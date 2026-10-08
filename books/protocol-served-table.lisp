@@ -422,30 +422,24 @@
             :view :pinned :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("msgid" :test (and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
             :cat (fn-nntp-msgid-retrieval-cat session v :article (car args) fn-arena fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
-                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :article) (token (car args)))
-                 (:instance fn-nntp-msgid-retrieval-indexed-refines-scan
-                            (index (fn-gidx-pin-trie index)) (kind :article) (token (car args)))))
+                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :article) (token (car args)))))
            ("number" :test (and (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
             :cat (fn-nntp-number-retrieval-cat session v :article (car args) fn-arena fn-cat)
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-number-retrieval-cat-is-walk (kind :article) (token (car args)))
                  (:instance fn-scat-pinned-number-line-is-number-retrieval)))
@@ -454,7 +448,6 @@
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-current-retrieval-cat-is-current-retrieval (kind :article)))
             :open (fn-nntp-retrieval))
@@ -462,10 +455,9 @@
             :view :none :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply))))
    :cost (:unrestricted "number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article"
-          :restricted "pinned Message-ID trie lookup or the reference number/current archive walk")
+          :restricted "Message-ID scan of the pinned article list or the reference number/current archive walk")
    :teeth ("ARTICLE 2" "ARTICLE" "ARTICLE <b@x>" "ARTICLE 9" "ARTICLE <missing@x>" "ARTICLE 1 2"))
   ("HEAD"
    :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.2"
@@ -481,30 +473,24 @@
             :view :pinned :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("msgid" :test (and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
             :cat (fn-nntp-msgid-retrieval-cat session v :head (car args) fn-arena fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
-                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :head) (token (car args)))
-                 (:instance fn-nntp-msgid-retrieval-indexed-refines-scan
-                            (index (fn-gidx-pin-trie index)) (kind :head) (token (car args)))))
+                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :head) (token (car args)))))
            ("number" :test (and (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
             :cat (fn-nntp-number-retrieval-cat session v :head (car args) fn-arena fn-cat)
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-number-retrieval-cat-is-walk (kind :head) (token (car args)))
                  (:instance fn-scat-pinned-number-line-is-number-retrieval)))
@@ -513,7 +499,6 @@
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-current-retrieval-cat-is-current-retrieval (kind :head)))
             :open (fn-nntp-retrieval))
@@ -521,10 +506,9 @@
             :view :none :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply))))
    :cost (:unrestricted "number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article"
-          :restricted "pinned Message-ID trie lookup or the reference number/current archive walk")
+          :restricted "Message-ID scan of the pinned article list or the reference number/current archive walk")
    :teeth ("HEAD 2" "HEAD" "HEAD <b@x>" "HEAD 9" "HEAD <missing@x>" "HEAD 1 2"))
   ("BODY"
    :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.3"
@@ -540,30 +524,24 @@
             :view :pinned :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("msgid" :test (and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
             :cat (fn-nntp-msgid-retrieval-cat session v :body (car args) fn-arena fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
-                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :body) (token (car args)))
-                 (:instance fn-nntp-msgid-retrieval-indexed-refines-scan
-                            (index (fn-gidx-pin-trie index)) (kind :body) (token (car args)))))
+                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :body) (token (car args)))))
            ("number" :test (and (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
             :cat (fn-nntp-number-retrieval-cat session v :body (car args) fn-arena fn-cat)
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-number-retrieval-cat-is-walk (kind :body) (token (car args)))
                  (:instance fn-scat-pinned-number-line-is-number-retrieval)))
@@ -572,7 +550,6 @@
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-current-retrieval-cat-is-current-retrieval (kind :body)))
             :open (fn-nntp-retrieval))
@@ -580,10 +557,9 @@
             :view :none :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply))))
    :cost (:unrestricted "number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article"
-          :restricted "pinned Message-ID trie lookup or the reference number/current archive walk")
+          :restricted "Message-ID scan of the pinned article list or the reference number/current archive walk")
    :teeth ("BODY 2" "BODY" "BODY <b@x>" "BODY 9" "BODY <missing@x>" "BODY 1 2"))
   ("STAT"
    :view :pinned :view-decided (:pin-or-completed "PRF-1238") :effect :current :view-rfc "NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.4"
@@ -599,30 +575,24 @@
             :view :pinned :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("compatibility" :test (fn-rcompat-reply-cat session archive index env keyword args v fn-arena fn-cat)
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("msgid" :test (and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
             :cat (fn-nntp-msgid-retrieval-cat session v :stat (car args) fn-arena fn-cat)
             :view :pinned :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
-                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :stat) (token (car args)))
-                 (:instance fn-nntp-msgid-retrieval-indexed-refines-scan
-                            (index (fn-gidx-pin-trie index)) (kind :stat) (token (car args)))))
+                 (:instance fn-nntp-msgid-retrieval-cat-is-scan (kind :stat) (token (car args)))))
            ("number" :test (and (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args)))
             :cat (fn-nntp-number-retrieval-cat session v :stat (car args) fn-arena fn-cat)
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-number-retrieval-cat-is-walk (kind :stat) (token (car args)))
                  (:instance fn-scat-pinned-number-line-is-number-retrieval)))
@@ -631,7 +601,6 @@
             :view :pinned :effect :current
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-current-retrieval-cat-is-current-retrieval (kind :stat)))
             :open (fn-nntp-retrieval))
@@ -639,10 +608,9 @@
             :view :none :effect :none
             :by ((:instance fn-nntp-number-withdrawn-p-cat-is-archive (token (car args)))
                  (:instance fn-nntp-msgid-withdrawn-p-cat-is-trie (token (car args)))
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply))))
    :cost (:unrestricted "number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article"
-          :restricted "pinned Message-ID trie lookup or the reference number/current archive walk")
+          :restricted "Message-ID scan of the pinned article list or the reference number/current archive walk")
    :teeth ("STAT 2" "STAT" "STAT <b@x>" "STAT 9" "STAT <missing@x>" "STAT 1 2"))
   ("OVER"
    :view :pinned :effect :none :view-rfc "NNT-042 (other reads); RFC 3977 8.3"
@@ -652,7 +620,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)))
            ("range" :test (and (fn-gidx-pinp index) (consp args) (null (cdr args))
                                (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
@@ -668,10 +635,9 @@
                  (:instance fn-nntp-over-range-indexed-equals-fold
                             (token (car args)) (legacyp (fn-nntp-keywordp keyword "XOVER")))
                  (:instance fn-nntp-over-range-indexed-preserves-session
-                            (buckets (fn-gidx-pin-buckets index)) (trie (fn-gidx-pin-trie index))
+                            (buckets (fn-gidx-pin-buckets index)) (arts (fn-state-articles archive))
                             (token (car args)) (legacyp (fn-nntp-keywordp keyword "XOVER")))
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built))
             :open (fn-nntp-over-response fn-nntp-xover-response fn-nntp-result-session
                    fn-nntp-result-effects))
@@ -681,7 +647,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)))
            ("msgid" :test (and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
             :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
@@ -689,7 +654,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)))
            ("other" :test t
             :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
@@ -697,7 +661,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built))))
    :cost (:unrestricted "one cursor quantum of W numbers per scheduling step (books/served-plan-cursor.lisp), including the configured Xref server captured by the cursor; retained output bytes are not yet separately bounded"
           :restricted "the reference walk over the projected pinned archive (fn-nntp-over-range-indexed, no cursor)")
@@ -710,7 +673,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)))
            ("range" :test (and (fn-gidx-pinp index) (consp args) (null (cdr args))
                                (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
@@ -726,10 +688,9 @@
                  (:instance fn-nntp-over-range-indexed-equals-fold
                             (token (car args)) (legacyp (fn-nntp-keywordp keyword "XOVER")))
                  (:instance fn-nntp-over-range-indexed-preserves-session
-                            (buckets (fn-gidx-pin-buckets index)) (trie (fn-gidx-pin-trie index))
+                            (buckets (fn-gidx-pin-buckets index)) (arts (fn-state-articles archive))
                             (token (car args)) (legacyp (fn-nntp-keywordp keyword "XOVER")))
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built))
             :open (fn-nntp-over-response fn-nntp-xover-response fn-nntp-result-session
                    fn-nntp-result-effects))
@@ -739,7 +700,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)))
            ("msgid" :test (and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
             :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
@@ -747,7 +707,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)))
            ("other" :test t
             :cat (fn-nntp-archive-command session archive env keyword args fn-arena)
@@ -755,7 +714,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built))))
    :cost (:unrestricted "one cursor quantum of W numbers per scheduling step (books/served-plan-cursor.lisp), including the configured Xref server captured by the cursor; retained output bytes are not yet separately bounded"
           :restricted "the reference walk over the projected pinned archive (fn-nntp-over-range-indexed, no cursor)")
@@ -769,7 +727,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("verified" :test (and (consp args) (fn-nntp-keywordp (car args) ":FN-VERIFIED"))
@@ -777,7 +734,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-verdict-hdr-response-cat-is-archive)))
@@ -786,7 +742,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-verdict-hdr-response-cat-is-archive)
@@ -796,7 +751,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-verdict-hdr-response-cat-is-archive)
@@ -808,7 +762,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-verdict-hdr-response-cat-is-archive)
@@ -828,7 +781,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("ordinary" :test t
@@ -837,7 +789,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-hdr-command-cat-is-archive (legacyp t)))
@@ -862,7 +813,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)))
            ("counts" :test (and (fn-gidx-pinp index) (consp args)
                                 (fn-nntp-keyword-tokenp (car args))
@@ -873,7 +823,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-nntp-list-counts-command-cat-is-archive
                             (closed (fn-nntp-env-closed env)) (args (cdr args)))
@@ -885,7 +834,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)))
            ("active" :test (fn-scat-list-active-formp args)
@@ -894,7 +842,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply)
                  (:instance fn-nntp-list-active-cat-is-list-command)))
@@ -904,7 +851,6 @@
             :by ((:instance fn-nntp-xref-reply-cat-is-col (configured (fn-state-groups archive)))
                  (:instance fn-nntp-xref-reply-col-is-xref-reply)
                  (:instance fn-proto-statep-article-listp)
-                 (:instance fn-proto-pin-trie-is-built)
                  (:instance fn-proto-pin-buckets-are-built)
                  (:instance fn-rcompat-reply-cat-is-rcompat-reply))))
    :cost (:unrestricted "ACTIVE and COUNTS use carried group summaries with configured-group walks; compatibility and other variants walk pinned listing/creation facts; whole reply allocated"

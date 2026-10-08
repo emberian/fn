@@ -489,7 +489,7 @@
 ;; The control pin a served connection carries (control-c3e): the view's
 ;; withdrawn list W and the withdrawal records WS it was decided under, pinned
 ;; at open or advance with the archive, so a reader never sees a later
-;; decision.  The pinned dispatcher reads it from the fourth slot of the group
+;; decision.  The pinned dispatcher reads it from the second slot of the group
 ;; pin (`fn-gidx-pin-with-control', books/group-bucket-index.lisp).
 
 (defun fn-ctl-pin (withdrawn ws)
@@ -511,19 +511,6 @@
 (defthm fn-ctl-pin-withdrawn-of-nil
   (equal (fn-ctl-pin-withdrawn nil) nil))
 
-;; The served lookups, over the pinned Message-ID trie of the visible list
-;; instead of a scan of it.  A target that is not a non-empty string (no
-;; parsed Control or Supersedes names one) takes the scan, which the trie
-;; cannot answer; the reader never reaches that case with a found target.
-
-(defun fn-ctl-served-held (msgid trie visible withdrawn)
-  (declare (xargs :guard t))
-  (or (fn-ctl-msgid-withdrawn msgid withdrawn)
-      (if (consp (fn-midx-key-chars msgid))
-          (let ((hit (fn-midx-lookup msgid trie)))
-            (if (consp hit) hit nil))
-        (fn-ctl-msgid-withdrawn msgid visible))))
-
 (defthm fn-ctl-find-article-is-msgid-withdrawn
   (implies (stringp msgid)
            (equal (if (consp (fn-find-article msgid xs))
@@ -531,61 +518,6 @@
                     nil)
                   (fn-ctl-msgid-withdrawn msgid xs)))
   :hints (("Goal" :in-theory (enable fn-find-article fn-ctl-msgid-withdrawn))))
-
-; KEYSTONE (the served lookup is the kernel's).  Over the trie of the
-; visible list, the served lookup finds what `fn-ctl-find-held' finds.
-(defthm fn-ctl-served-held-is-find-held
-  (implies (fn-midx-correspondencep trie visible)
-           (equal (fn-ctl-served-held msgid trie visible withdrawn)
-                  (fn-ctl-find-held msgid visible withdrawn)))
-  :hints (("Goal" :in-theory (e/d (fn-ctl-find-held fn-midx-correspondencep
-                                   fn-midx-key-chars)
-                                  (fn-midx-lookup fn-midx-build
-                                   fn-find-article fn-ctl-msgid-withdrawn
-                                   fn-ctl-find-article-is-msgid-withdrawn))
-           :use ((:instance fn-ctl-find-article-is-msgid-withdrawn
-                            (xs visible))
-                 (:instance fn-midx-lookup-of-build-is-find-article-for-nonempty
-                            (articles visible))))))
-
-; The served :fn-control status: `fn-ctl-control-status' with the held
-; target found through the trie.
-(defun fn-ctl-served-status (c cbytes trie visible withdrawn ws verdicts)
-  (declare (xargs :guard t))
-  (let* ((msgid (and (consp c) (fn-article-msgid c)))
-         (target (and (consp c) (fn-ctl-target-octets cbytes)))
-         (plan (fn-ctl-withdrawal-plan msgid (fn-ctl-lookup-verdict msgid verdicts)
-                                       target
-                                       (and (consp c)
-                                            (fn-ctl-keys-octets cbytes))
-                                       nil)))
-    (cond ((not target) (list :none))
-          ((not (fn-ctl-withdrawalp plan)) (list :declined (fn-ctl-at 1 plan)))
-          (t (let ((rec (fn-ctl-cause-record ws msgid target)))
-               (if (not rec)
-                   (list :declined :no-record)
-                 (let ((held (fn-ctl-served-held target trie visible withdrawn)))
-                   (if (not held)
-                       (list :owed)
-                     (let ((effect (fn-ctl-withdrawal-effect
-                                    rec (fn-article-groups held)
-                                    (fn-ctl-lookup-verdict target verdicts)
-                                    (fn-article-payload held))))
-                       (if (fn-ctl-effect-withdrawsp effect)
-                           (list :executed effect)
-                         (list :declined (fn-ctl-at 1 effect))))))))))))
-
-(defthm fn-ctl-served-status-is-control-status
-  (implies (fn-midx-correspondencep trie visible)
-           (equal (fn-ctl-served-status c cbytes trie visible withdrawn ws verdicts)
-                  (fn-ctl-control-status c cbytes visible withdrawn ws verdicts)))
-  :hints (("Goal" :in-theory (e/d (fn-ctl-control-status)
-                                  (fn-ctl-served-held fn-ctl-find-held
-                                   fn-midx-correspondencep
-                                   fn-ctl-withdrawal-plan fn-ctl-withdrawalp
-                                   fn-ctl-withdrawal-effect fn-ctl-effect-withdrawsp
-                                   fn-ctl-cause-record fn-ctl-target-octets fn-ctl-keys-octets
-                                   fn-ctl-lookup-verdict)))))
 
 ; The article the reader names in `HDR :fn-control <msgid>': served or
 ; withdrawn, found as the held target is.
@@ -604,8 +536,7 @@
 (in-theory (disable (:d fn-ctl-withdrawn-filter) (:d fn-ctl-subseq-diff)
                     (:d fn-ctl-refresh-withdrawn) (:d fn-ctl-control-status)
                     (:d fn-ctl-cause-record) (:d fn-ctl-find-held)
-                    (:d fn-ctl-msgid-withdrawn) (:d fn-ctl-served-held)
-                    (:d fn-ctl-served-status)))
+                    (:d fn-ctl-msgid-withdrawn)))
 
 ; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
 ; a structural primitive of bare variables, kept for this book's proofs

@@ -33,7 +33,7 @@
 ; WHAT IS SERVED.  An entry is served exactly when the session could fetch it
 ; with ARTICLE <msgid> on the same view (books/nntp.lisp
 ; `fn-nntp-archive-command-pinned''s Message-ID arms): its Message-ID is a
-; valid identifier, it is in the view's Message-ID trie (a withdrawn article
+; valid identifier, it is in the view's article list (a withdrawn article
 ; is not), it is not reclaimed (D13), its octets are CRLF-framed, and it is available at a number in a group WILDMAT
 ; matches (NEWNEWS' test, `fn-nntp-newnews-candidatep').  The view is the
 ; one the connection pinned, restricted by the login's READ rule
@@ -237,11 +237,11 @@
 ; KEYSTONE SUBJECT.  An entry of the view is served exactly when ARTICLE
 ; <msgid> on the same view would return it (see the head of this book) and
 ; WILDMAT's groups hold it at a number.
-(defun fn-cu-servedp (article groups trie fn-arena)
+(defun fn-cu-servedp (article groups arts fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (and (fn-nntp-article-idp article)
        (fn-nntp-newnews-candidatep groups article)
-       (consp (fn-midx-lookup (fn-article-msgid article) trie))
+       (consp (fn-find-article (fn-article-msgid article) arts))
        (not (fn-nntp-article-tombstonep article fn-arena))
        (fn-nntp-article-framedp article fn-arena)
        t))
@@ -282,19 +282,19 @@
 ; rendered octets served so far.  The first served record is always taken; a
 ; later one only when its rendered octets fit what remains of QUANTUM.  An
 ; entry that is not served is passed over and counts as examined.
-(defun fn-cu-select-aux (entries groups trie quantum pos served used fn-arena)
+(defun fn-cu-select-aux (entries groups arts quantum pos served used fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (natp quantum) (natp pos) (natp used))))
   (if (atom entries)
       (mv pos served used)
     (let ((a (car entries)))
-      (if (fn-cu-servedp a groups trie fn-arena)
+      (if (fn-cu-servedp a groups arts fn-arena)
           (let ((cost (fn-cu-record-cost a fn-arena)))
             (if (and (consp served) (< quantum (+ used cost)))
                 (mv pos served used)
-              (fn-cu-select-aux (cdr entries) groups trie quantum (+ 1 pos)
+              (fn-cu-select-aux (cdr entries) groups arts quantum (+ 1 pos)
                                 (cons a served) (+ used cost) fn-arena)))
-        (fn-cu-select-aux (cdr entries) groups trie quantum (+ 1 pos)
+        (fn-cu-select-aux (cdr entries) groups arts quantum (+ 1 pos)
                           served used fn-arena)))))
 
 ; THE ENTRIES ONE BATCH EXAMINES (lane pool-refusal, 2026-10-05).  The
@@ -324,12 +324,12 @@
 
 ; KEYSTONE SUBJECT.  The batch at FROM: (mv next articles), ARTICLES oldest
 ; first.
-(defun fn-cu-select (articles from groups trie quantum fn-arena)
+(defun fn-cu-select (articles from groups arts quantum fn-arena)
   (declare (xargs :stobjs fn-arena :guard (and (natp from) (natp quantum))))
   (mv-let (next served used)
     (fn-cu-select-aux (fn-cu-first (fn-cu-batch-entries)
                                    (fn-cu-drop from (fn-cu-rev articles nil)))
-                      groups trie quantum from nil 0 fn-arena)
+                      groups arts quantum from nil 0 fn-arena)
     (declare (ignore used))
     (mv next (fn-cu-rev served nil))))
 
@@ -385,9 +385,9 @@
           nil))
     nil))
 
-; KEYSTONE SUBJECT.  The reply to XFNCATCHUP ARGS on the pinned view ARCHIVE
-; with its index INDEX: what books/nntp.lisp `fn-nntp-command-pinned' answers.
-(defun fn-cu-serve-reply (session archive index args fn-arena)
+; KEYSTONE SUBJECT.  The reply to XFNCATCHUP ARGS on the pinned view ARCHIVE:
+; what books/nntp.lisp `fn-nntp-command-pinned' answers.
+(defun fn-cu-serve-reply (session archive args fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((request (fn-cu-parse-request args)))
     (if (not request)
@@ -407,7 +407,7 @@
                          (car request) (fn-cu-list (fn-state-groups archive))))
                 (quantum (min (nfix (cadddr request)) *fn-cu-max-quantum*)))
             (mv-let (next served)
-              (fn-cu-select articles from groups (fn-gidx-pin-trie index)
+              (fn-cu-select articles from groups (fn-state-articles archive)
                             quantum fn-arena)
               (fn-nntp-multi-octets
                session
@@ -420,11 +420,11 @@
 
 (local
  (defthm fn-cu-select-aux-served-member
-   (implies (and (member-equal a (mv-nth 1 (fn-cu-select-aux entries groups trie quantum
+   (implies (and (member-equal a (mv-nth 1 (fn-cu-select-aux entries groups arts quantum
                                                              pos served used fn-arena)))
                  (not (member-equal a served)))
             (and (member-equal a entries)
-                 (fn-cu-servedp a groups trie fn-arena)))
+                 (fn-cu-servedp a groups arts fn-arena)))
    :hints (("Goal" :in-theory (disable fn-cu-servedp fn-nntp-article-bytes)))))
 
 (local
@@ -468,13 +468,13 @@
 
 ; KEYSTONE (what is served).  Every article a batch serves is an entry of the
 ; view and one the session could fetch by Message-ID (`fn-cu-servedp'): the
-; view's trie holds it, it is not reclaimed, it is framed, and WILDMAT's
+; view's list holds it, it is not reclaimed, it is framed, and WILDMAT's
 ; groups hold it at a number.
 (defthm fn-cu-select-serves-only-retrievable
-  (implies (member-equal a (mv-nth 1 (fn-cu-select articles from groups trie
+  (implies (member-equal a (mv-nth 1 (fn-cu-select articles from groups arts
                                                    quantum fn-arena)))
            (and (member-equal a articles)
-                (fn-cu-servedp a groups trie fn-arena)))
+                (fn-cu-servedp a groups arts fn-arena)))
   :hints (("Goal" :in-theory (disable fn-cu-servedp fn-cu-select-aux fn-cu-drop fn-cu-rev
                                       fn-cu-first fn-cu-member-first)
            :use ((:instance fn-cu-select-aux-served-member
@@ -487,7 +487,7 @@
 (local
  (defthm fn-cu-select-aux-pos-grows
    (implies (natp pos)
-            (<= pos (car (fn-cu-select-aux entries groups trie quantum
+            (<= pos (car (fn-cu-select-aux entries groups arts quantum
                                            pos served used fn-arena))))
    :rule-classes :linear
    :hints (("Goal" :in-theory (disable fn-cu-servedp fn-nntp-article-bytes)))))
@@ -495,10 +495,10 @@
 (local
  (defthm fn-cu-select-aux-progress
    (implies (and (consp entries) (natp pos) (not (consp served)))
-            (< pos (car (fn-cu-select-aux entries groups trie quantum
+            (< pos (car (fn-cu-select-aux entries groups arts quantum
                                           pos served used fn-arena))))
    :rule-classes :linear
-   :hints (("Goal" :expand ((fn-cu-select-aux entries groups trie quantum
+   :hints (("Goal" :expand ((fn-cu-select-aux entries groups arts quantum
                                               pos served used fn-arena))
             :do-not-induct t
             :in-theory (disable fn-cu-servedp fn-nntp-article-bytes
@@ -519,7 +519,7 @@
 ; or one larger than the quantum.
 (defthm fn-cu-select-makes-progress
   (implies (and (natp from) (< from (len articles)))
-           (< from (mv-nth 0 (fn-cu-select articles from groups trie quantum
+           (< from (mv-nth 0 (fn-cu-select articles from groups arts quantum
                                            fn-arena))))
   :rule-classes :linear
   :hints (("Goal" :in-theory (disable fn-cu-select-aux fn-cu-servedp fn-cu-drop fn-cu-rev
@@ -534,7 +534,7 @@
 (local
  (defthm fn-cu-select-aux-pos-bound
    (implies (natp pos)
-            (<= (car (fn-cu-select-aux entries groups trie quantum
+            (<= (car (fn-cu-select-aux entries groups arts quantum
                                        pos served used fn-arena))
                 (+ pos (len entries))))
    :rule-classes :linear
@@ -549,7 +549,7 @@
 ; this bound) examines all eight entries of a view of eight.
 (defthm fn-cu-select-examines-a-bounded-batch
   (implies (natp from)
-           (<= (mv-nth 0 (fn-cu-select articles from groups trie quantum fn-arena))
+           (<= (mv-nth 0 (fn-cu-select articles from groups arts quantum fn-arena))
                (+ from (fn-cu-batch-entries))))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-cu-select-aux fn-cu-servedp fn-cu-drop fn-cu-rev
@@ -575,11 +575,11 @@
    (implies (and (natp used) (natp quantum)
                  (or (not (consp served)) (<= used quantum) (equal (len served) 1))
                  (equal used (fn-cu-octets-of served fn-arena)))
-            (let ((out (mv-nth 1 (fn-cu-select-aux entries groups trie quantum
+            (let ((out (mv-nth 1 (fn-cu-select-aux entries groups arts quantum
                                                    pos served used fn-arena))))
               (or (<= (fn-cu-octets-of out fn-arena) quantum)
                   (equal (len out) 1))))
-   :hints (("Goal" :induct (fn-cu-select-aux entries groups trie quantum pos served used fn-arena)
+   :hints (("Goal" :induct (fn-cu-select-aux entries groups arts quantum pos served used fn-arena)
                    :in-theory (disable fn-cu-servedp fn-nntp-article-bytes fn-cu-record-cost)))
    :rule-classes nil))
 
@@ -598,7 +598,7 @@
 ; one: everything the former counted is inside the rendered record.
 (defthm fn-cu-select-stays-within-the-quantum
   (implies (natp quantum)
-           (let ((served (mv-nth 1 (fn-cu-select articles from groups trie
+           (let ((served (mv-nth 1 (fn-cu-select articles from groups arts
                                                  quantum fn-arena))))
              (or (<= (fn-cu-octets-of served fn-arena) quantum)
                  (equal (len served) 1))))
@@ -641,9 +641,9 @@
 ; need with the reply closed.
 (defthm fn-cu-serve-reply-preserves-session
   (and (equal (fn-nntp-result-session
-               (fn-cu-serve-reply session archive index args fn-arena))
+               (fn-cu-serve-reply session archive args fn-arena))
               session)
-       (equal (car (fn-cu-serve-reply session archive index args fn-arena))
+       (equal (car (fn-cu-serve-reply session archive args fn-arena))
               session))
   :hints (("Goal" :in-theory (e/d (fn-cu-serve-reply fn-nntp-multi-octets
                                    fn-nntp-single fn-nntp-make-result
@@ -653,12 +653,11 @@
                                    fn-cu-render-lines fn-cu-initial-line
                                    fn-cu-parse-request fn-nntp-string-octets
                                    fn-nntp-crlf fn-nntp-stuff-lines fn-cu-list
-                                   fn-nntp-filter-groups-by-wildmat
-                                   fn-gidx-pin-trie)))))
+                                   fn-nntp-filter-groups-by-wildmat)))))
 
 (defthm fn-cu-serve-reply-is-one-reply
   (let ((effects (fn-nntp-result-effects
-                  (fn-cu-serve-reply session archive index args fn-arena))))
+                  (fn-cu-serve-reply session archive args fn-arena))))
     (and (consp effects)
          (null (cdr effects))
          (equal (car (car effects)) :reply)))
@@ -670,8 +669,7 @@
                                    fn-cu-render-lines fn-cu-initial-line
                                    fn-cu-parse-request fn-nntp-string-octets
                                    fn-nntp-crlf fn-nntp-stuff-lines fn-cu-list
-                                   fn-nntp-filter-groups-by-wildmat
-                                   fn-gidx-pin-trie)))))
+                                   fn-nntp-filter-groups-by-wildmat)))))
 
 (in-theory (disable fn-cu-serve-reply fn-cu-select fn-cu-servedp fn-cu-chain-step))
 

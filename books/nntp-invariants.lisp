@@ -1202,7 +1202,7 @@
               session archive index verdicts env keyword args fn-arena)) archive))
   :hints (("Goal" :in-theory
            (e/d (fn-nntp-archive-command-pinned)
-                (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
+                (fn-nntp-archive-command fn-nntp-msgid-retrieval
                  fn-nntp-over-range-indexed
                  fn-nntp-over-range-served fn-nntp-over-current-served
                  fn-nntp-over-msgid-served fn-nntp-list-overview-fmt-served

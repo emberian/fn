@@ -402,9 +402,9 @@
 ; ARTICLE/HEAD with no argument, a number or a Message-ID: the article the
 ; generic arms find (the scan for the current article and a number, as
 ; `fn-nntp-current-retrieval' and `fn-nntp-number-retrieval'; the pinned
-; trie for a Message-ID, as `fn-nntp-msgid-retrieval-indexed'), answered
+; served article list for a Message-ID, as `fn-nntp-msgid-retrieval'), answered
 ; over its served representation.
-(defun fn-rcompat-retrieval (session archive trie kind args server fn-arena)
+(defun fn-rcompat-retrieval (session archive arts kind args server fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (if (null args)
       (let ((group (fn-nntp-session-group session))
@@ -433,7 +433,7 @@
                   (fn-nntp-single session (fn-proto-text * :no-number))))))
         (if (not (and (fn-nntp-message-id-tokenp token) (fn-octet-listp token)))
             (fn-nntp-single session (fn-proto-text * :syntax))
-          (let ((article (fn-midx-lookup (fn-nntp-token-string token) trie)))
+          (let ((article (fn-find-article (fn-nntp-token-string token) arts)))
             (if (consp article)
                 (fn-rcompat-article-reply
                  session article (fn-nntp-msgid-local-number session article)
@@ -457,7 +457,7 @@
 (defthm fn-rcompat-retrieval-session-is-the-generic-session
   (implies (or (null args) (and (consp args) (null (cdr args))))
            (equal (fn-nntp-result-session
-                   (fn-rcompat-retrieval session archive trie kind args server fn-arena))
+                   (fn-rcompat-retrieval session archive arts kind args server fn-arena))
                   (fn-nntp-result-session
                    (fn-nntp-retrieval session archive kind args fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-retrieval fn-nntp-current-retrieval
@@ -491,7 +491,7 @@
   :body (fn-nntp-hdr-line (fn-nntp-decimal-field (car numbers))
                            (fn-nntp-hdr-octets content)))
 
-(defun fn-rcompat-hdr (session archive trie args legacyp server fn-arena)
+(defun fn-rcompat-hdr (session archive arts args legacyp server fn-arena)
   ; ARGS is (FIELD) or (FIELD RANGE-OR-MESSAGE-ID); FIELD is Xref.
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
   (let ((rest (and (consp args) (cdr args))))
@@ -538,7 +538,7 @@
             (if (not (and (fn-nntp-message-id-tokenp token)
                           (fn-octet-listp token)))
                 (fn-nntp-single session (fn-proto-text * :syntax))
-              (let* ((article (fn-midx-lookup (fn-nntp-token-string token) trie))
+              (let* ((article (fn-find-article (fn-nntp-token-string token) arts))
                      (content (fn-rcompat-xref-content server article fn-arena)))
                 (if (not (consp article))
                     (fn-nntp-single session (fn-proto-text * :no-msgid))
@@ -577,14 +577,14 @@
                (fn-nntp-keywordp keyword "HEAD"))
            (fn-gidx-pinp index)
            (or (null args) (and (consp args) (null (cdr args)))))
-      (fn-rcompat-retrieval session archive (fn-gidx-pin-trie index)
+      (fn-rcompat-retrieval session archive (fn-state-articles archive)
                             (fn-rcompat-retrieval-kind keyword) args server fn-arena))
      ((and (or (fn-nntp-keywordp keyword "HDR")
                (fn-nntp-keywordp keyword "XHDR"))
            (fn-gidx-pinp index)
            (consp args)
            (fn-nntp-keywordp (car args) "XREF"))
-      (fn-rcompat-hdr session archive (fn-gidx-pin-trie index) args
+      (fn-rcompat-hdr session archive (fn-state-articles archive) args
                       (fn-nntp-keywordp keyword "XHDR") server fn-arena))
      (t nil))))
 

@@ -76,7 +76,7 @@
   '(fn-nntp-keywordp fn-nntp-keyword-tokenp fn-nntp-upcase-keyword
     fn-nntp-parse-range fn-nntp-range-okp fn-nntp-xref-server fn-gidx-pinp
     fn-rcompat-list-keywordp fn-nntp-message-id-tokenp fn-nntp-number-tokenp
-    fn-nntp-printable-tokenp fn-gidx-pin-buckets fn-gidx-pin-trie
+    fn-nntp-printable-tokenp fn-gidx-pin-buckets
     fn-nntp-xref-reply fn-rcompat-reply))
 
 (defun fn-proto-dispatch-row-names (rows)
