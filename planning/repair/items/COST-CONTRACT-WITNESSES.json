@@ -1,0 +1,16 @@
+{
+ "category": "ratchet",
+ "file": "tools/cost_obligations.py",
+ "id": "COST-CONTRACT-WITNESSES",
+ "notes": [
+  "lane s-group-low raised the unwitnessed contract count 48 -> 50 with two rows in books/def-cost.lisp *fn-cost-contracts*: (fn-cat-horizon 1) and (fn-cat-group-raw-low 1), abstract-stobj exports of the same class as the existing (fn-cat-count 0) and (fn-cat-at 1) rows. Reviewed by Deputy S5 (2026-10-08): the witness these stand on is the paged-catalog measurement in tests/acl2/catalog-raw-low-tests.lisp and the lane's 1000-row/900-withdrawn probe (cell read 0 bytes vs 65,504 for the scan).",
+  "tools/cost_obligations.py reads every contract row with witness = null (no mechanism records a witness), so the unwitnessed count equals the row count and any new primitive raises it. Retire: give the registry a witness record per row (the measured micro-benchmark under planning/evidence/, as the tool header describes) and record witnesses for these two rows first; then the ratchet counts real gaps."
+ ],
+ "owner": "deputy-S",
+ "severity": "low",
+ "slice": "storage",
+ "source": "s-group-low",
+ "state": "open",
+ "title": "Cost contract rows have no witness mechanism: every row counts as unwitnessed, so the ratchet cannot distinguish a reviewed new primitive from an unreviewed one. Intended: a witness record per contract row (measured micro-benchmark), and the two catalog rows added by s-group-low witnessed first.",
+ "updated": "2026-10-08T12:30:00Z"
+}
