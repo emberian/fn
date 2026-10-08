@@ -1,0 +1,25 @@
+{
+ "category": "bug",
+ "detail": "The train-51 TCP_NOTSENT_LOWAT-only repair was refuted on hbox: the stopped-reader test observed 581632 queued octets against a 147456 limit. TCP_NOTSENT_LOWAT supplies writable notifications; eager nonblocking writes can still fill available send-buffer space. The old send-window theorem modeled a false write-refusal premise and has been replaced. host/native/mux.lisp now observes Linux SIOCOUTQNSD before each plan render, calls ACL2 fn-send-window-render-p, and parks the exact unrendered continuation when refused. POLLOUT retries admission; the send-progress timer remains live while no output buffer exists. books/send-window.lisp states NOTSENT + PENDING < W + Q for legal traces with one writer, exact observations and a maximum wire quantum Q; a no-transmit trace renders less than W + Q in total. defteeth covers the host quantum bound, the composed trace bound, and the stalled-reader bound, including removal of admission. fn-send-window-render-p-by-definition connects the deployed decision to fn-sw-render-p. TLS/compression expansion must be included in Q; the arithmetic does not certify those facilities, ioctl correctness, preflight scans or in-flight unacknowledged bytes.",
+ "file": "host/native/mux.lisp",
+ "id": "LOAD-F5-SLOW-READER-ISOLATION",
+ "line": "",
+ "notes": [
+  {
+   "author": "Codex / lane send-window-2",
+   "date": "2026-10-08",
+   "note": "Statement-first replacement of the false kernel premise. The host observation fails closed on ioctl failure or unsupported platforms. The /proc/net/tcp native test includes in-flight data and retains its existing receive-window slack. Gates and native results are recorded in the lane bundle handoff."
+  },
+  {
+   "author": "Codex / lane send-window-2",
+   "date": "2026-10-08",
+   "note": "hbox send-window-2/native-sw2-fixed completed status 0: default image closure 1231 books (175 certified here, 1056 installed), composed artifact 32a026e09ed399e514562426e40d8d7535c7599dcd04fe351f0b6dd77971044a; host-ld and developer/production images pass. Native over_pins 10/10 (494.698s), web 15/15 (80.266s), owner 30/30, zero skips. This includes the formerly failing stopped-reader queue bound and compressed web reads through restart. Fresh proof_repl admitted all 27 send-window forms with guards and defteeth. Nine scoped raw tests plus the output-lease harness pass; restoring either web deadline defect fails its controlled regression. Read, raw load 58/58, interface_emit 0, world check, native_program_check, harness reach/stubs and secrets pass. Lock keys equal the unmodified 805c28f30 tree; the requested whitelist still omits its pre-existing R1b|fnn-extent-executor-actual-return|fnn-cold-worker-phase:unlocked-read key. No baseline or lock rule changed."
+  }
+ ],
+ "owner": "deputy-C",
+ "severity": "high",
+ "source": "tools/load F5",
+ "state": "open",
+ "title": "F5: four stopped one-octet readers of 512 KiB articles degrade the fast clients' p99 6.2x and grow the owner 87.6 MB: the kernel send queue is an unbounded render-ahead",
+ "updated": "2026-10-08T22:13:18Z"
+}

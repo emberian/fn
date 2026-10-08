@@ -43,8 +43,8 @@ def reading(**over) -> dict:
 class DeclarationTests(unittest.TestCase):
     def test_forms_parse(self):
         decls = interface_emit.declarations(tree(SOURCE))
-        self.assertEqual([d["name"] for d in decls], ["fn-a", "fn-c", "fn-d", "create-fn-e"])
-        a = decls[0]
+        self.assertEqual([d["name"] for d in decls], ["create-fn-e", "fn-a", "fn-c", "fn-d"])  # sorted by name
+        a = decls[1]
         self.assertEqual(a["class"], "common-lisp-compliant")
         self.assertEqual(a["kinds"], [["octets", "fn-cbor-octet-listp"]])
         self.assertEqual(a["keystones"], [{"theorem": "fn-a-thm"},

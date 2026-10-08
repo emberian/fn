@@ -12,6 +12,10 @@
 ; Results are flat lists so that the host never applies a record accessor.
 
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/bp-node")
 (include-book "../books/bp-node-budget-input")
 (include-book "../books/bp-node-records")
@@ -22,6 +26,7 @@
 (include-book "../books/bp-node-profile-admission")
 (include-book "../books/bp-node-host-transfer")
 (include-book "../books/bp-node-host-sequence")
+(include-book "../books/definterface")
 
 ; -----------------------------------------------------------------------------
 ; Endpoint IDs from the command line.
@@ -34,8 +39,14 @@
 (defun fn-bpn-host-eid (uri)
   (fn-bpaj-raw-announced-eid uri))
 
+(definterface fn-bpn-host-eid
+  :class ::ideal)
+
 (defun fn-bpn-host-node-idp (e)
   (and (fn-bpp-previous-nodep e) t))
+
+(definterface fn-bpn-host-node-idp
+  :class ::ideal)
 
 ; -----------------------------------------------------------------------------
 ; Configuration.  NIL when the operator's numbers are not a configuration:
@@ -45,6 +56,9 @@
   (let ((c (fn-bpn-config node-id lifetime crc-type hop-limit transfer-limit)))
     (if (fn-bpn-configp c) c nil)))
 
+(definterface fn-bpn-host-config
+  :class ::ideal)
+
 ; -----------------------------------------------------------------------------
 ; The clock observation.  The host has a monotonic millisecond reading and,
 ; when the operator supplied one, a DTN wall reading with its error bound.
@@ -53,6 +67,9 @@
 (defun fn-bpn-host-observation (monotonic wall wall-error has-wall)
   (let ((obs (fn-clock-observation monotonic wall wall-error (if has-wall t nil))))
     (if (fn-clock-observationp obs) obs nil)))
+
+(definterface fn-bpn-host-observation
+  :class ::ideal)
 
 ; -----------------------------------------------------------------------------
 ; Sending.  NIL when the ADU or the peer is not one this node can address;
@@ -72,6 +89,9 @@
             (len adu))
     nil))
 
+(definterface fn-bpn-host-sent-summary
+  :class ::ideal)
+
 ; -----------------------------------------------------------------------------
 ; Durable creation-sequence frontier.  These are the only sequence operations
 ; host/native/bp.lisp may call.  In particular it does not parse an FNBS frame,
@@ -82,13 +102,22 @@
       (fn-bpn-sequence-recover octets (if presentp t nil) (if freshp t nil))
     (list :fault :host-arguments)))
 
+(definterface fn-bpn-host-sequence-recover
+  :class ::ideal)
+
 (defun fn-bpn-host-sequence-ready-p (answer)
   (and (fn-bpn-sequence-recovery-readyp answer) t))
+
+(definterface fn-bpn-host-sequence-ready-p
+  :class ::ideal)
 
 (defun fn-bpn-host-sequence-frontier (answer)
   (if (fn-bpn-sequence-recovery-readyp answer)
       (fn-bpn-sequence-recovery-frontier answer)
     nil))
+
+(definterface fn-bpn-host-sequence-frontier
+  :class ::ideal)
 
 ; fn-bpn-host-sequence-reserve, fn-bpn-host-sequence-reservationp,
 ; fn-bpn-host-sequence-reservation-sequence and
@@ -97,6 +126,9 @@
 
 (defun fn-bpn-host-sequence-frame-limit ()
   (fn-bpn-sequence-frame-limit))
+
+(definterface fn-bpn-host-sequence-frame-limit
+  :class ::ideal)
 
 ; -----------------------------------------------------------------------------
 ; Immutable authored-wire evidence.  The preview is used only to observe the
@@ -111,21 +143,40 @@
   (fn-bpn-authored-wire-authorize
    config peer adu reservation obs lock-owned final-absent))
 
+(definterface fn-bpn-host-authored-wire-authorize
+  :class ::ideal
+  :delegates fn-bpn-authored-wire-authorize)
+
 (defun fn-bpn-host-authored-wire-operationp (operation)
   (and (fn-bpn-authored-wire-operationp operation) t))
 
+(definterface fn-bpn-host-authored-wire-operationp
+  :class ::ideal)
+
 (defun fn-bpn-host-authored-wire-operation-label (operation)
   (fn-bpn-authored-wire-operation-label operation))
+
+(definterface fn-bpn-host-authored-wire-operation-label
+  :class ::ideal)
 
 (defun fn-bpn-host-authored-wire-operation-name (operation)
   (let ((chars (fn-bpn-authored-wire-operation-name-chars operation)))
     (if (character-listp chars) (coerce chars 'string) "")))
 
+(definterface fn-bpn-host-authored-wire-operation-name
+  :class ::ideal)
+
 (defun fn-bpn-host-authored-wire-operation-wire (operation)
   (fn-bpn-authored-wire-operation-wire operation))
 
+(definterface fn-bpn-host-authored-wire-operation-wire
+  :class ::ideal)
+
 (defun fn-bpn-host-authored-wire-operation-publication (operation)
   (fn-bpn-authored-wire-operation-publication operation))
+
+(definterface fn-bpn-host-authored-wire-operation-publication
+  :class ::ideal)
 
 ; A `bp send' retry re-offers a durable attempt; it never mints a second
 ; identity for the same ADU (kind-8 retry policy, spec 4.3.1: the retried
@@ -155,6 +206,9 @@
                    (equal wire (fn-bpn-send config peer adu sequence obs)))
               (list creation sequence)
             nil))))))
+
+(definterface fn-bpn-host-authored-retry
+  :class ::ideal)
 
 ; -----------------------------------------------------------------------------
 ; Receiving: fn-bpn-host-receive and its three flat-result readers are

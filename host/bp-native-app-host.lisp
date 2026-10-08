@@ -5,12 +5,19 @@
 ; image.  Every call below reads the canonical configured owner installed by
 ; host/owner-host.lisp.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/bp-channel-ingress")
 (include-book "../books/bp-listener-set")
 
 (defun fn-owner-bp-session-admission (channel announced-uri state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpaj-session-admission (fn-owner-config state) channel announced-uri)))
+
+(definterface fn-owner-bp-session-admission
+  :class ::program)
 
 (defun fn-owner-bp-tcpcl-ingress
     (fnbs-state session-counter xfer-id channel announced-uri state)
@@ -19,12 +26,18 @@
           (fn-owner-config state) fnbs-state channel announced-uri
           session-counter xfer-id)))
 
+(definterface fn-owner-bp-tcpcl-ingress
+  :class ::program)
+
 ; Spec bp-node-machine 4.6: the route table of the current configuration,
 ; which the host passes back to fn-bprt-outbound-choice and to the routed
 ; :session event.  ACL2 builds it (fn-bprt-table); the host keeps no copy.
 (defun fn-owner-bp-route-table (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bprt-table (fn-owner-config state))))
+
+(definterface fn-owner-bp-route-table
+  :class ::program)
 
 ;; PRF-176: the ports `bp-node serve -' binds, one per transport-bp boundary
 ;; row of the current configuration that admits a session
@@ -40,23 +53,35 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bplc-recover mode (fn-owner-config state))))
 
+(definterface fn-owner-bplc-recover :class ::program)
+
 (defun fn-owner-bplc-begin (carry mode state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bplc-begin carry mode (fn-owner-config state))))
+
+(definterface fn-owner-bplc-begin :class ::program)
 
 (defun fn-owner-bplc-turn-plan (ownerp admin carry state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bplc-turn-plan ownerp admin (fn-owner-config state) carry)))
 
+(definterface fn-owner-bplc-turn-plan :class ::program)
+
 (defun fn-owner-bp-request-trustedp (view state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-request-trustedp view (fn-owner-config state))))
+
+(definterface fn-owner-bp-request-trustedp
+  :class ::program)
 
 ; D23: ACL2's source decision for a delivered view, as the line the host
 ; prints (direct, carried with carrier and author, or the refusal reason).
 (defun fn-owner-bp-source-decision-line (view state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-source-decision-line view (fn-owner-config state))))
+
+(definterface fn-owner-bp-source-decision-line
+  :class ::program)
 (include-book "../books/bp-native-app-fast")
 ; fn-own-clock.  Reached through books/bp-native-app.lisp until that book
 ; dropped its unused include of owner (audit 2026-09-25, packet 2).
@@ -82,16 +107,25 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-receipt-signature-plan view (fn-owner-bp-keyring state))))
 
+(definterface fn-owner-bp-receipt-signature-plan
+  :class ::program)
+
 ; OBS is the host's (observed-ml-key ed25519 ml-dsa-65), or nil.
 (defun fn-owner-bp-receipt-gatep (view obs state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-receipt-gatep view (fn-owner-config state)
                                 (fn-owner-bp-keyring state) obs)))
 
+(definterface fn-owner-bp-receipt-gatep
+  :class ::program)
+
 (defun fn-owner-bp-release-line (view obs state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-receipt-release-line view (fn-owner-config state)
                                        (fn-owner-bp-keyring state) obs)))
+
+(definterface fn-owner-bp-release-line
+  :class ::program)
 
 (defun fn-owner-bp-receipt-release-record (view obs state)
   (declare (xargs :stobjs state :mode :program))
@@ -99,12 +133,18 @@
                                          (fn-owner-bp-workflow-image state)
                                          (fn-owner-bp-keyring state) obs)))
 
+(definterface fn-owner-bp-receipt-release-record
+  :class ::program)
+
 (defun fn-owner-bp-receipt-release-detail (view obs state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpah-release-detail
           (fn-bpah-receipt-release-verdict
            view (fn-owner-config state) (fn-owner-bp-workflow-image state)
            (fn-owner-bp-keyring state) obs))))
+
+(definterface fn-owner-bp-receipt-release-detail
+  :class ::program)
 
 (defun fn-owner-app-bind-receipt-store (state)
   (declare (xargs :stobjs state :mode :program))
@@ -116,11 +156,17 @@
          (state (f-put-global 'fn-bprj-store-source :owner-bound state)))
     (value :ready)))
 
+(definterface fn-owner-app-bind-receipt-store
+  :class ::program)
+
 (defun fn-owner-app-unbind-receipt-store (state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((state (f-put-global 'fn-bprj-store-source :standalone state))
          (state (f-put-global 'fn-bprj-bound-store nil state)))
     (value :ready)))
+
+(definterface fn-owner-app-unbind-receipt-store
+  :class ::program)
 
 ; Flat result: (outcome reason adu primary-identity source destination).
 ; Fragments are refused by fn-bpn-receive, so the canonical primary identity
@@ -143,12 +189,33 @@
         (list :uncertain (fn-bpn-outcome-reason r) nil nil "" ""))
        (t (list :refused (fn-bpn-outcome-reason r) nil nil "" ""))))))
 
+(definterface fn-bpapp-receive
+  :class ::program)
+
 (defun fn-bpapp-receive-outcome (r) (declare (xargs :guard t :mode :program)) (nth 0 r))
+
+(definterface fn-bpapp-receive-outcome
+  :class ::program)
 (defun fn-bpapp-receive-reason (r) (declare (xargs :guard t :mode :program)) (nth 1 r))
+
+(definterface fn-bpapp-receive-reason
+  :class ::program)
 (defun fn-bpapp-receive-adu (r) (declare (xargs :guard t :mode :program)) (nth 2 r))
+
+(definterface fn-bpapp-receive-adu
+  :class ::program)
 (defun fn-bpapp-receive-identity (r) (declare (xargs :guard t :mode :program)) (nth 3 r))
+
+(definterface fn-bpapp-receive-identity
+  :class ::program)
 (defun fn-bpapp-receive-source (r) (declare (xargs :guard t :mode :program)) (nth 4 r))
+
+(definterface fn-bpapp-receive-source
+  :class ::program)
 (defun fn-bpapp-receive-destination (r) (declare (xargs :guard t :mode :program)) (nth 5 r))
+
+(definterface fn-bpapp-receive-destination
+  :class ::program)
 
 ; REASON is nil for a ready plan and the refusal's keyword otherwise.  It is
 ; left in `fn-owner-app-refusal-reason' for fn-owner-app-refusal-log, which
@@ -342,6 +409,9 @@
                 state)))
     (value (fn-olog-bp-app-class result))))
 
+(definterface fn-owner-app-refusal-log
+  :class ::program)
+
 ;; The one line bp-node serve prints for a delivered request it did not
 ;; accept (host/native/bp-node.lisp fnn-bpnode-request-result): RESULT is the
 ;; answer the host returns, DETAIL the reason ACL2 named for a Store-side
@@ -369,9 +439,15 @@
                    (fn-olog-field "result" (fn-olog-symbol-text result))
                    (fn-olog-field "reason" (fn-olog-symbol-text reason))))))))
 
+(definterface fn-owner-bp-request-refusal-line
+  :class ::program)
+
 (defun fn-owner-app-current-generation (state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cfg-generation (fn-owner-config state))))
+
+(definterface fn-owner-app-current-generation
+  :class ::program)
 
 ; Sole ACL2 application admission event.  The request intent must already be
 ; durable: fn-bpaj-dispatch-fast is called over the same bound owner Store, and

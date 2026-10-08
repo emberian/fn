@@ -342,14 +342,21 @@
 ;   covered       the received finals the checkpoint retires (the journal
 ;                 credit the old generation had consumed); evidence only,
 ;                 replay never reads it
-(defun fn-bpnr-checkpoint (generation held handoffs prior next-arrival covered)
+;   jobs          the base machine's owed jobs at the rotation, exactly
+;   next-token    the base machine's token counter at the rotation
+; A rotation therefore no longer needs the base machine to owe nothing: the
+; owed work is part of the published file, and fn-bpnr-checkpoint-of-statep
+; (books/bp-node-progress) refuses a checkpoint that drops it.
+(defun fn-bpnr-checkpoint (generation held handoffs prior next-arrival covered
+                                      jobs next-token)
   (declare (xargs :guard t))
-  (list :bpnr-checkpoint generation held handoffs prior next-arrival covered))
+  (list :bpnr-checkpoint generation held handoffs prior next-arrival covered
+        jobs next-token))
 (verify-guards fn-bpnr-checkpoint)
 
 (defun fn-bpnr-checkpointp (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 7)
+  (and (true-listp x) (equal (len x) 9)
        (equal (car x) :bpnr-checkpoint)
        (natp (nth 1 x))
        (true-listp (nth 2 x))
@@ -358,7 +365,9 @@
            (and (consp (nth 4 x)) (natp (car (nth 4 x)))
                 (natp (cdr (nth 4 x)))))
        (natp (nth 5 x))
-       (natp (nth 6 x))))
+       (natp (nth 6 x))
+       (fn-bpn-job-listp (nth 7 x))
+       (natp (nth 8 x))))
 (verify-guards fn-bpnr-checkpointp)
 
 (defun fn-bpnr-checkpoint-generation (x) (declare (xargs :guard t)) (fn-bpn-nth 1 x))
@@ -367,28 +376,41 @@
 (defun fn-bpnr-checkpoint-prior (x) (declare (xargs :guard t)) (fn-bpn-nth 4 x))
 (defun fn-bpnr-checkpoint-next-arrival (x) (declare (xargs :guard t)) (fn-bpn-nth 5 x))
 (defun fn-bpnr-checkpoint-covered (x) (declare (xargs :guard t)) (fn-bpn-nth 6 x))
+(defun fn-bpnr-checkpoint-jobs (x) (declare (xargs :guard t)) (fn-bpn-nth 7 x))
+(defun fn-bpnr-checkpoint-next-token (x) (declare (xargs :guard t)) (fn-bpn-nth 8 x))
 (verify-guards fn-bpnr-checkpoint-generation)
 (verify-guards fn-bpnr-checkpoint-held)
 (verify-guards fn-bpnr-checkpoint-handoffs)
 (verify-guards fn-bpnr-checkpoint-prior)
 (verify-guards fn-bpnr-checkpoint-next-arrival)
 (verify-guards fn-bpnr-checkpoint-covered)
+(verify-guards fn-bpnr-checkpoint-jobs)
+(verify-guards fn-bpnr-checkpoint-next-token)
 
 (defun fn-bpnr-checkpoint-prefix (payload)
   (declare (xargs :guard t))
   (append *fn-bpnr-head*
           (append (fn-bpc-u64-bytes (len payload)) payload)))
 
-; The file the host publishes: every octet, the trailer included, is ACL2's.
-; Nil when the value is not a checkpoint or does not fit the budget.
-(defun fn-bpnr-checkpoint-octets (ck budget)
+;; The file of a value under a budget: the framed raw encoding, every octet,
+;; the trailer included, ACL2's.  Nil when the value does not fit the budget.
+;; It is defined for every value; fn-bpnr-checkpoint-octets restricts it to
+;; checkpoints, so a damaged value has a file here that no checkpoint decode
+;; accepts (fn-bpnr-checkpoint-decode-of-damaged-jobs-is-nil).
+(defun fn-bpnr-value-octets (x budget)
   (declare (xargs :guard t))
-  (let ((payload (and (fn-bpnr-checkpointp ck) (natp budget)
-                      (fn-bpnr-enc ck budget))))
+  (let ((payload (and (natp budget) (fn-bpnr-enc x budget))))
     (if (and payload (<= (len payload) *fn-bpc-max-uint*))
         (let ((prefix (fn-bpnr-checkpoint-prefix payload)))
           (append prefix (fn-frame-trailer prefix)))
       nil)))
+
+; The file the host publishes: nil when the value is not a checkpoint or does
+; not fit the budget.
+(defun fn-bpnr-checkpoint-octets (ck budget)
+  (declare (xargs :guard t))
+  (and (fn-bpnr-checkpointp ck)
+       (fn-bpnr-value-octets ck budget)))
 
 ; The inverse the host calls at open on the selected file's octets.  Nil is
 ; a damaged selection: recovery fences (spec 3.6's damaged row).
@@ -425,6 +447,7 @@
             :in-theory (e/d (fn-frame-digestp) (fn-frame-trailer-is-a-digest))))))
 
 (verify-guards fn-bpnr-checkpoint-prefix)
+(verify-guards fn-bpnr-value-octets)
 (verify-guards fn-bpnr-checkpoint-octets)
 (verify-guards fn-bpnr-checkpoint-decode)
 
@@ -459,6 +482,86 @@
                                            (fn-bpnr-checkpoint-prefix
                                             (fn-bpnr-enc ck budget))))))
                  (:instance fn-bpnr-dec-of-enc (x ck) (d budget) (rest nil))))))
+
+;; Support for R3 (the raw file of an encoding past the bound is no file).
+(local
+ (defthm fn-bpnr-damaged-jobs-raw
+  (implies (and (fn-bpnr-enc x budget)
+                (<= (len (fn-bpnr-enc x budget)) *fn-bpc-max-uint*)
+                (not (fn-bpn-job-listp (nth 7 x))))
+           (equal (fn-bpnr-checkpoint-decode
+                   (append (fn-bpnr-checkpoint-prefix (fn-bpnr-enc x budget))
+                           (fn-frame-trailer
+                            (fn-bpnr-checkpoint-prefix (fn-bpnr-enc x budget))))
+                   budget)
+                  nil))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpc-u64-bytes fn-bpnr-read-u64 fn-frame-split
+                               fn-bpnr-enc fn-bpnr-dec
+                               fn-frame-trailer)
+           :use ((:instance fn-frame-split-of-append
+                            (a *fn-bpnr-head*) (n 6)
+                            (b (append (fn-bpc-u64-bytes (len (fn-bpnr-enc x budget)))
+                                       (append (fn-bpnr-enc x budget)
+                                               (fn-frame-trailer
+                                                (fn-bpnr-checkpoint-prefix
+                                                 (fn-bpnr-enc x budget)))))))
+                 (:instance fn-frame-split-of-append
+                            (a (fn-bpnr-enc x budget))
+                            (n (len (fn-bpnr-enc x budget)))
+                            (b (fn-frame-trailer
+                                (fn-bpnr-checkpoint-prefix
+                                 (fn-bpnr-enc x budget)))))
+                 (:instance fn-bpnr-read-u64-of-append
+                            (n (len (fn-bpnr-enc x budget)))
+                            (rest (append (fn-bpnr-enc x budget)
+                                          (fn-frame-trailer
+                                           (fn-bpnr-checkpoint-prefix
+                                            (fn-bpnr-enc x budget))))))
+                 (:instance fn-bpnr-dec-of-enc (x x) (d budget) (rest nil)))))))
+
+(local
+ (defthm fn-bpnr-dec-of-nil
+   (equal (fn-bpnr-dec nil d) nil)
+   :hints (("Goal" :expand ((fn-bpnr-dec nil d))))))
+
+(local
+ (defthm fn-bpnr-damaged-jobs-bounded
+  (implies (and (<= (len (fn-bpnr-enc x budget)) *fn-bpc-max-uint*)
+                (not (fn-bpn-job-listp (nth 7 x))))
+           (equal (fn-bpnr-checkpoint-decode
+                   (append (fn-bpnr-checkpoint-prefix (fn-bpnr-enc x budget))
+                           (fn-frame-trailer
+                            (fn-bpnr-checkpoint-prefix (fn-bpnr-enc x budget))))
+                   budget)
+                  nil))
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-bpnr-enc x budget))
+           :in-theory (disable fn-bpc-u64-bytes fn-bpnr-read-u64 fn-frame-split
+                               fn-bpnr-enc fn-bpnr-dec fn-frame-trailer)
+           :use ((:instance fn-bpnr-damaged-jobs-raw)))
+          ("Subgoal 1" :in-theory (e/d (fn-bpnr-checkpoint-decode fn-bpnr-checkpoint-prefix
+                                        fn-frame-split fn-bpnr-read-u64 fn-bpnr-dec-of-nil)
+                                       (fn-bpnr-dec))))))
+
+;; KEYSTONE (R3, damaged jobs fence).  A value whose jobs are not a valid job
+;; list has a file (fn-bpnr-value-octets: the raw encoding, framed as every
+;; checkpoint file is) that decodes to NIL, so recovery fences with the
+;; damaged-selection verdict instead of seeding a machine from them.
+;; fn-bpnr-checkpoint-octets itself refuses such a value.
+(defthm fn-bpnr-checkpoint-decode-of-damaged-jobs-is-nil
+  (implies (not (fn-bpn-job-listp (nth 7 x)))
+           (equal (fn-bpnr-checkpoint-decode (fn-bpnr-value-octets x budget) budget)
+                  nil))
+  :hints (("Goal" :do-not-induct t
+           :cases ((and (natp budget) (fn-bpnr-enc x budget)
+                        (<= (len (fn-bpnr-enc x budget)) *fn-bpc-max-uint*)))
+           :in-theory (disable fn-bpc-u64-bytes fn-bpnr-read-u64 fn-frame-split
+                               fn-bpnr-enc fn-bpnr-dec fn-frame-trailer
+                               fn-bpnr-damaged-jobs-bounded)
+           :use ((:instance fn-bpnr-damaged-jobs-bounded)))
+          ("Subgoal 1" :in-theory (enable fn-bpnr-value-octets))
+          ("Subgoal 2" :in-theory (enable fn-bpnr-value-octets fn-bpnr-checkpoint-decode))))
 
 ; ---------------------------------------------------------------------------
 ; The generation namespace.  Generation 0 is the original lifecycle

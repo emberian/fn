@@ -376,26 +376,29 @@ def tree_slot(label: str) -> Iterator[None]:
         release_tree_slot()
 
 
-def acl2_environment(base: dict | None = None) -> dict:
+def acl2_environment(base: dict | None = None, *, root: Path | None = None) -> dict:
     """The environment every ACL2 fn starts gets.
 
     The certification settings (no user customization; content-hashed
     certificates, which is what makes them valid in another worktree; no
-    inherited system-books override), so a session sees the world the book
-    was certified in, and the pool's heap cap.
+    inherited system-books/project override), so a session sees the world
+    the book was certified in, and the pool's heap cap.
     """
     environment = dict(os.environ if base is None else base)
     environment["ACL2_CUSTOMIZATION"] = "NONE"
     environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"
     environment.pop("ACL2_SYSTEM_BOOKS", None)
+    import acl2_projects
+    environment["ACL2_PROJECTS"] = str(acl2_projects.projects_file(root))
     return apply_heap_cap(environment)
 
 
-def run(argv: list, label: str, env: dict | None = None, **kwargs):
+def run(argv: list, label: str, env: dict | None = None, *,
+        root: Path | None = None, **kwargs):
     """`subprocess.run` of an ACL2 under this tree's slot, with the environment."""
     import subprocess
     with tree_slot(label):
-        return subprocess.run(argv, env=acl2_environment(env), **kwargs)
+        return subprocess.run(argv, env=acl2_environment(env, root=root), **kwargs)
 
 
 def popen(argv: list, label: str, env: dict | None = None, **kwargs):
@@ -411,4 +414,3 @@ def popen(argv: list, label: str, env: dict | None = None, **kwargs):
     except BaseException:
         release_tree_slot()
         raise
-

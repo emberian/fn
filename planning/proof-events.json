@@ -3095,6 +3095,26 @@
         {
           "kind": "theorem",
           "name": "fn-bpnrd-rotation-keeps-every-held-family"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnr-checkpoint-recovery-equals-full-machine"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnj-rotation-restart-succeeds-with-owed-work"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-rotation-restart-keeps-owed-work"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-rotation-recovery-seeds-owed-jobs"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work"
         }
       ]
     },
@@ -9383,7 +9403,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ocs-complete-only-after-the-barrier"
+          "name": "fn-otm-held-plan-complete-only-after-the-barrier",
+          "note": "Retires fn-ocs-complete-only-after-the-barrier as the registry event: fn-otm-held-plan-carries-the-whole-ocs-step and fn-otm-held-plan-implies-ocs-barrier-property prove the unchanged old property. The hosted successor covers held and pipelined arms."
         },
         {
           "kind": "theorem",
@@ -9395,7 +9416,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ocs-in-flight-until-completed"
+          "name": "fn-otm-held-plan-in-flight-until-completed",
+          "note": "Retires fn-ocs-in-flight-until-completed as the registry event: the whole OCS step embedding and fn-otm-held-plan-implies-ocs-in-flight-property recover the unchanged old claim. New held-protocol completion words have executable traces."
         },
         {
           "kind": "theorem",
@@ -12897,7 +12919,12 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-ocp-no-start-next-while-a-shut-out-class-waits"
+          "name": "fn-ocp-no-start-next-while-a-shut-out-class-waits",
+          "note": "Hosted unchanged through fn-otm-held-committer-wake-is-ocp-when-unheld; the held arm is covered by fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits"
         }
       ]
     },
@@ -18917,6 +18944,23 @@
         {
           "kind": "theorem",
           "name": "fn-prl-convert-growth-under-row-sum-invp"
+        }
+      ]
+    },
+    {
+      "id": "PRF-1357",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-step-is-reference-under-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-step-is-ocfg-read-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-own-read-step-full-is-own-read-step-full"
         }
       ]
     }

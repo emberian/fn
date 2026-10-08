@@ -91,10 +91,34 @@
                                   names token records stages)))
                      (- (len records))))))
 
+; START-relative form, and the token-0 form as its START = 0 instance.
+(defthm fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records
+  (implies (and (natp start)
+                (equal (car (fn-bpn-lifecycle-namespace-plan-from names start))
+                       :ready))
+           (equal (nth 3 (fn-bpn-lifecycle-namespace-plan-from names start))
+                  (+ start
+                     (len (nth 1 (fn-bpn-lifecycle-namespace-plan-from
+                                  names start))))))
+  :hints (("Goal"
+           :use ((:instance
+                  fn-bpn-lifecycle-namespace-plan-aux-frontier-counts-the-records
+                  (token start) (records nil) (stages nil)))
+           :in-theory (e/d (fn-bpn-lifecycle-namespace-plan-from)
+                           (fn-bpn-lifecycle-namespace-plan-aux
+                            fn-bpn-lifecycle-namespace-plan-aux-frontier-counts-the-records)))))
+
 (defthm fn-bpn-lifecycle-namespace-plan-frontier-counts-the-records
   (implies (equal (car (fn-bpn-lifecycle-namespace-plan names)) :ready)
            (equal (nth 3 (fn-bpn-lifecycle-namespace-plan names))
-                  (len (nth 1 (fn-bpn-lifecycle-namespace-plan names))))))
+                  (len (nth 1 (fn-bpn-lifecycle-namespace-plan names)))))
+  :hints (("Goal"
+           :use ((:instance
+                  fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records
+                  (start 0)))
+           :in-theory (e/d (fn-bpn-lifecycle-namespace-plan)
+                           (fn-bpn-lifecycle-namespace-plan-from
+                            fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records)))))
 
 ; A record binding pairs the names and the records one to one.
 (defthm fn-bpn-lifecycle-record-bindingsp-pairs-the-records
@@ -115,12 +139,78 @@
                            (fn-bpn-apply-record fn-bpn-record-applicablep
                             fn-bpn-machine-state-next-token)))))
 
-; KEYSTONE.  The namespace recovery and the record replay agree: for a
-; :ready recovery of the observed names over the decoded records, and the
-; initial machine (frontier 0) that replays those records to :ready, the
-; host's agreement check answers t, and both frontiers are the record count.
-; The host's "recovered namespace and machine frontier disagree" exit is
-; unreachable when both recoveries succeed on the same records.
+; A ready recovery from START counts its records from START.
+(defthm fn-bpn-lifecycle-recovery-from-frontier-counts-the-records
+  (implies (and (natp start)
+                (equal (car (fn-bpn-lifecycle-recovery-from names records start))
+                       :ready))
+           (equal (fn-bpn-lifecycle-recovery-next-token
+                   (fn-bpn-lifecycle-recovery-from names records start))
+                  (+ start (len records))))
+  :hints (("Goal"
+           :in-theory (e/d (fn-bpn-lifecycle-recovery-from
+                            fn-bpn-lifecycle-recovery-next-token
+                            fn-bpn-lifecycle-namespace-planp
+                            fn-bpn-lifecycle-plan-record-names
+                            fn-bpn-lifecycle-plan-next-token)
+                           (fn-bpn-lifecycle-namespace-plan-from
+                            fn-bpn-lifecycle-record-bindingsp))
+           :use ((:instance fn-bpn-lifecycle-record-bindingsp-pairs-the-records
+                            (names (nth 1 (fn-bpn-lifecycle-namespace-plan-from names start)))
+                            (token start))
+                 (:instance fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records)))))
+
+; KEYSTONE.  The namespace recovery and the record replay agree, from any
+; start: a generation restarted from a checkpoint names its records from the
+; checkpoint's token START and replays into a machine whose frontier is START.
+; For a :ready recovery of the observed names over the decoded records, and a
+; machine that replays those records to :ready, the host's agreement check
+; answers t, and both frontiers are START plus the record count.  The host's
+; "recovered namespace and machine frontier disagree" exit is unreachable
+; when both recoveries succeed on the same records.
+(defthm fn-bpn-host-lifecycle-recovery-from-agrees-with-the-replayed-machine
+  (implies (and (fn-bpn-machine-invariantp base)
+                (equal (fn-bpn-machine-state-next-token base) start)
+                (equal (car (fn-bpn-lifecycle-recovery-from names records start))
+                       :ready)
+                (equal (car (fn-bpn-replay-records base records)) :ready))
+           (and (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+                        (fn-bpn-lifecycle-recovery-from names records start)
+                        (nth 1 (fn-bpn-replay-records base records)))
+                       t)
+                (equal (fn-bpn-lifecycle-recovery-next-token
+                        (fn-bpn-lifecycle-recovery-from names records start))
+                       (+ start (len records)))
+                (equal (fn-bpn-machine-state-next-token
+                        (nth 1 (fn-bpn-replay-records base records)))
+                       (+ start (len records)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (e/d (fn-bpn-host-lifecycle-recovery-agrees-p
+                            fn-bpn-lifecycle-recovery-agrees-with-statep
+                            fn-bpn-lifecycle-recovery-from
+                            fn-bpn-lifecycle-recovery-next-token
+                            fn-bpn-lifecycle-namespace-planp
+                            fn-bpn-lifecycle-plan-record-names
+                            fn-bpn-lifecycle-plan-next-token)
+                           (fn-bpn-lifecycle-namespace-plan-from
+                            fn-bpn-replay-records
+                            fn-bpn-lifecycle-record-bindingsp
+                            fn-bpn-machine-invariantp
+                            fn-bpn-machine-statep
+                            fn-bpn-machine-state-next-token))
+           :use ((:instance fn-bpn-replay-records-preserves-machine-invariant
+                            (st base))
+                 (:instance fn-bpn-lifecycle-record-bindingsp-pairs-the-records
+                            (names (nth 1 (fn-bpn-lifecycle-namespace-plan-from names start)))
+                            (token start))
+                 (:instance fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records)
+                 (:instance fn-bpn-machine-invariant-components (st base))
+                 (:instance fn-bpn-replay-records-ready-advances-the-frontier-per-record
+                            (st base))))
+          ("Subgoal 1" :in-theory (enable fn-bpn-machine-invariantp))))
+
+; The START = 0 instance (the whole-history recovery, unchanged).
 (defthm fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine
   (implies (and (fn-bpn-machine-invariantp base)
                 (equal (fn-bpn-machine-state-next-token base) 0)
@@ -138,25 +228,34 @@
                        (len records))))
   :rule-classes nil
   :hints (("Goal"
-           :in-theory (e/d (fn-bpn-host-lifecycle-recovery-agrees-p
-                            fn-bpn-lifecycle-recovery-agrees-with-statep
-                            fn-bpn-lifecycle-recovery
-                            fn-bpn-lifecycle-recovery-next-token
-                            fn-bpn-lifecycle-namespace-planp
-                            fn-bpn-lifecycle-plan-record-names
-                            fn-bpn-lifecycle-plan-next-token)
-                           (fn-bpn-lifecycle-namespace-plan
-                            fn-bpn-replay-records
-                            fn-bpn-lifecycle-record-bindingsp
-                            fn-bpn-machine-invariantp
-                            fn-bpn-machine-statep
-                            fn-bpn-machine-state-next-token))
-           :use ((:instance fn-bpn-replay-records-preserves-machine-invariant
-                            (st base))
-                 (:instance fn-bpn-lifecycle-record-bindingsp-pairs-the-records
-                            (names (nth 1 (fn-bpn-lifecycle-namespace-plan names)))
-                            (token 0))
-                 (:instance fn-bpn-replay-records-ready-advances-the-frontier-per-record
-                            (st base))))
-          ("Subgoal 1" :in-theory (enable fn-bpn-machine-invariantp))))
+           :use ((:instance fn-bpn-host-lifecycle-recovery-from-agrees-with-the-replayed-machine
+                            (start 0)))
+           :in-theory (e/d (fn-bpn-lifecycle-recovery)
+                           (fn-bpn-lifecycle-recovery-from
+                            fn-bpn-host-lifecycle-recovery-agrees-p
+                            fn-bpn-replay-records fn-bpn-machine-invariantp
+                            fn-bpn-machine-state-next-token)))))
 
+;; A recovery of an empty namespace from START answers :ready with frontier START,
+;; which agrees with any machine whose token counter is START (within the
+;; lifecycle bound): a rotated generation with no records yet.
+(defthm fn-bpn-host-lifecycle-recovery-from-nothing-agrees
+  (implies (and (fn-bpn-machine-statep st)
+                (<= start *fn-bpn-machine-max-records*)
+                (equal (fn-bpn-machine-state-next-token st) start))
+           (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+                   (fn-bpn-lifecycle-recovery-from nil nil start) st)
+                  t))
+  :hints (("Goal" :use ((:instance fn-bpn-machine-statep-components))
+           :in-theory (e/d (fn-bpn-host-lifecycle-recovery-agrees-p
+                                   fn-bpn-lifecycle-recovery-agrees-with-statep
+                                   fn-bpn-lifecycle-recovery-from
+                                   fn-bpn-lifecycle-recovery-next-token
+                                   fn-bpn-lifecycle-namespace-plan-from
+                                   fn-bpn-lifecycle-namespace-plan-aux
+                                   fn-bpn-lifecycle-namespace-planp
+                                   fn-bpn-lifecycle-plan-record-names
+                                   fn-bpn-lifecycle-plan-next-token
+                                   fn-bpn-lifecycle-record-bindingsp
+                                   fn-bpn-lifecycle-max-namespace-entries)
+                                  (fn-bpn-machine-statep)))))

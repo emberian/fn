@@ -1,5 +1,9 @@
 ; Program-mode bridge: decoded bounded local records enter the executable model.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/bp-workflow-constructors")
 (include-book "../books/bp-ion-workflow")
 (include-book "../books/bp-ion-lifetime")
@@ -38,6 +42,8 @@
          (value :ready)))))
     (value :fault))))
 
+(definterface fn-workflow-install-replay :class :program)
+
 (defun fn-workflow-state (state)
  (declare (xargs :stobjs state :mode :program))
  (value (f-get-global 'fn-workflow-state state)))
@@ -49,6 +55,8 @@
   (let ((state (f-put-global 'fn-workflow-effects nil state)))
    (let ((state (f-put-global 'fn-workflow-recovered nil state)))
     (value :ready))))))
+
+(definterface fn-workflow-reset :class :program)
 (defun fn-workflow-effects (state)
  (declare (xargs :stobjs state :mode :program))
  (value (f-get-global 'fn-workflow-effects state)))
@@ -57,6 +65,9 @@
   ; Read-only validation for the first record.  Installation happens only
   ; after the native publication machine reports :durable.
   (if (fn-bp-config-recordp record) t nil))
+
+(definterface fn-workflow-valid-config
+  :class ::ideal)
 
 (defun fn-workflow-enqueue-record
   (txid generation work-id msgid forward-obligation-id peer-eid policy-id
@@ -77,6 +88,9 @@
                      forward-obligation-id peer-eid policy-id terms-id))))
     (value (if (and record (fn-bp-journal-recordp record)) record nil))))
 
+(definterface fn-workflow-enqueue-record
+  :class ::program)
+
 ; Constructors return nil on refusal; raw Lisp only publishes returned exact
 ; records.  The receipt authorization boolean names the selected local
 ; trusted-peer observation profile, not a cryptographic verification claim.
@@ -84,6 +98,9 @@
  (declare (xargs :stobjs state :mode :program))
  (value (fn-bprl-undertake-record
          (f-get-global 'fn-workflow-state state) work-id charge)))
+
+(definterface fn-workflow-undertake-record
+  :class ::program)
 
 ; PKT-869: the carry overlay the carry journal replayed (fn-workflow-carry-
 ; install below), or the empty overlay when no carry journal is installed.
@@ -106,10 +123,17 @@
           (f-get-global 'fn-workflow-state state)
           octets txid generation authorizedp))))
 
+(definterface fn-workflow-receipt-record
+  :class ::program
+  :kinds ((octets fn-cbor-octet-listp)))
+
 (defun fn-workflow-release-record (receipt-id state)
  (declare (xargs :stobjs state :mode :program))
  (value (fn-bprl-release-record-for-journal
          (f-get-global 'fn-workflow-state state) receipt-id)))
+
+(definterface fn-workflow-release-record
+  :class ::program)
 
 (defun fn-workflow-preflight-record (record fn-arena state)
  (declare (xargs :stobjs (fn-arena state) :mode :program))
@@ -117,6 +141,8 @@
                 (f-get-global 'fn-workflow-state state)
                 (f-get-global 'fn-workflow-ion-state state) record fn-arena)))
   (value (if (car answer) :ready :fault))))
+
+(definterface fn-workflow-preflight-record :class :program)
 
 (defun fn-workflow-preflight-history (records fn-arena state)
  (declare (xargs :stobjs (fn-arena state) :mode :program))
@@ -140,15 +166,23 @@
      (let ((state (f-put-global 'fn-workflow-ion-state
                                 (fn-bp-journal-nth 3 answer) state)))
       (value :ready)))))))
+
+(definterface fn-workflow-apply-record :class :program)
 (defun fn-workflow-fencedp (state)
  (declare (xargs :stobjs state :mode :program))
  (value (if (fn-bp-state-fenced (f-get-global 'fn-workflow-state state)) t nil)))
+
+(definterface fn-workflow-fencedp
+  :class ::program)
 (defun fn-workflow-work-status (work-id state)
  (declare (xargs :stobjs state :mode :program))
  ; ACL2 owns the projection; this reports it.  :absent means no such work in
  ; the installed image, never "enqueued but not yet attempted".
  (value (fn-bp-work-status work-id
          (fn-bp-state-works (f-get-global 'fn-workflow-state state)))))
+
+(definterface fn-workflow-work-status
+  :class ::program)
 
 ; Provenance is a second question and a second answer.  Two works can both be
 ; :outstanding and have reached the image by materially different routes;
@@ -170,6 +204,9 @@
       (let ((state (f-put-global 'fn-workflow-effects nil state))) (value t))
     (value nil))))
 
+(definterface fn-workflow-take-submit
+  :class ::program)
+
 
 ; PKT-869: the carry control journal (domain :carry, JOURNAL/carry): its
 ; replay, preflight and apply over the workflow image installed first, and
@@ -183,12 +220,18 @@
       (let ((state (f-put-global 'fn-workflow-carry-state (fn-bpcc-initial) state)))
         (value :fault)))))
 
+(definterface fn-workflow-carry-install
+  :class ::program)
+
 (defun fn-workflow-carry-preflight (record state)
   (declare (xargs :stobjs state :mode :program))
   (value (if (or (fn-bpcc-configp record)
                  (fn-bpcc-admissiblep (f-get-global 'fn-workflow-state state)
                                       (fn-workflow-carry-state-of state) record))
              :ready :fault)))
+
+(definterface fn-workflow-carry-preflight
+  :class ::program)
 
 (defun fn-workflow-carry-apply (record state)
   (declare (xargs :stobjs state :mode :program))
@@ -200,6 +243,9 @@
                                     state)))
            (value :ready)))
         (t (value :fault))))
+
+(definterface fn-workflow-carry-apply
+  :class ::program)
 
 (defun fn-workflow-carry-frame-protected (kind values)
   (declare (xargs :mode :program))
@@ -251,6 +297,9 @@
                                             record)))))
     (value (if refusal (list :refused refusal) (list :record record)))))
 
+(definterface fn-workflow-carry-record
+  :class ::program)
+
 ; PKT-869: `carry list' (WORK-ID nil) or `carry inspect WORK-ID': ACL2's
 ; report octets, each work's pin read from the Store image the owner holds.
 (defun fn-workflow-carry-pinned (workflow works acc)
@@ -272,6 +321,9 @@
                (fn-bpcc-inspect-report workflow carry pinned work-id)
              (fn-bpcc-list-report workflow carry pinned)))))
 
+(definterface fn-workflow-carry-report
+  :class ::program)
+
 ; `bp-obligation recover': ACL2's decision for a fenced attempt, (:recover
 ; RECORD) or (:refused REASON) (books/bp-request-plan.lisp; keystone
 ; fn-bprq-recovery-plan-unfences-and-reopens-as-live, books/bp-request-recovery.lisp).
@@ -279,6 +331,9 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bprq-recovery-plan (f-get-global 'fn-workflow-state state)
                                 work-id attempt-id outcome)))
+
+(definterface fn-workflow-recovery-plan
+  :class ::program)
 
 ; The ION sender's (RETRY ATTEMPT): the journaled retry request first when a
 ; reopen marked the last attempt :restart-observed, so replay agrees.
@@ -293,6 +348,9 @@
           (fn-bp-config-lifetime
            (fn-bp-state-config (f-get-global 'fn-workflow-state state))))))
 
+(definterface fn-workflow-ion-helper-seconds
+  :class ::program)
+
 (defun fn-workflow-ion-attempt-plan
     (txid tx-generation work-id attempt-id fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
@@ -302,6 +360,9 @@
             (and sn (fn-sn-node sn)) s work-id
             (fn-bprq-ion-attempt-plan s txid tx-generation work-id attempt-id)
             fn-arena))))
+
+(definterface fn-workflow-ion-attempt-plan
+  :class ::program)
 
 ; Native ION sender calls these exact ACL2 constructors. Raw Lisp only
 ; publishes their returned records and executes their returned ADU bytes.
@@ -322,6 +383,9 @@
           (f-get-global 'fn-workflow-ion-state state)
           work-id attempt-id generation bp-destination own-bp-eid fn-arena)))
 
+(definterface fn-workflow-ion-route-record
+  :class ::program)
+
 (defun fn-workflow-ion-observation-record
     (work-id attempt-id generation bp-destination own-bp-eid raw fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
@@ -330,6 +394,9 @@
           (f-get-global 'fn-workflow-ion-state state)
           work-id attempt-id generation bp-destination own-bp-eid
           (fn-record-octets-string raw) fn-arena)))
+
+(definterface fn-workflow-ion-observation-record
+  :class ::program)
 
 (defun fn-workflow-ion-request-adu
     (work-id attempt-id generation fn-arena state)
@@ -345,7 +412,13 @@
                   (fn-bpo-result-value result))
                  (t :article-reclaimed)))))
 
+(definterface fn-workflow-ion-request-adu
+  :class ::program)
+
 (defun fn-workflow-ion-status (work-id attempt-id generation state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-bpiw-status (f-get-global 'fn-workflow-ion-state state)
                          work-id attempt-id generation)))
+
+(definterface fn-workflow-ion-status
+  :class ::program)

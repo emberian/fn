@@ -25,9 +25,15 @@
         (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger1 fn-page-read-pool)))
           (mv word token fn-page-read-pool)))))))
 
+(definterface fn-owner-page-file-pin :class :common-lisp-compliant
+  :keystones ((fn-prf-acquire-preserves-pool-funding :via fn-prf-acquire)
+              (fn-prf-acquired-file-is-held :via fn-prf-acquire)))
+
 (defun fn-owner-page-file-pin-file (token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (fn-prf-file (fn-owner-page-read-ledger fn-page-read-pool) token))
+
+(definterface fn-owner-page-file-pin-file :class :common-lisp-compliant)
 
 (defun fn-owner-page-file-unpin (token fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
@@ -37,6 +43,8 @@
     (fn-prf-release (fn-owner-page-read-ledger fn-page-read-pool) token)
     (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
       (mv word fn-page-read-pool)))))
+
+(definterface fn-owner-page-file-unpin :class :common-lisp-compliant)
 
 (defthm fn-owner-page-file-unpin-refines-prf-by-definition
   (implies (fn-owner-page-file-legacy-writablep fn-page-read-pool)
@@ -63,6 +71,9 @@
       (mv-let (admit buffer-token fn-page-read-pool)
         (fn-owner-page-read-discovery-admit file offset count fn-page-read-pool)
         (mv admit file offset count buffer-token fn-page-read-pool))))))
+
+(definterface fn-owner-page-file-pin-read :class :common-lisp-compliant
+  :keystones ((fn-prd-admit-preserves-pool-funding :via fn-prd-admit)))
 
 (defthm fn-owner-page-file-pin-refines-prf-by-definition
   (implies (fn-owner-page-file-legacy-writablep fn-page-read-pool)

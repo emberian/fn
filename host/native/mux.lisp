@@ -268,8 +268,8 @@ ACL2 lets one served step read (fnn-mux-read-buffer)."
 
 (defconstant +fnn-mux-siocoutq+ #x5411) ; Linux ioctl TIOCOUTQ, SIOCOUTQ on a socket
 
-(defun fnn-mux-send-outq (conn)
-  "The kernel's unsent octets for CONN's socket, or NIL where the platform
+(defun fnn-mux-socket-outq (fd)
+  "The kernel's queued octets for FD, including in-flight unacknowledged data, or NIL where the platform
 gives no figure (only Linux's SIOCOUTQ is read; the verdict then judges the
 octets the socket accepted alone)."
   #+linux
@@ -278,10 +278,29 @@ octets the socket accepted alone)."
               (sb-alien:extern-alien "ioctl" (function sb-alien:int sb-alien:int
                                                        sb-alien:unsigned-long
                                                        (* sb-alien:int)))
-              (fnn-mux-conn-fd conn) +fnn-mux-siocoutq+ (sb-alien:addr n))))
+              fd +fnn-mux-siocoutq+ (sb-alien:addr n))))
       (and (zerop r) (>= n 0) n)))
   #-linux
-  (progn conn nil))
+  (progn fd nil))
+
+(defun fnn-mux-send-outq (conn)
+  (fnn-mux-socket-outq (fnn-mux-conn-fd conn)))
+
+(defun fnn-mux-send-notsent (conn)
+  "Linux's not-yet-transmitted bytes, excluding in-flight unacknowledged data.
+An unavailable observation ends this connection; it never grants a quantum."
+  #+linux
+  (sb-alien:with-alien ((n sb-alien:int 0))
+    (when (minusp (sb-alien:alien-funcall
+                   (sb-alien:extern-alien "ioctl" (function sb-alien:int sb-alien:int
+                                                            sb-alien:unsigned-long
+                                                            (* sb-alien:int)))
+                   (fnn-mux-conn-fd conn) #x894b (sb-alien:addr n)))
+      (fnn-os-fail (sb-alien:get-errno)))
+    (unless (natp n) (fnn-fault "negative SIOCOUTQNSD observation"))
+    n)
+  #-linux
+  (progn conn (fnn-fault "send-window observation unavailable on this platform")))
 
 (defun fnn-mux-send-observation (conn)
   "(NOW OUTQ HANDED): the monotonic milliseconds, the kernel's unsent octets,
@@ -651,7 +670,9 @@ none of it waits for a barrier in flight that the read itself did not."
 (lane join-f2-13, PRF-1020: a served OVER/XOVER range; fnn-owner-cursor-step
 under the owner mutex, at most one quantum per mutex hold; sparse ranges
 can take several empty quanta before a write): (values OCTETS PLAN-REST
-DONEP YIELDP COLD-READ END)."
+DONEP YIELDP COLD-READ END WINDOW-WAIT)."
+  (unless (fnn-core 'fn-send-window-render-p (fnn-mux-send-notsent conn))
+    (return-from fnn-mux-render-next (values nil plan nil nil nil nil t)))
   (unless (fnn-mux-conn-output-grant conn)
     (setf (fnn-mux-conn-output-grant conn)
           (fnn-owner-output-issue (fnn-mux-service loop)
@@ -669,19 +690,18 @@ DONEP YIELDP COLD-READ END)."
 (defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
   "Retain the cursor's exact continuation and ownership until its
 positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
-  (let ((ms (fnn-core 'fn-splan-cursor-resume-ms)))
-    (unless (and (integerp ms) (> ms 0))
+  (let ((ms (fnn-core 'fn-asto-resume-ms plan)))
+    (unless (and (integerp ms) (>= ms 0))
       (fnn-fault "owner returned a malformed cursor resume delay"))
     (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
       ;; PASSES: the loop's completed passes (lane host-lifecycle: an
       ;; ineligible idle deadline made a yield's wait a busy poll, r71 F11).
       (fnn-err "OVER ~a cid=~d passes=~d" (if empty-progressp "empty-yield" "cursor-yield")
                (fnn-mux-conn-cid conn) (fnn-mux-loop-passes loop)))
-    ;; An ARTICLE quantum always consumes its fuel, so its yield is never
-    ;; empty progress: ACL2's positive delay exists for a sparse OVER range
-    ;; that would otherwise rescan in one event.  The article resumes on the
-    ;; next pass of the loop (due now: the poll timeout is zero, every other
-    ;; ready connection is served first), not after a fixed millisecond.
+    ;; ACL2 decides the delay (fn-asto-resume-ms): an ARTICLE or LIST quantum
+    ;; spends its whole grant, so it is due now and resumes on the next pass of
+    ;; the loop (the poll timeout is zero, every other ready connection is
+    ;; served first); a sparse OVER range waits ACL2's positive delay.
     (setf (fnn-mux-conn-plan conn) plan
           (fnn-mux-conn-drained-late conn) t
           (fnn-mux-conn-after conn) after
@@ -692,11 +712,7 @@ positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
           (fnn-mux-conn-send-state conn) nil
           (fnn-mux-conn-want conn) nil
           (fnn-mux-conn-resume-at conn)
-          (+ (fnn-now)
-             (if (or (fnn-core 'fn-asto-plan-articlep plan)
-                     (fnn-core 'fn-asto-preflight-planp plan))
-                 0
-                 (round (* ms internal-time-units-per-second) 1000))))))
+          (+ (fnn-now) (round (* ms internal-time-units-per-second) 1000)))))
 
 (defun fnn-mux-plan-cold (loop conn plan after read)
   "Suspend this response on its exact issued READ; no socket body or input
@@ -722,6 +738,19 @@ worker retains physical custody until its existing return/settlement."
     (when (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")
       (fnn-err "OVER cold-yield cid=~d" (fnn-mux-conn-cid conn)))))
 
+(defun fnn-mux-plan-window-wait (conn plan after)
+  "Keep the exact unrendered continuation and wait for POLLOUT. The send
+progress timer still runs, even though no user-space window is queued."
+  (unless (fnn-mux-conn-send-state conn) (fnn-mux-send-begin conn))
+  (setf (fnn-mux-conn-plan conn) plan
+        (fnn-mux-conn-after conn) after
+        (fnn-mux-conn-out conn) nil
+        (fnn-mux-conn-out-end conn) nil
+        (fnn-mux-conn-out-at conn) 0
+        (fnn-mux-conn-resume-at conn) nil
+        (fnn-mux-conn-drained-late conn) t
+        (fnn-mux-conn-want conn) :send-window))
+
 (defun fnn-mux-queue-plan (loop conn plan after)
   "Write the step's render PLAN a window at a time (HST-023): the first
 window now, each next one when the socket took the last (fnn-mux-flush).
@@ -734,8 +763,11 @@ whole reply; a plan with nothing to write runs AFTER at once."
           (fnn-owner-response-identity
            (fnn-mux-service loop) (fnn-mux-conn-connection-identity conn)
            (fnn-mux-read-class loop conn))))
-  (multiple-value-bind (octets rest donep yieldedp cold-read end)
+  (multiple-value-bind (octets rest donep yieldedp cold-read end window-wait)
       (fnn-mux-render-next loop conn plan)
+    (when window-wait
+      (fnn-mux-plan-window-wait conn plan after)
+      (return-from fnn-mux-queue-plan nil))
     (setf (fnn-mux-conn-plan conn) (if donep nil rest))
     ;; A quantum that completed is progress: the next cold page of this
     ;; reply starts its own line deadline (books/cold-line-quanta.lisp: a
@@ -776,8 +808,11 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
           (fnn-mux-plan-yield loop conn plan (fnn-mux-conn-after conn))
           (return-from fnn-mux-flush nil))
         (if plan
-            (multiple-value-bind (octets rest donep yieldedp cold-read end)
+            (multiple-value-bind (octets rest donep yieldedp cold-read end window-wait)
                 (fnn-mux-render-next loop conn plan)
+              (when window-wait
+                (fnn-mux-plan-window-wait conn plan (fnn-mux-conn-after conn))
+                (return-from fnn-mux-flush nil))
               (when cold-read
                 (fnn-mux-plan-cold loop conn rest (fnn-mux-conn-after conn) cold-read)
                 (return-from fnn-mux-flush nil))
@@ -1346,10 +1381,34 @@ answers :wait (the node's slots or this second's starts are spent)."
                  (fnn-mux-queue loop conn greeting :send-greeting nil))
                 (t (fnn-mux-after loop conn nil))))))))
 
+;;; TCP_NOTSENT_LOWAT supplies wakeups after observed render admission waits.
+;;; It does not prevent eager writes from filling the socket's send buffer.
+;;; SIOCOUTQNSD above supplies the observation ACL2 tests before rendering.
+
+(defconstant +fnn-ipproto-tcp+ 6)
+(defconstant +fnn-tcp-notsent-lowat+ 25) ; Linux linux/tcp.h
+
+(defun fnn-mux-send-window (fd)
+  "Set the served socket's writable notification threshold to ACL2's window.  A kernel that
+refuses it is an OS error of this connection (it ends, named), never a
+connection served without its bound.  The render observation separately refuses unsupported platforms."
+  #+linux
+  (sb-alien:with-alien ((value sb-alien:int (fnn-core 'fn-send-window-octets)))
+    (when (minusp (sb-alien:alien-funcall
+                   (sb-alien:extern-alien "setsockopt"
+                                          (function sb-alien:int sb-alien:int sb-alien:int
+                                                    sb-alien:int (* sb-alien:int) sb-alien:unsigned-int))
+                   fd +fnn-ipproto-tcp+ +fnn-tcp-notsent-lowat+ (sb-alien:addr value)
+                   (sb-alien:alien-size sb-alien:int :bytes)))
+      (fnn-os-fail (sb-alien:get-errno))))
+  #-linux
+  (progn fd nil))
+
 (defun fnn-mux-begin (loop conn)
   "A socket a loop adopted: the handshake pool's gate, then the admission."
   (let ((socket (fnn-mux-conn-socket conn)))
     (setf (fnn-mux-conn-fd conn) (fnn-socket-fd socket))
+    (fnn-mux-send-window (fnn-mux-conn-fd conn))
     ;; PKT-639 / PRF-986: an implicit-TLS socket's handshake is ACL2's
     ;; decision BEFORE the exposure admits anything and before SSL_accept
     ;; (books/tls-handshake-budget.lisp): admitted (then the exposure open,
@@ -1563,7 +1622,8 @@ descriptor (a timer, or a step it can take now)."
         (:handshake (bits (or want :input)))
         (:proxy +fnn-mux-pollin+)
         (:serving
-         (cond ((fnn-mux-conn-out conn) (bits (or want :output)))
+         (cond ((eq want :send-window) +fnn-mux-pollout+)
+               ((fnn-mux-conn-out conn) (bits (or want :output)))
                ((or (fnn-mux-conn-input conn) (fnn-mux-conn-resume-at conn)) 0)
                (t (bits (or want :input)))))
         (t 0)))))
@@ -1577,9 +1637,11 @@ operation then observes the error or the end of input)."
       (:handshake (fnn-mux-handshake-step loop conn))
       (:proxy (fnn-mux-proxy-readable loop conn))
       (:serving
-       (if (fnn-mux-conn-out conn)
-           (fnn-mux-flush loop conn)
-         (fnn-mux-readable loop conn))))))
+       (cond ((eq (fnn-mux-conn-want conn) :send-window)
+              (fnn-mux-queue-plan loop conn (fnn-mux-conn-plan conn)
+                                  (fnn-mux-conn-after conn)))
+             ((fnn-mux-conn-out conn) (fnn-mux-flush loop conn))
+             (t (fnn-mux-readable loop conn)))))))
 
 (defun fnn-mux-idle-eligible-p (conn)
   "The idle check may fire for CONN: serving, and holding nothing of a reply
@@ -1601,7 +1663,9 @@ included), no input in hand, no completion awaited, no resume timer."
         (unless (eq (fnn-mux-conn-phase conn) :done)
           (fnn-mux-guarded (loop conn)
             (cond
-              ((and (fnn-mux-conn-out conn) (due (fnn-mux-conn-out-deadline conn)))
+              ((and (or (fnn-mux-conn-out conn)
+                        (eq (fnn-mux-conn-want conn) :send-window))
+                    (due (fnn-mux-conn-out-deadline conn)))
                ;; ACL2's verdict on the reply's send, not a fixed deadline.
                (fnn-mux-send-check loop conn))
               ((and (eq (fnn-mux-conn-phase conn) :handshake)
@@ -1630,7 +1694,9 @@ included), no input in hand, no completion awaited, no resume timer."
                     (due (fnn-mux-conn-idle-at conn)))
                (fnn-mux-idle loop conn))))
           (unless (eq (fnn-mux-conn-phase conn) :done)
-            (when (fnn-mux-conn-out conn) (note (fnn-mux-conn-out-deadline conn)))
+            (when (or (fnn-mux-conn-out conn)
+                      (eq (fnn-mux-conn-want conn) :send-window))
+              (note (fnn-mux-conn-out-deadline conn)))
             (case (fnn-mux-conn-phase conn)
               ((:handshake :tls-queued :hs-wait :proxy) (note (fnn-mux-conn-hs-deadline conn)))
               (:draining (note (fnn-mux-conn-drain-deadline conn)))

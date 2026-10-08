@@ -1,6 +1,9 @@
 ; Workflow projections beside the canonical configured owner.  Store retention
 ; is mutated only by Store events; workflow replay never replaces owner state.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
 (include-book "../books/bp-release")
 (include-book "../books/bp-ion-workflow")
 (include-book "../books/bp-payload-gate")
@@ -24,13 +27,19 @@
                                      (fn-bp-state-works workflow)) state)))
       (value :ready)))))
 
+(definterface fn-owner-workflow-install-replay :class :program)
+
 (defun fn-owner-workflow-reset (state)
  (declare (xargs :stobjs state :mode :program))
  (fn-workflow-reset state))
 
+(definterface fn-owner-workflow-reset :class :program)
+
 (defun fn-owner-workflow-preflight-record (record fn-arena state)
  (declare (xargs :stobjs (fn-arena state) :mode :program))
  (fn-workflow-preflight-record record fn-arena state))
+
+(definterface fn-owner-workflow-preflight-record :class :program)
 
 ;; The generic request on the shared owner (`bp-obligation request'):
 ;; fn-workflow-request-plan's plan through the payload gate, whose canonical
@@ -47,11 +56,18 @@
                                (f-get-global 'fn-workflow-state state)
                                work-id plan))))
 
+; host/native/bp-obligation.lisp dispatches it (lane reclaim-retention).
+(definterface fn-owner-workflow-request-plan
+  :class ::program)
+
 (defun fn-owner-workflow-forward-pinnedp (work-id state)
  (declare (xargs :stobjs state :mode :program))
  (let* ((workflow (f-get-global 'fn-workflow-state state))
         (work (fn-bp-find-work work-id (fn-bp-state-works workflow))))
   (value (if (and (consp work) (fn-bprl-work-pinnedp workflow work)) t nil))))
+
+(definterface fn-owner-workflow-forward-pinnedp
+  :class ::program)
 
 ; Exact fields for the canonical Store event.  These projections are authored
 ; from the workflow state and release decision; the native adapter does not
@@ -67,6 +83,9 @@
                  (fn-bprl-required-evidence (fn-bp-state-config workflow) work)
                  charge)))))
 
+(definterface fn-owner-workflow-store-undertake
+  :class ::program)
+
 (defun fn-owner-workflow-store-release (release-record state)
  (declare (xargs :stobjs state :mode :program))
  (let* ((workflow (f-get-global 'fn-workflow-state state))
@@ -81,6 +100,9 @@
                   (fn-bprl-record-evidence release-record))
                  0)))))
 
+(definterface fn-owner-workflow-store-release
+  :class ::program)
+
 ;; PRF-950: the Store retention event of the operator's waiver of WORK-ID
 ;; (books/bp-carry-control.lisp fn-bpcc-waiver-release-event: the receipt's
 ;; event shape, the pin's own id, subject and evidence), or nil when the
@@ -91,11 +113,19 @@
                                       (fn-workflow-carry-state-of state)
                                       work-id)))
 
+; host/native/bp-obligation.lisp dispatches it (lane carry-abandon).
+(definterface fn-owner-workflow-store-waive
+  :class ::program)
+
 ;; The waivers durable in the carry journal whose Store event did not land.
 (defun fn-owner-workflow-pending-waivers (state)
  (declare (xargs :stobjs state :mode :program))
  (value (fn-bpcc-pending-waivers (f-get-global 'fn-workflow-state state)
                                  (fn-workflow-carry-state-of state))))
+
+; host/native/bp-obligation.lisp dispatches it (lane carry-abandon).
+(definterface fn-owner-workflow-pending-waivers
+  :class ::program)
 
 (defun fn-owner-workflow-apply-record (record fn-arena state)
  (declare (xargs :stobjs (fn-arena state) :mode :program))
@@ -112,6 +142,8 @@
                                     (fn-bp-journal-nth 3 answer) state)))
       (value :ready)))))
 
+(definterface fn-owner-workflow-apply-record :class :program)
+
 (defun fn-owner-workflow-sync-store-node (state)
  (declare (xargs :stobjs state :mode :program))
  (let* ((workflow (f-get-global 'fn-workflow-state state))
@@ -119,3 +151,6 @@
         (next (fn-bprl-with-node workflow node))
         (state (f-put-global 'fn-workflow-state next state)))
   (value :ready)))
+
+(definterface fn-owner-workflow-sync-store-node
+  :class ::program)

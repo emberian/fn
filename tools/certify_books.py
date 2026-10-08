@@ -747,13 +747,8 @@ def run_acl2(
     *, log_path: Path | None = None, book: str | None = None,
     wave: str | None = None,
 ) -> subprocess.CompletedProcess[bytes]:
-    environment = os.environ.copy()
-    # A user customization can alter the ACL2 world before certification.  Do
-    # not allow such ambient state into project evidence.
-    environment["ACL2_CUSTOMIZATION"] = "NONE"
-    environment["ACL2_BOOK_HASH_ALISTP"] = "NIL"  # content-hashed certificates: relocatable across worktrees and hosts
-    environment.pop("ACL2_SYSTEM_BOOKS", None)
-    acl2_slots.apply_heap_cap(environment)  # a runaway proof exhausts its own heap, never the machine
+    # Same project namespace for plain, provisional and saved-image runs.
+    environment = acl2_slots.acl2_environment(root=ROOT)
     command = [str(executable)]
     if log_path is None:
         # The short version probe has no book to attribute and retains its
@@ -1252,6 +1247,7 @@ def main() -> int:
         **git_facts(),
         "command": [configured],
         "environment": {"ACL2_CUSTOMIZATION": "NONE", "ACL2_BOOK_HASH_ALISTP": "NIL", "ACL2_SYSTEM_BOOKS": None,
+                        "ACL2_PROJECTS": str(certs.acl2_projects.projects_file(ROOT)),
                         "SBCL_USER_ARGS": os.environ.get("SBCL_USER_ARGS") or acl2_slots.heap_cap_user_args()},
         "platform": platform.platform(),
         "python": platform.python_version(),

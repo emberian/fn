@@ -55,6 +55,9 @@ def lines(result):
     return out
 
 
+# Critical host path: fnn-log-ack calls fn-lgu-acknowledge; its host-run
+# refinement is fn-lgc-host-run. The fn-lgrc-program cut map checks the
+# copy performed by fnn-log-recover before those acknowledgements.
 @unittest.skipUnless(DEVELOPER and PRODUCTION,
                      "FN_NATIVE_DEVELOPER_HOST and FN_NATIVE_HOST name the images")
 class NativeLogTests(unittest.TestCase):

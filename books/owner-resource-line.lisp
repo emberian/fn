@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "owner-cold-line")
 (include-book "failure-scope")
+(include-book "page-read-executor")
 
 (defun fn-orln-refusalp (word)
   (declare (xargs :guard t))
@@ -142,6 +143,20 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-orln-read-refusal-outcome fn-orln-read-refusal-class
                                      fn-fs-classify))))
+
+; KEYSTONE.  A diagnostic image with the extent cache off (limit 0) does not
+; make the checkpoint walk read unfunded: the cold-read mode is the exhausted
+; pool's refusal (books/page-read-executor.lisp fn-pxe-cache-mode), and the
+; walk's outcome for it is the deferred publication.  With the cache on the
+; mode is :ready.  A scenario that needs the checkpoint to publish therefore
+; runs with the cache on (tests/test_native_owner_scheduler.py, the A6
+; campaign).  Teeth (tests/acl2/owner-resource-line-tests.lisp).
+(defthm fn-orln-cache-off-walk-defers-the-publication
+  (and (fn-orln-refusalp (fn-pxe-cache-mode nil))
+       (equal (fn-orln-read-refusal-outcome :checkpoint-walk (fn-pxe-cache-mode nil))
+              :defer-publication)
+       (equal (fn-pxe-cache-mode t) :ready))
+  :rule-classes nil)
 
 ; And only an exhausted pool on those stages is: everything else faults.
 (defthm fn-orln-read-refusal-otherwise-faults

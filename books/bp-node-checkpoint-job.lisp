@@ -17,10 +17,11 @@
         count bound offset stage))
 
 (defun fn-bpck-begin
-  (token epoch generation depth held handoffs next-arrival covered bound)
+  (token epoch generation depth held handoffs next-arrival covered jobs
+         next-token bound)
   (declare (xargs :guard t))
   (let ((capture (fn-bpnr-checkpoint generation held handoffs (cons epoch 0)
-                                    next-arrival covered)))
+                                    next-arrival covered jobs next-token)))
     (fn-bpck-make token epoch generation depth capture :census
                   (fn-bpnrc-begin capture depth) 0 bound 0 :none)))
 

@@ -172,7 +172,8 @@ CORE and MACHINE are each captured once for both ACL2 reservation steps."
            (profile (fnn-heap-store-profile absolute-root))
            (core (fnn-heap-image-observation))
            (machine (fnn-heap-observations))
-           (observed (and profile (fnn-heap-history-observation absolute-root profile)))
+           (observed (and profile (fnn-core 'fn-heap-operation-observes-p :run)
+                          (fnn-heap-history-observation absolute-root profile)))
            (base (fnn-core 'fn-heap-status-decide profile core
                            +fnn-gc-nursery-octets+ machine observed)))
       (fnn-out "~a" (fnn-core 'fn-heap-reserve-report-line

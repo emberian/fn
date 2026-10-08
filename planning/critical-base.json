@@ -3429,10 +3429,6 @@
    "class": "durability",
    "statement_digest": "037f9527a0ce48defd920b3f831e97c73ecafb6231885e88a5c019a16fc1f778"
   },
-  "fn-ocs-complete-only-after-the-barrier": {
-   "class": "durability",
-   "statement_digest": "5b5d3b413e75645c48e936785495fd65cb08a884342eacfff10d2e9bc85f8c6e"
-  },
   "fn-ocs-failed-barrier-stops-telling-no-member": {
    "class": "durability",
    "statement_digest": "89f319c7f21ab7e57221922da1e91836af4e21d29051f3d2e898e59cbd2683f3"
@@ -3444,10 +3440,6 @@
   "fn-ocs-in-flight-commit-before-reader": {
    "class": "durability",
    "statement_digest": "c9993644d695d8f2a9c0c7c0809437583a051a7d874ff9c624376bb906a313c6"
-  },
-  "fn-ocs-in-flight-until-completed": {
-   "class": "durability",
-   "statement_digest": "87cce4cbd21bcd0c312e94ffd30be7b141a52fc65862ca5b718932ea17b4b56d"
   },
   "fn-ocs-inspect-first-when-not-last": {
    "class": "durability",

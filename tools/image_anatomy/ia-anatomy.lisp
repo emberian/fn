@@ -22,6 +22,9 @@
 ; the residency snapshots ia_node.py wrote.
 (in-package "ACL2")
 
+(unless (fboundp 'book-name-relative)
+  (load (merge-pathnames "../../books/book-name-relative.lisp" *load-truename*)))
+
 (defvar *ia-seen* (make-hash-table :test 'eq :size 8000000))
 (defvar *ia-owner-ids* (make-hash-table :test 'equal))
 (defvar *ia-owner-names* (make-array 0 :adjustable t :fill-pointer t))
@@ -70,12 +73,11 @@
 
 ; The world, oldest triple first.
 (defun ia-book-class (path)
-  (let ((s (cond ((stringp path) path)
-                 ((and (fboundp 'sysfile-p) (funcall 'sysfile-p path))
-                  (concatenate 'string "[books]/" (funcall 'sysfile-filename path)))
-                 (t (format nil "~a" path)))))
-    (cond ((or (search "[books]/" s) (search "/acl2-8.7/books/" s)) "community-books")
-          ((search "/books/" s) "fn-books")
+  (let ((s (or (book-name-relative path (project-dir-alist (w *the-live-state*))) "")))
+    (cond ((or (eql 0 (search ":system/" s))
+               (search "/acl2-8.7/books/" s)) "community-books")
+          ((eql 0 (search ":" s)) "other-book")
+          ((or (eql 0 (search "books/" s)) (search "/books/" s)) "fn-books")
           (t "other-book"))))
 
 (defun ia-walk-world ()

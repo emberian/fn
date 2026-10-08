@@ -4,6 +4,10 @@
 ; (host/native/web-host.lisp) and keep the session table, node-local, in the
 ; state global `fn-web-sessions' (never in the log, never on disk).
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/web-session-keystones")
 (include-book "../books/web-config")
 (include-book "../books/web-page-cursor")
@@ -13,27 +17,53 @@
 (include-book "../books/owner-state-accessors")
 ; fn-web-host-identity reads the live configuration (fn-owner-config, fn-cfg-policy).
 (include-book "../books/owner-config-state")
+(include-book "../books/definterface")
 
 (defun fn-web-host-plan (config-octets listener-port tls-port certp)
   (declare (xargs :mode :program :guard (fn-cbor-octet-listp config-octets)))
   (fn-web-config-plan config-octets listener-port tls-port certp))
 
+(definterface fn-web-host-plan
+  :class ::program
+  :kinds ((config-octets fn-cbor-octet-listp)))
+
 (defun fn-web-host-plan-web-p (plan)
   (declare (xargs :mode :program))
   (equal (car plan) :web))
+
+(definterface fn-web-host-plan-web-p
+  :class ::program)
 
 (defun fn-web-host-plan-refusal (plan)
   ; The reason word of a refused plan, else nil.
   (declare (xargs :mode :program))
   (and (equal (car plan) :refused) (cadr plan)))
 
+(definterface fn-web-host-plan-refusal
+  :class ::program)
+
 (defun fn-web-host-plan-port (plan) (declare (xargs :mode :program)) (fn-web-plan-port plan))
+
+(definterface fn-web-host-plan-port
+  :class ::program)
 (defun fn-web-host-plan-family (plan) (declare (xargs :mode :program)) (fn-web-plan-family plan))
+
+(definterface fn-web-host-plan-family
+  :class ::program)
 (defun fn-web-host-plan-address (plan) (declare (xargs :mode :program)) (fn-web-plan-address plan))
+
+(definterface fn-web-host-plan-address
+  :class ::program)
 (defun fn-web-host-plan-tls (plan) (declare (xargs :mode :program)) (fn-web-plan-tls plan))
+
+(definterface fn-web-host-plan-tls
+  :class ::program)
 (defun fn-web-host-plan-config (plan identity)
   (declare (xargs :mode :program))
   (fn-web-plan-config plan identity))
+
+(definterface fn-web-host-plan-config
+  :class ::program)
 
 ; The node's own name, the `path-identity' policy of the owner's live
 ; configuration (the one Path and Injection-Info carry): the domain of a
@@ -46,9 +76,15 @@
         (fn-record-string-octets identity)
       nil)))
 
+(definterface fn-web-host-identity
+  :class ::program)
+
 (defun fn-web-host-limits (article-limit)
   (declare (xargs :mode :program))
   (fn-web-plan-limits article-limit))
+
+(definterface fn-web-host-limits
+  :class ::program)
 
 ; A new run starts with no sessions (they are this process's; a restart
 ; signs everyone out).
@@ -57,13 +93,22 @@
   (let ((state (f-put-global 'fn-web-sessions nil state)))
     (value :reset)))
 
+(definterface fn-web-host-reset
+  :class ::program)
+
 (defun fn-web-host-frame (from limits fn-web-in)
   (declare (xargs :mode :program :stobjs fn-web-in))
   (fn-web-head-frame from limits fn-web-in))
 
+(definterface fn-web-host-frame
+  :class ::program)
+
 (defun fn-web-host-parse (end limits fn-web-in)
   (declare (xargs :mode :program :stobjs fn-web-in))
   (fn-web-parse-head end limits fn-web-in))
+
+(definterface fn-web-host-parse
+  :class ::program)
 
 ; One event of one request (books/web-session.lisp fn-web-step).
 (defun fn-web-host-step (config flow event fn-web-in fn-web-out state)
@@ -76,11 +121,18 @@
       (let ((state (f-put-global 'fn-web-sessions sessions state)))
         (mv action fn-web-out state)))))
 
+(definterface fn-web-host-step
+  :class ::program
+  :keystones ((fn-web-health-step-preserves-sessions-and-bounds-body :via fn-web-step)))
+
 ; The response head (books/web-request.lisp fn-web-response-head).  SECURE
 ; (HSTS) when the face serves TLS itself or the profile's proxy does.
 (defun fn-web-host-head (code fields length config tls)
   (declare (xargs :mode :program))
   (fn-web-response-head code fields length (or tls (fn-wss-cfg-proxied config))))
+
+(definterface fn-web-host-head
+  :class ::program)
 
 ; A request the parser refused: its status and a one-line page.
 (defun fn-web-host-refusal-body (code)
@@ -91,9 +143,15 @@
           (fn-wrq-chars-octets (coerce (fn-web-reason code) 'list))
           (fn-wrq-oct "</p>")))
 
+(definterface fn-web-host-refusal-body
+  :class ::program)
+
 (defun fn-web-host-refusal-fields ()
   (declare (xargs :mode :program))
   *fn-wss-html-fields*)
+
+(definterface fn-web-host-refusal-fields
+  :class ::program)
 
 ; The work a request may take: events one request's flow may need (the
 ; longest is make-your-account: open, send, close, open, send, respond).
@@ -101,16 +159,25 @@
   (declare (xargs :mode :program))
   16)
 
+(definterface fn-web-host-max-events
+  :class ::program)
+
 ; The seconds a connection may take to bring its whole request (a slow
 ; client is closed, not waited for).
 (defun fn-web-host-request-seconds ()
   (declare (xargs :mode :program))
   15)
 
+(definterface fn-web-host-request-seconds
+  :class ::program)
+
 ; The owner's article limit, for the request body bound.
 (defun fn-web-host-article-limit (state)
   (declare (xargs :mode :program :stobjs state))
   (fn-own-body-limit (fn-owner-core state)))
+
+(definterface fn-web-host-article-limit
+  :class ::program)
 
 ; Host observations whose meaning ACL2 decides.
 (defun fn-web-host-action-kind (action)
@@ -120,11 +187,19 @@
                              :post-form :post-command :post-stream))
        (car action)))
 
+(definterface fn-web-host-action-kind
+  :class ::program)
+
 ; Q10d: observe only the fixed scheduler/disk and checkpoint values, no
 ; whole-state walk. Called under the existing owner mutex by the web face.
 (defun fn-web-host-health-observe (sched state)
   (declare (xargs :mode :program :stobjs state))
   (fn-whl-observe sched (fn-owner-sco-deferred state)))
+
+; Q10d bounded observation for the owner's web readiness route.
+(definterface fn-web-host-health-observe
+  :class :program
+  :keystones ((fn-whl-success-requires-observed-clear-owner :via fn-whl-observe)))
 
 ; Scheduling ceilings are the configured supported profile and a work window,
 ; never a truncation of a stored article. The HTTP actor consumes these exact
@@ -133,18 +208,27 @@
   (declare (xargs :mode :program))
   (fn-wss-cfg-max config))
 
+; HTTP reactor uses these actual ACL2 scheduling and lease projections.
+(definterface fn-web-host-connection-limit :class ::program)
+
 (defun fn-web-host-request-end (end request)
   (declare (xargs :mode :program))
   (+ (nfix end) (fn-web-req-clen request)))
+
+(definterface fn-web-host-request-end :class ::program)
 
 (defun fn-web-host-window-end (start end)
   (declare (xargs :mode :program))
   (min (nfix end) (+ (nfix start) 4096)))
 
+(definterface fn-web-host-window-end :class ::program)
+
 (defun fn-web-host-read-size (used limits end request)
   (declare (xargs :mode :program))
   (min 4096 (nfix (- (if request (fn-web-host-request-end end request)
                        (fn-wrq-limits-head limits)) (nfix used)))))
+
+(definterface fn-web-host-read-size :class ::program)
 
 (defun fn-web-host-event-cid (config flow event state)
   (declare (xargs :mode :program :stobjs state))
@@ -159,10 +243,14 @@
         (and session (fn-wss-s-cid session)))
     nil))
 
+(definterface fn-web-host-event-cid :class ::program)
+
 (defun fn-web-host-reserve-size (need capacity)
   (declare (xargs :mode :program))
   (if (<= (nfix need) (nfix capacity)) (nfix capacity)
     (max 1024 (* 2 (nfix need)))))
+
+(definterface fn-web-host-reserve-size :class ::program)
 
 ; Count and emit use the same immutable segment cursor outside the owner
 ; section. IN remains the exact retained NNTP reply through the HTTP body.
@@ -170,18 +258,26 @@
   (declare (xargs :mode :program))
   (fn-wpc-cursor segs))
 
+(definterface fn-web-host-page-cursor :class ::program)
+
 (defun fn-web-host-page-step (cursor count emitp fn-web-in)
   (declare (xargs :mode :program :stobjs fn-web-in))
   (fn-wpc-step cursor count emitp fn-web-in))
+
+(definterface fn-web-host-page-step :class ::program)
 
 (defun fn-web-host-private-reply-p (flow event)
   (declare (xargs :mode :program))
   (fn-web-private-reply-p flow event))
 
+(definterface fn-web-host-private-reply-p :class ::program)
+
 (defun fn-web-host-private-reply-step (config flow event fn-web-in fn-web-out)
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
   (fn-web-private-reply-step (append (take 6 config) (list :page-plan :private-begin))
                             flow event fn-web-in fn-web-out))
+
+(definterface fn-web-host-private-reply-step :class ::program)
 
 ; Virtual ARTICLE source: scan only one rendered window, then replay the
 ; retained logical plans for the exact spans requested by the page cursor.
@@ -200,6 +296,8 @@
 (defun fn-web-host-window-page-step (cursor base count emitp fn-web-in)
   (declare (xargs :mode :program :stobjs fn-web-in))
   (fn-wpc-window-drive 4096 cursor base count emitp nil fn-web-in))
+
+(definterface fn-web-host-window-page-step :class ::program)
 (defun fn-web-host-replay-slice (at length need)
   (declare (xargs :mode :program))
   (let ((s (max (nfix at) (nfix (car need))))
@@ -207,21 +305,35 @@
     (list (max 0 (- s (nfix at))) (max 0 (- e (nfix at)))
           (+ (nfix at) (nfix length)) (>= (+ (nfix at) (nfix length)) (nfix (cdr need))))))
 
+(definterface fn-web-host-replay-slice :class ::program)
+
 (defun fn-web-host-replay-forward-p (need base end)
   (declare (xargs :mode :program))
   (and (<= (nfix base) (nfix (car need))) (<= (nfix (car need)) (nfix end))))
 
+(definterface fn-web-host-replay-forward-p :class ::program)
+
 (defun fn-web-host-stream-p (flow) (declare (xargs :mode :program)) (fn-wrs-p flow))
+
+(definterface fn-web-host-stream-p :class ::program)
 (defun fn-web-host-stream-start (flow) (declare (xargs :mode :program)) (fn-wrs-start flow))
+
+(definterface fn-web-host-stream-start :class ::program)
 (defun fn-web-host-stream-scan (scan fn-web-in)
   (declare (xargs :mode :program :stobjs fn-web-in)) (fn-wrs-scan scan fn-web-in))
+
+(definterface fn-web-host-stream-scan :class ::program)
 (defun fn-web-host-stream-page (config flow scan)
   (declare (xargs :mode :program)) (fn-wrs-page config flow scan))
+
+(definterface fn-web-host-stream-page :class ::program)
 
 (defun fn-web-host-private-begin-step (config action fn-web-in fn-web-out)
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
   (fn-wpf-private-begin (append (take 6 config) (list :page-plan :private-begin))
                              action fn-web-in fn-web-out))
+
+(definterface fn-web-host-private-begin-step :class ::program)
 
 (defun fn-web-host-post-window (cursor fn-web-in fn-web-out)
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
@@ -229,10 +341,14 @@
     (let* ((fn-web-out (fn-octets-clear fn-web-out))
            (fn-web-out (fn-octets-append-list bytes fn-web-out)))
       (mv next done fn-web-out))))
+
+(definterface fn-web-host-post-window :class ::program)
 (defun fn-web-host-post-reply-step (config flow event cursor fn-web-in fn-web-out)
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
   (fn-wps-private-reply (append (take 6 config) (list :page-plan :private-begin))
                         flow event cursor fn-web-in fn-web-out))
+
+(definterface fn-web-host-post-reply-step :class ::program)
 
 (defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
@@ -240,3 +356,5 @@
     (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
                            next fn-web-in fn-web-out)
       (mv (list :post-form next) fn-web-out))))
+
+(definterface fn-web-host-post-form-step :class ::program)

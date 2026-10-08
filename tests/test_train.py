@@ -55,7 +55,7 @@ STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
          "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
          "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py",
-         "tests/test_keystone_critical.py"]
+         "tests/test_keystone_critical.py", "tools/harness_check.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in planning/interfaces.json specs/wire-grammar.json; do
@@ -370,7 +370,8 @@ class RegenTests(TrainBase):
         p = self.train("regen")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         log = [l.split()[0] + " " + (l.split()[1] if len(l.split()) > 1 else "") for l in self.stub_log()]
-        self.assertEqual(log, ["world ", "ledger --write", "keystone_emit --write-manifest"])
+        self.assertEqual(log, ["world ", "ledger --write", "harness_check --write-stubs",
+                               "keystone_emit --write-manifest"])
         subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
         self.assertTrue(subj.startswith("Regenerate train 1"), subj)
 
@@ -586,6 +587,17 @@ class PushTests(TrainBase):
         got = train.unit_tests(root, ["tests/test_native_x.py", "tests/test_y.py",
                                       "tools/z.py", "tools/absent.py", "books/b.lisp"])
         self.assertEqual(got, list(train.UNIT_TESTS) + ["tests/test_y.py", "tests/test_z.py"])
+
+    def test_suites_that_start_the_native_image_are_left_to_the_native_gate(self):
+        root = Path(tempfile.mkdtemp(prefix="train-unit-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "tests").mkdir()
+        (root / "tests" / "test_bp_x_native.py").write_text(
+            "import unittest\nfrom tests.native_harness import (\n    Node,\n)\n")
+        (root / "tests" / "test_plain_native.py").write_text(
+            "import unittest\n# mentions native_harness in a comment only\n")
+        got = train.unit_tests(root, ["tests/test_bp_x_native.py", "tests/test_plain_native.py"])
+        self.assertEqual(got, list(train.UNIT_TESTS) + ["tests/test_plain_native.py"])
 
     def test_a_missing_fixed_suite_fails_the_gate(self):
         self.ready()

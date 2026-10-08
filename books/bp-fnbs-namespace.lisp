@@ -99,7 +99,7 @@
 ; depth-debt-2, PRF-919), their :exec the definition with this book's
 ; unverified helpers called through ec-call and the append fn-ag-append; an
 ; unverified function's *1* ran binary-append's recursion, one frame per name.
-(defun fn-bpnf-mixed-recovery-plan (names)
+(defun fn-bpnf-mixed-recovery-plan-from (names start)
   (declare (xargs :guard t :verify-guards nil))
   (mbe
    :logic
@@ -107,9 +107,10 @@
      (if (not (fn-bpnf-namespace-planp split))
          (list :fault :fnbs-namespace)
        (let ((legacy
-              (fn-bpn-lifecycle-namespace-plan
+              (fn-bpn-lifecycle-namespace-plan-from
                (append (fn-bpnf-namespace-legacy split)
-                       (fn-bpnf-namespace-hidden split)))))
+                       (fn-bpnf-namespace-hidden split))
+               start)))
          (if (not (fn-bpn-lifecycle-namespace-planp legacy))
              (list :fault :legacy-namespace)
            (list :ready
@@ -122,9 +123,10 @@
      (if (not (ec-call (fn-bpnf-namespace-planp split)))
          (list :fault :fnbs-namespace)
        (let ((legacy
-              (ec-call (fn-bpn-lifecycle-namespace-plan
+              (ec-call (fn-bpn-lifecycle-namespace-plan-from
                         (fn-ag-append (ec-call (fn-bpnf-namespace-legacy split))
-                                      (ec-call (fn-bpnf-namespace-hidden split)))))))
+                                      (ec-call (fn-bpnf-namespace-hidden split)))
+                        start))))
          (if (not (ec-call (fn-bpn-lifecycle-namespace-planp legacy)))
              (list :fault :legacy-namespace)
            (list :ready
@@ -133,10 +135,16 @@
                  (ec-call (fn-bpn-lifecycle-plan-hidden-stages legacy))
                  (ec-call (fn-bpn-lifecycle-plan-next-token legacy)))))))))
 
-(verify-guards fn-bpnf-mixed-recovery-plan
+(verify-guards fn-bpnf-mixed-recovery-plan-from
   :hints (("Goal" :in-theory (disable fn-bpnf-namespace-plan fn-bpnf-namespace-planp
-                                      fn-bpn-lifecycle-namespace-plan
+                                      fn-bpn-lifecycle-namespace-plan-from
                                       fn-bpn-lifecycle-namespace-planp))))
+
+; The whole-history recovery names its records from token 0: the START = 0
+; instance of the plan a rotated generation runs from its checkpoint's token.
+(defun fn-bpnf-mixed-recovery-plan (names)
+  (declare (xargs :guard t))
+  (fn-bpnf-mixed-recovery-plan-from names 0))
 
 (defun fn-bpnf-mixed-recovery-planp (plan)
   (declare (xargs :guard t))

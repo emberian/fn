@@ -20,6 +20,8 @@
             (fn-owner-canonical-epoch state) (fn-sf-records-count files)
             (fn-owner-account-root-state state))))))
 
+(definterface fn-owner-remote-ingress :class :program)
+
 ; Auth/read policy/configured-generation are captured from the same owner.
 ; The selected CP cursor names the exact consumer; ingress checks current
 ; principal and account creation before borrowing its immutable definition.

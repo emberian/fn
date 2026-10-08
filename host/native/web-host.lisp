@@ -24,8 +24,10 @@
 ;;; Work per connection is bounded: one request per connection (ACL2's head
 ;;; says Connection: close), the head within the profile's head limit and the
 ;;; body within the body limit ACL2 derived from the article limit (both
-;;; checked by ACL2 before the octets are read), the whole request within
+;;; checked by ACL2 before the octets are read), request intake within
 ;;; fn-web-host-request-seconds, and at most fn-web-host-max-events events.
+;;; Server quanta keep their cold-read deadline; queued wire windows use
+;;; ACL2's send-progress verdict. Rendering time is not a slow-client timeout.
 ;;; A registered I/O actor multiplexes bounded connection records. One fixed
 ;;; semantic actor runs the owner operations that can await publication. Each record
 ;;; retains its input/output stobjs, socket offset and semantic continuation.
@@ -54,6 +56,7 @@
   flow event private-begin post-form post-source post-cursor post-active post-done (events 0) (opened nil) (answered nil)
   cid leased response-capture (cmd-at 0) (cmd-end 0) pending plan closing await completion
   cold cold-word (line-since nil) (resume-at 0)
+  send-state (send-handed 0)
   wire (wire-at 0) (body-at 0) (body-end 0)
   page-segs page-cursor page-response (pagep nil) (page-count 0) (page-done nil)
   reply-scan captured-plans replay-plans replay-plan replay-need replay-return
@@ -323,6 +326,7 @@ exposure admission decides (the id, or NIL when it refused)."
           (fnn-web-conn-wire-at conn) 0
           (fnn-web-conn-body-at conn) 0
           (fnn-web-conn-body-end conn) (if bodyp length 0)
+          (fnn-web-conn-deadline conn) nil
           (fnn-web-conn-phase conn) :write
           (fnn-web-conn-want conn) :output)))
 
@@ -340,6 +344,8 @@ exposure admission decides (the id, or NIL when it refused)."
                 (fnn-octet-list (fnn-anchor-csprng-nonce 32))
                 (fnn-octet-list (fnn-anchor-csprng-nonce 32))
                 (and (fnn-web-face-tls-context face) t) family address)
+          ;; ACL2's read-size reached zero: the complete request arrived.
+          (fnn-web-conn-deadline conn) nil
           (fnn-web-conn-phase conn) :event (fnn-web-conn-want conn) nil)))
 
 (defun fnn-web-frame (face conn)
@@ -525,6 +531,8 @@ exposure admission decides (the id, or NIL when it refused)."
                                  (fnn-web-conn-plan conn) :reader)
     (cond (read (fnn-web-cold-start conn read :ready))
           (t
+           ;; This quantum completed; the next cache miss gets its own clock.
+           (setf (fnn-web-conn-line-since conn) nil)
            (setf (fnn-web-conn-plan conn) plan)
            (cond (ready
                   (push plan (fnn-web-conn-captured-plans conn))
@@ -628,7 +636,8 @@ exposure admission decides (the id, or NIL when it refused)."
         (multiple-value-bind (part rest donep yieldedp issued-read)
             (fnn-owner-render-next-quantum service cid plan :reader)
           (cond (issued-read (fnn-web-cold-start conn issued-read :render))
-                (t (if (fnn-web-conn-reply-scan conn)
+                (t (setf (fnn-web-conn-line-since conn) nil)
+                   (if (fnn-web-conn-reply-scan conn)
                        (progn
                          (fnn-web-fill (fnn-web-conn-in conn) part)
                          (setf (fnn-web-conn-reply-scan conn)
@@ -663,6 +672,7 @@ exposure admission decides (the id, or NIL when it refused)."
             ((and (member mode '(:ready :render :replay)) (not (eq word :serve)))
              ;; No substitute reply or fabricated terminator after a partial
              ;; semantic reply. The browser receives no HTTP outcome.
+             (fnn-err "web cold refused reason=~s phase=~s" word mode)
              (fnn-web-finish face conn))
             (t (setf (fnn-web-conn-cold conn) nil (fnn-web-conn-phase conn) mode
                      (fnn-web-conn-cold-word conn)
@@ -770,6 +780,7 @@ exposure admission decides (the id, or NIL when it refused)."
                                    (fnn-web-conn-replay-plan conn) :reader)
     (cond (read (fnn-web-cold-start conn read :replay))
           (t
+           (setf (fnn-web-conn-line-since conn) nil)
            (let ((base (fnn-web-conn-replay-at conn)))
              (fnn-web-replay-retain conn part base)
              (setf (fnn-web-conn-replay-tail conn) part (fnn-web-conn-replay-tail-base conn) base
@@ -814,6 +825,24 @@ exposure admission decides (the id, or NIL when it refused)."
                   (fnn-web-conn-page-done conn) (not bodyp))
             (fnn-web-response face conn code fields bodyp count)))))))
 
+(defun fnn-web-send-check (face conn)
+  "Judge only time with a wire window outstanding. Semantic production and
+cold reads have their own progress; they are not a socket stall."
+  (let* ((obs (list (fnn-owner-monotonic-ms)
+                    (fnn-mux-socket-outq (fnn-web-conn-fd conn))
+                    (fnn-web-conn-send-handed conn)))
+         (state (or (fnn-web-conn-send-state conn)
+                    (fnn-core 'fn-send-progress-begin (first obs) (second obs))))
+         (verdict (fnn-core 'fn-send-progress-decide state obs)))
+    (if (eq verdict :continue)
+        (progn
+          (setf (fnn-web-conn-send-state conn) (fnn-core 'fn-send-progress-next state obs))
+          t)
+      (progn
+        (fnn-err "web send refused reason=~(~a~)" (second verdict))
+        (fnn-web-finish face conn)
+        nil))))
+
 (defun fnn-web-write-ready (face conn)
   (let* ((data (fnn-web-conn-wire conn))
          (progress (fnn-transport-write-now (fnn-web-conn-fd conn) (fnn-web-conn-channel conn)
@@ -821,7 +850,10 @@ exposure admission decides (the id, or NIL when it refused)."
     (cond ((member progress '(:input :output)) (setf (fnn-web-conn-want conn) progress))
           (t
            (incf (fnn-web-conn-wire-at conn) progress)
+           (incf (fnn-web-conn-send-handed conn) progress)
            (when (= (fnn-web-conn-wire-at conn) (length data))
+             (setf (fnn-web-conn-send-state conn) nil
+                   (fnn-web-conn-send-handed conn) 0)
              (if (fnn-web-conn-pagep conn)
                  (if (fnn-web-conn-page-done conn)
                      (progn (setf (fnn-web-conn-answered conn) t)
@@ -849,7 +881,10 @@ exposure admission decides (the id, or NIL when it refused)."
   (fnn-web-job-consume face conn)
   (handler-case
       (cond ((fnn-web-conn-closedp conn) nil)
-            ((>= (fnn-web-seconds) (fnn-web-conn-deadline conn)) (fnn-web-finish face conn))
+            ((and (fnn-web-conn-deadline conn)
+                  (>= (fnn-web-seconds) (fnn-web-conn-deadline conn)))
+             (fnn-err "web request refused reason=request-timeout phase=~s" (fnn-web-conn-phase conn))
+             (fnn-web-finish face conn))
             ((fnn-web-conn-job conn) nil)
             ((< (fnn-now) (fnn-web-conn-resume-at conn)) nil)
             (t
@@ -872,7 +907,8 @@ exposure admission decides (the id, or NIL when it refused)."
                ((:head :body) (when (or ready (and (fnn-web-conn-channel conn)
                                                    (fnn-tls-pending-p (fnn-web-conn-channel conn))))
                                 (fnn-web-read-ready face conn)))
-               (:write (when ready (fnn-web-write-ready face conn))))))
+               (:write (when (and (fnn-web-send-check face conn) ready)
+                         (fnn-web-write-ready face conn))))))
     ((or fnn-os-error sb-bsd-sockets:socket-error fnn-tls-error) () (fnn-web-finish face conn))
     (serious-condition (condition)
       (unwind-protect

@@ -99,7 +99,9 @@
     (:send-stall-seconds 10 "seconds"
      "how long a queued reply may go with no octet leaving the kernel's send queue and none accepted into it before the owner refuses the send by name, send-stalled (books/send-progress.lisp); today's fixed 10 s, now a no-progress window instead of a total deadline")
     (:send-min-octets-per-second 4096 "octets per second"
-     "the least pace, over a whole reply that leaves a backlog in the kernel's send queue, at which a reader may drain before the owner refuses it by name, reader-too-slow (books/send-progress.lisp); 4096 admits the slowest reader the native tests name (38 KB/s, 1 MiB per 27.4 s) nine times over, and an operator tightens it against a slow-read attack")))
+     "the least pace, over a whole reply that leaves a backlog in the kernel's send queue, at which a reader may drain before the owner refuses it by name, reader-too-slow (books/send-progress.lisp); 4096 admits the slowest reader the native tests name (38 KB/s, 1 MiB per 27.4 s) nine times over, and an operator tightens it against a slow-read attack")
+    (:send-window-octets 65536 "octets"
+     "render admission threshold for one socket's observed not-yet-transmitted octets (SIOCOUTQNSD, books/send-window.lisp): ACL2 admits the next quantum only below this row; TCP_NOTSENT_LOWAT supplies wakeups, not write refusal. With one writer and wire quanta bounded by Q, rendered and unsent bytes stay below W+Q. In-flight bytes and preflight scans are outside this bound")))
 
 ; The row's VALUE, at macroexpansion: (fn-profile-limit :stack-kib) is the
 ; literal 1024 wherever it appears, and an unknown KEY is refused there.

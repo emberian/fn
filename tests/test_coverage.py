@@ -206,6 +206,19 @@ class WorldTests(unittest.TestCase):
         self.assertNotIn("std-lemma", self.world.theorems)
         self.assertIn("fn-serve-answers", self.world.theorems)
 
+    def test_project_relative_dump_preserves_the_same_world(self):
+        # coverage_dump normalizes :FN sysfiles through book-name-relative;
+        # other projects retain a namespace, even with a books/ filename.
+        dumped = json.loads(json.dumps(WORLD))
+        for record in dumped["functions"] + dumped["theorems"]:
+            if record["book"] == BOOK:
+                record["book"] = "books/served.lisp"
+        dumped["theorems"].append(thm("foreign-assumption", [], ["fn-serve"],
+                                     book=":other/books/assumptions.lisp"))
+        world = coverage.World(dumped)
+        self.assertEqual(world.functions, self.world.functions)
+        self.assertEqual(world.theorems, self.world.theorems)
+
     def test_attachment_is_an_edge(self):
         self.assertIn("fn-concrete", self.world.graph["fn-abstract"])
         self.assertIn("fn-field", self.world.descendants("fn-abstract"))

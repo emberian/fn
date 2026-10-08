@@ -405,6 +405,61 @@ class NativeOverPinsTests(unittest.TestCase):
         finally:
             node.stop(expect=None, grace=300)
 
+    def test_a_stopped_reader_leaves_the_kernel_at_most_the_send_window_unsent(self):
+        """The send window (books/send-window.lisp, the profile row
+        :send-window-octets; item LOAD-F5-SLOW-READER-ISOLATION): a reader
+        with a 4 KiB receive buffer that reads nothing of eight pipelined
+        2 MiB ARTICLEs leaves the owner's side of the socket with at most the
+        window plus one render window and the peer's receive window queued,
+        not the whole kernel send buffer. ACL2 gates each render from
+        SIOCOUTQNSD; TCP_NOTSENT_LOWAT only supplies POLLOUT wakeups.
+        This reads tx_queue in /proc/net/tcp (which also includes in-flight
+        bytes, hence the receive-window slack).  The wrong-answer arm of the same measure is the
+        stalled-reader test's, whose 12 MiB reply fills the whole queue
+        before the window existed."""
+        size = 2 << 20
+        node = Node(self, self.image, root=self.root / "send-window")
+        node.operator("init", "--profile", "development", "--max-transactions", "1024",
+                      "--max-history-octets", str(128 << 20),
+                      "--max-record-octets", str(size + (1 << 20)),
+                      "--max-groups-per-article", "16",
+                      "--max-article-octets", str(size), GROUP, timeout=600, expect=EXIT.OK)
+        secret = node.store("node-secret", "create", timeout=600)
+        self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
+        head = ("From: xpy@example.invalid\r\nNewsgroups: %s\r\nSubject: window\r\n"
+                "Message-ID: %s\r\n\r\n" % (GROUP, msgid("window"))).encode("ascii")
+        line = b"b" * 78 + b"\r\n"
+        body = line * ((size - len(head) - 4096) // len(line))
+        window, render, slack = 65536, 16384, 64 * 1024
+        owner = node.start(timeout=600)
+        try:
+            with Client(node.port, timeout=300, greeting=None) as poster:
+                first, final = poster.post(head + body)
+                self.assertTrue((final or first).startswith(b"240"), (first, final))
+            client = Client(node.port, timeout=300, greeting=None)
+            try:
+                client.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4096)
+                client_port = client.sock.getsockname()[1]
+                client.send(("ARTICLE %s\r\n" % msgid("window")).encode() * 8)
+                deadline = time.monotonic() + 8
+                peak, seen = 0, False
+                while time.monotonic() < deadline:
+                    queue = self.server_tx_queue(node.port, client_port)
+                    if queue is not None:
+                        seen = True
+                        peak = max(peak, queue)
+                    time.sleep(0.05)
+                if not seen:
+                    self.skipTest("no /proc/net/tcp row for the connection")
+                self.assertGreater(peak, 0, "the owner handed the kernel nothing")
+                self.assertLessEqual(peak, window + render + slack,
+                                     "the kernel holds %d unsent octets of a stopped reader's "
+                                     "replies; the window is %d" % (peak, window))
+            finally:
+                client.close(False)
+        finally:
+            node.stop(expect=None, grace=300)
+
     def test_a_cold_quantum_reads_off_the_owner_mutex(self):
         """Codex r67 F2 for OVER: a cursor quantum that needs a payload not in
         the realizer's cache issues the read and waits for it OFF the owner

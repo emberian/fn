@@ -5,6 +5,9 @@
 ; the line it prints and its exit code.  These wrappers only name them for the
 ; image (host/native/store-identity.lisp).  Loaded after host/owner-host.lisp.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/history-paged-attach")
 (include-book "../books/store-identity")
 (include-book "../books/live-profile-control")
 
@@ -12,9 +15,14 @@
   (declare (xargs :mode :program))
   (fn-stid-request))
 
+;; host/store-identity-host.lisp (Mini M4, `fn identity CONTROL')
+(definterface fn-stid-host-request :class ::program)
+
 (defun fn-stid-host-request-p (octets)
   (declare (xargs :mode :program))
   (fn-stid-request-p octets))
+
+(definterface fn-stid-host-request-p :class ::program)
 
 ; The owner's reply: the open's verdict this process installed
 ; (fn-store-genesis), the owner's consumer state, and RUNNING, the image's
@@ -28,22 +36,34 @@
                           (fn-sn-consumer (fn-owner-store state))
                           running))))
 
+(definterface fn-stid-host-reply :class ::program)
+
 (defun fn-stid-host-cli-plan (argv)
   (declare (xargs :mode :program))
   (fn-stid-cli-plan argv))
+
+(definterface fn-stid-host-cli-plan :class ::program)
 
 (defun fn-stid-host-usage ()
   (declare (xargs :mode :program))
   *fn-stid-usage*)
 
+(definterface fn-stid-host-usage :class ::program)
+
 (defun fn-stid-host-reply-read (octets)
   (declare (xargs :mode :program))
   (fn-stid-reply-read octets))
+
+(definterface fn-stid-host-reply-read :class ::program)
 
 (defun fn-stid-host-line (value)
   (declare (xargs :mode :program))
   (fn-stid-line value))
 
+(definterface fn-stid-host-line :class ::program)
+
 (defun fn-stid-host-exit-code (value)
   (declare (xargs :mode :program))
   (fn-stid-exit-code value))
+
+(definterface fn-stid-host-exit-code :class ::program)

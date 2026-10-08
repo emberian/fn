@@ -1,11 +1,155 @@
 {
- "about": "Ruling 22: the declared parts of the evidence package for critical keystones (host_test, trace_witness, mutation); premises and wrong_answer come from the keystone's defteeth. Each value is tests/PATH::MARKER, the marker occurring in that file.",
+ "about": "Critical keystone evidence: premises and wrong_answer come from defteeth; declared host_test, trace_witness and mutation references name their tests. Native log crash campaigns check the model program against host cuts; they do not execute that program. Failed-barrier clean-cache coverage is separately owed in TEETH-CRITICAL-HOST-TESTS.",
  "entries": {
-  "fn-scka-recover-from-checkpoint-is-full-recover": {
+  "fn-bpn-step-preserves-lifecycle-invariant": {
+   "subject": "fn-bpn-step",
+   "host_test": "tests/test_bp_node_native.py::test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
+   "trace_witness": "tests/acl2/bp-node-machine-authorization-tests.lisp::fn-bpn-step-preserves-lifecycle-invariant",
+   "mutation": "tests/acl2/bp-node-machine-authorization-tests.lisp::bpna-mutant-step-with-unbound-send"
+  },
+  "fn-bpnj-rotation-restart-succeeds-with-owed-work": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-recovery-tests.lisp::fn-bpnj-rotation-restart-succeeds-with-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work": {
+   "subject": "fn-bpnp-rotate-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotation-recovery-seeds-owed-jobs": {
+   "subject": "fn-bpnp-rotate-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-recovery-seeds-owed-jobs",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotation-restart-keeps-owed-work": {
+   "subject": "fn-bpnr-seed-state",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-restart-keeps-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-checkpoint-recovery-equals-full-machine": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-equivalence-tests.lisp::fn-bpnr-checkpoint-recovery-equals-full-machine",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-recover-from-checkpoint-equals-full-recover": {
+   "subject": "fn-bphp-recover-auto-event",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-recover-from-checkpoint-equals-full-recover",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-rotation-crash-recovers-old-or-new": {
+   "subject": "fn-bphp-recover-auto-event",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_killed_at_each_cut_keeps_held_rows",
+   "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-rotation-crash-recovers-old-or-new",
+   "mutation": "tests/acl2/bp-node-rotation-critical-tests.lisp::bprc-mutant-crash-visible-before-rename"
+  },
+  "fn-dwj-retired-job-refuses-scalar-publication": {
+   "subject": "fn-dwj-retire",
+   "host_test": "tests/test_native_decoded_custody.py::test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
+   "trace_witness": "tests/acl2/decoded-worker-job-teeth-tests.lisp::fn-dwj-retired-job-refuses-scalar-publication",
+   "mutation": "tests/acl2/decoded-worker-job-teeth-tests.lisp::retirement-skipped"
+  },
+  "fn-lg-open-program-keeps-the-relation": {
+   "subject": "fn-lg-open-program",
+   "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
+   "trace_witness": "tests/acl2/store-log-route-programs-tests.lisp::fn-lg-open-program-keeps-the-relation",
+   "mutation": "tests/acl2/store-log-route-programs-tests.lisp::stale-kernel"
+  },
+  "fn-lgob-three-barrier-open-after-the-copy-is-the-five": {
+   "subject": "fn-lg-open-program",
+   "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
+   "trace_witness": "tests/acl2/store-log-open-barriers-tests.lisp::fn-lgob-three-barrier-open-after-the-copy-is-the-five",
+   "mutation": "tests/acl2/store-log-open-barriers-tests.lisp::skipped-replay-cut"
+  },
+  "fn-lgrc-acknowledge-from-the-copy": {
+   "subject": "fn-lgu-acknowledge",
+   "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
+   "trace_witness": "tests/acl2/store-log-copy-ack-teeth-tests.lisp::fn-lgrc-acknowledge-from-the-copy",
+   "mutation": "tests/acl2/store-log-copy-ack-teeth-tests.lisp::skipped-file-fence"
+  },
+  "fn-lgrc-open-keeps-the-relation-at-every-cut": {
+   "subject": "fn-lgrc-program",
+   "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
+   "trace_witness": "tests/acl2/store-log-copy-teeth-tests.lisp::fn-lgrc-open-keeps-the-relation-at-every-cut",
+   "mutation": "tests/acl2/store-log-copy-teeth-tests.lisp::skip-file-barrier"
+  },
+  "fn-lgu-acknowledge-acknowledges-only-recoverable-records": {
+   "subject": "fn-lgu-acknowledge",
+   "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
+   "trace_witness": "tests/acl2/store-log-critical-teeth-tests.lisp::fn-lgu-acknowledge-acknowledges-only-recoverable-records",
+   "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode"
+  },
+  "fn-lgu-host-kernel-acknowledges-only-recoverable-records": {
+   "subject": "fn-lgc-host-run",
+   "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
+   "trace_witness": "tests/acl2/store-log-critical-teeth-tests.lisp::fn-lgu-host-kernel-acknowledges-only-recoverable-records",
+   "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode"
+  },
+  "fn-otm-held-plan-complete-only-after-the-barrier": {
+   "subject": "fn-otm-held-plan",
+   "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+   "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-barrier-trace",
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::forged-barrier"
+  },
+  "fn-otm-held-plan-in-flight-until-completed": {
+   "subject": "fn-otm-held-plan",
+   "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+   "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-barrier-trace",
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::clear-before-completed"
+  },
+  "fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits": {
+   "subject": "fn-otm-held-committer-wake",
+   "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+   "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-budget-trace",
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::ignore-waiter-budget"
+  },
+  "fn-rcw-canon-acc-steps-is-the-checkpoint-capture": {
+   "subject": "fn-scka-canon-rows",
+   "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-live-arena",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
+  },
+  "fn-rcw-load-chunks-is-load": {
+   "subject": "fn-rcw-load-chunks",
+   "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+   "trace_witness": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::fn-rcw-load-chunks-is-load",
+   "mutation": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::missing-clear"
+  },
+  "fn-rcw-load-chunks-keyed-is-keyed-load": {
+   "subject": "fn-rcw-load-chunks",
+   "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+   "trace_witness": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::fn-rcw-load-chunks-keyed-is-keyed-load",
+   "mutation": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::missing-keyed-clear"
+  },
+  "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open": {
+   "subject": "fn-owner-orcp-rebuild",
+   "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+   "trace_witness": "tests/acl2/reclaim-chunked-seal-tests.lisp::fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open",
+   "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::skipped-chunk"
+  },
+  "fn-rcw-srcs-steps-is-the-walk": {
+   "subject": "fn-scka-srcs-n",
+   "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+   "trace_witness": "tests/acl2/reclaim-chunked-seal-tests.lisp::fn-rcw-srcs-steps-is-the-walk",
+   "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::skip-first-chunk"
+  },
+  "fn-sca-load-held-rows-establishes-byte-facts": {
+   "subject": "fn-sca-load-held-rows-keyed",
+   "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+   "trace_witness": "tests/acl2/catalog-availability-owner-load-tests.lisp::fn-sca-load-held-rows-establishes-byte-facts",
+   "mutation": "tests/acl2/catalog-availability-owner-load-tests.lisp::stale-byte-facts"
+  },
+  "fn-scka-fold-at-is-the-ssr-step": {
    "subject": "fn-ssr-intern-step",
    "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
-   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-old-pair"
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
   },
   "fn-scka-next-checkpoint-is-capture": {
    "subject": "fn-scka-next-checkpoint",
@@ -13,17 +157,11 @@
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
    "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
   },
-  "fn-rcw-canon-acc-steps-is-the-checkpoint-capture": {
-   "subject": "fn-rcw-canon-acc-step",
-   "host_test": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-live-arena",
-   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-live-arena",
-   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
-  },
-  "fn-scka-fold-at-is-the-ssr-step": {
+  "fn-scka-recover-from-checkpoint-is-full-recover": {
    "subject": "fn-ssr-intern-step",
    "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
-   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-old-pair"
   }
  }
 }

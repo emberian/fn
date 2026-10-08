@@ -7,8 +7,11 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import os
+import subprocess
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -33,6 +36,43 @@ P_FIXTURE = [
 
 def iface(**more):
     return dict({"class": "common-lisp-compliant", "subsystem": "store", "extraction": None}, **more)
+
+
+# Run this world fixture with an existing proof_repl session containing
+# books/defkeystone. It uses ACL2's actual translation and all-vars check;
+# Python does not approximate closedness or theorem-formula equality.
+OPEN_LEMMA_FIXTURE = """
+(progn
+ (defthm p7-critical-open-lemma (equal (car (cons x nil)) x) :rule-classes nil)
+ (defthm p7-critical-closed-lemma (equal (car (cons 'a nil)) 'a) :rule-classes nil)
+ (assert-event
+  (equal (car (fn-dt-lemma-problem 'fixture 'p7-critical-open-lemma
+                 '((x free-variable)) '(equal (car (cons x nil)) x) (w state)))
+         :lemma-open))
+ (assert-event
+  (equal (car (fn-dt-lemma-problem 'fixture 'p7-critical-open-lemma
+                 nil '(equal (car (cons x nil)) x) (w state)))
+         :lemma-open))
+ (assert-event
+  (equal (car (fn-dt-lemma-problem 'fixture 'p7-critical-open-lemma
+                 '((x 'a)) '(equal (car (cons x nil)) x) (w state)))
+         :lemma-differs))
+ (assert-event
+  (not (fn-dt-lemma-problem 'fixture 'p7-critical-closed-lemma
+                 '((x 'a)) '(equal (car (cons x nil)) x) (w state)))))
+"""
+
+
+class GroundLemmaWorld(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get("FN_CRITICAL_PROOF_REPL"),
+                         "FN_CRITICAL_PROOF_REPL names a live defkeystone proof session")
+    def test_free_variable_lemma_is_refused_by_the_world(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "tools/proof_repl.py"), "send",
+             os.environ["FN_CRITICAL_PROOF_REPL"], OPEN_LEMMA_FIXTURE,
+             "--host", os.environ.get("FN_CRITICAL_PROOF_HOST", "persvati"), "--limit", "5"],
+            capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 class Mapping(unittest.TestCase):
@@ -74,6 +114,39 @@ class Mapping(unittest.TestCase):
             path.write_text('{"classes": ["durability"], "rows": [{"class": "durability"}]}')
             with self.assertRaises(ValueError):
                 kc.load_map(path)
+
+
+class ModelProgramReach(unittest.TestCase):
+    def test_campaign_program_requires_the_existing_cut_check(self):
+        import reach_check
+        from tests.campaign import native_cuts
+        graph = type("Graph", (), {"reachable": set(), "tied": {"fn-lgrc-program"}})()
+        with mock.patch.object(reach_check, "Graph", return_value=graph):
+            with mock.patch.object(native_cuts, "verify_log_cut_map") as check:
+                reachable = kc.lazy_reachable()
+                self.assertTrue(reachable("fn-lgrc-program"))
+                self.assertTrue(reachable("fn-lgrc-program"))
+                check.assert_called_once()
+            with mock.patch.object(native_cuts, "verify_log_cut_map", side_effect=AssertionError("missing fence")):
+                self.assertFalse(kc.lazy_reachable()("fn-lgrc-program"))
+            graph.tied = {"unmapped-model"}
+            self.assertFalse(kc.lazy_reachable()("unmapped-model"))
+            graph.tied = set()
+            self.assertFalse(kc.lazy_reachable()("fn-lgrc-program"))
+
+    def test_open_program_requires_order_and_route_checks(self):
+        import reach_check
+        from tests.campaign import native_cuts
+        graph = type("Graph", (), {"reachable": set(), "tied": {"fn-lg-open-program"}})()
+        with mock.patch.object(reach_check, "Graph", return_value=graph), \
+                mock.patch.object(native_cuts, "verify_recovery_order") as order, \
+                mock.patch.object(native_cuts, "verify_log_route_arms", return_value=[]):
+            self.assertTrue(kc.lazy_reachable()("fn-lg-open-program"))
+            order.assert_called_once()
+            with mock.patch.object(native_cuts, "verify_log_route_arms", return_value=["skipped cut"]):
+                self.assertFalse(kc.lazy_reachable()("fn-lg-open-program"))
+            order.side_effect = AssertionError("barrier reordered")
+            self.assertFalse(kc.lazy_reachable()("fn-lg-open-program"))
 
 
 class Marking(unittest.TestCase):
@@ -189,11 +262,68 @@ class Gate(unittest.TestCase):
         self.assertTrue(any("reached by no host line" in f for f in found), found)
 
     def test_no_positive_witness_or_wrong_answer_witness_fails(self):
-        for bad in (teeth("k", witness="lemma"), teeth("k", certified=False),
+        for bad in (teeth("k", witness="prose"), teeth("k", certified=False),
+                    teeth("k", witness="lemma", certified=False),
                     teeth("k", removals={"reachable": 0}, mutations="deferred"),
                     {"name": "k", "class": "hand", "registry": True, "critical": "durability"}):
             found, _ = self.run_gate([bad], [], {"k": self.full})
             self.assertTrue(any("HARD FAIL" in f for f in found), bad)
+
+    def test_campaign_reach_alone_does_not_supply_a_native_host_test(self):
+        def reachable(subject):
+            return True
+        reachable.campaign_tied = lambda subject: True
+        found, _ = self.run_gate([teeth("k")], [], {"k": self.full}, reachable=reachable)
+        self.assertTrue(any("requires a native campaign" in f for f in found), found)
+        native = self.root / "tests/test_native_cuts.py"
+        # A native-looking filename and a static verifier are not execution.
+        native.write_text("# fn-s\ndef host_rotation():\n    verify_log_cut_map()\n")
+        full = dict(self.full, host_test="tests/test_native_cuts.py::host_rotation")
+        found, _ = self.run_gate([teeth("k")], [], {"k": full}, reachable=reachable)
+        self.assertTrue(any("does not drive fault cuts" in f for f in found), found)
+        native.write_text("# fn-s\nimport subprocess\ndef host_rotation():\n"
+                          "    'FN_NATIVE_LOG_FAULT'\n    subprocess.run(['fn-host'])\n")
+        found, _ = self.run_gate([teeth("k")], [], {"k": full}, reachable=reachable)
+        self.assertTrue(any("does not drive fault cuts" in f for f in found), found)
+        native.write_text("# fn-s\nimport subprocess\ndef launch(fault):\n"
+                          "    return subprocess.run(['fn-host'], env={'FN_NATIVE_LOG_FAULT': fault})\n"
+                          "def host_rotation():\n    return launch(fault='log-copy-fenced')\n")
+        found, summary = self.run_gate([teeth("k")], [], {"k": full}, reachable=reachable)
+        self.assertEqual((found, summary["complete"]), ([], 1))
+        # Static verification elsewhere in a native module is still not the test.
+        native.write_text(native.read_text() + "def table_only():\n    verify_log_cut_map()\n")
+        found, _ = self.run_gate([teeth("k")], [], {"k": dict(full,
+                                 host_test="tests/test_native_cuts.py::table_only")}, reachable=reachable)
+        self.assertTrue(any("does not drive fault cuts" in f for f in found), found)
+
+    def test_positive_witness_kind_and_current_certification_are_distinct(self):
+        for mode in ("executable", "instance", "lemma"):
+            with self.subTest(mode=mode):
+                entry = teeth("k", witness=mode, certified=False)
+                pkg = kc.package(entry, self.full, lambda s: True, self.root)
+                self.assertEqual(pkg["premises"],
+                                 "positive witness book is not certified at its current closure key")
+                found, _ = self.run_gate([entry], [], {"k": self.full})
+                self.assertTrue(any("HARD FAIL" in f for f in found), found)
+                found, summary = self.run_gate([dict(entry, certified=True)], [], {"k": self.full})
+                self.assertEqual((found, summary["complete"]), ([], 1))
+        pkg = kc.package(teeth("k", witness="prose"), self.full, lambda s: True, self.root)
+        self.assertEqual(pkg["premises"], "no executable/instance/ground-lemma positive witness")
+
+    def test_certified_ground_lemma_needs_the_same_full_package(self):
+        # ACL2's defteeth checks exact closed formula equality for this mode;
+        # a quantified crash-image predicate cannot be executed by assert-event.
+        entry = teeth("k", witness="lemma", removals={"lemma": 1})
+        found, summary = self.run_gate([entry], [], {"k": self.full})
+        self.assertEqual((found, summary["complete"]), ([], 1))
+        for absent in ("trace_witness", "host_test", "mutation"):
+            declared = {k: v for k, v in self.full.items() if k != absent}
+            found, _ = self.run_gate([entry], [], {"k": declared})
+            self.assertTrue(any(absent + " (" in f for f in found), found)
+        # A logical removal alone still does not establish a wrong answer on
+        # a reachable path: this case must supply an edit mutation.
+        found, _ = self.run_gate([dict(entry, mutations="deferred")], [], {"k": self.full})
+        self.assertTrue(any("wrong_answer (" in f for f in found), found)
 
     def test_existing_critical_without_the_package_needs_an_owed_item(self):
         found, _ = self.run_gate([teeth("k")], ["k"])
@@ -246,6 +376,33 @@ class LowerStale(unittest.TestCase):
         self.assertEqual(sorted(dropped["owed:durability"]), ["demoted", "gone"])
         self.assertEqual(sorted(dropped["base:durability"]), ["demoted", "gone"])
         self.assertEqual(new_owed["live"], owed["live"])
+
+    def test_retire_line_names_the_witness_files(self):
+        line = kc.retire_line("fn-k", {"owner_book": "tests/acl2/k-tests.lisp"},
+                              {"host_test": "tests/test_native_k.py::t", "trace_witness": "tests/acl2/k-tests.lisp::w",
+                               "mutation": "tests/acl2/k-tests.lisp::m"})
+        self.assertEqual(line, "completed fn-k: premises/wrong_answer tests/acl2/k-tests.lisp; "
+                               "host_test tests/test_native_k.py::t; trace_witness tests/acl2/k-tests.lisp::w; "
+                               "mutation tests/acl2/k-tests.lisp::m")
+
+    def test_lower_complete_drops_only_current_full_packages(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tests").mkdir()
+            (root / "tests/evidence.py").write_text("# fn-s host trace mutation")
+            full = {key: "tests/evidence.py::" + marker for key, marker in
+                    (("host_test", "host"), ("trace_witness", "trace"), ("mutation", "mutation"))}
+            owed = {n: {"class": "durability", "item": "PRF-1345"} for n in
+                    ("complete", "uncertified", "missing-host", "gone")}
+            current = {n: teeth(n) for n in owed if n != "gone"}
+            current["uncertified"]["certified"] = False
+            declared = {n: dict(full) for n in current}
+            del declared["missing-host"]["host_test"]
+            kept, dropped = kc.lower_complete(current, owed, declared, lambda s: True, root)
+            self.assertEqual(dropped, ["complete"])
+            self.assertEqual(kept, {n: row for n, row in owed.items() if n != "complete"})
+            self.assertEqual(kc.lower_complete(current, kept, declared, lambda s: True, root),
+                             (kept, []))
 
     def test_a_new_critical_is_never_added(self):
         current = {"fresh": teeth("fresh")}

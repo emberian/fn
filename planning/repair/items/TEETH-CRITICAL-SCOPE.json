@@ -1,0 +1,16 @@
+{
+ "category": "proof-owed",
+ "file": "planning/teeth-ceiling.json",
+ "id": "TEETH-CRITICAL-SCOPE",
+ "notes": [
+  "p-teeth-critical scope review: the assigned 13 remain critical; no assigned claim was reclassified. The following seven of the other 19 also appear critical. They are reported for deputy-P allocation; this lane has not silently expanded its assigned scope.",
+  "fn-av-mca-read-span-restricted-is-legacy: authorization of article spans; fn-av-scr-auth-delegate-restricted-is-reference and fn-av-scr-dispatch-core-restricted-is-reference: authorization and dispatch refinements.",
+  "fn-ocap-preview-keeps-input-prefix-bounds: external parser boundary; fn-orcs-predict-seal-refines-intern: identity and bytes binding of reclaimed handles; fn-proto-archive-command-cat-is-pinned: ownership of a pinned catalog view; fn-sccv-step-is-seg-step: checkpoint parser extraction boundary."
+ ],
+ "owner": "deputy-P",
+ "severity": "high",
+ "source": "p-teeth-critical",
+ "state": "open",
+ "title": "Allocate seven additional critical-class ceiling claims for teeth",
+ "updated": "2026-10-08T16:26:00Z"
+}

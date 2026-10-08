@@ -72,10 +72,8 @@ ORDER = {"uncertified": 0, "unknown": 0, "absent": 1, "green": 2}
 # The record toolchain's launcher: tools/farm.py HOSTS["hbox"]["acl2"] (a test
 # pins them equal; farm is not imported here because it is heavy).
 RECORD_LAUNCHER = "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
-# The identity that launcher fingerprints to (the boxes compute it themselves;
-# this is only the default for a read-only local mirror on a machine that
-# has no such launcher, e.g. a laptop).  A test pins it against nothing local.
-RECORD_IDENTITY = "fcedce7e3aa26e7ef93c7b3801bc39b2c56b7968cc1dfdf8e710a8931b349d52"
+# Local mirrors without that launcher require --identity. A hardcoded digest
+# silently became stale when :FN changed the proof-environment contract.
 RECORD_BOX = "hbox"
 FALLBACK_BOX = "persvati"
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
@@ -186,7 +184,10 @@ class Cache:
     def local_identity(self) -> str:
         if self.identity is None:
             found = acl2_toolchain.fingerprint(Path(RECORD_LAUNCHER))
-            self.identity = found.identity or RECORD_IDENTITY
+            if found.identity is None:
+                raise CacheUnavailable("local mirror needs --identity from the record "
+                                       "toolchain; its launcher is unavailable here")
+            self.identity = found.identity
         return self.identity
 
     def ask_box(self, keys: list[str]) -> dict:

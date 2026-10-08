@@ -150,6 +150,16 @@
                               (theory 'minimal-theory))))))
 
 (local
+ (defthm bpnpb-restart-step-from-confined
+  (fn-bpnpb-effects-confinedp
+   (fn-bpn-answer-effects
+    (fn-bpn-restart-step-from st records ready jobs token)))
+  :hints (("Goal" :in-theory (union-theories
+                              '(bpnpb-confined-of-typed
+                                fn-bpn-restart-step-from-effects-are-typed)
+                              (theory 'minimal-theory))))))
+
+(local
  (defthm bpnpb-effect-listp-of-cdr
   (implies (fn-bpn-effect-listp effects)
            (fn-bpn-effect-listp (cdr effects)))
@@ -163,6 +173,17 @@
                               '(bpnpb-confined-of-typed
                                 bpnpb-effect-listp-of-cdr
                                 fn-bpn-restart-step-effects-are-typed)
+                              (theory 'minimal-theory))))))
+
+(local
+ (defthm bpnpb-restart-step-from-effects-cdr-confined
+  (fn-bpnpb-effects-confinedp
+   (cdr (fn-bpn-answer-effects
+         (fn-bpn-restart-step-from st records ready jobs token))))
+  :hints (("Goal" :in-theory (union-theories
+                              '(bpnpb-confined-of-typed
+                                bpnpb-effect-listp-of-cdr
+                                fn-bpn-restart-step-from-effects-are-typed)
                               (theory 'minimal-theory))))))
 
 (local
@@ -183,6 +204,7 @@
    '(bpnpb-base-of-slot-writers bpnpb-confined-of-literals
      bpnpb-propose-confined bpnpb-bpn-step-confined bpnpb-restart-step-confined
      bpnpb-restart-step-effects-cdr-confined
+     bpnpb-restart-step-from-confined bpnpb-restart-step-from-effects-cdr-confined
      car-cons cdr-cons (:e fn-cbor-ag-car) (:e member-equal) (:e car)
      (:e fn-bpnpb-effects-confinedp))
    (theory 'minimal-theory))))
