@@ -58,23 +58,23 @@
 ; (120,790,326 MB: the per-record term; 10,856,110,899 before).
 
 (assert! (equal (fn-heap-figure-octets *fn-heap-small-profile* *hft-core* *hft-nursery*)
-                918886750))
+                983756053))
 (assert! (equal (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
                                 (list *hft-2g*))
-                '(:heap 877 "small" 2048)))
+                '(:heap 939 "small" 2048)))
 (assert! (equal (fn-heap-decide *fn-heap-small-profile* *hft-prod-core* *hft-nursery*
                                 (list *hft-big*))
-                '(:heap 578 "small" 125885)))
+                '(:heap 640 "small" 125885)))
 (assert! (equal (fn-heap-decide *fn-bs-profile-development* *hft-core* *hft-nursery*
                                 (list *hft-2g*))
-                '(:refused :machine-cannot-hold-profile 2605 2048)))
+                '(:refused :machine-cannot-hold-profile 2751 2048)))
 (assert! (equal (fn-heap-decide *fn-bs-profile-scale* *hft-core* *hft-nursery*
                                 (list *hft-big*))
-                '(:heap 16037 "scale" 125885)))
+                '(:heap 20664 "scale" 125885)))
 (assert! (equal (fn-heap-decide *fn-bs-profile-defaults* *hft-core* *hft-nursery*
                                 (list *hft-big*))
                 '(:refused :machine-cannot-hold-profile
-                     61545718 125885)))
+                     69306705 125885)))
 (assert! (equal (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery* nil)
                 '(:refused :machine-memory-unobserved 0 0)))
 
@@ -104,11 +104,11 @@
 (assert! (equal (fn-heap-report-line
                  (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
                                  (list *hft-2g*)))
-                "heap=877 MB profile=small machine=2048 MB"))
+                "heap=939 MB profile=small machine=2048 MB"))
 (assert! (equal (fn-heap-report-line
                  (fn-heap-decide *fn-bs-profile-development* *hft-core* *hft-nursery*
                                  (list *hft-2g*)))
-                "refused machine-cannot-hold-profile heap=2605 MB machine=2048 MB"))
+                "refused machine-cannot-hold-profile heap=2751 MB machine=2048 MB"))
 (assert! (equal (fn-heap-decision-exit-code '(:heap 1924 "small" 2048)) 0))
 (assert! (equal (fn-heap-decision-exit-code
                  '(:refused :machine-cannot-hold-profile 7934 2048))
@@ -248,10 +248,10 @@
 ; The refusal theorem's witnesses: both arms reached on admitted profiles.
 
 (assert! (equal (car (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
-                                     (list (* 876 *fn-heap-mib*))))
+                                     (list (* 938 *fn-heap-mib*))))
                 :refused))
 (assert! (equal (car (fn-heap-decide *fn-heap-small-profile* *hft-core* *hft-nursery*
-                                     (list (* 877 *fn-heap-mib*))))
+                                     (list (* 939 *fn-heap-mib*))))
                 :heap))
 
 ; -----------------------------------------------------------------------------
@@ -260,19 +260,19 @@
 
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* (* 512 *fn-heap-mib*)
                                           *hft-nursery* (list *hft-1536*) '(0 . 0))
-                '(:heap 896 "small" 1536)))
+                '(:heap 958 "small" 1536)))
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* (* 512 *fn-heap-mib*)
                                           *hft-nursery* (list *hft-2g*) '(0 . 0))
-                '(:heap 896 "small" 2048)))
+                '(:heap 958 "small" 2048)))
 ; a core of more than 512 MiB of dynamic content: 1,150 MiB on 1,536 and
 ; 1,700 MiB on 2,048 are refused.  (Lane heap-bounds' uncharged header term
 ; had even the 512 MiB core refused on 1,536 MiB: 1,777 MB.)
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* (* 1150 *fn-heap-mib*)
                                           *hft-nursery* (list *hft-1536*) '(0 . 0))
-                '(:refused :machine-cannot-hold-profile 1550 1536)))
+                '(:refused :machine-cannot-hold-profile 1604 1536)))
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* (* 1700 *fn-heap-mib*)
                                           *hft-nursery* (list *hft-2g*) '(0 . 0))
-                '(:refused :machine-cannot-hold-profile 2100 2048)))
+                '(:refused :machine-cannot-hold-profile 2154 2048)))
 ; (no nursery hypothesis: even a 1 GiB cap is accepted, the trigger being a
 ; sixteenth of the space)
 (assert! (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile*
@@ -282,7 +282,7 @@
 ; a machine under the figure (850 MiB)
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* (* 512 *fn-heap-mib*)
                                           *hft-nursery* (list (* 850 *fn-heap-mib*)) '(0 . 0))
-                '(:refused :machine-cannot-hold-profile 896 850)))
+                '(:refused :machine-cannot-hold-profile 958 850)))
 ; a machine that is not a positive integer is no observation
 (assert! (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-core*
                                                *hft-nursery*
@@ -403,7 +403,7 @@
                                           *hft-nursery* (list *hft-2g*) '(100000 . 50))))
 (assert! (equal (fn-heap-operation-decide :init *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) nil)
-                '(:heap 524 "small" 2048)))
+                '(:heap 586 "small" 2048)))
 ; By the store's observed history: an empty store reclaims in 888 MB, the
 ; measured 3,000-article store in 1,639 MB (its six list copies), a store of
 ; 100,000 octets in 50 files compacts, recovers and runs in 888 MB, where an
@@ -412,25 +412,25 @@
 ; changes nothing; octets without a count take T's records.
 (assert! (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) '(0 . 0))
-                '(:heap 524 "small" 2048)))
+                '(:heap 586 "small" 2048)))
 (assert! (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-4g*) '(7271160 . 3000))
                 '(:heap 1639 "small" 4096)))
 (assert! (equal (fn-heap-operation-decide :compact *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) '(100000 . 50))
-                '(:heap 532 "small" 2048)))
+                '(:heap 594 "small" 2048)))
 (assert! (equal (fn-heap-operation-decide :recover *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) '(100000 . 50))
-                '(:heap 532 "small" 2048)))
+                '(:heap 594 "small" 2048)))
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) '(100000 . 50))
-                '(:heap 532 "small" 2048)))
+                '(:heap 594 "small" 2048)))
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) nil)
-                '(:heap 666 "small" 2048)))
+                '(:heap 728 "small" 2048)))
 (assert! (equal (fn-heap-operation-decide :recover *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) 100000)
-                '(:heap 568 "small" 2048)))
+                '(:heap 630 "small" 2048)))
 (assert! (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*)
                                           (cons (* 2 8388608) (* 2 16384)))
@@ -443,10 +443,10 @@
                 '(:refused :machine-cannot-hold-profile 1843 1536)))
 (assert! (equal (fn-heap-operation-decide :reclaim *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-1536*) '(0 . 0))
-                '(:heap 524 "small" 1536)))
+                '(:heap 586 "small" 1536)))
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-1536*) '(0 . 0))
-                '(:heap 524 "small" 1536)))
+                '(:heap 586 "small" 1536)))
 ; The observation only lowers the figure.
 (assert! (< (fn-heap-operation-figure-octets :reclaim *fn-heap-small-profile* *hft-bsd-core*
                                              *hft-nursery* '(7271160 . 3000))
@@ -616,7 +616,7 @@
 (defconst *hft-1000* '(2465160 . 1000))
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-prod-core*
                                           *hft-nursery* (list *hft-2g*) *hft-1000*)
-                '(:heap 530 "small" 2048)))
+                '(:heap 592 "small" 2048)))
 (assert! (equal (hft-st-hyps :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) *hft-1000* *hft-used* *hft-t* *hft-mw* 2465160 1000)
                 '(t t t t t t)))
 (assert! (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) *hft-1000* *hft-used* *hft-t* *hft-mw* 2465160 1000))
@@ -702,12 +702,12 @@
 ; hft-st-without-used's).
 (assert! (equal (hft-st-hyps :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) *hft-1000* *hft-used* *hft-t* *hft-m-uncharged* 0 0)
                 '(t t nil t t t)))
-(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) *hft-1000* *hft-used* *hft-t* *hft-m-uncharged* 0 0)))
+(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) *hft-1000* *hft-used* *hft-t* (* 4 *hft-m-uncharged*) 0 0)))
 ; Without the open's octets within the observation: an empty store observed,
 ; a replay of H.
 (assert! (equal (hft-st-hyps :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) '(0 . 0) *hft-used* *hft-t* *hft-mw* *hft-h* 0)
                 '(t t t t nil t)))
-(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) '(0 . 0) *hft-used* *hft-t* *hft-mw* *hft-h* 0)))
+(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) '(0 . 0) *hft-used* *hft-t* *hft-mw* (* 20 *hft-h*) 0)))
 (hft-st-must-fail hft-st-without-open-octets
                   (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
@@ -719,7 +719,7 @@
 ; observed, a replay of T records.
 (assert! (equal (hft-st-hyps :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) '(0 . 0) *hft-used* *hft-t* *hft-mw* 0 *hft-t*)
                 '(t t t t t nil)))
-(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) '(0 . 0) *hft-used* *hft-t* *hft-mw* 0 *hft-t*)))
+(assert! (not (hft-st-conclusion :run *fn-heap-small-profile* *hft-prod-core* *hft-nursery* (list *hft-2g*) '(0 . 0) *hft-used* *hft-t* *hft-mw* 0 (* 20 *hft-t*))))
 (hft-st-must-fail hft-st-without-open-records
                   (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
@@ -772,7 +772,9 @@
 (assert! (hft-sf-conclusion *hft-fig* nil *hft-used* *hft-t* *hft-mw* *hft-h* *hft-t*))
 ; D a fraction: the figure plus one half.
 (assert! (equal (hft-sf-hyps (+ *hft-fig* 1/2) nil 0 0 0 0 0) '(nil t t t t t)))
-; D under the figure: ten megabytes less, the store full (less the smaller
+; D under the figure: 300 megabytes less (the history roots' reserve, 126 MiB
+; of the small preset's figure, is slack for a store the roots do not hold),
+; the store full (less the smaller
 ; trigger's room, a sixteenth of the space, the collector's).  (The figure is
 ; within H of the costliest store since lane heap-bounds: the history bound
 ; charges a payload octet two arena octets, fn-heap-arena-octets-slope, where
@@ -781,10 +783,10 @@
 (assert! (equal (- *hft-fig* (fn-heap-store-need *fn-heap-small-profile* *hft-prod-core* *hft-used*
                                                  *hft-t* *hft-mw* *hft-h* *hft-t*
                                                  (fn-heap-nursery-trigger *hft-fig* *hft-nursery*)))
-                8387618))
-(assert! (equal (hft-sf-hyps (- *hft-fig* (* 10 *fn-heap-mib*)) nil *hft-used* *hft-t* *hft-mw* *hft-h* *hft-t*)
+                65148257))
+(assert! (equal (hft-sf-hyps (- *hft-fig* (* 300 *fn-heap-mib*)) nil *hft-used* *hft-t* *hft-mw* *hft-h* *hft-t*)
                 '(t nil t t t t)))
-(assert! (not (hft-sf-conclusion (- *hft-fig* (* 10 *fn-heap-mib*)) nil *hft-used* *hft-t* *hft-mw* *hft-h* *hft-t*)))
+(assert! (not (hft-sf-conclusion (- *hft-fig* (* 300 *fn-heap-mib*)) nil *hft-used* *hft-t* *hft-mw* *hft-h* *hft-t*)))
 (assert! (not (hft-sf-conclusion *hft-fig* nil (* 100 *hft-h*) *hft-t* *hft-mw* *hft-h* *hft-t*)))
 (assert! (not (hft-sf-conclusion *hft-fig* nil *hft-used* (* 10 *hft-t*) *hft-mw* *hft-h* *hft-t*)))
 (assert! (not (hft-sf-conclusion *hft-fig* nil *hft-used* *hft-t* *hft-mw* (* 10 *hft-h*) *hft-t*)))
@@ -797,9 +799,9 @@
 (defconst *hft-fig0* (fn-heap-store-figure-octets *fn-heap-small-profile* *hft-prod-core*
                                                   *hft-nursery* '(0 . 0)))
 (assert! (equal (hft-sf-hyps *hft-fig0* '(0 . 0) *hft-used* *hft-t* *hft-mw* *hft-h* 0) '(t t t t nil t)))
-(assert! (not (hft-sf-conclusion *hft-fig0* '(0 . 0) *hft-used* *hft-t* *hft-mw* *hft-h* 0)))
+(assert! (not (hft-sf-conclusion *hft-fig0* '(0 . 0) *hft-used* *hft-t* *hft-mw* (* 20 *hft-h*) 0)))
 (assert! (equal (hft-sf-hyps *hft-fig0* '(0 . 0) *hft-used* *hft-t* *hft-mw* 0 *hft-t*) '(t t t t t nil)))
-(assert! (not (hft-sf-conclusion *hft-fig0* '(0 . 0) *hft-used* *hft-t* *hft-mw* 0 *hft-t*)))
+(assert! (not (hft-sf-conclusion *hft-fig0* '(0 . 0) *hft-used* *hft-t* *hft-mw* 0 (* 20 *hft-t*))))
 
 (defmacro hft-sf-must-fail (name &rest hyps)
   `(must-fail-checked

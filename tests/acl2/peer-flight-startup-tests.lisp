@@ -136,7 +136,7 @@
        (equal (fn-prstartup-nth 0 *pfrst-wp-run*) :heap)
        ;; 1891 before the pool's read reserve (lane pool-refusal): the
        ;; served run now also holds its workers' reads in flight.
-       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 1783)
+       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 2174)
        (equal (fn-heap-core-file *pfrst-wp-owner-core*) (fn-heap-core-file *pfrst-wp-probe-core*))
        (<= (pfrst-wp-owner-need dyn *pfrst-wp-owner-core*) dyn)
        (fn-prstartup-planp plan)
@@ -146,8 +146,8 @@
               :hold))))
 ; Teeth: without the DEFAULT extension's launch floor the peer figure is
 ; 6107ceb56's figure (1509 at the 64 MiB trigger, 1397 at the 8 MiB trigger
-; since MEM-007), and the owner refuses it (it needs 1414, was 1526); an owner
-; core with a larger file (the core-file hypothesis dropped) fails at 1783
+; since MEM-007; 1788 with the history roots' reserve), and the owner refuses it (it needs 1805, was 1526); an owner
+; core with a larger file (the core-file hypothesis dropped) fails at 2174
 ; (was 1893).
 (assert-event
  (let* ((old (fn-pfr-extend-operation-reservation *pfrst-wp-base* :run *pfrst-flight*
@@ -155,8 +155,8 @@
         (dyn-old (* 1048576 (fn-prstartup-nth 1 old)))
         (dyn (* 1048576 (fn-prstartup-nth 1 *pfrst-wp-run*))))
   (and (equal (fn-prstartup-nth 0 old) :heap)
-       (equal (fn-prstartup-nth 1 old) 1397)
+       (equal (fn-prstartup-nth 1 old) 1788)
        (not (<= (pfrst-wp-owner-need dyn-old *pfrst-wp-owner-core*) dyn-old))
-       (<= (pfrst-wp-owner-need (* 1048576 1414) *pfrst-wp-owner-core*) (* 1048576 1414))
-       (not (<= (pfrst-wp-owner-need (* 1048576 1413) *pfrst-wp-owner-core*) (* 1048576 1413)))
+       (<= (pfrst-wp-owner-need (* 1048576 1805) *pfrst-wp-owner-core*) (* 1048576 1805))
+       (not (<= (pfrst-wp-owner-need (* 1048576 1804) *pfrst-wp-owner-core*) (* 1048576 1804)))
        (not (<= (pfrst-wp-owner-need dyn '(1615110568 . 1600000000)) dyn)))))

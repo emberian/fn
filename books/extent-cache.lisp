@@ -1368,16 +1368,14 @@
         (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))
                     :refused))))
 
-(defmacro fn-xc-install-result (n)
-  `(mv-nth ,n (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)))
 
 ; KEYSTONE 3 (the bound).  An install that is not refused adds a live slot
 ; exactly when a free slot took it, and the region never holds more than it has.
 (defthm fn-xc-install-occupancy
   (implies (fn-xc-install-hyps)
            (let ((n0 (fn-xc-live-count (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))
-                 (n1 (fn-xc-live-count (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) (fn-xc-install-result 3))))
-             (and (equal n1 (if (equal (fn-xc-install-result 0) :installed) (+ 1 n0) n0))
+                 (n1 (fn-xc-live-count (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)))))
+             (and (equal n1 (if (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :installed) (+ 1 n0) n0))
                   (<= n1 (- (fn-xc-hi kind fn-xcc) (fn-xc-lo kind fn-xcc))))))
   :hints (("Goal" :do-not-induct t
                   :use (fn-xc-install-nonempty
@@ -1413,12 +1411,12 @@
   (implies (and (fn-xc-case-hyps)
                 (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
                             trailer start fn-xcs))
-           (let ((v (fn-xc-install-result 1)))
-             (and (equal (fn-xc-install-result 0) :present)
-                  (equal (fn-xc-install-result 2) nil)
+           (let ((v (mv-nth 1 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))))
+             (and (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :present)
+                  (equal (mv-nth 2 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) nil)
                   (fn-xc-slot-matchp v t kind file eoff elen a b c d trailer start fn-xcs)
                   (implies (and (natp j) (not (equal j v)))
-                           (equal (nth j (fn-xc-install-result 3)) (nth j fn-xcs))))))
+                           (equal (nth j (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))) (nth j fn-xcs))))))
   :hints (("Goal" :in-theory (e/d (fn-xc-install-okp) (fn-xc-install-when-present))
                   :use (fn-xc-install-when-present
                         (:instance fn-xc-find-bounds (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc))
@@ -1435,12 +1433,12 @@
 (defthm fn-xc-install-fills-a-free-slot
   (implies (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
                 (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))
-           (let ((v (fn-xc-install-result 1)))
-             (and (equal (fn-xc-install-result 0) :installed)
-                  (equal (fn-xc-install-result 2) nil)
+           (let ((v (mv-nth 1 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))))
+             (and (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :installed)
+                  (equal (mv-nth 2 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) nil)
                   (equal (fn-xcs-get-kind v fn-xcs) 0)
                   (implies (and (natp j) (not (equal j v)))
-                           (equal (nth j (fn-xc-install-result 3)) (nth j fn-xcs))))))
+                           (equal (nth j (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))) (nth j fn-xcs))))))
   :hints (("Goal" :in-theory (e/d (fn-xc-install-okp fn-xc-write-okp) (fn-xc-install-when-free))
                   :use (fn-xc-install-when-free fn-xc-tick-is-u64
                         (:instance fn-xc-find-free-is-free (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc)))
@@ -1453,17 +1451,17 @@
 (defthm fn-xc-install-evicts-the-least-recently-used
   (implies (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
                 (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))
-           (let ((v (fn-xc-install-result 1)))
-             (and (equal (fn-xc-install-result 0) :replaced)
+           (let ((v (mv-nth 1 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))))
+             (and (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :replaced)
                   (natp v) (<= (fn-xc-lo kind fn-xcc) v) (< v (fn-xc-hi kind fn-xcc))
                   (not (equal (fn-xcs-get-kind v fn-xcs) 0))
-                  (equal (fn-xc-install-result 2) (fn-xc-slot-token v fn-xcs))
+                  (equal (mv-nth 2 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) (fn-xc-slot-token v fn-xcs))
                   ; every slot of the region was live, and none is older than the victim
                   (implies (and (natp j) (<= (fn-xc-lo kind fn-xcc) j) (< j (fn-xc-hi kind fn-xcc)))
                            (and (not (equal (fn-xcs-get-kind j fn-xcs) 0))
                                 (<= (fn-xcs-get-stamp v fn-xcs) (fn-xcs-get-stamp j fn-xcs))))
                   (implies (and (natp j) (not (equal j v)))
-                           (equal (nth j (fn-xc-install-result 3)) (nth j fn-xcs))))))
+                           (equal (nth j (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))) (nth j fn-xcs))))))
   :hints (("Goal" :in-theory (e/d (fn-xc-install-okp fn-xc-write-okp) (fn-xc-install-when-full))
                   :use (fn-xc-install-when-full fn-xc-tick-is-u64
                         (:instance fn-xc-lru-is-least (i (fn-xc-lo kind fn-xcc)) (hi (fn-xc-hi kind fn-xcc))

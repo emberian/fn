@@ -36,7 +36,7 @@ if name == "repair" and "report" in args:
 sys.exit(int(os.environ.get("STUB_RC_%s_%s" % (name, mode), "0")))
 '''
 STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
-         "tools/evidence_manifests.py", "tools/lock_discipline_check.py",
+         "tools/lock_discipline_check.py",
          "tools/secrets_check.py", "planning/repair/repair.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
          "tools/build_lists_check.py"]
@@ -193,15 +193,18 @@ class MergeTests(TrainBase):
 
 
 class RegenTests(TrainBase):
-    def test_cite_runs_before_ledger_and_order_is_fixed(self):
-        (self.tmp / "src" / "build" / "acl2" / "certify-x").mkdir(parents=True)
-        p = self.train("regen", "--cite", "certify-x", "--cite-from", str(self.tmp / "src"))
+    def test_regen_order_is_fixed_and_cites_nothing(self):
+        p = self.train("regen")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         log = [l.split()[0] + " " + (l.split()[1] if len(l.split()) > 1 else "") for l in self.stub_log()]
-        self.assertEqual(log, ["evidence_manifests add", "ledger --write", "current_view --write", "repair report"])
-        self.assertTrue((self.work / "build/acl2/certify-x").is_dir())
+        self.assertEqual(log, ["ledger --write", "current_view --write", "repair report"])
         subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
         self.assertTrue(subj.startswith("Regenerate train 1"), subj)
+
+    def test_regen_refuses_a_cite(self):
+        p = self.train("regen", "--cite", "certify-x")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertEqual(self.stub_log(), [])
 
     def test_regen_failure_stops_the_train(self):
         p = self.train("regen", extra_env={"STUB_RC_current_view_write": "1"})

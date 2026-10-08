@@ -13,7 +13,7 @@
 ;; B 256 MiB; base 160 MiB (image, threads, collector headroom); runtime 16
 ;; MiB; completion 8 MiB; no cache, nothing drawn, no operation.
 (defconst *mct-l0* (fn-mcr-make (* 256 *mct-mib*) (* 160 *mct-mib*) 0 (* 8 *mct-mib*)
-                                (* 16 *mct-mib*) 0 nil))
+                                (* 16 *mct-mib*) 0 nil 0 nil))
 ;; One article credit at the small preset: 2 x 16 x (512 + A + HDR), A 32 KiB,
 ;; HDR 16 KiB (books/heap-store-figure.lisp fn-heap-article-reserve-octets,
 ;; lane zero-copy-commit): nothing owned yet, all reserved.
@@ -75,7 +75,7 @@
 
 ;; The hypothesis is needed: a ledger already past its budget (a base of 300
 ;; MiB) stays unfunded after an admitted release.
-(defconst *mct-over* (fn-mcr-make (* 256 *mct-mib*) (* 300 *mct-mib*) 0 0 0 0 '((1 0 . 5))))
+(defconst *mct-over* (fn-mcr-make (* 256 *mct-mib*) (* 300 *mct-mib*) 0 0 0 0 '((1 0 . 5)) 0 nil))
 (assert! (not (fn-mcr-fundedp *mct-over*)))
 (assert! (equal (car (fn-mcr-release *mct-over* 1)) :ok))
 (assert! (not (fn-mcr-fundedp (cadr (fn-mcr-release *mct-over* 1)))))
@@ -131,3 +131,28 @@
  (defthm mct-return-keeps-funded-without-the-hypothesis
    (fn-mcr-fundedp (cadr (fn-mcr-return l id))))
  :step-limit 20000)
+
+;; THE HISTORY-ROOT RESERVE (lane mem10-hroot): 20 MiB funded for the roots
+;; beside the 160 MiB base, 8 MiB completion and 16 MiB runtime; the roots draw
+;; it and never the 52 MiB of free room.
+(defconst *mct-h0* (fn-mcr-make (* 256 *mct-mib*) (* 160 *mct-mib*) 0 (* 8 *mct-mib*)
+                                (* 16 *mct-mib*) 0 nil (* 20 *mct-mib*) nil))
+(assert! (fn-mcr-fundedp *mct-h0*))
+(assert! (equal (fn-mcr-free *mct-h0*) (* 52 *mct-mib*)))
+(defconst *mct-h1* (cadr (fn-mcr-hroot-resize *mct-h0* '(:history-root . 1) (* 12 *mct-mib*))))
+;; Admitted: the free room is untouched and the ledger stays funded.
+(assert! (equal (fn-mcr-free *mct-h1*) (* 52 *mct-mib*)))
+(assert! (fn-mcr-fundedp *mct-h1*))
+;; The second generation does not fit beside the first (12 + 9 > 20): refused
+;; by name, the ledger unchanged; it fits at 8.
+(assert! (equal (fn-mcr-hroot-resize *mct-h1* '(:history-root . 2) (* 9 *mct-mib*))
+                '(:refused :history-root-reserve-exhausted)))
+(defconst *mct-h2* (cadr (fn-mcr-hroot-resize *mct-h1* '(:history-root . 2) (* 8 *mct-mib*))))
+(assert! (equal (fn-mcr-free *mct-h2*) (* 52 *mct-mib*)))
+;; Shrinking is never refused, and a root of zero is released: the retired
+;; generation's 12 MiB come back, so the 9 MiB candidate now fits.
+(defconst *mct-h3* (cadr (fn-mcr-hroot-resize *mct-h2* '(:history-root . 1) 0)))
+(assert! (equal (car (fn-mcr-hroot-resize *mct-h3* '(:history-root . 2) (* 20 *mct-mib*))) :ok))
+;; The pool is unaffected: all 52 MiB of free room still admit an article credit.
+(assert! (equal (car (fn-mcr-acquire *mct-h2* :a 0 (* 52 *mct-mib*))) :ok))
+(assert! (equal (car (fn-mcr-acquire *mct-h2* :a 0 (+ 1 (* 52 *mct-mib*)))) :refused))
