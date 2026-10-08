@@ -12134,10 +12134,6 @@
         {
           "theorem": "fn-oct-transit-is-own-transit-outcome-under-ocl-relation",
           "via": "fn-oct-transit"
-        },
-        {
-          "theorem": "fn-oop-transit-outcome-is-own-transit-outcome",
-          "via": "fn-oop-transit-outcome"
         }
       ],
       "extraction": null,
