@@ -2254,9 +2254,8 @@ def def_representation_index_expansion(form: list) -> list:
     The macro (books/def-representation-index.lisp) is a make-event: ACL2 emits
     one ``{correspondence}`` theorem for the creator and for each of the five
     exports (NAME-COUNT, NAME-AT, the :query-export, NAME-APPEND, NAME-CLEAR;
-    ``ixg-exports``), and a ``{preserved}`` theorem for the creator and the two
-    ``:protect`` exports.  Their formulas are ACL2's; the ledger sees the names,
-    which is all a cited event needs.  Presence only, never admission evidence.
+    ``ixg-exports``).  Only those names are claimed; the formulas are ACL2's.
+    Other obligation kinds ACL2 may emit are not modelled here.  Presence only, never admission evidence.
     """
     if not (len(form) >= 3 and isinstance(form[1], Sym)):
         return []
@@ -2271,13 +2270,9 @@ def def_representation_index_expansion(form: list) -> list:
     creator = _gen_sym("create-", name)
     out = []
     for export in [creator] + exports:
-        kinds = ["correspondence"]
-        if export in (creator, exports[3], exports[4]):
-            kinds.append("preserved")
-        for kind in kinds:
-            out.append([Sym("defthm"), _gen_sym(export, "{" + kind + "}"),
-                        [Sym("fn-generated-obligation"), export, Sym(":" + kind)],
-                        Sym(":rule-classes"), Sym("nil")])
+        out.append([Sym("defthm"), _gen_sym(export, "{correspondence}"),
+                    [Sym("fn-generated-obligation"), export, Sym(":correspondence")],
+                    Sym(":rule-classes"), Sym("nil")])
     return out
 
 
