@@ -523,6 +523,7 @@ need() {
 finish() {
     echo "== load at end: \$(uptime)"
     (cd \$S && find tree/build -maxdepth 1 -name 'fn-host*' -type f -exec sha256sum {} + ; sha256sum logs/*.log) > \$S/SHA256SUMS 2>/dev/null
+    python3 \$T/tools/gate_walls.py \$S > \$S/gate_walls.json 2>/dev/null
     echo \$1 > \$S/status
     echo "== done status \$1; \$S/SHA256SUMS"
     exit \$1
