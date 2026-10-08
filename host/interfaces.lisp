@@ -2830,6 +2830,10 @@
               (fn-send-progress-too-slow-refused :via fn-send-progress-verdict)
               (fn-send-progress-verdict-answers :via fn-send-progress-verdict)))
 
+(definterface fn-send-window-octets
+  :class :common-lisp-compliant
+  :keystones (fn-send-window-octets-bounds-the-connection))
+
 (definterface fn-idle-gc-quiet
   :class :common-lisp-compliant
   :keystones (fn-idle-gc-quiet-counts-only-quiet-ticks-at-the-limit))

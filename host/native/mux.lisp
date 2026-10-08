@@ -1341,10 +1341,39 @@ answers :wait (the node's slots or this second's starts are spent)."
                  (fnn-mux-queue loop conn greeting :send-greeting nil))
                 (t (fnn-mux-after loop conn nil))))))))
 
+;;; The send window (books/send-window.lisp; item LOAD-F5-SLOW-READER-ISOLATION).
+;;; The kernel accepts a write on this socket only while it holds fewer than
+;;; ACL2's (fn-send-window-octets) octets unsent (TCP_NOTSENT_LOWAT), so a reader
+;;; that stops reading leaves the owner at most one window past the row rendered
+;;; instead of the whole kernel send queue.  It bounds octets not yet sent, not
+;;; the data in flight, and POLLOUT follows the same gate, so a stalled reply
+;;; waits in the poll like any other.
+
+(defconstant +fnn-ipproto-tcp+ 6)
+(defconstant +fnn-tcp-notsent-lowat+ 25) ; Linux linux/tcp.h
+
+(defun fnn-mux-send-window (fd)
+  "Set the served socket's unsent-octets gate to ACL2's window.  A kernel that
+refuses it is an OS error of this connection (it ends, named), never a
+connection served without its bound.  Off Linux the platform has no such
+option here and the kernel's own queue is the window."
+  #+linux
+  (sb-alien:with-alien ((value sb-alien:int (fnn-core 'fn-send-window-octets)))
+    (when (minusp (sb-alien:alien-funcall
+                   (sb-alien:extern-alien "setsockopt"
+                                          (function sb-alien:int sb-alien:int sb-alien:int
+                                                    sb-alien:int (* sb-alien:int) sb-alien:unsigned-int))
+                   fd +fnn-ipproto-tcp+ +fnn-tcp-notsent-lowat+ (sb-alien:addr value)
+                   (sb-alien:alien-size sb-alien:int :bytes)))
+      (fnn-os-fail (sb-alien:get-errno))))
+  #-linux
+  (progn fd nil))
+
 (defun fnn-mux-begin (loop conn)
   "A socket a loop adopted: the handshake pool's gate, then the admission."
   (let ((socket (fnn-mux-conn-socket conn)))
     (setf (fnn-mux-conn-fd conn) (fnn-socket-fd socket))
+    (fnn-mux-send-window (fnn-mux-conn-fd conn))
     ;; PKT-639 / PRF-986: an implicit-TLS socket's handshake is ACL2's
     ;; decision BEFORE the exposure admits anything and before SSL_accept
     ;; (books/tls-handshake-budget.lisp): admitted (then the exposure open,
