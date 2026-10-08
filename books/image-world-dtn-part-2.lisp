@@ -35,7 +35,7 @@
 (include-book "page-read-pool-state")
 (include-book "page-read-binding-revision")
 (include-book "page-read-budget-growth")
-(include-book "extent-cache")
+(include-book "extent-cache-span")
 (include-book "incoming-copy-stobj")
 (include-book "page-read-startup")
 (include-book "page-read-executor")

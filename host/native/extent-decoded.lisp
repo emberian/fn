@@ -206,7 +206,9 @@ pushed out (the caller releases their rows)."
             (setf (svref job +fnn-decoded-job-window-slot+) (create-fn-ew-buffer))
             (fnn-err "DECODED-WINDOW backing token=~s word=:REUSABLE scope=:persistent-partial-fixed-storage"
                      token)
-            (list :cached row (fnn-extent-window-cache-insert token nil window))))))))
+            (multiple-value-bind (evicted cachedp)
+                (fnn-extent-window-cache-insert token nil window)
+              (list :cached row evicted cachedp))))))))
 
 (defun fnn-extent-decoded-window-cache-run
     (file eoff elen poff compressed trailer decoded dict-id p end)

@@ -16,7 +16,7 @@
 (include-book "../books/page-read-pool-state")
 (include-book "../books/page-read-binding-revision")
 (include-book "../books/page-read-budget-growth")
-(include-book "../books/extent-cache") ; the payload extent cache's decisions (host/native/extent.lisp)
+(include-book "../books/extent-cache-span") ; the payload extent cache's decisions (host/native/extent.lisp)
 
  ; A served recovery is selected explicitly before Store open. Opening an
 ; offline Store supplies a separate context; absence alone grants no I/O.

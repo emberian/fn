@@ -181,7 +181,7 @@
 (include-book "../../books/page-read-pool-state")
 (include-book "../../books/page-read-binding-revision")
 (include-book "../../books/page-read-budget-growth")
-(include-book "../../books/extent-cache")
+(include-book "../../books/extent-cache-span")
 (include-book "../../books/incoming-copy-stobj")
 (include-book "../../books/page-read-startup")
 (include-book "../../books/page-read-executor")

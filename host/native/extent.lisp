@@ -742,30 +742,26 @@ to the window's end.  (values WORD OCTETS COUNT): :span, or the borrow's word."
             (values :unavailable nil nil)))))))
 
 (defun fnn-extent-window-cache-run (file eoff elen poff plen trailer p end)
-  "The cached window's octets from P to END or the window's end, decided by
-ACL2 (fn-owner-page-window-cache-span-at); (values OCTETS COUNT), or NIL.
-ACL2 selects candidate slots and moves a successful hit to most recent."
+  "One locked stretch: ACL2 selects its backing slot, bounds/copies the span
+and touches the hit. The native array only supplies the selected backing."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-    (let ((from 0))
-      (loop
-        (let ((slot (fnn-extent-slot-lookup 2 file eoff elen poff plen 0 0 trailer p from)))
-          (unless slot (return nil))
-          (let* ((token (fnn-extent-slot-token slot))
-                 (plan (car (svref *fnn-extent-slots* slot)))
-                 (window (cdr (svref *fnn-extent-slots* slot)))
-                 (j (and (integerp (nth 5 plan))
-                         (min end plen (+ p +fnn-extent-span-capacity+)
-                              (+ (eighth token) (nth 5 plan))))))
-            (when (and j (< p j))
-              (let ((dst (or *fnn-extent-run-dst*
-                             (setq *fnn-extent-run-dst* (create-fn-ew-span)))))
-                (when (eq (first (fnn-core-page-read-pool 'fn-owner-page-window-cache-span-at
-                                    token plan file eoff elen poff plen trailer p j window dst))
-                          :span)
-                  (incf (first *fnn-extent-stats*) (- j p))
-                  (fnn-extent-slot-touch slot)
-                  (return (values (fnn-extent-copy-span dst (- j p)) (- j p)))))))
-          (setq from (1+ slot)))))))
+    (let ((slot (fnn-extent-slot-lookup 2 file eoff elen poff plen 0 0 trailer p 0)))
+      (when slot
+        (let* ((backing (svref *fnn-extent-slots* slot))
+               (dst (or *fnn-extent-run-dst*
+                        (setq *fnn-extent-run-dst* (create-fn-ew-span))))
+               (ledger (fnn-core-cold-single 'fn-owner-page-read-ledger
+                                              (fnn-live-page-read-pool))))
+          (destructuring-bind (word count selected span xcs xcc)
+              (fnn-call 'fn-xc-span-at slot ledger (car backing)
+                        file eoff elen poff plen trailer p end
+                        *fnn-extent-xcs* *fnn-extent-xcc* (cdr backing) dst)
+            (declare (ignore selected))
+            (setq *fnn-extent-run-dst* span
+                  *fnn-extent-xcs* xcs *fnn-extent-xcc* xcc)
+            (when (eq word :span)
+              (incf (first *fnn-extent-stats*) count)
+              (values (fnn-extent-copy-span span count) count))))))))
 
 (defun fnn-extent-window-realize-run (file eoff elen poff plen trailer p end)
   "(values OCTETS COUNT) for a stretch starting at P and ending at or before END."
@@ -844,8 +840,8 @@ slot's victim, or the new row itself when ACL2 already holds that window."
     (case word
       ((:installed :replaced)
        (setf (svref *fnn-extent-slots* slot) (cons plan window))
-       (and evicted (list evicted)))
-      (:present (list token))
+       (values (and evicted (list evicted)) t))
+      ((:present :duplicate) (values (list token) nil))
       (t (fnn-fault "the window cache refused a window ACL2 had already cached")))))
 
 (defun fnn-extent-window-release (worker token &optional cachep)
@@ -887,13 +883,13 @@ the job is released.  Values :released (or a stale word) and whether cached."
                                                 (fnn-cold-worker-row worker) token (first result)))))
             (cond
               (decoded-attempt
-               (setq cached t evicted (third decoded-attempt))
+               (setq cached (fourth decoded-attempt) evicted (third decoded-attempt))
                (fnn-extent-window-observation "window-cached token=~s evicted=~s" token evicted)
                (list :released (second decoded-attempt)))
               ((and attempt (eq (first attempt) :cached))
-                (progn (setq cached t
-                             evicted (fnn-extent-window-cache-insert
-                                      token (first result) (second result)))
+                (progn (multiple-value-setq (evicted cached)
+                         (fnn-extent-window-cache-insert
+                          token (first result) (second result)))
                        (fnn-extent-window-observation "window-cached token=~s evicted=~s"
                                                       token evicted)
                        (list :released (second attempt))))

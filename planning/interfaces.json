@@ -29057,6 +29057,56 @@
       "applied_directly_in": []
     },
     {
+      "name": "fn-xc-span-at",
+      "subsystem": "store",
+      "declared_in": "host/interfaces.lisp",
+      "class": "common-lisp-compliant",
+      "kinds": [
+        [
+          "from",
+          "natp"
+        ],
+        [
+          "plan",
+          "true-listp"
+        ],
+        [
+          "plen",
+          "natp"
+        ],
+        [
+          "p",
+          "natp"
+        ],
+        [
+          "end",
+          "natp"
+        ]
+      ],
+      "exempt": {},
+      "keystones": [
+        {
+          "theorem": "fn-xc-span-at-is-the-returned-bytes"
+        },
+        {
+          "theorem": "fn-xc-span-at-answers-an-owed-hit"
+        },
+        {
+          "theorem": "fn-xc-span-at-hit-touches-only-the-selected-slot"
+        }
+      ],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [
+        "host/native/extent.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
       "name": "fn-xc-touch",
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
@@ -32839,47 +32889,6 @@
         {
           "theorem": "fn-prw-cache-keeps-only-the-buffer",
           "via": "fn-prw-cache"
-        }
-      ],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [
-        "host/native/extent.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
-      "name": "fn-owner-page-window-cache-span-at",
-      "subsystem": "owner",
-      "declared_in": "host/interfaces.lisp",
-      "class": "common-lisp-compliant",
-      "kinds": [
-        [
-          "plan",
-          "true-listp"
-        ],
-        [
-          "i",
-          "natp"
-        ],
-        [
-          "j",
-          "natp"
-        ]
-      ],
-      "exempt": {},
-      "keystones": [
-        {
-          "theorem": "fn-pwc-span-at-is-the-cached-bytes",
-          "via": "fn-pwc-span-at"
-        },
-        {
-          "theorem": "fn-pwc-span-at-answers-when-its-ends-do",
-          "via": "fn-pwc-span-at"
         }
       ],
       "extraction": null,

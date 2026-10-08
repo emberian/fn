@@ -4950,6 +4950,11 @@
 (definterface fn-xc-lookup :class :common-lisp-compliant
   :kinds ((from natp) (pos natp))
   :keystones (fn-xc-lookup-hit-is-the-descriptor fn-xc-lookup-miss-is-absent))
+(definterface fn-xc-span-at :class :common-lisp-compliant
+  :kinds ((from natp) (plan true-listp) (plen natp) (p natp) (end natp))
+  :keystones (fn-xc-span-at-is-the-returned-bytes
+              fn-xc-span-at-answers-an-owed-hit
+              fn-xc-span-at-hit-touches-only-the-selected-slot))
 (definterface fn-xc-touch :class :common-lisp-compliant
   :keystones (fn-xc-lookup-after-touch))
 (definterface fn-xc-install-entry :class :common-lisp-compliant
@@ -5574,10 +5579,6 @@
   :kinds ((plan true-listp))
   :keystones ((fn-pwc-cache-only-a-published-window :via fn-pwc-cache)
               (fn-prw-cache-keeps-only-the-buffer :via fn-prw-cache)))
-(definterface fn-owner-page-window-cache-span-at :class :common-lisp-compliant
-  :kinds ((plan true-listp) (i natp) (j natp))
-  :keystones ((fn-pwc-span-at-is-the-cached-bytes :via fn-pwc-span-at)
-              (fn-pwc-span-at-answers-when-its-ends-do :via fn-pwc-span-at)))
 (definterface fn-owner-page-window-executor-cancel :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-settle-cancelled :class :common-lisp-compliant)
 (definterface fn-owner-page-window-work-permittedp :class :common-lisp-compliant)
