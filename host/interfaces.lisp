@@ -4964,7 +4964,6 @@
   :keystones ((fn-xc-next-finds-every-held-slot :via fn-xc-next)))
 (definterface fn-xc-slot-token :class :common-lisp-compliant
   :kinds ((i natp)))
-(definterface fn-xc-holds :class :common-lisp-compliant)
 (definterface fn-pio-own-admitted-token
   :class :common-lisp-compliant
   :keystones ((fn-pio-admitted-resource-token-establishes-owned-read :via fn-pio-own-admitted-token)))
@@ -5574,11 +5573,6 @@
   :kinds ((plan true-listp) (i natp) (j natp))
   :keystones ((fn-pwc-span-at-is-the-cached-bytes :via fn-pwc-span-at)
               (fn-pwc-span-at-answers-when-its-ends-do :via fn-pwc-span-at)))
-(definterface fn-owner-page-window-cache-byte-at :class :common-lisp-compliant
-  :kinds ((plan true-listp))
-  :keystones ((fn-pwc-a-hit-is-the-published-window :via fn-pwc-byte-at)
-              (fn-pwc-hit-requires-a-cached-published-exact-window :via fn-pwc-byte-at)))
-
 (definterface fn-owner-page-window-executor-cancel :class :common-lisp-compliant)
 (definterface fn-owner-page-window-executor-settle-cancelled :class :common-lisp-compliant)
 (definterface fn-owner-page-window-work-permittedp :class :common-lisp-compliant)
@@ -5876,9 +5870,6 @@
   :kinds ((i natp) (j natp))
   :keystones ((fn-pwz-cache-span-at-is-the-cached-bytes :via fn-pwz-cache-span-at)
               (fn-pwz-cache-span-at-answers-when-its-ends-do :via fn-pwz-cache-span-at)))
-(definterface fn-owner-page-decoded-window-cache-byte-at :class :common-lisp-compliant
-  :keystones ((fn-pwz-a-hit-is-the-published-window :via fn-pwz-cache-byte-at)
-              (fn-pwz-hit-requires-a-cached-exact-window :via fn-pwz-cache-byte-at)))
 (definterface fn-prstartup-planp :class :common-lisp-compliant)
 (definterface fn-prstartup-decoded-workers :class :common-lisp-compliant)
 (definterface fn-owner-page-read-default-worker-ready :class :common-lisp-compliant)

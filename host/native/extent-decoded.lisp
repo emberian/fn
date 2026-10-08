@@ -29,9 +29,11 @@ first are read from this worker's copy with no descriptor call, lock or ACL2 cal
             ((eq word :unavailable)
              ;; Not in the borrowed window: a verified cached window, else the
              ;; core's complete cold descriptor.
-             (or (fnn-extent-decoded-window-cache-byte
-                  file eoff elen poff compressed trailer decoded dict-id i)
-                 (throw 'fnn-extent-cold descriptor)))
+             (let ((octets (fnn-extent-decoded-window-cache-run
+                            file eoff elen poff compressed trailer decoded dict-id i (1+ i))))
+               (if octets
+                   (first octets)
+                 (throw 'fnn-extent-cold descriptor))))
             (t (error 'fnn-extent-fault
                       :message "arena-extent-read: decoded window was not an authenticated returned result"))))))
 
@@ -206,50 +208,31 @@ pushed out (the caller releases their rows)."
                      token)
             (list :cached row (fnn-extent-window-cache-insert token nil window))))))))
 
-(defun fnn-extent-decoded-window-cache-byte (file eoff elen poff compressed trailer decoded dict-id i)
-  "A cached decoded window's byte I of this exact descriptor, or NIL.  ACL2
-names the slots that hold the descriptor and cover I (fn-xc-lookup) and decides
-the hit (fn-owner-page-decoded-window-cache-byte-at), as a SPAN
-(KEYSTONE fn-owner-page-decoded-window-cache-span-at-is-the-cached-bytes): the
-octets from I on are copied once and the following ones read from the copy
-while ACL2 still holds the slot."
+(defun fnn-extent-decoded-window-cache-run
+    (file eoff elen poff compressed trailer decoded dict-id p end)
+  "A cached decoded stretch, (values OCTETS COUNT), or NIL. ACL2 selects
+candidate slots, authorizes the span and moves a hit to most recent."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
-    (let ((span *fnn-extent-cache-span*)
-          (key (list :decoded file eoff elen poff compressed trailer decoded dict-id)))
-      (when (fnn-extent-span-valid-p span key i)
-        (incf (first *fnn-extent-stats*))
-        (return-from fnn-extent-decoded-window-cache-byte
-          (fn-ew-span-bytesi (- i (third span)) *fnn-extent-cache-span-dst*))))
     (let ((from 0))
       (loop
         (let ((slot (fnn-extent-slot-lookup 3 file eoff elen poff compressed decoded dict-id
-                                            trailer i from)))
+                                            trailer p from)))
           (unless slot (return nil))
-          (setq from (1+ slot))
           (let* ((token (fnn-extent-slot-token slot))
                  (window (cdr (svref *fnn-extent-slots* slot)))
-                 (j (min decoded (+ i +fnn-extent-span-capacity+) (+ (eighth token) 16384))))
-            (when (< (1+ i) j)
-              (let ((dst (or *fnn-extent-cache-span-dst*
-                             (setq *fnn-extent-cache-span-dst* (create-fn-ew-span)))))
+                 (j (min end decoded (+ p +fnn-extent-span-capacity+)
+                         (+ (eighth token) 16384))))
+            (when (< p j)
+              (let ((dst (or *fnn-extent-run-dst*
+                             (setq *fnn-extent-run-dst* (create-fn-ew-span)))))
                 (when (eq (first (fnn-core-page-read-pool 'fn-owner-page-decoded-window-cache-span-at
                                     token file eoff elen poff compressed trailer decoded
-                                    dict-id i j window dst))
+                                    dict-id p j window dst))
                           :span)
-                  (setq *fnn-extent-cache-span*
-                        (list slot (list :decoded file eoff elen poff compressed trailer decoded dict-id)
-                              i (- j i) token))
-                  (incf (first *fnn-extent-stats*))
+                  (incf (first *fnn-extent-stats*) (- j p))
                   (fnn-extent-slot-touch slot)
-                  (return (fn-ew-span-bytesi 0 dst)))))
-            (destructuring-bind (word byte)
-                (fnn-core-page-read-pool 'fn-owner-page-decoded-window-cache-byte-at
-                                         token file eoff elen poff compressed trailer decoded
-                                         dict-id i window)
-              (when (eq word :byte)
-                (incf (first *fnn-extent-stats*))
-                (fnn-extent-slot-touch slot)
-                (return byte)))))))))
+                  (return (values (fnn-extent-copy-span dst (- j p)) (- j p)))))))
+          (setq from (1+ slot)))))))
 
 (defun fnn-extent-decoded-window-run (worker token)
   "Same worker/token/pool; actual retained ACL2 controller selects each step.
