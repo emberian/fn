@@ -12,6 +12,10 @@ Exit 0 when the operator accepted the capacity, else 1."""
 import os, socket, subprocess, sys, time
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # tools/
+sys.path.insert(0, str(Path(__file__).resolve().parents[3]))  # the tree (tests/)
+from rep_measure import decided_heap_env  # noqa: E402
+
 image, store, units = sys.argv[1], Path(sys.argv[2]), sys.argv[3]
 work = store.parent / (store.name + ".capseed")
 work.mkdir(exist_ok=True)
@@ -21,7 +25,10 @@ s = socket.socket(); s.bind(("127.0.0.1", 0)); port = s.getsockname()[1]; s.clos
 cfg = work / "fn.toml"
 cfg.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
                '[control]\npath = "%s"\n' % (store, port, work / "control.sock"))
-p = subprocess.Popen([image, "--fn", "operator", str(cfg), "run"], env=env,
+# The owner runs at the heap the image's probe decides for this store
+# (rep_measure.decided_heap_env), as an installed node starts.
+p = subprocess.Popen([image, "--fn", "operator", str(cfg), "run"],
+                     env=decided_heap_env(image, cfg, env),
                      stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 line = b""
 while b"LISTENING" not in line:

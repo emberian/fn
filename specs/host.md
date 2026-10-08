@@ -689,14 +689,13 @@ A submission is completed as refused while the reader holds only a shared
 lock, and ACL2 -- never the host -- writes the 240 or the 441.
 
 The reply octets are never built as a list on the served read (PRF-192,
-2026-09-26, lane egress-span; PKT-491): `fn-served-reply-to-buffer`
-(books/served-reply-buffer.lisp) writes each `(:reply octets)` effect into
-an octet buffer, and its keystone `fn-served-reply-to-buffer-is-the-reply`
-says the buffer's range [0, len) is `fn-served-reply-octets` of the effects
-whenever every reply effect is octets (the answer `:ok`); the host faults on
-`:malformed` as it did on a non-octet reply. Until HST-023 the buffer was
-the live `fn-octets`, filled under the service mutex and copied out once
-before the mutex was released.
+2026-09-26, lane egress-span; PKT-491), and since HST-023 they are not written
+into one buffer under the service mutex either: the host renders the step's
+plan off the mutex (`fn-splan-step-make`, `fn-splan-window`), and
+`fn-splan-windows-are-the-reply` says the windows written, for any window size
+and count, are `fn-served-reply-octets` of the effects once the plan is done.
+The one-call buffer writer `fn-served-reply-to-buffer` and its book were
+retired with the path that called them.
 
 HST-023: The owner mutex is entered through a gate whose next class ACL2
 picks, and a served reply is an immutable render plan the connection's I/O

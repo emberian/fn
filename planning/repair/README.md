@@ -1,6 +1,6 @@
 # The repair ledger
 
-One JSON file per item in `items/`; `repair.py` reads and writes them. `STATUS.md` is generated (`repair.py report`).
+One JSON file per item in `items/`; `repair.py` reads and writes them. `repair.py report` prints the status table; it is not committed.
 Sources of the findings are in `sources/`; each item's `detail` names its source section, and sweep items carry the
 quoted `evidence`, the failure `scenario`, the proposed `fix` and the `reviewer` note.
 

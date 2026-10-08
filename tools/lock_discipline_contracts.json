@@ -468,6 +468,7 @@
  "realizers": [
   "fn-durable-realize-octet",
   "fn-durable-realize-octets",
+  "fn-durable-realize-span",
   "fn-durable-realize-lz",
   "fn-durable-realize-lz-octet",
   "fn-pgs-fill-frame",
@@ -550,34 +551,6 @@
  },
  "entries_are_actors": false,
  "private_owner_commands": {
-  "fnn-bpo-call-with-owner-journal": {
-   "file": "host/native/bp-obligation.lisp",
-   "lock": "O",
-   "owner": "service",
-   "thunk": "thunk",
-   "exempt_leaves": ["write-sequence", "finish-output", "sleep"],
-   "exempt_leaf_functions": ["fnn-emit", "fnn-carry-execute", "fnn-bpo-request-pause"],
-   "exempt_sites": 28,
-   "constructor": "fnn-owner-install",
-   "owner_makers": ["%make-fnn-owner-service"],
-   "failure_custody": ["fnn-owner-retain-run-authority"],
-   "commands": [
-    "fnn-command-bpo-owner-status",
-    "fnn-command-bpo-owner-undertake",
-    "fnn-command-bpo-owner-receipt",
-    "fnn-bpo-request-publish",
-    "fnn-command-bpo-owner-recover",
-    "fnn-carry-execute"
-   ],
-   "dispatch": ["fnn-dispatch-bp-obligation", "fnn-carry-execute"],
-   "registrars": ["fnn-register-verb", "fnn-operator-register-action"],
-   "table_writers": ["fnn-register-verb", "fnn-unregister-verb", "fnn-operator-register-action"],
-   "table_readers": {
-    "*fnn-verbs*": ["fnn-verb-handler"],
-    "*fnn-operator-surface-executors*": ["fnn-operator-dispatch-plan"]
-   },
-   "why": "LOCK-R2-OFFLINE-ONESHOT-HOLD. The BP obligation one-shot commands (`fn bp-obligation ...', `fn operator ... carry ...') open their own owner (fnn-owner-install), run the command's thunk in fnn-quantum-command and close it. The owner is a let variable of the runner, constructed there and nowhere else, handed only to host functions that do not store it, start an actor on it or give it to a thread; the checker proves each of those and that the commands are reached only from the two dispatch functions, which are registered only in the verb and operator-action tables, read only by fn-native-entry's dispatch and fnn-operator-dispatch-plan. So no other actor can wait on the owner mutex, and the stdout markers (and the developer-image pause that waits after printing one, which the process-death cut tests depend on) are held across, not moved. The one publication of an owner, fnn-owner-retain-run-authority, is checked to be called only on a freshly made throwaway (the failed Store open) or inside a handler clause that re-signals the error, where the install never returns an owner."
-  }
  },
  "test_only_entries": {
   "fnn-pull-worker-guarded": {
@@ -1359,5 +1332,5 @@
   }
  ],
  "alien_default": "ffi",
- "realization_comment": "SEED rows from build/coordinator/lanedumps/host-model.md REALIZATION; the authoritative copy becomes the host-model book's *fn-hmc-realization* defconst (agreed 2026-10-03), from which planning/host-realization.json is generated. :retire, :window-acquire and :window-release and the P labels' sites are the deputy's to fill."
+ "realization_comment": "SEED rows from build/coordinator/lanedumps/host-model.md REALIZATION; the authoritative copy becomes the host-model book's *fn-hmc-realization* defconst (agreed 2026-10-03). :retire, :window-acquire and :window-release and the P labels' sites are the deputy's to fill."
 }

@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/catalog-pool.lisp",
+ "id": "CPG-TABLE-FILLS",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-pool",
+ "state": "open",
+ "title": "The page store's :need-table fills (pgs-x-read (:need-table T PHYS)) are not in the fills bound of books/catalog-pool.lisp: each row or directory read may also fill table pages, floor(i/341) of the touched pages. Owed: model the table page as a second pool key (:table . T) in adt-pr-read-words and state the additive constant (at most 2 table pages per touched run of 341 pages) in fn-cpg-*-fills.",
+ "updated": "2026-10-07T23:29:28Z"
+}

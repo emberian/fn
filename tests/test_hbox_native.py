@@ -408,6 +408,15 @@ echo REACHED
         tstep = script[script.index("tstep() {"):]
         self.assertIn("/proc/loadavg", tstep.split("\n}")[0])
 
+    def test_finish_writes_gate_walls_beside_run_log(self):
+        answer = dry("HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        finish = answer.stdout[answer.stdout.index("finish() {"):].split("\n}")[0]
+        self.assertIn("python3 $T/tools/gate_walls.py $S > $S/gate_walls.json 2>/dev/null", finish)
+        # before the status file and the done line: a failed run still gets its walls
+        self.assertLess(finish.index("gate_walls.py"), finish.index("> $S/status"))
+        self.assertLess(finish.index("gate_walls.py"), finish.index("== done status"))
+
     def test_explicit_env_is_exported_and_wins(self):
         answer = dry("--images", "dtn-developer", "--env", "FN_NATIVE_BP_HOST=/x/y",
                      "--env", "FN_OTHER=1", "HEAD", "tests.test_bp_service_native")

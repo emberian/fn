@@ -1146,6 +1146,7 @@
     (and (no-duplicatesp-equal offers)
          (implies (member-equal k offers)
                   (not (member-equal k offered)))))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-bpnj-contact-offers sts peer routing offered)
            :in-theory (union-theories '(fn-bpnj-contact-offers member-equal no-duplicatesp-equal
                                         car-cons cdr-cons)
@@ -1157,7 +1158,3 @@
                                  (sts (cdr sts))
                                  (offered (fn-bpn-nth 2 (fn-bpnj-contact-next (car sts) peer routing offered))))))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bpnj-contact-offers-each-job-at-most-once))

@@ -30,6 +30,8 @@ imports the ledger's reader and adds the evaluation the ledger may not do.
     python3 tools/teeth_check.py --report         # static + the saved values
     python3 tools/teeth_check.py --summary        # the counts `make check` prints
     python3 tools/teeth_check.py --table          # macro-generated teeth, marked apart
+    python3 tools/teeth_check.py --null-witness   # an empty-result assertion with no non-empty witness
+    python3 tools/teeth_check.py --must-fail      # no bare must-fail in tests/acl2 (--convert rewrites)
 
 DEFKEYSTONE, DEFTEETH.  `(defkeystone NAME ...)` and `(defteeth NAME ...)`
 (books/defkeystone.lisp, TEETH CONTRACT v1) are the macros from another book
@@ -1605,6 +1607,391 @@ def anchor_probes(book: str, assertions: list[Assertion],
     return list(seen.values())
 
 
+# --------------------------------------------------------------------------
+# --null-witness: an empty-result assertion with no non-empty witness
+# --------------------------------------------------------------------------
+#
+# Protects against a test that certifies a defect: `(equal (fn-x-lace node) nil)`
+# (or null / endp / len 0) over a produced value pins whatever the machine
+# produces today (stx-model, 2026-09-29: the empty laces).  Such a function
+# needs a POSITIVE witness (consp, a non-nil equal, member, `(< 0 (len ..))`)
+# in the same book.  nw_classify walks assert-event / assert! / defthm / thm
+# conclusions (`implies` hypotheses excluded, `not` flips polarity, must-fail
+# skipped); nw_book_findings names each unwitnessed function once per book.
+# Warn-only unless --strict.  tools/null_witness_allow.json ("BOOK FUNCTION" ->
+# why the empty value is right; STALE when no longer found) is a ratchet
+# (tools/ratchet.py): --allow KEY --reason WHY needs the ACKS.md line
+# `ratchet:teeth_check:null-witness_<BOOK>_<FUNCTION>`; --write-baseline drops
+# stale entries.  (obstructions-6 item 54)
+
+NW_ALLOW = ROOT / "tools" / "null_witness_allow.json"
+NW_ASSERTIONS = {"assert-event", "assert!", "assert!-stobj", "assert$", "defthm", "thm",
+              "defthmd"}
+NW_SKIP = {"must-fail", "defun", "defund", "define", "defmacro", "local-defun"}
+NW_EMPTY_TESTS = {"null", "endp", "atom", "not"}
+NW_POSITIVE_TESTS = {"consp", "true-listp-nonempty", "posp"}
+NW_MEMBERS = {"member", "member-equal", "member-eq", "assoc", "assoc-equal", "assoc-eq"}
+NW_CONSTRUCTORS = {"list", "cons", "list*", "append"}
+# Heads that are not "a function the machine ran": constructors, quote, the
+# predicates themselves.
+NW_NOT_PRODUCERS = {"quote", "list", "cons", "list*", "len", "car", "cdr", "nth", "equal"} | NW_MEMBERS
+
+
+def nw_name(item) -> str | None:
+    return str(item).lower() if isinstance(item, ledger.Sym) else None
+
+
+def nw_is_nil(item) -> bool:
+    if nw_name(item) == "nil":
+        return True
+    return (isinstance(item, list) and len(item) == 2 and nw_name(item[0]) == "quote"
+            and (item[1] == [] or nw_name(item[1]) == "nil"))
+
+
+def nw_produced(item) -> str | None:
+    """The head of a call whose value a test asserts about, or None.  A
+    predicate (a name ending in p, ACL2's convention) answers a question;
+    asserting it false is a refusal witness, not an empty result."""
+    if isinstance(item, list) and item and nw_name(item[0]) and \
+            nw_name(item[0]) not in NW_NOT_PRODUCERS and not nw_name(item[0]).endswith("p") \
+            and any(nw_computed(argument) for argument in item[1:]):
+        return nw_name(item[0])
+    return None
+
+
+def nw_computed(argument) -> bool:
+    """A node the machine produced: a call (not a quoted literal), or a
+    variable (let-bound in a test).  A literal, a *constant* or a keyword is
+    an initial or junk input: a total accessor's nil on it is no defect."""
+    if isinstance(argument, list):
+        return bool(argument) and nw_name(argument[0]) not in ("quote", None)
+    symbol = nw_name(argument)
+    return bool(symbol) and symbol not in ("nil", "t", "state") and \
+        not symbol.startswith((":", "*", "#"))
+
+
+def nw_non_empty_constant(item) -> bool:
+    if isinstance(item, (int, str)) and not isinstance(item, ledger.Sym):
+        return True
+    if isinstance(item, list) and item:
+        head = nw_name(item[0])
+        if head == "quote":
+            return not nw_is_nil(item)
+        return head in NW_CONSTRUCTORS
+    return nw_name(item) in ("t",)
+
+
+def nw_classify(form, positive: bool, empty: set, witness: set) -> None:
+    """Record the heads FORM asserts empty (EMPTY) or non-empty (WITNESS)."""
+    if not isinstance(form, list) or not form:
+        return
+    head = nw_name(form[0])
+    if head in NW_SKIP or head == "quote":
+        return
+    if head == "not" and len(form) == 2:
+        inner = form[1]
+        # (not (consp A)) is an empty check; (not (null A)) a positive one.
+        if isinstance(inner, list) and inner and nw_name(inner[0]) == "consp" and len(inner) == 2:
+            target = nw_produced(inner[1])
+            if target:
+                (empty if positive else witness).add(target)
+                return
+        if nw_produced(inner) and nw_name(inner[0]) not in NW_EMPTY_TESTS | {"consp"}:
+            target = nw_produced(inner)
+            (empty if positive else witness).add(target)
+            return
+        nw_classify(inner, not positive, empty, witness)
+        return
+    if head in ("null", "endp", "atom") and len(form) == 2:
+        target = nw_produced(form[1])
+        if target:
+            (empty if positive else witness).add(target)
+            return
+    if head in NW_POSITIVE_TESTS and len(form) == 2:
+        target = nw_produced(form[1])
+        if target:
+            (witness if positive else empty).add(target)
+            return
+    if head in NW_MEMBERS and len(form) == 3:
+        target = nw_produced(form[2])
+        if target and positive:
+            witness.add(target)
+    if head in ("equal", "eq", "eql", "=") and len(form) == 3:
+        for side, other in ((form[1], form[2]), (form[2], form[1])):
+            target = nw_produced(side)
+            length = (side[1] if isinstance(side, list) and len(side) == 2
+                      and nw_name(side[0]) == "len" else None)
+            if target and nw_is_nil(other):
+                (empty if positive else witness).add(target)
+                return
+            if target and nw_non_empty_constant(other):
+                (witness if positive else empty).add(target)
+                return
+            if length is not None and nw_produced(length) and isinstance(other, int):
+                ((empty if other == 0 else witness) if positive else witness).add(
+                    nw_produced(length))
+                return
+    if head in ("<", "<=") and len(form) == 3:
+        right = form[2]
+        if (form[1] == 0 and isinstance(right, list) and len(right) == 2
+                and nw_name(right[0]) == "len" and nw_produced(right[1]) and positive):
+            witness.add(nw_produced(right[1]))
+            return
+    if head == "implies" and len(form) == 3:
+        nw_classify(form[2], positive, empty, witness)
+        return
+    for item in form[1:]:
+        nw_classify(item, positive, empty, witness)
+
+
+def nw_book_findings(path: Path) -> list[tuple[str, int]]:
+    """(function, line of its first empty assertion) with no positive witness."""
+    empty_at: dict[str, int] = {}
+    witnessed: set[str] = set()
+    try:
+        forms = list(ledger.Reader(path.read_text(encoding="utf-8")).top_level())
+    except Exception:  # noqa: BLE001  an unreadable book is another lint's finding
+        return []
+
+    def visit(form, line: int) -> None:
+        if not isinstance(form, list) or not form:
+            return
+        head = nw_name(form[0])
+        if head in ("local", "encapsulate", "progn"):
+            for item in form[1:]:
+                visit(item, line)
+            return
+        if head not in NW_ASSERTIONS:
+            return
+        body = form[2] if head in ("defthm", "defthmd") and len(form) > 2 else \
+            form[1] if len(form) > 1 else None
+        empty: set[str] = set()
+        nw_classify(body, True, empty, witnessed)
+        for target in empty:
+            empty_at.setdefault(target, line)
+
+    for form, line in forms:
+        visit(form, line)
+    return sorted((target, line) for target, line in empty_at.items()
+                  if target not in witnessed)
+
+
+def nw_load_allow(path: Path | None = None) -> dict[str, str]:
+    path = path or NW_ALLOW
+    if not path.is_file():
+        return {}
+    return {key: value for key, value in
+            json.loads(path.read_text(encoding="utf-8")).get("allow", {}).items()}
+
+
+def nw_write_allow(allow: dict[str, str], path: Path | None = None) -> None:
+    path = path or NW_ALLOW
+    document = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    document["allow"] = dict(sorted(allow.items()))
+    path.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
+
+
+def nw_allow_change(old: dict[str, str], new: dict[str, str], acks=None) -> list[str]:
+    """The allow-list only SHRINKS (tools/ratchet.py): an entry NEW adds over
+    OLD needs planning/repair/ACKS.md to carry
+    `ratchet:teeth_check:null-witness_<BOOK>_<FUNCTION>`; dropping one never does."""
+    import ratchet
+    row = lambda key: "null-witness " + key
+    return ratchet.refused("teeth_check", {row(k): 1 for k in old}, {row(k): 1 for k in new}, acks)
+
+
+def null_witness_main(files: list[str], strict: bool, allow_key: str | None = None,
+                      reason: str | None = None, write_baseline: bool = False,
+                      acks=None) -> int:
+    paths = ([ROOT / f for f in files] if files
+             else sorted((ROOT / "tests" / "acl2").glob("*.lisp")))
+    allow = nw_load_allow()
+    if allow_key is not None or write_baseline:
+        new = dict(allow)
+        if allow_key is not None:
+            if not reason:
+                print("teeth_check --null-witness: --allow needs --reason (why the empty result is right)")
+                return 2
+            new[allow_key] = reason
+        else:
+            seen = {f"{p.relative_to(ROOT).as_posix()} {target}"
+                    for p in paths for target, _ in nw_book_findings(p)}
+            new = {k: v for k, v in allow.items() if k in seen}
+        import ratchet
+        if ratchet.report("teeth_check", nw_allow_change(allow, new, acks)):
+            return 1
+        nw_write_allow(new)
+        print(f"teeth_check --null-witness: allow-list {len(allow)} -> {len(new)} entries")
+        return 0
+    seen: set[str] = set()
+    warned = 0
+    for path in paths:
+        relative = path.relative_to(ROOT).as_posix()
+        for target, line in nw_book_findings(path):
+            key = f"{relative} {target}"
+            seen.add(key)
+            if key in allow:
+                continue
+            warned += 1
+            print(f"WARN {relative}:{line} {target}: asserted EMPTY (nil / null / endp / "
+                  f"len 0) with no non-empty witness of {target} in this book -- add a "
+                  f"positive case (a produced node where it is non-empty), or allow it in "
+                  f"{NW_ALLOW.relative_to(ROOT)} with the reason the empty value is right")
+    stale = sorted(key for key in allow if key not in seen
+                   and (files == [] or key.split()[0] in files))
+    for key in stale:
+        print(f"STALE {key}: allowed in {NW_ALLOW.relative_to(ROOT)} but no longer found")
+    print(f"teeth_check --null-witness: {warned} empty-result assertion(s) without a non-empty "
+          f"witness in {len(paths)} test book(s); {len(allow)} allowed; {len(stale)} stale"
+          + ("" if strict else " (warn-only)"))
+    return 1 if strict and (warned or stale) else 0
+
+
+# --------------------------------------------------------------------------
+# --must-fail [--convert]: every tooth in tests/acl2 is a must-fail whose body TRANSLATES
+# --------------------------------------------------------------------------
+#
+# Protects against a tooth that bites nothing: std must-fail passes when its
+# form fails for ANY reason, so a body that stopped translating (stale arity,
+# undefined function) passes (2026-09-27: 41 such forms, PRF-191/132/144 never
+# evaluated).  tests/acl2/must-fail-checked.lisp translates the body's claim
+# first; this fails on a bare `must-fail`/`must-fail!`/`must-fail-with-...` head
+# in code (code_mask: not comments or strings, defmacro templates included)
+# unless its line declares `; must-fail-ok: <reason>`.  --convert rewrites bare
+# heads to `must-fail-checked` and fixes the include, idempotently.  Static.
+# host_check --tables reads code_mask as its Lisp comment/string mask.
+
+MF_TEST_DIR = "tests/acl2"
+MF_SUPPORT = "must-fail-checked.lisp"
+MF_STD_INCLUDE = re.compile(
+    r'\(include-book\s+"std/testing/must-fail"\s+:dir\s+:system\s*\)')
+MF_OWN_INCLUDE = '(include-book "must-fail-checked")'
+MF_DECLARATION = re.compile(r";\s*must-fail-ok:\s*\S")
+# A bare must-fail-family head: `(must-fail`, `(must-fail!`,
+# `(must-fail-with-error` ..., but not `(must-fail-checked`.
+MF_BARE = re.compile(r"\((must-fail(?:!|-with-[a-z-]+)?)(?=[\s()])", re.IGNORECASE)
+
+
+def code_mask(text: str) -> list[bool]:
+    """True at each character that is Lisp code (not comment, string or
+    character literal)."""
+    mask = [True] * len(text)
+    i, n = 0, len(text)
+    while i < n:
+        c = text[i]
+        if c == ";":
+            j = text.find("\n", i)
+            j = n if j < 0 else j
+            for k in range(i, j):
+                mask[k] = False
+            i = j
+        elif c == '"':
+            j = i + 1
+            while j < n and text[j] != '"':
+                j += 2 if text[j] == "\\" else 1
+            for k in range(i, min(j + 1, n)):
+                mask[k] = False
+            i = j + 1
+        elif text.startswith("#|", i):
+            j = text.find("|#", i + 2)
+            j = n if j < 0 else j + 2
+            for k in range(i, j):
+                mask[k] = False
+            i = j
+        elif text.startswith("#\\", i):
+            for k in range(i, min(i + 3, n)):
+                mask[k] = False
+            i += 3
+        else:
+            i += 1
+    return mask
+
+
+def mf_bare_sites(text: str) -> list[tuple[int, str, bool]]:
+    """(line, head, declared) for each bare must-fail head in code."""
+    mask = code_mask(text)
+    lines = text.split("\n")
+    found = []
+    for match in MF_BARE.finditer(text):
+        if not mask[match.start()]:
+            continue
+        line = text.count("\n", 0, match.start()) + 1
+        declared = bool(MF_DECLARATION.search(lines[line - 1]))
+        found.append((line, match.group(1), declared))
+    return found
+
+
+def mf_books(root: Path) -> list[Path]:
+    return sorted(p for p in (root / MF_TEST_DIR).glob("*.lisp")
+                  if p.name != MF_SUPPORT)
+
+
+def mf_convert_text(text: str) -> str:
+    mask = code_mask(text)
+    lines = text.split("\n")
+    pieces, last = [], 0
+    for match in MF_BARE.finditer(text):
+        if not mask[match.start()]:
+            continue
+        line = text.count("\n", 0, match.start()) + 1
+        if MF_DECLARATION.search(lines[line - 1]):
+            continue
+        if match.group(1).lower() != "must-fail":
+            continue  # a variant with other options: leave it to the lint
+        pieces.append(text[last:match.start()])
+        pieces.append("(must-fail-checked")
+        last = match.end()
+    pieces.append(text[last:])
+    out = "".join(pieces)
+    uses = "(must-fail-checked" in out
+    if uses and MF_OWN_INCLUDE not in out:
+        if MF_STD_INCLUDE.search(out):
+            out = MF_STD_INCLUDE.sub(MF_OWN_INCLUDE, out, count=1)
+        else:
+            m = re.search(r'\(in-package\s+"ACL2"\)[^\n]*\n', out)
+            if m is None:
+                raise SystemExit("no in-package line to include after")
+            out = out[:m.end()] + MF_OWN_INCLUDE + "\n" + out[m.end():]
+    if MF_OWN_INCLUDE in out:
+        # the std include is inside must-fail-checked; a second one is noise
+        out = re.sub(MF_STD_INCLUDE.pattern + r"[ \t]*\n?", "", out)
+    return out
+
+
+def must_fail_main(root: Path, selected_names: list[str], convert: bool) -> int:
+    selected = mf_books(root)
+    if selected_names:
+        chosen = [(Path(b) if Path(b).is_absolute() else root / b).resolve() for b in selected_names]
+        missing = [str(p) for p in chosen if not p.is_file()]
+        if missing:
+            print("teeth_check --must-fail: no such file: " + ", ".join(missing), file=sys.stderr)
+            return 2
+        selected = chosen
+    if convert:
+        changed = 0
+        for path in selected:
+            text = path.read_text()
+            new = mf_convert_text(text)
+            if new != text:
+                path.write_text(new)
+                changed += 1
+        print(f"teeth_check --must-fail --convert: {changed} book(s) rewritten")
+    findings, declared = [], []
+    for path in selected:
+        rel = path.relative_to(root)
+        for line, head, ok in mf_bare_sites(path.read_text()):
+            (declared if ok else findings).append(f"{rel}:{line}: {head}")
+    for site in declared:
+        print(f"declared (must-fail-ok): {site}")
+    for site in findings:
+        print(f"bare {site}: its body's translation is not checked; use "
+              f"must-fail-checked (tools/teeth_check.py --must-fail --convert) or "
+              f"declare `; must-fail-ok: <reason>`")
+    print(f"teeth_check --must-fail: {len(selected)} test books, "
+          f"{len(findings)} bare must-fail(s), {len(declared)} declared")
+    return 1 if findings else 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("books", nargs="*",
@@ -1631,12 +2018,33 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--logs", help="keep each book's raw ACL2 log here")
     parser.add_argument("--strict", action="store_true",
                         help="exit 1 when there is any finding")
+    parser.add_argument("--null-witness", action="store_true",
+                        help="static: an empty-result assertion with no non-empty witness in "
+                             "its book (warn-only unless --strict; BOOK... name the books)")
+    parser.add_argument("--allow", metavar="'BOOK FUNCTION'",
+                        help="with --null-witness: add an allow-list entry (needs --reason; "
+                             "a raise needs an ACKS.md ratchet line)")
+    parser.add_argument("--reason", help="with --null-witness --allow: why the empty value is right")
+    parser.add_argument("--write-baseline", action="store_true",
+                        help="with --null-witness: drop stale allow-list entries")
+    parser.add_argument("--must-fail", action="store_true",
+                        help="static: no bare must-fail in tests/acl2 (use must-fail-checked)")
+    parser.add_argument("--convert", action="store_true",
+                        help="with --must-fail: rewrite bare must-fails to must-fail-checked")
+    parser.add_argument("--root", type=Path, default=ROOT,
+                        help="with --must-fail: another checkout")
     parser.add_argument("--anchors", action="store_true",
                         help="with --evaluate: also probe every flagged unary "
                              "recogniser against every constant its book "
                              "defines, and print the ones it accepts")
     arguments = parser.parse_args(argv)
     arguments.books = list(arguments.books) + list(arguments.book)
+
+    if arguments.null_witness:
+        return null_witness_main(arguments.books, arguments.strict, arguments.allow,
+                                 arguments.reason, arguments.write_baseline)
+    if arguments.must_fail:
+        return must_fail_main(arguments.root, arguments.books, arguments.convert)
 
     paths = test_books(arguments.books)
     assertions, constants, errors = load_books(paths)

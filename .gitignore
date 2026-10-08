@@ -8,16 +8,9 @@ var/
 *.cert
 *.port
 *.fasl
-# Certification manifests are local drafts here. File cited runs with
-# `python3 tools/evidence_manifests.py add RUN-ID` (or `sync --add`):
-# bytes go to the content-addressed archive; only planning/evidence-index.tsv
-# is staged in Git. Exploratory local drafts remain ignored.
-planning/evidence/manifests/*.json
-
 # Lane scratch (BRIEF-COMMON: never committed)
 /LANEDUMP.md
 
-# The evidence index writers' flock (tools/evidence_store.py index_lock_path)
-/planning/evidence-index.tsv.lock
+# Retired archive working directory (D71): never committed.
 /planning/evidence/
 /.spw/_workbench/

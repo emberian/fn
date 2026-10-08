@@ -43,6 +43,7 @@ import sys
 import time
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))  # the repository root
 from tools.wire_stream import whole_stream  # noqa: E402  writes are sendall
+from tools.rep_measure import decided_heap_env  # noqa: E402
 
 ACCEPTED, REFUSED, UNCERTAIN, FAULT = "ACCEPTED", "REFUSED", "UNCERTAIN", "FAULT"
 EXIT = {ACCEPTED: 0, REFUSED: 1, UNCERTAIN: 3, FAULT: 4}
@@ -333,7 +334,8 @@ class FnSide:
         with open(stdout_path, "wb") as out, open(root / "owner.stderr", "ab") as err:
             process = subprocess.Popen([image, "--fn", "operator", node["config"], "run"],
                                        stdin=subprocess.DEVNULL, stdout=out, stderr=err,
-                                       env=env, cwd=self.scratch, start_new_session=True)
+                                       env=decided_heap_env(image, node["config"], env),
+                                       cwd=self.scratch, start_new_session=True)
         node["pid"] = process.pid
         start = {"pid": process.pid, "image": image, "selectors": selectors,
                  "at": time.time(), "stdout": str(stdout_path)}

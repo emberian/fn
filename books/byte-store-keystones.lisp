@@ -476,6 +476,7 @@
                   (fn-sn-groups s) (fn-sn-capacity s)
                   (fn-bs-scan-frontier (fn-bs-scan-store image))
                   (fn-bs-scanned-rows (fn-sn-files s) image arena)))))
+ :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-bs-recover-sweep-keeps-relation-at-every-cut
                             (ks (fn-sn-files s))
@@ -529,10 +530,6 @@
   :hints (("Goal"
            :use ((:instance fn-sn-sweep-round-removes-only-unheld-staging-names)
                  (:instance fn-bs-octet-list-listp-member (xs observed) (x name)))
-           :in-theory (disable fn-sn-sweep-round fn-sn-sweep-round-removes-only-unheld-staging-names
+           :in-theory (disable fn-sn-sweep-round
                                fn-bs-octet-list-listp-member fn-bs-octets-name))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bs-sweep-round-keeps-every-cut-reopenable))

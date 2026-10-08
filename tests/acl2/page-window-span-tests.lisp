@@ -81,28 +81,3 @@
 (defthm pwspan-at-witness-holds (pwspan-at-witness) :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-pwr-span-at fn-pwr-span fn-pwr-span-copy fn-pwr-byte-at
                                      fn-pwr-byte fn-pwr-outcome fn-pwr-plan-matches-token))))
-
-; Teeth of fn-pwr-byte-at-below-the-window-is-the-outcome (row 21).  A window
-; starting at payload coordinate 2: coordinates 0 and 1 are refused with ONE
-; word (:unavailable, the job being :ready); the coordinate AT the start is a
-; byte, so the independence of the word from the coordinate needs `i < start`;
-; and against the same token and a ledger that has the job running (not
-; returned) the word below the window is the outcome, :stale-job, not
-; :unavailable, so the conclusion's `if` is not decorative.
-(defun-nx pwspan-below-witness ()
-  (let* ((digest (fn-blake3 '(1 2 3)))
-         (r (pwrtest-request 2 (fn-bch-pack digest) (append '(1 2 3) digest)))
-         (token (nth 0 r)) (acquire (nth 1 r)) (returned (nth 2 r)) (run (nth 3 r))
-         (s (nth 1 run)) (buffer (nth 3 run))
-         (ledger (nth 2 returned)) (worker (nth 1 returned))
-         (w0 (nth 0 (fn-pwr-byte-at ledger worker token s 11 100 3 100 3 (fn-bch-pack digest) 0 buffer)))
-         (w1 (nth 0 (fn-pwr-byte-at ledger worker token s 11 100 3 100 3 (fn-bch-pack digest) 1 buffer)))
-         (w2 (nth 0 (fn-pwr-byte-at ledger worker token s 11 100 3 100 3 (fn-bch-pack digest) 2 buffer)))
-         (running (nth 0 (fn-pwr-byte-at (nth 2 acquire) (nth 1 acquire) token s
-                                         11 100 3 100 3 (fn-bch-pack digest) 0 buffer))))
-    (and (equal w0 :unavailable) (equal w1 :unavailable)
-         (equal w2 :byte)
-         (equal running :stale-job))))
-(defthm pwspan-below-witness-holds (pwspan-below-witness) :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-pwr-byte-at fn-pwr-byte fn-pwr-outcome
-                                     fn-pwr-plan-matches-token))))

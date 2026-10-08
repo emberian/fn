@@ -1450,9 +1450,9 @@
            (fn-mpxt-page-fullp q k (fn-mpxt-write-slot p j wtag seq fn-mpxt)))
   :hints (("Goal" :induct (fn-mpxt-page-fullp q k fn-mpxt))))
 
-(defthm fn-mpxt-subsetp-member
+(local (defthm fn-mpxt-subsetp-member
   (implies (and (subsetp-equal a b) (member-equal s a))
-           (member-equal s b)))
+           (member-equal s b))))
 (defthm fn-mpxt-scan-member
   (implies (and (member-equal s acc) (nat-listp acc))
            (member-equal s (fn-mpxt-scan tag p k acc fn-mpxt)))
@@ -2879,7 +2879,3 @@
 
 (in-theory (disable fn-mpxt-build-saturatedp fn-mpxt-build-health))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-mpxt-subsetp-member))

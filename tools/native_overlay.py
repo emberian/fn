@@ -868,7 +868,10 @@ def cmd_live(args) -> int:
     env = dict(os.environ, FN_NATIVE_DEV_REPL=str(sock))
     log = open(root / "owner.log", "a")
     started = time.monotonic()
-    owner = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"], env=env,
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from rep_measure import decided_heap_env
+    owner = subprocess.Popen([str(image), "--fn", "operator", str(config), "run"],
+                             env=decided_heap_env(image, config, env),
                              stdout=log, stderr=log, start_new_session=True)
     (root / "owner.pid").write_text(f"{owner.pid}\n")
     while not sock.exists():

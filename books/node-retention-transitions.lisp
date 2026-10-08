@@ -261,6 +261,5 @@
                                             fn-retain-admit-preserves-statep
                                             fn-nrt-admit-pins
                                             fn-nrt-admissible-id-not-pinned
-                                            fn-not-member-of-subset
                                             fn-nrt-subsetp-of-cons
                                             fn-nrt-archive-bindings-after-cons-pin)))))

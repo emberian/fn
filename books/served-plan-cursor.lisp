@@ -138,11 +138,26 @@
    (not (fn-nnw-meta-effectp (fn-ovw-cursor-effect cur)))
    :hints (("Goal" :in-theory (enable fn-nnw-meta-effectp fn-ovw-cursor-effect)))))
 
+; A quantum's octets lead the effects it leaves behind only when there are
+; some.  An empty quantum (a sparse stretch of the range) answers just the
+; next cursor: a reply effect with no octets in front of the cursor would
+; stay there for every later quantum to skip and be skipped again, a prefix
+; growing with the number of empty quanta (CONVERGE-3 row 44).
+(defun fn-splan-reply-then (octets tail)
+  (declare (xargs :guard t))
+  (if (consp octets)
+      (cons (fn-nntp-reply-effect octets) tail)
+    tail))
+
 ; The step: the first cursor of REST, stepped once
 
-(defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
+; The skipped prefix grows with the range, so the executable is a worker that
+; carries it reversed in ACC (tail recursion: a bounded stack however many
+; effects precede the first cursor); the logical definition is the plain
+; recursion and the worker is proved equal to it below.
+(defun fn-splan-rest-cursor-step-acc (rest w acc fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (natp w)
+                  :guard (and (natp w) (true-listp acc))
                   :verify-guards nil))
   (if (consp rest)
       (if (fn-splan-cursor-effectp (car rest))
@@ -151,22 +166,77 @@
                 (mv-let (octets next calls state)
                   (fn-nnw-stream-batch cur w w fn-arena fn-cat)
                   (declare (ignore calls state))
-                  (mv :ok (cons (fn-nntp-reply-effect octets)
-                                (if (fn-nnw-meta-livep next)
-                                    (cons (fn-nnw-meta-effect next) (cdr rest))
-                                  (cdr rest)))))
+                  (mv :ok (revappend acc
+                                     (fn-splan-reply-then octets
+                                       (if (fn-nnw-meta-livep next)
+                                           (cons (fn-nnw-meta-effect next) (cdr rest))
+                                         (cdr rest))))))
               (if (and (consp cur) (fn-ovw-cursorp cur))
                 (mv-let (octets next)
                   (fn-ovw-step cur w fn-arena fn-cat)
-                  (mv :ok (cons (fn-nntp-reply-effect octets)
-                                (if next
-                                    (cons (fn-ovw-cursor-effect next) (cdr rest))
-                                  (cdr rest)))))
-              (mv :malformed rest))))
-        (mv-let (status rest2)
-          (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
-          (mv status (cons (car rest) rest2))))
-    (mv :ok rest)))
+                  (mv :ok (revappend acc
+                                     (fn-splan-reply-then octets
+                                       (if next
+                                           (cons (fn-ovw-cursor-effect next) (cdr rest))
+                                         (cdr rest))))))
+              (mv :malformed (revappend acc rest)))))
+        (fn-splan-rest-cursor-step-acc (cdr rest) w (cons (car rest) acc)
+                                       fn-arena fn-cat))
+    (mv :ok (revappend acc rest))))
+
+(verify-guards fn-splan-rest-cursor-step-acc
+  :hints (("Goal" :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
+
+(defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat)
+                  :guard (natp w)
+                  :verify-guards nil))
+  (mbe
+   :logic
+     (if (consp rest)
+         (if (fn-splan-cursor-effectp (car rest))
+             (let ((cur (car (cdr (car rest)))))
+               (if (fn-nnw-meta-effectp (car rest))
+                   (mv-let (octets next calls state)
+                     (fn-nnw-stream-batch cur w w fn-arena fn-cat)
+                     (declare (ignore calls state))
+                     (mv :ok (fn-splan-reply-then octets
+                               (if (fn-nnw-meta-livep next)
+                                   (cons (fn-nnw-meta-effect next) (cdr rest))
+                                 (cdr rest)))))
+                 (if (and (consp cur) (fn-ovw-cursorp cur))
+                   (mv-let (octets next)
+                     (fn-ovw-step cur w fn-arena fn-cat)
+                     (mv :ok (fn-splan-reply-then octets
+                               (if next
+                                   (cons (fn-ovw-cursor-effect next) (cdr rest))
+                                 (cdr rest)))))
+                 (mv :malformed rest))))
+           (mv-let (status rest2)
+             (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
+             (mv status (cons (car rest) rest2))))
+       (mv :ok rest))
+   :exec (fn-splan-rest-cursor-step-acc rest w nil fn-arena fn-cat)))
+
+; fn-splan-rest-cursor-step returns exactly two values.
+(defthm fn-splan-rest-cursor-step-is-an-mv
+  (equal (list (car (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
+               (mv-nth 1 (fn-splan-rest-cursor-step rest w fn-arena fn-cat)))
+         (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
+  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest w fn-arena fn-cat)
+           :in-theory (e/d (fn-splan-rest-cursor-step)
+                           (fn-ovw-step fn-ovw-cursorp fn-nnw-stream-batch
+                            fn-nnw-meta-livep)))))
+
+; The worker is the logical function with the reversed prefix put back.
+(defthm fn-splan-rest-cursor-step-acc-is-the-reference
+  (equal (fn-splan-rest-cursor-step-acc rest w acc fn-arena fn-cat)
+         (mv (mv-nth 0 (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
+             (revappend acc (mv-nth 1 (fn-splan-rest-cursor-step rest w fn-arena fn-cat)))))
+  :hints (("Goal" :induct (fn-splan-rest-cursor-step-acc rest w acc fn-arena fn-cat)
+           :in-theory (e/d (fn-splan-rest-cursor-step)
+                           (fn-ovw-step fn-ovw-cursorp fn-nnw-stream-batch
+                            fn-nnw-meta-livep)))))
 
 (verify-guards fn-splan-rest-cursor-step
   :hints (("Goal" :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
@@ -265,6 +335,14 @@
          (append cur (fn-splan-cw-octets rest wl fn-arena fn-cat)))
   :hints (("Goal" :induct (fn-splan-take cur rest k)
            :in-theory (e/d (fn-splan-take) (fn-ovw-run)))))
+
+(defthm fn-splan-cw-octets-of-reply-then
+  (equal (fn-splan-cw-octets (fn-splan-reply-then octets tail) wl fn-arena fn-cat)
+         (append octets (fn-splan-cw-octets tail wl fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (enable fn-splan-reply-then fn-splan-cw-octets)
+           :do-not-induct t)))
+
+(in-theory (disable fn-splan-reply-then))
 
 ; A quantum keeps what the plan owes: the cursor's run is its step's octets
 ; followed by the run of the cursor that remains (fn-ovw-run unfolds).
@@ -530,6 +608,13 @@
   (declare (xargs :guard t))
   (fn-splan-cw-rest-okp (fn-splan-rest p)))
 
+(local
+ (defthm fn-splan-cw-rest-okp-of-reply-then
+   (equal (fn-splan-cw-rest-okp (fn-splan-reply-then octets tail))
+          (fn-splan-cw-rest-okp tail))
+   :hints (("Goal" :in-theory (enable fn-splan-reply-then fn-nntp-reply-effect
+                                      fn-splan-cw-rest-okp)))))
+
 (defthm fn-splan-fresh-effectsp-is-cw-okp
   (implies (fn-splan-fresh-effectsp effects)
            (fn-splan-cw-okp (fn-splan-of-effects effects)))
@@ -561,7 +646,55 @@
   :hints (("Goal" :induct (fn-splan-take cur rest k)
            :in-theory (e/d (fn-splan-take) (fn-ovw-cursorp)))))
 
-(in-theory (disable fn-splan-cursor-window fn-splan-rest-cursor-step fn-splan-cursor-step
+; -----------------------------------------------------------------------------
+; The effects in front of the cursors do not accumulate.
+
+; The effects that carry no octets and are not cursors: what a window renders
+; as nothing and an at-cursor scan skips (fn-splan-rest-at-cursorp).
+(defun fn-splan-rest-empties (rest)
+  (declare (xargs :guard t))
+  (if (consp rest)
+      (+ (if (and (not (fn-splan-cursor-effectp (car rest)))
+                  (atom (fn-srb-effect-octets (car rest))))
+             1 0)
+         (fn-splan-rest-empties (cdr rest)))
+    0))
+
+(defun fn-splan-empties (p)
+  (declare (xargs :guard t))
+  (fn-splan-rest-empties (fn-splan-rest p)))
+
+(defthm fn-splan-rest-empties-of-reply-then
+  (<= (fn-splan-rest-empties (fn-splan-reply-then octets tail))
+      (fn-splan-rest-empties tail))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (enable fn-splan-reply-then fn-nntp-reply-effect
+                                     fn-splan-rest-empties))))
+
+; KEYSTONE (CONVERGE-3 row 44).  A quantum leaves no more octet-less effects
+; than it found, whatever W and whatever the range: the effects in front of a
+; cursor that every later quantum must skip do not grow with the number of
+; empty quanta (an empty quantum answers just the next cursor).  Before
+; fn-splan-reply-then each empty quantum left one empty reply effect behind.
+(defthm fn-splan-rest-cursor-step-adds-no-empty-effect
+  (<= (fn-splan-rest-empties
+       (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)))
+      (fn-splan-rest-empties rest))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
+           :in-theory (e/d (fn-splan-rest-cursor-step fn-splan-rest-empties)
+                           (fn-ovw-step fn-ovw-cursorp fn-nnw-meta-livep
+                            fn-nnw-stream-batch)))))
+
+(defthm fn-splan-cursor-step-adds-no-empty-effect
+  (<= (fn-splan-empties (mv-nth 1 (fn-splan-cursor-step p wl fn-arena fn-cat)))
+      (fn-splan-empties p))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-splan-cursor-step fn-splan-empties)
+                                  (fn-splan-rest-cursor-step)))))
+
+(in-theory (disable fn-splan-cursor-window fn-splan-rest-cursor-step
+                    fn-splan-rest-empties fn-splan-empties fn-splan-cursor-step
                     fn-splan-cw-octets fn-splan-cw-remaining fn-splan-cw-drain
                     fn-splan-fresh-cursorp fn-splan-fresh-effectsp
                     fn-splan-cw-rest-okp fn-splan-cw-okp fn-splan-arm-reference))
