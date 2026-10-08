@@ -36,7 +36,7 @@
 ; KEYSTONE (the rendered line is the status): the status of a refused refresh
 ; word renders as a refused line with the word's own reason and figures, for
 ; every word of begin's form.
-(defthm fn-hrs-line-of-a-refused-begin-word
+(defthm fn-hrs-line-of-a-refused-begin-word-unfolds
   (implies (and (symbolp r) (natp ask) (natp room))
            (equal (fn-hrs-line (fn-hroot-refresh-status (list :refused r ask room)))
                   (append (fn-nls-text "history-root: refused reason=")
