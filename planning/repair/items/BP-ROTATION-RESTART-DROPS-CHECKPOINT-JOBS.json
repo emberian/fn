@@ -1,0 +1,23 @@
+{
+ "acceptance": "bp:rotation-with-owed-jobs",
+ "category": "architecture",
+ "evidence": "books/bp-node-foundation.lisp fn-bpnf-recover-fnbs-step calls (fn-bpn-restart-step (fnbs-base st) base-records ...); books/bp-node-machine.lisp fn-bpn-restart-step starts from fn-bpn-initial-machine-state; books/bp-node-machine-codec.lisp fn-bpn-lifecycle-namespace-plan and fn-bpn-lifecycle-recovery bind record names from token 0; books/bp-node-rotation.lisp fn-bpnp-rotation-recovery-seeds-owed-jobs proves only the replay base.",
+ "exposure": "conditional",
+ "file": "books/bp-node-progress.lisp",
+ "fix": "Statement first: (a) keystone over rotate-then-restart: the restarted base machine's jobs and next-token equal the state's at rotation (with no later records), with teeth. Needs (1) a seeded restart (fn-bpn-restart-step starting from the checkpoint's jobs/token; its invariant theorems in bp-node-machine-invariants/authorization/bridge restated for a seeded start), (2) the lifecycle namespace plan and recovery starting at the checkpoint's next-token (fn-bpn-lifecycle-namespace-plan-aux already takes a token), (3) fn-bpnr-checkpointp validating the jobs (fn-bpn-job-listp) so a damaged checkpoint fences, (4) the host passing the selection plan's start token and seeded state. Note: carrying next-token means the lifecycle record bound (*fn-bpn-machine-max-records*) is no longer reset by rotation.",
+ "id": "BP-ROTATION-RESTART-DROPS-CHECKPOINT-JOBS",
+ "line": "1507",
+ "locus": "bp-rotation",
+ "notes": [
+  "10-07 bp-rotation-c5: found while closing the S4 caveat; filed, not yet fixed."
+ ],
+ "owner": "deputy-C",
+ "reviewer": "mechanism established by tracing fn-bpnp-rotate-step and by truncating a dumped journal (hbox:/tank/fn/scratch/bp-residual/jdump, jx*): every variant with a job is refused.",
+ "scenario": "Rotate while a receipt job is owed, then reopen: the lifecycle records live in the selected generation's directory (host/native/bp-service.lisp fnn-bps-open, life = root + fn-bpnr-plan-directory), the new directory holds none, and fn-bpnf-recover-fnbs-step rebuilds the base from fn-bpn-restart-step over those records starting at fn-bpn-initial-machine-state (jobs nil, token 0). The checkpoint carries the jobs (BP-ROTATION-REFUSES-OWED-JOBS, S1-S4) but only the replay's base-for-limits sees them.",
+ "severity": "medium",
+ "slice": "bp",
+ "source": "bp-residual-2026-10-07",
+ "state": "open",
+ "title": "after a rotation of a state that owes jobs the reopen rebuilds the base machine from the new generation's (empty) lifecycle records, so the checkpoint's jobs and next-token never reach the restarted machine",
+ "updated": "2026-10-07T23:59:00Z"
+}
