@@ -22,6 +22,9 @@
 (defun fnn-mux-output-window (conn octets end)
   (declare (ignorable conn octets end))
   (harness-stub-reached 'fnn-mux-output-window "host/native/mux.lisp"))
+(defun fnn-mux-plan-window-wait (conn plan after)
+  (declare (ignorable conn plan after))
+  (harness-stub-reached 'fnn-mux-plan-window-wait "host/native/mux.lisp"))
 (defun fnn-mux-send-look (conn)
   (declare (ignorable conn))
   (harness-stub-reached 'fnn-mux-send-look "host/native/mux.lisp"))
@@ -115,11 +118,12 @@
   (declare (ignore loop conn after)) (setf *after-called* t))
 (defun fnn-mux-work (loop conn)
   (declare (ignore loop conn)) (setf *worked* t))
+(defun fnn-mux-send-notsent (conn) (declare (ignore conn)) 0)
 (defun fnn-core (name &rest args)
-  (declare (ignore args))
   ;; The plans here are the cursor's own (:original, :advanced), never an
   ;; ARTICLE preflight or article plan.
-  (case name (fn-splan-cursor-resume-ms 1) (fn-splan-at-cursorp nil)
+  (case name (fn-send-window-render-p (< (first args) 65536))
+    (fn-splan-cursor-resume-ms 1) (fn-splan-at-cursorp nil)
     ;; fn-owner-article-preflight-unavailable answers NIL for a plan with no
     ;; preflight (owner-host.lisp): a cursor plan has none, so the refusal stands.
     ((fn-asto-preflight-planp fn-asto-plan-articlep fn-asto-plan-cursorp

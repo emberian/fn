@@ -411,9 +411,10 @@ class NativeOverPinsTests(unittest.TestCase):
         with a 4 KiB receive buffer that reads nothing of eight pipelined
         2 MiB ARTICLEs leaves the owner's side of the socket with at most the
         window plus one render window and the peer's receive window queued,
-        not the 3.4 MB the kernel's own send queue holds.  The kernel's gate (TCP_NOTSENT_LOWAT) is the assumption the book
-        names; this reads it off the running owner (tx_queue in
-        /proc/net/tcp).  The wrong-answer arm of the same measure is the
+        not the whole kernel send buffer. ACL2 gates each render from
+        SIOCOUTQNSD; TCP_NOTSENT_LOWAT only supplies POLLOUT wakeups.
+        This reads tx_queue in /proc/net/tcp (which also includes in-flight
+        bytes, hence the receive-window slack).  The wrong-answer arm of the same measure is the
         stalled-reader test's, whose 12 MiB reply fills the whole queue
         before the window existed."""
         size = 2 << 20
