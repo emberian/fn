@@ -190,6 +190,9 @@
     "tools/certified_claims.py": "retired by D71 (ember, 2026-10-07): a certified claim is the cert-cache entry green_check reads; this tool cited archived manifests",
     "tests/test_certified_claims.py": "retired with tools/certified_claims.py (D71)",
     "tools/hazard_rule_classes.py": "deleted on dev in aeb4905df (the hazard-rule classifier and its check); no check now catches a new primitive-lhs rewrite rule. The `Hazard rules (...)` header comments in books/ predate the removal and still describe the rules disabled",
-    "tools/hazard_rules_check.py": "deleted on dev in aeb4905df (the hazard-rule classifier and its check); no check now catches a new primitive-lhs rewrite rule. The `Hazard rules (...)` header comments in books/ predate the removal and still describe the rules disabled"
+    "tools/hazard_rules_check.py": "deleted on dev in aeb4905df (the hazard-rule classifier and its check); no check now catches a new primitive-lhs rewrite rule. The `Hazard rules (...)` header comments in books/ predate the removal and still describe the rules disabled",
+    "host/store-open-host.lisp": "deleted in 04fb4e0c7 (2026-10-07): a CHICKEN-era store port; the extraction world now loads only the image's host files (Ruling 2: one extractor, bare-SBCL)",
+    "host/store-write-host.lisp": "deleted in 04fb4e0c7 (2026-10-07): a CHICKEN-era store port; the extraction world now loads only the image's host files (Ruling 2: one extractor, bare-SBCL)",
+    "tools/extract/build.sh": "deleted in 4e8b3bb37 with the CHICKEN extractor; gate.py targets fn-core vs the image"
   }
 }
