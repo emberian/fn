@@ -67,7 +67,7 @@ applies directly, and refuses
 
 * a keystone whose defthm formula never mentions its target (the :via or
   :step-of function, else the entry): the static half of
-  fn-di-keystone-problem (keystone_findings; the call closure is host-ld's);
+  fn-di-keystone-problem (keystone_findings; a :via target's call closure is read from the source too);
 
 What it cannot check is the world: the keystones' call closure, and the class and kinds
 the source cannot decide, are ACL2's to confirm, at image build
@@ -763,6 +763,88 @@ def _mentions(form, target: str) -> bool:
     return False
 
 
+def _body_symbols(form, out: set, heads: set | None = None) -> None:
+    """Add every symbol of FORM outside a quote to OUT, and the symbols in
+    call position to HEADS."""
+    if isinstance(form, ledger.Sym):
+        out.add(str(form).lower())
+    elif isinstance(form, list) and form and not (
+            isinstance(form[0], ledger.Sym) and str(form[0]).lower() == "quote"):
+        if heads is not None and isinstance(form[0], ledger.Sym):
+            heads.add(str(form[0]).lower())
+        for item in form:
+            _body_symbols(item, out, heads)
+
+
+def macro_bodies(files) -> dict[str, list]:
+    """defmacro name -> its definition form, and name -> the top-level form
+    that generates it (a macro call whose first argument is NAME), for the
+    closure to read through."""
+    out: dict[str, list] = {}
+    origin: dict[str, str] = {}
+    invocations: dict[str, list] = {}
+
+    def visit(form):
+        if not isinstance(form, list) or not form:
+            return
+        head = ledger.head(form)
+        if head == "defmacro" and len(form) > 3 and isinstance(form[1], ledger.Sym):
+            out.setdefault(str(form[1]).lower(), form)
+            stack = [form]
+            while stack:  # a defun written out inside the macro's template
+                node = stack.pop()
+                if isinstance(node, list):
+                    if (len(node) > 3 and isinstance(node[0], ledger.Sym) and str(node[0]).lower() == "defun"
+                            and isinstance(node[1], ledger.Sym)):
+                        out.setdefault(str(node[1]).lower(), node)
+                        origin.setdefault(str(node[1]).lower(), str(form[1]).lower())
+                    stack.extend(node)
+        elif head in ("progn", "encapsulate", "local", "with-output", "defsection"):
+            for item in form[1:]:
+                visit(item)
+        else:
+            if isinstance(form[0], ledger.Sym):
+                invocations.setdefault(str(form[0]).lower(), []).append(form)
+            if len(form) > 2 and isinstance(form[1], ledger.Sym):
+                out.setdefault(str(form[1]).lower(), form)
+
+    for _relative, text in files:
+        for form, _line in ledger.Reader(text).top_level():
+            visit(form)
+    # a function a macro template writes out is also read through every
+    # call of that macro (its rows are what the template's body calls)
+    for fn, macro in origin.items():
+        out[fn] = out[fn] + [call for call in invocations.get(macro, [])]
+    return out
+
+
+def call_closure(name: str, source, macros: dict[str, list]) -> tuple[set[str], bool]:
+    """(closure, certain): books/definterface.lisp's fn-di-callees over the
+    source -- NAME and every function some function in it mentions in its
+    definition body.  The walk is a superset of all-fnnames: any symbol
+    outside a quote, and through a tree macro every symbol of its definition
+    (its expansion is the world's, and can call only what the macro names).
+    A function the reader sees no defun for is read through the top-level
+    form that names it first (its generator), else it is a leaf.  certain is False only when NAME itself is not a
+    defun the reader sees (or a template's): then a miss is not a finding."""
+    seen: set[str] = set()
+    todo = [name]
+    certain = name in source.definitions or name in macros
+    while todo:
+        fn = todo.pop()
+        if fn in seen:
+            continue
+        seen.add(fn)
+        defined = fn in source.definitions
+        form = source.definitions[fn].form if defined else macros.get(fn)
+        if form is None:
+            continue
+        symbols: set[str] = set()
+        _body_symbols(form[-1] if defined else form[2:], symbols)
+        todo.extend(symbols)
+    return seen, certain
+
+
 def keystone_findings(decls: list[dict], root: Path = ROOT) -> tuple[list[str], list[str]]:
     """(findings, unresolved): the STATIC half of books/definterface.lisp's
     fn-di-keystone-problem, for the image build's host-ld.
@@ -776,8 +858,8 @@ def keystone_findings(decls: list[dict], root: Path = ROOT) -> tuple[list[str], 
     symbols outside a quote (never a text search: a comment or docstring
     cannot satisfy it).  n-bp-heap landed a keystone whose formula never
     mentioned its :via target and only host-ld, at an image build, said so
-    (CONVERGE-3 row 43).  Not decided here: (3), the call closure, which needs
-    the world's function bodies and stays with host-ld; and a keystone with no
+    (CONVERGE-3 row 43).  Not decided here: (3) for a :step-of keystone and a closure
+    through a tree macro, which need the world and stay with host-ld; and a keystone with no
     non-local defthm in books/ (generated by a macro the ledger does not model,
     or defined elsewhere), listed in UNRESOLVED by name, never silently
     passed, and not a finding."""
@@ -796,6 +878,26 @@ def keystone_findings(decls: list[dict], root: Path = ROOT) -> tuple[list[str], 
             if theorem.name in wanted and not theorem.local:
                 formulas.setdefault(theorem.name, []).append(theorem.statement)
     problems, unresolved = [], []
+    k_via = {(d["name"], k["theorem"]): True for d in decls for k in d["keystones"] if k.get("via")}
+    source = None
+    macros: dict[str, list] = {}
+    cache: dict[str, tuple[set[str], bool]] = {}
+
+    def closures(name):
+        nonlocal source
+        if source is None:
+            from tools import interface_kinds
+            if root == ROOT:
+                files = interface_kinds.tree_files()
+            else:
+                files = [(p.relative_to(root).as_posix(), p.read_text(encoding="utf-8"))
+                         for sub in ("books", "host") for p in sorted((root / sub).glob("*.lisp"))]
+            source = interface_kinds.read_source(files)
+            macros.update(macro_bodies(files))
+        if name not in cache:
+            cache[name] = call_closure(name, source, macros)
+        return cache[name]
+
     for theorem, uses in sorted(wanted.items()):
         for d, target in uses:
             where = "{}:{}".format(d["source"], d["line"])
@@ -807,6 +909,18 @@ def keystone_findings(decls: list[dict], root: Path = ROOT) -> tuple[list[str], 
                     "{}: {} keystone {} does not call {}: its formula never mentions it "
                     "(fn-di-keystone-problem refuses this at host-ld)".format(
                         where, d["name"], theorem, target))
+            elif k_via.get((d["name"], theorem)):
+                closure, certain = closures(d["name"])
+                if target not in closure:
+                    if certain:
+                        problems.append(
+                            "{}: {} keystone {}'s function {} is not in {}'s call closure "
+                            "(fn-di-keystone-problem refuses this at host-ld)".format(
+                                where, d["name"], theorem, target, d["name"]))
+                    else:
+                        unresolved.append(
+                            "{}: {} keystone {} :via {}: call closure not decidable from source".format(
+                                where, d["name"], theorem, target))
     return problems, unresolved
 
 
@@ -856,7 +970,7 @@ def main(argv=None) -> int:
         problems += keystone_problems
         print("interface_emit: keystones, the formula-mentions-its-target half of "
               "fn-di-keystone-problem: {} finding(s), {} unresolved (listed, not failures; the "
-              "call closure stays with host-ld)".format(len(keystone_problems), len(unresolved)))
+              "a :via call closure the source cannot decide stays with host-ld)".format(len(keystone_problems), len(unresolved)))
         for line in unresolved:
             print("  unresolved " + line)
     declared = sum(1 for d in decls if d["name"] in reading["dispatched"])
