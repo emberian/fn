@@ -4813,6 +4813,8 @@ class Checker:
         self.c = model.c
         self.infos = model.infos
         self.findings: list[Finding] = []
+        self.collect_r2_origins = False
+        self.r2_origins: list[dict] = []
         self.private_io_rows: dict = {}  # runner -> exempted pairs, held to the row's exempt_sites
         self.private_io: dict = {}      # lock -> R2 (site, leaf) pairs exempted as private-owner I/O
         self.excepted = {(r["rule"], r["function"], r.get("key", "*")): r["why"]
@@ -4950,6 +4952,29 @@ class Checker:
                          [f"{r[0].name} {r[0].path}:{r[1].line} {r[1].extra} under {sorted(r[2]) or '-'}" for r in rows[:12]])
 
     # R2 ----------------------------------------------------------------------
+    def r2_origin(self, info, event, lock, leaf, how):
+        """One counted origin, including parked origins of an otherwise live key.
+
+        This is diagnostic provenance only: no finding, exemption, weight or
+        reachability decision uses these rows. Preserve duplicate occurrences.
+        A trail remains a path-insensitive witness, not an execution proof.
+        """
+        fn, _, primitive = leaf.split(":", 2)
+        if isinstance(how, list):
+            trail = how
+        elif how[0] == "core":
+            _, subject, realizer, noio = how
+            trail = [f"{info.name} ({info.path}:{event.line}) core call " + " -> ".join(
+                acl2_path(self.an.reach, subject, realizer)) + " (ACL2 closure, path-insensitive)"]
+            trail += self.m.block_path(realizer, noio, leaf, limit=60)
+        else:
+            callee, noio = how
+            trail = [f"{info.name} ({info.path}:{event.line}) -> {event.name}"]
+            trail += self.m.block_path(callee, noio, leaf, limit=60)
+        return {"key": f"R2|{fn}|{lock}:{primitive}",
+                "origin": [info.name, event.kind, event.name],
+                "line": event.line, "loaded": info.loaded, "leaf": leaf, "trail": trail}
+
     def rule_R2(self):
         """One finding per (lock, blocking leaf site): the leaf runs while the
         lock is held, reached from N lock regions (one path shown)."""
@@ -4996,6 +5021,8 @@ class Checker:
                             self.private_io[lock] = self.private_io.get(lock, 0) + 1
                             self.private_io_rows[hit] = self.private_io_rows.get(hit, 0) + 1
                             continue
+                        if self.collect_r2_origins:
+                            self.r2_origins.append(self.r2_origin(info, e, lock, leaf, how))
                         k = (lock, leaf)
                         row = found.get(k)
                         if row is None:
@@ -6920,6 +6947,9 @@ def main(argv=None) -> int:
     ap.add_argument("--function")
     ap.add_argument("--json", action="store_true")
     ap.add_argument("-v", "--verbose", action="store_true")
+    ap.add_argument("--origin-trails", action="store_true",
+                    help="report every counted R2 origin and a path to its leaf; "
+                         "with --json add r2_origins, otherwise use -v for trails")
     ap.add_argument("--all-files", action="store_true", help="also report parked (unloaded) files")
     ap.add_argument("--write-baseline", action="store_true")
     ap.add_argument("--initial", action="store_true")
@@ -6949,6 +6979,7 @@ def main(argv=None) -> int:
             print("lock_discipline_check: " + why)
         print(audit_summary(model, checker.c.raw, audit_failures))
         return 1 if audit_failures else 0
+    checker.collect_r2_origins = args.origin_trails
     findings = checker.run(set(args.rule) if args.rule else None)
     if not args.rule or "R3" in args.rule:
         check_realization(checker)
@@ -6957,6 +6988,8 @@ def main(argv=None) -> int:
         findings = [f for f in findings if f.loaded]
     if args.function:
         findings = [f for f in findings if f.function == args.function]
+    reported_keys = {f.baseline_key() for f in findings}
+    origins = [row for row in checker.r2_origins if row["key"] in reported_keys]
     if args.emit_realization:
         table = getattr(checker, "realization", None)
         if table is None:
@@ -7015,6 +7048,7 @@ def main(argv=None) -> int:
     if args.json:
         print(json.dumps({"seconds": round(elapsed, 2), "functions": len(an.infos),
                           "events": total_sites,
+                          **({"r2_origins": origins} if args.origin_trails else {}),
                           "findings": [f.__dict__ for f in findings],
                           "private_owner_io": {"exempt_site_leaf_pairs": checker.private_io,
                                                "runners": {l: sorted(v["functions"])
@@ -7029,6 +7063,13 @@ def main(argv=None) -> int:
                 if args.verbose:
                     for t in f.trail:
                         print("    " + t)
+        if args.origin_trails:
+            for row in origins:
+                print(f"R2 ORIGIN {row['key']} {' -> '.join(row['origin'])} "
+                      f"line={row['line']} loaded={row['loaded']} leaf={row['leaf']}")
+                if args.verbose:
+                    for step in row["trail"]:
+                        print("    " + step)
         print(f"lock_discipline_check: {len(an.infos)} functions/roots, {total_sites} analyzed sites, "
               f"{len(an.tree.unreadable)} unreadable files, {elapsed:.1f} s")
         for rule in RULES:

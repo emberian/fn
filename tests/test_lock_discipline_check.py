@@ -486,6 +486,30 @@ class HeldCommitEffects(unittest.TestCase):
         src += self.macro + "(defun caller (s) (fnn-owner-held-commit (section s nil) nil))"
         self.assertIn(("fnn-owner-held-frames-wait", "O:sleep"), keys(run(src, ["R2"]), "R2"))
 
+    def test_nested_statement_prepare_does_not_inherit_owner_into_job(self):
+        # Round-3 :drain shape: the first held driver's body invokes a local
+        # prepare function, then its returned job runs outside both sections.
+        source = self.fixture + self.macro + """
+(defun statement-wait (s) (sleep 1))
+(defun caller (s)
+  (flet ((prepare () (sleep 2)))
+    (fnn-owner-held-commit (section s nil) (prepare)))
+  (statement-wait s)
+  (section s nil (lambda () (sleep 3))))
+"""
+        found = run(source, ['R2'])
+        self.assertEqual(dict(ldc.weights(found)), {'R2|caller|O:sleep': 2})
+        # Ablation is a real lock move. Each physical job becomes visible
+        # when called in PREPARE, including the already-working frames job.
+        for call, leaf in [('(statement-wait s)', 'statement-wait'),
+                           ('(fnn-owner-held-wait s nil)', 'fnn-owner-held-wait'),
+                           ('(fnn-owner-held-frames-wait s nil nil)',
+                            'fnn-owner-held-frames-wait')]:
+            with self.subTest(leaf=leaf):
+                mutant = source.replace('(prepare () (sleep 2))',
+                                        '(prepare () (sleep 2) ' + call + ')')
+                self.assertIn((leaf, 'O:sleep'), keys(run(mutant, ['R2']), 'R2'))
+
     def test_drain_capture_callbacks_do_not_reach_the_immediate_writer(self):
         src = """
 (defun drain (intent resolution) (funcall intent) (funcall resolution))
@@ -3436,3 +3460,58 @@ class HeldStatementEffects(unittest.TestCase):
         mutant = fixture.replace("(list nil nil)", "(fnn-owner-held-statement-wait s nil)")
         self.assertIn(("fnn-owner-held-statement-wait", "O:sleep"),
                       keys(run(mutant + macro + caller, ["R2"]), "R2"))
+
+
+class R2OriginTrails(unittest.TestCase):
+    def check_source(self, source, collect):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            path = root / 'host/native/fixture.lisp'
+            path.parent.mkdir(parents=True)
+            path.write_text(PRELUDE + source)
+            _, _, checker = ldc.analyze_tree(root, CONTRACTS,
+                                            ['host/native/fixture.lisp'], {})
+            checker.collect_r2_origins = collect
+            return checker.run({'R2'}), checker.r2_origins
+
+    def test_reports_every_origin_without_changing_counts_or_verdict(self):
+        source = '''
+(defun leaf () (sleep 1))
+(defun via () (leaf))
+(defun caller (s)
+  (sb-thread:with-mutex ((fnn-owner-service-lock s))
+    (via)
+    (via)))
+'''
+        plain, none = self.check_source(source, False)
+        found, origins = self.check_source(source, True)
+        self.assertEqual(plain, found)
+        self.assertEqual(none, [])
+        self.assertEqual(len(origins), 2)
+        self.assertEqual(sum(f.weight for f in found), len(origins))
+        self.assertEqual(origins[0]['origin'], ['caller', 'call', 'via'])
+        self.assertEqual(origins[0]['key'], 'R2|leaf|O:sleep')
+        self.assertTrue(any('leaf (' in step for step in origins[0]['trail']))
+        # Removing only one held call removes exactly one counted origin.
+        mutant, fewer = self.check_source(source.replace('    (via)\n', ''), True)
+        self.assertEqual(len(fewer), 1)
+        self.assertEqual(ldc.weights(mutant)['R2|leaf|O:sleep'], 1)
+
+    def test_off_owner_job_is_not_an_origin_and_moving_it_inside_is(self):
+        source = '''
+(defun section (s thunk)
+  (sb-thread:with-mutex ((fnn-owner-service-lock s)) (funcall thunk)))
+(defun job () (sleep 1))
+(defun caller (s)
+  (flet ((start () nil))
+    (section s #'start))
+  (job)
+  (section s (lambda () nil)))
+'''
+        found, origins = self.check_source(source, True)
+        self.assertEqual(found, [])
+        self.assertEqual(origins, [])
+        mutant = source.replace('(start () nil)', '(start () (job))')
+        found, origins = self.check_source(mutant, True)
+        self.assertIn(('job', 'O:sleep'), keys(found, 'R2'))
+        self.assertEqual(len(origins), 1)

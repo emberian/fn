@@ -1,0 +1,3190 @@
+{
+ "base": "a51a6b753f2dd42925886166514ffc93cd586b93",
+ "status": "INCOMPLETE: diagnosis plus origin-reporting tooling; no migration repair",
+ "scope": "Round-3 candidate reapplied without modification, then withdrawn again. Every listed origin is counted by R2; a static trail is not a reachable execution proof.",
+ "mechanism": "72 new origin/leaf pairs, 24 aggregate keys: statement-start 8 pairs, statement-complete 16, cut-complete 48. None crosses held-wait, held-frames-wait or statement-wait.",
+ "count_correction": "Aggregate key weights are SUMMED exactly as lock_discipline_check.weights. Previous max-based reports showed feed O:sleep 9->11; its two leaf sites actually total 18->22.",
+ "controls": "Nested held-commit/local PREPARE fixture keeps frames, batch and statement wait off O; moving each into PREPARE detects O:sleep. Origin reporting is tested to leave findings and weights identical.",
+ "rejected_experiment": "Named-special callback inference removed the reservation finding but exposed two other keys and was not safe against unknown reflective writes. Preserved only as build/lock-classes-round4/named-special-experiment.patch, not shipped.",
+ "remaining": "Implement continuation cuts for capture registration, key-executor subcommit, FNFD resolution and FNRJ context/receipt publication. Establish fresh-stage and history/scheduler invariants before classifying all representative paths or suppressing any. S0-S3 composition remains unproved. IO not wired; EXTENT remains Prop.",
+ "classification": [
+  {
+   "key": "R2|fn-pgs-fill-frame|O:fnn-extent-pread",
+   "before": 76,
+   "candidate": 78,
+   "classification": "UNRESOLVED",
+   "reason": "The representative path resubmits through fn-owner-app-submit and reloads history. A successful resume should bind the existing result and retain synchronized history, but that composed invariant is not proved. Do not suppress the paged-history leaf.",
+   "retained": 76
+  },
+  {
+   "key": "R2|fnn-chmod|O:sb-posix:chmod",
+   "before": 42,
+   "candidate": 44,
+   "classification": "CHECKER GAP",
+   "reason": "The representative fnn-at :log-written trail combines a record cut with the initializer-only :fnn-test-config-no-read fault class. fnn-init-test-fault arms initializer labels; the BP record cut cannot take that chmod branch. No cross-field path inference is implemented.",
+   "retained": 42
+  },
+  {
+   "key": "R2|fnn-close|O:sb-posix:close",
+   "before": 79,
+   "candidate": 83,
+   "classification": "REAL",
+   "reason": "Capture calls log-seal-capture -> append-capture -> members-in-flight -> extent-register under O and K. Open and close additionally occur in resumed FNRJ publication. These effects are outside the job, not misattributed job effects.",
+   "retained": 79
+  },
+  {
+   "key": "R2|fnn-durable-barrier|O:sb-posix:fcntl",
+   "before": 56,
+   "candidate": 58,
+   "classification": "REAL",
+   "reason": "The displayed statement-barrier edge is infeasible with the resumed batch flag NIL. A real alternate is statement-committed -> key-statement -> identity-commit -> owner-publish-prepared -> log-publish -> commit-open-batch, still under O. Its extension/append/fence/cut effects are not in the statement job.",
+   "retained": 56
+  },
+  {
+   "key": "R2|fnn-durable-barrier|O:sb-posix:fsync",
+   "before": 56,
+   "candidate": 58,
+   "classification": "REAL",
+   "reason": "The displayed statement-barrier edge is infeasible with the resumed batch flag NIL. A real alternate is statement-committed -> key-statement -> identity-commit -> owner-publish-prepared -> log-publish -> commit-open-batch, still under O. Its extension/append/fence/cut effects are not in the statement job.",
+   "retained": 56
+  },
+  {
+   "key": "R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+   "before": 155,
+   "candidate": 161,
+   "classification": "REAL",
+   "reason": "Real alternate after resume: fnn-bpapp-action -> fn-bprj-request-action -> fn-bpaj-dispatch-fast -> fn-bpaj-transit-record-lookup-fast -> fn-row-wire-of reads the just-reseated payload through the extent realizer. The extra COMPLETE reseat trails separately need a fresh-staged-handle invariant; they are not individually discharged.",
+   "retained": 155
+  },
+  {
+   "key": "R2|fnn-extent-read-entry|O:fnn-extent-pread",
+   "before": 124,
+   "candidate": 130,
+   "classification": "REAL",
+   "reason": "Real alternate after resume: fnn-bpapp-action -> fn-bprj-request-action -> fn-bpaj-dispatch-fast -> fn-bpaj-transit-record-lookup-fast -> fn-row-wire-of reads the just-reseated payload through the extent realizer. The extra COMPLETE reseat trails separately need a fresh-staged-handle invariant; they are not individually discharged.",
+   "retained": 124
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:probe-file",
+   "before": 155,
+   "candidate": 161,
+   "classification": "REAL",
+   "reason": "Real alternate after resume: fnn-bpapp-action -> fn-bprj-request-action -> fn-bpaj-dispatch-fast -> fn-bpaj-transit-record-lookup-fast -> fn-row-wire-of reads the just-reseated payload through the extent realizer. The extra COMPLETE reseat trails separately need a fresh-staged-handle invariant; they are not individually discharged.",
+   "retained": 155
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:sleep",
+   "before": 155,
+   "candidate": 161,
+   "classification": "REAL",
+   "reason": "Real alternate after resume: fnn-bpapp-action -> fn-bprj-request-action -> fn-bpaj-dispatch-fast -> fn-bpaj-transit-record-lookup-fast -> fn-row-wire-of reads the just-reseated payload through the extent realizer. The extra COMPLETE reseat trails separately need a fresh-staged-handle invariant; they are not individually discharged.",
+   "retained": 155
+  },
+  {
+   "key": "R2|fnn-fstat|O:sb-posix:fstat",
+   "before": 26,
+   "candidate": 28,
+   "classification": "REAL",
+   "reason": "Capture calls log-seal-capture -> append-capture -> members-in-flight -> extent-register under O and K. Open and close additionally occur in resumed FNRJ publication. These effects are outside the job, not misattributed job effects.",
+   "retained": 26
+  },
+  {
+   "key": "R2|fnn-link|O:sb-posix:link",
+   "before": 21,
+   "candidate": 23,
+   "classification": "REAL",
+   "reason": "Resumed :bind / :prepare-receipt publishes FNRJ context and receipt records via fnn-app-publish -> fnn-app-authorized-publish -> immutable publication under O. The representative :resolve-absent branch need not execute for these alternate effects to remain.",
+   "retained": 21
+  },
+  {
+   "key": "R2|fnn-log-await-sync|O:sb-thread:condition-wait",
+   "before": 28,
+   "candidate": 32,
+   "classification": "UNRESOLVED",
+   "reason": "Called under O in capture and through the resumed executor. A wait requires sync-state :syncing; preceding held completion collects it. The required scheduler/log-state relation has not been proved, so no blocking-path suppression is justified.",
+   "retained": 28
+  },
+  {
+   "key": "R2|fnn-log-fdatasync|O:sb-alien:alien-funcall",
+   "before": 27,
+   "candidate": 29,
+   "classification": "REAL",
+   "reason": "The displayed statement-barrier edge is infeasible with the resumed batch flag NIL. A real alternate is statement-committed -> key-statement -> identity-commit -> owner-publish-prepared -> log-publish -> commit-open-batch, still under O. Its extension/append/fence/cut effects are not in the statement job.",
+   "retained": 27
+  },
+  {
+   "key": "R2|fnn-log-fence|O:funcall:*fnn-record-barrier-fault-observer*",
+   "before": 27,
+   "candidate": 29,
+   "classification": "CHECKER GAP",
+   "reason": "The unresolved barrier observer is NIL on this BP route. Its sole source binding, in fnn-bpo-canonical-release, is a lambda that signals EIO; it does no physical I/O. The actual fdatasync remains a separate REAL key.",
+   "retained": 27
+  },
+  {
+   "key": "R2|fnn-log-preallocate|O:sb-alien:alien-funcall",
+   "before": 27,
+   "candidate": 29,
+   "classification": "REAL",
+   "reason": "The displayed statement-barrier edge is infeasible with the resumed batch flag NIL. A real alternate is statement-committed -> key-statement -> identity-commit -> owner-publish-prepared -> log-publish -> commit-open-batch, still under O. Its extension/append/fence/cut effects are not in the statement job.",
+   "retained": 27
+  },
+  {
+   "key": "R2|fnn-log-preallocate|O:sb-posix:lseek",
+   "before": 27,
+   "candidate": 29,
+   "classification": "REAL",
+   "reason": "The displayed statement-barrier edge is infeasible with the resumed batch flag NIL. A real alternate is statement-committed -> key-statement -> identity-commit -> owner-publish-prepared -> log-publish -> commit-open-batch, still under O. Its extension/append/fence/cut effects are not in the statement job.",
+   "retained": 27
+  },
+  {
+   "key": "R2|fnn-log-pwrite|O:sb-posix:lseek",
+   "before": 30,
+   "candidate": 32,
+   "classification": "REAL",
+   "reason": "The displayed statement-barrier edge is infeasible with the resumed batch flag NIL. A real alternate is statement-committed -> key-statement -> identity-commit -> owner-publish-prepared -> log-publish -> commit-open-batch, still under O. Its extension/append/fence/cut effects are not in the statement job.",
+   "retained": 30
+  },
+  {
+   "key": "R2|fnn-log-reserve|O:funcall:*fnn-identity-reservation-callback*",
+   "before": 27,
+   "candidate": 29,
+   "classification": "CHECKER GAP",
+   "reason": "The only source bindings name fnn-owner-identity-reservation; its ACL2 reservation observation has no blocking realizer. FUNCALL is unresolved because the initializer is NIL. No safe inference change is retained.",
+   "retained": 27
+  },
+  {
+   "key": "R2|fnn-lstat|O:sb-posix:lstat",
+   "before": 32,
+   "candidate": 34,
+   "classification": "REAL",
+   "reason": "Resumed :bind / :prepare-receipt publishes FNRJ context and receipt records via fnn-app-publish -> fnn-app-authorized-publish -> immutable publication under O. The representative :resolve-absent branch need not execute for these alternate effects to remain.",
+   "retained": 32
+  },
+  {
+   "key": "R2|fnn-open|O:sb-posix:open",
+   "before": 57,
+   "candidate": 61,
+   "classification": "REAL",
+   "reason": "Capture calls log-seal-capture -> append-capture -> members-in-flight -> extent-register under O and K. Open and close additionally occur in resumed FNRJ publication. These effects are outside the job, not misattributed job effects.",
+   "retained": 57
+  },
+  {
+   "key": "R2|fnn-owner-feed-append-locked|O:probe-file",
+   "before": 9,
+   "candidate": 11,
+   "classification": "REAL",
+   "reason": "Submission completion directly calls bound/transit-submission-outcome -> feed-flush -> feed-write-plan -> feed-append under O. Stall-file probe/sleeps are the physical FNFD writer test seam; a captured frames job does not cover this resumed resolution.",
+   "retained": 9
+  },
+  {
+   "key": "R2|fnn-owner-feed-append-locked|O:sleep",
+   "before": 18,
+   "candidate": 22,
+   "classification": "REAL",
+   "reason": "Submission completion directly calls bound/transit-submission-outcome -> feed-flush -> feed-write-plan -> feed-append under O. Stall-file probe/sleeps are the physical FNFD writer test seam; a captured frames job does not cover this resumed resolution.",
+   "retained": 18
+  },
+  {
+   "key": "R2|fnn-write-all|O:sb-unix:unix-write",
+   "before": 28,
+   "candidate": 30,
+   "classification": "REAL",
+   "reason": "Resumed :bind / :prepare-receipt publishes FNRJ context and receipt records via fnn-app-publish -> fnn-app-authorized-publish -> immutable publication under O. The representative :resolve-absent branch need not execute for these alternate effects to remain.",
+   "retained": 28
+  },
+  {
+   "key": "R2|fnn-write-range|O:sb-unix:unix-write",
+   "before": 30,
+   "candidate": 32,
+   "classification": "REAL",
+   "reason": "The displayed statement-barrier edge is infeasible with the resumed batch flag NIL. A real alternate is statement-committed -> key-statement -> identity-commit -> owner-publish-prepared -> log-publish -> commit-open-batch, still under O. Its extension/append/fence/cut effects are not in the statement job.",
+   "retained": 30
+  }
+ ],
+ "new_paths": [
+  {
+   "key": "R2|fnn-log-await-sync|O:sb-thread:condition-wait",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-start"
+   ],
+   "line": 271,
+   "leaf": "fnn-log-await-sync:9456:sb-thread:condition-wait",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-start",
+    "fnn-owner-held-statement-start (host/native/owner.lisp:5181)",
+    "fnn-log-seal-capture (host/native/io.lisp:9475)",
+    "fnn-log-await-sync (host/native/io.lisp:9456) -> condition-wait"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Wait predicate depends on the scheduler/log-state relation."
+  },
+  {
+   "key": "R2|fnn-open|O:sb-posix:open",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-start"
+   ],
+   "line": 271,
+   "leaf": "fnn-open:561:sb-posix:open",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-start",
+    "fnn-owner-held-statement-start (host/native/owner.lisp:5181)",
+    "fnn-log-seal-capture (host/native/io.lisp:9483)",
+    "fnn-log-append-capture (host/native/io.lisp:7886)",
+    "fnn-log-members-in-flight (host/native/io.lisp:7916)",
+    "fnn-extent-register (host/native/extent.lisp:176)",
+    "fnn-open (host/native/io.lisp:561) -> open"
+   ],
+   "classification": "REAL",
+   "reason": "Registration is executed by capture under O and K."
+  },
+  {
+   "key": "R2|fnn-close|O:sb-posix:close",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-start"
+   ],
+   "line": 271,
+   "leaf": "fnn-close:624:sb-posix:close",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-start",
+    "fnn-owner-held-statement-start (host/native/owner.lisp:5181)",
+    "fnn-log-seal-capture (host/native/io.lisp:9483)",
+    "fnn-log-append-capture (host/native/io.lisp:7886)",
+    "fnn-log-members-in-flight (host/native/io.lisp:7916)",
+    "fnn-extent-register (host/native/extent.lisp:190)",
+    "fnn-close (host/native/io.lisp:624) -> close"
+   ],
+   "classification": "REAL",
+   "reason": "Registration is executed by capture under O and K."
+  },
+  {
+   "key": "R2|fnn-fstat|O:sb-posix:fstat",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-start"
+   ],
+   "line": 271,
+   "leaf": "fnn-fstat:626:sb-posix:fstat",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-start",
+    "fnn-owner-held-statement-start (host/native/owner.lisp:5181)",
+    "fnn-log-seal-capture (host/native/io.lisp:9483)",
+    "fnn-log-append-capture (host/native/io.lisp:7886)",
+    "fnn-log-members-in-flight (host/native/io.lisp:7916)",
+    "fnn-extent-register (host/native/extent.lisp:177)",
+    "fnn-fstat (host/native/io.lisp:626) -> fstat"
+   ],
+   "classification": "REAL",
+   "reason": "Registration is executed by capture under O and K."
+  },
+  {
+   "key": "R2|fnn-extent-read-entry|O:fnn-extent-pread",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 271,
+   "leaf": "fnn-extent-read-entry:1296:fnn-extent-pread",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296) -> fnn-extent-pread"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 271,
+   "leaf": "fnn-extent-pread:245:sb-alien:alien-funcall",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:245) -> alien-funcall"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:probe-file",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 271,
+   "leaf": "fnn-extent-read-stall:237:probe-file",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> probe-file"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:sleep",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 271,
+   "leaf": "fnn-extent-read-stall:237:sleep",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> sleep"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fn-pgs-fill-frame|O:fnn-extent-pread",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fn-pgs-fill-frame:1948:fnn-extent-pread",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:121) -> ACL2 fn-owner-app-submit -> fn-host-hist-sync -> fn-hist-refresh -> fn-sf-records -> fn-sfr-list -> fn-hrs-disk-history -> fn-hrs-disk-decode -> fn-hrc-open-file -> fn-hrs-open-pgs -> fn-hrs-load-tables -> fn-hrs-fill-run -> fn-pgs-fill-frame",
+    "fn-pgs-fill-frame (host/native/extent.lisp:1948) -> fnn-extent-pread"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-extent-pread:245:sb-alien:alien-funcall",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:121) -> ACL2 fn-owner-app-submit -> fn-host-hist-sync -> fn-hist-refresh -> fn-sf-records -> fn-sfr-list -> fn-hrs-disk-history -> fn-hrs-disk-decode -> fn-hrc-open-file -> fn-hrs-open-pgs -> fn-hrs-load-tables -> fn-hrs-fill-run -> fn-pgs-fill-frame",
+    "fn-pgs-fill-frame (host/native/extent.lisp:1948)",
+    "fnn-extent-pread (host/native/extent.lisp:245) -> alien-funcall"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:probe-file",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-extent-read-stall:237:probe-file",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:121) -> ACL2 fn-owner-app-submit -> fn-host-hist-sync -> fn-hist-refresh -> fn-sf-records -> fn-sfr-list -> fn-hrs-disk-history -> fn-hrs-disk-decode -> fn-hrc-open-file -> fn-hrs-open-pgs -> fn-hrs-load-tables -> fn-hrs-fill-run -> fn-pgs-fill-frame",
+    "fn-pgs-fill-frame (host/native/extent.lisp:1948)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> probe-file"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:sleep",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-extent-read-stall:237:sleep",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:121) -> ACL2 fn-owner-app-submit -> fn-host-hist-sync -> fn-hist-refresh -> fn-sf-records -> fn-sfr-list -> fn-hrs-disk-history -> fn-hrs-disk-decode -> fn-hrc-open-file -> fn-hrs-open-pgs -> fn-hrs-load-tables -> fn-hrs-fill-run -> fn-pgs-fill-frame",
+    "fn-pgs-fill-frame (host/native/extent.lisp:1948)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> sleep"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-lstat|O:sb-posix:lstat",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-lstat:629:sb-posix:lstat",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:155)",
+    "fnn-app-publish (host/native/workflow.lisp:330)",
+    "fnn-app-authorized-publish (host/native/workflow.lisp:262)",
+    "fnn-lstat (host/native/io.lisp:629) -> lstat"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-open|O:sb-posix:open",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-open:561:sb-posix:open",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:155)",
+    "fnn-app-publish (host/native/workflow.lisp:330)",
+    "fnn-app-authorized-publish (host/native/workflow.lisp:300)",
+    "fnn-immutable-publish-deferred (host/native/immutable-publish.lisp:133)",
+    "fnn-open (host/native/io.lisp:561) -> open"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-write-all|O:sb-unix:unix-write",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-write-all:683:sb-unix:unix-write",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:155)",
+    "fnn-app-publish (host/native/workflow.lisp:330)",
+    "fnn-app-authorized-publish (host/native/workflow.lisp:300)",
+    "fnn-immutable-publish-deferred (host/native/immutable-publish.lisp:138)",
+    "fnn-write-all (host/native/io.lisp:683) -> unix-write"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-link|O:sb-posix:link",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-link:899:sb-posix:link",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:155)",
+    "fnn-app-publish (host/native/workflow.lisp:330)",
+    "fnn-app-authorized-publish (host/native/workflow.lisp:300)",
+    "fnn-immutable-publish-deferred (host/native/immutable-publish.lisp:156)",
+    "fnn-link (host/native/io.lisp:899) -> link"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-log-fence|O:funcall:*fnn-record-barrier-fault-observer*",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-log-fence:8083:funcall:*fnn-record-barrier-fault-observer*",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9322)",
+    "fnn-log-fence (host/native/io.lisp:8083) -> *fnn-record-barrier-fault-observer*"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-log-fdatasync|O:sb-alien:alien-funcall",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-log-fdatasync:7381:sb-alien:alien-funcall",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9322)",
+    "fnn-log-fence (host/native/io.lisp:8087)",
+    "fnn-log-fdatasync (host/native/io.lisp:7381) -> alien-funcall"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-durable-barrier|O:sb-posix:fcntl",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-durable-barrier:645:sb-posix:fcntl",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9322)",
+    "fnn-log-fence (host/native/io.lisp:8087)",
+    "fnn-log-fdatasync (host/native/io.lisp:7386)",
+    "fnn-durable-barrier (host/native/io.lisp:645) -> fcntl"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-durable-barrier|O:sb-posix:fsync",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-durable-barrier:650:sb-posix:fsync",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9322)",
+    "fnn-log-fence (host/native/io.lisp:8087)",
+    "fnn-log-fdatasync (host/native/io.lisp:7386)",
+    "fnn-durable-barrier (host/native/io.lisp:650) -> fsync"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-log-await-sync|O:sb-thread:condition-wait",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-log-await-sync:9456:sb-thread:condition-wait",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9314)",
+    "fnn-log-await-sync (host/native/io.lisp:9456) -> condition-wait"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-chmod|O:sb-posix:chmod",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-chmod:904:sb-posix:chmod",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9321)",
+    "fnn-at (host/native/io.lisp:2235)",
+    "fnn-chmod (host/native/io.lisp:904) -> chmod"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-log-pwrite|O:sb-posix:lseek",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-log-pwrite:7372:sb-posix:lseek",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9320)",
+    "fnn-log-append (host/native/io.lisp:7897)",
+    "fnn-log-pwrite (host/native/io.lisp:7372) -> lseek"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-write-range|O:sb-unix:unix-write",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-write-range:683:sb-unix:unix-write",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9320)",
+    "fnn-log-append (host/native/io.lisp:7897)",
+    "fnn-log-pwrite (host/native/io.lisp:7373)",
+    "fnn-write-range (host/native/io.lisp:683) -> unix-write"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-log-preallocate|O:sb-alien:alien-funcall",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-log-preallocate:7396:sb-alien:alien-funcall",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9319)",
+    "fnn-log-ensure-extent (host/native/io.lisp:9298)",
+    "fnn-log-preallocate (host/native/io.lisp:7396) -> alien-funcall"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-log-preallocate|O:sb-posix:lseek",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-log-preallocate:7404:sb-posix:lseek",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9319)",
+    "fnn-log-ensure-extent (host/native/io.lisp:9298)",
+    "fnn-log-preallocate (host/native/io.lisp:7404) -> lseek"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-extent-read-entry|O:fnn-extent-pread",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-extent-read-entry:1296:fnn-extent-pread",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:121) -> ACL2 fn-owner-app-submit -> fn-owner-app-submit-synced -> fn-owner-bp-transit-submit -> fn-owner-step -> fn-ocfg-step -> fn-ocfg-read-step -> fn-own-read-step-full -> fn-served-dispatch -> fn-served-dispatch-core -> fn-auth-step-pinned -> fn-auth-delegate-pinned -> fn-peer-step-pinned",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296) -> fnn-extent-pread"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-close|O:sb-posix:close",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-close:624:sb-posix:close",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:155)",
+    "fnn-app-publish (host/native/workflow.lisp:330)",
+    "fnn-app-authorized-publish (host/native/workflow.lisp:300)",
+    "fnn-immutable-publish-deferred (host/native/immutable-publish.lisp:170)",
+    "fnn-fsync-dir (host/native/io.lisp:659)",
+    "fnn-close (host/native/io.lisp:624) -> close"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-owner-feed-append-locked|O:sleep",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-owner-feed-append-locked:1285:sleep",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:127)",
+    "fnn-owner-complete-bound-submission (host/native/owner.lisp:5828)",
+    "fnn-owner-feed-flush (host/native/owner.lisp:1482)",
+    "fnn-owner-feed-write-plan (host/native/owner.lisp:1501)",
+    "fnn-owner-feed-append (host/native/owner.lisp:1256)",
+    "fnn-owner-feed-append-locked (host/native/owner.lisp:1285) -> sleep"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-owner-feed-append-locked|O:probe-file",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-owner-feed-append-locked:1287:probe-file",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:127)",
+    "fnn-owner-complete-bound-submission (host/native/owner.lisp:5828)",
+    "fnn-owner-feed-flush (host/native/owner.lisp:1482)",
+    "fnn-owner-feed-write-plan (host/native/owner.lisp:1501)",
+    "fnn-owner-feed-append (host/native/owner.lisp:1256)",
+    "fnn-owner-feed-append-locked (host/native/owner.lisp:1287) -> probe-file"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-owner-feed-append-locked|O:sleep",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-owner-feed-append-locked:1287:sleep",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:127)",
+    "fnn-owner-complete-bound-submission (host/native/owner.lisp:5828)",
+    "fnn-owner-feed-flush (host/native/owner.lisp:1482)",
+    "fnn-owner-feed-write-plan (host/native/owner.lisp:1501)",
+    "fnn-owner-feed-append (host/native/owner.lisp:1256)",
+    "fnn-owner-feed-append-locked (host/native/owner.lisp:1287) -> sleep"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-log-reserve|O:funcall:*fnn-identity-reservation-callback*",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 279,
+   "leaf": "fnn-log-reserve:9192:funcall:*fnn-identity-reservation-callback*",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:279) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:127)",
+    "fnn-owner-complete-bound-submission (host/native/owner.lisp:5846)",
+    "fnn-owner-attempt-served (host/native/owner.lisp:3925)",
+    "fnn-owner-attempt-filled (host/native/owner.lisp:3623)",
+    "fnn-owner-attempt (host/native/owner.lisp:3459)",
+    "fnn-advance-frontier (host/native/io.lisp:4158)",
+    "fnn-log-reserve (host/native/io.lisp:9192) -> *fnn-identity-reservation-callback*"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "Named literal callback is pure; unresolved FUNCALL is not physical I/O."
+  },
+  {
+   "key": "R2|fnn-extent-read-entry|O:fnn-extent-pread",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 271,
+   "leaf": "fnn-extent-read-entry:1296:fnn-extent-pread",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296) -> fnn-extent-pread"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 271,
+   "leaf": "fnn-extent-pread:245:sb-alien:alien-funcall",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:245) -> alien-funcall"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:probe-file",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 271,
+   "leaf": "fnn-extent-read-stall:237:probe-file",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> probe-file"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:sleep",
+   "origin": [
+    "fnn-bpapp-deliver",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 271,
+   "leaf": "fnn-extent-read-stall:237:sleep",
+   "trail": [
+    "fnn-bpapp-deliver (host/native/bp-app.lisp:271) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> sleep"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-log-await-sync|O:sb-thread:condition-wait",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-start"
+   ],
+   "line": 92,
+   "leaf": "fnn-log-await-sync:9456:sb-thread:condition-wait",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-start",
+    "fnn-owner-held-statement-start (host/native/owner.lisp:5181)",
+    "fnn-log-seal-capture (host/native/io.lisp:9475)",
+    "fnn-log-await-sync (host/native/io.lisp:9456) -> condition-wait"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Wait predicate depends on the scheduler/log-state relation."
+  },
+  {
+   "key": "R2|fnn-open|O:sb-posix:open",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-start"
+   ],
+   "line": 92,
+   "leaf": "fnn-open:561:sb-posix:open",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-start",
+    "fnn-owner-held-statement-start (host/native/owner.lisp:5181)",
+    "fnn-log-seal-capture (host/native/io.lisp:9483)",
+    "fnn-log-append-capture (host/native/io.lisp:7886)",
+    "fnn-log-members-in-flight (host/native/io.lisp:7916)",
+    "fnn-extent-register (host/native/extent.lisp:176)",
+    "fnn-open (host/native/io.lisp:561) -> open"
+   ],
+   "classification": "REAL",
+   "reason": "Registration is executed by capture under O and K."
+  },
+  {
+   "key": "R2|fnn-close|O:sb-posix:close",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-start"
+   ],
+   "line": 92,
+   "leaf": "fnn-close:624:sb-posix:close",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-start",
+    "fnn-owner-held-statement-start (host/native/owner.lisp:5181)",
+    "fnn-log-seal-capture (host/native/io.lisp:9483)",
+    "fnn-log-append-capture (host/native/io.lisp:7886)",
+    "fnn-log-members-in-flight (host/native/io.lisp:7916)",
+    "fnn-extent-register (host/native/extent.lisp:190)",
+    "fnn-close (host/native/io.lisp:624) -> close"
+   ],
+   "classification": "REAL",
+   "reason": "Registration is executed by capture under O and K."
+  },
+  {
+   "key": "R2|fnn-fstat|O:sb-posix:fstat",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-start"
+   ],
+   "line": 92,
+   "leaf": "fnn-fstat:626:sb-posix:fstat",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-start",
+    "fnn-owner-held-statement-start (host/native/owner.lisp:5181)",
+    "fnn-log-seal-capture (host/native/io.lisp:9483)",
+    "fnn-log-append-capture (host/native/io.lisp:7886)",
+    "fnn-log-members-in-flight (host/native/io.lisp:7916)",
+    "fnn-extent-register (host/native/extent.lisp:177)",
+    "fnn-fstat (host/native/io.lisp:626) -> fstat"
+   ],
+   "classification": "REAL",
+   "reason": "Registration is executed by capture under O and K."
+  },
+  {
+   "key": "R2|fnn-extent-read-entry|O:fnn-extent-pread",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 92,
+   "leaf": "fnn-extent-read-entry:1296:fnn-extent-pread",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296) -> fnn-extent-pread"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 92,
+   "leaf": "fnn-extent-pread:245:sb-alien:alien-funcall",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:245) -> alien-funcall"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:probe-file",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 92,
+   "leaf": "fnn-extent-read-stall:237:probe-file",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> probe-file"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:sleep",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 92,
+   "leaf": "fnn-extent-read-stall:237:sleep",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> sleep"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fn-pgs-fill-frame|O:fnn-extent-pread",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fn-pgs-fill-frame:1948:fnn-extent-pread",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:121) -> ACL2 fn-owner-app-submit -> fn-host-hist-sync -> fn-hist-refresh -> fn-sf-records -> fn-sfr-list -> fn-hrs-disk-history -> fn-hrs-disk-decode -> fn-hrc-open-file -> fn-hrs-open-pgs -> fn-hrs-load-tables -> fn-hrs-fill-run -> fn-pgs-fill-frame",
+    "fn-pgs-fill-frame (host/native/extent.lisp:1948) -> fnn-extent-pread"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-extent-pread:245:sb-alien:alien-funcall",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:121) -> ACL2 fn-owner-app-submit -> fn-host-hist-sync -> fn-hist-refresh -> fn-sf-records -> fn-sfr-list -> fn-hrs-disk-history -> fn-hrs-disk-decode -> fn-hrc-open-file -> fn-hrs-open-pgs -> fn-hrs-load-tables -> fn-hrs-fill-run -> fn-pgs-fill-frame",
+    "fn-pgs-fill-frame (host/native/extent.lisp:1948)",
+    "fnn-extent-pread (host/native/extent.lisp:245) -> alien-funcall"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:probe-file",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-extent-read-stall:237:probe-file",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:121) -> ACL2 fn-owner-app-submit -> fn-host-hist-sync -> fn-hist-refresh -> fn-sf-records -> fn-sfr-list -> fn-hrs-disk-history -> fn-hrs-disk-decode -> fn-hrc-open-file -> fn-hrs-open-pgs -> fn-hrs-load-tables -> fn-hrs-fill-run -> fn-pgs-fill-frame",
+    "fn-pgs-fill-frame (host/native/extent.lisp:1948)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> probe-file"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:sleep",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-extent-read-stall:237:sleep",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:121) -> ACL2 fn-owner-app-submit -> fn-host-hist-sync -> fn-hist-refresh -> fn-sf-records -> fn-sfr-list -> fn-hrs-disk-history -> fn-hrs-disk-decode -> fn-hrc-open-file -> fn-hrs-open-pgs -> fn-hrs-load-tables -> fn-hrs-fill-run -> fn-pgs-fill-frame",
+    "fn-pgs-fill-frame (host/native/extent.lisp:1948)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> sleep"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-lstat|O:sb-posix:lstat",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-lstat:629:sb-posix:lstat",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:155)",
+    "fnn-app-publish (host/native/workflow.lisp:330)",
+    "fnn-app-authorized-publish (host/native/workflow.lisp:262)",
+    "fnn-lstat (host/native/io.lisp:629) -> lstat"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-open|O:sb-posix:open",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-open:561:sb-posix:open",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:155)",
+    "fnn-app-publish (host/native/workflow.lisp:330)",
+    "fnn-app-authorized-publish (host/native/workflow.lisp:300)",
+    "fnn-immutable-publish-deferred (host/native/immutable-publish.lisp:133)",
+    "fnn-open (host/native/io.lisp:561) -> open"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-write-all|O:sb-unix:unix-write",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-write-all:683:sb-unix:unix-write",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:155)",
+    "fnn-app-publish (host/native/workflow.lisp:330)",
+    "fnn-app-authorized-publish (host/native/workflow.lisp:300)",
+    "fnn-immutable-publish-deferred (host/native/immutable-publish.lisp:138)",
+    "fnn-write-all (host/native/io.lisp:683) -> unix-write"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-link|O:sb-posix:link",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-link:899:sb-posix:link",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:155)",
+    "fnn-app-publish (host/native/workflow.lisp:330)",
+    "fnn-app-authorized-publish (host/native/workflow.lisp:300)",
+    "fnn-immutable-publish-deferred (host/native/immutable-publish.lisp:156)",
+    "fnn-link (host/native/io.lisp:899) -> link"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-log-fence|O:funcall:*fnn-record-barrier-fault-observer*",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-log-fence:8083:funcall:*fnn-record-barrier-fault-observer*",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9322)",
+    "fnn-log-fence (host/native/io.lisp:8083) -> *fnn-record-barrier-fault-observer*"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-log-fdatasync|O:sb-alien:alien-funcall",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-log-fdatasync:7381:sb-alien:alien-funcall",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9322)",
+    "fnn-log-fence (host/native/io.lisp:8087)",
+    "fnn-log-fdatasync (host/native/io.lisp:7381) -> alien-funcall"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-durable-barrier|O:sb-posix:fcntl",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-durable-barrier:645:sb-posix:fcntl",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9322)",
+    "fnn-log-fence (host/native/io.lisp:8087)",
+    "fnn-log-fdatasync (host/native/io.lisp:7386)",
+    "fnn-durable-barrier (host/native/io.lisp:645) -> fcntl"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-durable-barrier|O:sb-posix:fsync",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-durable-barrier:650:sb-posix:fsync",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9322)",
+    "fnn-log-fence (host/native/io.lisp:8087)",
+    "fnn-log-fdatasync (host/native/io.lisp:7386)",
+    "fnn-durable-barrier (host/native/io.lisp:650) -> fsync"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-log-await-sync|O:sb-thread:condition-wait",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-log-await-sync:9456:sb-thread:condition-wait",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9314)",
+    "fnn-log-await-sync (host/native/io.lisp:9456) -> condition-wait"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-chmod|O:sb-posix:chmod",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-chmod:904:sb-posix:chmod",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9321)",
+    "fnn-at (host/native/io.lisp:2235)",
+    "fnn-chmod (host/native/io.lisp:904) -> chmod"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-log-pwrite|O:sb-posix:lseek",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-log-pwrite:7372:sb-posix:lseek",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9320)",
+    "fnn-log-append (host/native/io.lisp:7897)",
+    "fnn-log-pwrite (host/native/io.lisp:7372) -> lseek"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-write-range|O:sb-unix:unix-write",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-write-range:683:sb-unix:unix-write",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9320)",
+    "fnn-log-append (host/native/io.lisp:7897)",
+    "fnn-log-pwrite (host/native/io.lisp:7373)",
+    "fnn-write-range (host/native/io.lisp:683) -> unix-write"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-log-preallocate|O:sb-alien:alien-funcall",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-log-preallocate:7396:sb-alien:alien-funcall",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9319)",
+    "fnn-log-ensure-extent (host/native/io.lisp:9298)",
+    "fnn-log-preallocate (host/native/io.lisp:7396) -> alien-funcall"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-log-preallocate|O:sb-posix:lseek",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-log-preallocate:7404:sb-posix:lseek",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:175)",
+    "fnn-owner-statement-submission-complete (host/native/owner.lisp:5765)",
+    "fnn-owner-statement-committed (host/native/owner.lisp:3877)",
+    "fnn-owner-statement-barrier (host/native/owner.lisp:3851)",
+    "fnn-log-commit-open-batch (host/native/io.lisp:9319)",
+    "fnn-log-ensure-extent (host/native/io.lisp:9298)",
+    "fnn-log-preallocate (host/native/io.lisp:7404) -> lseek"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "The resumed branch has *fnn-log-batch* NIL. The key remains REAL via the separate key executor commit; see per-key table."
+  },
+  {
+   "key": "R2|fnn-extent-read-entry|O:fnn-extent-pread",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-extent-read-entry:1296:fnn-extent-pread",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:121) -> ACL2 fn-owner-app-submit -> fn-owner-app-submit-synced -> fn-owner-bp-transit-submit -> fn-owner-step -> fn-ocfg-step -> fn-ocfg-read-step -> fn-own-read-step-full -> fn-served-dispatch -> fn-served-dispatch-core -> fn-auth-step-pinned -> fn-auth-delegate-pinned -> fn-peer-step-pinned",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296) -> fnn-extent-pread"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-close|O:sb-posix:close",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-close:624:sb-posix:close",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:155)",
+    "fnn-app-publish (host/native/workflow.lisp:330)",
+    "fnn-app-authorized-publish (host/native/workflow.lisp:300)",
+    "fnn-immutable-publish-deferred (host/native/immutable-publish.lisp:170)",
+    "fnn-fsync-dir (host/native/io.lisp:659)",
+    "fnn-close (host/native/io.lisp:624) -> close"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-owner-feed-append-locked|O:sleep",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-owner-feed-append-locked:1285:sleep",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:127)",
+    "fnn-owner-complete-bound-submission (host/native/owner.lisp:5828)",
+    "fnn-owner-feed-flush (host/native/owner.lisp:1482)",
+    "fnn-owner-feed-write-plan (host/native/owner.lisp:1501)",
+    "fnn-owner-feed-append (host/native/owner.lisp:1256)",
+    "fnn-owner-feed-append-locked (host/native/owner.lisp:1285) -> sleep"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-owner-feed-append-locked|O:probe-file",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-owner-feed-append-locked:1287:probe-file",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:127)",
+    "fnn-owner-complete-bound-submission (host/native/owner.lisp:5828)",
+    "fnn-owner-feed-flush (host/native/owner.lisp:1482)",
+    "fnn-owner-feed-write-plan (host/native/owner.lisp:1501)",
+    "fnn-owner-feed-append (host/native/owner.lisp:1256)",
+    "fnn-owner-feed-append-locked (host/native/owner.lisp:1287) -> probe-file"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-owner-feed-append-locked|O:sleep",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-owner-feed-append-locked:1287:sleep",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:127)",
+    "fnn-owner-complete-bound-submission (host/native/owner.lisp:5828)",
+    "fnn-owner-feed-flush (host/native/owner.lisp:1482)",
+    "fnn-owner-feed-write-plan (host/native/owner.lisp:1501)",
+    "fnn-owner-feed-append (host/native/owner.lisp:1256)",
+    "fnn-owner-feed-append-locked (host/native/owner.lisp:1287) -> sleep"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "The displayed generic dispatcher branch needs the post-submission state invariant. Per-key table records independently reachable real alternatives where established."
+  },
+  {
+   "key": "R2|fnn-log-reserve|O:funcall:*fnn-identity-reservation-callback*",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-bpapp-cut-complete"
+   ],
+   "line": 100,
+   "leaf": "fnn-log-reserve:9192:funcall:*fnn-identity-reservation-callback*",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:100) -> fnn-bpapp-cut-complete",
+    "fnn-bpapp-cut-complete (host/native/bp-app.lisp:178)",
+    "fnn-bpapp-accept-step (host/native/bp-app.lisp:127)",
+    "fnn-owner-complete-bound-submission (host/native/owner.lisp:5846)",
+    "fnn-owner-attempt-served (host/native/owner.lisp:3925)",
+    "fnn-owner-attempt-filled (host/native/owner.lisp:3623)",
+    "fnn-owner-attempt (host/native/owner.lisp:3459)",
+    "fnn-advance-frontier (host/native/io.lisp:4158)",
+    "fnn-log-reserve (host/native/io.lisp:9192) -> *fnn-identity-reservation-callback*"
+   ],
+   "classification": "CHECKER GAP",
+   "reason": "Named literal callback is pure; unresolved FUNCALL is not physical I/O."
+  },
+  {
+   "key": "R2|fnn-extent-read-entry|O:fnn-extent-pread",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 92,
+   "leaf": "fnn-extent-read-entry:1296:fnn-extent-pread",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296) -> fnn-extent-pread"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 92,
+   "leaf": "fnn-extent-pread:245:sb-alien:alien-funcall",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:245) -> alien-funcall"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:probe-file",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 92,
+   "leaf": "fnn-extent-read-stall:237:probe-file",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> probe-file"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  },
+  {
+   "key": "R2|fnn-extent-read-stall|O:sleep",
+   "origin": [
+    "fnn-bpnode-request-result-1",
+    "call",
+    "fnn-owner-held-statement-complete"
+   ],
+   "line": 92,
+   "leaf": "fnn-extent-read-stall:237:sleep",
+   "trail": [
+    "fnn-bpnode-request-result-1 (host/native/bp-node.lisp:92) -> fnn-owner-held-statement-complete",
+    "fnn-owner-held-statement-complete (host/native/owner.lisp:5210)",
+    "fnn-log-batch-finish (host/native/io.lisp:9440)",
+    "fnn-log-reseat-fenced (host/native/io.lisp:8044) -> ACL2 fn-lzr-commit-reseats -> fn-lzr-commit-reseat -> fn-arx-commit-reseat -> fn-arx-commit-extent -> fn-arx-commit-place -> fn-arx-arena-find -> fn-arx-arena-prefixp -> fn-arena-get -> fn-arena$x-get -> fn-durable-realize-octet",
+    "fn-durable-realize-octet (host/native/extent.lisp:1716)",
+    "fnn-extent-entry (host/native/extent.lisp:1481)",
+    "fnn-extent-entry-direct (host/native/extent.lisp:1426)",
+    "fnn-extent-read-verified (host/native/extent.lisp:1385)",
+    "fnn-extent-read-entry (host/native/extent.lisp:1296)",
+    "fnn-extent-pread (host/native/extent.lisp:241)",
+    "fnn-extent-read-stall (host/native/extent.lisp:237) -> sleep"
+   ],
+   "classification": "UNRESOLVED",
+   "reason": "Reseat reads its staged handle, but freshness/custody was not proved through this continuation. Do not infer a cold read is impossible."
+  }
+ ],
+ "retained_comparison": {
+  "removed": [],
+  "added": [],
+  "rising": [],
+  "outside": [],
+  "counts": [
+   {
+    "key": "R10|fnn-bp-reserve-sequence|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-bp-sequence-lock|ignored-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-bpnc-release-lease|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-bps-release|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-catchup-journal-open|ignored-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-command-log-scan-store|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-command-log|foreign-close:fnn-close",
+    "before": 2,
+    "candidate": 2,
+    "retained": 2
+   },
+   {
+    "key": "R10|fnn-control-acquire-lease|ignored-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-control-release-lease|ignored-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-initialize|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-log-open-read-only|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-log-read-active-segment|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-log-read-closed-segment|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-log-scan-segments|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-log-write-history|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-native-auth-admin-execute|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-operator-log-tail|ignored-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-owner-feed-close|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-owner-feed-open|ignored-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-owner-journal-open|ignored-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-pinv-call-reserved|ignored-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-pinv-fill|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-publication-unlock|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-pull-journal-open|ignored-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-record-filesystem-at-init|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R10|fnn-store-close|foreign-close:fnn-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-arena-release-due|*fnn-arena-release-custody*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-bpnode-request-result|*fnn-owner-transit-detail*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-checkpoint-write-arena-steps|*fnn-checkpoint-frames*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-cold-guard-cache-prepare|*fnn-cold-entry-guard-specs*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-command-bp-app-receive|fnn-owner-service-listener:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-command-bp-node-resume|*fnn-bpnode-budgets*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-connection-custody-publish-raw|fnn-owner-service-connection-head:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-connection-custody-publish-raw|fnn-owner-service-connection-raw-token:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-durable-step|*fnn-section-step*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-extent-decoded-window-span-octet|fnn-cold-worker-span:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-extent-executor-actual-return|fnn-cold-worker-phase:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-extent-executor-start|*fnn-cold-stopping*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-extent-executor-start|fnn-cold-worker-thread:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-extent-window-release|fnn-cold-worker-token:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-journal-write|*fnn-journal-w*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-live-arena|*fnn-arena*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-live-cat|*fnn-cat*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-live-hist|*fnn-hist*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-live-octets-pub|*fnn-octets-pub*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-live-octets|*fnn-octets*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-live-page-read-pool|*fnn-page-read-pool*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-batch-reset|fnn-log-count:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-batch-reset|fnn-log-octets:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-close-active|fnn-log-active-close-debt:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-close-active|fnn-log-fd:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-compress|fnn-log-lz:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-reseat-fenced|fnn-log-reseat-custody:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-rotate|fnn-log-dir-pending:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-rotate|fnn-log-extent:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-rotate|fnn-log-genesis:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-rotate|fnn-log-index:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-rotate|fnn-log-kernel:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-rotate|fnn-log-path:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-rotate|fnn-log-pending:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-seal-capture|fnn-log-sealed:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-take|fnn-log-members:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-write-history|fnn-log-bmax:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-write-history|fnn-log-omax:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-write-history|fnn-log-reserved:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-log-writer-loop|*fnn-owner-log-fd*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-lz-current-dict|*fnn-lz-current*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-lz-dicts|*fnn-lz-dicts*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-mux-iterate|fnn-mux-loop-passes:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-mux-iterate|fnn-mux-loop-polling:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-mux-start|fnn-mux-loop-wake-read:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-mux-start|fnn-mux-loop-wake-write:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-mux-start|fnn-owner-service-mux:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-native-auth-install|*fnn-native-auth-live-path*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-native-auth-install|*fnn-native-auth-live-policy*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-open-streams|*fnn-stderr*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-open-streams|*fnn-stdout*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-operator-execute-run|*fnn-health-min-percent*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-operator-execute-run|*fnn-owner-last-fault*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-operator-execute-run|*fnn-owner-log-path*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-cold-enqueue-locked|fnn-owner-service-cold-head:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-control-arm-fault|*fnn-owner-control-fault-consumed*:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-feed-close-all|fnn-owner-service-feeds:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-journal-open|*fnn-journal-fd*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-maybe-reopen-log|*fnn-owner-log-handled*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-maybe-retire|*fnn-sigterm-requested*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-maybe-retire|fnn-owner-service-retire:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-note-queued|fnn-owner-service-queued:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-peer-flight-startup|fnn-owner-service-peer-flight-bank:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-refresh-read-octets|fnn-owner-service-read-octets:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-run|*fnn-owner-measure*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-run|*fnn-owner-time-service*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-run|fnn-owner-service-connection-fault-operation:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-run|fnn-owner-service-tls-context:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-space-observe-if-due|fnn-owner-service-space-need:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-start-syncer|fnn-owner-service-synced:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-stop-service-locked|fnn-owner-service-exit-code:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-owner-stop-service-locked|fnn-owner-service-stopping:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-random-state-forget|*fnn-random-state*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-seal-live-buffer|*fnn-staged-handle*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-select-image-profile|*fnn-image-profile*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-state-checkpoint-adopt-image|*fnn-extent-image-id*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-store-compress-min|fnn-log-lz-min:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-test-entropy|*fnn-test-entropy-draws*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-tls-initialize|*fnn-tls-libraries*:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-tls-initialize|*fnn-tls-version*:unlocked-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1b|fnn-web-start|*fnn-web-face*:unlocked-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1|lambda@host/native/control.lisp:fnn-control-launch-client#lambda1|O:fnn-fresh-stobj:fnn-live-stobj",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R1|lambda@host/native/control.lisp:fnn-control-launch-client#lambda1|O:fnn-owner-serialized-with-control-turn:*the-live-state*",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fn-pgs-fill-frame|E:fnn-extent-pread",
+    "before": 3,
+    "candidate": 3,
+    "retained": 3
+   },
+   {
+    "key": "R2|fn-pgs-fill-frame|O:fnn-extent-pread",
+    "before": 76,
+    "candidate": 78,
+    "retained": 76
+   },
+   {
+    "key": "R2|fnn-chmod|E:sb-posix:chmod",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-chmod|O:sb-posix:chmod",
+    "before": 42,
+    "candidate": 44,
+    "retained": 42
+   },
+   {
+    "key": "R2|fnn-close|E:sb-posix:close",
+    "before": 2,
+    "candidate": 2,
+    "retained": 2
+   },
+   {
+    "key": "R2|fnn-close|K:sb-posix:close",
+    "before": 2,
+    "candidate": 2,
+    "retained": 2
+   },
+   {
+    "key": "R2|fnn-close|O:sb-posix:close",
+    "before": 79,
+    "candidate": 83,
+    "retained": 79
+   },
+   {
+    "key": "R2|fnn-control-live-status-answer|unresolved:binding",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-durable-barrier|E:sb-posix:fcntl",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-durable-barrier|E:sb-posix:fsync",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-durable-barrier|O:sb-posix:fcntl",
+    "before": 56,
+    "candidate": 58,
+    "retained": 56
+   },
+   {
+    "key": "R2|fnn-durable-barrier|O:sb-posix:fsync",
+    "before": 56,
+    "candidate": 58,
+    "retained": 56
+   },
+   {
+    "key": "R2|fnn-extent-pread|E:sb-alien:alien-funcall",
+    "before": 16,
+    "candidate": 16,
+    "retained": 16
+   },
+   {
+    "key": "R2|fnn-extent-pread|O:sb-alien:alien-funcall",
+    "before": 155,
+    "candidate": 161,
+    "retained": 155
+   },
+   {
+    "key": "R2|fnn-extent-read-entry|E:fnn-extent-pread",
+    "before": 13,
+    "candidate": 13,
+    "retained": 13
+   },
+   {
+    "key": "R2|fnn-extent-read-entry|O:fnn-extent-pread",
+    "before": 124,
+    "candidate": 130,
+    "retained": 124
+   },
+   {
+    "key": "R2|fnn-extent-read-stall|E:probe-file",
+    "before": 16,
+    "candidate": 16,
+    "retained": 16
+   },
+   {
+    "key": "R2|fnn-extent-read-stall|E:sleep",
+    "before": 16,
+    "candidate": 16,
+    "retained": 16
+   },
+   {
+    "key": "R2|fnn-extent-read-stall|O:probe-file",
+    "before": 155,
+    "candidate": 161,
+    "retained": 155
+   },
+   {
+    "key": "R2|fnn-extent-read-stall|O:sleep",
+    "before": 155,
+    "candidate": 161,
+    "retained": 155
+   },
+   {
+    "key": "R2|fnn-flock|O:fnn-%flock",
+    "before": 6,
+    "candidate": 6,
+    "retained": 6
+   },
+   {
+    "key": "R2|fnn-fstat|E:sb-posix:fstat",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-fstat|K:sb-posix:fstat",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-fstat|O:sb-posix:fstat",
+    "before": 26,
+    "candidate": 28,
+    "retained": 26
+   },
+   {
+    "key": "R2|fnn-link|E:sb-posix:link",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-link|O:sb-posix:link",
+    "before": 21,
+    "candidate": 23,
+    "retained": 21
+   },
+   {
+    "key": "R2|fnn-list-directory|O:sb-posix:closedir",
+    "before": 4,
+    "candidate": 4,
+    "retained": 4
+   },
+   {
+    "key": "R2|fnn-list-directory|O:sb-posix:opendir",
+    "before": 4,
+    "candidate": 4,
+    "retained": 4
+   },
+   {
+    "key": "R2|fnn-list-directory|O:sb-posix:readdir",
+    "before": 4,
+    "candidate": 4,
+    "retained": 4
+   },
+   {
+    "key": "R2|fnn-log-await-sync|O:sb-thread:condition-wait",
+    "before": 28,
+    "candidate": 32,
+    "retained": 28
+   },
+   {
+    "key": "R2|fnn-log-fdatasync|O:sb-alien:alien-funcall",
+    "before": 27,
+    "candidate": 29,
+    "retained": 27
+   },
+   {
+    "key": "R2|fnn-log-fence|O:funcall:*fnn-record-barrier-fault-observer*",
+    "before": 27,
+    "candidate": 29,
+    "retained": 27
+   },
+   {
+    "key": "R2|fnn-log-preallocate|O:sb-alien:alien-funcall",
+    "before": 27,
+    "candidate": 29,
+    "retained": 27
+   },
+   {
+    "key": "R2|fnn-log-preallocate|O:sb-posix:lseek",
+    "before": 27,
+    "candidate": 29,
+    "retained": 27
+   },
+   {
+    "key": "R2|fnn-log-pwrite|O:sb-posix:lseek",
+    "before": 30,
+    "candidate": 32,
+    "retained": 30
+   },
+   {
+    "key": "R2|fnn-log-reserve|O:funcall:*fnn-identity-reservation-callback*",
+    "before": 27,
+    "candidate": 29,
+    "retained": 27
+   },
+   {
+    "key": "R2|fnn-lstat|E:sb-posix:lstat",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-lstat|O:sb-posix:lstat",
+    "before": 32,
+    "candidate": 34,
+    "retained": 32
+   },
+   {
+    "key": "R2|fnn-mkdir|E:sb-posix:mkdir",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-mkdir|O:sb-posix:mkdir",
+    "before": 14,
+    "candidate": 14,
+    "retained": 14
+   },
+   {
+    "key": "R2|fnn-mux-wake-locked|C:sb-unix:unix-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-mux-wake-locked|M:sb-unix:unix-write",
+    "before": 3,
+    "candidate": 3,
+    "retained": 3
+   },
+   {
+    "key": "R2|fnn-open|E:sb-posix:open",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-open|K:sb-posix:open",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-open|O:sb-posix:open",
+    "before": 57,
+    "candidate": 61,
+    "retained": 57
+   },
+   {
+    "key": "R2|fnn-owner-consumer-entropy-observation|O:read-sequence",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-owner-feed-append-locked|O:probe-file",
+    "before": 9,
+    "candidate": 11,
+    "retained": 9
+   },
+   {
+    "key": "R2|fnn-owner-feed-append-locked|O:sleep",
+    "before": 18,
+    "candidate": 22,
+    "retained": 18
+   },
+   {
+    "key": "R2|fnn-owner-feed-open|E:sb-posix:ftruncate",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-owner-feed-open|E:sb-posix:lseek",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-owner-feed-open|O:sb-posix:ftruncate",
+    "before": 10,
+    "candidate": 10,
+    "retained": 10
+   },
+   {
+    "key": "R2|fnn-owner-feed-open|O:sb-posix:lseek",
+    "before": 10,
+    "candidate": 10,
+    "retained": 10
+   },
+   {
+    "key": "R2|fnn-owner-receiver-turn-parser-locked|unresolved:callback",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-owner-reclaim-pass|O:delete-file",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-owner-reclaim-pass|O:probe-file",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-read-fd|E:sb-unix:unix-read",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-read-fd|O:sb-unix:unix-read",
+    "before": 20,
+    "candidate": 20,
+    "retained": 20
+   },
+   {
+    "key": "R2|fnn-reclaim-cut|O:probe-file",
+    "before": 3,
+    "candidate": 3,
+    "retained": 3
+   },
+   {
+    "key": "R2|fnn-reclaim-cut|O:sleep",
+    "before": 2,
+    "candidate": 2,
+    "retained": 2
+   },
+   {
+    "key": "R2|fnn-rename-no-replace|O:fnn-%import-renameat2",
+    "before": 3,
+    "candidate": 3,
+    "retained": 3
+   },
+   {
+    "key": "R2|fnn-rename-no-replace|O:sb-posix:rename",
+    "before": 3,
+    "candidate": 3,
+    "retained": 3
+   },
+   {
+    "key": "R2|fnn-replace|O:sb-posix:rename",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-socket-shut|R:sb-bsd-sockets:socket-close",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-state-checkpoint-file-observation|O:sb-posix:lstat",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-tls-server-candidate|XTLSRELOAD:sb-posix:stat",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-write-all|E:sb-unix:unix-write",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R2|fnn-write-all|O:sb-unix:unix-write",
+    "before": 28,
+    "candidate": 30,
+    "retained": 28
+   },
+   {
+    "key": "R2|fnn-write-range|O:sb-unix:unix-write",
+    "before": 30,
+    "candidate": 32,
+    "retained": 30
+   },
+   {
+    "key": "R4|fnn-control-launch-client|no-handler:fn local control client",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R4|fnn-control-start|no-handler:fn local control accept",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R4|fnn-extent-executor-start|no-handler:fn cold executor",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R4|fnn-log-writer-start|no-handler:fn service log writer",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R5|fnn-command-bp-app-receive|unresolved:lock object (sb-thread:make-mutex)",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R5|fnn-owner-await-logical|unresolved:lock object (sb-thread:make-mutex)",
+    "before": 2,
+    "candidate": 2,
+    "retained": 2
+   },
+   {
+    "key": "R5|fnn-owner-committer-loop|C->M",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R5|lambda@host/native/owner.lisp:fnn-owner-await-logical#lambda1|unresolved:lock object lock",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-bps-publish-generation|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-checkpoint-revision|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-control-accept-loop|overfence:sb-bsd-sockets:socket-error:socket",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-control-handle-client|swallow:fnn-store-fault:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-control-handle-client|swallow:fnn-store-indeterminate:indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-control-send-reply|swallow:error:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-dev-evaluate|swallow:serious-condition:fault,indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-heap-history-observation|swallow:error:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-heap-history-octets|swallow:error:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-heap-read-small|swallow:error:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-hsig-observe-raw|swallow:error:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-journal-write|swallow:error:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-log-line|swallow:error:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-log-write-item|swallow:error:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-mux-dispatch|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-mux-handshake-refused|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-mux-iterate|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-mux-start-waiting-handshake|swallow:ignore-errors:fault",
+    "before": 2,
+    "candidate": 2,
+    "retained": 2
+   },
+   {
+    "key": "R7|fnn-mux-stop-loop|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-mux-take-arrived|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-mux-take-inbox|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-mux-timers|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-mux-tls-log|swallow:ignore-errors:fault",
+    "before": 2,
+    "candidate": 2,
+    "retained": 2
+   },
+   {
+    "key": "R7|fnn-mux-z-in|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-attempt-filled|swallow:fnn-store-indeterminate:indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-attempt|swallow:fnn-store-indeterminate:indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-batch-effect|swallow:serious-condition:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-classify-escape-locked|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-cold-reap|overfence:fnn-store-error:refusal",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-commit-pipeline|swallow:fnn-store-indeterminate:indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-commit-release-member|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-commit-start-locked|swallow:fnn-store-indeterminate:indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-committer-loop|overfence:serious-condition:refusal",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-export-captured|overfence:serious-condition:refusal",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-feed-append-locked|swallow:ignore-errors:fault,indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-publish-captured|swallow:serious-condition:fault,indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-retire-refuse|swallow:error:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-owner-space-event|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-pull-journal-append|swallow:ignore-errors:fault,indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-tcl-act|swallow:error:fault,indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-tcl-session|swallow:ignore-errors:fault",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|fnn-tcl-source-tick|swallow:error:fault,indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R7|lambda@host/native/owner.lisp:fnn-owner-start-syncer#lambda1|swallow:serious-condition:fault,indet",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R8|fnn-mux-adopt-place|push:fnn-mux-loop-inbox",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R8|lambda@host/native/mux.lisp:fnn-mux-await#lambda1|push:fnn-mux-loop-arrived",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R9|fnn-log-await-sync|mux-loop:await:sb-thread:condition-wait",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R9|fnn-section-run-cleanup|accept:gate",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   },
+   {
+    "key": "R9|fnn-section-run|accept:gate",
+    "before": 1,
+    "candidate": 1,
+    "retained": 1
+   }
+  ]
+ }
+}
