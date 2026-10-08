@@ -51,12 +51,22 @@
                           (:rewrite fn-arn-payload-listp-true-listp)
                           (:rewrite fn-oct-nth-of-octet-listp-is-octet . 1))))
 
+;; The stage's page: one resizable byte array, a staged payload's own octets
+;; (a per-handle buffer, not an arena; it was defined beside the arena's hand
+;; page table until that became the generated `fn-arena-paged').
+(defstobj fn-arena-page
+  (fn-arena-page-bytes :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t)
+  :inline t)
+
 (defstobj fn-arena$x
   (fn-arena$x-inner :type fn-arena-paged)
   (fn-arena$x-ext :type (array t (0)) :initially 0 :resizable t)
   (fn-arena$x-stage :type (array fn-arena-page (0)) :resizable t)
   (fn-arena$x-files :type (array t (0)) :initially 0 :resizable t)
   :inline t)
+
+(defthm fn-arx-page-bytesp-is-octets-bufp
+  (equal (fn-arena-page-bytesp x) (fn-octets$c-bufp x)))
 
 ; -----------------------------------------------------------------------------
 ; A stage page: the payload is the page's whole byte array.

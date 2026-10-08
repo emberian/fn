@@ -171,9 +171,9 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   `*fn-sbud-msgid-weight*` (12) more a Message-ID octet, so the figure's
   header term is `*fn-heap-charge-heap-octets*` (8) x H instead of a
   per-record worst case at the 250-octet Message-ID. The small preset's
-  base for the run of an empty store is 284,861,450 octets beside the
+  base for the run of an empty store is 284,615,754 octets beside the
   image's dynamic content, term by term: the history (empty arena page, 2 H
-  and a pointer) 17,039,424; the handles (48 T) 786,432; the records'
+  and a pointer) 16,793,728; the handles (48 T) 786,432; the records'
   fixed part with the keyed Message-ID index (2 x T x 4,160) 136,314,880;
   the header charge (8 H) 67,108,864; the open's transient 0 (an empty
   store; 130,023,424 for a full replay of H and T); the request in flight
