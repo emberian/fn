@@ -6051,3 +6051,21 @@
   :keystones (fn-pck-compact-keeps-both-slots))
 (definterface fn-pck-compact-log :class :common-lisp-compliant
   :keystones (fn-pck-compact-keeps-both-slots fn-pck-crash-after-compaction))
+
+; Resident page-store reads. The fill constraint supplies words; the directory
+; and table verdict refinements check them. The entry theorem below describes
+; the table lookup, not a new whole-open correspondence claim.
+(definterface fn-hrs-open-pgs :class :common-lisp-compliant
+  :keystones ((fn-pgs-fill-frame-is-frame-put :via fn-pgs-fill-frame)
+              (pgs-x-dir-verdict-is-model :via pgs-x-dir-verdict)
+              (pgs-x-table-verdict-is-model :via pgs-x-table-verdict)))
+(definterface pgs-rec-npages :class :common-lisp-compliant
+  :keystones (pgs-make-rec-fields))
+(definterface pgs-rec-txid :class :common-lisp-compliant
+  :keystones (pgs-make-rec-fields))
+(definterface pgs-x-open-pages :class :common-lisp-compliant
+  :kinds ((i natp) (hi natp) (acc true-listp))
+  :keystones ((pgs-x-get-entry-is-nth-tab :via pgs-x-get-entry)))
+(definterface pgs-x-open-page :class :common-lisp-compliant
+  :kinds ((i natp))
+  :keystones ((pgs-x-get-entry-is-nth-tab :via pgs-x-get-entry)))

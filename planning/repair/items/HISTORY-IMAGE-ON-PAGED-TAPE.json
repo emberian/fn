@@ -1,0 +1,15 @@
+{
+ "category": "representation",
+ "file": "books/paged-checkpoint-open.lisp",
+ "id": "HISTORY-IMAGE-ON-PAGED-TAPE",
+ "notes": [
+  "S accepted G2(a): delete the checkpoint-side history image build/write with the publication replacement, retaining the live-root fn-his-row-* use. That deletion is still pending the host contracts in PCK-2C-HOST-WIRING. Resident paged open returns all held rows; the 37-word fixture tape costs 296 B/article before page slack/metadata. Heap row costs depend on strings/facts/context and sharing; no measured bytes/article or VmHWM improvement is claimed. A future tape-backed history view needs a concrete refinement and resident-set measurement; the current driver does not supply it."
+ ],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-pck-2c-host",
+ "state": "open",
+ "title": "Serve history rows from the paged checkpoint tape without retaining the decoded row heap",
+ "updated": "2026-10-08"
+}

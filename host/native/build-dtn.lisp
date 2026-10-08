@@ -394,6 +394,7 @@
         (load "host/native/io.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
+        (load "host/native/checkpoint-pages.lisp")
         (load "host/native/extent-decoded.lisp")
         ; The COMPRESS DEFLATE layer (RFC 8054): mux.lisp serves it here too.
         (load "host/native/deflate.lisp")

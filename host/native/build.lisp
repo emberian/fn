@@ -501,6 +501,7 @@
         (load "host/native/io.lisp")
         ; The payload arena's extent realizer (A-DURABLE-EXTENT; PRF-281).
         (load "host/native/extent.lisp")
+        (load "host/native/checkpoint-pages.lisp")
         (load "host/native/extent-decoded.lisp")
         ; DEFLATE (lib/libfn-deflate, vendored zlib; untrusted: ACL2's
         ; inflater checks every stream it reads): the COMPRESS layer's

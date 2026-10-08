@@ -1,0 +1,15 @@
+{
+ "category": "representation",
+ "file": "books/pagestore-exec.lisp",
+ "id": "PGS-DIRTY-LIST-SCAN",
+ "notes": [
+  "pgs-x-dirty-list visits every page flag per commit. Accepted seam G5 permits this CPU scan for the current resident driver; it does not change delta-only page writes. Track and prove a maintained dirty list in a later layer; no ceiling or unproved host list."
+ ],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-pck-2c-host",
+ "state": "open",
+ "title": "Replace the O(npages) dirty-flag scan with a proved O(dirty) list",
+ "updated": "2026-10-08"
+}
