@@ -2179,10 +2179,80 @@ def def_cursor_batch_expansion(form: list) -> list:
             [Sym("verify-guards"), batch]]
 
 
+def def_loop_run_expansion(form: list) -> list:
+    """Source view of def-loop/run's three guarded functions and drive theorem.
+
+    The ACL2 macro owns admission, guard proofs and functional instantiation;
+    this mirror exposes the exact executable calls to the ledger, callgraph
+    and interface guard reader. Local proof scaffolding is omitted.
+    """
+    if not (len(form) >= 3 and isinstance(form[1], Sym) and isinstance(form[2], list)):
+        return []
+    name, formals = str(form[1]), form[2]
+    opts = keyword_plist(form[3:])
+    xs = opts.get(":over")
+    if xs is None or str(xs) == "nil":
+        xs = formals[0] if formals else None
+    acc = opts.get(":acc")
+    st = opts.get(":st")
+    if str(st) == "nil":
+        st = None
+    reserved = {"dl-k", "dl-fuel", "dl-v", "dl-rest", "dl-a2", "dl-s"}
+    if not (all(isinstance(x, Sym) for x in formals)
+            and len(set(formals)) == len(formals) and not reserved.intersection(map(str, formals))
+            and xs in formals and acc in formals and xs != acc
+            and (st is None or (st in formals and st not in (xs, acc)))
+            and opts.get(":row") is not None and str(opts[":row"]) != "nil"
+            and opts.get(":quantum") is not None and str(opts[":quantum"]) != "nil"):
+        return []
+    spell = source_text
+    success = opts.get(":success", Sym("nil"))
+    end = opts.get(":end-status", success)
+    guard = opts.get(":guard", Sym("t"))
+    row, quantum = spell(opts[":row"]), spell(opts[":quantum"])
+    args = " ".join(map(spell, formals))
+    outs = " ".join(map(spell, [acc] + ([st] if st is not None else [])))
+    outs2 = " ".join(map(spell, [Sym("dl-a2")] + ([st] if st is not None else [])))
+    next_args = " ".join(spell([Sym("cdr"), xs] if x == xs else Sym("dl-a2") if x == acc else x)
+                         for x in formals)
+    resume_args = " ".join(spell(Sym("dl-rest") if x == xs else Sym("dl-a2") if x == acc else x)
+                           for x in formals)
+    extra = (" :stobjs " + spell(st)) if st is not None else ""
+    if ":guard-hints" in opts:
+        extra += " :guard-hints " + spell(opts[":guard-hints"])
+    return read_forms(f"""
+      (defun {name}-all ({args})
+        (declare (xargs :guard {spell(guard)}{extra}))
+        (if (atom {xs}) (mv {spell(end)} {outs})
+          (mv-let (dl-v {outs2}) {row}
+            (if (equal dl-v {spell(success)}) ({name}-all {next_args}) (mv dl-v {outs})))))
+      (defun {name}-run (dl-k {args})
+        (declare (xargs :guard (and (natp dl-k) {spell(guard)}){extra}))
+        (cond ((atom {xs}) (let ((dl-v {spell(end)}))
+                                (if (equal dl-v {spell(success)}) (mv :done nil {outs})
+                                  (mv dl-v {xs} {outs}))))
+              ((zp dl-k) (mv :more {xs} {outs}))
+              (t (mv-let (dl-v {outs2}) {row}
+                   (if (equal dl-v {spell(success)}) ({name}-run (1- dl-k) {next_args})
+                     (mv dl-v {xs} {outs}))))))
+      (defun {name}-drive (dl-fuel {args})
+        (declare (xargs :guard (and (natp dl-fuel) {spell(guard)}){extra}))
+        (if (zp dl-fuel) (mv '(:refused :fuel) {outs})
+          (mv-let (dl-v dl-rest {outs2}) ({name}-run {quantum} {args})
+            (cond ((equal dl-v :done) (mv {spell(success)} {outs2}))
+                  ((equal dl-v :more) ({name}-drive (1- dl-fuel) {resume_args}))
+                  (t (mv dl-v {outs2}))))))
+      (defthm {name}-drive-is-all
+        (equal ({name}-drive (+ 1 (len {xs})) {args}) ({name}-all {args}))
+        :rule-classes nil)
+    """)
+
+
 GENERATOR_EXPANSIONS = {
     "fn-defrecord": defrecord_expansion,
     "fn-defrecord-export": defrecord_export_expansion,
     "def-loop": def_loop_expansion,
+    "def-loop/run": def_loop_run_expansion,
     "def-cursor/batch": def_cursor_batch_expansion,
     "defprotocol": defprotocol_expansion,
     "defprotocol-served": defprotocol_served_expansion,

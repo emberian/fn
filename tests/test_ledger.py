@@ -1944,5 +1944,37 @@ class CursorBatchSourceTests(unittest.TestCase):
             self.assertEqual(ledger.generated_expansion(form), [])
 
 
+class DefLoopRunMirrorTests(unittest.TestCase):
+    def test_stobj_refusal_threads_store_but_retains_accumulator(self):
+        form = ledger.read_forms("""(def-loop/run walk (xs acc mem)
+          :acc acc :st mem :quantum 3 :row (row (car xs) acc mem)
+          :success :ok :guard (natp acc) :end-status (if xs :bad :ok))""")[0]
+        events = ledger.generated_expansion(form)
+        self.assertEqual([str(e[1]) for e in events],
+                         ['walk-all', 'walk-run', 'walk-drive', 'walk-drive-is-all'])
+        self.assertIn('(mv dl-v xs acc mem)', ledger.source_text(events[1]))
+        self.assertIn('(mv-let (dl-v dl-a2 mem)', ledger.source_text(events[1]))
+        self.assertIn('(walk-drive (1- dl-fuel) dl-rest dl-a2 mem)',
+                      ledger.source_text(events[2]))
+        self.assertEqual(events[3][2], ledger.read_forms(
+            '(equal (walk-drive (+ 1 (len xs)) xs acc mem) (walk-all xs acc mem))')[0])
+
+    def test_pure_defaults_and_nil_over(self):
+        forms = ledger.read_forms('(def-loop/run walk (xs acc) :over nil :acc acc '
+                                  ':quantum 1 :row (row (car xs) acc))')
+        events = ledger.generated_expansion(forms[0])
+        self.assertIn('(mv :done nil acc)', ledger.source_text(events[1]))
+        self.assertNotIn(':stobjs', ledger.source_text(events))
+        self.assertIn('(walk-run 1 xs acc)', ledger.source_text(events[2]))
+
+    def test_missing_or_nil_terms_and_reserved_formals(self):
+        base = '(def-loop/run walk (xs acc) :acc acc :quantum 1 :row (row xs acc))'
+        for bad in (base.replace(':quantum 1', ':quantum nil'),
+                    base.replace(':row (row xs acc)', ':row nil'),
+                    base.replace(':acc acc', ':acc xs'),
+                    base.replace('(xs acc)', '(xs acc dl-k)', 1)):
+            self.assertEqual(ledger.generated_expansion(ledger.read_forms(bad)[0]), [])
+
+
 if __name__ == "__main__":
     unittest.main()
