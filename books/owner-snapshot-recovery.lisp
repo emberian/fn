@@ -8,6 +8,13 @@
 (include-book "statement-keyring-publication")
 
 (local (in-theory (disable (tau-system))))
+; Rules of the included books that backchain through the store-event
+; recognizers on every goal here; the proofs that need one name it in a hint.
+(local (in-theory (disable fn-sti-local-admin-is-topic-event
+                          fn-hls-kind4-disjoint-from-other-store-events
+                          fn-scram-printable-facts fn-dl-th-progress
+                          fn-snt-topic-event-is-not-hstxa fn-sf-fenced-rejects-success
+                          fn-th-topic-event-is-not-stxe fn-th-topic-event-is-not-stxk)))
 
 ; Identity replay decisions do not consult their accumulated verdict list.
 ; The live completion context deliberately omits that list.  Preserve every
@@ -559,7 +566,8 @@
                             (ctx (fn-sn-identity-context s))
                             (event (fn-sn-completion-record s))))
            :in-theory
-           (e/d (fn-sn-finish)
+           (e/d (fn-sn-finish fn-th-topic-event-is-not-stxe fn-th-topic-event-is-not-stxk
+                 fn-snt-topic-event-is-not-hstxa fn-sti-local-admin-is-topic-event)
                 (fn-sn-identity-context fn-osr-context-view
                  fn-sn-advance-identity-next fn-sn-update-indexed
                  fn-sn-update-accepted fn-replay-identity-advance
