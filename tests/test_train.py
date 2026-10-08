@@ -136,6 +136,18 @@ class CacheSeedTests(unittest.TestCase):
             if path.is_file():
                 self.assertEqual((self.new / "build/cache" / path.relative_to(cache)).read_bytes(), path.read_bytes())
 
+    def test_same_tree_keeps_its_cache_in_place(self):
+        # farm reuses one remote tree per worktree: no copy onto itself (train 28 logged "copy failed")
+        self.old = self.new
+        self.previous()
+        (self.new / "build/cache").mkdir(parents=True)
+        (self.new / "build/cache/wire-emit.json").write_text("stamp")
+        seed, run, output = self.execute()
+        self.assertNotIn("cp -a", seed)
+        self.assertEqual(run, "old-run")
+        self.assertIn("== cache seed old-run (same tree; cache in place)\n", output)
+        self.assertEqual((self.new / "build/cache/wire-emit.json").read_text(), "stamp")
+
     def test_absent_record_skips(self):
         seed, run, output = self.execute()
         self.assertNotIn("cp -a", seed)
@@ -598,6 +610,27 @@ class CertifyTests(TrainBase):
         self.assertNotEqual(self.train("certify", "hbox").returncode, 0)
         self.assertEqual([l for l in self.stub_log() if l.startswith("farm")], [])
 
+
+
+class AsciiGateTests(unittest.TestCase):
+    def gate(self, changed, refusals):
+        temporary = tempfile.TemporaryDirectory(prefix="train-ascii-")
+        self.addCleanup(temporary.cleanup)
+        t = SimpleNamespace(root=Path(temporary.name), logs=Path(temporary.name) / "logs")
+        out = "".join(f"REFUSED {r}: bytes 0xE2 0x80 0x99 (U+2019): books/ and host/ are ASCII (PKT-379)\n" for r in refusals)
+        with mock.patch.object(train, "git", return_value=SimpleNamespace(stdout="\n".join(changed))), \
+                mock.patch.object(train.subprocess, "run", return_value=SimpleNamespace(stdout=out, stderr="", returncode=0)), \
+                mock.patch.object(train, "say"):
+            return train._ascii_gate(t)
+
+    def test_refusal_in_a_changed_file_fails(self):
+        self.assertEqual(self.gate(["host/native/io.lisp"], ["host/native/io.lisp:12:3"]), 1)
+
+    def test_older_refusal_in_an_unchanged_file_passes(self):
+        self.assertEqual(self.gate(["host/native/io.lisp"], ["books/blake3-tree.lisp:627:17"]), 0)
+
+    def test_nothing_changed_skips(self):
+        self.assertEqual(self.gate([], ["books/blake3-tree.lisp:627:17"]), 0)
 
 if __name__ == "__main__":
     unittest.main()

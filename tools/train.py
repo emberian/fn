@@ -376,6 +376,9 @@ def cache_seed_command(t: Train, box: str, tree: str) -> tuple[str, str | None]:
     source = shlex.quote(previous_tree.rstrip("/") + "/build/cache/.")
     destination = shlex.quote(tree.rstrip("/") + "/build/cache/")
     success = shlex.quote("== cache seed " + run)
+    if previous_tree.rstrip("/") == tree.rstrip("/"):
+        # farm reuses one remote tree per worktree: its build/cache is already there
+        return f"echo {shlex.quote('== cache seed ' + run + ' (same tree; cache in place)')}", run
     return (f"if [ -d {source} ]; then "
             f"if mkdir -p {destination} && cp -a {source} {destination}; then "
             f"echo {success}; else echo '== cache seed skipped: copy failed'; fi; "
@@ -434,7 +437,8 @@ def cmd_certify(t: Train, args) -> int:
     log = t.logs / f"certify-emit-{args.box}.log"
     p = subprocess.run([SSH, args.box, remote_cmd], capture_output=True, text=True)
     log.write_text(p.stdout + p.stderr)
-    cache_seed = seed_run if seed_run and f"== cache seed {seed_run}" in p.stdout.splitlines() else None
+    cache_seed = seed_run if seed_run and any(line == f"== cache seed {seed_run}" or line.startswith(f"== cache seed {seed_run} ")
+                                              for line in p.stdout.splitlines()) else None
     steps = {m.group(1): int(m.group(2)) for m in re.finditer(r"^== step (\S+) (\d+)$", p.stdout, re.M)}
     if p.returncode != 0:
         say(f"emits on {args.box} failed (rc {p.returncode}; log {log}); nothing recorded")
@@ -480,6 +484,25 @@ def _lock_keys(t: Train, cwd: Path) -> set[str] | None:
         return None
 
 
+def _ascii_gate(t: Train) -> int:
+    """ascii_check refusals in files this train changes (books/, host/).  The
+    tree carries older refusals (make check's debt); a train must add none:
+    U+2019 in host docstrings broke the ASCII-reading natives (lock-io-out)."""
+    changed = set(git(t.root, "diff", "--name-only", "origin/dev", "HEAD", "--", "books", "host").stdout.split())
+    if not changed:
+        say("books/ and host/ unchanged vs origin/dev: ascii_check skipped")
+        return 0
+    p = subprocess.run([PY, "tools/ascii_check.py"], cwd=t.root, capture_output=True, text=True)
+    t.logs.mkdir(parents=True, exist_ok=True)
+    (t.logs / "gate-ascii.log").write_text(p.stdout + p.stderr)
+    hits = [line for line in p.stdout.splitlines()
+            if line.startswith("REFUSED ") and line.split()[1].split(":")[0] in changed]
+    say(f"$ {PY} tools/ascii_check.py  -> {len(hits)} refusal(s) in {len(changed)} changed file(s)")
+    for line in hits[:20]:
+        say("  | " + line)
+    return 1 if hits else 0
+
+
 def cmd_gate(t: Train, args) -> int:
     if t.dirty():
         raise TrainError("working tree is dirty; gates must run at a committed HEAD")
@@ -508,6 +531,8 @@ def cmd_gate(t: Train, args) -> int:
     else:
         say("host unchanged vs origin/dev: host_check --load skipped")
         rec("host_load", 0, skipped=True)
+
+    rec("ascii", _ascii_gate(t))
 
     box = load_box_record(t)
     if box is None:
