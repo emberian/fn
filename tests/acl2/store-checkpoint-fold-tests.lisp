@@ -27,6 +27,7 @@
 (include-book "../../books/crypto-attach")
 (include-book "../../books/defkeystone")
 (include-book "../../books/reclaim-chunked-walk")
+(include-book "../../books/owner-reclaim-seal")
 
 (defconst *scft-principal* (make-list 32 :initial-element 7))
 (defconst *scft-keys1*
@@ -272,6 +273,16 @@
         (equal (cdr (assoc-equal "<after@example>"
                                  (fn-sn-row-verdicts (fn-sco-records opened-split))))
                '(:unverified :malformed 2)))))
+
+;; The reclaim swap predicts the rewritten rows at ONE keyring and generation
+; (fn-orcs-predict-rows): after the rotation no single pair gives the replay's
+; rows (OWNER-RECLAIM-PREDICT-FOLD-CONTEXT).
+(assert-event
+ (let* ((acc (fn-scka-fold-at (fn-ssr-seed *scft-id0*) *scft-log* 0))
+        (k (fn-ssr-at 1 acc)) (g (fn-ssr-at 2 acc)))
+   (and (not (eq acc :bad))
+        (not (equal (fn-orcs-predict-rows *scft-log* nil 0 0) *scft-replay*))
+        (not (equal (fn-orcs-predict-rows *scft-log* k g 0) *scft-replay*)))))
 
 ; --- 8. the keystone's teeth (Ruling 22 evidence package) -------------------------
 
