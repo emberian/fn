@@ -1,0 +1,15 @@
+{
+ "category": "twins",
+ "file": "books/catalog-logic.lisp",
+ "id": "CAT-RAWS-LIVES-HAND-FIELDS",
+ "notes": [
+  "lane s-group-low 2026-10-08: fn-cat$c-raws (the maintained raw low) is a hand-written stobj table with hand-written plans, apply, correspondence conjunct (fn-cat-raws-okp) and paged simulation lemmas, mirroring fn-cat$c-lives (also hand-written: fn-cat$c is a defstobj in books/catalog-logic.lisp, not a def-representation output). Both are generator-shaped (a keyed table with commit/withdraw plans and an invariant) and should come out of def-representation when it grows a keyed-summary vocabulary."
+ ],
+ "owner": "deputy-S",
+ "severity": "low",
+ "slice": "storage",
+ "source": "s-group-low",
+ "state": "open",
+ "title": "The raw-low table and the live-summary table are hand-written twins of one keyed-summary shape.",
+ "updated": "2026-10-08T12:00:00Z"
+}

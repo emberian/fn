@@ -30,6 +30,7 @@
             (fn-cat-group-live-count :logic fn-cat$a-group-live-count
                                      :exec fn-cat$c-group-live-count)
             (fn-cat-group-live-low :logic fn-cat$a-group-live-low :exec fn-cat$c-group-live-low)
+            (fn-cat-group-raw-low :logic fn-cat$a-group-raw-low :exec fn-cat$c-group-raw-low)
             (fn-cat-group-live-high :logic fn-cat$a-group-live-high
                                     :exec fn-cat$c-group-live-high)
             (fn-cat-horizon :logic fn-cat$a-horizon :exec fn-cat$c-horizon)
@@ -122,6 +123,10 @@
   (equal (fn-cat-group-live-low g fn-cat)
          (fn-cat-live-first g 1 (fn-cat-group-high g fn-cat) fn-cat)))
 
+(defthm fn-cat-group-raw-low-is-first
+  (equal (fn-cat-group-raw-low g fn-cat)
+         (fn-cat-raw-first g 1 (fn-cat-group-high g fn-cat) fn-cat)))
+
 (defthm fn-cat-group-live-high-is-last
   (equal (fn-cat-group-live-high g fn-cat)
          (fn-cat-live-last g (fn-cat-group-high g fn-cat) fn-cat)))
@@ -138,7 +143,7 @@
                     fn-cat-total-octets fn-cat-visible-at fn-cat-commit
                     fn-cat-withdraw fn-cat-redecide fn-cat-clear
                     fn-cat-clear-keyed fn-cat-msgid-saturatedp fn-cat-index-health
-                    fn-cat-group-live-count fn-cat-group-live-low fn-cat-group-live-high
+                    fn-cat-group-live-count fn-cat-group-live-low fn-cat-group-live-high fn-cat-group-raw-low
                     fn-cat-horizon fn-cat-withdrawn-at
                     fn-cat-p-is-rowsp fn-cat-assign fn-cat-visiblep
                     fn-cat-mark-withdrawn fn-held-with-numbers

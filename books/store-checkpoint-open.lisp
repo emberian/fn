@@ -25,6 +25,10 @@
 (include-book "config-observed")
 (include-book "store-checkpoint-accessors")
 
+(local (defthmd fn-cpr-config-firstp-has-config-local-rewrite
+  (implies (fn-cpr-config-firstp configs events) (consp configs))
+  :hints (("Goal" :by fn-cpr-config-firstp-has-config))))
+
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
 ;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
@@ -748,7 +752,7 @@
                                         car-cons cdr-cons nfix fn-sco-append-shape
                                         fn-sco-config-firstp-of-later
                                         fn-sco-config-firstp-later-alone
-                                        fn-cpr-config-firstp-has-config
+                                        fn-cpr-config-firstp-has-config-local-rewrite
                                         fn-sco-later-configsp-of-cdr
                                         (:induction fn-sco-cpr-prefix)
                                         (:executable-counterpart equal))))

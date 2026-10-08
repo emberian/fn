@@ -225,6 +225,7 @@
    (defvar *fnn-actor-thread-joiner*) (defvar *fnn-actor-start-signal*)
    (defvar *fnn-actor-thread-terminator*) (defun fnn-owner-actor-run)
    (defun fnn-owner-actor-fault-service)
+   (defun fnn-owner-thread-escape)
    (defun fnn-owner-actor-start) (defvar *fnn-actors*) (defun fnn-actor-declare)
    (defmacro def-actor)
    (def-actor fnn-owner-spawn-syncer) (def-actor fnn-owner-spawn-committer)
@@ -330,8 +331,9 @@
   (let ((worker (fnn-owner-spawn-syncer s nil
                  (lambda () (incf steps) (throw 'raw-ev-fncall :torn)))))
     (multiple-value-bind (ended receipt) (fnn-owner-actor-join s worker)
-      (check (and ended (eq (third receipt) :fault) (= steps 1))
-             "raw ACL2 throw faults actor once"))))
+      (check (and ended (eq (third receipt) :fault) (= steps 1)
+                  (fnn-owner-service-stopping s))
+             "raw ACL2 throw faults actor once and stops the service without an escape callback"))))
 
 ;; The actual syncer operation emits result before physical lifecycle join;
 ;; the lifecycle holds its captured job and never self-removes its roster.

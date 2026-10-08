@@ -48,6 +48,11 @@
 (include-book "peer-carriage")
 (local (include-book "arithmetic/top" :dir :system))
 
+(local (defthmd fn-article-nonempty-true-list-is-consp-local-rewrite
+  (implies (and (true-listp xs) xs)
+           (consp xs))
+  :hints (("Goal" :by fn-article-nonempty-true-list-is-consp))))
+
 ; -----------------------------------------------------------------------------
 ; The projections (specifications).
 
@@ -737,7 +742,8 @@
 (verify-guards fn-ars-parse-lines
   :hints (("Goal"
            :in-theory
-           (e/d (fn-article-guard-backchaining)
+           (e/d (fn-article-guard-backchaining
+                fn-article-nonempty-true-list-is-consp-local-rewrite)
                 (fn-ars-next-line fn-ars-next-line-aux fn-ars-body-crlfp
                  fn-article-next-line fn-article-next-line-aux
                  fn-article-new-field fn-article-split-colon-aux
@@ -745,7 +751,8 @@
                  fn-article-finish-fields fn-article-body-crlfp)))))
 (verify-guards fn-ars-parse-lines-acc
   :hints (("Goal" :in-theory
-           (e/d (fn-article-guard-backchaining)
+           (e/d (fn-article-guard-backchaining
+                fn-article-nonempty-true-list-is-consp-local-rewrite)
                 (fn-ars-next-line fn-ars-next-line-aux
                  fn-article-next-line fn-article-next-line-aux
                  fn-article-new-field fn-article-line-value fn-article-line-rest

@@ -14,6 +14,7 @@
 (in-package "ACL2")
 (include-book "owner-time-model")
 (include-book "owner-commit-held")
+(include-book "defkeystone")
 
 (defun fn-otm-phase-of (s)
   (declare (xargs :guard t))
@@ -175,3 +176,100 @@
                  (:instance fn-otm-held-event-is-the-held-step
                             (s (mv-nth 1 (fn-otm-held-event s word)))
                             (event :completed-stopping))))))
+
+; The host-called labelled entry grows the held event, without a second
+; scheduler. The host executes these effects at their labels. :frames is
+; the no-member START's FNFD append/barrier before any caller submission.
+(defun fn-otm-held-plan (s event)
+  (declare (xargs :guard t))
+  (mv-let (action s2) (fn-otm-held-event s event)
+    (mv action s2 (fn-och-action-effects action))))
+
+; Every effect is labelled, and :off exactly for an I/O phase. This covers
+; the actual entry the host calls, including a START that kept no member.
+(defthm fn-otm-held-plan-labels-every-effect
+  (fn-och-labelsp (mv-nth 2 (fn-otm-held-plan s event)))
+  :hints (("Goal" :in-theory (e/d (fn-otm-held-plan fn-otm-held-event
+                                   fn-och-action-effects fn-och-step
+                                   fn-ocp-commit-step fn-ocs-commit-step)
+                                  (fn-otm-phase-of fn-otm-next-of fn-otm-held
+                                   fn-otm-with-step)))))
+
+(defteeth fn-otm-held-plan-labels-every-effect
+  :claim (() (fn-och-labelsp (mv-nth 2 (fn-otm-held-plan s event))))
+  :subject fn-otm-held-plan
+  :witness ((s (fn-otm-init)) (event :started-none-held))
+  :breaks ()
+  :mutations ((append-under-owner
+               (:conclusion
+                (fn-och-labelsp
+                 (cons (cons :owner :intents)
+                       (cdr (mv-nth 2 (fn-otm-held-plan s event))))))
+               ((s (fn-otm-init)) (event :started-none-held))
+               :fault "Run the no-member drain's feed append/barrier under O")))
+
+(defthm fn-otm-held-plan-no-member-drain-is-off-owner
+  (implies (and (not (fn-otm-held s))
+                (not (fn-ocs-in-flight-p (fn-otm-phase-of s))))
+           (mv-let (action s2 effects) (fn-otm-held-plan s :started-none-held)
+             (and (equal action :frames)
+                  (equal effects '((:off . :intents)))
+                  (fn-otm-held s2)
+                  (equal (fn-otm-phase-of s2) :staged)
+                  (not (fn-otm-committer-may-start s2)))))
+  :hints (("Goal" :in-theory (enable fn-otm-held-plan fn-otm-held-event
+                                    fn-och-action-effects fn-och-step))))
+
+(defteeth fn-otm-held-plan-no-member-drain-is-off-owner
+  :claim (((unheld (not (fn-otm-held s)))
+           (idle (not (fn-ocs-in-flight-p (fn-otm-phase-of s)))))
+          (mv-let (action s2 effects) (fn-otm-held-plan s :started-none-held)
+            (and (equal action :frames)
+                 (equal effects '((:off . :intents)))
+                 (fn-otm-held s2)
+                 (equal (fn-otm-phase-of s2) :staged)
+                 (not (fn-otm-committer-may-start s2)))))
+  :subject fn-otm-held-plan
+  :witness ((s (fn-otm-init)))
+  :breaks ((unheld ((s (fn-otm-with-step (fn-otm-init) :idle nil t))))
+           (idle ((s (fn-otm-with-step (fn-otm-init) :staged nil nil)))))
+  :mutations ((append-under-owner
+               (:conclusion
+                (equal (mv-nth 2 (fn-otm-held-plan s :started-none-held))
+                       '((:owner . :intents))))
+               ((s (fn-otm-init)))
+               :fault "Mutate the feed append's required execution label to :owner")))
+
+(defteeth fn-och-frames-held-until-the-job-returns
+  :claim (()
+          (and (equal (fn-och-step :idle nil nil :started-none-held)
+                      '(:frames :staged nil t))
+               (equal (mv-nth 0 (fn-och-step :staged nil t (fn-och-frames-event final)))
+                      (case final (:done :submit) (:uncertain :stop) (otherwise :fault)))
+               (iff (mv-nth 3 (fn-och-step :staged nil t (fn-och-frames-event final)))
+                    (not (equal final :done)))))
+  :subject fn-och-frames-event
+  :witness ((final :done))
+  :breaks ()
+  :mutations ((submit-on-uncertain
+               (:conclusion
+                (equal (mv-nth 0 (fn-och-step :staged nil t (fn-och-frames-event final)))
+                       :submit))
+               ((final :uncertain)) :fault "Submit after an ambiguous feed append")))
+
+(defteeth fn-och-held-crash-never-submits
+  :claim (((held held) (in-flight (fn-ocs-in-flight-p phase)))
+          (mv-let (action phase2 next2 held2) (fn-och-step phase next held :crash)
+            (and (equal action :stop)
+                 (equal phase2 :failed)
+                 (equal (mv-nth 0 (fn-och-step phase2 next2 held2 :completed)) :none))))
+  :subject fn-otm-held-plan
+  :witness ((held t) (phase :staged) (next nil))
+  :breaks ((held ((held nil) (phase :staged) (next nil)))
+           (in-flight ((held t) (phase :idle) (next nil))))
+  :mutations ((submit-after-crash
+               (:conclusion
+                (mv-let (action phase2 next2 held2) (fn-och-step phase next held :crash)
+                  (declare (ignore action))
+                  (equal (mv-nth 0 (fn-och-step phase2 next2 held2 :completed)) :submit)))
+               ((held t) (phase :staged) (next nil)) :fault "Complete a crashed job as accepted")))

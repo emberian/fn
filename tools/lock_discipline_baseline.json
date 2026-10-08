@@ -819,7 +819,7 @@
   },
   {
    "key": "R2|fnn-chmod|O:sb-posix:chmod",
-   "count": 35,
+   "count": 31,
    "rule": "R2",
    "category": "violation",
    "where": "host/native/io.lisp:842",
@@ -939,7 +939,7 @@
   },
   {
    "key": "R2|fnn-fstat|O:sb-posix:fstat",
-   "count": 26,
+   "count": 16,
    "rule": "R2",
    "category": "violation",
    "where": "host/native/io.lisp:564",
@@ -947,7 +947,7 @@
   },
   {
    "key": "R2|fnn-link|O:sb-posix:link",
-   "count": 14,
+   "count": 11,
    "rule": "R2",
    "category": "violation",
    "where": "host/native/io.lisp:837",
@@ -1035,7 +1035,7 @@
   },
   {
    "key": "R2|fnn-lstat|O:sb-posix:lstat",
-   "count": 28,
+   "count": 22,
    "rule": "R2",
    "category": "violation",
    "where": "host/native/io.lisp:567",
@@ -1043,7 +1043,7 @@
   },
   {
    "key": "R2|fnn-mkdir|O:sb-posix:mkdir",
-   "count": 14,
+   "count": 4,
    "rule": "R2",
    "category": "violation",
    "where": "host/native/io.lisp:841",
@@ -1128,22 +1128,6 @@
    "category": "violation",
    "where": "host/native/owner.lisp:1240",
    "reason": "sleep leaf sleep runs while holding O; reached from 10 site(s) under O, e.g. fnn-bpapp-deliver (host/native/bp-app.lisp:248)"
-  },
-  {
-   "key": "R2|fnn-owner-feed-open|O:sb-posix:ftruncate",
-   "count": 10,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/owner.lisp:1191",
-   "reason": "io leaf sb-posix:ftruncate runs while holding O; reached from 10 site(s) under O, e.g. fnn-owner-reclaim-request (host/native/admin.lisp:422)"
-  },
-  {
-   "key": "R2|fnn-owner-feed-open|O:sb-posix:lseek",
-   "count": 10,
-   "rule": "R2",
-   "category": "violation",
-   "where": "host/native/owner.lisp:1200",
-   "reason": "io leaf sb-posix:lseek runs while holding O; reached from 10 site(s) under O, e.g. fnn-owner-reclaim-request (host/native/admin.lisp:422)"
   },
   {
    "key": "R2|fnn-owner-receiver-turn-parser-locked|unresolved:callback",

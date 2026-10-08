@@ -1,0 +1,16 @@
+{
+ "id": "LOCK-R2-BP-APP-CLASS",
+ "title": "BP delivery must release O across commit and receipt I/O",
+ "detail": "REAL. fnn-bpapp-deliver calls fnn-bpapp-accept-locked inside fnn-quantum-bp. O protects the canonical receipt Store binding, current application plan and the complete submission sequence. fnn-owner-complete-bound-submission and fnn-owner-complete-bp-transit-submission call fnn-owner-commit-queued-locked, which runs fnn-owner-batch-job inline. A reader cannot enter its quantum until append, preallocation, fence and any extent realization return.",
+ "fix": "Use fn-otm-held-event / fn-och-step for held commit and fn-oqw-step for off-owner batch effects; retain the application plan across quanta under the ACL2 held gate. Trace receipt publication and cold payload reads separately: moving only the queued commit does not establish an entirely off-owner delivery.",
+ "owner": "deputy-C",
+ "state": "open",
+ "notes": [
+  "Statement first, lock-r2-class, 2026-10-08; traced checkout 414aed260. No numbered identifier required for descriptive LOCK repair IDs.",
+  "The cited fnn-owner-held-commit host macro is absent from this checkout; lane-commit-held-host contains an implementation to inspect as an integration dependency.",
+  "Full trail correction: most scoped durable I/O does NOT go through commit-queued-locked. It goes through fnn-owner-complete-bound-submission -> fnn-owner-attempt-served -> fnn-owner-attempt-filled -> fnn-owner-statement-committed -> fnn-owner-statement-barrier -> fnn-log-commit-open-batch. Thus lane-commit-held-host alone cannot drain the class: it moves the preceding queued batch, then executes the caller own submission body inside O again.",
+  "No BP host edits made. Its nine scoped keys remain. Required model work covers the caller own submit/take/intent/Store append and fence/resolution/publication, with the held gate keeping mutable application state coherent across each off-owner effect. The O pread trail additionally enters generic fn-owner-step through a fixed BP submit event; any path-sensitive GAP claim needs proof of the actual event restriction, not an informal reachability assertion.",
+  "Existing held-commit lane was inspected, not copied into this worktree; its host changes overlap C integration and do not solve the own-submission path above. Natives for C after a full split: tests.test_native_bp_app_clock, tests.test_native_bp_app_tally, tests.test_native_bp_transit_identity, tests.test_native_owner_scheduler, tests.test_native_slow_disk.",
+  "Round 2: waits on lane commit-held-host, which exclusively owns host/native/owner.lisp and host/native/bp-app.lisp now. Neither file is edited here. Dependency includes inline own-submission and identity/retention publication, not only the preceding queued batch. IO append registration must run in the same off-O held phase, with observation fed back before publication."
+ ]
+}

@@ -255,7 +255,6 @@
                             ;; rules that fire on any consp goal, only searched
                             ;; (2.4 s -> 1.6 s, persvati REPL).
                             nth member-equal fn-bs-ops-not-for-dir
-                            fn-nntp-article-idp-is-consp
                             
                             fn-nntp-newnews-candidate-is-projectable
                             fn-nntp-available-number-article-is-projectable)))))
@@ -556,7 +555,6 @@
                            (fn-bs-read-records fn-bs-record-of fn-sf-statep fn-bs-replay-visiblep
                             fn-bs-contiguous-namesp fn-bs-inode-list-knownp
                             fn-bs-all-fencedp fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
-                            fn-nntp-article-idp-is-consp
                             
                             fn-nntp-newnews-candidate-is-projectable
                             fn-nntp-available-number-article-is-projectable)))))

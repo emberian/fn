@@ -145,11 +145,12 @@
 (in-theory (disable adt-wrap1 adt-scalar-seq-p))
 
 ; The octet-sequence reader (books/def-representation.lisp, :scalar
-; :octet-seq): past the end of a list `nth' is NIL.  A defthmd: an instance
-; enables it for its own obligations, no other book sees a new rule.
-(defthmd adt-nth-beyond-len
+; :octet-seq): past the end of a list `nth' is NIL.  Not a rule
+; (:rule-classes nil): the generator's obligations enable a local twin of it.
+(defthm adt-nth-beyond-len
   (implies (and (natp i) (<= (len a) i))
            (equal (nth i a) nil))
+  :rule-classes nil
   :hints (("Goal" :in-theory (enable nth))))
 
 ; The octets [I, N) of a list, for the stobj-to-stobj copy loop of
