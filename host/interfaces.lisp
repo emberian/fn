@@ -6018,7 +6018,8 @@
 ; discharges frame-fit; the arena itself deliberately has no length ceiling.
 (definterface fn-pck-publish-plan-at :class :common-lisp-compliant
   :kinds ((cnt natp) (tail true-listp) (base natp))
-  :keystones (fn-pck-publish-plan-at-is-the-plan))
+  :keystones (fn-pck-publish-plan-at-context-is-the-plan
+              fn-pck-publish-plan-at-context-congruence))
 (definterface fn-pck-x-frame-preflight :class :common-lisp-compliant
   :keystones (fn-pck-x-frame-preflight-is-the-wire-preflight
               fn-pck-x-preflight-establishes-frame-fit))
@@ -6028,7 +6029,10 @@
               fn-cpl-x-write-frame-trailer-is-the-staging-trailer))
 (definterface fn-pck-x-stage-rows :class :common-lisp-compliant
   :kinds ((p natp) (base natp))
-  :keystones (fn-pck-x-stage-is-the-dirty fn-pck-x-image-after-commit))
+  :keystones (fn-pck-x-context-stage-is-the-dirty fn-pck-x-image-after-commit
+              fn-pck-x-stage-context-congruence
+              fn-pck-x-stage-summary-is-the-extended-prefix
+              fn-pck-x-stage-tail-is-the-extended-prefix))
 (definterface fn-pck-x-stage-root :class :common-lisp-compliant
   :keystones (fn-pck-x-stage-root-is-the-root-pages))
 (definterface pgs-x-commit :class :common-lisp-compliant
@@ -6044,7 +6048,8 @@
   :keystones (fn-pgs-fill-frame-is-frame-put))
 (definterface fn-pck-x-open :class :common-lisp-compliant
   :keystones (fn-pck-x-open-is-the-capture fn-pck-x-open-reads-bound
-              fn-pck-x-open-summary-is-the-root))
+              fn-pck-x-open-summary-is-the-root
+              fn-pck-x-open-tape-summary-is-the-prefix))
 (definterface fn-pck-x-open-selection :class :common-lisp-compliant
   :keystones (fn-pck-x-open-selection-is-the-selection))
 (definterface fn-pck-compact-floor :class :common-lisp-compliant
@@ -6069,3 +6074,7 @@
 (definterface pgs-x-open-page :class :common-lisp-compliant
   :kinds ((i natp))
   :keystones ((pgs-x-get-entry-is-nth-tab :via pgs-x-get-entry)))
+
+; The adopted slot is an open output; the host never compares slot numbers.
+(definterface pgs-x-commit-slot :class :common-lisp-compliant
+  :keystones (pgs-x-commit-slot-is-the-plan-slot))

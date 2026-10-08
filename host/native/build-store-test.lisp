@@ -47,6 +47,9 @@
 (include-book "books/paged-checkpoint-image")
 (include-book "books/paged-checkpoint-root")
 (include-book "books/paged-checkpoint-open")
+(include-book "books/paged-checkpoint-context-plan")
+(include-book "books/paged-checkpoint-summary")
+(include-book "books/pagestore-commit-slot")
 (include-book "books/checkpoint-payloads-exec")
 (include-book "books/pagestore-refine")
 ;; The default peer flight profile `init' writes (fn-pfp-default-octets).

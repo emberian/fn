@@ -7,6 +7,10 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
+(include-book "owner-checkpoint-open")
+(include-book "owner-export-request")
+(include-book "owner-control-post-reason")
+(include-book "peer-transit-authority")
 (include-book "peer-transit-indexed")
 (include-book "article-subject")
 (include-book "store-reclaim-owner-holders")

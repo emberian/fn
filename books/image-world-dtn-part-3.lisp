@@ -7,6 +7,9 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
+(include-book "identity-retain-carried")
+(include-book "history-columns-store")
+(include-book "owner-log-route")
 (include-book "owner-advance-carried")
 (include-book "owner-intent-carried")
 (include-book "owner-parse-carried")
