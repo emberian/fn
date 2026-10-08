@@ -1,3 +1,4 @@
+; UNHOOKED stage 0 (2026-10-08, D46): includes the D46-unhooked books/admission-semantic-node (via host/admission-semantic-node-host), which needs the reverted fn-evc-authorityp; out of the Makefile roots and every image world (planning/unhooked.json)
 ; Actual registered readout composition. This is a proof companion, never a
 ; served source validator. Current STATE/target establishment remains an
 ; actual producer obligation; neither job shape nor scalar completion proves it.

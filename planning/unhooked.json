@@ -13,6 +13,31 @@
       "why": "it is the account-adoption continuation, the producer D46 waits for (completion item 1); its fn-act-suspend guard is part of that completion"
     },
     {
+      "book": "books/admission-semantic-census-begin-refinement",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
+    },
+    {
+      "book": "books/admission-semantic-census-initial-order-refinement",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
+    },
+    {
+      "book": "books/admission-semantic-census-initial-refinement",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
+    },
+    {
+      "book": "books/admission-semantic-census-owner-refinement",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
+    },
+    {
+      "book": "books/admission-semantic-census-step-refinement",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
+    },
+    {
       "book": "books/admission-semantic-node",
       "decision": "D46",
       "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
@@ -136,6 +161,36 @@
       "book": "books/post-identity-captured-source-trace",
       "decision": "D43",
       "why": "depends on the acceptance-binding record field reverted in stage 0"
+    },
+    {
+      "book": "host/account-admission-semantic-host",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
+    },
+    {
+      "book": "host/admission-authority-dispatch-host",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
+    },
+    {
+      "book": "host/admission-authority-preparation-host",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
+    },
+    {
+      "book": "host/admission-history-tail-host",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
+    },
+    {
+      "book": "host/admission-semantic-census-host",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
+    },
+    {
+      "book": "host/admission-semantic-node-host",
+      "decision": "D46",
+      "why": "includes the D46-unhooked admission-semantic-node"
     },
     {
       "book": "tests/acl2/admission-semantic-node-tests",
