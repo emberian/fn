@@ -6013,3 +6013,41 @@
 (definterface fn-stid-host-reply-read :class ::program)
 (definterface fn-stid-host-line :class ::program)
 (definterface fn-stid-host-exit-code :class ::program)
+
+; PCK-2C-HOST-WIRING: the concrete checkpoint seam. The writer preflight
+; discharges frame-fit; the arena itself deliberately has no length ceiling.
+(definterface fn-pck-publish-plan-at :class :common-lisp-compliant
+  :kinds ((cnt natp) (tail true-listp) (base natp))
+  :keystones (fn-pck-publish-plan-at-is-the-plan))
+(definterface fn-pck-x-frame-preflight :class :common-lisp-compliant
+  :keystones (fn-pck-x-frame-preflight-is-the-wire-preflight
+              fn-pck-x-preflight-establishes-frame-fit))
+(definterface fn-cpl-x-write-frame :class :common-lisp-compliant
+  :kinds ((a natp) (n natp) (base natp))
+  :keystones (fn-cpl-x-write-frame-is-the-frame
+              fn-cpl-x-write-frame-trailer-is-the-staging-trailer))
+(definterface fn-pck-x-stage-rows :class :common-lisp-compliant
+  :kinds ((p natp) (base natp))
+  :keystones (fn-pck-x-stage-is-the-dirty fn-pck-x-image-after-commit))
+(definterface fn-pck-x-stage-root :class :common-lisp-compliant
+  :keystones (fn-pck-x-stage-root-is-the-root-pages))
+(definterface pgs-x-commit :class :common-lisp-compliant
+  :kinds ((n natp) (txid natp))
+  :keystones (pgs-x-commit-refines-commit))
+(definterface pgs-x-commit-durable :class :common-lisp-compliant
+  :keystones (fn-pck-x-image-after-commit))
+(definterface pgs-x-words-load :class :common-lisp-compliant
+  :kinds ((k natp) (n natp) (base natp))
+  :keystones (pgs-x-words-load-is-octets))
+(definterface fn-pgs-fill-frame :class :common-lisp-compliant
+  :kinds ((base natp))
+  :keystones (fn-pgs-fill-frame-is-frame-put))
+(definterface fn-pck-x-open :class :common-lisp-compliant
+  :keystones (fn-pck-x-open-is-the-capture fn-pck-x-open-reads-bound
+              fn-pck-x-open-summary-is-the-root))
+(definterface fn-pck-x-open-selection :class :common-lisp-compliant
+  :keystones (fn-pck-x-open-selection-is-the-selection))
+(definterface fn-pck-compact-floor :class :common-lisp-compliant
+  :keystones (fn-pck-compact-keeps-both-slots))
+(definterface fn-pck-compact-log :class :common-lisp-compliant
+  :keystones (fn-pck-compact-keeps-both-slots fn-pck-crash-after-compaction))

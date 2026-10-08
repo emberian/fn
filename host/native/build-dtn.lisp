@@ -64,6 +64,14 @@
 ;; to the generic fn-cat.  After the history attachment (its closure defines
 ;; fn-hist), before the first book that introduces fn-cat.
 (include-book "books/catalog-paged-attach")
+;; Paged checkpoint entries and the resident pgs-mem stobj. Attachments above
+;; must precede these includes, which reach the generic arena and catalog.
+(include-book "books/paged-checkpoint-host")
+(include-book "books/paged-checkpoint-image")
+(include-book "books/paged-checkpoint-root")
+(include-book "books/paged-checkpoint-open")
+(include-book "books/checkpoint-payloads-exec")
+(include-book "books/pagestore-refine")
 ;; The peer flight books reach `fn-arena' (heap-store-figure includes
 ;; owner-checkpoint-pipeline), so they follow the arena attachment.
 (include-book "books/peer-flight-profile")
