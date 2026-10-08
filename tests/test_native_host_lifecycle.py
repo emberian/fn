@@ -337,6 +337,8 @@ class IdleTimerTests(unittest.TestCase):
             passes = [int(m) for m in re.findall(rb"OVER (?:cursor|empty)-yield cid=\d+ passes=(\d+)",
                                                   owner.stderr.since(0))]
             if not passes:
+                # waiver-ok: REACH-PROSE-OWNER-SERVED-SEAMS (c), owner deputy-P -- the OVER
+                # cursor arm (PRF-1020); the skip ends when OVER replies yield.
                 # unreachable-in-composition: OVER is not served on the
                 # cursor arm at this revision (over_pins 0/4, a known served
                 # defect), so no reply yields and the timer cannot meet a
