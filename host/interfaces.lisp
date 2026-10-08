@@ -2140,8 +2140,7 @@
 (definterface fn-owner-transit-outcome
   :class ::program
   :keystones
-  ((fn-oct-transit-is-own-transit-outcome-under-ocl-relation :via fn-oct-transit)
-   (fn-oop-transit-outcome-is-own-transit-outcome :via fn-oop-transit-outcome)))
+  ((fn-oct-transit-is-own-transit-outcome-under-ocl-relation :via fn-oct-transit)))
 
 (definterface fn-owner-transit-reason
   :class :common-lisp-compliant)
