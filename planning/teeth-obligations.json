@@ -12386,9 +12386,123 @@
    "registry": true
   },
   {
+   "book_digest": "4bde40afd7b29b10efb658a6b6ba5adb89c8d2c8d5a067de650b6283f0dd5a32",
+   "bounds": [],
+   "claim_digest": "67237b5245c7ea5d76815334bf8c398c1c3d0bb388ec777d1e5a29f84d3a73b9",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-nco-lost-owner-after-receipt-is-uncertain",
+   "owed_met": null,
+   "owner_book": "tests/acl2/control-observation-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-nco-client-observed-status",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-nco-observe-refuses-exactly-past-the-operator-bound",
    "registry": true
+  },
+  {
+   "book_digest": "4bde40afd7b29b10efb658a6b6ba5adb89c8d2c8d5a067de650b6283f0dd5a32",
+   "bounds": [],
+   "claim_digest": "5f882a4cf2e55c8f018e2fc4c8b816323f441abfdaf51adf2bd204e1d43fc07e",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-nco-only-job-outcome-leaves-requested",
+   "owed_met": null,
+   "owner_book": "tests/acl2/control-observation-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": "fn-nco-owner-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "4bde40afd7b29b10efb658a6b6ba5adb89c8d2c8d5a067de650b6283f0dd5a32",
+   "bounds": [],
+   "claim_digest": "8b71c272fd751d7a9a8e6897b91bb58f6131b398e67ed147356efed534595c07",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-nco-owner-step-has-no-orphan",
+   "owed_met": null,
+   "owner_book": "tests/acl2/control-observation-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-nco-owner-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "4bde40afd7b29b10efb658a6b6ba5adb89c8d2c8d5a067de650b6283f0dd5a32",
+   "bounds": [],
+   "claim_digest": "6e4da9b60faba1c04b43f5c5be286fd2db7d898660f2dfed3d2e50f58a9d6ef7",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-nco-receipt-completes-exactly-once",
+   "owed_met": null,
+   "owner_book": "tests/acl2/control-observation-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": "fn-nco-owner-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "4bde40afd7b29b10efb658a6b6ba5adb89c8d2c8d5a067de650b6283f0dd5a32",
+   "bounds": [],
+   "claim_digest": "e9403227d05cf39e1e2e36f668f8536b4a0687d5f63c7fe3959fd08a3422052c",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-nco-unknown-receipt-status",
+   "owed_met": null,
+   "owner_book": "tests/acl2/control-observation-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-nco-wire-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "4bde40afd7b29b10efb658a6b6ba5adb89c8d2c8d5a067de650b6283f0dd5a32",
+   "bounds": [],
+   "claim_digest": "eb35bced9e45ce3ced7ee74f66d2a745b8fdd23778f4331ed51b2c9840551b0c",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-nco-unknown-receipt-stops-with-exit-3",
+   "owed_met": null,
+   "owner_book": "tests/acl2/control-observation-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-nco-client-status",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -13902,6 +14016,44 @@
    "registry": true
   },
   {
+   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "bounds": [],
+   "claim_digest": "40d96b0f89462dcebfa21fb3abaf131ea2f10de00b69120f636033edcf394643",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-och-frames-held-until-the-job-returns",
+   "owed_met": null,
+   "owner_book": "books/owner-time-held.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-och-frames-event",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "bounds": [],
+   "claim_digest": "e69f83cecb066af43282d6595faac23e4beb3fc220c0b79b86aeb7c0307c603b",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-och-held-crash-never-submits",
+   "owed_met": null,
+   "owner_book": "books/owner-time-held.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-otm-held-plan",
+   "witness": "executable"
+  },
+  {
    "book": "books/owner-checkpoint-open.lisp",
    "class": "hand",
    "critical": "durability",
@@ -14916,14 +15068,6 @@
    "class": "hand",
    "name": "fn-olog-socket-connection-line-is-one-line",
    "registry": true
-  },
-  {
-   "book": "books/store-log-route.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-olr-crash-reads-a-prefix-of-the-history",
-   "registry": true,
-   "statement_digest": "768a644d2c25a9142be3a2892af190a787d4dc8e5c7d1d6c27f33fcc654c6da4"
   },
   {
    "book": "books/store-log-extend.lisp",
@@ -16322,6 +16466,44 @@
    "class": "hand",
    "name": "fn-otm-health-disk-stalled-names-the-stall",
    "registry": true
+  },
+  {
+   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "bounds": [],
+   "claim_digest": "3f6b6e2d7922534051713035019d9f338107c3f828d2da2f9a143962f9283beb",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-otm-held-plan-labels-every-effect",
+   "owed_met": null,
+   "owner_book": "books/owner-time-held.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-otm-held-plan",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "bounds": [],
+   "claim_digest": "5a8521564440a5bf5a00937249c19929899eb589085b03f2fc692d612d46d65d",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-otm-held-plan-no-member-drain-is-off-owner",
+   "owed_met": null,
+   "owner_book": "books/owner-time-held.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-otm-held-plan",
+   "witness": "executable"
   },
   {
    "book_digest": "44563ac2a789221752a73b7b3a369eb5e9b4b841db9c8fc30be8e18e5d00021a",
@@ -21715,14 +21897,6 @@
    "book": "books/recovery-refinement.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new",
-   "registry": true,
-   "statement_digest": "1b9637869447013b6dcb1a1c6677cc4cc3c792edfb875c2a2eca639248eb05ac"
-  },
-  {
-   "book": "books/recovery-refinement.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-rr-medium-full-open-holds-its-records",
    "registry": true,
    "statement_digest": "eada7c6d65f985859e07a35021c26224ba675111c84b2d959bfaff0d5cc1a416"
@@ -25593,27 +25767,6 @@
   {
    "class": "hand",
    "name": "fn-stxe-token-code-of-code-token",
-   "registry": true
-  },
-  {
-   "book": "books/store-export-durability.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-sxd-crash-is-incomplete-or-complete",
-   "registry": true,
-   "statement_digest": "0644f138f5cbb8f40e67086860fbbd55bef204cd0dc21bd7f37a3f7997a919bc"
-  },
-  {
-   "book": "books/store-export-durability.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-sxd-import-verdict-is-incomplete-or-complete",
-   "registry": true,
-   "statement_digest": "8ab1e23ac1eaaf664d83ea559e3d1afb974bcbc4dfa8cff47f1f27b167c93f06"
-  },
-  {
-   "class": "hand",
-   "name": "fn-sxi-stream-plan-is-the-import-plan",
    "registry": true
   },
   {
