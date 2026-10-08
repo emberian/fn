@@ -327,6 +327,12 @@ class LiveReconfigurationImageTests(unittest.TestCase):
 GENERATIONS = 500
 
 
+def history_policy_requests(count):
+    """Grow configuration history while keeping the live group names fixed."""
+    for i in range(count):
+        yield ("group", "policy", "fn.test", "n" if i % 2 == 0 else "y")
+
+
 @requires(IMAGE)
 class LiveReconfigurationCostTests(unittest.TestCase):
     """Sweep S033: a live reconfiguration reads no configuration history
@@ -338,7 +344,9 @@ class LiveReconfigurationCostTests(unittest.TestCase):
 
     Measured with FN_OWNER_MEASURE=1 (the owner's per-class hold report at
     stop): the control holds of 20 `group create's at about 500
-    generations against 20 on a fresh store.  The witness of correctness
+    generations against 20 on a fresh store. Depth comes from alternating
+    fn.test's posting policy, keeping the group-name projection bounded.
+    The witness of correctness
     at the same depth: an occupied next name is refused by name (:occupied)
     and leaves the history unchanged."""
 
@@ -373,7 +381,12 @@ class LiveReconfigurationCostTests(unittest.TestCase):
     def test_reconfiguration_hold_does_not_grow_with_the_history(self):
         shallow = self.measured("fn.shallow", 20)
         owner = self.node.start()
-        self.creates("fn.depth", GENERATIONS)
+        # 500 new names exceed fn-cfg-delta-reason's line-projection ceiling
+        # before the depth measurement. Policy changes still publish one
+        # record each, preserving the history-depth control and 20 timed creates.
+        for request in history_policy_requests(GENERATIONS):
+            changed = self.node.operator(*request)
+            self.assertEqual(changed.returncode, EXIT_OK, changed.stderr.decode())
         self.node.stop(process=owner)
         deep = self.measured("fn.deep", 20)
         depth = len(self.config_files())
