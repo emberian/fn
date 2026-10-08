@@ -6001,3 +6001,26 @@
 (definterface fn-stid-host-reply-read :class ::program)
 (definterface fn-stid-host-line :class ::program)
 (definterface fn-stid-host-exit-code :class ::program)
+
+; Control receipt decisions; kinds copied from each guard.
+(definterface fn-nco-at :class :common-lisp-compliant :kinds ((n natp)))
+(definterface fn-nco-client-follow :class :common-lisp-compliant)
+(definterface fn-nco-client-heldp :class :common-lisp-compliant)
+(definterface fn-nco-client-status :class :common-lisp-compliant
+  :keystones (fn-nco-unknown-receipt-stops-with-exit-3))
+(definterface fn-nco-client-waitp :class :common-lisp-compliant)
+(definterface fn-nco-epoch-octets :class :common-lisp-compliant)
+(definterface fn-nco-initial :class :common-lisp-compliant)
+(definterface fn-nco-owner-publication-word :class :common-lisp-compliant)
+(definterface fn-nco-owner-step :class :common-lisp-compliant
+  :keystones (fn-nco-receipt-completes-exactly-once fn-nco-issued-receipt-is-requested
+              fn-nco-owner-step-has-no-orphan fn-nco-only-job-outcome-leaves-requested))
+(definterface fn-nco-pending-job :class :common-lisp-compliant)
+(definterface fn-nco-receipt-command :class :common-lisp-compliant)
+(definterface fn-nco-status-argv :class :common-lisp-compliant)
+(definterface fn-nco-client-releasep :class :common-lisp-compliant)
+(definterface fn-nco-wait-seconds :class :common-lisp-compliant)
+(definterface fn-nco-wire-step :class :common-lisp-compliant
+  :keystones (fn-nco-unknown-receipt-status))
+(definterface fn-nco-work-class :class :common-lisp-compliant)
+(definterface fn-owner-sco-count :class :common-lisp-compliant)

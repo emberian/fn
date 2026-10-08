@@ -75,6 +75,45 @@ independent attacker that can replace entries. Stop hooks use shutdown only to
 wake connection owners, which perform the final close before the close hook
 releases the lease. The control adapter never opens the Store.
 
+Store-sized maintenance uses the declared work class in
+`books/control-observation.lisp`. The shared declaration supplies both
+`fn-native-admin-plan` and `fn-nco-work-class`: reclaim (ordinary, recorded,
+and dry run), compact, and checkpoint all acknowledge `:requested` with a
+receipt before starting their work. Compact and checkpoint use the existing
+`compaction request` plan. Administrative FNCT kinds 3/17 select this class
+by verb; the other assigned kinds have bounded request work. Identity 24/25
+and consumer 4/5/6/9/22 remain bounded.
+
+The control owner retains one outstanding maintenance receipt in its existing
+control state, serialized by the control lock. Acceptance atomically records
+both the receipt and its one pending producer job (receipt plus argv).
+`fn-nco-owner-step-has-no-orphan` preserves their bijection from initialization
+through every reachable state; only the matching job's terminal outcome removes
+that job and completes the receipt. Its registered control worker sends the
+acknowledgement, then reads and runs the job held in that state. Reclaim records
+the pass's result; publication observes the requested durable frontier or its
+named deferral. `fn-nco-owner-step` admits one terminal observation per receipt
+and refuses a second; repeated status reads preserve the recorded result.
+The client prints the receipt, then reads `control receipt status TOKEN` until
+ACL2 classifies the result as terminal. Each exchange retains its request-sized
+reply deadline and ACL2 supplies the poll interval; there is no total work
+deadline. A received terminal result is released in a separate exchange.
+
+An unobserved result is retained and further maintenance admission is refused
+with its token, rather than overwriting it. An operator can resume observation
+with `fn operator CONFIG control receipt status TOKEN`, then use
+`fn operator CONFIG control receipt release TOKEN` after reading the outcome.
+This is an outstanding-operation admission limit, not a stored-data limit.
+Receipts are process-local, scoped by a fresh startup entropy observation and
+ACL2's increasing serial. A status query for a receipt this owner does not hold
+answers `receipt-unknown`, distinct from requested and terminal completion
+words. The CLI maps that observation to uncertain (exit 3) and stops polling.
+This covers death/restart and unissued serials; persistence across process
+death is not claimed beyond this observation contract. The pending job cannot
+be orphaned by an owner transition. Eventual execution still relies on host
+scheduling and the producer returning an outcome; the scheduling/order checks
+exercise the host, not an ACL2 proof of SBCL scheduling.
+
 HST-002 also requires bounded active control clients, one absolute receive
 deadline per frame and linear input accumulation, including one-byte reads.
 The integrated transport now enforces the ACL2-projected active-client ceiling
