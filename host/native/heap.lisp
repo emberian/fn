@@ -409,7 +409,7 @@ share this boundary, including standalone BP owners."
 ;; selected fixed backing only for a served run, before output allocation;
 ;; ACL2 chooses both the scope and the reservation.
 (defun fnn-heap-extend-reservation (base action cold-resources output-resources root core machine
-                                    profile observed &optional peer reclaim-live)
+                                    profile observed &optional peer reclaim-live bp-terms)
   "The same policy extensions for the launch probe and next-run diagnostics.
 PROFILE and OBSERVED are the base decision's: the served run's figure holds
 the owner's protected runtime for that observed store (books/page-read-startup.lisp
@@ -418,6 +418,7 @@ operator's opt-in, `[resources] reclaim_live', books/reclaim-reservation.lisp)
 extends the store decision first, so the cold and output allowances are added
 to a space that already holds it."
   (fnn-core 'fn-orv-extend-reservation
+            (fnn-core 'fn-bph-extend-reservation
             (fnn-core 'fn-pfr-extend-operation-reservation
                       (fnn-core 'fn-prstartup-extend-operation-reservation
                                 (fnn-core 'fn-crv-extend-reservation
@@ -427,15 +428,30 @@ to a space that already holds it."
                                 action cold-resources root (fnn-core 'fn-pio-direct-workers)
                                 (fnn-extent-cache-limit) core machine profile observed)
                       action peer core machine)
+            bp-terms core machine)
             output-resources core machine))
 
-(defun fnn-heap-reservation (profile connections &optional action observed cold-resources output-resources root peer reclaim-live)
+(defun fnn-heap-bp-terms (argv)
+  "A `bp-node serve' command's BP terms, observed as fnn-bp-session-install
+reads them: the session profile and node profile under its journal root, the
+transfer MRU argument and the segment MRU.  NIL for every other command.  The
+sizing is ACL2's (fn-bph-extend-reservation); this only reads the files."
+  (when (fnn-core 'fn-bph-node-serve-p argv)
+    (let ((journal (fnn-core 'fn-bph-node-journal argv))
+          (transfer (fnn-core 'fn-bph-node-transfer argv +fnn-tcl-transfer-mru+)))
+      (unless transfer
+        (fnn-refuse "~a" (fnn-core 'fn-bph-refusal-line :transfer-mru)))
+      (list (fnn-bp-session-profile journal) (fnn-bps-read-profile journal)
+            transfer +fnn-tcl-segment-mru+))))
+
+(defun fnn-heap-reservation (profile connections &optional action observed cold-resources output-resources root peer reclaim-live
+                             bp-terms)
   (let* ((core (fnn-heap-image-observation))
          (machine (fnn-heap-observations))
          (base (fnn-core 'fn-heap-reserve-operation-decide action profile core
                          +fnn-gc-nursery-octets+ machine connections observed)))
     (fnn-heap-extend-reservation base action cold-resources output-resources root core machine
-                                 profile observed peer reclaim-live)))
+                                 profile observed peer reclaim-live bp-terms)))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
@@ -444,7 +460,7 @@ to a space that already holds it."
                                          reclaim-live)
                        (fnn-heap-command-profile argv)
                      (fnn-heap-reservation profile connections action observed cold-resources output-resources root peer
-                                           reclaim-live)))
+                                           reclaim-live (fnn-heap-bp-terms argv))))
          (line (fnn-core 'fn-heap-reserve-report-line decision))
          (code (fnn-core 'fn-heap-decision-exit-code decision)))
     ;; The decision line on stdout whatever it is: the launcher tells ACL2's

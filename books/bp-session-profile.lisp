@@ -1,6 +1,7 @@
 ; Explicit BP retained-context admission profile, separate from held custody.
 (in-package "ACL2")
 (include-book "bp-node-budget-input")
+(include-book "bp-node-profile")
 (defun fn-bpsp-profilep (p)
  (declare (xargs :guard t))
  (and (true-listp p) (equal (len p) 6)
@@ -79,6 +80,27 @@
  ; output, plus fixed context/closures. Full semantic decode/collector tariff
  ; refinement remains open, so this is a staged transport projection.
  (+ 65536 (* 64 (+ (nfix transfer) (nfix segment))) 8192))
+;; THE sizing of a node's BP sessions, from the profiles.  The startup check and
+;; the launcher's heap probe (books/bp-heap-command.lisp) both read this one
+;; figure; the host only supplies what it observed.
+(defun fn-bpsp-table (profile)
+ (declare (xargs :guard (fn-bpsp-profilep profile)))
+ (+ 8192 (* 272 (+ 2 (first profile) (second profile)))))
+(defun fn-bpsp-minimum (profile transfer segment)
+ (declare (xargs :guard (fn-bpsp-profilep profile)))
+ (+ (fn-bpsp-table profile)
+    (* (+ (first profile) (second profile)) (fn-bpsp-session-resident transfer segment))))
+; The session allowance the node holds: the profile's resident figure, or the
+; minimum when it names none.  NIL when the profile or the spans are invalid,
+; or when the figure is below the minimum or unrepresentable.
+(defun fn-bpsp-allowance (profile transfer segment)
+ (declare (xargs :guard t))
+ (and (fn-bpsp-profilep profile) (posp transfer) (posp segment)
+      (let ((allowance (if (third profile) (third profile)
+                         (fn-bpsp-minimum profile transfer segment))))
+       (and (<= (fn-bpsp-minimum profile transfer segment) allowance)
+            (< allowance (expt 2 64))
+            allowance))))
 (defun fn-bpsp-startup (profile transfer segment dynamic store-need bp-held-need)
  (declare (xargs :guard t))
  (cond
@@ -86,16 +108,14 @@
              (natp dynamic) (natp store-need) (natp bp-held-need)))
    (list :refused :invalid-bp-session-profile))
   (t
-   (let* ((n (+ (first profile) (second profile)))
-          (each (fn-bpsp-session-resident transfer segment))
-          (table (+ 8192 (* 272 (+ 2 n))))
-          (minimum (+ table (* n each)))
-          (allowance (if (third profile) (third profile) minimum)))
-    (cond ((or (< allowance minimum) (<= (expt 2 64) allowance))
+   (let ((allowance (fn-bpsp-allowance profile transfer segment)))
+    (cond ((not allowance)
            (list :refused :bp-session-profile-too-small))
           ((< dynamic (+ store-need bp-held-need allowance))
            (list :refused :bp-session-capacity-not-held))
-          (t (list :hold allowance table each (first profile) (second profile) (fourth profile))))))))
+          (t (list :hold allowance (fn-bpsp-table profile)
+                   (fn-bpsp-session-resident transfer segment)
+                   (first profile) (second profile) (fourth profile))))))))
 ; Fixed receipt record; neither a timeout nor a protocol outcome fabricates
 ; a physical receipt. SLOT/GEN are the typed bank's draw token.
 (defun fn-bpsg-row (slot gen class)
@@ -168,6 +188,53 @@
  ; Both negotiated receive range and a complete retained outbound fragment
  ; plan fit this conservative sum; the stored bundle may exceed contact MRU.
  (+ (nfix transfer) (nfix bundle)))
+
+;; The BP terms of a node serve, as one figure.  PROFILE is the session profile,
+;; NODE the node profile, TRANSFER-MRU the contact's transfer MRU, SEGMENT the
+;; segment MRU.  NIL when the terms are invalid or unfunded.
+(defun fn-bpsp-capacity-octets (profile transfer segment held rows adu)
+ (declare (xargs :guard t))
+ (let ((allowance (fn-bpsp-allowance profile transfer segment)))
+  (and allowance (natp held) (natp rows) (natp adu)
+       (+ (fn-bpsp-held-projection held rows adu) allowance))))
+(defun fn-bpsp-node-wire-span (node transfer-mru)
+ (declare (xargs :guard t))
+ (fn-bpsp-captured-wire-span transfer-mru (fn-bpnpf-bundle-octets node)))
+(defun fn-bpsp-node-capacity (profile node transfer-mru segment)
+ (declare (xargs :guard t))
+ (fn-bpsp-capacity-octets profile (fn-bpsp-node-wire-span node transfer-mru) segment
+  (fn-bpnpf-held-octets node) (fn-bpnpf-rows node) (fn-bpnpf-adu-octets node)))
+; The startup check as the node runs it (host: fnn-bp-session-install).
+(defun fn-bpsp-node-startup (profile node transfer-mru segment dynamic store-need)
+ (declare (xargs :guard t))
+ (fn-bpsp-startup profile (fn-bpsp-node-wire-span node transfer-mru) segment dynamic store-need
+  (fn-bpsp-held-projection (fn-bpnpf-held-octets node) (fn-bpnpf-rows node)
+                           (fn-bpnpf-adu-octets node))))
+
+(defthm fn-bpsp-capacity-octets-natp
+ (implies (fn-bpsp-capacity-octets profile transfer segment held rows adu)
+          (natp (fn-bpsp-capacity-octets profile transfer segment held rows adu)))
+ :rule-classes :forward-chaining)
+(defthm fn-bpsp-node-capacity-natp
+ (implies (fn-bpsp-node-capacity profile node transfer-mru segment)
+          (natp (fn-bpsp-node-capacity profile node transfer-mru segment)))
+ :rule-classes :forward-chaining
+ :hints (("Goal" :in-theory (enable fn-bpsp-node-capacity))))
+; KEYSTONE (the figure is the check): the node holds its sessions exactly when
+; the dynamic space holds the store figure plus the one capacity figure.
+(defthm fn-bpsp-node-startup-holds-the-capacity
+ (implies (and (natp dynamic) (natp store-need)
+               (fn-bpsp-node-capacity profile node transfer-mru segment)
+               (<= (+ store-need (fn-bpsp-node-capacity profile node transfer-mru segment)) dynamic))
+          (equal (car (fn-bpsp-node-startup profile node transfer-mru segment dynamic store-need))
+                 :hold)))
+; TEETH: a dynamic space below it is refused by name.
+(defthm fn-bpsp-node-startup-refuses-below-the-capacity
+ (implies (and (natp dynamic) (natp store-need)
+               (fn-bpsp-node-capacity profile node transfer-mru segment)
+               (< dynamic (+ store-need (fn-bpsp-node-capacity profile node transfer-mru segment))))
+          (equal (fn-bpsp-node-startup profile node transfer-mru segment dynamic store-need)
+                 '(:refused :bp-session-capacity-not-held))))
 
 (defun fn-bpsp-root-release-ready (held)
  (declare (xargs :guard t)) (and (natp held) (equal held 0)))

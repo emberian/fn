@@ -4505,14 +4505,20 @@
          (state (f-put-global 'fn-owner-exposure (cdr r) state)))
     (value (if (equal (car r) :proceed) :proceed (cadr (car r))))))
 
-;; On a receive timeout: :keep or :close (RFC 3977 3.1: close, send nothing).
-(defun fn-owner-exposure-idle (id state)
+;; On a receive timeout: (DECISION TAIL'), DECISION :keep, :close (RFC 3977
+;; 3.1: close, send nothing) or (:refuse REASON).  TAIL is the reply's send
+;; state while the kernel still queues part of it (nil otherwise) and OBS the
+;; mux's (NOW-MS OUTQ HANDED): books/public-exposure-reply.lisp
+;; fn-exp-idle-delivery, which is fn-exp-idle exactly when there is no tail
+;; (fn-exp-idle-delivery-is-idle-without-delivery) and counts the peer
+;; reading the tail as activity (CONVERGE-2 row 20).
+(defun fn-owner-exposure-idle (id tail obs state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((r (fn-exp-idle (fn-owner-exposure-state state)
-                         (fn-owner-exposure-limits state) id
-                         (fn-owner-exposure-now state)))
-         (state (f-put-global 'fn-owner-exposure (cdr r) state)))
-    (value (car r))))
+  (let* ((r (fn-exp-idle-delivery (fn-owner-exposure-state state)
+                                  (fn-owner-exposure-limits state) id
+                                  (fn-owner-exposure-now state) tail obs))
+         (state (f-put-global 'fn-owner-exposure (cadr r) state)))
+    (value (list (car r) (caddr r)))))
 
 ; The transport accepted the whole of a reply whose drain outlasted its step:
 ; its last activity advances (books/public-exposure-reply.lisp
