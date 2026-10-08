@@ -298,6 +298,10 @@ unbounded (&rest or &key)."
 ;; The send window (fnn-mux-send-window: a setsockopt on the real socket) has no
 ;; socket here; the scripted transport above is the window.
 (defun fnn-mux-send-window (fd) (declare (ignore fd)) nil)
+;; The send window's observations (ioctl SIOCOUTQ / SIOCOUTQNSD on the real
+;; socket): the scripted transport keeps nothing unsent.
+(defun fnn-mux-socket-outq (fd) (declare (ignore fd)) 0)
+(defun fnn-mux-send-notsent (conn) (declare (ignore conn)) 0)
 (defvar *send-notsent* 0)
 (defun fnn-mux-send-notsent (conn) (declare (ignore conn)) *send-notsent*)
 
