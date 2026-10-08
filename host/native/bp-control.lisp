@@ -171,11 +171,22 @@ released, as it did when the drive ran in the reconfiguration's own section."
                      :fault))))
            (let* ((word (if (consp status) (second status) status))
                   (reason (and (consp status) (third status)))
-                  (reply (fnn-control-reply-octets
-                          (cond ((and (consp status) (not (eq (first status) :reason)))
-                                 status)
-                                (reasoned (list :reasoned-reply word reason nil))
-                                (t word)))))
+                  ;; A read handler's reply is already sealed whole by ACL2
+                  ;; (the decided profile, FNCT 27; the live status page);
+                  ;; every other status is the BP turn's word, as before.
+                  ;; (control.lisp's full reply dispatcher is not in the DTN
+                  ;; build; this owner needs only these three shapes.)
+                  (octets (cond ((and (consp status)
+                                      (member (first status) '(:sealed-reply :live-status-reply)))
+                                 (second status))
+                                ((and (consp status) (not (eq (first status) :reason)))
+                                 (fnn-fault "BP control has no encoder for reply ~s" (first status)))
+                                (reasoned (fnn-core 'fn-native-control-host-lined-reply-encode
+                                                    word reason nil))
+                                (t (fnn-core 'fn-native-control-host-reply-encode word))))
+                  (reply (if (fnn-octet-list-p octets)
+                             (fnn-octets octets)
+                           (fnn-fault "ACL2 refused a BP local-control reply status"))))
              ;; A lost answer does not change a durable admin completion.
              (ignore-errors
                (fnn-send-all (fnn-socket-fd socket) reply
