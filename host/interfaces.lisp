@@ -905,9 +905,20 @@
 (definterface fn-otm-jw-truncated
   :class :common-lisp-compliant)
 
-(definterface fn-otm-next
+; A live reconfiguration's hold on the gate (ruling 19, books/owner-time-reconfig.lisp;
+; host/native/owner.lisp fnn-owner-reconfig-hold, fnn-owner-gate-pick).
+(definterface fn-otm-hold-next
   :class :common-lisp-compliant
-  :keystones (fn-otm-next-is-ocp-next))
+  :keystones (fn-otm-hold-admits-only-inspect-commit-and-reader
+              fn-otm-hold-next-without-the-hold-is-next))
+
+(definterface fn-otm-hold-begin
+  :class :common-lisp-compliant
+  :keystones (fn-otm-hold-begin-and-end))
+
+(definterface fn-otm-hold-end
+  :class :common-lisp-compliant
+  :keystones (fn-otm-hold-begin-and-end))
 
 (definterface fn-otm-note-step
   :class :common-lisp-compliant)
@@ -1747,18 +1758,16 @@
   :class ::program
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
-(definterface fn-owner-feed-journal-begin
-  :class :common-lisp-compliant)
-
-(definterface fn-owner-feed-journal-offset
-  :class :common-lisp-compliant)
-
 (definterface fn-owner-feed-journal-prefix-size
   :class :common-lisp-compliant)
 
-(definterface fn-owner-feed-journal-scan
+; The journal a live reconfiguration opens off the owner (ruling 19): the host
+; runs the pure scanner over the frames it read and applies the entries it
+; returned here under the owner (books/owner-reconfig-phased.lisp
+; (:feed-replay . PEER)).
+(definterface fn-owner-feed-journal-replay
   :class ::program
-  :kinds ((peer-octets fn-cbor-octet-listp) (frame fn-cbor-octet-listp)))
+  :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-feed-port
   :class ::program
@@ -1997,6 +2006,13 @@
 
 (definterface fn-owner-reader-views-capture
   :class ::program)
+
+; The live reconfiguration as ACL2-ordered quanta (ruling 19): the host's
+; loop over this step, in host/native/admin.lisp fnn-owner-live-reconfigure,
+; runs each effect it names where its label says.
+(definterface fn-orp-step
+  :class :common-lisp-compliant
+  :keystones ((fn-orp-step-runs-the-phased-run :step-of fn-orp-trace)))
 
 (definterface fn-owner-reconfigure-authorizedp
   :class :common-lisp-compliant)
@@ -2413,6 +2429,9 @@
   :class ::program)
 
 (definterface fn-feed-journal-phase-step
+  :class :common-lisp-compliant)
+
+(definterface fn-feed-journal-scan
   :class :common-lisp-compliant)
 
 (definterface fn-feed-journal-prefix

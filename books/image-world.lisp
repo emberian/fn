@@ -398,6 +398,8 @@
 (include-book "connection-budget")
 (include-book "tls-proxy")
 (include-book "owner-stop-drain")
+(include-book "owner-reconfig-phased")
+(include-book "owner-time-reconfig")
 (include-book "served-available-read")
 (include-book "article-stream-owner")
 (include-book "owner-time-journal-writer")

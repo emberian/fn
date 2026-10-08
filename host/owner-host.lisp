@@ -269,6 +269,10 @@
 ;; host/native/owner.lisp fnn-owner-drain-service calls in every image.
 (include-book "../books/owner-stop-drain")
 (include-book "../books/owner-time-admission")
+;; Ruling 19: the live reconfiguration as quanta (fn-orp-step), which
+;; host/native/admin.lisp fnn-owner-live-reconfigure drives in every image.
+(include-book "../books/owner-reconfig-phased")
+(include-book "../books/owner-time-reconfig")
 ;; Lane zero-copy-commit: the articles in flight within the slots the figure
 ;; holds (fn-oas-read-span, over fn-otm-read-span).
 (include-book "../books/owner-article-slots")
@@ -5561,6 +5565,40 @@ itself."
                                       (nth 1 result) state)))
             (value :next))
         (value (car result))))))
+
+; The owner's side of a journal the host scanned OFF the owner (ruling 19,
+; books/owner-reconfig-phased.lisp (:feed-replay . PEER)): the host read the
+; journal's frames and ran the pure scanner fn-feed-journal-scan over them
+; (nothing writes a newly configured peer's journal before it is installed),
+; so the entries it returned, in order, and the safe offset the last of them
+; ended at, are applied here under the owner exactly as
+; fn-owner-feed-journal-scan applies each :next entry: the counted replay,
+; the intent, then the offset.
+(defun fn-owner-feed-journal-replay-entries (peer entries state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (atom entries)
+      state
+    (let* ((entry (car entries))
+           (state (fn-owner-feed-replay-counted peer (list entry) state))
+           (state (f-put-global
+                   'fn-owner-feed-intents
+                   (fn-own-feed-intent-apply
+                    (f-get-global 'fn-owner-feed-intents state)
+                    (fn-feed-journal-kind entry)
+                    (fn-feed-journal-values entry))
+                   state)))
+      (fn-owner-feed-journal-replay-entries peer (cdr entries) state))))
+
+(defun fn-owner-feed-journal-replay (peer-octets entries offset state)
+  (declare (xargs :stobjs state :mode :program
+                  :guard (fn-cbor-octet-listp peer-octets)))
+  (let ((peer (fn-store-octets->string peer-octets))
+        (state (f-put-global 'fn-owner-feed-safe-offset 0 state)))
+    (if (equal peer :bad)
+        (value :invalid)
+      (let* ((state (fn-owner-feed-journal-replay-entries peer entries state))
+             (state (f-put-global 'fn-owner-feed-safe-offset (nfix offset) state)))
+        (value :ok)))))
 
 ; The fence a process death owes every feed: one (:feed-restart peer) record
 ; per peer, durable, then fn-feed-restart on each.  fn-own-reopen does the

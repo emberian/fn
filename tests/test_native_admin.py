@@ -213,7 +213,7 @@ class AdminSectionStructureTests(unittest.TestCase):
     SOURCE = ROOT / "host/native/admin.lisp"
     OWNER = ROOT / "host/native/owner.lisp"
     SECTIONS = ("compaction", "inspect", "export", "reclaim", "reclaim-instant",
-                "limit-carry", "limit", "admin")
+                "limit-carry", "limit", "admin", "login-bindings", "login-bindings-record")
     # The offline command executors: no owner section; the command scope is
     # the generator's next piece (planning/handoff-2026-10-03/failure-scope.md).
     OFFLINE = ("fnn-admin-verify-under-lock",)
@@ -236,7 +236,11 @@ class AdminSectionStructureTests(unittest.TestCase):
         for transitional in ("(fnn-owner-serialized ", "(fnn-owner-gated ",
                              "(fnn-owner-transit-serialized ", "(fnn-section-run "):
             self.assertNotIn(transitional, body, transitional)
-        self.assertEqual(body.count("(fnn-quantum-control"), len(self.SECTIONS))
+        # A section is entered by its own call or as the SECTION of a live
+        # reconfiguration (fnn-owner-live-reconfigure (RUN DRIVE SECTION ...)).
+        self.assertEqual(body.count("(fnn-quantum-control")
+                         + body.count("(run drive fnn-quantum-control"),
+                         len(self.SECTIONS))
         for section in self.SECTIONS:
             self.assertIn('(fnn-admin-test-fault "{}")'.format(section), body, section)
 
@@ -246,11 +250,18 @@ class AdminSectionStructureTests(unittest.TestCase):
             if name in self.OFFLINE:
                 continue
             arms = re.findall(r"\(\s*(error|serious-condition|fnn-store-error)\s+\(", source)
-            if name == "fnn-owner-live-reconfigure-locked":
-                # Its one arm re-signals (ACL2's refusal un-stages, the
-                # condition goes on as itself): a cleanup, not a decision.
-                self.assertEqual(arms, ["fnn-store-error"], name)
-                self.assertIn("(error e)", source)
+            if name == "fnn-rc-window":
+                # A live reconfiguration's window keeps the condition it met
+                # as its result and the word ACL2's step takes
+                # (fnn-rc-classify); the :fence or :fault effect re-signals
+                # it under the owner (fnn-rc-resignal), where the section's
+                # one boundary classifies it: a hand-off, not a decision.
+                self.assertEqual(arms, ["serious-condition"], name)
+                self.assertIn("(fnn-rc-classify run condition)", source)
+                continue
+            if name == "fnn-rc-resignal":
+                self.assertEqual(arms, ["error"], name)
+                self.assertIn("(error (or (fnn-rc-condition run) default))", source)
                 continue
             if arms:
                 self.fail("{} decides the kind of a failure by a parent-class arm {}".format(

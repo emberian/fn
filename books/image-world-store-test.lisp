@@ -233,6 +233,8 @@
 (include-book "owner-time-journal")
 (include-book "owner-stop-drain")
 (include-book "owner-time-admission")
+(include-book "owner-reconfig-phased")
+(include-book "owner-time-reconfig")
 (include-book "owner-article-slots")
 (include-book "owner-credits")
 (include-book "served-available-read")
