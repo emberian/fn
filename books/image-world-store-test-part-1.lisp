@@ -81,6 +81,7 @@
 (include-book "store-log-segments")
 (include-book "store-log-extend")
 (include-book "store-init-log-publication")
+(include-book "definterface")
 (include-book "page-discovery-ledger")
 (include-book "cold-read-layout")
 (include-book "cold-guard-bootstrap")

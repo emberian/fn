@@ -88,7 +88,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools import ledger  # noqa: E402
+from tools import interfaces_relocate, ledger  # noqa: E402
 
 SOURCES = ("host/interfaces.lisp", "host/account-adoption-interfaces.lisp")
 REGISTRY = ROOT / "planning" / "interfaces.json"
@@ -165,10 +165,27 @@ def _plist(items: list, where: str) -> dict:
     return out
 
 
+def declaration_files(root: Path = ROOT) -> list[str]:
+    """Where definterface forms live: SOURCES (the book-defined entries), then every
+    other host file that declares an entry where it defines it
+    (tools/interfaces_relocate.py), in the order host/native/build.lisp loads them,
+    unloaded ones last by name."""
+    order: dict[str, int] = {}
+    build = root / "host" / "native" / "build.lisp"
+    if build.is_file():
+        order = interfaces_relocate.load_order(root)
+    declared = sorted(
+        (r for r in interfaces_relocate.host_files(root)
+         if Path(r).name != RAW_DECLARATIONS.name
+         and "(definterface " in (root / r).read_text(encoding="utf-8")),
+        key=lambda r: (order.get(r, len(order)), r))
+    return list(SOURCES) + [r for r in declared if r not in SOURCES]
+
+
 def declarations(root: Path = ROOT) -> list[dict]:
-    """Every definterface form in SOURCES, in order, parsed."""
+    """Every definterface form in declaration_files, in order, parsed."""
     found: list[dict] = []
-    for relative in SOURCES:
+    for relative in declaration_files(root):
         path = root / relative
         if not path.is_file():
             continue
@@ -212,6 +229,7 @@ def declarations(root: Path = ROOT) -> list[dict]:
                                    for key, value in ledger.keyword_plist(kv[":operation"]).items()}}
                    if kv.get(":operation") is not None else {}),
             })
+    found.sort(key=lambda d: d["name"])  # declaration order is the files' layout, not a fact
     rows = None
     for d in found:
         # `:raw-with (:carried NAME)' (books/def-carried.lisp): only the

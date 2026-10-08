@@ -159,3 +159,4 @@
 (include-book "store-replay-bound")
 (include-book "store-profile-open")
 (include-book "store-mount-identity")
+(include-book "store-host-boundary")

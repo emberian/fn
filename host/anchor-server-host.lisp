@@ -10,4 +10,8 @@
   (declare (xargs :guard (fn-cbor-octet-listp name-octets)))
   (fn-anchor-server-select name-octets timeout-seconds))
 
+(definterface fn-anchor-server-host-select
+  :class ::program
+  :kinds ((name-octets fn-cbor-octet-listp)))
+
 (logic)

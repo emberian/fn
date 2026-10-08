@@ -33,6 +33,9 @@
 (defun fn-tcl-host-spool-recovery-plan (entries)
   (fn-tcl-spool-recovery-plan entries))
 
+(definterface fn-tcl-host-spool-recovery-plan
+  :class ::ideal)
+
 ; -----------------------------------------------------------------------------
 ; Opening a session.  The operator's configuration becomes params here; the
 ; host passes numbers and octets and never assembles the record.
@@ -43,8 +46,14 @@
                       (if can-tls t nil)
                       (if expected-peer expected-peer nil)))
 
+(definterface fn-tcl-host-params
+  :class ::ideal)
+
 (defun fn-tcl-host-paramsp (p)
   (fn-tcl-paramsp p))
+
+(definterface fn-tcl-host-paramsp
+  :class ::ideal)
 
 ; NIL when the host offered a role, params or clock reading the machine will
 ; not accept: a refusal, distinct from a session.
@@ -53,31 +62,53 @@
       (fn-tcl-initial-session role local now)
     nil))
 
+(definterface fn-tcl-host-initial
+  :class ::ideal)
+
 ; -----------------------------------------------------------------------------
 ; The transitions.  One per host wakeup cause.
 
 (defun fn-tcl-host-open (s now)
   (fn-tcl-host-triple (fn-tcl-open s now)))
 
+(definterface fn-tcl-host-open
+  :class ::ideal)
+
 ; The host has a monotonic millisecond reading and no trusted wall clock; the
 ; observation is built here so that its shape is the books' and not the host's.
 (defun fn-tcl-host-tick (s monotonic)
   (fn-tcl-host-triple (fn-tcl-tick s (fn-clock-observation monotonic 0 0 nil))))
 
+(definterface fn-tcl-host-tick
+  :class ::ideal)
+
 (defun fn-tcl-host-send (s ref octets now)
   (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-tcl-host-triple (fn-tcl-send s ref octets now)))
 
+(definterface fn-tcl-host-send
+  :class ::ideal
+  :kinds ((octets fn-cbor-octet-listp)))
+
 (defun fn-tcl-host-pump (s now)
   (fn-tcl-host-triple (fn-tcl-pump s now)))
 
+(definterface fn-tcl-host-pump
+  :class ::ideal)
+
 (defun fn-tcl-host-tcp-closed (s)
   (fn-tcl-host-triple (fn-tcl-tcp-closed s)))
+
+(definterface fn-tcl-host-tcp-closed
+  :class ::ideal)
 
 ; A shutdown the operator asked for is not one of the RFC's named causes, so
 ; it carries Unknown (RFC 9174 section 6.1).  The code is the book's constant.
 (defun fn-tcl-host-terminate (s now)
   (fn-tcl-host-triple (fn-tcl-terminate s *fn-tcl-term-unknown* now)))
+
+(definterface fn-tcl-host-terminate
+  :class ::ideal)
 
 ; A no-progress bound ended the session (books/tcpcl-retained-turn.lisp
 ; fn-tcrt-expiry): the same SESS_TERM handshake, with the bound's own reason
@@ -85,10 +116,16 @@
 (defun fn-tcl-host-terminate-reason (s reason now)
   (fn-tcl-host-triple (fn-tcl-terminate s reason now)))
 
+(definterface fn-tcl-host-terminate-reason
+  :class ::ideal)
+
 ; Whether the session has a transfer in flight, either direction: the fact
 ; fn-tcrt-stall-timeout-p's in-transfer argument reads.
 (defun fn-tcl-host-in-transfer (s)
   (and (or (fn-tcl-session-inbound s) (fn-tcl-session-outbound s)) t))
+
+(definterface fn-tcl-host-in-transfer
+  :class ::ideal)
 
 ; Whether the active entity ends the session now (RFC 9174 section 6.1: only
 ; it initiates SESS_TERM here).  The session machine has no effect that says
@@ -106,14 +143,27 @@
        (or (and bundlep (member-equal outcome '(:refused :uncertain)) t)
            (>= (nfix inbound) (nfix expect)))))
 
+(definterface fn-tcl-host-active-closep
+  :class ::ideal)
+
 ; -----------------------------------------------------------------------------
 ; Reading a result out.  The host asks; it does not compute.
 
 (defun fn-tcl-host-encode (m)
   (fn-tcl-encode m))
 
+(definterface fn-tcl-host-encode
+  ; an exact alias; the callee's keystones are PRF-1006 (the per-kind
+  ; fn-tcl-decode-message-of-encode-* round trips and
+  ; fn-tcl-accepted-message-is-canonical)
+  :class ::ideal
+  :delegates fn-tcl-encode)
+
 (defun fn-tcl-host-phase (s)
   (fn-tcl-session-phase s))
+
+(definterface fn-tcl-host-phase
+  :class ::ideal)
 
 ; The negotiated keepalive in seconds, 0 before SESS_INIT and when the peer
 ; asked for none.  The host divides it to choose a read timeout; the interval
@@ -121,6 +171,9 @@
 (defun fn-tcl-host-keepalive (s)
   (let ((n (fn-tcl-session-negotiated s)))
     (if n (fn-tcl-negotiated-keepalive n) 0)))
+
+(definterface fn-tcl-host-keepalive
+  :class ::ideal)
 
 ; -----------------------------------------------------------------------------
 ; Event digests.  A session log line must be bounded, so the bulk octets of a
@@ -158,6 +211,9 @@
 
 (defun fn-tcl-host-event-digests (events)
   (fn-tcl-host-event-digests-loop events nil))
+
+(definterface fn-tcl-host-event-digests
+  :class ::ideal)
 
 ; -----------------------------------------------------------------------------
 ; The differential's model side.  STEPS is the trace the session loop wrote:
@@ -205,13 +261,20 @@
               (fn-tcl-host-event-digests (car (cdr out)))
               (len (car (cdr (cdr out)))))))))
 
+(definterface fn-tcl-host-replay
+  :class ::ideal)
+
 ; Concrete framing defers the existing codec until a complete frame or its
 ; extension prefix. These observations select no alternate protocol policy.
 (defun fn-tcl-host-segment-mru (s)
  (declare (xargs :guard t)) (fn-tcl-segment-mru s))
 (verify-guards fn-tcl-host-segment-mru)
+
+(definterface fn-tcl-host-segment-mru :class :common-lisp-compliant)
 (defun fn-tcl-host-input-probe (s buf)
  (declare (xargs :guard (and (fn-tcl-session-cheapp s)
                              (fn-cbor-octet-listp buf))))
  (fn-tcl-parse-needp (fn-tcl-decode-for s buf)))
 (verify-guards fn-tcl-host-input-probe)
+
+(definterface fn-tcl-host-input-probe :class :common-lisp-compliant :kinds ((buf fn-cbor-octet-listp)))

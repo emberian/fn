@@ -12,6 +12,7 @@ python3 - "$probe_root" "$source_root" "$snapshot" <<'PYDATA'
 import hashlib,json,pathlib,sys
 probe, source, dest=map(pathlib.Path,sys.argv[1:])
 paths=[source/p for p in ('books/newnews-stream-cursor.lisp','books/string-line-cursor.lisp','books/string-line-fill.lisp','books/served-plan-line-buffer.lisp','books/def-cursor.lisp','books/served-plan-cursor.lisp','books/served-plan-window.lisp','books/octets-stobj.lisp','books/definterface.lisp','host/interfaces.lisp','host/native/io.lisp','host/native/owner.lisp','host/native/trace.lisp')]+[probe/'tests/native_newnews_allocation_raw.lisp',probe/'tests/test_native_newnews_allocation_raw.sh']
+paths+=[p for p in sorted((source/'host').glob('*.lisp')) if p.name!='interfaces.lisp' and '(definterface ' in p.read_text()]
 dest.write_text(json.dumps({'kind':'normal native configured factory/plan discrimination, not heap coverage or image qualification','sha256':{str(p):hashlib.sha256(p.read_bytes()).hexdigest() for p in paths}},indent=2)+'\n')
 PYDATA
 python3 - "$source_root" "$probe_root" >"$input" <<'PY'
@@ -26,7 +27,7 @@ for book in ('string-line-fill', 'served-plan-line-buffer'):
  for form in forms((source/'books'/(book+'.lisp')).read_text()):
   if not form.startswith('(include-book '): print(form)
 subjects=['fn-nntp-newnews-response-stream','fn-splan-of-effects','fn-splan-cursor-step','fn-splan-donep','fn-splan-at-cursorp','fn-splan-window-size','fn-splan-window','fn-splan-line-ready-p','fn-splan-line-window']
-for f in forms((source/'host/interfaces.lisp').read_text()):
+for f in (g for p in sorted((source/'host').glob('*.lisp')) for g in forms(p.read_text()) if g.startswith('(definterface ')):
  if any(f.startswith('(definterface '+name+' ') or f.startswith('(definterface '+name+'\n') for name in subjects):print(f)
 print('(defttag :fn-newnews-allocation-native-observation)')
 print('(progn! (set-raw-mode t) (load '+lit(probe/'tests/native_newnews_allocation_raw.lisp')+'))')
