@@ -857,6 +857,14 @@
   :class :common-lisp-compliant
   :keystones (fn-otm-held-wakes))
 
+(definterface fn-otm-committer-may-start
+  :class :common-lisp-compliant
+  :keystones (fn-otm-committer-may-start-is-the-held-rule))
+
+(definterface fn-och-caller-answer
+  :class :common-lisp-compliant
+  :keystones (fn-och-held-caller-answer))
+
 (definterface fn-otm-held-caller-wake
   :class :common-lisp-compliant
   :keystones (fn-otm-held-wakes))

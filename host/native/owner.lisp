@@ -4923,7 +4923,9 @@ committer's is, then refused to the caller: the service is stopping."
                    (list :inline))
           (:stop (fnn-owner-reader-capture :drop)
                  (fnn-owner-commit-complete-locked service :stop members deferred)
-                 (fnn-refuse "owner service is stopping"))
+                 (if (eq (fnn-core 'fn-och-caller-answer action) :stopping)
+                     (fnn-refuse "owner service is stopping")
+                   (fnn-fault "owner answered a held caller after a stop")))
           (t (fnn-fault "owner named ~a after a held START" action)))))))
 
 (defun fnn-owner-held-await (service)
@@ -4936,11 +4938,14 @@ committer's is, then refused to the caller: the service is stopping."
 
 (defun fnn-owner-held-complete (service members deferred word condition thunk)
   "Quantum 2, under the owner in a :commit quantum: the batch's WORD (:fenced
-or :failed) through ACL2's held event, COMPLETE (or the recovery stop), then
-:completed.  ACL2's :submit runs THUNK, the caller's whole sequence, here; a
-:none (a failed batch, S4) or a stopping service refuses it, as every :live
-entry does.  THUNK nil only settles the batch (a stop that refused the
-entry)."
+or :failed) through ACL2's held event, COMPLETE (or the recovery stop, which
+answers every member as fn-ocs-member-release names), then :completed, or
+:completed-stopping when COMPLETE found the owner stopping.  The caller is
+answered by ACL2's word for the last action (fn-och-caller-answer, books/
+owner-commit-held.lisp fn-och-held-caller-answer): :submitted runs THUNK, the
+caller's whole sequence, here; :stopping is the stopping refusal, the
+submission never taken.  THUNK nil only settles the batch (a stop that
+refused the entry)."
   (let ((store (fnn-owner-service-store service)) (done nil) (step nil) (action nil))
     (unwind-protect
          (progn
@@ -4949,33 +4954,30 @@ entry)."
            ;; owner, so the fault boundary classifies it (exit 4).
            (when condition (error condition))
            (fnn-log-sync-collected (fnn-store-log store))
-           (cond ((fnn-owner-service-stopping service)
-                  ;; Stopped during the barrier: no member is answered
-                  ;; (uncertain to its client), as the committer's COMPLETE.
-                  (fnn-owner-reader-capture :drop)
-                  (fnn-owner-action 'fn-owner-credits-stop)
-                  (dolist (m members) (fnn-owner-deliver service (first m) :uncertain))
-                  (when (eq step :stop)
-                    (setf (fnn-store-fenced store) t)
-                    (fnn-owner-stop-service-locked service +fnn-exit-uncertain+)))
-                 ((eq step :complete)
-                  (fnn-owner-commit-complete-locked service :complete members deferred)
-                  (fnn-owner-reader-capture :complete))
-                 ((eq step :stop)
-                  (fnn-owner-reader-capture :drop)
-                  (fnn-owner-commit-complete-locked service :stop members deferred))
-                 (t (fnn-fault "owner named ~a after a held barrier" step)))
+           (case step
+             (:complete
+              (fnn-owner-commit-complete-locked service :complete members deferred)
+              (fnn-owner-reader-capture :complete))
+             (:stop
+              (fnn-owner-reader-capture :drop)
+              (fnn-owner-commit-complete-locked service :stop members deferred))
+             (t (fnn-fault "owner named ~a after a held barrier" step)))
            (setq done t))
-      (setq action (fnn-owner-held-event service :completed))
+      (setq action (fnn-owner-held-event
+                    service (if (and (eq step :complete) (fnn-owner-service-stopping service))
+                                :completed-stopping
+                              :completed)))
       (unless done (setq action :none))
       ;; Submissions queued while the batch was held wait for the committer,
       ;; which sleeps on this condition: tell it the batch has left flight.
       (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
         (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))
-    (cond ((null thunk) nil)
-          ((and (eq action :submit) (not (fnn-owner-service-stopping service)))
-           (funcall thunk))
-          (t (fnn-refuse "owner service is stopping")))))
+    (when thunk
+      (let ((answer (fnn-core 'fn-och-caller-answer action)))
+        (case answer
+          (:submitted (funcall thunk))
+          (:stopping (fnn-refuse "owner service is stopping"))
+          (t (fnn-fault "owner answered a held caller ~a" answer)))))))
 
 (defun fnn-owner-held-wait (service pending)
   "The held batch's life after quantum 1, off the owner: the batch job on the
@@ -5063,6 +5065,27 @@ fn-otm-held-wakes), so only this caller does.  Answers BODY's values."
                                             (third ,batch) (fourth ,batch) nil)))))
          (values-list ,results)))))
 
+(defun fnn-owner-committer-may-start (service)
+  "ACL2's answer (fn-otm-committer-may-start) to whether the committer may
+START: false while a batch is held or in flight.  Read under the gate mutex."
+  (let* ((gate (fnn-owner-service-gate service))
+         (sched (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+                  (fnn-owner-gate-sched gate)))
+         (answer (fnn-core 'fn-otm-committer-may-start sched)))
+    (unless (member answer '(t nil))
+      (fnn-fault "owner returned a malformed committer may-start ~a" answer))
+    answer))
+
+(defun fnn-owner-committer-await-start (service)
+  "A refused START took nobody (:none).  Off the owner, sleep on the commit
+condition until ACL2 allows a START again or the owner stops: the held
+batch's COMPLETE and the stop both signal it."
+  (sb-thread:with-mutex ((fnn-owner-service-commit-lock service))
+    (loop until (or (fnn-owner-service-stopping service)
+                    (fnn-owner-committer-may-start service))
+          do (sb-thread:condition-wait (fnn-owner-service-commit-ready service)
+                                       (fnn-owner-service-commit-lock service)))))
+
 (defun fnn-owner-commit-pipeline (service)
   "Batches through ACL2's pipelined commit (books/owner-commit-pipeline.lisp
 fn-ocp-commit-step): START (a :commit quantum; it seals the batch), the
@@ -5077,7 +5100,7 @@ leave only in its COMPLETE, after its barrier returned
   (let ((members nil) (uncertain nil) (deferred nil) (action nil) (job nil) (abandoned nil)
         (next nil) (next-deferred nil) (next-job nil) (frames-only nil) (syncer nil) (result nil) (limits nil)
         (need nil) (syncer-actor nil) (syncer-grant nil) (completion-pending nil)
-        (return-receipt '(:pipeline-returned nil :none nil nil))
+        (return-receipt '(:pipeline-returned nil :none nil nil)) (refused nil)
         ;; Lane time-bars (PRF-384): ACL2's ledger of the request in
         ;; flight -- its generation, whether its completion is still owed,
         ;; and the connections told before it (at a stall or a stop), which
@@ -5087,6 +5110,11 @@ leave only in its COMPLETE, after its barrier returned
     (fnn-owner-serialized
      service nil
      (lambda ()
+      ;; C6 gap 1 (books/owner-commit-held.lisp fn-och-committer-may-start): a
+      ;; caller's held batch is in flight; this pass takes nobody.
+      (if (not (fnn-owner-committer-may-start service))
+          (setq refused t action :none)
+       (progn
        ;; Lane time-model: the barrier's limits (D H C), from the
        ;; configuration generation current at the START
        ;; (fn-owner-barrier-limits).
@@ -5107,8 +5135,9 @@ leave only in its COMPLETE, after its barrier returned
          (:stop (fnn-owner-reader-capture :drop)
                 (fnn-owner-commit-complete-locked service :stop members deferred))
          (:none (fnn-owner-reader-capture :drop))
-         (t (fnn-fault "owner named ~a after a START" action))))
+         (t (fnn-fault "owner named ~a after a START" action))))))
      :commit)
+    (when refused (fnn-owner-committer-await-start service))
     ;; A START that captured no batch: its drain's frames and its refusals'
     ;; replies, off the owner mutex (lane owner-offlock).
     (unless (eq action :sync) (fnn-owner-frames-job service job))
