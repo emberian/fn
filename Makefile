@@ -1467,6 +1467,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-header-line-tests \
 	tests/acl2/injection-header-boundary-tests \
 	tests/acl2/article-art-tests \
+	tests/acl2/packed-octet-access-tests \
 	tests/acl2/injection-info-params-art-tests \
 	tests/acl2/post-art-take-domain-tests \
 	tests/acl2/owner-injection-info-tests \
