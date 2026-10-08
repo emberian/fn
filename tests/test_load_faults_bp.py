@@ -1,6 +1,10 @@
 """Pure F8 tests: fake node observations; no image, ACL2, or box process."""
 import copy
+import json
+import tempfile
 import unittest
+from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import patch
 
 from tools.load import faults, faults_bp as bp
@@ -92,9 +96,10 @@ class OracleTests(unittest.TestCase):
         self.assertEqual(self.findings(observation({}), observation({})), [])
 
 
-class FakeCampaign:
+class FakeCampaign(bp.BpCampaign):
     """One fresh fake pair per trial; only a retained transfer triggers loss."""
     def __init__(self, missing=False):
+        super().__init__(SimpleNamespace(cell_id='F8', label='unit'), {}, '/fake/dtn', '/fake/developer')
         self.calls, self.stores = [], []
         self.missing = missing
 
@@ -102,7 +107,7 @@ class FakeCampaign:
         self.calls.append(copy.deepcopy(recipe))
         stores = {'A': {}, 'B': {}}
         self.stores.append(stores)
-        h = faults.History()
+        h = self.history()
         for row in recipe:
             op = h.plan('F8', row)
             op['replayable'] = True
@@ -114,10 +119,15 @@ class FakeCampaign:
         obs = {n: observation({}) for n in stores}
         if self.missing:
             obs.pop('B')
-        return h, fs, {'observations': obs, 'witnessed': sorted(bp.FAULTS)}
+        h.trial_notes = {'observations': obs, 'witnessed': sorted(bp.FAULTS), 'nodes': {}}
+        return h, fs, h.trial_notes
 
 
 class ReplayTests(unittest.TestCase):
+    def setUp(self):
+        tmp = self.enterContext(tempfile.TemporaryDirectory())
+        self.enterContext(patch.dict('os.environ', FN_LOAD_TRACE_DIR=tmp))
+
     def test_real_campaign_constructs_and_closes_a_fresh_pair_per_trial(self):
         pairs = []
         class FakePair:
@@ -164,6 +174,14 @@ class ReplayTests(unittest.TestCase):
         self.assertTrue(any(op['args']['action'] == 'transfer' for op in finding['shrunk_history']))
         self.assertTrue(out['faults']['histories'])
         self.assertEqual(out['status'], 'failed')
+        self.assertTrue(out['faults']['traces'])
+        for path in out['faults']['traces']:
+            trace = json.loads(Path(path).read_text())
+            self.assertEqual(trace['schema'], 1)
+            self.assertEqual(trace['cell'], 'F8')
+            self.assertIn('tcpcl-octets', trace['extensions'])
+            self.assertIn('steps', trace)
+        self.assertIn('trace', finding)
 
     def test_missing_required_observation_with_all_faults_is_not_measured(self):
         out = bp.run_campaign(FakeCampaign(missing=True), budget=0)
@@ -179,10 +197,52 @@ class ReplayTests(unittest.TestCase):
             self.assertIsNotNone(op['send_time'])
             self.assertTrue(op['reply_line'].endswith('\r\n'))
 
+    def test_failure_records_step_traceback_and_all_node_stderr_paths(self):
+        class FailingPair:
+            def __init__(self, campaign, history):
+                history.trial_notes['nodes'] = {
+                    'A': {'stderr': ['/private/work/A/owner.1.err', '/private/work/A/bp-2.stderr']},
+                    'B': {'stderr': ['/private/work/B/bp-3.stderr']}}
+            def execute(self, step, witnessed):
+                if step['action'] == 'duplicate':
+                    raise ValueError('transfer rejected 060201')
+            def close(self):
+                pass
+        campaign = object.__new__(bp.BpCampaign)
+        recipe = [{'step': 0, 'action': 'transfer'}, {'step': 1, 'action': 'duplicate'},
+                  {'step': 2, 'action': 'stale'}]
+        with patch.object(bp, 'Pair', FailingPair):
+            h, findings, notes = campaign.trial(recipe)
+        self.assertTrue(findings)
+        self.assertEqual(notes['failing_step'], {'phase': 'recipe', **recipe[1]})
+        self.assertEqual(notes['exception']['type'], 'ValueError')
+        self.assertIn('transfer rejected 060201', '\n'.join(notes['exception']['traceback_tail']))
+        self.assertTrue(any('in execute' in line for line in notes['exception']['traceback_tail']))
+        self.assertEqual([s['outcome'] for s in notes['steps']],
+                         ['completed', 'attempted-uncertain', 'not-attempted'])
+        self.assertEqual(len(notes['nodes']['A']['stderr']), 2)
+        snap = campaign.snapshot(h)
+        self.assertFalse(snap['sequential'])
+        self.assertEqual(snap['trial']['nodes'], notes['nodes'])
+
+    def test_setup_exception_keeps_diagnostics_before_pair_assignment(self):
+        class BrokenPair:
+            def __init__(self, campaign, history):
+                history.trial_notes['nodes']['A'] = {'stderr': ['/work/A/bp-1.stderr']}
+                raise RuntimeError('no BP NODE LISTENING')
+        campaign = object.__new__(bp.BpCampaign)
+        with patch.object(bp, 'Pair', BrokenPair):
+            _, _, notes = campaign.trial([])
+        self.assertEqual(notes['failing_step'], {'phase': 'setup'})
+        self.assertEqual(notes['exception']['type'], 'RuntimeError')
+        self.assertIn('A', notes['nodes'])
+
 
 class WireTests(unittest.TestCase):
     def peer(self, frames):
         peer = object.__new__(bp.WirePeer)
+        peer.segment_mru, peer.transfer_mru = 65536, 1048576
+        peer.recorder = None
         class Sock:
             def sendall(self, wire):
                 self.wire = wire
@@ -192,15 +252,80 @@ class WireTests(unittest.TestCase):
         return peer
 
     def test_exact_ack_is_captured_and_replayed_verbatim(self):
-        ack = b'\x02\x03' + (1).to_bytes(8, 'big') + (3).to_bytes(8, 'big')
+        ack = b'\x02\x03' + (0).to_bytes(8, 'big') + (3).to_bytes(8, 'big')
         peer = self.peer([b'\x04', ack, b'\x06\x01\x02'])
         self.assertEqual(peer.transfer(b'abc'), ack)
         self.assertEqual(peer.replay(ack), b'\x06\x01\x02')
         self.assertEqual(peer.sock.wire, ack)
 
     def test_partial_ack_cannot_complete_a_transfer(self):
-        peer = self.peer([b'\x02\x02' + (1).to_bytes(8, 'big') + (2).to_bytes(8, 'big')])
+        peer = self.peer([b'\x02\x02' + (0).to_bytes(8, 'big') + (2).to_bytes(8, 'big')])
         with self.assertRaises(ValueError):
+            peer.transfer(b'abc')
+
+    def test_handshake_and_segment_frames_match_raw_peer_with_negotiated_mru(self):
+        from tests.test_bp_node_native import RawTcpclPeer
+        for length in (512, 1024, 1025, 2500):
+            with self.subTest(length=length):
+                bundle = bytes(i % 256 for i in range(length))
+                node = b'dtn://receiver/'
+                # Include session extensions and fragment all socket reads:
+                # first XFER_SEGMENT may only follow the COMPLETE SESS_INIT.
+                extensions = b'\x00\x00\x99\x00\x01x'
+                init = (b'\x07\x00\x01' + (1024).to_bytes(8, 'big')
+                        + (1048576).to_bytes(8, 'big') + len(node).to_bytes(2, 'big')
+                        + node + len(extensions).to_bytes(4, 'big') + extensions)
+                acks = []
+                for offset in range(0, length, 1024):
+                    end = min(offset + 1024, length)
+                    flags = (2 if not offset else 0) | (1 if end == length else 0)
+                    acks.append(b'\x02' + bytes([flags]) + bytes(8) + end.to_bytes(8, 'big'))
+                class Socket:
+                    def __init__(self):
+                        self.incoming = b'dtn!\x04\x00' + init + b''.join(acks)
+                        self.at, self.sent = 0, []
+                    def settimeout(self, _):
+                        pass
+                    def sendall(self, data):
+                        if data[0] == 1:
+                            self_test.assertGreaterEqual(self.at, 6 + len(init))
+                        self.sent.append(data)
+                    def recv(self, n):
+                        data = self.incoming[self.at:self.at + min(n, 3)]
+                        self.at += len(data)
+                        return data
+                    def close(self):
+                        pass
+                self_test = self
+                actual = Socket()
+                rec = faults.TraceRecorder()
+                with patch.object(bp.socket, 'create_connection', return_value=actual):
+                    peer = bp.WirePeer(1, 10, recorder=rec, node='B')
+                    ack = peer.transfer(bundle)
+                    peer.abort()
+                reference = Socket()
+                with patch.object(bp.socket, 'create_connection', return_value=reference), \
+                        patch('tests.test_bp_node_native.threading.Thread'):
+                    raw = RawTcpclPeer(1)
+                # Raw's reader thread was suppressed; the reference sender
+                # is now established for the purpose of comparing wire bytes.
+                reference.at = 6 + len(init)
+                for offset in range(0, length, 1024):
+                    raw.segment(0, bundle[offset:offset + 1024], start=offset == 0,
+                                end=offset + 1024 >= length)
+                raw.close()
+                self.assertEqual(actual.sent, reference.sent)
+                self.assertEqual(ack, acks[-1])
+                sends = [bytes.fromhex(s['hex']) for s in rec.steps if s['t'] == 'send']
+                self.assertEqual(sends, actual.sent)
+                self.assertTrue(any(s.get('until') == 'octets' for s in rec.steps))
+                self.assertEqual(rec.steps[-1]['t'], 'close')
+
+    def test_wrong_cumulative_ack_never_completes_segmented_duplicate(self):
+        peer = self.peer([b'\x02\x02' + bytes(8) + (2).to_bytes(8, 'big'),
+                          b'\x02\x01' + bytes(8) + (1).to_bytes(8, 'big')])
+        peer.segment_mru = 2
+        with self.assertRaisesRegex(ValueError, '3/3'):
             peer.transfer(b'abc')
 
 

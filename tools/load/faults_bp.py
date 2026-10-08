@@ -18,6 +18,7 @@ import re
 import socket
 import tempfile
 import time
+import traceback
 from types import SimpleNamespace
 
 from .faults import (Campaign, Client, History, digest, inventory, merge_reports,
@@ -93,34 +94,77 @@ class WirePeer:
     Retain exact XFER_ACK frames for replay on a later connection. All reads
     share an absolute deadline; byte lengths are fixture observations only.
     """
-    def __init__(self, port, timeout, node_id=b'dtn://sender/'):
+    def __init__(self, port, timeout, node_id=b'dtn://sender/', *, recorder=None, node=None):
         self.end = time.monotonic() + timeout
+        self.recorder, self.node = recorder, node
+        self.cid = None
+        self.closed = False
+        self.keepalive = False
         self.sock = socket.create_connection(('127.0.0.1', port), timeout)
         try:
-            self.sock.sendall(b'dtn!\x04\x00')
+            if recorder is not None:
+                idx = len(recorder.steps)
+                self.cid = recorder.conn()
+                self.annotate(idx, protocol='tcpcl', node=node)
+            self.send(b'dtn!\x04\x00')
             if self.exact(6) != b'dtn!\x04\x00':
                 raise ValueError('unexpected TCPCL contact header')
             peer = node_id
-            self.sock.sendall(b'\x07\x00\x00' + (65536).to_bytes(8, 'big')
+            self.send(b'\x07\x00\x01' + (65536).to_bytes(8, 'big')
                              + (1048576).to_bytes(8, 'big') + len(peer).to_bytes(2, 'big')
                              + peer + b'\x00\x00\x00\x00')
-            if self.frame()[0] != 7:
+            self.keepalive = True
+            init = self.frame()
+            if init[0] != 7:
                 raise ValueError('missing SESS_INIT')
+            # The peer's receive limits, not the limits we just advertised.
+            # bp-node currently advertises a 1024-byte segment MRU. Sending a
+            # whole 2 KiB bundle as one segment causes MSG_REJECT 060201.
+            self.segment_mru = int.from_bytes(init[3:11], 'big')
+            self.transfer_mru = int.from_bytes(init[11:19], 'big')
+            if not self.segment_mru or not self.transfer_mru:
+                raise ValueError('peer advertises a zero MRU')
         except BaseException:
-            self.sock.close()
+            self.abort()
             raise
+
+    def annotate(self, idx, **fields):
+        if self.recorder is not None:
+            with self.recorder.lock:
+                self.recorder.steps[idx].update(fields)
+
+    def send(self, data):
+        idx = None
+        if self.recorder is not None:
+            idx = self.recorder.send(self.cid, data)
+        self.sock.sendall(data)
+        return idx
 
     def exact(self, n):
         data = bytearray()
+        idx = None
+        if self.recorder is not None:
+            # Explicit binary-read extension; never label TCPCL as an NNTP
+            # line. The shared recorder still owns wire order and completion.
+            idx = self.recorder.read(self.cid, 'octets')
+            self.annotate(idx, count=n, protocol='tcpcl', node=self.node)
         while len(data) < n:
             left = self.end - time.monotonic()
             if left <= 0:
                 raise TimeoutError('TCPCL deadline')
-            self.sock.settimeout(left)
-            chunk = self.sock.recv(n - len(data))
+            self.sock.settimeout(min(left, 0.5))
+            try:
+                chunk = self.sock.recv(n - len(data))
+            except socket.timeout:
+                if self.keepalive:
+                    self.send(b'\x04')  # RawTcpclPeer's one-second keepalive.
+                continue
             if not chunk:
                 raise EOFError('incomplete TCPCL frame')
             data.extend(chunk)
+        if self.recorder is not None:
+            self.annotate(idx, received_hex=bytes(data).hex())
+            self.recorder.done(self.cid)
         return bytes(data)
 
     def frame(self):
@@ -137,20 +181,30 @@ class WirePeer:
         return kind + self.exact(sizes[kind[0]])
 
     def transfer(self, bundle):
-        self.sock.sendall(b'\x01\x03' + (1).to_bytes(8, 'big') + b'\x00' * 4
-                         + len(bundle).to_bytes(8, 'big') + bundle)
-        while True:
-            frame = self.frame()
-            if frame[0] == 4:
-                continue
-            if (frame[0] != 2 or frame[1] != 3
-                    or int.from_bytes(frame[2:10], 'big') != 1
-                    or int.from_bytes(frame[10:18], 'big') != len(bundle)):
-                raise ValueError('transfer did not get exact final XFER_ACK: ' + frame.hex())
-            return frame
+        if not bundle or len(bundle) > self.transfer_mru:
+            raise ValueError('bundle outside peer transfer MRU')
+        # Match RawTcpclPeer.segment exactly, with START/extensions only on
+        # the first segment and END only on the last (RFC 9174 section 5.2).
+        for offset in range(0, len(bundle), self.segment_mru):
+            data = bundle[offset:offset + self.segment_mru]
+            end = offset + len(data)
+            flags = (2 if offset == 0 else 0) | (1 if end == len(bundle) else 0)
+            self.send(b'\x01' + bytes([flags]) + (0).to_bytes(8, 'big')
+                      + (b'\x00' * 4 if offset == 0 else b'')
+                      + len(data).to_bytes(8, 'big') + data)
+            while True:
+                frame = self.frame()
+                if frame[0] != 4:
+                    break
+            if (frame[0] != 2 or frame[1] != flags
+                    or int.from_bytes(frame[2:10], 'big') != 0
+                    or int.from_bytes(frame[10:18], 'big') != end):
+                raise ValueError('transfer did not get exact XFER_ACK at %d/%d: %s'
+                                 % (end, len(bundle), frame.hex()))
+        return frame
 
     def replay(self, ack):
-        self.sock.sendall(ack)
+        self.send(ack)
         while True:
             frame = self.frame()
             if frame[0] == 4:
@@ -161,7 +215,7 @@ class WirePeer:
 
     def close(self, graceful=False):
         try:
-            self.sock.sendall(b'\x05\x00\x00')
+            self.send(b'\x05\x00\x00')
             if graceful:
                 while True:
                     frame = self.frame()
@@ -170,12 +224,19 @@ class WirePeer:
                     if frame[0] != 5:
                         raise ValueError('SESS_TERM reply missing: ' + frame.hex())
                     if not frame[1] & 1:
-                        self.sock.sendall(b'\x05\x01' + frame[2:3])
+                        self.send(b'\x05\x01' + frame[2:3])
                     break
         except OSError:
             if graceful:
                 raise
         finally:
+            self.abort()
+
+    def abort(self):
+        if not self.closed:
+            self.closed = True
+            if self.recorder is not None and self.cid is not None:
+                self.recorder.close(self.cid)
             self.sock.close()
 
 
@@ -187,29 +248,68 @@ class BpCampaign(Campaign):
         self.developer_image = Path(developer_image).resolve()
 
     def trial(self, recipe):
-        h, findings, observations, witnessed = History(), [], {}, set()
+        h, findings, observations, witnessed = self.history(), [], {}, set()
+        # The owners and relay run concurrently, including native traffic
+        # invisible to the raw peer. Do not claim a sequential NNTP replay.
+        h.recorder.interleaved = True
+        notes = {'steps': [{'recipe': dict(step), 'outcome': 'not-attempted'} for step in recipe],
+                 'failing_step': None, 'exception': None, 'cleanup_exceptions': [],
+                 'nodes': {}, 'commands': [], 'recipe': list(recipe)}
+        h.trial_notes = notes
         pair = None
+        current = {'phase': 'setup'}
+        step_log = None
         try:
             pair = Pair(self, h)
-            for step in recipe:
+            for step, step_log in zip(recipe, notes['steps']):
+                current = {'phase': 'recipe', **step}
                 # The original recipe, not the observed reply, is replayed.
                 op = h.plan('F8', step)
                 op['replayable'] = True
+                op['step'] = h.recorder.control(['F8', json.dumps(step, sort_keys=True)])
                 h.sent(op)
+                step_log.update(op_id=op['op_id'], send_time=op['send_time'], outcome=op['outcome'])
                 pair.execute(step, witnessed)
                 h.complete(op, b'F8 step observed\r\n')
+                step_log.update(outcome=op['outcome'], complete_time=op['complete_time'])
+            step_log = None
+            current = {'phase': 'converge'}
             pair.converge(witnessed)
+            current = {'phase': 'inventory'}
             observations = pair.observe()
         except Exception as exc:
+            notes['failing_step'] = current
+            notes['exception'] = exception_details(exc)
+            if step_log is not None:
+                step_log['exception'] = notes['exception']
             findings.append(('P5-RECOVERY', 'required observation failed: ' + type(exc).__name__ + ': ' + str(exc)))
         finally:
             if pair is not None:
                 try:
                     pair.close()
                 except Exception as exc:
+                    notes['cleanup_exceptions'].append(exception_details(exc))
                     findings.append(('P5-RECOVERY', 'cleanup failed: ' + str(exc)))
         findings.extend(check(h.ops, observations))
-        return h, findings, {'observations': observations, 'witnessed': sorted(witnessed)}
+        notes.update(observations=observations, witnessed=sorted(witnessed))
+        return h, findings, notes
+
+    def snapshot(self, history):
+        # Campaign.meta is mutable across shrink trials; use this history's
+        # own node paths and recipe, not the most recently allocated pair.
+        nodes = history.trial_notes['nodes']
+        first = nodes.get('A', {})
+        return dict(history.recorder.snapshot(history.ops), cell='F8',
+                    store={'init_flags': first.get('init_flags', []),
+                           'groups': first.get('groups', []), 'fixture': None},
+                    sbcl_user_args=first.get('sbcl_user_args', ''),
+                    extensions=['F8', 'multi-node', 'tcpcl-octets'],
+                    trial=history.trial_notes)
+
+
+def exception_details(exc):
+    return {'type': type(exc).__name__, 'message': str(exc),
+            'traceback_tail': ''.join(traceback.format_exception(type(exc), exc, exc.__traceback__)).splitlines()[-40:]}
 
 
 class Pair:
@@ -217,6 +317,7 @@ class Pair:
         from tests.native_harness import environment
         from tests.test_bp_contact_relay_native import ByteRelay
         self.c, self.h = campaign, history
+        self.notes = history.trial_notes
         self.nodes, self.processes, self.active = {}, [], {}
         self.bundles, self.acks, self.posted, self.requests = {}, {}, {}, {}
         self.offered = set()
@@ -230,6 +331,9 @@ class Pair:
                 self.h.sent(op)
                 node = self.c.node()
                 self.nodes[name] = node
+                self.notes['nodes'][name] = {'work': str(node.work), 'stderr': [], 'stdout': [],
+                                             'init_flags': list(node.flags), 'groups': list(node.groups),
+                                             'sbcl_user_args': node.env['SBCL_USER_ARGS']}
                 node.env = environment({'SBCL_USER_ARGS': node.env['SBCL_USER_ARGS']})
                 self.h.complete(op, b'private store initialized\r\n')
                 self.must_control(node, 'policy', 'set', 'path-identity', self.path(name))
@@ -260,10 +364,16 @@ class Pair:
     def invoke(self, *words, expected=0):
         from tests.native_harness import environment, run
         op = self.h.plan('CONTROL', {'argv': [str(x) for x in words]})
+        op['step'] = self.h.recorder.control(['--fn', *[str(x) for x in words]])
         self.h.sent(op)
         p = run([self.c.image, '--fn', *words], cwd=ROOT, env=environment(), timeout=self.c.recovery)
         self.h.complete(op, p.stdout + p.stderr + b'\r\n')
         op['rc'] = p.returncode
+        stem = self.c.run.node.work / ('command-%d-%d' % (self.c.serial, op['op_id']))
+        stdout, stderr = str(stem) + '.stdout', str(stem) + '.stderr'
+        Path(stdout).write_bytes(p.stdout)
+        Path(stderr).write_bytes(p.stderr)
+        self.notes['commands'].append({'op_id': op['op_id'], 'stdout': stdout, 'stderr': stderr, 'rc': p.returncode})
         if expected is not None and p.returncode != expected:
             raise RuntimeError('command exit %s: %s' % (p.returncode, (p.stdout + p.stderr).decode(errors='replace')))
         return p
@@ -277,13 +387,18 @@ class Pair:
         node = self.nodes[name]
         op = self.h.plan('START-NNTP', {'node': name})
         self.h.sent(op)
-        self.c.start(node)
+        self.notes['nodes'][name]['stderr'].append(str(node.work / ('owner.%d.err' % (node.err_n + 1))))
+        op['step'] = len(self.h.recorder.steps)
+        self.c.start(node, self.h)
+        with self.h.recorder.lock:
+            self.h.recorder.steps[op['step']].update(node=name, protocol='nntp')
         self.h.complete(op, b'LISTENING\r\n')
 
     def stop_reader(self, name):
         node = self.nodes[name]
         if node.proc is not None:
             op = self.h.plan('STOP-NNTP', {'node': name, 'pid': node.pid})
+            op['step'] = self.h.recorder.control(['F8', 'stop-nntp', name])
             self.h.sent(op)
             rc = node.stop(grace=5)
             self.h.complete(op, ('exit %s\r\n' % rc).encode())
@@ -294,6 +409,7 @@ class Pair:
         if pair:
             process, _ = pair
             op = self.h.plan('KILL' if kill else 'STOP-BP', {'node': name, 'pid': process.pid})
+            op['step'] = self.h.recorder.control(['F8', 'kill-bp' if kill else 'stop-bp', name])
             self.h.sent(op)
             if kill:
                 if process.poll() is not None:
@@ -327,9 +443,12 @@ class Pair:
         args = self.bp_args(name, 'serve', port, once)
         extra = {CUTS[mode][0]: '1'} if mode in CUTS else {}
         op = self.h.plan('START-BP', {'node': name, 'argv': args, 'env': extra})
+        op['step'] = self.h.recorder.control(['--fn', *args])
         self.h.sent(op)
         process = start([self.c.image, '--fn', *args], cwd=ROOT, env=environment(extra), limit=None)
         self.processes.append((name, process, op))
+        self.notes['nodes'][name]['stderr'].append(str(self.file(name, 'bp-%d.stderr' % process.pid)))
+        self.notes['nodes'][name]['stdout'].append(str(self.file(name, 'bp-%d.stdout' % process.pid)))
         self.active[name] = process, port
         self.file(name, 'bp-%d.pid' % process.pid).write_text(str(process.pid) + '\n')
         line = process.announcement(b'BP NODE LISTENING ', timeout=self.c.recovery)
@@ -414,17 +533,18 @@ class Pair:
                          observer=lambda **event: self.cut_events.append(event))
         receiver, port = self.start_bp('B', mode=mode, once=True)
         op = self.h.plan('BP-EXCHANGE', {'i': i, 'mode': mode})
+        op['step'] = self.h.recorder.control(['F8', 'exchange', str(i), mode])
         self.h.sent(op)
         if mode == 'duplicate':
             op['bundle_sha256'] = hashlib.sha256(self.bundles[i]).hexdigest()
-            peer = WirePeer(port, self.c.recovery)
+            peer = WirePeer(port, self.c.recovery, recorder=self.h.recorder, node='B')
             try:
                 ack = peer.transfer(self.bundles[i])
                 self.acks[i] = ack
                 op['ack_hex'] = ack.hex()
                 peer.close(graceful=True)
             except BaseException:
-                peer.sock.close()
+                peer.abort()
                 raise
         else:
             # A's listening node holds FNBS; the request uses a separate
@@ -512,7 +632,8 @@ class Pair:
             sender, port = self.active['A']
             op = self.h.plan('TCPCL-STALE-ACK', {'ack_hex': self.acks[step['i']].hex(), 'node': 'A'})
             self.h.sent(op)
-            peer = WirePeer(port, self.c.recovery, node_id=self.eid('B').encode())
+            peer = WirePeer(port, self.c.recovery, node_id=self.eid('B').encode(),
+                            recorder=self.h.recorder, node='A')
             try:
                 reply = peer.replay(self.acks[step['i']])
                 self.h.complete(op, ('TCPCL rejection ' + reply.hex() + '\r\n').encode())
@@ -563,16 +684,32 @@ class Pair:
         return observations
 
     def close(self):
+        errors = []
         for name in list(self.active):
-            self.stop_bp(name)
+            try:
+                self.stop_bp(name)
+            except Exception as exc:
+                errors.append('%s BP stop: %s' % (name, exc))
         for name in self.nodes:
-            self.stop_reader(name)
+            try:
+                self.stop_reader(name)
+            except Exception as exc:
+                errors.append('%s reader stop: %s' % (name, exc))
         for name, process, op in self.processes:
-            process.stop(grace=5)
-            op['rc'] = process.returncode
-            self.file(name, 'bp-%d.stdout' % process.pid).write_bytes(process.stdout.since(0))
-            self.file(name, 'bp-%d.stderr' % process.pid).write_bytes(process.stderr.since(0))
+            try:
+                process.stop(grace=5)
+            except Exception as exc:
+                errors.append('%s PID %s stop: %s' % (name, process.pid, exc))
+            finally:
+                op['rc'] = process.returncode
+                for stream in ('stdout', 'stderr'):
+                    try:
+                        self.file(name, 'bp-%d.%s' % (process.pid, stream)).write_bytes(getattr(process, stream).since(0))
+                    except Exception as exc:
+                        errors.append('%s PID %s %s: %s' % (name, process.pid, stream, exc))
         self.relay.close()
+        if errors:
+            raise RuntimeError('; '.join(errors))
 
 
 def run_campaign(campaign, seed=1, histories=1, budget=16):
@@ -580,6 +717,7 @@ def run_campaign(campaign, seed=1, histories=1, budget=16):
     for index in range(histories):
         recipe = generate(seed + index)
         h, findings, notes = campaign.trial(recipe)
+        notes['trace'] = campaign.emit(campaign.snapshot(h), 'history-%d' % index)
         missing = FAULTS - set(notes['witnessed'])
         if missing:
             findings.append(('P5-RECOVERY', 'missing fault witnesses: ' + ', '.join(sorted(missing))))
@@ -589,9 +727,10 @@ def run_campaign(campaign, seed=1, histories=1, budget=16):
         complete = all(complete_observation(notes['observations'].get(n)) for n in ('A', 'B'))
         notes['divergence'] = (len(set(notes['observations']['A']['articles'].items())
                                   ^ set(notes['observations']['B']['articles'].items())) if complete else None)
-        reports.append(report(h, findings, PROPERTIES if complete and not missing else [], replay, budget))
+        reports.append(report(h, findings, PROPERTIES if complete and not missing else [], replay, budget, campaign))
         trials.append(dict(notes, seed=seed + index))
     out = merge_reports(reports)
+    out['traces'] = campaign.traces
     return {'faults': out, 'trials': trials,
             'status': 'not-measured' if not out['checked'] else ('failed' if out['violations'] else 'ok')}
 
@@ -617,7 +756,8 @@ def run_standalone(image, developer, work, seed, histories, budget, ph=None):
     env = environment()
     parent = Node(Target('image', developer), root, ['--profile', 'default'], ['fn.test'],
                   env.get('SBCL_USER_ARGS', ''), [], root / 'gc.log', env, 1, 'fixed')
-    campaign = BpCampaign(SimpleNamespace(node=parent), ph or {'recovery_s': 120}, image, developer)
+    campaign = BpCampaign(SimpleNamespace(node=parent, cell_id='F8', label=root.name),
+                          ph or {'recovery_s': 120}, image, developer)
     result = run_campaign(campaign, seed, histories, budget)
     result['work'] = str(root)
     return result
