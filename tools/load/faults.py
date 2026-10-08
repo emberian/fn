@@ -217,7 +217,14 @@ def report(history, findings, checked, replay=None, budget=32, tracer=None):
     variable = [o for o in history.ops if not tagged or o.get('replayable') or o.get('transcript') or 'replay_key' in o]
     variable_ids = {o['op_id'] for o in variable}
     fixed = [o for o in history.ops if o['op_id'] not in variable_ids]
+    # One shrink per property: a trial can carry one finding per article (say, 50 lost POSTs),
+    # and shrinking each detail separately exhausted a 2 h cell on one boundary (f2b-g41).
+    # The first detail is shrunk; the rest are listed beside it.
+    by_prop = {}
     for prop, detail in sorted(set(findings)):
+        by_prop.setdefault(prop, []).append(detail)
+    for prop, details in by_prop.items():
+        detail = details[0]
         errors = []
         replayed = {}
         def fails(candidate):
@@ -233,7 +240,7 @@ def report(history, findings, checked, replay=None, budget=32, tracer=None):
         short, info = (shrink(variable, fails, budget) if replay else
                        (variable, {"runs": 0, "minimal": "not-replayed"}))
         info.update(fixed_operations=len(fixed), replay_errors=errors)
-        violation = {"property": prop, "detail": detail, "history_len": len(history.ops),
+        violation = {"property": prop, "detail": detail, "details": details, "history_len": len(history.ops),
                      "shrunk_history": short, "fixed_history": fixed, "shrink": info}
         if tracer is not None:
             # The last successful replay is the shrunk history's run; with no
@@ -591,6 +598,18 @@ def merge_reports(reports):
             'histories': [r['history'] for r in reports]}
 
 
+def partial(run, row):
+    """One line per finished trial in the run's output dir, so a cell killed by its timeout keeps its findings."""
+    try:
+        out = Path(run.args.out) if getattr(getattr(run, "args", None), "out", None) else None
+        if out is not None:
+            out.mkdir(parents=True, exist_ok=True)
+            with open(out / ("%s-trials.jsonl" % getattr(run, "label", "fault")), "a") as f:
+                f.write(json.dumps(row, default=str) + "\n")
+    except OSError:
+        pass
+
+
 def crash_boundary(run, ph):
     campaign = Campaign(run, ph)
     reference, _, counts = campaign.crash_trial()
@@ -610,6 +629,8 @@ def crash_boundary(run, ph):
             reports.append(report(h, findings, checked if 'not_measured' not in notes else [],
                                   replay, ph.get('shrink_runs', 16), campaign))
             trials.append(dict(notes, boundary=selected))
+            partial(run, {'boundary': selected, 'notes': notes,
+                          'findings': sorted({(p, str(d)) for p, d in findings})})
     # Reference is a control, not a fault-property measurement.
     out = merge_reports(reports[1:])
     out['outcomes'] = {k: out['outcomes'][k] + reference.counts()[k] for k in OUTCOMES}

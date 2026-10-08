@@ -1049,7 +1049,7 @@
      "name": "fault",
      "kind": "fault_crash_boundary",
      "posts": 100,
-     "samples_per_boundary": 1,
+     "samples_per_boundary": 3,
      "shrink_runs": 0,
      "command_deadline_s": 10,
      "recovery_s": 60,
