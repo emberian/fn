@@ -125,6 +125,10 @@ BASELINE = ROOT / "planning" / "reach-baseline.json"
 DEFUN = re.compile(r"\((?:defun|defund|defun-nx|define|defmacro)\s+([a-zA-Z0-9<>=/*+$-]+)")
 DEFTHM = re.compile(r"\((?:defthm|defthmd)\s+([a-zA-Z0-9<>=/*+${}-]+)")
 SYMBOL = re.compile(r"[a-zA-Z][a-zA-Z0-9<>=/*+${}-]*")
+# A top-level form that names a constant as its first argument defines or
+# fills it: `(defconst *c* ...)' or a table macro's `(defprotocol-served *c* ...)'.
+DEFCONST = re.compile(r"\((?!defun|defund|defthm|defthmd|in-theory)[a-z0-9-]+\s+(\*[a-zA-Z0-9<>=/+${}-]+\*)", re.I)
+CONSTANT = re.compile(r"\*[a-zA-Z0-9<>=/+${}-]+\*")
 
 
 def campaign_names(directory: "pathlib.Path | None" = None) -> dict[str, str]:
@@ -577,6 +581,10 @@ def load_world(path):
 class Graph:
     """The call graph, and what a host line can reach through it."""
 
+    generated: dict = {}           # make-event products (generated_templates)
+    generated_callers: dict = {}
+    shadow: dict = {}
+
     def __init__(self, world: "pathlib.Path | str | None" = None) -> None:
         self.books = sorted(ROOT.glob("books/*.lisp"))
         self.hosts = (sorted(ROOT.glob("host/*.lisp"))
@@ -626,8 +634,17 @@ class Graph:
 
         bodies = {n: f for n, (_, f) in self.book_defs.items()}
         bodies.update({n: f for n, (_, f) in host_defs.items()})
+        # Names a make-event or generator template defines, whose body no
+        # definition text holds (see `generated_templates').
+        self.generated = self.generated_templates()
         self.edges = {name: self.mentions(form, name)
                       for name, form in bodies.items()}
+        self.generated_callers = collections.defaultdict(set)
+        for name, form in bodies.items():
+            found = (self.symbols(form) if isinstance(form, str)
+                     else callgraph.symbols(form[2:]))
+            for symbol in found & self.generated.keys():
+                self.generated_callers[symbol].add(name)
         self.world = load_world(world)
         if self.world is not None:
             self.edges = self.world_edges(bodies)
@@ -651,7 +668,10 @@ class Graph:
             if str(path.relative_to(ROOT)) not in self.loaded_hosts:
                 continue
             text = path.read_text(encoding="utf-8", errors="replace")
-            for symbol in defined(self.code_symbols(text), self.book_defs):
+            named = self.code_symbols(text)
+            for symbol in defined(named, self.generated):
+                self.generated_callers[symbol].add(str(path.relative_to(ROOT)))
+            for symbol in defined(named, self.book_defs):
                 if symbol not in seen:
                     seen.add(symbol)
                     self.via[symbol] = str(path.relative_to(ROOT))
@@ -682,6 +702,7 @@ class Graph:
                                     self.via[nxt] = name
                                     work.append(nxt)
         self.reachable = seen & set(self.book_defs)
+        self.shadow = self.generated_shadow(seen)
         # Campaign-tied: book functions a crash campaign names in its code,
         # and what they call, that no host line reaches.  A separate verdict:
         # the host is checked AGAINST these programs, it does not run them,
@@ -714,6 +735,13 @@ class Graph:
         generated recognizers) keep their text."""
         functions = self.world.functions
         edges = {}
+        # A generated function (a make-event product) has no text node; where
+        # the world defines it, it gets one: the world's calls are its edges.
+        for name in self.generated:
+            record = functions.get(name)
+            if record is not None:
+                edges[name] = {c for c in set(record["callees"]) | set(record["guard_callees"])
+                               if c in self.known and c != name}
         for name, text in self.edges.items():
             record = functions.get(name)
             if record is None or name in self.export_of:
@@ -725,7 +753,101 @@ class Graph:
             quoted = global_names(bodies.get(name))
             edges[name] = ({c for c in calls if c in self.known and c != name}
                            | {c for c in text if c not in calls and c not in quoted})
+        for name in self.generated:
+            if name in functions:  # a text mention of a world-defined generated name is its call
+                for caller in self.generated_callers.get(name, ()):
+                    if caller in edges:
+                        edges[caller].add(name)
         return edges
+
+    def generated_templates(self) -> dict:
+        """name -> the top-level forms (code only) whose text writes
+        `(defun NAME', for every NAME no definition here defines.
+
+        Such a name is a make-event or generator product: `callgraph' skips a
+        `defun' inside a template, so the function has no node and no edges,
+        and a callee only it reaches reads as unreached.  The evidence is the
+        template text itself, so an ACL2 primitive, a system-book function and
+        the accessors fn-defrecord, defstobj and def-buffer generate (which
+        have no `(defun' text) are not in this set."""
+        found = collections.defaultdict(list)
+        for path in self.books:
+            try:
+                text = file_text(path)
+            except OSError:
+                continue
+            if "(defun" not in text and "(defund" not in text:
+                continue
+            for form in file_forms(path):
+                names = {m.group(1).lower() for m in DEFUN.finditer(form)} - self.known
+                if not names:
+                    continue
+                code = code_only(form)
+                for name in {m.group(1).lower() for m in DEFUN.finditer(code)} & names:
+                    found[name].append(code)
+        return dict(found)
+
+    def generated_shadow(self, seen: set) -> dict:
+        """unreached book function -> the generated names it may be reached
+        through.
+
+        A generated name G that a reached definition or a host file names is
+        an UNKNOWN edge: source mode cannot know what it calls.  What it can
+        know is what its template READS: the constants (`*name*') the
+        generating form and the functions it calls mention, followed through
+        the constants' own values.  The book functions those values name, and
+        what they call, are what G's expansion can call.  Where the --world
+        dump defines G, the world speaks and G leaves the shadow."""
+        if not self.generated:
+            return {}
+        constants = {}
+        for path in self.books:
+            try:
+                text = file_text(path)
+            except OSError:
+                continue
+            if "*" not in text:
+                continue
+            for form in file_forms(path):
+                match = DEFCONST.match(form)
+                if match:
+                    key = match.group(1).lower()
+                    constants[key] = constants.get(key, "") + " " + code_only(form)
+        world_defined = self.world.functions if self.world is not None else {}
+        shadow = collections.defaultdict(set)
+        for name, templates in self.generated.items():
+            if name in world_defined or not (self.generated_callers.get(name, set()) & seen):
+                continue
+            helpers, queue = set(), []
+            for code in templates:
+                queue.extend(s for s in self.symbols(code) if s in self.book_defs)
+            while queue:  # the helpers the template calls read constants too
+                helper = queue.pop()
+                if helper in helpers:
+                    continue
+                helpers.add(helper)
+                queue.extend(self.edges.get(helper, ()))
+            texts = templates + [form if isinstance(form, str) else flatten(form)
+                                 for form in (self.book_defs[h][1] for h in helpers if h in self.book_defs)]
+            used, pending = set(), [c.lower() for text in texts for c in CONSTANT.findall(text)]
+            while pending:
+                constant = pending.pop()
+                if constant in used or constant not in constants:
+                    continue
+                used.add(constant)
+                pending.extend(c.lower() for c in CONSTANT.findall(constants[constant]))
+            reach = set()
+            work = [s for constant in used for s in self.symbols(constants[constant])
+                    if s in self.book_defs]
+            while work:
+                function = work.pop()
+                if function in reach:
+                    continue
+                reach.add(function)
+                work.extend(self.edges.get(function, ()))
+            for function in reach - seen:
+                shadow[function].add(name)
+        return {function: sorted(names) for function, names in shadow.items()}
 
     def abbreviation(self, name: str):
         """(formals, body, macro?) when NAME is an unreached proof-only
@@ -1514,10 +1636,18 @@ def baseline_raise_refused(findings) -> bool:
         "reach_check", old, {f.key(): 1 for f in findings}))
 
 
-def write_baseline(findings) -> None:
+def generated_through(graph: "Graph", finding: "Finding") -> list[str]:
+    """The generated names (make-event products, unknown edges) a finding's
+    unreached subjects may be reached through; empty when none can be."""
+    return sorted({g for s in finding.subjects for g in graph.shadow.get(s, ())})
+
+
+def write_baseline(findings, kept=()) -> None:
+    """KEPT: findings that need --world; an entry already accepted stays."""
     current = load_baseline()
     existing = current.get("accepted", {})
-    accepted = {}
+    accepted = {finding.key(): existing[finding.key()] for finding in kept
+                if finding.key() in existing}
     for finding in sorted(findings, key=Finding.key):
         accepted[finding.key()] = existing.get(
             finding.key(),
@@ -1537,7 +1667,8 @@ def main(argv=None) -> int:
     parser.add_argument("--summary", action="store_true",
                         help="one line, the shape `make check` prints")
     parser.add_argument("--strict", action="store_true",
-                        help="exit non-zero on an orphan not in the baseline")
+                        help="exit non-zero on an orphan not in the baseline, or on an event "
+                             "that needs --world (clears only in a --world run)")
     parser.add_argument("--baseline", action="store_true",
                         help="rewrite planning/reach-baseline.json from this run")
     parser.add_argument("--book", action="append", default=[], metavar="PATH",
@@ -1597,7 +1728,12 @@ def main(argv=None) -> int:
                   "(a let-bound call of an unreached function), and no named equality ties "
                   "the model to a reached function")
         else:
-            print("NOT hosted: no reached subject, and no named equality to a reached function")
+            through = sorted({g for f in subject.functions for g in graph.shadow.get(f, ())})
+            if through:
+                print("NOT judged: no reached subject, but a subject may be reached through "
+                      f"generated {', '.join(through)}; needs --world")
+            else:
+                print("NOT hosted: no reached subject, and no named equality to a reached function")
         return 0
     chosen = ({str((pathlib.Path(b) if pathlib.Path(b).is_absolute() else ROOT / b)
                    .resolve().relative_to(ROOT)) for b in arguments.book}
@@ -1609,11 +1745,16 @@ def main(argv=None) -> int:
     findings, hosted, unresolved = audit(graph, chosen)
     tied = [f for f in findings if set(f.subjects) & graph.tied]
     findings = [f for f in findings if not set(f.subjects) & graph.tied]
+    # An event whose unreached subject a generated function (a make-event
+    # product source mode cannot read) may reach is not judged here: it is
+    # neither an orphan nor hosted, --world decides.
+    blind = [f for f in findings if generated_through(graph, f)]
+    findings = [f for f in findings if not generated_through(graph, f)]
 
     if arguments.baseline:
         if baseline_raise_refused(findings):
             return 1
-        write_baseline(findings)
+        write_baseline(findings, blind)
         print(f"reach_check: baseline rewritten with {len(findings)} accepted "
               f"orphan(s) in {BASELINE.relative_to(ROOT)}")
         return 0
@@ -1622,7 +1763,7 @@ def main(argv=None) -> int:
     accepted = baseline.get("accepted", {})
     untriaged_unresolved = unresolved_failures(unresolved, baseline.get("unresolved", {}))
     fresh = [f for f in findings if f.key() not in accepted]
-    stale = sorted(set(accepted) - {f.key() for f in findings})
+    stale = sorted(set(accepted) - {f.key() for f in findings} - {f.key() for f in blind})
     if chosen is not None:
         # Only this book's events were judged: a baselined orphan elsewhere
         # is not "now hosted", it was not looked at.
@@ -1632,11 +1773,17 @@ def main(argv=None) -> int:
         accepted = {key: accepted[key] for key in judged}
 
     if arguments.summary:
-        print(f"reach_check: {hosted + len(findings)} registry events over "
+        print(f"reach_check: {hosted + len(findings) + len(blind)} registry events over "
               f"{len(graph.book_defs)} book functions; {hosted} have a subject "
               f"a host line reaches, {len(findings)} do not "
               f"({len(fresh)} of them unbaselined), {len(unresolved)} "
               f"unresolvable here")
+        if blind:
+            names = collections.Counter(g for f in blind for g in generated_through(graph, f))
+            print(f"reach_check: {len(blind)} event(s) need --world (not judged here: "
+                  "their subject is reachable only through a generated function source "
+                  "mode cannot read), through "
+                  + ", ".join(f"{g} {n}" for g, n in names.most_common()))
         by_proof = collections.Counter(f.proof_id for f in findings)
         if by_proof:
             worst = ", ".join(f"{p} {n}" for p, n in by_proof.most_common(5))
@@ -1656,6 +1803,9 @@ def main(argv=None) -> int:
         for finding in sorted(findings, key=Finding.key):
             mark = "NEW  " if finding.key() not in accepted else "     "
             print(mark + finding.render())
+        for finding in sorted(blind, key=Finding.key):
+            print("WORLD " + finding.render().split(": no host line")[0]
+                  + f": needs --world (through {', '.join(generated_through(graph, finding))})")
         print()
         print(f"{len(graph.book_defs)} book functions, "
               f"{len(graph.reachable)} reachable from a host line "
@@ -1665,7 +1815,7 @@ def main(argv=None) -> int:
             print("host files no image build loads (no seeds): "
                   + ", ".join(graph.unloaded_hosts))
         print(f"{hosted} registry events hosted, {len(tied)} campaign-tied, "
-              f"{len(findings)} orphaned, {len(fresh)} of those unbaselined, "
+              f"{len(blind)} need --world, {len(findings)} orphaned, {len(fresh)} of those unbaselined, "
               f"{len(unresolved)} unresolvable here")
 
     for proof_id, event, export, linking in graph.correspondence_bridged:
@@ -1680,7 +1830,14 @@ def main(argv=None) -> int:
         print(f"reach_check: UNRESOLVED event with no disposition: {key}")
     for relative in sorted(graph.unreadable):
         print(f"reach_check: UNREADABLE book {relative}: its events cannot be judged")
-    failed = fresh or untriaged or untriaged_unresolved or graph.unreadable
+    # needs --world is no pass: it clears only when a --world run finds the
+    # generated function in the certified world (then the subject is judged
+    # hosted or orphaned).  No baseline holds it.
+    for finding in sorted(blind, key=Finding.key):
+        print(f"reach_check: NEEDS --world -- {finding.proof_id}:{finding.event} "
+              f"(through {', '.join(generated_through(graph, finding))}); "
+              "--strict fails until a --world run judges it")
+    failed = fresh or blind or untriaged or untriaged_unresolved or graph.unreadable
     return 1 if (arguments.strict and failed) else 0
 
 
