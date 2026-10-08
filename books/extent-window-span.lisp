@@ -1,4 +1,9 @@
 ; Span-granular driving of the verified-window stream.
+; Cancellation: the owner's work-permitted decision is taken once per host call,
+; so a cancel observed while a span read is in flight takes effect at the next
+; span boundary; the extra work after a cancel is at most one span read (the
+; profile's :read-span-octets of prefix digested, tick fuel bounded per block by
+; *fn-ews-block-tick-fuel*), never an unbounded run.
 ; One host call moves up to a profile span of the protected prefix (:read-span-octets)
 ; and runs the digest to its next I/O need, instead of one 64-octet block per call.
 ; Every function here is a composition of books/extent-window-stream.lisp's block
@@ -83,6 +88,11 @@
 
 ; Ticks the core may spend between two blocks before it yields.
 (defconst *fn-ews-block-tick-fuel* 1024)
+
+; The host's tick: run to the next I/O need (one quantum of ticks).
+(defun fn-ews-tick-to-io (s pgs-digest-state)
+  (declare (xargs :stobjs pgs-digest-state :guard (true-listp s) :verify-guards nil))
+  (fn-ews-tick-run *fn-ews-block-tick-fuel* s pgs-digest-state))
 
 ; K blocks of the span at BASE: read a block, run the digest to the next I/O
 ; need, and go on while the stream wants the next block of this same buffer.
@@ -260,6 +270,26 @@
            :in-theory (disable fn-ews-tick)))
   :rule-classes nil)
 
+; Fuel exhaustion yields a consistent :continue and the next run resumes it:
+; two runs are one run of the summed fuel.
+(defthm fn-ews-tick-run-resumes
+  (implies (and (natp a) (natp b)
+                (equal (mv-nth 0 (fn-ews-tick-run a s pgs-digest-state)) :continue))
+           (equal (fn-ews-tick-run b (mv-nth 1 (fn-ews-tick-run a s pgs-digest-state))
+                                     (mv-nth 2 (fn-ews-tick-run a s pgs-digest-state)))
+                  (fn-ews-tick-run (+ a b) s pgs-digest-state)))
+  :hints (("Goal" :induct (fn-ews-tick-run a s pgs-digest-state)
+           :in-theory (e/d (fn-ews-tick-run) (fn-ews-tick-run-rw))))
+  :rule-classes nil)
+
+; The host's tick is the block quantum of ticks.
+(defthm fn-ews-tick-to-io-is-iterated-tick
+  (equal (fn-ews-tick-to-io s pgs-digest-state)
+         (fn-ews-tick-n *fn-ews-block-tick-fuel* s pgs-digest-state))
+  :hints (("Goal" :in-theory (enable fn-ews-tick-to-io)
+           :use (:instance fn-ews-tick-run-is-iterated-tick (n *fn-ews-block-tick-fuel*))))
+  :rule-classes nil)
+
 ; The span's effect is the stream's effect for its first block, widened.
 (defthm fn-ews-span-effect-extends-block-effect
   (implies (fn-ews-span-effect s pgs-digest-state)
@@ -365,3 +395,28 @@
   :hints (("Goal" :in-theory (e/d (fn-ews-read-span fn-ews-span-effect fn-ews-read fn-ews-span-demand fn-ewp-demand) (fn-ews-effect))
            :do-not-induct t))
   :rule-classes nil)
+
+; ---------------------------------------------------------------------------
+; Guards: the host calls fn-ews-tick-run and fn-ews-read-span.
+(defthm fn-ews-tick-true-listp-s
+  (implies (true-listp s) (true-listp (mv-nth 1 (fn-ews-tick s pgs-digest-state))))
+  :hints (("Goal" :in-theory (enable fn-ews-tick fn-ewp-with-phase-pos fn-ewp-state))))
+(verify-guards fn-ews-tick-run)
+(verify-guards fn-ews-tick-to-io)
+(verify-guards fn-ews-read-block
+  :hints (("Goal" :in-theory (enable fn-ews-effect fn-ews-boundp fn-ewp-demand) :use fn-ewp-demand-bounded)))
+(defthm fn-ews-tick-run-true-listp-s
+  (implies (true-listp s) (true-listp (mv-nth 1 (fn-ews-tick-run n s pgs-digest-state))))
+  :hints (("Goal" :in-theory (enable fn-ews-tick-run) :induct (fn-ews-tick-run n s pgs-digest-state))))
+(defthm fn-ews-read-block-true-listp-s
+  (implies (true-listp s) (true-listp (mv-nth 1 (fn-ews-read-block base effect s fn-octets pgs-digest-state fn-ew-buffer))))
+  :hints (("Goal" :in-theory (enable fn-ews-read-block fn-ewp-with-phase-pos fn-ewp-state fn-ewp-complete-read))))
+(in-theory (disable fn-ews-tick-run-rw fn-ews-read-block-rw fn-ews-read-block-not-scan))
+(verify-guards fn-ews-span-loop
+  :hints (("Goal" :in-theory (disable fn-ews-read-block fn-ews-tick-run fn-ewp-demand fn-ews-effect
+                                      fn-ewp-complete-read fn-ewp-with-phase-pos))))
+(verify-guards fn-ews-read-span
+  :hints (("Goal" :in-theory (disable fn-ews-span-effect fn-ewp-demand fn-ews-span-demand fn-ews-read fn-ews-span-loop)
+           :use fn-ews-span-demand-covers-block)))
+(in-theory (disable fn-ews-span-demand fn-ews-span-effect fn-ewb-capture-at fn-ews-read-block
+                    fn-ews-tick-run fn-ews-tick-n fn-ews-tick-to-io fn-ews-span-loop fn-ews-read-span))
