@@ -1,6 +1,7 @@
 ; Teeth for books/served-carried.lisp and books/owner-served-carried.lisp.
 (in-package "ACL2")
 (include-book "../../books/owner-served-carried")
+(include-book "../../books/defkeystone")
 (include-book "must-fail-checked")
 (include-book "config-owner-live-tests")
 
@@ -168,7 +169,58 @@
        1 (fn-own-conns
           (fn-ocfg-owner
            (cdr (in-arena-fn-ocfg-read-step *sr-arena* *scar-t-bad-ev-oc* 1 *scar-t-event*)))))))
-(must-fail-checked
- (defthm fn-scar-t-event-step-is-reference-without-relation
-   (equal (fn-scar-ocfg-read-step *scar-t-bad-ev-oc* 1 *scar-t-event* fn-arena)
-          (fn-ocfg-read-step *scar-t-bad-ev-oc* 1 *scar-t-event* fn-arena))))
+
+;; The three theorems of PRF-1357 as registered keystones.  Each carries its
+;; premises as one labelled hypothesis: the node and view-trie premises are
+;; the carried invariant (books/owner-offer-indexed.lisp, fn-ocl-relation),
+;; and a state with the relation true and the trie uncorresponding is not
+;; reachable by an event the SASL context witness can exercise, so the
+;; removal witness drops the whole premise at the bad-node owner.
+(defteeth fn-scar-ocfg-read-step-is-reference-under-ocl-relation
+  :claim (((carried-premises (and (fn-ocl-relation oc)
+                                  (fn-scar-view-indexedp (fn-ocfg-owner oc)))))
+          (equal (fn-scar-ocfg-read-step oc id event fn-arena)
+                 (fn-ocfg-read-step oc id event fn-arena)))
+  :subject fn-scar-ocfg-read-step
+  :witness ((oc *scar-t-oc*) (id 1) (event *scar-t-event*))
+  :breaks ((carried-premises ((oc *scar-t-bad-ev-oc*))))
+  :mutations ((reply-for-a-context-event
+               (:conclusion
+                (equal (car (fn-scar-ocfg-read-step oc id event fn-arena))
+                       '(:a-reply-for-a-context-event)))
+               ()
+               :fault "The carried step answers a reply to a host event that emits none")))
+
+(defteeth fn-scar-ocfg-read-step-is-ocfg-read-step
+  :claim (((carried-premises (and (fn-node-statep (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))
+                                  (fn-scar-view-indexedp (fn-ocfg-owner oc)))))
+          (equal (fn-scar-ocfg-read-step oc id event fn-arena)
+                 (fn-ocfg-read-step oc id event fn-arena)))
+  :subject fn-scar-ocfg-read-step
+  :witness ((oc *scar-t-oc*) (id 1) (event *scar-t-event*))
+  :breaks ((carried-premises ((oc *scar-t-bad-ev-oc*))))
+  :mutations ((dropped-pin-update
+               (:conclusion
+                (equal (fn-ocfg-pins (cdr (fn-scar-ocfg-read-step oc id event fn-arena)))
+                       nil))
+               ()
+               :fault "The carried step loses the configuration pin table")))
+
+(defteeth fn-scar-own-read-step-full-is-own-read-step-full
+  :claim (((carried-premises (and (fn-node-statep (fn-sn-node (fn-own-store o)))
+                                  (fn-scar-view-indexedp o))))
+          (equal (fn-scar-own-read-step-full o id event fn-arena)
+                 (fn-own-read-step-full o id event fn-arena)))
+  :subject fn-scar-own-read-step-full
+  :witness ((o *scar-t-o*) (id 1) (event *scar-t-event*))
+  :breaks ((carried-premises ((o (fn-ocfg-owner *scar-t-bad-ev-oc*)))))
+  :mutations ((reply-for-a-context-event
+               (:conclusion
+                (equal (car (fn-scar-own-read-step-full o id event fn-arena))
+                       '(:a-reply-for-a-context-event)))
+               ()
+               :fault "The carried step answers a reply to a host event that emits none")))
+
+(defteeth-check (fn-scar-ocfg-read-step-is-reference-under-ocl-relation
+                 fn-scar-ocfg-read-step-is-ocfg-read-step
+                 fn-scar-own-read-step-full-is-own-read-step-full))

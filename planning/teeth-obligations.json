@@ -22954,9 +22954,66 @@
    "registry": true
   },
   {
+   "book_digest": "8191e65cb36434bcd466ecf238792bcede5d46d7678f809ad1237e7c20cdadd4",
+   "bounds": [],
+   "claim_digest": "26cb44179e2baf60fd7a6831b7209ef1a4b932d8cbdb00f9216a14ec71feb469",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-scar-ocfg-read-step-is-ocfg-read-step",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-served-carried-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-scar-ocfg-read-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "8191e65cb36434bcd466ecf238792bcede5d46d7678f809ad1237e7c20cdadd4",
+   "bounds": [],
+   "claim_digest": "f6650cc16b432c85bcb1d85b6c6010aac2710a4593a8342cafd097f738753f3f",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-scar-ocfg-read-step-is-reference-under-ocl-relation",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-served-carried-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-scar-ocfg-read-step",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-scar-own-read-span-is-own-read-tls-prefix",
    "registry": true
+  },
+  {
+   "book_digest": "8191e65cb36434bcd466ecf238792bcede5d46d7678f809ad1237e7c20cdadd4",
+   "bounds": [],
+   "claim_digest": "8e85f6c26f6a532ee45bd434aea3af4fbe9b5f0a07a82686c26fe9775cc732b0",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-scar-own-read-step-full-is-own-read-step-full",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-served-carried-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-scar-own-read-step-full",
+   "witness": "executable"
   },
   {
    "class": "hand",
