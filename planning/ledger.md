@@ -10,25 +10,25 @@ stale. Counts describe artifacts, not coverage; see
 
 | Quantity | Count |
 | --- | --- |
-| Books read | 3093 |
-| Certification roots in the Makefile | 2607 |
-| Books inside the root closure | 2938 |
-| `defthm` and `defthmd` events | 41881 |
-| `defun` events | 26450 |
-| Functions with verified guards | 4173 |
-| Functions declared `:verify-guards nil` and never verified | 3468 |
-| Functions left at the default with an explicit guard | 14507 |
-| Functions left at the default with no guard | 4302 |
-| `assert-event` checks | 28378 |
+| Books read | 3098 |
+| Certification roots in the Makefile | 2612 |
+| Books inside the root closure | 2943 |
+| `defthm` and `defthmd` events | 42021 |
+| `defun` events | 26534 |
+| Functions with verified guards | 4178 |
+| Functions declared `:verify-guards nil` and never verified | 3507 |
+| Functions left at the default with an explicit guard | 14541 |
+| Functions left at the default with no guard | 4308 |
+| `assert-event` checks | 28419 |
 | `must-fail` checks | 2805 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
-| Theorems flagged SUSPECT by shape | 1522 |
-| Export-hygiene warnings | 434 |
+| Theorems flagged SUSPECT by shape | 1525 |
+| Export-hygiene warnings | 437 |
 | Enabled-projection warnings | 78 |
 | Teeth-form warnings | 316 |
-| Include-hygiene warnings | 3712 |
-| Host-names warnings | 3423 |
+| Include-hygiene warnings | 3721 |
+| Host-names warnings | 3424 |
 | Hand-written-record warnings | 19 |
 
 ## Lints
@@ -487,6 +487,9 @@ that `make certify` requests.
 | `books/checkpoint-auxiliary.lisp` | root | 0 | 12 | 7/0/0/5 | 0 | 0 | 0 |
 | `books/checkpoint-codec.lisp` | root | 110 | 32 | 13/0/18/1 | 0 | 0 | 2 |
 | `books/checkpoint-compaction.lisp` | root | 12 | 19 | 0/15/4/0 | 0 | 0 | 1 |
+| `books/checkpoint-payload-ref.lisp` | root | 34 | 15 | 2/2/11/0 | 0 | 0 | 0 |
+| `books/checkpoint-payloads-extent.lisp` | root | 10 | 4 | 0/0/2/2 | 0 | 0 | 0 |
+| `books/checkpoint-payloads.lisp` | root | 78 | 29 | 3/12/12/2 | 0 | 0 | 0 |
 | `books/checkpoint-publish.lisp` | root | 67 | 65 | 13/1/51/0 | 0 | 0 | 0 |
 | `books/checkpoint-reserve.lisp` | root | 7 | 3 | 0/2/1/0 | 0 | 0 | 0 |
 | `books/checkpoint.lisp` | root | 18 | 14 | 12/0/2/0 | 0 | 0 | 5 |
@@ -864,8 +867,9 @@ that `make certify` requests.
 | `books/history-records-disk.lisp` | root | 34 | 20 | 0/0/19/1 | 0 | 0 | 0 |
 | `books/history-records.lisp` | root | 143 | 48 | 0/0/30/18 | 0 | 0 | 0 |
 | `books/history-resource-refinement.lisp` | root | 12 | 8 | 0/0/8/0 | 0 | 0 | 1 |
-| `books/history-root-credit.lisp` | closure | 2 | 15 | 5/0/9/1 | 0 | 0 | 0 |
+| `books/history-root-credit.lisp` | closure | 10 | 21 | 5/0/15/1 | 0 | 0 | 0 |
 | `books/history-root-figure.lisp` | root | 11 | 0 | 0/0/0/0 | 0 | 0 | 0 |
+| `books/history-root-status.lisp` | root | 6 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/history-scalar-cursor.lisp` | root | 17 | 12 | 0/4/8/0 | 0 | 0 | 0 |
 | `books/history-semantic-writer-state.lisp` | root | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/history-semantic-writer.lisp` | root | 0 | 3 | 0/0/3/0 | 0 | 0 | 0 |
@@ -2205,6 +2209,7 @@ that `make certify` requests.
 | `tests/acl2/checkpoint-auxiliary-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 48 | 0 | 0 |
 | `tests/acl2/checkpoint-codec-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 82 | 0 | 0 |
 | `tests/acl2/checkpoint-compaction-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 15 | 4 | 0 |
+| `tests/acl2/checkpoint-payloads-tests.lisp` | root | 4 | 29 | 0/25/2/2 | 41 | 0 | 3 |
 | `tests/acl2/checkpoint-publish-tests.lisp` | root | 0 | 3 | 0/0/0/3 | 93 | 2 | 0 |
 | `tests/acl2/checkpoint-reserve-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 4 | 2 | 0 |
 | `tests/acl2/checkpoint-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 28 | 0 | 0 |
@@ -3201,6 +3206,9 @@ Every theorem below is proved; none may be cited as a registry event in
 | `bpcd-job-key-of-with-status` | `books/bp-node-contact-driver.lisp` | 61 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `bpgap-uncertain-issued-is-inert` | `books/bp-node-machine-gaps.lisp` | 104 | arm-of-definition: the hypotheses select one IF/COND arm of fn-bpnp-step and the conclusion is that arm's value |
 | `bprsend-job-with-status-fields` | `books/bp-node-receipt-send.lisp` | 278 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `cpl-t-model-realize-octet-is-durable` | `tests/acl2/checkpoint-payloads-tests.lisp` | 475 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of cpl-t-realize-octet; reflexive-conclusion: a conjunct is (equal X X) |
+| `cpl-t-model-realize-octets-is-durable` | `tests/acl2/checkpoint-payloads-tests.lisp` | 478 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of cpl-t-realize-octets; reflexive-conclusion: a conjunct is (equal X X) |
+| `cpl-t-model-unfold` | `tests/acl2/checkpoint-payloads-tests.lisp` | 471 | definition-restated: the conclusion is the body of cpl-t-octets |
 | `cwt-relp-implies-corep` | `tests/acl2/def-carried-writer-tests.lisp` | 88 | recognizer-body-conclusion: the conclusion is the body of the hypothesis cwt-relp |
 | `ewzi-payload-span-outside-scan` | `books/extent-window-compressed-input.lisp` | 137 | arm-of-definition: the hypotheses select one IF/COND arm of fn-ewp-payload-span and the conclusion is that arm's value |
 | `ewzi-scanned-input-same-position` | `books/extent-window-compressed-input.lisp` | 106 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
