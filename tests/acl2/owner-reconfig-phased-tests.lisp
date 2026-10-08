@@ -256,4 +256,14 @@
         (member-equal :release (fn-orp-before :unstage effects))
         (not (member-equal :convert effects)))))
 
+(defteeth fn-orp-step-holds-the-owner-only-in-quanta
+  :claim (() (fn-orp-labelsp (mv-nth 0 (fn-orp-step phase reserve event))))
+  :witness ((phase :authorizing) (reserve t) (event :authorized))
+  :breaks ()
+  :mutations ((observe-under-owner
+               (:conclusion
+                (fn-orp-labelsp (subst :owner :off (mv-nth 0 (fn-orp-step phase reserve event)))))
+               ((phase :authorizing) (reserve t) (event :authorized))
+               :fault "the next name's observation (an lstat) run while the owner is held")))
+
 (defteeth-check)

@@ -469,3 +469,15 @@
 (defthm fn-orp-step-runs-the-phased-run
   (equal (fn-orp-trace :start reserve (fn-orp-events stage auth observe publish verdict feeds))
          (fn-orp-run reserve stage auth observe publish verdict feeds)))
+
+(local (defthm fn-orp-labelsp-owner-replay-peers
+  (fn-orp-labelsp (fn-orp-label :owner (fn-orp-replay-peers peers)))))
+
+; KEYSTONE R4 per call.  Every effect fn-orp-step answers is labelled, and it
+; is labelled :off exactly when it is I/O: the host, which runs each effect
+; where its label says, holds the owner for no I/O in any single step.  The
+; subject is fn-orp-step, the function host/native/admin.lisp's phased
+; wrapper (lane reconfig-host) calls.
+(defthm fn-orp-step-holds-the-owner-only-in-quanta
+  (fn-orp-labelsp (mv-nth 0 (fn-orp-step phase reserve event)))
+  :hints (("Goal" :in-theory (enable fn-orp-step))))
