@@ -134,6 +134,7 @@ cache only moves its result to another worktree, where ACL2 checks it again.
 from __future__ import annotations
 
 import argparse
+import atexit
 import cert_alists
 import contextlib
 from contextlib import contextmanager
@@ -250,6 +251,9 @@ class Report:
     installed_from: dict[str, str] = field(default_factory=dict)
     roots: list[str] = field(default_factory=list)
     roots_installed: list[str] = field(default_factory=list)
+    # install-partial: the record this report was reused from (one install
+    # per run, INSTALL_RECORD), or None when the selection ran.
+    reused_from: str | None = None
     # Installed or kept pairs whose entry carried a compiled file, and those
     # whose entry had none (ACL2 then processes that book's events uncompiled).
     fasl_installed: int = 0
@@ -356,14 +360,85 @@ def kind_is_stated(origin_kind: str | None) -> bool:
 # re-hashed each entry's cert, port and fasl, and install-umbrellas
 # enumerates up to three times per run: on hbox's random-read-bound tank a
 # convergence-time install-umbrellas read 3 GB and ran past 20 minutes
-# (2026-10-07).  It never crosses processes.
+# (2026-10-07).
+#
+# Across processes (ruling 17, N-GATETIME's profile of a c3 gate on hbox at
+# load 17-23): every certs entry point -- the install step, the
+# incremental certify's install, acquire -- re-hashed the same ~20k closure
+# files in a fresh process; reads were 104 of 238 s in the first install and
+# ~300 s of the second, at ~13 ms a read under load.  Under
+# FN_CONTENT_HASH_FILE (tools/hbox_native.sh sets it to one file per run
+# tree) the memo is loaded from and merged back into that file, under the
+# same key, so a later process stats a file instead of reading it.  Without
+# the variable nothing is persisted (the laptop, the unit tests).
 _CONTENT_HASHES: dict[tuple, str] = {}
+CONTENT_HASH_FILE_ENV = "FN_CONTENT_HASH_FILE"
+_PERSISTED: dict = {"loaded": False, "new": {}}
+
+
+def _hash_file() -> Path | None:
+    value = os.environ.get(CONTENT_HASH_FILE_ENV)
+    return Path(value) if value else None
+
+
+def _key_text(key: tuple) -> str:
+    return ":".join(str(part) for part in key)
+
+
+def _load_persisted_hashes() -> None:
+    _PERSISTED["loaded"] = True
+    where = _hash_file()
+    if where is None:
+        return
+    try:
+        stored = json.loads(where.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(stored, dict):
+        return
+    for text, digest in stored.items():
+        parts = text.split(":")
+        if len(parts) == 5 and isinstance(digest, str) and len(digest) == 64:
+            try:
+                _CONTENT_HASHES.setdefault(tuple(int(p) for p in parts), digest)
+            except ValueError:
+                continue
+
+
+def flush_persisted_hashes() -> None:
+    """Merge this process's new digests into FN_CONTENT_HASH_FILE (locked,
+    atomic replace).  Registered at exit; harmless to call more than once."""
+    where, new = _hash_file(), _PERSISTED["new"]
+    if where is None or not new:
+        return
+    try:
+        where.parent.mkdir(parents=True, exist_ok=True)
+        with open(str(where) + ".lock", "a+b") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            try:
+                merged = json.loads(where.read_text(encoding="utf-8"))
+                if not isinstance(merged, dict):
+                    merged = {}
+            except (OSError, ValueError):
+                merged = {}
+            merged.update({_key_text(k): v for k, v in new.items()})
+            temporary = where.with_name(where.name + f".{os.getpid()}.tmp")
+            temporary.write_text(json.dumps(merged, sort_keys=True), encoding="utf-8")
+            os.replace(temporary, where)
+        new.clear()
+    except OSError:
+        pass
+
+
+atexit.register(flush_persisted_hashes)
 
 
 def content_hash(path: Path) -> str:
     status = os.stat(path)
     key = (status.st_dev, status.st_ino, status.st_size, status.st_mtime_ns,
            status.st_ctime_ns)
+    if not _PERSISTED["loaded"]:
+        _load_persisted_hashes()
     known = _CONTENT_HASHES.get(key)
     if known is not None:
         return known
@@ -375,6 +450,8 @@ def content_hash(path: Path) -> str:
     after = os.stat(path)
     if (after.st_ino, after.st_size, after.st_mtime_ns, after.st_ctime_ns) == key[1:]:
         _CONTENT_HASHES[key] = digest  # unchanged while it was read
+        if _hash_file() is not None:
+            _PERSISTED["new"][key] = digest
     return digest
 
 
@@ -1851,6 +1928,84 @@ def umbrella_miss(candidate: list[str], missing: list[str]) -> str:
     return "; ".join(parts)
 
 
+# One install per run (CONVERGE-3 time bar, 2026-10-07).  A gate run installed
+# the same roots twice: tools/hbox_native.sh's install step (install-partial
+# over roots.txt), then certify_books --incremental, which calls
+# install_partial again; the second pass found every pair resident and still
+# redid the whole selection (13.5-15 min at load 12-14 on hbox).  The record
+# below lets the second call return the first's report.  Its key is what the
+# selection is a function of: the closure's sources (each book's content hash,
+# `required_closure`), the roots and recertify lists, the toolchain identity,
+# the ACL2 executable, this tree's path, and the run id.  It is never keyed on
+# the cache's mtime.  The record is honoured only while every artifact it
+# installed is still exactly as installed (stat of .cert/.port/.fasl: device,
+# inode, size, mtime) and every book it left uncached still has no
+# certificate; anything else and install_partial runs in full.
+#
+# Scope: ONE RUN.  The record is written and honoured only under
+# FN_INSTALL_RUN (tools/hbox_native.sh exports one id per run, for its install
+# step and its certify), and only for the same id.  A record left in a tree
+# never outlives its run: across runs the cache may have gained the pairs a
+# book lacked, and the next run must look again.
+INSTALL_RECORD = Path("build") / ".install-partial.json"
+INSTALL_RUN_ENV = "FN_INSTALL_RUN"
+
+
+def _install_key(root: Path, required: dict[str, str], roots, recertify,
+                 toolchain_identity: str, acl2) -> str:
+    return stable_identity({
+        "run": os.environ.get(INSTALL_RUN_ENV, ""),
+        "sources": closure_listing(required), "roots": sorted(roots),
+        "recertify": sorted(recertify), "toolchain": toolchain_identity,
+        "acl2": str(Path(acl2).resolve()) if acl2 is not None else "",
+        "tree": str(root.resolve())})
+
+
+def _artifact_stats(root: Path, report: "Report") -> dict[str, list]:
+    stats: dict[str, list] = {}
+    for name in sorted(report.installed_from):
+        for suffix in (".cert", ".port", ".fasl"):
+            try:
+                st = (root / f"{name}{suffix}").stat()
+            except OSError:
+                continue
+            stats[f"{name}{suffix}"] = [st.st_dev, st.st_ino, st.st_size, st.st_mtime_ns]
+    return stats
+
+
+def _reused_install(root: Path, key: str) -> "Report | None":
+    """The recorded report when KEY matches and the tree is as installed."""
+    try:
+        record = json.loads((root / INSTALL_RECORD).read_text(encoding="utf-8"))
+        if not isinstance(record, dict) or record.get("key") != key:
+            return None
+        report = Report(**record["report"])
+    except (OSError, ValueError, TypeError, KeyError):
+        return None
+    if _artifact_stats(root, report) != record.get("stats"):
+        return None
+    if any((root / f"{name}.cert").exists() for name in report.uncached):
+        return None
+    report.reused_from = str(INSTALL_RECORD)
+    return report
+
+
+def _write_install_record(root: Path, key: str, report: "Report") -> None:
+    from dataclasses import asdict
+    body = asdict(report)
+    body["reused_from"] = None
+    path = root / INSTALL_RECORD
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps({"key": key, "report": body,
+                                         "stats": _artifact_stats(root, report)},
+                                        sort_keys=True), encoding="utf-8")
+        os.replace(temporary, path)
+    except OSError:
+        pass
+
+
 @scoped_closures
 def install_partial(root: Path, cache: Path, roots: Iterable[str],
                     toolchain_identity: str, acl2: Path | None = None,
@@ -1886,6 +2041,13 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
     if outside:
         raise ValueError("a book to recertify is not in the roots' closure: "
                          + ", ".join(outside))
+    key = _install_key(root, required, roots, recertify, toolchain_identity, acl2)
+    run_scoped = bool(os.environ.get(INSTALL_RUN_ENV))
+    if _attempt == 0 and run_scoped:
+        reused = _reused_install(root, key)
+        if reused is not None:
+            return reused
+        (root / INSTALL_RECORD).unlink(missing_ok=True)
     report.recertified = list(recertify)
     report.books = len(required)
     report.toolchain_identity = toolchain_identity
@@ -1959,6 +2121,8 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
     report.roots = list(roots)
     report.roots_installed = sorted(name for name in roots
                                     if name in report.installed_from)
+    if run_scoped:
+        _write_install_record(root, key, report)
     return report
 
 
