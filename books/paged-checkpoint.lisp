@@ -230,8 +230,12 @@
            :use fn-sco-extend-of-capture)))
 
 (defun fn-pck-sccb-listp (recs)
-  (declare (xargs :guard t))
-  (if (atom recs) (null recs) (and (fn-sccb-treep (car recs)) (fn-pck-sccb-listp (cdr recs)))))
+  (declare (xargs :guard t :verify-guards nil))
+  ; Every event and its metadata tree are encodable trees.
+  (if (atom recs)
+      (null recs)
+    (and (fn-sccb-treep (car recs)) (fn-sccb-treep (fn-pck-meta (car recs)))
+         (fn-pck-sccb-listp (cdr recs)))))
 
 (defun fn-pck-recordsp (configs recs)
   ; Every record and the four fold roots are encodable trees: the premise of
@@ -317,12 +321,47 @@
   :hints (("Goal" :use fn-sccb-treep-encodes-octets
            :in-theory (disable fn-sccb-treep-encodes-octets))))
 
+(defthm pck-plen-of-append
+  (equal (fn-pck-plen (append a b) base) (fn-pck-plen b (fn-pck-plen a base)))
+  :hints (("Goal" :induct (fn-pck-plen a base))))
+
+(defthm pck-rows-from-of-append
+  (equal (fn-pck-rows-from (append a b) base)
+         (append (fn-pck-rows-from a base) (fn-pck-rows-from b (fn-pck-plen a base))))
+  :hints (("Goal" :induct (fn-pck-plen a base))))
+
 (defthm pck-rows-of-append
-  (equal (fn-pck-rows (append a b)) (append (fn-pck-rows a) (fn-pck-rows b))))
+  (equal (fn-pck-rows (append a b))
+         (append (fn-pck-rows a) (fn-pck-rows-from b (fn-pck-plen a 0))))
+  :hints (("Goal" :in-theory (enable fn-pck-rows))))
+
+(defun fn-pck-plen-okp (recs)
+  ; The payload file the frames of RECS fill is under 2^64 octets (the offset
+  ; and length fields of a row are words).
+  (declare (xargs :guard t :verify-guards nil))
+  (< (fn-pck-plen recs 0) 18446744073709551616))
+
+(defthm pck-plen-monotone
+  (<= base (fn-pck-plen recs base))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-pck-plen recs base))))
+
+(defthm pck-plen-natp
+  (implies (natp base) (natp (fn-pck-plen recs base)))
+  :hints (("Goal" :induct (fn-pck-plen recs base)))
+  :rule-classes :type-prescription)
+
+(defthm pck-rows-from-ap
+  (implies (and (fn-pck-sccb-listp recs) (natp base)
+                (< (fn-pck-plen recs base) 18446744073709551616))
+           (fn-pck-row$ap (fn-pck-rows-from recs base)))
+  :hints (("Goal" :induct (fn-pck-plen recs base)
+           :in-theory (enable fn-pck-row$ap adt-seq-p adt-rec-p adt-val-okp fn-pck-enc-row))))
 
 (defthm pck-rows-ap
-  (implies (fn-pck-sccb-listp recs) (fn-pck-row$ap (fn-pck-rows recs)))
-  :hints (("Goal" :in-theory (enable fn-pck-row$ap adt-seq-p adt-rec-p adt-val-okp fn-pck-enc-row))))
+  (implies (and (fn-pck-sccb-listp recs) (fn-pck-plen-okp recs))
+           (fn-pck-row$ap (fn-pck-rows recs)))
+  :hints (("Goal" :in-theory (enable fn-pck-rows) :use ((:instance pck-rows-from-ap (base 0))))))
 
 (defthm pck-len-zero-pages
   (equal (len (fn-pck-zero-pages n)) (nfix n)))
@@ -376,7 +415,8 @@
 
 (defthm fn-pck-dirty-is-the-delta
   (implies (and (true-listp prefix) (true-listp delta)
-                (fn-pck-sccb-listp (append prefix delta)))
+                (fn-pck-sccb-listp (append prefix delta))
+                (fn-pck-plen-okp (append prefix delta)))
            (equal (pgs-apply-dirty (fn-pck-pages configs prefix) (fn-pck-dirty configs prefix delta))
                   (fn-pck-pages configs (append prefix delta))))
   :hints (("Goal" :do-not-induct t
@@ -389,7 +429,10 @@
                  (:instance fn-pck-row-pages-of-extend-is-apply-dirty
                             (a (fn-pck-rows prefix)) (xs (fn-pck-rows-from delta (fn-pck-plen prefix 0))))
                  (:instance pck-rows-ap (recs prefix))
-                 (:instance pck-rows-ap (recs delta))))))
+                 (:instance pck-rows-from-ap (recs delta) (base (fn-pck-plen prefix 0)))
+                 (:instance pck-plen-of-append (a prefix) (b delta) (base 0))
+                 (:instance pck-plen-monotone (recs delta) (base (fn-pck-plen prefix 0)))
+                 (:instance pck-sccb-listp-of-append (a prefix) (b delta))))))
 
 ; -----------------------------------------------------------------------------
 ; 4. PCK-BOUND
