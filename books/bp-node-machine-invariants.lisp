@@ -834,6 +834,22 @@
        fn-bpn-machine-limitp posp len)
      (theory 'minimal-theory)))))
 
+(defthm fn-bpn-sequence-fault-of-seeded-state-has-invariant
+  (implies
+   (fn-bpn-machine-statep b)
+   (fn-bpn-machine-invariantp (fn-bpn-state-with b nil nil nil t 0)))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-machine-statep-components (st b))
+                 (:instance fn-bpn-machine-statep-of-state-with
+                            (st b) (jobs nil) (contacts nil) (pending nil)
+                            (fenced t) (next-token 0)))
+           :in-theory (union-theories
+                       '(fn-bpn-machine-invariantp fn-bpn-state-with-accessors
+                         fn-bpn-contact-listp fn-bpn-maybe-pendingp
+                         fn-bpn-job-listp fn-bpn-jobs-octets fn-bpn-machine-boolp fn-bpn-machine-u64p natp fn-bpn-machine-limitp posp
+                         len)
+                       (theory 'minimal-theory)))))
+
 (defthm fn-bpn-effect-listp-of-singleton
   (equal (fn-bpn-effect-listp (list effect))
          (fn-bpn-effectp effect))
@@ -1029,17 +1045,26 @@
               true-listp)
             (theory 'minimal-theory)))))
 
+(defthm fn-bpn-restart-step-from-effects-are-typed
+  (fn-bpn-effect-listp
+   (fn-bpn-answer-effects (fn-bpn-restart-step-from st records sequence-ready jobs token)))
+  :hints (("Goal"
+           :in-theory
+           (union-theories
+            '(fn-bpn-restart-step-from fn-bpn-answer-constructor-accessors
+              fn-bpn-resolve-orphans-step-effects-are-typed
+              fn-bpn-effect-listp-of-singleton fn-bpn-effect-listp-of-cons
+              fn-bpn-effectp fn-bpn-member car-cons cdr-cons
+              true-listp)
+            (theory 'minimal-theory)))))
+
 (defthm fn-bpn-restart-step-effects-are-typed
   (fn-bpn-effect-listp
    (fn-bpn-answer-effects (fn-bpn-restart-step st records sequence-ready)))
   :hints (("Goal"
            :in-theory
            (union-theories
-            '(fn-bpn-restart-step fn-bpn-answer-constructor-accessors
-              fn-bpn-resolve-orphans-step-effects-are-typed
-              fn-bpn-effect-listp-of-singleton fn-bpn-effect-listp-of-cons
-              fn-bpn-effectp fn-bpn-member car-cons cdr-cons
-              true-listp)
+            '(fn-bpn-restart-step fn-bpn-restart-step-from-effects-are-typed)
             (theory 'minimal-theory)))))
 
 (defthm fn-bpn-enqueue-step-preserves-machine-invariant
@@ -1179,6 +1204,51 @@
        car-cons cdr-cons true-listp)
      (theory 'minimal-theory)))))
 
+(defthm fn-bpn-seeded-machine-state-accessors
+  (implies (fn-bpn-machine-statep (fn-bpn-seeded-machine-state config max-jobs max-octets jobs token))
+           (and (equal (fn-bpn-machine-state-jobs (fn-bpn-seeded-machine-state config max-jobs max-octets jobs token)) jobs)
+                (equal (fn-bpn-machine-state-next-token (fn-bpn-seeded-machine-state config max-jobs max-octets jobs token)) token)
+                (equal (fn-bpn-machine-state-config (fn-bpn-seeded-machine-state config max-jobs max-octets jobs token)) config)
+                (equal (fn-bpn-machine-state-max-jobs (fn-bpn-seeded-machine-state config max-jobs max-octets jobs token)) max-jobs)
+                (equal (fn-bpn-machine-state-max-octets (fn-bpn-seeded-machine-state config max-jobs max-octets jobs token)) max-octets)
+                (not (fn-bpn-machine-state-pending (fn-bpn-seeded-machine-state config max-jobs max-octets jobs token)))
+                (not (fn-bpn-machine-state-fenced (fn-bpn-seeded-machine-state config max-jobs max-octets jobs token)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-bpn-seeded-machine-state fn-bpn-machine-statep fn-bpn-machine-recordp)
+                    (union-theories (theory 'ground-zero) (theory 'fn-bpn-machine-state-internals))))))
+
+(defthm fn-bpn-restart-step-from-preserves-machine-invariant
+  (implies
+   (and (fn-bpn-machine-statep st)
+        (fn-bpn-machine-invariantp (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token))
+        (true-listp records)
+        (<= (+ token (len records)) *fn-bpn-machine-max-records*))
+   (fn-bpn-machine-invariantp
+    (fn-bpn-answer-state (fn-bpn-restart-step-from st records sequence-ready jobs token))))
+  :hints
+  (("Goal"
+    :use
+    ((:instance fn-bpn-machine-invariant-components (st (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token)))
+     (:instance fn-bpn-machine-statep-components)
+     (:instance fn-bpn-sequence-fault-of-seeded-state-has-invariant (b (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token)))
+     (:instance fn-bpn-replay-records-preserves-machine-invariant (st (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token)))
+     (:instance fn-bpn-machine-invariant-components (st (nth 1 (fn-bpn-replay-records (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token) records))))
+     (:instance fn-bpn-machine-statep-components (st (nth 1 (fn-bpn-replay-records (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token) records))))
+     (:instance fn-bpn-resolve-orphans-step-preserves-machine-invariant (st (nth 1 (fn-bpn-replay-records (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token) records))))
+     (:instance fn-bpn-restart-state-with-preserves-machine-invariant
+                (st (nth 1 (fn-bpn-replay-records (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token) records)))
+                (jobs (fn-bpn-machine-state-jobs (nth 1 (fn-bpn-replay-records (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token) records))))
+                (fenced t)))
+    :in-theory
+    (union-theories
+     '(fn-bpn-restart-step-from fn-bpn-answer-constructor-accessors
+       fn-bpn-sequence-fault-of-seeded-state-has-invariant
+       fn-bpn-restart-state-with-preserves-machine-invariant
+       fn-bpn-seeded-machine-state-accessors
+       fn-bpn-limits-of-initial-machine-state
+       fn-bpn-job-listp fn-bpn-jobs-octets fn-bpn-machine-boolp
+       fn-bpn-machine-limitp posp len)
+     (theory 'minimal-theory)))))
+
 (defthm fn-bpn-restart-step-preserves-machine-invariant
   (implies
    (and (fn-bpn-machine-invariantp st)
@@ -1188,69 +1258,17 @@
     (fn-bpn-answer-state (fn-bpn-restart-step st records sequence-ready))))
   :hints
   (("Goal"
-    :use
-    ((:instance fn-bpn-machine-invariant-components)
-     (:instance fn-bpn-machine-statep-components)
-     (:instance fn-bpn-sequence-fault-state-has-invariant)
-     (:instance fn-bpn-initial-machine-state-has-invariant
-                (config (fn-bpn-machine-state-config st))
-                (max-jobs (fn-bpn-machine-state-max-jobs st))
-                (max-octets (fn-bpn-machine-state-max-octets st)))
-     (:instance fn-bpn-replay-records-preserves-machine-invariant
-                (st (fn-bpn-initial-machine-state
-                     (fn-bpn-machine-state-config st)
-                     (fn-bpn-machine-state-max-jobs st)
-                     (fn-bpn-machine-state-max-octets st))))
-     (:instance fn-bpn-machine-invariant-components
-                (st (nth 1
-                         (fn-bpn-replay-records
-                          (fn-bpn-initial-machine-state
-                           (fn-bpn-machine-state-config st)
-                           (fn-bpn-machine-state-max-jobs st)
-                           (fn-bpn-machine-state-max-octets st))
-                          records))))
-     (:instance fn-bpn-machine-statep-components
-                (st (nth 1
-                         (fn-bpn-replay-records
-                          (fn-bpn-initial-machine-state
-                           (fn-bpn-machine-state-config st)
-                           (fn-bpn-machine-state-max-jobs st)
-                           (fn-bpn-machine-state-max-octets st))
-                          records))))
-     (:instance fn-bpn-resolve-orphans-step-preserves-machine-invariant
-                (st (nth 1
-                         (fn-bpn-replay-records
-                          (fn-bpn-initial-machine-state
-                           (fn-bpn-machine-state-config st)
-                           (fn-bpn-machine-state-max-jobs st)
-                           (fn-bpn-machine-state-max-octets st))
-                          records))))
-     (:instance fn-bpn-restart-state-with-preserves-machine-invariant
-                (st (nth 1
-                         (fn-bpn-replay-records
-                          (fn-bpn-initial-machine-state
-                           (fn-bpn-machine-state-config st)
-                           (fn-bpn-machine-state-max-jobs st)
-                           (fn-bpn-machine-state-max-octets st))
-                          records)))
-                (jobs
-                 (fn-bpn-machine-state-jobs
-                  (nth 1
-                       (fn-bpn-replay-records
-                        (fn-bpn-initial-machine-state
-                         (fn-bpn-machine-state-config st)
-                         (fn-bpn-machine-state-max-jobs st)
-                         (fn-bpn-machine-state-max-octets st))
-                        records))))
-                (fenced t)))
+    :use ((:instance fn-bpn-restart-step-from-preserves-machine-invariant
+                     (jobs nil) (token 0))
+          (:instance fn-bpn-machine-invariant-components)
+          (:instance fn-bpn-machine-statep-components)
+          (:instance fn-bpn-initial-machine-state-has-invariant
+                     (config (fn-bpn-machine-state-config st))
+                     (max-jobs (fn-bpn-machine-state-max-jobs st))
+                     (max-octets (fn-bpn-machine-state-max-octets st))))
     :in-theory
     (union-theories
-     '(fn-bpn-restart-step fn-bpn-answer-constructor-accessors
-       fn-bpn-sequence-fault-state-has-invariant
-       fn-bpn-restart-state-with-preserves-machine-invariant
-       fn-bpn-next-token-of-initial-machine-state
-       fn-bpn-resolve-orphans-step-preserves-machine-invariant
-       fn-bpn-machine-boolp)
+     '(fn-bpn-restart-step fn-bpn-seeded-machine-state-of-no-jobs)
      (theory 'minimal-theory)))))
 
 ; Keystone: the effect output of the host-called dispatcher is typed from the
@@ -1555,6 +1573,22 @@
                       (fn-bpn-initial-machine-state config max-jobs max-octets)))))
   :hints (("Goal" :in-theory (enable fn-bpn-initial-machine-state))))
 
+(defthm fn-bpn-restart-step-from-of-ready-replay
+  (implies
+   (equal (car (fn-bpn-replay-records (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token) records)) :ready)
+   (equal (fn-bpn-restart-step-from st records :ready jobs token)
+          (let* ((replayed (nth 1 (fn-bpn-replay-records (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st) (fn-bpn-machine-state-max-jobs st) (fn-bpn-machine-state-max-octets st) jobs token) records)))
+                 (resolved (fn-bpn-resolve-orphans-step replayed)))
+            (fn-bpn-answer
+             (fn-bpn-answer-state resolved)
+             (cons (list :restart-ready
+                         (len (fn-bpn-machine-state-jobs replayed)))
+                   (fn-bpn-answer-effects resolved))))))
+  :hints (("Goal" :in-theory (e/d (fn-bpn-restart-step-from)
+                                  (fn-bpn-replay-records
+                                   fn-bpn-seeded-machine-state
+                                   fn-bpn-resolve-orphans-step)))))
+
 (defthm fn-bpn-restart-step-of-ready-replay
   (implies
    (equal (car (fn-bpn-replay-records
@@ -1577,12 +1611,41 @@
              (cons (list :restart-ready
                          (len (fn-bpn-machine-state-jobs replayed)))
                    (fn-bpn-answer-effects resolved))))))
-  :hints (("Goal" :in-theory (e/d (fn-bpn-restart-step)
+  :hints (("Goal" :in-theory (e/d (fn-bpn-restart-step fn-bpn-restart-step-from)
                                   (fn-bpn-replay-records
                                    fn-bpn-initial-machine-state
                                    fn-bpn-resolve-orphans-step)))))
 
 
+
+(defthm fn-bpn-restart-step-from-of-no-records
+  (implies
+   (and (fn-bpn-machine-statep
+         (fn-bpn-seeded-machine-state (fn-bpn-machine-state-config st)
+                                      (fn-bpn-machine-state-max-jobs st)
+                                      (fn-bpn-machine-state-max-octets st)
+                                      jobs token))
+        (not (fn-bpn-find-attempting jobs)))
+   (and (equal (fn-bpn-machine-state-jobs
+                (fn-bpn-answer-state
+                 (fn-bpn-restart-step-from st nil :ready jobs token)))
+               jobs)
+        (equal (fn-bpn-machine-state-next-token
+                (fn-bpn-answer-state
+                 (fn-bpn-restart-step-from st nil :ready jobs token)))
+               token)))
+  :hints (("Goal"
+           :use ((:instance fn-bpn-seeded-machine-state-accessors
+                            (config (fn-bpn-machine-state-config st))
+                            (max-jobs (fn-bpn-machine-state-max-jobs st))
+                            (max-octets (fn-bpn-machine-state-max-octets st))))
+           :in-theory (e/d (fn-bpn-restart-step-from-of-ready-replay
+                            fn-bpn-resolve-orphans-step
+                            fn-bpn-answer-constructor-accessors
+                            fn-bpn-replay-records)
+                           (fn-bpn-seeded-machine-state
+                            fn-bpn-restart-step-from fn-bpn-find-attempting
+                            fn-bpn-machine-statep)))))
 
 (defthm fn-bpn-attempt-after-orphan-attempt-is-inapplicable
   (implies (and (equal (fn-cbor-ag-car record) :attempting)

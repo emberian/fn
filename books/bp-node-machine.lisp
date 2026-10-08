@@ -938,15 +938,43 @@
         (list :fault st :lifecycle-record)
       (fn-bpn-replay-records (fn-bpn-apply-record st (car records)) (cdr records)))))
 
-(defun fn-bpn-restart-step (st records sequence-ready)
+; The machine a restart replays its records over: the initial machine of a
+; configuration and limits with JOBS and the token counter TOKEN installed.
+; With no jobs and token 0 it is the initial machine; a rotated generation
+; restarts from the owed jobs and the token its checkpoint carries.
+(defun fn-bpn-seeded-machine-state (config max-jobs max-octets jobs token)
+  (declare (xargs :guard t))
+  (if (and (fn-bpn-configp config)
+           (fn-bpn-machine-limitp max-jobs)
+           (fn-bpn-machine-limitp max-octets))
+      (fn-bpn-make-machine-state config jobs nil nil nil token max-jobs max-octets)
+    nil))
+
+(verify-guards fn-bpn-seeded-machine-state)
+
+(defthm fn-bpn-seeded-machine-state-of-no-jobs
+  (equal (fn-bpn-seeded-machine-state config max-jobs max-octets nil 0)
+         (fn-bpn-initial-machine-state config max-jobs max-octets))
+  :hints (("Goal" :in-theory (enable fn-bpn-seeded-machine-state
+                                     fn-bpn-initial-machine-state))))
+
+(defun fn-bpn-restart-step-from (st records sequence-ready jobs token)
   (declare (xargs :guard
                   (and (fn-bpn-machine-statep st)
                        (true-listp records)
-                       (<= (len records) *fn-bpn-machine-max-records*))))
-  (let ((base (fn-bpn-initial-machine-state
+                       (natp token)
+                       (<= (+ token (len records)) *fn-bpn-machine-max-records*)
+                       (fn-bpn-machine-statep
+                        (fn-bpn-seeded-machine-state
+                         (fn-bpn-machine-state-config st)
+                         (fn-bpn-machine-state-max-jobs st)
+                         (fn-bpn-machine-state-max-octets st)
+                         jobs token)))))
+  (let ((base (fn-bpn-seeded-machine-state
                (fn-bpn-machine-state-config st)
                (fn-bpn-machine-state-max-jobs st)
-               (fn-bpn-machine-state-max-octets st))))
+               (fn-bpn-machine-state-max-octets st)
+               jobs token)))
     (if (not (equal sequence-ready :ready))
         (fn-bpn-answer
          (fn-bpn-state-with base nil nil nil t 0)
@@ -965,6 +993,14 @@
              (fn-bpn-state-with prefix (fn-bpn-machine-state-jobs prefix)
                                 nil nil t (fn-bpn-machine-state-next-token prefix))
              (list (list :restart-fault (nth 2 replay))))))))))
+
+; The restart of the lifecycle log from the beginning: the unseeded instance.
+(defun fn-bpn-restart-step (st records sequence-ready)
+  (declare (xargs :guard
+                  (and (fn-bpn-machine-statep st)
+                       (true-listp records)
+                       (<= (len records) *fn-bpn-machine-max-records*))))
+  (fn-bpn-restart-step-from st records sequence-ready nil 0))
 
 (defun fn-bpn-eventp (event)
   (declare (xargs :guard t))
