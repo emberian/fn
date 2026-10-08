@@ -1105,3 +1105,25 @@
    (<= (fn-heap-store-figure-octets profile core nursery later)
        (fn-heap-store-figure-octets profile core nursery '(0 . 0)))
    :rule-classes nil))
+
+; THE LIVE-RECLAIM OPT-IN AT THE FULL-STORE RUN FIGURE (tests/test_native_reclaim_walk.py
+; test_the_opt_in_is_the_only_change_to_the_figure).  The opt-in adds the pass's EXCESS over
+; the open's transient at the bounds (fn-heap-store-reclaim-base-octets): one reserve holds the
+; larger of the two (fn-heap-open-and-excess-is-the-larger).
+; Positive instance: the native test's profile (development, T = 16384) -- the open term at the
+; bounds (1,247,858,048) already covers the pass (559,333,376): excess 0, the two figures equal.
+(assert! (let ((d (update-nth *fn-bs-pf-max-transactions* 16384 *fn-bs-profile-development*)))
+           (and (fn-bs-profile-admittedp d)
+                (equal (fn-heap-reclaim-excess-octets d (fn-heap-open-octets-bound d nil)
+                                                      (fn-heap-open-records-bound d nil))
+                       0)
+                (equal (fn-heap-store-live-figure-octets d *hft-core* *hft-nursery* nil)
+                       (fn-heap-store-figure-octets d *hft-core* *hft-nursery* nil)))))
+; Tooth: the opt-in still matters.  At the scale preset the pass's demand (9,736,011,776)
+; exceeds the open term at the bounds (2,782,973,312), so the opt-in figure is STRICTLY larger;
+; a figure that dropped the opt-in's term would fail here.
+(assert! (let ((d *fn-bs-profile-scale*))
+           (and (< 0 (fn-heap-reclaim-excess-octets d (fn-heap-open-octets-bound d nil)
+                                                    (fn-heap-open-records-bound d nil)))
+                (< (fn-heap-store-figure-octets d *hft-core* *hft-nursery* nil)
+                   (fn-heap-store-live-figure-octets d *hft-core* *hft-nursery* nil)))))

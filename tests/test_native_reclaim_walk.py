@@ -245,9 +245,18 @@ class NativeReclaimWalkTests(unittest.TestCase):
 
     def test_the_opt_in_is_the_only_change_to_the_figure(self):
         """The next run's figure (`status` heap=) on the same store: without
-        the key it is the store's alone; with it, larger by the owner's work
-        reserve.  Their numbers are printed for the record (the off figure is
-        compared with the release image's on the box, by hand)."""
+        the key it is the store's alone; with it, the store's plus the owner's
+        work reserve's EXCESS over the open's transient
+        (books/heap-store-figure.lisp fn-heap-store-reclaim-base-octets).  The
+        run's figure is the full-store figure (ADMISSION-RESERVES-NOT-REOPEN):
+        its open term is the transient at the profile's bounds, and one
+        reserve holds whichever of the open and a live pass is larger
+        (fn-heap-open-and-excess-is-the-larger; the pass's demand is held by
+        fn-heap-open-and-excess-hold-the-reclaim).  So the opt-in never lowers
+        the figure, and it raises it exactly when the pass's demand exceeds
+        the open's transient at the bounds; at presets where the open term
+        already covers the pass the two figures are equal.  Their numbers are
+        printed for the record."""
         line = re.compile(rb"^heap=(\d+) MB", re.M)
         off = self.node("figure", live=False)
         status = off.operator("status", timeout=600, expect=EXIT.OK)
@@ -259,7 +268,7 @@ class NativeReclaimWalkTests(unittest.TestCase):
         self.assertIsNotNone(b, status.stdout)
         print("RECLAIM-OPTIN-FIGURE off=%s on=%s" % (a.group(1).decode(), b.group(1).decode()),
               flush=True)
-        self.assertLess(int(a.group(1)), int(b.group(1)), (a.group(0), b.group(0)))
+        self.assertLessEqual(int(a.group(1)), int(b.group(1)), (a.group(0), b.group(0)))
 
     @unittest.skipUnless(os.environ.get("FN_RUN_RECLAIM_RSS") == "1",
                          "FN_RUN_RECLAIM_RSS=1 runs the walk's resident-set measurement")
