@@ -268,21 +268,21 @@
 ; The word operations, on declared words (section 2.2: addition modulo 2^32,
 ; XOR, rotation right).
 
-(defun fn-b3-add (x y)
+(defun-inline fn-b3-add (x y)
   (declare (type (unsigned-byte 32) x y))
   (the (unsigned-byte 32) (mod (+ (ifix x) (ifix y)) 4294967296)))
 
-(defun fn-b3-add3 (x y z)
+(defun-inline fn-b3-add3 (x y z)
   (declare (type (unsigned-byte 32) x y z))
   (the (unsigned-byte 32) (mod (+ (ifix x) (ifix y) (ifix z)) 4294967296)))
 
-(defun fn-b3-xor (x y)
+(defun-inline fn-b3-xor (x y)
   ; The reduction is the identity on two words; it is here so that the
   ; result is a word by a fact about `mod' rather than about `logxor'.
   (declare (type (unsigned-byte 32) x y))
   (the (unsigned-byte 32) (mod (logxor x y) 4294967296)))
 
-(defun fn-b3-rotr (x n)
+(defun-inline fn-b3-rotr (x n)
   (declare (type (unsigned-byte 32) x) (type (integer 1 31) n))
   (the (unsigned-byte 32)
        (mod (logior (ash x (- n)) (ash x (- 32 n))) 4294967296)))
@@ -301,7 +301,7 @@
 (local (in-theory (disable unsigned-byte-p mv-nth)))
 
 ; The quarter-round G (section 2.2), with the rotation distances 16, 12, 8, 7.
-(defun fn-b3-g (a b c d mx my)
+(defun-inline fn-b3-g (a b c d mx my)
   (declare (type (unsigned-byte 32) a b c d mx my))
   (let* ((a (fn-b3-add3 a b mx))
          (d (fn-b3-rotr (fn-b3-xor d a) 16))
