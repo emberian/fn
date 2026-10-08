@@ -8864,9 +8864,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "d587fa638c1a542955c2a0cf06540f12fbc83ba316f73268c10ad9d232b6d7da",
+   "bounds": [],
+   "claim_digest": "15423340bac92db96322658b52fdc0ebc3264378ba82072ba6edb33782e44048",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-lgrc-open-keeps-the-relation-at-every-cut",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-copy-teeth-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 8,
+    "reachable": 0
+   },
+   "subject": "fn-lgrc-attempt",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -8924,7 +8938,7 @@
    "registry": true
   },
   {
-   "book_digest": "f916cc6436c4c0f15976df7d0c90f131a31117248a4311eb7fd344696c46f3ff",
+   "book_digest": "ddcfdc1627508c5ffea99095a0272c10e6465d16d93e450f3a52615e52514de8",
    "bounds": [],
    "claim_digest": "8003a5581af7c1d856802a9bebe53f7d03e2612da1a987e6ad06970633890a84",
    "class": "generated",
@@ -9000,7 +9014,7 @@
    "witness": "lemma"
   },
   {
-   "book_digest": "f916cc6436c4c0f15976df7d0c90f131a31117248a4311eb7fd344696c46f3ff",
+   "book_digest": "ddcfdc1627508c5ffea99095a0272c10e6465d16d93e450f3a52615e52514de8",
    "bounds": [],
    "claim_digest": "d54bb7b26554cf301fb458974a5b95e89b865679d9d3fb515500d66d3d27954c",
    "class": "generated",
