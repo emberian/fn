@@ -1227,9 +1227,14 @@ def verify_index_saturation(history, health, existing, absent):
                         findings.append(('P2-IDENTITY', epoch + ' changed/missing ' + kind + ': ' + mid))
                 elif not line.startswith('430 ') or not named_refusal(line):
                     findings.append(('P2-IDENTITY', epoch + ' absent ID not absent: ' + mid))
-    saturated = all(len(health.get(epoch, [])) == 4 and health[epoch][2] > 0
-                    for epoch in ('before', 'after'))
-    return findings, ['P2-IDENTITY'] if complete and saturated else []
+    # Saturation (unplaced > 0) is reported beside the verdict, not required for it: on train 45
+    # 2,104 IDs with 8-bit tag collisions left the linear-hash table at unplaced 0 (it split), and
+    # full-tag collisions (60 bits) are not constructible. The verdict's scope says which.
+    return findings, ['P2-IDENTITY'] if complete else []
+
+
+def index_saturated(health):
+    return all(len(health.get(epoch, [])) == 4 and health[epoch][2] > 0 for epoch in ('before', 'after'))
 
 
 def fault_probe(c, mid, cell, epoch=None, held=False, route=None):
@@ -1503,6 +1508,7 @@ def index_saturation(run, ph):
         node.stop()
     notes.update(health=health, existing=len(existing), absent=len(absent))
     findings, checked = verify_index_saturation(h.ops, health, existing, absent)
+    notes['saturated'] = index_saturated(health)
     if not notes.get('complete'):
         checked = []
     if 'before' in health:
@@ -1512,5 +1518,5 @@ def index_saturation(run, ph):
             findings = list(findings) + [('P5-RECOVERY', 'restart after a refusal-free run refused: '
                                           + notes['restart_refused'])]
     if not checked:
-        notes.setdefault('reason', 'unplaced > 0 before and after restart, or complete identity probes, not witnessed')
+        notes.setdefault('reason', 'complete identity probes before and after restart not witnessed')
     return fault_result(campaign, h, findings, checked, notes, ['P2-IDENTITY', 'P5-RECOVERY'])

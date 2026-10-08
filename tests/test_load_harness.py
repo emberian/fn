@@ -1231,13 +1231,15 @@ class FaultSlotAndIndexTests(unittest.TestCase):
         self.assertEqual(fs, [])
         self.assertEqual(checked, ['P2-IDENTITY'])
 
-    def test_f4_observed_collisions_without_saturation_are_not_measured(self):
-        from tools.load.faults import verify_index_saturation, metrics, report
+    def test_f4_identity_is_judged_without_saturation_which_is_reported_apart(self):
+        from tools.load.faults import verify_index_saturation, metrics, report, index_saturated
         h = self.index_history()
         for health in ({}, dict(before=[3, 2048, 0, 1], after=[3, 2048, 0, 1]),
                        dict(before=[3, 2048, 1, 1]), dict(before=[3, 2048, 1, 1], after=[3, 2048, 0, 1])):
             fs, checked = verify_index_saturation(h.ops, health, {'<present>': 'original'}, ['<absent>'])
-            self.assertEqual(metrics(report(h, fs, checked)), {})
+            self.assertEqual(metrics(report(h, fs, checked)), {'faults.P2-IDENTITY.violations': 0})
+            self.assertFalse(index_saturated(health))
+        self.assertTrue(index_saturated(dict(before=[3, 2048, 1, 1], after=[3, 2048, 1, 1])))
 
     def test_f4_detects_duplicate_acceptance_even_with_same_bytes(self):
         from tools.load.faults import verify_index_saturation
