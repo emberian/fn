@@ -1,8 +1,9 @@
 # Fault corpus: externally visible properties
 
-F2, F6, F5 and F3 drive a private shipped image through NNTP and the operator
-control socket. They do not edit the image or store bytes. F1/F4/F7/F8/F9 are
-explicitly not implemented, with their properties and owners in workloads.json.
+F1 through F6 drive a private shipped image through NNTP and the operator
+control socket. F1/F2/F4 load developer hooks before starting the image; no
+cell edits store bytes. F7/F8/F9 remain explicitly not implemented, with their
+properties and owners in workloads.json.
 No cell qualifies power loss. The product's claimed write-ordering assumption
 is **fdatasync durability of the store filesystem**; abort/SIGKILL tests process
 death only. A surviving OS can retain unsynced writes.
@@ -29,6 +30,8 @@ A missing required observation never supplies a passing zero-violations bar.
 
 | Cell | Required externally visible result | Control and finite scope |
 | --- | --- | --- |
+| F1 | P4-RECLAIM, P2-IDENTITY: a cold-read completion after cache reuse across publication returns its accepted octets or a named refusal, never another article's bytes. | 25 distinct 32 KiB articles, checkpoint then restart, cache restricted to one entry. Hold the first cache-eligible window release, request a checkpoint/publication and 24 other cold reads, then release. Requires publication, drop calls and actual window evictions during the hold; otherwise not measured. |
+| F4 | P2-IDENTITY: under saturation and across restart, every existing Message-ID resolves to original octets, absent IDs are absent, and neither same-byte nor changed-byte reposts are accepted. | Up to 1,048,576 candidates, ACL2 tag oracle in batches of 4,096; 2,304 present candidates and 32 absent candidates sharing eight low tag bits, plus 62 IDs with a 128-character shared prefix and wide fan-out. STAT/ARTICLE on every ID before and after restart. Requires unplaced > 0 in both epochs. |
 | F2 | P1-DURABLE: every read 240 survives, Path/Xref excepted. P2-IDENTITY: only attempted IDs/octets exist, uncertain POSTs whole or absent. P5-RECOVERY: clean recovery after two process deaths reaches LISTENING and accepts a POST within 60 s. | 100 POSTs at intended 20/s with one requested publication; count boundary calls, then sample first/middle/last of each, 16 shrink reruns per finding. Full LIST ACTIVE/LISTGROUP/ARTICLE inventory, including numeric and Message-ID lookup routes. |
 | F6 | P8-CLIENTS: fragmented/pipelined GROUP, ARTICLE, HEAD, STAT, POST+body, and invalid command have the same replies as the unfragmented reference; invalid command is refused by name; another client meets a 10 s deadline. | Every split of the reference transcript is eligible; 64 evenly spaced splits including the endpoints when long. One variant changes exposure-connections to 32 after ARTICLE's status line. Fresh-store RSS must stay within 16 MiB of reference. 16 shrink reruns. |
 | F5 | P8-CLIENTS: four fast clients' GROUP/STAT/2 KiB ARTICLE p99 stays within 2x solo; RSS growth is at most four x 512 KiB; a send refusal is logged by name. | Four 512 KiB readers, SO_RCVBUF=4096, one-byte recv then 10 ms sleep; eight queued ARTICLEs each to exhaust socket queues. Four fast clients, POST at intended 5/s; 10 s solo, 40 s stress; at least 200 samples for each p99. Owner cache cold after restart, filesystem cache untouched. Eight shrink reruns. |
@@ -65,3 +68,41 @@ recovery; measure the p99/RSS/send-refusal windows; observe actual publication,
 reclaim and held-reader bytes. Laptop tests validate orchestration primitives
 and data, not those runtime claims. See specs/failures.md and the existing
 native crash-model/torn-journal campaigns for the separate model correspondence.
+
+F1's `f1-delay.lisp` uses `FN_LOAD_F1_ARM`, `FN_LOAD_F1_RELEASE` and
+`FN_LOAD_F1_WITNESS` paths, `FN_LOAD_F1_N` (cache-eligible call number),
+`FN_LOAD_F1_SECONDS` (maximum hold) and `FN_LOAD_F1_CACHE` (test cache size,
+never larger than the image's allowance). Its `held`/`released` witness counts
+window installs, file-drop calls, actual returned eviction tokens and optional
+`fn-xc-install` calls, in that order. A timeout row is not a release witness.
+This tree has no `fn-xc-install`; its concrete window cache uses
+`fnn-extent-window-cache-insert`. Counts alone do not establish reuse: at least
+one actual eviction is required. The harness releases the hook even on setup
+failure. In this tree `fnn-owner-cold-window-result-locked` calls release with
+the owner mutex held, so publication may be blocked throughout the hold. The
+hook preserves that locking and reports this experiment not measured if the
+required interleaving is unreachable; it never fabricates a release receipt.
+
+F4's `f4-index.lisp` observes the live catalog at
+`fnn-owner-read-buffer-fill`, under the owner mutex. `FN_LOAD_F4_REQUEST` is a
+numbered `tags START COUNT` or `health` request, and `FN_LOAD_F4_RESPONSE`
+contains its matching number, decimal rows and a final `done`. No Lisp reader
+parses that file. Tags come from `fn-mlh-tag-of` using the live table; the key
+never leaves the image. Health records `fn-mlh-build-health` and checks it
+against `fn-cat$c-index-health`. Refused candidate POSTs become additional
+absent probes. A saturated admission refusal does not imply unplaced rows:
+if the image prevents all such rows, this trial remains not measured. These
+are finite search/workload bounds, not new admission limits.
+
+F1/F4 save observed wire histories and hook evidence in reference traces,
+marked nonsequential because the wire replay format cannot reproduce file
+trigger timing. Findings explicitly say `not-replayed`; these cells do not
+claim a minimized counterexample. Missing hook functions, candidate exhaustion,
+unreached hold/reuse and missing saturation remain named not-measured outcomes.
+Box runs must confirm encapsulation reachability, the live stobj accessors and
+health equivalence, publication during the hold, and the resulting NNTP bytes.
+
+F7 remains not implemented: the g41/dev store has no persisted Message-ID
+index; open rebuilds fn-cei and the catalog msgid table from checkpoint records
+(`books/store-checkpoint-open.lisp:206`). It waits for paged checkpoint/catalog
+adoption (`s-pck-2c-host`, `PCK-ADOPT`).

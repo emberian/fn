@@ -1032,5 +1032,172 @@ echo cell >> "$EVENTS"; exit 23''',
                 sweep.safe_name(label)
 
 
+class FaultSlotAndIndexTests(unittest.TestCase):
+    def post(self, h, mid, value='original', duplicate=None, reply=b'240 accepted\r\n'):
+        args = dict(msgid=mid, sha256=value)
+        if duplicate:
+            args['duplicate'] = duplicate
+        op = h.plan('POST', args)
+        h.sent(op)
+        h.complete(op, reply)
+        return op
+
+    def probe(self, h, cell, mid, kind='ARTICLE', epoch=None, value='original', reply=None):
+        op = h.plan(kind, dict(msgid=mid, command=kind + ' ' + mid))
+        op.update(probe=cell, epoch=epoch, body_sha256=value, held=cell == 'F1')
+        h.sent(op)
+        if reply is None:
+            reply = ('%s 1 %s retrieved\r\n' % ('220' if kind == 'ARTICLE' else '223', mid)).encode()
+        h.complete(op, reply)
+        return op
+
+    def index_history(self):
+        from tools.load.faults import History
+        h = History()
+        self.post(h, '<present>')
+        self.post(h, '<present>', duplicate='same', reply=b'441 duplicate\r\n')
+        self.post(h, '<present>', 'changed', duplicate='different', reply=b'441 conflict\r\n')
+        for epoch in ('before', 'after'):
+            for kind in ('STAT', 'ARTICLE'):
+                self.probe(h, 'F4', '<present>', kind, epoch)
+                self.probe(h, 'F4', '<absent>', kind, epoch, reply=b'430 no such article\r\n')
+        return h
+
+    def test_collision_search_uses_oracle_low_bits_and_finite_budget(self):
+        from tools.load.faults import collision_search
+        seen = []
+        def tag(mid):
+            seen.append(mid)
+            return int(mid) * 17 + 3
+        result = collision_search(map(str, range(100)), tag, 4, bits=3, bucket=3)
+        self.assertEqual(result, ['0', '8', '16', '24'])
+        self.assertEqual(len(seen), 25)
+        self.assertEqual(collision_search(['0', '0', '8'], tag, 4, bits=3, bucket=3), ['0', '8'])
+        self.assertEqual(collision_search(['1', '2'], tag, 1, bits=3, bucket=3), [])
+        for bits in (0, 61):
+            with self.assertRaises(ValueError):
+                collision_search(['0'], tag, 1, bits=bits)
+
+    def test_f1_requires_real_reuse_and_publication_during_hold(self):
+        from tools.load.faults import History, verify_slot_reuse, report, metrics, f1_evidence
+        h = History()
+        self.post(h, '<a>')
+        self.probe(h, 'F1', '<a>')
+        ev = dict(f1_evidence('held\nreleased 12 1 11 0\n'), publication='installed', complete=True)
+        fs, checked = verify_slot_reuse(h.ops, ev)
+        self.assertEqual(fs, [])
+        self.assertEqual(set(checked), {'P4-RECLAIM', 'P2-IDENTITY'})
+        for key in ('held', 'released', 'publication', 'drop_calls', 'evictions', 'complete'):
+            missing = dict(ev, **{key: 0})
+            fs, checked = verify_slot_reuse(h.ops, missing)
+            self.assertEqual(checked, [], key)
+            self.assertEqual(metrics(report(h, fs, checked)), {}, key)
+        self.assertNotIn('released', f1_evidence('held\ntimeout 12 1 11 0\n'))
+        self.assertNotIn('released', f1_evidence('held\nreleased 12 1'))
+
+    def test_f1_other_article_bytes_and_unnamed_or_partial_refusals_fail(self):
+        from tools.load.faults import History, verify_slot_reuse
+        h = History()
+        self.post(h, '<a>')
+        op = self.probe(h, 'F1', '<a>', value='another article')
+        fs, _ = verify_slot_reuse(h.ops, {})
+        self.assertEqual({p for p, _ in fs}, {'P4-RECLAIM', 'P2-IDENTITY'})
+        op['reply_line'] = '430 no such article\r\n'
+        self.assertEqual(verify_slot_reuse(h.ops, {})[0], [])
+        op['reply_line'] = '430\r\n'
+        self.assertTrue(verify_slot_reuse(h.ops, {})[0])
+        op['outcome'] = 'attempted-uncertain'
+        self.assertTrue(verify_slot_reuse(h.ops, {})[0])
+
+    def test_f4_saturated_identity_and_restart_success(self):
+        from tools.load.faults import verify_index_saturation
+        h = self.index_history()
+        fs, checked = verify_index_saturation(h.ops, dict(before=[3, 2048, 1, 1], after=[3, 2048, 1, 1]),
+                                             {'<present>': 'original'}, ['<absent>'])
+        self.assertEqual(fs, [])
+        self.assertEqual(checked, ['P2-IDENTITY'])
+
+    def test_f4_observed_collisions_without_saturation_are_not_measured(self):
+        from tools.load.faults import verify_index_saturation, metrics, report
+        h = self.index_history()
+        for health in ({}, dict(before=[3, 2048, 0, 1], after=[3, 2048, 0, 1]),
+                       dict(before=[3, 2048, 1, 1]), dict(before=[3, 2048, 1, 1], after=[3, 2048, 0, 1])):
+            fs, checked = verify_index_saturation(h.ops, health, {'<present>': 'original'}, ['<absent>'])
+            self.assertEqual(metrics(report(h, fs, checked)), {})
+
+    def test_f4_detects_duplicate_acceptance_even_with_same_bytes(self):
+        from tools.load.faults import verify_index_saturation
+        for duplicate in ('same', 'different'):
+            h = self.index_history()
+            op = next(o for o in h.ops if o['args'].get('duplicate') == duplicate)
+            op['reply_line'] = '240 accepted\r\n'
+            fs, _ = verify_index_saturation(h.ops, {}, {'<present>': 'original'}, ['<absent>'])
+            self.assertIn(('P2-IDENTITY', 'duplicate accepted: <present>'), fs)
+
+    def test_f4_detects_wrong_bytes_false_absence_and_false_presence(self):
+        from tools.load.faults import verify_index_saturation
+        for mid, kind, field, wrong in [('<present>', 'ARTICLE', 'body_sha256', 'wrong'),
+                                       ('<present>', 'STAT', 'reply_line', '430 missing\r\n'),
+                                       ('<present>', 'STAT', 'reply_line', '223 1 <other>\r\n'),
+                                       ('<absent>', 'ARTICLE', 'reply_line', '220 1 <absent>\r\n'),
+                                       ('<absent>', 'STAT', 'reply_line', '400 busy\r\n')]:
+            h = self.index_history()
+            op = next(o for o in h.ops if o.get('epoch') == 'after'
+                      and o['args']['msgid'] == mid and o['kind'] == kind)
+            op[field] = wrong
+            fs, _ = verify_index_saturation(h.ops, {}, {'<present>': 'original'}, ['<absent>'])
+            self.assertTrue(fs, (mid, kind, field))
+
+    def test_f4_missing_probe_or_repost_cannot_pass(self):
+        from tools.load.faults import verify_index_saturation
+        h = self.index_history()
+        health = dict(before=[3, 2048, 1, 1], after=[3, 2048, 1, 1])
+        for dropped in h.ops:
+            fs, checked = verify_index_saturation([o for o in h.ops if o is not dropped], health,
+                                                 {'<present>': 'original'}, ['<absent>'])
+            self.assertEqual(checked, [], dropped)
+        h.ops[-1]['outcome'] = 'attempted-uncertain'
+        self.assertEqual(verify_index_saturation(h.ops, health, {'<present>': 'original'}, ['<absent>'])[1], [])
+
+    def test_new_fault_cells_dispatch_and_keep_f7_unimplemented(self):
+        from tools.load import driver, faults
+        data = workloads.load()
+        for cell in ('F1', 'F4'):
+            spec = data['workloads'][data['cells'][cell]]
+            self.assertTrue(hasattr(driver.Run, 'phase_' + spec['phases'][0]['kind']))
+            self.assertTrue(spec['hooks'])
+        spec = data['workloads'][data['cells']['F7']]
+        self.assertEqual(spec['phases'][0]['kind'], 'unimplemented')
+        self.assertIn('PCK-ADOPT', spec['about'])
+        self.assertEqual(faults.fault_environment({'FN_LOAD_F1_ARM': 'x', 'FN_LOAD_F4_REQUEST': 'x',
+                                                 'FN_LOAD_CRASH_AT': 'x', 'PATH': '/bin'}), {'PATH': '/bin'})
+
+    def test_not_measured_hook_reason_reaches_fault_bars(self):
+        from tools.load import faults
+        for cell, workload in [('F1', 'fault-slot-reuse'), ('F4', 'fault-index-saturation')]:
+            reason = 'no actual reuse' if cell == 'F1' else 'no unplaced rows'
+            props = ['P4-RECLAIM', 'P2-IDENTITY'] if cell == 'F1' else ['P2-IDENTITY']
+            out = faults.report(faults.History(), [], [])
+            out['not_measured'] = {'faults.%s.violations' % p: reason for p in props}
+            m, nm = cells.derive(workload, [dict(name='fault', status='not-measured', faults=out)])
+            m.update(faults.metrics(out))
+            rows = result.judge_cell(cell_result(cell=cell, workload=workload, metrics=m, not_measured=nm), result.load_bars())
+            self.assertEqual(len(rows), len(props))
+            for row in rows:
+                self.assertEqual(row['verdict'], 'NOT-MEASURED')
+                self.assertIn(reason, str(row))
+
+    def test_custom_post_records_its_original_identity_and_wire(self):
+        from tools.load import faults
+        h, sock = faults.History(), FakeSocket(respond)
+        body = b'Message-ID: <collision@fn.test>\r\nSubject: original\r\n\r\noriginal\r\n'
+        args = dict(msgid='<collision@fn.test>', sha256=faults.digest(body))
+        with patch.object(faults.socket, 'socket', return_value=sock), faults.Client(1, h) as client:
+            self.assertEqual(client.post_article(body, args), b'240 ok\r\n')
+        self.assertEqual(h.ops[0]['args'], args)
+        self.assertEqual(h.ops[0]['outcome'], 'completed')
+        self.assertEqual(sock.sent, [b'POST\r\n', body + b'.\r\n'])
+
+
 if __name__ == "__main__":
     unittest.main()
