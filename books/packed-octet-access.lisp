@@ -1,84 +1,118 @@
 ; fn: indexed access to a packed body without copying a bignum suffix.
 (in-package "ACL2")
 (include-book "packed-octets")
-(local (include-book "ihs/logops-lemmas" :dir :system))
+(local (include-book "arithmetic-5/top" :dir :system))
+; Each octet uses eight LOGBITP observations of the original natural.
+; The local arithmetic proves the bit slice and total unpacked length.
 
-; Width is eight at the octet boundary. LOGBITP observes the original N;
-; recursion builds only the small result, never a shifted copy of N.
+
 (defun fn-poa-bits (width index n)
   (declare (xargs :guard (and (natp width) (natp index) (integerp n))))
   (if (zp width) 0
     (+ (if (logbitp index n) 1 0)
        (* 2 (fn-poa-bits (- width 1) (+ index 1) n)))))
 
-(local (defthm fn-poa-low-bit
+(local (defthm fn-paa-low-bit
  (implies (integerp n)
-  (equal (if (logbitp 0 n) 1 0) (logcar n)))
- :hints (("Goal" :in-theory (e/d (logbitp* bitp) (logbitp logcar))))))
+  (equal (if (logbitp 0 n) 1 0) (mod n 2)))
+ :hints (("Goal" :in-theory (enable logbitp oddp evenp)))))
 
-(local (defthm fn-poa-next-tail
+(local (defthm fn-paa-mod-decompose
+ (implies (and (integerp n) (posp p))
+  (equal (mod n (* 2 p))
+         (+ (mod n 2) (* 2 (mod (floor n 2) p)))))))
+
+(local (in-theory (disable fn-paa-mod-decompose)))
+
+(local (defthm fn-paa-floor-compose
+ (implies (and (integerp n) (natp index))
+  (equal (floor (floor n (expt 2 index)) 2)
+         (floor n (expt 2 (+ 1 index)))))
+ :hints (("Goal" :expand ((expt 2 (+ 1 index)))))))
+
+(local (defthm fn-paa-index-bit
  (implies (and (natp index) (integerp n))
-  (equal (logcdr (logtail index n)) (logtail (+ 1 index) n)))
- :hints (("Goal" :use ((:instance logtail-logtail (pos index) (pos1 1) (i n)))
-          :in-theory (e/d (logtail*) (logtail-logtail logtail logcdr))))))
+  (equal (mod (floor n (expt 2 index)) 2)
+         (if (logbitp index n) 1 0)))
+ :hints (("Goal" :use ((:instance fn-paa-low-bit (n (floor n (expt 2 index)))))
+          :in-theory (e/d (logbitp) (fn-paa-low-bit))))))
 
-(local (defthm fn-poa-index-bit
- (implies (and (natp index) (integerp n))
-  (equal (logcar (logtail index n)) (if (logbitp index n) 1 0)))
- :hints (("Goal" :use ((:instance fn-poa-low-bit (n (logtail index n))))
-          :in-theory (disable fn-poa-low-bit logcar logtail logbitp)))))
+(local (defthm fn-paa-mod-one (implies (integerp n) (equal (mod n 1) 0))))
 
-(local (defthm fn-poa-bits-is-slice
+(local (defthm fn-paa-bits-is-slice
  (implies (and (natp width) (natp index) (integerp n))
   (equal (fn-poa-bits width index n)
-         (loghead width (logtail index n))))
+         (mod (floor n (expt 2 index)) (expt 2 width))))
  :hints (("Goal" :induct (fn-poa-bits width index n)
-          :in-theory (e/d (fn-poa-bits loghead* logcons)
-                          (loghead logtail logcdr logcar logbitp))
-          :expand ((loghead width (logtail index n)))))))
+          :in-theory (union-theories
+            '(fn-poa-bits natp zp zip fix posp fn-paa-index-bit fn-paa-floor-compose fn-paa-mod-one
+              default-+-1 default-+-2 default-*-1 default-*-2
+              commutativity-of-+ expt-type-prescription-integerp-base
+              expt-type-prescription-positive-base (:type-prescription floor) (:type-prescription fn-poa-bits))
+            (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))))
+         ("Subgoal *1/2" :use ((:instance fn-paa-mod-decompose
+                              (n (floor n (expt 2 index))) (p (expt 2 (- width 1)))))
+          :expand ((expt 2 width))))))
 
-(local (defun fn-poa-tail-ind (index n)
- (if (zp index) n (fn-poa-tail-ind (- index 1) (logcdr n)))))
+(local (defthm fn-paa-tail-decompose
+ (implies (and (integerp n) (posp index))
+  (equal (floor n (expt 2 index))
+         (floor (floor n 2) (expt 2 (- index 1)))))
+ :hints (("Goal" :expand ((expt 2 index))))))
 
-(local (defthm fn-poa-length-of-tail
+(local (defthm fn-paa-half-length
+ (implies (natp n)
+  (equal (integer-length (floor n 2))
+         (nfix (- (integer-length n) 1))))
+ :hints (("Goal" :expand ((integer-length n))
+          :in-theory (disable integer-length)))))
+
+(local (defun fn-paa-tail-ind (index n)
+ (if (zp index) n (fn-paa-tail-ind (- index 1) (floor n 2)))))
+
+(local (defthm fn-paa-floor-one (implies (integerp n) (equal (floor n 1) n))))
+
+(local (defthm fn-paa-length-of-tail
  (implies (and (natp index) (natp n))
-  (equal (integer-length (logtail index n))
+  (equal (integer-length (floor n (expt 2 index)))
          (nfix (- (integer-length n) index))))
- :hints (("Goal" :induct (fn-poa-tail-ind index n)
-          :in-theory (e/d (logtail* integer-length*)
-                          (logtail integer-length logcdr))))))
+ :hints (("Goal" :induct (fn-paa-tail-ind index n)
+          :in-theory (union-theories
+           '(natp nfix zp posp fn-paa-half-length fn-paa-floor-one (:induction fn-paa-tail-ind)
+             default-+-1 default-+-2 default-unary-minus
+             commutativity-of-+ associativity-of-+ commutativity-2-of-+
+             (:type-prescription floor) floor-nonnegative (:type-prescription integer-length))
+           (union-theories (theory 'minimal-theory) (executable-counterpart-theory :here))))
+         ("Subgoal *1/2" :use ((:instance fn-paa-tail-decompose))))))
 
-; Drop the most significant base-256 digit, exactly as FN-BCH-UNPACK does.
-; The equality below is total, including noncanonical natural encodings.
+(local (in-theory (disable fn-paa-tail-decompose fn-paa-index-bit)))
+
+(local (defthm fn-paa-zero-length
+ (implies (natp n)
+  (equal (equal (integer-length n) 0) (equal n 0)))
+ :hints (("Goal" :expand ((integer-length n)) :in-theory (disable integer-length)))))
+
+(local (defthm fn-paa-length-floor-eight
+ (implies (natp n)
+  (equal (integer-length (floor n 256)) (nfix (- (integer-length n) 8))))
+ :hints (("Goal" :use ((:instance fn-paa-length-of-tail (index 8)))
+          :in-theory (disable fn-paa-length-of-tail integer-length)))))
+
+(local (defthm fn-paa-small-length
+ (implies (and (natp n) (< n 256)) (<= (integer-length n) 8))
+ :rule-classes :linear
+ :hints (("Goal" :use ((:instance fn-paa-length-floor-eight))
+          :in-theory (disable integer-length fn-paa-length-floor-eight)))))
+
+(local (defthm fn-paa-large-length
+ (implies (and (natp n) (<= 256 n)) (< 8 (integer-length n)))
+ :rule-classes :linear
+ :hints (("Goal" :use ((:instance fn-paa-length-floor-eight))
+          :in-theory (disable integer-length fn-paa-length-floor-eight)))))
+
 (defun fn-poa-length (n)
  (declare (xargs :guard t))
  (nfix (floor (- (integer-length (nfix n)) 1) 8)))
-
-(local (defthm fn-poa-tail-eight
- (implies (natp n) (equal (logtail 8 n) (floor n 256)))
- :hints (("Goal" :in-theory (enable logtail)))))
-
-(local (defthm fn-poa-length-floor-eight
- (implies (natp n)
-  (equal (integer-length (floor n 256))
-         (nfix (- (integer-length n) 8))))
- :hints (("Goal" :use ((:instance fn-poa-length-of-tail (index 8)))
-          :in-theory (disable fn-poa-length-of-tail integer-length logtail)))))
-
-(local (include-book "arithmetic-5/top" :dir :system))
-
-(local (defthm fn-poa-small-length
- (implies (and (natp n) (< n 256)) (<= (integer-length n) 8))
- :rule-classes :linear
- :hints (("Goal" :use ((:instance integer-length-unsigned-byte (size 8) (i n)))
-          :in-theory (enable unsigned-byte-p)))))
-
-(local (defthm fn-poa-large-length
- (implies (and (natp n) (<= 256 n)) (< 8 (integer-length n)))
- :rule-classes :linear
- :hints (("Goal" :use ((:instance fn-poa-length-floor-eight))
-          :in-theory (e/d (equal-integer-length-0)
-                         (integer-length fn-poa-length-floor-eight))))))
 
 (defthm fn-poa-length-is-unpack-length
  (equal (fn-poa-length n) (len (fn-bch-unpack n)))
@@ -89,48 +123,43 @@
  (declare (xargs :guard t))
  (fn-poa-bits 8 (* 8 (nfix index)) (nfix n)))
 
-(local (defthm fn-poa-octet-is-slice
+(local (defthm fn-paa-octet-is-slice
  (equal (fn-poa-octet index n)
-        (loghead 8 (logtail (* 8 (nfix index)) (nfix n))))
- :hints (("Goal" :in-theory (e/d (fn-poa-octet)
-                               (fn-poa-bits loghead logtail))))))
+        (mod (floor (nfix n) (expt 2 (* 8 (nfix index)))) 256))
+ :hints (("Goal" :in-theory (e/d (fn-poa-octet) (fn-poa-bits))))))
 
-(local (defthm fn-poa-octet-zero
- (implies (natp n) (equal (fn-poa-octet 0 n) (mod n 256)))
- :hints (("Goal" :in-theory (enable loghead logtail)))))
+(local (defthm fn-paa-octet-zero
+ (implies (natp n) (equal (fn-poa-octet 0 n) (mod n 256)))))
 
-(local (defthm fn-poa-octet-next
+(local (defthm fn-paa-octet-next
  (implies (and (natp index) (natp n))
   (equal (fn-poa-octet (+ 1 index) n)
          (fn-poa-octet index (floor n 256))))
- :hints (("Goal" :use ((:instance logtail-logtail (pos 8) (pos1 (* 8 index)) (i n)))
-          :in-theory (disable loghead logtail fn-poa-octet fn-poa-bits logtail-logtail)))))
+ :hints (("Goal" :in-theory (disable fn-poa-octet fn-poa-bits)))))
 
-(local (defthm fn-poa-octet-is-nth
+(local (defthm fn-paa-octet-is-nth
  (implies (and (natp index) (< index (len (fn-bch-unpack n))))
   (equal (fn-poa-octet index n) (nth index (fn-bch-unpack n))))
  :hints (("Goal" :induct (fn-bch-digits n index)
           :in-theory (e/d (fn-bch-unpack nth)
-                    (fn-poa-octet fn-poa-octet-is-slice fn-poa-bits integer-length))
+                    (fn-poa-octet fn-paa-octet-is-slice fn-poa-bits integer-length))
           :expand ((fn-poa-octet 0 n)))
-         ("Subgoal *1/2" :use ((:instance fn-poa-octet-next (index (- index 1))))))))
+         ("Subgoal *1/2" :use ((:instance fn-paa-octet-next (index (- index 1))))))))
 
-(local (defthm fn-poa-nth-of-nfix
+(local (defthm fn-paa-nth-of-nfix
  (equal (nth (nfix index) xs) (nth index xs))
  :hints (("Goal" :in-theory (enable nth)))))
 
 (defthm fn-poa-octet-is-indexed-octet
  (implies (< (nfix index) (len (fn-bch-unpack n)))
   (equal (fn-poa-octet index n) (nth index (fn-bch-unpack n))))
- :hints (("Goal" :use ((:instance fn-poa-octet-is-nth (index (nfix index))))
-          :in-theory (e/d (fn-poa-octet)
-                    (fn-poa-octet-is-nth fn-poa-octet-is-slice fn-poa-bits)))))
+ :hints (("Goal" :use ((:instance fn-paa-octet-is-nth (index (nfix index))))
+          :in-theory (e/d (fn-poa-octet) (fn-paa-octet-is-nth fn-paa-octet-is-slice fn-poa-bits)))))
 
 (defthm fn-poa-octet-bound
  (and (natp (fn-poa-octet index n)) (< (fn-poa-octet index n) 256))
  :rule-classes (:rewrite :type-prescription)
- :hints (("Goal" :in-theory
-          (disable fn-poa-octet fn-poa-bits fn-poa-octet-is-nth
-                   fn-poa-octet-is-indexed-octet loghead logtail))))
+ :hints (("Goal" :in-theory (disable fn-poa-octet fn-poa-bits fn-paa-octet-is-nth fn-poa-octet-is-indexed-octet
+                                      |(mod (floor x y) z)|))))
 
 (in-theory (disable fn-poa-bits fn-poa-length fn-poa-octet))
