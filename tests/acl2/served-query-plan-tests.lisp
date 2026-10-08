@@ -59,7 +59,9 @@
                            (fn-nntp-string-octets "fn.empty10")))
              (env (fn-nntp-env-with-closed nil nil nil closed))
              (cur (fn-lst-start archive closed t nil nil nil 34)))
-        (mv-let (empty next calls state) (fn-lst-step cur 1 1 fn-cat)
+        (mv-let (bout bnext bcalls bstatus) (fn-lst-batch cur 256 256 fn-cat)
+         (mv-let (one-out one-next one-calls one-status) (fn-lst-batch cur 1 256 fn-cat)
+         (mv-let (empty next calls state) (fn-lst-step cur 1 1 fn-cat)
           (declare (ignore state))
           (mv-let (a fn-octets) (qpt-command "LIST ACTIVE" archive index env w fn-octets fn-arena fn-cat)
             (mv-let (b fn-octets) (qpt-command "LIST ACTIVE fn.available" archive index env w fn-octets fn-arena fn-cat)
@@ -75,11 +77,21 @@
                     (mv-let (stale-ok fn-octets)
                       (qpt-command "LIST ACTIVE fn.available" stale index env w fn-octets fn-arena fn-cat)
                       (mv (and a b c d (null empty) (equal calls 1) (fn-lst-livep next)
+                               ;; The batch spends the grant until the first row (positive
+                               ;; witness: more than one call, stopped at the call that emitted); the
+                               ;; one-visit batch is the single step (wrong-answer witness
+                               ;; for a batch that ignores its grant), and the two
+                               ;; cursors differ.
+                               (< 1 bcalls) (<= bcalls 256) (eq bstatus :candidate) (consp bout)
+                               (equal one-calls 1) (equal one-next next) (null one-out)
+                               (eq one-status :yield)
+                               (not (equal bnext one-next))
+                               (fn-lst-livep bnext)
                                (eq (fn-cur-at 1 (fn-cur-progress next)) :next)
                                (equal (fn-cur-at 2 (fn-cur-progress next)) (cdr groups))
                                agree
                                (or (null survivors) (and (not stale-agree) (not stale-ok))))
-                          fn-octets fn-arena fn-cat))))))))))))
+                          fn-octets fn-arena fn-cat))))))))))))))
 
 (defun qpt-local (survivors w)
   (declare (xargs :mode :program))
