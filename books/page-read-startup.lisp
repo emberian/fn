@@ -5,6 +5,7 @@
 (include-book "cold-guard-bootstrap")
 (include-book "decoded-worker-backing")
 (include-book "output-reservation")
+(include-book "cold-read-wait")
 
 (defun fn-prstartup-nth (n x)
  (declare (xargs :guard (natp n)))
@@ -90,9 +91,14 @@
  (declare (xargs :guard t))
  (nfix (car (fn-prs-worker-demand extent (fn-prstartup-read-token-octets) 0 0))))
 
+; The reads in flight, plus the bounded wait's queue (books/cold-read-wait.lisp
+; fn-cwq-queue-octets: WAIT-QUEUE waiting reads of one struct and one list cell
+; each, resident on the heap whether or not anyone waits). The admission below
+; refuses :default-pool-read-headroom-unavailable unless the heap holds both.
 (defun fn-prstartup-read-reserve (extent workers)
  (declare (xargs :guard t))
- (* (nfix workers) (fn-prstartup-read-demand extent)))
+ (+ (* (nfix workers) (fn-prstartup-read-demand extent))
+    (fn-cwq-queue-octets)))
 
 (defun fn-prstartup-plan (dynamic occupied protected root workers stack runtime cache-limit fd-limit reserve)
  (declare (xargs :guard t))
@@ -123,6 +129,27 @@
         (list baseline 0 0 0 0)
         0 (fn-prstartup-fd-bookkeeping) 18446744073709551615
         workers (fn-cgb-capacity)))))))
+
+; The reserve is funded at admission: an admitted default plan leaves the heap
+; room for the minimum pool AND the reserve (:default-pool-read-headroom-
+; unavailable otherwise).
+(defthm fn-prstartup-admitted-plan-funds-its-reserve
+  (implies (eq (car (fn-prstartup-plan dynamic occupied protected root workers stack runtime
+                                       cache-limit fd-limit reserve))
+               :admitted)
+           (<= (+ (fn-prstartup-required-heap (max 8 (+ 1 (nfix cache-limit))) workers root)
+                  reserve)
+               (fn-prstartup-available dynamic occupied protected)))
+  :hints (("Goal" :in-theory (e/d (fn-prstartup-plan)
+                                  (fn-prstartup-required-heap fn-prstartup-available
+                                   fn-prstartup-affordable-capacity fn-prstartup-baseline-heap
+                                   fn-crl-table-supportedp fn-cgb-capacity fn-prstartup-fd-bookkeeping))))
+  :rule-classes nil)
+
+(defthm fn-prstartup-read-reserve-charges-the-cold-wait-queue
+  (<= (fn-cwq-queue-octets) (fn-prstartup-read-reserve extent workers))
+  :hints (("Goal" :in-theory (enable fn-prstartup-read-reserve)))
+  :rule-classes nil)
 
 (defun fn-prstartup-file-capacity (plan)
  (declare (xargs :guard t)) (nfix (fn-prstartup-nth 2 (fn-prstartup-nth 1 plan))))

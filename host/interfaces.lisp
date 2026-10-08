@@ -4896,6 +4896,26 @@
 (definterface fn-otb-line-dependency-step
   :class :common-lisp-compliant)
 
+;; books/cold-read-wait.lisp: host/native/owner.lisp fnn-owner-cold-wait-arrive
+;; and fnn-owner-cold-wait-poll dispatch them (item COLD-READ-WORKERS-REFUSE-AT-16).
+(definterface fn-cwq-arrive
+  :class :common-lisp-compliant
+  :kinds ((free true-listp))
+  :keystones ((fn-cwq-arrival-under-the-bound-is-never-refused :via fn-cwq-arrive)
+              (fn-cwq-arrive-preserves-the-queue :via fn-cwq-arrive)))
+(definterface fn-cwq-step
+  :class :common-lisp-compliant
+  :kinds ((free true-listp))
+  :keystones ((fn-cwq-refused-only-at-the-deadline :via fn-cwq-step)
+              (fn-cwq-a-worker-for-it-admits :via fn-cwq-step)))
+;; The queue is ACL2's value; the host holds it opaquely and creates, counts and
+;; drops through these (host/native/owner.lisp *fnn-cold-queue*).
+(definterface fn-cwq-new :class :common-lisp-compliant)
+(definterface fn-cwq-waiting :class :common-lisp-compliant)
+(definterface fn-cwq-drop
+  :class :common-lisp-compliant
+  :keystones ((fn-cwq-drop-preserves-the-queue :via fn-cwq-drop)))
+
 ;; books/payload-arena-extent-logic.lisp
 
 ; host/native/extent.lisp dispatches it (lane compress-5 (NNT-055)).
@@ -5508,13 +5528,16 @@
 (definterface fn-crw-supportedp :class :common-lisp-compliant)
 (definterface fn-ews-begin :class :common-lisp-compliant
   :kinds ((file natp) (eoff natp) (elen natp) (poff natp) (plen natp) (offset natp) (expected natp)))
-(definterface fn-ews-effect :class :common-lisp-compliant
+;; The host drives the stream in spans (books/extent-window-span.lisp): one
+;; effect, one read and one tick-to-io per span of the prefix; each is equal
+;; to the stream's per-block step iterated (fn-ews-span-loop-is-iterated-block-step).
+(definterface fn-ews-span-effect :class :common-lisp-compliant
   :kinds ((s true-listp)))
-(definterface fn-ews-tick :class :common-lisp-compliant
+(definterface fn-ews-tick-to-io :class :common-lisp-compliant
   :kinds ((s true-listp)))
-(definterface fn-ews-read :class :common-lisp-compliant
+(definterface fn-ews-read-span :class :common-lisp-compliant
   :kinds ((s true-listp))
-  :keystones ((fn-ews-read-publication-requires-core-integrity :via fn-ews-read)))
+  :keystones ((fn-ews-read-span-publication-requires-core-integrity :via fn-ews-read-span)))
 (definterface fn-owner-page-read-ledger :class :common-lisp-compliant)
 (definterface fn-pwx-tokenp :class :common-lisp-compliant
   :direct "Guard-t fixed-shape worker kind discrimination avoids an unpriced global guard-cache entry")

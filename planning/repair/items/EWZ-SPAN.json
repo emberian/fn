@@ -1,0 +1,13 @@
+{
+ "category": "perf",
+ "file": "books/extent-window-compressed.lisp",
+ "id": "EWZ-SPAN",
+ "notes": ["Filed by lane s-article with Problem 1 (books/extent-window-span.lisp). The uncompressed window job now moves a span (profile :read-span-octets) per host read and runs the digest to its next I/O need inside one call (fn-ews-read-span, fn-ews-tick-to-io). The compressed (decoded) window path still drives fn-ewz-read / fn-ewz-hash-tick / fn-ewz-codec-tick one 64-octet block per host call, because the codec consumes each block's payload overlap between hashes (fn-ewz-read: pending -> :codec mode). It digests the same whole protected prefix, so its call count per article is the pre-span figure: about 2,900 reads and 3,900 ticks for a 2 KiB article, plus the codec quanta. MEASURED count of a compressed 2 KiB ARTICLE: owed, needs the image of the s-article sha (the figure above is the uncompressed pre-span profile of EXTRACTION-PROGRAM-20261007, not a compressed measurement)."],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-article",
+ "state": "open",
+ "title": "The compressed window job (fn-ewz-*) still issues one host->ACL2 call per 64-octet block. Intended: hash a span of blocks per call while the codec still sees each block's payload overlap in order; statement: the span drive of fn-ewz-read equals the per-block drive (same digest state, same decoded window, same verdicts), as fn-ews-span-loop-is-iterated-block-step is for the plain stream.",
+ "updated": "2026-10-08T00:30:00Z"
+}
