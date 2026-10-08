@@ -14,6 +14,7 @@ import os
 import socket
 import threading
 import time
+from pathlib import Path
 
 from .peers import without_path_and_xref
 
