@@ -215,3 +215,25 @@
 (assert-event
  (equal (fn-bs-pending (fn-lgob-open-then-batch (fn-lgob-imported-store) 1 '(:journal :root)))
         '((:set-entry :parent "store" :root) (:del-entry :parent ".import-stage"))))
+
+(include-book "../../books/defkeystone")
+; Host fnn-recover-log / fnn-store-recovery-barriers: exercised by
+; tests/campaign/test_native_operator_campaign.py::test_served_owner_cuts_stop_and_production_refusals.
+; The witness creates a segment, writes it, fences journal/, appends and
+; fences a batch (fn-lgob-acked-batch); it is quiet by executed steps.
+(defteeth fn-lgob-three-barrier-open-after-the-copy-is-the-five
+  :claim (((shape (fn-bs-shapep s)) (quiet (null (fn-bs-pending s))))
+          (equal (fn-lgob-cut-states s *fn-lgob-five-barrier-suffix* seg cfg)
+                 (list* s s (fn-lgob-cut-states s (fn-lg-open-program) seg cfg))))
+  :subject fn-lg-open-program
+  :witness ((s (fn-lgob-acked-batch t)) (seg 2) (cfg 1))
+  :breaks ((shape ((s (append (fn-lgob-acked-batch t) '(extra))) (seg 2) (cfg 1))
+                  :logical "corrupted store with an extra field, pending list still empty")
+           (quiet ((s (fn-lgob-write (fn-lgob-acked-batch t) 1 '(6 6 6 6)))
+                   (seg 2) (cfg 1))))
+  :mutations ((skipped-replay-cut
+               (:conclusion
+                (equal (fn-lgob-cut-states s *fn-lgob-five-barrier-suffix* seg cfg)
+                       (list* s s (fn-lgob-cut-states s (cdr (fn-lg-open-program)) seg cfg))))
+               ((s (fn-lgob-acked-batch t)) (seg 2) (cfg 1))
+               :fault "the open omits recover-replayed from its cut sequence")))
