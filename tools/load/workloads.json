@@ -744,7 +744,7 @@
   },
   "fault-index-saturation": {
    "about": "P2-IDENTITY: Under observed index saturation and across restart, every existing Message-ID resolves to its original octets, every absent ID is absent, and no same-byte or changed-byte duplicate is accepted. Owner L.",
-   "preset": "small",
+   "preset": "filled",
    "groups": [
     "fn.test"
    ],
