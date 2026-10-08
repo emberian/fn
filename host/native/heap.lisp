@@ -448,19 +448,6 @@ to a space that already holds it."
             bp-terms core machine)
             output-resources core machine))
 
-(defun fnn-heap-bp-terms (argv)
-  "A `bp-node serve' command's BP terms, observed as fnn-bp-session-install
-reads them: the session profile and node profile under its journal root, the
-transfer MRU argument and the segment MRU.  NIL for every other command.  The
-sizing is ACL2's (fn-bph-extend-reservation); this only reads the files."
-  (when (fnn-core 'fn-bph-node-serve-p argv)
-    (let ((journal (fnn-core 'fn-bph-node-journal argv))
-          (transfer (fnn-core 'fn-bph-node-transfer argv +fnn-tcl-transfer-mru+)))
-      (unless transfer
-        (fnn-refuse "~a" (fnn-core 'fn-bph-refusal-line :transfer-mru)))
-      (list (fnn-bp-session-profile journal) (fnn-bps-read-profile journal)
-            transfer +fnn-tcl-segment-mru+))))
-
 (defun fnn-heap-reservation (profile connections &optional action observed cold-resources output-resources root peer reclaim-live
                              bp-terms)
   (let* ((core (fnn-heap-image-observation))

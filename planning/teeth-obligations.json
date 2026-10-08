@@ -4562,30 +4562,6 @@
    "statement_digest": "c301cb99656f495bdd0f1e42501c5e801e1e169ebca6c58d43d284d63c0ef274"
   },
   {
-   "book": "books/byte-store-scan.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-crash-image-namespace-is-contiguous",
-   "registry": true,
-   "statement_digest": "deceab3e0b22093526da500348b6525ed8f64a8811f9889e0580bc7837c053a7"
-  },
-  {
-   "book": "books/byte-store-scan.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-crash-image-reads-the-config",
-   "registry": true,
-   "statement_digest": "39968a4ee01a1cdc7dc9db8851d0262a638afd4eac1369f69ec20db50bf5a897"
-  },
-  {
-   "book": "books/byte-store-scan.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-crash-image-records-do-not-fault",
-   "registry": true,
-   "statement_digest": "26d1693be7452cfa44ef231f18febb65c4fe07c3197940833c9832c5ef20a757"
-  },
-  {
    "book": "books/byte-store-k0-recovery.lisp",
    "class": "hand",
    "critical": "durability",
@@ -4600,14 +4576,6 @@
    "name": "fn-bs-crash-image-reopens",
    "registry": true,
    "statement_digest": "2e4b52f091f32af9d4a7d66ed8a8a276fb5dc73a3f03b309c84f7aa3f6a9cd44"
-  },
-  {
-   "book": "books/store-log-crash.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-crash-of-aligned-append",
-   "registry": true,
-   "statement_digest": "51daa5d0c83595cd6a47311f8d56ac35127be0ca3ba79798f3d78187d3501d29"
   },
   {
    "book": "books/byte-store-relation.lisp",
@@ -4674,22 +4642,6 @@
    "statement_digest": "8e99ae18ded176768c0872b3e2aacf369c1d3ae54fd30e0f2bf61bd5a3361a6a"
   },
   {
-   "book": "books/store-import-publication.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-imp-classify-by-what-is-known",
-   "registry": true,
-   "statement_digest": "2886385b610a060a3e4306ac7844aafa9b38c08cc338a34c2453bd77d5f52d5b"
-  },
-  {
-   "book": "books/store-import-publication.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
-   "registry": true,
-   "statement_digest": "3c77c6ad9735a56515a58d22768e771c940f0c5376f7673794c48b61fa01110a"
-  },
-  {
    "book": "books/store-init-log-publication.lisp",
    "class": "hand",
    "critical": "durability",
@@ -4698,46 +4650,40 @@
    "statement_digest": "d5494caa7a4bfea0e35538957236b771052a9712dd666765891cc8fbf2710826"
   },
   {
-   "book": "books/store-init-log-publication.lisp",
    "book_digest": "4a26a542233b3949b2928c0ba55d122e7cf394c7e105612edde2485904fb051b",
    "bounds": [],
    "claim_digest": "bee06722b56302e1bd6900a37dd6f680dfe409f28d4891e363463c3b04165869",
    "class": "generated",
-   "critical": "durability",
    "mutations": "edits:1",
    "name": "fn-bs-init-log-complete-store-carries-the-node-secret",
    "owed_met": null,
    "owner_book": "tests/acl2/store-init-log-publication-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
    },
-   "statement_digest": "67a67eb404136cf9d217362b1ca3631d8ca80d6e2e57a2246a845d07f2306528",
    "subject": "fn-bs-init-log-subdir-names",
    "witness": "executable"
   },
   {
-   "book": "books/store-init-log-publication.lisp",
    "book_digest": "4a26a542233b3949b2928c0ba55d122e7cf394c7e105612edde2485904fb051b",
    "bounds": [],
    "claim_digest": "05d11ed39648491d50210c0c3171e827cfbfbdc41923a4f01c29691b35702bad",
    "class": "generated",
-   "critical": "durability",
    "mutations": "edits:1",
    "name": "fn-bs-init-log-complete-store-carries-the-peer-flight-profile",
    "owed_met": null,
    "owner_book": "tests/acl2/store-init-log-publication-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
    },
-   "statement_digest": "ed8caa614c1f483da1116db638d24832363b4410909ae53b3e8f7211ac2d8944",
    "subject": "fn-bs-init-log-subdir-names",
    "witness": "executable"
   },
@@ -4935,14 +4881,6 @@
    "book": "books/byte-store-k0-staging.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-bs-k0-pending-staging-extension-preserves-relation",
-   "registry": true,
-   "statement_digest": "c1377cdff77a3d8fd11d131a7a5a693662eae855041c001d3261b43903a91f43"
-  },
-  {
-   "book": "books/byte-store-k0-staging.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-bs-k0-record-cleanup-cut-relation",
    "registry": true,
    "statement_digest": "a941c1bda4433ebbd8dd6498d03ff050a66c52379d706a1f623d0a3724095fe3"
@@ -5031,14 +4969,6 @@
    "book": "books/byte-store-record-provenance-bytes.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame",
-   "registry": true,
-   "statement_digest": "4a7e91a09b4e6885e36c214f533e9fce42c9abb1bfd6c5f1eddcb70b6d87c7ca"
-  },
-  {
-   "book": "books/byte-store-record-provenance-bytes.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-bs-k6-actual-record-file-cut-has-exact-frame",
    "registry": true,
    "statement_digest": "2e40f876d4be3d5b31faadbc1204f369f694e34a533deb053eeca64079088d48"
@@ -5082,14 +5012,6 @@
    "name": "fn-bs-k6-related-input-file-cut-has-no-transaction-pending",
    "registry": true,
    "statement_digest": "78b056e8e3a38fd40ac95ae1291746aa6a1e5b41c82f0df22708a1c00d02d359"
-  },
-  {
-   "book": "books/byte-store-record-provenance-bytes.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-k6-related-staged-durable-final-name-absent",
-   "registry": true,
-   "statement_digest": "0fa92be5293f79f7e68c79134a1cdee6572e5a96e9a3d4444902beab329c9fbb"
   },
   {
    "book": "books/byte-store-record-fence.lisp",
@@ -5136,14 +5058,6 @@
    "statement_digest": "794f9bdf108250301551a2e8b71e08e067d0e1b1359267a7ec3d6b09246ae1c8"
   },
   {
-   "book": "books/byte-store-k0-recovery.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
-   "registry": true,
-   "statement_digest": "a04e73682d8ced491a2ee48e568012d26f8c22a08e7d48b488765f847c556d43"
-  },
-  {
    "book": "books/byte-store-range-read.lisp",
    "class": "hand",
    "critical": "durability",
@@ -5158,14 +5072,6 @@
    "name": "fn-bs-read-ranges-is-the-range",
    "registry": true,
    "statement_digest": "5b8250a1666a284932f392a4b0ef52b42b32fd6e583d986cba3ee771919c44ae"
-  },
-  {
-   "book": "books/byte-store-range-read.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-read-ranges-read-the-whole-file",
-   "registry": true,
-   "statement_digest": "c2a5df1969c93257c32acb935d82d377f12b935880feb558927574b8f30f4d5f"
   },
   {
    "book": "books/byte-store-k0-staging.lisp",
@@ -5192,52 +5098,12 @@
    "statement_digest": "740c6284d8bc34849c93ae0a73fc69aeade816ca50b7ab8c547c255c02983bf0"
   },
   {
-   "book": "books/byte-store-k0-recovery.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-recover-program-keeps-relation-at-every-cut",
-   "registry": true,
-   "statement_digest": "91e59d1d75aec29e79891c5a7c5b23bae3be5720ef15982f716ff5469825b180"
-  },
-  {
-   "book": "books/byte-store-program-invariants.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-related-allocation-is-fresh",
-   "registry": true,
-   "statement_digest": "25a8d416a61a0d8d39e7e7bbd46be362d4acb477765b672486ae94e80134bd3b"
-  },
-  {
    "book": "books/byte-store-state-checkpoint-program.lisp",
    "class": "hand",
    "critical": "durability",
    "name": "fn-bs-scp-program-crash-is-old-or-new",
    "registry": true,
    "statement_digest": "dd3974f89f2f7f7c53009dff4bb61eae6cbba99aef732b33c8cd7abb6136f24f"
-  },
-  {
-   "book": "books/byte-store-stable-prefix.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-stable-prefix-retained-by-byte-crash",
-   "registry": true,
-   "statement_digest": "15237f8f40241d07a371b9fecf319a758e56c47b28912e3c26f6d23602a79c19"
-  },
-  {
-   "book": "books/byte-store-scan.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-store-crash-image-is-kernel-admissible",
-   "registry": true,
-   "statement_digest": "0a2ddf7b8393ad468eb0a4824b5e4cd2fc5ba611b49e7aace3b8d5ed03287a5f"
-  },
-  {
-   "book": "books/byte-store-scan.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-bs-store-crash-image-scans",
-   "registry": true,
-   "statement_digest": "1e14cd1e5564f371c61723514ca70c8751bc739a3db8abf372bbe1725e612404"
   },
   {
    "book": "books/byte-store-keystones.lisp",
@@ -6042,6 +5908,25 @@
    "registry": true
   },
   {
+   "book_digest": "706fc54000b7410da00b590b1bb879fd5f060d348efb82edbeae632d0ed2bd7b",
+   "bounds": [],
+   "claim_digest": "0eb64ff79ba1e6cf04808151c1e6181ab0ec7ff08c76441bff5770f71539ec3a",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-cfg-peer-names-loop-is-revappend-of-the-walk",
+   "owed_met": null,
+   "owner_book": "tests/acl2/config-walk-loops-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-cfg-peer-names",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-cfg-record-fitsp-is-the-decoder-limits",
    "registry": true
@@ -6063,6 +5948,25 @@
    "name": "fn-cfg-record-redeeming-an-expired-code-is-refused-and-faults-replay",
    "registry": true,
    "statement_digest": "495ca34a92e20a4a391710bac682b006ae6d414f9f5cc0056250673797460610"
+  },
+  {
+   "book_digest": "706fc54000b7410da00b590b1bb879fd5f060d348efb82edbeae632d0ed2bd7b",
+   "bounds": [],
+   "claim_digest": "af3e2051df15559d93deb9cb4a575a97283834252868709353e95aa105bf895f",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-cfg-rows-with-key-loop-is-revappend-of-the-walk",
+   "owed_met": null,
+   "owner_book": "tests/acl2/config-walk-loops-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-cfg-rows-with-key",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -6156,14 +6060,6 @@
    "name": "fn-checkpoint-admissible-capture-is-exact",
    "registry": true,
    "statement_digest": "2ffc2a255e068d4d46e93aaa97c0fb756277efec44bb965e9cef5fb289a6ade3"
-  },
-  {
-   "book": "books/checkpoint.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-checkpoint-admissible-capture-value-is-valid",
-   "registry": true,
-   "statement_digest": "1a6b6fd5f8f8acabc6096a37908dd863cca740d54d976640be59539cbbd7ad76"
   },
   {
    "book": "books/checkpoint.lisp",
@@ -6283,14 +6179,6 @@
    "name": "fn-clo-finalize-never-answers-frontier-at-the-computed-frontier",
    "registry": true,
    "statement_digest": "63fae0076b322dab1869a3578788818516ac13d4577bf51c2258c67e09956a38"
-  },
-  {
-   "book": "books/closure-open.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-clo-observed-at-the-computed-frontier",
-   "registry": true,
-   "statement_digest": "3d638f55746e7aa84ce3e3952ce83e0d4a2ab4962f5ff7915c579dff6a85ddc5"
   },
   {
    "book": "books/closure-open.lisp",
@@ -6523,14 +6411,6 @@
    "class": "hand",
    "name": "fn-cp-register-within-refuses-exactly-past-the-operator-bound",
    "registry": true
-  },
-  {
-   "book": "books/checkpoint-codec.lisp",
-   "class": "hand",
-   "critical": "parser-boundary",
-   "name": "fn-cpc-valid-is-capture-value",
-   "registry": true,
-   "statement_digest": "63f6c5379afc824c8c0095cb6ab74f22ed96f231529f0236a58324d74a36e484"
   },
   {
    "book": "books/checkpoint-codec.lisp",
@@ -7666,94 +7546,40 @@
    "witness": "executable"
   },
   {
-   "book": "books/def-loop.lisp",
-   "class": "hand",
-   "critical": "extraction",
-   "name": "fn-dl-concat-loop-is-revappend",
-   "registry": true,
-   "statement_digest": "b11371f4bbcd6b6a51025923dda786e7b3237aef3d79fce1291c4f124cfd6e42"
-  },
-  {
-   "book": "books/def-loop.lisp",
    "book_digest": "3acf756822b7ead57aae1ce59224719712cf096e58226670879a1f2e46c8a0be",
    "bounds": [],
    "claim_digest": "68ff84cd56459b0ce16b1c61b8b81af397ee6cdc8721f3dcd15f09ac5c0562b3",
    "class": "generated",
-   "critical": "extraction",
    "mutations": "edits:1",
    "name": "fn-dl-fold-loop-is-revappend",
    "owed_met": null,
    "owner_book": "tests/acl2/def-loop-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
    },
-   "statement_digest": "d2661bc96f6c6da9cd043a58e9251c7305e372c5d4a6068c54f3844aaf9db3ed",
    "subject": null,
    "witness": "instance"
   },
   {
-   "book": "books/def-loop.lisp",
-   "class": "hand",
-   "critical": "extraction",
-   "name": "fn-dl-foldr-loop-is-foldr",
-   "registry": true,
-   "statement_digest": "4fbd6445cd790c35ae161c2e680bc08dce522a0ebffafdc323ee7ef91ae243a5"
-  },
-  {
-   "book": "books/def-loop.lisp",
-   "class": "hand",
-   "critical": "extraction",
-   "name": "fn-dl-map-loop-is-revappend",
-   "registry": true,
-   "statement_digest": "32c50a971a98e49edd44a11d325efc179404cf061376298a25c2adfef56fbe47"
-  },
-  {
-   "book": "books/def-loop.lisp",
-   "class": "hand",
-   "critical": "extraction",
-   "name": "fn-dl-map-skip-loop-is-revappend",
-   "registry": true,
-   "statement_digest": "d1819d57853c1a407f113ab5e74ed73c58456c66365cc7898df7b187ebe5b4b8"
-  },
-  {
-   "book": "books/def-loop.lisp",
-   "class": "hand",
-   "critical": "extraction",
-   "name": "fn-dl-step-loop-is-revappend",
-   "registry": true,
-   "statement_digest": "0d5944daa7f31fee99a370443ae287a1139a8c702c61158233eae1481102ecd2"
-  },
-  {
-   "book": "books/def-loop.lisp",
-   "class": "hand",
-   "critical": "extraction",
-   "name": "fn-dl-sum-loop-is-plus",
-   "registry": true,
-   "statement_digest": "325ab2d953834162da103a2f03b06b60751576773a63fc070e7b6af6fc4ab019"
-  },
-  {
-   "book": "books/def-loop.lisp",
    "book_digest": "3acf756822b7ead57aae1ce59224719712cf096e58226670879a1f2e46c8a0be",
    "bounds": [],
    "claim_digest": "8f35c0cdf7c95fe3b8c3e5af79040d5342ee5bd3450107dd3a04b124762c0d66",
    "class": "generated",
-   "critical": "extraction",
    "mutations": "edits:1",
    "name": "fn-dl-thread-loop-is-revappend",
    "owed_met": null,
    "owner_book": "tests/acl2/def-loop-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
    },
-   "statement_digest": "ad84c5891afae53ee35a48bb8330aedf6019d8c5db3a50d574312f1e1b086352",
    "subject": null,
    "witness": "instance"
   },
@@ -9299,14 +9125,6 @@
    "book": "books/history-image-binding.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-hib-replay-extends",
-   "registry": true,
-   "statement_digest": "e2832f6af3f82840a624563f4b909b5b35623645fdcf4cce4ed691645ff9950c"
-  },
-  {
-   "book": "books/history-image-binding.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-hib-undone-evict",
    "registry": true,
    "statement_digest": "a285ede056609188da1f9f38d6761f63e6b954b08de4924ef4034508da7698b3"
@@ -9671,11 +9489,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-hp-x-append-step-refines",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hp-x-at-is-nth",
    "registry": true
   },
@@ -9727,11 +9540,6 @@
   {
    "class": "hand",
    "name": "fn-hrc-at-is-nth",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-hrc-flush-one-rel",
    "registry": true
   },
   {
@@ -9807,11 +9615,6 @@
    "name": "fn-hrs-disk-history-len",
    "registry": true,
    "statement_digest": "0eb64f3e868aa175f47031acbf86becdd49bb907e1e8159b36541b0eb5c0b272"
-  },
-  {
-   "class": "hand",
-   "name": "fn-hrs-loop-placement",
-   "registry": true
   },
   {
    "class": "hand",
@@ -10545,33 +10348,9 @@
    "book": "books/store-log-crash.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-lg-batch-crash-is-a-prefix",
-   "registry": true,
-   "statement_digest": "f590fac447c876c0e6b87912aaad0fa83b570999bc5920a4e2eec170210aa2a7"
-  },
-  {
-   "book": "books/store-log-crash.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer",
-   "registry": true,
-   "statement_digest": "b37276cfd486f5d7383838b41cc170ad866d8ff7a80c64fc2f9ec273a16009ca"
-  },
-  {
-   "book": "books/store-log-crash.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-lg-batch-tear-is-a-prefix",
    "registry": true,
    "statement_digest": "d2a5efe929eb351e7ba033522c7680a99b5f5df4522343b58c1d9d4cb4a8bad1"
-  },
-  {
-   "book": "books/store-log-decode.lisp",
-   "class": "hand",
-   "critical": "parser-boundary",
-   "name": "fn-lg-decode-is-the-scan",
-   "registry": true,
-   "statement_digest": "8da57bcdfffb837183d2631be375c1355706cc989caa4ee2ffcb52b6369b2c89"
   },
   {
    "book": "books/store-log-extend.lisp",
@@ -10606,14 +10385,6 @@
    "statement_digest": "f89692c9048203ffa833161aeb06099e125a2f62aeec6f8d6298d4ed742c9037"
   },
   {
-   "book": "books/store-log-programs.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lg-open-kernel-is-the-recovered-kernel",
-   "registry": true,
-   "statement_digest": "325f43cebfa6c674237d63f25faf6e79a9c3a3f95d50126eed5b0c526c52bb42"
-  },
-  {
    "book": "books/store-log-route-programs.lisp",
    "class": "hand",
    "critical": "durability",
@@ -10644,46 +10415,6 @@
    "name": "fn-lg-reserve-program-keeps-the-relation",
    "registry": true,
    "statement_digest": "df4a5f9e3383cb72d36a605924007695f89ba977cbeafeb59f0494252f6d8aab"
-  },
-  {
-   "book": "books/store-log-recover.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lg-scan-consumed-aligned",
-   "registry": true,
-   "statement_digest": "ca27ee303ea8e3c7e2126b2533fc3a6fad8ea99bb4ad60709a4d80bd416302f4"
-  },
-  {
-   "book": "books/store-log-recover.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lg-scan-consumed-within",
-   "registry": true,
-   "statement_digest": "f210f5cfb48b08e98956511b12823b4ccf34f71d448f657d38a242103f8632d4"
-  },
-  {
-   "book": "books/store-log-recover.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lg-scan-last-digestp",
-   "registry": true,
-   "statement_digest": "0836fe0ee2a7ac6cf5b9140f2cab6766e1ffe89946b3b050286c08e376de7826"
-  },
-  {
-   "book": "books/store-log-kernel.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lg-scan-last-of-complete-append",
-   "registry": true,
-   "statement_digest": "840121b427e346fd514cb78b40e4c93f1017e8e01c2009a2f2493606000abf4b"
-  },
-  {
-   "book": "books/store-log-crash.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lg-scan-of-complete-append",
-   "registry": true,
-   "statement_digest": "a9aaa1109503969efad49940d1fa3051f2ed1bbc38e90867fb5e5fdf3e28d060"
   },
   {
    "book": "books/store-log.lisp",
@@ -10726,28 +10457,12 @@
    "statement_digest": "41252fcb21f581172df76a0a74b6eba6957c26598c567b7c53efe0f9c0986d47"
   },
   {
-   "book": "books/store-log-crash.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lg-tear-write-is-pieces",
-   "registry": true,
-   "statement_digest": "38428a853d2f621528808c02940c379c4082abea5a622c05c8f51c1216afb498"
-  },
-  {
    "book": "books/store-log.lisp",
    "class": "hand",
    "critical": "durability",
    "name": "fn-lg-torn-variant-len",
    "registry": true,
    "statement_digest": "db4793b114230ac1beae7f05da36797a61943d0c8d337d347e8c34b7dd019d81"
-  },
-  {
-   "book": "books/store-log-txid.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lg-txids-strictly-increase",
-   "registry": true,
-   "statement_digest": "5340ed565c74d578cf5925de15d63ecba8a3fbfe0426acddd52fb77ceb663980"
   },
   {
    "book": "books/store-log-buffer.lisp",
@@ -10890,14 +10605,6 @@
    "witness": "executable"
   },
   {
-   "book": "books/store-log-decode.lisp",
-   "class": "hand",
-   "critical": "parser-boundary",
-   "name": "fn-lgd-loop-is-the-scan",
-   "registry": true,
-   "statement_digest": "c397a8c87d80a89fef84e6e7294cfcc313fef4d100dcfbc6c32a3867551b5409"
-  },
-  {
    "book": "books/store-log-damage.lisp",
    "class": "hand",
    "critical": "durability",
@@ -11017,14 +10724,6 @@
    "book": "books/store-log-kernel.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-lgk-crash-of-related-state-is-a-prefix",
-   "registry": true,
-   "statement_digest": "b1e5d186d4ba508a145a0f76eba26f7e5e45d2d33616ff3967a817eaf88977ae"
-  },
-  {
-   "book": "books/store-log-kernel.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-lgk-fence-content",
    "registry": true,
    "statement_digest": "8eeafb89d72098bb5633ff5725041ba78aa63c628075017c341522d936527b55"
@@ -11060,22 +10759,6 @@
    "name": "fn-lgk-prepare-preserves-relation",
    "registry": true,
    "statement_digest": "b183a83db9d25d3c593bf5149bcbe07442fc6eaa76639d71aff99e02c41b5c30"
-  },
-  {
-   "book": "books/store-log-recover.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgk-recover-establishes-relation",
-   "registry": true,
-   "statement_digest": "74004b3f2630fd8c82a78d0c438db157b1828f37697038d0d897d5bff720978e"
-  },
-  {
-   "book": "books/store-log-recover.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgk-recovered-content-okp",
-   "registry": true,
-   "statement_digest": "1a5f13ad72774c122922c74b5fb0f4491344ff52626497015aee4732e2301e27"
   },
   {
    "book": "books/recovery-refinement-concurrent.lisp",
@@ -11121,46 +10804,6 @@
    "book": "books/store-log-open-barriers.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-lgob-fence-of-a-fenced-file-is-identity",
-   "registry": true,
-   "statement_digest": "a90501598e6f7afd80cd0aabc62a89f5aeea957f820d3f2b38e3511ab57d508d"
-  },
-  {
-   "book": "books/store-log-open-barriers.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgob-file-fence-keeps-entry-operations",
-   "registry": true,
-   "statement_digest": "3ff93918ccedab1a17ff96e6566fdc9d5a9aae8ecb322035db3650fe60d4cceb"
-  },
-  {
-   "book": "books/store-log-open-barriers.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgob-journal-fence-keeps-the-rotated-segment",
-   "registry": true,
-   "statement_digest": "6f4b0c931bbaebc93742bb180815c5ad535597f1c01854640ec50df0f3b26d02"
-  },
-  {
-   "book": "books/store-log-open-barriers.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgob-one-barrier-loses-a-rotated-segment",
-   "registry": true,
-   "statement_digest": "86bbc5ad022b5b82c734ae883de3da20e8a34f074eca089e95b53c9a23495049"
-  },
-  {
-   "book": "books/store-log-open-barriers.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgob-only-a-write-unfences-a-file",
-   "registry": true,
-   "statement_digest": "fa15414bd31511f04c47c1e010c6c7adb5cec66230b368eaeb199596745fa551"
-  },
-  {
-   "book": "books/store-log-open-barriers.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-lgob-three-and-five-barrier-opens-have-the-same-cut-states",
    "registry": true,
    "statement_digest": "27a711dcb4732e2974c23e403b60d47cd24009a97379a4833069cda6a58c76bd"
@@ -11180,38 +10823,6 @@
    "name": "fn-lgob-three-barrier-open-is-the-five-at-every-cut",
    "registry": true,
    "statement_digest": "b5d3d7582075c59c1815453e07558cecfebf06dc69df42b9313f906c33d205fc"
-  },
-  {
-   "book": "books/store-log-open-barriers.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgob-three-barriers-keep-the-imported-store",
-   "registry": true,
-   "statement_digest": "0905f5add53e6bfb8a367533e22ad8dbb7cfcaf61149536920c5987f1a05a9cc"
-  },
-  {
-   "book": "books/store-log-open-barriers.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgob-three-barriers-keep-the-rotated-segment",
-   "registry": true,
-   "statement_digest": "40404b32127eb5bee7b3d96a57948a611249d579417fb9d2db177250021d2c02"
-  },
-  {
-   "book": "books/store-log-open-barriers.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment",
-   "registry": true,
-   "statement_digest": "ad39cbde90a3616e8c40e920d0f90deef15472973ebbdb51e3ad04a72747ce5c"
-  },
-  {
-   "book": "books/store-log-open-barriers.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgob-two-barriers-without-parent-lose-an-imported-store",
-   "registry": true,
-   "statement_digest": "9d08d4312958d255ef097abfa1d8033a7c95e78c4033eda239514ab0f51bd62f"
   },
   {
    "class": "hand",
@@ -11278,49 +10889,9 @@
    "book": "books/store-log-recover-copy.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-lgrc-attempt-makes-the-read-prefix-durable",
-   "registry": true,
-   "statement_digest": "50e96a90f5ae3584bdee5ef02a4644b2ce78d2c622bc07879607b03020e6cb9e"
-  },
-  {
-   "book": "books/store-log-recover-copy.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgrc-dropping-open-loses-a-checkpointed-history",
-   "registry": true,
-   "statement_digest": "c240c927c78373157d7ce0d9961be806c049dab7107bf3a6b492e3b8a2e1df8e"
-  },
-  {
-   "book": "books/store-log-recover-copy.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-lgrc-open-keeps-the-relation-at-every-cut",
    "registry": true,
    "statement_digest": "c484c90f4a728795349f30f7637d104bffddc6d9298bbebbc0d14d07daafbb93"
-  },
-  {
-   "book": "books/store-log-recover-copy.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgrc-open-unlinks-no-segment",
-   "registry": true,
-   "statement_digest": "089ee89a984c68752fb91ce6d4b88b8a7d616b9af76098d167e9d4051f61b972"
-  },
-  {
-   "book": "books/store-log-rotate-spare.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was",
-   "registry": true,
-   "statement_digest": "0603277a47cdb797043e9061780ef62dd6287ce67ea1c3a8f6a5550429e78171"
-  },
-  {
-   "book": "books/store-log-rotate-spare.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgrs-journal-fence-names-the-acknowledged-batch",
-   "registry": true,
-   "statement_digest": "5deb5409b25725f10997279104bdd649b0c74ede42e5e23b78b567c40162ad27"
   },
   {
    "book": "books/store-log-rotate-spare.lisp",
@@ -11329,14 +10900,6 @@
    "name": "fn-lgrs-spare-name-is-swept-and-never-a-segment",
    "registry": true,
    "statement_digest": "9a20d2972ce8384561f23b2000efa30aa82e39fa3bd57259093f6294cd6fdc2a"
-  },
-  {
-   "book": "books/store-log-rotate-spare.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed",
-   "registry": true,
-   "statement_digest": "4ed6a65cde823b3f8a40bfa6d9c751740e8d0620fdafa76bb6c701a121afb51f"
   },
   {
    "book": "books/store-log-segments.lisp",
@@ -11419,14 +10982,6 @@
    "statement_digest": "1863270e58e95de0c292d1664dd7134e8ca7841978172879ed515669ab213b75"
   },
   {
-   "book": "books/store-log-txid.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgt-recovered-okp-of-verdict",
-   "registry": true,
-   "statement_digest": "1afca58fee951796c56f42554320abcb8d555c99b2ff8ddb39463e9ae14eba29"
-  },
-  {
    "book": "books/store-log-durable.lisp",
    "class": "hand",
    "critical": "durability",
@@ -11435,24 +10990,21 @@
    "statement_digest": "94dc93214f93238fbd8d4d6e4471f1d89f051da0584ce65ad035a4508f0ff2c3"
   },
   {
-   "book": "books/store-log-durable.lisp",
    "book_digest": "207f485c9e0154ea21d46813f1a8dd86aad5eb4f639a49fb90f45b91b2021c3d",
    "bounds": [],
    "claim_digest": "6501313b395ba89f41e1f84ee32dc48acbad06126742807812f95df994964a68",
    "class": "generated",
-   "critical": "durability",
    "mutations": "not-applicable",
    "name": "fn-lgu-acknowledged-records-are-recovered-at-every-cut",
    "owed_met": null,
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 3,
     "logical": 0,
     "reachable": 0
    },
-   "statement_digest": "87f9fe0eeee661d47159a4fa0848ce6830fe67483a9111a8a9e4efc0e7b91b6f",
    "subject": "fn-lgu-host-run",
    "witness": "lemma"
   },
@@ -11509,24 +11061,21 @@
    "statement_digest": "d19052a46deebf41c3d1799db87ccc3ad3913d50bbf4d5082773c8158bfc79ac"
   },
   {
-   "book": "books/store-log-durable.lisp",
    "book_digest": "207f485c9e0154ea21d46813f1a8dd86aad5eb4f639a49fb90f45b91b2021c3d",
    "bounds": [],
    "claim_digest": "b8aaf15d91c459791182d719c0a7eeb224889e9278c2026ce8bbf98c3fb0d9da",
    "class": "generated",
-   "critical": "durability",
    "mutations": "not-applicable",
    "name": "fn-lgu-safe-image-recovers-the-acknowledged-records",
    "owed_met": null,
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
    },
-   "statement_digest": "8fca7159a37d819fda3a53f23f51f69985bc0918e05355ed9df8fcdfd1d66fb3",
    "subject": "fn-lgk-recover",
    "witness": "lemma"
   },
@@ -11619,14 +11168,6 @@
    "witness": "lemma"
   },
   {
-   "book": "books/store-log-stream.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgw-open-chain-is-the-chain",
-   "registry": true,
-   "statement_digest": "72a871ff0236207133f4dffc6b19b33023ae4c8ebdb3f2f7dc4716a47baa95d2"
-  },
-  {
    "book": "books/store-log-walk-once.lisp",
    "class": "hand",
    "critical": "durability",
@@ -11641,22 +11182,6 @@
    "name": "fn-lgw-run-of-set-next-is-run-nf",
    "registry": true,
    "statement_digest": "1f72b65c8689a6a179a0d49b0bd381e0581ece8ebbd848d4af13a6b80d503a5c"
-  },
-  {
-   "book": "books/store-log-stream.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgw-segment-drop-preserves-the-open",
-   "registry": true,
-   "statement_digest": "93ae260e57f0804b05dc06bfc1ef756877f77aa1f6ceee9c296d7d0ab7521563"
-  },
-  {
-   "book": "books/store-log-stream.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-lgw-segment-is-the-scan",
-   "registry": true,
-   "statement_digest": "11728bdfcf3e18001d0a1ae81b2aceea1cbed95ca842bde6850b43bf1904aea7"
   },
   {
    "book": "books/store-log-buffer.lisp",
@@ -14935,6 +14460,25 @@
    "registry": true
   },
   {
+   "book_digest": "26de30479bee1380734be898692c18597b7064c1aaa99a8ebf567bf72ae0188b",
+   "bounds": [],
+   "claim_digest": "f836d78ab8d299d299493865ceb1452925605b4afe4c449982c067986b68035f",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-oct-transit-is-own-transit-outcome-under-ocl-relation",
+   "owed_met": null,
+   "owner_book": "tests/acl2/catchup-carried-transit-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oct-transit",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-oct-word-octets-of-word-at",
    "registry": true
@@ -15570,9 +15114,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "26de30479bee1380734be898692c18597b7064c1aaa99a8ebf567bf72ae0188b",
+   "bounds": [],
+   "claim_digest": "50a4fafc33cb7d6e8495521f4279f85f2f6be5084ad04b28ab8f42eeb6088da0",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-oop-transit-outcome-is-own-transit-outcome",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/catchup-carried-transit-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oop-transit-outcome",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -19796,7 +19354,7 @@
   },
   {
    "book": "books/page-read-startup.lisp",
-   "book_digest": "960432552c168eb36c3d0e98d97df76c3b2a399bda0b4b08755f4215b9c9c64e",
+   "book_digest": "a5885e901d676274ed63dee267c98f4aa00b912bb98d631e055d96664486c6fd",
    "bounds": [],
    "claim_digest": "ad3cd34bfc949563f0c465b0809712f6e9d087493e9a23fad90331cc68b66b6e",
    "class": "generated",
@@ -19818,7 +19376,7 @@
   },
   {
    "book": "books/page-read-startup.lisp",
-   "book_digest": "960432552c168eb36c3d0e98d97df76c3b2a399bda0b4b08755f4215b9c9c64e",
+   "book_digest": "a5885e901d676274ed63dee267c98f4aa00b912bb98d631e055d96664486c6fd",
    "bounds": [],
    "claim_digest": "194941027e09e2b9a37a158046e542b8dcadb69f7cd2a74c6b5cfb273dceb6bd",
    "class": "generated",
@@ -22157,41 +21715,9 @@
    "book": "books/recovery-refinement.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-rr-acknowledged-record-is-in-every-tree-sequence-member",
-   "registry": true,
-   "statement_digest": "21c48b7708f811ab2a63a6cbe3d76ee2d37b12982ac1dabaa2059dc7d52d0247"
-  },
-  {
-   "book": "books/recovery-refinement.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new",
    "registry": true,
    "statement_digest": "1b9637869447013b6dcb1a1c6677cc4cc3c792edfb875c2a2eca639248eb05ac"
-  },
-  {
-   "book": "books/recovery-refinement.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member",
-   "registry": true,
-   "statement_digest": "feac44785e9fd901e2f03ca144d3bb992467cad192fb85286e4ee82c462343bc"
-  },
-  {
-   "book": "books/recovery-refinement.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-rr-log-crash-image-quiet-recovers-committed",
-   "registry": true,
-   "statement_digest": "ef347d98cb81a0bc78b9259225f94cd55afc8bc8237823eb8e1f405c8a0dbce3"
-  },
-  {
-   "book": "books/recovery-refinement.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-rr-log-crash-image-recovers-a-tree-sequence-member",
-   "registry": true,
-   "statement_digest": "fdb1a96c99e5b45acd89278cd682c88a8f065f3b115ebc438f840e4d87f6ee9e"
   },
   {
    "book": "books/recovery-refinement.lisp",
@@ -22226,68 +21752,12 @@
    "statement_digest": "9618003949c42e79b65159049d45f2c38a728bea2d79dccb7f342bdbf1ca2125"
   },
   {
-   "book": "books/recovery-refinement.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record",
-   "registry": true,
-   "statement_digest": "6e33455004017577134d19ace185420dd92d8c529c2a2d8c6463aca444dd5e4d"
-  },
-  {
-   "book": "books/recovery-refinement-concurrent.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight",
-   "registry": true,
-   "statement_digest": "b5053af7bb1af7cc8fabef14a38c973eb123e19f988c51f1c12dc14600b5dc6a"
-  },
-  {
-   "book": "books/recovery-refinement-concurrent.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-rrc-crash-content-is-the-projected-crash-content",
-   "registry": true,
-   "statement_digest": "926e57f84299a5b6f87dcc77497e9b4455f8ed4965e01ab103ca1dda1abe14c9"
-  },
-  {
    "book": "books/recovery-refinement-concurrent.lisp",
    "class": "hand",
    "critical": "durability",
    "name": "fn-rrc-keeping-the-segment-keeps-the-lifted-relation",
    "registry": true,
    "statement_digest": "b250df096c80a9eade3f00c4abc1e5426f759d70a2a410d86829ec59b040a329"
-  },
-  {
-   "book": "books/recovery-refinement-concurrent.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-rrc-log-crash-image-recovers-a-tree-sequence-member",
-   "registry": true,
-   "statement_digest": "ecc63cb58d4ff498e0595e9ecc15b9d6368b6bbeadf03f69ebc90789623f234d"
-  },
-  {
-   "book": "books/recovery-refinement-concurrent.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-rrc-projected-image-is-admissible-with-the-same-segment",
-   "registry": true,
-   "statement_digest": "25a42b7d61168e3dc1517cbc148fa55efe23837d881f57675b3de4b45b6c9565"
-  },
-  {
-   "book": "books/recovery-refinement-concurrent.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-rrc-projection-is-related",
-   "registry": true,
-   "statement_digest": "7973a70c5b2819fc38184df3843e96f88a7ecd6fc41dc6e8cb908f1a0e7307b3"
-  },
-  {
-   "book": "books/recovery-refinement-concurrent.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record",
-   "registry": true,
-   "statement_digest": "9340baf85d2e4ac8022ae90773521de8b5dfd22491b258511c625274a74f886c"
   },
   {
    "book": "books/recovery-refinement-pages.lisp",
@@ -23254,11 +22724,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-scar-own-read-span-is-own-read-tls-prefix",
    "registry": true
   },
@@ -23530,14 +22995,6 @@
    "statement_digest": "9c74767185cba0791544117d913770ca1d3501d4a5c1e327ffd5f40f11d01043"
   },
   {
-   "book": "books/store-checkpoint-arena.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-scka-recover-rows-rii-is-recover-rows",
-   "registry": true,
-   "statement_digest": "d087627490b8a9017592f9889dd4b87c2d254b5a74df32eb4ac62292fa06b325"
-  },
-  {
    "book": "books/store-checkpoint-arena-writer.lisp",
    "class": "hand",
    "critical": "durability",
@@ -23552,14 +23009,6 @@
    "name": "fn-scka-seal-n-compose",
    "registry": true,
    "statement_digest": "f811b1e59dcbad5c82d697cd2a8bc6d05a58a249e56b70a7713d22424dcf09c8"
-  },
-  {
-   "book": "books/store-checkpoint-arena-writer.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-scka-src-payloads-of-canon-srcs",
-   "registry": true,
-   "statement_digest": "bc32a504ee925d1b1113562f4a731e038254311621fa3de5cf25a9e803b43a2d"
   },
   {
    "book": "books/store-checkpoint-arena-writer.lisp",
@@ -27352,11 +26801,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-wm-match-codepoints-work-cost-bound",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-wm-match-codepoints-work-value",
    "registry": true
   },
@@ -27377,6 +26821,25 @@
     "reachable": 1
    },
    "subject": "fn-wmc-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2847d55314f692dd40fd24c9d4338c5528aef116ce394f1288dfcef04983ab39",
+   "bounds": [],
+   "claim_digest": "527aad0a75d916ebbd03f5a0d4e5c1b9b05b371627d5ba846bf4e612cee0d8c7",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-wmc-core-codepoint-start-work-bound",
+   "owed_met": null,
+   "owner_book": "tests/acl2/wildmat-cursor-bound-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-wmc-start-codepoints",
    "witness": "executable"
   },
   {

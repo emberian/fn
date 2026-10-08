@@ -1129,18 +1129,6 @@
    "class": "durability",
    "statement_digest": "c301cb99656f495bdd0f1e42501c5e801e1e169ebca6c58d43d284d63c0ef274"
   },
-  "fn-bs-crash-image-namespace-is-contiguous": {
-   "class": "durability",
-   "statement_digest": "deceab3e0b22093526da500348b6525ed8f64a8811f9889e0580bc7837c053a7"
-  },
-  "fn-bs-crash-image-reads-the-config": {
-   "class": "durability",
-   "statement_digest": "39968a4ee01a1cdc7dc9db8851d0262a638afd4eac1369f69ec20db50bf5a897"
-  },
-  "fn-bs-crash-image-records-do-not-fault": {
-   "class": "durability",
-   "statement_digest": "26d1693be7452cfa44ef231f18febb65c4fe07c3197940833c9832c5ef20a757"
-  },
   "fn-bs-crash-image-relates-to-recovery-entry-kernel": {
    "class": "durability",
    "statement_digest": "c42399a44d5309f0b39c34bcf0131e6ccb8b0fbb4c57749e10e47e5b7b384af1"
@@ -1148,10 +1136,6 @@
   "fn-bs-crash-image-reopens": {
    "class": "durability",
    "statement_digest": "2e4b52f091f32af9d4a7d66ed8a8a276fb5dc73a3f03b309c84f7aa3f6a9cd44"
-  },
-  "fn-bs-crash-of-aligned-append": {
-   "class": "durability",
-   "statement_digest": "51daa5d0c83595cd6a47311f8d56ac35127be0ca3ba79798f3d78187d3501d29"
   },
   "fn-bs-first-frontier-program-preserves-relation": {
    "class": "durability",
@@ -1185,25 +1169,9 @@
    "class": "durability",
    "statement_digest": "8e99ae18ded176768c0872b3e2aacf369c1d3ae54fd30e0f2bf61bd5a3361a6a"
   },
-  "fn-bs-imp-classify-by-what-is-known": {
-   "class": "durability",
-   "statement_digest": "2886385b610a060a3e4306ac7844aafa9b38c08cc338a34c2453bd77d5f52d5b"
-  },
-  "fn-bs-imp-program-crash-is-no-store-or-the-complete-store": {
-   "class": "durability",
-   "statement_digest": "3c77c6ad9735a56515a58d22768e771c940f0c5376f7673794c48b61fa01110a"
-  },
   "fn-bs-init-log-classify-by-what-is-known": {
    "class": "durability",
    "statement_digest": "d5494caa7a4bfea0e35538957236b771052a9712dd666765891cc8fbf2710826"
-  },
-  "fn-bs-init-log-complete-store-carries-the-node-secret": {
-   "class": "durability",
-   "statement_digest": "67a67eb404136cf9d217362b1ca3631d8ca80d6e2e57a2246a845d07f2306528"
-  },
-  "fn-bs-init-log-complete-store-carries-the-peer-flight-profile": {
-   "class": "durability",
-   "statement_digest": "ed8caa614c1f483da1116db638d24832363b4410909ae53b3e8f7211ac2d8944"
   },
   "fn-bs-init-log-crash-retry-is-old-or-new": {
    "class": "durability",
@@ -1293,10 +1261,6 @@
    "class": "durability",
    "statement_digest": "18e0f377bddc9bb0d3ee6509edfbe18b87f6fcff9faafa4bdb22d24824046605"
   },
-  "fn-bs-k0-pending-staging-extension-preserves-relation": {
-   "class": "durability",
-   "statement_digest": "c1377cdff77a3d8fd11d131a7a5a693662eae855041c001d3261b43903a91f43"
-  },
   "fn-bs-k0-record-cleanup-cut-relation": {
    "class": "durability",
    "statement_digest": "a941c1bda4433ebbd8dd6498d03ff050a66c52379d706a1f623d0a3724095fe3"
@@ -1341,10 +1305,6 @@
    "class": "durability",
    "statement_digest": "613551ff52792227fdc015263d5098deab9215a74130f4678e5d3d65e5420019"
   },
-  "fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame": {
-   "class": "durability",
-   "statement_digest": "4a7e91a09b4e6885e36c214f533e9fce42c9abb1bfd6c5f1eddcb70b6d87c7ca"
-  },
   "fn-bs-k6-actual-record-file-cut-has-exact-frame": {
    "class": "durability",
    "statement_digest": "2e40f876d4be3d5b31faadbc1204f369f694e34a533deb053eeca64079088d48"
@@ -1369,10 +1329,6 @@
    "class": "durability",
    "statement_digest": "78b056e8e3a38fd40ac95ae1291746aa6a1e5b41c82f0df22708a1c00d02d359"
   },
-  "fn-bs-k6-related-staged-durable-final-name-absent": {
-   "class": "durability",
-   "statement_digest": "0fa92be5293f79f7e68c79134a1cdee6572e5a96e9a3d4444902beab329c9fbb"
-  },
   "fn-bs-k8-issued-link-fence-crash-scans-exact-candidate": {
    "class": "durability",
    "statement_digest": "24024c13f1e2634ca7d4dbe53c634d490fddfb4233314bbbed6f193b9929e167"
@@ -1385,10 +1341,6 @@
    "class": "durability",
    "statement_digest": "794f9bdf108250301551a2e8b71e08e067d0e1b1359267a7ec3d6b09246ae1c8"
   },
-  "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel": {
-   "class": "durability",
-   "statement_digest": "a04e73682d8ced491a2ee48e568012d26f8c22a08e7d48b488765f847c556d43"
-  },
   "fn-bs-read-ranges-concatenate": {
    "class": "durability",
    "statement_digest": "59c3863b01d9ff91f70b3157ae9d990b5ef966cc9c22434b37ea20065ddf7571"
@@ -1396,10 +1348,6 @@
   "fn-bs-read-ranges-is-the-range": {
    "class": "durability",
    "statement_digest": "5b8250a1666a284932f392a4b0ef52b42b32fd6e583d986cba3ee771919c44ae"
-  },
-  "fn-bs-read-ranges-read-the-whole-file": {
-   "class": "durability",
-   "statement_digest": "c2a5df1969c93257c32acb935d82d377f12b935880feb558927574b8f30f4d5f"
   },
   "fn-bs-record-dir-error-preserves-relation": {
    "class": "durability",
@@ -1413,29 +1361,9 @@
    "class": "durability",
    "statement_digest": "740c6284d8bc34849c93ae0a73fc69aeade816ca50b7ab8c547c255c02983bf0"
   },
-  "fn-bs-recover-program-keeps-relation-at-every-cut": {
-   "class": "durability",
-   "statement_digest": "91e59d1d75aec29e79891c5a7c5b23bae3be5720ef15982f716ff5469825b180"
-  },
-  "fn-bs-related-allocation-is-fresh": {
-   "class": "durability",
-   "statement_digest": "25a8d416a61a0d8d39e7e7bbd46be362d4acb477765b672486ae94e80134bd3b"
-  },
   "fn-bs-scp-program-crash-is-old-or-new": {
    "class": "durability",
    "statement_digest": "dd3974f89f2f7f7c53009dff4bb61eae6cbba99aef732b33c8cd7abb6136f24f"
-  },
-  "fn-bs-stable-prefix-retained-by-byte-crash": {
-   "class": "durability",
-   "statement_digest": "15237f8f40241d07a371b9fecf319a758e56c47b28912e3c26f6d23602a79c19"
-  },
-  "fn-bs-store-crash-image-is-kernel-admissible": {
-   "class": "durability",
-   "statement_digest": "0a2ddf7b8393ad468eb0a4824b5e4cd2fc5ba611b49e7aace3b8d5ed03287a5f"
-  },
-  "fn-bs-store-crash-image-scans": {
-   "class": "durability",
-   "statement_digest": "1e14cd1e5564f371c61723514ca70c8751bc739a3db8abf372bbe1725e612404"
   },
   "fn-bs-store-recovery-is-a-kernel-crash": {
    "class": "durability",
@@ -1617,10 +1545,6 @@
    "class": "durability",
    "statement_digest": "2ffc2a255e068d4d46e93aaa97c0fb756277efec44bb965e9cef5fb289a6ade3"
   },
-  "fn-checkpoint-admissible-capture-value-is-valid": {
-   "class": "durability",
-   "statement_digest": "1a6b6fd5f8f8acabc6096a37908dd863cca740d54d976640be59539cbbd7ad76"
-  },
   "fn-checkpoint-plus-suffix-equals-full-replay": {
    "class": "durability",
    "statement_digest": "c73238b2c240deedf7f8a1e072263a4c6625e56004a864bd92f229aec9f81439"
@@ -1673,10 +1597,6 @@
    "class": "durability",
    "statement_digest": "63fae0076b322dab1869a3578788818516ac13d4577bf51c2258c67e09956a38"
   },
-  "fn-clo-observed-at-the-computed-frontier": {
-   "class": "durability",
-   "statement_digest": "3d638f55746e7aa84ce3e3952ce83e0d4a2ab4962f5ff7915c579dff6a85ddc5"
-  },
   "fn-clo-relation-state-opens-or-identity": {
    "class": "durability",
    "statement_digest": "1f6ed158fa94c8bbda66653fa240157dbd92bfdc94bd26e688c2a713a0b4ef0b"
@@ -1684,10 +1604,6 @@
   "fn-clo-store-open-of-clean-stop-is-accepted-or-identity": {
    "class": "durability",
    "statement_digest": "597e56a793e98048469f981884abdfc418266bba913efbaf72c30bc64fb1c2ad"
-  },
-  "fn-cpc-valid-is-capture-value": {
-   "class": "parser-boundary",
-   "statement_digest": "63f6c5379afc824c8c0095cb6ab74f22ed96f231529f0236a58324d74a36e484"
   },
   "fn-cpc-valid-refuses-generation-mismatch": {
    "class": "parser-boundary",
@@ -1904,38 +1820,6 @@
   "fn-cwait-wait-request-roundtrip": {
    "class": "parser-boundary",
    "statement_digest": "b3d3030e756ee0c0370145698fbac42162a5414aec86587496d91bcb96819388"
-  },
-  "fn-dl-concat-loop-is-revappend": {
-   "class": "extraction",
-   "statement_digest": "b11371f4bbcd6b6a51025923dda786e7b3237aef3d79fce1291c4f124cfd6e42"
-  },
-  "fn-dl-fold-loop-is-revappend": {
-   "class": "extraction",
-   "statement_digest": "d2661bc96f6c6da9cd043a58e9251c7305e372c5d4a6068c54f3844aaf9db3ed"
-  },
-  "fn-dl-foldr-loop-is-foldr": {
-   "class": "extraction",
-   "statement_digest": "4fbd6445cd790c35ae161c2e680bc08dce522a0ebffafdc323ee7ef91ae243a5"
-  },
-  "fn-dl-map-loop-is-revappend": {
-   "class": "extraction",
-   "statement_digest": "32c50a971a98e49edd44a11d325efc179404cf061376298a25c2adfef56fbe47"
-  },
-  "fn-dl-map-skip-loop-is-revappend": {
-   "class": "extraction",
-   "statement_digest": "d1819d57853c1a407f113ab5e74ed73c58456c66365cc7898df7b187ebe5b4b8"
-  },
-  "fn-dl-step-loop-is-revappend": {
-   "class": "extraction",
-   "statement_digest": "0d5944daa7f31fee99a370443ae287a1139a8c702c61158233eae1481102ecd2"
-  },
-  "fn-dl-sum-loop-is-plus": {
-   "class": "extraction",
-   "statement_digest": "325ab2d953834162da103a2f03b06b60751576773a63fc070e7b6af6fc4ab019"
-  },
-  "fn-dl-thread-loop-is-revappend": {
-   "class": "extraction",
-   "statement_digest": "ad84c5891afae53ee35a48bb8330aedf6019d8c5db3a50d574312f1e1b086352"
   },
   "fn-dwa-refused-retirement-preserves-carry": {
    "class": "ownership-reclamation",
@@ -2333,10 +2217,6 @@
    "class": "durability",
    "statement_digest": "2748f2db92cfc5ee1699b6c17dd7db14c34541b5a9b4deedc45272d9de936fe2"
   },
-  "fn-hib-replay-extends": {
-   "class": "durability",
-   "statement_digest": "e2832f6af3f82840a624563f4b909b5b35623645fdcf4cce4ed691645ff9950c"
-  },
   "fn-hib-undone-evict": {
    "class": "durability",
    "statement_digest": "a285ede056609188da1f9f38d6761f63e6b954b08de4924ef4034508da7698b3"
@@ -2653,21 +2533,9 @@
    "class": "durability",
    "statement_digest": "43d6cccfc7227a958d0690fc9c569a110392fb8cc853b7b0a1c568ecf4fb060d"
   },
-  "fn-lg-batch-crash-is-a-prefix": {
-   "class": "durability",
-   "statement_digest": "f590fac447c876c0e6b87912aaad0fa83b570999bc5920a4e2eec170210aa2a7"
-  },
-  "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer": {
-   "class": "durability",
-   "statement_digest": "b37276cfd486f5d7383838b41cc170ad866d8ff7a80c64fc2f9ec273a16009ca"
-  },
   "fn-lg-batch-tear-is-a-prefix": {
    "class": "durability",
    "statement_digest": "d2a5efe929eb351e7ba033522c7680a99b5f5df4522343b58c1d9d4cb4a8bad1"
-  },
-  "fn-lg-decode-is-the-scan": {
-   "class": "parser-boundary",
-   "statement_digest": "8da57bcdfffb837183d2631be375c1355706cc989caa4ee2ffcb52b6369b2c89"
   },
   "fn-lg-extend-program-keeps-the-relation": {
    "class": "durability",
@@ -2685,10 +2553,6 @@
    "class": "durability",
    "statement_digest": "f89692c9048203ffa833161aeb06099e125a2f62aeec6f8d6298d4ed742c9037"
   },
-  "fn-lg-open-kernel-is-the-recovered-kernel": {
-   "class": "durability",
-   "statement_digest": "325f43cebfa6c674237d63f25faf6e79a9c3a3f95d50126eed5b0c526c52bb42"
-  },
   "fn-lg-open-program-keeps-the-relation": {
    "class": "durability",
    "statement_digest": "3528a6553a92d0facd11b698720c176aecb3876bd579b66968b3d20d4b2f2b6d"
@@ -2704,26 +2568,6 @@
   "fn-lg-reserve-program-keeps-the-relation": {
    "class": "durability",
    "statement_digest": "df4a5f9e3383cb72d36a605924007695f89ba977cbeafeb59f0494252f6d8aab"
-  },
-  "fn-lg-scan-consumed-aligned": {
-   "class": "durability",
-   "statement_digest": "ca27ee303ea8e3c7e2126b2533fc3a6fad8ea99bb4ad60709a4d80bd416302f4"
-  },
-  "fn-lg-scan-consumed-within": {
-   "class": "durability",
-   "statement_digest": "f210f5cfb48b08e98956511b12823b4ccf34f71d448f657d38a242103f8632d4"
-  },
-  "fn-lg-scan-last-digestp": {
-   "class": "durability",
-   "statement_digest": "0836fe0ee2a7ac6cf5b9140f2cab6766e1ffe89946b3b050286c08e376de7826"
-  },
-  "fn-lg-scan-last-of-complete-append": {
-   "class": "durability",
-   "statement_digest": "840121b427e346fd514cb78b40e4c93f1017e8e01c2009a2f2493606000abf4b"
-  },
-  "fn-lg-scan-of-complete-append": {
-   "class": "durability",
-   "statement_digest": "a9aaa1109503969efad49940d1fa3051f2ed1bbc38e90867fb5e5fdf3e28d060"
   },
   "fn-lg-scan-of-log": {
    "class": "durability",
@@ -2745,17 +2589,9 @@
    "class": "durability",
    "statement_digest": "41252fcb21f581172df76a0a74b6eba6957c26598c567b7c53efe0f9c0986d47"
   },
-  "fn-lg-tear-write-is-pieces": {
-   "class": "durability",
-   "statement_digest": "38428a853d2f621528808c02940c379c4082abea5a622c05c8f51c1216afb498"
-  },
   "fn-lg-torn-variant-len": {
    "class": "durability",
    "statement_digest": "db4793b114230ac1beae7f05da36797a61943d0c8d337d347e8c34b7dd019d81"
-  },
-  "fn-lg-txids-strictly-increase": {
-   "class": "durability",
-   "statement_digest": "5340ed565c74d578cf5925de15d63ecba8a3fbfe0426acddd52fb77ceb663980"
   },
   "fn-lgb-count-loop-is-plus": {
    "class": "parser-boundary",
@@ -2813,10 +2649,6 @@
    "class": "durability",
    "statement_digest": "bdd097e43010f0962b64f02cac8819fefcc96ec0e98bec56ff1d3092bca44450"
   },
-  "fn-lgd-loop-is-the-scan": {
-   "class": "parser-boundary",
-   "statement_digest": "c397a8c87d80a89fef84e6e7294cfcc313fef4d100dcfbc6c32a3867551b5409"
-  },
   "fn-lgdm-damage-lies-in-the-last-write": {
    "class": "durability",
    "statement_digest": "2245a7d2d00239e86d2b1876b40dda1ab97d69c222827328f2a6b8d636705f99"
@@ -2861,10 +2693,6 @@
    "class": "durability",
    "statement_digest": "2b75062fc7844da8438d128c6ea7bf1b4515d2f801ae4171464b7c96a84706a8"
   },
-  "fn-lgk-crash-of-related-state-is-a-prefix": {
-   "class": "durability",
-   "statement_digest": "b1e5d186d4ba508a145a0f76eba26f7e5e45d2d33616ff3967a817eaf88977ae"
-  },
   "fn-lgk-fence-content": {
    "class": "durability",
    "statement_digest": "8eeafb89d72098bb5633ff5725041ba78aa63c628075017c341522d936527b55"
@@ -2884,14 +2712,6 @@
   "fn-lgk-prepare-preserves-relation": {
    "class": "durability",
    "statement_digest": "b183a83db9d25d3c593bf5149bcbe07442fc6eaa76639d71aff99e02c41b5c30"
-  },
-  "fn-lgk-recover-establishes-relation": {
-   "class": "durability",
-   "statement_digest": "74004b3f2630fd8c82a78d0c438db157b1828f37697038d0d897d5bff720978e"
-  },
-  "fn-lgk-recovered-content-okp": {
-   "class": "durability",
-   "statement_digest": "1a5f13ad72774c122922c74b5fb0f4491344ff52626497015aee4732e2301e27"
   },
   "fn-lgk-relp-implies-fn-rrc-relp": {
    "class": "durability",
@@ -2913,26 +2733,6 @@
    "class": "durability",
    "statement_digest": "58da37084ede80da891335fae8f3443471e5465fc2b169f76261a594b1a7b88a"
   },
-  "fn-lgob-fence-of-a-fenced-file-is-identity": {
-   "class": "durability",
-   "statement_digest": "a90501598e6f7afd80cd0aabc62a89f5aeea957f820d3f2b38e3511ab57d508d"
-  },
-  "fn-lgob-file-fence-keeps-entry-operations": {
-   "class": "durability",
-   "statement_digest": "3ff93918ccedab1a17ff96e6566fdc9d5a9aae8ecb322035db3650fe60d4cceb"
-  },
-  "fn-lgob-journal-fence-keeps-the-rotated-segment": {
-   "class": "durability",
-   "statement_digest": "6f4b0c931bbaebc93742bb180815c5ad535597f1c01854640ec50df0f3b26d02"
-  },
-  "fn-lgob-one-barrier-loses-a-rotated-segment": {
-   "class": "durability",
-   "statement_digest": "86bbc5ad022b5b82c734ae883de3da20e8a34f074eca089e95b53c9a23495049"
-  },
-  "fn-lgob-only-a-write-unfences-a-file": {
-   "class": "durability",
-   "statement_digest": "fa15414bd31511f04c47c1e010c6c7adb5cec66230b368eaeb199596745fa551"
-  },
   "fn-lgob-three-and-five-barrier-opens-have-the-same-cut-states": {
    "class": "durability",
    "statement_digest": "27a711dcb4732e2974c23e403b60d47cd24009a97379a4833069cda6a58c76bd"
@@ -2945,22 +2745,6 @@
    "class": "durability",
    "statement_digest": "b5d3d7582075c59c1815453e07558cecfebf06dc69df42b9313f906c33d205fc"
   },
-  "fn-lgob-three-barriers-keep-the-imported-store": {
-   "class": "durability",
-   "statement_digest": "0905f5add53e6bfb8a367533e22ad8dbb7cfcaf61149536920c5987f1a05a9cc"
-  },
-  "fn-lgob-three-barriers-keep-the-rotated-segment": {
-   "class": "durability",
-   "statement_digest": "40404b32127eb5bee7b3d96a57948a611249d579417fb9d2db177250021d2c02"
-  },
-  "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment": {
-   "class": "durability",
-   "statement_digest": "ad39cbde90a3616e8c40e920d0f90deef15472973ebbdb51e3ad04a72747ce5c"
-  },
-  "fn-lgob-two-barriers-without-parent-lose-an-imported-store": {
-   "class": "durability",
-   "statement_digest": "9d08d4312958d255ef097abfa1d8033a7c95e78c4033eda239514ab0f51bd62f"
-  },
   "fn-lgr-decide-checkpoints-the-rewrite": {
    "class": "ownership-reclamation",
    "statement_digest": "a15519740f852b1b2828123b32b453c941c1218c84fc16c214470fc7f10b4c6d"
@@ -2969,37 +2753,13 @@
    "class": "durability",
    "statement_digest": "2f56aac6810e7103c098824d12be7b8e77fa9923fa92bb9d335ac20b7f01417a"
   },
-  "fn-lgrc-attempt-makes-the-read-prefix-durable": {
-   "class": "durability",
-   "statement_digest": "50e96a90f5ae3584bdee5ef02a4644b2ce78d2c622bc07879607b03020e6cb9e"
-  },
-  "fn-lgrc-dropping-open-loses-a-checkpointed-history": {
-   "class": "durability",
-   "statement_digest": "c240c927c78373157d7ce0d9961be806c049dab7107bf3a6b492e3b8a2e1df8e"
-  },
   "fn-lgrc-open-keeps-the-relation-at-every-cut": {
    "class": "durability",
    "statement_digest": "c484c90f4a728795349f30f7637d104bffddc6d9298bbebbc0d14d07daafbb93"
   },
-  "fn-lgrc-open-unlinks-no-segment": {
-   "class": "durability",
-   "statement_digest": "089ee89a984c68752fb91ce6d4b88b8a7d616b9af76098d167e9d4051f61b972"
-  },
-  "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was": {
-   "class": "durability",
-   "statement_digest": "0603277a47cdb797043e9061780ef62dd6287ce67ea1c3a8f6a5550429e78171"
-  },
-  "fn-lgrs-journal-fence-names-the-acknowledged-batch": {
-   "class": "durability",
-   "statement_digest": "5deb5409b25725f10997279104bdd649b0c74ede42e5e23b78b567c40162ad27"
-  },
   "fn-lgrs-spare-name-is-swept-and-never-a-segment": {
    "class": "durability",
    "statement_digest": "9a20d2972ce8384561f23b2000efa30aa82e39fa3bd57259093f6294cd6fdc2a"
-  },
-  "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed": {
-   "class": "durability",
-   "statement_digest": "4ed6a65cde823b3f8a40bfa6d9c751740e8d0620fdafa76bb6c701a121afb51f"
   },
   "fn-lgs-chain-records-of-append": {
    "class": "durability",
@@ -3041,17 +2801,9 @@
    "class": "durability",
    "statement_digest": "1863270e58e95de0c292d1664dd7134e8ca7841978172879ed515669ab213b75"
   },
-  "fn-lgt-recovered-okp-of-verdict": {
-   "class": "durability",
-   "statement_digest": "1afca58fee951796c56f42554320abcb8d555c99b2ff8ddb39463e9ae14eba29"
-  },
   "fn-lgu-acknowledge-acknowledges-only-recoverable-records": {
    "class": "durability",
    "statement_digest": "94dc93214f93238fbd8d4d6e4471f1d89f051da0584ce65ad035a4508f0ff2c3"
-  },
-  "fn-lgu-acknowledged-records-are-recovered-at-every-cut": {
-   "class": "durability",
-   "statement_digest": "87f9fe0eeee661d47159a4fa0848ce6830fe67483a9111a8a9e4efc0e7b91b6f"
   },
   "fn-lgu-complete-acknowledges-the-fenced-batch": {
    "class": "durability",
@@ -3064,10 +2816,6 @@
   "fn-lgu-host-kernel-acknowledges-only-recoverable-records": {
    "class": "durability",
    "statement_digest": "d19052a46deebf41c3d1799db87ccc3ad3913d50bbf4d5082773c8158bfc79ac"
-  },
-  "fn-lgu-safe-image-recovers-the-acknowledged-records": {
-   "class": "durability",
-   "statement_digest": "8fca7159a37d819fda3a53f23f51f69985bc0918e05355ed9df8fcdfd1d66fb3"
   },
   "fn-lgu-safe-image-scans-the-committed-records-first": {
    "class": "durability",
@@ -3085,10 +2833,6 @@
    "class": "parser-boundary",
    "statement_digest": "637401d6c49a9226dd090cb25302663eca433a3529e6fcb9376f4b4aa3c911e1"
   },
-  "fn-lgw-open-chain-is-the-chain": {
-   "class": "durability",
-   "statement_digest": "72a871ff0236207133f4dffc6b19b33023ae4c8ebdb3f2f7dc4716a47baa95d2"
-  },
   "fn-lgw-run-nf-then-fold-is-run": {
    "class": "durability",
    "statement_digest": "b4e17af42a3356073483c714125c4d9cc76511cf66708efbebadb189aa297dd4"
@@ -3096,14 +2840,6 @@
   "fn-lgw-run-of-set-next-is-run-nf": {
    "class": "durability",
    "statement_digest": "1f72b65c8689a6a179a0d49b0bd381e0581ece8ebbd848d4af13a6b80d503a5c"
-  },
-  "fn-lgw-segment-drop-preserves-the-open": {
-   "class": "durability",
-   "statement_digest": "93ae260e57f0804b05dc06bfc1ef756877f77aa1f6ceee9c296d7d0ab7521563"
-  },
-  "fn-lgw-segment-is-the-scan": {
-   "class": "durability",
-   "statement_digest": "11728bdfcf3e18001d0a1ae81b2aceea1cbed95ca842bde6850b43bf1904aea7"
   },
   "fn-lgw-step-buf-is-step": {
    "class": "parser-boundary",
@@ -5181,25 +4917,9 @@
    "class": "ownership-reclamation",
    "statement_digest": "a5402f8fa2887cd7e0cf081bf14c13db21f669a4f8f74f4ee458ad6cf640dac4"
   },
-  "fn-rr-acknowledged-record-is-in-every-tree-sequence-member": {
-   "class": "durability",
-   "statement_digest": "21c48b7708f811ab2a63a6cbe3d76ee2d37b12982ac1dabaa2059dc7d52d0247"
-  },
   "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new": {
    "class": "durability",
    "statement_digest": "1b9637869447013b6dcb1a1c6677cc4cc3c792edfb875c2a2eca639248eb05ac"
-  },
-  "fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member": {
-   "class": "durability",
-   "statement_digest": "feac44785e9fd901e2f03ca144d3bb992467cad192fb85286e4ee82c462343bc"
-  },
-  "fn-rr-log-crash-image-quiet-recovers-committed": {
-   "class": "durability",
-   "statement_digest": "ef347d98cb81a0bc78b9259225f94cd55afc8bc8237823eb8e1f405c8a0dbce3"
-  },
-  "fn-rr-log-crash-image-recovers-a-tree-sequence-member": {
-   "class": "durability",
-   "statement_digest": "fdb1a96c99e5b45acd89278cd682c88a8f065f3b115ebc438f840e4d87f6ee9e"
   },
   "fn-rr-medium-full-open-holds-its-records": {
    "class": "durability",
@@ -5217,37 +4937,9 @@
    "class": "durability",
    "statement_digest": "9618003949c42e79b65159049d45f2c38a728bea2d79dccb7f342bdbf1ca2125"
   },
-  "fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record": {
-   "class": "durability",
-   "statement_digest": "6e33455004017577134d19ace185420dd92d8c529c2a2d8c6463aca444dd5e4d"
-  },
-  "fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight": {
-   "class": "durability",
-   "statement_digest": "b5053af7bb1af7cc8fabef14a38c973eb123e19f988c51f1c12dc14600b5dc6a"
-  },
-  "fn-rrc-crash-content-is-the-projected-crash-content": {
-   "class": "durability",
-   "statement_digest": "926e57f84299a5b6f87dcc77497e9b4455f8ed4965e01ab103ca1dda1abe14c9"
-  },
   "fn-rrc-keeping-the-segment-keeps-the-lifted-relation": {
    "class": "durability",
    "statement_digest": "b250df096c80a9eade3f00c4abc1e5426f759d70a2a410d86829ec59b040a329"
-  },
-  "fn-rrc-log-crash-image-recovers-a-tree-sequence-member": {
-   "class": "durability",
-   "statement_digest": "ecc63cb58d4ff498e0595e9ecc15b9d6368b6bbeadf03f69ebc90789623f234d"
-  },
-  "fn-rrc-projected-image-is-admissible-with-the-same-segment": {
-   "class": "durability",
-   "statement_digest": "25a42b7d61168e3dc1517cbc148fa55efe23837d881f57675b3de4b45b6c9565"
-  },
-  "fn-rrc-projection-is-related": {
-   "class": "durability",
-   "statement_digest": "7973a70c5b2819fc38184df3843e96f88a7ecd6fc41dc6e8cb908f1a0e7307b3"
-  },
-  "fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record": {
-   "class": "durability",
-   "statement_digest": "9340baf85d2e4ac8022ae90773521de8b5dfd22491b258511c625274a74f886c"
   },
   "fn-rrp-commit-writes-within-the-generation": {
    "class": "durability",
@@ -5565,10 +5257,6 @@
    "class": "durability",
    "statement_digest": "9c74767185cba0791544117d913770ca1d3501d4a5c1e327ffd5f40f11d01043"
   },
-  "fn-scka-recover-rows-rii-is-recover-rows": {
-   "class": "durability",
-   "statement_digest": "d087627490b8a9017592f9889dd4b87c2d254b5a74df32eb4ac62292fa06b325"
-  },
   "fn-scka-restore-base-of-strip-of-capture": {
    "class": "durability",
    "statement_digest": "d852a9f44c26c4656b583e6ab4d8b8bc8cdca746dccf6d6f7cd5966cff9a566d"
@@ -5576,10 +5264,6 @@
   "fn-scka-seal-n-compose": {
    "class": "durability",
    "statement_digest": "f811b1e59dcbad5c82d697cd2a8bc6d05a58a249e56b70a7713d22424dcf09c8"
-  },
-  "fn-scka-src-payloads-of-canon-srcs": {
-   "class": "durability",
-   "statement_digest": "bc32a504ee925d1b1113562f4a731e038254311621fa3de5cf25a9e803b43a2d"
   },
   "fn-scka-srcs-n-complete": {
    "class": "durability",

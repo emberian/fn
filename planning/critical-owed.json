@@ -1411,21 +1411,6 @@
    "item": "PRF-1345",
    "book": "books/byte-store-scan.lisp"
   },
-  "fn-bs-crash-image-namespace-is-contiguous": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-scan.lisp"
-  },
-  "fn-bs-crash-image-reads-the-config": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-scan.lisp"
-  },
-  "fn-bs-crash-image-records-do-not-fault": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-scan.lisp"
-  },
   "fn-bs-crash-image-relates-to-recovery-entry-kernel": {
    "class": "durability",
    "item": "PRF-1345",
@@ -1435,11 +1420,6 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/byte-store-keystones.lisp"
-  },
-  "fn-bs-crash-of-aligned-append": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-crash.lisp"
   },
   "fn-bs-first-frontier-program-preserves-relation": {
    "class": "durability",
@@ -1481,27 +1461,7 @@
    "item": "PRF-1345",
    "book": "books/byte-store-k0-recovery.lisp"
   },
-  "fn-bs-imp-classify-by-what-is-known": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-import-publication.lisp"
-  },
-  "fn-bs-imp-program-crash-is-no-store-or-the-complete-store": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-import-publication.lisp"
-  },
   "fn-bs-init-log-classify-by-what-is-known": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-init-log-publication.lisp"
-  },
-  "fn-bs-init-log-complete-store-carries-the-node-secret": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-init-log-publication.lisp"
-  },
-  "fn-bs-init-log-complete-store-carries-the-peer-flight-profile": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-init-log-publication.lisp"
@@ -1616,11 +1576,6 @@
    "item": "PRF-1345",
    "book": "books/byte-store-record-provenance-owner.lisp"
   },
-  "fn-bs-k0-pending-staging-extension-preserves-relation": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-k0-staging.lisp"
-  },
   "fn-bs-k0-record-cleanup-cut-relation": {
    "class": "durability",
    "item": "PRF-1345",
@@ -1676,11 +1631,6 @@
    "item": "PRF-1345",
    "book": "books/byte-store-record-provenance-bytes.lisp"
   },
-  "fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-record-provenance-bytes.lisp"
-  },
   "fn-bs-k6-actual-record-file-cut-has-exact-frame": {
    "class": "durability",
    "item": "PRF-1345",
@@ -1711,11 +1661,6 @@
    "item": "PRF-1345",
    "book": "books/byte-store-record-provenance-bytes.lisp"
   },
-  "fn-bs-k6-related-staged-durable-final-name-absent": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-record-provenance-bytes.lisp"
-  },
   "fn-bs-k8-issued-link-fence-crash-scans-exact-candidate": {
    "class": "durability",
    "item": "PRF-1345",
@@ -1731,22 +1676,12 @@
    "item": "PRF-1345",
    "book": "books/byte-store-frame.lisp"
   },
-  "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-k0-recovery.lisp"
-  },
   "fn-bs-read-ranges-concatenate": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/byte-store-range-read.lisp"
   },
   "fn-bs-read-ranges-is-the-range": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-range-read.lisp"
-  },
-  "fn-bs-read-ranges-read-the-whole-file": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/byte-store-range-read.lisp"
@@ -1766,35 +1701,10 @@
    "item": "PRF-1345",
    "book": "books/byte-store-k0-staging.lisp"
   },
-  "fn-bs-recover-program-keeps-relation-at-every-cut": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-k0-recovery.lisp"
-  },
-  "fn-bs-related-allocation-is-fresh": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-program-invariants.lisp"
-  },
   "fn-bs-scp-program-crash-is-old-or-new": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/byte-store-state-checkpoint-program.lisp"
-  },
-  "fn-bs-stable-prefix-retained-by-byte-crash": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-stable-prefix.lisp"
-  },
-  "fn-bs-store-crash-image-is-kernel-admissible": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-scan.lisp"
-  },
-  "fn-bs-store-crash-image-scans": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/byte-store-scan.lisp"
   },
   "fn-bs-store-recovery-is-a-kernel-crash": {
    "class": "durability",
@@ -2021,11 +1931,6 @@
    "item": "PRF-1345",
    "book": "books/checkpoint.lisp"
   },
-  "fn-checkpoint-admissible-capture-value-is-valid": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/checkpoint.lisp"
-  },
   "fn-checkpoint-plus-suffix-equals-full-replay": {
    "class": "durability",
    "item": "PRF-1345",
@@ -2091,11 +1996,6 @@
    "item": "PRF-1345",
    "book": "books/closure-open.lisp"
   },
-  "fn-clo-observed-at-the-computed-frontier": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/closure-open.lisp"
-  },
   "fn-clo-relation-state-opens-or-identity": {
    "class": "durability",
    "item": "PRF-1345",
@@ -2105,11 +2005,6 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/closure-open.lisp"
-  },
-  "fn-cpc-valid-is-capture-value": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/checkpoint-codec.lisp"
   },
   "fn-cpc-valid-refuses-generation-mismatch": {
    "class": "parser-boundary",
@@ -2380,46 +2275,6 @@
    "class": "parser-boundary",
    "item": "PRF-1349",
    "book": "books/consumer-wait-codec.lisp"
-  },
-  "fn-dl-concat-loop-is-revappend": {
-   "class": "extraction",
-   "item": "PRF-1346",
-   "book": "books/def-loop.lisp"
-  },
-  "fn-dl-fold-loop-is-revappend": {
-   "class": "extraction",
-   "item": "PRF-1346",
-   "book": "books/def-loop.lisp"
-  },
-  "fn-dl-foldr-loop-is-foldr": {
-   "class": "extraction",
-   "item": "PRF-1346",
-   "book": "books/def-loop.lisp"
-  },
-  "fn-dl-map-loop-is-revappend": {
-   "class": "extraction",
-   "item": "PRF-1346",
-   "book": "books/def-loop.lisp"
-  },
-  "fn-dl-map-skip-loop-is-revappend": {
-   "class": "extraction",
-   "item": "PRF-1346",
-   "book": "books/def-loop.lisp"
-  },
-  "fn-dl-step-loop-is-revappend": {
-   "class": "extraction",
-   "item": "PRF-1346",
-   "book": "books/def-loop.lisp"
-  },
-  "fn-dl-sum-loop-is-plus": {
-   "class": "extraction",
-   "item": "PRF-1346",
-   "book": "books/def-loop.lisp"
-  },
-  "fn-dl-thread-loop-is-revappend": {
-   "class": "extraction",
-   "item": "PRF-1346",
-   "book": "books/def-loop.lisp"
   },
   "fn-dwa-refused-retirement-preserves-carry": {
    "class": "ownership-reclamation",
@@ -2916,11 +2771,6 @@
    "item": "PRF-1345",
    "book": "books/history-image-binding.lisp"
   },
-  "fn-hib-replay-extends": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/history-image-binding.lisp"
-  },
   "fn-hib-undone-evict": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3316,25 +3166,10 @@
    "item": "PRF-1345",
    "book": "books/store-log-programs.lisp"
   },
-  "fn-lg-batch-crash-is-a-prefix": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-crash.lisp"
-  },
-  "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-crash.lisp"
-  },
   "fn-lg-batch-tear-is-a-prefix": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-crash.lisp"
-  },
-  "fn-lg-decode-is-the-scan": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/store-log-decode.lisp"
   },
   "fn-lg-extend-program-keeps-the-relation": {
    "class": "durability",
@@ -3356,11 +3191,6 @@
    "item": "PRF-1345",
    "book": "books/store-log-crash.lisp"
   },
-  "fn-lg-open-kernel-is-the-recovered-kernel": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-programs.lisp"
-  },
   "fn-lg-open-program-keeps-the-relation": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3380,31 +3210,6 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-route-programs.lisp"
-  },
-  "fn-lg-scan-consumed-aligned": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-recover.lisp"
-  },
-  "fn-lg-scan-consumed-within": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-recover.lisp"
-  },
-  "fn-lg-scan-last-digestp": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-recover.lisp"
-  },
-  "fn-lg-scan-last-of-complete-append": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-kernel.lisp"
-  },
-  "fn-lg-scan-of-complete-append": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-crash.lisp"
   },
   "fn-lg-scan-of-log": {
    "class": "durability",
@@ -3431,20 +3236,10 @@
    "item": "PRF-1345",
    "book": "books/store-log.lisp"
   },
-  "fn-lg-tear-write-is-pieces": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-crash.lisp"
-  },
   "fn-lg-torn-variant-len": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log.lisp"
-  },
-  "fn-lg-txids-strictly-increase": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-txid.lisp"
   },
   "fn-lgb-count-loop-is-plus": {
    "class": "parser-boundary",
@@ -3516,11 +3311,6 @@
    "item": "PRF-1345",
    "book": "books/store-log-kernel-concrete.lisp"
   },
-  "fn-lgd-loop-is-the-scan": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/store-log-decode.lisp"
-  },
   "fn-lgdm-damage-lies-in-the-last-write": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3576,11 +3366,6 @@
    "item": "PRF-1345",
    "book": "books/store-log-kernel.lisp"
   },
-  "fn-lgk-crash-of-related-state-is-a-prefix": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-kernel.lisp"
-  },
   "fn-lgk-fence-content": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3605,16 +3390,6 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-kernel.lisp"
-  },
-  "fn-lgk-recover-establishes-relation": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-recover.lisp"
-  },
-  "fn-lgk-recovered-content-okp": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-recover.lisp"
   },
   "fn-lgk-relp-implies-fn-rrc-relp": {
    "class": "durability",
@@ -3641,31 +3416,6 @@
    "item": "PRF-1345",
    "book": "books/store-log-open-barriers.lisp"
   },
-  "fn-lgob-fence-of-a-fenced-file-is-identity": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-open-barriers.lisp"
-  },
-  "fn-lgob-file-fence-keeps-entry-operations": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-open-barriers.lisp"
-  },
-  "fn-lgob-journal-fence-keeps-the-rotated-segment": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-open-barriers.lisp"
-  },
-  "fn-lgob-one-barrier-loses-a-rotated-segment": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-open-barriers.lisp"
-  },
-  "fn-lgob-only-a-write-unfences-a-file": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-open-barriers.lisp"
-  },
   "fn-lgob-three-and-five-barrier-opens-have-the-same-cut-states": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3681,26 +3431,6 @@
    "item": "PRF-1345",
    "book": "books/store-log-open-barriers.lisp"
   },
-  "fn-lgob-three-barriers-keep-the-imported-store": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-open-barriers.lisp"
-  },
-  "fn-lgob-three-barriers-keep-the-rotated-segment": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-open-barriers.lisp"
-  },
-  "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-open-barriers.lisp"
-  },
-  "fn-lgob-two-barriers-without-parent-lose-an-imported-store": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-open-barriers.lisp"
-  },
   "fn-lgr-decide-checkpoints-the-rewrite": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
@@ -3711,42 +3441,12 @@
    "item": "PRF-1345",
    "book": "books/store-log-recover-copy.lisp"
   },
-  "fn-lgrc-attempt-makes-the-read-prefix-durable": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-recover-copy.lisp"
-  },
-  "fn-lgrc-dropping-open-loses-a-checkpointed-history": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-recover-copy.lisp"
-  },
   "fn-lgrc-open-keeps-the-relation-at-every-cut": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-recover-copy.lisp"
   },
-  "fn-lgrc-open-unlinks-no-segment": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-recover-copy.lisp"
-  },
-  "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-rotate-spare.lisp"
-  },
-  "fn-lgrs-journal-fence-names-the-acknowledged-batch": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-rotate-spare.lisp"
-  },
   "fn-lgrs-spare-name-is-swept-and-never-a-segment": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-rotate-spare.lisp"
-  },
-  "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-rotate-spare.lisp"
@@ -3801,17 +3501,7 @@
    "item": "PRF-1345",
    "book": "books/store-log-txid.lisp"
   },
-  "fn-lgt-recovered-okp-of-verdict": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-txid.lisp"
-  },
   "fn-lgu-acknowledge-acknowledges-only-recoverable-records": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-durable.lisp"
-  },
-  "fn-lgu-acknowledged-records-are-recovered-at-every-cut": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-durable.lisp"
@@ -3827,11 +3517,6 @@
    "book": "books/store-log-durable.lisp"
   },
   "fn-lgu-host-kernel-acknowledges-only-recoverable-records": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-durable.lisp"
-  },
-  "fn-lgu-safe-image-recovers-the-acknowledged-records": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-durable.lisp"
@@ -3856,11 +3541,6 @@
    "item": "PRF-1349",
    "book": "books/store-log-entry-bound.lisp"
   },
-  "fn-lgw-open-chain-is-the-chain": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-stream.lisp"
-  },
   "fn-lgw-run-nf-then-fold-is-run": {
    "class": "durability",
    "item": "PRF-1345",
@@ -3870,16 +3550,6 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-walk-once.lisp"
-  },
-  "fn-lgw-segment-drop-preserves-the-open": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-stream.lisp"
-  },
-  "fn-lgw-segment-is-the-scan": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-stream.lisp"
   },
   "fn-lgw-step-buf-is-step": {
    "class": "parser-boundary",
@@ -6476,27 +6146,7 @@
    "item": "PRF-1348",
    "book": "books/response-plan-pins.lisp"
   },
-  "fn-rr-acknowledged-record-is-in-every-tree-sequence-member": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement.lisp"
-  },
   "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement.lisp"
-  },
-  "fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement.lisp"
-  },
-  "fn-rr-log-crash-image-quiet-recovers-committed": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement.lisp"
-  },
-  "fn-rr-log-crash-image-recovers-a-tree-sequence-member": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/recovery-refinement.lisp"
@@ -6521,42 +6171,7 @@
    "item": "PRF-1345",
    "book": "books/recovery-refinement.lisp"
   },
-  "fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement.lisp"
-  },
-  "fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement-concurrent.lisp"
-  },
-  "fn-rrc-crash-content-is-the-projected-crash-content": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement-concurrent.lisp"
-  },
   "fn-rrc-keeping-the-segment-keeps-the-lifted-relation": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement-concurrent.lisp"
-  },
-  "fn-rrc-log-crash-image-recovers-a-tree-sequence-member": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement-concurrent.lisp"
-  },
-  "fn-rrc-projected-image-is-admissible-with-the-same-segment": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement-concurrent.lisp"
-  },
-  "fn-rrc-projection-is-related": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement-concurrent.lisp"
-  },
-  "fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/recovery-refinement-concurrent.lisp"
@@ -6956,11 +6571,6 @@
    "item": "PRF-1345",
    "book": "books/store-checkpoint-arena.lisp"
   },
-  "fn-scka-recover-rows-rii-is-recover-rows": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-checkpoint-arena.lisp"
-  },
   "fn-scka-restore-base-of-strip-of-capture": {
    "class": "durability",
    "item": "PRF-1345",
@@ -6970,11 +6580,6 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-checkpoint-arena-load.lisp"
-  },
-  "fn-scka-src-payloads-of-canon-srcs": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-checkpoint-arena-writer.lisp"
   },
   "fn-scka-srcs-n-complete": {
    "class": "durability",

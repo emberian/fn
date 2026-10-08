@@ -18,7 +18,7 @@
 ; These are the two outcomes with the advance routed through the configured
 ; owner: the owner the host installs is exactly the raw outcome's owner
 ; (fn-oop-outcome-is-apc-own-outcome, fn-oop-transit-outcome-is-own-transit-
-; outcome: no hypothesis), the effects are the same, and the pin of a
+; outcome: under fn-ocl-relation for transit), the effects are the same, and the pin of a
 ; connection the advance admitted is set to the live configuration, as
 ; fn-ocfg-advance sets it.  books/owner-host-relation.lisp proves both keep
 ; fn-ocl-relation and the carried fn-lgoc-invariantp.
@@ -27,8 +27,9 @@
 ; (books/owner-advance-carried.lisp fn-acar-own-advance-result: the rebuilt
 ; session tested at the node the held session carries), equal to it under
 ; the relation (fn-oop-advance-is-ocfg-advance-under-ocl-relation).  The
-; transit outcome keeps the reference advance it had (fn-own-advance, hence
-; fn-ocfg-advance), so its equality carries no hypothesis.
+; transit outcome uses the same carried advance.  Its equality to the raw
+; reference has the sole premise fn-ocl-relation, already carried by the
+; host; transit-next preserves both premises needed by the carried rebuild.
 
 (in-package "ACL2")
 
@@ -146,6 +147,30 @@
                (fn-own-node-secret o)
                (fn-own-transit-refused o conn sub kind reason)))
 
+(defthm fn-oop-transit-next-keeps-acar-premises
+  (let ((next (fn-oop-transit-next o id conn sub completion kind reason)))
+    (and (equal (fn-acar-conn-sessionp next target)
+                (fn-acar-conn-sessionp o target))
+         (equal (fn-acar-view-statep next) (fn-acar-view-statep o))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-oop-transit-next fn-acar-conn-sessionp fn-acar-view-statep)
+                (fn-own-find-conn fn-auth-sessionp fn-statep
+                 fn-nntp-safe-group-listp fn-own-transit-refused)))))
+
+(defthm fn-oop-transit-next-advance-is-reference
+  (implies (fn-ocl-relation oc)
+           (equal
+            (fn-acar-own-advance-result
+             (fn-oop-transit-next (fn-ocfg-owner oc)
+                                  id conn sub completion kind reason) id)
+            (fn-own-advance-result
+             (fn-oop-transit-next (fn-ocfg-owner oc)
+                                  id conn sub completion kind reason) id)))
+  :hints (("Goal" :in-theory
+           (disable fn-oop-transit-next fn-acar-own-advance-result
+                    fn-own-advance-result fn-acar-conn-sessionp
+                    fn-acar-view-statep fn-ocl-relation))))
+
 (defun fn-oop-transit-outcome (oc id kind reason word)
   (declare (xargs :guard t))
   (let* ((o (fn-ocfg-owner oc))
@@ -173,21 +198,30 @@
                   (fn-own-sub-decision sub) d
                   (if (equal kind :want) (fn-own-outcome-rendering o word) nil)))
                 (if (equal completion :durable)
-                    (fn-ocfg-advance oc2 id)
+                    (fn-oop-advance oc2 id)
                   oc2)))
       (cons nil oc))))
 
 ; KEYSTONE for the host line: the effects and the owner are
-; fn-own-transit-outcome's, with no hypothesis.
+; fn-own-transit-outcome's under the configured relation the host carries.
 (defthm fn-oop-transit-outcome-is-own-transit-outcome
-  (and (equal (car (fn-oop-transit-outcome oc id kind reason word))
+  (implies (fn-ocl-relation oc)
+   (and (equal (car (fn-oop-transit-outcome oc id kind reason word))
               (car (fn-own-transit-outcome (fn-ocfg-owner oc) id kind reason word)))
        (equal (fn-ocfg-owner (cdr (fn-oop-transit-outcome oc id kind reason word)))
-              (cdr (fn-own-transit-outcome (fn-ocfg-owner oc) id kind reason word))))
-  :hints (("Goal" :in-theory (e/d (fn-oop-transit-outcome fn-oop-transit-next
-                                   fn-own-transit-outcome fn-ocfg-advance
+              (cdr (fn-own-transit-outcome (fn-ocfg-owner oc) id kind reason word)))))
+  :hints (("Goal"
+           :use ((:instance fn-oop-transit-next-advance-is-reference
+                  (conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+                  (sub (fn-own-inflight (fn-ocfg-owner oc)))
+                  (completion :durable)))
+           :in-theory (e/d (fn-oop-transit-outcome fn-oop-transit-next
+                                   fn-own-transit-outcome fn-oop-advance
                                    fn-own-advance fn-ocfg-with-owner)
-                                  (fn-own-advance-result fn-served-transit-outcome
+                                  (fn-acar-own-advance-result fn-own-advance-result
+                                   fn-oop-transit-next-advance-is-reference
+                                   fn-acar-conn-sessionp fn-acar-view-statep fn-ocl-relation
+                                   fn-served-transit-outcome
                                    fn-own-outcome-completion fn-own-outcome-rendering
                                    fn-own-feed-durable fn-own-transit-refused
                                    fn-peer-decision fn-served-make-conn-group-indexed
@@ -198,8 +232,8 @@
               (fn-ocfg-config oc))
        (equal (fn-ocfg-staged (cdr (fn-oop-transit-outcome oc id kind reason word)))
               (fn-ocfg-staged oc)))
-  :hints (("Goal" :in-theory (e/d (fn-oop-transit-outcome fn-ocfg-advance fn-ocfg-with-owner)
-                                  (fn-own-advance-result fn-served-transit-outcome
+  :hints (("Goal" :in-theory (e/d (fn-oop-transit-outcome fn-oop-advance fn-ocfg-with-owner)
+                                  (fn-acar-own-advance-result fn-served-transit-outcome
                                    fn-own-outcome-completion fn-oop-transit-next
                                    fn-own-outcome-rendering fn-peer-decision
                                    fn-served-make-conn-group-indexed)))))
