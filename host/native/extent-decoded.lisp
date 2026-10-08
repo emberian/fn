@@ -234,6 +234,69 @@ candidate slots, authorizes the span and moves a hit to most recent."
                   (return (values (fnn-extent-copy-span dst (- j p)) (- j p)))))))
           (setq from (1+ slot)))))))
 
+(defun fnn-extent-decoded-window-run-at
+    (worker token file eoff elen poff compressed trailer decoded dict-id p end)
+  "Copy one authenticated returned decoded stretch under its ledger lock."
+  (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
+    (unless (fnn-extent-executor-observe-returned worker)
+      (return-from fnn-extent-decoded-window-run-at (values :pending nil nil)))
+    (let ((result (fnn-cold-worker-result worker)))
+      (when (typep result 'condition) (error result))
+      (unless (and (fnn-decoded-activation-p result)
+                   (eq (fnn-decoded-activation-stage result) :idle))
+        (fnn-fault "decoded borrow lacks a completed private activation"))
+      (let ((j (and (integerp (eighth token))
+                    (min end decoded (+ p +fnn-extent-span-capacity+)
+                         (+ (eighth token) 16384)))))
+        (if (and j (< p j))
+            (let* ((dst (or *fnn-extent-run-dst*
+                            (setq *fnn-extent-run-dst* (create-fn-ew-span))))
+                   (word (first (fnn-call 'fn-owner-page-decoded-job-span-at
+                                  (fnn-cold-worker-row worker) token
+                                  file eoff elen poff compressed trailer decoded dict-id p j
+                                  (fnn-decoded-activation-job result) dst
+                                  (fnn-live-page-read-pool)))))
+              (if (eq word :span)
+                  (values :span (fnn-extent-copy-span dst (- j p)) (- j p))
+                (values word nil nil)))
+          (values :unavailable nil nil))))))
+
+(defun fnn-extent-decoded-window-realize-run
+    (file eoff elen poff compressed trailer decoded dict p end)
+  "One decoded stretch, or the same complete cold/refusal answer as a scalar read."
+  (let* ((descriptor (fnn-core 'fn-pwz-cold-descriptor
+                              file eoff elen poff compressed trailer decoded dict p))
+         (dict-id (fnn-core 'fn-pwz-nth 8 descriptor)))
+    (multiple-value-bind (word octets count)
+        (if *fnn-extent-window-worker*
+            (fnn-extent-decoded-window-run-at
+             *fnn-extent-window-worker* *fnn-extent-window-token*
+             file eoff elen poff compressed trailer decoded dict-id p end)
+          (values :unavailable nil nil))
+      (cond ((eq word :span) (values octets count))
+            ((member word '(:cancelled :stale-job))
+             (throw 'fnn-extent-window-refused (values word nil nil nil)))
+            ((eq word :unavailable)
+             (multiple-value-bind (cached n)
+                 (fnn-extent-decoded-window-cache-run
+                  file eoff elen poff compressed trailer decoded dict-id p end)
+               (if cached (values cached n)
+                 (throw 'fnn-extent-cold descriptor))))
+            (t (error 'fnn-extent-fault
+                      :message "arena-extent-read: decoded window was not an authenticated returned result"))))))
+
+(defun fnn-extent-decoded-window-realize-span
+    (file eoff elen poff compressed trailer decoded dict i n)
+  "N decoded octets; each window intersection is one authenticated span borrow."
+  (let ((acc nil) (p i) (end (+ i n)))
+    (loop while (< p end)
+          do (multiple-value-bind (octets count)
+                 (fnn-extent-decoded-window-realize-run
+                  file eoff elen poff compressed trailer decoded dict p end)
+               (setq acc (revappend octets acc))
+               (incf p count)))
+    (nreverse acc)))
+
 (defun fnn-extent-decoded-window-run (worker token)
   "Same worker/token/pool; actual retained ACL2 controller selects each step.
 The issuer draws its declared fixed-storage projection before this entry;

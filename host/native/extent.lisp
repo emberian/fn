@@ -1833,14 +1833,15 @@ Anything but :stale removes the row (the file pin) and idles the worker."
             (or (cdr (assoc 'fn-dlz (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the decoded-payload buffer stobj is not in this image")))))
 
-(defun fnn-extent-lz-buffer-octet (file eoff elen poff plen trailer n dict i)
+(defun fnn-extent-lz-buffer-span (file eoff elen poff plen trailer n dict i count)
   (let ((key (list file eoff elen trailer poff plen n)))
     (loop
       (multiple-value-bind (hit octet)
           (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
             (let ((held *fnn-extent-lz-buffer-key*))
               (if (and held (equal (car held) key) (eq (cdr held) dict))
-                  (values t (fn-dlz-nth i (fnn-live-dlz)))
+                  (values t (loop for p from i below (+ i count)
+                                  collect (fn-dlz-nth p (fnn-live-dlz))))
                   (values nil nil))))
         (when hit (return octet)))
       (let* ((c (fn-durable-realize-octets file eoff elen poff plen trailer))
@@ -1858,6 +1859,27 @@ Anything but :stale removes the row (the file pin) and idles the worker."
             (error 'fnn-extent-fault
                    :message (format nil "arena-extent-lz-decode: the block at ~a does not decode to its ~a octets"
                                     where n))))))))
+
+(defun fnn-extent-lz-buffer-octet (file eoff elen poff plen trailer n dict i)
+  (first (fnn-extent-lz-buffer-span file eoff elen poff plen trailer n dict i 1)))
+
+;;; A-DURABLE-LZ's bounded decoded span seam (assumptions-durable.lisp).
+;;; Served window mode never falls back to the whole-payload decoder.
+(defun fn-durable-realize-lz-span
+    (file eoff elen poff compressed trailer decoded dict i count)
+  (if (zerop count) nil
+    (if *fnn-extent-window-mode*
+        (if (fboundp 'fnn-extent-decoded-window-realize-span)
+            (fnn-extent-decoded-window-realize-span
+             file eoff elen poff compressed trailer decoded dict i count)
+          (throw 'fnn-extent-window-refused
+            (values (fnn-core-cold-single 'fn-owner-page-window-decoded-refusal)
+                    nil nil nil)))
+      (fnn-extent-lz-buffer-span file eoff elen poff compressed trailer decoded dict i count))))
+
+(defun acl2_*1*_acl2::fn-durable-realize-lz-span
+    (file eoff elen poff compressed trailer decoded dict i count)
+  (fn-durable-realize-lz-span file eoff elen poff compressed trailer decoded dict i count))
 
 ;;; The arena scalar export consumes this seam. Window mode may only borrow
 ;;; the authenticated returned decoded window; it never falls back to the

@@ -166,3 +166,31 @@
   (defthm fn-durable-realize-lz-is-the-lz-value
     (equal (fn-durable-realize-lz file eoff elen poff plen trailer n dict)
            (fn-lzr-lz-value dict (fn-durable-octets file poff plen) n))))
+
+; A-DURABLE-LZ's bounded span seam: one realization returns exactly the
+; scalar decoded answers at I through I+COUNT-1. The native implementation
+; must copy authenticated decoded windows, retaining the same cold refusal
+; as the scalar seam. This assumes no new fact about compressed storage.
+(local
+ (defthm fn-durable-lz-span-list-ac
+   (equal (true-listp (make-list-ac n x acc)) (true-listp acc))))
+
+(defun fn-durable-lz-span-spec
+    (file eoff elen poff compressed trailer decoded dict i count)
+  (declare (xargs :guard (and (natp i) (natp count)) :measure (nfix count)
+                  :guard-hints (("Goal" :in-theory (e/d (fn-lzr-lz-value) (fn-pzd-decode))))))
+  (if (zp count) nil
+    (cons (nth i (fn-durable-realize-lz file eoff elen poff compressed trailer decoded dict))
+          (fn-durable-lz-span-spec file eoff elen poff compressed trailer decoded dict
+                                   (+ 1 (nfix i)) (1- count)))))
+
+(encapsulate
+  (((fn-durable-realize-lz-span * * * * * * * * * *) => *))
+
+  (local (defun fn-durable-realize-lz-span
+             (file eoff elen poff compressed trailer decoded dict i count)
+           (fn-durable-lz-span-spec file eoff elen poff compressed trailer decoded dict i count)))
+
+  (defthm fn-durable-realize-lz-span-is-the-octets
+    (equal (fn-durable-realize-lz-span file eoff elen poff compressed trailer decoded dict i count)
+           (fn-durable-lz-span-spec file eoff elen poff compressed trailer decoded dict i count))))

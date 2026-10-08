@@ -415,3 +415,23 @@
                   (fn-arx-files-unnamed-p fs fn-arena$x)
                   (member-equal f fs))
              (not (equal (fn-arx-entry-file (nth h (nth *fn-arena$x-exti* fn-arena$x))) f)))))))
+
+; A concrete compressed arena, reached by the real compressed seal. No
+; premise substitutes an already-equal span for the compressed branch.
+(defun-nx paxt-lz-span-arena ()
+  (fn-arena$x-seal-lz-extent 7 100 100 120 20 99 20000 nil
+    (fn-arena$x-clear (create-fn-arena$x))))
+
+(defthm paxt-lz-span-compressed-witness
+  (let ((x (paxt-lz-span-arena)))
+    (and (fn-arena$x-wfp x)
+         (equal (fn-arena$x-count x) 1)
+         (fn-arn-lz-extentp (fn-arena$x-exti 0 x))
+         (equal (fn-arena$x-payload-len 0 x) 20000)
+         (natp 16380) (natp 8) (<= (+ 16380 8) 20000)
+         (equal (fn-arena$x-get-span 0 16380 8 x)
+                (fn-arx-get-loop 0 16380 8 x))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-durable-lz-span-spec
+                                     fn-durable-realize-lz-is-the-lz-value
+                                     fn-lzr-lz-value fn-arx-get-loop))))

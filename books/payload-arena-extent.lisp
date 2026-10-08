@@ -471,8 +471,8 @@
 
 ;; The span (row 21): the N octets from AT in one call.  An extent entry is
 ;; one host call (fn-durable-realize-span: one lock and one ledger decision per
-;; borrowed window instead of per octet); every other entry kind reads octet by
-;; octet as before, from memory.
+;; borrowed window instead of per octet). Compressed extents use the decoded
+;; span seam under A-DURABLE-LZ; only resident entries use the memory loop.
 (defun fn-arx-get-loop (h at n fn-arena$x)
   (declare (xargs :stobjs fn-arena$x
                   :guard (and (natp h) (< h (fn-arena$x-count fn-arena$x))
@@ -491,10 +491,15 @@
                               (fn-arena$x-wfp fn-arena$x)
                               (natp at) (natp n)
                               (<= (+ at n) (fn-arena$x-payload-len h fn-arena$x)))))
-  (let ((e (fn-arena$x-exti h fn-arena$x)))
-    (if (fn-arn-extentp e)
-        (fn-durable-realize-span (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e) at n)
-      (fn-arx-get-loop h at n fn-arena$x))))
+  (if (zp n) nil
+    (let ((e (fn-arena$x-exti h fn-arena$x)))
+      (cond ((fn-arn-extentp e)
+             (fn-durable-realize-span (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e)
+                                     (nth 4 e) (nth 5 e) at n))
+            ((fn-arn-lz-extentp e)
+             (fn-durable-realize-lz-span (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e)
+                                        (nth 4 e) (nth 5 e) (nth 6 e) (nth 7 e) at n))
+            (t (fn-arx-get-loop h at n fn-arena$x))))))
 
 (defun fn-arena$x-payload (h fn-arena$x)
   (declare (xargs :stobjs fn-arena$x
@@ -1279,6 +1284,35 @@
   :hints (("Goal" :induct (fn-arx-get-loop h at n fn-arena$x)
                   :in-theory (enable fn-arena$x-get fn-arena$x-exti))))
 
+(defthm fn-arx-lz-span-spec-is-the-loop
+  (implies (and (natp at) (natp n)
+                (fn-arn-lz-extentp (nth h (nth *fn-arena$x-exti* fn-arena$x))))
+           (equal (fn-durable-lz-span-spec (nth 0 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 1 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 2 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 3 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 4 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 5 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 6 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        (nth 7 (nth h (nth *fn-arena$x-exti* fn-arena$x)))
+                                        at n)
+                  (fn-arx-get-loop h at n fn-arena$x)))
+  :hints (("Goal" :induct (fn-arx-get-loop h at n fn-arena$x)
+                  :in-theory (enable fn-arena$x-get fn-arena$x-exti fn-durable-realize-lz-octet))))
+
+(defthm fn-arena$x-get-span-is-the-octet-loop
+  (implies (and (natp at) (natp n))
+           (equal (fn-arena$x-get-span h at n fn-arena$x)
+                  (fn-arx-get-loop h at n fn-arena$x)))
+  :hints (("Goal" :in-theory (e/d (fn-arena$x-get-span)
+                                  (fn-arx-get-loop fn-durable-span-spec fn-durable-lz-span-spec))
+           :expand ((fn-arx-get-loop h at 0 fn-arena$x)))))
+
+(local
+ (defthm fn-arx-empty-logical-span
+   (implies (zp n) (equal (fn-arena$a-get-span h at n fn-arena-extent) nil))
+   :hints (("Goal" :in-theory (enable fn-arena$a-get-span)))))
+
 (defthm fn-arena-extent-get-span{correspondence}
   (implies (and (fn-arena$xcorr fn-arena$x fn-arena-extent)
                 (natp h) (< h (fn-arena$a-count fn-arena-extent))
@@ -1288,7 +1322,7 @@
                   (fn-arena$a-get-span h at n fn-arena-extent)))
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-arena$xcorr fn-arena$x-get fn-arena$a-get-span
-                                      fn-arx-get-loop fn-durable-span-spec)
+                                      fn-arx-get-loop fn-durable-span-spec fn-durable-lz-span-spec)
                   :use (fn-arx-get-loop-is-the-span))))
 
 (defthm fn-arena-extent-get-span{guard-thm}
