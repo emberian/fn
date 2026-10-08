@@ -170,7 +170,6 @@
 ; when both recoveries succeed on the same records.
 (defthm fn-bpn-host-lifecycle-recovery-from-agrees-with-the-replayed-machine
   (implies (and (fn-bpn-machine-invariantp base)
-                (natp start)
                 (equal (fn-bpn-machine-state-next-token base) start)
                 (equal (car (fn-bpn-lifecycle-recovery-from names records start))
                        :ready)
@@ -206,6 +205,7 @@
                             (names (nth 1 (fn-bpn-lifecycle-namespace-plan-from names start)))
                             (token start))
                  (:instance fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records)
+                 (:instance fn-bpn-machine-invariant-components (st base))
                  (:instance fn-bpn-replay-records-ready-advances-the-frontier-per-record
                             (st base))))
           ("Subgoal 1" :in-theory (enable fn-bpn-machine-invariantp))))
@@ -240,14 +240,14 @@
 ;; which agrees with any machine whose token counter is START (within the
 ;; lifecycle bound): a rotated generation with no records yet.
 (defthm fn-bpn-host-lifecycle-recovery-from-nothing-agrees
-  (implies (and (natp start)
-                (fn-bpn-machine-statep st)
+  (implies (and (fn-bpn-machine-statep st)
                 (<= start *fn-bpn-machine-max-records*)
                 (equal (fn-bpn-machine-state-next-token st) start))
            (equal (fn-bpn-host-lifecycle-recovery-agrees-p
                    (fn-bpn-lifecycle-recovery-from nil nil start) st)
                   t))
-  :hints (("Goal" :in-theory (e/d (fn-bpn-host-lifecycle-recovery-agrees-p
+  :hints (("Goal" :use ((:instance fn-bpn-machine-statep-components))
+           :in-theory (e/d (fn-bpn-host-lifecycle-recovery-agrees-p
                                    fn-bpn-lifecycle-recovery-agrees-with-statep
                                    fn-bpn-lifecycle-recovery-from
                                    fn-bpn-lifecycle-recovery-next-token

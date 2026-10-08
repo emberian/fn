@@ -155,7 +155,11 @@ publication whose outcome is unknown; recovery required)."
                   (fnn-indeterminate
                    "bp-service: lifecycle namespace cannot be enumerated: ~a" e)))
               #'string<))
-         (plan (fnn-core 'fn-bpnf-mixed-recovery-plan names)))
+         ;; A rotated generation names its records from its checkpoint's
+         ;; token counter (ACL2's fn-bpnr-plan-start-token), 0 without one.
+         (plan (fnn-core 'fn-bpnf-mixed-recovery-plan-from names
+                         (fnn-core 'fn-bpnr-plan-start-token
+                                   (fnn-bps-plan service)))))
       (unless (eq (fnn-core 'fn-bpnf-mixed-recovery-planp plan) t)
         (fnn-indeterminate "bp-service: ACL2 rejected lifecycle namespace"))
       (values names plan))))
@@ -1313,8 +1317,17 @@ again and releases neither on a failure (HELD's owner does)."
                 (fnn-bps-profile service) profile
                 (fnn-bps-node-profile service) node-profile
                 (fnn-bps-state service)
-                (fnn-core 'fn-bpnf-initial-state
-                          config (first profile) (second profile)))
+                ;; The base machine starts from the selected checkpoint's
+                ;; owed jobs and token counter (ACL2's fn-bpnr-seed-state;
+                ;; fn-bpnp-rotation-restart-keeps-owed-work): a rotation
+                ;; carries the queue.  NIL fences: the checkpoint's jobs do
+                ;; not fit this profile's machine limits.
+                (or (fnn-core 'fn-bpnr-seed-state
+                              (fnn-core 'fn-bpnf-initial-state
+                                        config (first profile) (second profile))
+                              plan)
+                    (fnn-indeterminate
+                     "bp-service: checkpoint jobs do not fit the profile")))
           (unless (eq (fnn-core 'fn-bpn-machine-invariantp
                                 (fnn-bps-base service)) t)
             (fnn-indeterminate "bp-service: invalid initial machine state"))
@@ -1339,7 +1352,9 @@ again and releases neither on a failure (HELD's owner does)."
                      (fnn-core 'fn-bpnf-mixed-legacy-observed plan))
                    (decoded (fnn-bps-read-records service record-names))
                    (recovery (fnn-core 'fn-bpn-host-lifecycle-recovery
-                                       legacy-observed decoded)))
+                                       legacy-observed decoded
+                                       (fnn-core 'fn-bpnr-plan-start-token
+                                                 (fnn-bps-plan service)))))
               (unless (eq (fnn-core 'fn-bpn-host-lifecycle-recovery-ready-p
                                     recovery) t)
                 (fnn-indeterminate

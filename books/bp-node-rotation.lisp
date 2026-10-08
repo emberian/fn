@@ -1211,6 +1211,69 @@
 ;; recovered base machine has exactly ST's base jobs and token counter, whose
 ;; namespace frontier the host's agreement check accepts for an empty
 ;; namespace read from the checkpoint's token.
+;; The same, with the recovery's intermediate values bound by hypothesis (the
+;; keystone below states them by let*).
+(local
+ (defthm fn-bpnp-rotation-restart-keeps-owed-work-bound
+   (implies
+    (and (equal (car (car (fn-bpnf-answer-effects
+                           (fn-bpnp-rotate-step st generation ck))))
+                :persist-checkpoint)
+         (fn-bpn-machine-invariantp (fn-bpnf-base st))
+         (fn-bpn-machine-statep (fn-bpnf-base fresh))
+         (null (fn-bpn-machine-state-pending (fn-bpnf-base fresh)))
+         (equal (fn-bpn-machine-state-max-jobs (fn-bpnf-base fresh))
+                (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))
+         (equal (fn-bpn-machine-state-max-octets (fn-bpnf-base fresh))
+                (fn-bpn-machine-state-max-octets (fn-bpnf-base st)))
+         (equal plan
+                (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))))
+         (equal seeded (fn-bpnr-seed-state fresh plan))
+         (equal event (fn-bpnr-recover-auto-event seeded nil :ready nil plan))
+         (equal answer (fn-bpnf-recover-fnbs-step
+                        seeded (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+                        (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
+    (and (not (null seeded))
+         (equal (fn-bpn-machine-state-jobs
+                 (fn-bpnf-base (fn-bpnf-answer-state answer)))
+                (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+         (equal (fn-bpn-machine-state-next-token
+                 (fn-bpnf-base (fn-bpnf-answer-state answer)))
+                (fn-bpn-machine-state-next-token (fn-bpnf-base st)))
+         (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+                 (fn-bpn-lifecycle-recovery-from
+                  nil nil (fn-bpnr-plan-start-token plan))
+                 (fn-bpnf-base (fn-bpnf-answer-state answer)))
+                t)))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-bpnp-rotate-step-proposes-only-own-projection)
+                  (:instance fn-bpnr-selection-plan-of-octets
+                             (ck (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
+                             (budget (fn-bpnr-depth-budget
+                                      (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))))
+                  (:instance fn-bpnr-rotation-checkpoint-is-a-checkpoint
+                             (e (fn-bpnf-epoch st)))
+                  (:instance fn-bpnr-rotation-checkpoint-fields
+                             (e (fn-bpnf-epoch st)))
+                  (:instance fn-bpnr-recovery-over-a-selected-checkpoint-keeps-owed-work
+                             (ckk (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
+                             (other (fn-bpnf-base st)))
+                  (:instance fn-bpn-machine-invariant-components
+                             (st (fn-bpnf-base st))))
+            :in-theory (union-theories
+                        '(fn-bpnr-checkpoint-of-statep fn-bpnp-rotation-quiescentp
+                          fn-frame-natp)
+                        (theory 'minimal-theory))))))
+
 (defthm fn-bpnp-rotation-restart-keeps-owed-work
   (implies
    (and (equal (car (car (fn-bpnf-answer-effects
@@ -1222,54 +1285,147 @@
         (equal (fn-bpn-machine-state-max-jobs (fn-bpnf-base fresh))
                (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))
         (equal (fn-bpn-machine-state-max-octets (fn-bpnf-base fresh))
-               (fn-bpn-machine-state-max-octets (fn-bpnf-base st)))
-        (equal plan
-               (fn-bpnr-selection-plan
-                t
-                (fn-bpnr-checkpoint-octets
-                 (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
-                                     (fn-bpnp-rotate-step st generation ck))))
+               (fn-bpn-machine-state-max-octets (fn-bpnf-base st))))
+   (let* ((plan (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
                  (fn-bpnr-depth-budget
-                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
-                (fn-bpnr-depth-budget
-                 (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))))
-        (equal seeded (fn-bpnr-seed-state fresh plan))
-        (equal event (fn-bpnr-recover-auto-event seeded nil :ready nil plan))
-        (equal answer (fn-bpnf-recover-fnbs-step
-                       seeded (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
-                       (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
-   (and (not (null seeded))
-        (equal (fn-bpn-machine-state-jobs
-                (fn-bpnf-base (fn-bpnf-answer-state answer)))
-               (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
-        (equal (fn-bpn-machine-state-next-token
-                (fn-bpnf-base (fn-bpnf-answer-state answer)))
-               (fn-bpn-machine-state-next-token (fn-bpnf-base st)))
-        (equal (fn-bpn-host-lifecycle-recovery-agrees-p
-                (fn-bpn-lifecycle-recovery-from
-                 nil nil (fn-bpnr-plan-start-token plan))
-                (fn-bpnf-base (fn-bpnf-answer-state answer)))
-               t)))
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))))
+          (seeded (fn-bpnr-seed-state fresh plan))
+          (event (fn-bpnr-recover-auto-event seeded nil :ready nil plan))
+          (answer (fn-bpnf-recover-fnbs-step
+                   seeded (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+                   (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
+     (and (not (null seeded))
+          (equal (fn-bpn-machine-state-jobs
+                  (fn-bpnf-base (fn-bpnf-answer-state answer)))
+                 (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+          (equal (fn-bpn-machine-state-next-token
+                  (fn-bpnf-base (fn-bpnf-answer-state answer)))
+                 (fn-bpn-machine-state-next-token (fn-bpnf-base st)))
+          (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+                  (fn-bpn-lifecycle-recovery-from
+                   nil nil (fn-bpnr-plan-start-token plan))
+                  (fn-bpnf-base (fn-bpnf-answer-state answer)))
+                 t))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bpnp-rotate-step-proposes-only-own-projection)
-                 (:instance fn-bpnr-selection-plan-of-octets
-                            (ck (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
-                            (budget (fn-bpnr-depth-budget
-                                     (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))))
-                 (:instance fn-bpnr-rotation-checkpoint-is-a-checkpoint
-                            (e (fn-bpnf-epoch st)))
-                 (:instance fn-bpnr-rotation-checkpoint-fields
-                            (e (fn-bpnf-epoch st)))
-                 (:instance fn-bpnr-recovery-over-a-selected-checkpoint-keeps-owed-work
-                            (ckk (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
-                            (other (fn-bpnf-base st)))
-                 (:instance fn-bpn-machine-invariant-components
-                            (st (fn-bpnf-base st))))
-           :in-theory (union-theories
-                       '(fn-bpnr-checkpoint-of-statep fn-bpnp-rotation-quiescentp
-                         fn-frame-natp)
-                       (theory 'minimal-theory)))))
+           :use ((:instance fn-bpnp-rotation-restart-keeps-owed-work-bound
+                            (plan (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))))
+                            (seeded (fn-bpnr-seed-state fresh (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))))
+                            (event (fn-bpnr-recover-auto-event (fn-bpnr-seed-state fresh (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))) nil :ready nil (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))))
+                            (answer (fn-bpnf-recover-fnbs-step
+                   (fn-bpnr-seed-state fresh (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))) (fn-bpn-nth 1 (fn-bpnr-recover-auto-event (fn-bpnr-seed-state fresh (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))) nil :ready nil (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))))) (fn-bpn-nth 2 (fn-bpnr-recover-auto-event (fn-bpnr-seed-state fresh (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))) nil :ready nil (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))))
+                   (fn-bpn-nth 3 (fn-bpnr-recover-auto-event (fn-bpnr-seed-state fresh (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))) nil :ready nil (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))))) (fn-bpn-nth 4 (fn-bpnr-recover-auto-event (fn-bpnr-seed-state fresh (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))) nil :ready nil (fn-bpnr-selection-plan
+                 t
+                 (fn-bpnr-checkpoint-octets
+                  (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                      (fn-bpnp-rotate-step st generation ck))))
+                  (fn-bpnr-depth-budget
+                   (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))
+                 (fn-bpnr-depth-budget
+                  (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))))))))
+           :in-theory (theory 'minimal-theory))))
 
 ;; The credit reset (only a :durable answer for the issued, pending
 ;; checkpoint operation sets the count to zero) is exercised by the N16

@@ -2867,7 +2867,8 @@
 
 (definterface fn-bpn-host-lifecycle-recovery-agrees-p
   :class :common-lisp-compliant
-  :keystones (fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine))
+  :keystones (fn-bpn-host-lifecycle-recovery-from-agrees-with-the-replayed-machine
+              fn-bpn-host-lifecycle-recovery-from-nothing-agrees))
 
 (definterface fn-bpn-host-lifecycle-recovery-ready-p
   :class ::ideal)
@@ -3117,7 +3118,7 @@
   :class :common-lisp-compliant
   :kinds ((plan true-listp)))
 
-(definterface fn-bpnf-mixed-recovery-plan
+(definterface fn-bpnf-mixed-recovery-plan-from
   :class :common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-recovery-planp
@@ -3303,6 +3304,13 @@
 
 (definterface fn-bpnr-plan-generation
   :class ::ideal)
+
+(definterface fn-bpnr-plan-start-token
+  :class :common-lisp-compliant)
+
+(definterface fn-bpnr-seed-state
+  :class :common-lisp-compliant
+  :keystones (fn-bpnp-rotation-restart-keeps-owed-work))
 
 (definterface fn-bpnr-publish-action
   :class :common-lisp-compliant)

@@ -30,8 +30,8 @@
 (defun fn-bpn-host-lifecycle-record-name (token)
   (fn-bpn-lifecycle-record-name token))
 
-(defun fn-bpn-host-lifecycle-recovery (names records)
-  (fn-bpn-lifecycle-recovery names records))
+(defun fn-bpn-host-lifecycle-recovery (names records start)
+  (fn-bpn-lifecycle-recovery-from names records start))
 
 (defun fn-bpn-host-lifecycle-recovery-ready-p (answer)
   (and (equal (car answer) :ready) t))
