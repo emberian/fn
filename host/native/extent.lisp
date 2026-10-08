@@ -379,7 +379,9 @@ still the core's fault (fn-pwr-outcome; specs/storage.md PRF-1057)."
     (unless (fnn-core-cold-single 'fn-crw-supportedp (cddr token) ticket)
       (fnn-fault "window descriptor is not representable by the selected native ABI"))
     (let ((fd nil) (incarnation nil) (plan nil)
-          (input (fn-octets$c-reserve 64 (create-fn-octets$c)))
+          (input (fn-octets$c-reserve (fn-profile-limit :read-span-octets)
+                                      (create-fn-octets$c)))
+          (answer :continue)
           (hash (create-pgs-digest-state)) (window (create-fn-ew-buffer))
           (hold (fnn-developer-selector "FN_NATIVE_PAGE_IO_HOLD"))
           (mode (fnn-developer-selector "FN_NATIVE_PAGE_IO_RESULT")))
@@ -398,13 +400,22 @@ still the core's fault (fn-pwr-outcome; specs/storage.md PRF-1057)."
                   (first (fnn-core-cold-pool 'fn-owner-page-window-work-permittedp
                             (fnn-cold-worker-row worker) token)))
           (return (list plan window)))
-        (destructuring-bind (status next hash1) (fnn-core-cold-values 'fn-ews-tick plan hash)
+        ;; One span per iteration (books/extent-window-span.lisp): the core
+        ;; digests every block of the span read, and runs to the next I/O
+        ;; need, inside one call.  A :READ answer from the span read is that
+        ;; need, so the tick is skipped; any other answer goes through
+        ;; FN-EWS-TICK-TO-IO, which resumes a spent tick quantum (:CONTINUE)
+        ;; or reports the stream's terminal status.
+        (destructuring-bind (status next hash1)
+            (if (eq answer :read)
+                (list :read plan hash)
+              (fnn-core-cold-values 'fn-ews-tick-to-io plan hash))
           (setq plan next hash hash1)
           (case status
-            (:continue nil)
+            (:continue (setq answer :continue))
             (:read
              ;; :READ status requests I/O; :READ plan phase is terminal.
-             (let ((effect (fnn-core-cold-single 'fn-ews-effect plan hash)))
+             (let ((effect (fnn-core-cold-single 'fn-ews-span-effect plan hash)))
                (unless effect (return (list plan window)))
                ;; Developer observation gate (PRF-1057, SCN-216; as the
                ;; decoded controller's, SCN-1129): the core has selected this
@@ -429,10 +440,9 @@ still the core's fault (fn-pwr-outcome; specs/storage.md PRF-1057)."
                   "read-return token=~s fd=~d offset=~d count=~d got=~d status=~s injected=~s"
                   token fd (fifth effect) (sixth effect) (svref input 1) io-status
                   (equal mode "short"))
-                 (destructuring-bind (answer next hash1 window1)
-                     (fnn-core-cold-values 'fn-ews-read effect io-status plan input hash window)
-                   (declare (ignore answer))
-                   (setq plan next hash hash1 window window1)))))
+                 (destructuring-bind (answer1 next hash1 window1)
+                     (fnn-core-cold-values 'fn-ews-read-span effect io-status plan input hash window)
+                   (setq answer answer1 plan next hash hash1 window window1)))))
             (otherwise (return (list plan window)))))))))
 
 (defun fnn-extent-executor-actual-return (worker)

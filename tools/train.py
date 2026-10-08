@@ -9,7 +9,7 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
     train.py regen [--label N]
     train.py certify BOX             # books train: ONE farm run (install, certify), then the emits in its tree
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
-    train.py gate [--strict-lock]
+    train.py gate
     train.py push
     train.py status
 
@@ -481,17 +481,78 @@ def cmd_certify(t: Train, args) -> int:
 
 # --------------------------------------------------------------------------- gate
 
-def _lock_keys(t: Train, cwd: Path) -> set[str] | None:
+# The lock gate's contract with tools/lock_discipline_check.py --json
+# (ruling 21): exit 0 and a JSON object carrying every field below with its
+# type.  Any other exit (a killed child is negative), unparseable output, a
+# missing or mistyped field, or a malformed `new` entry is a CHECKER FAILURE,
+# never an empty finding set.
+LOCK_JSON_FIELDS = {"new": list, "stale": list, "findings": list}
+# Repair-item states that no longer own a key (anything else is open).
+CLOSED_ITEM_STATES = frozenset({"landed", "refuted", "duplicate", "closed"})
+
+
+def _lock_keys(t: Train, cwd: Path) -> tuple[set[str] | None, str | None]:
+    """(keys new against the checker's baseline, None), or (None, why) when
+    the checker broke its contract."""
     p = subprocess.run([PY, "tools/lock_discipline_check.py", "--json"], cwd=cwd, capture_output=True, text=True)
     say(f"$ (in {cwd}) {PY} tools/lock_discipline_check.py --json  -> rc {p.returncode}")
+
+    def fail(why: str):
+        say(f"  lock_discipline_check contract broken: {why}: " + (p.stdout + p.stderr)[-300:])
+        return None, why
+
+    if p.returncode != 0:
+        return fail(f"exit status {p.returncode}")
     try:
         data = json.loads(p.stdout)
+    except ValueError:
+        return fail("output is not JSON")
+    if not isinstance(data, dict):
+        return fail("output is not a JSON object")
+    for field, kind in LOCK_JSON_FIELDS.items():
+        if field not in data:
+            return fail(f"missing field {field!r}")
+        if not isinstance(data[field], kind):
+            return fail(f"field {field!r} is not a {kind.__name__}")
+    keys = set()
+    for e in data["new"]:
         # `new` holds key strings (lock-check-full-output, d4d8514f6) or
         # finding dicts with a 'key' (earlier checkers): accept both.
-        return {e if isinstance(e, str) else e["key"] for e in data.get("new", [])}
-    except (ValueError, KeyError, TypeError, AttributeError):
-        say("  lock_discipline_check output not parseable: " + (p.stdout + p.stderr)[-300:])
-        return None
+        key = e if isinstance(e, str) else e.get("key") if isinstance(e, dict) else None
+        if not isinstance(key, str) or not key:
+            return fail(f"malformed entry in 'new': {str(e)[:80]}")
+        keys.add(key)
+    return keys, None
+
+
+def _lock_owners(root: Path, keys) -> dict[str, list[dict]]:
+    """For each key, the repair items naming it verbatim (id, owner, state)."""
+    def strings(v):
+        if isinstance(v, str):
+            yield v
+        elif isinstance(v, dict):
+            for x in v.values():
+                yield from strings(x)
+        elif isinstance(v, list):
+            for x in v:
+                yield from strings(x)
+
+    items = []
+    for path in sorted((root / "planning" / "repair" / "items").glob("*.json")):
+        try:
+            d = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if isinstance(d, dict):
+            # match the item's decoded text, not its JSON spelling (a key
+            # after "\n" is preceded by the escape's letter n in the raw file)
+            text = "\n".join(strings(d))
+            items.append((d.get("id", path.stem), d.get("owner"), d.get("state"), text))
+    out = {}
+    for k in keys:
+        pat = re.compile(r"(?<![\w|*:-])" + re.escape(k) + r"(?![\w|*:-])")
+        out[k] = [{"item": i, "owner": o, "state": s} for i, o, s, raw in items if pat.search(raw)]
+    return out
 
 
 def _ascii_gate(t: Train) -> int:
@@ -594,19 +655,37 @@ def cmd_gate(t: Train, args) -> int:
     wt = tmp / "dev"
     try:
         git(t.root, "worktree", "add", "--detach", str(wt), "origin/dev")
-        old = _lock_keys(t, wt)
+        old, why_old = _lock_keys(t, wt)
     finally:
         git(t.root, "worktree", "remove", "--force", str(wt), check=False)
         shutil.rmtree(tmp, ignore_errors=True)
-    new = _lock_keys(t, t.root)
+    new, why_new = _lock_keys(t, t.root)
     if old is None or new is None:
-        rec("lock_delta", 1, error="unparseable lock_discipline_check output")
+        rec("lock_delta", 1, error="lock_discipline_check failed its contract",
+            dev_error=why_old, head_error=why_new)
     else:
+        # Ruling 21: the only green is "this train adds no key relative to
+        # dev".  Dev's existing keys are the recorded red list, each owned by
+        # an open repair item; a key with no item, or whose every item is
+        # closed, fails the gate too.  Nothing else exists.
         added, gone = sorted(new - old), sorted(old - new)
-        say(f"lock delta: added {added or '-'}; gone {gone or '-'}")
-        if added:
-            say("  WARNING: new lock-discipline keys (attributed at convergence)")
-        rec("lock_delta", 1 if (added and args.strict_lock) else 0, added=added, gone=gone)
+        owners = _lock_owners(t.root, sorted(new))
+        reds = [{"key": k, "items": owners[k]} for k in sorted(new & old)]
+        unowned = sorted(k for k in new & old if not owners[k])
+        closed = sorted(k for k in new & old if owners[k]
+                        and all(i["state"] in CLOSED_ITEM_STATES for i in owners[k]))
+        say(f"lock delta: added {added or '-'}; gone {gone or '-'}; "
+            f"owned reds on dev {len(reds) - len(unowned) - len(closed)}")
+        for k in added:
+            say(f"  NEW lock key added by this train: {k}")
+        for k in unowned:
+            say(f"  UNOWNED lock key on dev (no repair item names it): {k}")
+        for k in closed:
+            say(f"  lock key persists but its items are closed: {k} "
+                + ", ".join(i["item"] for i in owners[k]))
+        rc = 1 if (added or unowned or closed) else 0
+        rec("lock_delta", rc, added=added, gone=gone, unowned=unowned,
+            closed_items=closed, owned_reds=reds)
 
     files = git(t.root, "diff", "--name-only", "origin/dev", "HEAD").stdout.split()
     if files:
@@ -699,7 +778,6 @@ def main(argv=None) -> int:
     c = sub.add_parser("certify")
     c.add_argument("box", choices=("hbox", "persvati"))
     g = sub.add_parser("gate")
-    g.add_argument("--strict-lock", action="store_true")
     sub.add_parser("push")
     sub.add_parser("status")
     args = ap.parse_args(argv)

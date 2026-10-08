@@ -1,0 +1,16 @@
+{
+ "id": "REACH-PROSE-OWED-HOSTED-EVENTS",
+ "category": "reach",
+ "owner": "deputy-P",
+ "severity": "low",
+ "slice": "proofs",
+ "source": "lane p-reach-prose1 (b07e405b7)",
+ "state": "open",
+ "title": "Register two hosted claims dropped from the PRF event lists by the reach re-scope: the wildmat cursor work bound (PRF-016) and the config walks (PRF-383)",
+ "notes": [
+  "PRF-016: register fn-wmc-core-codepoint-start-work-bound (books/wildmat-cursor.lisp; hosted through fn-wmc-start-codepoints) as an event with defteeth (positive witness, one removal witness per hypothesis, a mutation of the bound). The keystone_emit ratchet refuses a toothless new event.",
+  "PRF-383: register fn-cfg-rows-with-key (books/config.lisp) and fn-cfg-peer-names (books/peer-config.lisp) as guarded-function events, hosted, with teeth; PRF-383 has no registered events since p-reach-prose1 removed the def-loop witness lemma.",
+  "PRF-014 refinement of the generated fn-av-mca-read-span chain to the reference read is owned by PRF-1287-OWED (item 1 there), not here."
+ ],
+ "updated": "2026-10-08T13:00:00Z"
+}

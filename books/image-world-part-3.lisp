@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
+(include-book "owner-reclaim-ready")
+(include-book "reclaim-chunked-seal")
 (include-book "owner-reclaim-carry")
 (include-book "owner-reclaim-seal")
 (include-book "owner-recovery-retain")
