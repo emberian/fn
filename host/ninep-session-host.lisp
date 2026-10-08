@@ -40,6 +40,6 @@
 ; These guard-T boundaries skip no carry predicate. Do not invent a
 ; :raw-with declaration or a cosmetic guard merely to select hot dispatch.
 ; The actual installed native executor/operation carry remains to compose.
-(definterface fn-ninep-session-step :class :common-lisp-compliant)
-(definterface fn-ninep-session-quiesce :class :common-lisp-compliant)
-(definterface fn-ninep-session-disconnect :class :common-lisp-compliant)
+
+
+
