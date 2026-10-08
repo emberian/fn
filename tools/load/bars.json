@@ -774,6 +774,125 @@
    "file": "tools/load/faults.py",
    "owner": "deputy-L",
    "severity": "high"
+  },
+  {
+   "id": "P4-RECLAIM-F1",
+   "quantity": "P4-RECLAIM externally visible property violations",
+   "cell": "F1",
+   "workload": "fault-slot-reuse",
+   "checks": [
+    {
+     "metric": "faults.P4-RECLAIM.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "tools/load/FAULTS.md",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "P2-IDENTITY-F1",
+   "quantity": "P2-IDENTITY externally visible property violations",
+   "cell": "F1",
+   "workload": "fault-slot-reuse",
+   "checks": [
+    {
+     "metric": "faults.P2-IDENTITY.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "tools/load/FAULTS.md",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "P2-IDENTITY-F4",
+   "quantity": "P2-IDENTITY externally visible property violations",
+   "cell": "F4",
+   "workload": "fault-index-saturation",
+   "checks": [
+    {
+     "metric": "faults.P2-IDENTITY.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "tools/load/FAULTS.md",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "P1-DURABLE-F8",
+   "quantity": "P1-DURABLE externally visible property violations",
+   "cell": "F8",
+   "workload": "fault-bp-disruption",
+   "checks": [
+    {
+     "metric": "faults.P1-DURABLE.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "ruling 24; tools/load/faults.py",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "P2-IDENTITY-F8",
+   "quantity": "P2-IDENTITY externally visible property violations",
+   "cell": "F8",
+   "workload": "fault-bp-disruption",
+   "checks": [
+    {
+     "metric": "faults.P2-IDENTITY.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "ruling 24; tools/load/faults.py",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "P5-RECOVERY-F8",
+   "quantity": "P5-RECOVERY externally visible property violations",
+   "cell": "F8",
+   "workload": "fault-bp-disruption",
+   "checks": [
+    {
+     "metric": "faults.P5-RECOVERY.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "ruling 24; tools/load/faults.py",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "P5-REOPEN-F4R",
+   "quantity": "after a refusal-free first run, restart under the same heap and machine budget reaches LISTENING (ADMISSION-RESERVES-NOT-REOPEN)",
+   "cell": "F4R",
+   "workload": "fault-index-saturation-reopen",
+   "checks": [
+    {
+     "metric": "faults.P5-RECOVERY.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "ruling 24; tools/load/faults.py",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
   }
  ]
 }

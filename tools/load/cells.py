@@ -120,6 +120,7 @@ def derive(workload, phases):
     m["posts.admitted"] = sum((p.get("counts") or {}).get("admitted", 0) for p in phases)
     m["posts.refused"] = sum((p.get("counts") or {}).get("refused", 0) for p in phases)
     for p in phases:
+        nm.update(p.get("faults", {}).get("not_measured", {}))
         for name, value in p.get("lock_metrics", {}).items():
             key = name + "." + p["name"]
             if value is None:
@@ -133,7 +134,7 @@ def derive(workload, phases):
     fn = {"mem-vs-size": _mem_vs_size, "commands": _commands, "post-rate": _post_rate, "readers": _readers,
           "readers-locks": _readers, "readers-prof": _readers, "article-sizes": _sizes, "growth": _growth,
           "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh, "conn-capacity": _conncap, "publish-stall": _stall, "prof-ops": _prof,
-          "catchup": peers.derive_catchup, "catchup-prof": peers.derive_catchup, "peers-feed": peers.derive_catchup,
+          "catchup": peers.derive_catchup, "catchup-prof": peers.derive_catchup, "catchup-quiet": peers.derive_catchup, "peers-feed": peers.derive_catchup,
           "peers-catchup-load": peers.derive_catchup}.get(workload)
     if fn:
         fn(phases, m, nm)

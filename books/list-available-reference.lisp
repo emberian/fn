@@ -2,9 +2,11 @@
 ; fn-lst-active-command / fn-lst-counts-command (the generated available
 ; dispatcher's LIST forms) start a cursor whose reference body
 ; (fn-lst-groups-reference, books/list-metadata-cursor) is the body
-; fn-av-nntp-list-active-cat / fn-av-nntp-list-counts-command-cat render,
-; whenever every listed group's probed summary is the available summary
-; (fn-lst-summaries-agreep, executable). Logical only.
+; fn-av-nntp-list-active-cat / fn-av-nntp-list-counts-command-cat render:
+; both read each group's summary as fn-scat-available-summary, so the
+; equality holds with no premise on the catalog. Logical only.
+; The numbered walk the cursor used to run is fn-lst-probe-summary;
+; fn-lst-available-summary-is-probe ties the carried summary to it.
 (in-package "ACL2")
 (include-book "served-query-plan")
 (include-book "served-available-commands")
@@ -22,14 +24,10 @@
         (list (len numbers) (car numbers) (fn-scat-available-last numbers))
       (list 0 next high))))
 
-(defun fn-lst-summaries-agreep (archive groups v fn-cat)
-  (declare (xargs :stobjs fn-cat :verify-guards nil))
-  (if (consp groups)
-      (and (equal (fn-lst-probe-summary
-                   (car groups) (fn-next-number (car groups) (fn-state-nexts archive)) v fn-cat)
-                  (fn-scat-available-summary archive (car groups) v fn-cat))
-           (fn-lst-summaries-agreep archive (cdr groups) v fn-cat))
-    t))
+; Induction scheme over a group list.
+(defun fn-lar-groups-induct (groups)
+  (declare (xargs :guard t))
+  (if (consp groups) (fn-lar-groups-induct (cdr groups)) groups))
 
 (local
  (defthm fn-lar-numbers-true-listp
@@ -50,17 +48,6 @@
    :hints (("Goal" :in-theory (enable fn-scat-available-numbers)))))
 
 (local (defthm fn-lar-len-of-consp (implies (consp x) (< 0 (len x))) :rule-classes :linear))
-
-(defthm fn-lst-next-summary-is-probe
-  (equal (fn-lst-next-summary env group next fn-cat)
-         (fn-lst-probe-summary group next (fn-cur-at 6 env) fn-cat))
-  :hints (("Goal" :in-theory (e/d (fn-lst-next-summary fn-gsc-reference fn-gsc-fold-reference
-                                   fn-gsc-start fn-gsc-at fn-cur-at)
-                                  (fn-scat-available-numbers-count fn-scat-available-numbers-first
-                                   fn-scat-available-numbers-last))
-           :cases ((consp (fn-scat-available-numbers group 1
-                            (if (posp (nfix next)) (- (nfix next) 1) 0)
-                            (nfix (fn-cur-at 6 env)) fn-cat))))))
 
 (local
  (defthm fn-lar-append-pieces-append
@@ -98,7 +85,7 @@
                                     fn-nntp-closed-status fn-nntp-string-octets))))))
 
 (defthm fn-lst-groups-reference-is-active-lines
-  (implies (and (natp v) (fn-lst-summaries-agreep archive groups v fn-cat))
+  (implies (natp v)
            (equal (fn-lst-groups-reference
                    (fn-lst-env archive closed statusp nil patterns filteredp v) groups fn-cat)
                   (append (fn-nntp-stuff-lines
@@ -106,11 +93,11 @@
                             archive (if filteredp (fn-nntp-filter-groups-by-wildmat patterns groups) groups)
                             closed statusp v fn-cat))
                           '(46 13 10))))
-  :hints (("Goal" :induct (fn-lst-summaries-agreep archive groups v fn-cat)
+  :hints (("Goal" :induct (fn-lar-groups-induct groups)
            :in-theory (e/d (fn-lst-groups-reference fn-lst-group-reference fn-lst-row-reference
-                            fn-lst-row-status fn-lst-summaries-agreep fn-av-scat-active-lines
+                            fn-lst-row-status fn-lar-groups-induct fn-lst-group-summary fn-av-scat-active-lines
                             fn-nntp-filter-groups-by-wildmat fn-nntp-stuff-lines)
-                           (fn-lst-line fn-lst-probe-summary fn-scat-available-summary
+                           (fn-lst-line fn-scat-available-summary
                             fn-lst-env fn-nntp-closed-status fn-av-scat-active-line
                             fn-av-scat-active-status-line
                             fn-nntp-group-matches-parsed-wildmatp)))))
@@ -124,7 +111,7 @@
                                    (fn-nntp-decimal-field fn-nntp-closed-status fn-nntp-string-octets))))))
 
 (defthm fn-lst-groups-reference-is-counts-lines
-  (implies (and (natp v) (fn-lst-summaries-agreep archive groups v fn-cat))
+  (implies (natp v)
            (equal (fn-lst-groups-reference
                    (fn-lst-env archive closed statusp t patterns filteredp v) groups fn-cat)
                   (append (fn-nntp-stuff-lines
@@ -132,11 +119,11 @@
                             archive (if filteredp (fn-nntp-filter-groups-by-wildmat patterns groups) groups)
                             closed v fn-cat))
                           '(46 13 10))))
-  :hints (("Goal" :induct (fn-lst-summaries-agreep archive groups v fn-cat)
+  :hints (("Goal" :induct (fn-lar-groups-induct groups)
            :in-theory (e/d (fn-lst-groups-reference fn-lst-group-reference fn-lst-row-reference
-                            fn-lst-row-status fn-lst-summaries-agreep fn-av-scat-counts-lines
+                            fn-lst-row-status fn-lar-groups-induct fn-lst-group-summary fn-av-scat-counts-lines
                             fn-nntp-filter-groups-by-wildmat fn-nntp-stuff-lines)
-                           (fn-lst-line fn-lst-probe-summary fn-scat-available-summary
+                           (fn-lst-line fn-scat-available-summary
                             fn-lst-env fn-nntp-closed-status fn-nntp-counts-summary-line
                             fn-nntp-group-matches-parsed-wildmatp)))))
 
@@ -164,7 +151,7 @@
 ; cursor as its completion; fn-qplan-cw-drain-is-a-prefix carries this to
 ; what the host writes.
 (defthm fn-lst-active-command-is-av-list-active
-  (implies (and (natp v) (fn-lst-summaries-agreep archive (fn-state-groups archive) v fn-cat))
+  (implies (natp v)
            (and (equal (fn-nntp-result-session (fn-lst-active-command session archive closed args v fn-cat))
                        (fn-nntp-result-session (fn-av-nntp-list-active-cat session archive closed args v fn-cat)))
                 (equal (fn-qplan-cw-octets
@@ -185,7 +172,7 @@
                             (filteredp t))))))
 
 (defthm fn-lst-counts-command-is-av-list-counts
-  (implies (and (natp v) (fn-lst-summaries-agreep archive (fn-state-groups archive) v fn-cat))
+  (implies (natp v)
            (and (equal (fn-nntp-result-session (fn-lst-counts-command session archive closed args v fn-cat))
                        (fn-nntp-result-session (fn-av-nntp-list-counts-command-cat session archive closed args v fn-cat)))
                 (equal (fn-qplan-cw-octets
@@ -205,4 +192,4 @@
                             (patterns (fn-wildmat-result-value (fn-wildmat-parse (car args))))
                             (filteredp t))))))
 
-(in-theory (disable fn-lst-probe-summary fn-lst-summaries-agreep))
+(in-theory (disable fn-lst-probe-summary))

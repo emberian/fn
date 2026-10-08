@@ -102,4 +102,109 @@
                ((s *oth-s1*) (word :failed) (stopping nil))
                :fault "a failed batch is answered as a durable one")))
 
+
+
+; PRF-267 / PRF-901: all new witnesses run the HOSTED plan from init.
+(defun oth-plan-s (s event)
+  (declare (xargs :guard t))
+  (mv-let (action s2 effects) (fn-otm-held-plan s event)
+    (declare (ignore action effects)) s2))
+(defun oth-plan-a (s event)
+  (declare (xargs :guard t))
+  (mv-let (action s2 effects) (fn-otm-held-plan s event)
+    (declare (ignore s2 effects)) action))
+
+(defconst *oth-plan-started* (oth-plan-s (fn-otm-init) :started-held))
+(defconst *oth-plan-fenced* (oth-plan-s *oth-plan-started* :fenced))
+(defconst *oth-plan-completed* (oth-plan-s *oth-plan-fenced* :completed))
+; plan-barrier-trace: START, no premature COMPLETE, barrier, COMPLETE.
+(assert-event (and (equal (oth-plan-a *oth-plan-started* :completed) :fault)
+                   (equal (fn-otm-phase-of *oth-plan-started*) :staged)
+                   (equal (oth-plan-a *oth-plan-started* :fenced) :complete)
+                   (equal (fn-otm-phase-of *oth-plan-fenced*) :fenced)
+                   (equal (oth-plan-a *oth-plan-fenced* :completed) :submit)
+                   (equal (fn-otm-phase-of *oth-plan-completed*) :idle)))
+; The new completion words are genuine protocol completions, not a narrowed
+; OCS claim: the whole-step theorem preserves OCS's invalid-event behavior.
+(assert-event
+ (and (equal (fn-otm-phase-of (oth-plan-s *oth-plan-fenced* :completed-stopping)) :idle)
+      (equal (fn-otm-phase-of
+              (oth-plan-s (oth-plan-s (fn-otm-init) :started-none-held)
+                          :frames-fenced)) :idle)))
+
+(defteeth fn-otm-held-plan-complete-only-after-the-barrier
+  :claim (((complete (equal (mv-nth 0 (fn-otm-held-plan s event)) :complete)))
+          (and (equal (fn-otm-phase-of s) :staged) (equal event :fenced)))
+  :subject fn-otm-held-plan
+  :witness ((s *oth-plan-started*) (event :fenced))
+  :breaks ((complete ((s (fn-otm-init)) (event :started-held))))
+  :mutations ((forged-barrier
+               (:hypothesis complete
+                (equal (mv-nth 0 (fn-otm-held-plan s :fenced)) :complete))
+               ((s *oth-plan-started*) (event :completed))
+               :fault "Complete by forging a barrier observation before the barrier")))
+
+(defteeth fn-otm-held-plan-in-flight-until-completed
+  :claim (((in-flight (fn-ocs-in-flight-p (fn-otm-phase-of s)))
+           (not-completed (not (member-equal event
+                                      '(:completed :completed-stopping :frames-fenced)))))
+          (fn-ocs-in-flight-p
+           (fn-otm-phase-of (mv-nth 1 (fn-otm-held-plan s event)))))
+  :subject fn-otm-held-plan
+  :witness ((s *oth-plan-fenced*) (event :unexpected))
+  :breaks ((in-flight ((s *oth-plan-completed*) (event :unexpected)))
+           (not-completed ((s *oth-plan-fenced*) (event :completed))))
+  :mutations ((clear-before-completed
+               (:conclusion
+                (equal (fn-otm-phase-of (mv-nth 1 (fn-otm-held-plan s event))) :idle))
+               ((s *oth-plan-fenced*) (event :unexpected))
+               :fault "Clear the in-flight batch before COMPLETE reports completion")))
+
+; plan-budget-trace: two pipelined batches, each with START-NEXT and a
+; fenced COMPLETE, consume exactly four quanta while control waits.
+(defconst *oth-plan-waiting* '(1 0 0 0 1 0))
+(defun oth-plan-cycle (s)
+  (declare (xargs :guard t))
+  (oth-plan-s
+   (oth-plan-s
+    (oth-next (oth-plan-s (oth-next s *oth-plan-waiting*) :next-started)
+              *oth-plan-waiting*)
+    :fenced)
+   :completed))
+(defconst *oth-plan-pipeline* (oth-plan-s (fn-otm-init) :started))
+(defconst *oth-plan-budget* (oth-plan-cycle (oth-plan-cycle *oth-plan-pipeline*)))
+(assert-event (and (equal (fn-ocp-passes (fn-otm-ocp *oth-plan-budget*)) 4)
+                   (equal (fn-otm-phase-of *oth-plan-budget*) :staged)
+                   (not (fn-otm-next-of *oth-plan-budget*))
+                   (equal (fn-otm-held-committer-wake
+                           *oth-plan-budget* nil t *oth-plan-waiting*) :wait)
+                   (equal (fn-otm-held-committer-wake
+                           *oth-plan-budget* t t *oth-plan-waiting*) :collect)))
+
+(defteeth fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits
+  :claim (((waiting (fn-ocp-excluded-waits-p w))
+           (budget (<= *fn-ocp-pass-bound* (fn-ocp-passes (fn-otm-ocp s)))))
+          (not (equal (fn-otm-held-committer-wake s returned queued w) :start-next)))
+  :subject fn-otm-held-committer-wake
+  :witness ((s *oth-plan-budget*) (returned nil) (queued t) (w *oth-plan-waiting*))
+  :breaks ((waiting ((w *oth-w0*)))
+           (budget ((s *oth-plan-pipeline*))))
+  :mutations ((ignore-waiter-budget
+               (:conclusion
+                (equal (fn-otm-held-committer-wake s returned queued w) :start-next))
+               ((s *oth-plan-budget*) (returned nil) (queued t) (w *oth-plan-waiting*))
+               :fault "Start the next commit after a shut-out class spent its wait budget")))
+
+(defteeth fn-otm-held-committer-wake-is-ocp-when-unheld
+  :claim (((unheld (not (fn-otm-held s))))
+          (equal (fn-ocp-committer-wake (fn-otm-ocp s) returned queued w)
+                 (fn-otm-held-committer-wake s returned queued w)))
+  :subject fn-otm-held-committer-wake
+  :witness ((s *oth-plan-budget*) (returned t) (queued t) (w *oth-plan-waiting*))
+  :breaks ((unheld ((s *oth-plan-fenced*))))
+  :mutations ((lose-returned-barrier
+               (:conclusion (equal (fn-otm-held-committer-wake s returned queued w) :wait))
+               ((s *oth-plan-budget*) (returned t) (queued t) (w *oth-plan-waiting*))
+               :fault "Lose the returned barrier instead of collecting it")))
+
 (defteeth-check)

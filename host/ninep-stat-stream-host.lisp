@@ -14,4 +14,4 @@
               (mv-nth 2 (fn-9pst-reply-step cursor fn-octets)) state))
  :rule-classes nil
  :hints (("Goal" :in-theory (e/d (fn-ninep-stat-reply-step) (fn-9pst-reply-step)))))
-(definterface fn-ninep-stat-reply-step :class :common-lisp-compliant)
+

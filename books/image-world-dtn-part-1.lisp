@@ -127,6 +127,7 @@
 (include-book "heap-figure")
 (include-book "heap-open-nursery")
 (include-book "send-progress")
+(include-book "send-window")
 (include-book "idle-collection")
 (include-book "heap-reservation")
 (include-book "bp-heap-command")
@@ -156,3 +157,4 @@
 (include-book "store-budget-naming")
 (include-book "store-profile-facts")
 (include-book "store-genesis")
+(include-book "store-replay-bound")

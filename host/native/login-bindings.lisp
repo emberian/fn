@@ -9,33 +9,36 @@
 ;;; to re-read the file it was started with; the owner, under its mutex, reads
 ;;; it with the same bounded reader as at start and publishes ACL2's plan
 ;;; (books/login-binding-live.lisp fn-lb-sync-plan) through
-;;; fnn-owner-live-reconfigure-locked (host/native/auth.lisp
+;;; fnn-owner-live-reconfigure (host/native/admin.lisp
 ;;; fnn-native-auth-publish-bindings).  A connection open at that moment keeps
 ;;; the table it pinned; the next connection pins the published one.
 
 (in-package "ACL2")
 
 (defun fnn-login-bindings-owner-reload (service)
-  (fnn-quantum-control
-   service nil
-   (lambda ()
-     (let ((path *fnn-native-auth-live-path*))
-       (if (null path)
-           :refused
-         (let ((max-credentials
-                 (fnn-profile-nat 'fn-store-profile-max-credentials
-                                  (fnn-owner-service-store service))))
-           (multiple-value-bind (octets presentp)
-               (fnn-native-auth-read path (fnn-core 'fn-native-auth-host-max-octets
-                                                    max-credentials))
-             ;; The passwords first (a `principal set-password'), then the
-             ;; bindings; a refused file leaves both as they were.
-             (if (eq (fnn-native-auth-reload-config service octets presentp
-                                                    max-credentials)
-                     :accepted)
-                 (fnn-native-auth-publish-bindings service octets presentp
-                                                   max-credentials)
-               :refused))))))))
+  (let ((loaded
+          (fnn-quantum-control
+           service nil
+           (lambda ()
+             (let ((path *fnn-native-auth-live-path*))
+               (if (null path)
+                   nil
+                 (let ((max-credentials
+                         (fnn-profile-nat 'fn-store-profile-max-credentials
+                                          (fnn-owner-service-store service))))
+                   (multiple-value-bind (octets presentp)
+                       (fnn-native-auth-read path (fnn-core 'fn-native-auth-host-max-octets
+                                                            max-credentials))
+                     ;; The passwords first (a `principal set-password'), then
+                     ;; the bindings; a refused file leaves both as they were.
+                     (and (eq (fnn-native-auth-reload-config service octets presentp
+                                                             max-credentials)
+                              :accepted)
+                          (list octets presentp max-credentials))))))))))
+    (if loaded
+        (destructuring-bind (octets presentp max-credentials) loaded
+          (fnn-native-auth-publish-bindings service octets presentp max-credentials))
+      :refused)))
 
 (defvar *fnn-login-bindings-next-handler* *fnn-hybrid-control-handler*)
 

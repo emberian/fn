@@ -111,10 +111,10 @@
   (if (consp seqs)
       (let ((i (car seqs)))
         (if (and (natp i) (< i (fn-hist$p-count fn-hist$p)))
-            (let ((record (fn-cei-event-article (fn-hist$p-at i fn-hist$p))))
+            (let ((ev (fn-hist$p-at i fn-hist$p)))
               (fn-hist$p-collect msgid (cdr seqs)
-                (if (and (fn-held-p record) (equal msgid (fn-record-msgid record)))
-                    (cons record acc) acc) fn-hist$p))
+                (if (fn-hist-article-matches msgid ev)
+                    (cons (fn-cei-event-article ev) acc) acc) fn-hist$p))
           (fn-hist$p-collect msgid (cdr seqs) acc fn-hist$p)))
     acc))
 
@@ -135,7 +135,7 @@
          (or (equal (fn-hrc-img root) 0)
              (equal (fn-hp-x-ready-range 0 (fn-hrc-npages root) (fn-hrc-pgs root)) :ok))
          (equal (nth 1 fn-hist$p)
-                (nth 2 (fn-hist-build h (fn-hist$c-empty (nth 2 fn-hist$p))))))))
+                (nth 2 (fn-hist-build h (ix-empty (nth 2 fn-hist$p))))))))
 
 (defthm fn-hist$p-append-keeps-resident-prefix
   (equal (fn-hist$p-root-ready (fn-hrc-append ev c))
@@ -196,7 +196,7 @@
 (local
  (defthm fn-hist$p-columns-row-agreement
   (implies (and (fn-hist$pcorr p h) (natp seq) (< seq (len h)))
-    (let ((c (fn-hist-build h (fn-hist$c-empty (nth 2 p)))))
+    (let ((c (fn-hist-build h (ix-empty (nth 2 p)))))
       (and (< seq (len (nth 0 c)))
            (equal (fn-hist$p-at seq p) (nth seq (nth 0 c))))))
   :hints (("Goal" :use ((:instance fn-hist$p-at-is-history-nth)
@@ -209,14 +209,14 @@
 
 (local
  (defthm fn-hist$p-collect-is-columns
-   (implies (and (fn-hist$pcorr p h) (fn-hist-below-p seqs (len h)))
+   (implies (and (fn-hist$pcorr p h) (ix-below-p seqs (len h)))
             (equal (fn-hist$p-collect msgid seqs acc p)
                    (fn-hist$c-collect msgid seqs acc
-                     (fn-hist-build h (fn-hist$c-empty (nth 2 p))))))
+                     (fn-hist-build h (ix-empty (nth 2 p))))))
    :hints (("Goal" :induct (fn-hist$p-collect msgid seqs acc p)
             :in-theory (union-theories
                          '(nfix natp (:type-prescription len)
-                           fn-hist$p-collect fn-hist$c-collect fn-hist-below-p
+                           fn-hist$p-collect fn-hist$c-collect ix-below-p
                            fn-hist$c-rowsi fn-hist$c-rows-length
                            fn-hist$p-count-is-history-count
                            fn-hist$p-columns-row-agreement)
@@ -236,14 +236,14 @@
                             (salt (nth 2 p)) (key (fn-hist-hash msgid (nth 2 p))))
                  (:instance fn-hist$p-collect-is-columns
                             (acc nil)
-                            (seqs (fn-hist$c-bucket (fn-hist-hash msgid (nth 2 p))
-                                     (fn-hist-build h (fn-hist$c-empty (nth 2 p))))))
+                            (seqs (ix-bucket (fn-hist-hash msgid (nth 2 p))
+                                     (fn-hist-build h (ix-empty (nth 2 p))))))
                  (:instance fn-hist-msgid-records{correspondence}
-                            (fn-hist$c (fn-hist-build h (fn-hist$c-empty (nth 2 p))))
-                            (fn-hist h)))
+                            (fn-hist$c (fn-hist-build h (ix-empty (nth 2 p))))
+                            (fn-hist h) (m msgid)))
            :in-theory (union-theories
                        '(fn-hist$pcorr fn-hist$p-msgid-records fn-hist$p-salt
-                         fn-hist$p-mids-get fn-hist$c-bucket fn-hist$c-msgid-records
+                         fn-hist$p-mids-get ix-bucket fn-hist$c-msgid-records
                          fn-hist$c-salt fn-hist$c-mids-get fn-hist$a-msgid-records
                          fn-hist$ap)
                        (theory 'minimal-theory)))))
@@ -252,7 +252,7 @@
   (fn-hist$pcorr (create-fn-hist$p) (create-fn-hist$a))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-hist$pcorr fn-hist$p-wfp fn-hist$p-root-ready
-                                    fn-hist-build fn-hist$c-empty fn-hrc-wfp fn-hrs-rel fn-hrs-img-ok))))
+                                    fn-hist-build ix-empty fn-hrc-wfp fn-hrs-rel fn-hrs-img-ok))))
 (defthm create-fn-hist-paged{preserved}
   (fn-hist$ap (create-fn-hist$a))
   :rule-classes nil)
@@ -382,7 +382,7 @@
               fn-hist$p-mids-clear update-fn-hist$p-root update-fn-hist$p-salt
               update-fn-hist$p-bound update-fn-hist$p-generation
               fn-hist$p-root-ready fn-hrc-reset fn-hrc-wfp fn-hrs-rel fn-hrs-img-ok
-              fn-hrc-fields fn-hrc-updaters fn-hist-build fn-hist$c-empty
+              fn-hrc-fields fn-hrc-updaters fn-hist-build ix-empty
               integer-range-p unsigned-byte-p natp nfix zp len true-listp nth update-nth
               nth-update-nth true-listp-update-nth)
             (theory 'ground-zero)))))
