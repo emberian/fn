@@ -3,6 +3,7 @@
 (in-package "ACL2")
 (include-book "history-image-plan")
 (include-book "history-image-row-encode")
+(local (in-theory (enable history-image-row-encode-exported)))
 (include-book "history-image-cursors")
 
 (defconst *fn-his-rc0* '(0 0 nil))

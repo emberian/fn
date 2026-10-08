@@ -1,6 +1,7 @@
 ; Relate cursor positions to the byte lengths carried by placement.
 (in-package "ACL2")
 (include-book "history-image-place")
+(local (in-theory (enable history-image-row-encode-exported)))
 (include-book "history-image-cursor-proof")
 (local (include-book "arithmetic/top" :dir :system))
 

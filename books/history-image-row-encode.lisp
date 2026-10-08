@@ -2,6 +2,8 @@
 (in-package "ACL2")
 (include-book "history-pages")
 
+(deflabel history-image-row-encode-start)
+
 (defun fn-hp-x-row (ev)
   (declare (xargs :guard t))
   (if (not (fn-sccb-treep ev))
@@ -15,3 +17,9 @@
  (true-listp (mv-nth 2 (fn-hp-x-row ev)))
  :rule-classes :type-prescription
  :hints (("Goal" :in-theory (enable fn-hp-pad8))))
+
+; The rules this book introduces and leaves enabled: consumers restore exactly
+; this state when a later snapshot export has disabled them.
+(deftheory history-image-row-encode-exported
+  (set-difference-theories (current-theory :here)
+                           (current-theory 'history-image-row-encode-start)))

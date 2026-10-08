@@ -35,7 +35,7 @@
 (include-book "sha256")
 (include-book "store-checkpoint-buffer")
 ; theory-restore-own-family fn-sfr-theory-before-disk: pagestore* history-pages* history-records*
-; theory-restore-hidden-shared fn-sfr-theory-before-disk: proto/adt-* -- re-enabled locally by their consumers (adt-*-exported)
+; theory-restore-hidden-shared fn-sfr-theory-before-disk: proto/adt-* history-image-row-encode -- re-enabled locally by their consumers (*-exported)
 (deftheory fn-sfr-theory-before-disk (current-theory :here))
 (include-book "history-records-disk")
 (deftheory fn-sfr-theory-after-disk (current-theory :here))
