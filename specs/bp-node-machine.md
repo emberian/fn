@@ -3485,9 +3485,7 @@ unless nothing is issued, the machine does not wait and the next arrival is in f
 and otherwise `(:ready arrival key)` of a zero-sourced family not in TRIED whose
 representative is ready. An arrival into a family whose offset-zero fragment has not
 arrived re-encodes no held row. The host plans the chosen family afterwards; a family
-whose plan is then not ready joins TRIED and the host asks again. The reference
-selector `fn-bpnf-family-next` and its memoised and walking forms were retired with
-their equalities and bounds: the node does not ask them. Measured once in a proof session on persvati
+whose plan is then not ready joins TRIED and the host asks again. Measured once in a proof session on persvati
 (not a native image): a 10 MiB ADU arriving as 5,120 4 KiB fragments, each
 twice and in no particular order, reassembles in 0.62 s with 673 MB
 allocated as octet lists.
