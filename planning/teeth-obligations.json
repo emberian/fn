@@ -19536,7 +19536,7 @@
   },
   {
    "book": "books/page-read-startup.lisp",
-   "book_digest": "a5885e901d676274ed63dee267c98f4aa00b912bb98d631e055d96664486c6fd",
+   "book_digest": "2505bf48362ee8a5132d195aab8753723c6f14896180f87b147a52bb2e73783e",
    "bounds": [],
    "claim_digest": "ad3cd34bfc949563f0c465b0809712f6e9d087493e9a23fad90331cc68b66b6e",
    "class": "generated",
@@ -19558,7 +19558,7 @@
   },
   {
    "book": "books/page-read-startup.lisp",
-   "book_digest": "a5885e901d676274ed63dee267c98f4aa00b912bb98d631e055d96664486c6fd",
+   "book_digest": "2505bf48362ee8a5132d195aab8753723c6f14896180f87b147a52bb2e73783e",
    "bounds": [],
    "claim_digest": "194941027e09e2b9a37a158046e542b8dcadb69f7cd2a74c6b5cfb273dceb6bd",
    "class": "generated",
