@@ -163,6 +163,12 @@
 (include-book "../books/feed-link-backoff")
 ; `peer feed NAME pause|resume': fn-owner-feed-peers answers fn-fps-live-names.
 (include-book "../books/feed-pause")
+;; The history-root refresh's status line (fn-owner-hroot-note, host/history-root-host.lisp,
+;; keeps the status in the history-root table under :last-refresh).
+(defun fn-owner-hroot-status-lines (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-hrs-line (fn-hroot-table-status (fn-owner-history-root-table state))))
+
 ; Step 8 (catalog slice): the served read over the catalog and the catalog at
 ; the owner's entries (books/served-catalog-chain, books/served-catalog-owner).
 (include-book "../books/served-catalog-owner")

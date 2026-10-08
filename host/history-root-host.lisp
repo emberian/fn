@@ -30,17 +30,9 @@
 ;; unrecognised word replaces it.  Returns the status for the host's log.
 (defun fn-owner-hroot-note (word state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((table (and (boundp-global 'fn-owner-history-roots state)
-                     (f-get-global 'fn-owner-history-roots state)))
-         (table (fn-hroot-table-note table word))
+  (let* ((table (fn-hroot-table-note (fn-owner-history-root-table state) word))
          (state (f-put-global 'fn-owner-history-roots table state)))
     (value (fn-hroot-table-status table))))
-
-(defun fn-owner-hroot-status-lines (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-hrs-line (fn-hroot-table-status
-                (and (boundp-global 'fn-owner-history-roots state)
-                     (f-get-global 'fn-owner-history-roots state)))))
 
 (defun fn-owner-hroot-resize (generation amount state)
   (declare (xargs :stobjs state :mode :program))

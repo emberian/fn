@@ -11,6 +11,10 @@
 (defun fn-owner-history-keep-capture (slot state)
  (declare (xargs :stobjs state :guard t))
  (f-put-global 'fn-owner-history-capture slot state))
+(defun fn-owner-history-root-table (state)
+ (declare (xargs :stobjs state :guard t))
+ (if (boundp-global 'fn-owner-history-roots state)
+     (f-get-global 'fn-owner-history-roots state) nil))
 (defun fn-history-root-roster-heldp (roots)
  (declare (xargs :guard t))
  (if (consp roots)
@@ -28,9 +32,7 @@
    (not (null roots))))
 (defun fn-owner-history-reset-status (state)
  (declare (xargs :stobjs state :guard t))
- (if (fn-history-root-roster-heldp
-       (if (boundp-global 'fn-owner-history-roots state)
-           (f-get-global 'fn-owner-history-roots state) nil))
+ (if (fn-history-root-roster-heldp (fn-owner-history-root-table state))
      :history-source-held
    (fn-hhc-reset-status (fn-owner-history-capture-slot state))))
 (defun fn-owner-history-recheck (token state)
