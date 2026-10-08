@@ -66,20 +66,19 @@
        fn-own-enqueue)))))
 
 ; Readers retain the entire store, including the authorization history.
-(local
- (defthm fn-orl-reader-events-preserve-store
-   (implies (member-equal (car event) '(:open :close :read :octets :fault))
-            (equal (fn-own-store (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
-                   (fn-own-store (fn-ocfg-owner oc))))
-   :hints (("Goal" :in-theory
-     (union-theories (theory 'minimal-theory)
-      '(car-cons cdr-cons member-equal
-        fn-ocfg-owner-of-fn-ocfg-make fn-own-store-of-fn-own-make
-        fn-ocfg-step fn-ocfg-open fn-ocfg-close fn-ocfg-read
-        fn-ocfg-read-step fn-ocfg-fault fn-ocfg-with-read-owner
-        fn-own-open fn-own-reader-context fn-own-set-conns fn-own-close
-        fn-own-fault fn-own-read-full fn-own-read-step-full
-        fn-own-finish-read fn-own-enqueue))))))
+(defthm fn-orl-reader-events-preserve-store
+  (implies (member-equal (car event) '(:open :close :read :octets :fault))
+           (equal (fn-own-store (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
+                  (fn-own-store (fn-ocfg-owner oc))))
+  :hints (("Goal" :in-theory
+    (union-theories (theory 'minimal-theory)
+     '(car-cons cdr-cons member-equal
+       fn-ocfg-owner-of-fn-ocfg-make fn-own-store-of-fn-own-make
+       fn-ocfg-step fn-ocfg-open fn-ocfg-close fn-ocfg-read
+       fn-ocfg-read-step fn-ocfg-fault fn-ocfg-with-read-owner
+       fn-own-open fn-own-reader-context fn-own-set-conns fn-own-close
+       fn-own-fault fn-own-read-full fn-own-read-step-full
+       fn-own-finish-read fn-own-enqueue)))))
 
 (defthm fn-orl-reader-events-keep-the-authorization
   (implies (and (fn-ocfg-staged oc)

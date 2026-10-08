@@ -1,0 +1,19 @@
+{
+ "id": "REACH-WORLD-HISTORY-EVENT-AND-INTERN-STEPS",
+ "category": "reach",
+ "owner": "deputy-P",
+ "severity": "medium",
+ "slice": "proofs",
+ "source": "world reach gate at 87daf18f5 (N; build/coordinator/lanedumps/n-world34-reach.log): first reach_check --world --strict run",
+ "state": "open",
+ "title": "5 world-reach orphans no REACH-PROSE item owns: history-event directory/backing steps (PRF-1190, PRF-1191) and the arena/LZ intern step refinements (PRF-294, PRF-326)",
+ "notes": [
+  "Rule (coordinator, 2026-10-08): no baseline entry; the reach step stays red by design with every orphan owned. Per event, one of: host code must reach the subject (name the host call or the correspondence reach_check accepts), or it is a model theorem the host does not run and goes under unreachable-in-composition with the PRF statement re-scoped to say so.",
+  "PRF-1190: fn-hed-grow-merge-pops-one-forest-cell (books/history-event-directory-refinement.lisp; subjects fn-hed-at, fn-hed-grow-step). NEEDS HOST LOADING: host/admission-history-tail-host.lisp:59 calls fn-hed-grow-step in code, but no image build loads that file (it is on reach_check's no-seeds list). Either an image loads the admission tail host, or the event is unreachable-in-composition until it does.",
+  "PRF-1191: fn-hep-retirement-keeps-epoch-and-retained-debt (books/history-event-backing.lisp; subjects fn-hed-at, fn-hep-current, fn-hep-retire-return-internal). NEEDS HOST CODE: no host file calls fn-hep-retire-return-internal; fn-hep-current is read only by host/admission-history-tail-host.lisp:92 and host/admission-authority-preparation-host.lisp:53, which no image loads.",
+  "PRF-1191: fn-hep-uncertain-keeps-candidate-roots-and-debt (books/history-event-backing.lisp; subjects fn-hep-current, fn-hep-fence-current). NEEDS HOST CODE: no host file calls fn-hep-fence-current.",
+  "PRF-294: fn-arx-intern-step-refines (books/payload-extent.lisp:547; subjects fn-arx-intern-step and its pieces). CORRESPONDENCE: the host reaches the events form (host/interfaces.lisp:129 keystones fn-arx-intern-events-refines); the step theorem is the per-chunk lemma under fn-arx-intern-events-loop (payload-extent.lisp:338). Name the step-to-events correspondence reach_check accepts, or fold the step lemma into the events keystone's proof and drop its PRF claim.",
+  "PRF-326: fn-lzr-intern-step-refines (books/payload-lz-replay.lisp; subject fn-lzr-intern-step). PROSE ONLY: host/native/io.lisp:8304-8305 names it in a comment; the host reaches fn-lzr-intern-events-refines (host/interfaces.lisp:129). Same disposition as PRF-294."
+ ],
+ "updated": "2026-10-08T07:30:00Z"
+}
