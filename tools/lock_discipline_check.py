@@ -859,6 +859,10 @@ class Analyzer:
         self.cur_def = None
         self.rebound: list = []       # specials let-bound around the form being walked
         self.dead_guards: list = []   # thread-not-alive guards around the form being walked
+        self.local_callables = self.nonescaping_callables()
+        self.resolved_callbacks: set = set()
+        self.slot_callbacks: dict = collections.defaultdict(set)
+        self.slot_invocations: list = []
         self.defer_vars: list = []    # variables whose captured conditions are rethrown on every exit path
         self.leaf_kinds = self._leaf_table()
         self.region_of = {}
@@ -877,6 +881,112 @@ class Analyzer:
                 self.region_of[g] = row["lock"]
         for acc, lock in contracts.raw.get("slots", {}).items():
             self.region_of[acc] = lock["lock"] if isinstance(lock, dict) else lock
+
+    def nonescaping_callables(self) -> set:
+        """Callable cells whose complete source use is invocation or a test.
+
+        A special's dynamically bound closure cannot leave its binding thread
+        through such a cell. A struct slot can have several callers: keep all
+        of them, rather than inventing an additional async actor. Any value
+        escape, non-lambda store, or non-NIL initial value refuses inference.
+        This resolves calling context, not an exclusion/publication contract.
+        """
+        candidates = set(self.tree.globals) | set(self.tree.structs)
+        bad, used = set(), set()
+
+        def cell(x):
+            if isinstance(x, Sym) and str(x) in self.tree.globals:
+                return str(x)
+            if head(x) in self.tree.structs:
+                return head(x)
+            return None
+
+        def closure(x):
+            return (sym(x) == "nil" or head(x) == "lambda" or
+                    head(x) == "function" and len(x) == 2 and head(x[1]) == "lambda")
+
+        def scan(x, role="value"):
+            c = cell(x)
+            if c:
+                used.add(c)
+                if role not in ("test", "invoke", "store"):
+                    bad.add(c)
+                if isinstance(x, list):
+                    for arg in x[1:]:
+                        scan(arg)
+                return
+            if not isinstance(x, list) or not x or head(x) in SPECIAL_SKIP:
+                return
+            h = head(x)
+            if h in ("symbol-value", "set", "boundp", "makunbound") and len(x) > 1:
+                reflected = quoted_symbol(x[1])
+                if reflected in candidates:
+                    bad.add(reflected)
+            if h in ("let", "let*"):
+                for b in x[1] if len(x) > 1 and isinstance(x[1], list) else []:
+                    if isinstance(b, list) and b:
+                        c = cell(b[0])
+                        init = b[1] if len(b) > 1 else Sym("nil")
+                        if c and not closure(init):
+                            bad.add(c)
+                        scan(init)
+                for f in x[2:]:
+                    scan(f)
+                return
+            if h in ("setf", "setq", "psetf", "psetq"):
+                for k in range(1, len(x) - 1, 2):
+                    c = cell(x[k])
+                    if c and not closure(x[k + 1]):
+                        bad.add(c)
+                    scan(x[k], "store")
+                    scan(x[k + 1])
+                return
+            for k, f in enumerate(x[1:], 1):
+                subrole = "value"
+                if h in FUNCALLERS and k == 1:
+                    subrole = "invoke"
+                elif h in ("when", "unless", "if") and k == 1:
+                    subrole = "test"
+                elif h in ("not", "null") or h in ("and", "or") and role == "test":
+                    subrole = "test"
+                scan(f, subrole)
+
+        constructors = collections.defaultdict(dict)
+        for slot, (struct, field) in self.tree.structs.items():
+            for constructor in ("make-" + struct, "%make-" + struct):
+                constructors[constructor][":" + field] = slot
+        top = list(_top_forms(self.tree))
+        for _, f in top:
+            if head(f) == "defstruct" and len(f) > 1 and isinstance(f[1], list):
+                struct = sym(f[1][0])
+                for option in f[1][1:]:
+                    if head(option) == ":constructor" and len(option) > 1 and sym(option[1]) != "nil":
+                        fields = {":" + field: slot for slot, (owner, field) in self.tree.structs.items()
+                                  if owner == struct}
+                        if len(option) > 2:
+                            # A positional constructor has arbitrary argument
+                            # bindings; no callable inference for its slots.
+                            bad.update(fields.values())
+                        constructors[sym(option[1])] = fields
+        for d in list(self.tree.defs.values()) + list(self.tree.macros.values()):
+            for f in d.body:
+                scan(f)
+                for node in _flat_nodes([f]):
+                    # Constructor keyword arguments can install a callable
+                    # without a SETF. Keep that pattern unresolved for now.
+                    h = head(node)
+                    if h in constructors:
+                        for arg in node[1:]:
+                            if sym(arg) in constructors[h]:
+                                bad.add(constructors[h][sym(arg)])
+        for accessor, init in self.tree.struct_inits.items():
+            if init is not None and sym(init) != "nil":
+                bad.add(accessor)
+        # Check global initializers as well as executable definitions.
+        for _, f in top:
+            if head(f) in ("defvar", "defparameter") and len(f) > 2 and sym(f[2]) != "nil":
+                bad.add(sym(f[1]))
+        return (candidates & used) - bad
 
     # -- tables ------------------------------------------------------------
     def resolve_guard(self, text: str) -> str | None:
@@ -1137,9 +1247,18 @@ class Analyzer:
         self.solve_param_ctx()
         self.infos = {}
         self.lambda_count = 0
+        self.resolved_callbacks.clear()
+        self.slot_callbacks.clear()
+        self.slot_invocations.clear()
         for name, d in self.tree.defs.items():
             self.top_name = name
             self.walk_def(name, d, record=True)
+        for caller, slot, line, ctx in self.slot_invocations:
+            for rid in sorted(self.slot_callbacks[slot]):
+                self.infos[caller].events.append(Event("call", rid, line, ctx, "slot-callback"))
+                self.infos[caller].sig = sig_union([self.infos[caller].sig,
+                                                   ("u", frozenset(), (rid,), ())])
+                self.resolved_callbacks.add(rid)
 
     def walk_def(self, name: str, d: Def, record: bool, ctx: Ctx | None = None,
                  thread_of=None, env=None) -> FnInfo:
@@ -1564,7 +1683,17 @@ class Analyzer:
                 if isinstance(b, list) and b:
                     name = str(b[0])
                     init = b[1] if len(b) > 1 else None
-                    parts.append(self.walk(init, ctx if h != "let*" else Ctx(ctx.locks, noio, ctx.scope, ctx.gated, ctx.ignore, ctx.cond), env2 if h == "let*" else env, line))
+                    initctx = ctx if h != "let*" else Ctx(ctx.locks, noio, ctx.scope, ctx.gated, ctx.ignore, ctx.cond)
+                    initenv = env2 if h == "let*" else env
+                    lam = init[1] if head(init) == "function" and len(init) == 2 else init
+                    if name in self.local_callables and name in self.tree.globals and head(lam) == "lambda":
+                        rid = self.spawn_lambda(lam, line, None, initenv)
+                        if self.recording:
+                            self.resolved_callbacks.add(rid)
+                        self.ev("call", rid, line, initctx, "dynamic-callback")
+                        parts.append(("u", frozenset(), (rid,), ()))
+                    else:
+                        parts.append(self.walk(init, initctx, initenv, line))
                     if name == "*fnn-extent-no-io*":
                         noio = not (init is None or (isinstance(init, Sym) and str(init) == "nil"))
                     elif name.startswith("*") and name in self.tree.globals:
@@ -1877,7 +2006,15 @@ class Analyzer:
             pairs = form[1:]
             for k in range(0, len(pairs) - 1, 2):
                 parts.append(self.note_place(pairs[k], ctx, env, line, value=pairs[k + 1], atomic_ok=True))
-                parts.append(self.walk(pairs[k + 1], ctx, env, line))
+                value = pairs[k + 1]
+                lam = value[1] if head(value) == "function" and len(value) == 2 else value
+                slot = head(pairs[k])
+                if slot in self.local_callables and head(lam) == "lambda":
+                    rid = self.spawn_lambda(lam, line, None, env)
+                    if self.recording:
+                        self.slot_callbacks[slot].add(rid)
+                else:
+                    parts.append(self.walk(value, ctx, env, line))
             return sig_union(parts)
         if h in ("push", "pushnew"):
             if len(form) > 2:
@@ -2157,6 +2294,8 @@ class Analyzer:
             self.ev("acc", h, line, ctx, "r")
         if h in FUNCALLERS and args:
             target = args[0]
+            if head(target) in self.local_callables and head(target) in self.tree.structs and self.recording:
+                self.slot_invocations.append((self.cur.name, head(target), line, ctx))
             if isinstance(target, Sym) and str(target) in env:
                 bound_form = env[str(target)]
                 if (isinstance(bound_form, tuple) and len(bound_form) == 2
@@ -3478,7 +3617,7 @@ class Model:
                 roots[name] = "thread"
             elif name in serving:
                 roots[name] = "serving"
-            elif name.startswith("lambda@") and name not in self.declared_callbacks:
+            elif name.startswith("lambda@") and name not in self.declared_callbacks and name not in self.an.resolved_callbacks:
                 roots[name] = "async"
             elif not self.callers.get(name):
                 roots[name] = "startup" if name in startup else "entry"

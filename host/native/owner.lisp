@@ -1754,7 +1754,11 @@ Use its held fence without recursively acquiring the owner's mutex."
            (serious-condition (condition)
              (setq kind (fn-fs-classify (fnn-condition-class condition)
                                         *fnn-section-step*))
-             (when escape (funcall escape condition))))
+             (if escape
+                 (funcall escape condition)
+               ;; A :result actor normally captures its own outcome, but
+               ;; this boundary can itself detect an escaped ACL2 step.
+               (fnn-owner-thread-escape service condition "actor boundary"))))
       ;; THUNK has completed its entire unwind before recording its end.
       ;; Registration remains until a parent physically joins the thread.
       (fnn-with-roster (service)
@@ -2036,7 +2040,8 @@ since 21d932152).  Reserved here, it needs no section after the step."
 
 (defun fnn-owner-output-begin-locked (service cid)
   "Owner held. Retain operation identity and draw before setup/preview."
-  (when (fnn-owner-service-output-ledger service)
+  (when (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+          (fnn-owner-service-output-ledger service))
     (unless *fnn-response-capture*
       (fnn-refuse "accounted output requires registered response custody for ~s" cid))
     (unless (fnn-response-capture-grant *fnn-response-capture*)
@@ -2054,7 +2059,8 @@ answers it on the wire (books/output-admission-line.lisp: an unpriced family
 or an unaffordable reply).  Absent policy passes the buffer: the pass-through
 goes in the commit that prices the last family a stock node serves
 (specs/resource-vector.md, the dated open precondition)."
-  (if (null (fnn-owner-service-output-ledger service)) (length incoming)
+  (if (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+        (null (fnn-owner-service-output-ledger service))) (length incoming)
     (let* ((preview (fnn-core-buffer-state 'fn-owner-output-preview cid 0 (length incoming)))
            (tariff (fnn-owner-core 'fn-owner-output-tariff-preview cid preview))
            (capacity

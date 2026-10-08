@@ -687,8 +687,13 @@ class CallbackContexts(unittest.TestCase):
             an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
             return [f for f in checker.run({"R1"}) if f.rule == "R1"]
 
-    def test_undeclared_stored_callback_is_unresolved(self):
+    def test_nonescaping_slot_callback_keeps_the_real_thread_violation(self):
         found = self.run_with({})
+        self.assertTrue(any("fnn-cbx-spawn" in f.function and f.category == "violation"
+                            and any(self.LAMBDA in step for step in f.trail) for f in found))
+
+    def test_escaping_slot_callback_is_still_unresolved(self):
+        found = self.run_with({}, self.SRC + "(defun leak (g) (foreign (fnn-cbx-grant-turn g)))")
         self.assertTrue(any(f.function == self.LAMBDA and f.category == "unresolved" for f in found))
 
     def test_declared_callback_runs_in_its_command(self):
@@ -2921,6 +2926,78 @@ class R2PipeClose(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.r2(self.SRC.replace("(let ((fd (if (eq slot :read) (fnn-pc-loop-wake-read loop) (fnn-pc-loop-wake-write loop))))",
                                      "(let ((fd (sb-posix:open \"/x\" 0)))"))
+
+
+class NonescapingCallableOwnership(unittest.TestCase):
+    SOURCE = """
+(defvar *counter* 0)
+(defvar *progress* nil)
+(defstruct fnn-turn callback)
+(defun touch () (incf *counter*))
+(defun pump () (when *progress* (funcall *progress*)))
+(defun install (g)
+ (setf (fnn-turn-callback g)
+  (lambda () (let ((*progress* (lambda () (touch)))) (pump)))))
+(defun turn (g) (when (fnn-turn-callback g) (funcall (fnn-turn-callback g))))
+(defun command (g) (install g) (touch) (turn g))
+"""
+
+    def test_slot_and_dynamic_binding_keep_one_owning_thread(self):
+        self.assertEqual(keys(run(self.SOURCE, ["R1b"]), "R1b"), [])
+
+    def test_second_thread_invoking_the_slot_is_still_red(self):
+        src = self.SOURCE + '''
+(defun start (g) (sb-thread:make-thread (lambda () (turn g)) :name "second"))
+'''
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_escaped_dynamic_value_is_still_red(self):
+        src = self.SOURCE.replace('(pump)))))', '(foreign *progress*) (pump)))))')
+        self.assertNotEqual(src, self.SOURCE)
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_escaped_slot_value_is_still_red(self):
+        src = self.SOURCE + '(defun leak (g) (foreign (fnn-turn-callback g)))'
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_unknown_slot_store_is_still_red(self):
+        src = self.SOURCE + '(defun replace-callback (g value) (setf (fnn-turn-callback g) value))'
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_constructor_slot_override_is_still_red(self):
+        src = self.SOURCE + '(defun construct (value) (make-fnn-turn :callback value))'
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_custom_constructor_override_is_still_red(self):
+        src = self.SOURCE.replace('defstruct fnn-turn callback',
+                                  'defstruct (fnn-turn (:constructor new-turn)) callback')
+        src += '(defun construct (value) (new-turn :callback value))'
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_reflected_dynamic_value_is_still_red(self):
+        src = self.SOURCE + "(defun leak () (symbol-value '*progress*))"
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_macro_slot_escape_is_still_red(self):
+        src = self.SOURCE + '(defmacro leak (g) `(foreign (fnn-turn-callback ,g)))'
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_initializer_other_than_nil_is_still_red(self):
+        src = self.SOURCE.replace('fnn-turn callback', 'fnn-turn (callback (foreign))')
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_slot_body_is_called_under_the_invokers_lock_not_the_creators(self):
+        src = '''
+(defstruct fnn-turn callback)
+(defun install (g service)
+ (sb-thread:with-mutex ((fnn-owner-service-lock service))
+  (setf (fnn-turn-callback g) (lambda () (fnn-close 3)))))
+(defun invoke (g) (funcall (fnn-turn-callback g)))
+'''
+        self.assertEqual(keys(run(src, ["R2"]), "R2"), [])
+        src = src.replace('(funcall (fnn-turn-callback g))',
+                          '(sb-thread:with-mutex (*fnn-extent-lock*) (funcall (fnn-turn-callback g)))')
+        self.assertTrue(keys(run(src, ["R2"]), "R2"))
 
 
 if __name__ == "__main__":
