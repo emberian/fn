@@ -1345,10 +1345,21 @@ def f1_route(campaign, h, ph, route):
                         FN_LOAD_F1_SECONDS=str(campaign.recovery * 3),
                         FN_LOAD_F1_CACHE=str(ph.get('cache_entries', 1)))
         campaign.start(node, h)
+        # After a checkpoint open the seeded payloads live in the in-memory arena and never take an
+        # extent route (S, train 45). Articles POSTed after the open seal as durable extents, so
+        # the reads target those; with a one-entry cache, all but the newest are cold.
+        base = 0
+        if ph.get('post_after_open', True):
+            base = 1000
+            with Client(node.port, h, campaign.deadline) as c:
+                for i in range(ph.get('cold_reads', 24) + 1):
+                    if not c.post(base + i, 524288).startswith(b'240 '):
+                        raise RuntimeError('F1 post-open seed refused')
+        notes['read_base'] = base
         go.touch()
         def cold():
             with Client(node.port, h, campaign.recovery * 3) as c:
-                fault_probe(c, msgid_measure.msgid(0), 'F1', held=True, route=route)
+                fault_probe(c, msgid_measure.msgid(base), 'F1', held=True, route=route)
         launch(cold)
         wait_file(witness, campaign.recovery, lambda s: f1_evidence(s, route).get('held'))
         offset = (node.work / ('owner.%d.err' % node.err_n)).stat().st_size
@@ -1362,7 +1373,7 @@ def f1_route(campaign, h, ph, route):
         def churn():
             with Client(node.port, h, campaign.recovery * 3) as c:
                 for i in range(1, ph.get('cold_reads', 24) + 1):
-                    fault_probe(c, msgid_measure.msgid(i), 'F1', route=route)
+                    fault_probe(c, msgid_measure.msgid(base + i), 'F1', route=route)
         # A blocked publication must not prevent dispatch of the competing reads.
         competing = [launch(publish), launch(churn)]
         end = time.monotonic() + campaign.recovery

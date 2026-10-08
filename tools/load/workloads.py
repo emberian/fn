@@ -17,7 +17,7 @@ HERE = Path(__file__).resolve().parent
 PATH = HERE / "workloads.json"
 
 PHASE_KINDS = {
-    "fault_slot_reuse": {"cold_reads", "hold_n", "cache_entries", "command_deadline_s", "recovery_s"},
+    "fault_slot_reuse": {"cold_reads", "hold_n", "cache_entries", "command_deadline_s", "recovery_s", "post_after_open"},
     "fault_index_saturation": {"colliding_ids", "absent_ids", "collision_bits", "candidate_budget",
                                "tag_batch", "prefix_octets", "command_deadline_s", "recovery_s"},
     "fault_held_reader": {"readers", "shrink_runs", "command_deadline_s", "recovery_s"},
