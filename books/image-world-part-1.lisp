@@ -172,3 +172,4 @@
 (include-book "bp-fnbs-deletion-publication")
 (include-book "bp-fnbs-conflict-publication")
 (include-book "bp-report-author")
+(include-book "bp-node-progress")

@@ -295,6 +295,17 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
 ;; ACL2's configuration bound, config.json at 16 KiB); a configuration or
 ;; command the operator plan refuses has no profile, and the command itself
 ;; reports the refusal under the no-store figure.
+(defun fnn-heap-operator-store-profile (root result)
+  "ACL2's liveness word selects the owner snapshot or the stopped-store open."
+  (let* ((live *fnn-operator-live-owner*)
+         (path (fnn-core 'fn-omr-control-path-octets result))
+         (liveness (if live (funcall (fnn-olo-admin-observe live) root path t) :offline)))
+    (case liveness
+      (:live (funcall (fnn-olo-profile live) path))
+      (:held (fnn-refuse "store-held: the owner's profile is unavailable"))
+      ((:offline :stale) (fnn-heap-store-profile root))
+      (otherwise (fnn-fault "ACL2 returned an invalid profile liveness word")))))
+
 (defun fnn-heap-operator-profile (config-path words)
   (handler-case
       (let* ((argv-octets (fnn-operator-argv-octets words))
@@ -305,7 +316,8 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
           (let* ((config-octets (fnn-operator-read-config
                                  config-path (fnn-core 'fn-native-config-host-max-octets)))
                  (result (fnn-operator-run-at config-path config-octets argv-octets))
-                 (root (fnn-core 'fn-native-operator-host-result-store-root result)))
+                 (root (fnn-core 'fn-native-operator-host-result-store-root result))
+                 (store-profile nil))
             (when (and (eq (fnn-core 'fn-native-operator-host-result-status result) :accepted)
                        (stringp root))
               (values
@@ -322,7 +334,8 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
                                                               result))
                                                    nil)))
                             (and (not (eq (car profile) :invalid)) profile))))
-                 (fnn-heap-store-profile (fnn-absolute root)))
+                 (setf store-profile
+                       (fnn-heap-operator-store-profile (fnn-absolute root) result)))
                ;; The owner's client workers a `run' admits, ACL2's figure
                ;; fnn-operator-execute passes on; for `init' the connections
                ;; init judged the store by (fn-heap-reserve-init-connections),
@@ -344,7 +357,9 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
                (let ((action (fnn-core 'fn-native-operator-host-result-native-action
                                        result)))
                  (and (fnn-core 'fn-heap-operation-observes-p action)
-                      (let ((profile (fnn-heap-store-profile (fnn-absolute root))))
+                      (let ((profile (if (eq action :init)
+                                         (fnn-heap-operator-store-profile (fnn-absolute root) result)
+                                       store-profile)))
                         (and profile
                              (fnn-heap-history-observation (fnn-absolute root)
                                                            profile)))))

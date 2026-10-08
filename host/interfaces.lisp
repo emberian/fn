@@ -6042,3 +6042,14 @@
 (definterface fn-stid-host-reply-read :class ::program)
 (definterface fn-stid-host-line :class ::program)
 (definterface fn-stid-host-exit-code :class ::program)
+
+;; Bounded live-owner profile read for heap preflight.
+(definterface fn-lpf-request :class :common-lisp-compliant)
+(definterface fn-lpf-request-p :class :common-lisp-compliant
+  :keystones (fn-lpf-request-is-recognized))
+(definterface fn-lpf-request-size-p :class :common-lisp-compliant)
+(definterface fn-lpf-reply :class :common-lisp-compliant
+  :keystones (fn-lpf-reply-is-bounded))
+(definterface fn-lpf-reply-read :class :common-lisp-compliant
+  :keystones (fn-lpf-reply-round-trip))
+(definterface fn-lpf-reply-bound :class :common-lisp-compliant)

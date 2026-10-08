@@ -9,6 +9,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 @unittest.skipUnless(shutil.which("sbcl"), "SBCL required")
 class PhasedReconfigurationAdapterTests(unittest.TestCase):
+    def test_live_heap_profile_avoids_configuration_history(self):
+        result = subprocess.run(
+            ["sbcl", "--script", "tests/native_live_profile_source-mock.lisp"],
+            cwd=ROOT, text=True, capture_output=True, timeout=60,
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("live/held never read disk; offline/stale controls passed", result.stdout)
+
     def test_capture_conversion_and_lock_placement(self):
         result = subprocess.run(
             ["sbcl", "--script", "tests/native_reconfig_phased_raw-mock.lisp"],

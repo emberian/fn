@@ -455,6 +455,7 @@
 (include-book "../../books/tls-reload")
 (include-book "../../books/tls-key-exchange")
 (include-book "../../books/store-identity")
+(include-book "../../books/live-profile-control")
 (include-book "../../books/web-session-keystones")
 (include-book "../../books/web-config")
 (include-book "../../books/web-page-cursor")

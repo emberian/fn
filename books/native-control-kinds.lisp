@@ -34,6 +34,7 @@
 (include-book "peer-invite")
 (include-book "native-hybrid-control")
 (include-book "wire-family-identity")
+(include-book "live-profile-control")
 
 ; -----------------------------------------------------------------------------
 ; The kinds.
@@ -45,7 +46,13 @@
         *fn-pinv-redecide-kind* *fn-pinv-bindings-kind*))
 
 (defconst *fn-ctlk-read-kinds*
-  (list *fn-tlsr-request-kind* *fn-wf-identity-request-kind*))
+  (list *fn-tlsr-request-kind* *fn-wf-identity-request-kind* *fn-lpf-request-kind*))
+
+; Mini work class for the new verb. This branch predates the complete
+; control-receipt class table; its profile row must remain :bounded there.
+; Only sixteen carried fields are captured, with no history traversal.
+(defconst *fn-ctlk-kind-work-classes*
+  (list (cons *fn-lpf-request-kind* :bounded)))
 
 (defun fn-ctlk-word (kind)
   (declare (xargs :guard t))
@@ -68,7 +75,11 @@
 ; fnn-control-handle-client).
 (defun fn-ctlk-frame-handler (fn-octets)
   (declare (xargs :stobjs fn-octets :guard t))
-  (fn-ctlk-word (fn-ctlk-header-kind fn-octets)))
+  (let ((kind (fn-ctlk-header-kind fn-octets)))
+    (if (and (equal kind *fn-lpf-request-kind*)
+             (not (fn-lpf-request-size-p (fn-octets-len fn-octets))))
+        nil
+      (fn-ctlk-word kind))))
 
 ; -----------------------------------------------------------------------------
 ; An opened frame's kind is its header's.
