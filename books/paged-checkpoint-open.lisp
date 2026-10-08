@@ -1821,3 +1821,84 @@
                  (:instance pcko-ref-wires-held (r (fn-pck-row0 st w)) (off (+ 37 base)) (len (len (fn-pck-payload w)))
                             (pay (fn-pck-payload w)) (d0 (car (pcko-tw w))) (d1 (cadr (pcko-tw w)))
                             (d2 (caddr (pcko-tw w))) (d3 (cadddr (pcko-tw w))))))))
+
+(defun pcko-durablep (recs base fid)
+  ; The durable payload file holds each record's payload at its ref.
+  (declare (xargs :guard (natp base) :verify-guards nil))
+  (if (atom recs)
+      t
+    (and (equal (fn-durable-octets fid (+ *fn-cpl-header-octets* base) (len (fn-pck-payload (car recs))))
+                (fn-pck-payload (car recs)))
+         (pcko-durablep (cdr recs) (pcko-next-base (car recs) base) fid))))
+
+(defthm pcko-durablep-of-resolves
+  (implies (and (fn-cpl-holdsp fid file 0) (true-listp file) (natp base) (fn-pck-resolvesp recs base file))
+           (pcko-durablep recs base fid))
+  :hints (("Goal" :induct (pcko-durablep recs base fid)
+           :expand ((fn-pck-resolvesp recs base file))
+           :in-theory (e/d (pcko-next-base) (fn-pck-payload fn-cpl-resolve fn-cpl-ref fn-pck-resolvesp)))
+          ("Subgoal *1/3" :use ((:instance pcko-holds-resolves (o (+ 37 base)) (l (len (fn-pck-payload (car recs))))
+                                           (pay (fn-pck-payload (car recs))))
+                                (:instance pck-payload-true-listp (w (car recs)))))))
+
+(defun-nx pcko-w-ind (recs base st acc fid a)
+  (if (atom recs)
+      a
+    (let ((acc2 (mv-nth 0 (pcko-ref acc (car recs) base st fid a)))
+          (a2 (mv-nth 1 (pcko-ref acc (car recs) base st fid a))))
+      (if (eq acc2 :bad)
+          a
+        (pcko-w-ind (cdr recs) (pcko-next-base (car recs) base) (pck-ssr1 st (car recs)) acc2 fid a2)))))
+
+(defthm pcko-wires-cons-step
+  (let* ((w1 (car recs))
+         (ref (pcko-ref acc w1 base st fid a))
+         (acc2 (mv-nth 0 ref))
+         (a2 (mv-nth 1 ref))
+         (st1 (pck-ssr1 st w1))
+         (base1 (pcko-next-base w1 base)))
+    (implies (and (consp recs) (true-listp recs) (pcko-agree acc st) (natp base) (natp fid)
+                  (not (equal (fn-pck-st-of st recs) :bad))
+                  (fn-arena-p a) (fn-rows-handles-inp (fn-ssr-at 0 acc) a)
+                  (pcko-durablep recs base fid)
+                  (implies (and (true-listp (cdr recs)) (pcko-agree acc2 st1) (natp base1) (natp fid)
+                                (not (equal (fn-pck-st-of st1 (cdr recs)) :bad))
+                                (fn-arena-p a2) (fn-rows-handles-inp (fn-ssr-at 0 acc2) a2)
+                                (pcko-durablep (cdr recs) base1 fid))
+                           (let ((s (pcko-sim (cdr recs) base1 st1 acc2 fid a2)))
+                             (and (fn-arena-p (mv-nth 1 s))
+                                  (fn-rows-handles-inp (fn-ssr-at 0 (mv-nth 0 s)) (mv-nth 1 s))
+                                  (equal (fn-rows-wire-of (fn-ssr-at 0 (mv-nth 0 s)) (mv-nth 1 s))
+                                         (revappend (cdr recs) (fn-rows-wire-of (fn-ssr-at 0 acc2) a2)))))))
+             (let ((s (pcko-sim recs base st acc fid a)))
+               (and (fn-arena-p (mv-nth 1 s))
+                    (fn-rows-handles-inp (fn-ssr-at 0 (mv-nth 0 s)) (mv-nth 1 s))
+                    (equal (fn-rows-wire-of (fn-ssr-at 0 (mv-nth 0 s)) (mv-nth 1 s))
+                           (revappend recs (fn-rows-wire-of (fn-ssr-at 0 acc) a)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable pcko-ref pck-ssr1 pcko-agree pcko-next-base fn-pck-st-of pcko-sim pcko-durablep
+                               pcko-step-agree pcko-ref-wires fn-ssr-intern-step)
+           :expand ((pcko-sim recs base st acc fid a) (fn-pck-st-of st recs) (pcko-durablep recs base fid))
+           :use ((:instance pcko-ref-is-the-step (w (car recs)) (b a))
+                 (:instance pcko-step-agree (w (car recs)) (b a))
+                 (:instance pcko-ref-wires (w (car recs)))))))
+
+(defthm pcko-sim-wires
+  ; The rows the tape's fold leaves read back as the records, in order.
+  (implies (and (true-listp recs) (pcko-agree acc st) (natp base) (natp fid)
+                (not (equal (fn-pck-st-of st recs) :bad))
+                (fn-arena-p a) (fn-rows-handles-inp (fn-ssr-at 0 acc) a)
+                (pcko-durablep recs base fid))
+           (let ((s (pcko-sim recs base st acc fid a)))
+             (and (fn-arena-p (mv-nth 1 s))
+                  (fn-rows-handles-inp (fn-ssr-at 0 (mv-nth 0 s)) (mv-nth 1 s))
+                  (equal (fn-rows-wire-of (fn-ssr-at 0 (mv-nth 0 s)) (mv-nth 1 s))
+                         (revappend recs (fn-rows-wire-of (fn-ssr-at 0 acc) a))))))
+  :hints (("Goal" :induct (pcko-w-ind recs base st acc fid a) :do-not-induct t
+           :in-theory (disable pcko-ref pck-ssr1 pcko-agree pcko-next-base fn-pck-st-of pcko-sim pcko-durablep
+                               fn-ssr-intern-step))
+          ("Subgoal *1/3" :use pcko-wires-cons-step)
+          ("Subgoal *1/2" :expand ((fn-pck-st-of st recs))
+           :use ((:instance pcko-ref-is-the-step (w (car recs)) (b a)) (:instance pcko-step-agree (w (car recs)) (b a))))
+          ("Subgoal *1/1" :in-theory (e/d (pcko-sim) (pcko-ref pck-ssr1 pcko-agree)))))
