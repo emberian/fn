@@ -81,6 +81,22 @@
   :hints (("Goal" :in-theory (enable (:e fn-pzd-decode))))
   :rule-classes nil)
 
+;; KEYSTONE fn-zpl-decode-bufs-from-the-empty-pool, reachable: the host's first
+;; call (POOL = NIL) over the held-out stream answers the decoder's status, the
+;; output buffer holds the decoder's octets, and the pool it returns satisfies
+;; the invariant (evaluated: C1, the check, which fn-zpl-pool-check-is-pool-okp
+;; equates with fn-zpl-pool-okp).  Every hypothesis is checked affirmatively.
+(defthm dpt-empty-pool-witness
+  (let ((d (fn-pzd-decode *plz-dict* *plz-dict-block* 750)))
+    (and (fn-cbor-octet-listp *plz-dict-block*) (natp 750) (fn-cbor-octet-listp *plz-dict*)
+         (equal (car (nth 0 *dpt-pooled*)) (car d))
+         (equal (car d) :ok)
+         (equal (nth 2 *dpt-pooled*) (cadr d))
+         (equal (nth 1 *dpt-pooled*) (list *plz-dict* 2749 750))
+         (equal (nth 7 *dpt-pooled*) t)))
+  :hints (("Goal" :in-theory (enable (:e fn-pzd-decode))))
+  :rule-classes nil)
+
 ; Without the pool invariant: the forged pool's H is not the dictionary's
 ; preset length, so fn-zpl-pool-okp fails; every other hypothesis holds; the
 ; read takes the reuse branch and does not answer the decoder's octets.

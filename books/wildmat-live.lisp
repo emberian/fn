@@ -166,12 +166,27 @@
                (if (fn-wildmat-pattern-matchp (fn-wildmat-pattern-items (car p)) target)
                    (car p) nil)))))
  :hints (("Goal" :expand ((fn-wildmat-rightmost-match p target))))))
-(defthm fn-wml-core-one-retained-room
-  (implies (and (fn-wmc-core-shapedp s)
-                (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode)))
-           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-wml-core-room fn-wml-task-room fn-wml-frame-room
+; The room bound is proved one task tag (and, for :return, one frame kind) at
+; a time.  MAX stays closed: opening it splits every sum of maxima into its
+; cases, which is where the single-theorem proof spent its steps.  The local
+; rules below let the prover compare two MAX terms by their arms instead.
+(local (defthm fn-wml-max-lt
+  (implies (and (rationalp a) (rationalp b) (rationalp w))
+           (equal (< w (max a b)) (or (< w a) (< w b))))
+  :hints (("Goal" :in-theory (enable max)))))
+(local (defthm fn-wml-max-ge-1 (implies (and (rationalp a) (rationalp b)) (<= a (max a b)))
+  :rule-classes :linear :hints (("Goal" :in-theory (enable max)))))
+(local (defthm fn-wml-max-ge-2 (implies (and (rationalp a) (rationalp b)) (<= b (max a b)))
+  :rule-classes :linear :hints (("Goal" :in-theory (enable max)))))
+(local (defthm fn-wml-max-rat (implies (and (rationalp a) (rationalp b)) (rationalp (max a b)))
+  :rule-classes :type-prescription :hints (("Goal" :in-theory (enable max)))))
+(local (defthm fn-wml-plus-max
+  (implies (and (rationalp k) (rationalp a) (rationalp b)) (equal (+ k (max a b)) (max (+ k a) (+ k b))))
+  :hints (("Goal" :in-theory (enable max)))))
+(local (defthm fn-wml-max-zero (implies (natp a) (equal (max a 0) a))
+  :hints (("Goal" :in-theory (enable max)))))
+(local (deftheory fn-wml-one-room-open
+  (e/d (fn-wml-core-room fn-wml-task-room fn-wml-frame-room
                   fn-wml-match-room fn-wml-pattern-room fn-wml-row-room fn-wml-last-room fn-wml-frame-value fn-wml-frames-room-open
                   fn-wmc-core-one fn-wmc-node fn-wmc-state fn-wmc-return fn-wmc-call
                   fn-wmc-task-result fn-wmc-frame-result
@@ -182,9 +197,127 @@
                   fn-wm-pattern-match-work-value fn-wm-rightmost-match-work-value fn-wm-match-codepoints-work-value
                   fn-wildmat-step-character fn-wildmat-step-star fn-wildmat-false-row fn-wildmat-pattern-matchp
                   fn-ag-car fn-ag-cdr revappend)
-                 (revappend-removal fn-wm-work-value fn-wm-work-result fn-wm-work-cost fn-wml-frames-room fn-wm-pattern-row-work fn-wm-initial-row-work fn-wm-false-row-work fn-wm-step-character-work fn-wm-step-character-aux-work fn-wm-step-star-work fn-wm-step-star-aux-work fn-wm-row-last-work fn-wm-pattern-match-work fn-wm-rightmost-match-work fn-wm-match-codepoints-work fn-wildmat-item-character-matchp
-                  fn-wildmat-rightmost-match fn-nntp-string-octets-aux nthcdr)))
-          ("Subgoal 1" :in-theory (enable fn-wml-frames-room-open))))
+                 (max revappend-removal fn-wm-work-value fn-wm-work-result fn-wm-work-cost fn-wml-frames-room fn-wm-pattern-row-work fn-wm-initial-row-work fn-wm-false-row-work fn-wm-step-character-work fn-wm-step-character-aux-work fn-wm-step-star-work fn-wm-step-star-aux-work fn-wm-row-last-work fn-wm-pattern-match-work fn-wm-rightmost-match-work fn-wm-match-codepoints-work fn-wildmat-item-character-matchp
+                  fn-wildmat-rightmost-match fn-nntp-string-octets-aux nthcdr))))
+(local (defthm fn-wml-one-room-reverse
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :reverse)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-match
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :match)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-right
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :right)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-pattern
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :pattern)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-initial
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :initial)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-false
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :false)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-row
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :row)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-star
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-star-aux
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star-aux)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-character
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :character)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-char-aux
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :char-aux)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-last
+  (implies (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :last)
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-cons
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :cons))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-match
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :match))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-right
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-right-pattern
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right-pattern))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-initial-pattern
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :initial-pattern))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-pattern-row
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-row))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-pattern-last
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-last))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-row-step
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-step))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-row-tail
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-tail))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-last
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s)) (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :last))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-other
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (consp (fn-wmc-at 1 s))
+                (and (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :cons)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :match)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :right-pattern)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :initial-pattern)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-row)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :pattern-last)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-step)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :row-tail)) (not (eq (fn-wmc-at 0 (car (fn-wmc-at 1 s))) :last))))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-return-done
+  (implies (and (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)
+                (not (consp (fn-wmc-at 1 s))))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(local (defthm fn-wml-one-room-other-tag
+  (implies (and (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :reverse)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :match)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :right)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :pattern)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :initial)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :false)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :row)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :star-aux)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :character)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :char-aux)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :last)) (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :return)))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :in-theory (theory 'fn-wml-one-room-open)))))
+(defthm fn-wml-core-one-retained-room
+  (implies (and (fn-wmc-core-shapedp s)
+                (not (eq (fn-wmc-at 0 (fn-wmc-at 0 s)) :decode)))
+           (<= (fn-wml-core-room (fn-wmc-core-one s)) (fn-wml-core-room s)))
+  :hints (("Goal" :use (fn-wml-one-room-reverse fn-wml-one-room-match fn-wml-one-room-right fn-wml-one-room-pattern fn-wml-one-room-initial fn-wml-one-room-false fn-wml-one-room-row fn-wml-one-room-star fn-wml-one-room-star-aux fn-wml-one-room-character fn-wml-one-room-char-aux fn-wml-one-room-last fn-wml-one-room-return-cons fn-wml-one-room-return-match fn-wml-one-room-return-right fn-wml-one-room-return-right-pattern fn-wml-one-room-return-initial-pattern fn-wml-one-room-return-pattern-row fn-wml-one-room-return-pattern-last fn-wml-one-room-return-row-step fn-wml-one-room-return-row-tail fn-wml-one-room-return-last fn-wml-one-room-return-other fn-wml-one-room-return-done fn-wml-one-room-other-tag)
+           :in-theory (theory 'minimal-theory))))
 
 ; Numeric carried extent; no runtime pattern walk is required by the consumer.
 (defun fn-wml-capacity (patterns tokens octets)

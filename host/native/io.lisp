@@ -8542,22 +8542,78 @@ removes one a death left, and the open's segment listing never sees it
   (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
     (setf (fnn-log-spare log) nil)))
 
-(defun fnn-log-spare-take (log)
+(defun fnn-log-spare-take (log &optional pending)
   "Take the spare out of the slot, atomically: the one caller that gets it
 owns its descriptor.  A close debt a failed discard left is signalled and
-nothing is taken."
+nothing is taken. PENDING reserves the taken spare in the close-debt slot
+until its off-lock disposal completes; return that exact receipt second."
   (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
     (when (fnn-log-spare-close-debt log)
       (error (second (fnn-log-spare-close-debt log))))
     (let ((spare (fnn-log-spare log)))
       (setf (fnn-log-spare log) nil)
-      spare)))
+      (let ((receipt (and spare pending (list spare pending))))
+        (when receipt (setf (fnn-log-spare-close-debt log) receipt))
+        (values spare receipt)))))
 
-(defun fnn-log-discard-spare (log)
+(defvar *fnn-log-spare-discards* nil
+  "Pending physical spare disposals; the log's close debt reserves its name.")
+(fnn-guarded-by *fnn-log-spare-discards* *fnn-close-debts-lock*)
+
+(defun fnn-log-defer-discard-spare (log)
+  "Take a rejected rotation's spare without I/O; retain its name until settled."
+  (multiple-value-bind (spare receipt)
+      (fnn-log-spare-take
+       log (make-condition 'fnn-store-error :message "log spare disposal is pending"))
+    (when spare
+      (sb-thread:with-mutex (*fnn-close-debts-lock*)
+        (push (list :pending log receipt) *fnn-log-spare-discards*))))
+  nil)
+
+(defun fnn-log-drain-spare-discards (log)
+  "Off O/K: claim physical disposal once, then reconcile its exact close debt.
+A concurrent prepare sees the debt until close and unlink both return."
+  (loop
+    (let ((entry
+            (sb-thread:with-mutex (*fnn-close-debts-lock*)
+              (let ((entry (find-if (lambda (entry)
+                                      (and (eq (first entry) :pending)
+                                           (eq log (second entry))))
+                                    *fnn-log-spare-discards*)))
+                (when entry (setf (first entry) :calling))
+                entry))))
+      (unless entry (return))
+      (let* ((log (second entry)) (receipt (third entry))
+             (failure nil))
+        (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+          (unless (eq receipt (fnn-log-spare-close-debt log))
+            (fnn-fault "log spare disposal lost custody before close"))
+          ;; From here an interrupted actor has no close return observation.
+          (setf (second receipt)
+                (make-condition 'fnn-store-indeterminate
+                                :message "log spare disposal return unobserved")))
+        (handler-case (fnn-log-discard-spare log receipt)
+          (serious-condition (condition) (setq failure condition)))
+        (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
+          (unless (eq receipt (fnn-log-spare-close-debt log))
+            (fnn-fault "log spare disposal lost its custody receipt"))
+          (if failure
+              (setf (second receipt) failure)
+            (setf (fnn-log-spare-close-debt log) nil)))
+        (sb-thread:with-mutex (*fnn-close-debts-lock*)
+          (unless (and (member entry *fnn-log-spare-discards* :test #'eq)
+                       (eq (first entry) :calling))
+            (fnn-fault "log spare disposal lost its queue receipt"))
+          (setf *fnn-log-spare-discards*
+                (delete entry *fnn-log-spare-discards* :test #'eq)))
+        (when failure (error failure))))))
+
+(defun fnn-log-discard-spare (log &optional receipt)
   "Close and unlink a spare that will not be renamed (another index, or the
 store closing).  Removing a staged name is never uncertain for the history:
-the open ignores and sweeps it."
-  (let ((spare (fnn-log-spare-take log)))
+the open ignores and sweeps it. RECEIPT is custody already taken by the
+off-lock drain; without it this call takes the spare itself."
+  (let ((spare (if receipt (first receipt) (fnn-log-spare-take log))))
     (when spare
       (destructuring-bind (index path fd) spare
         (declare (ignore index))
@@ -8567,7 +8623,12 @@ the open ignores and sweeps it."
               (when (fnn-lstat path) (fnn-unlink path)))
           (serious-condition (condition)
             (sb-thread:with-mutex ((fnn-log-spare-slot-lock log))
-              (setf (fnn-log-spare-close-debt log) (list spare condition)))
+              (if receipt
+                  (progn
+                    (unless (eq receipt (fnn-log-spare-close-debt log))
+                      (fnn-fault "log spare close lost its receipt"))
+                    (setf (second receipt) condition))
+                (setf (fnn-log-spare-close-debt log) (list spare condition))))
             (error condition)))))))
 
 (defun fnn-log-prepare-spare (store)
@@ -8617,7 +8678,7 @@ fnn-log-prepare-spare made it off the mutex) is renamed into journal/ under
 its segment name (cut rotate-renamed) and becomes the active segment, its
 kernel fn-lgc-rotate of the closed one's (fn-lgc-rotate-refines:
 fn-lgs-rotate's abstraction, the kernel recovery derives from its zeros:
-fn-lgs-rotate-is-the-recovered-kernel).  The rename is the only I/O here:
+fn-lgs-rotate-is-the-recovered-kernel). The namespace barrier is deferred:
 journal/'s fence (cut rotate-durable) is fnn-log-make-durable's, taken by
 the new segment's first fence and by the checkpoint that names it, both off
 the owner mutex; until then no member in the new segment is acknowledged
@@ -8629,7 +8690,8 @@ its head's trailer, which the open checks the head against
 (fnn-log-lineage-genesis).  No spare of the next index: refused (spare-unprepared), the
 closed segment stays active; the caller prepares one and asks again.  A
 rename whose outcome is unknown is a recovery event (the name may or may not
-be in journal/ while the closed segment would take more records)."
+be in journal/ while the closed segment would take more records). A definite
+rename refusal stages physical spare disposal for the caller's off-lock drain."
   (let* ((log (fnn-store-log store))
          (ks (fnn-log-kernel log))
          (next (fnn-core 'fn-lgs-next-segment (fnn-log-index log))))
@@ -8659,7 +8721,7 @@ be in journal/ while the closed segment would take more records)."
             ;; :unsupported: nothing was renamed.
             (fnn-unwind-cleanups
                 ((fnn-refuse "rotation refused reason=spare-rename-~(~a~)" renamed))
-              (fnn-log-discard-spare log)))
+              (fnn-log-defer-discard-spare log)))
           (fnn-log-at :rotate-renamed)
           ;; The head (lane store-lineage; books/store-log-lineage.lisp): the
           ;; rotation entry chained from the closed segment's last trailer,
@@ -8734,8 +8796,10 @@ Every later call answers the same uncertainty without touching the disk."
   "The whole P-ROTATE in one thread, for a store no owner serves (`store
 compact', `store reclaim'): the spare, the switch, journal/'s fence."
   (fnn-log-prepare-spare store)
-  (prog1 (fnn-log-rotate store)
-    (fnn-log-make-durable (fnn-store-log store))))
+  (fnn-unwind-cleanups
+      ((prog1 (fnn-log-rotate store)
+         (fnn-log-make-durable (fnn-store-log store))))
+    (fnn-log-drain-spare-discards (fnn-store-log store))))
 
 (defun fnn-log-covered-indices (store first)
   "The segments present below FIRST (a checkpoint's first suffix segment)."

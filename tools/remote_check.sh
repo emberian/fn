@@ -61,8 +61,8 @@
 #      Then
 #      then runs `make T` there (T = check-lane by default; `--cmd
 #      'COMMAND'` runs that shell command in the tree instead, e.g. one test
-#      module; `--regen` runs tools/ledger.py --write, tools/current_view.py
-#      --write and tools/hot_path_check.py --refresh-stale and fetches the five
+#      module; `--regen` runs tools/ledger.py --write and
+#      tools/hot_path_check.py --refresh-stale and fetches the two committed
 #      files they write) with the box's own
 #      FN_ACL2 and FN_CERT_CACHE (tools/farm.py HOSTS), under swarm-build on
 #      hbox, logging to --log BOXPATH (a path ON THE BOX; default
@@ -73,7 +73,7 @@
 #      auto: tools/chain_schedule.py) unless this shell sets FN_CERTIFY_JOBS;
 #   6. prints the log's step table, copies the log to
 #      build/remote-check/BOX-T.log here, rsyncs each --fetch PATH (a file or
-#      directory of the tree, e.g. planning/ledger.json) back into this
+#      directory of the tree, e.g. planning/proofs.json) back into this
 #      worktree, and exits with make's own status.  A fetched file is written
 #      here only when this worktree's copy is still the one shipped in step 4:
 #      one edited, committed or merged here while the box ran is kept, and the
@@ -168,8 +168,8 @@ if [ -n "$CMD" ] && [ $REGEN = 1 ]; then echo "remote_check: --cmd and --regen a
 if [ $REGEN = 1 ]; then
     # hot_path_check --refresh-stale drops listed finds that no longer occur
     # (item 76: dev's own STALE entries kept `make check` red at every head).
-    CMD='python3 tools/ledger.py --write && python3 tools/current_view.py --write && python3 tools/hot_path_check.py --refresh-stale'
-    FETCH="$FETCH planning/ledger.json planning/ledger.md planning/proofs.json planning/current.md planning/hot-path-findings.json"
+    CMD='python3 tools/ledger.py --write && python3 tools/hot_path_check.py --refresh-stale'
+    FETCH="$FETCH planning/proofs.json planning/hot-path-findings.json"
 fi
 sq() { printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"; }
 # What gets installed first: roots (closure-scoped), the whole tree, or nothing.
@@ -218,6 +218,10 @@ fi
 # The tests point these at a local directory and a local shell.
 BASE=${FN_REMOTE_CHECK_BASE:-$BASE}
 WRAP=${FN_REMOTE_CHECK_WRAP-$WRAP}
+# The wrap runs as an argument of the phase timer (a shell function), where a
+# leading VAR=value is a command name, not an assignment; `env` reads both
+# spellings ("SWARM_MEM_MAX=16G swarm-build" and "swarm-build").
+[ -z "$WRAP" ] || WRAP="env $WRAP"
 SSH=${FN_REMOTE_CHECK_SSH:-ssh -o ServerAliveInterval=30 -o ControlMaster=auto -o ControlPersist=600 -o ControlPath=~/.ssh/fn-remote-check-%r@%h:%p}
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {

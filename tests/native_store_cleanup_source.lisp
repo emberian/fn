@@ -3,9 +3,11 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
+
 (defvar *fnn-store-failed-open-custody* nil)
 (defstruct fnn-store completion-pending log lock-fd fenced close-debt application-close-debts)
-(defstruct fnn-log fd spare spare-close-debt active-close-debt reseat-custody)
+(defstruct fnn-log fd spare spare-close-debt active-close-debt reseat-custody
+  (spare-slot-lock (sb-thread:make-mutex)))
 (defvar *fnn-arena-release-custody* nil)
 (defconstant +fnn-lock-un+ 8)
 (defvar *calls* nil)
@@ -21,7 +23,7 @@
 (with-open-file (input "host/native/io.lisp")
   (loop for form = (read input nil :eof) until (eq form :eof) do
     (when (and (consp form) (member (car form) '(defun defmacro))
-               (member (second form) '(fnn-arena-return-observation fnn-unwind-cleanups fnn-store-close fnn-log-discard-spare fnn-store-failed-open-close fnn-log-close-active)))
+               (member (second form) '(fnn-arena-return-observation fnn-unwind-cleanups fnn-store-close fnn-log-spare-take fnn-log-spare-peek fnn-log-spare-install fnn-log-spare-clear fnn-log-discard-spare fnn-store-failed-open-close fnn-log-close-active)))
       (eval form))))
 ;; The escape arm of fnn-unwind-cleanups (cleanup-escalate, review M3d): the
 ;; deployed fnn-escape-cleanup-failed and the ACL2 decisions it calls.  A

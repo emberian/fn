@@ -843,6 +843,15 @@ def main(argv=None) -> int:
         print("interface_emit: :class/:kinds as the image build checks them: {} "
               "disagreement(s), {} declaration(s) the source cannot judge".format(
                   len(judged), skipped))
+        # def-carried's completeness at the image: every declared entry that
+        # returns the carried state is listed or owed (tools/carried_entries.py)
+        from tools import carried_entries
+        carried_problems, carried_undecided = carried_entries.findings(decls, interface_kinds)
+        problems += carried_problems
+        print("interface_emit: def-carried completeness as the image build checks it: {} "
+              "finding(s), {} entr(ies) the source cannot decide (listed by "
+              "tools/carried_entries.py, not failures)".format(
+                  len(carried_problems), len(carried_undecided)))
         keystone_problems, unresolved = keystone_findings(decls)
         problems += keystone_problems
         print("interface_emit: keystones, the formula-mentions-its-target half of "

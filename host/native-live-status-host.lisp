@@ -152,7 +152,11 @@
                                    ;; funded and ceiling values, from the
                                    ;; owner's carry (no history walk;
                                    ;; fn-lim-reported-triple-is-the-decisions).
-                                   (fn-owner-limit-report state)))
+                                   (fn-owner-limit-report state)
+                                   ;; The history-root refresh's status
+                                   ;; (books/history-root-status.lisp): a line,
+                                   ;; not a state, so the exit code is unchanged.
+                                   (fn-owner-hroot-status-lines state)))
                           ;; PRF-211: `status' ends with the capacity line
                           ;; (books/public-exposure.lisp fn-exp-capacity-line);
                           ;; HST-026: then the disk line.
@@ -160,7 +164,8 @@
                            (append (fn-owner-exposure-capacity state)
                                    (fn-otm-disk-lines sched)
                                    ;; PRF-996: the limit lines, as `health'.
-                                   (fn-owner-limit-report state)))
+                                   (fn-owner-limit-report state)
+                                   (fn-owner-hroot-status-lines state)))
                           (t nil))))))))
         (list (fn-nls-page buffer offset)
               (if stored cached (fn-nls-cache-put kind buffer cached))))))))

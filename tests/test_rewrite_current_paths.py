@@ -14,6 +14,6 @@ class CurrentPaths(unittest.TestCase):
                       (ROOT / 'host/interfaces.lisp').read_text())
 
     def test_evidence_instructions_do_not_force_add_ignored_bytes(self):
-        for rel in ('.gitignore', 'tests/README.md', 'tools/evidence_manifests.py'):
+        for rel in ('.gitignore', 'tests/README.md'):
             with self.subTest(path=rel):
                 self.assertNotIn('git add -f', (ROOT / rel).read_text())

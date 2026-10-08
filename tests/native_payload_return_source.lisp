@@ -4,6 +4,7 @@
 (load "tests/native_arena_return_source.lisp")
 (in-package "ACL2")
 
+
 (defun member-equal (x xs) (member x xs :test #'equal))
 (with-open-file (in "books/payload-view-lease.lisp")
   (loop for f = (read in nil :eof) until (eq f :eof) do

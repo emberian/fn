@@ -320,7 +320,7 @@ and ends the connection (the client keeps what the kernel took)."
 
 (defun fnn-mux-wake-locked (loop)
   "LOOP's LOCK held: one octet to the wake pipe, unless the loop has closed
-(its descriptors are closed under LOCK after CLOSED is set, so a write here
+(CLOSED is set under LOCK before descriptors are claimed for close, so a write here
 never reaches a number the kernel may have reused)."
   (unless (fnn-mux-loop-closed loop)
     (let ((one (fnn-make-octets 1)))
@@ -466,7 +466,7 @@ failed effects remain discoverable while independent physical cleanup runs."
              (fnn-mux-cleanup-attempt
               loop conn (list :response-window capture)
               (lambda ()
-                (fnn-owner-response-window-close service capture (fnn-mux-conn-class conn)))
+                (fnn-owner-response-window-close service capture (fnn-mux-read-class loop conn)))
               :window-closed nil)
              (fnn-mux-cleanup-attempt
               loop conn :output-discard
@@ -828,8 +828,12 @@ contract, without blocking the loop)."
 (defun fnn-mux-after (loop conn after)
   ;; All windows, including a partial socket write's pending suffix, have
   ;; drained.  A replacement catalog is now safe for this connection.
+  ;; The reply's settlement is the read's (fnn-mux-read-class): a peer read
+  ;; answered under the disk-slow posture must not wait here for the batch in
+  ;; flight, or the connection reads nothing more until the barrier ends
+  ;; (PKT-858; CONVERGE-3, test_a_peer_is_told_to_retry_while_the_disk_is_slow).
   (fnn-owner-response-window-close (fnn-mux-service loop) (fnn-mux-conn-response-capture conn)
-                                   (fnn-mux-conn-class conn))
+                                   (fnn-mux-read-class loop conn))
   (fnn-owner-response-unpin (fnn-mux-service loop) (fnn-mux-conn-cid conn))
   ;; Output progress (Codex r67 F3, Astra c07): a reply whose drain outlasted
   ;; its step -- it waited on the socket or yielded at a cursor -- ends now,
@@ -1757,32 +1761,45 @@ queued); nothing otherwise."
         (sb-thread:condition-broadcast (fnn-owner-service-commit-ready service))))))
 
 (defun fnn-mux-close-wake (loop)
-  "Close each owned wake descriptor once, independently. EIO/EINTR retains
-its descriptor and calling receipt; physical uncertainty never permits retry."
-  (let ((service (fnn-mux-service loop)) (conditions nil))
+  "Claim each wake descriptor under M, close off M, then settle its receipt.
+CLOSED must already exclude writers. A calling or failed receipt is never
+retried; an unobserved close retains the descriptor as physical debt."
+  (let ((service (fnn-mux-service loop)) (conditions nil) (taken nil))
     (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+      (unless (fnn-mux-loop-closed loop)
+        (fnn-fault "mux wake close before loop stopped"))
       (dolist (slot '(:read :write))
         (let ((fd (if (eq slot :read) (fnn-mux-loop-wake-read loop)
                     (fnn-mux-loop-wake-write loop))))
           (when (and fd (not (assoc slot (fnn-mux-loop-wake-receipts loop))))
-            (let ((receipt (%make-fnn-mux-cleanup-receipt :key (list :wake slot fd))))
+            (let ((receipt (%make-fnn-mux-cleanup-receipt
+                            :key (list :wake slot fd) :stage :calling)))
               (push (cons slot receipt) (fnn-mux-loop-wake-receipts loop))
-              (handler-case
-                  (progn
-                    (setf (fnn-mux-cleanup-receipt-stage receipt) :calling)
-                    (let ((answer (sb-posix:close fd)))
-                      (setf (fnn-mux-cleanup-receipt-stage receipt) :returned
-                            (fnn-mux-cleanup-receipt-value receipt) answer)
-                      (unless (eql answer 0) (fnn-fault "mux wake close returned ~s" answer))
-                      (if (eq slot :read) (setf (fnn-mux-loop-wake-read loop) nil)
-                        (setf (fnn-mux-loop-wake-write loop) nil))
-                      (setf (fnn-mux-cleanup-receipt-section-returned receipt) t)))
-                (serious-condition (condition)
-                  (setf (fnn-mux-cleanup-receipt-condition receipt) condition)
-                  (push condition conditions)
-                  (fnn-mux-cleanup-debt loop nil receipt))))))))
-    ;; Fault escalation outside inbox exclusion, after both closes attempted.
-    ;; A diagnostic escape leaves every receipt discoverable on the loop.
+              (push (list slot fd receipt) taken))))))
+    (dolist (entry (nreverse taken))
+      (destructuring-bind (slot fd receipt) entry
+        (let ((answer nil) (failure nil))
+          (handler-case (setq answer (sb-posix:close fd))
+            (serious-condition (condition) (setq failure condition)))
+          (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+            (handler-case
+                (progn
+                  (unless (and (eq receipt (cdr (assoc slot (fnn-mux-loop-wake-receipts loop))))
+                               (eql fd (if (eq slot :read) (fnn-mux-loop-wake-read loop)
+                                         (fnn-mux-loop-wake-write loop))))
+                    (fnn-fault "mux wake close lost descriptor custody"))
+                  (when failure (error failure))
+                  (setf (fnn-mux-cleanup-receipt-stage receipt) :returned
+                        (fnn-mux-cleanup-receipt-value receipt) answer)
+                  (unless (eql answer 0) (fnn-fault "mux wake close returned ~s" answer))
+                  (if (eq slot :read) (setf (fnn-mux-loop-wake-read loop) nil)
+                    (setf (fnn-mux-loop-wake-write loop) nil))
+                  (setf (fnn-mux-cleanup-receipt-section-returned receipt) t))
+              (serious-condition (condition)
+                (setf (fnn-mux-cleanup-receipt-condition receipt) condition)
+                (push condition conditions)
+                (fnn-mux-cleanup-debt loop nil receipt)))))))
+    ;; Fault escalation follows both attempts, outside inbox exclusion.
     (dolist (condition (nreverse conditions))
       (fnn-owner-install-or-end
        (lambda () (fnn-owner-thread-escape service condition "mux wake close"))

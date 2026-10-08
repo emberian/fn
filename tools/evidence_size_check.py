@@ -54,9 +54,9 @@ def relative_name(path: Path, root: Path) -> str | None:
 
 
 def in_scope(name: str) -> bool:
-    # planning/evidence/ is the evidence archive's working directory: ignored
-    # (.gitignore), filed by hash through tools/evidence_store.py, and dropped
-    # from history by the 2026-10-02 rewrite, so nothing there is committed.
+    # planning/evidence/ is the retired archive's working directory: ignored
+    # (.gitignore) and dropped from history by the 2026-10-02 rewrite, so
+    # nothing there is committed.
     return (name.startswith("planning/") and not name.startswith("planning/evidence/")
             and not name.startswith(COMMIT_MAP_PREFIX)
             and name.endswith(RAW_LOG_SUFFIXES))

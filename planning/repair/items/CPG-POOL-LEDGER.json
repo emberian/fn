@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/def-representation-pageread.lisp",
+ "id": "CPG-POOL-LEDGER",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-pool",
+ "state": "open",
+ "title": "Eviction in adt-pr-fill is least-recent; 'a frame the ledger allows' (books/page-read-ledger.lisp, page-read-pool-state.lisp) is not modelled because one reader pins nothing. Owed: when a read holds a frame across a yield (served ARTICLE with a body in flight), eviction must skip pinned frames and the residency bound must count them: statement adt-pr-fill-pinned.",
+ "updated": "2026-10-07T23:29:28Z"
+}

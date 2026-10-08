@@ -22,9 +22,12 @@
 (defun fnn-mux-output-window (conn octets end)
   (declare (ignorable conn octets end))
   (harness-stub-reached 'fnn-mux-output-window "host/native/mux.lisp"))
-(defun fnn-mux-read-class (loop conn)
-  (declare (ignorable loop conn))
-  (harness-stub-reached 'fnn-mux-read-class "host/native/mux.lisp"))
+(defun fnn-mux-send-look (conn)
+  (declare (ignorable conn))
+  (harness-stub-reached 'fnn-mux-send-look "host/native/mux.lisp"))
+(defun fnn-mux-send-observation (conn)
+  (declare (ignorable conn))
+  (harness-stub-reached 'fnn-mux-send-observation "host/native/mux.lisp"))
 (defun fnn-mux-write-now (conn)
   (declare (ignorable conn))
   (harness-stub-reached 'fnn-mux-write-now "host/native/mux.lisp"))
@@ -36,6 +39,9 @@
 (defun fnn-owner-connection-call (service operation thunk)
   (declare (ignorable service operation thunk))
   (harness-stub-reached 'fnn-owner-connection-call "host/native/owner.lisp"))
+(defun fnn-owner-peer-read-class (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-peer-read-class "host/native/owner.lisp"))
 ;;; ---- derived stubs: END ----
 ;;; Actual native cursor/mux functions with mocked I/O and ACL2 dispatch.
 ;;; This discriminates poll/control flow, not ACL2 semantics or image custody.
@@ -99,8 +105,8 @@
 (defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defun fnn-owner-monotonic-ms () *clock*)
 (defun fnn-now () 1000)
-(defun fnn-owner-cold-poll (service read first-miss since)
-  (declare (ignore service))
+(defun fnn-owner-cold-poll (service read first-miss since &optional class)
+  (declare (ignore service class))
   (setf *poll-args* (list read first-miss since))
   (values *poll-word* since *clock* nil))
 (defun fnn-mux-queue (loop conn octets op after &optional end)
@@ -114,7 +120,10 @@
   ;; The plans here are the cursor's own (:original, :advanced), never an
   ;; ARTICLE preflight or article plan.
   (case name (fn-splan-cursor-resume-ms 1) (fn-splan-at-cursorp nil)
-    ((fn-asto-preflight-planp fn-asto-plan-articlep fn-asto-plan-cursorp) nil)
+    ;; fn-owner-article-preflight-unavailable answers NIL for a plan with no
+    ;; preflight (owner-host.lisp): a cursor plan has none, so the refusal stands.
+    ((fn-asto-preflight-planp fn-asto-plan-articlep fn-asto-plan-cursorp
+      fn-owner-article-preflight-unavailable) nil)
     (otherwise (error "Unexpected core call ~s" name))))
 (defun fnn-mux-plan-yield (&rest args)
   (declare (ignore args)) (error "Cold read is distinct from empty progress"))
@@ -157,7 +166,7 @@
                  fnn-owner-render-next-quantum fnn-owner-feed-logical))
 (load-selected "host/native/mux.lisp"
                '(fnn-mux-loop fnn-mux-conn +fnn-mux-cold-poll-ms+ fnn-mux-service
-                 fnn-mux-render-next fnn-mux-plan-cold fnn-mux-queue-plan
+                 fnn-mux-render-next fnn-mux-read-class fnn-mux-plan-cold fnn-mux-queue-plan
                  fnn-mux-flush fnn-mux-cold-check))
 (let ((loop (%make-fnn-mux-loop :service :service))
       (conn (%make-fnn-mux-conn :cid 7)))

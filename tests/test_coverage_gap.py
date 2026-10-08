@@ -34,20 +34,13 @@ class Tree:
         self.lanes = Path(d.name) / "lanes"
         self.acks = self.root / "planning/repair/ACKS.md"
         self.acks.write_text("# header\n")
-        self.status()
         self.catalog([])
         self.tiers([])
-        self.evidence([])
 
     def item(self, id, state="open", **kw):
         self.items.append(id)
         d = {"id": id, "state": state, "owner": "nobody", "notes": [], **kw}
         (self.root / f"planning/repair/items/{id}.json").write_text(json.dumps(d))
-        self.status()
-
-    def status(self):
-        (self.root / "planning/repair/STATUS.md").write_text(
-            f"# s\n\nGenerated 2026-10-06 16:05 UTC. Items: {len(self.items)}.\n")
 
     def catalog(self, scenarios):
         (self.root / "tests/scenarios/catalog.json").write_text(json.dumps({"scenarios": scenarios}))
@@ -55,10 +48,6 @@ class Tree:
     def tiers(self, modules):
         rows = "".join(f"smoke\tmodule\t{m}\tPEER\twhy\n" for m in modules)
         (self.root / "tests/scenarios/tiers.tsv").write_text("# c\n" + rows)
-
-    def evidence(self, paths):
-        rows = "".join(f"{SHA} 10 {p}\n" for p in paths)
-        (self.root / "planning/evidence-index.tsv").write_text("# i\n" + rows)
 
     def claim(self, id, worker="w", op="claim"):
         with open(self.claims, "a") as f:
@@ -130,12 +119,6 @@ class Dispositions(unittest.TestCase):
         self.t.acks.write_text("ratchet:loop_call_check:f.lisp \u2014 r \u2014 w\n")
         self.assertEqual(self.t.run()["findings"], [])
 
-    def test_stale_status_md_is_a_finding(self):
-        self.t.item("A")
-        self.t.items.append("phantom")
-        self.t.status()
-        self.assertTrue(any("stale" in f for f in self.t.run()["findings"]))
-
 
 class FailClosed(unittest.TestCase):
     def setUp(self):
@@ -184,7 +167,6 @@ class NeverRun(unittest.TestCase):
 
     def test_scenario_without_a_recorded_log_is_never_run(self):
         self.t.catalog([self.scn("SCN-1"), self.scn("SCN-2", log="planning/evidence/a.log")])
-        self.t.evidence(["planning/evidence/a.log"])
         r = self.t.run()
         self.assertEqual(r["never_run_unacked"], ["SCN-1"])
 
@@ -197,9 +179,9 @@ class NeverRun(unittest.TestCase):
         self.t.catalog([self.scn("SCN-5", log="l.log")])
         self.assertEqual(self.t.run()["never_run"], [])
 
-    def test_module_named_by_an_evidence_path_is_run_and_a_prefix_is_not(self):
+    def test_module_named_by_a_cited_log_is_run_and_a_prefix_is_not(self):
         self.t.tiers(["tests.test_native_peer", "tests.test_native_peer_pull", "tests.test_native_other"])
-        self.t.evidence(["planning/evidence/x/test-tests.test_native_peer_pull.log"])
+        self.t.catalog([self.scn("SCN-9", log="planning/evidence/x/test-tests.test_native_peer_pull.log")])
         self.assertEqual(sorted(i for i, _, _ in self.t.run()["never_run"]),
                          ["tests.test_native_other", "tests.test_native_peer"])
 

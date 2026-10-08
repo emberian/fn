@@ -306,18 +306,26 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/pgs-frame-fill-tests \
 	books/def-representation-lib \
 	books/def-representation-pages \
+	books/checkpoint-payload-ref \
+	books/checkpoint-payloads \
+	books/checkpoint-payloads-extent \
 	books/paged-checkpoint \
 	books/catalog-pages \
 	books/paged-checkpoint-host \
 	books/paged-checkpoint-exec \
 	books/paged-checkpoint-stage \
+	books/paged-checkpoint-image \
+	books/paged-checkpoint-open \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
 	tests/acl2/def-representation-pages-tests \
 	tests/acl2/paged-checkpoint-tests \
 	tests/acl2/paged-checkpoint-host-tests \
+	tests/acl2/checkpoint-payloads-tests \
 	tests/acl2/paged-checkpoint-exec-tests \
 	tests/acl2/paged-checkpoint-stage-tests \
+	tests/acl2/paged-checkpoint-image-tests \
+	tests/acl2/paged-checkpoint-open-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
@@ -640,6 +648,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/heap-store-figure \
 	books/heap-figure \
 	books/history-root-figure \
+	books/history-root-status \
 	books/heap-open-nursery \
 	tests/acl2/heap-open-nursery-tests \
 	books/send-progress \
@@ -827,6 +836,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/store-log-txid \
 	tests/acl2/store-log-txid-tests \
 	books/owner-batch \
+	books/store-log-failed-barrier \
 	tests/acl2/owner-batch-tests \
 	books/store-log-decode \
 	tests/acl2/store-log-decode-tests \
@@ -2040,8 +2050,6 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/public-exposure-tests \
 	books/public-exposure-reply \
 	tests/acl2/public-exposure-reply-tests \
-	books/served-reply-buffer \
-	tests/acl2/served-reply-buffer-tests \
 	books/served-plan \
 	tests/acl2/served-plan-tests \
 	books/def-cursor \
@@ -2147,6 +2155,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-time-bars-tests \
 	books/owner-queued-work \
 	tests/acl2/owner-queued-work-tests \
+	books/owner-commit-held \
+	tests/acl2/owner-commit-held-tests \
+	books/owner-time-held \
+	tests/acl2/owner-time-held-tests \
+	books/owner-reconfig-phased \
+	books/owner-reconfig-lock \
+	tests/acl2/owner-reconfig-phased-tests \
+	books/owner-time-reconfig \
+	tests/acl2/owner-time-reconfig-tests \
+	tests/acl2/owner-reconfig-lock-tests \
 	books/feed-journal-order \
 	tests/acl2/feed-journal-order-tests \
 	tests/acl2/tls-handshake-budget-tests \
@@ -2423,8 +2441,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-image-builder-tests \
 	tests/acl2/history-image-binding-tests \
 	tests/acl2/history-image-campaign-tests \
+	books/image-world-part-1 \
+	books/image-world-part-2 \
+	books/image-world-part-3 \
 	books/image-world \
+	books/image-world-dtn-part-1 \
+	books/image-world-dtn-part-2 \
+	books/image-world-dtn-part-3 \
 	books/image-world-dtn \
+	books/image-world-store-test-part-1 \
+	books/image-world-store-test-part-2 \
 	books/image-world-store-test \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
@@ -2648,17 +2674,13 @@ extract-check:
 site:
 	$(PYTHON) site/build_site.py --out build/site
 
-# `make check` for a lane worktree: planning/ledger.json, ledger.md and
-# current.md are regenerated into one temporary directory and compared there
-# (printed, never failing) instead of against the committed files, which a
-# lane must not commit.  Their generation still has to succeed, and every
-# other check is the same.
+# `make check` for a lane worktree (FN_LANE_CHECK set; every check is the same).
 # Every pre-image gate for a host-code conversion, as one target (item 34):
 # world.py --check, interface_emit --check, host_check --forward/--world/
 # --load FILE, and the certified-world class check (host_check's default).
 # On a box: tools/remote_check.sh auto --install-roots books/image-world --cmd 'make host-convert-check FILE=host/native/x.lisp'
 host-convert-check:
-	@$(PYTHON) tools/host_convert_check.py $(FILE)
+	@$(PYTHON) tools/host_check.py --convert $(FILE)
 
 check-lane:
 	FN_LANE_CHECK=1 FN_LANE_CHECK_DIR=$$(mktemp -d "$${TMPDIR:-/tmp}/fn-lane-check.XXXXXX") $(MAKE) check
@@ -2672,9 +2694,7 @@ check-lane:
 # docs fix can break, before a full check-lane (lanes asked for it after a
 # two-line registry fix cost a 25-minute round; batch BB, 2026-09-28).  Not a
 # gate: `make check` stays the gate.  Registry reciprocity, spec and reach
-# citations, the ledger and the current view (with FN_LANE_CHECK, as
-# check-fast-lane sets it, the ledger is regenerated into a temporary
-# directory and only printed, as in check-lane), docs_check, and every host/
+# citations, the ledger and the current view, docs_check, and every host/
 # file reads (host_check --read, half a second: stx-model-2's paren on a
 # comment line reached an image build; obstructions-9 item 80), and every
 # book an ld host file calls into is in the image world (host_check --books,
@@ -2682,7 +2702,6 @@ check-lane:
 # an image build).
 check-fast:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
-	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --read
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
 	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
@@ -2702,6 +2721,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_unhooked
 	@$(CHECK_STEP) $(PYTHON) tools/generator_twin_check.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_generator_twin_check
+	@$(CHECK_STEP) $(PYTHON) tools/harness_check.py --lint test-stubs --quiet
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_proof_repl_smoke
 	@$(CHECK_EXECUTE)
 
@@ -2746,15 +2766,8 @@ CHECK_EXECUTE = $(PYTHON) tools/check_steps.py execute $(CHECK_STEPS_DIR) \
 
 check:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
-# The committed evidence objects (tools/evidence_store.py: ledger --check and
-# current_view --check read them) are fetched once here, in parallel with
-# every step that does not read them, so no step spawns the rsync itself: a
-# step that does is untraceable and never cached (lane iter-arch, 2026-10-04:
-# 46 + 28 s on every check-fast of a fresh tree).  Objects are content-named,
-# so the cache is a shared cache to check_steps, not an input.
-	@$(CHECK_STEP_WARM) $(PYTHON) tools/evidence_store.py fetch --all
 # The analysed tree (tools/ledger.py load_tree, persisted by its inputs'
-# digest under build/cache/ledger-tree) that check_scaffold, certified_claims,
+# digest under build/cache/ledger-tree) that check_scaffold,
 # current_view, depth_check, harness_check, interface_emit and spec_cite_check
 # read: about four minutes cold on persvati, 87% of it the whole-tree suspect
 # pass.  Analysed once here, while the steps that do not read it already run;
@@ -2798,15 +2811,11 @@ check:
 # encodings; the files that still carry a section sign are listed debt
 # (tools/ascii_debt.json, PKT-496) that may only shrink.
 	@$(CHECK_STEP) $(PYTHON) tools/ascii_check.py --strict
-# A certified registry row must name existing ACL2 events whose defining
-# books have source- and include-closure-compatible manifest evidence, and
-# must itself cite an archived manifest that certified each event book at its
-# current digest. Any warning fails; --explain PRF-xxx names the manifest.
-	@$(CHECK_STEP) $(PYTHON) tools/certified_claims.py
-# planning/current.md, the per-capability current view, is generated from
-# planning/current-view.json and the tree (host call lines, keystones, the
-# archived manifests, the tested and deployed images' source digests); this
-# fails when it is stale or names something absent.
+# The per-capability current view (`python3 tools/current_view.py` prints it)
+# is computed from planning/current-view.json and the tree (host call lines,
+# keystones, the record box's cert cache, the tested and deployed images'
+# pinned source digests); this fails when it cannot be built or names
+# something absent.
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 # The fastest passed attempt at each current book/include closure, grouped by
 # host and toolchain. The ten-second rule (D26) over
@@ -2815,7 +2824,7 @@ check:
 # figure is UNQUIET, a failed attempt FAILED. Installed pairs have no proof time.
 	@$(CHECK_STEP) $(PYTHON) tools/proof_cost.py
 # The throughput gate (PKT-407): the newest hbox run under
-# planning/evidence/throughput/ for HEAD or its nearest measured ancestor,
+# planning/throughput/ for HEAD or its nearest measured ancestor,
 # against planning/throughput-baseline.json per operation (25% or the
 # metric's floor); a regression fails unless planning/throughput-causes.json
 # names the run's revision with a reason.  No run: NOT MEASURED, passes.
@@ -2831,8 +2840,7 @@ check:
 # Every host file is loaded by a build (Q7k): an image, the extraction world
 # or the store-test image; a prototype, a retired host or a test harness in
 # host/ is refused (KNOWN, shrink-only, names an exception with why).
-	@$(CHECK_STEP) $(PYTHON) tools/host_loaded_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_loaded_check
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --loaded
 # Every tests/*.sh witness says its class (raw: tests.test_native_raw_scripts
 # runs it; needs-image/needs-acl2: the convergence checklist names it;
 # helper) and a scenario-catalog row cites it (KNOWN shrink-only).
@@ -2873,19 +2881,6 @@ check:
 # walk spelled by hand instead of through a named projection is drift and is
 # counted, not failed (--strict fails on those too).  Mechanical, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/session_depth.py
-# Every certification claim in this tree cites a run directory under
-# `build/`, which `.gitignore:6` excludes: the directory exists only on the
-# box that ran it, and a worktree removal, a farm root or a gate reaper
-# deletes it.  At dev 5698648, 314 run ids were cited in tracked files and
-# none resolved, so a reader could not check a single one.  The manifest is
-# the claim: its bytes are archived by hash and its logical name under
-# planning/evidence/manifests/ is committed in evidence-index.tsv; this fails
-# on a NEWLY cited run with no committed manifest and tolerates the 177 the
-# lane could not recover, which are named in that directory's LOST.txt.
-# `--strict` fails on those too, once their owners re-run or retract them.
-# Mechanical, no ACL2.  `tools/cite_check.py` is the same family for
-# repository paths and deliberately does not read `build/`.
-	@$(CHECK_STEP) $(PYTHON) tools/evidence_manifests.py check
 # The teeth audit's static half: assertions that exercise ACL2 rather than fn,
 # recognisers that no test ever makes TRUE, keystones with no witness in any
 # test book, and citations of theorems the tree no longer defines.  It needs
@@ -2900,7 +2895,7 @@ check:
 # with no non-empty witness of the same function in the book pins a defect
 # as the expected value (stx-model: stx-policy's empty laces).  Warn-only;
 # tools/null_witness_allow.json names the accepted ones.
-	@$(CHECK_STEP) $(PYTHON) tools/null_witness_lint.py
+	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --null-witness
 # Two static lints over the harness, both from the 2026-09-19 incident: a
 # host entry point gained a required keyword-only argument, two callers in
 # tests/ were never updated, and both integration labs were dead for a day
@@ -2921,13 +2916,13 @@ check:
 # (tests/acl2/must-fail-checked.lisp), which translates the body's claim
 # first and so makes certification refuse such a tooth; this fails on a bare
 # must-fail unless its line declares `; must-fail-ok: <reason>`.
-# `--convert` rewrites bare ones after a merge.  Static, no ACL2.
-	@$(CHECK_STEP) $(PYTHON) tools/must_fail_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_must_fail_check
+# `--must-fail --convert` rewrites bare ones after a merge.  Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --must-fail
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_teeth_check.MustFailCheckTests tests.test_teeth_check.NullWitnessTests
 # A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
 # that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
 	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py
-	@$(CHECK_STEP) $(PYTHON) tools/holder_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/lock_discipline_check.py --holders
 # Every node thread runs on a 1,024 KiB control stack, and a non-tail
 # recursion costs a frame per step: LIST ACTIVE and GROUP stopped the owner
 # past ~30,000 articles in fn-nntp-group-low (PKT-877), the open in
@@ -2940,12 +2935,9 @@ check:
 # lane serve-depth's head.
 	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
-# The raw host code (host/native/*.lisp) runs on the same 1,024 KiB stack and
-# depth_check reads only ACL2 functions: every non-tail recursion there is in
-# tools/raw_depth_baseline.json with its bound named (lane depth-debt; the
-# mux's per-step re-entry and the BP effect chain were loops made here).
-	@$(CHECK_STEP) $(PYTHON) tools/raw_depth_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_raw_depth_check
+# depth_check also reads the raw host code (host/native/*.lisp: the "raw" section
+# of the same baseline; the mux's per-step re-entry and the BP effect chain were
+# loops made by lane depth-debt).
 # Clock arithmetic goes through books/clock-unit.lisp (PRF-374, PRF-378):
 # arithmetic on an observation's fields at a call site assumed a unit twice
 # (bug M1; the vacuous record-level expiry).  tools/clock_unit_baseline.json
@@ -3001,12 +2993,11 @@ check:
 # `tools/tls_check.py --measure BUILD` names each compiled file's cost.
 	@$(CHECK_STEP) $(PYTHON) tools/tls_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_tls_check
-	@$(CHECK_STEP) $(PYTHON) tools/build_lists_check.py
-	@$(CHECK_STEP) $(PYTHON) tools/attach_order_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --build-lists
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --attach-order
 # A host macro used before its definition in load order compiles as a
 # function call (batch AW: every format-9 restart faulted; lane ops-fixes).
-	@$(CHECK_STEP) $(PYTHON) tools/host_macro_order_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_macro_order_check
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --macro-order
 # The raw files loaded in build.lisp's order into one bare ACL2 with SBCL's
 # warnings on (seconds, no image build): errors, arity, macro order and names
 # nothing defines (lane tooling-leftovers).  No ACL2: NOT RUN, exit 2.
@@ -3054,8 +3045,6 @@ check:
 # are grandfathered in a baseline that only shrinks. Static, no ACL2.
 	@$(CHECK_STEP) $(PYTHON) tools/evidence_size_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_evidence_size_check
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_build_lists_check
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_attach_order_check
 # Every ACL2 a tool or test starts takes the machine's pool and heap cap
 # (tools/acl2_slots.py run/popen/tree_slot; PKT-162, harness-repair).
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_acl2_launchers.LauncherRuleTests
@@ -3101,6 +3090,7 @@ check:
 	@$(CHECK_STEP) $(PYTHON) tools/reach_check.py --summary --strict
 	@$(CHECK_STEP) $(PYTHON) tools/keystone_emit.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/interface_emit.py --check
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_carried_entries
 	@$(CHECK_STEP) $(PYTHON) tools/cost_obligations.py --check
 # What the certified world says about each host-called entry (lane
 # coverage-crawler, 2026-09-29): planning/coverage.json is built from a dump
@@ -3133,8 +3123,7 @@ check:
 # each committed by a lane that never certified it, and every reader took
 # `git log` for certification.  The archived manifests had already recorded
 # those failures at exactly the digests the tree carried; nothing asked.  This
-# reads every manifest under planning/evidence/manifests/ plus this worktree's
-# unarchived runs and gives every root and every book in the roots' closure
+# asks the cert cache (and this worktree's run dirs) and gives every root and every book in the roots' closure
 # one of four answers: green at this digest, RED at this digest, never at this
 # digest, or never a requested root anywhere.  It REPORTS here -- 32 books are
 # red at their digest on this tree and are the certification lanes' worklist
@@ -3210,12 +3199,12 @@ model-test: certify
 # (PKT-305).  No module or test is over its budget.
 TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
-	    tests.test_evidence_manifests tests.test_green_check tests.test_certified_claims tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
+	    tests.test_green_check tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
 	    tests.test_test_budget tests.test_acl2_launchers tests.test_scenario_implementation tests.test_docs_check tests.test_post_docs \
 	    tests.test_farm tests.test_merge_registry tests.test_next_id tests.test_host_check_load tests.test_wait_for tests.test_native_harness tests.test_native_program_check \
 	    tests.test_hbox_native tests.test_acl2_slots tests.test_build_native_host tests.test_spec_cite_check tests.test_ascii_check tests.test_runpath_check tests.test_changelog tests.test_release_sequence tests.test_cut_release tests.test_fundamentals tests.test_check_steps tests.test_cert_cache_sync \
-	    tests.test_extract_gate tests.test_cert_images tests.test_coverage tests.test_resource_contract tests.test_premise_audit tests.test_alphabet_check tests.test_holder_check
+	    tests.test_extract_gate tests.test_cert_images tests.test_coverage tests.test_resource_contract tests.test_premise_audit tests.test_alphabet_check tests.test_lock_discipline_check.HolderCheck tests.test_lock_discipline_check.HolderCutMap
 tooling-test:
 	$(PYTHON) tools/test_budget.py $(TOOLING_TEST_MODULES)
 

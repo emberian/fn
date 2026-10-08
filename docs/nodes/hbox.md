@@ -5,8 +5,8 @@ Node #2, on ember's LAN machine hbox. It runs the 6.6.0 release
 installed on 2026-09-28 with its store exported and re-imported into format
 10. The public node is [fsn1](fsn1.md). Records:
 `planning/evidence/node-migrate-2026-09-28.md` and
-`planning/evidence/hbox-node-2026-09-28.md` (filed evidence;
-`python3 tools/evidence_store.py cat PATH`).
+`planning/evidence/hbox-node-2026-09-28.md` (historical: the bytes
+are in the hbox evidence archive, `/tank/fn/evidence`, which no tool reads).
 
 The node is owned by another Claude session (breadstuffs-89). Nothing on
 this page is a command to run: a stop, start, export or install on

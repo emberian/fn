@@ -1,0 +1,17 @@
+{
+ "category": "perf",
+ "file": "books/def-representation.lisp",
+ "id": "GEN-PAGED-GET-PER-OCTET",
+ "note": "fix: per-octet fn-arena-get callers on the served path (books/article-stream.lisp, nov-span-window, host/page-window-executor-host.lisp) use the range read (NAME$C-POOLR, per page, already faster than the hand code). Related: ARTICLE-RENDER-WALKS-FROM-WINDOW.",
+ "notes": [
+  "2026-10-07 lane s-vocab 5dfd7270b, persvati worst of 3 (s, GET 1K x2000 / 64K x100 / 1M x10): generated 0.06/0.20/0.34, hand 0.04/0.13/0.23 (GET 1.48x hand at 1 MiB, worst of 3). SEAL and READ beat the hand code (seal 1M 0.14 vs 0.25, read 1M 0.08 vs 0.14). Harness loop floor (null stobj call) 0.14 s per 10M.",
+  "Mechanism: a generated GET is two 3-level directory walks (row table, then pool), 12 dependent loads (stobj struct slot, array element, child struct slot, ...), against about 6 for the hand arena. The bounds checks are gone (the guard states the page lengths; corr implies them: adt-pg-corr-scalar-octets-row-in-pages) and the fast path is straight-line, so the remainder is load latency, about 10 ns per octet. A 2-level directory would be 8 loads, estimated about 0.26 on the 1M row: still a miss, and a 150-reference refactor of the corr model.",
+  "Cost on the served path: a 512 KiB ARTICLE (0.76 s today) pays about 5 ms, under 1%. Decision S3 2026-10-07: accept, and move the per-octet callers to the range read."
+ ],
+ "owner": "deputy-S",
+ "severity": "low",
+ "source": "s-vocab-4 GET gate, S3 ruling 2026-10-07",
+ "state": "open",
+ "title": "Generated paged arena GET costs about 10 ns per octet over the hand arena (12 vs 6 dependent loads); per-octet callers should use the range read",
+ "updated": "2026-10-07T23:00:00Z"
+}

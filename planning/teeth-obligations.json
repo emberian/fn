@@ -133,7 +133,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "15acd0910de56eb9b84f1835d04b30d78d22b7d7ef8595a2593194529a76518e",
+   "book_digest": "5cf2c3b6f6e168371f17466dde7e828e8ecf04e69ca6ad04ca138f3f46528d2b",
    "bounds": [],
    "claim_digest": "29b9acde2050b5b3991d51b794dbf3686ba9fc34b84279cad1558f51dc140c31",
    "class": "generated",
@@ -559,21 +559,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-arena-bytes-seal-buffer{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-bytes-seal-list{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-bytes-seal-range{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-arena-extent-get{correspondence}",
    "registry": true
   },
@@ -595,31 +580,6 @@
   {
    "class": "hand",
    "name": "fn-arena-extent-seal-extent{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-paged-clear{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-paged-get{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-paged-payload{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-paged-seal-buffer{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-paged-seal-range{correspondence}",
    "registry": true
   },
   {
@@ -690,21 +650,6 @@
   {
    "class": "hand",
    "name": "fn-arn-store-corr-of-open",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arp-add-page-step",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arp-seal-list-step",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arp-write-octet-step",
    "registry": true
   },
   {
@@ -1934,6 +1879,24 @@
    "registry": true
   },
   {
+   "book_digest": "82bebcb3ad7de90d9ea2234d261f02f6dd3e862d77c10414891ad7d8803bbc0f",
+   "bounds": [],
+   "claim_digest": "36b09d986dddfa6d34d71df0c4337c777649394274540bbee5cd5fae56b9b2e2",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-bpfj-next-candidate-is-a-ready-family-representative",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-fragment-step-job-tests.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-bpfj-next-candidate",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-bpfj-persist-step-is-the-persist-step",
    "registry": true
@@ -2467,21 +2430,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnf-family-next-memo-is-aux",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnf-family-next-selects-exactly-the-first-ready-family",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bpnf-family-plan-at-of-member",
    "registry": true
   },
@@ -2498,21 +2446,6 @@
   {
    "class": "hand",
    "name": "fn-bpnf-family-retain-other-rows-loop-is-rev-onto",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnf-family-select-is-aux",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnf-family-select-plans-bound",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnf-family-select-steps-bound",
    "registry": true
   },
   {
@@ -2657,16 +2590,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bpnj-scan-finds-the-held-job",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnj-scan-finds-the-selected-job",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bpnj-stale-job-result-settles-nothing",
    "registry": true
   },
@@ -2678,11 +2601,6 @@
   {
    "class": "hand",
    "name": "fn-bpnj-step-preserves-guard-premises",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnj-unique-keys-make-every-job-its-own-entry",
    "registry": true
   },
   {
@@ -6172,6 +6090,11 @@
   },
   {
    "class": "hand",
+   "name": "fn-dl-thread-loop-is-revappend",
+   "registry": true
+  },
+  {
+   "class": "hand",
    "name": "fn-duplicate-accepted-prepare-is-no-op",
    "registry": true
   },
@@ -8592,6 +8515,11 @@
   },
   {
    "class": "hand",
+   "name": "fn-lgc-failed-barrier-recovers-a-prefix",
+   "registry": true
+  },
+  {
+   "class": "hand",
    "name": "fn-lgc-log-len-is-the-log-length",
    "registry": true
   },
@@ -8604,6 +8532,24 @@
    "class": "hand",
    "name": "fn-lgc-sealed-extent-fits-the-batch",
    "registry": true
+  },
+  {
+   "book_digest": "156bcffceb940dbe00a1282251e58533bf91b30cb81d37628d7bc5d745903561",
+   "bounds": [],
+   "claim_digest": "8793a1a33db996d339b7cd5a3d39bc57ddd503a9b7e1547d9fbeeec609c7a736",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-lgc-take-never-joins-the-batch-in-flight",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-kernel-concrete-tests.lisp",
+   "registry": true,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-lgc-take",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -11702,11 +11648,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-oclc-ready-cst-relation-is-history-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-ocln-a-cold-line-is-answered-unavailable",
    "registry": true
   },
@@ -12277,11 +12218,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-olr-take-never-joins-the-batch-in-flight",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-omr-inspect-live-is-the-offline-report",
    "registry": true
   },
@@ -12723,6 +12659,150 @@
    "class": "hand",
    "name": "fn-orln-a-refused-cold-line-is-answered-unavailable",
    "registry": true
+  },
+  {
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "bounds": [],
+   "claim_digest": "dc91d17789c520a2091384ee94a7bc1f402a50cd842c6d10e6587610364818b3",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-accepted-keeps-the-owner-effects",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "bounds": [],
+   "claim_digest": "d5e679f5bcefba5fd4147127d653d3933bd6630fba72117d95052cc6fcbccb25",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-phased-answers-as-inline",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "bounds": [],
+   "claim_digest": "52235104b21461d6b36cad23367e51e02d825a3c13610ee78aeafb9d35381f45",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-phased-holds-the-owner-only-in-quanta",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "bounds": [],
+   "claim_digest": "2a0aaba72d72b379337769234a0596e16271e1c6eea2b952e4dcfa0ff23f7a16",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-phased-keeps-the-durable-effects",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "bounds": [],
+   "claim_digest": "d6d6757b616850dba31151e9d052e1007673a0e140ee7fa5a15c7ef3be51c1d0",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-orp-refusal-unstages-and-fence-keeps-the-stage",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "bounds": [],
+   "claim_digest": "79d2eb014025c342e228986c2bb7eb3c4a1b2f66e85e0f789ae1baf0298c23e5",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-orp-reservation-is-converted-or-released",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "bounds": [],
+   "claim_digest": "5d2de03f3f50d2c96cbbe799eeb14143677fb29b0c6e3be1586d0e2bcf44f1f4",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-step-holds-the-owner-only-in-quanta",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "bounds": [],
+   "claim_digest": "d7d6014a4bcc856b013987a2b20a1dbe2d472ca8bcfe952162fee27b5e1830f1",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-step-runs-the-phased-run",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -13237,11 +13317,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-otm-disk-effects-loop-is-rev-onto",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-otm-disk-effects-names-the-disk",
    "registry": true
   },
@@ -13279,6 +13354,78 @@
    "class": "hand",
    "name": "fn-otm-health-disk-stalled-names-the-stall",
    "registry": true
+  },
+  {
+   "book_digest": "44563ac2a789221752a73b7b3a369eb5e9b4b841db9c8fc30be8e18e5d00021a",
+   "bounds": [],
+   "claim_digest": "b3925e17401db7eb6a62c7bbf5ad488f656224e4c23ff6e12169900041b4e264",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-otm-held-quantum-2-answers-the-held-outcome",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-held-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "b3d186e16a82b627a7563aed25aed586a238d89658ca24b77f5cb1c7b9e23d15",
+   "bounds": [],
+   "claim_digest": "9508de54b9e09a2c0d7e3851669e50c51e72068726704d61c3f80d34b5627e39",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-otm-hold-admits-only-inspect-commit-and-reader",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-reconfig-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "b3d186e16a82b627a7563aed25aed586a238d89658ca24b77f5cb1c7b9e23d15",
+   "bounds": [],
+   "claim_digest": "b87d6d99a8058ca265dd636c6b56e7d63dd3b99760dee57c9a484929b91acfb2",
+   "class": "generated",
+   "mutations": "edits:3",
+   "name": "fn-otm-hold-begin-and-end",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-reconfig-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "b3d186e16a82b627a7563aed25aed586a238d89658ca24b77f5cb1c7b9e23d15",
+   "bounds": [],
+   "claim_digest": "4a176256a6c1eddba437b3da03c0469803f7ed8627086449e1bed0a874af27ff",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-otm-hold-stops-the-committer",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-reconfig-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -13517,11 +13664,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-owb-acknowledged-record-survives-crash",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-owb-append-preserves-alignment",
    "registry": true
   },
@@ -13538,21 +13680,6 @@
   {
    "class": "hand",
    "name": "fn-owb-batch-within-bounds",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-committed-record-survives-crash",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-failed-fence-image-is-admissible",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-failed-fence-is-the-crash-image",
    "registry": true
   },
   {
@@ -13592,11 +13719,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-owb-image-scan-of-related-state",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-owb-known-abort-preserves-alignment",
    "registry": true
   },
@@ -13612,37 +13734,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-owb-recover-establishes-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-recovered-kernel-after-a-failed-fence",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-related-state-is-the-sole-pending-writer",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-scan-of-related-content",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-owb-take-preserves-alignment",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-owb-take-preserves-bounds",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-uncertain-batch-recovers-to-a-prefix",
    "registry": true
   },
   {
@@ -13763,11 +13860,6 @@
   {
    "class": "hand",
    "name": "fn-own-feed-targets-omit-no-offerable-peer",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-own-feed-tick-loop-is-rev-onto",
    "registry": true
   },
   {
@@ -14641,7 +14733,7 @@
    "registry": true
   },
   {
-   "book_digest": "463926b7bfc053059b7299f7624b6226fe0669aa03be642ce3c9993bf96d5cc4",
+   "book_digest": "b93844a54fcebb6bb2fdaca38081a3bb9f2febbe6cb3cb08ab5339e375b26d24",
    "bounds": [],
    "claim_digest": "a43f763a5558da891bf9e9f8503cc2fbe3c87fbbca196fb7c5e57da61d39459c",
    "class": "generated",
@@ -14659,7 +14751,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "463926b7bfc053059b7299f7624b6226fe0669aa03be642ce3c9993bf96d5cc4",
+   "book_digest": "b93844a54fcebb6bb2fdaca38081a3bb9f2febbe6cb3cb08ab5339e375b26d24",
    "bounds": [],
    "claim_digest": "6acdf9a57a70e16cc61fe0c6a85ee6137189065747340eb73925a1bb01a279f0",
    "class": "generated",
@@ -14677,7 +14769,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "463926b7bfc053059b7299f7624b6226fe0669aa03be642ce3c9993bf96d5cc4",
+   "book_digest": "b93844a54fcebb6bb2fdaca38081a3bb9f2febbe6cb3cb08ab5339e375b26d24",
    "bounds": [],
    "claim_digest": "771d45e074784af1fa68b1b9004a8ed7699bc1228731aafafd808ce1ccf734e4",
    "class": "generated",
@@ -14695,7 +14787,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "463926b7bfc053059b7299f7624b6226fe0669aa03be642ce3c9993bf96d5cc4",
+   "book_digest": "b93844a54fcebb6bb2fdaca38081a3bb9f2febbe6cb3cb08ab5339e375b26d24",
    "bounds": [],
    "claim_digest": "b373f5ec45e07d3fdfe1f8d6fa453a070973ec603c8ba2e4cbb30739d5da5301",
    "class": "generated",
@@ -14713,7 +14805,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "463926b7bfc053059b7299f7624b6226fe0669aa03be642ce3c9993bf96d5cc4",
+   "book_digest": "b93844a54fcebb6bb2fdaca38081a3bb9f2febbe6cb3cb08ab5339e375b26d24",
    "bounds": [],
    "claim_digest": "af08973b864763e329109bc839870e96e3b7380366519b3794ba1d0c3a5c0839",
    "class": "generated",
@@ -14756,7 +14848,7 @@
    "registry": true
   },
   {
-   "book_digest": "463926b7bfc053059b7299f7624b6226fe0669aa03be642ce3c9993bf96d5cc4",
+   "book_digest": "b93844a54fcebb6bb2fdaca38081a3bb9f2febbe6cb3cb08ab5339e375b26d24",
    "bounds": [],
    "claim_digest": "c06cc5afc36b85c6830154f9bc58e21681d157982aa5e5ca502619ed6c815686",
    "class": "generated",
@@ -14774,7 +14866,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "463926b7bfc053059b7299f7624b6226fe0669aa03be642ce3c9993bf96d5cc4",
+   "book_digest": "b93844a54fcebb6bb2fdaca38081a3bb9f2febbe6cb3cb08ab5339e375b26d24",
    "bounds": [],
    "claim_digest": "5be19524726efcba92dd9a21969e5ae65cfde3d7028b58a28ecba8a0f30dc22e",
    "class": "generated",
@@ -14792,7 +14884,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "463926b7bfc053059b7299f7624b6226fe0669aa03be642ce3c9993bf96d5cc4",
+   "book_digest": "b93844a54fcebb6bb2fdaca38081a3bb9f2febbe6cb3cb08ab5339e375b26d24",
    "bounds": [],
    "claim_digest": "e5f3a3cef0174d63c8697ff0fe914870241e6b24e33bc9a4357949b01bda1634",
    "class": "generated",
@@ -15752,6 +15844,11 @@
   {
    "class": "hand",
    "name": "fn-psrv-store-prepare-next-cases",
+   "registry": true
+  },
+  {
+   "class": "hand",
+   "name": "fn-psrv-store-prepare-next-keeps-the-stored-octets",
    "registry": true
   },
   {
@@ -18714,11 +18811,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-scr-dispatch-events-loop-is-rev-onto",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-scr-dispatch-is-scar-dispatch",
    "registry": true
   },
@@ -18899,11 +18991,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-served-dispatch-events-loop-is-rev-onto",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-served-dispatch-list-motd",
    "registry": true
   },
@@ -18969,11 +19056,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-served-feed-loop-is-rev-onto",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-served-feed-of-append",
    "registry": true
   },
@@ -19020,16 +19102,6 @@
   {
    "class": "hand",
    "name": "fn-served-reply-stream-is-partition-independent",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-served-reply-to-buffer-is-the-reply",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-served-reply-to-buffer-refusal-keeps-the-buffer",
    "registry": true
   },
   {
@@ -20659,11 +20731,6 @@
   {
    "class": "hand",
    "name": "fn-store-groups-from-codes-loop-of-rev-onto",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-store-prepare-interned-keeps-the-stored-octets",
    "registry": true
   },
   {
@@ -22373,22 +22440,17 @@
   },
   {
    "class": "hand",
+   "name": "fn-zpl-decode-bufs-from-the-empty-pool",
+   "registry": true
+  },
+  {
+   "class": "hand",
    "name": "fn-zpl-decode-bufs-is-decode",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-zpl-decode-bufs-is-the-lz-value",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-zpl-pool-check-is-pool-okp",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-zpl-pool-okp-of-nil",
    "registry": true
   },
   {

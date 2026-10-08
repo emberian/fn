@@ -1610,8 +1610,6 @@
         "planning/evidence/native-control-accept-shutdown-2026-09-21.md",
         "planning/lanes/HANDOFF-w22-native-outbound-feed.md",
         "planning/lanes/HANDOFF-w23-native-auth-admin.md",
-        "books/served-reply-buffer.lisp",
-        "tests/acl2/served-reply-buffer-tests.lisp",
         "planning/evidence/egress-span-2026-09-26.md"
       ],
       "implementation_note": "D07 requires a Python-free deployed Lisp node, operator CLI and helpers calling the executable ACL2 core. The frozen 03eb3ba native default/DTN images build from the recorded certified closure and pass their scoped owner/operator/storage/BP runtime suites, including public operator run and NNTP greeting/QUIT. Python is only an external test driver there. The full installed CLI/service, native outbound feed/protected transport/identity features and Python-free two-peer dependency gate remain open; the development bin/fn still invokes Python. The later native AUTHINFO startup receiver has scoped certified-image login evidence; it is not part of frozen03. Native public control/post is now integrated through fn-owner-control-submit and the shared completion helper, with separate ACL2 closure and exact-raw Darwin runtime evidence. Its clean combined image and complete installed two-peer gate remain open. The native outbound-feed component and credential administrator are integrated but await owner activation and public CLI composition respectively; their component evidence does not qualify the assembled service.",

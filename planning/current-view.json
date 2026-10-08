@@ -4,74 +4,211 @@
     "18c91321": {
       "source": "18c913213863dfd99e9ac763cccd3b003df12dbb",
       "qualification": "planning/evidence/qual-18c91321-2026-09-24.md",
-      "closure_manifest": "certify-20260924T210828Z-1892761",
       "host_sha256": {
         "host/bp-native-app-host.lisp": "dcd759b0d351e317889c748b419c1505e1570cc808a8b5f68fa5e88b12058482",
         "host/checkpoint-host.lisp": "7e5c6f7852f45c407e0a4cc4e1de1bf722e0967e7aca824916deafac27b9d7d2",
         "host/native/bp-service.lisp": "09dfc3155e8498e6ad409f2cde320d512e137f40daf5893a9795698969025ec9",
+        "host/native/io.lisp": "d8c33d1990a3fd455376b367c4bc2084b5cf22531410abf38d02a447069b11ba",
+        "host/native/operator.lisp": "afcf244bdec0ac96f6e9347304076af3d9e936216227d78cbf1b3cb4fd8d3d51",
+        "host/native/tcpcl.lisp": "754f3185a071bde362deb91178bb5f2eec0d14c2461e00846b3f711ed58381e3",
         "host/owner-host.lisp": "f8de2831c92bb16367127469050a32436491d57ba09c21bac8a6b064905bebbf"
+      },
+      "host_absent": [
+        "host/native/heap.lisp",
+        "host/native/store-identity.lisp"
+      ],
+      "book_sha256": {
+        "books/bp-node-forward-retry.lisp": "41ff7ee56f11a777031225a2b06c8fa259c89e535832ce4eda2becbaf8214d55",
+        "books/bp-transit-join.lisp": "16abdbfcbd6d9761515d8be7f2093ea168b738ddc11b9d24883754b37c445a61",
+        "books/config-owner-publish.lisp": "06a7b93338a175e9996f571c2a24f1506d9c106b0bd977f751b7f7d2a8242891",
+        "books/nntp-auth-invariants.lisp": "38295ec0271cd0e0cff92c80ed3f88683ceba043f88b4d22462123a9863ac082",
+        "books/nntp-auth.lisp": "a39faad56d1a9e30ea58b35f398bb5e4b6ca29a6cf9b694c1268f674c5ec37f6",
+        "books/nntp-pinned-msgid.lisp": "a267cbbfc7eeed3166bee2cbd54c02053a7dac383792cb091eaa2b8f3c93fca7",
+        "books/owner-feed-subject.lisp": "336907bea0d3e2692cdb70b7b9ab6e2f06c493e927333d96c81bb22866dc37c5",
+        "books/owner-served-carried.lisp": "c5ece1d1599368ae510947155e1166625cf0b66a8d7f883abbb31b959e1c7a92",
+        "books/owner-served-invariants.lisp": "9d61a1e3d8755c1d9c51fb0682319af04e8ce488a4b6db5fc141ce3a0d32f870",
+        "books/owner-store-budget.lisp": "f0e4036b5d26188ea3dabc05675b06e800e3796ae44a608c1e95d1cc1733a652",
+        "books/owner-tls-prefix.lisp": "3c915508e61c7d688367df49e7fe786160915df66c9a33b0b99b103ab3198365",
+        "books/owner-verdict-read.lisp": "5209e3bb2b5f092db5a55c4cae68107cab3540deac05a52b761b71421247aba9",
+        "books/served-carried.lisp": "cd6eb8755bf54feed96973360dcdf2f36f28eeb6161a306868714c4941a0532a"
       }
     },
     "4eca4148": {
       "source": "4eca4148c59df75af916aa9c4be51647e7dc21b6",
       "qualification": "planning/evidence/qual-4eca4148-2026-09-24.md",
-      "closure_manifest": "certify-20260924T224341Z-2081666",
       "host_sha256": {
         "host/bp-native-app-host.lisp": "0104e3ee0711aa048e7418c769d3bd750483e572540de21191e90c2336975cf7",
         "host/checkpoint-host.lisp": "524723314d4cb080ece3eea2d454052f0dbe49cde507ee9d149f4611cfdb8e5c",
         "host/native/bp-service.lisp": "46bcb7ade951947aae71669d11a8487fdd24d1e0e993407ded5e02889a15d003",
+        "host/native/io.lisp": "d8c33d1990a3fd455376b367c4bc2084b5cf22531410abf38d02a447069b11ba",
+        "host/native/operator.lisp": "ba6699938b9e786328d2cdcb83a5a3e3766426e100a3fd4adca612c84ffdfab1",
+        "host/native/tcpcl.lisp": "b8d16f9a8f8f8503f0a181e3b7384dcde2f0c21934898e394f0a19caf2abd6b9",
         "host/owner-host.lisp": "cb7298a30e57e3b378e6803737a599d5ee6de0bd872836ec321f81318d4ea5f1"
+      },
+      "host_absent": [
+        "host/native/heap.lisp",
+        "host/native/store-identity.lisp"
+      ],
+      "book_sha256": {
+        "books/bp-node-forward-retry.lisp": "48c07da75812bfba3204482b0eaeb3315ec84ce74c07bb9ffe264b695ea4ae7c",
+        "books/bp-transit-join.lisp": "49ccde30397ab27bdf8bf24f5a8f41c55dc658b3e339c075a8c20ede89e42e9c",
+        "books/config-owner-publish.lisp": "06a7b93338a175e9996f571c2a24f1506d9c106b0bd977f751b7f7d2a8242891",
+        "books/nntp-auth-invariants.lisp": "314ae9fd035384bd40ab028e5587b8fd50197464c945e4e8788276738e2c7bef",
+        "books/nntp-auth.lisp": "a39faad56d1a9e30ea58b35f398bb5e4b6ca29a6cf9b694c1268f674c5ec37f6",
+        "books/nntp-pinned-msgid.lisp": "a267cbbfc7eeed3166bee2cbd54c02053a7dac383792cb091eaa2b8f3c93fca7",
+        "books/owner-feed-subject.lisp": "336907bea0d3e2692cdb70b7b9ab6e2f06c493e927333d96c81bb22866dc37c5",
+        "books/owner-list-counts-read.lisp": "de3cd237c35db3c90a8684d92b839883f95d911cf1104657d0b805841c33b25a",
+        "books/owner-served-carried.lisp": "a4e0cb8774059f9c074925b2db38edec2f9fbaf31cba883bd43dcfc352c10330",
+        "books/owner-served-invariants.lisp": "9d61a1e3d8755c1d9c51fb0682319af04e8ce488a4b6db5fc141ce3a0d32f870",
+        "books/owner-store-budget.lisp": "f0e4036b5d26188ea3dabc05675b06e800e3796ae44a608c1e95d1cc1733a652",
+        "books/owner-tls-prefix.lisp": "3c915508e61c7d688367df49e7fe786160915df66c9a33b0b99b103ab3198365",
+        "books/owner-verdict-read.lisp": "5209e3bb2b5f092db5a55c4cae68107cab3540deac05a52b761b71421247aba9",
+        "books/poster-bytes-invariants.lisp": "a94377046add24ebfa71eca416c9f9e2f1bb35e8fca376e755e75fbf0a951c94",
+        "books/served-carried.lisp": "6ec998dbcce61c224901f2ea2acc02a8babbd67df6a28a5c549a55bd50d72823"
       }
     },
     "c3420013": {
       "source": "c34200132b2b0c725a93672fc4ba93a528817e18",
       "qualification": "planning/evidence/qual-c3420013-2026-09-25.md",
-      "closure_manifest": "certify-20260925T001652Z-2229194",
       "host_sha256": {
         "host/bp-native-app-host.lisp": "776e96c8580fb69091b01318bc058e3c75dcbd3334f2c49c0fff69e63cb4e2a3",
         "host/checkpoint-host.lisp": "524723314d4cb080ece3eea2d454052f0dbe49cde507ee9d149f4611cfdb8e5c",
         "host/native/bp-service.lisp": "fafade31dec50cfebdcb796f9a0cab0627f12353e1647cc56efc5db0e93af514",
+        "host/native/io.lisp": "381959190bde7fb3190850399560f12654158c7d189129367ba7127234db7508",
+        "host/native/operator.lisp": "ba6699938b9e786328d2cdcb83a5a3e3766426e100a3fd4adca612c84ffdfab1",
+        "host/native/tcpcl.lisp": "4a42f988d45441fecb3a3301fe29b2c94e5b03e288ba0815340bae5f58592405",
         "host/owner-host.lisp": "cb7298a30e57e3b378e6803737a599d5ee6de0bd872836ec321f81318d4ea5f1"
+      },
+      "host_absent": [
+        "host/native/heap.lisp",
+        "host/native/store-identity.lisp"
+      ],
+      "book_sha256": {
+        "books/bp-node-forward-retry.lisp": "b6f73f4bc7bf65fbd9adeb10403655225eadb210120daf612a2909ae6696b163",
+        "books/bp-transit-join.lisp": "c62dde12a8127ecc8cfc12c1af735b79585bd12fa1380b24ad0d30ebd6e05818",
+        "books/config-owner-publish.lisp": "06a7b93338a175e9996f571c2a24f1506d9c106b0bd977f751b7f7d2a8242891",
+        "books/nntp-auth-invariants.lisp": "314ae9fd035384bd40ab028e5587b8fd50197464c945e4e8788276738e2c7bef",
+        "books/nntp-auth.lisp": "a39faad56d1a9e30ea58b35f398bb5e4b6ca29a6cf9b694c1268f674c5ec37f6",
+        "books/nntp-pinned-msgid.lisp": "a267cbbfc7eeed3166bee2cbd54c02053a7dac383792cb091eaa2b8f3c93fca7",
+        "books/owner-feed-subject.lisp": "336907bea0d3e2692cdb70b7b9ab6e2f06c493e927333d96c81bb22866dc37c5",
+        "books/owner-list-counts-read.lisp": "de3cd237c35db3c90a8684d92b839883f95d911cf1104657d0b805841c33b25a",
+        "books/owner-served-carried.lisp": "a4e0cb8774059f9c074925b2db38edec2f9fbaf31cba883bd43dcfc352c10330",
+        "books/owner-served-invariants.lisp": "9d61a1e3d8755c1d9c51fb0682319af04e8ce488a4b6db5fc141ce3a0d32f870",
+        "books/owner-store-budget.lisp": "f0e4036b5d26188ea3dabc05675b06e800e3796ae44a608c1e95d1cc1733a652",
+        "books/owner-tls-prefix.lisp": "3c915508e61c7d688367df49e7fe786160915df66c9a33b0b99b103ab3198365",
+        "books/owner-verdict-read.lisp": "5209e3bb2b5f092db5a55c4cae68107cab3540deac05a52b761b71421247aba9",
+        "books/poster-bytes-invariants.lisp": "c5ddbac38059d4084b2b7e98846ca23f76a520899f4edbca211a43155dfff141",
+        "books/served-carried.lisp": "6ec998dbcce61c224901f2ea2acc02a8babbd67df6a28a5c549a55bd50d72823"
       }
     },
     "bbf52159": {
       "source": "bbf52159dcab19228bd6cd0b855b99dd6d68758d",
       "qualification": "planning/evidence/qual-bbf52159-2026-09-25.md",
-      "closure_manifest": "certify-20260925T211549Z-3867068",
       "host_sha256": {
         "host/bp-native-app-host.lisp": "4f8d3795cbc693ef56b0ded8ef2d946d75ab066a7fa78489ccf0be55110ba560",
         "host/checkpoint-host.lisp": "5a9adefc0cf84f7f0c216ec8e1b46814360b8f81f00ea3f7230f08e30c8aa64d",
         "host/native/bp-service.lisp": "6125110a01a22e3e6ee44d9a1355afa62f9321f540f4eaec96e7de1c14b66e69",
+        "host/native/io.lisp": "7ad6e166894b4cccab808eff254c48f16ba31284fb136b863e73abc483cb5246",
+        "host/native/operator.lisp": "cfb20e00fbbb9067878096ad00f8e902d7370ad978c22e87b9dd578caf0b3631",
+        "host/native/tcpcl.lisp": "4a42f988d45441fecb3a3301fe29b2c94e5b03e288ba0815340bae5f58592405",
         "host/owner-host.lisp": "c258a29b02c7635c6f9a1a410bc0659f984ec86947aa2455f9b980436dbdb582"
+      },
+      "host_absent": [
+        "host/native/heap.lisp",
+        "host/native/store-identity.lisp"
+      ],
+      "book_sha256": {
+        "books/bp-node-forward-retry.lisp": "5ea9cb4daf6e3f2777dea2073bceb41dda0baddc1e7bd2c798e793d94e1c95ff",
+        "books/bp-transit-join.lisp": "c62dde12a8127ecc8cfc12c1af735b79585bd12fa1380b24ad0d30ebd6e05818",
+        "books/config-owner-publish.lisp": "06a7b93338a175e9996f571c2a24f1506d9c106b0bd977f751b7f7d2a8242891",
+        "books/nntp-auth-invariants.lisp": "314ae9fd035384bd40ab028e5587b8fd50197464c945e4e8788276738e2c7bef",
+        "books/nntp-auth.lisp": "a39faad56d1a9e30ea58b35f398bb5e4b6ca29a6cf9b694c1268f674c5ec37f6",
+        "books/nntp-pinned-msgid.lisp": "a267cbbfc7eeed3166bee2cbd54c02053a7dac383792cb091eaa2b8f3c93fca7",
+        "books/owner-feed-subject.lisp": "336907bea0d3e2692cdb70b7b9ab6e2f06c493e927333d96c81bb22866dc37c5",
+        "books/owner-list-counts-read.lisp": "de3cd237c35db3c90a8684d92b839883f95d911cf1104657d0b805841c33b25a",
+        "books/owner-served-carried.lisp": "a4e0cb8774059f9c074925b2db38edec2f9fbaf31cba883bd43dcfc352c10330",
+        "books/owner-served-invariants.lisp": "9d61a1e3d8755c1d9c51fb0682319af04e8ce488a4b6db5fc141ce3a0d32f870",
+        "books/owner-store-budget.lisp": "f0e4036b5d26188ea3dabc05675b06e800e3796ae44a608c1e95d1cc1733a652",
+        "books/owner-tls-prefix.lisp": "3c915508e61c7d688367df49e7fe786160915df66c9a33b0b99b103ab3198365",
+        "books/owner-verdict-read.lisp": "5209e3bb2b5f092db5a55c4cae68107cab3540deac05a52b761b71421247aba9",
+        "books/poster-bytes-invariants.lisp": "79c53d7e1423d6491f113f498f9628ab7566e378cdd3512a9881dc07c26f9eff",
+        "books/served-carried.lisp": "3e778962b9b5f0abf0e500c5ef9a335d3d43a26299b4bc5129a1c7b8dd523776"
       }
     },
     "b6759850": {
       "source": "b675985074cf14b009204f6eb3e5409f4a025a80",
       "qualification": "planning/evidence/qual-b6759850-2026-09-26.md",
-      "closure_manifest": "certify-20260926T050746Z-356474",
       "host_sha256": {
         "host/bp-native-app-host.lisp": "ffac6ce14483dd19cfd24043cd0497bc453db3a763326cca936357b807739d26",
         "host/checkpoint-host.lisp": "9981351df7b2e602e92e0a1cb1e6c337d5593f3806db6d374de5eb522379c034",
         "host/native/bp-service.lisp": "6e7a9327a582fe056bbb6fb2fe2c9083e1b0ca87f135fbeaede442009cf92e86",
+        "host/native/io.lisp": "091968505469d5993f4fe6886bcdb51f781011fafd43173451e0f1b78229e97f",
+        "host/native/operator.lisp": "9f5135ad5ebe59217f96a53456cff45be064589b8469e8fda25f265874659f32",
+        "host/native/tcpcl.lisp": "782626b42f1f677daf41abd81a1a16d37a90d3e7c36a255b42d0a2b4c818367c",
         "host/owner-host.lisp": "311d649434a746a1bfa2bab99662c28fff06c0a0fbe342d2c846258d9b27dadd"
       },
-      "qualification_amended": "rollback untested: qual-b6759850's rollback rehearsal ran the new image under bbf52159's name (packaging/fn honours $FN_NATIVE_HOST; PKT-481 (a), found by qual-dfa810fc); not a clean candidate; 69046a76 is the candidate"
+      "qualification_amended": "rollback untested: qual-b6759850's rollback rehearsal ran the new image under bbf52159's name (packaging/fn honours $FN_NATIVE_HOST; PKT-481 (a), found by qual-dfa810fc); not a clean candidate; 69046a76 is the candidate",
+      "host_absent": [
+        "host/native/heap.lisp",
+        "host/native/store-identity.lisp"
+      ],
+      "book_sha256": {
+        "books/bp-node-forward-retry.lisp": "5ea9cb4daf6e3f2777dea2073bceb41dda0baddc1e7bd2c798e793d94e1c95ff",
+        "books/bp-node-job-offer.lisp": "2bbabb034642c189f3ad3345643afa20ad0a720c2c77064fbe490606ac72ff9b",
+        "books/bp-transit-join.lisp": "c62dde12a8127ecc8cfc12c1af735b79585bd12fa1380b24ad0d30ebd6e05818",
+        "books/config-owner-publish.lisp": "06a7b93338a175e9996f571c2a24f1506d9c106b0bd977f751b7f7d2a8242891",
+        "books/nntp-auth-invariants.lisp": "468dfa11b2a81e75d53fe9ab188add17003070b800e06b14cee4b09f6f5e09aa",
+        "books/nntp-auth.lisp": "a39faad56d1a9e30ea58b35f398bb5e4b6ca29a6cf9b694c1268f674c5ec37f6",
+        "books/nntp-pinned-msgid.lisp": "d8671153fceba6d035670893b22fde3851e31a2a4008fe112a0964019fb27c5b",
+        "books/owner-feed-subject.lisp": "336907bea0d3e2692cdb70b7b9ab6e2f06c493e927333d96c81bb22866dc37c5",
+        "books/owner-list-counts-read.lisp": "cfdfa7fed8b5728f23beba5eb231e4ce60ee1052feaa3cf800560d298b6315d7",
+        "books/owner-served-carried.lisp": "4308bfdd2274bfe0d2d22eaa1e7ad705582746741bbc0e73e49f2e5b3b4a71ff",
+        "books/owner-served-invariants.lisp": "9d61a1e3d8755c1d9c51fb0682319af04e8ce488a4b6db5fc141ce3a0d32f870",
+        "books/owner-store-budget.lisp": "f0e4036b5d26188ea3dabc05675b06e800e3796ae44a608c1e95d1cc1733a652",
+        "books/owner-tls-prefix.lisp": "3cd243eedd1a0a0b9be7540559cf87458f801c6e750933a0405699a3cc566ebd",
+        "books/owner-verdict-read.lisp": "484b5d179c884027e572d78aa5bafd671804113ef5b48efb7b22b0a1954ab20e",
+        "books/poster-bytes-invariants.lisp": "e049af663edf3337e2872ac25c14a50f17cc887974794ec25c3d2017fc8f0f22",
+        "books/served-carried.lisp": "e3b08758e1c898d070aa927454f108b8eb065d061f8a4fc058867d87690dcdc8"
+      }
     },
     "69046a76": {
       "source": "69046a76798b8be6169eeed5a66cc46fbe399e51",
       "qualification": "planning/evidence/qual-69046a76-2026-09-26.md",
-      "closure_manifest": "certify-20260926T144826Z-2113131",
       "host_sha256": {
         "host/bp-native-app-host.lisp": "4d4ab6c4596fb18172beace8b7e255adcfdae6955c298ddd0e85f732bf7041a3",
         "host/checkpoint-host.lisp": "12b625e5f0130dbaf21f66473fca5b6732f311b06c6e72db6c1c3c3e3cc6619e",
         "host/native/bp-service.lisp": "bc694bd5c94f4c8beb411893bbf4191fe80b4be25960e9123435416df24292bb",
+        "host/native/io.lisp": "dceb72e91cbfff220646cd8f898d69a729ae8b333a11dcf41379f5dd4467423b",
+        "host/native/operator.lisp": "e8ffa279467797a38b2bd743a4cb0f2bd9bc1b9454874808fb51ef8790ba6672",
+        "host/native/tcpcl.lisp": "8e55af6b4546b79347d38c9bc3ab4d772e802d38b7212c8af13c3fd0d05b9fa6",
         "host/owner-host.lisp": "3984db58fd316e4ab047750bd3d96dbd77db323f2c6806008cf19a58fa9a8117"
+      },
+      "host_absent": [
+        "host/native/heap.lisp",
+        "host/native/store-identity.lisp"
+      ],
+      "book_sha256": {
+        "books/bp-node-forward-retry.lisp": "5ea9cb4daf6e3f2777dea2073bceb41dda0baddc1e7bd2c798e793d94e1c95ff",
+        "books/bp-node-job-offer.lisp": "e5aa4ab48e12702780e1010c270436d874fc87c371cb052b31d3d4b8f09ee644",
+        "books/bp-transit-join.lisp": "c62dde12a8127ecc8cfc12c1af735b79585bd12fa1380b24ad0d30ebd6e05818",
+        "books/config-owner-publish.lisp": "06a7b93338a175e9996f571c2a24f1506d9c106b0bd977f751b7f7d2a8242891",
+        "books/nntp-auth-invariants.lisp": "b971b83e1d8af255bb869bc2156bf52ea20e40aa4dfaf71569e49dff8bf3cfe2",
+        "books/nntp-auth.lisp": "65e2593184888ec850bfdfcb41ea8094b89c5c4d3cdad8bec030e4f3e9eea984",
+        "books/nntp-pinned-msgid.lisp": "d8671153fceba6d035670893b22fde3851e31a2a4008fe112a0964019fb27c5b",
+        "books/owner-feed-subject.lisp": "8dbad1bb7178f0f322fd46ad6b25af7bd827f8840d9b1026b5d233fb709ad1c6",
+        "books/owner-list-counts-read.lisp": "cfdfa7fed8b5728f23beba5eb231e4ce60ee1052feaa3cf800560d298b6315d7",
+        "books/owner-served-carried.lisp": "4308bfdd2274bfe0d2d22eaa1e7ad705582746741bbc0e73e49f2e5b3b4a71ff",
+        "books/owner-served-invariants.lisp": "9d61a1e3d8755c1d9c51fb0682319af04e8ce488a4b6db5fc141ce3a0d32f870",
+        "books/owner-store-budget.lisp": "f0e4036b5d26188ea3dabc05675b06e800e3796ae44a608c1e95d1cc1733a652",
+        "books/owner-tls-prefix.lisp": "3cd243eedd1a0a0b9be7540559cf87458f801c6e750933a0405699a3cc566ebd",
+        "books/owner-verdict-read.lisp": "484b5d179c884027e572d78aa5bafd671804113ef5b48efb7b22b0a1954ab20e",
+        "books/poster-bytes-invariants.lisp": "e049af663edf3337e2872ac25c14a50f17cc887974794ec25c3d2017fc8f0f22",
+        "books/served-carried.lisp": "2874396efd5bd2933088a53023d075b6d6a91e0b2a107b4f542e8911481e0a63"
       }
     },
     "a3553e6b": {
       "source": "a3553e6b4a230515dc661fe2e175be4a90400805",
       "qualification": null,
-      "closure_manifest": null,
       "release": "fn-6.6.0-linux-x86_64.tar.gz sha256 401c6324bb7a7e29d96fb552f92a38ec6c3ea3244071519324aa907ff6786bf0 (source dev a3553e6b4; release-gate green-check 609/609 on hbox, planning/evidence/node-migrate-2026-09-28.md; not a qualified image)",
       "host_sha256": {
         "host/bp-native-app-host.lisp": "ec5f8a19934fff5da14979340cc80e685ff8b50e1da9fb2414035922a130ce4e",
@@ -107,8 +244,7 @@
         "books/poster-bytes-invariants.lisp": "4fc4e0c087aef5e7d8b3cbf234b06a6850cd07b260539d16666bf52a7572a067",
         "books/served-carried.lisp": "40c402cc92a6dd89e72b2d390022c5b6b7103857f749652086da1aded7f7675e",
         "books/store-intern.lisp": "9bafe3384f6e920a2c12b13c246cdc1a5036f34e5cd04587ea649e9342682777",
-        "books/store-log-reclaim.lisp": "a9fa795fbf725fc33ced121ac72c0ceabfbd7518d08a502d7f16274530ff99ce",
-        "books/store-log-route-programs.lisp": "9b78cc50c6ea978444d2c7cbf0265589f0bc530a19d3694bed2d988904b7b536"
+        "books/store-log-reclaim.lisp": "a9fa795fbf725fc33ced121ac72c0ceabfbd7518d08a502d7f16274530ff99ce"
       },
       "host_absent": [
         "host/native/store-identity.lisp"

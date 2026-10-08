@@ -1,0 +1,20 @@
+{
+ "blocked_on": null,
+ "category": "generator-gap",
+ "detail": "defteeth (books/defkeystone.lisp) cannot express three kinds of keystone, so four keystones carry hand-written assert-event teeth and ratchet lines in planning/repair/ACKS.md instead of generated teeth. (1) Stobj-bound claims: the generated assert-event of an executable :witness is refused at translation when the claim calls a function returning stobjs (signature mismatch, e.g. fn-zpl-decode-bufs returns (MV * * FN-ZIN-WIN FN-ZIN-TAB FN-ZIN-OUT)), and :witness-lemma is refused by fn-dt-lemma-problem (books/defkeystone.lisp:62, :780: every variable bound to a variable-free value, none a stobj). This covers fn-zpl-decode-bufs-from-the-empty-pool and fn-psrv-store-prepare-next-keeps-the-stored-octets. (2) A hypothesis that is a named assumption (a constrained function, here fn-lg-platform-tears-p through fn-assume-crash-tearp) has no executable falsifying binding, while books/defkeystone.lisp:441-442 requires a :breaks entry per label. This covers fn-lgc-failed-barrier-recovers-a-prefix. (3) A generator's abstract lemma over non-executable stand-in functions (fn-dl-th-*) has no executable witness; its instances do. This covers fn-dl-thread-loop-is-revappend, whose fold twin fn-dl-fold-loop-is-revappend is in teeth-ceiling.json from before the ratchet.",
+ "disposition": "LOCAL",
+ "exposure": "latent",
+ "file": "books/defkeystone.lisp",
+ "fix": "Grow defteeth (the generator of record for teeth). (1) A stobj-bound witness: the generated check runs under with-local-stobj, filling each stobj with its own builders named in the witness. (2) An :assumption break kind for a label whose hypothesis is a constrained function: cite the encapsulate (books/assumptions*.lisp), checked to be the label's function, with no executable break. (3) An :instances witness for an abstract generator lemma: name the generated instance and its ground equality. When defteeth gains these, each of the four names gets a defteeth and LEAVES planning/teeth-ceiling.json in the same commit (keystone_emit refuses a ceiling name that is no longer toothless), with its ACKS.md ratchet line removed.",
+ "id": "DEFTEETH-STOBJ-AND-ASSUMPTION",
+ "notes": [
+  "2026-10-08 P5: four ratchet lines in ACKS.md for train 28 (coordinator approval via I): zpl and psrv under (1), lgc-failed-barrier under (2), dl-thread-loop under (3). Each line names its hand-written witness. Lane p-defteeth-stobj (owner deputy-P) un-parks this; both stobj names, and the other two, leave teeth-ceiling.json when defteeth gains stobj-bound teeth (and the :assumption and :instances kinds)."
+ ],
+ "owner": "deputy-P",
+ "scenario": "A keystone over a stobj-threading host function, a named assumption or a generator lemma ships without generated teeth, so the teeth gate can only ratchet it, not check it.",
+ "severity": "medium",
+ "source": "train 28 keystone_emit teeth gate (x-teeth-ratchet), 2026-10-08",
+ "state": "deferred",
+ "title": "defteeth cannot express stobj-bound claims, named-assumption hypotheses or abstract generator lemmas",
+ "updated": "2026-10-08T09:00:00Z"
+}

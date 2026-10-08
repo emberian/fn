@@ -3176,6 +3176,10 @@
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-open-establishes-the-relation))
 
+(definterface fn-bpnjc-answer
+  :class :common-lisp-compliant
+  :keystones (fn-bpnjc-answer-is-contact-next))
+
 (definterface fn-bpnjc-contact-next
   :class :common-lisp-compliant
   :keystones (fn-bpnjc-offer-keeps-the-relation
@@ -5779,6 +5783,7 @@
 (definterface fn-owner-hroot-resize :class :program)
 (definterface fn-owner-hroot-transient :class :program)
 (definterface fn-owner-hroot-begin :class :program)
+(definterface fn-owner-hroot-note :class :program)
 (definterface fn-owner-hroot-abandon :class :program)
 (definterface fn-owner-hroot-frontier-value :class :program)
 (definterface fn-owner-hroot-row :class :program)

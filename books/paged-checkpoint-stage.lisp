@@ -819,7 +819,12 @@
                          d))))
   :hints (("Goal" :do-not-induct t
            :cases ((consp (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows (fn-rows-wire-of rows fn-arena)))))
-           :in-theory (union-theories '(pcks-dirty-at-nil pcks-abs-dirty-nil)
+           ; pgs-dirty-lpages is named: certified inside the owner image
+           ; (owner@books:books/owner) its definition and executable
+           ; counterpart are not open here, so (pgs-dirty-lpages nil) would
+           ; never evaluate and pcks-abs-dirty-nil could not fire.
+           :in-theory (union-theories '(pcks-dirty-at-nil pcks-abs-dirty-nil
+                                        pgs-dirty-lpages (:executable-counterpart pgs-dirty-lpages))
                                       (disable pcks-stage-dirty-at-cons pcks-stage-dirty-at-nil fn-pck-x-stage-rows pcks-res pcks-put pgs-x-words
                                                pcks-wlen pcks-wlist pgs-x-abs-dirty)))
           ("Subgoal 1" :use pcks-stage-dirty-at-cons)

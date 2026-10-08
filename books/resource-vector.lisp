@@ -902,8 +902,8 @@
                   (if (eql (car (nth i rows)) 0) *fn-rv-zero* (cddr (nth i rows)))))
   :hints (("Goal" :in-theory (enable fn-rv-row-demand))))
 
-(defthm fn-rv-len-of-vector
-  (implies (fn-rv-vectorp v) (equal (len v) *fn-rv-k*)))
+(local (defthm fn-rv-len-of-vector
+  (implies (fn-rv-vectorp v) (equal (len v) *fn-rv-k*))))
 
 (defthm fn-rv-row-fields-of-nth
   (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows)))
@@ -1173,10 +1173,55 @@
            (fn-rv-okp (cadr (fn-rv-run bank ops))))
   :hints (("Goal" :in-theory (disable fn-rv-okp fn-rv-step))))
 
+;; Each transition's refusal returns the bank, proved once per callee, so the
+;; step keystone below does not open all six transitions at once (2.9M steps
+;; -> 9k).
+(local (defthm fn-rv-charge-refused-keeps-the-bank
+  (implies (not (fn-rv-admittedp (car (fn-rv-charge bank slot demand phase))))
+           (equal (cadr (fn-rv-charge bank slot demand phase)) bank))
+  :hints (("Goal" :in-theory (e/d (fn-rv-charge) (fn-rv-admittedp))))))
+
+(local (defthm fn-rv-settle-refused-keeps-the-bank
+  (implies (not (fn-rv-admittedp (car (fn-rv-settle bank slot gen))))
+           (equal (cadr (fn-rv-settle bank slot gen)) bank))
+  :hints (("Goal" :in-theory (e/d (fn-rv-settle) (fn-rv-admittedp))))))
+
+(local (defthm fn-rv-refund-refused-keeps-the-bank
+  (implies (not (fn-rv-admittedp (car (fn-rv-refund bank slot gen x))))
+           (equal (cadr (fn-rv-refund bank slot gen x)) bank))
+  :hints (("Goal" :in-theory (e/d (fn-rv-refund) (fn-rv-admittedp))))))
+
+(local (defthm fn-rv-grow-refused-keeps-the-bank
+  (implies (not (fn-rv-admittedp (car (fn-rv-grow bank slot gen x))))
+           (equal (cadr (fn-rv-grow bank slot gen x)) bank))
+  :hints (("Goal" :in-theory (e/d (fn-rv-grow) (fn-rv-admittedp))))))
+
+(local (defthm fn-rv-destroy-refused-keeps-the-bank
+  (implies (not (fn-rv-admittedp (car (fn-rv-destroy bank slot gen spent))))
+           (equal (cadr (fn-rv-destroy bank slot gen spent)) bank))
+  :hints (("Goal" :in-theory (e/d (fn-rv-destroy) (fn-rv-admittedp))))))
+
+(local (defthm fn-rv-draw-refused-keeps-the-bank
+  (implies (not (fn-rv-admittedp (car (fn-rv-draw bank slot demand))))
+           (equal (cadr (fn-rv-draw bank slot demand)) bank))
+  :hints (("Goal" :in-theory (e/d (fn-rv-draw) (fn-rv-admittedp fn-rv-charge))
+           :use ((:instance fn-rv-charge-refused-keeps-the-bank (demand demand) (phase 1)))))))
+
+(local (defthm fn-rv-open-refused-keeps-the-bank
+  (implies (not (fn-rv-admittedp (car (fn-rv-open bank slot budget))))
+           (equal (cadr (fn-rv-open bank slot budget)) bank))
+  :hints (("Goal" :in-theory (e/d (fn-rv-open) (fn-rv-admittedp fn-rv-charge))
+           :use ((:instance fn-rv-charge-refused-keeps-the-bank (demand budget) (phase 2)))))))
+
+(local (in-theory (disable fn-rv-charge-refused-keeps-the-bank fn-rv-settle-refused-keeps-the-bank fn-rv-refund-refused-keeps-the-bank fn-rv-grow-refused-keeps-the-bank fn-rv-destroy-refused-keeps-the-bank fn-rv-draw-refused-keeps-the-bank fn-rv-open-refused-keeps-the-bank)))
+
 ; KEYSTONE.  A refused step returns the bank itself: the slack is as it was.
 (defthm fn-rv-step-refused-keeps-the-bank
   (implies (not (fn-rv-admittedp (car (fn-rv-step bank op))))
-           (equal (cadr (fn-rv-step bank op)) bank)))
+           (equal (cadr (fn-rv-step bank op)) bank))
+  :hints (("Goal" :in-theory (e/d (fn-rv-charge-refused-keeps-the-bank fn-rv-settle-refused-keeps-the-bank fn-rv-refund-refused-keeps-the-bank fn-rv-grow-refused-keeps-the-bank fn-rv-destroy-refused-keeps-the-bank fn-rv-draw-refused-keeps-the-bank fn-rv-open-refused-keeps-the-bank)
+                                  (fn-rv-draw fn-rv-open fn-rv-settle fn-rv-refund
+                                   fn-rv-grow fn-rv-destroy fn-rv-admittedp)))))
 
 (defthm fn-rv-refusal-keeps-slack
   (implies (not (fn-rv-admittedp (car (fn-rv-step bank op))))
@@ -1482,14 +1527,45 @@
   (and (<= g (fn-rv-gen j bank))
        (implies (equal (fn-rv-phase j bank) 2) (< g (fn-rv-gen j bank)))))
 
+;; Charge, stated once as the bank or the bank with one slot written, and the
+;; written slot's gen and phase as facts: the retired-token proof then never
+;; opens fn-rv-charge's cond or the row selectors (1.68M steps -> 15k).
+(local
+ (defthm fn-rv-charge-is-the-bank-or-the-charged-slot
+   (equal (cadr (fn-rv-charge bank slot d phase))
+          (if (and (natp slot) (fn-rv-admittedp (car (fn-rv-charge bank slot d phase))))
+              (fn-rv-make (fn-rv-budget bank)
+                          (fn-rv-plus (fn-rv-drawn bank) d)
+                          (update-nth slot
+                                      (list* phase (+ 1 (fn-rv-gen slot bank)) d)
+                                      (fn-rv-slots bank)))
+            bank))
+   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-slotp) (nth update-nth fn-rv-make fn-rv-slots
+                                                   fn-rv-budget fn-rv-drawn fn-rv-gen))))))
+(local (in-theory (disable fn-rv-charge-is-the-bank-or-the-charged-slot)))
+(local
+ (defthm fn-rv-gen-of-a-written-slot
+   (implies (and (natp j) (natp slot))
+            (equal (fn-rv-gen j (fn-rv-make b d (update-nth slot (list* ph g dm) (fn-rv-slots bank))))
+                   (if (equal j slot) (nfix g) (fn-rv-gen j bank))))
+   :hints (("Goal" :in-theory (e/d (fn-rv-gen fn-rv-row fn-rv-make fn-rv-slots)
+                                   (nth update-nth))))))
+(local
+ (defthm fn-rv-phase-of-a-written-slot
+   (implies (and (natp j) (natp slot))
+            (equal (fn-rv-phase j (fn-rv-make b d (update-nth slot (list* ph g dm) (fn-rv-slots bank))))
+                   (if (equal j slot) (nfix ph) (fn-rv-phase j bank))))
+   :hints (("Goal" :in-theory (e/d (fn-rv-phase fn-rv-row fn-rv-make fn-rv-slots)
+                                   (nth update-nth))))))
+(local (in-theory (disable fn-rv-gen-of-a-written-slot fn-rv-phase-of-a-written-slot)))
 (local
  (defthm fn-rv-charge-keeps-a-retired-token
    (implies (and (natp j) (fn-rv-token-retiredp j g bank))
             (fn-rv-token-retiredp j g (cadr (fn-rv-charge bank slot d phase))))
-   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
-                                    fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
-                                    fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
-                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
+   :hints (("Goal" :in-theory (e/d (fn-rv-charge-is-the-bank-or-the-charged-slot
+                                    fn-rv-gen-of-a-written-slot fn-rv-phase-of-a-written-slot
+                                    fn-rv-token-retiredp)
+                                   (fn-rv-charge fn-rv-gen fn-rv-phase fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
 
 (local
  (defthm fn-rv-settle-keeps-a-retired-token
@@ -1560,7 +1636,3 @@
                     fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy fn-rv-step
                     fn-rv-run fn-rv-install))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-rv-len-of-vector))
