@@ -218,6 +218,30 @@ class Target:
         return out, env
 
 
+def listener_port():
+    """A free loopback port BELOW the kernel's ephemeral range.  A port taken by bind(0) lies inside
+    that range, and a node that restarts on it (W15 reopen, peers B) loses it to any client socket
+    opened meanwhile: conn-capacity's ~30k client sockets did exactly that (EADDRINUSE, 2026-10-08)."""
+    import random
+    import socket
+    lo = 32768
+    try:
+        lo = int(Path("/proc/sys/net/ipv4/ip_local_port_range").read_text().split()[0])
+    except (OSError, ValueError, IndexError):
+        pass
+    for _ in range(200):
+        port = random.randrange(10000, max(10001, lo))
+        with socket.socket() as s:
+            try:
+                s.bind(("127.0.0.1", port))
+            except OSError:
+                continue
+            return port
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
 class Node:
     def __init__(self, target, work, flags, groups, sbcl_args, hooks, gc_log, extra_env, interval, heap_mode="decided", max_connections=None):
         self.target, self.work, self.flags, self.groups = target, Path(work), flags, groups
@@ -242,9 +266,7 @@ class Node:
     def write_config(self):
         import socket
         if self.port is None:
-            with socket.socket() as s:
-                s.bind(("127.0.0.1", 0))
-                self.port = s.getsockname()[1]
+            self.port = listener_port()
         server = ""        # fn.toml has no [server] table (books/native-config.lisp: key-allowedp); the cap is policy, see apply_policy
         self.config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n[control]\npath = "%s"\n%s%s'
                                % (self.store, self.port, self.work / "c.sock", server,
