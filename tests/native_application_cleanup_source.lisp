@@ -28,6 +28,9 @@
 (defun fnn-app-require-live-store (store)
   (declare (ignorable store))
   (harness-stub-reached 'fnn-app-require-live-store "host/native/workflow.lisp"))
+(defun fnn-bpnode-receipt-detail (owner view obs)
+  (declare (ignorable owner view obs))
+  (harness-stub-reached 'fnn-bpnode-receipt-detail "host/native/bp-node.lisp"))
 (defun fnn-bpo-canonical-release (service release)
   (declare (ignorable service release))
   (harness-stub-reached 'fnn-bpo-canonical-release "host/native/bp-obligation.lisp"))
@@ -40,6 +43,9 @@
 (defun fnn-fsync-dir (path)
   (declare (ignorable path))
   (harness-stub-reached 'fnn-fsync-dir "host/native/io.lisp"))
+(defun fnn-immutable-test-fault (point path operation-label)
+  (declare (ignorable point path operation-label))
+  (harness-stub-reached 'fnn-immutable-test-fault "host/native/immutable-publish.lisp"))
 (defun fnn-parent (path)
   (declare (ignorable path))
   (harness-stub-reached 'fnn-parent "host/native/io.lisp"))
@@ -76,6 +82,13 @@
                    (and (eq (car form) 'defun)
                         (member (second form) '(fnn-app-retain-close-debt fnn-app-journal-close
                            fnn-app-journal-lock fnn-app-call-with-journal)))))
+      (eval form))))
+(defvar *fnn-close-debts-lock* (sb-thread:make-mutex :name "fn close debts"))
+;; No cleanup receipt is pending in this fixture, so the deployed drain finds nothing.
+(with-open-file (input "host/native/immutable-publish.lisp")
+  (loop for form = (read input nil :eof) until (eq form :eof) do
+    (when (and (consp form) (member (car form) '(defvar defun))
+               (member (second form) '(*fnn-immutable-cleanups* fnn-immutable-drain-cleanups)))
       (eval form))))
 (defun fnn-app-open (store &rest ignored)
   (declare (ignore ignored))
@@ -129,7 +142,15 @@
     (assert (equal (reverse *calls*) '(:unlock :store)))))
 (format t "PASS actual app cleanup: independent journal/Store close, sticky holder debt, acquisition unwind, preserved values/body.~%")
 ;;; Shared owner wrapper: one failed carry close cannot strand workflow/feed/Store.
-(defstruct (fnn-owner-service (:constructor %make-fnn-owner-service)) store)
+;; The carry wrapper reads the roster and the stopping flag of a failing quantum;
+;; a stopping service re-signals the body's condition directly (the other arm is
+;; the owner section envelope, covered by native_section_envelope_raw).
+(defstruct (fnn-owner-service (:constructor %make-fnn-owner-service))
+  store (roster (sb-thread:make-mutex)) (stopping t))
+(with-open-file (input "host/native/owner.lisp")
+  (loop for form = (read input nil :eof) until (eq form :eof) do
+    (when (and (consp form) (eq (car form) 'defmacro) (eq (second form) 'fnn-with-roster))
+      (eval form))))
 (defun fnn-owner-install (&rest ignored)
   (declare (ignore ignored)) (%make-fnn-owner-service :store *store*))
 (defun fnn-quantum-command (service cid thunk)
@@ -170,7 +191,7 @@
 (defun fnn-bpnode-source-decision (&rest ignored) (declare (ignore ignored)))
 (defun fnn-bpnode-receipt-observations (&rest ignored) (declare (ignore ignored)) nil)
 (defun fnn-bpnode-release-line (&rest ignored) (declare (ignore ignored)))
-(defun fnn-bpnode-receipt-detail (&rest ignored) (declare (ignore ignored)) '(0))
+(defun fnn-bpnode-receipt-detail-locked (&rest ignored) (declare (ignore ignored)) '(0))
 (defun fnn-owner-core (name &rest ignored)
   (declare (ignore ignored))
   (case name (fn-owner-bp-receipt-gatep t) (fn-owner-bp-receipt-release-record nil)

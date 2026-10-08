@@ -2,6 +2,7 @@
 ;;; recursively acquires owner exclusion from an inline commit quantum.
 (load "tests/native_section_envelope_raw.lisp")
 (in-package "ACL2")
+
 (load-deployed-forms "books/owner-queued-work.lisp"
  '((defun fn-oqw-phases) (defun fn-oqw-terminalp) (defun fn-oqw-after)
    (defun fn-oqw-start) (defun fn-oqw-step) (defun fn-oqw-outcome-of-final)))

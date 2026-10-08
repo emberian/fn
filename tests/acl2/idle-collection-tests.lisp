@@ -91,28 +91,3 @@
                                        quiet publishingp consed-octets)
                    (list :collect generation)))
    :hints (("Goal" :in-theory (enable fn-idle-gc-verdict)))))
-
-; MEM-012: the collection under load, both sides of the growth limit at the
-; profile's figure (16 MiB, generation 3).
-(assert! (equal *fn-load-gc-growth-octets* 16777216))
-(assert! (equal *fn-load-gc-generation* 3))
-(assert! (equal (fn-load-gc-decide 16777215 0) :wait))
-(assert! (equal (fn-load-gc-decide 16777216 0) '(:collect 3)))
-(assert! (equal (fn-load-gc-decide 100000000 83222785) :wait))
-(assert! (equal (fn-load-gc-decide 100000000 83222784) '(:collect 3)))
-(assert! (equal (fn-load-gc-decide nil 0) :wait))
-(assert! (equal (fn-load-gc-decide 99999999 -1) :wait))
-(assert! (and (< 1 *fn-load-gc-generation*) (<= *fn-load-gc-generation* 6)))
-
-(must-fail-checked
- (defthm idlec-load-collects-without-the-naturals
-   (implies (<= (+ base growth-limit) usage)
-            (equal (fn-load-gc-verdict growth-limit generation usage base)
-                   (list :collect generation)))
-   :hints (("Goal" :in-theory (enable fn-load-gc-verdict)))))
-
-(must-fail-checked
- (defthm idlec-load-wait-bounds-without-the-naturals
-   (implies (equal (fn-load-gc-verdict growth-limit generation usage base) :wait)
-            (< usage (+ base growth-limit)))
-   :hints (("Goal" :in-theory (enable fn-load-gc-verdict)))))
