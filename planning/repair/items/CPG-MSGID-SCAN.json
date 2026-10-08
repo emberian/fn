@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/catalog-pool.lisp",
+ "id": "CPG-MSGID-SCAN",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-pool",
+ "state": "open",
+ "title": "fn-cat$p-msgid-seqs falls back to a scan of every row when the mlh has unplaced rows or is not well formed. books/catalog-pool.lisp proves only the mlh path (candidates = fn-mlh-candidates). Owed: the scan path as candidates = (iota (len h)), its equality with fn-cat$a-msgid-seqs (fn-mpxt-confirm-is-the-spec) and its honest fills bound, which has a term in (len h).",
+ "updated": "2026-10-07T23:29:28Z"
+}

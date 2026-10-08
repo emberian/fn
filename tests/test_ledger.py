@@ -11,6 +11,7 @@ import contextlib
 import io
 import json
 import os
+import pickle
 from pathlib import Path
 import re
 import sys
@@ -23,6 +24,106 @@ from unittest import mock
 # earlier imports holding a different Sym class, so their readers disagree.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import ledger
+
+
+class SharedFormsTests(unittest.TestCase):
+    SOURCE = "; shared forms fixture\n" * 100 + "(defun f (x) (cons x '(a b)))\n"
+
+    def setUp(self):
+        for patcher in (mock.patch.object(ledger, "_FORMS_MEMO", {}),
+                        mock.patch.dict(os.environ, {"FN_LEDGER_FORMS_CACHE": "0"})):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_memory_hit_reuses_forms_without_unpickling_and_consumes_reader(self):
+        with mock.patch.object(pickle, "loads", wraps=pickle.loads) as loads:
+            first = ledger.Reader(self.SOURCE).top_level()
+            reader = ledger.Reader(self.SOURCE)
+            self.assertIs(reader.top_level(), first)
+            self.assertEqual(reader.pos, len(self.SOURCE))
+            self.assertEqual(reader.top_level(), [])
+            self.assertEqual(loads.call_count, 0)
+        changed = ledger.Reader(self.SOURCE.replace("cons", "list")).top_level()
+        self.assertNotEqual(changed, first)
+
+    def test_disk_hit_unpickles_once_then_shares_and_corrupt_disk_reparses(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.dict(os.environ, {"FN_LEDGER_FORMS_CACHE": directory}):
+            expected = ledger.Reader(self.SOURCE).top_level()
+            ledger._FORMS_MEMO.clear()
+            with mock.patch.object(pickle, "loads", wraps=pickle.loads) as loads:
+                first = ledger.Reader(self.SOURCE).top_level()
+                self.assertEqual(first, expected)
+                self.assertIs(ledger.Reader(self.SOURCE).top_level(), first)
+                self.assertEqual(loads.call_count, 1)
+            ledger._FORMS_MEMO.clear()
+            next(Path(directory).rglob("*.pickle")).write_bytes(b"broken")
+            first = ledger.Reader(self.SOURCE).top_level()
+            self.assertEqual(first, expected)
+            self.assertIs(ledger.Reader(self.SOURCE).top_level(), first)
+
+    def test_instrumented_reader_subclasses_keep_their_own_forms(self):
+        # SpanReader/Spans attach locations to list subclasses; session_depth
+        # keeps an identity-to-line map. Neither may reuse another read's forms.
+        class InstrumentedReader(ledger.Reader):
+            pass
+
+        first = InstrumentedReader(self.SOURCE).top_level()
+        second = InstrumentedReader(self.SOURCE).top_level()
+        self.assertEqual(first, second)
+        self.assertIsNot(first[0][0], second[0][0])
+        self.assertEqual(ledger._FORMS_MEMO, {})
+
+    def test_consumers_preserve_shared_forms_including_nested_lists(self):
+        import callgraph
+        from tools import interface_emit, protocol_emit
+
+        # Exercise the shared reader through analyzers, event expansion and
+        # emitters. Snapshots catch nested mutation as well as append/sort/del
+        # on the top level; identity ensures consumers really saw shared data.
+        root = Path(__file__).resolve().parents[1]
+        paths = [root / "tests/acl2" / name for name in (
+            "defrecord-tests.lisp", "def-loop-tests.lisp", "defkeystone-tests.lisp",
+            "def-carried-view-tests.lisp", "def-keyset-check-tests.lisp",
+            "def-cursor-tests.lisp", "def-carried-writer-tests.lisp")]
+        paths += [protocol_emit.TABLE, protocol_emit.SERVED_TABLE]
+        with mock.patch.object(ledger, "_FORMS_CACHE_MIN", 0):
+            for path in paths:
+                with self.subTest(path=path.name):
+                    source = path.read_text()
+                    forms = ledger.Reader(source).top_level()
+                    before = pickle.dumps(forms)
+                    relative = path.relative_to(root).as_posix()
+                    book = ledger.analyze_book(path, relative)
+                    host = ledger.analyze_host(path, relative)
+                    self.assertIs(host.forms, forms)
+                    tree = ledger.Tree({relative: book}, [relative[:-5]], {relative: host})
+                    ledger.lint_warnings(tree)
+                    list(ledger.source_events(forms))
+                    callgraph.collect(forms, relative)
+                    self.assertIs(ledger.Reader(source).top_level(), forms)
+                    self.assertEqual(pickle.dumps(forms), before)
+
+            # Emitters keep derived rows and writer lists separate from forms.
+            with tempfile.TemporaryDirectory() as directory:
+                scratch = Path(directory)
+                (scratch / "books").mkdir()
+                (scratch / "host").mkdir()
+                source = self.SOURCE + '''
+(definterface f :class :logic :kinds ((x :value)))
+(def-carried row :established ((f held)) :transitions ((g preserved))
+ :concludes ((p established)))
+'''
+                (scratch / "host/interfaces.lisp").write_text(source)
+                forms = ledger.Reader(source).top_level()
+                before = pickle.dumps(forms)
+                interface_emit.declarations(scratch)
+                interface_emit.carried_rows(scratch)
+                self.assertEqual(pickle.dumps(forms), before)
+            protocol_emit.load()
+            for path in (protocol_emit.TABLE, protocol_emit.SERVED_TABLE):
+                source = path.read_text()
+                self.assertEqual(ledger.Reader(source).top_level(), ledger.Reader(source)._top_level())
 
 
 def tree_from(sources: dict[str, str], roots: list[str] | None = None) -> ledger.Tree:
@@ -696,57 +797,62 @@ class RegistryTests(unittest.TestCase):
 
 
 class GeneratedStatusTests(unittest.TestCase):
-    """A proof target's status is generated from green at these bytes (R2)."""
+    """A proof target's status is computed from the cert cache (R2), never stored."""
 
-    def status(self, names, books, manifest=None):
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory).resolve()
-            (root / "books").mkdir()
-            (root / "books/a.lisp").write_text('(in-package "ACL2")\n(defthm t1 t)\n')
-            entry = {"id": "PRF-001", "evidence": []}
-            if manifest is not None:
-                folder = root / "planning/evidence/manifests"
-                folder.mkdir(parents=True)
-                (folder / "certify-20260901T010000Z-1.json").write_text(json.dumps(manifest(root)))
-                entry["evidence"].append("planning/evidence/manifests/certify-20260901T010000Z-1.json")
-                # Archived = filed: indexed by hash, bytes in a scratch archive.
-                import evidence_store
-                with mock.patch.dict(os.environ, {
-                        "FN_EVIDENCE_ARCHIVE": str(root / "_archive"),
-                        "FN_EVIDENCE_CACHE": str(root / "_cache")}):
-                    evidence_store.put(root, [entry["evidence"][-1]])
-                    return ledger.derived_status(entry, names, books, {}, root)
-            return ledger.derived_status(entry, names, books, {}, root)
-
-    def passed(self, root, digest=None):
+    def status(self, names, books, certified=None):
+        """derived_status over books/a, whose cache holds an entry at the
+        record identity when CERTIFIED (a fake cache directory; no ssh)."""
+        import green_check
+        import cert_images
         import certs
-        return {"status": "passed", "requested_books": ["books/a"],
-                "certificate_digests_sha256": {"books/a": "c" * 64},
-                "book_results": {"books/a": "passed"},
-                "source_digests_sha256": {
-                    "books/a.lisp": digest or certs.content_hash(root / "books/a.lisp")}}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve() / "tree"
+            cache = Path(directory).resolve() / "cache"
+            (root / "books").mkdir(parents=True)
+            (root / "books/a.lisp").write_text('(in-package "ACL2")\n(defthm t1 t)\n')
+            if certified is not None:
+                for world in cert_images.worlds(root, "books/a"):
+                    key, _ = certs.closure_key(root, "books/a", world)
+                    entry = cache / key / "origin"
+                    entry.mkdir(parents=True)
+                    (entry / "book.cert").write_bytes(b"cert")
+                    (entry / "meta.json").write_text(json.dumps({
+                        "toolchain_identity": certified,
+                        "cert_sha256": __import__("hashlib").sha256(b"cert").hexdigest()}))
+            fake = green_check.Cache(local=cache, identity="record")
+            with mock.patch.object(green_check, "_DEFAULT", fake):
+                return ledger.derived_status({"id": "PRF-001"}, names, books, {}, root)
 
     def test_no_events_is_planned(self):
         self.assertEqual(self.status([], set()), "planned")
 
-    def test_events_without_a_cited_manifest_are_uncertified(self):
+    def test_events_with_no_cache_entry_are_uncertified(self):
         self.assertEqual(self.status(["t1"], {"books/a"}),
                          "uncertified-at-current-digest")
 
-    def test_a_cited_manifest_at_the_current_digest_certifies(self):
-        self.assertEqual(self.status(["t1"], {"books/a"}, self.passed), "certified")
+    def test_a_record_toolchain_cache_entry_certifies(self):
+        self.assertEqual(self.status(["t1"], {"books/a"}, certified="record"), "certified")
 
-    def test_a_cited_manifest_at_an_older_digest_does_not(self):
-        self.assertEqual(self.status(["t1"], {"books/a"},
-                                     lambda root: self.passed(root, "0" * 64)),
+    def test_an_entry_from_another_toolchain_does_not(self):
+        self.assertEqual(self.status(["t1"], {"books/a"}, certified="laptop"),
                          "uncertified-at-current-digest")
+
+    def test_regenerating_the_registry_stores_no_status(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "proofs.json"
+            path.write_text(json.dumps({"proofs": [
+                {"id": "PRF-001", "status": "certified", "evidence": [], "events": ["t1"]}]}))
+            with mock.patch.object(ledger, "PROOFS", path):
+                registry = json.loads(ledger.apply_events({"PRF-001": ["t1"]}))
+        self.assertEqual(registry["proofs"], [
+            {"id": "PRF-001", "evidence": [], "events": ["t1"]}])
 
 
 class RepositoryLedgerTests(unittest.TestCase):
-    """The real tree: the shipped ledger must be current and the cited events
+    """The real tree: the ledger must build and the cited events
     must pass the same checks the fixtures above describe."""
 
-    def test_the_checked_in_ledger_is_current(self):
+    def test_the_ledger_builds_and_registry_events_are_current(self):
         self.assertEqual(ledger.check_problems(), [])
 
     def test_every_named_assumption_has_an_encapsulate(self):
@@ -838,26 +944,6 @@ class TreeCacheTests(unittest.TestCase):
         with mock.patch.dict("os.environ", {"FN_LEDGER_TREE_CACHE": "0"}):
             self.assertIsNone(ledger._tree_cache_dir())
 
-
-
-class LaneCheckTests(unittest.TestCase):
-    """`make check-lane`: generated files are written aside, not compared."""
-
-    def test_without_the_flag_nothing_is_diverted(self):
-        with mock.patch.dict("os.environ", {}, clear=False) as env:
-            env.pop("FN_LANE_CHECK", None)
-            self.assertFalse(ledger.lane_generated("planning/ledger.md", "x"))
-
-    def test_with_the_flag_the_text_lands_in_the_directory_and_is_compared(self):
-        with tempfile.TemporaryDirectory() as directory, \
-                mock.patch.dict("os.environ", {"FN_LANE_CHECK": "1",
-                                               "FN_LANE_CHECK_DIR": directory}), \
-                mock.patch("sys.stderr") as stderr:
-            self.assertTrue(ledger.lane_generated("planning/ledger.md", "regenerated\n"))
-            written = Path(directory, "planning/ledger.md").read_text()
-            said = "".join(call.args[0] for call in stderr.write.call_args_list)
-        self.assertEqual(written, "regenerated\n")
-        self.assertIn("differs from the committed file", said)
 
 
 class SuspectCacheTests(unittest.TestCase):
@@ -1804,33 +1890,6 @@ class HandWrittenRecordLintTests(unittest.TestCase):
                           '(defun fn-s (x) (declare (xargs :mode :program)) x)\n'
                           }).books["books/s.lisp"]
         self.assertFalse(ledger.exports_no_rule(book))
-
-
-class FlipLinesTests(unittest.TestCase):
-    """obstructions-8 item 71: a regen that uncertifies rows says why, and
-    whether this branch's own change is the cause."""
-
-    def test_causes_are_grouped_and_attributed(self):
-        records = {
-            "books/a": {"verdict": "green", "certified_archived": True,
-                        "deps_moved_since": ["books/store-log.lisp"]},
-            "books/b": {"verdict": "green", "certified_archived": True,
-                        "deps_moved_since": ["books/store-log.lisp", "books/other.lisp"]},
-            "books/c": {"verdict": "never"},
-            "books/d": {"verdict": "green", "certified_archived": False,
-                        "deps_moved_since": []},
-        }
-        lines = ledger.flip_lines(
-            [("PRF-1", {"books/a"}), ("PRF-2", {"books/b"}), ("PRF-3", {"books/c"}),
-             ("PRF-4", {"books/d"})], records, changed={"books/store-log.lisp"})
-        self.assertIn("4 row(s) certified -> uncertified-at-current-digest", lines[0])
-        self.assertEqual(lines[1], "  books/store-log.lisp: 2 row(s) (this branch changes it: "
-                                   "expected until it is certified): PRF-1, PRF-2")
-        text = "\n".join(lines)
-        self.assertIn("books/other.lisp: 1 row(s) (not changed by this branch vs origin/dev: "
-                      "investigate): PRF-2", text)
-        self.assertIn("books/c.lisp (never): 1 row(s)", text)
-        self.assertIn("books/d.lisp (green only in an unarchived local run): 1 row(s)", text)
 
 
 class CursorBatchSourceTests(unittest.TestCase):

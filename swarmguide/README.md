@@ -8,7 +8,7 @@ discovering one failure behind another without producing a usable image.
 
 This guide explains what helped, with [case notes](case-notes.md) from the
 development history. It is not a second development policy. Start a lane from
-[AGENTS.md](../AGENTS.md), [how we work](../planning/how-we-work.md), and the
+[AGENTS.md](../AGENTS.md) and the
 current step in [the trajectory plan](../planning/plan-2026-09-22-trajectory.md).
 Those documents own the schedule, merge rules, resource limits, and definition
 of done. The examples here were checked against the September 22 tree.
@@ -33,7 +33,7 @@ another's hints without checking the resulting book can leave intended
 assertions unexercised; the defect is unexamined composition, not overlap itself.
 
 The current plan starts around ten useful agents. Machine slots and proof
-jobs remain separately bounded. The [coordination loop](../planning/how-we-work.md)
+jobs remain separately bounded. The [coordination loop](../AGENTS.md)
 and [swarm board](../planning/swarm-board.md) describe peer messaging, durable
 handoffs and sharing expensive runs. Measure additional progress and iteration
 latency, rather than treating occupied agent slots as throughput.
@@ -172,7 +172,7 @@ answer to one does not answer the others.
 
 The lane carries its behavior and invariant evidence together. Root then
 checks a coherent batch and follows the convergence cadence in
-[how we work](../planning/how-we-work.md), comparing failures and their forms
+[AGENTS.md](../AGENTS.md), comparing failures and their forms
 against the previous wave. A new regression belongs to the batch. An inherited
 failure unrelated to that change must not become an indefinite hold on every
 other lane.

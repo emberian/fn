@@ -12,7 +12,9 @@ and asserts the bar:
 * 1,000 POSTs of 2,048 octets;
 * 32 idle connections opened (8, then 24 more) and closed;
 * about 20 s idle after the close;
-* VmRSS of the owner process then is at most 128 MiB.
+* VmHWM of the owner process over the whole workload is at most 128 MiB
+  (ruling 16: a Pi kills on the peak); the at-rest VmRSS then is printed beside
+  it and not judged.
 
 The launch shape is the shipped one: the saved launcher's own SBCL options
 (tools/build_native_host.sh: --tls-limit 16384, the control stack
@@ -33,17 +35,19 @@ import unittest
 from pathlib import Path
 
 from tests.native_harness import Client, Node, EXIT, executable, native_image
+from tools.load.workloads import nmem3_clean
 
 IMAGE = native_image("FN_NATIVE_HOST")
 BAR_MIB = 128
-POSTS = 1000
-ARTICLE_OCTETS = 2048
-IDLE_CONNECTIONS = (8, 24)
-IDLE_SECONDS = 20
-SBCL_USER_ARGS = "--dynamic-space-size 1068MB --tls-limit 16384"
-INIT_FLAGS = ("--profile", "development", "--max-transactions", "16384",
-              "--max-history-octets", "8388608", "--max-record-octets", "196608",
-              "--max-groups-per-article", "16", "--max-open-suffix", "128")
+# One definition of the reference workload: tools/load/workloads.json, "rss-small-filled".
+_WORKLOAD = nmem3_clean()
+POSTS = _WORKLOAD["posts"]
+ARTICLE_OCTETS = _WORKLOAD["octets"]
+IDLE_CONNECTIONS = _WORKLOAD["idle_connections"]
+IDLE_SECONDS = _WORKLOAD["idle_seconds"]
+SBCL_USER_ARGS = _WORKLOAD["sbcl_user_args"]
+INIT_FLAGS = _WORKLOAD["init_flags"]
+GROUPS = _WORKLOAD["groups"]
 LINE = b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdef\r\n"
 
 
@@ -79,10 +83,10 @@ class ImageHeapBarTests(unittest.TestCase):
             self.skipTest("needs the production image %s" % IMAGE)
         env = {"SBCL_USER_ARGS": SBCL_USER_ARGS}
         node = Node(self, IMAGE, env=env)
-        node.operator("init", *INIT_FLAGS, "fn.letters", "fn.test", env=env, timeout=600,
+        node.operator("init", *INIT_FLAGS, *GROUPS, env=env, timeout=600,
                       expect=EXIT.OK)
         owner = node.start(env=env, timeout=900)
-        time.sleep(3)
+        time.sleep(_WORKLOAD["settle_s"])
         pid = owner.pid
         try:
             with Client(node.port, timeout=120) as c:
@@ -93,7 +97,7 @@ class ImageHeapBarTests(unittest.TestCase):
             held = []
             for count in IDLE_CONNECTIONS:
                 held.extend(Client(node.port, timeout=120, greeting=None) for _ in range(count))
-                time.sleep(2)
+                time.sleep(_WORKLOAD["step_settle_s"])
             # The shipped node refuses connections past its limit with a 400
             # greeting; the workload still opens them, as m3.py and nmem3.py do.
             admitted = sum(1 for c in held if c.greeting[:3] == b"200")
@@ -108,12 +112,14 @@ class ImageHeapBarTests(unittest.TestCase):
                 "posts": POSTS, "connections": len(held), "admitted": admitted, "image": str(IMAGE),
                 "launch": "{} --fn operator {} run".format(IMAGE, node.config),
                 "sbcl_user_args": SBCL_USER_ARGS, "bar_mb": BAR_MIB * 1.0,
-                "workload": "nmem3-clean"}
+                "workload": "nmem3-clean", "judged": "vmhwm"}
         print("FN_IMAGE_HEAP " + json.dumps(line), flush=True)
-        self.assertLessEqual(sample["VmRSS"], BAR_MIB * 1024,
-                             "VmRSS %.1f MB after %d POSTs, 32 idle connections closed and "
-                             "%d s idle exceeds the %d MiB bar (ruling 7)"
-                             % (mb(sample["VmRSS"]), POSTS, IDLE_SECONDS, BAR_MIB))
+        # Ruling 16: the bar is the whole-process PEAK (VmHWM over the workload); the at-rest
+        # VmRSS is printed beside it (the line above) and not judged.
+        self.assertLessEqual(sample["VmHWM"], BAR_MIB * 1024,
+                             "VmHWM %.1f MB over the workload (%d POSTs, 32 idle connections, %d s idle; "
+                             "at-rest VmRSS %.1f MB) exceeds the %d MiB bar (rulings 7 and 16)"
+                             % (mb(sample["VmHWM"]), POSTS, IDLE_SECONDS, mb(sample["VmRSS"]), BAR_MIB))
 
 
 if __name__ == "__main__":

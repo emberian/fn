@@ -4990,7 +4990,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-arena-bytes-seal-buffer{correspondence}"
+          "name": "fn-arena-seal-buffer{correspondence}"
+        },
+        {
+          "kind": "theorem",
+          "name": "adt-corr-scalar-octets-row"
         },
         {
           "kind": "theorem",
@@ -8593,15 +8597,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-arena-bytes-seal-list{correspondence}"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-arena-seal-buffer{correspondence}"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-arena-bytes-seal-buffer{correspondence}"
         },
         {
           "kind": "theorem",
@@ -8609,7 +8605,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-arena-bytes-seal-range{correspondence}"
+          "name": "adt-corr-scalar-octets-row"
         },
         {
           "kind": "theorem",
@@ -9969,35 +9965,23 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-arp-add-page-step"
+          "name": "adt-pg-corr-append"
         },
         {
           "kind": "theorem",
-          "name": "fn-arp-write-octet-step"
+          "name": "adt-pg-append-step-bound"
         },
         {
           "kind": "theorem",
-          "name": "fn-arp-seal-list-step"
+          "name": "adt-pg-corr-scalar-octets-row"
         },
         {
           "kind": "theorem",
-          "name": "fn-arena-paged-get{correspondence}"
+          "name": "adt-pg-corr-scalar-octets-row-in-pages"
         },
         {
           "kind": "theorem",
-          "name": "fn-arena-paged-payload{correspondence}"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-arena-paged-seal-buffer{correspondence}"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-arena-paged-seal-range{correspondence}"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-arena-paged-clear{correspondence}"
+          "name": "adt-pg-corr-clear"
         }
       ]
     },
@@ -15744,10 +15728,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-otm-disk-effects-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-otm-journal-starts-loop-is-plus"
         },
         {
@@ -15756,7 +15736,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-own-feed-tick-loop-is-rev-onto"
+          "name": "fn-dl-thread-loop-is-revappend"
         },
         {
           "kind": "theorem",
@@ -15768,19 +15748,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-scr-dispatch-events-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-scr-scan-span-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-served-dispatch-events-loop-is-rev-onto"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-served-feed-loop-is-rev-onto"
         },
         {
           "kind": "theorem",

@@ -1,0 +1,18 @@
+{
+ "id": "LOCK-CHECKER-HOST-WRAPPER-IO-BLIND",
+ "category": "lock-discipline",
+ "file": "tools/lock_discipline_check.py",
+ "line": "2170",
+ "owner": "deputy-C",
+ "severity": "high",
+ "slice": "tools",
+ "source": "lane io-hot-lookups (O1 DecisionRingLeaf tests)",
+ "state": "ready",
+ "title": "lock_discipline did not see I/O reached under a lock through a funcall of a special-variable seam (fnn-write-all, fnn-write-range, fnn-read-fd), so any leaf lock could do I/O undetected",
+ "keys": [],
+ "notes": [
+  "Mechanism: fnn-write-all, fnn-write-range and fnn-read-fd reach the syscall by (funcall *fnn-write-syscall* ...) / (funcall *fnn-read-syscall* ...), the defvar'd lambda holding sb-unix:unix-write/-read. The walker's funcall arm handled only env-bound names, parameters and quoted defuns; a global special in head position matched none, produced no event, and the defvar's lambda body is never walked, so the blocking summary of every caller was empty.",
+  "Fix: funcall/apply of a global resolves its init form (lambda walked at the call site, #'NAME as a call or leaf); an init that is neither raises a callback event, reported as R2 unresolved when a lock that is not io_ok is held. Teeth in tests/test_lock_discipline_check.py class R2SpecialSeam. New real keys surfaced are filed under LOCK-R2-LIVE-RECONFIGURE-IO, LOCK-R2-COMMIT-INLINE-LOG-IO and LOCK-R2-LOG-WRITE-UNDER-K."
+ ],
+ "updated": "2026-10-07T00:00:00Z"
+}

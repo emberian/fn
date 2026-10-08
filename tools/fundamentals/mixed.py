@@ -46,6 +46,7 @@ from pathlib import Path
 T = Path(os.environ["FN_MIXED_TREE"])
 sys.path.insert(0, str(T / "tools")); sys.path.insert(0, str(T))
 import msgid_measure as m
+from msgid_measure import decided_heap_env
 from tests.native_harness import wait_for_announcement
 
 IMG = Path(os.environ["FN_MIXED_IMAGE"])
@@ -191,7 +192,7 @@ def main():
     print("init rc", rc, out.strip()[-400:], flush=True)
     owner_err = open(W / "owner.stderr", "ab")
     T0 = time.time()
-    owner = subprocess.Popen([str(IMG), "--fn", "operator", str(cfg), "run"], cwd=T, env=ENV, stdout=subprocess.PIPE, stderr=owner_err)
+    owner = subprocess.Popen([str(IMG), "--fn", "operator", str(cfg), "run"], cwd=T, env=decided_heap_env(IMG, cfg, ENV), stdout=subprocess.PIPE, stderr=owner_err)
     wait_for_announcement(owner, b"LISTENING ", timeout=300)
     a = b = None
     if AGENTS:

@@ -243,6 +243,7 @@
 (include-book "../../books/expiry-instant")
 (include-book "../../books/native-init-resume")
 (include-book "../../books/accounts")
+(include-book "../../books/history-root-status")
 (include-book "../../books/owner-report-capture")
 (include-book "../../books/index-writer-ticket")
 (include-book "../../books/catalog-may-seal")

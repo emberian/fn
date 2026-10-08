@@ -1196,8 +1196,13 @@
                  fn-osr-live-not-completing-identity-and-consumer-ok
                  fn-osr-identity-prefixp fn-sti-completed-prefixp)))))
 
-(defthm fn-osr-live-replay-identity-fields-typed
-  (implies (fn-osr-livep s)
+; Proved a phase at a time: with the phase fixed, the livep recognizers open
+; to a short conjunction; with the case split left to the one theorem they
+; open under every branch of the phase disjunctions at once.
+(local
+ (defthm fn-osr-live-replay-identity-fields-typed-not-completing
+  (implies (and (fn-osr-livep s)
+                (not (equal (fn-sf-phase (fn-sn-files s)) :completing)))
            (and (natp (fn-stxk-context-next
                        (fn-replay-identity (fn-sf-records (fn-sn-files s)))))
                 (fn-sn-keyring-snapshot-listp
@@ -1205,7 +1210,31 @@
                   (fn-replay-identity (fn-sf-records (fn-sn-files s)))))))
   :rule-classes nil
   :hints (("Goal"
-           :cases ((equal (fn-sf-phase (fn-sn-files s)) :completing))
+           :use (fn-osr-source-fields-typed
+                 (:instance fn-sf-state-records-are-true-list (s (fn-sn-files s)))
+                 (:instance fn-cbor-take-whole-list
+                            (xs (fn-sf-records (fn-sn-files s)))))
+           :in-theory
+           (e/d (fn-osr-livep fn-sti-livep fn-csi-livep fn-sn-identity-sequencep
+                 fn-sf-completion-phasep fn-osr-identity-prefixp fn-osr-context-view
+                 fn-sn-identity-context fn-stxk-context)
+                (fn-sn-finish fn-cst-relation fn-sn-statep fn-sf-statep take
+                 fn-replay-identity fn-cpe-projection-replay
+                 fn-osr-ready-identity-exact-view fn-osr-finish-preserves-live-carry
+                 fn-sti-completed-prefixp fn-csi-completion-lastp
+                 fn-csi-completed-prefixp fn-sn-keyring-snapshot-listp))))))
+
+(local
+ (defthm fn-osr-live-replay-identity-fields-typed-completing
+  (implies (and (fn-osr-livep s)
+                (equal (fn-sf-phase (fn-sn-files s)) :completing))
+           (and (natp (fn-stxk-context-next
+                       (fn-replay-identity (fn-sf-records (fn-sn-files s)))))
+                (fn-sn-keyring-snapshot-listp
+                 (fn-stxk-context-snapshots
+                  (fn-replay-identity (fn-sf-records (fn-sn-files s)))))))
+  :rule-classes nil
+  :hints (("Goal"
            :use (fn-osr-source-fields-typed
                  (:instance fn-osr-ready-identity-exact-view (s (fn-sn-finish s)))
                  (:instance fn-osr-source-fields-typed (s (fn-sn-finish s)))
@@ -1221,7 +1250,20 @@
                  fn-replay-identity fn-cpe-projection-replay
                  fn-osr-ready-identity-exact-view fn-osr-finish-preserves-live-carry
                  fn-sti-completed-prefixp fn-csi-completion-lastp
-                 fn-csi-completed-prefixp fn-sn-keyring-snapshot-listp)))))
+                 fn-csi-completed-prefixp fn-sn-keyring-snapshot-listp))))))
+
+(defthm fn-osr-live-replay-identity-fields-typed
+  (implies (fn-osr-livep s)
+           (and (natp (fn-stxk-context-next
+                       (fn-replay-identity (fn-sf-records (fn-sn-files s)))))
+                (fn-sn-keyring-snapshot-listp
+                 (fn-stxk-context-snapshots
+                  (fn-replay-identity (fn-sf-records (fn-sn-files s)))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use (fn-osr-live-replay-identity-fields-typed-not-completing
+                 fn-osr-live-replay-identity-fields-typed-completing)
+           :in-theory (theory 'minimal-theory))))
 
 (defthm fn-osr-live-capture-opens
   (implies (fn-osr-livep s)
@@ -1243,7 +1285,11 @@
                  fn-sn-update-replayed fn-sn-observed-seed fn-sn-make
                  fn-sn-make-v2 fn-osr-context-view fn-sn-identity-context
                  fn-stxk-context fn-sn-observed-topic-okp)
-                (fn-osr-live-current-identity-and-consumer-ok
+                (fn-csi-enabled-phase-by-definition fn-osr-configured-completing-enables-finish
+                 fn-sti-local-admin-is-topic-event fn-th-local-admin-eventp
+                 fn-hls-kind4-disjoint-from-other-store-events fn-stxa-p
+                 fn-sn-keyring-snapshot-listp fn-osr-ready-topic-exact fn-scram-printable-facts
+                 fn-osr-live-current-identity-and-consumer-ok
                  fn-sti-current-records-topic-ok-including-completed
                  fn-sn-make-v6 fn-sn-with-configuration fn-sn-statep
                  fn-cnode-statep fn-cpr-replay fn-cpr-loop fn-replay-identity

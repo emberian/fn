@@ -678,8 +678,8 @@ values (nil, nil, 0, nil, the first class, nil, nil, nil, nil). Because it
 is a state, not a separate projection record, a fixed-point statement over
 it is well typed (T6). Clearing every attempt and delivery marker, anchored
 or not, is the design's `clear-inflight`; as built, `fn-bpn-restart-step`
-applies `fn-bpn-resume-jobs`, which returns every `:attempting` job to
-`:queued`; `fn-bpn-reanchor st obs` is §4.5's
+applies `fn-bpn-resolve-orphans-step`, which resolves an `:attempting` job
+through the append path as a `:requeued` record with the `:uncertain` reason; `fn-bpn-reanchor st obs` is §4.5's
 re-anchoring. These three are the vocabulary of T6.
 
 ### 2.7 No whole-state revalidation on the served path
@@ -4226,7 +4226,7 @@ D's wire evidence exists.
 This replaces the phase-2/phase-3 briefs. Each slice lands its behaviour
 with the safety and replay theorems that behaviour's ACKs depend on; there
 is no proof-after-implementation interval (§12, D-10). Within a phase,
-edited books are disjoint; every lane follows [how we work](../planning/how-we-work.md):
+edited books are disjoint; every lane follows [AGENTS.md](../AGENTS.md):
 its own worktree, its own closure certified before it reports, 300 s per
 book for discovery, 1800 s once for the final closure, `green_check
 --changed-since <base> --strict`, an evidence file

@@ -14,7 +14,6 @@
 ; over the whole book, 2026-09-28, lane d26-books).  None is cited below.
 (local (in-theory (disable fn-cbor-octet-listp-implies-true-listp
                            fn-w47-octets-of-cdr
-                           fn-ot-nat-parse-accepts-only-digits
                            fn-oct-octetp-is-unsigned-byte-p
                            fn-oct-bufp-cell-is-octet
                            fn-oct-nth-of-octet-listp-is-octet)))

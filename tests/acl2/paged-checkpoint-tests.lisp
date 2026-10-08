@@ -176,3 +176,72 @@
  (defthm pckt-decode-uncarried
    (implies (true-listp h)
             (equal (fn-pck-held-of-crow-rows (fn-crow-of-pages (fn-pck-cat-pages h))) h))))
+
+; 6. PCK-ADOPT-ESCAPED (fn-pck-adopt-withdraw-escaped): a withdrawal that changes the
+; row's word width.  The shifted dirty set (the pages from the target row to the
+; end) gives the image where the same-width set (fn-pck-cat-withdraw-dirty) does not.
+; (a) the row is already escaped: premises of the keystone hold, its equation
+; evaluates true, and the same-width set is false at the same inputs.
+(assert-event (and (fn-cat-rowsp *pckt-esc-h*) (fn-pck-carriedp *pckt-esc-h*)
+                   (natp 10) (< 10 (len *pckt-esc-h*)) (natp 5)
+                   (fn-pck-carriedp (fn-cat$a-withdraw 10 5 *pckt-esc-h*))
+                   (equal (pgs-apply-dirty (fn-pck-cat-pages *pckt-esc-h*)
+                                           (fn-pck-cat-withdraw-dirty-shifted *pckt-esc-h* 10 5))
+                          (fn-pck-cat-pages (fn-cat$a-withdraw 10 5 *pckt-esc-h*)))
+                   (not (equal (pgs-apply-dirty (fn-pck-cat-pages *pckt-esc-h*)
+                                                (fn-pck-cat-withdraw-dirty *pckt-esc-h* 10 5))
+                               (fn-pck-cat-pages (fn-cat$a-withdraw 10 5 *pckt-esc-h*))))))
+
+; (b) the withdrawal newly escapes the row (BY is the sentinel, not small).
+(assert-event (and (fn-cat-rowsp *pckt-wide-h*) (fn-pck-carriedp *pckt-wide-h*)
+                   (not (fn-cp-escapedp (nth 10 *pckt-wide-h*)))
+                   (not (fn-cp-smallp (1- (expt 2 64))))
+                   (fn-pck-carriedp (fn-cat$a-withdraw 10 (1- (expt 2 64)) *pckt-wide-h*))
+                   (equal (pgs-apply-dirty (fn-pck-cat-pages *pckt-wide-h*)
+                                           (fn-pck-cat-withdraw-dirty-shifted *pckt-wide-h* 10 (1- (expt 2 64))))
+                          (fn-pck-cat-pages (fn-cat$a-withdraw 10 (1- (expt 2 64)) *pckt-wide-h*)))
+                   (not (equal (pgs-apply-dirty (fn-pck-cat-pages *pckt-wide-h*)
+                                                (fn-pck-cat-withdraw-dirty *pckt-wide-h* 10 (1- (expt 2 64))))
+                               (fn-pck-cat-pages (fn-cat$a-withdraw 10 (1- (expt 2 64)) *pckt-wide-h*))))))
+
+; (c) the premise that the withdrawn catalog is carried is needed.  BY past the
+; codec's naturals (2^2100: more than 255 digit octets) makes the remainder
+; unencodable, the row is kept whole in its cell and its columns shrink; this
+; catalog's tape is one word past a page boundary, so the shorter tape has one
+; page fewer, and no dirty set can drop the old image's last page.
+(defconst *pckt-edge-h* (pckt-cat 264 7))
+(assert-event (and (fn-cat-rowsp *pckt-edge-h*) (fn-pck-carriedp *pckt-edge-h*)
+                   (equal (mod (len (adt-tp-seq-words *fn-crow-schema* (fn-pck-crow-rows *pckt-edge-h*))) 2048) 1)
+                   (not (fn-pck-carriedp (fn-cat$a-withdraw 10 (expt 2 2100) *pckt-edge-h*)))
+                   (< (len (adt-tp-seq-words *fn-crow-schema*
+                                             (fn-pck-crow-rows (fn-cat$a-withdraw 10 (expt 2 2100) *pckt-edge-h*))))
+                      (len (adt-tp-seq-words *fn-crow-schema* (fn-pck-crow-rows *pckt-edge-h*))))
+                   (not (equal (pgs-apply-dirty (fn-pck-cat-pages *pckt-edge-h*)
+                                                (fn-pck-cat-withdraw-dirty-shifted *pckt-edge-h* 10 (expt 2 2100)))
+                               (fn-pck-cat-pages (fn-cat$a-withdraw 10 (expt 2 2100) *pckt-edge-h*))))
+                   ; the same catalog with a small BY: carried, and the keystone's equation holds
+                   (fn-pck-carriedp (fn-cat$a-withdraw 10 5 *pckt-edge-h*))
+                   (equal (pgs-apply-dirty (fn-pck-cat-pages *pckt-edge-h*)
+                                           (fn-pck-cat-withdraw-dirty-shifted *pckt-edge-h* 10 5))
+                          (fn-pck-cat-pages (fn-cat$a-withdraw 10 5 *pckt-edge-h*)))))
+(must-fail-checked
+ (defthm pckt-withdraw-escaped-uncarried
+   (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (natp target) (< target (len h)) (natp by))
+            (equal (pgs-apply-dirty (fn-pck-cat-pages h) (fn-pck-cat-withdraw-dirty-shifted h target by))
+                   (fn-pck-cat-pages (fn-cat$a-withdraw target by h))))))
+
+; (d) the bound is a term in the rows from the target on: the old same-width
+; bound (one row's pages) is false for an escaped row, and a withdrawal near the
+; end dirties fewer pages than one at the start.
+(must-fail-checked
+ (defthm pckt-withdraw-escaped-bound-one-row
+   (implies (and (fn-cat-rowsp h) (fn-pck-carriedp h) (natp target) (< target (len h)) (natp by))
+            (<= (len (fn-pck-cat-withdraw-dirty-shifted h target by))
+                (+ 1 (fn-crow-pool-pages-of-row (fn-cp-row-of (nth target h))))))))
+(assert-event (and (< (+ 1 (fn-crow-pool-pages-of-row (fn-cp-row-of (nth 10 *pckt-esc-h*))))
+                      (len (fn-pck-cat-withdraw-dirty-shifted *pckt-esc-h* 10 5)))
+                   (<= (len (fn-pck-cat-withdraw-dirty-shifted *pckt-esc-h* 10 5))
+                       (+ 1 (fn-crow-pool-pages-of-rows
+                             (fn-pck-crow-rows (nthcdr 10 (fn-cat$a-withdraw 10 5 *pckt-esc-h*))))))
+                   (< (len (fn-pck-cat-withdraw-dirty-shifted *pckt-esc-h* 140 5))
+                      (len (fn-pck-cat-withdraw-dirty-shifted *pckt-esc-h* 10 5)))))
