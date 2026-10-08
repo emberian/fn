@@ -82,8 +82,8 @@
   :hints (("Goal" :use ((:instance fn-ocs-in-flight-admits-only-inspect-commit-and-reader
                                    (s (fn-ocp-ocs (fn-otm-ocp (fn-otm-with-step s :staged nil t)))))))))
 
-; KEYSTONE H2.  Outside the hold the pick is fn-otm-next's.
-(defthm fn-otm-hold-next-without-the-hold-is-next
+; H2 (by definition, not a keystone).  Outside the hold the pick is fn-otm-next's.
+(defthm fn-otm-hold-next-without-the-hold-by-definition
   (implies (not (fn-otm-holdp s))
            (equal (fn-otm-hold-next s w) (fn-otm-next s w))))
 
