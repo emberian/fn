@@ -6,12 +6,14 @@
  "id": "PRL-ROW-SUM-INVARIANT",
  "locus": "page-read-ledger",
  "notes": [
-  "the page-read ledger carries charged >= the sum of the bound rows' demands (per resource), preserved by admit/register/issue/settle/evict/close/reserve-growth; it discharges fn-prl-convert-growth-when-charged-covers-the-reserve's charged-covers hypothesis across draws, and it is the real custody claim (no release refunds another row's charge). Today release-reusable nfix-clamps."
+  "the page-read ledger carries charged >= the sum of the bound rows' demands (per resource), preserved by admit/register/issue/settle/evict/close/reserve-growth; it discharges fn-prl-convert-growth-when-charged-covers-the-reserve's charged-covers hypothesis across draws, and it is the real custody claim (no release refunds another row's charge). Today release-reusable nfix-clamps.",
+  "Codex p-prl-rowsum: statement-first commit 66365c3f8; proof commit b97ebd8e5; complete proof/teeth source b8f66a5b2, PRF-1343. fn-prl-row-sum-invp is a total guard-t predicate: natural five-vector charge, natural demand vectors for every bound row, issued native-demand a natural vector below its demand, and each charged coordinate >= the sum of all bound row demands. make establishes it; register/admit/settle/evict/close/reserve-growth/convert-growth preserve it without extra transition premises. Exact reserve binding derives amount naturalness and G2 charged-covers; the corollary requires only custody, binding and pool funding. No ledger definitions changed; no preservation counterexample. Eleven defteeth claims have complete positive witnesses and 14 declared-hypothesis removals, with four mutations including an over-refund/nfix-clamp transition that retains another row unfunded; an additional malformed issued-row witness demonstrates why native-demand <= demand is required.",
+  "Gate: fresh persvati REPL loaded all 50 proof-book forms (3.62 ACL2 seconds) and the test book through defteeth-check, including the native-demand witness. Scoped farm run run-20261008T093314Z-1853 / certify-20261008T093341Z-1369411 passed: 2 newly certified roots, 4 cached dependency books, 0 failed, no book over 10 seconds; record toolchain fcedce7e3aa26e7ef93c7b3801bc39b2c56b7968cc1dfdf8e710a8931b349d52. ledger.py --check OK (8116 existing lint warnings); keystone_emit.py --check 0 findings. All ten original theorem terms are unchanged from the statement-first commit. keystone_emit generated manifest refreshed with the current tool schema and the eleven new teeth; no ceiling or ratchet changed. State landed records completed proofs in this lane; Deputy P still reviews/integrates, and this lane does not push."
  ],
  "owner": "deputy-S",
  "severity": "medium",
  "source": "p-growth-reserve lane, S4 audit 2026-10-08",
- "state": "deferred",
+ "state": "landed",
  "title": "Page-read ledger row-sum invariant: charged covers the bound rows' demands",
- "updated": "2026-10-08T00:00:00Z"
+ "updated": "2026-10-08T09:34:59Z"
 }
