@@ -13,7 +13,7 @@ import socket
 import threading
 import time
 
-from tests.test_native_peer_catchup import without_path_and_xref
+from .peers import without_path_and_xref
 
 PROPERTIES = {
     "P1-DURABLE": "Every POST with a read 240 survives restart byte-identically, Path/Xref excepted.",
