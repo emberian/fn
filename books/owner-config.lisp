@@ -496,7 +496,8 @@
   (fn-ocfg-make (fn-own-close (fn-ocfg-owner oc) id)
                 (fn-ocfg-config oc)
                 (fn-ocfg-pin-remove id (fn-ocfg-pins oc))
-                (if (equal (fn-own-pending (fn-ocfg-owner oc)) id)
+                (if (and (fn-own-pending (fn-ocfg-owner oc))
+                         (equal (fn-own-pending (fn-ocfg-owner oc)) id))
                     nil
                   (fn-ocfg-staged oc))))
 
