@@ -394,12 +394,14 @@
   :hints (("Goal" :induct (fn-bpnjc-first-held rest peer routing offered)
            :in-theory (disable fn-bpnjc-candp fn-bpnj-candidatep))))
 
-(local (defthm fn-bpnjc-subsetp-cons-right
-  (implies (subsetp-equal x y)
-           (subsetp-equal x (cons a y)))))
+(local
+ (defthm fn-bpnjc-subsetp-cons
+   (implies (subsetp-equal x y)
+            (subsetp-equal x (cons a y)))))
 
 (defthm fn-bpnjc-subsetp-reflexive
-  (subsetp-equal x x))
+  (subsetp-equal x x)
+  :hints (("Goal" :induct (len x))))
 
 ; The scan's two answers over the whole list, split at the cursor.
 (defthm fn-bpnjc-head-answers-at-the-cursor
