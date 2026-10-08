@@ -334,7 +334,12 @@ class FreshInitTests(Harness, unittest.TestCase):
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         word, _, _, _ = self.init_line(made)
         self.assertEqual(word, "custom")
-        status = self.run_fn("operator", config, "status")
+        # The replayed status: a stopped store's plain `status' reads only
+        # the checkpoint header and the journal's length, so it prints no
+        # headroom and no capacity line (books/owner-maintenance-request.lisp
+        # fn-omr-stopped-report); the capacity line is the replayed report's
+        # (books/native-live-status.lisp fn-nls-report).
+        status = self.run_fn("operator", config, "status", "--replay")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         self.assertIn("max-article-octets=1048576", status.stdout.decode())
         # PKT-707: at least the friend floor (16,384 transactions, 8 MiB of

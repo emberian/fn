@@ -40,7 +40,7 @@
 ; A ledger with ROOM octets free: 100 MiB of base, nothing else held.
 (defun mcat-ledger (room ops)
   (declare (xargs :mode :program))
-  (fn-mcr-make (+ (* 100 1048576) room (fn-mcr-ops-credit ops)) (* 100 1048576) 0 0 0 0 ops))
+  (fn-mcr-make (+ (* 100 1048576) room (fn-mcr-ops-credit ops)) (* 100 1048576) 0 0 0 0 ops 0 nil))
 
 ; KEYSTONE fn-mca-read-span-keeps-funded and fn-mca-read-span-covers-the-
 ; connection.  REACHABLE POSITIVE WITNESS: room for one reserve, connection 0
@@ -85,7 +85,7 @@
 
 ; HYPOTHESIS REMOVAL for fn-mca-read-span-keeps-funded: from an UNFUNDED
 ; ledger (total past the budget) the admitted read leaves it unfunded.
-(defconst *mcat-over* (fn-mcr-make 10 20 0 0 0 0 nil))
+(defconst *mcat-over* (fn-mcr-make 10 20 0 0 0 0 nil 0 nil))
 (assert-event (not (fn-mcr-fundedp *mcat-over*)))
 (assert-event (not (fn-mcr-fundedp
                     (cdr (mcat-read *mcat-over* *oast-open* *orrt-views* 0 *t2r-post* *t2-s1* 32 0)))))
@@ -217,6 +217,17 @@
 ; it the reserve is the open's transient alone.
 (assert-event (equal (fn-mca-owner-octets *fn-heap-small-profile* t) 358006784))
 (assert-event (equal (fn-mca-owner-octets *fn-heap-small-profile* nil) 130023424))
+; KEYSTONE fn-mca-roots-draw-the-reserve-and-never-the-articles at the small
+; preset: the roots' reserve is funded whole in the ledger, drawn to the last
+; octet it leaves the pool at 3,441,664 and admitted whole, and one octet more
+; of root is refused by name.
+(assert-event (equal (fn-mcr-hroot *mcat-small*) (fn-heap-hroot-reserve-octets *fn-heap-small-profile*)))
+(defconst *mcat-small-roots*
+  (cadr (fn-mcr-hroot-resize *mcat-small* :root-a (fn-heap-hroot-reserve-octets *fn-heap-small-profile*))))
+(assert-event (equal (- (fn-mcr-budget *mcat-small-roots*) (fn-mcr-total *mcat-small-roots*)) 3441664))
+(assert-event (equal (car (fn-mcr-resize *mcat-small-roots* :article-pool 3441664)) :ok))
+(assert-event (equal (fn-mcr-hroot-resize *mcat-small-roots* :root-b 1)
+                     '(:refused :history-root-reserve-exhausted)))
 (assert-event (equal (fn-heap-store-open-octets *fn-heap-small-profile* 8388608 16384) 130023424))
 
 ; KEYSTONE fn-mca-served-steps-keep-pass-free (K2), with

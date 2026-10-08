@@ -14,7 +14,8 @@
  "notes": [
   "10-02 22:38 not measured yet: cost_gate.py logs checkpoint_s per N; blocked on the NEWNEWS hang in the window (see cost-gate lanedump)",
   "10-04 15:51 claimed: scope=['host/native/io.lisp', 'tests/native_checkpoint_walk_yield-mock.lisp', 'tests/test_native_checkpoint_walk_yield.py'] test=python3 -m unittest tests.test_native_checkpoint_walk_yield",
-  "10-04 15:51 granted by integrator-3 2026-10-04, scope: host/native/io.lisp fnn-checkpoint-walk only"
+  "10-04 15:51 granted by integrator-3 2026-10-04, scope: host/native/io.lisp fnn-checkpoint-walk only",
+  "10-07 18:10 2026-10-07 C6: the tool this item measures with, tools/cost_gate.py, is deleted (parsimony ruling; nothing invoked it). A measurement still owed here needs a native test or throughput_gate."
  ],
  "owner": "cost-gate",
  "scope": [
@@ -27,5 +28,5 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_native_checkpoint_walk_yield",
  "title": "fnn-checkpoint-walk (bug)",
- "updated": "2026-10-04T19:51:05Z"
+ "updated": "2026-10-07T22:10:45Z"
 }

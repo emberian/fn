@@ -96,7 +96,7 @@
              (view (fn-own-view-make-indexed 34 nil raw nil index))
              (owner (fn-own-make (fn-sn-make-v6 (fn-state-groups raw) 0 nil nil nil nil 0 nil nil 0 nil nil nil nil) view (list conn) 1 1 nil nil nil nil nil nil nil nil nil nil))
              (oc (fn-ocfg-make owner nil nil nil))
-             (credits (fn-mcr-make 1048576 0 0 0 0 0 nil))
+             (credits (fn-mcr-make 1048576 0 0 0 0 0 nil 0 nil))
              (line (fn-nntp-string-octets "GROUP fn.available"))
              (wire (append line '(13 10)))
              (fn-octets (fn-octets-from-list wire fn-octets))

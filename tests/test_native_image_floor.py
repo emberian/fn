@@ -141,7 +141,7 @@ class ProductionTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as work:
             res = subprocess.run([sys.executable, str(MEASURE), "stack-floor", str(IMAGE),
                                   work, "--octets", "32000", "--line-octets", "2",
-                                  "--heap", "1024", "--hi", str(kib), "--lo", str(kib - 1)],
+                                  "--heap", "decided", "--hi", str(kib), "--lo", str(kib - 1)],
                                  env=environment(), stdout=subprocess.PIPE, check=True,
                                  timeout=900)
         return json.loads(res.stdout)

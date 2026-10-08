@@ -43,7 +43,7 @@
 ;; MiB, completion 8 MiB, runtime 16 MiB, no cache, two operations.
 (defconst *rvrt-l*
   (fn-mcr-make (* 256 *rvrt-mib*) (* 160 *rvrt-mib*) 0 (* 8 *rvrt-mib*) (* 16 *rvrt-mib*) 0
-               (list (cons 1 (cons 40000 1549248)) (cons 2 (cons 0 1589248)))))
+               (list (cons 1 (cons 40000 1549248)) (cons 2 (cons 0 1589248))) 0 nil))
 (assert! (fn-mcr-fundedp *rvrt-l*))
 (assert! (fn-rv-okp (fn-rv-bank-of-credits *rvrt-l*)))  ; evaluated; the theorem is NEXT
 (assert! (fn-rv-fundedp (fn-rv-bank-of-credits *rvrt-l*)))
@@ -55,7 +55,7 @@
 (assert! (equal (fn-rv-slot-count (fn-rv-bank-of-credits *rvrt-l*)) 6))
 ;; A ledger past its budget is not an okp bank, and not funded.
 (defconst *rvrt-l-past*
-  (fn-mcr-make (* 256 *rvrt-mib*) (* 250 *rvrt-mib*) 0 (* 8 *rvrt-mib*) (* 16 *rvrt-mib*) 0 nil))
+  (fn-mcr-make (* 256 *rvrt-mib*) (* 250 *rvrt-mib*) 0 (* 8 *rvrt-mib*) (* 16 *rvrt-mib*) 0 nil 0 nil))
 (assert! (not (fn-mcr-fundedp *rvrt-l-past*)))
 (assert! (not (fn-rv-fundedp (fn-rv-bank-of-credits *rvrt-l-past*))))
 (assert! (not (fn-rv-okp (fn-rv-bank-of-credits *rvrt-l-past*))))

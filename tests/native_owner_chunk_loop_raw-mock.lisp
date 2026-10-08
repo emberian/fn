@@ -102,6 +102,9 @@
            (dolist (item (if (eq head 'eval-when) (cddr form) (cdr form)))
              (index-form item file)))
           ((eq head 'defun) (note (second form) :function))
+          ;; host/native/owner.lisp `def-section' defines a function NAME
+          ;; (its lambda list is the macro's own; host-lambda-list).
+          ((eq head 'def-section) (note (second form) :function))
           ((eq head 'defmacro) (note (second form) :macro))
           ((member head '(defconstant defvar defparameter)) (note (second form) :variable))
           ((eq head 'deftype) (note (second form) :type))
@@ -169,11 +172,26 @@ definition the node never runs."
 
 (defun host-entries (name) (gethash name *host*))
 
+(defun section-lambda-list ()
+  "The lambda list of the function host/native/owner.lisp's `def-section'
+macro defines: the DEFUN template in the macro's own body."
+  (labels ((find-defun (x)
+             (cond ((typep x 'sb-impl::comma) (find-defun (sb-impl::comma-expr x)))
+                   ((not (consp x)) nil)
+                   ((eq (car x) 'defun) x)
+                   (t (or (find-defun (car x)) (find-defun (cdr x)))))))
+    (let ((macro (find :macro (host-entries 'def-section) :key #'first)))
+      (or (and macro (third (find-defun (cdddr (third macro)))))
+          (error "stale harness: host/native/owner.lisp defines no def-section ~
+                  macro with a DEFUN template")))))
+
 (defun host-lambda-list (name)
   "The lambda list the host gives the function NAME, or :none."
   (let ((entry (find-if (lambda (e) (member (first e) '(:function :alien)))
                         (host-entries name))))
     (cond ((null entry) :none)
+          ((and (eq (first entry) :function) (eq (car (third entry)) 'def-section))
+           (section-lambda-list))
           ((eq (first entry) :function) (third (third entry)))
           (t (mapcar #'first (cdddr (third entry)))))))
 
@@ -219,7 +237,10 @@ unbounded (&rest or &key)."
 ;; declared unreached.  The cold 403 itself is tests/test_native_slow_disk.py's.
 (defvar *fnn-extent-no-io* nil)
 (defun fnn-extent-no-io-usable-p () t)
-(defun fnn-socket-shut (socket) (declare (ignore socket)) nil)
+;; The close and its physical receipt (host/native/io.lisp fnn-socket-shut:
+;; NIL, then :closed or :unobserved, then the condition): the scripted socket
+;; always closes.
+(defun fnn-socket-shut (socket) (declare (ignore socket)) (values nil :closed nil))
 (defun fnn-tls-close-channel (channel) (declare (ignore channel)) nil)
 ;; host/native/tls.lisp's condition (tls.lisp is not extracted): the loop's
 ;; handler names it (host/native/mux.lisp), and SBCL resolves a handler's type
@@ -237,6 +258,8 @@ unbounded (&rest or &key)."
 (defun fnn-%statvfs (path buffer) (declare (ignore path buffer)) -1)
 ;; The owner mutex and its gate: the quantum runs at once.
 (defun fnn-owner-serialized (service cid thunk &optional class)
+  (declare (ignore service cid class)) (funcall thunk))
+(defun fnn-quantum-mux-finish (service cid thunk &optional class)
   (declare (ignore service cid class)) (funcall thunk))
 (defun fnn-owner-stop-service-locked (service code &optional answering)
   (declare (ignore service code answering)) nil)
@@ -291,13 +314,14 @@ unbounded (&rest or &key)."
     (fn-owner-compress-owed nil)
     ;; The reader context a response captures before its first window
     ;; (fnn-owner-capture-reader-context): opaque to the host, retained.
-    (fn-owner-catalog-capture-context (list :captured-context (first args)))))
+    (fn-owner-catalog-capture-context (list :captured-context (first args)))
+    ;; The idle check (fn-exp-idle-delivery): kept, no tail.
+    (fn-owner-exposure-idle (list :keep nil))))
 
 (defun fnn-owner-action (name &rest args)
   (ecase name
     (fn-owner-observe (push args *observations*) (push :observe *timeline*) :observed)
     (fn-owner-close :closed)
-    (fn-owner-exposure-idle :keep)
     ;; The transport took a reply window (fn-exp-progress, Astra c07).
     (fn-owner-exposure-progress (push :output-progress *timeline*) :ok)
     (fn-owner-exposure-release :released)
@@ -433,7 +457,14 @@ unbounded (&rest or &key)."
     ;; A scenario's plan is its list of ready windows: never an ARTICLE
     ;; preflight plan (books/article-stream-...: fn-asto-preflight-planp).
     (fn-asto-preflight-planp nil)
-    (fn-asto-plan-articlep nil)))
+    (fn-asto-plan-articlep nil)
+    ;; The reply's send verdict (books/send-progress.lisp): every scripted
+    ;; write is taken whole, so each look continues and the state is opaque.
+    (fn-send-progress-begin (list :send-state (first args)))
+    (fn-send-progress-decide :continue)
+    (fn-send-progress-next (first args))
+    ;; Row 20: no scripted reply leaves a kernel queue, so no tail.
+    (fn-exp-tail-start nil)))
 
 ;; The live arena and catalog stobjs (host/native/io.lisp, read from ACL2's
 ;; state): a response's capture retains them; nothing here reads through them.
