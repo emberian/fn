@@ -559,15 +559,16 @@ stop, caught before the first POST instead of at the second."
 
 (defun fnn-owner-measure-note (label start bytes)
   (let* ((held (- (fnn-owner-measure-now) start))
-         (consed (- (sb-ext:get-bytes-consed) bytes))
-         (row (or (gethash label *fnn-owner-measure-table*)
-                  (setf (gethash label *fnn-owner-measure-table*)
-                        (list 0 0 0 0 0)))))
-    (incf (first row))
-    (incf (second row) held)
-    (setf (third row) (max (third row) held))
-    (incf (fourth row) consed)
-    (setf (fifth row) (max (fifth row) consed))))
+         (consed (- (sb-ext:get-bytes-consed) bytes)))
+    (sb-ext:with-locked-hash-table (*fnn-owner-measure-table*)
+      (let ((row (or (gethash label *fnn-owner-measure-table*)
+                     (setf (gethash label *fnn-owner-measure-table*)
+                           (list 0 0 0 0 0)))))
+        (incf (first row))
+        (incf (second row) held)
+        (setf (third row) (max (third row) held))
+        (incf (fourth row) consed)
+        (setf (fifth row) (max (fifth row) consed))))))
 
 (defmacro fnn-owner-measured ((label &optional cid (operation '*fnn-trace-operation*)
                                     (connection-generation '*fnn-trace-connection-generation*)) &body body)
@@ -586,15 +587,19 @@ stop, caught before the first POST instead of at the second."
 
 (defun fnn-owner-measure-report ()
   (when *fnn-owner-measure*
-    (maphash
-     (lambda (label row)
-       (destructuring-bind (count held most consed most-consed) row
-         (format *error-output*
+    ;; Module actors can still finish a measured activation during teardown.
+    ;; Copy the rows under their update lock; output holds no table lock.
+    (let ((rows nil))
+      (sb-ext:with-locked-hash-table (*fnn-owner-measure-table*)
+        (maphash (lambda (label row) (push (cons label (copy-list row)) rows))
+                 *fnn-owner-measure-table*))
+      (dolist (entry rows)
+        (destructuring-bind (label count held most consed most-consed) entry
+          (format *error-output*
                  "~&fn-owner-measure ~(~a~) holds=~d held-us=~d max-us=~d bytes=~d max-bytes=~d~%"
                  label count
                  held most
-                 consed most-consed)))
-     *fnn-owner-measure-table*)
+                 consed most-consed))))
     (finish-output *error-output*)))
 
 (defun fnn-owner-core (name &rest args)
@@ -1756,7 +1761,11 @@ Use its held fence without recursively acquiring the owner's mutex."
            (serious-condition (condition)
              (setq kind (fn-fs-classify (fnn-condition-class condition)
                                         *fnn-section-step*))
-             (when escape (funcall escape condition))))
+             (if escape
+                 (funcall escape condition)
+               ;; A :result actor normally captures its own outcome, but
+               ;; this boundary can itself detect an escaped ACL2 step.
+               (fnn-owner-thread-escape service condition "actor boundary"))))
       ;; THUNK has completed its entire unwind before recording its end.
       ;; Registration remains until a parent physically joins the thread.
       (fnn-with-roster (service)
@@ -2038,7 +2047,8 @@ since 21d932152).  Reserved here, it needs no section after the step."
 
 (defun fnn-owner-output-begin-locked (service cid)
   "Owner held. Retain operation identity and draw before setup/preview."
-  (when (fnn-owner-service-output-ledger service)
+  (when (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+          (fnn-owner-service-output-ledger service))
     (unless *fnn-response-capture*
       (fnn-refuse "accounted output requires registered response custody for ~s" cid))
     (unless (fnn-response-capture-grant *fnn-response-capture*)
@@ -2056,7 +2066,8 @@ answers it on the wire (books/output-admission-line.lisp: an unpriced family
 or an unaffordable reply).  Absent policy passes the buffer: the pass-through
 goes in the commit that prices the last family a stock node serves
 (specs/resource-vector.md, the dated open precondition)."
-  (if (null (fnn-owner-service-output-ledger service)) (length incoming)
+  (if (sb-thread:with-mutex ((fnn-owner-service-output-ledger-lock service))
+        (null (fnn-owner-service-output-ledger service))) (length incoming)
     (let* ((preview (fnn-core-buffer-state 'fn-owner-output-preview cid 0 (length incoming)))
            (tariff (fnn-owner-core 'fn-owner-output-tariff-preview cid preview))
            (capacity

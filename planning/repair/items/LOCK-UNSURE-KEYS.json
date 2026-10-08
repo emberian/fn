@@ -5,7 +5,10 @@
  "file": "tools/lock_discipline_check.py",
  "fix": "Settle per key as written; then move to LOCK-CHECKER-MODEL-GAPS or file a LOCK-R7-* item.",
  "id": "LOCK-UNSURE-KEYS",
- "notes": [],
+ "notes": [
+  "2026-10-07 lock-r1-class STATEMENT R7|fnn-dev-repl-loop|swallow:serious-condition:fault REAL: the developer accept/read/send boundary catches a fnn-store-fault from connection framing outside fnn-owner-serialized; no owner fence has run and the loop logs then retries. Planned change: explicit fault/indeterminate clauses invoke fnn-owner-thread-escape before the connection-local diagnostic handler; ordinary socket errors retain their scope.",
+  "2026-10-08 lock-r1-class STATEMENT R7|fnn-dev-evaluate|swallow:serious-condition:fault,indet GAP: fnn-owner-serialized calls fnn-section-run; its fnn-section-envelope gates admission and uses fnn-owner-shared-action-locked, which classifies/fences before re-signalling, with a fault fence on unclassified unwind and gate-leave failure. The diagnostic handler receives an already fenced evaluation condition. The missing checker rule must propagate fenced-condition provenance through that boundary while retaining red for a fault raised before it or a removed fence. No developer-image exemption. Still open; no code change for this key."
+ ],
  "owner": "deputy-C",
  "severity": "low",
  "source": "lock-ownership census on lane/lock-model-gaps + lock-host-fix-2 (checker --check --json)",
