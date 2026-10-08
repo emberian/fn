@@ -499,6 +499,13 @@ def run_cell(image, readers, run_index, workdir, mode="stats", label=None, templ
 
 def evaluate(path):
     cells = [json.loads(l) for l in Path(path).read_text().splitlines() if l.strip()]
+    out = evaluate_cells(cells)
+    print(json.dumps(out, indent=1))
+    return out
+
+
+def evaluate_cells(cells):
+    """Evaluate a fetched matrix without printing or touching a box."""
     keys = sorted({(c["arm"], c["mode"]) for c in cells})
     out = []
     for arm, mode in keys:
@@ -526,7 +533,6 @@ def evaluate(path):
         hs = [row["R"][r]["hit_worst"] for r in sorted(row["R"]) if row["R"][r]["hit_worst"] is not None]
         row["hit_non_decreasing"] = all(b >= a - 0.005 for a, b in zip(hs, hs[1:])) if hs else None
         out.append(row)
-    print(json.dumps(out, indent=1))
     return out
 
 

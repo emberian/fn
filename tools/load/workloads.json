@@ -1059,6 +1059,19 @@
    "hooks": [
     "planning/evidence/load/hooks/f2-crash.lisp"
    ]
+  },
+  "extent-cache": {
+   "about": "W7 extent-cache contention; executed by tools.load.w7_extent, not the generic driver. Zipf readers, 2000 articles, 8 KiB/32000 octets; matrix compares R1 and R16.",
+   "runner": "w7_extent",
+   "preset": "scale-1m",
+   "phases": [
+    {
+     "name": "extent",
+     "kind": "unimplemented",
+     "reason": "External runner: tools.load.w7_extent run",
+     "measure": true
+    }
+   ]
   }
  },
  "cells": {
@@ -1094,7 +1107,8 @@
   "LIST-PROF": "list-prof",
   "LIST-PROF-ALLOC": "list-prof-alloc",
   "W6q": "catchup-quiet",
-  "F2S": "fault-crash-boundary-survey"
+  "F2S": "fault-crash-boundary-survey",
+  "W7": "extent-cache"
  },
  "stores": {
   "1k": 1000,
