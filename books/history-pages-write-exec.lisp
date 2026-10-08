@@ -6,6 +6,7 @@
 (in-package "ACL2")
 (include-book "history-pages-write")
 (include-book "history-pages-arith")
+(include-book "history-image-row-encode")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -227,12 +228,10 @@
                                                             fn-hp-hb fn-hp-pack8 floor mod fn-hp-x-blocks
                                                             fn-hp-x-unfit fn-sccb-treep fn-hp-mkey
                                                             fn-hp-u64-listp fn-scc-program fn-hp-x-aligned)))))
-  (if (not (fn-sccb-treep ev))
-      (mv (list :refused :event) nil lens)
-    (let* ((enc (fn-scc-encode ev)) (tl (len enc)))
-      (if (not (unsigned-byte-p 64 tl))
-          (mv (list :refused :event) nil lens)
-        (let* ((pe (fn-hp-pad8 enc)) (plen (len pe))
+  (mv-let (v tl pe) (fn-hp-x-row ev)
+    (if v
+        (mv v nil lens)
+        (let* ((plen (len pe))
                (lens2 (fn-hp-x-add lens (list 8 8 8 8 plen))))
           (cond ((not (fn-hp-x-aligned lens))
                  (mv (list :refused :alignment) nil lens))
@@ -247,7 +246,7 @@
                 (t (mv nil
                        (fn-hp-x-blocks n lens lens2 starts (fn-hp-mkey ev salt) tl
                                        (fn-hp-pack8 (floor plen 8) pe))
-                       lens2))))))))
+                       lens2)))))))
 
 (defthm fn-hp-alistp-x-append-plan
   (alistp (mv-nth 1 (fn-hp-x-append-plan ev salt n lens starts np)))
