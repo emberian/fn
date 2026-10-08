@@ -4,11 +4,13 @@
  "file": "tools/cost_gate.py",
  "id": "cg-gate",
  "locus": "gates-tests-packaging",
- "notes": [],
+ "notes": [
+  "10-07 18:10 2026-10-07 C6, parsimony ruling (PARSIMONY-20261007.md section 3): tools/cost_gate.py and tools/cost-probe.lisp are deleted. Nothing invoked them (no Makefile step, no train.py step) and planning/cost-baseline.json was never committed, so the gate never ran. Throughput regressions belong to throughput_gate (make check). Dropped, not fixed."
+ ],
  "owner": "cost-gate",
  "severity": "medium",
  "source": "coordinator",
- "state": "open",
+ "state": "deferred",
  "title": "cost gate in report mode: committed planning/cost-baseline.json; cost_gate.py check names an entry whose exponent or per-call bytes bend; NOT EXERCISED fails",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-07T22:10:44Z"
 }

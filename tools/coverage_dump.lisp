@@ -124,7 +124,9 @@
 ;; exports it disabled) (2026-10-07,
 ;; the attach-order stall: car/consp/member-equal rewrites of this shape in
 ;; owner-queued-work and failure-scope, 13M rule attempts on one host
-;; guard).  tools/hazard_rules_check.py reads it.
+;; guard).  No tool reads it since hazard_rules_check was deleted
+;; (2026-10-07, parsimony); it stays in the dump format until the next
+;; dump-format change removes it.
 (defun cov-var-lhs-rules (rules acc)
   (if (endp rules)
       acc

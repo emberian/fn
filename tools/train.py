@@ -6,7 +6,7 @@ of regeneration is fixed and the push is conditional on gates that ran at the
 exact HEAD being pushed, recorded in build/train/<branch>.json.
 
     train.py merge LANE@SHA [LANE@SHA ...]
-    train.py regen [--cite ID ...] [--cite-from DIR]
+    train.py regen [--label N]
     train.py boxstep BOX             # hbox or persvati: the box step, recorded
     train.py gate [--strict-lock]
     train.py push
@@ -307,24 +307,7 @@ def cmd_regen(t: Train, args) -> int:
         t.save(st)
         return rc
 
-    # (1) cite
-    for mid in args.cite or []:
-        run_dir = t.root / "build" / "acl2" / mid
-        if args.cite_from:
-            src = Path(args.cite_from) / "build" / "acl2" / mid
-            if not src.is_dir():
-                say(f"cite-from: {src} missing")
-                return done(f"cite-from:{mid}", 1) or 1
-            say(f"$ copy {src} -> {run_dir}")
-            shutil.copytree(src, run_dir, dirs_exist_ok=True)
-        if not run_dir.is_dir():
-            say(f"run dir {run_dir} does not exist")
-            done(f"cite:{mid}", 1)
-            return 1
-        rc = t.run(f"cite-{mid}", [PY, "tools/evidence_manifests.py", "add", mid])
-        if done(f"cite:{mid}", rc):
-            return rc
-    # (2)-(4)
+    # ledger, current view, repair status, in this order
     for step, argv in (
         ("ledger", [PY, "tools/ledger.py", "--write"]),
         ("current_view", [PY, "tools/current_view.py", "--write"]),
@@ -333,13 +316,11 @@ def cmd_regen(t: Train, args) -> int:
         rc = t.run(f"regen-{step}", argv)
         if done(step, rc):
             return rc
-    # (5)
     st["regen_commits"] = st.get("regen_commits", 0) + 1
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    cited = " ".join(args.cite or [])
-    msg = f"Regenerate train {n}: ledger, current view, repair status" + (f" after citing {cited}" if cited else "")
+    msg = f"Regenerate train {n}: ledger, current view, repair status"
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1
@@ -535,8 +516,6 @@ def main(argv=None) -> int:
     m = sub.add_parser("merge")
     m.add_argument("lanes", nargs="+", metavar="LANE@SHA")
     r = sub.add_parser("regen")
-    r.add_argument("--cite", action="append", metavar="ID")
-    r.add_argument("--cite-from", metavar="DIR")
     r.add_argument("--label", metavar="N", help="the train number for the regen commit messages")
     b = sub.add_parser("boxstep")
     b.add_argument("box", choices=("hbox", "persvati"))

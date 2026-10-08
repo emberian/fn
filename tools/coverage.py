@@ -1076,8 +1076,8 @@ def dump_command(args, run=subprocess.run) -> int:
     inner = (f"FN_LOAD_ACL2={launcher} python3 tools/coverage.py dump --here "
              f"--out {relative} --timeout {args.timeout}"
              + (" --no-host-files" if args.no_host_files else ""))
-    argv = ["sh", str(ROOT / "tools" / "remote_check.sh"), host, "--cmd", inner,
-            "--fetch", relative, "--fetch", relative[:-len(".json")] + ".log"]
+    argv = ["sh", str(ROOT / "tools" / "remote_check.sh"), host, "--install-roots", "books/image-world",
+            "--cmd", inner, "--fetch", relative, "--fetch", relative[:-len(".json")] + ".log"]
     print(f"coverage dump: {' '.join(argv[2:])}", file=sys.stderr, flush=True)
     done = run(argv, cwd=ROOT)
     fetched = DEFAULT_WORLD

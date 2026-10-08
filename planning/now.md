@@ -5,7 +5,7 @@ a generated number is quoted from its generator's output at that sha or not
 at all. The integrator rewrites this table when a batch lands on `dev`.
 The operating contract for this wave is the 2026-10-04 swarm plan's §3
 (the loading gate, replacement not reverts, generated truth, the cadence);
-"What a step is" in [how we work](how-we-work.md) stands.
+a step is DONE or NOT (the 2026-10-07 rules collapse, decisions.md).
 
 | coordinate | value |
 |---|---|
@@ -262,7 +262,7 @@ Lanes run on Claude Opus 5.5 in `build/lanes/<name>` on `lane/<name>`,
 under `build/coordinator/queue/LANE-PREAMBLE.txt` and closeout-common.txt;
 the batch runner merges to dev. The coordinator's log is
 `build/coordinator/WAVE-STATE.md` (newest on top, not tracked). How lanes
-work: [how we work](how-we-work.md).
+work: [AGENTS.md](../AGENTS.md).
 
 ## Where to read next
 

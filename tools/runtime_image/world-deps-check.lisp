@@ -144,14 +144,15 @@ fnn-exit's encapsulation as well as from the exit hooks."
 (defun wdc-live-pairs ()
   "Every (symbol . property) pair with a current value in the live world."
   (let ((key *current-acl2-world-key*) (seen (make-hash-table :test 'eq)) (pairs nil))
-    (dolist (trip (w *the-live-state*))
-      (let ((s (car trip)))
-        (unless (gethash s seen)
-          (setf (gethash s seen) t)
-          (dolist (entry (get s key))
-            (let ((stack (cdr entry)))
-              (when (and (consp stack) (not (eq (car stack) *acl2-property-unbound*)))
-                (push (cons s (car entry)) pairs)))))))
+    ;; The per-symbol plists hold the world's values (the installed world's
+    ;; reads take them, fgetprop); the alist is only its bottom (MEM-005).
+    (do-all-symbols (s)
+      (unless (gethash s seen)
+        (setf (gethash s seen) t)
+        (dolist (entry (get s key))
+          (let ((stack (cdr entry)))
+            (when (and (consp stack) (not (eq (car stack) *acl2-property-unbound*)))
+              (push (cons s (car entry)) pairs))))))
     pairs))
 
 (defun wdc-drop (text)

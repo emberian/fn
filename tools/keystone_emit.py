@@ -87,7 +87,7 @@ MANIFEST = ROOT / "planning/teeth-obligations.json"
 BASE = ROOT / "planning/teeth-base.json"
 OWED_ITEMS = ROOT / "planning/repair/items"
 OWED_CATEGORY = "teeth-owed"
-OWED_CLOSED = {"landed", "refuted", "duplicate"}
+OWED_CLOSED = {"landed", "refuted", "duplicate", "closed"}
 CONTAINERS = {"local", "progn", "encapsulate", "with-output", "defsection"}
 
 
@@ -381,7 +381,7 @@ def stored(entries: dict[str, dict]) -> list[dict]:
 
 def owed_items(directory: Path | None = None) -> dict[str, dict]:
     """The open teeth-owed repair items by the keystone each names: category
-    `teeth-owed` and a state that is not closed (landed, refuted, duplicate)."""
+    `teeth-owed` and a state that is not closed (landed, refuted, duplicate, closed)."""
     found: dict[str, dict] = {}
     for path in sorted((directory or OWED_ITEMS).glob("*.json")):
         try:

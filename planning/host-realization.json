@@ -4,7 +4,7 @@
   "file": "books/host-model-machine.lisp",
   "constant": "*fn-hmc-realization*",
   "line": 880,
-  "sha256": "2325826b7982ec4f4837db634da1cf73fe392ecc9b22be2a4fbca7759697faa9"
+  "sha256": "f8d868d50cfe2e73fd31d8f6e76feafadba25e8f69d68784f2781e71280e9ddc"
  },
  "rows": [
   {

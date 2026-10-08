@@ -2089,11 +2089,11 @@ class InstallUmbrellasTests(unittest.TestCase):
         # branch repeats the last umbrella summary and runs neither; the
         # digest is recorded after BOTH installs, so an interrupted run
         # (the marker was removed first) reinstalls the set.
-        per_book = text.index("tools/certs.py install > build/.certs-install.log")
-        umbrellas = text.index("tools/certs.py install-umbrellas > build/.certs-umbrellas.log")
+        per_book = text.rindex("tools/certs.py install > build/.certs-install.log")
+        umbrellas = text.rindex("tools/certs.py install-umbrellas > build/.certs-umbrellas.log")
         self.assertLess(per_book, umbrellas)
-        self.assertEqual(text.count("tools/certs.py install-umbrellas"), 1,
-                         "only the install branch runs the umbrellas")
+        self.assertEqual(text.count("tools/certs.py install-umbrellas > build"), 2,
+                         "the whole-tree install branch and the roots branch run the umbrellas")
         skipped = text.index("tail -n 1 build/.certs-umbrellas.log")
         self.assertLess(skipped, per_book, "the skip branch precedes the install branch")
         self.assertLess(text.index("rm -f build/.certs-installed"), per_book)

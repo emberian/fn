@@ -4226,7 +4226,7 @@ D's wire evidence exists.
 This replaces the phase-2/phase-3 briefs. Each slice lands its behaviour
 with the safety and replay theorems that behaviour's ACKs depend on; there
 is no proof-after-implementation interval (§12, D-10). Within a phase,
-edited books are disjoint; every lane follows [how we work](../planning/how-we-work.md):
+edited books are disjoint; every lane follows [AGENTS.md](../AGENTS.md):
 its own worktree, its own closure certified before it reports, 300 s per
 book for discovery, 1800 s once for the final closure, `green_check
 --changed-since <base> --strict`, an evidence file

@@ -5,12 +5,13 @@
  "id": "cg-report",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-02 22:38 WIP at f4c5d4e53; see lanedumps/cost-gate.md"
+  "10-02 22:38 WIP at f4c5d4e53; see lanedumps/cost-gate.md",
+  "10-07 18:10 2026-10-07 C6, parsimony ruling (PARSIMONY-20261007.md section 3): tools/cost_gate.py and tools/cost-probe.lisp are deleted. Nothing invoked them (no Makefile step, no train.py step) and planning/cost-baseline.json was never committed, so the gate never ran. Throughput regressions belong to throughput_gate (make check). Dropped, not fixed."
  ],
  "owner": "cost-gate",
  "severity": "high",
  "source": "coordinator",
- "state": "open",
+ "state": "deferred",
  "title": "guard-cost report: generated table (tools/cost_gate.py table -> planning/guard-cost.md/.json) of every exercised host entry's call and guard cost on the served fixture, fitted over N",
- "updated": "2026-10-03T02:38:17Z"
+ "updated": "2026-10-07T22:10:45Z"
 }

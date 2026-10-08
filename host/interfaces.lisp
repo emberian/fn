@@ -5845,7 +5845,7 @@
 (definterface fn-bph-node-transfer :class :common-lisp-compliant :kinds ((argv true-listp)))
 ; The probe's BP extension and the node's startup check read one capacity figure.
 (definterface fn-bph-extend-reservation :class :common-lisp-compliant
-  :keystones ((fn-bph-extended-reservation-holds-bp-sessions :via fn-bpsp-node-capacity)))
+  :keystones (fn-bph-extended-reservation-holds-bp-sessions))
 (definterface fn-log-sink-offer-live :class :common-lisp-compliant)
 ; STATUS/HEALTH project the accepted configuration, never run-only NIL fields.
 (definterface fn-native-operator-host-result-config :class :program)

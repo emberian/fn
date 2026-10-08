@@ -9,7 +9,8 @@
  "line": "4300",
  "locus": "cold-line",
  "notes": [
-  "10-02 22:38 stalled response-pin reader is in the fixture build (cost_gate.py stalled_reader); no curve yet"
+  "10-02 22:38 stalled response-pin reader is in the fixture build (cost_gate.py stalled_reader); no curve yet",
+  "10-07 18:10 2026-10-07 C6: the tool this item measures with, tools/cost_gate.py, is deleted (parsimony ruling; nothing invoked it). A measurement still owed here needs a native test or throughput_gate."
  ],
  "owner": "cost-gate",
  "severity": "medium",
@@ -17,5 +18,5 @@
  "source": "r71",
  "state": "open",
  "title": "fnn-owner-cold-result-locked (claim-gap)",
- "updated": "2026-10-03T02:38:17Z"
+ "updated": "2026-10-07T22:10:45Z"
 }

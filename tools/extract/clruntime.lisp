@@ -144,6 +144,49 @@ Presence is distinct from a present NIL value; no classes are inferred here."
 (defun throw-nonexec-error (fn actuals)
   (declare (ignore actuals))
   (hard-error fn "a non-executable function was called" nil))
+;;; --- ACL2's printer stays out of the core (X2: FMT1 is banned in closure_why.py).  The emitted *1*
+;;; scaffolding reaches it two ways (ACL2 8.7 interface-raw.lisp), and nothing else in the closure does:
+;;; * wormhole-er (axioms.lisp:1195): every *1* returning a stobj calls it under `(when *wormholep* ...)'.
+;;;   Only `wormhole' binds *wormholep*, and no extracted unit or host file calls it, so this entry is
+;;;   unreachable; it refuses by name rather than print.
+;;; * warning1: maybe-warn-for-guard-body's "Guards" warning, which a recursive *1* prints once when
+;;;   guard-checking is inhibited for its calls (an unverified guard on a served path is a defect:
+;;;   repair item ARTICLE-PATH-UNVERIFIED-GUARDS).  It is rendered here in one line, without fmt's
+;;;   line filling, on the stream the image prints it to (standard output, proofs-co): only the line
+;;;   breaks differ from the image's text.  warnings-as-errors and warning-off-p are not consulted;
+;;;   the image runs with neither set.
+(defun wormhole-er (fn args)
+  (format *error-output* "ACL2 Error in WORMHOLE:  ~s applied to ~s in a wormhole state~%" fn args)
+  (xl-halt))
+(defun xl-render-fmt (str alist)
+  "STR with ACL2 fmt's ~xN ~yN ~pN ~qN (prin1) and ~sN (princ) directives filled from ALIST, ~% and ~~,
+and a tilde-newline skipping the whitespace after it.  Any other directive is kept verbatim."
+  (with-output-to-string (out)
+    (let ((*package* (find-package "ACL2")) (n (length str)) (i 0))
+      (loop while (< i n)
+            do (let ((c (char str i)))
+                 (cond ((or (char/= c #\~) (>= (1+ i) n)) (write-char c out) (incf i))
+                       (t (let ((d (char str (1+ i))))
+                            (cond ((char= d #\Newline)
+                                   (incf i 2)
+                                   (loop while (and (< i n) (member (char str i) '(#\Space #\Tab))) do (incf i)))
+                                  ((char= d #\%) (terpri out) (incf i 2))
+                                  ((char= d #\~) (write-char #\~ out) (incf i 2))
+                                  ((and (member (char-downcase d) '(#\x #\y #\p #\q #\s)) (< (+ i 2) n)
+                                        (assoc (char str (+ i 2)) alist))
+                                   (let ((v (cdr (assoc (char str (+ i 2)) alist))))
+                                     (if (char-equal d #\s) (princ v out) (prin1 v out)))
+                                   (incf i 3))
+                                  (t (write-char c out) (incf i)))))))))))
+(defun warning1 (ctx summary str alist state)
+  (let ((inhibited (let ((g (global-symbol 'inhibit-output-lst)))
+                     (and (boundp g) (member 'warning (symbol-value g))))))
+    (unless inhibited
+      (let ((*package* (find-package "ACL2")))
+        (format *standard-output* "~%ACL2 Warning~@[ [~a]~] in ~s:  ~a~%~%"
+                summary ctx (xl-render-fmt (if (consp str) (car str) str) alist))
+        (force-output *standard-output*))))
+  state)
 (defun fmt-to-comment-window (&rest r) (declare (ignore r)) nil)
 (defun fmt-to-comment-window! (&rest r) (declare (ignore r)) nil)
 (defun fmt-to-comment-window+ (&rest r) (declare (ignore r)) nil)

@@ -503,9 +503,9 @@ class DumpTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertIn("FAILED on persvati", err.getvalue())
         argv = calls[0]
-        self.assertEqual(argv[2:4], ["persvati", "--cmd"])
-        self.assertIn("FN_LOAD_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls256k", argv[4])
-        self.assertIn("coverage.py dump --here", argv[4])
+        self.assertEqual(argv[2:6], ["persvati", "--install-roots", "books/image-world", "--cmd"])
+        self.assertIn("FN_LOAD_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls256k", argv[6])
+        self.assertIn("coverage.py dump --here", argv[6])
         self.assertIn("build/coverage/world.json", argv)
 
 

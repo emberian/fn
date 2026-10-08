@@ -976,7 +976,7 @@ converging afterwards. This changed sequencing, not the required end state or
 the standard for an assurance claim: intermediate failures are recorded,
 never silently removed or replaced with a claim about an easier API. The wave's
 targets are in the archived [capability wave](archive/capability-wave-2026-09-24.md);
-its convergence obligations now live in [how we work](how-we-work.md#the-loop).
+its convergence obligations now live in [AGENTS.md](../AGENTS.md).
 
 ### 2026-09-24: bounded implementers hand proof work to the proof owner
 
@@ -986,7 +986,7 @@ against an explicit contract and ran prescribed checks, and handed a failed
 certification's exact source, failed event and log to Sol rather than
 searching for proofs themselves. The trial record is
 [luna-feature-trial-2026-09-24](experiments/luna-feature-trial-2026-09-24.md).
-The rule is kept model-neutrally in [how we work](how-we-work.md#width-and-who-proves).
+The rule is kept model-neutrally in [AGENTS.md](../AGENTS.md).
 
 ### 2026-09-24: wind-down and consolidation (06:23 UTC)
 
@@ -1877,3 +1877,24 @@ Status: DECIDED (ember ruling 2026-10-06, late). Consequences: fn has never been
 ### 2026-10-06: D69 — The memory bar counts the whole resident process (ember ruling)
 goal: State what the memory bar measures. Ruling source: `build/coordinator/RULINGS-20261006.md` (ruling 7).
 Status: DECIDED (ember ruling 2026-10-06, late). Consequences: 128 MB means 128 MB of resident memory for the node process, the SBCL core and file-backed pages included, because the target hosts are a tiny VPS or an already-burdened shared Pi. The measured 169 MB (filled small store) and 115 MB (empty store) are therefore both over. The core baseline itself is to be shrunk, not just the data: a serving node streams views over storage and does not need to carry what a certifying session needs. This restates the working-set figure of D65 and of D67's bar item 3 as whole-process resident memory.
+
+### 2026-10-07: D70 — Rules collapse: AGENTS.md for lanes, SEAT.md for the coordinator (coordinator under ember's ruling 2026-10-07 17:55; reversible by ember)
+goal: Replace about 1,000 lines of disagreeing procedure documents with one lane-rules file and one coordinator-seat file, current truth only. Ruling source: `build/coordinator/PARSIMONY-20261007.md` section 4.
+Status: DECIDED. Consequences: `AGENTS.md` is the only lane rules (80 lines or fewer); `planning/how-we-work.md` is deleted (its D26 proof-cost text is in `docs/proofs.md`, the REPL and box detail in the `tools/proof_repl.py` header and the runbooks). `build/coordinator/SEAT.md` replaces `DEPUTY-RULES.md`, `COORDINATOR-SOP.md`, `BRIEF-COMMON*.md`, `S-LANE-COMMON.md` and `HOUSE-STANDARD.md`, each now a one-line stub. Three decisions in force: (1) laptop ACL2 is limited by the slot pool's enforced 6 (`tools/acl2_slots.py` `DEFAULT_SLOTS`, darwin); every "at most 2 ACL2 processes" line is deleted. (2) Ruling 5 of RULINGS-20261006 (D66) narrows: keystone_emit's toothless-keystone finding list becomes the ledger of keystones without teeth under a shrink-only ceiling (lane x-teeth-ratchet); until it lands, TEETH-OWED repair items remain the exemption and none is closed. No vacuous or weakened statements stays, and the teeth phase is scheduled work. (3) Current host and role truth: hbox runs up to 6 concurrent `swarm-build` jobs, total about 100G or less (`SWARM_MEM_MAX` sized, e.g. 6x16G); persvati is a full second site (images, natives, certifies); the integrator is the only writer of `origin/dev` and calls convergence; the natives deputy runs the convergence gates; staffing is the latest level only (six Opus deputies I, N, C, P, S, E plus X, 2-3 Sonnets each).
+History recorded here from the dated sections of `DEPUTY-RULES.md` and from `RULINGS-20261006.md`:
+- Velocity mode (2026-10-06): merge on narrow gates, converge in dedicated phases (a red list `CONVERGE-<date>-<n>.md`, every red attributed to its lane), pipeline instead of waiting; its "up to 3 x 36G" hbox cap was superseded by the 17:40 load rule and its "N merges the train" by I as integrator (from 21:40).
+- Staffing (2026-10-06 23:00): a day level, an overnight level (2 Sonnets per deputy), then the full team at 17:40 on 10-07; only the last is in force.
+- Ambition (2026-10-07 00:30): pull the next known step into the lane in hand, fix the defect rather than own it, drain the class, fix the checker's root; owed items only for work that needs another lane or a decision. S's def-buffer drain of the 35 `:congruent-to fn-octets` clones was its first application.
+- No process kills (2026-10-07 00:12): a lane's `pkill -x sbcl -u hbox` killed the production node and serve-next's live node; no kill of a process you did not start, never by name or user match, `timeout` on long commands.
+- REPL-first proof iteration (2026-10-07): iterate in `tools/proof_repl.py`, certify at READY; a cold persvati cache loads deps from source and can false-red, long events need `--load-limit 0`.
+- Grok lanes (2026-10-07 00:40): `claude-grok -p` for bounded mechanical work with the gate in the brief; review and revise, never negotiate; no shell on the farms beyond one certify, no kills, no pushes to dev.
+- Transformations, not hand edits (2026-10-07 00:50): more than about 5 identical sites is a position-keeping tool (`tools/lisp_rewrite.py`) with fixtures; hand conversions already done are its fixtures.
+- No bisecting (2026-10-07 01:20): debug the current tree and state the mechanism; history is too broken for a bisect to name one.
+- Redeploy and teardown (2026-10-07 01:30): the coordinator alone may restart, redeploy or tear down fn's own nodes; deputies ask.
+- Detach long jobs (2026-10-07 05:30): a box job that outlives a tool call runs detached with its PID beside the log (the attach-order certify died at 03:10 with the team).
+- Load and redundancy (2026-10-07 17:40): hammer hbox (load 16-22, up to 6 jobs, about 100G), persvati is a full second site, no single-homed infrastructure, an outage never holds the team (route to the other site), hbox is on wifi so a ping failure is a network event first.
+- RULINGS-20261006: items 1-4 and 6 became D41 re-adoption, the bare-SBCL extractor, D64 and D65, D67; item 5 is D66 (narrowed above); 7 and 8 are D69 and D68; item 9 (stretch goals: every deficiency addressed, load and scale harness, docs rewritten) and item 10 (the house doc standard: lead with the point, claim and scope in one sentence, precise names, no process diary) live on in `AGENTS.md` "Writing".
+
+### 2026-10-07: D71 — Evidence machinery deleted; the cert cache and farm run dirs are the record (ember, 2026-10-07 17:55: "the evidence machinery is cargo-culted")
+goal: Stop filing, indexing and citing evidence by hash; certified means what the cert cache says. Ruling source: ember, 2026-10-07 17:55.
+Status: DECIDED. Consequences: certified = a record-toolchain cert-cache entry at the book's current closure key (`green_check`). `tools/evidence_store.py`, `evidence_manifests.py`, `evidence_history.py`, `evidence_ingest.py`, `certified_claims.py`, `planning/evidence-index.tsv` and `train.py` regeneration and `--cite` are deleted, and generated views leave the tree. The hbox archive `/tank/fn/evidence` is left untouched; it is the only copy of the indexed bytes (the history rewrite removed them from git) and its disposal is ember's. This supersedes the evidence paragraphs of D-entries that name `planning/evidence/`, the index or cite ids.

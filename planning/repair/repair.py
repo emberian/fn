@@ -2,7 +2,7 @@
 """The repair ledger: one JSON file per item under planning/repair/items/.
 
 One file per item so many agents can update different items without conflicts.
-States: open -> in-progress -> ready -> landed  (or: refuted | duplicate | deferred).
+States: open -> in-progress -> ready -> landed  (or: refuted | duplicate | closed | deferred).
 
   repair.py list [--owner LANE] [--state STATE] [--severity SEV] [--open]
   repair.py show ID
@@ -30,7 +30,7 @@ from pathlib import Path
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 ITEMS = os.path.join(ROOT, "items")
-STATES = ["open", "in-progress", "ready", "landed", "refuted", "duplicate", "deferred"]
+STATES = ["open", "in-progress", "ready", "landed", "refuted", "duplicate", "closed", "deferred"]
 SEV = ["high", "medium", "low"]
 
 
@@ -87,7 +87,7 @@ def main(argv):
             else:
                 f[a.lstrip("-")] = next(it)
         for d in all_items():
-            if f.get("open") and d["state"] in ("landed", "refuted", "duplicate"):
+            if f.get("open") and d["state"] in ("landed", "refuted", "duplicate", "closed"):
                 continue
             if any(d.get(k) != v for k, v in f.items() if k != "open"):
                 continue
