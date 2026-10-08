@@ -435,6 +435,16 @@ class PushTests(TrainBase):
         self.train("gate")
         self.assertIn("test_current_view ", self.stub_log())
 
+    def test_native_suites_are_left_to_the_native_gate(self):
+        root = Path(tempfile.mkdtemp(prefix="train-unit-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "tests").mkdir()
+        for name in ("test_native_x.py", "test_y.py", "test_z.py"):
+            (root / "tests" / name).write_text("")
+        got = train.unit_tests(root, ["tests/test_native_x.py", "tests/test_y.py",
+                                      "tools/z.py", "tools/absent.py", "books/b.lisp"])
+        self.assertEqual(got, list(train.UNIT_TESTS) + ["tests/test_y.py", "tests/test_z.py"])
+
     def test_a_missing_fixed_suite_fails_the_gate(self):
         self.ready()
         (self.work / "tests/test_farm.py").unlink()

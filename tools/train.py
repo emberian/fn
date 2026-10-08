@@ -106,7 +106,7 @@ LOCAL_BOX_CHECKS = (
 # conditions: the push refuses on them like the others (train 36 pushed two
 # test_ledger reds through `gate; push` chained with `;`).  Always these; and
 # the test file of every tools/<x>.py the train changes, and every changed
-# tests/test_*.py.  Each runs as `python -m unittest <file>` from the root
+# tests/test_*.py except tests/test_native_* (they need a native image).  Each runs as `python -m unittest <file>` from the root
 # (test_train imports `tools.train`, so not as a bare script).
 UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
@@ -518,6 +518,10 @@ def unit_tests(root: Path, changed: list[str]) -> list[str]:
     tests = list(UNIT_TESTS)
     for path in changed:
         p = Path(path)
+        if p.name.startswith("test_native_"):
+            # needs a native image (build/fn-host-*); N's native gate on the
+            # box is its gate, not this tree
+            continue
         if p.parent.as_posix() == "tests" and p.name.startswith("test_") and p.suffix == ".py":
             candidate = path
         elif p.parent.as_posix() == "tools" and p.suffix == ".py":
