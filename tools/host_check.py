@@ -171,6 +171,7 @@ lock -- the declaration names the lock; the review reads the accesses.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import re
@@ -1971,10 +1972,21 @@ def attach_unpaired(root: Path) -> list[str]:
 
 
 def attach_scope(root: Path, world: AttachWorld) -> list[str]:
+    """Every host book the image reaches through the umbrellas, AND every certified
+    host book (host/*.lisp, except the parked families in planning/host-parked.json,
+    which are not loaded or certified; host/native/ is raw, ld'd): a host book
+    certified alone carries its own include order, so a generic met before its
+    attach refuses at certify (attach-stobj: "the name is in use") even when no
+    umbrella reaches the book."""
     hosts: set[str] = set()
     for umbrella in UMBRELLAS:
         if (root / (umbrella + ".lisp")).exists():
             hosts.update(b for b in world.closure(umbrella) if b.startswith("host/"))
+    parked_path = root / "planning" / "host-parked.json"
+    parked = (set(json.loads(parked_path.read_text(encoding="utf-8")).get("parked", {}))
+              if parked_path.exists() else set())
+    hosts.update("host/" + f.stem for f in (root / "host").glob("*.lisp")
+                 if "host/" + f.name not in parked)
     return sorted(hosts)
 
 
@@ -1990,7 +2002,44 @@ def attach_findings(root: Path = ROOT) -> list[str]:
     return findings
 
 
-def attach_order_main() -> int:
+ATTACH_COMMENT = ("; D61: the image attaches these (attach-stobj) before the generic they implement;\n"
+                  "; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).\n")
+
+
+def attach_fix(root: Path = ROOT) -> list[str]:
+    """The transformation for --attach-order findings: each host file whose closure
+    meets a generic before its attach book gets the attach book include-book'd right
+    after its (in-package ...) form, in the pairs' order, under the D61 comment.
+    Returns the files rewritten.  Idempotent: a second run finds nothing."""
+    world = AttachWorld(root)
+    need: dict[str, list[str]] = {}
+    for _gen, generic, attach in attach_pairs(root)[0]:
+        for host in attach_scope(root, world):
+            if world.generic_state(host, generic, attach) == "bare":
+                need.setdefault(host, []).append(attach)
+    changed = []
+    for host, attaches in sorted(need.items()):
+        path = root / (host + ".lisp")
+        text = path.read_text()
+        m = re.search(r'^\(in-package "ACL2"\)[^\n]*\n', text, re.M)
+        if not m:
+            raise SystemExit("host_check --attach-order --write: %s has no (in-package \"ACL2\") form" % host)
+        # The arena's attach first: the other attach books' closures reach
+        # books/payload-arena, so it must already be attached (owner-host's order).
+        order = {"books/payload-arena-attach": 0, "books/history-paged-attach": 1,
+                 "books/catalog-paged-attach": 2}
+        attaches = sorted(attaches, key=lambda a: order.get(a, 9))
+        lines = "".join('(include-book "../%s")\n' % a for a in attaches)
+        comment = "" if "D61: the image attaches these" in text else ATTACH_COMMENT
+        path.write_text(text[:m.end()] + comment + lines + text[m.end():])
+        changed.append(host)
+    return changed
+
+
+def attach_order_main(write: bool = False) -> int:
+    if write:
+        for host in attach_fix():
+            print("host_check --attach-order --write: %s.lisp" % host)
     findings = attach_findings()
     for line in findings:
         print("host_check --attach-order: " + line)
@@ -2579,6 +2628,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--log-dir", default=None,
                         help="write each session's transcript here")
     mode = parser.add_mutually_exclusive_group()
+    parser.add_argument("--write", action="store_true",
+                        help="with --attach-order: include-book each missing attach book first (the transformation)")
     mode.add_argument("--load", action="store_true",
                         help="load the raw host/native files in the build's order into one "
                              "bare ACL2 and report errors, arity, macro order and names "
@@ -2641,7 +2692,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.build_lists:
         return build_lists_main()
     if args.attach_order:
-        return attach_order_main()
+        return attach_order_main(write=getattr(args, "write", False))
     if args.macro_order:
         return macro_order_main(args.files)
     if args.read:

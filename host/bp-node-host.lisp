@@ -12,6 +12,10 @@
 ; Results are flat lists so that the host never applies a record accessor.
 
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/bp-node")
 (include-book "../books/bp-node-budget-input")
 (include-book "../books/bp-node-records")

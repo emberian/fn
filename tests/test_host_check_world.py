@@ -163,6 +163,23 @@ class AttachOrder(unittest.TestCase):
     def test_green_without_generic(self):
         self.assertEqual(host_check.attach_findings(tree("")), [])
 
+    def test_a_certified_host_book_outside_the_umbrellas_is_in_scope(self):
+        # A host book no umbrella reaches still certifies alone in its own order.
+        d = tree("")
+        (d / "host/lone-host.lisp").write_text('(in-package "ACL2")\n(include-book "../books/above")\n'
+                                               '(include-book "../books/gen-attach")\n')
+        f = host_check.attach_findings(d)
+        self.assertEqual(len(f), 1)
+        self.assertIn("host/lone-host.lisp", f[0])
+
+    def test_write_puts_the_attach_first_and_is_idempotent(self):
+        d = tree('(include-book "../books/above")\n(include-book "../books/gen-attach")\n')
+        self.assertEqual(host_check.attach_fix(d), ["host/h-host"])
+        self.assertEqual(host_check.attach_findings(d), [])
+        text = (d / "host/h-host.lisp").read_text()
+        self.assertLess(text.index('"../books/gen-attach"'), text.index('"../books/above"'))
+        self.assertEqual(host_check.attach_fix(d), [])
+
     def test_red_when_an_attachable_impl_name_extends_the_generic(self):
         # fn-cat and fn-cat-paged are both :attachable; the generic match must not
         # take fn-x-impl's defabsstobj as a second fn-x and drop the pair.
