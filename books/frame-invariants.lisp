@@ -621,7 +621,9 @@
                 (<= length *fn-cbor-max-uint*))
            (and (fn-cbor-octet-listp (fn-frame-header magic version kind length))
                 (equal (len (fn-frame-header magic version kind length)) 10)))
-  :hints (("Goal" :in-theory (enable fn-frame-header fn-frame-magicp))))
+  :hints (("Goal" :in-theory (enable fn-frame-header fn-frame-magicp
+                                    fn-cbor-octet-listp)
+           :use ((:instance fn-cbor-u32-bytes-are-octets (n length))))))
 
 (defthm fn-frame-head-fields-of-header
   (implies (and (fn-frame-magicp magic) (fn-cbor-octetp version)

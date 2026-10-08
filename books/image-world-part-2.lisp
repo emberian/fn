@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
-(include-book "bp-fnbs-deletion-publication")
-(include-book "bp-fnbs-conflict-publication")
 (include-book "bp-report-author")
 (include-book "bp-node-progress")
 (include-book "bp-node-progress-guards")
@@ -134,6 +132,7 @@
 (include-book "peer-config")
 (include-book "provenance-codec")
 (include-book "provenance-inspect")
+(include-book "owner-history-carried")
 (include-book "checkpoint-auxiliary")
 (include-book "store-reclaim-stream")
 (include-book "store-log-reclaim")

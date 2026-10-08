@@ -91,24 +91,8 @@
 ;; lane proto-determinism: fn-store-sn-replay-digest-report (the end of this file).
 (include-book "../books/state-digest")
 
-; This wrapper reuses the established decimal-octet boundary helpers from the
-; store host. Python supplies only ordered filesystem observations.
-;; The history stobj fn-hist (books/history-columns.lisp) the event-index
-;; readers read in place of the store node's retired field 13.  Before each
-;; read the host refreshes it against the Store it reads
-;; (books/history-columns-relation.lisp fn-hist-refresh-is-the-history: the
-;; result IS the history, so R holds at the read): a whole load after an open
-;; or reset of the store node (`fn-store-sn-hist-reload', set below wherever
-;; the store is replaced by an open), else the sync of the rows committed
-;; since the last read.  One process serves one Store (owner mode, or the
-;; store node's), so one stobj.
-(defun fn-host-hist-sync (store fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :guard t))
-  (let ((reload (and (boundp-global 'fn-store-sn-hist-reload state)
-                     (f-get-global 'fn-store-sn-hist-reload state))))
-    (let ((fn-hist (fn-hist-refresh (fn-sn-files store) reload fn-hist)))
-      (let ((state (f-put-global 'fn-store-sn-hist-reload nil state)))
-        (mv fn-hist state)))))
+; Startup owns the whole load; served readers have only incremental sync.
+(include-book "../books/owner-history-carried")
 
 (defun fn-store-sn-reset (state)
   (declare (xargs :stobjs state :mode :program))

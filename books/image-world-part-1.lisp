@@ -169,3 +169,5 @@
 (include-book "bp-node-contact-driver")
 (include-book "bp-node-job-offer")
 (include-book "bp-node-job-cursor")
+(include-book "bp-fnbs-deletion-publication")
+(include-book "bp-fnbs-conflict-publication")

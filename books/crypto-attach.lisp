@@ -33,7 +33,9 @@
 (local
  (defthm fn-blake3-cbor-octet-listp-is-b3-octet-listp
    (equal (fn-cbor-octet-listp xs)
-          (fn-b3-octet-listp xs))))
+          (fn-b3-octet-listp xs))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp
+                                     fn-b3-octet-listp)))))
 
 ; -----------------------------------------------------------------------------
 ; The constraints, discharged for the attachment.

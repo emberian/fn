@@ -148,7 +148,9 @@
 (defthm fn-owner-step-take-preserves-retain-state
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep (fn-owner-step (list :take) fn-arena state)))
-  :hints (("Goal" :in-theory '(fn-owner-step fn-orh-retain-statep-of-install-ocfg)
+  :hints (("Goal" :in-theory '(fn-owner-step fn-orh-retain-statep-of-install-ocfg
+                                fn-ocfg-served-step-is-step fn-ocfg-served-eventp
+                                car-cons cdr-cons (:executable-counterpart member-equal))
            :use ((:instance fn-ohr-step-take-preserves-carried-relation
                             (oc (fn-owner-ocfg state)))
                  (:instance fn-owner-retain-statep-implies-lgoc (state state))))))
@@ -166,7 +168,9 @@
   (implies (fn-owner-retain-statep state)
            (fn-owner-retain-statep
             (fn-owner-step (list :control-submit msgid groups octets) fn-arena state)))
-  :hints (("Goal" :in-theory '(fn-owner-step fn-orh-retain-statep-of-install-ocfg)
+  :hints (("Goal" :in-theory '(fn-owner-step fn-orh-retain-statep-of-install-ocfg
+                                fn-ocfg-served-step-is-step fn-ocfg-served-eventp
+                                car-cons cdr-cons (:executable-counterpart member-equal))
            :use ((:instance fn-ohr-step-control-submit-preserves-carried-relation
                             (oc (fn-owner-ocfg state)))
                  (:instance fn-owner-retain-statep-implies-lgoc (state state))))))
@@ -244,3 +248,30 @@
                                (:executable-counterpart zp)))))
 (assert-event (fn-owner-io-safep nil :log-reserve :ok))
 (assert-event (not (fn-owner-io-safep nil :no-such-operation :ok)))
+
+; Startup changes the history stobj, reload flag and three fold caches.
+(defthm fn-owner-history-startup-preserves-retain-state
+  (implies (fn-owner-retain-statep state)
+           (fn-owner-retain-statep
+            (mv-nth 3 (fn-owner-history-startup fn-hist state))))
+  :hints (("Goal" :in-theory '(fn-owner-history-startup fn-host-hist-startup
+                               fn-owner-history-cache-startup fn-owner-history-cache-put
+                               mv-nth nth zp car-cons cdr-cons
+                               (:executable-counterpart zp)
+                               fn-orh-retain-statep-of-other-global-put))))
+
+; Commit observations do not reset any carried fold. The next history sync
+; can only grow the count (fn-host-hist-sync-count-monotone).
+(defthm fn-owner-io-preserves-history-caches
+  (equal (fn-owner-history-cache-statep
+          count (mv-nth 2 (fn-owner-io operation result st)))
+         (fn-owner-history-cache-statep count st))
+  :hints (("Goal" :in-theory
+           (union-theories
+            '(fn-owner-io fn-owner-install-ocfg
+              fn-owner-history-cache-statep-of-other-global-put
+              mv-nth nth zp car-cons cdr-cons
+              (:executable-counterpart zp) (:executable-counterpart binary-+)
+              (:executable-counterpart unary--)
+              (:executable-counterpart member-equal))
+            (theory 'minimal-theory)))))

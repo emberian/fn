@@ -1636,6 +1636,7 @@ one ring, so the table's key and the served boundary's are one source."
             ;; not an anchor the run is dated against.
             (unless (eq (fnn-owner-advance-clock) :observed)
               (fnn-fault "owner refused its first clock observation"))
+            (fnn-owner-history-sync-first)
             (let ((configured (fnn-owner-names 'fn-owner-feed-configure)))
               (setq service
                     (%make-fnn-owner-service
@@ -1650,7 +1651,6 @@ one ring, so the table's key and the served boundary's are one source."
                      :batching (fnn-store-logp store)
                      :stopping nil))
               (fnn-owner-history-root-maintain service)
-              (fnn-owner-history-sync-first service)
               (progn
                 (setf (fnn-owner-service-feeds service)
                       (fnn-owner-feed-open-all service configured))

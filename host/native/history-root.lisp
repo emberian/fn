@@ -233,15 +233,10 @@ ACL2's source incarnation and refuses the candidate before installation."
         (fnn-err "HISTORY root refresh not built: ~(~s~)" status))
       word)))
 
-(defun fnn-owner-history-sync-first (service)
-  "Install's explicit first history synchronization.  fn-owner-hroot-row is
-ACL2's synchronizing read (fn-host-hist-sync, which consumes the reload flag
-set at open); asking for row 0 here, whatever history-root-maintain answered,
-makes the whole-history disk load a startup step before the service answers
-anything, never the first inspect, lookup or feed reply.  The row is not used."
-  (fnn-owner-gated (service :control)
-    (fnn-owner-core 'fn-owner-hroot-row 0
-                    (fourth (fnn-owner-core 'fn-owner-hroot-frontier-value))))
+(defun fnn-owner-history-sync-first ()
+  "Load history before install creates the owner service or its mutex."
+  (unless (eq (fnn-owner-core 'fn-owner-history-startup) :loaded)
+    (fnn-fault "owner history startup did not complete"))
   nil)
 
 (defun fnn-owner-history-root-chunk-return (service pin)

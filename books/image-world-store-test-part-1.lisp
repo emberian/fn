@@ -136,7 +136,7 @@
 (include-book "reclaim-chunked-seal")
 (include-book "owner-reclaim-carry")
 (include-book "owner-reclaim-seal")
-(include-book "owner-recovery-retain")
+(include-book "owner-history-cache-recovery")
 (include-book "owner-cursor-domain")
 (include-book "extent-retire")
 (include-book "owner-retire")
@@ -164,3 +164,4 @@
 (include-book "store-carried-folds")
 (include-book "owner-log-route")
 (include-book "owner-advance-carried")
+(include-book "owner-intent-carried")

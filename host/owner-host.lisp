@@ -96,7 +96,7 @@
 (include-book "../books/reclaim-chunked-seal")
 (include-book "../books/owner-reclaim-carry")
 (include-book "../books/owner-reclaim-seal")
-(include-book "../books/owner-recovery-retain")
+(include-book "../books/owner-history-cache-recovery")
 (include-book "../books/owner-cursor-domain")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
@@ -1342,17 +1342,7 @@
 ; (`fn-owner-install-profile') and stays valid while committed records only
 ; grow (`fn-sbud-octets-cache-valid-after-commit'); the count stored with it
 ; is the stobj's (fn-hist-count-is-used).
-(defun fn-owner-record-octets (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state)))
-  (let* ((s (fn-owner-store state))
-         (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
-         (cache (if (boundp-global 'fn-owner-record-octets state)
-                    (f-get-global 'fn-owner-record-octets state)
-                  nil))
-         (bytes (fn-hist-bytes-carried cache s fn-hist))
-         (state (f-put-global 'fn-owner-record-octets
-                              (cons (fn-hist-count fn-hist) bytes) state)))
-    (mv bytes fn-hist state)))
+; Defined in books/owner-history-carried.lisp.
 
 ; The completion debt of the carried Store (the open forward undertakings,
 ; each owing a release record), carried as (K . DEBT) and advanced over the
@@ -1361,17 +1351,7 @@
 ; extension is `fn-cvec-record-debt' when the cache is valid,
 ; fn-cvec-debt-extend-is-the-record-debt), reset with the octets when a
 ; profile is installed at open.
-(defun fn-owner-record-debt (fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state)))
-  (let* ((s (fn-owner-store state))
-         (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
-         (cache (if (boundp-global 'fn-owner-record-debt state)
-                    (f-get-global 'fn-owner-record-debt state)
-                  nil))
-         (debt (fn-hist-debt-carried cache s fn-hist))
-         (state (f-put-global 'fn-owner-record-debt
-                              (cons (fn-hist-count fn-hist) debt) state)))
-    (mv debt fn-hist state)))
+; Defined in books/owner-history-carried.lisp.
 
 ;; Row S1 (books/limits-live.lisp, PRF-940): the store's use a limit
 ;; decision reads, (TRANSACTIONS HISTORY-OCTETS COMPLETION-DEBT): committed
@@ -1465,14 +1445,7 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-sn-node (fn-owner-store state)))
 
-(defun fn-owner-step (event fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :guard (and (boundp-global 'fn-owner state)
-                              (fn-sn-statep (fn-sbud-oc-store (fn-owner-ocfg state)))
-                              (fn-ocfg-eventp (fn-owner-ocfg state) event))
-                  :guard-hints (("Goal" :in-theory (enable fn-sbud-oc-store)))))
-  (let ((state (fn-owner-install-ocfg
-                (fn-ocfg-step (fn-owner-ocfg state) event fn-arena) state)))
-    state))
+; fn-owner-step and its history-state frame live in owner-history-sync.
 
 ; The live control path is deliberately small for this packet: a configured
 ; client asks to create or retire one group.  ACL2 constructs the delta
@@ -2548,11 +2521,8 @@
 ;; retention, consumer and topic events complete here.
 ; Defined under the same host-called name in books/owner-retain-transitions.lisp.
 
-; fn-host-hist-sync clears its reload flag with f-put-global, which the ld
-; world opens to the global table before fn-owner-ocfg-of-other-global-put
-; can match; fn-owner-finish's guard needs the owner across that normalized
-; update (as fn-owner-retain-carry-of-other-global-update-by-definition
-; gives the carry).  Without it the guard proof searched 937 s and failed.
+; Normalized global-write frame. Startup clears its reload flag this way;
+; served fn-host-hist-sync now leaves STATE unchanged.
 (defthm fn-owner-ocfg-of-other-global-update-by-definition
   (implies (not (equal key 'fn-owner))
            (equal (fn-owner-ocfg (update-nth 2 (add-pair key value (nth 2 state)) state))
@@ -2561,8 +2531,8 @@
                                nth-update-nth (:executable-counterpart equal)))))
 
 ; The completion over the history stobj refreshed against the owner's Store
-; (R at the read: fn-hist-refresh-is-the-history; the finish keeps the
-; history, fn-ceis-finish-keeps-records), so fn-rix-ocfg-complete is
+; (R at the read: fn-hist-served-sync-is-sync plus the carried prefix;
+; the finish keeps the history, fn-ceis-finish-keeps-records), so fn-rix-ocfg-complete is
 ; fn-ccar-ocfg-complete (fn-rix-ocfg-complete-is-ccar-ocfg-complete).
 (defun fn-owner-finish (fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :guard (and (boundp-global 'fn-owner state)
@@ -3786,17 +3756,7 @@
 ; books/peer-carriage.lisp's fn-pcb-usage-extend,
 ; fn-hist-usage-carried-is-usage-extend, so fn-pcb-extended-cache-is-valid
 ; keeps the stored cache valid).  Reset at open (fn-owner-install-profile).
-(defun fn-owner-carried-usage (evidence fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :guard (boundp-global 'fn-owner state)))
-  (let* ((s (fn-owner-store state))
-         (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
-         (cache (if (boundp-global 'fn-owner-carried-usage state)
-                    (f-get-global 'fn-owner-carried-usage state)
-                  nil))
-         (tally (fn-hist-usage-carried cache s fn-hist))
-         (state (f-put-global 'fn-owner-carried-usage
-                              (cons (fn-hist-count fn-hist) tally) state)))
-    (mv (fn-pcb-tally-get evidence tally) fn-hist state)))
+; Defined in books/owner-history-carried.lisp.
 
 ; D23 and PRF-099: the carried arm's kind-4 event, for the NNTP transit
 ; attempt only, gated by the delivering boundary's opaque-carriage budget
@@ -5457,9 +5417,9 @@ itself."
 ;;; warm.  The committing half calls no arena read (fn-ofa-feed-article occurs
 ;;; only in the probe below).
 
-; The history stobj refreshed against the owner's Store (host/store-node-host.lisp
-; fn-host-hist-sync; R by fn-hist-refresh-is-the-history), alone: the probe's
-; precondition (R holds at its read), run by the host outside the no-I/O mode.
+; The history stobj refreshed by books/owner-history-sync's served sync.
+; fn-hist-served-sync-is-sync and the carried prefix establish R at the
+; probe's read; the host runs this outside the no-I/O mode.
 (defun fn-owner-feed-reply-sync (fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
@@ -5503,8 +5463,8 @@ itself."
                     state)))))))))
 
 ; The feed reply entry: the history stobj refreshed against the owner's Store
-; first (host/store-node-host.lisp fn-host-hist-sync; R by
-; fn-hist-refresh-is-the-history), then the reply committed with the article
+; first (fn-host-hist-sync; fn-hist-served-sync-is-sync and the carried
+; prefix establish R), then the reply committed with the article
 ; fn-owner-feed-reply-article read for it in the same owner quantum.
 (defun fn-owner-feed-reply-chunk (peer-octets octets monotonic article fn-arena fn-hist state)
   (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program

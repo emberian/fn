@@ -6013,3 +6013,6 @@
 (definterface fn-stid-host-reply-read :class ::program)
 (definterface fn-stid-host-line :class ::program)
 (definterface fn-stid-host-exit-code :class ::program)
+
+(definterface fn-owner-history-startup
+  :class :common-lisp-compliant)

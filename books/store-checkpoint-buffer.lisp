@@ -153,7 +153,7 @@
 
 (defun fn-sccb-append-list (xs fn-octets)
   (declare (xargs :stobjs fn-octets :guard (fn-scc-octet-listp xs)
-                  :guard-hints (("Goal" :in-theory (enable fn-cbor-octetp)))))
+                  :guard-hints (("Goal" :in-theory (enable fn-cbor-octetp fn-cbor-octet-listp)))))
   (fn-octets-append-list xs fn-octets))
 
 ; The export's logical value is `append' on ANY buffer value and any XS
