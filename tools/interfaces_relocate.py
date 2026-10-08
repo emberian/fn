@@ -56,6 +56,8 @@ SOURCE = "host/interfaces.lisp"
 BUILD = "host/native/build.lisp"
 FUNCTION_HEADS = {"defun", "defund", "defun-nx", "defund-nx", "defun-inline", "defund-inline",
                   "defun-notinline", "defun-sk", "define", "defstub", "defabbrev"}
+# Forms that annotate or check a function a book defines; they do not define it.
+NOT_DEFINITIONS = {"def-cost", "def-cost-check", "def-operation-check"}
 WRAPPERS = {"progn", "mutual-recursion", "encapsulate", "progn!", "with-output"}
 DEPENDENT_KEYS = {":keystones", ":delegates", ":raw-with", ":operation", ":raw-guarded"}
 
@@ -155,7 +157,7 @@ class Index:
             return
         if head == "verify-guards":
             self.guards[second.low].append((rel, end))
-        elif head.startswith("def") or head == "define":
+        elif (head.startswith("def") or head == "define") and head not in NOT_DEFINITIONS:
             self.defs[second.low].append((rel, head, end))
 
 

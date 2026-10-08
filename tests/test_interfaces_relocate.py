@@ -152,6 +152,15 @@ class RelocateTests(unittest.TestCase):
                          "an ld'd ACL2 file under host/native/ is a host file like one in host/")
         self.assertEqual((root / "host/interfaces.lisp").read_text(), IFACES_AFTER)
 
+    def test_a_cost_annotation_is_not_a_definition(self):
+        # def-cost / def-operation-check name a book's function in a host file; the
+        # declaration of that function must stay where the check can see it first.
+        root = self.tree()
+        (root / "host/b-host.lisp").write_text(
+            B + "(def-cost fn-book-two :visits 0)\n(def-operation-check fn-book-two)\n")
+        index = ir.Index(root)
+        self.assertEqual([d[0] for d in index.defs["fn-book-two"]], ["books/book.lisp"])
+
     def test_it_reports_and_refuses_what_it_cannot_place(self):
         root = self.tree()
         code, out = self.run_tool(root)
