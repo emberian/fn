@@ -793,6 +793,249 @@
      "reason": "F9 owner L: P1-DURABLE; P2-IDENTITY; P8-CLIENTS: 72 h soak at POST 5/s, eight readers, hourly publication and a catch-up peer; report RSS slope and p99 per hour, divergence must be 0."
     }
    ]
+  },
+  "readers-locks": {
+   "about": "W2 contention mechanism run: R1, R4, R16 beside one 5/s poster. Cumulative per-name mutex waits sampled every second; phase reports carry the actual snapshot boundaries.",
+   "preset": "filled",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 10000,
+    "octets": 2048
+   },
+   "phases": [
+    {
+     "name": "R1",
+     "kind": "read",
+     "readers": 1,
+     "duration_s": 20,
+     "cmd": "ARTICLE",
+     "poster": {
+      "rate_per_s": 5,
+      "octets": 2048
+     }
+    },
+    {
+     "name": "R4",
+     "kind": "read",
+     "readers": 4,
+     "duration_s": 20,
+     "cmd": "ARTICLE",
+     "poster": {
+      "rate_per_s": 5,
+      "octets": 2048
+     }
+    },
+    {
+     "name": "R16",
+     "kind": "read",
+     "readers": 16,
+     "duration_s": 20,
+     "cmd": "ARTICLE",
+     "poster": {
+      "rate_per_s": 5,
+      "octets": 2048
+     }
+    }
+   ],
+   "policy": {
+    "exposure-connections": 128
+   },
+   "lockwait": true
+  },
+  "readers-prof": {
+   "about": "W2 CPU mechanism run: 10 s R16 warmup, then 65 s R16 beside one 5/s poster. A trigger starts one 60 s sb-sprof :cpu flat profile at the measured phase; open and preload are excluded.",
+   "preset": "filled",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 10000,
+    "octets": 2048
+   },
+   "phases": [
+    {
+     "name": "warm-R16",
+     "kind": "read",
+     "readers": 16,
+     "duration_s": 10,
+     "cmd": "ARTICLE",
+     "poster": {
+      "rate_per_s": 5,
+      "octets": 2048
+     },
+     "measure": false
+    },
+    {
+     "name": "R16",
+     "kind": "read",
+     "readers": 16,
+     "duration_s": 65,
+     "cmd": "ARTICLE",
+     "poster": {
+      "rate_per_s": 5,
+      "octets": 2048
+     },
+     "measure": true
+    }
+   ],
+   "policy": {
+    "exposure-connections": 128
+   },
+   "sprof": {
+    "window_s": 60
+   }
+  },
+  "greeting-prof": {
+   "about": "C's ask (2026-10-08): sb-sprof of the owner (all threads, one 60 s window) while one client loops TCP connect to the greeting (T-CMD greeting is superlinear in store size on g41). Variant /alloc samples allocation instead of CPU. Run as GREET-PROF@25k.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 1000,
+    "octets": 2048,
+    "fixture": "curve/n{N}"
+   },
+   "phases": [
+    {
+     "name": "commands",
+     "kind": "commands",
+     "reps": 0,
+     "budget_s": 90,
+     "only": [
+      "greeting"
+     ],
+     "measure": true,
+     "greeting_reps": 400
+    }
+   ],
+   "sprof": {
+    "window_s": 60,
+    "mode": "cpu"
+   }
+  },
+  "greeting-prof-alloc": {
+   "about": "As greeting-prof, sb-sprof :alloc mode.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 1000,
+    "octets": 2048,
+    "fixture": "curve/n{N}"
+   },
+   "phases": [
+    {
+     "name": "commands",
+     "kind": "commands",
+     "reps": 0,
+     "budget_s": 90,
+     "only": [
+      "greeting"
+     ],
+     "measure": true,
+     "greeting_reps": 400
+    }
+   ],
+   "sprof": {
+    "window_s": 60,
+    "mode": "alloc"
+   }
+  },
+  "list-prof": {
+   "about": "C's ask (2026-10-08): sb-sprof of the owner (all threads, one 60 s window) while one client loops LIST (T-CMD LIST is O(n) on g41, wall 9x CPU at 25k). Run as LIST-PROF@25k.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 1000,
+    "octets": 2048,
+    "fixture": "curve/n{N}"
+   },
+   "phases": [
+    {
+     "name": "commands",
+     "kind": "commands",
+     "reps": 20,
+     "budget_s": 75,
+     "only": [
+      "LIST"
+     ],
+     "measure": true
+    }
+   ],
+   "sprof": {
+    "window_s": 60,
+    "mode": "cpu"
+   }
+  },
+  "list-prof-alloc": {
+   "about": "As list-prof, sb-sprof :alloc mode.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 1000,
+    "octets": 2048,
+    "fixture": "curve/n{N}"
+   },
+   "phases": [
+    {
+     "name": "commands",
+     "kind": "commands",
+     "reps": 20,
+     "budget_s": 75,
+     "only": [
+      "LIST"
+     ],
+     "measure": true
+    }
+   ],
+   "sprof": {
+    "window_s": 60,
+    "mode": "alloc"
+   }
+  },
+  "catchup-quiet": {
+   "about": "W6a without the GROUP poll (S, 2026-10-08): B gets no client command while it imports; progress and per-1000 splits come from B's own auto-checkpoint sequence lines, the pace from the round=done line. Run as W6q@1k/5k/10k.",
+   "preset": "peers",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "peers": {
+    "mode": "catchup"
+   },
+   "phases": [
+    {
+     "name": "pull",
+     "kind": "peers",
+     "mode": "catchup",
+     "deadline_s": 2400,
+     "measure": true,
+     "count": "log"
+    }
+   ]
   }
  },
  "cells": {
@@ -820,7 +1063,14 @@
   "F4": "fault-index-saturation",
   "F7": "fault-index-omission",
   "F8": "fault-bp-disruption",
-  "F9": "fault-soak"
+  "F9": "fault-soak",
+  "W2L": "readers-locks",
+  "W2P": "readers-prof",
+  "GREET-PROF": "greeting-prof",
+  "GREET-PROF-ALLOC": "greeting-prof-alloc",
+  "LIST-PROF": "list-prof",
+  "LIST-PROF-ALLOC": "list-prof-alloc",
+  "W6q": "catchup-quiet"
  },
  "stores": {
   "1k": 1000,
@@ -829,6 +1079,7 @@
   "40k": 40000,
   "100k": 100000,
   "25k": 25000,
-  "50k": 50000
+  "50k": 50000,
+  "5k": 5000
  }
 }
