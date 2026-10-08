@@ -357,3 +357,7 @@ class SpanReferenceTests(JoinFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+# Critical arena exports: fn-arena-seal-list and fn-arena-seal-buffer are
+# on commit staging (fn-owner-pending-octets -> fn-arx-stage-payload);
+# fn-arena-seal-range is reached through fn-scka-seal-n on extent open.

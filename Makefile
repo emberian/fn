@@ -1054,6 +1054,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/post-identity-index \
 	books/post-identity-catalog \
 	tests/acl2/post-identity-index-tests \
+	tests/acl2/post-identity-view-teeth-tests \
 	tests/acl2/post-identity-catalog-tests \
 	books/post-prepare-catalog \
 	tests/acl2/post-prepare-catalog-tests \
@@ -1636,6 +1637,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/string-line-cursor-cost-tests \
 	tests/acl2/served-plan-line-buffer-tests \
 	tests/acl2/payload-arena-tests \
+	tests/acl2/payload-arena-teeth-tests \
 	tests/acl2/payload-arena-paged-tests \
 	tests/acl2/payload-arena-extent-tests \
 	tests/acl2/payload-extent-tests \
@@ -1897,6 +1899,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
+	tests/acl2/owner-completion-teeth-tests \
 	books/poster-bytes-invariants \
 	tests/acl2/poster-bytes-tests \
 	tests/acl2/source-routes-tests \
@@ -2115,6 +2118,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
 	tests/acl2/served-available-access-tests \
+	tests/acl2/served-available-critical-teeth-tests \
 	tests/acl2/served-access-revoke-tests \
 	books/def-cursor-batch \
 	books/newnews-stream-cursor \

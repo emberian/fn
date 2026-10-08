@@ -111,3 +111,27 @@
 (assert-event (not (fn-node-statep '(not a node))))
 (thm (not (fn-node-statep (fn-replay-advance-txid '(not a node) k)))
      :hints (("Goal" :in-theory (enable fn-replay-advance-txid))))
+
+(include-book "../../books/defkeystone")
+;; Mutation of selection: the ready record accidentally drops the verdicts.
+(defun rdct-selection-no-verdicts (archive verdicts)
+  (declare (ignore verdicts))
+  (if (fn-nntp-projectionp archive) (list :ready archive nil) :refused))
+(defteeth fn-rdc-selection-establishes
+ :subject fn-rdc-selection
+ :claim (((ready (fn-rdc-readyp (fn-rdc-selection archive verdicts))))
+         (and (fn-nntp-projectionp (fn-rdc-archive (fn-rdc-selection archive verdicts)))
+              (fn-statep (fn-rdc-archive (fn-rdc-selection archive verdicts)))
+              (equal (fn-rdc-archive (fn-rdc-selection archive verdicts)) archive)
+              (equal (fn-rdc-verdicts (fn-rdc-selection archive verdicts)) verdicts)))
+ :witness ((archive *rdc-t-archive*) (verdicts *rdc-t-verdicts*))
+ :breaks ((ready ((archive *rdc-t-bad*))))
+ :mutations ((drop-verdicts
+              (:conclusion
+               (and (fn-nntp-projectionp (fn-rdc-archive (rdct-selection-no-verdicts archive verdicts)))
+                    (fn-statep (fn-rdc-archive (rdct-selection-no-verdicts archive verdicts)))
+                    (equal (fn-rdc-archive (rdct-selection-no-verdicts archive verdicts)) archive)
+                    (equal (fn-rdc-verdicts (rdct-selection-no-verdicts archive verdicts)) verdicts)))
+              ((archive *rdc-t-archive*) (verdicts *rdc-t-verdicts*))
+              :fault "selection publishes the archive without its verdict pin")))
+(defteeth-check (fn-rdc-selection-establishes))

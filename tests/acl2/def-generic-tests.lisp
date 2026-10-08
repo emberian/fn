@@ -170,3 +170,35 @@
    :lemmas (dgt-no-such-lemma)
    :exports ((:read dgt-g7-count :logic dgt-a-count)))
  :unchecked "refused at expansion: a lemma is not in the world")
+
+;; Strengthening retains the exact ACL2 guard obligation under a companion
+;; name and proves the public correspondence without the unused mark guard.
+(defun dgt-a-push-marked (x mark a)
+ (declare (ignore mark) (xargs :guard (and (natp x) (natp mark) (dgt-ap a))))
+ (dgt-a-push x a))
+(def-generic dgt-gs
+ :model (:recognizer dgt-ap :creator create-dgt-a)
+ :lemmas (dgt-ap-of-push)
+ :omit-hypotheses ((dgt-gs-push (natp mark)))
+ :exports ((:update dgt-gs-push :logic dgt-a-push-marked)))
+(assert-event
+ (and (getpropc 'dgt-gs-push{guarded-correspondence} 'theorem nil (w state))
+      (getpropc 'dgt-gs-push{correspondence} 'theorem nil (w state))
+      (not (member-equal '(natp mark)
+            (cdr (cadr (untranslate (getpropc 'dgt-gs-push{correspondence} 'theorem nil (w state)) t (w state))))))))
+;; A missing premise is refused, rather than silently ignored.
+(must-fail-checked
+ (def-generic dgt-gs-bad
+  :model (:recognizer dgt-ap :creator create-dgt-a)
+  :lemmas (dgt-ap-of-push)
+  :omit-hypotheses ((dgt-gs-bad-push (stringp mark)))
+  :exports ((:update dgt-gs-bad-push :logic dgt-a-push-marked)))
+ :unchecked "stringp mark is not an original correspondence premise")
+;; Dropping the payload's naturalness loses model preservation and fails.
+(must-fail-checked
+ (def-generic dgt-gs-unsound
+  :model (:recognizer dgt-ap :creator create-dgt-a)
+  :lemmas (dgt-ap-of-push)
+  :omit-hypotheses ((dgt-gs-unsound-push (natp x)))
+  :exports ((:update dgt-gs-unsound-push :logic dgt-a-push-marked)))
+ :unchecked "appending a non-natural does not preserve the model recognizer")

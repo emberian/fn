@@ -227,3 +227,43 @@
 (assert-event
  (not (equal (in-arena-gacct-served *sr-arena* *gacct-forged* "LIST ACTIVE")
              (in-arena-gacct-reference *sr-arena* "LIST ACTIVE"))))
+
+(include-book "../../books/defkeystone")
+;; Run acceptance from the empty archive; cache growth sees the accepted
+;; articles oldest first, just as fn-gacc-prefix leaves them.
+(defconst *gacct-trace0* (fn-initial-state *gacct-groups*))
+(defconst *gacct-trace1*
+ (fn-accept-complete
+  (fn-accept-prepare *gacct-trace0* 1 "<public@example.invalid>" 0 '("fn.public") 0)
+  0 1 :durable))
+(defconst *gacct-trace2*
+ (fn-accept-complete
+  (fn-accept-prepare *gacct-trace1* 2 "<private@example.invalid>" 1 '("fn.private.x") 0)
+  1 2 :durable))
+(defconst *gacct-grow-input* (reverse (fn-state-articles *gacct-trace2*)))
+(assert-event (equal (len *gacct-grow-input*) 2))
+;; Implementation mutation: step keeps every article instead of applying
+;; fn-gac-filter-groups / fn-gac-restrict-article.
+(defun gacct-grow-unrestricted (text as rarts buckets)
+ (declare (ignore text))
+ (if (consp as)
+     (gacct-grow-unrestricted nil (cdr as) (cons (car as) rarts)
+                             (fn-gidx-put-all (fn-index-article-entries (car as)) buckets))
+   (mv rarts buckets)))
+(defteeth fn-gacc-grow-builds
+ :subject fn-gacc-grow
+ :claim (()
+         (equal (fn-gacc-grow text as (fn-gac-restrict-articles text ys)
+                             (fn-gidx-build (fn-gac-restrict-articles text ys)))
+                (let ((r (fn-gac-restrict-articles text (revappend as ys))))
+                  (mv r (fn-gidx-build r)))))
+ :witness ((text *gacct-text*) (as *gacct-grow-input*) (ys nil))
+ :mutations ((unrestricted-grow
+              (:conclusion
+               (equal (gacct-grow-unrestricted text as (fn-gac-restrict-articles text ys)
+                                              (fn-gidx-build (fn-gac-restrict-articles text ys)))
+                      (let ((r (fn-gac-restrict-articles text (revappend as ys))))
+                        (mv r (fn-gidx-build r)))))
+              ((text *gacct-text*) (as *gacct-grow-input*) (ys nil))
+              :fault "cache growth inserts a private article without the access restriction")))
+(defteeth-check (fn-gacc-grow-builds))

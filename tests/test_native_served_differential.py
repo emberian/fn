@@ -143,3 +143,6 @@ class NativeServedDifferentialTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+# Critical reader selection: fnn-reader-prepare -> fnn-reader-select ->
+# fn-reader-use-store/seed -> fn-rdc-selection, before fn-reader-reset.

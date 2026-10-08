@@ -303,3 +303,67 @@
                           (list 'if (guard 'fn-rclb-same-articlep nil (w state))
                                 (guard 'fn-store-existing-action nil (w state))
                                 ''nil))))
+
+(include-book "../../books/defkeystone")
+;; A prepare mutation skips staging and returns the reserved input owner.
+(defun pitt-prepare-skipped (oc record budget)
+ (declare (ignore record budget)) oc)
+(defteeth fn-pidx-sbud-prepare-is-pcar-sbud-prepare
+ :subject fn-pidx-sbud-prepare
+ :claim (() (equal (fn-pidx-sbud-prepare oc record budget)
+                   (fn-pcar-sbud-prepare oc record budget)))
+ :witness ((oc *pit-oc*) (record *pit-fresh-record*) (budget 100))
+ :mutations ((prepare-skipped
+              (:conclusion (equal (pitt-prepare-skipped oc record budget)
+                                  (fn-pcar-sbud-prepare oc record budget)))
+              () :fault "POST prepare returns without staging the admitted record")))
+(defteeth-check (fn-pidx-sbud-prepare-is-pcar-sbud-prepare))
+
+(defun pitt-existing-check (msgid groups o fn-octets fn-arena)
+ (declare (xargs :stobjs (fn-octets fn-arena) :verify-guards nil))
+ (mv (equal (fn-pidx-existing-action msgid fn-octets groups o fn-arena)
+            (fn-store-existing-action msgid (fn-octets-list fn-octets) groups
+                                      (fn-own-store o) fn-arena))
+     fn-octets fn-arena))
+;; Implementation mutation: an existing Message-ID is called duplicate
+;; without comparing its content and group identity.
+(defun pitt-existing-no-bytes (msgid fn-octets groups o fn-arena)
+ (declare (xargs :stobjs (fn-octets fn-arena) :verify-guards nil)
+          (ignore fn-octets groups fn-arena))
+ (if (fn-find-article msgid (fn-state-articles (fn-node-acceptance (fn-sn-node (fn-own-store o)))))
+     :duplicate nil))
+(defun pitt-existing-mutant-check (msgid groups o fn-octets fn-arena)
+ (declare (xargs :stobjs (fn-octets fn-arena) :verify-guards nil))
+ (mv (equal (pitt-existing-no-bytes msgid fn-octets groups o fn-arena)
+            (fn-store-existing-action msgid (fn-octets-list fn-octets) groups
+                                      (fn-own-store o) fn-arena))
+     fn-octets fn-arena))
+(defteeth fn-pidx-existing-action-is-store-existing-action
+ :subject fn-pidx-existing-action
+ :claim (((buffer (fn-octets-p fn-octets)))
+         (equal (fn-pidx-existing-action msgid fn-octets groups o fn-arena)
+                (fn-store-existing-action msgid fn-octets groups (fn-own-store o) fn-arena)))
+ :witness ((msgid *pit-held*) (groups *pit-groups*) (o *pit-o*) (payload *pit-changed*))
+ :stobjs ((fn-octets (fn-octets-from-list payload fn-octets))
+          (fn-arena (fn-hrt-events *pit-prior* nil 0 fn-arena)))
+ :stobj-checks
+ (((equal (fn-pidx-existing-action msgid fn-octets groups o fn-arena)
+          (fn-store-existing-action msgid fn-octets groups (fn-own-store o) fn-arena))
+   (pitt-existing-check msgid groups o fn-octets fn-arena)
+   :hints (("Goal" :in-theory (e/d (pitt-existing-check)
+                                  (fn-pidx-existing-action fn-store-existing-action)))))
+  ((equal (pitt-existing-no-bytes msgid fn-octets groups o fn-arena)
+          (fn-store-existing-action msgid fn-octets groups (fn-own-store o) fn-arena))
+   (pitt-existing-mutant-check msgid groups o fn-octets fn-arena)
+   :hints (("Goal" :in-theory (e/d (pitt-existing-mutant-check)
+                                  (pitt-existing-no-bytes fn-store-existing-action))))))
+ :breaks ((buffer ((payload (append *pit-payload* 'bad-tail)))
+                  :logical "corrupted logical buffer: its improper tail is ignored by the bounded byte comparison"))
+ :hints (("Goal" :in-theory (e/d (fn-pidx-existing-action fn-rclb-same-articlep
+                                   fn-rclb-same-as-tombstonep fn-pbb-same-articlep)
+                                  ((:e fn-pidx-existing-action)))))
+ :mutations ((bytes-unchecked
+   (:conclusion (equal (pitt-existing-no-bytes msgid fn-octets groups o fn-arena)
+                       (fn-store-existing-action msgid fn-octets groups (fn-own-store o) fn-arena)))
+   () :fault "duplicate Message-ID bypasses content and group comparison")))
+(defteeth-check (fn-pidx-existing-action-is-store-existing-action))

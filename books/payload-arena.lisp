@@ -102,7 +102,23 @@
             (fn-arn-payload-listp (update-nth h v a)))
    :hints (("Goal" :in-theory (enable update-nth fn-arn-payload-listp)))))
 
+(local
+ (defthm fn-arn-slice-without-shape-hypotheses
+  (implies (and (fn-octets-p fn-octets) (<= b (fn-octets-len fn-octets)))
+           (fn-cbor-octet-listp (fn-oct-slice-list a b fn-octets)))
+  :hints (("Goal" :cases ((and (natp a) (natp b) (<= a b)))
+           :use ((:instance fn-arn-slice-list-octets))
+           :in-theory (e/d (fn-octets-p fn-octets-len fn-oct-slice-list)
+                            (fn-cbor-octet-listp fn-arn-slice-list-octets))))))
+(local
+ (defthm fn-arn-seal-range-without-shape-hypotheses
+  (implies (and (fn-arena$ap arena) (fn-octets-p fn-octets)
+                (<= b (fn-octets-len fn-octets)))
+           (fn-arena$ap (fn-arena$a-seal-range a b fn-octets arena)))
+  :hints (("Goal" :in-theory (enable fn-arena$a-seal-range)))))
+
 (def-generic fn-arena
+  :omit-hypotheses ((fn-arena-seal-range (natp a) (natp b) (<= a b)))
   :model (:recognizer fn-arena$ap :creator create-fn-arena$a)
   :lemmas (fn-oct-update-is-update-nth fn-arn-payload-listp-of-update-nth
            fn-oct-octets-p-is-octet-listp)

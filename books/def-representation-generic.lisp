@@ -102,13 +102,15 @@
 (defun dg-logic-names (rows)
   (if (endp rows) nil (cons (cadddr (car rows)) (dg-logic-names (cdr rows)))))
 
-(defun dg-export-rows (rows name l)
+(defun dg-export-rows (rows name l omit)
   (if (endp rows)
       nil
     (let ((r (car rows)))
       (cons `(,(cadr r) :logic ,(cadddr r) :exec ,(dg-exec-name l name (cadr r))
+              ,@(and (assoc-eq (cadr r) omit)
+                     (list :correspondence (adt-sym (cadr r) "{GUARDED-CORRESPONDENCE}")))
               ,@(if (eq (car r) :update) '(:protect t) nil))
-            (dg-export-rows (cdr rows) name l)))))
+            (dg-export-rows (cdr rows) name l omit)))))
 
 ; The obligations, as `defabsstobj-missing-events' states them (each named
 ; EXPORT{KIND}).  {preserved} first: it is the model's content and opens the
@@ -127,32 +129,58 @@
          (cons (car (car missing)) (dg-preserved-obs (cdr missing))))
         (t (dg-preserved-obs (cdr missing)))))
 
-(defun dg-ob-thm (ob formula preserved hints-pre hints-unfold wrld)
+ ; Explicit strengthening retains ACL2's exact guarded obligation under a
+; generated companion name.  The public correspondence theorem has only
+; the remaining premises.  Both are proved; no missing-event is bypassed.
+(defun dg-drop-hyps (drops hyps)
+ (cond ((endp drops) hyps)
+       ((member-equal (car drops) hyps)
+        (dg-drop-hyps (cdr drops) (remove-equal (car drops) hyps)))
+       (t (er hard 'def-generic "Not an obligation hypothesis: ~x0" (car drops)))))
+(defun dg-strengthen (term drops)
+ (if (endp drops) term
+  (if (and (consp term) (eq (car term) 'implies))
+   (let* ((h (cadr term))
+          (hs (if (and (consp h) (eq (car h) 'and)) (cdr h) (list h)))
+          (kept (dg-drop-hyps drops hs)))
+    (if (endp kept) (caddr term)
+      (list 'implies (if (endp (cdr kept)) (car kept) (cons 'and kept)) (caddr term))))
+   (er hard 'def-generic "Cannot remove hypotheses from ~x0" term))))
+
+(defun dg-ob-thm (ob formula preserved hints-pre hints-unfold omit wrld)
   (let* ((k (dg-ob-kind ob))
          (pob (intern-in-package-of-symbol (concatenate 'string (dg-ob-prefix ob) "{PRESERVED}") ob))
          (hints (cond ((equal k "PRESERVED") hints-pre)
-                      ((and (equal k "CORRESPONDENCE") (member-eq pob preserved))
+                      ((and (member-equal k '("CORRESPONDENCE" "GUARDED-CORRESPONDENCE")) (member-eq pob preserved))
                        `(("Goal" :use ((:instance ,pob))
                           :in-theory ,(cadr (cdr (car hints-unfold))))))
                       (t hints-unfold))))
-    `(defthm ,ob ,(untranslate formula t wrld) :rule-classes nil :hints ,hints)))
+    (let* ((term (untranslate formula t wrld))
+           (export (intern-in-package-of-symbol (dg-ob-prefix ob) ob))
+           (drops (cdr (assoc-eq export omit))))
+      (if (equal k "GUARDED-CORRESPONDENCE")
+          `(progn
+             (defthm ,ob ,term :rule-classes nil :hints ,hints)
+             (defthm ,(adt-sym export "{CORRESPONDENCE}")
+               ,(dg-strengthen term drops) :rule-classes nil :hints ,hints-unfold))
+        `(defthm ,ob ,term :rule-classes nil :hints ,hints)))))
 
-(defun dg-ob-thms (missing pass preserved hints-pre hints-unfold wrld)
+(defun dg-ob-thms (missing pass preserved hints-pre hints-unfold omit wrld)
   ; PASS :pre emits the {preserved} obligations, :post the rest.
   (cond ((endp missing) nil)
         (t (let ((pre (equal (dg-ob-kind (car (car missing))) "PRESERVED")))
              (if (eq (eq pass :pre) pre)
                  (cons (dg-ob-thm (car (car missing)) (cadr (car missing)) preserved
-                                  hints-pre hints-unfold wrld)
-                       (dg-ob-thms (cdr missing) pass preserved hints-pre hints-unfold wrld))
-               (dg-ob-thms (cdr missing) pass preserved hints-pre hints-unfold wrld))))))
+                                  hints-pre hints-unfold omit wrld)
+                       (dg-ob-thms (cdr missing) pass preserved hints-pre hints-unfold omit wrld))
+               (dg-ob-thms (cdr missing) pass preserved hints-pre hints-unfold omit wrld))))))
 
-(defun dg-all-ob-thms (missing hints-pre hints-unfold wrld)
+(defun dg-all-ob-thms (missing hints-pre hints-unfold omit wrld)
   (let ((pres (dg-preserved-obs missing)))
-    (append (dg-ob-thms missing :pre pres hints-pre hints-unfold wrld)
-            (dg-ob-thms missing :post pres hints-pre hints-unfold wrld))))
+    (append (dg-ob-thms missing :pre pres hints-pre hints-unfold omit wrld)
+            (dg-ob-thms missing :post pres hints-pre hints-unfold omit wrld))))
 
-(defun dg-events (name model rows lemmas disabled wrld)
+(defun dg-events (name model rows lemmas disabled omit wrld)
   (let* ((l (adt-sym name "$L"))
          (items (adt-sym l "-ITEMS"))
          (upd (adt-sym-pre "UPDATE-" items))
@@ -170,7 +198,7 @@
               :recognizer (,(adt-sym name "-P") :logic ,recog :exec ,lp)
               :creator (,(adt-sym-pre "CREATE-" name) :logic ,creator :exec ,create-l)
               :corr-fn ,lcorr
-              :exports ,(dg-export-rows rows name l)
+              :exports ,(dg-export-rows rows name l omit)
               :attachable t))
          (hints-pre `(("Goal" :in-theory (e/d (,wfp ,recog ,creator ,@(dg-logic-names rows) ,@lemmas)
                                              ,disabled))))
@@ -187,12 +215,12 @@
         ()
         (make-event
          (er-let* ((missing (defabsstobj-missing-events ,@(cdr defabs))))
-           (value (cons 'progn (dg-all-ob-thms missing ',hints-pre ',hints-unfold (w state)))))))
+           (value (cons 'progn (dg-all-ob-thms missing ',hints-pre ',hints-unfold ',omit (w state)))))))
       ,defabs
       (table fn-generated ',name
-             '(:def-generic :model ,model :exports ,rows :lemmas ,lemmas :disable ,disabled)))))
+             '(:def-generic :model ,model :exports ,rows :lemmas ,lemmas :disable ,disabled :omit-hypotheses ,omit)))))
 
-(defun def-generic-fn (name model rows lemmas disabled state)
+(defun def-generic-fn (name model rows lemmas disabled omit state)
   (declare (xargs :stobjs state))
   (let ((wrld (w state)) (ctx 'def-generic))
     (cond
@@ -208,9 +236,9 @@
       (er soft ctx "~x0: :lemmas must name theorems already proved." name))
      ((not (and (symbol-listp disabled) (rep-theorem-names-p disabled wrld)))
       (er soft ctx "~x0: :disable must name theorems already proved." name))
-     (t (value `(progn ,@(dg-events name model rows lemmas disabled wrld)))))))
+     (t (value `(progn ,@(dg-events name model rows lemmas disabled omit wrld)))))))
 
-(defmacro def-generic (name &key model exports lemmas disable)
-  `(make-event (def-generic-fn ',name ',model ',exports ',lemmas ',disable state)))
+(defmacro def-generic (name &key model exports lemmas disable omit-hypotheses)
+  `(make-event (def-generic-fn ',name ',model ',exports ',lemmas ',disable ',omit-hypotheses state)))
 
 (logic)
