@@ -4756,6 +4756,25 @@
    "registry": true
   },
   {
+   "book_digest": "706fc54000b7410da00b590b1bb879fd5f060d348efb82edbeae632d0ed2bd7b",
+   "bounds": [],
+   "claim_digest": "0eb64ff79ba1e6cf04808151c1e6181ab0ec7ff08c76441bff5770f71539ec3a",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-cfg-peer-names-loop-is-revappend-of-the-walk",
+   "owed_met": null,
+   "owner_book": "tests/acl2/config-walk-loops-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-cfg-peer-names",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-cfg-record-fitsp-is-the-decoder-limits",
    "registry": true
@@ -4774,6 +4793,25 @@
    "class": "hand",
    "name": "fn-cfg-record-redeeming-an-expired-code-is-refused-and-faults-replay",
    "registry": true
+  },
+  {
+   "book_digest": "706fc54000b7410da00b590b1bb879fd5f060d348efb82edbeae632d0ed2bd7b",
+   "bounds": [],
+   "claim_digest": "af3e2051df15559d93deb9cb4a575a97283834252868709353e95aa105bf895f",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-cfg-rows-with-key-loop-is-revappend-of-the-walk",
+   "owed_met": null,
+   "owner_book": "tests/acl2/config-walk-loops-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-cfg-rows-with-key",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -22279,6 +22317,25 @@
     "reachable": 1
    },
    "subject": "fn-wmc-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2847d55314f692dd40fd24c9d4338c5528aef116ce394f1288dfcef04983ab39",
+   "bounds": [],
+   "claim_digest": "527aad0a75d916ebbd03f5a0d4e5c1b9b05b371627d5ba846bf4e612cee0d8c7",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-wmc-core-codepoint-start-work-bound",
+   "owed_met": null,
+   "owner_book": "tests/acl2/wildmat-cursor-bound-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-wmc-start-codepoints",
    "witness": "executable"
   },
   {

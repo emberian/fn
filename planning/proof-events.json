@@ -1143,6 +1143,10 @@
         {
           "kind": "theorem",
           "name": "fn-served-step-nntp-steps-is-bounded"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-wmc-core-codepoint-start-work-bound"
         }
       ],
       "deferred": [
@@ -12725,8 +12729,16 @@
     },
     {
       "id": "PRF-383",
-      "events": [],
-      "note": "fn-dl-map-loop-is-revappend retained unchanged in books/def-loop.lisp and marked unreachable-in-composition in the PRF-383 statement (see PRF-919). Not a hosted-event claim; no reach baseline exemption is added."
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-rows-with-key-loop-is-revappend-of-the-walk"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-cfg-peer-names-loop-is-revappend-of-the-walk"
+        }
+      ]
     },
     {
       "id": "PRF-376",

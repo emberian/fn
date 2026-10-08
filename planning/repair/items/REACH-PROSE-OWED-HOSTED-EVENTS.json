@@ -5,12 +5,13 @@
  "severity": "low",
  "slice": "proofs",
  "source": "lane p-reach-prose1 (b07e405b7)",
- "state": "open",
+ "state": "landed",
  "title": "Register two hosted claims dropped from the PRF event lists by the reach re-scope: the wildmat cursor work bound (PRF-016) and the config walks (PRF-383)",
  "notes": [
   "PRF-016: register fn-wmc-core-codepoint-start-work-bound (books/wildmat-cursor.lisp; hosted through fn-wmc-start-codepoints) as an event with defteeth (positive witness, one removal witness per hypothesis, a mutation of the bound). The keystone_emit ratchet refuses a toothless new event.",
   "PRF-383: register fn-cfg-rows-with-key (books/config.lisp) and fn-cfg-peer-names (books/peer-config.lisp) as guarded-function events, hosted, with teeth; PRF-383 has no registered events since p-reach-prose1 removed the def-loop witness lemma.",
-  "PRF-014 refinement of the generated fn-av-mca-read-span chain to the reference read is owned by PRF-1287-OWED (item 1 there), not here."
+  "PRF-014 refinement of the generated fn-av-mca-read-span chain to the reference read is owned by PRF-1287-OWED (item 1 there), not here.",
+  "p-reach-owed (Sonnet, 2026-10-08): (a) PRF-016 registered fn-wmc-core-codepoint-start-work-bound with defteeth in tests/acl2/wildmat-cursor-bound-tests.lisp (no hypothesis, so no removal witness; positive witness from an actual run of fn-wmc-core-one, two bound mutations refuted). (b) PRF-383: guarded-function events cannot carry teeth (the keystone_emit ratchet counts a new one toothless), so books/config-walk-loops.lisp exports the loop-is-revappend-of-the-walk theorems for fn-cfg-rows-with-key and fn-cfg-peer-names (unconditional: the true-listp premise a first draft carried was redundant and is proved away) and tests/acl2/config-walk-loops-tests.lisp gives them defteeth."
  ],
- "updated": "2026-10-08T13:00:00Z"
+ "updated": "2026-10-08T15:00:00Z"
 }
