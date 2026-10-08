@@ -5,13 +5,13 @@
 (include-book "bp-recovery-profile")
 (set-verify-guards-eagerness 0)
 
-(defthm fn-bpnj-recovery-is-the-progress-step
+(defthm fn-bpnj-recovery-is-the-progress-step-by-definition
   (implies (equal (fn-cbor-ag-car event) :recover-fnbs)
            (equal (fn-bpnj-step st event) (fn-bpnp-step st event)))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn-bpnj-step fn-bpnj-unnamed-result-p (:e equal)) (theory 'minimal-theory)))))
 
-(defthm fn-bprpf-admitted-recovery-is-the-event
+(defthm fn-bprpf-admitted-recovery-is-the-event-by-definition
   (implies (and (fn-bpnpf-profilep profile)
                 (fn-bprpf-held-adus-fitp (fn-bpn-nth 1 (fn-bpn-nth 4 event))
                                        (fn-bpnpf-adu-octets profile)))
@@ -349,7 +349,7 @@
                          (:e binary-+) (:e unary--) (:e equal))
                        (theory 'minimal-theory)))))
 
-(defthm fn-bprpf-admission-preserves-admitted-event
+(defthm fn-bprpf-admission-preserves-admitted-event-by-definition
   (implies (or (not (equal (fn-bpn-nth 0 (fn-bpn-nth 4 event)) :ready))
                (and (fn-bpnpf-profilep profile)
                     (fn-bprpf-held-adus-fitp (fn-bpn-nth 1 (fn-bpn-nth 4 event))
@@ -394,8 +394,8 @@
                  (:instance fn-bpnp-rotation-restart-keeps-owed-work)
                  (:instance fn-bpnr-open-fresh-fields)
                  (:instance fn-bpn-machine-invariant-components (st (fn-bpnf-base st)))
-                 (:instance fn-bprpf-admission-preserves-admitted-event)
-                 (:instance fn-bpnj-recovery-is-the-progress-step (st seeded) (event served))
+                 (:instance fn-bprpf-admission-preserves-admitted-event-by-definition)
+                 (:instance fn-bpnj-recovery-is-the-progress-step-by-definition (st seeded) (event served))
                  (:instance fn-bpnp-recovery-keeps-foundation-base-and-effects
                             (st seeded) (event served)))
            :in-theory (union-theories

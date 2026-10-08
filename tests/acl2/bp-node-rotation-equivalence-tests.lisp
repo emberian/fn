@@ -1,0 +1,85 @@
+; Machine equality teeth: a real queued job and a later received row.
+(in-package "ACL2")
+(include-book "bp-node-rotation-recovery-tests")
+(include-book "bp-node-machine-authorization-tests")
+(include-book "../../books/bp-node-rotation-equivalence")
+
+(defun bprr-owed-record ()
+  (third (car (fn-bpn-answer-effects
+               (fn-bpn-step (fn-bpnf-base (fn-bpnr-open-fresh (bprd-owed-q)))
+                            *bpcx-enqueue*)))))
+(defun bprr-overlong-q ()
+  (update-nth 1
+    (nth 1 (fn-bpn-replay-records *bpna-s0* *bpna-overlong-records*))
+    (bprd-owed-q)))
+(defun bprr-overlong-ck ()
+  (fn-bpnr-checkpoint-of-event *bpcx-n16-event* 1 (bprr-overlong-q)))
+(defun bprr-empty-jobs-q ()
+  (update-nth 1 (fn-bpn-state-with (bprd-owed-fb) nil nil nil nil 1)
+              (bprd-owed-q)))
+
+(defteeth fn-bpnr-checkpoint-recovery-equals-full-machine
+  :claim (let* ((fresh (fn-bpnr-open-fresh st))
+         (replay (fn-bpn-replay-records
+               (fn-bpn-initial-machine-state
+                (fn-bpn-machine-state-config (fn-bpnf-base fresh))
+                (fn-bpn-machine-state-max-jobs (fn-bpnf-base fresh))
+                (fn-bpn-machine-state-max-octets (fn-bpnf-base fresh))) records))
+         (projected (fn-bpnr-seed-state fresh
+                         (list :selected (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))))
+         (expected (fn-bpnr-recover-auto-event
+                        projected nil :ready suffix
+                        (list :selected (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))))
+         (full-event (fn-bpnr-recover-auto-event fresh records :ready (append rows0 suffix) '(:none)))
+         (plan (fn-bpnr-published-plan st generation ck))
+         (seeded (fn-bpnr-seed-state fresh plan))
+         (event (fn-bpnr-recover-auto-event seeded nil :ready suffix plan)))
+    (((proposes (equal (car (car (fn-bpnf-answer-effects
+                         (fn-bpnp-rotate-step st generation ck)))) :persist-checkpoint))
+      (record-bound (<= (len records) *fn-bpn-machine-max-records*))
+      (ready-history (equal (car replay) :ready))
+      (jobs (equal (fn-bpn-machine-state-jobs (fn-bpnf-base st))
+              (fn-bpn-machine-state-jobs (nth 1 replay))))
+      (token (equal (fn-bpn-machine-state-next-token (fn-bpnf-base st))
+              (fn-bpn-machine-state-next-token (nth 1 replay))))
+      (full-input (fn-bpnr-recovery-replayp
+        (fn-bpnf-epoch fresh) (fn-bpn-nth 1 full-event) (fn-bpn-nth 4 full-event)
+        (fn-bpn-machine-state-max-jobs (fn-bpnf-base projected))
+        (fn-bpn-machine-state-max-octets (fn-bpnf-base projected))))
+      (checkpoint-input (fn-bpnr-recovery-replayp
+        (fn-bpnf-epoch projected) (fn-bpn-nth 1 expected) (fn-bpn-nth 4 expected)
+        (fn-bpn-machine-state-max-jobs (fn-bpnf-base projected))
+        (fn-bpn-machine-state-max-octets (fn-bpnf-base projected)))))
+     (let ((full-answer (fn-bpnj-step fresh full-event))
+        (checkpoint-answer (fn-bpnj-step seeded event)))
+    (and (equal (fn-bpnf-base (fn-bpnf-answer-state checkpoint-answer))
+                (fn-bpnf-base (fn-bpnf-answer-state full-answer)))
+         (equal (car (car (fn-bpnf-answer-effects checkpoint-answer))) :restart-ready)
+         (equal (car (car (fn-bpnf-answer-effects full-answer))) :restart-ready)))))
+  :subject fn-bpnj-step
+  :witness ((st (bprd-owed-q)) (generation 1) (ck (bprd-owed-ck))
+            (records (list (bprr-owed-record))) (rows0 (bpcx-n16-rows0))
+            (suffix (list (bpcx-n16-row-b))))
+  :breaks ((proposes ((ck (update-nth 7 nil (bprd-owed-ck)))))
+           (record-bound ((st (bprr-overlong-q)) (ck (bprr-overlong-ck))
+                          (records *bpna-overlong-records*) (suffix nil))
+                         :logical "the 4097-record counterexample is outside the served restart's record bound")
+           (ready-history ((st (bprd-st))
+                           (ck (fn-bpnr-checkpoint-of-event *bpcx-n16-event* 1 (bprd-st)))
+                           (records '(:bad)) (suffix nil)))
+           (jobs ((st (bprr-empty-jobs-q)) (ck (update-nth 7 nil (bprd-owed-ck)))))
+           (token ((st (bprd-token-q 2)) (ck (update-nth 8 2 (bprd-owed-ck)))))
+           (full-input ((rows0 *bpcx-n16-bad-rows*) (suffix nil)))
+           (checkpoint-input ((st (update-nth 2 '(bad) (bprd-owed-q)))
+                              (ck (update-nth 2 '(bad) (bprd-owed-ck))) (suffix nil))))
+  :mutations ((reopens-unseeded
+               (:conclusion (let ((full-answer (fn-bpnj-step fresh full-event))
+        (checkpoint-answer (fn-bpnj-step fresh (fn-bpnr-recover-auto-event fresh nil :ready suffix plan))))
+    (and (equal (fn-bpnf-base (fn-bpnf-answer-state checkpoint-answer))
+                (fn-bpnf-base (fn-bpnf-answer-state full-answer)))
+         (equal (car (car (fn-bpnf-answer-effects checkpoint-answer))) :restart-ready)
+         (equal (car (car (fn-bpnf-answer-effects full-answer))) :restart-ready))))
+               ((st (bprd-owed-q)) (generation 1) (ck (bprd-owed-ck))
+                (records (list (bprr-owed-record))) (rows0 (bpcx-n16-rows0))
+                (suffix (list (bpcx-n16-row-b))))
+               :fault "unseeded recovery loses the job that full-history recovery reconstructs")))
