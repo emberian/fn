@@ -1471,6 +1471,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/packed-body-crlf-tests \
 	tests/acl2/injection-info-params-art-tests \
 	tests/acl2/post-art-take-domain-tests \
+	tests/acl2/post-art-moderation-boundary-tests \
 	tests/acl2/owner-submission-octets-tests \
 	tests/acl2/owner-injection-info-tests \
 	tests/acl2/nntp-post-tests \
