@@ -18,19 +18,50 @@
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
 
-(defconst *pckt-wide* (make-list 20000 :initial-element 7))
-(defconst *pckt-prefix* (list '(1 2) "x"))
-(defconst *pckt-delta* (list *pckt-wide* *pckt-wide* *pckt-wide*))
+;; The two constrained seams, attached: the payload file's frame size (a frame
+;; is its payload and 32 octets) and the log position F (none recorded).
+(defun pckt-frame (n) (declare (xargs :guard t)) (+ 32 (nfix n)))
+(defun pckt-f (configs recs) (declare (xargs :guard t) (ignore configs recs)) nil)
+(defattach (fn-cpl-frame-octets pckt-frame))
+(defattach (fn-pck-f pckt-f))
+
+; A record with a payload of N octets, and a toy event that is no record.
+(defun pckt-rec (i n)
+  (declare (xargs :mode :program))
+  (fn-record-make i (+ 1 i) 0 "<a@x>" (make-list n :initial-element 7)
+                  '("fn.test") "o" "s" "e" 1 5))
+
+(defconst *pckt-prefix* (list (pckt-rec 0 5) '(1 2) (pckt-rec 1 0)))
+(defconst *pckt-delta* (list (pckt-rec 2 30000) (pckt-rec 3 30000) (pckt-rec 4 30000)))
+
+; The payload file those events lay end to end: each payload then 32 octets of frame.
+(defun pckt-file (recs)
+  (declare (xargs :mode :program))
+  (if (atom recs)
+      nil
+    (append (fn-pck-payload (car recs))
+            (make-list 32 :initial-element 0)
+            (pckt-file (cdr recs)))))
 
 ; 1. Premises.
 (assert-event (and (fn-pck-recordsp nil (append *pckt-prefix* *pckt-delta*))
                    (fn-pck-root-fitsp nil (append *pckt-prefix* *pckt-delta*))
                    (fn-pck-recordsp nil *pckt-prefix*)
-                   (fn-pck-root-fitsp nil *pckt-prefix*)))
+                   (fn-pck-root-fitsp nil *pckt-prefix*)
+                   (fn-pck-resolvesp *pckt-prefix* 0 (pckt-file *pckt-prefix*))
+                   (fn-pck-resolvesp (append *pckt-prefix* *pckt-delta*) 0
+                                     (pckt-file (append *pckt-prefix* *pckt-delta*)))))
 
-; The image reads back as the records (the capture decodes, event index included).
-(assert-event (equal (fn-pck-capture-of-pages (fn-pck-pages nil (append *pckt-prefix* *pckt-delta*)))
+; The image reads back as the records (the capture decodes, event index
+; included), the payloads coming from the file, not from the tape.
+(assert-event (equal (fn-pck-capture-of-pages (fn-pck-pages nil (append *pckt-prefix* *pckt-delta*))
+                                              (pckt-file (append *pckt-prefix* *pckt-delta*)))
                      (fn-sco-capture nil (append *pckt-prefix* *pckt-delta*))))
+
+; The tape holds no payload octets: the three 30000-octet payloads take no
+; tape pages beyond their metadata and refs.
+(assert-event (< (len (fn-pck-pages nil (append *pckt-prefix* *pckt-delta*)))
+                 (+ *fn-pck-root-pages* 3)))
 
 ; The dirty set applies to the old image and yields the new one.
 (assert-event (equal (pgs-apply-dirty (fn-pck-pages nil *pckt-prefix*)
@@ -41,31 +72,34 @@
 (defun pckt-bad-dirty (configs prefix delta)
   (declare (xargs :verify-guards nil) (ignore configs))
   (pck-shift *fn-pck-root-pages*
-             (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows delta))))
+             (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows-from delta (fn-pck-plen prefix 0)))))
 
 (must-fail-checked
  (defthm pckt-bad-dirty-is-the-delta
    (implies (and (true-listp prefix) (true-listp delta)
-                 (fn-pck-sccb-listp (append prefix delta)))
+                 (fn-pck-sccb-listp (append prefix delta))
+                 (fn-pck-plen-okp (append prefix delta)))
             (equal (pgs-apply-dirty (fn-pck-pages configs prefix) (pckt-bad-dirty configs prefix delta))
                    (fn-pck-pages configs (append prefix delta))))))
 
-(assert-event (not (equal (pgs-apply-dirty (fn-pck-pages nil nil) (pckt-bad-dirty nil nil '((1 2))))
-                          (fn-pck-pages nil '((1 2))))))
+(assert-event (not (equal (pgs-apply-dirty (fn-pck-pages nil nil) (pckt-bad-dirty nil nil (list (pckt-rec 0 5))))
+                          (fn-pck-pages nil (list (pckt-rec 0 5))))))
 
 ; 3. A bound of the root pages alone.
 (must-fail-checked
  (defthm pckt-bound-root-only
    (<= (len (fn-pck-dirty configs prefix delta)) *fn-pck-root-pages*)))
 
-(assert-event (< *fn-pck-root-pages* (len (fn-pck-dirty nil nil *pckt-delta*))))
+; A delta of many records takes tape pages beyond the root's K.
+(defconst *pckt-many* (make-list 400 :initial-element (pckt-rec 9 5)))
+(assert-event (< *fn-pck-root-pages* (len (fn-pck-dirty nil nil *pckt-many*))))
 
 ; The real bound at the witness, and no term in the prefix: the same delta
 ; after a long prefix needs the same number of pages or one more.
-(assert-event (<= (len (fn-pck-dirty nil *pckt-prefix* *pckt-delta*))
-                  (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckt-delta*))))
-(assert-event (<= (len (fn-pck-dirty nil (make-list 3000 :initial-element '(1 2)) *pckt-delta*))
-                  (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckt-delta*))))
+(assert-event (<= (len (fn-pck-dirty nil *pckt-prefix* *pckt-many*))
+                  (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckt-many* (fn-pck-plen *pckt-prefix* 0)))))
+(assert-event (<= (len (fn-pck-dirty nil (make-list 3000 :initial-element (pckt-rec 8 5)) *pckt-many*))
+                  (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckt-many* (fn-pck-plen (make-list 3000 :initial-element (pckt-rec 8 5)) 0)))))
 
 ; 4. A log compacted past the old checkpoint's S.
 (must-fail-checked
@@ -75,20 +109,53 @@
                  (fn-pck-recordsp configs prefix)
                  (fn-pck-root-fitsp configs (append prefix delta))
                  (fn-pck-root-fitsp configs prefix)
+                 (fn-pck-resolvesp prefix 0 file)
                  (fn-pck-log-retains log (+ (len prefix) (len delta)))
                  (equal (nthcdr (car log) (append prefix delta suffix)) (cdr log))
                  (equal v (list t0 (fn-pck-pages configs prefix))))
-            (equal (fn-pck-recover-view v log configs frontier max-conns)
+            (equal (fn-pck-recover-view v file log configs frontier max-conns)
                    (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns)))))
 
-; The witness: opening the old checkpoint (S = 2) with a log that starts at 5
+; The witness: opening the old checkpoint (S = 3) with a log that starts at 6
 ; replays no record of the delta, so the recovered records lack them.
-(defconst *pckt-log* (cons 5 '(5 6)))
+(defconst *pckt-log* (cons 6 '(5 6)))
 (assert-event
- (let* ((c (fn-pck-capture-of-pages (fn-pck-pages nil *pckt-prefix*)))
+ (let* ((c (fn-pck-capture-of-pages (fn-pck-pages nil *pckt-prefix*) (pckt-file *pckt-prefix*)))
         (e (fn-sco-extend c nil (nthcdr (nfix (- (len (fn-sco-records c)) (nfix (car *pckt-log*)))) (cdr *pckt-log*)))))
    (and (equal (fn-sco-records e) (append *pckt-prefix* '(5 6)))
-        (not (equal (fn-sco-records e) (append *pckt-prefix* '(a b c) '(5 6)))))))
+        (not (equal (fn-sco-records e) (append *pckt-prefix* *pckt-delta* '(5 6)))))))
+
+; 5. A root committed before its payload frames are durable.  The crash
+; keystone's premise "the new root visible implies its payloads are in the
+; file" is what the ordering of the publication gives; without it the claim is
+; false: the new root with the OLD payload file reads the delta's payloads as
+; absent.
+(must-fail-checked
+ (defthm pckt-root-before-payloads
+   (implies (and (true-listp prefix) (true-listp delta) (true-listp suffix)
+                 (fn-pck-recordsp configs (append prefix delta))
+                 (fn-pck-root-fitsp configs (append prefix delta))
+                 (fn-pck-resolvesp prefix 0 file)
+                 (fn-pck-log-retains log (len prefix))
+                 (equal (nthcdr (car log) (append prefix delta suffix)) (cdr log))
+                 (equal v (list t1 (fn-pck-pages configs (append prefix delta)))))
+            (equal (fn-pck-recover-view v file log configs frontier max-conns)
+                   (fn-ock-recover-full configs frontier (append prefix delta suffix) max-conns)))))
+
+; The witness: the delta's pages with the prefix's file (the payload append not
+; durable): the records read back are not the delta's.
+(assert-event
+ (not (equal (fn-sco-records (fn-pck-capture-of-pages
+                              (fn-pck-pages nil (append *pckt-prefix* *pckt-delta*))
+                              (pckt-file *pckt-prefix*)))
+             (append *pckt-prefix* *pckt-delta*))))
+
+; An uncommitted tail (a delta partly appended) after the committed payloads
+; changes nothing.
+(assert-event
+ (equal (fn-pck-capture-of-pages (fn-pck-pages nil *pckt-prefix*)
+                                 (append (pckt-file *pckt-prefix*) (make-list 5000 :initial-element 9)))
+        (fn-sco-capture nil *pckt-prefix*)))
 
 ; -----------------------------------------------------------------------------
 ; PCK-ADOPT (books/catalog-pages.lisp): the catalog's page image follows the
