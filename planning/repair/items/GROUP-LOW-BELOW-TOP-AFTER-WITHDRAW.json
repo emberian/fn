@@ -1,0 +1,17 @@
+{
+ "category": "perf",
+ "file": "books/served-catalog.lisp",
+ "id": "GROUP-LOW-BELOW-TOP-AFTER-WITHDRAW",
+ "notes": [
+  "lane s-group-low 2026-10-08: the maintained raw low answers only at the top view (fn-scat-top-viewp: v = count and horizon <= v). A withdrawal at count N sets the horizon N+1 (fn-cat-horizon-of) and a reader at v = N still sees that row (fn-cat-visiblep: v <= w.at), so after ANY withdrawal and until the next commit every repin (fn-scr-view-of of the live version, books/served-catalog-chain.lisp:118,1051; fn-scr-reselect) is below the top view and the O(leading non-kept numbers) pass answers. Same limit as the live summary (fn-scat-available-low).",
+  "Candidate fixes: (1) keep the field per version (the withdrawals-by-version table already orders withdrawals), so a reader at v < horizon reads the field as of v; (2) let a withdrawal advance the view so the top view is reachable again (a version bump on withdraw).",
+  "Un-park = a measurement showing GROUP cost in a cancel-heavy window (cancels/expiry with no commit between)."
+ ],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-group-low",
+ "state": "open",
+ "title": "GROUP/repin raw low is O(prefix) between a withdrawal and the next commit: the horizon puts every view below the top view.",
+ "updated": "2026-10-08T12:00:00Z"
+}

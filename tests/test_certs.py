@@ -2355,5 +2355,64 @@ class PersistedContentHashTests(unittest.TestCase):
             self.assertEqual(certs._PERSISTED["new"], {})
             self.assertEqual(sorted(p.name for p in Path(directory).iterdir()), ["f"])
 
+    def test_warm_install_rechecks_corruption_even_with_same_size_and_mtime(self):
+        for suffix in ("cert", "port", "fasl"):
+            for replace in (False, True):
+                with self.subTest(suffix=suffix, replace=replace), \
+                        tempfile.TemporaryDirectory() as directory:
+                    self.setUp()
+                    base = Path(directory)
+                    source = worktree(str(base / "source"),
+                                      certified=["books/base", "books/mid"])
+                    manifest_for(source, ["books/base", "books/mid"])
+                    cache = base / "cache"
+                    certs.publish(source, cache, origin="/farm/hash-memo-fixture")
+                    target = worktree(str(base / "target"))
+                    stored = certs.entry_directory(
+                        cache, certs.closure_key(source, "books/base")[0],
+                        "/farm/hash-memo-fixture")
+                    with mock.patch.dict(os.environ, {
+                            "FN_CONTENT_HASH_FILE": str(target / "build/hashes.json")}):
+                        self.setUp()
+                        first = install(target, cache, ["books/mid"])
+                        self.assertEqual(first.installed, 2)
+                        certs.flush_persisted_hashes()
+                        self.setUp()  # next farm process loads the persisted memo
+                        real_open = Path.open
+
+                        def no_payload_read(path, *args, **kwargs):
+                            if cache in path.parents and path.name in (
+                                    "book.cert", "book.port", "book.fasl"):
+                                raise AssertionError(f"unchanged payload read: {path}")
+                            return real_open(path, *args, **kwargs)
+
+                        # Metadata and locks are still read, but unchanged
+                        # cached payloads need no read during the entire install.
+                        with mock.patch.object(Path, "open", no_payload_read):
+                            warm = install(target, cache, ["books/mid"])
+                        self.assertEqual(warm.installed_from, first.installed_from)
+                        self.assertEqual(warm.uncached, first.uncached)
+                        path = stored / f"book.{suffix}"
+                        before = path.stat()
+                        data = path.read_bytes()
+                        changed = bytes([data[0] ^ 1]) + data[1:]
+                        time.sleep(0.001)
+                        if replace:
+                            replacement = stored / "replacement"
+                            replacement.write_bytes(changed)
+                            os.replace(replacement, path)
+                        else:
+                            path.write_bytes(changed)
+                        os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+                        self.assertEqual(path.stat().st_size, before.st_size)
+                        self.assertEqual(path.stat().st_mtime_ns, before.st_mtime_ns)
+                        self.assertNotEqual(path.stat().st_ctime_ns, before.st_ctime_ns)
+                        self.setUp()
+                        refused = install(target, cache, ["books/mid"])
+                        self.assertCountEqual(refused.uncached, ["books/base", "books/mid"])
+                        for name in refused.uncached:
+                            self.assertFalse((target / f"{name}.cert").exists())
+                            self.assertFalse((target / f"{name}.fasl").exists())
+
 if __name__ == "__main__":
     unittest.main()

@@ -840,8 +840,37 @@
   :class :common-lisp-compliant
   :keystones (fn-otm-commit-event-is-ocp-commit-event))
 
-(definterface fn-otm-committer-wake
+; The held commit (ruling 19, books/owner-time-held.lisp; the host split
+; host/native/owner.lisp fnn-owner-held-commit).
+(definterface fn-och-held-event
   :class :common-lisp-compliant)
+
+(definterface fn-otm-held-plan
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-otm-held-plan-labels-every-effect
+              fn-otm-held-plan-no-member-drain-is-off-owner))
+
+(definterface fn-och-frames-event
+  :class :common-lisp-compliant
+  :kinds ()
+  :keystones (fn-och-frames-held-until-the-job-returns))
+
+(definterface fn-otm-held-committer-wake
+  :class :common-lisp-compliant
+  :keystones (fn-otm-held-wakes))
+
+(definterface fn-otm-committer-may-start
+  :class :common-lisp-compliant
+  :keystones (fn-otm-committer-may-start-is-the-held-rule))
+
+(definterface fn-och-caller-answer
+  :class :common-lisp-compliant
+  :keystones (fn-otm-held-quantum-2-answers-the-held-outcome))
+
+(definterface fn-otm-held-caller-wake
+  :class :common-lisp-compliant
+  :keystones (fn-otm-held-wakes))
 
 (definterface fn-otm-disk
   :class :common-lisp-compliant
@@ -1435,9 +1464,6 @@
   :class :common-lisp-compliant)
 
 (definterface fn-ocs-classp
-  :class :common-lisp-compliant)
-
-(definterface fn-ocs-commit-step
   :class :common-lisp-compliant)
 
 (definterface fn-ocs-member-releases
@@ -2090,7 +2116,9 @@
   :class :common-lisp-compliant)
 
 (definterface fn-owner-transit-outcome
-  :class ::program)
+  :class ::program
+  :keystones
+  ((fn-oct-transit-is-own-transit-outcome-under-ocl-relation :via fn-oct-transit)))
 
 (definterface fn-owner-transit-reason
   :class :common-lisp-compliant)
@@ -6036,3 +6064,28 @@
 (definterface fn-stid-host-reply-read :class ::program)
 (definterface fn-stid-host-line :class ::program)
 (definterface fn-stid-host-exit-code :class ::program)
+
+; Control receipt decisions; kinds copied from each guard.
+(definterface fn-nco-at :class :common-lisp-compliant :kinds ((n natp)))
+(definterface fn-nco-client-follow :class :common-lisp-compliant)
+(definterface fn-nco-client-heldp :class :common-lisp-compliant)
+(definterface fn-nco-client-status :class :common-lisp-compliant
+  :keystones (fn-nco-unknown-receipt-stops-with-exit-3))
+(definterface fn-nco-client-observed-status :class :common-lisp-compliant
+  :keystones (fn-nco-lost-owner-after-receipt-is-uncertain))
+(definterface fn-nco-client-waitp :class :common-lisp-compliant)
+(definterface fn-nco-epoch-octets :class :common-lisp-compliant)
+(definterface fn-nco-initial :class :common-lisp-compliant)
+(definterface fn-nco-owner-publication-word :class :common-lisp-compliant)
+(definterface fn-nco-owner-step :class :common-lisp-compliant
+  :keystones (fn-nco-receipt-completes-exactly-once fn-nco-issued-receipt-is-requested
+              fn-nco-owner-step-has-no-orphan fn-nco-only-job-outcome-leaves-requested))
+(definterface fn-nco-pending-job :class :common-lisp-compliant)
+(definterface fn-nco-receipt-command :class :common-lisp-compliant)
+(definterface fn-nco-status-argv :class :common-lisp-compliant)
+(definterface fn-nco-client-releasep :class :common-lisp-compliant)
+(definterface fn-nco-wait-seconds :class :common-lisp-compliant)
+(definterface fn-nco-wire-step :class :common-lisp-compliant
+  :keystones (fn-nco-unknown-receipt-status))
+(definterface fn-nco-work-class :class :common-lisp-compliant)
+(definterface fn-owner-sco-count :class :common-lisp-compliant)

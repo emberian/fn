@@ -851,7 +851,7 @@
                                   ; (owner-books-split).
                                   (fn-own-step fn-own-advance fn-own-close
                                    fn-own-open fn-own-complete fn-own-begin
-                                   fn-own-find-conn fn-nntp-article-idp-is-consp
+                                   fn-own-find-conn
                                    fn-nntp-response-text-true-listp))))))
 
 ; KEYSTONE.  Every connection keeps the configuration generation it opened
@@ -1239,7 +1239,7 @@
                                    ;; in the configuration replay
                                    fn-ocfg-pin-remove fn-ocfg-config-stamp
                                    fn-nntp-response-text-true-listp
-                                   fn-cp-idp-true-listp fn-nntp-article-idp-is-consp
+                                   fn-cp-idp-true-listp
                                    fn-cnode-config-replay fn-own-complete fn-own-close
                                    fn-ocfg-reconfig-okp
                                    fn-ocfg-config-replay-of-one-more-record

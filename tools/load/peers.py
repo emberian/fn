@@ -407,11 +407,29 @@ def fetch_articles(port, d):
         c.close()
 
 
+CKPT_SEQ = re.compile(r"CHECKPOINT auto sequence=(\d+)")
+
+
 class RoundLog:
     """Incremental reader of B's owner log for `catch-up peer=` lines."""
 
-    def __init__(self, path):
+    def __init__(self, path, err_path=None):
         self.path, self.seen, self.lines = Path(path), 0, []
+        self.sequence = None        # last `CHECKPOINT auto sequence=N` (records committed), for count="log"
+        self.err_path, self.err_seen = (Path(err_path) if err_path else None), 0   # CHECKPOINT lines go to stderr
+
+    def poll_sequence(self):
+        if self.err_path is None:
+            return
+        try:
+            text = self.err_path.read_text(errors="replace").splitlines()
+        except OSError:
+            return
+        for line in text[self.err_seen:]:
+            self.err_seen += 1
+            mo = CKPT_SEQ.search(line)
+            if mo:
+                self.sequence = int(mo.group(1))
 
     def poll(self):
         new = []
@@ -421,6 +439,9 @@ class RoundLog:
             return new
         for line in text[self.seen:]:
             self.seen += 1
+            mo = CKPT_SEQ.search(line)
+            if mo:
+                self.sequence = int(mo.group(1))
             if "catch-up peer=" in line:
                 rec = parse_round_line(line)
                 if rec:
@@ -462,7 +483,7 @@ def run_phase(run, ph, d):
     r["b_open_s"] = round(t_listen - t_launch, 2)
     r["heap_a"] = a.env.get("SBCL_USER_ARGS")
     r["heap_b"] = b.env.get("SBCL_USER_ARGS")
-    log = RoundLog(b.log_path)
+    log = RoundLog(b.log_path, b.work / ("owner.%d.err" % b.err_n))
     bc = m.Conn(b.port, buffered=True)
     series, lagser, b_peak = [], [], {"vmrss": 0, "hwm": 0}
     cpu_rows = []
@@ -478,9 +499,21 @@ def run_phase(run, ph, d):
     t_end = t_listen + deadline_s
     posts_over_at = None
 
+    count_mode = ph.get("count", "group")
+    pending = []
+
     def poll():
         nonlocal first_import
-        n = group_count(bc)
+        if count_mode == "log":
+            # No client command reaches B while it imports (S, 2026-10-08: the GROUP poll re-pins
+            # and contaminates the pace): progress is B's own auto-checkpoint sequence line, read
+            # from its log file; one record per imported article (A's checkpoint-digest sequence
+            # equals its article count).
+            pending.extend(log.poll())     # round lines read here are handed to the main loop below
+            log.poll_sequence()
+            n = log.sequence
+        else:
+            n = group_count(bc)
         now = time.monotonic()
         snap = d.proc_snapshot(b.pid)
         asnap = d.proc_snapshot(a.pid)
@@ -499,7 +532,8 @@ def run_phase(run, ph, d):
 
     while True:
         n = poll()
-        for rec in log.poll():
+        fresh, pending[:] = pending + log.poll(), []
+        for rec in fresh:
             if rec["round"] == "done" and mode != "feed" and rec["position"] >= (target or 0) and done is None:
                 done = rec
         if mode == "feed":
@@ -526,7 +560,9 @@ def run_phase(run, ph, d):
     # A's POSTs during the window: stop the poster at the moment the round closed
     if poster is not None:
         poster.stop()
-    n_final = poll() if not terminal.startswith("b-exited") else None
+    n_final = (group_count(bc) if count_mode == "log" else poll()) if not terminal.startswith("b-exited") else None
+    r["count_basis"] = ("B's CHECKPOINT auto sequence lines (no client command during the round)"
+                        if count_mode == "log" else "B GROUP count polled every %.1f s" % POLL_S)
     if mode == "catchup-load" and n_final is not None:
         # the POSTs that landed after the round's cursor: wait for B to hold all of A's articles
         drain_end = time.monotonic() + ph.get("drain_s", 180)

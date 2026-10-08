@@ -140,7 +140,9 @@ class ScoreboardTests(unittest.TestCase):
                       "f6-t40k-2k-cp5-asis.json", "f6-t40k-2k-cp5-reckpt.json"):
                 (ev / "out" / f).unlink()
             checklist = Path(tmp) / "release.md"
-            shutil.copy(ROOT / "planning" / "release-v{}.md".format((ROOT / "VERSION").read_text().strip()), checklist)
+            # the 6.6.0 checklist is this test's fixture (its F1/F2/F8 rows are
+            # what the assertions read); VERSION 6.6.1-pre has no checklist
+            shutil.copy(ROOT / "planning" / "release-v6.6.0.md", checklist)
             before = fundamentals.table_rows(checklist.read_text())
             a = bars(checklist=str(checklist), out=str(ev / "out"), revision="HEAD", write=True)
             with contextlib.redirect_stdout(io.StringIO()):

@@ -40,8 +40,8 @@
   (assert (eq name 'fn-owner-app-refusal-log))
   (fn-olog-bp-app-class result))
 (defun fnn-bpapp-accept-locked (&rest args) (declare (ignore args)) (values *result* nil))
-(defun fnn-quantum-bp (service class thunk)
-  (declare (ignore service class))
+(defun fnn-quantum-bp (service cid thunk &optional class)
+  (declare (ignore service cid class))
   (funcall thunk))
 (defun fnn-core (name &rest args)
   (declare (ignore args))
@@ -55,6 +55,7 @@
     (fn-bpapp-receive-destination nil)
     (fn-id-hex-octets nil)))
 
+(load "tests/native_held_commit_prelude.lisp")
 (source-forms "books/owner-log.lisp" '(fn-olog-bp-app-class))
 (source-forms "host/native/bp.lisp" '(fnn-bp-tally fnn-bp-summary))
 (source-forms "host/native/bp-app.lisp" '(fnn-bpapp-deliver))
