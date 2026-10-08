@@ -466,7 +466,7 @@ failed effects remain discoverable while independent physical cleanup runs."
              (fnn-mux-cleanup-attempt
               loop conn (list :response-window capture)
               (lambda ()
-                (fnn-owner-response-window-close service capture (fnn-mux-conn-class conn)))
+                (fnn-owner-response-window-close service capture (fnn-mux-read-class loop conn)))
               :window-closed nil)
              (fnn-mux-cleanup-attempt
               loop conn :output-discard
@@ -828,8 +828,12 @@ contract, without blocking the loop)."
 (defun fnn-mux-after (loop conn after)
   ;; All windows, including a partial socket write's pending suffix, have
   ;; drained.  A replacement catalog is now safe for this connection.
+  ;; The reply's settlement is the read's (fnn-mux-read-class): a peer read
+  ;; answered under the disk-slow posture must not wait here for the batch in
+  ;; flight, or the connection reads nothing more until the barrier ends
+  ;; (PKT-858; CONVERGE-3, test_a_peer_is_told_to_retry_while_the_disk_is_slow).
   (fnn-owner-response-window-close (fnn-mux-service loop) (fnn-mux-conn-response-capture conn)
-                                   (fnn-mux-conn-class conn))
+                                   (fnn-mux-read-class loop conn))
   (fnn-owner-response-unpin (fnn-mux-service loop) (fnn-mux-conn-cid conn))
   ;; Output progress (Codex r67 F3, Astra c07): a reply whose drain outlasted
   ;; its step -- it waited on the socket or yielded at a cursor -- ends now,
