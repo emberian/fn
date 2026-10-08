@@ -1,9 +1,13 @@
-; LIST ACTIVE/COUNTS keeps captured group/next/config references and advances
-; matcher, next-watermark lookup, number probes and status entries separately.
-; Row strings and decimal digits advance through a retained renderer. Integer
-; width, status comparisons, catalog tariffs and snapshot stability remain debt.
+; LIST ACTIVE/COUNTS keeps captured group/config references and advances the
+; matcher and status entries one call at a time. A group's summary is the
+; catalog's carried one at the captured view (fn-scat-available-summary: the
+; live count/low/high, corrected over the rows appended or withdrawn since the
+; view), read in ONE call, never a probe of every article number: the cost of
+; a LIST is its groups and its emitted rows. Row strings and decimal digits
+; advance through a retained renderer. Integer width, status comparisons,
+; catalog tariffs and snapshot stability remain debt.
 (in-package "ACL2")
-(include-book "group-summary-cursor")
+(include-book "catalog-available-readers")
 (include-book "wildmat-cursor")
 (include-book "list-row-cursor")
 (include-book "list-status-cursor")
@@ -15,6 +19,7 @@
 
 ; Environment: archive closed statusp countsp parsed-patterns filteredp version.
 ; Progress: environment phase remaining-groups current-group detail summary calls.
+; Phases: :group :match :status :row :render.
 (defun fn-lst-env (archive closed statusp countsp patterns filteredp v)
   (declare (xargs :guard t))
   (list archive closed statusp countsp patterns filteredp (nfix v)))
@@ -41,6 +46,13 @@
            (if countsp (list '(32) (fn-nntp-decimal-field (fn-nntp-summary-count summary))) nil)
            (list '(32) (fn-nntp-string-octets status)))))
 
+; The progress once GROUP's summary is known: its status entries, or its row.
+(defun fn-lst-enter (env groups group summary calls)
+  (declare (xargs :guard t))
+  (if (or (fn-cur-at 2 env) (fn-cur-at 3 env))
+      (fn-lst-progress env :status groups group (fn-lss-start group (fn-cur-at 1 env)) summary calls)
+    (fn-lst-progress env :row groups group "y" summary calls)))
+
 (defun fn-lst-one (progress fn-cat)
   (declare (xargs :stobjs fn-cat :guard t :verify-guards nil))
   (let* ((env (fn-cur-at 0 progress))
@@ -51,47 +63,34 @@
          (summary (fn-cur-at 5 progress))
          (calls (+ 1 (nfix (fn-cur-at 6 progress))))
          (archive (fn-cur-at 0 env))
-         (closed (fn-cur-at 1 env))
-         (statusp (fn-cur-at 2 env))
-         (countsp (fn-cur-at 3 env))
-         (patterns (fn-cur-at 4 env))
          (filteredp (fn-cur-at 5 env))
+         (patterns (fn-cur-at 4 env))
          (v (nfix (fn-cur-at 6 env))))
     (cond
      ((not progress) (mv nil nil))
      ((eq phase :group)
       (if (consp groups)
-          (mv nil (fn-lst-progress env (if filteredp :match :next) (cdr groups)
-                        (car groups)
-                        (if filteredp (fn-wmc-start patterns (car groups)) (fn-state-nexts archive))
-                        nil calls))
+          (mv nil (if filteredp
+                      (fn-lst-progress env :match (cdr groups) (car groups)
+                                       (fn-wmc-start patterns (car groups)) nil calls)
+                    (fn-lst-enter env (cdr groups) (car groups)
+                                  (fn-scat-available-summary archive (car groups) v fn-cat) calls)))
         (mv '(46 13 10) nil)))
      ((eq phase :match)
       (if (fn-wmc-decidedp detail)
-          (mv nil (fn-lst-progress env (if (fn-wmc-matchedp detail) :next :group)
-                      groups group (fn-state-nexts archive) nil calls))
+          (mv nil (if (fn-wmc-matchedp detail)
+                      (fn-lst-enter env groups group
+                                    (fn-scat-available-summary archive group v fn-cat) calls)
+                    (fn-lst-progress env :group groups nil nil nil calls)))
         (mv nil (fn-lst-progress env :match groups group
                     (fn-wmc-step detail 1 (fn-wmc-demand detail)) nil calls))))
-     ((eq phase :next)
-      (if (and (consp detail) (not (equal group (fn-ag-car (car detail)))))
-          (mv nil (fn-lst-progress env :next groups group (cdr detail) nil calls))
-        (let ((next (nfix (if (consp detail) (fn-ag-cdr (car detail)) 0))))
-          (mv nil (fn-lst-progress env :summary groups group
-                     (fn-gsc-start group (if (posp next) (- next 1) 0) next v) nil calls)))))
-     ((eq phase :summary)
-      (if (posp (fn-gsc-remaining detail))
-          (mv nil (fn-lst-progress env :summary groups group (fn-gsc-one detail fn-cat) nil calls))
-        (mv nil (fn-lst-progress env (if (or statusp countsp) :status :row) groups group
-                       (if (or statusp countsp)
-                           (fn-lss-start group closed) "y")
-                       (fn-gsc-summary detail) calls))))
      ((eq phase :status)
       (if (fn-lss-donep detail)
           (mv nil (fn-lst-progress env :row groups group (fn-lss-status detail) summary calls))
         (mv nil (fn-lst-progress env :status groups group (fn-lss-one detail) summary calls))))
      ((eq phase :row)
       (mv nil (fn-lst-progress env :render groups group
-                              (fn-lsr-start group summary countsp detail) nil calls)))
+                              (fn-lsr-start group summary (fn-cur-at 3 env) detail) nil calls)))
      ((eq phase :render)
       (mv-let (octets next) (fn-lsr-one detail)
         (mv octets (if next
@@ -126,11 +125,11 @@
           (fn-lst-call-metric (mv-nth 1 (fn-lst-one progress fn-cat)))) 1)
   :hints (("Goal" :in-theory
            (union-theories
-            '(fn-lst-one fn-lst-call-metric fn-lst-progress-calls
+            '(fn-lst-one fn-lst-enter fn-lst-call-metric fn-lst-progress-calls
               fn-lst-nfix-successor fn-lst-empty-call-metric fn-lst-empty-field nfix natp)
             (theory 'minimal-theory)))))
 
-(local (in-theory (disable fn-lst-one fn-lst-progress fn-lst-env fn-lst-call-metric)))
+(local (in-theory (disable fn-lst-one fn-lst-enter fn-lst-progress fn-lst-env fn-lst-call-metric)))
 
 (local
  (defthm fn-lst-mv-first
@@ -206,7 +205,7 @@
             (fn-nntp-single session (fn-proto-text * :syntax))))
       (fn-nntp-single session (fn-proto-text * :syntax)))))
 
-(in-theory (disable fn-lst-env fn-lst-progress fn-lst-start fn-lst-one fn-lst-call-metric
+(in-theory (disable fn-lst-env fn-lst-progress fn-lst-start fn-lst-one fn-lst-enter fn-lst-call-metric
                     fn-lst-line fn-lst-step fn-lst-livep fn-lst-effectp fn-lst-effect))
 
 ; -----------------------------------------------------------------------------
@@ -222,18 +221,14 @@
 (defun-nx fn-lst-row-reference (env group summary status)
   (fn-nntp-stuff-lines (list (fn-lst-line group summary (fn-cur-at 3 env) status))))
 
-(defun-nx fn-lst-next-summary (env group next fn-cat)
-  (let ((next (nfix next)))
-    (fn-gsc-reference (fn-gsc-start group (if (posp next) (- next 1) 0) next
-                                    (nfix (fn-cur-at 6 env)))
-                      fn-cat)))
+; The summary a row carries: the catalog's available summary at the captured
+; view (the model's own, books/catalog-available-readers).
+(defun-nx fn-lst-group-summary (env group fn-cat)
+  (fn-scat-available-summary (fn-cur-at 0 env) group (nfix (fn-cur-at 6 env)) fn-cat))
 
 (defun-nx fn-lst-group-reference (env group fn-cat)
-  (fn-lst-row-reference
-   env group
-   (fn-lst-next-summary env group
-                        (fn-next-number group (fn-state-nexts (fn-cur-at 0 env))) fn-cat)
-   (fn-lst-row-status env group)))
+  (fn-lst-row-reference env group (fn-lst-group-summary env group fn-cat)
+                        (fn-lst-row-status env group)))
 
 (defun-nx fn-lst-groups-reference (env groups fn-cat)
   (if (consp groups)
@@ -256,15 +251,6 @@
      ((eq phase :group) future)
      ((eq phase :match)
       (append (if (fn-wmc-value detail) (fn-lst-group-reference env group fn-cat) nil)
-              future))
-     ((eq phase :next)
-      (append (fn-lst-row-reference env group
-                (fn-lst-next-summary env group (fn-next-number group detail) fn-cat)
-                (fn-lst-row-status env group))
-              future))
-     ((eq phase :summary)
-      (append (fn-lst-row-reference env group (fn-gsc-reference detail fn-cat)
-                                    (fn-lst-row-status env group))
               future))
      ((eq phase :status)
       (append (fn-lst-row-reference env group summary (fn-lss-reference detail)) future))
@@ -305,22 +291,6 @@
             :in-theory (e/d (fn-lsr-reference) (fn-lsr-one-keeps-reference fn-lsr-one-output-true-listp fn-lsr-one))))))
 
 (local
- (defthm fn-lst-next-number-step
-   (implies (and (consp detail) (not (equal group (car (car detail)))))
-            (equal (fn-next-number group (cdr detail)) (fn-next-number group detail)))
-   :hints (("Goal" :in-theory (enable fn-next-number)))))
-
-(local
- (defthm fn-lst-next-number-here
-   (equal (fn-next-number group detail)
-          (if (consp detail)
-              (if (equal group (car (car detail))) (cdr (car detail))
-                (fn-next-number group (cdr detail)))
-            0))
-   :rule-classes ((:definition :controller-alist ((fn-next-number nil t))))
-   :hints (("Goal" :in-theory (enable fn-next-number)))))
-
-(local
  (defthm fn-lst-render-step
    (equal (append (car (fn-lsr-one c)) (fn-lsr-reference (cadr (fn-lsr-one c))) z)
           (append (fn-lsr-reference c) z))
@@ -353,13 +323,13 @@
                  (fn-lst-progress-reference (mv-nth 1 (fn-lst-one progress fn-cat)) fn-cat))
          (fn-lst-progress-reference progress fn-cat))
   :hints (("Goal" :in-theory
-           (e/d (fn-lst-one fn-lst-progress-reference fn-lst-group-reference
-                 fn-lst-next-summary fn-lst-row-status fn-lst-row-reference)
-                (fn-lst-progress fn-cur-at fn-gsc-start fn-gsc-one
-                 fn-lss-start fn-lss-one fn-lsr-start fn-lsr-one fn-wmc-start fn-wmc-step
-                 fn-next-number nfix fn-nntp-closed-status fn-lst-line fn-nntp-stuff-lines)))))
+           (e/d (fn-lst-one fn-lst-enter fn-lst-progress-reference fn-lst-group-reference
+                 fn-lst-group-summary fn-lst-row-status fn-lst-row-reference)
+                (fn-lst-progress fn-cur-at fn-lss-start fn-lss-one fn-lsr-start fn-lsr-one fn-wmc-start fn-wmc-step
+                 nfix fn-nntp-closed-status fn-lst-line fn-nntp-stuff-lines
+                 fn-scat-available-summary)))))
 
-(local (in-theory (disable fn-lst-row-status fn-lst-row-reference fn-lst-next-summary
+(local (in-theory (disable fn-lst-row-status fn-lst-row-reference fn-lst-group-summary
                            fn-lst-group-reference fn-lst-groups-reference
                            fn-lst-progress-reference fn-lst-remaining)))
 
@@ -438,7 +408,7 @@
                                      fn-lst-progress fn-cur-make fn-cur-pending fn-cur-progress
                                      fn-cur-at))))
 
-(in-theory (disable fn-lst-row-status fn-lst-row-reference fn-lst-next-summary
+(in-theory (disable fn-lst-row-status fn-lst-row-reference fn-lst-group-summary
                     fn-lst-group-reference fn-lst-groups-reference
                     fn-lst-progress-reference fn-lst-remaining))
 
@@ -456,20 +426,11 @@
                           (fn-nntp-closed-status (fn-nntp-string-octets group) (fn-cur-at 1 env))))
     (fn-lst-row-cost env group summary "y")))
 
-(defun-nx fn-lst-summary-cost (env group next fn-cat)
-  (let ((next (nfix next)))
-    (+ 1 (fn-gsc-remaining (fn-gsc-start group (if (posp next) (- next 1) 0) next
-                                         (nfix (fn-cur-at 6 env))))
-       (fn-lst-status-cost env group (fn-lst-next-summary env group next fn-cat)))))
-
-(defun-nx fn-lst-next-cost (env group detail fn-cat)
-  (+ 1 (len detail) (fn-lst-summary-cost env group (fn-next-number group detail) fn-cat)))
-
 (defun-nx fn-lst-group-cost (env group fn-cat)
-  (let ((after (fn-lst-next-cost env group (fn-state-nexts (fn-cur-at 0 env)) fn-cat)))
+  (let ((after (fn-lst-status-cost env group (fn-lst-group-summary env group fn-cat))))
     (if (fn-cur-at 5 env)
-        (+ 2 (fn-wmc-remaining (fn-wmc-start (fn-cur-at 4 env) group)) after)
-      (+ 1 after))))
+        (+ 3 (fn-wmc-remaining (fn-wmc-start (fn-cur-at 4 env) group)) after)
+      (+ 2 after))))
 
 (defun-nx fn-lst-groups-cost (env groups fn-cat)
   (if (consp groups)
@@ -486,11 +447,7 @@
     (cond
      ((eq phase :match)
       (+ 1 (fn-wmc-remaining detail)
-         (fn-lst-next-cost env group (fn-state-nexts (fn-cur-at 0 env)) fn-cat)))
-     ((eq phase :next) (fn-lst-next-cost env group detail fn-cat))
-     ((eq phase :summary)
-      (+ 1 (fn-gsc-remaining detail)
-         (fn-lst-status-cost env group (fn-gsc-reference detail fn-cat))))
+         (fn-lst-status-cost env group (fn-lst-group-summary env group fn-cat))))
      ((eq phase :status)
       (+ 1 (fn-lss-remaining-work detail)
          (fn-lst-row-cost env group summary (fn-lss-reference detail))))
@@ -531,12 +488,6 @@
    :hints (("Goal" :in-theory (enable fn-lss-donep fn-lss-remaining-work)))))
 
 (local
- (defthm fn-lst-gsc-remaining-natp
-   (natp (fn-gsc-remaining c))
-   :rule-classes :type-prescription
-   :hints (("Goal" :in-theory (enable fn-gsc-remaining)))))
-
-(local
  (defthm fn-lst-lsr-start-live
    (fn-lsr-start group summary countsp status)
    :hints (("Goal" :in-theory (enable fn-lsr-start fn-lsr-make)))))
@@ -555,8 +506,8 @@
  (defthm fn-lst-groups-cost-natp
    (natp (fn-lst-groups-cost env groups fn-cat))
    :rule-classes :type-prescription
-   :hints (("Goal" :in-theory (enable fn-lst-groups-cost fn-lst-group-cost fn-lst-next-cost
-                                      fn-lst-summary-cost fn-lst-status-cost fn-lst-row-cost)))))
+   :hints (("Goal" :in-theory (enable fn-lst-groups-cost fn-lst-group-cost
+                                      fn-lst-status-cost fn-lst-row-cost)))))
 
 
 (local
@@ -577,8 +528,8 @@
 (defthm fn-lst-one-keeps-okp
   (implies (fn-lst-progress-okp progress)
            (fn-lst-progress-okp (mv-nth 1 (fn-lst-one progress fn-cat))))
-  :hints (("Goal" :in-theory (e/d (fn-lst-one fn-lst-progress-okp)
-                                  (fn-lst-progress fn-cur-at fn-wmc-start fn-wmc-step fn-wmc-shapedp
+  :hints (("Goal" :in-theory (e/d (fn-lst-one fn-lst-enter fn-lst-progress-okp)
+                                  (fn-lst-progress fn-cur-at fn-scat-available-summary fn-wmc-start fn-wmc-step fn-wmc-shapedp
                                    fn-lsr-start fn-lsr-one fn-lsr-statep fn-wmc-one)))))
 
 
@@ -601,27 +552,27 @@
               (fn-lst-potential progress fn-cat)))
   :hints (("Goal" :in-theory
            (e/d (fn-lst-one fn-lst-potential fn-lst-phase-cost fn-lst-progress-okp
-                 fn-lst-group-cost fn-lst-next-cost fn-lst-summary-cost fn-lst-status-cost
-                 fn-lst-next-summary fn-lst-row-cost)
-                (fn-lst-progress fn-cur-at fn-gsc-start fn-gsc-one fn-lss-start fn-lss-one
+                 fn-lst-group-cost fn-lst-status-cost fn-lst-enter
+                 fn-lst-group-summary fn-lst-row-cost)
+                (fn-lst-progress fn-cur-at fn-lss-start fn-lss-one
                  fn-lsr-start fn-lsr-one fn-wmc-start fn-wmc-step fn-wmc-one fn-wmc-shapedp
-                 fn-lsr-statep fn-next-number nfix fn-nntp-closed-status
+                 fn-lsr-statep nfix fn-nntp-closed-status
                  fn-lst-groups-cost fn-wmc-remaining fn-lsr-remaining-work
-                 fn-lss-remaining-work fn-gsc-remaining fn-gsc-reference)))))
+                 fn-lss-remaining-work fn-scat-available-summary)))))
 
 (defthm fn-lst-potential-natp
   (natp (fn-lst-potential progress fn-cat))
   :rule-classes :type-prescription
-  :hints (("Goal" :in-theory (e/d (fn-lst-potential fn-lst-phase-cost fn-lst-next-cost
-                                   fn-lst-summary-cost fn-lst-status-cost fn-lst-row-cost)
+  :hints (("Goal" :in-theory (e/d (fn-lst-potential fn-lst-phase-cost
+                                   fn-lst-status-cost fn-lst-row-cost)
                                   (fn-lst-groups-cost fn-wmc-remaining fn-lsr-remaining-work
-                                   fn-lss-remaining-work fn-gsc-remaining)))))
+                                   fn-lss-remaining-work)))))
 
 (defthm fn-lst-start-okp
   (fn-lst-progress-okp (fn-cur-progress (fn-lst-start archive closed statusp countsp patterns filteredp v)))
   :hints (("Goal" :in-theory (enable fn-lst-progress-okp fn-lst-start fn-lst-progress fn-cur-make
                                      fn-cur-progress fn-cur-at))))
 
-(in-theory (disable fn-lst-row-cost fn-lst-status-cost fn-lst-summary-cost fn-lst-next-cost
+(in-theory (disable fn-lst-row-cost fn-lst-status-cost
                     fn-lst-group-cost fn-lst-groups-cost fn-lst-phase-cost fn-lst-potential
                     fn-lst-progress-okp))

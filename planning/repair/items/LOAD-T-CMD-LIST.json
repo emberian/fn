@@ -4,7 +4,9 @@
  "file": "books/list-metadata-cursor.lisp",
  "id": "LOAD-T-CMD-LIST",
  "line": "",
- "notes": [],
+ "notes": [
+  "2026-10-08: L measured the batch image: LIST p50 40 / 389 / 1,055 ms at 1k / 10k / 25k (was 1.15 / 11.3 / 29.0 s), mechanism A gone, exponent still ~1.0 because the :summary phase probed every article number. Fix: the summary is fn-scat-available-summary (carried live count/low/high at the captured view), one call per group; statements: fn-scat-available-summary-is-the-walk (books/catalog-available-readers: carried summary = numbered walk when the group high is below the watermark), fn-lst-groups-reference-is-active-lines/-counts-lines now premise-free. Re-measurement owed."
+ ],
  "owner": "deputy-C",
  "severity": "high",
  "source": "tools/load",

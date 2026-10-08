@@ -44,6 +44,19 @@
                (equal octets (fn-served-reply-octets (fn-nntp-result-effects expected))))
           fn-octets))))
 
+; The carried summary against the numbered walk the LIST cursor used to run
+; (fn-scat-available-summary-is-the-walk): they agree where the group's high is
+; below the allocation watermark, and a stale watermark (below the high) is the
+; wrong-answer witness for that premise.
+(defun qpt-walk-agreep (archive groups v fn-cat)
+  (declare (xargs :mode :program :stobjs fn-cat))
+  (if (consp groups)
+      (and (equal (fn-scat-available-summary archive (car groups) v fn-cat)
+                  (fn-lst-probe-summary
+                   (car groups) (fn-next-number (car groups) (fn-state-nexts archive)) v fn-cat))
+           (qpt-walk-agreep archive (cdr groups) v fn-cat))
+    t))
+
 (defun qpt-run (survivors w fn-octets fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-octets fn-arena fn-cat)))
   (let ((fn-cat (fn-cat-clear fn-cat)))
@@ -67,13 +80,14 @@
             (mv-let (b fn-octets) (qpt-command "LIST ACTIVE fn.available" archive index env w fn-octets fn-arena fn-cat)
               (mv-let (c fn-octets) (qpt-command "LIST COUNTS fn.*,!fn.empty*" archive index env w fn-octets fn-arena fn-cat)
                 (mv-let (d fn-octets) (qpt-command "LIST ACTIVE no.match.*" archive index env w fn-octets fn-arena fn-cat)
-                  ;; Teeth for fn-lst-active-command-is-av-list-active: its
-                  ;; premise holds of this actual intern/commit fixture, and a
-                  ;; watermark mutation falsifies both premise and conclusion.
-                  (let* ((agree (fn-lst-summaries-agreep archive groups 34 fn-cat))
+                  ;; Teeth for fn-scat-available-summary-is-the-walk: its premise
+                  ;; holds of this actual intern/commit fixture (carried summary =
+                  ;; numbered walk), and a stale watermark falsifies the agreement;
+                  ;; the cursor still answers the model on the stale archive.
+                  (let* ((agree (qpt-walk-agreep archive groups 34 fn-cat))
                          (stale (fn-make-state groups '(("fn.available" . 2))
                                                (fn-state-articles archive) 0 nil nil))
-                         (stale-agree (fn-lst-summaries-agreep stale groups 34 fn-cat)))
+                         (stale-agree (qpt-walk-agreep stale groups 34 fn-cat)))
                     (mv-let (stale-ok fn-octets)
                       (qpt-command "LIST ACTIVE fn.available" stale index env w fn-octets fn-arena fn-cat)
                       (mv (and a b c d (null empty) (equal calls 1) (fn-lst-livep next)
@@ -87,10 +101,11 @@
                                (eq one-status :yield)
                                (not (equal bnext one-next))
                                (fn-lst-livep bnext)
-                               (eq (fn-cur-at 1 (fn-cur-progress next)) :next)
+                               (eq (fn-cur-at 1 (fn-cur-progress next)) :status)
                                (equal (fn-cur-at 2 (fn-cur-progress next)) (cdr groups))
                                agree
-                               (or (null survivors) (and (not stale-agree) (not stale-ok))))
+                               (or (null survivors) (not stale-agree))
+                               stale-ok)
                           fn-octets fn-arena fn-cat))))))))))))))
 
 (defun qpt-local (survivors w)
