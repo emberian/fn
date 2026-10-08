@@ -8717,16 +8717,14 @@ torn last entry follows.  Answers the offset the writer resumes at."
       (let* ((decided (fnn-owner-serialized
                        service nil
                        (lambda ()
-                         ;; The decision and the line it rendered leave the
-                         ;; section together: the global is read while the
-                         ;; owner is held, so the line written below is the
-                         ;; one this decision produced.
-                         (cons (fnn-owner-core 'fn-owner-log-reopen
-                                               (and *fnn-owner-log-path* t)
-                                               *fnn-owner-log-handled* requested)
-                               (fnn-global 'fn-owner-log-line)))))
-             (decision (car decided))
-             (line (cdr decided)))
+                         ;; The decision and the line it rendered are one
+                         ;; answer of the wrapper: (KIND N LINE).
+                         (fnn-owner-core 'fn-owner-log-reopen
+                                         (and *fnn-owner-log-path* t)
+                                         *fnn-owner-log-handled* requested))))
+             (shaped (and (consp decided) (= (length decided) 3)))
+             (decision (and shaped (list (first decided) (second decided))))
+             (line (and shaped (third decided))))
         (unless (and (consp decision)
                      (member (first decision) '(:reopen :ignore :none))
                      (integerp (second decision)))
