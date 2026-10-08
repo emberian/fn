@@ -175,7 +175,7 @@ CORE and MACHINE are each captured once for both ACL2 reservation steps."
            (observed (and profile (fnn-heap-history-observation absolute-root profile)))
            (*fnn-heap-trace-ring-octets*
              (if *fnn-operator-config-octets*
-                 (fnn-trace-config-ring-octets *fnn-operator-config-octets*)
+                 (fnn-heap-config-trace-ring-octets *fnn-operator-config-octets*)
                *fnn-heap-trace-ring-octets*))
            (base (fnn-core 'fn-heap-status-decide profile core
                            +fnn-gc-nursery-octets+ machine observed)))
@@ -315,7 +315,7 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
             ;; configuration's [trace] table; no other action holds one.
             (setq *fnn-heap-trace-ring-octets*
                   (if (eq (fnn-core 'fn-native-operator-host-result-native-action result) :run)
-                      (fnn-trace-config-ring-octets config-octets)
+                      (fnn-heap-config-trace-ring-octets config-octets)
                     0))
             (when (and (eq (fnn-core 'fn-native-operator-host-result-status result) :accepted)
                        (stringp root))

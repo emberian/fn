@@ -376,8 +376,9 @@ on anything but the leaf lock, and its result is meaningless to the caller."
                                   record))))
         (serious-condition () (ignore-errors (fnn-dtrace-count-dropped ring)))))))
 
-;;; The call sites.  Off: one special-variable test at entry and one local
-;;; test at exit.  On: a hash lookup of NAME; only a traced name reads the clock.
+;;; The call sites (macros, so host/native/io.lisp holds no trace branch).  Off:
+;;; one special-variable test.  On: a hash lookup of NAME; only a traced name
+;;; reads the clock.
 (defmacro fnn-dtrace-around ((name args) &body body)
   "Run BODY (which returns the list of the call's values) and offer it to the
 ring when NAME is traced.  The values are returned unchanged."
@@ -387,6 +388,24 @@ ring when NAME is traced.  The values are returned unchanged."
             (,values (progn ,@body)))
        (when ,point (fnn-dtrace-note ,point ,name ,args ,values ,start))
        ,values)))
+
+(defun fnn-dtrace-around-mv-traced (name thunk)
+  "Run THUNK (a fixed callback, returning its scalar MVs) and offer the values
+it returned to the ring.  A fixed callback has no argument list here, so it can
+record its outcome only: its declared inputs are all :redact.  The values are
+returned unchanged."
+  (let ((point (fnn-dtrace-lookup name)))
+    (if point
+        (let* ((start (fnn-trace-now))
+               (vals (multiple-value-list (funcall thunk))))
+          (fnn-dtrace-note point name nil vals start)
+          (values-list vals))
+      (funcall thunk))))
+
+(defmacro fnn-dtrace-around-mv (name thunk)
+  `(if *fnn-dtrace*
+       (fnn-dtrace-around-mv-traced ,name ,thunk)
+     (funcall ,thunk)))
 
 (defun fnn-dtrace-snapshot (ring since limit)
   "Under the ring lock: free the rows at most SINCE, copy the next LIMIT live
@@ -510,7 +529,7 @@ ACL2's accessors); both are freed together by `fnn-trace-reset'."
                       ;; takes the previous traced call's outcome.
                       :skew (and (fnn-developer-selector "FN_NATIVE_TEST_TRACE_SKEW") t))))
 
-(defun fnn-trace-config-ring-octets (config-octets)
+(defun fnn-heap-config-trace-ring-octets (config-octets)
   "The ring octets ACL2's plan of CONFIG-OCTETS' [trace] table commits (0 for
 none, and for a table the start will refuse by name)."
   (if config-octets

@@ -1529,8 +1529,6 @@ kind); :unknown when the world has no formals for NAME (a raw primitive)."
                                       name (1+ position) formal kind recognizer
                                       (fnn-entry-guard-describe value))))))))))
 
-(declaim (special *fnn-dtrace*))
-
 (defun fnn-call (name &rest args)
   "The dispatcher: after the entry guard (outside the handler below, so its
 fault keeps its class), apply NAME's raw definition (a :raw-with entry) or
@@ -1541,30 +1539,26 @@ An explicit core result such as :REFUSED remains a semantic result for its
 wrapper to handle.  A thrown condition or escaped raw evaluation is an
 execution-boundary fault, never a claim that the core refused an input.
 
-DECISION TRACING (host/native/trace.lisp, books/decision-trace.lisp): off, the
-cost is the one test of *fnn-dtrace*; on, a lookup of NAME in the traced set,
-and for a traced name a clock reading before the call and the offer of the
-returned VALUES to the ring after it.  The values are returned unchanged and
-nothing here reads what the ring did with them."
+DECISION TRACING is a view and lives wholly in host/native/trace.lisp:
+`fnn-dtrace-around' returns BODY's values unchanged and, when the operator
+turned tracing on and NAME is in the traced set, offers them to the ring.  Off
+it is the one test of *fnn-dtrace*.  Nothing here reads what the ring did."
   (fnn-entry-guard name args)
-  (let ((outcome :thrown) (values nil)
-        (point (and *fnn-dtrace* (fnn-dtrace-lookup name)))
-        (start 0))
-    (when point (setq start (fnn-trace-now)))
-    (setq values
-          (catch 'raw-ev-fncall
-            (handler-case
-                (prog1 (multiple-value-list (fnn-raw-dispatch-apply name args))
-                  (setq outcome :ok))
-              (serious-condition (c)
-                (setq outcome (princ-to-string c))
-                nil))))
-    (case outcome
-      (:ok (when point (fnn-dtrace-note point name args values start))
-       values)
-      (:thrown (fnn-fault "ACL2 error in ~(~a~): ~a" name
-                           (handler-case (princ-to-string values) (error () "guard violation"))))
-      (t (fnn-fault "ACL2 error in ~(~a~): ~a" name outcome)))))
+  (fnn-dtrace-around (name args)
+    (let ((outcome :thrown) (values nil))
+      (setq values
+            (catch 'raw-ev-fncall
+              (handler-case
+                  (prog1 (multiple-value-list (fnn-raw-dispatch-apply name args))
+                    (setq outcome :ok))
+                (serious-condition (c)
+                  (setq outcome (princ-to-string c))
+                  nil))))
+      (case outcome
+        (:ok values)
+        (:thrown (fnn-fault "ACL2 error in ~(~a~): ~a" name
+                             (handler-case (princ-to-string values) (error () "guard violation"))))
+        (t (fnn-fault "ACL2 error in ~(~a~): ~a" name outcome))))))
 
 ; Fixed served callbacks are selected once at funded startup. Their ACL2
 ; bodies check scalar inputs before work; :raw-with carries their stobj guards.
@@ -1580,25 +1574,11 @@ hot callback."
   (or (fnn-raw-dispatch-callback name)
       (fnn-fault "fixed callback ~(~a~) is not compiled" name)))
 
-(defun fnn-core-mv-traced (name thunk)
-  "Run THUNK (a fixed callback, returning its scalar MVs) and, when NAME is in
-the traced set (decision tracing, host/native/trace.lisp), offer the values it
-returned to the ring.  A fixed callback has no argument list here, so it can
-record its outcome only: its declared inputs are all :redact.  The values are
-returned unchanged."
-  (let ((point (fnn-dtrace-lookup name)))
-    (if point
-        (let* ((start (fnn-trace-now))
-               (vals (multiple-value-list (funcall thunk))))
-          (fnn-dtrace-note point name nil vals start)
-          (values-list vals))
-      (funcall thunk))))
-
 (defmacro fnn-core-mv (name call)
   "Preserve fixed CALL's scalar MVs without an argument or result container.
 NAME names the actual ACL2 subject. CALL uses its startup-selected callback;
 its own scalar refusals remain results, while execution escapes are faults.
-Off, decision tracing costs the one test of *fnn-dtrace*."
+Decision tracing: fnn-dtrace-around-mv (host/native/trace.lisp)."
   (let ((outcome (gensym "OUTCOME")) (condition (gensym "CONDITION")) (run (gensym "RUN")))
     `(flet ((,run ()
               (let ((,outcome :thrown))
@@ -1613,9 +1593,7 @@ Off, decision tracing costs the one test of *fnn-dtrace*."
                     (:ok nil)
                     (:thrown (fnn-fixed-callback-fail ,name :raw-callback-escaped nil))
                     (otherwise (fnn-fixed-callback-fail ,name :raw-callback-failed ,outcome)))))))
-       (if *fnn-dtrace*
-           (fnn-core-mv-traced ,name #',run)
-         (,run)))))
+       (fnn-dtrace-around-mv ,name #',run))))
 
 (defun fnn-core (name &rest args)
   "A state-free wrapper's single value."
