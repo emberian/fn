@@ -94,6 +94,91 @@
                     fn-qplan-rest-cursor-step fn-qplan-cursor-step))
 
 ; -----------------------------------------------------------------------------
+; The host runs this facade, not the fn-splan entries it extends.  On a plan
+; with no LIST effect each fn-qplan entry IS the fn-splan entry (PRF-1020's
+; claims about the OVER/NEWNEWS plan are stated over the fn-splan entries:
+; fn-splan-cursor-step-of-okp-is-ok, fn-splan-window-size-is-positive-until-
+; done); these equalities tie them to the entries host/native/owner.lisp
+; calls (fnn-owner-cursor-step: fn-qplan-cursor-step; fnn-owner-render-next:
+; fn-qplan-at-cursorp, fn-qplan-window).  A plan that holds a LIST effect is
+; outside them: that effect is the facade's, not the fn-splan model's.
+(defun fn-qplan-rest-no-lstp (rest)
+  (declare (xargs :guard t))
+  (if (consp rest)
+      (and (not (fn-lst-effectp (car rest)))
+           (fn-qplan-rest-no-lstp (cdr rest)))
+    t))
+
+(local
+ (defthm fn-qplan-no-lst-cursor-effect
+   (implies (not (fn-lst-effectp e))
+            (equal (fn-qplan-cursor-effectp e) (fn-splan-cursor-effectp e)))
+   :hints (("Goal" :in-theory (enable fn-qplan-cursor-effectp)))))
+
+(local
+ (defthm fn-qplan-rest-head-len-is-splan
+   (implies (fn-qplan-rest-no-lstp rest)
+            (equal (fn-qplan-rest-head-len rest) (fn-splan-rest-head-len rest)))
+   :hints (("Goal" :in-theory (enable fn-qplan-rest-head-len fn-splan-rest-head-len
+                                      fn-qplan-rest-no-lstp)))))
+
+(local
+ (defthm fn-qplan-rest-at-cursorp-is-splan
+   (implies (fn-qplan-rest-no-lstp rest)
+            (equal (fn-qplan-rest-at-cursorp rest) (fn-splan-rest-at-cursorp rest)))
+   :hints (("Goal" :in-theory (enable fn-qplan-rest-at-cursorp fn-splan-rest-at-cursorp
+                                      fn-qplan-rest-no-lstp)))))
+
+(local
+ (defthm fn-qplan-rest-donep-is-splan
+   (implies (fn-qplan-rest-no-lstp rest)
+            (equal (fn-qplan-rest-donep rest) (fn-splan-rest-donep rest)))
+   :hints (("Goal" :in-theory (enable fn-qplan-rest-donep fn-splan-rest-donep
+                                      fn-qplan-rest-no-lstp)))))
+
+(local
+ (defthm fn-qplan-rest-cursor-step-is-splan
+   (implies (fn-qplan-rest-no-lstp rest)
+            (equal (fn-qplan-rest-cursor-step rest w fn-arena fn-cat)
+                   (fn-splan-rest-cursor-step rest w fn-arena fn-cat)))
+   :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest w fn-arena fn-cat)
+            :in-theory (e/d (fn-qplan-rest-cursor-step fn-qplan-rest-no-lstp
+                             fn-qplan-cursor-effectp)
+                            (fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep
+                             fn-nnw-stream-batch fn-lst-step fn-lst-remaining fn-lst-livep
+                             fn-nntp-reply-effect fn-lst-effect mv-nth fn-splan-cursor-effectp
+                             fn-nnw-meta-effectp fn-ovw-cursor-effect fn-nnw-meta-effect))
+            :expand ((fn-splan-rest-cursor-step rest w fn-arena fn-cat)
+                     (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat))))))
+
+(defthm fn-qplan-window-size-is-splan-window-size
+  (implies (fn-qplan-rest-no-lstp (fn-splan-rest p))
+           (equal (fn-qplan-window-size p) (fn-splan-window-size p)))
+  :hints (("Goal" :in-theory (enable fn-qplan-window-size fn-splan-window-size)))
+  :rule-classes nil)
+
+(defthm fn-qplan-donep-is-splan-donep
+  (implies (fn-qplan-rest-no-lstp (fn-splan-rest p))
+           (equal (fn-qplan-donep p) (fn-splan-donep p)))
+  :hints (("Goal" :in-theory (enable fn-qplan-donep fn-splan-donep)))
+  :rule-classes nil)
+
+(defthm fn-qplan-at-cursorp-is-splan-at-cursorp
+  (implies (fn-qplan-rest-no-lstp (fn-splan-rest p))
+           (equal (fn-qplan-at-cursorp p) (fn-splan-at-cursorp p)))
+  :hints (("Goal" :in-theory (enable fn-qplan-at-cursorp fn-splan-at-cursorp)))
+  :rule-classes nil)
+
+(defthm fn-qplan-cursor-step-is-splan-cursor-step
+  (implies (fn-qplan-rest-no-lstp (fn-splan-rest p))
+           (equal (fn-qplan-cursor-step p w fn-arena fn-cat)
+                  (fn-splan-cursor-step p w fn-arena fn-cat)))
+  :hints (("Goal" :in-theory (e/d (fn-qplan-cursor-step fn-splan-cursor-step)
+                                  (fn-qplan-rest-cursor-step fn-splan-rest-cursor-step))
+           :use ((:instance fn-qplan-rest-cursor-step-is-splan (rest (fn-splan-rest p))))))
+  :rule-classes nil)
+
+; -----------------------------------------------------------------------------
 ; What a query plan owes with every cursor read as its completion: LIST
 ; cursors by fn-lst-remaining, OVER/NEWNEWS cursors exactly as the existing
 ; served-plan list model reads them. Logical only.
