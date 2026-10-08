@@ -17,11 +17,23 @@
          (f-get-global 'fn-owner-history-roots state)))))
 (defun fn-owner-hroot-put (generation row state)
   (declare (xargs :stobjs state :mode :program))
-  (let ((rest (remove1-assoc-equal generation
-                (and (boundp-global 'fn-owner-history-roots state)
-                     (f-get-global 'fn-owner-history-roots state)))))
-    (f-put-global 'fn-owner-history-roots
-      (if row (acons generation row rest) rest) state)))
+  (f-put-global 'fn-owner-history-roots
+    (fn-hroot-table-put (and (boundp-global 'fn-owner-history-roots state)
+                             (f-get-global 'fn-owner-history-roots state))
+                        generation row) state))
+;; The refresh's word as ACL2 classifies it (books/history-root-credit.lisp
+;; fn-hroot-refresh-status), held for `status' and `health' to render
+;; (books/history-root-status.lisp fn-hrs-line).  It lives in the history-root
+;; table (fn-owner-history-roots) under the reserved key :last-refresh
+;; (fn-hroot-table-note), not in a global of its own.  Every word the host got
+;; is noted: a building/installed word clears a refusal, a refusal or an
+;; unrecognised word replaces it.  Returns the status for the host's log.
+(defun fn-owner-hroot-note (word state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((table (fn-hroot-table-note (fn-owner-history-root-table state) word))
+         (state (f-put-global 'fn-owner-history-roots table state)))
+    (value (fn-hroot-table-status table))))
+
 (defun fn-owner-hroot-resize (generation amount state)
   (declare (xargs :stobjs state :mode :program))
   (let ((r (fn-mcr-hroot-resize (fn-owner-credits state) (fn-hroot-credit-key generation) amount)))

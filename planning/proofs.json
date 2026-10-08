@@ -22822,6 +22822,90 @@
         "fn-prl-row-sum-covers-bound-reserve",
         "fn-prl-convert-growth-under-row-sum-invp"
       ]
+    },
+    {
+      "id": "PRF-1344",
+      "title": "Critical evidence package for the existing authorization keystones",
+      "statement": "Ruling 22: the 289 existing authorization keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1345",
+      "title": "Critical evidence package for the existing durability keystones",
+      "statement": "Ruling 22: the 411 existing durability keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1346",
+      "title": "Critical evidence package for the existing extraction keystones",
+      "statement": "Ruling 22: the 9 existing extraction keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1347",
+      "title": "Critical evidence package for the existing identity-binding keystones",
+      "statement": "Ruling 22: the 105 existing identity-binding keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1348",
+      "title": "Critical evidence package for the existing ownership-reclamation keystones",
+      "statement": "Ruling 22: the 186 existing ownership-reclamation keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1349",
+      "title": "Critical evidence package for the existing parser-boundary keystones",
+      "statement": "Ruling 22: the 320 existing parser-boundary keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
+    },
+    {
+      "id": "PRF-1350",
+      "title": "Critical evidence package for the existing resource-reservation keystones",
+      "statement": "Ruling 22: the 232 existing resource-reservation keystones listed under this item in planning/critical-owed.json gain the evidence package (tools/keystone_critical.py): positive witness, wrong-answer witness, host-path test, trace-derived witness, implementation mutation.",
+      "milestone": "M4",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "planning/critical-owed.json"
+      ]
     }
   ]
 }

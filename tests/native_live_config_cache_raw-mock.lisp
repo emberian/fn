@@ -142,23 +142,13 @@
 (defun fnn-config-records-from-observation (observation)
   (declare (ignore observation)) nil)
 (defun fnn-durable-records (store) (declare (ignore store)) nil)
-;; The authorization over the state the owner carries (PKT-837).
-(defun fnn-admin-authorize-owner (store record)
-  (declare (ignore store record))
-  :authorization)
 (defun fnn-admin-publish (&rest args)
   (declare (ignore args)) (push '(publish) *calls*) (values 2 "generation-2"))
-(defun fnn-owner-feed-refresh-configuration (service)
-  (declare (ignore service)) (push '(feed-refresh) *calls*))
 
 (dolist (spec '(("host/native/io.lisp" fnn-decode-joined-names)
                 ("host/native/admin.lisp" fnn-admin-test-fault)
                 ("host/native/admin.lisp" fnn-owner-refresh-config-cache)
                 ("host/native/admin.lisp" fnn-lim-plan-p)
-                ;; peer-invite (e8a7606f) moved the stage-publish-complete
-                ;; body out of fnn-owner-live-admin-serialized into this
-                ;; deployed callee; the boundary under test is its body.
-                ("host/native/admin.lisp" fnn-owner-live-reconfigure-locked)
                 ("host/native/admin.lisp" fnn-owner-live-admin-serialized)))
   (destructuring-bind (path name) spec
     (let ((found nil))

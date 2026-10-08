@@ -154,3 +154,8 @@
 (include-book "byte-store-frame")
 (include-book "byte-store-txn-name")
 (include-book "store-budget-naming")
+(include-book "store-profile-facts")
+(include-book "store-genesis")
+(include-book "store-replay-bound")
+(include-book "store-profile-open")
+(include-book "store-mount-identity")

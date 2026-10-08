@@ -1494,7 +1494,7 @@
 ;; The table answers at V: V is the count and no withdrawal is at or past it.
 (defun fn-scat-top-viewp (v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
-  (and (equal v (fn-cat-count fn-cat))
+  (and (eql v (fn-cat-count fn-cat))
        (<= (fn-cat-horizon fn-cat) v)))
 
 (defthm fn-scat-top-viewp-gives
@@ -1540,6 +1540,41 @@
                            (fn-scat-group-summary fn-nntp-group-summary
                             fn-cat-view-articles fn-cnx-freshp)))))
 
+;; The top view's raw low is the maintained cell (s-group-low): at the top view
+;; (v the count, no withdrawal at or past it) a number is raw-kept exactly when
+;; the catalog's raw predicate says so.
+(local
+ (defthm fn-scat-horizon-above-withdrawal
+   (implies (and (natp s) (< s (len c)) (consp (fn-held-withdrawn (nth s c))))
+            (<= (+ 1 (nfix (car (fn-held-withdrawn (nth s c))))) (fn-cat-horizon-of c)))
+   :hints (("Goal" :induct (nth s c)
+            :in-theory (enable fn-cat-horizon-of)))))
+
+(local
+ (defthm fn-scat-raw-keptp-at-top
+   (implies (fn-scat-top-viewp v fn-cat)
+            (equal (fn-scat-raw-keptp group k v fn-cat)
+                   (fn-cat-raw-numberp group k fn-cat)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-scat-raw-keptp fn-cat-raw-numberp fn-cat-raw-rowp fn-cat-visiblep fn-cat-rowp
+                                         fn-held-withdrawnp)
+                            (fn-cat-number-seq fn-held-number-in fn-scat-top-viewp))
+            :use ((:instance fn-scat-top-viewp-gives)
+                  (:instance fn-scat-horizon-above-withdrawal (s (fn-cat-number-seq group k fn-cat 0)) (c fn-cat))
+                  (:instance fn-cat-rowp-of-nth-of-rowsp (xs fn-cat) (i (fn-cat-number-seq group k fn-cat 0)))
+                  (:instance fn-scat-number-seq-binds (g group) (n k) (c fn-cat) (i 0)))))))
+
+(local
+ (defthm fn-scat-raw-first-p-at-top
+   (implies (and (fn-scat-top-viewp v fn-cat) (natp k) (natp top))
+            (equal (fn-scat-raw-first-p group k top v fn-cat)
+                   (fn-cat-raw-first group k top fn-cat)))
+   :hints (("Goal" :induct (fn-scat-raw-first-p group k top v fn-cat)
+            :in-theory (disable fn-scat-raw-keptp-at-top fn-cat-raw-numberp fn-scat-top-viewp))
+           ("Subgoal *1/2" :use fn-scat-raw-keptp-at-top)
+           ("Subgoal *1/1" :use fn-scat-raw-keptp-at-top))))
+
+
 (defun fn-scat-group-low-pass (group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
   (let ((l (fn-scat-range-numbers group 1 *fn-nntp-max-article-number* v fn-cat)))
@@ -1562,20 +1597,40 @@
            :use ((:instance fn-scat-range-numbers-at-view)
                  (:instance fn-scat-view-list-car (k 1) (top (fn-cat-group-high group fn-cat)))))))
 
+(defthm fn-scat-group-raw-low-at-top
+  (implies (and (natp v) (fn-scat-top-viewp v fn-cat))
+           (equal (fn-cat-group-raw-low group fn-cat)
+                  (fn-scat-group-low-pass group v fn-cat)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat-group-raw-low-is-first)
+                           (fn-scat-raw-first-p fn-cat-raw-first fn-cat-group-high fn-scat-top-viewp))
+           :use ((:instance fn-scat-group-low-pass-is-raw-first-p)
+                 (:instance fn-scat-raw-first-p-at-top (k 1) (top (fn-cat-group-high group fn-cat)))))))
+
 ; Raw compatibility low is the retained-identity range pass (fn-scat-group-low-pass,
 ; the specification); the availability adapter's maintained fn-scat-available-low
-; is a different value (it skips withdrawn and reclaimed rows).  The executable
-; reads the first retained number directly: fn-scat-raw-first-p probes numbers
-; 1, 2, ... and stops at the first kept one, so a GROUP costs the leading
-; non-kept numbers, not the whole range.
+; is a different value (it skips withdrawn and reclaimed rows).  At the top view
+; the executable reads the catalog's maintained raw low (fn-cat-group-raw-low:
+; one cell, kept by commit and withdraw); below it the first retained number is
+; found by probing numbers 1, 2, ... (fn-scat-raw-first-p stops at the first kept
+; one), the cost of the leading non-kept numbers.
+; The top view's arm, a function of its own so that its cost is stated
+; (books/served-catalog-group-low-cost.lisp).
+(defun fn-scat-group-low-top (group fn-cat)
+  (declare (xargs :stobjs fn-cat :guard t))
+  (fn-cat-group-raw-low group fn-cat))
+
 (defun fn-scat-group-low (group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v) :verify-guards nil))
   (mbe :logic (fn-scat-group-low-pass group v fn-cat)
-       :exec (fn-scat-raw-first-p group 1 (nfix (- (fn-cat-group-next group fn-cat) 1))
-                                  v fn-cat)))
+       :exec (if (fn-scat-top-viewp v fn-cat)
+                 (fn-scat-group-low-top group fn-cat)
+               (fn-scat-raw-first-p group 1 (nfix (- (fn-cat-group-next group fn-cat) 1))
+                                    v fn-cat))))
 
 (verify-guards fn-scat-group-low
-  :hints (("Goal" :use ((:instance fn-scat-group-low-pass-is-raw-first-p)))))
+  :hints (("Goal" :use ((:instance fn-scat-group-low-pass-is-raw-first-p)
+                        (:instance fn-scat-group-raw-low-at-top)))))
 
 (defthm fn-scat-group-low-by-definition
   (equal (fn-scat-group-low group v fn-cat)
