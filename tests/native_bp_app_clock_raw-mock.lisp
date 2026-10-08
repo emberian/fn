@@ -100,6 +100,9 @@
     (fn-owner-next-txid 2) (fn-owner-app-current-generation 1)
     (otherwise (error "unexpected owner core query ~s" name))))
 
+;; The shipped held-commit macro the dispatchers expand.
+(load "tests/native_held_commit_prelude.lisp")
+
 ;; The dispatcher and the deployed txid check it calls, by name, so a rename
 ;; fails here rather than leaving a stub in its place.
 (let ((missing (list 'fnn-bpapp-planned-txid 'fnn-bpapp-accept-locked)))

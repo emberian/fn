@@ -1,0 +1,16 @@
+{
+ "category": "resource-accounting",
+ "id": "MEM-015",
+ "owner": "deputy-N",
+ "severity": "high",
+ "state": "deferred",
+ "source": "coordinator ruling 2026-10-08 on row 19b (N-FRESH table, hbox:/tank/fn/scratch/n-fresh/summary.txt)",
+ "file": "books/heap-reservation.lisp",
+ "line": "104",
+ "title": "thread stacks: 35 threads x (1 MiB control stack + 4 MiB runtime) = 175 MiB reserved before any heap; decide the thread count from the profile and cap the stacks",
+ "detail": "fn-heap-thread-count (books/heap-reservation.lisp:104) is a constant, ignoring its CONNECTIONS argument and the store profile: mux-loops 2 + control-clients 16 + fixed-threads 12 + cold-workers 4 (books/profile-limits.lisp), and fn-heap-reservation-octets charges each thread stack-kib 1024 plus thread-runtime-mib 4. At g41 that is 175 MiB of the 1048 MB fresh-start reservation, and with the 229 MiB core it puts a 256 MB node out of reach before any heap (404 MiB). Work: (1) MEASURE first: per-thread resident and reserved octets on a running small-preset node (control stack, binding stack, alien stack, TLS at run-tls-limit 20480 = 320 KiB) and the live thread count, against the 1 MiB / 4 MiB figures; the measured control-stack floor is 142 KiB whatever the article (test_native_image_floor's stack witness). (2) Decide the thread count from the profile in books (a small preset does not need 16 concurrent control clients or 4 cold workers) with a keystone that the host starts no thread the count does not fund. (3) Cap the stacks at the measured need plus a stated margin, per profile. (4) Then the 256 MB fresh start returns as a bar (ruling 15 restated the public claim to the measured figure meanwhile, 2026-10-08). The next memory lever after MEM-013 (coordinator).",
+ "notes": [
+  "2026-10-08 (N): DEFERRED by ruling 25 (ember: memory deprioritised; correctness first). Un-parks when memory work resumes. Measured before the park: node_measure floor on the production image at 72871c42d (development profile, 1 MiB stacks) refuses even at a 1100 MB dynamic space ('the process heap does not hold the store's protected runtime'), hbox:/tank/fn/scratch/n-fresh/floor/floor.json."
+ ],
+ "updated": "2026-10-08T11:30:00Z"
+}

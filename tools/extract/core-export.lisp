@@ -51,6 +51,21 @@
       (xt-core-roots (cdr tokens) w
                      (if (and (xt-core-root-p s w) (not (member-eq s acc))) (cons s acc) acc)))))
 
+; Every constrained function a host word names: the host realizes it (fn-sig-verify,
+; fn-durable-realize-*, fn-pgs-fill-frame, ...) and calls it through fnn-call, whose
+; fnn-entry-guard-spec reads its formals; it is no closure root, so without this the
+; snapshot lacked them and fn-core skipped their entry checks (O3,
+; tools/extract/obligations.py).
+(defun xt-core-token-functions (tokens w acc)
+  (if (endp tokens) (reverse acc)
+    (let ((s (intern-in-package-of-symbol (car tokens) 'xt-core-roots)))
+      (xt-core-token-functions (cdr tokens) w
+                               (if (and (getpropc s 'constrainedp nil w)
+                                        (not (eq (getpropc s 'formals :none w) :none))
+                                        (not (member-eq s acc)))
+                                   (cons s acc)
+                                 acc)))))
+
 ; The live stobjs host/native fetches by name (user-stobj-alist): each stobj a
 ; word names, by its creator, so the closure holds it.
 (defun xt-core-stobj-creators (tokens w acc)
@@ -232,6 +247,13 @@
                 (fn-rdv-table-digests (car tables) (xt-carried-alist (car tables) verdicts w)))
           (xt-table-manifest (cdr tables) verdicts w))))
 
+; The world globals the emitted forms read (FGETPROP 'NAME 'GLOBAL-VALUE, or GLOBAL-VAL 'NAME):
+; KNOWN-PACKAGE-ALIST through *1* PUT-GLOBAL > CHK-BAD-LISP-OBJECT > BAD-LISP-ATOMP, where an
+; empty alist makes every symbol a "bad Lisp object"; PROJECT-DIR-ALIST through
+; DEFCONST-REDECLARE-ERROR.  closure_why.py --check-props refuses a build whose emitted forms read
+; a world global not listed here.
+(defconst *xt-carried-world-globals* '(known-package-alist project-dir-alist))
+
 (defun xt-world-snapshot (names tables verdicts manifest w)
   (if (endp names) nil
     (let* ((name (car names))
@@ -250,6 +272,10 @@
              (and (member-eq name tables)
                   (eq (getpropc name 'table-alist :none w) :none)
                   (list (cons 'table-alist nil)))
+             ; a world global the emitted forms read by name (closure_why.py --check-props names them):
+             ; its value, as fgetprop and global-val read it
+             (and (member-eq name *xt-carried-world-globals*)
+                  (list (cons 'global-value (global-val name w))))
              (and functionp
                   (list (cons 'guard (guard name nil w))
                         (cons 'symbol-class (symbol-class name w))
@@ -393,11 +419,20 @@
                        (state (xt-print-globals globals channel state))
                        ; every function of the closure (host/native's fnn-call
                        ; may name any): formals, stobjs-in, guard
+                       ; every package KNOWN-PACKAGE-ALIST names exists before the snapshot that
+                       ; carries it is read (its import lists name symbols of packages no emitted
+                       ; form prints, such as U)
+                       (state (xt-print (list 'xl-ensure-packages
+                                              (list 'quote (strip-cars (global-val 'known-package-alist w))))
+                                        channel state))
                        (state (xt-print (list 'xl-set-world-snapshot
                                               (list 'quote
                                                     (xt-world-snapshot
                                                      (remove-duplicates-eq
-                                                      (append (xt-entry-fns entries nil)
+                                                      ; every function a host word names (xt-core-token-functions)
+                                                      (append *xt-carried-world-globals*
+                                                              (xt-core-token-functions tokens w nil)
+                                                              (xt-entry-fns entries nil)
                                                               (xt-stobj-closure-1 stobjs nil w)
                                                               tables
                                                               '(state fn-core-table-digests
