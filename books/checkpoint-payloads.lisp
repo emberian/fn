@@ -26,6 +26,7 @@
 (in-package "ACL2")
 (include-book "store-checkpoint-codec")
 (include-book "checkpoint-payload-ref")
+(include-book "store-checkpoint-buffer")
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -111,7 +112,7 @@
   (fn-scc-seal *fn-scc-genesis* (fn-scc-header 0 1 (len p) 0) p))
 
 (defun fn-cpl-trailers (ps)
-  (declare (xargs :guard (true-listp ps) :verify-guards nil))
+  (declare (xargs :guard (true-list-listp ps) :verify-guards nil))
   (if (consp ps) (cons (fn-cpl-trailer (car ps)) (fn-cpl-trailers (cdr ps))) nil))
 
 ; Each trailer is the last 32 octets of its ref's frame in FILE.
@@ -184,8 +185,6 @@
 
 ; -----------------------------------------------------------------------------
 ; 4. The frame's shape.
-
-(local (include-book "store-checkpoint-buffer"))
 
 (local
  (defthm cpl-frame-shape
@@ -822,7 +821,7 @@
     nil))
 
 (defun fn-cpl-trailer-words-impl (p)
-  (declare (xargs :guard (true-listp p) :verify-guards nil))
+  (declare (xargs :guard (fn-cpl-payloadp p) :verify-guards nil))
   (fn-cpl-pack-words (fn-cpl-trailer p) (fn-cpl-trailer-word-count)))
 
 (defun fn-cpl-ub64-listp (ws)
@@ -963,3 +962,77 @@
            :in-theory (e/d (fn-cpl-trailer-word-count fn-cpl-trailer-words-impl fn-cpl-ub64-listp)
                            (cpl-pack-ub64 fn-cpl-trailer-shape fn-cpl-trailer
                                           fn-cpl-pack-words)))))
+
+; -----------------------------------------------------------------------------
+; 9. The executable: the frames written through the buffer.  No octet list is
+; built for the file: the header (37 octets) and the trailer (32) are the small
+; lists, the payload is appended as given (the arena-to-buffer copy without a
+; transient list waits on the arena's inner-octet read, as
+; fn-scka-append-src does).
+
+(verify-guards fn-cpl-trailer)
+(verify-guards fn-cpl-trailers)
+
+(defun fn-cpl-write-frame (p fn-octets)
+  (declare (xargs :stobjs fn-octets :guard (fn-cpl-payloadp p) :verify-guards nil))
+  (let* ((fn-octets (fn-sccb-append-list (fn-scc-header 0 1 (len p) 0) fn-octets))
+         (fn-octets (fn-sccb-append-list p fn-octets))
+         (fn-octets (fn-sccb-append-list (fn-cpl-trailer p) fn-octets)))
+    fn-octets))
+
+(defun fn-cpl-write-frames (ps fn-octets)
+  (declare (xargs :stobjs fn-octets :guard (fn-cpl-payload-listp ps) :verify-guards nil))
+  (if (consp ps)
+      (let ((fn-octets (fn-cpl-write-frame (car ps) fn-octets)))
+        (fn-cpl-write-frames (cdr ps) fn-octets))
+    fn-octets))
+
+(verify-guards fn-cpl-write-frame
+  :hints (("Goal" :use (fn-cpl-trailer-shape cpl-header-octets)
+           :in-theory (disable fn-cpl-trailer-shape cpl-header-octets))))
+(verify-guards fn-cpl-write-frames)
+
+(defthm fn-cpl-write-frame-is-the-frame
+  (implies (fn-cpl-payloadp p)
+           (equal (fn-cpl-write-frame p fn-octets)
+                  (append fn-octets (fn-cpl-frame p))))
+  :hints (("Goal" :in-theory (e/d (fn-cpl-write-frame fn-cpl-trailer cpl-frame-shape)
+                                  (fn-cpl-frame fn-scc-header fn-scc-seal)))))
+
+(local (defthm cpl-tl-append (equal (true-listp (append a b)) (true-listp b))))
+
+(local
+ (defthm cpl-wf-step
+   (implies (and (true-listp fn-octets) (fn-cpl-payloadp p)
+                 (equal (fn-cpl-write-frames ps (append fn-octets (fn-cpl-frame p)))
+                        (append fn-octets (fn-cpl-frame p) (fn-cpl-frames ps))))
+            (equal (fn-cpl-write-frames (cons p ps) fn-octets)
+                   (append fn-octets (fn-cpl-frames (cons p ps)))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-cpl-write-frames fn-cpl-frames)
+                            (fn-cpl-write-frame fn-cpl-frame fn-cpl-payloadp))
+            :use ((:instance fn-cpl-write-frame-is-the-frame))))))
+
+(local
+ (defthm cpl-wf-frames
+   (implies (and (fn-cpl-payload-listp ps) (true-listp fn-octets))
+            (equal (fn-cpl-write-frames ps fn-octets)
+                   (append fn-octets (fn-cpl-frames ps))))
+   :hints (("Goal" :induct (fn-cpl-write-frames ps fn-octets)
+            :do-not '(generalize eliminate-destructors)
+            :in-theory (disable fn-cpl-write-frame fn-cpl-payloadp))
+           ("Subgoal *1/1"
+            :use ((:instance cpl-wf-step (p (car ps)) (ps (cdr ps))))
+            :in-theory (e/d (fn-cpl-payload-listp)
+                            (cpl-wf-step fn-cpl-write-frame fn-cpl-frame fn-cpl-payloadp))))))
+
+; The buffer after the writer is the buffer followed by the plan's bytes.
+(defthm fn-cpl-write-frames-is-the-plan
+  (implies (and (natp l) (fn-cpl-payload-listp ps) (true-listp fn-octets))
+           (equal (fn-cpl-write-frames ps fn-octets)
+                  (append fn-octets (car (fn-cpl-append-plan l ps)))))
+  :hints (("Goal" :use cpl-wf-frames :in-theory (disable cpl-wf-frames))))
+
+(verify-guards fn-cpl-trailer-words-impl
+  :hints (("Goal" :use (fn-cpl-trailer-shape)
+           :in-theory (e/d (fn-cpl-trailer-word-count) (fn-cpl-trailer-shape fn-cpl-trailer)))))
