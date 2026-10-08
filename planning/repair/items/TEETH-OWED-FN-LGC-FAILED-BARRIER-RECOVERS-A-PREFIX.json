@@ -1,0 +1,15 @@
+{
+ "category": "teeth-owed",
+ "detail": "keystone fn-lgc-failed-barrier-recovers-a-prefix; books/store-log-failed-barrier.lisp:27; statement: (let* ((c (fn-lgc-fence-failed (fn-lgc-of ks))) (bs1 (mv-nth 1 (fn-bs-fsync-file bs ino (cons :eio choices)))) (ks2 (fn-lgk-recover (fn-bs-durable-content bs1 ino) genesis (fn-bs-unit bs) max next-txi ...; owed because it is absent from the teeth gate's protected base and no defteeth declares it (CONVERGE-2 ruling 5: owed, not blocking). Close with state=landed once the defteeth lands.",
+ "file": "books/store-log-failed-barrier.lisp",
+ "id": "TEETH-OWED-FN-LGC-FAILED-BARRIER-RECOVERS-A-PREFIX",
+ "keystone": "fn-lgc-failed-barrier-recovers-a-prefix",
+ "line": 27,
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "TEETH-GATE",
+ "state": "open",
+ "title": "fn-lgc-failed-barrier-recovers-a-prefix is a new registry keystone with no generated teeth: declare (defteeth fn-lgc-failed-barrier-recovers-a-prefix ...) in a tests/acl2 book",
+ "updated": "2026-10-08T00:45:41Z"
+}

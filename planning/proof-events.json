@@ -4425,10 +4425,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnf-family-next-memo-is-aux"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpnf-family-plan-at-of-member"
         },
         {
@@ -5185,10 +5181,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-bpnf-family-next-memo-is-aux"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bpnpf-node-profile-read-of-octets"
         },
         {
@@ -5263,18 +5255,6 @@
     {
       "id": "PRF-136",
       "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-bpnf-family-select-is-aux"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnf-family-select-plans-bound"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnf-family-select-steps-bound"
-        },
         {
           "kind": "theorem",
           "name": "fn-bpnf-family-without-zero-key-is-not-ready"
@@ -16766,11 +16746,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-bpnf-family-next-selects-exactly-the-first-ready-family"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row"
+          "name": "fn-bpfj-next-candidate-is-a-ready-family-representative"
         }
       ]
     },

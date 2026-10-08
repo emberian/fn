@@ -1,0 +1,15 @@
+{
+ "category": "teeth-owed",
+ "detail": "keystone fn-bpfj-next-candidate-is-a-ready-family-representative; books/bp-node-fragment-step.lisp:742; statement: (let* ((held (fn-bpnf-held-list st)) (zero (fn-bpnf-zero-family-keys held)) (r (fn-bpfj-next-candidate st observation tried))) (and (iff r (and (not (fn-bpnf-issued st)) (not (fn-bpnf-waits st)) (fn-f ...; owed because it is absent from the teeth gate's protected base and no defteeth declares it (CONVERGE-2 ruling 5: owed, not blocking). Close with state=landed once the defteeth lands.",
+ "file": "books/bp-node-fragment-step.lisp",
+ "id": "TEETH-OWED-FN-BPFJ-NEXT-CANDIDATE-IS-A-READY-FAMILY-REPRESENTATIVE",
+ "keystone": "fn-bpfj-next-candidate-is-a-ready-family-representative",
+ "line": 742,
+ "notes": [],
+ "owner": "unassigned",
+ "severity": "low",
+ "source": "TEETH-GATE",
+ "state": "open",
+ "title": "fn-bpfj-next-candidate-is-a-ready-family-representative is a new registry keystone with no generated teeth: declare (defteeth fn-bpfj-next-candidate-is-a-ready-family-representative ...) in a tests/acl2 book",
+ "updated": "2026-10-08T00:45:41Z"
+}

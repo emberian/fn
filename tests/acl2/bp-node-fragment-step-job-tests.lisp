@@ -257,3 +257,60 @@
   (equal (car (fn-bpfj-next-candidate *bpfsj-short-state*
                                       *bpnfs-live-observation* nil))
          :ready)))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE teeth (PRF-1051, fn-bpfj-next-candidate-is-a-ready-family-
+; representative).  Reachable positive witness, the complete antecedent and
+; conclusion: *bpnff-state* has no issued family, no wait and a framed next
+; arrival; its one zero-sourced family has p3 as representative, ready; the
+; answer is that family's (:ready ARRIVAL KEY).
+(assert-event
+ (let* ((st *bpnff-state*) (obs *bpnfs-live-observation*)
+        (held (fn-bpnf-held-list st))
+        (zero (fn-bpnf-zero-family-keys held))
+        (r (fn-bpfj-next-candidate st obs nil))
+        (h (fn-bpfj-family-rep (fn-bpn-nth 2 r) held)))
+   (and (not (fn-bpnf-issued st))
+        (not (fn-bpnf-waits st))
+        (fn-frame-natp (fn-bpnf-next-arrival st))
+        (fn-bpfj-any-ready-rep zero st held obs nil)
+        (equal r (list :ready *bpfsj-arrival* *bpfsj-key*))
+        (member-equal *bpfsj-key* zero)
+        (equal h *bpnff-p3*)
+        (equal (fn-bpn-nth 3 h) (fn-bpn-nth 1 r))
+        (fn-bpfj-row-readyp st h obs))))
+; The nil side, hypothesis removed one at a time.  The coverage gate: the short
+; family's representative is not ready and the answer is nil.
+(assert-event
+ (let* ((st *bpfsj-short-state*) (obs *bpnfs-live-observation*)
+        (held (fn-bpnf-held-list st)))
+   (and (not (fn-bpnf-issued st)) (not (fn-bpnf-waits st))
+        (fn-frame-natp (fn-bpnf-next-arrival st))
+        (not (fn-bpfj-row-readyp
+              st (fn-bpfj-family-rep *bpfsj-key* held) obs))
+        (not (fn-bpfj-any-ready-rep (fn-bpnf-zero-family-keys held) st held obs nil))
+        (null (fn-bpfj-next-candidate st obs nil)))))
+; TRIED: the ready family is excluded once tried.
+(assert-event
+ (let* ((st *bpnff-state*) (obs *bpnfs-live-observation*)
+        (held (fn-bpnf-held-list st)))
+   (and (fn-bpfj-row-readyp st (fn-bpfj-family-rep *bpfsj-key* held) obs)
+        (not (fn-bpfj-any-ready-rep (fn-bpnf-zero-family-keys held) st held obs
+                                    (list *bpfsj-key*)))
+        (null (fn-bpfj-next-candidate st obs (list *bpfsj-key*))))))
+; The gate "no family issued": the same rows hold a ready representative under
+; an issued family, yet the answer is nil, so a ready representative alone
+; does not decide the answer.
+(defconst *bpfsj-issued-state* (update-nth 6 '(:issued) *bpnff-state*))
+(assert-event
+ (let* ((st *bpfsj-issued-state*) (obs *bpnfs-live-observation*)
+        (held (fn-bpnf-held-list st)))
+   (and (fn-bpnf-issued st)
+        (fn-bpfj-any-ready-rep (fn-bpnf-zero-family-keys held) st held obs nil)
+        (null (fn-bpfj-next-candidate st obs nil)))))
+(must-fail-checked
+ (assert-event
+  (let* ((st *bpfsj-issued-state*) (obs *bpnfs-live-observation*)
+         (held (fn-bpnf-held-list st)))
+    (iff (fn-bpfj-next-candidate st obs nil)
+         (fn-bpfj-any-ready-rep (fn-bpnf-zero-family-keys held) st held obs nil)))))

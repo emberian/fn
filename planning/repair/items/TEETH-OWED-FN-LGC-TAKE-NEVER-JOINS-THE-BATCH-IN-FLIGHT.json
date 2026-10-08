@@ -1,0 +1,15 @@
+{
+ "category": "teeth-owed",
+ "detail": "keystone fn-lgc-take-never-joins-the-batch-in-flight; books/store-log-kernel-concrete.lisp:811; statement: (let ((a (fn-lgc-take c record txid count octets bmax omax unit))) (and (equal (fn-lgc-inflight (cadr a)) (fn-lgc-inflight c)) (implies (equal (car a) :taken) (equal (fn-lgc-batch (cadr a)) (append (t ...; owed because it is absent from the teeth gate's protected base and no defteeth declares it (CONVERGE-2 ruling 5: owed, not blocking). Close with state=landed once the defteeth lands.",
+ "file": "books/store-log-kernel-concrete.lisp",
+ "id": "TEETH-OWED-FN-LGC-TAKE-NEVER-JOINS-THE-BATCH-IN-FLIGHT",
+ "keystone": "fn-lgc-take-never-joins-the-batch-in-flight",
+ "line": 811,
+ "notes": [],
+ "owner": "per-record-state",
+ "severity": "low",
+ "source": "TEETH-GATE",
+ "state": "open",
+ "title": "fn-lgc-take-never-joins-the-batch-in-flight is a new registry keystone with no generated teeth: declare (defteeth fn-lgc-take-never-joins-the-batch-in-flight ...) in a tests/acl2 book",
+ "updated": "2026-10-08T00:45:41Z"
+}

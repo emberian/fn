@@ -5133,7 +5133,6 @@
         "fn-bpfw-exact-canvas-reassembles",
         "fn-bpfs-plan-fragments-reassemble-uncapped",
         "fn-bpnf-fragment-query-is-reference",
-        "fn-bpnf-family-next-memo-is-aux",
         "fn-bpnf-family-plan-at-of-member",
         "fn-bpfw-sweep-is-view",
         "fn-bpfw-cell-at-of-sort",
@@ -5655,7 +5654,6 @@
         "fn-bpa-encoding-bound",
         "fn-bpnpf-restart-names-held-beyond-profile",
         "fn-bpnf-family-without-offset-zero-is-not-ready",
-        "fn-bpnf-family-next-memo-is-aux",
         "fn-bpnpf-node-profile-read-of-octets",
         "fn-bpnpf-node-profile-read-of-older",
         "fn-bpnpf-node-profile-read-is-valid",
@@ -5788,9 +5786,6 @@
       ],
       "progress_note": "Lane bp-lifecycle-5 (2026-09-26, wave 2), PKT-294 item 1, PKT-308. See the record.",
       "events": [
-        "fn-bpnf-family-select-is-aux",
-        "fn-bpnf-family-select-plans-bound",
-        "fn-bpnf-family-select-steps-bound",
         "fn-bpnf-family-without-zero-key-is-not-ready",
         "fn-bpnf-active-fragment-is-candidate",
         "fn-bpnf-zero-family-keys-bound",
@@ -17598,8 +17593,7 @@
       ],
       "progress_note": "Lane decision-keystones-6: the bp book entries, one two-sided keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode).",
       "events": [
-        "fn-bpnf-family-next-selects-exactly-the-first-ready-family",
-        "fn-bpnf-family-next-aux-answers-the-first-ready-row"
+        "fn-bpfj-next-candidate-is-a-ready-family-representative"
       ]
     },
     {

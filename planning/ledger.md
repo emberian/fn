@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3092 |
 | Certification roots in the Makefile | 2606 |
 | Books inside the root closure | 2937 |
-| `defthm` and `defthmd` events | 41881 |
-| `defun` events | 26446 |
+| `defthm` and `defthmd` events | 41877 |
+| `defun` events | 26436 |
 | Functions with verified guards | 4173 |
-| Functions declared `:verify-guards nil` and never verified | 3468 |
+| Functions declared `:verify-guards nil` and never verified | 3458 |
 | Functions left at the default with an explicit guard | 14503 |
 | Functions left at the default with no guard | 4302 |
-| `assert-event` checks | 28372 |
+| `assert-event` checks | 28367 |
 | `must-fail` checks | 2803 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
@@ -290,7 +290,7 @@ that `make certify` requests.
 | `books/bp-node-fragment-jobs.lisp` | root | 29 | 4 | 0/0/4/0 | 0 | 0 | 0 |
 | `books/bp-node-fragment-plan.lisp` | root | 4 | 4 | 2/2/0/0 | 0 | 0 | 1 |
 | `books/bp-node-fragment-replacement.lisp` | root | 3 | 7 | 1/2/4/0 | 0 | 0 | 0 |
-| `books/bp-node-fragment-step.lisp` | root | 35 | 28 | 0/23/5/0 | 0 | 0 | 0 |
+| `books/bp-node-fragment-step.lisp` | root | 31 | 18 | 0/13/5/0 | 0 | 0 | 0 |
 | `books/bp-node-host-machine.lisp` | root | 8 | 4 | 1/0/3/0 | 0 | 0 | 0 |
 | `books/bp-node-host-sequence.lisp` | closure | 7 | 5 | 0/0/5/0 | 0 | 0 | 0 |
 | `books/bp-node-host-transfer.lisp` | closure | 2 | 5 | 0/0/5/0 | 0 | 0 | 0 |
@@ -2074,8 +2074,8 @@ that `make certify` requests.
 | `tests/acl2/bp-node-fragment-jobs-tests.lisp` | root | 0 | 5 | 0/4/1/0 | 17 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-plan-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 10 | 1 | 0 |
 | `tests/acl2/bp-node-fragment-replacement-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 1 | 0 |
-| `tests/acl2/bp-node-fragment-step-job-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 25 | 1 | 0 |
-| `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 31 | 3 | 0 |
+| `tests/acl2/bp-node-fragment-step-job-tests.lisp` | root | 0 | 6 | 0/6/0/0 | 29 | 2 | 0 |
+| `tests/acl2/bp-node-fragment-step-tests.lisp` | root | 0 | 4 | 0/4/0/0 | 22 | 2 | 0 |
 | `tests/acl2/bp-node-host-machine-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 8 | 4 | 0 |
 | `tests/acl2/bp-node-host-sequence-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 5 | 0 | 0 |
 | `tests/acl2/bp-node-host-tests.lisp` | root | 0 | 1 | 0/0/1/0 | 27 | 0 | 0 |

@@ -2613,15 +2613,15 @@
     "books": 3092,
     "books_in_root_closure": 2937,
     "roots": 2606,
-    "theorems": 41881,
-    "functions": 26446,
-    "assert_events": 28372,
+    "theorems": 41877,
+    "functions": 26436,
+    "assert_events": 28367,
     "must_fails": 2803,
     "prover_refusals": 0,
     "encapsulates": 257,
     "guards": {
       "verified": 4173,
-      "declared-off": 3468,
+      "declared-off": 3458,
       "default-guarded": 14503,
       "default-unguarded": 4302
     },
@@ -8223,7 +8223,7 @@
         "default-guarded": 0,
         "default-unguarded": 0
       },
-      "verify_guards_events": 61,
+      "verify_guards_events": 56,
       "assert_events": 0,
       "must_fails": 0,
       "prover_refusals": 0,
@@ -8354,11 +8354,11 @@
       "book": "books/bp-node-fragment-step.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 35,
-      "functions": 28,
+      "theorems": 31,
+      "functions": 18,
       "guards": {
         "verified": 0,
-        "declared-off": 23,
+        "declared-off": 13,
         "default-guarded": 5,
         "default-unguarded": 0
       },
@@ -60645,10 +60645,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 25,
-      "must_fails": 1,
+      "assert_events": 29,
+      "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 6,
+      "defconsts": 7,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
@@ -60672,10 +60672,10 @@
         "default-unguarded": 0
       },
       "verify_guards_events": 0,
-      "assert_events": 31,
-      "must_fails": 3,
+      "assert_events": 22,
+      "must_fails": 2,
       "prover_refusals": 0,
-      "defconsts": 21,
+      "defconsts": 16,
       "defmacros": 0,
       "encapsulates": 0,
       "includes": [
