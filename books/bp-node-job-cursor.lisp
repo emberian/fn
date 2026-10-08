@@ -394,6 +394,10 @@
   :hints (("Goal" :induct (fn-bpnjc-first-held rest peer routing offered)
            :in-theory (disable fn-bpnjc-candp fn-bpnj-candidatep))))
 
+(local (defthm fn-bpnjc-subsetp-cons-right
+  (implies (subsetp-equal x y)
+           (subsetp-equal x (cons a y)))))
+
 (defthm fn-bpnjc-subsetp-reflexive
   (subsetp-equal x x))
 

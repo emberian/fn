@@ -604,8 +604,11 @@
    :breaks ((trust (:assumption fn-dkt-assume-exec)))
    :mutations ((two (:conclusion (equal x 2)) () :fault "Replace one with two.")))
  :unchecked "An executable function is not an encapsulated signature.")
+(defthm fn-dkt-unrelated-assumption-test
+  (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y)))
+  :rule-classes nil)
 (must-fail-checked
- (defteeth fn-dkt-add-adds-source
+ (defteeth fn-dkt-unrelated-assumption-test
    :claim (((nat (natp x)) (small (< x 10))) (<= (fix y) (fn-dkt-add x y)))
    :witness ((x 3) (y 4))
    :breaks ((nat (:assumption fn-dkt-assume)) (small ((x 10))))
@@ -621,8 +624,11 @@
  (equal (fn-dk-get :removals
                   (cdr (assoc-eq 'fn-dkt-assumed-one (table-alist 'fn-teeth (w state)))))
         '((trust :assumption))))
+(defthm fn-dkt-nongenerated-instance-test
+  (implies (and (natp x) (< x 10)) (<= (fix y) (fn-dkt-add x y)))
+  :rule-classes nil)
 (must-fail-checked
- (defteeth fn-dkt-add-adds-source
+ (defteeth fn-dkt-nongenerated-instance-test
    :claim (((nat (natp x)) (small (< x 10))) (<= (fix y) (fn-dkt-add x y)))
    :instances (fn-dkt-add fn-dkt-assume-exec)
    :witness ((x 3) (y 4))
