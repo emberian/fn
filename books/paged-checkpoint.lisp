@@ -42,6 +42,7 @@
 (include-book "store-checkpoint-buffer")
 (include-book "def-representation")
 (include-book "def-representation-tree")
+(include-book "statement-recover-stream")
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "std/lists/append" :dir :system))
 
@@ -150,10 +151,115 @@
                   (fn-record-obligation-id w) (fn-record-content-subject w)
                   (fn-record-release-evidence w) (fn-record-charge w) (fn-record-stamp w)))
 
-(defun fn-pck-meta (w)
+;; The fold state a row's metadata is taken at.  The held row of a record
+;; (facts and context decided from its payload under the keyring and generation
+;; in force) is what full recovery interns (books/statement-recover-stream.lisp
+;; fn-ssr-intern-step); the tape carries it, handle 0, so the open builds the
+;; row without reading the payload.  PCK-SSR1 is that step on the empty arena
+;; (count 0), a model function only.
+(defun fn-pck-seed () (declare (xargs :guard t)) (fn-ssr-seed (fn-stxk-initial-context 0)))
+
+(defun pck-ssr1 (st w)
+  ; The identity-fold step of one event from the fold state ST, with the row it
+  ; interns at handle 0: fn-ssr-intern-step (:resident) on the empty arena,
+  ; written without the arena (pck-ssr1-is-the-step).  :bad off a state.
+  (declare (xargs :guard t :verify-guards nil))
+  (if (not (fn-ssr-statep st))
+      :bad
+    (let ((row (cond ((fn-record-p w) (fn-intern-row-at w (fn-ssr-at 1 st) (fn-ssr-at 2 st) 0))
+                     ((fn-stxa-p w)
+                      (let ((a (fn-replay-composite-record w)))
+                        (if (fn-record-p a)
+                            (fn-hstxa-make w (fn-intern-row-at a (fn-ssr-at 1 st) (fn-ssr-at 2 st) 0))
+                          :bad)))
+                     ((fn-wire-event-p w) w)
+                     (t :bad))))
+      (if (eq row :bad)
+          :bad
+        (let ((identity (fn-replay-identity-step (fn-ssr-at 3 st) row)))
+          (if (equal (fn-stxk-context-kind identity) :ok)
+              (fn-ssr-publish st row w identity)
+            :bad))))))
+
+(defun fn-pck-st-of (st recs)
+  ; The fold state after RECS from ST (:bad once the identity fold faults).
+  (if (atom recs) st (fn-pck-st-of (pck-ssr1 st (car recs)) (cdr recs))))
+
+(defun fn-pck-row0 (st w)
+  (fn-ag-car (fn-ssr-at 0 (pck-ssr1 st w))))
+
+(defthm pck-publish-rows
+  (implies (fn-ssr-statep acc)
+           (equal (fn-ssr-at 0 (fn-ssr-publish acc row wire identity))
+                  (cons row (fn-ssr-at 0 acc))))
+  :hints (("Goal" :in-theory (enable fn-ssr-publish fn-ssr-state fn-ssr-at))))
+
+(defthm pck-ssr1-bad (equal (pck-ssr1 :bad w) :bad)
+  :hints (("Goal" :in-theory (enable pck-ssr1 fn-ssr-statep))))
+
+(defthm pck-st-of-bad (equal (fn-pck-st-of :bad recs) :bad))
+
+(defthm pck-car-of-cat-intern-list
+  (equal (car (fn-cat-intern-list w keyring generation nil))
+         (fn-intern-row-at w keyring generation 0))
+  :hints (("Goal" :use ((:instance fn-cat-intern-list-is-row-at-count (fn-arena nil)))
+           :in-theory (e/d (fn-arena-count-is-len) (fn-cat-intern-list fn-intern-row-at fn-cat-intern-list-is-row-at-count)))))
+
+(defthm pck-ssr1-is-the-step
+  ; The model step is the host's fold step on the empty arena.
+  (implies (fn-ssr-statep st)
+           (equal (pck-ssr1 st w)
+                  (mv-nth 0 (fn-ssr-intern-step st (list w) nil nil :resident nil nil))))
+  :hints (("Goal" :in-theory (e/d (pck-ssr1 fn-ssr-intern-step fn-intern-event pck-car-of-cat-intern-list)
+                                  (fn-ssr-publish fn-replay-identity-step fn-ssr-at fn-cat-intern-list
+                                   fn-intern-row-at)))))
+
+(defthm pck-ssr1-statep
+  (implies (fn-ssr-statep st)
+           (or (equal (pck-ssr1 st w) :bad) (fn-ssr-statep (pck-ssr1 st w))))
+  :hints (("Goal" :use ((:instance fn-ssr-intern-step-preserves-statep (acc st) (ws (list w)) (rs nil) (ps nil)
+                                   (mode :resident) (dicts nil) (fn-arena nil)))
+           :in-theory (disable fn-ssr-intern-step-preserves-statep))))
+
+(defthm pck-st-of-statep
+  (implies (fn-ssr-statep st)
+           (or (equal (fn-pck-st-of st recs) :bad) (fn-ssr-statep (fn-pck-st-of st recs))))
+  :hints (("Goal" :induct (fn-pck-st-of st recs))
+          ("Subgoal *1/2" :use ((:instance pck-ssr1-statep (w (car recs)))))))
+
+(defthm pck-row0-is-the-row
+  (implies (and (fn-record-p w) (fn-ssr-statep st) (not (equal (pck-ssr1 st w) :bad)))
+           (equal (fn-pck-row0 st w)
+                  (fn-intern-row-at w (fn-ssr-at 1 st) (fn-ssr-at 2 st) 0)))
+  :hints (("Goal" :in-theory (e/d (pck-ssr1 fn-pck-row0 pck-publish-rows)
+                                  (fn-ssr-publish fn-replay-identity-step fn-ssr-at fn-intern-row-at pck-ssr1-is-the-step)))))
+
+(defthm pck-statep-generation
+  (implies (fn-ssr-statep acc) (natp (fn-ssr-at 2 acc)))
+  :hints (("Goal" :in-theory (enable fn-ssr-statep))))
+
+(defthm pck-row0-wire
+  (implies (and (fn-record-p w) (fn-ssr-statep st) (not (equal (pck-ssr1 st w) :bad)))
+           (and (fn-held-p (fn-pck-row0 st w))
+                (equal (fn-held-wire (fn-pck-row0 st w) (fn-record-payload w)) w)))
+  :hints (("Goal" :in-theory (e/d (fn-intern-row-at fn-held-wire) (fn-pck-row0 fn-held-p pck-row0-is-the-row fn-held-wire-of-wire-record))
+           :use (pck-row0-is-the-row
+                 (:instance fn-held-p-of-intern-list (keyring (fn-ssr-at 1 st)) (generation (fn-ssr-at 2 st)) (fn-arena nil))
+                 (:instance fn-cat-intern-list-is-row-at-count (keyring (fn-ssr-at 1 st)) (generation (fn-ssr-at 2 st)) (fn-arena nil))
+                 (:instance fn-held-wire-of-wire-record (w w)) (:instance pck-statep-generation (acc st))
+                 (:instance fn-record-accessors-of-held-make
+                   (sequence (fn-record-sequence w)) (txid (fn-record-txid w)) (generation (fn-record-generation w))
+                   (msgid (fn-record-msgid w)) (payload 0) (groups (fn-record-groups w)) (obligation-id (fn-record-obligation-id w))
+                   (content-subject (fn-record-content-subject w)) (release-evidence (fn-record-release-evidence w))
+                   (charge (fn-record-charge w)) (stamp (fn-record-stamp w)) (facts (fn-held-facts-of (fn-record-payload w)))
+                   (context (fn-held-context-of (fn-record-payload w) (fn-ssr-at 1 st) (fn-ssr-at 2 st))) (numbers nil) (withdrawn nil))))))
+
+(in-theory (disable fn-pck-row0 pck-ssr1))
+
+(defun fn-pck-meta (w st)
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-record-p w)
-      (list :r (fn-pck-record-with-payload w nil))
+      (list :r (fn-pck-row0 st w))
     (list :o w)))
 
 (defun fn-pck-payload (w)
@@ -163,16 +269,16 @@
 (defun fn-pck-join (meta payload)
   ; The event METADATA and PAYLOAD denote.
   (declare (xargs :guard t :verify-guards nil))
-  (if (and (consp meta) (eq (car meta) :r) (consp (cdr meta)) (fn-record-p (cadr meta)))
-      (fn-pck-record-with-payload (cadr meta) payload)
+  (if (and (consp meta) (eq (car meta) :r) (consp (cdr meta)) (fn-held-p (cadr meta)))
+      (fn-held-wire (cadr meta) payload)
     (if (and (consp meta) (consp (cdr meta))) (cadr meta) nil)))
 
-(defun fn-pck-enc-row (w off)
+(defun fn-pck-enc-row (w off st)
   ; The row of event W whose payload frame starts at file offset OFF: the ref
   ; to the payload (37 octets into the frame) and the frame's trailer words.
   (declare (xargs :guard t :verify-guards nil))
   (let ((tw (fn-cpl-trailer-words (fn-pck-payload w))))
-    (list (fn-scc-program (fn-pck-meta w)) (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))
+    (list (fn-scc-program (fn-pck-meta w st)) (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))
           (car tw) (cadr tw) (caddr tw) (cadddr tw))))
 
 (defun fn-pck-plen (recs base)
@@ -182,15 +288,16 @@
       base
     (fn-pck-plen (cdr recs) (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs))))))))
 
-(defun fn-pck-rows-from (recs base)
+(defun fn-pck-rows-from (recs base st)
   (declare (xargs :guard (natp base) :verify-guards nil))
   (if (atom recs)
       nil
-    (cons (fn-pck-enc-row (car recs) base)
+    (cons (fn-pck-enc-row (car recs) base st)
           (fn-pck-rows-from (cdr recs)
-                            (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs)))))))))
+                            (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs)))))
+                            (pck-ssr1 st (car recs))))))
 
-(defun fn-pck-rows (recs) (declare (xargs :guard t :verify-guards nil)) (fn-pck-rows-from recs 0))
+(defun fn-pck-rows (recs) (declare (xargs :guard t :verify-guards nil)) (fn-pck-rows-from recs 0 (fn-pck-seed)))
 
 (defun fn-pck-enc-root (tree)
   ; The root row: the root tree as metadata, no payload.
@@ -239,20 +346,23 @@
   (declare (xargs :guard t :verify-guards nil))
   (< (fn-pck-plen recs 0) 18446744073709551616))
 
-(defun fn-pck-sccb-listp (recs)
+(defun fn-pck-sccb-listp (recs st)
   (declare (xargs :guard t :verify-guards nil))
-  ; Every event and its metadata tree are encodable trees.
+  ; Every event and its metadata tree (at the fold state ST) are encodable trees.
   (if (atom recs)
       (null recs)
-    (and (fn-sccb-treep (car recs)) (fn-sccb-treep (fn-pck-meta (car recs)))
-         (fn-pck-sccb-listp (cdr recs)))))
+    (and (fn-sccb-treep (car recs)) (fn-sccb-treep (fn-pck-meta (car recs) st))
+         (fn-pck-sccb-listp (cdr recs) (pck-ssr1 st (car recs))))))
 
 (defun fn-pck-recordsp (configs recs)
   ; Every record and the four fold roots are encodable trees: the premise of
   ; fn-sct-decode-file-of-file-is-the-capture (fn-sct-tables-treep), made
-  ; the stronger fn-sccb-treep the catalog's row codec uses.
+  ; the stronger fn-sccb-treep the catalog's row codec uses; the identity fold
+  ; over RECS from the initial context does not fault (PCK-OPEN-INTERN-NOT-BAD,
+  ; owed to the history).
   (declare (xargs :guard t :verify-guards nil))
-  (and (fn-pck-sccb-listp recs) (fn-pck-plen-okp recs)
+  (and (fn-pck-sccb-listp recs (fn-pck-seed)) (fn-pck-plen-okp recs)
+       (not (equal (fn-pck-st-of (fn-pck-seed) recs) :bad))
        (fn-sccb-treep (fn-pck-root-tree configs recs))))
 
 (defun fn-pck-zero-pages (n)
@@ -292,34 +402,35 @@
   (declare (xargs :guard t :verify-guards nil))
   (append (adt-tp-number 0 (fn-pck-root-pages-of configs (append prefix delta)))
           (pck-shift *fn-pck-root-pages*
-                     (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows-from delta (fn-pck-plen prefix 0))))))
+                     (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows-from delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix))))))
 
-(defun fn-pck-dirty-at (cnt tail root-pages delta base)
+(defun fn-pck-dirty-at (cnt tail root-pages delta base st)
   ; fn-pck-dirty from the tape's summary (CNT words, TAIL its last partial
   ; page) and the root pages; no prefix list.
   (declare (xargs :guard t :verify-guards nil))
   (append (adt-tp-number 0 root-pages)
           (pck-shift *fn-pck-root-pages*
-                     (fn-pck-row-extend-dirty-at cnt tail (fn-pck-rows-from delta base)))))
+                     (fn-pck-row-extend-dirty-at cnt tail (fn-pck-rows-from delta base st)))))
 
 (defthm fn-pck-dirty-at-is-fn-pck-dirty
   (let ((w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix))))
     (implies (and (equal cnt (len w))
                   (equal tail (nthcdr (* *pgs-page-words* (floor (len w) *pgs-page-words*)) w))
                   (equal base (fn-pck-plen prefix 0))
+                  (equal st (fn-pck-st-of (fn-pck-seed) prefix))
                   (equal root-pages (fn-pck-root-pages-of configs (append prefix delta))))
-             (equal (fn-pck-dirty-at cnt tail root-pages delta base)
+             (equal (fn-pck-dirty-at cnt tail root-pages delta base st)
                     (fn-pck-dirty configs prefix delta))))
   :hints (("Goal" :in-theory (e/d (fn-pck-dirty-at fn-pck-dirty)
                                   (fn-pck-row-extend-dirty-at fn-pck-row-extend-dirty
                                    fn-pck-root-pages-of))
            :use ((:instance fn-pck-row-extend-dirty-at-is-extend-dirty
-                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows-from delta (fn-pck-plen prefix 0))))))))
+                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows-from delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix))))))))
 
-(defun fn-pck-delta-page-bound (delta base)
+(defun fn-pck-delta-page-bound (delta base st)
   ; The pages the delta's own words take, and the one page it shares with the tape before it.
   (declare (xargs :guard t :verify-guards nil))
-  (+ 1 (fn-pck-row-pool-pages-of-rows (fn-pck-rows-from delta base))))
+  (+ 1 (fn-pck-row-pool-pages-of-rows (fn-pck-rows-from delta base st))))
 
 ; --- the rows are a well-formed sequence
 
@@ -336,14 +447,25 @@
   (equal (fn-pck-plen (append a b) base) (fn-pck-plen b (fn-pck-plen a base)))
   :hints (("Goal" :induct (fn-pck-plen a base))))
 
+(defun pck-ind3 (a base st)
+  (if (atom a)
+      (list base st)
+    (pck-ind3 (cdr a) (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car a))))) (pck-ssr1 st (car a)))))
+
+(defthm pck-st-of-append
+  (equal (fn-pck-st-of st (append a b)) (fn-pck-st-of (fn-pck-st-of st a) b))
+  :hints (("Goal" :induct (fn-pck-st-of st a))))
+
 (defthm pck-rows-from-of-append
-  (equal (fn-pck-rows-from (append a b) base)
-         (append (fn-pck-rows-from a base) (fn-pck-rows-from b (fn-pck-plen a base))))
-  :hints (("Goal" :induct (fn-pck-plen a base))))
+  (equal (fn-pck-rows-from (append a b) base st)
+         (append (fn-pck-rows-from a base st)
+                 (fn-pck-rows-from b (fn-pck-plen a base) (fn-pck-st-of st a))))
+  :hints (("Goal" :induct (pck-ind3 a base st))))
 
 (defthm pck-rows-of-append
   (equal (fn-pck-rows (append a b))
-         (append (fn-pck-rows a) (fn-pck-rows-from b (fn-pck-plen a 0))))
+         (append (fn-pck-rows a)
+                 (fn-pck-rows-from b (fn-pck-plen a 0) (fn-pck-st-of (fn-pck-seed) a))))
   :hints (("Goal" :in-theory (enable fn-pck-rows))))
 
 (defthm pck-plen-monotone
@@ -357,11 +479,11 @@
   :rule-classes :type-prescription)
 
 (defthm pck-row-ok
-  (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp off) (< (+ 37 off) 18446744073709551616)
+  (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp off) (< (+ 37 off) 18446744073709551616)
                 (< (len (fn-pck-payload w)) 18446744073709551616))
-           (adt-rec-p '((:octets) (:u64) (:u64) (:u64) (:u64) (:u64) (:u64)) (fn-pck-enc-row w off)))
+           (adt-rec-p '((:octets) (:u64) (:u64) (:u64) (:u64) (:u64) (:u64)) (fn-pck-enc-row w off st)))
   :hints (("Goal" :in-theory (e/d (adt-rec-p adt-val-okp fn-pck-enc-row) (fn-pck-meta fn-pck-payload fn-sccb-treep))
-           :use (fn-cpl-trailer-words-shape (:instance pck-program-octetsp (x (fn-pck-meta w)))))))
+           :use (fn-cpl-trailer-words-shape (:instance pck-program-octetsp (x (fn-pck-meta w st)))))))
 
 (defthm pck-plen-ge-frame
   (implies (consp recs) (<= (+ base 69) (fn-pck-plen recs base)))
@@ -369,23 +491,23 @@
   :hints (("Goal" :induct (fn-pck-plen recs base))))
 
 (defthm pck-rows-from-ap
-  (implies (and (fn-pck-sccb-listp recs) (natp base)
+  (implies (and (fn-pck-sccb-listp recs st) (natp base)
                 (< (fn-pck-plen recs base) 18446744073709551616))
-           (fn-pck-row$ap (fn-pck-rows-from recs base)))
-  :hints (("Goal" :induct (fn-pck-plen recs base)
+           (fn-pck-row$ap (fn-pck-rows-from recs base st)))
+  :hints (("Goal" :induct (pck-ind3 recs base st)
            :in-theory (e/d (fn-pck-row$ap adt-seq-p)
                            (fn-pck-meta fn-pck-payload fn-sccb-treep fn-pck-enc-row pck-row-ok))
-           :expand ((fn-pck-rows-from recs base) (fn-pck-plen recs base) (fn-pck-sccb-listp recs)))
-          ("Subgoal *1/2" :use ((:instance pck-row-ok (w (car recs)) (off base))
+           :expand ((fn-pck-rows-from recs base st) (fn-pck-plen recs base) (fn-pck-sccb-listp recs st)))
+          ("Subgoal *1/2" :use ((:instance pck-row-ok (w (car recs)) (off base) (st st))
                                 (:instance pck-plen-ge-frame (recs (cdr recs))
                                            (base (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs)))))))
                                 (:instance pck-plen-monotone (recs (cdr recs))
                                            (base (+ base (fn-cpl-frame-octets (len (fn-pck-payload (car recs)))))))))))
 
 (defthm pck-rows-ap
-  (implies (and (fn-pck-sccb-listp recs) (fn-pck-plen-okp recs))
+  (implies (and (fn-pck-sccb-listp recs (fn-pck-seed)) (fn-pck-plen-okp recs))
            (fn-pck-row$ap (fn-pck-rows recs)))
-  :hints (("Goal" :in-theory (enable fn-pck-rows) :use ((:instance pck-rows-from-ap (base 0))))))
+  :hints (("Goal" :in-theory (enable fn-pck-rows) :use ((:instance pck-rows-from-ap (base 0) (st (fn-pck-seed)))))))
 
 (defthm pck-len-zero-pages
   (equal (len (fn-pck-zero-pages n)) (nfix n)))
@@ -410,8 +532,9 @@
 
 (defthm pck-sccb-listp-of-append
   (implies (true-listp a)
-           (equal (fn-pck-sccb-listp (append a b))
-                  (and (fn-pck-sccb-listp a) (fn-pck-sccb-listp b)))))
+           (equal (fn-pck-sccb-listp (append a b) st)
+                  (and (fn-pck-sccb-listp a st) (fn-pck-sccb-listp b (fn-pck-st-of st a)))))
+  :hints (("Goal" :induct (fn-pck-st-of st a))))
 
 (defthm pck-true-listp-pages
   (true-listp (adt-tp-pages w))
@@ -439,7 +562,7 @@
 
 (defthm fn-pck-dirty-is-the-delta
   (implies (and (true-listp prefix) (true-listp delta)
-                (fn-pck-sccb-listp (append prefix delta))
+                (fn-pck-sccb-listp (append prefix delta) (fn-pck-seed))
                 (fn-pck-plen-okp (append prefix delta)))
            (equal (pgs-apply-dirty (fn-pck-pages configs prefix) (fn-pck-dirty configs prefix delta))
                   (fn-pck-pages configs (append prefix delta))))
@@ -449,14 +572,14 @@
                             (r0 (fn-pck-root-pages-of configs prefix))
                             (r1 (fn-pck-root-pages-of configs (append prefix delta)))
                             (t0 (fn-pck-row-pages-of (fn-pck-rows prefix)))
-                            (e (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows-from delta (fn-pck-plen prefix 0)))))
+                            (e (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows-from delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix)))))
                  (:instance fn-pck-row-pages-of-extend-is-apply-dirty
-                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows-from delta (fn-pck-plen prefix 0))))
+                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows-from delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix))))
                  (:instance pck-rows-ap (recs prefix))
-                 (:instance pck-rows-from-ap (recs delta) (base (fn-pck-plen prefix 0)))
+                 (:instance pck-rows-from-ap (recs delta) (base (fn-pck-plen prefix 0)) (st (fn-pck-st-of (fn-pck-seed) prefix)))
                  (:instance pck-plen-of-append (a prefix) (b delta) (base 0))
                  (:instance pck-plen-monotone (recs delta) (base (fn-pck-plen prefix 0)))
-                 (:instance pck-sccb-listp-of-append (a prefix) (b delta))))))
+                 (:instance pck-sccb-listp-of-append (a prefix) (b delta) (st (fn-pck-seed)))))))
 
 ; -----------------------------------------------------------------------------
 ; 4. PCK-BOUND
@@ -464,12 +587,12 @@
 (defthm fn-pck-dirty-bound
   ; No term in (len prefix): the K root pages and the delta's own.
   (<= (len (fn-pck-dirty configs prefix delta))
-      (+ *fn-pck-root-pages* (fn-pck-delta-page-bound delta (fn-pck-plen prefix 0))))
+      (+ *fn-pck-root-pages* (fn-pck-delta-page-bound delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-pck-dirty fn-pck-delta-page-bound)
                            (fn-pck-row-extend-dirty-bound))
            :use ((:instance fn-pck-row-extend-dirty-bound
-                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows-from delta (fn-pck-plen prefix 0))))))))
+                            (a (fn-pck-rows prefix)) (xs (fn-pck-rows-from delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix))))))))
 
 ; -----------------------------------------------------------------------------
 ; 5. Reading the image back.
@@ -504,10 +627,10 @@
 
 (defthm pck-join-of-meta
   ; Joining an event's metadata with its own payload gives the event back.
-  (equal (fn-pck-join (fn-pck-meta w) (fn-pck-payload w)) w)
-  :hints (("Goal" :in-theory (e/d (fn-pck-join fn-pck-meta fn-pck-payload) (fn-pck-record-with-payload))
-           :use (pck-record-with-payload-facts
-                 (:instance pck-record-with-payload-facts (p (fn-record-payload w)))))))
+  (implies (and (fn-ssr-statep st) (not (equal (pck-ssr1 st w) :bad)))
+           (equal (fn-pck-join (fn-pck-meta w st) (fn-pck-payload w)) w))
+  :hints (("Goal" :in-theory (e/d (fn-pck-join fn-pck-meta fn-pck-payload) (pck-row0-wire))
+           :use (pck-row0-wire))))
 
 (defthm pck-dec-tree-of-program
   (implies (fn-sccb-treep x)
@@ -562,25 +685,39 @@
            :in-theory (e/d (fn-pck-resolvesp) (fn-pck-payload fn-cpl-resolve fn-cpl-ref)))))
 
 (defthm pck-dec-row-of-enc-row
-  (implies (and (fn-sccb-treep (fn-pck-meta w)) (natp off)
+  (implies (and (fn-sccb-treep (fn-pck-meta w st)) (natp off)
+                (fn-ssr-statep st) (not (equal (pck-ssr1 st w) :bad))
                 (equal (fn-cpl-resolve (fn-cpl-ref (+ *fn-cpl-header-octets* off) (len (fn-pck-payload w))) file)
                        (fn-pck-payload w)))
-           (equal (fn-pck-dec-row (fn-pck-enc-row w off) file) w))
+           (equal (fn-pck-dec-row (fn-pck-enc-row w off st) file) w))
   :hints (("Goal" :in-theory (e/d (fn-pck-dec-row fn-pck-enc-row) (fn-pck-join fn-pck-meta fn-pck-payload pck-join-of-meta))
            :use (pck-join-of-meta))))
 
+(defthm pck-ssr1-not-bad
+  (implies (not (equal (fn-pck-st-of st (cons a r)) :bad))
+           (not (equal (pck-ssr1 st a) :bad)))
+  :hints (("Goal" :in-theory (disable pck-st-of-bad) :use ((:instance pck-st-of-bad (recs r))))))
+
 (defthm pck-dec-rows-of-rows-from
-  (implies (and (fn-pck-sccb-listp recs) (natp base) (fn-pck-resolvesp recs base file))
-           (equal (fn-pck-dec-rows (fn-pck-rows-from recs base) file) recs))
-  :hints (("Goal" :induct (fn-pck-plen recs base)
+  (implies (and (fn-pck-sccb-listp recs st) (natp base) (fn-pck-resolvesp recs base file)
+                (fn-ssr-statep st) (not (equal (fn-pck-st-of st recs) :bad)))
+           (equal (fn-pck-dec-rows (fn-pck-rows-from recs base st) file) recs))
+  :hints (("Goal" :induct (pck-ind3 recs base st)
            :in-theory (e/d (fn-pck-dec-rows fn-pck-rows-from fn-pck-sccb-listp fn-pck-resolvesp)
-                           (fn-pck-dec-row fn-pck-enc-row fn-pck-meta fn-pck-payload)))))
+                           (fn-pck-dec-row fn-pck-enc-row fn-pck-meta fn-pck-payload pck-st-of-statep)))
+          ("Subgoal *1/2" :use ((:instance pck-st-of-statep (st (pck-ssr1 st (car recs))) (recs (cdr recs)))
+                                (:instance pck-ssr1-statep (w (car recs)))
+                                (:instance pck-ssr1-bad (w (car recs)))
+                                (:instance pck-st-of-bad (recs (cdr recs)))
+                                (:instance pck-ssr1-not-bad (a (car recs)) (r (cdr recs)))
+                                (:instance pck-dec-row-of-enc-row (w (car recs)) (off base))))))
 
 (defthm pck-dec-rows-of-rows
-  (implies (and (fn-pck-sccb-listp recs) (fn-pck-resolvesp recs 0 file))
+  (implies (and (fn-pck-sccb-listp recs (fn-pck-seed)) (fn-pck-resolvesp recs 0 file)
+                (not (equal (fn-pck-st-of (fn-pck-seed) recs) :bad)))
            (equal (fn-pck-dec-rows (fn-pck-rows recs) file) recs))
   :hints (("Goal" :in-theory (enable fn-pck-rows)
-           :use ((:instance pck-dec-rows-of-rows-from (base 0))))))
+           :use ((:instance pck-dec-rows-of-rows-from (base 0) (st (fn-pck-seed)))))))
 
 (defun fn-pck-capture-of-pages (pages file)
   ; The capture the pages hold: the records from the events tape, the four
@@ -695,7 +832,8 @@
 
 (defthm pck-recordsp-parts
   (implies (fn-pck-recordsp configs recs)
-           (and (fn-pck-sccb-listp recs) (fn-pck-plen-okp recs)))
+           (and (fn-pck-sccb-listp recs (fn-pck-seed)) (fn-pck-plen-okp recs)
+                (not (equal (fn-pck-st-of (fn-pck-seed) recs) :bad))))
   :hints (("Goal" :in-theory (enable fn-pck-recordsp))))
 
 (defthm pck-capture-of-pages
@@ -790,14 +928,14 @@
                             fn-pck-root-pages-of fn-pck-rows adt-tp-dirty pck-shift))
            :use ((:instance pck-lpages-ok-shifted-dirty (k *fn-pck-root-pages*)
                             (w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix)))
-                            (n (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta (fn-pck-plen prefix 0)))))
+                            (n (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix)))))
                  (:instance pck-lpages-ok-number-then (lo 0)
                             (n (len (fn-pck-pages configs prefix)))
                             (ps (fn-pck-root-pages-of configs (append prefix delta)))
                             (l2 (pgs-dirty-lpages
                                  (pck-shift *fn-pck-root-pages*
                                             (adt-tp-dirty (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix))
-                                                          (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta (fn-pck-plen prefix 0))))))))
+                                                          (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix))))))))
                  (:instance pck-len-root-pages-of (recs (append prefix delta)))))))
 
 (defthm pck-disk-holds-facts
@@ -808,7 +946,7 @@
 
 (defthm pck-open-view-after-commit
   (implies (and (true-listp prefix) (true-listp delta)
-                (fn-pck-sccb-listp (append prefix delta))
+                (fn-pck-sccb-listp (append prefix delta) (fn-pck-seed))
                 (fn-pck-plen-okp (append prefix delta))
                 (fn-pck-disk-holds disk r mode configs prefix)
                 (pgs-alloc-inv alloc disk))
@@ -823,7 +961,7 @@
                  (:instance pck-dirty-lpages-ok)))))
 
 (defthm pck-recordsp-sccb
-  (implies (fn-pck-recordsp configs recs) (fn-pck-sccb-listp recs))
+  (implies (fn-pck-recordsp configs recs) (fn-pck-sccb-listp recs (fn-pck-seed)))
   :hints (("Goal" :in-theory (enable fn-pck-recordsp))))
 
 (defthm pck-true-listp-append
@@ -849,7 +987,7 @@
                  (:instance pck-capture-of-pages (recs (append prefix delta)))
                  (:instance fn-owner-recover-from-checkpoint-equals-full-recover
                             (prefix (append prefix delta)))
-                 (:instance pck-sccb-listp-of-append (a prefix) (b delta))
+                 (:instance pck-sccb-listp-of-append (a prefix) (b delta) (st (fn-pck-seed)))
                  (:instance pck-recordsp-sccb (recs (append prefix delta)))
                  (:instance pck-recordsp-parts (recs (append prefix delta)))
                  (:instance pck-true-listp-append (a prefix) (b delta))))))

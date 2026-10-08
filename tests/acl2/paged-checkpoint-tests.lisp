@@ -31,8 +31,13 @@
   (fn-record-make i (+ 1 i) 0 "<a@x>" (make-list n :initial-element 7)
                   '("fn.test") "o" "s" "e" 1 5))
 
-(defconst *pckt-prefix* (list (pckt-rec 0 5) '(1 2) (pckt-rec 1 0)))
-(defconst *pckt-delta* (list (pckt-rec 2 30000) (pckt-rec 3 30000) (pckt-rec 4 30000)))
+; A history: consecutive sequences from I (the identity fold faults otherwise).
+(defun pckt-recs (i k n)
+  (declare (xargs :mode :program))
+  (if (zp k) nil (cons (pckt-rec i n) (pckt-recs (+ i 1) (- k 1) n))))
+
+(defconst *pckt-prefix* (pckt-recs 0 3 5))
+(defconst *pckt-delta* (pckt-recs 3 3 30000))
 
 ; The payload file those events lay end to end: each payload then 32 octets of frame.
 (defun pckt-file (recs)
@@ -73,12 +78,12 @@
 (defun pckt-bad-dirty (configs prefix delta)
   (declare (xargs :verify-guards nil) (ignore configs))
   (pck-shift *fn-pck-root-pages*
-             (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows-from delta (fn-pck-plen prefix 0)))))
+             (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows-from delta (fn-pck-plen prefix 0) (fn-pck-st-of (fn-pck-seed) prefix)))))
 
 (must-fail-checked
  (defthm pckt-bad-dirty-is-the-delta
    (implies (and (true-listp prefix) (true-listp delta)
-                 (fn-pck-sccb-listp (append prefix delta))
+                 (fn-pck-sccb-listp (append prefix delta) (fn-pck-seed))
                  (fn-pck-plen-okp (append prefix delta)))
             (equal (pgs-apply-dirty (fn-pck-pages configs prefix) (pckt-bad-dirty configs prefix delta))
                    (fn-pck-pages configs (append prefix delta))))))
@@ -92,15 +97,17 @@
    (<= (len (fn-pck-dirty configs prefix delta)) *fn-pck-root-pages*)))
 
 ; A delta of many records takes tape pages beyond the root's K.
-(defconst *pckt-many* (make-list 400 :initial-element (pckt-rec 9 5)))
-(assert-event (< *fn-pck-root-pages* (len (fn-pck-dirty nil nil *pckt-many*))))
+(defconst *pckt-many* (pckt-recs 3 400 5))
+(assert-event (< *fn-pck-root-pages* (len (fn-pck-dirty nil nil (pckt-recs 0 400 5)))))
 
 ; The real bound at the witness, and no term in the prefix: the same delta
 ; after a long prefix needs the same number of pages or one more.
 (assert-event (<= (len (fn-pck-dirty nil *pckt-prefix* *pckt-many*))
-                  (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckt-many* (fn-pck-plen *pckt-prefix* 0)))))
-(assert-event (<= (len (fn-pck-dirty nil (make-list 3000 :initial-element (pckt-rec 8 5)) *pckt-many*))
-                  (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckt-many* (fn-pck-plen (make-list 3000 :initial-element (pckt-rec 8 5)) 0)))))
+                  (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckt-many* (fn-pck-plen *pckt-prefix* 0) (fn-pck-st-of (fn-pck-seed) *pckt-prefix*)))))
+(defconst *pckt-long* (pckt-recs 0 3000 5))
+(defconst *pckt-many2* (pckt-recs 3000 400 5))
+(assert-event (<= (len (fn-pck-dirty nil *pckt-long* *pckt-many2*))
+                  (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckt-many2* (fn-pck-plen *pckt-long* 0) (fn-pck-st-of (fn-pck-seed) *pckt-long*)))))
 
 ; 4. A log compacted past the old checkpoint's S.
 (must-fail-checked
