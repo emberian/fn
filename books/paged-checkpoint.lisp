@@ -232,7 +232,7 @@
            (equal (fn-pck-row0 st w)
                   (fn-intern-row-at w (fn-ssr-at 1 st) (fn-ssr-at 2 st) 0)))
   :hints (("Goal" :in-theory (e/d (pck-ssr1 fn-pck-row0 pck-publish-rows)
-                                  (fn-ssr-publish fn-replay-identity-step fn-ssr-at fn-intern-row-at)))))
+                                  (fn-ssr-publish fn-replay-identity-step fn-ssr-at fn-intern-row-at pck-ssr1-is-the-step)))))
 
 (defthm pck-statep-generation
   (implies (fn-ssr-statep acc) (natp (fn-ssr-at 2 acc)))
