@@ -35,6 +35,7 @@
 (in-package "ACL2")
 (include-book "config-owner-live-authorize")
 (include-book "config-crash-replay")
+(include-book "owner-reconfig-lock")
 
 ; The next generation's configuration file name, from the carried
 ; configuration's generation (O(1)).  The host observes this one name.
@@ -164,3 +165,40 @@
            :in-theory '(fn-olau-authorize-carried fn-olau-authorize fn-olau-next-name
                         fn-olau-member-of-singleton fn-olau-name-memberp-is-boolean
                         (:executable-counterpart fn-native-admin-name-memberp)))))
+
+; Window A consumes the captured owner and the single lstat observation.
+; Unknown observations are faults, never evidence that a name is absent.
+(defun fn-olau-authorize-observed (oc record-octets lock-owned observation profile)
+  (declare (xargs :guard t))
+  (if (not (member-equal observation '(:present :absent)))
+      (fn-native-admin-publication-result :fault :observation nil nil nil)
+    (let ((parsed (fn-cfg-decode-exact record-octets)))
+      (if (not (fn-record-parse-okp parsed))
+          (fn-native-admin-publication-result :refused :decode nil nil nil)
+        (fn-olau-authorize-carried oc (fn-record-parse-value parsed)
+                                  lock-owned (equal observation :present) profile)))))
+
+; KEYSTONE A1: the host's observed entry selects the carried authorization.
+(defthm fn-olau-authorize-observed-is-the-carried-authorization
+  (implies (and (member-equal observation '(:present :absent))
+                (fn-record-parse-okp (fn-cfg-decode-exact record-octets)))
+           (equal (fn-olau-authorize-observed oc record-octets lock-owned observation profile)
+                  (fn-olau-authorize-carried
+                   oc (fn-record-parse-value (fn-cfg-decode-exact record-octets))
+                   lock-owned (equal observation :present) profile)))
+  :hints (("Goal" :in-theory '(fn-olau-authorize-observed))))
+
+; KEYSTONE A2: the captured decision survives every permitted reader event.
+(defthm fn-olau-authorize-carried-across-reader-events
+  (implies (and (fn-ocfg-staged oc)
+                (not (fn-own-pending (fn-ocfg-owner oc)))
+                (member-equal (car event) '(:open :close :read :octets :fault))
+                (implies (equal (car event) :close) (natp (cadr event))))
+           (equal (fn-olau-authorize-carried (fn-ocfg-step oc event fn-arena)
+                                             record lock-owned occupied profile)
+                  (fn-olau-authorize-carried oc record lock-owned occupied profile)))
+  :hints (("Goal" :in-theory
+           '(fn-olau-authorize-carried fn-olau-authorize
+             fn-olau-publication-authorize fn-olau-next-name member-equal
+             fn-orl-staged-record-holds-the-configuration
+             fn-orl-reader-events-preserve-store))))

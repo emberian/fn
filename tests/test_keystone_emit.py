@@ -236,5 +236,98 @@ class WriteManifest(unittest.TestCase):
         self.assertIn("toothless: new", out)
 
 
+class NewWitnessClasses(unittest.TestCase):
+    def test_scoped_claim_preserves_labels_and_scopes_mutation(self):
+        form = ke.ledger.read_forms('''
+          (defteeth scoped
+            :claim (let* ((y (+ 1 x)))
+                     (let ((x y) (y (+ 1 y)))
+                       (((positive (< 1 x))) (< 2 y))))
+            :witness ((x 1)) :breaks ((positive ((x 0))))
+            :mutations ((strict (:conclusion (< 3 y)) () :fault "too high")))
+        ''')[0]
+        parts = ke.ledger.defteeth_parts(form)
+        self.assertIsNotNone(parts)
+        self.assertEqual(parts["labels"], [ke.ledger.Sym("positive")])
+        self.assertEqual(ke.ledger.head(parts["hyps"][0]), "let*")
+        events = ke.ledger.teeth_events(parts, "defteeth")
+        self.assertEqual(len(events), 4)  # witness, removal, mutation, row
+        mutation_terms = events[2][1][1:]
+        self.assertEqual(len(mutation_terms), 3)  # antecedent, conclusion, not mutant
+        self.assertEqual(ke.ledger.head(mutation_terms[-1][-1][1]), "let*")
+        form[-1][0][1][1] = ke.ledger.read_forms("(< 2 y)")[0]
+        self.assertIsNone(ke.ledger.defteeth_parts(form))  # unchanged conclusion
+
+    def test_stobj_builders_are_read_without_evaluation(self):
+        parts = self.parts(extra=":stobjs ((cell (fill x cell)))")
+        self.assertIsNotNone(parts)
+        self.assertEqual(ke.ledger.head(parts["options"][":stobjs"][0][1]), "fill")
+        self.assertIsNone(self.parts(extra=":stobjs ((cell))"))
+        self.assertIsNone(self.parts(extra=":stobjs ((cell cell) (cell cell))"))
+        self.assertIsNone(self.parts(extra=":stobjs ((cell cell)) :instances (run loop)"))
+        self.assertIsNone(self.parts(extra=":stobjs ((cell cell)) :witness-lemma fact"))
+
+    def test_stobj_refinements_require_stobjs_and_only_proof_hints(self):
+        self.assertIsNotNone(self.parts(extra=":stobjs ((cell (fill x cell))) "
+            ":stobj-checks (((p cell) (check cell) :hints ((\"Goal\" :in-theory nil))))"))
+        self.assertIsNone(self.parts(extra=":stobj-checks (((p cell) (check cell)))"))
+        self.assertIsNone(self.parts(extra=":stobjs ((cell (fill x cell))) "
+            ":stobj-checks (((p cell) (check cell) :rule-classes nil))"))
+
+    def parts(self, removal="(:assumption assumed)", extra=""):
+        return ke.ledger.defteeth_parts(ke.ledger.read_forms(f"""
+          (defteeth example :claim (((trust (assumed x))) (equal x 1))
+            :witness ((x 1)) {extra}
+            :breaks ((trust {removal}))
+            :mutations ((two (:conclusion (equal x 2)) () :fault "wrong value")))
+        """)[0])
+
+    def test_assumption_has_its_own_removal_class_and_no_assertion(self):
+        parts = self.parts()
+        self.assertIsNotNone(parts)
+        self.assertEqual(str(ke.ledger._dk_removal_kind(parts["breaks"]["trust"])),
+                         ":assumption")
+        events = ke.ledger.teeth_events(parts, "defteeth")
+        assertions = [e for e in events if ke.ledger.head(e) == "assert-event"]
+        self.assertEqual(len(assertions), 2)  # whole witness + mutation
+        self.assertNotIn("without TRUST", ke.ledger.source_text(events))
+
+    def test_assumptions_do_not_invent_must_fail_events(self):
+        parts = self.parts(extra=":must-fail t")
+        self.assertEqual(ke.ledger.defteeth_names(parts)["without"], [])
+        events = ke.ledger.teeth_events(parts, "defteeth")
+        local = [e for e in events if ke.ledger.head(e) == "local"]
+        self.assertEqual(len(local), 1)  # the mutation only
+
+    def test_bad_assumption_syntax_is_not_a_declaration(self):
+        for removal in ("(:assumption)", "(:assumption nil)",
+                        "(:assumption (f x))", "(:assumption f extra)"):
+            with self.subTest(removal=removal):
+                self.assertIsNone(self.parts(removal))
+
+    def test_instance_is_recorded_separately_from_executable(self):
+        parts = self.parts(extra=":instances (run run-loop)")
+        row = ke.ledger.teeth_row(parts, "defteeth")[3][1]
+        self.assertEqual(str(ke.ledger.keyword_plist(row)[":witness"]), ":instance")
+        self.assertIsNone(self.parts(extra=":instances (run)"))
+        self.assertIsNone(self.parts(extra=":instances (run loop) :witness-lemma fact"))
+
+    def test_manifest_does_not_count_assumptions_as_reachable_or_complete(self):
+        parts = self.parts()
+        book = SimpleNamespace(teeth_declared={"example": parts}, teeth_owed={})
+        tree = SimpleNamespace(books={"tests/acl2/t.lisp": book})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tests/acl2").mkdir(parents=True)
+            (root / "tests/acl2/t.lisp").write_text("fixture")
+            proofs = root / "proofs.json"
+            proofs.write_text('{"proofs": [{"events": ["example"]}]}')
+            with mock.patch.object(ke, "ROOT", root), mock.patch.object(ke, "PROOFS", proofs):
+                result = ke.obligations(tree, {"tests/acl2/t.lisp": True})["example"]
+        self.assertEqual(result["removals"],
+                         {"reachable": 0, "logical": 0, "lemma": 0, "assumption": 1})
+        self.assertFalse(result["complete"])
+
+
 if __name__ == "__main__":
     unittest.main()
