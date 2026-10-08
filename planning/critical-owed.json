@@ -5766,6 +5766,11 @@
    "item": "PRF-1348",
    "book": "books/reclaim-chunked-walk.lisp"
   },
+  "fn-rcw-canon-acc-steps-is-the-checkpoint-capture": {
+   "class": "ownership-reclamation",
+   "item": "PRF-1348",
+   "book": "books/reclaim-chunked-walk.lisp"
+  },
   "fn-rcw-finish-of-step": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
@@ -6531,10 +6536,20 @@
    "item": "PRF-1345",
    "book": "books/store-checkpoint-arena-load.lisp"
   },
+  "fn-scka-next-checkpoint-is-capture": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-checkpoint-arena-writer.lisp"
+  },
   "fn-scka-publication-setup-plans-within-the-disk": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-checkpoint-arena-writer.lisp"
+  },
+  "fn-scka-recover-from-checkpoint-is-full-recover": {
+   "class": "durability",
+   "item": "PRF-1345",
+   "book": "books/store-checkpoint-arena.lisp"
   },
   "fn-scka-restore-base-of-strip-of-capture": {
    "class": "durability",
