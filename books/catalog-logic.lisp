@@ -1058,6 +1058,17 @@
         (fn-cat$c-raw-scan-up group (+ 1 k) top fn-cat$c))
     0))
 
+; The probes of the scan, counted (the potential theorem
+; fn-cat-withdraw-scan-steps-are-the-potential-rise states how many there are).
+(defun fn-cat$c-raw-scan-up-steps (group k top fn-cat$c)
+  (declare (xargs :stobjs fn-cat$c :guard (and (fn-cat$c-wfp fn-cat$c) (natp k) (natp top))
+                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
+  (if (and (natp k) (natp top) (<= k top))
+      (if (fn-cat$c-raw-at-p group k fn-cat$c)
+          1
+        (+ 1 (fn-cat$c-raw-scan-up-steps group (+ 1 k) top fn-cat$c)))
+    0))
+
 ;; A commit's raw lows: a plan read from the group cells before any write.
 ;; The new row's number in each of its groups is the group's next; it is the
 ;; raw low when the group had none and the row is a raw candidate.  Executes
@@ -5146,6 +5157,141 @@
                                          subsetp-equal car-cons cdr-cons)
                                        (theory 'minimal-theory))
             :do-not '(generalize)))))
+
+; THE SCAN'S COST, EXACT (s-group-low).  A withdrawal of a group's raw low
+; probes the numbers above it until the next raw-kept one: fn-cat-raw-steps
+; counts those probes.  The potential PHI of a group is its raw low, or its
+; high when it has none.  One withdrawal's scan takes exactly the potential's
+; rise, and the potential never passes the high, so the scans of any run of
+; withdrawals together probe at most the group's high numbers.
+(defun fn-cat-raw-steps (group k top c)
+  (declare (xargs :guard (and (natp k) (natp top) (fn-cat-rowsp c))
+                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
+  (if (and (natp k) (natp top) (<= k top))
+      (if (fn-cat-raw-numberp group k c)
+          1
+        (+ 1 (fn-cat-raw-steps group (+ 1 k) top c)))
+    0))
+
+(defun fn-cat-raw-phi (group c)
+  (declare (xargs :guard (fn-cat-rowsp c)))
+  (let ((low (fn-cat-raw-first group 1 (fn-cat-group-high group c) c)))
+    (if (equal low 0) (fn-cat-group-high group c) low)))
+
+(defthm fn-cat-raw-steps-are-the-distance
+  (implies (and (natp j) (natp top))
+           (equal (fn-cat-raw-steps group j top c)
+                  (let ((l (fn-cat-raw-first group j top c)))
+                    (if (equal l 0)
+                        (nfix (+ 1 (- top j)))
+                      (+ 1 (- l j))))))
+  :hints (("Goal" :induct (fn-cat-raw-steps group j top c)
+           :in-theory (disable fn-cat-raw-numberp))))
+
+(defun fn-cat-withdraw-scan-steps (group c r)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((k (fn-ctg-kstar group c r)))
+    (if (and (not (equal k 0))
+             (equal (fn-cat-raw-first group 1 (fn-cat-group-high group c) c) k))
+        (fn-cat-raw-steps group (+ 1 k) (fn-cat-group-high group c) c)
+      0)))
+
+(defthm fn-cat-withdraw-scan-steps-are-the-potential-rise
+  (implies (and (natp r) (< r (len c)) (null (fn-held-withdrawn (nth r c))))
+           (equal (fn-cat-withdraw-scan-steps group c r)
+                  (- (fn-cat-raw-phi group (fn-cat-mark-withdrawn r v by c))
+                     (fn-cat-raw-phi group c))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat-withdraw-scan-steps fn-cat-raw-phi)
+                           (fn-cat-raw-first fn-cat-group-high fn-ctg-kstar fn-cat-raw-steps
+                            fn-cat-mark-withdrawn fn-cat-raw-steps-are-the-distance))
+           :use ((:instance fn-ctg-raw-first-withdrawn (g group) (j 1) (top (fn-cat-group-high group c)))
+                 (:instance fn-ctg-high-withdrawn (g group))
+                 (:instance fn-cat-raw-steps-are-the-distance
+                            (j (+ 1 (fn-ctg-kstar group c r))) (top (fn-cat-group-high group c)))
+                 (:instance fn-ctg-raw-first-bounds (g group) (k 1) (top (fn-cat-group-high group c)))
+                 (:instance fn-ctg-raw-first-bounds (g group) (k (+ 1 (fn-ctg-kstar group c r)))
+                            (top (fn-cat-group-high group c)))))))
+
+(defthm fn-cat-raw-phi-le-high
+  (<= (fn-cat-raw-phi group c) (fn-cat-group-high group c))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-cat-raw-phi) (fn-cat-raw-first fn-cat-group-high))
+           :use ((:instance fn-ctg-raw-first-bounds (g group) (k 1) (top (fn-cat-group-high group c)))))))
+
+; A commit never lowers the potential: the new row's number is above the
+; high, and it becomes the raw low only of a group that had none.
+(defthm fn-cat-raw-phi-of-commit
+  (implies (and (fn-cat-rowsp c) (fn-held-p h))
+           (<= (fn-cat-raw-phi group c)
+               (fn-cat-raw-phi group (append c (list (fn-cat-assign h c))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat-raw-phi fn-ctg-raw-first-append)
+                           (fn-cat-raw-first fn-cat-group-high fn-cat-assign fn-cat-raw-numberp))
+           :use ((:instance fn-ctg-raw-first-bounds (g group) (k 1) (top (fn-cat-group-high group c)))))))
+
+; Over a run of withdrawals the scans together probe the potential's total
+; rise, which is at most the group's high.
+(defun fn-cat-withdraw-run (rs v by c)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rs)
+      (fn-cat-withdraw-run (cdr rs) v by (fn-cat-mark-withdrawn (car rs) v by c))
+    c))
+
+(defun fn-cat-withdraw-run-steps (group rs v by c)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp rs)
+      (+ (if (and (natp (car rs)) (< (car rs) (len c)) (null (fn-held-withdrawn (nth (car rs) c))))
+             (fn-cat-withdraw-scan-steps group c (car rs))
+           0)
+         (fn-cat-withdraw-run-steps group (cdr rs) v by (fn-cat-mark-withdrawn (car rs) v by c)))
+    0))
+
+(defthm fn-cat-mark-withdrawn-noop
+  (implies (or (not (< r (len c))) (fn-held-withdrawn (nth r c)))
+           (equal (fn-cat-mark-withdrawn r v by c) c))
+  :hints (("Goal" :in-theory (enable fn-cat-mark-withdrawn))))
+
+(defthm fn-cat-withdraw-run-steps-are-the-potential-rise
+  (implies (nat-listp rs)
+           (equal (fn-cat-withdraw-run-steps group rs v by c)
+                  (- (fn-cat-raw-phi group (fn-cat-withdraw-run rs v by c))
+                     (fn-cat-raw-phi group c))))
+  :hints (("Goal" :induct (fn-cat-withdraw-run-steps group rs v by c)
+           :in-theory (e/d (fn-cat-mark-withdrawn-noop)
+                           (fn-cat-raw-phi fn-cat-withdraw-scan-steps fn-cat-mark-withdrawn
+                            fn-cat-withdraw-scan-steps-are-the-potential-rise))
+           :do-not '(generalize))
+          (and stable-under-simplificationp
+               '(:use ((:instance fn-cat-withdraw-scan-steps-are-the-potential-rise
+                                  (r (car rs))))))))
+
+(defthm fn-cat-withdraw-run-keeps-high
+  (equal (fn-cat-group-high group (fn-cat-withdraw-run rs v by c))
+         (fn-cat-group-high group c))
+  :hints (("Goal" :induct (fn-cat-withdraw-run rs v by c)
+           :in-theory (disable fn-cat-mark-withdrawn))))
+
+(defthm fn-cat-raw-phi-natp
+  (natp (fn-cat-raw-phi group c))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (e/d (fn-cat-raw-phi) (fn-cat-raw-first fn-cat-group-high)))))
+
+(defthm fn-cat-withdraw-run-steps-at-most-the-high
+  (implies (nat-listp rs)
+           (<= (fn-cat-withdraw-run-steps group rs v by c) (fn-cat-group-high group c)))
+  :hints (("Goal" :in-theory (disable fn-cat-raw-phi fn-cat-withdraw-run fn-cat-withdraw-run-steps)
+           :use ((:instance fn-cat-withdraw-run-steps-are-the-potential-rise)
+                 (:instance fn-cat-raw-phi-le-high (c (fn-cat-withdraw-run rs v by c)))
+                 (:instance fn-cat-withdraw-run-keeps-high)))))
+
+(local
+ (defthm fn-ctg-raw-scan-up-steps-are-the-steps
+   (implies (fn-cat$corr-base x c)
+            (equal (fn-cat$c-raw-scan-up-steps g k top x) (fn-cat-raw-steps g k top c)))
+   :hints (("Goal" :induct (fn-cat-raw-steps g k top c)
+            :in-theory (e/d (fn-cat$c-raw-scan-up-steps) (fn-cat$corr-base fn-cat$c-raw-at-p
+                                                          fn-cat-raw-numberp))))))
 
 (local (in-theory (disable fn-cat-withdrawn-at-from fn-cat-insert-asc fn-cat-wbv-okp
                            fn-cat-wbv-coverp fn-ctw-agree)))
