@@ -258,6 +258,7 @@
 (include-book "page-window-executor")
 (include-book "cold-read-window")
 (include-book "page-window-read")
+(include-book "extent-window-span")
 (include-book "page-window-span")
 (include-book "payload-arena")
 (include-book "decoded-worker-assignment")

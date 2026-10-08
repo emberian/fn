@@ -5484,13 +5484,16 @@
 (definterface fn-crw-supportedp :class :common-lisp-compliant)
 (definterface fn-ews-begin :class :common-lisp-compliant
   :kinds ((file natp) (eoff natp) (elen natp) (poff natp) (plen natp) (offset natp) (expected natp)))
-(definterface fn-ews-effect :class :common-lisp-compliant
+;; The host drives the stream in spans (books/extent-window-span.lisp): one
+;; effect, one read and one tick-to-io per span of the prefix; each is equal
+;; to the stream's per-block step iterated (fn-ews-span-loop-is-iterated-block-step).
+(definterface fn-ews-span-effect :class :common-lisp-compliant
   :kinds ((s true-listp)))
-(definterface fn-ews-tick :class :common-lisp-compliant
+(definterface fn-ews-tick-to-io :class :common-lisp-compliant
   :kinds ((s true-listp)))
-(definterface fn-ews-read :class :common-lisp-compliant
+(definterface fn-ews-read-span :class :common-lisp-compliant
   :kinds ((s true-listp))
-  :keystones ((fn-ews-read-publication-requires-core-integrity :via fn-ews-read)))
+  :keystones ((fn-ews-read-span-publication-requires-core-integrity :via fn-ews-read-span)))
 (definterface fn-owner-page-read-ledger :class :common-lisp-compliant)
 (definterface fn-pwx-tokenp :class :common-lisp-compliant
   :direct "Guard-t fixed-shape worker kind discrimination avoids an unpriced global guard-cache entry")
