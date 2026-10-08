@@ -957,8 +957,8 @@ def _bare(token: str) -> str:
 def table_sites(text: str) -> list[tuple[int, str, bool, str]]:
     """(line, name, synchronized, form text) for each make-hash-table in code
     whose table can outlive one call."""
-    import must_fail_check  # the one Lisp comment/string mask in tools/
-    mask = must_fail_check.code_mask(text)
+    import teeth_check  # the one Lisp comment/string mask in tools/
+    mask = teeth_check.code_mask(text)
     stack: list[tuple[int, str, str]] = []  # (open position, head, second token)
     sites = []
     i, n = 0, len(text)
@@ -2676,7 +2676,7 @@ def build_lists_main() -> int:
 # Exit 0 when every gate is green; 1 when any is red or did not run.  It reads
 # the whole tree and starts ACL2, so it refuses the laptop (FN_LAPTOP_OK=1
 # overrides): `make host-convert-check [FILE=host/native/x.lisp]`, or
-# tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'.
+# tools/remote_check.sh auto --install-roots books/image-world --cmd 'make host-convert-check FILE=host/native/x.lisp'.
 
 CONVERT_FIXES = {
     "world": "python3 tools/extract/world.py (writes the umbrellas), then certify "

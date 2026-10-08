@@ -2656,7 +2656,7 @@ site:
 # Every pre-image gate for a host-code conversion, as one target (item 34):
 # world.py --check, interface_emit --check, host_check --forward/--world/
 # --load FILE, and the certified-world class check (host_check's default).
-# On a box: tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'
+# On a box: tools/remote_check.sh auto --install-roots books/image-world --cmd 'make host-convert-check FILE=host/native/x.lisp'
 host-convert-check:
 	@$(PYTHON) tools/host_check.py --convert $(FILE)
 
@@ -2899,7 +2899,7 @@ check:
 # with no non-empty witness of the same function in the book pins a defect
 # as the expected value (stx-model: stx-policy's empty laces).  Warn-only;
 # tools/null_witness_allow.json names the accepted ones.
-	@$(CHECK_STEP) $(PYTHON) tools/null_witness_lint.py
+	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --null-witness
 # Two static lints over the harness, both from the 2026-09-19 incident: a
 # host entry point gained a required keyword-only argument, two callers in
 # tests/ were never updated, and both integration labs were dead for a day
@@ -2920,9 +2920,9 @@ check:
 # (tests/acl2/must-fail-checked.lisp), which translates the body's claim
 # first and so makes certification refuse such a tooth; this fails on a bare
 # must-fail unless its line declares `; must-fail-ok: <reason>`.
-# `--convert` rewrites bare ones after a merge.  Static, no ACL2.
-	@$(CHECK_STEP) $(PYTHON) tools/must_fail_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_must_fail_check
+# `--must-fail --convert` rewrites bare ones after a merge.  Static, no ACL2.
+	@$(CHECK_STEP) $(PYTHON) tools/teeth_check.py --must-fail
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_teeth_check.MustFailCheckTests tests.test_teeth_check.NullWitnessTests
 # A retained payload is a HANDLE (books/payload-kinds.lisp); every definition
 # that reads one declares which kind it takes (lane entry-guards, 2026-09-27).
 	@$(CHECK_STEP) $(PYTHON) tools/payload_kind_check.py

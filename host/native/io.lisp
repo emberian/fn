@@ -1604,9 +1604,9 @@ hot callback."
   "Preserve fixed CALL's scalar MVs without an argument or result container.
 NAME names the actual ACL2 subject. CALL uses its startup-selected callback;
 its own scalar refusals remain results, while execution escapes are faults.
-Decision tracing (host/native/trace.lisp): off, the expansion is the untraced
-body inline -- one special-variable test, no closure, no funcall.  On, the same
-body runs in a closure that fnn-dtrace-around-mv-traced calls."
+Decision tracing (host/native/trace.lisp): fnn-dtrace-around-mv expands to the
+body inline after one special-variable test when off, and to the same body in a
+closure when on."
   (flet ((body ()
            (let ((outcome (gensym "OUTCOME")) (condition (gensym "CONDITION")))
              `(let ((,outcome :thrown))
@@ -1621,9 +1621,7 @@ body runs in a closure that fnn-dtrace-around-mv-traced calls."
                     (:ok nil)
                     (:thrown (fnn-fixed-callback-fail ,name :raw-callback-escaped nil))
                     (otherwise (fnn-fixed-callback-fail ,name :raw-callback-failed ,outcome))))))))
-    `(if *fnn-dtrace*
-         (fnn-dtrace-around-mv-traced ,name (lambda () ,(body)))
-       ,(body))))
+    `(fnn-dtrace-around-mv ,name ,(body))))
 
 (defun fnn-core (name &rest args)
   "A state-free wrapper's single value."
