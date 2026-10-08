@@ -23,6 +23,17 @@ def image_lines(out):
 
 
 class HboxNativeDryRunTests(unittest.TestCase):
+    def test_reader_index_runs_against_the_integrated_image(self):
+        answer = dry("--box", "persvati", "--images", "developer,production", "HEAD",
+                     "tests.test_native_reader_index")
+        self.assertEqual(answer.returncode, 0, answer.stdout + answer.stderr)
+        steps = [line for line in answer.stdout.splitlines()
+                 if line.startswith("tstep ") and "tests.test_native_reader_index" in line]
+        self.assertEqual(len(steps), 1, answer.stdout)
+        self.assertIn("FN_RUN_NATIVE_READER_INDEX=1", steps[0])
+        self.assertNotIn("not set: opt-in for the integrated reader-index gate",
+                         answer.stdout + answer.stderr)
+
     def test_several_images_save_in_parallel_after_the_libraries_and_one_image_stays_serial(self):
         answer = dry("--box", "hbox", "--images", "developer,production,dtn", "HEAD", "tests.test_native_owner")
         lines = answer.stdout.splitlines()

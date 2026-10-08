@@ -2010,6 +2010,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/tls-reload-tests \
 	books/wire-grammar \
 	tests/acl2/wire-grammar-tests \
+	tests/acl2/wire-export-tests \
 	books/wire-family-fncu \
 	tests/acl2/wire-family-fncu-tests \
 	books/wire-family-identity \
@@ -2369,6 +2370,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/statement-recover-stream \
 	books/statement-keyring-publication \
 	books/native-statement-material \
+	tests/acl2/native-statement-material-tests \
 	tests/acl2/statement-keyring-publication-tests \
 	tests/acl2/statement-recover-stream-tests \
 	books/article-subject \

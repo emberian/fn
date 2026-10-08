@@ -145,6 +145,7 @@ FALLBACK = {
 }
 # Set for every module that reads them: they mean "the image this run built".
 FIXED = {
+    "FN_RUN_NATIVE_READER_INDEX": ("1", "integrated reader-index gate against this run's image"),
     "FN_RUN_HYBRID_E2E": ("1", "opt-in: the hybrid-signature saved-image gate"),
     "FN_RUN_CONSUMER_EXCHANGE": ("1", "opt-in: the consumer exchange against this run's image"),
     "FN_TEST_OPENSSL": (OPENSSL, "the test tool OpenSSL 3.5 (independent ML-DSA-65 keys)"),
@@ -169,7 +170,6 @@ MANUAL = {
     "FN_RUN_CONSUMER_POLL_E2E": "opt-in; requires the ACL2-owned consumer poll command",
     "FN_RUN_CONSUMER_INSPECT": "opt-in for consumer inspect",
     "FN_RUN_CONSUMER_PROJECT_BOUNDS": "opt-in for consumer project bounds",
-    "FN_RUN_NATIVE_READER_INDEX": "opt-in for the integrated reader-index gate",
     "FN_RUN_TOPIC_LOCAL_E2E": "opt-in for a source-matched topic image",
     "FN_RUN_TOPIC_METADATA_E2E": "opt-in for the source-matched topic-metadata gate",
     "FN_NATIVE_BP_NODE_HOST": "falls back to FN_NATIVE_DEVELOPER_HOST (the DTN developer image by --env)",
