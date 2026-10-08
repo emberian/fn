@@ -12066,6 +12066,25 @@
    "registry": true
   },
   {
+   "book_digest": "26de30479bee1380734be898692c18597b7064c1aaa99a8ebf567bf72ae0188b",
+   "bounds": [],
+   "claim_digest": "f836d78ab8d299d299493865ceb1452925605b4afe4c449982c067986b68035f",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-oct-transit-is-own-transit-outcome-under-ocl-relation",
+   "owed_met": null,
+   "owner_book": "tests/acl2/catchup-carried-transit-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oct-transit",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-oct-word-octets-of-word-at",
    "registry": true
@@ -12659,9 +12678,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "26de30479bee1380734be898692c18597b7064c1aaa99a8ebf567bf72ae0188b",
+   "bounds": [],
+   "claim_digest": "50a4fafc33cb7d6e8495521f4279f85f2f6be5084ad04b28ab8f42eeb6088da0",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-oop-transit-outcome-is-own-transit-outcome",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/catchup-carried-transit-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oop-transit-outcome",
+   "witness": "executable"
   },
   {
    "class": "hand",
