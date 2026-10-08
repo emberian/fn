@@ -18667,55 +18667,11 @@
   },
   {
    "book": "books/post-identity-index.lisp",
-   "book_digest": "f558e1822b0601723886200a2249e3307d259f74c756002336102bf2ec06ee7a",
-   "bounds": [],
-   "claim_digest": "099f89e05ae18911656656dc74286b25e3dbbe8dd2e0bba5114adf6df22ac260",
-   "class": "generated",
-   "critical": "identity-binding",
-   "mutations": "edits:1",
-   "name": "fn-pidx-existing-action-is-store-existing-action",
-   "owed_met": null,
-   "owner_book": "tests/acl2/post-identity-index-tests.lisp",
-   "registry": true,
-   "removals": {
-    "assumption": 0,
-    "lemma": 0,
-    "logical": 1,
-    "reachable": 0
-   },
-   "statement_digest": "791154f7ca7728c81a49d1e2cba9d669b55a8c67dcb7f08c5d444e22e6ee01f3",
-   "subject": "fn-pidx-existing-action",
-   "witness": "executable"
-  },
-  {
-   "book": "books/post-identity-index.lisp",
    "class": "hand",
    "critical": "identity-binding",
    "name": "fn-pidx-find-in-visible-is-find",
    "registry": true,
    "statement_digest": "4a78313bbb2b83c8b20c0102581968c6a2b4bf76815d5c32dcef9fe2f7412076"
-  },
-  {
-   "book": "books/post-identity-index.lisp",
-   "book_digest": "f558e1822b0601723886200a2249e3307d259f74c756002336102bf2ec06ee7a",
-   "bounds": [],
-   "claim_digest": "a8d4bc00ca713d6c50f2a7474888bd1cd6598817c1b4f92c43fc1b1b3a820668",
-   "class": "generated",
-   "critical": "identity-binding",
-   "mutations": "edits:1",
-   "name": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare",
-   "owed_met": null,
-   "owner_book": "tests/acl2/post-identity-index-tests.lisp",
-   "registry": true,
-   "removals": {
-    "assumption": 0,
-    "lemma": 0,
-    "logical": 0,
-    "reachable": 0
-   },
-   "statement_digest": "341f992e158b12655e21decb9d907b21381ce80cda1bba2dbe5353e4210bd6cb",
-   "subject": "fn-pidx-sbud-prepare",
-   "witness": "executable"
   },
   {
    "book": "books/post-identity-index.lisp",
