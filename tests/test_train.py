@@ -42,7 +42,7 @@ STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/secrets_check.py", "planning/repair/repair.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
          "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
-         "tests/test_farm.py", "tests/test_current_view.py"]
+         "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in planning/interfaces.json specs/wire-grammar.json; do
@@ -452,6 +452,17 @@ class PushTests(TrainBase):
         g = self.train("gate")
         self.assertNotEqual(g.returncode, 0, g.stdout)
         self.assertIn("unit: tests/test_farm.py is missing", g.stdout)
+
+    def test_push_refused_when_the_teeth_gate_fails(self):
+        self.ready()
+        before = self.origin_rev("dev")
+        g = self.train("gate", extra_env={"STUB_RC_keystone_emit_check": "1"})
+        self.assertNotEqual(g.returncode, 0, g.stdout)
+        self.assertIn("keystone=1", g.stdout)
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0, p.stdout)
+        self.assertIn("gate keystone failed", p.stdout + p.stderr)
+        self.assertEqual(self.origin_rev("dev"), before)
 
     def test_push_refused_when_ascii_failed(self):
         self.ready()
