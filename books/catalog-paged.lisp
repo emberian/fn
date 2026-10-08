@@ -72,206 +72,6 @@
 ;; a Message-ID string comes back from its octets.
 (include-book "records-invariants")
 
-; D26: the rules used at this boundary, without the thousands of unrelated
-; imported and base-theory rules.  New events keep their ordinary rule classes.
-(local (deftheory fn-cp-row-store-proof
- (union-theories (theory 'minimal-theory)
- '(
-   (:rewrite fn-dm-resize-list-0) (:rewrite fn-dm-nth-resize-list) (:rewrite fn-dm-nth-update-nth)
-   (:rewrite fn-dm-len-update-nth) (:rewrite fn-dm-len-resize-list)
-   (:rewrite adt-pg-append-t-c-is-append-c) (:executable-counterpart adt-pg-tmask-kinds-okp)
-   (:definition adt-pg-tmask-okp) (:definition adt-pg-tmask-enc) (:rewrite adt-tree-plen-0)
-   (:type-prescription adt-tree-okp) (:executable-counterpart adt-tree-okp)
-   (:definition adt-tree-okp) (:definition adt-tree-atom-okp)
-   (:rewrite adt-tree-ndig-is-len-digits) (:executable-counterpart adt-tree-ndig)
-   (:type-prescription adt-tree-floor-256-natp) (:rewrite adt-tree-floor-256-decreases)
-   (:rewrite fn-sccb-treep-is-treep) (:type-prescription fn-sccb-treep)
-   (:rewrite fn-scc-program-true-listp) (:executable-counterpart fn-scc-repeat)
-   (:executable-counterpart fn-scc-program) (:type-prescription fn-scc-octets-valuep)
-   (:executable-counterpart fn-scc-octets-valuep) (:type-prescription fn-scc-package-index)
-   (:executable-counterpart fn-scc-le-digits) (:rewrite adt-rec-p-of-list1)
-   (:rewrite adt-pg-fill-is-load-of-set) (:rewrite adt-pg-fill-is-load-of-append)
-   (:rewrite adt-pg-corr-clear) (:rewrite adt-pg-flat-of-empty) (:rewrite adt-pg-corr-get)
-   (:rewrite adt-pg-corr-set) (:rewrite adt-pg-corr-reserve) (:rewrite adt-pg-corr-append)
-   (:rewrite adt-pg-append-c-is-room-then-append) (:type-prescription adt-pg-rec-load-natp)
-   (:rewrite adt-pg-corr-count) (:rewrite adt-pg-nq-of-addpool) (:rewrite adt-pg-nth-0-tready)
-   (:rewrite adt-pg-nth-of-poolroom) (:rewrite adt-pg-nth-of-rowroom)
-   (:executable-counterpart adt-pg-tready) (:executable-counterpart adt-pg-fresh)
-   (:type-prescription adt-pg-corr) (:executable-counterpart adt-pg-flat)
-   (:type-prescription adt-pg-mod-integerp) (:rewrite adt-pg-floor-mod-guard-facts)
-   (:type-prescription adt-fill-is-load) (:executable-counterpart adt-fill-is-load)
-   (:executable-counterpart adt-rec-load) (:definition adt-rec-load)
-   (:forward-chaining adt-tp-seq-p-true-listp) (:type-prescription adt-tp-set-dirty)
-   (:type-prescription adt-tp-extend-dirty-at) (:definition adt-tp-extend-dirty-at)
-   (:type-prescription adt-tp-rows-pages) (:definition adt-tp-rows-pages)
-   (:type-prescription adt-tp-extend-dirty) (:type-prescription adt-tp-pages-wordsp)
-   (:type-prescription adt-tp-row-pages) (:definition adt-tp-row-pages)
-   (:type-prescription adt-tp-append-dirty) (:type-prescription adt-tp-of-pages)
-   (:definition adt-tp-of-pages) (:type-prescription adt-tp-pages-of) (:definition adt-tp-pages-of)
-   (:definition adt-tp-rw) (:executable-counterpart adt-tp-schema-ok)
-   (:executable-counterpart adt-empty-c) (:rewrite adt-true-listp-nth-when-seq-p)
-   (:rewrite adt-seq-p-of-set-a) (:type-prescription adt-set-a) (:rewrite adt-seq-p-of-append)
-   (:rewrite adt-len-update-nth-local) (:rewrite adt-update-nth-update-nth-same)
-   (:type-prescription adt-seq-p) (:type-prescription adt-rec-p)
-   (:executable-counterpart adt-rec-p) (:definition adt-rec-p)
-   (:executable-counterpart adt-val-okp) (:definition adt-val-okp) (:type-prescription adt-octetsp)
-   (:executable-counterpart adt-octetsp) (:definition adt-octetsp)
-   (:executable-counterpart adt-ncols) (:executable-counterpart adt-kind-width)
-   (:executable-counterpart adt-octets-kind-p) (:executable-counterpart adt-schemap)
-   (:executable-counterpart adt-kindp) (:rewrite fn-oct-octetp-is-unsigned-byte-p)
-   (:rewrite fn-oct-mod-256-octet) (:rewrite floor-floor-integer) (:type-prescription mod-type . 4)
-   (:rewrite mod-=-0 . 2) (:rewrite mod-=-0 . 1) (:type-prescription floor-type-3 . 1)
-   (:rewrite floor-=-x/y . 3) (:definition fn-cbor-octetp) (:executable-counterpart resize-list)
-   (:executable-counterpart make-list-ac) (:definition unsigned-byte-p)
-   (:definition integer-range-p) (:executable-counterpart update-nth-array)
-   (:definition update-nth-array) (:executable-counterpart update-nth)
-   (:executable-counterpart expt) (:definition max) (:rewrite characterp-nth) (:definition o-p)
-   (:compound-recognizer posp-compound-recognizer) (:compound-recognizer natp-compound-recognizer)
-   (:compound-recognizer zp-compound-recognizer) (:rewrite append-to-nil)
-   (:type-prescription true-listp-append) (:compound-recognizer booleanp-compound-recognizer)
-   (:type-prescription binary-append) (:type-prescription floor) (:type-prescription nfix)
-   (:executable-counterpart nfix) (:definition nfix) (:definition char)
-   (:executable-counterpart nth) (:rewrite distributivity-of-minus-over-+)
-   (:rewrite commutativity-2-of-+) (:forward-chaining character-listp-coerce)
-   (:type-prescription character-listp) (:definition o<) (:definition o-finp)
-   (:executable-counterpart posp) (:definition posp) (:executable-counterpart natp)
-   (:definition natp) (:rewrite distributivity) (:rewrite commutativity-of-*)
-   (:rewrite unicity-of-0) (:definition fix) (:rewrite commutativity-of-+)
-   (:executable-counterpart zp) (:rewrite cdr-cons) (:rewrite car-cons)
-   (:executable-counterpart eql) (:definition acl2-count) (:type-prescription length)
-   (:definition length) (:type-prescription len) (:executable-counterpart len) (:definition len)
-   (:definition integer-abs) (:executable-counterpart true-listp) (:definition true-listp)
-   (:executable-counterpart booleanp)))))
-
-(local (in-theory (union-theories (theory 'fn-cp-row-store-proof)
- '(
-   (:type-prescription fn-cpt-true-listp-of-list) (:rewrite fn-cpt-list-of-add)
-   (:executable-counterpart fn-cpt-list) (:induction fn-cpt-insert) (:definition fn-cpt-insert)
-   (:definition fn-dmap-clear) (:definition fn-dmap-rem) (:definition fn-dmap-put)
-   (:definition fn-dmap-get) (:definition create-fn-dmap) (:definition fn-dmapp)
-   (:rewrite fn-dmap-clear{preserved}) (:rewrite fn-dmap-rem{preserved})
-   (:rewrite fn-dmap-put{preserved}) (:definition fn-dmap$a-clear) (:definition fn-dmap$a-rem)
-   (:definition fn-dmap$a-put) (:definition fn-dmap$a-get)
-   (:executable-counterpart create-fn-dmap$a) (:type-prescription fn-dmap$ap)
-   (:definition fn-dmap$ap) (:rewrite fn-dm-assoc-of-remove-assoc) (:rewrite fn-dm-resize-list-zp)
-   (:executable-counterpart fn-dm-lanep) (:type-prescription fn-scc-decode-tree)
-   (:definition fn-scc-decode-tree) (:rewrite fn-scc-encode-is-program)
-   (:induction fn-scc-octet-listp) (:definition fn-scc-octetp) (:rewrite adt-l-nth-is-nth)
-   (:rewrite adt-tp-rec-p-nth) (:rewrite adt-len-of-append) (:rewrite adt-seq-p-of-update-nth)
-   (:rewrite adt-rec-p-of-update-nth) (:rewrite adt-cdr-of-update-nth)
-   (:rewrite adt-car-of-update-nth) (:definition adt-seq-p) (:type-prescription adt-val-okp)
-   (:induction adt-octetsp) (:rewrite fn-cpl-coverp-of-no-rows) (:type-prescription fn-cpl-coverp)
-   (:definition fn-cpl-unlink-is-wsteps) (:forward-chaining fn-cpl-live-below-high)
-   (:definition fn-cpl-unlink) (:definition fn-cpl-wplan) (:definition fn-cpl-link)
-   (:induction fn-cpl-cplan) (:definition fn-cpl-cplan) (:rewrite fn-cpl-okp-nil)
-   (:type-prescription fn-cpl-okp) (:definition fn-cpl-goodp) (:definition fn-cpl-prev-of)
-   (:definition fn-cpl-next-of) (:rewrite fn-cpl-rows-corr-nth) (:type-prescription fn-cat$corr-w)
-   (:definition fn-cat$corr-w) (:definition fn-cat$corr-wbv) (:definition fn-cat$c-index-health)
-   (:definition fn-cat$c-msgid-saturatedp) (:definition fn-cat$c-rows-below-count)
-   (:definition fn-cat$c-rows-list) (:definition fn-cat$c-clear-keyed)
-   (:definition fn-cat$c-clear-w) (:definition fn-cat$c-withdraw-w) (:definition fn-cat$c-commit-w)
-   (:definition fn-cat$c-withdrawn-at) (:induction fn-cat-insert-asc)
-   (:definition fn-cat-insert-asc) (:definition fn-cat$a-withdrawn-at) (:definition fn-cat$corr)
-   (:definition fn-cat$corr-live) (:type-prescription fn-cat$corr-base)
-   (:definition fn-cat$corr-base) (:definition fn-cat-key-of) (:type-prescription fn-cat-rows-corr)
-   (:definition fn-cat$c-clear) (:definition fn-cat$c-withdraw) (:definition fn-cat$c-drop-plan)
-   (:definition fn-cat$c-drop-entry) (:definition fn-cat$c-commit) (:induction fn-cat$c-live-apply)
-   (:definition fn-cat$c-live-apply) (:induction fn-cat$c-live-plan)
-   (:definition fn-cat$c-live-plan) (:definition fn-cat$c-horizon)
-   (:type-prescription fn-cat$c-group-live-high) (:definition fn-cat$c-group-live-high)
-   (:type-prescription fn-cat$c-group-live-low) (:definition fn-cat$c-group-live-low)
-   (:type-prescription fn-cat$c-group-live-count) (:definition fn-cat$c-group-live-count)
-   (:definition fn-cat$c-clear-base) (:definition fn-cat$c-redecide)
-   (:definition fn-cat$c-withdraw-base) (:definition fn-cat$c-commit-base)
-   (:definition fn-cat$c-index-set-key) (:definition fn-cat$c-index-clear)
-   (:definition fn-cat$c-index-add) (:induction fn-cat$c-apply-plan)
-   (:definition fn-cat$c-apply-plan) (:induction fn-cat$c-plan) (:definition fn-cat$c-plan)
-   (:definition fn-cat$c-visible-at) (:definition fn-cat$c-total-octets)
-   (:definition fn-cat$c-group-count) (:definition fn-cat$c-group-next)
-   (:definition fn-cat$c-group-number) (:definition fn-cat$c-msgid-seqs)
-   (:definition fn-cat$c-scan-msgid) (:definition fn-cat$c-confirm) (:definition fn-cat$c-at)
-   (:definition fn-cat$c-wfp) (:definition update-fn-cat$c-unplaced)
-   (:definition fn-cat$c-unplaced) (:definition fn-cat$c-wbv-clear) (:definition fn-cat$c-wbv-put)
-   (:definition fn-cat$c-wbv-get) (:definition update-fn-cat$c-hz) (:definition fn-cat$c-hz)
-   (:definition fn-cat$c-lives-clear) (:definition fn-cat$c-lives-put)
-   (:definition fn-cat$c-lives-get) (:definition update-fn-cat$c-octets)
-   (:definition fn-cat$c-octets) (:definition fn-cat$c-groups-clear)
-   (:type-prescription fn-cat$c-groups-put) (:definition fn-cat$c-groups-put)
-   (:definition fn-cat$c-groups-get) (:definition fn-cat$c-numbers-clear)
-   (:definition fn-cat$c-numbers-put) (:definition fn-cat$c-numbers-get)
-   (:definition update-fn-cat$c-mpx) (:definition fn-cat$c-mpx) (:definition update-fn-cat$c-count)
-   (:definition fn-cat$c-count) (:definition update-fn-cat$c-rowsi) (:definition fn-cat$c-rowsi)
-   (:definition resize-fn-cat$c-rows) (:definition fn-cat$c-rows-length)
-   (:definition create-fn-cat$c) (:type-prescription fn-cat$cp) (:definition fn-cat$cp)
-   (:definition fn-cat$c-unplacedp) (:definition fn-cat$c-hzp) (:definition fn-cat$c-octetsp)
-   (:definition fn-cat$c-mpxp) (:definition fn-cat$c-countp) (:induction fn-cat$c-rowsp)
-   (:type-prescription fn-cat$c-rowsp) (:definition fn-cat$c-rowsp)
-   (:definition fn-cat$a-group-live-high) (:definition fn-cat$a-clear-keyed)
-   (:definition fn-cat$a-clear) (:definition fn-cat$a-redecide) (:definition fn-cat$a-withdraw)
-   (:definition fn-cat$a-commit) (:definition fn-cat$a-visible-at)
-   (:definition fn-cat$a-total-octets) (:definition fn-cat$a-group-count)
-   (:definition fn-cat$a-group-next) (:definition fn-cat$a-group-number)
-   (:definition fn-cat$a-msgid-seqs) (:definition fn-cat$a-at) (:definition fn-cat$a-count)
-   (:executable-counterpart create-fn-cat$a) (:type-prescription fn-cat$ap) (:definition fn-cat$ap)
-   (:type-prescription fn-cat-live-last) (:type-prescription fn-cat-live-first)
-   (:type-prescription fn-cat-live-numberp) (:definition fn-cat-live-numberp)
-   (:type-prescription fn-cat-live-rowp) (:definition fn-cat-live-rowp)
-   (:definition fn-cat-live-candidatep) (:definition fn-scat-msgid-idp)
-   (:definition fn-cat-mark-withdrawn) (:definition fn-cat-visiblep)
-   (:type-prescription fn-cat-seqs-for) (:rewrite fn-cat-rowp-of-nth-of-rowsp)
-   (:rewrite fn-cat-rowp-fields) (:type-prescription fn-cat-rowsp) (:type-prescription fn-cat-rowp)
-   (:rewrite fn-mlh-build-health-is-the-build) (:rewrite fn-mlh-build-saturatedp-is-the-build)
-   (:rewrite fn-mlh-set-key-is-a-list) (:rewrite fn-mlh-build-shape) (:definition fn-mlh-add)
-   (:rewrite fn-mlh-put-car-iff-not-saturated) (:rewrite fn-mlh-saturatedp-no-pages)
-   (:rewrite fn-mlh-put-unplaced-unchanged) (:rewrite fn-mlh-put-places-iff-not-saturated)
-   (:type-prescription fn-mlh-put) (:type-prescription fn-mlh-saturatedp)
-   (:rewrite fn-mlh-candidates-no-pages) (:rewrite fn-mlh-candidates-is-cands)
-   (:rewrite fn-mlh-abs-tabp) (:rewrite fn-mlh-candidates-nat-listp)
-   (:type-prescription fn-mlh-candidates) (:definition fn-mlh-wfp) (:type-prescription fn-mlh-pgsp)
-   (:definition fn-mlh-rootp) (:definition fn-mlh-tag-of)
-   (:type-prescription fn-mlh-scalars-natp . 3) (:type-prescription fn-mlh-scalars-natp . 2)
-   (:type-prescription fn-mlh-scalars-natp . 1) (:rewrite fn-mlh-create-is-a-table)
-   (:type-prescription fn-mlhp) (:linear fn-mlh-tag-below) (:type-prescription fn-mlh-tag-posp)
-   (:linear fn-mpxt-reach-bounds . 2) (:type-prescription fn-mpxt-reach-natp)
-   (:type-prescription fn-mpxt-keyp) (:definition fn-mpxl-cands) (:rewrite fn-mpxl-seqs-nat-listp)
-   (:type-prescription fn-mpxl-seqs) (:rewrite fn-mpxl-tabp-facts) (:rewrite fn-mpxl-ents-pagep)
-   (:type-prescription fn-cat-number-seq) (:definition fn-cat-assign)
-   (:type-prescription fn-cat-group-high) (:type-prescription fn-cat-row-availablep-booleanp)
-   (:rewrite fn-cp-append-nil-left) (:type-prescription fn-held-with-context)
-   (:definition fn-held-with-context) (:type-prescription fn-held-with-withdrawn)
-   (:definition fn-held-with-withdrawn) (:type-prescription fn-held-with-numbers)
-   (:definition fn-held-with-numbers) (:rewrite fn-record-accessors-of-held-make)
-   (:rewrite fn-held-accessors-are-the-wire-accessors) (:type-prescription fn-held-p)
-   (:executable-counterpart fn-held-withdrawn) (:executable-counterpart fn-held-numbers)
-   (:type-prescription fn-held-make) (:type-prescription fn-held-shapep)
-   (:type-prescription fn-held-withdrawnp) (:type-prescription fn-hc-p)
-   (:rewrite revappend-removal) (:type-prescription rev)
-   (:congruence list-equiv-implies-equal-nth-2) (:rewrite append-atom-under-list-equiv)
-   (:type-prescription fn-record-msgidp) (:type-prescription fn-record-octet-stringp)
-   (:type-prescription fn-record-octets-string) (:definition fn-record-octets-string)
-   (:type-prescription fn-record-string-octets) (:definition fn-record-string-octets)
-   (:definition fn-cbor-ag-cdr) (:definition fn-cbor-ag-car) (:induction resize-list)
-   (:type-prescription resize-list) (:definition resize-list) (:rewrite cons-car-cdr)
-   (:rewrite default-cdr) (:rewrite default-car) (:rewrite nth-0-cons)
-   (:type-prescription true-listp-update-nth) (:type-prescription unsigned-byte-p)
-   (:executable-counterpart unsigned-byte-p) (:forward-chaining nat-listp-forward-to-integer-listp)
-   (:type-prescription nat-listp) (:executable-counterpart nat-listp) (:definition nat-listp)
-   (:forward-chaining integer-listp-forward-to-rational-listp) (:type-prescription integer-listp)
-   (:forward-chaining rational-listp-forward-to-acl2-number-listp)
-   (:type-prescription rational-listp) (:forward-chaining acl2-number-listp-forward-to-true-listp)
-   (:type-prescription acl2-number-listp) (:type-prescription update-nth) (:type-prescription max)
-   (:definition min) (:forward-chaining true-list-listp-forward-to-true-listp)
-   (:type-prescription true-list-listp) (:executable-counterpart true-list-listp)
-   (:definition true-list-listp) (:type-prescription true-listp-revappend-type-prescription)
-   (:rewrite zp-open) (:compound-recognizer eqlablep-recog)
-   (:congruence iff-implies-equal-implies-1) (:induction hons-assoc-equal)
-   (:type-prescription hons-assoc-equal) (:definition hons-assoc-equal) (:definition hons-equal)
-   (:induction binary-append) (:definition binary-append) (:rewrite fold-consts-in-+)
-   (:type-prescription natp) (:executable-counterpart fix) (:rewrite associativity-of-+)
-   (:rewrite cons-equal) (:elim car-cdr-elim) (:executable-counterpart atom)
-   (:executable-counterpart eqlablep) (:type-prescription acl2-count) (:induction len)
-   (:induction true-listp) (:type-prescription true-listp) (:type-prescription booleanp)))))
-
 (local (in-theory (disable (tau-system))))
 
 ; The stobjs' logical lists stay as `nth' and `update-nth' terms in every
@@ -287,11 +87,6 @@
 ; -----------------------------------------------------------------------------
 ; 1. The row store: typed columns and the pool, from one declaration.
 
-; Keep the generic tree-writer functional instance from opening arithmetic
-; and codec dispatch while matching its already proved constraint.
-(encapsulate ()
- (local (in-theory (theory 'fn-cp-row-store-proof)))
- (local (in-theory (disable floor mod fn-scc-octets-valuep fn-scc-package-index)))
 (def-representation fn-crow
   (seq :u64) (txid :u64) (gen :u64) (payload :u64) (charge :u64) (stamp :u64)
   (msgid :octets)
@@ -300,7 +95,7 @@
   (aux :tree)
   (nums :tree)
   :write-once t
-  :pages t))
+  :pages t)
 
 ; -----------------------------------------------------------------------------
 ; 2. The foundation: the row store beside the old foundation (its tables,
@@ -761,30 +556,18 @@
            (adt-rec-p *fn-crow-schema* (nth i a)))
   :hints (("Goal" :in-theory (enable fn-crowp-is-seq-p))))
 
-(local
- (defthm fn-cp-val-of-rec-nth
-   (implies (and (adt-rec-p s r) (natp j) (< j (len s)))
-            (adt-val-okp (nth j s) (nth j r)))
-   :rule-classes nil
-   :hints (("Goal" :induct (list (nth j s) (nth j r))
-            :in-theory (e/d (adt-rec-p nth) (adt-val-okp adt-rec-p-open))))))
 (defthm fn-cp-crow-aux-octets
   (implies (and (fn-crowp a) (natp i) (< i (len a)))
            (and (adt-octetsp (nth 11 (nth i a)))
                 (adt-octetsp (nth 12 (nth i a)))))
-  :hints (("Goal" :use (fn-cp-crow-row-rec-p
-                        (:instance fn-cp-val-of-rec-nth (s *fn-crow-schema*) (r (nth i a)) (j 11))
-                        (:instance fn-cp-val-of-rec-nth (s *fn-crow-schema*) (r (nth i a)) (j 12)))
-           :in-theory (union-theories '(natp adt-val-okp (:executable-counterpart len)
-                                       (:executable-counterpart nth))
-                                     (theory 'minimal-theory)))))
+  :hints (("Goal" :use fn-cp-crow-row-rec-p
+           :in-theory (e/d (adt-rec-p adt-val-okp nth) (fn-cp-crow-row-rec-p fn-crowp)))))
 
 (defthm fn-cp-crowp-of-set-column
   (implies (and (fn-crowp a) (natp i) (< i (len a)) (natp j) (< j 13)
                 (adt-val-okp (nth j *fn-crow-schema*) v))
            (fn-crowp (update-nth i (update-nth j v (nth i a)) a)))
-  :hints (("Goal" :in-theory (e/d (fn-crowp-is-seq-p)
-                                  (adt-val-okp fn-cp-nth-of-cons fn-cp-crow-row-rec-p)))))
+  :hints (("Goal" :in-theory (enable fn-crowp-is-seq-p))))
 
 (defthm fn-cp-crowp-of-append-row
   (implies (fn-crowp a)
@@ -805,7 +588,7 @@
   (implies (and (fn-crowp a) (natp i) (< i (len a)) (natp j) (< j 13)
                 (adt-val-okp (nth j *fn-crow-schema*) v))
            (fn-crowp (adt-set-a j i v a)))
-  :hints (("Goal" :in-theory (union-theories '(adt-set-a) (theory 'minimal-theory))
+  :hints (("Goal" :in-theory (e/d (adt-set-a) (fn-cp-crowp-of-set-column))
            :use fn-cp-crowp-of-set-column)))
 
 (local (in-theory (disable fn-cat$pp fn-crowp fn-cat$cp fn-cp-row-of fn-cp-held fn-cp-tree-of
@@ -827,10 +610,8 @@
         (booleanp (nth 10 (fn-cp-row-of h)))
         (adt-octetsp (nth 11 (fn-cp-row-of h)))
         (adt-octetsp (nth 12 (fn-cp-row-of h))))
-   :hints (("Goal" :use fn-cp-row-of-rec-p
-            :in-theory (e/d (adt-rec-p adt-val-okp)
-                            (fn-cp-row-of fn-cp-row-of-rec-p fn-cp-rec-p-of-list))
-            :expand ((:free (n x) (nth n x)))))))
+   :hints (("Goal" :in-theory (e/d (fn-cp-row-of) (fn-cp-u64 fn-cp-smallp fn-cp-msgid-octets
+                                                    fn-cp-escapedp fn-sccb-treep))))))
 
 (defun fn-cat$p-count (fn-cat$p)
   (declare (xargs :stobjs fn-cat$p))
@@ -2622,6 +2403,29 @@
             (update-fn-cat$c-hz hz c)))
    :hints (("Goal" :in-theory (enable fn-cat$p-tab-commit)))))
 
+; The link tables and the withdrawals' pushes: the view reads positions 0,
+; 1 and 4 only; the links write 2 and 3; a push is the old sorted insert at
+; the view (the trie's ascending list after the add).
+(local
+ (defthm fn-cp-link-fields
+   (and (equal (nth 0 (fn-cat$p-link plan fn-cat$p)) (nth 0 fn-cat$p))
+        (equal (nth 1 (fn-cat$p-link plan fn-cat$p)) (nth 1 fn-cat$p))
+        (equal (nth 3 (fn-cat$p-link plan fn-cat$p)) (nth 3 fn-cat$p))
+        (equal (nth 0 (nth 2 (fn-cat$p-link plan fn-cat$p))) (nth 0 (nth 2 fn-cat$p)))
+        (equal (nth 1 (nth 2 (fn-cat$p-link plan fn-cat$p))) (fn-cpl-link t plan (nth 1 (nth 2 fn-cat$p))))
+        (equal (nth 2 (nth 2 (fn-cat$p-link plan fn-cat$p))) (fn-cpl-link nil plan (nth 2 (nth 2 fn-cat$p)))))
+   :hints (("Goal" :in-theory (enable fn-cat$p-link fn-cpl-link)
+            :induct (fn-cat$p-link plan fn-cat$p)))))
+
+; The overflow cells and the array length are not the links' fields.
+(local
+ (defthm fn-cp-link-cells-fields
+   (and (equal (nth 4 (fn-cat$p-link plan fn-cat$p)) (nth 4 fn-cat$p))
+        (equal (nth 5 (fn-cat$p-link plan fn-cat$p)) (nth 5 fn-cat$p)))
+   :hints (("Goal" :in-theory (enable fn-cat$p-link fn-cat$p-lnext-put fn-cat$p-lnext-rem
+                                      fn-cat$p-lprev-put fn-cat$p-lprev-rem)
+            :induct (fn-cat$p-link plan fn-cat$p)))))
+
 ; One link-table write at a time: the fields it leaves alone and the one it changes.
 (local
  (defthm fn-cp-next-rem-fields
@@ -2668,32 +2472,6 @@
         (equal (nth 2 (nth 2 (fn-cat$p-lprev-put k v s))) (cons (cons k v) (nth 2 (nth 2 s)))))
    :hints (("Goal" :in-theory (enable fn-cat$p-lprev-put)))))
 
-; The link tables and the withdrawals' pushes: the view reads positions 0,
-; 1 and 4 only; the links write 2 and 3; a push is the old sorted insert at
-; the view (the trie's ascending list after the add).
-(local
- (defthm fn-cp-link-fields
-   (and (equal (nth 0 (fn-cat$p-link plan fn-cat$p)) (nth 0 fn-cat$p))
-        (equal (nth 1 (fn-cat$p-link plan fn-cat$p)) (nth 1 fn-cat$p))
-        (equal (nth 3 (fn-cat$p-link plan fn-cat$p)) (nth 3 fn-cat$p))
-        (equal (nth 0 (nth 2 (fn-cat$p-link plan fn-cat$p))) (nth 0 (nth 2 fn-cat$p)))
-        (equal (nth 1 (nth 2 (fn-cat$p-link plan fn-cat$p))) (fn-cpl-link t plan (nth 1 (nth 2 fn-cat$p))))
-        (equal (nth 2 (nth 2 (fn-cat$p-link plan fn-cat$p))) (fn-cpl-link nil plan (nth 2 (nth 2 fn-cat$p)))))
-   :hints (("Goal" :in-theory (e/d (fn-cat$p-link fn-cpl-link)
-                                   (fn-cat$p-lnext-put fn-cat$p-lprev-put
-                                    fn-cpl-link-is-lsteps posp))
-            :induct (fn-cat$p-link plan fn-cat$p)))))
-
-; The overflow cells and the array length are not the links' fields.
-(local
- (defthm fn-cp-link-cells-fields
-   (and (equal (nth 4 (fn-cat$p-link plan fn-cat$p)) (nth 4 fn-cat$p))
-        (equal (nth 5 (fn-cat$p-link plan fn-cat$p)) (nth 5 fn-cat$p)))
-   :hints (("Goal" :in-theory (e/d (fn-cat$p-link)
-                                   (fn-cat$p-lnext-put fn-cat$p-lnext-rem
-                                    fn-cat$p-lprev-put fn-cat$p-lprev-rem posp))
-            :induct (fn-cat$p-link plan fn-cat$p)))))
-
 (local
  (defthm fn-cp-unlink-fields
    (and (equal (nth 0 (fn-cat$p-unlink plan fn-cat$p)) (nth 0 fn-cat$p))
@@ -2702,20 +2480,17 @@
         (equal (nth 0 (nth 2 (fn-cat$p-unlink plan fn-cat$p))) (nth 0 (nth 2 fn-cat$p)))
         (equal (nth 1 (nth 2 (fn-cat$p-unlink plan fn-cat$p))) (fn-cpl-unlink t plan (nth 1 (nth 2 fn-cat$p))))
         (equal (nth 2 (nth 2 (fn-cat$p-unlink plan fn-cat$p))) (fn-cpl-unlink nil plan (nth 2 (nth 2 fn-cat$p)))))
-   :hints (("Goal" :induct (fn-cat$p-unlink plan fn-cat$p)
-            :in-theory (union-theories
-                        '(fn-cat$p-unlink fn-cpl-unlink fn-cp-next-rem-fields
-                          fn-cp-next-put-fields fn-cp-prev-rem-fields fn-cp-prev-put-fields)
-                        (theory 'minimal-theory))))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-unlink fn-cpl-unlink)
+                                   (fn-cat$p-lnext-rem fn-cat$p-lnext-put fn-cat$p-lprev-rem fn-cat$p-lprev-put))
+            :induct (fn-cat$p-unlink plan fn-cat$p)))))
 
 ; The overflow cells and the array length are not the links' fields.
 (local
  (defthm fn-cp-unlink-cells-fields
    (and (equal (nth 4 (fn-cat$p-unlink plan fn-cat$p)) (nth 4 fn-cat$p))
         (equal (nth 5 (fn-cat$p-unlink plan fn-cat$p)) (nth 5 fn-cat$p)))
-   :hints (("Goal" :in-theory (e/d (fn-cat$p-unlink)
-                                   (fn-cat$p-lnext-put fn-cat$p-lnext-rem
-                                    fn-cat$p-lprev-put fn-cat$p-lprev-rem posp))
+   :hints (("Goal" :in-theory (enable fn-cat$p-unlink fn-cat$p-lnext-put fn-cat$p-lnext-rem
+                                      fn-cat$p-lprev-put fn-cat$p-lprev-rem)
             :induct (fn-cat$p-unlink plan fn-cat$p)))))
 
 (local
@@ -3140,7 +2915,7 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-cat-msgid-seqs{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
                  (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
-           :in-theory (disable fn-cp-corr-facts fn-cat$c-msgid-seqs fn-cat$a-msgid-seqs))))
+           :in-theory (disable fn-cp-corr-facts))))
 
 (defthm fn-cat-paged-msgid-seqs{guard-thm}
   (implies (fn-cat$pcorr fn-cat$p fn-cat-paged)
@@ -3298,7 +3073,7 @@
                  (:instance fn-cp-cover-of-a-commit (dir t) (tab (nth 1 (nth 2 fn-cat$p))) (c fn-cat-paged))
                  (:instance fn-cp-cover-of-a-commit (dir nil) (tab (nth 2 (nth 2 fn-cat$p))) (c fn-cat-paged)))
            :in-theory (e/d (fn-cat$pcorr) (fn-cp-corr-facts fn-cat$c-commit-w fn-cat$a-commit fn-held-p
-                                                fn-cat$ap fn-cat$corr-w fn-cat$p-view fn-cat-live-candidatep)))))
+                                                fn-cat$ap fn-cat$corr-w)))))
 
 (defthm fn-cat-paged-commit{guard-thm}
   (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
@@ -3566,7 +3341,7 @@
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-cat-index-health{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
                  (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
-           :in-theory (disable fn-cp-corr-facts fn-cat$c-index-health fn-cat$a-index-health))))
+           :in-theory (disable fn-cp-corr-facts))))
 
 (defthm fn-cat-paged-index-health{guard-thm}
   (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
