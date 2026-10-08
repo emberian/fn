@@ -30,7 +30,6 @@
 ; content-identity clusters are tried on every consp and true-listp test and
 ; backchain by opening their recognizers; nothing here needs them.
 (local (in-theory (disable fn-midx-correspondencep fn-gidx-build
-                           fn-nntp-article-idp-is-consp
                            fn-nntp-response-text-true-listp fn-cp-idp-true-listp
                            fn-cp-id-length-bound)))
 ; Rules whose conclusion is a consp or car test on a variable, with a

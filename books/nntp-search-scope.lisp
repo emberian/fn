@@ -37,9 +37,13 @@
 (in-package "ACL2")
 (include-book "nntp-xpat")
 
+(local (defthmd fn-nntp-article-idp-is-consp-local-rewrite
+  (implies (fn-nntp-article-idp article) (consp article))
+  :hints (("Goal" :by fn-nntp-article-idp-is-consp))))
+
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
-(local (in-theory (enable (:rewrite fn-nntp-article-idp-is-consp)
+(local (in-theory (enable (:rewrite fn-nntp-article-idp-is-consp-local-rewrite)
                           (:rewrite fn-nntp-available-number-article-is-projectable))))
 
 ; The numbers of the scope the node's XPAT renders a line for: the same
