@@ -24,6 +24,11 @@
         (t (+ 3 (fn-scs-width (length (symbol-name x)))
               (length (symbol-name x))))))
 
+(defthm fn-scs-len-nat-octets
+  (equal (len (fn-scc-nat-octets n))
+         (+ 1 (len (fn-scc-le-digits n))))
+  :hints (("Goal" :in-theory (enable fn-scc-nat-octets))))
+
 (local
  (defthm fn-scs-chars-length
    (equal (len (fn-scc-chars-octets xs)) (len xs))
@@ -37,6 +42,27 @@
   :hints (("Goal" :in-theory (e/d (fn-scs-atom-size fn-scc-atom-octets
                                     fn-scc-string-octets fn-scc-nat-octets)
                                    (fn-scs-width fn-scc-le-digits)))))
+
+; Whether the atom's octets are all octets: only a string or symbol name
+; whose length needs 256 or more digits fails.
+(local
+ (defthm fn-scs-octet-listp-append
+   (implies (and (fn-scc-octet-listp a) (fn-scc-octet-listp b))
+            (fn-scc-octet-listp (append a b)))))
+
+(defun fn-scs-atom-octetsp (x)
+  (declare (xargs :guard (fn-scc-atomp x)))
+  (cond ((stringp x) (< (fn-scs-width (length x)) 256))
+        ((or (null x) (natp x) (integerp x) (characterp x)) t)
+        (t (< (fn-scs-width (length (symbol-name x))) 256))))
+
+(defthm fn-scs-octet-listp-atom-octets-iff
+  (implies (fn-scc-atomp x)
+           (equal (fn-scc-octet-listp (fn-scc-atom-octets x))
+                  (fn-scs-atom-octetsp x)))
+  :hints (("Goal" :in-theory (enable fn-scc-atom-octets fn-scc-string-octets fn-scs-atom-octetsp
+                                     fn-scc-atomp fn-scc-nat-encodablep)
+           :do-not-induct t)))
 
 ; Fixed-size sidecar: (encoded-octets octet-list-length-or-nil octet-atom-p).
 ; NIL has octet-list length zero; every constructed cons has octet-atom-p NIL.

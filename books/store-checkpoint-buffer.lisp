@@ -45,6 +45,7 @@
 (in-package "ACL2")
 (include-book "store-checkpoint-codec")
 (include-book "octets-stobj")
+(include-book "store-tree-size")
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; Rules withdrawn at their source that this book's proofs use
@@ -186,12 +187,18 @@
 ; Encodability: `fn-scc-treep' with every leaf's octets octets.
 
 (defun fn-sccb-treep (x)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-scc-atom-octets fn-scc-nat-octets fn-scc-atomp
+                                                            fn-scc-octet-listp fn-scs-atom-octetsp)
+                                 :use ((:instance fn-scs-octet-listp-atom-octets-iff)
+                                       (:instance fn-scc-octet-listp-nat-octets-iff (n (len x))))))))
   (cond ((fn-scc-octets-valuep x)
-         (fn-scc-octet-listp (fn-scc-nat-octets (len x))))
+         (mbe :logic (fn-scc-octet-listp (fn-scc-nat-octets (len x)))
+              :exec (< (fn-scs-width (len x)) 256)))
         ((consp x) (and (fn-sccb-treep (car x)) (fn-sccb-treep (cdr x))))
         (t (and (fn-scc-atomp x)
-                (fn-scc-octet-listp (fn-scc-atom-octets x))))))
+                (mbe :logic (fn-scc-octet-listp (fn-scc-atom-octets x))
+                     :exec (fn-scs-atom-octetsp x))))))
 
 (defthm fn-sccb-treep-is-treep
   (implies (fn-sccb-treep x) (fn-scc-treep x))

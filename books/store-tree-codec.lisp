@@ -265,10 +265,41 @@
 (defthm fn-scc-chars-octets-true-listp
   (true-listp (fn-scc-chars-octets chars)))
 
+(defun fn-scc-string-codes-down (s i acc)
+  (declare (xargs :guard (and (stringp s) (natp i) (<= i (length s)) (true-listp acc))
+                  :measure (nfix i)
+                  :verify-guards nil))
+  (if (zp i)
+      acc
+    (fn-scc-string-codes-down s (1- i) (cons (char-code (char s (1- i))) acc))))
+
+(defthm fn-scc-string-codes-down-is-chars-octets
+  (implies (and (stringp s) (natp i) (<= i (len (coerce s 'list))))
+           (equal (fn-scc-string-codes-down s i acc)
+                  (append (fn-scc-chars-octets (take i (coerce s 'list))) acc)))
+  :hints (("Goal" :induct (fn-scc-string-codes-down s i acc)
+           :in-theory (enable fn-scc-string-codes-down char))))
+
+(verify-guards fn-scc-string-codes-down)
+
+(defthm fn-scc-length-string-is-len-chars
+  (implies (stringp s) (equal (length s) (len (coerce s 'list)))))
+
+(local
+ (defthm fn-scc-take-len-self
+   (implies (true-listp l) (equal (take (len l) l) l))))
+
+; The logic is the list recursion; the execution is one pass over the
+; string from its last character, consing each code onto the result (the
+; list route coerced to a character list, accumulated, reversed again).
 (defun fn-scc-string-octets (s)
   (declare (xargs :guard (stringp s)))
-  (let ((codes (fn-scc-chars-octets (coerce s 'list))))
-    (append (fn-scc-nat-octets (len codes)) codes)))
+  (mbe :logic
+       (let ((codes (fn-scc-chars-octets (coerce s 'list))))
+         (append (fn-scc-nat-octets (len codes)) codes))
+       :exec
+       (let ((n (length s)))
+         (append (fn-scc-nat-octets n) (fn-scc-string-codes-down s n nil)))))
 
 (defun fn-scc-read-string (xs)
   ; (cons string rest) or nil.
@@ -357,6 +388,21 @@
         (t (cons *fn-scc-op-symbol*
                  (cons (fn-scc-package-index (symbol-package-name x))
                        (fn-scc-string-octets (symbol-name x)))))))
+
+(local
+ (defthm fn-scc-octet-listp-append
+   (implies (and (fn-scc-octet-listp a) (fn-scc-octet-listp b))
+            (fn-scc-octet-listp (append a b)))))
+
+(defthm fn-scc-octet-listp-chars-octets
+  (fn-scc-octet-listp (fn-scc-chars-octets chars))
+  :hints (("Goal" :in-theory (enable fn-scc-chars-octets fn-scc-octetp))))
+
+(defthm fn-scc-octet-listp-nat-octets-iff
+  (implies (natp n)
+           (equal (fn-scc-octet-listp (fn-scc-nat-octets n))
+                  (< (len (fn-scc-le-digits n)) 256)))
+  :hints (("Goal" :in-theory (enable fn-scc-nat-octets fn-scc-octet-listp fn-scc-octetp))))
 
 ; The specification: a plain recursion.
 (defun fn-scc-program (x)
