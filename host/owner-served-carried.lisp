@@ -60,6 +60,7 @@
 (include-book "../books/definterface") ; def-carried, with the :incomplete escape
 (include-book "../books/owner-retain-carried") ; the pilot row and its open
 (include-book "../books/owner-post-carried") ; actual refusal/known-abort writers
+(include-book "owner-retain-host")
 
 (def-carried fn-owner-served-carried
   :invariant fn-owner-retain-statep

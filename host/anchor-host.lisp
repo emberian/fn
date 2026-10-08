@@ -19,6 +19,8 @@
 (in-package "ACL2")
 (include-book "../books/anchor-invariants")
 (include-book "../books/anchor-replace")
+(include-book "../books/definterface")
+(include-book "../books/payload-kinds")
 
 (set-state-ok t)
 (program)

@@ -15,6 +15,8 @@
 ; `fn-sn-node' is books/store-node's; include it rather than depend on a
 ; store session having been opened in this ACL2 first.
 (include-book "../books/store-node")
+(include-book "../books/definterface")
+(include-book "store-host")
 
 ; The workflow entries that form a request read the article's octets through
 ; the live payload arena (books/bp-outbound.lisp; the records flip): each takes

@@ -9,6 +9,8 @@
 (include-book "../books/served")
 (include-book "../books/reader-open-carried")
 (include-book "../books/state-globals")
+(include-book "../books/definterface")
+(include-book "../books/owner-agent")
 
 (defconst *fn-reader-groups* '("fn.letters"))
 (defconst *fn-reader-id* "<reader@example.invalid>")

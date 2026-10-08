@@ -84,6 +84,7 @@ IFACES_AFTER = """(in-package "ACL2")
 """
 
 A_AFTER = """(in-package "ACL2")
+(include-book "../books/definterface")
 (defun fn-a-simple (x) (declare (xargs :guard t)) x)
 
 (definterface fn-a-simple :class :common-lisp-compliant)
@@ -98,6 +99,8 @@ A_AFTER = """(in-package "ACL2")
 """
 
 B_AFTER = """(in-package "ACL2")
+(include-book "../books/definterface")
+(include-book "../books/book")
 (defun fn-b-entry (x) x)
 (defthm fn-b-entry-holds (equal (fn-b-entry x) x))
 
@@ -181,6 +184,30 @@ class RelocateTests(unittest.TestCase):
         self.assertEqual({d["name"]: d["source"] for d in after}["fn-e-model"], "host/native/e-model-host.lisp")
         self.assertEqual({d["name"]: d["source"] for d in after}["fn-book-two"], "host/b-host.lisp",
                          "a book entry whose declaration names a host-defined keystone goes after it")
+
+    def test_includes_only_repairs_an_unreferenced_standalone_root(self):
+        root = self.tree()
+        path = root / "host/standalone.lisp"
+        path.write_text('(in-package "ACL2")\n(defun standalone (x) x)\n'
+                        '(definterface standalone :class :program)\n')
+        self.run_tool(root, "--includes-only", "--write")
+        self.assertIn('(include-book "../books/definterface")', path.read_text())
+        self.assertIn('(definterface fn-a-simple', (root / "host/interfaces.lisp").read_text())
+        self.assertEqual({}, ir.include_edits(root))
+
+    def test_dependency_transformation_checks_cycles_and_is_idempotent(self):
+        root = self.tree()
+        request = {"host/a-host.lisp": ["host/b-host.lisp"]}
+        out = ir.dependency_edits(root, request)
+        self.assertIn('(include-book "b-host")', out["host/a-host.lisp"])
+        for rel, text in out.items():
+            (root / rel).write_text(text)
+        self.assertEqual({}, ir.dependency_edits(root, request))
+        with self.assertRaisesRegex(ValueError, "include cycle"):
+            ir.dependency_edits(root, {"host/b-host.lisp": ["host/a-host.lisp"]})
+        with self.assertRaisesRegex(ValueError, "include cycle"):
+            ir.dependency_edits(root, {"host/c-host.lisp": ["host/d-host.lisp"],
+                                      "host/d-host.lisp": ["host/c-host.lisp"]})
 
     def test_a_second_run_moves_nothing(self):
         root = self.tree()

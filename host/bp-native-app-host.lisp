@@ -11,6 +11,9 @@
 (include-book "../books/history-paged-attach")
 (include-book "../books/bp-channel-ingress")
 (include-book "../books/bp-listener-set")
+(include-book "../books/definterface")
+(include-book "../books/owner-config-state")
+(include-book "owner-host")
 
 (defun fn-owner-bp-session-admission (channel announced-uri state)
   (declare (xargs :stobjs state :mode :program))

@@ -7,9 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
-(include-book "feed-pause")
-(include-book "served-catalog-owner")
-(include-book "served-catalog-owner-keyed")
 (include-book "owner-prepare-correspondence")
 (include-book "owner-store-budget")
 (include-book "store-identity-reserve")
@@ -124,6 +121,7 @@
 (include-book "history-paged-adopt")
 (include-book "bp-channel-ingress")
 (include-book "bp-listener-set")
+(include-book "owner-config-state")
 (include-book "bp-node-listener-control")
 (include-book "owner")
 (include-book "bp-transit-join")
@@ -163,3 +161,4 @@
 (include-book "../host/index-reader-request-host")
 (include-book "../host/index-connection-repin-prepare-host")
 (include-book "../host/receiver-repin-source-host")
+(include-book "../host/workflow-host")

@@ -2731,6 +2731,8 @@ check-lane:
 check-fast:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --read
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --standalone
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_standalone
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
 	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
 	@$(CHECK_STEP) $(PYTHON) tools/spec_cite_check.py --summary --strict

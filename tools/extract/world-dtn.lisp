@@ -437,6 +437,7 @@
 (include-book "../../books/history-paged-adopt")
 (include-book "../../books/bp-channel-ingress")
 (include-book "../../books/bp-listener-set")
+(include-book "../../books/owner-config-state")
 (include-book "../../books/bp-node-listener-control")
 (include-book "../../books/owner")
 (include-book "../../books/bp-transit-join")
@@ -476,3 +477,4 @@
 (include-book "../../host/index-reader-request-host")
 (include-book "../../host/index-connection-repin-prepare-host")
 (include-book "../../host/receiver-repin-source-host")
+(include-book "../../host/workflow-host")

@@ -24,6 +24,8 @@
 ; (books/native-live-pages.lisp).
 (include-book "../books/native-live-pages")
 (include-book "../books/owner-operation-report")
+(include-book "../books/definterface")
+(include-book "owner-host")
 
 (defun fn-native-operation-host-offline ()
  (declare (xargs :mode :program))

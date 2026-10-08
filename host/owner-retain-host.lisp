@@ -27,6 +27,7 @@
 (include-book "../books/owner-host-relation")
 (include-book "../books/owner-retain-transitions")
 (include-book "../books/owner-connection-callbacks")
+(include-book "owner-host")
 
 ; -----------------------------------------------------------------------------
 ; The frame: a write to any other global keeps the relation; an install of a
