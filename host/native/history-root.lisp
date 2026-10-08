@@ -218,10 +218,19 @@ ACL2's source incarnation and refuses the candidate before installation."
 (defun fnn-owner-history-root-maintain (service)
   (let ((*fnn-checkpoint-stop-test*
           (lambda () (fnn-owner-service-stopping service))))
-    (handler-case (fnn-owner-history-root-refresh service)
-      (fnn-store-io-refusal (e)
-        (fnn-err "HISTORY root retained current representation: ~a" e)
-        :refused))))
+    ;; Every word is noted: ACL2 classifies it (fn-hroot-refresh-status) and
+    ;; `status' / `health' render the class (books/history-root-status.lisp).
+    ;; A refusal no longer vanishes: the refresh returns begin's refusal by
+    ;; value, and an I/O refusal below is a refusal too.
+    (let* ((word (handler-case (fnn-owner-history-root-refresh service)
+                   (fnn-store-io-refusal (e)
+                     (fnn-err "HISTORY root retained current representation: ~a" e)
+                     (list :refused :history-root-io-refusal))))
+           (status (fnn-owner-gated (service :control)
+                     (fnn-owner-core 'fn-owner-hroot-note word))))
+      (unless (equal status '(:history-root :building))
+        (fnn-err "HISTORY root refresh not built: ~(~s~)" status))
+      word)))
 
 (defun fnn-owner-history-sync-first (service)
   "Install's explicit first history synchronization.  fn-owner-hroot-row is
