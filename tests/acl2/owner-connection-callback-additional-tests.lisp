@@ -74,7 +74,8 @@
   (let* ((state (ocbt-initialize state))
          (working (fn-own-view (fn-owner-core state)))
          (bad-d (fn-own-view (fn-ocfg-owner *ocbt-bad-owner*)))
-         (state (f-put-global 'fn-owner-reader-views (list bad-d) state))
+         (state (fn-ost-install-readers
+ (fn-ordr-put :views (list bad-d) (fn-ost-readers state)) state))
          (working-related (fn-ocl-relation (fn-owner-ocfg state)))
          (selected (fn-ocfg-at-reader-view (fn-owner-ocfg state) (fn-owner-reader-views state)))
          (omitted (fn-ocl-relation selected))

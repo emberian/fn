@@ -7,7 +7,7 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
-(include-book "owner-authority-recovery")
+(include-book "owner-readers-recovery")
 (include-book "owner-cursor-domain")
 (include-book "owner-retire")
 (include-book "config-owner-live")
@@ -58,6 +58,7 @@
 (include-book "login-binding-live")
 (include-book "connection-budget")
 (include-book "tls-proxy")
+(include-book "owner-readers-transitions")
 (include-book "owner-stop-drain")
 (include-book "owner-reconfig-phased")
 (include-book "owner-time-reconfig")

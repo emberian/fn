@@ -59,6 +59,7 @@
 (include-book "tls-proxy")
 (include-book "owner-open-carried")
 (include-book "owner-reader-view")
+(include-book "owner-readers-transitions")
 (include-book "owner-time-journal")
 (include-book "owner-stop-drain")
 (include-book "owner-time-admission")

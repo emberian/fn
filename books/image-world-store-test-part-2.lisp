@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-store-test-part-1")
+(include-book "post-identity-catalog")
+(include-book "post-prepare-catalog")
 (include-book "post-retain-carried")
 (include-book "identity-retain-carried")
 (include-book "owner-prepare-served")
@@ -78,6 +80,7 @@
 (include-book "tls-proxy")
 (include-book "owner-open-carried")
 (include-book "owner-reader-view")
+(include-book "owner-readers-transitions")
 (include-book "owner-time-journal")
 (include-book "owner-stop-drain")
 (include-book "owner-time-admission")

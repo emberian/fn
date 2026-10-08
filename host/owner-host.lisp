@@ -25,6 +25,7 @@
 ; effect list, `fn-owner-submittedp' (fn-served-submission).  The host never
 ; writes a reply octet.
 (in-package "ACL2")
+(include-book "../books/owner-readers-state")
 (include-book "../books/owner-authority-state")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
@@ -103,6 +104,7 @@
 (include-book "../books/owner-recovery-retain")
 (include-book "../books/owner-admission-recovery")
 (include-book "../books/owner-authority-recovery")
+(include-book "../books/owner-readers-recovery")
 (include-book "../books/owner-cursor-domain")
 ; Q16 (b): online disk release of dropped files (fn-xrt-).
 (include-book "../books/extent-retire")
@@ -270,6 +272,7 @@
 ; fn-orr-read-span-at-a-captured-view-restores-the-owner restates the relation
 ; after it (books/owner-reader-read.lisp).
 (include-book "../books/owner-reader-view")
+(include-book "../books/owner-readers-transitions")
 ; Lane time-model (PRF-311): the barrier's deadline and the shed POST;
 ; lane time-model-2: the decision journal (books/owner-time-journal.lisp,
 ; PRF-322) and the 440 at the POST command (books/owner-time-admission.lisp,
@@ -1442,8 +1445,7 @@
 ; (books/group-access-cache.lisp), nil before the first read.
 (defun fn-owner-access-cache (state)
   (declare (xargs :stobjs state :guard t))
-  (and (boundp-global 'fn-owner-access-cache state)
-       (f-get-global 'fn-owner-access-cache state)))
+  (fn-ordr-get :cache (fn-ost-readers state)))
 
 (defun fn-owner-article-slots (state)
   ; The slots the run installed (fn-owner-connection-budget), or one before
@@ -4062,10 +4064,10 @@
 ; capture is held after it.
 (defun fn-owner-reader-views-capture (event state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((views (fn-ocv-capture (fn-owner-reader-views state) event
-                                (fn-own-view (fn-owner-core state))))
-         (state (f-put-global 'fn-owner-reader-views views state)))
-    (value (if (consp views) t nil))))
+  (let* ((readers (fn-ordr-capture (fn-ost-readers state) event
+                                   (fn-own-view (fn-owner-core state))))
+         (state (fn-ost-install-readers readers state)))
+    (value (if (consp (fn-ordr-views readers)) t nil))))
 
 ; A reader entry at the reader view: while a capture is held the entry runs
 ; on the owner with the reader view in place of the working view
@@ -4508,7 +4510,8 @@
  (let* ((result (car RC))
         (effects (fn-own-tls-result-effects result))
         (consumed (fn-own-tls-result-consumed result))
-        (state (f-put-global 'fn-owner-access-cache cache state))
+        (state (fn-ost-install-readers
+ (fn-ordr-cache-install (fn-ost-readers state) cache) state))
         (state (fn-owner-put-credits (cdr RC) state))
         (state (fn-owner-install-ocfg (fn-own-tls-result-owner result) state))
         (state (fn-owner-exposure-observe id effects consumed state)))

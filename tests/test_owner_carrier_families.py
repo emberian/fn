@@ -100,6 +100,15 @@ class RecordFamilyTransformationTests(unittest.TestCase):
                     f'(f-put-global {quoted} {source} state)'))
                 self.assertEqual(self.transform(getter), getter)
 
+    def test_nil_default_and_consp_selector(self):
+        for key, field in self.fields.items():
+            getter = f'(fn-oauth-get {field} (fn-ost-authority state))'
+            self.assertEqual(self.transform(
+                f"(if (boundp-global '{key} state) (f-get-global '{key} state) nil)"), getter)
+            self.assertEqual(self.transform(
+                f"(and (f-boundp-global '{key} state) (consp (f-get-global '{key} state)))"),
+                f'(consp {getter})')
+
     def test_quoted_forms_and_comments_and_strings_are_preserved(self):
         source = '''; (f-get-global 'fn-owner-account-carries state)
 '(f-get-global 'fn-owner-account-carries state)
@@ -135,3 +144,25 @@ class AuthorityCarrierTests(unittest.TestCase):
                             ('owner-canonical-read-state', ':canonical')]:
             self.assertIn(f'(fn-oauth-get {field} (fn-ost-authority state))',
                           (root / 'books' / (path + '.lisp')).read_text())
+
+
+class ReadersCarrierTests(unittest.TestCase):
+    def test_all_reader_wrappers_use_the_carried_pair(self):
+        from tools.owner_globals_check import globals_of
+        root = Path(__file__).resolve().parents[1]
+        old = {'fn-owner-reader-views', 'fn-owner-access-cache'}
+        found = {}
+        for directory in ('books', 'host'):
+            for path in (root / directory).rglob('*.lisp'):
+                source = path.read_text()
+                if any(key in source for key in old):
+                    keys = set(globals_of(source)) & old
+                    if keys:
+                        found[str(path.relative_to(root))] = keys
+        self.assertEqual(found, {'books/owner-readers-state.lisp': {'fn-owner-reader-views'}})
+        for filename in ('index-connection-pins-host', 'index-connection-repin-prepare-host'):
+            self.assertIn('(fn-ordr-index-kind (fn-ost-readers state))',
+                          (root / 'host' / (filename+'.lisp')).read_text())
+        source = (root / 'host/owner-host.lisp').read_text()
+        self.assertIn('(fn-ordr-capture (fn-ost-readers state) event', source)
+        self.assertIn('(fn-ordr-cache-install (fn-ost-readers state) cache)', source)

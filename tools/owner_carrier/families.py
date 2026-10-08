@@ -111,7 +111,8 @@ def composition_events():
 def record_family(source, fields, prefix, slot):
     """Move complete bound/read idioms and threaded writes to a carried record.
 
-    FIELDS maps physical global names to record keywords. Quoted templates,
+    FIELDS maps physical global names to record keywords whose initial values
+    are NIL. Quoted templates,
     strings and unrelated forms are retained byte-for-byte. A lone boundness
     observation refuses: nil default preserves values, not physical boundness.
     """
@@ -139,17 +140,25 @@ def record_family(source, fields, prefix, slot):
         if not isinstance(n, lr.Lst) or head(n) == 'quote':
             return source[n.start:n.end]
         items = n.items
+        bound = read = None
+        consp_read = False
         if head(n) == 'and' and len(items) == 3:
             bound, read = items[1:]
-            if (field_call(bound, ('boundp-global', 'f-boundp-global'))
-                    and field_call(read, ('f-get-global', 'get-global'))
-                    and symbol(bound.items[1]) == symbol(read.items[1])
-                    and isinstance(bound.items[2], lr.Atom)
-                    and isinstance(read.items[2], lr.Atom)
-                    and bound.items[2].low == read.items[2].low):
-                if n.has_comment:
-                    raise ValueError('bound/read contains a comment: preserve it explicitly')
-                return get(symbol(read.items[1]), read.items[2])
+            if head(read) == 'consp' and len(read.items) == 2:
+                read, consp_read = read.items[1], True
+        elif (head(n) == 'if' and len(items) == 4
+              and isinstance(items[3], lr.Atom) and items[3].low == 'nil'):
+            bound, read = items[1:3]
+        if (field_call(bound, ('boundp-global', 'f-boundp-global'))
+                and field_call(read, ('f-get-global', 'get-global'))
+                and symbol(bound.items[1]) == symbol(read.items[1])
+                and isinstance(bound.items[2], lr.Atom)
+                and isinstance(read.items[2], lr.Atom)
+                and bound.items[2].low == read.items[2].low):
+            if n.has_comment:
+                raise ValueError('bound/read contains a comment: preserve it explicitly')
+            getter = get(symbol(read.items[1]), read.items[2])
+            return f'(consp {getter})' if consp_read else getter
         key = symbol(items[1]) if len(items) > 1 else None
         if key in fields:
             if head(n) in ('boundp-global', 'f-boundp-global'):
