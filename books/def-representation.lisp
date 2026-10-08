@@ -2386,10 +2386,14 @@
                                          (not (eq paged nil)) exports source model lemmas)))
         ; Every emission path (scalar, generic, paged, flat and optional
         ; page image) proves in the theory its ADT library was written for:
-        ; each loaded library's exported theory (adt-*-exported) is enabled
-        ; first, even where a consumer's snapshot export hid it (books/store-
-        ; records-field.lisp in books/owner's world), with adt-nth-0 off (the
-        ; paged bridges' NTH normal form).  Afterwards every one of those runes
+        ; proto/adt-lib's exported theory (adt-lib-exported, the one ADT
+        ; library in the generators' own include closure) is enabled first,
+        ; even where a consumer's snapshot export hid it (books/store-records-
+        ; field.lisp in books/owner's world).  Libraries the generators do not
+        ; include (adt-key-lib, adt-bytes*) are left as the caller has them:
+        ; enabling their exports turned (nth k x) into (nth 0 (cdr^k x)) under
+        ; adt-nth-1+ and broke FN-PCK-ROW$C-APPEND's guard (2026-10-08).
+        ; Afterwards every one of those runes
         ; returns to the state the caller's theory gave it (a snapshot),
         ; so the caller's later proofs keep their incoming theory.  Not
         ; local: the generated definitions' type prescriptions depend on the
@@ -2399,29 +2403,12 @@
         ; (2026-10-08).  Non-local, the events replay identically on include,
         ; and their net effect on the includer's theory is nil.
         (let* ((snap (adt-sym name "-CALLER-THEORY"))
-               (libs '(union-theories
-                       (theory 'adt-lib-exported)
-                       (union-theories
-                        (if (logical-namep 'adt-bytes-lib-exported world)
-                            (theory 'adt-bytes-lib-exported) nil)
-                        (union-theories
-                         (if (logical-namep 'adt-bytes-exported world)
-                             (theory 'adt-bytes-exported) nil)
-                         (if (logical-namep 'adt-key-lib-exported world)
-                             (theory 'adt-key-lib-exported) nil)))))
-               (touched `(union-theories ,libs
-                                         (if (logical-namep 'adt-nth-0 world)
-                                             (set-difference-theories
-                                              (current-theory :here)
-                                              (disable adt-nth-0))
-                                           nil))))
+               (libs '(theory 'adt-lib-exported))
+               (touched libs))
           (value
            `(progn
               (deftheory ,snap (current-theory :here))
               (in-theory (union-theories (current-theory :here) ,libs))
-              (in-theory (if (logical-namep 'adt-nth-0 world)
-                             (disable adt-nth-0)
-                           (current-theory :here)))
               ,(if pages
                    ; the instance's events, then its page image and marking
                    `(progn ,events
