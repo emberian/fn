@@ -473,6 +473,10 @@
 ; first) prove with the codec open.  Re-evaluated in each including world,
 ; so a world that already had that disable (the history towers, which
 ; include pagestore-exec before this book) keeps it.
+; The only first-loaded books are assumptions-pgs-host-io and pagestore-words;
+; their shared prerequisites already precede this label.  Unlike the disk
+; decode's two-snapshot export, this union retains enabled NEW rules too.
+; theory-restore-own-family a-pgs-host-io-include: assumptions-pgs-host-io pagestore*
 (deflabel a-pgs-host-io-include)
 (include-book "assumptions-pgs-host-io")
 (in-theory (union-theories (current-theory 'a-pgs-host-io-include)

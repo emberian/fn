@@ -125,5 +125,62 @@ class BookOrderTests(unittest.TestCase):
             "(defthm x t :hints ((\"Goal\" :in-theory (enable mv-nth))))"))
 
 
+class RestoreTests(unittest.TestCase):
+    def audit_tree(self, preload=False, local=False, declaration=True):
+        with tempfile.TemporaryDirectory() as directory:
+            books = pathlib.Path(directory)
+            (books / "lib").mkdir()
+            (books / "lib/shared.lisp").write_text('(in-package "ACL2")\n')
+            (books / "own-leaf.lisp").write_text('(include-book "lib/shared")\n')
+            (books / "own-root.lisp").write_text('(include-book "own-leaf")\n')
+            # A local include in another book is still an outside consumer.
+            (books / "lib/consumer.lisp").write_text('(local (include-book "shared"))\n')
+            restore = "(in-theory (union-theories (theory 'before) " \
+                      "(set-difference-theories (current-theory :here) " \
+                      "(universal-theory 'after))))"
+            (books / "exporter.lisp").write_text(
+                ('; theory-restore-own-family before: own-*\n' if declaration else '') +
+                ('(include-book "lib/shared")\n' if preload else '') +
+                '(deftheory before (current-theory :here))\n'
+                '(include-book "own-root")\n'
+                '(deftheory after (current-theory :here))\n' +
+                ('(local ' + restore + ')' if local else restore) + '\n')
+            return theory_check.restore_audit(books)
+
+    def test_shared_dependency_preloaded_passes(self):
+        report = self.audit_tree(preload=True)
+        self.assertEqual(report["findings"], [])
+        self.assertEqual(report["regions"][0]["first_loads"], ["own-leaf", "own-root"])
+
+    def test_first_loaded_shared_dependency_fails_with_evidence(self):
+        report = self.audit_tree()
+        self.assertEqual(len(report["findings"]), 1)
+        self.assertIn("first-loads shared books/lib/shared", report["findings"][0])
+        self.assertIn("outside includer books/lib/consumer", report["findings"][0])
+
+    def test_new_export_requires_family_declaration(self):
+        self.assertIn("missing theory-restore-own-family", self.audit_tree(
+            preload=True, declaration=False)["findings"][0])
+
+    def test_local_restore_is_reported_but_does_not_export_disables(self):
+        report = self.audit_tree(local=True, declaration=False)
+        self.assertEqual(report["findings"], [])
+        self.assertTrue(report["regions"][0]["local"])
+
+    def test_deflabel_restore_retains_new_rules_and_has_no_shared_loads(self):
+        with tempfile.TemporaryDirectory() as directory:
+            books = pathlib.Path(directory)
+            (books / "own-io.lisp").write_text('(in-package "ACL2")\n')
+            (books / "exporter.lisp").write_text(
+                '; theory-restore-own-family entry: own-*\n'
+                '(deflabel entry)\n(include-book "own-io")\n'
+                "(in-theory (union-theories (current-theory 'entry) "
+                "(set-difference-theories (current-theory :here) "
+                "(universal-theory 'entry))))\n")
+            report = theory_check.restore_audit(books)
+        self.assertEqual(report["findings"], [])
+        self.assertEqual(report["regions"][0]["first_loads"], ["own-io"])
+
+
 if __name__ == "__main__":
     unittest.main()

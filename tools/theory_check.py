@@ -17,6 +17,14 @@ decodes, never at the top of a book.
     python3 tools/theory_check.py --strict    # exit 1 on a codec opening
     python3 tools/theory_check.py --books books/replay books/store-node   # one cluster
     python3 tools/theory_check.py --book-order [--books ...]  # guard order, mv-nth opened
+    python3 tools/theory_check.py --restore-table  # include-order export census
+
+Label-restore exports are also checked on every normal run (including without
+--strict).  A source comment declares each export's own-family; shared
+dependencies outside it must be included before its snapshot.  --restore-table
+reports each region's first-loaded repository books and external includes.
+This recursive books/ check ignores scratch files named _*.lisp and does not
+traverse ACL2 system books or expand event-generating macros.
 
 THE CODEC LAYER.  A codec's own books -- its definitions, the proofs of its
 round trips, and the seam and attachment books of plan 2026-09-22 §4.1 --
@@ -42,8 +50,10 @@ book.  This is a static reader of one habit with a measured cost.
 from __future__ import annotations
 
 import argparse
+from fnmatch import fnmatchcase
 import json
 from pathlib import Path
+import posixpath
 import re
 import sys
 
@@ -378,6 +388,141 @@ def book_lints(paths: list[Path], root: Path) -> list[str]:
     return lines
 
 
+# A restore exports the theory at an earlier label after including books.
+# A shared dependency first loaded inside that interval can lose all its
+# rules: including it again above the exporter is redundant.  Declare the
+# private family beside the snapshot, using books-relative globs:
+#   ; theory-restore-own-family LABEL: private-* another-private-book
+# Family members are intentionally hidden; dependencies outside that family
+# must precede the snapshot when an outside book also includes them.
+RESTORE_FAMILY = re.compile(
+    r"^\s*;+\s*theory-restore-own-family\s+(\S+):\s*(.*?)\s*$", re.MULTILINE)
+
+
+def _events(fs, local=False):
+    """Literal events, retaining local scope; never descend into proofs/macros."""
+    for f in fs:
+        if not isinstance(f, list) or not f:
+            continue
+        if f[0] == "local":
+            yield from _events(f[1:], True)
+        elif f[0] in ("progn", "encapsulate"):
+            yield from _events(f[2:] if f[0] == "encapsulate" else f[1:], local)
+        else:
+            yield f, local
+
+
+def _theory_refs(expr):
+    if not isinstance(expr, list) or not expr:
+        return set()
+    names = set()
+    if (expr[0] in ("theory", "current-theory", "universal-theory")
+            and len(expr) == 2 and isinstance(expr[1], str)):
+        names.add(expr[1])
+    for child in expr:
+        names.update(_theory_refs(child))
+    return names
+
+
+def restore_audit(books_dir: Path = BOOKS, only: set[str] | None = None) -> dict:
+    """Census of literal label/include/restore regions and their shared leaks.
+
+    Includes are resolved relative to each book, recursively under books/.
+    Included books replay non-local events only.  Local includes in the book
+    being audited still affect its proof world, and local includes anywhere
+    count as evidence of an outside consumer.  System books are reported by
+    name, not traversed.  Scratch books (_*) are not repository consumers.
+    """
+    events, families, graph, consumers = {}, {}, {}, {}
+    findings = []
+
+    def target(book, f):
+        if f[0] != "include-book" or len(f) < 2:
+            return None
+        if ":dir" in f[2:]:
+            return None
+        return posixpath.normpath(posixpath.join(posixpath.dirname(book),
+                                               f[1].strip('"'))).removesuffix(".lisp")
+
+    for path in sorted(books_dir.rglob("*.lisp")):
+        if path.name.startswith("_"):
+            continue
+        book = path.relative_to(books_dir).with_suffix("").as_posix()
+        text = path.read_text(encoding="utf-8")
+        try:
+            events[book] = list(_events(forms(text)))
+        except ValueError as error:
+            findings.append(f"books/{book}: theory-restore: unreadable: {error}")
+            continue
+        families[book] = {name.lower(): pats.split()
+                          for name, pats in RESTORE_FAMILY.findall(text)}
+        graph[book] = []
+        for f, local in events[book]:
+            dep = target(book, f)
+            if dep is not None:
+                consumers.setdefault(dep, set()).add(book)
+                if not local:
+                    graph[book].append(dep)
+
+    def closure(roots):
+        seen, pending = set(), list(roots)
+        while pending:
+            book = pending.pop()
+            if book in seen:
+                continue
+            seen.add(book)
+            pending.extend(graph.get(book, []))
+        return seen
+
+    regions = []
+    for book, es in events.items():
+        if only is not None and f"books/{book}" not in only:
+            continue
+        labels, includes = {}, []
+        for i, (f, local) in enumerate(es):
+            if f[0] in ("deftheory", "deflabel"):
+                labels[f[1]] = i
+            elif f[0] == "include-book":
+                includes.append((i, f))
+            elif f[0] == "in-theory":
+                refs = _theory_refs(f) & labels.keys()
+                if not refs:
+                    continue
+                start = min(labels[name] for name in refs)
+                end = max(labels[name] for name in refs)
+                end = i if end == start else end
+                inside = [(j, inc) for j, inc in includes if start < j < end]
+                if not inside:
+                    continue
+                label = next(name for name in refs if labels[name] == start)
+                before = closure(target(book, inc) for j, inc in includes
+                                 if j < start and target(book, inc) is not None)
+                added = closure(target(book, inc) for _, inc in inside
+                                if target(book, inc) is not None) - before
+                own = families[book].get(label, [])
+                row = {"book": f"books/{book}", "label": label, "local": local,
+                       "own_family": own, "first_loads": sorted(added),
+                       "external_includes": [inc[1:] for _, inc in inside
+                                             if target(book, inc) is None]}
+                regions.append(row)
+                if local:
+                    continue  # A local theory event exports no disabled rules.
+                prefix = f"books/{book}: theory-restore {label}"
+                if not own:
+                    findings.append(f"{prefix}: missing theory-restore-own-family declaration")
+                for dep in sorted(added):
+                    if any(fnmatchcase(dep, pat) for pat in own):
+                        continue
+                    outside = sorted(user for user in consumers.get(dep, set())
+                                     if user != book and
+                                     not any(fnmatchcase(user, pat) for pat in own))
+                    if outside:
+                        findings.append(f"{prefix}: first-loads shared books/{dep}; "
+                                        f"outside includer books/{outside[0]}; include it "
+                                        "before the snapshot")
+    return {"regions": regions, "findings": findings}
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Codec theories opened book-wide.")
     parser.add_argument("--summary", action="store_true")
@@ -391,6 +536,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--book-order", action="store_true",
                         help="warn-only: guard verifications ahead of a callee's, and "
                              "mv-nth enabled in a book's theory (--books to restrict)")
+    parser.add_argument("--restore-table", action="store_true",
+                        help="list label-restore regions and their first-loaded books")
     args = parser.parse_args(argv)
     if args.book_order:
         root = Path(__file__).resolve().parents[1]
@@ -405,13 +552,26 @@ def main(argv: list[str] | None = None) -> int:
     if args.books:
         only = {name.removesuffix(".lisp") for name in args.books}
     report = audit(only=only)
+    restores = restore_audit(only=only)
+    report["theory_restores"] = restores
     if args.json:
         print(json.dumps(report, indent=1, sort_keys=True))
     elif args.table:
         print("\n".join(table(report)))
     if args.summary or not (args.json or args.table):
         print(summary(report))
-    return 1 if args.strict and report["books_opening_a_codec"] else 0
+    if not args.json:
+        if args.restore_table:
+            for row in restores["regions"]:
+                print(f"{row['book']} {row['label']} "
+                      f"({'local' if row['local'] else 'export'}): "
+                      + ", ".join(row["first_loads"]) +
+                      (f"; external {row['external_includes']}" if row["external_includes"] else ""))
+        for finding in restores["findings"]:
+            print(finding)
+        print(f"theory-restore: {len(restores['regions'])} region(s), "
+              f"{len(restores['findings'])} finding(s)")
+    return 1 if restores["findings"] or (args.strict and report["books_opening_a_codec"]) else 0
 
 
 if __name__ == "__main__":
