@@ -184,3 +184,39 @@
  (defthm pckh-ungated-catalog-plan-writes-a-carried-catalog
    (implies (equal (car (pckh-ungated-catalog-plan h s)) :write)
             (fn-pck-carriedp h))))
+
+; G-A: a real resident image, including the successful model disk open.
+(defun pckh-selection-digest (x) (declare (xargs :guard t)) (acl2-count x))
+(defattach pgs-digest pckh-selection-digest)
+(defun pckh-selection-data (pages at)
+  (declare (xargs :verify-guards nil))
+  (if (atom pages) nil
+    (cons (cons at (car pages)) (pckh-selection-data (cdr pages) (1+ at)))))
+(defun pckh-selection-table (pages at)
+  (declare (xargs :verify-guards nil))
+  (if (atom pages) nil
+    (cons (list at 1 (pgs-digest (car pages)))
+          (pckh-selection-table (cdr pages) (1+ at)))))
+(defun pckh-selection-disk ()
+  (declare (xargs :verify-guards nil))
+  (let* ((pages (fn-pck-pages nil nil))
+         (tab (pckh-selection-table pages 2))
+         (dir (list (list 1 1 (pgs-digest tab))))
+         (rec (pgs-make-rec 1 10 (len pages) (pgs-digest dir))))
+    (cons (append (list (cons 10 dir) (cons 1 tab)) (pckh-selection-data pages 2))
+          (list (cons :main (cons rec nil))))))
+(assert-event
+ (let* ((disk (pckh-selection-disk)) (o (pgs-open disk :main :eager))
+        (file nil) (log '(0 a b)) (s 0) (verdict :ok) (start 0))
+   (and (equal verdict (if (equal (car o) :ok) :ok :corrupt))
+        (equal s (len (fn-sco-records (fn-pck-capture-of-pages (second (pgs-view o)) file))))
+        (equal start (if (consp log) (car log) nil))
+        (equal (fn-pck-x-open-selection verdict s 2 2 start) '(:checkpoint 0))
+        (equal (fn-pck-x-open-selection verdict s 2 2 start)
+               (fn-pck-open-selection t disk :main :eager file 2 2 log)))))
+(assert-event
+ (and (equal (fn-pck-x-open-selection :ok 0 2 2 1) '(:refused :log-past-checkpoint))
+      (equal (fn-pck-open-selection t (pckh-selection-disk) :main :eager nil 2 2 '(1 b))
+             '(:refused :log-past-checkpoint))))
+(must-fail-checked
+ (assert-event (equal (fn-pck-x-open-selection :ok 0 2 2 1) '(:checkpoint 0))))

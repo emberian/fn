@@ -29,5 +29,15 @@
  "source": "s-cpl",
  "state": "deferred",
  "title": "Phase 2c: wire the paged checkpoint and the payload file into the host (publication and open), which establishes fn-cpl-holdsp, fn-cpl-payload-listp and fn-cpl-payloadp on the host path; until then those premises are established off the host path only.",
- "updated": "2026-10-08T05:40:00Z"
+ "updated": "2026-10-08T05:40:00Z",
+ "approved_layers": {
+  "author": "Codex s-pck-2c-host",
+  "date": "2026-10-08",
+  "process": "S authorized continuation of independent items and G-C via admission, or named :payload-over-frame refusal before writes. No global arena ceiling.",
+  "G-A-statement": "(defthm fn-pck-x-open-selection-is-the-selection\n (implies (and (equal verdict (if (not filep) :absent (if (equal (car (pgs-open disk r mode)) :ok) :ok :corrupt)))\n               (implies (equal verdict :ok) (equal s (len (fn-sco-records (fn-pck-capture-of-pages (second (pgs-view (pgs-open disk r mode))) file)))))\n               (equal start (if (consp log) (car log) nil)))\n          (equal (fn-pck-x-open-selection verdict s count k start)\n                 (fn-pck-open-selection filep disk r mode file count k log))))",
+  "G-A-scope": "The S equation is the decoded capture count supplied by resident-open correspondence. No model DISK or FILE argument to the executable. Verdict is :absent/:ok/:corrupt. A malformed retained start also refuses adoption. Guard T; comparisons belong to ACL2. Teeth: ground successful model open with all antecedents and conclusion; start>S must refuse; must-fail assertion of adoption for that same ground case.",
+  "G-B-statement": "(defthm fn-pck-x-open-summary-is-the-root\n (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)\n               (equal npg (len (fn-pck-pages configs recs)))\n               (equal (pgs-x-words 0 0 (* 2048 npg) pgs-mem) (adt-tp-flat (fn-pck-pages configs recs)))\n               (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid))\n  (let ((r (fn-pck-x-open npg pgs-mem fid fn-arena fn-octets))\n        (root (fn-pck-root-tree-of-capture (fn-sco-capture configs recs)\n                                         (fn-pck-f configs recs) (fn-pck-plen recs 0))))\n   (and (equal (mv-nth 6 r) (nth 4 root)) (equal (mv-nth 7 r) (nth 5 root))))))",
+  "G-B-layout": "Append F and PLEN at result positions 6 and 7; preserve existing result slots 0..5 and the capture keystone conclusion verbatim. No second decoder or payload read. The root-summary theorem needs only the resident image and valid encoded history, not durable payload contents, since it reads the root. G-B torn-tail write theorem and tooth follow in payload layer; base will be committed PLEN, never EOF.",
+  "G-A-validation": "Persvati REPL pckga: concrete entry and equality theorem admitted (14,057 prover steps), guard T verified; successful model-open witness and start>S refusal/must-fail passed (8 added test forms). Affected certify: boxq bq10081128-0294, run-20261008T112854Z-dadb, exit 0. Host wiring remains pending."
+ }
 }

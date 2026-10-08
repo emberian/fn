@@ -152,6 +152,34 @@
            :do-not-induct t)))
 
 ; -----------------------------------------------------------------------------
+; G-A: the resident reader supplies its verdict and capture count.  The host
+; holds neither the model disk nor the payload file as lists.  START is NIL
+; if the log has no well-formed start; that cannot authorize adoption.
+(defun fn-pck-x-open-selection (verdict s count k start)
+  (declare (xargs :guard t))
+  (let ((sel (fn-sco-select verdict s count k)))
+    (if (and (equal (car sel) :checkpoint)
+             (not (and (natp start) (natp s) (<= start s))))
+        (list :refused :log-past-checkpoint)
+      sel)))
+
+(defthm fn-pck-x-open-selection-is-the-selection
+  (implies
+   (and (equal verdict
+               (if (not filep) :absent
+                 (if (equal (car (pgs-open disk r mode)) :ok) :ok :corrupt)))
+        (implies (equal verdict :ok)
+                 (equal s (len (fn-sco-records
+                                (fn-pck-capture-of-pages
+                                 (second (pgs-view (pgs-open disk r mode))) file)))))
+        (equal start (if (consp log) (car log) nil)))
+   (equal (fn-pck-x-open-selection verdict s count k start)
+          (fn-pck-open-selection filep disk r mode file count k log)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-pck-x-open-selection fn-pck-open-selection
+                 fn-pck-open-raw-selection fn-pck-log-retains fn-sco-select)
+                (pgs-open pgs-view fn-pck-capture-of-pages fn-sco-records)))))
+
 ; 3. Compaction
 
 (defun fn-pck-slot-s (s)
