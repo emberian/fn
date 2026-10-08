@@ -9652,10 +9652,10 @@
         "fn-ocs-in-flight-admits-only-inspect-commit-and-reader",
         "fn-ocs-next-otherwise-is-ocm-next",
         "fn-ocs-inspect-pick-keeps-the-ocm",
-        "fn-ocs-complete-only-after-the-barrier",
+        "fn-otm-held-plan-complete-only-after-the-barrier",
         "fn-ocs-barrier-only-from-a-start",
         "fn-ocs-staged-only-by-a-start",
-        "fn-ocs-in-flight-until-completed",
+        "fn-otm-held-plan-in-flight-until-completed",
         "fn-ocs-inspect-first-when-not-last",
         "fn-ocs-inspect-waiting-picks-someone",
         "fn-ocs-other-pick-clears-lasti",
@@ -13447,7 +13447,8 @@
         "fn-ocf-potential-at-most-twenty-two",
         "fn-ocf-seal-potential-at-most-six",
         "fn-ocf-start-next-while-control-waits-is-within-the-budget",
-        "fn-ocp-no-start-next-while-a-shut-out-class-waits"
+        "fn-ocp-no-start-next-while-a-shut-out-class-waits",
+        "fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits"
       ]
     },
     {
