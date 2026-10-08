@@ -205,7 +205,7 @@
          (s (mv-nth 2 r))
          (rr (fn-xc-span-row s ledger file eoff elen poff plen trailer p end slots cells wins dst)))
     (implies (and (equal (mv-nth 0 r) :span))
-             (and (natp s) (natp p) (natp end) (natp plen) (or (not (natp from)) (<= from s)) (< s (fn-xcs-count slots))
+             (and (natp s) (natp p) (natp end) (natp plen) (and (natp from) (<= from s)) (< s (fn-xcs-count slots))
                   (fn-xc-slot-matchp s nil 2 file eoff elen poff plen 0 0 trailer p slots)
                   (equal (mv-nth 0 rr) :span)
                   (equal (mv-nth 1 r) (- (mv-nth 1 rr) p))
@@ -224,6 +224,7 @@
     (implies (not (equal (mv-nth 0 r) :span))
              (and (equal (mv-nth 0 r) :miss)
                   (equal (mv-nth 1 r) 0)
+                  (equal (mv-nth 2 r) nil)
                   (equal (mv-nth 3 r) dst)
                   (equal (mv-nth 4 r) slots)
                   (equal (mv-nth 5 r) cells))))
@@ -393,12 +394,13 @@
          (plan (fn-xcw-plan row wins))
          (window (fn-xcw-window row wins)))
     (implies
-     (and (fn-xccp cells) (fn-xc-readyp slots cells)
-          (natp from) (natp i) (<= from i)
-          (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells)))
+     (and (and (fn-xccp cells) (fn-xc-readyp slots cells))
+          (and (natp from) (<= from i))
+          (and (natp i) (<= (fn-xc-ne cells) i) (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))
           (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))
           (fn-xc-slot-matchp i nil 2 file eoff elen poff plen 0 0 trailer p slots)
-          (natp end) (< p end)
+          (natp end)
+          (< p end)
           (fn-pwc-cachedp ledger token)
           (true-listp plan)
           (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
@@ -434,7 +436,7 @@
          (plan (fn-xcw-plan (fn-xc-row s cells) wins)))
     (implies (equal (mv-nth 0 r) :span)
              (and (natp s)
-                  (or (not (natp from)) (<= from s))
+                  (and (natp from) (<= from s))
                   (< s (fn-xcs-count slots))
                   (fn-xc-slot-matchp s nil 2 file eoff elen poff plen 0 0 trailer p slots)
                   (fn-pwc-cachedp ledger token)
@@ -448,15 +450,71 @@
 
 (defthm fn-xc-span-at-hit-touches-only-the-selected-slot
   (let ((r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)))
-    (implies (equal (mv-nth 0 r) :span)
-             (and (equal (mv-nth 4 r)
-                         (mv-nth 1 (fn-xc-touch (mv-nth 2 r) slots cells)))
-                  (equal (mv-nth 5 r)
-                         (mv-nth 2 (fn-xc-touch (mv-nth 2 r) slots cells))))))
+    (and (equal (mv-nth 4 r)
+                (mv-nth 1 (fn-xc-touch (mv-nth 2 r) slots cells)))
+         (equal (mv-nth 5 r)
+                (mv-nth 2 (fn-xc-touch (mv-nth 2 r) slots cells)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-xc-span-row fn-xc-span-at fn-xc-touch)
-           :use fn-xc-span-at-span-structure)))
+  :hints (("Goal" :in-theory (e/d (fn-xc-touch) (fn-xc-span-row fn-xc-span-at))
+           :use (fn-xc-span-at-span-structure fn-xc-span-at-miss-changes-nothing))))
 
+(defthm fn-xc-span-at-answers-in-the-window-region
+  (implies (and (fn-xccp cells) (fn-xc-readyp slots cells) (natp from) (natp p)
+                (equal (mv-nth 0 (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) :span))
+           (and (<= (fn-xc-ne cells) (mv-nth 2 (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)))
+                (< (mv-nth 2 (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) (+ (fn-xc-ne cells) (fn-xc-nw cells)))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)
+           :in-theory (disable fn-xc-span-row fn-xc-touch fn-xc-lookup fn-xc-slot-matchp fn-xc-span-row-unfolds-to-the-cached-span fn-xc-span-end-natp))
+          ("Subgoal *1/3" :expand ((fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) :in-theory (e/d (fn-xc-lo fn-xc-hi) (fn-xc-span-row fn-xc-touch fn-xc-lookup fn-xc-slot-matchp fn-xc-span-at fn-xc-span-row-unfolds-to-the-cached-span fn-xc-span-end-natp))
+           :use ((:instance fn-xc-lookup-hit-is-the-descriptor (kind 2) (a poff) (b plen) (c 0) (d 0) (pos p) (fn-xcs slots) (fn-xcc cells))))
+          ("Subgoal *1/2" :expand ((fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) :in-theory (e/d (fn-xc-lo fn-xc-hi) (fn-xc-span-row fn-xc-touch fn-xc-lookup fn-xc-slot-matchp fn-xc-span-at fn-xc-span-row-unfolds-to-the-cached-span fn-xc-span-end-natp))
+           :use ((:instance fn-xc-lookup-hit-is-the-descriptor (kind 2) (a poff) (b plen) (c 0) (d 0) (pos p) (fn-xcs slots) (fn-xcc cells))))
+          ("Subgoal *1/1" :expand ((fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) :in-theory (e/d (fn-xc-lo fn-xc-hi) (fn-xc-span-row fn-xc-touch fn-xc-lookup fn-xc-slot-matchp fn-xc-span-at fn-xc-span-row-unfolds-to-the-cached-span fn-xc-span-end-natp))
+           :use ((:instance fn-xc-lookup-hit-is-the-descriptor (kind 2) (a poff) (b plen) (c 0) (d 0) (pos p) (fn-xcs slots) (fn-xcc cells))))))
+
+
+(defthm fn-xc-span-at-answers-no-earlier-than-the-first-candidate
+  (implies (and (fn-xccp cells) (fn-xc-readyp slots cells) (natp from) (natp p)
+                (equal (mv-nth 0 (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)) :span))
+           (<= (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) (mv-nth 2 (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-xc-span-at fn-xc-lookup fn-xc-slot-matchp fn-xc-lookup-covers-le fn-xc-lookup-covers-hit)
+           :use (fn-xc-span-at-answers-in-the-window-region
+                 fn-xc-span-at-answers-from-a-matching-slot
+                 (:instance fn-xc-lookup-covers-le (i (mv-nth 2 (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst))))))))
+
+(defthm fn-xc-span-at-answers-an-owed-hit
+  (let* ((hit (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))
+         (i (mv-nth 1 hit))
+         (token (fn-xc-slot-token i slots))
+         (plan (fn-xcw-plan (fn-xc-row i cells) wins))
+         (window (fn-xcw-window (fn-xc-row i cells) wins))
+         (r (fn-xc-span-at from ledger file eoff elen poff plen trailer p end slots cells wins dst)))
+    (implies
+     (and (and (fn-xccp cells) (fn-xc-readyp slots cells))
+          (natp from)
+          (equal (mv-nth 0 hit) :hit)
+          (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))
+          (fn-pwc-cachedp ledger token)
+          (true-listp plan)
+          (natp end)
+          (< p end)
+          (equal (mv-nth 0 (fn-pwr-byte-at returned-ledger worker token plan
+                                          file eoff elen poff plen trailer p window))
+                 :byte))
+     (and (equal (mv-nth 0 r) :span)
+          (posp (mv-nth 1 r))
+          (equal (mv-nth 2 r) (mv-nth 1 hit)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-xc-lo fn-xc-hi) (fn-xc-span-at fn-xc-lookup fn-xcw-plan fn-xcw-window fn-xc-row fn-xc-slot-matchp))
+           :use ((:instance fn-xc-span-at-answers-a-covered-slot (i (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells))))
+                 (:instance fn-xc-lookup-hit-is-the-descriptor (kind 2) (a poff) (b plen) (c 0) (d 0) (pos p) (fn-xcs slots) (fn-xcc cells))
+                 (:instance fn-xc-byte-at-facts (token (fn-xc-slot-token (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) slots))
+                            (plan (fn-xcw-plan (fn-xc-row (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) cells) wins))
+                            (window (fn-xcw-window (fn-xc-row (mv-nth 1 (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p slots cells)) cells) wins)))
+                 fn-xc-lookup-hit-matches
+                 fn-xc-span-at-answers-no-earlier-than-the-first-candidate))))
 
 (local
  (defthm fn-xcw-bytesp-nth
