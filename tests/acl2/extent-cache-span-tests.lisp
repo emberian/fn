@@ -2,7 +2,9 @@
 ; logical snapshots; registered ground lemmas check the entire claims. The
 ; native assertion below separately checks the same span on real stobjs.
 (in-package "ACL2")
-(include-book "../../books/extent-cache")
+(include-book "../../books/extent-cache-span")
+(include-book "../../books/extent-cache-disjoint")
+(include-book "../../books/extent-cache-contracts")
 (include-book "../../books/defkeystone")
 (include-book "must-fail-checked")
 (include-book "std/testing/assert-bang" :dir :system)
@@ -589,5 +591,250 @@
          (equal (mv-nth 3 r2) *xcst-slots*) (equal (mv-nth 4 r2) *xcst-cells*)
          (equal (mv-nth 0 r1) :duplicate)
          (equal (mv-nth 3 r1) *xcst-whole-slots*) (equal (mv-nth 4 r1) '(1 2 0)))))
+
+; Original-contract counterexamples under the guarded install.
+; Each asserts the complete original antecedent and refutes its conclusion.
+; Forms copied from origin/lane/s-extent-cache@248809ad2; only ground substitution.
+
+(xcst-ground-witness xcst-old-install-when-present-kind2-counterexample ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 8 0 11 100 3 100 3 1 0 0 77 0) (2 t 7 0 11 100 3 100 3 0 0 0 77 1))) (fn-xcc '(2 0 2)) (j 0))
+  (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+                (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc))
+                (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                            trailer start fn-xcs)) (not (let ((p (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                                trailer start fn-xcs)))
+             (and (equal (mv-nth 0 (fn-xc-install-call)) :present)
+                  (equal (mv-nth 1 (fn-xc-install-call)) p)
+                  (equal (mv-nth 2 (fn-xc-install-call)) nil)
+                  (equal (mv-nth 3 (fn-xc-install-call)) (mv-nth 1 (fn-xc-touch p fn-xcs fn-xcc)))
+                  (equal (mv-nth 4 (fn-xc-install-call)) (mv-nth 2 (fn-xc-touch p fn-xcs fn-xcc))))))))
+
+(xcst-ground-witness xcst-old-install-when-present-kind1-counterexample ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 8 9 11 100 3 1 0 0 0 0 77 0) (1 t 7 9 11 100 3 0 0 0 0 0 77 1))) (fn-xcc '(2 2 0)) (j 0))
+  (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+                (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc))
+                (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                            trailer start fn-xcs)) (not (let ((p (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                                trailer start fn-xcs)))
+             (and (equal (mv-nth 0 (fn-xc-install-call)) :present)
+                  (equal (mv-nth 1 (fn-xc-install-call)) p)
+                  (equal (mv-nth 2 (fn-xc-install-call)) nil)
+                  (equal (mv-nth 3 (fn-xc-install-call)) (mv-nth 1 (fn-xc-touch p fn-xcs fn-xcc)))
+                  (equal (mv-nth 4 (fn-xc-install-call)) (mv-nth 2 (fn-xc-touch p fn-xcs fn-xcc))))))))
+
+(xcst-ground-witness xcst-old-install-when-free-kind2-counterexample ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 7 0 11 100 3 100 3 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 0 2)) (j 0))
+  (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+                (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc))
+                (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                                 trailer start fn-xcs))
+                (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (let ((f (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))
+             (and (equal (mv-nth 0 (fn-xc-install-call)) :installed)
+                  (equal (mv-nth 1 (fn-xc-install-call)) f)
+                  (equal (mv-nth 2 (fn-xc-install-call)) nil)
+                  (equal (mv-nth 3 (fn-xc-install-call))
+                         (fn-xc-write f kind tokp tid tcid file eoff elen a b c d start trailer
+                                      (fn-xc-tick fn-xcc) fn-xcs))
+                  (equal (mv-nth 4 (fn-xc-install-call)) (mv-nth 1 (fn-xc-next-stamp fn-xcc))))))))
+
+(xcst-ground-witness xcst-old-install-when-free-kind1-counterexample ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 7 9 11 100 3 0 0 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 2 0)) (j 0))
+  (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+                (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc))
+                (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                                 trailer start fn-xcs))
+                (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (let ((f (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))
+             (and (equal (mv-nth 0 (fn-xc-install-call)) :installed)
+                  (equal (mv-nth 1 (fn-xc-install-call)) f)
+                  (equal (mv-nth 2 (fn-xc-install-call)) nil)
+                  (equal (mv-nth 3 (fn-xc-install-call))
+                         (fn-xc-write f kind tokp tid tcid file eoff elen a b c d start trailer
+                                      (fn-xc-tick fn-xcc) fn-xcs))
+                  (equal (mv-nth 4 (fn-xc-install-call)) (mv-nth 1 (fn-xc-next-stamp fn-xcc))))))))
+
+(xcst-ground-witness xcst-old-install-when-full-kind2-counterexample ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 7 0 11 100 3 100 3 0 0 0 77 1) (2 t 8 0 11 100 3 100 3 2 0 0 77 0))) (fn-xcc '(2 0 2)) (j 0))
+  (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+                (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc))
+                (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                                 trailer start fn-xcs))
+                (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))) (not (let ((v (fn-xc-lru (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) nil fn-xcs)))
+             (and (equal (mv-nth 0 (fn-xc-install-call)) :replaced)
+                  (equal (mv-nth 1 (fn-xc-install-call)) v)
+                  (equal (mv-nth 2 (fn-xc-install-call)) (fn-xc-slot-token v fn-xcs))
+                  (equal (mv-nth 3 (fn-xc-install-call))
+                         (fn-xc-write v kind tokp tid tcid file eoff elen a b c d start trailer
+                                      (fn-xc-tick fn-xcc) fn-xcs))
+                  (equal (mv-nth 4 (fn-xc-install-call)) (mv-nth 1 (fn-xc-next-stamp fn-xcc))))))))
+
+(xcst-ground-witness xcst-old-install-when-full-kind1-counterexample ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 7 9 11 100 3 0 0 0 0 0 77 1) (1 t 8 9 11 100 3 2 0 0 0 0 77 0))) (fn-xcc '(2 2 0)) (j 0))
+  (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+                (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc))
+                (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                                 trailer start fn-xcs))
+                (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))) (not (let ((v (fn-xc-lru (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) nil fn-xcs)))
+             (and (equal (mv-nth 0 (fn-xc-install-call)) :replaced)
+                  (equal (mv-nth 1 (fn-xc-install-call)) v)
+                  (equal (mv-nth 2 (fn-xc-install-call)) (fn-xc-slot-token v fn-xcs))
+                  (equal (mv-nth 3 (fn-xc-install-call))
+                         (fn-xc-write v kind tokp tid tcid file eoff elen a b c d start trailer
+                                      (fn-xc-tick fn-xcc) fn-xcs))
+                  (equal (mv-nth 4 (fn-xc-install-call)) (mv-nth 1 (fn-xc-next-stamp fn-xcc))))))))
+
+(xcst-ground-witness xcst-old-install-then-lookup-hits-free-kind2-counterexample ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 7 0 11 100 3 100 3 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 0 2)) (j 0))
+  (and (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
+                (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (fn-xc-lookup-after-install))))
+
+(xcst-ground-witness xcst-old-install-then-lookup-hits-free-kind1-counterexample ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 7 9 11 100 3 0 0 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 2 0)) (j 0))
+  (and (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
+                (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (fn-xc-lookup-after-install))))
+
+(xcst-ground-witness xcst-old-install-then-lookup-hits-full-kind2-counterexample ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 7 0 11 100 3 100 3 0 0 0 77 1) (2 t 8 0 11 100 3 100 3 2 0 0 77 0))) (fn-xcc '(2 0 2)) (j 0))
+  (and (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
+                (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))) (not (fn-xc-lookup-after-install))))
+
+(xcst-ground-witness xcst-old-install-then-lookup-hits-full-kind1-counterexample ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 7 9 11 100 3 0 0 0 0 0 77 1) (1 t 8 9 11 100 3 2 0 0 0 0 77 0))) (fn-xcc '(2 2 0)) (j 0))
+  (and (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
+                (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))) (not (fn-xc-lookup-after-install))))
+
+(xcst-ground-witness xcst-old-install-then-lookup-hits-kind2-counterexample ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 7 0 11 100 3 100 3 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 0 2)) (j 0))
+  (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+                (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer
+                                                      fn-xcs fn-xcc))
+                            :refused))) (not (fn-xc-lookup-after-install))))
+
+(xcst-ground-witness xcst-old-install-then-lookup-hits-kind1-counterexample ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 7 9 11 100 3 0 0 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 2 0)) (j 0))
+  (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+                (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer
+                                                      fn-xcs fn-xcc))
+                            :refused))) (not (fn-xc-lookup-after-install))))
+
+(xcst-ground-witness xcst-old-install-present-kind2-counterexample ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 8 0 11 100 3 100 3 1 0 0 77 0) (2 t 7 0 11 100 3 100 3 0 0 0 77 1))) (fn-xcc '(2 0 2)) (j 0))
+  (and (and (fn-xc-case-hyps)
+                (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                            trailer start fn-xcs)) (not (let ((v (mv-nth 1 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))))
+             (and (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :present)
+                  (equal (mv-nth 2 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) nil)
+                  (fn-xc-slot-matchp v t kind file eoff elen a b c d trailer start fn-xcs)
+                  (implies (and (natp j) (not (equal j v)))
+                           (equal (nth j (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))) (nth j fn-xcs))))))))
+
+(xcst-ground-witness xcst-old-install-present-kind1-counterexample ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 8 9 11 100 3 1 0 0 0 0 77 0) (1 t 7 9 11 100 3 0 0 0 0 0 77 1))) (fn-xcc '(2 2 0)) (j 0))
+  (and (and (fn-xc-case-hyps)
+                (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                            trailer start fn-xcs)) (not (let ((v (mv-nth 1 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))))
+             (and (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :present)
+                  (equal (mv-nth 2 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) nil)
+                  (fn-xc-slot-matchp v t kind file eoff elen a b c d trailer start fn-xcs)
+                  (implies (and (natp j) (not (equal j v)))
+                           (equal (nth j (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))) (nth j fn-xcs))))))))
+
+(xcst-ground-witness xcst-old-install-fills-a-free-slot-kind2-counterexample ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 7 0 11 100 3 100 3 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 0 2)) (j 0))
+  (and (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
+                (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (let ((v (mv-nth 1 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))))
+             (and (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :installed)
+                  (equal (mv-nth 2 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) nil)
+                  (equal (fn-xcs-get-kind v fn-xcs) 0)
+                  (implies (and (natp j) (not (equal j v)))
+                           (equal (nth j (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))) (nth j fn-xcs))))))))
+
+(xcst-ground-witness xcst-old-install-fills-a-free-slot-kind1-counterexample ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 7 9 11 100 3 0 0 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 2 0)) (j 0))
+  (and (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
+                (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (let ((v (mv-nth 1 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))))
+             (and (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :installed)
+                  (equal (mv-nth 2 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) nil)
+                  (equal (fn-xcs-get-kind v fn-xcs) 0)
+                  (implies (and (natp j) (not (equal j v)))
+                           (equal (nth j (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))) (nth j fn-xcs))))))))
+
+(xcst-ground-witness xcst-old-install-evicts-the-least-recently-used-kind2-counterexample ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 7 0 11 100 3 100 3 0 0 0 77 1) (2 t 8 0 11 100 3 100 3 2 0 0 77 0))) (fn-xcc '(2 0 2)) (j 0))
+  (and (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
+                (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))) (not (let ((v (mv-nth 1 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))))
+             (and (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :replaced)
+                  (natp v) (<= (fn-xc-lo kind fn-xcc) v) (< v (fn-xc-hi kind fn-xcc))
+                  (not (equal (fn-xcs-get-kind v fn-xcs) 0))
+                  (equal (mv-nth 2 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) (fn-xc-slot-token v fn-xcs))
+                  ; every slot of the region was live, and none is older than the victim
+                  (implies (and (natp j) (<= (fn-xc-lo kind fn-xcc) j) (< j (fn-xc-hi kind fn-xcc)))
+                           (and (not (equal (fn-xcs-get-kind j fn-xcs) 0))
+                                (<= (fn-xcs-get-stamp v fn-xcs) (fn-xcs-get-stamp j fn-xcs))))
+                  (implies (and (natp j) (not (equal j v)))
+                           (equal (nth j (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))) (nth j fn-xcs))))))))
+
+(xcst-ground-witness xcst-old-install-evicts-the-least-recently-used-kind1-counterexample ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 7 9 11 100 3 0 0 0 0 0 77 1) (1 t 8 9 11 100 3 2 0 0 0 0 77 0))) (fn-xcc '(2 2 0)) (j 0))
+  (and (and (fn-xc-case-hyps) (fn-xc-key-find-nil)
+                (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))) (not (let ((v (mv-nth 1 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))))
+             (and (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :replaced)
+                  (natp v) (<= (fn-xc-lo kind fn-xcc) v) (< v (fn-xc-hi kind fn-xcc))
+                  (not (equal (fn-xcs-get-kind v fn-xcs) 0))
+                  (equal (mv-nth 2 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) (fn-xc-slot-token v fn-xcs))
+                  ; every slot of the region was live, and none is older than the victim
+                  (implies (and (natp j) (<= (fn-xc-lo kind fn-xcc) j) (< j (fn-xc-hi kind fn-xcc)))
+                           (and (not (equal (fn-xcs-get-kind j fn-xcs) 0))
+                                (<= (fn-xcs-get-stamp v fn-xcs) (fn-xcs-get-stamp j fn-xcs))))
+                  (implies (and (natp j) (not (equal j v)))
+                           (equal (nth j (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))) (nth j fn-xcs))))))))
+
+(xcst-ground-witness xcst-old-install-placement-kind2-counterexample ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 7 0 11 100 3 100 3 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 0 2)) (j 0))
+  (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) (not (let* ((r (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))
+                  (word (mv-nth 0 r)) (v (mv-nth 1 r)) (s2 (mv-nth 3 r)) (c2 (mv-nth 4 r)))
+             (and (member-equal word '(:installed :replaced :present :refused))
+                  ; refused exactly when the region is empty: the cache is off for this kind
+                  (iff (equal word :refused) (equal (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)))
+                  (implies (not (equal word :refused))
+                           (and (natp v) (<= (fn-xc-lo kind fn-xcc) v) (< v (fn-xc-hi kind fn-xcc))))
+                  (fn-xcsp s2) (fn-xccp c2)
+                  (equal (fn-xcs-count s2) (fn-xcs-count fn-xcs))
+                  (equal (fn-xc-ne c2) (fn-xc-ne fn-xcc))
+                  (equal (fn-xc-nw c2) (fn-xc-nw fn-xcc))
+                  (fn-xc-readyp s2 c2))))))
+
+(xcst-ground-witness xcst-old-install-placement-kind1-counterexample ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 7 9 11 100 3 0 0 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 2 0)) (j 0))
+  (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) (not (let* ((r (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))
+                  (word (mv-nth 0 r)) (v (mv-nth 1 r)) (s2 (mv-nth 3 r)) (c2 (mv-nth 4 r)))
+             (and (member-equal word '(:installed :replaced :present :refused))
+                  ; refused exactly when the region is empty: the cache is off for this kind
+                  (iff (equal word :refused) (equal (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)))
+                  (implies (not (equal word :refused))
+                           (and (natp v) (<= (fn-xc-lo kind fn-xcc) v) (< v (fn-xc-hi kind fn-xcc))))
+                  (fn-xcsp s2) (fn-xccp c2)
+                  (equal (fn-xcs-count s2) (fn-xcs-count fn-xcs))
+                  (equal (fn-xc-ne c2) (fn-xc-ne fn-xcc))
+                  (equal (fn-xc-nw c2) (fn-xc-nw fn-xcc))
+                  (fn-xc-readyp s2 c2))))))
+
+; The two old contracts that remain true, including duplicate answers.
+(xcst-ground-witness xcst-original-install-occupancy-kind2-still-holds ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 7 0 11 100 3 100 3 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 0 2)) (j 0))
+ (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+        (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+        (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))
+                    :refused))) (let ((n0 (fn-xc-live-count (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))
+                 (n1 (fn-xc-live-count (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)))))
+             (and (equal n1 (if (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :installed) (+ 1 n0) n0))
+                  (<= n1 (- (fn-xc-hi kind fn-xcc) (fn-xc-lo kind fn-xcc))))) (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))
+
+(xcst-ground-witness xcst-original-install-occupancy-kind1-still-holds ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 7 9 11 100 3 0 0 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))) (fn-xcc '(1 2 0)) (j 0))
+ (and (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+        (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)
+        (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))
+                    :refused))) (let ((n0 (fn-xc-live-count (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))
+                 (n1 (fn-xc-live-count (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) (mv-nth 3 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)))))
+             (and (equal n1 (if (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :installed) (+ 1 n0) n0))
+                  (<= n1 (- (fn-xc-hi kind fn-xcc) (fn-xc-lo kind fn-xcc))))) (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))
+
+(xcst-ground-witness xcst-original-install-then-lookup-hits-present-kind2-still-holds ((kind 2) (tokp t) (tid 7) (tcid 0) (file 11) (eoff 100) (elen 3) (a 100) (b 3) (c 1) (d 0) (start 0) (trailer 77) (fn-xcs '((2 t 8 0 11 100 3 100 3 1 0 0 77 0) (2 t 7 0 11 100 3 100 3 0 0 0 77 1))) (fn-xcc '(2 0 2)) (j 0))
+ (and (and (fn-xc-case-hyps)
+                (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                            trailer start fn-xcs)) (fn-xc-lookup-after-install) (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))
+
+(xcst-ground-witness xcst-original-install-then-lookup-hits-present-kind1-still-holds ((kind 1) (tokp t) (tid 7) (tcid 9) (file 11) (eoff 100) (elen 3) (a 1) (b 0) (c 0) (d 0) (start 0) (trailer 77) (fn-xcs '((1 t 8 9 11 100 3 1 0 0 0 0 77 0) (1 t 7 9 11 100 3 0 0 0 0 0 77 1))) (fn-xcc '(2 2 0)) (j 0))
+ (and (and (fn-xc-case-hyps)
+                (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d
+                            trailer start fn-xcs)) (fn-xc-lookup-after-install) (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))
 
 (defteeth-check)
