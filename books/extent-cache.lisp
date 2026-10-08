@@ -1763,3 +1763,59 @@
                   :refused))
   :hints (("Goal" :in-theory (enable fn-xc-install fn-xc-lo fn-xc-hi)
                   :use (fn-xc-init-initializes))))
+
+; p-xc-span round 1: the host supplies the plan/window stored at the selected
+; slot under its extent lock. FROM may be the already selected slot: lookup
+; then repeats that same decision without walking earlier declined slots.
+(include-book "page-window-span")
+
+(defun fn-xc-span-at (from ledger plan file eoff elen poff plen trailer p end
+                         fn-xcs fn-xcc fn-ew-buffer fn-ew-span)
+  (declare (xargs :stobjs (fn-xcs fn-xcc fn-ew-buffer fn-ew-span)
+                  :guard (and (fn-xcsp fn-xcs) (fn-xccp fn-xcc)
+                              (true-listp plan) (natp from) (natp p)
+                              (natp end) (natp plen))))
+  (mv-let (word slot)
+    (fn-xc-lookup from 2 file eoff elen poff plen 0 0 trailer p fn-xcs fn-xcc)
+    (if (and (equal word :hit) (natp slot) (< slot (fn-xcs-count fn-xcs))
+             (natp p) (natp end) (natp plen))
+        (let* ((token (fn-xc-slot-token slot fn-xcs))
+               (j (min (min end plen)
+                       (min (+ p *fn-ew-span-capacity*)
+                            (+ (nfix (fn-prl-nth 7 token)) (nfix (nth 5 plan)))))))
+          (if (< p j)
+              (mv-let (answer fn-ew-span)
+                (fn-pwc-span-at ledger token plan file eoff elen poff plen trailer
+                                p j fn-ew-buffer fn-ew-span)
+                (if (equal answer :span)
+                    (mv-let (touch fn-xcs fn-xcc) (fn-xc-touch slot fn-xcs fn-xcc)
+                      (declare (ignore touch))
+                      (mv :span (- j p) slot fn-ew-span fn-xcs fn-xcc))
+                  (mv :miss 0 slot fn-ew-span fn-xcs fn-xcc)))
+            (mv :miss 0 slot fn-ew-span fn-xcs fn-xcc)))
+      (mv :miss 0 nil fn-ew-span fn-xcs fn-xcc))))
+
+; Logical carried invariant, never a whole-table check on a served path.
+; Use the generated slot-token projection: no second row/token encoding.
+(defun fn-xc-token-apart-from (token i fn-xcs)
+  (declare (xargs :stobjs fn-xcs
+                  :guard (and (fn-xcsp fn-xcs) (natp i))
+                  :measure (nfix (- (fn-xcs-count fn-xcs) i))))
+  (if (and (natp i) (< i (fn-xcs-count fn-xcs)))
+      (and (not (equal token (fn-xc-slot-token i fn-xcs)))
+           (fn-xc-token-apart-from token (1+ i) fn-xcs))
+    t))
+
+(defun fn-xc-token-disjoint-from (i fn-xcs)
+  (declare (xargs :stobjs fn-xcs
+                  :guard (and (fn-xcsp fn-xcs) (natp i))
+                  :measure (nfix (- (fn-xcs-count fn-xcs) i))))
+  (if (and (natp i) (< i (fn-xcs-count fn-xcs)))
+      (let ((token (fn-xc-slot-token i fn-xcs)))
+        (and (or (not token) (fn-xc-token-apart-from token (1+ i) fn-xcs))
+             (fn-xc-token-disjoint-from (1+ i) fn-xcs)))
+    t))
+
+(defun fn-xc-token-disjointp (fn-xcs)
+  (declare (xargs :stobjs fn-xcs :guard (fn-xcsp fn-xcs)))
+  (fn-xc-token-disjoint-from 0 fn-xcs))
