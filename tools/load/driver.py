@@ -818,12 +818,16 @@ class Run:
         m, _ = _clients()
         held = []
         admitted = 0
+        refused = collections.Counter()
         for k in ph["steps"]:
             for _ in range(k):
-                held.append(m.Conn(self.node.port))
+                try:
+                    held.append(m.Conn(self.node.port))
+                except ConnectionRefusedError as e:      # the cap's 400 greeting: counted by name, not a cell error
+                    refused[refusal_name(str(e).split(": ", 1)[-1].encode())] += 1
             time.sleep(ph.get("step_settle_s", 2))
         admitted = sum(1 for c in held if c.greeting[:3] == b"200")
-        refused = collections.Counter(refusal_name(c.greeting) for c in held if c.greeting[:3] != b"200")
+        refused.update(refusal_name(c.greeting) for c in held if c.greeting[:3] != b"200")
         if ph.get("close", True):
             for c in held:
                 with contextlib.suppress(Exception):

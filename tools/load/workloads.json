@@ -142,7 +142,10 @@
      "seconds": 20,
      "measure": true
     }
-   ]
+   ],
+   "policy": {
+    "exposure-connections": 64
+   }
   },
   "article-sizes": {
    "about": "ARTICLE wall time, request to terminating dot, over sizes 4 KiB to 1 MiB in doubling steps (L-LIN). Sizes the preset refuses are recorded as refusals, not skipped silently.",
