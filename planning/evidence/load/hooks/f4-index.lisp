@@ -29,7 +29,7 @@
             (format s "~d~%" serial)
             (cond
               ((and (= (length words) 2) (string= (second words) "health"))
-               (format s "~{~d~^ ~}~%" (funcall 'fn-cat-index-health key cat)))
+               (format s "~{~d~^ ~}~%" (funcall 'fnl-f4-health key cat)))
               ((and (= (length words) 4) (string= (second words) "tags"))
                (let ((start (parse-integer (third words)))
                      (count (parse-integer (fourth words))))
@@ -47,9 +47,12 @@
       (response (sb-ext:posix-getenv "FN_LOAD_F4_RESPONSE")))
   (when request
     (unless response (error "F4 requires response path"))
-    (dolist (sym '(fnn-owner-read-buffer-fill fnn-live-cat fn-owner-mpx-key
-                   fn-mlh-tag fn-cat-index-health))
+    (dolist (sym '(fnn-owner-read-buffer-fill fnn-live-cat fn-owner-mpx-key fn-mlh-tag))
       (unless (fboundp sym) (error "F4 missing observer function ~a" sym)))
+    ;; fn-cat-index-health is an abstract-stobj export, a MACRO in the image (f4c-t45):
+    ;; expand it once here, as the host's own call sites do at compile time.
+    (setf (symbol-function 'fnl-f4-health)
+          (compile nil '(lambda (key fn-cat) (fn-cat-index-health key fn-cat))))
     (sb-int:encapsulate 'fnn-owner-read-buffer-fill 'fn-load-f4
       (lambda (original &rest args)
         (handler-case (fnl-f4-observe request response)
