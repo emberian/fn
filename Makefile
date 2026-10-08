@@ -1005,6 +1005,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-records \
 	tests/acl2/bp-node-records-tests \
 	books/outcome-class \
+	books/control-observation \
+	books/control-receipt-wire \
+	tests/acl2/control-observation-tests \
 	books/bp-run-class \
 	books/bp-node-profile \
 	tests/acl2/bp-node-host-tests \
@@ -1541,6 +1544,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-wbv-trie \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
+	tests/acl2/catalog-raw-low-tests \
 	books/catalog-paged-attach \
 	books/served-catalog-view \
 	books/served-columns \

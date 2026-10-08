@@ -70,6 +70,9 @@
 (defun fnn-owner-commit-complete-locked (service action members deferred)
   (declare (ignorable service action members deferred))
   (harness-stub-reached 'fnn-owner-commit-complete-locked "host/native/owner.lisp"))
+(defun fnn-owner-committer-await-start (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-committer-await-start "host/native/owner.lisp"))
 (defun fnn-owner-deliver (service cid completion)
   (declare (ignorable service cid completion))
   (harness-stub-reached 'fnn-owner-deliver "host/native/owner.lisp"))
@@ -203,6 +206,10 @@
 (defun fnn-owner-serialized (service cid thunk &rest args)
   (declare (ignore service cid args)) (funcall thunk))
 (defun fnn-owner-core (subject &rest args) (declare (ignore subject args)) nil)
+;; No competing caller holds a batch in these post-launch escape schedules.
+;; START admission is a fixture seam; the pipeline and custody cleanup run.
+(defun fnn-owner-committer-may-start (service)
+  (declare (ignore service)) t)
 (defun fnn-owner-reader-capture (action) (declare (ignore action)) nil)
 (defun fnn-owner-commit-start-locked (service &key (seal t))
   (declare (ignore service seal)) (values '((31 :reply :accepted t)) nil nil :job))

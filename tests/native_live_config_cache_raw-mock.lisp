@@ -37,14 +37,12 @@
 (defun fnn-owner-reclaim-request (service mode)
   (declare (ignorable service mode))
   (harness-stub-reached 'fnn-owner-reclaim-request "host/native/admin.lisp"))
-(defun fnn-owner-reconfigure-unstage ()
-  (harness-stub-reached 'fnn-owner-reconfigure-unstage "host/native/admin.lisp"))
 (defun fnn-owner-retire-begin (service seconds)
   (declare (ignorable service seconds))
   (harness-stub-reached 'fnn-owner-retire-begin "host/native/owner.lisp"))
-(defun fnn-refuse (control &rest args)
-  (declare (ignorable control args))
-  (harness-stub-reached 'fnn-refuse "host/native/io.lisp"))
+(defun fnn-rc-begin (run reserve)
+  (declare (ignorable run reserve))
+  (harness-stub-reached 'fnn-rc-begin "host/native/admin.lisp"))
 ;;; ---- derived stubs: END ----
 
 (defstruct test-store config-generation config-served config-domain fenced)
