@@ -537,6 +537,7 @@
                  (:instance pcko-nthcdr-16384 (rw0 (pcko-rw0 (fn-pck-root-tree configs recs)))
                             (rest (append (pcko-tws recs) (adt-tp-zeros (adt-tp-pad (len (pcko-tws recs)))))))))))
 
+
 ; =============================================================================
 ; THE PROOFS.  The tape's rows are the model's rows (fn-pck-rows-from); each
 ; interned by `pcko-ref-step' leaves the state full recovery's intern leaves.
@@ -616,6 +617,10 @@
                         (car (fn-cpl-trailer-words (fn-pck-payload w))) (cadr (fn-cpl-trailer-words (fn-pck-payload w)))
                         (caddr (fn-cpl-trailer-words (fn-pck-payload w))) (cadddr (fn-cpl-trailer-words (fn-pck-payload w)))))
   :hints (("Goal" :in-theory (e/d (fn-pck-enc-row adt-tp-rw adt-tp-fw adt-enc pcko-rowwords) (fn-pck-meta fn-pck-payload)))))
+
+(defthm pcko-rw0-is
+  (equal (pcko-rw0 x) (pcko-rowwords (fn-scc-program x) 0 0 0 0 0 0))
+  :hints (("Goal" :in-theory (e/d (pcko-rw0 fn-pck-enc-root pcko-rowwords adt-tp-rw adt-tp-fw adt-enc) ()))))
 
 (defthm pcko-nthcdr-rowwords-nth
   ; Field I of the words from POS on, when they are a row's words then REST.
@@ -1338,3 +1343,33 @@
            :use ((:instance pcko-ref-is-the-step (w (car recs))) (:instance pcko-step-agree (w (car recs)))))
           ("Subgoal *1/1" :in-theory (e/d (pcko-sim fn-ssr-intern-step pcko-agree fn-ssr-statep) (pcko-ref pck-ssr1)))))
 
+
+; -----------------------------------------------------------------------------
+; The open, over the image.
+
+(defthm pcko-open-form
+  ; The open of an image whose first row is the root row: the tape, from the
+  ; first word past the root region, with the root tree decoded.
+  (implies (and (pcko-img w pgs-mem) (true-listp w) (natp npg) (<= 8 npg) (equal (len w) (* 2048 npg))
+                (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid)
+                (adt-octetsp prog)
+                (equal w (append (pcko-rowwords prog 0 0 0 0 0 0) rest))
+                (<= (+ 2 (adt-tp-npk (len prog))) 16384)
+                (pcko-ok-treep (fn-scc-decode-tree prog)))
+           (equal (fn-pck-x-open npg pgs-mem fid a octets)
+                  (mv-let (verdict acc reads a2 oct2)
+                    (pcko-tape 16384 (* 2048 npg) (fn-ssr-seed (fn-stxk-initial-context 0))
+                               (+ 2 (adt-tp-npk (len prog))) fid pgs-mem a prog)
+                    (mv verdict (fn-ssr-rows acc)
+                        (let ((root (cadr (fn-scc-decode-tree prog))))
+                          (list (pcko-nth 0 root) (pcko-nth 1 root) (pcko-nth 2 root) (pcko-nth 3 root)))
+                        reads a2 oct2))))
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-pck-x-open npg pgs-mem fid a octets))
+           :in-theory (e/d (pcko-nw-is-npk) (pcko-tape pcko-w nth fn-scc-decode-tree adt-tp-npk adt-tp-unpack
+                                             pcko-copy pcko-tree nfix pcko-rowwords))
+           :use ((:instance pcko-nthcdr-room (pos 0) (x (pcko-rowwords prog 0 0 0 0 0 0)))
+                 (:instance pcko-len-rowwords (off 0) (len 0) (d0 0) (d1 0) (d2 0) (d3 0))
+                 (:instance pcko-nth-rowwords-head (off 0) (len 0) (d0 0) (d1 0) (d2 0) (d3 0))
+                 (:instance pcko-unpack-of-row (pos 0) (off 0) (len 0) (d0 0) (d1 0) (d2 0) (d3 0))
+                 (:instance pcko-w-is-nth (i 0)) (:instance pcko-w-is-nth (i 1))))))
