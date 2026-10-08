@@ -27,6 +27,26 @@ class Forms(unittest.TestCase):
         self.assertIsNone(app("s"))
 
 
+class LocalLemmas(unittest.TestCase):
+    """A theorem proved inside (local ...) is a book-internal step: its
+    hypotheses are no host premise (bpfj-candidate-sound, 2026-10-08)."""
+
+    def test_local_theorems_are_named(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            book = pathlib.Path(d) / "b.lisp"
+            book.write_text('(in-package "ACL2")\n'
+                            '(local (defthm bpfj-candidate-sound (implies (fn-c x) (fn-ok (fn-c x)))))\n'
+                            '(encapsulate () (local\n  (defthmd Inner-Step (implies (fn-inv s) (fn-ok s)))))\n'
+                            '(defthm exported (implies (fn-inv s) (fn-ok s)))\n'
+                            '; (local (defthm in-a-comment t))\n')
+            got = premise_audit.local_theorems([book])
+        self.assertIn("bpfj-candidate-sound", got)
+        self.assertIn("inner-step", got)
+        self.assertNotIn("exported", got)
+        self.assertNotIn("in-a-comment", got)
+
+
 class StubGraph:
     """The three theorems the docstring names: a preservation, an
     establishment by the open (hosted), and a consumer that assumes R."""
