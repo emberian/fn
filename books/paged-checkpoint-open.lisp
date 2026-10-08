@@ -858,7 +858,8 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (disable pcko-tape pcko-sim pcko-ref-step nth nthcdr pcko-w fn-pck-meta fn-pck-payload
                                fn-pck-enc-row fn-scc-program pck-ssr1
-                               pcko-row-is-rowwords fn-pck-rows-from)
+                               pcko-row-is-rowwords fn-pck-rows-from fn-arx-trailer-nat fn-cpl-unpack-words
+                               adt-tp-seq-words adt-tp-rw adt-tp-fw pck-ssr1-is-the-step)
            :expand ((pcko-sim recs base st acc fid fn-arena) (pcko-ref acc (car recs) base st fid fn-arena)
                     (fn-pck-sccb-listp recs st))
            :use ((:instance pcko-tape-row (prog (pcko-prog (car recs) st))
@@ -1028,7 +1029,7 @@
                        (fn-arena-seal-extent fid (- off 37) (+ len 37) off len
                                              (fn-arx-trailer-nat (fn-cpl-unpack-words (list d0 d1 d2 d3))) a))))
   :hints (("Goal" :in-theory (e/d (pcko-ref-step pcko-recp) (fn-replay-identity-step fn-ssr-publish pcko-reseat fn-ssr-at
-                                                             fn-stxk-context-kind fn-arena-seal-extent fn-held-p)))))
+                                                             fn-stxk-context-kind fn-arena-seal-extent fn-held-p fn-arx-trailer-nat fn-cpl-unpack-words)))))
 
 (defthm pcko-ie-delta-of-record
   (implies (fn-record-p w) (equal (pcko-ie-delta w) 1))
