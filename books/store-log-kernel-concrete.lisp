@@ -335,11 +335,13 @@
   (declare (xargs :measure (len records) :guard (and (and (fn-frame-digestp prev) (fn-lg-recordsp records *fn-frame-max-payload*)) (true-listp acc)) :verify-guards nil))
   (if (consp records)
       (let* ((k (fn-lg-chunk-len records))
-             (chunk (fn-lgc-first k records)))
+             (chunk (fn-lgc-first k records))
+             (frame (fn-lgx-frame prev chunk)))
         (fn-lgx-log-loop (mbe :logic (nthcdr k records) :exec (fn-lgc-rest k records))
-                         (fn-lgx-trailer (fn-lgx-frame prev chunk))
+                         (fn-lgx-trailer frame)
                          unit
-                         (fn-ag-rev-onto (fn-lgx-entry prev chunk unit) acc)))
+                         (fn-ag-rev-onto (fn-lgx-zeros (fn-lg-pad-len (len frame) unit))
+                                         (fn-ag-rev-onto frame acc))))
     (revappend acc nil)))
 
 (defun fn-lgx-log (records prev unit)
@@ -360,6 +362,11 @@
        :exec (fn-lgx-log-loop records prev unit nil)))
 
 (local
+ (defthm fn-lgx-rev-onto-twice
+   (equal (fn-ag-rev-onto zeros (fn-ag-rev-onto frame acc))
+          (fn-ag-rev-onto (append frame zeros) acc))))
+
+(local
  (defthm fn-lgx-log-loop-rev-onto-append
    (equal (revappend (fn-ag-rev-onto x acc) y)
           (revappend acc (append x y)))))
@@ -369,7 +376,8 @@
    (equal (fn-lgx-log-loop records prev unit acc)
           (revappend acc (fn-lgx-log records prev unit)))
    :hints (("Goal" :induct (fn-lgx-log-loop records prev unit acc)
-                   :in-theory (union-theories '(fn-lgx-log-loop fn-lgx-log revappend car-cons cdr-cons fn-lgx-log-loop-rev-onto-append)
+                   :in-theory (union-theories '(fn-lgx-log-loop fn-lgx-log revappend car-cons cdr-cons fn-lgx-log-loop-rev-onto-append
+                                                fn-lgx-rev-onto-twice fn-lgx-entry)
                                               (theory 'minimal-theory))))))
 
 
