@@ -116,6 +116,17 @@ class RemoteCheckTests(unittest.TestCase):
         self.assertIn("1 fetched file(s) NOT written into this worktree", done.stdout)
         self.assertEqual((self.lane / "out/b.txt").read_text(), "box\n")
 
+    def test_a_wrap_spelled_with_an_env_assignment_runs(self):
+        # swarm-build's memory cap is the caller's: FN_REMOTE_CHECK_WRAP=
+        # "SWARM_MEM_MAX=16G swarm-build" must reach the wrap as environment.
+        wrap = Path(self.scratch.name) / "wrap.sh"
+        out = Path(self.scratch.name) / "seen.txt"
+        wrap.write_text(f'echo "$WRAP_SEEN" > {out}\nexec "$@"\n')
+        self.env["FN_REMOTE_CHECK_WRAP"] = f"WRAP_SEEN=16G sh {wrap}"
+        done = self.run_check("--cmd", "true")
+        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        self.assertEqual(out.read_text(), "16G\n")
+
     def test_cmd_runs_one_command_in_the_box_tree(self):
         done = self.run_check("--cmd", "cat marker.txt; echo \"it's $((1 + 1))\"")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
