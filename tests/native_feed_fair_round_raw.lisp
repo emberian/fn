@@ -137,8 +137,12 @@
          (words '(:mode :ready :send :need-input)) (inputs nil) (order nil) (dropped nil))
     (setf (symbol-function 'fnn-owner-transit-serialized)
           (lambda (service cid thunk) (declare (ignore service cid)) (funcall thunk))
+          ;; The article is read first by ACL2's pure probe; every probe is warm
+          ;; here and sends none (as tests/native_feed_service_raw-mock.lisp).
+          (symbol-function 'fnn-owner-feed-reply-probe-locked)
+          (lambda (&rest args) (declare (ignore args)) (values :warm nil))
           (symbol-function 'fnn-owner-feed-arena-step)
-          (lambda (name peer input now) (declare (ignore name peer now))
+          (lambda (name peer input now &optional article) (declare (ignore name peer now article))
             (push input inputs) (list (pop words) #(65 66)))
           (symbol-function 'fnn-owner-feed-word) #'first
           (symbol-function 'fnn-owner-feed-command) #'second
