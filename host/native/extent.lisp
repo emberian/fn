@@ -618,6 +618,10 @@ I, else borrow a span from I and read it, else the scalar borrow."
 ;;; is asked of the verified-window cache (fn-owner-page-window-cache-span-at),
 ;;; and what neither holds is the core's cold descriptor, as the scalar path
 ;;; answers its octet.
+;; The verified-window cache (below, THE VERIFIED-WINDOW CACHE); defined before
+;; fnn-extent-window-cache-run reads it.
+(defvar *fnn-extent-window-cache* nil)
+(fnn-guarded-by *fnn-extent-window-cache* *fnn-extent-lock*)
 (defvar *fnn-extent-run-dst* nil) ; the run's one buffer
 (fnn-guarded-by *fnn-extent-run-dst* *fnn-extent-lock*)
 
@@ -740,9 +744,8 @@ Live logical VIEW supplies its bound arena; selection/admission precede unlock."
 ;;; fn-arx-read-cache-entries, the bound books/cold-line-quanta.lisp's
 ;;; quanta are shaped to); the oldest is evicted, and its exact :cached row
 ;;; released (fn-prl-evict), on insertion and when its file retires
-;;; (fnn-extent-cache-drop-files).  Each entry is (TOKEN PLAN WINDOW).
-(defvar *fnn-extent-window-cache* nil)
-(fnn-guarded-by *fnn-extent-window-cache* *fnn-extent-lock*)
+;;; (fnn-extent-cache-drop-files).  Each entry is (TOKEN PLAN WINDOW); the
+;;; variable is defined above the renderer's span, its first reader.
 (defvar *fnn-extent-lz-last* nil)             ; (key dict . octets)
 
 (defun fnn-extent-window-cache-insert (token plan window)

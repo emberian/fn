@@ -279,8 +279,7 @@
                                fn-bpn-report-primary-for-guard
                                fn-cp-idp-true-listp
                                fn-nntp-response-text-true-listp
-                               fn-nntp-clean-line-is-response-text
-                               fn-nntp-article-idp-is-consp))))
+                               fn-nntp-clean-line-is-response-text))))
 (verify-guards fn-bpn-report-deleted-payload
   :hints (("Goal" :use ((:instance fn-bpn-report-held-bundle-for-guard)
                          (:instance fn-bpn-report-primary-for-guard
@@ -294,8 +293,7 @@
                                fn-bpn-report-primary-for-guard
                                fn-cp-idp-true-listp
                                fn-nntp-response-text-true-listp
-                               fn-nntp-clean-line-is-response-text
-                               fn-nntp-article-idp-is-consp))))
+                               fn-nntp-clean-line-is-response-text))))
 
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in

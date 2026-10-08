@@ -70,6 +70,16 @@
                (fn-own-node-secret o)
                (fn-own-transit-refused o conn sub kind reason)))
 
+(defthm fn-oct-transit-next-keeps-acar-premises
+  (let ((next (fn-oct-transit-next o id conn sub completion kind reason feeds)))
+    (and (equal (fn-acar-conn-sessionp next target)
+                (fn-acar-conn-sessionp o target))
+         (equal (fn-acar-view-statep next) (fn-acar-view-statep o))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-oct-transit-next fn-acar-conn-sessionp fn-acar-view-statep)
+                (fn-own-find-conn fn-auth-sessionp fn-statep
+                 fn-nntp-safe-group-listp fn-own-transit-refused)))))
+
 (defun fn-oct-transit (oc id kind reason word pending)
   (declare (xargs :guard (and (acl2-numberp pending)
                               (fn-own-feed-tablep (fn-own-feeds (fn-ocfg-owner oc)))
@@ -103,7 +113,7 @@
                   (fn-own-sub-decision sub) d
                   (if (equal kind :want) (fn-own-outcome-rendering o word) nil)))
                 (if (equal completion :durable)
-                    (fn-ocfg-advance oc2 id)
+                    (fn-oop-advance oc2 id)
                   oc2)) (cdr counted)))
       (cons (cons nil oc) pending))))
 
@@ -164,9 +174,24 @@
                 (fn-own-make fn-own-outcome-completion fn-own-transit-subp
                  fn-own-submission-targets fn-own-feed-stamp fn-own-transit-refused
                  fn-own-feed-enqueue-all fn-own-feed-enqueue-all-counted
-                 fn-ocfg-advance fn-ocfg-with-owner fn-served-result-effects
+                 fn-oop-advance fn-ocfg-with-owner fn-served-result-effects
                  fn-served-transit-outcome fn-served-make-conn-group-indexed
                  fn-own-outcome-rendering fn-peer-decision)))))
+
+(defthm fn-oct-transit-is-own-transit-outcome-under-ocl-relation
+  (implies
+   (fn-ocl-relation oc)
+   (and
+    (equal (car (car (fn-oct-transit oc id kind reason word pending)))
+           (car (fn-own-transit-outcome
+                 (fn-ocfg-owner oc) id kind reason word)))
+    (equal (fn-ocfg-owner
+            (cdr (car (fn-oct-transit oc id kind reason word pending))))
+           (cdr (fn-own-transit-outcome
+                 (fn-ocfg-owner oc) id kind reason word)))))
+  :hints (("Goal" :in-theory
+           (disable fn-oct-transit fn-oop-transit-outcome
+                    fn-own-transit-outcome fn-ocl-relation))))
 
 ; The host reads the effects-and-owner half of the counted answer through
 ; fn-oct-result (host/owner-host.lisp fn-owner-outcome and
@@ -311,7 +336,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-oct-transit fn-oct-transit-next fn-oct-durable fn-ocfg-with-owner)
                 (fn-own-make fn-oop-transit-outcome fn-oct-transit-has-the-original-result
-                 fn-ofct-enqueue-all-counted-has-the-original-table fn-ocfg-advance
+                 fn-ofct-enqueue-all-counted-has-the-original-table fn-oop-advance
                  fn-own-feed-table-pending-model fn-own-feed-enqueue-all-counted
                  fn-own-feeds fn-ocfg-owner fn-own-submission-targets fn-own-feed-stamp)))))
 
@@ -354,7 +379,7 @@
            (fn-ofct-table-relationp (fn-own-feeds (fn-ocfg-owner (cdr (car (fn-oct-transit oc id kind reason word pending)))))))
   :hints (("Goal" :in-theory
            (e/d (fn-oct-transit fn-oct-transit-next fn-oct-durable fn-ocfg-with-owner)
-                (fn-oct-transit-has-the-original-result fn-oop-transit-outcome fn-ocfg-advance fn-own-make fn-own-feeds fn-ocfg-owner
+                (fn-oct-transit-has-the-original-result fn-oop-transit-outcome fn-oop-advance fn-own-make fn-own-feeds fn-ocfg-owner
                  fn-own-feed-enqueue-all-counted fn-own-feed-enqueue-all
                  fn-ofct-enqueue-all-counted-has-the-original-table
                  fn-ofct-table-relationp fn-own-feed-stamp

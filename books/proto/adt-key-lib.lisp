@@ -30,6 +30,10 @@
 
 (in-package "ACL2")
 (include-book "adt-lib")
+
+(local (defthm adt-nth-of-atom-local-rewrite
+  (implies (atom x) (equal (nth n x) nil))
+  :hints (("Goal" :by adt-nth-of-atom))))
 (local (include-book "arithmetic/top" :dir :system))
 
 (local (in-theory (disable nth update-nth resize-list)))

@@ -556,7 +556,7 @@
 
 (defthm fn-cp-cp-fields
   (implies (fn-cat$cp c)
-           (and (true-listp c) (equal (len c) 10)
+           (and (true-listp c) (equal (len c) 11)
                 (true-listp (nth 0 c))
                 (natp (nth 1 c)) (natp (nth 5 c)) (natp (nth 7 c)) (natp (nth 9 c))
                 (fn-mlhp (nth 2 c))))
@@ -1112,7 +1112,7 @@
 (defthm fn-cp-true-list-listp-of-cplan
   (true-list-listp (fn-cat$p-cplan groups livep fn-cat$p)))
 
-(defun fn-cat$p-commit-w (h fn-cat$p)
+(defun fn-cat$p-commit-w0 (h fn-cat$p)
   (declare (xargs :stobjs fn-cat$p :guard (fn-cat$p-wfp fn-cat$p)
                   :guard-hints (("Goal" :do-not-induct t
                                  :in-theory (disable fn-cat$p-tab-index-add fn-cat$p-tab-commit
@@ -1238,7 +1238,7 @@
 ; column (fn-cat$p-numbers-of); every liveness and neighbour question is a
 ; table probe; the remainder in the pool is never decoded (D27: the step's
 ; allocation is the plans and the trie path, not the row).
-(defun fn-cat$p-withdraw-w (target by fn-cat$p)
+(defun fn-cat$p-withdraw-w0 (target by fn-cat$p)
   (declare (xargs :stobjs fn-cat$p
                   :guard (and (fn-cat$p-wfp fn-cat$p) (natp target) (natp by)
                               (< target (fn-cat$p-count fn-cat$p)))))
@@ -1255,6 +1255,112 @@
              (fn-cat$p (fn-cat$p-tab-withdraw dplan hz fn-cat$p))
              (fn-cat$p (fn-cat$p-unlink wplan fn-cat$p)))
         (fn-cat$p-wbv-put v (fn-cpt-add target (fn-cat$p-wbv-get v fn-cat$p)) fn-cat$p))
+    fn-cat$p))
+
+; --- the raw low (s-group-low): read from the group cells and the columns,
+; planned before any write and applied to the tab after, as the $c form.
+(defun fn-cat$p-group-raw-low (group fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p))
+  (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p))) (x) (fn-cat$c-group-raw-low group fn-cat$c) x))
+
+(defun fn-cat$p-group-top (group fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p))
+  (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p))) (x) (fn-cat$c-group-top group fn-cat$c) x))
+
+; Number K of GROUP is raw-kept: the numbers table's row, its withdrawal
+; columns first (a withdrawn row is not decoded), then its record.
+(defun fn-cat$p-raw-at-p (group k fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p :guard (fn-cat$p-wfp fn-cat$p)))
+  (let ((s (fn-cat$p-group-number group k fn-cat$p)))
+    (and (natp s) (< s (fn-cat$p-count fn-cat$p))
+         (null (fn-cat$p-withdrawn-of s fn-cat$p))
+         (fn-cat-raw-rowp group k (fn-cat$p-at s fn-cat$p)))))
+
+(defun fn-cat$p-raw-scan-up (group k top fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p :guard (and (fn-cat$p-wfp fn-cat$p) (natp k) (natp top))
+                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
+  (if (and (natp k) (natp top) (<= k top))
+      (if (fn-cat$p-raw-at-p group k fn-cat$p)
+          k
+        (fn-cat$p-raw-scan-up group (+ 1 k) top fn-cat$p))
+    0))
+
+(defun fn-cat$p-raws-drop-plan-loop (pairs target fn-cat$p acc)
+  (declare (xargs :stobjs fn-cat$p :guard (and (fn-cat$p-wfp fn-cat$p) (true-listp acc))
+                  :verify-guards nil))
+  (if (consp pairs)
+      (let* ((p (car pairs))
+             (g (fn-cbor-ag-car p))
+             (k (fn-cbor-ag-cdr p)))
+        (if (and (consp p)
+                 (equal (fn-cat$p-group-number g k fn-cat$p) target)
+                 (equal (fn-cat$p-group-raw-low g fn-cat$p) k))
+            (fn-cat$p-raws-drop-plan-loop
+             (cdr pairs) target fn-cat$p
+             (cons (cons g (fn-cat$p-raw-scan-up g (+ 1 k) (fn-cat$p-group-top g fn-cat$p) fn-cat$p))
+                   acc))
+          (fn-cat$p-raws-drop-plan-loop (cdr pairs) target fn-cat$p acc)))
+    (revappend acc nil)))
+
+(defun fn-cat$p-raws-drop-plan (pairs target fn-cat$p)
+  (declare (xargs :verify-guards nil :stobjs fn-cat$p :guard (fn-cat$p-wfp fn-cat$p)))
+  (mbe :logic
+       (if (consp pairs)
+           (let* ((p (car pairs))
+                  (g (fn-cbor-ag-car p))
+                  (k (fn-cbor-ag-cdr p)))
+             (if (and (consp p)
+                      (equal (fn-cat$p-group-number g k fn-cat$p) target)
+                      (equal (fn-cat$p-group-raw-low g fn-cat$p) k))
+                 (cons (cons g (fn-cat$p-raw-scan-up g (+ 1 k) (fn-cat$p-group-top g fn-cat$p) fn-cat$p))
+                       (fn-cat$p-raws-drop-plan (cdr pairs) target fn-cat$p))
+               (fn-cat$p-raws-drop-plan (cdr pairs) target fn-cat$p)))
+         nil)
+       :exec (fn-cat$p-raws-drop-plan-loop pairs target fn-cat$p nil)))
+
+(local
+ (defthm fn-cat$p-raws-drop-plan-loop-is-revappend
+   (equal (fn-cat$p-raws-drop-plan-loop pairs target fn-cat$p acc)
+          (revappend acc (fn-cat$p-raws-drop-plan pairs target fn-cat$p)))
+   :hints (("Goal" :induct (fn-cat$p-raws-drop-plan-loop pairs target fn-cat$p acc)
+            :in-theory (union-theories '(fn-cat$p-raws-drop-plan-loop fn-cat$p-raws-drop-plan
+                                         revappend car-cons cdr-cons)
+                                       (theory 'minimal-theory))))))
+
+(verify-guards fn-cat$p-raws-drop-plan-loop)
+
+(verify-guards fn-cat$p-raws-drop-plan
+  :hints (("Goal"
+           :in-theory (union-theories '(revappend fn-cat$p-raws-drop-plan)
+                                      (union-theories (theory 'minimal-theory)
+                                                      (executable-counterpart-theory :here)))
+           :use ((:instance fn-cat$p-raws-drop-plan-loop-is-revappend (acc nil))))))
+
+(defun fn-cat$p-tab-raws-apply (plan fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p))
+  (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
+             (fn-cat$c)
+             (fn-cat$c-raws-apply plan fn-cat$c)
+             fn-cat$p))
+
+(defun fn-cat$p-commit-w (h fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p :guard (fn-cat$p-wfp fn-cat$p)))
+  (let* ((rplan (stobj-let ((fn-cat$c (fn-cat$p-tab fn-cat$p)))
+                           (rp)
+                           (fn-cat$c-raws-commit-plan (fn-record-groups h) (fn-cat-raw-candidatep h)
+                                                      fn-cat$c)
+                           rp))
+         (fn-cat$p (fn-cat$p-commit-w0 h fn-cat$p)))
+    (fn-cat$p-tab-raws-apply rplan fn-cat$p)))
+
+(defun fn-cat$p-withdraw-w (target by fn-cat$p)
+  (declare (xargs :stobjs fn-cat$p
+                  :guard (and (fn-cat$p-wfp fn-cat$p) (natp target) (natp by)
+                              (< target (fn-cat$p-count fn-cat$p)))))
+  (if (null (fn-cat$p-withdrawn-of target fn-cat$p))
+      (let* ((rplan (fn-cat$p-raws-drop-plan (fn-cat$p-numbers-of target fn-cat$p) target fn-cat$p))
+             (fn-cat$p (fn-cat$p-withdraw-w0 target by fn-cat$p)))
+        (fn-cat$p-tab-raws-apply rplan fn-cat$p))
     fn-cat$p))
 
 (defun fn-cat$p-redecide (seq context fn-cat$p)
@@ -1370,7 +1476,8 @@
                           fn-cat$c-numbers-get fn-cat$c-numbers-put fn-cat$c-numbers-clear
                           fn-cat$c-groups-get fn-cat$c-groups-put fn-cat$c-groups-clear
                           fn-cat$c-lives-get fn-cat$c-lives-put fn-cat$c-lives-clear
-                          fn-cat$c-wbv-get fn-cat$c-wbv-put fn-cat$c-wbv-clear)))
+                          fn-cat$c-wbv-get fn-cat$c-wbv-put fn-cat$c-wbv-clear
+                          fn-cat$c-raws-get fn-cat$c-raws-put fn-cat$c-raws-clear)))
 
 (local
  (defthm fn-cp-readers-blind
@@ -1383,6 +1490,7 @@
         (equal (fn-cat$c-groups-get k (fn-cp-frame r nm wb c)) (fn-cat$c-groups-get k c))
         (equal (fn-cat$c-lives-get k (fn-cp-frame r nm wb c)) (fn-cat$c-lives-get k c))
         (equal (fn-cat$c-wbv-get k (fn-cp-frame r nm wb c)) (cdr (hons-assoc-equal k wb)))
+        (equal (fn-cat$c-raws-get k (fn-cp-frame r nm wb c)) (fn-cat$c-raws-get k c))
         (equal (fn-cat$c-rowsi i (fn-cp-frame r nm wb c)) (nth i r))
         (equal (fn-cat$c-rows-length (fn-cp-frame r nm wb c)) (len r)))))
 
@@ -1397,6 +1505,8 @@
         (equal (fn-cat$c-groups-put k v (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (fn-cat$c-groups-put k v c)))
         (equal (fn-cat$c-lives-put k v (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (fn-cat$c-lives-put k v c)))
         (equal (fn-cat$c-wbv-put k v (fn-cp-frame r nm wb c)) (fn-cp-frame r nm (cons (cons k v) wb) c))
+        (equal (fn-cat$c-raws-put k v (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (fn-cat$c-raws-put k v c)))
+        (equal (fn-cat$c-raws-clear (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (fn-cat$c-raws-clear c)))
         (equal (fn-cat$c-numbers-clear (fn-cp-frame r nm wb c)) (fn-cp-frame r nil wb c))
         (equal (fn-cat$c-groups-clear (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (fn-cat$c-groups-clear c)))
         (equal (fn-cat$c-lives-clear (fn-cp-frame r nm wb c)) (fn-cp-frame r nm wb (fn-cat$c-lives-clear c)))
@@ -1405,6 +1515,20 @@
         (equal (resize-fn-cat$c-rows n (fn-cp-frame r nm wb c)) (fn-cp-frame (resize-list r n nil) nm wb c)))))
 
 ; The derived readers and writers of books/catalog.lisp, each by its definition.
+(local
+ (defthm fn-cp-raws-blind
+   (and (equal (fn-cat$c-group-raw-low g (fn-cp-frame r nm wb c)) (fn-cat$c-group-raw-low g c))
+        (equal (fn-cat$c-group-top g (fn-cp-frame r nm wb c)) (fn-cat$c-group-top g c))
+        (equal (fn-cat$c-raws-commit-plan groups candp (fn-cp-frame r nm wb c))
+               (fn-cat$c-raws-commit-plan groups candp c))
+        (equal (fn-cat$c-raws-apply plan (fn-cp-frame r nm wb c))
+               (fn-cp-frame r nm wb (fn-cat$c-raws-apply plan c))))
+   :hints (("Goal" :in-theory (enable fn-cat$c-group-raw-low fn-cat$c-group-top))
+           ("Subgoal 2" :induct (fn-cat$c-raws-commit-plan groups candp c)
+            :in-theory (enable fn-cat$c-raws-commit-plan fn-cat$c-group-raw-low))
+           ("Subgoal 1" :induct (fn-cat$c-raws-apply plan c)
+            :in-theory (enable fn-cat$c-raws-apply)))))
+
 (local
  (defthm fn-cp-plan-blind
    (equal (fn-cat$c-plan groups (fn-cp-frame r nm wb c)) (fn-cat$c-plan groups c))
@@ -2049,8 +2173,11 @@
         (equal (fn-cat$p-group-live-low g fn-cat$p) (fn-cat$c-group-live-low g (fn-cat$p-view fn-cat$p)))
         (equal (fn-cat$p-group-live-high g fn-cat$p) (fn-cat$c-group-live-high g (fn-cat$p-view fn-cat$p)))
         (equal (fn-cat$p-horizon fn-cat$p) (fn-cat$c-horizon (fn-cat$p-view fn-cat$p)))
-        (equal (fn-cat$p-withdrawn-at w fn-cat$p) (fn-cat$c-withdrawn-at w (fn-cat$p-view fn-cat$p))))
-   :hints (("Goal" :in-theory (enable fn-cat$p-group-number fn-cat$p-group-next fn-cat$p-group-count
+        (equal (fn-cat$p-withdrawn-at w fn-cat$p) (fn-cat$c-withdrawn-at w (fn-cat$p-view fn-cat$p)))
+        (equal (fn-cat$p-group-raw-low g fn-cat$p) (fn-cat$c-group-raw-low g (fn-cat$p-view fn-cat$p)))
+        (equal (fn-cat$p-group-top g fn-cat$p) (fn-cat$c-group-top g (fn-cat$p-view fn-cat$p))))
+   :hints (("Goal" :in-theory (enable fn-cat$p-group-raw-low fn-cat$p-group-top
+                                      fn-cat$p-group-number fn-cat$p-group-next fn-cat$p-group-count
                                       fn-cat$p-total-octets fn-cat$p-group-live-count
                                       fn-cat$p-group-live-low fn-cat$p-group-live-high
                                       fn-cat$p-horizon fn-cat$p-withdrawn-at)))))
@@ -2542,15 +2669,15 @@
    :hints (("Goal" :in-theory (enable fn-held-with-numbers)))))
 
 (local
- (defthm fn-cat$p-commit-w-sim
+ (defthm fn-cat$p-commit-w0-sim
    (implies (and (equal (len (nth 0 fn-cat$p)) (nth 1 (nth 1 fn-cat$p)))
                  (<= (nth 1 (nth 1 fn-cat$p)) (nfix (nth 5 fn-cat$p))))
-            (equal (fn-cat$p-view (fn-cat$p-commit-w h fn-cat$p))
-                   (fn-cat$c-commit-w h (fn-cat$p-view fn-cat$p))))
+            (equal (fn-cat$p-view (fn-cat$p-commit-w0 h fn-cat$p))
+                   (fn-cat$c-commit-w0 h (fn-cat$p-view fn-cat$p))))
    :hints (("Goal" :do-not-induct t
             ;; D26: keep the shared decision predicates closed while matching
             ;; the two commits; their branch internals add case splits.
-            :in-theory (e/d (fn-cat$p-commit-w fn-cat$c-commit-w fn-cat$c-commit fn-cat$c-commit-base)
+            :in-theory (e/d (fn-cat$p-commit-w0 fn-cat$c-commit-w0 fn-cat$c-commit fn-cat$c-commit-base)
                             (max fn-scat-msgid-idp fn-cat$p-append-row fn-cat$p-tab-index-add fn-cat$p-tab-commit
                              fn-cat$c-live-plan fn-cat$c-plan fn-cat$c-apply-plan fn-cat$c-live-apply
                              fn-cat$c-index-add fn-cat$c-wbv-put fn-cat$c-wbv-get fn-held-with-numbers
@@ -2596,16 +2723,16 @@
    :hints (("Goal" :in-theory (enable fn-cat$p-set-cell)))))
 
 (local
- (defthm fn-cat$p-withdraw-w-sim
+ (defthm fn-cat$p-withdraw-w0-sim
    (implies (and (fn-cat$pcorr fn-cat$p fn-cat$a)
                  (equal (len (nth 0 fn-cat$p)) (nth 1 (nth 1 fn-cat$p)))
                  (<= (nth 1 (nth 1 fn-cat$p)) (nfix (nth 5 fn-cat$p)))
                  (natp target) (< target (nth 1 (nth 1 fn-cat$p))))
-            (equal (fn-cat$p-view (fn-cat$p-withdraw-w target by fn-cat$p))
-                   (fn-cat$c-withdraw-w target by (fn-cat$p-view fn-cat$p))))
+            (equal (fn-cat$p-view (fn-cat$p-withdraw-w0 target by fn-cat$p))
+                   (fn-cat$c-withdraw-w0 target by (fn-cat$p-view fn-cat$p))))
    :hints (("Goal" :do-not-induct t
             :use ((:instance fn-cp-view-row (seq target)))
-            :in-theory (e/d (fn-cat$p-withdraw-w fn-cat$c-withdraw-w fn-cat$c-withdraw
+            :in-theory (e/d (fn-cat$p-withdraw-w0 fn-cat$c-withdraw-w0 fn-cat$c-withdraw
                              fn-cat$c-withdraw-base)
                             (fn-cat$p-set-withdrawn fn-cat$p-tab-withdraw fn-cat$p-drop-plan fn-cat$c-drop-plan
                              fn-cat$c-live-apply fn-cat$c-wbv-put fn-cat$c-wbv-get fn-cat$p-wplan
@@ -2615,8 +2742,8 @@
  (defthm fn-cat$p-clear-w-sim
    (equal (fn-cat$p-view (fn-cat$p-clear-w fn-cat$p))
           (fn-cat$c-clear-w (fn-cat$p-view fn-cat$p)))
-   :hints (("Goal" :in-theory (enable fn-cat$p-clear-w fn-cat$c-clear-w fn-cat$c-clear
-                                      fn-cat$c-clear-base fn-cp-merge fn-cp-update-nth-3-commute)))))
+   :hints (("Goal" :in-theory (enable fn-cat$p-clear-w fn-cat$c-clear-w fn-cat$c-clear-w0 fn-cat$c-clear
+                                      fn-cat$c-clear-base fn-cp-merge fn-cp-update-nth-3-commute fn-cp-update-nth-8-commute)))))
 
 ; D26: the keyed clear IS the clear with the ring's key installed into the
 ; emptied table, and installing a key moves no field the view replaces, so
@@ -2698,36 +2825,36 @@
                                     fn-cat$c-index-add fn-cat$p-numbers-apply))))))
 
 (local
- (defthm fn-cp-links-of-commit-w
-    (and (equal (nth 1 (nth 2 (fn-cat$p-commit-w h fn-cat$p)))
+ (defthm fn-cp-links-of-commit-w0
+    (and (equal (nth 1 (nth 2 (fn-cat$p-commit-w0 h fn-cat$p)))
                 (fn-cpl-link t (fn-cat$p-cplan (fn-record-groups h)
                                                (fn-cat-live-candidatep h)
                                                fn-cat$p)
                              (nth 1 (nth 2 fn-cat$p))))
-         (equal (nth 2 (nth 2 (fn-cat$p-commit-w h fn-cat$p)))
+         (equal (nth 2 (nth 2 (fn-cat$p-commit-w0 h fn-cat$p)))
                 (fn-cpl-link nil (fn-cat$p-cplan (fn-record-groups h)
                                                  (fn-cat-live-candidatep h)
                                                  fn-cat$p)
                              (nth 2 (nth 2 fn-cat$p)))))
-    :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w)
+    :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w0)
                                     (fn-cat$p-tab-commit fn-cat$p-append-row fn-cat$p-tab-index-add
                                      fn-cat$p-link fn-cat$p-wbv-put fn-cat$p-wbv-get fn-cat$p-cplan fn-cpl-link
                                      fn-cat$c-live-plan fn-cat$c-plan fn-cat$c-apply-plan
                                      fn-cat$c-live-apply fn-cat$c-index-add fn-cp-row-of fn-cp-overflow-of))))))
 
 (local
- (defthm fn-cp-links-of-withdraw-w
-   (and (equal (nth 1 (nth 2 (fn-cat$p-withdraw-w target by fn-cat$p)))
+ (defthm fn-cp-links-of-withdraw-w0
+   (and (equal (nth 1 (nth 2 (fn-cat$p-withdraw-w0 target by fn-cat$p)))
                (if (null (fn-cat$p-withdrawn-of target fn-cat$p))
                    (fn-cpl-unlink t (fn-cat$p-wplan (fn-cat$p-numbers-of target fn-cat$p) target fn-cat$p)
                                   (nth 1 (nth 2 fn-cat$p)))
                  (nth 1 (nth 2 fn-cat$p))))
-        (equal (nth 2 (nth 2 (fn-cat$p-withdraw-w target by fn-cat$p)))
+        (equal (nth 2 (nth 2 (fn-cat$p-withdraw-w0 target by fn-cat$p)))
                (if (null (fn-cat$p-withdrawn-of target fn-cat$p))
                    (fn-cpl-unlink nil (fn-cat$p-wplan (fn-cat$p-numbers-of target fn-cat$p) target fn-cat$p)
                                   (nth 2 (nth 2 fn-cat$p)))
                  (nth 2 (nth 2 fn-cat$p)))))
-   :hints (("Goal" :in-theory (e/d (fn-cat$p-withdraw-w fn-cat$p-set-withdrawn fn-cat$p-set-cell
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-withdraw-w0 fn-cat$p-set-withdrawn fn-cat$p-set-cell
                                     fn-cat$p-tab-withdraw fn-cat$p-columns-p)
                                    (fn-cat$p-wplan fn-cat$p-drop-plan fn-cat$p-at fn-cat$p-withdrawn-of
                                     fn-cat$p-numbers-of fn-cat$c-live-apply fn-held-with-withdrawn))))))
@@ -2806,8 +2933,9 @@
 (local (in-theory (disable fn-cat$p-count fn-cat$p-wfp fn-cat$p-msgid-seqs fn-cat$p-group-number
                            fn-cat$p-group-next fn-cat$p-group-count fn-cat$p-total-octets
                            fn-cat$p-visible-at fn-cat$p-group-live-count fn-cat$p-group-live-low
-                           fn-cat$p-group-live-high fn-cat$p-horizon fn-cat$p-commit-w
-                           fn-cat$p-withdraw-w fn-cat$p-redecide fn-cat$p-clear-w fn-cat$p-withdrawn-at
+                           fn-cat$p-group-live-high fn-cat$p-horizon fn-cat$p-commit-w0
+                           fn-cat$p-commit-w fn-cat$p-withdraw-w fn-cat$p-tab-raws-apply
+                           fn-cat$p-withdraw-w0 fn-cat$p-redecide fn-cat$p-clear-w fn-cat$p-withdrawn-at
                            fn-cat$p-clear-keyed fn-cat$p-msgid-saturatedp fn-cat$p-index-health)))
 
 (local
@@ -2819,10 +2947,10 @@
             :in-theory (e/d (fn-cat$p-wfp fn-cat$p-count) (fn-cp-corr-facts))))))
 
 (local
- (defthm fn-cp-commit-w-shape
-    (and (equal (len (nth 0 (fn-cat$p-commit-w h fn-cat$p))) (+ 1 (len (nth 0 fn-cat$p))))
-         (equal (nth 1 (nth 1 (fn-cat$p-commit-w h fn-cat$p))) (+ 1 (nth 1 (nth 1 fn-cat$p)))))
-    :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w fn-cat$p-count)
+ (defthm fn-cp-commit-w0-shape
+    (and (equal (len (nth 0 (fn-cat$p-commit-w0 h fn-cat$p))) (+ 1 (len (nth 0 fn-cat$p))))
+         (equal (nth 1 (nth 1 (fn-cat$p-commit-w0 h fn-cat$p))) (+ 1 (nth 1 (nth 1 fn-cat$p)))))
+    :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w0 fn-cat$p-count)
                                     (fn-cat$p-tab-commit fn-cat$p-append-row fn-cat$p-tab-index-add
                                      fn-cat$p-link fn-cat$p-wbv-put fn-cat$p-wbv-get fn-cat$p-cplan
                                      fn-cat$c-live-plan fn-cat$c-plan fn-cat$c-apply-plan
@@ -2836,12 +2964,12 @@
    :hints (("Goal" :in-theory (e/d (fn-cat$p-tab-withdraw) (fn-cat$c-live-apply fn-cat$c-wbv-put))))))
 
 (local
- (defthm fn-cp-withdraw-w-shape
+ (defthm fn-cp-withdraw-w0-shape
    (implies (and (natp target) (< target (len (nth 0 fn-cat$p)))
                  (<= (len (nth 0 fn-cat$p)) (nfix (nth 5 fn-cat$p))))
-            (and (equal (len (nth 0 (fn-cat$p-withdraw-w target by fn-cat$p))) (len (nth 0 fn-cat$p)))
-                 (equal (nth 1 (nth 1 (fn-cat$p-withdraw-w target by fn-cat$p))) (nth 1 (nth 1 fn-cat$p)))))
-   :hints (("Goal" :in-theory (e/d (fn-cat$p-withdraw-w)
+            (and (equal (len (nth 0 (fn-cat$p-withdraw-w0 target by fn-cat$p))) (len (nth 0 fn-cat$p)))
+                 (equal (nth 1 (nth 1 (fn-cat$p-withdraw-w0 target by fn-cat$p))) (nth 1 (nth 1 fn-cat$p)))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-withdraw-w0)
                                    (fn-cat$p-set-withdrawn fn-cat$p-tab-withdraw fn-cat$p-drop-plan
                                     fn-cat$p-wplan fn-cat$p-withdrawn-of fn-cat$p-numbers-of))))))
 
@@ -2870,6 +2998,176 @@
 
 ; The obligations, as `defabsstobj-missing-events' states them: each the old
 ; catalog's at the view, with the simulation of section 6.
+
+;  --- the raw low through the paged writes (s-group-low)
+
+(local
+ (defthm fn-cp-raws-put-keeps
+   (implies (and (natp n) (not (equal n 10)))
+            (equal (nth n (fn-cat$c-raws-put k v x)) (nth n x)))
+   :hints (("Goal" :in-theory (enable fn-cat$c-raws-put)))))
+
+(local
+ (defthm fn-cp-raws-apply-keeps
+   (implies (and (natp n) (not (equal n 10)))
+            (equal (nth n (fn-cat$c-raws-apply plan x)) (nth n x)))
+   :hints (("Goal" :induct (fn-cat$c-raws-apply plan x)
+            :in-theory (e/d (fn-cat$c-raws-apply fn-cp-raws-put-keeps) (fn-cat$c-raws-put))))))
+
+(local
+ (defthm fn-cat$p-tab-raws-apply-fields
+   (and (equal (nth 0 (fn-cat$p-tab-raws-apply plan fn-cat$p)) (nth 0 fn-cat$p))
+        (equal (nth 2 (fn-cat$p-tab-raws-apply plan fn-cat$p)) (nth 2 fn-cat$p))
+        (equal (nth 3 (fn-cat$p-tab-raws-apply plan fn-cat$p)) (nth 3 fn-cat$p))
+        (equal (nth 4 (fn-cat$p-tab-raws-apply plan fn-cat$p)) (nth 4 fn-cat$p))
+        (equal (nth 5 (fn-cat$p-tab-raws-apply plan fn-cat$p)) (nth 5 fn-cat$p))
+        (equal (nth 1 (nth 1 (fn-cat$p-tab-raws-apply plan fn-cat$p))) (nth 1 (nth 1 fn-cat$p))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-tab-raws-apply) (fn-cat$c-raws-apply))
+            :use ((:instance fn-cp-raws-apply-keeps (n 1) (x (nth 1 fn-cat$p))))))))
+
+(local
+ (defthm fn-cat$p-view-of-tab-raws-apply
+   (equal (fn-cat$p-view (fn-cat$p-tab-raws-apply plan fn-cat$p))
+          (fn-cat$c-raws-apply plan (fn-cat$p-view fn-cat$p)))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-tab-raws-apply fn-cat$p-view) (fn-cat$c-raws-apply))))))
+
+(local
+ (defthm fn-cat$p-commit-w-sim
+   (implies (and (equal (len (nth 0 fn-cat$p)) (nth 1 (nth 1 fn-cat$p)))
+                 (<= (nth 1 (nth 1 fn-cat$p)) (nfix (nth 5 fn-cat$p))))
+            (equal (fn-cat$p-view (fn-cat$p-commit-w h fn-cat$p))
+                   (fn-cat$c-commit-w h (fn-cat$p-view fn-cat$p))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w fn-cat$c-commit-w fn-cat$p-view)
+                                   (fn-cat$p-commit-w0 fn-cat$c-commit-w0 fn-cat$c-raws-apply
+                                    fn-cat$c-raws-commit-plan fn-cat$p-tab-raws-apply))
+            :use ((:instance fn-cat$p-commit-w0-sim))))))
+
+(local
+ (defthm fn-cp-links-of-commit-w
+    (and (equal (nth 1 (nth 2 (fn-cat$p-commit-w h fn-cat$p)))
+                (fn-cpl-link t (fn-cat$p-cplan (fn-record-groups h)
+                                               (fn-cat-live-candidatep h)
+                                               fn-cat$p)
+                             (nth 1 (nth 2 fn-cat$p))))
+         (equal (nth 2 (nth 2 (fn-cat$p-commit-w h fn-cat$p)))
+                (fn-cpl-link nil (fn-cat$p-cplan (fn-record-groups h)
+                                                 (fn-cat-live-candidatep h)
+                                                 fn-cat$p)
+                             (nth 2 (nth 2 fn-cat$p)))))
+    :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w)
+                                    (fn-cat$p-commit-w0 fn-cat$p-tab-raws-apply fn-cat$p-cplan
+                                     fn-cpl-link fn-cat$c-raws-commit-plan))))))
+
+(local
+ (defthm fn-cp-commit-w-shape
+    (and (equal (len (nth 0 (fn-cat$p-commit-w h fn-cat$p))) (+ 1 (len (nth 0 fn-cat$p))))
+         (equal (nth 1 (nth 1 (fn-cat$p-commit-w h fn-cat$p))) (+ 1 (nth 1 (nth 1 fn-cat$p)))))
+    :hints (("Goal" :in-theory (e/d (fn-cat$p-commit-w)
+                                    (fn-cat$p-commit-w0 fn-cat$p-tab-raws-apply fn-cat$c-raws-commit-plan))))))
+
+(local
+ (defthm fn-cp-view-rowsi
+   (implies (and (fn-cat$pcorr fn-cat$p fn-cat$a) (natp s) (< s (len fn-cat$a)))
+            (equal (fn-cat$c-rowsi s (fn-cat$p-view fn-cat$p)) (nth s fn-cat$a)))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-cp-view-row (seq s)))
+            :in-theory (e/d (fn-cat$p-view) (fn-cat$pcorr fn-cp-view-row))))))
+
+(local
+ (defthm fn-cat$p-raw-at-p-sim
+   (implies (fn-cat$pcorr fn-cat$p fn-cat$a)
+            (equal (fn-cat$p-raw-at-p g k fn-cat$p)
+                   (fn-cat$c-raw-at-p g k (fn-cat$p-view fn-cat$p))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-cat$p-raw-at-p fn-cat$c-raw-at-p)
+                            (fn-cat$p-at fn-cat$p-withdrawn-of fn-cat$p-view fn-cat$pcorr
+                             fn-cat$p-group-number fn-cat-number-seq
+                             fn-cat$c-numbers-get fn-cat$c-rowsi fn-cat$c-count))
+            :use ((:instance fn-cp-group-number-is-seq (g g) (k k))
+                  (:instance fn-cp-view-numbers-get-is-seq (x (cons g k)))
+                  (:instance fn-cat$p-count-sim)
+                  (:instance fn-cp-view-rowsi (s (fn-cat-number-seq g k fn-cat$a 0)))
+                  (:instance fn-cp-wfp-of-corr (fn-cat$a fn-cat$a))
+                  (:instance fn-cp-corr-facts))))))
+
+(local
+ (defthm fn-cat$p-raw-scan-up-sim
+   (implies (fn-cat$pcorr fn-cat$p fn-cat$a)
+            (equal (fn-cat$p-raw-scan-up g k top fn-cat$p)
+                   (fn-cat$c-raw-scan-up g k top (fn-cat$p-view fn-cat$p))))
+   :hints (("Goal" :induct (fn-cat$p-raw-scan-up g k top fn-cat$p)
+            :in-theory (e/d (fn-cat$p-raw-scan-up fn-cat$c-raw-scan-up)
+                            (fn-cat$p-raw-at-p fn-cat$c-raw-at-p fn-cat$pcorr fn-cat$p-view
+                             fn-cat$p-raw-at-p-sim))
+            :do-not '(generalize))
+           (and stable-under-simplificationp
+                '(:use ((:instance fn-cat$p-raw-at-p-sim)))))))
+
+(local
+ (defthm fn-cat$p-raws-drop-plan-sim
+   (implies (fn-cat$pcorr fn-cat$p fn-cat$a)
+            (equal (fn-cat$p-raws-drop-plan pairs target fn-cat$p)
+                   (fn-cat$c-raws-drop-plan pairs target (fn-cat$p-view fn-cat$p))))
+   :hints (("Goal" :induct (fn-cat$p-raws-drop-plan pairs target fn-cat$p)
+            :in-theory (e/d (fn-cat$p-raws-drop-plan fn-cat$c-raws-drop-plan fn-cat$c-group-number
+                             fn-cat$p-table-readers-sim)
+                            (fn-cat$p-raw-scan-up fn-cat$c-raw-scan-up fn-cat$pcorr fn-cat$p-view
+                             fn-cat$p-group-number fn-cat$p-group-raw-low fn-cat$p-group-top
+                             fn-cat$c-group-raw-low fn-cat$c-group-top fn-cat$c-numbers-get
+                             fn-cat$p-raw-scan-up-sim))
+            :do-not '(generalize))
+           (and stable-under-simplificationp
+                '(:use ((:instance fn-cat$p-raw-scan-up-sim (g (car (car pairs)))
+                                   (k (+ 1 (cdr (car pairs))))
+                                   (top (fn-cat$c-group-top (car (car pairs)) (fn-cat$p-view fn-cat$p))))))))))
+
+(local
+ (defthm fn-cat$p-withdraw-w-sim
+   (implies (and (fn-cat$pcorr fn-cat$p fn-cat$a)
+                 (equal (len (nth 0 fn-cat$p)) (nth 1 (nth 1 fn-cat$p)))
+                 (<= (nth 1 (nth 1 fn-cat$p)) (nfix (nth 5 fn-cat$p)))
+                 (natp target) (< target (nth 1 (nth 1 fn-cat$p))))
+            (equal (fn-cat$p-view (fn-cat$p-withdraw-w target by fn-cat$p))
+                   (fn-cat$c-withdraw-w target by (fn-cat$p-view fn-cat$p))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-cat$p-withdraw-w fn-cat$c-withdraw-w)
+                            (fn-cat$p-withdraw-w0 fn-cat$c-withdraw-w0 fn-cat$p-tab-raws-apply
+                             fn-cat$c-raws-apply fn-cat$p-raws-drop-plan fn-cat$c-raws-drop-plan
+                             fn-cat$p-withdrawn-of fn-cat$p-numbers-of fn-cat$p-view fn-cat$pcorr
+                             fn-cat$c-rowsi))
+            :use ((:instance fn-cat$p-withdraw-w0-sim)
+                  (:instance fn-cat$p-withdrawn-of-is-row (seq target))
+                  (:instance fn-cat$p-numbers-of-is-row (seq target))
+                  (:instance fn-cp-view-rowsi (s target))
+                  (:instance fn-cat$p-raws-drop-plan-sim (pairs (fn-held-numbers (nth target fn-cat$a))))
+                  (:instance fn-cp-corr-facts))))))
+
+(local
+ (defthm fn-cp-links-of-withdraw-w
+   (and (equal (nth 1 (nth 2 (fn-cat$p-withdraw-w target by fn-cat$p)))
+               (if (null (fn-cat$p-withdrawn-of target fn-cat$p))
+                   (fn-cpl-unlink t (fn-cat$p-wplan (fn-cat$p-numbers-of target fn-cat$p) target fn-cat$p)
+                                  (nth 1 (nth 2 fn-cat$p)))
+                 (nth 1 (nth 2 fn-cat$p))))
+        (equal (nth 2 (nth 2 (fn-cat$p-withdraw-w target by fn-cat$p)))
+               (if (null (fn-cat$p-withdrawn-of target fn-cat$p))
+                   (fn-cpl-unlink nil (fn-cat$p-wplan (fn-cat$p-numbers-of target fn-cat$p) target fn-cat$p)
+                                  (nth 2 (nth 2 fn-cat$p)))
+                 (nth 2 (nth 2 fn-cat$p)))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-withdraw-w)
+                                   (fn-cat$p-withdraw-w0 fn-cat$p-tab-raws-apply fn-cat$p-wplan
+                                    fn-cat$p-withdrawn-of fn-cat$p-numbers-of fn-cpl-unlink
+                                    fn-cat$p-raws-drop-plan))))))
+
+(local
+ (defthm fn-cp-withdraw-w-shape
+   (implies (and (natp target) (< target (len (nth 0 fn-cat$p)))
+                 (<= (len (nth 0 fn-cat$p)) (nfix (nth 5 fn-cat$p))))
+            (and (equal (len (nth 0 (fn-cat$p-withdraw-w target by fn-cat$p))) (len (nth 0 fn-cat$p)))
+                 (equal (nth 1 (nth 1 (fn-cat$p-withdraw-w target by fn-cat$p))) (nth 1 (nth 1 fn-cat$p)))))
+   :hints (("Goal" :in-theory (e/d (fn-cat$p-withdraw-w)
+                                   (fn-cat$p-withdraw-w0 fn-cat$p-tab-raws-apply fn-cat$p-withdrawn-of
+                                    fn-cat$p-numbers-of fn-cat$p-raws-drop-plan))))))
 
 (defthm create-fn-cat-paged{correspondence}
   (fn-cat$pcorr (create-fn-cat$p)
@@ -3049,6 +3347,18 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-cat-group-live-low{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
+                 (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
+           :in-theory (disable fn-cp-corr-facts))))
+
+(defthm fn-cat-paged-group-raw-low{correspondence}
+  (implies (if (fn-cat$pcorr fn-cat$p fn-cat-paged)
+                    (fn-cat$ap fn-cat-paged)
+                  'nil)
+                (equal (fn-cat$p-group-raw-low group fn-cat$p)
+                       (fn-cat$a-group-raw-low group fn-cat-paged)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-cat-group-raw-low{correspondence} (fn-cat$c (fn-cat$p-view fn-cat$p)) (fn-cat fn-cat-paged))
                  (:instance fn-cp-corr-facts (fn-cat$a fn-cat-paged)))
            :in-theory (disable fn-cp-corr-facts))))
 
@@ -3402,6 +3712,7 @@
             (fn-cat-paged-visible-at :logic fn-cat$a-visible-at :exec fn-cat$p-visible-at)
             (fn-cat-paged-group-live-count :logic fn-cat$a-group-live-count :exec fn-cat$p-group-live-count)
             (fn-cat-paged-group-live-low :logic fn-cat$a-group-live-low :exec fn-cat$p-group-live-low)
+            (fn-cat-paged-group-raw-low :logic fn-cat$a-group-raw-low :exec fn-cat$p-group-raw-low)
             (fn-cat-paged-group-live-high :logic fn-cat$a-group-live-high :exec fn-cat$p-group-live-high)
             (fn-cat-paged-horizon :logic fn-cat$a-horizon :exec fn-cat$p-horizon)
             (fn-cat-paged-commit :logic fn-cat$a-commit :exec fn-cat$p-commit-w :protect t)

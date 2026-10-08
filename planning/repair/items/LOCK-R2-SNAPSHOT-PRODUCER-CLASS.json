@@ -1,0 +1,16 @@
+{
+ "id": "LOCK-R2-SNAPSHOT-PRODUCER-CLASS",
+ "title": "Separate snapshot rotation I/O from K and classify action exclusion",
+ "detail": "CHECKER GAP in the default loaded-image report, with a REAL latent stall in the parked code. fnn-snapshot-job-freeze-log holds K across rotation lstat/lseek/write. fnn-snapshot-job-cleanup and -log-durable hold XSNAP across close/open/barriers. However snapshot-producer.lisp is PARKED (S111, planning/host-parked.json) and no image loads it; its fn-osj phase calls have no definitions. R2 attributes each finding to the blocking leaf (usually in loaded io.lisp), and Checker.add copies that leaf FnInfo.loaded. main filters findings by that bit, so an unloaded lock origin incorrectly becomes a loaded-image stall. For multiple origins of one (lock, leaf), the report must retain the finding if ANY origin is loaded and prefer that origin in the trail. The all-files audit must continue reporting the parked stall.",
+ "fix": "Carry loaded-image provenance from each lock-origin event through R2 aggregation, OR it across origins, and use it for Finding.loaded instead of the leaf file. Preserve all-files findings, their keys and total site counts. Fixtures: parked-only origin into loaded leaf; live origin into parked leaf; mixed origins in both source orders; ablation restoring leaf-based attribution. No contracts, baseline, host lock or ACL2 event changes.",
+ "owner": "deputy-C",
+ "state": "open",
+ "notes": [
+  "Statement first, lock-r2-class, 2026-10-08; traced checkout 414aed260. No numbered identifier required for descriptive LOCK repair IDs.",
+  "The cited fnn-owner-held-commit host macro is absent from this checkout; lane-commit-held-host contains an implementation to inspect as an integration dependency.",
+  "2026-10-08: source trace found the exact gap before code. This corrects the existing default loaded-image filter; it does not exempt XSNAP or authorize I/O under K if this module is wired in.",
+  "Implemented origin_loaded propagation in Checker.add and rule_R2. Mixed loaded/parked origins retain the live finding and show a live trail. --all-files retains the parked origin findings. 296 lock-checker tests pass, including 4 new fixtures and a leaf-provenance ablation. No host/model events changed for this disposition.",
+  "Nine default-image keys disappear: the seven scoped snapshot keys, plus K:fnn-%import-renameat2 and K:sb-posix:rename. Eight old baseline rows become stale; the baseline and contracts were not edited. The latent lock defects remain visible under --all-files and must be repaired before wiring the parked producer into an image.",
+  "Round 2 gate: O:fstat weight 26; 9 default R2 keys removed, 0 added, 0 NEW outside lock-dev-keys.txt. Full lock gate still exit 1: 65 new keys, 8 stale. Checker unit tests 296 OK; host read/load 0 findings (bare ACL2 only, external certified-cache lock denied); interface 0 findings; native_program PASS 0 mismatches; secrets 10 files 0; diff --check clean. Detailed evidence: build/coordinator/lanedumps/lock-r2-class-continue.md."
+ ]
+}

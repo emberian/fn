@@ -5,26 +5,26 @@
   "proved": 5,
   "partial": 1,
   "derived": 12,
-  "none": 1745
+  "none": 1768
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 5,
    "partial": 1,
    "derived": 12,
-   "none": 1002
+   "none": 1021
   },
   "ideal": {
    "proved": 0,
    "partial": 0,
    "derived": 0,
-   "none": 148
+   "none": 147
   },
   "program": {
    "proved": 0,
    "partial": 0,
    "derived": 0,
-   "none": 595
+   "none": 600
   }
  },
  "families": {
@@ -68,6 +68,8 @@
  "undispatched_declarations": [
   "fn-cur-at",
   "fn-ncfg-nth",
+  "fn-scat-group-low-top",
+  "fn-scat-top-viewp",
   "fn-sl-loop",
   "fn-sl-one",
   "fn-sl-step",
@@ -642,7 +644,7 @@
   },
   {
    "name": "fn-asto-plan-render-window",
-   "class": "ideal",
+   "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
    "sizes": [],
@@ -988,6 +990,46 @@
   },
   {
    "name": "fn-bph-command-plan",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-bph-extend-reservation",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-bph-node-journal",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-bph-node-serve-p",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-bph-node-transfer",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -2287,6 +2329,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-bpnjc-answer",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-bpnjc-contact-close",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -2497,26 +2549,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-bpnpf-adu-octets",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-bpnpf-bundle-octets",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-bpnpf-file-name",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -2578,16 +2610,6 @@
   },
   {
    "name": "fn-bpnpf-rotate-records",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-bpnpf-rows",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -3307,16 +3329,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-bpsp-captured-wire-span",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-bpsp-file-name",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -3327,7 +3339,7 @@
    "declared_in": null
   },
   {
-   "name": "fn-bpsp-held-projection",
+   "name": "fn-bpsp-incoming-contended",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -3337,7 +3349,7 @@
    "declared_in": null
   },
   {
-   "name": "fn-bpsp-incoming-contended",
+   "name": "fn-bpsp-node-startup",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -3388,16 +3400,6 @@
   },
   {
    "name": "fn-bpsp-stall-ms",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-bpsp-startup",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -4017,6 +4019,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-exp-tail-start",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-feed-filename-host-component",
    "class": "program",
    "claim": "none",
@@ -4413,6 +4425,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-his-build-close",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-his-build-finish",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -4423,7 +4445,7 @@
    "declared_in": null
   },
   {
-   "name": "fn-his-build-source-count",
+   "name": "fn-his-build-open",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -4433,7 +4455,27 @@
    "declared_in": null
   },
   {
-   "name": "fn-his-build-yieldp",
+   "name": "fn-his-build-place-run",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-his-build-quantum",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-his-build-source-count",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -4474,6 +4516,36 @@
   },
   {
    "name": "fn-his-np",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-his-place-begin",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-his-plan-begin",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-his-plan-run",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -4693,7 +4765,27 @@
    "declared_in": null
   },
   {
+   "name": "fn-hroot-event-transient",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-hroot-grow-demand",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-hroot-grow-transient",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -4903,6 +4995,26 @@
    "declared_in": null
   },
   {
+   "name": "fn-idle-gc-decide",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-idle-gc-quiet",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-jpub-host-action",
    "class": "ideal",
    "claim": "none",
@@ -4964,16 +5076,6 @@
   },
   {
    "name": "fn-lg-extent-okp",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-lg-recover-tail",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -5404,6 +5506,26 @@
   },
   {
    "name": "fn-lgl-refusal-text",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-lgrc-copy-refusal-text",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-lgrc-copy-verdict",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -5884,6 +6006,26 @@
    ],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-mxa-deferral-line",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-mxa-reserve",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
   },
   {
    "name": "fn-native-admin-host-apply",
@@ -9578,6 +9720,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-owner-arena-count",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-owner-article-preflight-unavailable",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -10388,7 +10540,27 @@
    "declared_in": null
   },
   {
+   "name": "fn-owner-feed-reply-article",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-owner-feed-reply-chunk",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-owner-feed-reply-sync",
    "class": "program",
    "claim": "none",
    "bound": null,
@@ -10558,6 +10730,16 @@
    "declared_in": null
   },
   {
+   "name": "fn-owner-hroot-note",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-owner-hroot-pin-funded",
    "class": "program",
    "claim": "none",
@@ -10639,6 +10821,16 @@
   },
   {
    "name": "fn-owner-hroot-row",
+   "class": "program",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-owner-hroot-transient",
    "class": "program",
    "claim": "none",
    "bound": null,
@@ -12231,6 +12423,16 @@
   },
   {
    "name": "fn-owner-sco-note-durable",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-owner-sco-publication-abandoned",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -14376,6 +14578,36 @@
   },
   {
    "name": "fn-sco-records",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-send-progress-begin",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-send-progress-decide",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-send-progress-next",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
