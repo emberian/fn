@@ -62,12 +62,18 @@
 (defun pckh-wide (seed n)
   (declare (xargs :guard (and (natp seed) (natp n))))
   (if (zp n) nil (cons (mod (* (+ seed n) 2654435761) 251) (pckh-wide (+ seed 7) (- n 1)))))
-(defun pckh-recs (seed count)
-  (declare (xargs :guard (and (natp seed) (natp count))))
-  (if (zp count) nil (cons (pckh-wide (* seed count) 3000) (pckh-recs seed (- count 1)))))
-(defconst *pckh-store0* (pckh-recs 1 300))
-(defconst *pckh-d1* (pckh-recs 2 20))
-(defconst *pckh-d2* (pckh-recs 3 20))
+; Real records, sequences consecutive from the fold seed (0, 1, ...).
+(defun pckh-recs-from (first seed count)
+  (declare (xargs :mode :program))
+  (if (zp count) nil
+    (cons (fn-record-make first (+ 1 first) 0 "<a@x>" (pckh-wide (+ seed first) 3000)
+                          '("fn.test") "o" "s" "e" 1 5)
+          (pckh-recs-from (+ 1 first) seed (- count 1)))))
+(defconst *pckh-store0* (pckh-recs-from 0 1 300))
+(defconst *pckh-d1* (pckh-recs-from 300 2 20))
+(defconst *pckh-d2* (pckh-recs-from 320 3 20))
+(defconst *pckh-st0* (fn-pck-st-of (fn-pck-seed) *pckh-store0*))
+(defconst *pckh-st1* (fn-pck-st-of (fn-pck-seed) (append *pckh-store0* *pckh-d1*)))
 
 (defconst *pckh-full1* (len (fn-pck-pages nil (append *pckh-store0* *pckh-d1*))))
 (defconst *pckh-full2* (len (fn-pck-pages nil (append *pckh-store0* *pckh-d1* *pckh-d2*))))
@@ -77,9 +83,12 @@
 (assert-event (and (equal (car (fn-pck-publish-plan nil *pckh-store0* *pckh-d1*)) :commit)
                    (equal (car (fn-pck-publish-plan nil (append *pckh-store0* *pckh-d1*) *pckh-d2*)) :commit)))
 ; red: a whole-image rewrite grows with the store; green: a publication writes K + delta pages.
+(assert-event (and (fn-pck-sccb-listp (append *pckh-store0* *pckh-d1* *pckh-d2*) (fn-pck-seed))
+                   (not (equal *pckh-st1* :bad))
+                   (fn-pck-plen-okp (append *pckh-store0* *pckh-d1* *pckh-d2*))))
 (assert-event (< *pckh-full1* *pckh-full2*))
-(assert-event (<= *pckh-dirty1* (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckh-d1*))))
-(assert-event (<= *pckh-dirty2* (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckh-d2*))))
+(assert-event (<= *pckh-dirty1* (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckh-d1* (fn-pck-plen *pckh-store0* 0) *pckh-st0*))))
+(assert-event (<= *pckh-dirty2* (+ *fn-pck-root-pages* (fn-pck-delta-page-bound *pckh-d2* (fn-pck-plen (append *pckh-store0* *pckh-d1*) 0) *pckh-st1*))))
 (assert-event (< *pckh-dirty2* *pckh-full2*))
 (value-triple (cw "pages per publication: whole image ~x0 then ~x1; dirty ~x2 then ~x3~%"
                   *pckh-full1* *pckh-full2* *pckh-dirty1* *pckh-dirty2*))
@@ -116,8 +125,8 @@
 ; log that starts past the checkpoint's S.
 (must-fail-checked
  (defthm pckh-raw-selection-retains
-   (implies (equal (car (fn-pck-open-raw-selection filep disk r mode count k)) :checkpoint)
-            (fn-pck-log-retains log (cadr (fn-pck-open-raw-selection filep disk r mode count k))))))
+   (implies (equal (car (fn-pck-open-raw-selection filep disk r mode file count k)) :checkpoint)
+            (fn-pck-log-retains log (cadr (fn-pck-open-raw-selection filep disk r mode file count k))))))
 
 ; The witness: a checkpoint of S = 2 records over a log that starts at 5.
 (defun pckh-selection-of (s count k log)
@@ -133,10 +142,10 @@
 
 ; Recovery through the view with START > S is not the full recovery: the
 ; view of an S = 0 image (nothing checkpointed) over a log that starts at 1.
-(defun pckh-ungated-recover-view (v log configs frontier max-conns)
+(defun pckh-ungated-recover-view (v file log configs frontier max-conns)
   (declare (xargs :guard t :verify-guards nil))
   (if (and v (consp log))
-      (let ((c (fn-pck-capture-of-pages (cadr v))))
+      (let ((c (fn-pck-capture-of-pages (cadr v) file)))
         (fn-ock-recover-extended
          (fn-sco-extend c configs (nthcdr (- (len (fn-sco-records c)) (nfix (car log))) (cdr log)))
          configs frontier max-conns))
@@ -145,17 +154,17 @@
 (must-fail-checked
  (defthm pckh-ungated-recover-view-is-full
    (implies (and (true-listp recs) (true-listp suffix)
-                 (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                 (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs) (fn-pck-resolvesp recs 0 file)
                  (consp log) (natp (car log))
                  (equal (nthcdr (car log) (append recs suffix)) (cdr log))
                  (equal v (list tx (fn-pck-pages configs recs))))
-            (equal (pckh-ungated-recover-view v log configs frontier max-conns)
+            (equal (pckh-ungated-recover-view v file log configs frontier max-conns)
                    (fn-ock-recover-full configs frontier (append recs suffix) max-conns)))))
 
 (defthm pckh-recover-view-refuses-a-log-past-the-checkpoint
   (implies (and (consp log) (natp (car log))
-                (< (len (fn-sco-records (fn-pck-capture-of-pages (cadr v)))) (car log)))
-           (equal (fn-pck-recover-view v log configs frontier max-conns) :fault))
+                (< (len (fn-sco-records (fn-pck-capture-of-pages (cadr v) file))) (car log)))
+           (equal (fn-pck-recover-view v file log configs frontier max-conns) :fault))
   :hints (("Goal" :in-theory (enable fn-pck-recover-view fn-pck-log-retains))))
 
 ; 7. The catalog root's write gate.  Writing always (the ungated plan) does not
