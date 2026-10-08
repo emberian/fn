@@ -588,6 +588,12 @@
                                                default-car default-cdr
                                                default-+-1 default-+-2
                                                default-<-1 default-<-2 len
+                                               fn-cfg-account-loginp
+                                               fn-native-admin-counted-policy-keyp
+                                               fn-native-admin-known-policy-keyp
+                                               fn-rck-limit-valuep
+                                               fn-record-string-octets
+                                               member-equal natp
                                                (tau-system))))))
   (if (not (fn-native-admin-argvp argv))
       (fn-native-admin-result :refused :argv nil nil nil nil nil)
@@ -1409,6 +1415,14 @@
                                    fn-native-admin-consumer-plan
                                    fn-native-admin-motd-plan
                                    fn-native-admin-access-plan
+                                   fn-cfg-account-loginp fn-exp-anonymous-wordp
+                                   fn-exp-limit-slotp fn-exp-trusted-of-word
+                                   fn-exp-trusted-wordp fn-hsb-overrides-of-word
+                                   fn-native-admin-counted-policy-keyp
+                                   fn-native-admin-known-policy-keyp
+                                   fn-native-admin-naturalp fn-rck-limit-slotp
+                                   fn-rck-limit-valuep fn-rcl-rule-of-words
+                                   fn-xpy-targetp fn-xpy-words-policy
                                    fn-native-admin-peer-extend-plan))
            :use ((:instance fn-native-admin-peer-plan-kind
                             (words (fn-native-admin-words argv)))
@@ -1850,20 +1864,34 @@ recovery observes it under (`fn-nco-observe')."
 ; nothing; both host arms return :refused on a non-accepted plan before any
 ; store operation.  `group retire' of such a name stays admitted: a store
 ; that already carries one can still remove it.
-(local (defthm fn-native-admin-len-of-words
-  (equal (len (fn-native-admin-words argv)) (len argv))
+;; `group create' under its words, proved once.  The plan's `cond' split
+;; into 442 cases in each keystone below (a hypothesis equating
+;; (fn-native-admin-words argv) to a LIST is not a rewrite rule, so the arms
+;; were decided by case-splitting: ~1.1M steps apiece).  The same facts as
+;; constant-valued hypotheses on car/cadr/len rewrite the arms directly
+;; (4.9k steps); the keystones then keep fn-native-admin-plan closed.
+(local (defthm fn-native-admin-words-of-a-three-word-list
+  (implies (equal (fn-native-admin-words argv) (list a b c))
+           (and (equal (len (fn-native-admin-words argv)) 3)
+                (equal (car (fn-native-admin-words argv)) a)
+                (equal (cadr (fn-native-admin-words argv)) b)
+                (equal (caddr (fn-native-admin-words argv)) c)))
   :rule-classes nil))
-
-(defthm fn-native-admin-plan-refuses-a-reserved-group-create
+(local (defthm fn-native-admin-plan-under-group-create-words
   (implies (and (fn-native-admin-argvp argv)
-                (equal (fn-native-admin-words argv) (list "group" "create" name))
-                (fn-native-admin-group-name-reservedp name))
-           (let ((plan (fn-native-admin-plan argv)))
-             (and (equal (fn-native-admin-result-status plan) :refused)
-                  (equal (fn-native-admin-result-reason plan)
-                         :reserved-group-name)
-                  (equal (fn-native-admin-plan-deltas plan) nil))))
-  :rule-classes nil
+                (equal (len (fn-native-admin-words argv)) 3)
+                (equal (car (fn-native-admin-words argv)) "group")
+                (equal (cadr (fn-native-admin-words argv)) "create")
+                (or (fn-native-admin-group-name-reservedp
+                     (caddr (fn-native-admin-words argv)))
+                    (fn-record-group-namep (caddr (fn-native-admin-words argv)))))
+           (equal (fn-native-admin-plan argv)
+                  (if (fn-native-admin-group-name-reservedp
+                       (caddr (fn-native-admin-words argv)))
+                      (fn-native-admin-result :refused :reserved-group-name
+                                              nil nil 0 nil nil)
+                    (fn-native-admin-result :accepted nil :create-group
+                                            (caddr argv) 0 nil nil))))
   :hints (("Goal" :in-theory (e/d (fn-native-admin-plan)
                                   ((tau-system) fn-native-admin-group-name-reservedp
                                    fn-record-octets-string fn-cbor-octet-listp
@@ -1877,8 +1905,23 @@ recovery observes it under (`fn-nco-observe')."
                                    fn-native-admin-access-plan
                                    fn-record-group-namep fn-path-identityp
                                    fn-native-admin-decimalp
-                                   fn-native-admin-decimal-value))
-           :use ((:instance fn-native-admin-len-of-words)))))
+                                   fn-native-admin-decimal-value))))))
+
+(defthm fn-native-admin-plan-refuses-a-reserved-group-create
+  (implies (and (fn-native-admin-argvp argv)
+                (equal (fn-native-admin-words argv) (list "group" "create" name))
+                (fn-native-admin-group-name-reservedp name))
+           (let ((plan (fn-native-admin-plan argv)))
+             (and (equal (fn-native-admin-result-status plan) :refused)
+                  (equal (fn-native-admin-result-reason plan)
+                         :reserved-group-name)
+                  (equal (fn-native-admin-plan-deltas plan) nil))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-native-admin-plan
+                                      fn-native-admin-plan-under-group-create-words)
+           :use ((:instance fn-native-admin-words-of-a-three-word-list
+                            (a "group") (b "create") (c name))
+                 fn-native-admin-plan-under-group-create-words))))
 
 ; KEYSTONE (RFC 5536 s3.1.4 specific-purpose names, local agreement).  The
 ; subject is `fn-native-admin-plan' (called as below).  For every creatable
@@ -1895,21 +1938,9 @@ recovery observes it under (`fn-nco-observe')."
                   (fn-native-admin-result :accepted nil :create-group
                                           (caddr argv) 0 nil nil)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-admin-plan
-                                   fn-native-admin-group-name-creatablep)
-                                  ((tau-system) fn-native-admin-group-name-reservedp
-                                   fn-record-octets-string fn-cbor-octet-listp
-                                   fn-native-admin-words fn-native-admin-argvp
-                                   fn-native-admin-peer-plan fn-native-admin-peer-extend-plan
-                                   fn-native-admin-bp-boundary-plan
-                                   fn-native-admin-control-plan
-                                   fn-native-admin-moderate-plan
-                                   fn-native-admin-describe-plan
-                                   fn-native-admin-motd-plan
-                                   fn-native-admin-access-plan
-                                   fn-record-group-namep fn-path-identityp
-                                   fn-native-admin-decimalp
-                                   fn-native-admin-decimal-value
-                                   fn-native-admin-result))
-           :use ((:instance fn-native-admin-len-of-words)))))
-
+  :hints (("Goal" :in-theory (e/d (fn-native-admin-group-name-creatablep)
+                                  (fn-native-admin-plan
+                                   fn-native-admin-plan-under-group-create-words))
+           :use ((:instance fn-native-admin-words-of-a-three-word-list
+                            (a "group") (b "create") (c name))
+                 fn-native-admin-plan-under-group-create-words))))
