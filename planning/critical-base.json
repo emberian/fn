@@ -543,11 +543,11 @@
   },
   "fn-av-scr-auth-delegate-restricted-is-reference": {
    "class": "authorization",
-   "statement_digest": "aeaf6bbc1767bd4b5fed927973c243b299d901652510e61ae399cd9ccaeeea3f"
+   "statement_digest": "c82fa174dddbcd27ffbc8aeb5a37698e808817d159ddd4408f006e9cbae292ad"
   },
   "fn-av-scr-dispatch-core-restricted-is-reference": {
    "class": "authorization",
-   "statement_digest": "01832f3eb29c9700d346a19c24dbabd704773cab2de85e9182be9e96cd6c8191"
+   "statement_digest": "06d4279d6a9d7ccc4352b4b6869a58c56f1fe27a191de200b3ff6083b28d17dc"
   },
   "fn-aw-add-fold-open-cost": {
    "class": "parser-boundary",
@@ -1967,7 +1967,7 @@
   },
   "fn-gacc-grow-builds": {
    "class": "authorization",
-   "statement_digest": "a5fb4080a4bef7e41b1bf742221a2814c54d672b867283fd4b48ee4ec8332a34"
+   "statement_digest": "bdd856de97d43b34b07d7a41543df8454e0d49211604594484b46e17ebea92c5"
   },
   "fn-gacc-prepare-keeps-okp": {
    "class": "authorization",
@@ -3871,7 +3871,7 @@
   },
   "fn-own-consumed-completion-is-240-or-uncertain": {
    "class": "extraction",
-   "statement_digest": "b1a8385c06ed04d36f657b05c80281179643e8720cf52725e7b6966a220d8b41"
+   "statement_digest": "81a21f88f15601e8563e20742a3306c4957bb1cac5ee9fe3b0d1557ba3850550"
   },
   "fn-own-fault-clears-the-faulted-submission": {
    "class": "durability",
@@ -4079,7 +4079,7 @@
   },
   "fn-pidx-existing-action-is-store-existing-action": {
    "class": "identity-binding",
-   "statement_digest": "ad61b21e379fb120ab8e2eee0469e450822ad343d5c7ded4674e209ca54b2f58"
+   "statement_digest": "791154f7ca7728c81a49d1e2cba9d669b55a8c67dcb7f08c5d444e22e6ee01f3"
   },
   "fn-pidx-find-article-is-find-article": {
    "class": "identity-binding",
@@ -4091,11 +4091,11 @@
   },
   "fn-pidx-sbud-prepare-is-pcar-sbud-prepare": {
    "class": "identity-binding",
-   "statement_digest": "6f21bcf35b54cc76c02bc3459019e090c58de22b7d73c29e91b1257277608f7d"
+   "statement_digest": "341f992e158b12655e21decb9d907b21381ce80cda1bba2dbe5353e4210bd6cb"
   },
   "fn-pidx-view-okp-of-live-owner": {
    "class": "identity-binding",
-   "statement_digest": "574b48a9a103774ff39e0cf22ead104791d11637223c90eee1ea7490820db492"
+   "statement_digest": "3177fc0f2beb3422d880670dfaa106463553e90dc75d40116e05fd0ad2d0c5f6"
   },
   "fn-pinv-accept-of-a-current-inviter-configures-it": {
    "class": "authorization",
@@ -4655,7 +4655,7 @@
   },
   "fn-rdc-selection-establishes": {
    "class": "extraction",
-   "statement_digest": "a3921359792a45f25371a42b84d958c73fe0b574cae11c37422fa3019b4e3deb"
+   "statement_digest": "0b1c9145bce47402aab42da9cfc2f28c817c1ef78755fe6ceb7353c282dbfc55"
   },
   "fn-record-accepted-input-is-canonical": {
    "class": "parser-boundary",
