@@ -2,6 +2,7 @@
 ; (books/owner-time-held.lisp, ruling 19).
 (in-package "ACL2")
 (include-book "../../books/owner-time-held")
+(include-book "../../books/defkeystone")
 
 (defun oth-s (s e)
   (declare (xargs :guard t))
@@ -67,3 +68,38 @@
                    (equal (fn-otm-phase-of *oth-unheld*) :staged)))
 (assert-event (equal (oth-q2 *oth-unheld* :fenced nil) :stopping))
 (assert-event (not (equal (oth-q2 *oth-unheld* :fenced nil) (fn-och-held-outcome :done nil))))
+
+; RULING19-MODEL-AWAITS-HOST: the complete model sequence, with each
+; hypothesis independently removed while the other two remain true.
+(defteeth fn-otm-held-quantum-2-answers-the-held-outcome
+  :claim (((held (fn-otm-held s))
+           (staged (equal (fn-otm-phase-of s) :staged))
+           (job-word (member-equal word '(:fenced :failed))))
+          (mv-let (step s2) (fn-otm-held-event s word)
+            (equal (fn-och-caller-answer
+                    (mv-nth 0 (fn-otm-held-event
+                               s2 (if (and (equal step :complete) stopping)
+                                      :completed-stopping
+                                    :completed))))
+                   (fn-och-held-outcome (if (equal word :fenced) :done :uncertain)
+                                        stopping))))
+  :witness ((s *oth-s1*) (word :fenced) (stopping nil))
+  :breaks ((held ((s *oth-unheld*)))
+           (staged ((s (fn-otm-with-step (fn-otm-init) :failed nil t))))
+           (job-word ((word :completed))))
+  :mutations ((ignore-stopping
+               (:conclusion
+                (mv-let (step s2) (fn-otm-held-event s word)
+                  (declare (ignore step))
+                  (equal (fn-och-caller-answer (mv-nth 0 (fn-otm-held-event s2 :completed)))
+                         (fn-och-held-outcome (if (equal word :fenced) :done :uncertain)
+                                              stopping))))
+               ((s *oth-s1*) (word :fenced) (stopping t))
+               :fault "quantum 2 submits even after COMPLETE finds the owner stopping")
+              (failed-is-durable
+               (:conclusion
+                (equal (oth-q2 s word stopping) (fn-och-held-outcome :done stopping)))
+               ((s *oth-s1*) (word :failed) (stopping nil))
+               :fault "a failed batch is answered as a durable one")))
+
+(defteeth-check)
