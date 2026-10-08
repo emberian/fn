@@ -2652,7 +2652,13 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/newnews-cursor-tests \
     tests/acl2/owner-prepare-deferred-carried-tests \
     tests/acl2/owner-prepare-deferred-carried-owner-tests \
-    tests/acl2/withdrawal-index-carried-tests
+    tests/acl2/withdrawal-index-carried-tests \
+    tests/acl2/catalog-pool-tests \
+    tests/acl2/def-loop-run-tests \
+    tests/acl2/defteeth-removal-obstructions-tests \
+    tests/acl2/extent-window-span-tests \
+    tests/acl2/history-image-place-tests \
+    tests/acl2/history-image-canonical-tests
 
 .PHONY: wire-grammar wire-grammar-check host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
