@@ -61,8 +61,22 @@ TXID is ACL2's next transaction output. Payload frames are already written at co
 A post-plan I/O failure requires recovery because MEM contains new tables."
   (let* ((slot (fnn-core 'pgs-x-commit-slot adopted-slot))
          (plan (first (fnn-call 'pgs-x-commit lpages n txid alloc slot mem octets))))
+    (fnn-pck-write-commit-plan pages-fd payload-fd lpages slot plan mem octets)))
+
+(defun fnn-pck-bootstrap-pages (pages-fd payload-fd lpages mem octets)
+  "Initialize an absent paged checkpoint from staged pages.
+The certified initializer fixes slot zero, transaction one and the empty
+allocator. No old checkpoint or history-image initializer participates;
+bootstrap never compacts the log."
+  (let ((plan (first (fnn-call 'fn-pck-x-bootstrap lpages mem octets))))
+    ;; Slot zero is the bootstrap entry's fixed ABI, proved by
+    ;; fn-pck-x-bootstrap-is-the-plan. There is no adopted slot to compare.
+    (fnn-pck-write-commit-plan pages-fd payload-fd lpages 0 plan mem octets)))
+
+(defun fnn-pck-write-commit-plan (pages-fd payload-fd lpages slot plan mem octets)
+  "Write ACL2's plan with the same durability order for first and later roots."
     (unless (eq (first plan) :plan)
-      (return-from fnn-pck-commit-pages plan))
+      (return-from fnn-pck-write-commit-plan plan))
     (handler-case
         (progn
           ;; These address lists are the commit's outputs. Multiplication
@@ -83,4 +97,4 @@ A post-plan I/O failure requires recovery because MEM contains new tables."
           (fnn-core 'pgs-x-commit-durable lpages mem)
           plan)
       (fnn-os-error (e)
-        (fnn-indeterminate "paged checkpoint commit requires recovery: ~a" e)))))
+        (fnn-indeterminate "paged checkpoint commit requires recovery: ~a" e))))
