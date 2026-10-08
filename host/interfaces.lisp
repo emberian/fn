@@ -6081,7 +6081,7 @@
 (definterface fn-dtrace-config-plan
   :class :common-lisp-compliant
   :kinds ((octets fn-cbor-octet-listp))
-  :keystones (fn-dtrace-no-table-no-ring))
+  :keystones (fn-dtrace-config-ring-octets-is-the-plans-ring))
 (definterface fn-dtrace-plan-kind :class :common-lisp-compliant)
 (definterface fn-dtrace-plan-refusal :class :common-lisp-compliant)
 (definterface fn-dtrace-plan-classes :class :common-lisp-compliant)

@@ -26,6 +26,49 @@
   (declare (xargs :guard (fn-cbor-octet-listp octets)))
   (fn-dtrace-ring-octets (fn-dtrace-config-plan octets image)))
 
+; KEYSTONE (general): for every configuration and either image profile, what
+; the host asks is 0 when the plan is (:off) or a refusal, and otherwise a
+; 4,096-octet header and 1,024 octets a row of the plan's capacity.  The
+; numbers are written out, not read from the constants, so a change to the
+; ring's accounting must change this statement.
+(defthm fn-dtrace-ring-octets-by-kind
+  (equal (fn-dtrace-ring-octets plan)
+         (if (equal (fn-dtrace-plan-kind plan) :plan)
+             (+ 4096 (* 1024 (fn-dtrace-plan-capacity plan)))
+           0))
+  :hints (("Goal" :in-theory (enable fn-dtrace-ring-octets fn-dtrace-plan-kind))))
+
+(defthm fn-dtrace-config-ring-octets-is-the-plans-ring
+  (equal (fn-dtrace-config-ring-octets octets image)
+         (let ((plan (fn-dtrace-config-plan octets image)))
+           (if (equal (fn-dtrace-plan-kind plan) :plan)
+               (+ 4096 (* 1024 (fn-dtrace-plan-capacity plan)))
+             0)))
+  ;; the plan stays one term: expanding the configuration reader here explodes
+  :hints (("Goal" :use ((:instance fn-dtrace-ring-octets-by-kind
+                                   (plan (fn-dtrace-config-plan octets image))))
+                  :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-dtrace-config-ring-octets)))))
+
+; Its positive witnesses (the theorem is not vacuous): no table is no ring on
+; either image; a table of capacity 8 on a developer image holds 12,288 octets.
+(defthm fn-dtrace-config-ring-octets-witnesses
+  (and (equal (fn-dtrace-config-ring-octets (fn-record-string-octets "[store]
+path = \"/s\"
+") :production)
+              0)
+       (equal (fn-dtrace-config-ring-octets (fn-record-string-octets "[store]
+path = \"/s\"
+") :developer)
+              0)
+       (equal (fn-dtrace-config-ring-octets (fn-record-string-octets "[store]
+path = \"/s\"
+[trace]
+capacity = 8
+") :developer)
+              12288))
+  :rule-classes nil)
+
 ; Extend the already composed decision exactly once with the ring.
 (defun fn-dtrace-extend-reservation (base ring-octets core observations)
   (declare (xargs :guard t))
