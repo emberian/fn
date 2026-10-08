@@ -111,8 +111,8 @@ LOCAL_BOX_CHECKS = (
 UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
-GATES = ("ancestor", "ledger", "current_view", "main_last", "host_load", "ascii", "box_step",
-         "lock_delta", "secrets", "unit")
+GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
+         "box_step", "lock_delta", "secrets", "unit")
 
 
 class TrainError(Exception):
@@ -554,6 +554,9 @@ def cmd_gate(t: Train, args) -> int:
     # check-fast's main_last_check: a test file whose __main__ block is not last
     # silently skips every class after it (dev d67a244fa, tests/test_image_set.py)
     rec("main_last", t.run("gate-main_last", [PY, "tools/main_last_check.py"]))
+    # the teeth gate: a new toothless keystone or a stale teeth manifest
+    # (train 41: a lane's new keystones without teeth, caught by hand)
+    rec("keystone", t.run("gate-keystone", [PY, "tools/keystone_emit.py", "--check"]))
 
     host = git(t.root, "diff", "--name-only", "origin/dev", "HEAD", "--", "host").stdout.split()
     if host:
