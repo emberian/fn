@@ -1169,7 +1169,45 @@
    "statement_digest": "1b2fe202ce5e73755aa954ec54ea1d4ed66ff552d8e8f85d1811686c7e5c154f"
   },
   {
-   "book_digest": "45d86504975e8f6749d4b24196dd1cd3296eb59f867cbc5a2394264d1e423624",
+   "book_digest": "b5d61bb7375f76a18a561aee968e55f6fa5f1bd02ea89b6b230fd10f029ce3c1",
+   "bounds": [],
+   "claim_digest": "290e081e19e9a90d5384f2f3055ea3e3e4db0e083cf4dc2ad0342ef41fd054f4",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-asto-resume-ms-lst-is-immediate",
+   "owed_met": null,
+   "owner_book": "tests/acl2/article-stream-owner-teeth-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-asto-resume-ms",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "b5d61bb7375f76a18a561aee968e55f6fa5f1bd02ea89b6b230fd10f029ce3c1",
+   "bounds": [],
+   "claim_digest": "312632a40982204a1b51783a0fbe8f0bcff2a8e307a0dde751c3f8ecd4a16112",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-asto-resume-ms-over-waits",
+   "owed_met": null,
+   "owner_book": "tests/acl2/article-stream-owner-teeth-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": "fn-asto-resume-ms",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "b5d61bb7375f76a18a561aee968e55f6fa5f1bd02ea89b6b230fd10f029ce3c1",
    "bounds": [],
    "claim_digest": "6659ec184506c2b5cd3a909ff5a4032001e4b359a35ede454b830cdf445d9158",
    "class": "generated",
@@ -1188,7 +1226,7 @@
    "witness": "lemma"
   },
   {
-   "book_digest": "45d86504975e8f6749d4b24196dd1cd3296eb59f867cbc5a2394264d1e423624",
+   "book_digest": "b5d61bb7375f76a18a561aee968e55f6fa5f1bd02ea89b6b230fd10f029ce3c1",
    "bounds": [],
    "claim_digest": "6362a7ac0a7289b2a50637303d13a260a09b6a8d7d23e4b16adabb7efcdb1c14",
    "class": "generated",
@@ -7678,11 +7716,25 @@
   },
   {
    "book": "books/decoded-worker-job.lisp",
-   "class": "hand",
+   "book_digest": "f5032ca5a1eb98b726d4ad5b84d8c377f8113bd2d0bf5f9834eec8c93294fa52",
+   "bounds": [],
+   "claim_digest": "2015100b858c26c871aaaaedfe8f71b322ee5ddb2fd2a9a37c6d9abdb93191cf",
+   "class": "generated",
    "critical": "ownership-reclamation",
+   "mutations": "edits:1",
    "name": "fn-dwj-retired-job-refuses-scalar-publication",
+   "owed_met": null,
+   "owner_book": "tests/acl2/decoded-worker-job-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "0411484d12397fb2150fb87a25775ce7daf76b342dbe67cd179fa4854ebcf346"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "statement_digest": "0411484d12397fb2150fb87a25775ce7daf76b342dbe67cd179fa4854ebcf346",
+   "subject": "fn-dwj-retire",
+   "witness": "executable"
   },
   {
    "book": "books/decoded-worker-job.lisp",
@@ -10386,11 +10438,25 @@
   },
   {
    "book": "books/store-log-route-programs.lisp",
-   "class": "hand",
+   "book_digest": "3eb39eaca6cf906bc5ec27a5f971b757f1471ae91f787bcd8248c92dc751b95f",
+   "bounds": [],
+   "claim_digest": "89fe2d95671afabf63db86c2711609d8b652dd112c3346f4c7b3bd4991ad3688",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-lg-open-program-keeps-the-relation",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-route-programs-tests.lisp",
    "registry": true,
-   "statement_digest": "3528a6553a92d0facd11b698720c176aecb3876bd579b66968b3d20d4b2f2b6d"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "statement_digest": "3528a6553a92d0facd11b698720c176aecb3876bd579b66968b3d20d4b2f2b6d",
+   "subject": "fn-lg-open-program",
+   "witness": "executable"
   },
   {
    "book": "books/store-log-route-programs.lisp",
@@ -10810,11 +10876,25 @@
   },
   {
    "book": "books/store-log-open-barriers.lisp",
-   "class": "hand",
+   "book_digest": "ade0c56e9b261a730651fb3a926603e19d5adb76c4f556a138855defe52e076d",
+   "bounds": [],
+   "claim_digest": "97fb772ae0bfb4d1340a5bbeb1aebe02560fb32b7effc7147d67f27b2d2d92bf",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-lgob-three-barrier-open-after-the-copy-is-the-five",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-open-barriers-tests.lisp",
    "registry": true,
-   "statement_digest": "38e404bfcbf45cd59f10a350743bd56c1e7080927650058967435025b6928308"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 1
+   },
+   "statement_digest": "38e404bfcbf45cd59f10a350743bd56c1e7080927650058967435025b6928308",
+   "subject": "fn-lg-open-program",
+   "witness": "executable"
   },
   {
    "book": "books/store-log-open-barriers.lisp",
@@ -10879,19 +10959,47 @@
   },
   {
    "book": "books/store-log-recover-copy.lisp",
-   "class": "hand",
+   "book_digest": "bd0b465c5e589458c0c9a509900f0ca47673bf718b4710c7517715add088247c",
+   "bounds": [],
+   "claim_digest": "9b414fe577d9a90ef11e59078be6e74d2648016d5e10d263604de4bec402d408",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-lgrc-acknowledge-from-the-copy",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-copy-ack-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "2f56aac6810e7103c098824d12be7b8e77fa9923fa92bb9d335ac20b7f01417a"
+   "removals": {
+    "assumption": 0,
+    "lemma": 3,
+    "logical": 0,
+    "reachable": 0
+   },
+   "statement_digest": "ba4bb82de909c10c61bfe5e24650eaed0bf66f30790dd2cb6c5ffc7afae6aabe",
+   "subject": "fn-lgu-acknowledge",
+   "witness": "lemma"
   },
   {
    "book": "books/store-log-recover-copy.lisp",
-   "class": "hand",
+   "book_digest": "d587fa638c1a542955c2a0cf06540f12fbc83ba316f73268c10ad9d232b6d7da",
+   "bounds": [],
+   "claim_digest": "15423340bac92db96322658b52fdc0ebc3264378ba82072ba6edb33782e44048",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-lgrc-open-keeps-the-relation-at-every-cut",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-copy-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "c484c90f4a728795349f30f7637d104bffddc6d9298bbebbc0d14d07daafbb93"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 8,
+    "reachable": 0
+   },
+   "statement_digest": "2a2fdda26d82bd3ad69c0be53d9cf9b23788a5dc0c5d765b469866f8c0bf1d2f",
+   "subject": "fn-lgrc-attempt",
+   "witness": "executable"
   },
   {
    "book": "books/store-log-rotate-spare.lisp",
@@ -10983,11 +11091,25 @@
   },
   {
    "book": "books/store-log-durable.lisp",
-   "class": "hand",
+   "book_digest": "ddcfdc1627508c5ffea99095a0272c10e6465d16d93e450f3a52615e52514de8",
+   "bounds": [],
+   "claim_digest": "8003a5581af7c1d856802a9bebe53f7d03e2612da1a987e6ad06970633890a84",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-lgu-acknowledge-acknowledges-only-recoverable-records",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-critical-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "94dc93214f93238fbd8d4d6e4471f1d89f051da0584ce65ad035a4508f0ff2c3"
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "statement_digest": "94dc93214f93238fbd8d4d6e4471f1d89f051da0584ce65ad035a4508f0ff2c3",
+   "subject": "fn-lgu-acknowledge",
+   "witness": "lemma"
   },
   {
    "book_digest": "207f485c9e0154ea21d46813f1a8dd86aad5eb4f639a49fb90f45b91b2021c3d",
@@ -11054,11 +11176,25 @@
   },
   {
    "book": "books/store-log-durable.lisp",
-   "class": "hand",
+   "book_digest": "ddcfdc1627508c5ffea99095a0272c10e6465d16d93e450f3a52615e52514de8",
+   "bounds": [],
+   "claim_digest": "d54bb7b26554cf301fb458974a5b95e89b865679d9d3fb515500d66d3d27954c",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-lgu-host-kernel-acknowledges-only-recoverable-records",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-critical-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "d19052a46deebf41c3d1799db87ccc3ad3913d50bbf4d5082773c8158bfc79ac"
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "statement_digest": "d19052a46deebf41c3d1799db87ccc3ad3913d50bbf4d5082773c8158bfc79ac",
+   "subject": "fn-lgc-host-run",
+   "witness": "lemma"
   },
   {
    "book_digest": "207f485c9e0154ea21d46813f1a8dd86aad5eb4f639a49fb90f45b91b2021c3d",
@@ -14073,7 +14209,7 @@
    "registry": true
   },
   {
-   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "book_digest": "f92c6c40581f74c81d8a056b1404ecc500513e3d8e4d0dd53553541113d54e11",
    "bounds": [],
    "claim_digest": "40d96b0f89462dcebfa21fb3abaf131ea2f10de00b69120f636033edcf394643",
    "class": "generated",
@@ -14092,7 +14228,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "book_digest": "f92c6c40581f74c81d8a056b1404ecc500513e3d8e4d0dd53553541113d54e11",
    "bounds": [],
    "claim_digest": "e69f83cecb066af43282d6595faac23e4beb3fc220c0b79b86aeb7c0307c603b",
    "class": "generated",
@@ -14497,6 +14633,82 @@
    "registry": true
   },
   {
+   "book_digest": "dc71828b09759a489ef366b320a8b25b923f62c3694e3ede698fb6d830fd9c2b",
+   "bounds": [],
+   "claim_digest": "4c02afe7b5a8b2204776b925c0607d41a71dfba57ea50e97aa2cd40effaeb655",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocr-corrupt-counter-refuses-without-reset",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-catalog-root-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ocr-reserve",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "dc71828b09759a489ef366b320a8b25b923f62c3694e3ede698fb6d830fd9c2b",
+   "bounds": [],
+   "claim_digest": "02169a7d1c7925819f032606f9b7db75d6b867906f3469fc07702f42e37a155d",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocr-recovery-frame-prevents-token-reuse",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-catalog-root-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-ocr-reserve",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "dc71828b09759a489ef366b320a8b25b923f62c3694e3ede698fb6d830fd9c2b",
+   "bounds": [],
+   "claim_digest": "2f4bb9f6c0f3d62f878d7863223021fbc1b245a61deccc8cd5d3ad20f77f64f3",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocr-reserve-never-reuses-an-earlier-token",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-catalog-root-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ocr-reserve",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "dc71828b09759a489ef366b320a8b25b923f62c3694e3ede698fb6d830fd9c2b",
+   "bounds": [],
+   "claim_digest": "29abfcc04f727773d7c73de951948ed176f30dcfaee1799256dc066e7312f8fd",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocr-reserve-preserves-issued-invariant",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-catalog-root-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ocr-reserve",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-ocs-a-publication-waits-for-the-complete",
    "registry": true
@@ -14508,14 +14720,6 @@
    "name": "fn-ocs-barrier-only-from-a-start",
    "registry": true,
    "statement_digest": "037f9527a0ce48defd920b3f831e97c73ecafb6231885e88a5c019a16fc1f778"
-  },
-  {
-   "book": "books/owner-commit-steps.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-ocs-complete-only-after-the-barrier",
-   "registry": true,
-   "statement_digest": "5b5d3b413e75645c48e936785495fd65cb08a884342eacfff10d2e9bc85f8c6e"
   },
   {
    "book": "books/owner-commit-steps.lisp",
@@ -14540,14 +14744,6 @@
    "name": "fn-ocs-in-flight-commit-before-reader",
    "registry": true,
    "statement_digest": "c9993644d695d8f2a9c0c7c0809437583a051a7d874ff9c624376bb906a313c6"
-  },
-  {
-   "book": "books/owner-commit-steps.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-ocs-in-flight-until-completed",
-   "registry": true,
-   "statement_digest": "87cce4cbd21bcd0c312e94ffd30be7b141a52fc65862ca5b718932ea17b4b56d"
   },
   {
    "book": "books/owner-commit-steps.lisp",
@@ -15337,6 +15533,139 @@
    "class": "hand",
    "name": "fn-opc-prepare-equals-owner-event-under-relation",
    "registry": true
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "ba2926106d0f092d608f53ca482f2db7b98a7374ed6690dc3417a541437a25a3",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-abandoned-stale-fields-unchanged",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-opub-abandoned",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "ff153d530d34a66aa504c5a66f627e2856b135b90c0a1ddcfcf16b679a987cca",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-capture-establishes-holder",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-opub-capture",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "b843e98b815014752d43d225470eeb3afad43fe535a50d19f1e42ac203609fce",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-capture-serial-increases",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-opub-capture",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "8e0fd415d2aefd5d0fb545c4c7f08648fed86b3e5908e49a9659b9a7cf10c7f9",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-done-does-not-release-another-holder",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-opub-done",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "6265972bcb26bdd5b07abef8e65464748a64bb9b6bd2bd7ea575281105cc51eb",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-due-composition-by-definition",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-opub-due",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "8069713ad425b0e2ede001c91e3a874f78f110a4e2137da84970fedab7b17664",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-install-preserves-serial",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-opub-install",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "a8cbb3532dcc0ca010a129f8cd3a3379ef23ffdff9dce06ca45c1136dcd0ca09",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-request-composition-by-definition",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-opub-request",
+   "witness": "executable"
   },
   {
    "book_digest": "7fe79148da43f967aa187963b4a85e3104af5f4d8e0c4d57b1ddd395870d001d",
@@ -16525,7 +16854,70 @@
    "registry": true
   },
   {
-   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "book_digest": "f642404418125d247756508bc25fe833e6d91961cca254f45fc0f7a05cec49a1",
+   "bounds": [],
+   "claim_digest": "78248af5e0426f35cea9e4a3ce9c5cbefdadabd10d8f37ba2535b43b9f550822",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-otm-held-committer-wake-is-ocp-when-unheld",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-held-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-otm-held-committer-wake",
+   "witness": "executable"
+  },
+  {
+   "book": "books/owner-time-held.lisp",
+   "book_digest": "f642404418125d247756508bc25fe833e6d91961cca254f45fc0f7a05cec49a1",
+   "bounds": [],
+   "claim_digest": "66592934e9da79681acd31c644836c9756edc0467ceb381d718ebaa9bbf70fdf",
+   "class": "generated",
+   "critical": "durability",
+   "mutations": "edits:1",
+   "name": "fn-otm-held-plan-complete-only-after-the-barrier",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-held-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "statement_digest": "40d12b3ed44671b6d361558a5fb9c0f1f465e6a1bfb29911ec147c776303fdf9",
+   "subject": "fn-otm-held-plan",
+   "witness": "executable"
+  },
+  {
+   "book": "books/owner-time-held.lisp",
+   "book_digest": "f642404418125d247756508bc25fe833e6d91961cca254f45fc0f7a05cec49a1",
+   "bounds": [],
+   "claim_digest": "3d1388a42d482b9228b79200bb1169e162463916b1724a1546733913fea8516c",
+   "class": "generated",
+   "critical": "durability",
+   "mutations": "edits:1",
+   "name": "fn-otm-held-plan-in-flight-until-completed",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-held-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "statement_digest": "50002d0a60747c432d6a43dc851c96b02fef66c6ed107974f7e0fd20a93940ce",
+   "subject": "fn-otm-held-plan",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "f92c6c40581f74c81d8a056b1404ecc500513e3d8e4d0dd53553541113d54e11",
    "bounds": [],
    "claim_digest": "3f6b6e2d7922534051713035019d9f338107c3f828d2da2f9a143962f9283beb",
    "class": "generated",
@@ -16544,7 +16936,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "book_digest": "f92c6c40581f74c81d8a056b1404ecc500513e3d8e4d0dd53553541113d54e11",
    "bounds": [],
    "claim_digest": "5a8521564440a5bf5a00937249c19929899eb589085b03f2fc692d612d46d65d",
    "class": "generated",
@@ -16563,7 +16955,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "44563ac2a789221752a73b7b3a369eb5e9b4b841db9c8fc30be8e18e5d00021a",
+   "book_digest": "f642404418125d247756508bc25fe833e6d91961cca254f45fc0f7a05cec49a1",
    "bounds": [],
    "claim_digest": "b3925e17401db7eb6a62c7bbf5ad488f656224e4c23ff6e12169900041b4e264",
    "class": "generated",
@@ -16579,6 +16971,28 @@
     "reachable": 3
    },
    "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book": "books/owner-time-held.lisp",
+   "book_digest": "f642404418125d247756508bc25fe833e6d91961cca254f45fc0f7a05cec49a1",
+   "bounds": [],
+   "claim_digest": "0c115dac8a1f9b3a86c63d14ce51a89ef3dc38dd3daab21a8d5745cd09bd84d7",
+   "class": "generated",
+   "critical": "durability",
+   "mutations": "edits:1",
+   "name": "fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-held-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "statement_digest": "daf265526b6bc725e64f369f11c82b209e073cf19f0dcd219965d3dc7777c18c",
+   "subject": "fn-otm-held-committer-wake",
    "witness": "executable"
   },
   {
@@ -19593,7 +20007,7 @@
   },
   {
    "book": "books/page-read-startup.lisp",
-   "book_digest": "a5885e901d676274ed63dee267c98f4aa00b912bb98d631e055d96664486c6fd",
+   "book_digest": "2505bf48362ee8a5132d195aab8753723c6f14896180f87b147a52bb2e73783e",
    "bounds": [],
    "claim_digest": "ad3cd34bfc949563f0c465b0809712f6e9d087493e9a23fad90331cc68b66b6e",
    "class": "generated",
@@ -19615,7 +20029,7 @@
   },
   {
    "book": "books/page-read-startup.lisp",
-   "book_digest": "a5885e901d676274ed63dee267c98f4aa00b912bb98d631e055d96664486c6fd",
+   "book_digest": "2505bf48362ee8a5132d195aab8753723c6f14896180f87b147a52bb2e73783e",
    "bounds": [],
    "claim_digest": "194941027e09e2b9a37a158046e542b8dcadb69f7cd2a74c6b5cfb273dceb6bd",
    "class": "generated",
@@ -20760,7 +21174,7 @@
   },
   {
    "book": "books/reclaim-chunked-walk.lisp",
-   "book_digest": "4c9dcba22167bd68cb74aa4037bc7419b5f605d4d97c7fd53729dfbb7aa6272e",
+   "book_digest": "0c6b0ef720ca0365cc901af4bea1cfe37d82a7214fec0d464b5bc34251950cb7",
    "bounds": [],
    "claim_digest": "a066e067985a0bbefb8ee8dd421ffaca14cd7f874ac90d74582b7705e8fa7a96",
    "class": "generated",
@@ -20782,15 +21196,29 @@
   },
   {
    "book": "books/reclaim-chunked-walk.lisp",
-   "class": "hand",
+   "book_digest": "0c6b0ef720ca0365cc901af4bea1cfe37d82a7214fec0d464b5bc34251950cb7",
+   "bounds": [],
+   "claim_digest": "e3082d21a3ac9f28101232795c25c5562efe6eb9b8be9283817eb558bfc69419",
+   "class": "generated",
    "critical": "ownership-reclamation",
+   "mutations": "edits:1",
    "name": "fn-rcw-canon-acc-steps-is-the-checkpoint-capture",
+   "owed_met": null,
+   "owner_book": "tests/acl2/reclaim-chunked-walk-tests.lisp",
    "registry": true,
-   "statement_digest": "cb4dbbfe2b5daec4fbf132ab2e9ec433047027eb6e39e0e804884c38b5799a46"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "statement_digest": "cb4dbbfe2b5daec4fbf132ab2e9ec433047027eb6e39e0e804884c38b5799a46",
+   "subject": "fn-rcw-canon-acc-steps",
+   "witness": "executable"
   },
   {
    "book": "books/reclaim-chunked-walk.lisp",
-   "book_digest": "4c9dcba22167bd68cb74aa4037bc7419b5f605d4d97c7fd53729dfbb7aa6272e",
+   "book_digest": "0c6b0ef720ca0365cc901af4bea1cfe37d82a7214fec0d464b5bc34251950cb7",
    "bounds": [],
    "claim_digest": "876db97c76bfaae308af44b755ae850e2ae8037bf673e98ed3d49810937bda63",
    "class": "generated",
@@ -20812,23 +21240,51 @@
   },
   {
    "book": "books/reclaim-chunked-walk.lisp",
-   "class": "hand",
+   "book_digest": "9c9fd9e4154a757ac561080e266834444e67d6c0f23d6791ad0b8b361e6dddea",
+   "bounds": [],
+   "claim_digest": "8da71b6ec724032a6fa65e4c21c83b6dc2afbb4ef6ebfb4182256b58e7eef5a4",
+   "class": "generated",
    "critical": "ownership-reclamation",
+   "mutations": "edits:1",
    "name": "fn-rcw-load-chunks-is-load",
+   "owed_met": null,
+   "owner_book": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "8659158d2ce0446b2fea83a7fb32d890de59ca5266364463bd219aba8749221a"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "statement_digest": "8659158d2ce0446b2fea83a7fb32d890de59ca5266364463bd219aba8749221a",
+   "subject": "fn-rcw-load-chunks",
+   "witness": "executable"
   },
   {
    "book": "books/reclaim-chunked-seal.lisp",
-   "class": "hand",
+   "book_digest": "9c9fd9e4154a757ac561080e266834444e67d6c0f23d6791ad0b8b361e6dddea",
+   "bounds": [],
+   "claim_digest": "f4a3dc2bd49c5ffd4208a7e062ec902788281ccd0b3ca2f480873812ec0b5909",
+   "class": "generated",
    "critical": "ownership-reclamation",
+   "mutations": "edits:1",
    "name": "fn-rcw-load-chunks-keyed-is-keyed-load",
+   "owed_met": null,
+   "owner_book": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp",
    "registry": true,
-   "statement_digest": "95aebb043afb41bacb3fc77e2f9c6b92467ba8921f6d0a4f7e0fb603dfd4f7cf"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "statement_digest": "95aebb043afb41bacb3fc77e2f9c6b92467ba8921f6d0a4f7e0fb603dfd4f7cf",
+   "subject": "fn-rcw-load-chunks",
+   "witness": "executable"
   },
   {
    "book": "books/reclaim-chunked-seal.lisp",
-   "book_digest": "bf0ae658e869fd33cd251bded31dccebfa9cf89d030d7a62de8013f1d77106ae",
+   "book_digest": "799997a232d222d4d5ae9dd83b524d12f5117d849c426d34ae2067f924a3a050",
    "bounds": [],
    "claim_digest": "fb12477963d5806f0f995a2b79bba939ae53d4a9b12ed52721241e8966ce3b61",
    "class": "generated",
@@ -20850,19 +21306,47 @@
   },
   {
    "book": "books/reclaim-chunked-seal.lisp",
-   "class": "hand",
+   "book_digest": "799997a232d222d4d5ae9dd83b524d12f5117d849c426d34ae2067f924a3a050",
+   "bounds": [],
+   "claim_digest": "69f0a020273e92573a36c15e382ca28be8522e8eb21374b8b1859ff07f95a45a",
+   "class": "generated",
    "critical": "ownership-reclamation",
+   "mutations": "edits:1",
    "name": "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open",
+   "owed_met": null,
+   "owner_book": "tests/acl2/reclaim-chunked-seal-tests.lisp",
    "registry": true,
-   "statement_digest": "9fe06faed65795ec86fd762591855a54088575b3e04f933e77723f5f9b143d4c"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 0
+   },
+   "statement_digest": "4a603cf6dc7aadf99ed3929f7a4c161bee8092792708dc1cd37f6f3bc9fbb472",
+   "subject": "fn-owner-orcp-rebuild",
+   "witness": "executable"
   },
   {
    "book": "books/reclaim-chunked-seal.lisp",
-   "class": "hand",
+   "book_digest": "799997a232d222d4d5ae9dd83b524d12f5117d849c426d34ae2067f924a3a050",
+   "bounds": [],
+   "claim_digest": "3776c121cbf66b36d9e05ddcfb1315054b122f8fce538ffaa75e116398fb1c24",
+   "class": "generated",
    "critical": "ownership-reclamation",
+   "mutations": "edits:1",
    "name": "fn-rcw-srcs-steps-is-the-walk",
+   "owed_met": null,
+   "owner_book": "tests/acl2/reclaim-chunked-seal-tests.lisp",
    "registry": true,
-   "statement_digest": "8c8c910059fc9e8697f79981b3ecaa1d4401beb5ebc32ac2979a9c71718a1f76"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "statement_digest": "ad03eaa120cf6a1227b8cea880104fc293e276dd6ad556dcc31a346e8bec7006",
+   "subject": "fn-scka-srcs-n",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -22877,11 +23361,25 @@
   },
   {
    "book": "books/catalog-availability-refinement.lisp",
-   "class": "hand",
+   "book_digest": "9e3e93044a48bdedc31ec1c2fd136c0e314f6344c2d3d3371f516dcc3c4047ff",
+   "bounds": [],
+   "claim_digest": "c12040875002e269c55246f91539b2f0db060819289e6cf8526c878d557d29dd",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-sca-load-held-rows-establishes-byte-facts",
+   "owed_met": null,
+   "owner_book": "tests/acl2/catalog-availability-owner-load-tests.lisp",
    "registry": true,
-   "statement_digest": "2e09acc47737f80908822c83ebc6a7227eb93ff609f4d528d425c4e33c7f6487"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 1
+   },
+   "statement_digest": "2e09acc47737f80908822c83ebc6a7227eb93ff609f4d528d425c4e33c7f6487",
+   "subject": "fn-sca-load-held-rows",
+   "witness": "executable"
   },
   {
    "class": "hand",

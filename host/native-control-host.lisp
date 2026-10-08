@@ -12,7 +12,7 @@
 (include-book "../books/control-request-word")
 (include-book "../books/consumer-local-control")
 (include-book "../books/consumer-wait-codec")
-(include-book "../books/owner-state-accessors") ; fn-owner-sco-global (fn-nco-owner-publication-word)
+(include-book "../books/owner-publication-state") ; the carried publication record (fn-nco-owner-publication-word)
 (include-book "../books/consumer-reason")
 (include-book "../books/topic-history-local-control")
 (include-book "../books/native-live-buffer")
@@ -477,9 +477,9 @@
 (defun fn-nco-owner-publication-word (target state)
   (declare (xargs :stobjs state :guard t))
   (fn-nco-publication-word target
-    (fn-owner-sco-global 'fn-owner-sco-durable state)
-    (fn-owner-sco-global 'fn-owner-sco-inflight state)
-    (fn-owner-sco-global 'fn-owner-sco-requested state)
-    (fn-owner-sco-global 'fn-owner-sco-deferred state)))
+    (fn-opub-get :durable (fn-ost-publication state))
+    (fn-opub-get :inflight (fn-ost-publication state))
+    (fn-opub-get :requested (fn-ost-publication state))
+    (fn-opub-get :deferred (fn-ost-publication state))))
 
 (definterface fn-nco-owner-publication-word :class :common-lisp-compliant)

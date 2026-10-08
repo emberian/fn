@@ -1,0 +1,14 @@
+{
+ "category": "bug",
+ "detail": "F5 (g41, hbox, rev f2629613e): four readers with SO_RCVBUF=4096 and a one-octet read pull cold 512 KiB articles (eight pipelined ARTICLEs each). The fast clients' p99 rose to ARTICLE 31.8 ms against 5.1 ms solo (6.2x; bar 2x), GROUP 20.1 vs 3.6, STAT 21.4 vs 4.0, and the owner grew 87.6 MB against a 2 MB bound. Reproduced on persvati (developer image of f2629613e, cores 0-7 unpinned, noisy): loaded p99 ARTICLE 44-50 ms vs 12 solo, RSS +134..171 MB; without the poster the same (+160 MB, p99 65 ms); without the slow readers +26 MB, p99 22 ms. Mechanism (measured): the dynamic space alone holds the growth (smaps 134 MB in the dynamic-space mapping; heap census RAW 614 MB vs 563 MB), and sb-sprof :alloc over the 40 s loaded window counts 16.4 GB consed, 90% list allocation, 72% under fn-ast-scan-step/scan-one (the ARTICLE preflight scan) and window renders. The cause is the kernel's send queue as an unbounded render-ahead: fnn-mux-flush renders the next window whenever the socket took the last (host/native/mux.lisp fnn-mux-flush), the socket took 3.4 MB per reader (books/send-progress.lisp header), so each stopped reader had the owner scan and render about seven 512 KiB articles ahead of it (4 readers: ~28 articles, ~16 GB of garbage, seconds of owner-mutex quanta) before the first write blocked; the fast clients queued behind those 16 ms quanta (p99) and the collector's retained older generations are the RSS. Fix: ACL2 row :send-window-octets (65536) and books/send-window.lisp (model: fn-sw-buffered-bounded, fn-sw-stalled-reader-bounded, teeth fn-sw-window-exceeds-w-within-the-bound, fn-sw-gate-refuses-a-write-past-w, fn-sw-gate-removed-the-bound-fails; entry fn-send-window-octets with definterface keystone fn-send-window-octets-bounds-the-connection); host/native/mux.lisp fnn-mux-send-window sets TCP_NOTSENT_LOWAT on every served socket in fnn-mux-begin. Scope: the bound is on octets not yet sent, rendered ahead of the reader; the kernel's gate (write accepted only while unsent < lowat) is the named assumption, read off the running owner by tests/test_native_over_pins.py test_a_stopped_reader_leaves_the_kernel_at_most_the_send_window_unsent. Not covered: the 403 'cold read resources unavailable' (lane s-coldwait); the ARTICLE preflight scan's own allocation (~800 octets consed per payload octet, the per-octet call item); a window on the compressed or TLS path other than the socket gate.",
+ "file": "host/native/mux.lisp",
+ "id": "LOAD-F5-SLOW-READER-ISOLATION",
+ "line": "",
+ "notes": [],
+ "owner": "deputy-C",
+ "severity": "high",
+ "source": "tools/load F5",
+ "state": "open",
+ "title": "F5: four stopped one-octet readers of 512 KiB articles degrade the fast clients' p99 6.2x and grow the owner 87.6 MB: the kernel send queue is an unbounded render-ahead",
+ "updated": "2026-10-08T17:30:00Z"
+}

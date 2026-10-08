@@ -5,6 +5,26 @@
 ;;; def-loop forms are expanded by the repository's generator.
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-octet-list-p (x)
+  (declare (ignorable x))
+  (harness-stub-reached 'fnn-octet-list-p "host/native/io.lisp"))
+(defun fnn-octets (sequence)
+  (declare (ignorable sequence))
+  (harness-stub-reached 'fnn-octets "host/native/io.lisp"))
+;;; ---- derived stubs: END ----
 (defmacro mv (&rest xs) `(values ,@xs))
 (defmacro mv-let (vars form &body body) `(multiple-value-bind ,vars ,form ,@body))
 (defun natp (x) (and (integerp x) (<= 0 x)))
