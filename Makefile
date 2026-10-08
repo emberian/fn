@@ -317,7 +317,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/paged-checkpoint-image \
 	books/paged-checkpoint-open \
 	books/def-representation \
+	books/def-representation-index-lib \
+	books/def-representation-index \
 	tests/acl2/def-representation-tests \
+	tests/acl2/def-representation-index-tests \
+	tests/acl2/def-representation-history-tests \
 	tests/acl2/def-representation-pages-tests \
 	tests/acl2/paged-checkpoint-tests \
 	tests/acl2/paged-checkpoint-host-tests \
@@ -1005,6 +1009,9 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-records \
 	tests/acl2/bp-node-records-tests \
 	books/outcome-class \
+	books/control-observation \
+	books/control-receipt-wire \
+	tests/acl2/control-observation-tests \
 	books/bp-run-class \
 	books/bp-node-profile \
 	tests/acl2/bp-node-host-tests \
@@ -1544,6 +1551,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/catalog-wbv-trie \
 	books/catalog-paged \
 	tests/acl2/catalog-paged-tests \
+	tests/acl2/catalog-raw-low-tests \
 	books/catalog-paged-attach \
 	books/served-catalog-view \
 	books/served-columns \
@@ -2073,13 +2081,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/newnews-matching-selector-tests \
 	tests/acl2/newnews-candidate-selector-tests \
 	books/catalog-available-readers \
-	books/group-summary-cursor \
 	books/list-row-cursor \
 	tests/acl2/list-row-cursor-tests \
 	books/list-status-cursor \
 	tests/acl2/list-status-cursor-tests \
 	books/list-metadata-cursor \
-	tests/acl2/group-summary-cursor-tests \
 	books/served-availability \
 	books/served-available-commands \
 	books/served-available-read \
@@ -2655,7 +2661,13 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/newnews-cursor-tests \
     tests/acl2/owner-prepare-deferred-carried-tests \
     tests/acl2/owner-prepare-deferred-carried-owner-tests \
-    tests/acl2/withdrawal-index-carried-tests
+    tests/acl2/withdrawal-index-carried-tests \
+    tests/acl2/catalog-pool-tests \
+    tests/acl2/def-loop-run-tests \
+    tests/acl2/defteeth-removal-obstructions-tests \
+    tests/acl2/extent-window-span-tests \
+    tests/acl2/history-image-place-tests \
+    tests/acl2/history-image-canonical-tests
 
 .PHONY: wire-grammar wire-grammar-check host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none

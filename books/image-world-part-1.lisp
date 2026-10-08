@@ -112,6 +112,7 @@
 (include-book "heap-figure")
 (include-book "heap-open-nursery")
 (include-book "send-progress")
+(include-book "send-window")
 (include-book "idle-collection")
 (include-book "heap-reservation")
 (include-book "bp-heap-command")
@@ -185,5 +186,3 @@
 (include-book "bp-recovery-profile")
 (include-book "bp-node-retire")
 (include-book "bp-node-rotation-due")
-(include-book "bp-report-observe")
-(include-book "bp-report-guards")

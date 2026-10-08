@@ -469,3 +469,37 @@
                                      fn-nntp-message-id-tokenp)
            :expand ((:free (it) (fn-asx-need it))
                     (:free (a b c) (fn-asx-prefix-equalp a b c))))))
+
+
+; ---- fn-asto-resume-ms (books/article-stream-owner.lisp): a LIST quantum is
+; due on the loop's next pass, an OVER/NEWNEWS quantum waits ACL2's delay.
+(defconst *aot-lst-plan* '(nil (:list-cursor (nil (x)))))
+(defconst *aot-over-plan* '(nil (:over-cursor (x))))
+(defconst *aot-article-plan* '(nil (:article-cursor x)))
+(defconst *aot-preflight-plan* '(nil (:article-preflight x)))
+
+(defteeth fn-asto-resume-ms-lst-is-immediate
+  :claim (((lst (fn-qplan-lst-cursorp plan)))
+          (equal (fn-asto-resume-ms plan) 0))
+  :subject fn-asto-resume-ms
+  :witness ((plan *aot-lst-plan*))
+  :breaks ((lst ((plan *aot-over-plan*))))
+  :mutations ((lst-waits
+               (:conclusion (equal (fn-asto-resume-ms plan) 1))
+               ((plan *aot-lst-plan*))
+               :fault "a LIST yield that idles for the OVER delay")))
+
+(defteeth fn-asto-resume-ms-over-waits
+  :claim (((not-article (not (fn-asto-plan-articlep plan)))
+           (not-preflight (not (fn-asto-preflight-planp plan)))
+           (not-lst (not (fn-qplan-lst-cursorp plan))))
+          (posp (fn-asto-resume-ms plan)))
+  :subject fn-asto-resume-ms
+  :witness ((plan *aot-over-plan*))
+  :breaks ((not-article ((plan *aot-article-plan*)))
+           (not-preflight ((plan *aot-preflight-plan*)))
+           (not-lst ((plan *aot-lst-plan*))))
+  :mutations ((over-immediate
+               (:conclusion (equal (fn-asto-resume-ms plan) 0))
+               ((plan *aot-over-plan*))
+               :fault "an OVER quantum with no delay, rescanning a sparse range in one event")))

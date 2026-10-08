@@ -99,7 +99,9 @@
     (:send-stall-seconds 10 "seconds"
      "how long a queued reply may go with no octet leaving the kernel's send queue and none accepted into it before the owner refuses the send by name, send-stalled (books/send-progress.lisp); today's fixed 10 s, now a no-progress window instead of a total deadline")
     (:send-min-octets-per-second 4096 "octets per second"
-     "the least pace, over a whole reply that leaves a backlog in the kernel's send queue, at which a reader may drain before the owner refuses it by name, reader-too-slow (books/send-progress.lisp); 4096 admits the slowest reader the native tests name (38 KB/s, 1 MiB per 27.4 s) nine times over, and an operator tightens it against a slow-read attack")))
+     "the least pace, over a whole reply that leaves a backlog in the kernel's send queue, at which a reader may drain before the owner refuses it by name, reader-too-slow (books/send-progress.lisp); 4096 admits the slowest reader the native tests name (38 KB/s, 1 MiB per 27.4 s) nine times over, and an operator tightens it against a slow-read attack")
+    (:send-window-octets 65536 "octets"
+     "the most octets of a reply the kernel may hold unsent for one connection before the owner stops handing it more (TCP_NOTSENT_LOWAT, books/send-window.lisp): a reader that stops reading costs the owner at most this many octets and one render window, however large the reply, instead of the kernel's whole send queue (3.4 MB measured); it bounds octets not yet sent, never the data in flight, so a fast or distant reader's throughput does not depend on it")))
 
 ; The row's VALUE, at macroexpansion: (fn-profile-limit :stack-kib) is the
 ; literal 1024 wherever it appears, and an unknown KEY is refused there.

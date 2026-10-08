@@ -295,6 +295,9 @@ unbounded (&rest or &key)."
   (declare (ignore fd buffer))
   (fnn-make-octets 0))
 (defun fnn-mux-wake (loop) (declare (ignore loop)) nil)
+;; The send window (fnn-mux-send-window: a setsockopt on the real socket) has no
+;; socket here; the scripted transport above is the window.
+(defun fnn-mux-send-window (fd) (declare (ignore fd)) nil)
 
 ;; The ACL2 boundary.  fnn-owner-core, fnn-owner-action and fnn-core answer
 ;; the scenario's plan; each call the time model cares about is recorded on

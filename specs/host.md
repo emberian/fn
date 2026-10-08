@@ -694,8 +694,6 @@ into one buffer under the service mutex either: the host renders the step's
 plan off the mutex (`fn-splan-step-make`, `fn-splan-window`), and
 `fn-splan-windows-are-the-reply` says the windows written, for any window size
 and count, are `fn-served-reply-octets` of the effects once the plan is done.
-The one-call buffer writer `fn-served-reply-to-buffer` and its book were
-retired with the path that called them.
 
 HST-023: The owner mutex is entered through a gate whose next class ACL2
 picks, and a served reply is an immutable render plan the connection's I/O

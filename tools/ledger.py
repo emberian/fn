@@ -2248,7 +2248,36 @@ def def_loop_run_expansion(form: list) -> list:
     """)
 
 
+def def_representation_index_expansion(form: list) -> list:
+    """Source view of the defabsstobj obligations def-representation-index proves.
+
+    The macro (books/def-representation-index.lisp) is a make-event: ACL2 emits
+    one ``{correspondence}`` theorem for the creator and for each of the five
+    exports (NAME-COUNT, NAME-AT, the :query-export, NAME-APPEND, NAME-CLEAR;
+    ``ixg-exports``).  Only those names are claimed; the formulas are ACL2's.
+    Other obligation kinds ACL2 may emit are not modelled here.  Presence only, never admission evidence.
+    """
+    if not (len(form) >= 3 and isinstance(form[1], Sym)):
+        return []
+    opts = keyword_plist(list(form[3:]))
+    index = keyword_plist(opts[":index"]) if isinstance(opts.get(":index"), list) else {}
+    qexport = index.get(":query-export")
+    if not isinstance(qexport, Sym):
+        return []
+    name = form[1]
+    exports = [_gen_sym(name, "-count"), _gen_sym(name, "-at"), qexport,
+               _gen_sym(name, "-append"), _gen_sym(name, "-clear")]
+    creator = _gen_sym("create-", name)
+    out = []
+    for export in [creator] + exports:
+        out.append([Sym("defthm"), _gen_sym(export, "{correspondence}"),
+                    [Sym("fn-generated-obligation"), export, Sym(":correspondence")],
+                    Sym(":rule-classes"), Sym("nil")])
+    return out
+
+
 GENERATOR_EXPANSIONS = {
+    "def-representation-index": def_representation_index_expansion,
     "fn-defrecord": defrecord_expansion,
     "fn-defrecord-export": defrecord_export_expansion,
     "def-loop": def_loop_expansion,

@@ -4281,11 +4281,6 @@
    "item": "PRF-1345",
    "book": "books/owner-commit-steps.lisp"
   },
-  "fn-ocs-complete-only-after-the-barrier": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/owner-commit-steps.lisp"
-  },
   "fn-ocs-failed-barrier-stops-telling-no-member": {
    "class": "durability",
    "item": "PRF-1345",
@@ -4297,11 +4292,6 @@
    "book": "books/owner-commit-steps.lisp"
   },
   "fn-ocs-in-flight-commit-before-reader": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/owner-commit-steps.lisp"
-  },
-  "fn-ocs-in-flight-until-completed": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/owner-commit-steps.lisp"

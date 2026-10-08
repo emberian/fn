@@ -12,6 +12,7 @@
 ;;; a harness that wants a held batch defines fnn-owner-held-start itself
 ;;; before loading this file.  Not a harness itself.
 (in-package "ACL2")
+
 (with-open-file (stream "host/native/owner.lisp")
   (let ((macro nil) (detail nil) (finish nil))
     (loop for form = (read stream nil :eof) until (or (eq form :eof) (and macro detail finish))

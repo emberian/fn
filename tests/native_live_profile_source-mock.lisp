@@ -2,6 +2,29 @@
 ;;; liveness/transport are fixtures; the liveness decision is the real book.
 (load "tests/native_operator_diagnostics_source-mock.lisp")
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-bp-session-profile (root)
+  (declare (ignorable root))
+  (harness-stub-reached 'fnn-bp-session-profile "host/native/bp-session.lisp"))
+(defun fnn-bps-read-profile (root)
+  (declare (ignorable root))
+  (harness-stub-reached 'fnn-bps-read-profile "host/native/bp-service.lisp"))
+(defun fnn-heap-history-observation (root profile)
+  (declare (ignorable root profile))
+  (harness-stub-reached 'fnn-heap-history-observation "host/native/heap.lisp"))
+;;; ---- derived stubs: END ----
 (with-open-file (in "host/native/operator.lisp")
   (loop for form = (read in nil :eof) until (eq form :eof) do
     (when (and (consp form) (eq (car form) 'defstruct)

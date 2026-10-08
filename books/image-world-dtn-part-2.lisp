@@ -7,6 +7,9 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-1")
+(include-book "store-profile-open")
+(include-book "store-mount-identity")
+(include-book "store-host-boundary")
 (include-book "store-profile-namespace")
 (include-book "native-operator")
 (include-book "store-log-route")
@@ -167,5 +170,3 @@
 (include-book "feed-pause")
 (include-book "served-catalog-owner")
 (include-book "served-catalog-owner-keyed")
-(include-book "owner-prepare-correspondence")
-(include-book "owner-store-budget")

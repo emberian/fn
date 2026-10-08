@@ -1,10 +1,10 @@
 {
  "entries": {
-  "fn-bpnr-checkpoint-recovery-equals-full-machine": {
-   "subject": "fn-bpnj-step",
-   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
-   "trace_witness": "tests/acl2/bp-node-rotation-equivalence-tests.lisp::fn-bpnr-checkpoint-recovery-equals-full-machine",
-   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  "fn-bpn-step-preserves-lifecycle-invariant": {
+   "subject": "fn-bpn-step",
+   "host_test": "tests/test_bp_node_native.py::test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
+   "trace_witness": "tests/acl2/bp-node-machine-authorization-tests.lisp::fn-bpn-step-preserves-lifecycle-invariant",
+   "mutation": "tests/acl2/bp-node-machine-authorization-tests.lisp::bpna-mutant-step-with-unbound-send"
   },
   "fn-bpnj-rotation-restart-succeeds-with-owed-work": {
    "subject": "fn-bpnj-step",
@@ -12,10 +12,10 @@
    "trace_witness": "tests/acl2/bp-node-rotation-recovery-tests.lisp::fn-bpnj-rotation-restart-succeeds-with-owed-work",
    "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
   },
-  "fn-bpnp-rotation-restart-keeps-owed-work": {
-   "subject": "fn-bpnr-seed-state",
+  "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work": {
+   "subject": "fn-bpnp-rotate-step",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
-   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-restart-keeps-owed-work",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work",
    "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
   },
   "fn-bpnp-rotation-recovery-seeds-owed-jobs": {
@@ -24,10 +24,16 @@
    "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-recovery-seeds-owed-jobs",
    "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
   },
-  "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work": {
-   "subject": "fn-bpnp-rotate-step",
+  "fn-bpnp-rotation-restart-keeps-owed-work": {
+   "subject": "fn-bpnr-seed-state",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
-   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-restart-keeps-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-checkpoint-recovery-equals-full-machine": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-equivalence-tests.lisp::fn-bpnr-checkpoint-recovery-equals-full-machine",
    "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
   },
   "fn-bpnr-recover-from-checkpoint-equals-full-recover": {
@@ -42,11 +48,23 @@
    "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-rotation-crash-recovers-old-or-new",
    "mutation": "tests/acl2/bp-node-rotation-critical-tests.lisp::bprc-mutant-crash-visible-before-rename"
   },
-  "fn-bpn-step-preserves-lifecycle-invariant": {
-   "subject": "fn-bpn-step",
-   "host_test": "tests/test_bp_node_native.py::test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
-   "trace_witness": "tests/acl2/bp-node-machine-authorization-tests.lisp::fn-bpn-step-preserves-lifecycle-invariant",
-   "mutation": "tests/acl2/bp-node-machine-authorization-tests.lisp::bpna-mutant-step-with-unbound-send"
+  "fn-otm-held-plan-complete-only-after-the-barrier": {
+   "subject": "fn-otm-held-plan",
+   "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+   "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-barrier-trace",
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::forged-barrier"
+  },
+  "fn-otm-held-plan-in-flight-until-completed": {
+   "subject": "fn-otm-held-plan",
+   "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+   "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-barrier-trace",
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::clear-before-completed"
+  },
+  "fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits": {
+   "subject": "fn-otm-held-committer-wake",
+   "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+   "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-budget-trace",
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::ignore-waiter-budget"
   }
  }
 }
