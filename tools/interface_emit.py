@@ -805,7 +805,9 @@ def macro_bodies(files) -> dict[str, list]:
         else:
             if isinstance(form[0], ledger.Sym):
                 invocations.setdefault(str(form[0]).lower(), []).append(form)
-            if len(form) > 2 and isinstance(form[1], ledger.Sym):
+            if (len(form) > 2 and isinstance(form[1], ledger.Sym)
+                    and head not in ("definterface", "defthm", "defthmd", "defthm-inline",
+                                     "verify-guards", "in-theory", "deftheory", "defconst")):
                 out.setdefault(str(form[1]).lower(), form)
 
     for _relative, text in files:
