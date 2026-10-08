@@ -1,0 +1,14 @@
+{
+ "category": "proof-cost",
+ "severity": "medium",
+ "slice": "storage",
+ "id": "EXTENT-CACHE-D26-SPLIT",
+ "owner": "deputy-S",
+ "state": "open",
+ "source": "P7 2026-10-08, lane p-xc-span round 3 (Codex), persvati two-job certify run-20261008T115718Z-4a31",
+ "title": "books/extent-cache.lisp takes 97 s at two jobs on S's base (121 s with p-xc-span's install :duplicate path), far over the D26 10 s bar",
+ "notes": [
+  "Measured at two jobs on persvati: origin/lane/s-extent-cache base 96.984 s; lane/p-xc-span round 2 163.261 s (50.6M steps); round 3 after moving the span, token and disjointness proofs to books/extent-cache-span.lisp (7.4 s), extent-cache-disjoint (6.6 s), the token book (4.6 s) and the contracts book (5.2 s): 121.452 s (35.8M steps). The remaining 24 s above base is the :duplicate admission inside fn-xc-install and its restated install/lookup theorems, which must stay with the definition. Exit: split extent-cache by concern (representation, lookup, install, yield) so each book certifies under 10 s at two jobs; statements unchanged. Owner S (book owner); P supplies the install-theorem split on request."
+ ],
+ "updated": "2026-10-08T15:12:09Z"
+}

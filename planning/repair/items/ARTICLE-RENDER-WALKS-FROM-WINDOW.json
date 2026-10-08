@@ -2,11 +2,307 @@
  "file": "books/article-stream.lisp",
  "id": "ARTICLE-RENDER-WALKS-FROM-WINDOW",
  "note": "fix: the renderer asks for the span it needs (fn-pwr-span-at), with a theorem that the span renderer's result equals the per-byte renderer's (ownership checked once per span); then delete row21-span's below slot (host page-window span struct). Owner P when unparked, C until then.",
- "notes": [],
+ "notes": [
+  {
+   "author": "Codex p-xc-span",
+   "round": 1,
+   "status": "statements-only; awaiting S/P audit",
+   "statements": "tests/acl2/xcspan-statements.lisp (identical review copy /tmp/p7/xcspan-statements.lisp)",
+   "K1": [
+    "fn-xc-span-at-is-the-returned-bytes",
+    "fn-xc-span-at-answers-an-owed-hit",
+    "fn-xc-span-at-hit-touches-only-the-selected-slot"
+   ],
+   "K2": [
+    "fn-xc-held-token-has-one-slot",
+    "fn-xc-touch-preserves-token-disjointp",
+    "fn-xc-free-preserves-token-disjointp",
+    "fn-xc-yield-preserves-token-disjointp"
+   ],
+   "definitions": "10abd03db: fn-xc-span-at; fn-xc-token-apart-from; fn-xc-token-disjoint-from; fn-xc-token-disjointp. Admitted and guard-verified in persvati REPL, not certified.",
+   "host_export": "s-xc2 should call fn-xc-span-at(from, ledger, plan, file, eoff, elen, poff, plen, trailer, p, end, fn-xcs, fn-xcc, fn-ew-buffer, fn-ew-span), returning (mv word count slot fn-ew-span fn-xcs fn-xcc). Under the extent lock, select the backing plan/window first; pass from=selected slot to repeat the same lookup. :miss with a slot continues at slot+1; nil slot ends lookup. :span already touches the slot. No host/native changes in this lane.",
+   "ledger_scope": "The reference fn-pwr-byte-at uses the earlier returned-ledger/worker; the served composition uses the current cached ledger. Same selected plan and buffer are explicit arguments, not a claim about arbitrary host memory.",
+   "counterexample": "Ground-evaluated fn-xc-install-can-duplicate-a-charged-window and fn-xc-write-can-duplicate-a-charged-window: two live raw-window slots can both hold (:window 7 11 100 3 100 3 0 77). Install distinguishes c=0/c=1, while slot-token omits c. Well-formed/readyp alone does not imply uniqueness.",
+   "minimal_fix": "Round 2: before install writes, reject a nonnil proposed token held outside the selected victim, across all slots; retain ordinary :present behavior and use :refused on a charge conflict. Primitive write needs the corresponding absence-except-target precondition. Merely canonicalizing new fields does not cover an existing noncanonical well-formed table. No false unconditional preservation lemma proposed.",
+   "validation": "interface_emit regeneration: 0 findings at merge f563f1b18. Ground span gives count 2 and bytes 2,3; exclusive-end control misses. Nonempty two-distinct-token control passes. Exact no-hint defthm forms plus positive/removal/mutation sketches; new theorem proofs and gate deferred to round 2/deputy."
+  },
+  {
+   "author": "Codex p-xc-span",
+   "round": 2,
+   "status": "K1/K2, duplicate admission and teeth certified; host integration gate red in the S-owned warm-read arm",
+   "install": "da8a65c87 adds :duplicate before mutations, using one shared fn-xc-token constructor and a search across all slots except the chosen target. fn-xc-write remains unchecked.",
+   "proofs": [
+    "fn-xc-span-at-is-the-returned-bytes",
+    "fn-xc-span-at-answers-an-owed-hit",
+    "fn-xc-span-at-hit-touches-only-the-selected-slot",
+    "fn-xc-install-duplicate-is-already-held",
+    "fn-xc-install-duplicate-for-every-other-holder",
+    "fn-xc-held-token-has-one-slot",
+    "fn-xc-install-preserves-token-disjointp",
+    "fn-xc-write-preserves-token-disjointp",
+    "fn-xc-touch-preserves-token-disjointp",
+    "fn-xc-free-preserves-token-disjointp",
+    "fn-xc-yield-preserves-token-disjointp"
+   ],
+   "restated_statements": [
+    {
+     "name": "fn-xc-install-when-present",
+     "old": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs))",
+     "new": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
+    },
+    {
+     "name": "fn-xc-install-when-free",
+     "old": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs)) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))",
+     "new": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs)) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
+    },
+    {
+     "name": "fn-xc-install-when-full",
+     "old": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs)) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))",
+     "new": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs)) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits-present",
+     "old": "(and (fn-xc-case-hyps) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits-free",
+     "old": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits-full",
+     "old": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits",
+     "old": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :refused)))",
+     "new": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :refused)) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
+    },
+    {
+     "name": "fn-xc-install-present",
+     "old": "(and (fn-xc-case-hyps) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
+    },
+    {
+     "name": "fn-xc-install-fills-a-free-slot",
+     "old": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
+    },
+    {
+     "name": "fn-xc-install-evicts-the-least-recently-used",
+     "old": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
+    },
+    {
+     "name": "fn-xc-install-occupancy (via fn-xc-install-hyps)",
+     "old": "'(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :refused)))",
+     "new": "'(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :refused)) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))"
+    },
+    {
+     "name": "fn-xc-install-placement",
+     "old": "Unchanged well-formed/install-okp antecedent; answer in (:installed :replaced :present :refused)",
+     "new": "Same antecedent; answer vocabulary also includes :duplicate. Duplicate returns the selected target, retaining every existing placement/geometry conclusion.",
+     "old_antecedent": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))",
+     "new_antecedent": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))"
+    }
+   ],
+   "alpha_renaming": "New public K1 theorems, held-token uniqueness, and duplicate-is-already-held use slots/cells/window/dst as names of logical snapshot variables, enabling defteeth to bind ground values. This is alpha-renaming; executable signatures and logical claims are unchanged.",
+   "endpoint": "fn-xc-span-end factors the existing four-way min; fn-xc-span-at signature is unchanged. Its scalar refinement proof dropped from 8,350,004 steps / 25.41s to 1,172,923 steps / 2.23s in the REPL.",
+   "ready_source": "fnn-extent-window-release, host/native/extent.lisp:940, calls fn-owner-page-window-executor-cache with the returned worker row, token and plan. Its :cached branch at :948 inserts that token/plan/window. fn-owner-page-window-executor-cache-refines-pwc-by-definition connects the wrapper to fn-pwc-cache; fn-pwc-cache-only-a-published-window proves :ready before caching and cachedp afterward.",
+   "host_duplicate_contract": "S/s-xc2: on :duplicate release the job row as an uncached borrow, with no fault. fn-xc-install-duplicate-is-already-held proves the cache table and clock are unchanged; this theorem does not mutate or account for the ledger.",
+   "followup": "XC-KEY-DEAD-COLUMNS remains open under deputy-S; descriptor matching is unchanged for all kinds.",
+   "statement_diff": {
+    "base": "origin/lane/s-extent-cache",
+    "head": "b14ee1a4d",
+    "changed_existing_events": [
+     "defun fn-xc-slot-token",
+     "defun fn-xc-install",
+     "defthm fn-xc-install-placement",
+     "defthm fn-xc-install-when-present",
+     "defthm fn-xc-install-when-free",
+     "defthm fn-xc-install-when-full",
+     "defthm fn-xc-install-then-lookup-hits-present",
+     "defthm fn-xc-install-then-lookup-hits-free",
+     "defthm fn-xc-install-then-lookup-hits-full",
+     "defthm fn-xc-install-then-lookup-hits",
+     "defmacro fn-xc-install-hyps",
+     "defthm fn-xc-install-present",
+     "defthm fn-xc-install-fills-a-free-slot",
+     "defthm fn-xc-install-evicts-the-least-recently-used"
+    ],
+    "added_events": 45,
+    "explanation": "11 literal theorem restatements listed above, plus the install-hyps macro changing occupancy admission. The only two changed existing defuns are install (new duplicate branch) and slot-token (same token expression extracted into fn-xc-token). All remaining differences are the requested new functions and proven lemmas. The raw proof-only checker exits 1 for these intentional specification/implementation additions; no other existing formula or macro changes."
+   },
+   "teeth": "b14ee1a4d: five defteeth; 12 single-hypothesis removal witnesses; six mutation witnesses; kind-1 and kind-2 old-install must-fail-checked; concrete stobj span and all-transition ground controls. Both touched books loaded through their ends in persvati REPL.",
+   "sha": "b14ee1a4d",
+   "certification": {
+    "run": "run-20261008T111448Z-7488",
+    "manifest": "build/acl2/certify-20261008T111517Z-2441852/manifest.json",
+    "roots": [
+     "books/extent-cache",
+     "tests/acl2/extent-cache-span-tests",
+     "host/page-read-host"
+    ],
+    "passed": 12,
+    "failed": 0,
+    "installed_from_cache": 334,
+    "farm_wait_exit": 0,
+    "triage": "12 clean; no real, cascade, limit, killed or other failures",
+    "D26": "extent-cache 163.3s at two jobs (50,638,451 prover steps), over the 10s target; certification succeeds but this is a remaining proof-cost defect. Other affected dependency timings over 10s: page-read-startup 18.2s, cold-read-reservation 12.2s, heap-reservation 10.0s.",
+    "costliest_event": "fn-xc-write-keeps-well-formed: 26.1s / 15,371,875 steps; this existing statement is unchanged."
+   },
+   "gates": {
+    "REPL": "Production extent-cache through its final event. Fresh p-xc-span-teeth-final loaded all 54 test forms through defteeth-check against certified dependencies: 1.80s, 13,169 steps.",
+    "interface_emit --check": "exit 0, zero findings; no interface regeneration needed",
+    "keystone_emit --write-manifest / --check": "both exit 0, zero findings; five new defteeth manifest rows",
+    "unittest tests.test_ledger tests.test_keystone_emit": "179 passed, exit 0",
+    "proof_statement_diff": "exit 1 for the 14 explained changed existing events and 45 new events, with the exact old/new antecedents above; no unexpected existing statement changes",
+    "host_check --load": "exit 1 on persvati: 58/58 raw files loaded, one finding: undefined *fnn-extent-window-cache* at host/native/extent.lisp:747,762-764. Merge combines dev span-list warm read with S slot-table declarations; s-xc2 owns that replacement. Bare-world fallback because the image umbrella is unavailable; does not constitute a certified-world host gate."
+   },
+   "remaining_integration": "S/s-xc2 must replace the stale list warm read, call fn-xc-span-at with its unchanged signature, and handle :duplicate by releasing the job row as an uncached borrow with no fault. Re-run host_check --load after that host change. This lane does not edit host/native/. XC-KEY-DEAD-COLUMNS stays open under deputy-S."
+  },
+  {
+   "author": "Codex p-xc-span",
+   "round": 3,
+   "sha": "fcfeb38e0",
+   "status": "Split and proofs certified; all new books and touched tests under 10 seconds at two jobs. Inherited extent-cache D26 remains deputy-S work under P ruling; host integration still red for s-xc2. Not an all-gates READY claim.",
+   "baseline": {
+    "ref": "origin/lane/s-extent-cache@248809ad277d54e0103f26069bd83f69c505dbdf",
+    "export": "build/p-xc-span-round3/base-248809ad2 (git archive; no new worktree)",
+    "extent_cache_source_sha256": "bb49cd7915ebb8d7b5c2b88c16abf2b44fa02e387af4077022b512149d2cbf77",
+    "run": "run-20261008T112913Z-88d1",
+    "manifest": "build/p-xc-span-round3/base-248809ad2/build/acl2/certify-20261008T113013Z-2604267/manifest.json",
+    "jobs": 2,
+    "passed": 2,
+    "failed": 0,
+    "extent_cache_seconds": 96.984,
+    "extent_cache_steps": 38399232,
+    "host_check_exit": 0,
+    "host_finding": "58 of 58 raw files loaded in one bare acl2-literal-4g-tls64k in 8.2 s; 0 finding(s)",
+    "source_control": "The exported extent-cache bytes exactly equal git show of the named base ref. Manifest Git metadata may inherit the containing lane; source bytes and export ref identify this measurement."
+   },
+   "certification": {
+    "run": "run-20261008T115718Z-4a31",
+    "manifest": "build/acl2/certify-20261008T115751Z-2907451/manifest.json",
+    "jobs": 2,
+    "passed": 7,
+    "failed": 0,
+    "installed_from_cache": 343,
+    "farm_wait_exit": 0,
+    "triage": "7 clean logs, no real/cascade/limit/killed/other failures",
+    "two_job_book_measurements": [
+     {
+      "book": "books/extent-cache",
+      "base_seconds": 96.984,
+      "round2_seconds": 163.261,
+      "round3_seconds": 121.452,
+      "round3_steps": 35780165
+     },
+     {
+      "book": "books/extent-cache-contracts",
+      "base_seconds": null,
+      "round2_seconds": null,
+      "round3_seconds": 5.235,
+      "round3_steps": 733286
+     },
+     {
+      "book": "books/extent-cache-disjoint",
+      "base_seconds": null,
+      "round2_seconds": null,
+      "round3_seconds": 6.584,
+      "round3_steps": 2680531
+     },
+     {
+      "book": "books/extent-cache-span",
+      "base_seconds": null,
+      "round2_seconds": null,
+      "round3_seconds": 7.388,
+      "round3_steps": 2165718
+     },
+     {
+      "book": "books/extent-cache-token",
+      "base_seconds": null,
+      "round2_seconds": null,
+      "round3_seconds": 4.629,
+      "round3_steps": 1200249
+     },
+     {
+      "book": "host/page-read-host",
+      "base_seconds": 6.126,
+      "round2_seconds": 6.98,
+      "round3_seconds": 9.895,
+      "round3_steps": 108341
+     },
+     {
+      "book": "tests/acl2/extent-cache-span-tests",
+      "base_seconds": null,
+      "round2_seconds": 2.821,
+      "round3_seconds": 4.876,
+      "round3_steps": 17583
+     }
+    ],
+    "measurement_limit": "The process limit is two jobs in both runs. Background load differed: base core start/end 5.5/4.5; final 7.49/10.88. These are measured wall times, not matched quiet-host timings. Core prover work fell from round-2 50,638,451 to 35,780,165 steps, also below base 38,399,232."
+   },
+   "split": {
+    "books/extent-cache.lisp": "Core decisions and existing contracts; new duplicate guard unchanged. Geometry, placement, occupancy and eviction hints restricted; one local key-kind helper.",
+    "books/extent-cache-token.lisp": "Shared token/holder facts and duplicate iff plus unchanged-state compensation.",
+    "books/extent-cache-disjoint.lisp": "Carried uniqueness and all transition preservation.",
+    "books/extent-cache-span.lisp": "fn-xc-span-at and its endpoint helper, guard verification, K1 and bridge proofs. Signature unchanged.",
+    "books/extent-cache-contracts.lisp": "Original occupancy and present-lookup contracts proved without excluding duplicate; accepted narrower forms unchanged."
+   },
+   "host_export": "fn-xc-span-at now lives in books/extent-cache-span.lisp, which includes extent-cache. S must include this book in the host world before adding its interface/call. host/interfaces.lisp currently declares no fn-xc-span-at entry; existing extent-cache interfaces and their cited theorems stay in the core. No old host export was renamed or removed.",
+   "host_red": {
+    "current_exit": 1,
+    "finding": "FAIL undefined variable *fnn-extent-window-cache*: no raw file, book or ld host file defines it",
+    "mechanism": "Merge f563f1b18 combined dev parent f2629613e's new fnn-extent-window-cache-run (old-list walk) with S parent 248809ad2's slot-table layout. Dev defined the list variable; S replaced that state and did not yet have the new run function. The merged run at host/native/extent.lisp:747,762-764 still names the old list. Base host check passes. No host/native source changed after the merge in this lane.",
+    "owner": "s-xc2 / deputy-S",
+    "why_no_books_compatibility_fix": "This is a raw host global containing backing tokens/plans/windows, not an ACL2 export. Defining an empty constant or an alias in a book would not maintain the cache contents or transitions. S's already-assigned slot-table warm-read rewrite is the correction; no host/native edit made here.",
+    "scope": "58/58 files loaded; bare-world fallback, not a certified image-world host qualification."
+   },
+   "untouched_dependency_costs": [
+    {
+     "book": "books/page-read-startup",
+     "round2_seconds": 18.214,
+     "ownership": "Closure only; unchanged by this lane."
+    },
+    {
+     "book": "books/cold-read-reservation",
+     "round2_seconds": 12.16,
+     "ownership": "Closure only; unchanged by this lane."
+    },
+    {
+     "book": "books/heap-reservation",
+     "round2_seconds": 10.003,
+     "ownership": "Closure only; no lane-authored change since merge. Heap-reservation differs from S base only through dev merge."
+    }
+   ],
+   "restatement_record": "XC-KEY-DEAD-COLUMNS now lists all 12 names and the exit condition. Ten have 20 proved whole-antecedent/conclusion counterexamples across kinds 1 and 2, citing the test forms and original two must-fail mutations. Two originals are true on duplicate: full-strength companion proofs and four positive duplicate controls are recorded instead of fabricated counterexamples. Compensation remains fn-xc-install-duplicate-is-already-held.",
+   "gates": {
+    "REPL": "Core reloaded from install-okp through end after hint edits. Split books and tests replayed through end (131 forms). Fresh standalone test REPL p-xc-span-r3-final loaded all 80 forms, 17,583 steps, 2.76s.",
+    "interface_emit --check": "exit 0, zero findings; no interface regeneration needed",
+    "keystone_emit --write-manifest / --check": "both exit 0, zero findings; manifest updated, claim digests unchanged",
+    "unittest tests.test_ledger tests.test_keystone_emit": "179 tests passed, exit 0",
+    "proof_statement_diff origin/lane/s-extent-cache books/extent-cache.lisp": "18 expected differences: the same 14 round-2 changed events plus four new core events. One added local lemma. No additional changes to accepted statements. Cross-book audit against c4dcdaea3 proves all 199 accepted event statements, bodies and rule classes byte-identical apart from hints; additions are one local helper and the two full-strength theorems.",
+    "host_check --load": "exit 1; diagnosed host merge integration finding above"
+   }
+  }
+ ],
  "owner": "C",
  "severity": "high",
  "source": "CONVERGE-2 row 21, coordinator 2026-10-07 15:40",
  "state": "open",
  "title": "The ARTICLE renderer walks the payload from octet 0 while the borrowed window is the payload's last one, so every octet below the window start asks the wrong question; row21-span's below slot memoizes that answer",
- "updated": "2026-10-07T18:20:18Z"
+ "updated": "2026-10-08T12:08:17Z"
 }

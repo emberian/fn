@@ -1,0 +1,330 @@
+{
+ "category": "proof-owed",
+ "file": "books/extent-cache.lisp",
+ "id": "XC-KEY-DEAD-COLUMNS",
+ "notes": [
+  "On the host path, kind 1 passes zero for a,b,c,d,start and kind 2 passes zero for c,d in host/native/extent.lisp lookup calls. Those fields are absent from the respective token and are dead for those kinds; decoded kind 3 retains a,b,c,d,start. Drop the dead fields from the representation and restate fn-xc-lookup-hit-is-the-descriptor per kind. The :duplicate install answer is the interim all-kind guard against binding one ledger charge to two slots.",
+  "S/P ruling: admitted install answers exclude both :refused and :duplicate. The original exact descriptor lookup contract remains unchanged; do not silently canonicalize an arbitrary preexisting table.",
+  {
+   "author": "Codex p-xc-span",
+   "round": 3,
+   "ruling": "build/coordinator/RULINGS.md, Contracts that never relax: a restatement implies the old one or carries a proof-owed item with a counterexample recorded.",
+   "base": "origin/lane/s-extent-cache@248809ad277d54e0103f26069bd83f69c505dbdf",
+   "test_file": "tests/acl2/extent-cache-span-tests.lisp",
+   "compensating_theorem": "fn-xc-install-duplicate-is-already-held (books/extent-cache-token.lisp): duplicate iff a nonnil proposed token is held outside the chosen target; table/clock unchanged.",
+   "must_fail_forms": [
+    "xcst-raw-window-old-install-would-preserve",
+    "xcst-whole-entry-old-install-would-preserve"
+   ],
+   "must_fail_scope": "These reject the unchecked old install preserving token disjointness. The 20 separate whole-claim counterexamples below assert each old antecedent and refute its conclusion for the current guarded install. They are not inferred merely from a failed proof search.",
+   "ground_states": {
+    "2-present": {
+     "kind": 2,
+     "tokp": "t",
+     "tid": 7,
+     "tcid": 0,
+     "file": 11,
+     "eoff": 100,
+     "elen": 3,
+     "a": 100,
+     "b": 3,
+     "c": 1,
+     "d": 0,
+     "start": 0,
+     "trailer": 77,
+     "fn-xcs": "'((2 t 8 0 11 100 3 100 3 1 0 0 77 0) (2 t 7 0 11 100 3 100 3 0 0 0 77 1))",
+     "fn-xcc": "'(2 0 2)",
+     "j": 0
+    },
+    "1-present": {
+     "kind": 1,
+     "tokp": "t",
+     "tid": 7,
+     "tcid": 9,
+     "file": 11,
+     "eoff": 100,
+     "elen": 3,
+     "a": 1,
+     "b": 0,
+     "c": 0,
+     "d": 0,
+     "start": 0,
+     "trailer": 77,
+     "fn-xcs": "'((1 t 8 9 11 100 3 1 0 0 0 0 77 0) (1 t 7 9 11 100 3 0 0 0 0 0 77 1))",
+     "fn-xcc": "'(2 2 0)",
+     "j": 0
+    },
+    "2-free": {
+     "kind": 2,
+     "tokp": "t",
+     "tid": 7,
+     "tcid": 0,
+     "file": 11,
+     "eoff": 100,
+     "elen": 3,
+     "a": 100,
+     "b": 3,
+     "c": 1,
+     "d": 0,
+     "start": 0,
+     "trailer": 77,
+     "fn-xcs": "'((2 t 7 0 11 100 3 100 3 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))",
+     "fn-xcc": "'(1 0 2)",
+     "j": 0
+    },
+    "1-free": {
+     "kind": 1,
+     "tokp": "t",
+     "tid": 7,
+     "tcid": 9,
+     "file": 11,
+     "eoff": 100,
+     "elen": 3,
+     "a": 1,
+     "b": 0,
+     "c": 0,
+     "d": 0,
+     "start": 0,
+     "trailer": 77,
+     "fn-xcs": "'((1 t 7 9 11 100 3 0 0 0 0 0 77 0) (0 nil 0 0 0 0 0 0 0 0 0 0 0 0))",
+     "fn-xcc": "'(1 2 0)",
+     "j": 0
+    },
+    "2-full": {
+     "kind": 2,
+     "tokp": "t",
+     "tid": 7,
+     "tcid": 0,
+     "file": 11,
+     "eoff": 100,
+     "elen": 3,
+     "a": 100,
+     "b": 3,
+     "c": 1,
+     "d": 0,
+     "start": 0,
+     "trailer": 77,
+     "fn-xcs": "'((2 t 7 0 11 100 3 100 3 0 0 0 77 1) (2 t 8 0 11 100 3 100 3 2 0 0 77 0))",
+     "fn-xcc": "'(2 0 2)",
+     "j": 0
+    },
+    "1-full": {
+     "kind": 1,
+     "tokp": "t",
+     "tid": 7,
+     "tcid": 9,
+     "file": 11,
+     "eoff": 100,
+     "elen": 3,
+     "a": 1,
+     "b": 0,
+     "c": 0,
+     "d": 0,
+     "start": 0,
+     "trailer": 77,
+     "fn-xcs": "'((1 t 7 9 11 100 3 0 0 0 0 0 77 1) (1 t 8 9 11 100 3 2 0 0 0 0 77 0))",
+     "fn-xcc": "'(2 2 0)",
+     "j": 0
+    }
+   },
+   "contracts": [
+    {
+     "name": "fn-xc-install-when-present",
+     "disposition": "proof owed: original claim is false for the guarded install",
+     "counterexamples": [
+      {
+       "kind": 2,
+       "state": "2-present",
+       "form": "xcst-old-install-when-present-kind2-counterexample"
+      },
+      {
+       "kind": 1,
+       "state": "1-present",
+       "form": "xcst-old-install-when-present-kind1-counterexample"
+      }
+     ],
+     "failure": "The key was already present, but duplicate refusal leaves the table and clock unchanged and returns :duplicate rather than :present."
+    },
+    {
+     "name": "fn-xc-install-when-free",
+     "disposition": "proof owed: original claim is false for the guarded install",
+     "counterexamples": [
+      {
+       "kind": 2,
+       "state": "2-free",
+       "form": "xcst-old-install-when-free-kind2-counterexample"
+      },
+      {
+       "kind": 1,
+       "state": "1-free",
+       "form": "xcst-old-install-when-free-kind1-counterexample"
+      }
+     ],
+     "failure": "The proposed key is absent after duplicate refusal: the old install/post-lookup conclusion requires a change that did not happen."
+    },
+    {
+     "name": "fn-xc-install-when-full",
+     "disposition": "proof owed: original claim is false for the guarded install",
+     "counterexamples": [
+      {
+       "kind": 2,
+       "state": "2-full",
+       "form": "xcst-old-install-when-full-kind2-counterexample"
+      },
+      {
+       "kind": 1,
+       "state": "1-full",
+       "form": "xcst-old-install-when-full-kind1-counterexample"
+      }
+     ],
+     "failure": "The proposed key is absent after duplicate refusal: the old install/post-lookup conclusion requires a change that did not happen."
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits-present",
+     "disposition": "No counterexample: the original contract remains true, proved without the duplicate exclusion. Accepted narrower form left unchanged.",
+     "full_strength_proof": "fn-xc-install-then-lookup-hits-present-full-strength",
+     "positive_duplicate_controls": [
+      "xcst-original-install-then-lookup-hits-present-kind2-still-holds",
+      "xcst-original-install-then-lookup-hits-present-kind1-still-holds"
+     ]
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits-free",
+     "disposition": "proof owed: original claim is false for the guarded install",
+     "counterexamples": [
+      {
+       "kind": 2,
+       "state": "2-free",
+       "form": "xcst-old-install-then-lookup-hits-free-kind2-counterexample"
+      },
+      {
+       "kind": 1,
+       "state": "1-free",
+       "form": "xcst-old-install-then-lookup-hits-free-kind1-counterexample"
+      }
+     ],
+     "failure": "The proposed key is absent after duplicate refusal: the old install/post-lookup conclusion requires a change that did not happen."
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits-full",
+     "disposition": "proof owed: original claim is false for the guarded install",
+     "counterexamples": [
+      {
+       "kind": 2,
+       "state": "2-full",
+       "form": "xcst-old-install-then-lookup-hits-full-kind2-counterexample"
+      },
+      {
+       "kind": 1,
+       "state": "1-full",
+       "form": "xcst-old-install-then-lookup-hits-full-kind1-counterexample"
+      }
+     ],
+     "failure": "The proposed key is absent after duplicate refusal: the old install/post-lookup conclusion requires a change that did not happen."
+    },
+    {
+     "name": "fn-xc-install-then-lookup-hits",
+     "disposition": "proof owed: original claim is false for the guarded install",
+     "counterexamples": [
+      {
+       "kind": 2,
+       "state": "2-free",
+       "form": "xcst-old-install-then-lookup-hits-kind2-counterexample"
+      },
+      {
+       "kind": 1,
+       "state": "1-free",
+       "form": "xcst-old-install-then-lookup-hits-kind1-counterexample"
+      }
+     ],
+     "failure": "The proposed key is absent after duplicate refusal: the old install/post-lookup conclusion requires a change that did not happen."
+    },
+    {
+     "name": "fn-xc-install-present",
+     "disposition": "proof owed: original claim is false for the guarded install",
+     "counterexamples": [
+      {
+       "kind": 2,
+       "state": "2-present",
+       "form": "xcst-old-install-present-kind2-counterexample"
+      },
+      {
+       "kind": 1,
+       "state": "1-present",
+       "form": "xcst-old-install-present-kind1-counterexample"
+      }
+     ],
+     "failure": "The key was already present, but duplicate refusal leaves the table and clock unchanged and returns :duplicate rather than :present."
+    },
+    {
+     "name": "fn-xc-install-fills-a-free-slot",
+     "disposition": "proof owed: original claim is false for the guarded install",
+     "counterexamples": [
+      {
+       "kind": 2,
+       "state": "2-free",
+       "form": "xcst-old-install-fills-a-free-slot-kind2-counterexample"
+      },
+      {
+       "kind": 1,
+       "state": "1-free",
+       "form": "xcst-old-install-fills-a-free-slot-kind1-counterexample"
+      }
+     ],
+     "failure": "The proposed key is absent after duplicate refusal: the old install/post-lookup conclusion requires a change that did not happen."
+    },
+    {
+     "name": "fn-xc-install-evicts-the-least-recently-used",
+     "disposition": "proof owed: original claim is false for the guarded install",
+     "counterexamples": [
+      {
+       "kind": 2,
+       "state": "2-full",
+       "form": "xcst-old-install-evicts-the-least-recently-used-kind2-counterexample"
+      },
+      {
+       "kind": 1,
+       "state": "1-full",
+       "form": "xcst-old-install-evicts-the-least-recently-used-kind1-counterexample"
+      }
+     ],
+     "failure": "The proposed key is absent after duplicate refusal: the old install/post-lookup conclusion requires a change that did not happen."
+    },
+    {
+     "name": "fn-xc-install-occupancy",
+     "disposition": "No counterexample: the original contract remains true, proved without the duplicate exclusion. Accepted narrower form left unchanged.",
+     "full_strength_proof": "fn-xc-install-occupancy-full-strength",
+     "positive_duplicate_controls": [
+      "xcst-original-install-occupancy-kind2-still-holds",
+      "xcst-original-install-occupancy-kind1-still-holds"
+     ]
+    },
+    {
+     "name": "fn-xc-install-placement",
+     "disposition": "proof owed: original claim is false for the guarded install",
+     "counterexamples": [
+      {
+       "kind": 2,
+       "state": "2-free",
+       "form": "xcst-old-install-placement-kind2-counterexample"
+      },
+      {
+       "kind": 1,
+       "state": "1-free",
+       "form": "xcst-old-install-placement-kind1-counterexample"
+      }
+     ],
+     "failure": "The answer is :duplicate, outside the old placement vocabulary."
+    }
+   ],
+   "exit_condition": "Remove token-absent key columns per kind and prove key/token identity. Retire the interim :duplicate path and restore all full-strength old install/lookup/placement statements under their original antecedents (or prove a replacement implies each old claim), preserving token uniqueness and the positive/removal/mutation evidence. Occupancy and present lookup are already full-strength in extent-cache-contracts; no false counterexample is claimed for either. S owns the representation and host integration."
+  }
+ ],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "p-xc-span; S/P ruling on token uniqueness, 2026-10-08",
+ "state": "open",
+ "title": "Remove token-absent fields from whole-entry and raw-window cache keys",
+ "updated": "2026-10-08T11:55:30Z"
+}
