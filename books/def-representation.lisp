@@ -1430,41 +1430,50 @@
       (let ((events (rep-instance-events name fields0 scalar generic invariant invariant-lemmas once
                                          (not (eq paged nil)))))
         ; Every emission path (scalar, generic, paged, flat and optional
-        ; page image) proves inside this scope. Restore each loaded ADT
-        ; library's own enabled rules, even after a consumer's snapshot
-        ; export hid them. Only the generated events escape this scope;
-        ; the caller's later proofs retain their incoming library theory.
-        ; ADT-LIB is a dependency; the byte/key libraries need restoring
-        ; only in worlds that loaded them, not importing into new worlds.
-        (value
-         `(encapsulate ()
-            (local
-             (in-theory
-              (union-theories
-               (current-theory :here)
-               (union-theories
-                (theory 'adt-lib-exported)
-                (union-theories
-                 (if (logical-namep 'adt-bytes-lib-exported world)
-                     (theory 'adt-bytes-lib-exported) nil)
-                 (union-theories
-                  (if (logical-namep 'adt-bytes-exported world)
-                      (theory 'adt-bytes-exported) nil)
-                  (if (logical-namep 'adt-key-lib-exported world)
-                      (theory 'adt-key-lib-exported) nil)))))))
-            ; The paged bridges use NTH, including ADT-PG-NTH-0-TREADY.
-            ; Keep that normal form when the key library is present.
-            (local
-             (in-theory (if (logical-namep 'adt-nth-0 world)
-                            (disable adt-nth-0)
-                          (current-theory :here))))
-            ,(if pages
-                 ; the instance's events, then its page image and marking
-                 `(progn ,events
-                         ,@(rep-pages-events name)
-                         (table fn-generated ',name
-                                ',(append (cadr (cadddr (car (last events)))) '(:pages t))))
-               events))))))))
+        ; page image) proves in the theory its ADT library was written for:
+        ; each loaded library's exported theory (adt-*-exported) is enabled
+        ; first, even where a consumer's snapshot export hid it (books/store-
+        ; records-field.lisp in books/owner's world), with adt-nth-0 off (the
+        ; paged bridges' NTH normal form).  Afterwards every one of those runes
+        ; returns to the state the caller's theory gave it (a local snapshot),
+        ; so the caller's later proofs keep their incoming theory.  No
+        ; encapsulate: a defabsstobj :attachable re-run in an encapsulate's
+        ; second pass trips ACL2's type-prescription ASSERT$
+        ; (tests/acl2/def-representation-tests, 2026-10-08).
+        (let* ((snap (adt-sym name "-CALLER-THEORY"))
+               (libs '(union-theories
+                       (theory 'adt-lib-exported)
+                       (union-theories
+                        (if (logical-namep 'adt-bytes-lib-exported world)
+                            (theory 'adt-bytes-lib-exported) nil)
+                        (union-theories
+                         (if (logical-namep 'adt-bytes-exported world)
+                             (theory 'adt-bytes-exported) nil)
+                         (if (logical-namep 'adt-key-lib-exported world)
+                             (theory 'adt-key-lib-exported) nil)))))
+               (touched `(union-theories ,libs
+                                         (if (logical-namep 'adt-nth-0 world)
+                                             (set-difference-theories
+                                              (current-theory :here)
+                                              (disable adt-nth-0))
+                                           nil))))
+          (value
+           `(progn
+              (local (deftheory ,snap (current-theory :here)))
+              (local (in-theory (union-theories (current-theory :here) ,libs)))
+              (local (in-theory (if (logical-namep 'adt-nth-0 world)
+                                    (disable adt-nth-0)
+                                  (current-theory :here))))
+              ,(if pages
+                   ; the instance's events, then its page image and marking
+                   `(progn ,events
+                           ,@(rep-pages-events name)
+                           (table fn-generated ',name
+                                  ',(append (cadr (cadddr (car (last events)))) '(:pages t))))
+                 events)
+              (local (in-theory (union-theories
+                                 (set-difference-theories (current-theory :here) ,touched)
+                                 (intersection-theories ,touched (theory ',snap)))))))))))))
 
 (defun rep-fields-of (args)
   (if (or (endp args) (keywordp (car args)))
