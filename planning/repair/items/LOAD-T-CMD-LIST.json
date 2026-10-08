@@ -1,16 +1,16 @@
 {
  "category": "bug",
- "detail": "T-CMD LIST (L, dev f2629613e, persvati cores 12-23, tmpfs, scale-1m, one client, a 2-group LIST): p50 1.15 s / 11.3 s / 29.0 s at 1k / 10k / 25k articles; owner CPU per LIST 58 / 820 / 3,086 ms. Mechanism A (wait): fn-lst was a def-cursor, so every host activation made ONE controller call (books/served-query-plan.lisp fn-qplan-rest-cursor-step-acc: 'exactly one accepted LIST controller call per activation'), and fn-lst-one probes one article number per call in phase :summary (books/group-summary-cursor.lisp fn-gsc-one); each empty activation yielded through fnn-mux-plan-yield with fn-splan-cursor-resume-ms = 1 ms, so the quantum count grew with the store (articles + phases + digits), not the reply. Mechanism B (CPU): the per-activation overhead (owner mutex, window activation, plan rebuild) dominates; the cursor itself carries its position (groups rest, gsc k) and is not re-walked. Fix: fn-lst-batch (def-cursor/batch) spends the visit grant per activation and fn-asto-resume-ms (ACL2) makes a LIST yield due on the next loop pass. Statements owed and discharged: fn-lst-batch-residual (what a batch emits followed by the residual of the cursor it returns is the residual it was given = the reference reply), fn-lst-batch-call-bound, fn-lst-batch-byte-bound, fn-asto-resume-ms-lst-is-immediate, fn-asto-resume-ms-over-waits. Measurement after the fix is owed on the same cell.",
+ "detail": "T-CMD LIST on persvati cores 12-23, tmpfs, scale-1m, one client, a 2-group LIST. Before (dev f2629613e): p50 1.15 s / 11.3 s / 29.0 s at 1k / 10k / 25k articles, owner CPU 58 / 820 / 3,086 ms. After (lane/list-walk@42ef30e71, L): p50/p99 0.41/2.50 ms at 1k, 0.47/2.65 ms at 10k, 0.41/5.95 ms at 25k; owner CPU 0.57-0.67 ms per LIST, flat (bar p99 <= 50 ms, exponent <= 0.2: PASS). Raw: persvati:/tank/fn/scratch/load-harness/runs/lw2-tcmd-*. Mechanisms: (A) fn-lst was a one-step def-cursor, one controller call per host activation, each empty yield paced by a 1 ms delay; now fn-lst-batch (def-cursor/batch) spends the visit grant and fn-asto-resume-ms (ACL2) makes a LIST yield due on the next loop pass. (B) the :summary phase probed every article number of a group; now the summary is fn-scat-available-summary, the catalog's carried live count/low/high corrected over rows appended or withdrawn since the captured view, read in one call per group. Statements: fn-lst-step-residual / fn-lst-batch-residual, fn-asto-resume-ms-lst-is-immediate, fn-asto-resume-ms-over-waits (teeth in article-stream-owner-teeth-tests), fn-scat-available-summary-is-the-walk (carried summary = numbered walk when the group high is below the watermark), fn-lst-groups-reference-is-active-lines/-counts-lines (premise-free), fn-lst-one-finite-progress (re-proved). books/group-summary-cursor is deleted. Lands with the next train.",
  "file": "books/list-metadata-cursor.lisp",
  "id": "LOAD-T-CMD-LIST",
  "line": "",
  "notes": [
-  "2026-10-08: L measured the batch image: LIST p50 40 / 389 / 1,055 ms at 1k / 10k / 25k (was 1.15 / 11.3 / 29.0 s), mechanism A gone, exponent still ~1.0 because the :summary phase probed every article number. Fix: the summary is fn-scat-available-summary (carried live count/low/high at the captured view), one call per group; statements: fn-scat-available-summary-is-the-walk (books/catalog-available-readers: carried summary = numbered walk when the group high is below the watermark), fn-lst-groups-reference-is-active-lines/-counts-lines now premise-free. Re-measurement owed."
+  "2026-10-08: landed-pending on lane/list-walk; closes when the train carries it."
  ],
  "owner": "deputy-C",
  "severity": "high",
  "source": "tools/load",
- "state": "open",
- "title": "T-CMD LIST: a LIST costs one timer-paced owner activation per article probe (29 s p50 and 3.1 s owner CPU at 25k articles)",
+ "state": "landed-pending",
+ "title": "T-CMD LIST: a LIST cost one timer-paced activation and one probe per article; now batched and carried, flat in the store",
  "updated": "2026-10-08T00:00:00Z"
 }
