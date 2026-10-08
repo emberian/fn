@@ -1,135 +1,237 @@
-; Ground tests only; do NOT load statements.lisp before running these.
-; REPL attempt 2026-10-07: blocked before ACL2 startup by sandbox denial of
-; /Users/ember/.cache/fn-acl2-slots/slot-000. None of these has a REPL PASS.
+; PHASE 1c ground tests. Do not load statements.lisp: no keystone is assumed.
+; Start on contracts' cached dependency world, send its definitions, load the
+; existing must-fail-checked book, then send this file FROM *gc-init*.
 (in-package "ACL2")
 (include-book "contracts")
 (include-book "../../../tests/acl2/must-fail-checked")
+(defconst *gc-init* (fn-ocp-gc-init 512 65536 2 4096))
+(defconst *gc-warm-events*
+  '((:start ((65)) ((:accepted t)))
+    (:io :current :ok) (:io :current :ok) (:io :current :ok)
+    (:io :current :ok) (:io :current :ok) (:collect)))
+(defconst *gc-warm* (fn-ocp-gc-run *gc-init* *gc-warm-events*))
+(defconst *gc-a-events*
+  '((:start ((66)) ((:accepted t)))
+    (:io :current :ok) (:io :current :ok) (:io :current :ok)))
+(defconst *gc-a* (fn-ocp-gc-run *gc-warm* *gc-a-events*))
+(defconst *gc-next-events*
+  '((:next ((67)) ((:accepted nil))) (:io :next :ok) (:io :next :ok)))
+(defconst *gc-preappend* (fn-ocp-gc-run *gc-a* *gc-next-events*))
+(defconst *gc-pipelined* (fn-ocp-gc-host-step *gc-preappend* '(:io :next :ok)))
+(defconst *gc-fenced* (fn-ocp-gc-host-step *gc-pipelined* '(:io :current :ok)))
+(defconst *gc-resolved* (fn-ocp-gc-host-step *gc-fenced* '(:io :current :ok)))
+(defconst *gc-promoted* (fn-ocp-gc-host-step *gc-resolved* '(:collect)))
+(defconst *gc-tail-events* '((:io :current :ok) (:io :current :ok) (:collect)))
+(defconst *gc-completed* (fn-ocp-gc-run *gc-promoted* *gc-tail-events*))
 
-(defconst *gc-h* '((65) (66) (67)))
-(defconst *gc-head* '(0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
-                     0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0))
-(defconst *gc-events* '((:start 1) (:complete) (:start 1) (:next 1)))
-(defconst *gc-m* (fn-ocvm-run (fn-ocvm-init) *gc-events*))
-(defconst *gc-s1* (mv-nth 1 (fn-ocp-commit-event (fn-ocp-init) :started)))
-(defconst *gc-s* (mv-nth 1 (fn-ocp-commit-event *gc-s1* :next-started)))
-; Valid logical split snapshots; not witnesses of the byte-store relation
-; or of two physical appends overlapping fdatasync (not implemented yet).
-(defconst *gc-before*
-  (fn-lgk-make '((65)) *gc-head* 512 4 '((67)) '((66)) 1 :appended))
-(defconst *gc-after*
-  (fn-lgk-make '((65) (66)) *gc-head* 1024 4 '((67)) nil 1 :fenced))
+; W1: initial keystone's WHOLE antecedent and conclusion.
+(defconst *gc-w1*
+  (and (fn-ocp-gc-profilep 512 65536 2 4096) (fn-ocp-gc-linkedp *gc-init*)))
+(assert-event *gc-w1*)
 
-; REVEALS positive: the ENTIRE antecedent and conclusion, before and after
-; the fence. Nonempty durable prefix, nonempty current AND next batch.
-(assert-event
- (and (fn-ocvm-legal-run-p (fn-ocvm-init) *gc-events*)
-      (fn-ocp-gc-linkedp *gc-h* *gc-m* *gc-before* *gc-s* :next-none :append :ok)
-      (fn-ocp-gc-reveals-okp *gc-h* *gc-before*
-        (fn-ocp-gc-cuts *gc-m* *gc-s* :next-none :append :ok))
-      (equal (fn-ocp-gc-cuts *gc-m* *gc-s* :next-none :append :ok) '(1 0 0 0))))
-(assert-event
- (and (fn-ocp-gc-linkedp *gc-h* *gc-m* *gc-after* *gc-s* :fenced :fence :ok)
-      (fn-ocp-gc-reveals-okp *gc-h* *gc-after*
-        (fn-ocp-gc-cuts *gc-m* *gc-s* :fenced :fence :ok))
-      (equal (fn-ocp-gc-cuts *gc-m* *gc-s* :fenced :fence :ok) '(1 2 2 2))
-      (equal (fn-ocs-member-releases
-               (mv-nth 0 (fn-ocp-commit-event *gc-s* :fenced)) '((:accepted t)))
-             '(:rendered))))
+; W2: accepted append-behind, not a vacuous refusal; real encoded write plan.
+(defconst *gc-w2*
+  (let* ((p (nth 0 *gc-preappend*)) (q (nth 0 *gc-pipelined*))
+         (h (nth 3 *gc-pipelined*)) (ks (fn-lgk-pipe-ks p)))
+    (and (fn-lgk-pipe-okp p h) (fn-lgk-behind-admitsp p 512 65536)
+         (mv-let (word after effect) (fn-lgk-append-behind p 512 65536)
+           (declare (ignore after effect)) (equal word :appended))
+         (fn-lgk-pipe-behind q) (consp (fn-lgk-inflight ks)) (consp (fn-lgk-batch ks))
+         (equal (fn-lgk-append ks 512 65536) ks)
+         (fn-lgk-pipe-okp q h) (equal (fn-lgk-pipe-d q) (fn-lgk-pipe-d p))
+         (<= (fn-lgk-pipe-acked q) (fn-lgk-pipe-d q))
+         (equal (car (nth 14 *gc-pipelined*)) :write)
+         (equal (nth 1 (nth 14 *gc-pipelined*)) 1024)
+         (equal (len (nth 2 (nth 14 *gc-pipelined*))) 512))))
+(assert-event *gc-w2*)
 
-; REVEALS tooth 1: remove receipt-to-durability coupling. A forged :fenced
-; at APPEND releases the rendered reply while record 66 is still beyond D.
-; The explicit negation evaluates the counterexample, not a failed search.
+; W3: each reached transition asserts the full preservation antecedent and
+; conclusion, plus emitted cuts and monotonicity. No theorem is used to skip
+; evaluation. Includes normal ACKs, view advance, invalid early collection,
+; reader and gate steps, and promotion of the already appended second batch.
+(defun fn-gc-walk-okp (x events)
+  (declare (xargs :measure (len events)
+    :hints (("Goal" :in-theory (disable fn-ocp-gc-host-step fn-ocp-gc-linkedp
+                                      fn-ocp-gc-reveals-okp fn-lgk-pipe-d fn-lgk-pipe-acked)))))
+  (if (atom events) (fn-ocp-gc-linkedp x)
+    (let ((y (fn-ocp-gc-host-step x (car events))))
+      (and (fn-ocp-gc-linkedp x) (fn-ocp-gc-linkedp y)
+           (fn-ocp-gc-reveals-okp y)
+           (<= (fn-lgk-pipe-d (nth 0 x)) (fn-lgk-pipe-d (nth 0 y)))
+           (<= (fn-lgk-pipe-acked (nth 0 y)) (fn-lgk-pipe-d (nth 0 y)))
+           (fn-gc-walk-okp y (cdr events))))))
+(defconst *gc-success-events*
+  (append *gc-warm-events* *gc-a-events* *gc-next-events*
+    '((:io :next :ok) (:reader) (:collect) (:pick (0 1 0 0 0 0))
+      (:io :current :ok) (:io :current :ok) (:collect)) *gc-tail-events*))
+(defconst *gc-w3*
+  (and (fn-gc-walk-okp *gc-init* *gc-success-events*)
+       (equal (fn-lgk-pipe-acked (nth 0 *gc-completed*)) 3)
+       (equal (fn-ocvm-c (nth 2 *gc-completed*)) 3)))
+(assert-event *gc-w3*)
+
+; W4: pipelined reader reveal is the old durable prefix, with both batches
+; nonempty and B physically represented by an append receipt/write plan.
+(defconst *gc-w4*
+  (let ((r (fn-ocp-gc-host-step *gc-pipelined* '(:reader))))
+    (and (fn-ocp-gc-linkedp *gc-pipelined*)
+         (fn-ocp-gc-linkedp r) (fn-ocp-gc-reveals-okp r)
+         (equal (nth 8 r) '(1)) (equal (fn-lgk-pipe-d (nth 0 r)) 1))))
+(assert-event *gc-w4*)
+
+; W5: fence moves only A to durable; feed resolution observes through A.
+(defconst *gc-w5*
+  (let ((p (nth 0 *gc-pipelined*)) (q (nth 0 *gc-fenced*)))
+    (and (fn-lgk-pipe-okp p (nth 3 *gc-pipelined*))
+         (fn-lgk-pipe-okp q (nth 3 *gc-fenced*))
+         (<= (fn-lgk-pipe-d p) (fn-lgk-pipe-d q))
+         (<= (fn-lgk-pipe-acked q) (fn-lgk-pipe-d q))
+         (equal (fn-lgk-pipe-d q) 2) (fn-lgk-pipe-behind q)
+         (equal (fn-lgk-batch (fn-lgk-pipe-ks q)) '((67)))
+         (fn-ocp-gc-linkedp *gc-fenced*) (fn-ocp-gc-linkedp *gc-resolved*)
+         (fn-ocp-gc-reveals-okp *gc-resolved*) (equal (nth 8 *gc-resolved*) '(2)))))
+(assert-event *gc-w5*)
+
+; W6: collect releases A only, ACK stops at 2; B is promoted without rewrite.
+; Check the named ACK refinement and the exact planned offset/octet equation.
+(defconst *gc-w6*
+  (let* ((p (nth 0 *gc-preappend*)) (f (fn-lgk-pipe-ks (nth 0 *gc-fenced*))))
+    (and (fn-ocp-gc-linkedp *gc-resolved*) (fn-ocp-gc-linkedp *gc-promoted*)
+         (fn-ocp-gc-reveals-okp *gc-promoted*)
+         (equal (nth 9 *gc-promoted*) '(:rendered))
+         (equal (fn-lgk-pipe-acked (nth 0 *gc-promoted*)) 2)
+         (equal (fn-lgk-inflight (fn-lgk-pipe-ks (nth 0 *gc-promoted*))) '((67)))
+         (equal (nth 4 *gc-promoted*) :fence)
+         (equal (fn-lgk-behind-effect p 512 65536)
+                (list :write (fn-lgk-frontier f) (fn-lgk-append-octets f 512)))
+         (equal (fn-lgc-of (fn-lgk-pipe-ks (fn-lgk-pipe-ack (nth 0 *gc-fenced*) 1)))
+                (fn-lgu-acknowledge (fn-lgc-of f) 1)))))
+(assert-event *gc-w6*)
+
+; W7: failed barrier, both batches nonempty, both members uncertain. A late
+; success, collect, new start and read cannot acknowledge or resurrect them.
+(defconst *gc-late-events*
+  '((:io :current :ok) (:collect) (:start ((68)) ((:accepted t))) (:reader)))
+(defconst *gc-w7*
+  (let ((y (fn-ocp-gc-host-step *gc-pipelined* '(:io :current :uncertain))))
+    (and (fn-ocp-gc-failure-hyp *gc-pipelined*)
+         (consp (fn-lgk-inflight (fn-lgk-pipe-ks (nth 0 *gc-pipelined*))))
+         (consp (fn-lgk-batch (fn-lgk-pipe-ks (nth 0 *gc-pipelined*))))
+         (fn-ocp-gc-failure-okp *gc-pipelined* *gc-late-events*)
+         (equal (nth 9 y) '(:uncertain-reply :close))
+         (fn-gc-walk-okp *gc-pipelined* (cons '(:io :current :uncertain) *gc-late-events*)))))
+(assert-event *gc-w7*)
+
+; W8: membership keystone's whole hypothesis/conclusion on the new kernel,
+; taking B behind A. Once B is appended, any further take must yield :full.
+(defconst *gc-w8*
+  (let ((p (nth 0 *gc-a*)) (h (nth 3 *gc-a*)))
+    (and (fn-olr-gc-membership-hyp h p '(67) 3 0 0 2 4096 512)
+         (fn-olr-gc-membership-okp h p '(67) 3 0 0 2 4096 512)
+         (equal (car (fn-lgk-pipe-take (nth 0 *gc-pipelined*) '(68) 4 1 5 2 4096 512)) :full))))
+(assert-event *gc-w8*)
+
+; T1: explicit reply-at-append mutant. Current COLLECT correctly emits none.
+(defconst *gc-bad-reply*
+  (update-nth 8 '(2) (update-nth 9 '(:rendered) *gc-pipelined*)))
 (assert-event
- (and (not (fn-ocp-gc-linkedp *gc-h* *gc-m* *gc-before* *gc-s* :fenced :append :ok))
-      (equal (fn-ocs-member-releases
-               (mv-nth 0 (fn-ocp-commit-event *gc-s* :fenced)) '((:accepted t)))
-             '(:rendered))
-      (not (fn-ocp-gc-reveals-okp *gc-h* *gc-before*
-             (fn-ocp-gc-cuts *gc-m* *gc-s* :fenced :append :ok)))))
+ (and (fn-ocp-gc-linkedp *gc-pipelined*)
+      (equal (nth 9 (fn-ocp-gc-host-step *gc-pipelined* '(:collect))) nil)
+      (not (fn-ocp-gc-reveals-okp *gc-bad-reply*))))
+(must-fail-checked (assert-event (fn-ocp-gc-reveals-okp *gc-bad-reply*)))
+
+; T2: view advanced at append, instead of after fence/ACK/COMPLETE.
+(defconst *gc-bad-view*
+  (update-nth 2 (fn-ocvm-step (nth 2 *gc-pipelined*) '(:complete)) *gc-pipelined*))
+(defconst *gc-bad-read* (fn-ocp-gc-host-step *gc-bad-view* '(:reader)))
+(assert-event
+ (and (not (fn-ocp-gc-linkedp *gc-bad-view*))
+      (> (car (nth 8 *gc-bad-read*)) (fn-lgk-pipe-d (nth 0 *gc-bad-read*)))
+      (not (fn-ocp-gc-reveals-okp *gc-bad-read*))))
+(must-fail-checked (assert-event (fn-ocp-gc-reveals-okp *gc-bad-read*)))
+
+; T3: remove ONLY the :fence phase premise. This reached :done state retains
+; both member lists and linkedp, but an out-of-phase failure receipt stutters.
+(assert-event
+ (and (fn-ocp-gc-linkedp *gc-resolved*) (consp (nth 6 *gc-resolved*))
+      (consp (nth 7 *gc-resolved*)) (not (equal (nth 4 *gc-resolved*) :fence))
+      (not (fn-ocp-gc-failure-hyp *gc-resolved*))
+      (not (fn-ocp-gc-failure-okp *gc-resolved* nil))))
+(must-fail-checked (assert-event (fn-ocp-gc-failure-okp *gc-resolved* nil)))
+
+; T4: remove the new profile preflight by using the existing raw TAKE.
+; Its packed bytes (5) fit OMAX=5, but encoded/padded log bytes (512) do not.
+(defconst *gc-raw-oversize*
+  (fn-olr-take (fn-lgk-pipe-ks (nth 0 *gc-a*)) '(67) 3 0 0 2 5 512))
+(assert-event
+ (and (equal (car *gc-raw-oversize*) :taken)
+      (not (fn-olr-gc-profile-fitp (fn-lgk-pipe-ks (nth 0 *gc-a*)) '(67) 2 5 512))
+      (equal (car (fn-lgk-pipe-take (nth 0 *gc-a*) '(67) 3 0 0 2 5 512)) :full)
+      (equal (fn-lgc-append-len (fn-lgc-of (cadr *gc-raw-oversize*)) 512) 512)))
 (must-fail-checked
- (assert-event
-  (fn-ocp-gc-reveals-okp *gc-h* *gc-before*
-    (fn-ocp-gc-cuts *gc-m* *gc-s* :fenced :append :ok))))
+ (assert-event (<= (fn-lgc-append-len (fn-lgc-of (cadr *gc-raw-oversize*)) 512) 5)))
 
-; REVEALS tooth 2: remove the captured-view invariant. A read at the working
-; view exposes 66 and 67. The native equivalent is bypassing at-reader-view.
-(defconst *gc-unpinned* (fn-ocvm-make 3 1 1 1 nil))
+; T5: remove count correspondence; the raw decision can overfill BMAX=1.
+; The other membership assumptions and preflight remain true.
+(defconst *gc-stale-take*
+  (fn-lgk-pipe-take (nth 0 *gc-preappend*) '(68) 4 0 5 1 4096 512))
 (assert-event
- (and (not (fn-ocvm-inv *gc-unpinned*))
-      (not (fn-ocp-gc-linkedp *gc-h* *gc-unpinned* *gc-before* *gc-s* :next-none :append :ok))
-      (equal (fn-ocv-reader-view (fn-ocvm-views *gc-unpinned*) 3) 3)
-      (not (fn-ocp-gc-reveals-okp *gc-h* *gc-before*
-             (fn-ocp-gc-cuts *gc-unpinned* *gc-s* :next-none :append :ok)))))
+ (and (fn-lgk-pipe-okp (nth 0 *gc-preappend*) (nth 3 *gc-preappend*))
+      (equal (car *gc-stale-take*) :taken)
+      (not (fn-olr-gc-membership-hyp (nth 3 *gc-preappend*) (nth 0 *gc-preappend*) '(68) 4 0 5 1 4096 512))
+      (not (fn-olr-gc-membership-okp (nth 3 *gc-preappend*) (nth 0 *gc-preappend*) '(68) 4 0 5 1 4096 512))))
 (must-fail-checked
- (assert-event
-  (fn-ocp-gc-reveals-okp *gc-h* *gc-before*
-    (fn-ocp-gc-cuts *gc-unpinned* *gc-s* :next-none :append :ok))))
+ (assert-event (fn-olr-gc-membership-okp (nth 3 *gc-preappend*) (nth 0 *gc-preappend*) '(68) 4 0 5 1 4096 512)))
 
-; FAILURE positive: both nonempty batches, even after 100 attempted ACKs.
-(defconst *gc-a* '((:accepted t)))
-(defconst *gc-b* '((:accepted nil)))
+; T6: failing the first barrier must not let the next member's acceptance out.
 (assert-event
- (and (fn-ocp-gc-failure-hyp *gc-s* *gc-before* *gc-a* *gc-b*)
-      (fn-ocp-gc-failure-okp *gc-s* *gc-before* *gc-a* *gc-b* 100)
-      (equal (fn-ocs-member-releases
-               (mv-nth 0 (fn-ocp-commit-event *gc-s* :failed))
-               (append *gc-a* *gc-b*))
-             '(:uncertain-reply :close))))
-; Hypothesis-removal tooth: a previous ACK-at-append is not repaired by a
-; later failed barrier. ACKED=3 > D=1; the other failure hypotheses hold.
-(defconst *gc-early-acked*
-  (fn-lgk-make '((65)) *gc-head* 512 4 '((67)) '((66)) 3 :appended))
-(assert-event
- (and (not (fn-ocp-gc-failure-hyp *gc-s* *gc-early-acked* *gc-a* *gc-b*))
-      (not (fn-ocp-gc-failure-okp *gc-s* *gc-early-acked* *gc-a* *gc-b* 100))))
-(must-fail-checked
- (assert-event (fn-ocp-gc-failure-okp *gc-s* *gc-early-acked* *gc-a* *gc-b* 100)))
-; Mutation tooth: incorrectly completing the next batch after the failure
-; emits :rendered for its accepted member, violating the uncertain contract.
-(assert-event
- (not (subsetp-equal (fn-ocs-member-releases :complete *gc-b*)
+ (not (subsetp-equal (fn-ocs-member-releases :complete (nth 7 *gc-pipelined*))
                     '(:own-uncertain :uncertain-reply :close))))
 (must-fail-checked
- (assert-event (subsetp-equal (fn-ocs-member-releases :complete *gc-b*)
+ (assert-event (subsetp-equal (fn-ocs-member-releases :complete (nth 7 *gc-pipelined*))
                              '(:own-uncertain :uncertain-reply :close))))
-
-; MEMBERSHIP positive: old record 65, batch in flight 66, take 67 behind it.
-(defconst *gc-take-base*
-  (fn-lgk-make '((65)) *gc-head* 512 3 nil '((66)) 1 :appended))
+; T7: an ACK-at-append mutant violates the initial ACK prefix premise.
+(defconst *gc-early-ack*
+  (let* ((p (nth 0 *gc-pipelined*)) (ks (fn-lgk-pipe-ks p)))
+    (update-nth 0 (fn-lgk-pipe-make (update-nth 7 3 ks) t) *gc-pipelined*)))
 (assert-event
- (and (fn-olr-gc-membership-hyp '((65) (66)) *gc-take-base* '(67) 3 0 0 2 4096 512)
-      (fn-olr-gc-membership-okp '((65) (66)) *gc-take-base* '(67) 3 0 0 2 4096 512)
-      (equal (fn-lgk-batch
-               (cadr (fn-olr-take *gc-take-base* '(67) 3 0 0 2 4096 512))) '((67)))))
-; A real current append closes the exact suffix when no earlier batch is in
-; flight. This is why allowing append-behind needs a new kernel operation.
-(defconst *gc-seal-base*
-  (fn-lgk-make '((65)) *gc-head* 512 3 '((66)) nil 1 :fenced))
-(defconst *gc-seal-take*
-  (fn-olr-take *gc-seal-base* '(67) 3 1 5 2 4096 512))
+ (and (not (fn-ocp-gc-linkedp *gc-early-ack*))
+      (not (fn-ocp-gc-failure-okp *gc-early-ack* *gc-late-events*))))
+(must-fail-checked (assert-event (fn-ocp-gc-failure-okp *gc-early-ack* *gc-late-events*)))
+; T8: original singleton loophole even when packed bytes exceed OMAX=1.
+(defconst *gc-singleton-overflow*
+  (fn-olr-take (fn-lgk-pipe-ks (nth 0 *gc-a*)) '(67) 3 0 0 2 1 512))
 (assert-event
- (and (fn-olr-gc-membership-hyp '((65) (66)) *gc-seal-base* '(67) 3 1 5 2 4096 512)
-      (fn-olr-gc-membership-okp '((65) (66)) *gc-seal-base* '(67) 3 1 5 2 4096 512)
-      (fn-lgc-append-admitsp (fn-lgc-of (cadr *gc-seal-take*)) 512 4096)
-      (equal (fn-lgc-inflight
-               (fn-lgc-append (fn-lgc-of (cadr *gc-seal-take*)) 512 4096))
-             '((66) (67)))))
-
-; MEMBERSHIP tooth: remove exact COUNT correspondence. Current TAKE trusts
-; count=0, so a second record joins a supposedly one-record batch.
-(assert-event
- (and (equal (car (fn-olr-take *gc-before* '(68) 4 0 5 1 4096 512)) :taken)
-      (not (fn-olr-gc-membership-hyp *gc-h* *gc-before* '(68) 4 0 5 1 4096 512))
-      (not (fn-olr-gc-membership-okp *gc-h* *gc-before* '(68) 4 0 5 1 4096 512))))
+ (and (equal (car *gc-singleton-overflow*) :taken)
+      (equal (car (fn-lgk-pipe-take (nth 0 *gc-a*) '(67) 3 0 0 2 1 512)) :full)
+      (> (fn-lg-pack-len (fn-lgk-batch (cadr *gc-singleton-overflow*))) 1)))
 (must-fail-checked
- (assert-event (fn-olr-gc-membership-okp *gc-h* *gc-before* '(68) 4 0 5 1 4096 512)))
-; Remove encoded-octet preflight: singleton is taken even at OMAX=1.
-; OMAX=5 fits packed bytes exactly, yet still excludes framing/padding.
-(assert-event
- (and (equal (car (fn-olr-take *gc-take-base* '(67) 3 0 0 2 1 512)) :taken)
-      (not (fn-olr-gc-membership-hyp '((65) (66)) *gc-take-base* '(67) 3 0 0 2 1 512))
-      (not (fn-olr-gc-membership-okp '((65) (66)) *gc-take-base* '(67) 3 0 0 2 1 512))
-      (equal (car (fn-olr-take *gc-take-base* '(67) 3 0 0 2 5 512)) :taken)
-      (not (fn-olr-gc-membership-okp '((65) (66)) *gc-take-base* '(67) 3 0 0 2 5 512))))
-(must-fail-checked
- (assert-event (fn-olr-gc-membership-okp '((65) (66)) *gc-take-base* '(67) 3 0 0 2 1 512)))
+ (assert-event (<= (fn-lg-pack-len (fn-lgk-batch (cadr *gc-singleton-overflow*))) 1)))
+
+; W9: branch control, not a universal proof. From every prefix of the success
+; trace, try every event kind and OK/uncertain/fault, including invalid orders.
+(defun fn-gc-events-okp (x events)
+  (declare (xargs :measure (len events)
+    :hints (("Goal" :in-theory (disable fn-ocp-gc-host-step fn-ocp-gc-linkedp
+                                      fn-ocp-gc-reveals-okp fn-lgk-pipe-d fn-lgk-pipe-acked)))))
+  (if (atom events) t
+    (let ((y (fn-ocp-gc-host-step x (car events))))
+      (and (fn-ocp-gc-linkedp x) (fn-ocp-gc-linkedp y) (fn-ocp-gc-reveals-okp y)
+           (<= (fn-lgk-pipe-d (nth 0 x)) (fn-lgk-pipe-d (nth 0 y)))
+           (fn-gc-events-okp x (cdr events))))))
+(defun fn-gc-matrix-okp (x trace events)
+  (declare (xargs :measure (len trace)
+    :hints (("Goal" :in-theory (disable fn-gc-events-okp fn-ocp-gc-host-step)))))
+  (and (fn-gc-events-okp x events)
+       (if (atom trace) t
+         (fn-gc-matrix-okp (fn-ocp-gc-host-step x (car trace)) (cdr trace) events))))
+(defconst *gc-probe-events*
+  '((:start ((68)) ((:accepted t))) (:next ((69)) ((:accepted t)))
+    (:io :current :ok) (:io :current :uncertain) (:io :current :fault)
+    (:io :next :ok) (:io :next :uncertain) (:io :next :fault)
+    (:collect) (:reader) (:pick (1 1 1 1 1 1)) (:unknown)
+    (:start ((68) (69) (70)) ((:accepted t)))))
+(defconst *gc-w9* (fn-gc-matrix-okp *gc-init* *gc-success-events* *gc-probe-events*))
+(assert-event *gc-w9*)
+(value-triple (list :positives *gc-w1* *gc-w2* *gc-w3* *gc-w4* *gc-w5* *gc-w6* *gc-w7* *gc-w8* *gc-w9*))
+(value-triple (list :matrix-cases (* (+ 1 (len *gc-success-events*)) (len *gc-probe-events*))))

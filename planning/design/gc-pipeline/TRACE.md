@@ -1,5 +1,4 @@
-# Group commit phase 1 — n-gc-pipeline, 7895556b8
-
+# Group commit phase 1c — source trace at 7895556b8; draft updated 2026-10-08
 The ordinary committer barrier is already off the owner mutex; the inline path is not.
 There is also an owner-held `:full` fallback inside the committer's drain.
 No host/book changes, certification, network, commits or pushes. O = `host/native/owner.lisp`,
@@ -100,21 +99,22 @@ I = `host/native/io.lisp`; book names refer to `books/`.
    counts packed 4+record bytes (same book:81), not whole padded log bytes.
    Draft requires a profile-consistent single-record fit and encoded-length
    preflight. Validate profile consistency; do not truncate an oversized record.
-5. statements.lisp has three unproved contracts; contracts.lisp defines every
-   term using current calls/refinements (fn-lgc-take-refines:796,
-   fn-lgc-fence-failed-refines:787 in store-log-kernel-concrete). They are
-   dependency-prefix, uncertain-release and exact-membership obligations.
-   Still owed: preserve linkedp over composed transitions, bind actual reader/
-   feed/log render dependencies to those prefixes, and bind :stop to native
-   store-fence/exit. This draft is NOT an end-to-end octet provenance proof.
-6. witnesses.lisp asserts whole antecedents AND conclusions and ground
-   negations/must-fail teeth: ACK at append, unpinned reader, failed-next
-   acceptance, stale count, singleton/encoded-octet overflow. No failed proof
-   search is called a counterexample. No two-appended-batches witness yet.
-
-REPL: `python3 tools/proof_repl.py --help` succeeded. Startup used
-`timeout 60 python3 tools/proof_repl.py start gc-pipeline books/owner-reader-view --upto fn-ocvm-inv-init --cached-only --host laptop`.
-It failed BEFORE ACL2: `Operation not permitted: /Users/ember/.cache/fn-acl2-slots/slot-000`.
-No witness was evaluated; no certificate was built. With the normal pool writable:
-`timeout 60 python3 tools/proof_repl.py start gc-pipeline-witnesses planning/design/gc-pipeline/witnesses --cached-only --ld planning/design/gc-pipeline/contracts --host laptop`.
-This loads contracts from source, never statements as theorems; do not bypass the pool.
+5. Phase 1c replaces the premise-shifted contract. The KEYSTONE is now
+   fn-ocp-gc-linkedp-initially / fn-ocp-gc-linkedp-preserved; reveals is a
+   step-output COROLLARY. Neither successor-linkedp nor reveals-okp guards STEP.
+   fn-lgk-append-behind extends the existing kernel by a frozen-appended-next
+   bit and a codec-derived write plan; committed/inflight/batch still partition H.
+   Its new statements preserve that partition, monotone D and ACK <= D.
+   fn-ocp-gc-host-step composes existing OCP, OCVM, OQW, OLR and kernel calls.
+   Next append waits for current :fence; that fence commits only A. COMPLETE
+   ACKs A, advances fn-ocv, promotes B and resumes its saved job phase. The
+   native fnn-owner-run-job must not restart B's already completed append.
+6. All 9 positive witnesses and 8 ground-negation/must-fail teeth passed on
+   persvati (gc-pipeline-1c); 325 reached-state/event combinations also passed.
+   Every hypothesis has a positive witness. The phase-removal tooth retains
+   linkedp and both member lists in a reached :done state. Profile removal
+   demonstrates packed 5 bytes fitting OMAX=5 while its log encoding is 512.
+   See RESULTS.md for commands, per-witness results, vacuity audit and fixes.
+   No keystone was loaded/proved, no certification or production code changes.
+   Still owed: native dispatcher/generation/custody wiring, multi-write crash
+   refinement and actual renderer provenance; this is a proposed core contract.
