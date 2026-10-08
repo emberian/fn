@@ -1,0 +1,14 @@
+{
+ "category": "proof-owed",
+ "disposition": "LOCAL",
+ "exposure": "none",
+ "file": "books/peer-offer-catalog.lisp",
+ "id": "VIEWIDX-P2-CARRIED-ROWS",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "low",
+ "source": "s-viewidx",
+ "state": "deferred",
+ "title": "Wire P2 (fn-peer-history-hasp-is-the-catalog-column, books/peer-offer-catalog.lisp) into the peer arm: needs fn-scj-acc-rowsp carried at peer reads (idle store plus view version = history length, or a carried row relation). Cures the O(N) scan a withdrawn Message-ID takes in fn-scr-history-hasp (gate: node articles = visible list)",
+ "updated": "2026-10-08T04:35:57Z"
+}
