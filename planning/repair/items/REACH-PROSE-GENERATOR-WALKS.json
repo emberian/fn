@@ -17,7 +17,9 @@
   "PRF-919: fn-dl-map-skip-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-map-skip, fn-dl-map-skip-loop)",
   "PRF-919: fn-dl-step-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-step, fn-dl-step-loop)",
   "PRF-919: fn-dl-sum-loop-is-plus (books/def-loop.lisp; subjects fn-dl-sum, fn-dl-sum-loop)",
-  "PRF-383: fn-dl-map-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-map, fn-dl-map-loop)"
+  "PRF-383: fn-dl-map-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-map, fn-dl-map-loop)",
+  "World reach gate at 87daf18f5 (first --world --strict run, N): this item's 8 events recur as NEW orphans with no baseline entry, plus one more:",
+  "PRF-919: fn-dl-thread-loop-is-revappend (books/def-loop.lisp:518; subjects fn-dl-thread, fn-dl-thread-loop). A generator lemma: the host runs def-loop's generated instances, never fn-dl-thread-loop itself, so the disposition is the same as this item's other def-loop events (name the instance correspondence, or unreachable-in-composition with the PRF re-scoped)."
  ],
- "updated": "2026-10-07T14:30:00Z"
+ "updated": "2026-10-08T07:30:00Z"
 }
