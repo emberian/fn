@@ -1213,6 +1213,10 @@ class Run:
     def phase_fault_index_saturation(self, ph):
         return faults.index_saturation(self, ph)
 
+    def phase_fault_bp_disruption(self, ph):
+        from tools.load.faults_bp import bp_disruption
+        return bp_disruption(self, ph)
+
     def phase_fault_held_reader(self, ph):
         return faults.held_reader(self, ph)
 

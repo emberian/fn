@@ -793,8 +793,13 @@
    "phases": [
     {
      "name": "fault",
-     "kind": "unimplemented",
-     "reason": "F8 owner N: P1-DURABLE; P2-IDENTITY; P5-RECOVERY: two BP nodes with lost receipts, duplicate transfers, restarts, incarnation change and stale ack replay must preserve durable identity and recover productively."
+     "kind": "fault_bp_disruption",
+     "seed": 1,
+     "histories": 1,
+     "shrink_runs": 16,
+     "command_deadline_s": 10,
+     "recovery_s": 120,
+     "measure": true
     }
    ]
   },

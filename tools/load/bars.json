@@ -825,6 +825,57 @@
    "file": "tools/load/faults.py",
    "owner": "deputy-L",
    "severity": "high"
+  },
+  {
+   "id": "P1-DURABLE-F8",
+   "quantity": "P1-DURABLE externally visible property violations",
+   "cell": "F8",
+   "workload": "fault-bp-disruption",
+   "checks": [
+    {
+     "metric": "faults.P1-DURABLE.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "ruling 24; tools/load/faults.py",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "P2-IDENTITY-F8",
+   "quantity": "P2-IDENTITY externally visible property violations",
+   "cell": "F8",
+   "workload": "fault-bp-disruption",
+   "checks": [
+    {
+     "metric": "faults.P2-IDENTITY.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "ruling 24; tools/load/faults.py",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
+  },
+  {
+   "id": "P5-RECOVERY-F8",
+   "quantity": "P5-RECOVERY externally visible property violations",
+   "cell": "F8",
+   "workload": "fault-bp-disruption",
+   "checks": [
+    {
+     "metric": "faults.P5-RECOVERY.violations",
+     "cmp": "eq",
+     "threshold": 0
+    }
+   ],
+   "source": "ruling 24; tools/load/faults.py",
+   "file": "tools/load/faults.py",
+   "owner": "deputy-L",
+   "severity": "high"
   }
  ]
 }

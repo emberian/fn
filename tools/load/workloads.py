@@ -21,6 +21,7 @@ PHASE_KINDS = {
     "fault_index_saturation": {"colliding_ids", "absent_ids", "collision_bits", "candidate_budget",
                                "tag_batch", "prefix_octets", "command_deadline_s", "recovery_s"},
     "fault_held_reader": {"readers", "shrink_runs", "command_deadline_s", "recovery_s"},
+    "fault_bp_disruption": {"seed", "histories", "shrink_runs", "command_deadline_s", "recovery_s"},
     "fault_slow_reader": {"duration_s", "solo_s", "recv_sleep_s", "pipeline", "shrink_runs", "command_deadline_s"},
     "fault_framing": {"split_budget", "shrink_runs", "command_deadline_s", "fragment_pause_s", "rss_slack_kib"},
     "fault_crash_boundary": {"posts", "samples_per_boundary", "shrink_runs", "command_deadline_s", "recovery_s"},
