@@ -23,6 +23,7 @@
 
 (in-package "ACL2")
 (include-book "injection-info-params")
+(include-book "injection-info-params-reference")
 (include-book "injection-header-lines")
 (include-book "poster-bytes-invariants")
 
@@ -1191,3 +1192,174 @@
 ; books above cite them by :use and do not inherit them as rewrites.
 (in-theory (disable fn-ipp-injected-octets-carry-the-parameters
                     fn-ipp-with-params-of-an-injection))
+
+; The only compatibility domain is the successful injector, which supplies
+; every lexical premise of the hardened walk.  Old forms are book-level specs.
+(local
+ (defthm fn-pb-block-hardening-agrees
+   (implies (and (fn-pb-line-textp date) (equal (len date) 31)
+                 (implies gid (fn-pb-line-textp msgid)))
+            (equal (fn-pb-block-agent
+                    (append (fn-inj-block date msgid agent gid gdate) source) msgid)
+                   (fn-pb-block-agent-old
+                    (append (fn-inj-block date msgid agent gid gdate) source) msgid)))
+   :hints (("Goal" :do-not-induct t
+            :cases ((and gid gdate) (and gid (not gdate)) (and (not gid) gdate))
+            :in-theory (e/d (fn-pb-block-agent fn-pb-block-agent-old
+                              fn-inj-block fn-inj-strip-optional)
+                             (fn-pb-fixed-linep fn-pb-strip-header-line
+                              fn-pb-info-line-agent))))))
+
+(local
+ (defthm fn-pb-path-block-hardening-agrees
+   (implies (and (fn-pb-line-textp date) (equal (len date) 31)
+                 (implies gid (fn-pb-line-textp msgid)))
+            (equal (fn-pb-path-agent
+                    (append (fn-inj-block date msgid agent gid gdate) source) msgid)
+                   (fn-pb-path-agent-old
+                    (append (fn-inj-block date msgid agent gid gdate) source) msgid)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-pb-path-agent fn-pb-path-agent-old)
+                             (fn-pb-block-agent fn-pb-block-agent-old fn-inj-block
+                              fn-cll-skip fn-pb-path-line-agent))
+            :use ((:instance fn-cll-skip-of-an-article-not-opening-with-c
+                             (x (append (fn-inj-block date msgid agent gid gdate)
+                                        source))))))))
+
+(local
+ (defthm fn-pb-path-prefix-hardening-agrees
+   (equal (fn-pb-path-agent
+           (append (fn-inj-prefix date msgid agent gid gdate) source) mid)
+          (fn-pb-path-agent-old
+           (append (fn-inj-prefix date msgid agent gid gdate) source) mid))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-pb-path-agent fn-pb-path-agent-old fn-inj-prefix
+                              fn-pb-block-agent fn-pb-block-agent-old
+                              fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                              fn-inj-path-line)
+                             (fn-pb-fixed-linep fn-pb-strip-header-line
+                              fn-pb-info-line-agent fn-pb-path-line-agent
+                              fn-inj-block))))))
+
+(local
+ (defthm fn-pb-path-agent-hardening-agrees-on-injection
+   (let ((d (fn-inj-decide source config obs)))
+     (implies (fn-inj-injectedp d)
+              (equal (fn-pb-path-agent (fn-inj-decision-octets d)
+                                       (fn-inj-decision-msgid d))
+                     (fn-pb-path-agent-old (fn-inj-decision-octets d)
+                                           (fn-inj-decision-msgid d)))))
+   :hints (("Goal" :do-not-induct t
+            :cases ((fn-inj-supplies-pathp source))
+            :in-theory (union-theories '(fn-ipp-inj-append-is-append)
+                                      (theory 'minimal-theory))
+            :use ((:instance fn-inj-injected-octets-are-the-block-and-the-source)
+                  (:instance fn-inj-injected-octets-are-the-block-and-the-prefixed-source)
+                  (:instance fn-pb-injected-generated-id-line-textp (observation obs))
+                  (:instance fn-pb-date-octets-line-textp (inst (fn-inj-instant-of (fn-clock-wall obs))))
+                  (:instance fn-ipp-date-octets-shape (inst (fn-inj-instant-of (fn-clock-wall obs))))
+                  (:instance fn-pb-path-prefix-hardening-agrees
+                             (date (fn-ipp-date obs))
+                             (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                             (mid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                             (agent (fn-inj-config-agent config))
+                             (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source)))
+                  (:instance fn-pb-path-block-hardening-agrees
+                             (date (fn-ipp-date obs))
+                             (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                             (agent (fn-inj-config-agent config))
+                             (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source))
+                             (source (fn-inj-splice source (fn-inj-path-offset source)
+                                                    (fn-inj-path-insert
+                                                     (fn-inj-config-agent config))))))))))
+
+(local
+ (defthm fn-ipp-block-hardening-agrees-when-generated-id
+   (implies (and (fn-pb-line-textp date) (equal (len date) 31)
+                 (implies gid (fn-pb-line-textp msgid))
+                 (fn-pb-line-textp agent))
+            (equal (fn-ipp-at-stamp
+                    (append (fn-inj-block date msgid agent gid gdate) source)
+                    agent msgid params)
+                   (fn-ipp-at-stamp-old
+                    (append (fn-inj-block date msgid agent gid gdate) source)
+                    agent msgid params)))
+   :hints (("Goal" :do-not-induct t
+            :cases ((and gid gdate) (and gid (not gdate)) (and (not gid) gdate))
+            :in-theory (e/d (fn-inj-block fn-ipp-at-stamp fn-ipp-at-stamp-old
+                              fn-ipp-at-date fn-ipp-at-date-old
+                              fn-ipp-at-msgid fn-ipp-at-msgid-old
+                              fn-ipp-at-info fn-ipp-at-info-old)
+                             (fn-pb-fixed-linep fn-pb-strip-header-line))))))
+
+(local
+ (defthm fn-ipp-prefix-hardening-agrees
+   (let ((x (append (fn-inj-prefix date msgid agent gid gdate) source)))
+     (implies (and (fn-pb-line-textp date) (equal (len date) 31)
+                   (implies gid (fn-pb-line-textp msgid))
+                   (fn-pb-line-textp agent)
+                   (equal (fn-pb-path-agent x msgid) agent)
+                   (equal (fn-pb-path-agent-old x msgid) agent))
+              (equal (fn-ipp-with-params x msgid params)
+                     (fn-ipp-with-params-old x msgid params))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-ipp-with-params fn-ipp-with-params-old)
+                             (fn-pb-path-agent fn-pb-path-agent-old
+                              fn-pb-path-prefix-hardening-agrees
+                              fn-pb-path-block-hardening-agrees
+                              fn-ipp-at-stamp fn-ipp-at-stamp-old
+                              fn-inj-prefix fn-inj-block))))))
+
+(local
+ (defthm fn-ipp-local-block-hardening-agrees
+   (let ((x (append (fn-inj-block date msgid agent gid gdate) source)))
+     (implies (and (fn-pb-line-textp date) (equal (len date) 31)
+                   (implies gid (fn-pb-line-textp msgid))
+                   (fn-pb-line-textp agent)
+                   (equal (fn-pb-path-agent x msgid) agent)
+                   (equal (fn-pb-path-agent-old x msgid) agent))
+              (equal (fn-ipp-with-params x msgid params)
+                     (fn-ipp-with-params-old x msgid params))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-ipp-with-params fn-ipp-with-params-old)
+                             (fn-pb-path-agent fn-pb-path-agent-old
+                              fn-pb-path-prefix-hardening-agrees
+                              fn-pb-path-block-hardening-agrees
+                              fn-ipp-at-stamp fn-ipp-at-stamp-old
+                              fn-inj-prefix fn-inj-block))))))
+
+(defthm fn-ipp-hardening-agrees-on-injection
+  (let ((d (fn-inj-decide source config obs)))
+    (implies (fn-inj-injectedp d)
+             (equal (fn-ipp-with-params (fn-inj-decision-octets d)
+                                         (fn-inj-decision-msgid d) params)
+                    (fn-ipp-with-params-old (fn-inj-decision-octets d)
+                                             (fn-inj-decision-msgid d) params))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-inj-supplies-pathp source))
+           :in-theory (union-theories '(fn-ipp-inj-append-is-append)
+                                     (theory 'minimal-theory))
+           :use ((:instance fn-inj-injected-octets-are-the-block-and-the-source)
+                 (:instance fn-inj-injected-octets-are-the-block-and-the-prefixed-source)
+                 (:instance fn-pb-path-agent-of-an-injection)
+                 (:instance fn-pb-path-agent-hardening-agrees-on-injection)
+                 (:instance fn-ipp-an-injection-configures-first)
+                 (:instance fn-pb-config-agent-line-textp (cfg config))
+                 (:instance fn-pb-injected-generated-id-line-textp (observation obs))
+                 (:instance fn-pb-date-octets-line-textp
+                            (inst (fn-inj-instant-of (fn-clock-wall obs))))
+                 (:instance fn-ipp-date-octets-shape
+                            (inst (fn-inj-instant-of (fn-clock-wall obs))))
+                 (:instance fn-ipp-prefix-hardening-agrees
+                            (date (fn-ipp-date obs))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                            (agent (fn-inj-config-agent config))
+                            (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source)))
+                 (:instance fn-ipp-local-block-hardening-agrees
+                            (date (fn-ipp-date obs))
+                            (msgid (fn-inj-decision-msgid (fn-inj-decide source config obs)))
+                            (agent (fn-inj-config-agent config))
+                            (gid (fn-ipp-gid source)) (gdate (fn-ipp-gdate source))
+                            (source (fn-inj-splice source (fn-inj-path-offset source)
+                                                   (fn-inj-path-insert
+                                                    (fn-inj-config-agent config)))))))))
