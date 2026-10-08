@@ -108,14 +108,23 @@ class StartEveryPresetTests(unittest.TestCase):
                                  image, node)
 
     def test_a_heap_below_the_decided_figure_is_refused_by_name(self):
-        """85% of the figure the probe decides is named explicitly (a caller's
-        SBCL_USER_ARGS wins over the launcher's decision): the served run is
-        refused at cold start, and the BP node's funding is refused, by ACL2.
-        (The developer store owner's figure has more slack: it still starts at
-        85%, so it carries no tooth here.)"""
+        """85% of the figure each command's own probe decides, named
+        explicitly (a caller's SBCL_USER_ARGS wins over the launcher's
+        decision), is refused by ACL2 at cold start: the served run and the
+        developer store owner (the pool or the store's protected runtime), the
+        BP node (its session funding).
+
+        The store owner's probe once decided 3026 MB against about 1850 MB its
+        cold start needs (1700 refused for read headroom, 1600 for protected
+        runtime), so 85% still started.  Cause: the probe left OBSERVED nil,
+        which sizes the history by the profile's whole bound; the operator's
+        run observes the store on disk (host/native/heap.lisp
+        fnn-heap-command-profile-base, the owner clause), and now the owner's
+        probe does too (1934 MB).  Connections do not move the figure."""
         node = self.node(DEVELOPER, "development")
         for label, words, refusal in (
                 ("served run", self.served_words(node), b"cold startup refused"),
+                ("store owner", self.owner_words(node), b"cold startup refused"),
                 ("bp node", self.bp_words(node, free_port()), b"refused")):
             with self.subTest(command=label):
                 heap, text = probe(DEVELOPER, words)
