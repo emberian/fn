@@ -286,9 +286,11 @@
 ; fn-assume-log-sole-pending-writer-names-only-the-log are in
 ; books/assumptions.lisp (included through store-log), where every named
 ; obligation of the tree lives; it is an fn obligation, not a platform
-; assumption, discharged by fn-owb-related-state-is-the-sole-pending-writer
-; (books/owner-batch.lisp, for fn-owb-recover-establishes-relation).  The
-; constraint is all this book uses.
+; assumption.  Only the overwriting recovery
+; (fn-lgk-recover-establishes-relation) uses it, and the open the host runs
+; (books/store-log-recover-copy.lisp fn-lgrc-program) never overwrites below
+; the frontier, so it has no discharge theorem.  The constraint is all this
+; book uses.
 
 (local
  (defthm fn-lgkc-ops-all-for-ino

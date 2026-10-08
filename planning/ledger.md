@@ -13,13 +13,13 @@ stale. Counts describe artifacts, not coverage; see
 | Books read | 3092 |
 | Certification roots in the Makefile | 2606 |
 | Books inside the root closure | 2937 |
-| `defthm` and `defthmd` events | 41877 |
-| `defun` events | 26436 |
+| `defthm` and `defthmd` events | 41876 |
+| `defun` events | 26435 |
 | Functions with verified guards | 4173 |
-| Functions declared `:verify-guards nil` and never verified | 3458 |
+| Functions declared `:verify-guards nil` and never verified | 3457 |
 | Functions left at the default with an explicit guard | 14503 |
 | Functions left at the default with no guard | 4302 |
-| `assert-event` checks | 28367 |
+| `assert-event` checks | 28366 |
 | `must-fail` checks | 2803 |
 | of which labelled prover-refusal (proof search refused, no counter-witness) | 0 |
 | `encapsulate` events | 257 |
@@ -1147,7 +1147,7 @@ that `make certify` requests.
 | `books/owner-article-held.lisp` | root | 60 | 8 | 0/0/6/2 | 0 | 0 | 9 |
 | `books/owner-article-slots.lisp` | root | 26 | 18 | 0/0/17/1 | 0 | 0 | 6 |
 | `books/owner-authority-proposal-state.lisp` | closure | 1 | 4 | 0/0/4/0 | 0 | 0 | 0 |
-| `books/owner-batch.lisp` | root | 51 | 31 | 0/14/17/0 | 0 | 0 | 4 |
+| `books/owner-batch.lisp` | root | 49 | 30 | 0/13/17/0 | 0 | 0 | 4 |
 | `books/owner-bound-commit.lisp` | root | 2 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-canonical-epoch.lisp` | closure | 0 | 1 | 0/0/1/0 | 0 | 0 | 0 |
 | `books/owner-canonical-read-state.lisp` | root | 0 | 2 | 0/0/2/0 | 0 | 0 | 0 |
@@ -2368,7 +2368,7 @@ that `make certify` requests.
 | `tests/acl2/defkeystone-tests.lisp` | root | 10 | 3 | 0/0/3/0 | 66 | 14 | 0 |
 | `tests/acl2/deflate-inflate-tests.lisp` | root | 6 | 9 | 0/5/4/0 | 22 | 4 | 0 |
 | `tests/acl2/deflate-inflate-vectors.lisp` | closure | 0 | 0 | 0/0/0/0 | 0 | 0 | 0 |
-| `tests/acl2/deflate-pool-tests.lisp` | root | 5 | 3 | 0/0/2/1 | 0 | 1 | 0 |
+| `tests/acl2/deflate-pool-tests.lisp` | root | 6 | 3 | 0/0/2/1 | 0 | 1 | 0 |
 | `tests/acl2/defrecord-tests.lisp` | root | 37 | 20 | 9/0/11/0 | 39 | 1 | 2 |
 | `tests/acl2/docs-operator-grammar-tests.lisp` | root | 0 | 4 | 0/0/0/4 | 4 | 0 | 0 |
 | `tests/acl2/exchange-tests.lisp` | root | 0 | 0 | 0/0/0/0 | 162 | 0 | 0 |
@@ -2642,7 +2642,7 @@ that `make certify` requests.
 | `tests/acl2/owner-advance-carried-tests.lisp` | root | 0 | 1 | 0/1/0/0 | 64 | 16 | 0 |
 | `tests/acl2/owner-agent-tests.lisp` | root | 0 | 1 | 0/0/0/1 | 22 | 3 | 0 |
 | `tests/acl2/owner-article-slots-tests.lisp` | root | 0 | 11 | 0/0/0/11 | 78 | 0 | 0 |
-| `tests/acl2/owner-batch-tests.lisp` | root | 0 | 35 | 0/25/7/3 | 18 | 0 | 0 |
+| `tests/acl2/owner-batch-tests.lisp` | root | 0 | 35 | 0/25/7/3 | 17 | 0 | 0 |
 | `tests/acl2/owner-bound-commit-tests.lisp` | root | 0 | 2 | 0/0/0/2 | 5 | 3 | 0 |
 | `tests/acl2/owner-cancel-lock-tests.lisp` | root | 0 | 5 | 0/0/0/5 | 20 | 4 | 0 |
 | `tests/acl2/owner-cancel-refresh-tests.lisp` | root | 0 | 9 | 0/2/0/7 | 9 | 1 | 0 |
@@ -3887,10 +3887,10 @@ Every theorem below is proved; none may be cited as a registry event in
 | `fn-ovw-session-of-multi-octets` | `books/served-catalog.lisp` | 1183 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ovw-session-of-single` | `books/served-catalog.lisp` | 1175 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-ovw-status-is-crlf` | `books/served-catalog.lisp` | 1296 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor); definition-restated: the conclusion is the body of fn-ovw-status |
-| `fn-owb-fields-of-make` | `books/owner-batch.lisp` | 141 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
-| `fn-owb-lgk-append-when-refused` | `books/owner-batch.lisp` | 344 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-append and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lgk-append and the conclusion is that branch's value |
-| `fn-owb-lgk-finish-one-when-nothing-waits` | `books/owner-batch.lisp` | 393 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-finish-one and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-lgk-finish-one and the conclusion is that branch's value |
-| `fn-owb-lgk-prepare-when-faulted` | `books/owner-batch.lisp` | 308 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-prepare and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lgk-prepare and the conclusion is that branch's value |
+| `fn-owb-fields-of-make` | `books/owner-batch.lisp` | 138 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
+| `fn-owb-lgk-append-when-refused` | `books/owner-batch.lisp` | 341 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-append and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lgk-append and the conclusion is that branch's value |
+| `fn-owb-lgk-finish-one-when-nothing-waits` | `books/owner-batch.lisp` | 390 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-finish-one and the conclusion is that arm's value; branch-of-definition: the hypothesis negates a branch test of fn-lgk-finish-one and the conclusion is that branch's value |
+| `fn-owb-lgk-prepare-when-faulted` | `books/owner-batch.lisp` | 305 | arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-prepare and the conclusion is that arm's value; branch-of-definition: the hypothesis is a branch test of fn-lgk-prepare and the conclusion is that branch's value |
 | `fn-own-clock-of-fn-own-make` | `books/owner.lisp` | 861 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-own-config-of-fn-own-make` | `books/owner.lisp` | 867 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |
 | `fn-own-conn-archive-of-fn-own-conn-make` | `books/owner.lisp` | 367 | definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor) |

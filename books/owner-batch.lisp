@@ -69,15 +69,12 @@
 ;     fn-owb-image-scan-of-related-state,
 ;     fn-owb-recovered-kernel-after-a-failed-fence) are its proof, and
 ;     fn-owb-fence-failed-answers-uncertain is this layer's half.
-;   fn-owb-recover-establishes-relation: store-log-recover's obligation
-;     fn-assume-log-sole-pending-writer discharged by functional instantiation
-;     with fn-owb-sole-pending-writer, which every R-related store satisfies
-;     (fn-owb-related-state-is-the-sole-pending-writer).  Proof-side only: it
-;     discharges the obligation of the overwriting recovery
-;     (fn-lgk-recover-establishes-relation); the open the host runs never
-;     writes below the frontier (books/store-log-recover-copy.lisp
-;     fn-lgrc-program, RL-01), and establishes R itself
-;     (fn-lgrc-open-keeps-the-relation-at-every-cut).
+;   store-log-recover's obligation fn-assume-log-sole-pending-writer is no
+;     longer discharged here: the open the host runs never writes below the
+;     frontier (books/store-log-recover-copy.lisp fn-lgrc-program, RL-01) and
+;     establishes R itself (fn-lgrc-open-keeps-the-relation-at-every-cut), so
+;     the overwriting recovery (fn-lgk-recover-establishes-relation) is not
+;     the host's and its discharge went with it.
 
 (in-package "ACL2")
 (include-book "store-log-recover")
@@ -510,37 +507,6 @@
                                       (nfix omax))))
                          (equal (fn-owb-take st id token record unit bmax omax) st))))
   :hints (("Goal" :in-theory (disable fn-owb-batch-octets fn-lg-log))))
-
-; -----------------------------------------------------------------------------
-; The sole pending writer: store-log-recover's obligation, discharged.
-
-(defun fn-owb-sole-pending-writer (bs ino)
-  (declare (xargs :guard t :verify-guards nil))
-  (not (fn-bs-ops-not-for-ino (fn-bs-pending bs) ino)))
-
-(defthm fn-owb-related-state-is-the-sole-pending-writer
-  (implies (fn-lgk-relp bs ks ino genesis max)
-           (fn-owb-sole-pending-writer bs ino))
-  :hints (("Goal" :in-theory (e/d (fn-lgk-relp) (fn-lgk-content-okp fn-lg-log)))))
-
-(defthm fn-owb-recover-establishes-relation
-  (let* ((unit (fn-bs-unit bs)) (c (fn-bs-durable-content bs ino))
-         (ks (fn-lgk-recover c genesis unit max next-txid))
-         (f (fn-lgk-frontier ks))
-         (bs1 (mv-nth 1 (fn-bs-write bs ino f (fn-bs-zeros (- (len c) f)) :ok)))
-         (bs2 (mv-nth 1 (fn-bs-fsync-file bs1 ino :ok))))
-    (implies (and (posp unit) ino (assoc-equal ino (fn-bs-inodes bs))
-                  (true-listp c) (equal (mod (len c) unit) 0)
-                  (fn-frame-digestp genesis)
-                  (fn-owb-sole-pending-writer bs ino)
-                  (not (fn-bs-ops-for-ino (fn-bs-pending bs) ino)))
-             (fn-lgk-relp bs2 ks ino genesis max)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories (theory 'minimal-theory)
-                                      '(fn-owb-sole-pending-writer))
-           :use ((:functional-instance fn-lgk-recover-establishes-relation
-                                       (fn-assume-log-sole-pending-writer
-                                        fn-owb-sole-pending-writer))))))
 
 ; -----------------------------------------------------------------------------
 ; The crash images of a related state: the committed records are read by

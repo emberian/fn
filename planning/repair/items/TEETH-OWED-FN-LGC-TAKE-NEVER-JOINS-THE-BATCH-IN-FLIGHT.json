@@ -5,11 +5,13 @@
  "id": "TEETH-OWED-FN-LGC-TAKE-NEVER-JOINS-THE-BATCH-IN-FLIGHT",
  "keystone": "fn-lgc-take-never-joins-the-batch-in-flight",
  "line": 811,
- "notes": [],
+ "notes": [
+  "10-07 22:44 10-08 p-reach-rescope: hand-written assert-event teeth exist in tests/acl2/store-log-kernel-concrete-tests.lisp (positive witness, :full arm, labelled mutation witness); stays OPEN because the gate's close condition is a defteeth declaration (books/defkeystone.lisp), not written here."
+ ],
  "owner": "per-record-state",
  "severity": "low",
  "source": "TEETH-GATE",
  "state": "open",
  "title": "fn-lgc-take-never-joins-the-batch-in-flight is a new registry keystone with no generated teeth: declare (defteeth fn-lgc-take-never-joins-the-batch-in-flight ...) in a tests/acl2 book",
- "updated": "2026-10-08T00:45:41Z"
+ "updated": "2026-10-08T02:44:19Z"
 }

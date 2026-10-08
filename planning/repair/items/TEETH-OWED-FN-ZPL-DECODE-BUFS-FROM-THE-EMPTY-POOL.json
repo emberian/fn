@@ -5,11 +5,13 @@
  "id": "TEETH-OWED-FN-ZPL-DECODE-BUFS-FROM-THE-EMPTY-POOL",
  "keystone": "fn-zpl-decode-bufs-from-the-empty-pool",
  "line": 458,
- "notes": [],
+ "notes": [
+  "10-07 22:44 10-08 p-reach-rescope: hand-written assert-event teeth exist in tests/acl2/deflate-pool-tests.lisp dpt-empty-pool-witness (positive; the refusal-reason and forged-pool witnesses there are the neighbouring teeth; no hypothesis-removal witness for the octet-list hypotheses, which are guard-domain); stays OPEN because the gate's close condition is a defteeth declaration (books/defkeystone.lisp), not written here."
+ ],
  "owner": "compress-3",
  "severity": "low",
  "source": "TEETH-GATE",
  "state": "open",
  "title": "fn-zpl-decode-bufs-from-the-empty-pool is a new registry keystone with no generated teeth: declare (defteeth fn-zpl-decode-bufs-from-the-empty-pool ...) in a tests/acl2 book",
- "updated": "2026-10-08T00:45:41Z"
+ "updated": "2026-10-08T02:44:19Z"
 }

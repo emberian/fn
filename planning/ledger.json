@@ -2613,15 +2613,15 @@
     "books": 3092,
     "books_in_root_closure": 2937,
     "roots": 2606,
-    "theorems": 41877,
-    "functions": 26436,
-    "assert_events": 28367,
+    "theorems": 41876,
+    "functions": 26435,
+    "assert_events": 28366,
     "must_fails": 2803,
     "prover_refusals": 0,
     "encapsulates": 257,
     "guards": {
       "verified": 4173,
-      "declared-off": 3458,
+      "declared-off": 3457,
       "default-guarded": 14503,
       "default-unguarded": 4302
     },
@@ -33850,11 +33850,11 @@
       "book": "books/owner-batch.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 51,
-      "functions": 31,
+      "theorems": 49,
+      "functions": 30,
       "guards": {
         "verified": 0,
-        "declared-off": 14,
+        "declared-off": 13,
         "default-guarded": 17,
         "default-unguarded": 0
       },
@@ -68705,7 +68705,7 @@
       "book": "tests/acl2/deflate-pool-tests.lisp",
       "in_root_closure": true,
       "is_root": true,
-      "theorems": 5,
+      "theorems": 6,
       "functions": 3,
       "guards": {
         "verified": 0,
@@ -76200,7 +76200,7 @@
         "default-unguarded": 3
       },
       "verify_guards_events": 0,
-      "assert_events": 18,
+      "assert_events": 17,
       "must_fails": 0,
       "prover_refusals": 0,
       "defconsts": 3,
@@ -96691,7 +96691,7 @@
     {
       "theorem": "fn-owb-fields-of-make",
       "book": "books/owner-batch.lisp",
-      "line": 141,
+      "line": 138,
       "reasons": [
         "definition-restated: both sides unfold to the same term (non-recursive definitions, accessor of constructor)"
       ]
@@ -96699,7 +96699,7 @@
     {
       "theorem": "fn-owb-lgk-append-when-refused",
       "book": "books/owner-batch.lisp",
-      "line": 344,
+      "line": 341,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-append and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-lgk-append and the conclusion is that branch's value"
@@ -96708,7 +96708,7 @@
     {
       "theorem": "fn-owb-lgk-finish-one-when-nothing-waits",
       "book": "books/owner-batch.lisp",
-      "line": 393,
+      "line": 390,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-finish-one and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis negates a branch test of fn-lgk-finish-one and the conclusion is that branch's value"
@@ -96717,7 +96717,7 @@
     {
       "theorem": "fn-owb-lgk-prepare-when-faulted",
       "book": "books/owner-batch.lisp",
-      "line": 308,
+      "line": 305,
       "reasons": [
         "arm-of-definition: the hypotheses select one IF/COND arm of fn-lgk-prepare and the conclusion is that arm's value",
         "branch-of-definition: the hypothesis is a branch test of fn-lgk-prepare and the conclusion is that branch's value"
@@ -118498,7 +118498,7 @@
       },
       {
         "book": "books/owner-batch.lisp",
-        "line": 83,
+        "line": 80,
         "include": "store-log-recover",
         "included": "books/store-log-recover.lisp",
         "reason": "re-export: the included book ends with no theory withdrawal, so every rule it leaves enabled is enabled here and above"

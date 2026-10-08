@@ -58,32 +58,15 @@
 (defun owb-extent () (declare (xargs :guard t :verify-guards nil))
   (len (fn-bs-durable-content (owb-ext-bs) 0)))
 
-; The sole-pending-writer discharge, reachable: the store before recovery has
-; nothing pending; R is established.
+;; The recovered layer over the recovered store: R holds of the store the scan
+;; zeroed and fenced (and of its preallocated extension), the layer is aligned
+;; with the kernel, and it holds exactly the two committed records.
 (assert-event
- (let ((bs (owb-store (owb-content) nil)))
-   (and (fn-owb-sole-pending-writer bs 0)
-        (not (fn-bs-ops-for-ino (fn-bs-pending bs) 0))
-        (fn-lgk-relp (owb-bs0) (fn-owb-ks (owb-st0)) 0 (owb-genesis) (owb-max))
-        (fn-lgk-relp (owb-ext-bs) (fn-owb-ks (owb-st0)) 0 (owb-genesis) (owb-max))
-        (fn-owb-alignedp (owb-st0))
-        (equal (fn-owb-records (fn-owb-acked (owb-st0))) (list (owb-r 1) (owb-r 2)))
-        (null (fn-owb-waiting (owb-st0))) (null (fn-owb-members (owb-st0))))))
-
-; Hypothesis removal: another inode's write pending at recovery (removed:
-; fn-owb-sole-pending-writer).  The segment's fence does not drain it; R fails.
-(assert-event
- (let* ((bs (fn-bs-make (owb-unit) (list (cons 0 (owb-content)) (cons 1 nil)) nil
-                        (list (list :write 1 0 '(5 5 5 5))) 2))
-        (c (fn-bs-durable-content bs 0))
-        (ks (fn-owb-ks (owb-st0))) (f (fn-lgk-frontier ks))
-        (bs2 (owb-fsync (owb-write bs 0 f (fn-bs-zeros (- (len c) f))) 0)))
-   (and (posp (fn-bs-unit bs)) (assoc-equal 0 (fn-bs-inodes bs))
-        (true-listp c) (equal (mod (len c) (fn-bs-unit bs)) 0)
-        (fn-frame-digestp (owb-genesis))
-        (not (fn-bs-ops-for-ino (fn-bs-pending bs) 0))
-        (not (fn-owb-sole-pending-writer bs 0))
-        (not (fn-lgk-relp bs2 ks 0 (owb-genesis) (owb-max))))))
+ (and (fn-lgk-relp (owb-bs0) (fn-owb-ks (owb-st0)) 0 (owb-genesis) (owb-max))
+      (fn-lgk-relp (owb-ext-bs) (fn-owb-ks (owb-st0)) 0 (owb-genesis) (owb-max))
+      (fn-owb-alignedp (owb-st0))
+      (equal (fn-owb-records (fn-owb-acked (owb-st0))) (list (owb-r 1) (owb-r 2)))
+      (null (fn-owb-waiting (owb-st0))) (null (fn-owb-members (owb-st0)))))
 
 ; -----------------------------------------------------------------------------
 ; The served sequence: three connections' members taken into one batch.

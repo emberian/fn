@@ -5,11 +5,13 @@
  "id": "TEETH-OWED-FN-PSRV-STORE-PREPARE-NEXT-KEEPS-THE-STORED-OCTETS",
  "keystone": "fn-psrv-store-prepare-next-keeps-the-stored-octets",
  "line": 192,
- "notes": [],
+ "notes": [
+  "10-07 22:44 10-08 p-reach-rescope: hand-written assert-event teeth exist in tests/acl2/store-budget-stored-post-tests.lisp (positive witness over two POSTs and mis-paired-arena removals); stays OPEN because the gate's close condition is a defteeth declaration (books/defkeystone.lisp), not written here."
+ ],
  "owner": "unassigned",
  "severity": "low",
  "source": "TEETH-GATE",
  "state": "open",
  "title": "fn-psrv-store-prepare-next-keeps-the-stored-octets is a new registry keystone with no generated teeth: declare (defteeth fn-psrv-store-prepare-next-keeps-the-stored-octets ...) in a tests/acl2 book",
- "updated": "2026-10-08T00:45:41Z"
+ "updated": "2026-10-08T02:44:19Z"
 }
