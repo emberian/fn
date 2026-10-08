@@ -50,6 +50,8 @@
  '(*fn-heap-mib* fn-heap-mb-of fn-heap-machine-octets))
 (selected-source "books/native-config.lisp"
  '(fn-ncfg-nth *fn-ncfg-max-u64* fn-native-config-output-resources-wfp))
+;; The cold-wait queue is part of the fixed reservation since s-coldwait (train 45).
+(selected-source "books/cold-read-wait.lisp" '(*fn-cwq-bound* fn-cwq-bound *fn-cwq-entry-octets* fn-cwq-queue-octets))
 (selected-source "books/cold-read-reservation.lisp" '(fn-crv-nth))
 (selected-source "books/output-reservation.lisp" '(fn-orv-policy-p fn-orv-extend-reservation))
 (selected-source "books/heap-store-figure.lisp" '(fn-heap-core-file *fn-heap-nursery-least-octets* fn-heap-nursery-trigger fn-heap-with-nursery fn-heap-grow-runtime-dynamic))
