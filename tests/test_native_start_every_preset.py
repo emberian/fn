@@ -50,6 +50,9 @@ def probe(image, words):
     return (int(figure.group(1)) if figure else None), text
 
 
+# Every case starts the developer image (the bp-node case adds the DTN image
+# where it is built), so the class skips, naming it, when that image is absent.
+@requires(DEVELOPER)
 class StartEveryPresetTests(unittest.TestCase):
     def node(self, image, preset):
         # No heap opt-out is named: image_heap makes Node start the bare image.
@@ -58,6 +61,9 @@ class StartEveryPresetTests(unittest.TestCase):
         init = node.operator("init", *PRESETS[preset], GROUP, expect=None, timeout=600)
         if init.returncode != 0:
             text = (init.stdout + init.stderr).decode("utf-8", "replace")
+            # waiver-ok: capability -- init refuses :machine-cannot-hold-profile by
+            # name when this machine's memory cannot hold the preset; that preset is
+            # a machine this tree has not been given, not a broken start.
             if "machine-cannot-hold-profile" in text:
                 self.skipTest("{}: the machine cannot hold the {} preset".format(image.name, preset))
             self.fail("init {} exited {}: {}".format(preset, init.returncode, text))
@@ -108,14 +114,23 @@ class StartEveryPresetTests(unittest.TestCase):
                                  image, node)
 
     def test_a_heap_below_the_decided_figure_is_refused_by_name(self):
-        """85% of the figure the probe decides is named explicitly (a caller's
-        SBCL_USER_ARGS wins over the launcher's decision): the served run is
-        refused at cold start, and the BP node's funding is refused, by ACL2.
-        (The developer store owner's figure has more slack: it still starts at
-        85%, so it carries no tooth here.)"""
+        """85% of the figure each command's own probe decides, named
+        explicitly (a caller's SBCL_USER_ARGS wins over the launcher's
+        decision), is refused by ACL2 at cold start: the served run and the
+        developer store owner (the pool or the store's protected runtime), the
+        BP node (its session funding).
+
+        The store owner's probe once decided 3026 MB against about 1850 MB its
+        cold start needs (1700 refused for read headroom, 1600 for protected
+        runtime), so 85% still started.  Cause: the probe left OBSERVED nil,
+        which sizes the history by the profile's whole bound; the operator's
+        run observes the store on disk (host/native/heap.lisp
+        fnn-heap-command-profile-base, the owner clause), and now the owner's
+        probe does too (1934 MB).  Connections do not move the figure."""
         node = self.node(DEVELOPER, "development")
         for label, words, refusal in (
                 ("served run", self.served_words(node), b"cold startup refused"),
+                ("store owner", self.owner_words(node), b"cold startup refused"),
                 ("bp node", self.bp_words(node, free_port()), b"refused")):
             with self.subTest(command=label):
                 heap, text = probe(DEVELOPER, words)

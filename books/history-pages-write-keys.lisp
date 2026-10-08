@@ -245,7 +245,7 @@
                  (:instance fn-hp-u64-listp-of-x-add (a (adt-lens (fn-hp-regs h salt))) (b (list 8 8 8 8 (len (fn-hp-pe ev)))))
                  (:instance fn-hp-deltas-ok-from-checks (regs (fn-hp-regs h salt)) (ds (fn-hp-ds ev salt (fn-hp-pes-len h)))))
            :in-theory (e/d (fn-hp-blocks fn-hp-lens)
-                           (fn-hp-deltas-ok-from-checks fn-hp-ds-words-of-ds fn-hp-u64-listp-of-x-add fn-hp-regs fn-hp-ds fn-hp-pe fn-scc-encode fn-scc-program
+                           (fn-hp-u64-pool-len fn-hp-deltas-ok-from-checks fn-hp-ds-words-of-ds fn-hp-u64-listp-of-x-add fn-hp-regs fn-hp-ds fn-hp-pe fn-scc-encode fn-scc-program
                             fn-hp-x-append-plan-canonical-caps adt-placement-ok fn-hp-x-unfit fn-hp-npages fn-hp-starts
                             fn-hp-mkey fn-hp-pad8 fn-hp-x-caps-ok fn-hp-x-aligned adt-cap fn-hp-pack8 floor mod
                             fn-hp-deltas-ok fn-hp-okp adt-starts adt-lens fn-hp-zapp fn-hp-body-blocks

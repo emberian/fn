@@ -21,8 +21,9 @@ SCRIPT = Path(os.environ.get("TRAIN_SCRIPT", REPO / "tools" / "train.py"))
 
 STUB = '''#!/usr/bin/env python3
 import json, os, sys
-name = os.path.basename(sys.argv[0])[:-3]
-args = [a for a in sys.argv[1:]]
+name = os.path.basename(__file__)[:-3]
+# a test-suite stub runs under `python -m unittest <file>`: no mode of its own
+args = [] if name.startswith("test_") else [a for a in sys.argv[1:]]
 mode = args[0].lstrip("-") if args else ""
 with open(os.environ["STUB_LOG"], "a") as f:
     f.write(name + " " + " ".join(args) + "\\n")
@@ -39,7 +40,9 @@ sys.exit(int(os.environ.get("STUB_RC_%s_%s" % (name, mode), "0")))
 STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/lock_discipline_check.py",
          "tools/secrets_check.py", "planning/repair/repair.py",
-         "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py"]
+         "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
+         "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
+         "tests/test_farm.py", "tests/test_current_view.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in planning/interfaces.json specs/wire-grammar.json; do
@@ -196,7 +199,7 @@ class TrainBase(unittest.TestCase):
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(STUB)
         (self.seed / "tools/remote_check.sh").write_text(REMOTE_STUB)
-        (self.seed / ".gitignore").write_text("build/\n")
+        (self.seed / ".gitignore").write_text("build/\n__pycache__/\n")
         (self.seed / "lockkeys.json").write_text("[]\n")
         (self.seed / "src.txt").write_text("a\nb\nc\n")
         (self.seed / "specs").mkdir(exist_ok=True)
@@ -406,6 +409,62 @@ class PushTests(TrainBase):
         self.commit(self.work, "host change")
         self.train("gate")
         self.assertIn("host_check --load", self.stub_log())
+
+    def test_push_refused_when_a_unit_suite_fails(self):
+        # train 36: `gate; push` pushed two test_ledger reds; the suites are gates now
+        self.ready()
+        before = self.origin_rev("dev")
+        g = self.train("gate", extra_env={"STUB_RC_test_ledger_": "1"})
+        self.assertNotEqual(g.returncode, 0, g.stdout)
+        self.assertIn("unit=1", g.stdout)
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0, p.stdout)
+        self.assertIn("gate unit failed", p.stdout + p.stderr)
+        self.assertEqual(self.origin_rev("dev"), before)
+
+    def test_unit_runs_the_fixed_suites_and_the_tests_of_changed_tools(self):
+        self.ready()
+        self.train("gate")
+        log = self.stub_log()
+        for name in ("test_ledger", "test_keystone_emit", "test_train", "test_farm"):
+            self.assertIn(name + " ", log)
+        self.assertNotIn("test_current_view ", log)
+        (self.work / "tools/current_view.py").write_text(STUB + "# changed\n")
+        self.commit(self.work, "tool change")
+        self.log.unlink()
+        self.train("gate")
+        self.assertIn("test_current_view ", self.stub_log())
+
+    def test_native_suites_are_left_to_the_native_gate(self):
+        root = Path(tempfile.mkdtemp(prefix="train-unit-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "tests").mkdir()
+        for name in ("test_native_x.py", "test_y.py", "test_z.py"):
+            (root / "tests" / name).write_text("")
+        got = train.unit_tests(root, ["tests/test_native_x.py", "tests/test_y.py",
+                                      "tools/z.py", "tools/absent.py", "books/b.lisp"])
+        self.assertEqual(got, list(train.UNIT_TESTS) + ["tests/test_y.py", "tests/test_z.py"])
+
+    def test_a_missing_fixed_suite_fails_the_gate(self):
+        self.ready()
+        (self.work / "tests/test_farm.py").unlink()
+        self.commit(self.work, "drops a suite")
+        g = self.train("gate")
+        self.assertNotEqual(g.returncode, 0, g.stdout)
+        self.assertIn("unit: tests/test_farm.py is missing", g.stdout)
+
+    def test_push_refused_when_ascii_failed(self):
+        self.ready()
+        self.assertEqual(self.train("gate").returncode, 0)
+        path = next((self.work / "build/train").glob("integrate__*.json"))
+        st = json.loads(path.read_text())
+        st["gates"]["ascii"]["rc"] = 1
+        path.write_text(json.dumps(st))
+        before = self.origin_rev("dev")
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0, p.stdout)
+        self.assertIn("gate ascii failed", p.stdout + p.stderr)
+        self.assertEqual(self.origin_rev("dev"), before)
 
     def test_secrets_failure_blocks(self):
         self.ready()

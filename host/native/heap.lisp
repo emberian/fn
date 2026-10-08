@@ -389,7 +389,14 @@ normalized store root for the pre-open DEFAULT backing reservation."
          (let* ((root (fnn-absolute (third argv)))
                 (profile (fnn-heap-store-profile root))
                 (connections (or (ignore-errors (parse-integer (sixth argv))) 0)))
-           (values profile connections :run nil nil nil root)))
+           ;; OBSERVED as the operator's run observes it (ACL2 says which
+           ;; actions are sized by the store on disk): left NIL the figure is
+           ;; the profile's whole bound, 3026 MB against the 1934 MB the
+           ;; operator's run decides for the same store.
+           (values profile connections :run
+                   (and profile (fnn-core 'fn-heap-operation-observes-p :run)
+                        (fnn-heap-history-observation root profile))
+                   nil nil root)))
         ((and (string= (or (first argv) "") "store") (third argv))
          (let ((profile (fnn-heap-store-profile (second argv))))
            (values profile 0 nil
