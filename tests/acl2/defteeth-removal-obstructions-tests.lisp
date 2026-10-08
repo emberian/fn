@@ -1,6 +1,7 @@
 ; These two requested removals have no counterexamples, even outside guards.
 ; Each proof keeps every conclusion conjunct and drops only the named premise.
-; Production theorem statements are unchanged. This book does not register teeth.
+; Round 3 promotes these proofs into the strengthened production statements.
+; This regression book retains their original independent proof evidence.
 (in-package "ACL2")
 
 (include-book "../../books/deflate-pool")
