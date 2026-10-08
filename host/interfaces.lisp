@@ -19,6 +19,11 @@
 ; lists the declared entries with no keystone or no guard verification.
 
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
+(include-book "../books/catalog-paged-attach")
 (include-book "../books/definterface")
 ; Keystones the declarations below name, in books no host file otherwise
 ; brings into the image world (decision-keystones-5; host_check --books).

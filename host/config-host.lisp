@@ -11,6 +11,9 @@
 ; from `books/nntp-syntax'; this file no longer repeats the number.
 
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/history-paged-attach")
 (include-book "../books/node-config")
 (include-book "../books/native-init-resume")
 ; `fn-native-admin-some-group-name-reservedp': RFC 5536 s3.1.4 reserved names.

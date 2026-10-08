@@ -1,6 +1,9 @@
 ; Workflow projections beside the canonical configured owner.  Store retention
 ; is mutated only by Store events; workflow replay never replaces owner state.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
 (include-book "../books/bp-release")
 (include-book "../books/bp-ion-workflow")
 (include-book "../books/bp-payload-gate")
