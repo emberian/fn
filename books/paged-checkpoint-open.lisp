@@ -1902,3 +1902,102 @@
           ("Subgoal *1/2" :expand ((fn-pck-st-of st recs))
            :use ((:instance pcko-ref-is-the-step (w (car recs)) (b a)) (:instance pcko-step-agree (w (car recs)) (b a))))
           ("Subgoal *1/1" :in-theory (e/d (pcko-sim) (pcko-ref pck-ssr1 pcko-agree)))))
+
+; -----------------------------------------------------------------------------
+; THE KEYSTONES.
+
+(defthm pcko-rows-wire-of-append
+  (equal (fn-rows-wire-of (append a b) fn-arena)
+         (append (fn-rows-wire-of a fn-arena) (fn-rows-wire-of b fn-arena)))
+  :hints (("Goal" :induct (len a) :in-theory (enable fn-rows-wire-of))))
+
+(defthm pcko-rows-wire-of-rev
+  (equal (fn-rows-wire-of (rev a) fn-arena) (rev (fn-rows-wire-of a fn-arena)))
+  :hints (("Goal" :induct (len a) :in-theory (enable fn-rows-wire-of))))
+
+(defthm pcko-rows-wire-of-nil (equal (fn-rows-wire-of nil fn-arena) nil)
+  :hints (("Goal" :in-theory (enable fn-rows-wire-of))))
+
+(defthm pcko-rev-onto-is-revappend
+  (equal (fn-ag-rev-onto x acc) (revappend x acc)))
+
+(defthm pcko-wire-of-ssr-rows
+  (implies (not (eq acc :bad))
+           (equal (fn-rows-wire-of (fn-ssr-rows acc) fn-arena)
+                  (revappend (fn-rows-wire-of (fn-ssr-at 0 acc) fn-arena) nil)))
+  :hints (("Goal" :in-theory (e/d (fn-ssr-rows) (fn-ssr-at)))))
+
+(defthm pcko-seed-rows
+  (equal (fn-ssr-at 0 (fn-ssr-seed identity)) nil)
+  :hints (("Goal" :in-theory (enable fn-ssr-seed fn-ssr-state fn-ssr-at))))
+
+(defthm pcko-seed-agree (pcko-agree (fn-pck-seed) (fn-pck-seed))
+  :hints (("Goal" :in-theory (e/d (pcko-agree fn-pck-seed) ())
+           :use (:instance fn-ssr-seed-establishes-statep (identity (fn-stxk-initial-context 0))))))
+
+(defthm pcko-revappend-rev (equal (rev (revappend x nil)) (true-list-fix x))
+  :hints (("Goal" :in-theory (enable rev revappend))))
+
+(defthm pcko-capture-fields
+  (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs) (fn-pck-resolvesp recs 0 file))
+           (let ((c (fn-pck-capture-of-pages (fn-pck-pages configs recs) file))
+                 (x (fn-pck-root-tree configs recs)))
+             (and (equal (fn-sco-records c) recs)
+                  (equal (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c) (fn-sco-topic c))
+                         (list (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-pck-root-tree fn-pck-root-tree-of-capture fn-sco-capture)
+                           (fn-pck-pages fn-pck-capture-of-pages pck-capture-of-pages))
+           :use ((:instance pck-capture-of-pages)
+                 (:instance pck-recordsp-parts)
+                 pcko-sccb-listp-true-listp))))
+
+(defun pcko-wind (a k) (if (zp k) a (pcko-wind (1+ a) (1- k))))
+
+(defthm pcko-len-words
+  (implies (natp k) (equal (len (pgs-x-words 0 a k pgs-mem)) k))
+  :hints (("Goal" :induct (pcko-wind a k) :expand ((pgs-x-words 0 a k pgs-mem)))))
+
+(defthm fn-pck-x-open-is-the-capture
+  ; KEYSTONE.  The exec open of the image the writer's pages flatten to
+  ; answers the capture `fn-pck-capture-of-pages' makes of those pages, against
+  ; the durable payload file FID that holds the model file FILE: the verdict is
+  ; :ok; the rows are the rows full recovery interns for the same records (the
+  ; held rows the tape carries, reseated; no payload read); read back through
+  ; the arena the open leaves (the payloads sealed BY REF to the durable file)
+  ; they are the capture's records; the four fold roots are the capture's.
+  ; Scope.  The image is given by its words: that every page was filled and
+  ; verified before this open (the resident open) is the driver's premise; the
+  ; lazy open (fill and verify per page) is owed (PCK-OPEN-SQUARE,
+  ; PCK-STAGE-NEED-PAGE).  The event index is not rebuilt: the Store's index is
+  ; retired (books/store-node.lisp, field 13) and nothing on the served path
+  ; reads it.  The records intern from the initial identity context without a
+  ; refusal by fn-pck-recordsp (PCK-OPEN-INTERN-NOT-BAD).
+  (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                (equal npg (len (fn-pck-pages configs recs)))
+                (equal (pgs-x-words 0 0 (* 2048 npg) pgs-mem) (adt-tp-flat (fn-pck-pages configs recs)))
+                (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))
+                (natp fid) (fn-arena-p fn-arena)
+                (true-listp file) (fn-pck-resolvesp recs 0 file) (fn-cpl-holdsp fid file 0))
+           (let ((c (fn-pck-capture-of-pages (fn-pck-pages configs recs) file))
+                 (r (fn-pck-x-open npg pgs-mem fid fn-arena fn-octets)))
+             (and (equal (mv-nth 0 r) :ok)
+                  (equal (mv-nth 1 r)
+                         (fn-ssr-rows (mv-nth 0 (fn-ssr-intern-step (fn-pck-seed) recs nil nil :resident nil fn-arena))))
+                  (equal (fn-rows-wire-of (mv-nth 1 r) (mv-nth 4 r)) (fn-sco-records c))
+                  (equal (mv-nth 2 r)
+                         (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c) (fn-sco-topic c))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable pcko-open-model pcko-sim-is-the-fold pcko-sim-wires pcko-capture-fields fn-pck-pages
+                               fn-pck-x-open fn-pck-seed fn-pck-st-of pcko-sim fn-ssr-intern-step fn-ssr-rows
+                               fn-pck-capture-of-pages fn-pck-root-tree pcko-img pcko-durablep fn-pck-resolvesp
+                               pcko-agree pcko-wire-of-ssr-rows pcko-img-intro pcko-len-w)
+           :use ((:instance pcko-img-intro (k (* 2048 npg)) (w (adt-tp-flat (fn-pck-pages configs recs))))
+                 pcko-len-w
+                 (:instance pcko-open-model (a fn-arena) (octets fn-octets))
+                 (:instance pcko-sim-is-the-fold (st (fn-pck-seed)) (acc (fn-pck-seed)) (base 0) (b fn-arena) (a fn-arena))
+                 (:instance pcko-sim-wires (st (fn-pck-seed)) (acc (fn-pck-seed)) (base 0) (a fn-arena))
+                 (:instance pcko-durablep-of-resolves (base 0))
+                 pcko-capture-fields pck-recordsp-parts pcko-sccb-listp-true-listp pcko-seed-agree pcko-seed-rows
+                 (:instance pcko-wire-of-ssr-rows (acc (mv-nth 0 (pcko-sim recs 0 (fn-pck-seed) (fn-pck-seed) fid fn-arena)))
+                            (fn-arena (mv-nth 1 (pcko-sim recs 0 (fn-pck-seed) (fn-pck-seed) fid fn-arena))))))))
