@@ -1129,8 +1129,9 @@ def installed_launcher(image):
             # host's default (host/native/tls.lisp
             # *fnn-tls-default-openssl-prefix*, the boxes' toolchain).
             shipped = Path(os.environ.get("FN_OPENSSL_PREFIX") or OPENSSL_SHIPPED)
-            if (shipped / "lib").is_dir():
-                (prefix / "libexec" / "fn" / "openssl").symlink_to(shipped)
+            if not (shipped / "lib").is_dir():
+                raise RuntimeError("no shipped OpenSSL 3.5.8 prefix at %s (D64: set FN_OPENSSL_PREFIX); the harness does not fall back to the system pair" % shipped)
+            (prefix / "libexec" / "fn" / "openssl").symlink_to(shipped)
             import atexit
             import shutil
             atexit.register(shutil.rmtree, prefix, True)
