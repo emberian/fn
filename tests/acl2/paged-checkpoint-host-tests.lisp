@@ -73,12 +73,12 @@
 (defun pckh-recs-from (first seed count)
   (declare (xargs :mode :program))
   (if (zp count) nil
-    (cons (fn-record-make first (+ 1 first) 0 "<a@x>" (pckh-wide (+ seed first) 3000)
+    (cons (fn-record-make first (+ 1 first) 0 "<a@x>" (pckh-wide (+ seed first) 20)
                           '("fn.test") "o" "s" "e" 1 5)
           (pckh-recs-from (+ 1 first) seed (- count 1)))))
-(defconst *pckh-store0* (pckh-recs-from 0 1 300))
-(defconst *pckh-d1* (pckh-recs-from 300 2 20))
-(defconst *pckh-d2* (pckh-recs-from 320 3 20))
+(defconst *pckh-store0* (pckh-recs-from 0 1 1500))
+(defconst *pckh-d1* (pckh-recs-from 1500 2 400))
+(defconst *pckh-d2* (pckh-recs-from 1900 3 400))
 ; Attachments are not callable in a defconst, hence functions.
 (defun pckh-st0 () (declare (xargs :verify-guards nil)) (fn-pck-st-of (fn-pck-seed) *pckh-store0*))
 (defun pckh-st1 () (declare (xargs :verify-guards nil)) (fn-pck-st-of (fn-pck-seed) (append *pckh-store0* *pckh-d1*)))
