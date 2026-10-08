@@ -33,6 +33,25 @@
            :in-theory (disable fn-lzr-intern-events fn-intern-events fn-record-p
                                fn-arx-extent-of))))
 
+; Without a dictionary there is no compressed extent, for any input.
+(defthm plrt-no-dictionary-event
+  (equal (fn-lzr-intern-event w z position file nil keyring generation arena-value)
+         (fn-arx-intern-event w z position file keyring generation arena-value))
+  :hints (("Goal" :in-theory
+           (e/d (fn-lzr-intern-event fn-lzr-extent-of)
+                (fn-arx-intern-event fn-record-p fn-lzr-parse)))))
+
+(teeth-ground-lemma plrt-events-without-faithful *plrt-events-claim*
+  ((ws (list (pxt-teeth-bad-w))) (zs (list (pxt-teeth-bad-r)))
+   (ps (list (cons 3 *pxt-teeth-position*)))
+   (dicts nil) (keyring nil) (generation 0) (arena-value nil))
+  :without faithful
+  :hints (("Goal" :use pxt-events-without-faithful
+           :in-theory
+           (e/d (fn-lzr-intern-events fn-arx-intern-events)
+                (fn-intern-events fn-arx-intern-event fn-lzr-intern-event
+                 fn-arx-faithful-p)))))
+
 (defteeth fn-lzr-intern-events-refines
   :claim (((faithful (fn-arx-faithful-p zs ps)))
           (equal (fn-lzr-intern-events ws zs ps dicts keyring generation arena-value)
@@ -42,7 +61,11 @@
             (ps (list (cons 3 *pxt-teeth-position*)))
             (dicts nil) (keyring nil) (generation 0) (arena-value nil))
   :witness-lemma plrt-events-positive
-  :breaks ((faithful (:assumption fn-durable-octets)))
+  :breaks ((faithful
+            ((ws (list (pxt-teeth-bad-w))) (zs (list (pxt-teeth-bad-r)))
+             (ps (list (cons 3 *pxt-teeth-position*)))
+             (dicts nil) (keyring nil) (generation 0) (arena-value nil))
+            :lemma plrt-events-without-faithful))
   :mutations ((dropped-row
                (:conclusion
                 (equal (mv-nth 0 (fn-lzr-intern-events ws zs ps dicts keyring generation arena-value)) nil))

@@ -228,8 +228,8 @@
 
 ; The event fold's teeth.  The arena premise was proved unnecessary in
 ; payload-extent: both logical seals use the same snoc on arbitrary values.
-; The remaining premise crosses A-DURABLE-EXTENT and is classified as an
-; assumption removal, not an executed counterexample.
+; A changed payload byte provides a ground counterexample to the remaining
+; faithful-bytes premise and to the conclusion together.
 (include-book "teeth-ground-lemma")
 
 ; A closed logical fixture: one well-typed event, one placed nonempty
@@ -289,6 +289,41 @@
            :in-theory (disable fn-arx-intern-events fn-intern-events fn-record-p
                                fn-arx-extent-of))))
 
+; Flip the durable byte between zero and nonzero, preserving the octet
+; guard.  The presented record contains the changed byte; its extent still
+; denotes the original durable byte.  Both faithfulness and equality fail.
+(defmacro pxt-teeth-other-byte ()
+  '(if (equal (fn-durable-octet 3 42) 0) 1 0))
+(defmacro pxt-teeth-bad-w ()
+  '(fn-record-make 7 7 1 "<x@fn.invalid>" (list (pxt-teeth-other-byte))
+                   '("fn.test") "o" "s" "e" 4 5))
+(defmacro pxt-teeth-bad-r ()
+  '(cons (pxt-teeth-other-byte) (cdr (pxt-teeth-r))))
+(defthm pxt-teeth-bad-placed
+  (and (fn-record-p (pxt-teeth-bad-w))
+       (equal (fn-arx-extent-of 3 *pxt-teeth-position* (pxt-teeth-bad-r) (pxt-teeth-bad-w))
+              (list 3 0 (+ 42 *pxt-teeth-size*) 42 1 0)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-durable-octets-unfold
+                            (file 3) (off 42) (len *pxt-teeth-size*)))
+           :in-theory (enable fn-record-p fn-record-payloadp
+                              fn-arx-extent-of fn-durable-octets-unfold))))
+(teeth-ground-lemma pxt-events-without-faithful *pxt-events-claim*
+  ((ws (list (pxt-teeth-bad-w))) (rs (list (pxt-teeth-bad-r)))
+   (ps (list (cons 3 *pxt-teeth-position*)))
+   (keyring nil) (generation 0) (arena-value nil))
+  :without faithful
+  :hints (("Goal"
+           :use (pxt-teeth-bad-placed
+                 (:instance fn-durable-octets-unfold
+                            (file 3) (off 42) (len *pxt-teeth-size*)))
+           :in-theory
+           (e/d (fn-arx-intern-events fn-intern-events fn-arx-intern-event
+                 fn-intern-event fn-arx-cat-intern-extent fn-cat-intern-list
+                 fn-arena-seal-extent fn-arena-seal-list fn-durable-octets-unfold)
+                (fn-record-p fn-held-facts-of fn-held-context-of fn-arx-extent-of)))))
+
 (defteeth fn-arx-intern-events-refines
   :claim (((faithful (fn-arx-faithful-p rs ps)))
           (equal (fn-arx-intern-events ws rs ps keyring generation arena-value)
@@ -298,7 +333,11 @@
             (ps (list (cons 3 *pxt-teeth-position*)))
             (keyring nil) (generation 0) (arena-value nil))
   :witness-lemma pxt-events-positive
-  :breaks ((faithful (:assumption fn-durable-octets)))
+  :breaks ((faithful
+            ((ws (list (pxt-teeth-bad-w))) (rs (list (pxt-teeth-bad-r)))
+             (ps (list (cons 3 *pxt-teeth-position*)))
+             (keyring nil) (generation 0) (arena-value nil))
+            :lemma pxt-events-without-faithful))
   :mutations ((dropped-row
                (:conclusion
                 (equal (mv-nth 0 (fn-arx-intern-events ws rs ps keyring generation arena-value)) nil))
