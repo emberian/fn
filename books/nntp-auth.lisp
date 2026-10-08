@@ -4144,7 +4144,7 @@
                          (fn-post-result-submission r))))
 
 ; Authentication and STARTTLS decisions remain the same.  Only a command
-; delegated past that gate can reach the trie or historical verdict pin.
+; delegated past that gate can reach the group pin or historical verdict pin.
 (defun fn-auth-step-pinned
     (as archive index verdicts config observation injection wire-event fn-arena)
   (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
@@ -4297,22 +4297,8 @@
                             fn-nntp-command-arguments-at-mostp
                             fn-auth-sasl-continue fn-auth-install-context)))))
 
-; The view's trie is the one built from the view's articles.
-(defthm fn-auth-view-trie-corresponds
-  (implies (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                    (fn-state-articles archive))
-           (fn-midx-correspondencep
-            (fn-gidx-pin-trie (fn-auth-view-index as config archive index))
-            (fn-state-articles (fn-auth-view-archive as config archive))))
-  :hints (("Goal" :in-theory (e/d (fn-auth-view-index fn-auth-view-archive
-                                   fn-gac-restrict-index fn-midx-correspondencep)
-                                  (fn-gidx-pinp fn-midx-build fn-gidx-build
-                                   fn-gac-restrict-articles fn-auth-access-read)))))
-
 (defthm fn-auth-delegate-pinned-effects-well-formed
   (implies (and (fn-auth-session-consistentp as archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
                 (fn-gidx-pin-correspondencep index archive))
            (fn-auth-effectsp
             (fn-post-result-effects
@@ -4322,10 +4308,9 @@
            (e/d (fn-auth-delegate-pinned fn-auth-session-consistentp)
                 (fn-peer-step-pinned fn-peer-session-consistentp
                  fn-nntp-effectsp fn-auth-effectsp fn-post-result-effects
-                 fn-midx-correspondencep fn-peer-step-pinned-effects-well-formed
-                 fn-auth-view-consistent fn-auth-view-trie-corresponds))
+                 fn-peer-step-pinned-effects-well-formed
+                 fn-auth-view-consistent))
            :use ((:instance fn-auth-view-consistent)
-                 (:instance fn-auth-view-trie-corresponds)
                  (:instance fn-peer-step-pinned-effects-well-formed
                             (ps (fn-auth-view-session as config))
                             (archive (fn-auth-view-archive as config archive))
@@ -4334,8 +4319,6 @@
 
 (defthm fn-auth-step-pinned-effects-well-formed
   (implies (and (fn-auth-session-consistentp as archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
                 (fn-gidx-pin-correspondencep index archive))
            (fn-auth-effectsp
             (fn-post-result-effects
@@ -4347,7 +4330,7 @@
                  fn-auth-tls-established fn-auth-tls-eventp
                  fn-auth-sessionp fn-auth-session-consistentp
                  fn-auth-effectsp fn-post-result-effects
-                 fn-midx-correspondencep fn-nntp-keywordp
+                 fn-nntp-keywordp
                  fn-nntp-keyword-tokenp fn-nntp-command-inputp
                  fn-nntp-tokenize fn-nntp-command-arguments-at-mostp
                             fn-auth-sasl-continue fn-auth-install-context)))))

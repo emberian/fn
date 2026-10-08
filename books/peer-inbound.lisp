@@ -2134,29 +2134,6 @@
 (verify-guards fn-peer-delegate-pinned)
 (verify-guards fn-peer-step-pinned)
 
-; Message-ID retrieval does not select a current article: its result labels
-; the article with zero, even when the pinned trie supplied the candidate.
-; Thus a malformed trie cannot mutate session state; the separate index
-; correspondence obligation controls which article is returned.
-(local (defthm fn-peer-indexed-article-no-update-preserves-session
-  (equal (fn-nntp-result-session
-          (fn-nntp-article-response session article 0 kind nil nil fn-arena))
-         session)
-  :hints (("Goal" :in-theory (e/d (fn-nntp-article-response)
-                                  (fn-nntp-article-idp fn-nntp-article-framedp
-                                   fn-nntp-article-section
-                                   fn-nntp-retrieval-initial
-                                   fn-nntp-crlf fn-nntp-stuff-lines))))))
-
-(local (defthm fn-peer-indexed-msgid-preserves-session
-  (equal (fn-nntp-result-session
-          (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena))
-         session)
-  :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-retrieval-indexed)
-                                  (fn-nntp-result-session
-                                   fn-nntp-article-response fn-nntp-single
-                                   fn-midx-lookup fn-nntp-token-string))))))
-
 (local (defthm fn-peer-archive-command-pinned-preserves-consistent-session
   (implies (and (fn-nntp-session-consistentp session archive)
                 (fn-nntp-projectionp archive)
@@ -2263,8 +2240,6 @@
 
 (defthm fn-peer-delegate-pinned-effects-well-formed
   (implies (and (fn-peer-session-consistentp ps archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
                 (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-post-result-effects
@@ -2273,13 +2248,10 @@
   :hints (("Goal" :in-theory
            (e/d (fn-peer-delegate-pinned fn-peer-session-consistentp)
                 (fn-nntp-post-step-pinned fn-post-session-consistentp
-                 fn-nntp-effectsp fn-post-result-effects
-                 fn-midx-correspondencep)))))
+                 fn-nntp-effectsp fn-post-result-effects)))))
 
 (defthm fn-peer-step-pinned-effects-well-formed
   (implies (and (fn-peer-session-consistentp ps archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
                 (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-post-result-effects
@@ -2291,7 +2263,7 @@
                  fn-peer-session-consistentp fn-peer-sessionp
                  fn-gidx-pin-correspondencep
                  fn-nntp-effectsp fn-post-result-effects
-                 fn-midx-correspondencep fn-nntp-command-inputp
+                 fn-nntp-command-inputp
                  fn-nntp-tokenize fn-nntp-keyword-tokenp
                  fn-nntp-command-arguments-at-mostp
                  ;; These backchain uselessly on the Message-ID and

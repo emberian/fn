@@ -12,8 +12,8 @@
 ; view the connection pinned: the store with every group outside READ
 ; absent.  `fn-gac-restrict-state' keeps the groups READ admits, their
 ; watermarks, and the articles with at least one such group, each article
-; cut to its admitted groups and memberships; the Message-ID trie and the
-; group buckets are the ones built from those articles
+; cut to its admitted groups and memberships; the group buckets are the
+; ones built from those articles
 ; (`fn-gac-restrict-index'), and the control pin's withdrawn list is cut the
 ; same way.  books/nntp-auth.lisp `fn-auth-delegate-pinned' serves a
 ; restricted session's command over that view with the reader machine
@@ -224,7 +224,7 @@
                  (fn-state-next-txid s)
                  nil nil))
 
-; The index of the view: the trie and buckets built from its articles, and
+; The index of the view: the buckets built from its articles, and
 ; the control pin with its withdrawn list cut the same way (the withdrawal
 ; records stay: HDR :fn-control reads them only for an article the view
 ; holds).
@@ -233,10 +233,10 @@
   (if (fn-gidx-pinp index)
       (let ((control (fn-gidx-pin-control index)))
         (fn-gidx-pin-with-control
-         (fn-midx-build arts) (fn-gidx-build arts)
+         (fn-gidx-build arts)
          (fn-ctl-pin (fn-gac-restrict-articles text (fn-ctl-pin-withdrawn control))
                      (fn-ctl-pin-ws control))))
-    (fn-midx-build arts)))
+    nil))
 
 ; -----------------------------------------------------------------------------
 ; The session: a selection outside the view is dropped
@@ -639,7 +639,7 @@
    (fn-gac-restrict-index text index (fn-gac-restrict-articles text (fn-state-articles s)))
    (fn-gac-restrict-state text s))
   :hints (("Goal" :in-theory (e/d (fn-gidx-pin-correspondencep fn-gac-restrict-index)
-                                  (fn-gidx-pinp fn-midx-build fn-gidx-build
+                                  (fn-gidx-pinp fn-gidx-build
                                    fn-gac-restrict-articles)))))
 
 (defthm fn-gac-post-sessionp-of-deselected
@@ -847,7 +847,7 @@
 (defun fn-gac-view-entry (text archive control)
   (declare (xargs :guard t))
   (let ((rs (fn-gac-restrict-state text archive)))
-    (cons rs (fn-gac-restrict-index text (fn-gidx-pin-with-control nil nil control)
+    (cons rs (fn-gac-restrict-index text (fn-gidx-pin-with-control nil control)
                                     (fn-state-articles rs)))))
 
 (defthm fn-gac-view-entry-reads-withdrawn-and-records
@@ -857,7 +857,7 @@
                          (fn-gac-view-entry text archive c2))
                   t))
   :hints (("Goal" :in-theory (e/d (fn-gac-view-entry fn-gac-restrict-index)
-                                  (fn-gac-restrict-state fn-midx-build fn-gidx-build
+                                  (fn-gac-restrict-state fn-gidx-build
                                    fn-gac-restrict-articles)))))
 
 ; The per-command index of a pinned view is the entry's: fn-gac-restrict-index
@@ -870,7 +870,7 @@
                          text index
                          (fn-state-articles (fn-gac-restrict-state text archive))))))
   :hints (("Goal" :in-theory (e/d (fn-gac-view-entry fn-gac-restrict-index)
-                                  (fn-gac-restrict-state fn-midx-build fn-gidx-build
+                                  (fn-gac-restrict-state fn-gidx-build
                                    fn-gac-restrict-articles)))))
 
 (in-theory (disable fn-gac-view-entry))
