@@ -32,7 +32,6 @@
 (include-book "login-binding")
 (include-book "public-exposure")
 (include-book "public-exposure-reply")
-(include-book "served-reply-buffer")
 (include-book "served-plan")
 (include-book "served-plan-cursor")
 (include-book "served-plan-line-buffer")

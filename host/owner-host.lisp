@@ -251,9 +251,6 @@
 ; -done/-leave) and the PROXY header on a trusted path (fn-owner-proxy-*);
 ; books/tls-proxy includes the budget, the decision and the source.
 (include-book "../books/tls-proxy")
-; PRF-192: the served reply as a range of the octet buffer (fn-served-reply-to-buffer;
-; since HST-023 the host renders the step's plan off the mutex instead).
-(include-book "../books/served-reply-buffer")
 (include-book "../books/owner-open-carried")
 ; PKT-828: a reader quantum during a batch's barrier runs at the reader view
 ; (fn-owner-at-reader-view, fn-ocfg-with-view; fn-ocv-capture); the span read
@@ -493,8 +490,7 @@
 ; Every projection `fn-owner-install-effects' makes EXCEPT the reply octets,
 ; which are never built as a list here: `fn-owner-output' is NIL and the reply is
 ; the effects' (the native host renders the step's plan off the mutex,
-; fn-owner-chunk-span and books/served-plan.lisp, HST-023; before it the
-; octet buffer of PRF-192, books/served-reply-buffer.lisp).
+; fn-owner-chunk-span and books/served-plan.lisp, HST-023).
 
 
 (defun fn-owner-install-effects (effects state)

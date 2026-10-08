@@ -309,3 +309,22 @@
 ; R and nothing-in-flight: their removal witnesses are the logical twin's
 ; (store-log-extend-tests); the concrete statement adds only the kernel it
 ; runs, which fn-lg-extend-run-keeps-the-kernel shows the run never reads.
+
+; --- KEYSTONE fn-lgc-take-never-joins-the-batch-in-flight (PRF-288) ----------
+; A concrete kernel with a batch in flight ((9 9)) and an open batch ((1 2)):
+; the take joins the open batch and the batch in flight is unchanged.
+(defconst *slc-tk* (fn-lgc-make 0 nil 0 7 '((1 2)) '((9 9)) 0 :appended))
+(defconst *slc-take* (fn-lgc-take *slc-tk* '(3 4) 7 1 10 64 1000000 512))
+(assert-event (equal (car *slc-take*) :taken))
+(assert-event (equal (fn-lgc-inflight (cadr *slc-take*)) '((9 9))))
+(assert-event (equal (fn-lgc-batch (cadr *slc-take*)) '((1 2) (3 4))))
+; At the operator's bound (count 1 >= bmax 1) the take answers :full and
+; changes nothing (the host waits for the barrier, then commits the batch).
+(defconst *slc-tk-full* (fn-lgc-take *slc-tk* '(3 4) 7 1 10 1 1000000 512))
+(assert-event (and (equal (car *slc-tk-full*) :full)
+                   (equal (cadr *slc-tk-full*) *slc-tk*)))
+; Mutation witness (labelled): a take that put the record into INFLIGHT would
+; change it -- the keystone's first conjunct refuses that shape.
+(assert-event (not (equal (fn-lgc-inflight
+                           (fn-lgc-make 0 nil 0 8 '((1 2)) '((9 9) (3 4)) 0 :appended))
+                          (fn-lgc-inflight *slc-tk*))))
