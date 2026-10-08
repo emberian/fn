@@ -27,6 +27,34 @@ class Forms(unittest.TestCase):
         self.assertIsNone(app("s"))
 
 
+class OwnAnswer(unittest.TestCase):
+    """A hypothesis that is the conclusion's own subject call (same function,
+    same argument terms) being non-nil is the call's answer, not a premise."""
+
+    def split(self, form):
+        hyps, conclusion = premise_audit.statement(form)
+        return premise_audit.conjuncts(hyps[0])[0], conclusion
+
+    def test_the_identical_call_is_its_own_answer(self):
+        h, c = self.split("(defthm c-sound (implies (fn-cand x y) (fn-okp (fn-cand x y) x)))")
+        self.assertTrue(premise_audit.own_answer(h, c))
+        h, c = self.split("(defthm c-sound (implies (equal (fn-cand x y) t) (fn-okp (car (fn-cand x y)))))")
+        self.assertTrue(premise_audit.own_answer(h, c))
+
+    def test_other_arguments_stay_a_premise(self):
+        h, c = self.split("(defthm c-sound (implies (fn-cand x z) (fn-okp (fn-cand x y) x)))")
+        self.assertFalse(premise_audit.own_answer(h, c))
+
+    def test_a_wrapped_call_stays_a_premise(self):
+        # the hypothesis is (fn-inv (fn-cand x y)): a predicate OF the answer
+        h, c = self.split("(defthm c-sound (implies (fn-inv (fn-cand x y)) (fn-okp (fn-cand x y) x)))")
+        self.assertFalse(premise_audit.own_answer(h, c))
+
+    def test_a_state_premise_absent_from_the_conclusion_stays(self):
+        h, c = self.split("(defthm s-sound (implies (fn-inv s) (fn-okp (fn-step s))))")
+        self.assertFalse(premise_audit.own_answer(h, c))
+
+
 class StubGraph:
     """The three theorems the docstring names: a preservation, an
     establishment by the open (hosted), and a consumer that assumes R."""

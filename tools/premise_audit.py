@@ -135,6 +135,36 @@ def predicate_application(term):
     return term[0], (term[1] if len(term) > 1 else None)
 
 
+def _call_term(term):
+    """The asserted call of a predicate application TERM: `(R a ...)' itself,
+    or the call inside `(equal (R a ...) t)' / `(equal t (R a ...))'."""
+    if isinstance(term, list) and len(term) == 3 and term[0] == "equal":
+        for side, other in ((term[1], term[2]), (term[2], term[1])):
+            if other == "t" and isinstance(side, list):
+                return side
+    return term
+
+
+def _occurs(term, tree) -> bool:
+    """TERM occurs in TREE as a subterm (quoted constants are opaque)."""
+    if term == tree:
+        return True
+    if isinstance(tree, list) and tree and tree[0] != "quote":
+        return any(_occurs(term, t) for t in tree)
+    return False
+
+
+def own_answer(conjunct, conclusion) -> bool:
+    """A hypothesis that is the conclusion's own subject call being non-nil:
+    the very call (same function, same argument terms) occurs in the
+    conclusion, so the hypothesis says only that this call answered, which a
+    caller establishes by branching on that answer.  Not a premise about
+    state or a value domain.  The same function on other arguments, or the
+    call under another function, is still a premise."""
+    call = _call_term(conjunct)
+    return isinstance(call, list) and len(call) > 1 and _occurs(call, conclusion)
+
+
 def _substitute(term, env: dict):
     """TERM with each variable in ENV replaced by its bound term; a quoted
     constant is left alone."""
@@ -355,7 +385,7 @@ class Audit:
             for hyp in hyps:
                 for conjunct in conjuncts(hyp):
                     app = predicate_application(conjunct)
-                    if app is None or not self.predicate(app[0]):
+                    if app is None or not self.predicate(app[0]) or own_answer(conjunct, conclusion):
                         continue
                     assumed_heads.add(app[0])
             for conjunct in conjuncts(conclusion):
@@ -377,7 +407,7 @@ class Audit:
             for hyp in hyps:
                 for conjunct in conjuncts(hyp):
                     app = predicate_application(conjunct)
-                    if app is None or not self.predicate(app[0]):
+                    if app is None or not self.predicate(app[0]) or own_answer(conjunct, conclusion):
                         continue
                     r, arg = app
                     bare = isinstance(arg, str) and arg not in self.book_defs
