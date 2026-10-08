@@ -3470,10 +3470,12 @@
 ; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
 ; onward (RFC 5537 sec. 3.6) and the entry must survive the process that
 ; accepted it.  Read before the outcome moves the owner, as for POST.
-; The call is fn-oop-transit-outcome (books/owner-outcome-pinned.lisp): the
-; transit outcome over the configured owner, whose effects and owner are
-; fn-own-transit-outcome's (fn-oop-transit-outcome-is-own-transit-outcome)
-; and whose pin table follows a durable completion's advance, as
+; The call is fn-oct-transit (books/owner-outcome-counted.lisp), whose
+; effects/configured-owner projection is fn-oop-transit-outcome. Under the
+; carried fn-ocl-relation its effects and owner are fn-own-transit-outcome's
+; (fn-oct-transit-is-own-transit-outcome-under-ocl-relation and
+; fn-oop-transit-outcome-is-own-transit-outcome). It uses fn-oop-advance,
+; whose pin table follows a durable completion's advance, as
 ; fn-ocfg-advance's does (PKT-889: fn-owner-replace-core kept the pin the
 ; connection was opened under, so the carried relation was false after a
 ; durable transfer on a connection older than the live configuration;
