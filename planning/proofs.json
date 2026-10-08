@@ -22898,6 +22898,35 @@
         "fn-tlsk-library-without-tls-never-refuses",
         "fn-tlsk-library-served-tls-never-falls-back"
       ]
+    },
+    {
+      "id": "PRF-1343",
+      "title": "Page-read ledger charge covers every bound row across lifecycle and growth conversion",
+      "statement": "fn-prl-row-sum-invp requires a natural five-vector CHARGED, well-formed bound rows (issued native-demand is a natural five-vector below demand), and CHARGED[i] >= the sum of all bound demands[i] for i=0..4. fn-prl-make establishes it for every budget; register, admit, settle, evict, close, reserve-growth and convert-growth preserve it, including refused transitions. fn-prl-row-sum-covers-bound-reserve derives G2 charged-covers from the invariant and exact reserve binding. fn-prl-convert-growth-under-row-sum-invp derives successful funded conversion from custody, the binding, and pool funding; reserve amount naturalness follows from row well-formedness. Scope: the named ledger transitions and logical bound rows; no allocation or native host refinement claim.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-045"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "books/page-read-ledger-rowsum.lisp",
+        "tests/acl2/page-read-ledger-rowsum-tests.lisp"
+      ],
+      "note": "PRL-ROW-SUM-INVARIANT. No ledger definition changed. Teeth include successful lifecycle witnesses, a counterexample per declared hypothesis, and an over-refund mutation whose nfix clamp leaves another bound row unfunded.",
+      "events": [
+        "fn-prl-make-row-sum-invp",
+        "fn-prl-register-preserves-row-sum-invp",
+        "fn-prl-admit-preserves-row-sum-invp",
+        "fn-prl-settle-preserves-row-sum-invp",
+        "fn-prl-evict-preserves-row-sum-invp",
+        "fn-prl-close-preserves-row-sum-invp",
+        "fn-prl-reserve-growth-preserves-row-sum-invp",
+        "fn-prl-convert-growth-preserves-row-sum-invp",
+        "fn-prl-row-sum-bound-reserve-natural",
+        "fn-prl-row-sum-covers-bound-reserve",
+        "fn-prl-convert-growth-under-row-sum-invp"
+      ]
     }
   ]
 }

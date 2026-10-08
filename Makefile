@@ -660,6 +660,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cold-read-reservation \
 	tests/acl2/cold-read-reservation-tests \
 	books/page-read-budget-growth \
+	books/page-read-ledger-rowsum \
+	tests/acl2/page-read-ledger-rowsum-tests \
 	tests/acl2/page-read-budget-growth-tests \
 	books/page-read-startup \
 	books/peer-flight-reservation \
