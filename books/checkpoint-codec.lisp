@@ -1212,6 +1212,14 @@
   (declare (xargs :guard t))
   (fn-frame-item 1 x))
 
+(defthm fn-cpc-accepted-is-consp
+  (implies (fn-cpc-result-okp
+            (fn-cpc-decode octets groups capacity max-frontier max-sequence))
+           (consp octets))
+  :hints (("Goal" :in-theory (enable fn-cpc-read-bytes fn-cpc-read-item
+                                     fn-cbor-octet-listp fn-cbor-at-mostp)))
+  :rule-classes nil)
+
 ; -- reassembly facts --------------------------------------------------------------
 
 (defthm fn-cpc-checkpointp-reassembles

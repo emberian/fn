@@ -263,6 +263,11 @@
            (not (intersectp-equal x y)))
   :rule-classes nil)
 
+(defthm fn-bpnjc-disjoint-member
+  (implies (and (member-equal a x) (not (intersectp-equal x y)))
+           (not (member-equal a y)))
+  :rule-classes nil)
+
 (defthm fn-bpnjc-intersectp-of-cons
   (iff (intersectp-equal y (cons a o))
        (or (member-equal a y) (intersectp-equal y o))))

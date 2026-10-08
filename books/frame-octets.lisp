@@ -199,6 +199,11 @@
                           (cdr (fn-frame-split n xs)))
                   xs)))
 
+(defthm fn-frame-not-consp-when-len-zero
+  (implies (equal (len a) 0) (not (consp a)))
+  :hints (("Goal" :expand ((len a))))
+  :rule-classes nil)
+
 (defthm fn-frame-split-of-append
   (implies (and (true-listp a) (equal (len a) (nfix n)))
            (equal (fn-frame-split n (append a b)) (cons a b)))

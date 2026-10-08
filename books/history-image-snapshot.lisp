@@ -213,6 +213,16 @@
 ; An :ok check says the image holds EXPECTED at SEQ, for the history the
 ; adopted concrete holds (fn-hib-open-is-log-prefix: the log's prefix).
 
+(defthm fn-his-check-row-is-nth
+  (implies (and (fn-hrc-wfp c) (fn-hrs-rel h c) (fn-hib-root-holds h c) (fn-hib-disk-bound file h c)
+                (natp seq) (< seq (len h))
+                (equal (mv-nth 0 (fn-his-check-row seq expected file c)) :ok))
+           (equal (nth seq h) expected))
+  :hints (("Goal" :use ((:instance fn-hib-get-keeps (fuel (fn-hrc-vlen c))))
+           :in-theory (set-difference-theories
+                       (union-theories '(fn-his-check-row car-cons cdr-cons (:e equal) eq) (theory 'minimal-theory))
+                       '(mv-nth))))
+  :rule-classes nil)
 ; -----------------------------------------------------------------------------
 ; The image region of the checkpoint's file.
 ;

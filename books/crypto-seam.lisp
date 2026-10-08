@@ -70,6 +70,13 @@
        (consp x)
        (<= (len x) *fn-digest-max-tag-octets*)))
 
+(defthm fn-digest-octetsp-implies-octet-listp
+  (implies (fn-digest-octetsp x)
+           (and (fn-cbor-octet-listp x)
+                (true-listp x)
+                (equal (len x) 32)))
+  :rule-classes nil)
+
 ; -----------------------------------------------------------------------------
 ; The digest.  Constraint: shape only.  The local witness is a constant, which
 ; makes the point visible: the constraints are satisfied by a realiser under

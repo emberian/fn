@@ -162,6 +162,13 @@
                            (fn-cei-build fn-cei-build-aux fn-cei-get
                             fn-cei-get-of-build-is-committed-event)))))
 
+(defthm fn-col-poll-nth-past-end-is-nil
+  (implies (and (natp position) (<= (len events) position))
+           (equal (nth position events) nil))
+  :hints (("Goal" :induct (fn-col-poll-drop events position)
+           :in-theory (enable nth len fn-col-poll-drop)))
+  :rule-classes nil)
+
 (defthm fn-col-poll-index-lookup-is-drop-head-total
   (implies (and (fn-cei-correspondencep index events)
                 (true-listp events)

@@ -438,6 +438,20 @@
                            (fn-wire-feed-byte fn-wire-statep fn-wire-close
                             fn-wire-make-state))))))
 
+(defthm fn-wire-next-event-needs-input
+  (implies (and (fn-wire-statep wire-state)
+                (not (equal (fn-wire-state-mode wire-state) :closed))
+                (fn-wire-octet-listp octets)
+                (fn-wire-next-event (fn-wire-next wire-state octets)))
+           (consp octets))
+  :hints (("Goal"
+           :use ((:instance fn-wire-next-loop-event-needs-input))
+           :in-theory (e/d (fn-wire-next)
+                                  (fn-wire-next-loop fn-wire-statep
+                                   fn-wire-next-state fn-wire-next-event
+                                   fn-wire-next-unconsumed))))
+  :rule-classes nil)
+
 (defthm fn-wire-next-loop-no-event-consumes-proper-chunk
   (implies (and (fn-wire-statep wire-state)
                 (not (equal (fn-wire-state-mode wire-state) :closed))

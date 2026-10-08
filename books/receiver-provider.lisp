@@ -56,6 +56,18 @@
  (equal (mv-nth 4 (fn-rxp-fill-range token n limits fuel fn-rx-provider))
         fn-rx-provider)
  :hints (("Goal" :in-theory (enable fn-rxp-fill-range))))
+(defthm fn-rxc-fill-range-copy-bounds
+ (implies (equal (mv-nth 0 (fn-rxc-fill-range token n limits fuel fn-rx-carry))
+                 :receive-copy)
+          (and (fn-rxc-currentp token fn-rx-carry)
+               (natp n) (natp fuel)
+               (<= n (fn-cbud-step-read-octets limits))
+               (<= n 4096) (<= n fuel)
+               (equal (mv-nth 1 (fn-rxc-fill-range token n limits fuel fn-rx-carry)) 0)
+               (equal (mv-nth 2 (fn-rxc-fill-range token n limits fuel fn-rx-carry)) n)
+               (equal (mv-nth 3 (fn-rxc-fill-range token n limits fuel fn-rx-carry)) (- fuel n))))
+ :hints (("Goal" :in-theory (enable fn-rxc-fill-range)))
+  :rule-classes nil)
 (defthm fn-rxc-fill-range-refusal-preserves-fuel
  (implies (not (equal (mv-nth 0 (fn-rxc-fill-range token n limits fuel fn-rx-carry))
                       :receive-copy))
@@ -63,6 +75,21 @@
                (equal (mv-nth 2 (fn-rxc-fill-range token n limits fuel fn-rx-carry)) 0)
                (equal (mv-nth 3 (fn-rxc-fill-range token n limits fuel fn-rx-carry)) fuel)))
  :hints (("Goal" :in-theory (enable fn-rxc-fill-range))))
+(defthm fn-rxp-fill-range-copy-bounds
+ (implies (equal (mv-nth 0 (fn-rxp-fill-range token n limits fuel fn-rx-provider))
+                 :receive-copy)
+          (and (natp n) (natp fuel) (<= n 4096) (<= n fuel)
+               (<= n (fn-cbud-step-read-octets limits))
+               (equal (fn-rxp-token fn-rx-provider) token)
+               (equal (fn-rxp-instance fn-rx-provider) (fn-prl-nth 2 token))
+               (equal (fn-rxp-capacity fn-rx-provider) 4096)
+               (equal (mv-nth 1 (fn-rxp-fill-range token n limits fuel fn-rx-provider)) 0)
+               (equal (mv-nth 2 (fn-rxp-fill-range token n limits fuel fn-rx-provider)) n)
+               (equal (mv-nth 3 (fn-rxp-fill-range token n limits fuel fn-rx-provider)) (- fuel n))))
+ :hints (("Goal" :in-theory (enable fn-rxp-fill-range fn-rxc-fill-range
+                                  fn-rxc-currentp fn-rxp-token
+                                  fn-rxp-instance fn-rxp-capacity)))
+  :rule-classes nil)
 (defthm fn-rxp-fill-range-refusal-preserves-fuel
  (implies (not (equal (mv-nth 0 (fn-rxp-fill-range token n limits fuel fn-rx-provider))
                       :receive-copy))

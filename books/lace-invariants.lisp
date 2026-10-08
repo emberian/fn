@@ -51,6 +51,11 @@
   (implies (member-equal s lace)
            (member-equal (fn-stmt-id s) (fn-lace-ids lace))))
 
+(defthm fn-lace-new-is-sublist
+  (implies (member-equal s (fn-lace-new lace delta))
+           (member-equal s delta))
+  :rule-classes nil)
+
 (defthm fn-lace-new-ids-are-new
   (implies (member-equal s (fn-lace-new lace delta))
            (not (member-equal (fn-stmt-id s) (fn-lace-ids lace)))))

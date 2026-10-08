@@ -50,6 +50,11 @@
 ; -----------------------------------------------------------------------------
 ; Statement shape facts used below
 
+(defthm fn-pol-stmt-is-consp
+  (implies (fn-stmt-p s) (consp s))
+  :hints (("Goal" :in-theory (enable fn-stmt-p)))
+  :rule-classes nil)
+
 (defthm fn-pol-candidatep-implies-authority-stmt
   (implies (fn-pol-candidatep s keyring group authority)
            (and (fn-stmt-p s)
