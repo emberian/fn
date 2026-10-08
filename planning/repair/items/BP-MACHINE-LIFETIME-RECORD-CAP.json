@@ -1,0 +1,18 @@
+{
+ "category": "architecture",
+ "evidence": "books/bp-node-machine.lisp: defconst *fn-bpn-machine-max-records* 4096; fn-bpn-propose refuses at token >= max; fn-bpn-apply-record has no job removal arm. books/bp-node-progress.lisp: fn-bpnp-rotation-quiescentp (before bp-rotation-c5) required (null jobs) and next-token 0.",
+ "exposure": "conditional",
+ "file": "books/bp-node-machine.lisp",
+ "fix": "Decision (C6, 10-07): KEEP the cap in the BP-ROTATION-REFUSES-OWED-JOBS lane; S2 stands (checkpoint jobs equal the state's). Option for this item, statement first: rotation prunes terminal jobs (:forwarded, :expired) and renumbers: the checkpoint carries only live jobs and a token of 0 or the live jobs' count, the new generation's lifecycle namespace starts there. Interaction with S2: S2 must be restated as 'the checkpoint's jobs equal the state's non-terminal jobs, and next-token equals the renumbered frontier', which weakens the equality S2 now states; the restatement needs its own teeth (a rotation that drops a live job, or keeps a terminal one, is refuted) and renumbering must rewrite each job's last-token consistently, or last-token must be shown unread. The alternative is to raise or remove the cap with a proof that nothing depends on it.",
+ "id": "BP-MACHINE-LIFETIME-RECORD-CAP",
+ "locus": "bp-rotation",
+ "notes": [],
+ "owner": "deputy-C",
+ "scenario": "Every lifecycle record (queued, attempting, requeued, finished, expired) advances next-token, and fn-bpn-propose refuses once the token reaches *fn-bpn-machine-max-records* (4096). fn-bpn-apply-record only ever replaces a job's status; terminal :forwarded and :expired jobs stay in the job list. Rotation never reset the token for a node that ever queued a job (the old quiescence clause required null jobs), and with BP-ROTATION-REFUSES-OWED-JOBS (S1-S4) it carries next-token forward, so the token is a lifetime cap of 4096 records per node. After it, every enqueue and attempt is refused permanently. The jobs list also never shrinks below its terminal entries, so max-jobs is a lifetime bound on queued obligations too.",
+ "severity": "high",
+ "slice": "bp",
+ "source": "bp-rotation-c5-2026-10-07",
+ "state": "open",
+ "title": "the BP base machine never removes a job and caps its lifetime records at 4096, so any node that ever queued a job reaches the cap and rotation never resets it",
+ "updated": "2026-10-08T00:27:55Z"
+}
