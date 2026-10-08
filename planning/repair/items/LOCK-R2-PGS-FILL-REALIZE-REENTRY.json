@@ -16,14 +16,19 @@
  ],
  "notes": [
   "Fixed at 05c318793: (1) fn-pgs-fill-frame (renamed from fill-realize) reads its descriptor tables directly when it holds *fnn-extent-lock* (sb-thread:holding-mutex-p), so the limit quantum and fnn-owner-live-reconfigure-locked (via fn-own-refresh) no longer signal a recursive-lock error; fnn-owner-limit-serialized reads fn-owner-limit-use before the extent lock. (2) fnn-owner-history-sync-first (history-root.lisp) runs ACL2's fn-owner-hroot-row 0 from install, consuming fn-store-sn-hist-reload at startup. The R2 keys R2|fn-pgs-fill-frame|E:fnn-extent-pread and |O:fnn-extent-pread do NOT go: the E key remains through fnn-owner-live-reconfigure-locked (Deputy P live-reconfigure phase model), the O key is path-insensitive reachability from 70 O sites (fn-host-hist-sync is reachable from every ACL2 O-quantum). Lock gate: 0 gone, 0 added. natives_owed: tests/test_native_limits_live.py, tests/test_native_page_io.py, tests/native_limit_pool_raw-mock.lisp, tests/native_history_root_raw-mock.lisp, tests/native_owner_install_cleanup_source.lisp.",
-  "10-07 C5 (CONVERGE-3 row 1): R3|fn-pgs-fill-frame|naked:fnn-extent-pread (the old fill-realize key, re-keyed by the rename) FIXED on lane/lock-row1-c5: the page pread and the short-read path lookup now run inside the extent-lock region that looked up the descriptor (the caller's own hold, or the with-mutex), so a page file closed under the lock cannot hand the read a reused descriptor number; this also removes a recursive-lock error on the short-read path for a caller already holding E. lock_discipline_check models the held arm of (if (sb-thread:holding-mutex-p L) ...) as L's region. The R2 keys E and O on fn-pgs-fill-frame stay with this item (E now also on the not-held arm's pread, as before 05c318793); the four fnn-extent-read-stall keys are filed on LOCK-R2-FEED-REPLY-PAYLOAD-PREAD."
+  "10-07 C5 (CONVERGE-3 row 1): R3|fn-pgs-fill-frame|naked:fnn-extent-pread (the old fill-realize key, re-keyed by the rename) FIXED on lane/lock-row1-c5: the page pread and the short-read path lookup now run inside the extent-lock region that looked up the descriptor (the caller's own hold, or the with-mutex), so a page file closed under the lock cannot hand the read a reused descriptor number; this also removes a recursive-lock error on the short-read path for a caller already holding E. lock_discipline_check models the held arm of (if (sb-thread:holding-mutex-p L) ...) as L's region. The R2 keys E and O on fn-pgs-fill-frame stay with this item (E now also on the not-held arm's pread, as before 05c318793); the four fnn-extent-read-stall keys are filed on LOCK-R2-FEED-REPLY-PAYLOAD-PREAD.",
+  "10-08 C8 (ruling 21): the keys this item owns, verbatim, after the fill-realize -> fill-frame rename (05c318793): R2|fn-pgs-fill-frame|E:fnn-extent-pread (through fnn-owner-limit-serialized / live reconfigure; lane reconfig-host@0f9337e31 removes the live-reconfigure path) and R2|fn-pgs-fill-frame|O:fnn-extent-pread (72 O sites, e.g. fnn-owner-inspect-request). Owner deputy-C."
  ],
- "owner": "unassigned",
+ "owner": "deputy-C",
  "scenario": "(1) any invalid or missing carried debt cache during a live `store limit' faults with a recursive-lock error instead of answering. (2) install's history-root refresh refuses before its first row: the first inspect, lookup or feed reply after start reads the entire on-disk history under O.",
  "severity": "medium",
  "sha": "05c318793",
  "source": "lock-triage-r2b on lane/lock-triage-r2",
  "state": "partial",
  "title": "History page fill (fn-pgs-fill-realize) re-takes the extent mutex non-recursively under limit-serialized, and the whole-history disk load can run under the owner mutex",
- "updated": "2026-10-07T20:30:00Z"
+ "updated": "2026-10-08T00:00:00Z",
+ "keys": [
+  "R2|fn-pgs-fill-frame|E:fnn-extent-pread",
+  "R2|fn-pgs-fill-frame|O:fnn-extent-pread"
+ ]
 }

@@ -192,6 +192,11 @@
           (cons (car entry) (xt-interface-raw-roots (cdr entries) w))
         (xt-interface-raw-roots (cdr entries) w)))))
 
+; The stored properties the snapshot carries are the ones something in fn-core reads: the host
+; (formals, stobjs-in, guard, invariant-risk: raw-trap.lisp, io.lisp fnn-entry-guard-spec), the
+; runtime's accessors (clruntime.lisp) and the emitted forms.  Not UNNORMALIZED-BODY or THEOREM: at
+; dev f2629613e no emitted form, runtime entry or host file reads them, and the bodies alone were
+; 16.0 MB of the core's 52.7 MB dynamic space (every closure function's translated body).
 (defun xt-snapshot-stored-properties (name trips seen)
   (if (endp trips) nil
     (let ((trip (car trips)))
@@ -199,8 +204,8 @@
                (not (member-eq (cadr trip) seen))
                (member-eq (cadr trip)
                           '(formals stobjs-in guard symbol-class stobj
-                            absstobj-info stobj-function unnormalized-body
-                            theorem invariant-risk predefined const table-alist)))
+                            absstobj-info stobj-function
+                            invariant-risk predefined const table-alist)))
           (let ((tail (xt-snapshot-stored-properties
                        name (cdr trips) (cons (cadr trip) seen))))
             (if (eq (cddr trip) *acl2-property-unbound*) tail

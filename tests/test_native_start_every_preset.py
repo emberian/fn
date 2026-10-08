@@ -88,6 +88,11 @@ class StartEveryPresetTests(unittest.TestCase):
         self.addCleanup(process.stop, 5)
         process.announcement(announce, timeout=120)
         self.assertIsNone(process.poll(), "{} exited after announcing".format(words[0]))
+        # The open's first history root refresh is funded: the reserve is the
+        # run ledger's (N-FRESH, hroot reserve 0 at open), so an empty store
+        # opens without "HISTORY root refresh not built".
+        self.assertNotIn(b"HISTORY root refresh not built", process.stderr.since(0),
+                         "{}: the open's history root refresh was refused".format(words[0]))
         return process
 
     def test_the_served_run_starts_at_every_preset(self):

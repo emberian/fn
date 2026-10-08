@@ -29,8 +29,14 @@ with open(os.environ["STUB_LOG"], "a") as f:
     f.write(name + " " + " ".join(args) + "\\n")
 if name == "lock_discipline_check":
     keys = json.load(open("lockkeys.json"))
+    if isinstance(keys, dict):
+        # a contract-breaking checker: raw stdout, then an exit or a signal
+        sys.stdout.write(keys["raw"]); sys.stdout.flush()
+        if keys.get("signal"):
+            import signal; os.kill(os.getpid(), signal.SIGKILL)
+        sys.exit(keys.get("rc", 0))
     # the checker's current shape: `new` is a list of key strings
-    print(json.dumps({"new": list(keys), "stale": []}))
+    print(json.dumps({"new": list(keys), "stale": [], "findings": []}))
     sys.exit(0)
 if mode == "write" and name == "ledger":
     with open("planning/proofs.json", "a") as f:
@@ -278,6 +284,18 @@ class MergeTests(TrainBase):
         self.assertEqual(len(parents), 3, "expected a merge commit")
         self.assertIn(f"Merge lane/a @{sha} into integrate/t1", sh(self.work, "git", "log", "-1", "--format=%s").stdout)
 
+    def test_teeth_manifest_conflict_takes_train_side_and_regen_rewrites_it(self):
+        sha = self.lane("k", {"planning/teeth-obligations.json": "lane manifest\n"})
+        self.advance_dev({"planning/teeth-obligations.json": "dev manifest\n"})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+        p = self.train("merge", f"k@{sha}")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual((self.work / "planning/teeth-obligations.json").read_text(), "dev manifest\n")
+        r = self.train("regen")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("keystone_emit --write-manifest", self.stub_log())
+
     def test_curated_proofs_conflict_goes_back_to_the_lane(self):
         # proofs.json rows are lane-curated: a conflict is not resolved to ours.
         sha = self.lane("p", {"planning/proofs.json": "lane repoint\n"})
@@ -322,7 +340,7 @@ class RegenTests(TrainBase):
         p = self.train("regen")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         log = [l.split()[0] + " " + (l.split()[1] if len(l.split()) > 1 else "") for l in self.stub_log()]
-        self.assertEqual(log, ["ledger --write"])
+        self.assertEqual(log, ["ledger --write", "keystone_emit --write-manifest"])
         subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
         self.assertTrue(subj.startswith("Regenerate train 1"), subj)
 
@@ -389,16 +407,110 @@ class PushTests(TrainBase):
         self.assertEqual(self.origin_rev("integrate/t1"), self.head())
         self.assertIn(f"carried: a@{sha[:9]}", p.stdout)
 
-    def test_lock_delta_warns_but_does_not_block_unless_strict(self):
-        self.ready()
-        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1")
-        (self.work / "lockkeys.json").write_text('["k1"]\n')
-        self.commit(self.work, "adds a lock key")
+    # ruling 21: the lock gate's table.  The only green is "no key added
+    # relative to dev"; dev's own keys are an owned red list; a checker that
+    # breaks its exit/JSON contract is a failure, never an empty set.
+    def lock_gate(self, dev_keys, head_keys, items=None):
+        files = {"lockkeys.json": json.dumps(dev_keys) + "\n", "src.txt": "lock gate dev\n"}
+        idir = self.seed / "planning/repair/items"
+        idir.mkdir(parents=True, exist_ok=True)
+        for name, body in (items or {}).items():
+            files["planning/repair/items/%s.json" % name] = json.dumps(body)
+        self.advance_dev(files)
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
+        if head_keys is not None:
+            (self.work / "lockkeys.json").write_text(json.dumps(head_keys) + "\n")
+            self.commit(self.work, "head lock keys")
         g = self.train("gate")
-        self.assertEqual(g.returncode, 0, g.stdout)
-        self.assertIn("WARNING", g.stdout)
-        self.assertIn("k1", g.stdout)
-        self.assertNotEqual(self.train("gate", "--strict-lock").returncode, 0)
+        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        return g, st["gates"]["lock_delta"]
+
+    def item(self, key, state="open", owner="deputy-C"):
+        return {"id": "LOCK-X", "state": state, "owner": owner, "detail": "key " + key + " here"}
+
+    def test_lock_no_keys_is_green(self):
+        g, rec = self.lock_gate([], None)
+        self.assertEqual(rec["rc"], 0, g.stdout)
+
+    def test_lock_key_added_by_train_fails_by_default(self):
+        g, rec = self.lock_gate([], ["k1"])
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(rec["added"], ["k1"])
+        self.assertIn("NEW lock key added by this train: k1", g.stdout)
+        self.assertNotEqual(g.returncode, 0)
+
+    def test_lock_dev_key_owned_by_open_item_is_recorded_red_not_failure(self):
+        g, rec = self.lock_gate(["R2|f|O:x"], None, {"LOCK-X": self.item("R2|f|O:x")})
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual(rec["owned_reds"], [{"key": "R2|f|O:x", "items": [
+            {"item": "LOCK-X", "owner": "deputy-C", "state": "open"}]}])
+
+    def test_lock_key_after_a_newline_in_item_text_is_owned(self):
+        body = {"id": "LOCK-X", "state": "open", "owner": "deputy-C",
+                "detail": "list:\nR7|f|swallow:x (f.lisp:1): why"}
+        g, rec = self.lock_gate(["R7|f|swallow:x"], None, {"LOCK-X": body})
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual(rec["unowned"], [])
+
+    def test_lock_dev_key_without_item_fails(self):
+        g, rec = self.lock_gate(["R2|f|O:x"], None)
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(rec["unowned"], ["R2|f|O:x"])
+
+    def test_lock_item_naming_a_longer_key_does_not_own(self):
+        g, rec = self.lock_gate(["R2|f|O:x"], None, {"LOCK-X": self.item("R2|f|O:x-y")})
+        self.assertEqual(rec["unowned"], ["R2|f|O:x"])
+        self.assertEqual(rec["rc"], 1)
+
+    def test_lock_key_persisting_past_its_closed_item_fails(self):
+        g, rec = self.lock_gate(["k1"], None, {"LOCK-X": self.item("k1", state="landed")})
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(rec["closed_items"], ["k1"])
+
+    def test_lock_train_removing_a_key_is_green(self):
+        g, rec = self.lock_gate(["k1"], [], {"LOCK-X": self.item("k1")})
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual(rec["gone"], ["k1"])
+
+    def assert_contract_failure(self, broken, dev_side=False):
+        g, rec = self.lock_gate(broken if dev_side else [], None if dev_side else broken)
+        self.assertEqual(rec["rc"], 1, g.stdout)
+        self.assertIn("contract", rec["error"])
+        self.assertNotEqual(g.returncode, 0)
+        return rec
+
+    def test_lock_exit_2_with_empty_object_fails(self):
+        rec = self.assert_contract_failure({"raw": "{}", "rc": 2})
+        self.assertEqual(rec["head_error"], "exit status 2")
+
+    def test_lock_killed_child_with_empty_new_fails(self):
+        rec = self.assert_contract_failure({"raw": '{"new": [], "stale": [], "findings": []}', "signal": True})
+        self.assertTrue(rec["head_error"].startswith("exit status -"), rec)
+
+    def test_lock_exit_0_with_empty_object_fails(self):
+        rec = self.assert_contract_failure({"raw": "{}", "rc": 0})
+        self.assertEqual(rec["head_error"], "missing field 'new'")
+
+    def test_lock_missing_findings_field_fails(self):
+        rec = self.assert_contract_failure({"raw": '{"new": [], "stale": []}'})
+        self.assertEqual(rec["head_error"], "missing field 'findings'")
+
+    def test_lock_mistyped_new_fails(self):
+        rec = self.assert_contract_failure({"raw": '{"new": {}, "stale": [], "findings": []}'})
+        self.assertEqual(rec["head_error"], "field 'new' is not a list")
+
+    def test_lock_malformed_new_entry_fails(self):
+        rec = self.assert_contract_failure({"raw": '{"new": [{"rule": "R2"}], "stale": [], "findings": []}'})
+        self.assertTrue(rec["head_error"].startswith("malformed entry"), rec)
+
+    def test_lock_unparseable_output_fails(self):
+        rec = self.assert_contract_failure({"raw": "Traceback ..."})
+        self.assertEqual(rec["head_error"], "output is not JSON")
+
+    def test_lock_contract_failure_on_dev_side_fails(self):
+        rec = self.assert_contract_failure({"raw": "{}", "rc": 2}, dev_side=True)
+        self.assertEqual(rec["dev_error"], "exit status 2")
 
     def test_host_load_runs_only_when_host_changed(self):
         self.ready()

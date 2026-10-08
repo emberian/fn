@@ -1,0 +1,14 @@
+{
+ "category": "program",
+ "id": "PORT-ARM64-PRODUCTION-IMAGE",
+ "owner": "deputy-N",
+ "severity": "high",
+ "state": "open",
+ "source": "GPT6 review via coordinator 2026-10-08",
+ "file": "tools/build_native_host.sh",
+ "line": "1",
+ "title": "no arm64 production image has ever been built, yet the 128 MB bar is for a Pi: build one and measure it",
+ "detail": "Every image so far is x86-64 (hbox, persvati). The 128 MiB bar (rulings 7 and 16) names a Raspberry Pi. Scope: build the production fn-host for linux-arm64 and run the memory and fresh-start natives on arm64 hardware. NEEDS: (1) an arm64 box: rented (Hetzner CAX / Ampere, qualified per fn-rented-boxes) for the build and certify, plus a real Pi (4 or 5) for the bar row; (2) the toolchain built there at fixed absolute paths: SBCL 2.6.8 (aarch64 backend), ACL2 at the same commit, OpenSSL 3.5.8 prefix, with its identity computed by tools/acl2_toolchain.py and recorded as a box row; tools/box_table.py `like` admits only hbox/persvati (same bytes, same arch), so arm64 needs its own fixed row with its own certificate cache, not `like`; (3) a full certify of the image closure on arm64 (certs are fasl-bound, the x86 cache is not reusable); (4) build_native_host.sh --profile linux on aarch64 (check the OpenSSL prefix and any x86-only flags or alien sizes); (5) natives image_heap, image_floor, start_every_preset, tls_handshake_budget on the arm64 image. KNOWN RISK for the bar: Pi 5's stock kernel uses 16 KiB pages (Pi 4: 4 KiB); row 23's ~50 MB over the bar on x86 is kernel fault-around (64 KiB windows) over the page-cached core (CONVERGE-20261007-3, Train-41 section), so page size and fault-around change the measured RSS; report both kernels. GAUNTLET ROW: 'production image on arm64 (Pi 4, 4 KiB pages; Pi 5, 16 KiB): image_heap VmHWM and at-rest RSS (anon/file), fresh start at 256 and 1024 MB, store shape and workload stated' with the run dir. Not started.",
+ "notes": [],
+ "updated": "2026-10-08T11:40:00Z"
+}

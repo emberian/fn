@@ -42,6 +42,11 @@
 (in-package "ACL2")
 (include-book "byte-store-invariants")
 
+(local (defthm fn-bs-keys-belowp-excludes-bound-local-rewrite
+  (implies (fn-bs-keys-belowp x n)
+           (not (assoc-equal n x)))
+  :hints (("Goal" :by fn-bs-keys-belowp-excludes-bound))))
+
 (defconst *fn-sxd-partial* "MANIFEST.partial")
 (defconst *fn-sxd-manifest* "MANIFEST")
 

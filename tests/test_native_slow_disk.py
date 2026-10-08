@@ -362,13 +362,14 @@ class SlowDiskNativeTests(unittest.TestCase):
         ACL2's fixed cold workers (fn-pio-direct-workers) until its pread
         actually returns: the first retries wait out the dependency deadline
         (403 temporarily unavailable), and once every worker holds a stalled
-        read the next ones are refused AT ONCE by name (403 cold read
-        resources unavailable) -- no new thread, no new buffer.  The node's
+        read the next ones WAIT for a worker (books/cold-read-wait.lisp, the
+        bounded queue) and are refused only at their own dependency deadline
+        -- not at once, and with no new thread and no new buffer.  The node's
         thread count does not grow with the retries.  When the device
         comes back every stalled read settles (cancelled: nothing is
         published for a request that timed out) and the article reads."""
         workers = 4  # books/profile-limits.lisp :cold-workers
-        retries = 3 * workers
+        retries = workers + 2
         with node_log_on_failure(self.owner):
             conn, stream = self.connect()
             self.addCleanup(conn.close)
@@ -392,17 +393,16 @@ class SlowDiskNativeTests(unittest.TestCase):
                 line = s1.readline()
                 waited = time.monotonic() - started
                 peak = max(peak, thread_count(pid))
-                if line.startswith(b"403 article temporarily unavailable; cold read resources unavailable"):
-                    refused += 1
-                    self.assertLess(waited, 2.0, (line, waited))
-                else:
-                    self.assertTrue(line.startswith(b"403 article temporarily unavailable"), line)
-                    self.assertGreaterEqual(waited, 4.5, waited)
-                    timed_out += 1
+                self.assertFalse(
+                    line.startswith(b"403 article temporarily unavailable; cold read resources unavailable"),
+                    line)
+                self.assertTrue(line.startswith(b"403 article temporarily unavailable"), line)
+                self.assertGreaterEqual(waited, 4.5, waited)
+                timed_out += 1
             print("NATIVE-COLD-STORM retries=%d timed-out=%d refused=%d threads=%d->%d"
                   % (retries, timed_out, refused, before, peak))
-            self.assertEqual(timed_out, workers, (timed_out, refused))
-            self.assertEqual(refused, retries - workers, (timed_out, refused))
+            self.assertEqual(timed_out, retries, (timed_out, refused))
+            self.assertEqual(refused, 0, (timed_out, refused))
             # A thread per retry would be RETRIES more; allow the owner's own
             # lazily started threads (fewer than one retry's worth each).
             self.assertLess(peak - before, workers, (before, peak))
@@ -419,6 +419,53 @@ class SlowDiskNativeTests(unittest.TestCase):
                 self.assertLess(time.monotonic(), deadline, "the page never came back")
                 time.sleep(0.5)
             self.assertLess(thread_count(pid) - before, workers)
+
+    def test_more_cold_readers_than_workers_wait_instead_of_being_refused(self):
+        """Item COLD-READ-WORKERS-REFUSE-AT-16 (books/cold-read-wait.lisp).
+        Four cold-read workers, sixteen readers each missing a different
+        article while the device is slow: a miss past the workers used to be
+        refused at once (403 cold read resources unavailable; 62% of requests
+        at 16 readers in W7).  Now it waits, within the dependency deadline,
+        for a worker, and every reader is answered 220."""
+        readers = 16
+        with node_log_on_failure(self.owner):
+            conn, stream = self.connect()
+            self.addCleanup(conn.close)
+            for i in range(readers):
+                self.send_article(stream, ("wait-%d@example.invalid" % i).encode(), b"article %d" % i)
+                self.assertTrue(stream.readline().startswith(b"240"))
+            conn.close()
+            self.reap(self.owner)
+            readstall = self.root / "readstall"
+            self.addCleanup(lambda: readstall.unlink() if readstall.exists() else None)
+            self.owner = self.start_owner({"FN_NATIVE_TEST_READ_STALL_FILE": str(readstall)})
+            conns = []
+            for _ in range(readers):
+                c, s = self.connect()
+                self.addCleanup(c.close)
+                conns.append((c, s))
+            readstall.write_bytes(b"")
+            answers = [None] * readers
+
+            def read(i):
+                c, s = conns[i]
+                s.write(("ARTICLE <wait-%d@example.invalid>\r\n" % i).encode())
+                s.flush()
+                answers[i] = s.readline()
+
+            threads = [threading.Thread(target=read, args=(i,)) for i in range(readers)]
+            for th in threads:
+                th.start()
+            time.sleep(1.0)
+            readstall.unlink()
+            for th in threads:
+                th.join(timeout=30)
+            refused = [a for a in answers
+                       if a is not None and b"cold read resources unavailable" in a]
+            print("NATIVE-COLD-WAIT readers=%d refused=%d answers=%s"
+                  % (readers, len(refused), sorted(set((a or b"")[:3] for a in answers))))
+            self.assertEqual(refused, [], answers)
+            self.assertTrue(all(a is not None and a.startswith(b"220") for a in answers), answers)
 
     def test_reads_and_control_stay_flat_while_the_disk_stalls_and_posts_are_refused_try_later(self):
         # Slice 2: H far past this test's stall (the posters of a batch

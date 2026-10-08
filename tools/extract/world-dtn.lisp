@@ -191,6 +191,8 @@
 (include-book "../../books/page-window-executor")
 (include-book "../../books/cold-read-window")
 (include-book "../../books/page-window-read")
+(include-book "../../books/extent-window-span")
+(include-book "../../books/cold-read-wait")
 (include-book "../../books/page-window-span")
 (include-book "../../books/payload-arena")
 (include-book "../../books/decoded-worker-assignment")

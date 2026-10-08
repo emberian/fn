@@ -1,5 +1,6 @@
 ;;; SCN1137 actual guarded BP projection and actual heap profile consumer.
 (require :sb-posix)
+(require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "COMMON-LISP"))
 (in-package "ACL2")
 
@@ -74,7 +75,7 @@
 (defconstant +fnn-tcl-segment-mru+ 1024)
 (defun fnn-bp-session-profile (root) (push (list :session root) *events*) (list :session root))
 (defun fnn-bps-read-profile (root) (push (list :node root) *events*) (list :node root))
-(source-functions "host/native/heap.lisp" '(fnn-heap-bp-terms))
+(source-functions "host/native/bp-node.lisp" '(fnn-heap-bp-terms))
 (let ((*events* nil))
  (assert (equal (fnn-heap-bp-terms '("bp-node" "serve" "0" "journal" "store" "receipts" "workflow" "node" "peer"
                                      "dest" "policy" "issuer" "host" "4556" "1" "3600000" "2" "32" "65536"))

@@ -99,7 +99,7 @@ class Conn:
     # Kept for the --nodelay flag of the T17 lane; TCP_NODELAY is now always set.
     nodelay = True
 
-    def __init__(self, port, buffered=False):
+    def __init__(self, port, buffered=False, source=None):
         """BUFFERED (the throughput gate's measuring client): replies are
         read through a 64 KiB buffer, one recv per segment.  The default
         reads the unbuffered stream, one recv per octet, so the stream never
@@ -107,7 +107,10 @@ class Conn:
         need that); for a 2 KiB ARTICLE it is ~2,100 recv calls in Python,
         4-5 ms of client CPU per reply on hbox (lane gate-regress,
         2026-09-27), which the default makes part of every figure."""
-        self.sock = socket.create_connection(("127.0.0.1", port), timeout=600)
+        # SOURCE (a loopback address such as 127.0.0.2) widens the client's
+        # ephemeral port space past ~28k held connections (EADDRNOTAVAIL).
+        self.sock = socket.create_connection(("127.0.0.1", port), timeout=600,
+                                             source_address=(source, 0) if source else None)
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.stream = whole_stream(self.sock)
         self.reader = self.sock.makefile("rb", buffering=65536) if buffered else self.stream

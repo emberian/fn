@@ -75,7 +75,7 @@
                            ; the octet list): every buffer term met them
                            fn-nntp-response-text-true-listp fn-nntp-clean-line-is-response-text
                            fn-nov-clean-linep fn-nntp-response-textp fn-scc-octet-listp-true
-                           fn-nntp-article-idp-is-consp fn-oct-bufp-true-listp fn-octets$c-bufp)))
+                           fn-oct-bufp-true-listp fn-octets$c-bufp)))
 
 ; -----------------------------------------------------------------------------
 ; The publication buffer: the second abstract stobj congruent to
