@@ -4933,11 +4933,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-checkpoint-admissible-capture-value-is-valid",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-checkpoint-plus-suffix-equals-full-replay",
    "registry": true
   },
@@ -5245,11 +5240,6 @@
   {
    "class": "hand",
    "name": "fn-cp-register-within-refuses-exactly-past-the-operator-bound",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-cpc-valid-is-capture-value",
    "registry": true
   },
   {
@@ -6224,11 +6214,6 @@
    "witness": "executable"
   },
   {
-   "class": "hand",
-   "name": "fn-dl-concat-loop-is-revappend",
-   "registry": true
-  },
-  {
    "book_digest": "3acf756822b7ead57aae1ce59224719712cf096e58226670879a1f2e46c8a0be",
    "bounds": [],
    "claim_digest": "68ff84cd56459b0ce16b1c61b8b81af397ee6cdc8721f3dcd15f09ac5c0562b3",
@@ -6237,7 +6222,7 @@
    "name": "fn-dl-fold-loop-is-revappend",
    "owed_met": null,
    "owner_book": "tests/acl2/def-loop-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
@@ -6248,31 +6233,6 @@
    "witness": "instance"
   },
   {
-   "class": "hand",
-   "name": "fn-dl-foldr-loop-is-foldr",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-map-loop-is-revappend",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-map-skip-loop-is-revappend",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-step-loop-is-revappend",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-sum-loop-is-plus",
-   "registry": true
-  },
-  {
    "book_digest": "3acf756822b7ead57aae1ce59224719712cf096e58226670879a1f2e46c8a0be",
    "bounds": [],
    "claim_digest": "8f35c0cdf7c95fe3b8c3e5af79040d5342ee5bd3450107dd3a04b124762c0d66",
@@ -6281,7 +6241,7 @@
    "name": "fn-dl-thread-loop-is-revappend",
    "owed_met": null,
    "owner_book": "tests/acl2/def-loop-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
@@ -18892,11 +18852,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-scar-own-read-span-is-own-read-tls-prefix",
    "registry": true
   },
@@ -22411,11 +22366,6 @@
    },
    "subject": "fn-wix-targets-of",
    "witness": "executable"
-  },
-  {
-   "class": "hand",
-   "name": "fn-wm-match-codepoints-work-cost-bound",
-   "registry": true
   },
   {
    "class": "hand",

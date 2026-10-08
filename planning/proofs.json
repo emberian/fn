@@ -530,7 +530,7 @@
     {
       "id": "PRF-008",
       "title": "Checkpoint equivalence",
-      "statement": "Checkpoint plus suffix recovery preserves the required logical state of full committed-history replay.",
+      "statement": "Checkpoint plus suffix recovery preserves the required logical state of full committed-history replay. Model theorem retained in its book, excluded from the hosted-event claim list: fn-checkpoint-admissible-capture-value-is-valid: unreachable-in-composition: the generation checkpoints it describes (books/checkpoint.lisp fn-checkpoint-capture, fn-checkpoint-capture-value, fn-checkpointp) are retired from the served node (host/native/checkpoint.lisp header; tests/test_native_checkpoint.py), and no host line calls them; the record log's checkpoint is the state checkpoint (fn-bs-scp-program), claimed by its own events. The theorem keeps the model claim that an admissible capture is a valid checkpoint; the host does not run it.",
       "milestone": "M2",
       "requirements": [
         "STO-006"
@@ -544,8 +544,7 @@
       ],
       "events": [
         "fn-checkpoint-plus-suffix-equals-full-replay",
-        "fn-checkpoint-admissible-capture-is-exact",
-        "fn-checkpoint-admissible-capture-value-is-valid"
+        "fn-checkpoint-admissible-capture-is-exact"
       ],
       "evidence": [
         "books/checkpoint.lisp",
@@ -769,7 +768,7 @@
     {
       "id": "PRF-014",
       "title": "Guard and execution correspondence",
-      "statement": "Guard-verified concrete operations used by the host implement their logical counterparts on the stated domains.",
+      "statement": "Guard-verified concrete operations used by the host implement their logical counterparts on the stated domains. Model theorem retained in its book, excluded from the hosted-event claim list: fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation (books/owner-served-carried.lisp): unreachable-in-composition: it relates the carried list-path read fn-scar-ocfg-read-tls-prefix to the reference read fn-ocfg-read-tls-prefix, and the host no longer runs either; host/owner-host.lisp fn-owner-chunk-span-evaluate runs fn-asto-mca-read-span over the generated available-read chain (books/served-available-read.lisp fn-av-mca-read-span), whose refinement to the reference read is owed (that book's header). The theorem keeps the model claim for the raw-pinned route; no served claim.",
       "milestone": "M1",
       "requirements": [
         "HST-001",
@@ -788,7 +787,6 @@
         "fn-spc-prepare-equals-specification-under-relation",
         "fn-opc-prepare-equals-owner-event-under-relation",
         "fn-ocfg-step-observe-is-fn-ocfg-observe",
-        "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
         "fn-pgc-peer-arm-is-peer-step-pinned",
         "fn-ccar-own-finish-is-own-finish",
         "fn-ccar-seek-is-find-record",
@@ -985,7 +983,7 @@
     {
       "id": "PRF-016",
       "title": "Bounded parsing and staging",
-      "statement": "For the resource profile, parsing and modeled staging terminate within declared length, nesting, allocation, and work bounds.",
+      "statement": "For the resource profile, parsing and modeled staging terminate within declared length, nesting, allocation, and work bounds. Model theorem retained in its book, excluded from the hosted-event claim list: fn-wm-match-codepoints-work-cost-bound (books/wildmat-work.lisp): unreachable-in-composition: it bounds the cost of the work-counting reference model fn-wm-match-codepoints-work, which the host does not run (the host steps the cursor machine fn-wmc-step/fn-wmc-one from fn-wmc-start-codepoints; fn-wmc-task-result, which relates the two, is a proof residual that fn-wmc-one never calls). The host-side bound on that machine, fn-wmc-core-codepoint-start-work-bound (books/wildmat-cursor.lisp), is not yet a registered event (teeth owed).",
       "milestone": "M2",
       "requirements": [
         "ENC-002",
@@ -1015,7 +1013,6 @@
         "fn-transfer-entry-candidate-work-value",
         "fn-transfer-entry-candidate-work-cost-bound",
         "fn-wm-match-codepoints-work-value",
-        "fn-wm-match-codepoints-work-cost-bound",
         "fn-article-parse-work-value",
         "fn-article-parse-under-work-input-bound",
         "fn-article-parse-work-profile-bound",
@@ -1696,7 +1693,7 @@
     {
       "id": "PRF-037",
       "title": "Checkpoint validation refuses a non-journal prefix",
-      "statement": "Checkpoint validation binds a checkpoint to exactly one prefix and refuses a prefix that is not an ordered journal interval below the checkpoint frontier: fn-cpc-validp implies the checkpoint is fn-checkpoint-capture-value of that prefix at its frontier, and a prefix with any record whose recorded generation is not its transaction id is refused for every checkpoint and configuration offered with it.",
+      "statement": "Checkpoint validation binds a checkpoint to exactly one prefix and refuses a prefix that is not an ordered journal interval below the checkpoint frontier: fn-cpc-validp implies the checkpoint is fn-checkpoint-capture-value of that prefix at its frontier, and a prefix with any record whose recorded generation is not its transaction id is refused for every checkpoint and configuration offered with it. Model theorem retained in its book, excluded from the hosted-event claim list: fn-cpc-valid-is-capture-value: unreachable-in-composition: fn-cpc-validp and the generation checkpoint it validates are retired from the served node (host/native/checkpoint.lisp header), no host line calls fn-checkpoint-capture, fn-checkpoint-capture-value or fn-cpc-validp, and the open's checkpoint check is the state checkpoint's. The theorem keeps the model claim that a valid frame is the capture of its prefix at its frontier; the host does not run it.",
       "milestone": "M2",
       "requirements": [
         "STO-006"
@@ -1706,7 +1703,6 @@
       ],
       "assumptions": [],
       "events": [
-        "fn-cpc-valid-is-capture-value",
         "fn-cpc-valid-refuses-generation-mismatch"
       ],
       "evidence": [
@@ -13291,7 +13287,7 @@
     {
       "id": "PRF-383",
       "title": "`peer list', `control list' and the open's configuration-history observation execute in constant stack over grown operator data: each walk is (mbe :logic <its recursion, unchanged> :exec <a loop>) equal by its guard proof",
-      "statement": "Loop twins in the PRF-362 pattern (local lemmas <f>-loop-is-rev-onto / <f>-loop-of-rev-onto; books/rev-onto.lisp fn-ag-rev-onto): books/native-admin-peer-budget.lisp fn-napb-before-last (the rendered line's octets, ~82 per carried principal), fn-native-admin-peer-budget-report-rows (its loop finds each peer's rows once through books/config.lisp fn-cfg-rows-with-key, which executes by fn-cfg-rows-with-key-loop, equal to it by fn-cfg-rows-with-key-loop-is-rev-onto), fn-native-admin-peer-budget-report (names through books/peer-config.lisp fn-cfg-peer-names, which executes by fn-cfg-peer-names-loop, equal to it by fn-cfg-peer-names-loop-is-rev-onto); books/native-admin-peer.lisp fn-native-admin-peer-slot-values, fn-native-admin-peer-list-octets; books/native-admin.lisp fn-native-admin-control-report; books/native-config-observation.lisp fn-nco-decode-entries, fn-nco-insert-by-generation, fn-nco-sort-by-generation, fn-nco-output-entries. Host callers: host/native-admin-host.lisp fn-native-admin-host-query-report (host/native/admin.lisp fnn-admin-query), books/native-live-status.lisp fn-nls-report (:peers), host/store-node-host.lisp fn-store-config-observation. Before: tests/test_native_peer_rows_growth.py's `peer list' over 1,100 carried principals exited 4, 'Control stack guard page unprotected', at the deployed 1,024 KiB (batch AZ). tools/depth_check.py now refuses operator data (config tables, profile fields) as a 'bounded' reason (D27): a bounded entry cites a defined *constant*, a number or a structural bound. Scope: control-stack depth only; time is unchanged (the report still scans the peer table once per peer). Lane config-and-legacy (2026-09-28): fn-cfg-rows-with-key and fn-cfg-peer-names execute by their loops at the source (mbe), so every caller runs in constant stack; the report's twins fn-napb-rows-with-key-loop / fn-napb-peer-names-loop are gone and their depth_baseline debt entries with them.",
+      "statement": "Loop twins in the PRF-362 pattern (local lemmas <f>-loop-is-rev-onto / <f>-loop-of-rev-onto; books/rev-onto.lisp fn-ag-rev-onto): books/native-admin-peer-budget.lisp fn-napb-before-last (the rendered line's octets, ~82 per carried principal), fn-native-admin-peer-budget-report-rows (its loop finds each peer's rows once through books/config.lisp fn-cfg-rows-with-key, which executes by fn-cfg-rows-with-key-loop, equal to it by fn-cfg-rows-with-key-loop-is-rev-onto), fn-native-admin-peer-budget-report (names through books/peer-config.lisp fn-cfg-peer-names, which executes by fn-cfg-peer-names-loop, equal to it by fn-cfg-peer-names-loop-is-rev-onto); books/native-admin-peer.lisp fn-native-admin-peer-slot-values, fn-native-admin-peer-list-octets; books/native-admin.lisp fn-native-admin-control-report; books/native-config-observation.lisp fn-nco-decode-entries, fn-nco-insert-by-generation, fn-nco-sort-by-generation, fn-nco-output-entries. Host callers: host/native-admin-host.lisp fn-native-admin-host-query-report (host/native/admin.lisp fnn-admin-query), books/native-live-status.lisp fn-nls-report (:peers), host/store-node-host.lisp fn-store-config-observation. Before: tests/test_native_peer_rows_growth.py's `peer list' over 1,100 carried principals exited 4, 'Control stack guard page unprotected', at the deployed 1,024 KiB (batch AZ). tools/depth_check.py now refuses operator data (config tables, profile fields) as a 'bounded' reason (D27): a bounded entry cites a defined *constant*, a number or a structural bound. Scope: control-stack depth only; time is unchanged (the report still scans the peer table once per peer). Lane config-and-legacy (2026-09-28): fn-cfg-rows-with-key and fn-cfg-peer-names execute by their loops at the source (mbe), so every caller runs in constant stack; the report's twins fn-napb-rows-with-key-loop / fn-napb-peer-names-loop are gone and their depth_baseline debt entries with them. The shape lemma fn-dl-map-loop-is-revappend (books/def-loop.lisp) was this row's only registered event; it is a library witness lemma the host does not call (see PRF-919), retained unchanged as unreachable-in-composition and removed from the hosted-event claim list. The walks named above (fn-cfg-rows-with-key, fn-cfg-peer-names and the others) are hosted and execute by their loops through the mbe; registering them as guarded-function events with teeth is owed.",
       "milestone": "M5",
       "requirements": [
         "HST-006"
@@ -13314,9 +13310,6 @@
         "tests/test_depth_check.py",
         "planning/evidence/manifests/certify-20260928T175634Z-806289.json",
         "planning/evidence/peer-list-depth-2026-09-28.md"
-      ],
-      "events": [
-        "fn-dl-map-loop-is-revappend"
       ]
     },
     {
@@ -15983,7 +15976,7 @@
     {
       "id": "PRF-919",
       "title": "The host-called walks over operator data (D27) and the older queue, history, log, served-read and codec walks execute in constant stack: each is (mbe :logic <its recursion, unchanged> :exec <a loop>) equal by its guard proof; the raw host code's recursions are linted too",
-      "statement": "Loop twins in the PRF-362/PRF-383 pattern (books/rev-onto.lisp fn-ag-rev-onto; lemmas <f>-loop-is-rev-onto, <f>-loop-of-rev-onto for right folds, <f>-loop-is-plus for sums), one per walk that tools/depth_check.py listed as debt: the configuration replay's row walks (books/config.lisp fn-cfg-row-upsert, fn-cfg-row-replace-key, fn-cfg-rows-without-*, fn-cfg-access-table, fn-cfg-moderator-*, fn-cfg-parse-items ...), the owner's feed table (books/owner-feed.lisp, 12), the served reads (books/served.lisp fn-served-feed, fn-served-dispatch-events, fn-served-run; books/served-catalog-chain.lisp fn-scr-scan-span, fn-scr-dispatch-events), the log's recovery walks (books/store-log-*.lisp, store-intern, payload-extent, payload-lz-replay), the BP node's held and job queues and fragment families, the auth credential tables, TCPCL, wildmat, the web renderer and the rest: 116 D27 entries and 71 of the 77 older ones, debt 193 -> 9. The data-sized appends of the BP kind-5 persist (books/frame-fields.lisp fn-frame-fields-octets, books/bp-fnbs-codec.lisp fn-bpnf-stored-record-frame) execute through books/acceptance-alloc.lisp fn-ag-append: a 49,152-octet bundle died in BINARY-APPEND (x40,721 frames) at the deployed 1,024 KiB. tools/depth_check.py now reads the :logic branch of a logic-mode function whose guards are not verified (the host's fnn-call runs *1*, which evaluates such a function's logic); the nine debt entries it left are guard-verified now (lane depth-debt-2), so their loops run: books/byte-store.lisp fn-bs-take/-zeros, books/store-log.lisp fn-lg-pack/-unpack/-log/-last-trailer and the frame chain (the sealer and the u32 codec through ec-call, the nthcdr by fn-lg-nthcdr), books/store-recover-stream.lisp fn-srs-decode, books/owner-results.lisp's seal chain, books/bp-node-retire.lisp's filter with books/bp-node-rotation-codec.lisp fn-bpnr-generation-directory, and books/bp-node-rotation-buffer.lisp fn-bpnrb-decode-range on the goal-stack machine (fn-bpnrb-mrun-all-of-dec-goal): recursion debt 0. tools/depth_check.py also flags a data-sized append (first argument not a literal, constant or (list ...)) in a closure function whose guards are not verified, where *1* runs binary-append's recursion; its baseline key \"append\" lists the bounded ones with named bounds, and the sites fixed by guard verification leave it. tools/depth_check.py --raw lints host/native/*.lisp (0 debt, 11 bounded with named bounds); host/native/bp-service.lisp fnn-bps-drive-effects is a worklist (depth-first order kept) and host/native/mux.lisp fnn-mux-after no longer re-enters fnn-mux-work for the connection whose work loop runs. Scope: control-stack depth only; time is unchanged by construction (measure at convergence).",
+      "statement": "Loop twins in the PRF-362/PRF-383 pattern (books/rev-onto.lisp fn-ag-rev-onto; lemmas <f>-loop-is-rev-onto, <f>-loop-of-rev-onto for right folds, <f>-loop-is-plus for sums), one per walk that tools/depth_check.py listed as debt: the configuration replay's row walks (books/config.lisp fn-cfg-row-upsert, fn-cfg-row-replace-key, fn-cfg-rows-without-*, fn-cfg-access-table, fn-cfg-moderator-*, fn-cfg-parse-items ...), the owner's feed table (books/owner-feed.lisp, 12), the served reads (books/served.lisp fn-served-feed, fn-served-dispatch-events, fn-served-run; books/served-catalog-chain.lisp fn-scr-scan-span, fn-scr-dispatch-events), the log's recovery walks (books/store-log-*.lisp, store-intern, payload-extent, payload-lz-replay), the BP node's held and job queues and fragment families, the auth credential tables, TCPCL, wildmat, the web renderer and the rest: 116 D27 entries and 71 of the 77 older ones, debt 193 -> 9. The data-sized appends of the BP kind-5 persist (books/frame-fields.lisp fn-frame-fields-octets, books/bp-fnbs-codec.lisp fn-bpnf-stored-record-frame) execute through books/acceptance-alloc.lisp fn-ag-append: a 49,152-octet bundle died in BINARY-APPEND (x40,721 frames) at the deployed 1,024 KiB. tools/depth_check.py now reads the :logic branch of a logic-mode function whose guards are not verified (the host's fnn-call runs *1*, which evaluates such a function's logic); the nine debt entries it left are guard-verified now (lane depth-debt-2), so their loops run: books/byte-store.lisp fn-bs-take/-zeros, books/store-log.lisp fn-lg-pack/-unpack/-log/-last-trailer and the frame chain (the sealer and the u32 codec through ec-call, the nthcdr by fn-lg-nthcdr), books/store-recover-stream.lisp fn-srs-decode, books/owner-results.lisp's seal chain, books/bp-node-retire.lisp's filter with books/bp-node-rotation-codec.lisp fn-bpnr-generation-directory, and books/bp-node-rotation-buffer.lisp fn-bpnrb-decode-range on the goal-stack machine (fn-bpnrb-mrun-all-of-dec-goal): recursion debt 0. tools/depth_check.py also flags a data-sized append (first argument not a literal, constant or (list ...)) in a closure function whose guards are not verified, where *1* runs binary-append's recursion; its baseline key \"append\" lists the bounded ones with named bounds, and the sites fixed by guard verification leave it. tools/depth_check.py --raw lints host/native/*.lisp (0 debt, 11 bounded with named bounds); host/native/bp-service.lisp fnn-bps-drive-effects is a worklist (depth-first order kept) and host/native/mux.lisp fnn-mux-after no longer re-enters fnn-mux-work for the connection whose work loop runs. Scope: control-stack depth only; time is unchanged by construction (measure at convergence). Generator library lemmas, retained unchanged in books/def-loop.lisp and excluded from the hosted-event claim list as unreachable-in-composition: fn-dl-concat-loop-is-revappend, fn-dl-fold-loop-is-revappend, fn-dl-foldr-loop-is-foldr, fn-dl-map-loop-is-revappend, fn-dl-map-skip-loop-is-revappend, fn-dl-step-loop-is-revappend, fn-dl-sum-loop-is-plus, fn-dl-thread-loop-is-revappend. Each is the one-time bridge of a def-loop shape over a library witness instance (fn-dl-map, fn-dl-sum, ...) that no host line calls; the host runs the generated instances, which obtain their own local bridge by :functional-instance of these theorems, so the claim for an instance is its guard-verified mbe, not these lemmas. The per-walk loop events above remain the hosted claims.",
       "milestone": "M5",
       "requirements": [
         "HST-006"
@@ -16012,12 +16005,8 @@
       "events": [
         "fn-acct-kinds-lines-loop-is-rev-onto",
         "fn-arx-intern-events-loop-is-rev-onto",
-        "fn-dl-map-loop-is-revappend",
-        "fn-dl-sum-loop-is-plus",
         "fn-bpah-apply-delivery-loop-is-rev-onto",
-        "fn-dl-foldr-loop-is-foldr",
         "fn-bpfs-cut-loop-is-rev-onto",
-        "fn-dl-map-skip-loop-is-revappend",
         "fn-bpn-report-apply-delete-loop-is-rev-onto",
         "fn-bpnf-active-set-rows-loop-is-rev-onto",
         "fn-bpnf-arrival-count-loop-is-plus",
@@ -16027,7 +16016,6 @@
         "fn-bpnf-zero-family-keys-loop-is-rev-onto",
         "fn-bpnp-attempt-replace-loop-is-rev-onto",
         "fn-bpnp-deferral-replace-loop-is-rev-onto",
-        "fn-dl-step-loop-is-revappend",
         "fn-bpnp-forward-result-replace-loop-is-rev-onto",
         "fn-bpnp-prune-waits-loop-is-rev-onto",
         "fn-bpnp-remove-wait-loop-is-rev-onto",
@@ -16046,21 +16034,18 @@
         "fn-cu-unhex-loop-is-rev-onto",
         "fn-feed-backoff-loop-is-delay",
         "fn-gidx-put-loop-is-rev-onto",
-        "fn-dl-fold-loop-is-revappend",
         "fn-ipp-split-at-loop-is-rev-onto",
         "fn-lgb-count-loop-is-plus",
         "fn-lgb-decode-next-exec-loop-is-rev-onto",
         "fn-lgb-decode-next-exec-loop-next",
         "fn-lzr-nats-text-loop-is-rev-onto",
         "fn-mvb-join-groups-loop-is-rev-onto",
-        "fn-dl-concat-loop-is-revappend",
         "fn-native-auth-line-count-loop-is-plus",
         "fn-nntp-xpat-join-loop-of-rev-onto",
         "fn-ot-b64-decode-loop-is-rev-onto",
         "fn-ot-b64-decode-loop-nil",
         "fn-otm-journal-starts-loop-is-plus",
         "fn-own-feed-port-restart-fold-loop-is-fold",
-        "fn-dl-thread-loop-is-revappend",
         "fn-pull-pending-envelope-loop-of-rev-onto",
         "fn-scka-batches-loop-is-rev-onto",
         "fn-scr-scan-span-loop-is-rev-onto",
