@@ -2441,8 +2441,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-image-builder-tests \
 	tests/acl2/history-image-binding-tests \
 	tests/acl2/history-image-campaign-tests \
+	books/image-world-part-1 \
+	books/image-world-part-2 \
+	books/image-world-part-3 \
 	books/image-world \
+	books/image-world-dtn-part-1 \
+	books/image-world-dtn-part-2 \
+	books/image-world-dtn-part-3 \
 	books/image-world-dtn \
+	books/image-world-store-test-part-1 \
+	books/image-world-store-test-part-2 \
 	books/image-world-store-test \
     books/connection-receiver-source-invariants \
     books/owner-reader-response-domain \
