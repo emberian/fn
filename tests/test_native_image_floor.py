@@ -275,11 +275,15 @@ class DeepInputStackTests(unittest.TestCase):
         probe = node.invoke("heap", "--", "operator", node.config, "run")
         self.assertEqual(probe.returncode, 0, probe.stderr)
         stack = int(re.search(rb"stack=(\d+) KB", probe.stdout).group(1))
+        # The heap the same probe decides for this store (the run's full-store
+        # figure, ADMISSION-RESERVES-NOT-REOPEN): the node starts at it, as
+        # the installed launcher would; a pinned figure below it is refused.
+        node.decided_heap_mb = int(re.search(rb"heap=(\d+) MB", probe.stdout).group(1))
         return node, stack
 
-    def start(self, node, stack_kib, heap_mb=2048):
+    def start(self, node, stack_kib):
         return node.start(env={"SBCL_USER_ARGS": "--dynamic-space-size %dMB --control-stack-size %dKB"
-                                                  % (heap_mb, stack_kib)}, timeout=900)
+                                                  % (node.decided_heap_mb, stack_kib)}, timeout=900)
 
     def stop(self, node, owner):
         node.stop(process=owner, grace=300)
