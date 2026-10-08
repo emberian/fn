@@ -41,8 +41,8 @@
   (+ (fn-hroot-memory-octets fn-hrecs$c) (* 64 (fn-hrc-count fn-hrecs$c))))
 (defun fn-hroot-event-demand (ev ordinal fn-hrecs$c)
   (declare (xargs :stobjs fn-hrecs$c :guard (natp ordinal)))
+  (declare (ignore ev))
   (+ (fn-hroot-memory-octets fn-hrecs$c) (* 64 (+ 1 ordinal))
-     (* 96 (+ 8 (fn-hroot-tree-octets ev)))
      (fn-hroot-page-octets 1)))
 (defun fn-hroot-grow-demand (cursor ordinal fn-hrecs$c)
   (declare (xargs :stobjs fn-hrecs$c
@@ -51,18 +51,32 @@
                               (< (fn-hrc-lo fn-hrecs$c) (fn-hrc-hi fn-hrecs$c)))
                   :verify-guards nil))
   (+ (fn-hroot-memory-octets fn-hrecs$c) (* 64 (+ 1 ordinal))
-     (fn-hroot-page-octets (cadr (fn-hpr-final-placement cursor)))
-     (* 96 (+ 8 (fn-hroot-tree-octets (fn-hrc-sfxi (fn-hrc-lo fn-hrecs$c) fn-hrecs$c))))))
+     (fn-hroot-page-octets (cadr (fn-hpr-final-placement cursor)))))
+
+; The per-event decode transient (96 octets a tree octet of the event, beside
+; a constant): NOT part of a generation's resident credit.  It is its own
+; credit, drawn before the decode and released after it (host/history-root-host.lisp
+; fn-owner-hroot-transient), so it draws the article pool as an ops credit and is
+; refused by name when the pool is short.  The reserve holds the images only.
+(defun fn-hroot-event-transient (ev)
+  (declare (xargs :guard t))
+  (* 96 (+ 8 (fn-hroot-tree-octets ev))))
+(defun fn-hroot-grow-transient (fn-hrecs$c)
+  (declare (xargs :stobjs fn-hrecs$c
+                  :guard (and (fn-hrc-wfp fn-hrecs$c)
+                              (< (fn-hrc-lo fn-hrecs$c) (fn-hrc-hi fn-hrecs$c)))
+                  :verify-guards nil))
+  (fn-hroot-event-transient (fn-hrc-sfxi (fn-hrc-lo fn-hrecs$c) fn-hrecs$c)))
 (defun fn-hroot-credit-key (generation)
   (declare (xargs :guard (posp generation)))
   (cons :history-root generation))
 
 (defun fn-hroot-tail-demand (ev ordinal fn-hist$p)
-  (declare (xargs :stobjs fn-hist$p :guard (natp ordinal)))
+  (declare (xargs :stobjs fn-hist$p :guard (natp ordinal)) (ignore ev))
   (stobj-let ((fn-hrecs$c (fn-hist$p-root fn-hist$p)))
              (amount)
              (+ (* 2 (fn-hroot-memory-octets fn-hrecs$c))
-                (* 64 (+ 1 ordinal)) (* 96 (+ 8 (fn-hroot-tree-octets ev))))
+                (* 64 (+ 1 ordinal)))
              amount))
 
 ; The stored SCC length cell is scalar metadata. Read it before decoding the
@@ -107,6 +121,9 @@
                             (fn-hroot-memory-octets fn-hrecs$cp fn-hrc-fields fn-hrc-updaters)))))
 (verify-guards fn-hroot-grow-demand
  :hints (("Goal" :in-theory (e/d (fn-hrc-wfp fn-hpr-final-placement fn-hpr-cursorp)
+ (fn-hrc-fields fn-hrc-updaters fn-hrecs$cp fn-hroot-memory-octets fn-hroot-tree-octets)))))
+(verify-guards fn-hroot-grow-transient
+ :hints (("Goal" :in-theory (e/d (fn-hrc-wfp)
  (fn-hrc-fields fn-hrc-updaters fn-hrecs$cp fn-hroot-memory-octets fn-hroot-tree-octets)))))
 (verify-guards fn-hroot-read-demand
  :hints (("Goal" :in-theory (e/d (fn-hist$p-wfp fn-hrc-wfp fn-hp-starts-okp)

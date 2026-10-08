@@ -130,6 +130,11 @@
   ;; state (nil between replies), SEND-HANDED the octets of the reply the
   ;; kernel has accepted.  The host keeps them and compares nothing.
   out-deadline (send-state nil) (send-handed 0)
+  ;; The reply's tail (CONVERGE-2 row 20): its send state once its last octet
+  ;; was handed while the kernel still queues part of it
+  ;; (books/public-exposure-reply.lisp fn-exp-tail-start), judged at each
+  ;; idle check (fn-exp-idle-delivery); nil otherwise, and a new reply ends it.
+  (tail nil)
   want resume-at idle-at hs-deadline drain-deadline
   greeting done
   ;; The service class this connection's quanta are admitted as (:reader, or
@@ -292,7 +297,8 @@ the octets of this reply the kernel has accepted."
   "A reply's first window is queued: nothing accepted yet, the state ACL2
 starts it with."
   (let ((obs (fnn-mux-send-observation conn)))
-    (setf (fnn-mux-conn-send-handed conn) 0
+    (setf (fnn-mux-conn-tail conn) nil
+          (fnn-mux-conn-send-handed conn) 0
           (fnn-mux-conn-send-state conn)
           (fnn-core 'fn-send-progress-begin (first obs) (second obs))))
   (fnn-mux-send-look conn))
@@ -780,7 +786,10 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
               (setf (fnn-mux-conn-plan conn) (if donep nil rest))
               (fnn-mux-send-look conn))
           (let ((after (fnn-mux-conn-after conn)))
-            (setf (fnn-mux-conn-out conn) nil
+            (setf (fnn-mux-conn-tail conn)
+                  (fnn-core 'fn-exp-tail-start (fnn-mux-conn-send-state conn)
+                            (fnn-mux-send-observation conn))
+                  (fnn-mux-conn-out conn) nil
                   (fnn-mux-conn-out-end conn) nil (fnn-mux-conn-after conn) nil
                   (fnn-mux-conn-out-deadline conn) nil
                   (fnn-mux-conn-send-state conn) nil)
@@ -1155,11 +1164,25 @@ nothing."
   ;; batch in flight -- the whole barrier when the disk stalls -- and held
   ;; this I/O loop, every connection it serves included (the native case
   ;; found it: the peer's IHAVE during a stall was never read).
-  (if (eq (fnn-owner-exposure-idle (fnn-mux-service loop) (fnn-mux-conn-cid conn) :reader)
-          :close)
-      (progn (setf (fnn-mux-conn-idle-at conn) nil)
+  ;; Row 20: the reply's tail, while the kernel still queues part of it, is
+  ;; judged here (fn-exp-idle-delivery): the peer reading it is activity, a
+  ;; tail the send verdict refuses ends the connection by name, as a queued
+  ;; reply's refusal does (fnn-mux-send-check).
+  (let ((tail (fnn-mux-conn-tail conn)))
+    (multiple-value-bind (decision next)
+        (fnn-owner-exposure-idle (fnn-mux-service loop) (fnn-mux-conn-cid conn) tail
+                                 (and tail (fnn-mux-send-observation conn))
+                                 :reader)
+      (setf (fnn-mux-conn-tail conn) next)
+      (cond ((eq decision :close)
+             (setf (fnn-mux-conn-idle-at conn) nil)
              (fnn-mux-begin-drain loop conn))
-    (fnn-mux-arm-idle conn)))
+            ((consp decision)
+             (fnn-err "send refused reason=~(~a~) cid=~a op=tail" (second decision)
+                      (fnn-mux-conn-cid conn))
+             (setf (fnn-mux-conn-idle-at conn) nil)
+             (fnn-mux-finish loop conn))
+            (t (fnn-mux-arm-idle conn))))))
 
 (defun fnn-mux-drain-readable (loop conn)
   (let ((got (handler-case (fnn-mux-read-plain (fnn-mux-conn-fd conn))

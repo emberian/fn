@@ -59,9 +59,12 @@
                 fnn-octet-list-p fnn-make-octets fnn-string-octets
                 fnn-bridge-config-initial fnn-constants)
               '(fnn-octets))
+; The BP node's contact MRUs (host/native/tcpcl.lisp), read by the heap probe's BP terms.
+(defparameter +fnn-tcl-transfer-mru+ 1048576)
+(defparameter +fnn-tcl-segment-mru+ 1024)
 (source-forms (or (third sb-ext:*posix-argv*) "host/native/heap.lisp")
               '(fnn-heap-store-profile fnn-heap-operator-profile
-                fnn-heap-command-profile fnn-command-heap)
+                fnn-heap-command-profile fnn-heap-bp-terms fnn-command-heap)
               '(fnn-heap-profile-refusal fnn-heap-command-profile-base))
 
 (define-condition unlisted-profile-condition (fnn-store-error) ())
