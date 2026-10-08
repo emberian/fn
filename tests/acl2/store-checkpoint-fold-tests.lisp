@@ -25,6 +25,8 @@
 (include-book "../../books/owner-checkpoint-open")
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
+(include-book "../../books/defkeystone")
+(include-book "../../books/reclaim-chunked-walk")
 
 (defconst *scft-principal* (make-list 32 :initial-element 7))
 (defconst *scft-keys1*
@@ -270,3 +272,126 @@
         (equal (cdr (assoc-equal "<after@example>"
                                  (fn-sn-row-verdicts (fn-sco-records opened-split))))
                '(:unverified :malformed 2)))))
+
+; --- 8. the keystone's teeth (Ruling 22 evidence package) -------------------------
+
+; Native rendering of the claim's conclusion on the live arena; defteeth
+; proves the unconditional equality before it executes any witness or removal.
+(defun scft-open-conclusion (configs ws vs fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (e fn-arena)
+    (fn-scka-recover-rows
+     (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+     configs vs fn-arena)
+    (mv (equal e (car (fn-scka-full-recover configs (append ws vs)))) fn-arena)))
+
+(defun scft-open-mutant (configs ws vs fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (e fn-arena)
+    (fn-scka-recover-rows
+     (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+     configs vs fn-arena)
+    (mv (equal e (fn-sco-extend (fn-sco-capture configs nil) configs
+                                (scft-nil0-rows (append ws vs))))
+        fn-arena)))
+
+(defteeth fn-scka-recover-from-checkpoint-is-full-recover
+  :subject fn-scka-recover-rows
+  :claim
+  (((prefix-folds (not (equal (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0) :bad)))
+    (arena-count (equal (fn-arena-count fn-arena) (len (fn-scka-payloads ws)))))
+   (equal (mv-nth 0 (fn-scka-recover-rows
+                     (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+                     configs vs fn-arena))
+          (car (fn-scka-full-recover configs (append ws vs)))))
+  :witness ((configs *scft-cfgs*) (ws *scft-ws*) (vs *scft-vs*)
+            (loaded (fn-scka-payloads *scft-ws*)))
+  :stobjs ((fn-arena (sckat-seal-all loaded fn-arena)))
+  :stobj-checks
+  (((equal (mv-nth 0 (fn-scka-recover-rows
+                      (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+                      configs vs fn-arena))
+           (car (fn-scka-full-recover configs (append ws vs))))
+    (scft-open-conclusion configs ws vs fn-arena)
+    :hints (("Goal" :in-theory '(scft-open-conclusion))))
+   ((equal (mv-nth 0 (fn-scka-recover-rows
+                      (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+                      configs vs fn-arena))
+           (fn-sco-extend (fn-sco-capture configs nil) configs (scft-nil0-rows (append ws vs))))
+    (scft-open-mutant configs ws vs fn-arena)
+    :hints (("Goal" :in-theory '(scft-open-mutant)))))
+  :breaks
+  ((prefix-folds ((ws (list 'not-an-event)) (loaded nil) (vs (list *scft-enroll*))))
+   (arena-count ((loaded nil))))
+  :mutations
+  ((old-nil-zero-intern
+    (:conclusion (equal (mv-nth 0 (fn-scka-recover-rows
+                                   (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+                                   configs vs fn-arena))
+                        (fn-sco-extend (fn-sco-capture configs nil) configs (scft-nil0-rows (append ws vs)))))
+    () :fault "The capture interns every row at keyring NIL and generation 0, as before this change.")))
+
+(defteeth-check (fn-scka-recover-from-checkpoint-is-full-recover))
+
+; The live arena the writer and the chunked walk read: the host worker's
+; interning of the log (handles are the rows' own).
+(defun scft-live-arena (fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (acc fn-arena)
+    (fn-ssr-intern-step (fn-ssr-seed (fn-stxk-initial-context 0)) *scft-log* nil nil :resident nil
+                        fn-arena)
+    (declare (ignore acc))
+    fn-arena))
+
+(defteeth fn-scka-next-checkpoint-is-capture
+  :subject fn-scka-next-checkpoint
+  :claim
+  (((within (<= plen (len records)))
+    (canon-ok (not (equal (fn-scka-canon-rows records fn-arena 0 (fn-stxk-initial-context 0))
+                          :bad))))
+   (equal (fn-scka-next-checkpoint
+           (fn-sco-capture configs
+                           (fn-scka-canon-rows (take plen records) fn-arena 0
+                                               (fn-stxk-initial-context 0)))
+           (len (fn-scka-canon-payloads (take plen records) fn-arena))
+           configs records fn-arena)
+          (fn-sco-capture configs
+                          (fn-scka-canon-rows records fn-arena 0 (fn-stxk-initial-context 0)))))
+  :witness ((configs *scft-cfgs*) (plen 2) (records *scft-replay*))
+  :stobjs ((fn-arena (scft-live-arena fn-arena)))
+  :breaks
+  ((within ((plen 5)))
+   (canon-ok ((plen 1) (records (list (car *scft-replay*) (nth 3 *scft-replay*))))))
+  :mutations
+  ((old-nil-zero-intern
+    (:conclusion (equal (fn-scka-next-checkpoint
+                         (fn-sco-capture configs
+                                         (fn-scka-canon-rows (take plen records) fn-arena 0
+                                                             (fn-stxk-initial-context 0)))
+                         (len (fn-scka-canon-payloads (take plen records) fn-arena))
+                         configs records fn-arena)
+                        (fn-sco-capture configs (scft-nil0-rows (fn-rows-wire-of records fn-arena)))))
+    () :fault "The capture interns every row at keyring NIL and generation 0, as before this change.")))
+
+(defteeth fn-rcw-canon-acc-steps-is-the-checkpoint-capture
+  :subject fn-rcw-canon-acc-step
+  :claim
+  (let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena))
+        (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0))))
+    (()
+     (and (equal (eq r :bad) (eq all :bad))
+          (implies (not (eq r :bad))
+                   (equal (fn-rcw-acc-finish (car r)) (fn-sco-capture configs all))))))
+  :witness ((configs *scft-cfgs*)
+            (chunks (list (take 2 *scft-replay*) (nthcdr 2 *scft-replay*))))
+  :stobjs ((fn-arena (scft-live-arena fn-arena)))
+  :mutations
+  ((old-nil-zero-intern
+    (:conclusion
+     (let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena)))
+       (equal (fn-rcw-acc-finish (car r))
+              (fn-sco-capture configs (scft-nil0-rows (fn-rows-wire-of (fn-rcw-concat chunks)
+                                                                       fn-arena))))))
+    () :fault "The chunked capture interns every row at keyring NIL and generation 0, as before this change.")))
+
+(defteeth-check (fn-scka-next-checkpoint-is-capture fn-rcw-canon-acc-steps-is-the-checkpoint-capture))

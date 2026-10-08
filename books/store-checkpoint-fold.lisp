@@ -704,3 +704,23 @@
            :use ((:instance fn-scka-fold-at-len-rows (acc (fn-ssr-seed id)))
                  (:instance fn-scka-rows-of-seed)
                  (:instance fn-scka-intern-at-bad-iff)))))
+
+; A fold that is not refused ran over a true list: the fold of an improper
+; list refuses at its tail.
+(defthm fn-scka-fold-at-not-bad-true-listp
+  (implies (not (equal (fn-scka-fold-at acc ws h) :bad))
+           (true-listp ws))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :induct (fn-scka-fold-at acc ws h)
+           :in-theory (e/d (fn-scka-fold-at)
+                           (fn-ssr-publish fn-replay-identity-step fn-scka-intern-one
+                            fn-scka-sealsp fn-stxk-context-kind fn-ssr-at)))))
+
+(defthm fn-scka-intern-at-not-bad-true-listp-input
+  (implies (not (equal (fn-scka-intern-at ws id h) :bad))
+           (true-listp ws))
+  :rule-classes :forward-chaining
+  :hints (("Goal" :in-theory (e/d (fn-scka-intern-at) (fn-scka-fold-at fn-ssr-seed fn-ssr-rows
+                                                       fn-scka-intern-at-bad-iff))
+           :use ((:instance fn-scka-fold-at-not-bad-true-listp (acc (fn-ssr-seed id)))
+                 (:instance fn-scka-intern-at-bad-iff)))))

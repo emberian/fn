@@ -893,7 +893,7 @@
 ; (fn-sco-identity), which is the state the full fold reaches at that point
 ; (fn-scka-fold-at-seed), so a keyring rotation inside the first PLEN rows
 ; reaches the rows after it.
-(defthm fn-scka-next-checkpoint-is-capture
+(defthm fn-scka-next-checkpoint-is-capture-of-base
   (implies (and (natp plen) (<= plen (len records))
                 (equal base (fn-sco-capture configs
                                             (fn-scka-canon-rows (take plen records) fn-arena 0
@@ -952,6 +952,38 @@
                             fn-rows-wire-of fn-sco-extend fn-sco-capture fn-scka-canon-rows
                             fn-scka-canon-payloads fn-replay-identity-loop fn-scka-len-intern-at
                             fn-scka-intern-at-bad-iff)))))
+
+(local
+ (defthm fn-scka-take-of-nfix
+   (equal (take n x) (take (nfix n) x))))
+
+; KEYSTONE (the owner's next), with the base and its payload count stated as
+; what the owner keeps (fn-scka-restore-base-of-strip-of-capture): BASE the
+; capture of the canonical rows of the first PLEN live rows and H0 their
+; canonical payload count; NEXT is the capture of the canonical rows of all.
+(defthm fn-scka-next-checkpoint-is-capture
+  (implies (and (<= plen (len records))
+                (not (equal (fn-scka-canon-rows records fn-arena 0 (fn-stxk-initial-context 0))
+                            :bad)))
+           (equal (fn-scka-next-checkpoint
+                   (fn-sco-capture configs
+                                   (fn-scka-canon-rows (take plen records) fn-arena 0
+                                                       (fn-stxk-initial-context 0)))
+                   (len (fn-scka-canon-payloads (take plen records) fn-arena))
+                   configs records fn-arena)
+                  (fn-sco-capture configs
+                                  (fn-scka-canon-rows records fn-arena 0 (fn-stxk-initial-context 0)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-scka-next-checkpoint fn-sco-capture fn-scka-canon-rows
+                               fn-scka-canon-payloads fn-scka-next-checkpoint-is-capture-of-base
+                               fn-scka-take-of-nfix)
+           :use ((:instance fn-scka-next-checkpoint-is-capture-of-base (plen (nfix plen))
+                            (base (fn-sco-capture configs
+                                                  (fn-scka-canon-rows (take plen records) fn-arena 0
+                                                                      (fn-stxk-initial-context 0))))
+                            (h0 (len (fn-scka-canon-payloads (take plen records) fn-arena))))
+                 (:instance fn-scka-take-of-nfix (n plen) (x records))))))
+
 
 
 ; -----------------------------------------------------------------------------

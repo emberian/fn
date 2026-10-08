@@ -566,8 +566,7 @@
 ; full-recover; the two together on two arenas, the host's own two calls:
 ; fn-scka-recover-from-checkpoint-is-full-recover-two-arenas.
 (defthm fn-scka-recover-from-checkpoint-is-full-recover
-  (implies (and (true-listp ws)
-                (not (equal (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0) :bad))
+  (implies (and (not (equal (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0) :bad))
                 (equal (fn-arena-count fn-arena) (len (fn-scka-payloads ws))))
            (equal (mv-nth 0 (fn-scka-recover-rows
                              (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
@@ -580,6 +579,7 @@
                                fn-scka-full-recover-rows-are-the-emptied-arena-recover
                                fn-scka-recover-rows-from-checkpoint-is-full-recover)
            :use ((:instance fn-scka-recover-rows-from-checkpoint-is-full-recover)
+                 (:instance fn-scka-intern-at-not-bad-true-listp-input (id (fn-stxk-initial-context 0)) (h 0))
                  (:instance fn-scka-recover-rows-first-depends-on-the-count
                             (c (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0)))
                             (records vs) (a1 fn-arena) (a2 (fn-scka-payloads ws)))
