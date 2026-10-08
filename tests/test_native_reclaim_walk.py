@@ -52,6 +52,13 @@ CHUNK = 1024
 # now borrows its second generation's demand from the owner's work reserve,
 # which the launcher's figure holds at the profile's bounds.
 PROFILE = ("--profile", "development", "--max-transactions", "16384")
+# The development preset's history budget (max-history-octets) is 24 MiB, which
+# served 7,459 of the resident-set measurement's 10,000 small posts before
+# `441 ... history-exhausted` (train 27 gate, POST 7460): about 3,373 octets of
+# history per post.  That test sizes its store for its fill: 4 KiB of history
+# per post, never less than the preset's own.
+PRESET_HISTORY_OCTETS = 24 * 1024 * 1024
+HISTORY_PER_POST = 4096
 
 
 def tag(i: int) -> str:
@@ -84,9 +91,10 @@ class NativeReclaimWalkTests(unittest.TestCase):
     reclaim = expiry.ExpiryMixin.reclaim
     owner_lines = expiry.ExpiryMixin.owner_lines
 
-    def node(self, name="node", live=True):
+    def node(self, name="node", live=True, posts=None):
         node = Node(self, self.image, root=self.root / name, extra=expiry.reclaim_extra(live))
-        node.operator("init", *PROFILE, GROUP, expiry.KEEP, timeout=600, expect=EXIT.OK)
+        history = ("--max-history-octets", str(max(PRESET_HISTORY_OCTETS, posts * HISTORY_PER_POST))) if posts else ()
+        node.operator("init", *PROFILE, *history, GROUP, expiry.KEEP, timeout=600, expect=EXIT.OK)
         secret = node.store("node-secret", "create", timeout=600)
         self.assertIn(secret.returncode, (EXIT.OK, EXIT.REFUSED), secret.stderr[-600:])
         return node
@@ -247,7 +255,7 @@ class NativeReclaimWalkTests(unittest.TestCase):
                          "FN_RUN_RECLAIM_RSS=1 runs the walk's resident-set measurement")
     def test_resident_set_of_a_pass_at_1k_and_10k(self):
         for n in (1000, 10000):
-            node = self.node("rss-%d" % n)
+            node = self.node("rss-%d" % n, posts=n)
             owner = node.start(timeout=1800)
             try:
                 post_many(node, n, lambda i: i % 2 == 1)
