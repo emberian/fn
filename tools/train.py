@@ -394,6 +394,53 @@ def _changed_roots(t: Train, prefix: str) -> list[str]:
     return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
 
 
+def cache_seed_command(t: Train, box: str, tree: str) -> tuple[str, str | None]:
+    """Best-effort reuse of the last box step's content-keyed emit caches.
+
+    ledger-forms, ledger-tree (including suspects), callgraph, reach,
+    certify-audit and wire-emit all validate content keys before reuse;
+    wire-emit also validates the destination wire-grammar.json bytes.
+    The success marker, not merely a local record, determines cache_seed.
+    """
+    def skip(reason):
+        return f"echo {shlex.quote('== cache seed skipped: ' + reason)}", None
+
+    try:
+        previous = load_box_record(t)
+        if not previous:
+            return skip("no previous box record")
+        if previous.get("box") != box:
+            return skip("previous box differs")
+        run = previous.get("run")
+        if not isinstance(run, str) or not run or Path(run).name != run:
+            return skip("no previous farm run")
+        record = json.loads((t.root / "build" / "farm" / f"{run}.json").read_text())
+        if record.get("host", record.get("box", box)) != box:
+            return skip("previous farm box differs")
+        previous_tree = record.get("remote_path")
+        if not isinstance(previous_tree, str) or not previous_tree:
+            return skip("no previous farm tree")
+    except (OSError, ValueError, AttributeError):
+        return skip("previous farm record unavailable")
+    source = shlex.quote(previous_tree.rstrip("/") + "/build/cache/.")
+    destination = shlex.quote(tree.rstrip("/") + "/build/cache/")
+    success = shlex.quote("== cache seed " + run)
+    return (f"if [ -d {source} ]; then "
+            f"if mkdir -p {destination} && cp -a {source} {destination}; then "
+            f"echo {success}; else echo '== cache seed skipped: copy failed'; fi; "
+            "else echo '== cache seed skipped: previous cache missing'; fi", run)
+
+
+def emit_remote_command(tree: str, envs: str, box: str, seed: str) -> str:
+    wrap = WRAPS.get(box, "")
+    body = (f"{seed}; {envs}; "
+            'eval "$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; '
+            + EMIT_CMD)
+    # The copy shares the emits' timeout and hbox resource wrapper.
+    return (f"cd {shlex.quote(tree)} && "
+            f"{wrap + ' ' if wrap else ''}timeout {EMIT_TIMEOUT_SECONDS} sh -c {shlex.quote(body)}")
+
+
 def cmd_certify(t: Train, args) -> int:
     if t.dirty():
         # farm ships the worktree (rsync without .git/ and build/), so an
@@ -430,14 +477,13 @@ def cmd_certify(t: Train, args) -> int:
     tree = rec["remote_path"]
     env = subprocess.run([PY3, "tools/box_table.py", "env", args.box], cwd=t.root, capture_output=True, text=True)
     envs = env.stdout.strip() if env.returncode == 0 and env.stdout.strip() else "true"
-    wrap = WRAPS.get(args.box, "")
-    remote_cmd = (f"cd {shlex.quote(tree)} && {envs}; "
-                  f"eval \"$(python3 tools/native_env.py sbcl --export 2>/dev/null)\"; "
-                  f"{wrap} timeout {EMIT_TIMEOUT_SECONDS} sh -c {shlex.quote(EMIT_CMD)}").replace("  ", " ")
+    seed, seed_run = cache_seed_command(t, args.box, tree)
+    remote_cmd = emit_remote_command(tree, envs, args.box, seed)
     say(f"$ {SSH} {args.box} <emits in {tree}>")
     log = t.logs / f"certify-emit-{args.box}.log"
     p = subprocess.run([SSH, args.box, remote_cmd], capture_output=True, text=True)
     log.write_text(p.stdout + p.stderr)
+    cache_seed = seed_run if seed_run and f"== cache seed {seed_run}" in p.stdout.splitlines() else None
     steps = {m.group(1): int(m.group(2)) for m in re.finditer(r"^== step (\S+) (\d+)$", p.stdout, re.M)}
     if p.returncode != 0:
         say(f"emits on {args.box} failed (rc {p.returncode}; log {log}); nothing recorded")
@@ -454,12 +500,13 @@ def cmd_certify(t: Train, args) -> int:
     wall = {"install": round(t1 - t0), "certify": round(t2 - t1), "emit": round(t3 - t2), "total": round(t3 - t0), "emit_steps": steps}
     _commit_named(t, HBOX_OUTPUTS, f"interfaces.json, wire-grammar.json: the train certify's emits on {args.box} at {ran_at[:9]}")
     record = {"sha": t.head(), "ran_at": ran_at, "box": args.box, "run": run,
-              "certify_id": rec.get("certify_id"), "wall": wall}
+              "certify_id": rec.get("certify_id"), "wall": wall, "cache_seed": cache_seed}
     t.dir.mkdir(parents=True, exist_ok=True)
     box_record_path(t).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
     st = t.load()
     st["box_wall"] = wall
     st["box_run"] = run
+    st["cache_seed"] = cache_seed
     t.save(st)
     say(f"certify recorded: {args.box} run {run} at {record['sha'][:9]}; wall install {wall['install']}s "
         f"certify {wall['certify']}s emit {wall['emit']}s "

@@ -11,6 +11,7 @@ import contextlib
 import io
 import json
 import os
+import pickle
 from pathlib import Path
 import re
 import sys
@@ -23,6 +24,106 @@ from unittest import mock
 # earlier imports holding a different Sym class, so their readers disagree.
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import ledger
+
+
+class SharedFormsTests(unittest.TestCase):
+    SOURCE = "; shared forms fixture\n" * 100 + "(defun f (x) (cons x '(a b)))\n"
+
+    def setUp(self):
+        for patcher in (mock.patch.object(ledger, "_FORMS_MEMO", {}),
+                        mock.patch.dict(os.environ, {"FN_LEDGER_FORMS_CACHE": "0"})):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def test_memory_hit_reuses_forms_without_unpickling_and_consumes_reader(self):
+        with mock.patch.object(pickle, "loads", wraps=pickle.loads) as loads:
+            first = ledger.Reader(self.SOURCE).top_level()
+            reader = ledger.Reader(self.SOURCE)
+            self.assertIs(reader.top_level(), first)
+            self.assertEqual(reader.pos, len(self.SOURCE))
+            self.assertEqual(reader.top_level(), [])
+            self.assertEqual(loads.call_count, 0)
+        changed = ledger.Reader(self.SOURCE.replace("cons", "list")).top_level()
+        self.assertNotEqual(changed, first)
+
+    def test_disk_hit_unpickles_once_then_shares_and_corrupt_disk_reparses(self):
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.dict(os.environ, {"FN_LEDGER_FORMS_CACHE": directory}):
+            expected = ledger.Reader(self.SOURCE).top_level()
+            ledger._FORMS_MEMO.clear()
+            with mock.patch.object(pickle, "loads", wraps=pickle.loads) as loads:
+                first = ledger.Reader(self.SOURCE).top_level()
+                self.assertEqual(first, expected)
+                self.assertIs(ledger.Reader(self.SOURCE).top_level(), first)
+                self.assertEqual(loads.call_count, 1)
+            ledger._FORMS_MEMO.clear()
+            next(Path(directory).rglob("*.pickle")).write_bytes(b"broken")
+            first = ledger.Reader(self.SOURCE).top_level()
+            self.assertEqual(first, expected)
+            self.assertIs(ledger.Reader(self.SOURCE).top_level(), first)
+
+    def test_instrumented_reader_subclasses_keep_their_own_forms(self):
+        # SpanReader/Spans attach locations to list subclasses; session_depth
+        # keeps an identity-to-line map. Neither may reuse another read's forms.
+        class InstrumentedReader(ledger.Reader):
+            pass
+
+        first = InstrumentedReader(self.SOURCE).top_level()
+        second = InstrumentedReader(self.SOURCE).top_level()
+        self.assertEqual(first, second)
+        self.assertIsNot(first[0][0], second[0][0])
+        self.assertEqual(ledger._FORMS_MEMO, {})
+
+    def test_consumers_preserve_shared_forms_including_nested_lists(self):
+        import callgraph
+        from tools import interface_emit, protocol_emit
+
+        # Exercise the shared reader through analyzers, event expansion and
+        # emitters. Snapshots catch nested mutation as well as append/sort/del
+        # on the top level; identity ensures consumers really saw shared data.
+        root = Path(__file__).resolve().parents[1]
+        paths = [root / "tests/acl2" / name for name in (
+            "defrecord-tests.lisp", "def-loop-tests.lisp", "defkeystone-tests.lisp",
+            "def-carried-view-tests.lisp", "def-keyset-check-tests.lisp",
+            "def-cursor-tests.lisp", "def-carried-writer-tests.lisp")]
+        paths += [protocol_emit.TABLE, protocol_emit.SERVED_TABLE]
+        with mock.patch.object(ledger, "_FORMS_CACHE_MIN", 0):
+            for path in paths:
+                with self.subTest(path=path.name):
+                    source = path.read_text()
+                    forms = ledger.Reader(source).top_level()
+                    before = pickle.dumps(forms)
+                    relative = path.relative_to(root).as_posix()
+                    book = ledger.analyze_book(path, relative)
+                    host = ledger.analyze_host(path, relative)
+                    self.assertIs(host.forms, forms)
+                    tree = ledger.Tree({relative: book}, [relative[:-5]], {relative: host})
+                    ledger.lint_warnings(tree)
+                    list(ledger.source_events(forms))
+                    callgraph.collect(forms, relative)
+                    self.assertIs(ledger.Reader(source).top_level(), forms)
+                    self.assertEqual(pickle.dumps(forms), before)
+
+            # Emitters keep derived rows and writer lists separate from forms.
+            with tempfile.TemporaryDirectory() as directory:
+                scratch = Path(directory)
+                (scratch / "books").mkdir()
+                (scratch / "host").mkdir()
+                source = self.SOURCE + '''
+(definterface f :class :logic :kinds ((x :value)))
+(def-carried row :established ((f held)) :transitions ((g preserved))
+ :concludes ((p established)))
+'''
+                (scratch / "host/interfaces.lisp").write_text(source)
+                forms = ledger.Reader(source).top_level()
+                before = pickle.dumps(forms)
+                interface_emit.declarations(scratch)
+                interface_emit.carried_rows(scratch)
+                self.assertEqual(pickle.dumps(forms), before)
+            protocol_emit.load()
+            for path in (protocol_emit.TABLE, protocol_emit.SERVED_TABLE):
+                source = path.read_text()
+                self.assertEqual(ledger.Reader(source).top_level(), ledger.Reader(source)._top_level())
 
 
 def tree_from(sources: dict[str, str], roots: list[str] | None = None) -> ledger.Tree:

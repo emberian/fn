@@ -133,7 +133,8 @@ class Reader:
         """Every top-level form, paired with the line it starts on.
 
         A whole text read from its start is answered from the per-text cache
-        (`_cached_top_level`): the same bytes always read the same."""
+        (`_cached_top_level`): the same bytes always read the same. The
+        returned forms are shared read-only data; copy locally before editing."""
         if self.pos == 0 and type(self) is Reader and len(self.source) >= _FORMS_CACHE_MIN:
             return _cached_top_level(self)
         return self._top_level()
@@ -352,12 +353,13 @@ def number(text: str) -> object:
 # host_check --load 13,137 times (288 s); proof_repl start 3 times a book.
 # A text's forms are a function of its bytes and this reader, so an entry
 # is named by the digest of both and is valid exactly when its name
-# matches.  Each hit unpickles a fresh copy, so no caller sees another's
-# objects.  In-process first, then build/cache/ledger-forms/ (one file per
+# matches. Callers only read forms (including retained bodies and generator
+# inputs); transformations build new lists. Share the parsed list in-process
+# so repeat reads do not unpickle it again. Then build/cache/ledger-forms/ (one file per
 # text; a reader change starts a new format directory and removes the old
 # ones).  FN_LEDGER_FORMS_CACHE=0 turns the disk half off; a path moves it.
 _FORMS_CACHE_MIN = 2048
-_FORMS_MEMO: dict[bytes, bytes] = {}
+_FORMS_MEMO: dict[bytes, list[tuple[object, int]]] = {}
 _FORMS_FORMAT: "str | None" = None
 
 
@@ -380,30 +382,32 @@ def _forms_cache_dir() -> "Path | None":
 def _cached_top_level(reader: "Reader") -> list[tuple[object, int]]:
     import pickle
     key = hashlib.sha256(reader.source.encode("utf-8", "surrogatepass")).digest()
-    data = _FORMS_MEMO.get(key)
-    directory = None
-    if data is None:
-        directory = _forms_cache_dir()
-        if directory is not None:
-            try:
-                data = (directory / key.hex()[:2] / (key.hex() + ".pickle")).read_bytes()
-            except OSError:
-                data = None
+    forms = _FORMS_MEMO.get(key)
+    if forms is not None:
+        reader.pos = len(reader.source)
+        return forms
+    directory = _forms_cache_dir()
+    data = None
+    if directory is not None:
+        try:
+            data = (directory / key.hex()[:2] / (key.hex() + ".pickle")).read_bytes()
+        except OSError:
+            pass
     if data is not None:
         try:
             forms = pickle.loads(data)
         except Exception:
             forms = None
         if isinstance(forms, list):
-            _FORMS_MEMO[key] = data
+            _FORMS_MEMO[key] = forms
             reader.pos = len(reader.source)
             return forms
     forms = reader._top_level()
-    data = pickle.dumps(forms, protocol=pickle.HIGHEST_PROTOCOL)
-    _FORMS_MEMO[key] = data
+    _FORMS_MEMO[key] = forms
     if directory is not None:
+        data = pickle.dumps(forms, protocol=pickle.HIGHEST_PROTOCOL)
         _forms_cache_write(directory, key.hex(), data)
-    return pickle.loads(data)
+    return forms
 
 
 def _forms_cache_write(directory: Path, name: str, data: bytes) -> None:

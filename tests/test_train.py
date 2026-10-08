@@ -11,6 +11,10 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
+
+from tools import train
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPT = Path(os.environ.get("TRAIN_SCRIPT", REPO / "tools" / "train.py"))
@@ -74,6 +78,7 @@ case "$cmd" in
 esac
 echo "ssh $*" >> "$STUB_LOG"
 if [ "${STUB_RC_ssh:-0}" = 0 ]; then
+  [ -z "$STUB_CACHE_SEED" ] || echo "== cache seed $STUB_CACHE_SEED"
   for out in planning/interfaces.json specs/wire-grammar.json; do
     mkdir -p "$FARM_TREE/$(dirname $out)" && echo "${STUB_EMIT:-emitted}" > "$FARM_TREE/$out"
   done
@@ -87,6 +92,86 @@ def sh(cwd, *argv, env=None, check=True):
     if check and p.returncode != 0:
         raise AssertionError(f"{argv} rc {p.returncode}\n{p.stdout}\n{p.stderr}")
     return p
+
+
+class CacheSeedTests(unittest.TestCase):
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="train-seed-")
+        self.addCleanup(temporary.cleanup)
+        self.root = Path(temporary.name)
+        self.train = SimpleNamespace(root=self.root, dir=self.root / "build/train")
+        self.train.dir.mkdir(parents=True)
+        self.old = self.root / "old ' tree"
+        self.new = self.root / "new ' tree"
+        self.new.mkdir()
+
+    def previous(self, box="hbox", farm=True):
+        train.box_record_path(self.train).write_text(json.dumps({"box": box, "run": "old-run"}))
+        if farm:
+            record = self.root / "build/farm/old-run.json"
+            record.parent.mkdir(parents=True)
+            record.write_text(json.dumps({"host": box, "remote_path": str(self.old)}))
+
+    def execute(self, box="hbox"):
+        seed, run = train.cache_seed_command(self.train, box, str(self.new))
+        # Run the exact constructed remote shell locally, with harmless emits.
+        with mock.patch.object(train, "WRAPS", {}), \
+                mock.patch.object(train, "EMIT_CMD", "echo emitted"):
+            command = train.emit_remote_command(str(self.new), "true", box, seed)
+        result = subprocess.run(["sh", "-c", command], capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(result.stdout.endswith("emitted\n"), result.stdout)
+        return seed, run, result.stdout
+
+    def test_same_box_seeds_every_cache_and_preserves_names(self):
+        self.previous()
+        cache = self.old / "build/cache"
+        for name in ("ledger-forms/f/key.pickle", "ledger-tree/key.pickle",
+                     "ledger-tree/suspects.json", "wire-emit.json", "callgraph/key.pickle",
+                     "reach/files.pickle.z", "certify-audit.json", ".hidden"):
+            path = cache / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(name)
+        seed, run, output = self.execute()
+        self.assertIn("cp -a", seed)
+        self.assertEqual(run, "old-run")
+        self.assertIn("== cache seed old-run\n", output)
+        for path in cache.rglob("*"):
+            if path.is_file():
+                self.assertEqual((self.new / "build/cache" / path.relative_to(cache)).read_bytes(), path.read_bytes())
+
+    def test_absent_record_skips(self):
+        seed, run, output = self.execute()
+        self.assertNotIn("cp -a", seed)
+        self.assertIsNone(run)
+        self.assertIn("no previous box record", output)
+
+    def test_different_box_skips(self):
+        self.previous("persvati")
+        seed, run, output = self.execute()
+        self.assertNotIn("cp -a", seed)
+        self.assertIsNone(run)
+        self.assertIn("previous box differs", output)
+
+    def test_missing_farm_record_skips(self):
+        self.previous(farm=False)
+        _, run, output = self.execute()
+        self.assertIsNone(run)
+        self.assertIn("previous farm record unavailable", output)
+
+    def test_missing_remote_tree_skips(self):
+        self.previous()
+        _, _, output = self.execute()
+        self.assertIn("previous cache missing", output)
+        self.assertNotIn("== cache seed old-run\n", output)
+
+    def test_copy_failure_does_not_block_emits_or_claim_a_seed(self):
+        self.previous()
+        (self.old / "build/cache").mkdir(parents=True)
+        (self.new / "build").write_text("not a directory")
+        _, _, output = self.execute()
+        self.assertIn("copy failed", output)
+        self.assertNotIn("== cache seed old-run\n", output)
 
 
 class TrainBase(unittest.TestCase):
@@ -451,10 +536,28 @@ class CertifyTests(TrainBase):
         self.assertEqual(set(rec["wall"]), {"install", "certify", "emit", "total", "emit_steps"})
         st = json.loads(self.work.joinpath("build/train/integrate__t1.json").read_text())
         self.assertEqual(st["box_wall"], rec["wall"])
+        self.assertIsNone(rec["cache_seed"])
+        self.assertIsNone(st["cache_seed"])
         g = self.train("gate")
         self.assertIn("ran at HEAD on hbox", g.stdout)
         s = self.train("status")
         self.assertIn("certify", s.stdout)
+
+    def test_successful_seed_is_recorded_in_box_and_train_state(self):
+        self.books_train()
+        record = self.work / "build/farm/old-run.json"
+        record.parent.mkdir(parents=True, exist_ok=True)
+        record.write_text(json.dumps({"remote_path": "/old/farm-tree", "host": "hbox"}))
+        (self.work / "build/train/box-step.json").write_text(json.dumps({"box": "hbox", "run": "old-run"}))
+        result = self.train("certify", "hbox", extra_env={"STUB_CACHE_SEED": "old-run"})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.box()["cache_seed"], "old-run")
+        state = json.loads(self.work.joinpath("build/train/integrate__t1.json").read_text())
+        self.assertEqual(state["cache_seed"], "old-run")
+        ssh = [line for line in self.stub_log() if line.startswith("ssh ")]
+        self.assertEqual(len(ssh), 1)
+        self.assertLess(ssh[0].index("cp -a /old/farm-tree/build/cache/."),
+                        ssh[0].index("tools/interface_emit.py"))
 
     def test_a_books_free_train_certifies_wire_export_alone(self):
         self.merge({"tools/x.py": "x\n"})
