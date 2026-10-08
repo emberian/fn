@@ -33,15 +33,15 @@
                 (fn-bpn-lifecycle-recovery-from nil nil (fn-bpnr-plan-start-token plan))
                 (fn-bpnf-base (fn-bpnf-answer-state answer))) t))))
   :subject fn-bpnj-step
-  :witness ((st (bprd-owed-q)) (generation 1) (ck (bprd-owed-ck))
+  :witness ((st (bprd-traced-q)) (generation 1) (ck (bprd-traced-ck))
             (profile '(8 1048576 65538 1048576)) (domain '(:same (7 7 7 7))))
-  :breaks ((proposes ((ck (update-nth 7 nil (bprd-owed-ck)))))
+  :breaks ((proposes ((ck (update-nth 7 nil (bprd-owed-ck))) (st (bprd-owed-q))))
            (invariant ((st (bprd-token-q 5000))
                        (ck (update-nth 8 5000 (bprd-owed-ck)))))
            (projection ((st (update-nth 10 0 (bprd-owed-q)))
                         (ck (update-nth 5 0 (bprd-owed-ck)))))
-           (profile ((profile nil)))
-           (domain ((domain '(:fence :different-boot)))))
+           (profile ((profile nil) (st (bprd-owed-q)) (ck (bprd-owed-ck))))
+           (domain ((domain '(:fence :different-boot)) (st (bprd-owed-q)) (ck (bprd-owed-ck)))))
   :mutations ((reopens-unseeded
                (:conclusion (let* ((unseeded-event (fn-bpnr-recover-auto-event fresh nil :ready nil plan))
         (answer (fn-bpnj-step fresh (append (fn-bprpf-admit-recovery unseeded-event profile) (list domain)))))
@@ -56,3 +56,49 @@
                ((st (bprd-owed-q)) (generation 1) (ck (bprd-owed-ck))
                 (profile '(8 1048576 65538 1048576)) (domain '(:same (7 7 7 7))))
                :fault "omitting fn-bpnr-seed-state loses the owed job in fn-bpnj-step's answer")))
+
+;; Implementation mutation, not a changed conclusion.  These are the host
+;; open's ACL2 calls: construct a fresh foundation, seed from the selected
+;; checkpoint, build/profile-admit the recovery event, append the clock-domain
+;; evidence, and drive fn-bpnj-step.  The mutant omits precisely the seed call.
+(defun bprr-open (st plan profile domain)
+  (let* ((fresh (fn-bpnr-open-fresh st))
+         (seeded (fn-bpnr-seed-state fresh plan))
+         (event (fn-bpnr-recover-auto-event seeded nil :ready nil plan)))
+    (fn-bpnj-step seeded
+     (append (fn-bprpf-admit-recovery event profile) (list domain)))))
+(defun bprr-mutant-open-without-seed (st plan profile domain)
+  (let* ((fresh (fn-bpnr-open-fresh st))
+         (seeded fresh)
+         (event (fn-bpnr-recover-auto-event seeded nil :ready nil plan)))
+    (fn-bpnj-step seeded
+     (append (fn-bprpf-admit-recovery event profile) (list domain)))))
+(defun bprr-open-keeps-owed-work-p (answer st plan)
+  (and (equal (car (car (fn-bpnf-answer-effects answer))) :restart-ready)
+       (equal (fn-bpn-machine-state-jobs (fn-bpnf-base (fn-bpnf-answer-state answer)))
+              (fn-bpn-machine-state-jobs (fn-bpnf-base st)))
+       (equal (fn-bpn-machine-state-next-token (fn-bpnf-base (fn-bpnf-answer-state answer)))
+              (fn-bpn-machine-state-next-token (fn-bpnf-base st)))
+       (equal (fn-bpn-host-lifecycle-recovery-agrees-p
+               (fn-bpn-lifecycle-recovery-from nil nil (fn-bpnr-plan-start-token plan))
+               (fn-bpnf-base (fn-bpnf-answer-state answer))) t)))
+(defun bprr-traced-plan ()
+  (fn-bpnr-published-plan (bprd-traced-q) 1 (bprd-traced-ck)))
+(assert-event
+ (let* ((st (bprd-traced-q)) (plan (bprr-traced-plan))
+        (good (bprr-open st plan '(8 1048576 65538 1048576) '(:same (7 7 7 7))))
+        (bad (bprr-mutant-open-without-seed
+              st plan '(8 1048576 65538 1048576) '(:same (7 7 7 7)))))
+   (and (equal (car plan) :selected)
+        (equal (len (fn-bpn-machine-state-jobs (fn-bpnf-base st))) 1)
+        (bprr-open-keeps-owed-work-p good st plan)
+        (equal (car (car (fn-bpnf-answer-effects bad))) :restart-ready)
+        (null (fn-bpn-machine-state-jobs (fn-bpnf-base (fn-bpnf-answer-state bad))))
+        (equal (fn-bpn-machine-state-next-token
+                (fn-bpnf-base (fn-bpnf-answer-state bad))) 0))))
+(must-fail-checked
+ (assert-event
+  (bprr-open-keeps-owed-work-p
+   (bprr-mutant-open-without-seed (bprd-traced-q) (bprr-traced-plan)
+                                '(8 1048576 65538 1048576) '(:same (7 7 7 7)))
+   (bprd-traced-q) (bprr-traced-plan))))

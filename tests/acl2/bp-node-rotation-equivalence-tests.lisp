@@ -57,21 +57,21 @@
          (equal (car (car (fn-bpnf-answer-effects checkpoint-answer))) :restart-ready)
          (equal (car (car (fn-bpnf-answer-effects full-answer))) :restart-ready)))))
   :subject fn-bpnj-step
-  :witness ((st (bprd-owed-q)) (generation 1) (ck (bprd-owed-ck))
-            (records (list (bprr-owed-record))) (rows0 (bpcx-n16-rows0))
+  :witness ((st (bprd-traced-q)) (generation 1) (ck (bprd-traced-ck))
+            (records (bprd-trace-records)) (rows0 (bprd-trace-rows))
             (suffix (list (bpcx-n16-row-b))))
-  :breaks ((proposes ((ck (update-nth 7 nil (bprd-owed-ck)))))
+  :breaks ((proposes ((ck (update-nth 7 nil (bprd-owed-ck))) (st (bprd-owed-q)) (records (list (bprr-owed-record))) (rows0 (bpcx-n16-rows0))))
            (record-bound ((st (bprr-overlong-q)) (ck (bprr-overlong-ck))
-                          (records *bpna-overlong-records*) (suffix nil))
+                          (records *bpna-overlong-records*) (suffix nil) (rows0 (bpcx-n16-rows0)))
                          :logical "the 4097-record counterexample is outside the served restart's record bound")
            (ready-history ((st (bprd-st))
                            (ck (fn-bpnr-checkpoint-of-event *bpcx-n16-event* 1 (bprd-st)))
-                           (records '(:bad)) (suffix nil)))
-           (jobs ((st (bprr-empty-jobs-q)) (ck (update-nth 7 nil (bprd-owed-ck)))))
-           (token ((st (bprd-token-q 2)) (ck (update-nth 8 2 (bprd-owed-ck)))))
-           (full-input ((rows0 *bpcx-n16-bad-rows*) (suffix nil)))
+                           (records '(:bad)) (suffix nil) (rows0 (bpcx-n16-rows0))))
+           (jobs ((st (bprr-empty-jobs-q)) (ck (update-nth 7 nil (bprd-owed-ck))) (records (list (bprr-owed-record))) (rows0 (bpcx-n16-rows0))))
+           (token ((st (bprd-token-q 2)) (ck (update-nth 8 2 (bprd-owed-ck))) (records (list (bprr-owed-record))) (rows0 (bpcx-n16-rows0))))
+           (full-input ((rows0 *bpcx-n16-bad-rows*) (suffix nil) (st (bprd-owed-q)) (ck (bprd-owed-ck)) (records (list (bprr-owed-record)))))
            (checkpoint-input ((st (update-nth 2 '(bad) (bprd-owed-q)))
-                              (ck (update-nth 2 '(bad) (bprd-owed-ck))) (suffix nil))))
+                              (ck (update-nth 2 '(bad) (bprd-owed-ck))) (suffix nil) (records (list (bprr-owed-record))) (rows0 (bpcx-n16-rows0)))))
   :mutations ((reopens-unseeded
                (:conclusion (let ((full-answer (fn-bpnj-step fresh full-event))
         (checkpoint-answer (fn-bpnj-step fresh (fn-bpnr-recover-auto-event fresh nil :ready suffix plan))))
@@ -83,3 +83,22 @@
                 (records (list (bprr-owed-record))) (rows0 (bpcx-n16-rows0))
                 (suffix (list (bpcx-n16-row-b))))
                :fault "unseeded recovery loses the job that full-history recovery reconstructs")))
+
+;; The same implementation mutant also violates whole-machine equivalence
+;; against the actual pre-rotation lifecycle history; the conclusion stays
+;; equality, and only the implementation called on the checkpoint changes.
+(assert-event
+ (equal
+  (fn-bpnf-base (fn-bpnf-answer-state
+    (bprr-open (bprd-traced-q) (bprr-traced-plan)
+               '(8 1048576 65538 1048576) '(:same (7 7 7 7)))))
+  (fn-bpnf-base (fn-bpnf-answer-state
+    (fn-bpnj-step (bprd-trace-fresh) (bprd-trace-reopen-event))))))
+(must-fail-checked
+ (assert-event
+  (equal
+   (fn-bpnf-base (fn-bpnf-answer-state
+     (bprr-mutant-open-without-seed (bprd-traced-q) (bprr-traced-plan)
+                                  '(8 1048576 65538 1048576) '(:same (7 7 7 7)))))
+   (fn-bpnf-base (fn-bpnf-answer-state
+     (fn-bpnj-step (bprd-trace-fresh) (bprd-trace-reopen-event)))))))

@@ -13,6 +13,7 @@
 (include-book "../../books/bp-node-rotation-due")
 (include-book "must-fail-checked")
 (include-book "../../books/defkeystone")
+(include-book "../../books/bp-node-job-offer")
 
 ;; Profile 3 with a threshold of one record, and with two.
 (defconst *bprd-profile-1* '(8 1048576 65538 1048576 1))
@@ -197,6 +198,89 @@
          (equal (fn-bpn-nth 1 replay) (fn-bpnf-held-list (bprd-st-no-held)))))))
 
 ;; ---------------------------------------------------------------------------
+;; Critical durability witness: a composed execution, with no state splice.
+;; Boot, receive A and acknowledge persistence, enqueue, acknowledge token 0,
+;; contact the named job, acknowledge token 1, report an uncertain transfer,
+;; and acknowledge the :requeued record at token 2.  The job status becomes
+;; :queued again.  Reopen the emitted lifecycle records and received row:
+;; this resets the operation frontier to the host open's rotation safe point.
+(defun bprd-trace-fresh ()
+  (fn-bpnf-initial-state *bpcx-config* 8 1048576))
+(defun bprd-trace-boot ()
+  (fn-bpnf-answer-state
+   (fn-bpnj-step (bprd-trace-fresh)
+    (fn-bpnr-recover-auto-event (bprd-trace-fresh) nil :ready nil '(:none)))))
+(defun bprd-trace-receive ()
+  (fn-bpnj-step (bprd-trace-boot) (bpcx-receive-event *bpcx-a-wire*)))
+(defun bprd-trace-held ()
+  (let* ((answer (bprd-trace-receive))
+         (effect (car (fn-bpnf-answer-effects answer))))
+    (fn-bpnf-answer-state
+     (fn-bpnj-step (fn-bpnf-answer-state answer)
+      (list :persist-result (nth 1 effect) (nth 2 effect) :durable)))))
+(defun bprd-trace-enqueue ()
+  (fn-bpnj-step (bprd-trace-held) (list :base *bpcx-enqueue*)))
+(defun bprd-trace-queued ()
+  (fn-bpnf-answer-state
+   (fn-bpnj-step (fn-bpnf-answer-state (bprd-trace-enqueue))
+                '(:base (:persist-result 0 :durable)))))
+(defun bprd-trace-key ()
+  (fn-bpn-job-key (car (fn-bpn-machine-state-jobs
+                        (fn-bpnf-base (bprd-trace-queued))))))
+(defun bprd-trace-attempt ()
+  (fn-bpnj-step (bprd-trace-queued)
+               (list :contact-job *bpcx-dest* (bprd-trace-key))))
+(defun bprd-trace-attempting ()
+  (fn-bpnf-answer-state
+   (fn-bpnj-step (fn-bpnf-answer-state (bprd-trace-attempt))
+                '(:base (:persist-result 1 :durable)))))
+(defun bprd-trace-uncertain ()
+  (fn-bpnj-step (bprd-trace-attempting)
+               (list :job-result (bprd-trace-key) 1 :uncertain)))
+(defun bprd-trace-requeued ()
+  (fn-bpnf-answer-state
+   (fn-bpnj-step (fn-bpnf-answer-state (bprd-trace-uncertain))
+                '(:base (:persist-result 2 :durable)))))
+(defun bprd-trace-records ()
+  (list (third (car (fn-bpnf-answer-effects (bprd-trace-enqueue))))
+        (third (car (fn-bpnf-answer-effects (bprd-trace-attempt))))
+        (third (car (fn-bpnf-answer-effects (bprd-trace-uncertain))))))
+(defun bprd-trace-rows () (list (bpcx-n16-row (bprd-trace-receive))))
+(defun bprd-trace-reopen-event ()
+  (fn-bpnr-recover-auto-event (bprd-trace-fresh) (bprd-trace-records)
+                             :ready (bprd-trace-rows) '(:none)))
+(defun bprd-traced-q ()
+  (fn-bpnf-answer-state
+   (fn-bpnj-step (bprd-trace-fresh) (bprd-trace-reopen-event))))
+(defun bprd-traced-ck ()
+  (fn-bpnr-checkpoint-of-event (bprd-trace-reopen-event) 1 (bprd-traced-q)))
+(defun bprd-trace-rotate ()
+  (fn-bpnj-step (bprd-traced-q) (list :rotate 1 (bprd-traced-ck))))
+
+(defun bprd-trace-selected ()
+  (fn-bpnj-step (fn-bpnf-answer-state (bprd-trace-rotate))
+               (list :persist-result (fn-bpnf-epoch (bprd-traced-q)) 0 :durable)))
+(assert-event
+ (and (equal (len (fn-bpnf-held-list (bprd-trace-held))) 1)
+      (equal (fn-bpn-job-status
+              (car (fn-bpn-machine-state-jobs (fn-bpnf-base (bprd-trace-attempting)))))
+             :attempting)
+      (equal (car (nth 2 (bprd-trace-records))) :requeued)
+      (equal (len (fn-bpn-machine-state-jobs (fn-bpnf-base (bprd-traced-q)))) 1)
+      (equal (fn-bpn-machine-state-jobs (fn-bpnf-base (bprd-traced-q)))
+             (fn-bpn-machine-state-jobs (fn-bpnf-base (bprd-trace-requeued))))
+      (equal (fn-bpn-machine-state-next-token (fn-bpnf-base (bprd-traced-q))) 3)
+      (fn-bpn-machine-invariantp (fn-bpnf-base (bprd-traced-q)))
+      (fn-bpnp-rotation-quiescentp (bprd-traced-q))
+      (equal (car (car (fn-bpnf-answer-effects (bprd-trace-rotate)))) :persist-checkpoint)
+      (equal (fn-bpnf-answer-effects (bprd-trace-selected)) '((:generation-selected 1)))
+      (equal (fn-bpn-machine-state-jobs
+              (fn-bpnf-base (fn-bpnf-answer-state (bprd-trace-selected))))
+             (fn-bpn-machine-state-jobs (fn-bpnf-base (bprd-traced-q))))))
+
+;; The original spliced fixture below remains an extra and supplies the
+;; existing hypothesis-removal and statement-mutation witnesses.
+
 ;; Rotation of a state that owes jobs (lane bp-rotation-c5, item
 ;; BP-ROTATION-REFUSES-OWED-JOBS).  The fixture is N16's recovered state with
 ;; the base machine one durable enqueue further: one queued job, token
@@ -292,7 +376,7 @@
                (equal (fn-bpn-machine-state-next-token (fn-bpnr-replay-base (fn-bpnr-plan-checkpoint (fn-bpnr-selection-plan t (fn-bpnr-checkpoint-octets (fn-bpn-nth 4 (car (fn-bpnf-answer-effects (fn-bpnp-rotate-step st generation ck)))) (fn-bpnr-depth-budget (fn-bpn-machine-state-max-jobs (fn-bpnf-base st)))) (fn-bpnr-depth-budget (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))) base0))
                       (fn-bpn-machine-state-next-token (fn-bpnf-base st)))))
   :subject fn-bpnp-rotate-step
-  :witness ((st (bprd-owed-q)) (generation 1) (ck (bprd-owed-ck))
+  :witness ((st (bprd-traced-q)) (generation 1) (ck (bprd-traced-ck))
             (base0 (fn-bpnf-base *bpcx-raw-s0*)))
   :breaks ((proposes ((st (bprd-owed-q)) (generation 1)
                       (ck (update-nth 7 nil (bprd-owed-ck)))
@@ -334,8 +418,8 @@
                             (fn-bpnp-rotate-step st generation ck))))
                  :rotation-refused))
   :subject fn-bpnp-rotate-step
-  :witness ((st (bprd-owed-q)) (generation 1)
-            (ck (update-nth 7 nil (bprd-owed-ck))))
+  :witness ((st (bprd-traced-q)) (generation 1)
+            (ck (update-nth 7 nil (bprd-traced-ck))))
   :breaks ((drops ((st (bprd-owed-q)) (generation 1) (ck (bprd-owed-ck)))))
   :mutations ((proposes-the-dropping-rotation
                (:conclusion (equal (car (car (fn-bpnf-answer-effects
@@ -576,7 +660,7 @@
                   (fn-bpnf-base (fn-bpnf-answer-state answer)))
                  t))))
   :subject fn-bpnr-seed-state
-  :witness ((st (bprd-owed-q)) (generation 1) (ck (bprd-owed-ck))
+  :witness ((st (bprd-traced-q)) (generation 1) (ck (bprd-traced-ck))
             (fresh *bpcx-raw-s0*))
   :breaks ((proposes ((st (bprd-owed-q)) (generation 1)
                       (ck (update-nth 7 nil (bprd-owed-ck))) (fresh *bpcx-raw-s0*)))
