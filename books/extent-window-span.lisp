@@ -279,7 +279,7 @@
                                      (mv-nth 2 (fn-ews-tick-run a s pgs-digest-state)))
                   (fn-ews-tick-run (+ a b) s pgs-digest-state)))
   :hints (("Goal" :induct (fn-ews-tick-run a s pgs-digest-state)
-           :in-theory (e/d (fn-ews-tick-run) (fn-ews-tick-run-rw))))
+           :in-theory (enable fn-ews-tick-run)))
   :rule-classes nil)
 
 ; The host's tick is the block quantum of ticks.
