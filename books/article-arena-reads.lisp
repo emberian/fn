@@ -15,7 +15,8 @@
 ;; is read in place, and no octet list is built.  Logically it IS
 ;; fn-rcl-tombstonep of the article's bytes (the definition expands in every
 ;; proof); fn-nntp-article-tombstonep-exec-is-logic is the guard obligation.
-(defun fn-nntp-arena-prefixp (prefix h i fn-arena)
+; Byte scan is the logical specification only. Served execution uses one span.
+(defun fn-nntp-arena-prefixp-byte (prefix h i fn-arena)
   (declare (xargs :stobjs fn-arena
                   :guard (and (true-listp prefix) (natp h) (natp i)
                               (< h (fn-arena-count fn-arena)))
@@ -23,7 +24,7 @@
   (if (consp prefix)
       (and (< i (fn-arena-payload-len h fn-arena))
            (equal (car prefix) (fn-arena-get h i fn-arena))
-           (fn-nntp-arena-prefixp (cdr prefix) h (+ 1 i) fn-arena))
+           (fn-nntp-arena-prefixp-byte (cdr prefix) h (+ 1 i) fn-arena))
     t))
 
 (encapsulate ()
@@ -34,13 +35,45 @@
   (local (defthm fn-nntp-consp-nthcdr
            (implies (natp i) (iff (consp (nthcdr i xs)) (< i (len xs))))))
   (local (in-theory (disable nthcdr nth)))
-  (defthm fn-nntp-arena-prefixp-is-rcl-prefixp
+  (defthm fn-nntp-arena-prefixp-byte-is-rcl-prefixp
     (implies (natp i)
-             (equal (fn-nntp-arena-prefixp prefix h i fn-arena)
+             (equal (fn-nntp-arena-prefixp-byte prefix h i fn-arena)
                     (fn-rcl-prefixp prefix (nthcdr i (nth h fn-arena)))))
-    :hints (("Goal" :induct (fn-nntp-arena-prefixp prefix h i fn-arena)
+    :hints (("Goal" :induct (fn-nntp-arena-prefixp-byte prefix h i fn-arena)
              :in-theory (enable fn-rcl-prefixp fn-arena-get-is-nth
                                 fn-arena-payload-len-is-len-nth)))))
+
+
+(defun fn-nntp-arena-prefixp-span (prefix h i fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (true-listp prefix) (natp h) (natp i)
+                              (< h (fn-arena-count fn-arena)))))
+  (if (consp prefix)
+      (and (<= (+ i (len prefix)) (fn-arena-payload-len h fn-arena))
+           (fn-rcl-prefixp prefix (fn-arena-get-span h i (len prefix) fn-arena)))
+    t))
+
+(defthm fn-nntp-arena-prefixp-span-is-byte
+  (implies (natp i)
+           (equal (fn-nntp-arena-prefixp-span prefix h i fn-arena)
+                  (fn-nntp-arena-prefixp-byte prefix h i fn-arena)))
+  :hints (("Goal" :induct (fn-nntp-arena-prefixp-byte prefix h i fn-arena)
+           :in-theory (e/d (fn-nntp-arena-prefixp-span fn-rcl-prefixp
+                                   fn-arena-get-span-is-the-gets)
+                                  (fn-nntp-arena-prefixp-byte-is-rcl-prefixp)))))
+
+(defun fn-nntp-arena-prefixp (prefix h i fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (true-listp prefix) (natp h) (natp i)
+                              (< h (fn-arena-count fn-arena)))))
+  (mbe :logic (fn-nntp-arena-prefixp-byte prefix h i fn-arena)
+       :exec (fn-nntp-arena-prefixp-span prefix h i fn-arena)))
+
+(defthm fn-nntp-arena-prefixp-is-rcl-prefixp
+  (implies (natp i)
+           (equal (fn-nntp-arena-prefixp prefix h i fn-arena)
+                  (fn-rcl-prefixp prefix (nthcdr i (nth h fn-arena)))))
+  :hints (("Goal" :in-theory (enable fn-nntp-arena-prefixp))))
 
 (defthm fn-nntp-arena-prefixp-at-0
   (equal (fn-nntp-arena-prefixp prefix h 0 fn-arena)
