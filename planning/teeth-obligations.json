@@ -14633,6 +14633,82 @@
    "registry": true
   },
   {
+   "book_digest": "dc71828b09759a489ef366b320a8b25b923f62c3694e3ede698fb6d830fd9c2b",
+   "bounds": [],
+   "claim_digest": "4c02afe7b5a8b2204776b925c0607d41a71dfba57ea50e97aa2cd40effaeb655",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocr-corrupt-counter-refuses-without-reset",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-catalog-root-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ocr-reserve",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "dc71828b09759a489ef366b320a8b25b923f62c3694e3ede698fb6d830fd9c2b",
+   "bounds": [],
+   "claim_digest": "02169a7d1c7925819f032606f9b7db75d6b867906f3469fc07702f42e37a155d",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocr-recovery-frame-prevents-token-reuse",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-catalog-root-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-ocr-reserve",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "dc71828b09759a489ef366b320a8b25b923f62c3694e3ede698fb6d830fd9c2b",
+   "bounds": [],
+   "claim_digest": "2f4bb9f6c0f3d62f878d7863223021fbc1b245a61deccc8cd5d3ad20f77f64f3",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocr-reserve-never-reuses-an-earlier-token",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-catalog-root-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ocr-reserve",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "dc71828b09759a489ef366b320a8b25b923f62c3694e3ede698fb6d830fd9c2b",
+   "bounds": [],
+   "claim_digest": "29abfcc04f727773d7c73de951948ed176f30dcfaee1799256dc066e7312f8fd",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ocr-reserve-preserves-issued-invariant",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-catalog-root-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-ocr-reserve",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-ocs-a-publication-waits-for-the-complete",
    "registry": true
@@ -15457,6 +15533,139 @@
    "class": "hand",
    "name": "fn-opc-prepare-equals-owner-event-under-relation",
    "registry": true
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "ba2926106d0f092d608f53ca482f2db7b98a7374ed6690dc3417a541437a25a3",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-abandoned-stale-fields-unchanged",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-opub-abandoned",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "ff153d530d34a66aa504c5a66f627e2856b135b90c0a1ddcfcf16b679a987cca",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-capture-establishes-holder",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-opub-capture",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "b843e98b815014752d43d225470eeb3afad43fe535a50d19f1e42ac203609fce",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-capture-serial-increases",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-opub-capture",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "8e0fd415d2aefd5d0fb545c4c7f08648fed86b3e5908e49a9659b9a7cf10c7f9",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-done-does-not-release-another-holder",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-opub-done",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "6265972bcb26bdd5b07abef8e65464748a64bb9b6bd2bd7ea575281105cc51eb",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-due-composition-by-definition",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-opub-due",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "8069713ad425b0e2ede001c91e3a874f78f110a4e2137da84970fedab7b17664",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-install-preserves-serial",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-opub-install",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "070daf414e536cdd4343753021fdb7107b61c0bd6e3dc92ef111b372e35005ff",
+   "bounds": [],
+   "claim_digest": "a8cbb3532dcc0ca010a129f8cd3a3379ef23ffdff9dce06ca45c1136dcd0ca09",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-opub-request-composition-by-definition",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-publication-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-opub-request",
+   "witness": "executable"
   },
   {
    "book_digest": "7fe79148da43f967aa187963b4a85e3104af5f4d8e0c4d57b1ddd395870d001d",
