@@ -1075,7 +1075,7 @@ of its reply has no reply to replace and is terminated."
 
 (defun fnn-mux-await (loop conn step redeem after)
   "CONN waits for its submission's completion from the next commit quantum
-(host/native/owner.lisp fnn-owner-commit-queued-locked)."
+(host/native/owner.lisp fnn-owner-commit-pipeline)."
   (let ((service (fnn-mux-service loop)))
     (setf (fnn-mux-conn-await conn) (list step redeem after)
           (fnn-mux-conn-replying conn) nil)

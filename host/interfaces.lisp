@@ -843,6 +843,24 @@
 (definterface fn-otm-committer-wake
   :class :common-lisp-compliant)
 
+; The held commit (ruling 19, books/owner-time-held.lisp; the host split
+; host/native/owner.lisp fnn-owner-held-commit).
+(definterface fn-och-held-event
+  :class :common-lisp-compliant)
+
+(definterface fn-otm-held-event
+  :class :common-lisp-compliant
+  :keystones (fn-otm-held-event-is-the-held-step
+              fn-otm-held-event-without-a-held-batch-is-the-commit-event))
+
+(definterface fn-otm-held-committer-wake
+  :class :common-lisp-compliant
+  :keystones (fn-otm-held-wakes))
+
+(definterface fn-otm-held-caller-wake
+  :class :common-lisp-compliant
+  :keystones (fn-otm-held-wakes))
+
 (definterface fn-otm-disk
   :class :common-lisp-compliant
   :keystones (fn-otm-space-event-keeps-the-disk
