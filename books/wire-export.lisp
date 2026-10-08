@@ -31,6 +31,7 @@
 (include-book "wire-grammar")
 (include-book "wire-family-fncu")
 (include-book "wire-family-identity")
+(include-book "live-profile-control")
 (include-book "wire-family-consumer")
 (include-book "wire-family-control")
 (include-book "outcome-class")
@@ -449,6 +450,10 @@
          *fn-wgx-lined-values* *fn-wgx-lined-refusals*)
    (list "fnct.store-identity.request" *fn-wf-identity-request-grammar*
          'fn-wg-encode 'fn-wg-decode nil (list nil) nil)
+   (list "fnct.live-profile.request" *fn-lpf-request-grammar*
+         'fn-wg-encode 'fn-wg-decode nil (list nil) nil)
+   (list "fnct.live-profile.reply" *fn-lpf-reply-grammar*
+         'fn-wg-encode 'fn-wg-decode nil (list *fn-bs-profile-development*) nil)
    (list "fnct.store-identity.reply" *fn-wf-identity-reply-grammar*
          'fn-wg-encode 'fn-wg-decode nil *fn-wgx-identity-values*
          *fn-wgx-identity-refusals*)
@@ -464,7 +469,8 @@
      "fnct.consumer.poll-reply")
     ("fnct.consumer.reasoned-request" "fnct.consumer.reply" "fnct.consumer.status-reply"
      "fnct.consumer.poll-reply" "fnct.reasoned-reply")
-    ("fnct.store-identity.request" "fnct.store-identity.reply")))
+    ("fnct.store-identity.request" "fnct.store-identity.reply")
+    ("fnct.live-profile.request" "fnct.live-profile.reply")))
 
 (defun fn-wgx-entry-name (e) (declare (xargs :guard t)) (fn-wg-arg 0 e))
 (defun fn-wgx-entry-grammar (e) (declare (xargs :guard t)) (fn-wg-arg 1 e))

@@ -2,11 +2,13 @@
  "file": "tools/evidence_store.py",
  "id": "EVIDENCE-ARCHIVE-SINGLE-HOMED",
  "note": "fix: a second archive location (persvati) that evidence_store.py put writes when hbox is unreachable; a reconcile step copies to hbox and verifies by hash when it returns; the index line (sha256, bytes, logical path) is the same either way. Observed: train 20's regen refused at cite (ssh exit 255 to hbox:/tank/fn/evidence); chain_schedule on persvati paid an ssh timeout per uncached manifest until the laptop cache was seeded.",
- "notes": [],
+ "notes": [
+  "Closed as superseded (lane evidence-two-site, 2026-10-08): origin/dev 17c84c937 (evidence delete (2), 2026-10-07 19:11 -0400) deleted tools/evidence_store.py, evidence_manifests.py, evidence_history.py, evidence_ingest.py and planning/evidence-index.tsv; farm/certify_books no longer archive manifests (the run dir is the record) and the Makefile no longer runs evidence_manifests check or fetch --all. No tool on dev pushes to hbox:/tank/fn/evidence, so the single-homed dependency this item names no longer exists on dev (git grep of tools, Makefile, tests at 9fe2b6a88 finds none). hbox:/tank/fn/evidence is a frozen read-only remnant, not a write path. A second site would be new machinery for a deleted mechanism; none was written."
+ ],
  "owner": "C",
  "severity": "high",
  "source": "2026-10-07 hbox outage (from ~14:20 EDT); coordinator ruling",
- "state": "open",
+ "state": "closed",
  "title": "The evidence archive is single-homed on hbox: while hbox is unreachable evidence_manifests add refuses (UNAVAILABLE), so no certify can be cited and every books merge stops",
- "updated": "2026-10-07T19:26:12Z"
+ "updated": "2026-10-08T15:20:00Z"
 }

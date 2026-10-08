@@ -62,7 +62,9 @@ class SchedulerSourceTests(unittest.TestCase):
         # and fold are fn-ocp-next / fn-ocp-observe, which are fn-ocs-next's
         # (fn-ocp-next-is-ocs-next; fn-ocm-next's pick outside a batch,
         # fn-osch-next's for the four classes: PRF-267, PRF-248).
-        self.assertIn("'fn-otm-next", owner)
+        # (the pick is fn-otm-hold-next, which is fn-otm-next outside a live
+        # reconfiguration's hold: fn-otm-hold-next-without-the-hold-is-next)
+        self.assertIn("'fn-otm-hold-next", owner)
         self.assertIn("'fn-otm-observe", owner)
         # The committer's pipeline: START (it seals) as a :commit quantum, the
         # SYNC in the syncer thread with the owner released, at most one

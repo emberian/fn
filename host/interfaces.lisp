@@ -934,9 +934,19 @@
 (definterface fn-otm-jw-truncated
   :class :common-lisp-compliant)
 
-(definterface fn-otm-next
+; A live reconfiguration's hold on the gate (ruling 19, books/owner-time-reconfig.lisp;
+; host/native/owner.lisp fnn-owner-reconfig-hold, fnn-owner-gate-pick).
+(definterface fn-otm-hold-next
   :class :common-lisp-compliant
-  :keystones (fn-otm-next-is-ocp-next))
+  :keystones (fn-otm-hold-admits-only-inspect-commit-and-reader))
+
+(definterface fn-otm-hold-begin
+  :class :common-lisp-compliant
+  :keystones (fn-otm-hold-begin-and-end))
+
+(definterface fn-otm-hold-end
+  :class :common-lisp-compliant
+  :keystones (fn-otm-hold-begin-and-end))
 
 (definterface fn-otm-note-step
   :class :common-lisp-compliant)
@@ -1638,14 +1648,21 @@
 (definterface fn-owner-catchup-plans
   :class :common-lisp-compliant)
 
-(definterface fn-owner-cfg-native-admin-authorize-carried
-  :class :common-lisp-compliant
-  :kinds ((record-octets fn-cbor-octet-listp))
-  :keystones ((fn-olau-authorize-carried-is-the-observed-authorization
-               :via fn-olau-authorize-carried)))
-
-(definterface fn-owner-cfg-next-name
+(definterface fn-owner-cfg-capture
   :class :common-lisp-compliant)
+
+(definterface fn-oclc-live-authorizep
+  :class :common-lisp-compliant
+  :keystones (fn-orl-reader-events-keep-the-authorization))
+
+(definterface fn-olau-next-name
+  :class :common-lisp-compliant)
+
+(definterface fn-olau-authorize-observed
+  :class :common-lisp-compliant
+  :keystones (fn-olau-authorize-observed-is-the-carried-authorization
+              (fn-olau-authorize-carried-across-reader-events
+               :via fn-olau-authorize-carried)))
 
 (definterface fn-owner-checkpoint-clone-phase
   :class :common-lisp-compliant
@@ -1773,18 +1790,16 @@
   :class ::program
   :kinds ((peer-octets fn-cbor-octet-listp)))
 
-(definterface fn-owner-feed-journal-begin
-  :class :common-lisp-compliant)
-
-(definterface fn-owner-feed-journal-offset
-  :class :common-lisp-compliant)
-
 (definterface fn-owner-feed-journal-prefix-size
   :class :common-lisp-compliant)
 
-(definterface fn-owner-feed-journal-scan
+; The journal a live reconfiguration opens off the owner (ruling 19): the host
+; runs the pure scanner over the frames it read and applies the entries it
+; returned here under the owner (books/owner-reconfig-phased.lisp
+; (:feed-replay . PEER)).
+(definterface fn-owner-feed-journal-replay
   :class ::program
-  :kinds ((peer-octets fn-cbor-octet-listp) (frame fn-cbor-octet-listp)))
+  :kinds ((peer-octets fn-cbor-octet-listp)))
 
 (definterface fn-owner-feed-port
   :class ::program
@@ -2024,8 +2039,15 @@
 (definterface fn-owner-reader-views-capture
   :class ::program)
 
-(definterface fn-owner-reconfigure-authorizedp
+; The live reconfiguration as ACL2-ordered quanta (ruling 19): the host's
+; loop over this step, in host/native/admin.lisp fnn-owner-live-reconfigure,
+; runs each effect it names where its label says.
+(definterface fn-orp-convert-event
   :class :common-lisp-compliant)
+
+(definterface fn-orp-step
+  :class :common-lisp-compliant
+  :keystones (fn-orp-step-holds-the-owner-only-in-quanta))
 
 (definterface fn-owner-reconfigure-complete
   :class ::program)
@@ -2441,6 +2463,9 @@
   :class ::program)
 
 (definterface fn-feed-journal-phase-step
+  :class :common-lisp-compliant)
+
+(definterface fn-feed-journal-scan
   :class :common-lisp-compliant)
 
 (definterface fn-feed-journal-prefix
@@ -4711,6 +4736,8 @@
 ; The live limit/profile/pool join in host/native/admin.lisp.
 (definterface fn-lim-apply-row :class :common-lisp-compliant)
 (definterface fn-lim-protected-growth :class :common-lisp-compliant)
+(definterface fn-lim-funded-after :class :common-lisp-compliant)
+(definterface fn-lim-decision-appliedp :class :common-lisp-compliant)
 (definterface fn-lim-pool-decision :class :common-lisp-compliant)
 
 ; host/native/admin.lisp dispatches it (lane limits-live).
@@ -6029,8 +6056,10 @@
 (definterface fn-native-operation-host-offline :class :program) ; host/native-live-status-host.lisp:23
 (definterface fn-ort-log-caller-action :class :common-lisp-compliant) ; books/owner-retire-settlement.lisp:47
 (definterface fn-owner-hroot-abandon-word :class :program) ; host/history-root-host.lisp:45
-(definterface fn-owner-page-read-protected-growth :class :common-lisp-compliant) ; host/page-read-host.lisp:549
 (definterface fn-owner-page-read-protected-growth-preview :class :common-lisp-compliant) ; host/page-read-host.lisp:542
+(definterface fn-owner-page-read-growth-reserve :class :common-lisp-compliant)
+(definterface fn-owner-page-read-growth-convert :class :common-lisp-compliant)
+(definterface fn-owner-page-read-growth-release :class :common-lisp-compliant)
 (definterface fn-owner-peer-carried-event :class :program) ; host/owner-host.lisp:3715
 (definterface fn-owner-peer-revoked-event :class :program) ; host/owner-host.lisp:3742
 (definterface fn-owner-workflow-apply-record :class :program) ; host/bp-release-owner-host.lisp:100
@@ -6065,6 +6094,16 @@
 (definterface fn-stid-host-line :class ::program)
 (definterface fn-stid-host-exit-code :class ::program)
 
+;; Bounded live-owner profile read for heap preflight.
+(definterface fn-lpf-request :class :common-lisp-compliant)
+(definterface fn-lpf-request-p :class :common-lisp-compliant
+  :keystones (fn-lpf-request-is-recognized))
+(definterface fn-lpf-request-size-p :class :common-lisp-compliant)
+(definterface fn-lpf-reply :class :common-lisp-compliant
+  :keystones (fn-lpf-reply-is-bounded))
+(definterface fn-lpf-reply-read :class :common-lisp-compliant
+  :keystones (fn-lpf-reply-round-trip))
+(definterface fn-lpf-reply-bound :class :common-lisp-compliant)
 ; Control receipt decisions; kinds copied from each guard.
 (definterface fn-nco-at :class :common-lisp-compliant :kinds ((n natp)))
 (definterface fn-nco-client-follow :class :common-lisp-compliant)

@@ -352,6 +352,9 @@ class Client:
         from tools import rep_measure, msgid_measure
         article = rep_measure.article(i, octets)
         args = {"i": i, "octets": octets, "msgid": msgid_measure.msgid(i), "sha256": digest(article)}
+        return self.post_article(article, args, op)
+
+    def post_article(self, article, args, op=None):
         op = self.begin("POST", args, b"POST\r\n", op)
         self.mark_read("line")
         line = self.line()
@@ -460,12 +463,13 @@ class Campaign:
         self.serial += 1
         work = parent.work / ('fault-%04d' % self.serial)
         work.mkdir()
-        hooks = [Path(__file__).resolve().parents[2] / 'planning/evidence/load/hooks/f2-crash.lisp'] if hook else []
+        hook_name = 'f2-crash.lisp' if hook is True else hook
+        hooks = [Path(__file__).resolve().parents[2] / 'planning/evidence/load/hooks' / hook_name] if hook else []
         node = type(parent)(parent.target, work, parent.flags, parent.groups,
                             parent.env['SBCL_USER_ARGS'], hooks, work / 'gc.log', {}, 1,
                             parent.heap_mode)
         # The environment of the driving shell must not accidentally arm init/heap/control.
-        node.env = {k: v for k, v in node.env.items() if not k.startswith('FN_LOAD_CRASH_')}
+        node.env = fault_environment(node.env)
         node.init()
         self.meta = {'schema': TRACE_SCHEMA, 'cell': getattr(self.run, 'cell_id', None),
                      'store': {'init_flags': list(node.flags), 'groups': list(node.groups), 'fixture': None},
@@ -483,7 +487,7 @@ class Campaign:
         op = op if op is not None else h.plan('CONTROL', {'words': list(words)})
         h.sent(op)
         op['step'] = h.recorder.control(words)
-        env = {k: v for k, v in node.env.items() if not k.startswith('FN_LOAD_CRASH_')}
+        env = fault_environment(node.env)
         p = subprocess.run(node.argv(*words), env=env, capture_output=True, timeout=self.recovery)
         reply = (p.stdout + p.stderr).decode('utf-8', 'replace').strip()
         h.complete(op, (reply + '\r\n').encode())
@@ -1122,3 +1126,397 @@ def held_reader(run, ph):
     faults_out = report(h, findings, ['P4-RECLAIM'], replay, ph.get('shrink_runs', 8), campaign)
     faults_out['traces'] = campaign.traces
     return {'faults': faults_out, **notes}
+
+
+def fault_environment(env):
+    """Fault selectors belong only to the explicitly armed owner process."""
+    return {k: v for k, v in env.items()
+            if not k.startswith(('FN_LOAD_CRASH_', 'FN_LOAD_F1_', 'FN_LOAD_F4_'))}
+
+
+def collision_search(candidates, tag, count, bits=8, bucket=0):
+    """Finite candidate search; TAG is an oracle, never a Python MAC reimplementation.
+
+    Return fewer than count on exhaustion. The caller must not call that a
+    saturated trial. Low-bit collisions alone do not establish saturation.
+    """
+    if count < 1 or not 1 <= bits <= 60 or not 0 <= bucket < (1 << bits):
+        raise ValueError('invalid collision search geometry')
+    result, seen = [], set()
+    for mid in candidates:
+        if mid not in seen and tag(mid) & ((1 << bits) - 1) == bucket:
+            seen.add(mid)
+            result.append(mid)
+            if len(result) == count:
+                break
+    return result
+
+
+def named_refusal(line):
+    words = (line or '').strip().split(maxsplit=1)
+    return len(words) == 2 and len(words[0]) == 3 and words[0].isdigit() and words[0][0] in '45'
+
+
+def verify_slot_reuse(history, evidence):
+    """F1 external oracle, with coverage independent of any discovered violation."""
+    findings = []
+    reads = [o for o in history if o.get('probe') == 'F1'
+             and o.get('route') == evidence.get('route')]
+    accepted = {}
+    for op in history:
+        if (op['kind'] == 'POST' and op['outcome'] == 'completed'
+                and (op['reply_line'] or '').startswith('240 ')):
+            accepted.setdefault(op['args']['msgid'], op['args']['sha256'])
+    for op in reads:
+        mid, line = op['args']['msgid'], op.get('reply_line') or ''
+        if op['outcome'] != 'completed':
+            # A timeout is neither accepted bytes nor a named refusal.
+            findings.append(('P4-RECLAIM', 'incomplete F1 reply: ' + mid))
+        elif line.startswith('220 '):
+            if mid not in accepted or op.get('body_sha256') != accepted[mid]:
+                findings.extend((p, 'F1 returned changed bytes: ' + mid)
+                                for p in ('P4-RECLAIM', 'P2-IDENTITY'))
+        elif not named_refusal(line):
+            findings.append(('P4-RECLAIM', 'F1 reply lacked named refusal: ' + mid))
+    measured = bool(reads and any(o.get('held') for o in reads)
+                    and evidence.get('held') and evidence.get('released')
+                    and evidence.get('publication') and evidence.get('drop_calls', 0) > 0
+                    and evidence.get('installs', 0) > 0
+                    and evidence.get('evictions', 0) > 0 and evidence.get('reuses', 0) > 0
+                    and (evidence.get('route') != 'W' or evidence.get('funded_pool'))
+                    and evidence.get('complete'))
+    return findings, ['P4-RECLAIM', 'P2-IDENTITY'] if measured else []
+
+
+def verify_index_saturation(history, health, existing, absent):
+    """F4: both lookup routes, both epochs, original bytes and duplicate refusal."""
+    findings, complete = [], bool(existing and absent)
+    accepted = {}
+    duplicates = collections.Counter()
+    for op in history:
+        if op['kind'] != 'POST':
+            continue
+        mid = op['args']['msgid']
+        line = op.get('reply_line') or ''
+        if op['args'].get('duplicate'):
+            duplicates[mid, op['args']['duplicate']] += 1
+            if op['outcome'] != 'completed':
+                complete = False
+            elif line.startswith('240 '):
+                findings.append(('P2-IDENTITY', 'duplicate accepted: ' + mid))
+            elif not named_refusal(line):
+                findings.append(('P2-IDENTITY', 'duplicate lacked named refusal: ' + mid))
+        elif op['outcome'] == 'completed' and line.startswith('240 '):
+            accepted.setdefault(mid, op['args']['sha256'])
+    for mid, value in existing.items():
+        if accepted.get(mid) != value or any(duplicates[mid, kind] != 1 for kind in ('same', 'different')):
+            complete = False
+    probes = {(o.get('epoch'), o['kind'], o['args'].get('msgid')): o
+              for o in history if o.get('probe') == 'F4'}
+    for epoch in ('before', 'after'):
+        for mid in list(existing) + list(absent):
+            for kind, code in (('STAT', '223 '), ('ARTICLE', '220 ')):
+                op = probes.get((epoch, kind, mid))
+                if op is None or op['outcome'] != 'completed':
+                    complete = False
+                    continue
+                line = op.get('reply_line') or ''
+                if mid in existing:
+                    if (not line.startswith(code) or mid not in line.split()
+                            or (kind == 'ARTICLE' and op.get('body_sha256') != existing[mid])):
+                        findings.append(('P2-IDENTITY', epoch + ' changed/missing ' + kind + ': ' + mid))
+                elif not line.startswith('430 ') or not named_refusal(line):
+                    findings.append(('P2-IDENTITY', epoch + ' absent ID not absent: ' + mid))
+    # Saturation (unplaced > 0) is reported beside the verdict, not required for it: on train 45
+    # 2,104 IDs with 8-bit tag collisions left the linear-hash table at unplaced 0 (it split), and
+    # full-tag collisions (60 bits) are not constructible. The verdict's scope says which.
+    return findings, ['P2-IDENTITY'] if complete else []
+
+
+def index_saturated(health):
+    return all(len(health.get(epoch, [])) == 4 and health[epoch][2] > 0 for epoch in ('before', 'after'))
+
+
+def fault_probe(c, mid, cell, epoch=None, held=False, route=None):
+    text = 'ARTICLE ' + mid
+    op = c.begin('ARTICLE', {'command': text, 'msgid': mid}, text.encode() + b'\r\n')
+    op.update(probe=cell, epoch=epoch, held=held, route=route)
+    line, body = c.finish(op)
+    if line.startswith(b'220 '):
+        op['body_sha256'] = digest(body)
+    return op
+
+
+def wait_file(path, seconds, predicate=lambda text: bool(text)):
+    end = time.monotonic() + seconds
+    while time.monotonic() < end:
+        text = path.read_text() if path.exists() else ''
+        if predicate(text):
+            return text
+        time.sleep(.05)
+    raise TimeoutError('hook witness missing: ' + str(path))
+
+
+F1_FUNCTIONS = {'E': 'fnn-extent-cache-store', 'W': 'fnn-extent-window-release'}
+F1_POOL = ('Default startup: fnn-owner-page-read-startup -> '
+           'fn-owner-page-read-install-default -> fn-owner-page-read-install-baseline. '
+           'No external enable switch: [resources] cold_heap_octets/cold_workers/'
+           'cold_descriptors/cold_read_ids/cold_file_ids are parsed but '
+           'fn-prstartup-default-plan refuses explicit cold policy as '
+           ':unpriced-complete-cold-profile; leave them absent.')
+
+
+def f1_evidence(text, route='E'):
+    """Match the route/function; partial, malformed and timeout rows cannot pass."""
+    function = F1_FUNCTIONS[route]
+    out = dict(route=route, held=False, held_function=function, witness=text,
+               installs=0, drop_calls=0, evictions=0, reuses=0)
+    for row in text.splitlines(keepends=True):
+        if not row.endswith('\n'):
+            continue
+        fields = row.split()
+        if fields == ['pool', route, 'funded']:
+            out['funded_pool'] = True
+        if fields == ['pool', route, 'unfunded']:
+            out['funded_pool'] = False
+        if fields[1:3] != [route, function]:
+            continue
+        if len(fields) == 4 and fields[0] == 'held' and fields[3].isdigit() and int(fields[3]) > 0:
+            out.update(held=True, held_call=int(fields[3]))
+        if (len(fields) == 7 and fields[0] in ('released', 'timeout')
+                and out.get('held') and all(v.isdigit() for v in fields[3:])):
+            out.update(zip(('installs', 'drop_calls', 'evictions', 'reuses'), map(int, fields[3:])))
+            out[fields[0]] = True
+    if out.get('timeout'):
+        out.pop('released', None)
+    return out
+
+
+def fault_result(campaign, h, findings, checked, notes, required):
+    # Wire traces omit file-trigger timing. Do not advertise them as replayable
+    # or shrink them against an unhooked node (a different experiment).
+    trace = campaign.snapshot(h)
+    trace.update(sequential=False, hook_protocol=notes)
+    campaign.emit(trace, 'reference')
+    out = report(h, findings, checked)
+    out['traces'] = campaign.traces
+    out['not_measured'] = {'faults.%s.violations' % p: notes.get('reason', 'required hook evidence incomplete')
+                           for p in required if p not in checked}
+    result = {'faults': out, **notes}
+    if not checked:
+        result.update(status='not-measured', reason=notes.get('reason', 'required hook evidence incomplete'))
+    return result
+
+
+def f1_route(campaign, h, ph, route):
+    from tools import msgid_measure
+    node = release = witness = None
+    notes, workers, errors = dict(route=route, pool_configuration=F1_POOL), [], []
+    released = threading.Event()
+    def launch(action):
+        def guarded():
+            try:
+                action()
+            except Exception as exc:
+                errors.append(type(exc).__name__ + ': ' + str(exc))
+        worker = threading.Thread(target=guarded, daemon=True)
+        workers.append(worker)
+        worker.start()
+        return worker
+    try:
+        node = campaign.node(hook='f1-delay.lisp')
+        notes['work'] = str(node.work)
+        go, release, witness = (node.work / n for n in ('f1-arm', 'f1-release', 'f1-witness'))
+        campaign.start(node, h)
+        with Client(node.port, h, campaign.deadline) as c:
+            for i in range(ph.get('cold_reads', 24) + 1):
+                if not c.post(i, 524288).startswith(b'240 '):
+                    raise RuntimeError('F1 seed refused')
+        # Persist extents before making the owner's read cache cold.
+        offset = (node.work / ('owner.%d.err' % node.err_n)).stat().st_size
+        rc, reply = campaign.control(node, h, 'store', 'checkpoint')
+        if rc:
+            raise RuntimeError('F1 seed checkpoint: ' + reply)
+        wait_log(node, 'CHECKPOINT auto sequence=', campaign.recovery, offset)
+        node.stop()
+        node.env.update(FN_LOAD_F1_ARM=str(go), FN_LOAD_F1_RELEASE=str(release),
+                        FN_LOAD_F1_WITNESS=str(witness), FN_LOAD_F1_N=str(ph.get('hold_n', 1)),
+                        FN_LOAD_F1_ROUTE=route,
+                        FN_LOAD_F1_SECONDS=str(campaign.recovery * 3),
+                        FN_LOAD_F1_CACHE=str(ph.get('cache_entries', 1)))
+        campaign.start(node, h)
+        go.touch()
+        def cold():
+            with Client(node.port, h, campaign.recovery * 3) as c:
+                fault_probe(c, msgid_measure.msgid(0), 'F1', held=True, route=route)
+        launch(cold)
+        wait_file(witness, campaign.recovery, lambda s: f1_evidence(s, route).get('held'))
+        offset = (node.work / ('owner.%d.err' % node.err_n)).stat().st_size
+        def publish():
+            rc, reply = campaign.control(node, h, 'store', 'checkpoint')
+            if rc:
+                raise RuntimeError('F1 checkpoint during hold: ' + reply)
+            line = wait_log(node, 'CHECKPOINT auto sequence=', campaign.recovery, offset)
+            if not released.is_set():
+                notes['publication'] = line
+        def churn():
+            with Client(node.port, h, campaign.recovery * 3) as c:
+                for i in range(1, ph.get('cold_reads', 24) + 1):
+                    fault_probe(c, msgid_measure.msgid(i), 'F1', route=route)
+        # A blocked publication must not prevent dispatch of the competing reads.
+        competing = [launch(publish), launch(churn)]
+        end = time.monotonic() + campaign.recovery
+        for worker in competing:
+            worker.join(max(0, end - time.monotonic()))
+        released.set()
+        release.touch()
+        wait_file(witness, campaign.recovery, lambda s: f1_evidence(s, route).get('released'))
+    except Exception as exc:
+        notes['reason'] = type(exc).__name__ + ': ' + str(exc)
+    finally:
+        released.set()
+        if release is not None:
+            release.touch()  # Unblock our hook before asking our owner to stop.
+        for worker in workers:
+            worker.join(campaign.recovery)
+        if node is not None:
+            node.stop()
+        for worker in workers:
+            worker.join(5)
+    notes.update(f1_evidence(witness.read_text() if witness and witness.exists() else '', route))
+    reads = [o for o in h.ops if o.get('probe') == 'F1' and o.get('route') == route]
+    notes['complete'] = (len(reads) == ph.get('cold_reads', 24) + 1
+                         and not any(w.is_alive() for w in workers) and not errors)
+    notes['client_errors'] = errors
+    findings, checked = verify_slot_reuse(h.ops, notes)
+    notes['checked'] = checked
+    notes['status'] = 'measured' if checked else 'not-measured'
+    if not checked:
+        if route == 'W' and not notes.get('funded_pool'):
+            notes['reason'] = 'Funded pool not observed in the running image. ' + F1_POOL + ' ' + notes.get('reason', '')
+        else:
+            notes.setdefault('reason', 'hold, publication and actual cache eviction/reuse not witnessed; '
+                             'the hook preserves owner and extent mutexes')
+    return notes, [(p, route + ': ' + detail) for p, detail in findings], checked
+
+
+def slot_reuse(run, ph):
+    campaign = Campaign(run, ph)
+    h, routes, findings = campaign.history(), {}, []
+    required = ['P4-RECLAIM', 'P2-IDENTITY']
+    checked = set(required)
+    for route in F1_FUNCTIONS:
+        notes, fs, measured = f1_route(campaign, h, ph, route)
+        routes[route] = notes
+        findings.extend(fs)
+        checked.intersection_update(measured)
+    notes = {'routes': routes}
+    if not checked:
+        notes['reason'] = '; '.join(r + ': ' + n['reason'] for r, n in routes.items()
+                                   if n['status'] == 'not-measured')
+    return fault_result(campaign, h, findings, sorted(checked), notes, required)
+
+
+def f4_mid(i):
+    return '<f4-%d@fn.test>' % i
+
+
+def f4_request(node, h, campaign, command):
+    request, response = node.work / 'f4-request', node.work / 'f4-response'
+    # Numbered responses prevent a restart or earlier probe satisfying this one.
+    serial = sum(o['kind'] == 'HOOK' for o in h.ops) + 1
+    op = h.plan('HOOK', {'command': command, 'serial': serial})
+    request.write_text('%d %s\n' % (serial, command))
+    h.sent(op)
+    with Client(node.port, h, campaign.recovery) as c:
+        c.command('STAT <f4-hook-probe@fn.test>')
+    text = wait_file(response, campaign.recovery,
+                     lambda s: s.startswith('%d\n' % serial) and s.endswith('done\n'))
+    h.complete(op, b'200 hook complete\r\n')
+    op['response'] = text
+    return text.splitlines()[1:-1]
+
+
+def index_saturation(run, ph):
+    from tools import rep_measure, msgid_measure
+    campaign = Campaign(run, ph)
+    node, h = campaign.node(hook='f4-index.lisp'), campaign.history()
+    notes, existing, absent, health = {}, {}, [], {}
+    try:
+        node.env.update(FN_LOAD_F4_REQUEST=str(node.work / 'f4-request'),
+                        FN_LOAD_F4_RESPONSE=str(node.work / 'f4-response'))
+        campaign.start(node, h)
+        health['initial'] = list(map(int, f4_request(node, h, campaign, 'health')[0].split()))
+        count, absent_count = ph.get('colliding_ids', 2304), ph.get('absent_ids', 32)
+        selected, scanned = [], 0
+        batch = ph.get('tag_batch', 4096)
+        if not 1 <= batch <= 4096 or count < 1 or absent_count < 1:
+            raise ValueError('F4 needs positive ID counts and a tag batch in 1..4096')
+        while len(selected) < count + absent_count and scanned < ph.get('candidate_budget', 1048576):
+            size = min(batch, ph.get('candidate_budget', 1048576) - scanned)
+            rows = f4_request(node, h, campaign, 'tags %d %d' % (scanned, size))
+            tags = {f4_mid(int(i)): int(tag) for i, tag in (r.split() for r in rows)}
+            if len(tags) != size or set(tags) != {f4_mid(i) for i in range(scanned, scanned + size)}:
+                raise RuntimeError('incomplete hook tag batch')
+            selected.extend(collision_search(tags, tags.__getitem__, count + absent_count - len(selected),
+                                             ph.get('collision_bits', 8)))
+            scanned += size
+        notes.update(candidates_scanned=scanned, collisions=len(selected), collision_bits=ph.get('collision_bits', 8))
+        if len(selected) != count + absent_count:
+            raise RuntimeError('collision search exhausted its finite candidate budget')
+        absent = selected[count:]
+        prefix = 'p' * ph.get('prefix_octets', 128)
+        mids = selected[:count] + ['<%s%c-%d@fn.test>' % (prefix, ch, i)
+                                  for i, ch in enumerate('ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789')]
+        with Client(node.port, h, campaign.deadline) as c:
+            for i, mid in enumerate(mids):
+                body = rep_measure.article(i, 2048).replace(msgid_measure.msgid(i).encode(), mid.encode())
+                args = {'msgid': mid, 'sha256': digest(body)}
+                line = c.post_article(body, args)
+                if line.startswith(b'240 '):
+                    existing[mid] = digest(body)
+                    for label, duplicate in (('same', body), ('different', body + b'different octets\r\n')):
+                        c.post_article(duplicate, dict(args, sha256=digest(duplicate), duplicate=label))
+                elif named_refusal(line.decode('latin-1')):
+                    absent.append(mid)
+                else:
+                    raise RuntimeError('F4 seed reply: ' + repr(line))
+        for epoch in ('before', 'after'):
+            if epoch == 'after':
+                node.stop()
+                try:
+                    campaign.start(node, h)
+                except Exception as exc:  # a store accepted under this budget must reopen under it (ADMISSION-RESERVES-NOT-REOPEN)
+                    notes['restart_refused'] = str(exc)[-200:]
+                    raise
+            health[epoch] = list(map(int, f4_request(node, h, campaign, 'health')[0].split()))
+            with Client(node.port, h, campaign.deadline) as c:
+                for mid in list(existing) + absent:
+                    text = 'STAT ' + mid
+                    op = c.begin('STAT', {'command': text, 'msgid': mid}, text.encode() + b'\r\n')
+                    op.update(probe='F4', epoch=epoch)
+                    c.finish(op)
+                    fault_probe(c, mid, 'F4', epoch)
+        notes['accepted_collisions'] = sum(mid in existing for mid in selected[:count])
+        notes['accepted_fanout'] = sum(mid in existing for mid in mids[count:])
+        notes['complete'] = notes['accepted_collisions'] > 0 and notes['accepted_fanout'] > 1
+        if not notes['complete']:
+            notes['reason'] = 'both colliding IDs and shared-prefix fan-out were not accepted'
+    except Exception as exc:
+        notes['reason'] = type(exc).__name__ + ': ' + str(exc)
+    finally:
+        node.stop()
+    notes.update(health=health, existing=len(existing), absent=len(absent))
+    findings, checked = verify_index_saturation(h.ops, health, existing, absent)
+    notes['saturated'] = index_saturated(health)
+    if not notes.get('complete'):
+        checked = []
+    if 'before' in health:
+        # The restart arm was reached: a refused restart is a P5 finding whatever else completed.
+        checked = list(checked) + ['P5-RECOVERY']
+        if notes.get('restart_refused'):
+            findings = list(findings) + [('P5-RECOVERY', 'restart after a refusal-free run refused: '
+                                          + notes['restart_refused'])]
+    if not checked:
+        notes.setdefault('reason', 'complete identity probes before and after restart not witnessed')
+    return fault_result(campaign, h, findings, checked, notes, ['P2-IDENTITY', 'P5-RECOVERY'])

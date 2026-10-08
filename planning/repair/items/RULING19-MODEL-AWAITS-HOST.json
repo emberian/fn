@@ -8,7 +8,8 @@
  "fix": "Land C's lane/commit-held-host and lane/reconfig-host, whose host code calls fn-otm-held-event/fn-och-caller-answer and fn-orp-step/fn-otm-hold-* respectively. Then reach_check names the subjects as reached, the keystones become host claims, and their PRF rows may be written. Teeth (defteeth) for the same statements land in lane p-ruling19-teeth.",
  "id": "RULING19-MODEL-AWAITS-HOST",
  "notes": [
-  "2026-10-08 P5: PARKED (deferred). Un-parks when C's commit-held-host and reconfig-host merge to dev; P then checks reach_check on the subjects and writes the PRF rows."
+  "2026-10-08 P5: PARKED (deferred). Un-parks when C's commit-held-host and reconfig-host merge to dev; P then checks reach_check on the subjects and writes the PRF rows.",
+  "2026-10-08 Codex, reconfig-host round 3: H3 integration owner deputy-C / lane commit-held-host. fnn-owner-gate-pick calls fn-otm-hold-next, whose H1 only restricts admitted classes and preserves the hold. The live committer in this tree still calls fn-otm-commit-event and fn-otm-committer-wake, not fn-otm-held-event / fn-otm-held-committer-wake, and has no may-start check. Do not infer START/collect exclusion from hold-next or claim composition safety until commit-held-host lands and C runs the combined native owner_scheduler/owner_offlock/live_reconfiguration witnesses. The reconfiguration wrapper now documents this dependency explicitly."
  ],
  "owner": "deputy-P",
  "scenario": "A reader of the ledger takes the phased reconfiguration or the held commit as running on the host while the host still runs the inline path that holds O across durable I/O.",

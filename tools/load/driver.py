@@ -247,6 +247,7 @@ class Node:
     def __init__(self, target, work, flags, groups, sbcl_args, hooks, gc_log, extra_env, interval, heap_mode="decided", max_connections=None):
         self.target, self.work, self.flags, self.groups = target, Path(work), flags, groups
         self.heap_mode, self.decided = heap_mode, None
+        self.launcher_decides = sbcl_args == ""     # empty SBCL_USER_ARGS: the launcher probes at every exec
         self.env = dict(os.environ, ACL2_CUSTOMIZATION="NONE", SBCL_USER_ARGS=sbcl_args)
         for k in ("ACL2_SYSTEM_BOOKS", "FN_HOST", "FN_PROF_OUT", "FN_PROF_HOOK", "XL_HOOK"):
             self.env.pop(k, None)
@@ -311,7 +312,7 @@ class Node:
 
     def start(self, timeout=1800):
         import select
-        if self.heap_mode == "decided":
+        if self.heap_mode == "decided" and not self.launcher_decides:
             self.decide_heap()
         self.err_n += 1
         errp = self.work / ("owner.%d.err" % self.err_n)
@@ -1207,6 +1208,16 @@ class Run:
                     self.ctr.refusals["conn-capacity-%s-%s" % (preset, refusal_name(t["refusal"].encode()))] += 1
         return {"capacity": out}
 
+    def phase_fault_slot_reuse(self, ph):
+        return faults.slot_reuse(self, ph)
+
+    def phase_fault_index_saturation(self, ph):
+        return faults.index_saturation(self, ph)
+
+    def phase_fault_bp_disruption(self, ph):
+        from tools.load.faults_bp import bp_disruption
+        return bp_disruption(self, ph)
+
     def phase_fault_held_reader(self, ph):
         return faults.held_reader(self, ph)
 
@@ -1346,7 +1357,12 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
     work.mkdir(parents=True)
     use_hook = bool(arm) or args.gc_hook or bool(spec.get("sprof"))
     hooks, env_extra = cell_hooks(spec, work, arm, args.gc_hook)
-    node = Node(target, work, wl.init_flags(data, spec["preset"]), spec["groups"], args.sbcl_user_args or data["sbcl_user_args"],
+    # A workload with "sbcl_user_args": "" lets the image's own launcher decide heap and control
+    # stack at every start (F4 on train 45: a store filled under forced args refused to reopen under
+    # the same forced args, `the process heap does not hold the store's protected runtime`, while
+    # the decided start reopened it).
+    sbcl = spec["sbcl_user_args"] if "sbcl_user_args" in spec else (args.sbcl_user_args or data["sbcl_user_args"])
+    node = Node(target, work, wl.init_flags(data, spec["preset"]), spec["groups"], sbcl,
                 hooks, work / "gc.log", env_extra, spec.get("sampler_s", 1.0),
                 spec.get("heap", "decided"), None)
     ctr = Counters()
@@ -1565,6 +1581,8 @@ def cmd_run(args):
     try:
         for cell_id in args.cell.split(","):
             cell = wl.resolve(cell_id, data)
+            if cell.spec.get("runner"):
+                raise CellError("%s uses %s; run through tools.load.sweep" % (cell_id, cell.spec["runner"]))
             if args.sweep and cell.spec.get("sweep"):
                 data["workloads"][cell.workload]["sweep"] = args.sweep.split(",")
                 cell = wl.resolve(cell_id, data)
@@ -1598,18 +1616,50 @@ def ssh(host, script, timeout=120):
     return subprocess.run(["ssh", "-o", "ConnectTimeout=15", host, script], capture_output=True, text=True, timeout=timeout)
 
 
+# Shared payload for single-cell and per-image queues. No image or run evidence.
+SHIP_FILES = (
+    ("planning/evidence/load/hooks/", "planning/evidence/load/hooks/"),
+    ("planning/evidence/load/2026-10-07-w7/w7hook.lisp", "planning/evidence/load/2026-10-07-w7/"),
+    ("packaging/fn", "packaging/"), ("host/native/io.lisp", "host/native/"),
+    ("tools/", "tools/"), ("tests/__init__.py", "tests/"),
+    ("tests/native_harness.py", "tests/"), ("books/outcome-class.lisp", "books/"),
+)
+
+
+def ship_tree(host, ship):
+    dirs = sorted({ship + "/" + dst for _, dst in SHIP_FILES})
+    p = ssh(host, "mkdir -p " + shlex.join(dirs), timeout=30)
+    p.check_returncode()
+    for src, dst in SHIP_FILES:
+        p = subprocess.run(["rsync", "-a", "--protect-args", "--exclude", "__pycache__",
+                            str(ROOT / src) + ("/" if src.endswith("/") else ""),
+                            "%s:%s/%s" % (host, ship, dst)],
+                           capture_output=True, text=True, timeout=120)
+        if p.returncode:
+            raise RuntimeError("rsync %s failed: %s" % (src, p.stderr))
+
+
+def fetch_files(host, remote, dest):
+    """Fetch to a caller-owned directory (sweep tables use a temporary directory)."""
+    Path(dest).mkdir(parents=True, exist_ok=True)
+    p = subprocess.run(["rsync", "-a", "--protect-args", "--exclude", "samples.json",
+                        "%s:%s/" % (host, remote), str(dest) + "/"],
+                       capture_output=True, text=True, timeout=120)
+    if p.returncode:
+        raise RuntimeError("fetch %s:%s failed: %s" % (host, remote, p.stderr.strip()))
+
+
+def fetch_run(host, label, dest):
+    fetch_files(host, "%s/runs/%s" % (BOX_BASE, label), dest)
+
+
 def cmd_box(args):
     host = {"hbox": "hbox", "persvati": "persvati"}[args.box]
     base = BOX_BASE
     ship = "%s/ship/%s" % (base, args.label)
     runs = "%s/runs/%s" % (base, args.label)
-    ssh(host, "mkdir -p %s/tests %s/books %s/packaging %s/host/native %s/planning/evidence/load/hooks %s" % (ship, ship, ship, ship, ship, runs))
-    for src, dst in (("planning/evidence/load/hooks/", "planning/evidence/load/hooks/"), ("packaging/fn", "packaging/"), ("host/native/io.lisp", "host/native/"), ("tools/", "tools/"), ("tests/__init__.py", "tests/"), ("tests/native_harness.py", "tests/"),
-                     ("books/outcome-class.lisp", "books/")):
-        p = subprocess.run(["rsync", "-a", "--exclude", "__pycache__", str(ROOT / src) + ("/" if src.endswith("/") else ""), "%s:%s/%s" % (host, ship, dst)],
-                           capture_output=True, text=True)
-        if p.returncode:
-            raise SystemExit("rsync %s failed: %s" % (src, p.stderr))
+    ship_tree(host, ship)
+    ssh(host, "mkdir -p " + shlex.quote(runs), timeout=30).check_returncode()
     inner = ["python3", "-m", "tools.load.driver", "run", "--cell", args.cell, "--label", args.label, "--out", runs,
              "--box", args.box, "--repeat", str(args.repeat), "--cache", "%s/stores" % base]
     for img in args.image:
@@ -1651,7 +1701,7 @@ def cmd_fetch(args):
     # (and anon-by-type.md when present) enters the tree, with the box path written into it.
     # --raw also copies the raw files next to the report (gitignored; never commit them).
     raw = Path(tempfile.mkdtemp(prefix="fn-load-fetch-"))
-    p = subprocess.run(["rsync", "-a", "--exclude", "samples.json", "%s:%s/" % (host, runs), str(raw) + "/"], capture_output=True, text=True)
+    fetch_run(host, args.label, raw)
     resf = raw / "result.json"
     if resf.exists():
         note = "\n\nRaw output: %s:%s/ (result.json, cells.jsonl, run.log, census/prof files). Not committed.\n" % (host, runs)
@@ -1662,7 +1712,7 @@ def cmd_fetch(args):
     if args.raw:
         subprocess.run(["rsync", "-a", str(raw) + "/", str(dest) + "/"])
     shutil.rmtree(raw, ignore_errors=True)
-    print("fetched report to %s; raw stays at %s:%s %s" % (dest, host, runs, p.stderr.strip()))
+    print("fetched report to %s; raw stays at %s:%s" % (dest, host, runs))
     return 0
 
 
