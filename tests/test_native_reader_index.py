@@ -11,7 +11,7 @@ import os
 import time
 import unittest
 
-from tests.native_harness import EXIT, Client, Node, executable, native_image
+from tests.native_harness import EXIT, Client, Node, executable, native_image, table_reply
 
 
 IMAGE = native_image("FN_NATIVE_HOST")
@@ -96,7 +96,7 @@ class NativeReaderIndexTest(unittest.TestCase):
         self.assertTrue(self.command(middle, "GROUP fn.test")[0].startswith(b"211 "))
         self.assertEqual(self.overview(old, "OVER", "1-100")[1], [])
         first_status, first_rows = self.overview(middle, "OVER", "1-100")
-        self.assertEqual(first_status, b"224 overview information follows\r\n")
+        self.assertEqual(first_status, table_reply(224, "overview"))
         self.assertEqual(len(first_rows), 1)
         self.assertTrue(first_rows[0].startswith(b"1\t"), first_rows)
         self.assertIn(cross.encode(), first_rows[0])
@@ -106,7 +106,7 @@ class NativeReaderIndexTest(unittest.TestCase):
         fresh = self.reader()
         self.assertTrue(self.command(fresh, "GROUP fn.test")[0].startswith(b"211 "))
         status, rows = self.overview(fresh, "OVER", "1-100")
-        self.assertEqual(status, b"224 overview information follows\r\n")
+        self.assertEqual(status, table_reply(224, "overview"))
         self.assertEqual(len(rows), 2)
         self.assertEqual(rows[0], first_rows[0])
         self.assertTrue(rows[1].startswith(b"2\t"), rows)
@@ -121,7 +121,7 @@ class NativeReaderIndexTest(unittest.TestCase):
         # socket case checks a sparse bounded selection beyond the watermark.
         self.assertTrue(self.command(fresh, "GROUP fn.alt")[0].startswith(b"211 "))
         alt_status, alt_rows = self.overview(fresh, "OVER", "1-2")
-        self.assertEqual(alt_status, b"224 overview information follows\r\n")
+        self.assertEqual(alt_status, table_reply(224, "overview"))
         self.assertEqual(len(alt_rows), 2)
         self.assertIn(cross.encode(), alt_rows[0])
         self.assertIn(alt.encode(), alt_rows[1])
@@ -182,7 +182,7 @@ class NativeReaderIndexTest(unittest.TestCase):
 
         self.assertTrue(self.command(reader, "GROUP fn.test")[0].startswith(b"211 "))
         status, rows = self.overview(reader, "OVER", "1-100")
-        self.assertEqual(status, b"224 overview information follows\r\n")
+        self.assertEqual(status, table_reply(224, "overview"))
         self.assertEqual(len(rows), 1)
         self.assertEqual(xref(rows[0]), (b"1", [b"fn.alt:2", b"fn.test:1"]))
         self.assertEqual(self.overview(reader, "XOVER", "1-100")[1], rows)
