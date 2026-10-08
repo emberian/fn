@@ -218,6 +218,10 @@ fi
 # The tests point these at a local directory and a local shell.
 BASE=${FN_REMOTE_CHECK_BASE:-$BASE}
 WRAP=${FN_REMOTE_CHECK_WRAP-$WRAP}
+# The wrap runs as an argument of the phase timer (a shell function), where a
+# leading VAR=value is a command name, not an assignment; `env` reads both
+# spellings ("SWARM_MEM_MAX=16G swarm-build" and "swarm-build").
+[ -z "$WRAP" ] || WRAP="env $WRAP"
 SSH=${FN_REMOTE_CHECK_SSH:-ssh -o ServerAliveInterval=30 -o ControlMaster=auto -o ControlPersist=600 -o ControlPath=~/.ssh/fn-remote-check-%r@%h:%p}
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || {
