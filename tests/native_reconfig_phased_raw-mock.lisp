@@ -15,6 +15,20 @@
                       (remove-if (lambda (x) (and (consp x) (eq (car x) 'declare)))
                                  (cdddr f))))))))
 (load-defuns "books/owner-reconfig-phased.lisp" (constantly t))
+(load-defuns "books/config-owner-live-authorize-carried.lisp"
+             (lambda (x) (eq x 'fn-olau-authorize-observed)))
+(load-defuns "books/native-admin.lisp"
+             (lambda (x) (eq x 'fn-native-admin-publication-result)))
+;; The window's observation mapping is real. Decoding/staged owner validity
+;; remain fixture seams; native_reconfig_history_raw tests the real empty codec.
+(defun member-equal (x xs) (member x xs :test #'equal))
+(defun fn-cfg-decode-exact (octets) (assert (equal octets '(1 2))) '(:ok record))
+(defun fn-record-parse-okp (parsed) (eq (car parsed) :ok))
+(defun fn-record-parse-value (parsed) (second parsed))
+(defun fn-olau-authorize-carried (oc record lock-owned occupied profile)
+  (assert (equal (list oc record lock-owned profile) '(captured-owner record t funded)))
+  (fn-native-admin-publication-result (if occupied :refused :accepted)
+                                      (and occupied :occupied) nil nil nil))
 (load-defuns "books/limits-live.lisp"
              (lambda (x) (member x '(fn-lim-funded-after fn-lim-decision-appliedp))))
 (assert (fn-lim-decision-appliedp '(:applied 257)))
@@ -60,8 +74,7 @@
      (assert (equal args (list 'captured-owner '(1 2) t
                               (if *valid-name* (if *present* :present :absent) :unknown)
                               'funded)))
-     (cond ((not *valid-name*) '(:fault :observation))
-           (*present* '(:refused :occupied)) (t '(:accepted nil))))
+     (apply #'fn-olau-authorize-observed args))
     (fn-native-admin-host-publication-status (first (first args)))
     (fn-native-admin-host-publication-reason (second (first args)))
     (fn-lim-apply-row 'candidate)
@@ -169,6 +182,8 @@
     (let ((answer (handler-case (fnn-owner-limit-serialized 'store 'plan)
                     (fnn-store-fault () :fault))))
       (assert (if fault (eq answer :fault) (eq (second answer) (if (and authorized (not present)) :accepted :refused))))
+      (when (and authorized present valid-name)
+        (assert (equal answer '(:reason :refused :occupied))))
       (assert (not *hold*))
       (assert (= *captures* 1))
       (assert (= *authorizations* (if authorized 1 0)))

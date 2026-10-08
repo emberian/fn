@@ -116,3 +116,46 @@
                *fixture-value* (1+ *fixture-generation*) nil 0 (fn-cnode-line-ceiling)
                (list (fn-cfg-create-group "fn.occupied" *fn-cfg-default-policy-id*)))))
 (format t "replacement fixture: 500 policy generations, 20 deep creates, occupied-name candidate admitted~%")
+
+;; Round 5's occupied-name CLI request never reaches the owner: the heap
+;; probe observes the entire configuration history for the limits overlay.
+;; Reduce that observation to its decisive entry, the empty next-generation
+;; file. These are the actual decoder, namespace decision and host bridge;
+;; no decode/namespace verdict is mocked. Unused decoder branches are outside
+;; this witness (undefined dependencies fail loudly if reached).
+(source-forms "books/cbor.lisp"
+              '(fn-cbor-octet-listp fn-cbor-ag-car fn-cbor-error
+                fn-cbor-result-okp fn-cbor-decode-prechecked))
+(source-forms "books/records-shape.lisp"
+              '(*fn-record-max-octets* fn-record-parse-error fn-record-parse-okp
+                fn-record-octets-chars-rev fn-record-octets-chars fn-record-octets-string))
+(source-forms "books/records.lisp" '(fn-record-item-decode fn-record-read-bytes))
+(source-forms "books/config.lisp" '(*fn-cfg-max-octets* fn-cfg-decode-exact))
+(source-forms "books/rev-onto.lisp" '(fn-ag-rev-onto))
+(source-forms "books/native-config-observation.lisp"
+              '(fn-nco-result fn-nco-observed-entryp fn-nco-decode-entry
+                fn-nco-decode-entries-loop fn-nco-decode-entries fn-nco-observe))
+(source-forms "books/store-octet-entry.lisp" '(fn-store-octets->string))
+(source-forms "host/store-node-host.lisp"
+              '(fn-store-config-observation-entries-loop fn-store-config-observation-entries
+                fn-store-config-observation))
+(require :sb-posix)
+(require :sb-bsd-sockets)
+(source-forms "host/native/io.lisp" '(fnn-bridge-config-observation))
+(define-condition fixture-namespace-fault (error) ((message :initarg :message :reader fault-message)))
+(defun fnn-fault (message) (error 'fixture-namespace-fault :message message))
+(defun fnn-string-octets (text) (map 'vector #'char-code text))
+(defun fnn-octet-list (octets) (coerce octets 'list))
+(defvar *namespace-decision* nil)
+(defun fnn-core (name &rest args)
+  (assert (eq name 'fn-store-config-observation))
+  (setf *namespace-decision* (apply #'fn-store-config-observation args)))
+(assert (equal (fn-cfg-decode-exact nil) '(:error :magic)))
+(assert (equal (fn-nco-observe '(("00000542.cfg" nil)) 2048) '(:fault :decode nil)))
+(assert
+ (equal (handler-case
+            (fnn-bridge-config-observation (list (cons "00000542.cfg" #())) 2048)
+          (fixture-namespace-fault (condition) (fault-message condition)))
+        "ACL2 refused configuration namespace observation"))
+(assert (equal *namespace-decision* '(:fault :decode nil)))
+(format t "occupied empty 00000542.cfg, limit 2048: ACL2 (:fault :decode nil), host namespace fault~%")

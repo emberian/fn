@@ -30,6 +30,7 @@ class PhasedReconfigurationAdapterTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("fn.depth.20 refused before authorization; projection 508 -> 520, ceiling 510", result.stdout)
         self.assertIn("500 policy generations, 20 deep creates, occupied-name candidate admitted", result.stdout)
+        self.assertIn("occupied empty 00000542.cfg, limit 2048: ACL2 (:fault :decode nil), host namespace fault", result.stdout)
 
 
 if __name__ == "__main__":

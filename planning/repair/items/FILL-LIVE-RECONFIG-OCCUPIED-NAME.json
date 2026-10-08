@@ -1,0 +1,16 @@
+{
+ "id": "FILL-LIVE-RECONFIG-OCCUPIED-NAME",
+ "category": "native-red",
+ "owner": "deputy-C",
+ "state": "open",
+ "severity": "medium",
+ "file": "host/native/heap.lisp",
+ "line": "158",
+ "title": "test_native_live_reconfiguration's occupied-name witness exits 4 (fault) instead of REFUSED: the operator's heap preflight decodes the planted empty config record before the owner is asked",
+ "detail": "The test occupies the next generation's name with an empty file (00000542.cfg) and expects the live request to be refused :occupied by ACL2's window-A decision (fn-olau-authorize-observed, which does refuse it: tests/native_reconfig_phased_raw-mock.lisp asserts (:reason :refused :occupied)). Since b0c439c82 the operator CLI runs fnn-heap-operator-profile -> fnn-heap-store-profile (host/native/heap.lisp:158) -> fnn-load-config-overlay (host/native/io.lisp:2545), which reads the configuration history before contacting the owner; the empty record decodes to (:error :magic) and fn-nco-observe (books/native-config-observation.lisp:181) answers (:fault :decode nil): 'store: ACL2 refused configuration namespace observation', exit 4. Pre-existing on dev (b0c439c82), found on lane reconfig-host@2243176be (persvati native-rh-2243176be...).",
+ "fix": "Decide which side is wrong. (a) If an undecodable record at the next generation's name is a crash-torn tail the store must tolerate (a durable-acceptance question: the live request never acknowledged it), the configuration observation must classify it the way window A does (occupied) rather than fault, by an ACL2 decision with a keystone; then the test stands. (b) If such a record is corruption that must fault, the test's witness is wrong: occupy the name with a well-formed record the history accepts. C decides with N (heap preflight owner).",
+ "notes": [
+  "2026-10-08 C8: filed from Codex reconfig-host round 5 trace; raw evidence in tests/native_reconfig_history_raw.lisp (actual decoder on ((00000542.cfg NIL)), bound 2048)."
+ ],
+ "updated": "2026-10-08T00:00:00Z"
+}
