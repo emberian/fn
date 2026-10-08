@@ -36994,8 +36994,7 @@
       "exempt": {},
       "keystones": [
         {
-          "theorem": "fn-bpsp-node-startup-holds-the-capacity",
-          "via": "fn-bpsp-node-capacity"
+          "theorem": "fn-bpsp-node-startup-holds-the-capacity"
         }
       ],
       "extraction": null,
