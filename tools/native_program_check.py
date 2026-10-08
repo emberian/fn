@@ -92,6 +92,12 @@ OPAQUE_CALLS = {
         "the core completion and then the success emission"),
 }
 
+# The owner entry delivers the same two ACL2 transitions through its owner-only
+# callback set; both executable wrappers are checked against the finish program.
+OPAQUE_CALLS["funcall *fnn-owner-finish-callback*"] = (
+    ["(:core-completion sequence txid)", "(:emit-success sequence txid)"],
+    "the owner completion consumes the persisted completion and emits its outcome")
+
 # A call that begins a following program, checked separately; it must come
 # after every step of the calling program.
 SEQUELS = {
@@ -823,8 +829,8 @@ def programs_named() -> list[str]:
     return out
 
 
-def check_program(program, host, model, declared) -> ProgramResult:
-    fn = PROGRAM_HOSTS.get(program)
+def check_program(program, host, model, declared, *, entry=None) -> ProgramResult:
+    fn = entry if entry is not None else PROGRAM_HOSTS.get(program)
     if fn is None:
         return ProgramResult(program, "?", 0, 0, 0, "FAIL",
                              mismatches=["no host function declared for this program"])
@@ -916,6 +922,8 @@ def check(host_text: str | None = None, book_text: str | None = None,
                   traces_text if traces_text is not None else read(TRACES))
     declared = declared_model_cuts(host)
     results = [check_program(p, host, model, declared) for p in programs_named()]
+    results.append(check_program("fn-bs-finish-program", host, model, declared,
+                                 entry="fnn-owner-finish-store"))
     opaque = {k: {"events": v[0], "reason": v[1]} for k, v in OPAQUE_CALLS.items()}
     return Report(results, opaque, all(r.verdict == "PASS" for r in results))
 

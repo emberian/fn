@@ -199,15 +199,26 @@ ACL2's source incarnation and refuses the candidate before installation."
       (unless (eq (first row) :ok) (fnn-refuse-io "history row refused: ~a" row))
       (second row))))
 
-(defun fnn-owner-history-root-unpin (service pin)
-  ;; Discard physical custody before returning its lease. Cancellation does
-  ;; not call this until the actual consuming walk has reached its cleanup.
+(defun fnn-history-root-unpin-held (pin)
+  "Owner held, including a snapshot's definite no-child cleanup."
   (let ((source (first pin)))
     (setf (second pin) nil)
-    (let ((word (fnn-owner-gated (service :control)
-                  (fnn-owner-core 'fn-owner-hroot-return source))))
+    (let ((word (fnn-owner-core 'fn-owner-hroot-return source)))
       (unless (eq word :returned) (fnn-fault "history source return refused: ~a" word)))
-    (fnn-owner-history-root-release service (third source))))
+    (fnn-history-root-retire-held (third source))))
+
+(defun fnn-owner-history-root-unpin (service pin)
+  ;; Custody ends only after the consuming walk has returned.
+  (fnn-owner-gated (service :control)
+    (fnn-history-root-unpin-held pin)))
+
+(defun fnn-owner-history-root-materialize (service pin)
+  "Off O. Retain each decoded row's funding until the snapshot consumer ends."
+  (let ((records nil) (count (fourth (first pin))))
+    (dotimes (ordinal count)
+      (fnn-checkpoint-yield "history-snapshot" ordinal)
+      (push (fnn-owner-history-root-at service pin ordinal) records))
+    (nreverse records)))
 
 (defun fnn-history-root-pin-held ()
   (let* ((physical (fnn-live-hist))

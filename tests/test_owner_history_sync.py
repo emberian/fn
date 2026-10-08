@@ -1,5 +1,6 @@
 """Startup load is outside O; served history sync has no disk read edge."""
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -21,6 +22,93 @@ def mentions(form, name):
 
 
 class HistoryStartup(unittest.TestCase):
+    def test_history_find_expansion_exposes_reads_and_predicate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'books').mkdir()
+            source = root / 'books/reader.lisp'
+            prefix = '''
+(defun fn-hist-count (hist) 1)
+(defun fn-hist-at (k hist) nil)
+(defun reference (m rows) (fn-pgs-fill-frame rows))
+'''
+            source.write_text(prefix + '''
+(def-loop-history-find served (m) reference (equal event m))
+''')
+            reach = ldc.acl2_realizer_reach(root, {'fn-pgs-fill-frame'})
+            self.assertIn('served', reach.known)
+            self.assertIn('served-from', reach.known)
+            self.assertNotIn('fn-pgs-fill-frame', reach.get('served', {}))
+            self.assertIn('fn-pgs-fill-frame', reach['reference'])
+            # Ablation: a disk read in the generated predicate must be visible.
+            source.write_text(prefix + '''
+(def-loop-history-find served (m) reference (fn-pgs-fill-frame event))
+''')
+            reach = ldc.acl2_realizer_reach(root, {'fn-pgs-fill-frame'})
+            self.assertIn('fn-pgs-fill-frame', reach['served'])
+            # The actual column reader is also part of the executable closure.
+            source.write_text((prefix + '''
+(def-loop-history-find served (m) reference (equal event m))
+''').replace('(defun fn-hist-at (k hist) nil)',
+             '(defun fn-hist-at (k hist) (fn-pgs-fill-frame hist))'))
+            reach = ldc.acl2_realizer_reach(root, {'fn-pgs-fill-frame'})
+            self.assertIn('fn-pgs-fill-frame', reach['served'])
+
+    def test_history_fold_expansion_exposes_column_and_step(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / 'books').mkdir()
+            path = root / 'books/fold.lisp'
+            prefix = """
+(defun fn-hist-count (hist) 1)
+(defun fn-hist-at (k hist) nil)
+(defun reference (rows acc) (fn-pgs-fill-frame rows))
+"""
+            path.write_text(prefix + '(def-loop-history-fold served reference (cons event acc))')
+            reach = ldc.acl2_realizer_reach(root, {'fn-pgs-fill-frame'})
+            self.assertIn('served-from', reach.known)
+            self.assertNotIn('fn-pgs-fill-frame', reach.get('served', {}))
+            path.write_text(prefix + '(def-loop-history-fold served reference (fn-pgs-fill-frame event))')
+            self.assertIn('fn-pgs-fill-frame', ldc.acl2_realizer_reach(
+                root, {'fn-pgs-fill-frame'})['served'])
+
+    def test_owner_completion_callback_class_and_ablation(self):
+        from tests.test_lock_discipline_check import run
+        source = """
+(defun standalone (store) (fnn-extent-pread store nil 0))
+(defun missing (store) (fnn-fault "missing owner completion"))
+(defun resident (store) nil)
+(defvar *standalone* #'standalone)
+(defvar *owner* #'missing)
+(defun finish-owner (store) (funcall *owner* store))
+(defun quantum (service store)
+ (let ((*owner* #'resident))
+  (sb-thread:with-mutex ((fnn-owner-service-lock service)) (finish-owner store))))
+"""
+        self.assertEqual(run(source, ['R2']), [])
+        mutant = source.replace('(funcall *owner* store)', '(funcall *standalone* store)')
+        self.assertTrue(any(f.key == 'O:fnn-extent-pread' for f in run(mutant, ['R2'])))
+        actual = definitions(ROOT / 'host/native/io.lisp')['fnn-owner-finish-store']
+        self.assertIn('*fnn-owner-finish-callback*', str(actual))
+        self.assertNotIn('*fnn-finish-callback*', str(actual))
+
+    def test_round_three_served_entries_have_no_page_fill_arm(self):
+        reach = ldc.acl2_realizer_reach(ROOT, {'fn-pgs-fill-frame'})
+        subjects = ('fn-owner-io-served', 'fn-owner-prepare-buffer',
+                    'fn-owner-prepare-identity-served', 'fn-owner-prepare-consumer-served',
+                    'fn-owner-prepare-topic-served', 'fn-owner-prepare-retention-served',
+                    'fn-owner-finish-synced', 'fn-owner-finish-submission-synced',
+                    'fn-owner-key-statement-redecide-find', 'fn-bprj-install',
+                    'fn-owner-sco-capture-served', 'fn-owner-oex-capture-served',
+                    'fn-owner-orc-capture-served', 'fn-owner-orcp-capture',
+                    'fn-native-live-status-host-answer')
+        for subject in subjects:
+            with self.subTest(subject=subject):
+                self.assertIn(subject, reach.known)
+                self.assertNotIn('fn-pgs-fill-frame', reach.get(subject, {}))
+        self.assertIn('fn-pgs-fill-frame', reach['fn-owner-sco-capture'])
+        self.assertIn('fn-pgs-fill-frame', reach['fn-bpaj-replay'])
+
     def test_install_loads_before_mutex_and_maintenance(self):
         source = (ROOT / 'host/native/owner.lisp').read_text()
         start = source.index('(defun fnn-owner-install (')

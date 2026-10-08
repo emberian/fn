@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-store-test-part-1")
+(include-book "owner-advance-carried")
+(include-book "owner-intent-carried")
 (include-book "owner-parse-carried")
 (include-book "owner-identity-intern")
 (include-book "owner-identity-served")
@@ -126,6 +128,8 @@
 (include-book "provenance-inspect")
 (include-book "state-digest")
 (include-book "owner-history-carried")
+(include-book "owner-history-io-entry")
+(include-book "owner-history-find")
 (include-book "owner-connection-state")
 (include-book "index-reader-request")
 (include-book "index-reader-step")

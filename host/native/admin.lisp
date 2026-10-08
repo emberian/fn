@@ -414,7 +414,7 @@ fn-oex-request-line)."
                   (let* ((inflightp (first (fnn-owner-export-observation service)))
                          (word (fnn-core 'fn-oex-request-word inflightp existsp)))
                     (when (eq word :requested)
-                      (let ((captured (fnn-owner-core 'fn-owner-oex-capture)))
+                      (let ((captured (fnn-owner-core 'fn-owner-oex-capture-served)))
                         (unless (and (true-listp captured) (= (length captured) 4))
                           (fnn-fault "owner returned a malformed export capture"))
                         (fnn-owner-export-start service captured dir)))

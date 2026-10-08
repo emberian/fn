@@ -186,7 +186,7 @@ mutex (HST-033: statvfs never runs inside the owner's critical section)."
   (fnn-owner-serialized
    service nil
    (lambda ()
-     (let ((answer (fnn-core 'fn-native-live-status-host-answer request
+     (let ((answer (fnn-owner-core 'fn-native-live-status-host-answer request
                              *fnn-live-status-buffers*
                              (fnn-store-observation
                               (fnn-owner-service-store service))
@@ -195,14 +195,7 @@ mutex (HST-033: statvfs never runs inside the owner's critical section)."
                              (fnn-log-sink-snapshot)
                              ;; HST-023: the scheduler's hold and wait fold
                              ;; (books/owner-scheduler.lisp fn-osch-health-lines).
-                             (fnn-owner-sched-snapshot service)
-                             ;; the owner's arena: the reclaim line reads each
-                             ;; article's stored length through it.
-                             (fnn-live-arena)
-                             ;; lane scale-reads: and each article's tombstone
-                             ;; flag from the catalog's column.
-                             (fnn-live-cat)
-                             *the-live-state*)))
+                             (fnn-owner-sched-snapshot service))))
        (unless (and (consp answer) (consp (cdr answer))
                     (fnn-octet-list-p (first answer)))
          (fnn-fault "ACL2 returned a malformed live status page"))

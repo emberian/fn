@@ -72,25 +72,36 @@
                  :witness ((fn-owner-retain-witness-oc) nil (make-list 32 :initial-element 0)
                            (create-fn-arena$a) (create-fn-cat$a) (create-fn-hist$a)
                            (fn-owner-retain-witness-state))))
-  :transitions ((fn-owner-history-startup fn-owner-history-startup-preserves-retain-state)
+  :transitions ((fn-owner-sco-capture-served fn-owner-sco-capture-served-preserves-retain-state)
+                (fn-owner-oex-capture-served fn-owner-oex-capture-served-preserves-retain-state)
+                (fn-owner-orc-capture-served fn-owner-orc-capture-served-preserves-retain-state)
+                (fn-owner-history-startup fn-owner-history-startup-preserves-retain-state)
                 ; the pilot's (books/owner-retain-carried.lisp)
                 (fn-owner-prepare-identity fn-owner-prepare-identity-preserves-retain-state)
+                (fn-owner-prepare-identity-served fn-owner-prepare-identity-served-preserves-carried-state)
                 (fn-owner-prepare-consumer fn-owner-prepare-consumer-preserves-retain-state)
+                (fn-owner-prepare-consumer-served fn-owner-prepare-consumer-served-preserves-carried-state)
                 (fn-owner-prepare-topic fn-owner-prepare-topic-preserves-retain-state)
+                (fn-owner-prepare-topic-served fn-owner-prepare-topic-served-preserves-carried-state)
                 (fn-owner-refuse-reservation fn-owner-refuse-reservation-preserves-retain-state)
+                (fn-owner-refuse-reservation-served fn-owner-refuse-reservation-served-preserves-retain-state)
                 (fn-owner-known-abort fn-owner-known-abort-preserves-retain-state)
+                (fn-owner-known-abort-served fn-owner-known-abort-served-preserves-retain-state)
                 ; STAGE-5B tier A (host/owner-retain-host.lisp)
                 (fn-owner-io fn-owner-io-preserves-retain-state)
+                (fn-owner-io-served fn-owner-io-served-preserves-carried-state)
                 (fn-owner-take fn-owner-take-preserves-retain-state)
                 (fn-owner-control-submit fn-owner-control-submit-preserves-retain-state)
                 (fn-owner-prepare-retention fn-owner-prepare-retention-preserves-retain-state)
+                (fn-owner-prepare-retention-served fn-owner-prepare-retention-served-preserves-carried-state)
                 (fn-owner-install-effects fn-owner-install-effects-preserves-retain-state)
                 (fn-owner-close fn-owner-close-preserves-retain-state)
                 (fn-owner-fault fn-owner-fault-preserves-retain-state)
                 (fn-owner-open-peer fn-owner-open-peer-preserves-retain-state)
                 (fn-owner-install-node-secret fn-owner-install-node-secret-preserves-retain-state)
                 (fn-owner-apply-limit-profile fn-owner-apply-limit-profile-preserves-retain-state))
-  :concludes ((fn-sn-statep fn-owner-retain-statep-implies-entry-guard)
+  :concludes ((fn-cst-relation fn-owner-retain-statep-implies-configured-store)
+              (fn-sn-statep fn-owner-retain-statep-implies-entry-guard)
               (fn-prc-carryp fn-owner-retain-statep-implies-entry-guard))
   :incomplete (A-OWNER-INVARIANT-CARRIED
                ; every other state-returning host writer, by name: the
@@ -112,6 +123,9 @@
                 fn-acct-host-owner-redeem-stage
                 fn-acct-host-owner-redeem-waitingp
                 fn-acct-host-owner-redeem-word fn-bprj-apply
+                ; Program adapters use the same runtime assumption as fn-bprj-install:
+                ; startup writes only reload; status sync preserves state.
+                fn-bprj-history-startup fn-native-live-status-host-answer
                 fn-bprj-config-status fn-bprj-install
                 fn-bprj-pending-receipt-resolution fn-bprj-preflight
                 fn-bprj-preview-receipt fn-bprj-receipt-adu

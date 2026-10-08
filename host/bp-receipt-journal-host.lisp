@@ -1,5 +1,5 @@
 (in-package "ACL2")
-(include-book "../books/bp-native-app-fast")
+(include-book "../books/bp-history-served-replay")
 
 (defun fn-bprj-store (state)
  (declare (xargs :stobjs state :mode :program))
@@ -24,15 +24,21 @@
 
 ;; The records flip (flip-L4): replay, preflight, apply and dispatch read the
 ;; bound Store's rows through the live arena (read-only).
-(defun fn-bprj-install (records fn-arena state)
- (declare (xargs :stobjs (fn-arena state) :mode :program))
- (let ((answer (fn-bpaj-replay (fn-bprj-store state) records fn-arena)))
-  (if (not (car answer)) (value :fault)
-   (let* ((joined (fn-bprr-nth 1 answer))
-          (state (f-put-global 'fn-bpaj-state joined state))
-          (state (f-put-global 'fn-bprj-state
-                               (fn-bpaj-receiver joined) state)))
-    (value :ready)))))
+(defun fn-bprj-history-startup (fn-hist state)
+ (declare (xargs :stobjs (fn-hist state) :mode :program))
+ (mv-let (fn-hist state) (fn-host-hist-startup (fn-bprj-store state) fn-hist state)
+  (mv nil :ready fn-hist state)))
+
+(defun fn-bprj-install (records fn-arena fn-hist state)
+ (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
+ (mv-let (fn-hist state) (fn-host-hist-sync (fn-bprj-store state) fn-hist state)
+  (let ((answer (fn-bpaj-replay-served (fn-bprj-store state) records fn-arena fn-hist)))
+   (if (not (car answer)) (mv nil :fault fn-hist state)
+    (let* ((joined (fn-bprr-nth 1 answer))
+           (state (f-put-global 'fn-bpaj-state joined state))
+           (state (f-put-global 'fn-bprj-state
+                                (fn-bpaj-receiver joined) state)))
+     (mv nil :ready fn-hist state))))))
 
 (defun fn-bprj-preflight (record fn-arena fn-hist state)
  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))

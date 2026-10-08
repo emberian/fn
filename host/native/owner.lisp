@@ -946,6 +946,9 @@ the owner's keyword check, not the Store's."
     value))
 
 (defun fnn-owner-observe (operation result)
+  (fnn-owner-action 'fn-owner-io-served operation result))
+
+(defun fnn-owner-observe-startup (operation result)
   (fnn-owner-action 'fn-owner-io operation result))
 
 (defun fnn-owner-identity-reservation (operation)
@@ -1625,9 +1628,9 @@ one ring, so the table's key and the served boundary's are one source."
               (dolist (barrier (fnn-store-recovery-barriers store))
                 (handler-case (funcall barrier)
                   (fnn-os-error (e)
-                    (fnn-owner-observe :recovery-barrier :uncertain)
+                    (fnn-owner-observe-startup :recovery-barrier :uncertain)
                     (error e)))
-                (setq phase (fnn-owner-observe :recovery-barrier :ok)))
+                (setq phase (fnn-owner-observe-startup :recovery-barrier :ok)))
               (unless (eq phase :ready)
                 (fnn-fault "owner did not complete recovery barriers")))
             ;; The first reading, against a clock-less owner.  Every later
@@ -3296,14 +3299,14 @@ record on (lane compression-extents-2)."
       (fnn-store-error (e)
         (unless (fnn-store-fenced store)
           (setf (fnn-store-fenced store) t)
-          (unless (eq (fnn-owner-action 'fn-owner-known-abort) :aborted)
+          (unless (eq (fnn-owner-action 'fn-owner-known-abort-served) :aborted)
             (fnn-indeterminate "owner rejected known ~a abort" label))
           ; A known pre-publication refusal consumed the reservation.  It is
           ; the only error branch that reopens the writer without recovery.
           (setf (fnn-store-fenced store) nil))
         (error e)))
     (setf (fnn-store-fenced store) t)
-    (fnn-finish store)
+    (fnn-owner-finish-store store)
     ;; PRF-252: the committed delta wakes the consumer waits.
     (fnn-owner-signal-commit service)
     :durable))
@@ -3432,7 +3435,7 @@ follows is justified only by this line."
             (:conflict (return-from fnn-owner-attempt :conflict)))
           (let ((*fnn-observe-callback* #'fnn-owner-observe)
                 (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
-                (*fnn-finish-callback* #'fnn-owner-finish-submission))
+                (*fnn-owner-finish-callback* #'fnn-owner-finish-submission))
             (fnn-advance-frontier store
                                   (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
             (multiple-value-bind (obligation subject ignored)
@@ -3473,9 +3476,9 @@ follows is justified only by this line."
                 (unless (eq prepared :prepared)
                   (setf (fnn-store-fenced store) t)
                   (if staged
-                      (unless (eq (fnn-owner-action 'fn-owner-known-abort) :aborted)
+                      (unless (eq (fnn-owner-action 'fn-owner-known-abort-served) :aborted)
                         (fnn-indeterminate "owner could not abort refused staged record"))
-                    (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation)
+                    (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation-served)
                                 :refused)
                       (fnn-indeterminate "owner could not consume refused reservation")))
                   (setf (fnn-store-fenced store) nil)
@@ -3906,20 +3909,20 @@ theorems).  Only a present carrier's arm builds the article's list, once."
     (fnn-owner-preflight-publication service (first event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
                 (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
-          (*fnn-finish-callback* #'fnn-owner-finish))
+          (*fnn-owner-finish-callback* #'fnn-owner-finish))
       ;; The exact ACL2-authored event funds its reserved release identity
       ;; and produces the one-shot capability consumed by preparation.
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)) event)
       (let ((prepared
              (fnn-owner-action
-              'fn-owner-prepare-retention (first event)
+              'fn-owner-prepare-retention-served (first event)
               (fnn-octet-list (fnn-string-octets (second event)))
               (fnn-octet-list (fnn-string-octets (third event)))
               (fnn-octet-list (fnn-string-octets (fourth event)))
               (fifth event))))
         (unless (eq prepared :prepared)
-          (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
+          (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation-served) :refused)
             (fnn-indeterminate "owner could not consume refused retention reservation"))
           (fnn-refuse "canonical Store refused retention event")))
       (fnn-owner-publish-prepared service "retention"))))
@@ -3936,14 +3939,14 @@ theorems).  Only a present carrier's arm builds the article's list, once."
                   (fnn-core 'fn-wire-event-kind event)))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
                 (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
-          (*fnn-finish-callback* #'fnn-owner-finish))
+          (*fnn-owner-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
       ;; The entry stages the interned row and reads the arena only; when
       ;; the Store took a composite it names the article's payload and the
       ;; host seals exactly those octets (host/owner-host.lisp
       ;; fn-owner-prepare-identity, books/owner-identity-intern.lisp).
-      (let ((prepared (fnn-core-arena-state 'fn-owner-prepare-identity event)))
+      (let ((prepared (fnn-core-arena-state 'fn-owner-prepare-identity-served event)))
         (when (and (consp prepared) (eq (first prepared) :seal))
           (unless (and (consp (rest prepared)) (null (cddr prepared))
                        (fnn-octet-list-p (second prepared)))
@@ -3954,12 +3957,12 @@ theorems).  Only a present carrier's arm builds the article's list, once."
           ;; fn-owner-finish-identity at the durable finish.
           (unless (eq (fnn-owner-action 'fn-owner-cat-prepare-sealed) :prepared)
             (fnn-fault "owner did not prepare the catalog row of the identity event"))
-          (setq *fnn-finish-callback* #'fnn-owner-finish-identity)
+          (setq *fnn-owner-finish-callback* #'fnn-owner-finish-identity)
           (setq prepared :prepared))
         (unless (keywordp prepared)
           (fnn-fault "owner returned non-action from fn-owner-prepare-identity"))
         (unless (eq prepared :prepared)
-          (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
+          (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation-served) :refused)
             (fnn-indeterminate "owner could not consume refused identity reservation"))
           ;; The word names the refusal (:refused, or RFC 3977 section 6's
           ;; :article-numbers-exhausted, books/owner-prepare-served.lisp
@@ -3977,12 +3980,12 @@ theorems).  Only a present carrier's arm builds the article's list, once."
       (fnn-refuse "Store transaction budget refuses consumer transaction"))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
           (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
-          (*fnn-finish-callback* #'fnn-owner-finish))
+          (*fnn-owner-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
-      (let ((prepared (fnn-owner-action 'fn-owner-prepare-consumer event)))
+      (let ((prepared (fnn-owner-action 'fn-owner-prepare-consumer-served event)))
         (unless (eq prepared :prepared)
-          (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
+          (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation-served) :refused)
             (fnn-indeterminate "owner could not consume refused consumer reservation"))
           (fnn-refuse "canonical Store refused consumer event")))
       (fnn-owner-publish-prepared service "consumer"))))
@@ -3994,12 +3997,12 @@ theorems).  Only a present carrier's arm builds the article's list, once."
                                      (fnn-core 'fn-store-event-kind event))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
                 (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
-          (*fnn-finish-callback* #'fnn-owner-finish))
+          (*fnn-owner-finish-callback* #'fnn-owner-finish))
       (fnn-advance-frontier store
                             (fnn-nat (fnn-owner-core 'fn-owner-next-txid)))
-      (let ((prepared (fnn-owner-action 'fn-owner-prepare-topic event)))
+      (let ((prepared (fnn-owner-action 'fn-owner-prepare-topic-served event)))
         (unless (eq prepared :prepared)
-          (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation) :refused)
+          (unless (eq (fnn-owner-action 'fn-owner-refuse-reservation-served) :refused)
             (fnn-indeterminate "owner could not consume refused topic reservation"))
           (fnn-refuse "canonical Store refused topic event")))
       (fnn-owner-publish-prepared service "topic"))))
@@ -7261,7 +7264,7 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
 
 (defvar *fnn-snapshot-job* nil)
 (defstruct (fnn-snapshot-job (:constructor %make-fnn-snapshot-job))
-  kind captured arena pin thread (stage :pinning) physical condition)
+  kind captured metadata arena pin history-source thread (stage :pinning) physical condition)
 
 (def-actor fnn-owner-spawn-publisher :kind :publisher :thread-name "fn owner checkpoint" :roster t
   :join fnn-owner-wait-workers :failure :job)
@@ -7270,12 +7273,15 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
 
 (defun fnn-owner-snapshot-job-capture (service kind captured)
   "Owner held. Retain the envelope before the possibly torn pin operation."
-  (let ((job (%make-fnn-snapshot-job :kind kind :captured captured
+  (let ((job (%make-fnn-snapshot-job :kind kind :captured captured :metadata captured
                                      :arena (fnn-live-arena))))
     (fnn-with-roster (service)
       (push job (fnn-owner-service-snapshot-jobs service)))
     (setf (fnn-snapshot-job-pin job) (fnn-arena-pin)
-          (fnn-snapshot-job-stage job) :holding)
+          (fnn-snapshot-job-history-source job) (fnn-history-root-pin-held))
+    (unless (fnn-snapshot-job-history-source job)
+      (fnn-fault "snapshot capture has no funded history-root lease"))
+    (setf (fnn-snapshot-job-stage job) :holding)
     job))
 
 (defun fnn-owner-snapshot-job-release (service job)
@@ -7286,9 +7292,16 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
             t))
     (handler-case
         (progn
+          ;; The consumer has returned. Drop decoded rows before their credit.
+          (setf (fnn-snapshot-job-captured job) (fnn-snapshot-job-metadata job))
+          (let ((source (fnn-snapshot-job-history-source job)))
+            (if (sb-thread:holding-mutex-p (fnn-owner-service-lock service))
+                (fnn-history-root-unpin-held source)
+              (fnn-owner-history-root-unpin service source)))
           (fnn-arena-unpin (fnn-snapshot-job-pin job))
           (fnn-with-roster (service)
             (setf (fnn-snapshot-job-pin job) nil
+                  (fnn-snapshot-job-history-source job) nil
                   (fnn-snapshot-job-stage job) :released)))
       (serious-condition (condition)
         (fnn-with-roster (service)
@@ -7313,6 +7326,7 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
   (fnn-with-roster (service)
     (when (eq (fnn-snapshot-job-stage job) :released)
       (setf (fnn-snapshot-job-captured job) nil
+            (fnn-snapshot-job-metadata job) nil
             (fnn-snapshot-job-arena job) nil
             (fnn-owner-service-snapshot-jobs service)
             (delete job (fnn-owner-service-snapshot-jobs service) :test #'eq)))))
@@ -7323,14 +7337,22 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
     (null (fnn-owner-service-snapshot-jobs service))))
 
 (defun fnn-owner-snapshot-pin-release (service pin)
-  ;; Keep the old direct-call ABI while the actual starters retain JOB.
-  (if *fnn-snapshot-job*
-      (fnn-owner-snapshot-job-release service *fnn-snapshot-job*)
-    (when pin (fnn-arena-unpin pin))))
+  ;; Registered readers return their history lease only after the consuming
+  ;; function returns to JOB-RUN; direct callers retain the old arena ABI.
+  (declare (ignore service))
+  (unless *fnn-snapshot-job* (when pin (fnn-arena-unpin pin))))
 
 (defun fnn-owner-snapshot-job-run (service job thunk)
   (let ((*fnn-snapshot-job* job))
-    (unwind-protect (funcall thunk)
+    (unwind-protect
+        (progn
+          (setf (fnn-snapshot-job-captured job)
+                (fnn-core 'fn-hsc-complete-capture
+                          (if (eq (fnn-snapshot-job-kind job) :publisher) :checkpoint :export)
+                          (fnn-snapshot-job-captured job)
+                          (fnn-owner-history-root-materialize
+                           service (fnn-snapshot-job-history-source job))))
+          (funcall thunk))
       (fnn-owner-snapshot-job-release service job))))
 
 (defun fnn-owner-publisher-start (service captured position)
@@ -7344,7 +7366,7 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
          (fnn-owner-snapshot-job-run
           service job
           (lambda ()
-            (fnn-owner-publish-captured service captured (fnn-snapshot-job-arena job)
+            (fnn-owner-publish-captured service (fnn-snapshot-job-captured job) (fnn-snapshot-job-arena job)
                                         position (fnn-snapshot-job-pin job))))))
      (lambda (condition) (fnn-owner-thread-escape service condition "CHECKPOINT actor" t))
      (lambda (receipt) (fnn-owner-snapshot-job-physical service job receipt))
@@ -7683,7 +7705,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
                                (fnn-err "CHECKPOINT auto failed: ~a" e)
                                :failed)))
                  (captured (and (not (eq position :failed))
-                                (fnn-owner-core 'fn-owner-sco-capture
+                                (fnn-owner-core 'fn-owner-sco-capture-served
                                                 (fnn-checkpoint-budget-test-override nil)
                                                 free (fnn-checkpoint-revision)))))
             (unless (or (eq position :failed)
@@ -7704,7 +7726,7 @@ reads run as a :control quantum; the thread's registration is the roster's."
 ;;; (books/owner-export-request.lisp fn-oex-; SCN-210, PRF-988).  The export
 ;;; is a reader of the live arena, as the publication is: the capture under
 ;;; the owner mutex is O(1) (host/owner-host.lisp fn-owner-oex-capture: the
-;;; record list by pointer, its count, the configuration history, the
+;;; resident root lease, its count, the configuration history, the
 ;;; frontier), the archive is written on its own thread off the mutex in
 ;;; chunks of +fnn-export-chunk+ records, pinned at the arena generation the
 ;;; capture saw (fnn-arena-pin under the mutex, before the thread exists),
@@ -7737,7 +7759,7 @@ runs, the last outcome and its DIR."
          (fnn-owner-snapshot-job-run
           service job
           (lambda ()
-            (fnn-owner-export-captured service captured dir (fnn-snapshot-job-pin job)
+            (fnn-owner-export-captured service (fnn-snapshot-job-captured job) dir (fnn-snapshot-job-pin job)
                                        (fnn-snapshot-job-arena job))))))
      (lambda (condition)
        (let ((kind (fnn-owner-thread-escape service condition "EXPORT actor" t)))
@@ -7893,26 +7915,25 @@ the pass's reserved demand holds (fn-heap-reclaim-demand-octets)."
 
 (defun fnn-owner-reclaim-walk (records ctx arena service history-source &optional consumer)
   "One pass over the captured history in chunks of (fnn-reclaim-chunk-rows):
-from the pinned P3 root HISTORY-SOURCE when there is one (each row's decode
-funded before it is read, the chunk's grant returned once the chunk is
-consumed), else the captured RECORDS.  Without CONSUMER the pass folds the
+from the mandatory pinned P3 root HISTORY-SOURCE (each row's decode funded
+before it is read, the chunk's grant returned once the chunk is consumed).  Without CONSUMER the pass folds the
 decision's accumulator (fn-owner-orc-fold-chunk: fn-orc-fold, joined across
 chunks by fn-orc-fold-of-append) and answers it.  With CONSUMER each chunk is
 rewritten (fn-owner-orc-rewrite-chunk: fn-orc-rewrite-rows, the offline
 rewrite, joined by fn-orc-rewrite-rows-of-append) and handed to CONSUMER;
 no rewritten row outlives its chunk here (lane reclaim, PRF-1315: the pass
 keeps no whole rewritten-row list) and the answer is nil."
+  (declare (ignore records))
+  (unless history-source (fnn-fault "reclaim capture has no history-root lease"))
   (let ((acc (and (null consumer) (fnn-core 'fn-owner-orc-init)))
-        (rest records) (ordinal 0) (chunk-rows (fnn-reclaim-chunk-rows))
-        (total (and history-source (fourth (first history-source)))))
-    (loop while (if history-source (< ordinal total) rest) do
+        (ordinal 0) (chunk-rows (fnn-reclaim-chunk-rows))
+        (total (fourth (first history-source))))
+    (loop while (< ordinal total) do
       (let ((chunk
-              (if history-source
-                  (loop repeat chunk-rows
-                        while (< ordinal total)
-                        collect (prog1 (fnn-owner-history-root-at service history-source ordinal)
-                                  (incf ordinal)))
-                (loop repeat chunk-rows while rest collect (pop rest)))))
+              (loop repeat chunk-rows
+                    while (< ordinal total)
+                    collect (prog1 (fnn-owner-history-root-at service history-source ordinal)
+                              (incf ordinal)))))
         (if consumer
             (let ((rewritten (fnn-core 'fn-owner-orc-rewrite-chunk chunk ctx arena)))
               (unless (and (listp rewritten) (= (length rewritten) (length chunk)))
@@ -7921,13 +7942,13 @@ keeps no whole rewritten-row list) and the answer is nil."
               (funcall consumer rewritten))
           (setq acc (fnn-core 'fn-owner-orc-fold-chunk chunk ctx acc arena)
                 chunk nil))
-        (when history-source (fnn-owner-history-root-chunk-return service history-source))))
+        (fnn-owner-history-root-chunk-return service history-source)))
     acc))
 
 (defun fnn-owner-reclaim-dry-run (service free)
   "The dry run on the running owner: under the owner mutex the capture
-(fn-owner-orc-capture: the rows by pointer, the configuration and the
-Store, the clock's stamp), then off it, on this thread, the context, the
+(fn-owner-orc-capture-served: the metadata and slot effects, followed
+by a resident root lease), then off it, on this thread, the context, the
 walk (fnn-owner-reclaim-walk), the classes and the decision
 (fn-owner-orc-decide: fn-lgr-decide-stream at the clock, as the offline
 dry run), the report to the owner's log in the offline verb's words; then
@@ -7940,7 +7961,7 @@ the reply word: :dry-run, or ACL2's refusal."
     (unwind-protect
          (progn
            (fnn-owner-gated (service :control)
-             (let ((answer (fnn-owner-core 'fn-owner-orc-capture :dry-run clock
+             (let ((answer (fnn-owner-core 'fn-owner-orc-capture-served :dry-run clock
                                            (fnn-checkpoint-budget-test-override nil)
                                            free (fnn-checkpoint-revision))))
                ;; S038: a pass in flight refuses the dry run by name; nothing

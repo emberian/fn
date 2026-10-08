@@ -6,6 +6,7 @@
 (include-book "owner-retain-state")
 (include-book "owner-obligation-state")
 (include-book "identity-retain-carried")
+(include-book "history-served-finish")
 
 (defthm fn-owner-retain-carry-of-install-ocfg
   (equal (fn-owner-retain-carry (fn-owner-install-ocfg oc state))
@@ -167,7 +168,7 @@
                                  (fn-sn-node (fn-own-store before)))))
          (state (fn-owner-retain-carry-put carry state))
          (state (fn-owner-install-ocfg
-                 (fn-irc-rix-ocfg-complete (fn-owner-ocfg state) fn-hist carry)
+                 (fn-hsv-irc-rix-ocfg-complete (fn-owner-ocfg state) fn-hist carry)
                  state))
          (after (fn-owner-core state))
          (after-files (fn-sn-files (fn-own-store after))))
@@ -195,3 +196,9 @@
             (theory 'minimal-theory)))))
 
 (in-theory (disable fn-owner-retain-statep fn-owner-prepare-identity fn-owner-finish-synced))
+
+(defthm fn-owner-retain-statep-implies-configured-store
+ (implies (fn-owner-retain-statep state)
+          (fn-cst-relation (fn-owner-store state)))
+ :hints (("Goal" :in-theory '(fn-owner-retain-statep fn-owner-store
+ fn-owner-core fn-owner-ocfg fn-lgoc-invariantp fn-lgoc-ocl-relation-cst))))

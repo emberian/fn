@@ -32,7 +32,7 @@
 (include-book "history-columns-relation")
 (include-book "store-node-invariants-base")
 
-(include-book "control-visible-effect")
+(include-book "history-served-control")
 
 (defun fn-own-refresh-ix (o fn-hist)
   (declare (xargs :stobjs fn-hist :guard t))
@@ -43,7 +43,7 @@
                (raw (fn-state-articles acceptance))
                (old-raw (fn-own-view-raw old-view))
                (verdicts (fn-sn-verdicts s))
-               (withdrawals (fn-ctl-refresh-withdrawals-fx
+               (withdrawals (fn-ctl-refresh-withdrawals-served
                              raw old-raw (fn-own-view-withdrawals old-view)
                              verdicts (fn-sn-files s)
                              fn-hist

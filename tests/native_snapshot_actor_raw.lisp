@@ -217,6 +217,34 @@
    (defun fnn-owner-export-start) (defun fnn-owner-export-captured)
    (defun fnn-owner-worker-tail-hold)
    (defun fnn-owner-actor-for-custody) (defun fnn-owner-thread-escape)))
+(load-deployed-forms "host/native/history-root.lisp"
+ '((defun fnn-owner-history-root-materialize)))
+;; Lease/read leaves: the actual materializer must stay off O, read only the
+;; captured three-row prefix, and hold its grant until the consumer returns.
+(defvar *snapshot-history-unpins* 0)
+(defvar *snapshot-history-reads* nil)
+(defun fnn-history-root-pin-held () (list (list :history-root 1 9 3 nil) '(a b c later)))
+(defun fnn-owner-history-root-at (service pin ordinal)
+  (assert (not (sb-thread:holding-mutex-p (fnn-owner-service-lock service))))
+  (assert (< ordinal (fourth (first pin))))
+  (push ordinal *snapshot-history-reads*)
+  (nth ordinal (second pin)))
+(defun fnn-checkpoint-yield (label ordinal) (declare (ignore label ordinal)) nil)
+(defun fnn-history-root-unpin-held (pin)
+  (assert (eq (first (first pin)) :history-root))
+  (setf (second pin) nil)
+  (incf *snapshot-history-unpins*))
+(defun fnn-owner-history-root-unpin (service pin)
+  (assert (not (sb-thread:holding-mutex-p (fnn-owner-service-lock service))))
+  (sb-thread:with-mutex ((fnn-owner-service-lock service))
+    (fnn-history-root-unpin-held pin)))
+(defun fnn-core (name &rest args)
+  (assert (eq name 'fn-hsc-complete-capture))
+  (destructuring-bind (kind captured records) args
+    (assert (equal records '(a b c)))
+    (if (eq kind :checkpoint)
+        (progn (assert (eq captured :capture)) captured)
+      (cons records (cdr captured)))))
 ;; No developer selector is set: the tail hold is the deployed no-op.
 (defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defvar *snapshot-service* nil)
@@ -276,9 +304,11 @@
 (defun snapshot-start (kind)
   (if (eq kind :publisher)
       (fnn-owner-publisher-start *snapshot-service* :capture :position)
-    (fnn-owner-export-start *snapshot-service* '((a b c) 3 nil :frontier) :dir)))
+    (fnn-owner-export-start *snapshot-service* '(nil 3 nil :frontier) :dir)))
 (defun snapshot-reset ()
-  (setq *snapshot-service* (%make-fnn-owner-service :store :store)
+  (setq *snapshot-service* (%make-fnn-owner-service :store :store
+                         :lock (sb-thread:make-mutex :name "snapshot owner"))
+        *snapshot-history-unpins* 0 *snapshot-history-reads* nil
         *snapshot-cut* nil *snapshot-pin-cut* nil *snapshot-unpin-cut* nil
         *snapshot-unpins* 0 *join-faults* nil))
 
@@ -290,6 +320,8 @@
          (job (car (fnn-owner-service-snapshot-jobs *snapshot-service*))))
     (sb-thread:join-thread worker :default :abnormal)
     (assert (eq (fnn-snapshot-job-stage job) :released))
+    (assert (= *snapshot-history-unpins* 1))
+    (assert (equal *snapshot-history-reads* '(2 1 0)))
     (assert (null (fnn-snapshot-job-physical job)))
     (assert (not (fnn-owner-snapshot-jobs-drained-p *snapshot-service*)))
     (assert (null (if (eq kind :publisher)

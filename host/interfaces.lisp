@@ -221,7 +221,6 @@
   ;; (specs/failures.md: the writers that row owes are unproved).
   :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
-
 (definterface fn-native-health-host-exit
   :class :program
   :exempt ((octets "the health report's summary structure (fnn-operator-health-report)")))
@@ -439,7 +438,6 @@
 (definterface fn-arx-commit-reseats
   :class :common-lisp-compliant
   :keystones (fn-arx-commit-reseats-keep-the-arena))
-
 
 
 (definterface fn-arx-list-places
@@ -727,7 +725,6 @@
   :class :common-lisp-compliant
   :keystones (fn-log-sink-init-okp))
 
-
 (definterface fn-log-sink-pending-bound
   :class :common-lisp-compliant)
 
@@ -771,7 +768,6 @@
 
 (definterface fn-lzr-dicts-initial
   :class :common-lisp-compliant)
-
 
 
 (definterface fn-lzr-read-refusal-text
@@ -1036,7 +1032,6 @@
 
 (definterface fn-smid-unrecorded-warning
   :class :common-lisp-compliant)
-
 
 
 
@@ -1532,7 +1527,6 @@
 (definterface fn-oqw-outcome-of-final
   :class :common-lisp-compliant)
 
-
 (definterface fn-own-intent-refusal-word
   :class :common-lisp-compliant
   :keystones (fn-own-intent-refusal-word-is-a-refusal))
@@ -1834,6 +1828,10 @@
   ;; (specs/failures.md: the writers that row owes are unproved).
   :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
+(definterface fn-owner-io-served
+  :class :common-lisp-compliant
+  :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
+
 ;; The POST's take (host/native/owner.lisp fnn-owner-take).  Undeclared until
 ;; lane post-guard-off: the raw host reached it through fnn-owner-result,
 ;; which the host reading does not see, so it now dispatches it through
@@ -1862,7 +1860,8 @@
   :class ::program)
 
 (definterface fn-owner-key-statement-redecide-find
-  :class ::program)
+  :class :common-lisp-compliant
+  :kinds ((msgid fn-cbor-octet-listp)))
 
 (definterface fn-owner-key-statement-redecide-log-line
   :class :common-lisp-compliant)
@@ -1873,7 +1872,8 @@
 (definterface fn-owner-key-statement-request
   :class :common-lisp-compliant)
 
-(definterface fn-owner-known-abort
+
+(definterface fn-owner-known-abort-served
   :class :common-lisp-compliant
   :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
@@ -1951,21 +1951,24 @@
 (definterface fn-owner-posting-configure
   :class ::program)
 
-(definterface fn-owner-prepare-consumer
+
+(definterface fn-owner-prepare-consumer-served
   :class :common-lisp-compliant
   ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
   ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
   ;; (specs/failures.md: the writers that row owes are unproved).
   :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
-(definterface fn-owner-prepare-identity
+
+(definterface fn-owner-prepare-identity-served
   :class :common-lisp-compliant
   ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
   ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
   ;; (specs/failures.md: the writers that row owes are unproved).
   :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
-(definterface fn-owner-prepare-retention
+
+(definterface fn-owner-prepare-retention-served
   :class :common-lisp-compliant
   :kinds ((id-octets fn-cbor-octet-listp) (subject-octets fn-cbor-octet-listp) (evidence-octets fn-cbor-octet-listp))
   ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
@@ -1973,7 +1976,8 @@
   ;; (specs/failures.md: the writers that row owes are unproved).
   :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
-(definterface fn-owner-prepare-topic
+
+(definterface fn-owner-prepare-topic-served
   :class :common-lisp-compliant
   ;; RAW: its guard walks the whole Store (fn-sn-statep); raw dispatch over
   ;; host/owner-served-carried.lisp's row, under A-OWNER-INVARIANT-CARRIED
@@ -2010,16 +2014,17 @@
 (definterface fn-owner-recover-from-store-open
   :class ::program)
 
-(definterface fn-owner-refuse-reservation
+
+(definterface fn-owner-refuse-reservation-served
   :class :common-lisp-compliant
   :raw-with (:carried fn-owner-served-carried :assuming A-OWNER-INVARIANT-CARRIED))
 
-(definterface fn-owner-sco-capture
-  :class ::program)
+(definterface fn-owner-sco-capture-served
+  :class :common-lisp-compliant)
 
 ; host/native/admin.lisp dispatches it (lane operability-7, row S3b).
-(definterface fn-owner-oex-capture
-  :class ::program)
+(definterface fn-owner-oex-capture-served
+  :class :common-lisp-compliant)
 
 ; host/native/owner.lisp dispatches it (lane operability-7, row S3b).
 (definterface fn-store-sco-encode-chunk
@@ -2121,7 +2126,6 @@
 (definterface fn-owner-workflow-sync-store-node
   :class ::program)
 
-
 (definterface fn-splan-step-closep
   :class :common-lisp-compliant)
 
@@ -2164,7 +2168,6 @@
 (definterface fn-asto-plan-render-window
   :class :common-lisp-compliant
   :keystones ((fn-ast-render-window-byte-bound :via fn-ast-render-window)))
-
 
 (definterface fn-asto-quantum :class :common-lisp-compliant)
 (definterface fn-splan-cursor-window
@@ -3375,6 +3378,9 @@
 (definterface fn-bprj-config-status
   :class ::program)
 
+(definterface fn-bprj-history-startup
+  :class ::program)
+
 (definterface fn-bprj-install
   :class ::program)
 
@@ -3903,10 +3909,8 @@
 (definterface fn-native-health-host-log-tail-octets
   :class ::program)
 
-
 (definterface fn-native-health-host-not-running-lines
   :class ::program)
-
 
 (definterface fn-native-health-host-run-started-line
   :class ::program)
@@ -3938,7 +3942,6 @@
 (definterface fn-native-live-pages-host-request-encode
   :class ::program)
 
-
 (definterface fn-native-live-status-host-answer
   :class ::program)
 
@@ -3960,7 +3963,6 @@
 
 (definterface fn-native-live-status-host-request-encode
   :class ::program)
-
 
 (definterface fn-native-live-status-host-route
   :class ::program)
@@ -4016,7 +4018,6 @@
 
 (definterface fn-native-operator-host-result-command
   :class ::program)
-
 
 
 (definterface fn-native-operator-host-result-config-mission
@@ -4339,7 +4340,6 @@
 (definterface fn-native-control-host-consumer-poll-reply-encode
   :class ::program)
 
-
 (definterface fn-native-control-host-consumer-reasoned-request-encode
   :class ::program)
 
@@ -4349,7 +4349,6 @@
 (definterface fn-native-control-host-consumer-report-summary
   :class ::program
   :kinds ((octets fn-cbor-octet-listp)))
-
 
 (definterface fn-native-control-host-consumer-request-encode
   :class ::program)
@@ -4382,7 +4381,6 @@
 (definterface fn-native-control-host-max-frame
   :class ::program)
 
-
 (definterface fn-native-control-host-moderation-encode
   :class ::program)
 
@@ -4391,7 +4389,6 @@
 
 (definterface fn-native-control-host-reasoned-admin-encode
   :class ::program)
-
 
 
 
@@ -4426,7 +4423,6 @@
 
 (definterface fn-native-control-host-topic-reply-encode
   :class ::program)
-
 
 (definterface fn-native-control-host-topic-request-encode
   :class ::program)
@@ -5087,8 +5083,8 @@
   :class ::program)
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
-(definterface fn-owner-orc-capture
-  :class ::program)
+(definterface fn-owner-orc-capture-served
+  :class :common-lisp-compliant)
 
 ; host/native/owner.lisp dispatches them (lane online-reclaim; split into
 ; the fold and the rewrite by lane reclaim, PRF-1315).
@@ -5345,7 +5341,6 @@
 (definterface fn-pio-direct-quiet-p :class :common-lisp-compliant
   :keystones ((fn-pio-direct-quiet-is-clear :via fn-pio-direct-quiet-p)))
 (definterface fn-pio-direct-initial :class :common-lisp-compliant)
-
 
 
 (definterface fn-native-operator-host-result-init-budget
@@ -5824,7 +5819,6 @@
 (definterface fn-owner-page-decoded-window-acquire-projected :class :common-lisp-compliant)
 (definterface fn-owner-page-window-discovery-kind :class :common-lisp-compliant)
 
-
 (definterface fn-web-host-post-window :class ::program)
 (definterface fn-web-host-post-reply-step :class ::program)
 
@@ -6015,4 +6009,7 @@
 (definterface fn-stid-host-exit-code :class ::program)
 
 (definterface fn-owner-history-startup
+  :class :common-lisp-compliant)
+
+(definterface fn-hsc-complete-capture
   :class :common-lisp-compliant)

@@ -2248,10 +2248,69 @@ def def_loop_run_expansion(form: list) -> list:
     """)
 
 
+def def_loop_history_find_expansion(form: list) -> list:
+    """Faithful source view of books/def-loop-history-find.lisp.
+
+    Include the executable predicate, not only the logical reference: lock
+    reachability must see a blocking call inserted into either cursor read.
+    """
+    if len(form) != 5 or not isinstance(form[2], list):
+        return []
+    name, formals, reference, test = form[1:]
+    spell = source_text
+    args = " ".join(spell(x) for x in formals)
+    return read_forms(f"""
+      (defun {name}-from (k {args} fn-hist)
+        (declare (xargs :stobjs fn-hist :guard (natp k)
+                        :measure (nfix (- (fn-hist-count fn-hist) (nfix k)))))
+        (if (and (natp k) (< k (fn-hist-count fn-hist)))
+            (let ((event (fn-hist-at k fn-hist)))
+              (if {spell(test)} event ({name}-from (1+ k) {args} fn-hist)))
+          nil))
+      (defthm {name}-from-is-reference
+        (implies (natp k)
+                 (equal ({name}-from k {args} hist)
+                        ({reference} {args} (nthcdr k hist)))))
+      (defun {name} ({args} fn-hist)
+        (declare (xargs :stobjs fn-hist :guard t))
+        ({name}-from 0 {args} fn-hist))
+      (defthm {name}-is-reference
+        (equal ({name} {args} hist) ({reference} {args} hist)))
+      (in-theory (disable {name}-from {name}))
+    """)
+
+
+def def_loop_history_fold_expansion(form: list) -> list:
+    """Expose both the concrete column read and the accumulator step."""
+    if len(form) != 4:
+        return []
+    name, reference, step = form[1:]
+    return read_forms(f"""
+      (defun {name}-from (k acc fn-hist)
+        (declare (xargs :stobjs fn-hist :guard (natp k)
+                        :measure (nfix (- (fn-hist-count fn-hist) (nfix k)))))
+        (if (and (natp k) (< k (fn-hist-count fn-hist)))
+            (let ((event (fn-hist-at k fn-hist)))
+              ({name}-from (1+ k) {source_text(step)} fn-hist))
+          acc))
+      (defthm {name}-from-is-reference
+        (implies (natp k)
+                 (equal ({name}-from k acc hist) ({reference} (nthcdr k hist) acc))))
+      (defun {name} (acc fn-hist)
+        (declare (xargs :stobjs fn-hist :guard t))
+        ({name}-from 0 acc fn-hist))
+      (defthm {name}-is-reference
+        (equal ({name} acc hist) ({reference} hist acc)))
+      (in-theory (disable {name}-from {name}))
+    """)
+
+
 GENERATOR_EXPANSIONS = {
     "fn-defrecord": defrecord_expansion,
     "fn-defrecord-export": defrecord_export_expansion,
     "def-loop": def_loop_expansion,
+    "def-loop-history-find": def_loop_history_find_expansion,
+    "def-loop-history-fold": def_loop_history_fold_expansion,
     "def-loop/run": def_loop_run_expansion,
     "def-cursor/batch": def_cursor_batch_expansion,
     "defprotocol": defprotocol_expansion,

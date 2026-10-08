@@ -1974,6 +1974,10 @@ the payload to seal as (:seal OCTETS); the host seals exactly those octets
 ;; completion subject a second time.
 (defvar *fnn-observe-callback* #'fnn-bridge-io)
 (defvar *fnn-finish-callback* #'fnn-bridge-finish)
+(defun fnn-owner-finish-missing (store)
+  (declare (ignore store))
+  (fnn-fault "owner completion callback is not installed"))
+(defvar *fnn-owner-finish-callback* #'fnn-owner-finish-missing)
 ;; A composed owner supplies ACL2's release-debt-aware identity gate.  The
 ;; standalone Store has no workflow continuation and uses its codec successor.
 ;; Declare this special: owner bindings must reach the nested log allocator.
@@ -4187,6 +4191,47 @@ frontier is derived from the log, design 2026-09-27 section 3.3)."
       (setf (fnn-store-fenced store) t)
       (fnn-indeterminate "completion interrupted after publication: ~a" e)))
   (let ((completion (handler-case (funcall *fnn-finish-callback*)
+                      ((or fnn-store-error fnn-os-error) ()
+                        (setf (fnn-store-fenced store) t)
+                        (fnn-indeterminate "ACL2 completion failed after publication")))))
+    (unless (eq completion :durable)
+      (setf (fnn-store-fenced store) t)
+      (fnn-indeterminate "ACL2 rejected durable completion after publication"))
+    (setf (fnn-store-fenced store) nil)
+    ;; A batch of one (every commit outside the owner's batch quantum): the
+    ;; member's record is fenced already, so the log kernel acknowledges it
+    ;; now (fn-lgc-finish-one).  Inside a batch the committer acknowledges
+    ;; each member after the batch's barrier (fnn-log-batch-finish).
+    (when (and (fnn-store-logp store) (not *fnn-log-batch*))
+      (fnn-log-ack (fnn-store-log store) 1)
+      ;; and its staged payload reseated as its log extent (PRF-309)
+      (fnn-log-reseat-fenced (fnn-store-log store)))
+    (handler-case (fnn-at store :finish-durable)
+      (fnn-os-error (e)
+        (setf (fnn-store-fenced store) t)
+        (fnn-indeterminate "writer reopening interrupted after the consumed completion: ~a" e)))
+    completion))
+
+
+;; Same byte program; its callback namespace contains owner completions only.
+(defun fnn-owner-finish-store (store)
+  "Open the writer gate only after exact fn-sn durable completion."
+  (fnn-require-writer store)
+  (unless (and (fnn-store-fenced store) (fnn-store-completion-pending store))
+    (fnn-indeterminate "durable completion was not pending"))
+  (setf (fnn-store-completion-pending store) nil)
+  ;; Both cut points lie after publication: the record is durable.  An OS
+  ;; error at either is therefore never a refusal (campaign W2, 2026-09-24:
+  ;; one escaped to the owner's refusal clause and a durable article was
+  ;; answered `441 ... refused').  At :finish-consumed ACL2 has not consumed
+  ;; the completion; at :finish-durable it has, and the owner then renders any
+  ;; word but :durable as uncertain (fn-own-consumed-completion-is-240-or-
+  ;; uncertain).  Either way the store is fenced and recovery decides.
+  (handler-case (fnn-at store :finish-consumed)
+    (fnn-os-error (e)
+      (setf (fnn-store-fenced store) t)
+      (fnn-indeterminate "completion interrupted after publication: ~a" e)))
+  (let ((completion (handler-case (funcall *fnn-owner-finish-callback*)
                       ((or fnn-store-error fnn-os-error) ()
                         (setf (fnn-store-fenced store) t)
                         (fnn-indeterminate "ACL2 completion failed after publication")))))

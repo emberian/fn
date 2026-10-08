@@ -593,6 +593,8 @@ is refused before a record is read."
                        (not (string=
                              (or (fnn-developer-selector "FN_APP_JOURNAL_TEST_READ_ONLY_STORE") "")
                              "1")))))
+           ;; Standalone open consumes reload before the shared served replay.
+           (fnn-core-state 'fn-bprj-history-startup)
            (setq journal (fnn-app-open store journal-root domain))
            (funcall thunk journal)))
       (fnn-immutable-drain-cleanups)

@@ -8,6 +8,7 @@ import unittest
 
 from tests.campaign import native_cuts
 from tools import native_program_check as npc
+from tools import lisp_rewrite as lr
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -54,6 +55,24 @@ class NativeProgramCheckTests(unittest.TestCase):
         for r in report.programs:
             self.assertEqual(r.matched, r.model_steps, r.program)
             self.assertGreater(r.model_steps, 0)
+
+    def test_owner_finish_is_checked_and_has_no_standalone_callback(self):
+        report = npc.check()
+        owner = next(r for r in report.programs if r.host_function == "fnn-owner-finish-store")
+        self.assertEqual(owner.verdict, "PASS")
+        body = native_cuts.host_function(self.host, "fnn-owner-finish-store")
+        reference = native_cuts.host_function(self.host, "fnn-finish")
+        def form(text):
+            node = lr.parse(text).forms[0]
+            return text[node.start:node.end]
+        self.assertEqual(form(body).replace("fnn-owner-finish-store", "fnn-finish")
+                         .replace("*fnn-owner-finish-callback*", "*fnn-finish-callback*"), form(reference))
+        changed = mutate(self.host, "(handler-case (fnn-at store :finish-durable)",
+                         "(handler-case (progn)", within="fnn-owner-finish-store")
+        bad = npc.check(host_text=changed)
+        self.assertFalse(bad.ok)
+        self.assertEqual(next(r for r in bad.programs
+                              if r.host_function == "fnn-owner-finish-store").verdict, "FAIL")
 
     def test_swapped_cuts_fail(self):
         body = native_cuts.host_function(self.host, "fnn-finish")

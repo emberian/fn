@@ -6,6 +6,8 @@
 ; octets and prints them; it renders no field.
 (in-package "ACL2")
 (include-book "../books/native-health")
+(include-book "../books/history-served-evidence")
+(include-book "../books/history-served-status")
 ; lane scale-reads: the owner's reclaim line reads the catalog's tombstone
 ; column, one walk (books/native-status-columns.lisp fn-nsc-answer-report).
 (include-book "../books/native-status-columns")
@@ -47,7 +49,7 @@
                            (f-get-global 'fn-store-cfg state)
                            obs fn-arena))))
 
-(defun fn-native-live-status-host-answer (request cached obs min log-sink sched fn-arena fn-cat state)
+(defun fn-native-live-status-host-answer-resident (request cached obs min log-sink sched fn-arena fn-cat fn-hist state)
   ; The running owner's page for one FNLS request, under its mutex
   ; (host/native/control.lisp `fnn-control-live-status-answer'): (REPLY
   ; CACHED').  A request from offset 0 renders the report once into a
@@ -59,7 +61,7 @@
   ; the owner's service-log sink (books/log-sink.lisp, PKT-508), NIL when no
   ; writer runs; SCHED the owner's scheduler value (books/owner-scheduler.lisp,
   ; HST-023): `health' ends with the sink's line and the scheduler's.
-  (declare (xargs :stobjs (fn-arena fn-cat state) :mode :program))
+  (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
   ;; PKT-209: FNLS frame kind 3 carries a control report kind and its
   ;; argument (fn-cev-any-request-decode reads either frame).
   (let ((decoded (fn-cev-any-request-decode request)))
@@ -96,11 +98,11 @@
                    (if (fn-cev-report-kindp kind)
                        ;; PKT-209 (PRF-185): the records and archive the
                        ;; owner's committed view carries.
-                       (fn-cev-live-report kind (fn-owner-ocfg state))
+                       (fn-cev-live-report-resident kind (fn-owner-ocfg state) fn-hist)
                    (append
                     ;; fn-nsc-answer-report-is-answer-report: under the
                     ;; column relation F this is fn-nh-answer-report.
-                    (fn-nsc-answer-report kind
+                    (fn-nsc-answer-report-resident kind
                                          (fn-owner-store-profile state)
                                          ;; PKT-885: at the reader view while
                                          ;; a batch is in flight, so the
@@ -129,7 +131,7 @@
                                          ;; scheduler value the disk lines
                                          ;; below are rendered from.
                                          (fn-otm-health-disk sched)
-                                         fn-arena fn-cat)
+                                         fn-arena fn-cat fn-hist)
                     (cond ((equal kind :health)
                            ;; PKT-508 (PRF-187): the log sink's line last;
                            ;; fn-nh-report-exit-of-render-and-more: the exit is
@@ -169,6 +171,14 @@
                           (t nil))))))))
         (list (fn-nls-page buffer offset)
               (if stored cached (fn-nls-cache-put kind buffer cached))))))))
+
+(defun fn-native-live-status-host-answer
+ (request cached obs min log-sink sched fn-arena fn-cat fn-hist state)
+ (declare (xargs :stobjs (fn-arena fn-cat fn-hist state) :mode :program))
+ (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
+  (mv nil (fn-native-live-status-host-answer-resident
+            request cached obs min log-sink sched fn-arena fn-cat fn-hist state)
+      fn-hist state)))
 
 ; lane obligations-paged (books/native-live-pages.lisp).  The running owner's
 ; page of a paged report, under its mutex (host/native/control.lisp
