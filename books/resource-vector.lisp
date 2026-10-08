@@ -225,6 +225,35 @@
  (defun fn-rv-ind-n (n v)
    (if (zp n) v (fn-rv-ind-n (- n 1) (cdr v)))))
 
+; Elementwise arithmetic of the coordinate algebra, kept off by default: the
+; inductions below disable NFIX and enable exactly these, so the prover
+; reasons about (NFIX x) as an atom instead of splitting every NFIX.
+(local
+ (defthm fn-rv-nfix-of-nfix
+   (equal (nfix (nfix x)) (nfix x))))
+
+(local
+ (defthm fn-rv-nfix-of-sum
+   (equal (nfix (+ (nfix x) (nfix y))) (+ (nfix x) (nfix y)))))
+
+(local
+ (defthm fn-rv-nfix-of-negative
+   (equal (nfix (- (nfix z))) 0)))
+
+(local
+ (defthm fn-rv-nfix-below-monus
+   (implies (<= (+ (nfix x) (nfix y)) (nfix z))
+            (<= (nfix x) (nfix (+ (- (nfix y)) (nfix z)))))))
+
+(local
+ (defthm fn-rv-nfix-monus-monotone
+   (implies (<= (nfix x) (nfix y))
+            (<= (nfix (- (nfix x) (nfix z))) (nfix (- (nfix y) (nfix z)))))))
+
+(local
+ (in-theory (disable fn-rv-nfix-of-nfix fn-rv-nfix-of-sum fn-rv-nfix-of-negative
+                     fn-rv-nfix-monus-monotone fn-rv-nfix-below-monus)))
+
 (defthm fn-rv-nats-p-of-plus
   (fn-rv-nats-p (fn-rv-plus a b)))
 
@@ -295,7 +324,10 @@
 
 (defthm fn-rv-plus-associative
   (equal (fn-rv-plus (fn-rv-plus a b) c) (fn-rv-plus a (fn-rv-plus b c)))
-  :hints (("Goal" :induct (fn-rv-ind3 a b c))))
+  :hints (("Goal" :induct (fn-rv-ind3 a b c)
+           :expand ((fn-rv-plus a b) (fn-rv-plus b c) (fn-rv-plus (fn-rv-plus a b) c)
+                    (fn-rv-plus a (fn-rv-plus b c)))
+           :in-theory (e/d (fn-rv-nfix-of-nfix fn-rv-nfix-of-sum) (nfix)))))
 
 (defthm fn-rv-plus-commutative-2
   (equal (fn-rv-plus a (fn-rv-plus b c)) (fn-rv-plus b (fn-rv-plus a c)))
@@ -376,12 +408,21 @@
 (defthm fn-rv-below-plus-monotone
   (implies (fn-rv-below a b)
            (fn-rv-below (fn-rv-plus a c) (fn-rv-plus b c)))
-  :hints (("Goal" :induct (fn-rv-ind3 a b c))))
+  :hints (("Goal" :induct (fn-rv-ind3 a b c)
+           :expand ((fn-rv-plus a c) (fn-rv-plus b c) (fn-rv-below a b)
+                    (fn-rv-below (fn-rv-plus a c) (fn-rv-plus b c)))
+           :in-theory (e/d (fn-rv-nfix-of-nfix fn-rv-nfix-of-sum)
+                           (nfix fn-rv-below-transitive fn-rv-plus-commutative)))))
 
 (defthm fn-rv-below-monus-monotone
   (implies (fn-rv-below a b)
            (fn-rv-below (fn-rv-monus a c) (fn-rv-monus b c)))
-  :hints (("Goal" :induct (fn-rv-ind3 a b c))))
+  :hints (("Goal" :induct (fn-rv-ind3 a b c)
+           :expand ((fn-rv-monus a c) (fn-rv-monus b c) (fn-rv-below a b)
+                    (fn-rv-below (fn-rv-monus a c) (fn-rv-monus b c)))
+           :in-theory (e/d (fn-rv-nfix-of-nfix fn-rv-nfix-of-negative
+                            fn-rv-nfix-monus-monotone)
+                           (nfix fn-rv-below-transitive fn-rv-plus-commutative)))))
 
 (defthm fn-rv-below-keep-monotone
   (implies (fn-rv-below a b)
@@ -403,7 +444,12 @@
 
 (defthm fn-rv-below-plus-of-monus
   (implies (fn-rv-below (fn-rv-plus a b) c)
-           (fn-rv-below a (fn-rv-monus c b))))
+           (fn-rv-below a (fn-rv-monus c b)))
+  :hints (("Goal" :induct (fn-rv-ind3 a b c)
+           :expand ((fn-rv-plus a b) (fn-rv-monus c b) (fn-rv-below a (fn-rv-monus c b))
+                    (fn-rv-below (fn-rv-plus a b) c))
+           :in-theory (e/d (fn-rv-nfix-of-nfix fn-rv-nfix-of-sum fn-rv-nfix-below-monus)
+                           (nfix)))))
 
 (defthm fn-rv-below-monus-self
   (fn-rv-below (fn-rv-monus a b) a))
@@ -1262,21 +1308,128 @@
               (cadr (fn-rv-settle bank slot gen)))))
 
 ; KEYSTONE.  A step on one slot leaves every other row as it was.
+(local
+ (defthm fn-rv-draw-keeps-the-other-slots
+   (implies (and (natp j) (not (equal j slot))) (equal (fn-rv-row j (cadr (fn-rv-draw bank slot d))) (fn-rv-row j bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
+(local
+ (defthm fn-rv-open-keeps-the-other-slots
+   (implies (and (natp j) (not (equal j slot))) (equal (fn-rv-row j (cadr (fn-rv-open bank slot d))) (fn-rv-row j bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
+(local
+ (defthm fn-rv-settle-keeps-the-other-slots
+   (implies (and (natp j) (not (equal j slot))) (equal (fn-rv-row j (cadr (fn-rv-settle bank slot gen))) (fn-rv-row j bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
+(local
+ (defthm fn-rv-refund-keeps-the-other-slots
+   (implies (and (natp j) (not (equal j slot))) (equal (fn-rv-row j (cadr (fn-rv-refund bank slot gen x))) (fn-rv-row j bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
+(local
+ (defthm fn-rv-grow-keeps-the-other-slots
+   (implies (and (natp j) (not (equal j slot))) (equal (fn-rv-row j (cadr (fn-rv-grow bank slot gen x))) (fn-rv-row j bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
+(local
+ (defthm fn-rv-destroy-keeps-the-other-slots
+   (implies (and (natp j) (not (equal j slot))) (equal (fn-rv-row j (cadr (fn-rv-destroy bank slot gen x))) (fn-rv-row j bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
 (defthm fn-rv-step-keeps-the-other-slots
   (implies (and (natp j) (not (equal j (nfix (nth 1 op)))))
            (equal (fn-rv-row j (cadr (fn-rv-step bank op)))
                   (fn-rv-row j bank)))
-  :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
-                                      fn-rv-budget fn-rv-drawn))))
+  :hints (("Goal" :expand ((fn-rv-step bank op))
+           :use ((:instance fn-rv-draw-keeps-the-other-slots (slot (nfix (nth 1 op))) (d (true-list-fix (nth 2 op))))
+                 (:instance fn-rv-open-keeps-the-other-slots (slot (nfix (nth 1 op))) (d (true-list-fix (nth 2 op))))
+                 (:instance fn-rv-settle-keeps-the-other-slots (slot (nfix (nth 1 op))) (gen (nth 2 op)))
+                 (:instance fn-rv-refund-keeps-the-other-slots (slot (nfix (nth 1 op))) (gen (nth 2 op)) (x (true-list-fix (nth 3 op))))
+                 (:instance fn-rv-grow-keeps-the-other-slots (slot (nfix (nth 1 op))) (gen (nth 2 op)) (x (true-list-fix (nth 3 op))))
+                 (:instance fn-rv-destroy-keeps-the-other-slots (slot (nfix (nth 1 op))) (gen (nth 2 op)) (x (true-list-fix (nth 3 op)))))
+           :in-theory (union-theories '(fn-rv-step car-cons cdr-cons)
+                                      (theory 'minimal-theory)))))
 
 ; The generation of a slot never falls under a step, and a charge raises
 ; it by one: so a token names one draw of the slot, ever.
+(local
+ (defthm fn-rv-draw-never-lowers-a-gen
+   (implies (natp j)
+            (<= (fn-rv-gen j bank) (fn-rv-gen j (cadr (fn-rv-draw bank slot d)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                       fn-rv-budget fn-rv-drawn)))))
+
+(local
+ (defthm fn-rv-open-never-lowers-a-gen
+   (implies (natp j)
+            (<= (fn-rv-gen j bank) (fn-rv-gen j (cadr (fn-rv-open bank slot d)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                       fn-rv-budget fn-rv-drawn)))))
+
+(local
+ (defthm fn-rv-settle-never-lowers-a-gen
+   (implies (natp j)
+            (<= (fn-rv-gen j bank) (fn-rv-gen j (cadr (fn-rv-settle bank slot gen)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                       fn-rv-budget fn-rv-drawn)))))
+
+(local
+ (defthm fn-rv-refund-never-lowers-a-gen
+   (implies (natp j)
+            (<= (fn-rv-gen j bank) (fn-rv-gen j (cadr (fn-rv-refund bank slot gen x)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                       fn-rv-budget fn-rv-drawn)))))
+
+(local
+ (defthm fn-rv-grow-never-lowers-a-gen
+   (implies (natp j)
+            (<= (fn-rv-gen j bank) (fn-rv-gen j (cadr (fn-rv-grow bank slot gen x)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                       fn-rv-budget fn-rv-drawn)))))
+
+(local
+ (defthm fn-rv-destroy-never-lowers-a-gen
+   (implies (natp j)
+            (<= (fn-rv-gen j bank) (fn-rv-gen j (cadr (fn-rv-destroy bank slot gen x)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
+                                       fn-rv-budget fn-rv-drawn)))))
+
 (defthm fn-rv-step-never-lowers-a-gen
   (implies (natp j)
            (<= (fn-rv-gen j bank) (fn-rv-gen j (cadr (fn-rv-step bank op)))))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
-                                      fn-rv-budget fn-rv-drawn))))
+  :hints (("Goal" :expand ((fn-rv-step bank op))
+           :use ((:instance fn-rv-draw-never-lowers-a-gen
+                            (slot (nfix (nth 1 op))) (d (true-list-fix (nth 2 op))))
+                 (:instance fn-rv-open-never-lowers-a-gen
+                            (slot (nfix (nth 1 op))) (d (true-list-fix (nth 2 op))))
+                 (:instance fn-rv-settle-never-lowers-a-gen
+                            (slot (nfix (nth 1 op))) (gen (nth 2 op)))
+                 (:instance fn-rv-refund-never-lowers-a-gen
+                            (slot (nfix (nth 1 op))) (gen (nth 2 op))
+                            (x (true-list-fix (nth 3 op))))
+                 (:instance fn-rv-grow-never-lowers-a-gen
+                            (slot (nfix (nth 1 op))) (gen (nth 2 op))
+                            (x (true-list-fix (nth 3 op))))
+                 (:instance fn-rv-destroy-never-lowers-a-gen
+                            (slot (nfix (nth 1 op))) (gen (nth 2 op))
+                            (x (true-list-fix (nth 3 op)))))
+           :in-theory (union-theories '(fn-rv-step car-cons cdr-cons)
+                                      (theory 'minimal-theory)))))
 
 (defthm fn-rv-run-never-lowers-a-gen
   (implies (natp j)
@@ -1465,11 +1618,54 @@
 
 ; No step changes the budget or the slot count (the composition in
 ; books/resource-vector-tree.lisp rests on this).
+(local
+ (defthm fn-rv-draw-keeps-the-budget-and-the-slot-count
+   (and (equal (fn-rv-budget (cadr (fn-rv-draw bank slot d))) (fn-rv-budget bank)) (equal (fn-rv-slot-count (cadr (fn-rv-draw bank slot d))) (fn-rv-slot-count bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
+(local
+ (defthm fn-rv-open-keeps-the-budget-and-the-slot-count
+   (and (equal (fn-rv-budget (cadr (fn-rv-open bank slot d))) (fn-rv-budget bank)) (equal (fn-rv-slot-count (cadr (fn-rv-open bank slot d))) (fn-rv-slot-count bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
+(local
+ (defthm fn-rv-settle-keeps-the-budget-and-the-slot-count
+   (and (equal (fn-rv-budget (cadr (fn-rv-settle bank slot gen))) (fn-rv-budget bank)) (equal (fn-rv-slot-count (cadr (fn-rv-settle bank slot gen))) (fn-rv-slot-count bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
+(local
+ (defthm fn-rv-refund-keeps-the-budget-and-the-slot-count
+   (and (equal (fn-rv-budget (cadr (fn-rv-refund bank slot gen x))) (fn-rv-budget bank)) (equal (fn-rv-slot-count (cadr (fn-rv-refund bank slot gen x))) (fn-rv-slot-count bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
+(local
+ (defthm fn-rv-grow-keeps-the-budget-and-the-slot-count
+   (and (equal (fn-rv-budget (cadr (fn-rv-grow bank slot gen x))) (fn-rv-budget bank)) (equal (fn-rv-slot-count (cadr (fn-rv-grow bank slot gen x))) (fn-rv-slot-count bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
+(local
+ (defthm fn-rv-destroy-keeps-the-budget-and-the-slot-count
+   (and (equal (fn-rv-budget (cadr (fn-rv-destroy bank slot gen x))) (fn-rv-budget bank)) (equal (fn-rv-slot-count (cadr (fn-rv-destroy bank slot gen x))) (fn-rv-slot-count bank)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))
+)
 (defthm fn-rv-step-keeps-the-budget-and-the-slot-count
   (and (equal (fn-rv-budget (cadr (fn-rv-step bank op))) (fn-rv-budget bank))
        (equal (fn-rv-slot-count (cadr (fn-rv-step bank op))) (fn-rv-slot-count bank)))
-  :hints (("Goal" :in-theory (disable nth update-nth fn-rv-make fn-rv-slots
-                                      fn-rv-budget fn-rv-drawn))))
+  :hints (("Goal" :expand ((fn-rv-step bank op))
+           :use ((:instance fn-rv-draw-keeps-the-budget-and-the-slot-count (slot (nfix (nth 1 op))) (d (true-list-fix (nth 2 op))))
+                 (:instance fn-rv-open-keeps-the-budget-and-the-slot-count (slot (nfix (nth 1 op))) (d (true-list-fix (nth 2 op))))
+                 (:instance fn-rv-settle-keeps-the-budget-and-the-slot-count (slot (nfix (nth 1 op))) (gen (nth 2 op)))
+                 (:instance fn-rv-refund-keeps-the-budget-and-the-slot-count (slot (nfix (nth 1 op))) (gen (nth 2 op)) (x (true-list-fix (nth 3 op))))
+                 (:instance fn-rv-grow-keeps-the-budget-and-the-slot-count (slot (nfix (nth 1 op))) (gen (nth 2 op)) (x (true-list-fix (nth 3 op))))
+                 (:instance fn-rv-destroy-keeps-the-budget-and-the-slot-count (slot (nfix (nth 1 op))) (gen (nth 2 op)) (x (true-list-fix (nth 3 op)))))
+           :in-theory (union-theories '(fn-rv-step car-cons cdr-cons)
+                                      (theory 'minimal-theory)))))
 
 ; An admitted step names a slot of the bank, and what it leaves at that
 ; slot, per transition (the composition rests on these).
@@ -1568,39 +1764,123 @@
                                    (fn-rv-charge fn-rv-gen fn-rv-phase fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
 
 (local
+ (defthm fn-rv-settle-is-the-bank-or-the-written-slot
+   (equal (cadr (fn-rv-settle bank slot gen))
+          (if (and (natp slot) (equal (car (fn-rv-settle bank slot gen)) :settled))
+              (fn-rv-make (fn-rv-budget bank)
+                          (fn-rv-monus (fn-rv-drawn bank) (fn-rv-reusable (fn-rv-demand slot bank)))
+                          (update-nth slot (list* 0 (fn-rv-gen slot bank) *fn-rv-zero*)
+                                      (fn-rv-slots bank)))
+            bank))
+   :hints (("Goal" :in-theory (e/d (fn-rv-settle fn-rv-slotp fn-rv-idle-row)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget
+                                    fn-rv-drawn fn-rv-gen))))))
+
+(local
+ (defthm fn-rv-refund-is-the-bank-or-the-written-slot
+   (equal (cadr (fn-rv-refund bank slot gen x))
+          (if (and (natp slot) (equal (car (fn-rv-refund bank slot gen x)) :refunded))
+              (fn-rv-make (fn-rv-budget bank)
+                          (fn-rv-monus (fn-rv-drawn bank) x)
+                          (update-nth slot (list* 1 (fn-rv-gen slot bank)
+                                                  (fn-rv-monus (fn-rv-demand slot bank) x))
+                                      (fn-rv-slots bank)))
+            bank))
+   :hints (("Goal" :in-theory (e/d (fn-rv-refund fn-rv-slotp)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget
+                                    fn-rv-drawn fn-rv-gen))))))
+
+(local
+ (defthm fn-rv-grow-is-the-bank-or-the-written-slot
+   (equal (cadr (fn-rv-grow bank slot gen x))
+          (if (and (natp slot) (equal (car (fn-rv-grow bank slot gen x)) :grown))
+              (fn-rv-make (fn-rv-budget bank)
+                          (fn-rv-plus (fn-rv-drawn bank) x)
+                          (update-nth slot (list* 2 (fn-rv-gen slot bank)
+                                                  (fn-rv-plus (fn-rv-demand slot bank) x))
+                                      (fn-rv-slots bank)))
+            bank))
+   :hints (("Goal" :in-theory (e/d (fn-rv-grow fn-rv-slotp)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget
+                                    fn-rv-drawn fn-rv-gen))))))
+
+(local
+ (defthm fn-rv-destroy-is-the-bank-or-the-written-slot
+   (equal (cadr (fn-rv-destroy bank slot gen x))
+          (if (and (natp slot) (equal (car (fn-rv-destroy bank slot gen x)) :destroyed))
+              (fn-rv-make (fn-rv-budget bank)
+                          (fn-rv-plus (fn-rv-monus (fn-rv-drawn bank) (fn-rv-demand slot bank)) x)
+                          (update-nth slot (list* 0 (fn-rv-gen slot bank) *fn-rv-zero*)
+                                      (fn-rv-slots bank)))
+            bank))
+   :hints (("Goal" :in-theory (e/d (fn-rv-destroy fn-rv-slotp fn-rv-idle-row)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget
+                                    fn-rv-drawn fn-rv-gen))))))
+
+; A grown or destroyed slot was a sub-bank, so its row is at phase 2.
+(local
+ (defthm fn-rv-grow-names-a-sub-bank
+   (implies (equal (car (fn-rv-grow bank slot gen x)) :grown)
+            (equal (fn-rv-phase slot bank) 2))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-rv-grow fn-rv-sub-bankp)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget
+                                    fn-rv-drawn fn-rv-gen fn-rv-phase))))))
+
+(local
+ (defthm fn-rv-destroy-names-a-sub-bank
+   (implies (equal (car (fn-rv-destroy bank slot gen x)) :destroyed)
+            (equal (fn-rv-phase slot bank) 2))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-rv-destroy fn-rv-sub-bankp)
+                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget
+                                    fn-rv-drawn fn-rv-gen fn-rv-phase))))))
+
+(local (in-theory (disable fn-rv-settle-is-the-bank-or-the-written-slot
+                           fn-rv-refund-is-the-bank-or-the-written-slot
+                           fn-rv-grow-is-the-bank-or-the-written-slot
+                           fn-rv-destroy-is-the-bank-or-the-written-slot)))
+
+(local
  (defthm fn-rv-settle-keeps-a-retired-token
    (implies (and (natp j) (fn-rv-token-retiredp j g bank))
             (fn-rv-token-retiredp j g (cadr (fn-rv-settle bank slot gen))))
-   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
-                                    fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
-                                    fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
-                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
+   :hints (("Goal" :in-theory (e/d (fn-rv-settle-is-the-bank-or-the-written-slot
+                                    fn-rv-gen-of-a-written-slot fn-rv-phase-of-a-written-slot
+                                    fn-rv-token-retiredp)
+                                   (fn-rv-settle fn-rv-gen fn-rv-phase fn-rv-make fn-rv-slots
+                                    fn-rv-budget fn-rv-drawn))))))
 
 (local
  (defthm fn-rv-refund-keeps-a-retired-token
    (implies (and (natp j) (fn-rv-token-retiredp j g bank))
             (fn-rv-token-retiredp j g (cadr (fn-rv-refund bank slot gen x))))
-   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
-                                    fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
-                                    fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
-                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
+   :hints (("Goal" :in-theory (e/d (fn-rv-refund-is-the-bank-or-the-written-slot
+                                    fn-rv-gen-of-a-written-slot fn-rv-phase-of-a-written-slot
+                                    fn-rv-token-retiredp)
+                                   (fn-rv-refund fn-rv-gen fn-rv-phase fn-rv-make fn-rv-slots
+                                    fn-rv-budget fn-rv-drawn))))))
 
 (local
  (defthm fn-rv-grow-keeps-a-retired-token
    (implies (and (natp j) (fn-rv-token-retiredp j g bank))
             (fn-rv-token-retiredp j g (cadr (fn-rv-grow bank slot gen x))))
-   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
-                                    fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
-                                    fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
-                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn))))))
+   :hints (("Goal" :use fn-rv-grow-names-a-sub-bank
+           :in-theory (e/d (fn-rv-grow-is-the-bank-or-the-written-slot
+                                    fn-rv-gen-of-a-written-slot fn-rv-phase-of-a-written-slot
+                                    fn-rv-token-retiredp)
+                                   (fn-rv-grow fn-rv-gen fn-rv-phase fn-rv-make fn-rv-slots
+                                    fn-rv-budget fn-rv-drawn))))))
 
 (defthm fn-rv-destroy-keeps-a-retired-token
    (implies (and (natp j) (fn-rv-token-retiredp j g bank))
             (fn-rv-token-retiredp j g (cadr (fn-rv-destroy bank slot gen x))))
-   :hints (("Goal" :in-theory (e/d (fn-rv-charge fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy
-                                    fn-rv-phase fn-rv-gen fn-rv-row fn-rv-drawnp fn-rv-sub-bankp
-                                    fn-rv-token-retiredp fn-rv-slotp fn-rv-slot-count)
-                                   (nth update-nth fn-rv-make fn-rv-slots fn-rv-budget fn-rv-drawn)))))
+   :hints (("Goal" :use fn-rv-destroy-names-a-sub-bank
+           :in-theory (e/d (fn-rv-destroy-is-the-bank-or-the-written-slot
+                                    fn-rv-gen-of-a-written-slot fn-rv-phase-of-a-written-slot
+                                    fn-rv-token-retiredp)
+                                   (fn-rv-destroy fn-rv-gen fn-rv-phase fn-rv-make fn-rv-slots
+                                    fn-rv-budget fn-rv-drawn)))))
 
 (defthm fn-rv-step-keeps-a-retired-token
   (implies (and (natp j) (fn-rv-token-retiredp j g bank))

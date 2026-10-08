@@ -5,6 +5,7 @@
 (include-book "cold-guard-bootstrap")
 (include-book "decoded-worker-backing")
 (include-book "output-reservation")
+(local (in-theory (disable (tau-system))))
 
 (defun fn-prstartup-nth (n x)
  (declare (xargs :guard (natp n)))

@@ -2,6 +2,7 @@
 (include-book "article-stream")
 (include-book "served-catalog")
 (in-theory (disable fn-scat-membership-number-is-number-in))
+(local (in-theory (disable (tau-system))))
 
 (defun-nx fn-asx-prefix-equalp (group row-group at)
   (if (zp at)
