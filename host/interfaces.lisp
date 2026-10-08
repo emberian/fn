@@ -859,7 +859,8 @@
   :keystones (fn-otm-committer-may-start-is-the-held-rule))
 
 (definterface fn-och-caller-answer
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :keystones (fn-otm-held-quantum-2-answers-the-held-outcome))
 
 (definterface fn-otm-held-caller-wake
   :class :common-lisp-compliant
