@@ -247,10 +247,11 @@
                 (<= amount (fn-prl-nth 0 (fn-prl-nth 1 ledger)))
                 (fn-prs-fundedp (fn-prl-nth 0 ledger) (fn-prl-baseline ledger)
                                 '(0 0 0 0 0) (fn-prl-nth 1 ledger)))
-           (let ((res (mv-list 2 (fn-prl-convert-growth ledger token amount))))
-             (and (equal (car res) :protected-growth-admitted)
-                  (fn-prs-fundedp (fn-prl-nth 0 (cadr res)) (fn-prl-baseline (cadr res))
-                                  '(0 0 0 0 0) (fn-prl-nth 1 (cadr res))))))
+           (and (equal (mv-nth 0 (fn-prl-convert-growth ledger token amount))
+                       :protected-growth-admitted)
+                (let ((next (mv-nth 1 (fn-prl-convert-growth ledger token amount))))
+                  (fn-prs-fundedp (fn-prl-nth 0 next) (fn-prl-baseline next)
+                                  '(0 0 0 0 0) (fn-prl-nth 1 next)))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-prl-convert-growth fn-prl-resident-shrink fn-prl-baseline)
                                   (fn-prs-fundedp fn-prs-vectorp fn-prl-resident-budget
