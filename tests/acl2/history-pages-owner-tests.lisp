@@ -201,9 +201,9 @@
 ; rows' canonical rows, H0 their canonical payload count.
 (defconst *hpo-groups* '("fn.letters" "fn.test"))
 (defconst *hpo-w1* (fn-record-make 0 0 0 "<one@example>" '(1 2 3) *hpo-groups* "p1" "c1" "r1" 2 841000000))
-(defconst *hpo-w2* (fn-record-make 1 1 0 "<two@example>" '(65 66) *hpo-groups* "p2" "c2" "r2" 2 841000001))
-(defconst *hpo-w3* (fn-record-make 2 2 0 "<three@example>" '(7 8 9 10) *hpo-groups* "p3" "c3" "r3" 2 841000002))
-(defconst *hpo-re* (fn-store-retention-event-make :undertake 3 3 0 "forward-cpo" "subject" "evidence" 10))
+(defconst *hpo-w2* (fn-record-make 2 2 0 "<two@example>" '(65 66) *hpo-groups* "p2" "c2" "r2" 2 841000001))
+(defconst *hpo-w3* (fn-record-make 3 3 0 "<three@example>" '(7 8 9 10) *hpo-groups* "p3" "c3" "r3" 2 841000002))
+(defconst *hpo-re* (fn-store-retention-event-make :undertake 1 1 0 "forward-cpo" "subject" "evidence" 10))
 
 (defun hpo-publication ()
   ; (H CANON NEXT-RECORDS) for the live rows w1 e w2 | orphan | w3

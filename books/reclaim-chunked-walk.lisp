@@ -376,7 +376,7 @@
                    (fn-replay-identity-loop rows (fn-stxk-initial-context 0))))
    :hints (("Goal" :use ((:instance fn-rcw-identity-of-finish)
                          (:instance fn-scka-identity-of-capture (records rows)))
-            :in-theory (disable fn-rcw-identity-of-finish fn-scka-identity-of-capture
+            :in-theory (disable fn-rcw-identity-of-finish
                                 fn-rcw-acc-finish fn-sco-capture fn-sco-identity fn-sco-at)))))
 
 (local
