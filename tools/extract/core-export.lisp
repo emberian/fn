@@ -397,7 +397,12 @@
                                               (list 'quote
                                                     (xt-world-snapshot
                                                      (remove-duplicates-eq
-                                                      (append (xt-entry-fns entries nil)
+                                                      ; every root too: a constrained function the host
+                                                      ; realizes (fn-sig-verify, fn-durable-realize-*, ...)
+                                                      ; is a root but no closure entry, and fnn-entry-guard-spec
+                                                      ; reads its formals (O3, obligations.py)
+                                                      (append roots
+                                                              (xt-entry-fns entries nil)
                                                               (xt-stobj-closure-1 stobjs nil w)
                                                               tables
                                                               '(state fn-core-table-digests
