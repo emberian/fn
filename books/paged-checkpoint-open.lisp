@@ -1550,3 +1550,274 @@
                             (octets octets) (a a))
                  pcko-tws-is-rows-from pck-recordsp-parts pcko-root-tree-true-listp
                  (:instance adt-tp-car-zeros (n (adt-tp-pad (len (pcko-tws recs)))))))))
+
+; -----------------------------------------------------------------------------
+; The rows read back as the records.  The seal survival lemmas are store-intern's
+; local ones, restated.
+
+(defthm pcko-row-wire-of-survives-seal
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp (list row) fn-arena))
+           (equal (fn-row-wire-of row (fn-arena-seal-list xs fn-arena))
+                  (fn-row-wire-of row fn-arena)))
+  :hints (("Goal" :in-theory (enable fn-row-wire-of fn-rows-handles-inp fn-held-wire-of
+                                     fn-row-handle-inp fn-row-bytes))))
+
+(defthm pcko-rows-handles-survive-seal
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
+           (fn-rows-handles-inp rows (fn-arena-seal-list xs fn-arena)))
+  :hints (("Goal" :induct (fn-rows-handles-inp rows fn-arena)
+           :in-theory (enable fn-rows-handles-inp))))
+
+(defthm pcko-rows-wire-of-survives-seal
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
+           (equal (fn-rows-wire-of rows (fn-arena-seal-list xs fn-arena))
+                  (fn-rows-wire-of rows fn-arena)))
+  :hints (("Goal" :induct (fn-rows-handles-inp rows fn-arena)
+           :in-theory (enable fn-rows-handles-inp fn-rows-wire-of fn-row-wire-of))))
+
+(defthm pcko-intern-event-wire-p
+  (implies (not (eq (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad))
+           (fn-wire-event-p w))
+  :hints (("Goal" :in-theory (e/d (fn-intern-event fn-wire-event-p)
+                                  (fn-cat-intern-list fn-replay-composite-record)))))
+
+(defthm pcko-rows-survive-intern-event
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
+           (and (fn-rows-handles-inp rows (mv-nth 1 (fn-intern-event w keyring generation fn-arena)))
+                (equal (fn-rows-wire-of rows (mv-nth 1 (fn-intern-event w keyring generation fn-arena)))
+                       (fn-rows-wire-of rows fn-arena))))
+  :hints (("Goal" :use ((:instance fn-intern-event-arena)
+                        (:instance pcko-rows-handles-survive-seal
+                                   (xs (fn-record-payload w)))
+                        (:instance pcko-rows-wire-of-survives-seal
+                                   (xs (fn-record-payload w)))
+                        (:instance pcko-rows-handles-survive-seal
+                                   (xs (fn-record-payload (fn-replay-composite-record w))))
+                        (:instance pcko-rows-wire-of-survives-seal
+                                   (xs (fn-record-payload (fn-replay-composite-record w)))))
+           :in-theory (disable fn-intern-event-arena pcko-rows-handles-survive-seal
+                               pcko-rows-wire-of-survives-seal fn-intern-event))))
+
+(defthm pcko-arena-p-of-intern-event
+  (implies (and (fn-arena-p fn-arena)
+                (not (eq (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad)))
+           (fn-arena-p (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))
+  :hints (("Goal" :use ((:instance pcko-intern-event-wire-p)
+                        (:instance fn-intern-events-arena-p (ws (list w))))
+           :in-theory (e/d (fn-intern-events fn-wire-event-listp)
+                           (pcko-intern-event-wire-p fn-intern-events-arena-p
+                            fn-intern-event fn-wire-event-p fn-record-p)))))
+
+(defthm pcko-handles-of-cons
+  (implies (syntaxp (not (equal rs ''nil)))
+           (equal (fn-rows-handles-inp (cons r rs) fn-arena)
+                  (and (fn-rows-handles-inp (list r) fn-arena) (fn-rows-handles-inp rs fn-arena))))
+  :hints (("Goal" :in-theory (enable fn-rows-handles-inp))))
+
+(defthm pcko-intern-event-one
+  (implies (and (fn-arena-p fn-arena) (natp generation) (fn-rows-handles-inp rows fn-arena)
+                (not (eq (mv-nth 0 (fn-intern-event w keyring generation fn-arena)) :bad)))
+           (let ((row (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))
+                 (ar1 (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))
+             (and (fn-arena-p ar1)
+                  (fn-rows-handles-inp (cons row rows) ar1)
+                  (equal (fn-rows-wire-of (cons row rows) ar1)
+                         (cons w (fn-rows-wire-of rows fn-arena))))))
+  :hints (("Goal" :in-theory (e/d (fn-rows-wire-of)
+                                  (fn-intern-event pcko-rows-survive-intern-event
+                                   fn-intern-event-handle-in fn-intern-event-materializes
+                                   fn-rows-handles-inp fn-row-wire-of))
+           :use ((:instance pcko-rows-survive-intern-event)
+                 (:instance fn-intern-event-handle-in)
+                 (:instance fn-intern-event-materializes)
+                 (:instance pcko-arena-p-of-intern-event)
+                 (:instance pcko-handles-of-cons (r (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))
+                            (rs rows) (fn-arena (mv-nth 1 (fn-intern-event w keyring generation fn-arena))))))))
+
+(defthm pcko-arena-p-of-seal-extent
+  (implies (and (fn-arena-p a) (natp fid) (natp off) (natp len) (<= 37 off) (natp trailer))
+           (fn-arena-p (fn-arena-seal-extent fid (- off 37) (+ len 37) off len trailer a)))
+  :hints (("Goal" :use ((:instance fn-arena-seal-extent{preserved} (file fid) (eoff (- off 37)) (elen (+ len 37))
+                                   (poff off) (plen len) (fn-arena a)))
+           :in-theory (e/d (fn-arn-extent-guardp fn-arena-p fn-arena-seal-extent) (fn-arena-seal-extent-is-append fn-arena-p-is-payload-listp)))))
+
+(defthm pcko-row-wire-of-survives-extent
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp (list row) fn-arena))
+           (equal (fn-row-wire-of row (fn-arena-seal-extent file eoff elen poff plen trailer fn-arena))
+                  (fn-row-wire-of row fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-row-wire-of fn-rows-handles-inp fn-held-wire-of fn-row-handle-inp fn-row-bytes)
+                                  (fn-arena-seal-extent-is-append fn-arena-seal-extent))
+           :use ((:instance fn-arena-seal-extent-payload (h (fn-record-payload row)))
+                 (:instance fn-arena-seal-extent-payload (h (fn-record-payload (fn-hstxa-held row))))))))
+
+(defthm pcko-rows-handles-survive-extent
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
+           (fn-rows-handles-inp rows (fn-arena-seal-extent file eoff elen poff plen trailer fn-arena)))
+  :hints (("Goal" :induct (fn-rows-handles-inp rows fn-arena)
+           :in-theory (e/d (fn-rows-handles-inp fn-row-handle-inp) (fn-arena-seal-extent-is-append fn-arena-seal-extent)))))
+
+(defthm pcko-rows-wire-of-survives-extent
+  (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
+           (equal (fn-rows-wire-of rows (fn-arena-seal-extent file eoff elen poff plen trailer fn-arena))
+                  (fn-rows-wire-of rows fn-arena)))
+  :hints (("Goal" :induct (fn-rows-handles-inp rows fn-arena)
+           :in-theory (e/d (fn-rows-handles-inp fn-rows-wire-of) (fn-arena-seal-extent-is-append fn-arena-seal-extent)))))
+
+; -----------------------------------------------------------------------------
+; The durable payload file holds the model file: a resolved ref reads back the
+; payload through `fn-durable-octets' (s-cpl's cpl-holds-gen, restated).
+
+(defun pcko-ind-a (file f off len)
+  (if (zp len) (list file f off) (pcko-ind-a file (cdr f) (+ 1 (nfix off)) (1- len))))
+
+(defthm pcko-holds-at
+  (implies (and (fn-cpl-holdsp file f off) (natp off) (natp len) (<= len (len f)))
+           (equal (fn-durable-octets file off len) (take len f)))
+  :hints (("Goal" :induct (pcko-ind-a file f off len)
+           :in-theory (enable fn-durable-octets-unfold))))
+
+(defun pcko-ind-s (f i k)
+  (if (zp k) (list f i) (pcko-ind-s (cdr f) (+ 1 (nfix i)) (1- k))))
+
+(defthm pcko-holds-shift
+  (implies (and (fn-cpl-holdsp file f i) (natp i) (natp k) (<= k (len f)))
+           (fn-cpl-holdsp file (nthcdr k f) (+ i k)))
+  :hints (("Goal" :induct (pcko-ind-s f i k))))
+
+(defthm pcko-holds-gen
+  (implies (and (fn-cpl-holdsp file f 0) (natp off) (natp len) (<= (+ off len) (len f)))
+           (equal (fn-durable-octets file off len) (take len (nthcdr off f))))
+  :hints (("Goal" :use ((:instance pcko-holds-shift (i 0) (k off))
+                        (:instance pcko-holds-at (f (nthcdr off f)))
+                        (:instance pcko-len-nthcdr-in (pos off) (w f)))
+           :in-theory (disable pcko-holds-shift pcko-holds-at pcko-len-nthcdr-in))))
+
+(defthm pcko-resolve-bound
+  (implies (and (natp o) (natp l) (true-listp pay) (true-listp file)
+                (equal (fn-cpl-resolve (fn-cpl-ref o l) file) pay))
+           (and (<= (+ o l) (len file)) (equal pay (take l (nthcdr o file)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cpl-resolve fn-cpl-ref fn-cpl-refp) ()))))
+
+(defthm pcko-holds-resolves
+  (implies (and (fn-cpl-holdsp fid file 0) (true-listp file) (natp o) (natp l) (true-listp pay)
+                (equal (fn-cpl-resolve (fn-cpl-ref o l) file) pay))
+           (equal (fn-durable-octets fid o l) pay))
+  :hints (("Goal" :in-theory (disable pcko-holds-gen fn-cpl-resolve fn-cpl-ref)
+           :use (pcko-resolve-bound (:instance pcko-holds-gen (file fid) (off o) (len l) (f file))))))
+
+(defthm pcko-held-wire-of-reseat
+  (equal (fn-held-wire (pcko-reseat r h) pay) (fn-held-wire r pay))
+  :hints (("Goal" :in-theory (enable pcko-reseat fn-held-wire))))
+
+(defthm pcko-publish-rows
+  (implies (fn-ssr-statep acc)
+           (equal (fn-ssr-at 0 (fn-ssr-publish acc row wire identity)) (cons row (fn-ssr-at 0 acc))))
+  :hints (("Goal" :in-theory (enable fn-ssr-publish fn-ssr-state fn-ssr-at))))
+
+(defthm pcko-reseat-handle
+  (equal (fn-record-payload (pcko-reseat r h)) h)
+  :hints (("Goal" :in-theory (enable pcko-reseat))))
+
+(defthm pcko-extent-wires
+  ; The row sealed at the arena's count reads back the durable octets; the rows
+  ; below it read back what they did.
+  (implies (and (fn-held-p row) (equal (fn-record-payload row) (fn-arena-count a)) (fn-arena-p a)
+                (fn-rows-handles-inp rows a))
+           (let ((a2 (fn-arena-seal-extent file eoff elen poff plen trailer a)))
+             (and (fn-arena-p a2)
+                  (fn-rows-handles-inp (cons row rows) a2)
+                  (equal (fn-rows-wire-of (cons row rows) a2)
+                         (cons (fn-held-wire row (fn-durable-octets file poff plen))
+                               (fn-rows-wire-of rows a))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-rows-wire-of fn-row-wire-of fn-held-wire-of fn-row-handle-inp fn-row-bytes)
+                           (fn-arena-seal-extent fn-arena-seal-extent-is-append fn-held-p pcko-handles-of-cons
+                            pcko-rows-wire-of-survives-extent pcko-rows-handles-survive-extent))
+           :use ((:instance fn-arena-seal-extent-payload (fn-arena a) (h (fn-arena-count a)))
+                 (:instance pcko-count-seal-extent (fn-arena a))
+                 (:instance pcko-rows-wire-of-survives-extent (fn-arena a))
+                 (:instance pcko-rows-handles-survive-extent (fn-arena a))
+                 (:instance pcko-handles-of-cons (r row) (rs rows) (fn-arena (fn-arena-seal-extent file eoff elen poff plen trailer a)))
+                 (:instance pcko-count-natp (a a))))))
+(defthm pcko-ref-wires-held
+  (implies (and (fn-held-p r) (<= 37 off) (fn-ssr-statep acc) (fn-arena-p a) (natp fid) (natp len) (natp off)
+                (fn-rows-handles-inp (fn-ssr-at 0 acc) a)
+                (equal (fn-durable-octets fid off len) pay) (equal (fn-held-wire r pay) w)
+                (not (equal (mv-nth 0 (pcko-ref-step acc (list :r r) off len d0 d1 d2 d3 fid a)) :bad)))
+           (let ((acc2 (mv-nth 0 (pcko-ref-step acc (list :r r) off len d0 d1 d2 d3 fid a)))
+                 (a2 (mv-nth 1 (pcko-ref-step acc (list :r r) off len d0 d1 d2 d3 fid a))))
+             (and (fn-arena-p a2)
+                  (fn-rows-handles-inp (fn-ssr-at 0 acc2) a2)
+                  (equal (fn-rows-wire-of (fn-ssr-at 0 acc2) a2)
+                         (cons w (fn-rows-wire-of (fn-ssr-at 0 acc) a))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable pcko-ref-step-held pcko-ref-step fn-arena-seal-extent fn-ssr-publish fn-replay-identity-step
+                               fn-ssr-at fn-stxk-context-kind pcko-reseat fn-held-p pcko-extent-wires pcko-publish-rows)
+           :use ((:instance pcko-ref-step-held (len len))
+                 (:instance pcko-extent-wires (row (pcko-reseat r (fn-arena-count a))) (rows (fn-ssr-at 0 acc))
+                            (file fid) (eoff (- off 37)) (elen (+ len 37)) (poff off) (plen len)
+                            (trailer (fn-arx-trailer-nat (fn-cpl-unpack-words (list d0 d1 d2 d3)))))
+                 (:instance pcko-publish-rows (row (pcko-reseat r (fn-arena-count a))) (wire (pcko-reseat r (fn-arena-count a)))
+                            (identity (fn-replay-identity-step (fn-ssr-at 3 acc) (pcko-reseat r (fn-arena-count a)))))
+                 (:instance pcko-held-wire-of-reseat (h (fn-arena-count a)) (r r) (pay pay))
+                 (:instance pcko-reseat-handle (h (fn-arena-count a)))
+                 (:instance pcko-reseat-held-p (row r) (h (fn-arena-count a)))
+                 (:instance pcko-count-natp (a a))))))
+
+(defthm pcko-f1-wires
+  ; One event of full recovery's fold: the new row reads back the event.
+  (implies (and (fn-ssr-statep acc) (fn-arena-p a) (fn-rows-handles-inp (fn-ssr-at 0 acc) a)
+                (not (equal (mv-nth 0 (fn-ssr-intern-step acc (list w) nil nil :resident nil a)) :bad)))
+           (let ((acc2 (mv-nth 0 (fn-ssr-intern-step acc (list w) nil nil :resident nil a)))
+                 (a2 (mv-nth 1 (fn-ssr-intern-step acc (list w) nil nil :resident nil a))))
+             (and (fn-arena-p a2)
+                  (fn-rows-handles-inp (fn-ssr-at 0 acc2) a2)
+                  (equal (fn-rows-wire-of (fn-ssr-at 0 acc2) a2)
+                         (cons w (fn-rows-wire-of (fn-ssr-at 0 acc) a))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-intern-event fn-ssr-publish fn-replay-identity-step fn-ssr-at fn-stxk-context-kind
+                               fn-ssr-intern-step pcko-f1 pcko-intern-event-one pcko-publish-rows)
+           :use ((:instance pcko-f1 (a a))
+                 (:instance pck-statep-generation)
+                 (:instance pcko-intern-event-one (keyring (fn-ssr-at 1 acc)) (generation (fn-ssr-at 2 acc))
+                            (fn-arena a) (rows (fn-ssr-at 0 acc)))
+                 (:instance pcko-publish-rows (row (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) a)))
+                            (wire w)
+                            (identity (fn-replay-identity-step (fn-ssr-at 3 acc)
+                                                                (mv-nth 0 (fn-intern-event w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) a)))))))))
+
+(defthm pcko-ref-is-intern-step-other
+  (implies (not (fn-record-p w))
+           (equal (pcko-ref acc w base st fid a)
+                  (fn-ssr-intern-step acc (list w) nil nil :resident nil a)))
+  :hints (("Goal" :in-theory (union-theories '(pcko-meta-of-other pcko-ref-step-other pcko-recp-of-o pcko-ev-of-list pcko-ref)
+                                             (theory 'minimal-theory)))))
+
+(defthm pcko-payload-of-record
+  (implies (fn-record-p w) (equal (fn-pck-payload w) (fn-record-payload w)))
+  :hints (("Goal" :in-theory (enable fn-pck-payload))))
+
+(defthm pcko-ref-wires
+  (implies (and (pcko-agree acc st) (natp base) (natp fid) (not (equal (pck-ssr1 st w) :bad)) (fn-arena-p a)
+                (fn-rows-handles-inp (fn-ssr-at 0 acc) a)
+                (equal (fn-durable-octets fid (+ 37 base) (len (fn-pck-payload w))) (fn-pck-payload w))
+                (not (equal (mv-nth 0 (pcko-ref acc w base st fid a)) :bad)))
+           (let ((acc2 (mv-nth 0 (pcko-ref acc w base st fid a)))
+                 (a2 (mv-nth 1 (pcko-ref acc w base st fid a))))
+             (and (fn-arena-p a2)
+                  (fn-rows-handles-inp (fn-ssr-at 0 acc2) a2)
+                  (equal (fn-rows-wire-of (fn-ssr-at 0 acc2) a2)
+                         (cons w (fn-rows-wire-of (fn-ssr-at 0 acc) a))))))
+  :hints (("Goal" :do-not-induct t
+           :expand ((pcko-ref acc w base st fid a))
+           :in-theory (e/d (pcko-agree) (pcko-ref pcko-ref-step pck-row0-wire pck-row0-is-the-row fn-held-p fn-pck-row0
+                                         pcko-ref-wires-held pcko-f1-wires pcko-ref-is-intern-step-other pck-ssr1
+                                         fn-ssr-intern-step fn-record-p fn-pck-payload))
+           :use ((:instance pcko-ref-is-intern-step-other)
+                 (:instance pcko-f1-wires)
+                 (:instance pcko-meta-of-record)
+                 (:instance pck-row0-wire)
+                 (:instance pcko-ref-wires-held (r (fn-pck-row0 st w)) (off (+ 37 base)) (len (len (fn-pck-payload w)))
+                            (pay (fn-pck-payload w)) (d0 (car (pcko-tw w))) (d1 (cadr (pcko-tw w)))
+                            (d2 (caddr (pcko-tw w))) (d3 (cadddr (pcko-tw w))))))))
