@@ -281,6 +281,10 @@
                      (adt-sym cq "-IS-IX-CQUERY") :rewrite)
       ,@(ixg-fact-events *ixg-facts* name alist lemmas wrld)
       (local (in-theory (disable ,corr ,build)))
+      (table fn-generated ',name
+             '(:def-representation-index :index ,(list :key key :key-p keyp :hash hash :test test :project proj :query-export qexport)
+               :model ,(list :recognizer r :creator cr :count lcount :at lat :append lappend :clear lclear :query lquery)
+               :lemmas ,lemmas))
       (make-event
        (er-let* ((missing
                   (defabsstobj-missing-events
