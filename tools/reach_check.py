@@ -415,8 +415,32 @@ def absstobjs(paths):
             continue
         rel = str(path.relative_to(ROOT))
         for form in file_forms(path):
-            head = re.match(r"\((defabsstobj|defstobj)\s", form, re.I)
+            head = re.match(r"\((defabsstobj|defstobj|def-generic)\s", form, re.I)
             if not head:
+                continue
+            tree = read_sexp(form)
+            if head.group(1).lower() == "def-generic":
+                # books/def-representation-generic.lisp: the execs are
+                # NAME$L-SUFFIX for the export NAME-SUFFIX, the recognizer
+                # NAME-P over NAME$LP, the creator CREATE-NAME over CREATE-NAME$L.
+                if tree and len(tree) >= 2 and isinstance(tree[1], str):
+                    name = tree[1].lower()
+                    entry = {"exports": {}, "file": rel}
+                    found[tree[1]] = entry
+                    keys = {tree[i]: tree[i + 1] for i in range(2, len(tree) - 1, 2)
+                            if isinstance(tree[i], str) and tree[i].startswith(":")}
+                    model = keys.get(":model") or []
+                    mk = {model[i]: model[i + 1] for i in range(0, len(model) - 1, 2)
+                          if isinstance(model[i], str)}
+                    if mk.get(":recognizer"):
+                        entry["exports"][name + "-p"] = (mk[":recognizer"], name + "$lp")
+                    if mk.get(":creator"):
+                        entry["exports"]["create-" + name] = (mk[":creator"], "create-" + name + "$l")
+                    for row in keys.get(":exports") or []:
+                        if (isinstance(row, list) and len(row) == 4 and isinstance(row[1], str)
+                                and row[1].lower().startswith(name + "-") and isinstance(row[3], str)):
+                            suffix = row[1].lower()[len(name) + 1:]
+                            entry["exports"][row[1]] = (row[3], name + "$l-" + suffix)
                 continue
             tree = read_sexp(form)
             if not tree or len(tree) < 2 or not isinstance(tree[1], str):
