@@ -91,6 +91,7 @@ import argparse
 import collections
 import json
 import pathlib
+import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -135,34 +136,24 @@ def predicate_application(term):
     return term[0], (term[1] if len(term) > 1 else None)
 
 
-def _call_term(term):
-    """The asserted call of a predicate application TERM: `(R a ...)' itself,
-    or the call inside `(equal (R a ...) t)' / `(equal t (R a ...))'."""
-    if isinstance(term, list) and len(term) == 3 and term[0] == "equal":
-        for side, other in ((term[1], term[2]), (term[2], term[1])):
-            if other == "t" and isinstance(side, list):
-                return side
-    return term
+LOCAL_THEOREM = re.compile(r"\(local\s+\(defthmd?\s+([^\s()]+)", re.IGNORECASE)
 
 
-def _occurs(term, tree) -> bool:
-    """TERM occurs in TREE as a subterm (quoted constants are opaque)."""
-    if term == tree:
-        return True
-    if isinstance(tree, list) and tree and tree[0] != "quote":
-        return any(_occurs(term, t) for t in tree)
-    return False
-
-
-def own_answer(conjunct, conclusion) -> bool:
-    """A hypothesis that is the conclusion's own subject call being non-nil:
-    the very call (same function, same argument terms) occurs in the
-    conclusion, so the hypothesis says only that this call answered, which a
-    caller establishes by branching on that answer.  Not a premise about
-    state or a value domain.  The same function on other arguments, or the
-    call under another function, is still a premise."""
-    call = _call_term(conjunct)
-    return isinstance(call, list) and len(call) > 1 and _occurs(call, conclusion)
+def local_theorems(books) -> set[str]:
+    """The theorems a book proves inside `(local ...)': a book-internal
+    proof step whose hypotheses the book's own later events discharge.  It
+    is never cited outside the book, so its hypotheses are no premise the
+    host must establish; a non-local theorem that keeps the same hypothesis
+    is audited in its own right."""
+    out = set()
+    for path in books:
+        try:
+            text = reach_check.file_text(path)
+        except OSError:
+            continue
+        text = re.sub(r"(?m);.*$", "", text)   # a commented-out event is no event
+        out.update(m.group(1).lower() for m in LOCAL_THEOREM.finditer(text))
+    return out
 
 
 def _substitute(term, env: dict):
@@ -360,6 +351,7 @@ class Audit:
         self.book_defs = set(graph.book_defs)
         self.generated = set(reach_check.record_definitions(graph.books))
         self.theorems = reach_check.theorem_forms(graph.books)
+        self.local = local_theorems(graph.books)
         # R -> [(theorem, book, argument-heads, hosted-establishment?)]
         self.concluded: dict[str, list] = collections.defaultdict(list)
         # R -> [theorem]: concluded under its own assumption (a preservation)
@@ -385,7 +377,7 @@ class Audit:
             for hyp in hyps:
                 for conjunct in conjuncts(hyp):
                     app = predicate_application(conjunct)
-                    if app is None or not self.predicate(app[0]) or own_answer(conjunct, conclusion):
+                    if app is None or not self.predicate(app[0]):
                         continue
                     assumed_heads.add(app[0])
             for conjunct in conjuncts(conclusion):
@@ -399,7 +391,7 @@ class Audit:
                 heads = (reach_check.tree_symbols(arg) & self.book_defs) - self.graph.stobj_names
                 hosted = bool(heads & reachable)
                 self.concluded[r].append((name, book, sorted(heads), hosted))
-            if not hyps or not assumed_heads:
+            if not hyps or not assumed_heads or name in self.local:
                 continue
             subject = reach_check.Subject(self.graph, name, form)
             self.subjects[name] = subject
@@ -407,7 +399,7 @@ class Audit:
             for hyp in hyps:
                 for conjunct in conjuncts(hyp):
                     app = predicate_application(conjunct)
-                    if app is None or not self.predicate(app[0]) or own_answer(conjunct, conclusion):
+                    if app is None or not self.predicate(app[0]):
                         continue
                     r, arg = app
                     bare = isinstance(arg, str) and arg not in self.book_defs
