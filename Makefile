@@ -1556,6 +1556,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-step \
 	books/served-catalog-join \
 	books/owner-view-catalog-lookup \
+	books/peer-offer-catalog \
 	books/served-catalog-join-number \
 	books/served-catalog-join-open \
 	books/served-catalog-join-entry \
@@ -1636,6 +1637,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-owner-tests \
 	tests/acl2/served-catalog-join-tests \
 	tests/acl2/owner-view-catalog-lookup-tests \
+	tests/acl2/peer-offer-catalog-tests \
 	tests/acl2/served-catalog-join-open-tests \
 	tests/acl2/served-catalog-join-entry-tests \
 	tests/acl2/served-catalog-join-finish-tests \
