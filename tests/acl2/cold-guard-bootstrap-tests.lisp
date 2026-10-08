@@ -21,7 +21,7 @@
               (not (fn-cgb-planp '(:admitted nil (7391 0 0 0 0) 8 8 9 1 21)))))
 
 (assert! (and (fn-cgb-specp 'fn-crw-supportedp '(2))
-              (fn-cgb-specp 'fn-ews-read '(6 (2 s true-listp list)))
+              (fn-cgb-specp 'fn-ews-read-span '(6 (2 s true-listp list)))
               (fn-cgb-specp 'fn-pwx-boundp '(4))
               (fn-cgb-specp 'fn-owner-page-window-byte-at '(12 (2 plan true-listp list)))
               (fn-cgb-specp 'fn-ews-begin
@@ -31,8 +31,8 @@
                                  (9 expected natp natural)))))
 ; Unsupported/missing metadata is distinct from a prepared guarded entry.
 (assert! (and (not (fn-cgb-specp 'fn-ews-begin :unknown))
-              (not (fn-cgb-specp 'fn-ews-read '(6)))
-              (not (fn-cgb-specp 'fn-ews-read '(6 (2 s natp natural))))
+              (not (fn-cgb-specp 'fn-ews-read-span '(6)))
+              (not (fn-cgb-specp 'fn-ews-read-span '(6 (2 s natp natural))))
               (not (fn-cgb-specp 'fn-pwx-boundp '(3)))
               (not (fn-cgb-specp 'fn-owner-page-window-byte-at '(13 (2 plan true-listp list))))
               (not (fn-cgb-specp 'fn-owner-step '(2)))))
