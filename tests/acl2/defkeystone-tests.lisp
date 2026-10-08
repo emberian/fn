@@ -662,7 +662,7 @@
 (defstobj fn-dkt-cell (fn-dkt-val :type integer :initially 0))
 (defun fn-dkt-fill (x fn-dkt-cell)
   (declare (xargs :stobjs fn-dkt-cell :guard (integerp x)))
-  (let ((fn-dkt-cell (update-fn-dkt-val x fn-dkt-cell)))
+  (let* ((fn-dkt-cell (update-fn-dkt-val x fn-dkt-cell)))
     (mv :filled fn-dkt-cell)))
 (defthm fn-dkt-cell-positive
   (implies (< 0 (fn-dkt-val fn-dkt-cell))
@@ -764,5 +764,34 @@
 (defteeth-check (fn-dkt-snapshot))
 (must-fail-checked (defteeth-check (fn-dkt-never-declared))
  :unchecked "Explicit scope cannot omit a named obligation.")
+
+(must-fail-checked (defteeth-check fn-dkt-snapshot)
+ :unchecked "A malformed scope cannot silently select no obligations.")
+
+; A builder can return two stobjs plus an ordinary value. Logical removals
+; must use BOTH updated objects, exactly as the native positive test does.
+(defun fn-dkt-fill-both (x y fn-dkt-cell fn-dkt-other)
+ (declare (xargs :stobjs (fn-dkt-cell fn-dkt-other) :verify-guards nil))
+ (let* ((fn-dkt-cell (update-fn-dkt-val x fn-dkt-cell))
+       (fn-dkt-other (update-fn-dkt-other-val y fn-dkt-other)))
+  (mv :filled fn-dkt-cell fn-dkt-other)))
+(defthm fn-dkt-two-cells-built
+ (implies (and (< 0 (fn-dkt-val fn-dkt-cell))
+               (< 0 (fn-dkt-other-val fn-dkt-other)))
+  (< 0 (+ (fn-dkt-val fn-dkt-cell) (fn-dkt-other-val fn-dkt-other)))))
+(defteeth fn-dkt-two-cells-built
+ :claim (((left (< 0 (fn-dkt-val fn-dkt-cell)))
+          (right (< 0 (fn-dkt-other-val fn-dkt-other))))
+         (< 0 (+ (fn-dkt-val fn-dkt-cell) (fn-dkt-other-val fn-dkt-other))))
+ :witness ((x 2) (y 3))
+ :stobjs ((fn-dkt-cell (fn-dkt-fill-both x y fn-dkt-cell fn-dkt-other))
+          (fn-dkt-other fn-dkt-other))
+ :breaks ((left ((x -3)) :logical "Checks both logical builder outputs.")
+          (right ((y -2)) :logical "Checks both logical builder outputs."))
+ :mutations ((sum (:conclusion (equal (* (fn-dkt-val fn-dkt-cell)
+                                        (fn-dkt-other-val fn-dkt-other))
+                                     (+ (fn-dkt-val fn-dkt-cell)
+                                        (fn-dkt-other-val fn-dkt-other)))) ()
+                  :fault "Multiplies instead of adding.")))
 
 (defteeth-check)

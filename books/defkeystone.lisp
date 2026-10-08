@@ -1309,14 +1309,22 @@
     (cons (fn-dt-live-conjunct (car terms) builders checks w)
           (fn-dt-live-conjuncts (cdr terms) builders checks w))))
 
+(defun fn-dt-logical-output-bindings (out form i)
+  (declare (xargs :mode :program))
+  (if (atom out) nil
+    (append (and (car out) (list (list (car out) `(mv-nth ,i ,form))))
+            (fn-dt-logical-output-bindings (cdr out) form (1+ i)))))
+
 (defun fn-dt-logical-builders (builders body w)
   (declare (xargs :mode :program))
   (if (atom builders) body
     (let* ((st (caar builders)) (form (cadar builders))
-           (out (and (consp form) (getpropc (car form) 'stobjs-out nil w))))
-      `(let ((,st ,(if (consp (cdr out))
-                       `(mv-nth ,(position-eq st out) ,form) form)))
-         (declare (ignorable ,st))
+           (out (and (consp form) (getpropc (car form) 'stobjs-out nil w)))
+           (bindings (if (consp (cdr out))
+                         (fn-dt-logical-output-bindings out form 0)
+                       (list (list st form)))))
+      `(let ,bindings
+         (declare (ignorable ,@(strip-cars bindings)))
          ,(fn-dt-logical-builders (cdr builders) body w)))))
 
 (defun fn-dt-logical-locals (builders)
@@ -1351,8 +1359,11 @@
                 (body (if (eq (car terms) 'and)
                           (fn-dk-conj (fn-dt-logical-conjuncts (cdr terms) builders w))
                         (car (fn-dt-logical-conjuncts (list terms) builders w)))))
-           `((local (defthm ,fn ,body :rule-classes nil
-                      ,@(and hints (list :hints hints)))))))
+           (mv-let (bad translated) (fn-dt-translate body w)
+             (if (or bad (all-vars translated))
+                 (er hard 'defteeth "Logical stobj check must be closed: ~x0" body)
+               `((local (defthm ,fn ,body :rule-classes nil
+                          ,@(and hints (list :hints hints)))))))))
         (t
          (let ((body (if (eq (car value) 'and)
                          (fn-dk-conj (fn-dt-live-conjuncts (cdr value) builders checks w))
@@ -1526,7 +1537,8 @@
 
 (defun fn-dt-check-names (names owed teeth w)
   (declare (xargs :mode :program))
-  (if (atom names) nil
+  (if (atom names)
+      (and names (msg "The explicit teeth scope must be a proper list of names: ~x0" names))
     (let ((row (assoc-eq (car names) teeth))
           (debt (assoc-eq (car names) owed)))
       (or (fn-dt-owed-problem
