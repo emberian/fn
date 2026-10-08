@@ -4643,13 +4643,25 @@
 (definterface fn-his-build-source-count
   :class :common-lisp-compliant
   :kinds ((records true-listp)))
-(definterface fn-his-build-yieldp
-  :class :common-lisp-compliant
-  :kinds ((ordinal natp)))
 
 (definterface fn-his-build-begin
   :class :common-lisp-compliant
   :kinds ((salt natp)))
+
+(definterface fn-his-build-quantum :class :common-lisp-compliant)
+(definterface fn-his-plan-begin :class :common-lisp-compliant)
+(definterface fn-his-place-begin :class :common-lisp-compliant)
+(definterface fn-his-plan-run
+  :class :common-lisp-compliant
+  :kinds ((dl-k natp)))
+(definterface fn-his-build-open
+  :class :common-lisp-compliant)
+(definterface fn-his-build-place-run
+  :class :common-lisp-compliant
+  :kinds ((k natp)))
+(definterface fn-his-build-close
+  :class :common-lisp-compliant
+  :kinds ((np natp)))
 
 (definterface fn-his-row-begin
   :class :common-lisp-compliant)
