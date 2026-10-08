@@ -16945,7 +16945,7 @@
       "progress_note": "Lane decision-keystones-6: the bp book entries, one keystone each; REPL-admitted on persvati (0 refused), certified by the tree's background cite (the 2026-09-29 mode).",
       "events": [
         "fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine",
-        "fn-bpn-lifecycle-namespace-plan-frontier-counts-the-records",
+        "fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records",
         "fn-bpn-lifecycle-record-bindingsp-pairs-the-records",
         "fn-bpn-replay-records-ready-advances-the-frontier-per-record"
       ]

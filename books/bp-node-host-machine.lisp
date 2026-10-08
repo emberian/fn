@@ -91,16 +91,17 @@
                                   names token records stages)))
                      (- (len records))))))
 
-; START-relative form, and the token-0 form as its START = 0 instance.
+; START-relative form (a ready plan already forces START natural, so the
+; hypothesis is not stated), and the token-0 form as its START = 0 instance.
 (defthm fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records
-  (implies (and (natp start)
-                (equal (car (fn-bpn-lifecycle-namespace-plan-from names start))
-                       :ready))
+  (implies (equal (car (fn-bpn-lifecycle-namespace-plan-from names start))
+                  :ready)
            (equal (nth 3 (fn-bpn-lifecycle-namespace-plan-from names start))
                   (+ start
                      (len (nth 1 (fn-bpn-lifecycle-namespace-plan-from
                                   names start))))))
   :hints (("Goal"
+           :cases ((natp start))
            :use ((:instance
                   fn-bpn-lifecycle-namespace-plan-aux-frontier-counts-the-records
                   (token start) (records nil) (stages nil)))

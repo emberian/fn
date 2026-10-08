@@ -2845,9 +2845,23 @@
    "registry": true
   },
   {
-   "class": "hand",
-   "name": "fn-bpn-lifecycle-namespace-plan-frontier-counts-the-records",
-   "registry": true
+   "book_digest": "2ab0428bb1fcd379b403681e8e20311c87cec049ef4c5d879766cdd872b5ccde",
+   "bounds": [],
+   "claim_digest": "77318e7ec7bb47878ad6f31eabf55ae98c10de40f5bb55c129371f9cc2ba0c4c",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-host-machine-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-bpn-lifecycle-namespace-plan-from",
+   "witness": "executable"
   },
   {
    "class": "hand",
