@@ -12661,7 +12661,7 @@
    "registry": true
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "dc91d17789c520a2091384ee94a7bc1f402a50cd842c6d10e6587610364818b3",
    "class": "generated",
@@ -12679,7 +12679,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "d5e679f5bcefba5fd4147127d653d3933bd6630fba72117d95052cc6fcbccb25",
    "class": "generated",
@@ -12697,7 +12697,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "52235104b21461d6b36cad23367e51e02d825a3c13610ee78aeafb9d35381f45",
    "class": "generated",
@@ -12715,7 +12715,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "2a0aaba72d72b379337769234a0596e16271e1c6eea2b952e4dcfa0ff23f7a16",
    "class": "generated",
@@ -12733,7 +12733,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "d6d6757b616850dba31151e9d052e1007673a0e140ee7fa5a15c7ef3be51c1d0",
    "class": "generated",
@@ -12751,7 +12751,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "79d2eb014025c342e228986c2bb7eb3c4a1b2f66e85e0f789ae1baf0298c23e5",
    "class": "generated",
@@ -12769,7 +12769,25 @@
    "witness": "executable"
   },
   {
-   "book_digest": "78ce2c36dd97867eaec711ede0e44382bf949d210480e1ddf77066003461ceed",
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
+   "bounds": [],
+   "claim_digest": "5d2de03f3f50d2c96cbbe799eeb14143677fb29b0c6e3be1586d0e2bcf44f1f4",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-step-holds-the-owner-only-in-quanta",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "ca3646760cc57454934b14b848877bd17e44955c33aff0456a52c3545a29b035",
    "bounds": [],
    "claim_digest": "d7d6014a4bcc856b013987a2b20a1dbe2d472ca8bcfe952162fee27b5e1830f1",
    "class": "generated",
