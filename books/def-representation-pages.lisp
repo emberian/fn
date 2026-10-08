@@ -1049,3 +1049,137 @@
                  (:instance adt-tp-npages-subadd
                             (x (mod (len (adt-tp-seq-words s (take i a))) *pgs-page-words*))
                             (y (len (adt-tp-rw s x))))))))
+
+; -----------------------------------------------------------------------------
+; Setting a row to a WIDER one (a row whose remainder tree grows: the paged
+; catalog's withdraw of an escaped row).  The rows after row I shift, so the
+; dirty set is the new tape's pages from the one row I starts in to its end:
+; `adt-tp-set-dirty-widening'.  A row that does not narrow is the premise:
+; `pgs-apply-dirty' replaces and appends pages and cannot drop one, so a
+; narrower row that lost a page would not be reachable by any dirty set.
+
+(defun adt-tp-widen-dirty (w k0)
+  ; The pages of the tape W from page K0 to its end, numbered from K0.
+  (declare (xargs :guard (natp k0) :verify-guards nil))
+  (adt-tp-number k0 (nthcdr k0 (adt-tp-pages w))))
+
+(defthm adt-tp-len-npages-ge-k
+  (implies (and (natp k) (<= (* *pgs-page-words* k) n) (natp n))
+           (<= k (adt-tp-npages n)))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance adt-tp-npages-mono (x (* *pgs-page-words* k)) (y n))
+                        (:instance adt-tp-npages-of-multiple))
+           :in-theory (disable adt-tp-npages-mono adt-tp-npages-of-multiple))))
+
+
+(defthm adt-tp-widen-dirty-core
+  (implies (and (true-listp wo) (true-listp wn) (natp k0)
+                (<= (* *pgs-page-words* k0) (len wo))
+                (<= (len wo) (len wn))
+                (equal (take (* *pgs-page-words* k0) wo) (take (* *pgs-page-words* k0) wn)))
+           (equal (pgs-apply-dirty (adt-tp-pages wo) (adt-tp-widen-dirty wn k0))
+                  (adt-tp-pages wn)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (adt-tp-widen-dirty)
+                           (adt-tp-apply-dirty-number adt-tp-take-pages adt-tp-len-pages adt-tp-npages-mono
+                            adt-tp-take-nthcdr-split adt-tp-len-npages-ge-k adt-tp-pages))
+           :use ((:instance adt-tp-apply-dirty-number
+                            (a (take k0 (adt-tp-pages wo)))
+                            (b (nthcdr k0 (adt-tp-pages wo)))
+                            (ps (nthcdr k0 (adt-tp-pages wn))))
+                 (:instance adt-tp-take-nthcdr-split (m k0) (w (adt-tp-pages wo)))
+                 (:instance adt-tp-take-nthcdr-split (m k0) (w (adt-tp-pages wn)))
+                 (:instance adt-tp-take-pages (k k0) (w wo))
+                 (:instance adt-tp-take-pages (k k0) (w wn))
+                 (:instance adt-tp-len-pages (w wo))
+                 (:instance adt-tp-len-pages (w wn))
+                 (:instance adt-tp-len-npages-ge-k (n (len wo)))
+                 (:instance adt-tp-len-npages-ge-k (n (len wn)))
+                 (:instance adt-tp-npages-mono (x (len wo)) (y (len wn)))))))
+
+(defun adt-tp-set-dirty-widening (s a i x)
+  ; The dirty pages of setting row I of A to X, whatever the width of X: the pages
+  ; of the new tape from the one row I starts in to its end.
+  (declare (xargs :verify-guards nil :guard t))
+  (adt-tp-widen-dirty (adt-tp-seq-words s (update-nth i x a))
+                      (floor (len (adt-tp-seq-words s (take i a))) *pgs-page-words*)))
+
+(defthm adt-tp-seq-words-append
+  (equal (adt-tp-seq-words s (append a b))
+         (append (adt-tp-seq-words s a) (adt-tp-seq-words s b)))
+  :hints (("Goal" :in-theory (enable adt-tp-seq-words))))
+
+
+(defthm adt-tp-pages-of-set-widening-split
+  (implies (and (equal a (append a1 (cons r a2))) (equal i (len a1)) (true-listp a1)
+                (adt-tp-schema-ok s) (adt-seq-p s a1) (adt-seq-p s a2)
+                (adt-rec-p s r) (adt-rec-p s x)
+                (<= (len (adt-tp-rw s r)) (len (adt-tp-rw s x))))
+           (equal (pgs-apply-dirty (adt-tp-pages-of s a) (adt-tp-set-dirty-widening s a i x))
+                  (adt-tp-pages-of s (update-nth i x a))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (adt-tp-pages-of adt-tp-set-dirty-widening)
+                           (adt-tp-widen-dirty-core adt-tp-take-words-of-append adt-tp-widen-dirty))
+           :use ((:instance adt-tp-floor-mod (x (len (adt-tp-seq-words s a1))))
+                 (:instance adt-tp-widen-dirty-core
+                            (wo (append (adt-tp-seq-words s a1) (append (adt-tp-rw s r) (adt-tp-seq-words s a2))))
+                            (wn (append (adt-tp-seq-words s a1) (append (adt-tp-rw s x) (adt-tp-seq-words s a2))))
+                            (k0 (floor (len (adt-tp-seq-words s a1)) *pgs-page-words*)))
+                 (:instance adt-tp-take-words-of-append
+                            (p (adt-tp-seq-words s a1))
+                            (k0 (floor (len (adt-tp-seq-words s a1)) *pgs-page-words*))
+                            (z (append (adt-tp-rw s r) (adt-tp-seq-words s a2))))
+                 (:instance adt-tp-take-words-of-append
+                            (p (adt-tp-seq-words s a1))
+                            (k0 (floor (len (adt-tp-seq-words s a1)) *pgs-page-words*))
+                            (z (append (adt-tp-rw s x) (adt-tp-seq-words s a2))))))))
+
+(defthm adt-tp-pages-of-set-widening-is-apply-dirty
+  (implies (and (adt-tp-schema-ok s) (adt-seq-p s a) (natp i) (< i (len a)) (adt-rec-p s x)
+                (<= (len (adt-tp-rw s (nth i a))) (len (adt-tp-rw s x))))
+           (equal (pgs-apply-dirty (adt-tp-pages-of s a) (adt-tp-set-dirty-widening s a i x))
+                  (adt-tp-pages-of s (update-nth i x a))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable adt-tp-len-take2)
+           :use ((:instance adt-tp-split-row (a a) (i i))
+                 (:instance adt-tp-len-take2 (n i) (x a))
+                 (:instance adt-tp-pages-of-set-widening-split
+                            (a1 (take i a)) (r (nth i a)) (a2 (nthcdr (+ 1 i) a)))))))
+
+(defthm adt-tp-nthcdr-update-nth
+  (implies (and (natp i) (< i (len a)))
+           (equal (nthcdr i (update-nth i x a)) (cons x (nthcdr (+ 1 i) a))))
+  :hints (("Goal" :in-theory (enable update-nth nthcdr) :induct (update-nth i x a))))
+
+(defthm adt-tp-len-seq-words-update-nth
+  (implies (and (natp i) (< i (len a)))
+           (equal (len (adt-tp-seq-words s (update-nth i x a)))
+                  (+ (len (adt-tp-seq-words s (take i a)))
+                     (len (adt-tp-seq-words s (cons x (nthcdr (+ 1 i) a)))))))
+  :hints (("Goal" :in-theory (enable take update-nth nthcdr adt-tp-seq-words) :induct (update-nth i x a))))
+
+(defthm adt-tp-npages-tail-bound2
+  (implies (and (natp o) (natp l) (equal n (+ o l)))
+           (<= (adt-tp-npages (+ n (- (* *pgs-page-words* (floor o *pgs-page-words*)))))
+               (+ 1 (adt-tp-npages l))))
+  :rule-classes :linear
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable adt-tp-npages-subadd adt-tp-npages-plus-multiple floor)
+           :use ((:instance adt-tp-floor-mod (x o))
+                 (:instance adt-tp-npages-subadd (x (mod o *pgs-page-words*)) (y l))))))
+
+(defthm adt-tp-set-dirty-widening-bound
+  ; The new tape's pages from the row's own on: the row's pages, the rows after it, and the page it may share.
+  (implies (and (natp i) (< i (len a)))
+           (<= (len (adt-tp-set-dirty-widening s a i x))
+               (+ 1 (adt-tp-npages (len (adt-tp-seq-words s (nthcdr i (update-nth i x a))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (adt-tp-set-dirty-widening adt-tp-widen-dirty)
+                           (adt-tp-npages-tail-bound2 adt-tp-len-seq-words-update-nth floor adt-tp-len-npages-ge-k))
+           :use ((:instance adt-tp-len-seq-words-update-nth)
+                 (:instance adt-tp-nthcdr-update-nth)
+                 (:instance adt-tp-npages-tail-bound2
+                            (o (len (adt-tp-seq-words s (take i a))))
+                            (l (len (adt-tp-seq-words s (cons x (nthcdr (+ 1 i) a)))))
+                            (n (len (adt-tp-seq-words s (update-nth i x a)))))))))
