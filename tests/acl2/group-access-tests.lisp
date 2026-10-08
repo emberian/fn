@@ -34,7 +34,7 @@
                  *gat-articles* 3 nil nil))
 (assert-event (fn-nntp-projectionp *gat-state*))
 (defconst *gat-pin*
-  (fn-gidx-pin (fn-midx-build *gat-articles*) (fn-gidx-build *gat-articles*)))
+  (fn-gidx-pin (fn-gidx-build *gat-articles*)))
 
 ; Credentials: one verifier (books/nntp-auth-teeth-tests' literal, re-derived).
 (defconst *gat-secret* (fn-nntp-string-octets "correct-horse"))
@@ -319,7 +319,7 @@
 (assert-event (equal (fn-gac-view-entry *gat-bob-read* *gat-state* *gat-ctl*)
                      (cons (fn-gac-restrict-state *gat-bob-read* *gat-state*)
                            (fn-gac-restrict-index
-                            *gat-bob-read* (fn-gidx-pin-with-control nil nil *gat-ctl*)
+                            *gat-bob-read* (fn-gidx-pin-with-control nil *gat-ctl*)
                             (fn-state-articles
                              (fn-gac-restrict-state *gat-bob-read* *gat-state*))))))
 (assert-event (equal (len (fn-state-articles

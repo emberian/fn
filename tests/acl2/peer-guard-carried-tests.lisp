@@ -197,9 +197,9 @@
 
 ; -----------------------------------------------------------------------------
 ; A peer's retrieval by Message-ID (lane/rep-records-2): the peer commands do
-; not answer STAT or ARTICLE, so the arm delegates to the reader step, now
-; fn-pix-peer-delegate-pinned, which looks the Message-ID up in the pinned
-; view trie by index.  With the view pinned (*pix-t-pin*,
+; not answer STAT or ARTICLE, so the arm delegates to the reader step,
+; fn-peer-delegate-pinned, which finds the Message-ID in the view's article
+; list.  With the view pinned (*pix-t-pin*,
 ; peer-offer-indexed-tests) the held article answers 223 and the absent one
 ; 430, each the reference step's answer.
 (defun pgc-arm-pinned (event fn-arena)

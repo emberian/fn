@@ -52,7 +52,7 @@
 (defconst *xrt-session*
   (fn-nntp-set-cursor (fn-nntp-open-session *xrt-state*) "fn.two" 70))
 (defconst *xrt-pin*
-  (fn-gidx-pin (fn-midx-build *xrt-articles*) (fn-gidx-build *xrt-articles*)))
+  (fn-gidx-pin (fn-gidx-build *xrt-articles*)))
 (defconst *xrt-server* (fn-nntp-string-octets "news.example.org"))
 (defconst *xrt-env*
   (fn-nntp-env-full nil nil nil (list nil nil *xrt-server*) nil))
@@ -165,7 +165,7 @@
                  (consp args) (null (cdr args))
                  (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
             (equal (fn-nntp-archive-command-pinned session archive index verdicts env keyword args fn-arena)
-                   (fn-nntp-over-range-served session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index) (car args) nil (fn-nntp-xref-server env) fn-arena)))))
+                   (fn-nntp-over-range-served session (fn-gidx-pin-buckets index) (fn-state-articles archive) (car args) nil (fn-nntp-xref-server env) fn-arena)))))
 (assert-event ; the blind-env witness: the unserved answer differs
  (not (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
              (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xrt-session* *xrt-state* *xrt-pin* nil *xrt-blind* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100"))))))
@@ -185,9 +185,9 @@
 ; Indexed served lines over a reclaimed article (audit packets G5-5 and G5-6,
 ; lane audit-fixes).  C is a third article in fn.one at number 5 whose
 ; handle (2) holds a reclaim tombstone: the FN-RCL2 magic padded to the fixed
-; tombstone length.  The number index and trie are the ones the owner's
-; refresh builds from the article list (fn-gidx-build, fn-midx-build;
-; group-number-index-tests shows refresh = build).
+; tombstone length.  The number index is the one the owner's refresh
+; builds from the article list (fn-gidx-build; group-number-index-tests
+; shows refresh = build), and the article list is the served one.
 (defconst *xrt-tomb-octets* (append *fn-rcl-magic* (make-list 137 :initial-element 32)))
 (defconst *xrt-c*
   (fn-make-article "<xrt-c@example.invalid>" 2
@@ -198,7 +198,7 @@
   (list (fn-xrt-payload "<xrt-a@example.invalid>" "A")
         (fn-xrt-payload "<xrt-b@example.invalid>" "B")
         *xrt-tomb-octets*))
-(defconst *xrt-trie* (fn-midx-build *xrt-idx-articles*))
+(defconst *xrt-arts* *xrt-idx-articles*)
 (defconst *xrt-buckets* (fn-gidx-build *xrt-idx-articles*))
 (defconst *xrt-nidx* (fn-gidx-bucket-numbers "fn.one" *xrt-buckets*))
 (defconst *xrt-entries* (fn-gidx-bucket "fn.one" *xrt-buckets*))
@@ -211,31 +211,31 @@
 ; fn-nov-served-lines-numbered-has-the-article-line (PRF-206).  Positive:
 ; number 2 (A, live) in (2 5 7), with and without a server name: every
 ; hypothesis and the conclusion.
-(defun xrt-has-line-hyps (n numbers nidx trie payloads)
+(defun xrt-has-line-hyps (n numbers nidx arts payloads)
   (declare (xargs :verify-guards nil))
-  (let ((article (fn-gidx-nidx-number-article n nidx trie)))
+  (let ((article (fn-gidx-nidx-number-article n nidx arts)))
     (and (member-equal n numbers)
          (consp article)
          (not (in-arena-fn-nntp-article-tombstonep payloads article))
          (fn-nov-okp (in-arena-fn-nov-overview payloads article)))))
-(defun xrt-has-line-concl (n numbers nidx trie server payloads)
+(defun xrt-has-line-concl (n numbers nidx arts server payloads)
   (declare (xargs :verify-guards nil))
-  (let ((article (fn-gidx-nidx-number-article n nidx trie)))
+  (let ((article (fn-gidx-nidx-number-article n nidx arts)))
     (member-equal (fn-nov-served-line n (in-arena-fn-nov-overview payloads article)
                                       server article)
-                  (in-arena-fn-nov-served-lines-numbered payloads numbers nidx trie server))))
-(assert-event (and (xrt-has-line-hyps 2 '(2 5 7) *xrt-nidx* *xrt-trie* *xrt-idx-arena*)
-                   (xrt-has-line-concl 2 '(2 5 7) *xrt-nidx* *xrt-trie* *xrt-server* *xrt-idx-arena*)
-                   (xrt-has-line-concl 2 '(2 5 7) *xrt-nidx* *xrt-trie* nil *xrt-idx-arena*)))
+                  (in-arena-fn-nov-served-lines-numbered payloads numbers nidx arts server))))
+(assert-event (and (xrt-has-line-hyps 2 '(2 5 7) *xrt-nidx* *xrt-arts* *xrt-idx-arena*)
+                   (xrt-has-line-concl 2 '(2 5 7) *xrt-nidx* *xrt-arts* *xrt-server* *xrt-idx-arena*)
+                   (xrt-has-line-concl 2 '(2 5 7) *xrt-nidx* *xrt-arts* nil *xrt-idx-arena*)))
 ; Removal of (member-equal n numbers): 2 is live and has an overview, but the
 ; range (5 7) does not ask for it and its line is not served.
 (assert-event
- (let ((article (fn-gidx-nidx-number-article 2 *xrt-nidx* *xrt-trie*)))
+ (let ((article (fn-gidx-nidx-number-article 2 *xrt-nidx* *xrt-arts*)))
    (and (not (member-equal 2 '(5 7)))
         (consp article)
         (not (in-arena-fn-nntp-article-tombstonep *xrt-idx-arena* article))
         (fn-nov-okp (in-arena-fn-nov-overview *xrt-idx-arena* article))
-        (not (xrt-has-line-concl 2 '(5 7) *xrt-nidx* *xrt-trie* *xrt-server* *xrt-idx-arena*)))))
+        (not (xrt-has-line-concl 2 '(5 7) *xrt-nidx* *xrt-arts* *xrt-server* *xrt-idx-arena*)))))
 ; The tombstone and (consp article) hypotheses have no separate removal
 ; witness: a tombstone's first octet is NUL, and the overview of C's bytes is
 ; (:ERROR) (evaluated below), so the okp hypothesis fails with it; an
@@ -243,12 +243,12 @@
 ; either.  Both hypotheses fail only together with okp on every state the
 ; parser admits; the weakened theorem was not attempted.
 (assert-event
- (let ((c (fn-gidx-nidx-number-article 5 *xrt-nidx* *xrt-trie*)))
+ (let ((c (fn-gidx-nidx-number-article 5 *xrt-nidx* *xrt-arts*)))
    (and (member-equal 5 '(2 5 7))
         (consp c)
         (in-arena-fn-nntp-article-tombstonep *xrt-idx-arena* c)
         (equal (in-arena-fn-nov-overview *xrt-idx-arena* c) '(:error))
-        (not (fn-gidx-nidx-number-article 7 *xrt-nidx* *xrt-trie*))
+        (not (fn-gidx-nidx-number-article 7 *xrt-nidx* *xrt-arts*))
         (not (fn-nov-okp (in-arena-fn-nov-overview *xrt-idx-arena* nil))))))
 
 ; fn-nov-lines-indexed-skip-a-reclaimed-article (PRF-088), the scan the served
@@ -257,19 +257,19 @@
 (assert-event
  (and (fn-rcl-tombstonep
        (in-arena-fn-nntp-article-bytes
-        *xrt-idx-arena* (fn-gidx-entry-number-article "fn.one" 5 *xrt-entries* *xrt-trie*)))
-      (equal (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" '(2 5 7) *xrt-entries* *xrt-trie*)
+        *xrt-idx-arena* (fn-gidx-entry-number-article "fn.one" 5 *xrt-entries* *xrt-arts*)))
+      (equal (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" '(2 5 7) *xrt-entries* *xrt-arts*)
              (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" (remove-equal 5 '(2 5 7))
-                                                        *xrt-entries* *xrt-trie*))
+                                                        *xrt-entries* *xrt-arts*))
       (equal (len (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" '(2 5 7)
-                                                             *xrt-entries* *xrt-trie*))
+                                                             *xrt-entries* *xrt-arts*))
              1)))
 ; Removal of the tombstone hypothesis: A (number 2) is live, and removing it
 ; changes the lines.
 (assert-event
  (and (not (fn-rcl-tombstonep
             (in-arena-fn-nntp-article-bytes
-             *xrt-idx-arena* (fn-gidx-entry-number-article "fn.one" 2 *xrt-entries* *xrt-trie*))))
-      (not (equal (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" '(2 5 7) *xrt-entries* *xrt-trie*)
+             *xrt-idx-arena* (fn-gidx-entry-number-article "fn.one" 2 *xrt-entries* *xrt-arts*))))
+      (not (equal (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" '(2 5 7) *xrt-entries* *xrt-arts*)
                   (in-arena-fn-nov-lines-for-numbers-indexed *xrt-idx-arena* "fn.one" (remove-equal 2 '(2 5 7))
-                                                             *xrt-entries* *xrt-trie*)))))
+                                                             *xrt-entries* *xrt-arts*)))))

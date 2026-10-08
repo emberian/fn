@@ -44,7 +44,7 @@
 (defconst *tgn-old-buckets* (fn-gidx-refresh nil nil *tgn-old*))
 (defconst *tgn-new-buckets*
   (fn-gidx-refresh *tgn-old-buckets* *tgn-old* *tgn-new*))
-(defconst *tgn-trie* (fn-midx-build *tgn-new*))
+(defconst *tgn-arts* *tgn-new*)
 (assert-event (equal *tgn-new-buckets* (fn-gidx-build *tgn-new*)))
 
 ;; fn-gnix-get-of-set: a witness per branch, a must-fail per hypothesis.
@@ -101,21 +101,21 @@
  (and (fn-gidx-numbers-okp *tgn-new-buckets*)
       (equal (fn-gidx-nidx-number-article
               2147483647 (fn-gidx-bucket-numbers "fn.one" *tgn-new-buckets*)
-              *tgn-trie*)
+              *tgn-arts*)
              (fn-gidx-entry-number-article
               "fn.one" 2147483647 (fn-gidx-bucket "fn.one" *tgn-new-buckets*)
-              *tgn-trie*))
+              *tgn-arts*))
       (equal (fn-gidx-nidx-number-article
               2147483647 (fn-gidx-bucket-numbers "fn.one" *tgn-new-buckets*)
-              *tgn-trie*)
+              *tgn-arts*)
              *tgn-c*)
       (equal (fn-gidx-nidx-number-article
               70 (fn-gidx-bucket-numbers "fn.two" *tgn-new-buckets*)
-              *tgn-trie*)
+              *tgn-arts*)
              *tgn-a*)
       (equal (fn-gidx-nidx-number-article
               70 (fn-gidx-bucket-numbers "fn.one" *tgn-new-buckets*)
-              *tgn-trie*)
+              *tgn-arts*)
              nil)))
 ; CORRUPTED STATE (not reachable): fn.one's number index emptied.  The
 ; relation fails and so does the conclusion.
@@ -126,19 +126,19 @@
  (and (not (fn-gidx-numbers-okp *tgn-corrupt-buckets*))
       (consp (fn-gidx-entry-number-article
               "fn.one" 2 (fn-gidx-bucket "fn.one" *tgn-corrupt-buckets*)
-              *tgn-trie*))
+              *tgn-arts*))
       (not (equal (fn-gidx-nidx-number-article
                    2 (fn-gidx-bucket-numbers "fn.one" *tgn-corrupt-buckets*)
-                   *tgn-trie*)
+                   *tgn-arts*)
                   (fn-gidx-entry-number-article
                    "fn.one" 2 (fn-gidx-bucket "fn.one" *tgn-corrupt-buckets*)
-                   *tgn-trie*)))))
+                   *tgn-arts*)))))
 (must-fail-checked
  (defthm fn-tgn-keystone-without-relation
    (equal (fn-gidx-nidx-number-article
-           2 (fn-gidx-bucket-numbers "fn.one" *tgn-corrupt-buckets*) *tgn-trie*)
+           2 (fn-gidx-bucket-numbers "fn.one" *tgn-corrupt-buckets*) *tgn-arts*)
           (fn-gidx-entry-number-article
-           "fn.one" 2 (fn-gidx-bucket "fn.one" *tgn-corrupt-buckets*) *tgn-trie*))))
+           "fn.one" 2 (fn-gidx-bucket "fn.one" *tgn-corrupt-buckets*) *tgn-arts*))))
 
 ;; fn-gidx-numbers-okp-of-put.  Reachable witness: the put of the new
 ;; article's first entry into the refreshed buckets.  Without the
@@ -202,15 +202,15 @@
 (bpr-lift fn-nov-lines-for-numbers-numbered 3)
 (assert-event
  (and (fn-gidx-numbers-okp *tgn-new-buckets*)
-      (equal (in-arena-fn-nntp-over-range-indexed *sr-arena* *tgn-session* *tgn-new-buckets* *tgn-trie* *tgn-range* nil)
-             (in-arena-fn-nntp-over-range-walk *sr-arena* *tgn-session* *tgn-new-buckets* *tgn-trie* *tgn-range* nil))
-      (equal (len (in-arena-fn-nov-lines-for-numbers-numbered *sr-arena* '(2 3 2147483647) (fn-gidx-bucket-numbers "fn.one" *tgn-new-buckets*) *tgn-trie*))
+      (equal (in-arena-fn-nntp-over-range-indexed *sr-arena* *tgn-session* *tgn-new-buckets* *tgn-arts* *tgn-range* nil)
+             (in-arena-fn-nntp-over-range-walk *sr-arena* *tgn-session* *tgn-new-buckets* *tgn-arts* *tgn-range* nil))
+      (equal (len (in-arena-fn-nov-lines-for-numbers-numbered *sr-arena* '(2 3 2147483647) (fn-gidx-bucket-numbers "fn.one" *tgn-new-buckets*) *tgn-arts*))
              3)))
 (assert-event
  (and (not (fn-gidx-numbers-okp *tgn-corrupt-buckets*))
-      (not (equal (in-arena-fn-nntp-over-range-indexed *sr-arena* *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil)
-                  (in-arena-fn-nntp-over-range-walk *sr-arena* *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil)))))
+      (not (equal (in-arena-fn-nntp-over-range-indexed *sr-arena* *tgn-session* *tgn-corrupt-buckets* *tgn-arts* *tgn-range* nil)
+                  (in-arena-fn-nntp-over-range-walk *sr-arena* *tgn-session* *tgn-corrupt-buckets* *tgn-arts* *tgn-range* nil)))))
 (must-fail-checked
  (defthm fn-tgn-over-range-without-relation
-   (equal (fn-nntp-over-range-indexed *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil fn-arena)
-          (fn-nntp-over-range-walk *tgn-session* *tgn-corrupt-buckets* *tgn-trie* *tgn-range* nil fn-arena))))
+   (equal (fn-nntp-over-range-indexed *tgn-session* *tgn-corrupt-buckets* *tgn-arts* *tgn-range* nil fn-arena)
+          (fn-nntp-over-range-walk *tgn-session* *tgn-corrupt-buckets* *tgn-arts* *tgn-range* nil fn-arena))))
