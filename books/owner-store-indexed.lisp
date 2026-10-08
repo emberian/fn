@@ -41,7 +41,12 @@
 ; owner) carry no index premise.
 
 (in-package "ACL2")
-(include-book "owner-offer-indexed")
+(include-book "owner-served-carried")
+(include-book "owner-config-observe")
+(include-book "owner-commit-carried")
+(include-book "owner-prepare-carried")
+(include-book "owner-advance-carried")
+(include-book "config-owner-publish")
 (include-book "owner-checkpoint-open")
 (include-book "records-concrete-owner")
 (include-book "owner-served-bound")

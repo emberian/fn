@@ -1,5 +1,5 @@
 ;; fn: the configured owner the host installs at recovery satisfies the
-;; configured owner's relation and the view-trie premise.
+;; configured owner's relation.
 ;
 ; host/owner-host.lisp fn-owner-recover builds the owner it installs from
 ; ACL2 functions only: fn-cpr-replay over the decoded configuration and Store
@@ -7,12 +7,17 @@
 ; fn-own-configure (with fn-oag-post-config, through the host wrapper
 ; fn-owner-post-config) and fn-ocfg-make.  The keystones of the carried
 ; served path (owner-served-carried, owner-commit-ocl, owner-advance-carried)
-; take fn-ocl-relation and fn-scar-view-indexedp of the configured owner.
-; This book proves both of the owner that recovery installs, over that exact
+; take fn-ocl-relation of the configured owner.
+; This book proves it of the owner that recovery installs, over that exact
 ; composition, under the checks the host makes before it installs.
 
 (in-package "ACL2")
-(include-book "owner-offer-indexed")
+(include-book "owner-served-carried")
+(include-book "owner-config-observe")
+(include-book "owner-commit-carried")
+(include-book "owner-prepare-carried")
+(include-book "owner-advance-carried")
+(include-book "config-owner-publish")
 
 ;
 ; The hypotheses are exactly two of the host's checks before it installs:
@@ -148,7 +153,6 @@
                                (archive (fn-ctl-visible-state prefix nil nil)))
                           (fn-own-view-make-visible
                            0 0 archive nil
-                           (fn-midx-build (fn-state-articles archive))
                            (fn-gidx-build (fn-state-articles archive))
                            nil (fn-state-articles prefix)
                            (fn-ctl-subseq-diff (fn-state-articles prefix)
@@ -162,7 +166,7 @@
                            (fn-own-refresh fn-ocl-view-historyp fn-cst-relation fn-own-configure
                             fn-cst-replay-node fn-cpr-replay fn-own-take
                             fn-snt-idle-phasep fn-ctl-visible-articles
-                            fn-own-prefix-archive fn-midx-build fn-gidx-build)))))
+                            fn-own-prefix-archive fn-gidx-build)))))
 
 (defthm fn-orec-start-view-configp
   (implies (and (fn-cst-relation st)
@@ -179,8 +183,7 @@
                             fn-ocl-store-config)
                            (fn-cst-relation fn-cpr-replay fn-own-take
                             fn-own-view-make-group-indexed fn-snt-idle-phasep
-                            fn-own-prefix-archive fn-midx-build fn-gidx-build
-                            fn-midx-refresh)))))
+                            fn-own-prefix-archive fn-gidx-build)))))
 
 (defthm fn-orec-start-config-historyp
   (implies (fn-cpo-history-relation st)
@@ -231,9 +234,8 @@
 ;                                     (fn-owner-post-config cfg))
 ;                                    cfg nil nil)
 ; where fn-owner-post-config (owner-host.lisp:80) is
-; (fn-oag-post-config cfg *fn-record-max-payload*).  The conclusion carries
-; both premises the carried served keystones take (fn-ocl-relation and
-; fn-scar-view-indexedp of the owner).
+; (fn-oag-post-config cfg *fn-record-max-payload*).  The conclusion is
+; the premise the carried served keystones take (fn-ocl-relation of the owner).
 (defthm fn-orec-recover-installs-ocl-relation
   (implies (and (natp max-conns)
                 (equal (fn-sn-open-kind
@@ -247,8 +249,7 @@
                         (fn-own-start (fn-sn-open-state opened) max-conns)
                         (fn-oag-post-config cfg *fn-record-max-payload*))
                        cfg nil nil)))
-             (and (fn-ocl-relation oc)
-                  (fn-scar-view-indexedp (fn-ocfg-owner oc)))))
+             (fn-ocl-relation oc)))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-orec-open-kind-ok-is-okp
@@ -268,16 +269,14 @@
            :in-theory (e/d (fn-snt-idle-phasep)
                            (fn-cpo-open-observed fn-cpr-replay fn-ocl-relation
                             fn-own-start fn-own-configure fn-oag-post-config
-                            fn-cpo-history-relation fn-ocl-store-config
-                            fn-scar-view-indexedp fn-sn-open-okp)))))
+                            fn-cpo-history-relation fn-ocl-store-config fn-sn-open-okp)))))
 
 ; The native live administration opens a private logical connection before
 ; staging (host/native/admin.lisp:159, fnn-owner-core 'fn-owner-open), and
 ; fn-owner-open calls (fn-ocfg-open (fn-owner-ocfg state) (fn-owner-auth
-; state)) at owner-host.lisp:1337.  The preservation is the keystones
-; fn-ocl-open-preserves-historical-relation (config-owner-live) and
-; fn-oix-ocfg-open-keeps-view-indexed (owner-offer-indexed), which hold for
-; every related owner and every acfg; this corollary composes them with the
+; state)) at owner-host.lisp:1337.  The preservation is the keystone
+; fn-ocl-open-preserves-historical-relation (config-owner-live), which holds for
+; every related owner and every acfg; this corollary composes it with the
 ; recovery keystone for the first open after recovery.
 (defthm fn-orec-admin-open-after-recover-keeps-premises
   (implies (and (natp max-conns)
@@ -293,28 +292,11 @@
                         (fn-oag-post-config cfg *fn-record-max-payload*))
                        cfg nil nil))
                   (admin (cdr (fn-ocfg-open oc acfg))))
-             (and (fn-ocl-relation admin)
-                  (fn-scar-view-indexedp (fn-ocfg-owner admin)))))
+             (fn-ocl-relation admin)))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-orec-recover-installs-ocl-relation
                  (:instance fn-ocl-open-preserves-historical-relation
-                            (oc (fn-ocfg-make
-                                 (fn-own-configure
-                                  (fn-own-start
-                                   (fn-sn-open-state
-                                    (fn-cpo-open-observed configs frontier events))
-                                   max-conns)
-                                  (fn-oag-post-config
-                                   (fn-cnode-config
-                                    (fn-replay-result-node
-                                     (fn-cpr-replay configs events)))
-                                   *fn-record-max-payload*))
-                                 (fn-cnode-config
-                                  (fn-replay-result-node
-                                   (fn-cpr-replay configs events)))
-                                 nil nil)))
-                 (:instance fn-oix-ocfg-open-keeps-view-indexed
                             (oc (fn-ocfg-make
                                  (fn-own-configure
                                   (fn-own-start

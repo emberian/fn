@@ -3,7 +3,7 @@
 ;
 ; The host's served read is host/owner-host.lisp fn-owner-chunk-span, which
 ; runs the carried chain fn-scar-ocfg-read-span -> ... -> fn-scar-dispatch-core
-; -> fn-scar-auth-step-pinned -> ... -> fn-pix-archive-command-pinned
+; -> fn-scar-auth-step-pinned -> ... -> fn-nntp-archive-command-pinned
 ; (books/served-span, served-carried, peer-offer-indexed), a twin of the
 ; reference fn-nntp-archive-command-pinned that walks the pinned archive.
 ; This book is the same chain with the catalog stobjs carried down to the
@@ -133,25 +133,23 @@
               (fn-cat-view-articles v fn-arena fn-cat))
        (fn-statep archive)
        (fn-gidx-pin-correspondencep index archive)
-       (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                (fn-state-articles archive))
        (fn-cnx-freshp fn-cat)))
 
 ; The same over a connection's fields, and over the live view a re-pin
 ; takes them from.
-(defun-nx fn-scr-fields-catalogp (archive index group-index control pinned fn-arena fn-cat)
+(defun-nx fn-scr-fields-catalogp (archive group-index control pinned fn-arena fn-cat)
   (fn-scr-catalogp archive
-                   (fn-served-pinned-index archive index group-index control)
+                   (fn-served-pinned-index archive group-index control)
                    (fn-scr-view-of (fn-served-pinned-version pinned) fn-cat)
                    fn-arena fn-cat))
 
 (defun-nx fn-scr-conn-catalogp (conn fn-arena fn-cat)
-  (fn-scr-fields-catalogp (fn-served-conn-archive conn) (fn-served-conn-index conn)
+  (fn-scr-fields-catalogp (fn-served-conn-archive conn)
                           (fn-served-conn-group-index conn) (fn-served-conn-control conn)
                           (fn-served-conn-pinned conn) fn-arena fn-cat))
 
 (defun-nx fn-scr-live-catalogp (live fn-arena fn-cat)
-  (fn-scr-fields-catalogp (fn-served-live-archive live) (fn-served-live-index live)
+  (fn-scr-fields-catalogp (fn-served-live-archive live)
                           (fn-served-live-buckets live) (fn-served-live-control live)
                           (fn-served-pinned-make (fn-served-live-version live)
                                                  (fn-served-live-frontier live) t)
@@ -178,9 +176,9 @@
 (defthm fn-scr-conn-catalogp-of-make-conn-live
   (equal (fn-scr-conn-catalogp
           (fn-served-make-conn-live wire session archive config observation injection
-                                    verdicts index buckets control pinned live)
+                                    verdicts buckets control pinned live)
           fn-arena fn-cat)
-         (fn-scr-fields-catalogp archive index buckets control pinned fn-arena fn-cat))
+         (fn-scr-fields-catalogp archive buckets control pinned fn-arena fn-cat))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-scr-conn-catalogp fn-served-conn-fields-of-make-conn-live)
                               (theory 'minimal-theory)))))
@@ -424,12 +422,11 @@
            (fn-scr-post-agrees
             (fn-scr-peer-delegate ps archive index verdicts config observation injection
                                   wire-event v fn-arena fn-cat)
-            (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
+            (fn-peer-delegate-pinned ps archive index verdicts config observation
                                          injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (union-theories
-                              '(fn-scr-peer-delegate fn-pix-peer-delegate-pinned
+                              '(fn-scr-peer-delegate fn-peer-delegate-pinned
                                 fn-scr-post-step-is-post-step-pinned
-                                fn-pix-post-step-pinned-is-post-step-pinned
                                 fn-post-result-session-of-fn-post-make-result
                                 fn-post-result-effects-of-fn-post-make-result
                                 fn-post-result-submission-of-fn-post-make-result)
@@ -624,7 +621,7 @@
                   :verify-guards nil))
   (cond
    ((not (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t))
-    (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
+    (fn-peer-delegate-pinned ps archive index verdicts config observation
                                  injection wire-event fn-arena))
    ((fn-peer-session-transfer ps) (fn-pgc-transfer-step ps wire-event))
    ((and (consp wire-event)
@@ -638,11 +635,11 @@
                (fn-nntp-command-arguments-at-mostp tokens))
           (let ((r (fn-scr-peer-command ps (car tokens) (cdr tokens) lver arts fn-arena fn-cat)))
             (if r r
-              (fn-pix-peer-delegate-pinned ps archive index verdicts config
+              (fn-peer-delegate-pinned ps archive index verdicts config
                                            observation injection wire-event fn-arena)))
-        (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
+        (fn-peer-delegate-pinned ps archive index verdicts config observation
                                      injection wire-event fn-arena))))
-   (t (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
+   (t (fn-peer-delegate-pinned ps archive index verdicts config observation
                                    injection wire-event fn-arena))))
 
 
@@ -655,13 +652,13 @@
   :hints (("Goal" :in-theory (e/d (fn-scr-peer-arm fn-pgc-peer-arm
                                    fn-scr-peer-command-is-pgc-peer-command)
                                   (fn-scr-peer-command fn-pgc-peer-command fn-scr-live-joinp
-                                   fn-pgc-transfer-step fn-pix-peer-delegate-pinned
+                                   fn-pgc-transfer-step fn-peer-delegate-pinned
                                    fn-nntp-tokenize fn-nntp-keyword-tokenp
                                    fn-nntp-command-arguments-at-mostp fn-nntp-command-inputp)))))
 
 (verify-guards fn-scr-peer-arm
   :hints (("Goal" :in-theory (disable fn-scr-peer-command fn-pgc-transfer-step
-                                      fn-pix-peer-delegate-pinned))))
+                                      fn-peer-delegate-pinned))))
 
 (in-theory (disable fn-scr-peer-arm))
 
@@ -921,7 +918,6 @@
                           (fn-served-conn-observation conn)
                           (fn-served-conn-injection conn)
                           (fn-served-conn-verdicts conn)
-                          (fn-served-conn-index conn)
                           (fn-served-conn-group-index conn) (fn-served-conn-control conn)
                           (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (mbe :logic (append effects
@@ -1042,7 +1038,6 @@
        (fn-served-conn-observation conn)
        (fn-served-conn-injection conn)
        (fn-served-live-verdicts live)
-       (fn-served-live-index live)
        (fn-served-live-buckets live)
        (fn-served-live-control live)
        (fn-served-pinned-make (fn-served-live-version live)
@@ -1943,28 +1938,19 @@
 
 (defthm fn-scr-owner-catalogp-gives-live-joinp
   (implies (and (fn-scr-owner-catalogp o id fn-arena fn-cat)
-                (fn-scar-view-indexedp o)
                 (fn-own-find-conn id (fn-own-conns o)))
            (fn-scr-live-joinp (fn-own-view-version (fn-own-view o))
                               (fn-state-articles (fn-own-view-archive (fn-own-view o)))
                               fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-scr-owner-catalogp fn-scr-conn-okp fn-scr-live-catalogp
-                                   fn-scr-fields-catalogp fn-scr-catalogp fn-scr-live-joinp fn-scar-view-indexedp
-                                   fn-gidx-pin-trie-of-pin-with-control)
-                                  (fn-own-tls-served-conn fn-cat-view-articles fn-scr-view-of
-                                   fn-midx-correspondencep fn-scr-conn-catalogp
+                                   fn-scr-fields-catalogp fn-scr-catalogp fn-scr-live-joinp)
+                                  (fn-own-tls-served-conn fn-cat-view-articles fn-scr-view-of fn-scr-conn-catalogp
                                    fn-own-view-live fn-statep fn-gidx-pin-correspondencep))
            :use ((:instance fn-own-view-live-fields (view (fn-own-view o)))))))
 ;; With the peer arm reading the catalog (fn-scr-peer-arm), the chain is the
-;; scar chain when the view's trie is its visible list's index as well
-;; (fn-scar-view-indexedp): the scar arm reads that trie.  The host's owner
-;; carries it: fn-sjh-okp (books/served-catalog-join-host.lisp) has it as a
-;; conjunct, and join-f2-2 proves fn-sjh-okp kept at every owner-installing
-;; host entry (books/served-catalog-join-host-entries.lisp and siblings), so
-;; the hypothesis is discharged at the host level.
+;; scar chain.
 (defthm fn-scr-own-read-span-is-scar-own-read-span
-  (implies (and (fn-gacc-okp cache) (fn-scr-owner-catalogp o id fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat)
-                (fn-scar-view-indexedp o))
+  (implies (and (fn-gacc-okp cache) (fn-scr-owner-catalogp o id fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (fn-scr-tls-agrees
             (fn-scr-own-read-span o id i end cache fn-octets fn-arena fn-cat)
             (fn-scar-own-read-span o id i end fn-octets fn-arena)))
@@ -2513,8 +2499,7 @@
    '(natp nfix (:type-prescription fn-scr-source-own-read-span))))))
 
 (defthm fn-scr-ocfg-read-span-is-scar-ocfg-read-span
-  (implies (and (fn-gacc-okp cache) (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
+  (implies (and (fn-gacc-okp cache) (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat) (fn-scol-okp fn-arena fn-cat))
            (fn-scr-tls-agrees
             (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
             (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)))
@@ -2532,7 +2517,6 @@
 ; expansion is itself: it carries no cursor).
 (defthm fn-scr-ocfg-read-span-is-reference-under-ocl-relation
   (implies (and (fn-gacc-okp cache) (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                 (fn-scol-okp fn-arena fn-cat)
                 (natp i) (natp end))

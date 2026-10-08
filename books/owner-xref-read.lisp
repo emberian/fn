@@ -44,7 +44,7 @@
            (equal (fn-nntp-archive-command-pinned
                    session archive index verdicts env keyword args fn-arena)
                   (fn-nntp-over-range-served
-                   session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
+                   session (fn-gidx-pin-buckets index) (fn-state-articles archive)
                    (car args) (fn-nntp-keywordp keyword "XOVER")
                    (fn-nntp-xref-server env) fn-arena)))
   :hints (("Goal" :do-not-induct t
@@ -55,7 +55,7 @@
                             fn-nntp-list-overview-fmt-served
                             fn-gidx-list-counts-command
                             fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p
-                            fn-nntp-msgid-retrieval-indexed
+                            fn-nntp-msgid-retrieval
                             fn-gidx-listgroup-command fn-nntp-parse-range
                             fn-nntp-range-okp fn-gidx-pinp)))))
 
@@ -131,7 +131,7 @@
                          (fn-nntp-result-effects
                           (fn-nntp-over-range-served
                            ns (fn-gidx-pin-buckets (fn-served-conn-pinned-index conn))
-                           (fn-gidx-pin-trie (fn-served-conn-pinned-index conn))
+                           (fn-state-articles (fn-served-conn-archive conn))
                            (cadr tokens) nil
                            (fn-nntp-listing-server
                             (fn-inj-config-listing (fn-served-conn-config conn))) fn-arena)))
@@ -217,7 +217,7 @@
                     (fn-nntp-result-effects
                      (fn-nntp-over-range-served
                       ns (fn-gidx-pin-buckets (fn-served-conn-pinned-index conn))
-                      (fn-gidx-pin-trie (fn-served-conn-pinned-index conn))
+                      (fn-state-articles (fn-served-conn-archive conn))
                       (cadr tokens) nil
                       (fn-nntp-listing-server
                        (fn-inj-config-listing (fn-served-conn-config conn))) fn-arena)))))
@@ -240,8 +240,7 @@
                             fn-wire-feed-byte fn-wire-feed-proper fn-wire-statep
                             fn-nntp-list-newsgroups-described fn-nntp-list-motd
                             fn-nntp-over-range-served fn-gidx-pinp
-                            fn-nntp-env-listed fn-nntp-projectionp
-                            fn-midx-correspondencep fn-gidx-build
+                            fn-nntp-env-listed fn-nntp-projectionp fn-gidx-build
                             fn-nntp-tokenize fn-auth-sessionp
                             fn-peer-sessionp fn-post-sessionp
                             fn-nntp-sessionp fn-auth-gatedp

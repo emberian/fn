@@ -1488,7 +1488,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wire-scan \
 	books/served-scan \
 	books/served-span \
-	books/owner-offer-indexed \
 	books/store-events-carried \
 	books/owner-commit-carried \
 	books/owner-prepare-carried \

@@ -854,9 +854,10 @@
                   (fn-pidx-node-prepare s generation msgid payload groups
                                         obligation-id subject evidence charge
                                         stamp view)))
-  :hints (("Goal" :in-theory (e/d (fn-prc-node-prepare fn-pidx-node-prepare)
+  :hints (("Goal" :in-theory (e/d (fn-prc-node-prepare fn-node-prepare
+                                   fn-retain-admit)
                                   (fn-node-statep fn-retain-admissiblep
-                                   fn-pidx-accept-prepare fn-retain-make-state
+                                   fn-accept-prepare fn-retain-make-state
                                    fn-retain-make-obligation
                                    fn-node-make-state fn-node-make-stage)))))
 
@@ -888,8 +889,8 @@
   (implies (fn-prc-carryp carry)
            (equal (fn-prc-sn-prepare-node node record view carry)
                   (fn-pidx-sn-prepare-node node record view)))
-  :hints (("Goal" :in-theory (e/d (fn-prc-sn-prepare-node fn-pidx-sn-prepare-node)
-                                  (fn-pidx-node-prepare fn-replay-advance-txid)))))
+  :hints (("Goal" :in-theory (e/d (fn-prc-sn-prepare-node fn-sn-prepare-node)
+                                  (fn-replay-advance-txid)))))
 
 (in-theory (disable fn-prc-sn-prepare-node))
 
@@ -917,9 +918,9 @@
   (implies (fn-prc-carryp carry)
            (equal (fn-prc-spc-prepare s record view carry)
                   (fn-pidx-spc-prepare s record view)))
-  :hints (("Goal" :in-theory (e/d (fn-prc-spc-prepare fn-pidx-spc-prepare)
+  :hints (("Goal" :in-theory (e/d (fn-prc-spc-prepare fn-spc-prepare)
                                   (fn-sn-statep fn-pcar-stage-record
-                                   fn-pidx-sn-prepare-node fn-rcon-sn-record-bindsp
+                                   fn-rcon-sn-record-bindsp
                                    fn-held-p fn-rcon-cpe-projection-step
                                    fn-sn-update)))))
 
@@ -952,8 +953,8 @@
            (equal (fn-prc-opc-owner-prepare o record carry)
                   (fn-pidx-opc-owner-prepare o record)))
   :hints (("Goal" :in-theory (e/d (fn-prc-opc-owner-prepare
-                                   fn-pidx-opc-owner-prepare)
-                                  (fn-own-refresh fn-pidx-spc-prepare)))))
+                                   fn-opc-owner-prepare)
+                                  (fn-own-refresh)))))
 
 (in-theory (disable fn-prc-opc-owner-prepare))
 
@@ -970,8 +971,8 @@
   (implies (fn-prc-carryp carry)
            (equal (fn-prc-opc-prepare oc record carry)
                   (fn-pidx-opc-prepare oc record)))
-  :hints (("Goal" :in-theory (e/d (fn-prc-opc-prepare fn-pidx-opc-prepare)
-                                  (fn-pidx-opc-owner-prepare)))))
+  :hints (("Goal" :in-theory (e/d (fn-prc-opc-prepare fn-opc-prepare)
+                                  (fn-opc-owner-prepare)))))
 
 (in-theory (disable fn-prc-opc-prepare))
 
@@ -993,17 +994,16 @@
   (implies (fn-prc-carryp carry)
            (equal (fn-prc-sbud-prepare oc record budget carry)
                   (fn-pidx-sbud-prepare oc record budget)))
-  :hints (("Goal" :in-theory (e/d (fn-prc-sbud-prepare fn-pidx-sbud-prepare)
-                                  (fn-pidx-opc-prepare fn-sbud-admitp
+  :hints (("Goal" :in-theory (e/d (fn-prc-sbud-prepare fn-sbud-prepare)
+                                  (fn-opc-prepare fn-sbud-admitp
                                    fn-sbud-count fn-sbud-oc-store)))))
 
 ; The composition with the host's writer: the carry the host passes is the
 ; refresh of a value that has the recognizer; so the host's call is the
-; carried prepare fn-pcar-sbud-prepare under PRF-191's three hypotheses.
+; carried prepare fn-pcar-sbud-prepare under PRF-191's two hypotheses.
 (defthm fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare
   (implies (and (fn-prc-carryp carry)
-                (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
-                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
+                (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc))))
            (equal (fn-prc-sbud-prepare oc record budget
                                        (fn-prc-refresh carry ledger))
                   (fn-pcar-sbud-prepare oc record budget)))

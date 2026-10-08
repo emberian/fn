@@ -177,8 +177,7 @@
   (implies (and (fn-psrv-event-servedp (fn-ocfg-config oc) record)
                 (fn-psrv-event-numberedp oc record)
                 (fn-prc-carryp carry)
-                (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
-                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
+                (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc))))
            (equal (fn-psrv-prepare oc record budget carry)
                   (fn-sbud-prepare oc record budget)))
   :hints (("Goal" :use (fn-psrv-prepare-when-served

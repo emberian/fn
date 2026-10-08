@@ -63,7 +63,12 @@
 (in-package "ACL2")
 
 (include-book "served-catalog-join-frame")
-(include-book "owner-offer-indexed")
+(include-book "owner-served-carried")
+(include-book "owner-config-observe")
+(include-book "owner-commit-carried")
+(include-book "owner-prepare-carried")
+(include-book "owner-advance-carried")
+(include-book "config-owner-publish")
 (include-book "served-catalog-join-pinned")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).

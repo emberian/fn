@@ -93,7 +93,7 @@
 ; The owner's open, carried.
 
 (defun fn-ocar-served-open-group-indexed
-    (archive index buckets verdicts line-limit body-limit config
+    (archive buckets verdicts line-limit body-limit config
              observation injection acfg)
   (declare (xargs :guard t))
   (fn-served-pin-group-index
@@ -101,7 +101,7 @@
     (fn-served-make-conn-indexed
      (fn-wire-initial-state line-limit body-limit)
      (fn-ocar-auth-open-reader archive acfg)
-     archive config observation injection verdicts index)
+     archive config observation injection verdicts)
     (list (fn-nntp-reply-effect
            (fn-served-greeting config (fn-ocar-auth-open-reader archive acfg)))))
    buckets))
@@ -110,10 +110,10 @@
   (implies (and (fn-statep archive)
                 (fn-nntp-safe-group-listp (fn-state-groups archive)))
            (equal (fn-ocar-served-open-group-indexed
-                   archive index buckets verdicts line-limit body-limit config
+                   archive buckets verdicts line-limit body-limit config
                    observation injection acfg)
                   (fn-served-open-group-indexed
-                   archive index buckets verdicts line-limit body-limit config
+                   archive buckets verdicts line-limit body-limit config
                    observation injection acfg)))
   :hints (("Goal" :in-theory (e/d (fn-served-open-group-indexed
                                    fn-served-open-indexed)
@@ -129,7 +129,7 @@
              (archive (fn-own-view-archive view))
              (id (fn-own-next-id o))
              (opened (fn-ocar-served-open-group-indexed
-                      archive (fn-own-view-index view)
+                      archive
                       (fn-own-view-group-index view)
                       (fn-own-view-verdicts view)
                       *fn-nntp-max-initial-line-octets*
@@ -142,7 +142,6 @@
                                      (fn-served-conn-session sconn)
                                      archive (fn-own-config o) (fn-own-clock o)
                                      (fn-own-view-verdicts view)
-                                     (fn-own-view-index view)
                                      (fn-own-view-group-index view) (fn-own-view-control view))))
         (cons (fn-served-result-effects opened)
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
@@ -174,7 +173,6 @@
                       (fn-own-conn-archive conn) (fn-own-conn-config conn)
                       (fn-own-conn-observation conn)
                       (fn-own-conn-verdicts conn)
-                      (fn-own-conn-index conn)
                       (fn-own-conn-group-index conn) (fn-own-conn-control conn))))
           (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o))))
       o)))

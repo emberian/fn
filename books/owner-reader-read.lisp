@@ -178,9 +178,8 @@
 
 (defthm fn-orr-reader-relation-indexed
   (implies (fn-ocri-relation oc)
-           (and (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))))
-  :hints (("Goal" :in-theory (enable fn-ocri-relation fn-ocri-viewp fn-scar-view-indexedp))))
+           (fn-ocl-relation oc))
+  :hints (("Goal" :in-theory (enable fn-ocri-relation fn-ocri-viewp))))
 
 (defthm fn-orr-span-read-is-historical-read
   (implies (and (fn-ocri-relation x)
