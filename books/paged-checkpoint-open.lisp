@@ -339,40 +339,6 @@
 (defun pcko-ok-treep (d)
   (and (consp d) (eq (car d) :ok) (consp (cdr d))))
 
-(defun pcko-wellp (l)
-  ; Every row of L lies within L and its metadata decodes.
-  (declare (xargs :measure (len l) :verify-guards nil))
-  (if (and (consp l) (equal (car l) 1))
-      (and (consp (cdr l))
-           (<= (+ 8 (adt-tp-npk (cadr l))) (len l))
-           (pcko-ok-treep (fn-scc-decode-tree (adt-tp-unpack (cadr l) (cddr l))))
-           (pcko-wellp (adt-tp-restf *fn-pck-row-schema* (cdr l))))
-    t))
-
-(defun pcko-cost (l)
-  ; The words the open reads over L: each row's words, then the one word that
-  ; is not a tag.
-  (declare (xargs :measure (len l) :verify-guards nil))
-  (cond ((atom l) 0)
-        ((equal (car l) 1)
-         (+ 8 (adt-tp-npk (cadr l)) (pcko-cost (adt-tp-restf *fn-pck-row-schema* (cdr l)))))
-        (t 1)))
-
-(defthm pcko-nthcdr-six
-  (implies (natp n)
-           (equal (nthcdr (+ 6 n) x) (nthcdr n (cdr (cdr (cdr (cdr (cdr (cdr x)))))))))
-  :hints (("Goal" :in-theory (disable pck-nthcdr-nthcdr pgs-nthcdr-nthcdr pgs-cdr-nthcdr pgs-nthcdr-too-far)
-           :expand ((nthcdr (+ 6 n) x) (nthcdr (+ 5 n) (cdr x)) (nthcdr (+ 4 n) (cdr (cdr x)))
-                    (nthcdr (+ 3 n) (cdr (cdr (cdr x)))) (nthcdr (+ 2 n) (cdr (cdr (cdr (cdr x)))))
-                    (nthcdr (+ 1 n) (cdr (cdr (cdr (cdr (cdr x)))))))))
-  :rule-classes nil)
-
-(defthm pcko-restf-is-nthcdr
-  (equal (adt-tp-restf *fn-pck-row-schema* w)
-         (nthcdr (+ 6 (adt-tp-npk (car w))) (cdr w)))
-  :hints (("Goal" :expand ((adt-tp-restf *fn-pck-row-schema* w))
-           :use ((:instance pcko-nthcdr-six (n (adt-tp-npk (car w))) (x (cdr w)))))))
-
 (defthm pcko-nw-is-npk
   (implies (natp n) (equal (pcko-nw n) (adt-tp-npk n)))
   :hints (("Goal" :induct (adt-tp-npk n)
@@ -611,8 +577,9 @@
 
 (defthm pcko-nth-nthcdr
   (implies (and (natp i) (natp j)) (equal (nth i (nthcdr j w)) (nth (+ i j) w)))
-  :rule-classes nil
   :hints (("Goal" :induct (nthcdr j w))))
+
+(defthm pcko-nfix-len (equal (nfix (len x)) (len x)))
 
 (defthm pcko-len-rowwords
   (implies (adt-octetsp prog)
@@ -1456,14 +1423,11 @@
                   (equal (nthcdr 16384 w) (append (pcko-tws recs) (adt-tp-zeros (adt-tp-pad (len (pcko-tws recs))))))
                   (fn-pck-sccb-listp recs (fn-pck-seed)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable pcko-w-shape pcko-w-tape pcko-len-w fn-pck-pages pcko-tws pcko-rw0 fn-pck-recordsp
-                               fn-pck-root-tree adt-tp-zeros pcko-root-fits-in-region nthcdr (:executable-counterpart nthcdr)
-                               pcko-decode-of-program)
+           :in-theory (union-theories '(car-cons cdr-cons pcko-ok-treep (:executable-counterpart consp) (:executable-counterpart equal)) (theory 'minimal-theory))
            :use (pcko-w-shape pcko-w-tape pcko-len-w pcko-flat-true-listp pcko-npg-ok pcko-root-fits-in-region
                  (:instance pcko-decode-of-program (x (fn-pck-root-tree configs recs)))
                  (:instance pck-program-octetsp (x (fn-pck-root-tree configs recs)))
-                 pck-recordsp-parts
-                 pcko-recordsp-root))))
+                 pck-recordsp-parts pcko-recordsp-root))))
 
 (defthm pcko-sim-not-bad
   (implies (and (fn-pck-sccb-listp recs (fn-pck-seed)) (not (equal (fn-pck-st-of (fn-pck-seed) recs) :bad)))
@@ -1495,6 +1459,17 @@
            :use ((:instance pcko-tape-of-recs (pos 16384) (st (fn-pck-seed)) (base 0) (acc (fn-pck-seed)) (post zp)
                             (fn-octets oct) (fn-arena a))))))
 
+(defthm pcko-npk-plus2 (natp (+ 2 (adt-tp-npk n))))
+
+; mv-nth by its positions, for the proofs that run in a minimal theory.
+(defthm pcko-mvn0 (equal (mv-nth 0 x) (car x)))
+(defthm pcko-mvn1 (equal (mv-nth 1 x) (car (cdr x))))
+(defthm pcko-mvn2 (equal (mv-nth 2 x) (car (cdr (cdr x)))))
+(defthm pcko-mvn3 (equal (mv-nth 3 x) (car (cdr (cdr (cdr x))))))
+(defthm pcko-mvn4 (equal (mv-nth 4 x) (car (cdr (cdr (cdr (cdr x)))))))
+(defthm pcko-mvn5 (equal (mv-nth 5 x) (car (cdr (cdr (cdr (cdr (cdr x))))))))
+(in-theory (disable pcko-mvn0 pcko-mvn1 pcko-mvn2 pcko-mvn3 pcko-mvn4 pcko-mvn5))
+
 (defthm pcko-open-abstract
   (implies (and (pcko-img w pgs-mem) (true-listp w) (natp npg) (<= 8 npg) (equal (len w) (* 2048 npg))
                 (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid)
@@ -1515,12 +1490,16 @@
                   (equal (mv-nth 3 r) (+ 2 (adt-tp-npk (len prog)) (len tws) (if (consp zp) 1 0)))
                   (equal (mv-nth 4 r) (mv-nth 1 s)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable pcko-open-form pcko-tape-top pcko-sim pcko-sim-not-bad fn-pck-x-open pcko-img
-                               adt-tp-zeros nthcdr (:executable-counterpart nthcdr) pcko-rowwords fn-pck-st-of fn-pck-seed
-                               pcko-tape)
+           :in-theory (union-theories '((:executable-counterpart natp) (:executable-counterpart zp)
+                                        (:executable-counterpart binary-+) (:executable-counterpart not)
+                                        (:executable-counterpart unary--)
+                                        pcko-mvn0 pcko-mvn1 pcko-mvn2 pcko-mvn3 pcko-mvn4 pcko-mvn5
+                                        fn-pck-seed car-cons cdr-cons)
+                                      (theory 'minimal-theory))
            :use ((:instance pcko-open-form (octets octets))
                  (:instance pcko-tape-top (reads (+ 2 (adt-tp-npk (len prog)))) (oct prog))
-                 (:instance pcko-sim-not-bad)))))
+                 (:instance pcko-sim-not-bad) (:instance pcko-npk-natp (n (len prog)))
+                 (:instance pcko-npk-plus2 (n (len prog)))))))
 
 (defthm pcko-img-intro
   (implies (and (equal (pgs-x-words 0 0 k pgs-mem) w) (equal (len w) k)) (pcko-img w pgs-mem))
@@ -1546,9 +1525,8 @@
                             (if (consp (adt-tp-zeros (adt-tp-pad (len (pcko-tws recs))))) 1 0)))
                   (equal (mv-nth 4 r) (mv-nth 1 s)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable pcko-open-abstract pcko-image-facts pcko-sim fn-pck-x-open fn-pck-pages pcko-tws pcko-rw0
-                               fn-pck-recordsp fn-pck-root-tree pcko-img adt-tp-zeros pcko-tws-is-rows-from
-                               nthcdr (:executable-counterpart nthcdr) pcko-rowwords fn-pck-seed fn-pck-st-of)
+           :in-theory (union-theories '(pcko-nth-is-nth car-cons cdr-cons (:executable-counterpart consp))
+                                      (theory 'minimal-theory))
            :use ((:instance pcko-image-facts)
                  (:instance pcko-open-abstract (w (adt-tp-flat (fn-pck-pages configs recs)))
                             (prog (fn-scc-program (fn-pck-root-tree configs recs)))
@@ -1939,9 +1917,17 @@
   (equal (fn-ssr-at 0 (fn-ssr-seed identity)) nil)
   :hints (("Goal" :in-theory (enable fn-ssr-seed fn-ssr-state fn-ssr-at))))
 
+(defthm pcko-pck-seed-rows (equal (fn-ssr-at 0 (fn-pck-seed)) nil)
+  :hints (("Goal" :in-theory (enable fn-pck-seed))))
+
+(defthm pcko-handles-of-nil (fn-rows-handles-inp nil a)
+  :hints (("Goal" :in-theory (enable fn-rows-handles-inp))))
+
 (defthm pcko-seed-agree (pcko-agree (fn-pck-seed) (fn-pck-seed))
   :hints (("Goal" :in-theory (e/d (pcko-agree fn-pck-seed) ())
            :use (:instance fn-ssr-seed-establishes-statep (identity (fn-stxk-initial-context 0))))))
+
+(defthm pcko-revappend-twice (implies (true-listp x) (equal (revappend (revappend x nil) nil) x)))
 
 (defthm pcko-revappend-rev (equal (rev (revappend x nil)) (true-list-fix x))
   :hints (("Goal" :in-theory (enable rev revappend))))
@@ -1964,7 +1950,8 @@
 
 (defthm pcko-len-words
   (implies (natp k) (equal (len (pgs-x-words 0 a k pgs-mem)) k))
-  :hints (("Goal" :induct (pcko-wind a k) :expand ((pgs-x-words 0 a k pgs-mem)))))
+  :hints (("Goal" :induct (pcko-wind a k) :expand ((pgs-x-words 0 a k pgs-mem))
+           :in-theory (enable pgs-x-words))))
 
 (defthm fn-pck-x-open-is-the-capture
   ; KEYSTONE.  The exec open of the image the writer's pages flatten to
@@ -1996,17 +1983,14 @@
                   (equal (mv-nth 2 r)
                          (list (fn-sco-cpr c) (fn-sco-identity c) (fn-sco-consumer c) (fn-sco-topic c))))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable pcko-open-model pcko-sim-is-the-fold pcko-sim-wires pcko-capture-fields fn-pck-pages
-                               fn-pck-x-open fn-pck-seed fn-pck-st-of pcko-sim fn-ssr-intern-step fn-ssr-rows
-                               fn-pck-capture-of-pages fn-pck-root-tree pcko-img pcko-durablep fn-pck-resolvesp
-                               pcko-agree pcko-wire-of-ssr-rows pcko-img-intro pcko-len-w)
+           :in-theory (union-theories '(pcko-pck-seed-rows pcko-handles-of-nil pcko-rows-wire-of-nil pcko-revappend-twice (:executable-counterpart natp)) (theory 'minimal-theory))
            :use ((:instance pcko-img-intro (k (* 2048 npg)) (w (adt-tp-flat (fn-pck-pages configs recs))))
                  pcko-len-w
                  (:instance pcko-open-model (a fn-arena) (octets fn-octets))
                  (:instance pcko-sim-is-the-fold (st (fn-pck-seed)) (acc (fn-pck-seed)) (base 0) (b fn-arena) (a fn-arena))
                  (:instance pcko-sim-wires (st (fn-pck-seed)) (acc (fn-pck-seed)) (base 0) (a fn-arena))
                  (:instance pcko-durablep-of-resolves (base 0))
-                 pcko-capture-fields pck-recordsp-parts pcko-sccb-listp-true-listp pcko-seed-agree pcko-seed-rows
+                 pcko-capture-fields pck-recordsp-parts (:instance pcko-sccb-listp-true-listp (st (fn-pck-seed))) pcko-seed-agree
                  (:instance pcko-wire-of-ssr-rows (acc (mv-nth 0 (pcko-sim recs 0 (fn-pck-seed) (fn-pck-seed) fid fn-arena)))
                             (fn-arena (mv-nth 1 (pcko-sim recs 0 (fn-pck-seed) (fn-pck-seed) fid fn-arena))))))))
 
@@ -2023,12 +2007,9 @@
                (+ (* 8 2048) (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs))) 1)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable pcko-open-model fn-pck-pages fn-pck-x-open pcko-tws pcko-img adt-tp-zeros pcko-img-intro
-                               pcko-len-w pcko-root-fits-in-region)
+           :in-theory (union-theories '(pcko-tws) (theory 'minimal-theory))
+           :cases ((consp (adt-tp-zeros (adt-tp-pad (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs)))))))
            :use ((:instance pcko-img-intro (k (* 2048 npg)) (w (adt-tp-flat (fn-pck-pages configs recs))))
                  pcko-len-w
                  (:instance pcko-open-model (a fn-arena) (octets fn-octets))
-                 pcko-root-fits-in-region
-                 (:instance adt-tp-car-zeros (n (adt-tp-pad (len (pcko-tws recs)))))
-                 (:instance pcko-tws-is-rows-from)
-                 (:instance pcko-tws (recs recs))))))
+                 pcko-root-fits-in-region))))
