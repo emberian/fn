@@ -320,6 +320,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/paged-checkpoint-root-extend-tests \
 	books/catalog-pages \
 	books/paged-checkpoint-host \
+	books/paged-checkpoint-context-plan \
+	tests/acl2/paged-checkpoint-context-plan-tests \
 	books/paged-checkpoint-exec \
 	books/paged-checkpoint-stage \
 	books/paged-checkpoint-image \
