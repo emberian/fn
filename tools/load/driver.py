@@ -1447,6 +1447,12 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         cr["traceback"] = traceback.format_exc()[-900:]
     finally:
         node.sampler.stop_ev.set()
+        if spec.get("sprof") and (work / "sprof.start").exists():
+            # The window's flat report is written after sampling stops; with 16 busy threads the
+            # report itself can take seconds, and mech-w2p (persvati, g41) stopped the owner first.
+            deadline = time.monotonic() + spec["sprof"]["window_s"] + 120
+            while time.monotonic() < deadline and not list(work.glob("sprof.*.txt")):
+                time.sleep(1)
         if spec.get("lockwait"):
             # Get the next dump for end coverage before stopping our owner. No
             # delay between read phases; all phase deltas are derived below.
