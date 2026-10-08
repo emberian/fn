@@ -127,7 +127,7 @@
   },
   "fn-arena-seal-buffer{correspondence}": {
    "class": "ownership-reclamation",
-   "statement_digest": "45424ae8d57441180d95597509dbfcd27a1bf14e6722747442490ff7871c38f1"
+   "statement_digest": "e79532bd8b2f69d3f0af5d6bef578c93736db2387e3ffb3950a9158f3279e2ae"
   },
   "fn-arena-seal-extent-payload": {
    "class": "ownership-reclamation",
@@ -139,7 +139,7 @@
   },
   "fn-arena-seal-list{correspondence}": {
    "class": "ownership-reclamation",
-   "statement_digest": "a0c4ebd958f1b8b72662e02194ae7427692b3a0c80b73c6638b692ed6aa67427"
+   "statement_digest": "154d4597c6409c1a8bdc85675fabc7c6d1e0af9a6cd67ca731637c4218040666"
   },
   "fn-arena-seal-lz-extent-payload": {
    "class": "ownership-reclamation",
@@ -155,7 +155,7 @@
   },
   "fn-arena-seal-range{correspondence}": {
    "class": "ownership-reclamation",
-   "statement_digest": "977d8f57ffcbf6b91ecc153194b323c916300a1c31277403db65baba9174f191"
+   "statement_digest": "ef49bb437c417749446726b547381420ef4e4baee63504651b4717dbbd925231"
   },
   "fn-arena-seals-keep-sealed": {
    "class": "ownership-reclamation",
