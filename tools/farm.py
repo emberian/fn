@@ -160,6 +160,12 @@ INSTALLED_FASL = re.compile(r"; fasl (\d+) missing (\d+)$", re.MULTILINE)
 RUN = subprocess.run
 SLEEP = time.sleep
 
+# The preflight, incremental runner and later trains share this tree-local
+# digest memo. certs.content_hash still stats every payload and invalidates
+# on device, inode, size, mtime or ctime changes. Keep it under build/, which
+# mirrors preserve, as hbox_native.sh does for repeated cache consumers.
+CONTENT_HASH_ENV = "FN_CONTENT_HASH_FILE=build/.content-hashes.json"
+
 
 def mirror_cache(host: str, since: float, entries: list[str] | None = None) -> int:
     """Copy ENTRIES (or, without them, entries gained since SINCE) into the other box's
@@ -285,7 +291,7 @@ def certs_script(host: str, root: Path, action: str,
     where = host_settings(host, cache)["cache"]
     kind = f"--origin-kind {origin_kind} " if origin_kind else ""
     return (f"cd {remote_quote(root)} || exit 9; "
-            f"python3 tools/certs.py --cache {remote_quote(where)} "
+            f"{CONTENT_HASH_ENV} python3 tools/certs.py --cache {remote_quote(where)} "
             f"{kind}{action}")
 
 
@@ -418,7 +424,7 @@ def cache_preflight_script(host: str, remote: Path, books: list[str],
         f"acl2={acl2_shell_word(host, acl2)}; "
         "toolchain=$(python3 tools/acl2_toolchain.py identity \"$acl2\") "
         "|| exit 14; "
-        f"python3 tools/certs.py --cache {remote_quote(settings['cache'])} "
+        f"{CONTENT_HASH_ENV} python3 tools/certs.py --cache {remote_quote(settings['cache'])} "
         f"--toolchain-identity \"$toolchain\" --acl2 \"$acl2\" "
         f"{mode} $roots")
 
@@ -928,6 +934,7 @@ def remote_script(host: str, root: Path, identifier: str, books: list[str],
         f"FN_ACL2={acl2_shell_word(host, acl2)} "
         f"FN_ACL2_TIMEOUT_SECONDS={timeout_seconds} "
         f"FN_CERT_CACHE={settings['cache']} "
+        f"{CONTENT_HASH_ENV} "
         + (f"FN_SBCL={settings['sbcl']} PATH={os.path.dirname(settings['sbcl'])}:$PATH "
            if settings.get("sbcl") else "")
         +

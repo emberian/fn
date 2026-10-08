@@ -164,3 +164,5 @@
 (include-book "store-carried-folds")
 (include-book "owner-log-route")
 (include-book "owner-advance-carried")
+(include-book "owner-intent-carried")
+(include-book "owner-parse-carried")

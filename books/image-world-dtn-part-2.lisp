@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-1")
-(include-book "store-profile-facts")
-(include-book "store-genesis")
 (include-book "store-replay-bound")
 (include-book "store-profile-open")
 (include-book "store-mount-identity")
@@ -161,3 +159,8 @@
 (include-book "owner-parse-carried")
 (include-book "owner-identity-intern")
 (include-book "owner-identity-served")
+(include-book "owner-prepare-outcome")
+(include-book "owner-commit-ocl")
+(include-book "owner-served-invariants")
+(include-book "owner-feed-port")
+(include-book "owner-feed-live-carried")

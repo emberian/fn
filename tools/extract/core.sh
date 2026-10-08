@@ -114,6 +114,8 @@ fi
 python3 "$X/closure_why.py" "$OUT" --check || { echo "core: the closure reaches ACL2's evaluator (X2); see above" >&2; exit 1; }
 # X3: the snapshot carries exactly the tables the emitted forms and the install path read (one discovery)
 python3 "$X/closure_why.py" "$OUT" --check-tables || { echo "core: the carried tables disagree with the closure's (X3); see above" >&2; exit 1; }
+# O2: every world property an emitted form reads by name is carried (a missing one reads as its default)
+python3 "$X/closure_why.py" "$OUT" --check-props || { echo "core: an emitted form reads a world property the snapshot does not carry (O2); see above" >&2; exit 1; }
 # X1: a separate image run re-derives every unit from the world and ACL2's sources and compares
 {
   printf '(ld "tools/extract/frontend.lisp")\n:q\n(load "tools/extract/forms-export.lisp")\n(in-package "ACL2")\n'
