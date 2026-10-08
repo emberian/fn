@@ -88,7 +88,7 @@ not in it is new; a baseline row no longer found must be removed
     python3 tools/lock_discipline_check.py --rule R3 -v    # one rule, with paths
     python3 tools/lock_discipline_check.py --root DIR      # another checkout (a pre-fix commit)
     python3 tools/lock_discipline_check.py --write-baseline [--initial]
-    python3 tools/lock_discipline_check.py --emit-realization  # planning/host-realization.json
+    python3 tools/lock_discipline_check.py --emit-realization  # print the literal model table (JSON)
     python3 tools/lock_discipline_check.py --audit-callbacks  # standalone: print only the
                            # callback-ordinal audit (a callback_contexts why text that names
                            # its own file must name the line its ordinal resolves to); the
@@ -115,7 +115,6 @@ from ledger import Sym  # noqa: E402
 TOOL_ROOT = Path(__file__).resolve().parents[1]
 CONTRACTS = TOOL_ROOT / "tools" / "lock_discipline_contracts.json"
 BASELINE = TOOL_ROOT / "tools" / "lock_discipline_baseline.json"
-REALIZATION = "planning/host-realization.json"
 
 RULES = ("R1", "R1b", "R2", "R3", "R4", "R5", "R6", "R7", "R8", "R9", "R10")
 
@@ -5777,14 +5776,12 @@ def main(argv=None) -> int:
     if args.function:
         findings = [f for f in findings if f.function == args.function]
     if args.emit_realization:
-        out = root / REALIZATION
         table = getattr(checker, "realization", None)
         if table is None:
-            print("lock_discipline_check: refused realization source; no snapshot written")
+            print("lock_discipline_check: refused realization source; no table", file=sys.stderr)
             return 1
-        out.write_text(json.dumps({"comment": "generated literal model table; host sites are checked "
-                                   "syntactically, not a refinement proof", **table}, indent=1) + "\n")
-        print(f"lock_discipline_check: wrote {REALIZATION}")
+        print(json.dumps({"comment": "generated literal model table; host sites are checked "
+                          "syntactically, not a refinement proof", **table}, indent=1))
         return 0
     enclave = set(checker.c.raw.get("enclave", {}).get("functions", []))
     enclave_files = set(checker.c.raw.get("enclave", {}).get("files", []))
@@ -5830,16 +5827,6 @@ def main(argv=None) -> int:
     verdict = judge(findings, baseline, enclave, enclave_files, excepted)
     if args.rule or args.function:
         verdict["stale"] = []  # a filtered run cannot judge the whole baseline
-    realization_drift = None
-    out = root / REALIZATION
-    if out.exists() and not args.rule:
-        try:
-            snapshot = json.loads(out.read_text())
-            table = getattr(checker, "realization", None)
-            if table is None or any(snapshot.get(key) != table[key] for key in ("source", "rows")):
-                realization_drift = f"{REALIZATION} is stale: regenerate with --emit-realization"
-        except ValueError:
-            realization_drift = f"{REALIZATION} does not parse"
     elapsed = time.time() - started
     cats = collections.Counter((f.rule, f.category) for f in findings)
     total_sites = sum(len(i.events) for i in an.infos.values())
@@ -5867,8 +5854,6 @@ def main(argv=None) -> int:
             if v or u or x:
                 print(f"  {rule:4} violation {v:4}  unresolved {u:4}  exception {x:4}")
         nb = len([1 for k, f in verdict["new"]])
-        if realization_drift:
-            print("  " + realization_drift)
         for lock, n in sorted(checker.private_io.items()):
             print(f"  private-owner I/O under {lock}: {n} R2 (site, leaf) pair(s) exempt in "
                   f"{len(model.private_owner[lock]['functions'])} proved one-shot function(s)")
@@ -5880,7 +5865,7 @@ def main(argv=None) -> int:
             print(audit_summary(model, checker.c.raw, audit_failures))
     if args.check:
         bad = (verdict["new"] or verdict["stale"] or verdict["enclave_baselined"]
-               or realization_drift or audit_failures or guard_problems)
+               or audit_failures or guard_problems)
         if bad:
             counted = weights(findings)
             cap = args.cap or None

@@ -1215,7 +1215,7 @@ class StatusTests(unittest.TestCase):
 
 
 class CertifyIdTests(unittest.TestCase):
-    """submit and status name the run's certify id (evidence_manifests add)."""
+    """submit and status name the run's certify id (farm.run_record)."""
 
     def test_submit_records_the_certify_id_the_runner_names(self):
         class Named(Fake):
@@ -1274,9 +1274,6 @@ class CertifyIdTests(unittest.TestCase):
             self.assertIn("certify-20260929T101500Z-77", out.getvalue())
             self.assertEqual(farm.run_record(root, identifier)["certify_id"],
                              "certify-20260929T101500Z-77")
-            import evidence_manifests
-            self.assertEqual(evidence_manifests.certify_ids_of_farm_run(root, identifier),
-                             ["certify-20260929T101500Z-77"])
 
 
 class FrictionTests(unittest.TestCase):
@@ -1515,31 +1512,6 @@ class FrictionTests(unittest.TestCase):
         self.assertIn("FAILED tests/acl2/beta-tests: timed out after 300 s", text)
         self.assertIn("12.5 s  books/alpha  (at 2 jobs)", text)
         self.assertNotIn("books/beta  (at", text)
-
-    def test_verdict_names_installed_books_no_committed_manifest_certified(self):
-        # Batch AY, 2026-09-28: a union cite installed books from the cache
-        # whose certifying run was never committed; green_check owed them.
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory).resolve()
-            (root / "books").mkdir()
-            for name in ("cited", "uncited", "top"):
-                (root / f"books/{name}.lisp").write_text(f'(in-package "ACL2")\n; {name}\n')
-            digest = farm.certs.content_hash(root / "books/cited.lisp")
-            archive = root / "planning/evidence/manifests"
-            archive.mkdir(parents=True)
-            (archive / "certify-20260925T000000Z-9.json").write_text(json.dumps({
-                "book_results": {"books/cited": "passed"},
-                "source_digests_sha256": {"books/cited.lisp": digest}}))
-            self.write_run(root, {
-                "status": "passed", "book_results": {"books/top": "passed"},
-                "book_provenance": {"books/top": "certified", "books/cited": "installed",
-                                    "books/uncited": "installed"}}, {})
-            text = "\n".join(farm.verdict_lines(root, "run-v", 0))
-            self.assertIn("installed-without-cited-manifest: 1: books/uncited", text)
-            self.assertIn("--recertify-uncited", text)
-            import certified_claims
-            self.assertEqual(certified_claims.uncited_books(
-                root, ["books/cited", "books/uncited"]), ["books/uncited"])
 
     def test_a_signal_exit_is_killed_not_failed(self):
         manifest = {

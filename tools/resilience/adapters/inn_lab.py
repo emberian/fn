@@ -27,7 +27,7 @@ fn's own recovery and the articles it serves after the SIGTERM are judged
 by the rules every other backend uses (recovery-keeps-history,
 committed-serves-exact).
 
-Over the three findings files in planning/evidence (2026-09-22, 2026-09-23
+Over the three findings files in tests/fixtures/evidence (2026-09-22, 2026-09-23
 twice): the 2026-09-22 run's `operator post` (INN's 437 "Missing Path"
 refutes the injection) and inn-to-fn flow (the served Path without fn's
 identity, the sender's Xref served) are violations; every other scenario is
@@ -55,7 +55,7 @@ from tools.resilience.scenario import (  # noqa: E402
 from tools.resilience.journal import Journal  # noqa: E402
 from tools.resilience import checker  # noqa: E402
 
-EVIDENCE_DIR = ROOT / "planning/evidence"
+FINDINGS_DIR = ROOT / "tests/fixtures/evidence"
 GROUP = "fn.letters"
 # The fields a relaying or serving agent may change, each with the RFC that
 # lets it (tools/inn_lab.py RELAY_MAY_CHANGE; the test asserts they agree).
@@ -71,12 +71,8 @@ REQUIREMENTS = ["INT-001", "STO-002"]
 
 
 def records() -> list:
-    """The committed findings files, read from the evidence archive by hash
-    when the working tree does not carry them (tools/evidence_store.py)."""
-    import evidence_store  # noqa: PLC0415
-    rel = EVIDENCE_DIR.relative_to(ROOT).as_posix()
-    return [evidence_store.materialize(ROOT, name)
-            for name in evidence_store.glob(ROOT, rel + "/inn-lab-*.findings.json")]
+    """The committed findings files."""
+    return sorted(FINDINGS_DIR.glob("inn-lab-*.findings.json"))
 
 
 def load(path) -> dict:
@@ -389,7 +385,7 @@ def check_findings(path) -> list:
 
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
-    p.add_argument("findings", nargs="*", help="findings files (default: planning/evidence)")
+    p.add_argument("findings", nargs="*", help="findings files (default: tests/fixtures/evidence)")
     a = p.parse_args(argv)
     paths = [Path(x) for x in a.findings] or records()
     bad = 0

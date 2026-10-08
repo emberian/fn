@@ -1360,5 +1360,5 @@
   }
  ],
  "alien_default": "ffi",
- "realization_comment": "SEED rows from build/coordinator/lanedumps/host-model.md REALIZATION; the authoritative copy becomes the host-model book's *fn-hmc-realization* defconst (agreed 2026-10-03), from which planning/host-realization.json is generated. :retire, :window-acquire and :window-release and the P labels' sites are the deputy's to fill."
+ "realization_comment": "SEED rows from build/coordinator/lanedumps/host-model.md REALIZATION; the authoritative copy becomes the host-model book's *fn-hmc-realization* defconst (agreed 2026-10-03). :retire, :window-acquire and :window-release and the P labels' sites are the deputy's to fill."
 }
