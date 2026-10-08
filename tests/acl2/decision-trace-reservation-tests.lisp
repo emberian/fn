@@ -6,6 +6,7 @@
 (include-book "../../books/decision-trace-reservation")
 (include-book "../../books/connection-budget")
 (include-book "../../books/owner-credits")
+(include-book "must-fail-checked")
 
 (defconst *fn-dtrr-base* '(:heap 200 16 nil 1024 8))
 (defconst *fn-dtrr-big* (list (* 64 1024 1048576)))   ; a 64 GiB machine
@@ -60,3 +61,18 @@ path = \"/s\"
 ; a smaller ring costs less than a larger one
 (assert-event (<= (fn-dtrr-limit 67112960) (fn-dtrr-limit 1052672)))
 (assert-event (<= (fn-dtrr-limit 1052672) (fn-dtrr-limit 0)))
+
+; MUTATION of fn-dtrace-config-ring-octets-is-the-plans-ring: a ring-octets
+; function missing the 4,096 header.  The theorem's statement, with this
+; function in place of fn-dtrace-ring-octets, is not provable.
+(defun fn-dtrr-headerless-ring (plan)
+  (declare (xargs :guard t))
+  (if (fn-dtrace-planp plan) (* 1024 (fn-dtrace-plan-capacity plan)) 0))
+(must-fail-checked
+ (thm (equal (fn-dtrr-headerless-ring (fn-dtrace-config-plan octets image))
+             (let ((plan (fn-dtrace-config-plan octets image)))
+               (if (equal (fn-dtrace-plan-kind plan) :plan)
+                   (+ 4096 (* 1024 (fn-dtrace-plan-capacity plan)))
+                 0)))
+      :hints (("Goal" :in-theory (enable fn-dtrr-headerless-ring fn-dtrace-plan-kind))))
+ :unchecked "a refused proof is the claim")
