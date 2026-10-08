@@ -289,8 +289,9 @@ def findings(root: Path = ROOT, default_text: str | None = None,
                            f"{DTN_BUILD} loads names any more")
     out.extend(raw_findings(root, default_text, dtn_text,
                             DTN_RAW_REACH if reach is None else reach))
-    out.extend(include_findings(root, dtn_text))
-    out.extend(keystone_findings(root, default_text, default))
+    index = BookIndex(root)  # one parse of every book, shared by both checks
+    out.extend(include_findings(root, dtn_text, index))
+    out.extend(keystone_findings(root, default_text, default, index))
     return out
 
 
@@ -382,6 +383,7 @@ class BookIndex:
         self.root = root
         self._includes: dict[str, list[str]] = {}
         self._defs: dict[str, set[str]] = {}
+        self._codes: dict[str, str] = {}
         self.owner: dict[str, set[str]] = {}
         for path in sorted((root / "books").rglob("*.lisp")):
             rel = path.relative_to(root).as_posix()
@@ -389,7 +391,9 @@ class BookIndex:
                 self.owner.setdefault(name, set()).add(rel)
 
     def _code(self, rel: str) -> str:
-        return strip_code_keep_strings((self.root / rel).read_text(encoding="utf-8"))
+        if rel not in self._codes:
+            self._codes[rel] = strip_code_keep_strings((self.root / rel).read_text(encoding="utf-8"))
+        return self._codes[rel]
 
     def includes(self, rel: str) -> list[str]:
         if rel not in self._includes:
