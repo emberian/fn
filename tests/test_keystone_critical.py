@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+import os
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -34,6 +36,43 @@ P_FIXTURE = [
 
 def iface(**more):
     return dict({"class": "common-lisp-compliant", "subsystem": "store", "extraction": None}, **more)
+
+
+# Run this world fixture with an existing proof_repl session containing
+# books/defkeystone. It uses ACL2's actual translation and all-vars check;
+# Python does not approximate closedness or theorem-formula equality.
+OPEN_LEMMA_FIXTURE = """
+(progn
+ (defthm p7-critical-open-lemma (equal (car (cons x nil)) x) :rule-classes nil)
+ (defthm p7-critical-closed-lemma (equal (car (cons 'a nil)) 'a) :rule-classes nil)
+ (assert-event
+  (equal (car (fn-dt-lemma-problem 'fixture 'p7-critical-open-lemma
+                 '((x free-variable)) '(equal (car (cons x nil)) x) (w state)))
+         :lemma-open))
+ (assert-event
+  (equal (car (fn-dt-lemma-problem 'fixture 'p7-critical-open-lemma
+                 nil '(equal (car (cons x nil)) x) (w state)))
+         :lemma-open))
+ (assert-event
+  (equal (car (fn-dt-lemma-problem 'fixture 'p7-critical-open-lemma
+                 '((x 'a)) '(equal (car (cons x nil)) x) (w state)))
+         :lemma-differs))
+ (assert-event
+  (not (fn-dt-lemma-problem 'fixture 'p7-critical-closed-lemma
+                 '((x 'a)) '(equal (car (cons x nil)) x) (w state)))))
+"""
+
+
+class GroundLemmaWorld(unittest.TestCase):
+    @unittest.skipUnless(os.environ.get("FN_CRITICAL_PROOF_REPL"),
+                         "FN_CRITICAL_PROOF_REPL names a live defkeystone proof session")
+    def test_free_variable_lemma_is_refused_by_the_world(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "tools/proof_repl.py"), "send",
+             os.environ["FN_CRITICAL_PROOF_REPL"], OPEN_LEMMA_FIXTURE,
+             "--host", os.environ.get("FN_CRITICAL_PROOF_HOST", "persvati"), "--limit", "5"],
+            capture_output=True, text=True, timeout=60)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
 
 
 class Mapping(unittest.TestCase):
@@ -230,6 +269,33 @@ class Gate(unittest.TestCase):
             found, _ = self.run_gate([bad], [], {"k": self.full})
             self.assertTrue(any("HARD FAIL" in f for f in found), bad)
 
+    def test_campaign_reach_alone_does_not_supply_a_native_host_test(self):
+        def reachable(subject):
+            return True
+        reachable.campaign_tied = lambda subject: True
+        found, _ = self.run_gate([teeth("k")], [], {"k": self.full}, reachable=reachable)
+        self.assertTrue(any("requires a native campaign" in f for f in found), found)
+        native = self.root / "tests/test_native_cuts.py"
+        # A native-looking filename and a static verifier are not execution.
+        native.write_text("# fn-s\ndef host_rotation():\n    verify_log_cut_map()\n")
+        full = dict(self.full, host_test="tests/test_native_cuts.py::host_rotation")
+        found, _ = self.run_gate([teeth("k")], [], {"k": full}, reachable=reachable)
+        self.assertTrue(any("does not drive fault cuts" in f for f in found), found)
+        native.write_text("# fn-s\nimport subprocess\ndef host_rotation():\n"
+                          "    'FN_NATIVE_LOG_FAULT'\n    subprocess.run(['fn-host'])\n")
+        found, _ = self.run_gate([teeth("k")], [], {"k": full}, reachable=reachable)
+        self.assertTrue(any("does not drive fault cuts" in f for f in found), found)
+        native.write_text("# fn-s\nimport subprocess\ndef launch(fault):\n"
+                          "    return subprocess.run(['fn-host'], env={'FN_NATIVE_LOG_FAULT': fault})\n"
+                          "def host_rotation():\n    return launch(fault='log-copy-fenced')\n")
+        found, summary = self.run_gate([teeth("k")], [], {"k": full}, reachable=reachable)
+        self.assertEqual((found, summary["complete"]), ([], 1))
+        # Static verification elsewhere in a native module is still not the test.
+        native.write_text(native.read_text() + "def table_only():\n    verify_log_cut_map()\n")
+        found, _ = self.run_gate([teeth("k")], [], {"k": dict(full,
+                                 host_test="tests/test_native_cuts.py::table_only")}, reachable=reachable)
+        self.assertTrue(any("does not drive fault cuts" in f for f in found), found)
+
     def test_positive_witness_kind_and_current_certification_are_distinct(self):
         for mode in ("executable", "instance", "lemma"):
             with self.subTest(mode=mode):
@@ -310,6 +376,25 @@ class LowerStale(unittest.TestCase):
         self.assertEqual(sorted(dropped["owed:durability"]), ["demoted", "gone"])
         self.assertEqual(sorted(dropped["base:durability"]), ["demoted", "gone"])
         self.assertEqual(new_owed["live"], owed["live"])
+
+    def test_lower_complete_drops_only_current_full_packages(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "tests").mkdir()
+            (root / "tests/evidence.py").write_text("# fn-s host trace mutation")
+            full = {key: "tests/evidence.py::" + marker for key, marker in
+                    (("host_test", "host"), ("trace_witness", "trace"), ("mutation", "mutation"))}
+            owed = {n: {"class": "durability", "item": "PRF-1345"} for n in
+                    ("complete", "uncertified", "missing-host", "gone")}
+            current = {n: teeth(n) for n in owed if n != "gone"}
+            current["uncertified"]["certified"] = False
+            declared = {n: dict(full) for n in current}
+            del declared["missing-host"]["host_test"]
+            kept, dropped = kc.lower_complete(current, owed, declared, lambda s: True, root)
+            self.assertEqual(dropped, ["complete"])
+            self.assertEqual(kept, {n: row for n, row in owed.items() if n != "complete"})
+            self.assertEqual(kc.lower_complete(current, kept, declared, lambda s: True, root),
+                             (kept, []))
 
     def test_a_new_critical_is_never_added(self):
         current = {"fresh": teeth("fresh")}

@@ -9,13 +9,13 @@
   },
   "fn-lg-open-program-keeps-the-relation": {
    "subject": "fn-lg-open-program",
-   "host_test": "tests/campaign/test_native_operator_campaign.py::test_served_owner_cuts_stop_and_production_refusals",
+   "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
    "trace_witness": "tests/acl2/store-log-route-programs-tests.lisp::fn-lg-open-program-keeps-the-relation",
    "mutation": "tests/acl2/store-log-route-programs-tests.lisp::stale-kernel"
   },
   "fn-lgob-three-barrier-open-after-the-copy-is-the-five": {
    "subject": "fn-lg-open-program",
-   "host_test": "tests/campaign/test_native_operator_campaign.py::test_served_owner_cuts_stop_and_production_refusals",
+   "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
    "trace_witness": "tests/acl2/store-log-open-barriers-tests.lisp::fn-lgob-three-barrier-open-after-the-copy-is-the-five",
    "mutation": "tests/acl2/store-log-open-barriers-tests.lisp::skipped-replay-cut"
   },
