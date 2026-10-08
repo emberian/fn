@@ -4,7 +4,8 @@
  "id": "PCK-2C-HOST-WIRING",
  "notes": [
   "Owns the premise_audit --strict findings s-cpl (1abeeea95, train 28) introduces: fn-cpl-holdsp (preserved only), fn-cpl-payload-listp and fn-cpl-payloadp (established off the host path). They are expected until the host establishes them: the publication writes <store>/checkpoint.payloads through fn-cpl-write-frames, and the open seals by ref through fn-cpl-extent. Nothing on the host calls either yet.",
-  "Un-park condition: lane/s-pck-host's paged-checkpoint-open READY to S (s-pck-gen + s-cpl merged at dcb8df384; -open keystones signed by S 2026-10-08, statement-first). After that, phase 2c host wiring: driver for pagestore-exec sections 10-11, call sites io.lisp publish-steps and the recover open, owner.lisp publication, pgs-mem stobj rows in build*.lisp, .fnsc refused by name. Then natives via N and the schema-3 deletion cascade."
+  "Un-park condition: lane/s-pck-host's paged-checkpoint-open READY to S (s-pck-gen + s-cpl merged at dcb8df384; -open keystones signed by S 2026-10-08, statement-first). After that, phase 2c host wiring: driver for pagestore-exec sections 10-11, call sites io.lisp publish-steps and the recover open, owner.lisp publication, pgs-mem stobj rows in build*.lisp, .fnsc refused by name. Then natives via N and the schema-3 deletion cascade.",
+  "Train 28 statement audit (build/coordinator/audits/train28-statement-audit.txt): checkpoint-payloads.lisp's planning, compaction and writer theorems (:508, :666, :1045) and checkpoint-payloads-extent.lisp's descriptor (:141) are MODEL claims with no host caller. They become host claims only when 2c wires a host call to fn-cpl-write-frames / fn-cpl-extent, and each READY until then states them as model-only. Exit for the trailer-words constraint (checkpoint-payload-ref.lisp:92, fn-cpl-trailer-words-shape outside assumptions*.lisp): replaced by the concrete fn-cpl-trailer-words-impl with its digest equality (lane s-teeth28, or 2c at the latest)."
  ],
  "owner": "deputy-S",
  "severity": "high",
@@ -12,5 +13,5 @@
  "source": "s-cpl",
  "state": "deferred",
  "title": "Phase 2c: wire the paged checkpoint and the payload file into the host (publication and open), which establishes fn-cpl-holdsp, fn-cpl-payload-listp and fn-cpl-payloadp on the host path; until then those premises are established off the host path only.",
- "updated": "2026-10-08T05:00:00Z"
+ "updated": "2026-10-08T05:40:00Z"
 }
