@@ -25,17 +25,15 @@
 ; The host runs compiled code: every function it may reach is guard-verified.
 
 (assert-event
- (and (eq (symbol-class 'fn-arena$c-payload-len (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arena$c-get (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arena$c-payload (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arena$c-clear (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arn-write-octet (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arn-write (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arn-write-buffer (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arn-seal-entry (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arena$c-seal-list (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arena$c-seal-buffer (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-arn-buf-list-down (w state)) :common-lisp-compliant)
+ (and (eq (symbol-class 'fn-arena-bytes$c-len-of (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arena-bytes$c-inner-get (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arena-bytes$c-get-payload (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arena-bytes$c-clear (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arena-bytes$c-range-copy (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arena-bytes$c-range-push (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arena-bytes$c-seal-range (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arena-bytes$c-append1 (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-arena-bytes$c-seal-buffer (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-arn-seal-many (w state)) :common-lisp-compliant)))
 
 ; -----------------------------------------------------------------------------
@@ -223,10 +221,10 @@
 ; top level, so ground statements about them are theorems proved by
 ; evaluation, as in octets-stobj-tests.
 
-(defconst *pat-c* '((1 2 3 4 5 0 0 0) (0 3) (3 2) 2 5))
+(defconst *pat-c* '((0 3) (3 2) (1 2 3 4 5 0 0 0) 2 5))
 (defconst *pat-a* '((1 2 3) (4 5)))
 
-(assert-event (fn-arena$corr *pat-c* *pat-a*))
+(assert-event (fn-arena-bytes$corr *pat-c* *pat-a*))
 
 ; The range seal on the ground arena is the list seal of the slice.
 (defthm pat-w-seal-range-is-seal-list
@@ -237,104 +235,77 @@
 
 ; get: the positive witness, complete antecedent and conclusion.
 (defthm pat-w-get
-  (and (fn-arena$corr *pat-c* *pat-a*)
+  (and (fn-arena-bytes$corr *pat-c* *pat-a*)
        (natp 1) (< 1 (fn-arena$a-count *pat-a*)) (natp 1) (< 1 (fn-arena$a-payload-len 1 *pat-a*))
-       (equal (fn-arena$c-get 1 1 *pat-c*) (fn-arena$a-get 1 1 *pat-a*))
-       (equal (fn-arena$c-get 1 1 *pat-c*) 5))
+       (equal (fn-arena-bytes$c-inner-get 1 1 *pat-c*) (fn-arena$a-get 1 1 *pat-a*))
+       (equal (fn-arena-bytes$c-inner-get 1 1 *pat-c*) 5))
   :rule-classes nil)
 
 ; get without the correspondence: an abstraction that is not the slices.
 (defconst *pat-a-wrong* '((1 2 3) (9 9)))
 (defthm pat-w-get-without-corr
-  (and (not (fn-arena$corr *pat-c* *pat-a-wrong*))
+  (and (not (fn-arena-bytes$corr *pat-c* *pat-a-wrong*))
                    (natp 1) (< 1 (fn-arena$a-count *pat-a-wrong*)) (natp 0)
                    (< 0 (fn-arena$a-payload-len 1 *pat-a-wrong*))
-                   (not (equal (fn-arena$c-get 1 0 *pat-c*)
+                   (not (equal (fn-arena-bytes$c-inner-get 1 0 *pat-c*)
                                (fn-arena$a-get 1 0 *pat-a-wrong*))))
   :rule-classes nil)
 (must-fail-checked
  (defthm pat-r-get-without-corr
-   (equal (fn-arena$c-get 1 0 *pat-c*) (fn-arena$a-get 1 0 *pat-a-wrong*))
+   (equal (fn-arena-bytes$c-inner-get 1 0 *pat-c*) (fn-arena$a-get 1 0 *pat-a-wrong*))
    :rule-classes nil))
 
-; get without the octet bound: past the payload the array holds the next
-; payload's first octet, the abstraction holds nothing.
+; get without the octet bound: past the payload the executable answers 0, the
+; abstraction holds nothing (nil).
 (defthm pat-w-get-without-bound
-  (and (fn-arena$corr *pat-c* *pat-a*)
+  (and (fn-arena-bytes$corr *pat-c* *pat-a*)
                    (natp 0) (< 0 (fn-arena$a-count *pat-a*)) (natp 3)
                    (not (< 3 (fn-arena$a-payload-len 0 *pat-a*)))
-                   (not (equal (fn-arena$c-get 0 3 *pat-c*)
+                   (not (equal (fn-arena-bytes$c-inner-get 0 3 *pat-c*)
                                (fn-arena$a-get 0 3 *pat-a*))))
   :rule-classes nil)
 (must-fail-checked
  (defthm pat-r-get-without-bound
-   (equal (fn-arena$c-get 0 3 *pat-c*) (fn-arena$a-get 0 3 *pat-a*))
+   (equal (fn-arena-bytes$c-inner-get 0 3 *pat-c*) (fn-arena$a-get 0 3 *pat-a*))
    :rule-classes nil))
 
-; get without the handle bound: a handle at the count reads the spare cells.
-(defconst *pat-c-spare* '((1 2 3 4 5 7 0 0) (0 3 5) (3 2 1) 2 5))
+; get without the handle bound: a handle at the count reads no cell (0), the
+; abstraction holds nothing (nil), though the columns have a spare cell.
+(defconst *pat-c-spare* '((0 3 5) (3 2 1) (1 2 3 4 5 7 0 0) 2 5))
 (defthm pat-w-get-without-handle-bound
-  (and (fn-arena$corr *pat-c-spare* *pat-a*)
+  (and (fn-arena-bytes$corr *pat-c-spare* *pat-a*)
                    (natp 2) (not (< 2 (fn-arena$a-count *pat-a*))) (natp 0)
-                   (not (equal (fn-arena$c-get 2 0 *pat-c-spare*)
+                   (not (equal (fn-arena-bytes$c-inner-get 2 0 *pat-c-spare*)
                                (fn-arena$a-get 2 0 *pat-a*))))
   :rule-classes nil)
 (must-fail-checked
  (defthm pat-r-get-without-handle-bound
-   (equal (fn-arena$c-get 2 0 *pat-c-spare*) (fn-arena$a-get 2 0 *pat-a*))
+   (equal (fn-arena-bytes$c-inner-get 2 0 *pat-c-spare*) (fn-arena$a-get 2 0 *pat-a*))
    :rule-classes nil))
 
-; get without (natp i): a negative offset reads the previous payload's
-; last octet where the abstraction reads the payload's first.
+; get without (natp i): a negative index reads the pool cell before the
+; payload where the abstraction reads the payload's first octet.
 (defthm pat-w-get-without-natp-i
-  (and (fn-arena$corr *pat-c* *pat-a*)
+  (and (fn-arena-bytes$corr *pat-c* *pat-a*)
                    (natp 1) (< 1 (fn-arena$a-count *pat-a*)) (not (natp -1))
                    (< -1 (fn-arena$a-payload-len 1 *pat-a*))
-                   (not (equal (fn-arena$c-get 1 -1 *pat-c*)
+                   (not (equal (fn-arena-bytes$c-inner-get 1 -1 *pat-c*)
                                (fn-arena$a-get 1 -1 *pat-a*))))
   :rule-classes nil)
 (must-fail-checked
  (defthm pat-r-get-without-natp-i
-   (equal (fn-arena$c-get 1 -1 *pat-c*) (fn-arena$a-get 1 -1 *pat-a*))
+   (equal (fn-arena-bytes$c-inner-get 1 -1 *pat-c*) (fn-arena$a-get 1 -1 *pat-a*))
    :rule-classes nil))
 
-; get's (natp h) cannot be falsified: a handle that is not a natural reads
-; as handle 0 on both sides.  The weakened theorem, proved.
-(local
- (defthm pat-nth-of-non-natp
-   (implies (not (natp h))
-            (equal (nth h x) (car x)))
-   :hints (("Goal" :in-theory (enable nth)))))
-
-(local
- (defthm pat-nth-0
-   (equal (nth 0 x) (car x))
-   :hints (("Goal" :in-theory (enable nth)))))
-
-(defthm pat-w-get-needs-no-natp-h
-  (implies (and (fn-arena$corr fn-arena$c fn-arena)
-                (< h (fn-arena$a-count fn-arena))
-                (natp i) (< i (fn-arena$a-payload-len h fn-arena)))
-           (equal (fn-arena$c-get h i fn-arena$c) (fn-arena$a-get h i fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :cases ((natp h)))
-          ("Subgoal 2" :in-theory (e/d (fn-arena$corr) (nth fn-arn-slices fn-arn-nth-of-slices))
-           :use ((:instance fn-arn-nth-of-slices
-                            (h 0) (k 0) (count (nth 3 fn-arena$c)) (off (nth 1 fn-arena$c))
-                            (size (nth 2 fn-arena$c)) (buf (nth 0 fn-arena$c)))
-                 (:instance fn-arn-rangesp-at
-                            (h 0) (k 0) (count (nth 3 fn-arena$c)) (off (nth 1 fn-arena$c))
-                            (size (nth 2 fn-arena$c)) (top (nth 4 fn-arena$c)))
-                 (:instance fn-oct-nth-of-list-from
-                            (i (car (nth 1 fn-arena$c)))
-                            (n (+ (car (nth 1 fn-arena$c)) (car (nth 2 fn-arena$c))))
-                            (k i) (buf (nth 0 fn-arena$c)))))
-          ("Subgoal 1" :use ((:instance fn-arena-bytes-get{correspondence})))))
+; get's (natp h) is not exercised here: the hand byte array's relation could be
+; shown not to need it (a handle that is not a natural reads as handle 0 on both
+; sides); the generated foundation's reader is total over the handle and the
+; generator proves {guard-thm} and {correspondence} at the export's own guard.
 
 ; seal-list: the positive witness on the ground arena.
 (defthm pat-w-seal-list
-  (and (fn-arena$corr *pat-c* *pat-a*) (fn-cbor-octet-listp '(6 7 8))
-       (fn-arena$corr (fn-arena$c-seal-list '(6 7 8) *pat-c*)
+  (and (fn-arena-bytes$corr *pat-c* *pat-a*) (fn-cbor-octet-listp '(6 7 8))
+       (fn-arena-bytes$corr (fn-arena-bytes$c-append1 '(6 7 8) *pat-c*)
                       (fn-arena$a-seal-list '(6 7 8) *pat-a*))
        (equal (fn-arena$a-seal-list '(6 7 8) *pat-a*) '((1 2 3) (4 5) (6 7 8))))
   :rule-classes nil)
@@ -343,22 +314,22 @@
 ; Assert both literal hypotheses and the complete concrete/logical relation
 ; after a nonempty buffer is sealed into an already nonempty arena.
 (defthm pat-w-seal-buffer-correspondence
-  (and (fn-arena$corr *pat-c* *pat-a*)
+  (and (fn-arena-bytes$corr *pat-c* *pat-a*)
        (fn-octets-p '(6 7 8))
-       (fn-arena$corr (fn-arena$c-seal-buffer '(6 7 8) *pat-c*)
+       (fn-arena-bytes$corr (fn-arena-bytes$c-seal-buffer '(6 7 8) *pat-c*)
                      (fn-arena$a-seal-buffer '(6 7 8) *pat-a*)))
   :rule-classes nil)
 
 ; seal-list without octets: the array cannot hold 300 and the concrete
 ; recognizer fails; the abstraction still appends.
 (defthm pat-w-seal-list-without-octets
-  (and (fn-arena$corr *pat-c* *pat-a*) (not (fn-cbor-octet-listp '(300)))
-                   (not (fn-arena$corr (fn-arena$c-seal-list '(300) *pat-c*)
+  (and (fn-arena-bytes$corr *pat-c* *pat-a*) (not (fn-cbor-octet-listp '(300)))
+                   (not (fn-arena-bytes$corr (fn-arena-bytes$c-append1 '(300) *pat-c*)
                                        (fn-arena$a-seal-list '(300) *pat-a*))))
   :rule-classes nil)
 (must-fail-checked
  (defthm pat-r-seal-list-without-octets
-   (fn-arena$corr (fn-arena$c-seal-list '(300) *pat-c*)
+   (fn-arena-bytes$corr (fn-arena-bytes$c-append1 '(300) *pat-c*)
                   (fn-arena$a-seal-list '(300) *pat-a*))
    :rule-classes nil))
 

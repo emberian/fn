@@ -180,3 +180,252 @@
 (defthmd adt-between-whole
   (implies (true-listp a) (equal (adt-between 0 (len a) a) a))
   :hints (("Goal" :use (:instance adt-between-nthcdr (i 0)) :in-theory (union-theories (disable adt-between adt-between-nthcdr) (quote (nthcdr))))))
+
+; -----------------------------------------------------------------------------
+; The scalar :octets vocabulary (`def-representation' :exports roles
+; payload-len, inner-get, seal-buffer and seal-range).  The columnar
+; layout of one :octets field is the offset column 0, the length column 1,
+; the pool 2, the count 3 and the fill 4; what the correspondence says of
+; one row, proved once here for the schema ((:octets)).
+
+(defthm adt-cars-of-wrap1
+  (equal (adt-cars (adt-wrap1 a)) (true-list-fix a))
+  :hints (("Goal" :in-theory (enable adt-cars adt-wrap1))))
+
+(local
+ (defun adt-sn-ind (i off n)
+   (if (zp i) (list off n) (adt-sn-ind (1- i) (1+ off) (1- n)))))
+
+; Cell I of a slice of the pool is cell OFF+I of the pool.
+(defthm adt-nth-of-slice
+  (implies (and (natp off) (natp n) (natp i) (< i n))
+           (equal (nth i (adt-slice pool off n)) (nth (+ off i) pool)))
+  :hints (("Goal" :in-theory (enable adt-slice) :induct (adt-sn-ind i off n)
+                  :expand ((adt-slice pool off n)))))
+
+(local
+ (defthm adt-so-nth-of-true-list-fix
+   (equal (nth i (true-list-fix a)) (nth i a))
+   :hints (("Goal" :in-theory (enable nth true-list-fix)))))
+
+(local
+ (defthm adt-so-len-of-true-list-fix
+   (equal (len (true-list-fix a)) (len a))))
+
+(local
+ (defthm adt-so-unfold
+   (implies (adt-corr '((:octets)) c (adt-wrap1 a))
+            (and (adt-ocol-corr (nth 0 c) (nth 1 c) (nth 2 c) (nth 4 c) 0 (true-list-fix a))
+                 (adt-fill-okp 2 c) (equal (nth 3 c) (len a))))
+   :hints (("Goal" :in-theory (e/d (adt-corr adt-fields-corr adt-field-corr adt-octets-kind-p
+                                             adt-kind-width adt-ncols adt-cars-of-wrap1)
+                                   (adt-ocol-corr))))))
+
+(local
+ (defthm adt-so-fill
+   (implies (adt-corr '((:octets)) c (adt-wrap1 a))
+            (and (natp (nth 4 c)) (<= (nth 4 c) (len (nth 2 c)))))
+   :rule-classes nil
+   :hints (("Goal" :use adt-so-unfold :in-theory (e/d (adt-fill-okp) (adt-so-unfold))))))
+
+; Row H of a scalar :octets instance: its offset and length are naturals in
+; the columns, the row lies in the pool, the length column holds the length
+; of the payload, and the pool holds its octets at the offset.
+(defthm adt-corr-scalar-octets-row
+  (implies (and (adt-corr '((:octets)) c (adt-wrap1 a)) (natp h) (< h (len a)))
+           (and (natp (nth h (nth 0 c))) (natp (nth h (nth 1 c)))
+                (< h (len (nth 0 c))) (< h (len (nth 1 c)))
+                (<= (+ (nth h (nth 0 c)) (nth h (nth 1 c))) (len (nth 2 c)))
+                (equal (nth h (nth 1 c)) (len (nth h a)))
+                (implies (and (natp i) (< i (len (nth h a))))
+                         (equal (nth (+ (nth h (nth 0 c)) i) (nth 2 c)) (nth i (nth h a))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable adt-ocol-corr-get-0 adt-slice adt-len-of-slice adt-ocol-corr
+                                      adt-nth-of-slice adt-fill-okp)
+           :use (adt-so-unfold adt-so-fill
+                 (:instance adt-ocol-corr-get-0 (offs (nth 0 c)) (lens (nth 1 c)) (pool (nth 2 c))
+                            (fl (nth 4 c)) (v (true-list-fix a)) (m h))
+                 (:instance adt-len-of-slice (pool (nth 2 c)) (off (nth h (nth 0 c)))
+                            (n (nth h (nth 1 c))))
+                 (:instance adt-nth-of-slice (pool (nth 2 c)) (off (nth h (nth 0 c)))
+                            (n (nth h (nth 1 c)))))
+           :do-not-induct t)))
+
+; The octets [A, B) of a list (`adt-between') are the take of the drop.
+(local
+ (defthmd adt-so-nth-is-car-nthcdr
+   (equal (nth a x) (car (nthcdr a x)))
+   :hints (("Goal" :in-theory (enable nth nthcdr)))))
+
+(local
+ (defthmd adt-so-nthcdr-add1
+   (implies (natp a) (equal (nthcdr (+ 1 a) x) (cdr (nthcdr a x))))
+   :hints (("Goal" :in-theory (enable nthcdr)))))
+
+(defthmd adt-between-is-take-nthcdr
+  (implies (and (natp a) (natp b) (<= a b))
+           (equal (adt-between a b x) (take (- b a) (nthcdr a x))))
+  :hints (("Goal" :induct (adt-between a b x)
+                  :in-theory (enable adt-between adt-so-nth-is-car-nthcdr adt-so-nthcdr-add1)
+                  :expand ((take (- b a) (nthcdr a x))))))
+
+(defthm adt-len-of-between
+  (implies (and (natp a) (natp b) (<= a b)) (equal (len (adt-between a b x)) (- b a)))
+  :hints (("Goal" :in-theory (enable adt-between))))
+
+(defthmd adt-take-len
+  (implies (true-listp x) (equal (take (len x) x) x)))
+
+(defthm adt-true-listp-of-between
+  (true-listp (adt-between i n a))
+  :hints (("Goal" :in-theory (enable adt-between))))
+
+(local
+ (defun adt-bt-ind (j m)
+   (if (zp m) j (adt-bt-ind (+ 1 j) (- m 1)))))
+
+(defthm adt-between-take
+  (implies (and (natp j) (natp m) (natp n) (<= (+ j m) n))
+           (equal (take m (adt-between j n a)) (adt-between j (+ j m) a)))
+  :hints (("Goal" :induct (adt-bt-ind j m)
+           :in-theory (enable adt-between))))
+
+(defthm adt-between-nthcdr-m
+  (implies (and (natp j) (natp m) (natp n) (<= (+ j m) n))
+           (equal (nthcdr m (adt-between j n a)) (adt-between (+ j m) n a)))
+  :hints (("Goal" :induct (adt-bt-ind j m)
+           :in-theory (enable adt-between))))
+
+; The pool write of the cells [J, N) of a list A at the octet I, a pool page
+; at a time (the executable NAME$C-RANGE-COPY): the cells that fit in the
+; page of I go to that page in one step, the rest from the next page on.
+; `adt-pg-poolw-cs-is-poolw': the octet-by-octet write of the same cells
+; (`adt-pg-poolw', which NAME$C-POOLW is bridged to).
+(defun adt-pg-poolw-cs (i j n a c)
+  (declare (xargs :measure (nfix (- n j)) :verify-guards nil
+                  :hints (("Goal" :use ((:instance adt-pg-mod-below (n i) (r 16384))
+                                (:instance adt-pg-mod-integerp (n i) (r 16384)))
+                           :in-theory (disable floor mod)))))
+  (if (and (natp i) (natp j) (natp n) (< j n))
+      (let ((m (min (- n j) (- 16384 (mod i 16384)))))
+        (adt-pg-poolw-cs (+ i m) (+ j m) n a
+                         (adt-pg-page-write (floor i 16384) (mod i 16384)
+                                            (adt-between j (+ j m) a) c)))
+    c))
+
+(defthm adt-pg-poolw-cs-is-poolw
+  (implies (and (natp i) (natp j) (natp n))
+           (equal (adt-pg-poolw-cs i j n a c)
+                  (adt-pg-poolw i (adt-between j n a) 16384 c)))
+  :hints (("Goal" :induct (adt-pg-poolw-cs i j n a c)
+           :in-theory (disable floor mod))
+          ("Subgoal *1/1" :use ((:instance adt-pg-poolw-chunk (bytes (adt-between j n a)))
+                                (:instance adt-between-take (m (min (- n j) (- 16384 (mod i 16384)))))
+                                (:instance adt-between-nthcdr-m (m (min (- n j) (- 16384 (mod i 16384))))))
+           :in-theory (e/d (adt-between-step) (floor mod adt-between-take adt-between-nthcdr-m)))
+          ("Subgoal *1/2" :in-theory (enable adt-pg-poolw adt-between))))
+
+(local
+ (defthm adt-so-octetsp-nth
+   (implies (and (adt-octetsp x) (natp a) (< a (len x))) (unsigned-byte-p 8 (nth a x)))
+   :hints (("Goal" :in-theory (enable adt-octetsp nth)))))
+
+(local
+ (defthmd adt-so-octetsp-car-nthcdr
+   (implies (and (adt-octetsp x) (natp a) (< a (len x)))
+            (unsigned-byte-p 8 (car (nthcdr a x))))
+   :hints (("Goal" :use adt-so-octetsp-nth :in-theory (e/d (adt-so-nth-is-car-nthcdr)
+                                                           (adt-so-octetsp-nth))))))
+
+(local
+ (defun adt-so-ind (n a) (if (zp n) a (adt-so-ind (1- n) (1+ a)))))
+
+; A slice of an octet list that lies within it is an octet list.
+(defthmd adt-octetsp-of-take-nthcdr
+  (implies (and (adt-octetsp x) (natp a) (natp n) (<= (+ a n) (len x)))
+           (adt-octetsp (take n (nthcdr a x))))
+  :hints (("Goal" :induct (adt-so-ind n a)
+                  :in-theory (enable adt-octetsp adt-so-nth-is-car-nthcdr adt-so-nthcdr-add1
+                                     adt-so-octetsp-car-nthcdr)
+                  :expand ((take n (nthcdr a x))))))
+
+; A payload of a scalar :octets sequence is an octet list, so a true list
+; (the guard of `nth' into it).
+(defthm adt-octetsp-of-nth-of-scalar-seq
+  (implies (and (adt-scalar-seq-p '(:octets) a) (natp h) (< h (len a)))
+           (adt-octetsp (nth h a)))
+  :hints (("Goal" :in-theory (enable adt-scalar-seq-p adt-val-okp nth))))
+
+(defthm adt-true-listp-of-nth-of-scalar-seq
+  (implies (and (adt-scalar-seq-p '(:octets) a) (natp h) (< h (len a)))
+           (true-listp (nth h a)))
+  :hints (("Goal" :use adt-octetsp-of-nth-of-scalar-seq
+                  :in-theory (disable adt-octetsp-of-nth-of-scalar-seq))))
+
+; The paged foundation's row of a scalar :octets sequence: the length and
+; offset columns and the pool, read through the paged readers
+; (`adt-pg-rget', `adt-pg-pget': the directory and page walks the generated
+; NAME$C-RGET0/1 and NAME$C-PGET bridge to).  The flat row lemma above, over
+; the flat view, with the paged reads equal to the view's `nth'.
+(defthm adt-pg-corr-scalar-octets-row
+  (implies (and (adt-pg-corr '((:octets)) *adt-pg-rows* *adt-pg-octets* c (adt-wrap1 a))
+                (natp h) (< h (len a)))
+           (and (natp (adt-pg-rget 0 h *adt-pg-rows* c))
+                (equal (adt-pg-rget 1 h *adt-pg-rows* c) (len (nth h a)))
+                (implies (and (natp i) (< i (len (nth h a))))
+                         (equal (adt-pg-pget (+ (adt-pg-rget 0 h *adt-pg-rows* c) i) *adt-pg-octets* c)
+                                (nth i (nth h a))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (adt-pg-corr adt-pg-okp)
+                                  (adt-corr adt-pg-rget adt-pg-pget adt-pg-rokp adt-pg-pokp adt-pg-flat
+                                   adt-pg-col adt-pg-rtab adt-pg-ptab))
+           :use ((:instance adt-corr-scalar-octets-row (c (adt-pg-flat '((:octets)) c)))
+                 adt-pg-corr-count-bound
+                 (:instance adt-pg-rget-is-nth (m 2) (r *adt-pg-rows*) (ci 0) (n h))
+                 (:instance adt-pg-rget-is-nth (m 2) (r *adt-pg-rows*) (ci 1) (n h))
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 0))
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 1))
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 2))
+                 (:instance adt-pg-len-col-pokp (q *adt-pg-octets*)))
+           :do-not-induct t)))
+
+; Every check the executables make on a row's way to its octets holds for a
+; row of the image and an octet of its payload: the row's page has the offset
+; and length columns past the row's index, and the pool page of the octet has
+; the octet's index.  (Corr gives full pages and the row lying in the pool.)
+(defthm adt-pg-corr-scalar-octets-row-in-pages
+  (implies (and (adt-pg-corr '((:octets)) *adt-pg-rows* *adt-pg-octets* c (adt-wrap1 a))
+                (natp h) (< h (len a))
+                (natp i) (< i (len (nth h a))))
+           (and (< (mod h *adt-pg-rows*) (adt-pg-rpage-len 0 (floor h *adt-pg-rows*) c))
+                (< (mod h *adt-pg-rows*) (adt-pg-rpage-len 1 (floor h *adt-pg-rows*) c))
+                (equal (nfix (adt-pg-rget 0 h *adt-pg-rows* c)) (adt-pg-rget 0 h *adt-pg-rows* c))
+                (< (mod (+ i (adt-pg-rget 0 h *adt-pg-rows* c)) *adt-pg-octets*)
+                   (len (adt-pg-page-bytes (floor (+ i (adt-pg-rget 0 h *adt-pg-rows* c)) *adt-pg-octets*) c)))))
+  :hints (("Goal" :in-theory (e/d (adt-pg-corr adt-pg-okp)
+                                  (adt-corr adt-pg-rget adt-pg-pget adt-pg-rokp adt-pg-pokp adt-pg-flat
+                                   adt-pg-col adt-pg-rtab adt-pg-ptab adt-pg-rpage-len floor mod))
+           :use ((:instance adt-corr-scalar-octets-row (c (adt-pg-flat '((:octets)) c)))
+                 adt-pg-corr-count-bound
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 0))
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 1))
+                 (:instance adt-pg-nth-flat (s '((:octets))) (m 2))
+                 (:instance adt-pg-len-col-rokp (m 2) (r *adt-pg-rows*) (ci 0))
+                 (:instance adt-pg-len-col-pokp (q *adt-pg-octets*))
+                 (:instance adt-pg-corr-scalar-octets-row)
+                 (:instance adt-pg-floor-below (n h) (r *adt-pg-rows*) (np (nth 4 c)))
+                 (:instance adt-pg-floor-below (n (+ i (adt-pg-rget 0 h *adt-pg-rows* c))) (r *adt-pg-octets*) (np (nth 5 c)))
+                 (:instance adt-pg-mod-below (n h) (r *adt-pg-rows*))
+                 (:instance adt-pg-rpage-len-full (m 2) (r *adt-pg-rows*) (ci 0) (k (floor h *adt-pg-rows*)))
+                 (:instance adt-pg-rpage-len-full (m 2) (r *adt-pg-rows*) (ci 1) (k (floor h *adt-pg-rows*)))
+                 (:instance adt-pg-page-len-full (q *adt-pg-octets*) (k (floor (+ i (adt-pg-rget 0 h *adt-pg-rows* c)) *adt-pg-octets*)))
+                 (:instance adt-pg-mod-below (n (+ i (adt-pg-rget 0 h *adt-pg-rows* c))) (r *adt-pg-octets*)))
+           :do-not-induct t)))
+
+;; The rule that collapses two writes to one position (books/proto/adt-lib.lisp)
+;; is withdrawn from includers: it reaches every book above the arena
+;; (payload-arena-bytes includes this library) and reshapes the nested
+;; `f-put-global' terms the owner books' guard proofs read through
+;; `fn-sg-state-p1-of-put-global' (books/owner-connection-state.lisp).  The
+;; generator enables it for its own proofs (`rep-instance-events+').
+(in-theory (disable adt-update-nth-update-nth-same))

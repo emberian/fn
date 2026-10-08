@@ -525,7 +525,11 @@
            (pgs-lpages-ok (pgs-dirty-lpages (pck-shift k (adt-tp-dirty w n)))
                           (+ k (len (adt-tp-pages w))) k))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (adt-tp-dirty) (pck-lp-shift-number pck-floor-le-len-pages adt-tp-pages-long))
+           ; pgs-lpages-ok and pgs-dirty-lpages are named: certified inside the
+           ; owner image (owner@books:books/owner) their definitions are not
+           ; open here, as in the plain world.
+           :in-theory (e/d (adt-tp-dirty pgs-lpages-ok pgs-dirty-lpages)
+                           (pck-lp-shift-number pck-floor-le-len-pages adt-tp-pages-long))
            :use ((:instance pck-lp-shift-number
                             (k0 (floor (len w) *pgs-page-words*)) (l (len (adt-tp-pages w)))
                             (ps (adt-tp-pages (append (nthcdr (* *pgs-page-words* (floor (len w) *pgs-page-words*)) w) n))))
