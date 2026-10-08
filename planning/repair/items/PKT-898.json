@@ -1,0 +1,21 @@
+{
+ "id": "PKT-898",
+ "category": "check-lane",
+ "owner": "deputy-P",
+ "severity": "medium",
+ "source": "Codex p-ocs-reach, supplied train-47 base 530f44d08",
+ "state": "open",
+ "title": "The source-only reach unit gate predates the held-plan repair and is red on generated arena exports and cross-lane reach findings",
+ "file": "tests/test_reach_check.py",
+ "locus": "gates-tests-packaging",
+ "disposition": "LOCAL",
+ "evidence": "python3.12 -m unittest -v tests.test_ledger tests.test_keystone_emit tests.test_reach_check: 247 tests, 3 failures (177.536 s); /tmp/p7/ocs-unit-retry.log",
+ "notes": [
+  "Codex: GraphTests.test_a_defstobj_creator_is_reached_through_the_abstract_creator expects create-fn-arena$p, and SubjectRuleTests.test_an_absstobj_export_reaches_the_attached_implementation expects fn-arena-paged-get. The current payload-arena-paged book uses def-representation; the source graph does not expand it. Preserve the checks by connecting them to the generator expansion or the record world, not by accepting absence.",
+  "RatchetTests.test_the_tree_is_at_its_baseline reports the 2 PRF-1343 growth orphans already owned by C in PRL-GROWTH-HOST-WIRING, plus 5 NEEDS --world events in PRF-1020/363/367 through fn-proto-archive-command-available-cat. The PRF-1020 world-route finding is already described in REACH-PROSE-OWNER-SERVED-SEAMS. Wire the growth path and supply a current closure world to the strict gate; never rebaseline.",
+  "Control: git diff 530f44d08 -- tools/reach_check.py tests/test_reach_check.py books/payload-arena-paged.lisp books/page-read-ledger-rowsum.lisp host/page-read-host.lisp is empty. No original gate/test/ratchet was changed. The 3 assigned held-plan events are now hosted or retired to hosted successors with proofs implying the old statements.",
+  "The scoped farm run run-20261008T162309Z-2d01 passed all 16 books at 2 jobs. Touched books: owner-time-held 2.170 s, owner-time-held-tests 0.415 s. Untouched dependencies exceeded D26: host/owner-host 90.795 s, host/store-node-host 23.835 s, owner-recovery-retain 17.617 s, owner-cursor-domain 12.792 s, post-prepare-catalog 10.041 s. These costs are not claimed as within the ten-second bar."
+ ],
+ "fix": "Coordinate the existing growth-host and generated/world-reach owners; rerun the unchanged complete test_reach_check suite at their convergence. This blocks the all-green lane gate, not the proved held-plan correspondence.",
+ "updated": "2026-10-08T16:31:00Z"
+}

@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
+(include-book "bp-report-observe")
+(include-book "bp-report-guards")
 (include-book "bp-handoff-status")
 (include-book "anchor-wire")
 (include-book "anchor-servers")
@@ -194,4 +196,3 @@
 (include-book "owner-store-budget")
 (include-book "store-identity-reserve")
 (include-book "owner-identity-prepare")
-(include-book "consumer-event-charge")

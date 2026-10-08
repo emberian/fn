@@ -92,6 +92,14 @@ else
   done
   [ -n "$blake3" ] || {
     echo "install-native: no lib/libfn-blake3 beside the core (tools/build_blake3.sh)" >&2; exit 4; }
+  # A built (unfrozen) image loads the shipped OpenSSL from FN_OPENSSL_PREFIX,
+  # the prefix its launcher exports (D64), lib64 or lib as the freeze reads it.
+  openssl_lib=
+  for d in "${FN_OPENSSL_PREFIX:-}/lib64" "${FN_OPENSSL_PREFIX:-}/lib"; do
+    if [ -n "${FN_OPENSSL_PREFIX:-}" ] && [ -s "$d/libcrypto.so.3" ] && [ -s "$d/libssl.so.3" ]; then
+      openssl_lib=$d; break
+    fi
+  done
   frozen=no
 fi
 [ -s "$launcher_core" ] || { echo "install-native: generated launcher core is unavailable" >&2; exit 4; }

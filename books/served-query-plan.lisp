@@ -38,6 +38,22 @@
   (and (atom (fn-splan-cur plan))
        (fn-qplan-rest-at-cursorp (fn-splan-rest plan))))
 
+; The cursor the plan stops at is a LIST controller: true of exactly the plans
+; whose next quantum is fn-lst-batch's (the first cursor effect, past octet-less
+; effects, is a LIST effect).
+(defun fn-qplan-rest-lst-cursorp (rest)
+  (declare (xargs :guard t))
+  (if (consp rest)
+      (cond ((fn-qplan-cursor-effectp (car rest)) (fn-lst-effectp (car rest)))
+            ((consp (fn-srb-effect-octets (car rest))) nil)
+            (t (fn-qplan-rest-lst-cursorp (cdr rest))))
+    nil))
+
+(defun fn-qplan-lst-cursorp (plan)
+  (declare (xargs :guard t))
+  (and (atom (fn-splan-cur plan))
+       (fn-qplan-rest-lst-cursorp (fn-splan-rest plan))))
+
 (defun fn-qplan-rest-head-len (rest)
   (declare (xargs :guard t))
   (if (consp rest)
@@ -76,7 +92,7 @@
       (cond
        ((fn-lst-effectp (car rest))
         (mv-let (octets next calls state)
-          (fn-lst-step (fn-cur-at 1 (car rest)) w w fn-cat)
+          (fn-lst-batch (fn-cur-at 1 (car rest)) w w fn-cat)
           (declare (ignore calls state))
           (mv :ok (revappend acc
                              (fn-splan-reply-then
@@ -101,7 +117,7 @@
        (cond
         ((fn-lst-effectp (car rest))
          (mv-let (octets next calls state)
-           (fn-lst-step (fn-cur-at 1 (car rest)) w w fn-cat)
+           (fn-lst-batch (fn-cur-at 1 (car rest)) w w fn-cat)
            (declare (ignore calls state))
            (mv :ok (fn-splan-reply-then
                     octets
@@ -197,7 +213,7 @@
   :rule-classes :linear
   :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)
            :in-theory (e/d (fn-qplan-rest-cursor-step fn-qplan-rest-empties)
-                           (fn-lst-step fn-lst-livep fn-lst-effect fn-splan-rest-cursor-step)))))
+                           (fn-lst-batch fn-lst-livep fn-lst-effect fn-splan-rest-cursor-step)))))
 
 (defthm fn-qplan-cursor-step-adds-no-empty-effect
   (<= (fn-qplan-empties (mv-nth 1 (fn-qplan-cursor-step p wl fn-arena fn-cat)))
@@ -258,7 +274,7 @@
             :in-theory (e/d (fn-qplan-rest-cursor-step fn-qplan-rest-no-lstp
                              fn-qplan-cursor-effectp)
                             (fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep
-                             fn-nnw-stream-batch fn-lst-step fn-lst-remaining fn-lst-livep
+                             fn-nnw-stream-batch fn-lst-batch fn-lst-remaining fn-lst-livep
                              fn-nntp-reply-effect fn-lst-effect mv-nth fn-splan-cursor-effectp
                              fn-nnw-meta-effectp fn-ovw-cursor-effect fn-nnw-meta-effect))
             :expand ((fn-splan-rest-cursor-step rest w fn-arena fn-cat)
@@ -352,24 +368,31 @@
                                       fn-lst-progress-reference)))))
 
 (local
+ (defthm fn-qplan-mv-second
+   (equal (mv-nth 1 x) (cadr x))
+   :hints (("Goal" :in-theory (enable mv-nth)))))
+
+(local (in-theory (disable fn-qplan-mv-second)))
+
+(local
  (defthm fn-qplan-lst-step-assoc
-   (equal (append (car (fn-lst-step cur visits bytes fn-cat))
-                  (fn-lst-remaining (cadr (fn-lst-step cur visits bytes fn-cat)) fn-cat)
+   (equal (append (car (fn-lst-batch cur visits bytes fn-cat))
+                  (fn-lst-remaining (cadr (fn-lst-batch cur visits bytes fn-cat)) fn-cat)
                   z)
           (append (fn-lst-remaining cur fn-cat) z))
-   :hints (("Goal" :use fn-lst-step-keeps-remaining
-            :in-theory (e/d (mv-nth) (fn-lst-step-keeps-remaining fn-lst-step))))))
+   :hints (("Goal" :use fn-lst-batch-residual
+            :in-theory (e/d (fn-qplan-mv-second) (fn-lst-batch))))))
 
 (local
  (defthm fn-qplan-lst-step-last
-   (implies (not (fn-lst-livep (cadr (fn-lst-step cur visits bytes fn-cat))))
-            (equal (append (car (fn-lst-step cur visits bytes fn-cat)) z)
+   (implies (not (fn-lst-livep (cadr (fn-lst-batch cur visits bytes fn-cat))))
+            (equal (append (car (fn-lst-batch cur visits bytes fn-cat)) z)
                    (append (fn-lst-remaining cur fn-cat) z)))
    :hints (("Goal" :use (fn-qplan-lst-step-assoc
                          (:instance fn-qplan-not-live-owes-nothing
-                                    (cur (cadr (fn-lst-step cur visits bytes fn-cat)))))
+                                    (cur (cadr (fn-lst-batch cur visits bytes fn-cat)))))
             :in-theory (disable fn-qplan-lst-step-assoc fn-qplan-not-live-owes-nothing
-                                fn-lst-step)))))
+                                fn-lst-batch)))))
 
 
 (local
@@ -390,19 +413,19 @@
 ; A quantum keeps what the plan owes.
 (local
  (defthm fn-qplan-lst-step-assoc-mv
-   (equal (append (car (fn-lst-step cur visits bytes fn-cat))
-                  (fn-lst-remaining (mv-nth 1 (fn-lst-step cur visits bytes fn-cat)) fn-cat)
+   (equal (append (car (fn-lst-batch cur visits bytes fn-cat))
+                  (fn-lst-remaining (mv-nth 1 (fn-lst-batch cur visits bytes fn-cat)) fn-cat)
                   z)
           (append (fn-lst-remaining cur fn-cat) z))
    :hints (("Goal" :use fn-qplan-lst-step-assoc
-            :in-theory (e/d (mv-nth) (fn-qplan-lst-step-assoc fn-lst-step))))))
+            :in-theory (e/d (mv-nth) (fn-qplan-lst-step-assoc fn-lst-batch))))))
 (local
  (defthm fn-qplan-lst-step-last-mv
-   (implies (not (fn-lst-livep (mv-nth 1 (fn-lst-step cur visits bytes fn-cat))))
-            (equal (append (car (fn-lst-step cur visits bytes fn-cat)) z)
+   (implies (not (fn-lst-livep (mv-nth 1 (fn-lst-batch cur visits bytes fn-cat))))
+            (equal (append (car (fn-lst-batch cur visits bytes fn-cat)) z)
                    (append (fn-lst-remaining cur fn-cat) z)))
    :hints (("Goal" :use fn-qplan-lst-step-last
-            :in-theory (e/d (mv-nth) (fn-qplan-lst-step-last fn-lst-step fn-lst-livep))))))
+            :in-theory (e/d (mv-nth) (fn-qplan-lst-step-last fn-lst-batch fn-lst-livep))))))
 (defthm fn-qplan-rest-cursor-step-keeps-cw-octets
   (implies (equal (mv-nth 0 (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)) :ok)
            (equal (fn-qplan-cw-octets (mv-nth 1 (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat))
@@ -411,7 +434,7 @@
   :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)
            :in-theory (e/d (fn-qplan-rest-cursor-step fn-splan-rest-cursor-step)
                            (fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep
-                            fn-nnw-stream-batch fn-lst-step fn-lst-remaining fn-lst-livep
+                            fn-nnw-stream-batch fn-lst-batch fn-lst-remaining fn-lst-livep
                             fn-nntp-reply-effect fn-lst-effect mv-nth fn-splan-cursor-effectp
                             fn-nnw-meta-effectp fn-ovw-cursor-effect fn-nnw-meta-effect))
            :expand ((fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat)))))

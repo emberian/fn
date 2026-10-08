@@ -110,3 +110,67 @@ class HeldCommitHost(unittest.TestCase):
                                     capture_output=True, timeout=30)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn('6 scenarios passed', result.stdout)
+
+    def test_committer_plan_state_effects_and_waiter_counts(self):
+        """The real host wrappers forward fn-otm-held-plan's state/effects and
+        fn-otm-held-committer-wake's decision, including the waiting counts.
+        ACL2's plan-barrier-trace and plan-budget-trace in owner-time-held-tests
+        supply the semantic trace; these stubs isolate the host transport.
+        """
+        names = ('fnn-owner-held-event', 'fnn-owner-commit-wake')
+        forms = lisp_source.forms((ROOT / 'host/native/owner.lisp').read_text())
+        actual = '\n'.join(f for f in forms
+                           if any(f.startswith(f'(defun {name} ') for name in names))
+        fixture = r'''
+(defstruct fnn-owner-gate mutex sched waiting)
+(defun fnn-owner-service-gate (service) service)
+(defun fnn-fault (&rest args) (error "host fault: ~s" args))
+(defun fnn-developer-selector (name) (declare (ignore name)) nil)
+(defun fnn-err (&rest args) (declare (ignore args)))
+(defvar *expected*)
+(defun fnn-core (name &rest args)
+  (assert *expected*)
+  (destructuring-bind (expected-name expected-args result) (pop *expected*)
+    (assert (eq name expected-name))
+    (assert (equal args expected-args))
+    result))
+(defun fnn-call (name &rest args) (apply #'fnn-core name args))
+'''
+        assertions = r'''
+(let* ((waiting '(1 0 0 0 1 0))
+       (gate (make-fnn-owner-gate :mutex (sb-thread:make-mutex)
+                                 :sched :initial :waiting (coerce waiting 'vector)))
+       (*expected*
+        '((fn-otm-held-plan (:initial :started) (:sync :staged ((:off . :append))))
+          (fn-otm-held-committer-wake (:staged nil t (1 0 0 0 1 0)) :wait)
+          (fn-otm-held-plan (:staged :fenced) (:complete :fenced ((:owner . :complete))))
+          (fn-otm-held-committer-wake (:fenced t t (1 0 0 0 1 0)) :collect)
+          (fn-otm-held-plan (:fenced :completed) (:none :idle nil)))))
+  (assert (equal (multiple-value-list (fnn-owner-held-event gate :started))
+                 '(:sync ((:off . :append)))))
+  (assert (eq (fnn-owner-gate-sched gate) :staged))
+  (assert (eq (fnn-owner-commit-wake gate nil t) :wait))
+  (assert (equal (multiple-value-list (fnn-owner-held-event gate :fenced))
+                 '(:complete ((:owner . :complete)))))
+  (assert (eq (fnn-owner-commit-wake gate t t) :collect))
+  (assert (equal (multiple-value-list (fnn-owner-held-event gate :completed))
+                 '(:none nil)))
+  (assert (eq (fnn-owner-gate-sched gate) :idle))
+  (assert (null *expected*)))
+(write-line "committer plan transport passed")
+'''
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'committer.lisp'
+            path.write_text(fixture + actual + assertions)
+            result = subprocess.run(['sbcl', '--script', str(path)], text=True,
+                                    capture_output=True, timeout=30)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn('committer plan transport passed', result.stdout)
+            # Host implementation mutation: discard the plan's returned state.
+            mutant = actual.replace('(setf (fnn-owner-gate-sched gate) sched)',
+                                    '(identity sched)')
+            self.assertNotEqual(mutant, actual)
+            path.write_text(fixture + mutant + assertions)
+            rejected = subprocess.run(['sbcl', '--script', str(path)], text=True,
+                                      capture_output=True, timeout=30)
+            self.assertNotEqual(rejected.returncode, 0, rejected.stdout)
