@@ -108,6 +108,11 @@
                      (fn-orc-writer-leave state))))
         (mv erp val fn-arena state)))))
 
+(definterface fn-reader-use-seed
+  :class :common-lisp-compliant
+  :keystones ((fn-rdc-selection-establishes :via fn-rdc-selection))
+  :root :extract)
+
 ; The operator's posting permission and the host's clock reading.  A clock
 ; reading is an observation, not a computed value: books/clock.lisp says what
 ; the host is asserting, and books/injection.lisp is the only thing that
@@ -117,12 +122,22 @@
   (let ((state (f-put-global 'fn-reader-allow-post (if allow t nil) state)))
     (value :ok)))
 
+(definterface fn-reader-set-posting
+  :class :common-lisp-compliant
+  :root :extract)
+
 (defun fn-reader-observe-clock (monotonic wall error state)
   (declare (xargs :stobjs state :guard t))
   (let ((state (f-put-global 'fn-reader-clock
                              (fn-clock-observation monotonic wall error t)
                              state)))
     (value :ok)))
+
+(definterface fn-reader-observe-clock
+  :class :common-lisp-compliant
+  :keystones ((fn-clock-observation-shapep-of-fn-clock-observation
+               :via fn-clock-observation))
+  :root :extract)
 
 ; A single committed article whose stored bytes cannot be projected used to
 ; refuse the whole store here.  It no longer does: fn-nntp-projectionp is now a
@@ -135,6 +150,11 @@
   (declare (xargs :stobjs state :guard (boundp-global 'fn-store-sn state)))
   (fn-reader-install-selection
    (fn-rdc-store-selection (f-get-global 'fn-store-sn state)) state))
+
+(definterface fn-reader-use-store
+  :class :common-lisp-compliant
+  :keystones ((fn-rdc-store-selection-unfolds :via fn-rdc-store-selection))
+  :root :extract)
 
 ; Opening a connection is the one place the whole-archive projection recognizer
 ; runs.  fn-nntp-open-session records its verdict in the session; no command
@@ -168,6 +188,11 @@
                  state)))
     (value :ready)))
 
+(definterface fn-reader-reset
+  :class :common-lisp-compliant
+  :keystones ((fn-rdc-reset-is-served-open :via fn-rdc-reset))
+  :root :extract)
+
 ; One socket read.  The whole chunk is consumed: fn-served-step is a fold of
 ; fn-wire-feed-byte with fn-nntp-post-step run on each framed event before the
 ; next byte, with the reply concatenation, proved partition independent in
@@ -181,6 +206,12 @@
                 state)))
     (value :ok)))
 
+(definterface fn-reader-chunk
+  :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
+  :keystones ((fn-oag-served-step-submission-names-the-pinned-agent :via fn-served-step))
+  :root :extract)
+
 ; The durable observation comes back from the host after it has carried the
 ; submitted octets through the same acceptance path tools/run_store.py `post`
 ; uses.  It is one more served input: ACL2 turns it into the reply, and the
@@ -192,3 +223,9 @@
                                         completion)
                 state)))
     (value :ok)))
+
+(definterface fn-reader-outcome
+  :class :common-lisp-compliant
+  :keystones ((fn-own-consumed-completion-is-240-or-uncertain
+               :via fn-served-post-outcome))
+  :root :extract)
