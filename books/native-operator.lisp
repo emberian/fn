@@ -998,7 +998,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
          (fn-nop-result :accepted :plan "trace" config (list :trace :drain 0)))
         ((and (equal (fn-ncfg-first words) "drain")
               (equal (fn-ncfg-second words) "--since")
-              (null (cddr (cdr words)))
+              (null (fn-ncfg-rest (fn-ncfg-rest (fn-ncfg-rest words))))
               (fn-nop-profile-decimal (fn-ncfg-third words)))
          (fn-nop-result :accepted :plan "trace" config
                         (list :trace :drain (fn-nop-profile-decimal (fn-ncfg-third words)))))

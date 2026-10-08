@@ -1104,11 +1104,10 @@
 
 (definterface fn-store-charge
   :class :common-lisp-compliant
-  :kinds ((length natp))
   :keystones (fn-store-charge-is-positive-exactly-for-a-length-and-is-the-receipt-charge
               fn-store-charge-of-profile-article-is-representable)
   :trace (:class :tariff
-          :inputs ((length :value))
+          :inputs ((length (:with fn-dtrace-atom-clip)))
           :outcome fn-dtrace-v0-clip
           :decision fn-dtrace-v0
           :witnesses ((0) (4096))))
