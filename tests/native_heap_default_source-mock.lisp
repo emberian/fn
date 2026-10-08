@@ -3,6 +3,26 @@
 ; complete allocation coverage nor execution of a saved image/Store recovery.
 (load "tests/native_operator_diagnostics_source-mock.lisp")
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-bp-session-profile (root)
+  (declare (ignorable root))
+  (harness-stub-reached 'fnn-bp-session-profile "host/native/bp-session.lisp"))
+(defun fnn-bps-read-profile (root)
+  (declare (ignorable root))
+  (harness-stub-reached 'fnn-bps-read-profile "host/native/bp-service.lisp"))
+;;; ---- derived stubs: END ----
 (defun natp (x) (and (integerp x) (<= 0 x)))
 (defun posp (x) (and (integerp x) (< 0 x)))
 (defun nfix (x) (if (natp x) x 0))

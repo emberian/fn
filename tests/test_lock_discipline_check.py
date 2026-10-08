@@ -13,6 +13,7 @@ import os
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 import json
 from pathlib import Path
 
@@ -56,6 +57,235 @@ def analyzed(source):
 
 def keys(findings, rule):
     return [(f.function, f.key) for f in findings if f.rule == rule]
+
+
+class R2LoadedOrigins(unittest.TestCase):
+    """Loaded-image scope follows the held region, not its shared I/O leaf."""
+
+    LEAF = '(defun fixture-open (path) (sb-posix:open path 0))'
+
+    @staticmethod
+    def held(name):
+        return f'''(defun {name} (service path)
+          (sb-thread:with-mutex ((fnn-owner-service-lock service))
+            (fixture-open path)))'''
+
+    def findings(self, sources, loaded):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            native = root / 'host/native'
+            native.mkdir(parents=True)
+            for name, source in sources.items():
+                (native / name).write_text(source)
+            (native / 'build.lisp').write_text('\n'.join(
+                f'(load "host/native/{name}")' for name in loaded))
+            _, _, checker = ldc.analyze_tree(root, CONTRACTS, reach={})
+            return checker.run({'R2'})
+
+    def test_parked_origin_does_not_become_live_through_loaded_leaf(self):
+        all_files = self.findings(
+            {'leaf.lisp': self.LEAF, 'parked.lisp': self.held('parked')},
+            ['leaf.lisp'])
+        self.assertEqual(keys(all_files, 'R2'), [('fixture-open', 'O:sb-posix:open')])
+        self.assertEqual([f for f in all_files if f.loaded], [])
+        self.assertIn('parked (', all_files[0].trail[0])
+
+    def test_loaded_origin_is_not_hidden_by_a_parked_leaf(self):
+        findings = self.findings(
+            {'leaf.lisp': self.LEAF, 'live.lisp': self.held('live')},
+            ['live.lisp'])
+        self.assertEqual(keys([f for f in findings if f.loaded], 'R2'),
+                         [('fixture-open', 'O:sb-posix:open')])
+
+    def test_either_origin_order_keeps_the_live_trail_and_all_sites(self):
+        for parked_file, live_file in [('a.lisp', 'z.lisp'), ('z.lisp', 'a.lisp')]:
+            with self.subTest(parked_file=parked_file):
+                findings = self.findings(
+                    {'leaf.lisp': self.LEAF, parked_file: self.held('parked'),
+                     live_file: self.held('live')}, ['leaf.lisp', live_file])
+                self.assertEqual(len(findings), 1)
+                self.assertTrue(findings[0].loaded)
+                self.assertEqual(findings[0].weight, 2)
+                self.assertIn('live (', findings[0].trail[0])
+
+    def test_ablation_of_origin_provenance_reproduces_the_false_live_key(self):
+        add = ldc.Checker.add
+
+        def leaf_based_add(checker, *args, **kwargs):
+            kwargs.pop('origin_loaded', None)
+            return add(checker, *args, **kwargs)
+
+        # Remove just the new provenance input; the unchanged old add() then
+        # copies the loaded leaf's flag and invents the live held path.
+        with patch.object(ldc.Checker, 'add', leaf_based_add):
+            findings = self.findings(
+                {'leaf.lisp': self.LEAF, 'parked.lisp': self.held('parked')},
+                ['leaf.lisp'])
+        self.assertEqual(keys([f for f in findings if f.loaded], 'R2'),
+                         [('fixture-open', 'O:sb-posix:open')])
+
+class LifecycleAccesses(unittest.TestCase):
+    FENCED = """
+(defun fnn-owner-shared-action-locked (service cid thunk)
+  (declare (ignore cid))
+  (handler-case (funcall thunk)
+    (serious-condition (c)
+      (progn (fnn-owner-stop-service-locked service :fault) (error c)))))
+(defun wrapper (service thunk)
+  (fnn-owner-shared-action-locked service nil thunk))
+(defun consume (service)
+  (handler-case
+      (wrapper service (lambda () (fnn-fault "broken")))
+    (serious-condition () nil)))
+(defun start-consumer (service)
+  (sb-thread:make-thread (lambda () (consume service))))
+"""
+
+    def test_fenced_condition_provenance_crosses_callback_wrappers(self):
+        self.assertFalse(any(n == "consume" for n, _ in keys(run(self.FENCED, ["R7"]), "R7")))
+        bad = self.FENCED.replace("(fnn-owner-stop-service-locked service :fault)", "nil")
+        self.assertTrue(any(n == "consume" for n, _ in keys(run(bad, ["R7"]), "R7")))
+
+    def test_a_fault_before_fencing_and_an_inner_swallow_stay_red(self):
+        for src in (
+                self.FENCED.replace('(wrapper service (lambda () (fnn-fault "broken")))',
+                                    '(progn (fnn-fault "before") (wrapper service (lambda () nil)))'),
+                self.FENCED.replace('(lambda () (fnn-fault "broken"))',
+                                    '(lambda () (handler-case (fnn-fault "broken") (serious-condition () nil)))'),
+                self.FENCED.replace('(progn (fnn-owner-stop-service-locked service :fault)',
+                                    '(progn (when fail (fnn-fault "before fence")) (fnn-owner-stop-service-locked service :fault)')):
+            self.assertTrue(keys(run(src, ["R7"]), "R7"))
+
+    def test_fenced_callback_cannot_also_escape_the_wrapper(self):
+        src = "(defvar *saved* nil)\n" + self.FENCED.replace(
+            "(defun wrapper (service thunk)", "(defun wrapper (service thunk) (setq *saved* thunk)")
+        self.assertTrue(any(n == "consume" for n, _ in keys(run(src, ["R7"]), "R7")))
+
+    CONSTRUCTION = """
+(defstruct fnn-mux-loop wake-read)
+(defvar *roster* nil)
+(defun reader (x) (when *roster* nil) (fnn-mux-loop-wake-read x))
+(defun start ()
+  (let* ((x (make-fnn-mux-loop)) (alias x))
+    BEFORE
+    (setf (fnn-mux-loop-wake-read x) 3)
+    (push x *roster*)
+    (sb-thread:make-thread (lambda () (reader x)))))
+"""
+
+    def test_construction_ends_at_first_publication(self):
+        self.assertFalse(any("wake-read" in k for _, k in
+                             keys(run(self.CONSTRUCTION.replace("BEFORE", ""), ["R1b"]), "R1b")))
+        for before in ("(push alias *roster*)", "(unknown alias)",
+                       "(sb-thread:make-thread (lambda () (reader alias)))",
+                       "(when condition (push alias *roster*))"):
+            with self.subTest(before=before):
+                self.assertTrue(any("wake-read" in k for _, k in
+                                    keys(run(self.CONSTRUCTION.replace("BEFORE", before), ["R1b"]), "R1b")))
+
+    def test_initializer_helper_requires_every_caller_to_own_construction(self):
+        src = self.CONSTRUCTION.replace("BEFORE", "").replace(
+            "(setf (fnn-mux-loop-wake-read x) 3)", "(initialize x)")
+        src += "(defun initialize (x) (setf (fnn-mux-loop-wake-read x) 3))"
+        self.assertFalse(any("wake-read" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+        src += "(defun late (x) (sb-thread:make-thread (lambda () (initialize x))))"
+        self.assertTrue(any("wake-read" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    def test_constructor_roster_must_be_confined_and_not_reentered(self):
+        src = self.CONSTRUCTION.replace("(when *roster* nil) ", "").replace("BEFORE", "(push x *roster*)")
+        self.assertFalse(any("wake-read" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+        bad = src.replace("(push x *roster*)\n    (setf", "(push x *roster*) (publish-roster)\n    (setf")
+        bad += "(defun publish-roster () (let ((x (car *roster*))) (sb-thread:make-thread (lambda () (reader x)))))"
+        self.assertTrue(any("wake-read" in k for _, k in keys(run(bad, ["R1b"]), "R1b")))
+
+    def test_unknown_constructor_and_branch_alias_are_not_private(self):
+        for src in (
+                self.CONSTRUCTION.replace("BEFORE", "").replace("(make-fnn-mux-loop)", "(get-object)"),
+                self.CONSTRUCTION.replace("BEFORE", "(when condition (setq alias x)) (push alias *roster*)"),
+                self.CONSTRUCTION.replace("BEFORE", "(when condition (setq x *roster*))")):
+            self.assertTrue(any("wake-read" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    QUIESCENT = """
+(defstruct fnn-mux-loop thread other-thread (closed nil) inbox arrived conns cleanup-debts
+  (lock (sb-thread:make-mutex)))
+(defun run-loop (x)
+  (setf (fnn-mux-loop-conns x) nil)
+  (sb-thread:with-mutex ((fnn-mux-loop-lock x))
+    (setf (fnn-mux-loop-closed x) t)))
+(defun start-loop ()
+  (let ((x (make-fnn-mux-loop)))
+    (setf (fnn-mux-loop-thread x)
+          (sb-thread:make-thread (lambda () (run-loop x))))
+    x))
+(defun producer (x)
+  (sb-thread:with-mutex ((fnn-mux-loop-lock x))
+    (unless (fnn-mux-loop-closed x)
+      (push :item (fnn-mux-loop-inbox x)))))
+(defun start-producer (x)
+  (sb-thread:make-thread (lambda () (producer x))))
+(defun inspect-loop (x)
+  (let ((thread (fnn-mux-loop-thread x)))
+    (and (or (null thread) (not (sb-thread:thread-alive-p thread)))
+         (sb-thread:with-mutex ((fnn-mux-loop-lock x)) (fnn-mux-loop-closed x))
+         (null (fnn-mux-loop-inbox x))
+         (null (fnn-mux-loop-conns x)))))
+"""
+
+    def test_death_and_closed_exclude_owner_and_producer(self):
+        self.assertEqual(keys(run(self.QUIESCENT, ["R1b"]), "R1b"), [])
+
+    def test_death_alone_does_not_exclude_producer(self):
+        src = self.QUIESCENT.replace("         (sb-thread:with-mutex ((fnn-mux-loop-lock x)) (fnn-mux-loop-closed x))\n", "")
+        self.assertTrue(any("inbox" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    def test_closed_alone_does_not_exclude_owner(self):
+        src = self.QUIESCENT.replace("(or (null thread) (not (sb-thread:thread-alive-p thread)))", "t")
+        self.assertTrue(any("conns" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    def test_different_thread_and_different_object_stay_red(self):
+        for replacement in ("(fnn-mux-loop-other-thread x)", "(fnn-mux-loop-thread other)"):
+            with self.subTest(replacement=replacement):
+                src = self.QUIESCENT.replace("((thread (fnn-mux-loop-thread x)))", "((thread " + replacement + "))")
+                self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_producer_guard_and_same_lock_are_required(self):
+        for src in (
+                self.QUIESCENT.replace("(unless (fnn-mux-loop-closed x)", "(unless nil"),
+                self.QUIESCENT.replace("(sb-thread:with-mutex ((fnn-mux-loop-lock x))\n    (unless",
+                                       "(sb-thread:with-mutex ((fnn-mux-loop-lock other))\n    (unless"),
+                self.QUIESCENT.replace("(sb-thread:with-mutex ((fnn-mux-loop-lock x))\n    (unless", "(progn\n    (unless")):
+            self.assertTrue(any("inbox" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    def test_reopened_flag_and_replaced_thread_stay_red(self):
+        for extra in ("(defun reopen (x) (setf (fnn-mux-loop-closed x) nil))",
+                      "(defun replace-thread (x other) (setf (fnn-mux-loop-thread x) other))"):
+            self.assertTrue(keys(run(self.QUIESCENT + extra, ["R1b"]), "R1b"))
+
+    def test_thread_must_be_single_start_per_fresh_object(self):
+        src = self.QUIESCENT.replace("(defun start-loop ()\n  (let ((x (make-fnn-mux-loop)))",
+                                     "(defun start-loop (x)\n  (progn")
+        self.assertTrue(any("conns" in k for _, k in keys(run(src, ["R1b"]), "R1b")))
+
+    def test_boolean_admission_selector_is_read_from_its_body(self):
+        src = self.QUIESCENT.replace("(unless (fnn-mux-loop-closed x)",
+                                    "(when (eq (admit (fnn-mux-loop-closed x)) :yes)")
+        good = "(defun admit (closed) (if closed :no :yes))\n" + src
+        bad = good.replace("(if closed :no :yes)", "(if closed :yes :yes)")
+        self.assertEqual(keys(run(good, ["R1b"]), "R1b"), [])
+        self.assertTrue(any("inbox" in k for _, k in keys(run(bad, ["R1b"]), "R1b")))
+
+    def test_synchronized_table_snapshot_needs_compound_lock(self):
+        src = """
+(defvar *table* (make-hash-table :synchronized t))
+(defun writer () (setf (gethash :x *table*) '(1 2)))
+(defun start () (sb-thread:make-thread #'writer))
+(defun snapshot ()
+  (sb-ext:with-locked-hash-table (*table*)
+    (maphash (lambda (k v) (declare (ignore k v))) *table*)))
+"""
+        self.assertEqual(keys(run(src, ["R1b"]), "R1b"), [])
+        bad = src.replace("(sb-ext:with-locked-hash-table (*table*)", "(progn")
+        self.assertTrue(keys(run(bad, ["R1b"]), "R1b"))
 
 
 class R3Reads(unittest.TestCase):
@@ -687,8 +917,13 @@ class CallbackContexts(unittest.TestCase):
             an, model, checker = ldc.analyze_tree(root, ldc.Contracts(raw), ["host/native/fixture.lisp"], {})
             return [f for f in checker.run({"R1"}) if f.rule == "R1"]
 
-    def test_undeclared_stored_callback_is_unresolved(self):
+    def test_nonescaping_slot_callback_keeps_the_real_thread_violation(self):
         found = self.run_with({})
+        self.assertTrue(any("fnn-cbx-spawn" in f.function and f.category == "violation"
+                            and any(self.LAMBDA in step for step in f.trail) for f in found))
+
+    def test_escaping_slot_callback_is_still_unresolved(self):
+        found = self.run_with({}, self.SRC + "(defun leak (g) (foreign (fnn-cbx-grant-turn g)))")
         self.assertTrue(any(f.function == self.LAMBDA and f.category == "unresolved" for f in found))
 
     def test_declared_callback_runs_in_its_command(self):
@@ -2116,9 +2351,12 @@ class PrivateOwnerCommands(unittest.TestCase):
         self.assertEqual({k: v for k, v in without.items() if "write-seq" not in k and "finish" not in k},
                          {k: v for k, v in with_row.items() if "write-seq" not in k and "finish" not in k})
 
-    def test_the_real_row_holds_on_the_real_tree(self):
+    def test_the_real_tree_needs_no_private_owner_row(self):
+        # LOCK-R2-OFFLINE-ONESHOT-HOLD: the one-shot commands print and pause
+        # between owner quanta, so the BP obligation runner's exemption is gone.
         an, model, checker = ldc.build(ROOT, ROOT / "tools" / "lock_discipline_contracts.json")
-        self.assertIn("fnn-carry-execute", model.private_owner["O"]["functions"])
+        self.assertEqual(checker.c.raw.get("private_owner_commands"), {})
+        self.assertNotIn("O", model.private_owner)
 
 
 class ManualGrabCriticalSection(unittest.TestCase):
@@ -2921,6 +3159,207 @@ class R2PipeClose(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.r2(self.SRC.replace("(let ((fd (if (eq slot :read) (fnn-pc-loop-wake-read loop) (fnn-pc-loop-wake-write loop))))",
                                      "(let ((fd (sb-posix:open \"/x\" 0)))"))
+
+
+class NonescapingCallableOwnership(unittest.TestCase):
+    SOURCE = """
+(defvar *counter* 0)
+(defvar *progress* nil)
+(defstruct fnn-turn callback)
+(defun touch () (incf *counter*))
+(defun pump () (when *progress* (funcall *progress*)))
+(defun install (g)
+ (setf (fnn-turn-callback g)
+  (lambda () (let ((*progress* (lambda () (touch)))) (pump)))))
+(defun turn (g) (when (fnn-turn-callback g) (funcall (fnn-turn-callback g))))
+(defun command (g) (install g) (touch) (turn g))
+"""
+
+    def test_slot_and_dynamic_binding_keep_one_owning_thread(self):
+        self.assertEqual(keys(run(self.SOURCE, ["R1b"]), "R1b"), [])
+
+    def test_second_thread_invoking_the_slot_is_still_red(self):
+        src = self.SOURCE + '''
+(defun start (g) (sb-thread:make-thread (lambda () (turn g)) :name "second"))
+'''
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_escaped_dynamic_value_is_still_red(self):
+        src = self.SOURCE.replace('(pump)))))', '(foreign *progress*) (pump)))))')
+        self.assertNotEqual(src, self.SOURCE)
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_escaped_slot_value_is_still_red(self):
+        src = self.SOURCE + '(defun leak (g) (foreign (fnn-turn-callback g)))'
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_unknown_slot_store_is_still_red(self):
+        src = self.SOURCE + '(defun replace-callback (g value) (setf (fnn-turn-callback g) value))'
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_constructor_slot_override_is_still_red(self):
+        src = self.SOURCE + '(defun construct (value) (make-fnn-turn :callback value))'
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_custom_constructor_override_is_still_red(self):
+        src = self.SOURCE.replace('defstruct fnn-turn callback',
+                                  'defstruct (fnn-turn (:constructor new-turn)) callback')
+        src += '(defun construct (value) (new-turn :callback value))'
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_reflected_dynamic_value_is_still_red(self):
+        src = self.SOURCE + "(defun leak () (symbol-value '*progress*))"
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_macro_slot_escape_is_still_red(self):
+        src = self.SOURCE + '(defmacro leak (g) `(foreign (fnn-turn-callback ,g)))'
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_initializer_other_than_nil_is_still_red(self):
+        src = self.SOURCE.replace('fnn-turn callback', 'fnn-turn (callback (foreign))')
+        self.assertTrue(keys(run(src, ["R1b"]), "R1b"))
+
+    def test_slot_body_is_called_under_the_invokers_lock_not_the_creators(self):
+        src = '''
+(defstruct fnn-turn callback)
+(defun install (g service)
+ (sb-thread:with-mutex ((fnn-owner-service-lock service))
+  (setf (fnn-turn-callback g) (lambda () (fnn-close 3)))))
+(defun invoke (g) (funcall (fnn-turn-callback g)))
+'''
+        self.assertEqual(keys(run(src, ["R2"]), "R2"), [])
+        src = src.replace('(funcall (fnn-turn-callback g))',
+                          '(sb-thread:with-mutex (*fnn-extent-lock*) (funcall (fnn-turn-callback g)))')
+        self.assertTrue(keys(run(src, ["R2"]), "R2"))
+
+HOST = """\
+(defun fnn-pin () (fnn-step '(:pin)))
+(defun fnn-unpin (g) (fnn-step (list :unpin g)))
+(defun fnn-publish () (let ((g (fnn-pin))) (fnn-cut :installed) (fnn-cut :released) (fnn-unpin g)))
+(defun fnn-rogue () (let ((g (fnn-pin))) (fnn-unpin g)))
+"""
+
+BOOK_OK = """\
+(def-holder fn-toy
+  :shape :stamped :key "a generation"
+  :holders ((publication :host t :acquire fnn-pin :release fnn-unpin :in (fnn-publish))
+            (rogue :host t :acquire fnn-pin :release fnn-unpin :in (fnn-rogue))
+            (ledger :root t :in (fn-ledger) :status (:repinned "a toy")))
+  :effect (:physical *toy-cuts* :cut :released :after :installed))
+"""
+
+BOOK_BAD = """\
+(def-holder fn-toy
+  :shape :stamped :key "a generation"
+  :holders ((publication :host t :acquire fnn-pin :release fnn-unpin :in (fnn-publish))
+            (ghost :host t :acquire fnn-pin :release fnn-unpin :in (fnn-nowhere))
+            (idle :host t :acquire fnn-stamp :release fnn-unpin :in (fnn-publish)))
+  :effect (:physical *toy-cuts* :cut :installed :after :released))
+"""
+
+
+def _tree(book: str) -> Path:
+    root = Path(tempfile.mkdtemp())
+    (root / "books").mkdir()
+    (root / "host" / "native").mkdir(parents=True)
+    (root / "books" / "toy.lisp").write_text(book, encoding="utf-8")
+    (root / "books" / "ledger.lisp").write_text("(defun fn-ledger (x) x)\n", encoding="utf-8")
+    (root / "host" / "native" / "toy.lisp").write_text(HOST, encoding="utf-8")
+    return root
+
+
+class HolderCheck(unittest.TestCase):
+    def test_tree_has_no_refusal(self):
+        refusals, _notes = ldc.holder_check()
+        self.assertEqual(refusals, [], "\n".join(refusals))
+
+    def test_synthetic_ok(self):
+        refusals, notes = ldc.holder_check(_tree(BOOK_OK), strict=True)
+        self.assertEqual(refusals, [], "\n".join(refusals))
+        self.assertTrue(any("root ledger :repinned" in n for n in notes))
+
+    def test_synthetic_refusals(self):
+        refusals, _notes = ldc.holder_check(_tree(BOOK_BAD), strict=True)
+        text = "\n".join(refusals)
+        self.assertIn(":in fnn-nowhere is no function of the raw host", text)
+        self.assertIn(":acquire fnn-stamp is no function of the raw host", text)
+        self.assertIn("fnn-rogue calls fnn-pin, which is declared only in", text)
+        self.assertIn(":installed is marked before :released", text)
+
+
+class HolderCutMap(unittest.TestCase):
+    """tests/campaign/native_cuts.py verify_holder_cut_map: the declared cuts,
+    the host's +fnn-holder-cuts+ and its markers agree both ways."""
+
+    def test_tree_agrees(self):
+        from tests.campaign import native_cuts
+        self.assertEqual(native_cuts.verify_holder_cut_map(), [])
+
+    def test_a_missing_host_name_or_marker_is_a_mismatch(self):
+        from tests.campaign import native_cuts
+        if not native_cuts.holder_cuts():
+            self.skipTest("no def-holder declaration in this tree")
+        host = (Path(__file__).resolve().parent.parent / native_cuts.HOLDER_CUTS_HOST).read_text()
+        dropped = host.replace('"fn-pio-file-holds-released"', "", 1)
+        text = "\n".join(native_cuts.verify_holder_cut_map(host_text=dropped))
+        self.assertIn("declared holder cut fn-pio-file-holds-released is not in +fnn-holder-cuts+", text)
+        unmarked = host.replace("(fnn-holder-cut :fn-pio-file-holds-decided)", "", 1)
+        text = "\n".join(native_cuts.verify_holder_cut_map(host_text=unmarked))
+        self.assertIn("is marked by no (fnn-holder-cut :fn-pio-file-holds-decided)", text)
+        extra = host.replace('"fn-pio-file-holds-released"', '"fn-pio-file-holds-released" "fn-ghost-decided"', 1)
+        text = "\n".join(native_cuts.verify_holder_cut_map(host_text=extra))
+        self.assertIn("+fnn-holder-cuts+ names fn-ghost-decided, which no def-holder declares", text)
+
+
+class R2SpecialSeam(unittest.TestCase):
+    """I/O reached through (funcall *special* ...) -- the syscall seams fnn-write-all and
+    fnn-read-fd use -- counts as the init form's I/O; an unclassifiable seam under a lock
+    that may not do I/O is reported, never silent."""
+    SEAM = """
+(defvar *fnn-test-write-syscall*
+  (lambda (fd octets offset count) (sb-unix:unix-write fd octets offset count)))
+(defun fnn-test-write-all (fd octets)
+  (funcall *fnn-test-write-syscall* fd octets 0 (length octets)))
+"""
+    LEAF = "(sb-thread:with-mutex ((fnn-owner-service-syncer-ledger-lock service)) %s)"
+
+    def r2(self, src):
+        return run(src, ["R2"])
+
+    def test_a_wrapper_over_a_syscall_seam_under_a_leaf_lock_is_red(self):
+        src = self.SEAM + "(defun fnn-leaf-user (service fd o)\n  " + self.LEAF % "(fnn-test-write-all fd o)" + ")\n"
+        found = [f for f in self.r2(src) if f.rule == "R2" and f.category == "violation"]
+        self.assertEqual([f.key for f in found], ["XSYNCER:sb-unix:unix-write"])
+
+    def test_a_direct_fsync_under_the_leaf_lock_stays_red(self):
+        src = "(defun fnn-leaf-user (service fd)\n  " + self.LEAF % "(sb-posix:fsync fd)" + ")\n"
+        found = [f for f in self.r2(src) if f.rule == "R2" and f.category == "violation"]
+        self.assertEqual([f.key for f in found], ["XSYNCER:sb-posix:fsync"])
+
+    def test_an_unclassifiable_seam_under_a_leaf_lock_is_unresolved(self):
+        src = """
+(defvar *fnn-test-opaque* nil)
+(defun fnn-test-opaque-call (fd) (funcall *fnn-test-opaque* fd))
+(defun fnn-leaf-user (service fd)
+  """ + self.LEAF % "(fnn-test-opaque-call fd)" + ")\n"
+        found = self.r2(src)
+        self.assertEqual([(f.function, f.category) for f in found if f.rule == "R2"],
+                         [("fnn-test-opaque-call", "unresolved")])
+
+    def test_an_unclassifiable_seam_under_no_lock_or_an_io_ok_lock_is_quiet(self):
+        src = """
+(defvar *fnn-test-opaque* nil)
+(defun fnn-test-opaque-call (fd) (funcall *fnn-test-opaque* fd))
+(defun fnn-no-lock (fd) (fnn-test-opaque-call fd))
+"""
+        self.assertEqual([f for f in self.r2(src) if f.rule == "R2"], [])
+
+    def test_a_pure_host_function_under_the_leaf_lock_stays_clean(self):
+        src = """
+(defun fnn-test-pure (x) (+ x 1))
+(defun fnn-leaf-user (service x)
+  """ + self.LEAF % "(fnn-test-pure x)" + ")\n"
+        self.assertEqual([f for f in self.r2(src) if f.rule == "R2"], [])
 
 
 if __name__ == "__main__":

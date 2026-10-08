@@ -272,8 +272,7 @@ still an absence; a symptom is now a failure.
 
 The tools that decide what gets certified are themselves tested, with no ACL2
 and no network: `python3 -m unittest tests.test_certify_runner tests.test_ledger
-tests.test_certs tests.test_farm tests.test_proof_profile
-tests.test_evidence_manifests`. `tests/test_certify_runner.py` drives the
+tests.test_certs tests.test_farm tests.test_proof_profile`. `tests/test_certify_runner.py` drives the
 real runner against a fake ACL2 in a throwaway repository (`FakeRepository`):
 the parallel schedule, `--affected-by` selection and `--dry-run` listing
 (`AffectedByTests`), the machine-wide process cap with one slot serialising
@@ -288,11 +287,6 @@ sleeps rather than spins, the fetch of evidence and pairs -- without running
 ssh. `tests/test_ledger.py` covers the reader, the suspect detector, the export
 lints, the `fn-defrecord` expansion the reader must perform to see a migrated
 book, and the hand-written-record lint.
-`tests/test_evidence_manifests.py` holds the evidence archive to the one
-promise that matters: a citation resolves to what is COMMITTED, so an
-archived-but-unstaged manifest does not answer it, a manifest never cites
-itself, and the same run filed twice keeps the first copy while two
-different runs under one id are reported rather than merged.
 `tests/test_proof_profile.py` pins `tools/proof_profile.py`'s parser against
 two real ACL2 8.7 logs in `tests/vectors/` -- one form that closed and one
 that did not -- plus the driver it builds and its choice of the less loaded
@@ -321,35 +315,25 @@ A certification run writes `build/acl2/certify-<UTC>-<pid>/`, and `build/` is
 ignored (`.gitignore:6`). The directory exists only on the machine that ran
 it, and a lane worktree, a farm root under `/home/ember/fn-lanes` or
 `/tank/fn/lanes`, and a gate directory under `$HOME/fn-gates` or
-`/tank/fn/gates` are all removed as routine housekeeping. Measured on dev at
-`5698648`: 314 run ids were cited in tracked files, the oldest from
-2026-09-19, and **not one of them resolved in the checkout**. 137 were still
-recoverable from this laptop and the two boxes and are committed; the other
-177 are gone and are named in `planning/evidence/manifests/LOST.txt`.
+`/tank/fn/gates` are all removed as routine housekeeping, so a run id cited in
+a tracked file does not resolve in the checkout; a book's certification is the
+cert-cache entry `green_check` reads, not a cited run.
 
 So the two halves of a run are treated differently.
 
-- **The manifest is the claim and is durable.** `manifest.json` names the
+- **The manifest is the claim, kept in its run dir.** `manifest.json` names the
   requested books, the expected and observed `FN_CERTIFY_SUCCESS` markers,
   the per-book verdict and wall seconds, the source and certificate SHA-256
   digests, the forbidden-facility audit, the ACL2 executable and its digest,
   the host Lisp banner, and -- since this lane -- the run id, the hostname,
   the worktree, the git revision and branch, and the start and finish times.
   It is 4 kB for a single root and up to 200 kB for a wide closure. Every
-  one is filed under `planning/evidence/manifests/<run-id>.json`, keyed by
-  run id alone, with no box, lane or gate in the path.
+  one stays in its run dir `build/acl2/<run-id>/manifest.json` on the box
+  that ran it; a book's certification is the cert-cache entry `green_check`
+  reads.
 - **The logs are the bulk and are not durable.** `certify.log` is whatever
   ACL2 printed; it is not committed and it is deleted with its directory.
-  The archived manifest's `archived_from` field says which machine held it
-  and where, so a log that still exists can be found while it lasts.
-
-Two tools write the archive, at the two points a manifest reaches this
-laptop: `tools/certify_books.py` when a local run finishes (every exit,
-including a refusal before ACL2 starts), and `tools/farm.py wait` when a farm
-run's evidence is fetched. The directory holds ignored local drafts.
-`python3 tools/evidence_manifests.py add RUN-ID` archives the bytes by SHA-256
-and stages their logical name in `planning/evidence-index.tsv`; `sync --add`
-does this for the runs a tracked file cites. Commit that index line with the claim.
+  The run dir's box and path are the only record of where one was.
 
 **To re-run a claim from its manifest**: take `git_revision` and check it
 out; `source_digests_sha256` says which book sources that revision must
@@ -380,16 +364,8 @@ statically. With `FN_ACL2` unset the tool prints that it did not run and exits
 (`python3 tools/certs.py install`), because an `include-book` inside a host
 file reads a certificate `ld` will not produce.
 
-`tools/evidence_manifests.py check` runs beside them and asks a different
-question: not whether a book is right but whether a claim can be checked at
-all. It compares the run ids cited in tracked files against the manifests
-committed under `planning/evidence/manifests/`, and fails on a newly cited
-run with no committed manifest -- the fix is `sync --add`, or `harvest
---host persvati|hbox` if the run was on a box. It tolerates the 177 rows of
-`LOST.txt`, whose owners must re-run or retract them, and `--strict` fails
-on those too once they are gone. `tools/cite_check.py` is the same family
-for repository paths and deliberately does not read `build/`; this tool
-reads nothing else.
+`tools/cite_check.py` checks repository paths cited in tracked files and
+deliberately does not read `build/`.
 
 Three static checks run beside it, none of them needing ACL2.
 `tools/native_program_check.py` is the crash model's cut correspondence;

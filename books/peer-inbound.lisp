@@ -2268,7 +2268,7 @@
                  fn-nntp-command-arguments-at-mostp
                  ;; These backchain uselessly on the Message-ID and
                  ;; response-text hypotheses (1.1 M frames, 3.3 s).
-                 fn-nntp-article-idp-is-consp fn-nntp-article-idp
+                  fn-nntp-article-idp
                  fn-nntp-message-id-tokenp fn-nntp-response-text-true-listp
                  fn-af-message-idp fn-peer-message-id-len)))))
 

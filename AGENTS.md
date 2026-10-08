@@ -42,6 +42,8 @@ substantial changes, then the spec you touch. Proposals and open questions are n
 - Work only in your worktree, `build/lanes/<name>`. Never stash; never reset or check out
   ~/dev/fn; commit named files with `git commit -F`; run `tools/secrets_check.py <files>`;
   push `HEAD:lane/<name>` only. The integrator alone writes origin/dev.
+- When your branch merges to dev, the deputy that owns the worktree removes it
+  (`git worktree remove build/lanes/<name>`); a dirty merged worktree is salvaged first.
 - Claim new ids first: `tools/next_id.py claim KIND --lane NAME`.
 - Iterate in `tools/proof_repl.py` (seconds per attempt, steps not seconds); certify is for
   READY, not iteration. Certify with

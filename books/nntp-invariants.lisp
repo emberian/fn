@@ -146,13 +146,16 @@
 ; command names and the cursor the session keeps.
 (defthm fn-nntp-article-idp-is-consp
   (implies (fn-nntp-article-idp article) (consp article))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-nntp-article-idp fn-article-msgid))))
+
+(local (defthm fn-nntp-article-idp-is-consp-local-rewrite
+  (implies (fn-nntp-article-idp article) (consp article))
+  :hints (("Goal" :by fn-nntp-article-idp-is-consp))))
 
 ; As a rewrite rule it is tried on every consp test and backchains by opening
 ; fn-nntp-article-idp and the message-id token check; the proofs below reach
 ; it through the shape facts they name.  Exported enabled, as before.
-(local (in-theory (disable fn-nntp-article-idp-is-consp)))
-
 (defthm fn-nntp-found-article-with-identifier-is-available
   (implies (and (posp number)
                 (<= number *fn-nntp-max-article-number*)
@@ -1305,9 +1308,3 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-nntp-article-idp-is-consp)))
-
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-nntp-article-idp-is-consp))

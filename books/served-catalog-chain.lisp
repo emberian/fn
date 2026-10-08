@@ -55,6 +55,10 @@
 (include-book "protocol-served") ; generated served dispatcher and declared row keystones
 (include-book "group-access-cache")
 
+(local (defthmd fn-nntp-article-idp-is-consp-local-rewrite
+  (implies (fn-nntp-article-idp article) (consp article))
+  :hints (("Goal" :by fn-nntp-article-idp-is-consp))))
+
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
 ;; 9.1); planning/evidence/tau-cost-*.json has this book's figures.
@@ -1272,7 +1276,7 @@
                                ;; every auth arm (4.6 s -> 0.1 s without them)
                                fn-scr-auth-step-is-scar-auth-step-pinned fn-scr-catalogp
                                fn-gidx-pin-correspondencep fn-scat-article-idp-is-msgid-idp
-                               fn-nntp-article-idp-is-consp fn-nntp-index-msgid-okp-stringp
+                               fn-nntp-index-msgid-okp-stringp
                                fn-cp-id-length-bound)
            :use ((:instance fn-wire-begin-article-with-line-limit-preserves-fast-statep
                             (wire-state (fn-served-conn-wire conn))
@@ -1361,7 +1365,7 @@
                           fn-gidx-pin-correspondencep fn-scr-conn-okp-of-with-wire
                           fn-scr-feed-span-is-scar-feed-span fn-scr-feed-byte-is-scar-feed-byte
                           fn-scr-dispatch-events-is-scar-dispatch-events
-                          fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp)))
+                          fn-scat-article-idp-is-msgid-idp)))
 
 ; A publication-changing command is isolated from preceding reply effects.
 ; The original scanner remains the logical full-span reference. This entry
@@ -1750,7 +1754,7 @@
                           fn-gidx-pin-correspondencep fn-scr-conn-okp-of-with-wire
                           fn-scr-feed-span-is-scar-feed-span fn-scr-feed-byte-is-scar-feed-byte
                           fn-scr-dispatch-events-is-scar-dispatch-events
-                          fn-nntp-article-idp-is-consp fn-scat-article-idp-is-msgid-idp)))
+                          fn-nntp-article-idp-is-consp-local-rewrite fn-scat-article-idp-is-msgid-idp)))
 
 (defun fn-scr-step-span-core (conn i end live lver arts cache fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat)

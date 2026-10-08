@@ -227,7 +227,14 @@
                 (<= (fn-heap-with-nursery base nursery) d))
            (<= (+ base (* 2 (fn-heap-nursery-trigger d nursery))) d))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable floor ceiling)
+  ; The minimal theory plus the two definitions, the two bounds and the
+  ; arithmetic of MAX and MIN: with arithmetic-5's rules in play the linear
+  ; step costs seconds of non-step proof time on the 8 MiB constants.
+  :hints (("Goal" :in-theory (union-theories
+                              (theory 'minimal-theory)
+                              '(fn-heap-with-nursery fn-heap-nursery-trigger
+                                fn-heap-floor-16-bound fn-heap-ceiling-7-bound
+                                max min nfix natp))
            :cases ((<= (floor d 16) (nfix nursery))))))
 
 (defthm fn-heap-with-nursery-natp

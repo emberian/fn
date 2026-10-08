@@ -674,8 +674,6 @@
                            (fn-auth-effects-carry-no-submission
                             fn-auth-nntp-effects-are-auth-effects
                             fn-served-submission fn-wire-octet-listp
-                            fn-wire-next-event-needs-input
-                            fn-wire-next-loop-event-needs-input
                             fn-octl-served-step-archive-command fn-octl-reply
                             fn-served-step fn-own-conn-live-session
                             fn-own-conn-wire fn-own-conn-archive fn-own-conn-config

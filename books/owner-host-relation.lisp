@@ -52,7 +52,7 @@
 ;                                     fn-ocfg-open-peer      fn-ohr-open-peer-preserves-carried-relation (PRF-931; pins the live configuration since PKT-888)
 ;   fn-owner-outcome                  fn-oop-outcome (= fn-apc-own-outcome on the owner and effects; books/owner-outcome-pinned.lisp)
 ;                                                            fn-ohr-outcome-preserves-carried-relation (PRF-932; re-pins on a durable completion since PKT-889)
-;   fn-owner-transit-outcome          fn-oop-transit-outcome (= fn-own-transit-outcome on the owner and effects)
+;   fn-owner-transit-outcome          fn-oop-transit-outcome (= fn-own-transit-outcome on the owner and effects under fn-ocl-relation)
 ;                                                            fn-ohr-transit-outcome-preserves-carried-relation (PRF-932)
 
 (in-package "ACL2")
@@ -1046,7 +1046,7 @@
                                                            nil)
                                                          kind reason)))))
            :in-theory (e/d (fn-oop-transit-outcome)
-                           (fn-oop-transit-next fn-ocfg-advance fn-ocfg-with-owner
+                           (fn-oop-transit-next fn-oop-advance fn-ocfg-advance fn-ocfg-with-owner
                             fn-own-outcome-completion fn-own-outcome-rendering fn-served-transit-outcome
                             fn-peer-decision fn-own-transit-subp
                             fn-served-make-conn-group-indexed fn-own-advance-result
@@ -1071,7 +1071,7 @@
            (equal (fn-own-store (fn-ocfg-owner (cdr (fn-oop-transit-outcome oc id kind reason word))))
                   (fn-own-store (fn-ocfg-owner oc))))
   :hints (("Goal" :in-theory (e/d (fn-oop-transit-outcome)
-                                  (fn-oop-transit-next fn-ocfg-advance fn-own-outcome-completion
+                                  (fn-oop-transit-next fn-oop-advance fn-own-outcome-completion
                                    fn-own-outcome-rendering fn-served-transit-outcome fn-peer-decision
                                    fn-own-transit-subp fn-served-make-conn-group-indexed
                                    fn-oop-transit-outcome-is-own-transit-outcome)))))

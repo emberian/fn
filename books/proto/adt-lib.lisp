@@ -364,9 +364,9 @@
   (declare (xargs :guard (and (natp n) (true-listp p) (true-listp q))))
   (if (zp n) t (and (equal (nth (1- n) p) (nth (1- n) q)) (adt-prefix-eq p q (1- n)))))
 
-(defthm adt-prefix-eq-nth
+(local (defthm adt-prefix-eq-nth
   (implies (and (adt-prefix-eq p q n) (natp j) (< j (nfix n)))
-           (equal (nth j q) (nth j p))))
+           (equal (nth j q) (nth j p)))))
 
 (defthm adt-prefix-eq-refl (adt-prefix-eq p p n))
 
@@ -393,8 +393,6 @@
 (defthm adt-slice-of-prefix-eq
   (implies (and (adt-prefix-eq p q f) (natp off) (<= (+ off (nfix n)) (nfix f)))
            (equal (adt-slice q off n) (adt-slice p off n))))
-
-(in-theory (disable adt-prefix-eq-nth))
 
 ; Writing a list of octets into a pool, and the stobj-shaped loop over it.
 (defun adt-pool-writes (pool i bytes)
@@ -949,7 +947,12 @@
 
 (defthm adt-nth-of-atom
   (implies (atom x) (equal (nth n x) nil))
+ :rule-classes nil
   :hints (("Goal" :in-theory (enable nth))))
+
+(local (defthm adt-nth-of-atom-local-rewrite
+  (implies (atom x) (equal (nth n x) nil))
+  :hints (("Goal" :by adt-nth-of-atom))))
 
 (defthm adt-get-fields-of-corr
   (implies (and (adt-fields-corr s ci p c recs) (natp j) (< j (len s))
@@ -1454,8 +1457,3 @@
 
 (in-theory (disable adt-empty-c adt-build adt-canon))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable adt-nth-of-atom
-                    adt-prefix-eq-nth))

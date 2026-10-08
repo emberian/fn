@@ -69,12 +69,10 @@
 ;; PRF-161: host/owner-host.lisp calls the fn-exp- exposure subjects.
 (include-book "books/public-exposure")
 (include-book "books/public-exposure-reply")
-;; PRF-192: the served read's reply as a range of the octet buffer.  HST-023
-;; (PRF-248): the reply is a render PLAN over the step's effects, rendered off
+;; HST-023 (PRF-248, PRF-192): the reply is a render PLAN over the step's effects, rendered off
 ;; the owner mutex a window at a time: host/owner-host.lisp fn-owner-chunk-span
 ;; calls fn-splan-step-make, host/native/owner.lisp fnn-owner-render-next calls
 ;; fn-splan-window and the gate calls fn-osch-next (books/owner-scheduler).
-(include-book "books/served-reply-buffer")
 (include-book "books/served-plan")
 ;; Lane join-f2-13 (PRF-1020): the plan's cursor quantum, the host's
 ;; continuation of a served OVER/XOVER range (fnn-owner-cursor-step calls

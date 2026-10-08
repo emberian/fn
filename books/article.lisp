@@ -694,7 +694,13 @@
 
 (defthm fn-article-nonempty-true-list-is-consp
   (implies (and (true-listp xs) xs)
-           (consp xs)))
+           (consp xs))
+ :rule-classes nil)
+
+(local (defthm fn-article-nonempty-true-list-is-consp-local-rewrite
+  (implies (and (true-listp xs) xs)
+           (consp xs))
+  :hints (("Goal" :by fn-article-nonempty-true-list-is-consp))))
 
 (defthm fn-article-natp-one-less
   (implies (and (natp n) (not (zp n)))
@@ -887,8 +893,7 @@
 (deftheory fn-article-guard-backchaining
   '(fn-article-header-bytes-true-listp
     fn-article-field-list-true-listp
-    fn-article-octet-list-true-listp
-    fn-article-nonempty-true-list-is-consp))
+    fn-article-octet-list-true-listp))
 
 (in-theory (disable fn-article-guard-backchaining))
 
@@ -904,7 +909,3 @@
                     (:definition fn-article-parse-lines)
                     (:rewrite fn-article-header-rev-add-line-recomposes)))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-article-nonempty-true-list-is-consp))

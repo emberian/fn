@@ -135,7 +135,24 @@ FIXTURE_FILES = re.compile(r"^tests/test_[a-z0-9_]+\.py$")
 # key with its source digest, so a book removed since is named here forever
 # and MUST stay named: rewriting an evidence file to match today's tree is
 # falsifying the record.  Reported, never repaired.
-RECORD_FILES = re.compile(r"^(tests|planning)/evidence/")
+RECORD_FILES = re.compile(r"^(tests/evidence/|planning/(evidence|records|throughput)/)")
+
+# A citation of a record that left the tree: the evidence archive (D71) and the
+# dated handoffs, lane notes and boards the 2026-10-02 history rewrite moved
+# there.  The path stays as text, resolvable only through the box that holds
+# the bytes (hbox:/tank/fn/evidence).  One rule, not phantom or drift.
+HISTORICAL = re.compile(
+    r"^(?:(?:planning|docs)/evidence(?:/|$)"
+    r"|planning/(?:lanes|takeover-2026-09-29|archive|issues-drafts|deputies|briefs-wave5"
+    r"|plan-coverage-audit-2026-09-30)(?:/|$)"
+    r"|planning/(?:backlog-2026-09-25\.md|backlog-triage-2026-09-26\.md"
+    r"|burndown-2026-09-29\.(?:json|md)|commit-map-20261002\.txt|coordination-2026-09-29\.md"
+    r"|decisions-2026-09-29-(?:log-2-)?for-gpt6\.md|for-codex-2026-09-26\.md"
+    r"|for-gpt6-2026-09-26\.md|handoff-2026-09-24-(?:night|winddown)\.md"
+    r"|handoff-2026-09-25-fable-notes\.md|handoff-2026-09-27-coordinator\.md"
+    r"|handoff-2026-10-01-claude\.md|reorg-floats\.txt|reorg-plan\.json"
+    r"|reorientation-2026-09-29\.md|review-request-2026-09-26(?:-wave5)?\.md"
+    r"|swarm-board\.md|workstream-review-2026-09-24\.md|worktree-recovery-2026-09-24\.md))")
 
 # A load-bearing citer: a source file a reader consults while deciding whether
 # to trust a theorem.
@@ -304,46 +321,9 @@ def disclosed(lines: list[str], number: int) -> bool:
     return bool(DISCLOSURE.search(prose))
 
 
-def indexed_answer(token: str, index: dict, names: list[str]) -> str | None:
-    """The indexed file that answers this token: its own name or the implied
-    source's; for a directory token, the first indexed file under it."""
-    base = token.rstrip("/")
-    stem, dot, extension = base.rpartition(".")
-    candidates = [token, base] + [stem + e for e in IMPLIED_EXTENSIONS if dot] \
-        + [base + e for e in IMPLIED_EXTENSIONS]
-    name = next((c for c in candidates if c in index), None)
-    if name is None:
-        prefix = base + "/"
-        at = bisect.bisect_left(names, prefix)
-        name = names[at] if at < len(names) and names[at].startswith(prefix) else None
-    return name
-
-
-def unverified_evidence(root: Path, tokens: list[str]) -> dict[str, str]:
-    """{token: "unavailable" | "refused"} for the tokens whose indexed answer
-    does not verify (r56 F3: an index row is a name, not bytes).  A
-    working-tree file at an indexed path must hash to its index line; it
-    never answers as itself (r61 F2).  A token with no indexed answer at all
-    is "unavailable" (the caller sent it because only the index answered).
-    """
-    import evidence_store  # noqa: PLC0415
-    index = evidence_store.read_index(root)
-    names = sorted(index)
-    chosen = {token: indexed_answer(token, index, names) for token in tokens}
-    problems = evidence_store.verify_paths(
-        root, sorted({n for n in chosen.values() if n}), index, prefer_local=True)
-    failed = {}
-    for token, name in chosen.items():
-        problem = problems.get(name) if name else FileNotFoundError(token)
-        if problem is not None:
-            failed[token] = ("refused" if isinstance(problem, evidence_store.EvidenceRefused)
-                             else "unavailable")
-    return dict(sorted(failed.items()))
-
-
 def scan(present: set[str], history: set[str],
-         files: list[str] | None = None, answered: dict[str, bool] | None = None,
-         unavailable: set[str] | dict[str, str] = frozenset()) -> list[Finding]:
+         files: list[str] | None = None,
+         answered: dict[str, bool] | None = None) -> list[Finding]:
     findings: list[Finding] = []
     # One answer per distinct token: the same citations recur across the
     # tree, and each miss in `present` was a run of filesystem probes --
@@ -368,13 +348,13 @@ def scan(present: set[str], history: set[str],
                 hit = answered.get(token)
                 if hit is None:
                     hit = answered[token] = resolves(token, present)
-                if hit and token not in unavailable:
+                if hit:
                     continue
-                klass = ((unavailable.get(token, "unavailable")
-                          if isinstance(unavailable, dict) else "unavailable")
-                         if hit else benign(token, citer, line, match.start(1)))
+                klass = benign(token, citer, line, match.start(1))
                 if klass is None:
-                    if token.split("#")[0] in RETIRED:
+                    if HISTORICAL.match(token):
+                        klass = "historical"
+                    elif token.split("#")[0] in RETIRED:
                         # Disclosed centrally: planning/retired-paths.json says
                         # it was removed on purpose and where its role went.
                         klass = "retired"
@@ -406,7 +386,7 @@ def scan(present: set[str], history: set[str],
 
 RAISED = ("phantom", "drift")
 BENIGN = ("annotated", "retired", "catalogue", "placeholder", "wrapped", "prose",
-          "system", "fixture", "record")
+          "system", "fixture", "record", "historical")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -420,37 +400,9 @@ def main(argv: list[str] | None = None) -> int:
                         help="exit non-zero on any load-bearing finding")
     args = parser.parse_args(argv)
 
-    tracked_set = set(tracked())
-    present = set(tracked_set)
-    # A planning/evidence/ path answers a citation when the evidence index
-    # names it AND its bytes fetch and verify from the archive
-    # (tools/evidence_store.py); the bytes are checked after the scan, for
-    # the tokens only the index answered.
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import evidence_store  # noqa: PLC0415
-    for name in evidence_store.read_index(ROOT):
-        present.add(name)
-        parent = name.rpartition("/")[0]
-        while parent and parent not in present:
-            present.add(parent)
-            parent = parent.rpartition("/")[0]
+    present = set(tracked())
     history = ever_existed()
-    answered: dict[str, bool] = {}
-    findings = scan(present, history, answered=answered)
-    # Every answered token whose answer the index names is checked against
-    # the index, a local file included (r61 F2: an untracked shadow at an
-    # indexed path answered by existing); the rest only when nothing tracked
-    # answers them.
-    index = evidence_store.read_index(ROOT)
-    names = sorted(index)
-    via_index = [token for token, hit in answered.items()
-                 if hit and (indexed_answer(token, index, names) is not None
-                             or not resolves(token, tracked_set))]
-    failed = unverified_evidence(ROOT, via_index) if via_index else {}
-    if failed:
-        findings = scan(present, history, unavailable=failed)
-    unavailable = [f for f in findings if f.klass == "unavailable"]
-    refused = [f for f in findings if f.klass == "refused"]
+    findings = scan(present, history)
     raised = [f for f in findings if f.klass in RAISED]
     load_bearing = [f for f in raised if f.tier == "load-bearing"]
 
@@ -463,10 +415,8 @@ def main(argv: list[str] | None = None) -> int:
                         for t in ("load-bearing", "spec", "tool", "planning")},
             "distinct_targets": len({f.token for f in raised}),
             "load_bearing": len(load_bearing),
-            **({"unavailable": [f.as_dict() for f in unavailable]} if unavailable else {}),
-            **({"refused": [f.as_dict() for f in refused]} if refused else {}),
         }, indent=2))
-        return verdict(args.strict, load_bearing, unavailable, refused)
+        return verdict(args.strict, load_bearing)
 
     if not args.summary:
         order = {"load-bearing": 0, "spec": 1, "tool": 2, "planning": 3}
@@ -489,29 +439,13 @@ def main(argv: list[str] | None = None) -> int:
           f"{tiers['planning']} planning; "
           + ", ".join(f"{sum(1 for f in findings if f.klass == k)} {k}"
                       for k in BENIGN) + " not raised.")
-    if unavailable:
-        print(f"cite_check: UNAVAILABLE: {len(unavailable)} citations of "
-              f"{len({f.token for f in unavailable})} indexed evidence paths whose "
-              "bytes did not fetch and verify from the archive:")
-        for finding in sorted(unavailable, key=lambda f: (f.token, f.citer)):
-            print(f"  {finding.token}  {finding.citer}:{finding.line}")
-    if refused:
-        print(f"cite_check: REFUSED: {len(refused)} citations of "
-              f"{len({f.token for f in refused})} indexed evidence paths whose bytes "
-              "(a working-tree file, or the archive object) do not hash to the index line:")
-        for finding in sorted(refused, key=lambda f: (f.token, f.citer)):
-            print(f"  {finding.token}  {finding.citer}:{finding.line}")
-    return verdict(args.strict, load_bearing, unavailable, refused)
+    return verdict(args.strict, load_bearing)
 
 
-def verdict(strict: bool, load_bearing: list, unavailable: list,
-            refused: list = ()) -> int:
-    """--strict: 1 refused (a load-bearing absent path), 4 refused evidence
-    (cited bytes that do not hash to their index line), 3 uncertain (cited
-    evidence the archive cannot deliver), 0 accepted.  Report mode is 0."""
-    if not strict:
-        return 0
-    return 1 if load_bearing else 4 if refused else 3 if unavailable else 0
+def verdict(strict: bool, load_bearing: list) -> int:
+    """--strict: 1 when a load-bearing citer cites an absent path; 0 otherwise.
+    Report mode is 0."""
+    return 1 if strict and load_bearing else 0
 
 
 if __name__ == "__main__":

@@ -297,7 +297,7 @@ is refused before a record is read."
                                                   "") "1"))))
                    (fnn-os-fail sb-posix:eio path)))))
            (outcome
-             (fnn-immutable-publish-effect
+             (fnn-immutable-publish-deferred
               (fnn-core 'fn-aj-host-operation-publication operation)
               stage final (fnn-app-journal-records journal) frame
               :cleanup-directory (fnn-app-journal-staging journal)
@@ -595,6 +595,7 @@ is refused before a record is read."
                              "1")))))
            (setq journal (fnn-app-open store journal-root domain))
            (funcall thunk journal)))
+      (fnn-immutable-drain-cleanups)
       (when journal (fnn-app-journal-close journal))
       (when store (fnn-store-close store)))))
 

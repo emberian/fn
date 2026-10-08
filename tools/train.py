@@ -9,7 +9,7 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
     train.py regen [--label N]
     train.py certify BOX             # books train: ONE farm run (install, certify), then the emits in its tree
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
-    train.py gate [--strict-lock]
+    train.py gate
     train.py push
     train.py status
 
@@ -49,29 +49,22 @@ PY3 = os.environ.get("TRAIN_PY3", "python3")
 
 # Conflicted files that are regenerated anyway: the train side wins.
 GENERATED = (
-    "planning/ledger.json",
-    "planning/ledger.md",
-    "planning/current.md",
-    "planning/repair/STATUS.md",
     "planning/interfaces.json",
     "specs/wire-grammar.json",
+    # keystone_emit --write-manifest rewrites it from the tree at regen;
+    # its owners say never hand-merge it (trains 41, 45, 46 conflicted on it)
+    "planning/teeth-obligations.json",
 )
 # planning/proofs.json is NOT here: ledger.py --write regenerates only its
 # event arrays, and lanes curate its rows (re-pointing a PRF row at a renamed
 # keystone), so a conflict there goes back to the lane like source does.
 # Tail-append files: keep both sides' lines.
-UNION = ("planning/evidence-index.tsv", "planning/decisions.md")
-EVIDENCE_INDEX = "planning/evidence-index.tsv"
-DEDUPE = ("planning/evidence-index.tsv",)
+UNION = ("planning/decisions.md",)
 
 # Files the regen step is allowed to commit (only those that exist/changed).
 REGEN_OUTPUTS = (
-    EVIDENCE_INDEX,
-    "planning/ledger.json",
-    "planning/ledger.md",
     "planning/proofs.json",
-    "planning/current.md",
-    "planning/repair/STATUS.md",
+    "planning/teeth-obligations.json",
 )
 HBOX_OUTPUTS = ("planning/interfaces.json", "specs/wire-grammar.json")
 
@@ -79,7 +72,7 @@ BOX_CMD = (
     "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export && "
     "python3 tools/interface_emit.py --write && python3 tools/interface_emit.py --check && "
     "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check && "
-    "python3 tools/extract/world.py --check && python3 tools/build_lists_check.py && "
+    "python3 tools/extract/world.py --check && python3 tools/host_check.py --build-lists && "
     "python3 tools/host_check.py --read && python3 tools/host_check.py --world"
 )
 
@@ -90,7 +83,7 @@ EMIT_STEPS = (
     ("interface_emit", "python3 tools/interface_emit.py --write --check"),
     ("protocol_emit", "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check"),
     ("world", "python3 tools/extract/world.py --check"),
-    ("build_lists", "python3 tools/build_lists_check.py"),
+    ("build_lists", "python3 tools/host_check.py --build-lists"),
     ("host_read", "python3 tools/host_check.py --read"),
     ("host_world", "python3 tools/host_check.py --world"),
 )
@@ -108,12 +101,22 @@ BOX_PATHS = ("books", "specs", "tests/acl2")
 LOCAL_BOX_CHECKS = (
     ("interface_emit", ["tools/interface_emit.py", "--check"]),
     ("world", ["tools/extract/world.py", "--check"]),
-    ("build_lists", ["tools/build_lists_check.py"]),
+    ("build_lists", ["tools/host_check.py", "--build-lists"]),
     ("host_read", ["tools/host_check.py", "--read"]),
     ("host_world", ["tools/host_check.py", "--world"]),
 )
 
-GATES = ("ancestor", "ledger", "current_view", "main_last", "host_load", "box_step", "lock_delta", "secrets")
+# The Python suites the integrator ran by hand before a push, now gate
+# conditions: the push refuses on them like the others (train 36 pushed two
+# test_ledger reds through `gate; push` chained with `;`).  Always these; and
+# the test file of every tools/<x>.py the train changes, and every changed
+# tests/test_*.py except tests/test_native_* (they need a native image).  Each runs as `python -m unittest <file>` from the root
+# (test_train imports `tools.train`, so not as a bare script).
+UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
+              "tests/test_train.py", "tests/test_farm.py")
+
+GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
+         "box_step", "lock_delta", "secrets", "unit")
 
 
 class TrainError(Exception):
@@ -208,36 +211,8 @@ def _union_resolve(t: Train, path: str) -> None:
         if p.returncode < 0 or p.returncode > 127:
             raise TrainError(f"git merge-file failed for {path}")
         merged = p.stdout
-    if path in DEDUPE:
-        seen: set[str] = set()
-        keep = []
-        for line in merged.splitlines(keepends=True):
-            if line in seen:
-                continue
-            seen.add(line)
-            keep.append(line)
-        merged = "".join(keep)
     (t.root / path).write_text(merged)
     git(t.root, "add", "--", path)
-
-
-def _comm_23_missing(root: Path, path: str) -> list[str]:
-    """Lines of origin/dev:path (sorted) absent from the working file (comm -23)."""
-    ref = git(root, "show", f"origin/dev:{path}", check=False)
-    if ref.returncode != 0:
-        return []
-    have = sorted((root / path).read_text().splitlines())
-    want = sorted(ref.stdout.splitlines())
-    i = 0
-    missing = []
-    for w in want:
-        while i < len(have) and have[i] < w:
-            i += 1
-        if i < len(have) and have[i] == w:
-            i += 1
-        else:
-            missing.append(w)
-    return missing
 
 
 def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
@@ -276,14 +251,6 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
         else:
             say(f"  conflict {f}: union of both sides")
             _union_resolve(t, f)
-    if (t.root / EVIDENCE_INDEX).exists():
-        missing = _comm_23_missing(t.root, EVIDENCE_INDEX)
-        if missing:
-            git(t.root, "merge", "--abort", check=False)
-            entry.update(status="conflict", files=[EVIDENCE_INDEX])
-            say(f"  lane {name}: evidence-index lost {len(missing)} origin/dev line(s); merge aborted")
-            t.save(st)
-            return False
     git(t.root, "commit", "--no-edit")
     entry.update(status="merged", merge=t.head(), files=conflicted)
     t.save(st)
@@ -337,11 +304,12 @@ def cmd_regen(t: Train, args) -> int:
         t.save(st)
         return rc
 
-    # ledger, current view, repair status, in this order
+    # ledger.py --write: proofs.json's event arrays (the views are not committed)
     for step, argv in (
         ("ledger", [PY, "tools/ledger.py", "--write"]),
-        ("current_view", [PY, "tools/current_view.py", "--write"]),
-        ("repair", [PY, "planning/repair/repair.py", "report"]),
+        # the teeth obligation manifest of the merged tree (the keystone gate
+        # checks it; a conflict on it took the train side at merge)
+        ("teeth", [PY, "tools/keystone_emit.py", "--write-manifest"]),
     ):
         rc = t.run(f"regen-{step}", argv)
         if done(step, rc):
@@ -350,7 +318,7 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = f"Regenerate train {n}: ledger, current view, repair status"
+    msg = f"Regenerate train {n}: proofs.json events, teeth obligation manifest"
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1
@@ -394,6 +362,56 @@ def _changed_roots(t: Train, prefix: str) -> list[str]:
     return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
 
 
+def cache_seed_command(t: Train, box: str, tree: str) -> tuple[str, str | None]:
+    """Best-effort reuse of the last box step's content-keyed emit caches.
+
+    ledger-forms, ledger-tree (including suspects), callgraph, reach,
+    certify-audit and wire-emit all validate content keys before reuse;
+    wire-emit also validates the destination wire-grammar.json bytes.
+    The success marker, not merely a local record, determines cache_seed.
+    """
+    def skip(reason):
+        return f"echo {shlex.quote('== cache seed skipped: ' + reason)}", None
+
+    try:
+        previous = load_box_record(t)
+        if not previous:
+            return skip("no previous box record")
+        if previous.get("box") != box:
+            return skip("previous box differs")
+        run = previous.get("run")
+        if not isinstance(run, str) or not run or Path(run).name != run:
+            return skip("no previous farm run")
+        record = json.loads((t.root / "build" / "farm" / f"{run}.json").read_text())
+        if record.get("host", record.get("box", box)) != box:
+            return skip("previous farm box differs")
+        previous_tree = record.get("remote_path")
+        if not isinstance(previous_tree, str) or not previous_tree:
+            return skip("no previous farm tree")
+    except (OSError, ValueError, AttributeError):
+        return skip("previous farm record unavailable")
+    source = shlex.quote(previous_tree.rstrip("/") + "/build/cache/.")
+    destination = shlex.quote(tree.rstrip("/") + "/build/cache/")
+    success = shlex.quote("== cache seed " + run)
+    if previous_tree.rstrip("/") == tree.rstrip("/"):
+        # farm reuses one remote tree per worktree: its build/cache is already there
+        return f"echo {shlex.quote('== cache seed ' + run + ' (same tree; cache in place)')}", run
+    return (f"if [ -d {source} ]; then "
+            f"if mkdir -p {destination} && cp -a {source} {destination}; then "
+            f"echo {success}; else echo '== cache seed skipped: copy failed'; fi; "
+            "else echo '== cache seed skipped: previous cache missing'; fi", run)
+
+
+def emit_remote_command(tree: str, envs: str, box: str, seed: str) -> str:
+    wrap = WRAPS.get(box, "")
+    body = (f"{seed}; {envs}; "
+            'eval "$(python3 tools/native_env.py sbcl --export 2>/dev/null)"; '
+            + EMIT_CMD)
+    # The copy shares the emits' timeout and hbox resource wrapper.
+    return (f"cd {shlex.quote(tree)} && "
+            f"{wrap + ' ' if wrap else ''}timeout {EMIT_TIMEOUT_SECONDS} sh -c {shlex.quote(body)}")
+
+
 def cmd_certify(t: Train, args) -> int:
     if t.dirty():
         # farm ships the worktree (rsync without .git/ and build/), so an
@@ -430,14 +448,14 @@ def cmd_certify(t: Train, args) -> int:
     tree = rec["remote_path"]
     env = subprocess.run([PY3, "tools/box_table.py", "env", args.box], cwd=t.root, capture_output=True, text=True)
     envs = env.stdout.strip() if env.returncode == 0 and env.stdout.strip() else "true"
-    wrap = WRAPS.get(args.box, "")
-    remote_cmd = (f"cd {shlex.quote(tree)} && {envs}; "
-                  f"eval \"$(python3 tools/native_env.py sbcl --export 2>/dev/null)\"; "
-                  f"{wrap} timeout {EMIT_TIMEOUT_SECONDS} sh -c {shlex.quote(EMIT_CMD)}").replace("  ", " ")
+    seed, seed_run = cache_seed_command(t, args.box, tree)
+    remote_cmd = emit_remote_command(tree, envs, args.box, seed)
     say(f"$ {SSH} {args.box} <emits in {tree}>")
     log = t.logs / f"certify-emit-{args.box}.log"
     p = subprocess.run([SSH, args.box, remote_cmd], capture_output=True, text=True)
     log.write_text(p.stdout + p.stderr)
+    cache_seed = seed_run if seed_run and any(line == f"== cache seed {seed_run}" or line.startswith(f"== cache seed {seed_run} ")
+                                              for line in p.stdout.splitlines()) else None
     steps = {m.group(1): int(m.group(2)) for m in re.finditer(r"^== step (\S+) (\d+)$", p.stdout, re.M)}
     if p.returncode != 0:
         say(f"emits on {args.box} failed (rc {p.returncode}; log {log}); nothing recorded")
@@ -454,12 +472,13 @@ def cmd_certify(t: Train, args) -> int:
     wall = {"install": round(t1 - t0), "certify": round(t2 - t1), "emit": round(t3 - t2), "total": round(t3 - t0), "emit_steps": steps}
     _commit_named(t, HBOX_OUTPUTS, f"interfaces.json, wire-grammar.json: the train certify's emits on {args.box} at {ran_at[:9]}")
     record = {"sha": t.head(), "ran_at": ran_at, "box": args.box, "run": run,
-              "certify_id": rec.get("certify_id"), "wall": wall}
+              "certify_id": rec.get("certify_id"), "wall": wall, "cache_seed": cache_seed}
     t.dir.mkdir(parents=True, exist_ok=True)
     box_record_path(t).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
     st = t.load()
     st["box_wall"] = wall
     st["box_run"] = run
+    st["cache_seed"] = cache_seed
     t.save(st)
     say(f"certify recorded: {args.box} run {run} at {record['sha'][:9]}; wall install {wall['install']}s "
         f"certify {wall['certify']}s emit {wall['emit']}s "
@@ -469,17 +488,117 @@ def cmd_certify(t: Train, args) -> int:
 
 # --------------------------------------------------------------------------- gate
 
-def _lock_keys(t: Train, cwd: Path) -> set[str] | None:
+# The lock gate's contract with tools/lock_discipline_check.py --json
+# (ruling 21): exit 0 and a JSON object carrying every field below with its
+# type.  Any other exit (a killed child is negative), unparseable output, a
+# missing or mistyped field, or a malformed `new` entry is a CHECKER FAILURE,
+# never an empty finding set.
+LOCK_JSON_FIELDS = {"new": list, "stale": list, "findings": list}
+# Repair-item states that no longer own a key (anything else is open).
+CLOSED_ITEM_STATES = frozenset({"landed", "refuted", "duplicate", "closed"})
+
+
+def _lock_keys(t: Train, cwd: Path) -> tuple[set[str] | None, str | None]:
+    """(keys new against the checker's baseline, None), or (None, why) when
+    the checker broke its contract."""
     p = subprocess.run([PY, "tools/lock_discipline_check.py", "--json"], cwd=cwd, capture_output=True, text=True)
     say(f"$ (in {cwd}) {PY} tools/lock_discipline_check.py --json  -> rc {p.returncode}")
+
+    def fail(why: str):
+        say(f"  lock_discipline_check contract broken: {why}: " + (p.stdout + p.stderr)[-300:])
+        return None, why
+
+    if p.returncode != 0:
+        return fail(f"exit status {p.returncode}")
     try:
         data = json.loads(p.stdout)
+    except ValueError:
+        return fail("output is not JSON")
+    if not isinstance(data, dict):
+        return fail("output is not a JSON object")
+    for field, kind in LOCK_JSON_FIELDS.items():
+        if field not in data:
+            return fail(f"missing field {field!r}")
+        if not isinstance(data[field], kind):
+            return fail(f"field {field!r} is not a {kind.__name__}")
+    keys = set()
+    for e in data["new"]:
         # `new` holds key strings (lock-check-full-output, d4d8514f6) or
         # finding dicts with a 'key' (earlier checkers): accept both.
-        return {e if isinstance(e, str) else e["key"] for e in data.get("new", [])}
-    except (ValueError, KeyError, TypeError, AttributeError):
-        say("  lock_discipline_check output not parseable: " + (p.stdout + p.stderr)[-300:])
-        return None
+        key = e if isinstance(e, str) else e.get("key") if isinstance(e, dict) else None
+        if not isinstance(key, str) or not key:
+            return fail(f"malformed entry in 'new': {str(e)[:80]}")
+        keys.add(key)
+    return keys, None
+
+
+def _lock_owners(root: Path, keys) -> dict[str, list[dict]]:
+    """For each key, the repair items naming it verbatim (id, owner, state)."""
+    def strings(v):
+        if isinstance(v, str):
+            yield v
+        elif isinstance(v, dict):
+            for x in v.values():
+                yield from strings(x)
+        elif isinstance(v, list):
+            for x in v:
+                yield from strings(x)
+
+    items = []
+    for path in sorted((root / "planning" / "repair" / "items").glob("*.json")):
+        try:
+            d = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if isinstance(d, dict):
+            # match the item's decoded text, not its JSON spelling (a key
+            # after "\n" is preceded by the escape's letter n in the raw file)
+            text = "\n".join(strings(d))
+            items.append((d.get("id", path.stem), d.get("owner"), d.get("state"), text))
+    out = {}
+    for k in keys:
+        pat = re.compile(r"(?<![\w|*:-])" + re.escape(k) + r"(?![\w|*:-])")
+        out[k] = [{"item": i, "owner": o, "state": s} for i, o, s, raw in items if pat.search(raw)]
+    return out
+
+
+def _ascii_gate(t: Train) -> int:
+    """ascii_check refusals in files this train changes (books/, host/).  The
+    tree carries older refusals (make check's debt); a train must add none:
+    U+2019 in host docstrings broke the ASCII-reading natives (lock-io-out)."""
+    changed = set(git(t.root, "diff", "--name-only", "origin/dev", "HEAD", "--", "books", "host").stdout.split())
+    if not changed:
+        say("books/ and host/ unchanged vs origin/dev: ascii_check skipped")
+        return 0
+    p = subprocess.run([PY, "tools/ascii_check.py"], cwd=t.root, capture_output=True, text=True)
+    t.logs.mkdir(parents=True, exist_ok=True)
+    (t.logs / "gate-ascii.log").write_text(p.stdout + p.stderr)
+    hits = [line for line in p.stdout.splitlines()
+            if line.startswith("REFUSED ") and line.split()[1].split(":")[0] in changed]
+    say(f"$ {PY} tools/ascii_check.py  -> {len(hits)} refusal(s) in {len(changed)} changed file(s)")
+    for line in hits[:20]:
+        say("  | " + line)
+    return 1 if hits else 0
+
+
+def unit_tests(root: Path, changed: list[str]) -> list[str]:
+    """UNIT_TESTS, then the tests of what the train changed, in order, once each."""
+    tests = list(UNIT_TESTS)
+    for path in changed:
+        p = Path(path)
+        if p.name.startswith("test_native_"):
+            # needs a native image (build/fn-host-*); N's native gate on the
+            # box is its gate, not this tree
+            continue
+        if p.parent.as_posix() == "tests" and p.name.startswith("test_") and p.suffix == ".py":
+            candidate = path
+        elif p.parent.as_posix() == "tools" and p.suffix == ".py":
+            candidate = f"tests/test_{p.stem}.py"
+        else:
+            continue
+        if candidate not in tests and (root / candidate).is_file():
+            tests.append(candidate)
+    return tests
 
 
 def cmd_gate(t: Train, args) -> int:
@@ -503,6 +622,9 @@ def cmd_gate(t: Train, args) -> int:
     # check-fast's main_last_check: a test file whose __main__ block is not last
     # silently skips every class after it (dev d67a244fa, tests/test_image_set.py)
     rec("main_last", t.run("gate-main_last", [PY, "tools/main_last_check.py"]))
+    # the teeth gate: a new toothless keystone or a stale teeth manifest
+    # (train 41: a lane's new keystones without teeth, caught by hand)
+    rec("keystone", t.run("gate-keystone", [PY, "tools/keystone_emit.py", "--check"]))
 
     host = git(t.root, "diff", "--name-only", "origin/dev", "HEAD", "--", "host").stdout.split()
     if host:
@@ -510,6 +632,8 @@ def cmd_gate(t: Train, args) -> int:
     else:
         say("host unchanged vs origin/dev: host_check --load skipped")
         rec("host_load", 0, skipped=True)
+
+    rec("ascii", _ascii_gate(t))
 
     box = load_box_record(t)
     if box is None:
@@ -538,25 +662,53 @@ def cmd_gate(t: Train, args) -> int:
     wt = tmp / "dev"
     try:
         git(t.root, "worktree", "add", "--detach", str(wt), "origin/dev")
-        old = _lock_keys(t, wt)
+        old, why_old = _lock_keys(t, wt)
     finally:
         git(t.root, "worktree", "remove", "--force", str(wt), check=False)
         shutil.rmtree(tmp, ignore_errors=True)
-    new = _lock_keys(t, t.root)
+    new, why_new = _lock_keys(t, t.root)
     if old is None or new is None:
-        rec("lock_delta", 1, error="unparseable lock_discipline_check output")
+        rec("lock_delta", 1, error="lock_discipline_check failed its contract",
+            dev_error=why_old, head_error=why_new)
     else:
+        # Ruling 21: the only green is "this train adds no key relative to
+        # dev".  Dev's existing keys are the recorded red list, each owned by
+        # an open repair item; a key with no item, or whose every item is
+        # closed, fails the gate too.  Nothing else exists.
         added, gone = sorted(new - old), sorted(old - new)
-        say(f"lock delta: added {added or '-'}; gone {gone or '-'}")
-        if added:
-            say("  WARNING: new lock-discipline keys (attributed at convergence)")
-        rec("lock_delta", 1 if (added and args.strict_lock) else 0, added=added, gone=gone)
+        owners = _lock_owners(t.root, sorted(new))
+        reds = [{"key": k, "items": owners[k]} for k in sorted(new & old)]
+        unowned = sorted(k for k in new & old if not owners[k])
+        closed = sorted(k for k in new & old if owners[k]
+                        and all(i["state"] in CLOSED_ITEM_STATES for i in owners[k]))
+        say(f"lock delta: added {added or '-'}; gone {gone or '-'}; "
+            f"owned reds on dev {len(reds) - len(unowned) - len(closed)}")
+        for k in added:
+            say(f"  NEW lock key added by this train: {k}")
+        for k in unowned:
+            say(f"  UNOWNED lock key on dev (no repair item names it): {k}")
+        for k in closed:
+            say(f"  lock key persists but its items are closed: {k} "
+                + ", ".join(i["item"] for i in owners[k]))
+        rc = 1 if (added or unowned or closed) else 0
+        rec("lock_delta", rc, added=added, gone=gone, unowned=unowned,
+            closed_items=closed, owned_reds=reds)
 
     files = git(t.root, "diff", "--name-only", "origin/dev", "HEAD").stdout.split()
     if files:
         rec("secrets", t.run("gate-secrets", [PY3, "tools/secrets_check.py", *files]))
     else:
         rec("secrets", 0, skipped=True)
+
+    unit = unit_tests(t.root, files)
+    results = {}
+    for test in unit:
+        if not (t.root / test).is_file():
+            say(f"unit: {test} is missing")
+            results[test] = 1
+        else:
+            results[test] = t.run("gate-unit-" + Path(test).stem, [PY, "-m", "unittest", test])
+    rec("unit", 0 if all(v == 0 for v in results.values()) else 1, tests=results)
 
     bad = [n for n, g in gates.items() if g["rc"] != 0]
     say(f"gates at {head[:9]}: " + ", ".join(f"{n}={g['rc']}" for n, g in gates.items()))
@@ -633,7 +785,6 @@ def main(argv=None) -> int:
     c = sub.add_parser("certify")
     c.add_argument("box", choices=("hbox", "persvati"))
     g = sub.add_parser("gate")
-    g.add_argument("--strict-lock", action="store_true")
     sub.add_parser("push")
     sub.add_parser("status")
     args = ap.parse_args(argv)

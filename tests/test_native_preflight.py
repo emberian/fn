@@ -55,13 +55,13 @@ class NativePreflightTests(unittest.TestCase):
         self.run_gate()
         self.assertEqual(len(self.calls), 5)
 
-    def test_evidence_index_is_input_but_build_artifacts_are_not(self):
+    def test_planning_files_are_input_but_build_artifacts_are_not(self):
         self.run_gate()
         (self.root / "build").mkdir()
         (self.root / "build/image").write_text("unrelated image")
         self.assertIn(b"REUSED", self.run_gate()[1])
         (self.root / "planning").mkdir()
-        (self.root / "planning/evidence-index.tsv").write_text("new index")
+        (self.root / "planning/input.tsv").write_text("new input")
         self.run_gate()
         self.assertEqual(len(self.calls), 2)
 

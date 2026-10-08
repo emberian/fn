@@ -35,8 +35,7 @@ class HostCallTests(unittest.TestCase):
 class TestedCoordinateTests(unittest.TestCase):
     def render(self, tested):
         return current_view.tested_coordinate(Path("."), {"id": "W9", "tested": tested},
-                                             {"qualified": {"qualification": "record",
-                                                             "closure_manifest": "closure"}},
+                                             {"qualified": {"qualification": "record"}},
                                              None, [])
 
     def test_null_means_no_image(self):
@@ -70,7 +69,7 @@ class TestedCoordinateTests(unittest.TestCase):
     def test_historical_coordinates_keep_their_meaning(self, carried, record_link):
         qualified, detail = self.render({"image": "qualified", "profile": "small"})
         self.assertEqual(qualified, "yes: qualified")
-        self.assertIn("closure `closure`", detail)
+        self.assertIn("profile small", detail)
         qualified, detail = self.render({"record": "lab", "source": "revision", "profile": "small"})
         self.assertEqual(qualified, "lab only: `revision`")
         self.assertIn("lane image of `revision`", detail)
@@ -91,12 +90,39 @@ class PendingBridgeTests(unittest.TestCase):
 
 
 class ViewTests(unittest.TestCase):
-    def test_committed_view_is_current(self) -> None:
-        committed = (current_view.ROOT / current_view.OUTPUT).read_text(encoding="utf-8")
-        self.assertEqual(current_view.build(), committed)
+    def test_the_view_builds_from_pinned_digests_and_the_cache_verdict(self) -> None:
+        """No archived manifest is read: with a cache that certifies nothing
+        the view still builds, every capability reads not-certified, and the
+        qualified and deployed columns come from the sidecar's pins."""
+        with patch.object(current_view.green_check, "audit",
+                          return_value={"books_by_verdict": {}}):
+            text = current_view.build()
+        self.assertIn("| no: not certified |", text)
+        self.assertNotIn("yes: cert cache", text)
+
+
+class EvidenceTests(unittest.TestCase):
+    def test_certified_is_the_caches_green_verdict(self) -> None:
+        records = {"books/a": {"verdict": "green", "closure_key": "k" * 64},
+                   "books/b": {"verdict": "uncertified"}}
+        evidence = current_view.Evidence(Path("."), {"books_by_verdict": records})
+        self.assertEqual(evidence.certified("books/a"), records["books/a"])
+        self.assertIsNone(evidence.certified("books/b"))
+        self.assertIsNone(evidence.certified("books/unknown"))
 
 
 class CarriedTests(unittest.TestCase):
+    def test_a_book_is_carried_when_the_pinned_digest_is_the_current_one(self) -> None:
+        evidence = current_view.Evidence(Path("."), {})
+        evidence.states["books/a"] = ("d" * 64, [])
+        image = {"source": "a" * 40, "book_sha256": {"books/a.lisp": "d" * 64}}
+        self.assertEqual(current_view.carried(evidence, image, ["books/a.lisp"]),
+                         (True, "it carries this source"))
+        image["book_sha256"]["books/a.lisp"] = "e" * 64
+        held, why = current_view.carried(evidence, image, ["books/a.lisp"])
+        self.assertFalse(held)
+        self.assertIn("changed since it: `books/a.lisp`", why)
+
     """A host file the image's revision lacks reads as absent; one never
     pinned is still an error (a sidecar that forgot --pin-image)."""
 

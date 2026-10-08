@@ -5,7 +5,7 @@
  "severity": "medium",
  "slice": "proofs",
  "source": "CONVERGE-2 row 15 (lane/reach-code-only)",
- "state": "open",
+ "state": "landed",
  "title": "4 reach_check false greens in M1/M2 proofs (checkpoint, guard correspondence, bounded parsing): subjects reached only through host prose (4 PRFs: PRF-008, PRF-014, PRF-016, PRF-037)",
  "notes": [
   "Each event's subject is named only in host prose (a docstring or comment), never in host code, so reach_check counted it reached until lane/reach-code-only. Per event, one of: the host does run it under another name, so name the correspondence or equality reach_check accepts; or a crash campaign judges the host with it, so make the campaign name it in code (it then counts campaign-tied); or the claim is about a model the host does not run, so re-scope the PRF statement to say so (no served claim). Never re-baseline.",
@@ -13,7 +13,10 @@
   "PRF-008: fn-checkpoint-admissible-capture-value-is-valid (books/checkpoint.lisp; subjects fn-checkpoint-capture, fn-checkpoint-capture-value, fn-checkpointp)",
   "PRF-014: fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation (books/owner-served-carried.lisp; subjects fn-ocfg-read-tls-prefix, fn-scar-ocfg-read-tls-prefix)",
   "PRF-016: fn-wm-match-codepoints-work-cost-bound (books/wildmat-work.lisp; subjects fn-wm-match-codepoints-work, fn-wm-rightmost-work-budget, fn-wm-work-cost)",
-  "PRF-037: fn-cpc-valid-is-capture-value (books/checkpoint-codec.lisp; subjects fn-checkpoint-capture, fn-checkpoint-capture-value, fn-checkpoint-frontier)"
+  "PRF-037: fn-cpc-valid-is-capture-value (books/checkpoint-codec.lisp; subjects fn-checkpoint-capture, fn-checkpoint-capture-value, fn-checkpoint-frontier)",
+  "World reach gate at 87daf18f5 (first --world --strict run, N; build/coordinator/lanedumps/n-world34-reach.log): 4 of this item's events recur as NEW orphans with no baseline entry. Coordinator rule 2026-10-08: no baseline entry; the reach step stays red by design while this item owns them; each event's disposition says host code or unreachable-in-composition.",
+  "p-reach-prose1 (Sonnet, 2026-10-08), all 4 events (c) unreachable-in-composition, theorems unchanged, removed from the PRF event lists (proof-events.json note + PRF statement), no baseline entry: PRF-008 fn-checkpoint-admissible-capture-value-is-valid and PRF-037 fn-cpc-valid-is-capture-value (generation checkpoints retired from the served node: host/native/checkpoint.lisp header, no host line calls fn-checkpoint-capture/-value or fn-cpc-validp); PRF-014 fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation (the host runs fn-asto-mca-read-span over the generated available chain fn-av-mca-read-span whose refinement to the reference read is owed, books/served-available-read.lisp header; no equality to a reached function is provable today); PRF-016 fn-wm-match-codepoints-work-cost-bound (work-counting reference model; the host steps the cursor machine fn-wmc-step, and fn-wmc-task-result is a proof residual). Owed: register the hosted cursor bound fn-wmc-core-codepoint-start-work-bound for PRF-016 with teeth (a new toothless event is refused by the keystone_emit ratchet).",
+  "Owed pieces homed (p-reach-prose1): PRF-016 cursor bound -> REACH-PROSE-OWED-HOSTED-EVENTS; PRF-014 read-chain refinement -> PRF-1287-OWED."
  ],
- "updated": "2026-10-07T14:30:00Z"
+ "updated": "2026-10-08T12:00:00Z"
 }

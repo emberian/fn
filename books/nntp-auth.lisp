@@ -2542,7 +2542,8 @@
                             fn-post-sessionp fn-post-session-consistentp
                             fn-nntp-sessionp fn-nntp-session-consistentp
                             fn-auth-configp fn-auth-single fn-nntp-single
-                            fn-nntp-printable-tokenp fn-prin-idp))))))
+                            fn-nntp-printable-tokenp fn-prin-idp
+                            fn-auth-pendingp fn-zc-statep))))))
 
 (local
  (defthm fn-auth-tls-reader-base-preserves-consistentp

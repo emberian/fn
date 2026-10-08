@@ -2090,7 +2090,10 @@
   :class :common-lisp-compliant)
 
 (definterface fn-owner-transit-outcome
-  :class ::program)
+  :class ::program
+  :keystones
+  ((fn-oct-transit-is-own-transit-outcome-under-ocl-relation :via fn-oct-transit)
+   (fn-oop-transit-outcome-is-own-transit-outcome :via fn-oop-transit-outcome)))
 
 (definterface fn-owner-transit-reason
   :class :common-lisp-compliant)
@@ -3788,12 +3791,6 @@
               (fn-idle-gc-verdict-collects-when-owed :via fn-idle-gc-verdict)
               fn-idle-gc-decide-never-collects-during-a-publication))
 
-(definterface fn-load-gc-decide
-  :class :common-lisp-compliant
-  :keystones ((fn-load-gc-verdict-collects-only-when-grown :via fn-load-gc-verdict)
-              (fn-load-gc-verdict-collects-when-grown :via fn-load-gc-verdict)
-              (fn-load-gc-wait-bounds-the-growth :via fn-load-gc-verdict)))
-
 (definterface fn-heap-operation-observes-p
   :class :common-lisp-compliant)
 
@@ -4653,13 +4650,25 @@
 (definterface fn-his-build-source-count
   :class :common-lisp-compliant
   :kinds ((records true-listp)))
-(definterface fn-his-build-yieldp
-  :class :common-lisp-compliant
-  :kinds ((ordinal natp)))
 
 (definterface fn-his-build-begin
   :class :common-lisp-compliant
   :kinds ((salt natp)))
+
+(definterface fn-his-build-quantum :class :common-lisp-compliant)
+(definterface fn-his-plan-begin :class :common-lisp-compliant)
+(definterface fn-his-place-begin :class :common-lisp-compliant)
+(definterface fn-his-plan-run
+  :class :common-lisp-compliant
+  :kinds ((dl-k natp)))
+(definterface fn-his-build-open
+  :class :common-lisp-compliant)
+(definterface fn-his-build-place-run
+  :class :common-lisp-compliant
+  :kinds ((k natp)))
+(definterface fn-his-build-close
+  :class :common-lisp-compliant
+  :kinds ((np natp)))
 
 (definterface fn-his-row-begin
   :class :common-lisp-compliant)
@@ -4881,6 +4890,26 @@
 ; a re-run line's deadline from its first miss).
 (definterface fn-otb-line-dependency-step
   :class :common-lisp-compliant)
+
+;; books/cold-read-wait.lisp: host/native/owner.lisp fnn-owner-cold-wait-arrive
+;; and fnn-owner-cold-wait-poll dispatch them (item COLD-READ-WORKERS-REFUSE-AT-16).
+(definterface fn-cwq-arrive
+  :class :common-lisp-compliant
+  :kinds ((free true-listp))
+  :keystones ((fn-cwq-arrival-under-the-bound-is-never-refused :via fn-cwq-arrive)
+              (fn-cwq-arrive-preserves-the-queue :via fn-cwq-arrive)))
+(definterface fn-cwq-step
+  :class :common-lisp-compliant
+  :kinds ((free true-listp))
+  :keystones ((fn-cwq-refused-only-at-the-deadline :via fn-cwq-step)
+              (fn-cwq-a-worker-for-it-admits :via fn-cwq-step)))
+;; The queue is ACL2's value; the host holds it opaquely and creates, counts and
+;; drops through these (host/native/owner.lisp *fnn-cold-queue*).
+(definterface fn-cwq-new :class :common-lisp-compliant)
+(definterface fn-cwq-waiting :class :common-lisp-compliant)
+(definterface fn-cwq-drop
+  :class :common-lisp-compliant
+  :keystones ((fn-cwq-drop-preserves-the-queue :via fn-cwq-drop)))
 
 ;; books/payload-arena-extent-logic.lisp
 
@@ -5494,13 +5523,16 @@
 (definterface fn-crw-supportedp :class :common-lisp-compliant)
 (definterface fn-ews-begin :class :common-lisp-compliant
   :kinds ((file natp) (eoff natp) (elen natp) (poff natp) (plen natp) (offset natp) (expected natp)))
-(definterface fn-ews-effect :class :common-lisp-compliant
+;; The host drives the stream in spans (books/extent-window-span.lisp): one
+;; effect, one read and one tick-to-io per span of the prefix; each is equal
+;; to the stream's per-block step iterated (fn-ews-span-loop-is-iterated-block-step).
+(definterface fn-ews-span-effect :class :common-lisp-compliant
   :kinds ((s true-listp)))
-(definterface fn-ews-tick :class :common-lisp-compliant
+(definterface fn-ews-tick-to-io :class :common-lisp-compliant
   :kinds ((s true-listp)))
-(definterface fn-ews-read :class :common-lisp-compliant
+(definterface fn-ews-read-span :class :common-lisp-compliant
   :kinds ((s true-listp))
-  :keystones ((fn-ews-read-publication-requires-core-integrity :via fn-ews-read)))
+  :keystones ((fn-ews-read-span-publication-requires-core-integrity :via fn-ews-read-span)))
 (definterface fn-owner-page-read-ledger :class :common-lisp-compliant)
 (definterface fn-pwx-tokenp :class :common-lisp-compliant
   :direct "Guard-t fixed-shape worker kind discrimination avoids an unpriced global guard-cache entry")
@@ -5777,6 +5809,7 @@
 (definterface fn-owner-hroot-resize :class :program)
 (definterface fn-owner-hroot-transient :class :program)
 (definterface fn-owner-hroot-begin :class :program)
+(definterface fn-owner-hroot-note :class :program)
 (definterface fn-owner-hroot-abandon :class :program)
 (definterface fn-owner-hroot-frontier-value :class :program)
 (definterface fn-owner-hroot-row :class :program)

@@ -158,10 +158,10 @@
          (fn-bs-fencedp bs ino))
   :hints (("Goal" :in-theory (enable fn-bs-fencedp))))
 
-(defthm fn-bs-k8-name-absent-from-list-has-no-entry
+(local (defthm fn-bs-k8-name-absent-from-list-has-no-entry
   (implies (not (member-equal name (strip-cars alist)))
            (equal (assoc-equal name alist) nil))
-  :hints (("Goal" :induct (assoc-equal name alist))))
+  :hints (("Goal" :induct (assoc-equal name alist)))))
 
 (defthm fn-bs-k8-op-list-does-not-write-nil
   (implies (fn-bs-op-listp ops)
@@ -607,9 +607,3 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-bs-k8-name-absent-from-list-has-no-entry)))
-
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bs-k8-name-absent-from-list-has-no-entry))

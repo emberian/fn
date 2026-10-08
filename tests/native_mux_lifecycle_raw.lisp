@@ -22,6 +22,12 @@
 (defun fnn-core (name &rest args)
   (declare (ignorable name args))
   (harness-stub-reached 'fnn-core "host/native/io.lisp"))
+(defun fnn-exit (code)
+  (declare (ignorable code))
+  (harness-stub-reached 'fnn-exit "host/native/io.lisp"))
+(defun fnn-exit-code-for (condition &optional step)
+  (declare (ignorable condition step))
+  (harness-stub-reached 'fnn-exit-code-for "host/native/io.lisp"))
 (defun fnn-extent-direct-start ()
   (harness-stub-reached 'fnn-extent-direct-start "host/native/extent.lisp"))
 (defun fnn-extent-end-recovery-cache ()
@@ -103,6 +109,9 @@
 (defun fnn-owner-feed-close-all (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-feed-close-all "host/native/owner.lisp"))
+(defun fnn-owner-fence-service (service)
+  (declare (ignorable service))
+  (harness-stub-reached 'fnn-owner-fence-service "host/native/owner.lisp"))
 (defun fnn-owner-frames-job (service job)
   (declare (ignorable service job))
   (harness-stub-reached 'fnn-owner-frames-job "host/native/owner.lisp"))
@@ -207,7 +216,7 @@
 (defparameter +fnn-mux-loops+ 2) ; two physical startup slots in this fixture
 (defparameter +fnn-mux-send-seconds+ 10)
 (load-deployed-forms "host/native/owner.lisp"
- '((defun fnn-owner-actor-for-custody)))
+ '((defun fnn-owner-actor-for-custody) (defun fnn-owner-install-or-end)))
 (load-deployed-forms "host/native/mux.lisp"
  '((defstruct (fnn-mux-loop (:constructor %make-fnn-mux-loop)))
    (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn)))

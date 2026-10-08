@@ -801,6 +801,23 @@
          (equal (caddr a) (caddr b))))
   :hints (("Goal" :in-theory (disable fn-lgc-prepare fn-lgk-prepare fn-lgc-of fn-olr-entry-octets))))
 
+; KEYSTONE (PRF-288).  The host's take (host/native/io.lisp fnn-log-take for
+; every member a START or START-NEXT drains) runs this concrete entry over the
+; kernel it holds.  It never changes the batch in flight: a taken record joins
+; the OPEN batch, which is appended only after the batch in flight is fenced
+; (fn-ocp-sync-only-when-none-in-flight), so a POST a reader queued during a
+; barrier never joins the batch in flight.  Stated of every concrete kernel,
+; not only the abstraction of a logical one.
+(defthm fn-lgc-take-never-joins-the-batch-in-flight
+  (let ((a (fn-lgc-take c record txid count octets bmax omax unit)))
+    (and (equal (fn-lgc-inflight (cadr a)) (fn-lgc-inflight c))
+         (implies (equal (car a) :taken)
+                  (equal (fn-lgc-batch (cadr a))
+                         (append (true-list-fix (fn-lgc-batch c)) (list record))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgc-take fn-lgc-prepare fn-lgc-make fn-lgc-inflight fn-lgc-batch)
+                           (fn-olr-entry-octets)))))
+
 (defthm fn-lgc-rotate-admitsp-of-abstraction
   (equal (fn-lgc-rotate-admitsp (fn-lgc-of ks)) (fn-lgs-rotate-admitsp ks)))
 

@@ -127,7 +127,6 @@
                             fn-auth-starttls-effect)
                            (fn-nntp-replyp fn-octet-listp fn-nntp-effectsp
                             fn-auth-nntp-effects-are-auth-effects
-                            fn-nntp-article-idp-is-consp
                             fn-nntp-response-text-true-listp
                             fn-nntp-message-id-token-is-response-text
                             (:linear fn-cp-id-length-bound))))))
@@ -206,7 +205,6 @@
                             fn-auth-effects-carry-no-submission
                             fn-auth-step-pinned-post-without-permission-is-not-offered
                             fn-auth-nntp-effects-are-auth-effects
-                            fn-nntp-article-idp-is-consp
                             fn-nntp-response-text-true-listp
                             fn-nntp-message-id-token-is-response-text
                             (:linear fn-served-step-nntp-steps-is-bounded)

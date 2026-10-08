@@ -1051,11 +1051,24 @@ def environment(extra=None, *, stack=True):
     return env
 
 
+_PORTS_GIVEN = set()
+_PORTS_LOCK = threading.Lock()
+
+
 def free_port():
-    """A loopback port nothing held a moment ago."""
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+    """A loopback port nothing held a moment ago, and none this process
+    already handed out: the kernel gives the same ephemeral port to two
+    probes that close before anything binds it, and a node whose [listener]
+    port equals its tls_port is an invalid configuration
+    (fn-ncfg-tls-port-okp)."""
+    while True:
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        with _PORTS_LOCK:
+            if port not in _PORTS_GIVEN:
+                _PORTS_GIVEN.add(port)
+                return port
 
 
 def run(argv, *, env=None, timeout=180, cwd=None, stdin=None, input=None, text=False):
@@ -1397,6 +1410,20 @@ PEER_FLIGHT_POLICY = (8 << 20, 512 << 20, 2, 1, 64 << 20, 1 << 50)
 def fund_peer_flights(node, policy=PEER_FLIGHT_POLICY):
     (node.store_path / "peer-flight-profile").write_bytes(
         b"FNP1" + b"".join(v.to_bytes(8, "big") for v in policy))
+
+
+def table_reply(code, tag):
+    """The reply line books/protocol-table.lisp gives status CODE under TAG
+    (`(224 :accepted :reader :overview "224 overview information follows")`),
+    as the octets the wire carries.  The table is the design of record for reply
+    text; a test that hand-copies a line drifts from it (train 27:
+    test_native_over_window asserted a capitalized 224 line)."""
+    table = (ROOT / "books" / "protocol-table.lisp").read_text(encoding="utf-8")
+    lines = set(re.findall(r'\(%d :[a-z-]+ :[a-z-]+ :%s "([^"]*)"\)' % (code, re.escape(tag)), table))
+    if len(lines) != 1:
+        raise AssertionError("protocol table gives {} reply lines for {} {}: {}".format(
+            len(lines), code, tag, sorted(lines)))
+    return lines.pop().encode("ascii") + b"\r\n"
 
 
 def decided_launch(node, image=None):

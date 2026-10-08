@@ -165,7 +165,7 @@ Row numbers skip where a rule is covered elsewhere: R12 and R13 are E12 and E13,
 | `teeth_check --summary` | R19 | Report only; 156 findings | stilt in report mode (see R19) |
 | `harness_check` | caller signatures, arities, waivers | Caught `bp-app` dropping the ingress argument and `config.lisp` passing state-free functions (`1ac07458`) | load-bearing |
 | `host_shape_check` | host multiple-value shapes | 0 findings; the class cost an image build (9c344d1d) | load-bearing (cheap) |
-| `build_lists_check` | DTN image loads what it needs | Created today from the DTN image's failed `store init` (`8c63a7df`) | load-bearing |
+| `host_check --build-lists` | DTN image loads what it needs | Created today from the DTN image's failed `store init` (`8c63a7df`) | load-bearing |
 | SpecBookTieTests | `specs/identity.md` versus books | Created today (`038b6224`) | load-bearing |
 | `cite_check --strict` | phantom citations in books and tests | 0 in books; 179 reported elsewhere, including this audit's H11 phantom (`tools/iteration_bench.py` in how-we-work) | load-bearing |
 | `reach_check --strict` | R17 | 40 orphans, all baselined | load-bearing |

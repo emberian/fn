@@ -25,6 +25,7 @@
    "owner_book": "tests/acl2/def-carried-view-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -45,6 +46,7 @@
    "owner_book": "tests/acl2/def-carried-view-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -65,6 +67,7 @@
    "owner_book": "tests/acl2/def-carried-view-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -85,6 +88,7 @@
    "owner_book": "tests/acl2/def-carried-view-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -105,6 +109,7 @@
    "owner_book": "tests/acl2/def-carried-view-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -125,6 +130,7 @@
    "owner_book": "tests/acl2/def-carried-view-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -133,7 +139,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "5cf2c3b6f6e168371f17466dde7e828e8ecf04e69ca6ad04ca138f3f46528d2b",
+   "book_digest": "3acf756822b7ead57aae1ce59224719712cf096e58226670879a1f2e46c8a0be",
    "bounds": [],
    "claim_digest": "29b9acde2050b5b3991d51b794dbf3686ba9fc34b84279cad1558f51dc140c31",
    "class": "generated",
@@ -143,6 +149,7 @@
    "owner_book": "tests/acl2/def-loop-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -296,6 +303,7 @@
    "owner_book": "tests/acl2/article-kind-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 4
@@ -314,6 +322,7 @@
    "owner_book": "tests/acl2/article-kind-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 4
@@ -332,6 +341,7 @@
    "owner_book": "tests/acl2/article-kind-codec-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 1
@@ -350,6 +360,7 @@
    "owner_book": "tests/acl2/article-kind-codec-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -368,6 +379,7 @@
    "owner_book": "tests/acl2/article-kind-codec-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -386,6 +398,7 @@
    "owner_book": "tests/acl2/article-kind-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -404,6 +417,7 @@
    "owner_book": "tests/acl2/article-kind-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -422,6 +436,7 @@
    "owner_book": "tests/acl2/article-kind-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -440,6 +455,7 @@
    "owner_book": "tests/acl2/article-kind-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -559,21 +575,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-arena-bytes-seal-buffer{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-bytes-seal-list{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-bytes-seal-range{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-arena-extent-get{correspondence}",
    "registry": true
   },
@@ -595,31 +596,6 @@
   {
    "class": "hand",
    "name": "fn-arena-extent-seal-extent{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-paged-clear{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-paged-get{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-paged-payload{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-paged-seal-buffer{correspondence}",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arena-paged-seal-range{correspondence}",
    "registry": true
   },
   {
@@ -690,21 +666,6 @@
   {
    "class": "hand",
    "name": "fn-arn-store-corr-of-open",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arp-add-page-step",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arp-seal-list-step",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-arp-write-octet-step",
    "registry": true
   },
   {
@@ -908,9 +869,23 @@
    "registry": true
   },
   {
-   "class": "hand",
-   "name": "fn-arx-intern-step-refines",
-   "registry": true
+   "book_digest": "6e3b3631e5327979865f866961b62bc9bdb734bcd81cc329b90c20738107a641",
+   "bounds": [],
+   "claim_digest": "dfd5906c25b9606f34e0838de2daca1d9ae2043b2bf7e2f7ab0e8904fe6026ca",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-arx-intern-events-refines",
+   "owed_met": null,
+   "owner_book": "tests/acl2/payload-extent-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-arx-intern-events",
+   "witness": "lemma"
   },
   {
    "class": "hand",
@@ -958,6 +933,7 @@
    "owner_book": "tests/acl2/article-stream-owner-teeth-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -976,6 +952,7 @@
    "owner_book": "tests/acl2/article-stream-owner-teeth-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -1104,6 +1081,7 @@
    "owner_book": "tests/acl2/nntp-auth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -1122,6 +1100,7 @@
    "owner_book": "tests/acl2/nntp-auth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -1265,6 +1244,7 @@
    "owner_book": "tests/acl2/moderation-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -1275,11 +1255,6 @@
   {
    "class": "hand",
    "name": "fn-auth-view-hides-the-queue-from-a-non-moderator",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-auth-view-trie-corresponds",
    "registry": true
   },
   {
@@ -1323,6 +1298,7 @@
    "owner_book": "tests/acl2/blake3-tree-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 1
@@ -1341,6 +1317,7 @@
    "owner_book": "tests/acl2/blake3-tree-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -1359,6 +1336,7 @@
    "owner_book": "tests/acl2/blake3-tree-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -1377,6 +1355,7 @@
    "owner_book": "tests/acl2/blake3-tree-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -1475,6 +1454,7 @@
    "owner_book": "tests/acl2/blake3-tree-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -1493,6 +1473,7 @@
    "owner_book": "tests/acl2/blake3-tree-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -1511,6 +1492,7 @@
    "owner_book": "tests/acl2/blake3-tree-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -1934,6 +1916,25 @@
    "registry": true
   },
   {
+   "book_digest": "82bebcb3ad7de90d9ea2234d261f02f6dd3e862d77c10414891ad7d8803bbc0f",
+   "bounds": [],
+   "claim_digest": "36b09d986dddfa6d34d71df0c4337c777649394274540bbee5cd5fae56b9b2e2",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-bpfj-next-candidate-is-a-ready-family-representative",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-fragment-step-job-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-bpfj-next-candidate",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-bpfj-persist-step-is-the-persist-step",
    "registry": true
@@ -2154,6 +2155,7 @@
    "owner_book": "tests/acl2/bp-ion-lifetime-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -2362,6 +2364,7 @@
    "owner_book": "tests/acl2/bp-node-budget-input-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -2380,6 +2383,7 @@
    "owner_book": "tests/acl2/bp-node-budget-input-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -2398,6 +2402,7 @@
    "owner_book": "tests/acl2/bp-node-budget-input-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -2467,21 +2472,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bpnf-family-next-aux-answers-the-first-ready-row",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnf-family-next-memo-is-aux",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnf-family-next-selects-exactly-the-first-ready-family",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bpnf-family-plan-at-of-member",
    "registry": true
   },
@@ -2498,21 +2488,6 @@
   {
    "class": "hand",
    "name": "fn-bpnf-family-retain-other-rows-loop-is-rev-onto",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnf-family-select-is-aux",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnf-family-select-plans-bound",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnf-family-select-steps-bound",
    "registry": true
   },
   {
@@ -2657,16 +2632,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bpnj-scan-finds-the-held-job",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnj-scan-finds-the-selected-job",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bpnj-stale-job-result-settles-nothing",
    "registry": true
   },
@@ -2678,11 +2643,6 @@
   {
    "class": "hand",
    "name": "fn-bpnj-step-preserves-guard-premises",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bpnj-unique-keys-make-every-job-its-own-entry",
    "registry": true
   },
   {
@@ -3752,32 +3712,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-crash-image-namespace-is-contiguous",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-crash-image-reads-the-config",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-crash-image-records-do-not-fault",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-crash-image-relates-to-recovery-entry-kernel",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-bs-crash-image-reopens",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-crash-of-aligned-append",
    "registry": true
   },
   {
@@ -3822,16 +3762,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-imp-classify-by-what-is-known",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-init-log-classify-by-what-is-known",
    "registry": true
   },
@@ -3844,8 +3774,9 @@
    "name": "fn-bs-init-log-complete-store-carries-the-node-secret",
    "owed_met": null,
    "owner_book": "tests/acl2/store-init-log-publication-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -3862,8 +3793,9 @@
    "name": "fn-bs-init-log-complete-store-carries-the-peer-flight-profile",
    "owed_met": null,
    "owner_book": "tests/acl2/store-init-log-publication-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -3882,6 +3814,7 @@
    "owner_book": "tests/acl2/store-init-log-publication-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -3996,11 +3929,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-k0-pending-staging-extension-preserves-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-k0-record-cleanup-cut-relation",
    "registry": true
   },
@@ -4056,11 +3984,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-k6-actual-record-file-cut-has-exact-frame",
    "registry": true
   },
@@ -4087,11 +4010,6 @@
   {
    "class": "hand",
    "name": "fn-bs-k6-related-input-file-cut-has-no-transaction-pending",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-k6-related-staged-durable-final-name-absent",
    "registry": true
   },
   {
@@ -4131,22 +4049,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-read-ranges-concatenate",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-bs-read-ranges-is-the-range",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-read-ranges-read-the-whole-file",
    "registry": true
   },
   {
@@ -4166,32 +4074,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-recover-program-keeps-relation-at-every-cut",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-related-allocation-is-fresh",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-scp-program-crash-is-old-or-new",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-stable-prefix-retained-by-byte-crash",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-store-crash-image-is-kernel-admissible",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-store-crash-image-scans",
    "registry": true
   },
   {
@@ -4580,6 +4463,7 @@
    "owner_book": "tests/acl2/connection-budget-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -4598,6 +4482,7 @@
    "owner_book": "tests/acl2/connection-budget-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -4866,6 +4751,25 @@
    "registry": true
   },
   {
+   "book_digest": "706fc54000b7410da00b590b1bb879fd5f060d348efb82edbeae632d0ed2bd7b",
+   "bounds": [],
+   "claim_digest": "0eb64ff79ba1e6cf04808151c1e6181ab0ec7ff08c76441bff5770f71539ec3a",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-cfg-peer-names-loop-is-revappend-of-the-walk",
+   "owed_met": null,
+   "owner_book": "tests/acl2/config-walk-loops-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-cfg-peer-names",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-cfg-record-fitsp-is-the-decoder-limits",
    "registry": true
@@ -4884,6 +4788,25 @@
    "class": "hand",
    "name": "fn-cfg-record-redeeming-an-expired-code-is-refused-and-faults-replay",
    "registry": true
+  },
+  {
+   "book_digest": "706fc54000b7410da00b590b1bb879fd5f060d348efb82edbeae632d0ed2bd7b",
+   "bounds": [],
+   "claim_digest": "af3e2051df15559d93deb9cb4a575a97283834252868709353e95aa105bf895f",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-cfg-rows-with-key-loop-is-revappend-of-the-walk",
+   "owed_met": null,
+   "owner_book": "tests/acl2/config-walk-loops-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-cfg-rows-with-key",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -4977,11 +4900,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-checkpoint-admissible-capture-value-is-valid",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-checkpoint-plus-suffix-equals-full-replay",
    "registry": true
   },
@@ -5062,11 +4980,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-clo-observed-at-the-computed-frontier",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-clo-relation-state-opens-or-identity",
    "registry": true
   },
@@ -5101,6 +5014,7 @@
    "owner_book": "tests/acl2/committer-actor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -5119,6 +5033,7 @@
    "owner_book": "tests/acl2/committer-actor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -5137,6 +5052,7 @@
    "owner_book": "tests/acl2/committer-actor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -5155,6 +5071,7 @@
    "owner_book": "tests/acl2/committer-actor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -5289,11 +5206,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-cpc-valid-is-capture-value",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-cpc-valid-refuses-generation-mismatch",
    "registry": true
   },
@@ -5378,6 +5290,7 @@
    "owner_book": "tests/acl2/peer-catchup-spool-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -5396,6 +5309,7 @@
    "owner_book": "tests/acl2/peer-catchup-spool-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -5414,6 +5328,7 @@
    "owner_book": "tests/acl2/peer-catchup-spool-framer-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -5432,6 +5347,7 @@
    "owner_book": "tests/acl2/peer-catchup-spool-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -5450,6 +5366,7 @@
    "owner_book": "tests/acl2/peer-catchup-spool-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 6
@@ -5468,6 +5385,7 @@
    "owner_book": "tests/acl2/peer-catchup-spool-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -5486,6 +5404,7 @@
    "owner_book": "tests/acl2/peer-catchup-spool-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 4
@@ -5504,6 +5423,7 @@
    "owner_book": "tests/acl2/peer-catchup-spool-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 1
@@ -5522,6 +5442,7 @@
    "owner_book": "tests/acl2/peer-catchup-spool-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -5540,6 +5461,7 @@
    "owner_book": "tests/acl2/peer-catchup-spool-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -5715,11 +5637,6 @@
   {
    "class": "hand",
    "name": "fn-ctl-row-event-ix-is-row-event",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-ctl-served-status-is-control-status",
    "registry": true
   },
   {
@@ -6048,7 +5965,7 @@
    "registry": true
   },
   {
-   "book_digest": "685b6c059c2b092c52e247b643c3d2b5b62f94a3f91a03cc659fbb1c8416fa3a",
+   "book_digest": "c8cca3f1ac216196e21f9247acef552aa3bac1e13487220c81b96e2513963cbf",
    "bounds": [],
    "claim_digest": "de8187c360bb6f94d667dc111411647c591a4daef23ce3b20d7e099279a09abd",
    "class": "generated",
@@ -6058,6 +5975,7 @@
    "owner_book": "tests/acl2/defkeystone-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 1
@@ -6066,7 +5984,7 @@
    "witness": "lemma"
   },
   {
-   "book_digest": "685b6c059c2b092c52e247b643c3d2b5b62f94a3f91a03cc659fbb1c8416fa3a",
+   "book_digest": "c8cca3f1ac216196e21f9247acef552aa3bac1e13487220c81b96e2513963cbf",
    "bounds": [
     {
      "attained": true,
@@ -6085,6 +6003,7 @@
    "owner_book": "tests/acl2/defkeystone-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -6093,7 +6012,121 @@
    "witness": "executable"
   },
   {
-   "book_digest": "685b6c059c2b092c52e247b643c3d2b5b62f94a3f91a03cc659fbb1c8416fa3a",
+   "book_digest": "c8cca3f1ac216196e21f9247acef552aa3bac1e13487220c81b96e2513963cbf",
+   "bounds": [],
+   "claim_digest": "663279c26ea1be8bf546a170b5f6a1b2039cbf136cdc512335a818e7a7f08df4",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-dkt-assumed-one",
+   "owed_met": null,
+   "owner_book": "tests/acl2/defkeystone-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 1,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "c8cca3f1ac216196e21f9247acef552aa3bac1e13487220c81b96e2513963cbf",
+   "bounds": [],
+   "claim_digest": "45a7f19dc00791f07dbb43380986480c3a1d0b33fff58bc43384472f47da1784",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-dkt-cell-positive",
+   "owed_met": null,
+   "owner_book": "tests/acl2/defkeystone-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "c8cca3f1ac216196e21f9247acef552aa3bac1e13487220c81b96e2513963cbf",
+   "bounds": [],
+   "claim_digest": "d66fcfbba99ed7cf40d58d502c70c6f38d1dde441863cb50a69aa3df1e03d7a7",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-dkt-scoped",
+   "owed_met": null,
+   "owner_book": "tests/acl2/defkeystone-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "c8cca3f1ac216196e21f9247acef552aa3bac1e13487220c81b96e2513963cbf",
+   "bounds": [],
+   "claim_digest": "ba8f6d19d219ddec7614e1698662baf1a8d3de328a411b842602635fd7f412ad",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-dkt-snapshot",
+   "owed_met": null,
+   "owner_book": "tests/acl2/defkeystone-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "c8cca3f1ac216196e21f9247acef552aa3bac1e13487220c81b96e2513963cbf",
+   "bounds": [],
+   "claim_digest": "eaeab8236fae3ff45fb141ee80da66b8bb6ae3918ee2b484ad3231ade6981283",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-dkt-two-cells",
+   "owed_met": null,
+   "owner_book": "tests/acl2/defkeystone-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "c8cca3f1ac216196e21f9247acef552aa3bac1e13487220c81b96e2513963cbf",
+   "bounds": [],
+   "claim_digest": "eaeab8236fae3ff45fb141ee80da66b8bb6ae3918ee2b484ad3231ade6981283",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-dkt-two-cells-built",
+   "owed_met": null,
+   "owner_book": "tests/acl2/defkeystone-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 2,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "c8cca3f1ac216196e21f9247acef552aa3bac1e13487220c81b96e2513963cbf",
    "bounds": [],
    "claim_digest": "bf41c28b1ad141d7d1abb3493b3b5433d46a7f1a1c64bcaac973a57c5417f3f3",
    "class": "generated",
@@ -6103,6 +6136,7 @@
    "owner_book": "tests/acl2/defkeystone-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -6111,7 +6145,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "685b6c059c2b092c52e247b643c3d2b5b62f94a3f91a03cc659fbb1c8416fa3a",
+   "book_digest": "c8cca3f1ac216196e21f9247acef552aa3bac1e13487220c81b96e2513963cbf",
    "bounds": [
     {
      "attained": true,
@@ -6128,6 +6162,7 @@
    "owner_book": "tests/acl2/defkeystone-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -6136,39 +6171,42 @@
    "witness": "executable"
   },
   {
-   "class": "hand",
-   "name": "fn-dl-concat-loop-is-revappend",
-   "registry": true
-  },
-  {
-   "class": "hand",
+   "book_digest": "3acf756822b7ead57aae1ce59224719712cf096e58226670879a1f2e46c8a0be",
+   "bounds": [],
+   "claim_digest": "68ff84cd56459b0ce16b1c61b8b81af397ee6cdc8721f3dcd15f09ac5c0562b3",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-dl-fold-loop-is-revappend",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/def-loop-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "instance"
   },
   {
-   "class": "hand",
-   "name": "fn-dl-foldr-loop-is-foldr",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-map-loop-is-revappend",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-map-skip-loop-is-revappend",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-step-loop-is-revappend",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-sum-loop-is-plus",
-   "registry": true
+   "book_digest": "3acf756822b7ead57aae1ce59224719712cf096e58226670879a1f2e46c8a0be",
+   "bounds": [],
+   "claim_digest": "8f35c0cdf7c95fe3b8c3e5af79040d5342ee5bd3450107dd3a04b124762c0d66",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-dl-thread-loop-is-revappend",
+   "owed_met": null,
+   "owner_book": "tests/acl2/def-loop-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "instance"
   },
   {
    "class": "hand",
@@ -6191,6 +6229,7 @@
    "owner_book": "tests/acl2/payload-lz-scalar-realizer-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -6209,6 +6248,7 @@
    "owner_book": "tests/acl2/decoded-worker-reuse-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -6227,6 +6267,7 @@
    "owner_book": "tests/acl2/decoded-worker-reuse-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -6270,6 +6311,7 @@
    "owner_book": "tests/acl2/decoded-worker-reuse-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -6493,6 +6535,7 @@
    "owner_book": "tests/acl2/feed-connection-teeth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 2,
     "reachable": 0
@@ -6511,6 +6554,7 @@
    "owner_book": "tests/acl2/feed-connection-teeth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 2,
     "reachable": 0
@@ -6529,6 +6573,7 @@
    "owner_book": "tests/acl2/feed-connection-teeth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -6562,6 +6607,7 @@
    "owner_book": "tests/acl2/feed-connection-teeth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 2,
     "reachable": 0
@@ -6580,6 +6626,7 @@
    "owner_book": "tests/acl2/feed-connection-teeth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 5,
     "reachable": 0
@@ -6598,6 +6645,7 @@
    "owner_book": "tests/acl2/feed-connection-teeth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 4,
     "reachable": 0
@@ -6676,6 +6724,7 @@
    "owner_book": "tests/acl2/feed-journal-order-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -7026,6 +7075,7 @@
    "owner_book": "tests/acl2/handle-holds-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -7046,6 +7096,7 @@
    "owner_book": "tests/acl2/handle-holds-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -7300,11 +7351,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-hed-grow-merge-pops-one-forest-cell",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hed-grow-step-preserves-chronological-prefix",
    "registry": true
   },
@@ -7340,22 +7386,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-hep-retirement-keeps-epoch-and-retained-debt",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hep-return-cannot-drop-nonquiescent-custody",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-hep-successful-publication-is-once-only",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-hep-uncertain-keeps-candidate-roots-and-debt",
    "registry": true
   },
   {
@@ -7415,11 +7451,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-hib-replay-extends",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hib-undone-evict",
    "registry": true
   },
@@ -7444,6 +7475,7 @@
    "owner_book": "tests/acl2/history-image-build-rows-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -7462,6 +7494,7 @@
    "owner_book": "tests/acl2/history-image-build-rows-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -7675,6 +7708,7 @@
    "owner_book": "tests/acl2/host-model-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -7693,6 +7727,7 @@
    "owner_book": "tests/acl2/host-model-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -7767,11 +7802,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-hp-x-append-step-refines",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hp-x-at-is-nth",
    "registry": true
   },
@@ -7823,11 +7853,6 @@
   {
    "class": "hand",
    "name": "fn-hrc-at-is-nth",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-hrc-flush-one-rel",
    "registry": true
   },
   {
@@ -7893,11 +7918,6 @@
   {
    "class": "hand",
    "name": "fn-hrs-disk-history-len",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-hrs-loop-placement",
    "registry": true
   },
   {
@@ -8417,22 +8437,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-lg-batch-crash-is-a-prefix",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lg-batch-tear-is-a-prefix",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-decode-is-the-scan",
    "registry": true
   },
   {
@@ -8457,11 +8462,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lg-open-kernel-is-the-recovered-kernel",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lg-open-program-keeps-the-relation",
    "registry": true
   },
@@ -8478,31 +8478,6 @@
   {
    "class": "hand",
    "name": "fn-lg-reserve-program-keeps-the-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-consumed-aligned",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-consumed-within",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-last-digestp",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-last-of-complete-append",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-of-complete-append",
    "registry": true
   },
   {
@@ -8532,17 +8507,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-lg-tear-write-is-pieces",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lg-torn-variant-len",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-txids-strictly-increase",
    "registry": true
   },
   {
@@ -8591,6 +8556,25 @@
    "registry": true
   },
   {
+   "book_digest": "271e933aa01a84d105ee469204a21e9c7fc9a6420f287953c12d39b7b905564b",
+   "bounds": [],
+   "claim_digest": "9b4e4aba5b746d8fc6f76c3d98ae2ab544dcd198f32e4674b5ed226567e52a41",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-lgc-failed-barrier-recovers-a-prefix",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-batch-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 1,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-lgc-fence-failed",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-lgc-log-len-is-the-log-length",
    "registry": true
@@ -8606,9 +8590,23 @@
    "registry": true
   },
   {
-   "class": "hand",
-   "name": "fn-lgd-loop-is-the-scan",
-   "registry": true
+   "book_digest": "156bcffceb940dbe00a1282251e58533bf91b30cb81d37628d7bc5d745903561",
+   "bounds": [],
+   "claim_digest": "8793a1a33db996d339b7cd5a3d39bc57ddd503a9b7e1547d9fbeeec609c7a736",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-lgc-take-never-joins-the-batch-in-flight",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-log-kernel-concrete-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-lgc-take",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -8626,6 +8624,7 @@
    "owner_book": "tests/acl2/store-log-entry-bound-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -8644,6 +8643,7 @@
    "owner_book": "tests/acl2/store-log-entry-bound-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -8693,11 +8693,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgk-crash-of-related-state-is-a-prefix",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgk-fence-content",
    "registry": true
   },
@@ -8719,16 +8714,6 @@
   {
    "class": "hand",
    "name": "fn-lgk-prepare-preserves-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgk-recover-establishes-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgk-recovered-content-okp",
    "registry": true
   },
   {
@@ -8758,31 +8743,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgob-fence-of-a-fenced-file-is-identity",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-file-fence-keeps-entry-operations",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-journal-fence-keeps-the-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-one-barrier-loses-a-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-only-a-write-unfences-a-file",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgob-three-and-five-barrier-opens-have-the-same-cut-states",
    "registry": true
   },
@@ -8794,26 +8754,6 @@
   {
    "class": "hand",
    "name": "fn-lgob-three-barrier-open-is-the-five-at-every-cut",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-three-barriers-keep-the-imported-store",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-three-barriers-keep-the-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-two-barriers-without-parent-lose-an-imported-store",
    "registry": true
   },
   {
@@ -8873,42 +8813,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgrc-attempt-makes-the-read-prefix-durable",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrc-dropping-open-loses-a-checkpointed-history",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgrc-open-keeps-the-relation-at-every-cut",
    "registry": true
   },
   {
    "class": "hand",
-   "name": "fn-lgrc-open-unlinks-no-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrs-journal-fence-names-the-acknowledged-batch",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgrs-spare-name-is-swept-and-never-a-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed",
    "registry": true
   },
   {
@@ -8963,11 +8873,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgt-recovered-okp-of-verdict",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgu-acknowledge-acknowledges-only-recoverable-records",
    "registry": true
   },
@@ -8980,8 +8885,9 @@
    "name": "fn-lgu-acknowledged-records-are-recovered-at-every-cut",
    "owed_met": null,
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 3,
     "logical": 0,
     "reachable": 0
@@ -9000,6 +8906,7 @@
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 1
@@ -9018,6 +8925,7 @@
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -9039,8 +8947,9 @@
    "name": "fn-lgu-safe-image-recovers-the-acknowledged-records",
    "owed_met": null,
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -9059,6 +8968,7 @@
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -9077,6 +8987,7 @@
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -9095,6 +9006,7 @@
    "owner_book": "tests/acl2/store-log-entry-bound-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -9113,6 +9025,7 @@
    "owner_book": "tests/acl2/store-log-entry-bound-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -9122,27 +9035,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgw-open-chain-is-the-chain",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgw-run-nf-then-fold-is-run",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-lgw-run-of-set-next-is-run-nf",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgw-segment-drop-preserves-the-open",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgw-segment-is-the-scan",
    "registry": true
   },
   {
@@ -9181,6 +9079,7 @@
    "owner_book": "tests/acl2/log-sink-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -9209,6 +9108,7 @@
    "owner_book": "tests/acl2/log-sink-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -9227,6 +9127,7 @@
    "owner_book": "tests/acl2/log-sink-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -9245,6 +9146,7 @@
    "owner_book": "tests/acl2/list-row-cursor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -9353,9 +9255,23 @@
    "registry": true
   },
   {
-   "class": "hand",
-   "name": "fn-lzr-intern-step-refines",
-   "registry": true
+   "book_digest": "03490847dcf903764a86f85cc108c484b266d1e302c0bdfe9fa579fc8a20fa74",
+   "bounds": [],
+   "claim_digest": "1c481ecc324bc40c9be37bce56a58340975d864f4a214c32d9002c1dca83069a",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-lzr-intern-events-refines",
+   "owed_met": null,
+   "owner_book": "tests/acl2/payload-lz-replay-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-lzr-intern-events",
+   "witness": "lemma"
   },
   {
    "class": "hand",
@@ -10318,6 +10234,7 @@
    "owner_book": "tests/acl2/native-init-resume-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -10336,6 +10253,7 @@
    "owner_book": "tests/acl2/native-init-resume-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -10464,6 +10382,7 @@
    "owner_book": "tests/acl2/newnews-matching-selector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -10482,6 +10401,7 @@
    "owner_book": "tests/acl2/newnews-matching-selector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -10500,6 +10420,7 @@
    "owner_book": "tests/acl2/newnews-matching-selector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -10518,6 +10439,7 @@
    "owner_book": "tests/acl2/newnews-matching-selector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -10536,6 +10458,7 @@
    "owner_book": "tests/acl2/newnews-matching-selector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -10554,6 +10477,7 @@
    "owner_book": "tests/acl2/newnews-matching-selector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -10974,6 +10898,7 @@
    "owner_book": "tests/acl2/newnews-cursor-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -11122,6 +11047,7 @@
    "owner_book": "tests/acl2/native-retire-observation-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 6
@@ -11140,6 +11066,7 @@
    "owner_book": "tests/acl2/native-retire-observation-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -11348,6 +11275,7 @@
    "owner_book": "tests/acl2/output-command-admission-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -11702,11 +11630,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-oclc-ready-cst-relation-is-history-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-ocln-a-cold-line-is-answered-unavailable",
    "registry": true
   },
@@ -11894,6 +11817,25 @@
    "class": "hand",
    "name": "fn-oct-suffix-equalp-is-equal",
    "registry": true
+  },
+  {
+   "book_digest": "26de30479bee1380734be898692c18597b7064c1aaa99a8ebf567bf72ae0188b",
+   "bounds": [],
+   "claim_digest": "f836d78ab8d299d299493865ceb1452925605b4afe4c449982c067986b68035f",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-oct-transit-is-own-transit-outcome-under-ocl-relation",
+   "owed_met": null,
+   "owner_book": "tests/acl2/catchup-carried-transit-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oct-transit",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -12191,14 +12133,47 @@
    "registry": true
   },
   {
-   "class": "hand",
-   "name": "fn-oix-ocfg-step-keeps-view-indexed",
-   "registry": true
+   "book_digest": "87ad6cf8c17c8019fc07f281000da1088ba8ae767457dfb0b14a69d90eb36bc4",
+   "bounds": [],
+   "claim_digest": "520cc298ee8ccf3be4c93429a6244aa7b790d1e679f65f2a71766f7644dce28e",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-olau-authorize-carried-across-reader-events",
+   "owed_met": null,
+   "owner_book": "tests/acl2/config-owner-live-authorize-carried-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-olau-authorize-carried",
+   "witness": "executable"
   },
   {
    "class": "hand",
    "name": "fn-olau-authorize-is-the-replayed-authorization",
    "registry": true
+  },
+  {
+   "book_digest": "87ad6cf8c17c8019fc07f281000da1088ba8ae767457dfb0b14a69d90eb36bc4",
+   "bounds": [],
+   "claim_digest": "66e95631c5d2d9d9a680e29cd6d0fc7bdb27aea28ae787eba88013e962a04f80",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-olau-authorize-observed-is-the-carried-authorization",
+   "owed_met": null,
+   "owner_book": "tests/acl2/config-owner-live-authorize-carried-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-olau-authorize-observed",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -12262,22 +12237,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-olr-crash-reads-a-prefix-of-the-history",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-olr-extension-target-is-an-extent",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-olr-reopen-iff-requested",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-olr-take-never-joins-the-batch-in-flight",
    "registry": true
   },
   {
@@ -12456,9 +12421,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "26de30479bee1380734be898692c18597b7064c1aaa99a8ebf567bf72ae0188b",
+   "bounds": [],
+   "claim_digest": "50a4fafc33cb7d6e8495521f4279f85f2f6be5084ad04b28ab8f42eeb6088da0",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-oop-transit-outcome-is-own-transit-outcome",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/catchup-carried-transit-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oop-transit-outcome",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -12476,6 +12455,7 @@
    "owner_book": "tests/acl2/owner-queued-work-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -12494,6 +12474,7 @@
    "owner_book": "tests/acl2/owner-queued-work-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -12512,6 +12493,7 @@
    "owner_book": "tests/acl2/owner-queued-work-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -12725,6 +12707,177 @@
    "registry": true
   },
   {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "cdccb0bc2c90d27e808357ca4c99a2a2b8c275e9194b9e12795011eac3b99588",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-accepted-keeps-the-owner-effects",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "3c0d380d7f0870c5ed7b0a67262ae30568676b5d6f2abbf69d6e6a9cbdd3cfa2",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-phased-answers-as-inline",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "f7a11fcd67fbc3b93872ec37b734a9f0591731433e8d8106143c2b903e0cdcfe",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-phased-holds-the-owner-only-in-quanta",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "feef59c3ab4f1bbc23e16811df872caf551b1dacde4d0c799b14fc719b50fdba",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-phased-keeps-the-durable-effects",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "5c590704b646c70753e591d908b6bc30ae0b5a1bb254e0bfd7d736a665710751",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-orp-refusal-unstages-and-fence-keeps-the-stage",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "da0a204d68e2d823214e40106176a8ad47e9803b0e06cfef10f953ed8cb12c0e",
+   "class": "generated",
+   "mutations": "edits:3",
+   "name": "fn-orp-refused-convert-faults-after-release",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 8
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "4ac715adf920cc90555706168b460b7f881c679ebe3c1eb0868d65f5371a1b8a",
+   "class": "generated",
+   "mutations": "edits:3",
+   "name": "fn-orp-reservation-is-converted-or-released",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "5d2de03f3f50d2c96cbbe799eeb14143677fb29b0c6e3be1586d0e2bcf44f1f4",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-step-holds-the-owner-only-in-quanta",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "135d6e68f97c9e7714c5b4e7a183cf599b63ce4188a08e6c36c50ea2b628b6de",
+   "bounds": [],
+   "claim_digest": "26dfec0a13b6ef618e857cf75c438f4973cffd32a73e0e4e40cb04b7f92598e0",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orp-step-runs-the-phased-run",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reconfig-phased-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-orpr-configured-store-of-prepare-retention",
    "registry": true
@@ -12800,6 +12953,7 @@
    "owner_book": "tests/acl2/output-reservation-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -12818,6 +12972,7 @@
    "owner_book": "tests/acl2/output-reservation-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -12836,6 +12991,7 @@
    "owner_book": "tests/acl2/output-reservation-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -12921,11 +13077,6 @@
   {
    "class": "hand",
    "name": "fn-osi-ocar-exp-open-keeps-store",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-osi-pidx-prepare-keeps-view-indexed",
    "registry": true
   },
   {
@@ -13134,6 +13285,7 @@
    "owner_book": "tests/acl2/owner-time-journal-stream-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -13152,6 +13304,7 @@
    "owner_book": "tests/acl2/owner-time-journal-stream-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -13170,6 +13323,7 @@
    "owner_book": "tests/acl2/owner-time-journal-stream-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -13188,6 +13342,7 @@
    "owner_book": "tests/acl2/owner-time-journal-stream-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -13237,11 +13392,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-otm-disk-effects-loop-is-rev-onto",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-otm-disk-effects-names-the-disk",
    "registry": true
   },
@@ -13279,6 +13429,82 @@
    "class": "hand",
    "name": "fn-otm-health-disk-stalled-names-the-stall",
    "registry": true
+  },
+  {
+   "book_digest": "44563ac2a789221752a73b7b3a369eb5e9b4b841db9c8fc30be8e18e5d00021a",
+   "bounds": [],
+   "claim_digest": "b3925e17401db7eb6a62c7bbf5ad488f656224e4c23ff6e12169900041b4e264",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-otm-held-quantum-2-answers-the-held-outcome",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-held-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "b3d186e16a82b627a7563aed25aed586a238d89658ca24b77f5cb1c7b9e23d15",
+   "bounds": [],
+   "claim_digest": "9508de54b9e09a2c0d7e3851669e50c51e72068726704d61c3f80d34b5627e39",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-otm-hold-admits-only-inspect-commit-and-reader",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-reconfig-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "b3d186e16a82b627a7563aed25aed586a238d89658ca24b77f5cb1c7b9e23d15",
+   "bounds": [],
+   "claim_digest": "b87d6d99a8058ca265dd636c6b56e7d63dd3b99760dee57c9a484929b91acfb2",
+   "class": "generated",
+   "mutations": "edits:3",
+   "name": "fn-otm-hold-begin-and-end",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-reconfig-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book_digest": "b3d186e16a82b627a7563aed25aed586a238d89658ca24b77f5cb1c7b9e23d15",
+   "bounds": [],
+   "claim_digest": "4a176256a6c1eddba437b3da03c0469803f7ed8627086449e1bed0a874af27ff",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-otm-hold-stops-the-committer",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-reconfig-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -13517,11 +13743,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-owb-acknowledged-record-survives-crash",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-owb-append-preserves-alignment",
    "registry": true
   },
@@ -13538,21 +13759,6 @@
   {
    "class": "hand",
    "name": "fn-owb-batch-within-bounds",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-committed-record-survives-crash",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-failed-fence-image-is-admissible",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-failed-fence-is-the-crash-image",
    "registry": true
   },
   {
@@ -13592,11 +13798,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-owb-image-scan-of-related-state",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-owb-known-abort-preserves-alignment",
    "registry": true
   },
@@ -13612,37 +13813,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-owb-recover-establishes-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-recovered-kernel-after-a-failed-fence",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-related-state-is-the-sole-pending-writer",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-scan-of-related-content",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-owb-take-preserves-alignment",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-owb-take-preserves-bounds",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-owb-uncertain-batch-recovers-to-a-prefix",
    "registry": true
   },
   {
@@ -13763,11 +13939,6 @@
   {
    "class": "hand",
    "name": "fn-own-feed-targets-omit-no-offerable-peer",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-own-feed-tick-loop-is-rev-onto",
    "registry": true
   },
   {
@@ -13911,7 +14082,7 @@
    "registry": true
   },
   {
-   "book_digest": "5c4a9eeb99ec2adb3ee9ad06128d057b460a8be5dcf4d8dc35786b3903b502a0",
+   "book_digest": "1652336763c6954c264bf3b5a3d6614a34793b956e1de9677d62ff428cf4347c",
    "bounds": [],
    "claim_digest": "3e4f350646a4ac6fa1cc4d158d05cea5b24c879b3ae93933ab853f28624abb55",
    "class": "generated",
@@ -13921,6 +14092,7 @@
    "owner_book": "tests/acl2/served-access-revoke-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -13929,7 +14101,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "5c4a9eeb99ec2adb3ee9ad06128d057b460a8be5dcf4d8dc35786b3903b502a0",
+   "book_digest": "1652336763c6954c264bf3b5a3d6614a34793b956e1de9677d62ff428cf4347c",
    "bounds": [],
    "claim_digest": "418af6641ff3972038732f1087d7fe8b55fab1893b29a4fa91f5f4e78752c445",
    "class": "generated",
@@ -13939,6 +14111,7 @@
    "owner_book": "tests/acl2/served-access-revoke-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -13947,7 +14120,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "5c4a9eeb99ec2adb3ee9ad06128d057b460a8be5dcf4d8dc35786b3903b502a0",
+   "book_digest": "1652336763c6954c264bf3b5a3d6614a34793b956e1de9677d62ff428cf4347c",
    "bounds": [],
    "claim_digest": "06bc54296fcab22c15bdd275552fc8ec320323642b490b40e4d934620e611262",
    "class": "generated",
@@ -13957,6 +14130,7 @@
    "owner_book": "tests/acl2/served-access-revoke-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -14055,6 +14229,7 @@
    "owner_book": "tests/acl2/owner-reclaim-carry-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -14168,6 +14343,7 @@
    "owner_book": "tests/acl2/app-pattern-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -14186,6 +14362,7 @@
    "owner_book": "tests/acl2/app-pattern-delivery-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -14204,6 +14381,7 @@
    "owner_book": "tests/acl2/app-pattern-delivery-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -14222,6 +14400,7 @@
    "owner_book": "tests/acl2/app-pattern-delivery-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -14240,6 +14419,7 @@
    "owner_book": "tests/acl2/app-pattern-delivery-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -14363,6 +14543,7 @@
    "owner_book": "tests/acl2/peer-carriage-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -14651,6 +14832,7 @@
    "owner_book": "tests/acl2/peer-flight-default-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -14669,6 +14851,7 @@
    "owner_book": "tests/acl2/peer-flight-default-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -14687,6 +14870,7 @@
    "owner_book": "tests/acl2/peer-flight-default-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -14705,6 +14889,7 @@
    "owner_book": "tests/acl2/peer-flight-default-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -14723,6 +14908,7 @@
    "owner_book": "tests/acl2/peer-flight-default-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -14766,6 +14952,7 @@
    "owner_book": "tests/acl2/peer-flight-default-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -14784,6 +14971,7 @@
    "owner_book": "tests/acl2/peer-flight-default-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -14802,6 +14990,7 @@
    "owner_book": "tests/acl2/peer-flight-default-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -14820,6 +15009,7 @@
    "owner_book": "tests/acl2/peer-flight-reservation-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -14838,6 +15028,7 @@
    "owner_book": "tests/acl2/peer-flight-reservation-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -14873,11 +15064,6 @@
   {
    "class": "hand",
    "name": "fn-pidx-existing-action-is-store-existing-action",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-pidx-find-article-is-find-article",
    "registry": true
   },
   {
@@ -15082,11 +15268,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-pix-peer-delegate-pinned-is-peer-delegate-pinned",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-post-admitted-article-keeps-history",
    "registry": true
   },
@@ -15256,6 +15437,7 @@
    "owner_book": "tests/acl2/peer-round-driver-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -15274,6 +15456,7 @@
    "owner_book": "tests/acl2/peer-round-driver-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -15292,6 +15475,7 @@
    "owner_book": "tests/acl2/peer-round-driver-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -15310,6 +15494,7 @@
    "owner_book": "tests/acl2/peer-round-driver-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -15328,6 +15513,7 @@
    "owner_book": "tests/acl2/peer-round-driver-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -15346,6 +15532,7 @@
    "owner_book": "tests/acl2/peer-round-driver-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -15364,6 +15551,7 @@
    "owner_book": "tests/acl2/peer-round-driver-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -15382,6 +15570,7 @@
    "owner_book": "tests/acl2/peer-round-driver-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 2
@@ -15400,6 +15589,7 @@
    "owner_book": "tests/acl2/peer-round-driver-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 1
@@ -15428,12 +15618,202 @@
    "registry": true
   },
   {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "a457a125fe704611c590e099a468dc9a5f731781275677e5a86c287e4d56f4a7",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-admit-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-admit",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "8439aa9fde9ea79fad16fb75008f540a1bce84b671c896805c0ac091d7540463",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-close-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-close",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-prl-completion-refunds-at-most-once",
    "registry": true
   },
   {
-   "book_digest": "d8ff92bc09033d0674dc5bfdee8eb398497d9b2202671b205612e117c6a6daac",
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "e70ab755ad635efc26dad8c2808a746d9a8db9a31cfdf916d3c42ef047f74e73",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-convert-growth-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-convert-growth",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "51621b75233211ae0ff8db9aa205c48627d7eb675f0029e36c86b3a30da28e5e",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-convert-growth-under-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": "fn-prl-convert-growth",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "6b0d46f88c17d06b3350091cac1ea85f18480dc2a72abc463c07397ca825b409",
+   "bounds": [],
+   "claim_digest": "a7e2b3e5a142d5e350653cbf83a2e770dbc7939306c11315259d4db3a63b62ba",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-convert-growth-when-charged-covers-the-reserve",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-budget-growth-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 4
+   },
+   "subject": "fn-prl-convert-growth",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "6b0d46f88c17d06b3350091cac1ea85f18480dc2a72abc463c07397ca825b409",
+   "bounds": [],
+   "claim_digest": "0c7bbee56e1638f4749546a7a2a3d864e61ca1ec0f4fc7f7abe41908c154fe2c",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-evict-keeps-other-bindings",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-budget-growth-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-evict",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "90667f18396249affc9cc2d9682c0e748bc8b9eade93543647e21a7b8b4b511b",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-evict-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-evict",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "3d246275aa72aba2bc959529e485202d6640476edab80c7c852f0323211bb55a",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-make-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-prl-make",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "e06b5b5dee4eaf8f995f9ee312ea9a70667e39285057c4af0857a13084900e34",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-register-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-register",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "59d6ac8b14284f822db1a9cd24c95ee3fb7e415ffc150ab899a2b9447a05af90",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-reserve-growth-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-reserve-growth",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "6b0d46f88c17d06b3350091cac1ea85f18480dc2a72abc463c07397ca825b409",
    "bounds": [],
    "claim_digest": "dd697f7ceb634a7c2c87db1a58ad5a3127e014b9690cbe7b4f7dd9637974f7e9",
    "class": "generated",
@@ -15443,6 +15823,7 @@
    "owner_book": "tests/acl2/page-read-budget-growth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -15451,7 +15832,7 @@
    "witness": "lemma"
   },
   {
-   "book_digest": "d8ff92bc09033d0674dc5bfdee8eb398497d9b2202671b205612e117c6a6daac",
+   "book_digest": "6b0d46f88c17d06b3350091cac1ea85f18480dc2a72abc463c07397ca825b409",
    "bounds": [],
    "claim_digest": "3b04de90d189808a341a34e15795d87ce1ae906dd38cf1225cf2366c732d2c78",
    "class": "generated",
@@ -15461,6 +15842,7 @@
    "owner_book": "tests/acl2/page-read-budget-growth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -15469,9 +15851,66 @@
    "witness": "lemma"
   },
   {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "b918bfc2034f1ed814337219b8504b889503b44dfe8ec10075fff99ec46f388c",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-row-sum-bound-reserve-natural",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-prl-convert-growth",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "76202fdd3c5cd7470ebcff9ef18084eff77a0a19f3a579c58bb546c3dbc3d169",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-prl-row-sum-covers-bound-reserve",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-prl-convert-growth",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-prl-settle-never-reuses-identity",
    "registry": true
+  },
+  {
+   "book_digest": "2f676328b61290f864a6ad386cb4bcbba02c98feff83d80ae4c2cdadee3c0c67",
+   "bounds": [],
+   "claim_digest": "c0a01b80d1e98769584b7957167ace060077cc0161ad1f0247fd01a3736de428",
+   "class": "generated",
+   "mutations": "not-applicable",
+   "name": "fn-prl-settle-preserves-row-sum-invp",
+   "owed_met": null,
+   "owner_book": "tests/acl2/page-read-ledger-rowsum-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-prl-settle",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -15484,7 +15923,7 @@
    "registry": true
   },
   {
-   "book_digest": "c3dbce88511b594ab28d69ff48dfdfe987fecbc4b0193005feeeabb586b1d9c2",
+   "book_digest": "504b65ebb1572be1ba92a4e480ae189fe9454c4ef9034fddd7d313618dc0e481",
    "bounds": [],
    "claim_digest": "d66624b9b59102974e82a0f3cefcf4cfc26e3c8604af7ed0629de92d5a66c57e",
    "class": "generated",
@@ -15496,6 +15935,7 @@
    "owner_book": "books/protocol-served.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -15509,7 +15949,7 @@
    "registry": true
   },
   {
-   "book_digest": "c3dbce88511b594ab28d69ff48dfdfe987fecbc4b0193005feeeabb586b1d9c2",
+   "book_digest": "504b65ebb1572be1ba92a4e480ae189fe9454c4ef9034fddd7d313618dc0e481",
    "bounds": [],
    "claim_digest": "0e41a6459e85c7c3d658f49224c4ab1326b57a50c701735c6670f395d710bf5e",
    "class": "generated",
@@ -15521,6 +15961,7 @@
    "owner_book": "books/protocol-served.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -15604,7 +16045,7 @@
    "registry": true
   },
   {
-   "book_digest": "960432552c168eb36c3d0e98d97df76c3b2a399bda0b4b08755f4215b9c9c64e",
+   "book_digest": "a5885e901d676274ed63dee267c98f4aa00b912bb98d631e055d96664486c6fd",
    "bounds": [],
    "claim_digest": "ad3cd34bfc949563f0c465b0809712f6e9d087493e9a23fad90331cc68b66b6e",
    "class": "generated",
@@ -15614,6 +16055,7 @@
    "owner_book": "tests/acl2/page-read-startup-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -15622,7 +16064,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "960432552c168eb36c3d0e98d97df76c3b2a399bda0b4b08755f4215b9c9c64e",
+   "book_digest": "a5885e901d676274ed63dee267c98f4aa00b912bb98d631e055d96664486c6fd",
    "bounds": [],
    "claim_digest": "194941027e09e2b9a37a158046e542b8dcadb69f7cd2a74c6b5cfb273dceb6bd",
    "class": "generated",
@@ -15632,6 +16074,7 @@
    "owner_book": "tests/acl2/page-read-startup-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -15755,6 +16198,25 @@
    "registry": true
   },
   {
+   "book_digest": "7cc130de95c49c68670e67788fe9cf167b86bf7bd94d5427e7114b033d5d1026",
+   "bounds": [],
+   "claim_digest": "a4c031bf1d1799fa872adad90921d5e9cecd9884274ad3d78f9c181abc062afc",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-psrv-store-prepare-next-keeps-the-stored-octets",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-budget-stored-post-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-psrv-store-prepare-next",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-psrv-unstage-preserves-invariant",
    "registry": true
@@ -15845,6 +16307,7 @@
    "owner_book": "tests/acl2/peer-pull-auth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -15903,6 +16366,7 @@
    "owner_book": "tests/acl2/peer-pull-auth-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -16566,6 +17030,7 @@
    "owner_book": "tests/acl2/reclaim-chunked-walk-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -16589,6 +17054,7 @@
    "owner_book": "tests/acl2/reclaim-chunked-walk-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -16617,6 +17083,7 @@
    "owner_book": "tests/acl2/reclaim-chunked-seal-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -16670,6 +17137,7 @@
    "owner_book": "tests/acl2/raw-dispatch-verdict-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -16688,6 +17156,7 @@
    "owner_book": "tests/acl2/raw-dispatch-verdict-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -16706,6 +17175,7 @@
    "owner_book": "tests/acl2/raw-dispatch-verdict-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -16921,6 +17391,7 @@
    "owner_book": "tests/acl2/retention-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -16941,6 +17412,7 @@
    "owner_book": "tests/acl2/retention-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -17199,6 +17671,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -17217,6 +17690,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -17235,6 +17709,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -17253,6 +17728,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -17271,6 +17747,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -17289,6 +17766,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -17307,6 +17785,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -17325,6 +17804,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -17343,6 +17823,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -17361,6 +17842,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -17379,6 +17861,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -17397,6 +17880,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -17415,6 +17899,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -17433,6 +17918,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -17451,6 +17937,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 2,
     "logical": 0,
     "reachable": 0
@@ -17469,6 +17956,7 @@
    "owner_book": "tests/acl2/resource-output-chain-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 1,
     "logical": 0,
     "reachable": 0
@@ -17503,31 +17991,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-rr-acknowledged-record-is-in-every-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-log-crash-image-quiet-recovers-committed",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-log-crash-image-recovers-a-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-rr-medium-full-open-holds-its-records",
    "registry": true
   },
@@ -17548,42 +18011,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-crash-content-is-the-projected-crash-content",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-rrc-keeping-the-segment-keeps-the-lifted-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-log-crash-image-recovers-a-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-projected-image-is-admissible-with-the-same-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-projection-is-related",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record",
    "registry": true
   },
   {
@@ -17642,6 +18070,7 @@
    "owner_book": "tests/acl2/resource-vector-tree-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17660,6 +18089,7 @@
    "owner_book": "tests/acl2/resource-vector-tree-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17678,6 +18108,7 @@
    "owner_book": "tests/acl2/resource-vector-tree-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17696,6 +18127,7 @@
    "owner_book": "tests/acl2/resource-vector-tree-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17714,6 +18146,7 @@
    "owner_book": "tests/acl2/resource-vector-tree-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -17737,6 +18170,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 5,
     "reachable": 0
@@ -17755,6 +18189,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -17773,6 +18208,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17791,6 +18227,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17814,6 +18251,7 @@
    "owner_book": "tests/acl2/resource-vector-relations-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 4,
     "reachable": 0
@@ -17832,6 +18270,7 @@
    "owner_book": "tests/acl2/resource-vector-relations-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 2,
     "reachable": 0
@@ -17850,6 +18289,7 @@
    "owner_book": "tests/acl2/resource-vector-relations-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17868,6 +18308,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17886,6 +18327,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17904,6 +18346,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17922,6 +18365,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17940,6 +18384,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -17958,6 +18403,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -17976,6 +18422,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 2,
     "reachable": 0
@@ -17994,6 +18441,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -18012,6 +18460,7 @@
    "owner_book": "tests/acl2/resource-vector-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -18326,11 +18775,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-scar-own-read-span-is-own-read-tls-prefix",
    "registry": true
   },
@@ -18400,6 +18844,7 @@
    "owner_book": "tests/acl2/store-checkpoint-verify-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -18569,22 +19014,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-scka-recover-rows-rii-is-recover-rows",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-scka-restore-base-of-strip-of-capture",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-scka-seal-n-compose",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-scka-src-payloads-of-canon-srcs",
    "registry": true
   },
   {
@@ -18710,11 +19145,6 @@
   {
    "class": "hand",
    "name": "fn-scr-cached-view-is-the-view",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-scr-dispatch-events-loop-is-rev-onto",
    "registry": true
   },
   {
@@ -18899,11 +19329,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-served-dispatch-events-loop-is-rev-onto",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-served-dispatch-list-motd",
    "registry": true
   },
@@ -18969,11 +19394,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-served-feed-loop-is-rev-onto",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-served-feed-of-append",
    "registry": true
   },
@@ -19020,16 +19440,6 @@
   {
    "class": "hand",
    "name": "fn-served-reply-stream-is-partition-independent",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-served-reply-to-buffer-is-the-reply",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-served-reply-to-buffer-refusal-keeps-the-buffer",
    "registry": true
   },
   {
@@ -19300,6 +19710,7 @@
    "owner_book": "tests/acl2/store-files-teeth-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -19320,6 +19731,7 @@
    "owner_book": "tests/acl2/store-files-teeth-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -19858,6 +20270,7 @@
    "owner_book": "tests/acl2/string-line-cursor-cost-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -19876,6 +20289,7 @@
    "owner_book": "tests/acl2/string-line-cursor-cost-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -19894,6 +20308,7 @@
    "owner_book": "tests/acl2/string-line-fill-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -20663,11 +21078,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-store-prepare-interned-keeps-the-stored-octets",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-store-profile-read-bound-covers-every-admitted-publication",
    "registry": true
   },
@@ -20833,21 +21243,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-sxd-crash-is-incomplete-or-complete",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-sxd-import-verdict-is-incomplete-or-complete",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-sxi-stream-plan-is-the-import-plan",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-sxp-import-of-export-replays-the-same-history",
    "registry": true
   },
@@ -20877,6 +21272,7 @@
    "owner_book": "tests/acl2/output-tariff-family-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 5
@@ -20895,6 +21291,7 @@
    "owner_book": "tests/acl2/output-tariff-family-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 3
@@ -20913,6 +21310,7 @@
    "owner_book": "tests/acl2/output-tariff-family-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21051,6 +21449,7 @@
    "owner_book": "tests/acl2/tcpcl-received-source-refinement-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -21079,6 +21478,7 @@
    "owner_book": "tests/acl2/tcpcl-source-control-refinement-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21097,6 +21497,7 @@
    "owner_book": "tests/acl2/tcpcl-source-control-refinement-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21115,6 +21516,7 @@
    "owner_book": "tests/acl2/tcpcl-retained-turn-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 2,
     "reachable": 1
@@ -21183,6 +21585,7 @@
    "owner_book": "tests/acl2/tls-key-exchange-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21201,6 +21604,7 @@
    "owner_book": "tests/acl2/tls-key-exchange-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21219,6 +21623,7 @@
    "owner_book": "tests/acl2/tls-key-exchange-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -21237,6 +21642,7 @@
    "owner_book": "tests/acl2/tls-key-exchange-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21255,6 +21661,7 @@
    "owner_book": "tests/acl2/tls-key-exchange-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21458,6 +21865,7 @@
    "owner_book": "tests/acl2/wire-family-consumer-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21476,6 +21884,7 @@
    "owner_book": "tests/acl2/wire-family-consumer-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21494,6 +21903,7 @@
    "owner_book": "tests/acl2/wire-family-consumer-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21512,6 +21922,7 @@
    "owner_book": "tests/acl2/wire-family-consumer-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21530,6 +21941,7 @@
    "owner_book": "tests/acl2/wire-family-consumer-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21548,6 +21960,7 @@
    "owner_book": "tests/acl2/wire-family-consumer-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21566,6 +21979,7 @@
    "owner_book": "tests/acl2/wire-family-consumer-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21584,6 +21998,7 @@
    "owner_book": "tests/acl2/wire-family-consumer-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21602,6 +22017,7 @@
    "owner_book": "tests/acl2/wire-family-control-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21620,6 +22036,7 @@
    "owner_book": "tests/acl2/wire-family-control-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 2
@@ -21638,6 +22055,7 @@
    "owner_book": "tests/acl2/wire-family-control-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21656,6 +22074,7 @@
    "owner_book": "tests/acl2/wire-family-control-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21784,7 +22203,7 @@
    "registry": true
   },
   {
-   "book_digest": "103aced50687ab637eff56205e836e7fa20aa867830c4566051557117edfbc47",
+   "book_digest": "84ab876a94c62a3d0496f1ce535f219afa566bb230c12aaec6312fd0c7d45ef3",
    "bounds": [],
    "claim_digest": "e1d87a30b257b4a411a8022b01254fa1c983b782280fef9a731811d4c0e876d7",
    "class": "generated",
@@ -21796,6 +22215,7 @@
    "owner_book": "tests/acl2/withdrawal-index-carried-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21804,7 +22224,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "103aced50687ab637eff56205e836e7fa20aa867830c4566051557117edfbc47",
+   "book_digest": "84ab876a94c62a3d0496f1ce535f219afa566bb230c12aaec6312fd0c7d45ef3",
    "bounds": [],
    "claim_digest": "83f02e2fc4d8445fa6330ef0f1a97156f4d849d5624b19ec7e4fb01ef1b36cfe",
    "class": "generated",
@@ -21816,6 +22236,7 @@
    "owner_book": "tests/acl2/withdrawal-index-carried-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21824,7 +22245,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "103aced50687ab637eff56205e836e7fa20aa867830c4566051557117edfbc47",
+   "book_digest": "84ab876a94c62a3d0496f1ce535f219afa566bb230c12aaec6312fd0c7d45ef3",
    "bounds": [],
    "claim_digest": "b0f47356c3cf9c4d4b756d3a8c5c36bbc54e054caed41d250c913e58c6b638f4",
    "class": "generated",
@@ -21836,17 +22257,13 @@
    "owner_book": "tests/acl2/withdrawal-index-carried-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
    },
    "subject": "fn-wix-targets-of",
    "witness": "executable"
-  },
-  {
-   "class": "hand",
-   "name": "fn-wm-match-codepoints-work-cost-bound",
-   "registry": true
   },
   {
    "class": "hand",
@@ -21864,11 +22281,31 @@
    "owner_book": "tests/acl2/wildmat-cursor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
    },
    "subject": "fn-wmc-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2847d55314f692dd40fd24c9d4338c5528aef116ce394f1288dfcef04983ab39",
+   "bounds": [],
+   "claim_digest": "527aad0a75d916ebbd03f5a0d4e5c1b9b05b371627d5ba846bf4e612cee0d8c7",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-wmc-core-codepoint-start-work-bound",
+   "owed_met": null,
+   "owner_book": "tests/acl2/wildmat-cursor-bound-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-wmc-start-codepoints",
    "witness": "executable"
   },
   {
@@ -21882,6 +22319,7 @@
    "owner_book": "tests/acl2/wildmat-cursor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21900,6 +22338,7 @@
    "owner_book": "tests/acl2/wildmat-cursor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -21918,6 +22357,7 @@
    "owner_book": "tests/acl2/wildmat-cursor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21936,6 +22376,7 @@
    "owner_book": "tests/acl2/wildmat-cursor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21954,6 +22395,7 @@
    "owner_book": "tests/acl2/wildmat-cursor-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -21972,6 +22414,7 @@
    "owner_book": "tests/acl2/wildmat-live-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -21990,6 +22433,7 @@
    "owner_book": "tests/acl2/wildmat-live-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -22008,6 +22452,7 @@
    "owner_book": "tests/acl2/wildmat-live-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 1
@@ -22026,6 +22471,7 @@
    "owner_book": "tests/acl2/wildmat-live-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 1,
     "reachable": 0
@@ -22044,6 +22490,7 @@
    "owner_book": "tests/acl2/wildmat-live-tests.lisp",
    "registry": true,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 1
@@ -22372,6 +22819,25 @@
    "registry": true
   },
   {
+   "book_digest": "4400a90753c0b45f5b244f9282fca49f23466ccb40d9a5392a11c0802204d296",
+   "bounds": [],
+   "claim_digest": "40a1c63ec7925032a5a05ed1954b29cf6f18db30b1edc9b135d21d85621e9fb9",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-zpl-decode-bufs-from-the-empty-pool",
+   "owed_met": null,
+   "owner_book": "tests/acl2/deflate-pool-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 0
+   },
+   "subject": "fn-zpl-decode-bufs",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-zpl-decode-bufs-is-decode",
    "registry": true
@@ -22379,16 +22845,6 @@
   {
    "class": "hand",
    "name": "fn-zpl-decode-bufs-is-the-lz-value",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-zpl-pool-check-is-pool-okp",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-zpl-pool-okp-of-nil",
    "registry": true
   },
   {
@@ -22409,6 +22865,7 @@
    "owner_book": "tests/acl2/def-keyset-check-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -22429,6 +22886,7 @@
    "owner_book": "tests/acl2/def-keyset-check-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -22449,6 +22907,7 @@
    "owner_book": "tests/acl2/def-keyset-check-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0
@@ -22469,6 +22928,7 @@
    "owner_book": "tests/acl2/def-keyset-check-tests.lisp",
    "registry": false,
    "removals": {
+    "assumption": 0,
     "lemma": 0,
     "logical": 0,
     "reachable": 0

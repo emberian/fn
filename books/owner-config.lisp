@@ -496,7 +496,8 @@
   (fn-ocfg-make (fn-own-close (fn-ocfg-owner oc) id)
                 (fn-ocfg-config oc)
                 (fn-ocfg-pin-remove id (fn-ocfg-pins oc))
-                (if (equal (fn-own-pending (fn-ocfg-owner oc)) id)
+                (if (and (fn-own-pending (fn-ocfg-owner oc))
+                         (equal (fn-own-pending (fn-ocfg-owner oc)) id))
                     nil
                   (fn-ocfg-staged oc))))
 
@@ -850,11 +851,8 @@
                                   ; (owner-books-split).
                                   (fn-own-step fn-own-advance fn-own-close
                                    fn-own-open fn-own-complete fn-own-begin
-                                   fn-own-find-conn fn-nntp-article-idp-is-consp
-                                   fn-snrt-new-success-is-actual-matching-durable-completion
-                                   fn-nntp-response-text-true-listp
-                                   fn-wire-next-loop-event-needs-input
-                                   fn-wire-next-event-needs-input))))))
+                                   fn-own-find-conn
+                                   fn-nntp-response-text-true-listp))))))
 
 ; KEYSTONE.  Every connection keeps the configuration generation it opened
 ; at, for as long as it is not advanced.
@@ -1241,7 +1239,7 @@
                                    ;; in the configuration replay
                                    fn-ocfg-pin-remove fn-ocfg-config-stamp
                                    fn-nntp-response-text-true-listp
-                                   fn-cp-idp-true-listp fn-nntp-article-idp-is-consp
+                                   fn-cp-idp-true-listp
                                    fn-cnode-config-replay fn-own-complete fn-own-close
                                    fn-ocfg-reconfig-okp
                                    fn-ocfg-config-replay-of-one-more-record

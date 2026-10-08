@@ -380,6 +380,23 @@ normalized store root for the pre-open DEFAULT backing reservation."
            (declare (ignore peer))
            (values profile (if (integerp connections) connections 0) action observed cold-resources output-resources root
                    nil reclaim-live)))
+        ;; The developer owner (`owner run ROOT PORT ONCE MAX-CONNECTIONS'):
+        ;; a served run over ROOT's store, sized as the operator's run is by
+        ;; that store's profile.  Left to the final clause it answered
+        ;; profile=none, 1024 MB, below what the store's read pool needs.
+        ((and (string= (or (first argv) "") "owner") (string= (or (second argv) "") "run")
+              (third argv))
+         (let* ((root (fnn-absolute (third argv)))
+                (profile (fnn-heap-store-profile root))
+                (connections (or (ignore-errors (parse-integer (sixth argv))) 0)))
+           ;; OBSERVED as the operator's run observes it (ACL2 says which
+           ;; actions are sized by the store on disk): left NIL the figure is
+           ;; the profile's whole bound, 3026 MB against the 1934 MB the
+           ;; operator's run decides for the same store.
+           (values profile connections :run
+                   (and profile (fnn-core 'fn-heap-operation-observes-p :run)
+                        (fnn-heap-history-observation root profile))
+                   nil nil root)))
         ((and (string= (or (first argv) "") "store") (third argv))
          (let ((profile (fnn-heap-store-profile (second argv))))
            (values profile 0 nil
@@ -430,19 +447,6 @@ to a space that already holds it."
                       action peer core machine)
             bp-terms core machine)
             output-resources core machine))
-
-(defun fnn-heap-bp-terms (argv)
-  "A `bp-node serve' command's BP terms, observed as fnn-bp-session-install
-reads them: the session profile and node profile under its journal root, the
-transfer MRU argument and the segment MRU.  NIL for every other command.  The
-sizing is ACL2's (fn-bph-extend-reservation); this only reads the files."
-  (when (fnn-core 'fn-bph-node-serve-p argv)
-    (let ((journal (fnn-core 'fn-bph-node-journal argv))
-          (transfer (fnn-core 'fn-bph-node-transfer argv +fnn-tcl-transfer-mru+)))
-      (unless transfer
-        (fnn-refuse "~a" (fnn-core 'fn-bph-refusal-line :transfer-mru)))
-      (list (fnn-bp-session-profile journal) (fnn-bps-read-profile journal)
-            transfer +fnn-tcl-segment-mru+))))
 
 (defun fnn-heap-reservation (profile connections &optional action observed cold-resources output-resources root peer reclaim-live
                              bp-terms)

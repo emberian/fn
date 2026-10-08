@@ -5,7 +5,7 @@
  "severity": "medium",
  "slice": "proofs",
  "source": "CONVERGE-2 row 15 (lane/reach-code-only)",
- "state": "open",
+ "state": "landed",
  "title": "8 reach_check false greens in generated walks (def-loop) the host is said to call: subjects reached only through host prose (2 PRFs: PRF-919, PRF-383)",
  "notes": [
   "Each event's subject is named only in host prose (a docstring or comment), never in host code, so reach_check counted it reached until lane/reach-code-only. Per event, one of: the host does run it under another name, so name the correspondence or equality reach_check accepts; or a crash campaign judges the host with it, so make the campaign name it in code (it then counts campaign-tied); or the claim is about a model the host does not run, so re-scope the PRF statement to say so (no served claim). Never re-baseline.",
@@ -17,7 +17,11 @@
   "PRF-919: fn-dl-map-skip-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-map-skip, fn-dl-map-skip-loop)",
   "PRF-919: fn-dl-step-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-step, fn-dl-step-loop)",
   "PRF-919: fn-dl-sum-loop-is-plus (books/def-loop.lisp; subjects fn-dl-sum, fn-dl-sum-loop)",
-  "PRF-383: fn-dl-map-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-map, fn-dl-map-loop)"
+  "PRF-383: fn-dl-map-loop-is-revappend (books/def-loop.lisp; subjects fn-dl-map, fn-dl-map-loop)",
+  "World reach gate at 87daf18f5 (first --world --strict run, N): this item's 8 events recur as NEW orphans with no baseline entry, plus one more:",
+  "PRF-919: fn-dl-thread-loop-is-revappend (books/def-loop.lisp:518; subjects fn-dl-thread, fn-dl-thread-loop). A generator lemma: the host runs def-loop's generated instances, never fn-dl-thread-loop itself, so the disposition is the same as this item's other def-loop events (name the instance correspondence, or unreachable-in-composition with the PRF re-scoped).",
+  "p-reach-prose1 (Sonnet, 2026-10-08), all 9 events (c) unreachable-in-composition: the 8 fn-dl-*-loop-is-* bridges (PRF-919: concat, fold, foldr, map, map-skip, step, sum, thread; PRF-383: map) are one-time shape lemmas over def-loop's library witness instances, which no host line calls; instances take their own local bridge by :functional-instance, so the per-instance claim is each walk's guard-verified mbe. Theorems unchanged in books/def-loop.lisp, removed from PRF-919 and PRF-383 event lists (note + statement), no baseline entry. PRF-383 is left with no registered events (its walks fn-cfg-rows-with-key, fn-cfg-peer-names would need teeth as guarded-function events; owed). teeth-ceiling lowered by the removed toothless events.",
+  "Owed piece homed (p-reach-prose1): PRF-383 walk events -> REACH-PROSE-OWED-HOSTED-EVENTS."
  ],
- "updated": "2026-10-07T14:30:00Z"
+ "updated": "2026-10-08T12:00:00Z"
 }

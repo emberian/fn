@@ -98,24 +98,273 @@
 (defvar *fe-dummy-pkg* (or (find-package "XT-FE-DUMMY") (make-package "XT-FE-DUMMY" :use nil)))
 
 (defun fe-canon (x)
-  "X with each uninterned symbol replaced by one fresh G<n>, numbered by first occurrence."
-  (let ((map (make-hash-table :test 'eq)) (n 0))
-    (labels ((go-x (x)
-               (cond ((and (symbolp x) x (null (symbol-package x)))
-                      (or (gethash x map) (setf (gethash x map) (make-symbol (format nil "G~d" (incf n))))))
-                     ;; oneify-cltl-code's local function names come from acl2-gentemp's global counter
-                     ;; (gentemp)'s T<n> names (interface-raw.lisp:2635) likewise
-                     ((and (symbolp x) x (eq (symbol-package x) (find-package "ACL2"))
-                           (> (length (symbol-name x)) 1) (char= (char (symbol-name x) 0) #\T)
-                           (every #'digit-char-p (subseq (symbol-name x) 1)))
-                      (or (gethash x map) (setf (gethash x map) (intern (format nil "XTGT~d" (incf n)) "ACL2"))))
-                     ((and (symbolp x) x (eq (symbol-package x) (find-package "ACL2"))
-                           (> (length (symbol-name x)) 6) (string= "ONEIFY" (symbol-name x) :end2 6)
-                           (every #'digit-char-p (subseq (symbol-name x) 6)))
-                      (or (gethash x map) (setf (gethash x map) (intern (format nil "ONEIFY~d" (incf n)) "ACL2"))))
-                     ((consp x) (cons (go-x (car x)) (go-x (cdr x))))
-                     (t x))))
-      (go-x x))))
+  "For each emitted top-level F (already macroexpand-all'd), canon(F) is F
+with a renaming rho applied:
+1. Each uninterned symbol becomes one fresh #:G<n>, by first occurrence,
+everywhere in F, preserving sharing within F (including quoted data).
+2. An ACL2 T<digits> or ONEIFY<digits> is renamed only when every occurrence
+is a lexical binding or a reference in that binding's scope: LAMBDA and
+SB-INT:NAMED-LAMBDA parameters (including defaults and supplied-p), LET,
+LET*, MULTIPLE-VALUE-BIND, SYMBOL-MACROLET, FLET/LABELS names (calls and
+FUNCTION), BLOCK/RETURN-FROM, TAGBODY/GO, and declarations of those bindings.
+Distinct binders, including shadowing, receive distinct capture-free names.
+3. XTGT<n>/ONEIFY<n> retain their families, numbered by first binding in a
+deterministic walk, skipping target names occurring anywhere in F.
+4. Interned symbols in QUOTE (including quoted LOAD-TIME-VALUE data),
+symbols declared SPECIAL in F, top-level DEFUN/DEFMACRO/DEFVAR/DEFPARAMETER/
+DEFCONSTANT/DEFGLOBAL/DEFSTRUCT names, and free symbols keep their identity.
+5. A gentemp-shaped symbol occurring both bound and in a forbidden position
+signals ERROR naming the symbol and shape. Unknown binder shapes containing
+such symbols are refused, never guessed. SYMBOL-MACROLET expansions depending
+on renamed symbols are refused because their references have use-site scope.
+Unknown ordinary calls are walked as calls, not inferred to be binders.
+Thus lexical renaming is alpha-equivalent under ordinary CL scoping; interned
+global identities and quoted symbols remain EQ to their originals."
+  (let ((uninterned (make-hash-table :test 'eq)) (g 0) (n 0)
+        (occupied (make-hash-table :test 'equal))
+        (targets (make-hash-table :test 'eq))
+        (bound (make-hash-table :test 'eq)) (forbidden (make-hash-table :test 'eq)))
+    (labels
+        ((family (s)
+           (when (and (symbolp s) s (eq (symbol-package s) (find-package "ACL2")))
+             (let ((name (symbol-name s)))
+               (cond ((and (> (length name) 1) (char= (char name 0) #\T)
+                           (every #'digit-char-p (subseq name 1))) "XTGT")
+                     ((and (> (length name) 6) (string= "ONEIFY" name :end2 6)
+                           (every #'digit-char-p (subseq name 6))) "ONEIFY")))))
+         (symbol-array-p (a)
+           (and (arrayp a) (eq (array-element-type a) t)))
+         (array-map (fn a)
+           (let ((copy (make-array (array-dimensions a) :element-type t
+                                   :adjustable (adjustable-array-p a)
+                                   :fill-pointer (and (array-has-fill-pointer-p a) (fill-pointer a)))))
+             (dotimes (i (array-total-size a) copy)
+               (setf (row-major-aref copy i) (funcall fn (row-major-aref a i))))))
+         ;; Do this first so traversal of scopes cannot change G numbering.
+         (prepare (a)
+           (cond ((and (symbolp a) a (null (symbol-package a)))
+                  (or (gethash a uninterned)
+                      (setf (gethash a uninterned) (make-symbol (format nil "G~d" (incf g))))))
+                 ((symbolp a) (setf (gethash (symbol-name a) occupied) t) a)
+                 ((consp a) (cons (prepare (car a)) (prepare (cdr a))))
+                 ((symbol-array-p a) (array-map #'prepare a))
+                 (t a)))
+         (literal (a shape)
+           (cond ((family a) (setf (gethash a forbidden) shape))
+                 ((consp a) (literal (car a) shape) (literal (cdr a) shape))
+                 ((symbol-array-p a)
+                  (dotimes (i (array-total-size a)) (literal (row-major-aref a i) shape))))
+           a)
+         (unknown (a shape)
+           (cond ((family a) (error "FE-CANON: ~s in unsupported binder/declaration shape ~s" a shape))
+                 ((consp a) (unknown (car a) shape) (unknown (cdr a) shape))
+                 ((symbol-array-p a)
+                  (dotimes (i (array-total-size a)) (unknown (row-major-aref a i) shape))))
+           a)
+         (activate (pair)
+           (let ((prefix (family (car pair))))
+             (when prefix
+               (setf (gethash (cdr pair) targets)
+                     (loop for name = (format nil "~a~d" prefix (incf n))
+                           for existing = (find-symbol name "ACL2")
+                           unless (or (gethash name occupied)
+                                      (and existing
+                                           (or (not (eq (symbol-package existing) (find-package "ACL2")))
+                                               (member (sb-int:info :variable :kind existing)
+                                                       '(:special :constant)))))
+                             return (progn (setf (gethash name occupied) t)
+                                           (intern name "ACL2"))))))
+           pair)
+         (binding (s shape &optional deferred)
+           (unless (symbolp s) (unknown s shape) (error "FE-CANON: invalid binding ~s in ~s" s shape))
+           (let ((pair (cons s (if (family s) (make-symbol "BINDING") s))))
+             (when (family s)
+               (setf (gethash s bound) shape)
+               ;; Proclaimed specials are not lexical either.
+               (when (eq (sb-int:info :variable :kind s) :special)
+                 (literal s 'special)))
+             (unless deferred (activate pair))
+             pair))
+         (resolve (a)
+           (cond ((gethash a targets))
+                 ((consp a) (cons (resolve (car a)) (resolve (cdr a))))
+                 (t a)))
+         (reference (s env shape)
+           (let ((pair (assoc s env)))
+             (if pair (cdr pair) (literal s shape))))
+         (body (forms v f b tags)
+           (mapcar (lambda (a) (walk a v f b tags)) forms))
+         (declaration (d v f)
+           (case (car d)
+             (special (literal d 'special))
+             ((ignore ignorable dynamic-extent)
+              (cons (car d)
+                    (mapcar (lambda (a)
+                              (if (and (consp a) (eq (car a) 'function))
+                                  (list 'function (reference (cadr a) f d))
+                                  (reference a v d))) (cdr d))))
+             ((inline notinline) (cons (car d) (mapcar (lambda (s) (reference s f d)) (cdr d))))
+             ((type ftype)
+              (list* (car d) (literal (cadr d) d)
+                     (mapcar (lambda (s) (reference s (if (eq (car d) 'type) v f) d)) (cddr d))))
+             ((optimize declaration) (literal d d))
+             (t (if (and (symbolp (car d)) (sb-ext:defined-type-name-p (car d)))
+                    (cons (literal (car d) d)
+                          (mapcar (lambda (s) (reference s v d)) (cdr d)))
+                    (unknown d d)))))
+         (lambda-parts (ll forms v f b tags)
+           (let ((mode :required) (new nil))
+             (dolist (arg ll)
+               (cond
+                 ((member arg '(&optional &rest &key &allow-other-keys &aux))
+                  (unless (eq arg '&allow-other-keys) (setq mode arg))
+                  (push arg new))
+                 ((member arg lambda-list-keywords) (unknown (list ll forms) ll)
+                  (return-from lambda-parts (values ll forms)))
+                 ((member mode '(:required &rest))
+                  (unless (symbolp arg) (unknown (list ll forms) ll)
+                    (return-from lambda-parts (values ll forms)))
+                  (let ((pair (binding arg ll))) (push (cdr pair) new) (push pair v)))
+                 (t
+                  (let* ((parts (if (consp arg) arg (list arg)))
+                         (keyp (eq mode '&key))
+                         (explicit (and keyp (consp (car parts))))
+                         (s (if explicit (cadar parts) (car parts))))
+                    (unless (and (symbolp s) (<= (length parts) (if (eq mode '&aux) 2 3))
+                                 (or (not explicit) (= (length (car parts)) 2)))
+                      (unknown (list ll forms) ll)
+                      (return-from lambda-parts (values ll forms)))
+                    (let* ((pair (binding s ll))
+                           (init (when (cdr parts) (walk (cadr parts) v f b tags)))
+                           (sup (when (cddr parts) (binding (caddr parts) ll)))
+                           ;; An implicit &KEY name is external identity, not a
+                           ;; lexical variable: make it explicit before renaming.
+                           (head (cond (explicit (list (literal (caar parts) '&key) (cdr pair)))
+                                       ((and keyp (not (eq s (cdr pair))))
+                                        (list (intern (symbol-name s) "KEYWORD") (cdr pair)))
+                                       (t (cdr pair)))))
+                      (push (if (or (consp arg) (consp head))
+                                (append (list head) (when (cdr parts) (list init))
+                                        (when sup (list (cdr sup))))
+                                head) new)
+                      (push pair v)
+                      (when sup (push sup v)))))))
+             (values (nreverse new) (body forms v f b tags))))
+         (walk (a v f b tags)
+           (cond
+             ((symbolp a) (reference a v 'free-variable))
+             ((atom a) (literal a 'literal))
+             (t
+              (let ((op (car a)))
+                (case op
+                  (quote (literal a 'quote))
+                  ((lambda sb-int:named-lambda)
+                   (let ((named (eq op 'sb-int:named-lambda)))
+                     (multiple-value-bind (ll forms)
+                         (lambda-parts (if named (caddr a) (cadr a))
+                                       (if named (cdddr a) (cddr a)) v f b tags)
+                       (if named (list* op (literal (cadr a) op) ll forms)
+                           (list* op ll forms)))))
+                  ((defun defmacro)
+                   (let ((name (literal (cadr a) op)))
+                     (multiple-value-bind (ll forms)
+                         (lambda-parts (caddr a) (cdddr a) nil nil
+                                       (list (cons name name)) nil)
+                       (list* op name ll forms))))
+                  ((defvar defparameter defconstant sb-ext:defglobal)
+                   (list* op (literal (cadr a) op) (body (cddr a) nil nil nil nil)))
+                  (defstruct
+                   (let ((header (cadr a)))
+                     ;; BOA constructor lambda lists have slot-initialization
+                     ;; rules beyond an ordinary function lambda list.
+                     (when (consp header)
+                       (dolist (option (cdr header))
+                         (when (and (consp option) (eq (car option) :constructor) (cddr option))
+                           (unknown (cddr option) 'defstruct-boa-constructor))))
+                     (list* op (literal header op)
+                            (mapcar (lambda (slot)
+                                      (if (consp slot)
+                                          (cons (literal (car slot) op)
+                                                (when (cdr slot)
+                                                  (cons (walk (cadr slot) nil nil nil nil)
+                                                        (literal (cddr slot) op))))
+                                          (literal slot op))) (cddr a)))))
+                  ((let let* symbol-macrolet)
+                   (let ((new nil) (inner v))
+                     (dolist (entry (cadr a))
+                       (let* ((s (if (consp entry) (car entry) entry))
+                              (pair (binding s op))
+                              (init (when (consp entry)
+                                      (if (eq op 'symbol-macrolet)
+                                          ;; Expansion references resolve at each
+                                          ;; use site, not in this environment.
+                                          (literal (cdr entry) 'symbol-macrolet-expansion)
+                                          (body (cdr entry) (if (eq op 'let*) inner v) f b tags)))))
+                         (push (if (consp entry) (cons (cdr pair) init) (cdr pair)) new)
+                         (push pair inner)))
+                     (list* op (nreverse new) (body (cddr a) inner f b tags))))
+                  (multiple-value-bind
+                   (let* ((pairs (mapcar (lambda (s) (binding s op)) (cadr a)))
+                          (value (walk (caddr a) v f b tags)))
+                     (list* op (mapcar #'cdr pairs) value
+                            (body (cdddr a) (append pairs v) f b tags))))
+                  ((flet labels)
+                   (when (some (lambda (d) (not (symbolp (car d)))) (cadr a))
+                     (unknown a op)
+                     (return-from walk a))
+                   (let* ((defs (cadr a))
+                          (pairs (mapcar (lambda (d) (binding (car d) op t)) defs))
+                          (inner (append pairs f)) (new nil))
+                     ;; Reserve forward references, but number each name only
+                     ;; on reaching its definition in the source-order walk.
+                     (loop for d in defs for pair in pairs do
+                       (activate pair)
+                       (multiple-value-bind (ll forms)
+                           (lambda-parts (cadr d) (cddr d) v (if (eq op 'labels) inner f)
+                                         (cons pair b) tags)
+                         (push (list* (cdr pair) ll forms) new)))
+                     (list* op (nreverse new) (body (cddr a) v inner b tags))))
+                  (function
+                   (list op (if (symbolp (cadr a)) (reference (cadr a) f op)
+                                (if (member (caadr a) '(lambda sb-int:named-lambda))
+                                    (walk (cadr a) v f b tags) (literal (cadr a) op)))))
+                  (block
+                   (let ((pair (binding (cadr a) op)))
+                     (list* op (cdr pair) (body (cddr a) v f (cons pair b) tags))))
+                  (return-from
+                   (list* op (reference (cadr a) b op) (body (cddr a) v f b tags)))
+                  (tagbody
+                   (let ((pairs (loop for item in (cdr a) when (symbolp item)
+                                      collect (binding item op t))))
+                     (cons op (mapcar (lambda (item)
+                                        (cond ((symbolp item) (cdr (activate (assoc item pairs))))
+                                              ((atom item) item)
+                                              (t (walk item v f b (append pairs tags))))) (cdr a)))))
+                  (go (list op (reference (cadr a) tags op)))
+                  (declare (cons op (mapcar (lambda (d) (declaration d v f)) (cdr a))))
+                  (declaim (literal a op))
+                  ((the sb-ext:truly-the sb-kernel:the* sb-c::with-source-form)
+                   (list op (literal (cadr a) op) (walk (caddr a) v f b tags)))
+                  (load-time-value
+                   ;; Its evaluation has a null lexical environment.
+                   (list* op (walk (cadr a) nil nil nil nil) (literal (cddr a) op)))
+                  (eval-when (list* op (literal (cadr a) op) (body (cddr a) v f b tags)))
+                  ((if progn setq catch throw unwind-protect multiple-value-call
+                       multiple-value-prog1 locally progv)
+                   (cons op (body (cdr a) v f b tags)))
+                  (t
+                   (cond ((and (symbolp op) (or (special-operator-p op)
+                                               (and (not (assoc op f)) (macro-function op))))
+                          (unknown a op))
+                         (t (cons (if (symbolp op) (reference op f a) (walk op v f b tags))
+                                  (body (cdr a) v f b tags)))))))))))
+      (let ((result (walk (prepare x) nil nil nil nil)))
+        (maphash (lambda (s shape)
+                   (let ((reason (gethash s forbidden)))
+                     (when reason
+                       (error "FE-CANON: ~s bound in ~s also occurs in forbidden shape ~s" s shape reason))))
+                 bound)
+        (resolve result)))))
 
 (defun fe-text (x)
   (let ((*package* *fe-dummy-pkg*) (*print-circle* t) (*print-readably* t) (*print-pretty* nil)

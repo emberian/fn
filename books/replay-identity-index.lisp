@@ -69,10 +69,14 @@
 (include-book "msgid-index-concrete")
 (local (include-book "arithmetic/top" :dir :system))
 
+(local (defthmd fn-cpr-config-firstp-has-config-local-rewrite
+  (implies (fn-cpr-config-firstp configs events) (consp configs))
+  :hints (("Goal" :by fn-cpr-config-firstp-has-config))))
+
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-midx-put-chars)
-                          (:rewrite fn-cpr-config-firstp-has-config))))
+                          (:rewrite fn-cpr-config-firstp-has-config-local-rewrite))))
 
 ; -----------------------------------------------------------------------------
 ; 1. A trie of ids: the Message-ID trie's nodes, the value t at each id.

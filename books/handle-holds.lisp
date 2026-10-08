@@ -196,7 +196,7 @@
                             (xs (fn-arf-changed-handles old new))
                             (ys named)))
            :in-theory (e/d (fn-arpn-step)
-                           (fn-arpn-release-postdates-every-live-pin fn-arpn-split-released-are-clear
+                           (fn-arpn-release-postdates-every-live-pin
                             fn-arf-items-handles-of-tag
                             fn-hh-disjointp-member fn-arpn-okp fn-arpn-split fn-arpn-clear-through-p
                             fn-arf-changed-handles fn-arf-rows-handles fn-arf-tag

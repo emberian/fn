@@ -36,6 +36,11 @@
 (include-book "byte-store-txn-seam")
 (local (include-book "arithmetic/top" :dir :system))
 
+(local (defthmd fn-bs-keys-belowp-excludes-bound-local-rewrite
+  (implies (fn-bs-keys-belowp x n)
+           (not (assoc-equal n x)))
+  :hints (("Goal" :by fn-bs-keys-belowp-excludes-bound))))
+
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-bs-dir-idp)
@@ -48,7 +53,7 @@
                           (:definition fn-bs-tear-write)
                           (:definition fn-th-exact-octets-p)
                           (:definition fn-th-source-id-p)
-                          (:rewrite fn-bs-keys-belowp-excludes-bound))))
+                          (:rewrite fn-bs-keys-belowp-excludes-bound-local-rewrite))))
 
 ; The readers only.  fn-bs-invariants-vocabulary is seventy rules over alists,
 ; octets, tears and selections; enabling it book-wide made the name-list
@@ -912,9 +917,9 @@
 ; (NIL), NAME = NIL is a member of it, and (ASSOC-EQUAL NIL '(NIL)) is NIL --
 ; the same shape of falsehood fn-cpp-find-of-append had.  Every entry alist
 ; this book applies it to is an alist by fn-bs-alistp-of-dir-entries.
-(defthm fn-bs-assoc-of-name-in-entries
+(local (defthm fn-bs-assoc-of-name-in-entries
   (implies (and (alistp alist) (member-equal name (strip-cars alist)))
-           (assoc-equal name alist)))
+           (assoc-equal name alist))))
 
 ; -----------------------------------------------------------------------------
 ; 6. The record list of a prefix of the transaction namespace.
@@ -3065,7 +3070,7 @@
     fn-bs-quiet-names-are-durable-names fn-bs-durable-is-quiet
     fn-bs-entry-outcomes-of-nil fn-bs-crash-keeps-untouched-entry
     fn-bs-all-fencedp-of-append fn-bs-all-fencedp-member
-    fn-bs-assoc-value-is-in-strip-cdrs fn-bs-assoc-of-name-in-entries
+    fn-bs-assoc-value-is-in-strip-cdrs
     fn-bs-read-records-under-agreement fn-bs-read-records-len
     fn-bs-read-records-is-a-true-list fn-bs-read-records-of-one-more
     fn-bs-txn-names-length
@@ -3101,7 +3106,3 @@
 ;; enables it where it is used.
 (in-theory (disable (:rewrite fn-bs-natural-head-is-no-other-wire-event)))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bs-assoc-of-name-in-entries))

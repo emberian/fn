@@ -24,7 +24,7 @@ The release shape, v0 and v1, is the plan's §2.2; the steps are its §3.
 - [x] Record the user-facing choices needed by the first bounded M1 cycle.
 - [x] Run structural checks and review for contradictions before handoff.
 
-Scaffold validation on 2026-09-18: `make check` passed (see planning/ledger.md
+Scaffold validation on 2026-09-18: `make check` passed (see `python3 tools/ledger.py --stdout`
 for current document/requirement/proof-target/scenario counts, which have grown
 since this milestone closed). Temporary-copy negative checks rejected a broken
 document link, an unknown proof reference, and a certified status without
@@ -126,7 +126,7 @@ preservation, stable-prefix retention, and one-crash success retention. The [ass
 this to arbitrary finite file traces and actual live completion/replay
 correspondence, with systematic fault/process testing. The subsequent [composed-store checkpoint](../tests/evidence/2026-09-18-composed-store.md)
 passed mixed live/refusal/recovery traces and actual host adoption with a full
-base-book guard batch (planning/ledger.md has current counts). Physical
+base-book guard batch (`python3 tools/ledger.py --stdout` has current counts). Physical
 refinement and platform qualification remain work.
 
 ## M3: first usable local news service

@@ -91,6 +91,7 @@ import argparse
 import collections
 import json
 import pathlib
+import re
 import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -136,6 +137,26 @@ def predicate_application(term):
     if term[0] in ("not", "implies", "iff", "or", "if", "and"):
         return None
     return term[0], (term[1] if len(term) > 1 else None)
+
+
+LOCAL_THEOREM = re.compile(r"\(local\s+\(defthmd?\s+([^\s()]+)", re.IGNORECASE)
+
+
+def local_theorems(books) -> set[str]:
+    """The theorems a book proves inside `(local ...)': a book-internal
+    proof step whose hypotheses the book's own later events discharge.  It
+    is never cited outside the book, so its hypotheses are no premise the
+    host must establish; a non-local theorem that keeps the same hypothesis
+    is audited in its own right."""
+    out = set()
+    for path in books:
+        try:
+            text = reach_check.file_text(path)
+        except OSError:
+            continue
+        text = re.sub(r"(?m);.*$", "", text)   # a commented-out event is no event
+        out.update(m.group(1).lower() for m in LOCAL_THEOREM.finditer(text))
+    return out
 
 
 def _substitute(term, env: dict):
@@ -333,6 +354,7 @@ class Audit:
         self.book_defs = set(graph.book_defs)
         self.generated = set(reach_check.record_definitions(graph.books))
         self.theorems = reach_check.theorem_forms(graph.books)
+        self.local = local_theorems(graph.books)
         # R -> [(theorem, book, argument-heads, hosted-establishment?)]
         self.concluded: dict[str, list] = collections.defaultdict(list)
         # R -> [theorem]: concluded under its own assumption (a preservation)
@@ -372,7 +394,7 @@ class Audit:
                 heads = (reach_check.tree_symbols(arg) & self.book_defs) - self.graph.stobj_names
                 hosted = bool(heads & reachable)
                 self.concluded[r].append((name, book, sorted(heads), hosted))
-            if not hyps or not assumed_heads:
+            if not hyps or not assumed_heads or name in self.local:
                 continue
             subject = reach_check.Subject(self.graph, name, form)
             self.subjects[name] = subject

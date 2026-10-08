@@ -329,6 +329,7 @@
 (defthm fn-bprv-prefix-preserves-member
   (implies (and (fn-sf-prefixp h1 h2) (member-equal x h1))
            (member-equal x h2))
+ :rule-classes nil
   :hints (("Goal" :induct (fn-sf-prefixp h1 h2)
            :in-theory (enable fn-sf-prefixp))))
 
@@ -402,8 +403,7 @@
                             fn-bpr-row-standing-for-witnesses fn-bpr-row-standing-for
                             fn-bpr-rows-stand-for fn-row-wire-of
                             fn-bprv-article-records-prefix
-                            fn-bpr-article-records
-                            fn-bprv-prefix-preserves-member)))))
+                            fn-bpr-article-records)))))
 (defthm fn-bprv-grounded-implies-consp-context
   (implies (fn-bprv-context-groundedp config context h fn-arena) (consp context))
   :hints (("Goal" :use ((:instance fn-bprv-found-grounding-record-grounds
@@ -458,8 +458,7 @@
   :hints (("Goal" :use (fn-bprv-acceptable-implies-consp-record
                         (:instance fn-bpr-context-resolve-of-derived-context))
            :in-theory (e/d (fn-bprv-record-grounds fn-bpr-request-acceptablep)
-                           (fn-bprv-acceptable-implies-consp-record
-                            fn-bpr-context-resolve-of-derived-context
+                           (fn-bpr-context-resolve-of-derived-context
                             fn-bpr-context-resolve)))))
 (defthm fn-bprv-acceptable-implies-grounded
   (implies (fn-bpr-request-acceptablep store config record request authorized fn-arena)
@@ -711,7 +710,3 @@
                            (fn-bprv-output-implies-statep
                             fn-bprr-replay-rest-preserves-statep)))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bprv-prefix-preserves-member))

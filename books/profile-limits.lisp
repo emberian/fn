@@ -48,6 +48,8 @@
      "the I/O loops every served connection is multiplexed on")
     (:cold-workers 4 "threads"
      "the persistent workers that read a cold page off the owner mutex while the page pool is unfunded: a stalled read holds one, and a miss past them is refused by name (books/page-read-direct.lisp)")
+    (:cold-wait-queue 64 "requests"
+     "the served requests that may wait for a cold-read worker at once (books/cold-read-wait.lisp): a miss that finds every worker busy and fewer than this many waiting joins the queue and is answered or refused only at its dependency deadline; one more is refused by name at arrival")
     (:control-clients 16 "clients"
      "concurrent control-socket clients the owner serves")
     (:thread-runtime-mib 4 "MiB"
@@ -62,10 +64,6 @@
      "what one maintenance tick may allocate and still be quiet: served commands and accepts allocate more, the tick's own work less")
     (:idle-gc-floor-kib 8192 "KiB"
      "what must be allocated since the last idle collection before another is worth its pause (the collection trigger's cap, :gc-nursery-mib, in KiB)")
-    (:load-gc-growth-mib 16 "MiB"
-     "how far the dynamic space in use may grow past its figure after the last collection before the owner collects under load (books/idle-collection.lisp fn-load-gc-decide, MEM-012): a burst's garbage is promoted into generations 0-3 and only a collection above generation 1 returns it to the OS, so the whole-process peak (Ruling 16) is bounded by this growth, not by the burst")
-    (:load-gc-generation 3 "generation"
-     "the generation the owner collects through under load: above SBCL's small_generation_limit of 1 so the pages are released, and below a full collection so the pause stays short (the figure is chosen by measurement, MEM-012)")
     (:max-connections 32 "connections"
      "fn.toml's [server] max_connections when it names none")
     (:headroom-min-percent 10 "percent"
@@ -94,6 +92,8 @@
      "a TLS handshake's deadline, and a socket's wait for a handshake slot (the time model's D)")
     (:read-window-octets 262144 "octets"
      "the payload window one protected window read verifies and publishes (books/extent-window-plan.lisp fn-ewp-begin): each job digests the whole protected prefix, so a payload of P octets costs P / this many prefix digests per pass")
+    (:read-span-octets 16384 "octets"
+     "the octets one host read of a protected window job moves, and the digest work the core does inside one call (books/extent-window-span.lisp fn-ews-read-span): a multiple of 64, at most the window; a 2 KiB article's job makes one read per span of the prefix it digests, not one per 64-octet block")
     (:tls-handshake-source-overrides 64 "entries"
      "the most per-source handshake allowances (an address or an IPv6 /64 with its own handshakes per minute, for a known shared address such as a carrier NAT) the operator may list; one more is refused by name (books/tls-handshake-decision.lisp)")
     (:send-stall-seconds 10 "seconds"

@@ -12,8 +12,8 @@
 #               docker answers INSIDE a swarm-build scope (lat1, 2026-10-04: the
 #               group alone was not enough)
 #   tools       every box-aware tool resolves BOX: farm HOSTS, certs caches,
-#               proof_repl trees, native_box.sh, box_table env, gate_reap,
-#               evidence_manifests (tests/test_box_table.py holds the same list)
+#               proof_repl trees, native_box.sh, box_table env, gate_reap
+#               (tests/test_box_table.py holds the same list)
 #   sets        each published image set on the box has MANIFEST.json and
 #               SHA256SUMS (tests/native_image_provenance.py reads the manifest
 #               beside a linked launcher)
@@ -74,15 +74,14 @@ if box not in acl2_slots.farm_hosts(): bad.append("farm HOSTS")
 if box not in certs.REMOTE_CACHES: bad.append("certs.REMOTE_CACHES")
 import proof_repl
 if box not in proof_repl.REMOTE_TREES: bad.append("proof_repl REMOTE_TREES")
-import gate_reap, evidence_manifests
+import gate_reap
 if box not in gate_reap.DEFAULT_ROOTS: bad.append("gate_reap")
-if box not in evidence_manifests.BOX_ROOTS: bad.append("evidence_manifests")
 if box_table.env_line(box) is None: bad.append("box_table env")
 if subprocess.run(["sh", "tools/native_box.sh", box, "."], capture_output=True).returncode: bad.append("native_box.sh")
 print(" ".join(bad))
 PY
 )
-[ -z "$res" ] && pass tools "farm, certs, proof_repl, gate_reap, evidence_manifests, box_table env, native_box.sh" \
+[ -z "$res" ] && pass tools "farm, certs, proof_repl, gate_reap, box_table env, native_box.sh" \
     || fail tools "does not resolve $BOX: $res"
 
 sets=$($SSH "$BOX" 'for s in /tank/fn/images/*/; do n=$(basename $s); case $n in *.partial) continue;; esac; [ -f $s/MANIFEST.json ] && [ -f $s/SHA256SUMS ] && echo "ok $n" || echo "bad $n"; done')

@@ -255,9 +255,7 @@
                             ;; rules that fire on any consp goal, only searched
                             ;; (2.4 s -> 1.6 s, persvati REPL).
                             nth member-equal fn-bs-ops-not-for-dir
-                            fn-nntp-article-idp-is-consp
-                            fn-snrt-new-success-is-actual-matching-durable-completion
-                            fn-wire-next-loop-event-needs-input fn-wire-next-event-needs-input
+                            
                             fn-nntp-newnews-candidate-is-projectable
                             fn-nntp-available-number-article-is-projectable)))))
 (defun fn-bs-finish-inputp (ks sequence txid)
@@ -557,9 +555,6 @@
                            (fn-bs-read-records fn-bs-record-of fn-sf-statep fn-bs-replay-visiblep
                             fn-bs-contiguous-namesp fn-bs-inode-list-knownp
                             fn-bs-all-fencedp fn-sf-frontier-new-visiblep fn-sf-record-present-visiblep
-                            fn-bs-k8-name-absent-from-list-has-no-entry
-                            fn-nntp-article-idp-is-consp
-                            fn-snrt-new-success-is-actual-matching-durable-completion
-                            fn-wire-next-loop-event-needs-input fn-wire-next-event-needs-input
+                            
                             fn-nntp-newnews-candidate-is-projectable
                             fn-nntp-available-number-article-is-projectable)))))
