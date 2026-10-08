@@ -8,7 +8,9 @@ from __future__ import annotations
 
 import collections
 import hashlib
+import contextlib
 import json
+import os
 import socket
 import threading
 import time
@@ -29,16 +31,116 @@ def digest(octets):
     return hashlib.sha256(without_path_and_xref(octets)).hexdigest()
 
 
+TRACE_SCHEMA = 1
+
+
+class TraceRecorder:
+    """The wire order a run actually produced, as steps (schema 1, for replay).
+
+    Appended under one lock by Client and Campaign, so the list is the order the
+    run's threads reached the socket, not a reconstruction. `sequential` is read
+    off the steps: a send on one connection while another connection still owes
+    the rest of a reply, or two sends on different connections with no read step
+    between them, make the trace interleaved. Inside `inventory()` only the one
+    inventory step is recorded.
+    """
+    def __init__(self):
+        self.lock = threading.RLock()
+        self.steps, self.interleaved = [], False
+        self.started, self.next_conn, self.fixed = False, 0, None
+        self.incomplete, self.last_send = set(), None
+
+    def _add(self, step):
+        self.steps.append(step)
+        return len(self.steps) - 1
+
+    def _send_check(self, who):
+        if (self.incomplete - {who}) or (self.last_send not in (None, who)):
+            self.interleaved = True
+        self.last_send = who
+
+    def start(self, crash=None):
+        with self.lock:
+            idx = self._add({"t": "restart" if self.started else "start"})
+            self.started = True
+            if crash is not None:
+                self._add({"t": "crash", "boundary": crash[0], "hit": int(crash[1])})
+            return idx
+
+    def conn(self):
+        with self.lock:
+            if self.fixed is not None:
+                return -1
+            cid, self.next_conn = self.next_conn, self.next_conn + 1
+            self._add({"t": "conn", "c": cid})
+            return cid
+
+    def send(self, cid, octets):
+        with self.lock:
+            if self.fixed is not None:
+                return self.fixed
+            self._send_check(cid)
+            return self._add({"t": "send", "c": cid, "hex": bytes(octets).hex()})
+
+    def read(self, cid, until):
+        with self.lock:
+            if self.fixed is not None:
+                return self.fixed
+            self.last_send = None
+            self.incomplete.add(cid)
+            return self._add({"t": "read", "c": cid, "until": until})
+
+    def upgrade(self, idx, until):
+        with self.lock:
+            if self.fixed is None and self.steps[idx]["t"] == "read":
+                self.steps[idx]["until"] = until
+
+    def done(self, cid):
+        with self.lock:
+            self.incomplete.discard(cid)
+
+    def close(self, cid):
+        with self.lock:
+            self.incomplete.discard(cid)
+            if self.fixed is None:
+                self._add({"t": "close", "c": cid})
+
+    def control(self, words):
+        # An operator verb has no schema step of its own; recorded as an extension.
+        with self.lock:
+            self._send_check("control")
+            self.last_send = None
+            return self._add({"t": "control", "words": list(words)})
+
+    @contextlib.contextmanager
+    def inventory(self):
+        with self.lock:
+            self._send_check("inventory")
+            self.last_send = None
+            self.fixed = self._add({"t": "inventory"})
+        try:
+            yield self.fixed
+        finally:
+            with self.lock:
+                self.fixed = None
+
+    def snapshot(self, ops):
+        with self.lock:
+            return {"steps": [dict(x) for x in self.steps], "sequential": not self.interleaved,
+                    "ops": [dict(o, step=o.get("step")) for o in ops]}
+
+
 class History:
     def __init__(self):
         self.ops = []
         self.lock = threading.Lock()
+        self.recorder = TraceRecorder()
 
     def plan(self, kind, args):
         with self.lock:
             op = {"op_id": len(self.ops), "kind": kind, "args": args,
                   "args_digest": hashlib.sha256(json.dumps(args, sort_keys=True).encode()).hexdigest(),
-                  "send_time": None, "outcome": "not-attempted", "reply_line": None}
+                  "send_time": None, "outcome": "not-attempted", "reply_line": None, "step": None}
             self.ops.append(op)
             return op
 
@@ -109,7 +211,7 @@ def shrink(history, fails, budget=32):
     return best, {"runs": calls, "budget": budget, "minimal": "empty" if not best else "budget-exhausted"}
 
 
-def report(history, findings, checked, replay=None, budget=32):
+def report(history, findings, checked, replay=None, budget=32, tracer=None):
     violations = []
     tagged = any(o.get('replayable') or o.get('transcript') or 'replay_key' in o for o in history.ops)
     variable = [o for o in history.ops if not tagged or o.get('replayable') or o.get('transcript') or 'replay_key' in o]
@@ -117,9 +219,13 @@ def report(history, findings, checked, replay=None, budget=32):
     fixed = [o for o in history.ops if o['op_id'] not in variable_ids]
     for prop, detail in sorted(set(findings)):
         errors = []
+        replayed = {}
         def fails(candidate):
             try:
-                return replay(candidate, prop, detail)
+                hit = replay(candidate, prop, detail)
+                if hit and tracer is not None:
+                    replayed['trace'] = tracer.snapshot(tracer.last_history)
+                return hit
             except Exception as exc:
                 # A replay setup failure is not reproduction of this property.
                 errors.append(type(exc).__name__ + ': ' + str(exc))
@@ -127,8 +233,14 @@ def report(history, findings, checked, replay=None, budget=32):
         short, info = (shrink(variable, fails, budget) if replay else
                        (variable, {"runs": 0, "minimal": "not-replayed"}))
         info.update(fixed_operations=len(fixed), replay_errors=errors)
-        violations.append({"property": prop, "detail": detail, "history_len": len(history.ops),
-                           "shrunk_history": short, "fixed_history": fixed, "shrink": info})
+        violation = {"property": prop, "detail": detail, "history_len": len(history.ops),
+                     "shrunk_history": short, "fixed_history": fixed, "shrink": info}
+        if tracer is not None:
+            # The last successful replay is the shrunk history's run; with no
+            # reduction the original run is its own replay.
+            violation["trace"] = tracer.emit(replayed.get("trace") or tracer.snapshot(history),
+                                             "violation-%d-%s" % (len(violations), prop))
+        violations.append(violation)
     return {"violations": violations, "outcomes": history.counts(), "checked": checked,
             "history": history.ops}
 
@@ -146,10 +258,15 @@ class Client:
             self.sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, rcvbuf)
         self.sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         self.sock.connect(("127.0.0.1", port))
+        self.rec, self.closed = history.recorder, False
+        self.cid = self.rec.conn()
         self.buffer = bytearray()
         self.recv_size = 65536
         self.end = time.monotonic() + deadline
-        if self.line()[:3] not in (b"200", b"201"):
+        self.mark_read("line")
+        greeting = self.line()
+        self.read_done()
+        if greeting[:3] not in (b"200", b"201"):
             self.close()
             raise ConnectionError("greeting refused")
 
@@ -170,24 +287,40 @@ class Client:
         del self.buffer[:end]
         return line
 
+    def send_raw(self, wire):
+        """Record then write exactly these octets; returns the trace step index."""
+        idx = self.rec.send(self.cid, wire)
+        self.sock.sendall(wire)
+        return idx
+
+    def mark_read(self, until):
+        self.last_read = self.rec.read(self.cid, until)
+        return self.last_read
+
+    def read_done(self):
+        self.rec.done(self.cid)
+
     def begin(self, kind, args, wire, op=None):
         self.end = time.monotonic() + self.deadline
         op = op if op is not None else self.history.plan(kind, args)
         self.history.sent(op)
-        self.sock.sendall(wire)
+        op["step"] = self.send_raw(wire)
         return op
 
     def finish(self, op):
+        self.mark_read("line")
         line = self.line()
         body = bytearray()
         if line[:3] in (b"220", b"221", b"222", b"211", b"215", b"224") and (
                 op["kind"] != "GROUP"):
+            self.rec.upgrade(self.last_read, "dot")
             while True:
                 row = self.line()
                 if row == b".\r\n":
                     break
                 body.extend(row[1:] if row.startswith(b"..") else row)
         self.history.complete(op, line)
+        self.read_done()
         return line, bytes(body)
 
     def command(self, text):
@@ -199,14 +332,20 @@ class Client:
         article = rep_measure.article(i, octets)
         args = {"i": i, "octets": octets, "msgid": msgid_measure.msgid(i), "sha256": digest(article)}
         op = self.begin("POST", args, b"POST\r\n", op)
+        self.mark_read("line")
         line = self.line()
         if line.startswith(b"340 "):
-            self.sock.sendall(article + b".\r\n")
+            self.send_raw(article + b".\r\n")
+            self.mark_read("line")
             line = self.line()
         self.history.complete(op, line)
+        self.read_done()
         return line
 
     def close(self):
+        if not self.closed:
+            self.closed = True
+            self.rec.close(self.cid)
         self.sock.close()
 
     def __enter__(self):
@@ -219,7 +358,7 @@ class Client:
 def inventory(port, history, deadline=10):
     """Enumerate every group/article, checking both number and Message-ID routes."""
     present = {}
-    with Client(port, history, deadline) as c:
+    with history.recorder.inventory() as step, Client(port, history, deadline) as c:
         status, groups = c.command("LIST ACTIVE")
         if not status.startswith(b"215 "):
             raise RuntimeError("LIST ACTIVE refused: " + repr(status))
@@ -267,8 +406,32 @@ class Campaign:
     """Fresh, private stores per replay; never rewind or mutate another run."""
     def __init__(self, run, ph):
         self.run, self.ph, self.serial = run, ph, 0
+        self.traces, self.trace_serial, self.last_history, self.meta = [], 0, None, {}
         self.deadline = ph.get('command_deadline_s', 10)
         self.recovery = ph.get('recovery_s', 60)
+
+    def history(self):
+        self.last_history = History()
+        return self.last_history
+
+    def snapshot(self, history):
+        return dict(self.meta, **history.recorder.snapshot(history.ops))
+
+    def emit(self, trace, tag):
+        """Write one replayable trace; returns its path. FN_LOAD_TRACE_DIR overrides the default directory."""
+        from pathlib import Path
+        from .driver import BOX_BASE
+        cell = getattr(self.run, 'cell_id', None) or 'F'
+        label = getattr(self.run, 'label', None) or cell
+        self.trace_serial += 1
+        ident = '%s-%s-%03d' % (cell, tag, self.trace_serial)
+        directory = Path(os.environ.get('FN_LOAD_TRACE_DIR') or os.path.join(BOX_BASE, 'fault-traces', cell))
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / ('%s-%s.json' % (label, ident))
+        body = dict(trace, schema=TRACE_SCHEMA, cell=cell, id=ident)
+        path.write_text(json.dumps(body))
+        self.traces.append(str(path))
+        return str(path)
 
     def node(self, hook=False, reclaim=False):
         from pathlib import Path
@@ -283,6 +446,9 @@ class Campaign:
         # The environment of the driving shell must not accidentally arm init/heap/control.
         node.env = {k: v for k, v in node.env.items() if not k.startswith('FN_LOAD_CRASH_')}
         node.init()
+        self.meta = {'schema': TRACE_SCHEMA, 'cell': getattr(self.run, 'cell_id', None),
+                     'store': {'init_flags': list(node.flags), 'groups': list(node.groups), 'fixture': None},
+                     'sbcl_user_args': node.env['SBCL_USER_ARGS']}
         if reclaim:
             with node.config.open('a') as f:
                 f.write('\n[resources]\nreclaim_live = true\n')
@@ -295,6 +461,7 @@ class Campaign:
         import subprocess
         op = op if op is not None else h.plan('CONTROL', {'words': list(words)})
         h.sent(op)
+        op['step'] = h.recorder.control(words)
         env = {k: v for k, v in node.env.items() if not k.startswith('FN_LOAD_CRASH_')}
         p = subprocess.run(node.argv(*words), env=env, capture_output=True, timeout=self.recovery)
         reply = (p.stdout + p.stderr).decode('utf-8', 'replace').strip()
@@ -302,7 +469,9 @@ class Campaign:
         op['rc'] = p.returncode
         return p.returncode, reply
 
-    def start(self, node):
+    def start(self, node, h, crash=None):
+        """`crash` is (boundary, hit), the cut armed for this start; recorded after its start/restart step."""
+        h.recorder.start(crash)
         elapsed = node.start(timeout=self.recovery)
         (node.work / 'owner.pid').write_text(str(node.pid) + '\n')
         return elapsed
@@ -314,7 +483,7 @@ class Campaign:
 
     def crash_trial(self, selected=None, recipe=None):
         import subprocess
-        node, h, findings, notes = self.node(hook=True), History(), [], {}
+        node, h, findings, notes = self.node(hook=True), self.history(), [], {}
         count_path, go = node.work / 'counts', node.work / 'go'
         witness = node.work / 'crash'
         witness.touch()  # same pre-existing inode survives abort; hook fsyncs contents
@@ -324,7 +493,7 @@ class Campaign:
         else:
             node.env['FN_LOAD_CRASH_COUNT'] = str(count_path)
         try:
-            self.start(node)
+            self.start(node, h, tuple(selected.rsplit(':', 1)) if selected else None)
             ops = self.post_plan(h, self.ph.get('posts', 100)) if recipe is None else [
                 h.plan(o['kind'], o['args']) for o in recipe if o['kind'] in ('POST', 'CONTROL')
                 and o['args'].get('i') != 1000000]
@@ -374,7 +543,7 @@ class Campaign:
                 node.env.pop('FN_LOAD_CRASH_GO', None)
                 node.env.update(FN_LOAD_CRASH_AT='*:1', FN_LOAD_CRASH_RECORD=str(second))
                 try:
-                    self.start(node)
+                    self.start(node, h, ('*', 1))
                 except Exception:
                     pass  # expected only when the fsynced hook witness below exists
                 if not second.read_text().strip():
@@ -385,7 +554,7 @@ class Campaign:
                 node.env = {k: v for k, v in node.env.items() if not k.startswith('FN_LOAD_CRASH_')}
                 try:
                     t0 = time.monotonic()
-                    self.start(node)
+                    self.start(node, h)
                     with Client(node.port, h, min(self.deadline, max(.01, self.recovery - (time.monotonic() - t0)))) as c:
                         reply = c.post(1000000, 2048)
                     if not reply.startswith(b'240 ') or time.monotonic() - t0 > self.recovery:
@@ -425,6 +594,7 @@ def merge_reports(reports):
 def crash_boundary(run, ph):
     campaign = Campaign(run, ph)
     reference, _, counts = campaign.crash_trial()
+    campaign.emit(campaign.snapshot(reference), 'reference')
     reports, trials = [report(reference, [], [])], []
     checked = ['P1-DURABLE', 'P2-IDENTITY', 'P5-RECOVERY']
     for function in BOUNDARIES:
@@ -438,13 +608,14 @@ def crash_boundary(run, ph):
                 _, fs, _ = campaign.crash_trial(selected, recipe)
                 return (prop, detail) in fs
             reports.append(report(h, findings, checked if 'not_measured' not in notes else [],
-                                  replay, ph.get('shrink_runs', 16)))
+                                  replay, ph.get('shrink_runs', 16), campaign))
             trials.append(dict(notes, boundary=selected))
     # Reference is a control, not a fault-property measurement.
     out = merge_reports(reports[1:])
     out['outcomes'] = {k: out['outcomes'][k] + reference.counts()[k] for k in OUTCOMES}
     if any('not_measured' in t for t in trials):
         out['checked'] = []  # incomplete corpus must not pass with a vacuous zero
+    out['traces'] = campaign.traces
     return {'faults': out, 'reference_counts': counts['counts'], 'trials': trials,
             'recovery_bound_s': campaign.recovery,
             'status': 'not-measured' if not out['checked'] else 'ok'}
@@ -481,6 +652,7 @@ def wire_operations(recipe, history):
 def read_body(c, line, kind):
     body = bytearray()
     if kind in ('ARTICLE', 'HEAD') and line[:3] in (b'220', b'221'):
+        c.rec.upgrade(c.last_read, 'dot')
         while True:
             row = c.line()
             if row == b'.\r\n':
@@ -491,10 +663,10 @@ def read_body(c, line, kind):
 
 def framing_trial(campaign, recipe, split=None, policy=False):
     from .driver import proc_snapshot
-    node, h, findings, sequence = campaign.node(), History(), [], []
+    node, h, findings, sequence = campaign.node(), campaign.history(), [], []
     sender = None
     try:
-        campaign.start(node)
+        campaign.start(node, h)
         with Client(node.port, h, campaign.deadline) as seed:
             if not seed.post(0).startswith(b'240 '):
                 raise RuntimeError('F6 seed refused')
@@ -509,7 +681,10 @@ def framing_trial(campaign, recipe, split=None, policy=False):
                         for begin, end, op in ranges:
                             if begin < hi and end > lo and op['outcome'] == 'not-attempted':
                                 h.sent(op)
-                        c.sock.sendall(wire[lo:hi])
+                        step = c.send_raw(wire[lo:hi])
+                        for begin, end, op in ranges:
+                            if begin < hi and end > lo and op['step'] is None:
+                                op['step'] = step
                         if hi != len(wire):
                             time.sleep(campaign.ph.get('fragment_pause_s', .002))
                 except OSError as exc:
@@ -519,9 +694,11 @@ def framing_trial(campaign, recipe, split=None, policy=False):
             changed = False
             for _, _, op in ranges:
                 c.end = time.monotonic() + campaign.deadline
+                c.mark_read('line')
                 line = c.line()
                 intermediate = None
                 if op['kind'] == 'POST' and line.startswith(b'340 '):
+                    c.mark_read('line')
                     intermediate, line = line, c.line()
                 if policy and op['kind'] == 'ARTICLE' and line.startswith(b'220 ') and not changed:
                     rc, reply = campaign.control(node, h, 'policy', 'set', 'exposure-connections', '32')
@@ -530,6 +707,7 @@ def framing_trial(campaign, recipe, split=None, policy=False):
                     changed = True
                 body = read_body(c, line, op['kind'])
                 h.complete(op, line)
+                c.read_done()
                 if op['kind'] == 'MISUSE' and not (line[:1] in (b'4', b'5') and len(line.split()) > 1):
                     findings.append(('P8-CLIENTS', 'misuse lacked named refusal'))
                 normalized = without_path_and_xref(body) if body else b''
@@ -558,7 +736,8 @@ def framing_trial(campaign, recipe, split=None, policy=False):
 def framing(run, ph):
     campaign, recipe = Campaign(run, ph), transcript()
     reference, base_findings, sequence, base_mem = framing_trial(campaign, recipe)
-    reports = [report(reference, base_findings, ['P8-CLIENTS'])]
+    campaign.emit(campaign.snapshot(reference), 'reference')
+    reports = [report(reference, base_findings, ['P8-CLIENTS'], tracer=campaign)]
     wire, _ = wire_operations(recipe, History())
     points = sample_points(len(wire) - 1, ph.get('split_budget', 64))
     trials = []
@@ -575,9 +754,9 @@ def framing(run, ph):
             _, f0, expected, _ = framing_trial(campaign, reduced)
             _, fs, observed, _ = framing_trial(campaign, reduced, split, policy)
             return bool(fs) or (not f0 and observed != expected)
-        reports.append(report(h, findings, ['P8-CLIENTS'], replay, ph.get('shrink_runs', 16)))
+        reports.append(report(h, findings, ['P8-CLIENTS'], replay, ph.get('shrink_runs', 16), campaign))
         trials.append(dict(mem, split=split, policy_change=policy))
-    return {'faults': merge_reports(reports), 'split_points': points,
+    return {'faults': dict(merge_reports(reports), traces=campaign.traces), 'split_points': points,
             'transcript_octets': len(wire), 'sampled': len(points) < len(wire) - 1,
             'reference_sequence': sequence, 'trials': trials, 'command_deadline_s': campaign.deadline}
 
@@ -591,7 +770,7 @@ def slow_trial(campaign, selected=None):
     import re
     from .driver import proc_snapshot
     from .result import lat_stats
-    node, h, findings = campaign.node(), History(), []
+    node, h, findings = campaign.node(), campaign.history(), []
     duration = campaign.ph.get('duration_s', 40)
     slow_sleep = campaign.ph.get('recv_sleep_s', .01)
     stopped = threading.Event()
@@ -642,12 +821,15 @@ def slow_trial(campaign, selected=None):
                         pending.append(op)
                 for op in pending:
                     c.end = end
+                    c.mark_read('line')
                     line = c.line()
                     if not line.startswith(b'220 '):
                         h.complete(op, line)
+                        c.read_done()
                         if line[:1] not in (b'4', b'5') or len(line.split()) < 2:
                             findings.append(('P8-CLIENTS', 'slow reader lacked named refusal'))
                         continue
+                    c.mark_read('dot')  # stays owed (interleaved) unless the 1-byte reader reaches the dot
                     tail = bytearray()
                     while time.monotonic() < end and not stopped.is_set():
                         c.sock.settimeout(max(.01, end - time.monotonic()))
@@ -657,6 +839,7 @@ def slow_trial(campaign, selected=None):
                         tail.extend(octet)
                         if tail.endswith(b'\r\n.\r\n'):
                             h.complete(op, line)
+                            c.read_done()
                             break
                         if len(tail) > 5:
                             del tail[:-5]
@@ -683,13 +866,13 @@ def slow_trial(campaign, selected=None):
             findings.append(('P8-CLIENTS', 'poster deadline: ' + str(exc)))
 
     try:
-        campaign.start(node)
+        campaign.start(node, h)
         with Client(node.port, h, campaign.deadline) as c:
             for i in range(5):
                 if not c.post(i, 2048 if i == 0 else 512 * 1024).startswith(b'240 '):
                     raise RuntimeError('F5 seed refused')
         node.stop()
-        campaign.start(node)  # cold owner cache, without dropping the machine's caches
+        campaign.start(node, h)  # cold owner cache, without dropping the machine's caches
         solo, loaded = collections.defaultdict(list), collections.defaultdict(list)
         end = time.monotonic() + campaign.ph.get('solo_s', 10)
         threads = [threading.Thread(target=fast_worker, args=('fast-%d' % k, end, solo, False), daemon=True) for k in range(4)]
@@ -758,8 +941,11 @@ def slow_reader(run, ph):
         # Keep the same failure detail, so a removed slow client cannot turn a
         # latency finding into a missing-deadline-witness finding while shrinking.
         return (prop, detail) in fs
-    return {'faults': report(h, findings, ['P8-CLIENTS'] if stats['measured'] else [],
-                             replay, ph.get('shrink_runs', 8)), **stats,
+    campaign.emit(campaign.snapshot(h), 'reference')
+    faults_out = report(h, findings, ['P8-CLIENTS'] if stats['measured'] else [],
+                        replay, ph.get('shrink_runs', 8), campaign)
+    faults_out['traces'] = campaign.traces
+    return {'faults': faults_out, **stats,
             'status': 'ok' if stats['measured'] else 'not-measured',
             'cold_scope': 'owner cache after restart; filesystem cache untouched'}
 
@@ -767,27 +953,30 @@ def slow_reader(run, ph):
 def held_trial(campaign, selected=None):
     import re
     from tools import rep_measure, msgid_measure
-    node, h, findings, held, notes = campaign.node(reclaim=True), History(), [], [], {}
+    node, h, findings, held, notes = campaign.node(reclaim=True), campaign.history(), [], [], {}
     keys = None if selected is None else {tuple(o['replay_key']) for o in selected if 'replay_key' in o}
     def enabled(key):
         return keys is None or key in keys
     try:
-        campaign.start(node)
+        campaign.start(node, h)
         with Client(node.port, h, campaign.deadline) as c:
             for i in range(campaign.ph.get('readers', 4)):
                 body = rep_measure.article(i, 512 * 1024).replace(b'\r\n\r\n', b'\r\nExpires: Mon, 01 Jan 2024 00:00:00 +0000\r\n\r\n', 1)
                 args = {'i': i, 'octets': 512 * 1024, 'expires': '2024-01-01',
                         'msgid': msgid_measure.msgid(i), 'sha256': digest(body)}
                 op = c.begin('POST', args, b'POST\r\n')
+                c.mark_read('line')
                 line = c.line()
                 if line.startswith(b'340 '):
-                    c.sock.sendall(body + b'.\r\n')
+                    c.send_raw(body + b'.\r\n')
+                    c.mark_read('line')
                     line = c.line()
                 h.complete(op, line)
+                c.read_done()
                 if not line.startswith(b'240 '):
                     raise RuntimeError('F3 seed refused: ' + repr(line))
         node.stop()
-        campaign.start(node)
+        campaign.start(node, h)
         for i in range(campaign.ph.get('readers', 4)):
             if not enabled(('hold', i)):
                 continue
@@ -798,13 +987,16 @@ def held_trial(campaign, selected=None):
             text = 'ARTICLE ' + msgid_measure.msgid(i)
             op = c.begin('ARTICLE', {'command': text}, text.encode() + b'\r\n')
             op['replay_key'] = ['hold', i]
+            c.mark_read('line')
             line = c.line()
             if not line.startswith(b'220 '):
                 h.complete(op, line)
+                c.read_done()
                 c.close()
                 if line[:1] not in (b'4', b'5') or len(line.split()) < 2:
                     findings.append(('P4-RECLAIM', 'initial ARTICLE lacked named refusal'))
                 continue
+            c.mark_read('line')  # stays owed: the reply is held mid-body
             prefix = c.line()  # stall mid-body (inside ARTICLE's header block)
             held.append((c, op, line, prefix, i))
         notes['pins_before'] = campaign.control(node, h, 'pins')[1]
@@ -845,12 +1037,14 @@ def held_trial(campaign, selected=None):
             c.end = time.monotonic() + campaign.deadline
             body = bytearray(prefix)
             try:
+                c.mark_read('dot')
                 while True:
                     row = c.line()
                     if row == b'.\r\n':
                         break
                     body.extend(row[1:] if row.startswith(b'..') else row)
                 h.complete(op, line)
+                c.read_done()
                 expected = next(o['args']['sha256'] for o in h.ops if o['kind'] == 'POST' and o['args'].get('i') == i)
                 if digest(bytes(body)) != expected:
                     findings.append(('P4-RECLAIM', 'resumed ARTICLE changed accepted bytes: ' + str(i)))
@@ -886,4 +1080,7 @@ def held_reader(run, ph):
     def replay(ops, prop, detail):
         _, fs, _ = held_trial(campaign, ops)
         return (prop, detail) in fs
-    return {'faults': report(h, findings, ['P4-RECLAIM'], replay, ph.get('shrink_runs', 8)), **notes}
+    campaign.emit(campaign.snapshot(h), 'reference')
+    faults_out = report(h, findings, ['P4-RECLAIM'], replay, ph.get('shrink_runs', 8), campaign)
+    faults_out['traces'] = campaign.traces
+    return {'faults': faults_out, **notes}

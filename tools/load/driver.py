@@ -1350,6 +1350,7 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         from . import peers
         run.peers = peers.setup(node, spec, sys.modules[__name__])
     run.cell_id = cell.id
+    run.label = label
     cr = {"trace": None, "cell": cell.id, "workload": cell.workload, "target": target.kind, "arm": arm, "rep": rep,
           "preset": spec["preset"], "flags": node.flags, "git": args.rev, "status": "running",
           "image": {"path": str(target.path), "core_sha256": target.core_sha256, "tree_sha": target.tree_sha},
@@ -1476,7 +1477,8 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         fault_phases = [p["faults"] for p in cr["phases"] if "faults" in p]
         if fault_phases:
             cr["faults"] = {"violations": [v for f in fault_phases for v in f["violations"]],
-                            "outcomes": {k: sum(f["outcomes"][k] for f in fault_phases) for k in faults.OUTCOMES}}
+                            "outcomes": {k: sum(f["outcomes"][k] for f in fault_phases) for k in faults.OUTCOMES},
+                          "traces": [t for f in fault_phases for t in f.get("traces", [])]}
             for f in fault_phases:
                 cr["metrics"].update(faults.metrics(f))
         cr["bars"] = [] if sub else res_mod.judge_cell(cr, args.bars)
