@@ -3,6 +3,11 @@
 ;; fn-native-admin-plan-old-cond is the original cond, verbatim (books/native-admin.lisp
 ;; at 46664b46b~1); chunk K answers what the old cond answers whenever no
 ;; earlier chunk selects an arm, one lemma per chunk, composed at the end.
+;; In each -out proof, earlier selectors stay opaque: the next chunk's
+;; theorem supplies precisely those hypotheses.  Only the current selector
+;; and chunk open, in a minimal theory, so validators cannot multiply the
+;; fall-through clauses.  The -in proofs suppress preprocessing for the
+;; same reason; chunk 7 benefits from preprocessing its all-negative case.
 (in-package "ACL2")
 (include-book "../../books/native-admin")
 (include-book "must-fail-checked")
@@ -632,117 +637,117 @@
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (not (fn-native-admin-plan-sel-3 argv)) (not (fn-native-admin-plan-sel-4 argv)) (not (fn-native-admin-plan-sel-5 argv)) (fn-native-admin-plan-sel-6 argv))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-6 argv)))
   :rule-classes nil
-  :hints (("Goal" :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-6 argv) (fn-native-admin-plan-sel-6 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-3 argv) (fn-native-admin-plan-sel-4 argv) (fn-native-admin-plan-sel-5 argv)))))
+  :hints (("Goal" :do-not '(preprocess) :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-6 argv) (fn-native-admin-plan-sel-6 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-3 argv) (fn-native-admin-plan-sel-4 argv) (fn-native-admin-plan-sel-5 argv)))))
 
 (defthm fn-native-admin-plan-chunk-6-out
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (not (fn-native-admin-plan-sel-3 argv)) (not (fn-native-admin-plan-sel-4 argv)) (not (fn-native-admin-plan-sel-5 argv)) (not (fn-native-admin-plan-sel-6 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-6 argv)))
   :rule-classes nil
-  :hints (("Goal" :use fn-native-admin-plan-chunk-7
-           :expand ((fn-native-admin-plan-arms-6 argv) (fn-native-admin-plan-sel-6 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-3 argv) (fn-native-admin-plan-sel-4 argv) (fn-native-admin-plan-sel-5 argv)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(not implies)) :do-not '(preprocess) :use fn-native-admin-plan-chunk-7
+           :expand ((fn-native-admin-plan-arms-6 argv) (fn-native-admin-plan-sel-6 argv)))))
 
 (defthm fn-native-admin-plan-chunk-6
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (not (fn-native-admin-plan-sel-3 argv)) (not (fn-native-admin-plan-sel-4 argv)) (not (fn-native-admin-plan-sel-5 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-6 argv)))
   :rule-classes nil
-  :hints (("Goal" :use (fn-native-admin-plan-chunk-6-in fn-native-admin-plan-chunk-6-out))))
+  :hints (("Goal" :do-not '(preprocess) :use (fn-native-admin-plan-chunk-6-in fn-native-admin-plan-chunk-6-out))))
 
 (defthm fn-native-admin-plan-chunk-5-in
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (not (fn-native-admin-plan-sel-3 argv)) (not (fn-native-admin-plan-sel-4 argv)) (fn-native-admin-plan-sel-5 argv))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-5 argv)))
   :rule-classes nil
-  :hints (("Goal" :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-5 argv) (fn-native-admin-plan-sel-5 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-3 argv) (fn-native-admin-plan-sel-4 argv)))))
+  :hints (("Goal" :do-not '(preprocess) :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-5 argv) (fn-native-admin-plan-sel-5 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-3 argv) (fn-native-admin-plan-sel-4 argv)))))
 
 (defthm fn-native-admin-plan-chunk-5-out
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (not (fn-native-admin-plan-sel-3 argv)) (not (fn-native-admin-plan-sel-4 argv)) (not (fn-native-admin-plan-sel-5 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-5 argv)))
   :rule-classes nil
-  :hints (("Goal" :use fn-native-admin-plan-chunk-6
-           :expand ((fn-native-admin-plan-arms-5 argv) (fn-native-admin-plan-sel-5 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-3 argv) (fn-native-admin-plan-sel-4 argv)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(not implies)) :do-not '(preprocess) :use fn-native-admin-plan-chunk-6
+           :expand ((fn-native-admin-plan-arms-5 argv) (fn-native-admin-plan-sel-5 argv)))))
 
 (defthm fn-native-admin-plan-chunk-5
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (not (fn-native-admin-plan-sel-3 argv)) (not (fn-native-admin-plan-sel-4 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-5 argv)))
   :rule-classes nil
-  :hints (("Goal" :use (fn-native-admin-plan-chunk-5-in fn-native-admin-plan-chunk-5-out))))
+  :hints (("Goal" :do-not '(preprocess) :use (fn-native-admin-plan-chunk-5-in fn-native-admin-plan-chunk-5-out))))
 
 (defthm fn-native-admin-plan-chunk-4-in
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (not (fn-native-admin-plan-sel-3 argv)) (fn-native-admin-plan-sel-4 argv))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-4 argv)))
   :rule-classes nil
-  :hints (("Goal" :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-4 argv) (fn-native-admin-plan-sel-4 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-3 argv)))))
+  :hints (("Goal" :do-not '(preprocess) :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-4 argv) (fn-native-admin-plan-sel-4 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-3 argv)))))
 
 (defthm fn-native-admin-plan-chunk-4-out
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (not (fn-native-admin-plan-sel-3 argv)) (not (fn-native-admin-plan-sel-4 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-4 argv)))
   :rule-classes nil
-  :hints (("Goal" :use fn-native-admin-plan-chunk-5
-           :expand ((fn-native-admin-plan-arms-4 argv) (fn-native-admin-plan-sel-4 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-3 argv)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(not implies)) :do-not '(preprocess) :use fn-native-admin-plan-chunk-5
+           :expand ((fn-native-admin-plan-arms-4 argv) (fn-native-admin-plan-sel-4 argv)))))
 
 (defthm fn-native-admin-plan-chunk-4
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (not (fn-native-admin-plan-sel-3 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-4 argv)))
   :rule-classes nil
-  :hints (("Goal" :use (fn-native-admin-plan-chunk-4-in fn-native-admin-plan-chunk-4-out))))
+  :hints (("Goal" :do-not '(preprocess) :use (fn-native-admin-plan-chunk-4-in fn-native-admin-plan-chunk-4-out))))
 
 (defthm fn-native-admin-plan-chunk-3-in
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (fn-native-admin-plan-sel-3 argv))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-3 argv)))
   :rule-classes nil
-  :hints (("Goal" :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-3 argv) (fn-native-admin-plan-sel-3 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv)))))
+  :hints (("Goal" :do-not '(preprocess) :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-3 argv) (fn-native-admin-plan-sel-3 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv)))))
 
 (defthm fn-native-admin-plan-chunk-3-out
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)) (not (fn-native-admin-plan-sel-3 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-3 argv)))
   :rule-classes nil
-  :hints (("Goal" :use fn-native-admin-plan-chunk-4
-           :expand ((fn-native-admin-plan-arms-3 argv) (fn-native-admin-plan-sel-3 argv) (fn-native-admin-plan-sel-1 argv) (fn-native-admin-plan-sel-2 argv)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(not implies)) :do-not '(preprocess) :use fn-native-admin-plan-chunk-4
+           :expand ((fn-native-admin-plan-arms-3 argv) (fn-native-admin-plan-sel-3 argv)))))
 
 (defthm fn-native-admin-plan-chunk-3
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-3 argv)))
   :rule-classes nil
-  :hints (("Goal" :use (fn-native-admin-plan-chunk-3-in fn-native-admin-plan-chunk-3-out))))
+  :hints (("Goal" :do-not '(preprocess) :use (fn-native-admin-plan-chunk-3-in fn-native-admin-plan-chunk-3-out))))
 
 (defthm fn-native-admin-plan-chunk-2-in
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (fn-native-admin-plan-sel-2 argv))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-2 argv)))
   :rule-classes nil
-  :hints (("Goal" :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-2 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-1 argv)))))
+  :hints (("Goal" :do-not '(preprocess) :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-2 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-1 argv)))))
 
 (defthm fn-native-admin-plan-chunk-2-out
   (implies (and (not (fn-native-admin-plan-sel-1 argv)) (not (fn-native-admin-plan-sel-2 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-2 argv)))
   :rule-classes nil
-  :hints (("Goal" :use fn-native-admin-plan-chunk-3
-           :expand ((fn-native-admin-plan-arms-2 argv) (fn-native-admin-plan-sel-2 argv) (fn-native-admin-plan-sel-1 argv)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(not implies)) :do-not '(preprocess) :use fn-native-admin-plan-chunk-3
+           :expand ((fn-native-admin-plan-arms-2 argv) (fn-native-admin-plan-sel-2 argv)))))
 
 (defthm fn-native-admin-plan-chunk-2
   (implies (and (not (fn-native-admin-plan-sel-1 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-2 argv)))
   :rule-classes nil
-  :hints (("Goal" :use (fn-native-admin-plan-chunk-2-in fn-native-admin-plan-chunk-2-out))))
+  :hints (("Goal" :do-not '(preprocess) :use (fn-native-admin-plan-chunk-2-in fn-native-admin-plan-chunk-2-out))))
 
 (defthm fn-native-admin-plan-chunk-1-in
   (implies (and (fn-native-admin-plan-sel-1 argv))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-1 argv)))
   :rule-classes nil
-  :hints (("Goal" :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-1 argv) (fn-native-admin-plan-sel-1 argv) ))))
+  :hints (("Goal" :do-not '(preprocess) :expand ((fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-1 argv) (fn-native-admin-plan-sel-1 argv) ))))
 
 (defthm fn-native-admin-plan-chunk-1-out
   (implies (and (not (fn-native-admin-plan-sel-1 argv)))
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-1 argv)))
   :rule-classes nil
-  :hints (("Goal" :use fn-native-admin-plan-chunk-2
-           :expand ((fn-native-admin-plan-arms-1 argv) (fn-native-admin-plan-sel-1 argv) ))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(not implies)) :do-not '(preprocess) :use fn-native-admin-plan-chunk-2
+           :expand ((fn-native-admin-plan-arms-1 argv) (fn-native-admin-plan-sel-1 argv)))))
 
 (defthm fn-native-admin-plan-chunk-1
   (implies t
            (equal (fn-native-admin-plan-old-cond argv) (fn-native-admin-plan-arms-1 argv)))
   :rule-classes nil
-  :hints (("Goal" :use (fn-native-admin-plan-chunk-1-in fn-native-admin-plan-chunk-1-out))))
+  :hints (("Goal" :do-not '(preprocess) :use (fn-native-admin-plan-chunk-1-in fn-native-admin-plan-chunk-1-out))))
 
 (defthm fn-native-admin-plan-is-the-old-plan
   (equal (fn-native-admin-plan argv) (fn-native-admin-plan-old argv))
-  :hints (("Goal" :use fn-native-admin-plan-chunk-1
+  :hints (("Goal" :do-not '(preprocess) :use fn-native-admin-plan-chunk-1
            :expand ((fn-native-admin-plan argv) (fn-native-admin-plan-old argv)))))
