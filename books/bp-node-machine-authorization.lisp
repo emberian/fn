@@ -555,6 +555,7 @@
   (("Goal"
     :use
     ((:instance fn-bpn-lifecycle-invariant-implies-machine-invariant)
+     (:instance fn-bpn-restart-seed-fits-the-initial-machine)
      (:instance fn-bpn-restart-step-preserves-machine-invariant)
      (:instance fn-bpn-machine-invariant-components)
      (:instance fn-bpn-machine-statep-components)
@@ -596,7 +597,8 @@
                             records)))))
     :in-theory
     (union-theories
-     '(fn-bpn-restart-step
+     '(fn-bpn-restart-step fn-bpn-restart-step-from fn-bpn-restart-replay-step
+       fn-bpn-seeded-machine-state-of-no-jobs
        fn-bpn-lifecycle-invariant-without-pending
        fn-bpn-state-with-accessors fn-bpn-answer-constructor-accessors)
      (theory 'minimal-theory)))))
@@ -972,6 +974,7 @@
      '(fn-bpn-step fn-bpn-dispatch fn-bpn-enqueue-step fn-bpn-contact-step
        fn-bpn-start-one fn-bpn-persist-result-step
        fn-bpn-forward-result-step fn-bpn-clock-step fn-bpn-restart-step
+       fn-bpn-restart-step-from fn-bpn-restart-replay-step fn-bpn-restart-seed-fitsp
        fn-bpn-propose fn-bpn-apply-record fn-bpn-proposal-effectsp
        fn-bpn-effect-kind-memberp fn-bpn-answer-constructor-accessors
        fn-bpn-pending-authorizedp fn-bpn-lifecycle-invariantp
@@ -1035,6 +1038,7 @@
      '(fn-bpn-step fn-bpn-dispatch fn-bpn-enqueue-step fn-bpn-contact-step
        fn-bpn-start-one fn-bpn-persist-result-step
        fn-bpn-forward-result-step fn-bpn-clock-step fn-bpn-restart-step
+       fn-bpn-restart-step-from fn-bpn-restart-replay-step fn-bpn-restart-seed-fitsp
        fn-bpn-propose fn-bpn-apply-record fn-bpn-proposal-effectsp
        fn-bpn-effect-kind-memberp fn-bpn-answer-constructor-accessors
        fn-bpn-pending-authorizedp fn-bpn-lifecycle-invariantp
