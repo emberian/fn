@@ -676,3 +676,6 @@
   :hints (("Goal" :in-theory (e/d (fn-scka-intern-at) (fn-ssr-intern-step fn-ssr-seed fn-ssr-rows
                                                        fn-scka-fold-at))
            :use ((:instance fn-scka-fold-at-is-the-ssr-step (acc (fn-ssr-seed id)))))))
+(defthm fn-scka-payloads-of-append
+  (equal (fn-scka-payloads (append ws vs))
+         (append (fn-scka-payloads ws) (fn-scka-payloads vs))))

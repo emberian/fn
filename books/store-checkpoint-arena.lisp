@@ -38,6 +38,7 @@
 
 (in-package "ACL2")
 (include-book "store-intern")
+(include-book "store-checkpoint-fold")
 (include-book "store-checkpoint-tables-reader")
 ; fn-rii-sco-extend, the extension the host calls (section 4's twin).
 (include-book "replay-identity-index")
@@ -63,116 +64,10 @@
                            fn-sccr-cbor-octet-listp-is-scc-octet-listp)))
 
 ; -----------------------------------------------------------------------------
-; 1. The canonical intern.
-
-; One wire event's row with handle H (keyring NIL, generation 0), :bad as
-; fn-intern-event refuses.
-(defun fn-scka-intern-one (w h)
-  (declare (xargs :guard (natp h)
-                  :guard-hints (("Goal" :in-theory (enable fn-prin-keyringp)))))
-  (cond ((fn-record-p w) (fn-intern-row-at w nil 0 h))
-        ((fn-stxa-p w)
-         (let ((a (fn-replay-composite-record w)))
-           (if (fn-record-p a)
-               (fn-hstxa-make w (fn-intern-row-at a nil 0 h))
-             :bad)))
-        ((fn-wire-event-p w) w)
-        (t :bad)))
-
-; Whether the intern seals a payload for W, and which: a record, or a
-; composite whose article decodes to one (fn-intern-event seals exactly
-; these; any other composite is :bad).
-(defun fn-scka-sealsp (w)
-  (declare (xargs :guard t))
-  (or (fn-record-p w)
-      (and (fn-stxa-p w) (fn-record-p (fn-replay-composite-record w)))))
-
-(defun fn-scka-payload-of (w)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (fn-record-p w)
-      (fn-record-payload w)
-    (fn-record-payload (fn-replay-composite-record w))))
-
-(defun fn-scka-intern-at (ws h)
-  (declare (xargs :guard (natp h) :verify-guards nil))
-  (if (atom ws)
-      nil
-    (let ((row (fn-scka-intern-one (car ws) h)))
-      (if (eq row :bad)
-          :bad
-        (let ((rest (fn-scka-intern-at (cdr ws) (if (fn-scka-sealsp (car ws)) (+ 1 h) h))))
-          (if (eq rest :bad)
-              :bad
-            (cons row rest)))))))
-
-(defun fn-scka-payloads (ws)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (atom ws)
-      nil
-    (if (fn-scka-sealsp (car ws))
-        (cons (fn-scka-payload-of (car ws)) (fn-scka-payloads (cdr ws)))
-      (fn-scka-payloads (cdr ws)))))
-
-; The row of one event is the canonical row at the arena's count.
-(defthm fn-scka-intern-event-row
-  (equal (mv-nth 0 (fn-intern-event w nil 0 fn-arena))
-         (fn-scka-intern-one w (fn-arena-count fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-intern-event fn-scka-intern-one fn-cat-intern-list
-                                   fn-intern-row-at)
-                                  (fn-arena-count-is-len fn-held-make fn-held-facts-of
-                                   fn-held-context-of fn-arena-seal-list-is-append)))))
-
-(local
- (defthm fn-scka-intern-event-row-len
-   (equal (mv-nth 0 (fn-intern-event w nil 0 fn-arena))
-          (fn-scka-intern-one w (len fn-arena)))
-   :hints (("Goal" :use fn-scka-intern-event-row
-            :in-theory (disable fn-scka-intern-event-row fn-intern-event fn-scka-intern-one)))))
-
-(local
- (defthm fn-scka-len-seal-list
-   (equal (len (fn-arena-seal-list x a)) (+ 1 (len a)))
-   :hints (("Goal" :in-theory (enable fn-arena-seal-list fn-arena$a-seal-list fn-oct-snoc)))))
-
-(local
- (defthm fn-scka-count-of-intern-event
-   (implies (not (equal (fn-scka-intern-one w h) :bad))
-            (equal (len (mv-nth 1 (fn-intern-event w nil 0 fn-arena)))
-                   (if (fn-scka-sealsp w) (+ 1 (len fn-arena)) (len fn-arena))))
-   :hints (("Goal" :in-theory (e/d (fn-scka-intern-one fn-scka-sealsp)
-                                   (fn-intern-row-at fn-held-make fn-scka-intern-event-row
-                                    fn-arena-seal-list-is-append fn-hstxa-make))))))
-
-; The seal is an append on any true list (the arena's logical view).
-(defthm fn-scka-seal-list-is-append
-  (implies (true-listp a)
-           (equal (fn-arena-seal-list x a) (append a (list x))))
-  :hints (("Goal" :in-theory (enable fn-arena-seal-list fn-arena$a-seal-list fn-oct-snoc))))
-
-; KEYSTONE (the canonical intern), rows: the journal intern's rows are the
-; canonical rows from the arena's count, with no hypothesis (:bad for :bad).
-(defthm fn-intern-events-is-intern-at
-  (equal (mv-nth 0 (fn-intern-events ws nil 0 fn-arena))
-         (fn-scka-intern-at ws (len fn-arena)))
-  :hints (("Goal" :induct (fn-intern-events ws nil 0 fn-arena)
-           :in-theory (e/d (fn-intern-events fn-scka-intern-at)
-                           (fn-intern-event fn-scka-intern-one fn-intern-event-arena
-                            fn-scka-sealsp fn-scka-intern-event-row)))))
-
-; KEYSTONE (the canonical intern), arena: an intern that is not refused
-; leaves the arena with the canonical payloads behind what it held.
-(defthm fn-intern-events-arena-is-payloads
-  (implies (and (true-listp fn-arena)
-                (not (equal (fn-scka-intern-at ws (len fn-arena)) :bad)))
-           (equal (mv-nth 1 (fn-intern-events ws nil 0 fn-arena))
-                  (append fn-arena (fn-scka-payloads ws))))
-  :hints (("Goal" :induct (fn-intern-events ws nil 0 fn-arena)
-           :in-theory (e/d (fn-intern-events fn-scka-intern-at fn-scka-payloads
-                            fn-scka-intern-one fn-scka-sealsp fn-scka-payload-of)
-                           (fn-intern-event fn-intern-row-at fn-held-make fn-hstxa-make
-                            fn-scka-intern-event-row fn-arena-seal-list-is-append
-                            fn-stxa-p fn-stxa-is-no-other-wire-event
-                            fn-replay-composite-record fn-cbor-octet-listp)))))
+; 1. The canonical intern.  The fold-context intern (books/store-checkpoint-fold.lisp)
+; is the one intern: fn-scka-intern-one, fn-scka-fold-at, fn-scka-intern-at,
+; fn-scka-payloads, and KEYSTONES fn-scka-fold-at-is-the-ssr-step and
+; fn-scka-fold-at-arena-is-payloads (the pure fold is the host's worker).
 
 ; -----------------------------------------------------------------------------
 ; The codec's segment round trip (books/store-checkpoint-codec.lisp keeps it
@@ -432,63 +327,28 @@
 
 ; -----------------------------------------------------------------------------
 ; 4. The open.  What both host recovers call: the records interned onto the
-; arena, then the capture extended over the rows.  The full recover passes
-; the capture of no records and the emptied arena; the checkpoint recover
-; passes the loaded capture and the loaded arena.  (mv E fn-arena), E :bad
-; when the intern refuses a record.  The host's extension is the twin
-; fn-rii-sco-extend, EQUAL with no hypothesis (fn-rii-sco-extend-is-sco-extend,
-; books/replay-identity-index.lisp): fn-scka-recover-rows-rii below.
+; arena by the host's worker, fn-ssr-intern-step, from the seed of the
+; checkpoint's captured identity (host/store-node-host.lisp
+; fn-store-statement-replay-seed, host/native/io.lisp
+; fnn-recover-suffix-intern), then the capture extended over the rows.  The
+; full recover passes the capture of no records, whose identity is the initial
+; context (host/native/io.lisp fnn-bridge-recover-begin), and the emptied
+; arena; the checkpoint recover passes the loaded capture and the loaded
+; arena.  (mv E fn-arena), E :bad when the intern refuses a record.  The
+; host's extension is the twin fn-rii-sco-extend, EQUAL with no hypothesis
+; (fn-rii-sco-extend-is-sco-extend, books/replay-identity-index.lisp):
+; fn-scka-recover-rows-rii below.
 (defun fn-scka-recover-rows (c configs records fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (mv-let (rows fn-arena)
-    (fn-intern-events records nil 0 fn-arena)
-    (if (eq rows :bad)
+  (mv-let (acc fn-arena)
+    (fn-ssr-intern-step (fn-ssr-seed (fn-sco-identity c)) records nil nil :resident nil fn-arena)
+    (if (eq acc :bad)
         (mv :bad fn-arena)
-      (mv (fn-sco-extend c configs rows) fn-arena))))
-
-(defthm fn-scka-payloads-of-append
-  (equal (fn-scka-payloads (append ws vs))
-         (append (fn-scka-payloads ws) (fn-scka-payloads vs))))
+      (mv (fn-sco-extend c configs (fn-ssr-rows acc)) fn-arena))))
 
 (local
  (defthm fn-scka-append-is-bad
    (equal (equal (append x r) :bad) (and (atom x) (equal r :bad)))))
-
-(defthm fn-scka-intern-at-of-append
-  (implies (and (natp h) (not (equal (fn-scka-intern-at ws h) :bad)))
-           (equal (fn-scka-intern-at (append ws vs) h)
-                  (let ((r (fn-scka-intern-at vs (+ h (len (fn-scka-payloads ws))))))
-                    (if (equal r :bad) :bad (append (fn-scka-intern-at ws h) r)))))
-  :hints (("Goal" :induct (fn-scka-intern-at ws h)
-           :in-theory (disable fn-scka-intern-one fn-scka-sealsp fn-scka-payload-of))))
-
-; A refused prefix refuses the whole history.
-(defthm fn-scka-intern-at-of-append-bad
-  (implies (equal (fn-scka-intern-at ws h) :bad)
-           (equal (fn-scka-intern-at (append ws vs) h) :bad))
-  :hints (("Goal" :induct (fn-scka-intern-at ws h)
-           :in-theory (disable fn-scka-intern-one fn-scka-sealsp fn-scka-payload-of))))
-
-(local
- (defthm fn-scka-record-valuesp-is-store-eventsp
-   (equal (fn-sf-record-valuesp x) (fn-sco-store-eventsp x))
-   :hints (("Goal" :in-theory (enable fn-sf-record-valuesp fn-sco-store-eventsp)))))
-
-; The canonical rows are retained events (the intern's keystone, restated
-; on the canonical view).
-(defthm fn-scka-intern-at-store-eventsp
-  (implies (not (equal (fn-scka-intern-at ws 0) :bad))
-           (fn-sco-store-eventsp (fn-scka-intern-at ws 0)))
-  :hints (("Goal" :use ((:instance fn-intern-events-are-store-events
-                                   (keyring nil) (generation 0) (fn-arena nil))
-                        (:instance fn-intern-events-is-intern-at (fn-arena nil)))
-           :in-theory (disable fn-intern-events-are-store-events fn-intern-events-is-intern-at
-                               fn-intern-events fn-scka-intern-at))))
-
-(defthm fn-scka-intern-at-true-listp
-  (implies (not (equal (fn-scka-intern-at ws h) :bad))
-           (true-listp (fn-scka-intern-at ws h)))
-  :hints (("Goal" :in-theory (disable fn-scka-intern-one fn-scka-sealsp))))
 
 (local
  (defthm fn-scka-true-list-fix-id
@@ -498,116 +358,182 @@
  (defthm fn-scka-len-payloads-true-listp
    (true-listp (fn-scka-payloads ws))))
 
-; KEYSTONE (the open).  From the checkpoint of a prefix WS (the capture of
-; its canonical rows, and its canonical arena), the recover over the suffix
-; VS is the full recover of WS ++ VS from the emptied arena: the same
-; extended capture (so fn-store-sn-open-extended opens the same store) and
-; the same arena.  The hypothesis: the whole history interns (a record
-; the intern refuses faults both opens).  That the prefix interns follows
-; (fn-scka-intern-at-of-append-bad); the earlier second hypothesis was
-; removed after this weakened statement was proved.
-(defthm fn-scka-recover-from-checkpoint-is-full-recover
-  (implies (not (equal (fn-scka-intern-at (append ws vs) 0) :bad))
-           (equal (fn-scka-recover-rows (fn-sco-capture configs (fn-scka-intern-at ws 0))
-                                        configs vs (fn-scka-payloads ws))
-                  (fn-scka-recover-rows (fn-sco-capture configs nil) configs
-                                        (append ws vs) nil)))
+; The identity of a capture is the replay of its records from the initial
+; context: the seed of a checkpoint's suffix, and for the empty capture the
+; seed of the full replay.
+(local
+ (defthm fn-scka-identity-of-capture
+   (equal (fn-sco-identity (fn-sco-capture configs records))
+          (fn-replay-identity-loop (true-list-fix records) (fn-stxk-initial-context 0)))
+   :hints (("Goal" :in-theory (enable fn-sco-identity fn-sco-capture fn-sco-make fn-sco-at)))))
+
+(local
+ (defthm fn-scka-recover-rows-pair
+   (equal (fn-scka-recover-rows c configs records fn-arena)
+          (list (mv-nth 0 (fn-scka-recover-rows c configs records fn-arena))
+                (mv-nth 1 (fn-scka-recover-rows c configs records fn-arena))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-scka-recover-rows)))))
+
+; KEYSTONE (the open, rows).  From the checkpoint of a prefix WS -- the
+; capture of its fold-context rows, which exists exactly when that fold is
+; not refused: the writer builds a checkpoint only from canonical rows that
+; are not :bad (fn-scka-next-checkpoint answers :bad otherwise, and
+; fn-scka-next-checkpoint-is-capture is stated under that hypothesis) -- the
+; recover over the suffix VS, seeded from the checkpoint's identity, answers
+; what the full recover of WS ++ VS answers from the initial context: the
+; same extended capture (so fn-store-sn-open-extended opens the same store,
+; with the same verdict generations) or :bad on both.  No hypothesis on the
+; suffix and none on a keyring snapshot in the history.
+(defthm fn-scka-recover-rows-from-checkpoint-is-full-recover
+  (implies (and (true-listp ws)
+                (not (equal (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0) :bad)))
+           (equal (mv-nth 0 (fn-scka-recover-rows
+                             (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+                             configs vs (fn-scka-payloads ws)))
+                  (mv-nth 0 (fn-scka-recover-rows (fn-sco-capture configs nil) configs
+                                                  (append ws vs) nil))))
   :hints (("Goal" :do-not-induct t
-           :cases ((equal (fn-scka-intern-at ws 0) :bad))
-           :use ((:instance fn-scka-intern-at-of-append-bad (h 0))
-                 (:instance fn-intern-events-is-intern-at (ws vs) (fn-arena (fn-scka-payloads ws)))
-                 (:instance fn-intern-events-arena-is-payloads (ws vs)
-                            (fn-arena (fn-scka-payloads ws)))
-                 (:instance fn-intern-events-is-intern-at (ws (append ws vs)) (fn-arena nil))
-                 (:instance fn-intern-events-arena-is-payloads (ws (append ws vs)) (fn-arena nil))
-                 (:instance fn-scka-intern-at-of-append (h 0))
-                 (:instance fn-sco-extend-of-capture (prefix (fn-scka-intern-at ws 0))
-                            (suffix (fn-scka-intern-at vs (len (fn-scka-payloads ws)))))
-                 (:instance fn-sco-extend-of-capture (prefix nil)
-                            (suffix (append (fn-scka-intern-at ws 0)
-                                            (fn-scka-intern-at vs (len (fn-scka-payloads ws)))))))
            :in-theory (e/d (fn-scka-recover-rows)
-                           (fn-intern-events-is-intern-at fn-intern-events-arena-is-payloads
-                            fn-scka-intern-at-of-append fn-sco-extend-of-capture
-                            fn-scka-intern-at-of-append-bad
-                            fn-intern-events fn-scka-intern-at fn-scka-payloads
-                            fn-sco-extend fn-sco-capture)))))
+                           (fn-ssr-intern-step fn-ssr-seed fn-ssr-rows fn-sco-extend fn-sco-capture
+                            fn-scka-intern-at fn-replay-identity-loop fn-sco-identity
+                            fn-scka-intern-at-of-append
+                            fn-ssr-step-rows-are-fn-scka-intern-at))
+           :use ((:instance fn-ssr-step-rows-are-fn-scka-intern-at
+                            (id (fn-replay-identity-loop (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0)
+                                                         (fn-stxk-initial-context 0)))
+                            (ws vs) (dicts nil) (fn-arena (fn-scka-payloads ws)))
+                 (:instance fn-ssr-step-rows-are-fn-scka-intern-at
+                            (id (fn-stxk-initial-context 0))
+                            (ws (append ws vs)) (dicts nil) (fn-arena nil))
+                 (:instance fn-scka-intern-at-of-append (id (fn-stxk-initial-context 0)) (h 0))
+                 (:instance fn-sco-extend-of-capture
+                            (prefix (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+                            (suffix (fn-scka-intern-at vs
+                                      (fn-replay-identity-loop (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0)
+                                                               (fn-stxk-initial-context 0))
+                                      (len (fn-scka-payloads ws)))))))))
+
+; KEYSTONE (the open, arena).  When the whole history folds, the checkpoint
+; recover leaves the arena the full recover leaves.  (A refused open discards
+; the arena: host/native/io.lisp fnn-bridge-reset.)
+(defthm fn-scka-recover-arena-from-checkpoint-is-full-recover
+  (implies (and (true-listp ws)
+                (not (equal (fn-scka-intern-at (append ws vs) (fn-stxk-initial-context 0) 0) :bad)))
+           (equal (mv-nth 1 (fn-scka-recover-rows
+                             (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+                             configs vs (fn-scka-payloads ws)))
+                  (mv-nth 1 (fn-scka-recover-rows (fn-sco-capture configs nil) configs
+                                                  (append ws vs) nil))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-scka-recover-rows)
+                           (fn-ssr-intern-step fn-ssr-seed fn-ssr-rows fn-sco-extend fn-sco-capture
+                            fn-scka-intern-at fn-replay-identity-loop fn-sco-identity
+                            fn-scka-intern-at-of-append fn-scka-fold-at fn-scka-fold-at-of-append))
+           :use ((:instance fn-scka-fold-at-arena-is-payloads
+                            (acc (fn-ssr-seed (fn-replay-identity-loop
+                                               (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0)
+                                               (fn-stxk-initial-context 0))))
+                            (ws vs) (dicts nil) (fn-arena (fn-scka-payloads ws)))
+                 (:instance fn-scka-fold-at-arena-is-payloads
+                            (acc (fn-ssr-seed (fn-stxk-initial-context 0)))
+                            (ws (append ws vs)) (dicts nil) (fn-arena nil))
+                 (:instance fn-scka-intern-at-of-append (id (fn-stxk-initial-context 0)) (h 0))
+                 (:instance fn-scka-intern-at-of-append-bad (id (fn-stxk-initial-context 0)) (h 0))
+                 (:instance fn-scka-intern-at-bad-iff
+                            (ws vs) (h (len (fn-scka-payloads ws)))
+                            (id (fn-replay-identity-loop
+                                 (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0)
+                                 (fn-stxk-initial-context 0))))
+                 (:instance fn-scka-intern-at-bad-iff (ws (append ws vs)) (h 0)
+                            (id (fn-stxk-initial-context 0)))))))
+
+; KEYSTONE (the open).  The two together: from the checkpoint of a prefix WS
+; and its canonical arena, the recover over the suffix VS is the full recover
+; of WS ++ VS from the emptied arena -- the same extended capture and the same
+; arena -- when the whole history folds.
+(defthm fn-scka-recover-from-checkpoint-is-full-recover
+  (implies (and (true-listp ws)
+                (not (equal (fn-scka-intern-at (append ws vs) (fn-stxk-initial-context 0) 0) :bad)))
+           (equal (fn-scka-recover-rows
+                   (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0))
+                   configs vs (fn-scka-payloads ws))
+                  (fn-scka-recover-rows (fn-sco-capture configs nil) configs (append ws vs) nil)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-scka-recover-rows fn-scka-intern-at fn-sco-capture
+                               fn-scka-recover-rows-from-checkpoint-is-full-recover
+                               fn-scka-recover-arena-from-checkpoint-is-full-recover)
+           :use ((:instance fn-scka-recover-rows-from-checkpoint-is-full-recover)
+                 (:instance fn-scka-recover-arena-from-checkpoint-is-full-recover)
+                 (:instance fn-scka-intern-at-of-append-bad (id (fn-stxk-initial-context 0)) (h 0))
+                 (:instance fn-scka-recover-rows-pair
+                            (c (fn-sco-capture configs (fn-scka-intern-at ws (fn-stxk-initial-context 0) 0)))
+                            (records vs) (fn-arena (fn-scka-payloads ws)))
+                 (:instance fn-scka-recover-rows-pair
+                            (c (fn-sco-capture configs nil)) (records (append ws vs)) (fn-arena nil))))))
 
 ; The composition the host runs (host/native/io.lisp fnn-recover-suffix-rows
-; and fnn-bridge-recover: the guard-verified fn-intern-events, then
+; and fnn-bridge-recover: the guard-verified fn-ssr-intern-step, then
 ; host/store-node-host.lisp fn-store-sn-recover-from-checkpoint or
 ; fn-store-sn-recover-rows over fn-rii-sco-extend) is this function; it is
-; fn-scka-recover-rows, so the open keystone above is about what the host
+; fn-scka-recover-rows, so the open keystones above are about what the host
 ; calls.
 (defun fn-scka-recover-rows-rii (c configs records fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (mv-let (rows fn-arena)
-    (fn-intern-events records nil 0 fn-arena)
-    (if (eq rows :bad)
+  (mv-let (acc fn-arena)
+    (fn-ssr-intern-step (fn-ssr-seed (fn-sco-identity c)) records nil nil :resident nil fn-arena)
+    (if (eq acc :bad)
         (mv :bad fn-arena)
-      (mv (fn-rii-sco-extend c configs rows) fn-arena))))
+      (mv (fn-rii-sco-extend c configs (fn-ssr-rows acc)) fn-arena))))
 
 (defthm fn-scka-recover-rows-rii-is-recover-rows
   (equal (fn-scka-recover-rows-rii c configs records fn-arena)
          (fn-scka-recover-rows c configs records fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-rii-sco-extend-is-sco-extend)
-                                  (fn-intern-events fn-sco-extend fn-rii-sco-extend)))))
+                                  (fn-ssr-intern-step fn-sco-extend fn-rii-sco-extend
+                                   fn-ssr-seed fn-ssr-rows)))))
 
 ; -----------------------------------------------------------------------------
 ; 5. The writer's inputs, from the live store (rows and arena), per row.
 ; Alpha of each row (fn-row-wire-of: the payload read through the arena)
 ; is taken one row at a time, so the live store is never materialized as
-; wire records; the canonical rows and payloads are those of alpha.
-
-; Executes by a loop (PKT-876, lane open-depth): one frame per row of the
-; store, on every checkpoint publication.  The :logic is the recursion,
-; unchanged; the :exec accumulates the rows in reverse and stops at the first
-; :bad, equal by the guard proof.
-(defun fn-scka-canon-rows-rev (rows fn-arena h acc)
-  (declare (xargs :stobjs fn-arena :guard (and (natp h) (true-listp acc)) :verify-guards nil))
+; wire records; the canonical rows and payloads are those of alpha, interned
+; by the fold-context intern (books/store-checkpoint-fold.lisp) from the seed
+; of the identity ID: the initial context for a capture from the first row, a
+; base capture's identity (fn-sco-identity) for rows after it.
+;
+; Executes by a loop (PKT-876, lane open-depth): the recursion is a tail call
+; carrying the fold state (the rows, newest first, ride in the state), one
+; frame per row of the store on every checkpoint publication.
+(defun fn-scka-canon-fold (rows fn-arena h acc)
+  (declare (xargs :stobjs fn-arena :guard (and (natp h) (fn-ssr-statep acc))
+                  :verify-guards nil))
   (if (atom rows)
-      (revappend acc nil)
+      acc
     (let* ((w (fn-row-wire-of (car rows) fn-arena))
-           (row (fn-scka-intern-one w h)))
-      (if (eq row :bad)
+           (row (fn-scka-intern-one w (fn-ssr-at 1 acc) (fn-ssr-at 2 acc) h))
+           (identity (fn-replay-identity-step (fn-ssr-at 3 acc) row)))
+      (if (or (eq row :bad) (not (equal (fn-stxk-context-kind identity) :ok)))
           :bad
-        (fn-scka-canon-rows-rev (cdr rows) fn-arena
-                                (if (fn-scka-sealsp w) (+ 1 h) h)
-                                (cons row acc))))))
+        (fn-scka-canon-fold (cdr rows) fn-arena (if (fn-scka-sealsp w) (+ 1 h) h)
+                            (fn-ssr-publish acc row w identity))))))
 
-(defun fn-scka-canon-rows (rows fn-arena h)
+(defun fn-scka-canon-rows (rows fn-arena h id)
   (declare (xargs :stobjs fn-arena :guard (natp h) :verify-guards nil))
-  (mbe :logic
-       (if (atom rows)
-           nil
-         (let* ((w (fn-row-wire-of (car rows) fn-arena))
-                (row (fn-scka-intern-one w h)))
-           (if (eq row :bad)
-               :bad
-             (let ((rest (fn-scka-canon-rows (cdr rows) fn-arena
-                                             (if (fn-scka-sealsp w) (+ 1 h) h))))
-               (if (eq rest :bad)
-                   :bad
-                 (cons row rest))))))
-       :exec (fn-scka-canon-rows-rev rows fn-arena h nil)))
+  (fn-ssr-rows (fn-scka-canon-fold rows fn-arena h (fn-ssr-seed id))))
 
-(verify-guards fn-scka-intern-at)
-(verify-guards fn-scka-canon-rows-rev)
-(encapsulate ()
-  (local
-   (defthm fn-scka-canon-rows-rev-is-revappend
-     (equal (fn-scka-canon-rows-rev rows fn-arena h acc)
-            (let ((r (fn-scka-canon-rows rows fn-arena h)))
-              (if (eq r :bad) :bad (revappend acc r))))
-     :hints (("Goal" :in-theory (disable fn-row-wire-of fn-scka-intern-one fn-scka-sealsp)))))
-  (verify-guards fn-scka-canon-rows
-    :hints (("Goal" :in-theory (disable fn-row-wire-of fn-scka-intern-one fn-scka-sealsp)))))
+(defthm fn-scka-canon-fold-is-fold-of-alpha
+  (equal (fn-scka-canon-fold rows fn-arena h acc)
+         (fn-scka-fold-at acc (fn-rows-wire-of rows fn-arena) h))
+  :hints (("Goal" :induct (fn-scka-canon-fold rows fn-arena h acc)
+           :in-theory (disable fn-scka-intern-one fn-scka-sealsp fn-row-wire-of fn-ssr-publish
+                               fn-replay-identity-step fn-stxk-context-kind fn-ssr-at))))
 
 (defthm fn-scka-canon-rows-is-intern-at-of-alpha
-  (equal (fn-scka-canon-rows rows fn-arena h)
-         (fn-scka-intern-at (fn-rows-wire-of rows fn-arena) h))
-  :hints (("Goal" :induct (fn-scka-canon-rows rows fn-arena h)
-           :in-theory (disable fn-scka-intern-one fn-scka-sealsp fn-row-wire-of))))
+  (equal (fn-scka-canon-rows rows fn-arena h id)
+         (fn-scka-intern-at (fn-rows-wire-of rows fn-arena) id h))
+  :hints (("Goal" :in-theory (e/d (fn-scka-intern-at)
+                                  (fn-scka-fold-at fn-ssr-seed fn-ssr-rows fn-rows-wire-of)))))
 
 (defun fn-scka-canon-payloads (rows fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
