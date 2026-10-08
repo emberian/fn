@@ -232,7 +232,6 @@
                             (start 0)))
            :in-theory (e/d (fn-bpn-lifecycle-recovery)
                            (fn-bpn-lifecycle-recovery-from
-                            fn-bpn-host-lifecycle-recovery-from-agrees-with-the-replayed-machine
                             fn-bpn-host-lifecycle-recovery-agrees-p
                             fn-bpn-replay-records fn-bpn-machine-invariantp
                             fn-bpn-machine-state-next-token)))))

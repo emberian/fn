@@ -366,7 +366,7 @@
                 (natp (cdr (nth 4 x)))))
        (natp (nth 5 x))
        (natp (nth 6 x))
-       (true-listp (nth 7 x))
+       (fn-bpn-job-listp (nth 7 x))
        (natp (nth 8 x))))
 (verify-guards fn-bpnr-checkpointp)
 
@@ -472,6 +472,47 @@
                                            (fn-bpnr-checkpoint-prefix
                                             (fn-bpnr-enc ck budget))))))
                  (:instance fn-bpnr-dec-of-enc (x ck) (d budget) (rest nil))))))
+
+;; KEYSTONE (R3, damaged jobs fence).  A file whose payload is a nine-element
+;; checkpoint value X whose jobs are not a valid job list decodes to NIL, so
+;; recovery fences with the damaged-selection verdict instead of seeding a
+;; machine from them.  The file is built exactly as fn-bpnr-checkpoint-octets
+;; builds one, from the raw encoding of X (fn-bpnr-checkpoint-octets itself
+;; refuses such an X).
+(defthm fn-bpnr-checkpoint-decode-of-damaged-jobs-is-nil
+  (implies (and (fn-bpnr-enc x budget)
+                (<= (len (fn-bpnr-enc x budget)) *fn-bpc-max-uint*)
+                (not (fn-bpn-job-listp (nth 7 x))))
+           (equal (fn-bpnr-checkpoint-decode
+                   (append (fn-bpnr-checkpoint-prefix (fn-bpnr-enc x budget))
+                           (fn-frame-trailer
+                            (fn-bpnr-checkpoint-prefix (fn-bpnr-enc x budget))))
+                   budget)
+                  nil))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bpc-u64-bytes fn-bpnr-read-u64 fn-frame-split
+                               fn-bpnr-enc fn-bpnr-dec
+                               fn-frame-trailer)
+           :use ((:instance fn-frame-split-of-append
+                            (a *fn-bpnr-head*) (n 6)
+                            (b (append (fn-bpc-u64-bytes (len (fn-bpnr-enc x budget)))
+                                       (append (fn-bpnr-enc x budget)
+                                               (fn-frame-trailer
+                                                (fn-bpnr-checkpoint-prefix
+                                                 (fn-bpnr-enc x budget)))))))
+                 (:instance fn-frame-split-of-append
+                            (a (fn-bpnr-enc x budget))
+                            (n (len (fn-bpnr-enc x budget)))
+                            (b (fn-frame-trailer
+                                (fn-bpnr-checkpoint-prefix
+                                 (fn-bpnr-enc x budget)))))
+                 (:instance fn-bpnr-read-u64-of-append
+                            (n (len (fn-bpnr-enc x budget)))
+                            (rest (append (fn-bpnr-enc x budget)
+                                          (fn-frame-trailer
+                                           (fn-bpnr-checkpoint-prefix
+                                            (fn-bpnr-enc x budget))))))
+                 (:instance fn-bpnr-dec-of-enc (x x) (d budget) (rest nil))))))
 
 ; ---------------------------------------------------------------------------
 ; The generation namespace.  Generation 0 is the original lifecycle
