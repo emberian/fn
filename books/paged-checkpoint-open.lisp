@@ -422,6 +422,8 @@
 
 (defthm pcko-rw0-true-listp (true-listp (pcko-rw0 tree)))
 
+(in-theory (disable pcko-rw0))
+
 (defthm pcko-flat-fit
   (implies (and (true-listp w) (<= (len (adt-tp-pages w)) 8))
            (and (<= (len w) 16384)
@@ -482,7 +484,7 @@
   (implies (and (true-listp rw0) (<= (len rw0) 16384))
            (equal (nthcdr 16384 (append rw0 (adt-tp-zeros (- 16384 (len rw0))) rest)) rest))
   :hints (("Goal" :use ((:instance pck-nthcdr-root (r (append rw0 (adt-tp-zeros (- 16384 (len rw0))))) (c rest)))
-           :in-theory (disable pck-nthcdr-root))))
+           :in-theory (disable pck-nthcdr-root nthcdr (:executable-counterpart nthcdr) adt-tp-zeros (:executable-counterpart adt-tp-zeros)))))
 
 (defthm pcko-len-w-gen
   (implies (and (true-listp rw0) (<= (len rw0) 16384) (true-listp tw))
