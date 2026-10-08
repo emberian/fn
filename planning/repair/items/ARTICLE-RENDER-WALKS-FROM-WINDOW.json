@@ -2,11 +2,35 @@
  "file": "books/article-stream.lisp",
  "id": "ARTICLE-RENDER-WALKS-FROM-WINDOW",
  "note": "fix: the renderer asks for the span it needs (fn-pwr-span-at), with a theorem that the span renderer's result equals the per-byte renderer's (ownership checked once per span); then delete row21-span's below slot (host page-window span struct). Owner P when unparked, C until then.",
- "notes": [],
+ "notes": [
+  {
+   "author": "Codex p-xc-span",
+   "round": 1,
+   "status": "statements-only; awaiting S/P audit",
+   "statements": "tests/acl2/xcspan-statements.lisp (identical review copy /tmp/p7/xcspan-statements.lisp)",
+   "K1": [
+    "fn-xc-span-at-is-the-returned-bytes",
+    "fn-xc-span-at-answers-an-owed-hit",
+    "fn-xc-span-at-hit-touches-only-the-selected-slot"
+   ],
+   "K2": [
+    "fn-xc-held-token-has-one-slot",
+    "fn-xc-touch-preserves-token-disjointp",
+    "fn-xc-free-preserves-token-disjointp",
+    "fn-xc-yield-preserves-token-disjointp"
+   ],
+   "definitions": "10abd03db: fn-xc-span-at; fn-xc-token-apart-from; fn-xc-token-disjoint-from; fn-xc-token-disjointp. Admitted and guard-verified in persvati REPL, not certified.",
+   "host_export": "s-xc2 should call fn-xc-span-at(from, ledger, plan, file, eoff, elen, poff, plen, trailer, p, end, fn-xcs, fn-xcc, fn-ew-buffer, fn-ew-span), returning (mv word count slot fn-ew-span fn-xcs fn-xcc). Under the extent lock, select the backing plan/window first; pass from=selected slot to repeat the same lookup. :miss with a slot continues at slot+1; nil slot ends lookup. :span already touches the slot. No host/native changes in this lane.",
+   "ledger_scope": "The reference fn-pwr-byte-at uses the earlier returned-ledger/worker; the served composition uses the current cached ledger. Same selected plan and buffer are explicit arguments, not a claim about arbitrary host memory.",
+   "counterexample": "Ground-evaluated fn-xc-install-can-duplicate-a-charged-window and fn-xc-write-can-duplicate-a-charged-window: two live raw-window slots can both hold (:window 7 11 100 3 100 3 0 77). Install distinguishes c=0/c=1, while slot-token omits c. Well-formed/readyp alone does not imply uniqueness.",
+   "minimal_fix": "Round 2: before install writes, reject a nonnil proposed token held outside the selected victim, across all slots; retain ordinary :present behavior and use :refused on a charge conflict. Primitive write needs the corresponding absence-except-target precondition. Merely canonicalizing new fields does not cover an existing noncanonical well-formed table. No false unconditional preservation lemma proposed.",
+   "validation": "interface_emit regeneration: 0 findings at merge f563f1b18. Ground span gives count 2 and bytes 2,3; exclusive-end control misses. Nonempty two-distinct-token control passes. Exact no-hint defthm forms plus positive/removal/mutation sketches; new theorem proofs and gate deferred to round 2/deputy."
+  }
+ ],
  "owner": "C",
  "severity": "high",
  "source": "CONVERGE-2 row 21, coordinator 2026-10-07 15:40",
  "state": "open",
  "title": "The ARTICLE renderer walks the payload from octet 0 while the borrowed window is the payload's last one, so every octet below the window start asks the wrong question; row21-span's below slot memoizes that answer",
- "updated": "2026-10-07T18:20:18Z"
+ "updated": "2026-10-08T10:20:11Z"
 }
