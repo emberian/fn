@@ -18923,6 +18923,23 @@
           "name": "fn-prl-convert-growth-under-row-sum-invp"
         }
       ]
+    },
+    {
+      "id": "PRF-1357",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-step-is-reference-under-ocl-relation"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-ocfg-read-step-is-ocfg-read-step"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-scar-own-read-step-full-is-own-read-step-full"
+        }
+      ]
     }
   ]
 }

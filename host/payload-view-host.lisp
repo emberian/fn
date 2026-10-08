@@ -9,6 +9,7 @@
 (include-book "../books/snapshot-capture-lease")
 (include-book "../books/payload-view-arena")
 (include-book "recovery-payload-view-state")
+(include-book "../books/definterface")
 (defun fn-owner-payload-view-global (key state)
   (declare (xargs :stobjs state :mode :program))
   (if (f-boundp-global key state) (f-get-global key state) nil))
@@ -30,15 +31,22 @@
         (if (not (eq (car answer) :acquired)) (value answer)
           (let ((state (f-put-global 'fn-owner-payload-view (fn-omk-at 2 answer) state)))
             (value answer)))))))
+
+; Exact logical view declarations imported from producer 57b70ff2b.
+(definterface fn-owner-payload-view-acquire :class :program)
 (defun fn-owner-payload-view-live-p (token state)
   (declare (xargs :stobjs state :mode :program))
   (value (fn-pvl-livep token (fn-owner-payload-view-ledger state))))
+
+(definterface fn-owner-payload-view-live-p :class :program)
 (defun fn-owner-payload-view-release (token settlement state)
   (declare (xargs :stobjs state :mode :program))
   (let ((answer (fn-pvl-release (fn-owner-payload-view-ledger state) token settlement)))
     (if (not (eq (car answer) :released)) (value answer)
       (let ((state (f-put-global 'fn-owner-payload-view (fn-omk-at 2 answer) state)))
         (value answer)))))
+
+(definterface fn-owner-payload-view-release :class :program)
 ; Every current destructive native arena entry goes through this decision.
 ; Refusal returns the arena and ownership unchanged; no clear follows it.
 (defun fn-owner-payload-view-reset (fn-arena state)
@@ -55,9 +63,13 @@
                                       (fn-omk-at 2 recovery) state)))
             (mv nil answer fn-arena state)))))))
 
+(definterface fn-owner-payload-view-reset :class :program)
+
 (defun fn-owner-payload-view-owned-p (state)
   (declare (xargs :stobjs state :mode :program))
   (let ((recovery (fn-owner-recovery-payload-view-ledger state)))
     (value (if (or (fn-omk-at 2 (fn-owner-payload-view-ledger state))
                    (not (fn-rpv-ledgerp recovery))
                    (fn-rpv-ownedp recovery)) t nil))))
+
+(definterface fn-owner-payload-view-owned-p :class :program)

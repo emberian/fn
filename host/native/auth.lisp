@@ -61,27 +61,6 @@ Answers :accepted, or :refused (the old table stays) with the reason logged."
           (t (fnn-err "credential file reload: the owner rejected ACL2's table")
              :refused))))
 
-(defun fnn-native-auth-publish-bindings (service octets presentp max-credentials)
-  "Publish the credential file's login bindings into the owner's configuration.
-PKT-221: ACL2's fn-lb-sync-plan names the delta lists; each is staged and made
-durable through fnn-owner-live-reconfigure-locked, the one live path.  The
-caller holds the owner mutex.  Answers :accepted, or :refused before any
-record whose publication was refused (records published before it stand)."
-  (let ((plan (fnn-owner-core 'fn-owner-login-bindings-plan
-                              (fnn-core 'fn-native-auth-host-load-bindings
-                                        octets presentp max-credentials))))
-    (unless (and (consp plan) (eq (first plan) :ok) (listp (second plan)))
-      (fnn-err "login bindings refused: ~a" (and (consp plan) (second plan)))
-      (return-from fnn-native-auth-publish-bindings :refused))
-    (dolist (deltas (second plan) :accepted)
-      (unless (eq (fnn-owner-live-reconfigure-locked
-                   service
-                   (lambda (cid)
-                     (fnn-owner-result 'fn-ores-config-result-p
-                                       'fn-owner-reconfigure-deltas cid deltas)))
-                  :accepted)
-        (return-from fnn-native-auth-publish-bindings :refused)))))
-
 (defun fnn-native-auth-install (service path requiredp protected-onlyp
                                  tls-availablep max-credentials)
   "Load and install the exact ACL2-produced config before any connection opens.
@@ -101,11 +80,8 @@ MAX-CREDENTIALS is the store profile's max-credentials (D27, PRF-102)."
       ;; books/login-binding-live.lisp) before the listener opens.
       (setq *fnn-native-auth-live-path* path
             *fnn-native-auth-live-policy* (list requiredp protected-onlyp))
-      (unless (eq (fnn-quantum-control
-                   service nil
-                   (lambda ()
-                     (fnn-native-auth-publish-bindings service octets presentp
-                                                       max-credentials)))
+      (unless (eq (fnn-native-auth-publish-bindings service octets presentp
+                                                    max-credentials)
                   :accepted)
         (fnn-refuse "owner refused to publish the credential file's login bindings"))
       :accepted)))

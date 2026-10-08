@@ -24,39 +24,67 @@
   (declare (xargs :stobjs state :mode :program))
   (value (fn-cpa-rollover-proposal (f-get-global 'fn-store-sn state) fresh-id)))
 
+(definterface fn-store-checkpoint-rollover-proposal
+  :class ::program)
+
 (defun fn-store-checkpoint-clone-fence-name ()
   (declare (xargs :mode :program))
   *fn-cpa-clone-fence-name*)
+
+(definterface fn-store-checkpoint-clone-fence-name
+  :class ::program)
 
 (defun fn-store-checkpoint-clone-fence-read-bound ()
   (declare (xargs :mode :program))
   (fn-cpa-clone-fence-read-bound))
 
+(definterface fn-store-checkpoint-clone-fence-read-bound
+  :class ::program)
+
 (defun fn-store-checkpoint-clone-max-depth ()
   (declare (xargs :mode :program))
   (fn-cpa-clone-max-depth))
+
+(definterface fn-store-checkpoint-clone-max-depth
+  :class ::program)
 
 (defun fn-store-checkpoint-clone-max-entries ()
   (declare (xargs :mode :program))
   (fn-cpa-clone-max-entries))
 
+(definterface fn-store-checkpoint-clone-max-entries
+  :class ::program)
+
 (defun fn-store-checkpoint-clone-max-bytes ()
   (declare (xargs :mode :program))
   (fn-cpa-clone-max-bytes))
+
+(definterface fn-store-checkpoint-clone-max-bytes
+  :class ::program)
 
 (defun fn-store-checkpoint-clone-path-bound ()
   (declare (xargs :mode :program))
   (fn-cpa-clone-path-bound))
 
+(definterface fn-store-checkpoint-clone-path-bound
+  :class ::program)
+
 (defun fn-store-checkpoint-clone-input-pathp (path)
   (declare (xargs :mode :program))
   (fn-cpa-clone-input-pathp path))
+
+(definterface fn-store-checkpoint-clone-input-pathp
+  :class ::program)
 
 (defun fn-store-checkpoint-clone-phase (marker-octets state)
   (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp marker-octets)))
   (value (fn-cpa-clone-phase-of-octets
           (f-get-global 'fn-store-sn state) marker-octets)))
+
+(definterface fn-store-checkpoint-clone-phase
+  :class ::program
+  :kinds ((marker-octets fn-cbor-octet-listp)))
 
 ;; `operator CONFIG store reclaim [--dry-run]' over the record log
 ;; (host/native/checkpoint.lisp `fnn-log-reclaim-steps'): the host folds
@@ -82,6 +110,9 @@
     (value (fn-xpy-ctx rule now (f-get-global 'fn-store-sn state)
                        (fn-cfg-value (f-get-global 'fn-store-cfg state)) fn-arena))))
 
+(definterface fn-store-reclaim-context
+  :class ::program)
+
 ;; The classes the verb reports before it rewrites (books/expiry.lisp
 ;; fn-xpy-ctx-classes, KEYSTONE fn-xpy-classes-partition-the-articles):
 ;; (reclaimable expired held reclaimed signed kept) over the context.
@@ -89,14 +120,24 @@
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (value (fn-xpy-ctx-classes ctx fn-arena)))
 
+(definterface fn-store-reclaim-ctx-classes
+  :class ::program)
+
 (defun fn-store-reclaim-init ()
   (declare (xargs :mode :program))
   (fn-rcls-init))
+
+(definterface fn-store-reclaim-init
+  :class ::program)
 
 (defun fn-store-reclaim-step (acc octets ctx)
   (declare (xargs :mode :program
                   :guard (fn-cbor-octet-listp octets)))
   (fn-rcls-step acc octets ctx))
+
+(definterface fn-store-reclaim-step
+  :class ::program
+  :kinds ((octets fn-cbor-octet-listp)))
 
 ;; The streamed reclaim over the record log (books/store-log-reclaim.lisp
 ;; fn-lgr-decide-stream, over compact-arena's fold fn-rcls-*): one record's
@@ -106,10 +147,17 @@
                   :guard (fn-cbor-octet-listp octets)))
   (fn-rclp-event octets ctx))
 
+(definterface fn-store-log-reclaim-event
+  :class ::program
+  :kinds ((octets fn-cbor-octet-listp)))
+
 (defun fn-store-log-reclaim-decide-stream (profile clock acc dry fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (mv-let (rule now) (fn-store-reclaim-rule-and-stamp clock state)
     (value (fn-lgr-decide-stream profile rule now (f-get-global 'fn-store-sn state) acc dry fn-arena))))
+
+(definterface fn-store-log-reclaim-decide-stream
+  :class ::program)
 
 ;; The reclaim's instant, recorded (books/reclaim-instant.lisp, PKT-857):
 ;; before a reclaim rewrites anything, the host publishes the configuration
@@ -130,6 +178,9 @@
       (let ((state (f-put-global 'fn-store-cfg-last-reason :reclaim-instant state)))
         (value :refused)))))
 
+(definterface fn-store-reclaim-instant-record
+  :class ::program)
+
 ;; `store reclaim --recorded': the context and the decision from the
 ;; configuration the store opened with -- its rule and its recorded instant
 ;; (fn-rci-context, fn-rci-decide-stream; refused :no-recorded-instant when no
@@ -141,7 +192,13 @@
   (value (fn-xpy-rci-context (fn-cfg-value (f-get-global 'fn-store-cfg state))
                              (f-get-global 'fn-store-sn state) fn-arena)))
 
+(definterface fn-store-reclaim-context-recorded
+  :class ::program)
+
 (defun fn-store-log-reclaim-decide-recorded (profile acc dry fn-arena state)
   (declare (xargs :stobjs (fn-arena state) :mode :program))
   (value (fn-rci-decide-stream profile (fn-cfg-value (f-get-global 'fn-store-cfg state))
                                (f-get-global 'fn-store-sn state) acc dry fn-arena)))
+
+(definterface fn-store-log-reclaim-decide-recorded
+  :class ::program)

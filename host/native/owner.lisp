@@ -1196,12 +1196,19 @@ books/owner-feed-article.lisp fn-ofa-feed-article).  It seals nothing."
       (setf (fnn-owner-feed-journal-fd journal) nil)
       (fnn-close fd))))
 
-(defun fnn-owner-feed-open (store peer)
-  "Open, replay and repair one FNFD file through the ACL2 scanner."
-  (let ((fd nil) (journal nil))
+(defun fnn-owner-feed-open (store peer prefix-size)
+  "Open, scan and repair one FNFD file: all of its I/O and none of the
+owner's state, so it runs off the owner mutex.  PREFIX-SIZE is ACL2's
+(fn-owner-feed-journal-prefix-size), read by the caller under the owner.  The
+scan is ACL2's pure fn-feed-journal-scan over each prefix and frame read; the
+offset it answers is passed back to it and is the only truncate authority.
+Answers (values JOURNAL ENTRIES OFFSET): the open journal, the replay entries
+in file order and the safe offset after the last of them.  The owner applies
+the entries (fnn-owner-feed-replay)."
+  (let ((fd nil) (journal nil) (entries nil) (offset 0)
+        (peer-octets (fnn-octet-list (fnn-string-octets peer))))
     (handler-case
         (multiple-value-bind (directory path) (fnn-owner-feed-path store peer)
-          (progn
           (setq fd (fnn-open path (logior sb-posix:o-rdwr sb-posix:o-creat
                                           +fnn-o-nofollow+) #o600))
           (unless (fnn-regular-p (fnn-fstat fd))
@@ -1209,33 +1216,27 @@ books/owner-feed-article.lisp fn-ofa-feed-article).  It seals nothing."
           (setq journal (%make-fnn-owner-feed-journal
                          :peer peer :path path :fd fd :phase :closed))
           (fnn-owner-feed-phase journal :opened)
-          (unless (eq (fnn-owner-action 'fn-owner-feed-journal-begin) :ok)
-            (fnn-fault "owner refused FNFD scan start"))
-          (let ((prefix-size
-                  (fnn-nat (fnn-owner-core 'fn-owner-feed-journal-prefix-size))))
-            (loop
-              (let* ((prefix (fnn-owner-feed-read journal prefix-size))
-                     (plan (fnn-core 'fn-feed-journal-prefix
-                                     (fnn-octet-list prefix)))
-                     (frame (if (and (integerp plan) (>= plan 0))
-                                (fnn-owner-feed-read journal plan)
-                              (fnn-make-octets 0)))
-                     (status
-                       (fnn-owner-action
-                        'fn-owner-feed-journal-scan
-                        (fnn-octet-list (fnn-string-octets peer))
-                        (fnn-octet-list prefix) (fnn-octet-list frame))))
+          (loop
+            (let* ((prefix (fnn-owner-feed-read journal prefix-size))
+                   (plan (fnn-core 'fn-feed-journal-prefix
+                                   (fnn-octet-list prefix)))
+                   (frame (if (and (integerp plan) (>= plan 0))
+                              (fnn-owner-feed-read journal plan)
+                            (fnn-make-octets 0)))
+                   (result (fnn-core 'fn-feed-journal-scan
+                                     peer-octets (fnn-octet-list prefix)
+                                     (fnn-octet-list frame) offset)))
+              (destructuring-bind (status safe-offset entry) result
+                (setq offset (fnn-nat safe-offset))
                 (case status
-                  (:next (incf (fnn-owner-feed-journal-replayed journal)))
+                  (:next (incf (fnn-owner-feed-journal-replayed journal))
+                         (push entry entries))
                   (:invalid
                    (fnn-fault "invalid complete FNFD evidence: ~a" path))
                   ((:end :repair)
                    (fnn-owner-feed-phase journal status)
                    (when (eq status :repair)
-                     (fnn-posix (path)
-                       (sb-posix:ftruncate
-                        fd (fnn-nat
-                            (fnn-owner-core 'fn-owner-feed-journal-offset))))
+                     (fnn-posix (path) (sb-posix:ftruncate fd offset))
                      (fnn-owner-feed-phase journal :truncated))
                    (return))
                   (t (fnn-fault "unexpected FNFD scan result: ~a" status))))))
@@ -1243,10 +1244,32 @@ books/owner-feed-article.lisp fn-ofa-feed-article).  It seals nothing."
           (fnn-owner-feed-phase journal :content-durable)
           (fnn-owner-feed-sync-namespace store directory journal)
           (fnn-posix (path) (sb-posix:lseek fd 0 sb-posix:seek-end))
-          journal))
+          (values journal (nreverse entries) offset))
       (error (e)
         (when fd (ignore-errors (fnn-close fd)))
         (error e)))))
+
+(defun fnn-owner-feed-replay (peer entries offset)
+  "Under the owner: apply the entries a journal's scan returned and its safe
+offset (ACL2's fn-owner-feed-journal-replay)."
+  (unless (eq (fnn-owner-action 'fn-owner-feed-journal-replay
+                                (fnn-octet-list (fnn-string-octets peer))
+                                entries offset)
+              :ok)
+    (fnn-fault "owner refused the FNFD replay of ~a" peer)))
+
+(defun fnn-owner-feed-open-at-start (store peer)
+  "Open, replay and repair one FNFD file through the ACL2 scanner, at the
+start (no client yet): fnn-owner-feed-open, then the owner's replay.  A live
+reconfiguration runs the two in separate quanta (fnn-owner-live-reconfigure)."
+  (multiple-value-bind (journal entries offset)
+      (fnn-owner-feed-open
+       store peer (fnn-nat (fnn-owner-core 'fn-owner-feed-journal-prefix-size)))
+    (handler-case (fnn-owner-feed-replay peer entries offset)
+      (error (e)
+        (ignore-errors (fnn-owner-feed-close journal))
+        (error e)))
+    journal))
 
 (defun fnn-owner-feed-append (journal frame)
   "Append one ACL2-sealed frame and cross every ordered durability barrier.
@@ -1429,7 +1452,7 @@ directories because one encoded label can be a prefix of a longer label.
     (handler-case
         (progn
           (dolist (peer (remove-duplicates peers :test #'string= :from-end t))
-            (push (cons peer (fnn-owner-feed-open store peer)) opened))
+            (push (cons peer (fnn-owner-feed-open-at-start store peer)) opened))
           (nreverse opened))
       (error (e)
         (fnn-owner-feed-close-entries opened)
@@ -1442,34 +1465,24 @@ directories because one encoded label can be a prefix of a longer label.
     (setf (fnn-owner-service-feeds service) nil)
     (when failure (error failure))))
 
-(defun fnn-owner-feed-open-missing (service configured)
-  "Install journals for newly configured feeds before they can enqueue.
+(defun fnn-owner-feed-configured-missing (service)
+  "Apply ACL2's live configuration to the feeds and name the journals to
+provision: the peers the configuration names (FN-OWNER-FEED-CONFIGURE is the
+sole peer membership decision) that no open journal serves.  Under the owner
+mutex, immediately after a durable configuration completion.  Historical
+journals remain open until owner shutdown because replayed obligations may
+still name a peer removed from the current configuration."
+  (let* ((configured (fnn-owner-names 'fn-owner-feed-configure))
+         (known (mapcar #'car (fnn-owner-service-feeds service))))
+    (loop for peer in configured
+          unless (member peer known :test #'string=)
+            collect peer)))
 
-Historical journals remain open until owner shutdown because replayed
-obligations may still name a peer removed from the current configuration."
-  (let* ((current (fnn-owner-service-feeds service))
-         (known (mapcar #'car current))
-         (missing (loop for peer in configured
-                        unless (member peer known :test #'string=)
-                        collect peer))
-         (opened nil))
-    (handler-case
-        (progn
-          (dolist (peer missing)
-            (push (cons peer (fnn-owner-feed-open
-                              (fnn-owner-service-store service) peer)) opened))
-          (setf (fnn-owner-service-feeds service)
-                (append current (nreverse opened))))
-      (error (e)
-        (fnn-owner-feed-close-entries opened)
-        (error e)))))
-
-(defun fnn-owner-feed-refresh-configuration (service)
-  "Apply ACL2's live configuration to feeds and provision its journals.
-
-Call while holding the owner mutex immediately after a durable configuration
-completion.  FN-OWNER-FEED-CONFIGURE is the sole peer membership decision."
-  (fnn-owner-feed-open-missing service (fnn-owner-names 'fn-owner-feed-configure)))
+(defun fnn-owner-feed-install (service opened)
+  "Under the owner mutex: the journals of OPENED, (PEER . JOURNAL) in order,
+join the service's feeds before anything can enqueue to them."
+  (setf (fnn-owner-service-feeds service)
+        (append (fnn-owner-service-feeds service) opened)))
 
 (defun fnn-owner-feed-flush (service publication)
   "Persist PUBLICATION's sealed frame plan before its authorized effect.
@@ -2354,6 +2367,22 @@ recognise is a host fault."
 (defun fnn-ms-since (started)
   (round (* 1000 (- (get-internal-real-time) started)) internal-time-units-per-second))
 
+(defun fnn-owner-reconfig-hold (service entry)
+  "A live reconfiguration's hold on the gate (books/owner-time-reconfig.lisp):
+ENTRY is :begin (fn-otm-hold-begin), taken in the quantum that leaves the owner for
+its first window (:held, or :busy and nothing changed), or :end (fn-otm-hold-end), in
+the quantum whose step answered :done (:released).  Answers ACL2's word."
+  (let ((gate (fnn-owner-service-gate service)))
+    (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
+      (destructuring-bind (word sched)
+          (ecase entry
+            (:begin (fnn-call 'fn-otm-hold-begin (fnn-owner-gate-sched gate)))
+            (:end (fnn-call 'fn-otm-hold-end (fnn-owner-gate-sched gate))))
+        (unless (member word '(:held :busy :released :fault))
+          (fnn-fault "owner returned a malformed reconfiguration hold word ~a" word))
+        (setf (fnn-owner-gate-sched gate) sched)
+        word))))
+
 (defun fnn-owner-gate-pick (gate)
   "The owner is free and nobody was admitted: ask ACL2 which class runs
 (nil when no class waits).  The caller holds the gate mutex."
@@ -2363,8 +2392,11 @@ recognise is a host fault."
       ;; books/owner-commit-steps.lisp: the phase of the commit in flight is
       ;; part of ACL2's value; the six counts are the host's observation.
       ;; books/owner-time-model.lisp: the value also carries the disk's
-      ;; state; the pick is the pipeline's (fn-otm-next-is-ocp-next).
-      (fnn-call 'fn-otm-next (fnn-owner-gate-sched gate)
+      ;; state; the pick is the pipeline's (fn-otm-next-is-ocp-next), and
+      ;; under a live reconfiguration's hold the in-flight pick
+      ;; (books/owner-time-reconfig.lisp fn-otm-hold-next, equal to
+      ;; fn-otm-next outside the hold).
+      (fnn-call 'fn-otm-hold-next (fnn-owner-gate-sched gate)
                 (coerce (fnn-owner-gate-waiting gate) 'list))
     (setf (fnn-owner-gate-sched gate) sched
           (fnn-owner-gate-turn gate) (and class (fnn-owner-class-index class)))
@@ -2566,7 +2598,7 @@ posture, so IHAVE is answered 436 and CHECK 431 at once), else :transit
 (which waits for a batch in flight).  Appends nothing: the committer's timed
 wakes append the clock events that move the disk past its deadline."
   (let ((class (let ((gate (fnn-owner-service-gate service)))
-                 ;; Under the gate mutex, as fnn-owner-gate-pick's fn-otm-next.
+                 ;; Under the gate mutex, as fnn-owner-gate-pick's fn-otm-hold-next.
                  (sb-thread:with-mutex ((fnn-owner-gate-mutex gate))
                    (fnn-core 'fn-otm-peer-read-class (fnn-owner-gate-sched gate))))))
     (unless (member class '(:reader :transit))
@@ -2800,11 +2832,12 @@ stops the load (the image is not built)."
 
 (def-section fnn-quantum-control
   :actors (:control :command)
-  :classes (:control :inspect :poster)
+  :classes (:control :inspect :poster :commit)
   :admits :live
   :doc "A quantum of a request on the local control socket (or of the
 startup command that installs the same configuration): the control verbs,
-their inspections (:inspect) and a submission (:poster).")
+their inspections (:inspect) and a submission (:poster).  :commit is a live
+reconfiguration's re-entry under the gate's hold (fnn-owner-live-reconfigure).")
 
 (def-section fnn-quantum-command
   :actors (:command)
@@ -2818,7 +2851,8 @@ their inspections (:inspect) and a submission (:poster).")
   :classes (:transit :control :commit)
   :admits :live
   :doc "A quantum of the BP node: an application's delivery or receipt
-(:transit) and its control requests' reconfiguration (:control).  :commit is
+(:transit) and its control requests' reconfiguration (:control; its re-entry
+under the gate's hold is :commit, fnn-owner-live-reconfigure).  :commit is also
 the held caller's second quantum (fnn-owner-held-commit): the COMPLETE of the
 batch it waited for, then its own submission.")
 
@@ -5949,12 +5983,7 @@ waits."
   (let ((class (fnn-core 'fn-ocs-publication-class)))
     (unless (eq class :control)
       (fnn-fault "owner returned a malformed publication class ~a" class))
-    (fnn-owner-serialized
-     service cid
-     (lambda ()
-       (and (fnn-owner-core 'fn-acct-host-owner-redeem-waitingp cid)
-            (fnn-octet-list (fnn-owner-account-redeem service cid))))
-     class)))
+    (fnn-owner-account-redeem service cid class)))
 
 (defun fnn-owner-handle-chunk (service cid incoming &optional socket (class :reader) peerp)
   "One served read (fnn-owner-handle-chunk-read, a quantum of CLASS) and,

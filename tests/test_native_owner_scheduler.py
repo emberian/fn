@@ -62,7 +62,9 @@ class SchedulerSourceTests(unittest.TestCase):
         # and fold are fn-ocp-next / fn-ocp-observe, which are fn-ocs-next's
         # (fn-ocp-next-is-ocs-next; fn-ocm-next's pick outside a batch,
         # fn-osch-next's for the four classes: PRF-267, PRF-248).
-        self.assertIn("'fn-otm-next", owner)
+        # (the pick is fn-otm-hold-next, which is fn-otm-next outside a live
+        # reconfiguration's hold: fn-otm-hold-next-without-the-hold-is-next)
+        self.assertIn("'fn-otm-hold-next", owner)
         self.assertIn("'fn-otm-observe", owner)
         # The committer's pipeline: START (it seals) as a :commit quantum, the
         # SYNC in the syncer thread with the owner released, at most one
@@ -759,8 +761,7 @@ class SchedulerNativeTests(unittest.TestCase):
     def test_the_a6_campaign_keeps_accepted_history_through_one_integrated_scenario(self):
         # Row A6, GPT-6's integrated campaign (planning/review-2026-09-28-gpt6.md),
         # in ONE scenario on the developer image: every completion delayed at
-        # its barrier (0.6 s), the extent cache off (every payload read cold:
-        # cache pressure), an OLD reader pinned before new writes, a snapshot
+        # its barrier (0.6 s), an OLD reader pinned before new writes, a snapshot
         # (the checkpoint publication, which reads the live arena off the
         # mutex under its generation pin, books/arena-reader-pins.lisp) racing
         # the old reader's reads, then a crash (SIGKILL) with one completion
@@ -770,7 +771,11 @@ class SchedulerNativeTests(unittest.TestCase):
         # during the snapshot); the article whose completion the crash cut is
         # all there or not there -- never a damaged body.
         self.reap(self.owner)
-        env = {"FN_NATIVE_OWNER_TEST_BARRIER_MS": "600", "FN_NATIVE_EXTENT_CACHE_TEST_OFF": "1"}
+        # The extent cache stays on: with it off ACL2 refuses every cold
+        # read (fn-pxe-cache-mode) and defers the checkpoint publication
+        # (fn-orln-cache-off-walk-defers-the-publication), so the snapshot
+        # this scenario waits for could not exist.
+        env = {"FN_NATIVE_OWNER_TEST_BARRIER_MS": "600"}
         self.owner = self.start_owner(env, image=DEVELOPER)
         bodies = {}
 

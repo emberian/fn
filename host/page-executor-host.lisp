@@ -12,12 +12,18 @@
     (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
       (mv word worker1 fn-page-read-pool))))
 
+(definterface fn-owner-page-executor-acquire :class :common-lisp-compliant
+  :keystones ((fn-pxe-acquired-token-cannot-own-a-second-worker :via fn-pxe-acquire)))
+
 (defun fn-owner-page-executor-commit (worker io token cachedp fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool))
   (mv-let (word worker1 ledger)
     (fn-pxe-commit worker io token (fn-owner-page-read-ledger fn-page-read-pool) cachedp)
     (let ((fn-page-read-pool (fn-owner-page-read-keep-ledger ledger fn-page-read-pool)))
       (mv word worker1 fn-page-read-pool))))
+
+(definterface fn-owner-page-executor-commit :class :common-lisp-compliant
+  :keystones ((fn-pxe-commit-requires-returned-settled-exact-job :via fn-pxe-commit)))
 
 ; Representation boundaries, not keystones: exact answers and pool effects.
 ; Open only the adapter and multiple-value projections.  Expanding the ledger

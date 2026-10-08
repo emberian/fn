@@ -399,6 +399,7 @@
   "fnn-connection-scoped",
   "fnn-log-sealed-effect",
   "fnn-section-envelope",
+  "fnn-owner-live-reconfigure",
   "fnn-owner-held-commit",
   "fnn-with-observed-owner",
   "fnn-native-with-observation",
@@ -862,6 +863,10 @@
   "fnn-csp-worker-loop": {
    "scope": "result",
    "why": "the spool worker's condition is its RESULT: the loop stores it (catchup-spool.lisp:62, 68) and fnn-csp-worker-take re-signals any condition that is not an fnn-os-error as fnn-fault on the taking thread (catchup-spool.lisp:128-142), while an fnn-os-error stays the per-peer status :error ACL2 decides on"
+  },
+  "fnn-rc-window": {
+   "scope": "result",
+   "why": "ruling 19 (host/native/admin.lisp fnn-owner-live-reconfigure): a condition a window of a live reconfiguration meets is the window's RESULT: fnn-rc-classify keeps it with the word ACL2's fn-orp-step takes (:uncertain, :refused or :fault), and the :fence or :fault effect the step answers re-signals it under the owner (fnn-rc-resignal, in a quantum of the caller's section), where the section's one boundary classifies it by its class and the publication step the window left"
   },
   "fnn-extent-executor-job": {
    "scope": "result",

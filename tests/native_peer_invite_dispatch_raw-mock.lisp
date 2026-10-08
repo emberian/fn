@@ -84,7 +84,6 @@
 (defun fnn-err (&rest args) (declare (ignore args)))
 (defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defun fnn-owner-identity-commit (&rest args) (declare (ignore args)) (error "not reached"))
-(defun fnn-owner-live-reconfigure-locked (&rest args) (declare (ignore args)) (error "not reached"))
 
 (dolist (name '("fnn-pinv-observe" "fnn-pinv-refused" "fnn-pinv-owner-issue"
                 "fnn-pinv-owner-accept" "fnn-pinv-owner-enrol-confirmed"
