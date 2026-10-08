@@ -43,3 +43,27 @@
 (assert-event (equal (oth-a (oth-s *oth-s1* :failed)
                                                   :completed)
                      :none))
+
+; fn-otm-held-quantum-2-answers-the-held-outcome: the host's quantum-2
+; sequence (word, then :completed or :completed-stopping, then the caller's
+; answer) on the batch quantum 1 held.
+(defun oth-q2 (s word stopping)
+  (declare (xargs :guard t))
+  (mv-let (step s2) (fn-otm-held-event s word)
+    (mv-let (a s3) (fn-otm-held-event s2 (if (and (equal step :complete) stopping)
+                                              :completed-stopping
+                                            :completed))
+      (declare (ignore s3))
+      (fn-och-caller-answer a))))
+(assert-event (equal (oth-q2 *oth-s1* :fenced nil) :submitted))
+(assert-event (equal (oth-q2 *oth-s1* :fenced t) :stopping))
+(assert-event (equal (oth-q2 *oth-s1* :failed nil) :stopping))
+(assert-event (equal (oth-q2 *oth-s1* :fenced nil) (fn-och-held-outcome :done nil)))
+; Teeth: drop the held hypothesis.  The same :staged value without the slot
+; is the committer's batch: :fenced completes it, but :completed answers
+; :none, so the caller is told :stopping, not the held outcome :submitted.
+(defconst *oth-unheld* (fn-otm-with-step (fn-otm-init) :staged nil nil))
+(assert-event (and (not (fn-otm-held *oth-unheld*))
+                   (equal (fn-otm-phase-of *oth-unheld*) :staged)))
+(assert-event (equal (oth-q2 *oth-unheld* :fenced nil) :stopping))
+(assert-event (not (equal (oth-q2 *oth-unheld* :fenced nil) (fn-och-held-outcome :done nil))))
