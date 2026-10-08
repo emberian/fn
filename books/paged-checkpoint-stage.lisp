@@ -44,6 +44,8 @@
 
 (in-package "ACL2")
 (include-book "paged-checkpoint-exec")
+(include-book "paged-checkpoint-context")
+(include-book "paged-checkpoint-tail")
 (include-book "pagestore-exec")
 (include-book "pagestore-refine")
 (local (include-book "arithmetic/top" :dir :system))
@@ -98,13 +100,17 @@
   (pck-ssr1 st (fn-row-wire-of row fn-arena)))
 
 (defun fn-pck-x-stage-rows (rows p base st fn-arena fn-octets pgs-mem)
-  ; (mv VERDICT fn-octets pgs-mem): the rows' words from tape position P on,
+  ; (mv VERDICT fn-octets pgs-mem CNT PLEN CONTEXT TAIL). No prefix rows
+  ; are retained by the returned context. The rows' words from tape position P on,
   ; the first row's payload frame at BASE in the payload file, frames end to end.
+  ; fn-row-wire-of is used only per delta row: at most LEN(ROWS) rows
+  ; materialize, with payload work bounded by their total payload bytes.
+  ; No prefix row is materialized; TAIL reads at most 2047 resident words.
   (declare (xargs :stobjs (fn-arena fn-octets pgs-mem) :verify-guards nil
                   :guard (and (natp p) (natp base)
                               (fn-pck-sccb-listp (fn-rows-wire-of rows fn-arena) st))))
   (if (atom rows)
-      (mv :ok fn-octets pgs-mem)
+      (mv :ok fn-octets pgs-mem p base (fn-pck-context st) (fn-pck-x-tail p pgs-mem))
     (let* ((fn-octets (fn-pck-x-encode-row (car rows) fn-arena st fn-octets))
            (nw (fn-pck-x-row-words (fn-octets-len fn-octets)))
            (tl (fn-pck-x-tl (car rows) fn-arena base)))
@@ -115,7 +121,7 @@
                                  (+ base (fn-cpl-frame-octets (fn-pck-x-payload-len (car rows) fn-arena)))
                                  (fn-pck-x-st-next (car rows) fn-arena st)
                                  fn-arena fn-octets pgs-mem)
-          (mv v fn-octets pgs-mem))))))
+          (mv v fn-octets pgs-mem p base (fn-pck-context st) nil))))))
 
 ; -----------------------------------------------------------------------------
 ; Proof.
@@ -459,12 +465,12 @@
                                                (+ base (fn-cpl-frame-octets (fn-pck-x-payload-len (car rows) fn-arena)))
                                                (fn-pck-x-st-next (car rows) fn-arena st)
                                                fn-arena fn-octets pgs-mem)
-                        (mv v fn-octets pgs-mem))))))
+                        (mv v fn-octets pgs-mem p base (fn-pck-context st) nil))))))
   :hints (("Goal" :expand ((fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)))))
 
 (defthm pcks-stage-done
   (implies (atom rows)
-           (equal (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem) (mv :ok fn-octets pgs-mem)))
+           (equal (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem) (mv :ok fn-octets pgs-mem p base (fn-pck-context st) (fn-pck-x-tail p pgs-mem))))
   :hints (("Goal" :expand ((fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)))))
 
 (defthm pcks-len-dlo-list (equal (len (pcks-dlo-list ws)) (len ws)))
@@ -1004,3 +1010,168 @@
            :in-theory (e/d (fn-pck-x-st-next fn-pck-x-tl fn-pck-sccb-listp fn-rows-wire-of)
                            (fn-pck-meta fn-row-wire-of pck-ssr1 fn-pck-x-encode-row
                             fn-pck-x-row-words fn-cpl-trailer-words-impl)))))
+
+(defthm pcks-stage-context
+  (implies (equal (mv-nth 0 (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)) :ok)
+           (equal (mv-nth 5 (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem))
+                  (fn-pck-context (fn-pck-st-of st (fn-rows-wire-of rows fn-arena)))))
+  :hints (("Goal" :induct (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)
+           :in-theory (union-theories
+                        '(fn-pck-x-stage-rows fn-pck-x-st-next fn-rows-wire-of
+                          fn-pck-st-of mv-nth car-cons cdr-cons
+                          (:executable-counterpart zp) (:executable-counterpart binary-+))
+                        (theory 'minimal-theory)))))
+
+(defthm pcks-stage-plen
+  (implies (equal (mv-nth 0 (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)) :ok)
+           (equal (mv-nth 4 (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem))
+                  (fn-pck-plen (fn-rows-wire-of rows fn-arena) base)))
+  :hints (("Goal" :induct (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)
+           :in-theory (union-theories
+                        '(fn-pck-x-stage-rows fn-pck-x-payload-len fn-rows-wire-of
+                          fn-pck-plen mv-nth car-cons cdr-cons
+                          (:executable-counterpart zp) (:executable-counterpart binary-+))
+                        (theory 'minimal-theory)))))
+
+(defthm pcks-stage-cursor
+  (implies (and (natp p)
+                (fn-pck-sccb-listp (fn-rows-wire-of rows fn-arena) st)
+                (equal (mv-nth 0 (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)) :ok))
+           (equal (mv-nth 3 (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem))
+                  (+ p (pcks-wlen rows fn-arena st))))
+  :hints (("Goal" :induct (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)
+           :in-theory (union-theories
+                        '(fn-pck-x-stage-rows fn-pck-x-st-next fn-rows-wire-of
+                          fn-pck-sccb-listp pcks-wlen pcks-octets-len-of-encode-row
+                          (:type-prescription fn-pck-x-row-words)
+                          mv-nth car-cons cdr-cons natp fix
+                          associativity-of-+ commutativity-of-+ unicity-of-0
+                          (:executable-counterpart zp) (:executable-counterpart binary-+))
+                        (theory 'minimal-theory)))))
+
+(defthm pcks-context-encode-row
+  (implies (fn-pck-context-agreep a b)
+           (equal (fn-pck-x-encode-row row fn-arena a fn-octets)
+                  (fn-pck-x-encode-row row fn-arena b fn-octets)))
+  :hints (("Goal" :use (:instance fn-pck-context-meta-congruence
+                                  (w (fn-row-wire-of row fn-arena)))
+           :in-theory (union-theories '(fn-pck-x-encode-row) (theory 'minimal-theory)))))
+
+(local
+ (defun-nx pcks-context-ind (rows p base a b arena oct mem)
+  (if (atom rows) nil
+    (let* ((buf (fn-pck-x-encode-row (car rows) arena a oct))
+           (nw (fn-pck-x-row-words (fn-octets-len buf)))
+           (r (fn-pck-x-put-row 0 nw p (fn-pck-x-tl (car rows) arena base) buf mem)))
+      (if (equal (mv-nth 0 r) :ok)
+          (pcks-context-ind (cdr rows) (+ p nw)
+                             (+ base (fn-cpl-frame-octets (fn-pck-x-payload-len (car rows) arena)))
+                             (fn-pck-x-st-next (car rows) arena a)
+                             (fn-pck-x-st-next (car rows) arena b)
+                             arena buf (mv-nth 1 r))
+        nil)))))
+
+(defthm pcks-context-value
+  (implies (fn-pck-context-agreep a b)
+           (equal (fn-pck-context a) (fn-pck-context b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pck-context-agreep))))
+
+(defthm fn-pck-x-stage-context-congruence
+  (implies (fn-pck-context-agreep a b)
+           (equal (fn-pck-x-stage-rows rows p base a fn-arena fn-octets pgs-mem)
+                  (fn-pck-x-stage-rows rows p base b fn-arena fn-octets pgs-mem)))
+  :hints (("Goal" :induct (pcks-context-ind rows p base a b fn-arena fn-octets pgs-mem)
+           :expand ((fn-pck-x-stage-rows rows p base a fn-arena fn-octets pgs-mem)
+                    (fn-pck-x-stage-rows rows p base b fn-arena fn-octets pgs-mem))
+           :in-theory (union-theories
+                        '(pcks-context-ind fn-pck-x-stage-rows fn-pck-x-st-next
+                          pcks-context-encode-row fn-pck-context-agree-step
+                          mv-nth car-cons cdr-cons
+                          (:executable-counterpart zp) (:executable-counterpart binary-+))
+                        (theory 'minimal-theory)))
+          ("Subgoal *1/3" :use ((:instance pcks-context-encode-row (row (car rows)))
+                  pcks-context-value
+                  (:instance fn-pck-context-agree-step (w (fn-row-wire-of (car rows) fn-arena)))))
+          ("Subgoal *1/2" :use ((:instance pcks-context-encode-row (row (car rows)))
+                  pcks-context-value
+                  (:instance fn-pck-context-agree-step (w (fn-row-wire-of (car rows) fn-arena)))))
+          ("Subgoal *1/1" :use pcks-context-value)))
+
+(defthm fn-pck-x-context-stage-is-the-dirty
+  ; Staging the delta's rows from P = the prefix's word count, their payload
+  ; frames laid end to end from BASE = the prefix's payload-file length, writes
+  ; exactly the tape part of the model's dirty set: the pages the commit will
+  ; digest hold the words `fn-pck-dirty' names.
+  (let* ((delta (fn-rows-wire-of rows fn-arena))
+         (pw (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix)))
+         (w (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from delta base st)))
+         (tape (pck-shift *fn-pck-root-pages*
+                          (fn-pck-row-extend-dirty (fn-pck-rows prefix) (fn-pck-rows-from delta base st))))
+         (lp (pgs-dirty-lpages tape)))
+    (implies (and (equal cnt (len pw))
+                  (equal tail (nthcdr (* *pgs-page-words* (floor (len pw) *pgs-page-words*)) pw))
+                  (equal base (fn-pck-plen prefix 0))
+                  (fn-pck-context-agreep st (fn-pck-st-of (fn-pck-seed) prefix))
+                  (fn-pck-sccb-listp delta st)
+                  (fn-pck-plen-okp (append prefix delta))
+                  (adt-tp-seq-lens-ok *fn-pck-row-schema* (fn-pck-rows-from delta base st))
+                  (pcks-res cnt (+ cnt (len w)) pgs-mem)
+                  (equal (pgs-x-abs-dirty lp pgs-mem)
+                         (pck-shift 8 (adt-tp-dirty-at cnt tail (adt-tp-zeros (len w))))))
+             (and (equal (mv-nth 0 (fn-pck-x-stage-rows rows cnt base st fn-arena fn-octets pgs-mem)) :ok)
+                  (equal (pgs-x-abs-dirty lp (mv-nth 2 (fn-pck-x-stage-rows rows cnt base st fn-arena fn-octets pgs-mem)))
+                         tape))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-pck-x-stage-is-the-dirty
+                            (st (fn-pck-st-of (fn-pck-seed) prefix)))
+                 (:instance fn-pck-x-stage-context-congruence
+                            (a st) (b (fn-pck-st-of (fn-pck-seed) prefix)) (p cnt))
+                 (:instance fn-pck-context-rows-congruence
+                            (a st) (b (fn-pck-st-of (fn-pck-seed) prefix))
+                            (recs (fn-rows-wire-of rows fn-arena)))
+                 (:instance fn-pck-context-encodable-congruence
+                            (a st) (b (fn-pck-st-of (fn-pck-seed) prefix))
+                            (recs (fn-rows-wire-of rows fn-arena))))
+           :in-theory (theory 'minimal-theory))))
+
+(defthm fn-pck-x-stage-summary-is-the-extended-prefix
+  (let* ((delta (fn-rows-wire-of rows fn-arena))
+         (pw (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows prefix)))
+         (all (append prefix delta)))
+    (implies (and (equal p (len pw)) (equal base (fn-pck-plen prefix 0))
+                  (fn-pck-context-agreep st (fn-pck-st-of (fn-pck-seed) prefix))
+                  (fn-pck-sccb-listp delta st)
+                  (equal (mv-nth 0 (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)) :ok))
+             (let ((r (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)))
+               (and (equal (mv-nth 3 r)
+                           (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows all))))
+                    (equal (mv-nth 4 r) (fn-pck-plen all 0))
+                    (equal (mv-nth 5 r) (fn-pck-context (fn-pck-st-of (fn-pck-seed) all)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (pcks-stage-cursor pcks-stage-plen pcks-stage-context
+                 (:instance pcks-wlen-is-len-words)
+                 (:instance fn-pck-context-rows-congruence
+                            (a st) (b (fn-pck-st-of (fn-pck-seed) prefix))
+                            (recs (fn-rows-wire-of rows fn-arena)))
+                 (:instance fn-pck-context-fold-congruence
+                            (a st) (b (fn-pck-st-of (fn-pck-seed) prefix))
+                            (recs (fn-rows-wire-of rows fn-arena)))
+                 (:instance pcks-context-value
+                            (a (fn-pck-st-of st (fn-rows-wire-of rows fn-arena)))
+                            (b (fn-pck-st-of (fn-pck-st-of (fn-pck-seed) prefix) (fn-rows-wire-of rows fn-arena)))))
+           :in-theory (union-theories '(pck-rows-of-append adt-tp-seq-words-of-append
+                                        pck-plen-of-append pck-st-of-append pcks-len-append
+                                        natp (:type-prescription len))
+                                      (theory 'minimal-theory)))))
+
+(defthm pcks-stage-tail-of-cursor
+  (implies (equal (mv-nth 0 (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)) :ok)
+           (let ((r (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)))
+             (equal (mv-nth 6 r) (fn-pck-x-tail (mv-nth 3 r) (mv-nth 2 r)))))
+  :hints (("Goal" :induct (fn-pck-x-stage-rows rows p base st fn-arena fn-octets pgs-mem)
+           :in-theory (union-theories
+                        '(fn-pck-x-stage-rows mv-nth car-cons cdr-cons
+                          (:executable-counterpart zp) (:executable-counterpart binary-+))
+                        (theory 'minimal-theory)))))

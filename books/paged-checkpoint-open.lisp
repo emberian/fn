@@ -43,6 +43,8 @@
 (include-book "paged-checkpoint")
 (include-book "store-checkpoint-buffer")
 (include-book "statement-recover-stream")
+(include-book "paged-checkpoint-context")
+(include-book "paged-checkpoint-tail")
 (include-book "payload-extent")
 (include-book "checkpoint-payloads-extent")
 (include-book "consumer-event-index")
@@ -59,7 +61,7 @@
 ; Inherited rules that loop on a symbolic length.
 
 ; -----------------------------------------------------------------------------
-; The exec.  Every word of the image is read by `pcko-w' at the call site that
+; The exec decoder reads image words through `pcko-w' at the call site that
 ; also counts it (the READS threaded through), so the returned count is the
 ; number of words the open read.
 
@@ -186,7 +188,7 @@
   ; The events tape from word POS to LIM: tag, octet count, packed metadata
   ; octets, then the ref (offset, length) and the trailer words, one row at a
   ; time, until a word that is not the tag.
-  ; (mv verdict acc reads fn-arena fn-octets).  No event index is built: the
+  ; (mv verdict acc reads fn-arena fn-octets pos).  No event index is built: the
   ; Store's index is retired (books/store-node.lisp, field 13), and nothing on the
   ; served path reads it.
   (declare (xargs :stobjs (pgs-mem fn-arena fn-octets)
@@ -209,30 +211,33 @@
                         (pcko-copy (+ pos 2) n (+ reads 2) pgs-mem fn-octets)
                         (let ((d (pcko-tree fn-octets)))
                           (if (eq d :refused)
-                              (mv :record acc reads fn-arena fn-octets)
+                              (mv :record acc reads fn-arena fn-octets pos)
                             (mv-let (acc2 fn-arena)
                               (pcko-ref-step acc (cadr d) (pcko-w tl pgs-mem) (pcko-w (+ tl 1) pgs-mem)
                                              (pcko-w (+ tl 2) pgs-mem) (pcko-w (+ tl 3) pgs-mem)
                                              (pcko-w (+ tl 4) pgs-mem) (pcko-w (+ tl 5) pgs-mem)
                                              fid fn-arena)
                               (if (eq acc2 :bad)
-                                  (mv :intern acc2 (+ reads 6) fn-arena fn-octets)
+                                  (mv :intern acc2 (+ reads 6) fn-arena fn-octets pos)
                                 (pcko-tape npos lim acc2
                                            (+ reads 6) fid
                                            pgs-mem fn-arena fn-octets)))))))
-                  (mv :truncated acc (+ reads 2) fn-arena fn-octets)))
-            (mv :truncated acc (+ reads 1) fn-arena fn-octets))
-        (mv :ok acc (+ reads 1) fn-arena fn-octets))
-    (mv :ok acc reads fn-arena fn-octets)))
+                  (mv :truncated acc (+ reads 2) fn-arena fn-octets pos)))
+            (mv :truncated acc (+ reads 1) fn-arena fn-octets pos))
+        (mv :ok acc (+ reads 1) fn-arena fn-octets pos))
+    (mv :ok acc reads fn-arena fn-octets pos)))
 
 (defun fn-pck-x-open (npg pgs-mem fid fn-arena fn-octets)
   ; The open of the NPG-page image in PGS-MEM against the payload file FID: the
   ; root row from words 0 .. 8*2048, then the events tape from word 8*2048 to
   ; NPG*2048, row by row.
-  ; (mv VERDICT ROWS ROOTS READS fn-arena fn-octets F PLEN): VERDICT :ok or a
+  ; (mv VERDICT ROWS ROOTS READS fn-arena fn-octets F PLEN CNT CONTEXT TAIL).
+  ; VERDICT :ok or a
   ; refusal by name; ROWS the arena rows, ROOTS the four fold roots, READS the
   ; words read. F and committed PLEN come from this same root decode. A later
   ; publication writes at PLEN; an interrupted payload append may extend EOF.
+  ; CNT/CONTEXT/TAIL are captured in this pass. TAIL adds at most 2047
+  ; resident-word reads beyond the decoder-only READS counter.
   (declare (xargs :stobjs (pgs-mem fn-arena fn-octets) :verify-guards nil))
   (if (and (natp npg) (<= 8 npg) (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid)
            (eql (pcko-w 0 pgs-mem) 1))
@@ -244,18 +249,19 @@
                 (pcko-copy 2 n 2 pgs-mem fn-octets)
                 (let ((d (pcko-tree fn-octets)))
                   (if (eq d :refused)
-                      (mv :root nil nil reads fn-arena fn-octets nil nil)
+                      (mv :root nil nil reads fn-arena fn-octets nil nil 0 :bad nil)
                     (let ((root (cadr d)))
-                      (mv-let (verdict acc reads fn-arena fn-octets)
+                      (mv-let (verdict acc reads fn-arena fn-octets pos)
                         (pcko-tape 16384 (* 2048 npg) (fn-ssr-seed (fn-stxk-initial-context 0)) reads fid
                                    pgs-mem fn-arena fn-octets)
                         (mv verdict (fn-ssr-rows acc)
                             (list (pcko-nth 0 root) (pcko-nth 1 root) (pcko-nth 2 root) (pcko-nth 3 root))
                             reads fn-arena fn-octets
-                            (pcko-nth 4 root) (pcko-nth 5 root))))))))
-          (mv :root nil nil 2 fn-arena fn-octets nil nil)))
+                            (pcko-nth 4 root) (pcko-nth 5 root)
+                            (nfix (- (nfix pos) 16384)) (fn-pck-context acc) (fn-pck-x-tail (nfix (- (nfix pos) 16384)) pgs-mem))))))))
+          (mv :root nil nil 2 fn-arena fn-octets nil nil 0 :bad nil)))
     (mv :root nil nil (if (and (natp npg) (<= 8 npg) (<= (* 2048 npg) (pgs-x-len 0 pgs-mem))) 1 0)
-        fn-arena fn-octets nil nil)))
+        fn-arena fn-octets nil nil 0 :bad nil)))
 
 ; -----------------------------------------------------------------------------
 ; The image as a list, and the copy.
@@ -408,7 +414,8 @@
 
 (verify-guards pcko-tape
   :hints (("Goal" :in-theory (disable pcko-ref-step pcko-w pcko-copy pcko-tree))))
-(verify-guards fn-pck-x-open)
+(verify-guards fn-pck-x-open
+  :hints (("Goal" :in-theory (disable pcko-tape pcko-copy pcko-tree fn-pck-context))))
 
 ; -----------------------------------------------------------------------------
 ; The shape of the image the writer's pages flatten to.
@@ -684,7 +691,7 @@
                   (mv-let (acc2 fn-arena)
                     (pcko-ref-step acc (cadr (fn-scc-decode-tree prog)) off len d0 d1 d2 d3 fid fn-arena)
                     (if (eq acc2 :bad)
-                        (mv :intern acc2 (+ reads 8 (adt-tp-npk (len prog))) fn-arena prog)
+                        (mv :intern acc2 (+ reads 8 (adt-tp-npk (len prog))) fn-arena prog pos)
                       (pcko-tape (+ pos 8 (adt-tp-npk (len prog))) (len w) acc2
                                  (+ reads 8 (adt-tp-npk (len prog))) fid pgs-mem fn-arena prog)))))
   :hints (("Goal" :do-not-induct t
@@ -811,7 +818,7 @@
   (implies (and (pcko-img w pgs-mem) (natp pos) (<= pos (len w))
                 (equal (nthcdr pos w) post) (or (atom post) (not (equal (car post) 1))))
            (equal (pcko-tape pos (len w) acc reads fid pgs-mem fn-arena fn-octets)
-                  (mv :ok acc (if (consp post) (+ reads 1) reads) fn-arena fn-octets)))
+                  (mv :ok acc (if (consp post) (+ reads 1) reads) fn-arena fn-octets pos)))
   :hints (("Goal" :do-not-induct t
            :expand ((pcko-tape pos (len w) acc reads fid pgs-mem fn-arena fn-octets))
            :use ((:instance pcko-consp-nthcdr (i pos) (l w))
@@ -851,6 +858,9 @@
                                          (+ reads n (len (adt-tp-seq-words *fn-pck-row-schema*
                                                                            (fn-pck-rows-from (cdr recs) base1 st1)))
                                             (if (consp post) 1 0)))
+                                  (equal (mv-nth 5 r)
+                                         (+ pos n (len (adt-tp-seq-words *fn-pck-row-schema*
+                                                       (fn-pck-rows-from (cdr recs) base1 st1)))))
                                   (equal (mv-nth 3 r) (cadr s))))))
              (let ((r (pcko-tape pos (len w) acc reads fid pgs-mem fn-arena fn-octets))
                    (s (pcko-sim recs base st acc fid fn-arena)))
@@ -859,6 +869,8 @@
                     (equal (mv-nth 2 r)
                            (+ reads (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from recs base st)))
                               (if (consp post) 1 0)))
+                    (equal (mv-nth 5 r)
+                           (+ pos (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from recs base st)))))
                     (equal (mv-nth 3 r) (cadr s))))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
@@ -915,6 +927,8 @@
                   (equal (mv-nth 2 r)
                          (+ reads (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from recs base st)))
                             (if (consp post) 1 0)))
+                  (equal (mv-nth 5 r)
+                         (+ pos (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows-from recs base st)))))
                   (equal (mv-nth 3 r) (cadr s)))))
   :hints (("Goal" :induct (pcko-t-ind recs base st pos acc reads fid fn-arena fn-octets)
            :do-not-induct t
@@ -1339,7 +1353,7 @@
                 (<= (+ 2 (adt-tp-npk (len prog))) 16384)
                 (pcko-ok-treep (fn-scc-decode-tree prog)))
            (equal (fn-pck-x-open npg pgs-mem fid a octets)
-                  (mv-let (verdict acc reads a2 oct2)
+                  (mv-let (verdict acc reads a2 oct2 pos)
                     (pcko-tape 16384 (* 2048 npg) (fn-ssr-seed (fn-stxk-initial-context 0))
                                (+ 2 (adt-tp-npk (len prog))) fid pgs-mem a prog)
                     (mv verdict (fn-ssr-rows acc)
@@ -1347,7 +1361,8 @@
                           (list (pcko-nth 0 root) (pcko-nth 1 root) (pcko-nth 2 root) (pcko-nth 3 root)))
                         reads a2 oct2
                         (pcko-nth 4 (cadr (fn-scc-decode-tree prog)))
-                        (pcko-nth 5 (cadr (fn-scc-decode-tree prog)))))))
+                        (pcko-nth 5 (cadr (fn-scc-decode-tree prog)))
+                        (nfix (- (nfix pos) 16384)) (fn-pck-context acc) (fn-pck-x-tail (nfix (- (nfix pos) 16384)) pgs-mem)))))
   :hints (("Goal" :do-not-induct t
            :expand ((fn-pck-x-open npg pgs-mem fid a octets))
            :in-theory (e/d (pcko-nw-is-npk) (pcko-tape pcko-w nth fn-scc-decode-tree adt-tp-npk adt-tp-unpack
@@ -1461,6 +1476,7 @@
              (and (equal (mv-nth 0 r) :ok)
                   (equal (mv-nth 1 r) (car s))
                   (equal (mv-nth 2 r) (+ reads (len tws) (if (consp zp) 1 0)))
+                  (equal (mv-nth 5 r) (+ 16384 (len tws)))
                   (equal (mv-nth 3 r) (cadr s)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable pcko-tape pcko-sim pcko-img adt-tp-zeros nthcdr (:executable-counterpart nthcdr) fn-pck-seed
@@ -1481,6 +1497,15 @@
 (defthm pcko-mvn5 (equal (mv-nth 5 x) (car (cdr (cdr (cdr (cdr (cdr x))))))))
 (defthm pcko-mvn6 (equal (mv-nth 6 x) (nth 6 x)))
 (defthm pcko-mvn7 (equal (mv-nth 7 x) (nth 7 x)))
+(defthm pcko-cursor-normalizes
+  (equal (nfix (- (nfix (+ 16384 (len x))) 16384)) (len x)))
+
+(defthm pcko-mvn8 (equal (mv-nth 8 x) (nth 8 x))
+  :hints (("Goal" :expand ((mv-nth 8 x) (nth 8 x))
+           :use (:instance pcko-mvn7 (x (cdr x))))))
+(defthm pcko-mvn9 (equal (mv-nth 9 x) (nth 9 x))
+  :hints (("Goal" :expand ((mv-nth 9 x) (nth 9 x))
+           :use (:instance pcko-mvn8 (x (cdr x))))))
 (in-theory (disable pcko-mvn0 pcko-mvn1 pcko-mvn2 pcko-mvn3 pcko-mvn4 pcko-mvn5
                     pcko-mvn6 pcko-mvn7))
 
@@ -1504,13 +1529,17 @@
                   (equal (mv-nth 6 r) (pcko-nth 4 root))
                   (equal (mv-nth 7 r) (pcko-nth 5 root))
                   (equal (mv-nth 3 r) (+ 2 (adt-tp-npk (len prog)) (len tws) (if (consp zp) 1 0)))
+                  (equal (mv-nth 8 r) (len tws))
+                  (equal (mv-nth 9 r) (fn-pck-context (mv-nth 0 s)))
                   (equal (mv-nth 4 r) (mv-nth 1 s)))))
   :hints (("Goal" :do-not-induct t
+           :expand ((:free (x) (nth 8 x)) (:free (x) (nth 9 x)))
            :in-theory (union-theories '((:executable-counterpart natp) (:executable-counterpart zp)
                                         (:executable-counterpart binary-+) (:executable-counterpart not)
                                         (:executable-counterpart unary--)
                                         pcko-mvn0 pcko-mvn1 pcko-mvn2 pcko-mvn3 pcko-mvn4 pcko-mvn5
-                                        pcko-mvn6 pcko-mvn7 nth zp
+                                        pcko-mvn6 pcko-mvn7 pcko-mvn8 pcko-mvn9 nth zp pcko-cursor-normalizes
+                                        associativity-of-+ commutativity-of-+ inverse-of-+ unicity-of-0 fix
                                         fn-pck-seed car-cons cdr-cons)
                                       (theory 'minimal-theory))
            :use ((:instance pcko-open-form (octets octets))
@@ -1542,6 +1571,8 @@
                   (equal (mv-nth 3 r)
                          (+ 2 (adt-tp-npk (len (fn-scc-program x))) (len (pcko-tws recs))
                             (if (consp (adt-tp-zeros (adt-tp-pad (len (pcko-tws recs))))) 1 0)))
+                  (equal (mv-nth 8 r) (len (pcko-tws recs)))
+                  (equal (mv-nth 9 r) (fn-pck-context (mv-nth 0 s)))
                   (equal (mv-nth 4 r) (mv-nth 1 s)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(pcko-nth-is-nth car-cons cdr-cons (:executable-counterpart consp))
@@ -2026,7 +2057,7 @@
                (+ (* 8 2048) (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs))) 1)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(pcko-tws) (theory 'minimal-theory))
+           :in-theory (union-theories '(pcko-tws (:executable-counterpart natp)) (theory 'minimal-theory))
            :cases ((consp (adt-tp-zeros (adt-tp-pad (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs)))))))
            :use ((:instance pcko-img-intro (k (* 2048 npg)) (w (adt-tp-flat (fn-pck-pages configs recs))))
                  pcko-len-w
@@ -2051,3 +2082,153 @@
            :use ((:instance pcko-img-intro (k (* 2048 npg)) (w (adt-tp-flat (fn-pck-pages configs recs))))
                  pcko-len-w
                  (:instance pcko-open-model (a fn-arena) (octets fn-octets))))))
+
+(defthm pcko-ref-context-agrees
+  (implies (and (pcko-agree acc st) (natp base)
+                (not (equal (pck-ssr1 st w) :bad)))
+           (and (not (equal (mv-nth 0 (pcko-ref acc w base st fid a)) :bad))
+                (pcko-agree (mv-nth 0 (pcko-ref acc w base st fid a)) (pck-ssr1 st w))))
+  :hints (("Goal" :use ((:instance pcko-ref-is-the-step (b a))
+                        (:instance pcko-step-agree (b a)))
+           :in-theory (theory 'minimal-theory))))
+
+(defthm pcko-sim-context-agrees
+  (implies (and (pcko-agree acc st) (natp base)
+                (not (equal (fn-pck-st-of st recs) :bad)))
+           (pcko-agree (mv-nth 0 (pcko-sim recs base st acc fid fn-arena))
+                       (fn-pck-st-of st recs)))
+  :hints (("Goal" :induct (pcko-sim recs base st acc fid fn-arena)
+           :in-theory (e/d (pcko-sim fn-pck-st-of pcko-mvn0)
+                           (pcko-agree pck-ssr1 pcko-ref pcko-next-base)))
+          ("Subgoal *1/3" :expand ((fn-pck-st-of st recs))
+           :use (:instance pcko-ref-context-agrees (w (car recs)) (a fn-arena)))
+          ("Subgoal *1/2" :expand ((fn-pck-st-of st recs))
+           :use (:instance pcko-ref-context-agrees (w (car recs)) (a fn-arena)))))
+
+(defthm pcko-context-of-agree
+  (implies (pcko-agree acc st)
+           (equal (fn-pck-context acc) (fn-pck-context st)))
+  :hints (("Goal" :in-theory (enable pcko-agree fn-pck-context fn-ssr-statep))))
+
+(defthm fn-pck-x-open-cursor-context-is-the-prefix
+  (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                (equal npg (len (fn-pck-pages configs recs)))
+                (equal (pgs-x-words 0 0 (* 2048 npg) pgs-mem)
+                       (adt-tp-flat (fn-pck-pages configs recs)))
+                (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid))
+           (let ((r (fn-pck-x-open npg pgs-mem fid fn-arena fn-octets)))
+             (and (equal (mv-nth 8 r)
+                         (len (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs))))
+                  (equal (mv-nth 9 r)
+                         (fn-pck-context (fn-pck-st-of (fn-pck-seed) recs))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance pcko-open-model (a fn-arena) (octets fn-octets))
+                 (:instance pcko-sim-context-agrees (acc (fn-pck-seed))
+                            (st (fn-pck-seed)) (base 0))
+                 (:instance pcko-img-intro (k (* 2048 npg))
+                            (w (adt-tp-flat (fn-pck-pages configs recs))))
+                 (:instance pcko-context-of-agree
+                            (acc (mv-nth 0 (pcko-sim recs 0 (fn-pck-seed) (fn-pck-seed) fid fn-arena)))
+                            (st (fn-pck-st-of (fn-pck-seed) recs)))
+                 pcko-len-w pck-recordsp-parts pcko-seed-agree)
+           :in-theory (union-theories '(pcko-tws (:executable-counterpart natp)) (theory 'minimal-theory)))))
+
+(defthm pcko-mvn10
+  (equal (mv-nth 10 x) (nth 10 x))
+  :hints (("Goal" :expand ((mv-nth 10 x) (nth 10 x))
+           :use (:instance pcko-mvn9 (x (cdr x))))))
+
+(defthm pcko-open-tail-of-cursor
+  (implies (equal (mv-nth 0 (fn-pck-x-open npg pgs-mem fid fn-arena fn-octets)) :ok)
+           (equal (mv-nth 10 (fn-pck-x-open npg pgs-mem fid fn-arena fn-octets))
+                  (fn-pck-x-tail (mv-nth 8 (fn-pck-x-open npg pgs-mem fid fn-arena fn-octets)) pgs-mem)))
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-pck-x-open npg pgs-mem fid fn-arena fn-octets)
+                    (:free (x) (nth 10 x)) (:free (x) (nth 9 x)) (:free (x) (nth 8 x)))
+           :in-theory (union-theories
+                        '(pcko-mvn0 pcko-mvn8 pcko-mvn10 nth car-cons cdr-cons
+                          (:executable-counterpart zp) (:executable-counterpart binary-+))
+                        (theory 'minimal-theory)))))
+
+(local
+ (defun pcko-take-ind (a n k)
+   (if (zp n) (list a k) (pcko-take-ind (+ 1 a) (1- n) (1- k)))))
+(local
+ (defthm pcko-words-take
+   (implies (and (natp a) (natp n) (natp k) (<= n k))
+            (equal (take n (pgs-x-words 0 a k pgs-mem))
+                   (pgs-x-words 0 a n pgs-mem)))
+   :hints (("Goal" :induct (pcko-take-ind a n k)
+            :in-theory (e/d (pgs-x-words) (pgs-x-words-split))))))
+
+(local
+ (defthm pcko-words-nthcdr
+   (implies (and (natp a) (natp n) (natp k))
+            (equal (nthcdr n (pgs-x-words 0 a (+ n k) pgs-mem))
+                   (pgs-x-words 0 (+ a n) k pgs-mem)))
+   :hints (("Goal" :induct (pcko-ind a (+ n k) n)
+            :in-theory (e/d (pgs-x-words) (pgs-x-words-split))))))
+
+(local
+ (defthm pcko-words-window
+   (implies (and (natp n) (natp a) (natp k) (<= (+ a k) n))
+            (equal (take k (nthcdr a (pgs-x-words 0 0 n pgs-mem)))
+                   (pgs-x-words 0 a k pgs-mem)))
+   :hints (("Goal" :use ((:instance pcko-words-nthcdr (a 0) (n a) (k (- n a)))
+                         (:instance pcko-words-take (n k) (k (- n a))))
+            :in-theory (disable pgs-x-words pgs-x-words-split pcko-words-take pcko-words-nthcdr)))))
+
+(local
+ (defthm pcko-tape-window-general
+   (implies (and (natp n) (<= 16384 n) (true-listp tws)
+                 (equal (len w) n)
+                 (equal (pgs-x-words 0 0 n pgs-mem) w)
+                 (equal (nthcdr 16384 w) (append tws zp)))
+            (and (<= (+ 16384 (len tws)) n)
+                 (equal (pgs-x-words 0 16384 (len tws) pgs-mem) tws)))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance pcko-words-window (a 16384) (k (len tws)))
+                  (:instance pcko-nthcdr-room (pos 16384) (x tws) (rest zp)))
+            :in-theory (disable pcko-words-window pgs-x-words nthcdr pgs-x-words-split)))))
+
+(local
+ (defthm pcko-tape-window
+   (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                 (equal (pgs-x-words 0 0 (* 2048 (len (fn-pck-pages configs recs))) pgs-mem)
+                        (adt-tp-flat (fn-pck-pages configs recs))))
+            (and (<= (+ 16384 (len (pcko-tws recs))) (* 2048 (len (fn-pck-pages configs recs))))
+                 (equal (pgs-x-words 0 16384 (len (pcko-tws recs)) pgs-mem) (pcko-tws recs))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance pcko-image-facts (npg (len (fn-pck-pages configs recs))))
+                  (:instance pcko-tape-window-general
+                             (n (* 2048 (len (fn-pck-pages configs recs))))
+                             (w (adt-tp-flat (fn-pck-pages configs recs)))
+                             (tws (pcko-tws recs))
+                             (zp (adt-tp-zeros (adt-tp-pad (len (pcko-tws recs))))))
+                  pcko-tws-true-listp)
+            :in-theory (union-theories '(natp (:type-prescription len)) (theory 'minimal-theory))))))
+
+(defthm fn-pck-x-open-tape-summary-is-the-prefix
+  (implies (and (fn-pck-recordsp configs recs) (fn-pck-root-fitsp configs recs)
+                (equal npg (len (fn-pck-pages configs recs)))
+                (equal (pgs-x-words 0 0 (* 2048 npg) pgs-mem)
+                       (adt-tp-flat (fn-pck-pages configs recs)))
+                (<= (* 2048 npg) (pgs-x-len 0 pgs-mem)) (natp fid))
+           (let ((r (fn-pck-x-open npg pgs-mem fid fn-arena fn-octets))
+                 (pw (adt-tp-seq-words *fn-pck-row-schema* (fn-pck-rows recs))))
+             (and (equal (mv-nth 8 r) (len pw))
+                  (equal (mv-nth 9 r) (fn-pck-context (fn-pck-st-of (fn-pck-seed) recs)))
+                  (equal (mv-nth 10 r) (nthcdr (* 2048 (floor (len pw) 2048)) pw)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-pck-x-open-cursor-context-is-the-prefix
+                 pcko-open-tail-of-cursor pcko-tape-window
+                 (:instance fn-pck-x-tail-is-the-partial-page
+                            (cnt (len (pcko-tws recs))) (words (pcko-tws recs)))
+                 (:instance pcko-open-model (a fn-arena) (octets fn-octets))
+                 (:instance pcko-img-intro (k (* 2048 npg))
+                            (w (adt-tp-flat (fn-pck-pages configs recs))))
+                 pcko-len-w)
+           :in-theory (union-theories '(pcko-tws natp (:type-prescription len))
+                                      (theory 'minimal-theory)))))
