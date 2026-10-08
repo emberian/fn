@@ -328,6 +328,7 @@
 (include-book "../../books/consumer-account-carries-state")
 (include-book "../../books/consumer-progress-carried")
 (include-book "../../books/owner-state-accessors")
+(include-book "../../books/owner-publication-transitions")
 (include-book "../../books/history-capture-state")
 (include-book "../../books/owner-retain-state")
 (include-book "../../books/owner-retain-transitions")

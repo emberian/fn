@@ -116,6 +116,7 @@
 (include-book "consumer-account-carries-state")
 (include-book "consumer-progress-carried")
 (include-book "owner-state-accessors")
+(include-book "owner-publication-transitions")
 (include-book "history-capture-state")
 (include-book "owner-retain-state")
 (include-book "owner-retain-transitions")
@@ -161,5 +162,3 @@
 (include-book "identity-retain-carried")
 (include-book "owner-prepare-served")
 (include-book "history-columns-store")
-(include-book "store-carried-folds")
-(include-book "owner-log-route")

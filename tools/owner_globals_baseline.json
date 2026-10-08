@@ -50,7 +50,8 @@
     "2026-10-08: OWNER-CARRIER-GLOBALS: C q0 books-side measurement, not a state raise (books/query-payload-state.lisp 0->1, admitting fn-owner-payload-view)",
     "2026-10-08: OWNER-CARRIER-GLOBALS: C q0 books-side measurement, not a state raise (books/runtime-operation-installed-source.lisp 0->2, admitting fn-owner-runtime-bootstrap-capsule, fn-owner-runtime-operation-binding)",
     "2026-10-08: OWNER-CARRIER-GLOBALS: C q0 books-side measurement, not a state raise (books/runtime-operation-source.lisp 0->1, admitting fn-owner-runtime-bootstrap-capsule)",
-    "2026-10-08: OWNER-CARRIER-GLOBALS: C q0 books-side measurement, not a state raise (books/substrate-completed-source.lisp 0->3, admitting fn-owner-canonical-admission-executor, fn-owner-history-completion-fault, fn-owner-history-semantic-source)"
+    "2026-10-08: OWNER-CARRIER-GLOBALS: C q0 books-side measurement, not a state raise (books/substrate-completed-source.lisp 0->3, admitting fn-owner-canonical-admission-executor, fn-owner-history-completion-fault, fn-owner-history-semantic-source)",
+    "2026-10-08: OWNER-CARRIER-GLOBALS: C q0 measures the consolidated publication funnel (books/owner-publication-state.lisp 0->1, admitting fn-owner-publication)"
   ],
   "books/account-adoption-input-source.lisp": 1,
   "books/account-adoption-turn-state.lisp": 1,
@@ -91,12 +92,13 @@
   "books/owner-obligation-state.lisp": 1,
   "books/owner-operation-report.lisp": 1,
   "books/owner-post-carried.lisp": 1,
-  "books/owner-recovery-retain.lisp": 19,
+  "books/owner-publication-state.lisp": 1,
+  "books/owner-recovery-retain.lisp": 10,
   "books/owner-report-capture.lisp": 3,
   "books/owner-report-reservation.lisp": 1,
   "books/owner-retain-state.lisp": 1,
   "books/owner-retain-transitions.lisp": 1,
-  "books/owner-state-accessors.lisp": 1,
+  "books/owner-state-accessors.lisp": 0,
   "books/query-payload-state.lisp": 1,
   "books/runtime-operation-installed-source.lisp": 2,
   "books/runtime-operation-source.lisp": 1,
@@ -109,5 +111,5 @@
   "host/native/mux.lisp": 2,
   "host/native/owner.lisp": 3,
   "host/native/pull-service.lisp": 1,
-  "host/owner-host.lisp": 64
+  "host/owner-host.lisp": 54
 }

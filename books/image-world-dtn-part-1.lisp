@@ -155,3 +155,4 @@
 (include-book "byte-store-txn-name")
 (include-book "store-budget-naming")
 (include-book "store-profile-facts")
+(include-book "store-genesis")

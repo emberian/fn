@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
-(include-book "bp-node-progress-guards")
 (include-book "bp-node-job-offer-guards")
 (include-book "bp-node-control")
 (include-book "bp-node-forward-plan")
@@ -162,6 +161,7 @@
 (include-book "consumer-account-carries-state")
 (include-book "consumer-progress-carried")
 (include-book "owner-state-accessors")
+(include-book "owner-publication-transitions")
 (include-book "history-capture-state")
 (include-book "owner-retain-state")
 (include-book "owner-retain-transitions")
@@ -174,4 +174,3 @@
 (include-book "peer-transit-authority")
 (include-book "peer-transit-indexed")
 (include-book "article-subject")
-(include-book "store-reclaim-owner-holders")

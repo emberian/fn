@@ -102,13 +102,11 @@ funnel body changes from a global read to a stobj field read, the host call site
 `lane/stage-5b-carrier` is retired as an input (its `xf.py` rewrote hint pairs wrongly; its
 `sigs2.txt` is from a world 1,058 commits behind).
 
-**Open decision for the coordinator (q0).** The scanner counts only `host/`. A funnel that keeps one
-`f-put-global` in `books/` drops the host count to 0 without removing the global (as `retain-carry`
-did). Either the item's exit is met at Move A (the books own the transitions and the relation, the
-host holds nothing), or the check also counts the funnel files, so the global count reaches 0 only
-at Move B. This design recommends the second: add `books/owner-*-state.lisp` to the scan with
-their own baseline rows, which the funnels enter and S6 empties. Until decided, funnels are
-written so either holds.
+**C q0 (decided for carrier3).** The scanner counts owner globals under both
+`host/` and `books/`, so moving a funnel to a book cannot hide state. Existing
+books rows are added as measurement with OWNER-CARRIER-GLOBALS reason lines;
+the consolidated catalog-root and publication slots remain counted until S6.
+The host baseline drops by the retired names without absorbing unrelated red.
 
 ## 4. Families: the 73 globals of owner-host and history-root-host, and the bp-app channel
 
@@ -120,7 +118,7 @@ row 14 is the cross-file bp-app channel.
 | # | family (globals; count) | consumed by (host function: books functions) | becomes |
 |---|---|---|---|
 | 1 | catalog-root (`catalog-root-counter`, `catalog-root-incarnation`; 2) | `fn-owner-catalog-root-reserve` RW, `-current` R: `fn-cri-reserve`, `fn-cri-tokenp` (`books/catalog-root-incarnation.lisp`); `fn-owner-catalog-capture-context`; native `host/native/owner.lisp:1532,8231` | slot `catalog-root` = (counter, incarnation); NOT reset by recovery install (never reset by open, reclaim or a failed publication) |
-| 2 | publication-capture (`sco-attempted`, `sco-base`, `sco-base-payloads`, `sco-deferred`, `sco-durable`, `sco-inflight`, `sco-pending`, `sco-requested`, `sco-serial`, `orc-pass`; 10) | `fn-owner-sco-due`, `-request`, `-capture`, `-note-durable`, `-note-base-payloads`, `-publication-done`, `-publication-abandoned`, `fn-owner-orc-request`, `-orc-capture`, `-orc-finish`, `fn-owner-orcp-capture`: `fn-ock-requested-next`, `fn-ock-request-word`, `fn-ock-capture-budget`, `fn-ockp-space`, `fn-opl-attempted`, `-blockedp`, `-next-serial`, `-settle`, `-holdsp`, `fn-orc-release-slot`, `fn-orc-capture-slot`, `fn-scka-strip-base`, `fn-sco-sequence` (`books/owner-checkpoint-open.lisp`, `owner-publication-lifecycle.lisp`, `owner-reclaim*.lisp`); reset in `fn-owner-install-extended`; `fn-owner-sco-global` / `fn-owner-sco-deferred` already in `books/owner-state-accessors.lisp` | slot `publication` = a 10-field record; reset by install except none persists |
+| 2 | publication-capture (`sco-attempted`, `sco-base`, `sco-base-payloads`, `sco-deferred`, `sco-durable`, `sco-inflight`, `sco-pending`, `sco-requested`, `sco-serial`, `orc-pass`; 10) | `fn-owner-sco-due`, `-request`, `-capture`, `-note-durable`, `-note-base-payloads`, `-publication-done`, `-publication-abandoned`, `fn-owner-orc-request`, `-orc-capture`, `-orc-finish`, `fn-owner-orcp-capture`: `fn-ock-requested-next`, `fn-ock-request-word`, `fn-ock-capture-budget`, `fn-ockp-space`, `fn-opl-attempted`, `-blockedp`, `-next-serial`, `-settle`, `-holdsp`, `fn-orc-release-slot`, `fn-orc-capture-slot`, `fn-scka-strip-base`, `fn-sco-sequence` (`books/owner-checkpoint-open.lisp`, `owner-publication-lifecycle.lisp`, `owner-reclaim*.lisp`); install sets the stripped base, clears eight fields and preserves serial; `fn-owner-sco-global` / `fn-owner-sco-deferred` already in `books/owner-state-accessors.lisp` | slot `publication` = a 10-field record; install preserves serial |
 | 3 | authority publication (`account-carries`, `account-root-state`, `canonical-state`; 3) | `fn-owner-authority-publication-install` RW: `fn-cp-nth`, `fn-sn-consumer`; `books/consumer-account-carries-state.lisp`, `consumer-account-state.lisp`, `owner-canonical-state.lisp`, `owner-canonical-read-state.lisp` | slot `authority` = (account-carries, root-state, canonical) |
 | 4 | reader views (`reader-views`, `access-cache`; 2) | `fn-owner-reader-views-capture` W: `fn-ocv-capture`, `fn-ocfg-at-reader-view`; `fn-owner-chunk-span-install-result` W/`fn-owner-access-cache` R: `fn-own-tls-result-*`, `fn-splan-step-make` (`books/owner-connection-state.lisp`) | slot `readers` |
 | 5 | feed (`feed-inputs`, `feed-intents`, `feed-pending`, `feed-safe-offset`, `feed-stopped`; 5) | `fn-owner-feed-configure`, `-dial-open`, `-lost`, `-tls-established`, `-reply-article`, `-reply-chunk-synced`, `-install-port-result`, `-replay-counted`, `-journal-begin/-scan/-offset`, `-reconcile-*`: `fn-own-feed-*`, `fn-fc-*`, `fn-feed-journal-*`, `fn-ores-feed-port-publication` (`books/owner-recovery-retain.lisp` reset) | slot `feed`; `feed-inputs` is socket-only (rebuilt at recovery) |

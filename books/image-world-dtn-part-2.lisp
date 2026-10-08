@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-1")
-(include-book "store-genesis")
 (include-book "store-replay-bound")
 (include-book "store-profile-open")
 (include-book "store-mount-identity")
@@ -121,6 +120,7 @@
 (include-book "consumer-account-carries-state")
 (include-book "consumer-progress-carried")
 (include-book "owner-state-accessors")
+(include-book "owner-publication-transitions")
 (include-book "history-capture-state")
 (include-book "owner-retain-state")
 (include-book "owner-retain-transitions")
@@ -157,4 +157,3 @@
 (include-book "owner-log-route")
 (include-book "owner-advance-carried")
 (include-book "owner-intent-carried")
-(include-book "owner-parse-carried")
