@@ -19,8 +19,8 @@ What ACL2 does with an image (measured, planning/evidence/cert-images-2026-09-28
   when the directory it was issued from is the book's own directory
   (other-events.lisp make-include-books-absolute-1); otherwise the name is
   absolute and the certificate stops being relocatable.  So an image is
-  built per book directory (`books/`, `tests/acl2/`, `host/`), issuing its
-  includes from that directory, in the tree that certifies.
+  built per book directory (`books/`, `tests/acl2/`), issuing its includes
+  from that directory, in the tree that certifies.
 * A plain-world include of such a book executes the portcullis first: the
   image's roots, which are in the book's own non-local closure (the rule
   `image_for` keeps), so an includer loads the same books.  A `local` image
@@ -68,7 +68,7 @@ CONFIG = ROOT / "tools" / "cert-images.json"
 # The directories whose books certify from images; each gets its own build of
 # every image (see the module docstring: a relative portcullis needs the
 # includes issued from the book's own directory).
-DIRECTORIES = ("books", "tests/acl2", "host")
+DIRECTORIES = ("books", "tests/acl2")
 # The architect's include-cost model (R^2 0.83 over 18 books).
 MS_PER_DEFINITION = 0.78
 MS_PER_THEOREM = 0.12
@@ -198,10 +198,6 @@ class Graph:
     def attached(self, book: str) -> frozenset[str]:
         """Every stobj an attach-stobj in BOOK's certification world names."""
         return frozenset().union(*(self.attaches[name] for name in self.closure(book)))
-
-    def attached_by(self, books: frozenset[str]) -> frozenset[str]:
-        """The stobjs an attach-stobj in any of BOOKS names."""
-        return frozenset().union(*(self.attaches[name] for name in books))
 
     def defines(self, books: frozenset[str]) -> frozenset[str]:
         for name in books:
