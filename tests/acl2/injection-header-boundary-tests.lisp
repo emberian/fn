@@ -1,6 +1,7 @@
 ; PRF-1358: the old body edit, hardened refusal, and a real injected recipe.
 (in-package "ACL2")
 (include-book "../../books/injection-info-params-reference")
+(include-book "../../books/post-header-local")
 (include-book "must-fail-checked")
 
 (defun phlt-codes (chars)
@@ -68,3 +69,28 @@
         (not (equal r x))
         (equal r (fn-ipp-with-params-old x mid *phlt-params*))
         (equal (fn-pb-path-agent x mid) (fn-pb-path-agent-old x mid)))))
+
+
+(include-book "../../books/defkeystone")
+(defteeth fn-ipp-with-params-head-local
+  :claim (((head-boundary (fn-art-separated-headp head)))
+          (equal (fn-ipp-with-params (append head body) msgid params)
+                 (append (fn-ipp-with-params head msgid params) body)))
+  :subject fn-ipp-with-params
+  :witness
+  ((head (fn-art-head (fn-art-of (fn-inj-decision-octets *phlt-decision*))))
+   (body (fn-bch-unpack (fn-art-body (fn-art-of (fn-inj-decision-octets *phlt-decision*)))))
+   (msgid (fn-inj-decision-msgid *phlt-decision*))
+   (params *phlt-params*))
+  :breaks
+  ((head-boundary
+    ((head nil) (body (fn-inj-decision-octets *phlt-decision*))
+     (msgid (fn-inj-decision-msgid *phlt-decision*)) (params *phlt-params*))))
+  :mutations
+  ((old-unchecked-drops
+    (:conclusion
+     (equal (fn-ipp-with-params-old (append head body) msgid params)
+            (append (fn-ipp-with-params-old head msgid params) body)))
+    ((head *phlt-stamp-head*) (body *phlt-body*)
+     (msgid *phlt-mid*) (params *phlt-params*))
+    :fault "The old 49-octet prefix-only skip crosses the blank line and edits BODY.")))
