@@ -318,9 +318,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/paged-checkpoint-image \
 	books/paged-checkpoint-open \
 	books/def-representation \
+	books/def-representation-generic \
 	books/def-representation-index-lib \
 	books/def-representation-index \
 	tests/acl2/def-representation-tests \
+	tests/acl2/def-generic-tests \
 	tests/acl2/def-representation-index-tests \
 	tests/acl2/def-representation-history-tests \
 	tests/acl2/def-representation-pages-tests \
