@@ -284,6 +284,18 @@ class MergeTests(TrainBase):
         self.assertEqual(len(parents), 3, "expected a merge commit")
         self.assertIn(f"Merge lane/a @{sha} into integrate/t1", sh(self.work, "git", "log", "-1", "--format=%s").stdout)
 
+    def test_teeth_manifest_conflict_takes_train_side_and_regen_rewrites_it(self):
+        sha = self.lane("k", {"planning/teeth-obligations.json": "lane manifest\n"})
+        self.advance_dev({"planning/teeth-obligations.json": "dev manifest\n"})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+        p = self.train("merge", f"k@{sha}")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual((self.work / "planning/teeth-obligations.json").read_text(), "dev manifest\n")
+        r = self.train("regen")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("keystone_emit --write-manifest", self.stub_log())
+
     def test_curated_proofs_conflict_goes_back_to_the_lane(self):
         # proofs.json rows are lane-curated: a conflict is not resolved to ours.
         sha = self.lane("p", {"planning/proofs.json": "lane repoint\n"})
@@ -328,7 +340,7 @@ class RegenTests(TrainBase):
         p = self.train("regen")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         log = [l.split()[0] + " " + (l.split()[1] if len(l.split()) > 1 else "") for l in self.stub_log()]
-        self.assertEqual(log, ["ledger --write"])
+        self.assertEqual(log, ["ledger --write", "keystone_emit --write-manifest"])
         subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
         self.assertTrue(subj.startswith("Regenerate train 1"), subj)
 
