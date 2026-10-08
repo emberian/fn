@@ -1,0 +1,16 @@
+{
+ "category": "bug",
+ "detail": "T-CMD greeting: a TCP connect to the 200 line cost p50 7.1 / 116 / 385 ms and owner CPU 7.1 / 112 / 400 ms at 1k / 10k / 25k articles (exponent 1.24; bar p99 <= 50 ms, exponent <= 0.2), persvati cores 12-23, tmpfs, scale-1m, 300 reps (raw before: persvati:/tank/fn/scratch/load-harness/runs/g41-tcmd-{1k,10k,25k}). Mechanism: the accept sends the (:sasl-context SEED BINDING) event after every open (host/native/mux.lisp fnn-mux-admit -> fnn-owner-sasl-context -> fn-owner-sasl-context); fn-ocfg-read-step reached fn-auth-sessionp, and a reader session pins the store node, so fn-node-statep walked the whole node (FN-OWNER-SASL-CONTEXT 3622 of 3627 ms owner time over 40 connects at 10k; FN-OWNER-EXPOSURE-OPEN 2 ms). Fix PRF-1357: books/owner-served-carried.lisp fn-scar-ocfg-read-step with keystone fn-scar-ocfg-read-step-is-reference-under-ocl-relation (hypotheses fn-ocl-relation and fn-scar-view-indexedp, carried by fn-ock-recover-installs-ocl-relation and fn-oix-ocfg-step-keeps-view-indexed); host/owner-host.lisp and host/native-admin-host.lisp call it. After (lane/greeting-walk@fc177a166, L's official cell): p99 0.35 / 0.34 / 0.66 ms at 1k / 10k / 25k, raw persvati:/tank/fn/scratch/load-harness/runs/gw-tcmd-*. Pending the train landing.",
+ "file": "books/owner-served-carried.lisp",
+ "id": "LOAD-T-CMD-GREETING",
+ "line": "",
+ "notes": [
+  "2026-10-08: fixed on lane/greeting-walk@fc177a166 (PRF-1357); L's official T-CMD cell passes; landed-pending the train"
+ ],
+ "owner": "deputy-C",
+ "severity": "high",
+ "source": "tools/load",
+ "state": "landed-pending",
+ "title": "T-CMD greeting walked the store: the accept's SASL context event evaluated fn-node-statep over the whole node (385 ms p50 at 25k)",
+ "updated": "2026-10-08T16:00:00Z"
+}
