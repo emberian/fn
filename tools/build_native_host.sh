@@ -7,6 +7,11 @@
 set -eu
 cd "$(dirname "$0")/.."
 ACL2="${FN_ACL2:-acl2}"
+# Relative :FN mapping is resolved against this file, including saved cores.
+# Validate the same contract the Python launchers use; do not inherit another
+# run's ACL2_PROJECTS mapping.
+ACL2_PROJECTS=$(python3 -c 'import sys; sys.path.insert(0, "tools"); import acl2_projects; print(acl2_projects.projects_file())')
+export ACL2_PROJECTS
 # FN_NATIVE_BUILD selects the session script and FN_NATIVE_IMAGE the image it
 # saves.  The main build reads the latter at save-exec; specialized build
 # scripts still document the matching path they require.
@@ -122,7 +127,7 @@ else
 fi
 rc=0
 FN_NATIVE_PROFILE="$PROFILE" FN_NATIVE_IMAGE="$IMAGE" FN_NATIVE_WORLD="$WORLD" \
-     ACL2_CUSTOMIZATION=NONE ACL2_SYSTEM_BOOKS= env -u ACL2_SYSTEM_BOOKS \
+     ACL2_CUSTOMIZATION=NONE ACL2_BOOK_HASH_ALISTP=NIL ACL2_SYSTEM_BOOKS= env -u ACL2_SYSTEM_BOOKS \
      "$ACL2" < "$BUILD" > "$LOG" 2>&1 || rc=$?
 if [ "$rc" -ne 0 ]; then
     echo "build_native_host: acl2 exited with status $rc; see $LOG" >&2

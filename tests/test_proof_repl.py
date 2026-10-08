@@ -832,6 +832,7 @@ class RemoteTests(unittest.TestCase):
     def test_the_sync_is_tools_and_the_closure_never_planning(self):
         files = proof_repl.sync_files(["books/wildmat"], ["tests/acl2/extra.lisp"])
         self.assertIn("tools/proof_repl.py", files)
+        self.assertIn("acl2-projects", files)
         self.assertIn("books/wildmat.lisp", files)
         self.assertIn("tests/acl2/extra.lisp", files)
         # The host files a session may `ld` (item 14).

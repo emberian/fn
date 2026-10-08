@@ -465,14 +465,17 @@ class BoxTests(Fixture):
             for mode in (["--summary"], ["--table"], ["--json"], ["--strict"]):
                 self.assertEqual(green_check.main(mode), 3, mode)
 
-    def test_a_local_mirror_without_a_launcher_uses_the_record_identity(self):
+    def test_a_local_mirror_without_a_launcher_requires_explicit_identity(self):
         book(self.root, "books/a", '(in-package "ACL2")')
-        publish(self.cache, self.root, "books/a", identity=green_check.RECORD_IDENTITY)
+        publish(self.cache, self.root, "books/a", identity="current-record")
         with patch.object(green_check.acl2_toolchain, "fingerprint",
                           return_value=green_check.acl2_toolchain.Fingerprint(
                               False, None, None, {}, "no launcher")):
+            with self.assertRaisesRegex(green_check.CacheUnavailable, "--identity"):
+                green_check.Cache(local=self.cache).local_identity()
             report = green_check.audit(self.root, roots=["books/a"],
-                                       cache=green_check.Cache(local=self.cache))
+                                       cache=green_check.Cache(local=self.cache,
+                                                               identity="current-record"))
         self.assertEqual(report["books_by_verdict"]["books/a"]["verdict"], "green")
 
     def test_an_explicit_box_is_the_only_box_asked(self):
