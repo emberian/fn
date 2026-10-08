@@ -1036,8 +1036,6 @@ class CertificateExpansionTests(unittest.TestCase):
                               check=False, timeout=300)
         if not (cls.root / "books/t.cert").is_file():
             cls.tmp.cleanup()
-            # waiver-ok: capability -- the cert reader needs a real ACL2 certify; a
-            # machine without the ACL2 slot pool skips, and the skip shows ACL2's tail.
             raise unittest.SkipTest("no ACL2 here: " + done.stdout.decode()[-300:])
 
     @classmethod
