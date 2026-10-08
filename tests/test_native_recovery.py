@@ -6,12 +6,15 @@ processes; they do not turn the older Python/native differential finding into
 a claim about this source revision.
 """
 
+import os
 import re
+import subprocess
 import unittest
 
+from tests import test_native_checkpoint_auto as checkpoint_auto
 from tests.native_harness import (
     EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, Acl2Session, acl2_keyword,
-    acl2_octets, acl2_result, environment, executable, native_image, run, scratch)
+    acl2_octets, acl2_result, article, environment, executable, native_image, run, scratch)
 
 IMAGE = native_image("FN_NATIVE_HOST")
 # A fault selector is a developer-image selector: a production image refuses
@@ -50,6 +53,87 @@ def missing_enrollment_fixture():
     if not transaction:
         raise AssertionError("fixture must pass article replay and fail identity replay")
     return transaction
+
+
+class NativeRecoveryKeyringCheckpointTests(checkpoint_auto.AutoCheckpointFixture):
+    """The running owner's capture preserves the replay's author-keyring epochs.
+
+    Ordinary POST records exercise re-interning. A kind-4 hybrid-author record
+    already encodes its verdict and would not expose the nil/0 capture defect.
+    An intentionally malformed FN-Statement makes HDR render the generation;
+    an absent statement's HDR item omits it (fn-stx-verified-item).
+    The owner captures through fn-scka-next-checkpoint; full replay interns
+    through fn-ssr-intern-step. Both opens must serve the same verdicts.
+    """
+    image = IMAGE
+
+    def verified_header(self, message_id):
+        with self.node.session(timeout=30, greeting=(b"200",)) as client:
+            status, body = client.multiline("HDR :fn-verified " + message_id)
+        self.assertEqual(status, b"225 headers follow\r\n")
+        return body
+
+    def test_author_keyring_rotation_checkpoint_matches_full_replay(self):
+        self.init_development()
+        principal = self.root / "principal.bin"
+        principal.write_bytes(bytes([85]) * 32)
+        ed_public = self.root / "ed-public.bin"
+        ml_private, ml_public = self.root / "ml-private.pem", self.root / "ml-public.pem"
+        openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
+        for args in (("genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private),
+                     ("pkey", "-in", ml_private, "-pubout", "-out", ml_public)):
+            made = subprocess.run([openssl, *map(str, args)], capture_output=True, timeout=60)
+            self.assertEqual(made.returncode, 0, made.stderr)
+
+        ids = ("<capture-before@example.invalid>", "<capture-after@example.invalid>")
+        # Two distinct RFC 8032 public keys; rotation changes the author's
+        # enrollment, not the node's Cancel-Lock secret.
+        public_keys = (
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a",
+            "3d4017c3e843895a92b70aa74d1b7ebc9c982ccf2ec4968cc0cd55f12af4660c")
+        expected = (b"0 unverified malformed keyring 1\r\n",
+                    b"0 unverified malformed keyring 2\r\n")
+        owner = self.node.start()
+        for generation, (message_id, public) in enumerate(zip(ids, public_keys), 1):
+            ed_public.write_bytes(bytes.fromhex(public))
+            self.node.invoke("hybrid-enroll", self.control, str(generation), principal,
+                             ed_public, ml_public, expect=EXIT_OK)
+            with self.node.session(timeout=30, greeting=(b"200",)) as client:
+                offered, accepted = client.post(article(
+                    message_id, headers=("FN-Statement: malformed",)))
+            self.assertTrue(offered.startswith(b"340"), offered)
+            self.assertEqual(accepted, b"240 article received OK\r\n")
+            self.assertEqual(self.verified_header(message_id), expected[generation - 1])
+
+        # Keep the actual journal inodes AFTER the writable open. Publication
+        # rotates and drops covered segments, so removing only the checkpoint
+        # would test damaged-store refusal, not full replay of this history.
+        self.assertFalse(self.path().exists())
+        self.keep_log()
+        made = self.checkpoint()
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr)
+        self.assertIn(b"requested", made.stdout + made.stderr)
+        published = self.owner_line(owner, checkpoint_auto.CHECKPOINT_AUTO)
+        self.assertIsNotNone(published, owner.stderr.tail())
+        self.assertEqual(int(published.group(1)), 4)
+        self.node.stop()
+
+        self.assertEqual(self.open_line(), "open=checkpoint:4 suffix=0")
+        self.node.start()
+        captured = tuple(self.verified_header(message_id) for message_id in ids)
+        self.node.stop()
+
+        self.path().rename(self.root / "captured.fnsc")
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
+        self.assertEqual(self.open_line(), "open=full-replay reason=absent")
+        self.node.start()
+        replayed = tuple(self.verified_header(message_id) for message_id in ids)
+        self.node.stop()
+        self.assertEqual(replayed, expected)
+        # Tooth at dev 84b9996d4: captured B says keyring 0, replayed B says 2.
+        self.assertEqual(captured[1], replayed[1])
+        self.assertEqual(captured[1], expected[1])
+        self.assertEqual(captured, replayed)
 
 
 class NativeRecoverySourceMapTests(unittest.TestCase):

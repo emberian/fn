@@ -3,13 +3,13 @@
  "entries": {
   "fn-scka-recover-from-checkpoint-is-full-recover": {
    "subject": "fn-ssr-intern-step",
-   "host_test": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
    "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-old-pair"
   },
   "fn-scka-next-checkpoint-is-capture": {
    "subject": "fn-scka-next-checkpoint",
-   "host_test": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
    "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
   },
@@ -21,7 +21,7 @@
   },
   "fn-scka-fold-at-is-the-ssr-step": {
    "subject": "fn-ssr-intern-step",
-   "host_test": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
    "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
   }
