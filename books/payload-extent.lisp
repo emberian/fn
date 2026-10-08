@@ -485,19 +485,21 @@
                            (fn-arx-durable-slice fn-arx-prefixp-take
                             fn-arx-record-suffix-len)))))
 
+; Arena validity is unnecessary for this equality: both logical seal
+; operations use the same snoc, even outside the arena recognizer.  Open
+; those exports here, rather than assume validity through the append rule.
 (defthm fn-arx-cat-intern-extent-refines
-  (implies (and (fn-arena-p fn-arena)
-                (equal (fn-durable-octets (nth 0 x) (nth 3 x) (nth 4 x)) (fn-record-payload w)))
+  (implies (equal (fn-durable-octets (nth 0 x) (nth 3 x) (nth 4 x)) (fn-record-payload w))
            (equal (fn-arx-cat-intern-extent w x keyring generation fn-arena)
                   (fn-cat-intern-list w keyring generation fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-cat-intern-list)
+  :hints (("Goal" :in-theory (e/d (fn-cat-intern-list fn-arena-seal-extent
+                                                 fn-arena-seal-list)
                                   (fn-record-p fn-held-facts-of fn-held-context-of)))))
 
 (defthm fn-arx-intern-event-refines
-  (implies (and (fn-arena-p fn-arena)
-                (equal (fn-durable-octets (nfix file) (nfix (nth 2 position))
+  (implies (equal (fn-durable-octets (nfix file) (nfix (nth 2 position))
                                           (len r))
-                       r))
+                       r)
            (equal (fn-arx-intern-event w r position file keyring generation fn-arena)
                   (fn-intern-event w keyring generation fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-intern-event)
@@ -530,12 +532,13 @@
    :hints (("Goal" :in-theory (disable fn-intern-event fn-record-p fn-stxa-p
                                        fn-replay-composite-record fn-arena-seal-list-is-append)))))
 
+; Name the universally quantified logical value independently of the live
+; stobj so defteeth's ground-lemma mode can instantiate it with NIL.
 (defthm fn-arx-intern-events-refines
-  (implies (and (fn-arena-p fn-arena)
-                (fn-arx-faithful-p rs ps))
-           (equal (fn-arx-intern-events ws rs ps keyring generation fn-arena)
-                  (fn-intern-events ws keyring generation fn-arena)))
-  :hints (("Goal" :induct (fn-arx-intern-events ws rs ps keyring generation fn-arena)
+  (implies (fn-arx-faithful-p rs ps)
+           (equal (fn-arx-intern-events ws rs ps keyring generation arena-value)
+                  (fn-intern-events ws keyring generation arena-value)))
+  :hints (("Goal" :induct (fn-arx-intern-events ws rs ps keyring generation arena-value)
            :in-theory (e/d (fn-intern-events)
                            (fn-arx-intern-event fn-intern-event fn-intern-event-arena)))))
 

@@ -117,19 +117,20 @@
 ; 10. The refinement: the replay with compressed extents is the resident
 ; replay.
 
+; As for the plain extent, equality of the sealed payloads suffices for
+; every logical arena value; the recognizer is not needed by the fold.
 (defthm fn-lzr-cat-intern-lz-refines
-  (implies (and (fn-arena-p fn-arena)
-                (equal (fn-lzr-lz-value dict (fn-durable-octets (nth 0 x) (nth 3 x) (nth 4 x))
+  (implies (equal (fn-lzr-lz-value dict (fn-durable-octets (nth 0 x) (nth 3 x) (nth 4 x))
                                         (nth 6 x))
-                       (fn-record-payload w)))
+                       (fn-record-payload w))
            (equal (fn-lzr-cat-intern-lz w x dict keyring generation fn-arena)
                   (fn-cat-intern-list w keyring generation fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-cat-intern-list)
+  :hints (("Goal" :in-theory (e/d (fn-cat-intern-list fn-arena-seal-lz-extent
+                                                 fn-arena-seal-list)
                                   (fn-record-p fn-held-facts-of fn-held-context-of)))))
 
 (defthm fn-lzr-intern-event-refines
-  (implies (and (fn-arena-p fn-arena)
-                (equal (fn-durable-octets (nfix file) (nfix (nth 2 position)) (len z)) z))
+  (implies (equal (fn-durable-octets (nfix file) (nfix (nth 2 position)) (len z)) z)
            (equal (fn-lzr-intern-event w z position file dicts keyring generation fn-arena)
                   (fn-intern-event w keyring generation fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-intern-event)
@@ -179,12 +180,13 @@
    :hints (("Goal" :in-theory (disable fn-intern-event fn-record-p fn-stxa-p
                                        fn-replay-composite-record fn-arena-seal-list-is-append)))))
 
+; Ordinary variable name permits ground logical witnesses in defteeth;
+; the statement still ranges over every logical arena value.
 (defthm fn-lzr-intern-events-refines
-  (implies (and (fn-arena-p fn-arena)
-                (fn-arx-faithful-p zs ps))
-           (equal (fn-lzr-intern-events ws zs ps dicts keyring generation fn-arena)
-                  (fn-intern-events ws keyring generation fn-arena)))
-  :hints (("Goal" :induct (fn-lzr-intern-events ws zs ps dicts keyring generation fn-arena)
+  (implies (fn-arx-faithful-p zs ps)
+           (equal (fn-lzr-intern-events ws zs ps dicts keyring generation arena-value)
+                  (fn-intern-events ws keyring generation arena-value)))
+  :hints (("Goal" :induct (fn-lzr-intern-events ws zs ps dicts keyring generation arena-value)
            :in-theory (e/d (fn-intern-events)
                            (fn-lzr-intern-event fn-intern-event fn-intern-event-arena)))))
 
