@@ -7,7 +7,9 @@
  "fix": "Make the deciding quantum refuse-and-retry (return to the observation loop, off the mutexes) instead of observing under them when the carry moved; the ACL2 decision then runs only on a history observed over the carried profile. If instead kept, declare it as an exception citing the race-only reachability.",
  "id": "LOCK-R2-LIMIT-HISTORY-REOBSERVE",
  "notes": [
-  "Fixed: deciding quantum returns :carry-moved and the loop re-observes off O/E; fnn-lim-decision history now required. Removed opendir/readdir/closedir E keys; lstat E remains (live-reconfigure chain). natives_owed: tests/test_native_limits_live.py, tests/test_native_public_limits.py (concurrent store limit), tests/test_native_admin.py."
+  "Fixed: deciding quantum returns :carry-moved and the loop re-observes off O/E; fnn-lim-decision history now required. Removed opendir/readdir/closedir E keys; lstat E remains (live-reconfigure chain). natives_owed: tests/test_native_limits_live.py, tests/test_native_public_limits.py (concurrent store limit), tests/test_native_admin.py.",
+  "lock-io-out statement: O/E exclude the limit decision; history directory I/O already runs off both locks. The carried profile and history are staged, and the deciding quantum rechecks the current carry, returning :carry-moved to reobserve off-lock on mismatch. No limit mutation happens on that retry branch. Verified current tree; live-reconfigure I/O remains the other lane’s item.",
+  "lock-io-out natives owed for the existing fix: tests/test_native_limits_live.py and tests/test_native_public_limits.py."
  ],
  "owner": "unassigned",
  "scenario": "Two operators change the limit concurrently; the loser's deciding quantum finds values != seen and walks the journal directory while holding O and E.",

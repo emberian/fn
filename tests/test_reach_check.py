@@ -812,6 +812,144 @@ class WorldEdgeTests(unittest.TestCase):
 
 
 
+class GeneratedDispatcherTests(unittest.TestCase):
+    """REACH-CHECK-GENERATED-DISPATCHER-BLIND: a subject reached only through
+    a make-event-generated function is `needs --world', never `unreachable'."""
+
+    BOOK = (
+        "(defconst *fn-t-table* '((\"a\" :cat (fn-t-subject x))))\n"
+        "(defun fn-t-clauses (table) table)\n"
+        "(make-event\n"
+        " `(defun fn-t-dispatch (x)\n"
+        "    (cond ,@(fn-t-clauses *fn-t-table*) (t nil))))\n"
+        "(defun fn-t-subject (x) (cons x x))\n"
+        "(defthm fn-t-subject-prop (consp (fn-t-subject x)))\n"
+        "(defun fn-t-lone (x) (cons x x))\n"
+        "(defthm fn-t-lone-prop (consp (fn-t-lone x)))\n"
+        "(defun fn-t-textual (x) (cons x x))\n"
+        "(defthm fn-t-textual-prop (consp (fn-t-textual x)))\n"
+        "(defun fn-t-live (x) (fn-t-textual x))\n")
+    ROWS = [{"id": "PRF-T1", "events": ["fn-t-subject-prop"]},
+            {"id": "PRF-T2", "events": ["fn-t-lone-prop"]},
+            {"id": "PRF-T3", "events": ["fn-t-textual-prop"]}]
+
+    def tree(self, root, host="(defun host-live (x) (list (fn-t-dispatch x) (fn-t-live x)))\n"):
+        (root / "books").mkdir()
+        (root / "tools").mkdir()
+        (root / "host/native").mkdir(parents=True)
+        (root / "host/native/build.lisp").write_text('(ld "host/live.lisp")\n')
+        (root / "host/live.lisp").write_text(host)
+        (root / "books/t.lisp").write_text(self.BOOK)
+
+    def graph(self, root, world=None):
+        loaded = reach_check.loaded_host_files(root=root)
+        with patch.object(reach_check, "ROOT", root), \
+                patch.object(reach_check, "loaded_host_files", return_value=loaded), \
+                patch.object(reach_check, "load_rows", return_value=self.ROWS):
+            graph = reach_check.Graph(world=world)
+            return graph, reach_check.audit(graph)[0]
+
+    def test_a_subject_behind_a_generated_dispatcher_needs_world(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.tree(root)
+            graph, findings = self.graph(root)
+            self.assertIn("fn-t-dispatch", graph.generated)
+            self.assertNotIn("fn-t-subject", graph.reachable)
+            blind = {f.key(): reach_check.generated_through(graph, f) for f in findings}
+            self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], ["fn-t-dispatch"])
+
+    def strict(self, root, extra=()):
+        baseline = root / "baseline.json"
+        baseline.write_text(json.dumps({"accepted": {"PRF-T2:fn-t-lone-prop": "SPEC: fixture"},
+                                        "unresolved": {}}))
+        out = io.StringIO()
+        loaded = reach_check.loaded_host_files(root=root)
+        with patch.object(reach_check, "ROOT", root), patch.object(reach_check, "BASELINE", baseline), \
+                patch.object(reach_check, "loaded_host_files", return_value=loaded), \
+                patch.object(reach_check, "load_rows", return_value=self.ROWS), \
+                redirect_stdout(out):
+            code = reach_check.main(["--strict", "--summary", *extra])
+        return code, out.getvalue()
+
+    def stub_world(self, root):
+        records = [{"name": name, "book": "/x/books/t.lisp", "class": ":ideal",
+                    "callees": calls, "guard_callees": [], "attachment": None,
+                    "formals": [], "alias": None, "mbe": []}
+                   for name, calls in (("fn-t-dispatch", ["fn-t-subject"]),
+                                       ("fn-t-subject", []), ("fn-t-lone", []),
+                                       ("fn-t-textual", []), ("fn-t-live", ["fn-t-textual"]))]
+        dump = root / "world.json"
+        dump.write_text(json.dumps({"functions": records, "theorems": []}))
+        return dump
+
+    def test_needs_world_fails_strict_in_source_mode_with_its_own_line(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.tree(root)
+            code, text = self.strict(root)
+            self.assertEqual(code, 1, text)
+            self.assertIn("1 event(s) need --world", text)
+            self.assertIn("fn-t-dispatch 1", text)
+            self.assertIn("NEEDS --world -- PRF-T1:fn-t-subject-prop", text)
+            self.assertNotIn("NEW unreachable", text)
+            self.assertIn("1 have a subject a host line reaches, 1 do not", text)
+
+    def test_needs_world_passes_strict_when_a_world_run_judges_it(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.tree(root)
+            code, text = self.strict(root, ["--world", str(self.stub_world(root))])
+            self.assertEqual(code, 0, text)
+            self.assertNotIn("need --world", text)
+            self.assertIn("2 have a subject a host line reaches, 1 do not", text)
+
+    def test_a_subject_with_no_path_stays_unreachable(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.tree(root)
+            graph, findings = self.graph(root)
+            lone = [f for f in findings if f.key() == "PRF-T2:fn-t-lone-prop"]
+            self.assertEqual(len(lone), 1)
+            self.assertEqual(reach_check.generated_through(graph, lone[0]), [])
+
+    def test_a_subject_behind_a_textual_defun_stays_reached(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.tree(root)
+            graph, findings = self.graph(root)
+            self.assertIn("fn-t-textual", graph.reachable)
+            self.assertNotIn("PRF-T3:fn-t-textual-prop", [f.key() for f in findings])
+
+    def test_a_generated_name_no_reached_definition_names_blinds_nothing(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.tree(root, host="(defun host-live (x) (fn-t-live x))\n")
+            graph, findings = self.graph(root)
+            self.assertEqual(graph.shadow, {})
+            self.assertIn("PRF-T1:fn-t-subject-prop", [f.key() for f in findings])
+
+    def test_the_world_judges_what_the_generated_function_calls(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.tree(root)
+            records = [{"name": name, "book": "/x/books/t.lisp", "class": ":ideal",
+                        "callees": calls, "guard_callees": [], "attachment": None,
+                        "formals": [], "alias": None, "mbe": []}
+                       for name, calls in (("fn-t-dispatch", ["fn-t-subject"]),
+                                           ("fn-t-subject", []), ("fn-t-lone", []),
+                                           ("fn-t-textual", []), ("fn-t-live", ["fn-t-textual"]))]
+            dump = root / "world.json"
+            dump.write_text(json.dumps({"functions": records, "theorems": []}))
+            try:
+                graph, findings = self.graph(root, world=dump)
+            except (ImportError, KeyError, TypeError) as error:  # dump format is coverage.py's
+                self.skipTest(f"stub world not loadable here: {error}")
+            self.assertIn("fn-t-subject", graph.reachable)
+            self.assertEqual(graph.shadow, {})
+            self.assertEqual([f.key() for f in findings], ["PRF-T2:fn-t-lone-prop"])
+
+
 class ProseIsNotReachTests(unittest.TestCase):
     """CONVERGE-2 row 14: a docstring that cites a book program is prose, not
     a call; a crash campaign naming a program in code is a tie, not a host."""
