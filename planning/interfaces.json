@@ -40295,12 +40295,7 @@
       "subsystem": "nntp/served",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [
-        [
-          "lpages",
-          "nat-listp"
-        ]
-      ],
+      "kinds": [],
       "exempt": {},
       "keystones": [
         {
