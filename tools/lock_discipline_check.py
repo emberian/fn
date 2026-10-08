@@ -682,6 +682,8 @@ class Event:
     # is bound from) per such guard, and a call's first argument when it is a symbol
     dead: tuple = ()
     arg0: str = ""
+    receiver: str = ""
+    guards: tuple = ()
 
 
 @dataclass
@@ -860,6 +862,11 @@ class Analyzer:
         self.cur_def = None
         self.rebound: list = []       # specials let-bound around the form being walked
         self.dead_guards: list = []   # thread-not-alive guards around the form being walked
+        self.path_guards: list = []
+        self.local_callables = self.nonescaping_callables()
+        self.resolved_callbacks: set = set()
+        self.slot_callbacks: dict = collections.defaultdict(set)
+        self.slot_invocations: list = []
         self.defer_vars: list = []    # variables whose captured conditions are rethrown on every exit path
         self.leaf_kinds = self._leaf_table()
         self.region_of = {}
@@ -878,6 +885,112 @@ class Analyzer:
                 self.region_of[g] = row["lock"]
         for acc, lock in contracts.raw.get("slots", {}).items():
             self.region_of[acc] = lock["lock"] if isinstance(lock, dict) else lock
+
+    def nonescaping_callables(self) -> set:
+        """Callable cells whose complete source use is invocation or a test.
+
+        A special's dynamically bound closure cannot leave its binding thread
+        through such a cell. A struct slot can have several callers: keep all
+        of them, rather than inventing an additional async actor. Any value
+        escape, non-lambda store, or non-NIL initial value refuses inference.
+        This resolves calling context, not an exclusion/publication contract.
+        """
+        candidates = set(self.tree.globals) | set(self.tree.structs)
+        bad, used = set(), set()
+
+        def cell(x):
+            if isinstance(x, Sym) and str(x) in self.tree.globals:
+                return str(x)
+            if head(x) in self.tree.structs:
+                return head(x)
+            return None
+
+        def closure(x):
+            return (sym(x) == "nil" or head(x) == "lambda" or
+                    head(x) == "function" and len(x) == 2 and head(x[1]) == "lambda")
+
+        def scan(x, role="value"):
+            c = cell(x)
+            if c:
+                used.add(c)
+                if role not in ("test", "invoke", "store"):
+                    bad.add(c)
+                if isinstance(x, list):
+                    for arg in x[1:]:
+                        scan(arg)
+                return
+            if not isinstance(x, list) or not x or head(x) in SPECIAL_SKIP:
+                return
+            h = head(x)
+            if h in ("symbol-value", "set", "boundp", "makunbound") and len(x) > 1:
+                reflected = quoted_symbol(x[1])
+                if reflected in candidates:
+                    bad.add(reflected)
+            if h in ("let", "let*"):
+                for b in x[1] if len(x) > 1 and isinstance(x[1], list) else []:
+                    if isinstance(b, list) and b:
+                        c = cell(b[0])
+                        init = b[1] if len(b) > 1 else Sym("nil")
+                        if c and not closure(init):
+                            bad.add(c)
+                        scan(init)
+                for f in x[2:]:
+                    scan(f)
+                return
+            if h in ("setf", "setq", "psetf", "psetq"):
+                for k in range(1, len(x) - 1, 2):
+                    c = cell(x[k])
+                    if c and not closure(x[k + 1]):
+                        bad.add(c)
+                    scan(x[k], "store")
+                    scan(x[k + 1])
+                return
+            for k, f in enumerate(x[1:], 1):
+                subrole = "value"
+                if h in FUNCALLERS and k == 1:
+                    subrole = "invoke"
+                elif h in ("when", "unless", "if") and k == 1:
+                    subrole = "test"
+                elif h in ("not", "null") or h in ("and", "or") and role == "test":
+                    subrole = "test"
+                scan(f, subrole)
+
+        constructors = collections.defaultdict(dict)
+        for slot, (struct, field) in self.tree.structs.items():
+            for constructor in ("make-" + struct, "%make-" + struct):
+                constructors[constructor][":" + field] = slot
+        top = list(_top_forms(self.tree))
+        for _, f in top:
+            if head(f) == "defstruct" and len(f) > 1 and isinstance(f[1], list):
+                struct = sym(f[1][0])
+                for option in f[1][1:]:
+                    if head(option) == ":constructor" and len(option) > 1 and sym(option[1]) != "nil":
+                        fields = {":" + field: slot for slot, (owner, field) in self.tree.structs.items()
+                                  if owner == struct}
+                        if len(option) > 2:
+                            # A positional constructor has arbitrary argument
+                            # bindings; no callable inference for its slots.
+                            bad.update(fields.values())
+                        constructors[sym(option[1])] = fields
+        for d in list(self.tree.defs.values()) + list(self.tree.macros.values()):
+            for f in d.body:
+                scan(f)
+                for node in _flat_nodes([f]):
+                    # Constructor keyword arguments can install a callable
+                    # without a SETF. Keep that pattern unresolved for now.
+                    h = head(node)
+                    if h in constructors:
+                        for arg in node[1:]:
+                            if sym(arg) in constructors[h]:
+                                bad.add(constructors[h][sym(arg)])
+        for accessor, init in self.tree.struct_inits.items():
+            if init is not None and sym(init) != "nil":
+                bad.add(accessor)
+        # Check global initializers as well as executable definitions.
+        for _, f in top:
+            if head(f) in ("defvar", "defparameter") and len(f) > 2 and sym(f[2]) != "nil":
+                bad.add(sym(f[1]))
+        return (candidates & used) - bad
 
     # -- tables ------------------------------------------------------------
     def resolve_guard(self, text: str) -> str | None:
@@ -1138,9 +1251,18 @@ class Analyzer:
         self.solve_param_ctx()
         self.infos = {}
         self.lambda_count = 0
+        self.resolved_callbacks.clear()
+        self.slot_callbacks.clear()
+        self.slot_invocations.clear()
         for name, d in self.tree.defs.items():
             self.top_name = name
             self.walk_def(name, d, record=True)
+        for caller, slot, line, ctx in self.slot_invocations:
+            for rid in sorted(self.slot_callbacks[slot]):
+                self.infos[caller].events.append(Event("call", rid, line, ctx, "slot-callback"))
+                self.infos[caller].sig = sig_union([self.infos[caller].sig,
+                                                   ("u", frozenset(), (rid,), ())])
+                self.resolved_callbacks.add(rid)
 
     def walk_def(self, name: str, d: Def, record: bool, ctx: Ctx | None = None,
                  thread_of=None, env=None) -> FnInfo:
@@ -1151,6 +1273,7 @@ class Analyzer:
         self.defer_vars = []
         self.rebound = []
         self.dead_guards = []
+        self.path_guards = []
         self.recording = record
         if not record:
             self.pass1_name = name
@@ -1164,19 +1287,23 @@ class Analyzer:
         body = d.body
         if body and isinstance(body[0], str) and not isinstance(body[0], Sym) and len(body) > 1:
             body = body[1:]
-        for f in body:
-            parts.append(self.walk(f, ctx or Ctx(), env, d.line))
+        parts.append(self.walk_body(body, ctx or Ctx(), env, d.line))
         info.sig = sig_union(parts)
         if record:
             # a template that splices its body twice (fnn-owner-measured's two
             # branches) walks the same source twice: keep one of each
-            seen = set()
+            seen = {}
             unique = []
             for e in info.events:
                 k = (e.kind, e.name, e.line, e.ctx, e.bound, e.atomic, e.dead, e.arg0, render(e.extra, 200) if isinstance(e.extra, list) else repr(e.extra))
                 if k not in seen:
-                    seen.add(k)
+                    seen[k] = e
                     unique.append(e)
+                else:
+                    # One source form can be expanded on differently guarded
+                    # paths. Only facts common to every path dominate it.
+                    old = seen[k]
+                    old.guards = tuple(g for g in old.guards if g in e.guards)
             info.events = unique
             hs = {}
             for h in info.handlers:
@@ -1189,10 +1316,26 @@ class Analyzer:
             self.infos[name] = info
         return info
 
-    def ev(self, kind, name, line, ctx, extra=None, atomic=False, arg0=""):
+    def ev(self, kind, name, line, ctx, extra=None, atomic=False, arg0="", receiver=""):
         if self.recording:
             self.cur.events.append(Event(kind, name, line, ctx, extra, frozenset(self.rebound), atomic,
-                                         tuple(self.dead_guards), arg0))
+                                         tuple(self.dead_guards), arg0, receiver, tuple(self.path_guards)))
+
+    @staticmethod
+    def guard_expr(form, env, seen=frozenset()):
+        """Resolve lexical aliases in a predicate, without evaluating it."""
+        if isinstance(form, Sym):
+            n = str(form)
+            value = env.get(n)
+            if n not in seen and isinstance(value, (Sym, list)):
+                return Analyzer.guard_expr(value, env, seen | {n})
+            return n
+        if isinstance(form, list):
+            if head(form) == "sb-thread:with-mutex" and len(form) == 3:
+                return ("under-mutex", Analyzer.guard_expr(form[1][0], env, seen),
+                        Analyzer.guard_expr(form[2], env, seen))
+            return tuple(Analyzer.guard_expr(x, env, seen) for x in form)
+        return form
 
     @staticmethod
     def _holding_release_cleanup(cleanup, lockform) -> bool:
@@ -1209,6 +1352,7 @@ class Analyzer:
 
     def walk_body(self, forms, ctx, env, line):
         parts = []
+        fenced = set()
         forms = list(forms)
         i = 0
         while i < len(forms):
@@ -1233,11 +1377,47 @@ class Analyzer:
                     parts.append(self.walk(nxt[1], inner, env, line_of(nxt, ln)))
                     i += 2
                     continue
-            parts.append(self.walk(f, ctx, env, line_of(f, line)))
+            sig = self.walk(f, ctx, env, line_of(f, line))
+            parts.append(("f", sig, tuple(sorted(fenced))) if fenced else sig)
+            if head(f) in self.c.raw.get("fence_functions", []):
+                fenced.add(head(f))
             i += 1
         return sig_union(parts)
 
     def walk(self, form, ctx: Ctx, env: dict, line: int):
+        if head(form) == "and":
+            saved = list(self.path_guards)
+            parts = []
+            try:
+                for f in form[1:]:
+                    parts.append(self.walk_lambda_inline(f, ctx, env, line_of(f, line))
+                                 if head(f) == "lambda" else self.walk(f, ctx, env, line_of(f, line)))
+                    self.path_guards.append((True, self.guard_expr(f, env)))
+                return sig_union(parts)
+            finally:
+                self.path_guards = saved
+        if head(form) in ("when", "unless") and len(form) > 2:
+            if head(form[1]) == "sb-thread:holding-mutex-p":
+                return self._walk(form, ctx, env, line)
+            saved = list(self.path_guards)
+            test_sig = self.walk(form[1], ctx, env, line)
+            self.path_guards.append((head(form) == "when", self.guard_expr(form[1], env)))
+            dead = head(form) == "unless" and self.dead_test(form[1]) is not None
+            if dead:
+                self.dead_guards.append(self.dead_ties(self.dead_test(form[1]), env))
+            try:
+                body = (self.walk_body(form[2:], ctx, env, line_of(form, line))
+                        if dead or not any(head(f) == "lambda" for f in form[2:]) else
+                        self.walk_call(Node([Sym("progn")] + list(form[2:])), "progn", ctx, env,
+                                       line_of(form, line)))
+                return sig_union([test_sig, body])
+            finally:
+                self.path_guards = saved
+                if dead:
+                    self.dead_guards.pop()
+        return self._walk(form, ctx, env, line)
+
+    def _walk(self, form, ctx: Ctx, env: dict, line: int):
         if isinstance(form, Sym):
             name = str(form)
             if name in self.tree.globals and name not in env:
@@ -1288,6 +1468,16 @@ class Analyzer:
             return self.walk_gated_body(form, ctx, env, line)
         if h in BINDING_FORMS or h in ("multiple-value-bind", "destructuring-bind", "symbol-macrolet"):
             return self.walk_binding(form, h, ctx, env, line)
+        if h == "sb-ext:with-locked-hash-table" and len(form) > 2:
+            # SBCL's table lock covers compound operations as well as the
+            # individual synchronized operations. It does not cover values
+            # retained and mutated after leaving this lexical extent.
+            spec = form[1]
+            table = sym(spec[0]) if isinstance(spec, list) and len(spec) == 1 else None
+            if table in self.tree.synchronized and table not in env:
+                inner = Ctx(ctx.locks | {"SYNC:" + table}, ctx.noio, ctx.scope,
+                            ctx.gated, ctx.ignore, ctx.cond)
+                return self.walk_body(form[2:], inner, env, line)
         if h in SYNC_TABLE_OPS and len(form) > SYNC_TABLE_OPS[h][0]:
             pos, kind = SYNC_TABLE_OPS[h]
             table = form[pos]
@@ -1565,7 +1755,17 @@ class Analyzer:
                 if isinstance(b, list) and b:
                     name = str(b[0])
                     init = b[1] if len(b) > 1 else None
-                    parts.append(self.walk(init, ctx if h != "let*" else Ctx(ctx.locks, noio, ctx.scope, ctx.gated, ctx.ignore, ctx.cond), env2 if h == "let*" else env, line))
+                    initctx = ctx if h != "let*" else Ctx(ctx.locks, noio, ctx.scope, ctx.gated, ctx.ignore, ctx.cond)
+                    initenv = env2 if h == "let*" else env
+                    lam = init[1] if head(init) == "function" and len(init) == 2 else init
+                    if name in self.local_callables and name in self.tree.globals and head(lam) == "lambda":
+                        rid = self.spawn_lambda(lam, line, None, initenv)
+                        if self.recording:
+                            self.resolved_callbacks.add(rid)
+                        self.ev("call", rid, line, initctx, "dynamic-callback")
+                        parts.append(("u", frozenset(), (rid,), ()))
+                    else:
+                        parts.append(self.walk(init, initctx, initenv, line))
                     if name == "*fnn-extent-no-io*":
                         noio = not (init is None or (isinstance(init, Sym) and str(init) == "nil"))
                     elif name.startswith("*") and name in self.tree.globals:
@@ -1878,7 +2078,15 @@ class Analyzer:
             pairs = form[1:]
             for k in range(0, len(pairs) - 1, 2):
                 parts.append(self.note_place(pairs[k], ctx, env, line, value=pairs[k + 1], atomic_ok=True))
-                parts.append(self.walk(pairs[k + 1], ctx, env, line))
+                value = pairs[k + 1]
+                lam = value[1] if head(value) == "function" and len(value) == 2 else value
+                slot = head(pairs[k])
+                if slot in self.local_callables and head(lam) == "lambda":
+                    rid = self.spawn_lambda(lam, line, None, env)
+                    if self.recording:
+                        self.slot_callbacks[slot].add(rid)
+                else:
+                    parts.append(self.walk(value, ctx, env, line))
             return sig_union(parts)
         if h in ("push", "pushnew"):
             if len(form) > 2:
@@ -1904,7 +2112,7 @@ class Analyzer:
         if isinstance(place, list) and place:
             h = head(place)
             if h in self.tree.structs or h in self.region_of:
-                self.ev("acc", h, line, ctx, "w")
+                self.ev("acc", h, line, ctx, "w", receiver=render(place[1]) if len(place) > 1 else "")
                 if pushed is not None:
                     self.ev("push", h, line, ctx, pushed)
                 return self.walk_body(place[1:], ctx, env, line)
@@ -1967,9 +2175,9 @@ class Analyzer:
             if self.recording:
                 lam = Def(rid, creator.path, line, [], [Node([fn[1]])], "lambda", "", creator.loaded)
                 lam.body[0].line = line
-                saved = (self.cur, self.recording, self.rebound, self.defer_vars, self.dead_guards)
+                saved = (self.cur, self.recording, self.rebound, self.defer_vars, self.dead_guards, self.path_guards)
                 info = self.walk_def(rid, lam, True, thread_of=(creator.name, line, tname))
-                self.cur, self.recording, self.rebound, self.defer_vars, self.dead_guards = saved
+                self.cur, self.recording, self.rebound, self.defer_vars, self.dead_guards, self.path_guards = saved
             self.ev("thread", rid, line, ctx, tname)
         else:
             self.ev("unresolved", "make-thread of a computed function " + render(fn, 40), line, ctx)
@@ -2027,10 +2235,10 @@ class Analyzer:
         d = Def(rid, self.cur.path, line_of(lam, line), lam[1] if len(lam) > 1 else [], list(lam[2:]),
                 "lambda", "", self.cur.loaded)
         saved = (self.cur, self.cur_def, self.recording, getattr(self, "gate_class", None), self.defer_vars,
-                 self.rebound, self.dead_guards)
+                 self.rebound, self.dead_guards, self.path_guards)
         self.walk_def(rid, d, True, thread_of=thread_of, env={k: None for k in env})
         (self.cur, self.cur_def, self.recording, self.gate_class, self.defer_vars,
-         self.rebound, self.dead_guards) = saved
+         self.rebound, self.dead_guards, self.path_guards) = saved
         return rid
 
     def walk_handler_case(self, form, ctx, env, line):
@@ -2147,17 +2355,22 @@ class Analyzer:
         subject = quoted_symbol(args[0]) if args else None
         if subject and (h in self.c.core_callers or subject in self.reach):
             self.ev("core", subject, line, ctx, h)
+            # Keep the source position of possible core failure for the
+            # provenance analysis. The original signal census remains intact.
+            parts.append(("u", frozenset({("core-fault", subject)}), (), ()))
         kind = self.leaf_kind(h)
         if kind:
             self.ev("leaf", h, line, ctx, (kind, args[0] if args else None))
             if kind in ("io", "socket"):
                 parts.append(("u", frozenset([("class", "socket" if kind == "socket" else "os")]), (), ()))
         if h in self.region_of and h not in self.tree.globals:
-            self.ev("acc", h, line, ctx, "r")
+            self.ev("acc", h, line, ctx, "r", receiver=render(args[0]) if args else "")
         elif h in self.tree.structs:
-            self.ev("acc", h, line, ctx, "r")
+            self.ev("acc", h, line, ctx, "r", receiver=render(args[0]) if args else "")
         if h in FUNCALLERS and args:
             target = args[0]
+            if head(target) in self.local_callables and head(target) in self.tree.structs and self.recording:
+                self.slot_invocations.append((self.cur.name, head(target), line, ctx))
             if isinstance(target, Sym) and str(target) in env:
                 bound_form = env[str(target)]
                 if (isinstance(bound_form, tuple) and len(bound_form) == 2
@@ -2229,7 +2442,9 @@ class Analyzer:
                         if pname:
                             self.run_targets.append((h, pname))
                         try:
-                            parts.append(self.walk_lambda_inline(a, inner, env, line))
+                            sig = self.walk_lambda_inline(a, inner, env, line)
+                            boundaries = getattr(self, "fenced_params", {}).get((h, pname))
+                            parts.append(("f", sig, tuple(sorted(boundaries))) if boundaries else sig)
                         finally:
                             if pname:
                                 self.run_targets.pop()
@@ -2241,7 +2456,9 @@ class Analyzer:
                     inner = Ctx(ctx.locks | extra.locks, ctx.noio, extra.scope or ctx.scope,
                                 extra.gated or ctx.gated, ctx.ignore, ctx.cond)
                     self.ev("call", sym(a[1]), line, inner, "ref")
-                    parts.append(("u", frozenset(), (sym(a[1]),), ()))
+                    sig = ("u", frozenset(), (sym(a[1]),), ())
+                    boundaries = getattr(self, "fenced_params", {}).get((h, pname))
+                    parts.append(("f", sig, tuple(sorted(boundaries))) if boundaries else sig)
                     continue
                 if isinstance(a, list) and head(a) == "function" and isinstance(a[1], Sym):
                     # a per-reference flet closure passed at PARAM: its body
@@ -2255,7 +2472,9 @@ class Analyzer:
                                     extra.gated or ctx.gated, ctx.ignore, ctx.cond)
                         self.run_targets.append((h, pname))
                         try:
-                            parts.append(self.walk_flet_body(fl, inner, env, line))
+                            sig = self.walk_flet_body(fl, inner, env, line)
+                            boundaries = getattr(self, "fenced_params", {}).get((h, pname))
+                            parts.append(("f", sig, tuple(sorted(boundaries))) if boundaries else sig)
                         finally:
                             self.run_targets.pop()
                         continue
@@ -2372,6 +2591,55 @@ class Analyzer:
             if entries:
                 routes[key] = entries
         self.param_routes = routes
+        # Failure provenance has its own fixed point. Adding it must not
+        # split lock contexts or change the R2 region/site weights.
+        fenced = {k: {k[0]} for k in sites if k[0] in self.c.raw.get("fence_boundaries", [])}
+        changed = True
+        while changed:
+            changed = False
+            for key, rows in sites.items():
+                if key in fenced or not rows:
+                    continue
+                origins = []
+                for row in rows:
+                    target = row[2] if row[0] == "run" and len(row) == 3 else (
+                        (row[2], row[3]) if row[0] == "pass" else None)
+                    origins.append(fenced.get(target, set()))
+                if all(origins):
+                    fenced[key] = set().union(*origins)
+                    changed = True
+        def no_escape(key):
+            fn, param = key
+            d = self.tree.defs.get(fn)
+            if not d:
+                return False
+            def scan(x, enclosed=False):
+                if isinstance(x, Sym):
+                    return str(x) != param
+                if not isinstance(x, list) or not x or head(x) in SPECIAL_SKIP:
+                    return True
+                h = head(x)
+                if h in self.templates and h in self.tree.macros:
+                    expanded = self.expand(x, self.tree.macros[h])
+                    return expanded is not None and scan(expanded, enclosed)
+                if h in FUNCALLERS and len(x) > 1 and sym(x[1]) == param:
+                    return enclosed and all(scan(a, enclosed) for a in x[2:])
+                params = lambda_params(self.tree.defs[h].params) if h in self.tree.defs else []
+                for k, a in enumerate(x[1:]):
+                    safe = k < len(params) and (h, params[k]) in fenced
+                    if sym(a) == param and safe:
+                        continue
+                    if not scan(a, enclosed or safe):
+                        return False
+                return True
+            return all(scan(f, fn in self.c.raw.get("fence_boundaries", [])) for f in d.body)
+        changed = True
+        while changed:
+            bad = {k for k in fenced if not no_escape(k)}
+            changed = bool(bad)
+            for k in bad:
+                del fenced[k]
+        self.fenced_params = fenced
 
     def resolve_param_ctx(self, fn: str, pname: str | None, literals: dict):
         """The context a closure passed at (FN, PNAME) runs in AT A CALL
@@ -3402,10 +3670,498 @@ class Model:
         self.compute_blocking()
         self.compute_acquires()
         self.compute_signals()
+        self.compute_unfenced_signals()
         self.compute_requirements()
         self.compute_actors()
         self.compute_mustheld()
         self.compute_mustbound()
+        self.construction_accesses = self.construction_before_publication()
+        self.quiescent_accesses = self.post_death_quiescence()
+
+    def construction_before_publication(self) -> set:
+        """A fresh object's initialization precedes its first publication.
+
+        Track constructor results and lexical aliases in evaluation order.
+        Storing one in shared storage, passing it to an unknown operation,
+        capturing it in a closure, or returning it ends private construction.
+        Branches retain only privacy true on both paths. A helper's parameter
+        is private only if every reference is a direct call with a still-private
+        argument, and its source uses the parameter solely as a slot receiver.
+        A roster read only by the constructing actor retains private custody;
+        a call that can read that roster revokes it. An early store in a roster
+        another actor reads is publication even if a later spawn looks safe.
+        The rule removes individual R1b sites, never a function or a slot class.
+        """
+        constructors = {prefix + s for s, _ in self.tree.structs.values()
+                        for prefix in ("make-", "%make-")}
+        for _, f in _top_forms(self.tree):
+            if head(f) == "defstruct" and isinstance(f[1], list):
+                for opt in f[1][1:]:
+                    if head(opt) == ":constructor" and len(opt) > 1:
+                        constructors.add(sym(opt[1]))
+        constructors -= set(self.tree.defs) | set(self.tree.macros)
+        global_actors = collections.defaultdict(set)
+        for n, info in self.infos.items():
+            for e in info.events:
+                if e.kind == "acc" and e.name in self.tree.globals:
+                    global_actors[e.name].update(self.actor_of(r) for r in self.actors.get(n, ()))
+        private_rosters = {g for g, actors in global_actors.items() if actors <= {"main", "startup"}}
+        no_reentry = {"sb-thread:with-mutex", "progn", "unwind-protect", "handler-case", "block",
+                      "and", "or", "not", "null", "eq", "eql", "equal", "consp", "atom", "listp",
+                      "integerp", "numberp", "stringp", "typep", "first", "second", "third", "car", "cdr",
+                      "get-internal-real-time", "values", "+", "-", "*", "/", "<", ">", "<=", ">=", "=",
+                      "incf", "decf", "1+", "1-", "length", "aref", "svref",
+                      "sb-thread:holding-mutex-p", "sb-thread:grab-mutex", "sb-thread:release-mutex"}
+        reads_cache = {}
+
+        def globals_read(fn):
+            if fn not in reads_cache:
+                seen, todo, reads = set(), [fn], set()
+                while todo:
+                    name = todo.pop()
+                    if name in seen or name not in self.infos:
+                        continue
+                    seen.add(name)
+                    for e in self.infos[name].events:
+                        if e.kind == "acc" and e.extra == "r" and e.name in private_rosters:
+                            reads.add(e.name)
+                        elif e.kind == "call":
+                            todo.append(e.name)
+                reads_cache[fn] = reads
+            return reads_cache[fn]
+        receivers = {}
+        referenced = set()
+        direct_calls = collections.defaultdict(set)
+        for n, d in self.tree.defs.items():
+            for p in lambda_params(d.params):
+                uses = []
+                def uses_of(x, parent=None, index=0):
+                    if isinstance(x, Sym) and str(x) == p:
+                        uses.append(head(parent) in self.tree.structs and index == 1)
+                    elif isinstance(x, list) and head(x) not in SPECIAL_SKIP:
+                        for k, y in enumerate(x):
+                            uses_of(y, x, k)
+                for f in d.body:
+                    uses_of(f)
+                if uses and all(uses):
+                    receivers[(n, p)] = True
+        def references(x, call_head=False):
+            if isinstance(x, Sym) and str(x) in self.tree.defs and not call_head:
+                referenced.add(str(x))
+            if isinstance(x, list):
+                if head(x) in self.tree.defs:
+                    direct_calls[head(x)].add(id(x))
+                for k, y in enumerate(x):
+                    references(y, k == 0)
+        for d in list(self.tree.defs.values()) + list(self.tree.macros.values()):
+            for f in d.body:
+                references(f)
+
+        private_params = set()
+        proofs = {}
+        # Dependencies run from a private caller argument to a helper's
+        # parameter. Monotonic growth stops at the finite parameter set.
+        for _ in range(len(receivers) + 1):
+            proofs, calls = {}, collections.defaultdict(list)
+            seen_calls = collections.defaultdict(set)
+            for n, d in self.tree.defs.items():
+                if any(head(f) in ("flet", "labels", "macrolet", "symbol-macrolet", "progv")
+                       for f in _flat_nodes(d.body)):
+                    continue
+                env = {p: frozenset({("param", p)}) for p in lambda_params(d.params)
+                       if (n, p) in private_params}
+                live = set().union(*env.values()) if env else set()
+                children = collections.defaultdict(set)
+                confined = ({self.actor_of(r) for r in self.actors.get(n, ())} <= {"main", "startup"})
+
+                def escape(tokens):
+                    pending = set(tokens)
+                    while pending:
+                        t = pending.pop()
+                        if t in live:
+                            live.remove(t)
+                            pending.update(children[t])
+
+                def record(f, slot, obj, line):
+                    key = (n, line, slot)
+                    proofs.setdefault(key, []).append(bool(obj) and obj <= live)
+
+                def seq(fs, scope):
+                    value = frozenset()
+                    for f in fs:
+                        value = scan(f, scope)
+                    return value
+
+                def scan(f, scope):
+                    if isinstance(f, Sym):
+                        return scope.get(str(f), frozenset() if str(f) == "nil" or str(f).startswith(":")
+                                         else frozenset({("unknown",)}))
+                    if not isinstance(f, list) or not f or head(f) in SPECIAL_SKIP:
+                        return frozenset()
+                    h, ln = head(f), line_of(f, d.line)
+                    if h is None:
+                        # A clause/binding list, not a call to a computed
+                        # function. Do not infer alias updates across its
+                        # unknown control shape.
+                        escape(set().union(*(scope.get(s, frozenset()) for s in direct_symbols(f))))
+                        return seq(f, scope)
+                    if h in ("cond", "case", "ecase", "typecase", "handler-case"):
+                        # Unknown branch selection must not make the last
+                        # visited branch's new aliases private after the join.
+                        escape(set().union(*(scope.get(s, frozenset()) for s in direct_symbols(f))))
+                        before = set(live)
+                        seq(f[1:], scope)
+                        live.intersection_update(before)
+                        return frozenset({("unknown",)})
+                    if h in self.an.templates and h in self.tree.macros:
+                        expanded = self.an.expand(f, self.tree.macros[h])
+                        if expanded is not None:
+                            return scan(expanded, scope)
+                    if h in ("lambda", "function"):
+                        escape(set().union(*(scope.get(s, frozenset()) for s in direct_symbols(f))))
+                        return frozenset()
+                    if h in ("let", "let*"):
+                        inner = dict(scope)
+                        for b in f[1] if isinstance(f[1], list) else []:
+                            if isinstance(b, list) and b:
+                                v = scan(b[1], inner if h == "let*" else scope) if len(b) > 1 else frozenset()
+                                inner[sym(b[0])] = v
+                        return seq(f[2:], inner)
+                    if h in ("sb-thread:with-mutex", "sb-thread:with-recursive-lock"):
+                        for a in f[1] if isinstance(f[1], list) else []:
+                            scan(a, scope)
+                        return seq(f[2:], scope)
+                    if h in ("setf", "setq"):
+                        value = frozenset()
+                        for k in range(1, len(f) - 1, 2):
+                            place = f[k]
+                            obj = scan(place[1], scope) if head(place) in self.tree.structs else frozenset()
+                            value = scan(f[k + 1], scope)
+                            if isinstance(place, Sym) and (str(place) not in self.tree.globals or
+                                                          confined and str(place) in private_rosters):
+                                scope[str(place)] = value
+                            elif head(place) in self.tree.structs:
+                                record(f, head(place), obj, ln)
+                                if obj and obj <= live:
+                                    for t in obj:
+                                        children[t].update(value)
+                                else:
+                                    escape(value)
+                            else:
+                                escape(value)
+                        return value
+                    if h in ("push", "pushnew") and len(f) > 2:
+                        value = scan(f[1], scope)
+                        place = sym(f[2])
+                        if confined and place in private_rosters:
+                            scope[place] = scope.get(place, frozenset()) | value
+                        else:
+                            escape(value)
+                        return frozenset({("unknown",)})
+                    if h in ("if", "when", "unless"):
+                        scan(f[1], scope)
+                        before = set(live)
+                        arms = [f[2:3], f[3:]] if h == "if" else [f[2:], []]
+                        states, values, scopes = [], [], []
+                        for arm in arms:
+                            live.clear(); live.update(before)
+                            branch = dict(scope)
+                            values.append(seq(arm, branch))
+                            scopes.append(branch)
+                            states.append(set(live))
+                        live.clear(); live.update(set.intersection(*states))
+                        for p in set().union(*(set(s) for s in scopes)):
+                            scope[p] = frozenset().union(*(s.get(p, frozenset({("unknown",)})) for s in scopes))
+                        return frozenset().union(*values)
+                    if h in self.tree.structs:
+                        obj = scan(f[1], scope) if len(f) > 1 else frozenset()
+                        record(f, h, obj, ln)
+                        return frozenset({("unknown",)})
+                    if h in constructors:
+                        for a in f[1:]:
+                            escape(scan(a, scope))
+                        t = (n, id(f))
+                        live.add(t)
+                        return frozenset({t})
+                    if h == "progn":
+                        return seq(f[1:], scope)
+                    if h in ("dolist", "dotimes", "loop", "do", "do*"):
+                        # Outer objects can escape on an earlier iteration.
+                        # Fresh LET allocations within an iteration still work.
+                        live.clear()
+                        seq(f[1:], dict(scope))
+                        live.clear()
+                        return frozenset()
+                    if h in self.tree.macros:
+                        live.clear()  # macro body can run before its arguments
+                    args = [scan(a, scope) for a in f[1:]]
+                    if h in ("list", "cons", "vector"):
+                        return frozenset().union(*args)
+                    params = lambda_params(self.tree.defs[h].params) if h in self.tree.defs else []
+                    if h in self.tree.defs:
+                        seen_calls[h].add(id(f))
+                        for g in globals_read(h):
+                            escape(scope.get(g, ()))
+                        for p in params[len(args):]:
+                            if (h, p) in receivers:
+                                calls[(h, p)].append(False)
+                    elif h not in self.tree.structs and h not in no_reentry:
+                        # An opaque operation could re-enter a command reader.
+                        for g in private_rosters:
+                            escape(scope.get(g, ()))
+                    for k, value in enumerate(args):
+                        key = (h, params[k]) if k < len(params) else None
+                        if key in receivers:
+                            calls[key].append(bool(value) and value <= live)
+                        else:
+                            escape(value)
+                    if h in self.tree.macros:
+                        live.clear()  # no inference through an unexpanded macro
+                    return frozenset({("unknown",)})
+
+                seq(d.body, env)
+            for k in receivers:
+                if direct_calls[k[0]] - seen_calls[k[0]]:
+                    calls[k].append(False)
+            new = {k for k, values in calls.items() if values and all(values) and k[0] not in referenced}
+            if new <= private_params:
+                break
+            private_params |= new
+        return {id(e) for n, info in self.infos.items() for e in info.events
+                if e.kind == "acc" and (values := proofs.get((n, e.line, e.name))) and all(values)}
+
+    def post_death_quiescence(self) -> set:
+        """Death of an object's owning thread orders its writes before reads.
+
+        A read must test that same object's thread slot, whose spawn identifies
+        the writer actor, and whose construction admits only one start. The
+        closing flag is observed under its own mutex, before the unlocked
+        reads. Other actors are permitted only when every write is
+        excluded by a monotonic closing slot under the closing writer's lock,
+        and the read has already observed that slot true. Death alone never
+        excludes queue producers. This changes only the R1b access census;
+        lock regions and blocking effects (R2) are untouched.
+        """
+        selectors = self.boolean_selectors()
+        owners = collections.defaultdict(set)
+        assignments = collections.defaultdict(list)
+        thread_stores = collections.defaultdict(list)
+        true_sites = collections.defaultdict(set)
+        protections = collections.defaultdict(set)
+
+        def source_locks(x, path, held=()):
+            if not isinstance(x, list) or head(x) in SPECIAL_SKIP:
+                return
+            if head(x) == "lambda":
+                held = ()
+            if head(x) == "sb-thread:with-mutex" and isinstance(x[1], list) and x[1]:
+                held += (x[1][0],)
+            places = (x[1::2] if head(x) in ("setf", "psetf") else
+                      x[2:3] if head(x) in ("push", "pushnew") else [])
+            for place in places:
+                slot = head(place)
+                if slot in self.tree.structs and len(place) == 2:
+                    for lock in held:
+                        if (head(lock) in self.tree.structs and len(lock) == 2
+                                and render(lock[1]) == render(place[1])
+                                and self.tree.structs[head(lock)][0] == self.tree.structs[slot][0]):
+                            protections[(path, line_of(x, 0), slot, render(place[1]))].add(self.an.lock_of(lock, {}))
+            for y in x:
+                source_locks(y, path, held)
+
+        def fresh_at_start(d, place, value):
+            """The spawn is once per newly allocated object, not a restart."""
+            receiver = sym(place[1]) if len(place) == 2 else None
+            struct = self.tree.structs[head(place)][0]
+            makers = {"make-" + struct, "%make-" + struct} - set(self.tree.defs)
+            paths = []
+            def path(x, parents):
+                if x is value:
+                    paths.append(parents)
+                if isinstance(x, list):
+                    for y in x:
+                        path(y, parents + [x])
+            for f in d.body:
+                path(f, [])
+            if len(paths) != 1 or not receiver:
+                return False
+            parents = paths[0]
+            for k in range(len(parents) - 1, -1, -1):
+                f = parents[k]
+                if head(f) in ("let", "let*"):
+                    binds = [b for b in f[1] if isinstance(b, list) and sym(b[0]) == receiver]
+                    if binds:
+                        return (len(binds) == 1 and len(binds[0]) == 2 and head(binds[0][1]) in makers
+                                and not _setq_pairs(d.body, receiver)
+                                and not any(head(p) in ("loop", "dolist", "dotimes", "do", "do*")
+                                            for p in parents[k + 1:]))
+                if head(f) == "dolist" and sym(f[1][0]) == receiver:
+                    collection = sym(f[1][1])
+                    values = _setq_pairs(d.body, collection) if collection else []
+                    return (bool(values) and all(head(v) == "loop" and len(v) == 5
+                                                and sym(v[1]) == "repeat" and sym(v[3]) == "collect"
+                                                and head(v[4]) in makers for _, v in values)
+                            and not any(head(p) in ("loop", "dolist", "dotimes", "do", "do*")
+                                        for p in parents[k + 1:]))
+            return False
+
+        def retained_thread(d, place, value):
+            """A failed starter may copy its registered thread, never restart."""
+            if not isinstance(value, Sym) or _setq_pairs(d.body, str(value)):
+                return False
+            binds = [b for f in _call_forms(d.body, "let") + _call_forms(d.body, "let*")
+                     for b in f[1] if isinstance(b, list) and len(b) == 2]
+            vals = [b[1] for b in binds if b[0] == value]
+            if len(vals) != 1:
+                return False
+            v = vals[0]
+            if head(v) != "or" or len(v) != 3 or render(v[1]) != render(place):
+                return False
+            a = v[2]
+            if (head(a) != "and" or len(a) != 3 or head(a[2]) != "fnn-owner-actor-thread"
+                    or len(a[2]) != 2 or a[1] != a[2][1]):
+                return False
+            actors = [b[1] for b in binds if b[0] == a[1]]
+            return (len(actors) == 1 and head(actors[0]) == "fnn-owner-actor-for-custody"
+                    and len(actors[0]) == 3 and render(actors[0][2]) == render(place[1]))
+        for d in self.tree.defs.values():
+            for f in d.body:
+                source_locks(f, d.path)
+            for f in _flat_nodes(d.body):
+                if head(f) not in ("setf", "setq"):
+                    continue
+                for k in range(1, len(f) - 1, 2):
+                    place, value = f[k:k + 2]
+                    slot = head(place)
+                    if slot not in self.tree.structs:
+                        continue
+                    assignments[slot].append(value)
+                    if sym(value) == "t":
+                        true_sites[slot].add((d.name, line_of(f, d.line)))
+                    starts = (head(value) == "sb-thread:make-thread" or head(value) in self.tree.actors) \
+                             and fresh_at_start(d, place, value)
+                    thread_stores[slot].append((d, place, value, starts))
+                    for x in _flat_nodes([value]) if starts else ():
+                        if head(x) == "lambda":
+                            rid = "lambda@" + d.path + ":" + getattr(x, "identity", "")
+                            if rid in self.infos and self.infos[rid].thread_of:
+                                owners[slot].add(rid)
+        for slot in list(owners):
+            if any(not start and not retained_thread(d, p, v)
+                   for d, p, v, start in thread_stores[slot]):
+                del owners[slot]
+
+        def dead(g):
+            truth, x = g
+            if truth and isinstance(x, tuple) and len(x) == 2 and x[0] == "not":
+                truth, x = False, x[1]
+            if truth and isinstance(x, tuple) and len(x) == 3 and x[0] == "or":
+                a, b = x[1:]
+                if (isinstance(a, tuple) and len(a) == 2 and a[0] == "null"
+                        and b == ("not", ("sb-thread:thread-alive-p", a[1]))):
+                    return a[1]
+            if not truth and isinstance(x, tuple) and len(x) == 2 and x[0] == "sb-thread:thread-alive-p":
+                return x[1]
+            return None
+
+        writes = collections.defaultdict(list)
+        for name, info in self.infos.items():
+            for e in info.events:
+                if e.kind == "acc" and e.extra == "w":
+                    writes[e.name].append((name, e))
+
+        def actor_set(n):
+            return ({self.actor_of(r) for r in self.actors.get(n, ())} |
+                    {tag for _, tag in self.post_actors.get(n, ())}) - {"startup"}
+
+        def excludes(w, flag):
+            test = (flag, w.receiver)
+            if (False, test) in w.guards:
+                return True
+            for truth, g in w.guards:
+                if not (truth and isinstance(g, tuple) and len(g) == 3 and g[0] in ("eq", "eql")):
+                    continue
+                call, answer = g[1:]
+                if (isinstance(call, tuple) and len(call) == 2 and call[1] == test
+                        and call[0] in selectors):
+                    yes, no = selectors[call[0]]
+                    if answer == no and answer != yes:
+                        return True
+            return False
+
+        # Only literal true writes establish a monotonic closing flag. A
+        # later NIL assignment, including one in a helper, invalidates it.
+        closing = {s for s, vs in assignments.items() if vs and all(sym(v) == "t" for v in vs)
+                   and (self.tree.struct_inits.get(s) is None or sym(self.tree.struct_inits[s]) == "nil")
+                   and all((n, w.line) in true_sites[s] for n, w in writes[s])}
+        result = set()
+        for name, info in self.infos.items():
+            for e in info.events:
+                if e.kind != "acc" or e.extra != "r" or not e.receiver:
+                    continue
+                for g in e.guards:
+                    t = dead(g)
+                    if not (isinstance(t, tuple) and len(t) == 2 and t[1] == e.receiver
+                            and len(owners.get(t[0], ())) == 1
+                            and self.tree.structs.get(t[0], (None,))[0] ==
+                            self.tree.structs.get(e.name, (None,))[0]):
+                        continue
+                    owner = next(iter(owners[t[0]]))
+                    observed = {}
+                    for truth, p in e.guards:
+                        if not (truth and isinstance(p, tuple) and len(p) == 3 and p[0] == "under-mutex"):
+                            continue
+                        lock, flag = p[1:]
+                        if (isinstance(flag, tuple) and len(flag) == 2 and flag[0] in closing
+                                and flag[1] == e.receiver and isinstance(lock, tuple) and len(lock) == 2
+                                and lock[1] == e.receiver and lock[0] in self.tree.structs
+                                and self.tree.structs[lock[0]][0] == self.tree.structs[flag[0]][0]):
+                            observed[flag[0]] = self.an.lock_of([Sym(lock[0]), Sym(e.receiver)], {})
+                    if not observed:
+                        continue
+                    external = [(n, w) for n, w in writes[e.name] if actor_set(n) - {owner}]
+                    if not external:
+                        result.add(id(e))
+                        continue
+                    for flag, observation_lock in observed.items():
+                        close_rows = writes[flag]
+                        if not close_rows or any(actor_set(n) - {owner} for n, _ in close_rows):
+                            continue
+                        def same_object_locks(n, w):
+                            return (w.ctx.locks | self.mustheld.get(n, frozenset())) & protections[
+                                (self.infos[n].path, w.line, w.name, w.receiver)]
+                        locks = frozenset.intersection(*(same_object_locks(n, w) for n, w in close_rows))
+                        locks &= {observation_lock}
+                        if locks and all(
+                                locks & same_object_locks(n, w)
+                                and excludes(w, flag) for n, w in external):
+                            result.add(id(e))
+        return result
+
+    def boolean_selectors(self) -> dict:
+        """Read literal Boolean selectors, including the failure-scope API.
+
+        This is a syntactic implication, not an assumed meaning of an ACL2
+        function's name: only (if PARAM KEYWORD KEYWORD) qualifies. Changes
+        to the decision body invalidate the implication automatically.
+        """
+        defs = list(self.tree.defs.values())
+        book = self.tree.root / "books/failure-scope.lisp"
+        if book.exists():
+            for f, line in read_forms(book.read_text()):
+                if head(f) == "defun" and len(f) > 3:
+                    defs.append(Def(sym(f[1]), str(book), line, f[2], f[3:]))
+        out = {}
+        for d in defs:
+            body = [f for f in d.body if head(f) != "declare" and
+                    not (isinstance(f, str) and not isinstance(f, Sym))]
+            if len(d.params) != 1 or len(body) != 1:
+                continue
+            f = body[0]
+            if (head(f) == "if" and len(f) == 4 and f[1] == d.params[0]
+                    and all(isinstance(x, Sym) and str(x).startswith(":") for x in f[2:])):
+                out[d.name] = (str(f[2]), str(f[3]))
+        return out
 
     def declare_callback_contexts(self) -> None:
         """contracts `callback_contexts': {LAMBDA-ID: {"runs_in": ENTRY, "why"}}.
@@ -3501,7 +4257,7 @@ class Model:
                 roots[name] = "thread"
             elif name in serving:
                 roots[name] = "serving"
-            elif name.startswith("lambda@") and name not in self.declared_callbacks:
+            elif name.startswith("lambda@") and name not in self.declared_callbacks and name not in self.an.resolved_callbacks:
                 roots[name] = "async"
             elif not self.callers.get(name):
                 roots[name] = "startup" if name in startup else "entry"
@@ -3667,6 +4423,8 @@ class Model:
         return "other"
 
     def eval_sig(self, s, sums) -> frozenset:
+        if s[0] == "f":
+            return self.eval_sig(s[1], sums)
         if s[0] == "u":
             out = set()
             for leaf in s[1]:
@@ -3708,6 +4466,135 @@ class Model:
             if not changed:
                 break
         self.signals = sums
+
+    def compute_unfenced_signals(self) -> None:
+        """A re-signalled condition retains the fence it already passed.
+
+        Keep the original signal census, and separately compute which faults
+        can escape before fencing. A handler establishes provenance only when
+        its clause unconditionally enters a declared fence before rethrowing.
+        A declared shared boundary must still have its outer catch and a
+        classifier whose non-refusal arms each fence; removing either loses
+        provenance. Calls and nested handlers compose this fact, rather than
+        exempting an outer handler because it happens to call a fence elsewhere.
+        """
+        fences = set(self.c.raw.get("fence_functions", []))
+
+        def prefix_safe(f):
+            if not isinstance(f, list) or head(f) in ("quote", "declare", "ignore-errors"):
+                return True
+            if head(f) in ("error", "signal", "return", "return-from", "throw", "go"):
+                return False
+            if head(f) in self.c.core_callers or self.signals.get(head(f), set()) & {"fault", "indet"}:
+                return False
+            return all(prefix_safe(a) for a in (f[1:] if head(f) else f))
+
+        def guaranteed(forms):
+            for f in forms:
+                if head(f) in fences and all(prefix_safe(a) for a in f[1:]):
+                    return True
+                if head(f) == "progn":
+                    return guaranteed(f[1:])
+                if head(f) in ("let", "let*") and prefix_safe(f[1]):
+                    return guaranteed(f[2:])
+                if not prefix_safe(f):
+                    return False
+            return False
+
+        boundaries = set()
+        for name in self.c.raw.get("fence_boundaries", []):
+            d = self.tree.defs.get(name)
+            if not d:
+                continue
+            body = [f for f in d.body if isinstance(f, list) and head(f) != "declare"]
+            if len(body) != 1 or head(body[0]) != "handler-case":
+                continue
+            catches = [cl for cl in body[0][2:] if head(cl) == "serious-condition"]
+            if len(catches) != 1 or len(catches[0]) != 3:
+                continue
+            clause = catches[0]
+            case = clause[2]
+            if guaranteed(clause[2:]):
+                boundaries.add(name)
+                continue
+            if head(case) != "case" or head(case[1]) not in self.tree.defs:
+                continue
+            classifier = self.tree.defs[head(case[1])]
+            cb = [f for f in classifier.body if isinstance(f, list) and head(f) != "declare"]
+            if len(cb) != 1 or head(cb[0]) not in ("let", "let*") or len(cb[0]) != 4:
+                continue
+            let = cb[0]
+            if len(let[1]) != 1 or len(let[1][0]) != 2 or head(let[2]) != "case":
+                continue
+            var, classify = let[1][0]
+            if let[2][1] != var or let[3] != var or _setq_pairs(let[2:], sym(var)):
+                continue
+            # This is the existing declared failure-scope boundary's classifier
+            # API, not an arbitrary function returning a reassuring keyword.
+            if head(classify) != "fn-fs-classify" or head(classify[1]) != "fnn-condition-class":
+                continue
+            arms = let[2][2:]
+            # The boundary passes only refusal/usage unchanged. Its remaining
+            # result arms create fault/indeterminate conditions after fencing.
+            exempt = {":refusal", ":usage"}
+            passed = [a for a in case[2:] if isinstance(a[0], list) and set(map(str, a[0])) <= exempt]
+            condition = clause[1][0] if len(clause[1]) == 1 else None
+            if (not condition or len(passed) != 1 or len(passed[0]) != 2
+                    or render(passed[0][1]) != render([Sym("error"), condition])):
+                continue
+            if (arms and any(sym(a[0]) in ("t", "otherwise") for a in arms)
+                    and all((set(map(str, a[0])) if isinstance(a[0], list) else {sym(a[0])}) <= exempt
+                            or guaranteed(a[1:]) for a in arms)):
+                boundaries.add(name)
+
+        self.fenced_boundaries = boundaries | fences
+        routed = set()
+        for name, info in self.infos.items():
+            for _, _, clauses, _ in info.handlers:
+                for _, _, body, _, _, forms in clauses:
+                    if guaranteed(forms):
+                        routed.add(id(body))
+        self.fenced_clause_bodies = routed
+        sums = {n: frozenset() for n in self.infos}
+        for _ in range(60):
+            new = {n: self.eval_unfenced_sig(i.sig, sums) - ({"fault", "indet"} if n in self.fenced_boundaries else set())
+                   for n, i in self.infos.items()}
+            if new == sums:
+                break
+            sums = new
+        self.unfenced_signals = sums
+
+    def eval_unfenced_sig(self, s, sums=None) -> frozenset:
+        sums = self.unfenced_signals if sums is None else sums
+        if s[0] == "f":
+            out = self.eval_unfenced_sig(s[1], sums)
+            return out - {"fault", "indet"} if set(s[2]) <= self.fenced_boundaries else out
+        if s[0] == "u":
+            out = set()
+            for leaf in s[1]:
+                if leaf[0] == "type":
+                    out.add(self.classify(leaf[1]))
+                elif leaf[0] == "class":
+                    out.add(leaf[1])
+                elif leaf[0] == "core-fault":
+                    out.add("fault")
+            for c in s[2]:
+                out.update(sums.get(c, ()))
+            for p in s[3]:
+                out.update(self.eval_unfenced_sig(p, sums))
+            return frozenset(out)
+        _, inner, clauses = s
+        remaining = set(self.eval_unfenced_sig(inner, sums))
+        out = set()
+        for types, rethrows, body in clauses:
+            caught = {c for c in remaining if any(self.subtype(CLASS_TYPE[c], t) for t in types)}
+            remaining -= caught
+            if id(body) in self.fenced_clause_bodies:
+                caught -= {"fault", "indet"}
+            if rethrows:
+                out.update(caught)
+            out.update(self.eval_unfenced_sig(body, sums))
+        return frozenset(out | remaining)
 
     # R7 helper: does a form's body reach the fence ----------------------
     def fences(self) -> set:
@@ -3931,13 +4818,14 @@ class Checker:
         self.excepted = {(r["rule"], r["function"], r.get("key", "*")): r["why"]
                          for r in self.c.raw.get("exceptions", [])}
 
-    def add(self, rule, info: FnInfo, line, message, key, trail=None, category="violation", weight=1):
+    def add(self, rule, info: FnInfo, line, message, key, trail=None, category="violation", weight=1,
+            origin_loaded=None):
         exc = (self.excepted.get((rule, info.name, key)) or self.excepted.get((rule, info.name, "*")))
         if exc and category == "violation":
             category = "exception"
             message = message + " [declared: " + exc + "]"
         self.findings.append(Finding(rule, category, info.name, info.path, line, message, key,
-                                     trail or [], info.loaded, weight))
+                                     trail or [], info.loaded if origin_loaded is None else origin_loaded, weight))
 
     def rule_unresolved(self, only):
         """An event the walk could not decide is reported, never assumed safe."""
@@ -3989,6 +4877,7 @@ class Checker:
 
     # R1b -----------------------------------------------------------------------
     def rule_R1b(self):
+        self.r1b_model_sites = collections.Counter()
         protected = self.an.region_of
         declared = self.c.raw.get("unlocked_publication", {})
         shared_structs = set(self.c.raw.get("shared_structs", []))
@@ -4015,6 +4904,12 @@ class Checker:
                 actors = {self.m.actor_of(r) for r in self.m.actors.get(name, ())}
                 actors |= {self.m.actor_of(r) + "|after|" + tag for r, tag in self.m.post_actors.get(name, ())}
                 if not actors or actors == {"startup"} or "STARTUP" in held:
+                    continue
+                if id(e) in self.m.construction_accesses:
+                    self.r1b_model_sites["construction"] += 1
+                    continue
+                if id(e) in self.m.quiescent_accesses:
+                    self.r1b_model_sites["quiescence"] += 1
                     continue
                 sites[e.name].append((info, e, held, actors - {"startup"}))
         for var, rows in sorted(sites.items()):
@@ -4104,9 +4999,16 @@ class Checker:
                         k = (lock, leaf)
                         row = found.get(k)
                         if row is None:
-                            found[k] = [kind, info, e, how, 1]
+                            found[k] = [kind, info, e, how, 1, info.loaded]
                         else:
                             row[4] += 1
+                            # The default report audits loaded lock origins,
+                            # not loaded I/O leaves. Prefer a live trail when
+                            # parked and live regions reach the same leaf;
+                            # --all-files still retains every region's count.
+                            if info.loaded and not row[5]:
+                                row[:4] = [kind, info, e, how]
+                            row[5] = row[5] or info.loaded
         for runner, row in sorted(self.c.raw.get("private_owner_commands", {}).items()):
             if runner not in self.infos or runner not in {r for v in self.m.private_owner.values()
                                                           for r in v["rows"]}:
@@ -4118,7 +5020,7 @@ class Checker:
                 self.add("R2", self.infos[runner], self.infos[runner].line,
                          f"private-owner exemption pinned at {want} site/leaf pair(s), found {have}; {advice}",
                          f"private-owner-sites:{runner}")
-        for (lock, leaf), (kind, info, e, how, n) in sorted(found.items(), key=lambda kv: kv[0]):
+        for (lock, leaf), (kind, info, e, how, n, origin_loaded) in sorted(found.items(), key=lambda kv: kv[0]):
             lfn, lline, lname = leaf.split(":", 2)
             if isinstance(how, list):
                 trail = how
@@ -4136,12 +5038,12 @@ class Checker:
                          f"unresolved callee {lname}: its function is not a literal the checker can classify, "
                          f"and it runs while holding {lock}; reached from {n} site(s) under {lock}, "
                          f"e.g. {info.name} ({info.path}:{e.line})",
-                         f"{lock}:{lname}", trail, "unresolved", weight=n)
+                         f"{lock}:{lname}", trail, "unresolved", weight=n, origin_loaded=origin_loaded)
                 continue
             self.add("R2", leaf_info, int(lline),
                      f"{kind} leaf {lname} runs while holding {lock}; reached from {n} site(s) under {lock}, "
                      f"e.g. {info.name} ({info.path}:{e.line})",
-                     f"{lock}:{lname}", trail, weight=n)
+                     f"{lock}:{lname}", trail, weight=n, origin_loaded=origin_loaded)
 
     # R3 ----------------------------------------------------------------------
     def rule_R3(self):
@@ -4831,6 +5733,8 @@ class Checker:
                 calls.update(s[2])
                 leaves = leaves or bool(s[1])
                 stack.extend(s[3])
+            elif s[0] == "f":
+                stack.append(s[1])
             else:
                 stack.append(s[1])
                 stack.extend(b for _, _, b in s[2])
@@ -4881,6 +5785,8 @@ class Checker:
                             for f in forms for y in self._subforms(f))):
                         continue    # captured into the verified debt slot (contract debt_rethrows)
                     core = caught & {"fault", "indet"}
+                    if core and not (self.m.eval_unfenced_sig(inner) & {"fault", "indet"}):
+                        core = set()
                     local = caught & {"socket", "refusal", "connection"}
                     if core and not (routes or names & classifiers or self._converts(forms)) \
                             and scope not in ("private", "result", "converts", "fence"):
@@ -4906,6 +5812,8 @@ class Checker:
                          "unfenced-gated", [])
 
     def body_fences(self, body, fences) -> bool:
+        if body[0] == "f":
+            return self.body_fences(body[1], fences)
         if body[0] == "u":
             if any(c in fences for c in body[2]):
                 return True
@@ -4913,6 +5821,8 @@ class Checker:
         return self.body_fences(body[1], fences) or any(self.body_fences(b, fences) for _, _, b in body[2])
 
     def body_in_shared(self, body) -> bool:
+        if body[0] == "f":
+            return self.body_in_shared(body[1])
         names = set(self.c.raw.get("fence_boundaries", []))
         if body[0] == "u":
             return bool(set(body[2]) & names)
@@ -5344,6 +6254,8 @@ class Checker:
                 calls.update(s[2])
                 for p in s[3]:
                     collect(p)
+            elif s[0] == "f":
+                collect(s[1])
             else:
                 collect(s[1])
                 for _, _, b in s[2]:

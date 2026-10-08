@@ -36,12 +36,23 @@
 (include-book "frame-journal")
 (local (include-book "arithmetic/top" :dir :system))
 
+(local (defthmd fn-frame-len-2-conses-local-rewrite
+  (implies (equal (len xs) 2)
+           (and (consp xs) (consp (cdr xs))))
+  :hints (("Goal" :by fn-frame-len-2-conses))))
+
+(local (defthmd fn-frame-len-4-conses-local-rewrite
+  (implies (equal (len xs) 4)
+           (and (consp xs) (consp (cdr xs))
+                (consp (cdr (cdr xs))) (consp (cdr (cdr (cdr xs))))))
+  :hints (("Goal" :by fn-frame-len-4-conses))))
+
 ;; Rules withdrawn at their source that this book's proofs use
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:definition fn-frame-textp)
                           (:linear fn-frame-at-mostp-bounds-len)
-                          (:rewrite fn-frame-len-2-conses)
-                          (:rewrite fn-frame-len-4-conses))))
+                          (:rewrite fn-frame-len-2-conses-local-rewrite)
+                          (:rewrite fn-frame-len-4-conses-local-rewrite))))
 
 (local (in-theory (enable fn-cbor-invariants-vocabulary
                           fn-frame-octet-vocabulary

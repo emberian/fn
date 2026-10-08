@@ -68,23 +68,36 @@ python3 "$X/world_binding.py" check "$FN_EXTRACT_WORLD_IMAGE" "$WORLD_KEY" "$VAR
 ACL2_SRC=${FN_EXTRACT_ACL2_SRC:-$(sed -n 's/.*--core "\(.*\)\/saved_acl2\.core".*/\1/p' "$ACL2")}
 [ -d "$ACL2_SRC" ] && [ -f "$ACL2_SRC/axioms.lisp" ] || { echo "core: cannot find ACL2's sources (FN_EXTRACT_ACL2_SRC)" >&2; exit 1; }
 EXPORT_DEADLINE=${FN_EXPORT_DEADLINE:-900}
+# Completion evidence (image_run.py): each image run below writes OUT/<phase>.done from inside the form that did
+# the work, after it returned: "XT-<PHASE>-DONE <nonce> <sha256 of defs.lisp>".  The nonce is fresh per invocation;
+# a run is accepted only with exit status 0 AND that evidence, never on a recognizable log line alone.
+NONCE=$(python3 -c 'import secrets; print(secrets.token_hex(16))')
+# (xl-done PHASE): raw Lisp, defined in each run's script; DEFS is read back from disk, so the evidence names the bytes
+# the phase left behind.
+DONE_DEF='(defun cl-user::xl-done (phase) (let ((defs (with-open-file (i "'"$OUT"'/defs.lisp" :element-type (quote (unsigned-byte 8))) (let ((v (make-array (file-length i) :element-type (quote (unsigned-byte 8))))) (read-sequence v i) v)))) (with-open-file (o (format nil "'"$OUT"'/~(~a~).done" phase) :direction :output :if-exists :supersede) (format o "XT-~a-DONE '"$NONCE"' ~a~%" phase (acl2::fe-sha256-hex (map (quote string) (function code-char) defs))))))'
 {
   printf '(ld "tools/extract/frontend.lisp")\n(ld "tools/extract/core-export.lisp")\n'
   # the definitions first: ACL2's own raw and *1* forms, macroexpanded (forms-export.lisp), under a
   # deadline.  Its closure walk is the one discovery of the tables the emitted forms read (XT-FE-TABLES).
-  printf ':q\n(load "tools/extract/forms-export.lisp")\n(in-package "ACL2")\n(xt-fe-export (with-open-file (s "%s/tokens.lsp") (let ((*package* (find-package "ACL2"))) (read s))) "%s" "%s" "tools/extract/clruntime.lisp" "%s" :deadline %s :extra-roots (quote (setup-standard-io)))\n(lp)\n' \
+  printf ':q\n(load "tools/extract/forms-export.lisp")\n(in-package "ACL2")\n(defvar cl-user::*xl-fe-done* nil)\n(progn (xt-fe-export (with-open-file (s "%s/tokens.lsp") (let ((*package* (find-package "ACL2"))) (read s))) "%s" "%s" "tools/extract/clruntime.lisp" "%s" :deadline %s :extra-roots (quote (setup-standard-io))) (setq cl-user::*xl-fe-done* t))\n(lp)\n' \
       "$OUT" "$OUT" "$ACL2_SRC" "$WORLD_KEY" "$EXPORT_DEADLINE"
   # then, back in the loop, the world snapshot, carrying exactly those tables with their row digests
-  printf '(xt-core-export (quote\n'
+  printf '(er-progn (xt-core-export (quote\n'
   cat "$OUT/tokens.lsp"
-  printf ') "%s/core.json" "%s/core-world.lisp" "%s/packages.json" (@ xt-fe-tables) state)\n:q\n(sb-ext:exit)\n' "$OUT" "$OUT" "$OUT"
+  # the snapshot phase is done only if xt-core-export returned without error: er-progn reaches the assignment
+  printf ') "%s/core.json" "%s/core-world.lisp" "%s/packages.json" (@ xt-fe-tables) state) (assign xt-core-export-done t))\n' "$OUT" "$OUT" "$OUT"
+  printf ':q\n%s\n' "$DONE_DEF"
+  printf '(if (and cl-user::*xl-fe-done* (boundp-global (quote xt-core-export-done) *the-live-state*) (f-get-global (quote xt-core-export-done) *the-live-state*)) (progn (cl-user::xl-done "EXPORT") (sb-ext:exit :code 0)) (sb-ext:exit :code 3))\n(sb-ext:exit :code 4)\n'
 } > "$OUT/export.lsp"
 # setup-standard-io (ACL2 axioms.lisp:19005) is an extra root: core-main.lisp runs it at build, as ACL2's
 # own load-time form does, so its standard channels carry streams (an ACL2 warning prints, as the image's does).
 # The export is measured at about 30 s on hbox once the image is cached (xt-fe-export: index 5 s, closure 20 s);
 # EXPORT_DEADLINE is the in-image deadline (fails closed naming the phase and the last unit), the outer
 # timeout is twice that plus the front end's own pass.
-( cd "$TREE" && timeout $((2 * EXPORT_DEADLINE + 600)) swarm-build "$FN_EXTRACT_WORLD_IMAGE" < "$OUT/export.lsp" > "$OUT/export.log" 2>&1 ) || true
+EXPORT_OK=1
+python3 "$X/image_run.py" --phase EXPORT --out "$OUT" --nonce "$NONCE" --stdin "$OUT/export.lsp" --log "$OUT/export.log" \
+    --timeout $((2 * EXPORT_DEADLINE + 660)) --cwd "$TREE" -- timeout $((2 * EXPORT_DEADLINE + 600)) swarm-build "$FN_EXTRACT_WORLD_IMAGE" \
+    || EXPORT_OK=0
 if grep -q "XT-FE TIMEOUT" "$OUT/export.log"; then
     echo "core: the export timed out: $(grep 'XT-FE TIMEOUT' "$OUT/export.log" | head -1); see $OUT/export.log" >&2; exit 1
 fi
@@ -92,6 +105,7 @@ if grep -qE "ACL2 Error|HARD ACL2 ERROR|debugger invoked" "$OUT/export.log" || [
    || [ ! -s "$OUT/defs.lisp" ] || [ ! -s "$OUT/manifest.tsv" ] || [ ! -s "$OUT/packages.lisp" ]; then
     echo "core: the export failed; see $OUT/export.log" >&2; exit 1
 fi
+[ "$EXPORT_OK" = 1 ] || exit 1
 # X2: a name no extracted unit, runtime entry or Common Lisp provides is refused here, by name
 if [ -s "$OUT/gaps.txt" ]; then
     echo "core: the closure has names nothing provides (see $OUT/gaps.txt):" >&2; head -20 "$OUT/gaps.txt" >&2; exit 1
@@ -103,10 +117,11 @@ python3 "$X/closure_why.py" "$OUT" --check-tables || { echo "core: the carried t
 # X1: a separate image run re-derives every unit from the world and ACL2's sources and compares
 {
   printf '(ld "tools/extract/frontend.lisp")\n:q\n(load "tools/extract/forms-export.lisp")\n(in-package "ACL2")\n'
-  printf '(xt-verify-defs "%s" "%s" "tools/extract/clruntime.lisp" "%s")\n(sb-ext:exit)\n' "$OUT" "$ACL2_SRC" "$WORLD_KEY"
+  printf '%s\n' "$DONE_DEF"
+  printf '(if (eq t (xt-verify-defs "%s" "%s" "tools/extract/clruntime.lisp" "%s")) (progn (cl-user::xl-done "VERIFY") (sb-ext:exit :code 0)) (sb-ext:exit :code 3))\n(sb-ext:exit :code 4)\n' "$OUT" "$ACL2_SRC" "$WORLD_KEY"
 } > "$OUT/verify.lsp"
-( cd "$TREE" && timeout $((2 * EXPORT_DEADLINE)) swarm-build "$FN_EXTRACT_WORLD_IMAGE" < "$OUT/verify.lsp" > "$OUT/verify.log" 2>&1 ) || true
-grep -q "XT-VERIFY-DEFS OK" "$OUT/verify.log" || {
+python3 "$X/image_run.py" --phase VERIFY --out "$OUT" --nonce "$NONCE" --stdin "$OUT/verify.lsp" --log "$OUT/verify.log" \
+    --timeout $((2 * EXPORT_DEADLINE + 60)) --cwd "$TREE" -- timeout $((2 * EXPORT_DEADLINE)) swarm-build "$FN_EXTRACT_WORLD_IMAGE" || {
     echo "core: xt-verify-defs refused the definitions:" >&2; grep -a "^  unit\|XT-VERIFY-DEFS\|VERIFY" "$OUT/verify.log" | head -20 >&2; exit 1; }
 DEFS_SHA=$(python3 -c 'import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],"rb").read()).hexdigest())' "$OUT/defs.lisp")
 echo "$DEFS_SHA" > "$OUT/defs.lisp.verified-sha256"
@@ -118,7 +133,10 @@ export FN_MLDSA_LIBRARY=$LIB/libfn-mldsa65.so FN_BLAKE3_LIBRARY=$LIB/libfn-blake
 # The image's runtime options (its launcher's: heap, control stack, thread-
 # local storage, from the profile: tools/build_native_host.sh), recorded in
 # the generated launcher, so the product runs as the image does.
-opt() { sed -n "s/.*$1 \([^ ]*\) .*/\1/p" "$IMAGE" | head -1; }
+# Only the exec line: the image launcher's heap-decision prelude (tools/build_native_host.sh, from
+# packaging/fn) names --dynamic-space-size in shell text too.  The product keeps the exec line's default
+# heap; it does not carry that per-command decision (bound_launch.py accepts only the two-line form).
+opt() { grep '^exec ' "$IMAGE" | sed -n "s/.*$1 \([^ ]*\) .*/\1/p" | head -1; }
 HEAP=$(opt --dynamic-space-size); STACK=$(opt --control-stack-size); TLS=$(opt --tls-limit)
 [ -n "$HEAP" ] && [ -n "$STACK" ] || { echo "core: cannot read the runtime options of $IMAGE" >&2; exit 1; }
 # the file the SBCL build compiles is the file xt-verify-defs verified

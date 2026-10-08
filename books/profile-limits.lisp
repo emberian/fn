@@ -48,6 +48,8 @@
      "the I/O loops every served connection is multiplexed on")
     (:cold-workers 4 "threads"
      "the persistent workers that read a cold page off the owner mutex while the page pool is unfunded: a stalled read holds one, and a miss past them is refused by name (books/page-read-direct.lisp)")
+    (:cold-wait-queue 64 "requests"
+     "the served requests that may wait for a cold-read worker at once (books/cold-read-wait.lisp): a miss that finds every worker busy and fewer than this many waiting joins the queue and is answered or refused only at its dependency deadline; one more is refused by name at arrival")
     (:control-clients 16 "clients"
      "concurrent control-socket clients the owner serves")
     (:thread-runtime-mib 4 "MiB"
@@ -90,6 +92,8 @@
      "a TLS handshake's deadline, and a socket's wait for a handshake slot (the time model's D)")
     (:read-window-octets 262144 "octets"
      "the payload window one protected window read verifies and publishes (books/extent-window-plan.lisp fn-ewp-begin): each job digests the whole protected prefix, so a payload of P octets costs P / this many prefix digests per pass")
+    (:read-span-octets 16384 "octets"
+     "the octets one host read of a protected window job moves, and the digest work the core does inside one call (books/extent-window-span.lisp fn-ews-read-span): a multiple of 64, at most the window; a 2 KiB article's job makes one read per span of the prefix it digests, not one per 64-octet block")
     (:tls-handshake-source-overrides 64 "entries"
      "the most per-source handshake allowances (an address or an IPv6 /64 with its own handshakes per minute, for a known shared address such as a carrier NAT) the operator may list; one more is refused by name (books/tls-handshake-decision.lisp)")
     (:send-stall-seconds 10 "seconds"

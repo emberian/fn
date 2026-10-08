@@ -3717,32 +3717,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-crash-image-namespace-is-contiguous",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-crash-image-reads-the-config",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-crash-image-records-do-not-fault",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-crash-image-relates-to-recovery-entry-kernel",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-bs-crash-image-reopens",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-crash-of-aligned-append",
    "registry": true
   },
   {
@@ -3787,16 +3767,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-imp-classify-by-what-is-known",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-imp-program-crash-is-no-store-or-the-complete-store",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-init-log-classify-by-what-is-known",
    "registry": true
   },
@@ -3809,7 +3779,7 @@
    "name": "fn-bs-init-log-complete-store-carries-the-node-secret",
    "owed_met": null,
    "owner_book": "tests/acl2/store-init-log-publication-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
@@ -3828,7 +3798,7 @@
    "name": "fn-bs-init-log-complete-store-carries-the-peer-flight-profile",
    "owed_met": null,
    "owner_book": "tests/acl2/store-init-log-publication-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
@@ -3964,11 +3934,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-k0-pending-staging-extension-preserves-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-k0-record-cleanup-cut-relation",
    "registry": true
   },
@@ -4024,11 +3989,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-k6-actual-linked-crash-surviving-name-has-exact-frame",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-k6-actual-record-file-cut-has-exact-frame",
    "registry": true
   },
@@ -4055,11 +4015,6 @@
   {
    "class": "hand",
    "name": "fn-bs-k6-related-input-file-cut-has-no-transaction-pending",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-k6-related-staged-durable-final-name-absent",
    "registry": true
   },
   {
@@ -4099,22 +4054,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-quiet-scanned-store-is-related-to-every-recovered-kernel",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-read-ranges-concatenate",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-bs-read-ranges-is-the-range",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-read-ranges-read-the-whole-file",
    "registry": true
   },
   {
@@ -4134,32 +4079,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-bs-recover-program-keeps-relation-at-every-cut",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-related-allocation-is-fresh",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-bs-scp-program-crash-is-old-or-new",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-stable-prefix-retained-by-byte-crash",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-store-crash-image-is-kernel-admissible",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-bs-store-crash-image-scans",
    "registry": true
   },
   {
@@ -4836,6 +4756,25 @@
    "registry": true
   },
   {
+   "book_digest": "706fc54000b7410da00b590b1bb879fd5f060d348efb82edbeae632d0ed2bd7b",
+   "bounds": [],
+   "claim_digest": "0eb64ff79ba1e6cf04808151c1e6181ab0ec7ff08c76441bff5770f71539ec3a",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-cfg-peer-names-loop-is-revappend-of-the-walk",
+   "owed_met": null,
+   "owner_book": "tests/acl2/config-walk-loops-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-cfg-peer-names",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-cfg-record-fitsp-is-the-decoder-limits",
    "registry": true
@@ -4854,6 +4793,25 @@
    "class": "hand",
    "name": "fn-cfg-record-redeeming-an-expired-code-is-refused-and-faults-replay",
    "registry": true
+  },
+  {
+   "book_digest": "706fc54000b7410da00b590b1bb879fd5f060d348efb82edbeae632d0ed2bd7b",
+   "bounds": [],
+   "claim_digest": "af3e2051df15559d93deb9cb4a575a97283834252868709353e95aa105bf895f",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-cfg-rows-with-key-loop-is-revappend-of-the-walk",
+   "owed_met": null,
+   "owner_book": "tests/acl2/config-walk-loops-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-cfg-rows-with-key",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -4947,11 +4905,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-checkpoint-admissible-capture-value-is-valid",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-checkpoint-plus-suffix-equals-full-replay",
    "registry": true
   },
@@ -5028,11 +4981,6 @@
   {
    "class": "hand",
    "name": "fn-clo-finalize-never-answers-frontier-at-the-computed-frontier",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-clo-observed-at-the-computed-frontier",
    "registry": true
   },
   {
@@ -5259,11 +5207,6 @@
   {
    "class": "hand",
    "name": "fn-cp-register-within-refuses-exactly-past-the-operator-bound",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-cpc-valid-is-capture-value",
    "registry": true
   },
   {
@@ -6238,11 +6181,6 @@
    "witness": "executable"
   },
   {
-   "class": "hand",
-   "name": "fn-dl-concat-loop-is-revappend",
-   "registry": true
-  },
-  {
    "book_digest": "3acf756822b7ead57aae1ce59224719712cf096e58226670879a1f2e46c8a0be",
    "bounds": [],
    "claim_digest": "68ff84cd56459b0ce16b1c61b8b81af397ee6cdc8721f3dcd15f09ac5c0562b3",
@@ -6251,7 +6189,7 @@
    "name": "fn-dl-fold-loop-is-revappend",
    "owed_met": null,
    "owner_book": "tests/acl2/def-loop-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
@@ -6262,31 +6200,6 @@
    "witness": "instance"
   },
   {
-   "class": "hand",
-   "name": "fn-dl-foldr-loop-is-foldr",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-map-loop-is-revappend",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-map-skip-loop-is-revappend",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-step-loop-is-revappend",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-dl-sum-loop-is-plus",
-   "registry": true
-  },
-  {
    "book_digest": "3acf756822b7ead57aae1ce59224719712cf096e58226670879a1f2e46c8a0be",
    "bounds": [],
    "claim_digest": "8f35c0cdf7c95fe3b8c3e5af79040d5342ee5bd3450107dd3a04b124762c0d66",
@@ -6295,7 +6208,7 @@
    "name": "fn-dl-thread-loop-is-revappend",
    "owed_met": null,
    "owner_book": "tests/acl2/def-loop-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 0,
@@ -7548,11 +7461,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-hib-replay-extends",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hib-undone-evict",
    "registry": true
   },
@@ -7904,11 +7812,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-hp-x-append-step-refines",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hp-x-at-is-nth",
    "registry": true
   },
@@ -7960,11 +7863,6 @@
   {
    "class": "hand",
    "name": "fn-hrc-at-is-nth",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-hrc-flush-one-rel",
    "registry": true
   },
   {
@@ -8030,11 +7928,6 @@
   {
    "class": "hand",
    "name": "fn-hrs-disk-history-len",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-hrs-loop-placement",
    "registry": true
   },
   {
@@ -8554,22 +8447,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-lg-batch-crash-is-a-prefix",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-batch-crash-is-a-prefix-under-a-crypto-trailer",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lg-batch-tear-is-a-prefix",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-decode-is-the-scan",
    "registry": true
   },
   {
@@ -8594,11 +8472,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lg-open-kernel-is-the-recovered-kernel",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lg-open-program-keeps-the-relation",
    "registry": true
   },
@@ -8615,31 +8488,6 @@
   {
    "class": "hand",
    "name": "fn-lg-reserve-program-keeps-the-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-consumed-aligned",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-consumed-within",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-last-digestp",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-last-of-complete-append",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-scan-of-complete-append",
    "registry": true
   },
   {
@@ -8669,17 +8517,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-lg-tear-write-is-pieces",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lg-torn-variant-len",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lg-txids-strictly-increase",
    "registry": true
   },
   {
@@ -8782,11 +8620,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgd-loop-is-the-scan",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgdm-damage-lies-in-the-last-write",
    "registry": true
   },
@@ -8870,11 +8703,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgk-crash-of-related-state-is-a-prefix",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgk-fence-content",
    "registry": true
   },
@@ -8896,16 +8724,6 @@
   {
    "class": "hand",
    "name": "fn-lgk-prepare-preserves-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgk-recover-establishes-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgk-recovered-content-okp",
    "registry": true
   },
   {
@@ -8935,31 +8753,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgob-fence-of-a-fenced-file-is-identity",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-file-fence-keeps-entry-operations",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-journal-fence-keeps-the-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-one-barrier-loses-a-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-only-a-write-unfences-a-file",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgob-three-and-five-barrier-opens-have-the-same-cut-states",
    "registry": true
   },
@@ -8971,26 +8764,6 @@
   {
    "class": "hand",
    "name": "fn-lgob-three-barrier-open-is-the-five-at-every-cut",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-three-barriers-keep-the-imported-store",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-three-barriers-keep-the-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-two-barriers-without-journal-lose-a-rotated-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgob-two-barriers-without-parent-lose-an-imported-store",
    "registry": true
   },
   {
@@ -9050,42 +8823,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgrc-attempt-makes-the-read-prefix-durable",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrc-dropping-open-loses-a-checkpointed-history",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgrc-open-keeps-the-relation-at-every-cut",
    "registry": true
   },
   {
    "class": "hand",
-   "name": "fn-lgrc-open-unlinks-no-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrs-a-staged-spare-leaves-the-journal-as-it-was",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrs-journal-fence-names-the-acknowledged-batch",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgrs-spare-name-is-swept-and-never-a-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgrs-without-the-journal-fence-an-acknowledged-batch-is-unnamed",
    "registry": true
   },
   {
@@ -9140,11 +8883,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgt-recovered-okp-of-verdict",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgu-acknowledge-acknowledges-only-recoverable-records",
    "registry": true
   },
@@ -9157,7 +8895,7 @@
    "name": "fn-lgu-acknowledged-records-are-recovered-at-every-cut",
    "owed_met": null,
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 3,
@@ -9219,7 +8957,7 @@
    "name": "fn-lgu-safe-image-recovers-the-acknowledged-records",
    "owed_met": null,
    "owner_book": "tests/acl2/store-log-durable-tests.lisp",
-   "registry": true,
+   "registry": false,
    "removals": {
     "assumption": 0,
     "lemma": 2,
@@ -9307,27 +9045,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-lgw-open-chain-is-the-chain",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-lgw-run-nf-then-fold-is-run",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-lgw-run-of-set-next-is-run-nf",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgw-segment-drop-preserves-the-open",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-lgw-segment-is-the-scan",
    "registry": true
   },
   {
@@ -12106,6 +11829,25 @@
    "registry": true
   },
   {
+   "book_digest": "26de30479bee1380734be898692c18597b7064c1aaa99a8ebf567bf72ae0188b",
+   "bounds": [],
+   "claim_digest": "f836d78ab8d299d299493865ceb1452925605b4afe4c449982c067986b68035f",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-oct-transit-is-own-transit-outcome-under-ocl-relation",
+   "owed_met": null,
+   "owner_book": "tests/acl2/catchup-carried-transit-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oct-transit",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-oct-word-octets-of-word-at",
    "registry": true
@@ -12510,11 +12252,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-olr-crash-reads-a-prefix-of-the-history",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-olr-extension-target-is-an-extent",
    "registry": true
   },
@@ -12699,9 +12436,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "26de30479bee1380734be898692c18597b7064c1aaa99a8ebf567bf72ae0188b",
+   "bounds": [],
+   "claim_digest": "50a4fafc33cb7d6e8495521f4279f85f2f6be5084ad04b28ab8f42eeb6088da0",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-oop-transit-outcome-is-own-transit-outcome",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/catchup-carried-transit-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oop-transit-outcome",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -16324,7 +16075,7 @@
    "registry": true
   },
   {
-   "book_digest": "960432552c168eb36c3d0e98d97df76c3b2a399bda0b4b08755f4215b9c9c64e",
+   "book_digest": "a5885e901d676274ed63dee267c98f4aa00b912bb98d631e055d96664486c6fd",
    "bounds": [],
    "claim_digest": "ad3cd34bfc949563f0c465b0809712f6e9d087493e9a23fad90331cc68b66b6e",
    "class": "generated",
@@ -16343,7 +16094,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "960432552c168eb36c3d0e98d97df76c3b2a399bda0b4b08755f4215b9c9c64e",
+   "book_digest": "a5885e901d676274ed63dee267c98f4aa00b912bb98d631e055d96664486c6fd",
    "bounds": [],
    "claim_digest": "194941027e09e2b9a37a158046e542b8dcadb69f7cd2a74c6b5cfb273dceb6bd",
    "class": "generated",
@@ -18270,31 +18021,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-rr-acknowledged-record-is-in-every-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-log-crash-image-in-flight-recovers-a-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-log-crash-image-quiet-recovers-committed",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rr-log-crash-image-recovers-a-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-rr-medium-full-open-holds-its-records",
    "registry": true
   },
@@ -18315,42 +18041,7 @@
   },
   {
    "class": "hand",
-   "name": "fn-rr-recovery-refines-a-prefix-with-every-acknowledged-record",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-checkpoint-crash-point-refines-with-a-batch-in-flight",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-crash-content-is-the-projected-crash-content",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-rrc-keeping-the-segment-keeps-the-lifted-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-log-crash-image-recovers-a-tree-sequence-member",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-projected-image-is-admissible-with-the-same-segment",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-projection-is-related",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-rrc-recovery-refines-a-prefix-with-every-acknowledged-record",
    "registry": true
   },
   {
@@ -19114,11 +18805,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-scar-own-read-span-is-own-read-tls-prefix",
    "registry": true
   },
@@ -19358,22 +19044,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-scka-recover-rows-rii-is-recover-rows",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-scka-restore-base-of-strip-of-capture",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-scka-seal-n-compose",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-scka-src-payloads-of-canon-srcs",
    "registry": true
   },
   {
@@ -21597,21 +21273,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-sxd-crash-is-incomplete-or-complete",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-sxd-import-verdict-is-incomplete-or-complete",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-sxi-stream-plan-is-the-import-plan",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-sxp-import-of-export-replays-the-same-history",
    "registry": true
   },
@@ -22636,11 +22297,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-wm-match-codepoints-work-cost-bound",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-wm-match-codepoints-work-value",
    "registry": true
   },
@@ -22661,6 +22317,25 @@
     "reachable": 1
    },
    "subject": "fn-wmc-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "2847d55314f692dd40fd24c9d4338c5528aef116ce394f1288dfcef04983ab39",
+   "bounds": [],
+   "claim_digest": "527aad0a75d916ebbd03f5a0d4e5c1b9b05b371627d5ba846bf4e612cee0d8c7",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-wmc-core-codepoint-start-work-bound",
+   "owed_met": null,
+   "owner_book": "tests/acl2/wildmat-cursor-bound-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-wmc-start-codepoints",
    "witness": "executable"
   },
   {
