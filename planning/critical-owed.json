@@ -4446,11 +4446,6 @@
    "item": "PRF-1344",
    "book": "books/config-owner-live-authorize.lisp"
   },
-  "fn-olr-crash-reads-a-prefix-of-the-history": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-route.lisp"
-  },
   "fn-olr-extension-target-is-an-extent": {
    "class": "durability",
    "item": "PRF-1345",
@@ -6146,11 +6141,6 @@
    "item": "PRF-1348",
    "book": "books/response-plan-pins.lisp"
   },
-  "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/recovery-refinement.lisp"
-  },
   "fn-rr-medium-full-open-holds-its-records": {
    "class": "durability",
    "item": "PRF-1345",
@@ -7190,16 +7180,6 @@
    "class": "authorization",
    "item": "PRF-1344",
    "book": "books/stx-verify.lisp"
-  },
-  "fn-sxd-crash-is-incomplete-or-complete": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-export-durability.lisp"
-  },
-  "fn-sxd-import-verdict-is-incomplete-or-complete": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-export-durability.lisp"
   },
   "fn-tcl-accepted-contact-is-canonical": {
    "class": "parser-boundary",

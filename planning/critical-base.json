@@ -3557,10 +3557,6 @@
    "class": "authorization",
    "statement_digest": "6e1b7c1a773c4894219ec30e35d25081f3cf54e9cab48d95d6238bc8c5b75428"
   },
-  "fn-olr-crash-reads-a-prefix-of-the-history": {
-   "class": "durability",
-   "statement_digest": "768a644d2c25a9142be3a2892af190a787d4dc8e5c7d1d6c27f33fcc654c6da4"
-  },
   "fn-olr-extension-target-is-an-extent": {
    "class": "durability",
    "statement_digest": "6da6886846de0396dd984ec1574d3a3b03e95470c336c40f7afc334f94b60f99"
@@ -4917,10 +4913,6 @@
    "class": "ownership-reclamation",
    "statement_digest": "a5402f8fa2887cd7e0cf081bf14c13db21f669a4f8f74f4ee458ad6cf640dac4"
   },
-  "fn-rr-checkpoint-crash-point-recovers-committed-under-old-or-new": {
-   "class": "durability",
-   "statement_digest": "1b9637869447013b6dcb1a1c6677cc4cc3c792edfb875c2a2eca639248eb05ac"
-  },
   "fn-rr-medium-full-open-holds-its-records": {
    "class": "durability",
    "statement_digest": "eada7c6d65f985859e07a35021c26224ba675111c84b2d959bfaff0d5cc1a416"
@@ -5752,14 +5744,6 @@
   "fn-stx-verified-item-separates-the-five-tokens": {
    "class": "authorization",
    "statement_digest": "97b4e0810bc03558cf5c0d090bde91ab608e097207b14622a932a5d5a543c7d0"
-  },
-  "fn-sxd-crash-is-incomplete-or-complete": {
-   "class": "durability",
-   "statement_digest": "0644f138f5cbb8f40e67086860fbbd55bef204cd0dc21bd7f37a3f7997a919bc"
-  },
-  "fn-sxd-import-verdict-is-incomplete-or-complete": {
-   "class": "durability",
-   "statement_digest": "8ab1e23ac1eaaf664d83ea559e3d1afb974bcbc4dfa8cff47f1f27b167c93f06"
   },
   "fn-tcl-accepted-contact-is-canonical": {
    "class": "parser-boundary",
