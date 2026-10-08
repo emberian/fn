@@ -2714,18 +2714,8 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-oix-ocfg-step-keeps-view-indexed",
-          "note": "Preservation of the trie premise fn-scar-view-indexedp over every fn-ocfg-step event the host drives (open, advance, close, reads, open-peer, fault, reconfigure, complete, begin, take and every fn-own-step writer event); with fn-oix-own-start-is-view-indexed and the lemmas for every owner host/owner-host.lisp installs without fn-ocfg-step (fn-ocfg-observe, the carried read, fn-ocfg-open/-open-peer/-read-step/-fault/-with-owner, fn-pcar-sbud-prepare, fn-ccar-own-finish, fn-acar-own-outcome, fn-own-with-feeds, fn-own-configure, fn-own-transit-outcome, fn-ocl-publish) it holds on every configured owner the host reaches. The work is fn-oix-refresh-keeps-correspondence over fn-midx-refresh-preserves-correspondence."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-midx-concrete-lookup-is-lookup",
           "note": "The Message-ID trie walked by string index: fn-mxc-lookup equals fn-midx-lookup for every Message-ID and trie, no hypothesis. The served path reaches it from host/owner-host.lisp:1430 fn-owner-chunk (fn-scar-ocfg-read-tls-prefix) through fn-scar-peer-step-pinned: a reader session's ARTICLE/HEAD/BODY/STAT by Message-ID (fn-pix-peer-delegate-pinned), a peer session's (fn-pgc-peer-arm delegates to the same), and the IHAVE/CHECK history test (fn-pix-history-hasp). Teeth: tests/acl2/msgid-index-concrete-tests.lisp, tests/acl2/peer-offer-indexed-tests.lisp."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-pix-peer-delegate-pinned-is-peer-delegate-pinned",
-          "note": "The reader delegate with the lookup by index equals fn-peer-delegate-pinned on every input, no hypothesis; books/served-carried.lisp fn-scar-peer-step-pinned (reader sessions) and books/peer-guard-carried.lisp fn-pgc-peer-arm (peer sessions) call it, so fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation holds of the rerouted chain. Teeth: tests/acl2/peer-offer-indexed-tests.lisp, tests/acl2/peer-guard-carried-tests.lisp (223 for the held Message-ID, 430 for an absent one, each the reference's)."
         }
       ]
     },
@@ -3587,10 +3577,6 @@
         {
           "kind": "theorem",
           "name": "fn-own-related-conn-control"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-ctl-served-status-is-control-status"
         },
         {
           "kind": "theorem",
@@ -6391,10 +6377,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-pidx-find-article-is-find-article"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-pidx-existing-action-is-store-existing-action"
         },
         {
@@ -6408,10 +6390,6 @@
         {
           "kind": "theorem",
           "name": "fn-pidx-view-okp-of-live-owner"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-osi-pidx-prepare-keeps-view-indexed"
         }
       ]
     },
@@ -8102,10 +8080,6 @@
         {
           "kind": "theorem",
           "name": "fn-auth-view-consistent-back"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-auth-view-trie-corresponds"
         },
         {
           "kind": "theorem",

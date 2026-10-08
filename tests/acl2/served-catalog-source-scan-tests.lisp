@@ -22,38 +22,38 @@
         (make-list 3 :initial-element :common-lisp-compliant)))
 (defun ssct-prefix (conn i end fn-octets fn-arena fn-cat)
  (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
- (let ((r (fn-scr-source-scan-span conn i end nil nil nil nil nil fn-octets fn-arena fn-cat)))
+ (let ((r (fn-scr-source-scan-span conn i end nil nil nil nil fn-octets fn-arena fn-cat)))
   (equal r (fn-scr-scan-span conn i (+ i (fn-served-counted-consumed r))
-                           nil nil nil nil nil fn-octets fn-arena fn-cat))))
+                           nil nil nil nil fn-octets fn-arena fn-cat))))
 (defun ssct-mixed (command fn-octets fn-arena fn-cat)
  (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
  (let* ((bytes (append (ssct-line "OVER") (ssct-line command) (ssct-line "OVER")))
         (fn-octets (fn-octets-from-list bytes fn-octets))
         (end (fn-octets-len fn-octets))
-        (p0 (fn-scr-source-prepare-span *ssct-reader* 0 end nil nil nil nil nil
+        (p0 (fn-scr-source-prepare-span *ssct-reader* 0 end nil nil nil nil
                                       fn-octets fn-arena fn-cat))
         (r0 (nth 1 p0))
         (n0 (fn-served-counted-consumed r0))
         (c0 (fn-served-result-conn (fn-served-counted-result r0)))
-        (p1 (fn-scr-source-prepare-span c0 n0 end nil nil nil nil nil
+        (p1 (fn-scr-source-prepare-span c0 n0 end nil nil nil nil
                                       fn-octets fn-arena fn-cat)))
   (mv-let (word r1)
-   (fn-scr-source-boundary-dispatch p1 nil nil nil nil nil fn-arena fn-cat)
+   (fn-scr-source-boundary-dispatch p1 nil nil nil nil fn-arena fn-cat)
    (let* ((n1 (fn-served-counted-consumed r1))
           (c1 (fn-served-result-conn (fn-served-counted-result r1)))
-          (p2 (fn-scr-source-prepare-span c1 (+ n0 n1) end nil nil nil nil nil
+          (p2 (fn-scr-source-prepare-span c1 (+ n0 n1) end nil nil nil nil
                                         fn-octets fn-arena fn-cat))
           (r2 (nth 1 p2))
-          (whole (fn-scr-scan-span *ssct-reader* 0 end nil nil nil nil nil
+          (whole (fn-scr-scan-span *ssct-reader* 0 end nil nil nil nil
                                    fn-octets fn-arena fn-cat)))
     (mv
      (and (eq (car p0) :source-result)
           (equal n0 (len (ssct-line "OVER")))
-          (equal r0 (fn-scr-scan-span *ssct-reader* 0 n0 nil nil nil nil nil
+          (equal r0 (fn-scr-scan-span *ssct-reader* 0 n0 nil nil nil nil
                                      fn-octets fn-arena fn-cat))
           (eq (car p1) :source-boundary) (equal (nth 2 p1) n0)
           (eq word :dispatched) (equal n1 (len (ssct-line command)))
-          (equal r1 (fn-scr-scan-span c0 n0 (+ n0 n1) nil nil nil nil nil
+          (equal r1 (fn-scr-scan-span c0 n0 (+ n0 n1) nil nil nil nil
                                      fn-octets fn-arena fn-cat))
           (eq (car p2) :source-result)
           (equal (+ n0 n1 (fn-served-counted-consumed r2)) end)
@@ -87,10 +87,10 @@
 
 (defun ssct-prepared-literal (conn i end fn-octets fn-arena fn-cat)
  (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
- (let* ((p (fn-scr-source-prepare-span conn i end nil nil nil nil nil fn-octets fn-arena fn-cat))
-        (r (fn-scr-source-scan-span conn i end nil nil nil nil nil fn-octets fn-arena fn-cat)))
+ (let* ((p (fn-scr-source-prepare-span conn i end nil nil nil nil fn-octets fn-arena fn-cat))
+        (r (fn-scr-source-scan-span conn i end nil nil nil nil fn-octets fn-arena fn-cat)))
   (mv-let (word dispatched)
-   (fn-scr-source-boundary-dispatch p nil nil nil nil nil fn-arena fn-cat)
+   (fn-scr-source-boundary-dispatch p nil nil nil nil fn-arena fn-cat)
    (and (implies (equal (car p) :source-result) (equal (nth 1 p) r))
         (implies (equal (car p) :source-boundary)
                  (and (equal word :dispatched) (equal dispatched r)))))))
@@ -99,21 +99,21 @@
  (let* ((bytes (append (ssct-line "OVER") (ssct-line command) (ssct-line "OVER")))
         (fn-octets (fn-octets-from-list bytes fn-octets))
         (end (fn-octets-len fn-octets))
-        (p0 (fn-scr-source-prepare-span *ssct-reader* 0 end nil nil nil nil nil
+        (p0 (fn-scr-source-prepare-span *ssct-reader* 0 end nil nil nil nil
                                       fn-octets fn-arena fn-cat))
         (r0 (nth 1 p0))
         (n0 (fn-served-counted-consumed r0))
         (c0 (fn-served-result-conn (fn-served-counted-result r0)))
-        (p1 (fn-scr-source-prepare-span c0 n0 end nil nil nil nil nil
+        (p1 (fn-scr-source-prepare-span c0 n0 end nil nil nil nil
                                       fn-octets fn-arena fn-cat)))
   (mv-let (word r1)
-   (fn-scr-source-boundary-dispatch p1 nil nil nil nil nil fn-arena fn-cat)
+   (fn-scr-source-boundary-dispatch p1 nil nil nil nil fn-arena fn-cat)
    (let* ((n1 (fn-served-counted-consumed r1))
           (c1 (fn-served-result-conn (fn-served-counted-result r1)))
-          (p2 (fn-scr-source-prepare-span c1 (+ n0 n1) end nil nil nil nil nil
+          (p2 (fn-scr-source-prepare-span c1 (+ n0 n1) end nil nil nil nil
                                         fn-octets fn-arena fn-cat))
           (r2 (nth 1 p2))
-          (whole (fn-scr-scan-span *ssct-reader* 0 end nil nil nil nil nil
+          (whole (fn-scr-scan-span *ssct-reader* 0 end nil nil nil nil
                                    fn-octets fn-arena fn-cat)))
     (mv
      (and (ssct-prepared-literal *ssct-reader* 0 end fn-octets fn-arena fn-cat)
@@ -123,11 +123,11 @@
           (ssct-prepared-literal *ssct-reader* 0 3 fn-octets fn-arena fn-cat)
           (eq (car p0) :source-result)
           (equal n0 (len (ssct-line "OVER")))
-          (equal r0 (fn-scr-scan-span *ssct-reader* 0 n0 nil nil nil nil nil
+          (equal r0 (fn-scr-scan-span *ssct-reader* 0 n0 nil nil nil nil
                                      fn-octets fn-arena fn-cat))
           (eq (car p1) :source-boundary) (equal (nth 2 p1) n0)
           (eq word :dispatched) (equal n1 (len (ssct-line command)))
-          (equal r1 (fn-scr-scan-span c0 n0 (+ n0 n1) nil nil nil nil nil
+          (equal r1 (fn-scr-scan-span c0 n0 (+ n0 n1) nil nil nil nil
                                      fn-octets fn-arena fn-cat))
           (eq (car p2) :source-result)
           (equal (+ n0 n1 (fn-served-counted-consumed r2)) end)

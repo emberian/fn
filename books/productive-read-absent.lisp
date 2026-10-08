@@ -69,7 +69,7 @@
             (fn-nntp-session-group session)
             (fn-nntp-decimal-value token)
             (fn-state-articles archive))
-          (fn-midx-lookup (fn-nntp-token-string token) trie))))
+          (fn-find-article (fn-nntp-token-string token) arts))))
     (implies
       (and
         (or
@@ -78,7 +78,7 @@
         (or (not (fn-nntp-number-tokenp token)) group)
         (not (consp article)))
       (equal
-        (fn-rcompat-retrieval session archive trie :article (list token) server fn-arena)
+        (fn-rcompat-retrieval session archive arts :article (list token) server fn-arena)
         (fn-pcr-absent-reply session token))))
   :rule-classes
   nil
@@ -95,7 +95,7 @@
          fn-nntp-decimal-value
          fn-nntp-session-group
          fn-state-articles
-         fn-midx-lookup
+         fn-find-article
          fn-nntp-token-string)))))
 
 (defthm
@@ -107,7 +107,7 @@
         (if
           (fn-nntp-number-tokenp token)
           (fn-nntp-find-group-number group number (fn-state-articles archive))
-          (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie index))))
+          (fn-find-article (fn-nntp-token-string token) (fn-state-articles archive))))
       (server (fn-nntp-xref-server env)))
     (implies
       (and
@@ -127,7 +127,7 @@
         (fn-gidx-pinp index)
         (and
           (not (fn-nntp-number-withdrawn-p session archive index token))
-          (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p index token)))))
+          (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p archive index token)))))
       (equal
         (fn-nntp-step-pinned session archive index verdicts env (list :command line) fn-arena)
         (fn-pcr-absent-reply session token))))
@@ -138,7 +138,7 @@
      :use
      ((:instance
         fn-pcr-absent-retrieval-preserves-the-cursor
-        (trie (fn-gidx-pin-trie index))
+        (arts (fn-state-articles archive))
         (server (fn-nntp-xref-server env)))
        (:instance
          fn-nntp-archive-command-pinned-article-head-is-served
@@ -194,7 +194,7 @@
         (if
           (fn-nntp-number-tokenp token)
           (fn-nntp-find-group-number group number (fn-state-articles archive))
-          (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie index))))
+          (fn-find-article (fn-nntp-token-string token) (fn-state-articles archive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session token))
       (p
@@ -228,7 +228,7 @@
         (fn-gidx-pinp index)
         (and
           (not (fn-nntp-number-withdrawn-p session archive index token))
-          (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p index token)))))
+          (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p archive index token)))))
       (and
         (equal (fn-post-result-effects p) (fn-nntp-result-effects r))
         (null (fn-post-result-submission p))
@@ -284,7 +284,7 @@
         (if
           (fn-nntp-number-tokenp token)
           (fn-nntp-find-group-number group number (fn-state-articles archive))
-          (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie index))))
+          (fn-find-article (fn-nntp-token-string token) (fn-state-articles archive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session token))
       (p
@@ -320,7 +320,7 @@
         (fn-gidx-pinp index)
         (and
           (not (fn-nntp-number-withdrawn-p session archive index token))
-          (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p index token)))))
+          (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p archive index token)))))
       (and
         (equal (fn-post-result-effects p) (fn-nntp-result-effects r))
         (null (fn-post-result-submission p))
@@ -356,7 +356,7 @@
         (if
           (fn-nntp-number-tokenp token)
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex))))
+          (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session token))
       (p
@@ -399,7 +399,7 @@
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
           (not
-            (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token)))))
+            (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))))
       (and
         (equal (fn-post-result-effects p) (fn-nntp-result-effects r))
         (null (fn-post-result-submission p))
@@ -443,7 +443,7 @@
         (if
           (fn-nntp-number-tokenp token)
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex))))
+          (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session token))
       (p (fn-served-dispatch conn (list :command line) fn-arena)))
@@ -476,7 +476,7 @@
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
           (not
-            (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token)))))
+            (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))))
       (and
         (equal (fn-served-result-effects p) (fn-nntp-result-effects r))
         (equal
@@ -485,8 +485,7 @@
               (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p)))))
           (fn-nntp-result-session r))
         (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
-        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn))
-        (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn)))))
+        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)))))
   :rule-classes
   nil
   :hints
@@ -539,7 +538,7 @@
         (if
           (fn-nntp-number-tokenp token)
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex))))
+          (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session token))
       (p (fn-served-step conn (append line (quote (13 10))) fn-arena)))
@@ -581,7 +580,7 @@
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
           (not
-            (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token)))))
+            (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))))
       (and
         (equal (fn-served-result-effects p) (fn-nntp-result-effects r))
         (equal
@@ -590,8 +589,7 @@
               (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p)))))
           (fn-nntp-result-session r))
         (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
-        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn))
-        (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn)))))
+        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)))))
   :rule-classes
   nil
   :hints
@@ -678,7 +676,7 @@
         (equal article
           (if (fn-nntp-number-tokenp token)
             (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-            (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex))))
+            (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive))))
         (equal server (fn-nntp-xref-server env))
         (equal r (fn-pcr-absent-reply session token))
         (equal p
@@ -709,7 +707,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp o)
         (fn-scr-owner-catalogp o id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         (natp i)
@@ -748,7 +745,7 @@
         server
         (fn-gidx-pinp viewindex)
         (and (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-          (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token)))))
+          (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))))
       (and (equal (fn-otb-dependency-step since now limit completed) :serve)
         (equal (fn-own-tls-result-consumed p) (+ 2 (len line)))
         (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r))
@@ -802,7 +799,7 @@
         (if
           (fn-nntp-number-tokenp token)
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex))))
+          (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session token))
       (p
@@ -845,7 +842,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp (fn-ocfg-owner oc))
         (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         (natp i)
@@ -889,7 +885,7 @@
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
           (not
-            (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token)))))
+            (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))))
       (and
         (equal (fn-otb-dependency-step since now limit completed) :serve)
         (equal (fn-own-tls-result-consumed p) (+ 2 (len line)))
@@ -977,14 +973,10 @@
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
                   (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))
-            (fn-midx-lookup (fn-nntp-token-string token)
-              (fn-gidx-pin-trie (fn-auth-view-index (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-pinned-index (fn-own-tls-served-conn (fn-ocfg-owner oc)
+            (fn-find-article (fn-nntp-token-string token)
+              (fn-state-articles (fn-auth-view-archive (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))))
         (server (fn-nntp-xref-server (fn-post-reader-env (fn-auth-view-config (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
@@ -1154,7 +1146,7 @@
         (equal article
           (if (fn-nntp-number-tokenp token)
             (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-            (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex))))
+            (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive))))
         (equal server (fn-nntp-xref-server env))
         (equal r (fn-pcr-absent-reply session token))
         (equal p
@@ -1185,7 +1177,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp o)
         (fn-scr-owner-catalogp o id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         completed
@@ -1211,7 +1202,7 @@
         server
         (fn-gidx-pinp viewindex)
         (and (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-          (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token)))))
+          (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))))
       (and (equal (fn-otb-dependency-step since now limit completed) :serve)
         (equal (fn-own-tls-result-consumed p) (+ 2 (len line)))
         (equal (fn-own-tls-result-effects p) (fn-nntp-result-effects r))
@@ -1258,7 +1249,7 @@
         (if
           (fn-nntp-number-tokenp token)
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex))))
+          (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session token))
       (p
@@ -1301,7 +1292,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp (fn-ocfg-owner oc))
         (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         completed
@@ -1331,7 +1321,7 @@
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
           (not
-            (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token)))))
+            (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))))
       (and
         (equal (fn-otb-dependency-step since now limit completed) :serve)
         (equal (fn-own-tls-result-consumed p) (+ 2 (len line)))
@@ -1419,14 +1409,10 @@
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
                   (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))
-            (fn-midx-lookup (fn-nntp-token-string token)
-              (fn-gidx-pin-trie (fn-auth-view-index (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-pinned-index (fn-own-tls-served-conn (fn-ocfg-owner oc)
+            (fn-find-article (fn-nntp-token-string token)
+              (fn-state-articles (fn-auth-view-archive (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))))
         (server (fn-nntp-xref-server (fn-post-reader-env (fn-auth-view-config (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))

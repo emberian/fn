@@ -409,11 +409,10 @@
                              fn-wire-article-line-limit
                              fn-served-connp-is-consistent-session
                              fn-served-connp-is-group-correspondence
-                             fn-served-connp-is-pinned-trie-correspondence
+                             
                              fn-auth-step-pinned-effects-well-formed))
             :use ((:instance fn-served-connp-is-consistent-session (c conn))
                   (:instance fn-served-connp-is-group-correspondence (c conn))
-                  (:instance fn-served-connp-is-pinned-trie-correspondence (c conn))
                   (:instance fn-auth-step-pinned-effects-well-formed
                              (as (fn-served-conn-session conn))
                              (archive (fn-served-conn-archive conn))
@@ -461,7 +460,6 @@
               (fn-served-conn-observation conn)
               (fn-served-conn-injection conn)
               (fn-served-conn-verdicts conn)
-              (fn-served-conn-index conn)
               (fn-served-conn-group-index conn)
               (fn-served-conn-control conn))))
    :hints (("Goal" :in-theory (e/d (fn-served-connp)

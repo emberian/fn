@@ -7,7 +7,7 @@
 ; fn-nntp-post-step-pinned -> fn-nntp-step-pinned -> fn-nntp-command-pinned
 ; -> fn-nntp-archive-command-pinned (books/owner-control-read.lisp states the
 ; three answers over fn-own-read).  Its index argument is the group pin
-; whose fourth slot is the connection's control pin (`fn-ctl-pin' W WS,
+; whose third slot is the connection's control pin (`fn-ctl-pin' W WS,
 ; books/control-served.lisp).  Over a pin whose W is the withdrawn list of
 ; the raw list RAW the served archive is the visible list of
 ; (`fn-own-control-okp', books/owner-invariants.lisp, carries exactly that
@@ -104,7 +104,7 @@
   (implies (and (fn-nctl-retrievalp keyword)
                 (consp args) (null (cdr args))
                 (fn-nntp-message-id-tokenp (car args))
-                (fn-nntp-msgid-withdrawn-p index (car args)))
+                (fn-nntp-msgid-withdrawn-p archive index (car args)))
            (equal (fn-nntp-archive-command-pinned
                    session archive index verdicts env keyword args fn-arena)
                   (fn-nntp-single session "430 withdrawn")))
@@ -113,51 +113,31 @@
                                   (fn-nntp-single fn-nntp-upcase-keyword
                                    fn-nntp-message-id-tokenp)))))
 
-(local
- (defthm fn-nctl-trie-lookup-is-find-article
-   (implies (and (fn-midx-correspondencep trie articles)
-                 (fn-nntp-message-id-tokenp token)
-                 (fn-octet-listp token))
-            (equal (fn-midx-lookup (fn-nntp-token-string token) trie)
-                   (fn-find-article (fn-nntp-token-string token) articles)))
-   :hints (("Goal" :in-theory (e/d (fn-midx-correspondencep)
-                                   (fn-midx-lookup fn-midx-build fn-find-article
-                                    fn-nntp-token-string fn-midx-key-chars
-                                    fn-nntp-message-id-tokenp))))))
-
 ; KEYSTONE (430 withdrawn, sound).
 (defthm fn-nntp-430-withdrawn-is-a-withdrawn-article
   (let* ((msgid (fn-nntp-token-string token))
          (y (fn-ctl-msgid-withdrawn msgid (fn-ctl-withdrawn-articles raw ws verdicts))))
     (implies (and (equal (fn-ctl-pin-withdrawn (fn-gidx-pin-control index))
                          (fn-ctl-withdrawn-articles raw ws verdicts))
-                  (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                           (fn-state-articles archive))
                   (fn-nntp-message-id-tokenp token)
-                  (fn-nntp-msgid-withdrawn-p index token))
+                  (fn-nntp-msgid-withdrawn-p archive index token))
              (and (member-equal y raw)
                   (not (member-equal y (fn-ctl-visible-articles raw ws verdicts)))
                   (equal (fn-article-msgid y) msgid)
                   (not (consp (fn-find-article msgid (fn-state-articles archive)))))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-withdrawn-p)
                                   (fn-ctl-withdrawn-articles fn-ctl-visible-articles
-                                   fn-midx-correspondencep fn-midx-lookup
                                    fn-find-article fn-nntp-token-string
                                    fn-nntp-message-id-tokenp
                                    fn-ctl-msgid-withdrawn-is-a-withdrawn-article))
            :use ((:instance fn-ctl-msgid-withdrawn-is-a-withdrawn-article
-                            (msgid (fn-nntp-token-string token)))
-                 (:instance fn-nctl-trie-lookup-is-find-article
-                            (trie (fn-gidx-pin-trie index))
-                            (articles (fn-state-articles archive)))))))
+                            (msgid (fn-nntp-token-string token)))))))
 
 ; KEYSTONE (430 withdrawn, complete).
 (defthm fn-nntp-withdrawn-article-answers-430-withdrawn
   (let ((msgid (fn-nntp-token-string (car args))))
     (implies (and (equal (fn-ctl-pin-withdrawn (fn-gidx-pin-control index))
                          (fn-ctl-withdrawn-articles raw ws verdicts))
-                  (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                           (fn-state-articles archive))
                   (fn-nctl-retrievalp keyword)
                   (consp args) (null (cdr args))
                   (fn-nntp-message-id-tokenp (car args))
@@ -171,22 +151,17 @@
                     (fn-nntp-single session "430 withdrawn"))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-withdrawn-p)
                                   (fn-ctl-withdrawn-articles fn-ctl-visible-articles
-                                   fn-midx-correspondencep fn-midx-lookup
                                    fn-find-article fn-nntp-token-string
                                    fn-nntp-message-id-tokenp fn-nntp-single
                                    fn-nntp-archive-command-pinned
                                    fn-ctl-withdrawn-article-is-found-by-msgid))
            :use ((:instance fn-ctl-withdrawn-article-is-found-by-msgid
-                            (msgid (fn-nntp-token-string (car args))))
-                 (:instance fn-nctl-trie-lookup-is-find-article
-                            (token (car args))
-                            (trie (fn-gidx-pin-trie index))
-                            (articles (fn-state-articles archive)))))))
+                            (msgid (fn-nntp-token-string (car args))))))))
 
 ; -----------------------------------------------------------------------------
 ; HDR :fn-control.
 
-; KEYSTONE (HDR :fn-control).  Over the trie of the served list, the reply
+; KEYSTONE (HDR :fn-control).  Over the served list, the reply
 ; to `HDR :fn-control <msgid>' is one line: 0 and the item of the kernel's
 ; status `fn-ctl-control-status' of the article C with that Message-ID,
 ; served or withdrawn (`fn-ctl-find-held'); 430 when there is none.
@@ -195,8 +170,7 @@
          (visible (fn-state-articles archive))
          (withdrawn (fn-ctl-pin-withdrawn control))
          (c (fn-ctl-find-held (fn-nntp-token-string (cadr args)) visible withdrawn)))
-    (implies (and (fn-midx-correspondencep (fn-gidx-pin-trie index) visible)
-                  (fn-nntp-keywordp keyword "HDR")
+    (implies (and (fn-nntp-keywordp keyword "HDR")
                   (consp args) (consp (cdr args)) (null (cddr args))
                   (fn-nntp-keywordp (car args) ":FN-CONTROL")
                   (fn-nntp-message-id-tokenp (cadr args))
@@ -222,8 +196,7 @@
                                    fn-nntp-control-hdr-response)
                                   (fn-nntp-single fn-nntp-multi fn-nntp-upcase-keyword
                                    fn-ctl-control-item fn-ctl-control-status
-                                   fn-ctl-served-status fn-ctl-served-held
-                                   fn-ctl-find-held fn-midx-correspondencep
+                                   fn-ctl-find-held
                                    fn-nntp-hdr-line fn-nntp-decimal-field
                                    fn-nntp-string-octets fn-ctl-target-octets
                                    fn-nntp-message-id-tokenp fn-nntp-control-cleanp)))))

@@ -8,7 +8,7 @@
 (defun fn-crv-test-view (visible withdrawn records)
  (declare (xargs :guard t))
  (list 2 2 (fn-make-state '("a" "b") nil visible 2 nil nil)
-       nil nil nil records nil withdrawn nil))
+       nil nil records nil withdrawn nil))
 (defun fn-crv-test-run (fuel result key)
  (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
  (if (or (zp fuel) (not (eq (fn-cp-nth 0 result) :yield))) result

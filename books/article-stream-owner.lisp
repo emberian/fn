@@ -13,42 +13,13 @@
   (fn-own-conn-make-group-indexed
    (fn-own-conn-id conn) (fn-own-conn-version conn) (fn-own-conn-frontier conn)
    wire session (fn-own-conn-archive conn) (fn-own-conn-config conn)
-   (fn-own-conn-observation conn) (fn-own-conn-verdicts conn)
-   (fn-own-conn-index conn) (fn-own-conn-group-index conn) (fn-own-conn-control conn)))
+   (fn-own-conn-observation conn) (fn-own-conn-verdicts conn) (fn-own-conn-group-index conn) (fn-own-conn-control conn)))
 
 (defun fn-asto-with-conn (oc conn)
   (declare (xargs :guard t))
   (let ((o (fn-ocfg-owner oc)))
     (fn-ocfg-with-owner oc
       (fn-own-set-conns o (fn-own-replace-conn conn (fn-own-conns o))))))
-
-; A selection is (article number updatep group). Missing/syntax/gated arms
-; return NIL and run the existing dispatcher over just this parsed event.
-(defun fn-asto-selection (session archive index args)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((group (fn-nntp-session-group session)))
-    (cond
-     ((null args)
-      (let* ((number (fn-nntp-session-current session))
-             (article (and group number
-                       (fn-nntp-available-article group number (fn-state-articles archive)))))
-        (and article (list article number t group))))
-     ((and (consp args) (null (cdr args)))
-      (let ((token (car args)))
-        (cond
-         ((fn-nntp-number-tokenp token)
-          (let* ((number (fn-nntp-decimal-value token))
-                 (article (and group (fn-nntp-find-group-number group number
-                                                (fn-state-articles archive)))))
-            (and article (list article number t group))))
-         ((and (fn-nntp-message-id-tokenp token) (fn-octet-listp token))
-          (let ((article (if (fn-gidx-pinp index)
-                             (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie index))
-                           (fn-find-article (fn-nntp-token-string token)
-                                            (fn-state-articles archive)))))
-            (and article (list article (fn-nntp-msgid-local-number session article) nil nil))))
-         (t nil))))
-     (t nil))))
 
 (defun fn-asto-selection-start (session archive index args)
   (declare (xargs :guard t))
@@ -66,7 +37,7 @@
            (fn-nntp-message-id-tokenp (car args)) (fn-octet-listp (car args)))
       (let ((key (fn-nntp-token-string (car args))))
         (if (fn-gidx-pinp index)
-            (let ((article (fn-midx-lookup key (fn-gidx-pin-trie index))))
+            (let ((article (fn-find-article key (fn-state-articles archive))))
               (if (consp article) (fn-ast-msgid-local-start group article)
                 (fn-ast-select-state :msgid group key nil nil nil nil 0 :missing)))
           (fn-ast-select-state :msgid group key (fn-state-articles archive)
@@ -134,8 +105,7 @@
  (defthm fn-scr-catalogp-parts
    (implies (fn-scr-catalogp archive index v fn-arena fn-cat)
             (and (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
-                 (fn-cnx-freshp fn-cat)
-                 (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive))))
+                 (fn-cnx-freshp fn-cat)))
    :hints (("Goal" :in-theory (enable fn-scr-catalogp)))))
 
 (defthm fn-asto-selection-start-cat-number
@@ -149,7 +119,7 @@
                   (fn-asx-outcome (fn-asto-selection-start-cat session v args fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-ast-select-step fn-ast-select-one fn-asx-goodp fn-cat-view-articles
-                               fn-gidx-pinp fn-gidx-pin-trie fn-midx-correspondencep
+                               fn-gidx-pinp
                                fn-asx-walk-is-lookup fn-asx-walk-nonstring fn-scat-number-article
                                fn-scat-number-article-is-find-group-number fn-scr-catalogp
                                fn-asx-first fn-asx-done-state fn-asx-outcome fn-asx-need)
@@ -215,7 +185,7 @@
                   (fn-asx-outcome (fn-asto-selection-start-cat session v args fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-ast-select-step fn-ast-select-one fn-asx-goodp fn-cat-view-articles
-                               fn-gidx-pinp fn-gidx-pin-trie fn-midx-correspondencep
+                               fn-gidx-pinp
                                fn-asx-walk-is-lookup fn-asx-walk-nonstring fn-scat-number-article
                                fn-scat-number-article-is-find-group-number fn-scr-catalogp
                                fn-asx-first fn-asx-done-state fn-asx-outcome fn-asx-need
@@ -263,7 +233,6 @@
   :hints (("Goal" :in-theory (e/d (fn-asto-selection-start-cat fn-scr-catalogp
                                    fn-scat-msgid-article-is-find-article)
                                   (fn-scat-msgid-article fn-find-article fn-cat-view-articles
-                                   fn-midx-build fn-midx-lookup fn-midx-key-chars
                                    fn-ast-msgid-local-start fn-nntp-token-string
                                    fn-nntp-message-id-tokenp fn-octet-listp)))))
 
@@ -276,11 +245,8 @@
            (equal (fn-asto-selection-start session archive index args)
                   (fn-asto-selection-start-cat session v args fn-arena fn-cat)))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-asto-selection-start fn-asto-selection-start-cat
-                            fn-midx-correspondencep fn-scat-msgid-article-is-find-article
-                            fn-midx-lookup-of-build-is-find-article-for-nonempty)
+           :in-theory (e/d (fn-asto-selection-start fn-asto-selection-start-cat fn-scat-msgid-article-is-find-article)
                            (fn-scat-msgid-article fn-find-article fn-cat-view-articles
-                            fn-midx-build fn-midx-lookup fn-midx-key-chars
                             fn-ast-msgid-local-start fn-nntp-token-string
                             fn-nntp-message-id-tokenp fn-octet-listp fn-scr-catalogp
                             fn-nntp-number-tokenp))
@@ -304,7 +270,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-asto-selection-start fn-asto-selection-start-cat)
                            (fn-asx-msgid-walk-is-lookup fn-scat-msgid-article fn-find-article
-                            fn-cat-view-articles fn-midx-build fn-midx-lookup fn-midx-key-chars
+                            fn-cat-view-articles
                             fn-ast-msgid-local-start fn-nntp-token-string fn-asx-nc
                             fn-nntp-message-id-tokenp fn-octet-listp fn-scr-catalogp
                             fn-nntp-number-tokenp fn-ast-select-step fn-ast-select-state))

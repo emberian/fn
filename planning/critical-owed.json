@@ -656,11 +656,6 @@
    "item": "PRF-1344",
    "book": "books/nntp-auth.lisp"
   },
-  "fn-auth-view-trie-corresponds": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/nntp-auth.lisp"
-  },
   "fn-auth-view-when-unrestricted": {
    "class": "authorization",
    "item": "PRF-1344",
@@ -5052,11 +5047,6 @@
    "book": "books/assumptions-pgs-host-io.lisp"
   },
   "fn-pidx-existing-action-is-store-existing-action": {
-   "class": "identity-binding",
-   "item": "PRF-1347",
-   "book": "books/post-identity-index.lisp"
-  },
-  "fn-pidx-find-article-is-find-article": {
    "class": "identity-binding",
    "item": "PRF-1347",
    "book": "books/post-identity-index.lisp"

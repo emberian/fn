@@ -427,10 +427,10 @@
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(def-loop fn-nov-served-lines-numbered-col (numbers nidx trie server fn-arena fn-cat)
+(def-loop fn-nov-served-lines-numbered-col (numbers nidx arts server fn-arena fn-cat)
   :shape :map :over numbers :elt n :stobjs (fn-arena fn-cat)
   :let ((number n)
-         (article (fn-gidx-nidx-number-article number nidx trie))
+         (article (fn-gidx-nidx-number-article number nidx arts))
          (over (if (and (consp article)
                         (not (fn-scol-tombstonep article fn-arena fn-cat)))
                    (fn-scol-overview-of article fn-arena fn-cat)
@@ -440,15 +440,15 @@
 
 (defthm fn-nov-served-lines-numbered-col-is-served
   (implies (fn-scol-okp fn-arena fn-cat)
-           (equal (fn-nov-served-lines-numbered-col numbers nidx trie server fn-arena fn-cat)
-                  (fn-nov-served-lines-numbered numbers nidx trie server fn-arena)))
-  :hints (("Goal" :induct (fn-nov-served-lines-numbered-col numbers nidx trie server
+           (equal (fn-nov-served-lines-numbered-col numbers nidx arts server fn-arena fn-cat)
+                  (fn-nov-served-lines-numbered numbers nidx arts server fn-arena)))
+  :hints (("Goal" :induct (fn-nov-served-lines-numbered-col numbers nidx arts server
                                                              fn-arena fn-cat)
            :in-theory (e/d (fn-nov-served-lines-numbered)
                            (fn-scol-okp fn-nov-overview fn-nov-okp fn-nov-served-line
                             fn-gidx-nidx-number-article fn-nntp-article-tombstonep)))))
 
-(defun fn-nntp-over-range-served-col (session buckets trie token legacyp server fn-arena fn-cat)
+(defun fn-nntp-over-range-served-col (session buckets arts token legacyp server fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :guard t))
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
@@ -459,7 +459,7 @@
                        entries group (fn-nntp-range-low range)
                        (fn-nntp-range-high range)))
              (lines (fn-nov-served-lines-numbered-col
-                     numbers (fn-gidx-bucket-numbers group buckets) trie
+                     numbers (fn-gidx-bucket-numbers group buckets) arts
                      server fn-arena fn-cat)))
         (if (consp lines)
             (fn-nntp-multi session "224 overview information follows" lines)
@@ -469,9 +469,9 @@
 
 (defthm fn-nntp-over-range-served-col-is-served
   (implies (fn-scol-okp fn-arena fn-cat)
-           (equal (fn-nntp-over-range-served-col session buckets trie token legacyp server
+           (equal (fn-nntp-over-range-served-col session buckets arts token legacyp server
                                                  fn-arena fn-cat)
-                  (fn-nntp-over-range-served session buckets trie token legacyp server
+                  (fn-nntp-over-range-served session buckets arts token legacyp server
                                              fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-served)
                                   (fn-scol-okp fn-nov-served-lines-numbered-col
@@ -551,7 +551,7 @@
          (consp args) (null (cdr args))
          (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
     (fn-nntp-over-range-served-col
-     session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
+     session (fn-gidx-pin-buckets index) (fn-state-articles archive)
      (car args) (fn-nntp-keywordp keyword "XOVER") (fn-nntp-xref-server env) fn-arena fn-cat))
    ((and (or (fn-nntp-keywordp keyword "OVER")
              (fn-nntp-keywordp keyword "XOVER"))

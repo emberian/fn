@@ -43,16 +43,14 @@
 (defconst *xri-session*
   (fn-nntp-set-cursor (fn-nntp-open-session *xri-new*) "fn.one" 2))
 (defconst *xri-old-pin*
-  (fn-gidx-pin (fn-midx-build *xri-old-articles*)
-               (fn-gidx-build *xri-old-articles*)))
+  (fn-gidx-pin (fn-gidx-build *xri-old-articles*)))
 (defconst *xri-new-pin*
-  (fn-gidx-pin (fn-midx-build *xri-new-articles*)
-               (fn-gidx-build *xri-new-articles*)))
+  (fn-gidx-pin (fn-gidx-build *xri-new-articles*)))
 (defconst *xri-env* (fn-nntp-env nil nil nil))
 
 (assert-event (and (fn-statep *xri-old*) (fn-statep *xri-new*)
                    (fn-nntp-sessionp *xri-session*)))
-; Invalid ranges and an untagged index use the archive fallback in the
+; Invalid ranges and an untagged index (nil) use the archive fallback in the
 ; called dispatcher.  Neither is a premise of the carried theorem.
 (include-book "arena-lift")
 ;; The arena: handles 0, 1, 2 = the payloads of A, B, C; 3 = the duplicate's DUP payload.
@@ -69,15 +67,15 @@
 (assert-event
  (and (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xri-session* *xri-new* *xri-new-pin* nil *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "broken")))
              (in-arena-fn-nntp-archive-command *sr-arena* *xri-session* *xri-new* *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "broken"))))
-      (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xri-session* *xri-new* (fn-gidx-pin-trie *xri-new-pin*) nil *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
+      (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xri-session* *xri-new* nil nil *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
              (in-arena-fn-nntp-archive-command *sr-arena* *xri-session* *xri-new* *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100"))))))
 (assert-event (equal (fn-gidx-range-numbers
                       (fn-gidx-pin-buckets *xri-new-pin*) "fn.one" 1 100)
                      '(2 100)))
 (assert-event (equal (len (in-arena-fn-nov-lines-for-numbers-indexed *sr-arena* "fn.one" '(2 100) (fn-gidx-bucket "fn.one"
-                                            (fn-gidx-pin-buckets *xri-new-pin*)) (fn-gidx-pin-trie *xri-new-pin*))) 2))
+                                            (fn-gidx-pin-buckets *xri-new-pin*)) *xri-new-articles*)) 2))
 (assert-event (equal (len (in-arena-fn-nov-lines-for-numbers-indexed *sr-arena* "fn.one" '(2 100) (fn-gidx-bucket "fn.one"
-                                            (fn-gidx-pin-buckets *xri-old-pin*)) (fn-gidx-pin-trie *xri-old-pin*))) 1))
+                                            (fn-gidx-pin-buckets *xri-old-pin*)) *xri-old-articles*)) 1))
 (assert-event
  (and (equal (in-arena-fn-nntp-step-pinned *sr-arena* *xri-session* *xri-new* *xri-new-pin* nil *xri-env* (list :command (fn-nntp-string-octets "OVER 1-100")))
              (in-arena-fn-nntp-step *sr-arena* *xri-session* *xri-new* *xri-env* (list :command (fn-nntp-string-octets "OVER 1-100"))))
@@ -89,37 +87,20 @@
       (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xri-session* *xri-new* *xri-new-pin* nil *xri-env* (fn-nntp-string-octets "XOVER") (list (fn-nntp-string-octets "101-200")))
              (fn-nntp-single *xri-session* "420 no article(s) selected"))))
 
-; An old bucket and a missing trie are both concrete counterexamples to
-; dropping the carried correspondence premises.
+; An old bucket is a concrete counterexample to dropping the carried
+; correspondence premise.
 (defconst *xri-stale-bucket-pin*
-  (fn-gidx-pin (fn-gidx-pin-trie *xri-new-pin*)
-               (fn-gidx-pin-buckets *xri-old-pin*)))
-(defconst *xri-missing-trie-pin*
-  (fn-gidx-pin nil (fn-gidx-pin-buckets *xri-new-pin*)))
+  (fn-gidx-pin (fn-gidx-pin-buckets *xri-old-pin*)))
 (assert-event
  (not (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xri-session* *xri-new* *xri-stale-bucket-pin* nil *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
-             (in-arena-fn-nntp-archive-command *sr-arena* *xri-session* *xri-new* *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100"))))))
-(assert-event
- (not (equal (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xri-session* *xri-new* *xri-missing-trie-pin* nil *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100")))
              (in-arena-fn-nntp-archive-command *sr-arena* *xri-session* *xri-new* *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "1-100"))))))
 (must-fail-checked
  (defthm fn-xri-without-bucket-correspondence
    (implies (and (fn-statep archive)
-                 (fn-midx-correspondencep
-                  (fn-gidx-pin-trie index) (fn-state-articles archive))
                  (fn-nntp-keywordp keyword "OVER"))
             (equal (fn-nntp-archive-command-pinned session archive index nil nil keyword (list token) fn-arena)
                    (fn-nntp-archive-command session archive nil keyword (list token) fn-arena)))
    :hints (("Goal" :do-not-induct t))))
-(must-fail-checked
- (defthm fn-xri-without-trie-correspondence
-   (implies (and (fn-statep archive)
-                 (fn-gidx-pin-correspondencep index archive)
-                 (fn-nntp-keywordp keyword "OVER"))
-            (equal (fn-nntp-archive-command-pinned session archive index nil nil keyword (list token) fn-arena)
-                   (fn-nntp-archive-command session archive nil keyword (list token) fn-arena)))
-   :hints (("Goal" :do-not-induct t))))
-
 ; Duplicate accepted IDs cannot occur in fn-statep, but show why the
 ; archive-validity premise of the bucket/trie-to-archive theorem matters.
 ; This is a malformed-state proof counterexample, never runtime evidence.
@@ -133,36 +114,30 @@
 (assert-event
  (not (equal (fn-gidx-number-article
               "fn.one" 100 (fn-gidx-build *xri-duplicate-articles*)
-              (fn-midx-build *xri-duplicate-articles*))
+              *xri-duplicate-articles*)
              (fn-nntp-available-article
               "fn.one" 100 *xri-duplicate-articles*))))
 (defconst *xri-duplicate-state*
   (fn-make-state *xri-groups* *xri-nexts-new*
                  *xri-duplicate-articles* 3 nil nil))
 (defconst *xri-duplicate-pin*
-  (fn-gidx-pin (fn-midx-build *xri-duplicate-articles*)
-               (fn-gidx-build *xri-duplicate-articles*)))
+  (fn-gidx-pin (fn-gidx-build *xri-duplicate-articles*)))
 (assert-event
  (and (not (fn-statep *xri-duplicate-state*))
       (fn-gidx-pin-correspondencep *xri-duplicate-pin*
                                     *xri-duplicate-state*)
-      (fn-midx-correspondencep
-       (fn-gidx-pin-trie *xri-duplicate-pin*)
-       (fn-state-articles *xri-duplicate-state*))
       (not (equal
             (in-arena-fn-nntp-archive-command-pinned *sr-arena* *xri-session* *xri-duplicate-state* *xri-duplicate-pin* nil *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "100-100")))
             (in-arena-fn-nntp-archive-command *sr-arena* *xri-session* *xri-duplicate-state* *xri-env* (fn-nntp-string-octets "OVER") (list (fn-nntp-string-octets "100-100")))))))
 (must-fail-checked
  (defthm fn-xri-without-valid-archive
    (equal (fn-gidx-number-article
-           group number (fn-gidx-build articles) (fn-midx-build articles))
+           group number (fn-gidx-build articles) articles)
           (fn-nntp-available-article group number articles))
    :hints (("Goal" :do-not-induct t))))
 (must-fail-checked
  (defthm fn-xri-carried-without-valid-archive
    (implies (and (fn-gidx-pin-correspondencep index archive)
-                 (fn-midx-correspondencep
-                  (fn-gidx-pin-trie index) (fn-state-articles archive))
                  (fn-nntp-keywordp keyword "OVER"))
             (equal (fn-nntp-archive-command-pinned session archive index nil nil keyword (list token) fn-arena)
                    (fn-nntp-archive-command session archive nil keyword (list token) fn-arena)))
@@ -177,9 +152,7 @@
 (must-fail-checked
  (defthm fn-xri-carried-without-over-keyword-scope
    (implies (and (fn-statep archive)
-                 (fn-gidx-pin-correspondencep index archive)
-                 (fn-midx-correspondencep
-                  (fn-gidx-pin-trie index) (fn-state-articles archive)))
+                 (fn-gidx-pin-correspondencep index archive))
             (equal (fn-nntp-archive-command-pinned session archive index verdicts env keyword (list token) fn-arena)
                    (fn-nntp-archive-command session archive env keyword (list token) fn-arena)))
    :hints (("Goal" :do-not-induct t))))

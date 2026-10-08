@@ -2928,9 +2928,7 @@
         "fn-nntp-archive-command-pinned-msgid-arms-are-the-scan",
         "fn-pix-history-hasp-is-peer-history-hasp",
         "fn-pgc-peer-arm-is-peer-step-pinned",
-        "fn-oix-ocfg-step-keeps-view-indexed",
-        "fn-midx-concrete-lookup-is-lookup",
-        "fn-pix-peer-delegate-pinned-is-peer-delegate-pinned"
+        "fn-midx-concrete-lookup-is-lookup"
       ],
       "progress_note": "Scoped ACL2 certification and called-owner sparse/historical LISTGROUP witnesses are recorded in the group-bucket evidence. Indexed OVER/XOVER resolve selected-group bucket entries through the pinned trie; the called pinned dispatcher equality has direct reachable and malformed-state premise teeth, with redundant range, tag, bound and session assumptions removed. HDR remains on the archive fold. The native OVER/XOVER socket driver is prepared but has not run on a source-matched image; combined-image qualification and full dependent closure at integrated source remain open."
     },
@@ -3724,7 +3722,6 @@
         "fn-nntp-hdr-fn-control-status-is-the-model-status",
         "fn-own-read-archive-command-is-the-pinned-dispatcher",
         "fn-own-related-conn-control",
-        "fn-ctl-served-status-is-control-status",
         "fn-own-read-of-a-withdrawn-article-answers-430-withdrawn"
       ]
     },
@@ -6936,12 +6933,10 @@
       ],
       "progress_note": "Lane post-identity-index (2026-09-26). REPL-admitted and certified singly on persvati (certify-20260926T153906Z-3532313, certify-20260926T154311Z-3572486); the batch certifies the union.",
       "events": [
-        "fn-pidx-find-article-is-find-article",
         "fn-pidx-existing-action-is-store-existing-action",
         "fn-pidx-sbud-prepare-is-pcar-sbud-prepare",
         "fn-pidx-find-in-visible-is-find",
-        "fn-pidx-view-okp-of-live-owner",
-        "fn-osi-pidx-prepare-keeps-view-indexed"
+        "fn-pidx-view-okp-of-live-owner"
       ]
     },
     {
@@ -8394,7 +8389,6 @@
         "fn-auth-view-when-unrestricted",
         "fn-auth-view-consistent",
         "fn-auth-view-consistent-back",
-        "fn-auth-view-trie-corresponds",
         "fn-auth-delegate-pinned-preserves-consistentp"
       ]
     },

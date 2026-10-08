@@ -189,7 +189,7 @@
 ;; fn-cu-serve-reply (books/peer-catchup-serve.lisp)
 (defthm fn-proto-codes-of-cu-serve-reply
   (implies (and (member-equal 291 codes) (member-equal 423 codes) (member-equal 501 codes) (member-equal 503 codes))
-           (fn-proto-within (fn-nntp-result-effects (fn-cu-serve-reply session archive index args fn-arena)) codes))
+           (fn-proto-within (fn-nntp-result-effects (fn-cu-serve-reply session archive args fn-arena)) codes))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-cu-serve-reply)
                            (fn-cu-select fn-cu-render-lines fn-cu-chain-over
@@ -241,11 +241,11 @@
   (implies (and (member-equal 225 codes) (member-equal 430 codes) (member-equal 501 codes) (member-equal 503 codes))
            (fn-proto-within (fn-nntp-result-effects (fn-nntp-control-hdr-response session archive index verdicts args fn-arena)) codes))
   :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response)
-                                  (fn-ctl-control-item fn-ctl-served-status
-                                   fn-ctl-served-held fn-nntp-string-octets
+                                  (fn-ctl-control-item fn-ctl-control-status
+                                   fn-ctl-find-held fn-nntp-string-octets
                                    fn-nntp-control-cleanp fn-nntp-hdr-line
                                    fn-nntp-decimal-field fn-nntp-message-id-tokenp
-                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-gidx-pin-control
                                    fn-ctl-pin-withdrawn fn-ctl-pin-ws
                                    fn-nntp-token-string fn-ctl-target-octets
                                    fn-octet-listp fn-nntp-article-bytes)))))
@@ -436,25 +436,19 @@
            (fn-proto-within (fn-nntp-result-effects (fn-nntp-msgid-retrieval session archive kind token fn-arena)) codes))
   :hints (("Goal" :in-theory (enable fn-nntp-msgid-retrieval))))
 
-;; fn-nntp-msgid-retrieval-indexed (books/nntp-responses.lisp)
-(defthm fn-proto-codes-of-nntp-msgid-retrieval-indexed
-  (implies (and (member-equal 423 codes) (member-equal 430 codes) (member-equal 501 codes) (member-equal 503 codes) (member-equal (fn-proto-retrieval-code kind) codes))
-           (fn-proto-within (fn-nntp-result-effects (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena)) codes))
-  :hints (("Goal" :in-theory (enable fn-nntp-msgid-retrieval-indexed))))
-
 ;; fn-zar-command (books/nntp-zarticle.lisp)
 (defthm fn-proto-codes-of-zar-command
   (implies (and (member-equal 229 codes) (member-equal 220 codes) (member-equal 423 codes)
                 (member-equal 430 codes) (member-equal 501 codes) (member-equal 503 codes))
-           (fn-proto-within (fn-nntp-result-effects (fn-zar-command session archive index args fn-arena)) codes))
+           (fn-proto-within (fn-nntp-result-effects (fn-zar-command session archive args fn-arena)) codes))
   :hints (("Goal" :in-theory (e/d (fn-zar-command fn-zar-initial)
                                   (fn-zar-decide fn-zdn-body-lines fn-zar-line-okp
-                                   fn-nntp-msgid-retrieval-indexed))
-           :use ((:instance fn-proto-codes-of-nntp-msgid-retrieval-indexed
+                                   fn-nntp-msgid-retrieval))
+           :use ((:instance fn-proto-codes-of-nntp-msgid-retrieval
                             (kind :article)
-                            (token (if (equal (car (fn-zar-decide args index fn-arena)) :stored)
+                            (token (if (equal (car (fn-zar-decide args (fn-state-articles archive) fn-arena)) :stored)
                                        (cadr (fn-zdn-request args))
-                                     (cadr (fn-zar-decide args index fn-arena)))))))))
+                                     (cadr (fn-zar-decide args (fn-state-articles archive) fn-arena)))))))))
 
 ;; fn-nntp-newgroups-response (books/nntp-responses.lisp)
 (defthm fn-proto-codes-of-nntp-newgroups-response
@@ -513,13 +507,13 @@
 ;; fn-nntp-over-range-indexed (books/nntp-range-indexed.lisp)
 (defthm fn-proto-codes-of-nntp-over-range-indexed
   (implies (and (member-equal 224 codes) (member-equal 412 codes) (member-equal 420 codes) (member-equal 423 codes))
-           (fn-proto-within (fn-nntp-result-effects (fn-nntp-over-range-indexed session buckets trie token legacyp fn-arena)) codes))
+           (fn-proto-within (fn-nntp-result-effects (fn-nntp-over-range-indexed session buckets arts token legacyp fn-arena)) codes))
   :hints (("Goal" :in-theory (enable fn-nntp-over-range-indexed))))
 
 ;; fn-nntp-over-range-served (books/nntp-xref.lisp)
 (defthm fn-proto-codes-of-nntp-over-range-served
   (implies (and (member-equal 224 codes) (member-equal 412 codes) (member-equal 420 codes) (member-equal 423 codes))
-           (fn-proto-within (fn-nntp-result-effects (fn-nntp-over-range-served session buckets trie token legacyp server fn-arena)) codes))
+           (fn-proto-within (fn-nntp-result-effects (fn-nntp-over-range-served session buckets arts token legacyp server fn-arena)) codes))
   :hints (("Goal" :in-theory (enable fn-nntp-over-range-served))))
 
 ;; fn-nntp-over-response (books/nntp-responses.lisp)
@@ -617,13 +611,13 @@
 ;; fn-rcompat-hdr (books/nntp-reader-compat.lisp)
 (defthm fn-proto-codes-of-rcompat-hdr
   (implies (and (member-equal 412 codes) (member-equal 420 codes) (member-equal 423 codes) (member-equal 430 codes) (member-equal 501 codes) (member-equal (fn-proto-hdr-code legacyp) codes))
-           (fn-proto-within (fn-nntp-result-effects (fn-rcompat-hdr session archive trie args legacyp server fn-arena)) codes))
+           (fn-proto-within (fn-nntp-result-effects (fn-rcompat-hdr session archive arts args legacyp server fn-arena)) codes))
   :hints (("Goal" :in-theory (enable fn-rcompat-hdr))))
 
 ;; fn-rcompat-retrieval (books/nntp-reader-compat.lisp)
 (defthm fn-proto-codes-of-rcompat-retrieval
   (implies (and (member-equal 412 codes) (member-equal 420 codes) (member-equal 423 codes) (member-equal 430 codes) (member-equal 501 codes) (member-equal 503 codes) (member-equal (fn-proto-retrieval-code kind) codes))
-           (fn-proto-within (fn-nntp-result-effects (fn-rcompat-retrieval session archive trie kind args server fn-arena)) codes))
+           (fn-proto-within (fn-nntp-result-effects (fn-rcompat-retrieval session archive arts kind args server fn-arena)) codes))
   :hints (("Goal" :in-theory (enable fn-rcompat-retrieval))))
 
 ;; fn-rcompat-subscriptions (books/nntp-reader-compat.lisp)

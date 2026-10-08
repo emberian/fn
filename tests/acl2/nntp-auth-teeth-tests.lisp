@@ -143,8 +143,9 @@
                        *aut-obs* (list :command (fn-nntp-string-octets text)) fn-arena))
 
 ; The pinned and legacy public steps make the same AUTHINFO decision even
-; with no index.  A delegated STAT on an accepted article separates them
-; when that pin is stale, so the handled-command premise does real work.
+; with no index.  A delegated LISTGROUP of the accepted article's group
+; separates them when that pin is stale (its group buckets are empty), so the
+; handled-command premise does real work.
 (include-book "arena-lift")
 ;; The payloads the arena holds at handles 0, 1, ...: *aut-archive*'s one
 ;; article is handle 0 (*aut-handle*), its payload *aut-payload*.
@@ -160,14 +161,14 @@
        (cdr (fn-nntp-tokenize (fn-nntp-string-octets "AUTHINFO USER reader"))))
       (equal (in-arena-aut-step-pinned *aut-arena* *aut-s-req* "AUTHINFO USER reader" nil)
              (in-arena-aut-step *aut-arena* *aut-s-req* "AUTHINFO USER reader"))))
-(defconst *aut-stat-id-line* "STAT <teeth@example.invalid>")
+(defconst *aut-stale-line* "LISTGROUP fn.letters")
 (assert-event
- (not (equal (in-arena-aut-step-pinned *aut-arena* *aut-s-open* *aut-stat-id-line* nil)
-             (in-arena-aut-step *aut-arena* *aut-s-open* *aut-stat-id-line*))))
+ (not (equal (in-arena-aut-step-pinned *aut-arena* *aut-s-open* *aut-stale-line* (fn-gidx-pin nil))
+             (in-arena-aut-step *aut-arena* *aut-s-open* *aut-stale-line*))))
 (must-fail-checked
  (defthm fn-auth-false-all-commands-agree-with-stale-pin
-   (equal (aut-step-pinned *aut-s-open* *aut-stat-id-line* nil fn-arena)
-          (aut-step *aut-s-open* *aut-stat-id-line* fn-arena))))
+   (equal (aut-step-pinned *aut-s-open* *aut-stale-line* (fn-gidx-pin nil) fn-arena)
+          (aut-step *aut-s-open* *aut-stale-line* fn-arena))))
 (defun aut-reply (as text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (fn-post-result-effects (aut-step as text fn-arena)))

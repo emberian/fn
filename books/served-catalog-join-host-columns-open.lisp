@@ -275,15 +275,14 @@
                   (fn-rows-composites-okp (append prefix suffix) fn-arena)
                   (fn-scol-history-okp (append prefix suffix) fn-arena))
              (fn-sjh-colsp nil fn-arena
-                           (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view o)) fn-arena fn-cat))))
+                           (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o)))) fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '() (theory 'minimal-theory))
            :use ((:instance fn-sca-ocl-relation-at-recover
-                            (view-index (fn-own-view-index
-                                         (fn-own-view (fn-ocfg-owner
+                            (view-index (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner
                                                        (fn-ock-recover-extended
                                                         (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
-                                                        configs frontier max-conns))))))
+                                                        configs frontier max-conns))))))))
                  (:instance fn-ock-recover-installs-ocl-relation)
                  (:instance fn-sca-ocl-store-rows-are-values
                             (oc (fn-ock-recover-extended
@@ -291,11 +290,10 @@
                                  configs frontier max-conns)))
                  (:instance fn-sjh-col-load-held-rows-colsp
                             (rows (append prefix suffix))
-                            (view-index (fn-own-view-index
-                                         (fn-own-view (fn-ocfg-owner
+                            (view-index (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner
                                                        (fn-ock-recover-extended
                                                         (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
-                                                        configs frontier max-conns))))))))))
+                                                        configs frontier max-conns))))))))))))
 
 (defthm fn-sjh-col-intern-events-history-okp
   (let ((rows (mv-nth 0 (fn-intern-events ws keyring generation fn-arena)))
@@ -334,7 +332,7 @@
                   (not (equal oc :fault)))
              (fn-sjh-colsp nil arena
                            (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store o)))
-                                                  (fn-own-view-index (fn-own-view o))
+                                                  (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                                                   arena fn-cat))))
   :hints (("Goal" :use ((:instance fn-sjh-colsp-at-recover
                                    (prefix nil)

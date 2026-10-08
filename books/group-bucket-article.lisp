@@ -1,5 +1,5 @@
 ; Resolve a selected group's local number through its pinned membership bucket
-; and the already pinned Message-ID trie.  This is a read-only derived lookup;
+; and the pinned served article list.  This is a read-only derived lookup;
 ; the authoritative accepted archive remains the proof source.
 (in-package "ACL2")
 (include-book "group-bucket-index")
@@ -24,18 +24,18 @@
         (fn-gidx-find-number-entry group number (cdr entries)))
     nil))
 
-(defun fn-gidx-entry-number-article (group number entries trie)
+(defun fn-gidx-entry-number-article (group number entries arts)
   (declare (xargs :guard t))
   (let ((entry (fn-gidx-find-number-entry
                 group number entries)))
     (if (consp entry)
-        (fn-midx-lookup (fn-index-entry-msgid entry) trie)
+        (fn-find-article (fn-index-entry-msgid entry) arts)
       nil)))
 
-(defun fn-gidx-number-article (group number buckets trie)
+(defun fn-gidx-number-article (group number buckets arts)
   (declare (xargs :guard t))
   (fn-gidx-entry-number-article
-   group number (fn-gidx-bucket group buckets) trie))
+   group number (fn-gidx-bucket group buckets) arts))
 
 (defthm fn-gidx-find-number-entry-of-append
   (equal (fn-gidx-find-number-entry group number (append left right))
@@ -58,13 +58,13 @@
 
 ; The served number lookup (over-number-index, PRF-189): the entry at NUMBER
 ; from the bucket's number index, at most 31 trie steps, then the article
-; from the pinned Message-ID trie.  `fn-nov-lines-for-numbers-numbered'
+; found by its Message-ID in the served article list.  `fn-nov-lines-for-numbers-numbered'
 ; (books/nntp-range-indexed.lisp) calls it once per OVER row.
-(defun fn-gidx-nidx-number-article (number nidx trie)
+(defun fn-gidx-nidx-number-article (number nidx arts)
   (declare (xargs :guard t))
   (let ((entry (fn-gnix-find number nidx)))
     (if (consp entry)
-        (fn-midx-lookup (fn-index-entry-msgid entry) trie)
+        (fn-find-article (fn-index-entry-msgid entry) arts)
       nil)))
 
 ; The number index answers what the walk answers: the first entry of the
@@ -75,21 +75,21 @@
 
 (defthm fn-gidx-nidx-number-article-of-build
   (equal (fn-gidx-nidx-number-article number (fn-gnix-build group entries)
-                                      trie)
-         (fn-gidx-entry-number-article group number entries trie))
+                                      arts)
+         (fn-gidx-entry-number-article group number entries arts))
   :hints (("Goal" :in-theory (disable fn-gnix-find fn-gnix-build))))
 
 ;  KEYSTONE (PRF-189).  Under the relation the group index carries
 ; (`fn-gidx-numbers-okp', established by every build and preserved by every
 ; put), the served lookup through GROUP's number index equals
 ; `fn-gidx-find-number-entry''s walk of GROUP's bucket followed by the same
-; trie lookup.
+; Message-ID lookup.
 (defthm fn-gidx-nidx-number-article-is-walk
   (implies (fn-gidx-numbers-okp buckets)
            (equal (fn-gidx-nidx-number-article
-                   number (fn-gidx-bucket-numbers group buckets) trie)
+                   number (fn-gidx-bucket-numbers group buckets) arts)
                   (fn-gidx-entry-number-article
-                   group number (fn-gidx-bucket group buckets) trie)))
+                   group number (fn-gidx-bucket group buckets) arts)))
   :hints (("Goal" :in-theory (disable fn-gidx-nidx-number-article
                                       fn-gidx-entry-number-article
                                       fn-gnix-build fn-gidx-bucket

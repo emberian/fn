@@ -28,7 +28,7 @@
                  *gacct-articles* 3 nil nil))
 (assert-event (fn-nntp-projectionp *gacct-state*))
 (defconst *gacct-pin*
-  (fn-gidx-pin (fn-midx-build *gacct-articles*) (fn-gidx-build *gacct-articles*)))
+  (fn-gidx-pin (fn-gidx-build *gacct-articles*)))
 (defconst *gacct-text* "fn.*,!fn.private.*")
 (defconst *gacct-ctl* (fn-gidx-pin-control *gacct-pin*))
 
@@ -195,14 +195,14 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (with-local-stobj fn-cat
     (mv-let (r fn-cat)
-      (mv (fn-scr-auth-delegate *gacct-bob* nil nil nil nil cache *gacct-state* *gacct-pin* nil
+      (mv (fn-scr-auth-delegate *gacct-bob* nil nil nil cache *gacct-state* *gacct-pin* nil
                                 *gacct-config* *gacct-obs* *gacct-obs*
                                 (list :command (fn-nntp-string-octets text)) 0 fn-arena fn-cat)
           fn-cat)
       r)))
 (defun gacct-reference (text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (fn-scar-auth-delegate-pinned *gacct-bob* nil nil nil *gacct-state* *gacct-pin* nil
+  (fn-scar-auth-delegate-pinned *gacct-bob* nil nil *gacct-state* *gacct-pin* nil
                                 *gacct-config* *gacct-obs* *gacct-obs*
                                 (list :command (fn-nntp-string-octets text)) fn-arena))
 (bpr-lift gacct-served 2)

@@ -224,8 +224,7 @@
                                    fn-ocl-owner-with-store
                                    fn-own-store-idlep fn-snt-idle-phasep)
                                   (fn-spc-prepare fn-sbud-admitp fn-pcar-sbud-prepare
-                                   fn-ctl-refresh-visible fn-ctl-refresh-withdrawals fn-ctl-refresh-withdrawn
-                                   fn-midx-refresh fn-gidx-refresh fn-ctl-visible-state-of)))))
+                                   fn-ctl-refresh-visible fn-ctl-refresh-withdrawals fn-ctl-refresh-withdrawn fn-gidx-refresh fn-ctl-visible-state-of)))))
 
 (defthm fn-sjh-sn-update-files
   (equal (fn-sn-files (fn-sn-update s files node)) files)
@@ -251,12 +250,6 @@
            (fn-scjs-historyp o2))
   :hints (("Goal" :in-theory (enable fn-scjs-historyp))))
 
-(defthm fn-sjh-indexedp-of-same-view
-  (implies (and (fn-scar-view-indexedp o)
-                (equal (fn-own-view o2) (fn-own-view o)))
-           (fn-scar-view-indexedp o2))
-  :hints (("Goal" :in-theory (enable fn-scar-view-indexedp))))
-
 ; KEYSTONE (the join carried across the host's article POST).  The host's
 ; prepare stages the row the arena's count names (over fn-pcar-sbud-prepare,
 ; the prepare the host's fn-pout-prepare-article equals under the carried
@@ -278,8 +271,7 @@
              (fn-sjh-okp o2 pc arena2 fn-cat)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-sjh-okp fn-sjh-versionsp-is-versions-okp fn-sjh-invp-arena-free
-                                        fn-sjh-historyp-of-same-view-and-records
-                                        fn-sjh-indexedp-of-same-view)
+                                        fn-sjh-historyp-of-same-view-and-records)
                                       (theory 'minimal-theory))
            :use ((:instance fn-pout-stagedp (before (fn-own-store (fn-ocfg-owner oc)))
                             (after (fn-own-store (fn-ocfg-owner (fn-pcar-sbud-prepare oc (fn-intern-row-at w keyring generation (fn-arena-count fn-arena)) budget)))))
@@ -304,7 +296,6 @@
 (defthm fn-sjh-pout-prepare-article-next
   (implies (and (fn-prc-carryp carry)
                 (fn-ocl-view-visiblep (fn-own-view (fn-ocfg-owner oc)))
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-pout-stagedp (fn-own-store (fn-ocfg-owner oc))
                                  (fn-own-store (fn-ocfg-owner (mv-nth 1 (fn-pout-prepare-article oc record budget carry))))))
            (equal (mv-nth 1 (fn-pout-prepare-article oc record budget carry))
@@ -313,8 +304,7 @@
                                    fn-prc-sbud-prepare-is-pidx-sbud-prepare
                                    fn-pidx-sbud-prepare-is-pcar-sbud-prepare)
                                   (fn-pcar-sbud-prepare fn-prc-sbud-prepare fn-pidx-sbud-prepare
-                                   fn-psrv-event-servedp fn-psrv-refusal-kind fn-ocl-view-visiblep
-                                   fn-scar-view-indexedp)))))
+                                   fn-psrv-event-servedp fn-psrv-refusal-kind fn-ocl-view-visiblep)))))
 
 (defthm fn-sjh-pout-prepared-is-staged
   (implies (equal (mv-nth 0 (fn-pout-prepare-article oc record budget carry)) :prepared)
@@ -427,7 +417,6 @@
                 (fn-scj-invp (fn-own-store-step o ev) fn-arena fn-cat)
                 (fn-scjs-seenp (fn-own-store-step o ev))
                 (fn-scjs-versionsp (fn-own-store-step o ev))
-                (fn-scar-view-indexedp (fn-own-store-step o ev))
                 (fn-scjs-historyp (fn-own-store-step o ev))
                 (fn-sjh-files-okp (fn-sn-files (fn-snrt-step (fn-own-store o) ev)) pending2 fn-arena fn-cat))
            (fn-sjh-okp (fn-own-store-step o ev) pending2 fn-arena fn-cat))
@@ -451,8 +440,7 @@
                  (:instance fn-sjh-known-abort-keeps-files-okp (s (fn-own-store (fn-ocfg-owner oc))))
                  (:instance fn-scjs-ocfg-store-step-keeps-invp (ev (list :known-abort)))
                  (:instance fn-scjs-ocfg-store-step-keeps-versions (ev (list :known-abort)))
-                 (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc)) (ev (list :known-abort)))
-                 (:instance fn-oix-ocfg-step-keeps-view-indexed (event (list :store (list :known-abort))))))))
+                 (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc)) (ev (list :known-abort)))))))
 
 (defthm fn-sjh-refused-reservation-facts
   (let* ((s (fn-own-store (fn-ocfg-owner oc)))
@@ -504,6 +492,4 @@
                  (:instance fn-scjs-ocfg-store-step-keeps-versions
                             (ev (list :refuse-reservation (1- (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))))
                  (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc))
-                            (ev (list :refuse-reservation (1- (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))))
-                 (:instance fn-oix-ocfg-step-keeps-view-indexed
-                            (event (list :store (list :refuse-reservation (1- (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))))))))))))
+                            (ev (list :refuse-reservation (1- (fn-sf-frontier (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))))))))

@@ -17,7 +17,7 @@
                       *npm-t-id* 0 '("fn.letters") 841000000)
    0 1 :durable))
 (defconst *npm-t-session* (fn-nntp-open-session *npm-t-archive*))
-(defconst *npm-t-trie* (fn-midx-build (fn-state-articles *npm-t-archive*)))
+(defconst *npm-t-pin* (fn-gidx-pin (fn-gidx-build (fn-state-articles *npm-t-archive*))))
 (defconst *npm-t-stat* (fn-nntp-string-octets "STAT"))
 (defconst *npm-t-article* (fn-nntp-string-octets "ARTICLE"))
 (defconst *npm-t-arg* (list (fn-nntp-string-octets *npm-t-id*)))
@@ -27,47 +27,36 @@
 (defmacro npm-t-scan (keyword args)
   `(in-arena-fn-nntp-archive-command *sr-arena* *npm-t-session* *npm-t-archive* nil ,keyword ,args))
 
-; Reachable, non-degenerate witness: one accepted article, its trie, and
-; STAT / ARTICLE by its Message-ID answer 223 / 220 through the pinned trie,
-; and exactly what the scanning dispatcher answers.
+; Reachable, non-degenerate witness: one accepted article, its group pin, and
+; STAT / ARTICLE by its Message-ID answer 223 / 220 through the pinned
+; dispatcher, and exactly what the scanning dispatcher answers.
 (assert-event (fn-statep *npm-t-archive*))
 (assert-event (equal (fn-nntp-session-projected *npm-t-session*) t))
-(assert-event (fn-midx-correspondencep *npm-t-trie*
-                                       (fn-state-articles *npm-t-archive*)))
+(assert-event (fn-gidx-pin-correspondencep *npm-t-pin* *npm-t-archive*))
 (include-book "arena-lift")
 ;; The arena: handle 0 = *npm-t-payload*.
 (defconst *sr-arena* (list *npm-t-payload*))
 (bpr-lift fn-nntp-archive-command 5)
 (bpr-lift fn-nntp-archive-command-pinned 7)
-(assert-event (equal (npm-t-pinned *npm-t-trie* *npm-t-stat* *npm-t-arg*)
+(assert-event (equal (npm-t-pinned *npm-t-pin* *npm-t-stat* *npm-t-arg*)
                      (npm-t-scan *npm-t-stat* *npm-t-arg*)))
-(assert-event (equal (npm-t-pinned *npm-t-trie* *npm-t-article* *npm-t-arg*)
+(assert-event (equal (npm-t-pinned *npm-t-pin* *npm-t-article* *npm-t-arg*)
                      (npm-t-scan *npm-t-article* *npm-t-arg*)))
-(assert-event (not (equal (npm-t-pinned *npm-t-trie* *npm-t-stat* *npm-t-arg*)
-                          (npm-t-pinned *npm-t-trie* *npm-t-stat*
+(assert-event (not (equal (npm-t-pinned *npm-t-pin* *npm-t-stat* *npm-t-arg*)
+                          (npm-t-pinned *npm-t-pin* *npm-t-stat*
                                         (list (fn-nntp-string-octets
                                                "<absent@Id.invalid>"))))))
 
-; Hypothesis 1, the correspondence.  A trie that is not the build of the
-; archive (here the empty one) answers 430 where the scan answers 223.
-(assert-event (not (equal (npm-t-pinned nil *npm-t-stat* *npm-t-arg*)
-                          (npm-t-scan *npm-t-stat* *npm-t-arg*))))
-(must-fail-checked
- (defthm npm-t-false-without-correspondence
-   (implies (fn-nntp-keywordp keyword "STAT")
-            (equal (fn-nntp-archive-command-pinned session archive index verdicts env keyword args fn-arena)
-                   (fn-nntp-archive-command session archive env keyword args fn-arena)))))
-
-; Hypothesis 2, the keyword.  The pinned dispatcher is not the scan on
+; The keyword hypothesis.  The pinned dispatcher is not the scan on
 ; every keyword: HDR :fn-verified is answered from the pinned verdicts.
 (defconst *npm-t-hdr* (fn-nntp-string-octets "HDR"))
 (defconst *npm-t-hdr-args* (list (fn-nntp-string-octets ":fn-verified")
                                  (fn-nntp-string-octets *npm-t-id*)))
-(assert-event (not (equal (npm-t-pinned *npm-t-trie* *npm-t-hdr* *npm-t-hdr-args*)
+(assert-event (not (equal (npm-t-pinned *npm-t-pin* *npm-t-hdr* *npm-t-hdr-args*)
                           (npm-t-scan *npm-t-hdr* *npm-t-hdr-args*))))
 (must-fail-checked
  (defthm npm-t-false-without-keyword
-   (implies (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                     (fn-state-articles archive))
+   (implies (and (not (fn-nntp-number-withdrawn-p session archive index (car args)))
+                 (not (fn-nntp-msgid-withdrawn-p archive index (car args))))
             (equal (fn-nntp-archive-command-pinned session archive index verdicts env keyword args fn-arena)
                    (fn-nntp-archive-command session archive env keyword args fn-arena)))))

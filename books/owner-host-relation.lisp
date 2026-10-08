@@ -748,7 +748,6 @@
 ; owner-tls-prefix), and that read keeps the relation (config-owner-live-read).
 (defthm fn-ohr-chunk-preserves-ocl-relation
   (implies (and (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-wire-statep (fn-own-conn-wire (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
            (fn-ocl-relation (fn-own-tls-result-owner (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena))))
   :hints (("Goal" :use (fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation
@@ -808,7 +807,7 @@
   (fn-own-conn-boundedp
    (fn-own-conn-make-group-indexed
     id version frontier wire (fn-auth-open-session archive peer node cfg acfg nil)
-    archive config observation verdicts index buckets control)
+    archive config observation verdicts buckets control)
    groups)
   :hints (("Goal"
            :in-theory (e/d (fn-own-conn-boundedp fn-auth-open-session fn-peer-open-session
@@ -1200,7 +1199,7 @@
              (fn-served-conn-wire sconn) (fn-served-conn-session sconn)
              (fn-served-conn-archive sconn)
              (fn-own-conn-config conn) (fn-own-conn-observation conn)
-             (fn-served-conn-verdicts sconn) (fn-served-conn-index sconn)
+             (fn-served-conn-verdicts sconn)
              (fn-served-conn-group-index sconn) (fn-served-conn-control sconn)))))
   :hints (("Goal"
            :use ((:instance fn-own-find-conn-id (conns (fn-own-conns o))))
@@ -1328,7 +1327,6 @@
    (implies (fn-served-pin-old-or-live-p (fn-own-served-conn o conn session) sconn)
             (or (and (equal (fn-served-conn-archive sconn) (fn-own-conn-archive conn))
                      (equal (fn-served-conn-verdicts sconn) (fn-own-conn-verdicts conn))
-                     (equal (fn-served-conn-index sconn) (fn-own-conn-index conn))
                      (equal (fn-served-conn-group-index sconn) (fn-own-conn-group-index conn))
                      (equal (fn-served-conn-control sconn) (fn-own-conn-control conn))
                      (equal (fn-served-conn-pinned sconn)
@@ -1336,7 +1334,6 @@
                                                    (fn-own-conn-frontier conn) nil)))
                 (and (equal (fn-served-conn-archive sconn) (fn-own-view-archive (fn-own-view o)))
                      (equal (fn-served-conn-verdicts sconn) (fn-own-view-verdicts (fn-own-view o)))
-                     (equal (fn-served-conn-index sconn) (fn-own-view-index (fn-own-view o)))
                      (equal (fn-served-conn-group-index sconn) (fn-own-view-group-index (fn-own-view o)))
                      (equal (fn-served-conn-control sconn) (fn-own-view-control (fn-own-view o)))
                      (equal (fn-served-conn-pinned sconn)
@@ -1414,14 +1411,12 @@
                    (equal (fn-own-conn-frontier next) (fn-own-view-frontier view))
                    (equal (fn-own-conn-archive next) (fn-own-view-archive view))
                    (equal (fn-own-conn-verdicts next) (fn-own-view-verdicts view))
-                   (equal (fn-own-conn-index next) (fn-own-view-index view))
                    (equal (fn-own-conn-group-index next) (fn-own-view-group-index view))
                    (equal (fn-own-conn-control next) (fn-own-view-control view)))
             (and (equal (fn-own-conn-version next) (fn-own-conn-version old))
                  (equal (fn-own-conn-frontier next) (fn-own-conn-frontier old))
                  (equal (fn-own-conn-archive next) (fn-own-conn-archive old))
                  (equal (fn-own-conn-verdicts next) (fn-own-conn-verdicts old))
-                 (equal (fn-own-conn-index next) (fn-own-conn-index old))
                  (equal (fn-own-conn-group-index next) (fn-own-conn-group-index old))
                  (equal (fn-own-conn-control next) (fn-own-conn-control old)))))))
   :hints (("Goal"
@@ -1447,7 +1442,7 @@
                          fn-own-conn-frontier-of-make-group-indexed fn-own-conn-wire-of-make-group-indexed
                          fn-own-conn-session-of-make-group-indexed fn-own-conn-archive-of-make-group-indexed
                          fn-own-conn-config-of-make-group-indexed fn-own-conn-observation-of-make-group-indexed
-                         fn-own-conn-verdicts-of-make-group-indexed fn-own-conn-index-of-make-group-indexed
+                         fn-own-conn-verdicts-of-make-group-indexed
                          fn-own-conn-group-index-of-make fn-own-conn-control-of-make)
                        (theory 'minimal-theory)))))
 

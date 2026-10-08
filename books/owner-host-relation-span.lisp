@@ -33,7 +33,6 @@
 ; the served read of the span keeps the configured owner's relation.
 (defthm fn-ohr-read-span-preserves-ocl-relation
   (implies (and (fn-gacc-okp cache) (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                 (fn-scol-okp fn-arena fn-cat)
                 (natp i) (natp end)
@@ -71,7 +70,6 @@
 ; fn-ohr-carried-of-same-store: the read keeps the store.
 (defthm fn-ohr-read-span-is-the-consumed-read
   (implies (and (fn-gacc-okp cache) (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                 (fn-scol-okp fn-arena fn-cat)
                 (natp i) (natp end)
@@ -113,7 +111,6 @@
 
 (defthm fn-ohr-read-span-preserves-carried-relation
   (implies (and (fn-gacc-okp cache) (fn-lgoc-invariantp oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                 (fn-scol-okp fn-arena fn-cat)
                 (natp i) (natp end)

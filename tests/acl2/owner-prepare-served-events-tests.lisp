@@ -293,13 +293,9 @@
 ; committed count with the history's length; the invariant does not read the
 ; budget, so a prepare the miscounted budget admits is still fn-opc-prepare,
 ; which fn-lgoc-sbud-prepare-preserves-invariant covers at any admitting
-; budget.  The view premise (fn-scar-view-indexedp) is NOT shown redundant:
-; it is the bridge's (fn-pidx = fn-pcar); owner-log-ocl-tests' blind-trie
-; owner shows the prepare refusing without it, and no weakened theorem is
-; claimed.
+; budget.
 (defthm g12b-lgoc-pidx-sbud-prepare-without-ceis-indexedp
   (implies (and (fn-lgoc-invariantp oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (implies (fn-held-p record)
                          (fn-cnode-selection-servedp (fn-ocfg-config oc)
                                                      (fn-record-groups record))))
@@ -312,7 +308,7 @@
                  fn-pcar-opc-prepare-is-opc-prepare
                  (:instance fn-ocl-view-historyp-is-visible (o (fn-ocfg-owner oc))))
            :in-theory '(fn-pidx-sbud-prepare fn-sbud-prepare fn-sbud-admitp fn-sbud-used
-                        fn-pidx-view-okp fn-scar-view-indexedp fn-lgoc-invariantp fn-ocl-relation
+                        fn-pidx-view-okp fn-lgoc-invariantp fn-ocl-relation
                         fn-sbud-oc-store
                         (:type-prescription len) natp (:executable-counterpart natp) (:executable-counterpart binary-+) (:executable-counterpart <)))))
 

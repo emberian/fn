@@ -94,7 +94,6 @@
                                        (fn-own-conn-observation conn)
                                        (fn-own-clock o)
                                        (fn-own-conn-verdicts conn)
-                                       (fn-own-conn-index conn)
                                        (fn-own-conn-group-index conn)
                                        (fn-own-conn-control conn))
                   (fn-own-post-rendering o word)))
@@ -192,7 +191,6 @@
                                        (fn-own-conn-observation conn)
                                        (fn-own-clock o)
                                        (fn-own-conn-verdicts conn)
-                                       (fn-own-conn-index conn)
                                        (fn-own-conn-group-index conn)
                                        (fn-own-conn-control conn))
                   (fn-own-sub-decision sub) d

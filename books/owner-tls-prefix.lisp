@@ -16,10 +16,8 @@
   (fn-own-served-conn o conn (fn-own-conn-live-session o conn)))
 
 (defthm fn-own-tls-served-conn-keeps-reader-pins
-  (and (equal (fn-served-conn-verdicts (fn-own-tls-served-conn o conn))
-              (fn-own-conn-verdicts conn))
-       (equal (fn-served-conn-index (fn-own-tls-served-conn o conn))
-              (fn-own-conn-index conn)))
+  (equal (fn-served-conn-verdicts (fn-own-tls-served-conn o conn))
+         (fn-own-conn-verdicts conn))
   :hints (("Goal" :in-theory (enable fn-own-tls-served-conn fn-own-served-conn))))
 
 (defun fn-own-read-tls-prefix (o id octets fn-arena)

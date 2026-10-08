@@ -1,4 +1,4 @@
-; Effect typing for the executed Message-ID trie and historical HDR branch.
+; Effect typing for the executed Message-ID and historical HDR branch.
 (in-package "ACL2")
 (include-book "nntp-post")
 (include-book "nntp-verdict-effects")
@@ -11,16 +11,6 @@
 (local (defthm fn-pinned-effects-projection-is-state
          (implies (fn-nntp-projectionp archive) (fn-statep archive))
          :hints (("Goal" :in-theory (enable fn-nntp-projectionp)))))
-
-(defthm fn-nntp-effects-msgid-retrieval-indexed
-  (implies (fn-midx-correspondencep index (fn-state-articles archive))
-           (fn-nntp-effectsp
-            (fn-nntp-result-effects
-             (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena))))
-  :hints (("Goal" :use ((:instance fn-nntp-effects-msgid-retrieval))
-           :in-theory (disable fn-nntp-effectsp fn-nntp-msgid-retrieval-indexed
-                               fn-nntp-msgid-retrieval
-                               fn-nntp-effects-msgid-retrieval))))
 
 (local (defthm fn-zdn-escape-is-response-text
   (implies (fn-octet-listp c) (fn-nntp-response-textp (fn-zdn-escape c)))
@@ -63,41 +53,39 @@
            :expand ((take 4 l) (take 3 (cdr l)) (take 2 (cddr l)) (take 1 (cdddr l))))))
 
 (local (defthm fn-zar-decide-stored-octets
-  (implies (equal (car (fn-zar-decide args index fn-arena)) :stored)
-           (fn-octet-listp (nth 2 (fn-zar-decide args index fn-arena))))
+  (implies (equal (car (fn-zar-decide args arts fn-arena)) :stored)
+           (fn-octet-listp (nth 2 (fn-zar-decide args arts fn-arena))))
   :hints (("Goal" :in-theory (disable fn-zar-decide-stored-denotes fn-zar-decide)
            :use ((:instance fn-zar-decide-stored-denotes))))))
 
 (defthm fn-zar-command-effects-well-formed
-  (implies (fn-midx-correspondencep index (fn-state-articles archive))
-           (fn-nntp-effectsp
-            (fn-nntp-result-effects (fn-zar-command session archive index args fn-arena))))
+  (fn-nntp-effectsp
+   (fn-nntp-result-effects (fn-zar-command session archive args fn-arena)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-zar-command)
                            (fn-zar-line-okp fn-zar-decide fn-zar-initial fn-zdn-body-lines
                             fn-nntp-multi-octets fn-nntp-single fn-nntp-effectsp
-                            fn-nntp-result-effects fn-nntp-msgid-retrieval-indexed
-                            fn-nntp-response-textp fn-nntp-initial-status-linep
-                            fn-midx-correspondencep))
+                            fn-nntp-result-effects fn-nntp-msgid-retrieval
+                            fn-nntp-response-textp fn-nntp-initial-status-linep))
            :use ((:instance fn-zar-decide-stored-octets)
                  (:instance fn-zdn-body-lines-are-block-text
-                            (c (nth 2 (fn-zar-decide args index fn-arena))))
+                            (c (nth 2 (fn-zar-decide args (fn-state-articles archive) fn-arena))))
                  (:instance fn-zar-line-okp-is-an-initial-line
-                            (l (fn-zar-initial (nth 1 (fn-zar-decide args index fn-arena))
-                                               (nth 3 (fn-zar-decide args index fn-arena))
-                                               (len (nth 2 (fn-zar-decide args index fn-arena))))))))))
+                            (l (fn-zar-initial (nth 1 (fn-zar-decide args (fn-state-articles archive) fn-arena))
+                                               (nth 3 (fn-zar-decide args (fn-state-articles archive) fn-arena))
+                                               (len (nth 2 (fn-zar-decide args (fn-state-articles archive) fn-arena))))))))))
 
 (defthm fn-nov-indexed-lines-are-clean
   (fn-nov-clean-line-listp
-   (fn-nov-lines-for-numbers-indexed group numbers entries trie fn-arena))
+   (fn-nov-lines-for-numbers-indexed group numbers entries arts fn-arena))
   :hints (("Goal" :induct (fn-nov-lines-for-numbers-indexed
-                            group numbers entries trie fn-arena)
+                            group numbers entries arts fn-arena)
            :in-theory (e/d (fn-nov-lines-for-numbers-indexed)
                            (fn-nov-overview fn-nov-line)))))
 
 (defthm fn-nntp-indexed-over-block-is-block-text
   (fn-nntp-block-textp
-   (fn-nov-lines-for-numbers-indexed group numbers entries trie fn-arena))
+   (fn-nov-lines-for-numbers-indexed group numbers entries arts fn-arena))
   :hints (("Goal" :use ((:instance fn-nov-indexed-lines-are-clean
                             (entries entries)))
            :in-theory (disable fn-nov-indexed-lines-are-clean
@@ -107,14 +95,14 @@
 ; renderer is the indexed one's, so its lines are clean whatever the index.
 (defthm fn-nov-numbered-lines-are-clean
   (fn-nov-clean-line-listp
-   (fn-nov-lines-for-numbers-numbered numbers nidx trie fn-arena))
-  :hints (("Goal" :induct (fn-nov-lines-for-numbers-numbered numbers nidx trie fn-arena)
+   (fn-nov-lines-for-numbers-numbered numbers nidx arts fn-arena))
+  :hints (("Goal" :induct (fn-nov-lines-for-numbers-numbered numbers nidx arts fn-arena)
            :in-theory (e/d (fn-nov-lines-for-numbers-numbered)
                            (fn-nov-overview fn-nov-line)))))
 
 (defthm fn-nntp-numbered-over-block-is-block-text
   (fn-nntp-block-textp
-   (fn-nov-lines-for-numbers-numbered numbers nidx trie fn-arena))
+   (fn-nov-lines-for-numbers-numbered numbers nidx arts fn-arena))
   :hints (("Goal" :use ((:instance fn-nov-numbered-lines-are-clean))
            :in-theory (disable fn-nov-numbered-lines-are-clean
                                fn-nov-lines-for-numbers-numbered))))
@@ -122,7 +110,7 @@
 (defthm fn-nntp-effects-over-range-indexed
   (fn-nntp-effectsp
    (fn-nntp-result-effects
-    (fn-nntp-over-range-indexed session buckets trie token legacyp fn-arena)))
+    (fn-nntp-over-range-indexed session buckets arts token legacyp fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-indexed)
                                   (fn-nov-lines-for-numbers-indexed
                                    fn-nov-lines-for-numbers-numbered
@@ -135,7 +123,7 @@
 (defthm fn-nntp-served-over-block-is-block-text
   (implies (or (null server) (fn-xref-serverp server))
            (fn-nntp-block-textp
-            (fn-nov-served-lines-numbered numbers nidx trie server fn-arena)))
+            (fn-nov-served-lines-numbered numbers nidx arts server fn-arena)))
   :hints (("Goal" :use ((:instance fn-nov-served-lines-numbered-are-clean))
            :in-theory (disable fn-nov-served-lines-numbered-are-clean
                                fn-nov-served-lines-numbered fn-xref-serverp))))
@@ -159,7 +147,7 @@
   (implies (or (null server) (fn-xref-serverp server))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-nntp-over-range-served session buckets trie token legacyp
+             (fn-nntp-over-range-served session buckets arts token legacyp
                                         server fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-served)
                                   (fn-nov-served-lines-numbered fn-xref-serverp
@@ -255,10 +243,10 @@
     (fn-nntp-control-hdr-response session archive index verdicts args fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response)
                                   (fn-nntp-single fn-nntp-hdr-line
-                                   fn-ctl-control-item fn-ctl-served-status
-                                   fn-ctl-served-held fn-nntp-string-octets
+                                   fn-ctl-control-item fn-ctl-control-status
+                                   fn-ctl-find-held fn-nntp-string-octets
                                    fn-nntp-decimal-field fn-nntp-message-id-tokenp
-                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-gidx-pin-control
                                    fn-ctl-pin-withdrawn fn-ctl-pin-ws
                                    fn-nntp-token-string fn-ctl-target-octets
                                    fn-octet-listp)))))
@@ -273,9 +261,9 @@
                                    fn-nov-decimal-field-is-clean)
                                   (fn-nntp-single fn-nntp-hdr-line
                                    fn-enr-item fn-stx-reader-lookup
-                                   fn-midx-lookup
+                                   fn-find-article
                                    fn-nntp-decimal-field fn-nntp-message-id-tokenp
-                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-gidx-pin-control
                                    fn-nntp-token-string fn-octet-listp)))))
 
 ;; PRF-243: the served compatibility arms (books/nntp-reader-compat.lisp).
@@ -350,17 +338,17 @@
   (implies (fn-xref-serverp server)
            (fn-nntp-effectsp
             (fn-nntp-result-effects
-             (fn-rcompat-hdr session archive trie args legacyp server fn-arena))))
+             (fn-rcompat-hdr session archive arts args legacyp server fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-rcompat-hdr fn-nntp-hdr-initial)
                                   (fn-rcompat-hdr-lines fn-rcompat-xref-content
                                    fn-nntp-hdr-line fn-nntp-hdr-octets
                                    fn-nntp-hdr-okp fn-xref-serverp
-                                   fn-nntp-available-article fn-midx-lookup
+                                   fn-nntp-available-article fn-find-article
                                    fn-nov-scrub fn-nntp-decimal-field
                                    fn-nntp-group-range-numbers fn-nntp-block-textp))
            :use ((:instance fn-rcompat-xref-content-is-clean
-                            (article (fn-midx-lookup (fn-nntp-token-string
-                                                      (cadr args)) trie)))
+                            (article (fn-find-article (fn-nntp-token-string
+                                                      (cadr args)) arts)))
                  (:instance fn-rcompat-xref-content-is-clean
                             (article (fn-nntp-available-article
                                       (fn-nntp-session-group session)
@@ -391,12 +379,10 @@
                             fn-rcompat-served-article fn-nntp-hdr-line
                             fn-nntp-filter-groups-by-wildmat fn-wildmat-parse
                             fn-nntp-available-article fn-nntp-find-group-number
-                            fn-midx-lookup)))))
+                            fn-find-article)))))
 
 (defthm fn-nntp-archive-command-pinned-effects-well-formed
   (implies (and (fn-nntp-projectionp archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
                 (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
@@ -407,7 +393,7 @@
                  (:instance fn-gidx-listgroup-command-of-build)
                  (:instance fn-nntp-effects-over-range-indexed
                             (buckets (fn-gidx-pin-buckets index))
-                            (trie (fn-gidx-pin-trie index))
+                            (arts (fn-state-articles archive))
                             (token (car args))
                             (legacyp (fn-nntp-keywordp keyword "XOVER")))
                  (:instance fn-nntp-verdict-hdr-response-effects)
@@ -423,7 +409,7 @@
                  (:instance fn-nntp-effects-rcompat-reply))
            :in-theory
            (e/d (fn-nntp-archive-command-pinned)
-                (fn-nntp-archive-command fn-nntp-msgid-retrieval-indexed
+                (fn-nntp-archive-command fn-nntp-msgid-retrieval
                  fn-gidx-list-counts-command
                  fn-nntp-effects-gidx-list-counts-command
                  fn-gidx-listgroup-command fn-gidx-build
@@ -443,13 +429,10 @@
                  fn-nntp-archive-command-effects-well-formed
                  fn-nntp-verdict-hdr-response-effects
                  fn-nntp-control-hdr-response-effects fn-nntp-withdrawn-reply-effects
-                 fn-nntp-control-hdr-response fn-nntp-withdrawn-reply
-                 fn-nntp-msgid-retrieval-indexed-refines-scan)))))
+                 fn-nntp-control-hdr-response fn-nntp-withdrawn-reply)))))
 
 (defthm fn-nntp-command-pinned-effects-well-formed
   (implies (and (fn-nntp-session-consistentp session archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
                 (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
@@ -465,8 +448,6 @@
 
 (defthm fn-nntp-step-pinned-effects-well-formed
   (implies (and (fn-nntp-session-consistentp session archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
                 (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-nntp-result-effects
@@ -481,8 +462,6 @@
 
 (defthm fn-post-step-pinned-effects-well-formed
   (implies (and (fn-post-session-consistentp ps archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
                 (fn-gidx-pin-correspondencep index archive))
            (fn-nntp-effectsp
             (fn-post-result-effects

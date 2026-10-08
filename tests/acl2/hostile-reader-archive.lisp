@@ -20,8 +20,8 @@
 ;   5  F <f@example.invalid>  fn.mod.a 4          UNFRAMED: no blank line
 ;   6  X <x@example.invalid>  fn.mod.a 5, fn.misc 1   CROSS-POSTED
 ;
-; Constants: *hra-archive* (the visible served state), *hra-index* (trie,
-; group index, control pin), *hra-verdicts*, *hra-env*, *hra-session*
+; Constants: *hra-archive* (the visible served state), *hra-index* (group
+; index, control pin), *hra-verdicts*, *hra-env*, *hra-session*
 ; (opened on the archive, fn.mod.a selected), *hra-payloads* (the arena).
 ; Each condition is a named theorem stated with the predicate the arm
 ; tests; the replies are witnessed through fn-nntp-command-pinned
@@ -93,7 +93,7 @@
 (defconst *hra-visible* (fn-state-articles *hra-archive*))
 (defconst *hra-withdrawn* (fn-ctl-withdrawn-articles *hra-raw* *hra-ws* *hra-verdicts*))
 (defconst *hra-index*
-  (fn-gidx-pin-with-control (fn-midx-build *hra-visible*) (fn-gidx-build *hra-visible*)
+  (fn-gidx-pin-with-control (fn-gidx-build *hra-visible*)
                             (fn-ctl-pin *hra-withdrawn* *hra-ws*)))
 (defconst *hra-session*
   (fn-nntp-set-cursor (fn-nntp-open-session *hra-archive*) "fn.mod.a" nil))
@@ -120,7 +120,7 @@
        (not (member-equal (hra-article "<t@example.invalid>") *hra-visible*))
        (equal (len *hra-visible*) 6)
        (fn-nntp-number-withdrawn-p *hra-session* *hra-archive* *hra-index* (hra-oct "1"))
-       (fn-nntp-msgid-withdrawn-p *hra-index* (hra-oct "<t@example.invalid>")))
+       (fn-nntp-msgid-withdrawn-p *hra-archive* *hra-index* (hra-oct "<t@example.invalid>")))
   :rule-classes nil)
 
 ; CANCELLED and CONTROL: T's withdrawal is C's executed cancel on the author

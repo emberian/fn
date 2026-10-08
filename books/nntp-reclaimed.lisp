@@ -10,7 +10,7 @@
 ; (`fn-nntp-newnews-scan', which `fn-nntp-newnews-response' calls).
 ;
 ; fn-nntp-step (books/nntp) answers ARTICLE, HEAD, BODY and STAT by
-; Message-ID through `fn-nntp-msgid-retrieval-indexed' and by number through
+; Message-ID through `fn-nntp-msgid-retrieval' and by number through
 ; `fn-nntp-number-retrieval'; both reach `fn-nntp-article-response', whose
 ; tombstone branch (books/nntp-responses) answers "article reclaimed".
 ; These two theorems are stated of the functions the step calls, so a
@@ -20,24 +20,21 @@
 (include-book "nntp-responses")
 (include-book "nntp-range-indexed")
 
-;  KEYSTONE.  By Message-ID: when the served index corresponds to the
-; archive (the invariant the connection carries) and the article the token
-; names is a tombstone, the answer is 430 article reclaimed.
+;  KEYSTONE.  By Message-ID: when the article the token names in the
+; served list is a tombstone, the answer is 430 article reclaimed.
 (defthm fn-nntp-msgid-retrieval-answers-reclaimed
   (let ((article (fn-find-article (fn-nntp-token-string token)
                                   (fn-state-articles archive))))
-    (implies (and (fn-midx-correspondencep index (fn-state-articles archive))
-                  (fn-nntp-message-id-tokenp token)
+    (implies (and (fn-nntp-message-id-tokenp token)
                   (consp article)
                   (fn-nntp-article-idp article)
                   (fn-nntp-article-tombstonep article fn-arena))
-             (equal (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena)
+             (equal (fn-nntp-msgid-retrieval session archive kind token fn-arena)
                     (fn-nntp-single session "430 article reclaimed"))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-msgid-retrieval)
                                   (fn-rcl-tombstonep fn-nntp-article-idp
                                    fn-nntp-article-response))
-                  :use (fn-nntp-msgid-retrieval-indexed-refines-scan
-                        (:instance fn-nntp-reclaimed-article-answers-reclaimed
+                  :use ((:instance fn-nntp-reclaimed-article-answers-reclaimed
                                    (article (fn-find-article
                                              (fn-nntp-token-string token)
                                              (fn-state-articles archive)))
@@ -135,10 +132,10 @@
 ; the lines over NUMBERS are the lines over NUMBERS without its number.
 (defthm fn-nov-lines-indexed-skip-a-reclaimed-article
   (implies (fn-rcl-tombstonep
-            (fn-nntp-article-bytes (fn-gidx-entry-number-article group n entries trie) fn-arena))
-           (equal (fn-nov-lines-for-numbers-indexed group numbers entries trie fn-arena)
+            (fn-nntp-article-bytes (fn-gidx-entry-number-article group n entries arts) fn-arena))
+           (equal (fn-nov-lines-for-numbers-indexed group numbers entries arts fn-arena)
                   (fn-nov-lines-for-numbers-indexed group (remove-equal n numbers)
-                                                    entries trie fn-arena)))
+                                                    entries arts fn-arena)))
   :hints (("Goal" :induct (len numbers)
                   :in-theory (e/d (fn-nov-lines-for-numbers-indexed)
                                   (fn-rcl-tombstonep fn-nov-overview fn-nov-okp

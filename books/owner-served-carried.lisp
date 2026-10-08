@@ -53,7 +53,6 @@
                                  (fn-own-conn-config conn)
                                  (fn-own-conn-observation conn)
                                  (fn-served-conn-verdicts sconn)
-                                 (fn-served-conn-index sconn)
                                  (fn-served-conn-group-index sconn)
                                  (fn-served-conn-control sconn)))
          (decision (fn-served-submission effects)))
@@ -82,30 +81,18 @@
                                   (fn-scar-conn-boundedp fn-own-conn-boundedp
                                    fn-node-statep)))))
 
-; The owner's view trie and the article list it indexes, carried (not
-; evaluated) the way the node premise is.  fn-own-relation carries it in
-; fn-own-view-okp; for the configured owner it is carried by every
-; fn-ocfg-step event, fn-ocfg-observe and the carried read
-; (books/owner-offer-indexed.lisp).
-(defun fn-scar-view-indexedp (o)
-  (declare (xargs :guard t))
-  (fn-midx-correspondencep
-   (fn-own-view-index (fn-own-view o))
-   (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
-
 ; fn-own-read-tls-prefix (books/owner-tls-prefix.lisp) with the store's node
-; passed as `live', and the view's trie and articles as `trie' and `arts'
+; passed as `live', and the view's articles as `arts'
 ; for the IHAVE/CHECK history test (books/peer-offer-indexed.lisp).
 (defun fn-scar-own-read-tls-prefix (o id octets fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o)))
         (live (fn-sn-node (fn-own-store o)))
-        (trie (fn-own-view-index (fn-own-view o)))
         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
     (if conn
         (let* ((counted
                  (fn-scar-step-counted-fast
-                  (fn-own-tls-served-conn o conn) octets live trie arts fn-arena))
+                  (fn-own-tls-served-conn o conn) octets live arts fn-arena))
                (result
                  (fn-scar-finish-read
                   o conn (fn-served-counted-result counted) live)))
@@ -115,8 +102,7 @@
       (fn-own-tls-make-result (len octets) nil o nil))))
 
 (defthm fn-scar-own-read-tls-prefix-is-own-read-tls-prefix
-  (implies (and (fn-node-statep (fn-sn-node (fn-own-store o)))
-                (fn-scar-view-indexedp o))
+  (implies (fn-node-statep (fn-sn-node (fn-own-store o)))
            (equal (fn-scar-own-read-tls-prefix o id octets fn-arena)
                   (fn-own-read-tls-prefix o id octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-own-read-tls-prefix
@@ -124,8 +110,7 @@
                                   (fn-scar-step-counted-fast
                                    fn-served-step-counted-fast
                                    fn-scar-finish-read fn-own-finish-read
-                                   fn-own-tls-served-conn fn-node-statep
-                                   fn-midx-correspondencep)))))
+                                   fn-own-tls-served-conn fn-node-statep)))))
 
 ; The read host/owner-host.lisp fn-owner-chunk-span-at runs over the span
 ; (fn-scr-ocfg-read-span-is-reference-under-ocl-relation).
@@ -140,15 +125,13 @@
      (fn-own-tls-result-repinned result))))
 
 (defthm fn-scar-ocfg-read-tls-prefix-is-ocfg-read-tls-prefix
-  (implies (and (fn-node-statep (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))
-                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
+  (implies (fn-node-statep (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))
            (equal (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena)
                   (fn-ocfg-read-tls-prefix oc id octets fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-ocfg-read-tls-prefix
                                    fn-ocfg-read-tls-prefix)
                                   (fn-scar-own-read-tls-prefix
-                                   fn-own-read-tls-prefix fn-node-statep
-                                   fn-scar-view-indexedp)))))
+                                   fn-own-read-tls-prefix fn-node-statep)))))
 
 ; The premise is the owner's: fn-own-relation conjoins fn-snt-relation,
 ; which conjoins fn-sn-statep, which conjoins fn-node-statep of the node.
@@ -158,13 +141,6 @@
   :hints (("Goal" :in-theory (e/d (fn-own-relation fn-snt-relation fn-sn-statep)
                                   (fn-node-statep)))))
 
-(defthm fn-scar-relation-carries-view-indexedp
-  (implies (fn-own-relation o)
-           (fn-scar-view-indexedp o))
-  :hints (("Goal" :in-theory (e/d (fn-own-relation fn-own-view-okp
-                                   fn-scar-view-indexedp)
-                                  (fn-midx-correspondencep)))))
-
 ; KEYSTONE for the host line.  Under the owner relation, the carried read is
 ; the reference read, whatever the connection, the octets and the session.
 (defthm fn-scar-ocfg-read-tls-prefix-is-reference-under-relation
@@ -172,8 +148,7 @@
            (equal (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena)
                   (fn-ocfg-read-tls-prefix oc id octets fn-arena)))
   :hints (("Goal" :in-theory (disable fn-scar-ocfg-read-tls-prefix
-                                      fn-ocfg-read-tls-prefix fn-own-relation
-                                      fn-scar-view-indexedp))))
+                                      fn-ocfg-read-tls-prefix fn-own-relation))))
 
 ; Preservation: a served read leaves the store, hence its node and the
 ; premise, exactly as it found them.  No hypothesis.
@@ -223,18 +198,14 @@
                                   (fn-node-statep)))))
 
 ; KEYSTONE for host/owner-host.lisp fn-owner-chunk-span-at: under the configured
-; owner's relation and its view trie's correspondence, the carried read is
-; the reference read, for every connection identifier, every observed octet
-; list and every session.  books/owner-offer-indexed.lisp carries the second
-; premise across every configured-owner transition.
+; owner's relation, the carried read is the reference read, for every
+; connection identifier, every observed octet list and every session.
 (defthm fn-scar-ocfg-read-tls-prefix-is-reference-under-ocl-relation
-  (implies (and (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
+  (implies (fn-ocl-relation oc)
            (equal (fn-scar-ocfg-read-tls-prefix oc id octets fn-arena)
                   (fn-ocfg-read-tls-prefix oc id octets fn-arena)))
   :hints (("Goal" :in-theory (disable fn-scar-ocfg-read-tls-prefix
-                                      fn-ocfg-read-tls-prefix fn-ocl-relation
-                                      fn-scar-view-indexedp))))
+                                      fn-ocfg-read-tls-prefix fn-ocl-relation))))
 
 ; -----------------------------------------------------------------------------
 ; The host's wire events, carried (PRF-1357, LOAD-T-CMD-GREETING).
@@ -256,12 +227,12 @@
   (declare (xargs :stobjs fn-arena :guard t))
   (let ((conn (fn-own-find-conn id (fn-own-conns o)))
         (live (fn-sn-node (fn-own-store o)))
-        (trie (fn-own-view-index (fn-own-view o)))
+        
         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
     (if conn
         (let* ((result (fn-scar-dispatch
                         (fn-own-served-conn o conn (fn-own-conn-session conn))
-                        event live trie arts fn-arena))
+                        event live  arts fn-arena))
                (sconn (fn-served-result-conn result))
                (pinned (fn-served-conn-pinned sconn))
                (next (fn-own-conn-make-group-indexed (fn-own-conn-id conn)
@@ -273,7 +244,7 @@
                                        (fn-own-conn-config conn)
                                        (fn-own-conn-observation conn)
                                        (fn-served-conn-verdicts sconn)
-                                       (fn-served-conn-index sconn)
+                                       
                                        (fn-served-conn-group-index sconn)
                                        (fn-served-conn-control sconn))))
           (list (fn-served-result-effects result)
@@ -288,15 +259,15 @@
 
 (defthm fn-scar-own-read-step-full-is-own-read-step-full
   (implies (and (fn-node-statep (fn-sn-node (fn-own-store o)))
-                (fn-scar-view-indexedp o))
+                )
            (equal (fn-scar-own-read-step-full o id event fn-arena)
                   (fn-own-read-step-full o id event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-own-read-step-full
-                                   fn-own-read-step-full fn-scar-view-indexedp)
+                                   fn-own-read-step-full )
                                   (fn-scar-dispatch fn-served-dispatch
                                    fn-scar-conn-boundedp fn-own-conn-boundedp
                                    fn-own-served-conn fn-node-statep
-                                   fn-midx-correspondencep)))))
+                                   )))))
 
 (defun fn-scar-ocfg-read-step (oc id event fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
@@ -307,12 +278,12 @@
 
 (defthm fn-scar-ocfg-read-step-is-ocfg-read-step
   (implies (and (fn-node-statep (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))
-                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
+                )
            (equal (fn-scar-ocfg-read-step oc id event fn-arena)
                   (fn-ocfg-read-step oc id event fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-scar-ocfg-read-step fn-ocfg-read-step)
                                   (fn-scar-own-read-step-full fn-own-read-step-full
-                                   fn-node-statep fn-scar-view-indexedp)))))
+                                   fn-node-statep )))))
 
 ; KEYSTONE for host/owner-host.lisp fn-owner-sasl-context and
 ; fn-owner-tls-established and host/native-admin-host.lisp
@@ -321,15 +292,16 @@
 ; every connection identifier and every event.
 (defthm fn-scar-ocfg-read-step-is-reference-under-ocl-relation
   (implies (and (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
+                )
            (equal (fn-scar-ocfg-read-step oc id event fn-arena)
                   (fn-ocfg-read-step oc id event fn-arena)))
   :hints (("Goal" :use ((:instance fn-scar-ocl-relation-carries-node-statep))
            :in-theory (disable fn-scar-ocfg-read-step fn-ocfg-read-step
-                               fn-ocl-relation fn-scar-view-indexedp
+                               fn-ocl-relation 
                                fn-scar-ocl-relation-carries-node-statep
                                fn-node-statep))))
 
-(in-theory (disable fn-scar-view-indexedp fn-scar-conn-boundedp fn-scar-finish-read
+(in-theory (disable  fn-scar-conn-boundedp fn-scar-finish-read
                     fn-scar-own-read-tls-prefix fn-scar-ocfg-read-tls-prefix
                     fn-scar-own-read-step-full fn-scar-ocfg-read-step))
+

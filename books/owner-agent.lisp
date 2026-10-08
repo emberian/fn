@@ -462,17 +462,14 @@ supplies as `*fn-record-max-payload*' (books/records-shape.lisp)."
                            (fn-auth-step-pinned fn-auth-sessionp fn-served-connp
                             fn-oag-names-agentp fn-auth-effectsp
                             fn-served-connp-is-consistent-session
-                            fn-served-connp-is-index-correspondence
+                            
                             fn-auth-step-pinned-effects-well-formed
                             fn-oag-auth-step-pinned-submission-names-the-configured-agent
                             fn-post-offeredp
                             fn-wire-begin-article-with-line-limit
                             fn-wire-article-line-limit))
            :use ((:instance fn-served-connp-is-consistent-session (c conn))
-                 (:instance fn-served-connp-is-index-correspondence (c conn))
                  (:instance fn-served-connp-is-group-correspondence (c conn))
-                 (:instance fn-served-connp-is-pinned-trie-correspondence
-                            (c conn))
                  (:instance fn-auth-step-pinned-effects-well-formed
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn))

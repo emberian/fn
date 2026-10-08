@@ -17,10 +17,7 @@
  (let* ((conn (fn-own-find-conn
                0 (fn-own-conns (fn-ocfg-owner *ocla-t-advanced*)))))
    (and (fn-wire-statep (fn-own-conn-wire conn))
-        (fn-sn-verdict-listp (fn-own-conn-verdicts conn))
-        (fn-midx-correspondencep
-         (fn-own-conn-index conn)
-         (fn-state-articles (fn-own-conn-archive conn))))))
+        (fn-sn-verdict-listp (fn-own-conn-verdicts conn)))))
 
 ; A forged old pin lies outside the strengthened reader relation.  A duplicate
 ; ID additionally survives an attempted repin and remains outside it.

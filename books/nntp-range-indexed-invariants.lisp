@@ -1,5 +1,5 @@
 ; The pinned OVER/XOVER range renderer equals the historical archive fold.
-; Bucket/trie correspondence is established at connection open and preserved
+; Bucket correspondence is established at connection open and preserved
 ; by the served transition; it is not checked during a reader command.
 (in-package "ACL2")
 (include-book "nntp-range-indexed")
@@ -29,13 +29,13 @@
            (equal (fn-nov-lines-for-numbers-indexed
                    group numbers
                    (fn-gidx-bucket group (fn-gidx-build articles))
-                   (fn-midx-build articles) fn-arena)
+                   articles fn-arena)
                   (fn-nov-lines-for-numbers group numbers articles fn-arena)))
   :hints (("Goal" :induct (fn-nov-lines-for-numbers group numbers articles fn-arena)
            :in-theory (e/d (fn-nov-lines-for-numbers-indexed
                             fn-nov-lines-for-numbers)
                            (fn-gidx-entry-number-article fn-nntp-available-article
-                            fn-midx-build fn-gidx-build fn-gidx-bucket-of-build
+                            fn-gidx-build fn-gidx-bucket-of-build
                             fn-rcl-tombstonep)))))
 
 ; A malformed session can carry a non-text selected group.  Valid archived
@@ -74,7 +74,7 @@
                 (not (stringp (fn-nntp-session-group session))))
            (equal (fn-nntp-over-range-indexed
                    session (fn-gidx-build (fn-state-articles archive))
-                   (fn-midx-build (fn-state-articles archive))
+                   (fn-state-articles archive)
                    token legacyp fn-arena)
                   (if legacyp
                       (fn-nntp-xover-range session archive token fn-arena)
@@ -100,7 +100,7 @@
                 (fn-nntp-range-okp (fn-nntp-parse-range token)))
            (equal (fn-nntp-over-range-indexed
                    session (fn-gidx-build (fn-state-articles archive))
-                   (fn-midx-build (fn-state-articles archive))
+                   (fn-state-articles archive)
                    token legacyp fn-arena)
                   (if legacyp
                       (fn-nntp-xover-range session archive token fn-arena)
@@ -147,8 +147,7 @@
            (equal
             (fn-nntp-archive-command-pinned
              session archive
-             (fn-gidx-pin (fn-midx-build (fn-state-articles archive))
-                          (fn-gidx-build (fn-state-articles archive)))
+             (fn-gidx-pin (fn-gidx-build (fn-state-articles archive)))
              verdicts env keyword (list token) fn-arena)
             (fn-nntp-archive-command
              session archive env keyword (list token) fn-arena)))
@@ -165,9 +164,6 @@
 (defthm fn-nntp-carried-over-range-equals-archive-command
   (implies (and (fn-statep archive)
                 (fn-gidx-pin-correspondencep index archive)
-                (fn-midx-correspondencep
-                 (fn-gidx-pin-trie index)
-                 (fn-state-articles archive))
                 (null (fn-nntp-xref-server env))
                 (or (fn-nntp-keywordp keyword "OVER")
                     (fn-nntp-keywordp keyword "XOVER")))
@@ -179,7 +175,6 @@
            :use ((:instance fn-nntp-over-range-indexed-equals-fold
                             (legacyp (fn-nntp-keywordp keyword "XOVER"))))
            :in-theory (e/d (fn-gidx-pin-correspondencep
-                            fn-midx-correspondencep
                             fn-nntp-archive-command-pinned
                             fn-nntp-archive-command
                             fn-nntp-over-response fn-nntp-xover-response

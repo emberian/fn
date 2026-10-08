@@ -65,22 +65,23 @@
   (and (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
        (fn-statep archive)
        (fn-gidx-pin-correspondencep index archive)
-       (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive))
        (fn-cnx-freshp (scjp-rows-of 0 fn-cat))
        t))
 
 ; fn-scr-fields-catalogp's body.
-(defun scjp-fields-catalogp (archive index group-index control pinned fn-arena fn-cat)
+(defun scjp-fields-catalogp (archive group-index control pinned fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
   (scjp-catalogp archive
-                 (if group-index (fn-gidx-pin-with-control index group-index control) index)
+                 (if (or group-index (and control (not (consp (fn-state-articles archive)))))
+                     (fn-gidx-pin-with-control group-index control)
+                   nil)
                  (fn-scr-view-of (fn-served-pinned-version pinned) fn-cat)
                  fn-arena fn-cat))
 
 ; fn-scr-live-catalogp's body.
 (defun scjp-live-catalogp (live fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
-  (scjp-fields-catalogp (fn-served-live-archive live) (fn-served-live-index live)
+  (scjp-fields-catalogp (fn-served-live-archive live)
                         (fn-served-live-buckets live) (fn-served-live-control live)
                         (fn-served-pinned-make (fn-served-live-version live)
                                                (fn-served-live-frontier live) t)
@@ -95,11 +96,12 @@
 (defun scjp-conn-pinp (conn fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
   (scjp-catalogp (fn-own-conn-archive conn)
-                 (if (fn-own-conn-group-index conn)
-                     (fn-gidx-pin-with-control (fn-own-conn-index conn)
-                                               (fn-own-conn-group-index conn)
+                 (if (or (fn-own-conn-group-index conn)
+                         (and (fn-own-conn-control conn)
+                              (not (consp (fn-state-articles (fn-own-conn-archive conn))))))
+                     (fn-gidx-pin-with-control (fn-own-conn-group-index conn)
                                                (fn-own-conn-control conn))
-                   (fn-own-conn-index conn))
+                   nil)
                  (fn-scr-view-of (fn-own-conn-version conn) fn-cat)
                  fn-arena fn-cat))
 
@@ -117,7 +119,7 @@
   (let ((conn (fn-own-find-conn id (fn-own-conns o))))
     (if conn
         (let ((sc (fn-own-tls-served-conn o conn)))
-          (and (scjp-fields-catalogp (fn-served-conn-archive sc) (fn-served-conn-index sc)
+          (and (scjp-fields-catalogp (fn-served-conn-archive sc)
                                      (fn-served-conn-group-index sc) (fn-served-conn-control sc)
                                      (fn-served-conn-pinned sc) fn-arena fn-cat)
                (if (fn-served-conn-live sc)
@@ -206,9 +208,9 @@
                      (fn-pc-p pending)))
          (before (scjp-views-at vs fn-arena fn-cat)))
     (mv-let (word pending2 fn-cat)
-      ;; The view index shows the completed row, so T2 commits it visible.
+      ;; The shown list holds the completed row, so T2 commits it visible.
       (fn-sca-finish (fn-pc-token pending) pending
-                     (fn-midx-build (list (fn-make-article (fn-record-msgid row) n nil nil t nil)))
+                     (list (fn-make-article (fn-record-msgid row) n nil nil t nil))
                      nil fn-cat)
       (declare (ignore word pending2))
       (let ((c2 (scjp-rows-of 0 fn-cat)))
@@ -270,7 +272,7 @@
          (rows (fn-sf-records (fn-sn-files s)))
          (events0 (take (- (len rows) 1) rows))
          (event (car (last rows)))
-         (fn-cat (fn-sca-load-held-rows (take ncat rows) (fn-own-view-index view) fn-arena fn-cat))
+         (fn-cat (fn-sca-load-held-rows (take ncat rows) (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat))
          (row (fn-sn-completion-record s))
          (w (fn-held-wire-of row fn-arena))
          (pending (fn-cat-prepare-sealed w row nil nil nil fn-arena fn-cat))
@@ -284,7 +286,6 @@
          (c0 (scjp-rows-of 0 fn-cat))
          (hyps (list (if (fn-ccar-completion-enabledp s) t nil)
                      (scjp-joinp view fn-arena fn-cat)
-                     (fn-scar-view-indexedp o)
                      (scjp-rows-invp c0 events0)
                      (if (fn-cst-relation s2) t nil)
                      (if (fn-own-store-idlep s2) t nil)
@@ -312,10 +313,10 @@
                      (fn-cnx-freshp c0)
                      (scjp-conns-pinp (fn-own-conns o) fn-arena fn-cat)
                      (fn-scj-conns-versions-atmostp (fn-own-conns o) (fn-own-view-version view))
-                     (fn-scj-view-indexesp view2)
+                     (fn-scj-view-gidxp view2)
                      (if (fn-statep (fn-own-view-archive view2)) t nil))))
     (mv-let (word pending2 fn-cat)
-      (fn-sca-finish token pending (fn-own-view-index view2)
+      (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                      (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                         (fn-own-view-withdrawals view2))
                      fn-cat)
@@ -351,11 +352,11 @@
           (mv result fn-arena)))
       result)))
 
-; 4. Reachable witness of fn-scj-owner-catalogp-at-host-finish (all 24
+; 4. Reachable witness of fn-scj-owner-catalogp-at-host-finish (all 23
 ; hypotheses, all five conclusions); fn-scj-conns-pinp-at-host-finish's ten
-; hypotheses are among them (2, 5, 7, 8, 10, 11, 18, 19, 21 and 22 of the
+; hypotheses are among them (2, 4, 6, 7, 9, 10, 17, 18, 20 and 21 of the
 ; list) and its two conclusions are the second and fourth.
 (assert-event (equal (scjp-host-exec *cet-t2-oc* *cet-t2-payloads* 2)
-                     (list (make-list 24 :initial-element t)
+                     (list (make-list 23 :initial-element t)
                            (list t t t t t)
                            (list '(1 0) 2 2 3 1 2 0 1))))

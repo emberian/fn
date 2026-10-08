@@ -165,27 +165,26 @@
 (assert-event (fn-own-relation (cdr *own-listgroup-new*)))
 (assert-event (fn-own-relation (cdr *own-listgroup-old*)))
 ; The advanced connection is pinned at the view: version 1, the view's
-; archive, trie and buckets (what a connection opened now would pin).
+; archive and buckets (what a connection opened now would pin).
 (assert-event
  (let ((conn (fn-own-find-conn 0 (fn-own-conns (cdr *own-listgroup-old*))))
        (view (fn-own-view *own-c*)))
    (and (equal (fn-own-conn-version conn) (fn-own-view-version view))
         (equal (fn-own-conn-frontier conn) (fn-own-view-frontier view))
         (equal (fn-own-conn-archive conn) (fn-own-view-archive view))
-        (equal (fn-own-conn-index conn) (fn-own-view-index view))
         (equal (fn-own-conn-group-index conn) (fn-own-view-group-index view))
         (equal (fn-own-conn-control conn) (fn-own-view-control view)))))
 ; The flag the configured owner reads (fn-ocfg-with-read-owner): the pin moved.
 (assert-event (equal (in-arena-fn-own-read-repinned *sr-arena* *own-c* 0 *own-listgroup-octets*) t))
 (assert-event (equal (in-arena-fn-own-read-repinned *sr-arena* *own-c* 2 *own-listgroup-octets*) t))
 
-; A forged tagged pin with an empty bucket has the correct Message-ID trie
-; but loses the committed membership.  The correspondence premise in the
-; pinned command theorem therefore has observable force.
+; A forged tagged pin with an empty bucket loses the committed membership.
+; The correspondence premise in the pinned command theorem therefore has
+; observable force.
 (defconst *own-group-archive*
   (fn-own-conn-archive (fn-own-find-conn 2 (fn-own-conns *own-c*))))
 (defconst *own-bad-group-pin*
-  (fn-gidx-pin (fn-midx-build (fn-state-articles *own-group-archive*)) nil))
+  (fn-gidx-pin nil))
 (assert-event (not (fn-gidx-pin-correspondencep
                     *own-bad-group-pin* *own-group-archive*)))
 (assert-event
@@ -421,7 +420,7 @@
              (fn-own-conn-wire conn) (fn-own-conn-session conn) archive
              (fn-own-conn-config conn) (fn-own-conn-observation conn)
              (fn-own-clock *own-c*) nil
-             (fn-midx-build (fn-state-articles archive)) nil nil
+             nil nil
              (fn-served-pinned-make (fn-own-conn-version conn) (fn-own-conn-frontier conn) nil)
              (fn-own-view-live (fn-own-view *own-c*))) *own-group-octets*)))))
 (assert-event
@@ -438,7 +437,7 @@
              (fn-own-conn-wire conn) (fn-own-conn-session conn) archive
              (fn-own-conn-config conn) (fn-own-conn-observation conn)
              (fn-own-clock *own-c*) nil
-             (fn-midx-build (fn-state-articles archive)) nil nil
+             nil nil
              (fn-served-pinned-make (fn-own-conn-version conn) (fn-own-conn-frontier conn) nil)
              (fn-own-view-live (fn-own-view *own-c*))) *own-group-command*)))))
 (assert-event
@@ -924,7 +923,7 @@
         (fn-own-conn-wire conn) (fn-own-conn-session conn)
         (fn-own-conn-archive conn) (fn-own-conn-config conn)
         (fn-own-conn-observation conn) (fn-own-clock ,o)
-        (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
+        (fn-own-conn-verdicts conn)
         (fn-own-conn-group-index conn) (fn-own-conn-control conn))
        (cond ((equal ,word :durable) :durable)
              ((equal ,word :durable-key-change-refused) ,word)
@@ -1326,16 +1325,7 @@
 (assert-event (equal (fn-own-conn-version (fn-own-find-conn 5 (fn-own-conns *own-late*))) 3))
 (assert-event
  (and (fn-own-relation *own-after-post*)
-      (fn-own-relation *own-late*)
-      (fn-midx-correspondencep
-       (fn-own-conn-index (fn-own-find-conn 3 (fn-own-conns *own-after-post*)))
-       (fn-state-articles
-        (fn-own-conn-archive
-         (fn-own-find-conn 3 (fn-own-conns *own-after-post*)))))
-      (fn-midx-correspondencep
-       (fn-own-conn-index (fn-own-find-conn 5 (fn-own-conns *own-late*)))
-       (fn-state-articles
-        (fn-own-conn-archive (fn-own-find-conn 5 (fn-own-conns *own-late*)))))))
+      (fn-own-relation *own-late*)))
 (defconst *own-indexed-stat*
   (append (fn-nntp-string-octets "STAT <three@example>") '(13 10)))
 (assert-event
@@ -1347,27 +1337,6 @@
               (fn-served-reply-octets
                (car (in-arena-fn-own-read *sr-arena* *own-late* 5 *own-indexed-stat*))))
              (fn-nntp-string-octets "223 "))))
-; A forged stale trie changes the actual owner reply despite the same pinned
-; archive.  This is why correspondence is a conjunct of fn-own-relation.
-(defconst *own-forged-index*
-  (let ((conn (fn-own-find-conn 5 (fn-own-conns *own-late*))))
-    (fn-own-set-conns
-     *own-late*
-     (fn-own-replace-conn
-      (fn-own-conn-make-indexed
-       (fn-own-conn-id conn) (fn-own-conn-version conn)
-       (fn-own-conn-frontier conn) (fn-own-conn-wire conn)
-       (fn-own-conn-session conn) (fn-own-conn-archive conn)
-       (fn-own-conn-config conn) (fn-own-conn-observation conn)
-       (fn-own-conn-verdicts conn) nil)
-      (fn-own-conns *own-late*)))))
-(assert-event (not (fn-own-relation *own-forged-index*)))
-(must-fail-checked
- (defthm fn-own-forged-index-still-serves-accepted-article
-   (equal (fn-own-take 4
-           (fn-served-reply-octets
-            (car (fn-own-read *own-forged-index* 5 *own-indexed-stat* fn-arena))))
-          (fn-nntp-string-octets "223 "))))
 (assert-event (equal (fn-served-reply-octets (car (in-arena-fn-own-read *sr-arena* *own-late* 5 *own-group-octets*)))
                      (append (fn-nntp-string-octets "211 3 1 3 fn.letters") '(13 10))))
 (assert-event (equal (fn-own-take 2 (fn-sf-records (fn-sn-files (fn-own-store *own-late*))))

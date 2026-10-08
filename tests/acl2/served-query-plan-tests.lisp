@@ -66,7 +66,7 @@
                       "fn.available" "fn.empty10"))
              (archive (fn-make-state groups '(("fn.available" . 35))
                                      (cav-av-articles 34 34 fn-cat) 0 nil nil))
-             (index (fn-gidx-pin-with-control (fn-midx-build (fn-state-articles archive))
+             (index (fn-gidx-pin-with-control
                                               (fn-gidx-build (fn-state-articles archive)) nil))
              (closed (list (list :moderated (fn-nntp-string-octets "fn.available") nil)
                            (fn-nntp-string-octets "fn.empty10")))

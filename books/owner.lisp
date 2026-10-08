@@ -120,7 +120,7 @@
 
 (defun fn-own-conn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 12)))
+  (and (true-listp x) (equal (len x) 11)))
 (defun fn-own-conn-id (c)
   (declare (xargs :guard t))
   (mbe :logic (car c) :exec (fn-ag-car c)))
@@ -155,154 +155,88 @@
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr c)))))))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c)))))))))))
-(defun fn-own-conn-index (c)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr (cdr c))))))))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c))))))))))))
 (defun fn-own-conn-group-index (c)
   (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c))))))))))))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c)))))))))))
 (defun fn-own-conn-control (c)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-   (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c)))))))))))))
+   (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr c))))))))))))
 (defun fn-own-conn-make-group-indexed
     (id version frontier wire session archive config observation verdicts
-        index buckets control)
+        buckets control)
   (declare (xargs :guard t))
   (list id version frontier wire session archive config observation verdicts
-        index buckets control))
-(defun fn-own-conn-make-indexed
-    (id version frontier wire session archive config observation verdicts index)
-  (declare (xargs :guard t))
-  (fn-own-conn-make-group-indexed
-   id version frontier wire session archive config observation verdicts index nil nil))
+        buckets control))
 (defthm fn-own-conn-group-index-of-make
   (equal (fn-own-conn-group-index
           (fn-own-conn-make-group-indexed
            id version frontier wire session archive config observation
-           verdicts index buckets control))
+           verdicts buckets control))
          buckets))
 (defthm fn-own-conn-control-of-make
   (equal (fn-own-conn-control
           (fn-own-conn-make-group-indexed
            id version frontier wire session archive config observation
-           verdicts index buckets control))
+           verdicts buckets control))
          control))
 (defthm fn-own-conn-shapep-of-group-indexed
   (fn-own-conn-shapep
    (fn-own-conn-make-group-indexed
     id version frontier wire session archive config observation verdicts
-    index buckets control)))
+    buckets control)))
 
 (defthm fn-own-conn-id-of-make-group-indexed
   (equal (fn-own-conn-id
-          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts index buckets control))
+          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts buckets control))
          id))
 
 (defthm fn-own-conn-version-of-make-group-indexed
   (equal (fn-own-conn-version
-          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts index buckets control))
+          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts buckets control))
          version))
 
 (defthm fn-own-conn-frontier-of-make-group-indexed
   (equal (fn-own-conn-frontier
-          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts index buckets control))
+          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts buckets control))
          frontier))
 
 (defthm fn-own-conn-wire-of-make-group-indexed
   (equal (fn-own-conn-wire
-          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts index buckets control))
+          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts buckets control))
          wire))
 
 (defthm fn-own-conn-session-of-make-group-indexed
   (equal (fn-own-conn-session
-          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts index buckets control))
+          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts buckets control))
          session))
 
 (defthm fn-own-conn-archive-of-make-group-indexed
   (equal (fn-own-conn-archive
-          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts index buckets control))
+          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts buckets control))
          archive))
 
 (defthm fn-own-conn-config-of-make-group-indexed
   (equal (fn-own-conn-config
-          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts index buckets control))
+          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts buckets control))
          config))
 
 (defthm fn-own-conn-observation-of-make-group-indexed
   (equal (fn-own-conn-observation
-          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts index buckets control))
+          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts buckets control))
          observation))
 
 (defthm fn-own-conn-verdicts-of-make-group-indexed
   (equal (fn-own-conn-verdicts
-          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts index buckets control))
+          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts buckets control))
          verdicts))
 
-(defthm fn-own-conn-index-of-make-group-indexed
-  (equal (fn-own-conn-index
-          (fn-own-conn-make-group-indexed id version frontier wire session archive config observation verdicts index buckets control))
-         index))
-(defthm fn-own-conn-shapep-of-fn-own-conn-make-indexed
-  (fn-own-conn-shapep
-   (fn-own-conn-make-indexed id version frontier wire session archive config
-                              observation verdicts index)))
-
-(defthm fn-own-conn-fields-of-fn-own-conn-make-indexed
-  (and (equal (fn-own-conn-id
-               (fn-own-conn-make-indexed id version frontier wire session
-                                         archive config observation verdicts
-                                         index)) id)
-       (equal (fn-own-conn-version
-               (fn-own-conn-make-indexed id version frontier wire session
-                                         archive config observation verdicts
-                                         index)) version)
-       (equal (fn-own-conn-frontier
-               (fn-own-conn-make-indexed id version frontier wire session
-                                         archive config observation verdicts
-                                         index)) frontier)
-       (equal (fn-own-conn-wire
-               (fn-own-conn-make-indexed id version frontier wire session
-                                         archive config observation verdicts
-                                         index)) wire)
-       (equal (fn-own-conn-session
-               (fn-own-conn-make-indexed id version frontier wire session
-                                         archive config observation verdicts
-                                         index)) session)
-       (equal (fn-own-conn-archive
-               (fn-own-conn-make-indexed id version frontier wire session
-                                         archive config observation verdicts
-                                         index)) archive)
-       (equal (fn-own-conn-config
-               (fn-own-conn-make-indexed id version frontier wire session
-                                         archive config observation verdicts
-                                         index)) config)
-       (equal (fn-own-conn-observation
-               (fn-own-conn-make-indexed id version frontier wire session
-                                         archive config observation verdicts
-                                         index)) observation)
-       (equal (fn-own-conn-verdicts
-               (fn-own-conn-make-indexed id version frontier wire session
-                                         archive config observation verdicts
-                                         index)) verdicts)))
 (defun fn-own-conn-make-pinned
     (id version frontier wire session archive config observation verdicts)
   (declare (xargs :guard t))
-  (fn-own-conn-make-indexed id version frontier wire session archive config
-                             observation verdicts nil))
+  (fn-own-conn-make-group-indexed id version frontier wire session archive config
+                                  observation verdicts nil nil))
 
-(defthm fn-own-conn-index-of-fn-own-conn-make-indexed
-  (equal (fn-own-conn-index
-          (fn-own-conn-make-indexed id version frontier wire session archive
-                                     config observation verdicts index))
-         index))
-
-(defthm fn-own-conn-index-of-fn-own-conn-make-pinned
-  (equal (fn-own-conn-index
-          (fn-own-conn-make-pinned id version frontier wire session archive
-                                    config observation verdicts))
-         nil))
 (defun fn-own-conn-make (id version frontier wire session archive config observation)
   (declare (xargs :guard t))
   (fn-own-conn-make-pinned id version frontier wire session archive config
@@ -405,8 +339,8 @@
                     (:d fn-own-conn-frontier) (:d fn-own-conn-wire)
                     (:d fn-own-conn-session) (:d fn-own-conn-archive)
                     (:d fn-own-conn-config) (:d fn-own-conn-observation)
-                    (:d fn-own-conn-verdicts) (:d fn-own-conn-index)
-                    (:d fn-own-conn-make-indexed) (:d fn-own-conn-make-pinned)
+                    (:d fn-own-conn-verdicts)
+                    (:d fn-own-conn-make-pinned)
                     (:d fn-own-conn-make)))
 
 ; Typed ingress boundary: absence is legacy; a parsed native carrier is
@@ -483,7 +417,7 @@
 
 ; -----------------------------------------------------------------------------
 ; The committed view record:
-;   (version frontier archive verdicts trie buckets withdrawals raw withdrawn
+;   (version frontier archive verdicts buckets withdrawals raw withdrawn
 ;    keyring)
 ; ARCHIVE is the state the view serves: the acceptance state of its prefix
 ; with the withdrawn targets out of its article list (C3, D29,
@@ -498,7 +432,7 @@
 ; walking RAW (control-c3e).
 (defun fn-own-view-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 10)))
+  (and (true-listp x) (equal (len x) 9)))
 (defun fn-own-view-version (v)
   (declare (xargs :guard t))
   (mbe :logic (car v) :exec (fn-ag-car v)))
@@ -512,25 +446,20 @@
   (declare (xargs :guard t))
   (mbe :logic (car (cdr (cdr (cdr v))))
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v))))))
-(defun fn-own-view-index (v)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr v)))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v)))))))
 (defun fn-own-view-group-index (v)
   (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v)))))))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v))))))
 (defun fn-own-view-withdrawals (v)
   (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                                         (fn-ag-cdr v))))))))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v)))))))
 (defun fn-own-view-raw (v)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                                         (fn-ag-cdr (fn-ag-cdr v)))))))))
+                                                         (fn-ag-cdr v))))))))
 (defun fn-own-view-withdrawn (v)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                                         (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v))))))))))
+                                                         (fn-ag-cdr (fn-ag-cdr v)))))))))
 ; KEYRING is the Store's keyring snapshots (`fn-sn-keyring-snapshots') at
 ; the refresh that committed the view: the node's keyring view a reader of
 ; this view is told the current enrollment against (HDR :fn-enrollment,
@@ -538,17 +467,17 @@
 (defun fn-own-view-keyring (v)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v)))))))))))
+               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v))))))))))
 (defun fn-own-view-make-visible
-    (version frontier archive verdicts index buckets withdrawals raw withdrawn
+    (version frontier archive verdicts buckets withdrawals raw withdrawn
              keyring)
   (declare (xargs :guard t))
-  (list version frontier archive verdicts index buckets withdrawals raw
+  (list version frontier archive verdicts buckets withdrawals raw
         withdrawn keyring))
 (defun fn-own-view-make-group-indexed
-    (version frontier archive verdicts index buckets)
+    (version frontier archive verdicts buckets)
   (declare (xargs :guard t))
-  (list version frontier archive verdicts index buckets nil nil nil nil))
+  (list version frontier archive verdicts buckets nil nil nil nil))
 ; The control pin a connection opened or advanced on this view carries: the
 ; withdrawn list, the withdrawal records and the keyring view.
 (defun fn-own-view-control (v)
@@ -572,14 +501,14 @@
                             fn-own-view-keyring)))))
 (in-theory (disable fn-own-view-control))
 ; The view as a served connection's LIVE pin (books/served.lisp
-; fn-served-live-make; NNT-042): the seven values fn-own-open pins into a new
+; fn-served-live-make; NNT-042): the six values fn-own-open pins into a new
 ; connection, handed to every read so that GROUP and LISTGROUP can advance
 ; the connection to them between commands (fn-served-repin).
 (defun fn-own-view-live (view)
   (declare (xargs :guard t))
   (fn-served-live-make (fn-own-view-version view) (fn-own-view-frontier view)
                        (fn-own-view-archive view) (fn-own-view-verdicts view)
-                       (fn-own-view-index view) (fn-own-view-group-index view)
+                       (fn-own-view-group-index view)
                        (fn-own-view-control view)))
 (defthm fn-own-view-live-fields
   (let ((live (fn-own-view-live view)))
@@ -588,20 +517,16 @@
          (equal (fn-served-live-frontier live) (fn-own-view-frontier view))
          (equal (fn-served-live-archive live) (fn-own-view-archive view))
          (equal (fn-served-live-verdicts live) (fn-own-view-verdicts view))
-         (equal (fn-served-live-index live) (fn-own-view-index view))
          (equal (fn-served-live-buckets live) (fn-own-view-group-index view))
          (equal (fn-served-live-control live) (fn-own-view-control view)))))
 (in-theory (disable fn-own-view-live))
-(defun fn-own-view-make-indexed (version frontier archive verdicts index)
-  (declare (xargs :guard t))
-  (fn-own-view-make-group-indexed version frontier archive verdicts index nil))
 (defthm fn-own-view-group-index-of-make
   (equal (fn-own-view-group-index
           (fn-own-view-make-group-indexed
-           version frontier archive verdicts index buckets))
+           version frontier archive verdicts buckets))
          buckets))
 (defthm fn-own-view-fields-of-make-visible
-  (let ((v (fn-own-view-make-visible version frontier archive verdicts index
+  (let ((v (fn-own-view-make-visible version frontier archive verdicts
                                      buckets withdrawals raw withdrawn
                                      keyring)))
     (and (fn-own-view-shapep v)
@@ -609,7 +534,6 @@
          (equal (fn-own-view-frontier v) frontier)
          (equal (fn-own-view-archive v) archive)
          (equal (fn-own-view-verdicts v) verdicts)
-         (equal (fn-own-view-index v) index)
          (equal (fn-own-view-group-index v) buckets)
          (equal (fn-own-view-withdrawals v) withdrawals)
          (equal (fn-own-view-raw v) raw)
@@ -618,66 +542,32 @@
 (defthm fn-own-view-shapep-of-group-indexed
   (fn-own-view-shapep
    (fn-own-view-make-group-indexed
-    version frontier archive verdicts index buckets)))
+    version frontier archive verdicts buckets)))
 
 (defthm fn-own-view-version-of-make-group-indexed
   (equal (fn-own-view-version
-          (fn-own-view-make-group-indexed version frontier archive verdicts index buckets))
+          (fn-own-view-make-group-indexed version frontier archive verdicts buckets))
          version))
 
 (defthm fn-own-view-frontier-of-make-group-indexed
   (equal (fn-own-view-frontier
-          (fn-own-view-make-group-indexed version frontier archive verdicts index buckets))
+          (fn-own-view-make-group-indexed version frontier archive verdicts buckets))
          frontier))
 
 (defthm fn-own-view-archive-of-make-group-indexed
   (equal (fn-own-view-archive
-          (fn-own-view-make-group-indexed version frontier archive verdicts index buckets))
+          (fn-own-view-make-group-indexed version frontier archive verdicts buckets))
          archive))
 
 (defthm fn-own-view-verdicts-of-make-group-indexed
   (equal (fn-own-view-verdicts
-          (fn-own-view-make-group-indexed version frontier archive verdicts index buckets))
+          (fn-own-view-make-group-indexed version frontier archive verdicts buckets))
          verdicts))
 
-(defthm fn-own-view-index-of-make-group-indexed
-  (equal (fn-own-view-index
-          (fn-own-view-make-group-indexed version frontier archive verdicts index buckets))
-         index))
-(defthm fn-own-view-shapep-of-fn-own-view-make-indexed
-  (fn-own-view-shapep
-   (fn-own-view-make-indexed version frontier archive verdicts index)))
-
-(defthm fn-own-view-fields-of-fn-own-view-make-indexed
-  (and (equal (fn-own-view-version
-               (fn-own-view-make-indexed version frontier archive verdicts
-                                         index))
-              version)
-       (equal (fn-own-view-frontier
-               (fn-own-view-make-indexed version frontier archive verdicts
-                                         index))
-              frontier)
-       (equal (fn-own-view-archive
-               (fn-own-view-make-indexed version frontier archive verdicts
-                                         index))
-              archive)
-       (equal (fn-own-view-verdicts
-               (fn-own-view-make-indexed version frontier archive verdicts
-                                         index))
-              verdicts)))
 (defun fn-own-view-make-pinned (version frontier archive verdicts)
   (declare (xargs :guard t))
-  (fn-own-view-make-indexed version frontier archive verdicts nil))
+  (fn-own-view-make-group-indexed version frontier archive verdicts nil))
 
-(defthm fn-own-view-index-of-fn-own-view-make-indexed
-  (equal (fn-own-view-index
-          (fn-own-view-make-indexed version frontier archive verdicts index))
-         index))
-
-(defthm fn-own-view-index-of-fn-own-view-make-pinned
-  (equal (fn-own-view-index
-          (fn-own-view-make-pinned version frontier archive verdicts))
-         nil))
 (defun fn-own-view-make (version frontier archive)
   (declare (xargs :guard t))
   (fn-own-view-make-pinned version frontier archive nil))
@@ -727,8 +617,8 @@
                                     :trigger-terms ((fn-own-view-archive x)))))
 (in-theory (disable (:d fn-own-view-shapep) (:d fn-own-view-version)
                     (:d fn-own-view-frontier) (:d fn-own-view-archive)
-                    (:d fn-own-view-verdicts) (:d fn-own-view-index)
-                    (:d fn-own-view-make-indexed) (:d fn-own-view-make-pinned)
+                    (:d fn-own-view-verdicts)
+                    (:d fn-own-view-make-pinned)
                     (:d fn-own-view-make) (:d fn-own-view-make-visible)
                     (:d fn-own-view-withdrawals) (:d fn-own-view-raw)
                     (:d fn-own-view-withdrawn) (:d fn-own-view-keyring)))
@@ -1045,8 +935,7 @@
 ;; visible list grown by one article at its head; the index of the grown list
 ;; is the old index with that article's entries put in (`fn-gidx-build-of-
 ;; cons'), work in the article's memberships and the group count, not in N.
-;; Any other change (a withdrawal, a verdict, a recovery view) rebuilds, as
-;; `fn-midx-refresh' does for the Message-ID index.  The keystone
+;; Any other change (a withdrawal, a verdict, a recovery view) rebuilds.  The keystone
 ;; `fn-gidx-refresh-is-build': from an index that is the build of the old
 ;; list (or no index), the refreshed index IS the build of the new list, so
 ;; every served read over it answers as before.
@@ -1143,15 +1032,13 @@
                (archive (fn-ctl-visible-state-of acceptance visible))
                (withdrawn (fn-ctl-refresh-withdrawn
                            raw old-raw visible old-visible
-                           (fn-own-view-withdrawn old-view)))
-               (index (fn-midx-refresh
-                       (fn-own-view-index old-view) old-visible visible)))
+                           (fn-own-view-withdrawn old-view))))
           (fn-own-make s
                      (fn-own-view-make-visible
                       (mbe :logic (len (fn-sf-records (fn-sn-files s)))
                            :exec (fn-sf-records-count (fn-sn-files s)))
                       (fn-sf-frontier (fn-sn-files s))
-                      archive verdicts index
+                      archive verdicts
                       (fn-gidx-refresh (fn-own-view-group-index old-view)
                                        old-visible visible)
                       withdrawals raw withdrawn
@@ -1175,7 +1062,6 @@
                        (archive (fn-ctl-visible-state prefix nil nil)))
                   (fn-own-view-make-visible
                    0 0 archive nil
-                   (fn-midx-build (fn-state-articles archive))
                    (fn-gidx-build (fn-state-articles archive))
                    nil (fn-state-articles prefix)
                    (fn-ctl-subseq-diff (fn-state-articles prefix)
@@ -1271,7 +1157,6 @@
                       (fn-own-conn-archive conn) (fn-own-conn-config conn)
                       (fn-own-conn-observation conn)
                       (fn-own-conn-verdicts conn)
-                      (fn-own-conn-index conn)
                                        (fn-own-conn-group-index conn) (fn-own-conn-control conn))))
           (fn-own-set-conns o (fn-own-replace-conn next (fn-own-conns o))))
       o)))
@@ -1318,7 +1203,7 @@
              (archive (fn-own-view-archive view))
              (id (fn-own-next-id o))
              (opened (fn-served-open-group-indexed
-                      archive (fn-own-view-index view)
+                      archive
                       (fn-own-view-group-index view)
                       (fn-own-view-verdicts view)
                       *fn-nntp-max-initial-line-octets*
@@ -1331,7 +1216,6 @@
                                      (fn-served-conn-session sconn)
                                      archive (fn-own-config o) (fn-own-clock o)
                                      (fn-own-view-verdicts view)
-                                     (fn-own-view-index view)
                                      (fn-own-view-group-index view) (fn-own-view-control view))))
         (cons (fn-served-result-effects opened)
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
@@ -1405,7 +1289,6 @@
              ; credential, no protected-only bit and no certificate --
              ; and on one box every client is resolved that way.
              (opened (fn-served-open-peer-group-indexed archive
-                                          (fn-own-view-index view)
                                           (fn-own-view-group-index view)
                                           (fn-own-view-verdicts view)
                                           *fn-nntp-max-initial-line-octets*
@@ -1420,7 +1303,6 @@
                                      (fn-served-conn-session sconn)
                                      archive (fn-own-config o) (fn-own-clock o)
                                      (fn-own-view-verdicts view)
-                                     (fn-own-view-index view)
                                      (fn-own-view-group-index view) (fn-own-view-control view))))
         (cons (fn-served-result-effects opened)
               (fn-own-make (fn-own-store o) view (cons conn (fn-own-conns o))
@@ -1771,7 +1653,7 @@
                             (fn-gac-config-with-live (fn-own-conn-config conn)
                                                      (fn-own-config o))
                             (fn-own-conn-observation conn) (fn-own-clock o)
-                            (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
+                            (fn-own-conn-verdicts conn)
                             (fn-own-conn-group-index conn) (fn-own-conn-control conn)
                             (fn-served-pinned-make (fn-own-conn-version conn)
                                                    (fn-own-conn-frontier conn) nil)
@@ -1813,7 +1695,6 @@
                                  (fn-own-conn-config conn)
                                  (fn-own-conn-observation conn)
                                  (fn-served-conn-verdicts sconn)
-                                 (fn-served-conn-index sconn)
                                  (fn-served-conn-group-index sconn)
                                  (fn-served-conn-control sconn)))
          (decision (fn-served-submission effects)))
@@ -1890,7 +1771,6 @@
                                        (fn-own-conn-config conn)
                                        (fn-own-conn-observation conn)
                                        (fn-served-conn-verdicts sconn)
-                                       (fn-served-conn-index sconn)
                                        (fn-served-conn-group-index sconn)
                                        (fn-served-conn-control sconn))))
           (list (fn-served-result-effects result)
@@ -1946,7 +1826,6 @@
                                        (fn-own-conn-config conn)
                                        (fn-own-conn-observation conn)
                                        (fn-own-view-verdicts view)
-                                       (fn-own-view-index view)
                                        (fn-own-view-group-index view) (fn-own-view-control view))))
           (if (fn-own-conn-boundedp next (fn-sn-groups (fn-own-store o)))
               (cons :advanced
@@ -2793,7 +2672,6 @@
                                        (fn-own-conn-observation conn)
                                        (fn-own-clock o)
                                        (fn-own-conn-verdicts conn)
-                                       (fn-own-conn-index conn)
                                        (fn-own-conn-group-index conn) (fn-own-conn-control conn))
                   (fn-own-post-rendering o word)))
                 (if (equal completion :durable)
@@ -2940,7 +2818,6 @@
                                        (fn-own-conn-observation conn)
                                        (fn-own-clock o)
                                        (fn-own-conn-verdicts conn)
-                                       (fn-own-conn-index conn)
                                        (fn-own-conn-group-index conn) (fn-own-conn-control conn))
                   (fn-own-sub-decision sub) d
                   ; A refusal is rendered with the word the host relayed,

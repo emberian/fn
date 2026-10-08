@@ -15,7 +15,7 @@
 (defconst *sit-acfg* (fn-auth-make-config t t t nil))
 
 (defun sit-open (acfg)
-  (fn-sit-opened nil (fn-midx-build nil) nil nil *fn-nntp-max-initial-line-octets*
+  (fn-sit-opened nil nil nil *fn-nntp-max-initial-line-octets*
                  1048576 *sit-config* *sit-observation* *sit-observation* acfg))
 
 (defun sit-implicit (acfg fn-arena)
@@ -99,7 +99,7 @@
 (defmacro sit-keystone-without (hyps)
   `(defthm sit-keystone-weakened
      (implies (and ,@hyps)
-              (let ((c0 (fn-sit-opened archive index buckets verdicts line-limit
+              (let ((c0 (fn-sit-opened archive buckets verdicts line-limit
                                        body-limit config observation injection
                                        acfg)))
                 (and (member-equal

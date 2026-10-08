@@ -37,7 +37,7 @@
 (defconst *rct-session*
   (fn-nntp-set-cursor (fn-nntp-open-session *rct-state*) "fn.two" 7))
 (defconst *rct-pin*
-  (fn-gidx-pin (fn-midx-build *rct-articles*) (fn-gidx-build *rct-articles*)))
+  (fn-gidx-pin (fn-gidx-build *rct-articles*)))
 (defconst *rct-server* (fn-nntp-string-octets "news.example.org"))
 ; Clock observations (DTN milliseconds): the facts' provenance and "now".
 (defconst *rct-obs* (fn-clock-observation 5000 841000000000 1000 t))
@@ -261,19 +261,19 @@
 ; first.
 (assert-event
  (equal (fn-nntp-result-session
-         (in-arena-fn-rcompat-retrieval *sr-arena* *rct-session* *rct-state* (fn-gidx-pin-trie *rct-pin*) :head (fn-nntp-string-list-octets '("2")) *rct-server*))
+         (in-arena-fn-rcompat-retrieval *sr-arena* *rct-session* *rct-state* (fn-state-articles *rct-state*) :head (fn-nntp-string-list-octets '("2")) *rct-server*))
         (fn-nntp-result-session
          (in-arena-fn-nntp-retrieval *sr-arena* *rct-session* *rct-state* :head (fn-nntp-string-list-octets '("2"))))))
 (defconst *rct-no-cursor*
   (fn-nntp-set-cursor (fn-nntp-open-session *rct-state*) "fn.two" nil))
 (assert-event
  (not (equal (fn-nntp-result-session
-              (in-arena-fn-rcompat-retrieval *sr-arena* *rct-no-cursor* *rct-state* (fn-gidx-pin-trie *rct-pin*) :head (fn-nntp-string-list-octets '("7" "x")) *rct-server*))
+              (in-arena-fn-rcompat-retrieval *sr-arena* *rct-no-cursor* *rct-state* (fn-state-articles *rct-state*) :head (fn-nntp-string-list-octets '("7" "x")) *rct-server*))
              (fn-nntp-result-session
               (in-arena-fn-nntp-retrieval *sr-arena* *rct-no-cursor* *rct-state* :head (fn-nntp-string-list-octets '("7" "x")))))))
 (must-fail-checked
  (thm (equal (fn-nntp-result-session
-              (fn-rcompat-retrieval session archive trie kind args server fn-arena))
+              (fn-rcompat-retrieval session archive arts kind args server fn-arena))
              (fn-nntp-result-session
               (fn-nntp-retrieval session archive kind args fn-arena)))))
 

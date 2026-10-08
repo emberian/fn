@@ -285,7 +285,7 @@
   (implies (fn-onb-boundp o) (fn-onb-boundp (fn-own-refresh o)))
   :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-onb-boundp fn-onb-store-boundp fn-onb-node-boundp)
                                   (fn-snb-groups-fitp fn-nntp-nexts-boundedp fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-visible fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-visible fn-gidx-refresh
                                    fn-ctl-refresh-withdrawn)))))
 
 (defthm fn-onb-boundp-of-same-store-and-view

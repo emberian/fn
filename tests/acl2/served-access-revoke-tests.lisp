@@ -46,7 +46,7 @@
                  *sar-articles* 3 nil nil))
 (assert-event (fn-nntp-projectionp *sar-state*))
 (defconst *sar-pin-index*
-  (fn-gidx-pin (fn-midx-build *sar-articles*) (fn-gidx-build *sar-articles*)))
+  (fn-gidx-pin (fn-gidx-build *sar-articles*)))
 (defconst *sar-arena*
   (list (sar-payload "<p@example.invalid>") (sar-payload "<s@example.invalid>")
         (sar-payload "<c@example.invalid>")))

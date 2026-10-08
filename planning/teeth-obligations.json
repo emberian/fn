@@ -1692,14 +1692,6 @@
    "book": "books/nntp-auth.lisp",
    "class": "hand",
    "critical": "authorization",
-   "name": "fn-auth-view-trie-corresponds",
-   "registry": true,
-   "statement_digest": "f8ef2cdd96b1833e63be141efce47866f6b288436b5bf7068c5717ff41e50fdf"
-  },
-  {
-   "book": "books/nntp-auth.lisp",
-   "class": "hand",
-   "critical": "authorization",
    "name": "fn-auth-view-when-unrestricted",
    "registry": true,
    "statement_digest": "384afd018dc354828e9ea3a655325c045fdfb321baf16d0648cd6373a6e1c61e"
@@ -1726,7 +1718,7 @@
    "critical": "authorization",
    "name": "fn-av-scr-auth-delegate-restricted-is-reference",
    "registry": true,
-   "statement_digest": "aeaf6bbc1767bd4b5fed927973c243b299d901652510e61ae399cd9ccaeeea3f"
+   "statement_digest": "c82fa174dddbcd27ffbc8aeb5a37698e808817d159ddd4408f006e9cbae292ad"
   },
   {
    "book": "books/served-available-access.lisp",
@@ -1734,7 +1726,7 @@
    "critical": "authorization",
    "name": "fn-av-scr-dispatch-core-restricted-is-reference",
    "registry": true,
-   "statement_digest": "01832f3eb29c9700d346a19c24dbabd704773cab2de85e9182be9e96cd6c8191"
+   "statement_digest": "06d4279d6a9d7ccc4352b4b6869a58c56f1fe27a191de200b3ff6083b28d17dc"
   },
   {
    "book": "books/article-work.lisp",
@@ -6941,11 +6933,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-ctl-served-status-is-control-status",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-ctl-subseq-diff",
    "registry": true
   },
@@ -8453,7 +8440,7 @@
    "critical": "authorization",
    "name": "fn-gacc-grow-builds",
    "registry": true,
-   "statement_digest": "a5fb4080a4bef7e41b1bf742221a2814c54d672b867283fd4b48ee4ec8332a34"
+   "statement_digest": "bdd856de97d43b34b07d7a41543df8454e0d49211604594484b46e17ebea92c5"
   },
   {
    "book": "books/group-access-cache.lisp",
@@ -15133,11 +15120,6 @@
    "statement_digest": "3e9f04992c71dbdd317ef9b5e4a1aa7543e7210298714e8809b38086ec63b850"
   },
   {
-   "class": "hand",
-   "name": "fn-oix-ocfg-step-keeps-view-indexed",
-   "registry": true
-  },
-  {
    "book_digest": "87ad6cf8c17c8019fc07f281000da1088ba8ae767457dfb0b14a69d90eb36bc4",
    "bounds": [],
    "claim_digest": "520cc298ee8ccf3be4c93429a6244aa7b790d1e679f65f2a71766f7644dce28e",
@@ -16212,11 +16194,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-osi-pidx-prepare-keeps-view-indexed",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-osp-authorized-event-binds-the-post",
    "registry": true
   },
@@ -17215,7 +17192,7 @@
    "critical": "extraction",
    "name": "fn-own-consumed-completion-is-240-or-uncertain",
    "registry": true,
-   "statement_digest": "b1a8385c06ed04d36f657b05c80281179643e8720cf52725e7b6966a220d8b41"
+   "statement_digest": "81a21f88f15601e8563e20742a3306c4957bb1cac5ee9fe3b0d1557ba3850550"
   },
   {
    "class": "hand",
@@ -17477,7 +17454,7 @@
   },
   {
    "book": "books/served-access-revoke.lisp",
-   "book_digest": "5c4a9eeb99ec2adb3ee9ad06128d057b460a8be5dcf4d8dc35786b3903b502a0",
+   "book_digest": "1652336763c6954c264bf3b5a3d6614a34793b956e1de9677d62ff428cf4347c",
    "bounds": [],
    "claim_digest": "3e4f350646a4ac6fa1cc4d158d05cea5b24c879b3ae93933ab853f28624abb55",
    "class": "generated",
@@ -17499,7 +17476,7 @@
   },
   {
    "book": "books/served-access-revoke.lisp",
-   "book_digest": "5c4a9eeb99ec2adb3ee9ad06128d057b460a8be5dcf4d8dc35786b3903b502a0",
+   "book_digest": "1652336763c6954c264bf3b5a3d6614a34793b956e1de9677d62ff428cf4347c",
    "bounds": [],
    "claim_digest": "418af6641ff3972038732f1087d7fe8b55fab1893b29a4fa91f5f4e78752c445",
    "class": "generated",
@@ -17521,7 +17498,7 @@
   },
   {
    "book": "books/served-access-revoke.lisp",
-   "book_digest": "5c4a9eeb99ec2adb3ee9ad06128d057b460a8be5dcf4d8dc35786b3903b502a0",
+   "book_digest": "1652336763c6954c264bf3b5a3d6614a34793b956e1de9677d62ff428cf4347c",
    "bounds": [],
    "claim_digest": "06bc54296fcab22c15bdd275552fc8ec320323642b490b40e4d934620e611262",
    "class": "generated",
@@ -18596,15 +18573,7 @@
    "critical": "identity-binding",
    "name": "fn-pidx-existing-action-is-store-existing-action",
    "registry": true,
-   "statement_digest": "ad61b21e379fb120ab8e2eee0469e450822ad343d5c7ded4674e209ca54b2f58"
-  },
-  {
-   "book": "books/post-identity-index.lisp",
-   "class": "hand",
-   "critical": "identity-binding",
-   "name": "fn-pidx-find-article-is-find-article",
-   "registry": true,
-   "statement_digest": "3ea97bb50bc95f71340b1500a5f4d5ae9536540c1301e37f52435f1dc85b8167"
+   "statement_digest": "791154f7ca7728c81a49d1e2cba9d669b55a8c67dcb7f08c5d444e22e6ee01f3"
   },
   {
    "book": "books/post-identity-index.lisp",
@@ -18620,7 +18589,7 @@
    "critical": "identity-binding",
    "name": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare",
    "registry": true,
-   "statement_digest": "6f21bcf35b54cc76c02bc3459019e090c58de22b7d73c29e91b1257277608f7d"
+   "statement_digest": "341f992e158b12655e21decb9d907b21381ce80cda1bba2dbe5353e4210bd6cb"
   },
   {
    "book": "books/post-identity-index.lisp",
@@ -18628,7 +18597,7 @@
    "critical": "identity-binding",
    "name": "fn-pidx-view-okp-of-live-owner",
    "registry": true,
-   "statement_digest": "574b48a9a103774ff39e0cf22ead104791d11637223c90eee1ea7490820db492"
+   "statement_digest": "3177fc0f2beb3422d880670dfaa106463553e90dc75d40116e05fd0ad2d0c5f6"
   },
   {
    "book": "books/peer-invite.lisp",
@@ -18921,11 +18890,6 @@
   {
    "class": "hand",
    "name": "fn-pix-history-hasp-is-peer-history-hasp",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-pix-peer-delegate-pinned-is-peer-delegate-pinned",
    "registry": true
   },
   {
@@ -19642,7 +19606,7 @@
    "registry": true
   },
   {
-   "book_digest": "c3dbce88511b594ab28d69ff48dfdfe987fecbc4b0193005feeeabb586b1d9c2",
+   "book_digest": "504b65ebb1572be1ba92a4e480ae189fe9454c4ef9034fddd7d313618dc0e481",
    "bounds": [],
    "claim_digest": "d66624b9b59102974e82a0f3cefcf4cfc26e3c8604af7ed0629de92d5a66c57e",
    "class": "generated",
@@ -19668,7 +19632,7 @@
    "registry": true
   },
   {
-   "book_digest": "c3dbce88511b594ab28d69ff48dfdfe987fecbc4b0193005feeeabb586b1d9c2",
+   "book_digest": "504b65ebb1572be1ba92a4e480ae189fe9454c4ef9034fddd7d313618dc0e481",
    "bounds": [],
    "claim_digest": "0e41a6459e85c7c3d658f49224c4ab1326b57a50c701735c6670f395d710bf5e",
    "class": "generated",
@@ -21158,7 +21122,7 @@
    "critical": "extraction",
    "name": "fn-rdc-selection-establishes",
    "registry": true,
-   "statement_digest": "a3921359792a45f25371a42b84d958c73fe0b574cae11c37422fa3019b4e3deb"
+   "statement_digest": "0b1c9145bce47402aab42da9cfc2f28c817c1ef78755fe6ceb7353c282dbfc55"
   },
   {
    "class": "hand",
@@ -23243,9 +23207,9 @@
    "registry": true
   },
   {
-   "book_digest": "8191e65cb36434bcd466ecf238792bcede5d46d7678f809ad1237e7c20cdadd4",
+   "book_digest": "54c9f1d68342349be0d02fcbd8bd0959899144e7ad9c5e0713400a331dbe3bc7",
    "bounds": [],
-   "claim_digest": "26cb44179e2baf60fd7a6831b7209ef1a4b932d8cbdb00f9216a14ec71feb469",
+   "claim_digest": "3edb3aff63b5d807cfd6f0bf02d3c7cfae6059b3faee991ac7cf6411b28b3822",
    "class": "generated",
    "mutations": "edits:1",
    "name": "fn-scar-ocfg-read-step-is-ocfg-read-step",
@@ -23262,9 +23226,9 @@
    "witness": "executable"
   },
   {
-   "book_digest": "8191e65cb36434bcd466ecf238792bcede5d46d7678f809ad1237e7c20cdadd4",
+   "book_digest": "54c9f1d68342349be0d02fcbd8bd0959899144e7ad9c5e0713400a331dbe3bc7",
    "bounds": [],
-   "claim_digest": "f6650cc16b432c85bcb1d85b6c6010aac2710a4593a8342cafd097f738753f3f",
+   "claim_digest": "62980ab9684fb366d8c29ab43f379497361af1a14afc20e0f8d89a7f68d26553",
    "class": "generated",
    "mutations": "edits:1",
    "name": "fn-scar-ocfg-read-step-is-reference-under-ocl-relation",
@@ -23286,9 +23250,9 @@
    "registry": true
   },
   {
-   "book_digest": "8191e65cb36434bcd466ecf238792bcede5d46d7678f809ad1237e7c20cdadd4",
+   "book_digest": "54c9f1d68342349be0d02fcbd8bd0959899144e7ad9c5e0713400a331dbe3bc7",
    "bounds": [],
-   "claim_digest": "8e85f6c26f6a532ee45bd434aea3af4fbe9b5f0a07a82686c26fe9775cc732b0",
+   "claim_digest": "e7e85641e8d29f15a7edcdd71994dc2409a093781a5ed1f57593f8fda81cf56e",
    "class": "generated",
    "mutations": "edits:1",
    "name": "fn-scar-own-read-step-full-is-own-read-step-full",
@@ -27293,7 +27257,7 @@
    "statement_digest": "5a4211bf2743a6ac3bc9bfb2a76cade6ff175ce1a072d96a263c9c7d717f5477"
   },
   {
-   "book_digest": "103aced50687ab637eff56205e836e7fa20aa867830c4566051557117edfbc47",
+   "book_digest": "84ab876a94c62a3d0496f1ce535f219afa566bb230c12aaec6312fd0c7d45ef3",
    "bounds": [],
    "claim_digest": "e1d87a30b257b4a411a8022b01254fa1c983b782280fef9a731811d4c0e876d7",
    "class": "generated",
@@ -27314,7 +27278,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "103aced50687ab637eff56205e836e7fa20aa867830c4566051557117edfbc47",
+   "book_digest": "84ab876a94c62a3d0496f1ce535f219afa566bb230c12aaec6312fd0c7d45ef3",
    "bounds": [],
    "claim_digest": "83f02e2fc4d8445fa6330ef0f1a97156f4d849d5624b19ec7e4fb01ef1b36cfe",
    "class": "generated",
@@ -27335,7 +27299,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "103aced50687ab637eff56205e836e7fa20aa867830c4566051557117edfbc47",
+   "book_digest": "84ab876a94c62a3d0496f1ce535f219afa566bb230c12aaec6312fd0c7d45ef3",
    "bounds": [],
    "claim_digest": "b0f47356c3cf9c4d4b756d3a8c5c36bbc54e054caed41d250c913e58c6b638f4",
    "class": "generated",

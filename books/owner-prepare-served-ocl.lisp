@@ -600,8 +600,7 @@
 ; (PRF-191, PRF-242).
 (defthm fn-psrv-prepare-preserves-invariant
   (implies (and (fn-lgoc-invariantp oc)
-                (fn-prc-carryp carry)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc)))
+                (fn-prc-carryp carry))
            (fn-lgoc-invariantp (fn-psrv-prepare oc record budget carry)))
   :hints (("Goal"
            :cases ((and (fn-psrv-event-servedp (fn-ocfg-config oc) record)

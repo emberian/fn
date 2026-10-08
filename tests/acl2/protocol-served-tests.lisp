@@ -21,12 +21,11 @@
 ;      answer (221, 211, 411, 224; OVER's cursor arm answers a cursor only
 ;      with no Xref server named: c07's spot-check); and the composed subject
 ;      on BOTH routes reaches each declared row (fn-scr-command, the
-;      unrestricted route's command layer; fn-pix-command-pinned, the
+;      unrestricted route's command layer; fn-nntp-command-pinned, the
 ;      restricted route's dispatcher): a reply, never the 500 of an
 ;      unrecognized command (the HELP closure's converse, by evaluation).
 ;  (2) removal witnesses: view-articles (the pinned archive served at a view
-;      the pin does not name: reachable); trie-correspondence (an index whose
-;      trie is the build of another view: logical); statep, pin-correspondence,
+;      the pin does not name: reachable); statep, pin-correspondence,
 ;      fresh and columns :deferred (no ground state outside each is built
 ;      here; the weakened theorems are registered as must-fails, which is not
 ;      a counterexample).
@@ -84,8 +83,7 @@
                   (fn-cat-view-articles ,v *pst-a* *pst-c*) 0 nil nil))
 
 (defmacro pst-index (v)
-  `(fn-gidx-pin (fn-midx-build (fn-cat-view-articles ,v *pst-a* *pst-c*))
-                (fn-gidx-build (fn-cat-view-articles ,v *pst-a* *pst-c*))))
+  `(fn-gidx-pin (fn-gidx-build (fn-cat-view-articles ,v *pst-a* *pst-c*))))
 
 (defconst *pst-session* (fn-nntp-make-session t "fn.test" 1 t))
 (defmacro pst-tokens (line) `(fn-nntp-tokenize (fn-nntp-string-octets ,line)))
@@ -138,8 +136,6 @@
          (fn-statep arch)
          ;; pin-correspondence
          (fn-gidx-pin-correspondencep index arch)
-         ;; trie-correspondence
-         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          ;; fresh
          (fn-cnx-freshp *pst-c*)
          ;; columns
@@ -183,7 +179,7 @@
 ;; Composed reachability on BOTH routes: each declared row's first :teeth
 ;; line draws a reply other than 500 from the unrestricted route's command
 ;; layer (fn-scr-command) and from the restricted route's dispatcher
-;; (fn-pix-command-pinned).
+;; (fn-nntp-command-pinned).
 (defun pst-first-lines (names rows)
   (declare (xargs :verify-guards nil))
   (if (consp names)
@@ -213,7 +209,7 @@
                              3 fn-arena fn-cat)))
            (pst-not-500
             (fn-nntp-result-effects
-             (fn-pix-command-pinned *pst-session* arch index nil *pst-env-x*
+             (fn-nntp-command-pinned *pst-session* arch index nil *pst-env-x*
                                     (fn-nntp-tokenize (fn-nntp-string-octets (car lines)))
                                     fn-arena)))
            (pst-reaches (cdr lines) arch index fn-arena fn-cat))
@@ -248,7 +244,7 @@
     (and (pst-not-500 (fn-nntp-result-effects
                        (fn-scr-command session arch index nil env tokens 3 fn-arena fn-cat)))
          (pst-not-500 (fn-nntp-result-effects
-                       (fn-pix-command-pinned session arch index nil env tokens fn-arena))))))
+                       (fn-nntp-command-pinned session arch index nil env tokens fn-arena))))))
 
 (defun pst-result-code (result)
   (declare (xargs :verify-guards nil))
@@ -267,7 +263,6 @@
     (and (equal (fn-state-articles arch) (fn-cat-view-articles 3 *pst-a* *pst-c*))
          (fn-statep arch)
          (fn-gidx-pin-correspondencep index arch)
-         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *pst-c*)
          (fn-scol-okp *pst-a* *pst-c*)
          (pst-agree-all *pst-env-x* *pst-dc03-success-lines* arch index *pst-a* *pst-c*)
@@ -348,7 +343,6 @@
     (and (equal (fn-state-articles arch) (fn-cat-view-articles 3 *pst-a* *pst-c*))
          (fn-statep arch)
          (fn-gidx-pin-correspondencep index arch)
-         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *pst-c*)
          (fn-scol-okp *pst-a* *pst-c*)
          (equal (car (pst-tokens "HDR Subject 1-3")) (fn-nntp-string-octets "HDR"))
@@ -390,7 +384,6 @@
                   (fn-cat-view-articles 3 *pst-a* *pst-c-withdrawn*) 0 nil nil))
 (defmacro pst-withdrawn-index ()
   `(fn-gidx-pin-with-control
-     (fn-midx-build (fn-cat-view-articles 3 *pst-a* *pst-c-withdrawn*))
      (fn-gidx-build (fn-cat-view-articles 3 *pst-a* *pst-c-withdrawn*))
      (fn-ctl-pin (list (cadr (fn-cat-view-articles 3 *pst-a* *pst-c*))) nil)))
 (defconst *pst-withdrawn-lines*
@@ -402,7 +395,6 @@
     (and (equal (fn-state-articles arch) (fn-cat-view-articles 3 *pst-a* *pst-c-withdrawn*))
          (fn-statep arch)
          (fn-gidx-pin-correspondencep index arch)
-         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *pst-c-withdrawn*)
          (fn-scol-okp *pst-a* *pst-c-withdrawn*)
          (fn-nntp-number-withdrawn-p-cat *pst-session* index (fn-nntp-string-octets "2")
@@ -455,7 +447,6 @@
     (and (equal (fn-state-articles arch) (fn-cat-view-articles 3 *pst-a* *pst-c*))
          (fn-statep arch)
          (fn-gidx-pin-correspondencep index arch)
-         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *pst-c*)
          (fn-scol-okp *pst-a* *pst-c*)
          (fn-nntp-envp *pst-discovery-env-x*)
@@ -496,7 +487,7 @@
                 (fn-nntp-date-response *pst-session* *pst-discovery-env-x*))
          (equal (pst-served-at-session *pst-session* *pst-discovery-env-x* "DATE"
                                        arch index *pst-a* *pst-c*)
-                (fn-pix-command-pinned *pst-session* arch index nil *pst-discovery-env-x*
+                (fn-nntp-command-pinned *pst-session* arch index nil *pst-discovery-env-x*
                                        (pst-tokens "DATE") *pst-a*))
          (equal (fn-nntp-result-effects (pst-served-at-session *pst-session* *pst-discovery-env-x*
                                          "DATE" arch index *pst-a* *pst-c*))
@@ -528,7 +519,6 @@
     (and ;; retained
          (fn-statep arch)
          (fn-gidx-pin-correspondencep index arch)
-         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *pst-c*)
          (fn-scol-okp *pst-a* *pst-c*)
          ;; removed: served at view 2, which the pin does not name
@@ -549,8 +539,6 @@
         (defthm fn-proto-archive-command-cat-is-pinned-without-view-articles
           (implies (and (fn-statep archive)
                         (fn-gidx-pin-correspondencep index archive)
-                        (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                                 (fn-state-articles archive))
                         (fn-cnx-freshp fn-cat)
                         (fn-scol-okp fn-arena fn-cat))
                    (equal (fn-nntp-result-session
@@ -561,38 +549,12 @@
                             session archive index verdicts env keyword args fn-arena))))
           :hints (("Goal" :by fn-proto-archive-command-cat-is-pinned-by-rows)))))
 
-;; trie-correspondence, logical: an index whose trie is the build of view 2
-;; (no row for <c@x>) with the buckets of view 3; STAT <c@x> (an undeclared
-;; row, served by the fallthrough's catalog arm) is found by the catalog and
-;; not by the pin's trie.
-(defthm pst-without-trie-correspondence
-  (let ((arch (pst-arch 3))
-        (index (fn-gidx-pin (fn-midx-build (fn-cat-view-articles 2 *pst-a* *pst-c*))
-                            (fn-gidx-build (fn-cat-view-articles 3 *pst-a* *pst-c*)))))
-    (and ;; retained
-         (equal (fn-state-articles arch) (fn-cat-view-articles 3 *pst-a* *pst-c*))
-         (fn-statep arch)
-         (fn-gidx-pin-correspondencep index arch)
-         (fn-cnx-freshp *pst-c*)
-         (fn-scol-okp *pst-a* *pst-c*)
-         ;; removed
-         (not (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch)))
-         ;; the conclusion fails
-         (not (equal (fn-nntp-result-effects
-                      (pst-cat-at *pst-env-x* "STAT <c@x>" 3 arch index *pst-a* *pst-c*))
-                     (fn-nntp-result-effects
-                      (pst-pinned-of *pst-env-x* "STAT <c@x>" arch index *pst-a*))))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-scol-okp fn-midx-correspondencep))))
-
 ;; statep, pin-correspondence, fresh, columns: :deferred.
 (local (must-fail-checked
         (defthm fn-proto-archive-command-cat-is-pinned-without-pin-correspondence
           (implies (and (equal (fn-state-articles archive)
                                (fn-cat-view-articles v fn-arena fn-cat))
                         (fn-statep archive)
-                        (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                                 (fn-state-articles archive))
                         (fn-cnx-freshp fn-cat)
                         (fn-scol-okp fn-arena fn-cat))
                    (equal (fn-ovw-expand

@@ -324,11 +324,16 @@
         ; the arena by the open; the catalog commits those rows and reads no
         ; byte and seals nothing (fn-sca-load-held-rows).
         ; THE SWITCH: under the ring's key (fn-sca-load-held-rows-keyed-is-
-        ; load-held-rows: the same catalog, the table keyed).
+        ; load-held-rows: the same catalog, the table keyed).  The visible-set
+        ; test of each row reads a Message-ID trie built here from the view's
+        ; visible list and dropped with the load (the view holds none).
         (let* ((state (fn-orc-writer-enter state))
                (fn-cat (fn-sca-load-held-rows-keyed key
                                                    (fn-sf-records (fn-sn-files store))
-                                                   (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
+                                                   (fn-midx-build
+                                                    (fn-state-articles
+                                                     (fn-own-view-archive
+                                                      (fn-own-view (fn-ocfg-owner oc)))))
                                                    fn-arena fn-cat)))
           (let (; Stage 2b: the history stobj IS the installed store's history
               ; (KEYSTONE fn-hist-load-is-the-history,
