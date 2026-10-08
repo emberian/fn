@@ -12,6 +12,7 @@
 (include-book "../../books/store-budget-stored-post")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 
 (defconst *sbsp-groups* '("fn.letters" "fn.test"))
 ; The Store's live configuration (the default serves both groups).
@@ -193,3 +194,39 @@
 (defconst *sbsp-own-bad* (sbsp-owner *sbsp-oc* *sbsp-w2* nil))
 (assert-event (equal (nth 0 *sbsp-own-bad*) nil))
 (must-fail-checked (assert-event (nth 2 *sbsp-own-bad*)))
+
+; Native rendering of the logical AFTER snapshot; defteeth proves the
+; unconditional equality before it executes any witness or removal.
+(defun sbsp-conclusion (config s w fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((next (fn-psrv-store-prepare-next config s w (fn-arena-count fn-arena)))
+         (fn-arena (if (equal next s) fn-arena
+                     (fn-arena-seal-list (fn-record-payload w) fn-arena))))
+    (mv (fn-sbud-store-extents-okp next fn-arena) fn-arena)))
+
+(defteeth fn-psrv-store-prepare-next-keeps-the-stored-octets
+  :subject fn-psrv-store-prepare-next
+  :claim (((stored (fn-sbud-store-extents-okp s fn-arena)))
+    (let* ((next (fn-psrv-store-prepare-next config s w (fn-arena-count fn-arena)))
+           (after (if (equal next s) fn-arena
+                    (fn-arena-seal-list (fn-record-payload w) fn-arena))))
+      (fn-sbud-store-extents-okp next after)))
+  :witness ((config *sbsp-config*) (s *sbsp-s4*) (w *sbsp-w2*)
+            (prior (list *sbsp-w1*)))
+  :stobjs ((fn-arena (fn-intern-events prior nil 0 fn-arena)))
+  :stobj-checks
+  (((let* ((next (fn-psrv-store-prepare-next config s w (fn-arena-count fn-arena)))
+           (after (if (equal next s) fn-arena
+                    (fn-arena-seal-list (fn-record-payload w) fn-arena))))
+      (fn-sbud-store-extents-okp next after))
+    (sbsp-conclusion config s w fn-arena)
+    :hints (("Goal" :in-theory '(sbsp-conclusion)))))
+  :breaks ((stored ((prior nil))))
+  :mutations
+  ((unsealed
+    (:conclusion
+      (let ((next (fn-psrv-store-prepare-next config s w (fn-arena-count fn-arena))))
+        (fn-sbud-store-extents-okp next fn-arena)))
+    () :fault "The host publishes the prepared store without sealing its payload.")))
+
+(defteeth-check (fn-psrv-store-prepare-next-keeps-the-stored-octets))

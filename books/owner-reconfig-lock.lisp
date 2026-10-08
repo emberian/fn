@@ -11,10 +11,7 @@
 ;      record is staged).
 ;   L2 fn-orl-staged-record-holds-the-configuration: while a record is staged
 ;      (and, as staging requires, no article transaction is pending), every
-;      event but :complete whose connection id, for a :close, is a natural
-;      (the host's ids are; fn-ocfg-close compares the closing id with the
-;      pending slot, so a :close of NIL with nothing pending would match it)
-;      keeps the live configuration, the staged record
+;      event but :complete keeps the live configuration, the staged record
 ;      and the empty pending slot.  :begin and :take are refused outright
 ;      (fn-ocfg-step), and a second :reconfigure is refused (:busy).
 ;   L3 fn-orl-reader-events-keep-the-authorization: across the events a
@@ -48,8 +45,7 @@
 (defthm fn-orl-staged-record-holds-the-configuration
   (implies (and (fn-ocfg-staged oc)
                 (not (fn-own-pending (fn-ocfg-owner oc)))
-                (not (equal (car event) :complete))
-                (implies (equal (car event) :close) (natp (cadr event))))
+                (not (equal (car event) :complete)))
            (let ((next (fn-ocfg-step oc event fn-arena)))
              (and (equal (fn-ocfg-config next) (fn-ocfg-config oc))
                   (equal (fn-ocfg-staged next) (fn-ocfg-staged oc))
@@ -70,26 +66,24 @@
        fn-own-enqueue)))))
 
 ; Readers retain the entire store, including the authorization history.
-(local
- (defthm fn-orl-reader-events-preserve-store
-   (implies (member-equal (car event) '(:open :close :read :octets :fault))
-            (equal (fn-own-store (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
-                   (fn-own-store (fn-ocfg-owner oc))))
-   :hints (("Goal" :in-theory
-     (union-theories (theory 'minimal-theory)
-      '(car-cons cdr-cons member-equal
-        fn-ocfg-owner-of-fn-ocfg-make fn-own-store-of-fn-own-make
-        fn-ocfg-step fn-ocfg-open fn-ocfg-close fn-ocfg-read
-        fn-ocfg-read-step fn-ocfg-fault fn-ocfg-with-read-owner
-        fn-own-open fn-own-reader-context fn-own-set-conns fn-own-close
-        fn-own-fault fn-own-read-full fn-own-read-step-full
-        fn-own-finish-read fn-own-enqueue))))))
+(defthm fn-orl-reader-events-preserve-store
+  (implies (member-equal (car event) '(:open :close :read :octets :fault))
+           (equal (fn-own-store (fn-ocfg-owner (fn-ocfg-step oc event fn-arena)))
+                  (fn-own-store (fn-ocfg-owner oc))))
+  :hints (("Goal" :in-theory
+    (union-theories (theory 'minimal-theory)
+     '(car-cons cdr-cons member-equal
+       fn-ocfg-owner-of-fn-ocfg-make fn-own-store-of-fn-own-make
+       fn-ocfg-step fn-ocfg-open fn-ocfg-close fn-ocfg-read
+       fn-ocfg-read-step fn-ocfg-fault fn-ocfg-with-read-owner
+       fn-own-open fn-own-reader-context fn-own-set-conns fn-own-close
+       fn-own-fault fn-own-read-full fn-own-read-step-full
+       fn-own-finish-read fn-own-enqueue)))))
 
 (defthm fn-orl-reader-events-keep-the-authorization
   (implies (and (fn-ocfg-staged oc)
                 (not (fn-own-pending (fn-ocfg-owner oc)))
                 (member-equal (car event) '(:open :close :read :octets :fault))
-                (implies (equal (car event) :close) (natp (cadr event)))
                 (fn-oclc-live-authorizep oc))
            (fn-oclc-live-authorizep (fn-ocfg-step oc event fn-arena)))
   :hints (("Goal" :in-theory

@@ -24,7 +24,7 @@ with it:
   (`generated`: a defteeth/defkeystone form declares its teeth, read from
   the form, never from a bare table; `hand`: none does), the owner book and
   that book's digest, the claim's digest, the subject, the witness mode, the
-  removal kinds (reachable / logical / lemma), the mutation class (edits,
+  removal kinds (reachable / logical / lemma / assumption), the mutation class (edits,
   not-applicable, deferred), each bound (attained, derived), whether an owed
   row is met (claim, subject and bounds EQUAL), whether the owner book is
   CERTIFIED at its digest (green_check's verdict from an archived manifest:
@@ -311,11 +311,11 @@ def obligations(tree: ledger.Tree, certified: dict[str, bool] | None = None) -> 
             entry["book_digest"] = _digest((ROOT / book).read_text(encoding="utf-8"))
             entry["claim_digest"] = _digest(ledger.source_text(parts["claim"]))
             entry["subject"] = str(parts["subject"]) if parts["subject"] is not None else None
-            entry["witness"] = "lemma" if ":witness-lemma" in parts["options"] else "executable"
-            kinds = [str(ledger._dk_witness_kind(ledger.keyword_plist(
-                parts["breaks"][str(label)][2:]))).lstrip(":") for label in parts["labels"]]
+            entry["witness"] = ("instance" if ":instances" in parts["options"] else
+                                "lemma" if ":witness-lemma" in parts["options"] else "executable")
+            kinds = [str(ledger._dk_removal_kind(parts["breaks"][str(label)])).lstrip(":") for label in parts["labels"]]
             entry["removals"] = {kind: kinds.count(kind)
-                                 for kind in ("reachable", "logical", "lemma")}
+                                 for kind in ("reachable", "logical", "lemma", "assumption")}
             entry["mutations"] = (parts["exemption"].lstrip(":") if parts["exemption"]
                                   else f"edits:{len(parts['mutations'])}")
             entry["bounds"] = [{"label": str(e[0]), "kind": kind.lstrip(":"),
@@ -327,6 +327,7 @@ def obligations(tree: ledger.Tree, certified: dict[str, bool] | None = None) -> 
             entry["complete"] = bool(
                 entry["certified"]
                 and entry["removals"]["logical"] == 0 and entry["removals"]["lemma"] == 0
+                and entry["removals"]["assumption"] == 0
                 and entry["witness"] == "executable"
                 and entry["mutations"].startswith("edits:")
                 and all(b["derived"] for b in entry["bounds"])
@@ -474,7 +475,9 @@ def manifest_counts(current: dict[str, dict]) -> str:
             f"debt: {sum(1 for e in generated if e.get('mutations') == 'deferred')} deferred, "
             f"{sum(1 for e in generated if e.get('mutations') == 'not-applicable')} not-applicable, "
             f"{sum(1 for e in generated if e.get('removals', {}).get('logical'))} with logical "
-            f"removals, {sum(1 for e in generated if e.get('witness') == 'lemma')} lemma witnesses, "
+            f"removals, {sum(1 for e in generated if e.get('removals', {}).get('assumption'))} with assumption "
+            f"removals, {sum(1 for e in generated if e.get('witness') == 'instance')} instance witnesses, "
+            f"{sum(1 for e in generated if e.get('witness') == 'lemma')} lemma witnesses, "
             f"{sum(1 for e in generated for b in e.get('bounds', []) if not b['derived'])} underived "
             f"bounds, {sum(1 for e in generated for b in e.get('bounds', []) if not b['attained'])} "
             f"unattained bounds, {sum(1 for e in current.values() if e.get('owed_by'))} owed "

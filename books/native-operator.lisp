@@ -2341,17 +2341,12 @@ when that store already exists is `fn-native-operator-init-outcome'."
                  (equal (fn-nop-parse-command words config argv)
                         (fn-nop-parse-store (cdr words) config))))
    :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-nop-parse-command fn-nop-usage)
-                                   (fn-nop-result
-                                    fn-native-operator-result-status
-                                    fn-native-operator-result-command
-                                    fn-native-operator-result-arguments
-                                    fn-nop-parse-init fn-nop-parse-post
-                                    fn-nop-parse-principal
-                                    fn-nop-parse-administration
-                                    fn-nop-parse-store fn-nop-parse-run
-                                    fn-nop-help-text fn-nop-help-subjectp
-                                    fn-nop-profile-decimal))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '(fn-nop-parse-command fn-nop-usage fn-nop-refused fn-nop-result-accessors
+                             fn-nop-parse-init-command fn-nop-parse-post-command fn-nop-parse-principal-command
+                             fn-nop-parse-administration-command fn-nop-parse-store-command
+                             fn-nop-parse-peering fn-nop-parse-moderate fn-nop-moderate-plan
+                             fn-nop-parse-keys fn-nop-parse-carry fn-nop-parse-tls fn-nop-parse-account))))))
 
 (local
  (defthm fn-nop-parse-store-compact-words
@@ -2420,22 +2415,11 @@ when that store already exists is `fn-native-operator-init-outcome'."
                   :compact)
            (equal (fn-nop-argument-texts argv) '("store" "compact")))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-usage)
-                                  (fn-nop-result
-                                   fn-native-operator-result-native-action
-                                   fn-native-operator-result-status
-                                   fn-native-operator-result-command
-                                   fn-native-operator-result-arguments
-                                   fn-nop-parse-command fn-nop-argument-texts
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep
-                                   fn-nntp-response-text-true-listp fn-cp-idp true-listp
-                                   fn-nntp-article-idp-is-consp fn-nntp-response-textp
-                                   fn-cp-id-length-bound fn-nntp-clean-line-is-response-text))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '(fn-native-operator-run fn-native-operator-command-preflight
+                             fn-native-operator-preflight-needs-config-p fn-nop-usage
+                             fn-nop-native-action-of-unaccepted fn-nop-result-accessors
+                             (:executable-counterpart fn-native-operator-result-native-action)))
            :use ((:instance fn-nop-parse-command-compact-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
@@ -2533,22 +2517,11 @@ when that store already exists is `fn-native-operator-init-outcome'."
                   :checkpoint)
            (equal (fn-nop-argument-texts argv) '("store" "checkpoint")))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-usage)
-                                  (fn-nop-result
-                                   fn-native-operator-result-native-action
-                                   fn-native-operator-result-status
-                                   fn-native-operator-result-command
-                                   fn-native-operator-result-arguments
-                                   fn-nop-parse-command fn-nop-argument-texts
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep
-                                   fn-nntp-response-text-true-listp fn-cp-idp true-listp
-                                   fn-nntp-article-idp-is-consp fn-nntp-response-textp
-                                   fn-cp-id-length-bound fn-nntp-clean-line-is-response-text))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '(fn-native-operator-run fn-native-operator-command-preflight
+                             fn-native-operator-preflight-needs-config-p fn-nop-usage
+                             fn-nop-native-action-of-unaccepted fn-nop-result-accessors
+                             (:executable-counterpart fn-native-operator-result-native-action)))
            :use ((:instance fn-nop-parse-command-checkpoint-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
@@ -2646,22 +2619,11 @@ when that store already exists is `fn-native-operator-init-outcome'."
                   :reclaim)
            (equal (fn-nop-argument-texts argv) '("store" "reclaim")))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-usage)
-                                  (fn-nop-result
-                                   fn-native-operator-result-native-action
-                                   fn-native-operator-result-status
-                                   fn-native-operator-result-command
-                                   fn-native-operator-result-arguments
-                                   fn-nop-parse-command fn-nop-argument-texts
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep
-                                   fn-nntp-response-text-true-listp fn-cp-idp true-listp
-                                   fn-nntp-article-idp-is-consp fn-nntp-response-textp
-                                   fn-cp-id-length-bound fn-nntp-clean-line-is-response-text))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '(fn-native-operator-run fn-native-operator-command-preflight
+                             fn-native-operator-preflight-needs-config-p fn-nop-usage
+                             fn-nop-native-action-of-unaccepted fn-nop-result-accessors
+                             (:executable-counterpart fn-native-operator-result-native-action)))
            :use ((:instance fn-nop-parse-command-reclaim-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
@@ -2759,22 +2721,11 @@ when that store already exists is `fn-native-operator-init-outcome'."
                   :reclaim-dry-run)
            (equal (fn-nop-argument-texts argv) '("store" "reclaim" "--dry-run")))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-usage)
-                                  (fn-nop-result
-                                   fn-native-operator-result-native-action
-                                   fn-native-operator-result-status
-                                   fn-native-operator-result-command
-                                   fn-native-operator-result-arguments
-                                   fn-nop-parse-command fn-nop-argument-texts
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep
-                                   fn-nntp-response-text-true-listp fn-cp-idp true-listp
-                                   fn-nntp-article-idp-is-consp fn-nntp-response-textp
-                                   fn-cp-id-length-bound fn-nntp-clean-line-is-response-text))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '(fn-native-operator-run fn-native-operator-command-preflight
+                             fn-native-operator-preflight-needs-config-p fn-nop-usage
+                             fn-nop-native-action-of-unaccepted fn-nop-result-accessors
+                             (:executable-counterpart fn-native-operator-result-native-action)))
            :use ((:instance fn-nop-parse-command-reclaim-dry-run-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
@@ -2872,22 +2823,11 @@ when that store already exists is `fn-native-operator-init-outcome'."
                   :reclaim-recorded)
            (equal (fn-nop-argument-texts argv) '("store" "reclaim" "--recorded")))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-native-operator-run
-                                   fn-native-operator-command-preflight
-                                   fn-native-operator-preflight-needs-config-p
-                                   fn-nop-usage)
-                                  (fn-nop-result
-                                   fn-native-operator-result-native-action
-                                   fn-native-operator-result-status
-                                   fn-native-operator-result-command
-                                   fn-native-operator-result-arguments
-                                   fn-nop-parse-command fn-nop-argument-texts
-                                   fn-nop-argvp fn-native-config-load
-                                   fn-ncfg-ascii-octetsp
-                                   fn-native-config-operator-availablep
-                                   fn-nntp-response-text-true-listp fn-cp-idp true-listp
-                                   fn-nntp-article-idp-is-consp fn-nntp-response-textp
-                                   fn-cp-id-length-bound fn-nntp-clean-line-is-response-text))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                             '(fn-native-operator-run fn-native-operator-command-preflight
+                             fn-native-operator-preflight-needs-config-p fn-nop-usage
+                             fn-nop-native-action-of-unaccepted fn-nop-result-accessors
+                             (:executable-counterpart fn-native-operator-result-native-action)))
            :use ((:instance fn-nop-parse-command-reclaim-recorded-action-words
                             (words (fn-nop-argument-texts argv))
                             (config (fn-ncfg-second (fn-native-config-load config)))
