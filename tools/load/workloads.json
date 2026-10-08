@@ -766,7 +766,8 @@
    ],
    "hooks": [
     "planning/evidence/load/hooks/f4-index.lisp"
-   ]
+   ],
+   "sbcl_user_args": ""
   },
   "fault-index-omission": {
    "about": "P1-DURABLE; P2-IDENTITY: a plausible persisted index omitting an existing article must not hide accepted content. Owner S. Process death only; assumes fdatasync durability of the store filesystem. Not implemented because the g41/dev store has no persisted Message-ID index: open rebuilds fn-cei and the catalog msgid table from checkpoint records (books/store-checkpoint-open.lisp:206); waits for paged checkpoint/catalog adoption (s-pck-2c-host, PCK-ADOPT).",

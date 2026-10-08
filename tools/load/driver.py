@@ -247,6 +247,7 @@ class Node:
     def __init__(self, target, work, flags, groups, sbcl_args, hooks, gc_log, extra_env, interval, heap_mode="decided", max_connections=None):
         self.target, self.work, self.flags, self.groups = target, Path(work), flags, groups
         self.heap_mode, self.decided = heap_mode, None
+        self.launcher_decides = sbcl_args == ""     # empty SBCL_USER_ARGS: the launcher probes at every exec
         self.env = dict(os.environ, ACL2_CUSTOMIZATION="NONE", SBCL_USER_ARGS=sbcl_args)
         for k in ("ACL2_SYSTEM_BOOKS", "FN_HOST", "FN_PROF_OUT", "FN_PROF_HOOK", "XL_HOOK"):
             self.env.pop(k, None)
@@ -311,7 +312,7 @@ class Node:
 
     def start(self, timeout=1800):
         import select
-        if self.heap_mode == "decided":
+        if self.heap_mode == "decided" and not self.launcher_decides:
             self.decide_heap()
         self.err_n += 1
         errp = self.work / ("owner.%d.err" % self.err_n)
@@ -1356,7 +1357,12 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
     work.mkdir(parents=True)
     use_hook = bool(arm) or args.gc_hook or bool(spec.get("sprof"))
     hooks, env_extra = cell_hooks(spec, work, arm, args.gc_hook)
-    node = Node(target, work, wl.init_flags(data, spec["preset"]), spec["groups"], args.sbcl_user_args or data["sbcl_user_args"],
+    # A workload with "sbcl_user_args": "" lets the image's own launcher decide heap and control
+    # stack at every start (F4 on train 45: a store filled under forced args refused to reopen under
+    # the same forced args, `the process heap does not hold the store's protected runtime`, while
+    # the decided start reopened it).
+    sbcl = spec["sbcl_user_args"] if "sbcl_user_args" in spec else (args.sbcl_user_args or data["sbcl_user_args"])
+    node = Node(target, work, wl.init_flags(data, spec["preset"]), spec["groups"], sbcl,
                 hooks, work / "gc.log", env_extra, spec.get("sampler_s", 1.0),
                 spec.get("heap", "decided"), None)
     ctr = Counters()
