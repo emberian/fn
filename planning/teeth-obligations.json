@@ -2254,7 +2254,7 @@
    "registry": true
   },
   {
-   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "643da0e0b2eae8b5261af5d677b374f4bd6b247be93a57c460ba32f20aed2a36",
    "class": "generated",
@@ -2358,7 +2358,7 @@
    "registry": true
   },
   {
-   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "04030e0902021f8bef5af993cf1364ad8b9059c8de79322ac6c9f7621e940018",
    "class": "generated",
@@ -2588,7 +2588,7 @@
    "registry": true
   },
   {
-   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "f706fee1960e88e3f96338a27f0e06d655f069fa3c96959c1e5fb953146dda36",
    "class": "generated",
@@ -2707,7 +2707,7 @@
    "registry": true
   },
   {
-   "book_digest": "e8121bb8c2ed7382beeaf5da104ea49e499e8fa147ae10a2b048f2e648ee0281",
+   "book_digest": "4e1c6780fb2ea2c9ca6c6d8a7d8ea596566041beeef0732220af41d46cdf8b21",
    "bounds": [],
    "claim_digest": "22bacb0f2e9956a9a63f658e7c8758f4623733bc461f2f86aa94bae753afc39b",
    "class": "generated",
@@ -2941,7 +2941,7 @@
    "registry": true
   },
   {
-   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "965a192906280811b3aafe7f9b8926bb2d3413d9c9133136f6375b6f108cd8bf",
    "class": "generated",
@@ -2960,7 +2960,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "f0411da1adab956f97e825ba1f10478f9385c4476e9f97368da2163e4bc8fab1",
    "class": "generated",
@@ -2979,7 +2979,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "184fbbc1ac0f651012f0ef0e8a598295147341edc8748bfaf06fc6ce76ff0198",
    "class": "generated",
@@ -3233,7 +3233,7 @@
    "registry": true
   },
   {
-   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "5c73b25e1cdd0e75f3daa6430957bb503a31465e76214102741006ea2cc5a396",
    "class": "generated",
@@ -3257,7 +3257,7 @@
    "registry": true
   },
   {
-   "book_digest": "1f4844a4b8ae61d2557c0eaa32e3c16e52876640458b3bcd60c7e0a96cd78daf",
+   "book_digest": "9ee49445ce7573c178eba106f39e7efbd61eb68aaab101b8e053ce7f5ebb12d1",
    "bounds": [],
    "claim_digest": "831f130d43bdddde74a181f8c889b24554d0cbe57f204e7dcddb6c35914b6d86",
    "class": "generated",
@@ -3306,7 +3306,7 @@
    "registry": true
   },
   {
-   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "book_digest": "c1e2930261fbbde9244c3c6a8c4030ffa1b725a43d1d31cae4ac081938a693b7",
    "bounds": [],
    "claim_digest": "85c0910d55b3f5b5664bca70a37e27e30ba44da5d4d2c1215eaf8b5c0f959c7f",
    "class": "generated",
