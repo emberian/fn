@@ -76,6 +76,20 @@
    "16",
    "--max-open-suffix",
    "128"
+  ],
+  "index-fault": [
+   "--profile",
+   "development",
+   "--max-transactions",
+   "16384",
+   "--max-history-octets",
+   "67108864",
+   "--max-record-octets",
+   "196608",
+   "--max-groups-per-article",
+   "16",
+   "--max-open-suffix",
+   "128"
   ]
  },
  "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up).",
@@ -720,8 +734,8 @@
    ]
   },
   "fault-slot-reuse": {
-   "about": "P1-DURABLE; P2-IDENTITY: late completion after slot reuse across publication must preserve operation identity and accepted octets. Owner S. Process death only; assumes fdatasync durability of the store filesystem.",
-   "preset": "small",
+   "about": "P4-RECLAIM; P2-IDENTITY: Entry (E) and funded-window (W) cold completions across publication return accepted octets or named refusals. Each route requires witnessed cache eviction and reuse during its hold. Owner L.",
+   "preset": "big-articles",
    "groups": [
     "fn.test"
    ],
@@ -729,14 +743,22 @@
    "phases": [
     {
      "name": "fault",
-     "kind": "unimplemented",
-     "reason": "F1 owner S: P1-DURABLE; P2-IDENTITY: late completion after slot reuse across publication must preserve operation identity and accepted octets."
+     "kind": "fault_slot_reuse",
+     "cold_reads": 24,
+     "hold_n": 1,
+     "cache_entries": 1,
+     "command_deadline_s": 10,
+     "recovery_s": 60,
+     "measure": true
     }
+   ],
+   "hooks": [
+    "planning/evidence/load/hooks/f1-delay.lisp"
    ]
   },
   "fault-index-saturation": {
-   "about": "P2-IDENTITY: forced index collisions and splits, existing and absent IDs under saturation and restart must preserve exact identity/absence. Owner S. Process death only; assumes fdatasync durability of the store filesystem.",
-   "preset": "small",
+   "about": "P2-IDENTITY: Under observed index saturation and across restart, every existing Message-ID resolves to its original octets, every absent ID is absent, and no same-byte or changed-byte duplicate is accepted. Owner L.",
+   "preset": "index-fault",
    "groups": [
     "fn.test"
    ],
@@ -744,13 +766,24 @@
    "phases": [
     {
      "name": "fault",
-     "kind": "unimplemented",
-     "reason": "F4 owner S: P2-IDENTITY: forced index collisions and splits, existing and absent IDs under saturation and restart must preserve exact identity/absence."
+     "kind": "fault_index_saturation",
+     "colliding_ids": 2304,
+     "absent_ids": 32,
+     "collision_bits": 8,
+     "candidate_budget": 1048576,
+     "tag_batch": 4096,
+     "prefix_octets": 128,
+     "command_deadline_s": 10,
+     "recovery_s": 60,
+     "measure": true
     }
+   ],
+   "hooks": [
+    "planning/evidence/load/hooks/f4-index.lisp"
    ]
   },
   "fault-index-omission": {
-   "about": "P1-DURABLE; P2-IDENTITY: a plausible persisted index omitting an existing article must not hide accepted content. Owner S. Process death only; assumes fdatasync durability of the store filesystem.",
+   "about": "P1-DURABLE; P2-IDENTITY: a plausible persisted index omitting an existing article must not hide accepted content. Owner S. Process death only; assumes fdatasync durability of the store filesystem. Not implemented because the g41/dev store has no persisted Message-ID index: open rebuilds fn-cei and the catalog msgid table from checkpoint records (books/store-checkpoint-open.lisp:206); waits for paged checkpoint/catalog adoption (s-pck-2c-host, PCK-ADOPT).",
    "preset": "small",
    "groups": [
     "fn.test"
@@ -760,7 +793,7 @@
     {
      "name": "fault",
      "kind": "unimplemented",
-     "reason": "F7 owner S: P1-DURABLE; P2-IDENTITY: a plausible persisted index omitting an existing article must not hide accepted content."
+     "reason": "F7 not implemented: the g41/dev store has no persisted Message-ID index: open rebuilds fn-cei and the catalog msgid table from checkpoint records (books/store-checkpoint-open.lisp:206); waits for paged checkpoint/catalog adoption (s-pck-2c-host, PCK-ADOPT)"
     }
    ]
   },
@@ -774,8 +807,13 @@
    "phases": [
     {
      "name": "fault",
-     "kind": "unimplemented",
-     "reason": "F8 owner N: P1-DURABLE; P2-IDENTITY; P5-RECOVERY: two BP nodes with lost receipts, duplicate transfers, restarts, incarnation change and stale ack replay must preserve durable identity and recover productively."
+     "kind": "fault_bp_disruption",
+     "seed": 1,
+     "histories": 1,
+     "shrink_runs": 16,
+     "command_deadline_s": 10,
+     "recovery_s": 120,
+     "measure": true
     }
    ]
   },
@@ -1059,6 +1097,45 @@
    "hooks": [
     "planning/evidence/load/hooks/f2-crash.lisp"
    ]
+  },
+  "extent-cache": {
+   "about": "W7 extent-cache contention; executed by tools.load.w7_extent, not the generic driver. Zipf readers, 2000 articles, 8 KiB/32000 octets; matrix compares R1 and R16.",
+   "runner": "w7_extent",
+   "preset": "scale-1m",
+   "phases": [
+    {
+     "name": "extent",
+     "kind": "unimplemented",
+     "reason": "External runner: tools.load.w7_extent run",
+     "measure": true
+    }
+   ]
+  },
+  "fault-index-saturation-reopen": {
+   "about": "ADMISSION-RESERVES-NOT-REOPEN tooth (N, 2026-10-08): F4's workload at the filled preset inside a 32G cgroup; after a refusal-free first run, restart under the same machine budget reaches LISTENING. On train 45 the restart refused `cold startup refused: the process heap does not hold the store's protected runtime`.",
+   "preset": "filled",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "fault_index_saturation",
+     "colliding_ids": 2304,
+     "absent_ids": 32,
+     "collision_bits": 8,
+     "candidate_budget": 1048576,
+     "tag_batch": 4096,
+     "prefix_octets": 128,
+     "command_deadline_s": 10,
+     "recovery_s": 60,
+     "measure": true
+    }
+   ],
+   "hooks": [
+    "planning/evidence/load/hooks/f4-index.lisp"
+   ]
   }
  },
  "cells": {
@@ -1094,7 +1171,9 @@
   "LIST-PROF": "list-prof",
   "LIST-PROF-ALLOC": "list-prof-alloc",
   "W6q": "catchup-quiet",
-  "F2S": "fault-crash-boundary-survey"
+  "F2S": "fault-crash-boundary-survey",
+  "W7": "extent-cache",
+  "F4R": "fault-index-saturation-reopen"
  },
  "stores": {
   "1k": 1000,
