@@ -328,7 +328,7 @@
    (fn-served-conn-session
     (fn-served-result-conn
      (fn-served-open-indexed
-      archive index verdicts line-limit body-limit config
+      archive verdicts line-limit body-limit config
       observation injection acfg))))
   :hints (("Goal"
            :use ((:instance fn-own-open-indexed-session-boundedp
@@ -362,7 +362,6 @@
              (fn-own-conn-config conn)
              (fn-own-conn-observation conn)
              (fn-own-conn-verdicts conn)
-             (fn-own-conn-index conn)
              (fn-own-conn-group-index conn) (fn-own-conn-control conn))))
   :hints (("Goal" :in-theory (e/d (fn-own-reader-context
                                     fn-own-set-conns fn-own-find-conn
@@ -419,7 +418,6 @@
      (fn-own-conn-config (car (fn-own-conns o)))
      (fn-own-conn-observation (car (fn-own-conns o)))
      (fn-own-conn-verdicts (car (fn-own-conns o)))
-     (fn-own-conn-index (car (fn-own-conns o)))
      (fn-own-conn-group-index (car (fn-own-conns o))) (fn-own-conn-control (car (fn-own-conns o))))))
   :hints (("Goal" :in-theory (e/d (fn-own-reader-context
                                     fn-own-set-conns fn-own-find-conn
@@ -463,12 +461,12 @@
 
 (defthm fn-ocl-indexed-open-context-is-bounded
   (fn-own-conn-boundedp
-   (fn-own-conn-make-indexed
+   (fn-own-conn-make
     id version frontier wire
     (fn-auth-with-base
      (fn-auth-open-session archive nil nil nil acfg nil)
      (fn-peer-open-session archive nil node cfg))
-    archive config observation verdicts index)
+    archive config observation)
    groups)
   :hints (("Goal"
            :use ((:instance fn-ocl-new-reader-context-session-is-bounded
@@ -476,7 +474,7 @@
                                                       acfg nil)))
                  (:instance fn-auth-open-session-is-consistent
                             (peer nil) (node nil) (cfg nil) (tlsp nil)))
-           :in-theory (e/d (fn-own-conn-boundedp-of-make-indexed)
+           :in-theory (e/d (fn-own-conn-boundedp)
                            (fn-auth-open-session fn-auth-sessionp
                             fn-auth-open-session-is-consistent
                             fn-peer-open-session fn-auth-with-base
@@ -583,7 +581,6 @@
       (fn-own-conn-config (car (fn-own-conns o)))
       (fn-own-conn-observation (car (fn-own-conns o)))
       (fn-own-conn-verdicts (car (fn-own-conns o)))
-      (fn-own-conn-index (car (fn-own-conns o)))
       (fn-own-conn-group-index (car (fn-own-conns o))) (fn-own-conn-control (car (fn-own-conns o))))
      (cdr (fn-own-conns o)))))
   :hints (("Goal" :in-theory (e/d (fn-own-reader-context

@@ -246,19 +246,17 @@
                                   (fn-scar-own-read-tls-prefix
                                    fn-scar-own-read-span)))))
 
-; KEYSTONE for the host line: under the configured owner's relation and its
-; view trie's correspondence, the span read is the reference read of the
-; range's bytes, for every connection identifier and every range.
+; KEYSTONE for the host line: under the configured owner's relation, the
+; span read is the reference read of the range's bytes, for every connection
+; identifier and every range.
 (defthm fn-scar-ocfg-read-span-is-reference-under-ocl-relation
   (implies (and (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (natp i) (natp end))
            (equal (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)
                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
   :hints (("Goal" :in-theory (disable fn-scar-ocfg-read-span
                                       fn-scar-ocfg-read-tls-prefix
-                                      fn-ocfg-read-tls-prefix fn-ocl-relation
-                                      fn-scar-view-indexedp))))
+                                      fn-ocfg-read-tls-prefix fn-ocl-relation))))
 
 ; Preservation: the span read leaves the store, hence the premise, as it
 ; found them.
@@ -282,6 +280,7 @@
                (fn-own-tls-result-owner
                 (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)))))))
   :hints (("Goal" :in-theory (disable fn-scar-ocfg-read-span
-                                      fn-scar-ocfg-read-tls-prefix fn-node-statep))))
+                                      fn-scar-ocfg-read-tls-prefix fn-node-statep
+                                      fn-scar-ocfg-read-tls-prefix-is-ocfg-read-tls-prefix))))
 
 (in-theory (disable fn-scar-own-read-span fn-scar-ocfg-read-span))
