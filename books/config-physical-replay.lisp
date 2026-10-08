@@ -16,9 +16,14 @@
 (local (in-theory (disable (tau-system))))
 
 (include-book "config-record-order")
-; config-record-order exports its config-first rule disabled (a hazard rule:
-; consp of a bare variable); this book's replay proofs use it.
-(local (in-theory (enable fn-cpr-config-firstp-has-config)))
+
+(local (defthmd fn-cpr-config-firstp-has-config-local-rewrite
+  (implies (fn-cpr-config-firstp configs events) (consp configs))
+  :hints (("Goal" :by fn-cpr-config-firstp-has-config))))
+; config-record-order exports its config-first fact with no rule class (a
+; `consp' left-hand side fires on every call); this book's replay proofs use
+; it as a rewrite rule, through the local twin above.
+(local (in-theory (enable fn-cpr-config-firstp-has-config-local-rewrite)))
 
 (defun fn-cpr-event-servedp (cn event)
   ; The served-domain check belongs only to events that create an article.
@@ -333,4 +338,3 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-cpr-config-firstp-has-config)))

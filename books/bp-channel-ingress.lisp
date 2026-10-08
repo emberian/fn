@@ -58,8 +58,7 @@
                            fn-cp-idp-true-listp
                            fn-bpp-dtn-sspp-has-a-name-delimiter
                            fn-bpp-vchar-listp-implies-true-listp
-                           fn-bpb-block-listp-implies-true-listp
-                           fn-nntp-article-idp-is-consp)))
+                           fn-bpb-block-listp-implies-true-listp)))
 
 ; The native caller supplies the observed channel and the current durable
 ; configuration.  This theorem joins the external octets, the admission

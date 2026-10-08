@@ -17,13 +17,12 @@
 ; every true-listp and consp test here and backchain by opening their
 ; recognizers; nothing below needs them.
 (local (in-theory (disable fn-nntp-response-text-true-listp fn-cp-idp-true-listp
-                           fn-nntp-article-idp-is-consp fn-cp-id-length-bound)))
+                           fn-cp-id-length-bound)))
 ; Rules and vocabulary of the resolution, wire, control, feed and index
 ; clusters that are tried or opened here and never apply (accumulated
 ; persistence over the book, 2026-09-27): consp and car conclusions with
 ; free-variable hypotheses, and the group and message-id index builders.
 (local (in-theory (disable
-                           fn-cpr-config-firstp-has-config
                            fn-prov-structured-is-not-a-string
                            fn-ctl-refresh-visible-is-visible fn-gidx-refresh-is-build
                            fn-gidx-put fn-gidx-put-all fn-gidx-build-entries

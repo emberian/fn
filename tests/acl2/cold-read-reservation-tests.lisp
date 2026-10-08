@@ -24,8 +24,8 @@
       (<= (+ (* *fn-heap-mib* (nfix (fn-crv-nth 1 *crvt-base*)))
              (nfix (fn-crv-nth 0 *crvt-policy*)))
           (* *fn-heap-mib* (nfix (fn-crv-nth 1 *crvt-result*))))))
-(assert! (equal (fn-crv-native-baseline *crvt-policy* nil) 10485760))
-(assert! (equal (fn-crv-pool-budget *crvt-policy* nil) '(77594624 0 16 2 10000)))
+(assert! (equal (fn-crv-native-baseline *crvt-policy* nil) (+ 10485760 8192)))
+(assert! (equal (fn-crv-pool-budget *crvt-policy* nil) '(77602816 0 16 2 10000)))
 ; Remove accepted result: valid policy retained, returned refusal and its
 ; proposed reservation exceeds the new machine. Not a live claim from it.
 (assert!

@@ -39,6 +39,22 @@ uses the actual input buffer length, assembles at most sixteen padded words,
 steps the cursor and copies the selected private overlap. Stale completions
 preserve all three states; its output theorem describes every window cell.
 
+The host drives the stream in spans, not blocks (books/extent-window-span.lisp,
+profile row `:read-span-octets`, <!--limit:read-span-octets,-->16,384<!--/limit--> octets).
+`fn-ews-span-effect` is the stream's effect for the next block with its count
+widened to the span; `fn-ews-read-span` takes one read of that span and
+digests every block of it inside one call, running the cursor to its next I/O
+need between blocks (`fn-ews-tick-run`, fuel `*fn-ews-block-tick-fuel*` per
+block: exhausting it answers :continue with a consistent state and the next
+`fn-ews-tick-to-io` resumes it). `fn-ews-span-loop-is-iterated-block-step`
+equates the loop to the stream's own `fn-ews-read` on each 64-octet slice and
+`fn-ews-tick` iterated, so the digest state, the captured window, and the
+verdicts (including :state on an invalid cursor and :stale) are those of the
+per-block drive; `fn-ews-read-span-publication-requires-core-integrity`
+carries the publication keystone to the entry the host calls. A cancellation
+the owner sees between host calls takes effect at the next span boundary: at
+most one span read of extra work.
+
 The trailer effect becomes available only when the full scan has completed
 and the actual cursor is done. The completion obtains its digest directly
 from `pgs-dcb-result-octets`; no host-supplied digest argument reaches the

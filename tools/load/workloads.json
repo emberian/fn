@@ -174,7 +174,7 @@
    ]
   },
   "post-rate": {
-   "about": "Closed-loop POSTs/s at 1 and 8 connections, alone and beside 3 readers (L-POST, T-POST, T-RATE). A 1000-article store is preloaded for the readers. The variant names the preset: post-rate/small, /development, /default.",
+   "about": "Closed-loop POSTs/s at 1 and 8 connections, alone and beside 3 readers (L-POST, T-POST, T-RATE). A 1000-article store is preloaded for the readers. The variant names the preset: post-rate/small, /development, /default. At the development preset the store cannot hold the 1000-article preload (it admits ~127 2 KiB POSTs, then refuses 441 'posting failed the store'), so that variant starts empty (variant_preload) and its POST phases run into the same bound: read its admitted/refused counts beside the rate.",
    "preset": "filled",
    "groups": [
     "fn.letters",
@@ -226,6 +226,9 @@
    },
    "policy": {
     "exposure-connections": 64
+   },
+   "variant_preload": {
+    "development": 0
    }
   },
   "readers": {
@@ -495,7 +498,7 @@
       "development",
       "default"
      ],
-     "max_try": 4096,
+     "max_try": 32768,
      "measure": true
     }
    ]
@@ -599,6 +602,36 @@
      "measure": true
     }
    ]
+  },
+  "publish-stall": {
+   "about": "W8 stall row (T-PUB stall half): POSTs at 20/s on one connection while the running owner publishes a checkpoint (requested through its control socket); at 10k and 50k articles from the curve fixture. Longest POST stall, p99 inside the window, window duration, VmHWM before and after.",
+   "preset": "scale-1m",
+   "groups": [
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "sweep": [
+    "10k",
+    "50k"
+   ],
+   "store": {
+    "preload": 10000,
+    "octets": 2048,
+    "fixture": "curve/n{N}"
+   },
+   "phases": [
+    {
+     "name": "publish-live",
+     "kind": "publish_live",
+     "rate_per_s": 20,
+     "octets": 2048,
+     "before_s": 5,
+     "after_s": 5,
+     "max_wait_s": 900,
+     "measure": true
+    }
+   ]
   }
  },
  "cells": {
@@ -616,7 +649,8 @@
   "conn-capacity": "conn-capacity",
   "T-OPS": "prof-ops",
   "W6b": "peers-feed",
-  "W6c": "peers-catchup-load"
+  "W6c": "peers-catchup-load",
+  "W8S": "publish-stall"
  },
  "stores": {
   "1k": 1000,
