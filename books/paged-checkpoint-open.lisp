@@ -1458,7 +1458,9 @@
                   (equal (mv-nth 3 r) (cadr s)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable pcko-tape pcko-sim pcko-img adt-tp-zeros nthcdr (:executable-counterpart nthcdr) fn-pck-seed
-                               fn-pck-rows-from adt-tp-seq-words pcko-tape-of-recs)
+                               fn-pck-rows-from adt-tp-seq-words pcko-tape-of-recs
+                               pcko-flat-fit adt-tp-tail-is-page-prefix pck-nthcdr-nthcdr pcko-consp-nthcdr pcko-tape-nil
+                               adt-tp-pages adt-tp-npages adt-tp-npages-tail-bound2)
            :use ((:instance pcko-tape-of-recs (pos 16384) (st (fn-pck-seed)) (base 0) (acc (fn-pck-seed)) (post zp)
                             (fn-octets oct) (fn-arena a))))))
 
