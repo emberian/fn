@@ -58,6 +58,9 @@ class StartEveryPresetTests(unittest.TestCase):
         init = node.operator("init", *PRESETS[preset], GROUP, expect=None, timeout=600)
         if init.returncode != 0:
             text = (init.stdout + init.stderr).decode("utf-8", "replace")
+            # waiver-ok: capability -- init refuses :machine-cannot-hold-profile by
+            # name when this machine's memory cannot hold the preset; that preset is
+            # a machine this tree has not been given, not a broken start.
             if "machine-cannot-hold-profile" in text:
                 self.skipTest("{}: the machine cannot hold the {} preset".format(image.name, preset))
             self.fail("init {} exited {}: {}".format(preset, init.returncode, text))
