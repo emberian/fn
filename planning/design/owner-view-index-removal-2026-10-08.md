@@ -49,7 +49,7 @@ P1 (visible lookup, answers R1's trie half and the visible-set questions; no new
   asserted by computation, asserting all three lookups and `(fn-midx-lookup m2 ...) = nil`; removal witness = the same catalog with
   row 2's withdrawal mark removed (join's first conjunct fails): the walk returns row 2 where `fn-find-article` over the visible list
   returns nil, so the premise carries weight. Premise inhabitation: `fn-scj-joinp` of a freshly opened view is
-  `fn-scj-joinp-of-open` (served-catalog-join-entry.lisp, E for the opens).
+  `fn-scj-joinp-of-load` (served-catalog-join-entry.lisp:280, the catalog the open loads).
 
 P2 (R1, the history test is raw membership, not visible membership). Careful: the fast path holds only when the node's acceptance
 articles equal the trie's list; with any withdrawal the code falls back to the O(N) scan `fn-peer-history-hasp` (a node scan of articles
