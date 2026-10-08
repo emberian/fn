@@ -52,7 +52,7 @@ K2 (exactly when the resize refuses, never otherwise; status never reads as buil
       (equal (car (fn-hroot-begin-verdict l g))
              (if (equal (car (fn-mcr-hroot-resize l (fn-hroot-credit-key g) (fn-hroot-begin-ask))) :ok) :funded :refused)))
     (defthm fn-hroot-refresh-status-building-iff-funded
-      (equal (equal (caddr-or-second (fn-hroot-refresh-status v)) :building) (equal (car v) :funded)))  ; stated with cadr
+      (equal (equal (cadr (fn-hroot-refresh-status v)) :building) (equal (car v) :funded)))
 
 The history (`img`, `nimg`, `sfx`): `fn-owner-hroot-begin` has no `fn-hist` among its STOBJS, so it cannot change them; this is not a
 theorem and is not cited as one. The host-side claim, that a refused begin leaves the installed root untouched, is the existing early
