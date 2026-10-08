@@ -579,7 +579,8 @@
                                                    pos served used fn-arena))))
               (or (<= (fn-cu-octets-of out fn-arena) quantum)
                   (equal (len out) 1))))
-   :hints (("Goal" :in-theory (disable fn-cu-servedp fn-nntp-article-bytes)))
+   :hints (("Goal" :induct (fn-cu-select-aux entries groups trie quantum pos served used fn-arena)
+                   :in-theory (disable fn-cu-servedp fn-nntp-article-bytes fn-cu-record-cost)))
    :rule-classes nil))
 
 (local

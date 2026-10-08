@@ -249,8 +249,11 @@
 ; -----------------------------------------------------------------------------
 ; The measured terms (the record, sections 2 and 3).
 
-(defconst *fn-heap-arena-page-octets* 262144)       ; *fn-arp-page*
-(defconst *fn-heap-arena-page-pointer-octets* 32)
+(defconst *fn-heap-arena-page-octets* 16384)        ; *adt-pg-octets*
+; A pool page's overhead: its stobj header and array header (about 40 octets)
+; and its slot in a table page (8, with the table page's own 1/64 share),
+; rounded up.
+(defconst *fn-heap-arena-page-pointer-octets* 64)
 (defconst *fn-heap-handle-octets* 48)
 ; A record's retained state (the header's comment, `records'): the fixed
 ; part, a header octet's columns, and a Message-ID octet's trie and names.
@@ -295,15 +298,15 @@
 (local
  (defthm fn-heap-floor-page-monotone
    (implies (and (natp a) (natp b) (<= a b))
-            (<= (floor a 262144) (floor b 262144)))
+            (<= (floor a 16384) (floor b 16384)))
    :rule-classes nil
    :hints (("Goal" :in-theory (enable floor)))))
 
 (local
  (defthm fn-heap-arena-pointers-monotone
    (implies (<= (nfix a) (nfix b))
-            (<= (* 32 (+ 1 (floor (nfix a) 262144)))
-                (* 32 (+ 1 (floor (nfix b) 262144)))))
+            (<= (* 64 (+ 1 (floor (nfix a) 16384)))
+                (* 64 (+ 1 (floor (nfix b) 16384)))))
    :rule-classes nil
    :hints (("Goal" :use ((:instance fn-heap-floor-page-monotone (a (nfix a)) (b (nfix b))))
             :in-theory (disable floor)))))
@@ -321,20 +324,20 @@
 
 ; THE ARENA's slope: an octet more of payload costs at most two octets of
 ; the term, plus one page pointer at a page boundary.  (Today's paged arena:
-; one octet and 32 per page.  A cache bound that does not grow with USED,
+; one octet and 64 per page.  A cache bound that does not grow with USED,
 ; arena-offheap-3's, has slope 0.)  With monotonicity it is all the history
 ; bound below uses of the arena.
 (local
  (defthm fn-heap-floor-page-bounds
    (implies (natp a)
-            (and (<= (* 262144 (floor a 262144)) a)
-                 (< a (* 262144 (+ 1 (floor a 262144))))))
+            (and (<= (* 16384 (floor a 16384)) a)
+                 (< a (* 16384 (+ 1 (floor a 16384))))))
    :rule-classes nil))
 
 (local
  (defthm fn-heap-floor-page-of-sum
    (implies (and (natp u) (natp x))
-            (<= (floor (+ u x) 262144) (+ (floor u 262144) (floor x 262144) 1)))
+            (<= (floor (+ u x) 16384) (+ (floor u 16384) (floor x 16384) 1)))
    :rule-classes nil
    :hints (("Goal" :in-theory (disable floor)
             :use ((:instance fn-heap-floor-page-bounds (a u))

@@ -311,6 +311,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/paged-checkpoint-host \
 	books/paged-checkpoint-exec \
 	books/paged-checkpoint-stage \
+	books/paged-checkpoint-image \
+	books/paged-checkpoint-open \
 	books/def-representation \
 	tests/acl2/def-representation-tests \
 	tests/acl2/def-representation-pages-tests \
@@ -318,6 +320,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/paged-checkpoint-host-tests \
 	tests/acl2/paged-checkpoint-exec-tests \
 	tests/acl2/paged-checkpoint-stage-tests \
+	tests/acl2/paged-checkpoint-image-tests \
+	tests/acl2/paged-checkpoint-open-tests \
 	tests/acl2/defkeystone-tests \
 	tests/acl2/definterface-tests \
 	tests/acl2/definterface-recognizer-tests \
@@ -2660,7 +2664,7 @@ site:
 # Every pre-image gate for a host-code conversion, as one target (item 34):
 # world.py --check, interface_emit --check, host_check --forward/--world/
 # --load FILE, and the certified-world class check (host_check's default).
-# On a box: tools/remote_check.sh auto --cmd 'make host-convert-check FILE=host/native/x.lisp'
+# On a box: tools/remote_check.sh auto --install-roots books/image-world --cmd 'make host-convert-check FILE=host/native/x.lisp'
 host-convert-check:
 	@$(PYTHON) tools/host_convert_check.py $(FILE)
 
@@ -2944,12 +2948,9 @@ check:
 # lane serve-depth's head.
 	@$(CHECK_STEP) $(PYTHON) tools/depth_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_depth_check
-# The raw host code (host/native/*.lisp) runs on the same 1,024 KiB stack and
-# depth_check reads only ACL2 functions: every non-tail recursion there is in
-# tools/raw_depth_baseline.json with its bound named (lane depth-debt; the
-# mux's per-step re-entry and the BP effect chain were loops made here).
-	@$(CHECK_STEP) $(PYTHON) tools/raw_depth_check.py
-	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_raw_depth_check
+# depth_check also reads the raw host code (host/native/*.lisp: the "raw" section
+# of the same baseline; the mux's per-step re-entry and the BP effect chain were
+# loops made by lane depth-debt).
 # Clock arithmetic goes through books/clock-unit.lisp (PRF-374, PRF-378):
 # arithmetic on an observation's fields at a call site assumed a unit twice
 # (bug M1; the vacuous record-level expiry).  tools/clock_unit_baseline.json

@@ -490,6 +490,32 @@
                                         fn-bpnjc-nfix-nfix car-cons cdr-cons)
                                       (theory 'minimal-theory)))))
 
+; The answer of an ask: the first of the pair (ANSWER . CURSOR) the host
+; carries between asks.  The host reads it through this function, so the
+; claims of PRF-103, PRF-120 and PRF-139 about fn-bpnj-contact-next are
+; claims about the answer the running contact acts on:
+; fn-bpnjc-answer-is-contact-next, the head-scan keystone above as an
+; equality of the answer read back.
+(defun fn-bpnjc-answer (result)
+  (declare (xargs :guard t))
+  (if (consp result) (car result) nil))
+
+(local
+ (defthm fn-bpnjc-contact-next-is-a-cons
+   (consp (fn-bpnjc-contact-next st peer routing offered cursor))
+   :hints (("Goal" :in-theory (e/d (fn-bpnjc-contact-next)
+                                   (fn-bpnjc-scan fn-bpnjc-gatep))))))
+
+(defthm fn-bpnjc-answer-is-contact-next
+  (implies (and (fn-bpnjc-contact-relp st peer routing offered cursor)
+                (equal result (fn-bpnjc-contact-next st peer routing offered cursor)))
+           (equal (fn-bpnj-contact-next st peer routing offered)
+                  (fn-bpnjc-answer result)))
+  :hints (("Goal" :use (fn-bpnjc-contact-next-is-the-head-scan
+                        fn-bpnjc-contact-next-is-a-cons)
+           :in-theory (union-theories '(fn-bpnjc-answer) (theory 'minimal-theory))))
+  :rule-classes nil)
+
 ;; ---------------------------------------------------------------------
 ;; An offer advances the cursor past the offered job and keeps the relation.
 

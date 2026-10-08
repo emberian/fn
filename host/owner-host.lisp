@@ -3483,7 +3483,7 @@
   (declare (xargs :stobjs state :mode :program))
   (let* ((counted (fn-oct-transit (fn-owner-ocfg state) id kind reason word
                                   (fn-owner-feed-pending state)))
-         (result (car counted))
+         (result (fn-oct-result counted))
          (state (f-put-global 'fn-owner-feed-pending (cdr counted) state))
          (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state)))
@@ -3580,7 +3580,7 @@
                                   (fn-owner-intent-carry state)
                                   (fn-owner-parse-carry state)
                                   (fn-owner-feed-pending state)))
-         (result (car counted))
+         (result (fn-oct-result counted))
          (state (f-put-global 'fn-owner-feed-pending (cdr counted) state))
          (state (fn-owner-install-ocfg (cdr result) state))
          (state (fn-owner-install-effects (car result) state))

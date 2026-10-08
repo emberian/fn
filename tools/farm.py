@@ -115,7 +115,11 @@ HOSTS = {
         "load_acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls256k",
         "sbcl": "/tank/fn/sbcl/bin/sbcl",
         "cache": "~/fn-certcache",
-        "wrap": "",
+        # persvati is also the timing site (ruling 17): its wrapper pins every
+        # certify, image build and REPL server to cores 0-11
+        # (/tank/fn/bin/persvati-jobs: `taskset -c 0-11`), leaving 12-23 for
+        # measurements taken under /tank/fn/scratch/timing-12-23.lock.
+        "wrap": "/tank/fn/bin/persvati-jobs",
     },
     "hbox": {
         "acl2": "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k",  # see persvati's

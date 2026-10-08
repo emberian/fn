@@ -1,0 +1,82 @@
+[
+ {
+  "limit_mb": 256,
+  "image": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host",
+  "dir": "/tank/fn/scratch/load-bars-now/fresh-256-1791412663",
+  "port": 37181,
+  "load": [
+   22.98388671875,
+   20.3583984375,
+   15.7763671875
+  ],
+  "preset": "small (INIT_FLAGS)",
+  "init_exit": 0,
+  "init_stderr_tail": "accepted operator init\n",
+  "heap_probe": {
+   "exit": 1,
+   "stdout": "refused machine-cannot-hold-profile heap=497 MB machine=256 MB",
+   "stderr_tail": ""
+  },
+  "argv": [
+   "systemd-run",
+   "--user",
+   "--scope",
+   "--quiet",
+   "-p",
+   "MemoryMax=256M",
+   "-p",
+   "MemorySwapMax=0",
+   "/tmp/fn-installed-i6lrzjtv/bin/fn",
+   "operator",
+   "/tank/fn/scratch/load-bars-now/fresh-256-1791412663/fn.toml",
+   "run"
+  ],
+  "pid": 15489,
+  "seconds_to_listening_or_exit": 0.2,
+  "listening": false,
+  "exit_code": 1,
+  "stdout_tail": "",
+  "stderr_tail": "fn: refused machine-cannot-hold-profile heap=497 MB machine=256 MB\n",
+  "verdict": "refused-or-exited"
+ },
+ {
+  "limit_mb": 1024,
+  "image": "/tank/fn/scratch/converge-3/native-c3-0b4d3b183/tree/build/fn-host",
+  "dir": "/tank/fn/scratch/load-bars-now/fresh-1024-1791412664",
+  "port": 34383,
+  "load": [
+   22.34423828125,
+   20.26904296875,
+   15.77197265625
+  ],
+  "preset": "small (INIT_FLAGS)",
+  "init_exit": 0,
+  "init_stderr_tail": "accepted operator init\n",
+  "heap_probe": {
+   "exit": 1,
+   "stdout": "refused machine-cannot-hold-threads reservation=1030 MB machine=1024 MB",
+   "stderr_tail": ""
+  },
+  "argv": [
+   "systemd-run",
+   "--user",
+   "--scope",
+   "--quiet",
+   "-p",
+   "MemoryMax=1024M",
+   "-p",
+   "MemorySwapMax=0",
+   "/tmp/fn-installed-i6lrzjtv/bin/fn",
+   "operator",
+   "/tank/fn/scratch/load-bars-now/fresh-1024-1791412664/fn.toml",
+   "run"
+  ],
+  "pid": 15977,
+  "seconds_to_listening_or_exit": 0.2,
+  "listening": false,
+  "exit_code": 1,
+  "stdout_tail": "",
+  "stderr_tail": "fn: refused machine-cannot-hold-threads reservation=1030 MB machine=1024 MB\n",
+  "verdict": "refused-or-exited"
+ }
+]

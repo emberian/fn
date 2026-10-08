@@ -1,0 +1,13 @@
+{
+ "category": "proof-owed",
+ "file": "books/paged-checkpoint-open.lisp",
+ "id": "PCK-OPEN-INTERN-NOT-BAD",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "s-pck-host",
+ "state": "open",
+ "title": "fn-pck-x-open-is-the-capture assumes the records intern from the initial identity context without a refusal: (not (eq (mv-nth 0 (fn-ssr-intern-step (fn-ssr-seed (fn-stxk-initial-context 0)) recs nil nil :resident nil fn-arena)) :bad)). It does not follow from fn-pck-recordsp or the empty arena: fn-pck-recordsp says the trees are encodable, while the intern is :bad for a tree that is not a wire event, a composite whose article does not decode, or an identity step whose context is not :ok (a sequence off the cursor). It holds for a history the store admitted. State and prove it from the store's own invariant (the records of a store opened or grown by the node, e.g. fn-srs/fn-ssr recovery of the same records, or fn-sco-capture of an opened store), so the open needs no premise; until then the host driver's open refuses (:intern) on a history that fails it. The exec seeds from fn-stxk-initial-context 0 (not the root's identity): the seed of the host's full recovery, so rows equal a replay's.",
+ "updated": "2026-10-07T23:30:00Z"
+}

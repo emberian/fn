@@ -469,6 +469,7 @@
  "realizers": [
   "fn-durable-realize-octet",
   "fn-durable-realize-octets",
+  "fn-durable-realize-span",
   "fn-durable-realize-lz",
   "fn-durable-realize-lz-octet",
   "fn-pgs-fill-frame",

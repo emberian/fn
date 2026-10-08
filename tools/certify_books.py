@@ -1383,6 +1383,9 @@ def main() -> int:
             "origins": dict(installed.origins),
             "roots_installed": installed.roots_installed,
             "recertified": installed.recertified,
+            # The install step's record this run reused (one install per
+            # run, tools/certs.py INSTALL_RECORD), or None.
+            "reused_from": installed.reused_from,
             # Installed or kept pairs whose cache entry carried the compiled
             # file, and those that did not (ACL2 then loads them uncompiled).
             "fasl_installed": installed.fasl_installed,

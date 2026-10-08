@@ -206,7 +206,9 @@ def native(image, *argv, timeout=1800):
 def start_owner(image, cfg, stderr_path, timeout=600):
     from tests.native_harness import wait_for_announcement
     err = open(stderr_path, "ab")
+    from rep_measure import decided_heap_env
     p = subprocess.Popen([str(image), "--fn", "operator", str(cfg), "run"],
+                         env=decided_heap_env(image, cfg, dict(os.environ)),
                          stdout=subprocess.PIPE, stderr=err)
     try:
         wait_for_announcement(p, b"LISTENING ", timeout=timeout)
@@ -1873,8 +1875,10 @@ def post_one(port, i, octets):
 def start_owner_env(image, cfg, stderr_path, env, timeout=600):
     from tests.native_harness import wait_for_announcement
     err = open(stderr_path, "ab")
+    from rep_measure import decided_heap_env
     p = subprocess.Popen([str(image), "--fn", "operator", str(cfg), "run"],
-                         stdout=subprocess.PIPE, stderr=err, env=dict(os.environ, **env))
+                         stdout=subprocess.PIPE, stderr=err,
+                         env=decided_heap_env(image, cfg, dict(os.environ, **env)))
     try:
         wait_for_announcement(p, b"LISTENING ", timeout=timeout)
     except BaseException:
