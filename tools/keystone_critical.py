@@ -393,6 +393,16 @@ def lower_complete(current, owed, declared, reachable, root=ROOT):
     return {n: row for n, row in owed.items() if n not in complete}, sorted(complete)
 
 
+def retire_line(name: str, entry: dict, declared: dict) -> str:
+    """The witness files a retired owed row stands on (coordinator, 2026-10-08:
+    a row leaves critical-owed only when the tool finds its package, naming
+    them)."""
+    parts = [f"premises/wrong_answer {entry.get('owner_book') or '?'}"]
+    for key in ("host_test", "trace_witness", "mutation"):
+        parts.append(f"{key} {declared.get(key) or '?'}")
+    return f"completed {name}: " + "; ".join(parts)
+
+
 def lower_complete_main() -> int:
     ke, current = _current()
     owed = load_owed()
@@ -401,9 +411,10 @@ def lower_complete_main() -> int:
     certified = ke.certified_books(books)
     for entry in current.values():
         entry["certified"] = certified.get(entry.get("owner_book"), False)
-    kept, dropped = lower_complete(current, owed, load_declared(), lazy_reachable())
+    declared = load_declared()
+    kept, dropped = lower_complete(current, owed, declared, lazy_reachable())
     for name in dropped:
-        print(f"completed {name}")
+        print(retire_line(name, current[name], declared.get(name) or {}))
     if dropped:
         doc = json.loads(OWED.read_text(encoding="utf-8"))
         doc["items"] = kept
