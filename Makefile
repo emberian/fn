@@ -503,6 +503,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-admin-peer \
 	books/native-admin \
 	tests/acl2/native-admin-tests \
+	tests/acl2/native-admin-split-tests \
 	books/native-config-observation \
 	tests/acl2/native-config-observation-tests \
 	books/native-operator \
