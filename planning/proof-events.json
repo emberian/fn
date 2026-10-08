@@ -10991,7 +10991,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-arx-intern-step-refines"
+          "name": "fn-arx-intern-events-refines"
         },
         {
           "kind": "theorem",
@@ -11844,7 +11844,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lzr-intern-step-refines"
+          "name": "fn-lzr-intern-events-refines"
         },
         {
           "kind": "theorem",
@@ -17668,13 +17668,9 @@
           "kind": "theorem",
           "name": "fn-hed-read-yield-makes-structural-progress",
           "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hed-grow-merge-pops-one-forest-cell",
-          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged in their books and explicitly marked unreachable-in-composition in PRF-1190 statement: fn-hed-grow-merge-pops-one-forest-cell. They are not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-1191",
@@ -17696,20 +17692,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-hep-uncertain-keeps-candidate-roots-and-debt",
-          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-hep-return-cannot-drop-nonquiescent-custody",
           "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-hep-retirement-keeps-epoch-and-retained-debt",
-          "pending_subject": "Actual internal history directory/backing subject; native owner/custody caller and genuine allocating-family installation are not installed in this source packet. No whole served completion or raw alias/retirement claim."
         }
-      ]
+      ],
+      "note": "Model-only theorems retained unchanged in their books and explicitly marked unreachable-in-composition in PRF-1191 statement: fn-hep-retirement-keeps-epoch-and-retained-debt, fn-hep-uncertain-keeps-candidate-roots-and-debt. They are not hosted-event claims; no reach baseline exemption is added."
     },
     {
       "id": "PRF-1189",

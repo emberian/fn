@@ -869,9 +869,23 @@
    "registry": true
   },
   {
-   "class": "hand",
-   "name": "fn-arx-intern-step-refines",
-   "registry": true
+   "book_digest": "6e3b3631e5327979865f866961b62bc9bdb734bcd81cc329b90c20738107a641",
+   "bounds": [],
+   "claim_digest": "dfd5906c25b9606f34e0838de2daca1d9ae2043b2bf7e2f7ab0e8904fe6026ca",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-arx-intern-events-refines",
+   "owed_met": null,
+   "owner_book": "tests/acl2/payload-extent-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-arx-intern-events",
+   "witness": "lemma"
   },
   {
    "class": "hand",
@@ -7434,11 +7448,6 @@
   },
   {
    "class": "hand",
-   "name": "fn-hed-grow-merge-pops-one-forest-cell",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hed-grow-step-preserves-chronological-prefix",
    "registry": true
   },
@@ -7474,22 +7483,12 @@
   },
   {
    "class": "hand",
-   "name": "fn-hep-retirement-keeps-epoch-and-retained-debt",
-   "registry": true
-  },
-  {
-   "class": "hand",
    "name": "fn-hep-return-cannot-drop-nonquiescent-custody",
    "registry": true
   },
   {
    "class": "hand",
    "name": "fn-hep-successful-publication-is-once-only",
-   "registry": true
-  },
-  {
-   "class": "hand",
-   "name": "fn-hep-uncertain-keeps-candidate-roots-and-debt",
    "registry": true
   },
   {
@@ -9543,9 +9542,23 @@
    "registry": true
   },
   {
-   "class": "hand",
-   "name": "fn-lzr-intern-step-refines",
-   "registry": true
+   "book_digest": "03490847dcf903764a86f85cc108c484b266d1e302c0bdfe9fa579fc8a20fa74",
+   "bounds": [],
+   "claim_digest": "1c481ecc324bc40c9be37bce56a58340975d864f4a214c32d9002c1dca83069a",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-lzr-intern-events-refines",
+   "owed_met": null,
+   "owner_book": "tests/acl2/payload-lz-replay-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-lzr-intern-events",
+   "witness": "lemma"
   },
   {
    "class": "hand",
