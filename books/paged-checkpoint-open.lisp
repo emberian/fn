@@ -497,7 +497,9 @@
            (equal (len (adt-tp-flat (fn-pck-pages configs recs)))
                   (* 2048 (len (fn-pck-pages configs recs)))))
   :hints (("Goal" :in-theory (disable pcko-flat-pages pcko-len-w-gen pcko-len-pages pcko-root-flat
-                                      pcko-rw0 pcko-tws adt-tp-rw fn-pck-pages)
+                                      pcko-rw0 pcko-tws adt-tp-rw fn-pck-pages
+                                      pcko-flat-fit adt-tp-tail-is-page-prefix pck-nthcdr-nthcdr adt-tp-pages adt-tp-npages
+                                      adt-tp-zeros nthcdr (:executable-counterpart adt-tp-zeros))
            :use ((:instance pcko-flat-pages) (:instance pcko-len-pages)
                  (:instance pcko-root-flat)
                  (:instance pcko-len-w-gen (rw0 (pcko-rw0 (fn-pck-root-tree configs recs)))
