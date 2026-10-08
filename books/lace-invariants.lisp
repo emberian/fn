@@ -51,10 +51,6 @@
   (implies (member-equal s lace)
            (member-equal (fn-stmt-id s) (fn-lace-ids lace))))
 
-(defthm fn-lace-new-is-sublist
-  (implies (member-equal s (fn-lace-new lace delta))
-           (member-equal s delta)))
-
 (defthm fn-lace-new-ids-are-new
   (implies (member-equal s (fn-lace-new lace delta))
            (not (member-equal (fn-stmt-id s) (fn-lace-ids lace)))))
@@ -566,7 +562,6 @@
     fn-lace-member-of-append
     fn-lace-ids-of-append
     fn-lace-member-implies-id-in-ids
-    fn-lace-new-is-sublist
     fn-lace-new-ids-are-new
     fn-lace-member-of-new
     fn-lace-member-of-merge
@@ -613,7 +608,3 @@
 
 (in-theory (disable fn-lace-invariants-vocabulary))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-lace-new-is-sublist))

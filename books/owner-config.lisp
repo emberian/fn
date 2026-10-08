@@ -851,10 +851,7 @@
                                   (fn-own-step fn-own-advance fn-own-close
                                    fn-own-open fn-own-complete fn-own-begin
                                    fn-own-find-conn fn-nntp-article-idp-is-consp
-                                   fn-snrt-new-success-is-actual-matching-durable-completion
-                                   fn-nntp-response-text-true-listp
-                                   fn-wire-next-loop-event-needs-input
-                                   fn-wire-next-event-needs-input))))))
+                                   fn-nntp-response-text-true-listp))))))
 
 ; KEYSTONE.  Every connection keeps the configuration generation it opened
 ; at, for as long as it is not advanced.

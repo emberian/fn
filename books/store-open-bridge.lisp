@@ -520,36 +520,6 @@
                             (events (fn-bs-scanned-rows (fn-sn-files s) image arena))))
            :in-theory nil)))
 
-(defthm fn-bs-sweep-round-keeps-every-cut-reopenable-of-host-open
-  (implies (and (fn-csi-full-relationp s)
-                (fn-bs-store-relation bs (fn-sn-files s) arena)
-                (member-equal pair
-                              (fn-bs-run bs (fn-sn-files s)
-                                         (fn-bs-recover-sweep-program
-                                          (cadr (fn-sn-sweep-round s observed overp held)))
-                                         outcomes groups capacity))
-                (fn-bs-crash-imagep (car pair) image)
-                (fn-sn-observed-identity-okp
-                 (fn-bs-scanned-rows (fn-sn-files s) image arena))
-                (fn-sn-observed-topic-okp
-                 (fn-bs-scanned-rows (fn-sn-files s) image arena))
-                (fn-sob-configured-openp configs
-                                         (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                         (fn-bs-scanned-rows (fn-sn-files s) image arena)))
-           (and (equal (cdr pair) (fn-sn-files s))
-                (equal (fn-bs-scan-store (car pair)) (fn-bs-scan-store bs))
-                (fn-sn-open-okp
-                 (fn-cpo-open-observed configs
-                                       (fn-bs-scan-frontier (fn-bs-scan-store image))
-                                       (fn-bs-scanned-rows (fn-sn-files s) image arena)))))
-  :hints (("Goal"
-           :use (fn-bs-sweep-round-keeps-every-cut-reopenable
-                 (:instance fn-cpo-open-observed-is-sn-open-observed-on-the-kernel
-                            (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
-                            (frontier (fn-bs-scan-frontier (fn-bs-scan-store image)))
-                            (events (fn-bs-scanned-rows (fn-sn-files s) image arena))))
-           :in-theory nil)))
-
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
@@ -558,7 +528,3 @@
 (in-theory (disable (:definition fn-sob-identity-typedp)
                     (:rewrite fn-sob-cpo-opens-on-configured-image)))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bs-sweep-round-keeps-every-cut-reopenable-of-host-open))

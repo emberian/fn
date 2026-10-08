@@ -902,8 +902,8 @@
                   (if (eql (car (nth i rows)) 0) *fn-rv-zero* (cddr (nth i rows)))))
   :hints (("Goal" :in-theory (enable fn-rv-row-demand))))
 
-(defthm fn-rv-len-of-vector
-  (implies (fn-rv-vectorp v) (equal (len v) *fn-rv-k*)))
+(local (defthm fn-rv-len-of-vector
+  (implies (fn-rv-vectorp v) (equal (len v) *fn-rv-k*))))
 
 (defthm fn-rv-row-fields-of-nth
   (implies (and (fn-rv-rowsp rows) (natp i) (< i (len rows)))
@@ -1560,7 +1560,3 @@
                     fn-rv-settle fn-rv-refund fn-rv-grow fn-rv-destroy fn-rv-step
                     fn-rv-run fn-rv-install))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-rv-len-of-vector))

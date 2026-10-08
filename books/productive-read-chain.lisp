@@ -270,7 +270,7 @@
                  (:instance fn-pcr-post-delegates-an-ordinary-read-without-offer-by-definition)
                  (:instance fn-pcr-article-line-is-an-ordinary-command))
            :in-theory (disable fn-nntp-find-group-number-of-fresh-member fn-articles-freshp
-                               fn-pol-stmt-p-shape fn-memberships-conflictsp
+                               fn-memberships-conflictsp
                                (:type-prescription fn-nntp-keywordp)
                                fn-pcr-command-line-reaches-the-reader-dispatch-by-definition
                                fn-nntp-command-pinned fn-stx-reader-verdict-is-the-recorded-verdict

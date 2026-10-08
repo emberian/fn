@@ -1031,6 +1031,7 @@
                       path (fn-record-string-octets
                             (fn-cfg-peer-path-identity
                              (fn-own-feed-record-of name tbl)))))))
+ :rule-classes nil
   :hints (("Goal" :use (fn-own-feed-target-is-offerable
                         fn-own-feed-target-has-an-entry
                         (:instance fn-own-feed-find-is-typed (peer name)))
@@ -1179,7 +1180,6 @@
                             (groups (fn-own-feed-groups-of octets))
                             (path (fn-own-feed-path-of octets))))
            :in-theory (disable fn-own-feed-accept-touches-only-its-targets
-                               fn-own-feed-never-offers-a-loop
                                fn-own-feed-targets fn-own-feed-accept
                                fn-own-feed-tablep))))
 
@@ -2063,9 +2063,3 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-own-feed-never-offers-a-loop)))
-
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-own-feed-never-offers-a-loop))

@@ -50,10 +50,6 @@
 ; -----------------------------------------------------------------------------
 ; Statement shape facts used below
 
-(defthm fn-pol-stmt-is-consp
-  (implies (fn-stmt-p s) (consp s))
-  :hints (("Goal" :in-theory (enable fn-stmt-p))))
-
 (defthm fn-pol-candidatep-implies-authority-stmt
   (implies (fn-pol-candidatep s keyring group authority)
            (and (fn-stmt-p s)
@@ -165,10 +161,10 @@
 ; -----------------------------------------------------------------------------
 ; Grounding
 
-(defthm fn-pol-candidates-members-are-candidates
+(local (defthm fn-pol-candidates-members-are-candidates
   (implies (member-equal p (fn-pol-candidates lace keyring group authority))
            (and (member-equal p lace)
-                (fn-pol-candidatep p keyring group authority))))
+                (fn-pol-candidatep p keyring group authority)))))
 
 (defthm fn-pol-member-candidate-is-in-candidates
   (implies (and (member-equal p lace)
@@ -405,7 +401,6 @@
 
 (deftheory fn-pol-invariants-vocabulary
   '(
-    fn-pol-stmt-is-consp
     fn-pol-candidatep-implies-authority-stmt
     fn-pol-candidates-is-true-list
     fn-pol-candidates-of-append
@@ -413,7 +408,6 @@
     fn-pol-delta-without-authority-p-of-new
     fn-pol-candidates-of-merge-with-foreign-delta
     fn-pol-first-authority-stmt-when-not-foreign
-    fn-pol-candidates-members-are-candidates
     fn-pol-member-candidate-is-in-candidates
     fn-pol-slot-lessp-irreflexive
     fn-pol-slot-lessp-asymmetric
@@ -430,8 +424,3 @@
 
 (in-theory (disable fn-pol-invariants-vocabulary))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-pol-candidates-members-are-candidates
-                    fn-pol-stmt-is-consp))

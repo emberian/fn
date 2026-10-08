@@ -424,7 +424,7 @@
 ; yielded boundary cannot be manufactured from an empty socket chunk; when no
 ; event is found, every supplied proper octet has been consumed into the
 ; returned framing state.
-(defthm fn-wire-next-loop-event-needs-input
+(local (defthm fn-wire-next-loop-event-needs-input
   (implies (and (fn-wire-statep wire-state)
                 (not (equal (fn-wire-state-mode wire-state) :closed))
                 (fn-wire-octet-listp octets)
@@ -436,20 +436,7 @@
                             fn-wire-next-event
                             fn-wire-make-next)
                            (fn-wire-feed-byte fn-wire-statep fn-wire-close
-                            fn-wire-make-state)))))
-
-(defthm fn-wire-next-event-needs-input
-  (implies (and (fn-wire-statep wire-state)
-                (not (equal (fn-wire-state-mode wire-state) :closed))
-                (fn-wire-octet-listp octets)
-                (fn-wire-next-event (fn-wire-next wire-state octets)))
-           (consp octets))
-  :hints (("Goal"
-           :use ((:instance fn-wire-next-loop-event-needs-input))
-           :in-theory (e/d (fn-wire-next)
-                                  (fn-wire-next-loop fn-wire-statep
-                                   fn-wire-next-state fn-wire-next-event
-                                   fn-wire-next-unconsumed)))))
+                            fn-wire-make-state))))))
 
 (defthm fn-wire-next-loop-no-event-consumes-proper-chunk
   (implies (and (fn-wire-statep wire-state)
@@ -823,11 +810,5 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:rewrite fn-wire-next-event-needs-input)
-                    (:rewrite fn-wire-next-loop-event-needs-input)))
+(in-theory (disable))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-wire-next-event-needs-input
-                    fn-wire-next-loop-event-needs-input))

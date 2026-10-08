@@ -466,31 +466,3 @@
                             (st (fn-bpnf-base st)) (event e)))
            :in-theory (theory 'minimal-theory))))
 
-(defthm fn-bpnp-step-base-event-cl-send-is-authorized-by-durable-attempt-record-by-bridge
-  (implies
-   (and (fn-bpn-lifecycle-invariantp (fn-bpnf-base st))
-        (fn-bpn-effect-kind-memberp
-         :cl-send (fn-bpnf-answer-effects (fn-bpnp-step st (list :base e)))))
-   (let* ((pending (fn-bpn-machine-state-pending (fn-bpnf-base st)))
-          (record (fn-bpn-pending-record pending)))
-     (and (not (fn-bpnf-issued st))
-          (not (fn-bpah-delivery-uncertainp st))
-          pending
-          (equal (car e) :persist-result)
-          (equal (nth 1 e) (fn-bpn-pending-token pending))
-          (equal (nth 2 e) :durable)
-          (equal (fn-cbor-ag-car record) :attempting)
-          (fn-bpn-record-applicablep (fn-bpnf-base st) record)
-          (equal (fn-bpnf-answer-effects (fn-bpnp-step st (list :base e)))
-                 (fn-bpn-pending-success-effects pending)))))
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bpnp-step-base-event-refines-fn-bpn-step)
-                 (:instance fn-bpn-step-cl-send-is-authorized-by-durable-attempt-record
-                            (st (fn-bpnf-base st)) (event e)))
-           :in-theory (union-theories '(bpnpb-kind-memberp-atom (:e atom))
-                                      (theory 'minimal-theory)))))
-
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bpnp-step-base-event-cl-send-is-authorized-by-durable-attempt-record-by-bridge))
