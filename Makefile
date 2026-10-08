@@ -648,6 +648,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/heap-store-figure \
 	books/heap-figure \
 	books/history-root-figure \
+	books/history-root-status \
 	books/heap-open-nursery \
 	tests/acl2/heap-open-nursery-tests \
 	books/send-progress \

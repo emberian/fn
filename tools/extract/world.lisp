@@ -306,6 +306,7 @@
 (include-book "../../books/anchor-invariants")
 (include-book "../../books/owner-report-capture")
 (include-book "../../books/state-globals")
+(include-book "../../books/history-root-status")
 (include-book "../../books/index-writer-ticket")
 (include-book "../../books/catalog-may-seal")
 (include-book "../../books/catalog-root-incarnation")
