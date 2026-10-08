@@ -2240,6 +2240,25 @@
    "registry": true
   },
   {
+   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "bounds": [],
+   "claim_digest": "643da0e0b2eae8b5261af5d677b374f4bd6b247be93a57c460ba32f20aed2a36",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpn-host-lifecycle-recovery-from-agrees-with-the-replayed-machine",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 3
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-bpn-host-receive-keeps-the-three-outcomes-distinct",
    "registry": true
@@ -2325,6 +2344,25 @@
    "registry": true
   },
   {
+   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "bounds": [],
+   "claim_digest": "04030e0902021f8bef5af993cf1364ad8b9059c8de79322ac6c9f7621e940018",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpn-restart-step-from-of-no-records",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-bpn-sf-step-preserves-nonreuse",
    "registry": true
@@ -2340,9 +2378,23 @@
    "registry": true
   },
   {
-   "class": "hand",
+   "book_digest": "857579f7c7d549c8e70d2da16b5cf5f3035614e8c0ae1337269c6bc826cfdbf6",
+   "bounds": [],
+   "claim_digest": "d3a369281edd6d35d47d457235885d53042aa0cfd4a52cef5ef7daf84d783b35",
+   "class": "generated",
+   "mutations": "edits:1",
    "name": "fn-bpn-step-preserves-lifecycle-invariant",
-   "registry": true
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-machine-authorization-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
   },
   {
    "book_digest": "c9f4c99d52b6303449d48ff542cba04945f3c9cde9e36e15be40d52ddc52ce2e",
@@ -2522,6 +2574,25 @@
    "registry": true
   },
   {
+   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "bounds": [],
+   "claim_digest": "f706fee1960e88e3f96338a27f0e06d655f069fa3c96959c1e5fb953146dda36",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpnf-recover-fnbs-step-of-no-base-records-keeps-owed-work",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 0
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-bpnf-recovery-heldp-fast-is-logic",
    "registry": true
@@ -2620,6 +2691,25 @@
    "class": "hand",
    "name": "fn-bpnj-new-arms-preserve-the-lifecycle-invariant",
    "registry": true
+  },
+  {
+   "book_digest": "e8121bb8c2ed7382beeaf5da104ea49e499e8fa147ae10a2b048f2e648ee0281",
+   "bounds": [],
+   "claim_digest": "22bacb0f2e9956a9a63f658e7c8758f4623733bc461f2f86aa94bae753afc39b",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpnj-rotation-restart-succeeds-with-owed-work",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-recovery-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 5
+   },
+   "subject": "fn-bpnj-step",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -2835,6 +2925,63 @@
    "class": "hand",
    "name": "fn-bpnp-rotate-step-proposes-only-own-projection",
    "registry": true
+  },
+  {
+   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "bounds": [],
+   "claim_digest": "965a192906280811b3aafe7f9b8926bb2d3413d9c9133136f6375b6f108cd8bf",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-bpnp-rotate-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "bounds": [],
+   "claim_digest": "f0411da1adab956f97e825ba1f10478f9385c4476e9f97368da2163e4bc8fab1",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpnp-rotation-recovery-seeds-owed-jobs",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-bpnp-rotate-step",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "bounds": [],
+   "claim_digest": "184fbbc1ac0f651012f0ef0e8a598295147341edc8748bfaf06fc6ce76ff0198",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpnp-rotation-restart-keeps-owed-work",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 4,
+    "reachable": 2
+   },
+   "subject": "fn-bpnr-seed-state",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -3072,9 +3219,47 @@
    "registry": true
   },
   {
+   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "bounds": [],
+   "claim_digest": "5c73b25e1cdd0e75f3daa6430957bb503a31465e76214102741006ea2cc5a396",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpnr-checkpoint-decode-of-damaged-jobs-is-nil",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-bpnr-checkpoint-decode-of-octets",
    "registry": true
+  },
+  {
+   "book_digest": "1f4844a4b8ae61d2557c0eaa32e3c16e52876640458b3bcd60c7e0a96cd78daf",
+   "bounds": [],
+   "claim_digest": "831f130d43bdddde74a181f8c889b24554d0cbe57f204e7dcddb6c35914b6d86",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpnr-checkpoint-recovery-equals-full-machine",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-equivalence-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 6
+   },
+   "subject": "fn-bpnj-step",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -3105,6 +3290,25 @@
    "class": "hand",
    "name": "fn-bpnr-recover-from-checkpoint-equals-full-recover",
    "registry": true
+  },
+  {
+   "book_digest": "14eeaaa1bbbc1e0655337c0fca9e4d6452c5a891827b4a79de0d3fa3a329dd41",
+   "bounds": [],
+   "claim_digest": "85c0910d55b3f5b5664bca70a37e27e30ba44da5d4d2c1215eaf8b5c0f959c7f",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-bpnr-replay-base-seeds-checkpoint",
+   "owed_met": null,
+   "owner_book": "tests/acl2/bp-node-rotation-due-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 1
+   },
+   "subject": null,
+   "witness": "executable"
   },
   {
    "class": "hand",
