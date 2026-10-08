@@ -161,7 +161,7 @@ def result_line(cr, rows=None):
             "rss_kib": {"anon": m.get("rss_kib.anon"), "file": m.get("rss_kib.file"),
                         "vmrss": m.get("rss_kib.vmrss"), "hwm": m.get("rss_kib.hwm")},
             "gc_s": None if m.get("gc.ms") is None else round(m["gc.ms"] / 1000.0, 3),
-            "refusals": cr.get("refusals", {}),
+            "refusals": cr.get("refusals", {}), "faults": cr.get("faults"),
             "bar": {r["bar"]: r["verdict"] for r in rows}, "verdict": overall(rows),
             "status": cr.get("status")}
 

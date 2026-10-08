@@ -44,6 +44,7 @@ ROOT = HERE.parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT))
 
+from tools.load import faults                     # noqa: E402
 from tools.load import cells as cells_mod          # noqa: E402
 from tools.load import result as res_mod            # noqa: E402
 from tools.load import workloads as wl              # noqa: E402
@@ -1170,6 +1171,18 @@ class Run:
                     self.ctr.refusals["conn-capacity-%s-%s" % (preset, refusal_name(t["refusal"].encode()))] += 1
         return {"capacity": out}
 
+    def phase_fault_held_reader(self, ph):
+        return faults.held_reader(self, ph)
+
+    def phase_fault_slow_reader(self, ph):
+        return faults.slow_reader(self, ph)
+
+    def phase_fault_framing(self, ph):
+        return faults.framing(self, ph)
+
+    def phase_fault_crash_boundary(self, ph):
+        return faults.crash_boundary(self, ph)
+
     def phase_unimplemented(self, ph):
         return {"status": "not-implemented", "reason": ph["reason"]}
 
@@ -1378,6 +1391,12 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
             cr["metrics"]["site.fdatasync_p50_ms"], cr["metrics"]["site.fdatasync_p99_ms"] = st["p50_ms"], st.get("p99_ms")
             if st.get("p99_ms") is None:
                 cr["not_measured"]["site.fdatasync_p99_ms"] = "fewer than 200 probe samples"
+        fault_phases = [p["faults"] for p in cr["phases"] if "faults" in p]
+        if fault_phases:
+            cr["faults"] = {"violations": [v for f in fault_phases for v in f["violations"]],
+                            "outcomes": {k: sum(f["outcomes"][k] for f in fault_phases) for k in faults.OUTCOMES}}
+            for f in fault_phases:
+                cr["metrics"].update(faults.metrics(f))
         cr["bars"] = [] if sub else res_mod.judge_cell(cr, args.bars)
         with contextlib.suppress(OSError):
             (work / "samples.json").write_text(json.dumps(node.sampler.series))

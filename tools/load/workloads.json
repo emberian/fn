@@ -635,6 +635,164 @@
      "measure": true
     }
    ]
+  },
+  "fault-crash-boundary": {
+   "about": "P1-DURABLE: Every POST with a read 240 survives restart byte-identically, Path/Xref excepted.; P2-IDENTITY: Only attempted articles exist; each Message-ID has exactly its attempted octets; uncertain POSTs are whole or absent.; P5-RECOVERY: After each process death, including recovery death, LISTENING and a productive POST occur within the stated bound.; process death only, assumes store-filesystem fdatasync durability. Owner L.",
+   "preset": "small",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "fault_crash_boundary",
+     "posts": 100,
+     "samples_per_boundary": 3,
+     "shrink_runs": 16,
+     "command_deadline_s": 10,
+     "recovery_s": 60,
+     "measure": true
+    }
+   ],
+   "hooks": [
+    "planning/evidence/load/hooks/f2-crash.lisp"
+   ]
+  },
+  "fault-framing": {
+   "about": "P8-CLIENTS: Client bytes cannot kill the owner, exceed other clients' deadlines or grow RSS without bound; misuse is refused by name.; process death only, assumes store-filesystem fdatasync durability. Owner L.",
+   "preset": "small",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "fault_framing",
+     "split_budget": 64,
+     "shrink_runs": 16,
+     "command_deadline_s": 10,
+     "fragment_pause_s": 0.002,
+     "rss_slack_kib": 16384,
+     "measure": true
+    }
+   ]
+  },
+  "fault-slow-reader": {
+   "about": "P8-CLIENTS: Client bytes cannot kill the owner, exceed other clients' deadlines or grow RSS without bound; misuse is refused by name.; process death only, assumes store-filesystem fdatasync durability. Owner L.",
+   "preset": "big-articles",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "fault_slow_reader",
+     "duration_s": 40,
+     "solo_s": 10,
+     "recv_sleep_s": 0.01,
+     "pipeline": 8,
+     "shrink_runs": 8,
+     "command_deadline_s": 10,
+     "measure": true
+    }
+   ]
+  },
+  "fault-held-reader": {
+   "about": "P4-RECLAIM: A held ARTICLE across publication/checkpoint/reclaim returns accepted octets or a named refusal, never another article's bytes.; process death only, assumes store-filesystem fdatasync durability. Owner L.",
+   "preset": "big-articles",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "fault_held_reader",
+     "readers": 4,
+     "shrink_runs": 8,
+     "command_deadline_s": 10,
+     "recovery_s": 60,
+     "measure": true
+    }
+   ]
+  },
+  "fault-slot-reuse": {
+   "about": "P1-DURABLE; P2-IDENTITY: late completion after slot reuse across publication must preserve operation identity and accepted octets. Owner S. Process death only; assumes fdatasync durability of the store filesystem.",
+   "preset": "small",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "unimplemented",
+     "reason": "F1 owner S: P1-DURABLE; P2-IDENTITY: late completion after slot reuse across publication must preserve operation identity and accepted octets."
+    }
+   ]
+  },
+  "fault-index-saturation": {
+   "about": "P2-IDENTITY: forced index collisions and splits, existing and absent IDs under saturation and restart must preserve exact identity/absence. Owner S. Process death only; assumes fdatasync durability of the store filesystem.",
+   "preset": "small",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "unimplemented",
+     "reason": "F4 owner S: P2-IDENTITY: forced index collisions and splits, existing and absent IDs under saturation and restart must preserve exact identity/absence."
+    }
+   ]
+  },
+  "fault-index-omission": {
+   "about": "P1-DURABLE; P2-IDENTITY: a plausible persisted index omitting an existing article must not hide accepted content. Owner S. Process death only; assumes fdatasync durability of the store filesystem.",
+   "preset": "small",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "unimplemented",
+     "reason": "F7 owner S: P1-DURABLE; P2-IDENTITY: a plausible persisted index omitting an existing article must not hide accepted content."
+    }
+   ]
+  },
+  "fault-bp-disruption": {
+   "about": "P1-DURABLE; P2-IDENTITY; P5-RECOVERY: two BP nodes with lost receipts, duplicate transfers, restarts, incarnation change and stale ack replay must preserve durable identity and recover productively. Owner N. Process death only; assumes fdatasync durability of the store filesystem.",
+   "preset": "small",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "unimplemented",
+     "reason": "F8 owner N: P1-DURABLE; P2-IDENTITY; P5-RECOVERY: two BP nodes with lost receipts, duplicate transfers, restarts, incarnation change and stale ack replay must preserve durable identity and recover productively."
+    }
+   ]
+  },
+  "fault-soak": {
+   "about": "P1-DURABLE; P2-IDENTITY; P8-CLIENTS: 72 h soak at POST 5/s, eight readers, hourly publication and a catch-up peer; report RSS slope and p99 per hour, divergence must be 0. Owner L. Process death only; assumes fdatasync durability of the store filesystem.",
+   "preset": "big-articles",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "unimplemented",
+     "reason": "F9 owner L: P1-DURABLE; P2-IDENTITY; P8-CLIENTS: 72 h soak at POST 5/s, eight readers, hourly publication and a catch-up peer; report RSS slope and p99 per hour, divergence must be 0."
+    }
+   ]
   }
  },
  "cells": {
@@ -653,7 +811,16 @@
   "T-OPS": "prof-ops",
   "W6b": "peers-feed",
   "W6c": "peers-catchup-load",
-  "W8S": "publish-stall"
+  "W8S": "publish-stall",
+  "F2": "fault-crash-boundary",
+  "F6": "fault-framing",
+  "F5": "fault-slow-reader",
+  "F3": "fault-held-reader",
+  "F1": "fault-slot-reuse",
+  "F4": "fault-index-saturation",
+  "F7": "fault-index-omission",
+  "F8": "fault-bp-disruption",
+  "F9": "fault-soak"
  },
  "stores": {
   "1k": 1000,

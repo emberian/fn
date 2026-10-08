@@ -479,3 +479,72 @@ class PeersTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FaultFrameworkTests(unittest.TestCase):
+    def test_outcomes_and_partial_reply(self):
+        from tools.load.faults import History
+        h = History()
+        a, b, c = [h.plan('STAT', {'n': i}) for i in range(3)]
+        h.sent(b)
+        h.sent(c)
+        with self.assertRaises(EOFError):
+            h.complete(b, b'223 partial')
+        h.complete(c, b'223 complete\r\n')
+        self.assertEqual(h.counts(), {'not-attempted': 1, 'attempted-uncertain': 1, 'completed': 1})
+        self.assertIsNone(a['send_time'])
+        self.assertNotEqual(a['args_digest'], b['args_digest'])
+
+    def test_durability_identity_and_uncertainty(self):
+        from tools.load.faults import History, verify
+        h = History()
+        for mid, outcome in [('accepted', 'completed'), ('uncertain', 'attempted-uncertain'), ('unsent', 'not-attempted')]:
+            op = h.plan('POST', {'msgid': mid, 'sha256': mid})
+            if outcome != 'not-attempted':
+                h.sent(op)
+            if outcome == 'completed':
+                h.complete(op, b'240 accepted\r\n')
+        self.assertEqual(verify(h.ops, {'accepted': 'accepted'}), [])
+        self.assertEqual(verify(h.ops, {'accepted': 'accepted', 'uncertain': 'uncertain'}), [])
+        self.assertEqual({p for p, _ in verify(h.ops, {'accepted': 'wrong', 'unsent': 'unsent'})},
+                         {'P1-DURABLE', 'P2-IDENTITY'})
+        self.assertIn('P2-IDENTITY', [p for p, _ in verify(h.ops, {'uncertain': 'partial'})])
+        self.assertIn('P2-IDENTITY', [p for p, _ in verify(h.ops, {'unknown': 'new'})])
+
+    def test_later_conflicting_attempt_cannot_replace_accepted_identity(self):
+        from tools.load.faults import History, verify
+        h = History()
+        a = h.plan('POST', {'msgid': 'a', 'sha256': 'original'})
+        h.sent(a)
+        h.complete(a, b'240 accepted\r\n')
+        h.sent(h.plan('POST', {'msgid': 'a', 'sha256': 'replacement'}))
+        self.assertEqual({p for p, _ in verify(h.ops, {'a': 'replacement'})}, {'P1-DURABLE', 'P2-IDENTITY'})
+
+    def test_shrinker_reruns_and_honors_budget(self):
+        from tools.load.faults import shrink
+        attempts = []
+        def fails(h):
+            attempts.append(h)
+            return 3 in h and 7 in h
+        short, info = shrink(list(range(12)), fails, 100)
+        self.assertEqual(short, [3, 7])
+        self.assertEqual(info['minimal'], 'one-deletion')
+        self.assertEqual(info['runs'], len(attempts))
+        _, info = shrink(list(range(20)), lambda h: False, 2)
+        self.assertEqual(info['runs'], 2)
+        self.assertEqual(info['minimal'], 'budget-exhausted')
+
+    def test_fault_hooks_and_boundary_inventory(self):
+        from tools.load import faults
+        root = Path(__file__).resolve().parents[1]
+        data = workloads.load()
+        for spec in data['workloads'].values():
+            for hook in spec.get('hooks', []):
+                self.assertTrue((root / hook).is_file(), hook)
+        hook = (root / 'planning/evidence/load/hooks/f2-crash.lisp').read_text()
+        host = (root / 'host/native/io.lisp').read_text() + (root / 'host/native/owner.lisp').read_text()
+        for boundary in faults.BOUNDARIES:
+            self.assertIn(boundary, hook)
+            self.assertIn('(defun ' + boundary + ' ', host)
+        self.assertEqual(faults.sample_points(100, 3), [1, 51, 100])
+        self.assertEqual(faults.sample_points(2, 3), [1, 2])
