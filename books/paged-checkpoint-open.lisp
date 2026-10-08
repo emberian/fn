@@ -45,6 +45,14 @@
 (include-book "consumer-event-index")
 (local (include-book "arithmetic/top" :dir :system))
 
+; Certified inside the owner image (owner@books:books/owner), store-records-field's
+; export theory leaves the proto ADT libraries' rules and executable counterparts
+; disabled (history-records-disk loads them between its theory labels), so ground
+; terms such as (adt-octets-kind-p '(:octets)) never evaluate here.  Executable
+; counterparts are enabled for this book as in the plain world; the root is lane
+; theory-order's (C), which removes this event.
+(local (in-theory (union-theories (current-theory :here) (executable-counterpart-theory :here))))
+
 ; Inherited rules that loop on a symbolic length.
 (in-theory (disable pckx-npk-step pckx-npk-bound))
 
