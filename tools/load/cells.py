@@ -7,6 +7,8 @@ a metric is absent (`not_measured`).  Pure functions over JSON: laptop-testable.
 from __future__ import annotations
 
 import re
+from bisect import bisect_right
+from urllib.parse import unquote
 
 from . import peers
 from .result import fit_exponent
@@ -24,6 +26,86 @@ def _cmd(ph, op):
     return ((ph or {}).get("cmd") or {}).get(op) or {}
 
 
+def parse_locks(text):
+    """Cumulative mutex counters, keyed by decoded UTF-8 names; ignore a torn last row.
+
+    Reject malformed or nonmonotonic complete rows rather than inventing zero waits.
+    Each row is (epoch_us, {name: (waits, wait_us)}).
+    """
+    rows = []
+    previous = {}
+    for line in text.splitlines(keepends=True):
+        if not line.endswith("\n"):
+            break
+        fields = line.split()
+        if not fields:
+            continue
+        epoch = int(fields[0])
+        if rows and epoch <= rows[-1][0]:
+            raise ValueError("lock log epochs are not increasing")
+        counts = {}
+        for field in fields[1:]:
+            name, pair = field.split("=", 1)
+            name = unquote(name, errors="strict")
+            waits, us = map(int, pair.split(":"))
+            if name in counts or min(waits, us) < 0:
+                raise ValueError("invalid lock counters")
+            old = previous.get(name, (0, 0))
+            if waits < old[0] or us < old[1]:
+                raise ValueError("lock counters decreased")
+            counts[name] = (waits, us)
+        if previous.keys() - counts.keys():
+            raise ValueError("lock names disappeared")
+        rows.append((epoch, counts))
+        previous = counts
+    return rows
+
+
+def phase_lock_metrics(rows, phase):
+    """Use the last dump at/before each phase boundary, without interpolation.
+
+    Integer counts are exact for the returned snapshot window; its boundaries lag
+    the phase by up to one dump interval (normally 1 s). Require a dump beyond the
+    end as evidence of coverage, and return actual sample bounds for the report.
+    Totals include all owner threads, including the poster. New names start at 0.
+    """
+    times = [r[0] for r in rows]
+    start, end = (round(phase[k] * 1e6) for k in ("epoch_start", "epoch_end"))
+    if not times or start < times[0] or end > times[-1] or end < start:
+        raise ValueError("lock log does not cover the phase")
+    a, b = bisect_right(times, start) - 1, bisect_right(times, end) - 1
+    if a == b:
+        raise ValueError("phase has no complete lock sampling interval")
+    articles = _cmd(phase, "ARTICLE").get("n", 0)
+    metrics = {}
+    for name, (waits, us) in rows[b][1].items():
+        old = rows[a][1].get(name, (0, 0))
+        prefix = "locks." + name
+        metrics[prefix + ".waits"] = waits - old[0]
+        ms = (us - old[1]) / 1000
+        metrics[prefix + ".wait_ms"] = ms
+        metrics[prefix + ".wait_ms_per_article"] = ms / articles if articles else None
+    return metrics, {"epoch_start": times[a] / 1e6, "epoch_end": times[b] / 1e6,
+                     "boundary_rule": "last dump at or before each phase boundary"}
+
+
+def attach_lock_metrics(phases, text):
+    try:
+        rows = parse_locks(text)
+        error = None
+    except ValueError as exc:
+        rows, error = [], str(exc)
+    for ph in phases:
+        if ph.get("kind") != "read":
+            continue
+        try:
+            if error:
+                raise ValueError(error)
+            ph["lock_metrics"], ph["lock_window"] = phase_lock_metrics(rows, ph)
+        except (ValueError, KeyError) as exc:
+            ph["locks_error"] = str(exc)
+
+
 def derive(workload, phases):
     m, nm = {}, {}
     measure = next((p for p in phases if p.get("measure")), None)
@@ -38,9 +120,18 @@ def derive(workload, phases):
     m["posts.admitted"] = sum((p.get("counts") or {}).get("admitted", 0) for p in phases)
     m["posts.refused"] = sum((p.get("counts") or {}).get("refused", 0) for p in phases)
     for p in phases:
+        for name, value in p.get("lock_metrics", {}).items():
+            key = name + "." + p["name"]
+            if value is None:
+                nm[key] = "no completed ARTICLEs in phase"
+            else:
+                m[key] = value
+        if p.get("locks_error"):
+            nm["locks." + p["name"]] = p["locks_error"]
         if p.get("status") == "not-implemented":
             nm.setdefault("*", p.get("reason"))
-    fn = {"mem-vs-size": _mem_vs_size, "commands": _commands, "post-rate": _post_rate, "readers": _readers, "article-sizes": _sizes, "growth": _growth,
+    fn = {"mem-vs-size": _mem_vs_size, "commands": _commands, "post-rate": _post_rate, "readers": _readers,
+          "readers-locks": _readers, "readers-prof": _readers, "article-sizes": _sizes, "growth": _growth,
           "m1-durable": _durable, "smoke": _smoke, "fresh-start": _fresh, "conn-capacity": _conncap, "publish-stall": _stall, "prof-ops": _prof,
           "catchup": peers.derive_catchup, "catchup-prof": peers.derive_catchup, "peers-feed": peers.derive_catchup,
           "peers-catchup-load": peers.derive_catchup}.get(workload)

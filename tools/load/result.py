@@ -216,6 +216,27 @@ def report(res, bars):
                 _fmt(st.get("p50_ms")), _fmt(st.get("p99_ms")), _fmt(rate), _fmt(mem.get("vmrss")),
                 _fmt(mem.get("anon")), _fmt(mem.get("file")), _fmt(mem.get("hwm")), _fmt(ph.get("cpu_s")),
                 _fmt(io.get("read_bytes")), _fmt(io.get("write_bytes")), _fmt(gc.get("count")), _fmt(gc.get("ms"))))
+        for ph in cr.get("phases", []):
+            if ph.get("locks_error"):
+                out += ["", "%s locks: NOT-MEASURED: %s" % (ph["name"], ph["locks_error"])]
+            if "lock_metrics" not in ph:
+                continue
+            mt, window = ph["lock_metrics"], ph["lock_window"]
+            names = sorted((k[len("locks."):-len(".wait_ms")] for k in mt if k.endswith(".wait_ms")),
+                           key=lambda name: (-mt["locks." + name + ".wait_ms"], name))[:8]
+            out += ["", "%s contended mutex waits (top 8 by wait; all owner threads, including poster). "
+                    "Snapshot window %.6f–%.6f; phase %.6f–%.6f epoch seconds. "
+                    "Each boundary uses the last dump at or before it (normally <1 s earlier); "
+                    "counts are charged on wait completion, with no interpolation."
+                    % (ph["name"], window["epoch_start"], window["epoch_end"], ph["epoch_start"], ph["epoch_end"]), "",
+                    "| lock | waits | wait ms | wait ms / ARTICLE |", "|---|---|---|---|"]
+            for name in names:
+                prefix = "locks." + name
+                out.append("| %s | %s | %s | %s |" % (
+                    name.replace("|", "&#124;").replace("\n", " "), _fmt(mt[prefix + ".waits"]),
+                    _fmt(mt[prefix + ".wait_ms"]), _fmt(mt[prefix + ".wait_ms_per_article"])))
+            if not names:
+                out.append("| (no contended grabs observed) | 0 | 0 | - |")
         if cr.get("members"):
             keys = [m.split("@", 1)[1] for m in cr["members"]]
             mt = cr.get("metrics") or {}

@@ -54,6 +54,8 @@ BOX_BASE = os.environ.get("FN_LOAD_BOX_BASE", "/tank/fn/scratch/load-harness")
 HOOKS = ROOT / "planning" / "evidence" / "load" / "hooks"
 HOOK = HOOKS / "w13-idle-gc.lisp"
 CENSUS_HOOK = HOOKS / "w15-census.lisp"
+LOCKS_HOOK = HOOKS / "w2-lockwait.lisp"
+SPROF_HOOK = HOOKS / "w6-prof.lisp"
 FIXTURES = "/tank/fn/scratch/fixtures-0b4d3b183"
 PROF_HOOK = Path("/tank/fn/scratch/extract-prof/prof2.lisp")      # E's deterministic encapsulate hook (same path on hbox and persvati)
 CLK = os.sysconf("SC_CLK_TCK") if hasattr(os, "sysconf") else 100
@@ -654,10 +656,14 @@ class Run:
             except Exception as e:      # noqa: BLE001
                 errs.append(repr(e))
         t0 = time.monotonic()
+        epoch_start = time.time()
         ths = [threading.Thread(target=reader, args=(k,)) for k in range(readers)]
         pth = threading.Thread(target=poster_loop) if poster else None
         for t in ths + ([pth] if pth else []):
             t.start()
+        # Trigger one CPU window only for the measured read phase, after warmup.
+        if self.spec.get("sprof") and ph.get("measure"):
+            Path(self.node.env["FN_LOAD_PROF_START"]).touch()
         if "duration_s" in ph:
             time.sleep(ph["duration_s"])
             stop.set()
@@ -666,11 +672,12 @@ class Run:
         stop.set()
         if pth:
             pth.join()
+        epoch_end = time.time()
         secs = time.monotonic() - t0
         allv = [d for v in lat for d in v]
         op = "OVER40" if cmd == "OVER40" else "ARTICLE"
         out = {"cmd": {op: res_mod.lat_stats(allv)}, "rate": {op.lower() + "_per_s": round(len(allv) / secs, 2) if secs else None},
-               "readers": readers}
+               "readers": readers, "epoch_start": epoch_start, "epoch_end": epoch_end}
         if plat:
             out["cmd"]["POST"] = res_mod.lat_stats(plat)
         if bad:
@@ -780,6 +787,11 @@ class Run:
         plan = {"GROUP": lambda k: ("GROUP fn.test", False), "OVER40": lambda k: ("OVER %d-%d" % (lo, hi), True),
                 "STAT": lambda k: ("STAT %s" % pick(k), False), "HEAD": lambda k: ("HEAD %s" % pick(k), True),
                 "LIST": lambda k: ("LIST", True)}
+        only = ph.get("only")              # a profiling cell loops one command (or only the greeting)
+        if only is not None:
+            plan = {k: v for k, v in plan.items() if k in only}
+        if self.spec.get("sprof") and ph.get("measure"):
+            Path(self.node.env["FN_LOAD_PROF_START"]).touch()
         out, cpu_ms, bad = {}, {}, {}
         for name, mk in plan.items():
             ts, c0 = [], (proc_snapshot(self.node.pid) or {}).get("cpu_s")
@@ -800,9 +812,11 @@ class Run:
             if c0 is not None and c1 is not None:
                 cpu_ms[name] = round((c1 - c0) * 1000.0 / max(1, len(ts)), 3)
         c.close()
+        if only is not None and "greeting" not in only:
+            return {"cmd": out, "cpu_ms_per_op_by_cmd": cpu_ms, "bad_replies": bad or None}
         ts = []
         c0 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
-        for _ in range(reps):
+        for _ in range(ph.get("greeting_reps", reps)):
             t0 = time.perf_counter()
             cc = m.Conn(self.node.port, buffered=True)
             ts.append(time.perf_counter() - t0)
@@ -810,7 +824,7 @@ class Run:
         c1 = (proc_snapshot(self.node.pid) or {}).get("cpu_s")
         out["greeting"] = res_mod.lat_stats(ts)
         if c0 is not None and c1 is not None:
-            cpu_ms["greeting"] = round((c1 - c0) * 1000.0 / reps, 3)
+            cpu_ms["greeting"] = round((c1 - c0) * 1000.0 / max(1, len(ts)), 3)
         return {"cmd": out, "cpu_ms_per_op_by_cmd": cpu_ms, "bad_replies": bad or None}
 
     # hold / idle --------------------------------------------------------
@@ -1245,13 +1259,9 @@ def prepare_store(node, run, spec, cache_dir, key):
 
 # ---------------------------------------------------------------- one cell
 
-def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
-    spec = cell.spec
-    label = "%s-%s-%s-r%d" % (re.sub(r"[^A-Za-z0-9]+", "_", cell.id), target.kind, arm or "x", rep)
-    work = Path(args.work) / label
-    shutil.rmtree(work, ignore_errors=True)
-    work.mkdir(parents=True)
-    use_hook = bool(arm) or args.gc_hook
+def cell_hooks(spec, work, arm=None, gc_hook=False):
+    """Hook selection shared by the run and laptop tests (no image required)."""
+    use_hook = bool(arm) or gc_hook
     hooks = [HOOK] if use_hook else []
     env_extra = {"FN_LOAD_IDLE_GC": "off"} if arm == "A" else {}
     if spec.get("prof"):
@@ -1261,6 +1271,40 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         hooks.append(CENSUS_HOOK)
         (work / "census").mkdir()
         env_extra["FN_LOAD_CENSUS_DIR"] = str(work / "census")
+    if spec.get("lockwait"):
+        hooks.append(LOCKS_HOOK)
+        env_extra["FN_LOAD_LOCKS"] = str(work / "locks.log")
+    if spec.get("sprof"):
+        # w6-prof loads the GC hook itself; do not install it twice.
+        hooks = [h for h in hooks if h != HOOK] + [SPROF_HOOK]
+        env_extra.update(FN_LOAD_PROF=str(work / "sprof"),
+                         FN_LOAD_PROF_WINDOW=str(spec["sprof"]["window_s"]),
+                         FN_LOAD_PROF_START=str(work / "sprof.start"),
+                         FN_LOAD_PROF_MODE=spec["sprof"].get("mode", "cpu"))
+    return hooks, env_extra
+
+
+def collect_measurement_artifacts(work, out, label):
+    """Keep per-cell names (including target/arm/rep), inside the fetchable run dir."""
+    dest = Path(out) / label
+    files = [p for p in (work / "samples.json", work / "locks.log") if p.exists()]
+    files += sorted(work.glob("sprof.*.txt"))
+    if files:
+        dest.mkdir(parents=True, exist_ok=True)
+        for path in files:
+            if path.resolve() != (dest / path.name).resolve():
+                shutil.copy2(path, dest / path.name)
+    return [str(Path(label) / p.name) for p in files]
+
+
+def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
+    spec = cell.spec
+    label = "%s-%s-%s-r%d" % (re.sub(r"[^A-Za-z0-9]+", "_", cell.id), target.kind, arm or "x", rep)
+    work = Path(args.work) / label
+    shutil.rmtree(work, ignore_errors=True)
+    work.mkdir(parents=True)
+    use_hook = bool(arm) or args.gc_hook or bool(spec.get("sprof"))
+    hooks, env_extra = cell_hooks(spec, work, arm, args.gc_hook)
     node = Node(target, work, wl.init_flags(data, spec["preset"]), spec["groups"], args.sbcl_user_args or data["sbcl_user_args"],
                 hooks, work / "gc.log", env_extra, spec.get("sampler_s", 1.0),
                 spec.get("heap", "decided"), None)
@@ -1361,6 +1405,17 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         cr["traceback"] = traceback.format_exc()[-900:]
     finally:
         node.sampler.stop_ev.set()
+        if spec.get("lockwait"):
+            # Get the next dump for end coverage before stopping our owner. No
+            # delay between read phases; all phase deltas are derived below.
+            end = max((p.get("epoch_end", 0) for p in cr["phases"]), default=0)
+            deadline = time.monotonic() + 2.5
+            while end and time.monotonic() < deadline:
+                with contextlib.suppress(OSError, ValueError):
+                    rows = cells_mod.parse_locks((work / "locks.log").read_text())
+                    if rows and rows[-1][0] >= round(end * 1e6):
+                        break
+                time.sleep(0.1)
         if run.peers:
             with contextlib.suppress(Exception):
                 run.peers.close(keep=args.keep)
@@ -1372,7 +1427,12 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         cr["box"]["loadavg_end"] = loadavg()
         cr["box"]["arc_bytes_end"] = arc_size()
         cr["noisy"] = (cr["box"]["loadavg_start"][0] > 2 * cr["box"]["cores"]) if cr["box"]["cores"] else False
+        if spec.get("lockwait"):
+            text = (work / "locks.log").read_text() if (work / "locks.log").exists() else ""
+            cells_mod.attach_lock_metrics(cr["phases"], text)
         cr["metrics"], cr["not_measured"] = cells_mod.derive(cell.workload, cr["phases"])
+        if spec.get("sprof") and not list(work.glob("sprof.*.txt")):
+            cr["not_measured"]["sprof"] = "owner produced no CPU flat profile"
         st = (cr.get("site") or {}).get("write4k_fdatasync") or {}
         if st.get("p50_ms") is not None:
             cr["metrics"]["site.fdatasync_p50_ms"], cr["metrics"]["site.fdatasync_p99_ms"] = st["p50_ms"], st.get("p99_ms")
@@ -1381,6 +1441,7 @@ def run_cell(cell, target, arm, rep, args, data, res, write, sub=False):
         cr["bars"] = [] if sub else res_mod.judge_cell(cr, args.bars)
         with contextlib.suppress(OSError):
             (work / "samples.json").write_text(json.dumps(node.sampler.series))
+        cr["raw_artifacts"] = collect_measurement_artifacts(work, args.out, label)
         write()
         if not args.keep:
             shutil.rmtree(work / "store", ignore_errors=True)

@@ -7,8 +7,10 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
-from tools.load import cells, peers, result, workloads
+from tools.load import cells, driver, peers, result, workloads
 
 
 def cell_result(**over):
@@ -296,6 +298,130 @@ class DeriveTests(unittest.TestCase):
         ph = [{"name": "R16", "cmd": {"ARTICLE": result.lat_stats([0.002] * 50)}}]
         m, nm = cells.derive("readers", ph)
         self.assertIn("article.p99_ms.R16", nm)
+
+
+class LockWaitTests(unittest.TestCase):
+    LOG = ("100000000 fn%20owner%2Fstore=10:10000 %3Cunnamed%3E=1:1000\n"
+           "101000000 fn%20owner%2Fstore=13:16000 %3Cunnamed%3E=1:1000\n"
+           "102000000 fn%20owner%2Fstore=18:26000 %3Cunnamed%3E=2:2000 fn%20extent%20realizer=2:6000\n"
+           "103000000 fn%20owner%2Fstore=20:30000 %3Cunnamed%3E=2:2000 fn%20extent%20realizer=4:8000\n")
+
+    def phase(self, **extra):
+        return dict({"name": "R4", "kind": "read", "epoch_start": 100.5, "epoch_end": 102.5,
+                     "cmd": {"ARTICLE": {"n": 4}, "POST": {"n": 20}}}, **extra)
+
+    def test_parser_names_and_torn_tail(self):
+        rows = cells.parse_locks(self.LOG + "104000000 fn%20owner%2Fstore=99:")
+        self.assertEqual(len(rows), 4)
+        self.assertEqual(rows[0][1]["fn owner/store"], (10, 10000))
+        self.assertEqual(rows[0][1]["<unnamed>"], (1, 1000))
+
+    def test_split_boundaries_use_previous_dumps_and_article_denominator(self):
+        metrics, window = cells.phase_lock_metrics(cells.parse_locks(self.LOG), self.phase())
+        self.assertEqual((window["epoch_start"], window["epoch_end"]), (100, 102))
+        self.assertEqual(metrics["locks.fn owner/store.waits"], 8)
+        self.assertEqual(metrics["locks.fn owner/store.wait_ms"], 16)
+        self.assertEqual(metrics["locks.fn owner/store.wait_ms_per_article"], 4)
+        self.assertEqual(metrics["locks.fn extent realizer.waits"], 2)
+        self.assertEqual(metrics["locks.<unnamed>.wait_ms"], 1)
+        exact, _ = cells.phase_lock_metrics(cells.parse_locks(self.LOG), self.phase(epoch_start=101, epoch_end=103))
+        self.assertEqual(exact["locks.fn owner/store.waits"], 7)
+
+    def test_phase_derivation_and_zero_articles(self):
+        phases = [self.phase(), self.phase(name="R16", epoch_start=102, epoch_end=103, cmd={"ARTICLE": {"n": 0}})]
+        cells.attach_lock_metrics(phases, self.LOG)
+        metrics, nm = cells.derive("readers-locks", phases)
+        self.assertEqual(metrics["locks.fn owner/store.wait_ms.R4"], 16)
+        self.assertEqual(metrics["locks.fn owner/store.waits.R16"], 2)
+        self.assertIn("locks.fn owner/store.wait_ms_per_article.R16", nm)
+
+    def test_missing_coverage_and_corruption_are_not_zero_contention(self):
+        for ph in (self.phase(epoch_start=99), self.phase(epoch_end=104), self.phase(epoch_end=100.8)):
+            cells.attach_lock_metrics([ph], self.LOG)
+            self.assertIn("locks_error", ph)
+            self.assertNotIn("lock_metrics", ph)
+        for log in (self.LOG + "104000000 fn%20owner%2Fstore=1:1\n",
+                    self.LOG + "103000000\n", "100000000 broken\n"):
+            with self.assertRaises(ValueError):
+                cells.parse_locks(log)
+
+    def test_report_top_eight_and_sample_window(self):
+        ph = self.phase()
+        cells.attach_lock_metrics([ph], self.LOG)
+        for n in range(10):
+            ph["lock_metrics"].update({"locks.extra%d.waits" % n: 1, "locks.extra%d.wait_ms" % n: 100 + n,
+                                       "locks.extra%d.wait_ms_per_article" % n: (100 + n) / 4})
+        text = result.report({"cells": [cell_result(phases=[ph])]}, [])
+        self.assertIn("Snapshot window 100.000000–102.000000", text)
+        self.assertIn("| extra9 |", text)
+        self.assertIn("| extra2 |", text)
+        self.assertNotIn("| extra1 |", text)
+        self.assertLess(text.index("| extra9 |"), text.index("| extra2 |"))
+
+    def test_workloads_inherit_reader_conditions(self):
+        base = workloads.resolve("readers@10k").spec
+        lock = workloads.resolve("W2L@10k").spec
+        prof = workloads.resolve("readers-prof@10k").spec
+        self.assertEqual(workloads.resolve("W2P@10k").workload, "readers-prof")
+        for spec in (lock, prof):
+            for key in ("preset", "store", "groups", "policy"):
+                self.assertEqual(spec[key], base[key])
+            for ph in spec["phases"]:
+                self.assertEqual(ph["poster"], {"rate_per_s": 5, "octets": 2048})
+        self.assertTrue(lock["lockwait"])
+        self.assertEqual([(p["name"], p["duration_s"]) for p in lock["phases"]], [("R1", 20), ("R4", 20), ("R16", 20)])
+        self.assertEqual([(p["readers"], p["duration_s"], p["measure"]) for p in prof["phases"]], [(16, 10, False), (16, 65, True)])
+        self.assertEqual(prof["sprof"], {"window_s": 60})
+
+    def test_hooks_and_fetchable_artifacts_without_image(self):
+        with tempfile.TemporaryDirectory() as d:
+            work, out = Path(d) / "work", Path(d) / "raw"
+            work.mkdir()
+            hooks, env = driver.cell_hooks(workloads.resolve("W2L").spec, work)
+            self.assertIn(driver.LOCKS_HOOK, hooks)
+            self.assertTrue(driver.LOCKS_HOOK.is_file())
+            self.assertEqual(env["FN_LOAD_LOCKS"], str(work / "locks.log"))
+            hooks, env = driver.cell_hooks(workloads.resolve("W2P").spec, work, gc_hook=True)
+            self.assertIn(driver.SPROF_HOOK, hooks)
+            self.assertNotIn(driver.HOOK, hooks)  # sprof already loads it
+            self.assertTrue(driver.SPROF_HOOK.is_file())
+            self.assertEqual(env["FN_LOAD_PROF_WINDOW"], "60")
+            self.assertEqual(env["FN_LOAD_PROF"], str(work / "sprof"))
+            self.assertEqual(env["FN_LOAD_PROF_START"], str(work / "sprof.start"))
+            self.assertEqual(driver.cell_hooks(workloads.resolve("readers").spec, work), ([], {}))
+            for name in ("locks.log", "sprof.000.txt", "samples.json"):
+                (work / name).write_text(name)
+            files = driver.collect_measurement_artifacts(work, out, "W2P-image-x-r1")
+            self.assertEqual(len(files), 3)
+            for name in files:
+                self.assertEqual((out / name).read_text(), Path(name).name)
+
+    def test_invalid_measurement_settings_are_refused(self):
+        for bad in (0, -1, True, 60.5, "60"):
+            data = workloads.load()
+            data["workloads"]["readers-prof"]["sprof"]["window_s"] = bad
+            with self.assertRaises(workloads.WorkloadError):
+                workloads.validate(data)
+        data = workloads.load()
+        data["workloads"]["readers-prof"]["phases"][-1]["measure"] = False
+        with self.assertRaises(workloads.WorkloadError):
+            workloads.validate(data)
+
+    def test_read_epochs_and_profile_trigger_exclude_warmup(self):
+        with tempfile.TemporaryDirectory() as d:
+            trigger = Path(d) / "sprof.start"
+            node = SimpleNamespace(env={"FN_LOAD_PROF_START": str(trigger)})
+            ctr = driver.Counters()
+            ctr.known.append(0)
+            run = driver.Run(node, {"sprof": {"window_s": 60}}, ctr, None)
+            # No connection or image: a refused connection ends this worker.
+            with patch.object(run, "conn", return_value=None), patch.object(driver.time, "time", side_effect=[100, 110, 111, 176]):
+                warm = run.phase_read({"readers": 1, "count": 1, "measure": False})
+                self.assertFalse(trigger.exists())
+                measured = run.phase_read({"readers": 1, "count": 1, "measure": True})
+                self.assertTrue(trigger.exists())
+            self.assertEqual((warm["epoch_start"], warm["epoch_end"]), (100, 110))
+            self.assertEqual((measured["epoch_start"], measured["epoch_end"]), (111, 176))
 
 
 class ReportAndItemTests(unittest.TestCase):
