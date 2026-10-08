@@ -10911,7 +10911,7 @@
     {
       "id": "PRF-294",
       "title": "Payloads off the heap: the arena's extent handles, the open's verified extent seals and the served read's trailer check",
-      "statement": "books/payload-arena-extent.lisp, books/payload-arena-extent-logic.lisp, books/payload-extent.lisp, books/payload-arena.lisp: payloads off the heap (arena-offheap stage 2). The generic fn-arena gains the export fn-arena-seal-extent (logic: append of fn-durable-octets FILE POFF PLEN, A-DURABLE-EXTENT); KEYSTONE fn-arena-seal-extent-payload: the new handle is the old count and denotes the extent's durable octets, every older handle keeps its payload, the count grows by one. The attachment fn-arena-extent (books/payload-arena-extent.lisp) nests the paged arena (PRF-281) as a child plus an EXT array; an extent handle holds no octets; its relation fn-arena$xcorr is fn-arx-view of the child's logical value, and every {correspondence}/{guard-thm}/{preserved} obligation is proved (fn-arena-extent-get{correspondence} reads an extent handle through the realizer fn-durable-realize-octet, equal to the durable octet by A-DURABLE-EXTENT; fn-arena-extent-seal-extent{correspondence}). At the open (books/payload-extent.lisp): fn-arx-positions answers each log entry's start, frame length and trailer; fn-arx-extent-of finds the payload's place by the codec's suffix length and VERIFIES it octet for octet; fn-arx-extent-of-denotes-payload: under the faithful read the extent's durable octets are the decoded payload; KEYSTONE fn-arx-intern-step-refines: the host's chunk step with extents (host/native/io.lisp fnn-bridge-recover calls fn-arx-intern-step on each chunk fnn-recover-record-chunks answers with its places) equals fn-srs-intern-step when fn-arx-faithful-p (each placed record's octets are its entry's durable octets: A-HOST's read and A-DURABLE-EXTENT; a record with no place needs nothing, fn-arx-intern-event-without-place); KEYSTONE fn-arx-steps-are-one-step-of-the-concatenation: folding that step over ANY chunking of the history (fn-arx-steps, the host's loop) answers what one resident step over the whole history answers (fn-srs-steps-are-one-step-of-the-concatenation), so every theorem about the open's rows and arena holds. Served reads of an extent handle: the host realizer (host/native/extent.lisp) preads the entry's protected prefix and asks fn-arx-entry-ok (SHA-256 equals the recorded trailer); fn-arx-entry-ok-of-durable: a faithful read passes; a mismatch is refused by name (arena-extent-digest), a store fault. Host subject: host/native/io.lisp fnn-bridge-recover (fn-arx-intern-step), fnn-log-scan-segments (fn-arx-positions via fnn-extent-positions), host/native/extent.lisp fnn-extent-entry (fn-arx-entry-ok, fn-arx-read-cache-entries).",
+      "statement": "books/payload-arena-extent.lisp, books/payload-arena-extent-logic.lisp, books/payload-extent.lisp, books/payload-arena.lisp: payloads off the heap (arena-offheap stage 2). The generic fn-arena gains the export fn-arena-seal-extent (logic: append of fn-durable-octets FILE POFF PLEN, A-DURABLE-EXTENT); KEYSTONE fn-arena-seal-extent-payload: the new handle is the old count and denotes the extent's durable octets, every older handle keeps its payload, the count grows by one. The attachment fn-arena-extent (books/payload-arena-extent.lisp) nests the paged arena (PRF-281) as a child plus an EXT array; an extent handle holds no octets; its relation fn-arena$xcorr is fn-arx-view of the child's logical value, and every {correspondence}/{guard-thm}/{preserved} obligation is proved (fn-arena-extent-get{correspondence} reads an extent handle through the realizer fn-durable-realize-octet, equal to the durable octet by A-DURABLE-EXTENT; fn-arena-extent-seal-extent{correspondence}). At the open (books/payload-extent.lisp): fn-arx-positions answers each log entry's start, frame length and trailer; fn-arx-extent-of finds the payload's place by the codec's suffix length and VERIFIES it octet for octet; fn-arx-extent-of-denotes-payload: under the faithful read the extent's durable octets are the decoded payload; KEYSTONE fn-arx-intern-events-refines: under fn-arena-p and fn-arx-faithful-p, fn-arx-intern-events equals fn-intern-events on the same events, keyring, generation and arena, including both returned rows and resulting arena. host/store-host.lisp fn-store-intern-records-local calls fn-intern-events, whose host/interfaces.lisp declaration names this events refinement. fn-arx-intern-step-refines remains a theorem of the unserved chunk wrapper; it is a corollary of the events refinement, not a separate hosted PRF event. fn-arx-steps-are-one-step-of-the-concatenation remains a model theorem about arbitrary faithful chunking, not the host's current loop. Served reads of an extent handle: the host realizer (host/native/extent.lisp) preads the entry's protected prefix and asks fn-arx-entry-ok (SHA-256 equals the recorded trailer); fn-arx-entry-ok-of-durable: a faithful read passes; a mismatch is refused by name (arena-extent-digest), a store fault. Host subject: host/native/io.lisp fnn-bridge-recover-step-extents (fn-ssr-intern-step in :extent mode, which calls fn-arx-intern-event; its sequential refinement is fn-ssr-extent-step-refines-resident), fnn-log-scan-segments (fn-arx-positions via fnn-extent-positions), host/native/extent.lisp fnn-extent-entry (fn-arx-entry-ok, fn-arx-read-cache-entries).",
       "milestone": "M5",
       "requirements": [
         "REP-010",
@@ -10930,7 +10930,7 @@
         "fn-arena-extent-get{correspondence}",
         "fn-arena-extent-seal-extent{correspondence}",
         "fn-arx-extent-of-denotes-payload",
-        "fn-arx-intern-step-refines",
+        "fn-arx-intern-events-refines",
         "fn-arx-entry-ok-of-durable",
         "fn-arx-steps-are-one-step-of-the-concatenation"
       ],
@@ -11796,7 +11796,7 @@
     {
       "id": "PRF-326",
       "title": "A compressed record in the log expands to exactly the record it was sealed from; a compressed extent reads back, through the proved DEFLATE decoder, as the record's payload; the replay and the commit with compressed extents are the resident ones",
-      "statement": "books/payload-lz-record.lisp (brief C2 of planning/evidence/article-compression-2026-09-27.md section 6; lane compression-extents). The record FRAME sits between the record codec and the log: Z = 'fn-z' head ++ u32 DICT-ID, K, N, |STUB| ++ STUB ++ C, STUB the record R without its payload span [K, K+N), C a raw DEFLATE stream (books/payload-deflate.lisp fn-pzd-decode, PRF-257) decoding to that span against the dictionary DICT-ID; fn-lzr-expand gives R back or refuses by name (:lz-frame, :lz-dictionary, :lz-decode); a record that is not a frame passes unchanged. fn-lzr-seal (the one producer of a frame) runs the proved decoder over the host's untrusted candidate and frames R only when it decodes to the span, the span reaches the profile's threshold MIN (0 never) and the frame is shorter (fn-lzr-compress-p); a record that begins with the frame head is framed with an empty span. KEYSTONE fn-lzr-expand-of-seal: for a table binding DICT-ID to DICT, a u32 DICT-ID and an octet record of u32 length, (fn-lzr-expand dicts (fn-lzr-seal dict dict-id min r k n candidate)) = (:ok r), whatever the candidate, threshold or span. fn-lzr-replay-reads-the-sealed-record (the D25 decision): for (fn-record-p w) the expansion of the seal of (fn-record-encode w) decodes to (:ok w), so the content identity, Message-ID comparison, signatures and Cancel-Lock -- all over the authored octets, computed before the seal -- are unchanged; the log's frame trailer covers the durable Z. Dictionaries: fn-lzr-dictsp (u32 id, at most 65,536 octets; the initial table is the shipped one, books/payload-lz-dicts.lisp, PRF-912), fn-lzr-dicts-add refuses a rebinding (fn-lzr-dicts-add-keeps-bindings). The compressed extent (FILE EOFF ELEN CPOFF CLEN TRAILER N DICT-ID) of a frame at its log place (fn-lzr-extent-of: C is Z's tail and decodes to the record's payload); KEYSTONE fn-lzr-extent-read-denotes: under the faithful read of Z at its place, fn-lzr-read of C's durable octets against the dictionary is (:ok payload). The arena (books/payload-arena.lisp, books/payload-arena-extent.lisp, books/payload-arena-extent-logic.lisp): exports fn-arena-seal-lz-extent / fn-arena-reseat-lz-extent (logic: the handle is fn-lzr-lz-value DICT (durable C) N, books/payload-lz-value.lisp), every {correspondence}/{guard-thm}/{preserved} obligation proved over the reference and the extent attachment (EXT entry an 8-tuple carrying the dictionary's octets); KEYSTONE fn-arena-seal-lz-extent-payload, KEYSTONE fn-arena-reseat-lz-extent-keeps-a-faithful-arena. The replay (books/payload-lz-replay.lisp): fn-lzr-intern-step (a frame whose C decodes to the record's payload sealed as a compressed extent, anything else the plain extent intern); KEYSTONE fn-lzr-intern-step-refines: under fn-arx-faithful-p it is fn-srs-intern-step. The commit: fn-lzr-commit-reseats; KEYSTONE fn-lzr-commit-reseats-keep-the-arena under fn-arx-commit-faithful-p. The served read of a compressed handle is the host realizer fn-durable-realize-lz (A-DURABLE-LZ): the extent realizer's trailer-checked read of C, then ACL2's payload decoder over pooled buffers (fn-pzd-decode-bufs; KEYSTONE fn-lzr-decode-bufs-is-the-lz-value), a failed decode refused by name (arena-extent-lz-decode). Host subject: host/native/extent.lisp fn-durable-realize-lz calls host/native/deflate.lisp fnn-pzd-decode, which calls fn-pzd-decode-bufs; the seal (POST), the replay step and the commit reseat have no host caller yet (the lane's continuation wires them: planning/evidence/compression-extents-2026-09-27.md).",
+      "statement": "books/payload-lz-record.lisp (brief C2 of planning/evidence/article-compression-2026-09-27.md section 6; lane compression-extents). The record FRAME sits between the record codec and the log: Z = 'fn-z' head ++ u32 DICT-ID, K, N, |STUB| ++ STUB ++ C, STUB the record R without its payload span [K, K+N), C a raw DEFLATE stream (books/payload-deflate.lisp fn-pzd-decode, PRF-257) decoding to that span against the dictionary DICT-ID; fn-lzr-expand gives R back or refuses by name (:lz-frame, :lz-dictionary, :lz-decode); a record that is not a frame passes unchanged. fn-lzr-seal (the one producer of a frame) runs the proved decoder over the host's untrusted candidate and frames R only when it decodes to the span, the span reaches the profile's threshold MIN (0 never) and the frame is shorter (fn-lzr-compress-p); a record that begins with the frame head is framed with an empty span. KEYSTONE fn-lzr-expand-of-seal: for a table binding DICT-ID to DICT, a u32 DICT-ID and an octet record of u32 length, (fn-lzr-expand dicts (fn-lzr-seal dict dict-id min r k n candidate)) = (:ok r), whatever the candidate, threshold or span. fn-lzr-replay-reads-the-sealed-record (the D25 decision): for (fn-record-p w) the expansion of the seal of (fn-record-encode w) decodes to (:ok w), so the content identity, Message-ID comparison, signatures and Cancel-Lock -- all over the authored octets, computed before the seal -- are unchanged; the log's frame trailer covers the durable Z. Dictionaries: fn-lzr-dictsp (u32 id, at most 65,536 octets; the initial table is the shipped one, books/payload-lz-dicts.lisp, PRF-912), fn-lzr-dicts-add refuses a rebinding (fn-lzr-dicts-add-keeps-bindings). The compressed extent (FILE EOFF ELEN CPOFF CLEN TRAILER N DICT-ID) of a frame at its log place (fn-lzr-extent-of: C is Z's tail and decodes to the record's payload); KEYSTONE fn-lzr-extent-read-denotes: under the faithful read of Z at its place, fn-lzr-read of C's durable octets against the dictionary is (:ok payload). The arena (books/payload-arena.lisp, books/payload-arena-extent.lisp, books/payload-arena-extent-logic.lisp): exports fn-arena-seal-lz-extent / fn-arena-reseat-lz-extent (logic: the handle is fn-lzr-lz-value DICT (durable C) N, books/payload-lz-value.lisp), every {correspondence}/{guard-thm}/{preserved} obligation proved over the reference and the extent attachment (EXT entry an 8-tuple carrying the dictionary's octets); KEYSTONE fn-arena-seal-lz-extent-payload, KEYSTONE fn-arena-reseat-lz-extent-keeps-a-faithful-arena. The replay (books/payload-lz-replay.lisp): KEYSTONE fn-lzr-intern-events-refines: under fn-arena-p and fn-arx-faithful-p, fn-lzr-intern-events equals fn-intern-events on the same events, keyring, generation and arena, including both returned rows and resulting arena. host/store-host.lisp fn-store-intern-records-local calls fn-intern-events, whose host/interfaces.lisp declaration names this events refinement. fn-lzr-intern-step-refines remains a theorem of the unserved chunk wrapper; it is a corollary of the events refinement, not a separate hosted PRF event. The commit: fn-lzr-commit-reseats; KEYSTONE fn-lzr-commit-reseats-keep-the-arena under fn-arx-commit-faithful-p. The served read of a compressed handle is the host realizer fn-durable-realize-lz (A-DURABLE-LZ): the extent realizer's trailer-checked read of C, then ACL2's payload decoder over pooled buffers (fn-pzd-decode-bufs; KEYSTONE fn-lzr-decode-bufs-is-the-lz-value), a failed decode refused by name (arena-extent-lz-decode). Host subject: host/native/extent.lisp fn-durable-realize-lz calls host/native/deflate.lisp fnn-pzd-decode, which calls fn-pzd-decode-bufs; native replay's fnn-bridge-recover-step-lz calls fn-ssr-intern-step in :lz mode, which calls fn-lzr-intern-event; fn-ssr-lz-step-refines-resident covers that sequential worker. host/native/io.lisp also calls fn-lzr-commit-reseats. The events refinement does not assert that native replay runs the old fn-lzr-intern-step wrapper.",
       "milestone": "M5",
       "requirements": [
         "REP-010",
@@ -11828,7 +11828,7 @@
         "fn-lzr-extent-read-denotes",
         "fn-arena-seal-lz-extent-payload",
         "fn-arena-reseat-lz-extent-keeps-a-faithful-arena",
-        "fn-lzr-intern-step-refines",
+        "fn-lzr-intern-events-refines",
         "fn-lzr-commit-reseats-keep-the-arena",
         "fn-lzr-lz-read-is-the-lz-value",
         "fn-lzr-dicts-add-keeps-bindings",
@@ -19336,7 +19336,7 @@
     {
       "id": "PRF-1190",
       "title": "Chronological persistent forest growth and exact resumable page selection",
-      "statement": "Chronological persistent forest growth and exact resumable page selection on the actual guarded source operations. Conditional internal component only; no served installer or raw atomicity claim.",
+      "statement": "Chronological persistent forest growth and exact resumable page selection on the actual guarded source operations. Conditional internal component only; no served installer or raw atomicity claim. Model theorems retained in their books, excluded from the hosted-event claim list: fn-hed-grow-merge-pops-one-forest-cell: unreachable-in-composition: fn-hed-grow-step is called by host/admission-history-tail-host.lisp fn-owner-admission-new-page-step, but no native image or extraction world loads that host file. The theorem retains the model claim that a carry-to-carry grow step pops exactly one forest cell; the host does not run it. Native activation needs a loaded admission-tail route and is outside this claim.",
       "milestone": "M2",
       "requirements": [
         "STO-10003"
@@ -19349,8 +19349,7 @@
         "fn-hed-read-step-preserves-exact-selected-page",
         "fn-hed-read-leaf-is-complete-selected-result",
         "fn-hed-read-begin-refines-chronological-page",
-        "fn-hed-read-yield-makes-structural-progress",
-        "fn-hed-grow-merge-pops-one-forest-cell"
+        "fn-hed-read-yield-makes-structural-progress"
       ],
       "evidence": [
         "specs/history-event-directory.md",
@@ -19364,7 +19363,7 @@
     {
       "id": "PRF-1191",
       "title": "Registered exact candidate, completion replay and epoch custody frames",
-      "statement": "Registered exact candidate, completion replay and epoch custody frames on the actual guarded source operations. Conditional internal component only; no served installer or raw atomicity claim.",
+      "statement": "Registered exact candidate, completion replay and epoch custody frames on the actual guarded source operations. Conditional internal component only; no served installer or raw atomicity claim. Model theorems retained in their books, excluded from the hosted-event claim list: fn-hep-retirement-keeps-epoch-and-retained-debt: unreachable-in-composition: no host caller reaches fn-hep-retire-return-internal. The theorem retains the model claim that retirement preserves epoch identity, phase, retained debt and current source. fn-hep-current is read only by the unloaded admission-history-tail-host.lisp and admission-authority-preparation-host.lisp. A physical relinquishment producer and host retirement route are absent, so the host does not run this operation. fn-hep-uncertain-keeps-candidate-roots-and-debt: unreachable-in-composition: no host caller reaches fn-hep-fence-current. The theorem retains the model claim that fencing preserves current source, builder, producer receipts and epoch; the host does not run this operation. A host uncertainty/fencing route is required before it can be a served claim.",
       "milestone": "M2",
       "requirements": [
         "STO-10003"
@@ -19375,9 +19374,7 @@
         "fn-hep-offer-retains-exact-row-and-complete-producer",
         "fn-hep-completion-registration-is-once-only",
         "fn-hep-successful-publication-is-once-only",
-        "fn-hep-uncertain-keeps-candidate-roots-and-debt",
-        "fn-hep-return-cannot-drop-nonquiescent-custody",
-        "fn-hep-retirement-keeps-epoch-and-retained-debt"
+        "fn-hep-return-cannot-drop-nonquiescent-custody"
       ],
       "evidence": [
         "specs/history-event-directory.md",
@@ -22897,6 +22894,35 @@
         "fn-tlsk-hybrid-is-served-only-when-offered",
         "fn-tlsk-library-without-tls-never-refuses",
         "fn-tlsk-library-served-tls-never-falls-back"
+      ]
+    },
+    {
+      "id": "PRF-1343",
+      "title": "Page-read ledger charge covers every bound row across lifecycle and growth conversion",
+      "statement": "fn-prl-row-sum-invp requires a natural five-vector CHARGED, well-formed bound rows (issued native-demand is a natural five-vector below demand), and CHARGED[i] >= the sum of all bound demands[i] for i=0..4. fn-prl-make establishes it for every budget; register, admit, settle, evict, close, reserve-growth and convert-growth preserve it, including refused transitions. fn-prl-row-sum-covers-bound-reserve derives G2 charged-covers from the invariant and exact reserve binding. fn-prl-convert-growth-under-row-sum-invp derives successful funded conversion from custody, the binding, and pool funding; reserve amount naturalness follows from row well-formedness. Scope: the named ledger transitions and logical bound rows; no allocation or native host refinement claim.",
+      "milestone": "M5",
+      "requirements": [
+        "HST-045"
+      ],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "books/page-read-ledger-rowsum.lisp",
+        "tests/acl2/page-read-ledger-rowsum-tests.lisp"
+      ],
+      "note": "PRL-ROW-SUM-INVARIANT. No ledger definition changed. Teeth include successful lifecycle witnesses, a counterexample per declared hypothesis, and an over-refund mutation whose nfix clamp leaves another bound row unfunded.",
+      "events": [
+        "fn-prl-make-row-sum-invp",
+        "fn-prl-register-preserves-row-sum-invp",
+        "fn-prl-admit-preserves-row-sum-invp",
+        "fn-prl-settle-preserves-row-sum-invp",
+        "fn-prl-evict-preserves-row-sum-invp",
+        "fn-prl-close-preserves-row-sum-invp",
+        "fn-prl-reserve-growth-preserves-row-sum-invp",
+        "fn-prl-convert-growth-preserves-row-sum-invp",
+        "fn-prl-row-sum-bound-reserve-natural",
+        "fn-prl-row-sum-covers-bound-reserve",
+        "fn-prl-convert-growth-under-row-sum-invp"
       ]
     }
   ]
