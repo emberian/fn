@@ -59,6 +59,11 @@ class Rules(unittest.TestCase):
         self.assertEqual(find('a, b = f(x, y), "z"  # invite'), [])
         self.assertEqual(len(find('password = "hunter2realpw"  # credential')), 1)  # FAKE-SECRET
 
+    def test_the_tool_passes_itself(self):
+        # The train's gate-secrets runs the tool on the files a lane changes,
+        # this one included: its own examples are written as placeholders.
+        self.assertEqual(secrets_check.check([secrets_check.ROOT / "tools" / "secrets_check.py"]), [])
+
     def test_synthetic_rule(self):
         self.assertTrue(secrets_check.synthetic_hex("1" * 32))
         self.assertTrue(secrets_check.synthetic_hex("0123" * 8))

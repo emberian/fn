@@ -15,9 +15,9 @@ CONTEXT word, in every tracked file under planning/, docs/ and tests/
   secret    a standalone 32-hex-digit token (an invitation code's shape: no
             hex digit or word character on either side, so a 64-hex digest
             or a hex run inside a longer word is not one);
-            `password=VALUE` / `password: VALUE` / `passwd` / `secret=VALUE`;
+            `password=<VALUE>` / `password: <VALUE>` / `passwd` / `secret=<VALUE>`;
             `Bearer TOKEN` (16+ token characters);
-            `Authorization: VALUE`.
+            `Authorization: <VALUE>`.
 
 WINDOW is 5 lines.  An invitation is quoted on its own command line
 (`XREDEEM <code>`), or in a transcript or a record one to three lines from the
@@ -77,7 +77,7 @@ WINDOW = 5
 CONTEXT = re.compile(r"(?i)(?<![A-Za-z0-9_/.-])(?:x?redeem|invit(?:e|es|ed|ing|ation)"
                      r"|credentials?)(?![A-Za-z0-9_]|[-_/.][A-Za-z0-9])")
 HEX32 = re.compile(r"(?<![0-9A-Za-z_])([0-9a-fA-F]{32})(?![0-9A-Za-z_])")
-# `password=VALUE' and a quoted `"password": "VALUE"'; an unquoted
+# `password=<VALUE>' and a quoted `"password": "<VALUE>"'; an unquoted
 # `Password: ...' is a prompt in a transcript (`Password: Confirm password:'),
 # never a value.
 PASSWORD = re.compile(r"(?i)\b(?:password|passwd|secret)\s*=\s*\\?[\"']?([^\s\"',;)\\]*)"
