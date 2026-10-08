@@ -38,7 +38,6 @@
 
 ;; The constrained seams that execute, attached: the frame trailer's words, the
 ;; log position F (any encodable tree).
-(defun pckot-trailer (p) (declare (xargs :guard t) (ignore p)) (list 11 22 33 44))
 (defun pckot-f (configs recs) (declare (xargs :guard t) (ignore configs recs)) nil)
 (defattach fn-pck-f pckot-f)
 

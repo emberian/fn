@@ -19,7 +19,6 @@
 ;; the frame trailer's words.
 (defun pckh-f (configs recs) (declare (xargs :guard t) (ignore configs recs)) nil)
 (defattach fn-pck-f pckh-f)
-(defun pckh-trailer (p) (declare (xargs :guard t) (ignore p)) (list 11 22 33 44))
 
 ; 1. The max floor.
 (defun pckh-max-floor (sa sb) (max (fn-pck-slot-s sa) (fn-pck-slot-s sb)))

@@ -18,7 +18,6 @@
 (include-book "std/testing/assert-bang" :dir :system)
 
 ;; The constrained seam, attached: the frame trailer's words (distinct per word).
-(defun pckxt-trailer (p) (declare (xargs :guard t) (ignore p)) (list 11 22 33 44))
 
 (defun pckxt-word-at (j off plen tw pack-at swap fn-octets)
   ; the reader with the pack's first word at row index PACK-AT; SWAP puts the
@@ -111,7 +110,7 @@
              (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off* (fn-pck-seed))))
       ; the last six words are the ref (offset 37 into the frame, length) and the trailer, no payload octets
       (let ((ws (pckxt-words *pckxt-record* *pckxt-off* 2 nil)))
-        (equal (nthcdr (- (len ws) 6) ws) (list 4133 17 11 22 33 44)))
+        (equal (nthcdr (- (len ws) 6) ws) (list 4133 17 (car (fn-cpl-trailer-words-impl (fn-pck-payload *pckxt-record*))) (cadr (fn-cpl-trailer-words-impl (fn-pck-payload *pckxt-record*))) (caddr (fn-cpl-trailer-words-impl (fn-pck-payload *pckxt-record*))) (cadddr (fn-cpl-trailer-words-impl (fn-pck-payload *pckxt-record*))))))
       (not (equal (pckxt-words *pckxt-record* *pckxt-off* 0 nil)
                   (adt-tp-rw *fn-pck-row-schema* (fn-pck-enc-row *pckxt-record* *pckxt-off* (fn-pck-seed)))))
       (not (equal (pckxt-words *pckxt-record* *pckxt-off* 1 nil)

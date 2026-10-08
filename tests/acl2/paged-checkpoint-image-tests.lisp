@@ -18,7 +18,6 @@
 (include-book "std/testing/assert-bang" :dir :system)
 
 ;; The constrained seam, attached: the frame trailer's words.
-(defun pckit-trailer (p) (declare (xargs :guard t) (ignore p)) (list 11 22 33 44))
 
 (must-fail-checked
  (defthm pckit-no-residency

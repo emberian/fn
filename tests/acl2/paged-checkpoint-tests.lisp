@@ -20,7 +20,6 @@
 
 ;; The two constrained seams, attached: the frame's trailer words and the log
 ;; position F (none recorded).
-(defun pckt-trailer (p) (declare (xargs :guard t) (ignore p)) (list 0 0 0 0))
 (defun pckt-f (configs recs) (declare (xargs :guard t) (ignore configs recs)) nil)
 (defattach (fn-pck-f pckt-f))
 
