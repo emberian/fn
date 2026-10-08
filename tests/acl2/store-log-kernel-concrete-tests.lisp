@@ -325,7 +325,6 @@
                    (equal (cadr *slc-tk-full*) *slc-tk*)))
 ; Mutation witness (labelled): a take that put the record into INFLIGHT would
 ; change it -- the keystone's first conjunct refuses that shape.
-(must-fail-checked
- (assert-event (equal (fn-lgc-inflight
-                       (fn-lgc-make 0 nil 0 8 '((1 2)) '((9 9) (3 4)) 0 :appended))
-                      (fn-lgc-inflight *slc-tk*))))
+(assert-event (not (equal (fn-lgc-inflight
+                           (fn-lgc-make 0 nil 0 8 '((1 2)) '((9 9) (3 4)) 0 :appended))
+                          (fn-lgc-inflight *slc-tk*))))
