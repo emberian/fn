@@ -17,7 +17,7 @@ WHAT IT COUNTS.  Per file under host/ and books/, the distinct `fn-owner-*' name
 a global accessor reads or writes: a token ending in `-global'
 (f-put-global, f-get-global, boundp-global, makunbound-global, the natives'
 fnn-owner-list-global / fnn-owner-octets-global / fnn-global, ...) followed
-by the quoted name.  A quoted `fn-owner-*' that is a FUNCTION name (the
+by a quoted owner name in any argument (quote shorthand or an explicit QUOTE form).  A quoted `fn-owner-*' that is a FUNCTION name (the
 natives' `(fnn-owner-core 'fn-owner-open-peer ...)') is not a global and is
 not counted.  Source-level, no ACL2; comments and strings are skipped.
 
@@ -60,26 +60,48 @@ from tools import ratchet  # noqa: E402
 from tools import lisp_source  # noqa: E402
 BASELINE = ROOT / "tools" / "owner_globals_baseline.json"
 HOST_DIRS = ("host", "books")
-ACCESSOR = re.compile(r"(?:^|[\s(])[A-Za-z0-9*+/<>=!?.-]*-global\s+'(fn-owner-[a-z0-9*+/<>=!?.-]*)",
-                      re.IGNORECASE)
+OWNER_NAME = re.compile(r"fn-owner-[a-z0-9*+/<>=!?.-]+$", re.IGNORECASE)
 
 
-def strip_comments_and_strings(text):
-    """The source with `;' comments and `#|...|#' blocks removed and each
-    string literal read as an empty one (tools/lisp_source.py)."""
-    return lisp_source.code_only(text, strings='""')
+def calls(nodes):
+    """Conservative source calls, including macro templates; never strings/comments."""
+    for node in nodes:
+        if isinstance(node, lisp_source.List):
+            if node.items and isinstance(node.items[0], lisp_source.Atom):
+                yield node.items
+            yield from calls(node.items)
+
+
+def quoted_symbol(node):
+    if isinstance(node, lisp_source.Atom) and node.marks == ("'",):
+        return node.text.lower()
+    if (isinstance(node, lisp_source.List) and not node.marks
+            and len(node.items) == 2
+            and isinstance(node.items[0], lisp_source.Atom)
+            and node.items[0].text.lower() == "quote"
+            and isinstance(node.items[1], lisp_source.Atom)
+            and not node.items[1].marks):
+        return node.items[1].text.lower()
+    return ""
+
+
+def globals_in(nodes):
+    return sorted({name for call in calls(nodes)
+                   if call[0].text.lower().endswith("-global")
+                   for arg in call[1:]
+                   if OWNER_NAME.fullmatch(name := quoted_symbol(arg))})
 
 
 def globals_of(text):
     """The distinct `fn-owner-*' names a global accessor names in TEXT."""
-    return sorted({m.group(1).lower() for m in ACCESSOR.finditer(strip_comments_and_strings(text))})
+    return globals_in(lisp_source.read_all(text))
 
 
 def parked(root=ROOT):
     """Host files no build loads, parked with their owner (planning/host-
     parked.json, tools/host_check.py --loaded KNOWN).  Their globals are not
-    the running owner's; when one is wired into a build its KNOWN entry must
-    go (host_check --loaded is red until it does), and it is counted here."""
+    the running owner's unless a counted file reaches them by INCLUDE-BOOK.
+    SCAN follows that closure even when the raw-LD inventory is stale."""
     import json
     path = root / "planning" / "host-parked.json"
     if not path.exists():
@@ -88,16 +110,32 @@ def parked(root=ROOT):
 
 
 def scan(root=ROOT):
-    found = {}
-    skip = parked(root)
-    for d in HOST_DIRS:
-        for path in sorted((root / d).rglob("*.lisp")):
-            if str(path.relative_to(root)).replace("\\", "/") in skip:
+    root = root.resolve()
+    sources = {path.relative_to(root).as_posix(): lisp_source.read_all(
+        path.read_text(encoding="utf-8", errors="replace"))
+        for directory in HOST_DIRS for path in sorted((root / directory).rglob("*.lisp"))}
+    # The parked ledger historically tracked raw LD, not INCLUDE-BOOK. A
+    # parked file reached from a counted source still carries live globals.
+    active = set(sources) - parked(root)
+    pending = list(active)
+    while pending:
+        source = pending.pop()
+        for call in calls(sources[source]):
+            if (call[0].text.lower() != "include-book" or len(call) < 2
+                    or not isinstance(call[1], lisp_source.Str)
+                    or any(isinstance(x, lisp_source.Atom) and x.text.lower() == ":dir"
+                           for x in call[2:])):
                 continue
-            names = globals_of(path.read_text(encoding="utf-8", errors="replace"))
-            if names:
-                found[str(path.relative_to(root)).replace("\\", "/")] = names
-    return found
+            target = (root / source).parent / lisp_source.string_value(call[1].text)
+            target = target.with_suffix(".lisp").resolve()
+            if not target.is_relative_to(root):
+                continue
+            name = target.relative_to(root).as_posix()
+            if name in sources and name not in active:
+                active.add(name)
+                pending.append(name)
+    return {path: names for path in sorted(active)
+            if (names := globals_in(sources[path]))}
 
 
 def judge(found, baseline):
@@ -193,7 +231,11 @@ def main(argv=None):
                 or int(value) >= baseline[path]):
             print("owner_globals_check: --lower-to must strictly shrink an existing row")
             return 1
+        old = baseline[path]
         baseline[path] = int(value)
+        if args.reason:
+            reasons.append("{}: {} ({} {}->{})".format(
+                datetime.date.today().isoformat(), args.reason.strip(), path, old, value))
         baseline["_reasons"] = reasons
         baseline_path.write_text(json.dumps(baseline, indent=2, sort_keys=True) + "\n")
         print("owner_globals_check: {} lowered to {}; {} present".format(
