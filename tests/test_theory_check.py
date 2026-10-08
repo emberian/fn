@@ -126,11 +126,12 @@ class BookOrderTests(unittest.TestCase):
 
 
 class RestoreTests(unittest.TestCase):
-    def audit_tree(self, preload=False, local=False, declaration=True):
+    def audit_tree(self, preload=False, local=False, declaration=True,
+                   hidden=False, exported=""):
         with tempfile.TemporaryDirectory() as directory:
             books = pathlib.Path(directory)
             (books / "lib").mkdir()
-            (books / "lib/shared.lisp").write_text('(in-package "ACL2")\n')
+            (books / "lib/shared.lisp").write_text('(in-package "ACL2")\n' + exported)
             (books / "own-leaf.lisp").write_text('(include-book "lib/shared")\n')
             (books / "own-root.lisp").write_text('(include-book "own-leaf")\n')
             # A local include in another book is still an outside consumer.
@@ -140,6 +141,8 @@ class RestoreTests(unittest.TestCase):
                       "(universal-theory 'after))))"
             (books / "exporter.lisp").write_text(
                 ('; theory-restore-own-family before: own-*\n' if declaration else '') +
+                ('; theory-restore-hidden-shared before: lib/* -- consumers restore shared-exported\n'
+                 if hidden else '') +
                 ('(include-book "lib/shared")\n' if preload else '') +
                 '(deftheory before (current-theory :here))\n'
                 '(include-book "own-root")\n'
@@ -157,6 +160,22 @@ class RestoreTests(unittest.TestCase):
         self.assertEqual(len(report["findings"]), 1)
         self.assertIn("first-loads shared books/lib/shared", report["findings"][0])
         self.assertIn("outside includer books/lib/consumer", report["findings"][0])
+
+    def test_hidden_shared_with_exported_theory_passes(self):
+        report = self.audit_tree(hidden=True, exported="(deftheory shared-exported nil)\n")
+        self.assertEqual(report["findings"], [])
+        self.assertIn("lib/shared", report["regions"][0]["first_loads"])
+        self.assertEqual(report["regions"][0]["hidden_shared"]["reason"],
+                         "consumers restore shared-exported")
+
+    def test_hidden_shared_without_exported_theory_is_still_a_finding(self):
+        for exported in ("", "(deftheory shared-other nil)\n",
+                         "(local (deftheory shared-exported nil))\n"):
+            with self.subTest(exported=exported):
+                report = self.audit_tree(hidden=True, exported=exported)
+                self.assertEqual(len(report["findings"]), 1)
+                self.assertIn("hidden-shared books/lib/shared has no non-local "
+                              "*-exported deftheory", report["findings"][0])
 
     def test_new_export_requires_family_declaration(self):
         self.assertIn("missing theory-restore-own-family", self.audit_tree(

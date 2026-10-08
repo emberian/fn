@@ -9,6 +9,8 @@
 
 (in-package "ACL2")
 (include-book "adt-lib")
+
+(deflabel adt-bytes-lib-start)
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
 
@@ -356,3 +358,9 @@
   :hints (("Goal" :induct (adt-region-induct2 r regs start prefix)
            :in-theory (disable adt-pad adt-starts)
            :expand ((adt-body regs)))))
+
+; The rules this library introduces and leaves enabled: consumers can restore
+; exactly this state when a later snapshot export has disabled those rules.
+(deftheory adt-bytes-lib-exported
+  (set-difference-theories (current-theory :here)
+                           (current-theory 'adt-bytes-lib-start)))

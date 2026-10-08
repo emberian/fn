@@ -29,6 +29,8 @@
 ; instantiation, not an induction.
 
 (in-package "ACL2")
+
+(deflabel adt-lib-start)
 (local (include-book "arithmetic/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -1459,3 +1461,9 @@
 ; and disabled for every book that includes it (enable or :use them).
 (in-theory (disable adt-nth-of-atom
                     adt-prefix-eq-nth))
+
+; The rules this library introduces and leaves enabled: consumers can restore
+; exactly this state when a later snapshot export has disabled those rules.
+(deftheory adt-lib-exported
+  (set-difference-theories (current-theory :here)
+                           (current-theory 'adt-lib-start)))

@@ -1402,13 +1402,6 @@
   (equal (nth 0 (adt-pg-tready d tp)) (resize-list nil *adt-pg-tpages* d))
   :hints (("Goal" :in-theory (enable adt-pg-tready))))
 
-; proto/adt-key-lib exports adt-nth-0.  With that shared library enabled,
-; generated stobj accessors can reach CAR before the NTH rule above matches.
-; Keep the same table-ready fact available in that normal form too.
-(defthm adt-pg-car-tready
-  (equal (car (adt-pg-tready d tp)) (resize-list nil *adt-pg-tpages* d))
-  :hints (("Goal" :in-theory (enable adt-pg-tready))))
-
 (local
  (defthm adt-pg-len-dflat-boundary
    (implies (and (adt-pg-dokp *adt-pg-tpages* (* *adt-pg-tpages* jt) dir) (natp jt))

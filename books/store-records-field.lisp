@@ -19,26 +19,23 @@
 ; based value, so a field built from a list reads that list back and the
 ; commit's snoc is the append, for every value.
 (in-package "ACL2")
-;; The shared dependencies precede the snapshot: snoc-list, assumptions,
-;; history-columns, SHA-256, store-checkpoint-buffer and their closures
-;; (including the store codec, frame trailer and BLAKE3), plus proto/adt-lib,
-;; proto/adt-bytes-lib, proto/adt-bytes and proto/adt-key-lib.  The decode's
-;; own family is pagestore*, history-pages* and history-records*.  Only that
-;; family's newly loaded rules are hidden by the final export, apart from
-;; the three named disk-history facts; shared rules retain their pre-decode
-;; enabled state regardless of what the including world loaded earlier.
-;; Shared dependencies must not first load between the snapshots: a later
-;; include is redundant and cannot restore rules this export disabled.
+;; The decode's books come in two kinds.  The books the page store and the
+;; history image need that other books above store-files also include (the
+;; store codec, the frame trailer, BLAKE3, the assumptions) are included
+;; first, as they are: a book above that includes one again finds its rules
+;; as it always did.  The page store's and the history image's own books
+;; (pagestore*, history-pages*, history-records*) are included after, and
+;; their rules stay out of the theory this book exports (the last event), so
+;; the books above store-files prove what they proved before.  (A theory
+;; that disabled the shared books' rules too would leave them disabled in a
+;; book above that includes one of them again: the include is redundant.)
 (include-book "snoc-list")
 (include-book "assumptions")
 (include-book "history-columns")
 (include-book "sha256")
 (include-book "store-checkpoint-buffer")
-(include-book "proto/adt-lib")
-(include-book "proto/adt-bytes-lib")
-(include-book "proto/adt-bytes")
-(include-book "proto/adt-key-lib")
 ; theory-restore-own-family fn-sfr-theory-before-disk: pagestore* history-pages* history-records*
+; theory-restore-hidden-shared fn-sfr-theory-before-disk: proto/adt-* -- re-enabled locally by their consumers (adt-*-exported)
 (deftheory fn-sfr-theory-before-disk (current-theory :here))
 (include-book "history-records-disk")
 (deftheory fn-sfr-theory-after-disk (current-theory :here))

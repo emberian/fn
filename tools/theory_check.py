@@ -21,7 +21,8 @@ decodes, never at the top of a book.
 
 Label-restore exports are also checked on every normal run (including without
 --strict).  A source comment declares each export's own-family; shared
-dependencies outside it must be included before its snapshot.  --restore-table
+dependencies outside it must precede its snapshot or declare a hidden-shared
+exception backed by a non-local *-exported theory in that dependency.  --restore-table
 reports each region's first-loaded repository books and external includes.
 This recursive books/ check ignores scratch files named _*.lisp and does not
 traverse ACL2 system books or expand event-generating macros.
@@ -394,9 +395,16 @@ def book_lints(paths: list[Path], root: Path) -> list[str]:
 # private family beside the snapshot, using books-relative globs:
 #   ; theory-restore-own-family LABEL: private-* another-private-book
 # Family members are intentionally hidden; dependencies outside that family
-# must precede the snapshot when an outside book also includes them.
+# must precede the snapshot when an outside book also includes them, unless
+# their consumers explicitly restore a named exported theory. Such exceptions
+# require a reason and a non-local *-exported deftheory in every matched book:
+#   ; theory-restore-hidden-shared LABEL: shared-* -- restored by consumers
 RESTORE_FAMILY = re.compile(
     r"^\s*;+\s*theory-restore-own-family\s+(\S+):\s*(.*?)\s*$", re.MULTILINE)
+
+RESTORE_HIDDEN_SHARED = re.compile(
+    r"^[ \t]*;+[ \t]*theory-restore-hidden-shared[ \t]+(\S+):[ \t]*(.*?)[ \t]+--[ \t]+(\S[^\n]*)$",
+    re.MULTILINE)
 
 
 def _events(fs, local=False):
@@ -434,6 +442,7 @@ def restore_audit(books_dir: Path = BOOKS, only: set[str] | None = None) -> dict
     name, not traversed.  Scratch books (_*) are not repository consumers.
     """
     events, families, graph, consumers = {}, {}, {}, {}
+    hidden_shared, exported = {}, {}
     findings = []
 
     def target(book, f):
@@ -456,6 +465,12 @@ def restore_audit(books_dir: Path = BOOKS, only: set[str] | None = None) -> dict
             continue
         families[book] = {name.lower(): pats.split()
                           for name, pats in RESTORE_FAMILY.findall(text)}
+        hidden_shared[book] = {
+            name.lower(): {"patterns": pats.split(), "reason": reason.strip()}
+            for name, pats, reason in RESTORE_HIDDEN_SHARED.findall(text)}
+        exported[book] = sorted(f[1] for f, local in events[book]
+                                if not local and f[0] == "deftheory"
+                                and len(f) >= 3 and f[1].endswith("-exported"))
         graph[book] = []
         for f, local in events[book]:
             dep = target(book, f)
@@ -500,8 +515,10 @@ def restore_audit(books_dir: Path = BOOKS, only: set[str] | None = None) -> dict
                 added = closure(target(book, inc) for _, inc in inside
                                 if target(book, inc) is not None) - before
                 own = families[book].get(label, [])
+                hidden = hidden_shared[book].get(label, {"patterns": [], "reason": ""})
                 row = {"book": f"books/{book}", "label": label, "local": local,
-                       "own_family": own, "first_loads": sorted(added),
+                       "own_family": own, "hidden_shared": hidden,
+                       "first_loads": sorted(added),
                        "external_includes": [inc[1:] for _, inc in inside
                                              if target(book, inc) is None]}
                 regions.append(row)
@@ -511,6 +528,12 @@ def restore_audit(books_dir: Path = BOOKS, only: set[str] | None = None) -> dict
                 if not own:
                     findings.append(f"{prefix}: missing theory-restore-own-family declaration")
                 for dep in sorted(added):
+                    if any(fnmatchcase(dep, pat) for pat in hidden["patterns"]):
+                        if exported.get(dep):
+                            continue
+                        findings.append(f"{prefix}: hidden-shared books/{dep} has no "
+                                        "non-local *-exported deftheory")
+                        continue
                     if any(fnmatchcase(dep, pat) for pat in own):
                         continue
                     outside = sorted(user for user in consumers.get(dep, set())

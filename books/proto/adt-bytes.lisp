@@ -53,6 +53,8 @@
 (include-book "adt-key-lib")
 (include-book "../sha256")
 (include-book "../blake3")
+
+(deflabel adt-bytes-start)
 (local (include-book "arithmetic/top" :dir :system))
 
 (local (in-theory (disable nth update-nth nthcdr take)))
@@ -974,3 +976,9 @@
   :rule-classes nil)
 
 (in-theory (disable adt-ser-image adt-kser-image adt-page-digests))
+
+; The rules this library introduces and leaves enabled: consumers can restore
+; exactly this state when a later snapshot export has disabled those rules.
+(deftheory adt-bytes-exported
+  (set-difference-theories (current-theory :here)
+                           (current-theory 'adt-bytes-start)))
