@@ -994,7 +994,7 @@
                      (fn-scka-next-checkpoint (fn-scka-restore-base base) h0 configs records
                                               fn-arena)))
          (next (if (or (null next0) (equal next0 :bad))
-                   (let ((canon (fn-scka-canon-rows records fn-arena 0)))
+                   (let ((canon (fn-scka-canon-rows records fn-arena 0 (fn-stxk-initial-context 0))))
                      (if (equal canon :bad) :bad (fn-sco-capture configs canon)))
                  next0)))
     (fn-owner-sco-next-of next walked seg)))
