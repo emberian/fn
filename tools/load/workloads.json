@@ -1036,6 +1036,29 @@
      "count": "log"
     }
    ]
+  },
+  "fault-crash-boundary-survey": {
+   "about": "F2 survey: one sample per boundary, no shrinking; lists every finding with its detail so a campaign's findings are known within minutes. The full F2 (shrinking) runs after.",
+   "preset": "small",
+   "groups": [
+    "fn.test"
+   ],
+   "own_nodes": true,
+   "phases": [
+    {
+     "name": "fault",
+     "kind": "fault_crash_boundary",
+     "posts": 100,
+     "samples_per_boundary": 1,
+     "shrink_runs": 0,
+     "command_deadline_s": 10,
+     "recovery_s": 60,
+     "measure": true
+    }
+   ],
+   "hooks": [
+    "planning/evidence/load/hooks/f2-crash.lisp"
+   ]
   }
  },
  "cells": {
@@ -1070,7 +1093,8 @@
   "GREET-PROF-ALLOC": "greeting-prof-alloc",
   "LIST-PROF": "list-prof",
   "LIST-PROF-ALLOC": "list-prof-alloc",
-  "W6q": "catchup-quiet"
+  "W6q": "catchup-quiet",
+  "F2S": "fault-crash-boundary-survey"
  },
  "stores": {
   "1k": 1000,
