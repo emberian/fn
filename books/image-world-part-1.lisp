@@ -112,6 +112,7 @@
 (include-book "heap-figure")
 (include-book "heap-open-nursery")
 (include-book "send-progress")
+(include-book "send-window")
 (include-book "idle-collection")
 (include-book "heap-reservation")
 (include-book "bp-heap-command")
@@ -175,5 +176,3 @@
 (include-book "bp-node-progress")
 (include-book "bp-node-progress-guards")
 (include-book "bp-node-job-offer-guards")
-(include-book "bp-node-control")
-(include-book "bp-node-forward-plan")

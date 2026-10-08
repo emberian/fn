@@ -112,6 +112,7 @@
 (include-book "../../books/heap-figure")
 (include-book "../../books/heap-open-nursery")
 (include-book "../../books/send-progress")
+(include-book "../../books/send-window")
 (include-book "../../books/idle-collection")
 (include-book "../../books/heap-reservation")
 (include-book "../../books/bp-heap-command")
