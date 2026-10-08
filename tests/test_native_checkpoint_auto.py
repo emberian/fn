@@ -138,10 +138,14 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fn-opl-blockedp", due)
         self.assertIn("(fn-owner-sco-budget override profile)", due)
         self.assertIn("(fn-ockp-space free)", due)
-        capture = native_cuts.host_function(owner_host, "fn-owner-sco-capture")
+        capture = native_cuts.book_function("fn-owner-sco-capture-of")[1]
+        served_capture = native_cuts.book_function("fn-owner-sco-capture-served")[1]
+        self.assertIn("(fn-owner-sco-capture-of nil override free revision state)", served_capture)
+        self.assertIn("fn-owner-sco-capture-served-is-reference",
+                      (ROOT / "books/owner-history-capture.lisp").read_text())
         self.assertIn("(fn-owner-sco-budget override profile)", capture)
         self.assertIn("(fn-sf-frontier (fn-sn-files st))", capture)
-        budget = native_cuts.host_function(owner_host, "fn-owner-sco-budget")
+        budget = native_cuts.book_function("fn-owner-sco-budget")[1]
         self.assertIn("(fn-ock-capture-budget profile)", budget)
         maybe = native_cuts.host_function(owner, "fnn-owner-maybe-publish-quantum")
         self.assertEqual(maybe.count("(fnn-checkpoint-budget-test-override nil)"), 2)

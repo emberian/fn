@@ -177,7 +177,7 @@ ACL2's source incarnation and refuses the candidate before installation."
   (fnn-owner-gated (service :control)
     (let* ((physical (fnn-live-hist))
            (generation (fnn-core 'fn-hist$p-root-generation physical))
-           (source (fnn-owner-core 'fn-owner-hroot-pin-funded generation)))
+           (source (fnn-owner-core 'fn-owner-hroot-pin-funded generation nil)))
       (when (and (consp source) (eq (first source) :history-root))
         (list source physical)))))
 
@@ -220,12 +220,13 @@ ACL2's source incarnation and refuses the candidate before installation."
       (push (fnn-owner-history-root-at service pin ordinal) records))
     (nreverse records)))
 
-(defun fnn-history-root-pin-held ()
+(defun fnn-history-root-pin-held (&optional workp)
   (let* ((physical (fnn-live-hist))
          (generation (fnn-core 'fn-hist$p-root-generation physical))
-         (source (fnn-owner-core 'fn-owner-hroot-pin-funded generation)))
-    (when (and (consp source) (eq (first source) :history-root))
-      (list source physical))))
+         (source (fnn-owner-core 'fn-owner-hroot-pin-funded generation workp)))
+    (if (and (consp source) (eq (first source) :history-root))
+        (values (list source physical) nil)
+      (values nil source))))
 
 (defun fnn-owner-history-root-maintain (service)
   (let ((*fnn-checkpoint-stop-test*

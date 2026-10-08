@@ -8,6 +8,7 @@
 ; redundant and loads nothing.
 (include-book "owner-host")
 (include-book "../books/history-root-credit")
+(include-book "../books/history-root-work-credit")
 (include-book "../books/history-paged-adopt")
 
 (defun fn-owner-hroot-get (generation state)
@@ -149,7 +150,7 @@
              (value (list :installed generation old)))))))
 
 (definterface fn-owner-hroot-activate :class :program)
-(defun fn-owner-hroot-pin (physical-generation fn-hist state)
+(defun fn-owner-hroot-pin (physical-generation tail-credit workp fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((generation (fn-owner-hroot-current state))
          (row (and generation (fn-owner-hroot-get generation state)))
@@ -161,9 +162,9 @@
       (mv-let (fn-hist state) (fn-host-hist-sync (fn-owner-store state) fn-hist state)
         (let* ((token (+ 1 (if bound old 0)))
                (source (list :history-root token generation (fn-hist-count fn-hist)
-                             (fn-owner-hroot-frontier state)))
-               (credit (fn-mcr-resize (fn-owner-credits state)
-                          (cons :history-root-lease token) 256)))
+                             (fn-owner-hroot-frontier state) workp))
+               (credit (fn-hroot-reader-resize (fn-owner-credits state)
+                          (cons :history-root-lease token) (+ 256 (nfix tail-credit)) workp)))
           (if (not (eq (car credit) :ok)) (mv nil credit fn-hist state)
             (let* ((state (fn-owner-put-credits (cadr credit) state))
                    (state (f-put-global 'fn-owner-history-root-lease-counter token state))
@@ -178,11 +179,11 @@
          (row (fn-owner-hroot-get generation state)))
     (if (not (and (eq (car source) :history-root) (equal source (cdr (assoc-equal token (caddr row))))))
         (value :history-root-stale)
-      (let* ((read-credit (fn-mcr-resize (fn-owner-credits state)
-                                         (cons :history-root-read token) 0))
+      (let* ((read-credit (fn-hroot-reader-resize (fn-owner-credits state)
+                                         (cons :history-root-read token) 0 (nth 5 source)))
              (lease-credit (and (eq (car read-credit) :ok)
-                               (fn-mcr-resize (cadr read-credit)
-                                             (cons :history-root-lease token) 0))))
+                               (fn-hroot-reader-resize (cadr read-credit)
+                                             (cons :history-root-lease token) 0 (nth 5 source)))))
         (if (not (and (eq (car read-credit) :ok) (eq (car lease-credit) :ok)))
             (value '(:refused :history-root-credit-return))
           (let* ((state (fn-owner-put-credits (cadr lease-credit) state))
@@ -245,19 +246,23 @@
 
 (definterface fn-owner-hroot-detach :class :program)
 
-; A pinned old tail must remain funded after its formerly shared Store is
-; replaced. Reserve that retention before publishing a source handle.
-(defun fn-owner-hroot-pin-funded (physical-generation fn-hist state)
+; A snapshot borrows the owner's existing work reserve for its retained
+; tail and decoded rows; ordinary streaming/reclaim keeps its ops funding.
+; Work credit is per lease, so mixed readers never reinterpret each other's
+; grants and the last snapshot return returns exactly its own reservation.
+(defun fn-owner-hroot-pin-funded (physical-generation workp fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (if (not (and (posp physical-generation)
                 (equal physical-generation (fn-owner-hroot-current state))))
       (mv nil '(:refused :history-root-source) fn-hist state)
     (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
-      (let ((credit (fn-mcr-resize (fn-owner-credits state)
-                                  (cons :history-root-tail physical-generation) (* 16 bytes))))
-        (if (not (eq (car credit) :ok)) (mv nil credit fn-hist state)
-          (let ((state (fn-owner-put-credits (cadr credit) state)))
-            (fn-owner-hroot-pin physical-generation fn-hist state)))))))
+      (if workp
+          (fn-owner-hroot-pin physical-generation (* 16 bytes) t fn-hist state)
+        (let ((credit (fn-mcr-resize (fn-owner-credits state)
+                                    (cons :history-root-tail physical-generation) (* 16 bytes))))
+          (if (not (eq (car credit) :ok)) (mv nil credit fn-hist state)
+            (let ((state (fn-owner-put-credits (cadr credit) state)))
+              (fn-owner-hroot-pin physical-generation 0 nil fn-hist state))))))))
 
 (definterface fn-owner-hroot-pin-funded :class :program)
 
@@ -267,10 +272,12 @@
 
 (definterface fn-owner-hroot-frontier-value :class :program)
 
+; A resize grant lives in the reserved component; both components remain
+; retained until the reader releases the rows, so accumulate their sum.
 (defun fn-owner-hroot-read-owned (source state)
   (declare (xargs :stobjs state :mode :program))
-  (value (fn-mcr-op-owned (fn-mcr-op (cons :history-root-read (cadr source))
-                                    (fn-mcr-ops (fn-owner-credits state))))))
+  (value (fn-mcr-credit-of (cons :history-root-read (cadr source))
+                            (fn-mcr-ops (fn-owner-credits state)))))
 
 (definterface fn-owner-hroot-read-owned :class :program)
 (defun fn-owner-hroot-read-fund (source amount state)
@@ -279,8 +286,8 @@
          (owned (cdr (assoc-equal (cadr source) (caddr row)))))
     (if (not (and (eq (car source) :history-root) (equal source owned) (natp amount)))
         (value '(:refused :history-root-stale))
-      (let ((r (fn-mcr-resize (fn-owner-credits state)
-                              (cons :history-root-read (cadr source)) amount)))
+      (let ((r (fn-hroot-reader-resize (fn-owner-credits state)
+                              (cons :history-root-read (cadr source)) amount (nth 5 source))))
         (if (not (eq (car r) :ok)) (value r)
           (let ((state (fn-owner-put-credits (cadr r) state)))
             (value :funded)))))))

@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
-(include-book "moderation-verbs")
 (include-book "owner-results")
 (include-book "owner-served-bound")
 (include-book "topic-history-local-proposals")
@@ -112,6 +111,7 @@
 (include-book "bp-payload-gate")
 (include-book "bp-history-served-replay")
 (include-book "history-root-credit")
+(include-book "history-root-work-credit")
 (include-book "history-paged-adopt")
 (include-book "bp-channel-ingress")
 (include-book "bp-listener-set")

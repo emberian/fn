@@ -133,6 +133,16 @@ class HistoryStartup(unittest.TestCase):
                     callers.append(name)
         self.assertEqual(callers, ['fnn-owner-install'])
 
+    def test_standalone_inspect_loads_before_served_lookup(self):
+        inspect = definitions(ROOT / 'host/native/io.lisp')['fnn-command-inspect']
+        body = str(inspect)
+        self.assertLess(body.index('fn-store-history-startup'),
+                        body.index('fnn-bridge-lookup-found-p'))
+        callers = [name for path in (ROOT / 'host/native').glob('*.lisp')
+                   for name, form in definitions(path).items()
+                   if 'fn-store-history-startup' in str(form[3:])]
+        self.assertEqual(callers, ['fnn-command-inspect'])
+
     def test_served_sync_has_no_disk_realizer(self):
         reach = ldc.acl2_realizer_reach(ROOT, {'fn-pgs-fill-frame'})
         self.assertNotIn('fn-pgs-fill-frame', reach.get('fn-host-hist-sync', {}))
@@ -170,7 +180,7 @@ class HistoryStartup(unittest.TestCase):
 
     def test_no_owner_region_can_call_reset_open_or_startup(self):
         forbidden = {'fn-store-sn-reset', 'fn-store-sn-open-classified',
-                     'fn-owner-history-startup', 'fn-owner-install-profile'}
+                     'fn-owner-history-startup', 'fn-store-history-startup', 'fn-owner-install-profile'}
         reach = ldc.acl2_realizer_reach(ROOT, forbidden)
         _, model, _ = ldc.analyze_tree(
             ROOT, ldc.load_contracts(ROOT / 'tools/lock_discipline_contracts.json'),

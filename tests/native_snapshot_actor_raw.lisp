@@ -206,6 +206,10 @@
 ;;; ---- derived stubs: END ----
 (load-deployed-forms "books/failure-scope.lisp" '((defun fn-fs-classify-job)))
 (load-deployed-forms "host/native/io.lisp" '((define-condition fnn-store-io-refusal)))
+(defmacro fnn-owner-gated ((service class) &body body)
+  (declare (ignore class))
+  `(sb-thread:with-mutex ((fnn-owner-service-lock ,service)) ,@body))
+
 (load-deployed-forms "host/native/owner.lisp"
  '((defvar *fnn-snapshot-job*)
    (defstruct (fnn-snapshot-job (:constructor %make-fnn-snapshot-job)))
@@ -223,9 +227,17 @@
 ;; captured three-row prefix, and hold its grant until the consumer returns.
 (defvar *snapshot-history-unpins* 0)
 (defvar *snapshot-history-reads* nil)
-(defun fnn-history-root-pin-held () (list (list :history-root 1 9 3 nil) '(a b c later)))
+(defvar *snapshot-read-refusal* nil)
+(defvar *snapshot-history-refusal* nil)
+(defvar *snapshot-history-pin-cut* nil)
+(defun fnn-history-root-pin-held (&optional workp)
+  (assert workp)
+  (when *snapshot-history-pin-cut* (throw 'raw-ev-fncall :history-pin-torn))
+  (if *snapshot-history-refusal* (values nil *snapshot-history-refusal*)
+    (list (list :history-root 1 9 3 nil t) '(a b c later))))
 (defun fnn-owner-history-root-at (service pin ordinal)
   (assert (not (sb-thread:holding-mutex-p (fnn-owner-service-lock service))))
+  (when *snapshot-read-refusal* (error 'fnn-store-io-refusal :message "credit refused"))
   (assert (< ordinal (fourth (first pin))))
   (push ordinal *snapshot-history-reads*)
   (nth ordinal (second pin)))
@@ -436,4 +448,59 @@
            (fnn-owner-actor-join *snapshot-service* worker)
            (assert (fnn-owner-snapshot-jobs-drained-p *snapshot-service*))))
     (setf (symbol-function 'fnn-owner-stop-service-locked) saved)))
+ ;; A nonlocal exit from the history pin may have acquired a lease. Keep
+;; the registered envelope, as for an ambiguous arena-pin acquisition.
+(snapshot-reset)
+(setq *snapshot-history-pin-cut* t)
+(assert (eq (catch 'raw-ev-fncall
+              (fnn-owner-snapshot-job-capture *snapshot-service* :publisher :capture))
+            :history-pin-torn))
+(assert (eq (fnn-snapshot-job-stage
+             (car (fnn-owner-service-snapshot-jobs *snapshot-service*))) :pinning))
+(assert (not (fnn-owner-snapshot-jobs-drained-p *snapshot-service*)))
+(setq *snapshot-history-pin-cut* nil)
+
+ ;; A refused lease publishes no job and never reaches the arena pin. The
+;; publisher settles the exact capture under the same owner hold.
+(snapshot-reset)
+(setq *snapshot-history-refusal* '(:refused :completion-reserve-exhausted)
+      *snapshot-pin-cut* t)
+(multiple-value-bind (job refusal)
+    (fnn-owner-snapshot-job-capture *snapshot-service* :publisher :capture)
+  (assert (null job))
+  (assert (equal refusal *snapshot-history-refusal*)))
+(assert (fnn-owner-snapshot-jobs-drained-p *snapshot-service*))
+(defvar *snapshot-settlement* nil)
+(defun fnn-owner-monotonic-ms () 43)
+(defun fnn-owner-core (name &rest args)
+  (assert (eq name 'fn-owner-sco-publication-abandoned))
+  (setq *snapshot-settlement* args)
+  :settled)
+(let ((captured (make-list 13)))
+  (setf (fifth captured) 72 (nth 12 captured) 8)
+  (assert (null (fnn-owner-publisher-start *snapshot-service* captured :position))))
+(assert (equal *snapshot-settlement*
+               '(72 8 (:refused :completion-reserve-exhausted) 43)))
+(assert (fnn-owner-snapshot-jobs-drained-p *snapshot-service*))
+(assert (null (fnn-owner-service-publisher *snapshot-service*)))
+(assert (null (fnn-owner-service-stopping *snapshot-service*)))
+(setq *snapshot-history-refusal* nil *snapshot-pin-cut* nil)
+ ;; Refusal while decoding happens before the publication body's cleanup.
+;; It still settles the capture and returns both acquired pins.
+(snapshot-reset)
+(setq *snapshot-read-refusal* t *snapshot-settlement* nil)
+(let* ((captured (make-list 13))
+       (job (fnn-owner-snapshot-job-capture *snapshot-service* :publisher captured)))
+  (setf (fifth captured) 73 (nth 12 captured) 9)
+  (handler-case (fnn-owner-snapshot-job-run *snapshot-service* job
+                  (lambda () (error "consumer entered after refused read")))
+    (fnn-store-io-refusal () nil))
+  (assert (equal *snapshot-settlement* '(73 9 (:io-refusal) 43)))
+  (assert (= *snapshot-unpins* 1))
+  (assert (= *snapshot-history-unpins* 1))
+  (fnn-owner-snapshot-job-physical *snapshot-service* job :no-actor-created)
+  (assert (fnn-owner-snapshot-jobs-drained-p *snapshot-service*)))
+(setq *snapshot-read-refusal* nil)
+(format t "native_snapshot_lease_refusal: PASS no actor/pin debt, exact settlement, owner remains live~%")
+
 (format t "native_snapshot_actor_raw: PASS capture/pre-wake slot/early exit/physical join/pin cleanup debt/maker and latch failure~%")

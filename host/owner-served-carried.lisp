@@ -53,6 +53,10 @@
 
 (in-package "ACL2")
 (include-book "../books/definterface") ; def-carried, with the :incomplete escape
+(include-book "../books/owner-history-capture")
+(include-book "../books/store-history-startup")
+; The startup/frame transitions below are proved in this host book.
+(include-book "owner-retain-host")
 (include-book "../books/owner-retain-carried") ; the pilot row and its open
 (include-book "../books/owner-post-carried") ; actual refusal/known-abort writers
 
@@ -72,7 +76,8 @@
                  :witness ((fn-owner-retain-witness-oc) nil (make-list 32 :initial-element 0)
                            (create-fn-arena$a) (create-fn-cat$a) (create-fn-hist$a)
                            (fn-owner-retain-witness-state))))
-  :transitions ((fn-owner-sco-capture-served fn-owner-sco-capture-served-preserves-retain-state)
+  :transitions ((fn-store-history-startup fn-store-history-startup-preserves-retain-state)
+                (fn-owner-sco-capture-served fn-owner-sco-capture-served-preserves-retain-state)
                 (fn-owner-oex-capture-served fn-owner-oex-capture-served-preserves-retain-state)
                 (fn-owner-orc-capture-served fn-owner-orc-capture-served-preserves-retain-state)
                 (fn-owner-history-startup fn-owner-history-startup-preserves-retain-state)

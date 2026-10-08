@@ -7654,16 +7654,22 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
   :join fnn-owner-wait-workers :failure :job)
 
 (defun fnn-owner-snapshot-job-capture (service kind captured)
-  "Owner held. Retain the envelope before the possibly torn pin operation."
+  "Owner held. Retain torn-pin custody; a definite refusal acquires no arena."
   (let ((job (%make-fnn-snapshot-job :kind kind :captured captured :metadata captured
                                      :arena (fnn-live-arena))))
     (fnn-with-roster (service)
       (push job (fnn-owner-service-snapshot-jobs service)))
+    (multiple-value-bind (source refusal) (fnn-history-root-pin-held t)
+      (unless source
+        ;; The ACL2 call returned a definite refusal: no lease was issued.
+        ;; A nonlocal exit never reaches this removal and keeps pin custody.
+        (fnn-with-roster (service)
+          (setf (fnn-owner-service-snapshot-jobs service)
+                (delete job (fnn-owner-service-snapshot-jobs service) :test #'eq)))
+        (return-from fnn-owner-snapshot-job-capture (values nil refusal)))
+      (setf (fnn-snapshot-job-history-source job) source))
     (setf (fnn-snapshot-job-pin job) (fnn-arena-pin)
-          (fnn-snapshot-job-history-source job) (fnn-history-root-pin-held))
-    (unless (fnn-snapshot-job-history-source job)
-      (fnn-fault "snapshot capture has no funded history-root lease"))
-    (setf (fnn-snapshot-job-stage job) :holding)
+          (fnn-snapshot-job-stage job) :holding)
     job))
 
 (defun fnn-owner-snapshot-job-release (service job)
@@ -7729,17 +7735,34 @@ mutex; other faults stop the owner. Neither terminal outcome resumes serving."
     (unwind-protect
         (progn
           (setf (fnn-snapshot-job-captured job)
-                (fnn-core 'fn-hsc-complete-capture
-                          (if (eq (fnn-snapshot-job-kind job) :publisher) :checkpoint :export)
-                          (fnn-snapshot-job-captured job)
-                          (fnn-owner-history-root-materialize
-                           service (fnn-snapshot-job-history-source job))))
+                (handler-case
+                    (fnn-core 'fn-hsc-complete-capture
+                              (if (eq (fnn-snapshot-job-kind job) :publisher) :checkpoint :export)
+                              (fnn-snapshot-job-captured job)
+                              (fnn-owner-history-root-materialize
+                               service (fnn-snapshot-job-history-source job)))
+                  (fnn-store-io-refusal (condition)
+                    ;; The publication body has not entered its settlement
+                    ;; yet. Refused decode funding must release its slot too.
+                    (when (eq (fnn-snapshot-job-kind job) :publisher)
+                      (fnn-owner-gated (service :control)
+                        (fnn-owner-core 'fn-owner-sco-publication-abandoned
+                                        (fifth (fnn-snapshot-job-metadata job))
+                                        (nth 12 (fnn-snapshot-job-metadata job))
+                                        '(:io-refusal) (fnn-owner-monotonic-ms))))
+                    (error condition))))
           (funcall thunk))
       (fnn-owner-snapshot-job-release service job))))
 
 (defun fnn-owner-publisher-start (service captured position)
   "Owner held: retain snapshot and publish activity slot before actor wake."
-  (let ((job (fnn-owner-snapshot-job-capture service :publisher captured)))
+  (multiple-value-bind (job refusal) (fnn-owner-snapshot-job-capture service :publisher captured)
+    (unless job
+      (let ((settled (fnn-owner-core 'fn-owner-sco-publication-abandoned
+                                    (fifth captured) (nth 12 captured) refusal
+                                    (fnn-owner-monotonic-ms))))
+        (fnn-err "CHECKPOINT capture deferred: ~(~s~) settlement=~(~s~)" refusal settled))
+      (return-from fnn-owner-publisher-start nil))
     (fnn-owner-spawn-publisher
      service (list job)
      (lambda ()
@@ -8132,7 +8155,8 @@ runs, the last outcome and its DIR."
 
 (defun fnn-owner-export-start (service captured dir)
   "Owner held: retain the pin/capture and activity slot before child wake."
-  (let ((job (fnn-owner-snapshot-job-capture service :exporter captured)))
+  (multiple-value-bind (job refusal) (fnn-owner-snapshot-job-capture service :exporter captured)
+    (unless job (fnn-refuse-io "export history lease refused: ~s" refusal))
     (fnn-owner-spawn-exporter
      service (list job)
      (lambda ()

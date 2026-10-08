@@ -6071,7 +6071,10 @@ in use (lane compression-extents-2)."
   (multiple-value-bind (store records) (fnn-open-live-store root nil)
     (declare (ignore records))
     (fnn-unwind-cleanups
-         ((let ((msgid (progn
+         ((progn
+           ;; Standalone open has no owner install to consume reload.
+           (fnn-core-state 'fn-store-history-startup)
+           (let ((msgid (progn
                         ;; Python encodes the Message-ID after opening the
                         ;; store, so a non-ASCII identifier is a usage error
                         ;; only once the store itself opened.
@@ -6081,7 +6084,7 @@ in use (lane compression-extents-2)."
            (cond ((not (fnn-bridge-lookup-found-p msgid)) +fnn-exit-refused+)
                  (t (write-sequence (fnn-bridge-lookup msgid) *fnn-stdout*)
                     (finish-output *fnn-stdout*)
-                    +fnn-exit-ok+))))
+                    +fnn-exit-ok+)))))
       (fnn-store-close store))))
 
 (defun fnn-command-provenance (root message-id)

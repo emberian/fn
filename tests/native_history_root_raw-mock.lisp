@@ -4,6 +4,7 @@
 (require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "COMMON-LISP"))
 (in-package "ACL2")
+(defmacro fnn-guarded-by (&rest ignored) (declare (ignore ignored)) nil)
 (defmacro fnn-owner-gated ((service class) &body body)
   (declare (ignore service class)) `(progn ,@body))
 (define-condition fnn-store-io-refusal (error) ())

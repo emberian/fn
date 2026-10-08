@@ -94,6 +94,8 @@
 
 ; Startup owns the whole load; served readers have only incremental sync.
 (include-book "../books/owner-history-carried")
+(include-book "../books/store-history-startup")
+(definterface fn-store-history-startup :class :common-lisp-compliant)
 
 (defun fn-store-sn-reset (state)
   (declare (xargs :stobjs state :mode :program))

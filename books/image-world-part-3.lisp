@@ -7,9 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
-(include-book "peer-catchup")
-(include-book "consumer-owner-local")
-(include-book "consumer-bound")
 (include-book "consumer-wait")
 (include-book "consumer-withdrawal")
 (include-book "owner-feed-article")
@@ -53,6 +50,7 @@
 (include-book "connection-receiver-repin")
 (include-book "index-reader-rx-source-completion")
 (include-book "history-root-credit")
+(include-book "history-root-work-credit")
 (include-book "history-paged-adopt")
 (include-book "owner-host-relation")
 (include-book "consumer-account-state")
@@ -153,3 +151,4 @@
 (include-book "../host/index-connection-repin-prepare-host")
 (include-book "../host/receiver-repin-source-host")
 (include-book "../host/owner-host")
+(include-book "../host/owner-retain-host")

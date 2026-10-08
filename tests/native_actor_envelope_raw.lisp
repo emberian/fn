@@ -231,6 +231,11 @@
    (def-actor fnn-owner-spawn-syncer) (def-actor fnn-owner-spawn-committer)
    (defun fnn-owner-actor-join) (defun fnn-owner-start-syncer)))
 
+ ; The production thread escape now fences the store as a separate seam.
+; This actor-only fixture records the service fence; it has no live Store.
+(defun fnn-owner-fence-service (service)
+  (setf (fnn-owner-service-stopping service) t))
+
 ;; The declarations: ACL2 accepted both deployed def-actors as they loaded
 ;; (the table holds them as written), and refuses what the book does not
 ;; list -- the load stops.

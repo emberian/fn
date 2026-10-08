@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-store-test-part-1")
-(include-book "owner-served-invariants")
-(include-book "owner-feed-port")
 (include-book "owner-feed-live-carried")
 (include-book "owner-feed-reconfigure-counted")
 (include-book "owner-outcome-counted")
@@ -124,6 +122,7 @@
 (include-book "provenance-inspect")
 (include-book "state-digest")
 (include-book "owner-history-carried")
+(include-book "store-history-startup")
 (include-book "history-served-reconfigure")
 (include-book "owner-history-io-entry")
 (include-book "owner-history-find")

@@ -129,7 +129,10 @@ class LiveReconfigurationSourceTests(unittest.TestCase):
         # The carried completion since PKT-827 (PRF-274): fn-oclc-publish,
         # fn-ocl-publish under the owner's invariant (fn-oclc-publish-is-publish)
         # and carrying it (fn-oclc-publish-carries-ocl-relation).
-        self.assertIn("(fn-oclc-publish (fn-owner-ocfg state) generation", owner)
+        self.assertIn("(fn-hcr-publish (fn-owner-ocfg state) generation", owner)
+        resident = (ROOT / "books/history-served-reconfigure.lisp").read_text()
+        self.assertIn("(defthm fn-hcr-publish-is-publish", resident)
+        self.assertIn("(fn-ocl-publish oc generation max-octets)", resident)
         carried = (ROOT / "books" / "config-owner-carried.lisp").read_text(encoding="ascii")
         for name in ("fn-oclc-publish-is-publish", "fn-oclc-publish-carries-ocl-relation"):
             self.assertIn("(defthm " + name, carried)
