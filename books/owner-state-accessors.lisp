@@ -3,6 +3,7 @@
 ; new decision, or invariant revalidation is introduced.
 (in-package "ACL2")
 (include-book "owner-config")
+(include-book "owner-publication-state")
 
 (defun fn-owner-ocfg (state)
   ; Internal, single-valued accessor for host wrappers.
@@ -32,13 +33,11 @@
 
 ;; The owner's publication globals (moved unchanged from host/owner-host.lisp
 ;; so host/web-host.lisp, which includes only this book, certifies).
-(defun fn-owner-sco-global (name state)
-  (declare (xargs :stobjs state :guard (symbolp name)))
-  (if (boundp-global name state) (f-get-global name state) nil))
+; Publication reads use the carried record, not a dynamic global funnel.
 
 ; The publication the owner deferred by name, (:deferred REASON ESTIMATE
 ; BUDGET) as fn-ock-publication-stream answered it, or nil; the status
 ; report carries it (host/native-live-status-host.lisp).
 (defun fn-owner-sco-deferred (state)
   (declare (xargs :stobjs state :mode :program))
-  (fn-owner-sco-global 'fn-owner-sco-deferred state))
+  (fn-opub-get :deferred (fn-ost-publication state)))
