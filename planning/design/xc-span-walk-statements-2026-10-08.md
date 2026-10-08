@@ -476,3 +476,81 @@ resync log is the admission evidence. The 17 closed contract forms above were
 parsed structurally with `tools/lisp_rewrite.py`; none was submitted to the
 prover. No candidate keystone certification, native qualification, or host
 array deletion is claimed in round 5a.
+
+### Round 5b: proved contracts and charged entry ownership
+
+All 17 round-5a contracts are proved in `extent-cache-storage-{walk,sound,complete,install}.lisp`.
+Soundness and completeness now omit hypotheses implied by the actual answer;
+the exact 5a statements remain as `-round5a` corollaries where strengthened.
+The declared table, row-region, coordinate, and successful-install hypotheses
+group the corresponding operational conditions, as round 4 did. Their teeth
+remove the entire declared condition; they do not claim independent necessity
+of every representation guard inside it.
+
+The whole-entry buffer declaration is now `(def-buffer-exact fn-xce-entry)`
+and `(def-buffer-exact fn-xce-stage)`. This generator uses the new abstract
+stobj `fn-obe`, whose concrete foundation contains only a resizable u8 array,
+initial length zero. Its logical model remains an octet list. There is no
+unaccounted spare capacity: `fn-obe-correspondence-counts-allocated-octets`
+equates logical length and allocated array length; `fn-obe-clear-releases-the-array`
+sets that array's length to zero. The eight `fn-xce` keys/entry rows and shared
+eight `fn-xcw` raw/decoded rows retain the 5a layout and profile limits.
+
+The host must install charged entries through:
+
+```lisp
+(fn-xc-install-entry-funded ledger file eoff elen trailer token
+                            fn-xcs fn-xcc fn-xce fn-xce-stage)
+; -> (mv word slot evicted fn-xcs fn-xcc fn-xce fn-xce-stage)
+(fn-xc-free-bytes slot fn-xcs fn-xce)
+; -> (mv word token fn-xcs fn-xce)
+(fn-xc-yield-bytes fn-xcs fn-xcc fn-xce)
+; -> (mv word slot token fn-xcs fn-xce)
+```
+
+`fn-xc-install-entry-funded` adds `:refused-entry-charge` if the incoming
+nonempty stage lacks a token's `:cached` charge covering its exact allocation.
+Other words are those of `fn-xc-install-entry-bytes`. On `:installed` or
+`:replaced`, adoption stores the new pair and **clears the displaced stage
+before returning**. The low-level 5a installer retains its swap contract for
+proof instantiation and must not be used as the host's owned-entry installer.
+The free/yield wrappers return S's decisions and tokens unchanged and empty
+the entry row on `:freed`/`:yielded`; slot-table-only free/yield are their
+logical decision models, not the host ownership boundary.
+
+`fn-xce-fundedp` is a carried logical invariant, not a served-path scan.
+`fn-xce-every-resident-row-is-charged` gives, for every profile row, an octet
+count at most the ledger `:cached` charge of that slot's token; a nonempty row
+also requires a live kind-1 slot. Initialization with fresh backing establishes
+it; funded install, free and yield preserve it. The three release keystones
+are `fn-xc-install-entry-funded-releases-the-victim-buffer`,
+`fn-xc-free-bytes-releases-freed-row`, and
+`fn-xc-yield-bytes-releases-yielded-row`.
+`fn-xce-refund-preserves-funding` also covers the subsequent ledger eviction
+when the removed token is absent from the remaining table.
+
+S's host premises: settle the incoming entry into `:cached` before the funded
+install; refund a returned victim only after the wrapper has released its
+buffer; retain S's token-disjoint invariant so credit is not shared by resident
+rows; use the wrappers for every entry retirement. Capture the decoded Z
+controller before worker retirement and keep its buffer paired with Z. Entry
+staging uses exact `resize`/`put`; no host-owned retained entry array is part of
+this boundary. As required above, scalar `END = P + 1` entry calls are allowed
+only off served paths: s-xc2 must inventory ARTICLE/HEAD/BODY/OVER/HDR callers
+and show that none uses such scalar calls.
+
+The 21 keystones have `defteeth` in five `extent-cache-storage-*-tests` books.
+Positive snapshots are proved results of init plus installation; every declared
+hypothesis has a checked removal. Faulty walker implementations stop after the
+first declining slot or omit the stored plan/key check. The funded-install
+mutant retains the evicted buffer; its replacement witness refutes that
+implementation. Ground proof witnesses are labelled as such, including
+out-of-guard logical removals. `extent-cache-storage-live-tests` separately
+runs real profile-sized stobjs through decoded multi-candidate/stale-plan
+reads and entry install/read/replacement/free/yield. Both native assertions
+passed in persvati REPL `pxc5b-teeth2`; all core exports are guard verified.
+
+The critical gate introduced on origin/dev forbids owed entries for new or
+changed critical keystones (`keystone_critical.py`, `findings` and `claim_owed`).
+The host test and served-caller inventory belong to s-xc2; they are not supplied
+by these ACL2 traces. No critical owed exemption is claimed for this round.

@@ -42,7 +42,58 @@
              (and (equal (mv-nth 0 r) :span) (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))
   :rule-classes nil
   :hints (("Goal" :induct (fn-xc-entry-span-at from file eoff elen poff plen trailer p end slots cells entries dst) :in-theory (disable fn-xc-entry-span-row fn-xc-slot-matchp fn-xc-touch fn-xc-decoded-planp))))
+(defthm fn-xc-decoded-cache-byte-naturals
+  (implies (equal (mv-nth 0 (fn-pwz-cache-byte-at ledger token file eoff elen poff compressed trailer decoded dict-id i window)) :byte)
+           (and (natp i) (natp decoded)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pwz-cache-byte-at))))
+
+(defthm fn-xc-decoded-cache-byte-matches-slot
+  (implies (equal (mv-nth 0 (fn-pwz-cache-byte-at ledger (fn-xc-slot-token i slots) file eoff elen poff compressed trailer decoded dict-id p (fn-xcw-window (fn-xc-row i cells) wins))) :byte)
+           (fn-xc-slot-matchp i nil 3 file eoff elen poff compressed decoded dict-id trailer p slots))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-pwz-nth fn-pwz-cache-byte-at fn-pwz-cachedp fn-pwz-tokenp fn-xc-slot-token fn-xc-token fn-xc-slot-matchp))))
+
 (defthm fn-xc-decoded-span-at-answers-a-covered-slot
+  (let* ((token (fn-xc-slot-token i slots))
+         (z (fn-xcw-plan (fn-xc-row i cells) wins))
+         (window (fn-xcw-window (fn-xc-row i cells) wins))
+         (r (fn-xc-decoded-span-at from ledger file eoff elen poff compressed trailer decoded dict-id p end slots cells wins dst)))
+    (implies
+     (and (and (fn-xccp cells) (fn-xc-readyp slots cells))
+          (and (natp from) (<= from i)) (and (natp i) (<= (fn-xc-ne cells) i)
+               (< i (+ (fn-xc-ne cells) (fn-xc-nw cells))))
+          (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))
+          (natp end) (< p end)
+          (fn-xc-decoded-planp z token)
+          (equal (mv-nth 0 (fn-pwz-cache-byte-at ledger token file eoff elen poff compressed trailer decoded dict-id p window)) :byte))
+     (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r))
+          (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-xc-row fn-xc-readyp) (fn-xc-decoded-span-at fn-xc-decoded-span-row fn-xc-slot-matchp fn-xc-touch fn-xc-slot-token fn-xcw-plan fn-xcw-window fn-xc-decoded-planp fn-xcwp fn-xcep fn-xc-decoded-row-answers-a-byte fn-xc-entry-row-answers-a-byte))
+           :use (fn-xc-decoded-cache-byte-matches-slot (:instance fn-xc-decoded-cache-byte-naturals (token (fn-xc-slot-token i slots)) (i p) (window (fn-xcw-window (fn-xc-row i cells) wins))) fn-xc-decoded-walk-covers-a-ready-row fn-xc-decoded-span-at-span-count
+                 (:instance fn-xc-decoded-row-answers-a-byte (slot i))))))
+
+(defthm fn-xc-entry-span-at-answers-a-covered-slot
+  (let ((r (fn-xc-entry-span-at from file eoff elen poff plen trailer p end slots cells entries dst)))
+    (implies
+     (and (and (fn-xccp cells) (fn-xc-readyp slots cells))
+          (and (natp from) (<= from i)) (and (natp i) (< i (fn-xc-ne cells)))
+          (<= (fn-xc-ne cells) (fn-xce-keys-length entries))
+          (and (natp eoff) (natp elen) (natp poff) (natp plen) (natp p) (natp end))
+          (<= eoff poff) (<= (+ poff plen) (+ eoff elen)) (< p end) (< p plen)
+          (fn-xc-slot-matchp i nil 1 file eoff elen 0 0 0 0 trailer 0 slots)
+          (equal (nth i (nth 0 entries)) (fn-xc-entry-key file eoff elen trailer (fn-xc-slot-token i slots)))
+          (equal (len (nth i (nth 1 entries))) (+ elen *fn-frame-trailer-octets*)))
+     (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r))
+          (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-xc-row fn-xc-readyp) (fn-xc-entry-span-at fn-xc-entry-span-row fn-xc-slot-matchp fn-xc-touch fn-xc-slot-token fn-xcw-plan fn-xcw-window fn-xc-decoded-planp fn-xcwp fn-xcep fn-xc-decoded-row-answers-a-byte fn-xc-entry-row-answers-a-byte))
+           :use (fn-xc-entry-walk-covers-a-ready-row fn-xc-entry-span-at-span-count
+                 (:instance fn-xc-entry-row-answers-a-byte (slot i))))))
+
+
+(defthm fn-xc-decoded-span-at-answers-a-covered-slot-round5a
   (let* ((token (fn-xc-slot-token i slots))
          (z (fn-xcw-plan (fn-xc-row i cells) wins))
          (window (fn-xcw-window (fn-xc-row i cells) wins))
@@ -59,11 +110,9 @@
      (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r))
           (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-xc-row fn-xc-readyp) (fn-xc-decoded-span-at fn-xc-decoded-span-row fn-xc-slot-matchp fn-xc-touch fn-xc-slot-token fn-xcw-plan fn-xcw-window fn-xc-decoded-planp fn-xcwp fn-xcep fn-xc-decoded-row-answers-a-byte fn-xc-entry-row-answers-a-byte))
-           :use (fn-xc-decoded-walk-covers-a-ready-row fn-xc-decoded-span-at-span-count
-                 (:instance fn-xc-decoded-row-answers-a-byte (slot i))))))
+  :hints (("Goal" :in-theory (disable fn-xc-decoded-span-at fn-xc-entry-span-at fn-xc-slot-token fn-xc-row fn-xcw-plan fn-xcw-window) :use fn-xc-decoded-span-at-answers-a-covered-slot)))
 
-(defthm fn-xc-entry-span-at-answers-a-covered-slot
+(defthm fn-xc-entry-span-at-answers-a-covered-slot-round5a
   (let ((r (fn-xc-entry-span-at from file eoff elen poff plen trailer p end slots cells entries dst)))
     (implies
      (and (fn-xcsp slots) (fn-xccp cells) (fn-xcep entries) (fn-xc-readyp slots cells)
@@ -77,7 +126,4 @@
      (and (equal (mv-nth 0 r) :span) (posp (mv-nth 1 r))
           (<= from (mv-nth 2 r)) (<= (mv-nth 2 r) i))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-xc-row fn-xc-readyp) (fn-xc-entry-span-at fn-xc-entry-span-row fn-xc-slot-matchp fn-xc-touch fn-xc-slot-token fn-xcw-plan fn-xcw-window fn-xc-decoded-planp fn-xcwp fn-xcep fn-xc-decoded-row-answers-a-byte fn-xc-entry-row-answers-a-byte))
-           :use (fn-xc-entry-walk-covers-a-ready-row fn-xc-entry-span-at-span-count
-                 (:instance fn-xc-entry-row-answers-a-byte (slot i))))))
-
+  :hints (("Goal" :in-theory (disable fn-xc-decoded-span-at fn-xc-entry-span-at fn-xc-slot-token fn-xc-row fn-xcw-plan fn-xcw-window) :use fn-xc-entry-span-at-answers-a-covered-slot)))

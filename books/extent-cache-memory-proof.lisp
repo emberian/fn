@@ -11,8 +11,8 @@
            :in-theory (disable fn-xce-row-fundedp))))
 
 (defthm fn-xce-every-resident-row-is-charged
-  (implies (and (fn-xce-fundedp ledger slots entries) (natp i)
-                (< i (fn-xce-keys-length entries)))
+  (implies (and (fn-xce-fundedp ledger slots entries) (and (natp i)
+                (< i (fn-xce-keys-length entries))))
            (let ((n (len (nth i (nth 1 entries)))))
              (and (<= n (fn-xce-cached-charge ledger (fn-xc-slot-token i slots)))
                   (implies (posp n)
@@ -76,13 +76,13 @@
 
 (defthm fn-xc-free-bytes-releases-freed-row
   (let ((r (fn-xc-free-bytes slot slots entries)))
-    (implies (and (natp slot) (< slot (fn-xce-keys-length entries)) (equal (mv-nth 0 r) :freed))
+    (implies (and (and (natp slot) (< slot (fn-xce-keys-length entries)) (equal (mv-nth 0 r) :freed)))
              (equal (nth slot (nth 1 (mv-nth 3 r))) nil)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-xc-free-bytes) (fn-xce-drop fn-xc-free)))))
 (defthm fn-xc-yield-bytes-releases-yielded-row
   (let* ((r (fn-xc-yield-bytes slots cells entries)) (slot (mv-nth 1 r)))
-    (implies (and (natp slot) (< slot (fn-xce-keys-length entries)) (equal (mv-nth 0 r) :yielded))
+    (implies (and (and (natp slot) (< slot (fn-xce-keys-length entries)) (equal (mv-nth 0 r) :yielded)))
              (equal (nth slot (nth 1 (mv-nth 4 r))) nil)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-xc-yield-bytes) (fn-xce-drop fn-xc-yield)))))

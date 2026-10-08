@@ -44,7 +44,7 @@
                     (take 2 (cdddr x)) (take 1 (cddddr x))))))
 
 (defthm fn-xc-install-decoded-bytes-installs-the-table-decision
-  (implies (and (fn-xcsp slots) (fn-xccp cells) (fn-xc-readyp slots cells)
+  (implies (and (fn-xc-readyp slots cells)
                 (<= (fn-xc-nw cells) (fn-xcw-plans-length wins)) (fn-xc-decoded-planp z token))
            (equal (take 5 (fn-xc-install-decoded-bytes token z slots cells wins buf))
                   (fn-xc-install-window token slots cells)))
@@ -52,7 +52,7 @@
   :hints (("Goal" :in-theory (e/d (mv-nth) (fn-xc-install-window fn-xc-install-entry fn-xcw-copy fn-xce-adopt fn-xc-decoded-planp)) :use (:instance fn-xc-list-five (x (fn-xc-install-window token slots cells))))))
 
 (defthm fn-xc-install-entry-bytes-installs-the-table-decision
-  (implies (and (fn-xcsp slots) (fn-xccp cells) (fn-xc-readyp slots cells)
+  (implies (and (fn-xc-readyp slots cells)
                 (<= (fn-xc-ne cells) (fn-xce-keys-length entries)) (natp elen)
                 (equal (len stage) (+ elen *fn-frame-trailer-octets*)))
            (equal (take 5 (fn-xc-install-entry-bytes file eoff elen trailer token slots cells entries stage))
@@ -110,9 +110,7 @@
 (defthm fn-xc-install-decoded-bytes-stores-the-pair
   (let* ((r (fn-xc-install-decoded-bytes token z slots cells wins buf))
          (row (fn-xc-row (mv-nth 1 r) (mv-nth 4 r))) (new (mv-nth 5 r)))
-    (implies (and (fn-xcsp slots) (fn-xccp cells) (fn-xcwp wins) (fn-xc-readyp slots cells)
-                  (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))
-                  (member-equal (mv-nth 0 r) '(:installed :replaced)))
+    (implies (and (and (fn-xcsp slots) (fn-xccp cells) (member-equal (mv-nth 0 r) '(:installed :replaced))))
              (and (equal (fn-xcw-plan row new) z)
                   (implies (and (natp j) (< j (fn-pwz-token-window-length token)))
                            (equal (nth j (nth 0 (fn-xcw-window row new))) (nth j (nth 0 buf)))))))
@@ -126,9 +124,7 @@
 (defthm fn-xc-install-entry-bytes-stores-the-pair
   (let* ((r (fn-xc-install-entry-bytes file eoff elen trailer token slots cells entries stage))
          (s (mv-nth 1 r)) (new (mv-nth 5 r)))
-    (implies (and (fn-xcsp slots) (fn-xccp cells) (fn-xcep entries) (fn-xc-readyp slots cells)
-                  (<= (fn-xc-ne cells) (fn-xce-keys-length entries))
-                  (member-equal (mv-nth 0 r) '(:installed :replaced)))
+    (implies (and (and (fn-xcsp slots) (fn-xccp cells) (member-equal (mv-nth 0 r) '(:installed :replaced))))
              (and (equal (nth s (nth 0 new)) (fn-xc-entry-key file eoff elen trailer token))
                   (equal (nth s (nth 1 new)) stage)
                   (equal (mv-nth 6 r) (nth s (nth 1 entries))))))
@@ -148,7 +144,7 @@
 
 (defthm fn-xc-init-all-readies-all-rows
   (let ((r (fn-xc-init-all ne nw slots cells)))
-    (implies (and (fn-xcsp slots) (fn-xccp cells) (equal (fn-xcs-count slots) 0) (equal (fn-xcc-count cells) 0)
+    (implies (and (and (fn-xcsp slots) (fn-xccp cells) (equal (fn-xcs-count slots) 0) (equal (fn-xcc-count cells) 0))
                   (natp ne) (natp nw) (<= ne (fn-profile-limit :extent-cache-entries))
                   (<= nw (fn-profile-limit :extent-cache-windows)))
              (and (equal (mv-nth 0 r) :initialized)
@@ -158,3 +154,44 @@
                   (<= ne (fn-xce-keys-length entries)) (<= nw (fn-xcw-plans-length wins)))) )
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-xc-init-all) (fn-xc-init)) :use (:instance fn-xc-init-initializes (fn-xcs slots) (fn-xcc cells)))))
+
+(defthm fn-xc-install-decoded-bytes-installs-the-table-decision-round5a
+  (implies (and (fn-xcsp slots) (fn-xccp cells) (fn-xc-readyp slots cells)
+                (<= (fn-xc-nw cells) (fn-xcw-plans-length wins)) (fn-xc-decoded-planp z token))
+           (equal (take 5 (fn-xc-install-decoded-bytes token z slots cells wins buf))
+                  (fn-xc-install-window token slots cells)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-xc-install-entry-bytes fn-xc-install-decoded-bytes fn-xc-install-entry fn-xc-install-window fn-xcw-plan fn-xcw-window) :use fn-xc-install-decoded-bytes-installs-the-table-decision)))
+
+(defthm fn-xc-install-entry-bytes-installs-the-table-decision-round5a
+  (implies (and (fn-xcsp slots) (fn-xccp cells) (fn-xc-readyp slots cells)
+                (<= (fn-xc-ne cells) (fn-xce-keys-length entries)) (natp elen)
+                (equal (len stage) (+ elen *fn-frame-trailer-octets*)))
+           (equal (take 5 (fn-xc-install-entry-bytes file eoff elen trailer token slots cells entries stage))
+                  (fn-xc-install-entry file eoff elen trailer token slots cells)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-xc-install-entry-bytes fn-xc-install-decoded-bytes fn-xc-install-entry fn-xc-install-window fn-xcw-plan fn-xcw-window) :use fn-xc-install-entry-bytes-installs-the-table-decision)))
+
+(defthm fn-xc-install-decoded-bytes-stores-the-pair-round5a
+  (let* ((r (fn-xc-install-decoded-bytes token z slots cells wins buf))
+         (row (fn-xc-row (mv-nth 1 r) (mv-nth 4 r))) (new (mv-nth 5 r)))
+    (implies (and (fn-xcsp slots) (fn-xccp cells) (fn-xcwp wins) (fn-xc-readyp slots cells)
+                  (<= (fn-xc-nw cells) (fn-xcw-plans-length wins))
+                  (member-equal (mv-nth 0 r) '(:installed :replaced)))
+             (and (equal (fn-xcw-plan row new) z)
+                  (implies (and (natp j) (< j (fn-pwz-token-window-length token)))
+                           (equal (nth j (nth 0 (fn-xcw-window row new))) (nth j (nth 0 buf)))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-xc-install-entry-bytes fn-xc-install-decoded-bytes fn-xc-install-entry fn-xc-install-window fn-xcw-plan fn-xcw-window) :use fn-xc-install-decoded-bytes-stores-the-pair)))
+
+(defthm fn-xc-install-entry-bytes-stores-the-pair-round5a
+  (let* ((r (fn-xc-install-entry-bytes file eoff elen trailer token slots cells entries stage))
+         (s (mv-nth 1 r)) (new (mv-nth 5 r)))
+    (implies (and (fn-xcsp slots) (fn-xccp cells) (fn-xcep entries) (fn-xc-readyp slots cells)
+                  (<= (fn-xc-ne cells) (fn-xce-keys-length entries))
+                  (member-equal (mv-nth 0 r) '(:installed :replaced)))
+             (and (equal (nth s (nth 0 new)) (fn-xc-entry-key file eoff elen trailer token))
+                  (equal (nth s (nth 1 new)) stage)
+                  (equal (mv-nth 6 r) (nth s (nth 1 entries))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-xc-install-entry-bytes fn-xc-install-decoded-bytes fn-xc-install-entry fn-xc-install-window fn-xcw-plan fn-xcw-window) :use fn-xc-install-entry-bytes-stores-the-pair)))
