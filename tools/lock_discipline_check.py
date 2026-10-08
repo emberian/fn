@@ -2181,6 +2181,28 @@ class Analyzer:
                     self.ev("callback", pname, line, ctx)
                 elif self.recording:
                     self.ev("callback-param", pname, line, ctx)
+            elif isinstance(target, Sym) and str(target) in self.tree.globals and str(target) not in env:
+                # a funcall through a special variable (a test seam such as
+                # *fnn-write-syscall*): the call runs the variable's init
+                # form.  A lambda is walked at this site, a #'NAME is that
+                # function (classified by name exactly like a direct call); a
+                # non-literal init cannot be classified, and reaching
+                # it under a lock that may not do I/O is reported.
+                gname = str(target)
+                init = self.tree.global_inits.get(gname)
+                if isinstance(init, list) and head(init) == "lambda":
+                    parts.append(self.walk_lambda_inline(init, ctx, {}, line))
+                    parts.extend(self.walk(a, ctx, env, line) for a in args[1:])
+                    return sig_union(parts)
+                fsym = str(init[1]) if isinstance(init, list) and head(init) == "function" \
+                    and len(init) > 1 and isinstance(init[1], Sym) else None
+                if fsym and fsym in self.tree.defs:
+                    self.ev("call", fsym, line, ctx, "funcall")
+                    parts.append(("u", frozenset(), (fsym,), ()))
+                elif fsym and self.leaf_kind(fsym):
+                    self.ev("leaf", fsym, line, ctx, (self.leaf_kind(fsym), args[1] if len(args) > 1 else None))
+                elif not fsym:
+                    self.ev("leaf", "funcall:" + gname, line, ctx, ("unresolved", None))
             elif quoted_symbol(target) and quoted_symbol(target) in self.tree.defs:
                 self.ev("call", quoted_symbol(target), line, ctx, "funcall")
                 parts.append(("u", frozenset(), (quoted_symbol(target),), ()))
@@ -3502,7 +3524,7 @@ class Model:
             if name in overrides:
                 continue
             for e in info.events:
-                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket") \
+                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket", "unresolved") \
                         and e.name not in nonblocking \
                         and not (name in pipe_closes and e.name == pipe_closes[name]["close_call"]):
                     for flag in (False, True):
@@ -4047,7 +4069,7 @@ class Checker:
                     continue
                 noio = e.ctx.noio if e.ctx.noio is not None else False
                 cands = []
-                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket") \
+                if e.kind == "leaf" and e.extra and e.extra[0] in ("io", "await", "sleep", "socket", "unresolved") \
                         and e.name not in nonblocking \
                         and not (name in pipe_closes and e.name == pipe_closes[name]["close_call"]):
                     h2 = held - {e.extra[1]} if e.extra[0] == "await" and e.name == "sb-thread:condition-wait" else held
@@ -4107,6 +4129,13 @@ class Checker:
                 callee, noio = how
                 trail = [f"{info.name} ({info.path}:{e.line})"] + self.m.block_path(callee, noio, leaf)
             leaf_info = self.infos.get(lfn, info)
+            if kind == "unresolved":
+                self.add("R2", leaf_info, int(lline),
+                         f"unresolved callee {lname}: its function is not a literal the checker can classify, "
+                         f"and it runs while holding {lock}; reached from {n} site(s) under {lock}, "
+                         f"e.g. {info.name} ({info.path}:{e.line})",
+                         f"{lock}:{lname}", trail, "unresolved", weight=n)
+                continue
             self.add("R2", leaf_info, int(lline),
                      f"{kind} leaf {lname} runs while holding {lock}; reached from {n} site(s) under {lock}, "
                      f"e.g. {info.name} ({info.path}:{e.line})",
