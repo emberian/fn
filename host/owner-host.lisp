@@ -163,6 +163,12 @@
 (include-book "../books/feed-link-backoff")
 ; `peer feed NAME pause|resume': fn-owner-feed-peers answers fn-fps-live-names.
 (include-book "../books/feed-pause")
+;; The history-root refresh's status line (fn-owner-hroot-note, host/history-root-host.lisp,
+;; keeps the status in the history-root table under :last-refresh).
+(defun fn-owner-hroot-status-lines (state)
+  (declare (xargs :stobjs state :mode :program))
+  (fn-hrs-line (fn-hroot-table-status (fn-owner-history-root-table state))))
+
 ; Step 8 (catalog slice): the served read over the catalog and the catalog at
 ; the owner's entries (books/served-catalog-chain, books/served-catalog-owner).
 (include-book "../books/served-catalog-owner")
@@ -267,6 +273,9 @@
 ;; host/native/owner.lisp fnn-owner-drain-service calls in every image.
 (include-book "../books/owner-stop-drain")
 (include-book "../books/owner-time-admission")
+;; Ruling 19: the held commit over the scheduler value (fn-otm-held-*), which
+;; host/native/owner.lisp fnn-owner-held-commit calls in every image.
+(include-book "../books/owner-time-held")
 ;; Lane zero-copy-commit: the articles in flight within the slots the figure
 ;; holds (fn-oas-read-span, over fn-otm-read-span).
 (include-book "../books/owner-article-slots")
@@ -3470,10 +3479,12 @@
 ; `(:feed-enqueue ...)` records a POST does: a relayed article is fed
 ; onward (RFC 5537 sec. 3.6) and the entry must survive the process that
 ; accepted it.  Read before the outcome moves the owner, as for POST.
-; The call is fn-oop-transit-outcome (books/owner-outcome-pinned.lisp): the
-; transit outcome over the configured owner, whose effects and owner are
-; fn-own-transit-outcome's (fn-oop-transit-outcome-is-own-transit-outcome)
-; and whose pin table follows a durable completion's advance, as
+; The call is fn-oct-transit (books/owner-outcome-counted.lisp), whose
+; effects/configured-owner projection is fn-oop-transit-outcome. Under the
+; carried fn-ocl-relation its effects and owner are fn-own-transit-outcome's
+; (fn-oct-transit-is-own-transit-outcome-under-ocl-relation and
+; fn-oop-transit-outcome-is-own-transit-outcome). It uses fn-oop-advance,
+; whose pin table follows a durable completion's advance, as
 ; fn-ocfg-advance's does (PKT-889: fn-owner-replace-core kept the pin the
 ; connection was opened under, so the carried relation was false after a
 ; durable transfer on a connection older than the live configuration;
@@ -3745,19 +3756,18 @@
 
 ;; PKT-101: whether a SIGHUP asks for a reopen of `[log] path'
 ;; (books/owner-log-reopen.lisp fn-olr-decide, KEYSTONE
-;; fn-olr-reopen-iff-requested), and on :reopen the line the reopened file
-;; starts with, left in `fn-owner-log-line' for host/native/owner.lisp
-;; fnn-owner-maybe-reopen-log.
+;; fn-olr-reopen-iff-requested).  The answer is (KIND N LINE): the decision
+;; fn-olr-decide made and, on :reopen, the line the reopened file starts
+;; with (NIL otherwise).  The line is the wrapper's own result, read by
+;; host/native/owner.lisp fnn-owner-maybe-reopen-log from the same return,
+;; not left in a state global for a later read.
 (defun fn-owner-log-reopen (configured handled requested state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
-  (let* ((decision (fn-olr-decide configured handled requested))
-         (state (f-put-global 'fn-owner-log-line
-                              (if (equal (car decision) :reopen)
-                                  (fn-olr-line requested
-                                               (fn-own-clock (fn-owner-core state)))
-                                nil)
-                              state)))
-    (value decision)))
+  (let ((decision (fn-olr-decide configured handled requested)))
+    (value (append decision
+                   (list (and (equal (car decision) :reopen)
+                              (fn-olr-line requested
+                                           (fn-own-clock (fn-owner-core state)))))))))
 
 ;; PKT-069: the gate host/native/owner.lisp fnn-owner-complete-bound-submission
 ;; asks before it calls a commit callback (books/owner-bound-commit.lisp
@@ -4556,22 +4566,6 @@
                        (fn-owner-exposure-limits state)
                        (len (fn-own-conns (fn-owner-core state)))
                        (fn-owner-exposure-now state)))
-
-; The refresh's word as ACL2 classifies it (books/history-root-credit.lisp
-; fn-hroot-refresh-status), held for `status' and `health' to render
-; (books/history-root-status.lisp fn-hrs-line).  Every word the host got is
-; noted: a building/installed word clears a refusal, a refusal or an
-; unrecognised word replaces it.  Returns the status for the host's log.
-(defun fn-owner-hroot-note (word state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((status (fn-hroot-refresh-status word))
-         (state (f-put-global 'fn-owner-history-root-status status state)))
-    (value status)))
-
-(defun fn-owner-hroot-status-lines (state)
-  (declare (xargs :stobjs state :mode :program))
-  (fn-hrs-line (and (boundp-global 'fn-owner-history-root-status state)
-                    (f-get-global 'fn-owner-history-root-status state))))
 
 ; Step 8 (catalog slice): the read runs books/served-catalog-chain.lisp
 ; fn-scr-ocfg-read-span, the same chain with the catalog carried to the

@@ -13,7 +13,7 @@ import re
 import subprocess
 import unittest
 
-from tests.native_harness import EXIT_FAULT, EXIT_UNCERTAIN, ROOT, Node, native_image
+from tests.native_harness import EXIT_FAULT, EXIT_UNCERTAIN, ROOT, Node, article, native_image
 
 
 IMAGE_TEXT = os.environ.get("FN_NATIVE_HOST")
@@ -212,7 +212,7 @@ class AdminSectionStructureTests(unittest.TestCase):
 
     SOURCE = ROOT / "host/native/admin.lisp"
     OWNER = ROOT / "host/native/owner.lisp"
-    SECTIONS = ("compaction", "inspect", "export", "reclaim", "reclaim-instant",
+    SECTIONS = ("compaction", "compaction-status", "inspect", "export", "reclaim", "reclaim-instant",
                 "limit-carry", "limit", "admin")
     # The offline command executors: no owner section; the command scope is
     # the generator's next piece (planning/handoff-2026-10-03/failure-scope.md).
@@ -289,8 +289,11 @@ class AdminSectionBoundaryTests(unittest.TestCase):
         self.node = Node(self, DEVELOPER)
         self.node.init("fn.test")
 
-    def injected(self, section, kind, words, exit_code, line):
+    def injected(self, section, kind, words, exit_code, line, seed=False):
         owner = self.node.start(env={"FN_NATIVE_ADMIN_FAULT": "{}:{}".format(section, kind)})
+        if seed:
+            mid = "<compaction-status-section@example.invalid>"
+            self.assertEqual(self.node.post(mid, article(mid)).returncode, 0)
         request = self.node.operator(*words, expect=None)
         self.assertNotEqual(request.returncode, 0, request.stdout + request.stderr)
         self.node.exited(exit_code, timeout=180, process=owner)
@@ -308,6 +311,10 @@ class AdminSectionBoundaryTests(unittest.TestCase):
     def test_a_fault_in_the_compaction_section_stops_the_owner_as_a_fault(self):
         self.injected("compaction", "fault", ("store", "compact"),
                       EXIT_FAULT, b"owner quantum fault; process stopped")
+
+    def test_a_fault_in_the_compaction_status_section_stops_the_owner_as_a_fault(self):
+        self.injected("compaction-status", "fault", ("store", "compact"),
+                      EXIT_FAULT, b"owner quantum fault; process stopped", seed=True)
 
     def test_a_fault_in_the_admin_section_stops_the_owner_as_a_fault(self):
         self.injected("admin", "fault", ("group", "create", "fn.injected"),

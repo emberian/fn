@@ -230,7 +230,7 @@ def f1(out: Path, a) -> Row:
 # list or catalog walk) never belongs on the served path.
 F2_PROBE = ("fn-cat$c-group-number",)
 F2_INDEX = ("fn-midx-lookup", "fn-cat$c-msgid-seqs")
-F2_LIVE = ("fn-cat$c-group-live-count", "fn-cat$c-group-live-low", "fn-cat$c-group-live-high", "fn-cat$c-horizon")
+F2_LIVE = ("fn-cat$c-group-live-count", "fn-cat$c-group-live-low", "fn-cat$c-group-live-high", "fn-cat$c-group-raw-low", "fn-cat$c-horizon")
 F2_WALK_ENTRIES = ("fn-cat-view-below", "fn-cat-view-articles", "fn-cat-view-find", "fn-cat-view-number-find",
                    "fn-cat-number-seq", "fn-cat-seqs-for", "fn-cnx-walk-range", "fn-nntp-archive-command",
                    "fn-nntp-over-range", "fn-nntp-group-result")

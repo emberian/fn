@@ -9,7 +9,7 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
     train.py regen [--label N]
     train.py certify BOX             # books train: ONE farm run (install, certify), then the emits in its tree
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
-    train.py gate [--strict-lock]
+    train.py gate
     train.py push
     train.py status
 
@@ -33,6 +33,7 @@ other case refuses: the train runs `boxstep` first.
 from __future__ import annotations
 
 import argparse
+import fnmatch
 import json
 import os
 import shutil
@@ -51,7 +52,19 @@ PY3 = os.environ.get("TRAIN_PY3", "python3")
 GENERATED = (
     "planning/interfaces.json",
     "specs/wire-grammar.json",
+    # keystone_emit --write-manifest rewrites it from the tree at regen;
+    # its owners say never hand-merge it (trains 41, 45, 46 conflicted on it)
+    "planning/teeth-obligations.json",
+    # tools/extract/world.py writes the image-world umbrellas, their -part-N
+    # links and the extraction world files from the native build scripts
+    # (deputy C, 2026-10-08: commit-held-host bounced on the six parts)
+    "books/image-world*.lisp",
+    "tools/extract/world*.lisp",
 )
+
+
+def _generated(path: str) -> bool:
+    return any(fnmatch.fnmatchcase(path, g) for g in GENERATED)
 # planning/proofs.json is NOT here: ledger.py --write regenerates only its
 # event arrays, and lanes curate its rows (re-pointing a PRF row at a renamed
 # keystone), so a conflict there goes back to the lane like source does.
@@ -60,7 +73,10 @@ UNION = ("planning/decisions.md",)
 
 # Files the regen step is allowed to commit (only those that exist/changed).
 REGEN_OUTPUTS = (
+    "books/image-world*.lisp",
+    "tools/extract/world*.lisp",
     "planning/proofs.json",
+    "planning/teeth-obligations.json",
 )
 HBOX_OUTPUTS = ("planning/interfaces.json", "specs/wire-grammar.json")
 
@@ -109,6 +125,7 @@ LOCAL_BOX_CHECKS = (
 # tests/test_*.py except tests/test_native_* (they need a native image).  Each runs as `python -m unittest <file>` from the root
 # (test_train imports `tools.train`, so not as a bare script).
 UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
+              "tests/test_keystone_critical.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
@@ -230,7 +247,7 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
         say(f"  lane {name}: merge failed without conflicts: {entry['files'][0]}")
         t.save(st)
         return False
-    bad = [f for f in conflicted if f not in GENERATED and f not in UNION]
+    bad = [f for f in conflicted if not _generated(f) and f not in UNION]
     if bad:
         git(t.root, "merge", "--abort", check=False)
         entry.update(status="conflict", files=bad)
@@ -238,7 +255,7 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
         t.save(st)
         return False
     for f in conflicted:
-        if f in GENERATED:
+        if _generated(f):
             say(f"  conflict {f}: take train side (ours)")
             if git(t.root, "checkout", "--ours", "--", f, check=False).returncode == 0:
                 git(t.root, "add", "--", f)
@@ -273,12 +290,13 @@ def cmd_merge(t: Train, args) -> int:
 # --------------------------------------------------------------------------- regen
 
 def _commit_named(t: Train, paths, msg: str) -> bool:
-    present = [p for p in paths if (t.root / p).exists()]
-    changed = [p for p in present if git(t.root, "status", "--porcelain", "--", p).stdout.strip()]
+    # a path may be a glob pathspec (the world files: a regen can add or drop
+    # a -part-N link), so additions and deletions under it are committed too
+    changed = [p for p in paths if git(t.root, "status", "--porcelain", "--", p).stdout.strip()]
     if not changed:
         say("  nothing to commit")
         return False
-    git(t.root, "add", "--", *changed)
+    git(t.root, "add", "-A", "--", *changed)
     mf = t.dir / "commit-msg.txt"
     t.dir.mkdir(parents=True, exist_ok=True)
     mf.write_text(msg + "\n")
@@ -302,7 +320,12 @@ def cmd_regen(t: Train, args) -> int:
 
     # ledger.py --write: proofs.json's event arrays (the views are not committed)
     for step, argv in (
+        # first: the books it writes are what the ledger and teeth read
+        ("world", [PY3, "tools/extract/world.py"]),
         ("ledger", [PY, "tools/ledger.py", "--write"]),
+        # the teeth obligation manifest of the merged tree (the keystone gate
+        # checks it; a conflict on it took the train side at merge)
+        ("teeth", [PY, "tools/keystone_emit.py", "--write-manifest"]),
     ):
         rc = t.run(f"regen-{step}", argv)
         if done(step, rc):
@@ -311,7 +334,7 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = f"Regenerate train {n}: proofs.json events"
+    msg = f"Regenerate train {n}: image-world and extraction world files, proofs.json events, teeth obligation manifest"
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1
@@ -481,17 +504,78 @@ def cmd_certify(t: Train, args) -> int:
 
 # --------------------------------------------------------------------------- gate
 
-def _lock_keys(t: Train, cwd: Path) -> set[str] | None:
+# The lock gate's contract with tools/lock_discipline_check.py --json
+# (ruling 21): exit 0 and a JSON object carrying every field below with its
+# type.  Any other exit (a killed child is negative), unparseable output, a
+# missing or mistyped field, or a malformed `new` entry is a CHECKER FAILURE,
+# never an empty finding set.
+LOCK_JSON_FIELDS = {"new": list, "stale": list, "findings": list}
+# Repair-item states that no longer own a key (anything else is open).
+CLOSED_ITEM_STATES = frozenset({"landed", "refuted", "duplicate", "closed"})
+
+
+def _lock_keys(t: Train, cwd: Path) -> tuple[set[str] | None, str | None]:
+    """(keys new against the checker's baseline, None), or (None, why) when
+    the checker broke its contract."""
     p = subprocess.run([PY, "tools/lock_discipline_check.py", "--json"], cwd=cwd, capture_output=True, text=True)
     say(f"$ (in {cwd}) {PY} tools/lock_discipline_check.py --json  -> rc {p.returncode}")
+
+    def fail(why: str):
+        say(f"  lock_discipline_check contract broken: {why}: " + (p.stdout + p.stderr)[-300:])
+        return None, why
+
+    if p.returncode != 0:
+        return fail(f"exit status {p.returncode}")
     try:
         data = json.loads(p.stdout)
+    except ValueError:
+        return fail("output is not JSON")
+    if not isinstance(data, dict):
+        return fail("output is not a JSON object")
+    for field, kind in LOCK_JSON_FIELDS.items():
+        if field not in data:
+            return fail(f"missing field {field!r}")
+        if not isinstance(data[field], kind):
+            return fail(f"field {field!r} is not a {kind.__name__}")
+    keys = set()
+    for e in data["new"]:
         # `new` holds key strings (lock-check-full-output, d4d8514f6) or
         # finding dicts with a 'key' (earlier checkers): accept both.
-        return {e if isinstance(e, str) else e["key"] for e in data.get("new", [])}
-    except (ValueError, KeyError, TypeError, AttributeError):
-        say("  lock_discipline_check output not parseable: " + (p.stdout + p.stderr)[-300:])
-        return None
+        key = e if isinstance(e, str) else e.get("key") if isinstance(e, dict) else None
+        if not isinstance(key, str) or not key:
+            return fail(f"malformed entry in 'new': {str(e)[:80]}")
+        keys.add(key)
+    return keys, None
+
+
+def _lock_owners(root: Path, keys) -> dict[str, list[dict]]:
+    """For each key, the repair items naming it verbatim (id, owner, state)."""
+    def strings(v):
+        if isinstance(v, str):
+            yield v
+        elif isinstance(v, dict):
+            for x in v.values():
+                yield from strings(x)
+        elif isinstance(v, list):
+            for x in v:
+                yield from strings(x)
+
+    items = []
+    for path in sorted((root / "planning" / "repair" / "items").glob("*.json")):
+        try:
+            d = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if isinstance(d, dict):
+            # match the item's decoded text, not its JSON spelling (a key
+            # after "\n" is preceded by the escape's letter n in the raw file)
+            text = "\n".join(strings(d))
+            items.append((d.get("id", path.stem), d.get("owner"), d.get("state"), text))
+    out = {}
+    for k in keys:
+        pat = re.compile(r"(?<![\w|*:-])" + re.escape(k) + r"(?![\w|*:-])")
+        out[k] = [{"item": i, "owner": o, "state": s} for i, o, s, raw in items if pat.search(raw)]
+    return out
 
 
 def _ascii_gate(t: Train) -> int:
@@ -594,19 +678,37 @@ def cmd_gate(t: Train, args) -> int:
     wt = tmp / "dev"
     try:
         git(t.root, "worktree", "add", "--detach", str(wt), "origin/dev")
-        old = _lock_keys(t, wt)
+        old, why_old = _lock_keys(t, wt)
     finally:
         git(t.root, "worktree", "remove", "--force", str(wt), check=False)
         shutil.rmtree(tmp, ignore_errors=True)
-    new = _lock_keys(t, t.root)
+    new, why_new = _lock_keys(t, t.root)
     if old is None or new is None:
-        rec("lock_delta", 1, error="unparseable lock_discipline_check output")
+        rec("lock_delta", 1, error="lock_discipline_check failed its contract",
+            dev_error=why_old, head_error=why_new)
     else:
+        # Ruling 21: the only green is "this train adds no key relative to
+        # dev".  Dev's existing keys are the recorded red list, each owned by
+        # an open repair item; a key with no item, or whose every item is
+        # closed, fails the gate too.  Nothing else exists.
         added, gone = sorted(new - old), sorted(old - new)
-        say(f"lock delta: added {added or '-'}; gone {gone or '-'}")
-        if added:
-            say("  WARNING: new lock-discipline keys (attributed at convergence)")
-        rec("lock_delta", 1 if (added and args.strict_lock) else 0, added=added, gone=gone)
+        owners = _lock_owners(t.root, sorted(new))
+        reds = [{"key": k, "items": owners[k]} for k in sorted(new & old)]
+        unowned = sorted(k for k in new & old if not owners[k])
+        closed = sorted(k for k in new & old if owners[k]
+                        and all(i["state"] in CLOSED_ITEM_STATES for i in owners[k]))
+        say(f"lock delta: added {added or '-'}; gone {gone or '-'}; "
+            f"owned reds on dev {len(reds) - len(unowned) - len(closed)}")
+        for k in added:
+            say(f"  NEW lock key added by this train: {k}")
+        for k in unowned:
+            say(f"  UNOWNED lock key on dev (no repair item names it): {k}")
+        for k in closed:
+            say(f"  lock key persists but its items are closed: {k} "
+                + ", ".join(i["item"] for i in owners[k]))
+        rc = 1 if (added or unowned or closed) else 0
+        rec("lock_delta", rc, added=added, gone=gone, unowned=unowned,
+            closed_items=closed, owned_reds=reds)
 
     files = git(t.root, "diff", "--name-only", "origin/dev", "HEAD").stdout.split()
     if files:
@@ -699,7 +801,6 @@ def main(argv=None) -> int:
     c = sub.add_parser("certify")
     c.add_argument("box", choices=("hbox", "persvati"))
     g = sub.add_parser("gate")
-    g.add_argument("--strict-lock", action="store_true")
     sub.add_parser("push")
     sub.add_parser("status")
     args = ap.parse_args(argv)
