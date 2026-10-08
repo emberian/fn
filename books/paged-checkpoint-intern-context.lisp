@@ -25,7 +25,8 @@
   :hints (("Goal" :in-theory (enable fn-record-p fn-held-p fn-record-internals fn-held-internals fn-hf-p fn-hc-p
                                      fn-hf-startp fn-hc-verdictp fn-intern-row-at))))
 
-(defthm pckh-identity-of-held
+(local
+ (defthm pckh-identity-of-held
  (implies (fn-held-p h)
   (equal (fn-replay-identity-step ctx h)
    (cond ((not (equal (fn-stxk-context-kind ctx) :ok)) ctx)
@@ -37,9 +38,10 @@
  '(fn-replay-identity-step fn-replay-identity-wire fn-store-event-sequence
    fn-hsig-article-event-carried-bindsp fn-hsig-article-event-revoked-bindsp))
  :use ((:instance fn-held-is-no-wire-event (x h))
-       (:instance fn-hstxa-is-not-held (x h))))))
+       (:instance fn-hstxa-is-not-held (x h)))))))
 
-(defthm pckh-identity-of-intern-row
+(local
+ (defthm pckh-identity-of-intern-row
  (implies (and (fn-record-p w) (natp g) (natp h))
   (equal (fn-replay-identity-step ctx (fn-intern-row-at w k g h))
    (cond ((not (equal (fn-stxk-context-kind ctx) :ok)) ctx)
@@ -51,9 +53,10 @@
                                (h (fn-intern-row-at w k g h))))
  :in-theory (e/d (fn-intern-row-at)
  (fn-replay-identity-step fn-held-make fn-held-p fn-held-facts-of fn-held-context-of
-  pckh-identity-of-held fn-replay-identity-advance fn-stxk-fault)))))
+  pckh-identity-of-held fn-replay-identity-advance fn-stxk-fault))))))
 
-(defthm pckh-intern-one-identity-handle-independent
+(local
+ (defthm pckh-intern-one-identity-handle-independent
  (implies (and (natp g) (natp a) (natp b))
   (equal (fn-replay-identity-step ctx (fn-scka-intern-one w k g a))
          (fn-replay-identity-step ctx (fn-scka-intern-one w k g b))))
@@ -66,15 +69,16 @@
        (:instance pcko-held-p-of-row-at (w (fn-replay-composite-record w)) (h b))
        (:instance pcko-identity-of-hstxa
         (h1 (fn-intern-row-at (fn-replay-composite-record w) k g a))
-        (h2 (fn-intern-row-at (fn-replay-composite-record w) k g b)))))))
+        (h2 (fn-intern-row-at (fn-replay-composite-record w) k g b))))))))
 
-(defthm pckh-intern-one-bad-handle-independent
+(local
+ (defthm pckh-intern-one-bad-handle-independent
  (equal (equal (fn-scka-intern-one w k g a) :bad)
         (equal (fn-scka-intern-one w k g b) :bad))
  :hints (("Goal" :in-theory
  (e/d (fn-scka-intern-one fn-intern-row-at fn-held-make fn-hstxa-make)
       (fn-held-facts-of fn-held-context-of fn-replay-composite-record
-       fn-record-p fn-stxa-p fn-wire-event-p)))))
+       fn-record-p fn-stxa-p fn-wire-event-p))))))
 (defun fn-pck-context (st)
   (declare (xargs :guard t))
   (if (equal st :bad) :bad
@@ -85,11 +89,12 @@
   (or (and (equal a :bad) (equal b :bad))
       (and (fn-ssr-statep a) (fn-ssr-statep b)
            (equal (fn-pck-context a) (fn-pck-context b)))))
-(defthm pckh-publish-agrees
+(local
+ (defthm pckh-publish-agrees
  (implies (and (fn-pck-context-agreep a b) (not (equal a :bad)))
   (fn-pck-context-agreep (fn-ssr-publish a r1 w id)
                          (fn-ssr-publish b r2 w id)))
- :hints (("Goal" :in-theory (enable fn-pck-context-agreep fn-ssr-publish fn-ssr-state fn-ssr-at fn-ssr-statep))))
+ :hints (("Goal" :in-theory (enable fn-pck-context-agreep fn-ssr-publish fn-ssr-state fn-ssr-at fn-ssr-statep)))))
 
 (defthm pckh-context-bad
  (equal (fn-pck-context-agreep :bad b) (equal b :bad))

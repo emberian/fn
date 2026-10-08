@@ -63,6 +63,13 @@
               fn-sfi-cpr-prefix-carried-car car-cons cdr-cons)
             (theory 'minimal-theory)))))
 
+; The shared comparator exports its fact without rewrite rules. Keep the
+; induction aid local to this proof book.
+(local
+ (defthm pck-cursor-config-firstp-has-config
+  (implies (fn-cpr-config-firstp configs events) (consp configs))
+  :hints (("Goal" :by fn-cpr-config-firstp-has-config))))
+
 (defthm pck-cursor-prefix-counter-bounds
   (let ((r (car (fn-sfi-cpr-prefix-carried cn configs events cs es ix))))
     (implies (fn-sco-pausedp r)
@@ -73,7 +80,7 @@
            :in-theory
            (e/d (fn-sfi-cpr-prefix-carried
                  fn-sco-pausedp fn-sco-paused fn-sco-at fn-replay-fault
-                 fn-cpr-config-firstp-has-config)
+                 pck-cursor-config-firstp-has-config)
                 (fn-cnode-statep fn-node-statep fn-cpr-config-firstp
                  fn-rii-cpr-apply-event fn-cpr-apply-event fn-cnode-apply-config
                  fn-cnode-record-acceptablep fn-cnode-carried-acceptablep

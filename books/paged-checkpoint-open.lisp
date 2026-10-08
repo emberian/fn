@@ -49,6 +49,10 @@
 (include-book "checkpoint-payloads-extent")
 (include-book "consumer-event-index")
 (local (include-book "arithmetic/top" :dir :system))
+(local (in-theory (disable fn-scka-fold-at-is-the-ssr-step
+                           fn-ssr-step-rows-are-fn-scka-intern-at
+                           fn-scka-intern-event-row
+                           fn-scka-fold-at-arena-is-payloads)))
 
 ;; Certified inside the owner image (owner@books:books/owner), store-records-field's
 ;; export theory leaves the proto ADT libraries' rules and executable counterparts
@@ -945,7 +949,8 @@
 ; in the rows' handles only).
 
 ; The arena is read through its interface, never through the opened list view.
-(in-theory (disable fn-arena-payload-is-nth fn-arena-count-is-len fn-arena-seal-list-is-append
+(in-theory (disable fn-scka-seal-list-is-append
+                    fn-arena-payload-is-nth fn-arena-count-is-len fn-arena-seal-list-is-append
                     fn-arena-p-is-payload-listp fn-arena-get-is-nth fn-arena-payload-len-is-len-nth))
 
 (defun pcko-agree (acc st)

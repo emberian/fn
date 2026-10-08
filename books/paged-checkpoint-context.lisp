@@ -46,8 +46,10 @@
 (defthm fn-pck-context-agree-step
   (implies (fn-pck-context-agreep a b)
            (fn-pck-context-agreep (pck-ssr1 a w) (pck-ssr1 b w)))
-  :hints (("Goal" :in-theory (e/d (fn-pck-context-agreep fn-pck-context)
-                                 (pck-ssr1 fn-ssr-statep))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+            '(fn-pck-context-agreep fn-pck-context pck-ssr1-bad
+              (:executable-counterpart fn-ssr-statep)))
            :use (fn-pck-context-step-congruence
                  (:instance pck-ssr1-statep (st a))
                  (:instance pck-ssr1-statep (st b))))))
