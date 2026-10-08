@@ -1,0 +1,234 @@
+; Actual book decisions and native dispatch/client loop. Only I/O, owner
+; producer and ACL2 runtime primitives are deterministic fixture seams.
+(defpackage "ACL2" (:use "CL"))
+(in-package "ACL2")
+(declaim (declaration xargs))
+(defmacro defconst (n v) `(defparameter ,n ,v))
+(defmacro mbe (&key logic exec) (declare (ignore logic)) exec)
+(defun natp (x) (and (integerp x) (<= 0 x)))
+(defun nfix (x) (if (natp x) x 0))
+(defun zp (x) (or (not (integerp x)) (<= x 0)))
+(defun true-listp (x) (or (null x) (and (consp x) (true-listp (cdr x)))))
+(defun len (x) (length x))
+(defun member-equal (x xs) (member x xs :test #'equal))
+(defun member-eq (x xs) (member x xs :test #'eq))
+(defun assoc-equal (x xs) (assoc x xs :test #'equal))
+(defun fn-cbor-octet-listp (xs)
+  (and (listp xs) (every (lambda (x) (typep x '(unsigned-byte 8))) xs)))
+(defun explode-nonnegative-integer (n base acc)
+  (assert (= base 10)) (append (coerce (format nil "~d" n) 'list) acc))
+(deftype fnn-octets () '(vector (unsigned-byte 8)))
+(define-condition fnn-store-error (error) ())
+(define-condition fnn-store-indeterminate (fnn-store-error) ())
+(define-condition fnn-store-fault (fnn-store-error) ())
+(define-condition fnn-os-error (error) ())
+(require :sb-bsd-sockets)
+(defstruct fnn-control-state service receipt read-maximum)
+(defmacro fnn-with-control ((control) &body body) `(progn ,@body))
+(defmacro fnn-with-control-buffer (() &body body) `(progn ,@body))
+(defvar *argv* nil)
+(defvar *reasoned* nil)
+(defvar *sent* nil)
+(defvar *fenced* nil)
+(defvar *producer-failure* nil)
+(defvar *issuing-control* nil)
+(defvar *fnn-hybrid-control-handler* nil)
+(defvar *fnn-control-frame-list* nil)
+(defvar *fnn-control-observe-pause* nil)
+(defvar *prints* nil)
+(defvar *the-live-state* :fixture-state)
+(defvar *publication-observations* nil)
+(defvar *admin-sections* nil)
+(defun fnn-octets (xs) (coerce xs '(vector (unsigned-byte 8))))
+(defun fnn-octets-string (xs) (map 'string #'code-char xs))
+(defun fnn-octet-list-p (xs) (fn-cbor-octet-listp xs))
+(defun fnn-control-read-frame (socket maximum)
+  (declare (ignore socket maximum)) (fnn-octets '(1)))
+(defun fnn-control-answering (&rest args) (declare (ignore args)))
+(defun fnn-octets-ctl-fill (x) x)
+(defun fnn-arena-then-state (name) (declare (ignore name)) (list *the-live-state*))
+(defun fnn-call (name &rest args)
+  ; Preserve the real scalar versus error-triple ABI at this runtime seam.
+  ; fnn-core, fnn-core-state and fnn-owner-core below are production code.
+  (case name
+    (fn-native-control-host-decode-frame (list (list *reasoned* nil (list :admin *argv*))))
+    (fn-owner-sco-request
+     (assert (eq (car (last args)) *the-live-state*))
+     (list nil :requested *the-live-state*))
+    (fn-owner-sco-count
+     (assert (equal args (list *the-live-state*))) (list 42))
+    (fn-nco-owner-publication-word
+     (assert (equal (cdr args) (list *the-live-state*)))
+     (assert *publication-observations*)
+     (list (apply #'fn-nco-publication-word (first args) (pop *publication-observations*))))
+    (otherwise (multiple-value-list (apply name args)))))
+(defun fnn-owner-disk-admit (service) (declare (ignore service)) :admit)
+(defun fnn-control-test-after-submit (status) (declare (ignore status)))
+(defun fnn-control-send-reply (socket status)
+  (declare (ignore socket))
+  (when *issuing-control*
+    (let ((st (fnn-control-state-receipt *issuing-control*)))
+      (assert (eq (fn-nco-at 3 st) :requested))
+      (assert (fn-nco-no-orphanp st))
+      (assert (equal (fn-nco-at 1 (fn-nco-pending-job st)) *argv*))))
+  (push status *sent*))
+(defun fnn-owner-live-admin-serialized (service argv)
+  (declare (ignore service argv))
+  ; The regression control: reversing acknowledgement/work order fails here.
+  (assert (equal (subseq (car *sent*) 0 3) '(:reasoned-reply :accepted :requested)))
+  (when *producer-failure* (error *producer-failure*))
+  (list :reason :accepted :installed))
+(defun fnn-owner-fence-service (service) (declare (ignore service)) (setf *fenced* t))
+(defun fnn-owner-fault-service (&rest args) (declare (ignore args)) (setf *fenced* t))
+(defun fnn-fault (text &rest args) (error (apply #'format nil text args)))
+(defun fnn-err (&rest args) (declare (ignore args)))
+(defun fnn-out (text &rest args) (push (apply #'format nil text args) *prints*))
+(load "__SOURCE__")
+
+; Every assigned kind is classified, every declared maintenance verb has
+; one shared native-admin plan, consumer and identity remain bounded.
+(dolist (row *fn-nco-kind-table*)
+  (assert (eq (fn-nco-work-class (car row) nil) :bounded)))
+(dolist (kind '(24 25 4 5 9 6 22))
+  (assert (eq (fn-nco-work-class kind nil) :bounded)))
+(dolist (row *fn-nco-store-verbs*)
+  (assert (eq (fn-nco-store-plan-kind (car row)) (second row)))
+  (dolist (kind '(3 17)) (assert (eq (fn-nco-work-class kind (car row)) :store-sized))))
+
+(let* ((*argv* (caar *fn-nco-store-verbs*))
+       (control (make-fnn-control-state :service :owner :read-maximum 1024
+                                       :receipt (fn-nco-initial "epoch"))))
+  (let ((*issuing-control* control)) (fnn-control-handle-client control :socket))
+  (assert (= (length *sent*) 1))
+  (let* ((completed (fnn-control-state-receipt control))
+         (token (fn-nco-at 2 completed))
+         (text (fn-record-string-octets (fn-nco-token-text token)))
+         (query (fn-nco-status-argv text nil)))
+    (assert (eq (fn-nco-at 3 completed) :completed))
+    (assert (fn-nco-no-orphanp completed))
+    (assert (null (fn-nco-pending-job completed)))
+    (assert (equal (second (fn-nco-wire-step completed query)) '(:reason :accepted :installed)))
+    (assert (equal (first (fn-nco-wire-step completed query)) completed))
+    (assert (equal (fn-nco-owner-step completed (list :complete token :refused :failed))
+                   (list :refused completed)))
+    (assert (eq (second (second (fn-nco-wire-step completed
+                         (fn-nco-status-argv '(98 97 100) t)))) :uncertain))
+    (assert (equal (second (fn-nco-wire-step completed (fn-nco-status-argv text t)))
+                   '(:reason :accepted :released)))))
+
+; A post-ACK ambiguous outcome remains uncertain and fences the owner.
+(let* ((*argv* (caar *fn-nco-store-verbs*)) (*sent* nil)
+       (*producer-failure* 'fnn-store-indeterminate) (*fenced* nil)
+       (control (make-fnn-control-state :service :owner :read-maximum 1024
+                                       :receipt (fn-nco-initial "other"))))
+  (fnn-control-handle-client control :socket)
+  (assert *fenced*)
+  (assert (eq (fn-nco-at 4 (fnn-control-state-receipt control)) :uncertain)))
+
+; Real CLI observation loop, deterministic wire/clock: the work takes 20 s,
+; beyond the 11 s request deadline. Each status observation is immediate.
+(defvar *client-state* nil)
+(defvar *polls* 0)
+(defvar *elapsed* 0)
+(defvar *client-no-owner* nil)
+(defun fnn-control-admin-once (path argv)
+  (declare (ignore path))
+  (incf *polls*)
+  (when *client-no-owner*
+    (return-from fnn-control-admin-once
+      (values :refused (fn-nctrl-reason-word :no-owner) nil)))
+  (let* ((r (fn-nco-wire-step *client-state* argv)) (reply (second r)))
+    (setf *client-state* (first r))
+    (values (second reply) (fn-nctrl-reason-word (third reply))
+            (and (fourth reply) (fn-record-string-octets (fourth reply))))))
+(let ((*client-state* (fn-nco-initial "cli")) (*polls* 0) (*elapsed* 0) (*prints* nil)
+      (*fnn-control-observe-pause*
+        (lambda (seconds)
+          (assert (= seconds (fn-nco-wait-seconds)))
+          (incf *elapsed* seconds)
+          (when (>= *elapsed* 20)
+            (setf *client-state*
+                  (cadr (fn-nco-owner-step *client-state*
+                         (list :complete (fn-nco-at 2 *client-state*) :accepted :installed))))))))
+  (multiple-value-bind (status word) (fnn-control-admin nil (caar *fn-nco-store-verbs*))
+    (assert (eq status :accepted))
+    (assert (equal word (fn-nctrl-reason-word :installed)))
+    (assert (= *elapsed* 20)) (assert (> *polls* 100))
+    (assert (> *elapsed* (fn-nco-reply-seconds 100)))
+    (assert (eq (fn-nco-at 3 *client-state*) :idle))
+    (assert (search "requested receipt=cli-1" (car *prints*)))))
+; A lost acknowledgement is recoverable: the next refused maintenance
+; request prints the still-held receipt instead of hiding it from the CLI.
+(let* ((*client-state* (cadr (fn-nco-owner-step (fn-nco-initial "lost")
+                              (list :request (caar *fn-nco-store-verbs*)))))
+       (*polls* 0) (*prints* nil))
+  (multiple-value-bind (status word) (fnn-control-admin nil (caar *fn-nco-store-verbs*))
+    (assert (eq status :refused))
+    (assert (equal word (fn-nctrl-reason-word :receipt-in-flight)))
+    (assert (equal (car *prints*) "outstanding receipt=lost-1"))))
+
+; An old deferral cannot prematurely complete a publication retry.
+(assert (eq (fn-nco-publication-word 42 1 42 nil '(:deferred :old)) :requested))
+(assert (eq (fn-nco-publication-word 42 42 nil nil nil) :compacted))
+(assert (eq (fn-nco-publication-word 42 1 nil nil '(:deferred :space)) :blocked))
+(assert (not (fn-nco-client-releasep :uncertain)))
+
+; Death between ACK and completion loses process-local state. The actual
+; CLI loop must stop on the first unknown receipt, report exit 3, and never
+; release it as though it had observed a terminal producer result.
+(let ((*client-state* (fn-nco-initial "before-death"))
+      (*polls* 0) (*prints* nil)
+      (*fnn-control-observe-pause*
+        (lambda (seconds)
+          (assert (= seconds (fn-nco-wait-seconds)))
+          (setf *client-state* (fn-nco-initial "after-restart")))))
+  (multiple-value-bind (status word) (fnn-control-admin nil (caar *fn-nco-store-verbs*))
+    (assert (eq status :uncertain))
+    (assert (equal word (fn-nctrl-reason-word :receipt-unknown)))
+    (assert (= (fn-outcome-code (fn-outcome-of-status status)) 3))
+    (assert (= *polls* 2))))
+; The owner can also die without a replacement listening. A no-owner
+; observation after ACK stops with uncertainty; an initial refusal stays so.
+(let ((*client-state* (fn-nco-initial "before-death"))
+      (*polls* 0) (*prints* nil) (*client-no-owner* nil)
+      (*fnn-control-observe-pause*
+        (lambda (seconds) (declare (ignore seconds)) (setf *client-no-owner* t))))
+  (multiple-value-bind (status word) (fnn-control-admin nil (caar *fn-nco-store-verbs*))
+    (assert (eq status :uncertain))
+    (assert (equal word (fn-nctrl-reason-word :no-owner)))
+    (assert (= (fn-outcome-code (fn-outcome-of-status status)) 3))
+    (assert (= *polls* 2))))
+(let ((*client-no-owner* t) (*polls* 0))
+  (assert (eq (fnn-control-admin nil (caar *fn-nco-store-verbs*)) :refused))
+  (assert (= *polls* 1)))
+; A serial never issued has the same observation contract.
+(let* ((st (cadr (fn-nco-owner-step (fn-nco-initial "live")
+                                   (list :request (caar *fn-nco-store-verbs*)))))
+       (r (fn-nco-wire-step st (fn-nco-status-argv
+                                (fn-record-string-octets "live-2") nil))))
+  (assert (equal r (list st '(:reason :uncertain :receipt-unknown))))
+  (assert (fn-nco-no-orphanp (first r))))
+; The real public admin sub-plan accepts receipt status/release commands.
+(dolist (op '("status" "release"))
+  (assert (equal (subseq (fn-native-admin-control-plan
+                         (list "control" "receipt" op "epoch-1") nil) 0 3)
+                 '(:accepted nil :request-receipt))))
+
+; Actual compaction worker waits for ACL2's terminal observation; it never
+; reports its initial requested/coalesced word as completion.
+(defun fnn-owner-service-store (service) service)
+(defun fnn-disk-free-octets (store) (declare (ignore store)) 1000000)
+(defun fnn-admin-test-fault (section) (push section *admin-sections*))
+(defun fnn-checkpoint-budget-test-override (x) x)
+(defun fnn-owner-monotonic-ms () 0)
+(defun fnn-quantum-control (service cid thunk)
+  (declare (ignore service cid)) (funcall thunk))
+(defun fnn-owner-maybe-publish (service) (declare (ignore service)))
+(let ((*publication-observations* '((1 42 nil (:deferred :old)) (42 nil nil nil)))
+      (*admin-sections* nil))
+  (assert (equal (fnn-owner-compaction-request :owner) '(:reason :accepted :compacted)))
+  (assert (null *publication-observations*))
+  (assert (equal (reverse *admin-sections*) '("compaction" "compaction-status" "compaction-status"))))
+(let ((*publication-observations* '((1 nil nil (:deferred :space)))))
+  (assert (equal (fnn-owner-compaction-request :owner) '(:reason :refused :blocked))))
+(format t "PASS control receipt~%")

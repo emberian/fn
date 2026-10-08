@@ -89,9 +89,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                   (receipt nil)
                   (receipt-id nil))
              (multiple-value-setq (result receipt receipt-id)
-               (fnn-quantum-bp
-                owner nil
-                (lambda ()
+               (fnn-owner-held-commit (fnn-quantum-bp owner nil)
                   ;; Config can change after preflight and before this lock.
                   ;; Authorize the fresh Store decision against the live
                   ;; owner configuration under serialization.
@@ -104,7 +102,7 @@ its reason class, which ACL2 already returned; the host classifies nothing."
                                 (when (member accepted '(:accepted :duplicate))
                                   (fnn-core-state
                                    'fn-bprj-request-receipt-id request))))
-                    (values :refused nil nil)))))
+                    (values :refused nil nil))))
              (case result
                ((:accepted :duplicate)
                 (unless receipt
@@ -1395,3 +1393,19 @@ over N rows takes ceiling(N/64) turns and resumes where it yielded.")
        (arg 19) control-config)))))
 
 (fnn-register-verb "bp-node" (fnn-bp-verb #'fnn-dispatch-bp-node))
+
+;;; The heap probe's BP terms (host/native/heap.lisp fnn-heap-reservation calls it).
+;;; Here, not in heap.lisp: it reads tcpcl.lisp's MRU defaults, and heap.lisp is
+;;; loaded before tcpcl.lisp in build.lisp and build-dtn.lisp.
+(defun fnn-heap-bp-terms (argv)
+  "A `bp-node serve' command's BP terms, observed as fnn-bp-session-install
+reads them: the session profile and node profile under its journal root, the
+transfer MRU argument and the segment MRU.  NIL for every other command.  The
+sizing is ACL2's (fn-bph-extend-reservation); this only reads the files."
+  (when (fnn-core 'fn-bph-node-serve-p argv)
+    (let ((journal (fnn-core 'fn-bph-node-journal argv))
+          (transfer (fnn-core 'fn-bph-node-transfer argv +fnn-tcl-transfer-mru+)))
+      (unless transfer
+        (fnn-refuse "~a" (fnn-core 'fn-bph-refusal-line :transfer-mru)))
+      (list (fnn-bp-session-profile journal) (fnn-bps-read-profile journal)
+            transfer +fnn-tcl-segment-mru+))))

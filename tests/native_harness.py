@@ -1051,11 +1051,24 @@ def environment(extra=None, *, stack=True):
     return env
 
 
+_PORTS_GIVEN = set()
+_PORTS_LOCK = threading.Lock()
+
+
 def free_port():
-    """A loopback port nothing held a moment ago."""
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+    """A loopback port nothing held a moment ago, and none this process
+    already handed out: the kernel gives the same ephemeral port to two
+    probes that close before anything binds it, and a node whose [listener]
+    port equals its tls_port is an invalid configuration
+    (fn-ncfg-tls-port-okp)."""
+    while True:
+        with socket.socket() as probe:
+            probe.bind(("127.0.0.1", 0))
+            port = probe.getsockname()[1]
+        with _PORTS_LOCK:
+            if port not in _PORTS_GIVEN:
+                _PORTS_GIVEN.add(port)
+                return port
 
 
 def run(argv, *, env=None, timeout=180, cwd=None, stdin=None, input=None, text=False):
@@ -1129,8 +1142,9 @@ def installed_launcher(image):
             # host's default (host/native/tls.lisp
             # *fnn-tls-default-openssl-prefix*, the boxes' toolchain).
             shipped = Path(os.environ.get("FN_OPENSSL_PREFIX") or OPENSSL_SHIPPED)
-            if (shipped / "lib").is_dir():
-                (prefix / "libexec" / "fn" / "openssl").symlink_to(shipped)
+            if not (shipped / "lib").is_dir():
+                raise RuntimeError("no shipped OpenSSL 3.5.8 prefix at %s (D64: set FN_OPENSSL_PREFIX); the harness does not fall back to the system pair" % shipped)
+            (prefix / "libexec" / "fn" / "openssl").symlink_to(shipped)
             import atexit
             import shutil
             atexit.register(shutil.rmtree, prefix, True)

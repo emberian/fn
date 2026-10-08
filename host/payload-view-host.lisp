@@ -5,6 +5,7 @@
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
 (include-book "../books/payload-arena-attach")
+(include-book "../books/owner-publication-state") ; the carried publication record (OWNER-CARRIER-GLOBALS)
 (include-book "../books/payload-view-lease")
 (include-book "../books/snapshot-capture-lease")
 (include-book "../books/payload-view-arena")
@@ -22,7 +23,7 @@
   (let ((capture (fn-owner-payload-view-global 'fn-owner-osn-lease state)))
     (if (not (and (fn-osl-leasep capture)
                   (equal (fn-omk-at 1 capture)
-                         (fn-owner-payload-view-global 'fn-owner-sco-inflight state))))
+                         (fn-opub-get :inflight (fn-ost-publication state)))))
         (value '(:refused :capture-not-owned))
       (let ((answer (fn-pvl-acquire (fn-owner-payload-view-ledger state)
                                    (fn-arena-count fn-arena)

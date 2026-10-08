@@ -1,0 +1,17 @@
+{
+ "id": "REACH-PROSE-CRASH-ORACLE",
+ "category": "reach",
+ "owner": "deputy-P",
+ "severity": "medium",
+ "slice": "proofs",
+ "source": "lane p-reach-prose2 (REACH-PROSE-STORE-CRASH-MODEL)",
+ "state": "open",
+ "title": "Make a crash campaign judge the host with the byte-store crash model, so its theorems are campaign-tied rather than model-only",
+ "notes": [
+  "Context: p-reach-prose2 re-scoped 77 store crash/recovery model events (PRF-041, 044, 083, 217, 244, 245, 264, 270, 273, 342, 369, 370, 372, 907, 920, 936, 945, 1040, 1212, 1214, 1216, 1319) to unreachable-in-composition. Theorems and books are unchanged. tests/campaign/native_cuts.py names the byte PROGRAMS (fn-lg-open-program, fn-bs-imp-program, fn-bs-init-log-program, fn-lgs-rotate-program, fn-bs-scp-program ...) and checks the host's cut coordinates against them, but no campaign evaluates the crash semantics (fn-bs-crash, fn-bs-crash-imagep, fn-bs-durable-content, fn-bs-durable-entry, fn-lg-scan) that those theorems are about, so naming the symbols in a campaign string would be cosmetic and was not done.",
+  "Owed (b): a campaign (or an ACL2 test book the campaign runs) that computes the model's allowed post-crash states at each cut (fn-bs-crash over the program prefix) and compares the reopened host store with them, so the expected-outcome column of NativeCut (candidate present/absent) is derived from the model instead of written by hand. Then the campaign names fn-bs-crash and fn-bs-durable-content in code and reach_check counts the events campaign-tied. Each theorem to restore as an event needs ruling 22's package (durability: satisfiable premises, real-trace positive witness, wrong-answer witness, real host-path test, implementation mutation).",
+  "Owed (a), candidates where the host runs a sibling under another name: fn-hrc-flush-one (host reaches fn-hrc-flush-init) PRF-372; fn-hp-x-append-step / fn-hp-x-append-loop (host reaches fn-hp-x-append, fn-hp-x-append-plan) PRF-342 and PRF-372; fn-scka-recover-rows-rii vs the open's fn-sco-store-open PRF-083; fn-scka-src-payloads vs fn-scka-canon-rows PRF-083. Each needs a named equality to the reached function, with teeth.",
+  "The recovery scan: fn-lg-scan / fn-lgd-loop / fn-lgw-segment-* (PRF-245, PRF-270) are the whole-segment reference; the host runs the streaming fn-lgw-step-buf loop, which is Lisp, so no ACL2 function equals it. Owed: either a restatement over the loop the host runs or a campaign oracle for the scan."
+ ],
+ "updated": "2026-10-08T14:00:00Z"
+}

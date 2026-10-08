@@ -162,3 +162,8 @@
 (include-book "identity-retain-carried")
 (include-book "owner-prepare-served")
 (include-book "history-columns-store")
+(include-book "store-carried-folds")
+(include-book "owner-log-route")
+(include-book "owner-advance-carried")
+(include-book "owner-intent-carried")
+(include-book "owner-parse-carried")
