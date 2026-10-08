@@ -310,3 +310,22 @@ loop_call_check: host/native/io.lisp: 33 per-iteration call/lock loops, baseline
 loop_call_check: host/native/mux.lisp: 3 per-iteration call/lock loops, baseline 2
 loop_call_check: 130 host loops that call ACL2 or take a lock per iteration in 30 files (baseline 123)
 ```
+
+
+## Round 6: prefix statement, before proof
+
+For the same arena state, handle H, prefix and offset I, the new span prefix
+predicate equals the existing byte prefix predicate whenever `(natp i)`.
+This is the existing premise of `fn-nntp-arena-prefixp-is-rcl-prefixp`, and
+is already in the public prefix function's guard; no new caller premise
+is added. Neither arena well-formedness nor prefix bounds are theorem
+premises. The implementation checks the complete prefix's bounds locally
+before its single `fn-arena-get-span` call; an empty prefix needs no read,
+and a prefix that cannot fit returns nil. The public function keeps the
+old byte predicate as its logical meaning, with the proved span predicate
+as its executable arm. Its original guard stays unchanged.
+
+The positive witness uses the actual eight-octet reclaim magic followed by
+payload data in an arena. The negative witness changes the eighth octet:
+the correct predicate refuses it, while a mutant that drops the last
+prefix octet accepts it. A must-fail event asserts their false equality.
