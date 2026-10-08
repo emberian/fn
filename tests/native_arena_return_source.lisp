@@ -1,6 +1,7 @@
 (load "tests/native_rotation_cleanup_source-mock.lisp")
 (in-package "ACL2")
 
+
 (defmacro fnn-log-with-kernel ((log) &body body) (declare (ignore log)) `(progn ,@body))
 (defvar *arena* (list :staged :staged :staged))
 (defvar *due* nil)
