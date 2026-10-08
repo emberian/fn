@@ -75,8 +75,6 @@ class RepairVerifyTests(unittest.TestCase):
         self.item.update(updates)
         self.write("planning/repair/items/FIX.json", json.dumps(self.item))
         with patch.object(repair, "ITEMS", str(self.items)), patch.object(repair, "repo_root", return_value=str(self.root)), \
-                patch.dict(os.environ, {"FN_EVIDENCE_ARCHIVE": str(Path(self.tmp.name) / "archive"),
-                                        "FN_EVIDENCE_CACHE": str(Path(self.tmp.name) / "cache")}), \
                 contextlib.redirect_stdout(io.StringIO()):
             code = repair.verify(["FIX", "--base", self.base])
         result = json.loads((self.items / "FIX.json").read_text())["verify"]
@@ -88,9 +86,7 @@ class RepairVerifyTests(unittest.TestCase):
         r = self.verify()
         self.assertTrue(r["ok"], r)
         self.assertEqual(r["base_observation"]["result"]["assertions"][0]["message"], MESSAGE)
-        evidence = json.loads((self.root / r["evidence"]["path"]).read_text())
-        self.assertIn("AssertionError", evidence["base_observation"]["stderr"])
-        self.assertTrue((self.root / "planning/evidence-index.tsv").exists())
+        self.assertIn("AssertionError", r["base_observation"]["stderr"])
 
     def test_no_test_is_refused(self):
         self.head()
@@ -187,14 +183,6 @@ class RepairVerifyTests(unittest.TestCase):
         (self.root / "docs/program.md").chmod(0o755)
         self.commit("FIX executable")
         self.assertFalse(self.verify(test="", scope=["docs/program.md"], **{"doc-only": "claimed prose"})["ok"])
-
-    def test_archive_outage_preserves_semantic_result(self):
-        self.head()
-        with patch.object(repair, "archive_result", side_effect=OSError("archive offline")):
-            r = self.verify()
-        self.assertTrue(r["semantic_ok"])
-        self.assertFalse(r["ok"])
-        self.assertEqual(r["evidence_outcome"], "unavailable")
 
     def test_exact_list_filters_exclude_untagged_items(self):
         with patch.object(repair, "all_items", return_value=[

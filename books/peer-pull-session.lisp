@@ -762,6 +762,7 @@
                        (cons (fn-pull-r-current (fn-pull-s-round s))
                              (fn-pull-list (fn-pull-r-unavailable
                                             (fn-pull-s-round s)))))))
+ :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-pull-session-step fn-pull-s-with-round)
                                   (fn-pull-step fn-pull-fail fn-pull-list
                                    fn-fc-drive fn-fc-drive-state fn-pull-obs-effects
@@ -1011,7 +1012,3 @@
           (fn-record-string-octets " connection=failed")
           (fn-peer-failure-words (list (fn-peer-lost-word cause) nil nil))))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-pull-session-step-marks-unavailable-only-on-the-peers-reply))

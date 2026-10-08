@@ -3584,13 +3584,13 @@
         "Measure ARTICLE 32 KiB and 3 MiB with a client that reads in 1 MiB chunks: wall, owner CPU and bytes consed per ARTICLE, before and after (planning/evidence/egress-span-2026-09-26/egress.py)."
       ],
       "expected": [
-        "Each ARTICLE is 220 with the posted octets as the stored article's suffix and the owner keeps serving; the bytes are those fn-served-reply-octets of the step's effects decides (fn-served-reply-to-buffer-is-the-reply).",
+        "Each ARTICLE is 220 with the posted octets as the stored article's suffix and the owner keeps serving; the bytes are those fn-served-reply-octets of the step's effects decides (fn-splan-windows-are-the-reply).",
         "No per-octet cons for the reply on the served read: the ARTICLE's bytes consed fall by at least the reply list and its host copy."
       ],
       "evidence": [
         "tests/test_native_bounds_join.py",
-        "books/served-reply-buffer.lisp",
-        "tests/acl2/served-reply-buffer-tests.lisp",
+        "books/served-plan.lisp",
+        "tests/acl2/served-plan-tests.lisp",
         "planning/evidence/egress-span-2026-09-26.md",
         "planning/evidence/egress-span-2026-09-26/test_native_bounds_join.LargeReplyTests.6660cb8b.log"
       ],
@@ -5049,7 +5049,7 @@
         "Remove each hypothesis of T1 in turn (the alignment, R at the cut, the admissible image, the platform's tear) with a ground witness of the conclusion's failure; label the corrupted-state witnesses separately."
       ],
       "expected": [
-        "At log-written the scan reads the committed records then a prefix of the batch (fn-lg-crash-verdictp); at log-fenced and after every finish it reads the committed records and the whole batch; the acknowledged member's record is in every image's scan (fn-owb-acknowledged-record-survives-crash).",
+        "At log-written the scan reads the committed records then a prefix of the batch (fn-lg-crash-verdictp); at log-fenced and after every finish it reads the committed records and the whole batch; the acknowledged member's record is in every image's scan (fn-lgu-acknowledge-acknowledges-only-recoverable-records).",
         "A member not yet acknowledged may be absent after a log-written crash and is answered :durable by no cut before the barrier; a member acknowledged before the cut is absent from no image.",
         "Every removed hypothesis has a witness whose conclusion fails, with the retained hypotheses checked affirmatively."
       ],
@@ -5079,7 +5079,7 @@
       ],
       "expected": [
         "The kernel is :fault; every member in flight or waiting is answered :uncertain and none :durable; the finish acknowledges nothing (fn-owb-fence-failed-answers-uncertain).",
-        "The recovered kernel holds the committed records followed by a prefix of the batch in flight under every admissible selection (fn-owb-uncertain-batch-recovers-to-a-prefix); the store stays fenced until recovery (STO-004).",
+        "The recovered kernel holds the committed records followed by a prefix of the batch in flight under every admissible selection (fn-lgc-failed-barrier-recovers-a-prefix); the store stays fenced until recovery (STO-004).",
         "The retry fences nothing further and answers no member the failed barrier covered :durable."
       ],
       "evidence": [

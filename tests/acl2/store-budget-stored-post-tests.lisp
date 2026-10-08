@@ -2,7 +2,7 @@
 ; flip-L1-3): the served POST keeps the stored-bytes condition.
 ;
 ; The run is two POSTs through the entries, from fn-sn-initial: the stage
-; (fn-store-prepare-interned over a local arena), the host's publication words
+; (fn-psrv-store-prepare-next over a local arena's count, then the host's seal), the host's publication words
 ; (fn-sn-io) and the finish (fn-sn-finish).  A run's arena is the payloads of
 ; PRIOR (the wire records the run staged, in order).  The hypothesis-removal
 ; witnesses pair a REACHED store with the arena as it stood before a seal (a
@@ -12,8 +12,12 @@
 (include-book "../../books/store-budget-stored-post")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 
 (defconst *sbsp-groups* '("fn.letters" "fn.test"))
+; The Store's live configuration (the default serves both groups).
+(defconst *sbsp-config*
+  (fn-config-replay 0 (fn-cnode-line-ceiling) (list *fn-cfg-default-record*)))
 (defconst *sbsp-w1*
   (fn-record-make 0 0 0 "<sbsp1@example.invalid>" '(65 66) *sbsp-groups*
                   "p1" "s1" "r1" 2 841000000))
@@ -53,8 +57,10 @@
     (fn-intern-events prior nil 0 fn-arena)
     (declare (ignore rows))
     (let ((before (fn-sbud-store-extents-okp s fn-arena)))
-      (mv-let (next fn-arena)
-        (fn-store-prepare-interned s w fn-arena)
+      (let* ((next (fn-psrv-store-prepare-next *sbsp-config* s w (fn-arena-count fn-arena)))
+             (fn-arena (if (equal next s)
+                           fn-arena
+                         (fn-arena-seal-list (fn-record-payload w) fn-arena))))
         (mv (list before next (fn-sbud-store-extents-okp next fn-arena)
                   (fn-arena-count fn-arena))
             fn-arena)))))
@@ -69,7 +75,7 @@
 (defconst *sbsp-s0* (sbsp-reserve (fn-sn-initial *sbsp-groups* 10)))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sbsp-s0*)) :reserved))
 
-; POST 1, the stage (fn-store-prepare-interned-keeps-the-stored-octets,
+; POST 1, the stage (fn-psrv-store-prepare-next-keeps-the-stored-octets,
 ; reachable): the relation holds before (empty history, empty arena) and
 ; after; the store took the row (phase :record-staged, the row at handle 0)
 ; and the arena grew to 1.
@@ -122,7 +128,7 @@
 ; -----------------------------------------------------------------------------
 ; HYPOTHESIS REMOVAL (the relation), each over a MIS-PAIRED ARENA.
 
-; fn-store-prepare-interned-keeps-the-stored-octets.  Retained: fn-arena-p
+; fn-psrv-store-prepare-next-keeps-the-stored-octets.  Retained: fn-arena-p
 ; (a local stobj).  Omitted: the relation of *sbsp-s4* over the EMPTY arena
 ; fails (the history's row names handle 0, outside it).  Conclusion: the
 ; stage still takes W2 (the prepare reads no bytes), at handle 0, whose
@@ -188,3 +194,39 @@
 (defconst *sbsp-own-bad* (sbsp-owner *sbsp-oc* *sbsp-w2* nil))
 (assert-event (equal (nth 0 *sbsp-own-bad*) nil))
 (must-fail-checked (assert-event (nth 2 *sbsp-own-bad*)))
+
+; Native rendering of the logical AFTER snapshot; defteeth proves the
+; unconditional equality before it executes any witness or removal.
+(defun sbsp-conclusion (config s w fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((next (fn-psrv-store-prepare-next config s w (fn-arena-count fn-arena)))
+         (fn-arena (if (equal next s) fn-arena
+                     (fn-arena-seal-list (fn-record-payload w) fn-arena))))
+    (mv (fn-sbud-store-extents-okp next fn-arena) fn-arena)))
+
+(defteeth fn-psrv-store-prepare-next-keeps-the-stored-octets
+  :subject fn-psrv-store-prepare-next
+  :claim (((stored (fn-sbud-store-extents-okp s fn-arena)))
+    (let* ((next (fn-psrv-store-prepare-next config s w (fn-arena-count fn-arena)))
+           (after (if (equal next s) fn-arena
+                    (fn-arena-seal-list (fn-record-payload w) fn-arena))))
+      (fn-sbud-store-extents-okp next after)))
+  :witness ((config *sbsp-config*) (s *sbsp-s4*) (w *sbsp-w2*)
+            (prior (list *sbsp-w1*)))
+  :stobjs ((fn-arena (fn-intern-events prior nil 0 fn-arena)))
+  :stobj-checks
+  (((let* ((next (fn-psrv-store-prepare-next config s w (fn-arena-count fn-arena)))
+           (after (if (equal next s) fn-arena
+                    (fn-arena-seal-list (fn-record-payload w) fn-arena))))
+      (fn-sbud-store-extents-okp next after))
+    (sbsp-conclusion config s w fn-arena)
+    :hints (("Goal" :in-theory '(sbsp-conclusion)))))
+  :breaks ((stored ((prior nil))))
+  :mutations
+  ((unsealed
+    (:conclusion
+      (let ((next (fn-psrv-store-prepare-next config s w (fn-arena-count fn-arena))))
+        (fn-sbud-store-extents-okp next fn-arena)))
+    () :fault "The host publishes the prepared store without sealing its payload.")))
+
+(defteeth-check (fn-psrv-store-prepare-next-keeps-the-stored-octets))

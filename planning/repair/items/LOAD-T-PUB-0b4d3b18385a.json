@@ -1,0 +1,16 @@
+{
+ "category": "bug",
+ "detail": "T-PUB: publish.write_octets.exponent = 0.961 (bar <= 0.5). Measured on hbox, load [19.81, 17.86, 17.03], preset scale-1m, filesystem tmpfs, image /tank/fn/scratch/extract-core/tree4/build/core/fn-core (core sha256 2d0a0e443ea524c4), cell W15 target fn-core arm - rep 1, run w15-100k. Evidence: tools/load result JSON planning/evidence/load/2026-10-07-w15-100k/result.json. The bar is publication (checkpoint) of a 50k store: octets written O(changed) not O(store) (exponent against n <= 0.5); longest POST stall while it runs <= 2 s (time check) (ruling 17 (LOAD-PROGRAM 1a)).",
+ "file": "books/catalog-paged.lisp",
+ "id": "LOAD-T-PUB-0b4d3b18385a",
+ "line": "",
+ "notes": [
+  "2026-10-07T23:56:39Z: re-run w15-100k: publish.write_octets.exponent = 0.961 (bar <= 0.5)"
+ ],
+ "owner": "deputy-L",
+ "severity": "high",
+ "source": "tools/load",
+ "state": "open",
+ "title": "T-PUB: publication is O(store): a 50k store writes 232 MB and spends 58 s CPU per offline publication (exponent 0.96 against n)",
+ "updated": "2026-10-07T23:56:39Z"
+}

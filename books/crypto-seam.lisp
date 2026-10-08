@@ -74,7 +74,8 @@
   (implies (fn-digest-octetsp x)
            (and (fn-cbor-octet-listp x)
                 (true-listp x)
-                (equal (len x) 32))))
+                (equal (len x) 32)))
+  :rule-classes nil)
 
 ; -----------------------------------------------------------------------------
 ; The digest.  Constraint: shape only.  The local witness is a constant, which
@@ -279,10 +280,5 @@
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;
 ;; docs/proof-style.md section 8).  An includer that needs one
 ;; enables it where it is used.
-(in-theory (disable (:definition fn-digest-octetsp)
-                    (:rewrite fn-digest-octetsp-implies-octet-listp)))
+(in-theory (disable (:definition fn-digest-octetsp)))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-digest-octetsp-implies-octet-listp))

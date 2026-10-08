@@ -548,7 +548,8 @@
                             (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))
                             (frontier (fn-bs-scan-frontier (fn-bs-scan-store image)))
                             (events (fn-bs-scanned-rows (fn-sn-files s) image arena))))
-           :in-theory nil)))
+           :in-theory nil))
+  :rule-classes nil)
 
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in
@@ -558,7 +559,3 @@
 (in-theory (disable (:definition fn-sob-identity-typedp)
                     (:rewrite fn-sob-cpo-opens-on-configured-image)))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-bs-sweep-round-keeps-every-cut-reopenable-of-host-open))

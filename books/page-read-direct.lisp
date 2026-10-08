@@ -754,6 +754,26 @@
                  (:instance fn-pird-not-clear-when-token))))
   :rule-classes nil)
 
+; The same bridge as an EQUALITY of the two booleans, the shape tools/
+; reach_check.py reads as tying fn-pio-file-clear-p (the claim of
+; fn-pio-close-waits-for-every-worker, books/page-read-ownership.lisp) to
+; the lookup fnn-extent-close runs: the host asks fn-pio-direct-quiet-p, and
+; under the agreement of the tables that IS the walk of the issued rows.
+(local
+ (defthm fn-pio-file-clear-p-booleanp
+   (booleanp (fn-pio-file-clear-p file rows))
+   :rule-classes :type-prescription))
+
+(defthm fn-pio-direct-quiet-equals-clear
+  (implies (fn-pio-direct-okp issued holds)
+           (equal (fn-pio-direct-quiet-p file holds)
+                  (fn-pio-file-clear-p file (fn-pio-issued-rows issued))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-pio-direct-quiet-is-clear)
+                 (:instance fn-pio-file-clear-p-booleanp (rows (fn-pio-issued-rows issued))))
+           :in-theory (e/d (fn-pio-direct-quiet-p) (fn-pio-file-clear-p))))
+  :rule-classes nil)
+
 (in-theory (disable fn-pio-direct-admit fn-pxe-commit-direct fn-pio-direct-settle
                     fn-pio-direct-cancel fn-pio-direct-quiet-p fn-pio-direct-okp))
 

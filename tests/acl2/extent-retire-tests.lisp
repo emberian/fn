@@ -221,7 +221,7 @@
        (not (equal (fn-arx-entry-file (nth 1 (nth *fn-arena$x-exti* (xrt-x3)))) 7)))
   :rule-classes nil
   :hints (("Goal" :use ((:instance xrt-x3-corresponds))
-           :in-theory (disable fn-arena$xcorr fn-xrt-quiet-files-are-unnamed))))
+           :in-theory (disable fn-arena$xcorr))))
 
 ; Each file the check keeps out fails a conjunct of the conclusion: 9 is
 ; named at handle 0, 5 by a member in flight.

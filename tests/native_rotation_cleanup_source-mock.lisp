@@ -2,9 +2,11 @@
 (require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
+
 (defconstant +fnn-lock-un+ 8)
 (defconstant +fnn-o-nofollow+ 0)
 (define-condition fnn-os-error (error) ())
+(define-condition fnn-store-error (error) ((message :initarg :message :initform nil)))
 (define-condition fnn-store-indeterminate (error) ())
 (define-condition fixture-refused (error) ())
 (defvar *physical-condition* (make-condition 'fnn-os-error))
@@ -56,9 +58,13 @@
                (or (and (eq (car form) 'defstruct)
                         (consp (second form)) (member (car (second form)) '(fnn-store fnn-log)))
                    (and (eq (car form) 'defmacro) (eq (second form) 'fnn-unwind-cleanups))
+                   (and (eq (car form) 'defvar)
+                        (member (second form) '(*fnn-close-debts-lock* *fnn-log-spare-discards*)))
                    (and (eq (car form) 'defun)
                         (member (second form) '(fnn-arena-return-observation fnn-store-close fnn-log-close-active
-                          fnn-log-discard-spare fnn-log-prepare-spare fnn-log-rotate)))))
+                          fnn-log-discard-spare fnn-log-prepare-spare fnn-log-rotate
+                          fnn-log-spare-peek fnn-log-spare-take fnn-log-spare-install fnn-log-spare-clear
+                          fnn-log-defer-discard-spare fnn-log-drain-spare-discards)))))
       (eval form))))
 (defun fixture-store ()
   (%make-fnn-store :log (%make-fnn-log :fd :old :index 1 :unit 1 :kernel :kernel
@@ -83,6 +89,16 @@
        (*rename-result* :exists) (*fail* '(:new)) (caught nil))
   (handler-case (fnn-log-rotate store) (error (e) (setq caught e)))
   (assert (typep caught 'fixture-refused))
+  ;; A definite rename refusal stages the spare's disposal without I/O: the
+  ;; close debt holds the spare under a pending receipt until the off-lock
+  ;; drain (fnn-log-drain-spare-discards) closes it.
+  (assert (not (member :new *calls*)))
+  (assert (equal (first (fnn-log-spare-close-debt log)) '(2 "/stage" :new)))
+  (assert (= (length *fnn-log-spare-discards*) 1))
+  (let ((drained nil))
+    (handler-case (fnn-log-drain-spare-discards log) (error (e) (setq drained e)))
+    (assert (eq drained *physical-condition*)))
+  (assert (null *fnn-log-spare-discards*))
   (assert (equal (fnn-log-spare-close-debt log)
                  (list '(2 "/stage" :new) *physical-condition*)))
   (let ((*calls* nil) (*fail* nil))

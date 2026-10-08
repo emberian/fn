@@ -296,22 +296,6 @@
            :use (:instance fn-pwr-span-at-answers-when-its-ends-do
                            (ledger (fn-owner-page-read-ledger fn-page-read-pool)) (s plan)))))
 
-; Row 21 (books/page-window-span.lisp fn-pwr-byte-at-below-the-window-is-the-outcome):
-; below the borrowed window's start the scalar borrow's word is one word for
-; every coordinate, so a host that was refused one coordinate there reads the
-; rest of that range as the same refusal until the job's ledger row changes.
-(defthm fn-owner-page-window-byte-at-below-the-window-is-one-word
-  (implies (and (natp i) (natp i2) (natp (fn-prl-nth 7 token))
-                (< i (fn-prl-nth 7 token)) (< i2 (fn-prl-nth 7 token)))
-           (equal (mv-nth 0 (fn-owner-page-window-byte-at worker token plan file eoff elen
-                                                          poff plen trailer i
-                                                          fn-ew-buffer fn-page-read-pool))
-                  (mv-nth 0 (fn-owner-page-window-byte-at worker token plan file eoff elen
-                                                          poff plen trailer i2
-                                                          fn-ew-buffer fn-page-read-pool))))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-owner-page-window-byte-at))))
-
 (defun fn-owner-page-window-outcome (worker token plan fn-page-read-pool)
   (declare (xargs :stobjs fn-page-read-pool :guard (true-listp plan)))
   (fn-pwr-outcome (fn-owner-page-read-ledger fn-page-read-pool) worker token plan))

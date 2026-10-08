@@ -212,13 +212,13 @@
 
 ; Membership of a name list transfers to membership of its code list, which
 ; is what turns "no duplicate codes" into "no duplicate names" and back.
-(defthm fn-store-codes-from-groups-member
+(local (defthm fn-store-codes-from-groups-member
   (implies (not (equal (fn-store-codes-from-groups names groups) :bad))
            (iff (member-equal name names)
                 (and (fn-store-group-code-in name groups)
                      (member-equal (fn-store-group-code-in name groups)
                                    (fn-store-codes-from-groups names groups)))))
-  :hints (("Goal" :induct (fn-store-codes-from-groups names groups))))
+  :hints (("Goal" :induct (fn-store-codes-from-groups names groups)))))
 
 ; Over a table parameter the inversion needs one hypothesis the compiled
 ; table made invisible: a NIL entry is a name whose code round-trips to NIL,
@@ -241,12 +241,7 @@
 
 (deftheory fn-store-config-vocabulary
   '(fn-store-group-code-in-natp fn-store-group-name-of-code-in
-    fn-store-group-name-is-a-member fn-store-group-code-in-is-injective
-    fn-store-codes-from-groups-member))
+    fn-store-group-name-is-a-member fn-store-group-code-in-is-injective))
 
 (in-theory (disable fn-store-config-vocabulary))
 
-; Hazard rules (tools/hazard_rule_classes.py --disable): :rewrite rules on
-; a structural primitive of bare variables, kept for this book's proofs
-; and disabled for every book that includes it (enable or :use them).
-(in-theory (disable fn-store-codes-from-groups-member))
