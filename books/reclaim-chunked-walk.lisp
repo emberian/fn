@@ -236,28 +236,66 @@
    (implies (not (equal y :bad))
             (not (equal (append x y) :bad)))))
 
-(local (in-theory (disable fn-scka-canon-rows-is-intern-at-of-alpha)))
+(local (in-theory (disable fn-scka-canon-rows-is-intern-at-of-alpha fn-scka-intern-at-bad-iff)))
+
+;; The canonical rows of a concatenation, chunk by chunk: the second chunk's rows
+;; are interned from the seed of the identity the first chunk's rows leave
+;; (fn-replay-identity-loop over them), which is the identity the accumulator
+;; carries after the first chunk.
+(local
+ (defthm fn-rcw-rows-wire-of-append
+   (equal (fn-rows-wire-of (append a b) fn-arena)
+          (append (fn-rows-wire-of a fn-arena) (fn-rows-wire-of b fn-arena)))))
+
+(local
+ (defthm fn-rcw-rows-wire-of-true-listp
+   (true-listp (fn-rows-wire-of rows fn-arena))))
+
+(local
+ (defthm fn-rcw-rows-wire-of-true-list-fix
+   (equal (fn-rows-wire-of (true-list-fix rows) fn-arena) (fn-rows-wire-of rows fn-arena))))
+
+(local
+ (defthm fn-rcw-seal-count-is-len-payloads-of-alpha
+   (equal (fn-rcw-seal-count rows fn-arena)
+          (len (fn-scka-payloads (fn-rows-wire-of rows fn-arena))))
+   :hints (("Goal" :use (fn-rcw-seal-count-is-len-of-canon-payloads
+                         fn-scka-canon-payloads-is-payloads-of-alpha)
+            :in-theory (disable fn-rcw-seal-count-is-len-of-canon-payloads
+                                fn-scka-canon-payloads-is-payloads-of-alpha
+                                fn-scka-canon-payloads)))))
+
+(local
+ (defthm fn-rcw-append-is-bad
+   (equal (equal (append x r) :bad) (and (atom x) (equal r :bad)))))
 
 (local
  (defthm fn-rcw-canon-rows-of-append
    (implies
     (natp h)
-    (equal (fn-scka-canon-rows (append a b) fn-arena h)
-          (let ((ra (fn-scka-canon-rows a fn-arena h)))
-            (if (eq ra :bad)
-                :bad
-              (let ((rb (fn-scka-canon-rows b fn-arena (+ h (fn-rcw-seal-count a fn-arena)))))
-                (if (eq rb :bad) :bad (append ra rb)))))))
-   :hints (("Goal" :induct (fn-scka-canon-rows a fn-arena h)
-            :in-theory (disable fn-scka-intern-one fn-scka-sealsp fn-row-wire-of
-                                fn-scka-canon-rows-is-intern-at-of-alpha
-                                fn-rcw-seal-count-is-len-of-canon-payloads)))))
+    (equal (fn-scka-canon-rows (append a b) fn-arena h id)
+           (let ((ra (fn-scka-canon-rows a fn-arena h id)))
+             (if (eq ra :bad)
+                 :bad
+               (let ((rb (fn-scka-canon-rows b fn-arena (+ h (fn-rcw-seal-count a fn-arena))
+                                             (fn-replay-identity-loop ra id))))
+                 (if (eq rb :bad) :bad (append ra rb)))))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-scka-canon-rows-is-intern-at-of-alpha)
+                            (fn-scka-canon-rows fn-scka-intern-at fn-scka-intern-at-of-append
+                             fn-scka-intern-at-bad-iff fn-rows-wire-of fn-scka-payloads
+                             fn-replay-identity-loop fn-rcw-seal-count-is-len-of-canon-payloads))
+            :use ((:instance fn-scka-intern-at-of-append
+                             (ws (fn-rows-wire-of a fn-arena)) (vs (fn-rows-wire-of b fn-arena)))
+                  (:instance fn-scka-intern-at-of-append-bad
+                             (ws (fn-rows-wire-of a fn-arena)) (vs (fn-rows-wire-of b fn-arena))))))))
 
 ; The host's call per chunk of pass 2: ACC extended by the chunk's canonical
-; rows from H, and the next H; :bad when a row has no canonical row.
+; rows from H, interned from the seed of the identity ACC carries, and the next
+; H; :bad when a row has no canonical row.
 (defun fn-rcw-canon-acc-step (acc configs chunk h fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (let ((canon (fn-scka-canon-rows chunk fn-arena (nfix h))))
+  (let ((canon (fn-scka-canon-rows chunk fn-arena (nfix h) (fn-sco-at 3 acc))))
     (if (eq canon :bad)
         :bad
       (list (fn-rcw-acc-step acc configs canon)
@@ -266,13 +304,14 @@
 (local
  (defthm fn-rcw-canon-acc-step-parts
    (and (equal (equal (fn-rcw-canon-acc-step acc configs chunk h fn-arena) :bad)
-               (equal (fn-scka-canon-rows chunk fn-arena (nfix h)) :bad))
+               (equal (fn-scka-canon-rows chunk fn-arena (nfix h) (fn-sco-at 3 acc)) :bad))
         (equal (car (fn-rcw-canon-acc-step acc configs chunk h fn-arena))
-               (if (equal (fn-scka-canon-rows chunk fn-arena (nfix h)) :bad)
+               (if (equal (fn-scka-canon-rows chunk fn-arena (nfix h) (fn-sco-at 3 acc)) :bad)
                    nil
-                 (fn-rcw-acc-step acc configs (fn-scka-canon-rows chunk fn-arena (nfix h)))))
+                 (fn-rcw-acc-step acc configs
+                                  (fn-scka-canon-rows chunk fn-arena (nfix h) (fn-sco-at 3 acc)))))
         (equal (cadr (fn-rcw-canon-acc-step acc configs chunk h fn-arena))
-               (if (equal (fn-scka-canon-rows chunk fn-arena (nfix h)) :bad)
+               (if (equal (fn-scka-canon-rows chunk fn-arena (nfix h) (fn-sco-at 3 acc)) :bad)
                    nil
                  (+ (nfix h) (fn-rcw-seal-count chunk fn-arena)))))
    :hints (("Goal" :in-theory (union-theories '(fn-rcw-canon-acc-step car-cons cdr-cons eq)
@@ -291,22 +330,27 @@
 
 (local
  (defthm fn-rcw-canon-rows-true-listp
-   (implies (not (equal (fn-scka-canon-rows rows fn-arena h) :bad))
-            (true-listp (fn-scka-canon-rows rows fn-arena h)))
-   :hints (("Goal" :in-theory (disable fn-scka-intern-one fn-scka-sealsp fn-row-wire-of)))))
+   (implies (not (equal (fn-scka-canon-rows rows fn-arena h id) :bad))
+            (true-listp (fn-scka-canon-rows rows fn-arena h id)))
+   :hints (("Goal" :use ((:instance fn-scka-intern-at-true-listp (ws (fn-rows-wire-of rows fn-arena))))
+            :in-theory (e/d (fn-scka-canon-rows-is-intern-at-of-alpha)
+                            (fn-scka-intern-at-true-listp fn-scka-canon-rows fn-scka-intern-at
+                             fn-rows-wire-of))))))
 
 (local
  (defthm fn-rcw-canon-rows-of-true-list-fix
-   (equal (fn-scka-canon-rows (true-list-fix rows) fn-arena h)
-          (fn-scka-canon-rows rows fn-arena h))
-   :hints (("Goal" :in-theory (disable fn-scka-intern-one fn-scka-sealsp fn-row-wire-of)))))
+   (equal (fn-scka-canon-rows (true-list-fix rows) fn-arena h id)
+          (fn-scka-canon-rows rows fn-arena h id))
+   :hints (("Goal" :in-theory (e/d (fn-scka-canon-rows-is-intern-at-of-alpha)
+                                   (fn-scka-canon-rows fn-scka-intern-at fn-rows-wire-of))))))
 
 (local
  (defthm fn-rcw-seal-count-of-true-list-fix
    (equal (fn-rcw-seal-count (true-list-fix rows) fn-arena)
           (fn-rcw-seal-count rows fn-arena))
    :hints (("Goal" :in-theory (disable fn-scka-sealsp fn-row-wire-of
-                                       fn-rcw-seal-count-is-len-of-canon-payloads)))))
+                                       fn-rcw-seal-count-is-len-of-canon-payloads
+                                       fn-rcw-seal-count-is-len-payloads-of-alpha)))))
 
 (local
  (defun fn-rcw-canon-ind (acc configs chunks h prefix fn-arena)
@@ -320,14 +364,33 @@
      (list acc h prefix))))
 
 (local
+ (defthm fn-rcw-identity-of-finish
+   (equal (fn-sco-identity (fn-rcw-acc-finish acc)) (fn-sco-at 3 acc))
+   :hints (("Goal" :in-theory (enable fn-rcw-acc-finish fn-sco-identity fn-sco-make fn-sco-at)))))
+
+(local
+ (defthm fn-rcw-identity-of-acc-at-a-capture
+   (implies (and (true-listp rows)
+                 (equal (fn-rcw-acc-finish acc) (fn-sco-capture configs rows)))
+            (equal (fn-sco-at 3 acc)
+                   (fn-replay-identity-loop rows (fn-stxk-initial-context 0))))
+   :hints (("Goal" :use ((:instance fn-rcw-identity-of-finish)
+                         (:instance fn-scka-identity-of-capture (records rows)))
+            :in-theory (disable fn-rcw-identity-of-finish fn-scka-identity-of-capture
+                                fn-rcw-acc-finish fn-sco-capture fn-sco-identity fn-sco-at)))))
+
+(local
  (defthm fn-rcw-canon-steps-from
    (implies (and (fn-rcw-accp acc) (natp h)
-                 (not (eq (fn-scka-canon-rows prefix fn-arena 0) :bad))
+                 (not (eq (fn-scka-canon-rows prefix fn-arena 0 (fn-stxk-initial-context 0)) :bad))
                  (equal h (fn-rcw-seal-count prefix fn-arena))
                  (equal (fn-rcw-acc-finish acc)
-                        (fn-sco-capture configs (fn-scka-canon-rows prefix fn-arena 0))))
+                        (fn-sco-capture configs
+                                        (fn-scka-canon-rows prefix fn-arena 0
+                                                            (fn-stxk-initial-context 0)))))
             (let ((r (fn-rcw-canon-acc-steps acc configs chunks h fn-arena))
-                  (all (fn-scka-canon-rows (append prefix (fn-rcw-concat chunks)) fn-arena 0)))
+                  (all (fn-scka-canon-rows (append prefix (fn-rcw-concat chunks)) fn-arena 0
+                                           (fn-stxk-initial-context 0))))
               (and (equal (eq r :bad) (eq all :bad))
                    (implies (not (eq r :bad))
                             (equal (fn-rcw-acc-finish (car r))
@@ -335,22 +398,48 @@
    :hints (("Goal" :induct (fn-rcw-canon-ind acc configs chunks h prefix fn-arena)
             :in-theory (disable fn-rcw-acc-step fn-rcw-acc-finish fn-rcw-accp
                                 fn-sco-capture fn-sco-extend fn-scka-canon-rows
-                                fn-rcw-seal-count-is-len-of-canon-payloads))
-           ("Subgoal *1/2" :use ((:instance fn-sco-extend-of-capture
-                                            (prefix (fn-scka-canon-rows prefix fn-arena 0))
-                                            (suffix (fn-scka-canon-rows (car chunks) fn-arena h)))
-                                 (:instance fn-rcw-finish-of-step
-                                            (chunk (fn-scka-canon-rows (car chunks) fn-arena h)))
-                                 (:instance fn-rcw-canon-rows-of-append
-                                            (a prefix) (b (true-list-fix (car chunks))) (h 0)))
+                                fn-rcw-seal-count-is-len-of-canon-payloads
+                                fn-rcw-seal-count-is-len-payloads-of-alpha))
+           ("Subgoal *1/1" :use ((:instance fn-rcw-canon-rows-of-append
+                                            (a prefix) (b (true-list-fix (car chunks))) (h 0)
+                                            (id (fn-stxk-initial-context 0)))
+                                 (:instance fn-rcw-identity-of-acc-at-a-capture
+                                            (rows (fn-scka-canon-rows prefix fn-arena 0
+                                                                      (fn-stxk-initial-context 0))))
+                                 (:instance fn-rcw-canon-rows-true-listp
+                                            (rows prefix) (h 0) (id (fn-stxk-initial-context 0))))
             :in-theory (e/d (fn-rcw-concat)
                             (fn-rcw-acc-step fn-rcw-acc-finish fn-rcw-accp
                              fn-sco-capture fn-sco-extend fn-scka-canon-rows
-                             fn-rcw-seal-count-is-len-of-canon-payloads))))))
+                             fn-rcw-seal-count-is-len-of-canon-payloads
+                             fn-rcw-seal-count-is-len-payloads-of-alpha)))
+           ("Subgoal *1/2" :use ((:instance fn-sco-extend-of-capture
+                                            (prefix (fn-scka-canon-rows prefix fn-arena 0
+                                                                        (fn-stxk-initial-context 0)))
+                                            (suffix (fn-scka-canon-rows
+                                                     (car chunks) fn-arena h
+                                                     (fn-sco-at 3 acc))))
+                                 (:instance fn-rcw-finish-of-step
+                                            (chunk (fn-scka-canon-rows (car chunks) fn-arena h
+                                                                       (fn-sco-at 3 acc))))
+                                 (:instance fn-rcw-canon-rows-of-append
+                                            (a prefix) (b (true-list-fix (car chunks))) (h 0)
+                                            (id (fn-stxk-initial-context 0)))
+                                 (:instance fn-rcw-identity-of-acc-at-a-capture
+                                            (rows (fn-scka-canon-rows prefix fn-arena 0
+                                                                      (fn-stxk-initial-context 0))))
+                                 (:instance fn-rcw-canon-rows-true-listp
+                                            (rows prefix) (h 0) (id (fn-stxk-initial-context 0))))
+            :in-theory (e/d (fn-rcw-concat)
+                            (fn-rcw-acc-step fn-rcw-acc-finish fn-rcw-accp
+                             fn-sco-capture fn-sco-extend fn-scka-canon-rows
+                             fn-rcw-seal-count-is-len-of-canon-payloads
+                             fn-rcw-seal-count-is-len-payloads-of-alpha))))))
 
 (local
  (defthm fn-rcw-canon-rows-of-atom
-   (implies (atom rows) (equal (fn-scka-canon-rows rows fn-arena h) nil))))
+   (implies (atom rows) (equal (fn-scka-canon-rows rows fn-arena h id) nil))
+   :hints (("Goal" :in-theory (e/d (fn-scka-canon-rows fn-scka-canon-fold) nil)))))
 
 (local
  (defthm fn-rcw-seal-count-of-atom
@@ -362,7 +451,7 @@
 ; the canonical rows of the whole rewritten history.
 (defthm fn-rcw-canon-acc-steps-is-the-checkpoint-capture
   (let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena))
-        (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0)))
+        (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0))))
     (and (equal (eq r :bad) (eq all :bad))
          (implies (not (eq r :bad))
                   (equal (fn-rcw-acc-finish (car r)) (fn-sco-capture configs all)))))
