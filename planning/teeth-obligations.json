@@ -22712,6 +22712,101 @@
    "registry": true
   },
   {
+   "book_digest": "c530d0595549bac279570e702376560ddbcde360c9eb718fa86965e9575277da",
+   "bounds": [],
+   "claim_digest": "2c50a387c842f809dbc898c31dbe36a2f90ee35ad86718743b7d781000ce031f",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-held-token-has-one-slot",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-span-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 3,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-holds",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "c530d0595549bac279570e702376560ddbcde360c9eb718fa86965e9575277da",
+   "bounds": [],
+   "claim_digest": "752cfe2e1340b814884b71cc4555d97deb377314ffc01f99372862f98e56d902",
+   "class": "generated",
+   "mutations": "edits:2",
+   "name": "fn-xc-install-duplicate-is-already-held",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-span-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-install",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "c530d0595549bac279570e702376560ddbcde360c9eb718fa86965e9575277da",
+   "bounds": [],
+   "claim_digest": "91989cdfb0af64a56a5744018efb607ecb6ca14ff93de870fbc8c102185816b3",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-span-at-answers-an-owed-hit",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-span-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 5,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "c530d0595549bac279570e702376560ddbcde360c9eb718fa86965e9575277da",
+   "bounds": [],
+   "claim_digest": "a1b63698331f548b33567723d78f88947de52a25a4f5f99f4ba005146e8cc44d",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-span-at-hit-touches-only-the-selected-slot",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-span-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 1,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-span-at",
+   "witness": "lemma"
+  },
+  {
+   "book_digest": "c530d0595549bac279570e702376560ddbcde360c9eb718fa86965e9575277da",
+   "bounds": [],
+   "claim_digest": "534fea1a07b14e2cb1e2f140b26fcc1651fdff020dc15ce57b2734b7a4b5f889",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-xc-span-at-is-the-returned-bytes",
+   "owed_met": null,
+   "owner_book": "tests/acl2/extent-cache-span-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 3,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-xc-span-at",
+   "witness": "lemma"
+  },
+  {
    "class": "hand",
    "name": "fn-xpy-a-group-that-keeps-it-keeps-it",
    "registry": true

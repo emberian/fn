@@ -29,7 +29,7 @@
   {
    "author": "Codex p-xc-span",
    "round": 2,
-   "status": "K1/K2 and duplicate theorem proved in persvati REPL; teeth and certification in progress",
+   "status": "K1/K2, duplicate admission and teeth certified; host integration gate red in the S-owned warm-read arm",
    "install": "da8a65c87 adds :duplicate before mutations, using one shared fn-xc-token constructor and a search across all slots except the chosen target. fn-xc-write remains unchecked.",
    "proofs": [
     "fn-xc-span-at-is-the-returned-bytes",
@@ -47,70 +47,131 @@
    "restated_statements": [
     {
      "name": "fn-xc-install-when-present",
-     "old": "Original antecedent",
-     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+     "old": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs))",
+     "new": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
     },
     {
      "name": "fn-xc-install-when-free",
-     "old": "Original antecedent",
-     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+     "old": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs)) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))",
+     "new": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs)) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
     },
     {
      "name": "fn-xc-install-when-full",
-     "old": "Original antecedent",
-     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+     "old": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs)) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))",
+     "new": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (< (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc)) (not (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs)) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
     },
     {
      "name": "fn-xc-install-then-lookup-hits-present",
-     "old": "Original antecedent",
-     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+     "old": "(and (fn-xc-case-hyps) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
     },
     {
      "name": "fn-xc-install-then-lookup-hits-free",
-     "old": "Original antecedent",
-     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+     "old": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
     },
     {
      "name": "fn-xc-install-then-lookup-hits-full",
-     "old": "Original antecedent",
-     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+     "old": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
     },
     {
      "name": "fn-xc-install-then-lookup-hits",
-     "old": "Original antecedent",
-     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+     "old": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :refused)))",
+     "new": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :refused)) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
     },
     {
      "name": "fn-xc-install-present",
-     "old": "Original antecedent",
-     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+     "old": "(and (fn-xc-case-hyps) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-find (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) t kind file eoff elen a b c d trailer start fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
     },
     {
      "name": "fn-xc-install-fills-a-free-slot",
-     "old": "Original antecedent",
-     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+     "old": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
     },
     {
      "name": "fn-xc-install-evicts-the-least-recently-used",
-     "old": "Original antecedent",
-     "new": "Original antecedent AND install answer is not :duplicate; conclusion unchanged"
+     "old": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)))",
+     "new": "(and (fn-xc-case-hyps) (fn-xc-key-find-nil) (not (fn-xc-find-free (fn-xc-lo kind fn-xcc) (fn-xc-hi kind fn-xcc) fn-xcs)) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))",
+     "conclusion": "unchanged"
     },
     {
      "name": "fn-xc-install-occupancy (via fn-xc-install-hyps)",
-     "old": "Original hypotheses, including answer != :refused",
-     "new": "Same hypotheses AND answer != :duplicate; conclusion unchanged"
+     "old": "'(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :refused)))",
+     "new": "'(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :refused)) (not (equal (mv-nth 0 (fn-xc-install kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc)) :duplicate)))"
     },
     {
      "name": "fn-xc-install-placement",
      "old": "Unchanged well-formed/install-okp antecedent; answer in (:installed :replaced :present :refused)",
-     "new": "Same antecedent; answer vocabulary also includes :duplicate. Duplicate returns the selected target, retaining every existing placement/geometry conclusion."
+     "new": "Same antecedent; answer vocabulary also includes :duplicate. Duplicate returns the selected target, retaining every existing placement/geometry conclusion.",
+     "old_antecedent": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))",
+     "new_antecedent": "(and (fn-xcsp fn-xcs) (fn-xccp fn-xcc) (fn-xc-install-okp kind tokp tid tcid file eoff elen a b c d start trailer fn-xcs fn-xcc))"
     }
    ],
    "alpha_renaming": "New public K1 theorems, held-token uniqueness, and duplicate-is-already-held use slots/cells/window/dst as names of logical snapshot variables, enabling defteeth to bind ground values. This is alpha-renaming; executable signatures and logical claims are unchanged.",
    "endpoint": "fn-xc-span-end factors the existing four-way min; fn-xc-span-at signature is unchanged. Its scalar refinement proof dropped from 8,350,004 steps / 25.41s to 1,172,923 steps / 2.23s in the REPL.",
    "ready_source": "fnn-extent-window-release, host/native/extent.lisp:940, calls fn-owner-page-window-executor-cache with the returned worker row, token and plan. Its :cached branch at :948 inserts that token/plan/window. fn-owner-page-window-executor-cache-refines-pwc-by-definition connects the wrapper to fn-pwc-cache; fn-pwc-cache-only-a-published-window proves :ready before caching and cachedp afterward.",
    "host_duplicate_contract": "S/s-xc2: on :duplicate release the job row as an uncached borrow, with no fault. fn-xc-install-duplicate-is-already-held proves the cache table and clock are unchanged; this theorem does not mutate or account for the ledger.",
-   "followup": "XC-KEY-DEAD-COLUMNS remains open under deputy-S; descriptor matching is unchanged for all kinds."
+   "followup": "XC-KEY-DEAD-COLUMNS remains open under deputy-S; descriptor matching is unchanged for all kinds.",
+   "statement_diff": {
+    "base": "origin/lane/s-extent-cache",
+    "head": "b14ee1a4d",
+    "changed_existing_events": [
+     "defun fn-xc-slot-token",
+     "defun fn-xc-install",
+     "defthm fn-xc-install-placement",
+     "defthm fn-xc-install-when-present",
+     "defthm fn-xc-install-when-free",
+     "defthm fn-xc-install-when-full",
+     "defthm fn-xc-install-then-lookup-hits-present",
+     "defthm fn-xc-install-then-lookup-hits-free",
+     "defthm fn-xc-install-then-lookup-hits-full",
+     "defthm fn-xc-install-then-lookup-hits",
+     "defmacro fn-xc-install-hyps",
+     "defthm fn-xc-install-present",
+     "defthm fn-xc-install-fills-a-free-slot",
+     "defthm fn-xc-install-evicts-the-least-recently-used"
+    ],
+    "added_events": 45,
+    "explanation": "11 literal theorem restatements listed above, plus the install-hyps macro changing occupancy admission. The only two changed existing defuns are install (new duplicate branch) and slot-token (same token expression extracted into fn-xc-token). All remaining differences are the requested new functions and proven lemmas. The raw proof-only checker exits 1 for these intentional specification/implementation additions; no other existing formula or macro changes."
+   },
+   "teeth": "b14ee1a4d: five defteeth; 12 single-hypothesis removal witnesses; six mutation witnesses; kind-1 and kind-2 old-install must-fail-checked; concrete stobj span and all-transition ground controls. Both touched books loaded through their ends in persvati REPL.",
+   "sha": "b14ee1a4d",
+   "certification": {
+    "run": "run-20261008T111448Z-7488",
+    "manifest": "build/acl2/certify-20261008T111517Z-2441852/manifest.json",
+    "roots": [
+     "books/extent-cache",
+     "tests/acl2/extent-cache-span-tests",
+     "host/page-read-host"
+    ],
+    "passed": 12,
+    "failed": 0,
+    "installed_from_cache": 334,
+    "farm_wait_exit": 0,
+    "triage": "12 clean; no real, cascade, limit, killed or other failures",
+    "D26": "extent-cache 163.3s at two jobs (50,638,451 prover steps), over the 10s target; certification succeeds but this is a remaining proof-cost defect. Other affected dependency timings over 10s: page-read-startup 18.2s, cold-read-reservation 12.2s, heap-reservation 10.0s.",
+    "costliest_event": "fn-xc-write-keeps-well-formed: 26.1s / 15,371,875 steps; this existing statement is unchanged."
+   },
+   "gates": {
+    "REPL": "Production extent-cache through its final event. Fresh p-xc-span-teeth-final loaded all 54 test forms through defteeth-check against certified dependencies: 1.80s, 13,169 steps.",
+    "interface_emit --check": "exit 0, zero findings; no interface regeneration needed",
+    "keystone_emit --write-manifest / --check": "both exit 0, zero findings; five new defteeth manifest rows",
+    "unittest tests.test_ledger tests.test_keystone_emit": "179 passed, exit 0",
+    "proof_statement_diff": "exit 1 for the 14 explained changed existing events and 45 new events, with the exact old/new antecedents above; no unexpected existing statement changes",
+    "host_check --load": "exit 1 on persvati: 58/58 raw files loaded, one finding: undefined *fnn-extent-window-cache* at host/native/extent.lisp:747,762-764. Merge combines dev span-list warm read with S slot-table declarations; s-xc2 owns that replacement. Bare-world fallback because the image umbrella is unavailable; does not constitute a certified-world host gate."
+   },
+   "remaining_integration": "S/s-xc2 must replace the stale list warm read, call fn-xc-span-at with its unchanged signature, and handle :duplicate by releasing the job row as an uncached borrow with no fault. Re-run host_check --load after that host change. This lane does not edit host/native/. XC-KEY-DEAD-COLUMNS stays open under deputy-S."
   }
  ],
  "owner": "C",
@@ -118,5 +179,5 @@
  "source": "CONVERGE-2 row 21, coordinator 2026-10-07 15:40",
  "state": "open",
  "title": "The ARTICLE renderer walks the payload from octet 0 while the borrowed window is the payload's last one, so every octet below the window start asks the wrong question; row21-span's below slot memoizes that answer",
- "updated": "2026-10-08T11:08:51Z"
+ "updated": "2026-10-08T11:20:59Z"
 }
