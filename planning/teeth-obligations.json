@@ -14111,7 +14111,7 @@
    "registry": true
   },
   {
-   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "book_digest": "f92c6c40581f74c81d8a056b1404ecc500513e3d8e4d0dd53553541113d54e11",
    "bounds": [],
    "claim_digest": "40d96b0f89462dcebfa21fb3abaf131ea2f10de00b69120f636033edcf394643",
    "class": "generated",
@@ -14130,7 +14130,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "book_digest": "f92c6c40581f74c81d8a056b1404ecc500513e3d8e4d0dd53553541113d54e11",
    "bounds": [],
    "claim_digest": "e69f83cecb066af43282d6595faac23e4beb3fc220c0b79b86aeb7c0307c603b",
    "class": "generated",
@@ -14551,14 +14551,6 @@
    "book": "books/owner-commit-steps.lisp",
    "class": "hand",
    "critical": "durability",
-   "name": "fn-ocs-complete-only-after-the-barrier",
-   "registry": true,
-   "statement_digest": "5b5d3b413e75645c48e936785495fd65cb08a884342eacfff10d2e9bc85f8c6e"
-  },
-  {
-   "book": "books/owner-commit-steps.lisp",
-   "class": "hand",
-   "critical": "durability",
    "name": "fn-ocs-failed-barrier-stops-telling-no-member",
    "registry": true,
    "statement_digest": "89f319c7f21ab7e57221922da1e91836af4e21d29051f3d2e898e59cbd2683f3"
@@ -14578,14 +14570,6 @@
    "name": "fn-ocs-in-flight-commit-before-reader",
    "registry": true,
    "statement_digest": "c9993644d695d8f2a9c0c7c0809437583a051a7d874ff9c624376bb906a313c6"
-  },
-  {
-   "book": "books/owner-commit-steps.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-ocs-in-flight-until-completed",
-   "registry": true,
-   "statement_digest": "87cce4cbd21bcd0c312e94ffd30be7b141a52fc65862ca5b718932ea17b4b56d"
   },
   {
    "book": "books/owner-commit-steps.lisp",
@@ -16563,7 +16547,70 @@
    "registry": true
   },
   {
-   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "book_digest": "f642404418125d247756508bc25fe833e6d91961cca254f45fc0f7a05cec49a1",
+   "bounds": [],
+   "claim_digest": "78248af5e0426f35cea9e4a3ce9c5cbefdadabd10d8f37ba2535b43b9f550822",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-otm-held-committer-wake-is-ocp-when-unheld",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-held-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-otm-held-committer-wake",
+   "witness": "executable"
+  },
+  {
+   "book": "books/owner-time-held.lisp",
+   "book_digest": "f642404418125d247756508bc25fe833e6d91961cca254f45fc0f7a05cec49a1",
+   "bounds": [],
+   "claim_digest": "66592934e9da79681acd31c644836c9756edc0467ceb381d718ebaa9bbf70fdf",
+   "class": "generated",
+   "critical": "durability",
+   "mutations": "edits:1",
+   "name": "fn-otm-held-plan-complete-only-after-the-barrier",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-held-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "statement_digest": "40d12b3ed44671b6d361558a5fb9c0f1f465e6a1bfb29911ec147c776303fdf9",
+   "subject": "fn-otm-held-plan",
+   "witness": "executable"
+  },
+  {
+   "book": "books/owner-time-held.lisp",
+   "book_digest": "f642404418125d247756508bc25fe833e6d91961cca254f45fc0f7a05cec49a1",
+   "bounds": [],
+   "claim_digest": "3d1388a42d482b9228b79200bb1169e162463916b1724a1546733913fea8516c",
+   "class": "generated",
+   "critical": "durability",
+   "mutations": "edits:1",
+   "name": "fn-otm-held-plan-in-flight-until-completed",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-held-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "statement_digest": "50002d0a60747c432d6a43dc851c96b02fef66c6ed107974f7e0fd20a93940ce",
+   "subject": "fn-otm-held-plan",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "f92c6c40581f74c81d8a056b1404ecc500513e3d8e4d0dd53553541113d54e11",
    "bounds": [],
    "claim_digest": "3f6b6e2d7922534051713035019d9f338107c3f828d2da2f9a143962f9283beb",
    "class": "generated",
@@ -16582,7 +16629,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "861d732790e547026c1f4b09657defb95762530e86ef39fbb6d5ea7249e8648c",
+   "book_digest": "f92c6c40581f74c81d8a056b1404ecc500513e3d8e4d0dd53553541113d54e11",
    "bounds": [],
    "claim_digest": "5a8521564440a5bf5a00937249c19929899eb589085b03f2fc692d612d46d65d",
    "class": "generated",
@@ -16601,7 +16648,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "44563ac2a789221752a73b7b3a369eb5e9b4b841db9c8fc30be8e18e5d00021a",
+   "book_digest": "f642404418125d247756508bc25fe833e6d91961cca254f45fc0f7a05cec49a1",
    "bounds": [],
    "claim_digest": "b3925e17401db7eb6a62c7bbf5ad488f656224e4c23ff6e12169900041b4e264",
    "class": "generated",
@@ -16617,6 +16664,28 @@
     "reachable": 3
    },
    "subject": null,
+   "witness": "executable"
+  },
+  {
+   "book": "books/owner-time-held.lisp",
+   "book_digest": "f642404418125d247756508bc25fe833e6d91961cca254f45fc0f7a05cec49a1",
+   "bounds": [],
+   "claim_digest": "0c115dac8a1f9b3a86c63d14ce51a89ef3dc38dd3daab21a8d5745cd09bd84d7",
+   "class": "generated",
+   "critical": "durability",
+   "mutations": "edits:1",
+   "name": "fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-time-held-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "statement_digest": "daf265526b6bc725e64f369f11c82b209e073cf19f0dcd219965d3dc7777c18c",
+   "subject": "fn-otm-held-committer-wake",
    "witness": "executable"
   },
   {

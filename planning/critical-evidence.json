@@ -1,0 +1,22 @@
+{
+ "entries": {
+  "fn-otm-held-plan-complete-only-after-the-barrier": {
+   "subject": "fn-otm-held-plan",
+   "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+   "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-barrier-trace",
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::forged-barrier"
+  },
+  "fn-otm-held-plan-in-flight-until-completed": {
+   "subject": "fn-otm-held-plan",
+   "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+   "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-barrier-trace",
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::clear-before-completed"
+  },
+  "fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits": {
+   "subject": "fn-otm-held-committer-wake",
+   "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
+   "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-budget-trace",
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::ignore-waiter-budget"
+  }
+ }
+}
