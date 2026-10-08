@@ -49,6 +49,16 @@ class Rules(unittest.TestCase):
         path = ROOT / "tests/fixtures/secrets/accepted.md"
         self.assertEqual(secrets_check.check([path], ROOT), [])
 
+    def test_a_tuple_assignment_pairs_targets_with_values(self):
+        find = secrets_check.findings_in
+        # d48362b44's line: the password is the token_hex(12) expression, not "fit-"
+        self.assertEqual(find('login, password = "fit-" + secrets.token_hex(4), secrets.token_hex(12)  # XREDEEM'), [])  # FAKE-SECRET
+        pair = 'login, password = "bob", "hunter2realpw"  # credential'  # FAKE-SECRET
+        self.assertEqual(len(find(pair)), 1)
+        self.assertIn("hunt", find(pair)[0][1])
+        self.assertEqual(find('a, b = f(x, y), "z"  # invite'), [])
+        self.assertEqual(len(find('password = "hunter2realpw"  # credential')), 1)  # FAKE-SECRET
+
     def test_synthetic_rule(self):
         self.assertTrue(secrets_check.synthetic_hex("1" * 32))
         self.assertTrue(secrets_check.synthetic_hex("0123" * 8))
