@@ -5887,7 +5887,7 @@
 (definterface fn-bpsp-read-bound :class :common-lisp-compliant)
 (definterface fn-bpsp-root-release-ready :class :common-lisp-compliant)
 (definterface fn-bpsp-node-startup :class :common-lisp-compliant
-  :keystones ((fn-bpsp-node-startup-holds-the-capacity :via fn-bpsp-node-capacity)))
+  :keystones (fn-bpsp-node-startup-holds-the-capacity))
 (definterface fn-bpsp-write :class :common-lisp-compliant)
 (definterface fn-bpsrx-abort-plan :class :common-lisp-compliant)
 (definterface fn-bpsrx-authorizedp :class :common-lisp-compliant)
