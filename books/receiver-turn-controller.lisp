@@ -631,7 +631,7 @@
    (mv-let (word start end left provider)
     (fn-rxp-fill-range (fn-rxp-token fn-rx-provider) n limits fuel fn-rx-provider)
     (mv word start end left provider fn-receiver-turn fn-page-read-pool))))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-fill-range)))
+ :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-fill-range) (fn-rxt-live-claim-p fn-rxp-fill-range))))
  :rule-classes nil)
 (defthm fn-owner-rx-turn-fill-range-refuses-without-current-claim-by-definition
  (implies
@@ -639,7 +639,7 @@
   (equal
    (fn-owner-rx-turn-fill-range ticket n limits fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)
    (mv :receiver-unavailable 0 0 fuel fn-rx-provider fn-receiver-turn fn-page-read-pool)))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-fill-range)))
+ :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-fill-range) (fn-rxt-live-claim-p fn-rxp-fill-range))))
  :rule-classes nil)
 (defthm fn-owner-rx-turn-copy-next-revokes-reader-readiness
  (implies
@@ -654,9 +654,10 @@
                        fn-rx-provider fn-receiver-turn fn-page-read-pool))) :copy-issued)
    (equal (mv-nth 6 (fn-owner-rx-turn-copy-next ticket n limits fuel
                        fn-rx-provider fn-receiver-turn fn-page-read-pool)) fn-page-read-pool)))
- :hints (("Goal" :in-theory (enable fn-owner-rx-turn-copy-next
-   fn-owner-rx-turn-fill-range fn-rxt-live-claim-p fn-rxp-fill-range
-   fn-rxc-fill-range fn-rxp-fence fn-rxc-fence fn-rxp-capacity)))
+ :hints (("Goal" :in-theory (e/d (fn-owner-rx-turn-copy-next
+   fn-owner-rx-turn-fill-range fn-rxt-live-claim-p
+   fn-rxp-fence fn-rxc-fence fn-rxp-capacity)
+   (fn-rxp-fill-range fn-rxt-owned-claim-p))))
  :rule-classes nil)
 (defthm fn-owner-rx-turn-copy-ack-completion-keeps-custody
  (implies

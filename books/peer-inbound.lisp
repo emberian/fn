@@ -2008,7 +2008,14 @@
 (verify-guards fn-peer-relayed-octets)
 ; After fn-peer-relayed-octets (the octets it relays): the transfer decision's
 ; own guard is fn-peer-intrinsic-refusal-of-when-not-okp's.
-(verify-guards fn-peer-decide-transfer)
+(verify-guards fn-peer-decide-transfer
+  ; The guard obligations call these recognizers and parsers; opening their
+  ; definitions (scope groups into the wildmat matcher, the Path and article
+  ; field checks) is the whole cost, and no obligation needs a body.
+  :hints (("Goal" :in-theory (disable fn-peer-scope-groups fn-path-names-p fn-af-message-idp
+                                      fn-article-syntax-p fn-article-field-listp fn-article-fieldp
+                                      fn-record-stamp-of-observation fn-peer-intrinsic-refusal-of
+                                      fn-af-path-field-value fn-af-newsgroup-list-parse-aux))))
 (verify-guards fn-peer-header-limit-refusal)
 (verify-guards fn-peer-decide-transfer-under)
 (verify-guards fn-peer-injection-arguments)
