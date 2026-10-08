@@ -454,6 +454,46 @@
        (not (equal (fn-cat-group-live-count "fn.test" *sct-c4*) 2)))
   :rule-classes nil)
 
+;;; GROUP-LOW: the executable low is fn-scat-raw-first-p (KEYSTONE
+;;; fn-scat-group-low-pass-is-raw-first-p; the specification stays the range
+;;; pass).  Premise inhabitation: *sct-cw* at version 3 is a catalog where
+;;; fn.other's only row (1) is withdrawn yet still visible to the reader
+;;; pinned at 3, so the raw low (1) and the catalog's live low (0) differ;
+;;; the live table cannot stand in for the raw low.
+(defthm sct-gl-raw-first-witness
+  (and (natp 3)
+       (fn-cnx-freshp *sct-cw*)
+       (equal (fn-scat-raw-first-p "fn.other" 1 (fn-cat-group-high "fn.other" *sct-cw*) 3 *sct-cw*) 1)
+       (equal (fn-scat-group-low-pass "fn.other" 3 *sct-cw*) 1)
+       (equal (fn-scat-group-low "fn.other" 3 *sct-cw*) 1)
+       (equal (fn-scat-group-low "fn.other" 3 *sct-cw*)
+              (fn-nntp-group-low "fn.other" (fn-cat-view-articles 3 *sct-a* *sct-cw*)))
+       (equal (fn-cat-group-live-low "fn.other" *sct-cw*) 0)
+       ;; fn.test: the first number leads at 3 and a view that hides it leads with 0
+       (equal (fn-scat-raw-first-p "fn.test" 1 (fn-cat-group-high "fn.test" *sct-cw*) 3 *sct-cw*) 1)
+       (equal (fn-scat-group-low-pass "fn.test" 0 *sct-cw*)
+              (fn-scat-raw-first-p "fn.test" 1 (fn-cat-group-high "fn.test" *sct-cw*) 0 *sct-cw*))
+       (equal (fn-scat-group-low "fn.test" 0 *sct-cw*) 0))
+  :rule-classes nil)
+
+;; TOOTH (hypothesis kept, conclusion swapped): the live low is not the raw
+;; low where the first article is withdrawn but visible.
+(must-fail-checked
+ (defthm sct-gl-live-low-is-not-raw-low
+   (and (fn-cnx-freshp *sct-cw*)
+        (equal (fn-scat-group-low "fn.other" 3 *sct-cw*) 1)
+        (equal (fn-scat-group-low "fn.other" 3 *sct-cw*)
+               (fn-cat-group-live-low "fn.other" *sct-cw*)))
+   :rule-classes nil))
+
+;; TOOTH: an off-view v that hides row 1 leads with 0, not the first number.
+(must-fail-checked
+ (defthm sct-gl-offview-low-is-one
+   (and (fn-cnx-freshp *sct-cw*)
+        (equal (fn-scat-group-low "fn.test" 0 *sct-cw*) 0)
+        (equal (fn-scat-group-low "fn.test" 0 *sct-cw*) 1))
+   :rule-classes nil))
+
 ;;; F2 item 1: the Xref ARTICLE/HEAD arm by number and of the current article
 ;;; reads the catalog (fn-rcompat-retrieval-cat, KEYSTONE
 ;;; fn-rcompat-retrieval-cat-is-retrieval).  The archive is the view's
