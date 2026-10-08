@@ -314,6 +314,32 @@
         (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed (owb-eio-ks (owb-choice 0))))
                        (fn-lgc-inflight c)))))
 
+;; KEYSTONE fn-lgc-failed-barrier-recovers-a-prefix, the complete statement at
+;; one binding (the selection where every pending octet landed, so the tear
+;; premise fn-lg-platform-tears-p is decided by the frames alone, with no call
+;; of the constrained fn-assume-crash-tearp): every hypothesis is asserted --
+;; R, a batch in flight, the admissible selection, the platform's tear -- and
+;; the whole conclusion -- the fault phase, the acknowledged records kept, the
+;; recovered kernel's committed records are the old committed records followed
+;; by a tail, and that tail is a prefix of the batch in flight.
+(assert-event
+ (let* ((ks (fn-owb-ks (owb-st4))) (bs (owb-bs4)) (choices (owb-choice (owb-units)))
+        (c (fn-lgc-fence-failed (fn-lgc-of ks)))
+        (bs1 (mv-nth 1 (mv-list 2 (fn-bs-fsync-file bs 0 (cons :eio choices)))))
+        (ks2 (fn-lgk-recover (fn-bs-durable-content bs1 0) (owb-genesis) (fn-bs-unit bs) (owb-max) 9)))
+   (and (fn-lgk-relp bs ks 0 (owb-genesis) (owb-max))
+        (consp (fn-lgc-inflight (fn-lgc-of ks)))
+        (fn-bs-crash-choicesp choices (fn-bs-pending bs) (fn-bs-unit bs))
+        (fn-lg-platform-tears-p (nthcdr (fn-lgc-frontier c) (fn-bs-durable-content bs1 0))
+                                (fn-lgc-inflight c) (fn-lgc-last c) (fn-bs-unit bs))
+        (equal (fn-lgc-phase c) :fault)
+        (equal (fn-lgc-acked c) (fn-lgk-acked ks))
+        (equal (fn-lgk-committed ks2)
+               (append (fn-lgk-committed ks)
+                       (nthcdr (fn-lgc-count c) (fn-lgk-committed ks2))))
+        (equal (nthcdr (fn-lgc-count c) (fn-lgk-committed ks2)) (owb-batch))
+        (fn-lg-prefixp (nthcdr (fn-lgc-count c) (fn-lgk-committed ks2)) (fn-lgc-inflight c)))))
+
 ; T7, hypothesis removal: R (the kernel of an unrelated store).  The failed
 ; fence of a store holding nothing leaves nothing; the recovered kernel's
 ; records are not the committed records followed by anything.
