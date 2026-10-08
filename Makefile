@@ -2713,6 +2713,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_unhooked
 	@$(CHECK_STEP) $(PYTHON) tools/generator_twin_check.py --check
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_generator_twin_check
+	@$(CHECK_STEP) $(PYTHON) tools/harness_check.py --lint test-stubs --quiet
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_proof_repl_smoke
 	@$(CHECK_EXECUTE)
 

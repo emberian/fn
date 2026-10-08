@@ -12,7 +12,7 @@
 (defconstant +fnn-max-read+ 65536)
 (defconstant +fnn-socket-read-attempt-max+ 65536)
 (load-deployed-forms "host/native/io.lisp"
- '((define-condition fnn-store-io-refusal) (defmacro fnn-guarded-by) (defun fnn-make-octets) (deftype fnn-octets) (defun fnn-octets)
+ '((define-condition fnn-store-io-refusal) (defun fnn-make-octets) (deftype fnn-octets) (defun fnn-octets)
    (defun fnn-octet-list) (defun fnn-octets-string) (defun fnn-string-octets)
    (defmacro fnn-posix) (defvar *fnn-read-syscall*) (defvar *fnn-write-syscall*) (defvar *fnn-fd-waiter*)
    (defvar *fnn-connect-attempt*) (defvar *fnn-socket-pending-error*)

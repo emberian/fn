@@ -60,8 +60,13 @@
  '((defstruct (fnn-mux-loop (:constructor %make-fnn-mux-loop)))
    (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn)))
    (defun fnn-mux-output-window) (defun fnn-mux-write-now)
-   (defun fnn-mux-flush) (defun fnn-mux-z-out)))
+   (defun fnn-mux-flush) (defun fnn-mux-send-look) (defun fnn-mux-send-observation)
+   (defconstant +fnn-mux-tick-ms+) (defun fnn-mux-z-out)))
 (defvar *fnn-write-syscall* nil)
+;; The send look's observation leaves: this fixture's kernel accepts every write
+;; whole, so nothing is ever unsent, and the clock is fixed.
+(defun fnn-owner-monotonic-ms () 0)
+(defun fnn-mux-send-outq (conn) (declare (ignore conn)) 0)
 (load-range-forms "host/native/io.lisp" '((deftype fnn-octets) (defun fnn-make-octets) (defun fnn-transport-write-now)))
 (defparameter +fnn-mux-send-seconds+ 10)
 (defvar *range-writes* nil)
@@ -90,9 +95,16 @@
 (load-range-forms "books/article-stream-owner.lisp"
  '((defun fn-asto-plan-cursorp) (defun fn-asto-preflight-restp)
    (defun fn-asto-preflight-planp) (defun fn-asto-plan-articlep)))
-(defun fnn-core (subject plan)
-  (assert (member subject '(fn-qplan-at-cursorp fn-asto-plan-cursorp fn-asto-preflight-planp fn-asto-plan-articlep)))
-  (funcall (symbol-function subject) plan))
+(defun fnn-core (subject &rest args)
+  ;; ACL2's send-progress state is opaque to the window tests: begun, never read.
+  (cond
+    ((eq subject 'fn-send-progress-begin) :send-state)
+    ;; ACL2: a reply leaves a tail only while the kernel still queues part of it
+    ;; (outq above is 0).
+    ((eq subject 'fn-exp-tail-start) nil)
+    (t
+     (assert (member subject '(fn-qplan-at-cursorp fn-asto-plan-cursorp fn-asto-preflight-planp fn-asto-plan-articlep)))
+     (funcall (symbol-function subject) (first args)))))
 (defun fnn-mux-ticks (seconds) seconds)
 (defun fnn-mux-after (loop conn after)
   (declare (ignore loop conn)) (setf *range-after* after))
