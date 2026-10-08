@@ -1,0 +1,14 @@
+{
+ "id": "LOCK-HELD-COMMIT-TEST-HOLD-ROWS",
+ "category": "lock-discipline",
+ "file": "host/native/owner.lisp",
+ "owner": "deputy-C",
+ "severity": "low",
+ "state": "open",
+ "source": "lane commit-held-host natives (Sonnet chh-natives, 2026-10-08)",
+ "title": "The held commit moves the developer-image test-hold hooks' R2 rows (fnn-owner-feed-append-locked O:sleep, O:probe-file) to new reaching paths: count 10 -> 18, and the fnn-owner-batch-fence pair goes stale",
+ "detail": "R2|fnn-owner-feed-append-locked|O:sleep and |O:probe-file are the developer image's test-hold hooks (a production image never selects them). With ruling 19's held commit (fnn-owner-held-start -> fnn-owner-frames-job -> fnn-owner-feed-write-batch) the same leaves are reached from 18 sites instead of 10, and the two rows reached through fnn-owner-batch-fence go stale. Same leaves, same hooks, no new production I/O under O: a relocation, like LOCK-PGS-FILL-FRAME-ROWS.",
+ "fix": "Integrator decision: accept the relocation (lower the stale pair with --lower-stale; the count rise on the two hook rows needs an explicit decision because the baseline is never raised by a lane), or move the developer test-hold off O (the hook pauses a quantum on purpose; moving it changes what the crash tests exercise).",
+ "notes": [],
+ "updated": "2026-10-08T05:55:25Z"
+}
