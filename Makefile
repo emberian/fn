@@ -1137,7 +1137,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-foundation \
 	books/bp-handoff-recovery-shape \
 	books/bp-handoff-producer-shape \
-	books/bp-handoff-recovery-refinement \
 	tests/acl2/bp-checkpoint-recovery-symbol-tests \
 	tests/acl2/bp-handoff-producer-shape-tests \
 	tests/acl2/bp-node-foundation-tests \
