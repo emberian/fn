@@ -553,6 +553,12 @@
                               fn-scc-octet-listp fn-scc-octetp)
                              (fn-scc-le-digits fn-hrcur-cold-digits-length-bound))))))
 
+; The codec groups header/body first; the cursor groups body/continuation.
+(local
+ (defthm fn-hrcur-cold-append-associative
+   (equal (append (append a b) c) (append a (append b c)))
+   :hints (("Goal" :induct (append a b) :in-theory (enable append)))))
+
 (defthm fn-hrcur-cold-classify-tick-refines-residual
   (implies (and (fn-hrcur-cold-invariantp c pool)
                 (eq (fn-hrcur-field 0 c) :classify))
@@ -1204,7 +1210,8 @@
  (defthm fn-hrcur-cold-nth-take-unfolds
    (implies (and (natp i) (natp n) (< i n))
      (equal (nth i (take n xs)) (nth i xs)))
-   :hints (("Goal" :induct (fn-hrcur-cold-take-induct i n xs) :in-theory (enable nth take)))))
+   :hints (("Goal" :induct (fn-hrcur-cold-take-induct i n xs)
+            :expand ((take n xs)) :in-theory (enable nth take)))))
 (local
  (defthm fn-hrcur-cold-nth-tail-unfolds
    (implies (and (natp off) (natp i))
@@ -1275,6 +1282,10 @@
      :in-theory (e/d (fn-hrcur-cold-symbol-childp fn-hrcur-cold-countp fn-hrcur-cold-field-is-nth)
                      (fn-hdsn-supply fn-hdsn-statep fn-hdsn-state-fields fn-hdsn-source-coordinate-preserved
                       fn-hrcur-cold-symbol-budgetp fn-hrcur-cold-symbol-supply-preserves-budget))))))
+(local
+ (defthm fn-hrcur-cold-nth-one-unfolds
+   (equal (nth 1 xs) (cadr xs))
+   :hints (("Goal" :expand ((nth 1 xs) (nth 0 (cdr xs)))))))
 (local
  (defthm fn-hrcur-cold-symbol-demand-projection-unfolds
    (implies (and (fn-hrcur-widthp c 9)

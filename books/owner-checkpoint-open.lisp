@@ -139,8 +139,7 @@
              (fn-sco-extend (fn-sco-capture configs prefix) configs suffix)
              configs frontier max-conns)))
     (implies (not (equal oc :fault))
-             (and (fn-ocl-relation oc)
-                  (fn-scar-view-indexedp (fn-ocfg-owner oc)))))
+             (fn-ocl-relation oc)))
   :rule-classes nil
   :hints (("Goal"
            :use (fn-owner-recover-from-checkpoint-equals-full-recover

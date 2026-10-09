@@ -1,0 +1,97 @@
+{
+ "note": "Dev's recorded reds, each owned by an open repair item (COORDINATION section 5). A train is non-regressing when every red it meets is a row here and green only when there are no rows; rows shrink only (tools/train.py, gate baseline). Rewritten by the train that removes a row, never hand-grown: a new dev red is a RED message first.",
+ "measured_at": "3a937ebc3 (freeze-20261009), 2026-10-09",
+ "rows": [
+  {
+   "kind": "native",
+   "subject": "tests.test_native_image_floor.ProductionTests.test_fresh_node_serves_in_256_mb",
+   "item": "LOAD-L-FRESH-0b4d3b183",
+   "owner": "deputy-L",
+   "evidence": "CONVERGE-4 row 19b, red by design (RULINGS priority 3); drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_image_heap.ImageHeapBarTests.test_nmem3_clean_resident_set_is_within_the_bar",
+   "item": "IMAGE-HEAP-LONG-RESIDENT",
+   "owner": "deputy-N",
+   "evidence": "CONVERGE-4 row 23, red by design (RULINGS priority 3); drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_control.NativeControlCutGateTests.test_the_reply_is_the_owners_status",
+   "item": "FILL-CONTROL-3-RED",
+   "owner": "builder-B",
+   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_control.NativeControlTests.test_control_worker_ceiling_returns_busy",
+   "item": "FILL-CONTROL-3-RED",
+   "owner": "builder-B",
+   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_control.NativeControlTests.test_shared_control_path_is_not_stolen_by_another_store",
+   "item": "FILL-CONTROL-3-RED",
+   "owner": "builder-B",
+   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_control.NativeControlTests.test_sigkilled_owner_socket_is_stale_and_control_list_runs_offline",
+   "item": "FILL-CONTROL-3-RED",
+   "owner": "builder-B",
+   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_owner_scheduler.SchedulerNativeTests.test_health_carries_the_scheduler_lines_and_counts_the_classes",
+   "item": "FILL-OWNER-SCHEDULER-2-RED",
+   "owner": "builder-B",
+   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_bounds_join.PostHeapUnderMutexTests.test_large_post_allocates_less_than_one_article_list_under_the_mutex",
+   "item": "FILL-BOUNDS-JOIN-POST-HEAP",
+   "owner": "builder-B",
+   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
+  },
+  {
+   "kind": "check",
+   "subject": "check-fast:merge_registry",
+   "item": "PRL-GROWTH-HOST-WIRING",
+   "owner": "deputy-C",
+   "evidence": "MISSING HST-045 proof_targets += PRF-1343; check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
+  },
+  {
+   "kind": "check",
+   "subject": "check-fast:spec_cite_check",
+   "item": "SPEC-CITE-UNDEFINED-20261009",
+   "owner": "builder-B",
+   "evidence": "4 undefined cited names; check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
+  },
+  {
+   "kind": "check",
+   "subject": "check-fast:test_roots_check",
+   "item": "TEST-ROOTS-UNLISTED-OWNER-STATE",
+   "owner": "builder-B",
+   "evidence": "5 owner state test books outside ACL2_BOOKS; check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
+  },
+  {
+   "kind": "check",
+   "subject": "check-fast:lock_discipline_check",
+   "item": "LOCK-CHECKER-MODEL-GAPS",
+   "owner": "deputy-C",
+   "evidence": "NEW R1b fnn-arena-release-due *fnn-arena-release-custody* unlocked write host/native/io.lisp:8001 (owned; the train's lock gate passes on it); check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
+  },
+  {
+   "kind": "check",
+   "subject": "green_check --strict",
+   "item": "GREEN-CHECK-STRICT-UNCERTIFIED",
+   "owner": "builder-B",
+   "evidence": "1701 of 3112 books not certified at their closure key, dev 3a937ebc3 (build/coordinator/lanedumps/b-static-green-strict.log)"
+  }
+ ]
+}

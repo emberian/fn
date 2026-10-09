@@ -207,11 +207,13 @@ class SubjectRuleTests(unittest.TestCase):
 
     def test_a_dollar_symbol_is_one_symbol(self):
         """`(defun fn-arena$lcorr ...)' used to define `fn-arena', so every
-        theorem naming the stobj was hosted by the stobj's name."""
+        theorem naming the stobj was hosted by the stobj's name.  (Since
+        s-twins fn-arena is a def-generic and no book spells fn-arena$lcorr;
+        books/catalog-dense-map's literal fn-dmap$c-* definitions carry the check.)"""
         self.assertEqual(reach_check.Graph.symbols("(fn-octets$corr a b)"),
                          {"fn-octets$corr", "a", "b"})
-        self.assertIn("fn-arena$lcorr", self.graph.book_defs)
-        self.assertNotIn("fn-arena", self.graph.book_defs)
+        self.assertIn("fn-dmap$c-pid", self.graph.book_defs)
+        self.assertNotIn("fn-dmap", self.graph.book_defs)
 
     def test_stobj_names_are_never_the_subject(self):
         for name in ("fn-arena", "fn-cat", "state"):

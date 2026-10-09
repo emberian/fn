@@ -4,8 +4,8 @@
 ;
 ; The subject is fn-store-existing-action (books/store-intern.lisp), which
 ; the host calls at host/owner-host.lisp fn-owner-existing-action and
-; fn-owner-prepare, and through fn-pidx-existing-action
-; (fn-pidx-existing-action-is-store-existing-action) at
+; fn-owner-prepare, and through fn-pidx-existing-action-cat
+; (fn-pidx-existing-action-cat-is-store-existing-action) at
 ; fn-owner-existing-action-buffer; it reads the held bytes through the arena
 ; (srt-action below runs it over the arena of SPEC).  The articles are the corpus
 ; shapes (tests/fixtures/source-corpus): a supplied Date, a generated Date,

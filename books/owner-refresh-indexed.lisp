@@ -55,14 +55,12 @@
                (archive (fn-ctl-visible-state-of acceptance visible))
                (withdrawn (fn-ctl-refresh-withdrawn
                            raw old-raw visible old-visible
-                           (fn-own-view-withdrawn old-view)))
-               (index (fn-midx-refresh
-                       (fn-own-view-index old-view) old-visible visible)))
+                           (fn-own-view-withdrawn old-view))))
           (fn-own-make s
                      (fn-own-view-make-visible
                       (fn-sf-records-count (fn-sn-files s))
                       (fn-sf-frontier (fn-sn-files s))
-                      archive verdicts index
+                      archive verdicts
                       (fn-gidx-refresh (fn-own-view-group-index old-view)
                                        old-visible visible)
                       withdrawals raw withdrawn
@@ -107,7 +105,7 @@
                             fn-orix-store-rows-agree
                             fn-ctl-refresh-withdrawals fn-ctl-refresh-withdrawals-ix
                             fn-ctl-refresh-visible fn-ctl-visible-state-of
-                            fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                            fn-ctl-refresh-withdrawn fn-gidx-refresh
                             fn-own-make fn-own-view-make-visible)))))
 
 ;; For the completions (books/owner-commit-carried.lisp

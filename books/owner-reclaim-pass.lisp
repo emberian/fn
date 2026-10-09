@@ -439,7 +439,6 @@
                                     (fn-own-conn-config conn)
                                     (fn-own-conn-observation conn)
                                     (fn-served-conn-verdicts sconn)
-                                    (fn-served-conn-index sconn)
                                     (fn-served-conn-group-index sconn)
                                     (fn-served-conn-control sconn))))
 

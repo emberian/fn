@@ -269,7 +269,7 @@
                                         fn-cat-count-is-len)
                                       (theory 'minimal-theory))
            :use ((:instance fn-sca-finish-keeps-pinned-views
-                            (v (fn-scr-view-of v fn-cat)) (view-index idx))))))
+                            (v (fn-scr-view-of v fn-cat)) (visible idx))))))
 
 ; KEYSTONE (a pinned catalog view survives the host's finish).  Any reader
 ; pinned at a version V -- a connection, the live view, a captured reader
@@ -464,7 +464,7 @@
   (equal (fn-own-conns (fn-own-refresh x)) (fn-own-conns x))
   :hints (("Goal" :in-theory (e/d (fn-own-refresh)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-ctl-visible-state-of fn-own-view-make-visible)))))
 
 (defthm fn-scj-conns-of-host-finish
@@ -495,7 +495,7 @@
          (s2 (fn-own-store o2))
          (view2 (fn-own-view o2))
          (held (fn-pc-held pending))
-         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                                       (fn-sca-targets-of (fn-record-msgid held)
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
@@ -524,12 +524,12 @@
                  (:instance fn-scj-conns-versions-atmostp-monotone (conns (fn-own-conns o))
                             (m (fn-own-view-version (fn-own-view o))) (n (len events0)))
                  (:instance fn-scj-conns-pinp-of-finish (conns (fn-own-conns o))
-                            (idx (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
+                            (idx (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))))
                             (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                         (fn-own-view-withdrawals
                                                          (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))))
                  (:instance fn-scj-seqs-sortedp-of-finish (c fn-cat)
-                            (idx (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
+                            (idx (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))))
                             (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                         (fn-own-view-withdrawals
                                                          (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))))))))
@@ -540,7 +540,6 @@
 
 (defun-nx fn-scj-conn-on-viewp (conn view)
   (and (equal (fn-own-conn-archive conn) (fn-own-view-archive view))
-       (equal (fn-own-conn-index conn) (fn-own-view-index view))
        (equal (fn-own-conn-group-index conn) (fn-own-view-group-index view))
        (equal (fn-own-conn-control conn) (fn-own-view-control view))
        (equal (fn-own-conn-version conn) (fn-own-view-version view))))
@@ -553,7 +552,7 @@
                                    fn-scj-live-okp fn-scr-live-catalogp fn-scr-fields-catalogp
                                    fn-served-pinned-version fn-served-pinned-make)
                                   (fn-scr-catalogp fn-scr-view-of fn-own-view-live
-                                   fn-own-conn-archive fn-own-conn-index fn-own-conn-group-index
+                                   fn-own-conn-archive fn-own-conn-group-index
                                    fn-own-conn-control fn-own-conn-version)))))
 
 (defthm fn-scj-open-conn-on-view
@@ -585,8 +584,7 @@
 
 (defthm fn-scj-conn-pinp-of-make-on-view
   (equal (fn-scj-conn-pinp (fn-own-conn-make-group-indexed id (fn-own-view-version view) frontier wire session
-                                                           (fn-own-view-archive view) config observation verdicts
-                                                           (fn-own-view-index view) (fn-own-view-group-index view)
+                                                           (fn-own-view-archive view) config observation verdicts (fn-own-view-group-index view)
                                                            (fn-own-view-control view))
                            fn-arena fn-cat)
          (fn-scj-live-okp view fn-arena fn-cat))
@@ -594,8 +592,7 @@
                                                           fn-scj-live-okp fn-own-view-control))
            :use ((:instance fn-scj-conn-pinp-when-on-view
                             (conn (fn-own-conn-make-group-indexed id (fn-own-view-version view) frontier wire session
-                                                                  (fn-own-view-archive view) config observation verdicts
-                                                                  (fn-own-view-index view) (fn-own-view-group-index view)
+                                                                  (fn-own-view-archive view) config observation verdicts (fn-own-view-group-index view)
                                                                   (fn-own-view-control view))))))))
 
 (defthm fn-scj-conns-pinp-of-advance
@@ -607,28 +604,25 @@
                                    fn-own-conn-make-group-indexed fn-scj-conns-pinp
                                    fn-own-replace-conn fn-own-find-conn fn-own-view-group-index)))))
 
-; The view's two indexes over its visible archive: the Message-ID trie and,
-; when present, the group buckets.  These are the only facts of
-; fn-own-view-okp (fn-own-relation's view conjunct) the live view's catalog
-; premise reads (lane join-f2: the finishes asked the whole of fn-own-view-okp,
-; whose archive equations are over the unconfigured replay the configured
-; owner does not carry).
-(defun fn-scj-view-indexesp (view)
+; The view's group buckets over its visible archive, when present.  This is
+; the only fact of fn-own-view-okp (fn-own-relation's view conjunct) the live
+; view's catalog premise reads (lane join-f2: the finishes asked the whole of
+; fn-own-view-okp, whose archive equations are over the unconfigured replay
+; the configured owner does not carry).
+(defun fn-scj-view-gidxp (view)
   (declare (xargs :guard t))
-  (and (fn-midx-correspondencep (fn-own-view-index view)
-                                (fn-state-articles (fn-own-view-archive view)))
-       (implies (fn-own-view-group-index view)
-                (equal (fn-own-view-group-index view)
-                       (fn-gidx-build (fn-state-articles (fn-own-view-archive view)))))))
+  (implies (fn-own-view-group-index view)
+           (equal (fn-own-view-group-index view)
+                  (fn-gidx-build (fn-state-articles (fn-own-view-archive view))))))
 
-(defthm fn-scj-view-indexesp-of-view-okp
+(defthm fn-scj-view-gidxp-of-view-okp
   (implies (fn-own-view-okp view groups capacity records)
-           (fn-scj-view-indexesp view))
-  :hints (("Goal" :in-theory (e/d (fn-own-view-okp fn-scj-view-indexesp)
-                                  (fn-midx-correspondencep fn-gidx-build fn-own-prefix-archive
+           (fn-scj-view-gidxp view))
+  :hints (("Goal" :in-theory (e/d (fn-own-view-okp fn-scj-view-gidxp)
+                                  (fn-gidx-build fn-own-prefix-archive
                                    fn-ctl-visible-state fn-ctl-subseq-diff)))))
 
-(in-theory (disable fn-scj-view-indexesp))
+(in-theory (disable fn-scj-view-gidxp))
 
 ; The live view from the join: the view at the view's version is the whole
 ; catalog (every row's sequence below it), which the join says is the
@@ -638,12 +632,12 @@
     (implies (and (fn-scj-joinp view fn-arena fn-cat)
                   (fn-cnx-freshp fn-cat)
                   (fn-statep (fn-own-view-archive view))
-                  (fn-scj-view-indexesp view))
+                  (fn-scj-view-gidxp view))
              (fn-scj-live-okp view fn-arena fn-cat)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-scj-joinp fn-scj-live-okp fn-scr-live-catalogp fn-scr-fields-catalogp
                             fn-served-pinned-version fn-served-pinned-make fn-scr-catalogp
-                            fn-gidx-pin-correspondencep fn-scj-view-indexesp)
+                            fn-gidx-pin-correspondencep fn-scj-view-gidxp)
                            (fn-scr-view-of fn-own-view-live fn-cat-view-articles fn-cnx-freshp
                             fn-statep fn-midx-build fn-gidx-build fn-gidx-pinp
                             fn-scj-seqs-below-is-nats-below fn-own-prefix-archive
@@ -655,7 +649,7 @@
 ; hypotheses (fn-scj-joinp-at-host-finish), with the catalog sorted and
 ; fresh before, every connection pinned over it at or below the view's
 ; version, the finished owner's view indexes its visible archive
-; (fn-scj-view-indexesp: its trie and group buckets are the archive's) and its
+; (fn-scj-view-gidxp: its group buckets are the archive's) and its
 ; archive a state (fn-statep, which fn-ocl-relation carries:
 ; fn-acar-ocl-relation-carries-view-statep), the catalog the host's finish leaves carries the live view,
 ; every pinned connection and sortedness: fn-scr-owner-catalogp at every
@@ -669,13 +663,12 @@
          (a (car (fn-state-articles acc2)))
          (events2 (append events0 (list event)))
          (held (fn-pc-held pending))
-         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                                       (fn-sca-targets-of (fn-record-msgid held)
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
     (implies (and (fn-ccar-completion-enabledp (fn-own-store o))
                   (fn-scj-joinp view fn-arena fn-cat)
-                  (fn-scar-view-indexedp o)
                   (fn-scj-rows-invp fn-cat events0)
                   (fn-cst-relation s2)
                   (fn-own-store-idlep s2)
@@ -703,7 +696,7 @@
                   (fn-cnx-freshp fn-cat)
                   (fn-scj-conns-pinp (fn-own-conns o) fn-arena fn-cat)
                   (fn-scj-conns-versions-atmostp (fn-own-conns o) (fn-own-view-version view))
-                  (fn-scj-view-indexesp view2)
+                  (fn-scj-view-gidxp view2)
                   (fn-statep (fn-own-view-archive view2)))
              (and (fn-scr-owner-catalogp o2 id fn-arena c2)
                   (fn-scj-conns-pinp (fn-own-conns o2) fn-arena c2)
@@ -715,14 +708,14 @@
            :use ((:instance fn-scj-joinp-at-host-finish)
                  (:instance fn-scj-conns-pinp-at-host-finish)
                  (:instance fn-scj-freshp-of-finish (c fn-cat)
-                            (idx (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
+                            (idx (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))))
                             (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                         (fn-own-view-withdrawals
                                                          (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))))
                  (:instance fn-scj-live-okp-of-joinp
                             (o (cdr (fn-ccar-own-finish o cfg fn-arena)))
                             (fn-cat (mv-nth 2 (fn-sca-finish token pending
-                                                             (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))
+                                                             (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
                                                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                                                 (fn-own-view-withdrawals
                                                                                  (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
@@ -730,7 +723,7 @@
                  (:instance fn-scj-owner-catalogp-of-conns-and-live
                             (o (cdr (fn-ccar-own-finish o cfg fn-arena)))
                             (fn-cat (mv-nth 2 (fn-sca-finish token pending
-                                                             (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena))))
+                                                             (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))
                                                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                                                 (fn-own-view-withdrawals
                                                                                  (fn-own-view (cdr (fn-ccar-own-finish o cfg fn-arena)))))

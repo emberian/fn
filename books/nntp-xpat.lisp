@@ -60,7 +60,7 @@
                             fn-nntp-command-arguments-at-mostp
                             fn-nntp-sessionp fn-nntp-xpat-response
                             fn-gidx-list-counts-command
-                            fn-nntp-msgid-retrieval-indexed
+                            fn-nntp-msgid-retrieval
                             fn-gidx-listgroup-command
                             fn-nntp-over-range-indexed
                             fn-nntp-verdict-hdr-response)))))

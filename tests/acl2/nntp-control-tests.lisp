@@ -3,8 +3,8 @@
 ; (fn.mod.a 1) withdrawn by P's cancel C, O (fn.mod.a 2) served, Q's cancel
 ; D of a U that never arrived.  Each keystone has a witness through
 ; `fn-nntp-archive-command-pinned' itself and one must-fail per substantive
-; hypothesis (the pin's W, the arm's decision, the archive's miss, the trie
-; correspondence, the keyword, the argument shape).
+; hypothesis (the pin's W, the arm's decision, the archive's miss, the
+; keyword, the argument shape).
 (in-package "ACL2")
 (include-book "control-served-tests")
 (include-book "../../books/nntp-control")
@@ -18,7 +18,7 @@
 (defconst *nct-session*
   (fn-nntp-set-cursor (fn-nntp-open-session *nct-archive*) "fn.mod.a" nil))
 (defun nct-index (w)
-  (fn-gidx-pin-with-control (fn-midx-build *csv-vis*) (fn-gidx-build *csv-vis*)
+  (fn-gidx-pin-with-control (fn-gidx-build *csv-vis*)
                             (fn-ctl-pin w *csv-ws*)))
 (defconst *nct-index* (nct-index *csv-w*))
 (defun nct-toks (args)
@@ -92,31 +92,20 @@
 (must-fail-checked
  (assert-event
   (let ((idx (nct-index (list *csv-a*))))
-    (implies (fn-nntp-msgid-withdrawn-p idx (nct-tok "<a@example.invalid>"))
+    (implies (fn-nntp-msgid-withdrawn-p *nct-archive* idx (nct-tok "<a@example.invalid>"))
              (member-equal (fn-ctl-msgid-withdrawn "<a@example.invalid>" (list *csv-a*))
                            *csv-raw*)))))
-; Sound, hypothesis 2 removed (the trie is the archive's): a trie of the raw
-; list misses nothing, so the arm cannot fire on T; with an empty trie and
-; an archive that serves T, the arm fires and T is served.
-(must-fail-checked
- (assert-event
-  (let* ((arch (fn-ctl-visible-state-of *nct-archive* *csv-raw*))
-         (idx (fn-gidx-pin-with-control nil nil (fn-ctl-pin *csv-w* *csv-ws*))))
-    (implies (fn-nntp-msgid-withdrawn-p idx (nct-tok "<t@example.invalid>"))
-             (not (consp (fn-find-article "<t@example.invalid>"
-                                          (fn-state-articles arch))))))))
 ; Sound, hypothesis 3 removed (the arm fired): O is not withdrawn.
 (must-fail-checked
  (assert-event
   (member-equal (fn-ctl-msgid-withdrawn "<o@example.invalid>" *csv-w*) *csv-raw*)))
 ; Complete, per hypothesis: W nil; keyword; two arguments; the archive
-; serves T (trie of the raw list).
+; serves T.
 (must-fail-checked (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* (nct-index nil) "ARTICLE" '("<t@example.invalid>")) *nct-430*)))
 (must-fail-checked (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "GROUP" '("<t@example.invalid>")) *nct-430*)))
 (must-fail-checked (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "ARTICLE" '("<t@example.invalid>" "1")) *nct-430*)))
 (must-fail-checked (assert-event
-            (equal (in-arena-nct-run *sr-arena* *nct-session* (fn-ctl-visible-state-of *nct-archive* *csv-raw*) (fn-gidx-pin-with-control (fn-midx-build *csv-raw*)
-                                                      (fn-gidx-build *csv-raw*)
+            (equal (in-arena-nct-run *sr-arena* *nct-session* (fn-ctl-visible-state-of *nct-archive* *csv-raw*) (fn-gidx-pin-with-control (fn-gidx-build *csv-raw*)
                                                       (fn-ctl-pin *csv-w* *csv-ws*)) "ARTICLE" '("<t@example.invalid>"))
                    *nct-430*)))
 
@@ -136,11 +125,6 @@
                      (nct-hdr-line "none")))
 (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "HDR" '(":fn-control" "<zz@example.invalid>"))
                      (fn-nntp-single *nct-session* "430 no article with that message-id")))
-; Hypothesis removed (the trie is the served list's): an empty trie misses C
-; and answers 430.
-(must-fail-checked (assert-event
-            (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* (fn-gidx-pin-with-control nil nil (fn-ctl-pin *csv-w* *csv-ws*)) "HDR" '(":fn-control" "<c@example.invalid>"))
-                   (nct-hdr-line "executed withdrawal <t@example.invalid> author"))))
 ; The keyword and the field name (HDR :fn-verified answers the verdict).
 (must-fail-checked (assert-event (equal (in-arena-nct-run *sr-arena* *nct-session* *nct-archive* *nct-index* "HDR" '(":fn-verified" "<c@example.invalid>"))
                                 (nct-hdr-line "executed withdrawal <t@example.invalid> author"))))
@@ -185,7 +169,7 @@
                  (list (cons "fn.mod.a" 3) (cons "control.cancel" 3))
                  *nct-f-vis* 5 nil nil))
 (defconst *nct-f-index*
-  (fn-gidx-pin-with-control (fn-midx-build *nct-f-vis*) (fn-gidx-build *nct-f-vis*)
+  (fn-gidx-pin-with-control (fn-gidx-build *nct-f-vis*)
                             (fn-ctl-pin *nct-f-w* *csv-ws*)))
 (defconst *nct-f-session*
   (fn-nntp-set-cursor (fn-nntp-open-session *nct-f-archive*) "fn.mod.a" nil))

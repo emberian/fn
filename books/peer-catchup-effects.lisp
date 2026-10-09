@@ -92,42 +92,42 @@
   :hints (("Goal" :in-theory (disable fn-cu-article-lines fn-cu-record-header
                                       fn-nntp-article-idp fn-nntp-article-bytes))))
 
-(defun fn-cu-all-servedp (xs groups trie fn-arena)
+(defun fn-cu-all-servedp (xs groups arts fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (consp xs)
-      (and (fn-cu-servedp (car xs) groups trie fn-arena)
-           (fn-cu-all-servedp (cdr xs) groups trie fn-arena))
+      (and (fn-cu-servedp (car xs) groups arts fn-arena)
+           (fn-cu-all-servedp (cdr xs) groups arts fn-arena))
     t))
 
 (local
  (defthm fn-cu-all-servedp-rev
-   (implies (and (fn-cu-all-servedp x groups trie fn-arena)
-                 (fn-cu-all-servedp y groups trie fn-arena))
-            (fn-cu-all-servedp (fn-cu-rev x y) groups trie fn-arena))
+   (implies (and (fn-cu-all-servedp x groups arts fn-arena)
+                 (fn-cu-all-servedp y groups arts fn-arena))
+            (fn-cu-all-servedp (fn-cu-rev x y) groups arts fn-arena))
    :hints (("Goal" :induct (fn-cu-rev x y)
             :in-theory (disable fn-cu-servedp)))))
 
 (local
  (defthm fn-cu-select-aux-all-servedp
-   (implies (fn-cu-all-servedp served groups trie fn-arena)
+   (implies (fn-cu-all-servedp served groups arts fn-arena)
             (fn-cu-all-servedp
-             (mv-nth 1 (fn-cu-select-aux entries groups trie quantum pos served
+             (mv-nth 1 (fn-cu-select-aux entries groups arts quantum pos served
                                          used fn-arena))
-             groups trie fn-arena))
+             groups arts fn-arena))
    :hints (("Goal" :in-theory (disable fn-cu-servedp fn-nntp-article-bytes)))))
 
 (local
  (defthm fn-cu-all-servedp-all-idp
-   (implies (fn-cu-all-servedp xs groups trie fn-arena)
+   (implies (fn-cu-all-servedp xs groups arts fn-arena)
             (fn-cu-all-idp xs))
    :hints (("Goal" :in-theory (enable fn-cu-servedp)))))
 
 (defthm fn-cu-select-all-idp
-  (fn-cu-all-idp (mv-nth 1 (fn-cu-select articles from groups trie quantum fn-arena)))
+  (fn-cu-all-idp (mv-nth 1 (fn-cu-select articles from groups arts quantum fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-cu-select) (fn-cu-servedp fn-cu-select-aux
                                                   fn-nntp-article-idp fn-cu-rev))
            :use ((:instance fn-cu-all-servedp-all-idp
-                            (xs (mv-nth 1 (fn-cu-select articles from groups trie
+                            (xs (mv-nth 1 (fn-cu-select articles from groups arts
                                                         quantum fn-arena))))))))
 
 (defthm fn-cu-len-blake3-stobj
@@ -193,7 +193,7 @@
 
 (defthm fn-cu-serve-reply-effects-well-formed
   (fn-nntp-effectsp
-   (fn-nntp-result-effects (fn-cu-serve-reply session archive index args fn-arena)))
+   (fn-nntp-result-effects (fn-cu-serve-reply session archive args fn-arena)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-cu-serve-reply)
                            (fn-cu-select fn-cu-chain-over fn-cu-render-lines
@@ -203,4 +203,4 @@
                             fn-nntp-response-textp fn-nntp-block-textp
                             fn-nntp-initial-status-linep
                             fn-nntp-filter-groups-by-wildmat
-                            fn-gidx-pin-trie fn-cu-list)))))
+                            fn-cu-list)))))

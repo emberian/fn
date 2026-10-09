@@ -51,9 +51,9 @@
       result)))
 
 ;; 1. Every hypothesis; :duplicate from both, and :conflict from both.
-(defconst *pict-1* (pict-exec (fn-own-view-index *scjt-view1*) *pict-groups*))
+(defconst *pict-1* (pict-exec (fn-midx-build (fn-state-articles (fn-own-view-archive *scjt-view1*))) *pict-groups*))
 (assert-event (equal *pict-1* '(t t t :duplicate :duplicate)))
-(defconst *pict-1c* (pict-exec (fn-own-view-index *scjt-view1*) '("other.group")))
+(defconst *pict-1c* (pict-exec (fn-midx-build (fn-state-articles (fn-own-view-archive *scjt-view1*))) '("other.group")))
 (assert-event (equal *pict-1c* '(t t t :conflict :conflict)))
 
 ;; 2. The join removed: every other hypothesis holds, the answers differ.

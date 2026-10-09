@@ -137,16 +137,15 @@
                                    fn-hl-history-row
                                    fn-hl-current-for-principal)))))
 
-;; The served arm.  The article is looked up in the pinned Message-ID trie of
-;; the served list (one lookup), the verdict in the pinned verdict list.
+;; The served arm.  The article is looked up by Message-ID in the served
+;; list (one lookup), the verdict in the pinned verdict list.
 (defun fn-nntp-enrollment-hdr-response (session archive index verdicts args)
-  (declare (xargs :guard t)
-           (ignorable archive))
+  (declare (xargs :guard t))
   (if (and (consp args) (consp (cdr args)) (null (cddr args))
            (fn-nntp-message-id-tokenp (cadr args))
            (fn-octet-listp (cadr args)))
       (let ((msgid (fn-nntp-token-string (cadr args))))
-        (if (not (consp (fn-midx-lookup msgid (fn-gidx-pin-trie index))))
+        (if (not (consp (fn-find-article msgid (fn-state-articles archive))))
             (fn-nntp-single session (fn-proto-text * :no-msgid))
           (fn-nntp-multi
            session (fn-nntp-hdr-initial nil)
@@ -165,8 +164,8 @@
                                    fn-nntp-make-result fn-nntp-result-session)
                                   (fn-enr-item fn-nntp-hdr-line
                                    fn-nntp-decimal-field fn-nntp-message-id-tokenp
-                                   fn-gidx-pin-control fn-gidx-pin-trie
-                                   fn-midx-lookup fn-stx-reader-lookup
+                                   fn-gidx-pin-control
+                                   fn-find-article fn-stx-reader-lookup
                                    fn-nntp-token-string fn-octet-listp)))))
 
 (defthm fn-nntp-enrollment-hdr-response-effects-true-listp
@@ -179,11 +178,11 @@
                                    fn-nntp-hdr-line fn-nntp-hdr-initial
                                    fn-nntp-stuff-lines fn-nntp-crlf
                                    fn-nntp-decimal-field fn-nntp-message-id-tokenp
-                                   fn-gidx-pin-control fn-gidx-pin-trie
-                                   fn-midx-lookup fn-stx-reader-lookup
+                                   fn-gidx-pin-control
+                                   fn-find-article fn-stx-reader-lookup
                                    fn-nntp-token-string fn-octet-listp)))))
 
-;; KEYSTONE (the arm): over a Message-ID the pinned trie holds, the reply is
+;; KEYSTONE (the arm): over a Message-ID the served list holds, the reply is
 ;; one line, 0 and the enrollment item of the verdict recorded for that
 ;; Message-ID against the pin's keyring view.  (Stated here over the arm;
 ;; books/owner-enrollment-read.lisp states it over fn-own-read.)
@@ -192,7 +191,7 @@
     (implies (and (consp args) (consp (cdr args)) (null (cddr args))
                   (fn-nntp-message-id-tokenp (cadr args))
                   (fn-octet-listp (cadr args))
-                  (consp (fn-midx-lookup msgid (fn-gidx-pin-trie index))))
+                  (consp (fn-find-article msgid (fn-state-articles archive))))
              (equal (fn-nntp-enrollment-hdr-response session archive index
                                                      verdicts args)
                     (fn-nntp-multi
@@ -204,8 +203,8 @@
   :hints (("Goal" :in-theory (e/d (fn-nntp-enrollment-hdr-response)
                                   (fn-enr-item fn-nntp-multi fn-nntp-hdr-line
                                    fn-nntp-decimal-field fn-nntp-message-id-tokenp
-                                   fn-gidx-pin-control fn-gidx-pin-trie
-                                   fn-midx-lookup fn-stx-reader-lookup
+                                   fn-gidx-pin-control
+                                   fn-find-article fn-stx-reader-lookup
                                    fn-nntp-token-string fn-octet-listp)))))
 
 ;; What the item says, by case, over the pinned keyring view: the three

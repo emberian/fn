@@ -56,6 +56,7 @@
 (ld "../../host/interfaces.lisp" :ld-error-action :error)
 (ld "../../host/cost-host.lisp" :ld-error-action :error)
 (ld "../../host/raw-dispatch-verdicts.lisp" :ld-error-action :error)
+(def-carried-host-check)
 (assert-event (equal (len (global-val 'include-book-alist (w state)))
                      (@ fn-image-world-books))
               :msg "an include-book after the image's umbrella added a book")

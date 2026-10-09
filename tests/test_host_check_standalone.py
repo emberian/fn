@@ -20,6 +20,30 @@ class StandaloneTests(unittest.TestCase):
     def findings(self):
         return '\n'.join(hc.standalone_findings(self.root))
 
+    def test_an_attachment_after_its_stobj_is_defined_is_found(self):
+        # HOST-ATTACH-ORDER-STANDALONE: index-writer-operation-host reached
+        # payload-arena (defines fn-arena) before owner-host's attachment
+        self.put('books/impl.lisp', '(defstobj impl fld)')
+        self.put('books/generic.lisp', '(defstobj gen fld :attachable t)')
+        self.put('books/attach.lisp', '(include-book "impl") (attach-stobj gen impl) (include-book "generic")')
+        self.put('books/user.lisp', '(include-book "generic")')
+        self.put('host/late.lisp', '(include-book "../books/user") (include-book "../books/attach")')
+        self.assertIn('(attach-stobj gen ...) comes after books/generic.lisp defined gen in host/late.lisp', self.findings())
+        self.put('host/late.lisp', '(include-book "../books/attach") (include-book "../books/user")')
+        self.assertEqual('', self.findings())
+
+    def test_attachment_order_covers_parked_host_books_and_skips_includers_locals(self):
+        self.put('planning/host-parked.json', json.dumps({"parked": {"host/late.lisp": "parked"}}))
+        self.put('books/impl.lisp', '(defstobj impl fld)')
+        self.put('books/generic.lisp', '(defstobj gen fld :attachable t)')
+        self.put('books/attach.lisp', '(include-book "impl") (attach-stobj gen impl) (include-book "generic")')
+        # an included book's local include never reaches the includer's world
+        self.put('books/user.lisp', '(local (include-book "generic"))')
+        self.put('host/late.lisp', '(include-book "../books/user") (include-book "../books/attach")')
+        self.assertEqual('', self.findings())
+        self.put('host/late.lisp', '(local (include-book "../books/generic")) (include-book "../books/attach")')
+        self.assertIn('defined gen in host/late.lisp', self.findings())
+
     def test_call_and_guard_need_their_own_include_not_an_image_or_ld(self):
         self.put('books/dep.lisp', '(defun helper (x) x) (defun guard-p (x) t)')
         self.put('host/native/build.lisp', '(include-book "books/dep")')

@@ -1,0 +1,14 @@
+{
+ "category": "cost",
+ "disposition": "LOCAL",
+ "exposure": "none",
+ "file": "books/served-catalog-owner.lisp",
+ "id": "VIEWIDX-FINISH-CANCEL-SCAN",
+ "notes": [],
+ "owner": "deputy-S",
+ "severity": "low",
+ "source": "s-viewidx",
+ "state": "deferred",
+ "title": "fn-sca-finish scans the refreshed visible list (fn-ctl-has-msgid-p) per cancel target and per hidden-at-birth article: bound (number of cancel targets + hidden rows) x visible articles per finish, the class of the refresh's own drop-via pass. Exit: answer 'is the target still shown' from the old catalog's raw membership plus this commit's withdrawals with no list scan; needs an invariant relating the catalog's per-row withdrawal marks to the refreshed view's shown set (the join plus a per-finish delta statement), not a new field on the view",
+ "updated": "2026-10-08T04:35:57Z"
+}

@@ -151,7 +151,7 @@
                        :article-select)))
   :hints (("Goal" :in-theory (e/d (fn-asto-selection-start fn-asto-selection-start-cat
                                    fn-ast-select-state fn-ast-at fn-ast-msgid-local-start)
-                                  (fn-scat-msgid-article fn-midx-lookup fn-gidx-pinp fn-gidx-pin-trie))
+                                  (fn-scat-msgid-article fn-midx-lookup fn-gidx-pinp))
            :use ((:instance fn-asto-bridge-msgid-token-not-number-token (token (car args)))))))
 
 (defthm fn-asto-ready-plan-step-of-capture-selection

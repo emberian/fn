@@ -171,8 +171,7 @@
       (fn-served-conn-config offered)
       (fn-served-conn-observation offered)
       (fn-served-conn-injection offered)
-      (fn-served-conn-verdicts offered)
-      (fn-served-conn-index offered))))
+      (fn-served-conn-verdicts offered))))
 (defconst *aft-post-body*
   (append (aft-line "From: reader@example.invalid")
           (aft-line "Subject: auth fold witness")

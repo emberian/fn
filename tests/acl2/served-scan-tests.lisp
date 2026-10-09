@@ -203,9 +203,9 @@
 (defun sct-served (conn i end fn-octets fn-arena)
   (declare (xargs :stobjs (fn-octets fn-arena)
                   :verify-guards nil))
-  (list (fn-scar-scan-span conn i end nil nil nil fn-octets fn-arena)
-        (fn-scar-feed-span conn i end nil nil nil fn-octets fn-arena)
-        (fn-scar-feed-counted conn (fn-oct-slice-list i end fn-octets) nil nil nil fn-arena)))
+  (list (fn-scar-scan-span conn i end nil nil fn-octets fn-arena)
+        (fn-scar-feed-span conn i end nil nil fn-octets fn-arena)
+        (fn-scar-feed-counted conn (fn-oct-slice-list i end fn-octets) nil nil fn-arena)))
 
 (defun sct-served-agree (conn i end fn-octets fn-arena)
   (declare (xargs :stobjs (fn-octets fn-arena)
@@ -240,7 +240,7 @@
   (declare (xargs :stobjs (fn-octets fn-arena)
                   :verify-guards nil))
   (let ((fn-octets (fn-octets-from-list octets fn-octets)))
-    (mv (fn-scar-scan-span conn 0 (fn-octets-len fn-octets) nil nil nil fn-octets fn-arena)
+    (mv (fn-scar-scan-span conn 0 (fn-octets-len fn-octets) nil nil fn-octets fn-arena)
         fn-octets)))
 
 (defun sct-served-whole-value (conn octets fn-arena)

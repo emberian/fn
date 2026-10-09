@@ -599,9 +599,10 @@ def host_reading(root: Path = ROOT) -> dict:
 
 
 # Functions a macro introduces that the ledger's reader does not list: an
-# abstract stobj's exports (`(NAME :logic ...' in a defabsstobj) and a
+# abstract stobj's exports (`(NAME :logic ...' in a defabsstobj, `(:read NAME
+# :logic ...' in a def-generic) and a
 # defevent's recognizer and encoder.
-_GENERATED = re.compile(r"\((fn-[^\s()]+)\s+:logic\s|:(?:recognizer|encode)\s+(fn-[^\s()]+)")
+_GENERATED = re.compile(r"\((?::(?:read|update)\s+)?(fn-[^\s()]+)\s+:logic\s|:(?:recognizer|encode)\s+(fn-[^\s()]+)")
 
 
 def generated_names(root: Path = ROOT) -> set[str]:

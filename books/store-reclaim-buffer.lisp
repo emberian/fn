@@ -4,7 +4,7 @@
 ; The native owner asks the D25 question with the submitted payload in the
 ; octet buffer (host/owner-host.lisp fn-owner-existing-action-buffer, called
 ; from host/native/owner.lisp fnn-owner-attempt; its verdict is
-; books/post-identity-index.lisp fn-pidx-existing-action).  Once `store
+; books/post-identity-catalog.lisp fn-pidx-existing-action-cat).  Once `store
 ; reclaim' can leave a tombstone in the article list, the comparison must be
 ; `fn-rcl-same-articlep' (books/store-reclaim), not `fn-pb-same-articlep'.
 ; This book is its buffer twin, `fn-rclb-same-articlep'.
@@ -103,11 +103,11 @@
 
 ;  KEYSTONE (the buffer comparison).  On the buffer's logical value the
 ; tombstone-aware buffer comparison is books/store-reclaim's list one.  The
-; host's buffer verdict, books/post-identity-index.lisp
-; fn-pidx-existing-action (host/owner-host.lisp
+; host's buffer verdict, books/post-identity-catalog.lisp
+; fn-pidx-existing-action-cat (host/owner-host.lisp
 ; fn-owner-existing-action-buffer, fn-owner-prepare-buffer), compares with
 ; fn-rclb-same-articlep against the bytes read through the arena, and
-; fn-pidx-existing-action-is-store-existing-action equates it with the
+; fn-pidx-existing-action-cat-is-store-existing-action equates it with the
 ; Store's entry fn-store-existing-action.  (The whole-store buffer verdict
 ; fn-rclb-existing-action compared with the held handle and was retired,
 ; PKT-860.)

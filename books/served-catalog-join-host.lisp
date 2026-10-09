@@ -37,41 +37,28 @@
 (local (in-theory (disable (tau-system))))
 
 ; -----------------------------------------------------------------------------
-; The view's group buckets over its visible archive: the live view's catalog
-; premise carries them (fn-scj-live-okp), and a refresh keeps them.
-
-(defun fn-sjh-view-gidxp (view)
-  (declare (xargs :guard t))
-  (implies (fn-own-view-group-index view)
-           (equal (fn-own-view-group-index view)
-                  (fn-gidx-build (fn-state-articles (fn-own-view-archive view))))))
+; The view's group buckets over its visible archive (fn-scj-view-gidxp,
+; books/served-catalog-join-pinned.lisp): the live view's catalog premise
+; carries them (fn-scj-live-okp), and a refresh keeps them.
 
 (defthm fn-sjh-invp-gives-view-gidx
   (implies (fn-scj-invp o fn-arena fn-cat)
-           (fn-sjh-view-gidxp (fn-own-view o)))
-  :hints (("Goal" :in-theory (e/d (fn-sjh-view-gidxp fn-scj-invp fn-scj-live-okp fn-scr-live-catalogp
+           (fn-scj-view-gidxp (fn-own-view o)))
+  :hints (("Goal" :in-theory (e/d (fn-scj-view-gidxp fn-scj-invp fn-scj-live-okp fn-scr-live-catalogp
                                    fn-scr-fields-catalogp fn-scr-catalogp fn-gidx-pin-correspondencep)
                                   (fn-scj-joinp fn-scj-rows-invp fn-scj-vvp fn-scj-conns-pinp
-                                   fn-scr-view-of fn-cat-view-articles fn-midx-correspondencep
+                                   fn-scr-view-of fn-cat-view-articles
                                    fn-gidx-build fn-own-view-live fn-statep fn-cnx-freshp))
            :use ((:instance fn-own-view-live-fields (view (fn-own-view o)))))))
 
 (defthm fn-sjh-refresh-keeps-gidx
-  (implies (fn-sjh-view-gidxp (fn-own-view o))
-           (fn-sjh-view-gidxp (fn-own-view (fn-own-refresh o))))
-  :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-sjh-view-gidxp fn-gidx-refresh-is-build)
+  (implies (fn-scj-view-gidxp (fn-own-view o))
+           (fn-scj-view-gidxp (fn-own-view (fn-own-refresh o))))
+  :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-scj-view-gidxp fn-gidx-refresh-is-build)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
                                    fn-own-view-make-visible fn-own-view-group-index fn-own-view-archive
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-gidx-build fn-ctl-visible-state-of)))))
-
-(defthm fn-sjh-view-indexesp-of-parts
-  (implies (and (fn-scar-view-indexedp o)
-                (fn-sjh-view-gidxp (fn-own-view o)))
-           (fn-scj-view-indexesp (fn-own-view o)))
-  :hints (("Goal" :in-theory (enable fn-scar-view-indexedp fn-sjh-view-gidxp fn-scj-view-indexesp))))
-
-(in-theory (disable fn-sjh-view-gidxp))
 
 ; -----------------------------------------------------------------------------
 ; LINK and the carried predicate.
@@ -123,7 +110,6 @@
   (and (fn-scj-invp o fn-arena fn-cat)
        (fn-scjs-seenp o)
        (fn-scjs-historyp o)
-       (fn-scar-view-indexedp o)
        (fn-scj-seqs-sortedp fn-cat)
        (fn-cnx-freshp fn-cat)
        (fn-scj-versions-okp o)
@@ -135,7 +121,6 @@
            (and (fn-scj-invp o fn-arena fn-cat)
                 (fn-scjs-seenp o)
                 (fn-scjs-historyp o)
-                (fn-scar-view-indexedp o)
                 (fn-scj-seqs-sortedp fn-cat)
                 (fn-cnx-freshp fn-cat)
                 (fn-scj-versions-okp o)
@@ -150,7 +135,6 @@
   (implies (and (fn-scj-invp o fn-arena fn-cat)
                 (fn-scjs-seenp o)
                 (fn-scjs-historyp o)
-                (fn-scar-view-indexedp o)
                 (fn-scj-seqs-sortedp fn-cat)
                 (fn-cnx-freshp fn-cat)
                 (fn-scj-versions-okp o)
@@ -315,7 +299,6 @@
          (and (fn-scj-invp o fn-arena fn-cat)
               (fn-scjs-seenp o)
               (fn-scjs-historyp o)
-              (fn-scar-view-indexedp o)
               (fn-scj-seqs-sortedp fn-cat)
               (fn-cnx-freshp fn-cat)
               (fn-scjs-versionsp o)
@@ -336,7 +319,7 @@
            (fn-own-view-version (fn-own-view o))))
   :hints (("Goal" :in-theory (e/d (fn-own-refresh)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-ctl-visible-state-of)))))
 
 (defthm fn-sjh-store-step-historyp
@@ -391,5 +374,4 @@
                             (o (fn-ocfg-owner (fn-ocfg-step oc (list :store (list :io operation result)) fn-arena))))
                  (:instance fn-scjs-ocfg-store-step-keeps-invp (ev (list :io operation result)))
                  (:instance fn-scjs-ocfg-store-step-keeps-versions (ev (list :io operation result)))
-                 (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc)) (ev (list :io operation result)))
-                 (:instance fn-oix-ocfg-step-keeps-view-indexed (event (list :store (list :io operation result))))))))
+                 (:instance fn-sjh-store-step-historyp (o (fn-ocfg-owner oc)) (ev (list :io operation result)))))))

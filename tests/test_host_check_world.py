@@ -112,6 +112,17 @@ class GeneratedNameTests(unittest.TestCase):
                             ':code-var c :recognizer famp)\n', encoding="utf-8")
             self.assertEqual(host_check.stobj_names(book), {"fam-code", "fam-kind", "famp"})
 
+    def test_a_def_generic_defines_its_exports_creator_and_recognizer(self):
+        # s-twins: books/payload-arena.lisp's def-generic exports fn-arena-count,
+        # which host/native/owner.lisp calls; its expansion names only obligations.
+        with tempfile.TemporaryDirectory() as directory:
+            book = Path(directory) / "g.lisp"
+            book.write_text('(in-package "ACL2")\n(def-generic gen :foundation impl '
+                            ':exports ((:read gen-count :logic gen$a-count) '
+                            '(:update gen-seal :logic gen$a-seal)))\n', encoding="utf-8")
+            names = host_check.stobj_names(book)
+            self.assertTrue({"gen-count", "gen-seal", "genp", "create-gen"} <= names, names)
+
 
 class TreeTests(unittest.TestCase):
     def test_the_images_worlds_define_every_named_counterpart(self):

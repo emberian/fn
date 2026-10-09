@@ -63,15 +63,13 @@
                      (fn-sf-frontier (fn-sn-files s))
                      (fn-ctl-visible-state-of (fn-node-acceptance (fn-sn-node s)) arts)
                      (fn-own-view-verdicts view)
-                     (fn-own-view-index view)
                      (fn-gidx-refresh (fn-own-view-group-index view) arts arts)
                      (fn-own-view-withdrawals view)
                      (fn-own-view-raw view)
                      (fn-own-view-withdrawn view)
                      (fn-sn-keyring-snapshots s)))))
   :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-scj-vvp fn-ctl-refresh-visible
-                                   fn-ctl-refresh-withdrawals fn-ctl-refresh-withdrawn
-                                   fn-midx-refresh)
+                                   fn-ctl-refresh-withdrawals fn-ctl-refresh-withdrawn)
                                   (fn-own-store-idlep fn-gidx-refresh fn-ctl-visible-articles
                                    fn-ctl-visible-add fn-ctl-articles-withdrawals fn-ctl-prepend
                                    fn-ctl-visible-state-of fn-own-view-make-visible)))))
@@ -96,17 +94,16 @@
                 (fn-own-store-idlep (fn-own-store o))
                 (fn-scj-joinp (fn-own-view o) fn-arena fn-cat)
                 (fn-scj-live-okp (fn-own-view o) fn-arena fn-cat)
-                (fn-scar-view-indexedp o)
                 (<= (nfix (fn-own-view-version (fn-own-view o)))
                     (len (fn-sf-records (fn-sn-files (fn-own-store o)))))
                 (fn-statep (fn-own-view-archive (fn-own-view (fn-own-refresh o)))))
            (fn-scj-live-okp (fn-own-view (fn-own-refresh o)) fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-scj-live-okp fn-scr-live-catalogp fn-scr-fields-catalogp
                                    fn-scr-catalogp fn-scj-joinp fn-gidx-refresh
-                                   fn-gidx-pin-correspondencep fn-scar-view-indexedp)
+                                   fn-gidx-pin-correspondencep)
                                   (fn-own-refresh fn-own-store-idlep fn-scr-view-of
                                    fn-cat-view-articles fn-ctl-visible-state-of
-                                   fn-own-view-make-visible fn-midx-correspondencep
+                                   fn-own-view-make-visible
                                    fn-statep fn-gidx-build fn-cnx-freshp))
            :use ((:instance fn-scj-view-of-when-seqs-below
                             (version (fn-own-view-version (fn-own-view o))))
@@ -120,7 +117,7 @@
   (equal (fn-own-conns (fn-own-refresh o)) (fn-own-conns o))
   :hints (("Goal" :in-theory (e/d (fn-own-refresh)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-ctl-visible-state-of fn-own-view-make-visible)))))
 
 ; KEYSTONE (the refresh keeps the invariant with the catalog untouched).  A
@@ -133,7 +130,6 @@
   (let ((records (fn-sf-records (fn-sn-files (fn-own-store o))))
         (version (fn-own-view-version (fn-own-view o))))
     (implies (and (fn-scj-invp o fn-arena fn-cat)
-                  (fn-scar-view-indexedp o)
                   (true-listp records)
                   (natp version)
                   (<= version (len records))

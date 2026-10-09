@@ -8,9 +8,6 @@
 (defun fn-ocri-connp (conn)
   (declare (xargs :guard t))
   (and (fn-wire-statep (fn-own-conn-wire conn))
-       (fn-midx-correspondencep
-        (fn-own-conn-index conn)
-        (fn-state-articles (fn-own-conn-archive conn)))
        (fn-sn-verdict-listp (fn-own-conn-verdicts conn))))
 
 (defun fn-ocri-conns-p (conns)
@@ -22,10 +19,7 @@
 
 (defun fn-ocri-viewp (view)
   (declare (xargs :guard t))
-  (and (fn-midx-correspondencep
-        (fn-own-view-index view)
-        (fn-state-articles (fn-own-view-archive view)))
-       (fn-sn-verdict-listp (fn-own-view-verdicts view))))
+  (fn-sn-verdict-listp (fn-own-view-verdicts view)))
 
 (defun fn-ocri-relation (oc)
   (declare (xargs :guard t))
@@ -57,7 +51,7 @@
             :in-theory (e/d (fn-ocri-relation fn-ocri-connp)
                             (fn-ocri-found-conn-is-carried fn-ocl-relation
                              fn-ocri-viewp fn-ocri-conns-p fn-wire-statep
-                             fn-midx-correspondencep fn-sn-verdict-listp))))))
+                             fn-sn-verdict-listp))))))
 
 (local
  (defthm fn-ocri-missing-tls-read-is-read
@@ -113,7 +107,7 @@
              (fn-own-conn-frontier conn) (fn-own-conn-wire conn)
              session (fn-own-conn-archive conn)
              (fn-own-conn-config conn) (fn-own-conn-observation conn)
-             (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
+             (fn-own-conn-verdicts conn)
              (fn-own-conn-group-index conn) (fn-own-conn-control conn))))
   :hints (("Goal" :in-theory (enable fn-ocri-connp))))
 
@@ -145,7 +139,7 @@
              id version frontier
              (fn-wire-initial-state line-limit body-limit)
              session (fn-own-view-archive view) config observation
-             (fn-own-view-verdicts view) (fn-own-view-index view)
+             (fn-own-view-verdicts view)
              (fn-own-view-group-index view) (fn-own-view-control view))))
   :hints (("Goal"
            :use ((:instance fn-wire-initial-state-is-state))
@@ -177,7 +171,6 @@
                             fn-ocri-conns-p)
                            (fn-own-body-limit fn-ocri-connp
                             fn-ocri-viewp fn-wire-statep
-                            fn-midx-correspondencep
                             fn-sn-verdict-listp)))))
 
 (defthm fn-ocri-own-open-keeps-view
@@ -242,7 +235,7 @@
                              fn-own-read-survivor-keeps-historical-fields
                              fn-own-read-survivor-wire-is-the-steps
                              fn-ocri-served-step-keeps-valid-wire
-                             fn-wire-statep fn-midx-correspondencep
+                             fn-wire-statep
                              fn-sn-verdict-listp fn-own-served-conn
                              fn-own-conn-live-session))))))
 
@@ -274,7 +267,7 @@
                             fn-ocri-read-survivor-is-a-reader-pin
                             fn-ocl-own-read-survivor-is-replacement
                             fn-ocl-own-read-nonsurvivor-is-removal
-                            fn-wire-statep fn-midx-correspondencep
+                            fn-wire-statep
                             fn-sn-verdict-listp)))))
 
 (defthm fn-ocri-own-read-keeps-view

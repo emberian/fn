@@ -64,7 +64,7 @@
          (acc (fn-node-acceptance (fn-sn-node st))))
     (list (if (fn-own-store-idlep st) t nil)
           (consp (fn-state-articles acc))
-          (scjo-acc-rowsp acc (scjo-loaded o (fn-own-view-index (fn-own-view o))))
+          (scjo-acc-rowsp acc (scjo-loaded o (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view o))))))
           (scjo-acc-rowsp acc (scjo-loaded o (fn-midx-build nil))))))
 
 ;; 1. Every owner: idle, related, and the loaded catalog is related.
@@ -76,7 +76,7 @@
 
 ;; The numbers are the acceptance's, not merely consistent with each other:
 ;; two articles, and the second one's number in the shared group is 2.
-(defconst *scjo-after-c* (scjo-loaded *ocr-after* (fn-own-view-index (fn-own-view *ocr-after*))))
+(defconst *scjo-after-c* (scjo-loaded *ocr-after* (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view *ocr-after*))))))
 (assert-event (equal (len *scjo-after-c*) 2))
 (assert-event (equal (fn-article-memberships (car (fn-state-articles (fn-node-acceptance
                                                                     (fn-sn-node (fn-own-store *ocr-after*))))))

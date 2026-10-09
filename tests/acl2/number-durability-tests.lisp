@@ -69,7 +69,7 @@
   ; A view at VERSION whose archive and raw list are RAW-EVENTS' replay
   ; (the live history's prefix of that length, for an honest view).
   (let ((acc (fn-node-acceptance (fn-cst-replay-node *ndt-configs* raw-events *ndt-f*))))
-    (fn-own-view-make-visible version *ndt-f* (fn-ctl-visible-state acc nil nil) nil nil nil nil
+    (fn-own-view-make-visible version *ndt-f* (fn-ctl-visible-state acc nil nil) nil nil nil
                               (fn-state-articles acc) nil nil)))
 (defun ndt-owner (live view)
   (fn-own-make (fn-sn-open-state (fn-cpo-open-observed *ndt-configs* *ndt-f* live))

@@ -20,7 +20,7 @@
                 (fn-scr-post-step ps archive nil nil config old now event 0 fn-arena fn-cat))
                expected)
         (equal (fn-post-result-effects
-                (fn-pix-post-step-pinned ps archive nil nil config old now event fn-arena))
+                (fn-nntp-post-step-pinned ps archive nil nil config old now event fn-arena))
                expected)
         ; MUTATION: the old pinned-reading response differs on both routes.
         (not (equal (fn-nntp-result-effects

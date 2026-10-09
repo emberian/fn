@@ -326,20 +326,7 @@ if [ -n "$STACK_KIB" ]; then
     {
         echo '#!/bin/sh'
         sed -n '/^# BEGIN fn_decide_heap/,/^# END fn_decide_heap/p' packaging/fn
-        cat <<'PRELUDE'
-fn_decide_command_heap() {
-    shift
-    fn_decide_heap "$0" "$@"
-}
-if [ -z "${SBCL_USER_ARGS:-}" ] && [ "${1:-}" = --fn ] && [ "${2:-}" != heap ]; then
-    if [ -n "${FN_TEST_HEAP_MB:-}" ]; then
-        SBCL_USER_ARGS="--dynamic-space-size $FN_TEST_HEAP_MB"
-        export SBCL_USER_ARGS
-    else
-        fn_decide_command_heap "$@"
-    fi
-fi
-PRELUDE
+        cat packaging/launcher-decide.sh
         sed 1d "$IMAGE"
     } > "$IMAGE.decide" && chmod 755 "$IMAGE.decide" && mv "$IMAGE.decide" "$IMAGE" || {
         echo "build_native_host: could not splice the heap decision into the launcher" >&2; exit 1; }

@@ -424,7 +424,7 @@
 
 (local
  (defthm fn-octl-over-range-indexed-effects-true-listp
-   (true-listp (fn-nntp-result-effects (fn-nntp-over-range-indexed session buckets trie token legacyp fn-arena)))
+   (true-listp (fn-nntp-result-effects (fn-nntp-over-range-indexed session buckets arts token legacyp fn-arena)))
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-nntp-over-range-indexed fn-nntp-single fn-nntp-multi
                                     fn-nntp-multi-octets fn-nntp-make-result)
@@ -435,14 +435,6 @@
    (true-listp (fn-nntp-result-effects (fn-gidx-listgroup-command session archive buckets args)))
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-gidx-listgroup-command fn-nntp-single fn-nntp-multi
-                                    fn-nntp-multi-octets fn-nntp-make-result)
-                                   (fn-nntp-result-effects))))))
-
-(local
- (defthm fn-octl-msgid-retrieval-indexed-effects-true-listp
-   (true-listp (fn-nntp-result-effects (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena)))
-   :hints (("Goal" :do-not-induct t
-                   :in-theory (e/d (fn-nntp-msgid-retrieval-indexed fn-nntp-single fn-nntp-multi
                                     fn-nntp-multi-octets fn-nntp-make-result)
                                    (fn-nntp-result-effects))))))
 
@@ -486,15 +478,15 @@
                    :in-theory (e/d (fn-nntp-control-hdr-response fn-nntp-single
                                     fn-nntp-multi fn-nntp-make-result)
                                    (fn-nntp-result-effects fn-nntp-control-cleanp
-                                    fn-ctl-served-held fn-ctl-control-item
-                                    fn-ctl-served-status fn-nntp-hdr-line
+                                    fn-ctl-find-held fn-ctl-control-item
+                                    fn-ctl-control-status fn-nntp-hdr-line
                                     fn-nntp-string-octets fn-nntp-hdr-initial
                                     fn-nntp-stuff-lines fn-nntp-crlf
                                     fn-ctl-target-octets fn-nntp-decimal-field))))))
 
 (local
  (defthm fn-octl-nntp-over-range-served-effects-true-listp
-   (true-listp (fn-nntp-result-effects (fn-nntp-over-range-served session buckets trie token legacyp server fn-arena)))
+   (true-listp (fn-nntp-result-effects (fn-nntp-over-range-served session buckets arts token legacyp server fn-arena)))
    :hints (("Goal" :do-not-induct t
                    :in-theory (e/d (fn-nntp-over-range-served fn-nntp-single fn-nntp-multi
                                     fn-nntp-multi-octets fn-nntp-make-result)
@@ -547,7 +539,7 @@
                   :in-theory (e/d (fn-nntp-archive-command-pinned)
                                   (fn-nntp-result-effects fn-nntp-archive-command
                                    fn-nntp-withdrawn-reply fn-gidx-list-counts-command
-                                   fn-nntp-msgid-retrieval-indexed fn-gidx-listgroup-command
+                                   fn-nntp-msgid-retrieval fn-gidx-listgroup-command
                                    fn-nntp-over-range-indexed fn-nntp-verdict-hdr-response
                                    fn-nntp-over-range-served fn-nntp-over-current-served
                                    fn-nntp-over-msgid-served fn-nntp-list-overview-fmt-served
@@ -686,7 +678,7 @@
                             fn-served-step fn-own-conn-live-session
                             fn-own-conn-wire fn-own-conn-archive fn-own-conn-config
                             fn-own-conn-observation fn-own-conn-verdicts
-                            fn-own-conn-index fn-own-conn-group-index
+                            fn-own-conn-group-index
                             fn-own-conn-control
                             fn-own-conn-session fn-own-find-conn
                             fn-wire-feed-byte fn-wire-feed-proper fn-wire-statep
@@ -705,12 +697,9 @@
   (implies (or (fn-own-conn-group-index conn)
                (and (fn-own-conn-control conn)
                     (not (consp (fn-state-articles (fn-own-conn-archive conn))))))
-           (and (equal (fn-gidx-pin-control
-                        (fn-served-conn-pinned-index (fn-octl-served-conn o conn)))
-                       (fn-own-conn-control conn))
-                (equal (fn-gidx-pin-trie
-                        (fn-served-conn-pinned-index (fn-octl-served-conn o conn)))
-                       (fn-own-conn-index conn))))
+           (equal (fn-gidx-pin-control
+                   (fn-served-conn-pinned-index (fn-octl-served-conn o conn)))
+                  (fn-own-conn-control conn)))
   :hints (("Goal" :in-theory (enable fn-served-conn-pinned-index
                                      fn-own-served-conn))))
 
@@ -731,15 +720,11 @@
              (and (equal (fn-state-articles (fn-own-conn-archive conn))
                          (fn-ctl-visible-articles raw ws (fn-own-conn-verdicts conn)))
                   (equal (fn-ctl-pin-withdrawn control)
-                         (fn-ctl-withdrawn-articles raw ws (fn-own-conn-verdicts conn)))
-                  (fn-midx-correspondencep (fn-own-conn-index conn)
-                                           (fn-state-articles
-                                            (fn-own-conn-archive conn))))))
+                         (fn-ctl-withdrawn-articles raw ws (fn-own-conn-verdicts conn))))))
   :hints (("Goal" :in-theory (e/d (fn-own-relation fn-own-control-okp fn-own-conn-okp)
                                   (fn-own-prefix-archive fn-ctl-visible-articles
                                    fn-ctl-withdrawn-articles fn-ctl-subseq-diff
-                                   fn-own-conn-boundedp fn-own-view-okp fn-own-conn-control
-                                   fn-midx-correspondencep))
+                                   fn-own-conn-boundedp fn-own-view-okp fn-own-conn-control))
            :use ((:instance fn-own-find-conn-okp
                             (conns (fn-own-conns o))
                             (groups (fn-sn-groups (fn-own-store o)))
@@ -752,7 +737,7 @@
 ;; view holds no article at all, which has no buckets (two signed cancels
 ;; naming each other withdraw both; tests/test_native_control_across_peers.py
 ;; test_a_view_with_every_article_withdrawn).  Before PKT-443 such a view was
-;; served from the bare trie and answered `430 no article with that
+;; served without buckets and answered `430 no article with that
 ;; message-id'.
 (defthm fn-own-read-of-a-withdrawn-article-answers-430-withdrawn
   (let* ((s (fn-own-store o))
@@ -852,12 +837,12 @@
                             fn-nntp-archive-command-pinned
                             fn-served-conn-pinned-index
                             fn-ctl-withdrawn-articles fn-ctl-visible-articles
-                            fn-own-prefix-archive fn-midx-correspondencep
+                            fn-own-prefix-archive
                             fn-own-relation fn-find-article
                             fn-own-read fn-served-step fn-own-conn-live-session
                             fn-own-conn-wire fn-own-conn-archive fn-own-conn-config
                             fn-own-conn-observation fn-own-conn-verdicts
-                            fn-own-conn-index fn-own-conn-group-index
+                            fn-own-conn-group-index
                             fn-own-conn-control fn-own-conn-session fn-own-find-conn
                             fn-wire-feed-byte fn-wire-feed-proper fn-wire-statep
                             fn-auth-sessionp fn-peer-sessionp fn-post-sessionp

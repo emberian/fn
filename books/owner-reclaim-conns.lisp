@@ -172,7 +172,7 @@
                   :in-theory (e/d (fn-ock-recover-full fn-ock-install)
                                   (fn-orcp-rebuild fn-ocl-relation fn-cpr-replay
                                    fn-cpo-open-observed fn-own-configure fn-own-start
-                                   fn-oag-post-config fn-scar-view-indexedp)))))
+                                   fn-oag-post-config)))))
 
 ;; The admitted swap's rebuild installed.
 (defthm fn-orcn-admitted-swap-rebuild-installed

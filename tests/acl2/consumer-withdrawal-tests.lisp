@@ -55,7 +55,7 @@
 
 ; The owner O with its view's withdrawal records WS and withdrawn list N.
 (defun cwdt-with-withdrawals (o ws n)
-  (update-nth 1 (update-nth 8 n (update-nth 6 ws (fn-own-view o))) o))
+  (update-nth 1 (update-nth 7 n (update-nth 5 ws (fn-own-view o))) o))
 
 (defconst *cwdt-o* (fn-own-start *colt-after-article* 2))
 (defconst *cwdt-target* (fn-make-article "<poll@fn.test>" 0 '("fn.test") nil t nil))

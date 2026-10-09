@@ -68,8 +68,6 @@
   '((view-articles (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat)))
     (statep (fn-statep archive))
     (pin-correspondence (fn-gidx-pin-correspondencep index archive))
-    (trie-correspondence (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                                  (fn-state-articles archive)))
     (fresh (fn-cnx-freshp fn-cat))
     (columns (fn-scol-okp fn-arena fn-cat))))
 
@@ -115,8 +113,8 @@
 ; -----------------------------------------------------------------------------
 ; Keyword exclusivity (books/protocol-dispatch.lisp's, restated locally), the
 ; two preludes vanish outside their rows, and books/served-catalog-dispatch.
-; lisp's local lemmas restated: the pin's buckets and trie are the builds
-; under the correspondences, and a state's articles are an article list of
+; lisp's local lemmas restated: the pin's buckets are the build
+; under the correspondence, and a state's articles are an article list of
 ; its groups.
 
 (local
@@ -152,7 +150,7 @@
    :hints (("Goal" :in-theory (e/d (fn-rcompat-reply-cat)
                                    (fn-nntp-keywordp fn-nntp-xref-server fn-gidx-pinp
                                     fn-rcompat-retrieval-cat fn-rcompat-hdr-cat
-                                    fn-rcompat-retrieval-kind fn-gidx-pin-trie fn-rcompat-reply))))))
+                                    fn-rcompat-retrieval-kind fn-rcompat-reply))))))
 
 (local
  (defthm fn-proto-pin-buckets-are-built
@@ -160,18 +158,6 @@
             (equal (fn-gidx-pin-buckets index)
                    (fn-gidx-build (fn-state-articles archive))))
    :hints (("Goal" :in-theory (enable fn-gidx-pin-correspondencep)))))
-
-(local
- (defthm fn-proto-pin-trie-is-built
-   (implies (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles archive))
-            (equal (fn-gidx-pin-trie index)
-                   (fn-midx-build (fn-state-articles archive))))
-   :hints (("Goal" :in-theory (enable fn-midx-correspondencep)))))
-
-(local
- (defthm fn-proto-built-trie-corresponds
-   (fn-midx-correspondencep (fn-midx-build articles) articles)
-   :hints (("Goal" :in-theory (enable fn-midx-correspondencep)))))
 
 (local
  (defthm fn-proto-statep-article-listp
@@ -186,7 +172,7 @@
   '(fn-nntp-keywordp fn-nntp-keyword-tokenp fn-nntp-upcase-keyword
     fn-nntp-parse-range fn-nntp-range-okp fn-nntp-xref-server fn-gidx-pinp
     fn-rcompat-list-keywordp fn-nntp-message-id-tokenp fn-nntp-number-tokenp
-    fn-nntp-printable-tokenp fn-nntp-token-string fn-gidx-pin-buckets fn-gidx-pin-trie
+    fn-nntp-printable-tokenp fn-nntp-token-string fn-gidx-pin-buckets 
     fn-rcompat-reply fn-nntp-xref-reply fn-gidx-list-counts-command
     fn-rcompat-reply-cat fn-nntp-number-withdrawn-p-cat
     fn-nntp-number-withdrawn-p fn-nntp-msgid-withdrawn-p
@@ -195,8 +181,8 @@
     fn-nntp-verdict-hdr-response-cat
     fn-nntp-control-hdr-response fn-nntp-enrollment-hdr-response
     fn-nntp-msgid-retrieval-cat fn-nntp-number-retrieval-cat
-    fn-nntp-msgid-retrieval-indexed fn-nntp-msgid-retrieval fn-nntp-number-retrieval
-    fn-cat-view-articles fn-midx-correspondencep fn-gidx-pin-correspondencep
+    fn-nntp-msgid-retrieval fn-nntp-number-retrieval
+    fn-cat-view-articles fn-gidx-pin-correspondencep
     fn-nntp-list-counts-command-cat fn-nntp-list-counts-command
     fn-nntp-listgroup-command-cat fn-nntp-listgroup-command
     fn-nntp-over-range-cat fn-nntp-over-range fn-nntp-xover-range
@@ -389,8 +375,6 @@
                        (fn-cat-view-articles v fn-arena fn-cat))
                 (fn-statep archive)
                 (fn-gidx-pin-correspondencep index archive)
-                (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
                 (fn-cnx-freshp fn-cat)
                 (fn-scol-okp fn-arena fn-cat))
            (and (equal (fn-nntp-result-session

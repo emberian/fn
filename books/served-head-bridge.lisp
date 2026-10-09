@@ -225,9 +225,7 @@
                   (equal (fn-served-conn-pinned (fn-served-result-conn p))
                          (fn-served-conn-pinned conn))
                   (equal (fn-served-conn-archive (fn-served-result-conn p))
-                         (fn-served-conn-archive conn))
-                  (equal (fn-served-conn-index (fn-served-result-conn p))
-                         (fn-served-conn-index conn)))))
+                         (fn-served-conn-archive conn)))))
   :hints (("Goal" :in-theory (e/d (fn-served-dispatch fn-served-dispatch-core
                                   fn-shd-head-keeps-the-pinned-view-by-definition)
                                  (fn-auth-step-pinned fn-post-result-submission
@@ -235,7 +233,7 @@
                                   fn-post-offeredp fn-served-advance-eventp
                                   fn-served-make-result fn-served-make-conn-live
                                   fn-served-conn-session fn-served-conn-pinned
-                                  fn-served-conn-archive fn-served-conn-index
+                                  fn-served-conn-archive 
                                   fn-served-result-conn fn-served-result-effects
                                   fn-wire-begin-article-with-line-limit))))))
 
@@ -243,7 +241,7 @@
  (defthm fn-shd-retrieval-has-no-offer
    (not (fn-post-offeredp
          (fn-nntp-result-effects
-          (fn-rcompat-retrieval session archive trie kind args server fn-arena))))
+          (fn-rcompat-retrieval session archive arts kind args server fn-arena))))
    :hints (("Goal" :in-theory
             (e/d (fn-rcompat-retrieval fn-rcompat-article-reply
                   fn-nntp-article-response fn-post-offeredp fn-nntp-reply-effect)
@@ -254,7 +252,7 @@
  (defthm fn-shd-retrieval-effects-true-listp
    (true-listp
     (fn-nntp-result-effects
-     (fn-rcompat-retrieval session archive trie kind args server fn-arena)))
+     (fn-rcompat-retrieval session archive arts kind args server fn-arena)))
    :hints (("Goal" :in-theory
             (e/d (fn-rcompat-retrieval fn-rcompat-article-reply
                   fn-nntp-article-response fn-nntp-single fn-nntp-multi
@@ -282,7 +280,7 @@
 (local
  (defthm fn-shd-overlong-head-retrieval-is-syntax
   (implies (not (fn-nntp-command-arguments-at-mostp (list *fn-shd-head-keyword* token)))
-   (equal (fn-rcompat-retrieval session archive trie :head (list token) server fn-arena)
+   (equal (fn-rcompat-retrieval session archive arts :head (list token) server fn-arena)
           (fn-nntp-single session (fn-proto-text * :syntax))))
   :hints (("Goal" :use fn-shd-overlong-head-token-is-neither-number-nor-message-id
    :in-theory (e/d (fn-rcompat-retrieval)
@@ -297,17 +295,17 @@
                 (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token))
                 (not (fn-nntp-command-arguments-at-mostp (list *fn-shd-head-keyword* token))))
    (equal (fn-nntp-step-pinned session archive index verdicts env (list :command line) fn-arena)
-          (fn-rcompat-retrieval session archive (fn-gidx-pin-trie index) :head
+          (fn-rcompat-retrieval session archive (fn-state-articles archive) :head
                                 (list token) (fn-nntp-xref-server env) fn-arena)))
   :hints (("Goal" :use (:instance fn-shd-overlong-head-retrieval-is-syntax
-    (trie (fn-gidx-pin-trie index)) (server (fn-nntp-xref-server env)))
+    (arts (fn-state-articles archive)) (server (fn-nntp-xref-server env)))
    :in-theory (e/d (fn-nntp-step-pinned)
     (fn-nntp-sessionp fn-nntp-session-openp fn-nntp-command-inputp
      fn-nntp-tokenize fn-nntp-command-arguments-at-mostp fn-nntp-single
      fn-rcompat-retrieval fn-nntp-command-pinned))))))
 
 (local
- (defthm fn-shd-reader-step-is-served-retrieval (implies (and (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) (fn-nntp-xref-server env) (fn-gidx-pinp index) (not (fn-nntp-number-withdrawn-p session archive index token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p index token)))) (equal (fn-nntp-step-pinned session archive index verdicts env (list :command line) fn-arena) (fn-rcompat-retrieval session archive (fn-gidx-pin-trie index) :head (list token) (fn-nntp-xref-server env) fn-arena))) :rule-classes nil :hints (("Goal" :use (fn-shd-head-kind fn-shd-command-line-reaches-the-reader-dispatch-by-definition fn-shd-command-head-reaches-the-pinned-archive-by-definition (:instance fn-nntp-archive-command-pinned-article-head-is-served (keyword *fn-shd-head-keyword*) (args (list token))) fn-shd-overlong-reader-step-is-retrieval) :in-theory (union-theories (quote (car-cons cdr-cons)) (theory (quote minimal-theory))) :cases ((fn-nntp-command-arguments-at-mostp (list *fn-shd-head-keyword* token)))))))
+ (defthm fn-shd-reader-step-is-served-retrieval (implies (and (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) (fn-nntp-xref-server env) (fn-gidx-pinp index) (not (fn-nntp-number-withdrawn-p session archive index token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p archive index token)))) (equal (fn-nntp-step-pinned session archive index verdicts env (list :command line) fn-arena) (fn-rcompat-retrieval session archive (fn-state-articles archive) :head (list token) (fn-nntp-xref-server env) fn-arena))) :rule-classes nil :hints (("Goal" :use (fn-shd-head-kind fn-shd-command-line-reaches-the-reader-dispatch-by-definition fn-shd-command-head-reaches-the-pinned-archive-by-definition (:instance fn-nntp-archive-command-pinned-article-head-is-served (keyword *fn-shd-head-keyword*) (args (list token))) fn-shd-overlong-reader-step-is-retrieval) :in-theory (union-theories (quote (car-cons cdr-cons)) (theory (quote minimal-theory))) :cases ((fn-nntp-command-arguments-at-mostp (list *fn-shd-head-keyword* token)))))))
 
 
 (local
@@ -343,19 +341,19 @@
                                    fn-post-session-base fn-nntp-tokenize))))))
 
 (local
- (defthm fn-shd-post-is-served-retrieval (let* ((session (fn-post-session-base ps)) (env (fn-post-reader-env config observation)) (server (fn-nntp-xref-server env)) (r (fn-rcompat-retrieval session archive (fn-gidx-pin-trie index) :head (list token) server fn-arena)) (p (fn-nntp-post-step-pinned ps archive index verdicts config observation injection (list :command line) fn-arena))) (implies (and (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) server (fn-gidx-pinp index) (not (fn-nntp-number-withdrawn-p session archive index token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p index token)))) (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r)) (null (fn-post-result-submission p)) (equal (fn-post-session-base (fn-post-result-session p)) (fn-nntp-result-session r))))) :rule-classes nil :hints (("Goal" :use ((:instance fn-shd-reader-step-is-served-retrieval (session (fn-post-session-base ps)) (env (fn-post-reader-env config observation))) (:instance fn-shd-post-delegates-a-head-without-offer-by-definition) (:instance fn-shd-retrieval-has-no-offer (session (fn-post-session-base ps)) (trie (fn-gidx-pin-trie index)) (kind :head) (args (list token)) (server (fn-nntp-xref-server (fn-post-reader-env config observation))))) :in-theory (theory (quote minimal-theory))))))
+ (defthm fn-shd-post-is-served-retrieval (let* ((session (fn-post-session-base ps)) (env (fn-post-reader-env config observation)) (server (fn-nntp-xref-server env)) (r (fn-rcompat-retrieval session archive (fn-state-articles archive) :head (list token) server fn-arena)) (p (fn-nntp-post-step-pinned ps archive index verdicts config observation injection (list :command line) fn-arena))) (implies (and (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) server (fn-gidx-pinp index) (not (fn-nntp-number-withdrawn-p session archive index token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p archive index token)))) (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r)) (null (fn-post-result-submission p)) (equal (fn-post-session-base (fn-post-result-session p)) (fn-nntp-result-session r))))) :rule-classes nil :hints (("Goal" :use ((:instance fn-shd-reader-step-is-served-retrieval (session (fn-post-session-base ps)) (env (fn-post-reader-env config observation))) (:instance fn-shd-post-delegates-a-head-without-offer-by-definition) (:instance fn-shd-retrieval-has-no-offer (session (fn-post-session-base ps)) (arts (fn-state-articles archive)) (kind :head) (args (list token)) (server (fn-nntp-xref-server (fn-post-reader-env config observation))))) :in-theory (theory (quote minimal-theory))))))
 
 
 (local
- (defthm fn-shd-peer-is-served-retrieval (let* ((ps (fn-peer-session-base peer)) (session (fn-post-session-base ps)) (env (fn-post-reader-env config observation)) (server (fn-nntp-xref-server env)) (r (fn-rcompat-retrieval session archive (fn-gidx-pin-trie index) :head (list token) server fn-arena)) (p (fn-peer-step-pinned peer archive index verdicts config observation injection (list :command line) fn-arena))) (implies (and (fn-peer-sessionp peer) (null (fn-peer-session-peer peer)) (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) server (fn-gidx-pinp index) (not (fn-nntp-number-withdrawn-p session archive index token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p index token)))) (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r)) (null (fn-post-result-submission p)) (equal (fn-post-session-base (fn-peer-session-base (fn-post-result-session p))) (fn-nntp-result-session r))))) :rule-classes nil :hints (("Goal" :use ((:instance fn-shd-post-is-served-retrieval (ps (fn-peer-session-base peer))) (:instance fn-shd-peer-reader-delegates-to-post-by-definition (ps peer) (event (list :command line)))) :in-theory (theory (quote minimal-theory))))))
+ (defthm fn-shd-peer-is-served-retrieval (let* ((ps (fn-peer-session-base peer)) (session (fn-post-session-base ps)) (env (fn-post-reader-env config observation)) (server (fn-nntp-xref-server env)) (r (fn-rcompat-retrieval session archive (fn-state-articles archive) :head (list token) server fn-arena)) (p (fn-peer-step-pinned peer archive index verdicts config observation injection (list :command line) fn-arena))) (implies (and (fn-peer-sessionp peer) (null (fn-peer-session-peer peer)) (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) server (fn-gidx-pinp index) (not (fn-nntp-number-withdrawn-p session archive index token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p archive index token)))) (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r)) (null (fn-post-result-submission p)) (equal (fn-post-session-base (fn-peer-session-base (fn-post-result-session p))) (fn-nntp-result-session r))))) :rule-classes nil :hints (("Goal" :use ((:instance fn-shd-post-is-served-retrieval (ps (fn-peer-session-base peer))) (:instance fn-shd-peer-reader-delegates-to-post-by-definition (ps peer) (event (list :command line)))) :in-theory (theory (quote minimal-theory))))))
 
 
 (local
- (defthm fn-shd-auth-is-served-retrieval (let* ((peer (fn-auth-view-session as config)) (viewarchive (fn-auth-view-archive as config archive)) (viewindex (fn-auth-view-index as config archive index)) (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive)) (ps (fn-peer-session-base peer)) (session (fn-post-session-base ps)) (env (fn-post-reader-env viewconfig observation)) (server (fn-nntp-xref-server env)) (r (fn-rcompat-retrieval session viewarchive (fn-gidx-pin-trie viewindex) :head (list token) server fn-arena)) (p (fn-auth-step-pinned as archive index verdicts config observation injection (list :command line) fn-arena))) (implies (and (fn-auth-sessionp as) (not (fn-auth-session-handshakingp as)) (not (fn-auth-sasl-waitingp as)) (or (not (fn-auth-config-requiredp (fn-auth-session-config as))) (fn-auth-session-subject as)) (fn-peer-sessionp peer) (null (fn-peer-session-peer peer)) (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) server (fn-gidx-pinp viewindex) (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token)))) (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r)) (null (fn-post-result-submission p)) (equal (fn-post-session-base (fn-peer-session-base (fn-auth-session-base (fn-post-result-session p)))) (fn-nntp-result-session r))))) :rule-classes nil :hints (("Goal" :use ((:instance fn-shd-peer-is-served-retrieval (peer (fn-auth-view-session as config)) (archive (fn-auth-view-archive as config archive)) (index (fn-auth-view-index as config archive index)) (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive))) fn-shd-auth-reader-delegates-an-authorized-head-by-definition) :in-theory (theory (quote minimal-theory))))))
+ (defthm fn-shd-auth-is-served-retrieval (let* ((peer (fn-auth-view-session as config)) (viewarchive (fn-auth-view-archive as config archive)) (viewindex (fn-auth-view-index as config archive index)) (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive)) (ps (fn-peer-session-base peer)) (session (fn-post-session-base ps)) (env (fn-post-reader-env viewconfig observation)) (server (fn-nntp-xref-server env)) (r (fn-rcompat-retrieval session viewarchive (fn-state-articles viewarchive) :head (list token) server fn-arena)) (p (fn-auth-step-pinned as archive index verdicts config observation injection (list :command line) fn-arena))) (implies (and (fn-auth-sessionp as) (not (fn-auth-session-handshakingp as)) (not (fn-auth-sasl-waitingp as)) (or (not (fn-auth-config-requiredp (fn-auth-session-config as))) (fn-auth-session-subject as)) (fn-peer-sessionp peer) (null (fn-peer-session-peer peer)) (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) server (fn-gidx-pinp viewindex) (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))) (and (equal (fn-post-result-effects p) (fn-nntp-result-effects r)) (null (fn-post-result-submission p)) (equal (fn-post-session-base (fn-peer-session-base (fn-auth-session-base (fn-post-result-session p)))) (fn-nntp-result-session r))))) :rule-classes nil :hints (("Goal" :use ((:instance fn-shd-peer-is-served-retrieval (peer (fn-auth-view-session as config)) (archive (fn-auth-view-archive as config archive)) (index (fn-auth-view-index as config archive index)) (config (fn-auth-view-config as (fn-auth-moderation-config as config) archive))) fn-shd-auth-reader-delegates-an-authorized-head-by-definition) :in-theory (theory (quote minimal-theory))))))
 
 
 (local
- (defthm fn-shd-dispatch-is-served-retrieval (let* ((as (fn-served-conn-session conn)) (config (fn-served-conn-config conn)) (archive (fn-served-conn-archive conn)) (index (fn-served-conn-pinned-index conn)) (observation (fn-served-conn-observation conn)) (peer (fn-auth-view-session as config)) (viewarchive (fn-auth-view-archive as config archive)) (viewindex (fn-auth-view-index as config archive index)) (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive)) (ps (fn-peer-session-base peer)) (session (fn-post-session-base ps)) (env (fn-post-reader-env viewconfig observation)) (server (fn-nntp-xref-server env)) (r (fn-rcompat-retrieval session viewarchive (fn-gidx-pin-trie viewindex) :head (list token) server fn-arena)) (p (fn-served-dispatch conn (list :command line) fn-arena))) (implies (and (fn-auth-sessionp as) (not (fn-auth-session-handshakingp as)) (not (fn-auth-sasl-waitingp as)) (or (not (fn-auth-config-requiredp (fn-auth-session-config as))) (fn-auth-session-subject as)) (fn-peer-sessionp peer) (null (fn-peer-session-peer peer)) (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) server (fn-gidx-pinp viewindex) (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token)))) (and (equal (fn-served-result-effects p) (fn-nntp-result-effects r)) (equal (fn-post-session-base (fn-peer-session-base (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p))))) (fn-nntp-result-session r)) (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn)) (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)) (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn))))) :rule-classes nil :hints (("Goal" :use ((:instance fn-shd-auth-is-served-retrieval (as (fn-served-conn-session conn)) (config (fn-served-conn-config conn)) (archive (fn-served-conn-archive conn)) (index (fn-served-conn-pinned-index conn)) (verdicts (fn-served-conn-verdicts conn)) (observation (fn-served-conn-observation conn)) (injection (fn-served-conn-injection conn))) fn-shd-served-reader-dispatch-is-the-auth-answer-by-definition (:instance fn-shd-retrieval-effects-true-listp (session (fn-post-session-base (fn-peer-session-base (fn-auth-view-session (fn-served-conn-session conn) (fn-served-conn-config conn))))) (archive (fn-auth-view-archive (fn-served-conn-session conn) (fn-served-conn-config conn) (fn-served-conn-archive conn))) (trie (fn-gidx-pin-trie (fn-auth-view-index (fn-served-conn-session conn) (fn-served-conn-config conn) (fn-served-conn-archive conn) (fn-served-conn-pinned-index conn)))) (kind :head) (args (list token)) (server (fn-nntp-xref-server (fn-post-reader-env (fn-auth-view-config (fn-served-conn-session conn) (fn-auth-moderation-config (fn-served-conn-session conn) (fn-served-conn-config conn)) (fn-served-conn-archive conn)) (fn-served-conn-observation conn)))))) :in-theory (theory (quote minimal-theory))))))
+ (defthm fn-shd-dispatch-is-served-retrieval (let* ((as (fn-served-conn-session conn)) (config (fn-served-conn-config conn)) (archive (fn-served-conn-archive conn)) (index (fn-served-conn-pinned-index conn)) (observation (fn-served-conn-observation conn)) (peer (fn-auth-view-session as config)) (viewarchive (fn-auth-view-archive as config archive)) (viewindex (fn-auth-view-index as config archive index)) (viewconfig (fn-auth-view-config as (fn-auth-moderation-config as config) archive)) (ps (fn-peer-session-base peer)) (session (fn-post-session-base ps)) (env (fn-post-reader-env viewconfig observation)) (server (fn-nntp-xref-server env)) (r (fn-rcompat-retrieval session viewarchive (fn-state-articles viewarchive) :head (list token) server fn-arena)) (p (fn-served-dispatch conn (list :command line) fn-arena))) (implies (and (fn-auth-sessionp as) (not (fn-auth-session-handshakingp as)) (not (fn-auth-sasl-waitingp as)) (or (not (fn-auth-config-requiredp (fn-auth-session-config as))) (fn-auth-session-subject as)) (fn-peer-sessionp peer) (null (fn-peer-session-peer peer)) (fn-post-sessionp ps) (not (fn-post-session-awaiting ps)) (fn-nntp-sessionp session) (equal (fn-nntp-session-openp session) t) (fn-nntp-session-projected session) (fn-nntp-command-inputp line) (equal (fn-nntp-tokenize line) (list *fn-shd-head-keyword* token)) server (fn-gidx-pinp viewindex) (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token)) (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))) (and (equal (fn-served-result-effects p) (fn-nntp-result-effects r)) (equal (fn-post-session-base (fn-peer-session-base (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p))))) (fn-nntp-result-session r)) (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn)) (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn))))) :rule-classes nil :hints (("Goal" :use ((:instance fn-shd-auth-is-served-retrieval (as (fn-served-conn-session conn)) (config (fn-served-conn-config conn)) (archive (fn-served-conn-archive conn)) (index (fn-served-conn-pinned-index conn)) (verdicts (fn-served-conn-verdicts conn)) (observation (fn-served-conn-observation conn)) (injection (fn-served-conn-injection conn))) fn-shd-served-reader-dispatch-is-the-auth-answer-by-definition (:instance fn-shd-retrieval-effects-true-listp (session (fn-post-session-base (fn-peer-session-base (fn-auth-view-session (fn-served-conn-session conn) (fn-served-conn-config conn))))) (archive (fn-auth-view-archive (fn-served-conn-session conn) (fn-served-conn-config conn) (fn-served-conn-archive conn))) (arts (fn-state-articles (fn-auth-view-archive (fn-served-conn-session conn) (fn-served-conn-config conn) (fn-served-conn-archive conn)))) (kind :head) (args (list token)) (server (fn-nntp-xref-server (fn-post-reader-env (fn-auth-view-config (fn-served-conn-session conn) (fn-auth-moderation-config (fn-served-conn-session conn) (fn-served-conn-config conn)) (fn-served-conn-archive conn)) (fn-served-conn-observation conn)))))) :in-theory (theory (quote minimal-theory))))))
 
 (local
  (defthm fn-shd-head-dispatch-keeps-the-command-wire-by-definition
@@ -409,7 +407,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list token)
          server
@@ -444,7 +442,7 @@
         server
         (fn-gidx-pinp viewindex)
         (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-        (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token))))
+        (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token))))
       (and
         (equal (fn-served-result-effects p) (fn-nntp-result-effects r))
         (equal
@@ -453,8 +451,7 @@
               (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p)))))
           (fn-nntp-result-session r))
         (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
-        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn))
-        (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn)))))
+        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)))))
   :rule-classes
   nil
   :hints
@@ -483,13 +480,12 @@
              (fn-served-conn-session conn)
              (fn-served-conn-config conn)
              (fn-served-conn-archive conn)))
-         (trie
-           (fn-gidx-pin-trie
-             (fn-auth-view-index
+         (arts
+           (fn-state-articles
+             (fn-auth-view-archive
                (fn-served-conn-session conn)
                (fn-served-conn-config conn)
-               (fn-served-conn-archive conn)
-               (fn-served-conn-pinned-index conn))))
+               (fn-served-conn-archive conn))))
          (kind :head)
          (args (list token))
          (server
@@ -513,13 +509,12 @@
              (fn-served-conn-session conn)
              (fn-served-conn-config conn)
              (fn-served-conn-archive conn)))
-         (trie
-           (fn-gidx-pin-trie
-             (fn-auth-view-index
+         (arts
+           (fn-state-articles
+             (fn-auth-view-archive
                (fn-served-conn-session conn)
                (fn-served-conn-config conn)
-               (fn-served-conn-archive conn)
-               (fn-served-conn-pinned-index conn))))
+               (fn-served-conn-archive conn))))
          (kind :head)
          (args (list token))
          (server
@@ -636,7 +631,7 @@
   (let ((conn (fn-served-make-conn-live
    (fn-wire-make-state :command nil 0 nil nil 0 line-limit body-limit)
    auth-session archive-input config-input observation-input injection-input
-   verdicts-input index-input buckets-input control-input pinned-input live-input)))
+   verdicts-input buckets-input control-input pinned-input live-input)))
    (and (fn-served-conn-shapep conn)
         (equal (fn-served-conn-wire conn)
                (fn-wire-make-state :command nil 0 nil nil 0 line-limit body-limit))))
@@ -655,7 +650,6 @@
          observation-input
          injection-input
          verdicts-input
-         index-input
          buckets-input
          control-input
          pinned-input
@@ -677,7 +671,7 @@
        (fn-rcompat-retrieval
          session
          viewarchive
-         (fn-gidx-pin-trie viewindex)
+         (fn-state-articles viewarchive)
          :head
          (list token)
          server
@@ -702,7 +696,7 @@
         server
         (fn-gidx-pinp viewindex)
         (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-        (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewindex token))))
+        (not (and (fn-nntp-message-id-tokenp token) (fn-nntp-msgid-withdrawn-p viewarchive viewindex token))))
       (and
         (equal (fn-served-result-effects p) (fn-nntp-result-effects r))
         (equal
@@ -711,8 +705,7 @@
               (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p)))))
           (fn-nntp-result-session r))
         (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
-        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn))
-        (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn)))))
+        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)))))
   :rule-classes
   nil
   :hints
@@ -730,7 +723,6 @@
              observation-input
              injection-input
              verdicts-input
-             index-input
              buckets-input
              control-input
              pinned-input
@@ -747,7 +739,6 @@
                observation-input
                injection-input
                verdicts-input
-               index-input
                buckets-input
                control-input
                pinned-input
@@ -762,7 +753,6 @@
                observation-input
                injection-input
                verdicts-input
-               index-input
                buckets-input
                control-input
                pinned-input
@@ -779,7 +769,6 @@
              observation-input
              injection-input
              verdicts-input
-             index-input
              buckets-input
              control-input
              pinned-input

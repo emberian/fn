@@ -45,17 +45,7 @@
 ; an arbitrary configuration.
 (must-fail-checked
  (defthm sst-read-span-needs-ocl-relation
-   (implies (and (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                 (natp i) (natp end))
-            (equal (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)
-                   (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))))
-
-; Without (fn-scar-view-indexedp (fn-ocfg-owner oc)): the Message-ID view trie
-; premise the carried fold needs is dropped.
-(must-fail-checked
- (defthm sst-read-span-needs-view-indexedp
-   (implies (and (fn-ocl-relation oc)
-                 (natp i) (natp end))
+   (implies (and (natp i) (natp end))
             (equal (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))))
 
@@ -64,7 +54,6 @@
 (must-fail-checked
  (defthm sst-read-span-needs-natp-start
    (implies (and (fn-ocl-relation oc)
-                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (natp end))
             (equal (fn-scar-ocfg-read-span oc id i end fn-octets fn-arena)
                    (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))))

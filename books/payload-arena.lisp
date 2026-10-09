@@ -72,6 +72,7 @@
 
 (in-package "ACL2")
 (include-book "payload-arena-extent-logic")
+(include-book "def-representation-generic")
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
 ;; Its work is proof time no prover step counts (docs/proof-style.md
@@ -85,324 +86,15 @@
                           (:rewrite fn-arn-payload-listp-true-listp))))
 
 ; -----------------------------------------------------------------------------
-; The list-backed reference foundation.
-
-(defstobj fn-arena$l
-  (fn-arena$l-items :type t :initially nil)
-  :inline t)
-
-(defun fn-arena$l-wfp (fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l))
-  (fn-arn-payload-listp (fn-arena$l-items fn-arena$l)))
-
-(defun fn-arena$l-count (fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l :guard (fn-arena$l-wfp fn-arena$l)))
-  (len (fn-arena$l-items fn-arena$l)))
-
-(defun fn-arena$l-payload-len (h fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l
-                  :guard (and (fn-arena$l-wfp fn-arena$l)
-                              (natp h) (< h (fn-arena$l-count fn-arena$l)))))
-  (len (fn-oct-nth h (fn-arena$l-items fn-arena$l))))
-
-(defun fn-arena$l-get (h i fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l
-                  :guard (and (fn-arena$l-wfp fn-arena$l)
-                              (natp h) (< h (fn-arena$l-count fn-arena$l))
-                              (natp i) (< i (fn-arena$l-payload-len h fn-arena$l)))))
-  (fn-oct-nth i (fn-oct-nth h (fn-arena$l-items fn-arena$l))))
-
-(defun fn-arena$l-get-span (h at n fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l
-                  :guard (and (fn-arena$l-wfp fn-arena$l)
-                              (natp h) (< h (fn-arena$l-count fn-arena$l))
-                              (natp at) (natp n)
-                              (<= (+ at n) (fn-arena$l-payload-len h fn-arena$l)))
-                  :measure (nfix n)))
-  (if (zp n)
-      nil
-    (cons (fn-arena$l-get h at fn-arena$l)
-          (fn-arena$l-get-span h (+ 1 at) (1- n) fn-arena$l))))
-
-(defun fn-arena$l-payload (h fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l
-                  :guard (and (fn-arena$l-wfp fn-arena$l)
-                              (natp h) (< h (fn-arena$l-count fn-arena$l)))))
-  (fn-oct-nth h (fn-arena$l-items fn-arena$l)))
-
-(defun fn-arena$l-seal-list (xs fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l
-                  :guard (and (fn-arena$l-wfp fn-arena$l) (fn-cbor-octet-listp xs))))
-  (update-fn-arena$l-items (fn-oct-snoc (fn-arena$l-items fn-arena$l) xs) fn-arena$l))
-
-(defun fn-arena$l-seal-buffer (fn-octets fn-arena$l)
-  (declare (xargs :stobjs (fn-octets fn-arena$l) :guard (fn-arena$l-wfp fn-arena$l)))
-  (update-fn-arena$l-items (fn-oct-snoc (fn-arena$l-items fn-arena$l) (fn-octets-list fn-octets))
-                           fn-arena$l))
-
-(defun fn-arena$l-clear (fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l))
-  (update-fn-arena$l-items nil fn-arena$l))
-
-(defun fn-arena$l-seal-range (a b fn-octets fn-arena$l)
-  (declare (xargs :stobjs (fn-octets fn-arena$l)
-                  :guard (and (fn-arena$l-wfp fn-arena$l)
-                              (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))))
-  (update-fn-arena$l-items (fn-oct-snoc (fn-arena$l-items fn-arena$l)
-                                        (fn-oct-slice-list a b fn-octets))
-                           fn-arena$l))
-
-; The extent seal over the reference: the payload read through the host's
-; whole-payload realizer (A-DURABLE-EXTENT: it is fn-durable-octets of the
-; extent).
-; The node's arena is the attachment (books/payload-arena-extent.lisp), which
-; records the extent and holds no octets.
-(defun fn-arena$l-seal-extent (file eoff elen poff plen trailer fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l
-                  :guard (and (fn-arena$l-wfp fn-arena$l)
-                              (fn-arn-extent-guardp file eoff elen poff plen trailer))))
-  (update-fn-arena$l-items
-   (fn-oct-snoc (fn-arena$l-items fn-arena$l)
-                (fn-durable-realize-octets file eoff elen poff plen trailer))
-   fn-arena$l))
-
-; The reseat and the release over the reference (lane arena-offheap-3): the
-; handle's payload becomes the extent's octets, read through the realizer;
-; the release changes nothing.
-(defun fn-arena$l-reseat-extent (h file eoff elen poff plen trailer fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l
-                  :guard (and (fn-arena$l-wfp fn-arena$l)
-                              (natp h) (< h (fn-arena$l-count fn-arena$l))
-                              (fn-arn-extent-guardp file eoff elen poff plen trailer))))
-  (update-fn-arena$l-items
-   (fn-oct-update h (fn-durable-realize-octets file eoff elen poff plen trailer)
-                  (fn-arena$l-items fn-arena$l))
-   fn-arena$l))
-
-; The compressed seal and reseat over the reference (lane compression-extents,
-; PRF-326): the payload read through the host's compressed realizer
-; (A-DURABLE-LZ: it is fn-lzr-lz-value of the block's durable octets).
-(defun fn-arena$l-seal-lz-extent (file eoff elen poff plen trailer n dict fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l
-                  :guard (and (fn-arena$l-wfp fn-arena$l)
-                              (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))))
-  (update-fn-arena$l-items
-   (fn-oct-snoc (fn-arena$l-items fn-arena$l)
-                (fn-durable-realize-lz file eoff elen poff plen trailer n dict))
-   fn-arena$l))
-
-(defun fn-arena$l-reseat-lz-extent (h file eoff elen poff plen trailer n dict fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l
-                  :guard (and (fn-arena$l-wfp fn-arena$l)
-                              (natp h) (< h (fn-arena$l-count fn-arena$l))
-                              (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))))
-  (update-fn-arena$l-items
-   (fn-oct-update h (fn-durable-realize-lz file eoff elen poff plen trailer n dict)
-                  (fn-arena$l-items fn-arena$l))
-   fn-arena$l))
-
-(defun fn-arena$l-release (h fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l :guard (natp h))
-           (ignore h))
-  fn-arena$l)
-
-; The forget over the reference (lane arena-forget): the handle's payload
-; becomes the empty payload.
-(defun fn-arena$l-forget (h fn-arena$l)
-  (declare (xargs :stobjs fn-arena$l
-                  :guard (and (fn-arena$l-wfp fn-arena$l) (natp h))))
-  (if (< h (fn-arena$l-count fn-arena$l))
-      (update-fn-arena$l-items (fn-oct-update h nil (fn-arena$l-items fn-arena$l))
-                               fn-arena$l)
-    fn-arena$l))
-
-; The abstraction relation of the reference: the field is the logical value.
-(defun fn-arena$lcorr (fn-arena$l fn-arena$a)
-  (declare (xargs :stobjs fn-arena$l :verify-guards nil))
-  (and (fn-arn-payload-listp fn-arena$a)
-       (equal (fn-arena$l-items fn-arena$l) fn-arena$a)))
-
-; -----------------------------------------------------------------------------
-; The generic's obligations over its own foundation, each as
-; `defabsstobj-missing-events' states it.
-
-(defthm create-fn-arena{correspondence}
-  (fn-arena$lcorr (create-fn-arena$l) (create-fn-arena$a))
-  :rule-classes nil)
-
-(defthm create-fn-arena{preserved}
-  (fn-arena$ap (create-fn-arena$a))
-  :rule-classes nil)
-
-(defthm fn-arena-count{correspondence}
-  (implies (fn-arena$lcorr fn-arena$l fn-arena)
-           (equal (fn-arena$l-count fn-arena$l) (fn-arena$a-count fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-count{guard-thm}
-  (implies (fn-arena$lcorr fn-arena$l fn-arena)
-           (fn-arena$l-wfp fn-arena$l))
-  :rule-classes nil)
-
-(defthm fn-arena-payload-len{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena)))
-           (equal (fn-arena$l-payload-len h fn-arena$l) (fn-arena$a-payload-len h fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-payload-len{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena)))
-           (and (fn-arena$l-wfp fn-arena$l)
-                (natp h) (< h (fn-arena$l-count fn-arena$l))))
-  :rule-classes nil)
-
-(defthm fn-arena-get{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena))
-                (natp i) (< i (fn-arena$a-payload-len h fn-arena)))
-           (equal (fn-arena$l-get h i fn-arena$l) (fn-arena$a-get h i fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-get{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena))
-                (natp i) (< i (fn-arena$a-payload-len h fn-arena)))
-           (and (fn-arena$l-wfp fn-arena$l)
-                (natp h) (< h (fn-arena$l-count fn-arena$l))
-                (natp i) (< i (fn-arena$l-payload-len h fn-arena$l))))
-  :rule-classes nil)
-
-(defthm fn-arena-get-span{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena))
-                (natp at) (natp n)
-                (<= (+ at n) (fn-arena$a-payload-len h fn-arena)))
-           (equal (fn-arena$l-get-span h at n fn-arena$l)
-                  (fn-arena$a-get-span h at n fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :induct (fn-arena$a-get-span h at n fn-arena))))
-
-(defthm fn-arena-get-span{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena))
-                (natp at) (natp n)
-                (<= (+ at n) (fn-arena$a-payload-len h fn-arena)))
-           (and (fn-arena$l-wfp fn-arena$l)
-                (natp h) (< h (fn-arena$l-count fn-arena$l))
-                (natp at) (natp n)
-                (<= (+ at n) (fn-arena$l-payload-len h fn-arena$l))))
-  :rule-classes nil)
-
-(defthm fn-arena-payload{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena)))
-           (equal (fn-arena$l-payload h fn-arena$l) (fn-arena$a-payload h fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-payload{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena)))
-           (and (fn-arena$l-wfp fn-arena$l)
-                (natp h) (< h (fn-arena$l-count fn-arena$l))))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-list{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (fn-cbor-octet-listp xs))
-           (fn-arena$lcorr (fn-arena$l-seal-list xs fn-arena$l)
-                           (fn-arena$a-seal-list xs fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-list{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (fn-cbor-octet-listp xs))
-           (and (fn-arena$l-wfp fn-arena$l) (fn-cbor-octet-listp xs)))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-list{preserved}
-  (implies (and (fn-arena$ap fn-arena)
-                (fn-cbor-octet-listp xs))
-           (fn-arena$ap (fn-arena$a-seal-list xs fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-buffer{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (fn-octets-p fn-octets))
-           (fn-arena$lcorr (fn-arena$l-seal-buffer fn-octets fn-arena$l)
-                           (fn-arena$a-seal-buffer fn-octets fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-oct-octets-p-is-octet-listp))))
-
-(defthm fn-arena-seal-buffer{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (fn-octets-p fn-octets))
-           (fn-arena$l-wfp fn-arena$l))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-buffer{preserved}
-  (implies (and (fn-arena$ap fn-arena)
-                (fn-octets-p fn-octets))
-           (fn-arena$ap (fn-arena$a-seal-buffer fn-octets fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-oct-octets-p-is-octet-listp))))
-
-(defthm fn-arena-clear{correspondence}
-  (implies (fn-arena$lcorr fn-arena$l fn-arena)
-           (fn-arena$lcorr (fn-arena$l-clear fn-arena$l) (fn-arena$a-clear fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-clear{preserved}
-  (implies (fn-arena$ap fn-arena)
-           (fn-arena$ap (fn-arena$a-clear fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-range{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (fn-octets-p fn-octets)
-                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))
-           (fn-arena$lcorr (fn-arena$l-seal-range a b fn-octets fn-arena$l)
-                           (fn-arena$a-seal-range a b fn-octets fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-oct-octets-p-is-octet-listp)
-                                  (fn-oct-slice-list-is-take-nthcdr)))))
-
-(defthm fn-arena-seal-range{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (fn-octets-p fn-octets)
-                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))
-           (and (fn-arena$l-wfp fn-arena$l)
-                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets))))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-range{preserved}
-  (implies (and (fn-arena$ap fn-arena)
-                (fn-octets-p fn-octets)
-                (natp a) (natp b) (<= a b) (<= b (fn-octets-len fn-octets)))
-           (fn-arena$ap (fn-arena$a-seal-range a b fn-octets fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-oct-octets-p-is-octet-listp)
-                                  (fn-oct-slice-list-is-take-nthcdr)))))
-
-(defthm fn-arena-seal-extent{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (fn-arn-extent-guardp file eoff elen poff plen trailer))
-           (fn-arena$lcorr (fn-arena$l-seal-extent file eoff elen poff plen trailer fn-arena$l)
-                           (fn-arena$a-seal-extent file eoff elen poff plen trailer fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-extent{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (fn-arn-extent-guardp file eoff elen poff plen trailer))
-           (and (fn-arena$l-wfp fn-arena$l)
-                (fn-arn-extent-guardp file eoff elen poff plen trailer)))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-extent{preserved}
-  (implies (and (fn-arena$ap fn-arena)
-                (fn-arn-extent-guardp file eoff elen poff plen trailer))
-           (fn-arena$ap (fn-arena$a-seal-extent file eoff elen poff plen trailer fn-arena)))
-  :rule-classes nil)
+; The generic, derived (books/def-representation-generic.lisp).  The list
+; foundation `fn-arena$l', its abstraction relation, one :exec per export (the
+; export's :logic function over the field) and every {correspondence},
+; {guard-thm} and {preserved} obligation are the generator's; the
+; `defabsstobj' is `:attachable t', which is what lets (attach-stobj fn-arena
+; IMPL), evaluated before this book is included, replace the foundation and
+; the :exec functions while the :logic functions stay the implementation's own.
+; The one content of the model the generator reads is that each update keeps
+; the recognizer; the lemmas below say so for the writes of an octet list.
 
 (local
  (defthm fn-arn-payload-listp-of-update-nth
@@ -410,157 +102,42 @@
             (fn-arn-payload-listp (update-nth h v a)))
    :hints (("Goal" :in-theory (enable update-nth fn-arn-payload-listp)))))
 
-(defthm fn-arena-reseat-extent{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena))
-                (fn-arn-extent-guardp file eoff elen poff plen trailer))
-           (fn-arena$lcorr (fn-arena$l-reseat-extent h file eoff elen poff plen trailer fn-arena$l)
-                           (fn-arena$a-reseat-extent h file eoff elen poff plen trailer fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
+(local
+ (defthm fn-arn-slice-without-shape-hypotheses
+  (implies (and (fn-octets-p fn-octets) (<= b (fn-octets-len fn-octets)))
+           (fn-cbor-octet-listp (fn-oct-slice-list a b fn-octets)))
+  :hints (("Goal" :cases ((and (natp a) (natp b) (<= a b)))
+           :use ((:instance fn-arn-slice-list-octets))
+           :in-theory (e/d (fn-octets-p fn-octets-len fn-oct-slice-list)
+                            (fn-cbor-octet-listp fn-arn-slice-list-octets))))))
+(local
+ (defthm fn-arn-seal-range-without-shape-hypotheses
+  (implies (and (fn-arena$ap arena) (fn-octets-p fn-octets)
+                (<= b (fn-octets-len fn-octets)))
+           (fn-arena$ap (fn-arena$a-seal-range a b fn-octets arena)))
+  :hints (("Goal" :in-theory (enable fn-arena$a-seal-range)))))
 
-(defthm fn-arena-reseat-extent{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena))
-                (fn-arn-extent-guardp file eoff elen poff plen trailer))
-           (and (fn-arena$l-wfp fn-arena$l)
-                (natp h) (< h (fn-arena$l-count fn-arena$l))
-                (fn-arn-extent-guardp file eoff elen poff plen trailer)))
-  :rule-classes nil)
-
-(defthm fn-arena-reseat-extent{preserved}
-  (implies (and (fn-arena$ap fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena))
-                (fn-arn-extent-guardp file eoff elen poff plen trailer))
-           (fn-arena$ap (fn-arena$a-reseat-extent h file eoff elen poff plen trailer fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
-
-(defthm fn-arena-seal-lz-extent{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
-           (fn-arena$lcorr (fn-arena$l-seal-lz-extent file eoff elen poff plen trailer n dict
-                                                      fn-arena$l)
-                           (fn-arena$a-seal-lz-extent file eoff elen poff plen trailer n dict
-                                                      fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-lz-extent{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
-           (and (fn-arena$l-wfp fn-arena$l)
-                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict)))
-  :rule-classes nil)
-
-(defthm fn-arena-seal-lz-extent{preserved}
-  (implies (and (fn-arena$ap fn-arena)
-                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
-           (fn-arena$ap (fn-arena$a-seal-lz-extent file eoff elen poff plen trailer n dict
-                                                   fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-reseat-lz-extent{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena))
-                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
-           (fn-arena$lcorr (fn-arena$l-reseat-lz-extent h file eoff elen poff plen trailer n dict
-                                                        fn-arena$l)
-                           (fn-arena$a-reseat-lz-extent h file eoff elen poff plen trailer n dict
-                                                        fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
-
-(defthm fn-arena-reseat-lz-extent{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena))
-                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
-           (and (fn-arena$l-wfp fn-arena$l)
-                (natp h) (< h (fn-arena$l-count fn-arena$l))
-                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict)))
-  :rule-classes nil)
-
-(defthm fn-arena-reseat-lz-extent{preserved}
-  (implies (and (fn-arena$ap fn-arena)
-                (natp h) (< h (fn-arena$a-count fn-arena))
-                (fn-arn-lz-guardp file eoff elen poff plen trailer n dict))
-           (fn-arena$ap (fn-arena$a-reseat-lz-extent h file eoff elen poff plen trailer n dict
-                                                     fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
-
-(defthm fn-arena-release{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h))
-           (fn-arena$lcorr (fn-arena$l-release h fn-arena$l)
-                           (fn-arena$a-release h fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-release{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h))
-           (natp h))
-  :rule-classes nil)
-
-(defthm fn-arena-release{preserved}
-  (implies (and (fn-arena$ap fn-arena)
-                (natp h))
-           (fn-arena$ap (fn-arena$a-release h fn-arena)))
-  :rule-classes nil)
-
-(defthm fn-arena-forget{correspondence}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h))
-           (fn-arena$lcorr (fn-arena$l-forget h fn-arena$l)
-                           (fn-arena$a-forget h fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
-
-(defthm fn-arena-forget{guard-thm}
-  (implies (and (fn-arena$lcorr fn-arena$l fn-arena)
-                (natp h))
-           (and (fn-arena$l-wfp fn-arena$l) (natp h)))
-  :rule-classes nil)
-
-(defthm fn-arena-forget{preserved}
-  (implies (and (fn-arena$ap fn-arena)
-                (natp h))
-           (fn-arena$ap (fn-arena$a-forget h fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (enable fn-oct-update-is-update-nth))))
-
-; -----------------------------------------------------------------------------
-; The generic.  `:attachable t' is what lets (attach-stobj fn-arena IMPL),
-; evaluated before this book is included, replace the foundation and the
-; :exec functions; the :logic functions are the implementation's own.
-
-(defabsstobj fn-arena
-  :foundation fn-arena$l
-  :recognizer (fn-arena-p :logic fn-arena$ap :exec fn-arena$lp)
-  :creator (create-fn-arena :logic create-fn-arena$a :exec create-fn-arena$l)
-  :corr-fn fn-arena$lcorr
-  :exports ((fn-arena-count :logic fn-arena$a-count :exec fn-arena$l-count)
-            (fn-arena-payload-len :logic fn-arena$a-payload-len :exec fn-arena$l-payload-len)
-            (fn-arena-get :logic fn-arena$a-get :exec fn-arena$l-get)
-            (fn-arena-get-span :logic fn-arena$a-get-span :exec fn-arena$l-get-span)
-            (fn-arena-payload :logic fn-arena$a-payload :exec fn-arena$l-payload)
-            (fn-arena-seal-list :logic fn-arena$a-seal-list :exec fn-arena$l-seal-list
-                                :protect t)
-            (fn-arena-seal-buffer :logic fn-arena$a-seal-buffer :exec fn-arena$l-seal-buffer
-                                  :protect t)
-            (fn-arena-clear :logic fn-arena$a-clear :exec fn-arena$l-clear :protect t)
-            (fn-arena-seal-range :logic fn-arena$a-seal-range :exec fn-arena$l-seal-range
-                                 :protect t)
-            (fn-arena-seal-extent :logic fn-arena$a-seal-extent :exec fn-arena$l-seal-extent
-                                  :protect t)
-            (fn-arena-reseat-extent :logic fn-arena$a-reseat-extent
-                                    :exec fn-arena$l-reseat-extent :protect t)
-            (fn-arena-release :logic fn-arena$a-release :exec fn-arena$l-release :protect t)
-            (fn-arena-seal-lz-extent :logic fn-arena$a-seal-lz-extent
-                                     :exec fn-arena$l-seal-lz-extent :protect t)
-            (fn-arena-reseat-lz-extent :logic fn-arena$a-reseat-lz-extent
-                                       :exec fn-arena$l-reseat-lz-extent :protect t)
-            (fn-arena-forget :logic fn-arena$a-forget :exec fn-arena$l-forget :protect t))
-  :attachable t)
+(def-generic fn-arena
+  :omit-hypotheses ((fn-arena-seal-range (natp a) (natp b) (<= a b)))
+  :model (:recognizer fn-arena$ap :creator create-fn-arena$a)
+  :lemmas (fn-oct-update-is-update-nth fn-arn-payload-listp-of-update-nth
+           fn-oct-octets-p-is-octet-listp)
+  :disable (fn-oct-slice-list-is-take-nthcdr)
+  :exports ((:read fn-arena-count :logic fn-arena$a-count)
+            (:read fn-arena-payload-len :logic fn-arena$a-payload-len)
+            (:read fn-arena-get :logic fn-arena$a-get)
+            (:read fn-arena-get-span :logic fn-arena$a-get-span)
+            (:read fn-arena-payload :logic fn-arena$a-payload)
+            (:update fn-arena-seal-list :logic fn-arena$a-seal-list)
+            (:update fn-arena-seal-buffer :logic fn-arena$a-seal-buffer)
+            (:update fn-arena-clear :logic fn-arena$a-clear)
+            (:update fn-arena-seal-range :logic fn-arena$a-seal-range)
+            (:update fn-arena-seal-extent :logic fn-arena$a-seal-extent)
+            (:update fn-arena-reseat-extent :logic fn-arena$a-reseat-extent)
+            (:update fn-arena-release :logic fn-arena$a-release)
+            (:update fn-arena-seal-lz-extent :logic fn-arena$a-seal-lz-extent)
+            (:update fn-arena-reseat-lz-extent :logic fn-arena$a-reseat-lz-extent)
+            (:update fn-arena-forget :logic fn-arena$a-forget)))
 
 ; -----------------------------------------------------------------------------
 ; The logical view, opened: the value is the list of payloads, a handle is

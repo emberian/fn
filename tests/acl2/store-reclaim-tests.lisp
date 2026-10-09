@@ -366,7 +366,6 @@
 ; never exercised.  *rt-s1* is the reclaimed store itself: its articles carry
 ; arena handles (a1 the tombstone at handle 2, a2 its payload at handle 1),
 ; read through *sr-arena*.
-(bpr-lift fn-nntp-msgid-retrieval-indexed 5)
 (bpr-lift fn-nntp-article-tombstonep 1)
 (defconst *rt-h-arts* (fn-state-articles *rt-s1*))
 (defconst *rt-h-r1* (fn-find-article "<a1@x>" *rt-h-arts*))
@@ -384,25 +383,17 @@
                          *sr-arena* (fn-nntp-find-group-number "g" 2 *rt-h-arts*)))
                    (not (equal (in-arena-fn-nntp-number-retrieval *sr-arena* *rt-session* *rt-s1* :article '(50))
                                (fn-nntp-single *rt-session* "423 article reclaimed")))))
-; fn-nntp-msgid-retrieval-answers-reclaimed: its subject is the INDEXED
-; lookup the host calls; the index is fn-midx-build of the store's articles
-; (the correspondence hypothesis asserted).
-(defconst *rt-h-index* (fn-midx-build *rt-h-arts*))
-(assert-event (and (fn-midx-correspondencep *rt-h-index* *rt-h-arts*)
-                   (fn-nntp-message-id-tokenp (fn-record-string-octets "<a1@x>"))
-                   (equal (in-arena-fn-nntp-msgid-retrieval-indexed
-                           *sr-arena* *rt-session* *rt-s1* *rt-h-index* :article (fn-record-string-octets "<a1@x>"))
+; fn-nntp-msgid-retrieval-answers-reclaimed over handles: the article a1
+; names in the store's articles is the tombstone.
+(assert-event (and (fn-nntp-message-id-tokenp (fn-record-string-octets "<a1@x>"))
+                   (equal (in-arena-fn-nntp-msgid-retrieval
+                           *sr-arena* *rt-session* *rt-s1* :article (fn-record-string-octets "<a1@x>"))
                           (fn-nntp-single *rt-session* "430 article reclaimed"))))
 ; Tooth (tombstone): a2 by Message-ID is served, not 430.
-(assert-event (not (equal (in-arena-fn-nntp-msgid-retrieval-indexed
-                           *sr-arena* *rt-session* *rt-s1* *rt-h-index* :article
+(assert-event (not (equal (in-arena-fn-nntp-msgid-retrieval
+                           *sr-arena* *rt-session* *rt-s1* :article
                            (fn-record-string-octets "<a2@x>"))
                           (fn-nntp-single *rt-session* "430 article reclaimed"))))
-; Tooth (the correspondence): an empty index misses a1 (430 is not answered).
-(assert-event (and (not (fn-midx-correspondencep nil *rt-h-arts*))
-                   (not (equal (in-arena-fn-nntp-msgid-retrieval-indexed
-                                *sr-arena* *rt-session* *rt-s1* nil :article (fn-record-string-octets "<a1@x>"))
-                               (fn-nntp-single *rt-session* "430 article reclaimed")))))
 ; fn-nntp-over-by-msgid-answers-reclaimed and fn-nntp-over-current-answers-
 ; reclaimed over handles.
 (assert-event (equal (in-arena-fn-nntp-over-response *sr-arena* *rt-session* *rt-s1* (list (fn-record-string-octets "<a1@x>")))

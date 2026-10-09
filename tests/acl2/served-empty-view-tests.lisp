@@ -37,7 +37,7 @@
 (defun sev-conn (archive group-index control)
   (fn-served-make-conn-group-indexed
    (fn-wire-initial-state 512 1000) (fn-auth-open-session archive nil nil nil nil nil) archive nil nil nil
-   *sev-verdicts* (fn-midx-build (fn-state-articles archive)) group-index control))
+   *sev-verdicts* group-index control))
 (defconst *sev-conn* (sev-conn *sev-archive* nil *sev-control*))
 (defun sev-line (text) (fn-nntp-string-octets text))
 
@@ -54,7 +54,7 @@
 
 ; fn-octl-pinned-index-of-served-conn, the new disjunct.  Witness: the empty
 ; view's served connection has no buckets and a control pin, and its pinned
-; index is a pin carrying that control pin and the connection's trie.
+; index is a pin carrying that control pin and no buckets.
 (assert-event
  (let ((index (fn-served-conn-pinned-index *sev-conn*)))
    (and (null (fn-served-conn-group-index *sev-conn*))
@@ -62,10 +62,9 @@
         (not (consp (fn-state-articles (fn-served-conn-archive *sev-conn*))))
         (fn-gidx-pinp index)
         (equal (fn-gidx-pin-control index) *sev-control*)
-        (equal (fn-gidx-pin-trie index) (fn-served-conn-index *sev-conn*))
         (equal (fn-gidx-pin-buckets index) nil))))
 ; Hypothesis removed (the view holds an article): a connection with no
-; buckets over a non-empty archive keeps the bare trie, whose control is nil
+; buckets over a non-empty archive has no pinned index, whose control is nil
 ; -- the retained hypothesis (a control pin) holds, the omitted one fails and
 ; so does the conclusion.  (No owner connection is in this state: the
 ; owner's buckets are fn-gidx-build of its visible list.)

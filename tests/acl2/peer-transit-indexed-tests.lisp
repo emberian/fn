@@ -56,9 +56,9 @@
 ;; 1. REACHABLE POSITIVE WITNESSES of fn-peer-history-hasp-cat-is-history-hasp:
 ;; every hypothesis holds; a held Message-ID is in the history and a fresh
 ;; one is not, each equal to the reference's walk.
-(assert-event (equal (ptit-exec (fn-own-view-index *pit-view*) *pit-held*)
+(assert-event (equal (ptit-exec (fn-midx-build (fn-state-articles (fn-own-view-archive *pit-view*))) *pit-held*)
                      '(t t t t t)))
-(assert-event (equal (ptit-exec (fn-own-view-index *pit-view*) *pit-fresh*)
+(assert-event (equal (ptit-exec (fn-midx-build (fn-state-articles (fn-own-view-archive *pit-view*))) *pit-fresh*)
                      '(t t t nil nil)))
 
 ;; 2. HYPOTHESIS REMOVAL (the join): the catalog loaded under an index that
@@ -125,7 +125,7 @@
           (mv result fn-arena)))
       result)))
 
-(defconst *ptit-ok-index* (fn-own-view-index *pit-view*))
+(defconst *ptit-ok-index* (fn-midx-build (fn-state-articles (fn-own-view-archive *pit-view*))))
 (defconst *ptit-node* (fn-sn-node (fn-own-store (fn-ocfg-owner *pit-oc*))))
 
 ; Each result: ((node invariant, view, join, carry), the -cat decision, the
@@ -236,7 +236,7 @@
          (view (fn-own-view o))
          (fn-arena (fn-arena-clear fn-arena))
          (fn-arena (fn-arn-seal-many *scje-payloads* fn-arena))
-         (fn-cat (fn-sca-load-held-rows *scje-srows* (fn-own-view-index view) fn-arena fn-cat))
+         (fn-cat (fn-sca-load-held-rows *scje-srows* (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat))
          (carry (fn-prc-refresh nil (fn-node-retention node)))
          (mid (pt-o msgid))
          (octets (ptit-article msgid)))

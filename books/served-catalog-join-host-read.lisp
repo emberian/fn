@@ -25,20 +25,16 @@
 
 (local (in-theory (disable (tau-system))))
 
-;; join-f2-midx: and its trie is its visible list's index
-;; (fn-scj-trie-indexedp), which the served chain asks since the peer arm
-;; reads the catalog (books/served-catalog-chain.lisp).
+;; join-f2-midx: the views captured for a reader read the catalog's visible list.
 (defun-nx fn-sjh-views-okp (views o fn-arena fn-cat)
   (implies (consp views)
            (and (fn-scj-live-okp (car views) fn-arena fn-cat)
-                (fn-scj-trie-indexedp (car views))
                 (<= (nfix (fn-own-view-version (car views)))
                     (nfix (fn-own-view-version (fn-own-view o)))))))
 
 (defthm fn-sjh-rd-orr-keeps
   (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (let ((o2 (fn-ocfg-owner (fn-own-tls-result-owner
                                      (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)))))
@@ -182,11 +178,10 @@
     (and (equal (fn-own-conn-id c2) (fn-own-conn-id c))
          (equal (fn-own-conn-version c2) (fn-own-conn-version c))
          (equal (fn-own-conn-archive c2) (fn-own-conn-archive c))
-         (equal (fn-own-conn-index c2) (fn-own-conn-index c))
          (equal (fn-own-conn-group-index c2) (fn-own-conn-group-index c))
          (equal (fn-own-conn-control c2) (fn-own-conn-control c))))
   :hints (("Goal" :in-theory (e/d (fn-oas-conn-closed update-nth true-list-fix fn-own-conn-id fn-own-conn-version
-                                   fn-own-conn-archive fn-own-conn-index fn-own-conn-group-index
+                                   fn-own-conn-archive fn-own-conn-group-index
                                    fn-own-conn-control fn-ag-car fn-ag-cdr)
                                   (fn-wire-make-state fn-wire-make-result fn-wire-result-state)))))
 

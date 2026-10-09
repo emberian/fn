@@ -28,7 +28,6 @@
 (defun-nx fn-sjh-viewsp (views o fn-cat)
   (if (consp views)
       (and (fn-scj-live-okp (car views) nil fn-cat)
-           (fn-scj-trie-indexedp (car views))
            (<= (nfix (fn-own-view-version (car views)))
                (nfix (fn-own-view-version (fn-own-view o))))
            (fn-sjh-viewsp (cdr views) o fn-cat))
@@ -59,11 +58,10 @@
 ; fn-owner-reader-views-capture, fn-ocv-capture of the working view).
 (defthm fn-sjh-viewsp-at-capture
   (implies (and (fn-sjh-viewsp views o fn-cat)
-                (fn-scj-invp o fn-arena fn-cat)
-                (fn-scar-view-indexedp o))
+                (fn-scj-invp o fn-arena fn-cat))
            (fn-sjh-viewsp (fn-ocv-capture views event (fn-own-view o)) o fn-cat))
-  :hints (("Goal" :in-theory (e/d (fn-ocv-capture fn-sjh-viewsp fn-scj-trie-indexedp-is-view-indexedp)
-                                  (fn-scj-live-okp fn-scj-invp fn-scj-trie-indexedp fn-scar-view-indexedp))
+  :hints (("Goal" :in-theory (e/d (fn-ocv-capture fn-sjh-viewsp)
+                                  (fn-scj-live-okp fn-scj-invp))
            :use ((:instance fn-scj-invp-gives-live-okp)))))
 
 
@@ -109,7 +107,7 @@
                                       (theory 'minimal-theory))
            :use ((:instance fn-scj-catalogp-of-finish
                             (archive (fn-own-view-archive v))
-                            (index (fn-served-pinned-index (fn-own-view-archive v) (fn-own-view-index v)
+                            (index (fn-served-pinned-index (fn-own-view-archive v)
                                                            (fn-own-view-group-index v)
                                                            (fn-own-view-control v)))
                             (v (fn-own-view-version v))
@@ -204,7 +202,7 @@
          (o2 (cdr res))
          (view2 (fn-own-view o2))
          (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending)))
-         (fin (fn-sca-finish token pending (fn-own-view-index view2)
+         (fin (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view2))
                              fn-cat)))
@@ -221,7 +219,7 @@
                             (o (fn-ocfg-owner oc))
                             (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
                                          (fn-pc-expected pending)))
-                            (idx (fn-own-view-index (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))
+                            (idx (fn-state-articles (fn-own-view-archive (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena))))))
                             (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                         (fn-own-view-withdrawals
                                                          (fn-own-view (cdr (fn-ccar-own-finish (fn-ocfg-owner oc) cfg fn-arena)))))))))))
@@ -249,7 +247,7 @@
          (durablep (and (equal (fn-sf-phase (fn-sn-files s)) :completing)
                         (equal (fn-sf-phase (fn-sn-files (fn-own-store o2))) :ready)))
          (fin (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
-                             pending (fn-own-view-index view2)
+                             pending (fn-state-articles (fn-own-view-archive view2))
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view2))
                              fn-cat)))
@@ -281,7 +279,7 @@
                             (o (fn-ocfg-owner oc)) (cfg nil)
                             (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files (fn-own-store (fn-ocfg-owner oc))))))
                                          (fn-pc-expected pending)))
-                            (idx (fn-own-view-index (fn-own-view (fn-ocfg-owner (fn-rix-ocfg-complete oc fn-hist)))))
+                            (idx (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner (fn-rix-ocfg-complete oc fn-hist))))))
                             (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                         (fn-own-view-withdrawals
                                                          (fn-own-view (fn-ocfg-owner (fn-rix-ocfg-complete oc fn-hist)))))))))))
@@ -305,12 +303,10 @@
 (defthm fn-sjh-vw-otm-view
   (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-vw-result-viewp (fn-otm-read-span oc views id i end cache s fn-octets fn-arena fn-cat) oc))
   :hints (("Goal" :in-theory (union-theories '(fn-sjh-vw-result-viewp fn-scj-otm-read-span-owner
-                                               fn-sjh-vw-unshed-view fn-sjh-rd-shed-view
-                                               fn-scj-trie-indexedp-is-view-indexedp)
+                                               fn-sjh-vw-unshed-view fn-sjh-rd-shed-view)
                                              (theory 'minimal-theory))
            :use ((:instance fn-sjh-rd-orr-keeps)
                  (:instance fn-sjh-rd-orr-keeps (oc (fn-otm-shed-ocfg oc id)))
@@ -321,10 +317,9 @@
 (defthm fn-sjh-vw-posting-off-view
   (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-vw-result-viewp (fn-oas-posting-off-read oc views id i end cache s fn-octets fn-arena fn-cat) oc))
-  :hints (("Goal" :in-theory (union-theories '(fn-scj-trie-indexedp-is-view-indexedp fn-sjh-vw-result-viewp fn-oas-posting-off-read
+  :hints (("Goal" :in-theory (union-theories '( fn-sjh-vw-result-viewp fn-oas-posting-off-read
                                                fn-scj-tls-result-owner-of-make fn-sjh-rd-with-allow-view)
                                              (theory 'minimal-theory))
            :use ((:instance fn-sjh-vw-otm-view (oc (fn-otm-owner-with-allow oc id nil)))
@@ -334,50 +329,47 @@
 
 (defthm fn-sjh-vw-close-result-view
   (equal (fn-sjh-vw-result-viewp (fn-oas-close-result r id) oc) (fn-sjh-vw-result-viewp r oc))
-  :hints (("Goal" :in-theory '(fn-scj-trie-indexedp-is-view-indexedp fn-sjh-vw-result-viewp fn-oas-close-result fn-scj-tls-result-owner-of-make
+  :hints (("Goal" :in-theory '( fn-sjh-vw-result-viewp fn-oas-close-result fn-scj-tls-result-owner-of-make
                                fn-sjh-vw-owner-closed-view))))
 
 (defthm fn-sjh-vw-whole-refusal-view
   (fn-sjh-vw-result-viewp (fn-oas-whole-refusal oc id i end) oc)
-  :hints (("Goal" :in-theory '(fn-scj-trie-indexedp-is-view-indexedp fn-sjh-vw-result-viewp fn-oas-whole-refusal fn-scj-tls-result-owner-of-make
+  :hints (("Goal" :in-theory '( fn-sjh-vw-result-viewp fn-oas-whole-refusal fn-scj-tls-result-owner-of-make
                                fn-sjh-vw-owner-closed-view))))
 
 (defthm fn-sjh-vw-tiers-view
   (implies (fn-sjh-vw-result-viewp r1 oc)
            (fn-sjh-vw-result-viewp (fn-oas-tiers oc r1 id i end slots) oc))
-  :hints (("Goal" :in-theory '(fn-scj-trie-indexedp-is-view-indexedp fn-oas-tiers fn-sjh-vw-close-result-view fn-sjh-vw-whole-refusal-view))))
+  :hints (("Goal" :in-theory '( fn-oas-tiers fn-sjh-vw-close-result-view fn-sjh-vw-whole-refusal-view))))
 
 
 (defthm fn-sjh-vw-oas-view
   (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-vw-result-viewp (fn-oas-read-span oc views id i end cache s slots fn-octets fn-arena fn-cat) oc))
-  :hints (("Goal" :in-theory '(fn-scj-trie-indexedp-is-view-indexedp fn-oas-read-span fn-sjh-vw-otm-view fn-sjh-vw-posting-off-view fn-sjh-vw-tiers-view))))
+  :hints (("Goal" :in-theory '( fn-oas-read-span fn-sjh-vw-otm-view fn-sjh-vw-posting-off-view fn-sjh-vw-tiers-view))))
 
 (defthm fn-sjh-vw-shut-read-view
   (fn-sjh-vw-result-viewp (fn-mca-shut-read oc id i end) oc)
-  :hints (("Goal" :in-theory '(fn-scj-trie-indexedp-is-view-indexedp fn-sjh-vw-result-viewp fn-mca-shut-read fn-scj-tls-result-owner-of-make
+  :hints (("Goal" :in-theory '( fn-sjh-vw-result-viewp fn-mca-shut-read fn-scj-tls-result-owner-of-make
                                fn-sjh-vw-owner-closed-view))))
 
 (defthm fn-sjh-vw-refused-read-view
   (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-vw-result-viewp (fn-mca-refused-read oc views id i end cache s fn-octets fn-arena fn-cat) oc))
-  :hints (("Goal" :in-theory '(fn-scj-trie-indexedp-is-view-indexedp fn-mca-refused-read fn-sjh-vw-posting-off-view fn-sjh-vw-close-result-view))))
+  :hints (("Goal" :in-theory '( fn-mca-refused-read fn-sjh-vw-posting-off-view fn-sjh-vw-close-result-view))))
 
 (defthm fn-sjh-vw-mca-view
   (implies (and (fn-gacc-okp cache) (fn-scol-okp fn-arena fn-cat)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-sjh-views-okp views (fn-ocfg-owner oc) fn-arena fn-cat))
            (fn-sjh-vw-result-viewp (car (fn-mca-read-span credits oc views id i end cache s slots reserve
                                                           fn-octets fn-arena fn-cat))
                                    oc))
-  :hints (("Goal" :in-theory '(fn-scj-trie-indexedp-is-view-indexedp fn-mca-read-span car-cons fn-sjh-vw-oas-view fn-sjh-vw-refused-read-view
+  :hints (("Goal" :in-theory '( fn-mca-read-span car-cons fn-sjh-vw-oas-view fn-sjh-vw-refused-read-view
                                fn-sjh-vw-shut-read-view))))
 
 ; KEYSTONE (the captured views across the host's served read,
@@ -546,7 +538,7 @@
          (o2 (cdr res))
          (view2 (fn-own-view o2))
          (token (cons (nfix (cdr (fn-sf-completion (fn-sn-files s)))) (fn-pc-expected pending)))
-         (fin (fn-sca-finish token pending (fn-own-view-index view2)
+         (fin (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view2))
                              fn-cat)))

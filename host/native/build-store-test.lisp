@@ -89,7 +89,7 @@
 ;; host/store-node-host.lisp) call the concrete twins of books/records-concrete.
 (include-book "books/records-concrete")
 ;; D13 (STO-014): the tombstone-aware same-article test over the buffer
-;; (fn-rclb-same-articlep), which fn-pidx-existing-action, the served POST's
+;; (fn-rclb-same-articlep), which fn-pidx-existing-action-cat, the served POST's
 ;; duplicate verdict, calls.
 (include-book "books/store-reclaim-buffer")
 (ld "host/store-host.lisp" :ld-error-action :error)

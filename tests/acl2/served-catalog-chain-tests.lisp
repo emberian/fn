@@ -81,8 +81,7 @@
                   (fn-cat-view-articles ,v *scct-a* *scct-c*) 0 nil nil))
 
 (defmacro scct-index (v)
-  `(fn-gidx-pin (fn-midx-build (fn-cat-view-articles ,v *scct-a* *scct-c*))
-                (fn-gidx-build (fn-cat-view-articles ,v *scct-a* *scct-c*))))
+  `(fn-gidx-pin (fn-gidx-build (fn-cat-view-articles ,v *scct-a* *scct-c*))))
 
 ;; An open, projected session in fn.test; command lines are octets, tokens
 ;; the tokenizer's (books/nntp-session.lisp).
@@ -95,7 +94,6 @@
          (equal (fn-state-articles arch) (fn-cat-view-articles 3 *scct-a* *scct-c*))
          (fn-statep arch)
          (fn-gidx-pin-correspondencep index arch)
-         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *scct-c*)
          ;; the article at number 3 by the catalog is the pinned reply, a 220
          (equal (fn-scr-command *scct-session* arch index nil nil (scct-tokens "ARTICLE 3") 3 *scct-a* *scct-c*)
@@ -128,7 +126,6 @@
          (equal (fn-state-articles arch) (fn-cat-view-articles 3 *scct-a* *scct-c*))
          (fn-statep arch)
          (fn-gidx-pin-correspondencep index arch)
-         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *scct-c*)
          ;; the conclusion
          (equal (fn-nntp-result-session cat) (fn-nntp-result-session pinned))
@@ -175,7 +172,6 @@
          (equal (fn-state-articles arch) (fn-cat-view-articles 3 *scct-a* *scct-c*))
          (fn-statep arch)
          (fn-gidx-pin-correspondencep index arch)
-         (fn-midx-correspondencep (fn-gidx-pin-trie index) (fn-state-articles arch))
          (fn-cnx-freshp *scct-c*)
          (fn-arena-p *scct-a*)
          (fn-scol-rows-okp *scct-c* *scct-a*)
@@ -240,7 +236,6 @@
 ;; components, the effects modulo the OVER cursor (fn-scr-tls-agrees).
 (defthm scct-read-span-control
   (implies (and (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (natp i) (natp end))
@@ -254,20 +249,7 @@
 
 (must-fail-checked
  (defthm scct-read-span-needs-ocl-relation
-   (implies (and (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                 (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
-                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
-                 (natp i) (natp end))
-            (fn-scr-tls-agrees
-             (fn-scr-ocfg-read-span oc id i end cache fn-octets fn-arena fn-cat)
-             (fn-ocfg-read-tls-prefix oc id (fn-oct-slice-list i end fn-octets) fn-arena)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (union-theories '(fn-scr-ocfg-read-span-is-reference-under-ocl-relation)
-                                       (theory 'minimal-theory))))))
-
-(must-fail-checked
- (defthm scct-read-span-needs-view-indexedp
-   (implies (and (fn-ocl-relation oc)
+   (implies (and
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i) (natp end))
@@ -284,7 +266,6 @@
 (must-fail-checked
  (defthm scct-read-span-needs-the-overview-column
    (implies (and (fn-ocl-relation oc)
-                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-gacc-okp cache)
                  (natp i) (natp end))
@@ -302,7 +283,6 @@
 (must-fail-checked
  (defthm scct-read-span-needs-the-access-cache
    (implies (and (fn-ocl-relation oc)
-                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-scol-okp fn-arena fn-cat)
                  (natp i) (natp end))
@@ -316,7 +296,6 @@
 (must-fail-checked
  (defthm scct-read-span-needs-the-catalog-relation
    (implies (and (fn-ocl-relation oc)
-                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i) (natp end))
             (fn-scr-tls-agrees
@@ -329,7 +308,6 @@
 (must-fail-checked
  (defthm scct-read-span-needs-natp-start
    (implies (and (fn-ocl-relation oc)
-                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp end))
@@ -343,7 +321,6 @@
 (must-fail-checked
  (defthm scct-read-span-needs-natp-end
    (implies (and (fn-ocl-relation oc)
-                 (fn-scar-view-indexedp (fn-ocfg-owner oc))
                  (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                  (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                  (natp i))
@@ -374,8 +351,8 @@
 
 (defun scct-scan-agree (conn i end fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil))
-  (equal (fn-scr-scan-span conn i end nil nil nil nil nil fn-octets fn-arena fn-cat)
-         (fn-scr-feed-span conn i end nil nil nil nil nil fn-octets fn-arena fn-cat)))
+  (equal (fn-scr-scan-span conn i end nil nil nil nil fn-octets fn-arena fn-cat)
+         (fn-scr-feed-span conn i end nil nil nil nil fn-octets fn-arena fn-cat)))
 
 (defun scct-scan-cuts (conn cut n fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil
@@ -397,10 +374,10 @@
               (let ((fn-octets (fn-octets-from-list octets fn-octets)))
                 (mv (list (scct-scan-cuts conn 0 (fn-octets-len fn-octets) fn-octets fn-arena fn-cat)
                           (fn-served-counted-consumed
-                           (fn-scr-step-span-core conn 0 (fn-octets-len fn-octets) nil nil nil nil nil
+                           (fn-scr-step-span-core conn 0 (fn-octets-len fn-octets) nil nil nil nil
                                                   fn-octets fn-arena fn-cat))
                           (fn-served-counted-consumed
-                           (fn-scr-feed-span conn 0 (fn-octets-len fn-octets) nil nil nil nil nil
+                           (fn-scr-feed-span conn 0 (fn-octets-len fn-octets) nil nil nil nil
                                              fn-octets fn-arena fn-cat)))
                     fn-octets fn-arena fn-cat))
               (mv v fn-arena fn-cat)))

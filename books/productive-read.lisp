@@ -92,7 +92,6 @@
                   (not (eq (fn-otm-admit-post s) :shed))
                   (not (consp views))
                   (fn-gacc-okp cache) (fn-ocl-relation oc)
-                  (fn-scar-view-indexedp o)
                   (fn-scr-owner-catalogp o id fn-arena fn-cat)
                   (fn-scol-okp fn-arena fn-cat)
                   (natp i) (natp end)
@@ -153,7 +152,7 @@
                   (fn-nntp-response-okp-of-bytes article
                      (fn-nntp-article-bytes article fn-arena) :article)
                   (fn-nntp-response-okp-of-bytes article served :article))
-             (equal (fn-rcompat-retrieval session archive trie :article (list token) server fn-arena)
+             (equal (fn-rcompat-retrieval session archive arts :article (list token) server fn-arena)
                     (fn-pcr-220-reply session article number group server fn-arena))))
   :rule-classes nil
   :hints (("Goal"

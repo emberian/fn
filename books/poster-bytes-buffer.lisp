@@ -24,7 +24,7 @@
 ; `fn-oct-suffix-equalp' over the second.  The one keystone,
 ; `fn-pbb-same-articlep-is-pb-same-articlep', says the buffer comparison
 ; equals the list comparison on the buffer's logical value; the host's
-; buffer verdict (books/post-identity-index.lisp `fn-pidx-existing-action',
+; buffer verdict (books/post-identity-catalog.lisp `fn-pidx-existing-action-cat',
 ; called by host/owner-host.lisp `fn-owner-existing-action-buffer' and
 ; `fn-owner-prepare-buffer') uses it through its tombstone-aware form
 ; (books/store-reclaim-buffer.lisp `fn-rclb-same-articlep').

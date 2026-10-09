@@ -1,6 +1,6 @@
 ; Indexed range renderers used by the pinned NNTP dispatcher.  The bucket
-; selects local numbers; its entries resolve through the pinned Message-ID
-; trie.  Neither path traverses the retained article list per output line.
+; selects local numbers; its entries resolve through the served article list
+; ARTS by Message-ID.
 (in-package "ACL2")
 (include-book "nntp-responses")
 (include-book "def-loop")
@@ -11,11 +11,11 @@
 ;; (lane rule-hygiene, tools/rule_cost.py).
 (local (in-theory (enable (:rewrite fn-gidx-bucket-numbers-under-okp))))
 
-(defun fn-nov-lines-for-numbers-indexed (group numbers entries trie fn-arena)
+(defun fn-nov-lines-for-numbers-indexed (group numbers entries arts fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (if (consp numbers)
       (let* ((number (car numbers))
-             (article (fn-gidx-entry-number-article group number entries trie))
+             (article (fn-gidx-entry-number-article group number entries arts))
              ; D13: a reclaimed article is skipped before the parser.
              (over (if (and (consp article)
                             (not (fn-nntp-article-tombstonep article fn-arena)))
@@ -24,23 +24,23 @@
         (if (fn-nov-okp over)
             (cons (fn-nov-line number over)
                   (fn-nov-lines-for-numbers-indexed
-                   group (cdr numbers) entries trie fn-arena))
+                   group (cdr numbers) entries arts fn-arena))
           (fn-nov-lines-for-numbers-indexed
-           group (cdr numbers) entries trie fn-arena)))
+           group (cdr numbers) entries arts fn-arena)))
     nil))
 
 ; The served renderer (over-number-index, PRF-189): each row's article comes
 ; from the bucket's number index (`fn-gidx-nidx-number-article', at most 31
-; trie steps) instead of a walk of the bucket per row.  It renders what
+; number-trie steps) instead of a walk of the bucket per row.  It renders what
 ; `fn-nov-lines-for-numbers-indexed' renders
 ; (`fn-nov-lines-for-numbers-numbered-of-build' below).
 ; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
 ; control-stack frame per element.  The :logic is the recursion, unchanged;
 ; the :exec collects onto an accumulator and reverses it (revappend).
-(def-loop fn-nov-lines-for-numbers-numbered (numbers nidx trie fn-arena)
+(def-loop fn-nov-lines-for-numbers-numbered (numbers nidx arts fn-arena)
   :shape :map :over numbers :elt n :stobjs fn-arena
   :let ((number n)
-         (article (fn-gidx-nidx-number-article number nidx trie))
+         (article (fn-gidx-nidx-number-article number nidx arts))
          (over (if (and (consp article)
                         (not (fn-nntp-article-tombstonep article fn-arena)))
                    (fn-nov-overview article fn-arena)
@@ -50,10 +50,10 @@
 
 (defthm fn-nov-lines-for-numbers-numbered-of-build
   (equal (fn-nov-lines-for-numbers-numbered
-          numbers (fn-gnix-build group entries) trie fn-arena)
-         (fn-nov-lines-for-numbers-indexed group numbers entries trie fn-arena))
+          numbers (fn-gnix-build group entries) arts fn-arena)
+         (fn-nov-lines-for-numbers-indexed group numbers entries arts fn-arena))
   :hints (("Goal" :induct (fn-nov-lines-for-numbers-indexed
-                           group numbers entries trie fn-arena)
+                           group numbers entries arts fn-arena)
            :in-theory (disable fn-gidx-nidx-number-article
                                fn-gidx-entry-number-article fn-gnix-build
                                fn-nov-overview fn-nov-okp fn-nov-line
@@ -63,7 +63,7 @@
 ; bucket (`fn-nntp-index-group-range-numbers'), each row through the number
 ; index.  Under the group index's relation (`fn-gidx-numbers-okp') this is
 ; the bucket walk's answer (`fn-nntp-over-range-indexed-is-walk' below).
-(defun fn-nntp-over-range-indexed (session buckets trie token legacyp fn-arena)
+(defun fn-nntp-over-range-indexed (session buckets arts token legacyp fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
@@ -74,7 +74,7 @@
                        entries group (fn-nntp-range-low range)
                        (fn-nntp-range-high range)))
              (lines (fn-nov-lines-for-numbers-numbered
-                     numbers (fn-gidx-bucket-numbers group buckets) trie fn-arena)))
+                     numbers (fn-gidx-bucket-numbers group buckets) arts fn-arena)))
         (if (consp lines)
             (fn-nntp-multi session (fn-proto-text * :overview) lines)
           (fn-nntp-single
@@ -82,7 +82,7 @@
                      (fn-proto-text * :empty-range))))))))
 
 ; The spec: the same renderer with each row found by the bucket walk.
-(defun fn-nntp-over-range-walk (session buckets trie token legacyp fn-arena)
+(defun fn-nntp-over-range-walk (session buckets arts token legacyp fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
   (let ((group (fn-nntp-session-group session))
         (range (fn-nntp-parse-range token)))
@@ -93,7 +93,7 @@
                        entries group (fn-nntp-range-low range)
                        (fn-nntp-range-high range)))
              (lines (fn-nov-lines-for-numbers-indexed
-                     group numbers entries trie fn-arena)))
+                     group numbers entries arts fn-arena)))
         (if (consp lines)
             (fn-nntp-multi session (fn-proto-text * :overview) lines)
           (fn-nntp-single
@@ -102,8 +102,8 @@
 
 (defthm fn-nntp-over-range-indexed-is-walk
   (implies (fn-gidx-numbers-okp buckets)
-           (equal (fn-nntp-over-range-indexed session buckets trie token legacyp fn-arena)
-                  (fn-nntp-over-range-walk session buckets trie token legacyp fn-arena)))
+           (equal (fn-nntp-over-range-indexed session buckets arts token legacyp fn-arena)
+                  (fn-nntp-over-range-walk session buckets arts token legacyp fn-arena)))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-indexed
                                    fn-nntp-over-range-walk)
                                   (fn-nov-lines-for-numbers-numbered
@@ -117,7 +117,7 @@
 
 (defthm fn-nntp-over-range-indexed-preserves-session
   (equal (fn-nntp-result-session
-          (fn-nntp-over-range-indexed session buckets trie token legacyp fn-arena))
+          (fn-nntp-over-range-indexed session buckets arts token legacyp fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-indexed
                                   fn-nntp-single fn-nntp-multi

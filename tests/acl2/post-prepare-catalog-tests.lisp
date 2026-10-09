@@ -55,9 +55,9 @@
 ;; fn-ppc-pout-prepare-article-cat-is-pout-prepare-article: every hypothesis
 ;; holds; a fresh Message-ID stages (:prepared) and a held one is refused by
 ;; the duplicate test, both values equal to the reference's.
-(assert-event (equal (ppct-exec (fn-own-view-index *pit-view*) *pit-fresh-record*)
+(assert-event (equal (ppct-exec (fn-midx-build (fn-state-articles (fn-own-view-archive *pit-view*))) *pit-fresh-record*)
                      '(t t t t :prepared :prepared t)))
-(assert-event (equal (ppct-exec (fn-own-view-index *pit-view*) *pit-dup-record*)
+(assert-event (equal (ppct-exec (fn-midx-build (fn-state-articles (fn-own-view-archive *pit-view*))) *pit-dup-record*)
                      '(t t t t :refused :refused t)))
 
 ;; 2. HYPOTHESIS REMOVAL (the join): the catalog loaded under an index that
