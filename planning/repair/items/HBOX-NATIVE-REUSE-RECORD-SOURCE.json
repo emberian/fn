@@ -1,12 +1,101 @@
 {
  "detail": "tools/hbox_native.sh:431 sets SOURCE_ID='$(cat build/REUSED_SOURCE)' for --reuse-image, text meant for the box script (evaluated there at :710 after link-run writes REUSED_SOURCE). :899 writes the same literal into the local record build/hbox-native/LABEL.run as source=, so tools/train.py cmd_image (source != HEAD) refuses the run though its images may be HEAD's. The record must name the images' identity source as the reused run's log states it (its == source line), resolved at launch; a reused run whose source is not HEAD is then refused by train.py correctly.",
+ "expect-failure": "tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from",
+ "failure-message": "'$(cat build/REUSED_SOURCE)' != 'dddddddddddddddddddddddddddddddddddddddd'\n- $(cat build/REUSED_SOURCE)\n+ dddddddddddddddddddddddddddddddddddddddd\n",
  "file": "tools/hbox_native.sh",
+ "harness": "tests/test_hbox_native.py",
  "id": "HBOX-NATIVE-REUSE-RECORD-SOURCE",
- "notes": [],
+ "notes": [
+  "10-09 17:33 claimed: scope=['tools/hbox_native.sh', 'tests/test_hbox_native.py', 'planning/repair/items/HBOX-NATIVE-REUSE-RECORD-SOURCE.json'] test=python3 -m unittest tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from",
+  "10-09 17:33 claimed: scope=['tools/hbox_native.sh', 'tests/test_hbox_native.py', 'planning/repair/items/HBOX-NATIVE-REUSE-RECORD-SOURCE.json'] test=python3 -m unittest tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from",
+  "10-09 17:34 READY 6c97fa2ce; repair.py verify --base origin/dev ok (red at base with the literal source, green at head)"
+ ],
  "owner": "builder-B",
+ "scope": [
+  "tools/hbox_native.sh",
+  "tests/test_hbox_native.py",
+  "planning/repair/items/HBOX-NATIVE-REUSE-RECORD-SOURCE.json"
+ ],
  "severity": "medium",
  "source": "train 79: build/hbox-native/dfdd95398046-2g.run in build/integrate-20261006n",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from",
+ "timeout": "300",
  "title": "hbox_native.sh --reuse-image writes its record's source= as the unevaluated text $(cat build/REUSED_SOURCE), so train.py image refuses every reused run",
- "updated": "2026-10-09T21:26:11Z"
+ "updated": "2026-10-09T21:34:09Z",
+ "verify": {
+  "base": "dd93a43f12762dec745f5a57f13eff34d1285bf1",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "'$(cat build/REUSED_SOURCE)' != 'dddddddddddddddddddddddddddddddddddddddd'\n- $(cat build/REUSED_SOURCE)\n+ dddddddddddddddddddddddddddddddddddddddd\n",
+      "test": "tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_hbox_native.py": "db0c5fcfde0a1942946f38bb7370ff41f3af2880029f23a4cc2cf7620cd075c0"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "dd93a43f12762dec745f5a57f13eff34d1285bf1",
+   "stderr": "test_a_reused_run_records_the_source_its_images_were_built_from (tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from) ... FAIL\n\n======================================================================\nFAIL: test_a_reused_run_records_the_source_its_images_were_built_from (tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-z_5d1m4q/wt/tests/test_hbox_native.py\", line 813, in test_a_reused_run_records_the_source_its_images_were_built_from\n    self.assertEqual(fields[\"source\"], want)\n    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: '$(cat build/REUSED_SOURCE)' != 'dddddddddddddddddddddddddddddddddddddddd'\n- $(cat build/REUSED_SOURCE)\n+ dddddddddddddddddddddddddddddddddddddddd\n\n\n----------------------------------------------------------------------\nRan 1 test in 1.653s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
+  "changed_files": [
+   "planning/repair/items/HBOX-NATIVE-REUSE-RECORD-SOURCE.json",
+   "tests/test_hbox_native.py",
+   "tools/hbox_native.sh"
+  ],
+  "diff_lines": 42,
+  "expected_failure": {
+   "message": "'$(cat build/REUSED_SOURCE)' != 'dddddddddddddddddddddddddddddddddddddddd'\n- $(cat build/REUSED_SOURCE)\n+ dddddddddddddddddddddddddddddddddddddddd\n",
+   "test": "tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_hbox_native.py": "db0c5fcfde0a1942946f38bb7370ff41f3af2880029f23a4cc2cf7620cd075c0"
+  },
+  "head": "6c97fa2ce0b8bdd254fa716b2ece54b811f3c51f",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_hbox_native.py": "db0c5fcfde0a1942946f38bb7370ff41f3af2880029f23a4cc2cf7620cd075c0"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "6c97fa2ce0b8bdd254fa716b2ece54b811f3c51f",
+   "stderr": "test_a_reused_run_records_the_source_its_images_were_built_from (tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 2.309s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_hbox_native.DetachedByDefaultTests.test_a_reused_run_records_the_source_its_images_were_built_from",
+  "timeout": 300.0
+ }
 }
