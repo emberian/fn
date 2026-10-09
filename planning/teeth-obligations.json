@@ -9212,11 +9212,25 @@
   },
   {
    "book": "books/heap-figure.lisp",
-   "class": "hand",
+   "book_digest": "96553da3b4f9f730ed46d3df66f8cc09add82b94d44ee3a81d1f17606172858a",
+   "bounds": [],
+   "claim_digest": "b5261e406cc1538650ef030de3115e8c00de2af33132bae274b90662a8cbc815",
+   "class": "generated",
    "critical": "resource-reservation",
+   "mutations": "edits:1",
    "name": "fn-heap-operation-decide-holds-the-store",
+   "owed_met": null,
+   "owner_book": "tests/acl2/heap-figure-tests.lisp",
    "registry": true,
-   "statement_digest": "63476fdb77f9d5e5b5b271e530e8849b227509c7a29a7bb1c184d8e577940617"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 7
+   },
+   "statement_digest": "a490996fd50f5b96f1a5984481b15ed009509bb30f23e774dcaff3659df9f8fe",
+   "subject": "fn-heap-reserve-operation-decide",
+   "witness": "executable"
   },
   {
    "book": "books/heap-figure.lisp",
@@ -9225,6 +9239,25 @@
    "name": "fn-heap-operation-decide-of-a-serve-action-is-heap-decide",
    "registry": true,
    "statement_digest": "52a07c14e382fcf8f2d730466f85fe5bfc7993c7d0144d114e200db4a5a6f8c9"
+  },
+  {
+   "book_digest": "96553da3b4f9f730ed46d3df66f8cc09add82b94d44ee3a81d1f17606172858a",
+   "bounds": [],
+   "claim_digest": "46d13b9185d79d85bf75cdd6b4235c4a9ad3b946c0beb4d77128fabe8c62eb11",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-heap-operation-decide-of-a-storeless-action",
+   "owed_met": null,
+   "owner_book": "tests/acl2/heap-figure-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": "fn-heap-reserve-operation-decide",
+   "witness": "executable"
   },
   {
    "book": "books/heap-store-figure.lisp",
