@@ -1,0 +1,13 @@
+{
+ "category": "tests",
+ "file": "tests/native_harness.py",
+ "id": "NATIVE-HARNESS-PORT-RACE",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "high",
+ "slice": "harness",
+ "source": "N, drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (25 failures in 11 modules, each with EADDRINUSE at the node's bind)",
+ "state": "open",
+ "title": "the native harness hands a node a probed loopback port it released, inside the kernel ephemeral range: any socket on the box (a client connect, another probe) can take it before the node binds (EADDRINUSE)",
+ "updated": "2026-10-09T06:57:21Z"
+}
