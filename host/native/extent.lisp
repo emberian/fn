@@ -631,9 +631,12 @@ I, else borrow a span from I and read it, else the scalar borrow."
           do (push (fn-ew-span-bytesi k dst) acc))
     acc))
 
-(defun fnn-extent-window-run-at (worker token file eoff elen poff plen trailer p end)
+(defun fnn-extent-window-run-at (worker token file eoff elen poff plen trailer p end
+                                 &optional sink)
   "One lock, one ACL2 decision: the borrowed window's octets from P to END, or
-to the window's end.  (values WORD OCTETS COUNT): :span, or the borrow's word."
+to the window's end.  (values WORD OCTETS COUNT): :span, or the borrow's word.
+With SINK, the run's bytes are not listed: (funcall SINK DST COUNT) reads them
+from the fn-ew-span stobj DST under the lock, and OCTETS is T."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (unless (fnn-extent-executor-observe-returned worker)
       (return-from fnn-extent-window-run-at (values :pending nil nil)))
@@ -652,13 +655,18 @@ to the window's end.  (values WORD OCTETS COUNT): :span, or the borrow's word."
                                      (fnn-cold-worker-row worker) token plan file eoff elen poff plen
                                      trailer p j window dst))))
                   (if (eq word :span)
-                      (values :span (fnn-extent-copy-span dst (- j p)) (- j p))
+                      (values :span
+                              (if sink
+                                  (progn (funcall sink dst (- j p)) t)
+                                (fnn-extent-copy-span dst (- j p)))
+                              (- j p))
                     (values word nil nil))))
             (values :unavailable nil nil)))))))
 
-(defun fnn-extent-window-cache-run (file eoff elen poff plen trailer p end)
+(defun fnn-extent-window-cache-run (file eoff elen poff plen trailer p end &optional sink)
   "The cached window's octets from P to END or the window's end, decided by
-ACL2 (fn-owner-page-window-cache-span-at); (values OCTETS COUNT), or NIL."
+ACL2 (fn-owner-page-window-cache-span-at); (values OCTETS COUNT), or NIL.
+SINK as in fnn-extent-window-run-at (OCTETS is then T)."
   (fnn-with-observed-mutex (*fnn-extent-lock* :extent)
     (dolist (entry *fnn-extent-window-cache* nil)
       (destructuring-bind (token plan window) entry
@@ -678,21 +686,25 @@ ACL2 (fn-owner-page-window-cache-span-at); (values OCTETS COUNT), or NIL."
                   (unless (eq entry (first *fnn-extent-window-cache*))
                     (setq *fnn-extent-window-cache*
                           (cons entry (delete entry *fnn-extent-window-cache* :test #'eq))))
-                  (return (values (fnn-extent-copy-span dst (- j p)) (- j p))))))))))))
+                  (return (values (if sink
+                                      (progn (funcall sink dst (- j p)) t)
+                                    (fnn-extent-copy-span dst (- j p)))
+                                  (- j p))))))))))))
 
-(defun fnn-extent-window-realize-run (file eoff elen poff plen trailer p end)
-  "(values OCTETS COUNT) for a stretch starting at P and ending at or before END."
+(defun fnn-extent-window-realize-run (file eoff elen poff plen trailer p end &optional sink)
+  "(values OCTETS COUNT) for a stretch starting at P and ending at or before END.
+SINK as in fnn-extent-window-run-at (OCTETS is then T)."
   (multiple-value-bind (word octets count)
       (if *fnn-extent-window-worker*
           (fnn-extent-window-run-at *fnn-extent-window-worker* *fnn-extent-window-token*
-                                    file eoff elen poff plen trailer p end)
+                                    file eoff elen poff plen trailer p end sink)
         (values :unavailable nil nil))
     (cond ((eq word :span) (values octets count))
           ((member word '(:cancelled :stale-job))
            (throw 'fnn-extent-window-refused (values word nil nil nil)))
           ((eq word :unavailable)
            (multiple-value-bind (cached n)
-               (fnn-extent-window-cache-run file eoff elen poff plen trailer p end)
+               (fnn-extent-window-cache-run file eoff elen poff plen trailer p end sink)
              (if cached
                  (values cached n)
                (throw 'fnn-extent-cold
@@ -1738,6 +1750,63 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 
 (defun acl2_*1*_acl2::fn-durable-realize-span (file eoff elen poff plen trailer i n)
   (fn-durable-realize-span file eoff elen poff plen trailer i n))
+
+;;; A-ARENA-SPAN-INTO (books/assumptions-durable-spans.lisp): the same N octets
+;;; appended to the octet buffer, no list.  FN-ARENA is the concrete
+;;; fn-arena-extent object and FN-OCTETS the concrete fn-octets$c (or a
+;;; congruent clone's: field 0 the ub8 array, field 1 the fill; io.lisp
+;;; fnn-octets-append-vector writes it the same way).  The window [AT, AT+N)
+;;; is checked against the payload length at entry.  An extent entry runs the
+;;; run loop of fnn-extent-window-realize-span with one REPLACE per decided
+;;; run, from the fn-ew-span array under the lock that decided it; the
+;;; synchronous route copies one REPLACE from the trailer-verified entry
+;;; (fnn-extent-entry) under the one lock.  The fill moves once, after the last
+;;; run, so a cold throw or refusal leaves the buffer as it was.  Every other
+;;; entry kind appends the arena's own span.
+(defun fn-arena-get-span-into (h at n fn-arena fn-octets)
+  (unless (and (integerp h) (<= 0 h) (< h (fn-arena$x-count fn-arena))
+               (integerp at) (<= 0 at) (integerp n) (<= 0 n)
+               (<= (+ at n) (fn-arena$x-payload-len h fn-arena)))
+    (error 'fnn-extent-fault
+           :message (format nil "arena-span-into: window [~a, ~a+~a) of handle ~a is not inside its payload"
+                            at at n h)))
+  (let ((e (fn-arena$x-exti h fn-arena)))
+    (if (not (fn-arn-extentp e))
+        (fn-oct-write-list (fn-arena$x-get-span h at n fn-arena) fn-octets)
+      (let ((fill (svref fn-octets 1)))
+        (declare (type fixnum fill n))
+        (fn-octets$c-reserve (+ fill n) fn-octets)
+        (destructuring-bind (file eoff elen poff plen trailer) e
+          (cond
+           ((zerop n))
+           (*fnn-extent-window-mode*
+            (let ((pos fill) (p at) (end (+ at n)))
+              (declare (type fixnum pos p end))
+              (flet ((sink (dst count)
+                       (declare (type fixnum count))
+                       (replace (the fnn-octets (svref fn-octets 0))
+                                (the fnn-octets (svref dst 0))
+                                :start1 pos :end2 count)
+                       (incf pos count)))
+                (declare (dynamic-extent #'sink))
+                (loop while (< p end)
+                      do (multiple-value-bind (octets count)
+                             (fnn-extent-window-realize-run file eoff elen poff plen trailer
+                                                            p end #'sink)
+                           (declare (ignore octets))
+                           (incf p count))))))
+           (t
+            (fnn-with-observed-mutex (*fnn-extent-lock* :extent :wait-p t)
+              (let ((entry (fnn-extent-entry file eoff elen trailer))
+                    (start (+ (- poff eoff) at)))
+                (declare (type fnn-octets entry))
+                (replace (the fnn-octets (svref fn-octets 0)) entry
+                         :start1 fill :start2 start :end2 (+ start n)))))))
+        (setf (svref fn-octets 1) (+ fill n))))
+    fn-octets))
+
+(defun acl2_*1*_acl2::fn-arena-get-span-into (h at n fn-arena fn-octets)
+  (fn-arena-get-span-into h at n fn-arena fn-octets))
 
 ;;; The whole payload in one call (fn-durable-realize-octets): one lock, one
 ;;; cache lookup or one pread and one verdict, one list of PLEN octets built

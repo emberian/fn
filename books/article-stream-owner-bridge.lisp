@@ -49,17 +49,18 @@
 
 (defthm fn-asto-ready-rest-of-selection-preflight
   (implies (equal (fn-ast-at 0 (fn-ast-at 2 cap)) :article-select)
-           (equal (mv-list 3 (fn-asto-ready-rest oc id (cons (list :article-preflight cap) rest0)
-                                                 f fn-arena))
+           (equal (mv-list 4 (fn-asto-ready-rest oc id (cons (list :article-preflight cap) rest0)
+                                                 f fn-arena fn-ast-ws))
                   (if (equal id (fn-own-conn-id (fn-ast-at 0 cap)))
                       (list (mv-nth 0 (fn-asto-selection-ready oc cap f fn-arena))
                             (mv-nth 1 (fn-asto-selection-ready oc cap f fn-arena))
                             (append (mv-nth 2 (fn-asto-selection-ready oc cap f fn-arena))
-                                    rest0))
-                    (list :stale oc (cons (list :article-preflight cap) rest0)))))
+                                    rest0)
+                            fn-ast-ws)
+                    (list :stale oc (cons (list :article-preflight cap) rest0) fn-ast-ws))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-asto-selection-ready fn-asto-capture-with-selection)
-           :expand ((fn-asto-ready-rest oc id (cons (list :article-preflight cap) rest0) f fn-arena)))))
+           :expand ((fn-asto-ready-rest oc id (cons (list :article-preflight cap) rest0) f fn-arena fn-ast-ws)))))
 
 (defthm fn-asto-capture-with-selection-fields
   (and (equal (fn-ast-at 0 (fn-asto-capture-with-selection cap s sc)) (fn-ast-at 0 cap))
@@ -79,8 +80,8 @@
                 (equal n2 (fn-ast-select-step s2 (nfix f2)))
                 (equal (fn-asx-outcome n1) (fn-asx-outcome n2))
                 (or (fn-ast-select-donep n1) (equal n1 n2)))
-           (equal (mv-list 3 (fn-asto-ready-plan-step oc id plan1 f1 fn-arena))
-                  (mv-list 3 (fn-asto-ready-plan-step oc id plan2 f2 fn-arena))))
+           (equal (mv-list 4 (fn-asto-ready-plan-step oc id plan1 f1 fn-arena fn-ast-ws))
+                  (mv-list 4 (fn-asto-ready-plan-step oc id plan2 f2 fn-arena fn-ast-ws))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-asto-ready-plan-step fn-asto-selection-ready)
@@ -182,8 +183,8 @@
                             (fn-asto-selection-start-cat session v args fn-arena fn-cat) (nfix f1))
                            (fn-ast-select-step
                             (fn-asto-selection-start session archive index args) (nfix f2)))))
-           (equal (mv-list 3 (fn-asto-ready-plan-step oc id plan1 f1 fn-arena))
-                  (mv-list 3 (fn-asto-ready-plan-step oc id plan2 f2 fn-arena))))
+           (equal (mv-list 4 (fn-asto-ready-plan-step oc id plan1 f1 fn-arena fn-ast-ws))
+                  (mv-list 4 (fn-asto-ready-plan-step oc id plan2 f2 fn-arena fn-ast-ws))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-asto-selection-start fn-asto-selection-start-cat fn-asto-capture-selection
@@ -212,8 +213,8 @@
                 (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args))
                 (posp fuel)
                 (<= (fn-asx-need (fn-asto-selection-start session archive index args)) fuel))
-           (equal (mv-list 3 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena))
-                  (mv-list 3 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena))))
+           (equal (mv-list 4 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena fn-ast-ws))
+                  (mv-list 4 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena fn-ast-ws))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-asto-selection-start fn-asto-selection-start-cat fn-asto-capture-selection
@@ -246,8 +247,8 @@
                 (<= (fn-nntp-session-current session) *fn-nntp-max-article-number*)
                 (posp fuel)
                 (<= (fn-asx-need (fn-asto-selection-start session archive index args)) fuel))
-           (equal (mv-list 3 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena))
-                  (mv-list 3 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena))))
+           (equal (mv-list 4 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena fn-ast-ws))
+                  (mv-list 4 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena fn-ast-ws))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-asto-selection-start fn-asto-selection-start-cat fn-asto-capture-selection
@@ -277,8 +278,8 @@
                 (fn-gidx-pinp index)
                 (consp args) (null (cdr args))
                 (fn-nntp-message-id-tokenp (car args)) (fn-octet-listp (car args)))
-           (equal (mv-list 3 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena))
-                  (mv-list 3 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena))))
+           (equal (mv-list 4 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena fn-ast-ws))
+                  (mv-list 4 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena fn-ast-ws))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-asto-selection-start fn-asto-selection-start-cat fn-asto-capture-selection
@@ -307,8 +308,8 @@
                 (consp args) (null (cdr args))
                 (fn-nntp-message-id-tokenp (car args)) (fn-octet-listp (car args))
                 (natp e))
-           (equal (mv-list 3 (fn-asto-ready-plan-step oc id plan1 e fn-arena))
-                  (mv-list 3 (fn-asto-ready-plan-step
+           (equal (mv-list 4 (fn-asto-ready-plan-step oc id plan1 e fn-arena fn-ast-ws))
+                  (mv-list 4 (fn-asto-ready-plan-step
                               oc id plan2
                               (+ (fn-asx-nc (fn-nntp-token-string (car args)) (fn-state-articles archive)) e)
                               fn-arena))))
@@ -385,8 +386,8 @@
                 (consp args) (null (cdr args)) (fn-nntp-number-tokenp (car args))
                 (posp fuel)
                 (<= (fn-asx-need (fn-asto-selection-start session archive index args)) fuel))
-           (equal (mv-list 3 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena))
-                  (mv-list 3 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena))))
+           (equal (mv-list 4 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena fn-ast-ws))
+                  (mv-list 4 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena fn-ast-ws))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (theory 'minimal-theory)
@@ -421,8 +422,8 @@
                 (<= (fn-nntp-session-current session) *fn-nntp-max-article-number*)
                 (posp fuel)
                 (<= (fn-asx-need (fn-asto-selection-start session archive index args)) fuel))
-           (equal (mv-list 3 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena))
-                  (mv-list 3 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena))))
+           (equal (mv-list 4 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena fn-ast-ws))
+                  (mv-list 4 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena fn-ast-ws))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (theory 'minimal-theory)
@@ -454,8 +455,8 @@
                 (fn-gidx-pinp index)
                 (consp args) (null (cdr args))
                 (fn-nntp-message-id-tokenp (car args)) (fn-octet-listp (car args)))
-           (equal (mv-list 3 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena))
-                  (mv-list 3 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena))))
+           (equal (mv-list 4 (fn-asto-ready-plan-step oc id plan1 fuel fn-arena fn-ast-ws))
+                  (mv-list 4 (fn-asto-ready-plan-step oc id plan2 fuel fn-arena fn-ast-ws))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (theory 'minimal-theory)
@@ -488,8 +489,8 @@
                 (consp args) (null (cdr args))
                 (fn-nntp-message-id-tokenp (car args)) (fn-octet-listp (car args))
                 (natp e))
-           (equal (mv-list 3 (fn-asto-ready-plan-step oc id plan1 e fn-arena))
-                  (mv-list 3 (fn-asto-ready-plan-step
+           (equal (mv-list 4 (fn-asto-ready-plan-step oc id plan1 e fn-arena fn-ast-ws))
+                  (mv-list 4 (fn-asto-ready-plan-step
                               oc id plan2
                               (+ (fn-asx-nc (fn-nntp-token-string (car args)) (fn-state-articles archive)) e)
                               fn-arena))))

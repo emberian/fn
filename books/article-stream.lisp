@@ -1,10 +1,19 @@
 ; Shared ARTICLE/HEAD/BODY producer. Payloads remain captured arena handles;
-; preflight and rendering each consume a bounded number of octets per step.
-; The logical list source is retained by its tail, never copied or indexed
-; repeatedly. A READY cursor has no session or authorization effects.
+; preflight and rendering each consume a bounded number of octets per step,
+; read a window at a time into a workspace and scanned by span instances
+; (books/nntp-spans.lisp): the preflight folds `fn-nsp-frame-block', the
+; payload is streamed by `fn-nsp-stuff'.  A READY cursor has no session or
+; authorization effects.
 (in-package "ACL2")
 (include-book "nntp-responses")
 (include-book "nov-piece-window")
+(include-book "nntp-spans")
+(include-book "assumptions-durable-spans")
+(local (include-book "arithmetic-5/top" :dir :system))
+
+; The workspace a quantum loads its payload window into (the owner's, cleared
+; at each load; congruent to `fn-octets', so every span instance reads it).
+(def-buffer fn-ast-ws :view t)
 
 (defun fn-ast-at (i xs)
   (declare (xargs :guard (natp i) :measure (nfix i)))
@@ -21,34 +30,183 @@
         (list p 0 (fn-arena-payload-len p fn-arena) nil)
       (let ((bytes (fn-nntp-article-bytes article fn-arena)))
         (list nil 0 (len bytes) bytes)))))
-(fn-payload-kind fn-ast-source :handle "tests the payload as a natural below the arena count, reads its length there, and keeps the handle as the source's handle; the octets are read by fn-ast-source-byte")
-
-(defun fn-ast-source-byte (source fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (let ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source))))
-    (if (and (natp h) (< h (fn-arena-count fn-arena))
-             (< at (fn-arena-payload-len h fn-arena)))
-        (fn-arena-get h at fn-arena)
-      (if (null h) (fn-cbor-ag-car (fn-ast-at 3 source)) nil))))
-
-(defun fn-ast-source-next (source)
-  (declare (xargs :guard t))
-  (list (fn-ast-at 0 source) (+ 1 (nfix (fn-ast-at 1 source)))
-        (nfix (- (nfix (fn-ast-at 2 source)) 1)) (fn-cbor-ag-cdr (fn-ast-at 3 source))))
+(fn-payload-kind fn-ast-source :handle "tests the payload as a natural below the arena count, reads its length there, and keeps the handle as the source's handle; the octets are read a window at a time by fn-ast-load")
 
 (defun fn-ast-source-left (source left)
   (declare (xargs :guard (natp left)))
   (list (fn-ast-at 0 source) (nfix (fn-ast-at 1 source)) left (fn-ast-at 3 source)))
 
-; Preflight = (source original pending-CR line-start separator-state
-;              body-source bad). Separator state recognizes CR LF CR LF.
+;; THE SPAN SOURCE.  A source's next N octets are a window: a handle's are
+;; the arena's span from AT (fn-arena-get-span), a literal's the first N of
+;; its tail.  `fn-ast-load' clears the workspace and reads the window into it,
+;; a handle's through A-ARENA-SPAN-INTO (books/assumptions-durable-spans.lisp:
+;; one host read into the buffer, no list); `fn-ast-source-avail' is how many
+;; octets the source can still deliver.
+(defun fn-ast-handlep (h fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (and (natp h) (< h (fn-arena-count fn-arena))))
+
+(defun fn-ast-lit-take (n xs)
+  (declare (xargs :guard (natp n)))
+  (if (and (not (zp n)) (consp xs) (fn-cbor-octetp (car xs)))
+      (cons (car xs) (fn-ast-lit-take (- n 1) (cdr xs)))
+    nil))
+
+(defthm fn-ast-lit-take-octets
+  (fn-cbor-octet-listp (fn-ast-lit-take n xs))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp))))
+
+(defthm fn-ast-lit-take-len
+  (<= (len (fn-ast-lit-take n xs)) (nfix n))
+  :rule-classes :linear)
+
+(defun fn-ast-drop (n xs)
+  (declare (xargs :guard (natp n)))
+  (if (or (zp n) (atom xs)) xs (fn-ast-drop (- n 1) (cdr xs))))
+
+(defun fn-ast-source-avail (source fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (let ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source)))
+        (rem (nfix (fn-ast-at 2 source))))
+    (cond ((fn-ast-handlep h fn-arena)
+           (min rem (nfix (- (fn-arena-payload-len h fn-arena) at))))
+          ((null h) (len (fn-ast-lit-take rem (fn-ast-at 3 source))))
+          (t 0))))
+
+; The executable probe: how many of the next WANT octets the source can
+; deliver, in work bounded by WANT (a literal is walked no further than WANT).
+(defun fn-ast-source-take (source want fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (natp want)))
+  (let ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source)))
+        (rem (nfix (fn-ast-at 2 source))))
+    (cond ((fn-ast-handlep h fn-arena)
+           (min (nfix want) (min rem (nfix (- (fn-arena-payload-len h fn-arena) at)))))
+          ((null h) (len (fn-ast-lit-take (min (nfix want) rem) (fn-ast-at 3 source))))
+          (t 0))))
+
+(local
+ (defun fn-ast-lit-ind2 (a b xs)
+   (if (or (zp a) (zp b) (atom xs)) (list a b xs)
+     (fn-ast-lit-ind2 (- a 1) (- b 1) (cdr xs)))))
+
+(local
+ (defthm fn-ast-lit-take-len-min
+   (implies (and (natp a) (natp b))
+            (equal (len (fn-ast-lit-take (min a b) xs))
+                   (min a (len (fn-ast-lit-take b xs)))))
+   :hints (("Goal" :induct (fn-ast-lit-ind2 a b xs)))))
+
+(defthm fn-ast-source-take-is-min
+  (equal (fn-ast-source-take source want fn-arena)
+         (min (nfix want) (fn-ast-source-avail source fn-arena)))
+  :hints (("Goal" :in-theory (disable fn-ast-lit-take fn-ast-lit-take-len-min)
+                  :use ((:instance fn-ast-lit-take-len-min (a (nfix want)) (b (nfix (fn-ast-at 2 source)))
+                                   (xs (fn-ast-at 3 source)))))))
+
+(defun fn-ast-source-window (source n fn-arena)
+  (declare (xargs :stobjs fn-arena
+                  :guard (and (natp n) (<= n (fn-ast-source-avail source fn-arena)))
+                  :guard-hints (("Goal" :in-theory (disable fn-ast-at fn-ast-lit-take)))))
+  (let ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source))))
+    (cond ((not (fn-ast-handlep h fn-arena)) (fn-ast-lit-take n (fn-ast-at 3 source)))
+          ((<= (+ at (nfix n)) (fn-arena-payload-len h fn-arena)) (fn-arena-get-span h at (nfix n) fn-arena))
+          (t nil))))
+
+(defun fn-ast-source-advance (source n)
+  (declare (xargs :guard (natp n)))
+  (list (fn-ast-at 0 source) (+ (nfix n) (nfix (fn-ast-at 1 source)))
+        (nfix (- (nfix (fn-ast-at 2 source)) (nfix n))) (fn-ast-drop n (fn-ast-at 3 source))))
+
+(defun fn-ast-load (source n fn-arena fn-ast-ws)
+  (declare (xargs :stobjs (fn-arena fn-ast-ws)
+                  :guard (and (natp n) (<= n (fn-ast-source-avail source fn-arena)))
+                  :guard-hints (("Goal" :in-theory (disable fn-ast-at fn-ast-lit-take)))))
+  (let* ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source)))
+         (fn-ast-ws (fn-ast-ws-clear fn-ast-ws)))
+    (cond ((not (fn-ast-handlep h fn-arena))
+           (fn-ast-ws-append-list (fn-ast-lit-take n (fn-ast-at 3 source)) fn-ast-ws))
+          ((<= (+ at n) (fn-arena-payload-len h fn-arena)) (fn-arena-get-span-into h at n fn-arena fn-ast-ws))
+          (t fn-ast-ws))))
+
+;; The window a load leaves in the workspace (A-ARENA-SPAN-INTO for a handle).
+(defthm fn-ast-load-is-window
+  (implies (and (natp n) (<= n (fn-ast-source-avail source fn-arena)))
+           (equal (fn-ast-load source n fn-arena fn-ast-ws)
+                  (fn-ast-source-window source n fn-arena)))
+  :hints (("Goal" :in-theory (enable fn-arena-get-span-into-is-append-list fn-ast-ws-append-list
+                                     fn-octets$a-append-list))))
+
+(local
+ (defun fn-ast-span-ind (at n)
+   (if (zp n) at (fn-ast-span-ind (+ 1 at) (1- n)))))
+
+(defthm fn-ast-span-len
+  (equal (len (fn-arena-get-span h at n fn-arena)) (nfix n))
+  :hints (("Goal" :induct (fn-ast-span-ind at n)
+                  :in-theory (enable fn-arena-get-span-is-the-gets))))
+
+(local
+ (defun fn-ast-lit-ind (n k xs)
+   (if (or (zp n) (zp k) (atom xs)) (list n k xs)
+     (fn-ast-lit-ind (- n 1) (- k 1) (cdr xs)))))
+
+(local
+ (defthm fn-ast-lit-take-len-prefix
+   (implies (and (natp n) (<= n (len (fn-ast-lit-take k xs))))
+            (equal (len (fn-ast-lit-take n xs)) n))
+   :hints (("Goal" :induct (fn-ast-lit-ind n k xs)))))
+
+(defthm fn-ast-source-window-len
+  (implies (and (natp n) (<= n (fn-ast-source-avail source fn-arena)))
+           (equal (len (fn-ast-source-window source n fn-arena)) n))
+  :hints (("Goal" :in-theory (enable fn-arena-get-span-is-the-gets))))
+
+(defthm fn-ast-load-len
+  (implies (and (natp n) (<= n (fn-ast-source-avail source fn-arena)))
+           (equal (len (fn-ast-load source n fn-arena fn-ast-ws)) n))
+  :hints (("Goal" :in-theory (disable fn-ast-load fn-ast-source-window fn-ast-source-avail))))
+
+(defthm fn-ast-source-window-octets
+  (implies (and (fn-arena-p fn-arena) (natp n) (<= n (fn-ast-source-avail source fn-arena)))
+           (fn-cbor-octet-listp (fn-ast-source-window source n fn-arena)))
+  :hints (("Goal" :in-theory (disable fn-ast-at fn-ast-lit-take))))
+
+(defthm fn-ast-load-octets
+  (implies (and (fn-arena-p fn-arena) (natp n) (<= n (fn-ast-source-avail source fn-arena)))
+           (fn-cbor-octet-listp (fn-ast-load source n fn-arena fn-ast-ws)))
+  :hints (("Goal" :in-theory (disable fn-ast-load fn-ast-source-window fn-ast-source-avail))))
+
+;; Preflight = (:span source original acc he body): SOURCE what is left to scan,
+;; ORIGINAL the payload's source, ACC the framing fold `fn-nsp-frame-block'
+;; (books/nntp-spans.lisp) over the octets scanned so far, HE the header
+;; block's end (its last CRLF included) from the payload's start once the
+;; CRLF CRLF is found, BODY the source from the body's first octet, taken in
+;; the quantum that finds it (a skip within that quantum, never a second walk
+;; over the header).  Each quantum folds its window from ACC's flags with
+;; the fold's count at zero (until the find), so the count never exceeds one
+;; window and the head end is exact for a payload of any length; no constant
+;; bounds the article (D27).  A refused preflight is done with the BAD bit set.
+(defconst *fn-ast-acc-bad* 4)
+
+; No quantum reads or writes more than 2^40 octets (every index stays a fixnum).
+(defconst *fn-ast-window-max* (expt 2 40))
+
 (defun fn-ast-preflight (source)
   (declare (xargs :guard t))
-  (list source source nil t 0 nil nil))
+  (list :span source source *fn-nsp-block-init* nil nil))
 
 (defun fn-ast-refused-preflight (source)
   (declare (xargs :guard t))
-  (list (fn-ast-source-left source 0) source nil t 0 nil t))
+  (list :span (fn-ast-source-left source 0) source *fn-ast-acc-bad* nil nil))
+
+(defun fn-ast-acc-foundp (acc)
+  (declare (xargs :guard (natp acc)))
+  (eql (mod (floor acc 8) 8) 4))
+
+(defun fn-ast-scan-acc (scan)
+  (declare (xargs :guard t))
+  (let ((acc (fn-ast-at 3 scan)))
+    (if (unsigned-byte-p 59 acc) acc *fn-ast-acc-bad*)))
 
 ; Numeric/current selection retains the archive spine and compares one group
 ; character per transition. The first membership for a group decides its
@@ -159,49 +317,51 @@
   :hints (("Goal" :induct (fn-ast-select-step it a)
                   :in-theory (disable fn-ast-select-one fn-ast-select-donep))))
 
-(defun fn-ast-separator-next (matched byte)
-  (declare (xargs :guard t))
-  (cond ((equal matched 0) (if (equal byte 13) 1 0))
-        ((equal matched 1) (cond ((equal byte 10) 2) ((equal byte 13) 1) (t 0)))
-        ((equal matched 2) (if (equal byte 13) 3 0))
-        (t (cond ((equal byte 10) 4) ((equal byte 13) 1) (t 0)))))
+;; The header end and the body's source after a quantum: kept once found,
+;; taken from the window in the quantum whose fold finds the CRLF CRLF.
+(defun fn-ast-found (foundp scan source base m acc2)
+  (declare (xargs :guard (and (natp base) (natp m) (natp acc2))))
+  (cond (foundp (mv (fn-ast-at 4 scan) (fn-ast-at 5 scan)))
+        ((fn-ast-acc-foundp acc2)
+         (mv (nfix (- (+ base (floor acc2 64)) 2))
+             (fn-ast-source-advance source (min m (floor acc2 64)))))
+        (t (mv nil nil))))
 
-(defun fn-ast-scan-one (scan fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (let* ((source (fn-ast-at 0 scan)) (byte (fn-ast-source-byte source fn-arena))
-         (next (fn-ast-source-next source)) (pending (fn-ast-at 2 scan))
-         (sep (fn-ast-separator-next (fn-ast-at 4 scan) byte)))
-    (list next (fn-ast-at 1 scan) (equal byte 13) (equal byte 10) sep
-          (or (fn-ast-at 5 scan) (and (equal sep 4) next))
-          (or (fn-ast-at 6 scan) (not (fn-octetp byte))
-              (if pending (not (equal byte 10))
-                (or (equal byte 0) (equal byte 10)))))))
-
-(defun fn-ast-scan-step (scan fuel fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (natp fuel) :verify-guards nil :measure (nfix fuel)))
-  (if (or (zp fuel) (zp (nfix (fn-ast-at 2 (fn-ast-at 0 scan)))))
-      (mv scan 0)
-    (mv-let (next used)
-      (fn-ast-scan-step (fn-ast-scan-one scan fn-arena) (- fuel 1) fn-arena)
-      (mv next (+ 1 used)))))
-
-(defthm fn-ast-scan-used-natural
-  (natp (mv-nth 1 (fn-ast-scan-step scan fuel fn-arena)))
-  :rule-classes :type-prescription
-  :hints (("Goal" :induct (fn-ast-scan-step scan fuel fn-arena)
-                  :in-theory (disable fn-ast-scan-one fn-ast-at))))
-
-(verify-guards fn-ast-scan-step
-  :hints (("Goal" :in-theory (disable fn-ast-scan-one fn-ast-at))))
+;; One preflight quantum: up to FUEL octets of the source loaded into the
+;; workspace and folded by `fn-nsp-frame-block' into ACC.  A source that
+;; claims octets it cannot deliver (a payload shorter than its length, or a
+;; literal with a non-octet) ends the scan with the BAD bit set.
+(defun fn-ast-scan-step (scan fuel fn-arena fn-ast-ws)
+  (declare (xargs :stobjs (fn-arena fn-ast-ws) :guard (natp fuel)
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-ast-load fn-ast-source-avail fn-ast-at
+                                                     fn-ast-source-take fn-nsp-frame-block
+                                                     fn-ast-load-is-window fn-ast-found)))))
+  (let* ((source (fn-ast-at 1 scan)) (original (fn-ast-at 2 scan))
+         (acc (fn-ast-scan-acc scan)) (rem (nfix (fn-ast-at 2 source))))
+    (cond ((or (zp rem) (zp fuel)) (mv scan fn-ast-ws))
+          (t (let ((n (fn-ast-source-take source (min (nfix fuel) *fn-ast-window-max*) fn-arena)))
+               (if (zp n)
+                   (mv (list :span (fn-ast-source-left source 0) original *fn-ast-acc-bad* nil nil) fn-ast-ws)
+                 (let* ((fn-ast-ws (fn-ast-load source n fn-arena fn-ast-ws))
+                        (m (min n (fn-ast-ws-len fn-ast-ws)))
+                        (foundp (fn-ast-acc-foundp acc))
+                        (acc2 (fn-nsp-frame-block (if foundp acc (mod acc 64)) 0 m fn-ast-ws))
+                        (base (nfix (- (nfix (fn-ast-at 1 source)) (nfix (fn-ast-at 1 original))))))
+                   (mv-let (he body) (fn-ast-found foundp scan source base m acc2)
+                     (mv (list :span (fn-ast-source-advance source m) original acc2 he body)
+                         fn-ast-ws)))))))))
 
 (defun fn-ast-scan-donep (scan)
   (declare (xargs :guard t))
-  (zp (nfix (fn-ast-at 2 (fn-ast-at 0 scan)))))
+  (zp (nfix (fn-ast-at 2 (fn-ast-at 1 scan)))))
 
+;; Valid: scanned to the end and framed (every line CRLF, no NUL, bare CR or
+;; bare LF, the header block ended by CRLF CRLF).
 (defun fn-ast-scan-validp (scan)
   (declare (xargs :guard t))
-  (and (fn-ast-scan-donep scan) (not (fn-ast-at 6 scan))
-       (not (fn-ast-at 2 scan)) (fn-ast-at 3 scan) (consp (fn-ast-at 5 scan))))
+  (and (fn-ast-scan-donep scan)
+       (fn-nsp-block-framedp (fn-ast-scan-acc scan))))
 
 ; No decimal field is expanded wholesale: the existing proved numerical
 ; piece setup divides once per work unit, then emits one digit per unit.
@@ -220,11 +380,10 @@
 ; across replay. The caller passes pairs from the captured selected article.
 (defun fn-ast-ready (scan kind number article server pairs)
   (declare (xargs :guard t))
-  (let* ((original (fn-ast-at 1 scan)) (body (fn-ast-at 5 scan))
-         (source (cond ((eq kind :body) body)
-                       ((eq kind :head)
-                        (fn-ast-source-left original
-                          (nfix (- (nfix (fn-ast-at 1 body)) 2))))
+  (let* ((original (fn-ast-at 2 scan))
+         (he (nfix (fn-ast-at 4 scan)))
+         (source (cond ((eq kind :body) (fn-ast-at 5 scan))
+                       ((eq kind :head) (fn-ast-source-left original he))
                        (t original))))
     (list :initial (fn-ast-initial-pieces kind number article) 0
           (and (not (eq kind :body)) pairs) source t server)))
@@ -361,8 +520,8 @@
           (t t)))))
 
 ; Each transition spends one unit, even when numerical setup or a phase
-; transition produces no bytes. The payload branch emits at most two octets
-; (a leading dot is doubled); it never scans for the end of a line.
+; transition produces no bytes.  The payload phase is not a transition: the
+; window renders it a quantum at a time (fn-ast-render-window-aux below).
 (defun fn-ast-render-one (cur fn-arena)
   (declare (xargs :stobjs fn-arena :guard (fn-ast-cursorp cur fn-arena)
                   :guard-hints (("Goal" :in-theory (disable fn-npw-one fn-npw-piecesp)))))
@@ -408,13 +567,7 @@
                           (list " " (car pair) ":" (list :decimal (nfix (cdr pair)) nil))
                           0 (cdr (fn-ast-at 3 cur)) (fn-ast-at 4 cur) t nil)))
         (mv nil (list :payload (list '(13 10)) 0 nil (fn-ast-at 4 cur) t nil))))
-     ((eq phase :payload)
-      (let ((source (fn-ast-at 4 cur)))
-        (if (zp (nfix (fn-ast-at 2 source)))
-            (mv nil (list :end (list '(46 13 10)) 0 nil nil t nil))
-          (let ((byte (fn-ast-source-byte source fn-arena)))
-            (mv (if (and (fn-ast-at 5 cur) (equal byte 46)) '(46 46) (list byte))
-                (list :payload nil 0 nil (fn-ast-source-next source) (equal byte 10) nil))))))
+     ((eq phase :payload) (mv nil cur))
      (t (mv nil (list :done nil 0 nil nil nil nil))))))
 
 (local
@@ -488,22 +641,9 @@
                                    fn-ast-xref-state)
                                   (fn-ast-initial-pieces fn-ast-at)))))
 
-(defun fn-ast-render-step-aux (cur fuel acc fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil :measure (nfix fuel)))
-  (if (or (zp fuel) (eq (car cur) :done))
-      (mv (revappend acc nil) cur 0)
-    (mv-let (out next) (fn-ast-render-one cur fn-arena)
-      (mv-let (bytes rest used)
-        (fn-ast-render-step-aux next (- fuel 1) (revappend out acc) fn-arena)
-        (mv bytes rest (+ 1 used))))))
-
-(defun fn-ast-render-step (cur fuel fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (fn-ast-render-step-aux cur fuel nil fn-arena))
-
 ; A window retains an emitted fragment separately from the immutable cursor.
-; Reading a leading dot may produce two octets even for a one-octet window.
-; Neither byte is lost: publication drains the fragment one byte per unit.
+; A transition or a quantum may produce more octets than the window has room
+; for; none is lost: the window keeps them and the next call sends them first.
 (defun fn-ast-window-cur (window)
   (declare (xargs :guard t))
   (if (eq (fn-ast-at 0 window) :window) (fn-ast-at 2 window) window))
@@ -519,7 +659,8 @@
 
 (defun fn-ast-windowp (window fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
-  (fn-ast-cursorp (fn-ast-window-cur window) fn-arena))
+  (and (fn-ast-cursorp (fn-ast-window-cur window) fn-arena)
+       (fn-cbor-octet-listp (fn-ast-window-pending window))))
 
 (local
  (defthm fn-ast-window-cur-of-ready-memberships
@@ -529,254 +670,302 @@
                                    (fn-ast-cursorp fn-ast-initial-pieces))))))
 
 ; The cursor the owner publishes is a window in the sense of the render guard.
+(local
+ (defthm fn-ast-window-pending-of-ready-memberships
+   (equal (fn-ast-window-pending (fn-ast-ready-memberships scan kind number article server))
+          nil)
+   :hints (("Goal" :in-theory (e/d (fn-ast-window-pending fn-ast-ready-memberships fn-ast-ready fn-ast-at)
+                                   (fn-ast-cursorp fn-ast-initial-pieces))))))
+
 (defthm fn-ast-ready-memberships-windowp
   (fn-ast-windowp (fn-ast-ready-memberships scan kind number article server) fn-arena)
-  :hints (("Goal" :in-theory (e/d (fn-ast-windowp) (fn-ast-ready-memberships)))))
+  :hints (("Goal" :in-theory (e/d (fn-ast-windowp) (fn-ast-ready-memberships fn-ast-window-pending)))))
 
-(defun fn-ast-render-window-aux (cur pending fuel left acc fn-arena)
-  (declare (xargs :stobjs fn-arena :measure (nfix fuel)
-                  :guard (and (fn-ast-cursorp cur fn-arena) (natp fuel) (natp left)
-                              (true-listp acc))
-                  :guard-hints (("Goal" :in-theory (disable fn-ast-cursorp fn-ast-render-one
-                                                            fn-npw-piecesp)))))
+;; THE WINDOW RENDER.  A window is (:window PENDING CUR): PENDING octets
+;; emitted but not yet sent, CUR the cursor.  One call clears the output buffer
+;; and writes at most OCTETS octets into it, spending one unit of FUEL per
+;; pending octet sent, per cursor transition and per payload quantum.
+;;
+;; The payload phase is rendered a quantum at a time over spans: the next
+;; window of the payload (no more octets than the room left) is loaded into the
+;; workspace (`fn-ast-load', A-ARENA-SPAN-INTO for a handle) and streamed by
+;; `fn-nsp-stuff' (books/nntp-spans.lisp: each line dot-stuffed, ".CRLF" after
+;; the last), LAST when the window reaches the payload's end.  The stream's
+;; state (0 at a line start) is the cursor's line-start flag; the octets it
+;; consumed advance the source.  The stream needs three octets of room (its
+;; floor, ".CRLF"); a call left with less room offers three and keeps the
+;; octets past its bound as PENDING, so no window is ever written past OCTETS
+;; and none stalls (F4 of the step 3 packet).  A refused stream (an
+;; unterminated last line, which a valid preflight excludes) ends the cursor.
+(defun fn-ast-out-tail (i end fn-dss-out)
+  (declare (xargs :stobjs fn-dss-out
+                  :guard (and (natp i) (natp end) (<= end (fn-dss-out-len fn-dss-out)))
+                  :measure (nfix (- (nfix end) (nfix i)))))
+  (if (and (natp i) (natp end) (< i end))
+      (cons (fn-dss-out-get i fn-dss-out) (fn-ast-out-tail (+ 1 i) end fn-dss-out))
+    nil))
+
+; The octets past BOUND are taken out of the buffer and kept (at most two:
+; only a window with less room than the stream's floor of three has any).
+(defun fn-ast-split-excess (bound fn-dss-out)
+  (declare (xargs :stobjs fn-dss-out :guard (natp bound)))
+  (let ((len (fn-dss-out-len fn-dss-out)))
+    (if (< bound len)
+        (let* ((pending (fn-ast-out-tail bound len fn-dss-out))
+               (fn-dss-out (fn-dss-out-truncate bound fn-dss-out)))
+          (mv pending fn-dss-out))
+      (mv nil fn-dss-out))))
+
+(defthm fn-ast-word-octets-octets
+  (fn-cbor-octet-listp (fn-oct-word-octets w k))
+  :hints (("Goal" :in-theory (enable fn-oct-word-octets fn-cbor-octet-listp))))
+(defthm fn-ast-stuff-list-loop-octets
+  (fn-cbor-octet-listp (mv-nth 2 (fn-nsp-stuff-list-loop s xs last room)))
+  :hints (("Goal" :induct (fn-nsp-stuff-list-loop s xs last room)
+           :in-theory (enable fn-nsp-stuff-list-loop))))
+(defthm fn-ast-stuff-list-octets
+  (fn-cbor-octet-listp (mv-nth 2 (fn-nsp-stuff-list s xs last room)))
+  :hints (("Goal" :in-theory (enable fn-nsp-stuff-list))))
+
+(defthm fn-ast-nth-octet
+  (implies (and (fn-cbor-octet-listp xs) (natp i) (< i (len xs)))
+           (fn-cbor-octetp (nth i xs)))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp nth))))
+(defthm fn-ast-out-tail-octets
+  (implies (and (fn-cbor-octet-listp fn-dss-out) (<= end (len fn-dss-out)))
+           (fn-cbor-octet-listp (fn-ast-out-tail i end fn-dss-out)))
+  :hints (("Goal" :in-theory (e/d (fn-cbor-octet-listp fn-dss-out-get) (fn-cbor-octetp)))))
+(defthm fn-ast-split-excess-len
+  (implies (and (natp bound) (true-listp fn-dss-out))
+           (and (true-listp (mv-nth 1 (fn-ast-split-excess bound fn-dss-out)))
+                (equal (len (mv-nth 1 (fn-ast-split-excess bound fn-dss-out)))
+                       (min bound (len fn-dss-out)))))
+  :hints (("Goal" :in-theory (e/d (fn-oct-take) (fn-ast-out-tail)))))
+
+(defthm fn-ast-stuff-call-len
+  (implies (and (natp cap) (true-listp fn-dss-out))
+           (let ((out2 (mv-nth 3 (fn-nsp-stuff s 0 end last cap fn-octets fn-dss-out))))
+             (and (true-listp out2) (<= (len fn-dss-out) (len out2)))))
+  :hints (("Goal" :in-theory (disable fn-nsp-stuff-list))))
+
+(defthm fn-ast-split-excess-facts
+  (implies (and (natp bound) (fn-cbor-octet-listp fn-dss-out))
+           (and (fn-cbor-octet-listp (car (fn-ast-split-excess bound fn-dss-out)))
+                (fn-cbor-octet-listp (mv-nth 1 (fn-ast-split-excess bound fn-dss-out)))
+                (equal (len (mv-nth 1 (fn-ast-split-excess bound fn-dss-out)))
+                       (min bound (len fn-dss-out)))))
+  :hints (("Goal" :in-theory (e/d (fn-oct-take) (fn-ast-out-tail)))))
+(defthm fn-ast-stuff-call-facts
+  (implies (and (natp cap) (fn-cbor-octet-listp fn-dss-out)
+                (natp end) (<= end (len fn-octets)))
+           (let ((out2 (mv-nth 3 (fn-nsp-stuff s 0 end last cap fn-octets fn-dss-out))))
+             (and (fn-cbor-octet-listp out2)
+                  (<= (len fn-dss-out) (len out2)))))
+  :hints (("Goal" :in-theory (disable fn-nsp-stuff-list))))
+
+(defun fn-ast-payload-quantum (cur left fn-arena fn-ast-ws fn-dss-out)
+  (declare (xargs :stobjs (fn-arena fn-ast-ws fn-dss-out)
+                  :guard (and (natp left) (<= left *fn-ast-window-max*)
+                              (<= (fn-dss-out-len fn-dss-out) *fn-ast-window-max*))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-nsp-stuff fn-ast-load fn-ast-source-avail
+                                                     fn-ast-at fn-ast-out-tail fn-ast-source-advance
+                                                     fn-nsp-stuff-writes fn-nsp-stuff-is-list
+                                                     fn-ast-load-is-window)
+                                 :use ((:instance fn-nsp-stuff-writes
+                                        (s (if (fn-ast-at 5 cur) 0 1)) (i 0)
+                                        (end (min (min left (fn-ast-source-avail (fn-ast-at 4 cur) fn-arena))
+                                                  (len (fn-ast-load (fn-ast-at 4 cur)
+                                                                    (min left (fn-ast-source-avail (fn-ast-at 4 cur) fn-arena))
+                                                                    fn-arena fn-ast-ws))))
+                                        (last (equal (min (min left (fn-ast-source-avail (fn-ast-at 4 cur) fn-arena))
+                                                          (len (fn-ast-load (fn-ast-at 4 cur)
+                                                                            (min left (fn-ast-source-avail (fn-ast-at 4 cur) fn-arena))
+                                                                            fn-arena fn-ast-ws)))
+                                                     (nfix (fn-ast-at 2 (fn-ast-at 4 cur)))))
+                                        (cap (+ (len fn-dss-out) (max left 3)))
+                                        (fn-octets (fn-ast-load (fn-ast-at 4 cur)
+                                                                (min left (fn-ast-source-avail (fn-ast-at 4 cur) fn-arena))
+                                                                fn-arena fn-ast-ws))))))))
+  (let* ((source (fn-ast-at 4 cur))
+         (rem (nfix (fn-ast-at 2 source)))
+         (n (fn-ast-source-take source left fn-arena))
+         (fn-ast-ws (fn-ast-load source n fn-arena fn-ast-ws))
+         (m (min n (fn-ast-ws-len fn-ast-ws)))
+         (lastp (eql m rem))
+         (s (if (fn-ast-at 5 cur) 0 1))
+         (base (fn-dss-out-len fn-dss-out))
+         (cap (+ base (max left 3))))
+    (if (and (zp m) (not lastp))
+        (mv nil (list :done nil 0 nil nil nil nil) 0 fn-ast-ws fn-dss-out)
+      (mv-let (r s2 i2 fn-dss-out)
+        (fn-nsp-stuff s 0 m lastp cap fn-ast-ws fn-dss-out)
+        (mv-let (pending fn-dss-out) (fn-ast-split-excess (+ base left) fn-dss-out)
+          (let* ((next (if (or (eq r :done) (eq r :refused))
+                         (list :done nil 0 nil nil nil nil)
+                       (list :payload nil 0 nil (fn-ast-source-advance source (nfix i2)) (eql s2 0) nil))))
+          (mv pending next (- (fn-dss-out-len fn-dss-out) base) fn-ast-ws fn-dss-out)))))))
+
+(defthm fn-ast-payload-quantum-facts
+  (implies (and (natp left) (<= left *fn-ast-window-max*)
+                (fn-cbor-octet-listp fn-dss-out) (<= (len fn-dss-out) *fn-ast-window-max*))
+           (mv-let (pending next used ws out)
+             (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)
+             (declare (ignore ws pending))
+             (and (fn-cbor-octet-listp (car (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))
+                  (natp used) (<= used left)
+                  (equal (len out) (+ (len fn-dss-out) used))
+                  (fn-cbor-octet-listp out)
+                  (fn-ast-cursorp next fn-arena))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ast-cursorp)
+                           (fn-ast-load fn-ast-source-avail fn-ast-at fn-ast-split-excess
+                            fn-ast-source-advance fn-nsp-stuff fn-nsp-stuff-is-list fn-ast-load-is-window)))))
+
+(defthm fn-ast-payload-quantum-used-bound
+  (implies (and (natp left) (<= left *fn-ast-window-max*)
+                (true-listp fn-dss-out) (<= (len fn-dss-out) *fn-ast-window-max*))
+           (and (<= 0 (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))
+                (<= (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)) left)
+                (integerp (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))
+                (true-listp (mv-nth 4 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))
+                (equal (len (mv-nth 4 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))
+                       (+ (len fn-dss-out)
+                          (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out))))))
+  :rule-classes ((:linear :corollary
+                  (implies (and (natp left) (<= left *fn-ast-window-max*)
+                                (true-listp fn-dss-out) (<= (len fn-dss-out) *fn-ast-window-max*))
+                           (and (<= 0 (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))
+                                (<= (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)) left))))
+                 (:rewrite :corollary
+                  (implies (and (natp left) (<= left *fn-ast-window-max*)
+                                (true-listp fn-dss-out) (<= (len fn-dss-out) *fn-ast-window-max*))
+                           (and (integerp (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))
+                                (true-listp (mv-nth 4 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))
+                                (equal (len (mv-nth 4 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))
+                                       (+ (len fn-dss-out)
+                                          (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out))))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ast-cursorp)
+                           (fn-ast-load fn-ast-source-avail fn-ast-at fn-ast-split-excess
+                            fn-ast-source-advance fn-nsp-stuff fn-nsp-stuff-is-list fn-ast-load-is-window)))))
+
+(defun fn-ast-render-window-aux (cur pending fuel left fn-arena fn-ast-ws fn-dss-out)
+  (declare (xargs :stobjs (fn-arena fn-ast-ws fn-dss-out) :measure (nfix fuel)
+                  :guard (and (fn-ast-cursorp cur fn-arena) (fn-cbor-octet-listp pending)
+                              (natp fuel) (natp left) (<= left *fn-ast-window-max*)
+                              (<= (+ left (fn-dss-out-len fn-dss-out)) *fn-ast-window-max*))
+                  :verify-guards nil))
   (cond
    ((or (zp fuel) (zp left)
         (and (not (consp pending)) (eq (fn-ast-at 0 cur) :done)))
-    (mv (revappend acc nil) (list :window pending cur)))
+    (mv (list :window pending cur) fn-ast-ws fn-dss-out))
    ((consp pending)
-    (fn-ast-render-window-aux cur (cdr pending) (- fuel 1) (- left 1)
-                              (cons (car pending) acc) fn-arena))
+    (let ((fn-dss-out (fn-dss-out-append-octet (car pending) fn-dss-out)))
+      (fn-ast-render-window-aux cur (cdr pending) (- fuel 1) (- left 1) fn-arena fn-ast-ws fn-dss-out)))
+   ((and (eq (fn-ast-at 0 cur) :payload) (not (consp (fn-ast-at 1 cur))))
+    (mv-let (pending2 next used fn-ast-ws fn-dss-out)
+      (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)
+      (fn-ast-render-window-aux next pending2 (- fuel 1) (nfix (- left used))
+                                fn-arena fn-ast-ws fn-dss-out)))
    (t
     (mv-let (out next) (fn-ast-render-one cur fn-arena)
-      (fn-ast-render-window-aux next out (- fuel 1) left acc fn-arena)))))
-
-;; THE SPAN RENDERER (row 21, ARTICLE-RENDER-WALKS-FROM-WINDOW).  The aux
-;; above reads a payload one octet per transition, each octet an arena read
-;; and so, on the host, a borrow of its own.  A window render is a run of
-;; transitions over an arena it only reads, so it asks the arena for the span
-;; of octets it is about to consume (fn-arena-get-span: one call, the host's
-;; one borrow per stretch) and consumes them from the chunk.  The chunk lives
-;; in this call alone: the cursor the call returns is the unconsumed
-;; remainder, offset first, so no read-ahead outlives the arena it was read
-;; from.
-(defun fn-ast-span-want ()
-  (declare (xargs :guard t))
-  256)
-
-(defun fn-ast-source-readablep (source fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (let ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source))))
-    (and (natp h) (< h (fn-arena-count fn-arena))
-         (< at (fn-arena-payload-len h fn-arena))
-         (not (zp (nfix (fn-ast-at 2 source)))))))
-
-; The chunk is the next octets of the cursor's own payload, as the arena has
-; them, no more than the source's remainder.
-(defun fn-ast-chunk-validp (cur chunk fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t))
-  (or (null chunk)
-      (let ((source (fn-ast-at 4 cur)))
-        (and (true-listp chunk)
-             (eq (fn-ast-at 0 cur) :payload) (not (consp (fn-ast-at 1 cur)))
-             (fn-ast-source-readablep source fn-arena)
-             (<= (len chunk) (- (fn-arena-payload-len (fn-ast-at 0 source) fn-arena)
-                                (nfix (fn-ast-at 1 source))))
-             (<= (len chunk) (nfix (fn-ast-at 2 source)))
-             (equal chunk (fn-arena-get-span (fn-ast-at 0 source) (nfix (fn-ast-at 1 source))
-                                             (len chunk) fn-arena))))))
-
-(defun fn-ast-render-one-chunk (cur chunk fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (fn-ast-cursorp cur fn-arena)
-                  :guard-hints (("Goal" :in-theory (disable fn-ast-cursorp fn-ast-render-one
-                                                            fn-npw-piecesp)))))
-  (let ((source (fn-ast-at 4 cur)))
-    (if (and (eq (fn-ast-at 0 cur) :payload) (not (consp (fn-ast-at 1 cur)))
-             (fn-ast-source-readablep source fn-arena))
-        (let* ((h (fn-ast-at 0 source)) (at (nfix (fn-ast-at 1 source)))
-               (chunk (if (consp chunk)
-                          chunk
-                        (fn-arena-get-span h at
-                                           (min (fn-ast-span-want)
-                                                (min (- (fn-arena-payload-len h fn-arena) at)
-                                                     (nfix (fn-ast-at 2 source))))
-                                           fn-arena)))
-               (byte (car chunk)))
-          (mv (if (and (fn-ast-at 5 cur) (equal byte 46)) '(46 46) (list byte))
-              (list :payload nil 0 nil (fn-ast-source-next source) (equal byte 10) nil)
-              (cdr chunk)))
-      (mv-let (out next) (fn-ast-render-one cur fn-arena)
-        (mv out next nil)))))
-
-;; The span renderer's local facts: the per-octet renderer on a readable
-;; payload cursor, and the span's car, cdr and length.
-(local
- (defthm fn-ast-render-one-on-a-readable-payload
-   (implies (and (equal (fn-ast-at 0 cur) :payload) (not (consp (fn-ast-at 1 cur)))
-                 (fn-ast-source-readablep (fn-ast-at 4 cur) fn-arena))
-            (equal (fn-ast-render-one cur fn-arena)
-                   (let ((byte (fn-arena-get (fn-ast-at 0 (fn-ast-at 4 cur))
-                                             (nfix (fn-ast-at 1 (fn-ast-at 4 cur))) fn-arena)))
-                     (mv (if (and (fn-ast-at 5 cur) (equal byte 46)) '(46 46) (list byte))
-                         (list :payload nil 0 nil (fn-ast-source-next (fn-ast-at 4 cur))
-                               (equal byte 10) nil)))))
-   :hints (("Goal" :in-theory (e/d (fn-ast-render-one fn-ast-source-readablep fn-ast-source-byte)
-                                   (fn-npw-one fn-ast-xref-one fn-ast-server-one fn-ast-source-next))))))
+      (fn-ast-render-window-aux next out (- fuel 1) left fn-arena fn-ast-ws fn-dss-out)))))
 
 (local
- (defthm fn-ast-span-car-cdr
-   (implies (not (zp n))
-            (and (equal (car (fn-arena-get-span h at n fn-arena)) (fn-arena-get h at fn-arena))
-                 (equal (cdr (fn-arena-get-span h at n fn-arena))
-                        (fn-arena-get-span h (+ 1 at) (1- n) fn-arena))
-                 (consp (fn-arena-get-span h at n fn-arena))))
-   :hints (("Goal" :expand ((fn-arena-get-span h at n fn-arena))))))
+ (defthm fn-ast-snoc-octets
+   (implies (and (fn-cbor-octet-listp xs) (fn-cbor-octetp o))
+            (and (fn-cbor-octet-listp (fn-oct-snoc xs o))
+                 (equal (len (fn-oct-snoc xs o)) (+ 1 (len xs)))))
+   :hints (("Goal" :in-theory (enable fn-oct-snoc fn-cbor-octet-listp)))))
 
 (local
- (defun fn-ast-span-ind (at n)
-   (if (zp n) at (fn-ast-span-ind (+ 1 at) (1- n)))))
-
-(local
- (defthm fn-ast-span-len
-   (equal (len (fn-arena-get-span h at n fn-arena)) (nfix n))
-   :hints (("Goal" :induct (fn-ast-span-ind at n)
-                   :in-theory (enable fn-arena-get-span-is-the-gets)))))
-
-(local
- (defthm fn-ast-span-true-listp
-   (true-listp (fn-arena-get-span h at n fn-arena))
-   :hints (("Goal" :induct (fn-ast-span-ind at n)
-                   :in-theory (enable fn-arena-get-span-is-the-gets)))))
-
-(local
- (defthm fn-ast-span-of-zp
-   (implies (zp n) (equal (fn-arena-get-span h at n fn-arena) nil))
-   :hints (("Goal" :in-theory (enable fn-arena-get-span-is-the-gets)))))
-
-(local
- (defthm fn-ast-chunk-car-cdr
-   (implies (and (equal chunk (fn-arena-get-span h at (len chunk) fn-arena))
-                 (consp chunk))
-            (and (equal (car chunk) (fn-arena-get h at fn-arena))
-                 (equal (cdr chunk) (fn-arena-get-span h (+ 1 at) (+ -1 (len chunk)) fn-arena))))
-   :hints (("Goal" :use ((:instance fn-ast-span-car-cdr (n (len chunk))))
-                   :in-theory (disable fn-ast-span-car-cdr)))))
-
-(local
- (defthm fn-ast-render-one-chunk-keeps-cursorp
+ (defthm fn-ast-render-one-output-octets
    (implies (fn-ast-cursorp cur fn-arena)
-            (fn-ast-cursorp (mv-nth 1 (fn-ast-render-one-chunk cur chunk fn-arena)) fn-arena))
-   :hints (("Goal" :use fn-ast-render-one-keeps-cursorp :in-theory (e/d (fn-ast-render-one-chunk fn-ast-cursorp fn-npw-piecesp)
-                                   (fn-ast-render-one fn-ast-source-readablep fn-ast-source-next
-                                    fn-arena-get-span-is-the-gets))))))
+            (fn-cbor-octet-listp (car (fn-ast-render-one cur fn-arena))))
+   :hints (("Goal" :in-theory (e/d (fn-ast-render-one fn-ast-cursorp)
+                                   (fn-npw-one fn-ast-xref-one fn-ast-server-one fn-npw-piecesp
+                                    fn-npw-one-output-octets))
+                   :use ((:instance fn-npw-one-output-octets
+                          (pieces (fn-ast-at 1 cur)) (pos (nfix (fn-ast-at 2 cur)))))))))
 
-(defun fn-ast-render-window-aux-chunk (cur pending chunk fuel left acc fn-arena)
-  (declare (xargs :stobjs fn-arena :measure (nfix fuel)
-                  :guard (and (fn-ast-cursorp cur fn-arena) (natp fuel) (natp left)
-                              (true-listp acc))
-                  :guard-hints (("Goal" :in-theory (disable fn-ast-cursorp fn-ast-render-one
-                                                            fn-ast-render-one-chunk
-                                                            fn-npw-piecesp)))))
-  (cond
-   ((or (zp fuel) (zp left)
-        (and (not (consp pending)) (eq (fn-ast-at 0 cur) :done)))
-    (mv (revappend acc nil) (list :window pending cur)))
-   ((consp pending)
-    (fn-ast-render-window-aux-chunk cur (cdr pending) chunk (- fuel 1) (- left 1)
-                                    (cons (car pending) acc) fn-arena))
-   (t
-    (mv-let (out next chunk)
-      (fn-ast-render-one-chunk cur chunk fn-arena)
-      (fn-ast-render-window-aux-chunk next out chunk (- fuel 1) left acc fn-arena)))))
+; The window invariant, the output's octets and its bound, through every call.
+(defthm fn-ast-render-window-aux-facts
+  (implies (and (fn-ast-cursorp cur fn-arena) (fn-cbor-octet-listp pending)
+                (natp left) (<= left *fn-ast-window-max*)
+                (fn-cbor-octet-listp fn-dss-out)
+                (<= (+ left (len fn-dss-out)) *fn-ast-window-max*))
+           (mv-let (window ws out)
+             (fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out)
+             (declare (ignore ws))
+             (and (fn-ast-windowp window fn-arena)
+                  (fn-cbor-octet-listp out)
+                  (<= (len out) (+ (len fn-dss-out) left)))))
+  :hints (("Goal" :induct (fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out)
+           :in-theory (e/d (fn-ast-windowp fn-ast-window-cur fn-ast-window-pending fn-ast-at)
+                           (fn-ast-payload-quantum fn-ast-render-one fn-ast-cursorp))
+           :expand ((fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out)))))
 
-;; KEYSTONE fn-ast-render-window-aux-chunk-is-per-octet: the span renderer's
-;; output and cursor are the per-octet renderer's (fn-ast-render-window-aux,
-;; the specification) for every cursor, fuel and bound, from an empty chunk.
-;; The arena is only read, so the span the chunk was read from is the arena
-;; every later octet would have been read from.
-(defthm fn-ast-render-one-chunk-is-render-one
-  (implies (fn-ast-chunk-validp cur chunk fn-arena)
-           (and (equal (mv-nth 0 (fn-ast-render-one-chunk cur chunk fn-arena))
-                       (mv-nth 0 (fn-ast-render-one cur fn-arena)))
-                (equal (mv-nth 1 (fn-ast-render-one-chunk cur chunk fn-arena))
-                       (mv-nth 1 (fn-ast-render-one cur fn-arena)))
-                (fn-ast-chunk-validp (mv-nth 1 (fn-ast-render-one cur fn-arena))
-                                     (mv-nth 2 (fn-ast-render-one-chunk cur chunk fn-arena))
-                                     fn-arena)))
-  :hints (("Goal" :in-theory (e/d (fn-ast-render-one-chunk fn-ast-chunk-validp
-                                   fn-ast-source-readablep fn-ast-source-next)
-                                  (fn-ast-render-one fn-ast-cursorp fn-arena-get-span-is-the-gets
-                                   fn-ast-span-want)))))
+(verify-guards fn-ast-render-window-aux
+  :hints (("Goal" :in-theory (disable fn-ast-payload-quantum fn-ast-render-one fn-ast-cursorp))))
 
-(defthm fn-ast-render-window-aux-chunk-is-per-octet
-  (implies (fn-ast-chunk-validp cur chunk fn-arena)
-           (equal (fn-ast-render-window-aux-chunk cur pending chunk fuel left acc fn-arena)
-                  (fn-ast-render-window-aux cur pending fuel left acc fn-arena)))
-  :hints (("Goal" :induct (fn-ast-render-window-aux-chunk cur pending chunk fuel left acc fn-arena)
-                  :in-theory (disable fn-ast-render-one fn-ast-render-one-chunk fn-ast-chunk-validp))))
+(defun fn-ast-render-window (window fuel octets fn-arena fn-ast-ws fn-dss-out)
+  (declare (xargs :stobjs (fn-arena fn-ast-ws fn-dss-out)
+                  :guard (fn-ast-windowp window fn-arena)
+                  :guard-hints (("Goal" :in-theory (enable fn-ast-windowp)))))
+  (let ((fn-dss-out (fn-dss-out-clear fn-dss-out)))
+    (fn-ast-render-window-aux (fn-ast-window-cur window) (fn-ast-window-pending window)
+                              (nfix fuel) (min (nfix octets) *fn-ast-window-max*)
+                              fn-arena fn-ast-ws fn-dss-out)))
 
-(defun fn-ast-render-window (window fuel octets fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (fn-ast-windowp window fn-arena)))
-  (fn-ast-render-window-aux-chunk (fn-ast-window-cur window)
-                                  (fn-ast-window-pending window) nil
-                                  (nfix fuel) (nfix octets) nil fn-arena))
+(defthm fn-ast-render-window-aux-len
+  (implies (and (natp left) (<= left *fn-ast-window-max*) (true-listp fn-dss-out)
+                (<= (+ left (len fn-dss-out)) *fn-ast-window-max*))
+           (let ((out (mv-nth 2 (fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out))))
+             (and (true-listp out) (<= (len out) (+ (len fn-dss-out) left)))))
+  :hints (("Goal" :induct (fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out)
+           :in-theory (e/d (fn-oct-snoc) (fn-ast-payload-quantum fn-ast-render-one fn-ast-cursorp)))))
 
-; A window rendered from a valid window is a valid window, so the plan can carry it.
-(defthm fn-ast-render-window-aux-keeps-windowp
-  (implies (fn-ast-cursorp cur fn-arena)
-           (fn-ast-windowp (mv-nth 1 (fn-ast-render-window-aux cur pending fuel left acc fn-arena))
-                           fn-arena))
-  :hints (("Goal" :induct (fn-ast-render-window-aux cur pending fuel left acc fn-arena)
-                  :in-theory (e/d (fn-ast-windowp fn-ast-window-cur fn-ast-at)
-                                  (fn-ast-cursorp fn-ast-render-one)))))
+; A window rendered from a valid window is a valid window, so the plan can
+; carry it; and no call writes more than OCTETS octets.
 (defthm fn-ast-render-window-keeps-windowp
   (implies (fn-ast-windowp window fn-arena)
-           (fn-ast-windowp (mv-nth 1 (fn-ast-render-window window fuel octets fn-arena))
+           (fn-ast-windowp (mv-nth 0 (fn-ast-render-window window fuel octets fn-arena fn-ast-ws fn-dss-out))
                            fn-arena))
-  :hints (("Goal" :in-theory (e/d (fn-ast-windowp fn-ast-chunk-validp)
-                                  (fn-ast-render-window-aux fn-ast-cursorp
-                                      fn-ast-window-cur fn-ast-window-pending))
-                  :expand ((fn-ast-render-window window fuel octets fn-arena))
-                  :use ((:instance fn-ast-render-window-aux-keeps-windowp
-                          (cur (fn-ast-window-cur window))
-                          (pending (fn-ast-window-pending window))
-                          (fuel (nfix fuel)) (left (nfix octets)) (acc nil))
-                        (:instance fn-ast-render-window-aux-chunk-is-per-octet
-                          (cur (fn-ast-window-cur window))
-                          (pending (fn-ast-window-pending window)) (chunk nil)
-                          (fuel (nfix fuel)) (left (nfix octets)) (acc nil))))))
-
-(defthm fn-ast-render-window-acc-bound
-  (<= (len (mv-nth 0 (fn-ast-render-window-aux cur pending fuel left acc fn-arena)))
-      (+ (len acc) (nfix left)))
-  :rule-classes :linear
-  :hints (("Goal" :induct (fn-ast-render-window-aux cur pending fuel left acc fn-arena)
-                  :in-theory (disable fn-ast-render-one))))
+  :hints (("Goal" :in-theory (e/d (fn-ast-windowp) (fn-ast-render-window-aux fn-ast-window-cur fn-ast-window-pending))
+                  :use ((:instance fn-ast-render-window-aux-facts
+                         (cur (fn-ast-window-cur window)) (pending (fn-ast-window-pending window))
+                         (fuel (nfix fuel)) (left (min (nfix octets) *fn-ast-window-max*))
+                         (fn-dss-out nil))))))
 
 (defthm fn-ast-render-window-byte-bound
-  (<= (len (mv-nth 0 (fn-ast-render-window window fuel octets fn-arena)))
+  (<= (len (mv-nth 2 (fn-ast-render-window window fuel octets fn-arena fn-ast-ws fn-dss-out)))
       (nfix octets))
   :rule-classes :linear
-  :hints (("Goal"
-           :use ((:instance fn-ast-render-window-acc-bound
-                            (cur (fn-ast-window-cur window))
-                            (pending (fn-ast-window-pending window))
-                            (fuel (nfix fuel)) (left (nfix octets)) (acc nil))
-                 (:instance fn-ast-render-window-aux-chunk-is-per-octet
-                          (cur (fn-ast-window-cur window))
-                          (pending (fn-ast-window-pending window)) (chunk nil)
-                          (fuel (nfix fuel)) (left (nfix octets)) (acc nil)))
-           :in-theory (e/d (fn-ast-chunk-validp)
-                           (fn-ast-render-window-aux
-                            fn-ast-window-cur fn-ast-window-pending)))))
+  :hints (("Goal" :in-theory (disable fn-ast-render-window-aux fn-ast-window-cur fn-ast-window-pending)
+                  :use ((:instance fn-ast-render-window-aux-len
+                         (cur (fn-ast-window-cur window)) (pending (fn-ast-window-pending window))
+                         (fuel (nfix fuel)) (left (min (nfix octets) *fn-ast-window-max*))
+                         (fn-dss-out nil))))))
 
-(defthm fn-ast-scan-work-bounded
-  (<= (mv-nth 1 (fn-ast-scan-step scan fuel fn-arena)) (nfix fuel))
-  :rule-classes :linear
-  :hints (("Goal" :induct (fn-ast-scan-step scan fuel fn-arena)
-                  :in-theory (disable fn-ast-scan-one))))
+;; The served path's runs, for the keystones: K preflight quanta, and K window
+;; calls with every call's output collected in order.
+(defun fn-ast-scan-run (scan fuel k fn-arena fn-ast-ws)
+  (declare (xargs :stobjs (fn-arena fn-ast-ws) :guard (and (natp fuel) (natp k))
+                  :verify-guards nil))
+  (if (zp k)
+      (mv scan fn-ast-ws)
+    (mv-let (scan fn-ast-ws) (fn-ast-scan-step scan fuel fn-arena fn-ast-ws)
+      (fn-ast-scan-run scan fuel (- k 1) fn-arena fn-ast-ws))))
 
-(defthm fn-ast-render-work-bounded
-  (<= (mv-nth 2 (fn-ast-render-step-aux cur fuel acc fn-arena)) (nfix fuel))
-  :rule-classes :linear
-  :hints (("Goal" :induct (fn-ast-render-step-aux cur fuel acc fn-arena)
-                  :in-theory (disable fn-ast-render-one revappend))))
+(defun fn-ast-render-run (window fuel octets k fn-arena fn-ast-ws fn-dss-out)
+  (declare (xargs :stobjs (fn-arena fn-ast-ws fn-dss-out) :guard (and (natp fuel) (natp k))
+                  :verify-guards nil))
+  (if (zp k)
+      (mv window nil fn-ast-ws fn-dss-out)
+    (mv-let (w2 fn-ast-ws fn-dss-out)
+      (fn-ast-render-window window fuel octets fn-arena fn-ast-ws fn-dss-out)
+      (let ((sent (fn-dss-out-list fn-dss-out)))
+        (mv-let (w3 rest fn-ast-ws fn-dss-out)
+          (fn-ast-render-run w2 fuel octets (- k 1) fn-arena fn-ast-ws fn-dss-out)
+          (mv w3 (append sent rest) fn-ast-ws fn-dss-out))))))
