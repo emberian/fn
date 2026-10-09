@@ -29,6 +29,25 @@
 ;          submitted action until its completion arrives, keys (kind id inc)
 ;          distinct.  A buffered action holds a lease on its handle's buffer.
 ;
+; A completion that matches no outstanding use -- a duplicate, a forgery, one
+; already ended, one naming a retired incarnation -- changes nothing and emits
+; nothing (T6).  The layer checks the host's discipline; it does not assume it.
+;
+; Cancellation: an instance may request (:cancel kind) for its own outstanding
+; action; the layer emits (:cancel id inc (kind)) to the host and keeps the use.
+; The use, and any lease it holds, ends only on the action's own completion,
+; which after a cancel is (:cancelled) or whatever the worker actually did.
+; A-HOST-COMPLETES (statement below): the host delivers exactly one completion
+; for every submitted action.  Under it a deadline (a :timer) followed by a
+; cancel bounds how long any action can pin its slot and its buffer.
+;
+; v1 limitation: the key (kind id inc) allows one outstanding action per kind
+; per instance, so an instance cannot keep two :pread in flight (no double-
+; buffered reads).  Revisit when a measured served path needs it: cold ARTICLE
+; of a multi-extent article whose per-read latency, serialized, misses the
+; ARTICLE 3 MiB bar in PRODUCT-DRAFT; the change is an operation number in the
+; key, not a new mechanism.
+;
 ; The ownership invariant OutstandingUse(h,g) => BytesStable(h,g) and
 ; not Recyclable(h,g) is `fn-rtc-invp''s lease clause plus the two-state
 ; theorem `fn-rtc-outstanding-use-is-stable' (statements below).  A lease is
@@ -67,6 +86,10 @@
 ; layer's.
 (defconst *fn-rtc-machine-kinds*
   '(:recv :send :pread :pwrite :fsync :timer :bp-send))
+
+; Actions are the completion kinds plus :cancel, which has no completion of its
+; own: it asks the host to finish the named action early.
+(defconst *fn-rtc-action-kinds* (cons :cancel *fn-rtc-kinds*))
 
 (defun fn-rtc-get (i l)
   (declare (xargs :guard t))
@@ -137,7 +160,7 @@
 (defun fn-rtc-actionp (a)
   (declare (xargs :guard t))
   (and (true-listp a) (equal (len a) 4)
-       (member-eq (fn-rtc-get 0 a) *fn-rtc-kinds*)
+       (member-eq (fn-rtc-get 0 a) *fn-rtc-action-kinds*)
        (natp (fn-rtc-get 1 a)) (natp (fn-rtc-get 2 a))
        (true-listp (fn-rtc-get 3 a))))
 
@@ -400,6 +423,7 @@
 ;   (:release h g)             its own workspace back to :free
 ;   (:submit kind hd extra)    an action; hd a handle for a buffered kind
 ;   (:close)                   close this instance
+;   (:cancel kind)             ask the host to finish its outstanding KIND action
 ; A request the layer cannot honour is refused (returned, nothing changes).
 
 (defun fn-rtc-reqs-octets (reqs)
@@ -687,6 +711,22 @@
   :hints (("Goal" :in-theory (disable fn-rtc-submit-okp fn-rtc-with-uses fn-rtc-with-buffer
                                       fn-rtc-find-use fn-rtc-live-p fn-rtc-buffered-kind-p))))
 
+; Ask the host to finish this instance's outstanding KIND action early.  The
+; use stays; nothing in the pool changes.  Refused when no such use exists.
+(defun fn-rtc-req-cancel (r id inc s)
+  (declare (xargs :guard t))
+  (let ((kind (fn-rtc-get 1 r)))
+    (if (and (member-eq kind *fn-rtc-machine-kinds*)
+             (fn-rtc-current-p id inc s)
+             (fn-rtc-find-use (list kind id inc) (fn-rtc-uses s)))
+        (mv s (list (list :cancel id inc (list kind))) nil
+            (+ 1 (fn-rtc-use-bound (fn-rtc-config s))))
+      (mv s nil (list r) (+ 1 (fn-rtc-use-bound (fn-rtc-config s)))))))
+
+(defthm fn-rtc-req-cancel-lists
+  (and (true-listp (mv-nth 1 (fn-rtc-req-cancel r id inc s)))
+       (true-listp (mv-nth 2 (fn-rtc-req-cancel r id inc s)))))
+
 (defun fn-rtc-request (r id inc s)
   (declare (xargs :guard t))
   (case (fn-rtc-get 0 r)
@@ -695,13 +735,14 @@
     (:release (fn-rtc-req-release r id inc s))
     (:close (fn-rtc-req-close r id inc s))
     (:submit (fn-rtc-req-submit r id inc s))
+    (:cancel (fn-rtc-req-cancel r id inc s))
     (otherwise (mv s nil (list r) 1))))
 
 (defthm fn-rtc-request-lists
   (and (true-listp (mv-nth 1 (fn-rtc-request r id inc s)))
        (true-listp (mv-nth 2 (fn-rtc-request r id inc s))))
   :hints (("Goal" :in-theory (disable fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
-                                      fn-rtc-req-close fn-rtc-req-submit))))
+                                      fn-rtc-req-close fn-rtc-req-submit fn-rtc-req-cancel))))
 
 (in-theory (disable fn-rtc-request))
 
@@ -841,6 +882,17 @@
     (declare (ignore s2 acts refused))
     cost))
 
+; Retained output of a step: the octets the emitted actions name.  An action
+; carries a handle, never bytes; the handle's len is within the configured
+; buffer capacity (`fn-rtc-use-okp'), so this is the measure section 1 bounds.
+(defun fn-rtc-actions-octets (acts)
+  (declare (xargs :guard t))
+  (if (consp acts)
+      (+ (let ((hd (fn-rtc-get 0 (fn-rtc-get 3 (car acts)))))
+           (if (fn-rtc-handlep hd) (fn-rtc-h-len hd) 0))
+         (fn-rtc-actions-octets (cdr acts)))
+    0))
+
 (defun fn-rtc-step-c (cfg)
   (declare (xargs :guard t))
   (+ 4 (fn-rtc-m-c) (* 2 (fn-rtc-nslots cfg)) (fn-rtc-nbufs cfg)
@@ -914,12 +966,13 @@
            (not (fn-rtc-find-use (fn-rtc-key u)
                                  (fn-rtc-uses (fn-rtc-end-use s e))))))
 
-; T6. A completion whose incarnation is not its slot's current one changes
-; nothing and emits nothing.
-(defthm fn-rtc-stale-incarnation-is-discarded
+; T6. A completion that matches no outstanding use -- a duplicate, a forgery, one
+; already ended, or one naming an incarnation other than its slot's current one
+; (every outstanding use is at its slot's current incarnation) -- changes
+; nothing and emits nothing.  The layer checks the host; it does not trust it.
+(defthm fn-rtc-unmatched-completion-is-discarded
   (implies (and (fn-rtc-invp s)
-                (not (equal (fn-rtc-e-inc e)
-                            (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-e-id e) s)))))
+                (not (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))))
            (and (equal (mv-nth 0 (fn-rtc-step s e q)) s)
                 (equal (mv-nth 1 (fn-rtc-step s e q)) nil))))
 
@@ -950,18 +1003,26 @@
   (implies (fn-rtc-invp s)
            (<= (fn-rtc-gen h s) (fn-rtc-gen h (mv-nth 0 (fn-rtc-step s e q))))))
 
-; T10. Every emitted action is well formed and recorded in the
-; outstanding-use table of the resulting state under its key.
+; T10. Every emitted action is well formed; every action but :cancel is
+; recorded in the outstanding-use table of the resulting state under its key,
+; and a :cancel names a use that is still outstanding there (cancel does not
+; end a use).
 (defthm fn-rtc-every-action-is-outstanding
   (implies (and (fn-rtc-invp s)
                 (member-equal a (mv-nth 1 (fn-rtc-step s e q))))
            (and (fn-rtc-actionp a)
-                (fn-rtc-find-use (fn-rtc-key a)
-                                 (fn-rtc-uses (mv-nth 0 (fn-rtc-step s e q)))))))
+                (if (equal (fn-rtc-get 0 a) :cancel)
+                    (fn-rtc-find-use (list (fn-rtc-get 0 (fn-rtc-get 3 a))
+                                           (fn-rtc-get 1 a) (fn-rtc-get 2 a))
+                                     (fn-rtc-uses (mv-nth 0 (fn-rtc-step s e q))))
+                  (fn-rtc-find-use (fn-rtc-key a)
+                                   (fn-rtc-uses (mv-nth 0 (fn-rtc-step s e q))))))))
 
 ; T11. The commit point: an instance's commit observer turns true only on
 ; the delivery of a (:fsync (:done n)) completion of its own outstanding
-; :fsync at its live incarnation.
+; :fsync at its live incarnation.  This is the layer's half.  Which barrier an
+; instance may commit on (for POST: the barrier after its log record, not the
+; payload barrier) is the instance's own keystone, the first of landing 2.
 (defthm fn-rtc-commit-only-on-own-barrier-completion
   (implies (and (fn-rtc-invp s)
                 (not (fn-rtc-m-committedp (fn-rtc-mstate j s)))
@@ -972,11 +1033,49 @@
                 (equal (fn-rtc-get 0 (fn-rtc-e-outcome e)) :done))))
 
 ; T12. The work budget: one step costs at most the quantum plus a term of the
-; configuration, and emits a bounded number of actions.
+; configuration, emits a bounded number of actions, and the octets those
+; actions name (its retained output) are bounded by the configuration.
 (defthm fn-rtc-step-is-charged
   (implies (and (fn-rtc-invp s) (natp q))
            (and (<= (fn-rtc-step-cost s e q)
                     (+ q (fn-rtc-step-c (fn-rtc-config s))))
                 (<= (len (mv-nth 1 (fn-rtc-step s e q)))
-                    (+ 1 (fn-rtc-m-max-reqs))))))
-|#
+                    (+ 1 (fn-rtc-m-max-reqs)))
+                (<= (fn-rtc-actions-octets (mv-nth 1 (fn-rtc-step s e q)))
+                    (* (fn-rtc-m-max-reqs) (fn-rtc-cap (fn-rtc-config s)))))))
+
+; T13. Drain progresses: a :draining slot whose last outstanding use is ended
+; by this event is retired to :free, and the listener's :accept is armed.
+(defthm fn-rtc-last-completion-retires-a-draining-slot
+  (implies (and (fn-rtc-invp s)
+                (equal (fn-rtc-s-status (fn-rtc-slot j s)) :draining)
+                (member-equal u (fn-rtc-uses s))
+                (equal (fn-rtc-get 1 u) j)
+                (fn-rtc-ends-use-p e u)
+                (not (fn-rtc-uses-of-slot-p j (fn-rtc-s-inc (fn-rtc-slot j s))
+                                            (fn-rtc-remove-use (fn-rtc-key u) (fn-rtc-uses s)))))
+           (let ((s2 (mv-nth 0 (fn-rtc-step s e q))))
+             (and (equal (fn-rtc-s-status (fn-rtc-slot j s2)) :free)
+                  (fn-rtc-find-use '(:accept 0 0) (fn-rtc-uses s2))))))
+
+; A-HOST-COMPLETES, the named assumption (an encapsulate in
+; books/assumptions-runtime.lisp, statement here): the host delivers exactly
+; one completion for every submitted action.  Over a host trace -- the actions
+; the layer emitted and the events the host returned after them, in order --
+; every non-:cancel action's key is the key of exactly one later completion.
+;
+;   (encapsulate (((fn-assume-host-completions *) => *))
+;     (local (defun fn-assume-host-completions (actions)  ; witness: cancel all
+;              (fn-rtc-cancel-all actions)))
+;     (defthm fn-assume-host-completes-every-action
+;       (implies (and (member-equal a actions) (not (equal (fn-rtc-get 0 a) :cancel)))
+;                (equal (fn-rtc-count-key (fn-rtc-key a)
+;                                         (fn-assume-host-completions actions))
+;                       1)))
+;     (defthm fn-assume-host-completions-are-completions
+;       (fn-rtc-completion-listp (fn-assume-host-completions actions))))
+;
+; With T4 (only its own completion ends a use), T13 and A-HOST-COMPLETES, every
+; draining slot is eventually retired: the pin a stuck action holds is bounded by
+; the instance's deadline plus the host's completion of the cancel.
+|#|#
