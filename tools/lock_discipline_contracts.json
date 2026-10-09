@@ -946,7 +946,12 @@
   "fnn-tcl-spool-release": "the transfer's spool lock descriptor handed to the release (tcpcl.lisp:278); unlocked and closed independently, an ambiguous return retained in *fnn-tcl-spool-close-debts*, never retried",
   "fnn-app-journal-close": "the application journal's lock fd (fnn-app-journal-lock-fd), consumed here before the close (workflow.lisp:34); unlocked and closed once, custody of an ambiguous return retained via fnn-app-retain-close-debt"
  },
- "unlocked_publication": {},
+ "unlocked_publication": {
+  "fnn-owner-service-peer-flight-bank": {
+   "writers": ["fnn-owner-peer-flight-startup"],
+   "why": "Written once per service by the bank constructor's install callback in fnn-owner-peer-flight-startup (host/native/owner.lisp), on the thread that installs the service and before it spawns any reader: fnn-owner-run calls it before fnn-owner-start-committer, fnn-mux-start and the start hooks (pull service), whose threads read the slot (fnn-mux-render-next, fnn-mux-step, fnn-pull-flight-catchup-lease), so thread creation orders the write before those reads; fnn-bp-served-owner-start (host/native/bp-service.lisp) spawns none of them. Every other read (fnn-owner-run's teardown, fnn-bp-served-owner-stop, fnn-owner-measure-report, the registered close hook) is on the installing thread after the workers are joined. The checker has no spawn happens-before edge (LOCK-CHECKER-MODEL-GAPS gap 3), so this row states the order; a second writer is red."
+  }
+ },
  "escalation_wrappers": {
   "fnn-owner-install-or-end": {
    "param": "install",
