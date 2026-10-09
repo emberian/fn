@@ -32,7 +32,7 @@
 (defconst *fn-nsp-refused-malformed* (expt 2 57))
 (defconst *fn-nsp-refused-overlimit* (+ 1 (expt 2 57)))
 
-(defun fn-nsp-frame-step (limit s o)
+(defun-inline fn-nsp-frame-step (limit s o)
   (declare (xargs :guard (and (unsigned-byte-p 55 limit) (unsigned-byte-p 59 s)
                               (fn-cbor-octetp o))))
   (let* ((s (nfix s))
@@ -47,7 +47,7 @@
           ((< n (nfix limit)) (mv (* 2 (+ n 1)) 1 o 0))
           (t (mv *fn-nsp-refused-overlimit* 0 0 2)))))
 
-(defun fn-nsp-frame-final (s)
+(defun-inline fn-nsp-frame-final (s)
   (declare (xargs :guard (unsigned-byte-p 59 s)))
   (if (eql s 0) (mv 0 0 0 0) (mv s 0 0 2)))
 
@@ -68,7 +68,7 @@
 ; refuses: a line over 510 octets, a BOM, a byte outside SP/TAB/33..255,
 ; leading or (at FINAL) trailing white space, the empty line.
 
-(defun fn-nsp-tok-step (s o)
+(defun-inline fn-nsp-tok-step (s o)
   (declare (xargs :guard (and (unsigned-byte-p 13 s) (fn-cbor-octetp o))))
   (let* ((s (nfix s))
          (phase (mod s 4))
@@ -84,7 +84,7 @@
                  (t (mv (+ 2 (* 4 b2) (* 16 c2)) 0 0 0))))
           (t (mv (+ 1 (* 4 b2) (* 16 c2)) 1 o 0)))))
 
-(defun fn-nsp-tok-final (s)
+(defun-inline fn-nsp-tok-final (s)
   (declare (xargs :guard (unsigned-byte-p 13 s)))
   (if (eql (mod (nfix s) 4) 1) (mv s 0 0 0) (mv s 0 0 2)))
 
@@ -169,14 +169,14 @@
 ; "." is sent with ".." (RFC 3977 section 3.1.1); FINAL writes ".CRLF" at a
 ; line start and refuses an unterminated last line.
 
-(defun fn-nsp-stuff-step (s o)
+(defun-inline fn-nsp-stuff-step (s o)
   (declare (xargs :guard (and (unsigned-byte-p 1 s) (fn-cbor-octetp o))))
   (let ((s2 (if (eql o 10) 0 1)))
     (if (and (eql s 0) (eql o 46))
         (mv s2 2 (+ 46 (* 256 46)) 0)
       (mv s2 1 o 0))))
 
-(defun fn-nsp-stuff-final (s)
+(defun-inline fn-nsp-stuff-final (s)
   (declare (xargs :guard (unsigned-byte-p 1 s)))
   (if (eql s 0)
       (mv 0 3 (+ 46 (* 256 13) (* 65536 10)) 0)
