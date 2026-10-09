@@ -139,8 +139,9 @@ export FN_MLDSA_LIBRARY=$LIB/libfn-mldsa65.so FN_BLAKE3_LIBRARY=$LIB/libfn-blake
 # local storage, from the profile: tools/build_native_host.sh), recorded in
 # the generated launcher, so the product runs as the image does.
 # Only the exec line: the image launcher's heap-decision prelude (tools/build_native_host.sh, from
-# packaging/fn) names --dynamic-space-size in shell text too.  The product keeps the exec line's default
-# heap; it does not carry that per-command decision (bound_launch.py accepts only the two-line form).
+# packaging/fn) names --dynamic-space-size in shell text too.  The exec line's heap and stack are the
+# product's defaults; its launcher carries the same per-command decision (core_launcher.py: the core's own
+# `heap -- ARGV' probe, ruling 2026-10-09), and bound_launch.py decides the same way under its ceiling.
 opt() { grep '^exec ' "$IMAGE" | sed -n "s/.*$1 \([^ ]*\) .*/\1/p" | head -1; }
 HEAP=$(opt --dynamic-space-size); STACK=$(opt --control-stack-size); TLS=$(opt --tls-limit)
 [ -n "$HEAP" ] && [ -n "$STACK" ] || { echo "core: cannot read the runtime options of $IMAGE" >&2; exit 1; }

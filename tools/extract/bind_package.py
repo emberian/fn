@@ -25,7 +25,7 @@ def assignments(items):
     return result
 
 
-def emit_binding(output, artifacts, environment, libraries):
+def emit_binding(output, artifacts, environment, libraries, heap_ceiling_mb):
     """Validate before publishing; exclusive creation never replaces a binding."""
     output = Path(output).absolute()
     if output.exists() or output.is_symlink():
@@ -40,7 +40,13 @@ def emit_binding(output, artifacts, environment, libraries):
     launcher = bound_launch.checked_bytes(Path(records["launcher"]["path"]),
                                            records["launcher"]["sha256"]).decode()
     _, _, _, geometry, _ = bound_launch.parse_launcher(launcher)
-    binding = {"schema": 1, "artifacts": records, "options": geometry}
+    if type(heap_ceiling_mb) is not int or heap_ceiling_mb <= 0:
+        raise bound_launch.BindingError("the heap ceiling is a positive number of MiB")
+    # The heap is decided per command by the core; the binding pins its
+    # ceiling, the preset's configured memory, and the TLS limit.
+    binding = {"schema": 1, "artifacts": records,
+               "options": {"tls_limit": geometry["tls_limit"],
+                           "dynamic_space_ceiling_bytes": heap_ceiling_mb * bound_launch.MIB}}
     if environment:
         binding["environment"] = environment
     if libraries:
@@ -79,11 +85,14 @@ def main():
         parser.add_argument("--" + role.replace("_", "-"), type=Path, required=True)
     parser.add_argument("--environment", action="append", default=[], metavar="FN_NAME=VALUE")
     parser.add_argument("--library", action="append", default=[], metavar="FN_NAME_LIBRARY=PATH")
+    parser.add_argument("--heap-ceiling-mb", type=int, required=True,
+                        help="the preset's configured memory: no command starts above it")
     args = parser.parse_args()
     try:
         result = emit_binding(args.output,
                               {role: getattr(args, role) for role in bound_launch.ROLES},
-                              assignments(args.environment), assignments(args.library))
+                              assignments(args.environment), assignments(args.library),
+                              args.heap_ceiling_mb)
         print(json.dumps(result))
         return 0
     except (bound_launch.BindingError, OSError, ValueError, KeyError, TypeError) as error:
