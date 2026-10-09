@@ -644,5 +644,26 @@ class KeystoneFormulaTests(unittest.TestCase):
         self.assertLessEqual(len(unresolved), 1)  # fn-tariff-family-...: a defmacro template
 
 
+class WriteRegistryTests(unittest.TestCase):
+    """--write-registry: a tree shipped without build/ (tools/hbox_native.sh's
+    git archive) gets build/box/interfaces.json from its declarations, and
+    roots.sh and interfaces-raw.lisp are left to the check, not rewritten."""
+
+    def test_writes_the_registry_and_nothing_else(self):
+        with tempfile.TemporaryDirectory() as work:
+            work = Path(work)
+            registry, roots, raw = work / "box" / "interfaces.json", work / "roots.sh", work / "raw.lisp"
+            with mock.patch.object(interface_emit, "REGISTRY", registry), \
+                    mock.patch.object(interface_emit, "ROOTS_SH", roots), \
+                    mock.patch.object(interface_emit, "RAW_DECLARATIONS", raw), \
+                    contextlib.redirect_stdout(io.StringIO()):
+                interface_emit.main(["--write-registry"])
+                expected = interface_emit.render_registry(interface_emit.declarations(),
+                                                          interface_emit.host_reading())
+            self.assertEqual(registry.read_text(), expected)
+            self.assertFalse(roots.exists())
+            self.assertFalse(raw.exists())
+
+
 if __name__ == "__main__":
     unittest.main()

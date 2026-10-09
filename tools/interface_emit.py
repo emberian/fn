@@ -984,6 +984,10 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--write", action="store_true")
+    parser.add_argument("--write-registry", action="store_true",
+                        help="write build/box/interfaces.json from the declarations and "
+                             "nothing else (roots.sh and interfaces-raw.lisp stay checked): "
+                             "a tree shipped without build/, as tools/hbox_native.sh's")
     parser.add_argument("--kinds", action="store_true",
                         help="also report :class/:kinds disagreements without --check")
     args = parser.parse_args(argv)
@@ -992,11 +996,12 @@ def main(argv=None) -> int:
         acl2_slots.refuse_on_laptop("tools/interface_emit.py --write")
     decls = declarations()
     reading = host_reading()
-    if args.write:
-        ROOTS_SH.write_text(render_roots(decls))
+    if args.write or args.write_registry:
         box_artifacts.path("interfaces.json")  # refuses a committed copy by name
         REGISTRY.parent.mkdir(parents=True, exist_ok=True)
         REGISTRY.write_text(render_registry(decls, reading))
+    if args.write:
+        ROOTS_SH.write_text(render_roots(decls))
         RAW_DECLARATIONS.write_text(render_raw_declarations(decls, carried_rows(), dtn_host_files()))
     problems = findings(decls, reading)
     # the raw host reaches a book function only through the dispatcher
