@@ -22,7 +22,8 @@ certify id and the install/certify/emit wall seconds (also in the train state,
 shown by `status`).
 
 `certify BOX` certifies the affected closure of the train: every Makefile
-root transitively affected by a changed book, plus the critical witness tests
+root transitively affected by a changed book, every root the train adds to
+the Makefile's ACL2_BOOKS, plus the critical witness tests
 of affected theorem books (COORDINATION section 5: the affected closure
 certifies on the exact artifact before a push, regardless of tree size; the
 lane selection, direct includers only, missed the far consumers of trains 49
@@ -317,16 +318,28 @@ def parse_amendments(text: str) -> list[dict]:
     records = data.get("amendments") if isinstance(data, dict) else None
     if not isinstance(records, list):
         raise TrainError(f"{KNOWN_RED_AMENDMENTS} has no list 'amendments'")
-    seen = set()
+    last: dict = {}
     for rec in records:
         if not isinstance(rec, dict) or any(not isinstance(rec.get(f), str) or not rec.get(f)
                                             for f in AMENDMENT_FIELDS):
             raise TrainError(f"{KNOWN_RED_AMENDMENTS}: a record lacks one of "
                              f"{', '.join(AMENDMENT_FIELDS)}: {str(rec)[:120]}")
         key = (rec["kind"], rec["subject"])
-        if key in seen:
-            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]} is amended twice")
-        seen.add(key)
+        prev = last.get(key)
+        if prev is not None:
+            # An owner transfer (coordinator 2026-10-09): a later record for
+            # the same row names the owner it takes over from, with the first
+            # record's item and dev sha.  The earlier records stay as written
+            # (the measured owner); the last one is the row's current owner.
+            if not (rec.get("transfer_from") == prev["owner"] and rec["owner"] != prev["owner"]
+                    and rec["item"] == prev["item"] and rec["dev_sha"] == prev["dev_sha"]):
+                raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]} is amended twice "
+                                 "(a later record must be an owner transfer: transfer_from the "
+                                 "previous owner, the same item and dev_sha, a new owner)")
+        elif "transfer_from" in rec:
+            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]}: a transfer with no "
+                             "earlier record")
+        last[key] = rec
     return records
 
 
@@ -543,6 +556,26 @@ def _changed_roots(t: Train, prefix: str) -> list[str]:
     return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
 
 
+def makefile_root_list(text: str) -> list[str]:
+    """The Makefile's ACL2_BOOKS roots (tools/ledger.py makefile_roots's reading)."""
+    match = re.search(r"(?ms)^ACL2_BOOKS\s*\??=\s*(.*?)(?=^\S|\Z)", text)
+    if not match:
+        raise TrainError("Makefile: no ACL2_BOOKS assignment")
+    return [token for token in match.group(1).replace("\\\n", " ").split() if token]
+
+
+def _added_roots(t: "Train") -> list[str]:
+    """Roots HEAD's Makefile lists that origin/dev's does not.  A book that
+    becomes a root without changing (a kept claim nothing certified, a test
+    re-hooked) is affected by the train though no changed book reaches it;
+    train 76 listed three such roots and the changed-book selection missed
+    them."""
+    old = git(t.root, "show", "origin/dev:Makefile").stdout
+    new = (t.root / "Makefile").read_text(encoding="utf-8")
+    before = set(makefile_root_list(old))
+    return [r for r in makefile_root_list(new) if r not in before]
+
+
 def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
     """Critical teeth whose theorem's closure changed, from regen's manifest.
 
@@ -635,7 +668,10 @@ def cmd_certify(t: Train, args) -> int:
     # stale witness fails keystone_emit's critical gate (trains 52 and 55
     # needed a hand certify of them)
     witnesses = _critical_witness_roots(t.root, books)
-    roots = list(dict.fromkeys(["books/wire-export", *books, *tests, *witnesses]))
+    added = _added_roots(t)
+    if added:
+        say(f"certify: {len(added)} root(s) new in the Makefile: " + ", ".join(added))
+    roots = list(dict.fromkeys(["books/wire-export", *books, *tests, *witnesses, *added]))
     argv = [PY, "tools/farm.py"]
     # the affected closure: every Makefile root a changed book reaches
     for b in books:

@@ -1104,6 +1104,39 @@ class BaselineGateTests(TrainBase):
         self.assertEqual(rec["mismatched_amendments"], ["native t.new"])
         self.assertEqual(rec["rc"], 1)
 
+    def test_an_owner_transfer_appends_a_record_and_the_row_takes_the_new_owner(self):
+        # coordinator 2026-10-09: the measured owner's record stays as written,
+        # a later record names the owner it takes over from
+        self.on_dev(self.rows("t.a", "t.new"))
+        first = self.amendment("t.new")
+        self.advance_dev({"planning/known-reds-amendments.json": self.amendments(first)})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
+        moved = json.loads(self.rows("t.a", "t.new"))
+        moved["rows"][1]["owner"] = "builder-M"
+        transfer = dict(first, owner="builder-M", transfer_from=first["owner"], ruling="moved")
+        g, rec = self.gate_amended(json.dumps(moved) + "\n", self.amendments(first, transfer))
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual((rec["rows"], rec["amended"], rec["mismatched_amendments"]), (2, 1, []))
+        # without the transfer record the moved row disagrees with its amendment
+        g, rec = self.gate_amended(json.dumps(moved) + "\n", self.amendments(first))
+        self.assertEqual(rec["mismatched_amendments"], ["native t.new"])
+
+    def test_a_second_record_that_is_not_a_proper_transfer_is_malformed(self):
+        first = self.amendment("t.a")
+        bad = [dict(first, owner="builder-M"),                                   # no transfer_from
+               dict(first, owner="builder-M", transfer_from="someone-else"),     # wrong previous owner
+               dict(first, transfer_from=first["owner"]),                        # same owner
+               dict(first, owner="builder-M", transfer_from=first["owner"], item="OTHER"),
+               dict(first, owner="builder-M", transfer_from=first["owner"], dev_sha="0000000")]
+        for second in bad:
+            with self.assertRaises(train.TrainError, msg=str(second)):
+                train.parse_amendments(self.amendments(first, second))
+        with self.assertRaises(train.TrainError):
+            train.parse_amendments(self.amendments(dict(first, transfer_from="x")))
+        ok = dict(first, owner="builder-M", transfer_from=first["owner"])
+        self.assertEqual(len(train.parse_amendments(self.amendments(first, ok))), 2)
+
     def test_a_malformed_amendments_file_fails(self):
         self.on_dev(self.rows("t.a"))
         for text in ("not json\n", '{"amendments": {}}\n', '{"amendments": [{"kind": "native"}]}\n',
@@ -1238,6 +1271,28 @@ class ImageModuleTests(unittest.TestCase):
         rc, rec = train.image_verdict(need, run, self.HEAD, [])
         self.assertEqual(rc, 1)
         self.assertEqual(rec["unexplained"], ["tests.test_native_owner (rc 137, no case recorded)"])
+
+
+class AddedRootTests(TrainBase):
+    """certify selects the roots a train adds to ACL2_BOOKS, changed or not."""
+
+    MAKEFILE = "ACL2_BOOKS ?= books/a \\\n\tbooks/b \\\n\ttests/acl2/b-tests\n\nOTHER = x\n"
+
+    def test_the_root_list_is_ledgers_reading(self):
+        self.assertEqual(train.makefile_root_list(self.MAKEFILE), ["books/a", "books/b", "tests/acl2/b-tests"])
+        with self.assertRaises(train.TrainError):
+            train.makefile_root_list("NOTHING = 1\n")
+
+    def test_a_root_listed_by_the_train_is_selected_and_a_dropped_one_is_not(self):
+        self.advance_dev({"Makefile": self.MAKEFILE})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
+        (self.work / "Makefile").write_text(self.MAKEFILE.replace(
+            "\tbooks/b \\\n", "\tbooks/kept-claim \\\n").replace(
+            "tests/acl2/b-tests\n", "tests/acl2/b-tests \\\n\ttests/acl2/rehooked-tests\n"))
+        self.commit(self.work, "roots")
+        self.assertEqual(train._added_roots(train.Train(self.work)),
+                         ["books/kept-claim", "tests/acl2/rehooked-tests"])
 
 
 class ImageGateTests(TrainBase):
