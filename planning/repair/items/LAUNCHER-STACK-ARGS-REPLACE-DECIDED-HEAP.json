@@ -1,0 +1,15 @@
+{
+ "category": "bug",
+ "detail": "Red on dev 1bec0755d (image native-1bec0755d671), both cases of tests/test_native_served_line_stack.py: the test starts the owner with SBCL_USER_ARGS='--control-stack-size 1MB' to run at one MiB of stack, and packaging/launcher-decide.sh (train 63) treats any caller SBCL_USER_ARGS as the whole figure, so no heap is decided and the image starts at its launcher's small-preset heap, below what an 8 MiB-article store's protected runtime needs; the cold startup refuses. The class is train 63's: a caller that names only the control stack loses the decided heap. Retirement: the launcher composes a caller's SBCL_USER_ARGS that names no --dynamic-space-size after the decided heap and stack (SBCL takes the last option, so the caller's stack wins and the decided heap stays), with the test's failure on image native-1bec0755d671 as the tooth and its pass on the fixed image as the gate.",
+ "file": "packaging/launcher-decide.sh",
+ "id": "LAUNCHER-STACK-ARGS-REPLACE-DECIDED-HEAP",
+ "notes": [
+  "10-09 coordinator: owned by builder-B (train 63 is this seat's). Admitted to planning/known-reds.json by amendment. Gate: tests.test_native_served_line_stack (2 cases)."
+ ],
+ "owner": "builder-B",
+ "severity": "medium",
+ "source": "dev-red-20261009 (train 73 image gate)",
+ "state": "open",
+ "title": "a caller's stack-only SBCL_USER_ARGS replaces the launcher's decided heap (served_line_stack 2/2 refused at cold startup)",
+ "updated": "2026-10-09T18:00:00Z"
+}
