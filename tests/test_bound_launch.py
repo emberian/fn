@@ -14,6 +14,24 @@ TOOL = ROOT / "tools/extract/bound_launch.py"
 spec = importlib.util.spec_from_file_location("bound_launch", TOOL)
 launch = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(launch)
+import core_launcher  # noqa: E402  (bound_launch put tools/extract on sys.path)
+
+MIB = 2**20
+# The recording runtime: `--fn heap -- ...` is the core's heap probe (its
+# answer from probe.json beside it, every call logged in probes.log); any
+# other command prints what it was started with.
+RUNTIME = (
+    "import json,os,sys\n"
+    "from pathlib import Path\n"
+    "here=Path(sys.argv[0]).parent; a=sys.argv[1:]\n"
+    "if a[a.index('--fn')+1:a.index('--fn')+2]==['heap'] if '--fn' in a else False:\n"
+    "    open(here/'probes.log','a').write(json.dumps(a)+'\\n')\n"
+    "    p=json.loads((here/'probe.json').read_text()) if (here/'probe.json').exists() else {}\n"
+    "    print(p.get('stdout','heap=2048 MB profile=small machine=9000 MB stack=1024 KB threads=1'))\n"
+    "    sys.exit(p.get('rc',0))\n"
+    "print(json.dumps({'argv':a,'home':os.environ['SBCL_HOME'],"
+    "'override':os.environ.get('SBCL_USER_ARGS'),"
+    "'fn':{k:v for k,v in os.environ.items() if k.startswith('FN_')}}))\n")
 
 
 class BoundLaunchTests(unittest.TestCase):
@@ -24,22 +42,12 @@ class BoundLaunchTests(unittest.TestCase):
         self.paths = {role: self.root / role for role in launch.ROLES}
         for role, path in self.paths.items():
             path.write_text(role)
-        self.paths["runtime"].write_text(
-            '#!' + sys.executable + '\nimport json,os,sys\n'
-            'print(json.dumps({"argv":sys.argv[1:],"home":os.environ["SBCL_HOME"],'
-            '"override":os.environ.get("SBCL_USER_ARGS"),'
-            '"fn":{k:v for k,v in os.environ.items() if k.startswith("FN_")}}))\n')
+        self.paths["runtime"].write_text('#!' + sys.executable + '\n' + RUNTIME)
         self.paths["runtime"].chmod(0o755)
-        self.paths["launcher"].write_text(
-            "#!/bin/sh\n# literal generated product shape\n"
-            "export SBCL_HOME='%s'\n" % self.root
-            + 'exec "%s" --tls-limit 65536 --dynamic-space-size 4096 '
-              '--control-stack-size 64 --disable-ldb --core "%s" --noinform '
-              '${SBCL_USER_ARGS} --end-runtime-options --no-userinit --no-sysinit '
-              "--eval '(cl-user::xl-toplevel)' --disable-debugger --end-toplevel-options \"$@\"\n"
-            % (self.paths["runtime"], self.paths["core"]))
-        self.geometry = {"tls_limit": 65536, "dynamic_space_bytes": 4096 * 2**20,
-                         "control_stack_bytes": 64 * 2**20}
+        self.paths["launcher"].write_text(core_launcher.launcher(
+            str(self.paths["runtime"]), str(self.root), str(self.paths["core"]),
+            "4096", "64", "65536"))
+        self.geometry = {"tls_limit": 65536, "dynamic_space_ceiling_bytes": 8192 * MIB}
         self.capsule = {"schema": 1, "coordinate": {
             role + "_sha256": launch.digest(self.paths[role])
             for role in ("runtime", "source_manifest", "profile")}}
@@ -147,7 +155,7 @@ class BoundLaunchTests(unittest.TestCase):
     def emit_package(self, *extra):
         self.output = self.root / "package-binding.json"
         command = [sys.executable, str(TOOL.with_name("bind_package.py")),
-                   "--output", str(self.output)]
+                   "--output", str(self.output), "--heap-ceiling-mb", "8192"]
         for role, path in self.paths.items():
             command.extend(["--" + role.replace("_", "-"), str(path)])
         return subprocess.run(command + list(extra), env={"PATH": os.defpath},
@@ -200,15 +208,60 @@ class BoundLaunchTests(unittest.TestCase):
                 self.assertEqual(run.returncode, 2)
                 self.assertFalse(self.output.exists())
 
-    def test_actual_process_gets_only_fixed_geometry_and_literal_app_arguments(self):
+    def test_a_callers_figure_within_the_ceiling_is_its_own_and_args_stay_literal(self):
         run = self.run_cli("--", "--fn", "store", "path with spaces", "$(literal)",
                            override="--dynamic-space-size 4GB --control-stack-size 65536KB")
         self.assertEqual(run.returncode, 0, run.stderr)
         result = json.loads(run.stdout)
-        self.assertEqual(result["argv"][-4:], ["--fn", "store", "path with spaces", "$(literal)"])
-        self.assertEqual(result["argv"].count("--dynamic-space-size"), 1)
+        argv = result["argv"]
+        self.assertEqual(argv[-4:], ["--fn", "store", "path with spaces", "$(literal)"])
+        self.assertEqual(argv.count("--dynamic-space-size"), 1)
+        self.assertEqual(argv[argv.index("--dynamic-space-size") + 1], "4GB")
+        self.assertEqual(argv[argv.index("--control-stack-size") + 1], "65536KB")
         self.assertEqual(result["home"], str(self.root))
         self.assertIsNone(result["override"])
+        self.assertFalse((self.root / "probes.log").exists())
+
+    def test_a_command_starts_at_the_heap_and_stack_the_core_decides(self):
+        run = self.run_cli("--", "--fn", "operator", "/cfg", "run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        argv = json.loads(run.stdout)["argv"]
+        self.assertEqual(argv[argv.index("--dynamic-space-size") + 1], "2048")
+        self.assertEqual(argv[argv.index("--control-stack-size") + 1], "1024KB")
+        self.assertEqual(argv[-4:], ["--fn", "operator", "/cfg", "run"])
+        probes = [json.loads(line) for line in (self.root / "probes.log").read_text().splitlines()]
+        self.assertEqual(len(probes), 1)
+        probe = probes[0]
+        # at the core's size plus two 64 MiB nurseries, packaging/fn's boot figure
+        boot = (self.paths["core"].stat().st_size + MIB - 1) // MIB + 128
+        self.assertEqual(probe[probe.index("--dynamic-space-size") + 1], str(boot))
+        self.assertEqual(probe[-6:], ["--fn", "heap", "--", "operator", "/cfg", "run"])
+
+    def test_a_decided_heap_above_the_ceiling_is_a_named_refusal(self):
+        (self.root / "probe.json").write_text(json.dumps(
+            {"stdout": "heap=9000 MB profile=development machine=126288 MB stack=1024 KB threads=1"}))
+        run = self.run_cli("--", "--fn", "operator", "/cfg", "run")
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertEqual(run.stdout, "")
+        self.assertIn("fn: refused heap-above-ceiling decided=9000 MB ceiling=8192 MB", run.stderr)
+
+    def test_the_probes_refusal_is_the_launchs_and_a_silent_probe_is_a_fault(self):
+        (self.root / "probe.json").write_text(json.dumps(
+            {"stdout": "refused machine-cannot-hold-profile need=9 MB machine=1 MB", "rc": 1}))
+        run = self.run_cli("--", "--fn", "operator", "/cfg", "run")
+        self.assertEqual((run.returncode, run.stdout), (1, ""))
+        self.assertIn("fn: refused machine-cannot-hold-profile", run.stderr)
+        (self.root / "probe.json").write_text(json.dumps({"stdout": "", "rc": 139}))
+        run = self.run_cli("--", "--fn", "operator", "/cfg", "run")
+        self.assertEqual((run.returncode, run.stdout), (4, ""))
+        self.assertIn("heap-probe-did-not-run exit=139", run.stderr)
+
+    def test_the_heap_command_itself_runs_at_the_launchers_default(self):
+        run = self.run_cli("--", "--fn", "heap", "--", "operator", "/cfg", "run")
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue(run.stdout.startswith("heap="))
+        probe = json.loads((self.root / "probes.log").read_text().splitlines()[0])
+        self.assertEqual(probe[probe.index("--dynamic-space-size") + 1], "4096")
 
     def test_each_real_artifact_mutation_refuses_before_process(self):
         for role, path in self.paths.items():
@@ -231,9 +284,9 @@ class BoundLaunchTests(unittest.TestCase):
         self.assertEqual(run.returncode, 2)
         self.assertEqual(run.stdout, "")
 
-    def test_options_cannot_change_geometry_or_inject_runtime_code(self):
-        for args in ("--dynamic-space-size 2048", "--tls-limit 1",
-                     "--control-stack-size 32", "--eval (quit)", "--core /other",
+    def test_options_cannot_pass_the_bounds_or_inject_runtime_code(self):
+        for args in ("--dynamic-space-size 8193", "--dynamic-space-size 9GB", "--tls-limit 1",
+                     "--eval (quit)", "--core /other",
                      "--tls-limit 65536 --tls-limit 65536", "--tls-limit",
                      "--dynamic-space-size 4096;touch", "--tls-limit 65536KB"):
             with self.subTest(args=args):
@@ -243,11 +296,15 @@ class BoundLaunchTests(unittest.TestCase):
 
     def test_launcher_geometry_must_match_pinned_binding(self):
         path = self.paths["launcher"]
-        path.write_text(path.read_text().replace("--dynamic-space-size 4096", "--dynamic-space-size 2048"))
-        self.binding["artifacts"]["launcher"]["sha256"] = launch.digest(path)
-        self.pin()
-        with self.assertRaisesRegex(launch.BindingError, "geometry"):
-            launch.resolve(self.manifest, self.expected)
+        original = path.read_text()
+        for old, new in (("--dynamic-space-size 4096", "--dynamic-space-size 16384"),
+                         ("--tls-limit 65536", "--tls-limit 4096")):
+            with self.subTest(new=new):
+                path.write_text(original.replace(old, new))
+                self.binding["artifacts"]["launcher"]["sha256"] = launch.digest(path)
+                self.pin()
+                with self.assertRaisesRegex(launch.BindingError, "geometry"):
+                    launch.resolve(self.manifest, self.expected)
 
     def test_launcher_cannot_select_an_unbound_core(self):
         path = self.paths["launcher"]
@@ -272,8 +329,11 @@ class BoundLaunchTests(unittest.TestCase):
         self.assertEqual(self.capsule["units"], [])
 
     def test_unrecognized_launcher_code_is_not_executed(self):
-        for text in ("#!/bin/sh\ntouch /tmp/never\n", self.paths["launcher"].read_text().replace(
-                "(cl-user::xl-toplevel)", "(evil)")):
+        launcher = self.paths["launcher"].read_text()
+        exec_only = "#!/bin/sh\n" + launcher[launcher.index("export SBCL_HOME="):]
+        for text in ("#!/bin/sh\ntouch /tmp/never\n", launcher.replace(
+                "(cl-user::xl-toplevel)", "(evil)"), exec_only,
+                launcher.replace("fn_decide_command_heap \"$@\"", "touch /tmp/never")):
             with self.subTest(text=text), self.assertRaises(launch.BindingError):
                 launch.parse_launcher(text)
 
