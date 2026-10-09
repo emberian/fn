@@ -100,6 +100,10 @@
 ; The S152 run: 2,100 articles charging 7,077,639 octets; its demand
 ; (fn-heap-reclaim-demand-octets) is under the 64 x h the reservation took
 ; before this lane (the RED BEFORE witness below).
+(assert-event (equal (fn-heap-reclaim-demand-octets 2100 7077639)
+                     (+ (* *fn-heap-reclaim-record-octets* (+ 2100 (fn-heap-reclaim-chunk-rows)))
+                        (* *fn-heap-reclaim-tombstone-octets* 2100)
+                        (* *orcp-t-unit* 7077639))))
 (assert-event (< (fn-heap-reclaim-demand-octets 2100 7077639) (* 64 7077639)))
 (assert-event (equal (car (fn-orcp-reserve *orcp-t-run* 2100 7077639 t)) :ok))
 ; And the store at the profile's bounds.
