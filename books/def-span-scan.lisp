@@ -166,6 +166,44 @@
 
 (in-theory (disable fn-dss-out-append-octet fn-dss-out-reserve fn-dss-b-get))
 
+; Proof support, local: the slice opened one octet at a time, appends, and
+; the monotonicity of a natural slope.
+(local (include-book "arithmetic/top" :dir :system))
+
+(local
+ (defthm fn-dss-slice-open
+   (implies (and (natp i) (natp n) (< i n))
+            (equal (fn-oct-slice-list i n st)
+                   (cons (nth i st) (fn-oct-slice-list (+ 1 i) n st))))
+   :hints (("Goal" :expand ((fn-oct-slice-list i n st))
+            :in-theory (enable fn-oct-get-is-nth)))))
+
+(local
+ (defthm fn-dss-slice-empty
+   (implies (not (and (natp i) (natp n) (< i n)))
+            (equal (fn-oct-slice-list i n st) nil))
+   :hints (("Goal" :expand ((fn-oct-slice-list i n st))))))
+
+(local
+ (defthm fn-dss-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
+(local
+ (defthm fn-dss-snoc-is-append-any
+   (implies (true-listp xs) (equal (fn-oct-snoc xs o) (append xs (list o))))))
+
+(local
+ (defthm fn-dss-nth-append-below
+   (implies (and (natp k) (< k (len xs)))
+            (equal (nth k (append xs ys)) (nth k xs)))))
+
+(local
+ (defun fn-dss-idx-ind (i end)
+   (declare (xargs :measure (nfix (- (nfix end) (nfix i)))))
+   (if (and (natp i) (natp end) (< i end))
+       (fn-dss-idx-ind (+ 1 i) end)
+     (list i end))))
+
 ; Every loop here is admitted in a theory that knows only the measure's
 ; arithmetic: an instance's body sits in the loop's tests and must not be
 ; reasoned about to show that the index advances.
@@ -218,7 +256,9 @@
 (defthm fn-dss-find-is-list
   (equal (fn-dss-find i end fn-octets)
          (let ((k (fn-dss-find-list (fn-oct-slice-list i end fn-octets))))
-           (if k (+ i k) nil))))
+           (if k (+ i k) nil)))
+  :hints (("Goal" :induct (fn-dss-find i end fn-octets)
+           :in-theory (enable fn-oct-get-is-nth))))
 
 (defthm fn-dss-find-hit
   (let ((r (fn-dss-find i end fn-octets)))
@@ -232,10 +272,24 @@
                   (or (null r) (< j r)))
              (not (fn-dss-find-p (nth j fn-octets))))))
 
+(local
+ (defthm fn-dss-find-cost-linear-natp
+   (implies (natp (fn-dss-find-cost o))
+            (<= (fn-dss-find-cost o) (fn-dss-find-cmax)))
+   :rule-classes :linear
+   :hints (("Goal" :use fn-dss-find-cost-contract))))
+
+(local
+ (defthm fn-dss-find-cmax-natp
+   (natp (fn-dss-find-cmax))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-dss-find-cost-contract))))
+
 (defthm fn-dss-find-work-bound
   (<= (fn-dss-find-work i end fn-octets)
       (+ 1 (* (+ 1 (fn-dss-find-cmax)) (nfix (- (nfix end) (nfix i))))))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-dss-find-work i end fn-octets))))
 
 ; =============================================================================
 ; :fold
@@ -280,17 +334,37 @@
 
 (defthm fn-dss-fold-is-list
   (equal (fn-dss-fold acc i end fn-octets)
-         (fn-dss-fold-list acc (fn-oct-slice-list i end fn-octets))))
+         (fn-dss-fold-list acc (fn-oct-slice-list i end fn-octets)))
+  :hints (("Goal" :induct (fn-dss-fold acc i end fn-octets)
+           :in-theory (enable fn-oct-get-is-nth))))
 
 (defthm fn-dss-fold-acc-type
   (implies (and (fn-dss-fold-accp acc)
                 (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
-           (fn-dss-fold-accp (fn-dss-fold acc i end fn-octets))))
+           (fn-dss-fold-accp (fn-dss-fold acc i end fn-octets)))
+  :hints (("Goal" :induct (fn-dss-fold acc i end fn-octets)
+           :in-theory (e/d (fn-oct-get-is-nth (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2))
+                           (fn-dss-fold-is-list)))
+          ("Subgoal *1/1" :use ((:instance fn-dss-fold-f-keeps-type (o (nth i fn-octets)))))))
+
+(local
+ (defthm fn-dss-fold-cost-linear-natp
+   (implies (natp (fn-dss-fold-cost acc o))
+            (<= (fn-dss-fold-cost acc o) (fn-dss-fold-cmax)))
+   :rule-classes :linear
+   :hints (("Goal" :use fn-dss-fold-cost-contract))))
+
+(local
+ (defthm fn-dss-fold-cmax-natp
+   (natp (fn-dss-fold-cmax))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-dss-fold-cost-contract))))
 
 (defthm fn-dss-fold-work-bound
   (<= (fn-dss-fold-work acc i end fn-octets)
       (+ 1 (* (+ 1 (fn-dss-fold-cmax)) (nfix (- (nfix end) (nfix i))))))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-dss-fold-work acc i end fn-octets))))
 
 ; =============================================================================
 ; :equal
@@ -364,24 +438,73 @@
 
 (defthm fn-dss-eqc-is-list
   (equal (fn-dss-eqc i end fn-octets xs)
-         (equal (fn-dss-eq-list (fn-oct-slice-list i end fn-octets)) xs)))
+         (equal (fn-dss-eq-list (fn-oct-slice-list i end fn-octets)) xs))
+  :hints (("Goal" :induct (fn-dss-eqc i end fn-octets xs)
+           :in-theory (enable fn-oct-get-is-nth))))
 
 (defthm fn-dss-eqs-is-list
   (implies (and (natp i) (natp j))
            (equal (fn-dss-eqs i end fn-octets j fn-dss-b)
                   (equal (fn-dss-eq-list (fn-oct-slice-list i end fn-octets))
                          (fn-dss-eq-list
-                          (fn-oct-slice-list j (+ j (nfix (- (nfix end) (nfix i)))) fn-dss-b))))))
+                          (fn-oct-slice-list j (+ j (nfix (- (nfix end) (nfix i)))) fn-dss-b)))))
+  :hints (("Goal" :induct (fn-dss-eqs i end fn-octets j fn-dss-b)
+           :in-theory (enable fn-oct-get-is-nth))))
+
+(local
+ (defthm fn-dss-eq-cost-linear-natp
+   (implies (natp (fn-dss-eq-cost o))
+            (<= (fn-dss-eq-cost o) (fn-dss-eq-cmax)))
+   :rule-classes :linear
+   :hints (("Goal" :use fn-dss-eq-cost-contract))))
+
+(local
+ (defthm fn-dss-eq-cmax-natp
+   (natp (fn-dss-eq-cmax))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-dss-eq-cost-contract))))
 
 (defthm fn-dss-eqc-work-bound
   (<= (fn-dss-eqc-work i end fn-octets xs)
       (+ 1 (* (+ 1 (fn-dss-eq-cmax)) (nfix (- (nfix end) (nfix i))))))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-dss-eqc-work i end fn-octets xs))))
+
+(local
+ (defthm fn-dss-mul-monotone
+   (implies (and (natp k) (natp i) (natp e) (<= i e))
+            (<= (* k i) (* k e)))
+   :rule-classes :linear
+   :hints (("Goal" :nonlinearp t))))
+
+(local
+ (defthm fn-dss-eqs-slope-monotone
+   (implies (and (natp i) (natp e) (<= i e))
+            (<= (* (+ 1 (* 2 (fn-dss-eq-cmax))) i) (* (+ 1 (* 2 (fn-dss-eq-cmax))) e)))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-dss-eqs-slope-nonneg
+   (implies (and (natp i) (natp end) (<= i end))
+            (<= 0 (* (+ 1 (* 2 (fn-dss-eq-cmax))) (- end i))))
+   :rule-classes nil))
+
+(local
+ (defthm fn-dss-eqs-work-bound-nat
+   (implies (and (natp i) (natp end) (<= i end))
+            (<= (fn-dss-eqs-work i end fn-octets j fn-dss-b)
+                (+ 1 (* (+ 1 (* 2 (fn-dss-eq-cmax))) (- end i)))))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-dss-eqs-work i end fn-octets j fn-dss-b))
+           ("Subgoal *1/2" :use ((:instance fn-dss-eqs-slope-nonneg)))
+           ("Subgoal *1/1" :use ((:instance fn-dss-eqs-slope-nonneg))))))
 
 (defthm fn-dss-eqs-work-bound
   (<= (fn-dss-eqs-work i end fn-octets j fn-dss-b)
       (+ 1 (* (+ 1 (* 2 (fn-dss-eq-cmax))) (nfix (- (nfix end) (nfix i))))))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-dss-eqs-work-bound-nat))
+           :expand ((fn-dss-eqs-work i end fn-octets j fn-dss-b)))))
 
 ; =============================================================================
 ; :copy
@@ -454,6 +577,14 @@
          (fn-dss-copy-work (+ 1 i) end fn-octets))
     1))
 
+(local
+ (defthm fn-dss-copy-loop-is-append
+   (implies (true-listp fn-dss-out)
+            (equal (fn-dss-copy-loop i end fn-octets fn-dss-out)
+                   (append fn-dss-out (fn-dss-copy-list (fn-oct-slice-list i end fn-octets)))))
+   :hints (("Goal" :induct (fn-dss-copy-loop i end fn-octets fn-dss-out)
+            :in-theory (enable fn-oct-get-is-nth)))))
+
 (defthm fn-dss-copy-is-list
   (implies (true-listp fn-dss-out)
            (equal (fn-dss-copy i end cap fn-octets fn-dss-out)
@@ -462,18 +593,68 @@
                                         (fn-dss-copy-list (fn-oct-slice-list i end fn-octets))))
                     (mv :refused fn-dss-out)))))
 
+; Within one instance: the buffer is the original followed by what has been
+; written, and every read is below the original fill point.
+(local
+ (defthm fn-dss-slice-append-below
+   (implies (and (natp i) (natp end) (<= end (len fn-octets)))
+            (equal (fn-oct-slice-list i end (append fn-octets ys))
+                   (fn-oct-slice-list i end fn-octets)))
+   :hints (("Goal" :induct (fn-dss-idx-ind i end)
+            :in-theory (disable fn-oct-slice-list-is-take-nthcdr)))))
+
+(local
+ (defun fn-dss-copyw-ind (i end st0 w)
+   (declare (xargs :measure (nfix (- (nfix end) (nfix i)))))
+   (if (and (natp i) (natp end) (< i end))
+       (fn-dss-copyw-ind (+ 1 i) end st0 (append w (list (fn-dss-copy-f (nth i st0)))))
+     (list i end st0 w))))
+
+(local
+ (defthm fn-dss-copyw-loop-general
+   (implies (and (true-listp st0) (true-listp w) (natp end) (<= end (len st0)))
+            (equal (fn-dss-copyw-loop i end (append st0 w))
+                   (append st0 w (fn-dss-copy-list (fn-oct-slice-list i end st0)))))
+   :hints (("Goal" :induct (fn-dss-copyw-ind i end st0 w)
+            :expand ((fn-dss-copyw-loop i end (append st0 w)))
+            :in-theory (e/d (fn-oct-get-is-nth) (fn-oct-slice-list-is-take-nthcdr))))))
+
+(local
+ (defthm fn-dss-copyw-loop-is-append
+   (implies (and (true-listp fn-octets) (natp end) (<= end (len fn-octets)))
+            (equal (fn-dss-copyw-loop i end fn-octets)
+                   (append fn-octets (fn-dss-copy-list (fn-oct-slice-list i end fn-octets)))))
+   :hints (("Goal" :use ((:instance fn-dss-copyw-loop-general (st0 fn-octets) (w nil)))
+            :in-theory (disable fn-dss-copyw-loop-general fn-oct-slice-list-is-take-nthcdr)))))
+
 (defthm fn-dss-copyw-is-list
   (implies (and (true-listp fn-octets) (<= end (len fn-octets)))
            (equal (fn-dss-copyw i end cap fn-octets)
                   (if (<= (+ (len fn-octets) (nfix (- (nfix end) (nfix i)))) (nfix cap))
                       (mv :done (append fn-octets
                                         (fn-dss-copy-list (fn-oct-slice-list i end fn-octets))))
-                    (mv :refused fn-octets)))))
+                    (mv :refused fn-octets))))
+  :hints (("Goal" :cases ((natp end))
+           :in-theory (disable fn-oct-slice-list-is-take-nthcdr))))
+
+(local
+ (defthm fn-dss-copy-cost-linear-natp
+   (implies (natp (fn-dss-copy-cost o))
+            (<= (fn-dss-copy-cost o) (fn-dss-copy-cmax)))
+   :rule-classes :linear
+   :hints (("Goal" :use fn-dss-copy-cost-contract))))
+
+(local
+ (defthm fn-dss-copy-cmax-natp
+   (natp (fn-dss-copy-cmax))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-dss-copy-cost-contract))))
 
 (defthm fn-dss-copy-work-bound
   (<= (fn-dss-copy-work i end fn-octets)
       (+ 1 (* (+ 1 (fn-dss-copy-cmax)) (nfix (- (nfix end) (nfix i))))))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-dss-copy-work i end fn-octets))))
 
 ; =============================================================================
 ; :stream
