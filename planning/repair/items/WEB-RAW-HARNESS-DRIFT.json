@@ -3,11 +3,13 @@
  "file": "tests/native_web_reactor_raw-mock.lisp",
  "id": "WEB-RAW-HARNESS-DRIFT",
  "line": "138",
- "notes": [],
+ "notes": [
+  "10-09 18:29 coordinator ruling: land the repair. Repaired in lane/d-fixtures-schema at the five mechanisms (mocks at the current host signatures, page_cursor's loader expands def-loop and refuses a missing named form, raw_def_loop gains assoc-eq, the producer's arena model gains the span read); the refusal at once caught a stale wanted name (fn-wr-pct-encode-loop, generated away by the def-loop). raw-arity now reads each harness's mocks against the host files it loads (harness_mock_arity_scan; unit test the first drift), which found a sixth drift: tests/native_peer_round_driver_raw-mock.lisp's fnn-owner-core took 1 argument where owner.lisp's takes (name &rest args), repaired. A native for the four harnesses: WEB-RAW-HARNESS-NATIVE (builder-C)."
+ ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "Builder C via the coordinator 2026-10-09; traced by Builder D on the laptop (sbcl --non-interactive --load, tree dd93a43f1 + lane/d-fixtures-schema)",
- "state": "open",
+ "state": "landed",
  "title": "the web raw harnesses (reactor mock, page cursor, article stream) drifted from host/native/owner.lisp, web-host.lisp and the def-loop generator, so native_web_article_producer_raw cannot run; they are hand-written with no regenerating recipe (only their derived-stub blocks are, and those are current)",
- "updated": "2026-10-09T22:06:37Z"
+ "updated": "2026-10-09T22:29:25Z"
 }

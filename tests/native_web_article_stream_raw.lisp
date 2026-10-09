@@ -112,7 +112,7 @@
                     (if provider (funcall provider p)
                       (values (car p) (cdr p) (null (cdr p)) nil nil (length (car p)))))))
           (setf (symbol-function 'fnn-owner-cold-poll)
-                (lambda (service read first issued) (declare (ignore service first issued))
+                (lambda (service read first issued &optional class) (declare (ignore service first issued class))
                   (assert (eq read :article-read)) (values :serve 0 0 0)))
           (setf (symbol-function 'fnn-owner-response-unpin)
                 (lambda (service cid) (declare (ignore service cid)) (incf pins-released)))

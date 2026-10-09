@@ -119,8 +119,18 @@
     (t (error "unexpected call ~s" name))))
 (defun fnn-owner-serialized (service cid thunk &optional class)
   (declare (ignore service cid class)) (funcall thunk))
-(defun fnn-owner-thread-escape (service condition label)
-  (declare (ignore service label)) (push condition *faults*))
+(defun fnn-owner-thread-escape (service condition label &optional jobp)
+  (declare (ignore service label jobp)) (push condition *faults*))
+;; host/native/owner.lisp's def-section entry and install-or-end, at their
+;; signatures (web-host.lisp's cleanup reaches both since 65b9a3077): the
+;; section runs its thunk; an installation that signals fails the harness
+;; loudly where the owner would end the process.
+(defun fnn-quantum-mux-finish (service cid thunk &optional class)
+  (declare (ignore service cid class)) (funcall thunk))
+(defun fnn-owner-install-or-end (install original label)
+  (handler-case (funcall install)
+    (serious-condition (failure)
+      (error "~a: installing the stop failed (~a); original condition: ~a" label failure original))))
 (defun fnn-owner-response-unpin (service cid) (declare (ignore service)) (push cid *released*))
 (defun fnn-owner-action (name cid) (push (list name cid) *released*) :ok)
 (defun fnn-owner-await-register (service cid callback socket)
@@ -135,8 +145,8 @@
   (declare (ignore service cid class))
   (if *render-cold* (values (fnn-make-octets 0) plan nil nil :read)
     (values (fnn-octets '(50 52 48 13 10)) nil t nil nil)))
-(defun fnn-owner-cold-poll (service read first since)
-  (declare (ignore service read first)) (values *cold-result* since 10 nil))
+(defun fnn-owner-cold-poll (service read line-since since &optional (class :control))
+  (declare (ignore service read line-since class)) (values *cold-result* since 10 nil))
 (defun fnn-transport-write-now (fd channel data offset)
   (declare (ignore channel))
   (let ((n (min *write-limit* (- (length data) offset))))

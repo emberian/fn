@@ -41,6 +41,7 @@
 (defun symbol-listp (l) (and (listp l) (every #'symbolp l)))
 (defun no-duplicatesp-eq (l) (= (length l) (length (remove-duplicates l))))
 (defun member-eq (x l) (member x l :test #'eq))
+(defun assoc-eq (x a) (assoc x a :test #'eq))
 (defun intersectp-eq (a b) (and (intersection a b :test #'eq) t))
 (defun remove1-eq (x l) (remove x l :test #'eq :count 1))
 (defun fn-dl-readonly-check (name stobjs terms state)
