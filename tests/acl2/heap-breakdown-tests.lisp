@@ -65,7 +65,12 @@
                   (:thread-stacks . 35651584)
                   (:thread-runtime . 142606336))))
 
-;; The launcher's figure for the empty store (the :init observation): 780 MB
+;; `init' holds no store (lane b-init-heap): its figure is the store-less
+;; figure, and its breakdown is that one term.
+(assert! (equal (fn-heap-operation-figure-octets :init *hbt-small* *hbt-core* *hbt-nursery* nil)
+                (fn-heap-storeless-figure-octets *hbt-core* *hbt-nursery*)))
+(assert! (hbt-conclusion :init *hbt-small* *hbt-core* *hbt-nursery* nil 32))
+;; Before it, the launcher's figure for the empty store (the :init observation): 780 MB
 ;; before lane f8-reservation (the observation was solved from it), 770 MB
 ;; since the payload and the memberships share H, 826 MB with the article
 ;; slots (zero-copy-commit), 1,406 MB with the records' term derived from the
@@ -74,11 +79,12 @@
 ;; with the articles in flight charged as packed submissions (lane
 ;; chunked-body-2), 472 MB with THE SWITCH's keyed index, 534 MB with the
 ;; history roots' reserve (lane mem10-hroot), 533 MB with the paged arena's
-;; 16 KiB pool page (c6bf5db63).
-(assert! (equal (fn-heap-mb-of (fn-heap-operation-figure-octets :init *hbt-small* *hbt-core*
-                                                                 *hbt-nursery* nil))
+;; 16 KiB pool page (c6bf5db63).  That figure stays the store figure over the
+;; empty observation, which a store-opening command observing an empty store
+;; reserves (here :status).
+(assert! (equal (fn-heap-mb-of (fn-heap-operation-figure-octets :status *hbt-small* *hbt-core*
+                                                                 *hbt-nursery* '(0 . 0)))
                 533))
-(assert! (hbt-conclusion :init *hbt-small* *hbt-core* *hbt-nursery* nil 32))
 
 ;; The hypothesis is needed: `store compact' reserves the larger of its list
 ;; copies and the store figure; the breakdown itemises only the latter, so
