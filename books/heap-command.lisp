@@ -117,12 +117,15 @@
 ;; THE COLLECTOR'S CARD TABLE.  SBCL's generational collector marks one
 ;; octet a card of dynamic space and touches the whole table at start
 ;; (runtime/coreparse.c; Codex F4), outside the dynamic space, so a decision
-;; that picks the dynamic space charges it resident.  CARD is the image's
+;; that picks the dynamic space charges it resident, rounded to a power of
+;; two cards as the runtime rounds it.  CARD is the image's
 ;; card size (sb-vm:gencgc-card-bytes), observed by the probe.
 (defun fn-mo-card-octets (dynamic card)
   (declare (xargs :guard t))
   (if (posp card)
-      (floor (+ (nfix dynamic) (- card 1)) card)
+      ;; the runtime rounds the table to a power of two cards (Codex,
+      ;; landing-2 re-check F2)
+      (adt-pow2-at-least (floor (+ (nfix dynamic) (- card 1)) card) 1)
     0))
 
 ;; THE READ.  A read-only command serves nothing, so it is held to the

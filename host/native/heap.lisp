@@ -513,7 +513,9 @@ to a space that already holds it."
   (handler-case
       (and (stringp root) profile
            (fnn-heap-directory-octets (fnn-config-dir (make-fnn-store root))
-                                      (fnn-heap-listing-bound profile)))
+                                      ;; the reader's own namespace bound
+                                      ;; (io.lisp fnn-bridge-config-observation-limit)
+                                      (fnn-core 'fn-store-config-observation-limit profile)))
     (error () nil)))
 
 ;; The collector's card size of this image (SBCL's gencgc), NIL when the

@@ -754,7 +754,7 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(stopped.returncode, EXIT_OK, stopped.stderr.decode())
         line = stopped.stdout.decode("ascii").strip()
         self.assertTrue(line.startswith("heap="), line)
-        self.assertIn(" profile=default ", line)
+        self.assertIn(" profile=custom ", line)  # D27 with the fields init's flags set
         self.assertNotIn("totals=", line)
         # the store-less figure (books/heap-figure.lisp
         # fn-heap-storeless-figure-octets), never the profile's
