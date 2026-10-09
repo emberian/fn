@@ -53,7 +53,8 @@
 ; (to tinc) is live then, the buffer becomes its workspace at generation + 1
 ; and that instance alone is stepped with (:handed (:done 0) to tinc id inc
 ; handle); otherwise it returns to the sender (or :free) and the sender, when
-; live, is told (:failed :gone), or the completion's own failure.
+; live, is told (:hand (:failed :gone) id inc handle), or the completion's own
+; failure, with the handle of the buffer it has back.
 ;
 ; A completion that matches no outstanding use -- a duplicate, a forgery, a late
 ; completion of an earlier operation with the same kind on the same instance,
@@ -1280,17 +1281,22 @@
          ((eq kind :close)
           (mv-let (s2 acts) (fn-rtc-close-branch s1 id inc)
             (mv s2 acts nil (+ base (fn-rtc-nbufs cfg)))))
+         ((eq kind :hand)
+          ;; a hand that did not deliver (target gone, or failed) is a
+          ;; failure to its sender, whose workspace the buffer is again at
+          ;; generation + 1: the event names that handle, so the sender can
+          ;; use or release it
+          (let* ((h (fn-rtc-h-buf (fn-rtc-u-hd u))) (b (fn-rtc-buffer h s))
+                 (hd2 (list h (+ 1 (fn-rtc-b-gen b)) 0 (len (fn-rtc-b-bytes b)))))
+            (mv-let (s2 acts refused c)
+              (fn-rtc-deliver s1 id inc
+                              (fn-rtc-ev kind (if (eq (fn-rtc-get 0 out) :done) '(:failed :gone) out)
+                                         id inc (list hd2))
+                              q)
+              (mv s2 acts refused (+ base c)))))
          (t
-          ;; a hand that did not deliver (target gone) is a failure to its
-          ;; sender, whose workspace the buffer is again
           (mv-let (s2 acts refused c)
-            (fn-rtc-deliver s1 id inc
-                            (fn-rtc-ev kind
-                                       (if (and (eq kind :hand) (eq (fn-rtc-get 0 out) :done))
-                                           '(:failed :gone)
-                                         out)
-                                       id inc nil)
-                            q)
+            (fn-rtc-deliver s1 id inc (fn-rtc-ev kind out id inc nil) q)
             (mv s2 acts refused (+ base c)))))))))
 
 (defun fn-rtc-step (s e q)
