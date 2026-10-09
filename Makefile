@@ -70,7 +70,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/admission-semantic-census-source-guard-tests \
 	tests/acl2/admission-semantic-census-resident-tests \
 	tests/acl2/admission-semantic-exclusion-tests \
+	tests/acl2/bp-controller-checkpoint-payload-directory-tests \
 	tests/acl2/bp-controller-registry-carry-tests \
+	tests/acl2/bp-digest-workspace-factory-tests \
+	tests/acl2/bp-digest-workspace-publication-tests \
+	tests/acl2/bp-digest-workspace-registered-factory-tests \
 	tests/acl2/bp-node-crc0-receive-tests \
 	tests/acl2/bp-node-fragment-step-job-tests \
 	tests/acl2/bp-received-source-capture-tests \
