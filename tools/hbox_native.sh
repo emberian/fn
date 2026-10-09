@@ -564,6 +564,13 @@ static_gate() {
     fi
 }
 step world-check static_gate world-check tools/extract/world.py --check
+# The box-step artifacts (tools/box_artifacts.py: build/box/, never
+# committed) are not in a shipped tree: the registry is made from the
+# declarations before its check, the wire grammar from the certified
+# books/wire-export after the certify step (test_native_owner and
+# test_native_store_identity read them).  A revision before the registers
+# left git has neither the tool nor the need.
+if [ -f tools/box_artifacts.py ]; then step box-registry python3 tools/interface_emit.py --write-registry; fi
 step interfaces-check static_gate interfaces-check tools/interface_emit.py --check
 # A repository declaration is not evidence its book is in this image.
 # Reject a missing native entry before spending time on certification.
@@ -574,6 +581,7 @@ step attach-order static_gate attach-order tools/host_check.py --attach-order
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
+if [ -f tools/box_artifacts.py ]; then step box-wire $WRAP python3 tools/protocol_emit.py --wire --write; fi
 # acquire demands ONE complete origin in the cache.  The cache holds pairs
 # from many origins (runs before and after merges, partial recertifies), and
 # the incremental certify above installs what composes and certifies only the
@@ -696,6 +704,31 @@ step overlay $WRAP python3 \$S/bin/native_overlay.py build \$S/overlay --image-s
 BOX
         fi
     fi
+    # The box artifacts in a run that built nothing here (--no-build,
+    # --reuse-image, an image set): build/ outlives a re-ship, so both are
+    # made again for this source, the registry from the declarations and the
+    # wire grammar only from a certified books/wire-export the tree kept;
+    # without one it is absent, and a module reading it is refused by
+    # tools/box_artifacts.py rather than handed another revision's grammar.
+    if [ $BUILD -ne 1 ]; then
+        cat <<BOX
+if [ -f tools/box_artifacts.py ]; then
+    step box-registry python3 tools/interface_emit.py --write-registry
+    if [ -f books/wire-export.cert ]; then
+        step box-wire $WRAP python3 tools/protocol_emit.py --wire --write
+    else
+        rm -f build/box/wire-grammar.json
+        echo "== box: no certified books/wire-export in this tree; no build/box/wire-grammar.json"
+    fi
+fi
+BOX
+    fi
+    # Every run stamps the artifacts with its source (box_artifacts.load).
+    cat <<BOX
+if [ -f tools/box_artifacts.py ]; then
+    step box-stamp python3 -c "import sys; sys.path.insert(0, 'tools'); import box_artifacts; from pathlib import Path; box_artifacts.write_stamp(Path('.'), '$SOURCE_ID', '$BOX', '$SOURCE_ID')"
+fi
+BOX
     # The production image's identity (tests/test_native_peering and
     # test_native_admin check the running process against it), computed by
     # tools/native_env.py identity from the image FN_NATIVE_HOST names by

@@ -64,9 +64,10 @@ a module that has not run (an interrupted image gate) refuses the push.
 Every command ends with one line `TRAIN-DONE CMD rc=N`.
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
-regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
-the world, build-list and host checks, commits the fetched outputs and records
-the resulting sha in build/train/box-step.json.  The `box_step` gate passes
+emits interfaces.json and wire-grammar.json there, runs the world, build-list
+and host checks, fetches the two into build/box/ (tools/box_artifacts.py,
+stamped with the sha they were made at; never committed) and records that
+sha in build/train/box-step.json.  The `box_step` gate passes
 when that sha is HEAD, or when it is an ancestor of HEAD, no file under
 books/, specs/ or tests/acl2/ changed since it, and the local checks
 (LOCAL_BOX_CHECKS) are all 0 at HEAD; the gate then records the sha it
@@ -88,16 +89,17 @@ import tempfile
 import time
 from pathlib import Path
 
+# the sibling tools (box_artifacts, certs, shrink_line) whether this runs as
+# a script or is imported as tools.train (tests/test_train.py)
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+import box_artifacts  # noqa: E402
+
 PY = os.environ.get("TRAIN_PY", "python3.12")
 PY3 = os.environ.get("TRAIN_PY3", "python3")
 
 # Conflicted files that are regenerated anyway: the train side wins.
 GENERATED = (
-    "planning/interfaces.json",
-    "specs/wire-grammar.json",
-    # keystone_emit --write-manifest rewrites it from the tree at regen;
-    # its owners say never hand-merge it (trains 41, 45, 46 conflicted on it)
-    "planning/teeth-obligations.json",
     # tools/extract/world.py writes the image-world umbrellas, their -part-N
     # links and the extraction world files from the native build scripts
     # (deputy C, 2026-10-08: commit-held-host bounced on the six parts)
@@ -119,12 +121,16 @@ REGEN_OUTPUTS = (
     "books/image-world*.lisp",
     "tools/extract/world*.lisp",
     "planning/proofs.json",
-    "planning/teeth-obligations.json",
     # harness_check --write-stubs rewrites only the marked derived-stub
     # blocks; the tree is clean before regen, so only those changes match
     "tests/*.lisp",
 )
-HBOX_OUTPUTS = ("planning/interfaces.json", "specs/wire-grammar.json")
+# The box step's emits, fetched into build/box/ beside stamp.json and never
+# committed (coordinator ruling 2026-10-09 19:50 on the registers DECISION;
+# tools/box_artifacts.py is their one reader).  The regen step's teeth
+# manifest is build/teeth-obligations.json, likewise uncommitted.
+HBOX_OUTPUTS = tuple(str(box_artifacts.DIR / name) for name in box_artifacts.ARTIFACTS)
+TEETH_MANIFEST = "build/teeth-obligations.json"
 
 BOX_CMD = (
     "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export && "
@@ -510,8 +516,9 @@ def cmd_regen(t: Train, args) -> int:
         ("ledger", [PY, "tools/ledger.py", "--write"]),
         # the raw harnesses' derived-stub blocks (31 had drifted by train 51)
         ("stubs", [PY, "tools/harness_check.py", "--write-stubs"]),
-        # the teeth obligation manifest of the merged tree (the keystone gate
-        # checks it; a conflict on it took the train side at merge)
+        # the teeth obligation manifest of the merged tree, written to
+        # build/teeth-obligations.json (uncommitted); the keystone gate and
+        # certify's critical witnesses read it
         ("teeth", [PY, "tools/keystone_emit.py", "--write-manifest"]),
     ):
         rc = t.run(f"regen-{step}", argv)
@@ -521,7 +528,7 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = f"Regenerate train {n}: image-world and extraction world files, proofs.json events, derived harness stubs, teeth obligation manifest"
+    msg = f"Regenerate train {n}: image-world and extraction world files, proofs.json events, derived harness stubs"
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1
@@ -552,8 +559,8 @@ def cmd_boxstep(t: Train, args) -> int:
     if rc != 0:
         say(f"box step on {args.box} failed (rc {rc}); nothing recorded")
         return rc
-    _commit_named(t, HBOX_OUTPUTS, f"interfaces.json, wire-grammar.json: the box step's emits on {args.box} at {ran_at[:9]}")
-    record = {"sha": t.head(), "ran_at": ran_at, "box": args.box}
+    box_artifacts.write_stamp(t.root, ran_at, args.box, ran_at)
+    record = {"sha": ran_at, "ran_at": ran_at, "box": args.box}
     t.dir.mkdir(parents=True, exist_ok=True)
     box_record_path(t).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
     say(f"box step recorded: {args.box} at {record['sha'][:9]}")
@@ -599,7 +606,7 @@ def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
         return []
     import certs
 
-    manifest = root / "planning/teeth-obligations.json"
+    manifest = root / TEETH_MANIFEST
     try:
         entries = json.loads(manifest.read_text())["entries"]
         witnesses: dict[str, set[str]] = {}
@@ -748,8 +755,8 @@ def cmd_certify(t: Train, args) -> int:
             return 1
     t3 = time.monotonic()
     wall = {"install": round(t1 - t0), "certify": round(t2 - t1), "emit": round(t3 - t2), "total": round(t3 - t0), "emit_steps": steps}
-    _commit_named(t, HBOX_OUTPUTS, f"interfaces.json, wire-grammar.json: the train certify's emits on {args.box} at {ran_at[:9]}")
-    record = {"sha": t.head(), "ran_at": ran_at, "box": args.box, "run": run,
+    box_artifacts.write_stamp(t.root, ran_at, args.box, ran_at)
+    record = {"sha": ran_at, "ran_at": ran_at, "box": args.box, "run": run,
               "certify_id": rec.get("certify_id"), "wall": wall, "cache_seed": cache_seed,
               "known_reds_seen": known_seen}
     t.dir.mkdir(parents=True, exist_ok=True)
@@ -1270,9 +1277,6 @@ def shrink_words(t: "Train", base: str, head: str) -> str:
     lines and net lines per directory against BASE.  A status line, not a
     gate: a measure that cannot be taken is printed, never a refusal."""
     try:
-        here = str(Path(__file__).resolve().parent)
-        if here not in sys.path:
-            sys.path.insert(0, here)
         import shrink_line
         return shrink_line.line(t.root, base, head)
     except Exception as error:  # noqa: BLE001 - the push already happened
