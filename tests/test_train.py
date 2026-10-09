@@ -1224,6 +1224,13 @@ class ImageModuleTests(unittest.TestCase):
         # a row of another kind with the same subject does not excuse it
         self.assertEqual(train.image_verdict(need, run, self.HEAD, [dict(row, kind="check")])[0], 1)
 
+    def test_a_module_whose_every_test_skipped_passes_and_is_listed(self):
+        need = train.image_modules(["packaging/fn"])
+        run = self.ran(need)
+        run["modules"]["tests.test_native_over_window"] = {"rc": 4, "cases": {}}
+        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        self.assertEqual((rc, rec["skipped"]), (0, ["tests.test_native_over_window"]))
+
     def test_a_failed_module_with_no_case_recorded_refuses(self):
         need = train.image_modules(["packaging/fn"])
         run = self.ran(need)

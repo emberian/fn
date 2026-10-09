@@ -188,6 +188,10 @@ IMAGE_RULES = (
 IMAGE_RUN_RECORD = "build/hbox-native/{label}.run"
 # a case status that is not a red (tools/test_budget.py's vocabulary)
 IMAGE_CASE_PASS = ("ok", "skip")
+# tools/hbox_native.sh's module status when it ran and every test skipped
+# (a fixture or memory cap absent): it ran, it is not a red, and the gate
+# prints it so the uncovered module is never silent
+IMAGE_RC_ALL_SKIPPED = 4
 
 # Dev's recorded reds with owners (COORDINATION section 5).  Each row is
 # {"kind", "subject", "item", "owner", "evidence"}; (kind, subject) is unique.
@@ -938,18 +942,20 @@ def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
     known = {r["subject"] for r in rows or [] if r.get("kind") == "native"}
     results = record.get("modules", {})
     missing = sorted(m for m in need if m not in results)
-    unexplained, known_seen = [], []
+    unexplained, known_seen, skipped = [], [], []
     for m in sorted(need):
         if m not in results:
             continue
         rc, cases = results[m]["rc"], results[m]["cases"]
         reds = sorted(c for c, s in cases.items() if s not in IMAGE_CASE_PASS)
-        if rc != 0 and not reds:
+        if rc == IMAGE_RC_ALL_SKIPPED and not reds:
+            skipped.append(m)
+        elif rc != 0 and not reds:
             unexplained.append(f"{m} (rc {rc}, no case recorded)")
         for c in reds:
             (known_seen if c in known else unexplained).append(c)
     extra = {"need": sorted(need), "run": record.get("dir"), "missing": missing,
-             "unexplained": unexplained, "known_reds": known_seen}
+             "unexplained": unexplained, "known_reds": known_seen, "skipped": skipped}
     return (1 if missing or unexplained else 0), extra
 
 
@@ -1136,6 +1142,8 @@ def cmd_gate(t: Train, args) -> int:
             say(f"  NOT RUN on HEAD's image: {m}")
         for c in image_record.get("unexplained", []):
             say(f"  RED and not a known red: {c}")
+        for m in image_record.get("skipped", []):
+            say(f"  ran with every test skipped (not covered): {m}")
         if "error" in image_record:
             say(f"  {image_record['error']}")
     else:
