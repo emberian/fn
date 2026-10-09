@@ -462,6 +462,15 @@ def export(pt):
     return {"s": r["s"], "peak_hwm_kib": r["hwm_kib"]}
 
 
+
+def _reserve_port():
+    """A listener port from tools/ports.py (NATIVE-HARNESS-PORT-RACE)."""
+    try:
+        from tools import ports
+    except ImportError:  # run as tools/<script>.py: tools/ is on sys.path
+        import ports
+    return ports.reserve()
+
 class ProbeError(Exception):
     pass
 
@@ -648,7 +657,7 @@ class Point:
         lock = self.store / "writer.lock"
         lock.touch()
         lock.chmod(0o600)
-        s = socket.socket(); s.bind(("127.0.0.1", 0)); self.port = s.getsockname()[1]; s.close()
+        self.port = _reserve_port()
         self.config = self.work / "fn.toml"
         self.config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
                                '[control]\npath = "%s"\n' % (self.store, self.port,

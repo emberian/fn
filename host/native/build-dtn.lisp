@@ -352,6 +352,10 @@
 ; declaration (books/raw-dispatch-verdict.lisp): fnn-install-raw-dispatch
 ; admits a raw dispatch only on one, here and in the extracted core.
 (ld "host/raw-dispatch-verdicts.lisp" :ld-error-action :error)
+; Every carried row's owed writers, in the complete world: a name a
+; standalone certification left to host-ld is a function returning the
+; carried state here, or the build stops (books/def-carried.lisp).
+(def-carried-host-check)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.

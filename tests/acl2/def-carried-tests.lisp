@@ -1895,8 +1895,7 @@
                             :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero))
                             :incomplete (A-TEST-OWED (fn-cdt-zap fn-cdt-reset)))
                 "and also a transition or establishing")
-; ... and so is a stale owed name: fn-cdt-peek returns no stobj, and a
-; symbol that is no function at all.
+; ... and so is an in-world stale owed name: fn-cdt-peek returns no stobj.
 (fn-cdt-refused fn-cdt-esc (:invariant fn-cdt-relp
                             :established ((fn-cdt-open fn-cdt-open-establishes :witness ('(0 nil))))
                             :transitions ((fn-cdt-bump fn-cdt-bump-carries)
@@ -1905,15 +1904,6 @@
                                           (fn-cdt-bump2 fn-cdt-bump2-carries))
                             :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero))
                             :incomplete (A-TEST-OWED (fn-cdt-zap fn-cdt-peek)))
-                "a stale owed name")
-(fn-cdt-refused fn-cdt-esc (:invariant fn-cdt-relp
-                            :established ((fn-cdt-open fn-cdt-open-establishes :witness ('(0 nil))))
-                            :transitions ((fn-cdt-bump fn-cdt-bump-carries)
-                                          (fn-cdt-note fn-cdt-note-carries)
-                                          (fn-cdt-reset fn-cdt-reset-carries)
-                                          (fn-cdt-bump2 fn-cdt-bump2-carries))
-                            :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero))
-                            :incomplete (A-TEST-OWED (fn-cdt-zap fn-cdt-no-such-function)))
                 "a stale owed name")
 ; A value row says :complete-by; the escape is for a stobj row only.
 (fn-cdt-refused fn-cdt-vx (:invariant fn-cdt-vp
@@ -1980,6 +1970,69 @@
                                  '(:raw-with (:carried fn-cdt-escape :assuming A-TEST-OWED))
                                  (w state))
         '(fn-cdt-escape-fn-cdt-bump2-carries fn-cdt-escape-fn-cdt-nonzerop-bridge)))
+
+; Neither a forged :state nor a deferred name dropped from :incomplete
+; may bypass the image-world obligation.
+(assert-event
+ (fn-cd-host-owed-problem
+  'forged '(:invariant fn-cdt-relp :state nil
+            :left-to-host-ld (fn-cdt-no-such-function)) (w state)))
+
+; Standalone scope: an absent writer is explicitly deferred, not discharged.
+; The image-world check (def-carried-host-check, run by the host drivers)
+; refuses it until a real function returning the carried state exists.
+(encapsulate
+ ()
+ (local
+  (def-carried fn-cdt-deferred
+    :invariant fn-cdt-relp
+    :established ((fn-cdt-open fn-cdt-open-establishes :witness ('(0 nil))))
+    :transitions ((fn-cdt-bump fn-cdt-bump-carries)
+                  (fn-cdt-note fn-cdt-note-carries)
+                  (fn-cdt-reset fn-cdt-reset-carries)
+                  (fn-cdt-bump2 fn-cdt-bump2-carries))
+    :concludes ((fn-cdt-nonzerop fn-cdt-relp-nonzero))
+    :incomplete (A-TEST-OWED (fn-cdt-zap fn-cdt-later))
+    :trace nil))
+ (local
+  (assert-event
+   (equal (fn-cd-get :left-to-host-ld
+                    (cdr (assoc-eq 'fn-cdt-deferred (table-alist 'fn-carried (w state)))))
+          '(fn-cdt-later))))
+ (local
+  (must-fail-checked (def-carried-check fn-cdt-deferred)
+                    :unchecked "absent owed writer cannot pass the full-world check"))
+ (local
+  (assert-event
+   (search "stale owed names"
+           (car (fn-cd-host-owed-problem
+                 'fn-cdt-deferred
+                 (cdr (assoc-eq 'fn-cdt-deferred (table-alist 'fn-carried (w state))))
+                 (w state))))))
+ (local
+  (assert-event
+   (fn-cd-host-rows-problem (table-alist 'fn-carried (w state)) (w state))))
+ (local
+  (must-fail-checked (def-carried-host-check)
+                     :unchecked "the image-world check refuses an absent owed writer"))
+ ; A definition that exists but returns no carried state is still stale.
+ (local
+  (encapsulate
+   ()
+   (local (defun fn-cdt-later (x) x))
+   (local
+    (assert-event
+     (fn-cd-host-rows-problem (table-alist 'fn-carried (w state)) (w state))))))
+ ; The control differs only in the image-world definition of the owed name.
+ (local
+  (defun fn-cdt-later (fn-cdt-st)
+    (declare (xargs :stobjs fn-cdt-st))
+    fn-cdt-st))
+ (local (def-carried-check fn-cdt-deferred))
+ (local
+  (assert-event
+   (null (fn-cd-host-rows-problem (table-alist 'fn-carried (w state)) (w state)))))
+ (local (def-carried-host-check)))
 
 ; A writer declared after the row and neither listed nor owed refuses it
 ; again, naming the assumption it is not owed under.
