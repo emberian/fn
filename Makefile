@@ -68,8 +68,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/admission-preparation-intent-tests \
 	tests/acl2/admission-preparation-source-capture-tests \
 	tests/acl2/admission-semantic-census-source-guard-tests \
+	tests/acl2/admission-semantic-census-resident-tests \
 	tests/acl2/admission-semantic-exclusion-tests \
+	tests/acl2/bp-controller-checkpoint-payload-directory-tests \
 	tests/acl2/bp-controller-registry-carry-tests \
+	tests/acl2/bp-digest-workspace-factory-tests \
+	tests/acl2/bp-digest-workspace-publication-tests \
+	tests/acl2/bp-digest-workspace-registered-factory-tests \
 	tests/acl2/bp-node-crc0-receive-tests \
 	tests/acl2/bp-node-fragment-step-job-tests \
 	tests/acl2/bp-received-source-capture-tests \
@@ -234,7 +239,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-private-frame \
 	tests/acl2/consumer-account-config-row-carry-tests \
 	tests/acl2/consumer-account-private-frame-tests \
-	books/history-preparation-page-ready \
 	books/snapshot-row-source-remap \
 	books/history-census-controller \
 	books/snapshot-held-remap \
@@ -470,7 +474,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config \
 	books/config-invariants \
 	books/replay \
-	books/replay-invariants \
 	tests/acl2/store-event-replay-tests \
 	tests/acl2/store-identity-replay-tests \
 	tests/acl2/replay-tests \
@@ -669,6 +672,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cold-read-reservation \
 	tests/acl2/cold-read-reservation-tests \
 	books/page-read-budget-growth \
+	books/page-read-growth-reserve-tokens \
 	books/page-read-ledger-rowsum \
 	tests/acl2/page-read-ledger-rowsum-tests \
 	tests/acl2/page-read-budget-growth-tests \
@@ -701,10 +705,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/resource-vector-tests \
 	books/resource-vector-relations \
 	tests/acl2/resource-vector-relations-tests \
+	books/resource-vector-relations-heap \
 	books/resource-vector-exec \
 	tests/acl2/resource-vector-exec-tests \
 	books/resource-vector-tree \
 	tests/acl2/resource-vector-tree-tests \
+	books/resource-operation \
 	tests/acl2/heap-figure-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
@@ -1137,7 +1143,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-foundation \
 	books/bp-handoff-recovery-shape \
 	books/bp-handoff-producer-shape \
-	books/bp-handoff-recovery-refinement \
 	tests/acl2/bp-checkpoint-recovery-symbol-tests \
 	tests/acl2/bp-handoff-producer-shape-tests \
 	tests/acl2/bp-node-foundation-tests \
@@ -2361,7 +2366,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/crypto-attach \
 	books/auth-secret \
 	tests/acl2/auth-secret-tests \
-	books/statement-items \
 	books/statement-codec \
 	books/statement-seam \
 	books/statement-attach \
@@ -2699,7 +2703,7 @@ ACL2_BOOKS ?= books/defrecord \
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
 # its books; when the list is every book, `--strict` runs without `--books`.
-THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
+THEORY_STRICT_BOOKS ?= books/store-events books/replay \
 	books/store-files books/store-files-invariants books/store-files-traces \
 	books/store-node books/store-node-invariants-base books/store-node-invariants \
 	books/store-node-resolution books/store-observed books/store-observed-traces \

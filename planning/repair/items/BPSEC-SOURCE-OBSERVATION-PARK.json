@@ -1,0 +1,29 @@
+{
+ "category": "dead-code",
+ "detail": "The bpsec source-observation family is parked as one unit: books/bp-segmented-wire-job.lisp, books/bp-wire-primary-cursor.lisp, books/bp-wire-canonical-cursor.lisp, books/bp-received-raw-source.lisp, tests/bp_received_raw_registry_recording.lisp, tests/bp_segmented_wire_job_recording.lisp, tests/bp_segmented_wire_native_recording.lisp, tests/bp_wire_primary_cursor_recording.lisp, tests/bp_wire_canonical_cursor_recording.lisp. tools/bpsec_source_observation.py:17-19 and tools/bpsec_registered_source_observation.py:23 (and tests/test_commit_map.py:56-57) pin the four books by git hash from history, so the tip files are not their input; the tip books are loaded only by the five tests/bp_*_recording.lisp, which no runner or register names; the SCN catalog (tests/scenarios/catalog.json:7456,7463) and planning/requirements.json:1753,1760 cite the native_bpsec_* tests and tools, not the recording tests. No Makefile root reaches the books, so nothing certifies them. tests/bp_segmented_wire_native_recording.lisp binds *fnn-tcl-source-start* (S068), so the family's disposition follows S068's.",
+ "disposition": "PARKED",
+ "evidence": "build/coordinator/RETIRE-VERDICTS-20261009.md rows bp-received-raw-source, bp-segmented-wire-job, bp-wire-canonical-cursor, bp-wire-primary-cursor (adjudicate group A1, dev 1bec0755d); coordinator ruling 2026-10-09: park by this item, no register row",
+ "file": "books/bp-segmented-wire-job.lisp",
+ "files": [
+  "books/bp-segmented-wire-job.lisp",
+  "books/bp-wire-primary-cursor.lisp",
+  "books/bp-wire-canonical-cursor.lisp",
+  "books/bp-received-raw-source.lisp",
+  "tests/bp_received_raw_registry_recording.lisp",
+  "tests/bp_segmented_wire_job_recording.lisp",
+  "tests/bp_segmented_wire_native_recording.lisp",
+  "tests/bp_wire_primary_cursor_recording.lisp",
+  "tests/bp_wire_canonical_cursor_recording.lisp"
+ ],
+ "fix": "S068's owner decides with S068: if the TCPCL source continuation lands as the production path, the family is certified as Makefile roots with the recording tests under a runner; if the source continuation is removed, the nine files are retired as one unit (the hash pins survive deletion of the tip files). Never split the unit.",
+ "id": "BPSEC-SOURCE-OBSERVATION-PARK",
+ "notes": [
+  "2026-10-09 Builder B: parked under the inventory rule on the coordinator's ruling (option a): host-parked.json holds host files only and is shrink-only."
+ ],
+ "owner": "bp-transport",
+ "severity": "low",
+ "source": "RETIRE-VERDICTS-20261009 A1",
+ "state": "open",
+ "title": "bpsec source-observation family (4 books, 5 recording tests) parked as one unit with S068",
+ "updated": "2026-10-09T18:30:00Z"
+}

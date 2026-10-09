@@ -645,8 +645,8 @@ The test book must contain, over one real Store built by
    L12, L15, L17, L18. No dependency on new Store lemmas.
 2. New book `books/bp-receiver-store-evolution-invariants.lisp` including
    the above and `store-node-resolution-traces`: L1, L2, L7, L13, L14, L16, L21.
-3. L19 with `fn-bprv-replay-loop-installs-every-record` in `books/replay-invariants.lisp`
-   or a new `replay-content-invariants` book; then L20. This is the only step
+3. L19 with `fn-bprv-replay-loop-installs-every-record` in `books/bp-receiver-evolving-node-invariants.lisp`
+   (the receiver's own node book; see below); then L20. This is the only step
    with proof risk and it is independent of steps 1 and 2.
 4. L22 last, after C1-14 lands or with its prefix hypothesis as stated.
 5. Test book `tests/acl2/bp-receiver-evolving-tests.lisp` as above; Makefile
@@ -680,7 +680,7 @@ Deviations:
   rather than a bare prefix hypothesis, and concludes both that the reopen
   succeeds and that the invariant holds against the reopened Store.
 - L19 lives in the receiver's own node book rather than in
-  `replay-invariants`; it carries the idle-node predicate
+  `books/replay.lisp`; it carries the idle-node predicate
   `fn-bprv-node-idlep` through `fn-replay-loop` because
   `fn-replay-apply-record` on a node with a stage could complete a stale
   proposal.
