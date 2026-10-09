@@ -1,0 +1,13 @@
+{
+ "category": "proofs",
+ "detail": "Trigger: memory landing 4 wires fn-mm-launch-decide into the run's launch (host/native/heap.lisp, the :serves class). Then K1 fn-mm-need-within-the-sum and K2 fn-mm-sum-grows-with-the-store (subject fn-mm-sum) and K4 fn-mm-launch-holds-the-store-and-the-reservation and K5 fn-mm-launch-refuses-only-by-the-model (subject fn-mm-launch-decide; restated with the LET inside the conclusion, the same formula) become defkeystone with :id and are declared critical through tools/keystone_critical.py --declare. Today they carry defteeth only (tests/acl2/memory-model-tests.lisp): keystone_emit refuses a subject no host line reaches. Stated finding, the tooth: at W13's store under D27's profile the serving sum's in-flight term is profile-sized (3H capture buffers), and the model's gate refuses a read at 6,294,592 MB; landing 4 retires the charges with nothing behind them. Coordinator ruling 2026-10-09.",
+ "file": "books/memory-model.lisp",
+ "id": "MEMORY-RUN-LAUNCH-MODEL",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "memory-l2",
+ "state": "open",
+ "title": "When the run launch takes the model (landing 4, L-FRESH), K1, K2, K4, K5 are registered and critical with packages",
+ "updated": "2026-10-09T21:03:26Z"
+}

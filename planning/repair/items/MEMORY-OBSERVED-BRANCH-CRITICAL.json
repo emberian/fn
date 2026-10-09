@@ -1,0 +1,13 @@
+{
+ "category": "proofs",
+ "detail": "Trigger: Builder A's landing 2 (the checkpoint header's charged-totals field, books/charged-totals.lisp's tuple, and the log suffix scan) lands. Then, in that train: host/native/heap.lisp fnn-heap-charged-totals reads HDR and SUFFIX (an action with a completion under A's contract) instead of NIL; register fn-mo-read-holds-the-observed-store (K7) and fn-mo-read-refuses-only-by-the-model (K8) as defkeystone (tests/acl2/heap-command-tests.lisp, today defteeth) and add books/memory-model.lisp to the resource-reservation map row; declare K3 fn-mm-admitted-store-reopens, K7 and K8 critical through tools/keystone_critical.py --declare with a native host test that runs status --replay / inspect on a store whose header carries totals (D27 store made by init --budget: accepted where today's figure refuses); retire OPERATOR-STATUS-OBSERVED-SIZING (its red test's headroom() runs status --replay). Coordinator ruling 2026-10-09 (draft 2 of memory-l2).",
+ "file": "books/heap-command.lisp",
+ "id": "MEMORY-OBSERVED-BRANCH-CRITICAL",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "memory-l2",
+ "state": "open",
+ "title": "When A's checkpoint carries the charged totals, the observed read branch becomes critical: K3, K7, K8 declared with packages, OPERATOR-STATUS-OBSERVED-SIZING retired",
+ "updated": "2026-10-09T21:03:26Z"
+}

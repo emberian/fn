@@ -25,13 +25,6 @@
   },
   {
    "kind": "check",
-   "subject": "check-fast:merge_registry",
-   "item": "PRL-GROWTH-HOST-WIRING",
-   "owner": "deputy-C",
-   "evidence": "MISSING HST-045 proof_targets += PRF-1343; check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
-  },
-  {
-   "kind": "check",
    "subject": "check-fast:lock_discipline_check",
    "item": "LOCK-CHECKER-MODEL-GAPS",
    "owner": "deputy-C",

@@ -1,14 +1,15 @@
 {
- "id": "PRL-GROWTH-HOST-WIRING",
  "category": "reach",
+ "id": "PRL-GROWTH-HOST-WIRING",
+ "notes": [
+  "books/page-read-ledger-rowsum.lisp: fn-prl-reserve-growth-preserves-row-sum-invp and fn-prl-convert-growth-preserves-row-sum-invp (PRF-1343) are NEW orphans: no host line calls fn-prl-reserve-growth or fn-prl-convert-growth (grep host/ is empty at 9a9fa4bab). They were proved ahead of C's reconfig-host wiring (growth reservation for LIVE-RECONFIGURE, p-growth-reserve G1-G5). Exit: the host's reconfiguration path calls them (C), at which point both events are hosted; this is also link (i), the host correspondence, of PRL-ROW-SUM-INVARIANT. No baseline entry.",
+  "10-09 17:04 memory landing 2: both PRF-1343 events are hosted since 7c4866cc6 (host/native/admin.lisp -> host/page-read-host.lisp fn-owner-page-read-growth-reserve/convert -> fn-prl-reserve-growth/convert-growth; reach_check lists no orphan); the remaining check-fast:merge_registry red, HST-045 proof_targets += PRF-1343, is added by tools/merge_registry.py --reciprocate; the known-reds row is dropped"
+ ],
  "owner": "C",
  "severity": "medium",
  "slice": "proofs",
  "source": "P7 2026-10-08, reach_check NEW at 9a9fa4bab after train 42 (p-prl-rowsum)",
- "state": "open",
+ "state": "landed",
  "title": "The growth reservation transitions fn-prl-reserve-growth and fn-prl-convert-growth have no host caller, so PRF-1343's two preservation events are reach orphans",
- "notes": [
-  "books/page-read-ledger-rowsum.lisp: fn-prl-reserve-growth-preserves-row-sum-invp and fn-prl-convert-growth-preserves-row-sum-invp (PRF-1343) are NEW orphans: no host line calls fn-prl-reserve-growth or fn-prl-convert-growth (grep host/ is empty at 9a9fa4bab). They were proved ahead of C's reconfig-host wiring (growth reservation for LIVE-RECONFIGURE, p-growth-reserve G1-G5). Exit: the host's reconfiguration path calls them (C), at which point both events are hosted; this is also link (i), the host correspondence, of PRL-ROW-SUM-INVARIANT. No baseline entry."
- ],
- "updated": "2026-10-08T11:02:16Z"
+ "updated": "2026-10-09T21:04:12Z"
 }
