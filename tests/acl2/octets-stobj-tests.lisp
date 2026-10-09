@@ -28,10 +28,10 @@
 ; The host runs compiled code: every function it may reach is guard-verified.
 
 (assert-event
- (and (eq (symbol-class 'fn-octets$c-len (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-octets$c-get (w state)) :common-lisp-compliant)
+ (and (eq (symbol-class 'fn-octets$c-len$inline (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-octets$c-get$inline (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-octets$c-put (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-octets$c-append-octet (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-octets$c-append-octet$inline (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-octets$c-clear (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-octets$c-reserve (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-octets$c-list (w state)) :common-lisp-compliant)

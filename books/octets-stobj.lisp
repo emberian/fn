@@ -18,6 +18,12 @@
 ; exactly as `defabsstobj-missing-events' prints it and proved before the
 ; `defabsstobj' event, which then admits them by name.  No `skip-proofs'.
 ;
+; The four exports a span loop calls once per octet -- len, get,
+; append-octet and append-word -- are `defun-inline' (their :exec is the
+; $inline function), so a loop over the array compiles them in place rather
+; than as a full call per octet (books/def-span-scan.lisp's disassembly
+; evidence, 2026-10-09).
+;
 ; Exports (logic / exec):
 ;   fn-octets-len            (len st)                / the fill count
 ;   fn-octets-get i          (nth i st)              / one array read
@@ -214,17 +220,17 @@
   (declare (xargs :stobjs fn-octets$c))
   (<= (fn-octets$c-fill fn-octets$c) (fn-octets$c-buf-length fn-octets$c)))
 
-(defun fn-octets$c-len (fn-octets$c)
+(defun-inline fn-octets$c-len (fn-octets$c)
   (declare (xargs :stobjs fn-octets$c))
   (fn-octets$c-fill fn-octets$c))
 
-(defun fn-octets$c-get (i fn-octets$c)
+(defun-inline fn-octets$c-get (i fn-octets$c)
   (declare (xargs :stobjs fn-octets$c
                   :guard (and (natp i) (< i (fn-octets$c-fill fn-octets$c))
                               (fn-octets$c-wfp fn-octets$c))))
   (fn-octets$c-bufi i fn-octets$c))
 
-(defun fn-octets$c-append-octet (o fn-octets$c)
+(defun-inline fn-octets$c-append-octet (o fn-octets$c)
   (declare (xargs :stobjs fn-octets$c
                   :guard (and (fn-cbor-octetp o) (fn-octets$c-wfp fn-octets$c))))
   (let* ((n (fn-octets$c-fill fn-octets$c))
@@ -436,7 +442,7 @@
 (defthm fn-oct-octet-listp-of-word-octets
   (fn-cbor-octet-listp (fn-oct-word-octets w k)))
 
-(defun fn-octets$c-append-word (w k fn-octets$c)
+(defun-inline fn-octets$c-append-word (w k fn-octets$c)
   (declare (xargs :stobjs fn-octets$c
                   :guard (and (natp w) (natp k) (fn-octets$c-wfp fn-octets$c))))
   (if (unsigned-byte-p 56 w)
@@ -1035,11 +1041,11 @@
   :recognizer (fn-octets-p :logic fn-octets$ap :exec fn-octets$cp)
   :creator (create-fn-octets :logic create-fn-octets$a :exec create-fn-octets$c)
   :corr-fn fn-octets$corr
-  :exports ((fn-octets-len :logic fn-octets$a-len :exec fn-octets$c-len)
-            (fn-octets-get :logic fn-octets$a-get :exec fn-octets$c-get)
+  :exports ((fn-octets-len :logic fn-octets$a-len :exec fn-octets$c-len$inline)
+            (fn-octets-get :logic fn-octets$a-get :exec fn-octets$c-get$inline)
             (fn-octets-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
             (fn-octets-append-octet :logic fn-octets$a-append-octet
-                                    :exec fn-octets$c-append-octet :protect t)
+                                    :exec fn-octets$c-append-octet$inline :protect t)
             (fn-octets-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
             (fn-octets-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
                                :protect t)
@@ -1052,7 +1058,7 @@
                                    :exec fn-octets$c-append-back :protect t)
             (fn-octets-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
             (fn-octets-append-word :logic fn-octets$a-append-word
-                                   :exec fn-octets$c-append-word :protect t)))
+                                   :exec fn-octets$c-append-word$inline :protect t)))
 
 ; -----------------------------------------------------------------------------
 ; The logical view, opened: the stobj's value is the list, its length is
