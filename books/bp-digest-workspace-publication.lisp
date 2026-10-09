@@ -31,11 +31,14 @@
                     (fn-bpn-nth 6 original-plan))))
    (mv :workspace-fenced fn-bpd-workspace-carry))
   (t
-   (let ((fn-bpd-workspace-carry
-           (update-fn-bpd-revision final-revision fn-bpd-workspace-carry)))
-    ;; Installed is published last. Actual intent must independently publish
-    ;; the SAME final revision before any registered read can expose it.
-    (mv :carry-published (update-fn-bpd-phase :installed fn-bpd-workspace-carry))))))
+   (let* ((fn-bpd-workspace-carry
+            (update-fn-bpd-revision final-revision fn-bpd-workspace-carry))
+          ;; Installed is published last. Actual intent must independently
+          ;; publish the SAME final revision before any registered read can
+          ;; expose it.
+          (fn-bpd-workspace-carry
+            (update-fn-bpd-phase :installed fn-bpd-workspace-carry)))
+    (mv :carry-published fn-bpd-workspace-carry)))))
 
 (local (defthm fn-bpd-publication-address-natural
  (implies (natp address) (natp (floor address 2)))

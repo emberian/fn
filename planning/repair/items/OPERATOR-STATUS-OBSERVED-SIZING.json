@@ -4,12 +4,13 @@
  "file": "host/native/operator.lisp",
  "id": "OPERATOR-STATUS-OBSERVED-SIZING",
  "notes": [
-  "10-09 coordinator: owned by builder-A. Admitted to planning/known-reds.json by amendment (planning/known-reds-amendments.json), the first: a red found on dev after the baseline enters only by amendment. Gate: tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_writes_the_operators_fields_and_status_prints_them."
+  "10-09 coordinator: owned by builder-A. Admitted to planning/known-reds.json by amendment (planning/known-reds-amendments.json), the first: a red found on dev after the baseline enters only by amendment. Gate: tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_writes_the_operators_fields_and_status_prints_them.",
+  "10-09 15:03 10-09 builder-B: owner builder-A -> builder-M (coordinator ruling 2026-10-09 (Builder M opened for the section-6 memory and admission model)); the amendment record keeps builder-A as the owner measured at ac66a0a23 and a transfer record names builder-M."
  ],
- "owner": "builder-A",
+ "owner": "builder-M",
  "severity": "medium",
  "source": "dev-red-20261009",
  "state": "open",
  "title": "operator status sizes the heap from the unobserved profile (heap=23095730 MB, refused machine-cannot-hold-profile) instead of the store's charged totals",
- "updated": "2026-10-09T17:00:00Z"
+ "updated": "2026-10-09T19:03:32Z"
 }

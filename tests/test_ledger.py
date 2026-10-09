@@ -1976,5 +1976,106 @@ class DefLoopRunMirrorTests(unittest.TestCase):
             self.assertEqual(ledger.generated_expansion(ledger.read_forms(bad)[0]), [])
 
 
+class EvidenceWriterTests(unittest.TestCase):
+    """Evidence lists are written by `--repoint` and stamped; `--check`
+    refuses a list the tool did not write (the hand-edited PRF-001/007 lists
+    of train 76 were the cost)."""
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.root = Path(directory.name)
+        for name in ("books/replay.lisp", "books/journal.lisp"):
+            (self.root / name).parent.mkdir(parents=True, exist_ok=True)
+            (self.root / name).write_text("; book\n")
+        self.proofs = self.root / "planning/proofs.json"
+        self.proofs.parent.mkdir(parents=True)
+        self.proofs.write_text(json.dumps({"proofs": [
+            {"id": "PRF-001", "title": "t", "evidence": ["books/journal.lisp"],
+             "events": ["e"]},
+            {"id": "PRF-007", "title": "u", "evidence": "prose, not a list"},
+        ]}, indent=2) + "\n")
+        patcher = mock.patch.object(ledger, "PROOFS", self.proofs)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
+    def rows(self):
+        return {row["id"]: row for row in json.loads(self.proofs.read_text())["proofs"]}
+
+    def problems(self):
+        return ledger.evidence_problems(json.loads(self.proofs.read_text()))
+
+    def test_unstamped_rows_are_refused_until_sealed_once(self):
+        self.assertEqual(len(self.problems()), 2)
+        self.assertIn("has no evidence_digest", self.problems()[0])
+        self.assertEqual(ledger.seal_evidence(), [])
+        self.assertEqual(self.problems(), [])
+        # the stamp sits after the list and the rest of the row is untouched
+        self.assertEqual(list(self.rows()["PRF-001"]),
+                         ["id", "title", "evidence", "evidence_digest", "events"])
+        refused = ledger.seal_evidence()
+        self.assertEqual(len(refused), 1)
+        self.assertIn("runs once", refused[0])
+
+    def test_repoint_writes_a_stamped_list_and_a_hand_edit_is_refused(self):
+        ledger.seal_evidence()
+        self.assertEqual(ledger.repoint("PRF-001", ["books/replay.lisp",
+                                                    "planning/evidence/gone.md"],
+                                        root=self.root), [])
+        self.assertEqual(self.rows()["PRF-001"]["evidence"],
+                         ["books/replay.lisp", "planning/evidence/gone.md"])
+        self.assertEqual(self.problems(), [])
+        registry = json.loads(self.proofs.read_text())
+        registry["proofs"][0]["evidence"][0] = "books/journal.lisp"
+        self.proofs.write_text(json.dumps(registry, indent=2) + "\n")
+        found = self.problems()
+        self.assertEqual(len(found), 1)
+        self.assertIn("PRF-001", found[0])
+        self.assertIn("edited by hand", found[0])
+
+    def test_a_stamp_copied_to_another_row_does_not_match(self):
+        ledger.seal_evidence()
+        registry = json.loads(self.proofs.read_text())
+        first, second = registry["proofs"]
+        second["evidence"] = first["evidence"]
+        second["evidence_digest"] = first["evidence_digest"]
+        self.proofs.write_text(json.dumps(registry, indent=2) + "\n")
+        found = self.problems()
+        self.assertEqual(len(found), 1)
+        self.assertIn("PRF-007", found[0])
+
+    def test_repoint_refuses_and_writes_nothing(self):
+        ledger.seal_evidence()
+        before = self.proofs.read_text()
+        cases = {
+            ("PRF-999", ("books/replay.lisp",)): "not a row",
+            ("PRF-001", ()): "at least one file",
+            ("PRF-001", ("books/replay.lisp", "books/replay.lisp")): "named twice",
+            ("PRF-001", ("books/replay-invariants.lisp",)): "not a file in this tree",
+            ("PRF-001", ("/etc/passwd",)): "not a repository-relative path",
+            ("PRF-001", ("../books/replay.lisp",)): "not a repository-relative path",
+            ("PRF-001", ("books/replay.lisp (prose)",)): "not a file in this tree",
+        }
+        for (ident, paths), reason in cases.items():
+            with self.subTest(ident=ident, paths=paths):
+                found = ledger.repoint(ident, list(paths), root=self.root)
+                self.assertTrue(any(reason in problem for problem in found), found)
+                self.assertEqual(self.proofs.read_text(), before)
+
+    def test_command_line_repoint(self):
+        ledger.seal_evidence()
+        with mock.patch.object(ledger, "ROOT", self.root), \
+                contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(ledger.main(["--repoint", "PRF-007", "--evidence",
+                                          "books/replay.lisp"]), 0)
+        self.assertEqual(self.rows()["PRF-007"]["evidence"], ["books/replay.lisp"])
+        self.assertEqual(self.problems(), [])
+        with contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit):
+                ledger.main(["--evidence", "books/replay.lisp"])
+            with self.assertRaises(SystemExit):
+                ledger.main(["--repoint", "PRF-007"])
+
+
 if __name__ == "__main__":
     unittest.main()
