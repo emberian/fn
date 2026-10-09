@@ -1,11 +1,13 @@
 ; fn: the runtime contract (RUNTIME-MODEL-DRAFT-20261009 section 1).
 ;
 ; One executor runs many machine instances.  Every effect an instance wants is
-; an ACTION (kind id incarnation args) handed to an I/O worker; the worker's
-; answer is a COMPLETION (kind id incarnation outcome), the only kind of event
-; this layer consumes.  Outcomes are (:done n), (:short n), (:failed reason)
-; and (:cancelled).  An instance learns that an effect happened only from its
-; completion; submission establishes nothing.
+; an ACTION (kind id incarnation op args) handed to an I/O worker; the worker's
+; answer is a COMPLETION (kind id incarnation op outcome), the only kind of
+; event this layer consumes.  ID is the instance's slot, INCARNATION the slot's
+; incarnation, OP the operation number the layer assigned at submission (one
+; process-monotonic counter, never reused).  Outcomes are (:done n),
+; (:short n), (:failed reason) and (:cancelled).  An instance learns that an
+; effect happened only from its completion; submission establishes nothing.
 ;
 ; This book is that layer, written once over a constrained instance machine
 ; (`fn-rtc-m-step'), so its theorems hold for every machine that meets the
@@ -16,58 +18,70 @@
 ;          :live, :closing (close submitted) or :draining (close completed,
 ;          actions still outstanding).  Slot 0 is the listener.  A slot is
 ;          retired to :free only when its incarnation has no outstanding
-;          action, and an :accept reuses it under incarnation + 1, so every
-;          outstanding action belongs to its slot's current incarnation and a
-;          completion naming any other incarnation is discarded whole.
+;          action, and an :accept reuses it under incarnation + 1.
 ;   POOL   buffers (generation owner bytes), owner (:free), (:workspace id inc)
-;          (mutable, one instance) or (:leased id inc) (immutable; the pair is
-;          where the buffer returns when the lease ends).  At an action boundary
-;          a buffer is named by a handle (h g off len).  The third state,
-;          BORROWED, exists only inside one call: the instance machine reads the
-;          pool and cannot write it; it changes buffers only by requests.
-;   USES   the outstanding-action table: (kind id inc handle), one per
-;          submitted action until its completion arrives, keys (kind id inc)
-;          distinct.  A buffered action holds a lease on its handle's buffer.
+;          (mutable, one instance) or (:leased id inc dir) (immutable to every
+;          instance; the pair is where the buffer returns when the lease ends,
+;          DIR is :in when a worker writes it, :out when workers read it).  At
+;          an action boundary a buffer is named by a handle (h g off len).
+;   USES   the outstanding-action table: (kind id inc handle op), one per
+;          submitted action until its completion arrives.  At most one use per
+;          (kind id inc) (v1, below); ops distinct.  A buffered action holds a
+;          lease on its handle's buffer: an :in lease has exactly one holder, an
+;          :out lease any number of :out holders.
 ;
-; A completion that matches no outstanding use -- a duplicate, a forgery, one
-; already ended, one naming a retired incarnation -- changes nothing and emits
-; nothing (T6).  The layer checks the host's discipline; it does not assume it.
+; BORROWED, the third ownership state, exists only inside one call: the
+; instance machine receives `fn-rtc-borrow' of the pool, which it cannot write
+; and in which the bytes of every :in-leased buffer are hidden, so no machine
+; observes bytes a worker may be writing.  The executable pool's read export
+; refuses an :in-leased buffer, which is what this view models.
+;
+; A completion that matches no outstanding use -- a duplicate, a forgery, a late
+; completion of an earlier operation with the same kind on the same instance,
+; one naming a retired incarnation -- changes nothing and emits nothing (T6).
+; The layer checks the host's discipline; it does not assume it.
 ;
 ; Cancellation: an instance may request (:cancel kind) for its own outstanding
-; action; the layer emits (:cancel id inc (kind)) to the host and keeps the use.
-; The use, and any lease it holds, ends only on the action's own completion,
-; which after a cancel is (:cancelled) or whatever the worker actually did.
-; A-HOST-COMPLETES (statement below): the host delivers exactly one completion
-; for every submitted action.  Under it a deadline (a :timer) followed by a
-; cancel bounds how long any action can pin its slot and its buffer.
+; action; the layer emits (:cancel id inc op (kind)) naming that operation and
+; keeps the use.  The use, and any lease it holds, ends only on the action's
+; own completion.  A completion, (:cancelled) included, means the worker has
+; let go of the operation and its buffer; the host never synthesizes one on a
+; timeout (books/page-read-ownership.lisp: cancellation revokes publication,
+; not worker ownership).  A-HOST-COMPLETES (statement below): the host
+; delivers exactly one completion for every submitted action.  Under it a
+; deadline (a :timer) followed by a cancel bounds how long any action pins its
+; slot and its buffer.
 ;
-; v1 limitation: the key (kind id inc) allows one outstanding action per kind
-; per instance, so an instance cannot keep two :pread in flight (no double-
-; buffered reads).  Revisit when a measured served path needs it: cold ARTICLE
-; of a multi-extent article whose per-read latency, serialized, misses the
-; ARTICLE 3 MiB bar in PRODUCT-DRAFT; the change is an operation number in the
-; key, not a new mechanism.
+; v1 limitation: one outstanding action per (kind id inc), so an instance cannot
+; keep two :pread in flight (no double-buffered reads).  Revisit when a
+; measured served path needs it: cold ARTICLE of a multi-extent article whose
+; per-read latency, serialized, misses the ARTICLE 3 MiB bar in PRODUCT-DRAFT.
+; Operation numbers already identify operations; the change is to drop the
+; per-kind check and bound uses per instance by configuration.
 ;
 ; The ownership invariant OutstandingUse(h,g) => BytesStable(h,g) and
 ; not Recyclable(h,g) is `fn-rtc-invp''s lease clause plus the two-state
-; theorem `fn-rtc-outstanding-use-is-stable' (statements below).  A lease is
-; released only by the completion of its last use; a deadline, a close or any
-; other event retains it (the uncertainty rule of books/page-read-ownership.lisp,
-; kept).  Data an :in action reads (:recv, :pread) is part of its completion in
+; theorem `fn-rtc-outstanding-use-is-stable'.  A lease is released only by the
+; completion of its last use; a deadline, a close or any other event retains
+; it.  Data an :in action reads (:recv, :pread) is part of its completion in
 ; this model and lands in the buffer exactly when the lease ends; in the
-; executable pool the bytes are already in the array (A-HOST).
+; executable pool the bytes are already in the array (A-HOST), hidden by the
+; borrow view until then.
 ;
 ; The work budget: the instance machine is charged its quantum q plus a
-; constant; the layer adds work bounded by the configuration, so one step costs
-; at most q + (fn-rtc-step-c config).  Work an instance cannot finish within q
+; constant; the layer adds work bounded by the configuration (completion bytes
+; included), so one step costs at most q + (fn-rtc-step-c config).  Retained
+; output per step is bounded: actions carry handles and at most two bounded
+; naturals, never bytes; an instance's retained state is bounded by the
+; constrained `fn-rtc-m-max-state'.  Work an instance cannot finish within q
 ; stays in its own state and resumes on the completion of a zero-delay :timer
-; it submits; there is no other continuation mechanism.
+; it submits; there is no other continuation mechanism (that an instance with
+; pending work has such a timer outstanding is the instance's obligation).
 ;
 ; The commit point: :commit is not an action kind.  An instance's commit
 ; observer (`fn-rtc-m-committedp') may turn true only on the delivery of a
-; (:fsync (:done n)) completion of the instance's own outstanding :fsync; the
-; landing that writes the transaction machine says which record that barrier
-; makes durable.
+; (:fsync (:done n)) completion of the instance's own outstanding :fsync (T11,
+; the layer's half); which barrier that may be is the instance's keystone.
 
 (in-package "ACL2")
 (include-book "cbor")
@@ -90,6 +104,19 @@
 ; Actions are the completion kinds plus :cancel, which has no completion of its
 ; own: it asks the host to finish the named action early.
 (defconst *fn-rtc-action-kinds* (cons :cancel *fn-rtc-kinds*))
+
+; The failure reasons a completion may carry; any other is delivered as
+; :other, so a host cannot hand an instance an unbounded object.
+(defconst *fn-rtc-failure-reasons*
+  '(:eio :enospc :epipe :econnreset :etimedout :ebadf :eagain :malformed-completion :other))
+
+; Extra action arguments: at most two naturals below 2^64 (a file reference
+; and a position, or a timer delay).
+(defun fn-rtc-extrap (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (<= (len x) 2)
+       (or (atom x) (and (natp (car x)) (< (car x) (expt 2 64))))
+       (or (atom (cdr x)) (and (natp (cadr x)) (< (cadr x) (expt 2 64))))))
 
 (defun fn-rtc-get (i l)
   (declare (xargs :guard t))
@@ -141,28 +168,46 @@
          (:cancelled (equal (len o) 1))
          (otherwise nil))))
 
-; (kind id inc outcome) or, for an :in kind, (kind id inc outcome data).
+; (kind id inc op outcome) or, for an :in kind, (kind id inc op outcome data).
 (defun fn-rtc-completionp (e)
   (declare (xargs :guard t))
   (and (true-listp e)
-       (or (equal (len e) 4) (equal (len e) 5))
+       (or (equal (len e) 5) (equal (len e) 6))
        (member-eq (fn-rtc-get 0 e) *fn-rtc-kinds*)
        (natp (fn-rtc-get 1 e))
        (natp (fn-rtc-get 2 e))
-       (fn-rtc-outcomep (fn-rtc-get 3 e))))
+       (natp (fn-rtc-get 3 e))
+       (fn-rtc-outcomep (fn-rtc-get 4 e))))
 
 (defun fn-rtc-e-kind (e) (declare (xargs :guard t)) (fn-rtc-get 0 e))
 (defun fn-rtc-e-id (e) (declare (xargs :guard t)) (nfix (fn-rtc-get 1 e)))
 (defun fn-rtc-e-inc (e) (declare (xargs :guard t)) (nfix (fn-rtc-get 2 e)))
-(defun fn-rtc-e-outcome (e) (declare (xargs :guard t)) (fn-rtc-get 3 e))
-(defun fn-rtc-e-data (e) (declare (xargs :guard t)) (fn-rtc-get 4 e))
+(defun fn-rtc-e-op (e) (declare (xargs :guard t)) (nfix (fn-rtc-get 3 e)))
+(defun fn-rtc-e-outcome (e) (declare (xargs :guard t)) (fn-rtc-get 4 e))
+(defun fn-rtc-e-data (e) (declare (xargs :guard t)) (fn-rtc-get 5 e))
+
+; An action's arguments: at most four, each a handle, a natural below 2^64, nil
+; or a kind -- a bounded object whatever the instance asked for.
+(defun fn-rtc-action-argp (x)
+  (declare (xargs :guard t))
+  (or (null x)
+      (and (natp x) (< x (expt 2 64)))
+      (and (member-eq x *fn-rtc-kinds*) t)
+      (fn-rtc-handlep x)))
+
+(defun fn-rtc-action-argsp (args)
+  (declare (xargs :guard t))
+  (and (true-listp args) (<= (len args) 4)
+       (or (atom args)
+           (and (fn-rtc-action-argp (car args))
+                (fn-rtc-action-argsp (cdr args))))))
 
 (defun fn-rtc-actionp (a)
   (declare (xargs :guard t))
-  (and (true-listp a) (equal (len a) 4)
+  (and (true-listp a) (equal (len a) 5)
        (member-eq (fn-rtc-get 0 a) *fn-rtc-action-kinds*)
-       (natp (fn-rtc-get 1 a)) (natp (fn-rtc-get 2 a))
-       (true-listp (fn-rtc-get 3 a))))
+       (natp (fn-rtc-get 1 a)) (natp (fn-rtc-get 2 a)) (natp (fn-rtc-get 3 a))
+       (fn-rtc-action-argsp (fn-rtc-get 4 a))))
 
 ; -----------------------------------------------------------------------------
 ; Slots, buffers, uses
@@ -172,7 +217,8 @@
   (and (true-listp x) (equal (len x) 3)
        (natp (fn-rtc-get 0 x))
        (member-eq (fn-rtc-get 1 x) '(:free :live :closing :draining))
-       (or (null (fn-rtc-get 2 x)) (natp (fn-rtc-get 2 x)))))
+       (or (null (fn-rtc-get 2 x))
+           (and (natp (fn-rtc-get 2 x)) (< (fn-rtc-get 2 x) (expt 2 64))))))
 
 (defun fn-rtc-s-inc (x) (declare (xargs :guard t)) (nfix (fn-rtc-get 0 x)))
 (defun fn-rtc-s-status (x) (declare (xargs :guard t)) (fn-rtc-get 1 x))
@@ -185,8 +231,11 @@
   (and (true-listp o)
        (case (fn-rtc-get 0 o)
          (:free (equal (len o) 1))
-         ((:workspace :leased)
+         (:workspace
           (and (equal (len o) 3) (natp (fn-rtc-get 1 o)) (natp (fn-rtc-get 2 o))))
+         (:leased
+          (and (equal (len o) 4) (natp (fn-rtc-get 1 o)) (natp (fn-rtc-get 2 o))
+               (member-eq (fn-rtc-get 3 o) '(:in :out))))
          (otherwise nil))))
 
 (defun fn-rtc-bufferp (b cap)
@@ -203,18 +252,43 @@
 
 (defun fn-rtc-usep (u)
   (declare (xargs :guard t))
-  (and (true-listp u) (equal (len u) 4)
+  (and (true-listp u) (equal (len u) 5)
        (member-eq (fn-rtc-get 0 u) *fn-rtc-kinds*)
-       (natp (fn-rtc-get 1 u)) (natp (fn-rtc-get 2 u))
+       (natp (fn-rtc-get 1 u)) (natp (fn-rtc-get 2 u)) (natp (fn-rtc-get 3 u))
        (if (or (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
                (member-eq (fn-rtc-get 0 u) *fn-rtc-out-kinds*))
-           (fn-rtc-handlep (fn-rtc-get 3 u))
-         (null (fn-rtc-get 3 u)))))
+           (fn-rtc-handlep (fn-rtc-get 4 u))
+         (null (fn-rtc-get 4 u)))))
 
-; The key of a use, an action or a completion: (kind id inc).
+; A use's handle (nil for an unbuffered kind).
+(defun fn-rtc-u-hd (u) (declare (xargs :guard t)) (fn-rtc-get 4 u))
+
+; The key of a use, an action or a completion: (kind id inc op).
 (defun fn-rtc-key (x)
   (declare (xargs :guard t))
-  (list (fn-rtc-get 0 x) (fn-rtc-get 1 x) (fn-rtc-get 2 x)))
+  (list (fn-rtc-get 0 x) (fn-rtc-get 1 x) (fn-rtc-get 2 x) (fn-rtc-get 3 x)))
+
+; Is some use of KIND outstanding for instance (ID INC)?  (The v1 one-per-kind
+; rule.)
+(defun fn-rtc-kind-out-p (kind id inc uses)
+  (declare (xargs :guard t))
+  (if (consp uses)
+      (or (and (equal (fn-rtc-get 0 (car uses)) kind)
+               (equal (fn-rtc-get 1 (car uses)) id)
+               (equal (fn-rtc-get 2 (car uses)) inc))
+          (fn-rtc-kind-out-p kind id inc (cdr uses)))
+    nil))
+
+; The op of instance (ID INC)'s outstanding KIND use.
+(defun fn-rtc-kind-op (kind id inc uses)
+  (declare (xargs :guard t))
+  (if (consp uses)
+      (if (and (equal (fn-rtc-get 0 (car uses)) kind)
+               (equal (fn-rtc-get 1 (car uses)) id)
+               (equal (fn-rtc-get 2 (car uses)) inc))
+          (nfix (fn-rtc-get 3 (car uses)))
+        (fn-rtc-kind-op kind id inc (cdr uses)))
+    0))
 
 (defun fn-rtc-find-use (key uses)
   (declare (xargs :guard t))
@@ -236,7 +310,7 @@
 (defun fn-rtc-holds-p (h g uses)
   (declare (xargs :guard t))
   (if (consp uses)
-      (or (let ((hd (fn-rtc-get 3 (car uses))))
+      (or (let ((hd (fn-rtc-u-hd (car uses))))
             (and (fn-rtc-handlep hd)
                  (equal (fn-rtc-h-buf hd) h)
                  (equal (fn-rtc-h-gen hd) g)))
@@ -252,17 +326,18 @@
     nil))
 
 ; -----------------------------------------------------------------------------
-; The layer state (config slots pool uses mstates)
+; The layer state (config slots pool uses mstates next-op)
 
 (defun fn-rtc-config (s) (declare (xargs :guard t)) (fn-rtc-get 0 s))
 (defun fn-rtc-slots (s) (declare (xargs :guard t)) (fn-rtc-get 1 s))
 (defun fn-rtc-pool (s) (declare (xargs :guard t)) (fn-rtc-get 2 s))
 (defun fn-rtc-uses (s) (declare (xargs :guard t)) (fn-rtc-get 3 s))
 (defun fn-rtc-mstates (s) (declare (xargs :guard t)) (fn-rtc-get 4 s))
+(defun fn-rtc-next-op (s) (declare (xargs :guard t)) (nfix (fn-rtc-get 5 s)))
 
-(defun fn-rtc-make (config slots pool uses mstates)
+(defun fn-rtc-make (config slots pool uses mstates next-op)
   (declare (xargs :guard t))
-  (list config slots pool uses mstates))
+  (list config slots pool uses mstates next-op))
 
 (defun fn-rtc-slot (id s) (declare (xargs :guard t)) (fn-rtc-get id (fn-rtc-slots s)))
 (defun fn-rtc-buffer (h s) (declare (xargs :guard t)) (fn-rtc-get h (fn-rtc-pool s)))
@@ -291,6 +366,102 @@
          (eq (fn-rtc-s-status slot) :live))))
 
 ; -----------------------------------------------------------------------------
+; The instance machine, constrained.
+;
+; (fn-rtc-m-step m ev pool q) => (mv m2 requests cost).  EV is the delivered
+; completion without its identity, (kind outcome); POOL is the borrow view
+; (read only; :in-leased bytes hidden).  Requests, processed in order by `fn-rtc-requests':
+;   (:acquire h)               a :free buffer becomes this instance's workspace,
+;                              generation + 1, bytes empty
+;   (:write h g off octets)    into its own workspace, within capacity
+;   (:release h g)             its own workspace back to :free
+;   (:submit kind hd extra)    an action; hd a handle for a buffered kind
+;   (:close)                   close this instance
+;   (:cancel kind)             ask the host to finish its outstanding KIND action
+; A request the layer cannot honour is refused (returned, nothing changes).
+
+(defun fn-rtc-reqs-octets (reqs)
+  (declare (xargs :guard t))
+  (if (consp reqs)
+      (+ (if (eq (fn-rtc-get 0 (car reqs)) :write)
+             (len (fn-rtc-get 4 (car reqs)))
+           0)
+         (fn-rtc-reqs-octets (cdr reqs)))
+    0))
+
+; Retained size in words: one per cons and one per atom.  Every number the layer
+; and its instances hold is a handle field, a resource below 2^64, or a counter
+; (generation, incarnation, op) that grows by one per event, so below 2^62 --
+; one word -- for any run of fewer than 2^62 events.
+(defun fn-rtc-size (x)
+  (declare (xargs :guard t))
+  (if (consp x)
+      (+ 1 (fn-rtc-size (car x)) (fn-rtc-size (cdr x)))
+    1))
+
+(defun fn-rtc-fsync-done-p (ev)
+  (declare (xargs :guard t))
+  (and (eq (fn-rtc-get 0 ev) :fsync)
+       (eq (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done)))
+
+(encapsulate
+  (((fn-rtc-m-init) => *)
+   ((fn-rtc-m-step * * * *) => (mv * * *))
+   ((fn-rtc-m-committedp *) => *)
+   ((fn-rtc-m-c) => *)
+   ((fn-rtc-m-max-reqs) => *)
+   ((fn-rtc-m-max-state) => *))
+
+  (local (defun fn-rtc-m-init () nil))
+  (local (defun fn-rtc-m-step (m ev pool q)
+           (declare (ignore m ev pool q))
+           (mv nil nil 0)))
+  (local (defun fn-rtc-m-committedp (m) (declare (ignore m)) nil))
+  (local (defun fn-rtc-m-c () 0))
+  (local (defun fn-rtc-m-max-reqs () 0))
+  (local (defun fn-rtc-m-max-state () 1))
+
+  (defthm fn-rtc-m-c-natp
+    (natp (fn-rtc-m-c))
+    :rule-classes :type-prescription)
+
+  (defthm fn-rtc-m-max-reqs-natp
+    (natp (fn-rtc-m-max-reqs))
+    :rule-classes :type-prescription)
+
+  ; The budget: the machine's own work plus the octets it asks the layer to
+  ; write is within its quantum plus a constant.
+  (defthm fn-rtc-m-step-is-charged
+    (implies (natp q)
+             (and (natp (mv-nth 2 (fn-rtc-m-step m ev pool q)))
+                  (<= (+ (mv-nth 2 (fn-rtc-m-step m ev pool q))
+                         (fn-rtc-reqs-octets (mv-nth 1 (fn-rtc-m-step m ev pool q))))
+                      (+ q (fn-rtc-m-c))))))
+
+  (defthm fn-rtc-m-step-requests-are-bounded
+    (<= (len (mv-nth 1 (fn-rtc-m-step m ev pool q))) (fn-rtc-m-max-reqs)))
+
+  (defthm fn-rtc-m-max-state-natp
+    (natp (fn-rtc-m-max-state))
+    :rule-classes :type-prescription)
+
+  ; Retained state: an instance's state is never larger than a constant.
+  (defthm fn-rtc-m-init-is-bounded
+    (<= (fn-rtc-size (fn-rtc-m-init)) (fn-rtc-m-max-state)))
+
+  (defthm fn-rtc-m-step-state-is-bounded
+    (<= (fn-rtc-size (mv-nth 0 (fn-rtc-m-step m ev pool q))) (fn-rtc-m-max-state)))
+
+  (defthm fn-rtc-m-init-is-uncommitted
+    (not (fn-rtc-m-committedp (fn-rtc-m-init))))
+
+  ; The commit point is the completion of a barrier, never a submission.
+  (defthm fn-rtc-m-commits-only-on-fsync-done
+    (implies (and (not (fn-rtc-m-committedp m))
+                  (fn-rtc-m-committedp (mv-nth 0 (fn-rtc-m-step m ev pool q))))
+             (fn-rtc-fsync-done-p ev))))
+
+; -----------------------------------------------------------------------------
 ; The invariant
 
 (defun fn-rtc-slots-okp (i slots)
@@ -305,8 +476,8 @@
     (null slots)))
 
 ; A workspace belongs to an instance whose slot is live or closing at that
-; incarnation; a lease's return pair names a slot; a lease is held by some use
-; at the buffer's generation.
+; incarnation; a lease's return pair names an instance slot (never the
+; listener); a lease is held by some use at the buffer's generation.
 (defun fn-rtc-pool-okp (h pool s)
   (declare (xargs :guard (natp h) :measure (len pool)))
   (if (consp pool)
@@ -319,7 +490,9 @@
                        (equal (fn-rtc-s-inc slot) (fn-rtc-get 2 o))
                        (member-eq (fn-rtc-s-status slot) '(:live :closing)))))
                (:leased
-                (fn-rtc-holds-p h (fn-rtc-b-gen b) (fn-rtc-uses s)))
+                (and (<= 1 (nfix (fn-rtc-get 1 o)))
+                     (< (nfix (fn-rtc-get 1 o)) (fn-rtc-nslots (fn-rtc-config s)))
+                     (fn-rtc-holds-p h (fn-rtc-b-gen b) (fn-rtc-uses s))))
                (otherwise t))
              (fn-rtc-pool-okp (+ 1 h) (cdr pool) s)))
     (null pool)))
@@ -328,7 +501,7 @@
 (defun fn-rtc-holders (h g uses)
   (declare (xargs :guard t))
   (if (consp uses)
-      (+ (let ((hd (fn-rtc-get 3 (car uses))))
+      (+ (let ((hd (fn-rtc-u-hd (car uses))))
            (if (and (fn-rtc-handlep hd)
                     (equal (fn-rtc-h-buf hd) h)
                     (equal (fn-rtc-h-gen hd) g))
@@ -337,16 +510,18 @@
     0))
 
 ; One outstanding use against the state: it belongs to its slot's current
-; incarnation; a buffered use's handle names a leased buffer at its current
-; generation, within the bytes (:out) or within capacity starting inside the
-; bytes (:in), and an :in lease is exclusive; :accept is the listener's and
-; :close is a closing slot's.
+; incarnation and its op was issued (below next-op); a buffered use's handle
+; names a buffer leased in the use's direction at its current generation,
+; within the bytes (:out) or within capacity starting inside the bytes (:in),
+; and an :in lease is exclusive; :accept is the listener's and :close is a
+; closing slot's.
 (defun fn-rtc-use-okp (u s)
   (declare (xargs :guard t))
   (let* ((kind (fn-rtc-get 0 u)) (id (nfix (fn-rtc-get 1 u))) (inc (fn-rtc-get 2 u))
-         (hd (fn-rtc-get 3 u)) (cfg (fn-rtc-config s)))
+         (hd (fn-rtc-u-hd u)) (cfg (fn-rtc-config s)))
     (and (fn-rtc-usep u)
          (< id (fn-rtc-nslots cfg))
+         (< (nfix (fn-rtc-get 3 u)) (fn-rtc-next-op s))
          (fn-rtc-current-p id inc s)
          (iff (eq kind :accept) (equal id 0))
          (implies (eq kind :close)
@@ -358,6 +533,8 @@
                     (and (< h (fn-rtc-nbufs cfg))
                          (equal (fn-rtc-b-gen b) (fn-rtc-h-gen hd))
                          (eq (fn-rtc-get 0 (fn-rtc-b-owner b)) :leased)
+                         (eq (fn-rtc-get 3 (fn-rtc-b-owner b))
+                             (if (member-eq kind *fn-rtc-in-kinds*) :in :out))
                          (if (member-eq kind *fn-rtc-in-kinds*)
                              (and (<= (fn-rtc-h-off hd) (len (fn-rtc-b-bytes b)))
                                   (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd))
@@ -368,13 +545,32 @@
                            (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd))
                                (len (fn-rtc-b-bytes b))))))))))
 
+; Uses are distinct per (kind id inc) (v1), hence per key, and their ops are
+; distinct.
+(defun fn-rtc-op-used-p (op uses)
+  (declare (xargs :guard t))
+  (if (consp uses)
+      (or (equal (fn-rtc-get 3 (car uses)) op)
+          (fn-rtc-op-used-p op (cdr uses)))
+    nil))
+
 (defun fn-rtc-uses-okp (uses s)
   (declare (xargs :guard t))
   (if (consp uses)
       (and (fn-rtc-use-okp (car uses) s)
-           (not (fn-rtc-find-use (fn-rtc-key (car uses)) (cdr uses)))
+           (not (fn-rtc-kind-out-p (fn-rtc-get 0 (car uses)) (fn-rtc-get 1 (car uses))
+                                   (fn-rtc-get 2 (car uses)) (cdr uses)))
+           (not (fn-rtc-op-used-p (fn-rtc-get 3 (car uses)) (cdr uses)))
            (fn-rtc-uses-okp (cdr uses) s))
     (null uses)))
+
+; Every instance's retained state is within the machine's bound.
+(defun fn-rtc-mstates-okp (ms)
+  (declare (xargs :guard t))
+  (if (consp ms)
+      (and (<= (fn-rtc-size (car ms)) (fn-rtc-m-max-state))
+           (fn-rtc-mstates-okp (cdr ms)))
+    t))
 
 ; Some slot other than the listener is free.
 (defun fn-rtc-free-slot (i slots)
@@ -397,7 +593,8 @@
 (defun fn-rtc-invp (s)
   (declare (xargs :guard t))
   (let ((cfg (fn-rtc-config s)))
-    (and (true-listp s) (equal (len s) 5)
+    (and (true-listp s) (equal (len s) 6)
+         (natp (fn-rtc-get 5 s))
          (fn-rtc-configp cfg)
          (equal (len (fn-rtc-slots s)) (fn-rtc-nslots cfg))
          (fn-rtc-slots-okp 0 (fn-rtc-slots s))
@@ -406,83 +603,11 @@
          (fn-rtc-uses-okp (fn-rtc-uses s) s)
          (true-listp (fn-rtc-mstates s))
          (equal (len (fn-rtc-mstates s)) (fn-rtc-nslots cfg))
+         (fn-rtc-mstates-okp (fn-rtc-mstates s))
          (fn-rtc-draining-okp 0 (fn-rtc-slots s) (fn-rtc-uses s))
          ;; the listener's :accept is armed exactly while a slot is free
          (iff (fn-rtc-free-slot 0 (fn-rtc-slots s))
-              (fn-rtc-find-use '(:accept 0 0) (fn-rtc-uses s))))))
-
-; -----------------------------------------------------------------------------
-; The instance machine, constrained.
-;
-; (fn-rtc-m-step m ev pool q) => (mv m2 requests cost).  EV is the delivered
-; completion without its identity, (kind outcome); POOL is borrowed (read
-; only).  Requests, processed in order by `fn-rtc-requests':
-;   (:acquire h)               a :free buffer becomes this instance's workspace,
-;                              generation + 1, bytes empty
-;   (:write h g off octets)    into its own workspace, within capacity
-;   (:release h g)             its own workspace back to :free
-;   (:submit kind hd extra)    an action; hd a handle for a buffered kind
-;   (:close)                   close this instance
-;   (:cancel kind)             ask the host to finish its outstanding KIND action
-; A request the layer cannot honour is refused (returned, nothing changes).
-
-(defun fn-rtc-reqs-octets (reqs)
-  (declare (xargs :guard t))
-  (if (consp reqs)
-      (+ (if (and (true-listp (car reqs)) (eq (fn-rtc-get 0 (car reqs)) :write))
-             (len (fn-rtc-get 4 (car reqs)))
-           0)
-         (fn-rtc-reqs-octets (cdr reqs)))
-    0))
-
-(defun fn-rtc-fsync-done-p (ev)
-  (declare (xargs :guard t))
-  (and (eq (fn-rtc-get 0 ev) :fsync)
-       (eq (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done)))
-
-(encapsulate
-  (((fn-rtc-m-init) => *)
-   ((fn-rtc-m-step * * * *) => (mv * * *))
-   ((fn-rtc-m-committedp *) => *)
-   ((fn-rtc-m-c) => *)
-   ((fn-rtc-m-max-reqs) => *))
-
-  (local (defun fn-rtc-m-init () nil))
-  (local (defun fn-rtc-m-step (m ev pool q)
-           (declare (ignore ev pool q))
-           (mv m nil 0)))
-  (local (defun fn-rtc-m-committedp (m) (declare (ignore m)) nil))
-  (local (defun fn-rtc-m-c () 0))
-  (local (defun fn-rtc-m-max-reqs () 0))
-
-  (defthm fn-rtc-m-c-natp
-    (natp (fn-rtc-m-c))
-    :rule-classes :type-prescription)
-
-  (defthm fn-rtc-m-max-reqs-natp
-    (natp (fn-rtc-m-max-reqs))
-    :rule-classes :type-prescription)
-
-  ; The budget: the machine's own work plus the octets it asks the layer to
-  ; write is within its quantum plus a constant.
-  (defthm fn-rtc-m-step-is-charged
-    (implies (natp q)
-             (and (natp (mv-nth 2 (fn-rtc-m-step m ev pool q)))
-                  (<= (+ (mv-nth 2 (fn-rtc-m-step m ev pool q))
-                         (fn-rtc-reqs-octets (mv-nth 1 (fn-rtc-m-step m ev pool q))))
-                      (+ q (fn-rtc-m-c))))))
-
-  (defthm fn-rtc-m-step-requests-are-bounded
-    (<= (len (mv-nth 1 (fn-rtc-m-step m ev pool q))) (fn-rtc-m-max-reqs)))
-
-  (defthm fn-rtc-m-init-is-uncommitted
-    (not (fn-rtc-m-committedp (fn-rtc-m-init))))
-
-  ; The commit point is the completion of a barrier, never a submission.
-  (defthm fn-rtc-m-commits-only-on-fsync-done
-    (implies (and (not (fn-rtc-m-committedp m))
-                  (fn-rtc-m-committedp (mv-nth 0 (fn-rtc-m-step m ev pool q))))
-             (fn-rtc-fsync-done-p ev))))
+              (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s))))))
 
 ; -----------------------------------------------------------------------------
 ; Ending a use
@@ -493,19 +618,33 @@
           (true-list-fix data)
           (nthcdr (+ (nfix off) (len data)) (true-list-fix bytes))))
 
+; DATA is exactly N octets; walks at most N + 1 cells, so a completion's data is
+; never scanned beyond the handle it is checked against.
+(defun fn-rtc-octets-n-p (data n)
+  (declare (xargs :guard (natp n)))
+  (if (zp n)
+      (null data)
+    (and (consp data)
+         (fn-cbor-octetp (car data))
+         (fn-rtc-octets-n-p (cdr data) (- n 1)))))
+
 ; What the instance is told: a completion that is malformed for its use (an
 ; :in completion whose data is not N octets within the handle, an :out count
-; beyond the handle) is reported as (:failed :malformed-completion); the use
-; ends either way, because the worker has let go of the buffer.
+; beyond the handle) is reported as (:failed :malformed-completion), and a
+; failure reason outside the closed set as (:failed :other); the use ends
+; either way, because the worker has let go of the buffer.  N is checked
+; against the handle before the data is walked.
 (defun fn-rtc-delivered-outcome (u e)
   (declare (xargs :guard t))
-  (let* ((kind (fn-rtc-get 0 u)) (hd (fn-rtc-get 3 u)) (o (fn-rtc-e-outcome e))
+  (let* ((kind (fn-rtc-get 0 u)) (hd (fn-rtc-u-hd u)) (o (fn-rtc-e-outcome e))
          (tag (fn-rtc-get 0 o)) (n (fn-rtc-get 1 o)))
-    (cond ((not (member-eq tag '(:done :short))) o)
+    (cond ((eq tag :failed)
+           (if (member-eq n *fn-rtc-failure-reasons*) o '(:failed :other)))
+          ((not (member-eq tag '(:done :short))) o)
           ((member-eq kind *fn-rtc-in-kinds*)
-           (if (and (fn-cbor-octet-listp (fn-rtc-e-data e))
-                    (equal (len (fn-rtc-e-data e)) n)
-                    (<= (nfix n) (fn-rtc-h-len hd)))
+           (if (and (natp n)
+                    (<= n (fn-rtc-h-len hd))
+                    (fn-rtc-octets-n-p (fn-rtc-e-data e) n))
                o
              '(:failed :malformed-completion)))
           ((member-eq kind *fn-rtc-out-kinds*)
@@ -521,29 +660,35 @@
 (defun fn-rtc-with-slot (id slot s)
   (declare (xargs :guard t))
   (fn-rtc-make (fn-rtc-config s) (fn-rtc-set id slot (fn-rtc-slots s))
-               (fn-rtc-pool s) (fn-rtc-uses s) (fn-rtc-mstates s)))
+               (fn-rtc-pool s) (fn-rtc-uses s) (fn-rtc-mstates s) (fn-rtc-next-op s)))
 
 (defun fn-rtc-with-buffer (h b s)
   (declare (xargs :guard t))
   (fn-rtc-make (fn-rtc-config s) (fn-rtc-slots s) (fn-rtc-set h b (fn-rtc-pool s))
-               (fn-rtc-uses s) (fn-rtc-mstates s)))
+               (fn-rtc-uses s) (fn-rtc-mstates s) (fn-rtc-next-op s)))
 
 (defun fn-rtc-with-uses (uses s)
   (declare (xargs :guard t))
   (fn-rtc-make (fn-rtc-config s) (fn-rtc-slots s) (fn-rtc-pool s)
-               uses (fn-rtc-mstates s)))
+               uses (fn-rtc-mstates s) (fn-rtc-next-op s)))
 
 (defun fn-rtc-with-mstate (id m s)
   (declare (xargs :guard t))
   (fn-rtc-make (fn-rtc-config s) (fn-rtc-slots s) (fn-rtc-pool s)
-               (fn-rtc-uses s) (fn-rtc-set id m (fn-rtc-mstates s))))
+               (fn-rtc-uses s) (fn-rtc-set id m (fn-rtc-mstates s)) (fn-rtc-next-op s)))
+
+; Record a newly issued use (op = next-op) and advance the counter.
+(defun fn-rtc-issue (use s)
+  (declare (xargs :guard t))
+  (fn-rtc-make (fn-rtc-config s) (fn-rtc-slots s) (fn-rtc-pool s)
+               (cons use (fn-rtc-uses s)) (fn-rtc-mstates s) (+ 1 (fn-rtc-next-op s))))
 
 ; The buffer a lease returns to when its last use U ends by completion E: the
 ; return pair's workspace when that instance is live or closing, else :free;
 ; generation + 1; an :in completion's data spliced in only when it is live.
 (defun fn-rtc-lease-return (u e b s)
   (declare (xargs :guard t))
-  (let* ((hd (fn-rtc-get 3 u)) (o (fn-rtc-b-owner b))
+  (let* ((hd (fn-rtc-u-hd u)) (o (fn-rtc-b-owner b))
          (rid (nfix (fn-rtc-get 1 o))) (rinc (fn-rtc-get 2 o))
          (back (and (fn-rtc-current-p rid rinc s)
                     (member-eq (fn-rtc-s-status (fn-rtc-slot rid s)) '(:live :closing))))
@@ -560,7 +705,7 @@
 ; generation, the lease ends.
 (defun fn-rtc-end-lease (u e s)
   (declare (xargs :guard t))
-  (let ((hd (fn-rtc-get 3 u)))
+  (let ((hd (fn-rtc-u-hd u)))
     (if (or (not (fn-rtc-handlep hd))
             (fn-rtc-holds-p (fn-rtc-h-buf hd) (fn-rtc-h-gen hd) (fn-rtc-uses s)))
         s
@@ -643,17 +788,18 @@
   (declare (xargs :guard t))
   (let ((slot (fn-rtc-slot id s)))
     (if (fn-rtc-live-p id inc s)
-        (mv (fn-rtc-with-uses
-             (cons (list :close id inc nil) (fn-rtc-uses s))
+        (mv (fn-rtc-issue
+             (list :close id inc (fn-rtc-next-op s) nil)
              (fn-rtc-with-slot id (list inc :closing (fn-rtc-s-res slot)) s))
-            (list (list :close id inc (list (fn-rtc-s-res slot))))
+            (list (list :close id inc (fn-rtc-next-op s) (list (fn-rtc-s-res slot))))
             nil
             (+ 1 (fn-rtc-use-bound (fn-rtc-config s))))
       (mv s nil (list r) 1))))
 
 ; May instance (ID INC) submit KIND on handle HD?  An :in kind needs its own
 ; workspace (the worker will write it); an :out kind its own workspace or a
-; buffer already leased at the handle's generation (shared, immutable).
+; buffer already leased :out at the handle's generation (shared, immutable).
+; An :in lease is never shared.
 (defun fn-rtc-submit-okp (kind hd id inc s)
   (declare (xargs :guard t))
   (let* ((h (fn-rtc-h-buf hd)) (b (fn-rtc-buffer h s)) (o (fn-rtc-b-owner b))
@@ -666,7 +812,7 @@
                   (<= (fn-rtc-h-off hd) (len (fn-rtc-b-bytes b)))
                   (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd))
                       (fn-rtc-cap (fn-rtc-config s))))
-           (and (or own (eq (fn-rtc-get 0 o) :leased))
+           (and (or own (and (eq (fn-rtc-get 0 o) :leased) (eq (fn-rtc-get 3 o) :out)))
                 (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd))
                     (len (fn-rtc-b-bytes b))))))))
 
@@ -678,25 +824,26 @@
     (cond
      ((not (and (member-eq kind *fn-rtc-machine-kinds*)
                 (fn-rtc-live-p id inc s)
-                (true-listp extra)
-                (not (fn-rtc-find-use (list kind id inc) (fn-rtc-uses s)))))
+                (fn-rtc-extrap extra)
+                (not (fn-rtc-kind-out-p kind id inc (fn-rtc-uses s)))))
       (mv s nil (list r) cost))
      ((not (fn-rtc-buffered-kind-p kind))
       (if (null hd)
-          (mv (fn-rtc-with-uses (cons (list kind id inc nil) (fn-rtc-uses s)) s)
-              (list (list kind id inc (cons res extra)))
+          (mv (fn-rtc-issue (list kind id inc (fn-rtc-next-op s) nil) s)
+              (list (list kind id inc (fn-rtc-next-op s) (cons res extra)))
               nil cost)
         (mv s nil (list r) cost)))
      ((not (fn-rtc-submit-okp kind hd id inc s))
       (mv s nil (list r) cost))
      (t
       (let* ((h (fn-rtc-h-buf hd)) (b (fn-rtc-buffer h s))
+             (dir (if (member-eq kind *fn-rtc-in-kinds*) :in :out))
              (s1 (if (equal (fn-rtc-b-owner b) (list :workspace id inc))
                      (fn-rtc-with-buffer
-                      h (list (fn-rtc-b-gen b) (list :leased id inc) (fn-rtc-b-bytes b)) s)
+                      h (list (fn-rtc-b-gen b) (list :leased id inc dir) (fn-rtc-b-bytes b)) s)
                    s)))
-        (mv (fn-rtc-with-uses (cons (list kind id inc hd) (fn-rtc-uses s1)) s1)
-            (list (list kind id inc (list* hd res extra)))
+        (mv (fn-rtc-issue (list kind id inc (fn-rtc-next-op s1) hd) s1)
+            (list (list kind id inc (fn-rtc-next-op s1) (list* hd res extra)))
             nil cost))))))
 
 (defthm fn-rtc-req-acquire-lists
@@ -718,18 +865,21 @@
 (defthm fn-rtc-req-submit-lists
   (and (true-listp (mv-nth 1 (fn-rtc-req-submit r id inc s)))
        (true-listp (mv-nth 2 (fn-rtc-req-submit r id inc s))))
-  :hints (("Goal" :in-theory (disable fn-rtc-submit-okp fn-rtc-with-uses fn-rtc-with-buffer
-                                      fn-rtc-find-use fn-rtc-live-p fn-rtc-buffered-kind-p))))
+  :hints (("Goal" :in-theory (disable fn-rtc-submit-okp fn-rtc-issue fn-rtc-with-buffer
+                                      fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-buffered-kind-p
+                                      fn-rtc-extrap))))
 
-; Ask the host to finish this instance's outstanding KIND action early.  The
-; use stays; nothing in the pool changes.  Refused when no such use exists.
+; Ask the host to finish this instance's outstanding KIND action early: the
+; :cancel action names that action's op.  The use stays; nothing in the pool
+; changes.  Refused when no such use exists.
 (defun fn-rtc-req-cancel (r id inc s)
   (declare (xargs :guard t))
   (let ((kind (fn-rtc-get 1 r)))
     (if (and (member-eq kind *fn-rtc-machine-kinds*)
              (fn-rtc-current-p id inc s)
-             (fn-rtc-find-use (list kind id inc) (fn-rtc-uses s)))
-        (mv s (list (list :cancel id inc (list kind))) nil
+             (fn-rtc-kind-out-p kind id inc (fn-rtc-uses s)))
+        (mv s (list (list :cancel id inc (fn-rtc-kind-op kind id inc (fn-rtc-uses s)) (list kind)))
+            nil
             (+ 1 (fn-rtc-use-bound (fn-rtc-config s))))
       (mv s nil (list r) (+ 1 (fn-rtc-use-bound (fn-rtc-config s)))))))
 
@@ -776,9 +926,9 @@
 (defun fn-rtc-rearm (s)
   (declare (xargs :guard t))
   (if (and (fn-rtc-free-slot 0 (fn-rtc-slots s))
-           (not (fn-rtc-find-use '(:accept 0 0) (fn-rtc-uses s))))
-      (mv (fn-rtc-with-uses (cons (list :accept 0 0 nil) (fn-rtc-uses s)) s)
-          (list (list :accept 0 0 (list nil))))
+           (not (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s))))
+      (mv (fn-rtc-issue (list :accept 0 0 (fn-rtc-next-op s) nil) s)
+          (list (list :accept 0 0 (fn-rtc-next-op s) (list nil))))
     (mv s nil)))
 
 (defthm fn-rtc-rearm-lists
@@ -818,11 +968,36 @@
       (nfix (fn-rtc-free-slot 0 (fn-rtc-slots s)))
     (fn-rtc-e-id e)))
 
+; The borrow view: the pool with every :in-leased buffer's bytes hidden.
+(defun fn-rtc-borrow (pool)
+  (declare (xargs :guard t))
+  (if (consp pool)
+      (cons (if (and (eq (fn-rtc-get 0 (fn-rtc-b-owner (car pool))) :leased)
+                     (eq (fn-rtc-get 3 (fn-rtc-b-owner (car pool))) :in))
+                (list (fn-rtc-b-gen (car pool)) (fn-rtc-b-owner (car pool)) nil)
+              (car pool))
+            (fn-rtc-borrow (cdr pool)))
+    nil))
+
+; Two pools agree except in the bytes of :in-leased buffers (T14).
+(defun fn-rtc-pools-agree-off-in-leases-p (p1 p2)
+  (declare (xargs :guard t))
+  (if (consp p1)
+      (and (consp p2)
+           (let ((b1 (car p1)) (b2 (car p2)))
+             (if (and (eq (fn-rtc-get 0 (fn-rtc-b-owner b1)) :leased)
+                      (eq (fn-rtc-get 3 (fn-rtc-b-owner b1)) :in))
+                 (and (equal (fn-rtc-b-gen b1) (fn-rtc-b-gen b2))
+                      (equal (fn-rtc-b-owner b1) (fn-rtc-b-owner b2)))
+               (equal b1 b2)))
+           (fn-rtc-pools-agree-off-in-leases-p (cdr p1) (cdr p2)))
+    (atom p2)))
+
 ; Deliver EV to instance (ID INC) and process its requests.
 (defun fn-rtc-deliver (s id inc ev q)
   (declare (xargs :guard t))
   (mv-let (m2 reqs cm)
-    (fn-rtc-m-step (fn-rtc-mstate id s) ev (fn-rtc-pool s) (nfix q))
+    (fn-rtc-m-step (fn-rtc-mstate id s) ev (fn-rtc-borrow (fn-rtc-pool s)) (nfix q))
     (mv-let (s2 acts refused cr)
       (fn-rtc-requests reqs id inc (fn-rtc-with-mstate id m2 s))
       (mv s2 acts refused (+ (nfix cm) (nfix cr))))))
@@ -844,11 +1019,11 @@
   (declare (xargs :guard t))
   (let ((j (fn-rtc-free-slot 0 (fn-rtc-slots s1)))
         (r (fn-rtc-get 1 out)))
-    (if (and (eq (fn-rtc-get 0 out) :done) j)
+    (if (and (eq (fn-rtc-get 0 out) :done) j (natp r) (< r (expt 2 64)))
         (let* ((jinc (+ 1 (fn-rtc-s-inc (fn-rtc-slot j s1))))
                (s2 (fn-rtc-with-mstate
                     j (fn-rtc-m-init)
-                    (fn-rtc-with-slot j (list jinc :live (nfix r)) s1))))
+                    (fn-rtc-with-slot j (list jinc :live r) s1))))
           (mv-let (s3 acts refused c)
             (fn-rtc-deliver s2 j jinc (list :accept out) q)
             (mv-let (s4 acts2) (fn-rtc-rearm s3)
@@ -863,7 +1038,7 @@
   (declare (xargs :guard t))
   (let* ((s2 (fn-rtc-make (fn-rtc-config s1) (fn-rtc-slots s1)
                           (fn-rtc-release-all (fn-rtc-pool s1) id inc)
-                          (fn-rtc-uses s1) (fn-rtc-mstates s1)))
+                          (fn-rtc-uses s1) (fn-rtc-mstates s1) (fn-rtc-next-op s1)))
          (status (if (fn-rtc-uses-of-slot-p id inc (fn-rtc-uses s2)) :draining :free))
          (s3 (fn-rtc-with-mstate
               id (fn-rtc-m-init)
@@ -882,7 +1057,12 @@
       (let* ((s1 (fn-rtc-end-use s e))
              (kind (fn-rtc-e-kind e)) (id (fn-rtc-e-id e)) (inc (fn-rtc-e-inc e))
              (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))
-             (out (fn-rtc-delivered-outcome u e)))
+             (out (fn-rtc-delivered-outcome u e))
+             ;; checking and landing an :in completion's data: at most the
+             ;; handle's length, itself within the buffer capacity
+             (base (+ base (if (member-eq kind *fn-rtc-in-kinds*)
+                               (fn-rtc-h-len (fn-rtc-u-hd u))
+                             0))))
         (cond
          ((eq kind :accept)
           (mv-let (s2 acts refused c) (fn-rtc-accept-branch s1 out q)
@@ -913,14 +1093,14 @@
 (defun fn-rtc-actions-octets (acts)
   (declare (xargs :guard t))
   (if (consp acts)
-      (+ (let ((hd (fn-rtc-get 0 (fn-rtc-get 3 (car acts)))))
+      (+ (let ((hd (fn-rtc-get 0 (fn-rtc-get 4 (car acts)))))
            (if (fn-rtc-handlep hd) (fn-rtc-h-len hd) 0))
          (fn-rtc-actions-octets (cdr acts)))
     0))
 
 (defun fn-rtc-step-c (cfg)
   (declare (xargs :guard t))
-  (+ 4 (fn-rtc-m-c) (* 2 (fn-rtc-nslots cfg)) (fn-rtc-nbufs cfg)
+  (+ 4 (fn-rtc-m-c) (* 2 (fn-rtc-nslots cfg)) (fn-rtc-nbufs cfg) (fn-rtc-cap cfg)
      (* 6 (fn-rtc-use-bound cfg))
      (* (fn-rtc-m-max-reqs) (+ 1 (fn-rtc-use-bound cfg)))))
 
@@ -943,7 +1123,8 @@
                 (cons *fn-rtc-listener* (fn-rtc-free-slots (nfix (- (fn-rtc-nslots cfg) 1))))
                 (fn-rtc-free-pool (fn-rtc-nbufs cfg))
                 nil
-                (make-list (fn-rtc-nslots cfg) :initial-element nil))))
+                (make-list (fn-rtc-nslots cfg) :initial-element nil)
+                0)))
 
 ; =============================================================================
 ; PROOFS
@@ -962,11 +1143,12 @@
 (defthm fn-rtc-set-true-listp
   (implies (true-listp l) (true-listp (fn-rtc-set j v l))))
 (defthm fn-rtc-make-accessors
-  (and (equal (fn-rtc-config (fn-rtc-make c sl p u m)) c)
-       (equal (fn-rtc-slots (fn-rtc-make c sl p u m)) sl)
-       (equal (fn-rtc-pool (fn-rtc-make c sl p u m)) p)
-       (equal (fn-rtc-uses (fn-rtc-make c sl p u m)) u)
-       (equal (fn-rtc-mstates (fn-rtc-make c sl p u m)) m)))
+  (and (equal (fn-rtc-config (fn-rtc-make c sl p u m n)) c)
+       (equal (fn-rtc-slots (fn-rtc-make c sl p u m n)) sl)
+       (equal (fn-rtc-pool (fn-rtc-make c sl p u m n)) p)
+       (equal (fn-rtc-uses (fn-rtc-make c sl p u m n)) u)
+       (equal (fn-rtc-mstates (fn-rtc-make c sl p u m n)) m)
+       (equal (fn-rtc-next-op (fn-rtc-make c sl p u m n)) (nfix n))))
 
 (in-theory (disable fn-rtc-config fn-rtc-slots fn-rtc-pool fn-rtc-uses fn-rtc-mstates fn-rtc-make
                     fn-rtc-with-slot fn-rtc-with-buffer fn-rtc-with-uses fn-rtc-with-mstate
@@ -1010,6 +1192,10 @@
   (implies (fn-rtc-invp s) (fn-rtc-uses-okp (fn-rtc-uses s) s))
   :hints (("Goal" :in-theory (disable fn-rtc-uses-okp fn-rtc-slots-okp fn-rtc-pool-okp fn-rtc-draining-okp fn-rtc-free-slot fn-rtc-find-use)))
   :rule-classes :forward-chaining)
+
+(defthm fn-rtc-find-use-implies-op-used
+  (implies (not (fn-rtc-op-used-p (fn-rtc-get 3 x) l))
+           (not (fn-rtc-find-use (fn-rtc-key x) l))))
 
 (defthm fn-rtc-remove-use-removes-distinct-key
   (implies (fn-rtc-uses-okp uses s)
@@ -1056,6 +1242,20 @@
        (equal (fn-rtc-mstate i (fn-rtc-with-slot k x s)) (fn-rtc-mstate i s)))
   :hints (("Goal" :in-theory (enable fn-rtc-mstate))))
 
+(defthm fn-rtc-issue-frame
+  (and (equal (fn-rtc-uses (fn-rtc-issue x s)) (cons x (fn-rtc-uses s)))
+       (equal (fn-rtc-next-op (fn-rtc-issue x s)) (+ 1 (fn-rtc-next-op s)))
+       (equal (fn-rtc-config (fn-rtc-issue x s)) (fn-rtc-config s))
+       (equal (fn-rtc-slots (fn-rtc-issue x s)) (fn-rtc-slots s))
+       (equal (fn-rtc-pool (fn-rtc-issue x s)) (fn-rtc-pool s))
+       (equal (fn-rtc-mstates (fn-rtc-issue x s)) (fn-rtc-mstates s))
+       (equal (fn-rtc-buffer h (fn-rtc-issue x s)) (fn-rtc-buffer h s))
+       (equal (fn-rtc-slot h (fn-rtc-issue x s)) (fn-rtc-slot h s))
+       (equal (fn-rtc-mstate h (fn-rtc-issue x s)) (fn-rtc-mstate h s)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-issue fn-rtc-buffer fn-rtc-slot fn-rtc-mstate) (fn-rtc-next-op)))))
+
+(in-theory (disable fn-rtc-issue fn-rtc-next-op))
+
 (defthm fn-rtc-get-of-non-natp
   (implies (not (natp i)) (equal (fn-rtc-get i l) (fn-rtc-get 0 l))))
 (defthm fn-rtc-buffer-of-non-natp
@@ -1096,8 +1296,8 @@
   :hints (("Goal" :in-theory (e/d (fn-rtc-requests) (mv-nth fn-rtc-request))
            :induct (fn-rtc-requests reqs id inc s))))
 (defthm fn-rtc-holds-p-of-member
-  (implies (and (member-equal u uses) (fn-rtc-handlep (fn-rtc-get 3 u)))
-           (fn-rtc-holds-p (fn-rtc-h-buf (fn-rtc-get 3 u)) (fn-rtc-h-gen (fn-rtc-get 3 u)) uses))
+  (implies (and (member-equal u uses) (fn-rtc-handlep (fn-rtc-u-hd u)))
+           (fn-rtc-holds-p (fn-rtc-h-buf (fn-rtc-u-hd u)) (fn-rtc-h-gen (fn-rtc-u-hd u)) uses))
   :hints (("Goal" :in-theory (disable fn-rtc-handlep fn-rtc-h-buf fn-rtc-h-gen))))
 
 (defthm fn-rtc-member-of-remove-use
@@ -1116,10 +1316,10 @@
   :hints (("Goal" :in-theory (disable fn-rtc-key) :induct (fn-rtc-find-use k uses))))
 
 (defthm fn-rtc-use-okp-lease
-  (implies (and (fn-rtc-use-okp u s) (fn-rtc-handlep (fn-rtc-get 3 u)))
-           (and (equal (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-get 3 u)) s))
-                       (fn-rtc-h-gen (fn-rtc-get 3 u)))
-                (fn-rtc-leasedp (fn-rtc-h-buf (fn-rtc-get 3 u)) s)))
+  (implies (and (fn-rtc-use-okp u s) (fn-rtc-handlep (fn-rtc-u-hd u)))
+           (and (equal (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) s))
+                       (fn-rtc-h-gen (fn-rtc-u-hd u)))
+                (fn-rtc-leasedp (fn-rtc-h-buf (fn-rtc-u-hd u)) s)))
   :hints (("Goal" :in-theory (disable fn-rtc-handlep fn-rtc-h-buf fn-rtc-h-gen fn-rtc-holders
                                       fn-rtc-current-p fn-rtc-usep))))
 
@@ -1140,9 +1340,9 @@
   :hints (("Goal" :in-theory (disable fn-rtc-lease-return fn-rtc-holds-p fn-rtc-handlep))))
 
 (defthm fn-rtc-end-lease-buffer-unchanged
-  (implies (or (not (fn-rtc-handlep (fn-rtc-get 3 u)))
-               (not (equal (nfix h) (fn-rtc-h-buf (fn-rtc-get 3 u))))
-               (fn-rtc-holds-p (fn-rtc-h-buf (fn-rtc-get 3 u)) (fn-rtc-h-gen (fn-rtc-get 3 u))
+  (implies (or (not (fn-rtc-handlep (fn-rtc-u-hd u)))
+               (not (equal (nfix h) (fn-rtc-h-buf (fn-rtc-u-hd u))))
+               (fn-rtc-holds-p (fn-rtc-h-buf (fn-rtc-u-hd u)) (fn-rtc-h-gen (fn-rtc-u-hd u))
                                (fn-rtc-uses s)))
            (equal (fn-rtc-buffer h (fn-rtc-end-lease u e s)) (fn-rtc-buffer h s)))
   :hints (("Goal" :in-theory (disable fn-rtc-lease-return fn-rtc-holds-p fn-rtc-handlep fn-rtc-h-buf fn-rtc-h-gen))))
@@ -1159,10 +1359,10 @@
 (defthm fn-rtc-end-use-keeps-other-leases
   (implies (and (fn-rtc-invp s)
                 (member-equal u (fn-rtc-uses s))
-                (fn-rtc-handlep (fn-rtc-get 3 u))
+                (fn-rtc-handlep (fn-rtc-u-hd u))
                 (not (fn-rtc-ends-use-p e u)))
-           (equal (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-get 3 u)) (fn-rtc-end-use s e))
-                  (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-get 3 u)) s)))
+           (equal (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) (fn-rtc-end-use s e))
+                  (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) s)))
   :hints (("Goal" :in-theory (e/d (fn-rtc-ends-use-p fn-rtc-end-use)
                                   (fn-rtc-invp fn-rtc-use-okp fn-rtc-completionp fn-rtc-find-use
                                    fn-rtc-remove-use fn-rtc-holds-p fn-rtc-handlep fn-rtc-key
@@ -1179,7 +1379,7 @@
                  (:instance fn-rtc-find-use-is-member (k (fn-rtc-key e)) (uses (fn-rtc-uses s)))
                  (:instance fn-rtc-member-of-remove-use (uses (fn-rtc-uses s)) (k (fn-rtc-key e)))
                  (:instance fn-rtc-holds-p-of-member (uses (fn-rtc-remove-use (fn-rtc-key e) (fn-rtc-uses s))))
-                 (:instance fn-rtc-end-lease-buffer-unchanged (h (fn-rtc-h-buf (fn-rtc-get 3 u)))
+                 (:instance fn-rtc-end-lease-buffer-unchanged (h (fn-rtc-h-buf (fn-rtc-u-hd u)))
                             (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))
                             (s (fn-rtc-with-uses (fn-rtc-remove-use (fn-rtc-key e) (fn-rtc-uses s)) s)))))))
 
@@ -1192,9 +1392,9 @@
 (defthm fn-rtc-invp-admission
   (implies (fn-rtc-invp s)
            (iff (fn-rtc-free-slot 0 (fn-rtc-slots s))
-                (fn-rtc-find-use '(:accept 0 0) (fn-rtc-uses s))))
+                (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s))))
   :hints (("Goal" :in-theory (disable fn-rtc-uses-okp fn-rtc-slots-okp fn-rtc-pool-okp fn-rtc-draining-okp
-                                      fn-rtc-free-slot fn-rtc-find-use)))
+                                      fn-rtc-free-slot fn-rtc-kind-out-p fn-rtc-mstates-okp)))
   :rule-classes nil)
 
 (defthm fn-rtc-rearm-under-invp
@@ -1202,7 +1402,7 @@
            (and (equal (mv-nth 0 (fn-rtc-rearm s)) s)
                 (equal (mv-nth 1 (fn-rtc-rearm s)) nil)))
   :hints (("Goal" :use fn-rtc-invp-admission
-                  :in-theory (e/d (fn-rtc-rearm) (fn-rtc-invp fn-rtc-free-slot fn-rtc-find-use)))))
+                  :in-theory (e/d (fn-rtc-rearm) (fn-rtc-invp fn-rtc-free-slot fn-rtc-kind-out-p)))))
 
 ; T6
 (defthm fn-rtc-unmatched-completion-is-discarded
@@ -1217,10 +1417,10 @@
 (defthm fn-rtc-outstanding-use-is-leased
   (implies (and (fn-rtc-invp s)
                 (member-equal u (fn-rtc-uses s))
-                (fn-rtc-handlep (fn-rtc-get 3 u)))
-           (let ((h (fn-rtc-h-buf (fn-rtc-get 3 u))))
+                (fn-rtc-handlep (fn-rtc-u-hd u)))
+           (let ((h (fn-rtc-h-buf (fn-rtc-u-hd u))))
              (and (not (fn-rtc-recyclablep h s))
-                  (equal (fn-rtc-gen h s) (fn-rtc-h-gen (fn-rtc-get 3 u))))))
+                  (equal (fn-rtc-gen h s) (fn-rtc-h-gen (fn-rtc-u-hd u))))))
   :hints (("Goal" :use ((:instance fn-rtc-uses-okp-member (uses (fn-rtc-uses s))))
                   :in-theory (e/d (fn-rtc-use-okp fn-rtc-recyclablep fn-rtc-gen)
                                   (fn-rtc-uses-okp-member fn-rtc-uses-okp fn-rtc-invp
@@ -1283,9 +1483,9 @@
 (defthm fn-rtc-len-of-release-all
   (equal (len (fn-rtc-release-all pool id inc)) (len pool)))
 (defthm fn-rtc-buffer-of-make
-  (and (equal (fn-rtc-buffer h (fn-rtc-make c sl p u m)) (fn-rtc-get h p))
-       (equal (fn-rtc-slot h (fn-rtc-make c sl p u m)) (fn-rtc-get h sl))
-       (equal (fn-rtc-mstate h (fn-rtc-make c sl p u m)) (fn-rtc-get h m)))
+  (and (equal (fn-rtc-buffer h (fn-rtc-make c sl p u m n)) (fn-rtc-get h p))
+       (equal (fn-rtc-slot h (fn-rtc-make c sl p u m n)) (fn-rtc-get h sl))
+       (equal (fn-rtc-mstate h (fn-rtc-make c sl p u m n)) (fn-rtc-get h m)))
   :hints (("Goal" :in-theory (enable fn-rtc-buffer fn-rtc-slot fn-rtc-mstate))))
 
 (defthm fn-rtc-pool-is-buffers
@@ -1298,8 +1498,8 @@
   :hints (("Goal" :in-theory (e/d (fn-rtc-ends-use-p) (fn-rtc-key fn-rtc-completionp fn-rtc-find-use fn-rtc-remove-use)))))
 
 (defthm fn-rtc-leasedp-of-use
-  (implies (and (fn-rtc-invp s) (member-equal u (fn-rtc-uses s)) (fn-rtc-handlep (fn-rtc-get 3 u)))
-           (fn-rtc-leasedp (fn-rtc-h-buf (fn-rtc-get 3 u)) s))
+  (implies (and (fn-rtc-invp s) (member-equal u (fn-rtc-uses s)) (fn-rtc-handlep (fn-rtc-u-hd u)))
+           (fn-rtc-leasedp (fn-rtc-h-buf (fn-rtc-u-hd u)) s))
   :hints (("Goal" :in-theory (disable fn-rtc-invp fn-rtc-use-okp fn-rtc-leasedp fn-rtc-handlep fn-rtc-h-buf)
                   :use (fn-rtc-invp-uses-okp
                         (:instance fn-rtc-uses-okp-member (uses (fn-rtc-uses s)))
@@ -1336,8 +1536,8 @@
                 (not (fn-rtc-ends-use-p e u)))
            (let ((s2 (mv-nth 0 (fn-rtc-step s e q))))
              (and (member-equal u (fn-rtc-uses s2))
-                  (implies (fn-rtc-handlep (fn-rtc-get 3 u))
-                           (let ((h (fn-rtc-h-buf (fn-rtc-get 3 u))))
+                  (implies (fn-rtc-handlep (fn-rtc-u-hd u))
+                           (let ((h (fn-rtc-h-buf (fn-rtc-u-hd u))))
                              (equal (fn-rtc-buffer h s2) (fn-rtc-buffer h s)))))))
   :hints (("Goal" :in-theory (e/d (fn-rtc-step fn-rtc-step* fn-rtc-leasedp)
                                   (fn-rtc-invp fn-rtc-ends-use-p fn-rtc-acts-on-p fn-rtc-handlep fn-rtc-h-buf
@@ -1399,8 +1599,8 @@
 ;;                 (member-equal a (mv-nth 1 (fn-rtc-step s e q))))
 ;;            (and (fn-rtc-actionp a)
 ;;                 (if (equal (fn-rtc-get 0 a) :cancel)
-;;                     (fn-rtc-find-use (list (fn-rtc-get 0 (fn-rtc-get 3 a))
-;;                                            (fn-rtc-get 1 a) (fn-rtc-get 2 a))
+;;                     (fn-rtc-find-use (list (fn-rtc-get 0 (fn-rtc-get 4 a))
+;;                                            (fn-rtc-get 1 a) (fn-rtc-get 2 a) (fn-rtc-get 3 a))
 ;;                                      (fn-rtc-uses (mv-nth 0 (fn-rtc-step s e q))))
 ;;                   (fn-rtc-find-use (fn-rtc-key a)
 ;;                                    (fn-rtc-uses (mv-nth 0 (fn-rtc-step s e q))))))))
@@ -1443,7 +1643,24 @@
 ;;                                             (fn-rtc-remove-use (fn-rtc-key u) (fn-rtc-uses s)))))
 ;;            (let ((s2 (mv-nth 0 (fn-rtc-step s e q))))
 ;;              (and (equal (fn-rtc-s-status (fn-rtc-slot j s2)) :free)
-;;                   (fn-rtc-find-use '(:accept 0 0) (fn-rtc-uses s2))))))
+;;                   (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s2))))))
+;;
+;; ; T14. Borrowing hides in-flight input: two pools that differ only in the
+;; ; bytes of :in-leased buffers have the same borrow view, so no instance machine
+;; ; can observe bytes a worker may be writing.
+;; (defthm fn-rtc-borrow-hides-in-leased-bytes
+;;   (implies (fn-rtc-pools-agree-off-in-leases-p p1 p2)
+;;            (equal (fn-rtc-borrow p1) (fn-rtc-borrow p2))))
+;; ;   where fn-rtc-pools-agree-off-in-leases-p holds when the pools have the same
+;; ;   length and agree buffer by buffer, except that an :in-leased buffer's bytes
+;; ;   may differ (generation and owner equal).
+;;
+;; ; T15. Retained state per instance: every machine state the layer holds is
+;; ; within the machine's constrained bound, so the layer's retained machine state
+;; ; is at most nslots * (fn-rtc-m-max-state).
+;; (defthm fn-rtc-machine-states-are-bounded
+;;   (implies (and (fn-rtc-invp s) (natp j))
+;;            (<= (fn-rtc-size (fn-rtc-mstate j s)) (fn-rtc-m-max-state))))
 ;;
 ;; ; A-HOST-COMPLETES, the named assumption (an encapsulate in
 ;; ; books/assumptions-runtime.lisp, statement here): the host delivers exactly
