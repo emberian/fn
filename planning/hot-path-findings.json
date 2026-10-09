@@ -582,7 +582,7 @@
       "note": "[batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-sbud-record-octets recursion N', same traversal, same class]",
       "packet": "PKT-324 (5)"
     },
-    "fn-scka-canon-rows-rev recursion N": {
+    "fn-scka-canon-fold recursion N": {
       "class": "unexpected",
       "note": "checkpoint-arena-2 (2026-09-27): the state checkpoint publication's setup canonicalizes the live rows (alpha of each row through the arena, interned at the canonical handle) and reads each canonical payload's length for the arena run's batches: one walk of the history per publication, where fn-sco-capture's walk was; reached from the verb (fn-store-sco-publish-setup) and the owner's publication thread off the mutex (fn-owner-sco-prepare), never from a served command [batch AY: open-depth (PRF-352) runs this walk as a loop over an accumulator; the entry moved from 'fn-scka-canon-rows recursion N', same traversal, same class]",
       "packet": "PKT-041"

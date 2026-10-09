@@ -1,0 +1,14 @@
+{
+ "id": "OWNER-ARENA-PAYLOADS-KEYSTONE-TEETH",
+ "category": "proofs",
+ "owner": "deputy-S",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "lane s-capture-intern",
+ "state": "open",
+ "title": "Register and tooth the arena half of the checkpoint open (the worker leaves the canonical payloads)",
+ "notes": [
+  "fn-scka-fold-at-arena-is-payloads (books/store-checkpoint-fold.lisp) replaced fn-intern-events-arena-is-payloads as the arena claim but is not a registry keystone: its hypothesis (true-listp fn-arena) and its conclusion (arena equals a list) cannot be rendered natively on the abstract fn-arena stobj, so defteeth has no executable witness. Its content is proved in books/store-checkpoint-arena.lisp: fn-scka-recover-arena-from-checkpoint-is-full-recover, fn-scka-recover-from-checkpoint-is-full-recover-with-arena, fn-scka-recover-from-checkpoint-is-full-recover-two-arenas (the host's own two calls); and tested by evaluation in tests/acl2/store-checkpoint-arena-tests.lisp and store-checkpoint-fold-tests.lisp (the worker's arena = fn-scka-payloads; the file written, loaded and opened).",
+  "Plan: restate with (fn-arena-p fn-arena) in place of (true-listp fn-arena) (a stobj always satisfies it), prove fn-ssr-intern-step preserves fn-arena-p and that fn-scka-arena-list (an exported reader of the payloads by handle) equals the arena under fn-arena-p, then render the conclusion natively through a :stobj-checks checker as scft-worker-rows does in tests/acl2/store-checkpoint-fold-tests.lisp; register the theorem in PRF-083's events with its defteeth and a planning/critical-evidence.json entry."
+ ]
+}

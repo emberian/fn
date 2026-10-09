@@ -1,5 +1,5 @@
 {
- "about": "Critical evidence for the thirteen p-teeth-critical claims. Trace references name the defteeth whose fixtures run the real steps. Native log crash campaigns check the model program against the host's cuts; they do not execute that program. Failed-barrier clean-cache coverage is separately owed in TEETH-CRITICAL-HOST-TESTS.",
+ "about": "Critical keystone evidence: premises and wrong_answer come from defteeth; declared host_test, trace_witness and mutation references name their tests. Native log crash campaigns check the model program against host cuts; they do not execute that program. Failed-barrier clean-cache coverage is separately owed in TEETH-CRITICAL-HOST-TESTS.",
  "entries": {
   "fn-bpn-step-preserves-lifecycle-invariant": {
    "subject": "fn-bpn-step",
@@ -112,8 +112,8 @@
   "fn-rcw-canon-acc-steps-is-the-checkpoint-capture": {
    "subject": "fn-scka-canon-rows",
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
-   "trace_witness": "tests/acl2/reclaim-chunked-walk-tests.lisp::fn-rcw-canon-acc-steps-is-the-checkpoint-capture",
-   "mutation": "tests/acl2/reclaim-chunked-walk-tests.lisp::reset-handle"
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-live-arena",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
   },
   "fn-rcw-load-chunks-is-load": {
    "subject": "fn-rcw-load-chunks",
@@ -144,6 +144,24 @@
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
    "trace_witness": "tests/acl2/catalog-availability-owner-load-tests.lisp::fn-sca-load-held-rows-establishes-byte-facts",
    "mutation": "tests/acl2/catalog-availability-owner-load-tests.lisp::stale-byte-facts"
+  },
+  "fn-scka-fold-at-is-the-ssr-step": {
+   "subject": "fn-ssr-intern-step",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
+  },
+  "fn-scka-next-checkpoint-is-capture": {
+   "subject": "fn-scka-next-checkpoint",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
+  },
+  "fn-scka-recover-from-checkpoint-is-full-recover": {
+   "subject": "fn-ssr-intern-step",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-old-pair"
   }
  }
 }

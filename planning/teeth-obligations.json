@@ -10144,14 +10144,6 @@
    "registry": true
   },
   {
-   "book": "books/store-checkpoint-arena.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-intern-events-arena-is-payloads",
-   "registry": true,
-   "statement_digest": "14b379cabbd52bfb559420a089fae4a776bfe038e7ae1c6f0f5459280fd16aed"
-  },
-  {
    "book": "books/store-budget-stored.lisp",
    "class": "hand",
    "critical": "resource-reservation",
@@ -10166,14 +10158,6 @@
    "name": "fn-intern-events-extents-okp",
    "registry": true,
    "statement_digest": "356b0eaf262b849a8b3ac6fb87ce6833d88b88eedb3116a04e6c2e2c9367f36b"
-  },
-  {
-   "book": "books/store-checkpoint-arena.lisp",
-   "class": "hand",
-   "critical": "durability",
-   "name": "fn-intern-events-is-intern-at",
-   "registry": true,
-   "statement_digest": "f1d7c969475c5abb0c876634229d19f84c62b7803fc8a737dbb84fec1bb39044"
   },
   {
    "class": "hand",
@@ -21568,7 +21552,7 @@
   },
   {
    "book": "books/reclaim-chunked-walk.lisp",
-   "book_digest": "0c6b0ef720ca0365cc901af4bea1cfe37d82a7214fec0d464b5bc34251950cb7",
+   "book_digest": "78e281f1c55a746f72f6e5eb058d13a94e0baefd7624297dfb8dd0446422ffdf",
    "bounds": [],
    "claim_digest": "a066e067985a0bbefb8ee8dd421ffaca14cd7f874ac90d74582b7705e8fa7a96",
    "class": "generated",
@@ -21590,9 +21574,9 @@
   },
   {
    "book": "books/reclaim-chunked-walk.lisp",
-   "book_digest": "0c6b0ef720ca0365cc901af4bea1cfe37d82a7214fec0d464b5bc34251950cb7",
+   "book_digest": "78e281f1c55a746f72f6e5eb058d13a94e0baefd7624297dfb8dd0446422ffdf",
    "bounds": [],
-   "claim_digest": "e3082d21a3ac9f28101232795c25c5562efe6eb9b8be9283817eb558bfc69419",
+   "claim_digest": "7f44cc16fc9bcf70293fa6d38ab82efe3f0321c2879bcc81e6b09aa0a20f3f67",
    "class": "generated",
    "critical": "ownership-reclamation",
    "mutations": "edits:1",
@@ -21606,13 +21590,13 @@
     "logical": 0,
     "reachable": 0
    },
-   "statement_digest": "cb4dbbfe2b5daec4fbf132ab2e9ec433047027eb6e39e0e804884c38b5799a46",
+   "statement_digest": "34971d76ae99f3a9cb5605bd25c21f50d0cd7eee86536411cc4c7969f19111a5",
    "subject": "fn-rcw-canon-acc-steps",
    "witness": "executable"
   },
   {
    "book": "books/reclaim-chunked-walk.lisp",
-   "book_digest": "0c6b0ef720ca0365cc901af4bea1cfe37d82a7214fec0d464b5bc34251950cb7",
+   "book_digest": "78e281f1c55a746f72f6e5eb058d13a94e0baefd7624297dfb8dd0446422ffdf",
    "bounds": [],
    "claim_digest": "876db97c76bfaae308af44b755ae850e2ae8037bf673e98ed3d49810937bda63",
    "class": "generated",
@@ -24143,6 +24127,28 @@
    "registry": true
   },
   {
+   "book": "books/store-checkpoint-fold.lisp",
+   "book_digest": "5dba7ab1ef5d6aca25dfd50fb6dd659cf48bc742eb18aa59ca626f19c0ee902f",
+   "bounds": [],
+   "claim_digest": "64e014adbc0503762c716c25096ab139976f2820a4dbdb3e231ba13e70b2c8ba",
+   "class": "generated",
+   "critical": "durability",
+   "mutations": "edits:1",
+   "name": "fn-scka-fold-at-is-the-ssr-step",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-checkpoint-fold-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "statement_digest": "6d043dbaa39b7b5a998b127d2656b22fea52e917735af641a085630c9c5190d9",
+   "subject": "fn-ssr-intern-step",
+   "witness": "executable"
+  },
+  {
    "book": "books/store-checkpoint-arena-load.lisp",
    "class": "hand",
    "critical": "durability",
@@ -24152,11 +24158,25 @@
   },
   {
    "book": "books/store-checkpoint-arena-writer.lisp",
-   "class": "hand",
+   "book_digest": "5dba7ab1ef5d6aca25dfd50fb6dd659cf48bc742eb18aa59ca626f19c0ee902f",
+   "bounds": [],
+   "claim_digest": "5fe573196377bfee83d413e3116e5842140831c472ab631868f7f7cca950619d",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-scka-next-checkpoint-is-capture",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-checkpoint-fold-tests.lisp",
    "registry": true,
-   "statement_digest": "ab1126d5de28bbdca883db4ca68a1ca24896306003adbd9147f1ceb3f325df3a"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "statement_digest": "2ca5becf793dcd4935bc7b8364767a929ab9e3373b141f70721d726d31c225ec",
+   "subject": "fn-scka-next-checkpoint",
+   "witness": "executable"
   },
   {
    "book": "books/store-checkpoint-arena-writer.lisp",
@@ -24168,11 +24188,25 @@
   },
   {
    "book": "books/store-checkpoint-arena.lisp",
-   "class": "hand",
+   "book_digest": "5dba7ab1ef5d6aca25dfd50fb6dd659cf48bc742eb18aa59ca626f19c0ee902f",
+   "bounds": [],
+   "claim_digest": "be6b6bafef1b6f31616bde12b561de8a3726ae405e56104bfe6fc9c160056fb9",
+   "class": "generated",
    "critical": "durability",
+   "mutations": "edits:1",
    "name": "fn-scka-recover-from-checkpoint-is-full-recover",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-checkpoint-fold-tests.lisp",
    "registry": true,
-   "statement_digest": "9c74767185cba0791544117d913770ca1d3501d4a5c1e327ffd5f40f11d01043"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "statement_digest": "af9ebee3bdd31e57894dbd22731133817486768dbb67b9f069113b7655e98b03",
+   "subject": "fn-scka-recover-rows",
+   "witness": "executable"
   },
   {
    "book": "books/store-checkpoint-arena-writer.lisp",
