@@ -20,12 +20,22 @@
                              (cons :open (cons 0 500))))
 (defconst *orcp-t-l* (fn-mcr-make 1000000 100000 0 200000 0 0 *orcp-t-ops* 0 nil))
 (assert-event (fn-mcr-fundedp *orcp-t-l*))
-; The demand over 3 records charging 1,000 octets: 10,416 a record and the
-; same for the walk's chunk, 4,640 a tombstone, 12 a charged octet.
-(assert-event (equal (fn-heap-reclaim-demand-octets 3 1000) (+ (* 10416 6) (* 4640 3) 12000)))
-(assert-event (equal (fn-heap-reclaim-demand-octets 3 1000) 88416))
+; The demand over 3 records charging 1,000 octets: a record's octets
+; (*fn-heap-reclaim-record-octets*) and the same for the walk's chunk, a
+; tombstone's (*fn-heap-reclaim-tombstone-octets*), a charged octet's
+; (*fn-heap-charge-heap-octets* and *fn-heap-reclaim-agent-octets-per-charge*).
+; The figures are the producing book's constants (books/heap-store-figure.lisp),
+; not pinned here (D27, PINNED-FIGURES).
+(defconst *orcp-t-unit*
+  (+ *fn-heap-charge-heap-octets* *fn-heap-reclaim-agent-octets-per-charge*))
+(defconst *orcp-t-demand3*
+  (+ (* *fn-heap-reclaim-record-octets* 6) (* *fn-heap-reclaim-tombstone-octets* 3)
+     (* *orcp-t-unit* 1000)))
+(assert-event (equal (fn-heap-reclaim-demand-octets 3 1000) *orcp-t-demand3*))
 ; The chunk term saturates at the walk's quantum.
-(assert-event (equal (fn-heap-reclaim-demand-octets 2000 0) (+ (* 10416 3024) (* 4640 2000))))
+(assert-event (equal (fn-heap-reclaim-demand-octets 2000 0)
+                     (+ (* *fn-heap-reclaim-record-octets* (+ 2000 (fn-heap-reclaim-chunk-rows)))
+                        (* *fn-heap-reclaim-tombstone-octets* 2000))))
 (assert-event (equal (fn-heap-reclaim-chunk-rows) 1024))
 
 ; KEYSTONES fn-orcp-reserve-keeps-funded, fn-orcp-reserve-holds-the-estimate
@@ -36,28 +46,34 @@
 (defconst *orcp-t-r* (fn-orcp-reserved-credits *orcp-t-l* 3 1000 t))
 (assert-event (equal (car (fn-orcp-reserve *orcp-t-l* 3 1000 t)) :ok))
 (assert-event (fn-mcr-fundedp *orcp-t-r*))
-(assert-event (equal (fn-mcr-credit-of :reclaim (fn-mcr-ops *orcp-t-r*)) 88416))
+(assert-event (equal (fn-mcr-credit-of :reclaim (fn-mcr-ops *orcp-t-r*)) *orcp-t-demand3*))
 (assert-event (equal (fn-mcr-credit-of (fn-mca-conn-key 3) (fn-mcr-ops *orcp-t-r*)) 1000))
 (assert-event (equal (fn-mcr-credit-of :open (fn-mcr-ops *orcp-t-r*)) 500))
 (assert-event (equal (fn-mcr-total *orcp-t-r*) (fn-mcr-total *orcp-t-l*)))
 (assert-event (equal (fn-mcr-budget *orcp-t-r*) (fn-mcr-budget *orcp-t-l*)))
-(assert-event (equal (fn-mcr-completion *orcp-t-r*) (- 200000 88416)))
+(assert-event (equal (fn-mcr-completion *orcp-t-r*) (- 200000 *orcp-t-demand3*)))
 ; Mutation: a reservation that took the connection's credit is not this one.
 (must-fail-checked
  (assert-event (equal (fn-mcr-credit-of (fn-mca-conn-key 3) (fn-mcr-ops *orcp-t-r*)) 0)))
 ; Mutation (K3): the reservation before this lane, a resize of :reclaim out of
 ; the budget's free room, takes the articles' room by the whole demand.
 (must-fail-checked
- (assert-event (equal (fn-mcr-total (cadr (fn-mcr-resize *orcp-t-l* :reclaim 88416)))
+ (assert-event (equal (fn-mcr-total (cadr (fn-mcr-resize *orcp-t-l* :reclaim *orcp-t-demand3*)))
                       (fn-mcr-total *orcp-t-l*))))
 
 ; fn-orcp-reserve-refused-by-name: a demand past the reserve is refused by
-; name and the ledger is kept; the boundary is the reserve exactly
-; (76,416 + 12 x 10,298 = 199,992 admitted, 12 more refused).
+; name and the ledger is kept; the boundary is the reserve exactly (the
+; most charged octets the 200,000 completion reserve holds beside 3 records:
+; its quotient by one octet's demand, fn-heap-reclaim-demand-octets).
+(defconst *orcp-t-most*
+  (floor (- 200000 (fn-heap-reclaim-demand-octets 3 0)) *orcp-t-unit*))
+(assert-event (< *orcp-t-most* 20000))
 (assert-event (equal (fn-orcp-reserve *orcp-t-l* 3 20000 t) '(:refused :completion-reserve-exhausted)))
 (assert-event (equal (fn-orcp-reserved-credits *orcp-t-l* 3 20000 t) *orcp-t-l*))
-(assert-event (equal (car (fn-orcp-reserve *orcp-t-l* 3 10298 t)) :ok))
-(assert-event (equal (car (fn-orcp-reserve *orcp-t-l* 3 10299 t)) :refused))
+(assert-event (<= (fn-heap-reclaim-demand-octets 3 *orcp-t-most*) 200000))
+(assert-event (< 200000 (fn-heap-reclaim-demand-octets 3 (1+ *orcp-t-most*))))
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-l* 3 *orcp-t-most* t)) :ok))
+(assert-event (equal (car (fn-orcp-reserve *orcp-t-l* 3 (1+ *orcp-t-most*) t)) :refused))
 ; A second pass while one holds the reserve is refused by name.
 (assert-event (equal (fn-orcp-reserve *orcp-t-r* 3 1000 t) '(:refused :operation-already-admitted)))
 
@@ -81,8 +97,14 @@
 (assert-event (fn-bs-profile-admittedp *orcp-t-s152*))
 (defconst *orcp-t-run* (fn-mca-initial *orcp-t-s152* *orcp-t-core* 67108864 t))
 (assert-event (fn-mca-pass-free-p *orcp-t-run* *orcp-t-s152* t))
-; The S152 run: 2,100 articles charging 7,077,639 octets, demand 127,215,252.
-(assert-event (equal (fn-heap-reclaim-demand-octets 2100 7077639) 127215252))
+; The S152 run: 2,100 articles charging 7,077,639 octets; its demand
+; (fn-heap-reclaim-demand-octets) is under the 64 x h the reservation took
+; before this lane (the RED BEFORE witness below).
+(assert-event (equal (fn-heap-reclaim-demand-octets 2100 7077639)
+                     (+ (* *fn-heap-reclaim-record-octets* (+ 2100 (fn-heap-reclaim-chunk-rows)))
+                        (* *fn-heap-reclaim-tombstone-octets* 2100)
+                        (* *orcp-t-unit* 7077639))))
+(assert-event (< (fn-heap-reclaim-demand-octets 2100 7077639) (* 64 7077639)))
 (assert-event (equal (car (fn-orcp-reserve *orcp-t-run* 2100 7077639 t)) :ok))
 ; And the store at the profile's bounds.
 (assert-event (equal (car (fn-orcp-reserve *orcp-t-run* 16384 67108864 t)) :ok))

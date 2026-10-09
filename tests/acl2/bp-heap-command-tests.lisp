@@ -47,9 +47,18 @@
 (defconst *bph-machine* '(137438953472))
 (defconst *bph-launch* (fn-bph-extend-reservation *bph-base* *bph-terms* 100 *bph-machine*))
 ; Premise inhabitation: the terms are funded and the extended reservation is accepted.
-(assert-event (and (equal (fn-bpsp-node-capacity *bph-session* *bph-node* 1048576 1024) 944178640)
+; The need is books/bp-session-profile.lisp fn-bpsp-node-capacity; the launch
+; figure is the base grown by it (heap-store-figure's fn-heap-grow-runtime-dynamic,
+; in MB); neither is pinned (D27, PINNED-FIGURES).
+(defconst *bph-need* (fn-bpsp-node-capacity *bph-session* *bph-node* 1048576 1024))
+(assert-event (and (posp *bph-need*)
                    (equal (car *bph-launch*) :heap)
-                   (equal (nth 1 *bph-launch*) 4997)))
+                   (equal (nth 1 *bph-launch*)
+                          (fn-heap-mb-of
+                           (fn-heap-grow-runtime-dynamic
+                            (* *fn-heap-mib* (nth 1 *bph-base*)) *bph-need*
+                            (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))))
+                   (< (nth 1 *bph-base*) (nth 1 *bph-launch*))))
 ; Keystone, ground: at the extended reservation the node's startup check holds.
 (assert-event
  (equal (car (fn-bpsp-node-startup *bph-session* *bph-node* 1048576 1024
