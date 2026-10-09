@@ -136,7 +136,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-INTERFACES = ROOT / "planning" / "interfaces.json"
+from tools import box_artifacts  # noqa: E402
 PROOFS = ROOT / "planning" / "proofs.json"
 REQUIREMENTS = ROOT / "planning" / "requirements.json"
 FAMILIES = ROOT / "planning" / "families.json"
@@ -600,7 +600,7 @@ def build(world_path: Path, box: str | None = None, root: Path = ROOT,
           revision: str | None = None) -> dict:
     world = World(load_json(world_path))
     registry = Registry(root)
-    declared = load_json(root / "planning" / "interfaces.json")["entries"]
+    declared = box_artifacts.load("interfaces.json", root)["entries"]
     entries = frozenset(d["name"] for d in declared)
     rows = []
     for d in declared:
@@ -844,7 +844,7 @@ def check(cov: dict | None, root: Path = ROOT) -> tuple[list[str], list[str]]:
     if not gaps.is_file() or gaps.read_text(encoding="utf-8") != render_gaps(cov):
         problems.append("planning/interfaces-gaps.md is not what planning/coverage.json renders; "
                         "run tools/coverage.py build --write (or render --write)")
-    declared = {d["name"] for d in load_json(root / "planning" / "interfaces.json")["entries"]}
+    declared = {d["name"] for d in box_artifacts.load("interfaces.json", root)["entries"]}
     covered = {r["name"] for r in cov["entries"]}
     if declared - covered:
         notes.append("{} declared entries are not in planning/coverage.json (declared since its "

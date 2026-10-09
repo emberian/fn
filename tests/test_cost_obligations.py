@@ -24,7 +24,9 @@ def tree(entries: list[dict], books: dict[str, str], hosts: dict[str, str]) -> P
     (root / "planning").mkdir()
     (root / "books").mkdir()
     (root / "host").mkdir()
-    (root / "planning" / "interfaces.json").write_text(json.dumps({"entries": entries}))
+    (root / "build" / "box").mkdir(parents=True)
+    (root / "build" / "box" / "interfaces.json").write_text(json.dumps({"entries": entries}))
+    (root / "build" / "box" / "stamp.json").write_text(json.dumps({"sha": "fixture"}))
     (root / "books" / "def-cost.lisp").write_text(GENERATOR)
     for name, text in books.items():
         (root / "books" / name).write_text(text)

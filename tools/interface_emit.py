@@ -88,10 +88,11 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools import interfaces_relocate, ledger  # noqa: E402
+from tools import box_artifacts, interfaces_relocate, ledger  # noqa: E402
 
 SOURCES = ("host/interfaces.lisp", "host/account-adoption-interfaces.lisp")
-REGISTRY = ROOT / "planning" / "interfaces.json"
+# a box-step artifact, never committed (tools/box_artifacts.py)
+REGISTRY = ROOT / box_artifacts.DIR / "interfaces.json"
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
 RAW_DECLARATIONS = ROOT / "host" / "interfaces-raw.lisp"
 STEP_OF_STATUS = "keystone via fold; host-loop correspondence owed"
@@ -786,9 +787,13 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
     if not ROOTS_SH.is_file() or ROOTS_SH.read_text() != render_roots(decls):
         out.append("tools/extract/roots.sh is not what the declarations say; "
                    "run tools/interface_emit.py --write")
+    try:
+        box_artifacts.path("interfaces.json", root)
+    except box_artifacts.Refused as error:
+        out.append(str(error))
     if not REGISTRY.is_file() or REGISTRY.read_text() != render_registry(decls, reading):
-        out.append("planning/interfaces.json is not what the declarations say; "
-                   "run tools/interface_emit.py --write")
+        out.append("build/box/interfaces.json is not what the declarations say; "
+                   "run tools/interface_emit.py --write (the box step)")
     if (not RAW_DECLARATIONS.is_file()
             or RAW_DECLARATIONS.read_text() != render_raw_declarations(
                 decls, carried_rows(root), dtn_host_files(root / "host" / "native" / "build-dtn.lisp"))):
@@ -989,6 +994,8 @@ def main(argv=None) -> int:
     reading = host_reading()
     if args.write:
         ROOTS_SH.write_text(render_roots(decls))
+        box_artifacts.path("interfaces.json")  # refuses a committed copy by name
+        REGISTRY.parent.mkdir(parents=True, exist_ok=True)
         REGISTRY.write_text(render_registry(decls, reading))
         RAW_DECLARATIONS.write_text(render_raw_declarations(decls, carried_rows(), dtn_host_files()))
     problems = findings(decls, reading)
