@@ -113,13 +113,6 @@
    "mutation": "tests/acl2/heap-figure-tests.lisp::hft-st-without-store-opening-action",
    "provenance": "keystone_critical.py --declare sha256:226aecddb8fe46016e2a25170b570e42b25bdb80b266ee0e88b75917670cfe24"
   },
-  "fn-heap-operation-decide-of-a-storeless-action": {
-   "subject": "fn-heap-reserve-operation-decide",
-   "host_test": "tests/test_native_operator_verbs.py::test_init_writes_the_operators_fields_and_status_prints_them",
-   "trace_witness": "tests/acl2/heap-figure-tests.lisp::(fn-heap-operation-decide :init *fn-heap-small-profile*",
-   "mutation": "tests/acl2/heap-figure-tests.lisp::init-sized-as-the-store",
-   "provenance": "keystone_critical.py --declare sha256:05d2d6b59e2ead9a451d579e5a2a08c34e4f4831e73e9abea74c69f8223d54c6"
-  },
   "fn-lg-open-program-keeps-the-relation": {
    "subject": "fn-lg-open-program",
    "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
