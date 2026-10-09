@@ -67,20 +67,6 @@
   },
   {
    "kind": "check",
-   "subject": "check-fast:spec_cite_check",
-   "item": "SPEC-CITE-UNDEFINED-20261009",
-   "owner": "builder-B",
-   "evidence": "4 undefined cited names; check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
-  },
-  {
-   "kind": "check",
-   "subject": "check-fast:test_roots_check",
-   "item": "TEST-ROOTS-UNLISTED-OWNER-STATE",
-   "owner": "builder-B",
-   "evidence": "5 owner state test books outside ACL2_BOOKS; check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
-  },
-  {
-   "kind": "check",
    "subject": "check-fast:lock_discipline_check",
    "item": "LOCK-CHECKER-MODEL-GAPS",
    "owner": "deputy-C",

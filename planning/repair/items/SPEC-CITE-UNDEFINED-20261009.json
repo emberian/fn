@@ -2,12 +2,14 @@
  "category": "docs",
  "file": "tools/spec_cite_check.py",
  "id": "SPEC-CITE-UNDEFINED-20261009",
- "notes": [],
+ "notes": [
+  "10-09 builder-B: spec_cite_check 0 unlisted on lane/b-checkfast (10 names by then, not 4). Citations of retired definitions rewritten to the present ones: fnn-owner-live-reconfigure-locked -> the fnn-owner-live-reconfigure macro (specs/nntp.md, bp-node-machine.md, peering.md, reconfiguration.md); fn-owner-reconfigure-authorizedp -> its first quantum's :authorize over fn-oclc-live-authorizep; fn-owner-cfg-native-admin-authorize-carried -> fn-olau-authorize-observed; fn-pidx-existing-action -> fn-pidx-existing-action-cat (specs/lifecycle.md, nntp.md); fn-nntp-msgid-retrieval-indexed-refines-scan -> fn-nntp-msgid-retrieval-cat-is-scan; the trie-era fn-pix- retrieval chain and fn-scar-view-indexedp in docs/prefixes.md rewritten to the books' present content (the fn-oix- row's book is deleted, row removed); the operator-internals incident note no longer names the deleted frame. fn-arena-seal-buffer is defined, as a def-generic export: tools/spec_cite_check.py reads def-generic :exports rows as host_check.stobj_names does (unit test added)."
+ ],
  "owner": "builder-B",
  "severity": "low",
  "slice": "tree",
  "source": "check-fast at dev 3a937ebc3 on persvati (b-measure-check)",
- "state": "open",
+ "state": "landed",
  "title": "spec_cite_check --strict: four cited names no book, test book or host file defines (fn-owner-cfg-native-admin-authorize-carried docs/prefixes.md:299; fn-owner-reconfigure-authorizedp specs/reconfiguration.md:1523; fnn-owner-commit-step-action docs/operator-internals.md:1059; fnn-owner-live-reconfigure-locked specs/bp-node-machine.md:4882, nntp.md:1887, peering.md:2311, reconfiguration.md:1522)",
- "updated": "2026-10-09T07:20:02Z"
+ "updated": "2026-10-09T14:40:00Z"
 }
