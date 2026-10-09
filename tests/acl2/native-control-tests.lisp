@@ -379,6 +379,23 @@
 (assert-event (not (fn-native-control-liveness-offlinep :live)))
 (assert-event (stringp (fn-native-control-liveness-note :stale)))
 (assert-event (null (fn-native-control-liveness-note :live)))
+; fn-native-control-profile-source: a run is sized by its own store, whatever
+; the liveness at its control path (another store's owner is :stale to this
+; store's free lock); other commands read the live owner's profile, are
+; refused while held, else read the stopped store.
+(assert-event (equal (fn-native-control-profile-source :run :live) :store))
+(assert-event (equal (fn-native-control-profile-source :run :stale) :store))
+(assert-event (not (fn-native-control-profile-observes-p :run)))
+(assert-event (equal (fn-native-control-profile-source :compact :live) :owner))
+(assert-event (equal (fn-native-control-profile-source :compact :held) :held))
+(assert-event (equal (fn-native-control-profile-source :compact :stale) :store))
+(assert-event (equal (fn-native-control-profile-source :compact :offline) :store))
+(assert-event (equal (fn-native-control-profile-source :compact :other) :invalid))
+; The rule before: a run read the live owner's profile at its control path.
+(defun nct-profile-source-by-liveness (action liveness)
+  (declare (ignore action))
+  (if (equal liveness :live) :owner :store))
+(assert-event (not (equal (nct-profile-source-by-liveness :run :live) :store)))
 ; The conclusion fails for the pre-PKT-344 rule (the socket node alone):
 ; with a stale node that rule answered :live and the connect refused.
 (defun nct-livep-by-node-alone (socket-node lock)

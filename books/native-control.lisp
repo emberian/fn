@@ -729,6 +729,37 @@ distinguish an unobserved refusal from a durable acceptance."
   :hints (("Goal" :in-theory (enable fn-native-control-liveness
                                      fn-native-control-liveness-offlinep))))
 
+;
+; The profile a command's heap is decided over (host/native/heap.lisp
+; fnn-heap-operator-store-profile).  A RUN opens its own store, so it is sized
+; by that store's saved profile and its probe observes no liveness: the owner
+; at its control path is this store's, whose lock refuses the run, or another
+; store's, whose profile is not this run's and whose socket a probe must not
+; treat as stale (tests/test_native_control.py
+; test_shared_control_path_is_not_stolen_by_another_store).  Every other
+; command reads the live owner's decided profile (:owner), is refused while
+; the store is held (:held), and otherwise reads the stopped store (:store).
+(defun fn-native-control-profile-observes-p (action)
+  (declare (xargs :guard t))
+  (not (equal action :run)))
+
+(defun fn-native-control-profile-source (action liveness)
+  (declare (xargs :guard t))
+  (cond ((not (fn-native-control-profile-observes-p action)) :store)
+        ((equal liveness :live) :owner)
+        ((equal liveness :held) :held)
+        ((fn-native-control-liveness-offlinep liveness) :store)
+        (t :invalid)))
+
+(defthm fn-native-control-profile-source-of-a-run
+  (equal (fn-native-control-profile-source :run liveness) :store))
+
+(defthm fn-native-control-profile-source-reads-the-owner-only-live
+  (implies (equal (fn-native-control-profile-source action liveness) :owner)
+           (and (fn-native-control-profile-observes-p action)
+                (equal liveness :live)))
+  :rule-classes nil)
+
 ; The socket node a closing run may unlink.  A run unlinks the node at its
 ; control path only when it installed a socket (its device and inode are
 ; set) and the node there is that same socket; a run that never bound (its
