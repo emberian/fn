@@ -911,17 +911,29 @@
 ; store (1,782 MB with the threads); on 2 GiB `run' is accepted.  Observed at the
 ; measured 3,000-article store's 7,271,160 octets (item 1) it reserves
 ; 1,639 MB and fits 2 GiB; observed empty, 307 MB.
+; Since s-admit-reopen (337b6c3f7) a run is sized for the full store
+; whatever it observes (fn-heap-operation-figure-octets-of-a-run): its heap
+; is the store figure at observed NIL, derived here from books/heap-figure.lisp
+; rather than pinned (D27; the pinned 582 MB went stale at 337b6c3f7 and
+; nothing recertified this book, HEAP-RESERVATION-TEST-PINNED-FIGURE).
+(defconst *hrt-run-mb*
+  (fn-heap-mb-of (fn-heap-store-figure-octets *fn-heap-small-profile* *hrt-core*
+                                              *hrt-nursery* nil)))
+; The figure is the full store's, not the empty store's.
+(assert! (< (fn-heap-mb-of (fn-heap-store-figure-octets *fn-heap-small-profile* *hrt-core*
+                                                        *hrt-nursery* '(0 . 0)))
+            *hrt-run-mb*))
 (assert! (equal (fn-heap-reserve-operation-decide :run *fn-heap-small-profile* *hrt-core*
                                                   *hrt-nursery* (list *hrt-datasize*) 32
                                                   '(0 . 0))
-                '(:heap 582 "small" 1536 1024 34)))
+                (list :heap *hrt-run-mb* "small" 1536 1024 34)))
 (assert! (equal (car (fn-heap-reserve-operation-decide :run *fn-heap-small-profile*
                                                        *hrt-core* *hrt-nursery*
                                                        (list *hrt-datasize*) 32 nil))
                 :heap))
 (assert! (equal (fn-heap-reserve-operation-decide :run *fn-heap-small-profile* *hrt-core*
                                                   *hrt-nursery* *hrt-2g* 32 '(0 . 0))
-                '(:heap 582 "small" 2048 1024 34)))
+                (list :heap *hrt-run-mb* "small" 2048 1024 34)))
 (assert! (equal (car (fn-heap-reserve-operation-decide :run *fn-heap-small-profile*
                                                        *hrt-core* *hrt-nursery*
                                                        *hrt-2g* 32 nil))
@@ -1274,9 +1286,12 @@
                                                   *hrt-nursery* *hrt-big*
                                                   (fn-heap-reserve-run-connections 5)
                                                   '(7271160 . 3000))))
-(assert! (equal (fn-heap-reserve-report-line
-                 (fn-heap-status-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
-                                        *hrt-big* '(7271160 . 3000)))
+; The status decision is the run's, the full store's figure (derived, D27),
+; and the line prints a decision field by field.
+(assert! (equal (fn-heap-status-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery*
+                                       *hrt-big* '(7271160 . 3000))
+                (list :heap *hrt-run-mb* "small" 125952 1024 34)))
+(assert! (equal (fn-heap-reserve-report-line '(:heap 691 "small" 125952 1024 34))
                 "heap=691 MB profile=small machine=125952 MB stack=1024 KB threads=34"))
 ; The default mission's top rung (1 MiB articles) on this machine: the
 ; launcher's figure.  (The mutation this paragraph held, connection-budget's
@@ -1285,10 +1300,11 @@
 ; articles in flight.)
 (defconst *hrt-mission-top*
   (fn-bs-profile-resolve (fn-heap-friend-candidate *hrt-mission* 67108864) nil))
-(assert! (equal (fn-heap-reserve-report-line
-                 (fn-heap-status-decide *hrt-mission-top* *hrt-core* *hrt-nursery*
-                                        *hrt-big* '(7271160 . 3000)))
-                "heap=3092 MB profile=custom machine=125952 MB stack=1024 KB threads=34"))
+(assert! (equal (fn-heap-status-decide *hrt-mission-top* *hrt-core* *hrt-nursery*
+                                       *hrt-big* '(7271160 . 3000))
+                (list :heap (fn-heap-mb-of (fn-heap-store-figure-octets
+                                            *hrt-mission-top* *hrt-core* *hrt-nursery* nil))
+                      "custom" 125952 1024 34)))
 
 ; -----------------------------------------------------------------------------
 ; Lane membership-budget (2026-09-27).
@@ -1331,13 +1347,20 @@
                                 fn-heap-reserve-operation-decide
                                 fn-heap-reserve-full-store-decide)))))
 ; MUTATION (before this lane): the empty store's first run was init's
-; promise.  Here a machine that holds the small profile's empty-store run
-; but not its full store's: the old promise was kept, the later run refused.
+; promise.  Here a machine that holds the small profile's empty-store figure
+; but not its full store's: under the old promise its first run was accepted
+; and a later run refused.  Since 337b6c3f7 (s-admit-reopen) a run is sized
+; for the full store whatever it observes, so that first run is refused too:
+; the broken promise is unreachable (the empty store's figure still fits).
 (defconst *hrt-mut-obs* (list (* 950 *fn-heap-mib*)))
-(assert! (equal (car (fn-heap-reserve-operation-decide :run *fn-heap-small-profile* *hrt-core*
-                                                       *hrt-nursery* *hrt-mut-obs* 32
-                                                       '(0 . 0)))
-                :heap))
+(assert! (<= (* *fn-heap-mib*
+                (fn-heap-mb-of (fn-heap-store-figure-octets *fn-heap-small-profile* *hrt-core*
+                                                            *hrt-nursery* '(0 . 0))))
+             (car *hrt-mut-obs*)))
+(assert! (not (equal (car (fn-heap-reserve-operation-decide :run *fn-heap-small-profile* *hrt-core*
+                                                            *hrt-nursery* *hrt-mut-obs* 32
+                                                            '(0 . 0)))
+                     :heap)))
 (assert! (equal (hrt-reopens-hyps *fn-heap-small-profile* *hrt-mut-obs* 32) '(nil)))
 (assert! (not (hrt-reopens-conclusion *fn-heap-small-profile* *hrt-mut-obs* 32 nil)))
 
