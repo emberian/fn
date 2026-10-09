@@ -472,9 +472,12 @@
 ;; publication.lisp fn-bs-init-log-files: the profile, one configuration
 ;; record, the genesis, a segment of fn-store-log-initial-extent zeros, the
 ;; node secret and the peer flight profile), none sized by the profile's
-;; bounds, and opens nothing; the store it writes may be one made for another
-;; machine (`init --budget MB').  So its figure is the store-less figure,
-;; whatever profile it writes: the store-less action class.
+;; bounds, and validates the staged store by the ordinary open of an EMPTY
+;; store (host/native/io.lisp fnn-staged-publication: no record to replay;
+;; the open's term over no input is nothing,
+;; fn-heap-storeless-figure-holds-the-empty-open below).  The store it writes
+;; may be one made for another machine (`init --budget MB').  So its figure is
+;; the store-less figure, whatever profile it writes: the store-less class.
 (defun fn-heap-storeless-action-p (action)
   (declare (xargs :guard t))
   (equal action :init))
@@ -500,6 +503,15 @@
               (fn-heap-store-figure-octets profile core nursery observed)))
         (t (fn-heap-store-figure-octets profile core nursery
                                         (fn-heap-operation-observation action observed)))))
+
+; The store-less figure holds the image's dynamic content and the open of an
+; empty store under any profile: what init's validation open replays.
+(defthm fn-heap-storeless-figure-holds-the-empty-open
+  (<= (+ (fn-heap-core-dynamic core) (fn-heap-store-open-octets profile 0 0))
+      (fn-heap-storeless-figure-octets core nursery))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-heap-storeless-figure-octets fn-heap-store-open-octets
+                                     fn-heap-with-nursery))))
 
 ; The store-less action's figure: the same for every profile and observation.
 (defthm fn-heap-operation-figure-octets-of-a-storeless-action
