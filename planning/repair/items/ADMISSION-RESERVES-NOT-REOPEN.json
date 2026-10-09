@@ -6,12 +6,13 @@
  "line": "1",
  "notes": [
   "2026-10-08 (N): filed from L's F4; S joins on the store term.",
-  "10-08 13:16 S (s-admit-reopen) lane/s-admit-reopen@337b6c3f7, N ruling B: the :run heap is sized at observed nil (fn-heap-operation-observes-p false for :run; fn-heap-operation-observation nil for :run; status line routed through the predicate). KEYSTONE fn-heap-operation-figure-octets-of-a-run + fn-heap-run-figure-holds-every-later-open (with fn-heap-store-figure-observed-is-at-most-unobserved). Cause refined: tools/load/faults.py node() decides the heap ONCE on the empty store (heap_mode fixed) and reuses it at each restart; the empty store's open term is 0. Cost is reserved address space, not resident memory; RULINGS priority 1 outranks priority 3. Filled preset on the production core: 7,046,630,746 -> 7,867,993,434 octets, +821,362,688 (783.3 MiB; supersedes the 588 MiB first estimate). MB on the production core: small 498 -> 639, development 1330 -> 2489, scale 17748 -> 20402; small on the OpenBSD core 586 -> 728, on a 512 MiB core 958 -> 1090. Gates: certify --affected-by heap-figure green; interface_emit, keystone_emit 0 findings; host_check --load 0 findings. Owed: L F4R rerun; N image gate start_every_preset and image_floor 1024."
+  "10-08 13:16 S (s-admit-reopen) lane/s-admit-reopen@337b6c3f7, N ruling B: the :run heap is sized at observed nil (fn-heap-operation-observes-p false for :run; fn-heap-operation-observation nil for :run; status line routed through the predicate). KEYSTONE fn-heap-operation-figure-octets-of-a-run + fn-heap-run-figure-holds-every-later-open (with fn-heap-store-figure-observed-is-at-most-unobserved). Cause refined: tools/load/faults.py node() decides the heap ONCE on the empty store (heap_mode fixed) and reuses it at each restart; the empty store's open term is 0. Cost is reserved address space, not resident memory; RULINGS priority 1 outranks priority 3. Filled preset on the production core: 7,046,630,746 -> 7,867,993,434 octets, +821,362,688 (783.3 MiB; supersedes the 588 MiB first estimate). MB on the production core: small 498 -> 639, development 1330 -> 2489, scale 17748 -> 20402; small on the OpenBSD core 586 -> 728, on a 512 MiB core 958 -> 1090. Gates: certify --affected-by heap-figure green; interface_emit, keystone_emit 0 findings; host_check --load 0 findings. Owed: L F4R rerun; N image gate start_every_preset and image_floor 1024.",
+  "10-09 04:00 2026-10-09 builder-B: closed. Image: s-admit-reopen (train 53) qualified at drain c0e35e156, F4R PASS (16,464 POSTs, 0 violations, hbox load-harness/runs/drain-f4r), F4 PASS, start_every_preset 4/4. fn-core: lane b-corelaunch decides per command under the binding ceiling; extraction gate 11/11 faults agree and fn-core start_every_preset 4/4 at b3e7263c7 (hbox:/tank/fn/scratch/b-corelaunch/extract-b3e7263c7)."
  ],
- "owner": "deputy-N",
+ "owner": "builder-B",
  "severity": "high",
  "source": "L fault cell F4 on train 45 (617a83910), 2026-10-08",
- "state": "open",
+ "state": "landed",
  "title": "admission accepts work the running heap cannot reopen: a refusal-free run is refused at its next start under the same heap and machine budget",
- "updated": "2026-10-08T17:16:54Z"
+ "updated": "2026-10-09T08:00:22Z"
 }

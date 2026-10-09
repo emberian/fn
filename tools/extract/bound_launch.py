@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 """Check an externally pinned product binding before starting its runtime.
 
-This checks artifact identity and exact launch geometry, never qualification.
+This checks artifact identity and the launch's bounds, never qualification.
+The heap is decided per command, as the image's launcher decides it (ruling
+2026-10-09, ADMISSION-RESERVES-NOT-REOPEN): `--fn ARGV' with no caller figure
+first runs the core's own `--fn heap -- ARGV' probe and starts at the heap and
+control stack ACL2 prints, under the binding's heap ceiling (the preset's
+configured memory); a decided figure above it is a named refusal, exit 1.
 The installer must supply a digest-pinned binding and a capsule export from the
 SAME build as the saved core. The core still owns unit admission. Files must be
 in an immutable installation for the check-to-exec interval; this is not a
@@ -15,16 +20,35 @@ from pathlib import Path
 import re
 import shlex
 import stat
+import subprocess
 import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import core_launcher  # noqa: E402  the one rendering of the decision prelude
 
 
 class BindingError(ValueError):
     pass
 
 
+class Refusal(Exception):
+    """The launch is refused by name (the heap probe's refusal, or a decided
+    heap above the binding's ceiling): STATUS is the exit status, WORDS the
+    line printed after `fn: '."""
+    def __init__(self, status, words):
+        super().__init__(words)
+        self.status, self.words = status, words
+
+
 ROLES = {"launcher", "runtime", "core", "source_manifest", "profile", "capsule"}
 OPTIONS = {"--tls-limit": "tls_limit", "--dynamic-space-size": "dynamic_space_bytes",
            "--control-stack-size": "control_stack_bytes"}
+# What a binding pins: the TLS limit (a build constant) and the heap ceiling,
+# the preset's configured memory.  The heap and control stack themselves are
+# decided per command by the core (heap_decision).
+BOUND_OPTIONS = ("tls_limit", "dynamic_space_ceiling_bytes")
+PROBE_TIMEOUT_SECONDS = 300
+MIB = 2**20
 
 
 def digest(path):
@@ -64,10 +88,21 @@ def number(flag, value):
     return int(match[1]) * {None: 2**20, "KB": 2**10, "MB": 2**20, "GB": 2**30}[match[2]]
 
 
+def _code(text):
+    return [line.strip() for line in text.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")]
+
+
 def parse_launcher(text):
-    """Accept only core_launcher.py's literal shell form, without evaluating it."""
-    lines = [line.strip() for line in text.splitlines()
-             if line.strip() and not line.lstrip().startswith("#")]
+    """Accept only core_launcher.py's literal shell form, without evaluating it:
+    the decision prelude, verbatim, then the SBCL_HOME and exec lines.  This
+    process never runs the prelude (it decides the heap itself, below); a
+    launcher without it would start at a fixed heap when run directly."""
+    code = _code(text)
+    prelude = _code(core_launcher.decision_prelude())
+    if code[:len(prelude)] != prelude:
+        raise BindingError("launcher does not carry the heap decision prelude")
+    lines = code[len(prelude):]
     if len(lines) != 2 or not lines[0].startswith("export SBCL_HOME="):
         raise BindingError("unsupported product launcher form")
     home_words = shlex.split(lines[0])
@@ -129,14 +164,17 @@ def resolve_plan(binding_path, expected_sha256, user_runtime_args="", app_args=(
     if Path(runtime).resolve() != paths["runtime"] or Path(core).resolve() != paths["core"]:
         raise BindingError("launcher selects different runtime or core")
     expected_options = binding.get("options")
-    if (not isinstance(expected_options, dict) or set(expected_options) != set(OPTIONS.values())
-            or any(type(v) is not int or v <= 0 for v in expected_options.values())
-            or geometry != expected_options):
-        raise BindingError("launch geometry differs from binding")
+    if (not isinstance(expected_options, dict) or set(expected_options) != set(BOUND_OPTIONS)
+            or any(type(v) is not int or v <= 0 for v in expected_options.values())):
+        raise BindingError("binding options must be the TLS limit and the heap ceiling")
+    if geometry["tls_limit"] != expected_options["tls_limit"]:
+        raise BindingError("launch geometry differs from binding: TLS limit")
+    if geometry["dynamic_space_bytes"] > expected_options["dynamic_space_ceiling_bytes"]:
+        raise BindingError("launch geometry differs from binding: the default heap is above the ceiling")
     capsule = json.loads(checked_bytes(paths["capsule"], binding["artifacts"]["capsule"]["sha256"]))
     expected_coordinate = {role + "_sha256": binding["artifacts"][role]["sha256"]
                            for role in ("runtime", "source_manifest", "profile")}
-    expected_coordinate["options"] = geometry
+    expected_coordinate["options"] = expected_options
     selected = binding.get("environment", {})
     libraries = binding.get("foreign_libraries", {})
     if not isinstance(selected, dict) or not isinstance(libraries, dict):
@@ -187,19 +225,74 @@ def resolve_plan(binding_path, expected_sha256, user_runtime_args="", app_args=(
     env.pop("SBCL_USER_ARGS", None)
     # Neither a status string nor a caller-supplied boolean establishes admission.
     # Unit evidence is deliberately left to the saved core's actual installer.
+    # A caller's figure is its own (as at the image's launcher), within the
+    # bounds: the TLS limit is the binding's, the heap at most its ceiling.
     overrides = shlex.split(user_runtime_args)
     seen = set()
     while overrides:
         if len(overrides) < 2 or overrides[0] not in OPTIONS or overrides[0] in seen:
             raise BindingError("unsupported or duplicate SBCL_USER_ARGS option")
         flag, value = overrides[:2]
-        if number(flag, value) != geometry[OPTIONS[flag]]:
-            raise BindingError("SBCL_USER_ARGS changes bound geometry: " + flag)
+        size = number(flag, value)
+        if flag == "--tls-limit" and size != expected_options["tls_limit"]:
+            raise BindingError("SBCL_USER_ARGS changes the bound TLS limit")
+        if flag == "--dynamic-space-size" and size > expected_options["dynamic_space_ceiling_bytes"]:
+            raise BindingError("SBCL_USER_ARGS heap is above the binding's ceiling")
+        argv[argv.index(flag) + 1] = value
         seen.add(flag)
         overrides = overrides[2:]
     argv[0] = str(paths["runtime"])
     argv[argv.index("--core") + 1] = str(paths["core"])
     return argv + list(app_args), home, env
+
+
+def heap_decision(argv, env, app_args, ceiling):
+    """ARGV with the heap and control stack the core decides for APP_ARGS:
+    `--fn heap -- ARGV' run at the core's size plus two 64 MiB nurseries (as
+    packaging/fn's fn_decide_heap runs it), its `heap=MB MB ... stack=KB KB'
+    applied; Refusal on its refusal, on a probe that never decided, and on a
+    decided heap above CEILING (octets)."""
+    core = Path(argv[argv.index("--core") + 1])
+    boot = (core.stat().st_size + MIB - 1) // MIB + 128
+    probe = list(argv)
+    probe[probe.index("--dynamic-space-size") + 1] = str(boot)
+    probe += ["--fn", "heap", "--", *app_args[1:]]
+    done = subprocess.run(probe, env=env, capture_output=True, text=True,
+                          timeout=PROBE_TIMEOUT_SECONDS)
+    figure = next((line for line in done.stdout.splitlines()
+                   if line.startswith(("heap=", "refused "))), "")
+    if figure.startswith("refused "):
+        raise Refusal(done.returncode or 1, figure)
+    if done.returncode == 5:
+        raise Refusal(5, done.stderr.strip() or "usage refused before the heap probe ran")
+    heap = re.match(r"heap=([0-9]+) MB\b", figure)
+    stack = re.search(r"\bstack=([0-9]+) KB\b", figure)
+    if done.returncode != 0 or not heap or not stack:
+        raise Refusal(4, "fault heap-probe-did-not-run exit=%d: the core stopped before it decided "
+                         "its memory: %s" % (done.returncode, (done.stderr or figure).strip()[-300:]))
+    if int(heap[1]) * MIB > ceiling:
+        raise Refusal(1, "refused heap-above-ceiling decided=%s MB ceiling=%d MB: the store this "
+                         "command opens needs more memory than the binding's preset is configured "
+                         "for" % (heap[1], ceiling // MIB))
+    argv = list(argv)
+    argv[argv.index("--dynamic-space-size") + 1] = heap[1]
+    argv[argv.index("--control-stack-size") + 1] = stack[1] + "KB"
+    return argv
+
+
+def plan_launch(binding_path, expected_sha256, user_runtime_args="", app_args=(), environment=None):
+    """resolve_plan, then the per-command heap: a caller's heap figure is its
+    own; otherwise a `--fn' command other than `heap' is decided by the core."""
+    argv, home, env = resolve_plan(binding_path, expected_sha256, user_runtime_args, app_args,
+                                   environment)
+    app_args = list(app_args)
+    caller_heap = "--dynamic-space-size" in shlex.split(user_runtime_args)
+    if not caller_heap and app_args[:1] == ["--fn"] and app_args[1:2] != ["heap"]:
+        binding = json.loads(checked_bytes(Path(binding_path).resolve(), expected_sha256))
+        head = argv[:len(argv) - len(app_args)]
+        argv = heap_decision(head, env, app_args,
+                             binding["options"]["dynamic_space_ceiling_bytes"]) + app_args
+    return argv, home, env
 
 
 def resolve(binding_path, expected_sha256, user_runtime_args="", app_args=(), environment=None):
@@ -217,14 +310,18 @@ def main():
     args = parser.parse_args()
     try:
         app_args = args.app_args[1:] if args.app_args[:1] == ["--"] else args.app_args
-        argv, home, env = resolve_plan(args.binding, args.expected_sha256,
-                                       os.environ.get("SBCL_USER_ARGS", ""), app_args)
+        argv, home, env = plan_launch(args.binding, args.expected_sha256,
+                                      os.environ.get("SBCL_USER_ARGS", ""), app_args)
         if args.check:
             print(json.dumps({"identity": "matched", "qualification": "not-established",
                               "argv": argv, "SBCL_HOME": home}))
             return 0
         os.execve(argv[0], argv, env)
-    except (BindingError, OSError, ValueError, KeyError, TypeError) as error:
+    except Refusal as refusal:
+        print("fn: " + refusal.words, file=sys.stderr)
+        return refusal.status
+    except (BindingError, OSError, ValueError, KeyError, TypeError,
+            subprocess.SubprocessError) as error:
         print("bound launch refused: " + str(error), file=sys.stderr)
         return 2
 
