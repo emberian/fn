@@ -1737,6 +1737,149 @@
            :cases ((< j (len (fn-rtc-mstates s))))
            :use ((:instance fn-rtc-mstates-okp-get (ms (fn-rtc-mstates s)))))))
 
+
+; Machine states, operation by operation.
+(defthm fn-rtc-request-keeps-mstates
+  (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-request r id inc s))) (fn-rtc-mstate j s))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
+                                   fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit)
+                                  (fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p
+                                   fn-rtc-extrap fn-rtc-kind-op fn-rtc-splice)))))
+(defthm fn-rtc-requests-keeps-mstates
+  (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-requests reqs id inc s))) (fn-rtc-mstate j s))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-requests) (mv-nth fn-rtc-request))
+           :induct (fn-rtc-requests reqs id inc s))))
+(defthm fn-rtc-mstate-of-deliver
+  (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-deliver s id inc ev q)))
+         (if (and (equal (nfix j) (nfix id)) (< (nfix id) (len (fn-rtc-mstates s))))
+             (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate id s) ev (fn-rtc-borrow (fn-rtc-pool s)) (nfix q)))
+           (fn-rtc-mstate j s)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-deliver) (fn-rtc-requests mv-nth)))))
+(defthm fn-rtc-mstate-of-end-use
+  (equal (fn-rtc-mstate j (fn-rtc-end-use s e)) (fn-rtc-mstate j s))
+  :hints (("Goal" :in-theory (enable fn-rtc-end-use))))
+(defthm fn-rtc-mstate-of-accept-branch
+  (implies (not (equal (nfix j) (nfix (fn-rtc-free-slot 0 (fn-rtc-slots s1)))))
+           (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-accept-branch s1 out q))) (fn-rtc-mstate j s1)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (mv-nth fn-rtc-free-slot fn-rtc-deliver fn-rtc-rearm)))))
+(defthm fn-rtc-mstates-is-mstate
+  (equal (fn-rtc-get j (fn-rtc-mstates s)) (fn-rtc-mstate j s))
+  :hints (("Goal" :in-theory (enable fn-rtc-mstate))))
+(defthm fn-rtc-slots-is-slot
+  (equal (fn-rtc-get j (fn-rtc-slots s)) (fn-rtc-slot j s))
+  :hints (("Goal" :in-theory (enable fn-rtc-slot))))
+(defthm fn-rtc-mstate-of-close-branch
+  (implies (not (equal (nfix j) (nfix id)))
+           (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-close-branch s1 id inc))) (fn-rtc-mstate j s1)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-close-branch) (mv-nth fn-rtc-uses-of-slot-p fn-rtc-rearm)))))
+(defthm fn-rtc-mstate-of-accept-branch-not-done
+  (implies (not (eq (fn-rtc-get 0 out) :done))
+           (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-accept-branch s1 out q))) (fn-rtc-mstate j s1)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (mv-nth fn-rtc-free-slot fn-rtc-deliver fn-rtc-rearm)))))
+
+(defthm fn-rtc-invp-listener
+  (implies (fn-rtc-invp s) (equal (fn-rtc-slot 0 s) '(0 :live nil)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-slot) (fn-rtc-uses-okp fn-rtc-pool-okp fn-rtc-draining-okp fn-rtc-free-slot
+                                                fn-rtc-kind-out-p fn-rtc-mstates-okp fn-rtc-slots-is-slot))
+                  :expand ((fn-rtc-slots-okp 0 (fn-rtc-slots s))))))
+
+(defthm fn-rtc-slots-of-end-lease
+  (equal (fn-rtc-slots (fn-rtc-end-lease u e s)) (fn-rtc-slots s))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-end-lease) (fn-rtc-lease-return fn-rtc-holds-p fn-rtc-handlep)))))
+
+(defthm fn-rtc-slots-of-end-use-at-live-slot
+  (implies (not (eq (fn-rtc-s-status (fn-rtc-slot (fn-rtc-e-id e) s)) :draining))
+           (equal (fn-rtc-slots (fn-rtc-end-use s e)) (fn-rtc-slots s)))
+  :hints (("Goal" :in-theory (enable fn-rtc-end-use fn-rtc-retire-drained))))
+
+(defthm fn-rtc-delivered-outcome-done
+  (implies (eq (fn-rtc-get 0 (fn-rtc-delivered-outcome u e)) :done)
+           (eq (fn-rtc-get 0 (fn-rtc-e-outcome e)) :done))
+  :hints (("Goal" :in-theory (enable fn-rtc-delivered-outcome))))
+
+(defthm fn-rtc-use-okp-accept-is-listener
+  (implies (and (fn-rtc-use-okp u s) (equal (fn-rtc-get 0 u) :accept))
+           (equal (fn-rtc-get 1 u) 0))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-use-okp) (fn-rtc-usep fn-rtc-current-p fn-rtc-holders fn-rtc-handlep
+                                                   fn-rtc-buffer fn-rtc-slot fn-rtc-u-hd))
+                  :expand ((fn-rtc-usep u)))))
+
+(defthm fn-rtc-acts-on-accept-id
+  (implies (and (fn-rtc-invp s) (fn-rtc-acts-on-p s e) (eq (fn-rtc-e-kind e) :accept))
+           (equal (fn-rtc-e-id e) 0))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-acts-on-p fn-rtc-e-kind fn-rtc-e-id)
+                                  (fn-rtc-invp fn-rtc-uses-okp-member fn-rtc-find-use fn-rtc-use-okp
+                                   fn-rtc-use-okp-accept-is-listener fn-rtc-completionp fn-rtc-slot))
+           :use (fn-rtc-invp-uses-okp
+                 (:instance fn-rtc-uses-okp-member (uses (fn-rtc-uses s))
+                            (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))))
+                 (:instance fn-rtc-use-okp-accept-is-listener (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))))
+                 (:instance fn-rtc-find-use-is-member (k (fn-rtc-key e)) (uses (fn-rtc-uses s)))
+                 (:instance fn-rtc-key-of-find-use (k (fn-rtc-key e)) (uses (fn-rtc-uses s)))))))
+; T7
+(defthm fn-rtc-machine-changes-only-on-its-own-completion
+  (implies (and (fn-rtc-invp s)
+                (not (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-step s e q)))
+                            (fn-rtc-mstate j s))))
+           (and (fn-rtc-acts-on-p s e)
+                (equal (nfix j) (fn-rtc-target s e))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-step-state fn-rtc-target)
+                                  (fn-rtc-invp mv-nth fn-rtc-acts-on-p fn-rtc-e-id fn-rtc-e-inc
+                                   fn-rtc-delivered-outcome fn-rtc-find-use fn-rtc-key fn-rtc-end-use
+                                   fn-rtc-rearm fn-rtc-deliver fn-rtc-accept-branch fn-rtc-close-branch
+                                   fn-rtc-free-slot fn-rtc-e-outcome fn-rtc-delivered-outcome-done
+                                   fn-rtc-mstate-of-accept-branch-not-done))
+           :use (fn-rtc-invp-listener fn-rtc-acts-on-accept-id
+                 (:instance fn-rtc-delivered-outcome-done (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))))
+                 (:instance fn-rtc-mstate-of-accept-branch-not-done
+                            (s1 (fn-rtc-end-use s e))
+                            (out (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e)))))))
+
+(defthm fn-rtc-accept-branch-commits-nothing
+  (implies (not (fn-rtc-m-committedp (fn-rtc-mstate j s1)))
+           (not (fn-rtc-m-committedp (fn-rtc-mstate j (mv-nth 0 (fn-rtc-accept-branch s1 out q))))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch fn-rtc-fsync-done-p)
+                                  (mv-nth fn-rtc-free-slot fn-rtc-deliver fn-rtc-rearm fn-rtc-m-commits-only-on-fsync-done))
+           :use ((:instance fn-rtc-m-commits-only-on-fsync-done
+                  (m (fn-rtc-m-init)) (ev (list :accept out))
+                  (pool (fn-rtc-borrow (fn-rtc-pool s1))) (q (nfix q)))))))
+
+(defthm fn-rtc-close-branch-commits-nothing
+  (implies (not (fn-rtc-m-committedp (fn-rtc-mstate j s1)))
+           (not (fn-rtc-m-committedp (fn-rtc-mstate j (mv-nth 0 (fn-rtc-close-branch s1 id inc))))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-close-branch) (mv-nth fn-rtc-uses-of-slot-p fn-rtc-rearm)))))
+
+(defthm fn-rtc-deliver-commits-only-on-fsync-done
+  (implies (and (not (fn-rtc-m-committedp (fn-rtc-mstate j s)))
+                (fn-rtc-m-committedp (fn-rtc-mstate j (mv-nth 0 (fn-rtc-deliver s id inc ev q)))))
+           (fn-rtc-fsync-done-p ev))
+  :hints (("Goal" :in-theory (disable fn-rtc-m-commits-only-on-fsync-done fn-rtc-fsync-done-p mv-nth)
+           :use ((:instance fn-rtc-m-commits-only-on-fsync-done
+                  (m (fn-rtc-mstate id s)) (pool (fn-rtc-borrow (fn-rtc-pool s))) (q (nfix q)))))))
+
+; T11
+(defthm fn-rtc-commit-only-on-own-barrier-completion
+  (implies (and (fn-rtc-invp s)
+                (not (fn-rtc-m-committedp (fn-rtc-mstate j s)))
+                (fn-rtc-m-committedp (fn-rtc-mstate j (mv-nth 0 (fn-rtc-step s e q)))))
+           (and (fn-rtc-acts-on-p s e)
+                (equal (fn-rtc-e-kind e) :fsync)
+                (equal (nfix j) (fn-rtc-e-id e))
+                (equal (fn-rtc-get 0 (fn-rtc-e-outcome e)) :done)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-step-state fn-rtc-target fn-rtc-fsync-done-p)
+                                  (fn-rtc-invp mv-nth fn-rtc-acts-on-p fn-rtc-e-id fn-rtc-e-inc fn-rtc-e-kind
+                                   fn-rtc-delivered-outcome fn-rtc-find-use fn-rtc-key fn-rtc-end-use
+                                   fn-rtc-rearm fn-rtc-deliver fn-rtc-accept-branch fn-rtc-close-branch
+                                   fn-rtc-free-slot fn-rtc-e-outcome fn-rtc-delivered-outcome-done
+                                   fn-rtc-machine-changes-only-on-its-own-completion
+                                   fn-rtc-deliver-commits-only-on-fsync-done))
+           :use (fn-rtc-machine-changes-only-on-its-own-completion
+                 (:instance fn-rtc-delivered-outcome-done (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))))
+                 (:instance fn-rtc-deliver-commits-only-on-fsync-done
+                            (s (fn-rtc-end-use s e)) (id (fn-rtc-e-id e)) (inc (fn-rtc-e-inc e))
+                            (ev (list (fn-rtc-e-kind e)
+                                      (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e))))))))
+
 ; =============================================================================
 ; STATEMENTS NOT YET PROVED (each moves above, unchanged, when proved)
 ;
@@ -1752,16 +1895,6 @@
 ;; (defthm fn-rtc-step-preserves-invp
 ;;   (implies (fn-rtc-invp s)
 ;;            (fn-rtc-invp (mv-nth 0 (fn-rtc-step s e q)))))
-;;
-;; ; T7. An instance's machine state changes only by an event that acts on it
-;; ; (its own outstanding action's completion at its live incarnation, or the
-;; ; :accept that creates it).
-;; (defthm fn-rtc-machine-changes-only-on-its-own-completion
-;;   (implies (and (fn-rtc-invp s)
-;;                 (not (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-step s e q)))
-;;                             (fn-rtc-mstate j s))))
-;;            (and (fn-rtc-acts-on-p s e)
-;;                 (equal (nfix j) (fn-rtc-target s e)))))
 ;;
 ;; ; T8. Workspace isolation: a step leaves every workspace of an instance
 ;; ; other than the one the event is for exactly as it was (owner and bytes).
@@ -1787,20 +1920,6 @@
 ;;                                      (fn-rtc-uses (mv-nth 0 (fn-rtc-step s e q))))
 ;;                   (fn-rtc-find-use (fn-rtc-key a)
 ;;                                    (fn-rtc-uses (mv-nth 0 (fn-rtc-step s e q))))))))
-;;
-;; ; T11. The commit point: an instance's commit observer turns true only on
-;; ; the delivery of a (:fsync (:done n)) completion of its own outstanding
-;; ; :fsync at its live incarnation.  This is the layer's half.  Which barrier an
-;; ; instance may commit on (for POST: the barrier after its log record, not the
-;; ; payload barrier) is the instance's own keystone, the first of landing 2.
-;; (defthm fn-rtc-commit-only-on-own-barrier-completion
-;;   (implies (and (fn-rtc-invp s)
-;;                 (not (fn-rtc-m-committedp (fn-rtc-mstate j s)))
-;;                 (fn-rtc-m-committedp (fn-rtc-mstate j (mv-nth 0 (fn-rtc-step s e q)))))
-;;            (and (fn-rtc-acts-on-p s e)
-;;                 (equal (fn-rtc-e-kind e) :fsync)
-;;                 (equal (nfix j) (fn-rtc-e-id e))
-;;                 (equal (fn-rtc-get 0 (fn-rtc-e-outcome e)) :done))))
 ;;
 ;; ; T12. The work budget: one step costs at most the quantum plus a term of the
 ;; ; configuration, emits a bounded number of actions, and the octets those
