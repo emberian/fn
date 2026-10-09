@@ -110,27 +110,37 @@
 ; (or copy the field) itself; the partition theorem says nothing about it.
 (defun fn-dss-fx-field-len (s)
   (declare (xargs :guard (natp s)))
-  (mod (floor (nfix s) 262144) 65536))
+  (min (floor (nfix s) 262144) 65535))
+
+; The next state, or a refusal if it would leave the 34-bit state type; no
+; state the step itself produces reaches that branch (each packed field stays
+; within its bits), so it states the type rather than assuming it.
+(defun fn-dss-fx-field-put (s next sig)
+  (declare (xargs :guard (and (natp s) (natp next))))
+  (if (< (nfix next) 17179869184)
+      (mv (nfix next) 0 0 sig)
+    (mv (nfix s) 0 0 2)))
 
 (defun fn-dss-fx-field-step (s o)
   (declare (xargs :guard (and (unsigned-byte-p 34 s) (fn-cbor-octetp o))))
   (let* ((s (nfix s))
          (o (mod (nfix o) 256))
          (phase (mod s 4))
-         (rem (mod (floor s 4) 65536))
+         (rem (floor (mod s 262144) 4))
          (len (fn-dss-fx-field-len s)))
     (cond ((or (eql phase 0) (eql phase 3))
-           (mv (+ 1 (* 262144 (* 256 o))) 0 0 0))
+           (fn-dss-fx-field-put s (+ 1 (* 262144 (* 256 o))) 0))
           ((eql phase 1)
-           (let ((n (mod (+ len o) 65536)))
+           (let* ((x (+ len o))
+                  (n (if (< x 65536) x (- x 65536))))
              (if (eql n 0)
-                 (mv 3 0 0 1)
-               (mv (+ 2 (* 4 n) (* 262144 n)) 0 0 0))))
+                 (fn-dss-fx-field-put s 3 1)
+               (fn-dss-fx-field-put s (+ 2 (* 4 n) (* 262144 n)) 0))))
           (t
            (let ((r (if (< 0 rem) (- rem 1) 0)))
              (if (eql r 0)
-                 (mv (+ 3 (* 262144 len)) 0 0 1)
-               (mv (+ 2 (* 4 r) (* 262144 len)) 0 0 0)))))))
+                 (fn-dss-fx-field-put s (+ 3 (* 262144 len)) 1)
+               (fn-dss-fx-field-put s (+ 2 (* 4 r) (* 262144 len)) 0)))))))
 
 (defun fn-dss-fx-field-final (s)
   (declare (xargs :guard (unsigned-byte-p 34 s)))

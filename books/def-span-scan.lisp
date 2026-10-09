@@ -166,6 +166,10 @@
   (equal (fn-octets-reserve n fn-octets) fn-octets)
   :hints (("Goal" :in-theory (enable fn-octets-reserve))))
 
+(defthm fn-dss-octets-from-list-is-list
+  (equal (fn-octets-from-list xs fn-octets) xs)
+  :hints (("Goal" :in-theory (enable fn-octets-from-list))))
+
 (in-theory (disable fn-dss-out-append-octet fn-dss-out-reserve fn-dss-b-get))
 
 ; Proof support, local: the slice opened one octet at a time, appends, and
@@ -240,8 +244,8 @@
   (if (consp xs)
       (if (fn-dss-find-p (car xs))
           0
-        (let ((k (fn-dss-find-list (cdr xs))))
-          (if k (+ 1 k) nil)))
+        (let ((dss-k (fn-dss-find-list (cdr xs))))
+          (if dss-k (+ 1 dss-k) nil)))
     nil))
 
 (defun fn-dss-find-work (i end fn-octets)
@@ -257,21 +261,21 @@
 
 (defthm fn-dss-find-is-list
   (equal (fn-dss-find i end fn-octets)
-         (let ((k (fn-dss-find-list (fn-oct-slice-list i end fn-octets))))
-           (if k (+ i k) nil)))
+         (let ((dss-k (fn-dss-find-list (fn-oct-slice-list i end fn-octets))))
+           (if dss-k (+ i dss-k) nil)))
   :hints (("Goal" :induct (fn-dss-find i end fn-octets)
            :in-theory (enable fn-oct-get-is-nth))))
 
 (defthm fn-dss-find-hit
-  (let ((r (fn-dss-find i end fn-octets)))
-    (implies r
-             (and (natp r) (<= i r) (< r end)
-                  (fn-dss-find-p (nth r fn-octets))))))
+  (let ((dss-r (fn-dss-find i end fn-octets)))
+    (implies dss-r
+             (and (natp dss-r) (<= i dss-r) (< dss-r end)
+                  (fn-dss-find-p (nth dss-r fn-octets))))))
 
 (defthm fn-dss-find-least
-  (let ((r (fn-dss-find i end fn-octets)))
+  (let ((dss-r (fn-dss-find i end fn-octets)))
     (implies (and (natp i) (natp end) (natp j) (<= i j) (< j end)
-                  (or (null r) (< j r)))
+                  (or (null dss-r) (< j dss-r)))
              (not (fn-dss-find-p (nth j fn-octets))))))
 
 (local
@@ -474,8 +478,8 @@
 
 (local
  (defthm fn-dss-mul-monotone
-   (implies (and (natp k) (natp i) (natp e) (<= i e))
-            (<= (* k i) (* k e)))
+   (implies (and (natp dss-k) (natp i) (natp e) (<= i e))
+            (<= (* dss-k i) (* dss-k e)))
    :rule-classes :linear
    :hints (("Goal" :nonlinearp t))))
 
@@ -543,9 +547,9 @@
 
 (defun fn-dss-copy (i end cap fn-octets fn-dss-out)
   (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
-  (let ((n (+ (fn-dss-out-len fn-dss-out) (nfix (- (nfix end) (nfix i))))))
-    (if (<= n (nfix cap))
-        (let* ((fn-dss-out (fn-dss-out-reserve n fn-dss-out))
+  (let ((dss-n (+ (fn-dss-out-len fn-dss-out) (nfix (- (nfix end) (nfix i))))))
+    (if (<= dss-n (nfix cap))
+        (let* ((fn-dss-out (fn-dss-out-reserve dss-n fn-dss-out))
                (fn-dss-out (fn-dss-copy-loop i end fn-octets fn-dss-out)))
           (mv :done fn-dss-out))
       (mv :refused fn-dss-out))))
@@ -563,9 +567,9 @@
 
 (defun fn-dss-copyw (i end cap fn-octets)
   (declare (xargs :stobjs fn-octets :verify-guards nil))
-  (let ((n (+ (fn-octets-len fn-octets) (nfix (- (nfix end) (nfix i))))))
-    (if (<= n (nfix cap))
-        (let* ((fn-octets (fn-octets-reserve n fn-octets))
+  (let ((dss-n (+ (fn-octets-len fn-octets) (nfix (- (nfix end) (nfix i))))))
+    (if (<= dss-n (nfix cap))
+        (let* ((fn-octets (fn-octets-reserve dss-n fn-octets))
                (fn-octets (fn-dss-copyw-loop i end fn-octets)))
           (mv :done fn-octets))
       (mv :refused fn-octets))))
@@ -724,15 +728,15 @@
   (if (and (mbt (and (natp i) (natp end))) (< i end))
       (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) (fn-dss-st-emax))
           (mv :need-output s i fn-dss-out)
-        (let* ((o (fn-octets-get i fn-octets))
-               (sig (fn-dss-st-sig s o)))
-          (if (eql sig 2)
-              (mv :refused (fn-dss-st-next s o) i fn-dss-out)
-            (let ((fn-dss-out (fn-dss-out-append-word (fn-dss-st-w s o) (fn-dss-st-k s o)
+        (let* ((dss-o (fn-octets-get i fn-octets))
+               (dss-sig (fn-dss-st-sig s dss-o)))
+          (if (eql dss-sig 2)
+              (mv :refused (fn-dss-st-next s dss-o) i fn-dss-out)
+            (let ((fn-dss-out (fn-dss-out-append-word (fn-dss-st-w s dss-o) (fn-dss-st-k s dss-o)
                                                       fn-dss-out)))
-              (if (eql sig 1)
-                  (mv :yield (fn-dss-st-next s o) (+ 1 i) fn-dss-out)
-                (fn-dss-stream-loop (fn-dss-st-next s o) (+ 1 i) end last cap
+              (if (eql dss-sig 1)
+                  (mv :yield (fn-dss-st-next s dss-o) (+ 1 i) fn-dss-out)
+                (fn-dss-stream-loop (fn-dss-st-next s dss-o) (+ 1 i) end last cap
                                fn-octets fn-dss-out))))))
     (if last
         (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) (fn-dss-st-fmax))
@@ -759,17 +763,17 @@
   (if (consp xs)
       (if (< (nfix room) (fn-dss-st-emax))
           (mv :need-output s nil 0)
-        (let* ((o (car xs))
-               (sig (fn-dss-st-sig s o)))
-          (if (eql sig 2)
-              (mv :refused (fn-dss-st-next s o) nil 0)
-            (let ((ws (fn-oct-word-octets (fn-dss-st-w s o) (fn-dss-st-k s o))))
-              (if (eql sig 1)
-                  (mv :yield (fn-dss-st-next s o) ws 1)
-                (mv-let (r s2 outs n)
-                  (fn-dss-stream-list-loop (fn-dss-st-next s o) (cdr xs) last
-                                      (- (nfix room) (nfix (fn-dss-st-k s o))))
-                  (mv r s2 (append ws outs) (+ 1 n))))))))
+        (let* ((dss-o (car xs))
+               (dss-sig (fn-dss-st-sig s dss-o)))
+          (if (eql dss-sig 2)
+              (mv :refused (fn-dss-st-next s dss-o) nil 0)
+            (let ((dss-ws (fn-oct-word-octets (fn-dss-st-w s dss-o) (fn-dss-st-k s dss-o))))
+              (if (eql dss-sig 1)
+                  (mv :yield (fn-dss-st-next s dss-o) dss-ws 1)
+                (mv-let (dss-r dss-s2 dss-outs dss-n)
+                  (fn-dss-stream-list-loop (fn-dss-st-next s dss-o) (cdr xs) last
+                                      (- (nfix room) (nfix (fn-dss-st-k s dss-o))))
+                  (mv dss-r dss-s2 (append dss-ws dss-outs) (+ 1 dss-n))))))))
     (if last
         (if (< (nfix room) (fn-dss-st-fmax))
             (mv :need-output s nil 0)
@@ -789,14 +793,14 @@
 (defun fn-dss-stream-items (s xs last)
   (declare (xargs :measure (len xs) :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
   (if (consp xs)
-      (let* ((o (car xs))
-             (sig (fn-dss-st-sig s o)))
-        (if (eql sig 2)
-            (mv :refused (fn-dss-st-next s o) nil)
-          (mv-let (r s2 items)
-            (fn-dss-stream-items (fn-dss-st-next s o) (cdr xs) last)
-            (mv r s2 (append (fn-oct-word-octets (fn-dss-st-w s o) (fn-dss-st-k s o))
-                             (if (eql sig 1) (cons :yield items) items))))))
+      (let* ((dss-o (car xs))
+             (dss-sig (fn-dss-st-sig s dss-o)))
+        (if (eql dss-sig 2)
+            (mv :refused (fn-dss-st-next s dss-o) nil)
+          (mv-let (dss-r dss-s2 dss-items)
+            (fn-dss-stream-items (fn-dss-st-next s dss-o) (cdr xs) last)
+            (mv dss-r dss-s2 (append (fn-oct-word-octets (fn-dss-st-w s dss-o) (fn-dss-st-k s dss-o))
+                             (if (eql dss-sig 1) (cons :yield dss-items) dss-items))))))
     (if last
         (if (eql (fn-dss-st-fsig s) 2)
             (mv :refused (fn-dss-st-fnext s) nil)
@@ -815,27 +819,27 @@
     0))
 
 ; What one call consumes: a count within its input.  The drive's measure
-; rests on it, here and in every instance (by `:functional-instance').
+; rests on dss-it, here and in every instance (by `:functional-instance').
 (defthm fn-dss-stream-list-loop-consumed
-  (let ((n (mv-nth 3 (fn-dss-stream-list-loop s xs last room))))
-    (and (natp n) (<= n (len xs))))
+  (let ((dss-n (mv-nth 3 (fn-dss-stream-list-loop s xs last room))))
+    (and (natp dss-n) (<= dss-n (len xs))))
   :rule-classes nil
   :hints (("Goal" :induct (fn-dss-stream-list-loop s xs last room))))
 
 (defthm fn-dss-stream-list-consumed
-  (let ((n (mv-nth 3 (fn-dss-stream-list s xs last room))))
-    (and (natp n) (<= n (len xs))))
+  (let ((dss-n (mv-nth 3 (fn-dss-stream-list s xs last room))))
+    (and (natp dss-n) (<= dss-n (len xs))))
   :rule-classes nil
   :hints (("Goal" :use fn-dss-stream-list-loop-consumed)))
 
 (defthm fn-dss-len-nthcdr
-  (implies (and (natp n) (<= n (len xs)))
-           (equal (len (nthcdr n xs)) (- (len xs) n))))
+  (implies (and (natp dss-n) (<= dss-n (len xs)))
+           (equal (len (nthcdr dss-n xs)) (- (len xs) dss-n))))
 
 ; How a host drives the loop over a split input: PIECES the successive
 ; arrivals, ROOMS the output room offered at each call (raised to the floor),
 ; LAST given with the final piece only.  Every call consumes an octet or ends
-; a piece or the run, which is the measure's argument.
+; a piece or the dss-run, which is the measure's argument.
 (defun fn-dss-drive (s pieces last rooms)
   (declare (xargs :measure (+ (fn-dss-sum-lens pieces) (len pieces))
                   :hints (("Goal" :use ((:instance fn-dss-stream-list-consumed
@@ -845,21 +849,21 @@
                                                     (nfix (if (consp rooms) (car rooms) 0))))))
                            :in-theory (e/d (fn-dss-len-nthcdr) (fn-dss-stream-list nthcdr))))))
   (let* ((xs (if (consp pieces) (car pieces) nil))
-         (lastp (and last (atom (cdr pieces))))
+         (dss-lastp (and last (atom (cdr pieces))))
          (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
-    (mv-let (r s2 outs n) (fn-dss-stream-list s xs lastp room)
-      (cond ((or (eq r :refused) (eq r :done))
-             (mv r s2 outs))
-            ((eq r :need-input)
+    (mv-let (dss-r dss-s2 dss-outs dss-n) (fn-dss-stream-list s xs dss-lastp room)
+      (cond ((or (eq dss-r :refused) (eq dss-r :done))
+             (mv dss-r dss-s2 dss-outs))
+            ((eq dss-r :need-input)
              (if (consp (cdr pieces))
-                 (mv-let (r3 s3 items) (fn-dss-drive s2 (cdr pieces) last (cdr rooms))
-                   (mv r3 s3 (append outs items)))
-               (mv r s2 outs)))
-            ((zp n) (mv r s2 outs))
+                 (mv-let (dss-r3 dss-s3 dss-items) (fn-dss-drive dss-s2 (cdr pieces) last (cdr rooms))
+                   (mv dss-r3 dss-s3 (append dss-outs dss-items)))
+               (mv dss-r dss-s2 dss-outs)))
+            ((zp dss-n) (mv dss-r dss-s2 dss-outs))
             (t
-             (mv-let (r3 s3 items)
-               (fn-dss-drive s2 (cons (nthcdr n xs) (cdr pieces)) last (cdr rooms))
-               (mv r3 s3 (append outs (if (eq r :yield) (cons :yield items) items)))))))))
+             (mv-let (dss-r3 dss-s3 dss-items)
+               (fn-dss-drive dss-s2 (cons (nthcdr dss-n xs) (cdr pieces)) last (cdr rooms))
+               (mv dss-r3 dss-s3 (append dss-outs (if (eq dss-r :yield) (cons :yield dss-items) dss-items)))))))))
 
 ; The work of one call, ROOM the output room at the call: each examined
 ; octet 1 plus the step's cost, the exit 1 plus the final's cost when LAST.
@@ -870,18 +874,18 @@
   (if (and (mbt (and (natp i) (natp end))) (< i end))
       (if (< (nfix room) (fn-dss-st-emax))
           1
-        (let* ((o (fn-octets-get i fn-octets))
-               (sig (fn-dss-st-sig s o)))
-          (+ 1 (nfix (fn-dss-st-cost s o))
-             (if (or (eql sig 2) (eql sig 1))
+        (let* ((dss-o (fn-octets-get i fn-octets))
+               (dss-sig (fn-dss-st-sig s dss-o)))
+          (+ 1 (nfix (fn-dss-st-cost s dss-o))
+             (if (or (eql dss-sig 2) (eql dss-sig 1))
                  0
-               (fn-dss-stream-work (fn-dss-st-next s o) (+ 1 i) end last
-                                   (- (nfix room) (nfix (fn-dss-st-k s o))) fn-octets)))))
+               (fn-dss-stream-work (fn-dss-st-next s dss-o) (+ 1 i) end last
+                                   (- (nfix room) (nfix (fn-dss-st-k s dss-o))) fn-octets)))))
     (+ 1 (if last (nfix (fn-dss-st-fcost s)) 0))))
 
 ; Proof support for the stream bridge, local.  The list loop sees its room
 ; only through nfix; the stobj loop is the list loop at any room equal to the
-; output's under nfix (the induction carries it explicitly).
+; output's under nfix (the induction carries dss-it explicitly).
 (local
  (defthm fn-dss-st-emax-natp
    (natp (fn-dss-st-emax))
@@ -904,7 +908,7 @@
 
 (local
  (defthm fn-dss-len-word-octets
-   (equal (len (fn-oct-word-octets w k)) (nfix k))))
+   (equal (len (fn-oct-word-octets w dss-k)) (nfix dss-k))))
 
 (local
  (defthm fn-dss-stream-list-loop-nfix-room
@@ -917,10 +921,10 @@
  (defun fn-dss-stream-ind (s i end cap st out room)
    (declare (xargs :measure (nfix (- (nfix end) (nfix i)))))
    (if (and (natp i) (natp end) (< i end))
-       (let* ((o (nth i st)))
-         (fn-dss-stream-ind (fn-dss-st-next s o) (+ 1 i) end cap st
-                            (append out (fn-oct-word-octets (fn-dss-st-w s o) (fn-dss-st-k s o)))
-                            (- (nfix room) (nfix (fn-dss-st-k s o)))))
+       (let* ((dss-o (nth i st)))
+         (fn-dss-stream-ind (fn-dss-st-next s dss-o) (+ 1 i) end cap st
+                            (append out (fn-oct-word-octets (fn-dss-st-w s dss-o) (fn-dss-st-k s dss-o)))
+                            (- (nfix room) (nfix (fn-dss-st-k s dss-o)))))
      (list s i end cap st out room))))
 
 (local
@@ -928,9 +932,9 @@
    (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
                  (equal (nfix room) (nfix (- cap (len fn-dss-out)))))
             (equal (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
-                   (mv-let (r s2 outs n)
+                   (mv-let (dss-r dss-s2 dss-outs dss-n)
                      (fn-dss-stream-list-loop s (fn-oct-slice-list i end fn-octets) last room)
-                     (mv r s2 (+ i n) (append fn-dss-out outs)))))
+                     (mv dss-r dss-s2 (+ i dss-n) (append fn-dss-out dss-outs)))))
    :hints (("Goal" :induct (fn-dss-stream-ind s i end cap fn-octets fn-dss-out room)
             :in-theory (e/d (fn-oct-get-is-nth)
                             (fn-oct-slice-list-is-take-nthcdr
@@ -939,10 +943,10 @@
 (defthm fn-dss-stream-is-list
   (implies (and (natp i) (natp cap) (true-listp fn-dss-out))
            (equal (fn-dss-stream s i end last cap fn-octets fn-dss-out)
-                  (mv-let (r s2 outs n)
+                  (mv-let (dss-r dss-s2 dss-outs dss-n)
                     (fn-dss-stream-list s (fn-oct-slice-list i end fn-octets) last
                                         (nfix (- cap (len fn-dss-out))))
-                    (mv r s2 (+ i n) (append fn-dss-out outs)))))
+                    (mv dss-r dss-s2 (+ i dss-n) (append fn-dss-out dss-outs)))))
   :hints (("Goal" :use ((:instance fn-dss-stream-loop-is-list-general
                          (room (nfix (- cap (len fn-dss-out))))))
            :in-theory (disable nfix fn-dss-stream-list-loop-nfix-room
@@ -971,11 +975,11 @@
 (local
  (defthm fn-dss-items-append
   (equal (fn-dss-stream-items s (append a b) last)
-         (mv-let (r1 s1 it1) (fn-dss-stream-items s a nil)
-           (if (eq r1 :refused)
-               (mv r1 s1 it1)
-             (mv-let (r2 s2 it2) (fn-dss-stream-items s1 b last)
-               (mv r2 s2 (append it1 it2))))))
+         (mv-let (dss-r1 dss-s1 dss-it1) (fn-dss-stream-items s a nil)
+           (if (eq dss-r1 :refused)
+               (mv dss-r1 dss-s1 dss-it1)
+             (mv-let (dss-r2 dss-s2 dss-it2) (fn-dss-stream-items dss-s1 b last)
+               (mv dss-r2 dss-s2 (append dss-it1 dss-it2))))))
   :hints (("Goal" :induct (fn-dss-stream-items s a nil)))))
 
 (local
@@ -996,18 +1000,18 @@
 
 (local
  (defthm fn-dss-list-loop-items-prefix
-  (mv-let (r s2 outs n) (fn-dss-stream-list-loop s xs lp room)
-    (and (implies (eq r :need-input)
-                  (fn-dss-mv3= (fn-dss-stream-items s xs nil) :need-input s2 outs))
-         (implies (eq r :yield)
-                  (fn-dss-mv3= (fn-dss-stream-items s (take n xs) nil)
-                               :need-input s2 (append outs (list :yield))))
-         (implies (eq r :need-output)
-                  (fn-dss-mv3= (fn-dss-stream-items s (take n xs) nil) :need-input s2 outs))
-         (implies (and (eq r :refused) (< n (len xs)))
-                  (fn-dss-mv3= (fn-dss-stream-items s xs nil) :refused s2 outs))
-         (implies (and (or (eq r :refused) (eq r :done)) (not (< n (len xs))))
-                  (and lp (fn-dss-mv3= (fn-dss-stream-items s xs t) r s2 outs)))))
+  (mv-let (dss-r dss-s2 dss-outs dss-n) (fn-dss-stream-list-loop s xs lp room)
+    (and (implies (eq dss-r :need-input)
+                  (fn-dss-mv3= (fn-dss-stream-items s xs nil) :need-input dss-s2 dss-outs))
+         (implies (eq dss-r :yield)
+                  (fn-dss-mv3= (fn-dss-stream-items s (take dss-n xs) nil)
+                               :need-input dss-s2 (append dss-outs (list :yield))))
+         (implies (eq dss-r :need-output)
+                  (fn-dss-mv3= (fn-dss-stream-items s (take dss-n xs) nil) :need-input dss-s2 dss-outs))
+         (implies (and (eq dss-r :refused) (< dss-n (len xs)))
+                  (fn-dss-mv3= (fn-dss-stream-items s xs nil) :refused dss-s2 dss-outs))
+         (implies (and (or (eq dss-r :refused) (eq dss-r :done)) (not (< dss-n (len xs))))
+                  (and lp (fn-dss-mv3= (fn-dss-stream-items s xs t) dss-r dss-s2 dss-outs)))))
   :rule-classes nil
   :hints (("Goal" :induct (fn-dss-stream-list-loop s xs lp room)
            :in-theory (disable fn-dss-stream-items-shape fn-dss-stream-items-shape-car)))))
@@ -1034,19 +1038,19 @@
 
 (local
  (defthm fn-dss-append-take-nthcdr
-  (implies (and (natp n) (<= n (len xs)))
-           (equal (append (take n xs) (append (nthcdr n xs) r))
-                  (append xs r)))))
+  (implies (and (natp dss-n) (<= dss-n (len xs)))
+           (equal (append (take dss-n xs) (append (nthcdr dss-n xs) dss-r))
+                  (append xs dss-r)))))
 
 (local
  (defthm fn-dss-list-loop-shape
-  (mv-let (r s2 outs n) (fn-dss-stream-list-loop s xs lp room)
-    (declare (ignore s2 outs))
-    (and (member-equal r '(:need-input :need-output :yield :refused :done))
-         (implies (eq r :done) (and lp (equal n (len xs))))
-         (implies (eq r :need-input) (and (not lp) (equal n (len xs))))
-         (implies (eq r :refused) (or (< n (len xs)) (and lp (equal n (len xs)))))
-         (implies (eq r :yield) (and (< 0 n) (<= n (len xs))))))
+  (mv-let (dss-r dss-s2 dss-outs dss-n) (fn-dss-stream-list-loop s xs lp room)
+    (declare (ignore dss-s2 dss-outs))
+    (and (member-equal dss-r '(:need-input :need-output :yield :refused :done))
+         (implies (eq dss-r :done) (and lp (equal dss-n (len xs))))
+         (implies (eq dss-r :need-input) (and (not lp) (equal dss-n (len xs))))
+         (implies (eq dss-r :refused) (or (< dss-n (len xs)) (and lp (equal dss-n (len xs)))))
+         (implies (eq dss-r :yield) (and (< 0 dss-n) (<= dss-n (len xs))))))
   :rule-classes nil
   :hints (("Goal" :induct (fn-dss-stream-list-loop s xs lp room)))))
 
@@ -1091,18 +1095,18 @@
            (let ((xs (if (consp pieces) (car pieces) nil))
                  (lp (and last (atom (cdr pieces)))))
              (equal (fn-dss-stream-items s (fn-dss-flatten pieces) last)
-                    (mv-let (r s2 outs n) (fn-dss-stream-list-loop s xs lp room)
-                      (cond ((or (eq r :refused) (eq r :done)) (mv r s2 outs))
-                            ((eq r :need-input)
+                    (mv-let (dss-r dss-s2 dss-outs dss-n) (fn-dss-stream-list-loop s xs lp room)
+                      (cond ((or (eq dss-r :refused) (eq dss-r :done)) (mv dss-r dss-s2 dss-outs))
+                            ((eq dss-r :need-input)
                              (if (consp (cdr pieces))
-                                 (mv-let (r3 s3 it)
-                                   (fn-dss-stream-items s2 (fn-dss-flatten (cdr pieces)) last)
-                                   (mv r3 s3 (append outs it)))
-                               (mv r s2 outs)))
-                            (t (mv-let (r3 s3 it)
+                                 (mv-let (dss-r3 dss-s3 dss-it)
+                                   (fn-dss-stream-items dss-s2 (fn-dss-flatten (cdr pieces)) last)
+                                   (mv dss-r3 dss-s3 (append dss-outs dss-it)))
+                               (mv dss-r dss-s2 dss-outs)))
+                            (t (mv-let (dss-r3 dss-s3 dss-it)
                                  (fn-dss-stream-items
-                                  s2 (fn-dss-flatten (cons (nthcdr n xs) (cdr pieces))) last)
-                                 (mv r3 s3 (append outs (if (eq r :yield) (cons :yield it) it))))))))))
+                                  dss-s2 (fn-dss-flatten (cons (nthcdr dss-n xs) (cdr pieces))) last)
+                                 (mv dss-r3 dss-s3 (append dss-outs (if (eq dss-r :yield) (cons :yield dss-it) dss-it))))))))))
   :rule-classes nil
   :hints (("Goal"
            :use ((:instance fn-dss-list-loop-shape
@@ -1202,7 +1206,7 @@
 ; at least FLOOR octets of output room (the host sends and clears the output
 ; before the next call).  A call offered less is refused by name (:no-room)
 ; and consumes nothing, so the theorem below is not made true by a host that
-; never makes room: it is a hypothesis, stated, and a host that breaks it sees
+; never makes room: dss-it is a hypothesis, stated, and a host that breaks dss-it sees
 ; :no-room.
 (defun fn-dss-a-host-room (floor rooms fuel)
   (if (zp fuel)
@@ -1211,41 +1215,41 @@
          (<= (nfix floor) (nfix (car rooms)))
          (fn-dss-a-host-room floor (cdr rooms) (1- fuel)))))
 
-; The calls a run needs: one per consumed octet, one per piece, one to end.
+; The calls a dss-run needs: one per consumed octet, one per piece, one to end.
 (defun fn-dss-calls-bound (pieces)
   (+ 1 (len pieces) (fn-dss-sum-lens pieces)))
 
 ; The host loop over the stobj calls: the current piece is the input buffer's
-; whole content, I the cursor in it; each call is offered the next room of
+; whole content, I the cursor in dss-it; each call is offered the next room of
 ; ROOMS on a cleared output, whose octets the host then takes as sent; after
 ; :yield or :need-output the host calls again at the returned cursor, after
-; :need-input it loads the next piece at cursor 0, and LAST is given with the
-; final piece only.  FUEL bounds the calls; the run ends :fuel when it is out.
+; :need-input dss-it loads the next piece at cursor 0, and LAST is given with the
+; final piece only.  FUEL bounds the calls; the dss-run ends :fuel when dss-it is out.
 (defun fn-dss-host (s pieces i last rooms fuel fn-octets fn-dss-out)
   (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil
                   :measure (nfix fuel)))
   (if (zp fuel)
       (mv :fuel s nil fn-octets fn-dss-out)
     (let* ((fn-dss-out (fn-dss-out-clear fn-dss-out))
-           (lastp (and last (atom (cdr pieces))))
+           (dss-lastp (and last (atom (cdr pieces))))
            (cap (nfix (if (consp rooms) (car rooms) 0))))
-      (mv-let (r s2 i2 fn-dss-out)
-        (fn-dss-stream s i (fn-octets-len fn-octets) lastp cap fn-octets fn-dss-out)
-        (let ((outs (fn-dss-out-list fn-dss-out)))
-          (cond ((or (eq r :refused) (eq r :done) (eq r :no-room))
-                 (mv r s2 outs fn-octets fn-dss-out))
-                ((eq r :need-input)
+      (mv-let (dss-r dss-s2 dss-i2 fn-dss-out)
+        (fn-dss-stream s i (fn-octets-len fn-octets) dss-lastp cap fn-octets fn-dss-out)
+        (let ((dss-outs (fn-dss-out-list fn-dss-out)))
+          (cond ((or (eq dss-r :refused) (eq dss-r :done) (eq dss-r :no-room))
+                 (mv dss-r dss-s2 dss-outs fn-octets fn-dss-out))
+                ((eq dss-r :need-input)
                  (if (consp (cdr pieces))
                      (let ((fn-octets (fn-octets-from-list (cadr pieces) fn-octets)))
-                       (mv-let (r3 s3 items fn-octets fn-dss-out)
-                         (fn-dss-host s2 (cdr pieces) 0 last (cdr rooms) (1- fuel)
+                       (mv-let (dss-r3 dss-s3 dss-items fn-octets fn-dss-out)
+                         (fn-dss-host dss-s2 (cdr pieces) 0 last (cdr rooms) (1- fuel)
                                       fn-octets fn-dss-out)
-                         (mv r3 s3 (append outs items) fn-octets fn-dss-out)))
-                   (mv r s2 outs fn-octets fn-dss-out)))
+                         (mv dss-r3 dss-s3 (append dss-outs dss-items) fn-octets fn-dss-out)))
+                   (mv dss-r dss-s2 dss-outs fn-octets fn-dss-out)))
                 (t
-                 (mv-let (r3 s3 items fn-octets fn-dss-out)
-                   (fn-dss-host s2 pieces i2 last (cdr rooms) (1- fuel) fn-octets fn-dss-out)
-                   (mv r3 s3 (append outs (if (eq r :yield) (cons :yield items) items))
+                 (mv-let (dss-r3 dss-s3 dss-items fn-octets fn-dss-out)
+                   (fn-dss-host dss-s2 pieces dss-i2 last (cdr rooms) (1- fuel) fn-octets fn-dss-out)
+                   (mv dss-r3 dss-s3 (append dss-outs (if (eq dss-r :yield) (cons :yield dss-items) dss-items))
                        fn-octets fn-dss-out)))))))))
 
 (defun fn-dss-host-run (s pieces last rooms fuel fn-octets fn-dss-out)
@@ -1284,16 +1288,16 @@
  (defthm fn-dss-host-call
   (implies (and (natp i) (natp cap) (true-listp st) (<= i (len st)))
            (equal (fn-dss-stream s i (len st) lp cap st nil)
-                  (mv-let (r s2 outs n) (fn-dss-stream-list s (nthcdr i st) lp cap)
-                    (mv r s2 (+ i n) outs))))
+                  (mv-let (dss-r dss-s2 dss-outs dss-n) (fn-dss-stream-list s (nthcdr i st) lp cap)
+                    (mv dss-r dss-s2 (+ i dss-n) dss-outs))))
   :hints (("Goal" :use ((:instance fn-dss-stream-is-list (end (len st)) (fn-octets st)
                                    (last lp) (fn-dss-out nil)))
            :in-theory (disable fn-dss-stream-is-list fn-dss-stream fn-dss-stream-list)))))
 
 (local
  (defthm fn-dss-nthcdr-nthcdr
-  (implies (and (natp i) (natp n))
-           (equal (nthcdr n (nthcdr i x)) (nthcdr (+ i n) x)))))
+  (implies (and (natp i) (natp dss-n))
+           (equal (nthcdr dss-n (nthcdr i x)) (nthcdr (+ i dss-n) x)))))
 
 (local
  (defthm fn-dss-a-host-room-car
@@ -1308,8 +1312,8 @@
                 (natp i) (<= i (len fn-octets))
                 (<= (+ 1 (len pieces) (- (fn-dss-sum-lens pieces) i)) (nfix fuel))
                 (fn-dss-a-host-room (fn-dss-floor) rooms fuel))
-           (let ((run (fn-dss-host s pieces i last rooms fuel fn-octets fn-dss-out)))
-             (equal (list (mv-nth 0 run) (mv-nth 1 run) (mv-nth 2 run))
+           (let ((dss-run (fn-dss-host s pieces i last rooms fuel fn-octets fn-dss-out)))
+             (equal (list (mv-nth 0 dss-run) (mv-nth 1 dss-run) (mv-nth 2 dss-run))
                     (fn-dss-drive s (cons (nthcdr i (if (consp pieces) (car pieces) nil)) (cdr pieces)) last rooms))))
   :hints (("Goal" :induct (fn-dss-host s pieces i last rooms fuel fn-octets fn-dss-out)
            :expand ((fn-dss-host s pieces i last rooms fuel fn-octets fn-dss-out)
@@ -1377,8 +1381,8 @@
   (implies (and (true-list-listp pieces)
                 (<= (fn-dss-calls-bound pieces) (nfix fuel))
                 (fn-dss-a-host-room (fn-dss-floor) rooms fuel))
-           (let ((run (fn-dss-host-run s pieces last rooms fuel fn-octets fn-dss-out)))
-             (equal (list (mv-nth 0 run) (mv-nth 1 run) (mv-nth 2 run))
+           (let ((dss-run (fn-dss-host-run s pieces last rooms fuel fn-octets fn-dss-out)))
+             (equal (list (mv-nth 0 dss-run) (mv-nth 1 dss-run) (mv-nth 2 dss-run))
                     (fn-dss-stream-items s (fn-dss-flatten pieces) last))))
   :hints (("Goal" :use ((:instance fn-dss-host-is-drive (i 0)
                          (fn-octets (if (consp pieces) (car pieces) nil)))
@@ -1418,13 +1422,13 @@
    (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
                  (<= (len fn-dss-out) cap)
                  (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
-            (mv-let (r s2 i2 out2) (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
-              (declare (ignore r s2))
-              (and (<= (len out2) cap)
-                   (<= (len out2)
-                       (+ (len fn-dss-out) (* (fn-dss-st-emax) (- i2 i)) (fn-dss-st-fmax)))
-                   (<= i i2)
-                   (or (<= i2 end) (equal i2 i)))))
+            (mv-let (dss-r dss-s2 dss-i2 dss-out2) (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
+              (declare (ignore dss-r dss-s2))
+              (and (<= (len dss-out2) cap)
+                   (<= (len dss-out2)
+                       (+ (len fn-dss-out) (* (fn-dss-st-emax) (- dss-i2 i)) (fn-dss-st-fmax)))
+                   (<= i dss-i2)
+                   (or (<= dss-i2 end) (equal dss-i2 i)))))
    :hints (("Goal" :induct (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
             :in-theory (enable fn-oct-get-is-nth (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2))))))
 
@@ -1459,13 +1463,13 @@
   (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
                 (<= (len fn-dss-out) cap)
                 (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
-           (mv-let (r s2 i2 out2) (fn-dss-stream s i end last cap fn-octets fn-dss-out)
-             (declare (ignore r s2))
-             (and (<= (len out2) cap)
-                  (<= (len out2)
-                      (+ (len fn-dss-out) (* (fn-dss-st-emax) (- i2 i)) (fn-dss-st-fmax)))
-                  (<= i i2)
-                  (or (<= i2 end) (equal i2 i)))))
+           (mv-let (dss-r dss-s2 dss-i2 dss-out2) (fn-dss-stream s i end last cap fn-octets fn-dss-out)
+             (declare (ignore dss-r dss-s2))
+             (and (<= (len dss-out2) cap)
+                  (<= (len dss-out2)
+                      (+ (len fn-dss-out) (* (fn-dss-st-emax) (- dss-i2 i)) (fn-dss-st-fmax)))
+                  (<= i dss-i2)
+                  (or (<= dss-i2 end) (equal dss-i2 i)))))
   :hints (("Goal" :use fn-dss-stream-loop-writes
            :expand ((fn-dss-stream s i end last cap fn-octets fn-dss-out))
            :in-theory (disable fn-dss-stream fn-dss-stream-loop fn-dss-stream-loop-writes
@@ -1479,9 +1483,9 @@
 (defthm fn-dss-stream-progress
   (implies (and (natp i) (natp end) (< i end) (natp cap)
                 (<= (+ (len fn-dss-out) (fn-dss-floor)) cap))
-           (mv-let (r s2 i2 out2) (fn-dss-stream s i end last cap fn-octets fn-dss-out)
-             (declare (ignore s2 out2))
-             (or (equal r :refused) (< i i2))))
+           (mv-let (dss-r dss-s2 dss-i2 dss-out2) (fn-dss-stream s i end last cap fn-octets fn-dss-out)
+             (declare (ignore dss-s2 dss-out2))
+             (or (equal dss-r :refused) (< i dss-i2))))
   :hints (("Goal" :expand ((fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)))))
 
 (local
@@ -1511,6 +1515,13 @@
          (* (+ 1 (fn-dss-st-cmax)) (nfix (- (nfix end) (nfix i))))))
   :rule-classes :linear
   :hints (("Goal" :induct (fn-dss-stream-work s i end last room fn-octets))))
+
+; Guard support for generated loops that append (:copy :within), enabled
+; only in their guard hints.
+(defthm fn-dss-guard-len-append
+  (equal (len (append a b)) (+ (len a) (len b))))
+
+(in-theory (disable fn-dss-guard-len-append))
 
 ; =============================================================================
 ; The generator.
@@ -1550,14 +1561,15 @@
 (defun fn-dss-guard-theory ()
   (declare (xargs :mode :program))
   '((:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)
-    (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2)))
+    (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2)
+    fn-oct-octets-p-is-octet-listp fn-oct-octet-listp-of-append fn-dss-guard-len-append))
 
 (defun fn-dss-defs-theory (names)
   ; The instance's definitions, unfolded once, in `minimal-theory' plus what
   ; a numeral-for-constrained-constant substitution needs: nfix is a natural
   ; (its type, not its definition, which would split cases before the unfold).
   (declare (xargs :mode :program))
-  `(union-theories '(,@names (:type-prescription nfix))
+  `(union-theories '(,@names (:type-prescription nfix) car-cons cdr-cons mv-nth)
                    (union-theories (theory 'minimal-theory)
                                    (executable-counterpart-theory :here))))
 
@@ -2306,7 +2318,10 @@
                    (equal (list (mv-nth 0 dss-run) (mv-nth 1 dss-run) (mv-nth 2 dss-run))
                           (,items ,@ctx s (fn-dss-flatten pieces) last))))
         :hints (("Goal" :use (,usc (:functional-instance fn-dss-drive-stobj-is-items ,@hsubst))
-                 :in-theory ,(fn-dss-defs-theory (list name loopn lst lstl items host run)))))
+                 :in-theory ,(fn-dss-defs-theory
+                              (list name loopn lst lstl items host run
+                                    'fn-dss-octets-from-list-is-list
+                                    'fn-dss-out-clear-is-nil 'fn-dss-out-list-is-identity)))))
       (defthm ,writes
         (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
                       (<= (len fn-dss-out) cap)
@@ -2349,9 +2364,10 @@
                  :expand ((,work ,@ctx s i end last room fn-octets))
                  :in-theory ,(fn-dss-defs-theory (list work)))
 ))
-      (verify-guards ,name
+      (verify-guards ,loopn
         :hints ,(or guard-hints
                     `(("Goal" :in-theory (enable ,@(fn-dss-guard-theory))))))
+      (verify-guards ,name)
       (table fn-generated ',name
              '(:def-span-scan :shape :stream :loop ,loopn :list ,lst :items ,items :drive ,drive
                               :host ,host :partition-stobj ,spart :assumes (:a-host-room)
