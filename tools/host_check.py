@@ -348,7 +348,7 @@ def stobj_world_names() -> set[str]:
         paths = base.rglob("*.lisp") if directory == "books" else base.glob("*.lisp")
         for path in sorted(paths):
             text = path.read_text(encoding="utf-8", errors="replace").lower()
-            if "(defstobj" in text or "(defabsstobj" in text:
+            if "(defstobj" in text or "(defabsstobj" in text or "(def-generic" in text:
                 found |= {name.lower() for name in stobj_names(path)}
     return found
 
@@ -1741,6 +1741,17 @@ def stobj_names(path: Path) -> set[str]:
     def visit(form) -> None:
         if not isinstance(form, list) or not form:
             return
+        if form[0] == "def-generic" and len(form) >= 2:
+            # books/def-representation-generic.lisp: an attachable abstract
+            # stobj whose exports are the :exports rows' second words (its
+            # expansion below names only the obligations, s-twins' payload-arena
+            # export fn-arena-count went unseen by --world).
+            name = str(form[1])
+            found.update({name + "p", "create-" + name})
+            rows = ledger.keyword_plist(list(form[2:])).get(":exports")
+            for row in rows if isinstance(rows, list) else []:
+                if isinstance(row, list) and len(row) >= 2:
+                    found.add(str(row[1]))
         expansion = ledger.generated_expansion(form)
         if expansion is not None:
             for item in expansion:
@@ -2321,9 +2332,12 @@ def attach_pairs(root: Path) -> tuple[list[tuple[str, str, str]], list[AttachUnp
             continue
         for m in ATTACH_STOBJ.finditer(_attach_read(path)):
             gen = m.group(1).lower()
+            # an :attachable defabsstobj, or a def-generic, which is one by
+            # construction (books/def-representation-generic.lisp)
             generic = [p for p in sorted((root / "books").glob("*.lisp"))
-                       if re.search(r"\(defabsstobj\s+%s(?![A-Za-z0-9$*+-])" % re.escape(gen), _attach_read(p), re.I)
-                       and ":attachable t" in _attach_read(p).lower()]
+                       if (re.search(r"\(defabsstobj\s+%s(?![A-Za-z0-9$*+-])" % re.escape(gen), _attach_read(p), re.I)
+                           and ":attachable t" in _attach_read(p).lower())
+                       or re.search(r"\(def-generic\s+%s(?![A-Za-z0-9$*+-])" % re.escape(gen), _attach_read(p), re.I)]
             if len(generic) == 1:
                 found.append((gen, "books/" + generic[0].stem, rel))
             else:
