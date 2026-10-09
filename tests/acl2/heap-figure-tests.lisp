@@ -8,6 +8,7 @@
 (include-book "../../books/heap-figure")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *hft-core* 389141032)              ; the 69046a76 fn-host.core
@@ -1157,3 +1158,78 @@
                                                     (fn-heap-open-records-bound d nil)))
                 (< (fn-heap-store-figure-octets d *hft-core* *hft-nursery* nil)
                    (fn-heap-store-live-figure-octets d *hft-core* *hft-nursery* nil)))))
+
+;; The evidence package of the two store keystones (ruling 22): generated
+;; teeth over the subject the host calls (host/native/heap.lisp
+;; fnn-heap-reservation through fn-heap-reserve-operation-decide).
+(defteeth fn-heap-operation-decide-holds-the-store
+  :subject fn-heap-reserve-operation-decide
+  :claim
+  (let* ((decision (fn-heap-operation-decide action profile core nursery observations
+                                             observed))
+         (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
+    (((store-opening (not (fn-heap-storeless-action-p action)))
+      (admitted (fn-bs-profile-admittedp profile))
+      (accepted (equal (car decision) :heap))
+      (used-within (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
+                       (nfix (fn-bs-profile-max-history-octets profile))))
+      (records-within (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile))))
+      (open-octets (<= (nfix ou) (fn-heap-open-octets-bound
+                                  profile (fn-heap-operation-observation action observed))))
+      (open-records (<= (nfix on) (fn-heap-open-records-bound
+                                   profile (fn-heap-operation-observation action observed)))))
+     (and (<= (fn-heap-store-need profile core used n m ou on
+                                  (fn-heap-nursery-trigger d nursery))
+              d)
+          (<= d (fn-heap-machine-octets observations)))))
+  :witness ((action :run) (profile *fn-heap-small-profile*) (core *hft-prod-core*)
+            (nursery *hft-nursery*) (observations (list *hft-2g*)) (observed *hft-1000*)
+            (used *hft-used*) (n *hft-t*) (m *hft-mw*) (ou 2465160) (on 1000))
+  :breaks
+  ((store-opening ((action :init) (profile *hft-scale*) (observations (list *hft-big*))
+                   (observed nil) (used (fn-bs-profile-max-history-octets *hft-scale*))
+                   (n (fn-bs-profile-max-transactions *hft-scale*)) (m 0) (ou 0) (on 0)))
+   (admitted ((profile nil) (core (* 100 *fn-heap-mib*)) (nursery 0)
+              (observations (list (* 206 *fn-heap-mib*))) (observed nil)
+              (used 0) (n 0) (m 0) (ou 0) (on 0)))
+   (accepted ((observations (list *hft-700m*)) (observed nil) (ou *hft-h*) (on *hft-t*)))
+   (used-within ((used (* 100 *hft-h*)) (ou 0) (on 0)))
+   (records-within ((n (* 10 *hft-t*)) (ou 0) (on 0)))
+   (open-octets ((observed '(0 . 0)) (ou (* 20 *hft-h*)) (on 0)))
+   (open-records ((observed '(0 . 0)) (ou 0) (on (* 20 *hft-t*)))))
+  :mutations
+  ((image-only-heap
+    (:conclusion (<= (fn-heap-store-need profile core used n m ou on
+                                         (fn-heap-nursery-trigger d nursery))
+                     (fn-heap-core-dynamic core)))
+    () :fault "A heap of the image's dynamic content alone read as holding the store.")))
+
+(defteeth fn-heap-operation-decide-of-a-storeless-action
+  :subject fn-heap-reserve-operation-decide
+  :claim
+  (let ((decision (fn-heap-operation-decide action profile core nursery observations
+                                            observed)))
+    (((storeless (fn-heap-storeless-action-p action))
+      (admitted (fn-bs-profile-admittedp profile))
+      (accepted (equal (car decision) :heap)))
+     (and (equal (fn-heap-decision-mb decision)
+                 (fn-heap-mb-of (fn-heap-storeless-figure-octets core nursery)))
+          (<= (* *fn-heap-mib* (fn-heap-decision-mb decision))
+              (fn-heap-machine-octets observations)))))
+  :witness ((action :init) (profile *hft-scale*) (core *hft-prod-core*) (nursery *hft-nursery*)
+            (observations (list (* 24576 *fn-heap-mib*))) (observed nil))
+  :breaks
+  ((storeless ((action :run) (profile *fn-heap-small-profile*) (observations (list *hft-2g*))))
+   (admitted ((profile nil) (core (* 100 *fn-heap-mib*)) (nursery 0)
+              (observations (list (* 900 *fn-heap-mib*)))))
+   (accepted ((observations (list *hft-700m*)))))
+  :mutations
+  ((init-sized-as-the-store
+    (:conclusion (and (equal (fn-heap-decision-mb decision)
+                             (fn-heap-mb-of (fn-heap-store-figure-octets profile core nursery nil)))
+                      (<= (* *fn-heap-mib* (fn-heap-decision-mb decision))
+                          (fn-heap-machine-octets observations))))
+    () :fault "init sized by the store figure of the profile it writes (before lane b-init-heap).")))
+
+(defteeth-check (fn-heap-operation-decide-holds-the-store
+                 fn-heap-operation-decide-of-a-storeless-action))
