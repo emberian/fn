@@ -296,7 +296,7 @@
 ; fn-heap-reserve-decide.
 (defthm fn-heap-reserve-operation-decide-of-a-serve-action
   (implies (and (not (member-equal action *fn-heap-list-actions*))
-                (not (equal action :init)))
+                (not (fn-heap-storeless-action-p action)))
            (equal (fn-heap-reserve-operation-decide action profile core nursery
                                                     observations connections nil)
                   (fn-heap-reserve-decide profile core nursery observations

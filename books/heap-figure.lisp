@@ -277,9 +277,17 @@
                   (<= (+ (* *fn-heap-mib* (fn-heap-decision-mb d)) (fn-heap-core-file core)
                          *fn-heap-storeless-thread-octets*)
                       machine))))
-  :hints (("Goal" :use ((:instance fn-heap-mb-of-covers
-                                   (octets (+ (fn-heap-core-file core) (nfix nursery)))))
-           :in-theory (disable fn-heap-mb-of-covers))))
+  :hints (("Goal"
+     :use ((:instance fn-heap-mb-of-covers
+                     (octets (+ (fn-heap-core-file core) (nfix nursery))))
+           (:instance fn-heap-mb-below-is-below
+                     (x (- (nfix machine) (+ (fn-heap-core-file core)
+                                              *fn-heap-storeless-thread-octets*)))))
+     :in-theory
+     (union-theories
+      '(fn-heap-storeless-decide fn-heap-decision-mb min nfix natp
+        fn-heap-mb-below-natp fn-heap-core-file-natp car-cons cdr-cons)
+      (theory 'minimal-theory)))))
 
 ; The store-less figure grows with the machine: accepted on a machine, it is
 ; accepted on every larger one.
@@ -584,7 +592,9 @@
   (implies (fn-heap-storeless-action-p action)
            (equal (fn-heap-operation-figure-octets action profile core nursery observed)
                   (fn-heap-storeless-figure-octets core nursery)))
-  :hints (("Goal" :in-theory (enable fn-heap-operation-figure-octets))))
+  :hints (("Goal" :in-theory
+           (union-theories '(fn-heap-storeless-action-p fn-heap-operation-figure-octets)
+                           (theory 'minimal-theory)))))
 
 ; KEYSTONE (ADMISSION-RESERVES-NOT-REOPEN, N's ruling B).  A run's figure is
 ; the store figure over NO observation: the profile's whole bound.
@@ -643,13 +653,15 @@
            (equal (fn-heap-operation-decide action profile core nursery observations
                                             nil)
                   (fn-heap-decide profile core nursery observations)))
-  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets fn-heap-figure-octets
-                                   fn-heap-operation-observation fn-heap-action-profile
-                                   fn-heap-read-profile fn-heap-observed-octets
-                                   fn-heap-storeless-action-p)
-                                  (fn-heap-profile-word fn-bs-profile-admittedp
-                                   fn-heap-store-figure-octets
-                                   fn-heap-buffer-octets fn-heap-storeless-decide)))))
+  :hints (("Goal" :in-theory
+           (union-theories
+            '(fn-heap-operation-decide fn-heap-decide
+              fn-heap-operation-figure-octets fn-heap-figure-octets
+              fn-heap-operation-observation fn-heap-action-profile
+              fn-heap-read-profile fn-heap-observed-octets natp
+              fn-heap-storeless-action-p
+              fn-heap-action-growth-lists-are-the-list-actions)
+            (theory 'minimal-theory)))))
 
 ; An accepted operation decision for an admitted profile is its figure's
 ; megabytes, within the machine.
@@ -818,14 +830,149 @@
                                    fn-heap-core-dynamic fn-heap-observed-octets
                                    fn-bs-profile-field fn-heap-buffer-octets)))))
 
+; Clipping only lowers effective fields, including when validation rejects
+; the clipped profile. Compare unobserved bases, then apply nursery monotonicity.
+(local
+ (defthm fn-heap-profile-field-when-invalid
+   (implies (not (fn-bs-profile-validp profile))
+            (equal (fn-bs-profile-field i profile) 0))
+   :hints (("Goal" :in-theory (e/d (fn-bs-profile-field fn-bs-profile-of fn-bs-pf fn-bs-meta-nth)
+                                   (fn-bs-profile-validp))))))
+(local
+ (defthm fn-heap-profile-field-when-valid
+   (implies (fn-bs-profile-validp profile)
+            (equal (fn-bs-profile-field i profile) (fn-bs-pf i profile)))
+   :hints (("Goal" :in-theory (e/d (fn-bs-profile-field fn-bs-profile-of)
+                                   (fn-bs-profile-validp fn-bs-pf))))))
+(local
+ (defthm fn-heap-profile-with-zero-transactions-is-invalid
+   (implies (equal (fn-bs-pf 1 profile) 0)
+            (not (fn-bs-profile-validp profile)))
+   :hints (("Goal" :in-theory (e/d (fn-bs-profile-validp fn-bs-profile-invalid-reason)
+                                   (fn-bs-pf fn-frame-values-okp fn-bs-meta-formatp fn-bs-meta-nth))))))
+
+(local
+ (defthm fn-heap-profile-put-is-update-nth
+   (equal (fn-bs-profile-put j v profile) (update-nth j v profile))
+   :hints (("Goal" :in-theory (enable fn-bs-profile-put update-nth)))))
+(local
+ (defthm fn-heap-meta-nth-is-nth
+   (equal (fn-bs-meta-nth i profile) (nth i profile))
+   :hints (("Goal" :in-theory (enable fn-bs-meta-nth nth)))))
+(local
+ (defthm fn-heap-read-profile-raw-fields
+   (implies (natp (fn-heap-observed-octets observed))
+     (and
+       (equal (fn-bs-pf 1 (fn-heap-read-profile profile observed))
+              (nfix (fn-heap-open-records-bound profile observed)))
+       (equal (fn-bs-pf 2 (fn-heap-read-profile profile observed))
+              (nfix (fn-heap-open-octets-bound profile observed)))
+       (equal (fn-bs-pf 3 (fn-heap-read-profile profile observed))
+              (nfix (min (fn-heap-open-octets-bound profile observed)
+                         (nfix (fn-bs-profile-max-record-octets profile)))))
+       (equal (fn-bs-pf 4 (fn-heap-read-profile profile observed))
+              (nfix (min (fn-heap-open-octets-bound profile observed)
+                         (nfix (fn-bs-profile-max-article-octets profile)))))
+       (equal (fn-bs-pf 15 (fn-heap-read-profile profile observed))
+              (nfix (min (fn-heap-open-octets-bound profile observed)
+                         (nfix (fn-bs-profile-field 15 profile)))))))
+   :hints (("Goal" :in-theory
+      (union-theories
+       '(fn-heap-read-profile fn-bs-profile-set-fields fn-bs-pf
+         fn-heap-profile-put-is-update-nth fn-heap-meta-nth-is-nth
+         nth-update-nth natp len car-cons cdr-cons (:executable-counterpart nfix))
+       (theory 'minimal-theory))))))
+(local
+ (defthm fn-heap-read-profile-of-invalid-is-invalid
+   (implies (not (fn-bs-profile-validp profile))
+            (not (fn-bs-profile-validp (fn-heap-read-profile profile observed))))
+   :hints (("Goal" :cases ((natp (fn-heap-observed-octets observed)))
+            :in-theory (e/d (fn-heap-open-records-bound fn-bs-profile-max-transactions)
+                            (fn-bs-profile-validp fn-bs-profile-field fn-bs-pf
+                             fn-heap-read-profile fn-heap-observed-octets))
+            :use ((:instance fn-heap-profile-with-zero-transactions-is-invalid
+                             (profile (fn-heap-read-profile profile observed)))))
+           ("Subgoal 2" :in-theory (e/d (fn-heap-read-profile)
+                                        (fn-bs-profile-validp fn-heap-observed-octets))))))
+(local
+ (defthm fn-heap-read-profile-fields-are-at-most-original
+   (and
+    (<= (nfix (fn-bs-profile-max-transactions (fn-heap-read-profile profile observed)))
+        (nfix (fn-bs-profile-max-transactions profile)))
+    (<= (nfix (fn-bs-profile-max-history-octets (fn-heap-read-profile profile observed)))
+        (nfix (fn-bs-profile-max-history-octets profile)))
+    (<= (nfix (fn-bs-profile-max-record-octets (fn-heap-read-profile profile observed)))
+        (nfix (fn-bs-profile-max-record-octets profile)))
+    (<= (nfix (fn-bs-profile-max-article-octets (fn-heap-read-profile profile observed)))
+        (nfix (fn-bs-profile-max-article-octets profile)))
+    (<= (nfix (fn-bs-profile-field 15 (fn-heap-read-profile profile observed)))
+        (nfix (fn-bs-profile-field 15 profile))))
+   :rule-classes nil
+   :hints (("Goal" :cases ((natp (fn-heap-observed-octets observed)))
+            :in-theory (e/d (fn-heap-open-records-bound fn-heap-open-octets-bound
+                             fn-bs-profile-max-transactions fn-bs-profile-max-history-octets
+                             fn-bs-profile-max-record-octets fn-bs-profile-max-article-octets)
+                            (fn-bs-profile-validp fn-bs-profile-field fn-bs-pf
+                             fn-heap-read-profile fn-heap-observed-octets)))
+           ("Subgoal 2" :in-theory (e/d (fn-heap-read-profile)
+                                        (fn-bs-profile-validp fn-heap-observed-octets)))
+           ("Subgoal 1" :cases
+             ((and (fn-bs-profile-validp profile)
+                   (fn-bs-profile-validp (fn-heap-read-profile profile observed)))
+              (and (fn-bs-profile-validp profile)
+                   (not (fn-bs-profile-validp (fn-heap-read-profile profile observed)))))))))
+(local
+ (defthm fn-heap-read-profile-base-is-at-most-original
+   (<= (fn-heap-store-base-octets (fn-heap-read-profile profile observed) core nil)
+       (fn-heap-store-base-octets profile core nil))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-heap-read-profile-fields-are-at-most-original
+                  (:instance fn-heap-store-base-octets-grows-with-the-profile
+                             (p1 (fn-heap-read-profile profile observed)) (p2 profile)))
+            :in-theory
+            (e/d (fn-ock-capture-budget fn-sccr-file-read-bound fn-scc-segment-max-octets)
+                 (fn-heap-store-base-octets fn-heap-read-profile
+                  fn-bs-profile-max-transactions fn-bs-profile-max-history-octets
+                  fn-bs-profile-max-record-octets fn-bs-profile-max-article-octets
+                  fn-bs-profile-field))))))
+(local
+ (defthm fn-heap-read-profile-figure-is-at-most-unobserved
+   (<= (fn-heap-store-figure-octets (fn-heap-read-profile profile observed) core nursery observed)
+       (fn-heap-store-figure-octets profile core nursery nil))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-heap-read-profile-base-is-at-most-original
+                  (:instance fn-heap-store-base-observed-is-at-most-unobserved
+                             (profile (fn-heap-read-profile profile observed)))
+                  (:instance fn-heap-with-nursery-monotone
+                             (b1 (fn-heap-store-base-octets
+                                  (fn-heap-read-profile profile observed) core observed))
+                             (b2 (fn-heap-store-base-octets profile core nil))))
+            :in-theory
+            (union-theories
+             '(fn-heap-store-figure-octets fn-heap-store-base-octets-natp nfix)
+             (theory 'minimal-theory))))))
+(local
+ (defthm fn-heap-read-profile-of-nil
+   (equal (fn-heap-read-profile profile nil) profile)
+   :hints (("Goal" :in-theory
+            (union-theories '(fn-heap-read-profile fn-heap-observed-octets natp)
+                            (theory 'minimal-theory))))))
+
 (defthm fn-heap-operation-figure-octets-observed-is-at-most-unobserved
   (<= (fn-heap-operation-figure-octets action profile core nursery observed)
       (fn-heap-operation-figure-octets action profile core nursery nil))
   :rule-classes :linear
-  :hints (("Goal" :in-theory (e/d (fn-heap-operation-figure-octets fn-heap-figure-octets
-                                   fn-heap-operation-observation)
-                                  (fn-heap-store-figure-octets
-                                   fn-heap-operation-list-figure-octets)))))
+  :hints (("Goal"
+           :use (fn-heap-read-profile-figure-is-at-most-unobserved
+                 fn-heap-operation-list-figure-observed-is-at-most-unobserved
+                 fn-heap-store-figure-observed-is-at-most-unobserved)
+           :in-theory
+           (union-theories
+            '(fn-heap-operation-figure-octets fn-heap-action-profile
+              fn-heap-operation-observation fn-heap-read-profile-of-nil max)
+            (theory 'minimal-theory)))))
 
 (defthm fn-heap-small-profile-is-admitted
   (fn-bs-profile-admittedp *fn-heap-small-profile*))
@@ -934,12 +1081,8 @@
            (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile* core nursery
                                                  (list machine) '(0 . 0)))
                   :heap))
-  :hints (("Goal" :in-theory (e/d (fn-heap-mb-of fn-heap-store-figure-octets
-                                       fn-heap-operation-figure-octets-of-a-run)
-                                  (fn-heap-profile-word))
-           :use ((:instance fn-heap-with-nursery-below-eight-sevenths
-                            (base (fn-heap-store-base-octets *fn-heap-small-profile* core
-                                                             nil)))))))
+  :hints (("Goal" :use (fn-heap-small-profile-run-fits-a-small-machine)
+                   :in-theory (theory 'minimal-theory))))
 
 ; -----------------------------------------------------------------------------
 ; The report line `status' and `health' print, and the launcher reads:

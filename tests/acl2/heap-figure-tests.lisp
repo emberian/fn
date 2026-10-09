@@ -403,9 +403,25 @@
                                           *hft-nursery* (list *hft-2g*) nil)
                 (fn-heap-decide *fn-heap-small-profile* *hft-bsd-core* *hft-nursery*
                                 (list *hft-2g*))))
-(assert! (equal (fn-heap-operation-decide :status *fn-heap-small-profile* *hft-bsd-core*
+; A record writer (the grows class) of a store of 100,000 octets in 50
+; files: the state at the profile's bounds, the open over the observation.
+(assert! (equal (fn-heap-operation-decide :post *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) '(100000 . 50))
                 '(:heap 593 "small" 2048)))
+; `status' of it (the read-only class) holds the observed store: the figure of
+; the profile read at the observation (fn-heap-read-profile); 593 MB before
+; lane b-heap-growth, when it was sized as the record writer.
+(assert! (equal (fn-heap-operation-decide :status *fn-heap-small-profile* *hft-bsd-core*
+                                          *hft-nursery* (list *hft-2g*) '(100000 . 50))
+                (list :heap
+                      (fn-heap-mb-of (fn-heap-store-figure-octets
+                                      (fn-heap-read-profile *fn-heap-small-profile* '(100000 . 50))
+                                      *hft-bsd-core* *hft-nursery* '(100000 . 50)))
+                      "small" 2048)))
+(assert! (< (fn-heap-decision-mb
+             (fn-heap-operation-decide :status *fn-heap-small-profile* *hft-bsd-core*
+                                       *hft-nursery* (list *hft-2g*) '(100000 . 50)))
+            593))
 ; The run alone ignores what the probe saw: the same store, observed or not.
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-bsd-core*
                                           *hft-nursery* (list *hft-2g*) '(100000 . 50))
