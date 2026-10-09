@@ -1,8 +1,9 @@
 """bp-checkpoint-open: build the SCN-077 first-half fixture (1,311 held rows)
 at a fixed path, snapshot it before and after the rotation."""
-import os, sys, time, unittest, subprocess, tempfile, shutil
+import os, sys, time, unittest, subprocess, shutil
 sys.path.insert(0, os.getcwd())
 from pathlib import Path
+import tests.test_bp_fragment_node_native as bp_native
 from tests.test_bp_fragment_node_native import NativeBpFragmentNodeTests as Base, IMAGE, ROOT
 
 FIX = Path(os.environ["FIXTURE_DIR"])
@@ -11,14 +12,16 @@ WORK = FIX / "t"
 
 class Fixture(Base):
     def setUp(self):
-        real = tempfile.mkdtemp
+        # Base.setUp takes its directory from native_harness.scratch(case,
+        # prefix), which registers the directory's removal; the fixture is
+        # built at FIXTURE_DIR/t and kept, so it supplies that directory.
         WORK.mkdir(parents=True)
-        tempfile.mkdtemp = lambda prefix="": str(WORK)
+        real = bp_native.scratch
+        bp_native.scratch = lambda case, prefix="": WORK
         try:
             Base.setUp(self)
         finally:
-            tempfile.mkdtemp = real
-        self._cleanups.clear()
+            bp_native.scratch = real
 
     def test_fixture(self):
         paths, total = self.author_large_fragments(10 * 1024 * 1024, 4000)
