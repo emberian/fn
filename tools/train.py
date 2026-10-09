@@ -34,7 +34,14 @@ red it meets is a row there; it is *green* only when the file has no rows, and
 rows goes on to its emits and records them; any other failed or killed book
 fails it.  The `baseline` gate refuses a row this train adds relative to
 origin/dev (rows shrink only), a row whose item is missing or closed, and a
-malformed file.
+malformed file.  The one way in is an amendment record in
+`planning/known-reds-amendments.json` (append-only; the row, the dev sha where
+it was measured, the item, the owner, the coordinator ruling; ruled 2026-10-09
+13:05): the gate accepts exactly the added rows an amendment names, refuses a
+rewritten or dropped amendment record, and refuses an amendment that names no
+present row (unless the row was retired and its item is closed), so amendments
+cannot be stockpiled.  `push` and `status` print the amendment count beside
+the row count.
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
 regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
@@ -155,6 +162,10 @@ GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_lo
 KNOWN_REDS = "planning/known-reds.json"
 KNOWN_RED_KINDS = ("certify", "native", "check", "extraction")
 KNOWN_RED_FIELDS = ("kind", "subject", "item", "owner", "evidence")
+# Amendments admit a row added after the baseline entered (COORDINATION section 5).
+# Each record names its row by the same (kind, subject) key.
+KNOWN_RED_AMENDMENTS = "planning/known-reds-amendments.json"
+AMENDMENT_FIELDS = ("kind", "subject", "dev_sha", "item", "owner", "ruling")
 
 
 class TrainError(Exception):
@@ -261,12 +272,43 @@ def known_reds_at(t: "Train", rev: str) -> list[dict] | None:
     return parse_known_reds(p.stdout) if p.returncode == 0 else None
 
 
-def verdict_words(rows: list[dict] | None) -> str:
+def parse_amendments(text: str) -> list[dict]:
+    """The records of an amendments file; TrainError when it is malformed."""
+    try:
+        data = json.loads(text)
+    except ValueError as error:
+        raise TrainError(f"{KNOWN_RED_AMENDMENTS} is not JSON: {error}") from error
+    records = data.get("amendments") if isinstance(data, dict) else None
+    if not isinstance(records, list):
+        raise TrainError(f"{KNOWN_RED_AMENDMENTS} has no list 'amendments'")
+    seen = set()
+    for rec in records:
+        if not isinstance(rec, dict) or any(not isinstance(rec.get(f), str) or not rec.get(f)
+                                            for f in AMENDMENT_FIELDS):
+            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: a record lacks one of "
+                             f"{', '.join(AMENDMENT_FIELDS)}: {str(rec)[:120]}")
+        key = (rec["kind"], rec["subject"])
+        if key in seen:
+            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]} is amended twice")
+        seen.add(key)
+    return records
+
+
+def amendments_at(t: "Train", rev: str) -> list[dict]:
+    """The amendment records at REV; none when REV has no amendments file."""
+    p = git(t.root, "show", f"{rev}:{KNOWN_RED_AMENDMENTS}", check=False)
+    return parse_amendments(p.stdout) if p.returncode == 0 else []
+
+
+def verdict_words(rows: list[dict] | None, amendments: list[dict] | None = None) -> str:
     if rows is None:
         return f"no known-red baseline ({KNOWN_REDS} missing): not green"
     if not rows:
         return "green: the known-red baseline is empty"
-    return f"non-regressing against {len(rows)} known red(s) in {KNOWN_REDS}; NOT green"
+    amended = {(a["kind"], a["subject"]) for a in amendments or []}
+    n_amended = sum(1 for r in rows if (r["kind"], r["subject"]) in amended)
+    return (f"non-regressing against {len(rows)} known reds, {n_amended} amended "
+            f"({KNOWN_REDS}, {KNOWN_RED_AMENDMENTS}); NOT green")
 
 
 def certify_failures(root: Path, certify_id: str | None) -> tuple[list[str], list[str]] | None:
@@ -738,10 +780,13 @@ def _ascii_gate(t: Train) -> int:
 def _baseline_gate(t: Train) -> tuple[int, dict]:
     """(rc, record) of the known-reds gate: the file parses at HEAD, every
     row's repair item exists and is open, and no row is added relative to
-    origin/dev (the first file is the baseline itself)."""
+    origin/dev unless an amendment names it (the first file is the baseline
+    itself).  The amendments are append-only and each names a present row."""
     try:
         head_rows = known_reds_at(t, "HEAD")
         dev_rows = known_reds_at(t, "origin/dev")
+        head_amend = amendments_at(t, "HEAD")
+        dev_amend = amendments_at(t, "origin/dev")
     except TrainError as error:
         say(f"baseline: {error}")
         return 1, {"error": str(error)}
@@ -749,29 +794,61 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
         say(f"baseline: {KNOWN_REDS} is missing at HEAD")
         return 1, {"error": "missing"}
     items = t.root / "planning" / "repair" / "items"
+
+    def item_state(name):
+        try:
+            return json.loads((items / f"{name}.json").read_text()).get("state"), True
+        except (OSError, ValueError):
+            return None, False
+
     unowned, closed = [], []
     for row in head_rows:
-        path = items / f"{row['item']}.json"
-        try:
-            state = json.loads(path.read_text()).get("state")
-        except (OSError, ValueError):
+        state, found = item_state(row["item"])
+        if not found:
             unowned.append(f"{row['kind']} {row['subject']} ({row['item']})")
-            continue
-        if state in CLOSED_ITEM_STATES:
+        elif state in CLOSED_ITEM_STATES:
             closed.append(f"{row['kind']} {row['subject']} ({row['item']} {state})")
     keys = lambda rows: {(r["kind"], r["subject"]) for r in rows}
-    added = sorted(keys(head_rows) - keys(dev_rows)) if dev_rows is not None else []
+    row_by_key = {(r["kind"], r["subject"]): r for r in head_rows}
+    amended = {(a["kind"], a["subject"]): a for a in head_amend}
+    added_all = sorted(keys(head_rows) - keys(dev_rows)) if dev_rows is not None else []
+    added = [k for k in added_all if k not in amended]
+    admitted = [k for k in added_all if k in amended]
     gone = sorted(keys(dev_rows) - keys(head_rows)) if dev_rows is not None else []
+    # append-only: every record on origin/dev is at HEAD, unchanged and in order
+    rewritten = head_amend[:len(dev_amend)] != dev_amend
+    dangling, mismatched = [], []
+    for k, a in amended.items():
+        row = row_by_key.get(k)
+        if row is None:
+            state, found = item_state(a["item"])
+            if not (found and state in CLOSED_ITEM_STATES):
+                dangling.append(f"{k[0]} {k[1]}")
+        elif (row["item"], row["owner"]) != (a["item"], a["owner"]):
+            mismatched.append(f"{k[0]} {k[1]}")
     for k in added:
         say(f"  known red ADDED by this train (rows shrink only): {k[0]} {k[1]}")
+    for k in admitted:
+        say(f"  known red added by amendment ({amended[k]['item']}, measured at {amended[k]['dev_sha']}): {k[0]} {k[1]}")
+    if rewritten:
+        say(f"  {KNOWN_RED_AMENDMENTS} is append-only: a record on origin/dev was edited or dropped")
+    for k in dangling:
+        say(f"  amendment names no known-red row (amendments cannot be stockpiled): {k}")
+    for k in mismatched:
+        say(f"  amendment disagrees with its row on item or owner: {k}")
     for k in unowned:
         say(f"  known red with no repair item: {k}")
     for k in closed:
         say(f"  known red whose item is closed (remove the row or reopen the item): {k}")
-    say(f"baseline: {len(head_rows)} row(s); added {len(added)}; gone {len(gone)}"
+    n_amended = sum(1 for k in amended if k in row_by_key)
+    say(f"baseline: {len(head_rows)} row(s), {n_amended} amended; added {len(added)}; "
+        f"added by amendment {len(admitted)}; gone {len(gone)}"
         + ("; first baseline (none on origin/dev)" if dev_rows is None else ""))
-    rc = 1 if (added or unowned or closed) else 0
-    return rc, {"rows": len(head_rows), "added": [list(k) for k in added], "gone": [list(k) for k in gone],
+    rc = 1 if (added or unowned or closed or rewritten or dangling or mismatched) else 0
+    return rc, {"rows": len(head_rows), "amended": n_amended, "added": [list(k) for k in added],
+                "admitted": [list(k) for k in admitted], "gone": [list(k) for k in gone],
+                "amendments_rewritten": rewritten, "dangling_amendments": dangling,
+                "mismatched_amendments": mismatched,
                 "unowned": unowned, "closed_items": closed, "established": dev_rows is None}
 
 
@@ -954,7 +1031,7 @@ def cmd_push(t: Train, args) -> int:
             raise TrainError(f"push to {target} failed: {p.stderr.strip()}")
     carried = ", ".join(f"{l['name']}@{l['sha'][:9]}" for l in st["lanes"] if l["status"] == "merged")
     say(f"dev {old[:9]}..{head[:9]} carried: {carried or '-'}")
-    say("verdict: " + verdict_words(known_reds_at(t, "HEAD")))
+    say("verdict: " + verdict_words(known_reds_at(t, "HEAD"), amendments_at(t, "HEAD")))
     b = gates["box_step"]
     say("box step: " + (f"inherited from {b['inherits_from'][:9]} ({b['box']})" if "inherits_from" in b
                         else f"ran at HEAD on {b['ran_on']}"))
@@ -975,7 +1052,7 @@ def cmd_status(t: Train, args) -> int:
         w = st["box_wall"]
         say(f"  certify {st.get('box_run')}: install {w['install']}s, certify {w['certify']}s, emit {w['emit']}s, total {w['total']}s")
     try:
-        say("  verdict: " + verdict_words(known_reds_at(t, "HEAD")))
+        say("  verdict: " + verdict_words(known_reds_at(t, "HEAD"), amendments_at(t, "HEAD")))
     except TrainError as error:
         say(f"  verdict: {error}")
     for n in GATES:

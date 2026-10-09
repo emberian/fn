@@ -1,0 +1,15 @@
+{
+ "category": "bug",
+ "detail": "Red on dev ac66a0a23 (image native-ac66a0a23ad7 and later): the test's `operator status` step is refused 'machine-cannot-hold-profile' with heap=23095730 MB, so init's fields are never printed back. Retirement condition: status sized by the store's charged totals from the checkpoint header (RUNTIME-MODEL section 6 observation form).",
+ "file": "host/native/operator.lisp",
+ "id": "OPERATOR-STATUS-OBSERVED-SIZING",
+ "notes": [
+  "10-09 coordinator: owned by builder-A. Admitted to planning/known-reds.json by amendment (planning/known-reds-amendments.json), the first: a red found on dev after the baseline enters only by amendment. Gate: tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_writes_the_operators_fields_and_status_prints_them."
+ ],
+ "owner": "builder-A",
+ "severity": "medium",
+ "source": "dev-red-20261009",
+ "state": "open",
+ "title": "operator status sizes the heap from the unobserved profile (heap=23095730 MB, refused machine-cannot-hold-profile) instead of the store's charged totals",
+ "updated": "2026-10-09T17:00:00Z"
+}

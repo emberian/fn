@@ -972,7 +972,7 @@ class BaselineGateTests(TrainBase):
         self.assertEqual(rec["rc"], 0, g.stdout)
         self.assertEqual(rec["rows"], 2)
         s = self.train("status")
-        self.assertIn("non-regressing against 2 known red(s)", s.stdout)
+        self.assertIn("non-regressing against 2 known reds, 0 amended", s.stdout)
         self.assertIn("NOT green", s.stdout)
 
     def test_a_removed_row_passes(self):
@@ -1035,6 +1035,101 @@ class BaselineGateTests(TrainBase):
         self.assertNotEqual(p.returncode, 0)
         self.assertIn("gate baseline failed", p.stdout)
         self.assertEqual(self.origin_rev("dev"), before)
+
+    def amendment(self, subject, item="KR-X", owner="builder-B"):
+        return {"kind": "native", "subject": subject, "dev_sha": "abc123def", "item": item,
+                "owner": owner, "ruling": "coordinator: test"}
+
+    def amendments(self, *records):
+        return json.dumps({"note": "append-only", "amendments": list(records)}) + "\n"
+
+    def gate_amended(self, rows, amend):
+        (self.work / "planning/known-reds-amendments.json").write_text(amend)
+        return self.gate_with(rows)
+
+    def test_an_unamended_addition_is_refused_with_the_usual_message(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_amended(self.rows("t.a", "t.new"), self.amendments())
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(rec["added"], [["native", "t.new"]])
+        self.assertIn("known red ADDED by this train (rows shrink only): native t.new", g.stdout)
+
+    def test_an_amended_addition_is_accepted_and_counted(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_amended(self.rows("t.a", "t.new"), self.amendments(self.amendment("t.new")))
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual(rec["admitted"], [["native", "t.new"]])
+        self.assertEqual((rec["rows"], rec["amended"]), (2, 1))
+
+    def test_an_amendment_covers_only_the_row_it_names(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_amended(self.rows("t.a", "t.new", "t.other"),
+                                   self.amendments(self.amendment("t.new")))
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(rec["added"], [["native", "t.other"]])
+
+    def test_a_dangling_amendment_fails(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_amended(self.rows("t.a"), self.amendments(self.amendment("t.stock")))
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(rec["dangling_amendments"], ["native t.stock"])
+        self.assertIn("amendments cannot be stockpiled", g.stdout)
+
+    def test_an_amendment_of_a_retired_row_with_a_closed_item_is_history(self):
+        self.on_dev(self.rows("t.a", "t.new"))
+        (self.work / "planning/known-reds-amendments.json").write_text(
+            self.amendments(self.amendment("t.new")))
+        g, rec = self.gate_with(self.rows("t.a"))
+        self.assertEqual(rec["rc"], 1, "item still open: the amendment dangles")
+        g, rec = self.gate_with(self.rows("t.a"), item_state="landed")
+        self.assertEqual(rec["dangling_amendments"], [])
+
+    def test_a_rewritten_or_dropped_amendment_fails(self):
+        self.on_dev(self.rows("t.a", "t.new"))
+        self.advance_dev({"planning/known-reds-amendments.json": self.amendments(self.amendment("t.new"))})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
+        g, rec = self.gate_amended(self.rows("t.a", "t.new"),
+                                   self.amendments(self.amendment("t.new", owner="builder-B") | {"ruling": "edited"}))
+        self.assertTrue(rec["amendments_rewritten"])
+        self.assertEqual(rec["rc"], 1)
+        g, rec = self.gate_amended(self.rows("t.a", "t.new"), self.amendments())
+        self.assertTrue(rec["amendments_rewritten"])
+        self.assertEqual(rec["rc"], 1)
+
+    def test_an_amendment_disagreeing_with_its_row_fails(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_amended(self.rows("t.a", "t.new"),
+                                   self.amendments(self.amendment("t.new", owner="someone-else")))
+        self.assertEqual(rec["mismatched_amendments"], ["native t.new"])
+        self.assertEqual(rec["rc"], 1)
+
+    def test_a_malformed_amendments_file_fails(self):
+        self.on_dev(self.rows("t.a"))
+        for text in ("not json\n", '{"amendments": {}}\n', '{"amendments": [{"kind": "native"}]}\n',
+                     self.amendments(self.amendment("t.a"), self.amendment("t.a"))):
+            g, rec = self.gate_amended(self.rows("t.a"), text)
+            self.assertEqual(rec["rc"], 1, text)
+
+    def test_status_shows_the_row_count_and_the_amendment_count(self):
+        self.on_dev(self.rows("t.a"))
+        self.gate_amended(self.rows("t.a", "t.new"), self.amendments(self.amendment("t.new")))
+        s = self.train("status")
+        self.assertIn("non-regressing against 2 known reds, 1 amended", s.stdout)
+        self.assertIn("NOT green", s.stdout)
+
+    def test_status_says_green_only_when_there_are_no_rows(self):
+        self.on_dev(self.rows())
+        self.gate_with()
+        s = self.train("status")
+        self.assertIn("green: the known-red baseline is empty", s.stdout)
+        self.assertNotIn("NOT green", s.stdout)
+
+    def test_the_verdict_words_push_prints_carry_the_amendment_count(self):
+        self.assertEqual(train.verdict_words(json.loads(self.rows("t.a", "t.b"))["rows"],
+                                             [self.amendment("t.b")]),
+                         "non-regressing against 2 known reds, 1 amended "
+                         "(planning/known-reds.json, planning/known-reds-amendments.json); NOT green")
 
 
 class AsciiGateTests(unittest.TestCase):
