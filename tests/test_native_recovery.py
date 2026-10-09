@@ -7,11 +7,13 @@ a claim about this source revision.
 """
 
 import re
+import time
 import unittest
 
 from tests import test_native_checkpoint_auto as checkpoint_auto
+from tests import test_native_expiry as expiry
 from tests.native_harness import (
-    EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, ROOT, Acl2Session, acl2_keyword,
+    EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, Node, ROOT, Acl2Session, acl2_keyword,
     acl2_octets, acl2_result, article, environment, executable, native_image, run, scratch)
 
 IMAGE = native_image("FN_NATIVE_HOST")
@@ -126,6 +128,117 @@ class NativeRecoveryKeyringCheckpointTests(checkpoint_auto.AutoCheckpointFixture
         self.assertEqual(captured[1], replayed[1])
         self.assertEqual(captured[1], expected[1])
         self.assertEqual(captured, replayed)
+
+
+@unittest.skipUnless(executable(DEVELOPER), "the developer image is absent")
+class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
+    """Reclaim after an author-keyring rotation serves what a restart serves.
+
+    Pass 3 of the live reclaim predicts the rewritten history's rows
+    (fn-orcs-predict-rows-at, which fn-orcs-predict wraps, chunk by chunk
+    through fn-rcw-predict-acc-step, the step of fn-rcw-predict-acc-steps) and the
+    swap installs the owner those predicted rows rebuild; a restart replays the
+    rewritten history through the fold (fn-ssr-intern-step), which freezes the
+    keyring generation in force before each record.  The prediction is that
+    fold (fn-orcs-predict-rows-at-is-the-fold), so the verdict generations the
+    swapped owner serves are the restart's: article A (posted under generation
+    1) keeps generation 1 and article B (generation 2) keeps generation 2.
+    The prediction used to intern every record at the store's current keyring
+    and generation (one pair).  Pass 3 rewrites only the tombstoned records,
+    and nothing serves a tombstone after expiry, so the defect has no served
+    observable: the keystone protects the owner's internal consistency after
+    a restart, not a reply.  The test therefore reads the owner's held-row
+    verdicts through the developer image's inspection
+    (FN_NATIVE_TEST_HELD_VERDICTS_FILE, host/owner-held-verdicts-host.lisp):
+    the swapped owner's must equal the restarted owner's, the tombstone's
+    included.  A malformed FN-Statement makes HDR :fn-verified render the
+    generation on an ordinary record (fn-stx-verified-item).
+    """
+
+    def setUp(self):
+        self.root = scratch(self, "fn-rcrk-")
+
+    def verified_header(self, node, message_id):
+        with node.session(timeout=30, greeting=(b"200",)) as client:
+            status, body = client.multiline("HDR :fn-verified " + message_id)
+        self.assertEqual(status, b"225 headers follow\r\n")
+        return body
+
+    def post(self, node, message_id, raw=None):
+        with node.session(timeout=30, greeting=(b"200",)) as client:
+            offered, accepted = client.post(raw or article(
+                message_id, headers=("FN-Statement: malformed",)))
+        self.assertTrue(offered.startswith(b"340"), offered)
+        self.assertEqual(accepted, b"240 article received OK\r\n")
+
+    def test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves(self):
+        held = self.root / "held-verdicts.txt"
+        node = Node(self, DEVELOPER, root=self.root / "node",
+                    extra=expiry.reclaim_extra(True),
+                    env={"FN_NATIVE_TEST_HELD_VERDICTS_FILE": held})
+        node.operator("init", "--profile", "development", expiry.GROUP, expect=EXIT_OK)
+        principal = self.root / "principal.bin"
+        principal.write_bytes(bytes([85]) * 32)
+        keysets = (self.root / "author-keys-1", self.root / "author-keys-2")
+        # The image's own libsodium and libfn-mldsa65 through peer keygen, as
+        # NativeRecoveryKeyringCheckpointTests does.
+        for keys in keysets:
+            node.operator("peer", "keygen", keys, expect=EXIT_OK)
+        before, expiring, after = (
+            "<reclaim-before@example.invalid>", expiry.msgid("rk"),
+            "<reclaim-after@example.invalid>")
+        expected = {before: b"0 unverified malformed keyring 1\r\n",
+                    after: b"0 unverified malformed keyring 2\r\n"}
+
+        owner = node.start(timeout=600)
+        try:
+            for generation, keys in enumerate(keysets, 1):
+                node.invoke("hybrid-enroll", node.control, str(generation), principal,
+                            keys / "ed-public.bin", keys / "ml-public.pem", expect=EXIT_OK)
+                if generation == 1:
+                    self.post(node, before)
+                    # The expired article is the record the pass rewrites.
+                    self.post(node, expiring, expiry.article("rk", expiry.GROUP, expiry.PAST))
+                else:
+                    self.post(node, after)
+            node.operator("retention", "expire", expiry.GROUP, "purge", "30", expect=EXIT_OK)
+            for message_id, verdict in expected.items():
+                self.assertEqual(self.verified_header(node, message_id), verdict)
+
+            done = node.operator("store", "reclaim", timeout=1200)
+            self.assertEqual(done.returncode, EXIT_OK,
+                             (done.stdout, done.stderr, owner.stderr.since(0)[-1500:]))
+            self.assertIn(b"installed", done.stdout, done.stdout)
+            deadline = time.monotonic() + 30
+            while (not re.search(rb"RECLAIM installed records=\d+ reclaimed=1 ", owner.stderr.since(0))
+                   and time.monotonic() < deadline):
+                time.sleep(0.25)
+            self.assertRegex(owner.stderr.since(0), rb"RECLAIM installed records=\d+ reclaimed=1 ")
+            # The swapped owner serves the predicted rows' verdicts.
+            swapped = {message_id: self.verified_header(node, message_id)
+                       for message_id in expected}
+        finally:
+            node.stop(expect=None, grace=300)
+
+        # A restart replays the rewritten history through the fold.
+        node.start(timeout=600)
+        try:
+            replayed = {message_id: self.verified_header(node, message_id)
+                        for message_id in expected}
+        finally:
+            node.stop(expect=None, grace=300)
+        self.assertEqual(swapped, replayed)
+        self.assertEqual(swapped, expected)
+        # The owner state the prediction decides: every held row's verdict,
+        # the rewritten tombstone's included, is the restart's.
+        lines = held.read_text().splitlines()
+        after_swap = [l[len("reclaim "):] for l in lines if l.startswith("reclaim ")]
+        reopened = [l[len("open "):] for l in lines if l.startswith("open ")]
+        self.assertEqual(len(after_swap), 1, lines)
+        self.assertGreaterEqual(len(reopened), 2, lines)
+        self.assertIn(expiring.strip("<>"), after_swap[0])
+        self.assertEqual(after_swap[0], reopened[-1],
+                         "the swapped owner's held-row verdicts differ from a restart's")
 
 
 class NativeRecoverySourceMapTests(unittest.TestCase):

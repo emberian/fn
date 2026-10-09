@@ -611,6 +611,19 @@ stop, caught before the first POST instead of at the second."
 (defun fnn-owner-core (name &rest args)
   (apply #'fnn-core-state name args))
 
+(defun fnn-dev-held-verdicts-dump (label)
+  "Developer image only (FN_NATIVE_TEST_HELD_VERDICTS_FILE): append LABEL and
+the owner's held-row verdicts (books fn-owner-held-verdicts) to the file, so a
+test compares the owner a reclaim swap installs with the one a restart opens.
+No served verb reaches it; a production image refuses the selector at start."
+  (let ((path (fnn-developer-selector "FN_NATIVE_TEST_HELD_VERDICTS_FILE")))
+    (when path
+      (let ((verdicts (first (fnn-call 'fn-owner-held-verdicts *the-live-state*))))
+        (with-open-file (out path :direction :output :if-exists :append
+                                  :if-does-not-exist :create)
+          (let ((*print-pretty* nil) (*print-readably* nil))
+            (format out "~a ~s~%" label verdicts)))))))
+
 (defun fnn-owner-refresh-read-octets (service)
   "Install ACL2's read size for the next served read (under the owner mutex:
 the exposure install, and every served step, so a live change of the step
@@ -8685,32 +8698,30 @@ publication).  Answers the reply word."
                  ;; rebuilt capture (KEYSTONES fn-rcw-predict-acc-steps-is-
                  ;; predict, fn-rcw-rebuild-of-the-chunked-capture-is-the-
                  ;; full-open); the chunks' seal payloads, in order.
-                 (destructuring-bind (keyring generation)
-                     (fnn-core 'fn-owner-orcp-keyring s)
-                   (setq base (fnn-owner-gated (service :control)
-                                (first (fnn-call 'fn-arena-count arena))))
-                   (let ((acc3 (fnn-core 'fn-rcw-acc-init configs)) (h3 base) (bad nil)
-                         (payload-chunks nil) (nrows 0))
-                     (fnn-owner-reclaim-walk
-                      records ctx arena service history-source
-                      (lambda (chunk)
-                        (fnn-checkpoint-yield "reclaim-walk" nrows)
-                        (unless bad
-                          (let ((r (fnn-core 'fn-rcw-predict-acc-step acc3 configs chunk
-                                             keyring generation h3)))
-                            (if (eq r :bad)
-                                (setq bad t)
-                              (progn (setq acc3 (first r) h3 (second r))
-                                     (when (third r) (push (third r) payload-chunks))))))
-                        (incf nrows (length chunk))))
-                     (when bad (deferred :unencodable) (return-from pass))
-                     (unless (= nrows count)
-                       (fnn-fault "the rewritten history is not the captured history's length"))
-                     (setq seal-payloads (let ((all nil))
-                                           (dolist (c payload-chunks all)
-                                             (setq all (append c all))))
-                           e (fnn-core 'fn-rcw-acc-finish acc3)
-                           acc3 nil)))
+                 (setq base (fnn-owner-gated (service :control)
+                              (first (fnn-call 'fn-arena-count arena))))
+                 (let ((acc3 (fnn-core 'fn-rcw-acc-init configs)) (h3 base) (bad nil)
+                       (payload-chunks nil) (nrows 0))
+                   (fnn-owner-reclaim-walk
+                    records ctx arena service history-source
+                    (lambda (chunk)
+                      (fnn-checkpoint-yield "reclaim-walk" nrows)
+                      (unless bad
+                        (let ((r (fnn-core 'fn-rcw-predict-acc-step acc3 configs chunk
+                                           h3)))
+                          (if (eq r :bad)
+                              (setq bad t)
+                            (progn (setq acc3 (first r) h3 (second r))
+                                   (when (third r) (push (third r) payload-chunks))))))
+                      (incf nrows (length chunk))))
+                   (when bad (deferred :unencodable) (return-from pass))
+                   (unless (= nrows count)
+                     (fnn-fault "the rewritten history is not the captured history's length"))
+                   (setq seal-payloads (let ((all nil))
+                                         (dolist (c payload-chunks all)
+                                           (setq all (append c all))))
+                         e (fnn-core 'fn-rcw-acc-finish acc3)
+                         acc3 nil))
                  ;; the walks are done: the context freed and the root pin
                  ;; returned before the swap is attempted
                  (fnn-core 'fn-owner-orc-ctx-free ctx)
@@ -8799,7 +8810,8 @@ publication).  Answers the reply word."
                                      ;; only after them, in this quantum
                                      ;; (fn-orrd-a-post-after-the-swap-is-
                                      ;; taken-as-before).
-                                     (fnn-owner-reclaim-barriers store))
+                                     (fnn-owner-reclaim-barriers store)
+                                     (fnn-dev-held-verdicts-dump "reclaim"))
                                    w)))))
                        (case sw
                          (:swap (return))
@@ -9427,6 +9439,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                         ;; Recovery is done: from here the owner serves.
                         (fnn-owner-release-recovery-garbage)
                         (fnn-owner-service-nursery)
+                        (fnn-dev-held-verdicts-dump "open")
                         (fnn-out "LISTENING ~d" bound-port)
                         ;; PRF-162: the implicit-TLS listener ACL2 offered
                         ;; (fn-native-operator-result-run-implicit-tls-port),

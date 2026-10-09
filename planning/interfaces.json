@@ -4,7 +4,7 @@
   "coverage": {
     "declared": 1882,
     "declared_and_dispatched": 1833,
-    "guard_verified": 1133,
+    "guard_verified": 1134,
     "with_keystone": 311,
     "with_fold_keystone_only": 3,
     "raw_dispatched": 20
@@ -24322,6 +24322,25 @@
       "applied_directly_in": []
     },
     {
+      "name": "fn-owner-held-verdicts",
+      "subsystem": "owner",
+      "declared_in": "host/owner-held-verdicts-host.lisp",
+      "class": "common-lisp-compliant",
+      "kinds": [],
+      "exempt": {},
+      "keystones": [],
+      "extraction": null,
+      "direct": null,
+      "delegates": null,
+      "raw_with": [],
+      "raw_with_carried": null,
+      "raw_guarded": null,
+      "dispatched_from": [
+        "host/native/owner.lisp"
+      ],
+      "applied_directly_in": []
+    },
+    {
       "name": "fn-owner-hroot-abandon",
       "subsystem": "owner",
       "declared_in": "host/history-root-host.lisp",
@@ -25563,25 +25582,6 @@
     },
     {
       "name": "fn-owner-orcp-key",
-      "subsystem": "owner",
-      "declared_in": "host/owner-host.lisp",
-      "class": "program",
-      "kinds": [],
-      "exempt": {},
-      "keystones": [],
-      "extraction": null,
-      "direct": null,
-      "delegates": null,
-      "raw_with": [],
-      "raw_with_carried": null,
-      "raw_guarded": null,
-      "dispatched_from": [
-        "host/native/owner.lisp"
-      ],
-      "applied_directly_in": []
-    },
-    {
-      "name": "fn-owner-orcp-keyring",
       "subsystem": "owner",
       "declared_in": "host/owner-host.lisp",
       "class": "program",

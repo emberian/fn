@@ -16280,12 +16280,64 @@
    "statement_digest": "1e2113a692f097a2f90ec77c7e647a0c905f020140e40eaa18a2d9e5fcfed4bc"
   },
   {
+   "book_digest": "a6961ba948462e0e0c925385c5680e604bc26e2fd6c48803f67ced3452d82b2d",
+   "bounds": [],
+   "claim_digest": "c9568cf4fd23199717ce5e09d7b001508df7cae802bbb6f01a19b92d904065e3",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orcs-predict-rows-at-is-the-fold",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-checkpoint-fold-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 2
+   },
+   "subject": "fn-orcs-predict-rows-at",
+   "witness": "executable"
+  },
+  {
    "book": "books/owner-reclaim-seal.lisp",
-   "class": "hand",
+   "book_digest": "14344f5bc45c1ec08f168e2ea3ba78b9c18fe8b8ded7c06e08b5285cf112ab03",
+   "bounds": [],
+   "claim_digest": "b514c91e180fda71d89ee1597c561d2495403baa59b5f677e0d8661827af14ec",
+   "class": "generated",
    "critical": "ownership-reclamation",
+   "mutations": "edits:1",
    "name": "fn-orcs-predict-seal-refines-intern",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reclaim-seal-tests.lisp",
    "registry": true,
-   "statement_digest": "4ba070ae0ff312f8264177b3d94a93956c69685145536f838c3223d0e7174a5c"
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "statement_digest": "a82de7574c725d183ef586b4e1716c1bc16fee08b0c5d6d928c611f7315963d9",
+   "subject": "fn-orcs-predict",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "14344f5bc45c1ec08f168e2ea3ba78b9c18fe8b8ded7c06e08b5285cf112ab03",
+   "bounds": [],
+   "claim_digest": "af701b86a5cfb6c94c63ec10ca7db9349cb91b728196bc907acd9433832f92d2",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orcs-seal-is-the-intern",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-reclaim-seal-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-orcp-intern-rows",
+   "witness": "executable"
   },
   {
    "book_digest": "89b4211b93b7cc72d172cbc3a8368902b108ef0f1e0675247c3552e8c827409f",
@@ -21722,12 +21774,12 @@
   },
   {
    "book": "books/reclaim-chunked-seal.lisp",
-   "book_digest": "799997a232d222d4d5ae9dd83b524d12f5117d849c426d34ae2067f924a3a050",
+   "book_digest": "c04ad23eb1896397179f43fc93997331b03392f22a172f8fee5df19d838e57e2",
    "bounds": [],
-   "claim_digest": "fb12477963d5806f0f995a2b79bba939ae53d4a9b12ed52721241e8966ce3b61",
+   "claim_digest": "49d88090953155e85bec12d3bdf80e4384b49f85dbd4e23b3d3669d1d2131d1e",
    "class": "generated",
    "critical": "ownership-reclamation",
-   "mutations": "edits:1",
+   "mutations": "edits:2",
    "name": "fn-rcw-predict-acc-steps-is-predict",
    "owed_met": null,
    "owner_book": "tests/acl2/reclaim-chunked-seal-tests.lisp",
@@ -21738,15 +21790,15 @@
     "logical": 1,
     "reachable": 0
    },
-   "statement_digest": "22e66c262fa711394762596bb8f51e0fe16501d3aca8ff5d9fd3344bb9d1328f",
+   "statement_digest": "92a5f134c0fe159141f84c24f4c5454236f47fcf3d2c62ed963c3937c17f6a60",
    "subject": "fn-rcw-predict-acc-steps",
    "witness": "executable"
   },
   {
    "book": "books/reclaim-chunked-seal.lisp",
-   "book_digest": "799997a232d222d4d5ae9dd83b524d12f5117d849c426d34ae2067f924a3a050",
+   "book_digest": "c04ad23eb1896397179f43fc93997331b03392f22a172f8fee5df19d838e57e2",
    "bounds": [],
-   "claim_digest": "69f0a020273e92573a36c15e382ca28be8522e8eb21374b8b1859ff07f95a45a",
+   "claim_digest": "cb8035cdbfdb796cad688984d324992feb92ee938d5e2193f600a8241b9fb372",
    "class": "generated",
    "critical": "ownership-reclamation",
    "mutations": "edits:1",
@@ -21760,13 +21812,13 @@
     "logical": 1,
     "reachable": 0
    },
-   "statement_digest": "4a603cf6dc7aadf99ed3929f7a4c161bee8092792708dc1cd37f6f3bc9fbb472",
+   "statement_digest": "cb7200c2c4b2cdf2cc253fdc2d69398571a7f726d93ce09cf30173af5160750e",
    "subject": "fn-owner-orcp-rebuild",
    "witness": "executable"
   },
   {
    "book": "books/reclaim-chunked-seal.lisp",
-   "book_digest": "799997a232d222d4d5ae9dd83b524d12f5117d849c426d34ae2067f924a3a050",
+   "book_digest": "c04ad23eb1896397179f43fc93997331b03392f22a172f8fee5df19d838e57e2",
    "bounds": [],
    "claim_digest": "3776c121cbf66b36d9e05ddcfb1315054b122f8fce538ffaa75e116398fb1c24",
    "class": "generated",
@@ -24202,7 +24254,7 @@
   },
   {
    "book": "books/store-checkpoint-fold.lisp",
-   "book_digest": "5dba7ab1ef5d6aca25dfd50fb6dd659cf48bc742eb18aa59ca626f19c0ee902f",
+   "book_digest": "a6961ba948462e0e0c925385c5680e604bc26e2fd6c48803f67ced3452d82b2d",
    "bounds": [],
    "claim_digest": "64e014adbc0503762c716c25096ab139976f2820a4dbdb3e231ba13e70b2c8ba",
    "class": "generated",
@@ -24232,7 +24284,7 @@
   },
   {
    "book": "books/store-checkpoint-arena-writer.lisp",
-   "book_digest": "5dba7ab1ef5d6aca25dfd50fb6dd659cf48bc742eb18aa59ca626f19c0ee902f",
+   "book_digest": "a6961ba948462e0e0c925385c5680e604bc26e2fd6c48803f67ced3452d82b2d",
    "bounds": [],
    "claim_digest": "5fe573196377bfee83d413e3116e5842140831c472ab631868f7f7cca950619d",
    "class": "generated",
@@ -24262,7 +24314,7 @@
   },
   {
    "book": "books/store-checkpoint-arena.lisp",
-   "book_digest": "5dba7ab1ef5d6aca25dfd50fb6dd659cf48bc742eb18aa59ca626f19c0ee902f",
+   "book_digest": "a6961ba948462e0e0c925385c5680e604bc26e2fd6c48803f67ced3452d82b2d",
    "bounds": [],
    "claim_digest": "be6b6bafef1b6f31616bde12b561de8a3726ae405e56104bfe6fc9c160056fb9",
    "class": "generated",
