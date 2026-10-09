@@ -34360,6 +34360,7 @@
       "raw_with_carried": null,
       "raw_guarded": null,
       "dispatched_from": [
+        "host/native/heap.lisp",
         "host/native/io.lisp"
       ],
       "applied_directly_in": []
