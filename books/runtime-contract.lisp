@@ -1720,19 +1720,11 @@
 ; =============================================================================
 ; STATEMENTS NOT YET PROVED (each moves above, unchanged, when proved)
 ;
-;; ; =============================================================================
-;; ; STATEMENTS (for review; no proof attempted yet)
-;;
-;; ; T1. The initial state satisfies the invariant.
-;; (defthm fn-rtc-init-establishes-invp
-;;   (implies (fn-rtc-configp cfg)
-;;            (fn-rtc-invp (mv-nth 0 (fn-rtc-init cfg)))))
-;;
-;; ; T2. Every step preserves it, for every event and every quantum.
-;; (defthm fn-rtc-step-preserves-invp
-;;   (implies (fn-rtc-invp s)
-;;            (fn-rtc-invp (mv-nth 0 (fn-rtc-step s e q)))))
-;;
+; T1 `fn-rtc-init-establishes-invp' and T2 `fn-rtc-step-preserves-invp' are
+; proved, as stated, in books/runtime-contract-invariant.lisp (over
+; runtime-contract-invariant-ops).  What remains here is the named host
+; assumption.
+;
 ;; ; A-HOST-COMPLETES, the named assumption (an encapsulate in
 ;; ; books/assumptions-runtime.lisp, statement here): the host delivers exactly
 ;; ; one completion for every submitted action.  Over a host trace -- the actions
