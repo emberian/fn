@@ -390,3 +390,7 @@ class ProductionCommitLogTests(CommitLogMixin, unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+# Critical completion delivery: fnn-owner-deliver reaches fn-own-outcome
+# through fn-own-step after consuming each completion. Concurrent served
+# POSTs exercise the consumed connection's 240 reply and durable reread.

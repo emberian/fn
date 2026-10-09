@@ -1019,7 +1019,7 @@
 
 ; KEYSTONE (the buffer comparison).  On the buffer's logical value the
 ; buffer's same-article test is the list's; the host's buffer verdict
-; (fn-pidx-existing-action) reaches it through fn-rclb-same-articlep.
+; (fn-pidx-existing-action-cat) reaches it through fn-rclb-same-articlep.
 (defthm fn-pbb-same-articlep-is-pb-same-articlep
   (implies (true-listp fn-octets)
            (equal (fn-pbb-same-articlep msgid fn-octets held-payload)
@@ -1035,9 +1035,9 @@
 
 ; The buffer verdict over a whole store (fn-pbb-existing-action) was a
 ; pre-flip twin comparing with the held handle and was retired (PKT-860):
-; the host's buffer verdict is books/post-identity-index.lisp
-; fn-pidx-existing-action, equal to the Store's entry fn-store-existing-action
-; (KEYSTONE fn-pidx-existing-action-is-store-existing-action) through the
+; the host's buffer verdict is books/post-identity-catalog.lisp
+; fn-pidx-existing-action-cat, equal to the Store's entry fn-store-existing-action
+; (KEYSTONE fn-pidx-existing-action-cat-is-store-existing-action) through the
 ; comparison above (fn-pbb-same-articlep-is-pb-same-articlep).
 
 ; The buffer's logical value is an octet list in the acceptance model's

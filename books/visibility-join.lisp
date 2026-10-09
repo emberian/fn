@@ -17,10 +17,10 @@
 ; The subject is what the host calls.  host/native/owner.lisp
 ; `fnn-owner-attempt' asks host/owner-host.lisp
 ; `fn-owner-existing-action-buffer', whose decision is
-; `fn-pidx-existing-action', which is `fn-store-existing-action'
+; `fn-pidx-existing-action-cat', which is `fn-store-existing-action'
 ; (books/store-intern.lisp) over the buffer's value
-; (`fn-pidx-existing-action-is-store-existing-action',
-; books/post-identity-index.lisp), and returns `:duplicate' / `:conflict' as
+; (`fn-pidx-existing-action-cat-is-store-existing-action',
+; books/post-identity-catalog.lisp), and returns `:duplicate' / `:conflict' as
 ; its word before `fnn-advance-frontier' or `fn-owner-prepare-buffer' run,
 ; so no transaction number and no article number is allocated.  The
 ; carried-signature ingress (`fnn-owner-attempt-transit') asks

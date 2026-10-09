@@ -3,7 +3,6 @@
 (in-package "ACL2")
 (include-book "nntp-index-runtime")
 (include-book "protocol-table") ; reply texts: (fn-proto-text ROW KEY)
-(include-book "msgid-index")
 (include-book "group-number-index")
 
 ;; Rules withdrawn at their source that this book's proofs use
@@ -11,7 +10,6 @@
 (local (in-theory (enable (:definition fn-gnix-add)
                           (:definition fn-gnix-build)
                           (:definition fn-gnix-key)
-                          (:definition fn-midx-put-chars)
                           (:definition fn-nntp-index-entry-available)
                           (:definition fn-nntp-index-msgid-okp))))
 
@@ -249,88 +247,53 @@
 ; The pinned dispatcher receives this tagged pair through its existing index
 ; argument.  The middle POST/peer/auth layers make no index decision and keep
 ; one transition definition each.  The owner and served records still carry
-; the trie and buckets as separate immutable fields.
-;; The fourth slot is the control pin (control-c3e, books/control-served.lisp
+; the buckets as a separate immutable field.
+;; The third slot is the control pin (control-c3e, books/control-served.lisp
 ;; `fn-ctl-pin'): the view's withdrawn list and its withdrawal records, which
 ;; the dispatcher reads for `423 withdrawn', `430 withdrawn' and
 ;; `HDR :fn-control'.  A pin without one carries nil.
-(defun fn-gidx-pin-with-control (trie buckets control)
+(defun fn-gidx-pin-with-control (buckets control)
   (declare (xargs :guard t))
-  (list :fn-group-pin trie buckets control))
+  (list :fn-group-pin buckets control))
 
-(defun fn-gidx-pin (trie buckets)
+(defun fn-gidx-pin (buckets)
   (declare (xargs :guard t))
-  (fn-gidx-pin-with-control trie buckets nil))
+  (fn-gidx-pin-with-control buckets nil))
 
 (defun fn-gidx-pinp (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 4)
+  (and (true-listp x) (equal (len x) 3)
        (equal (fn-ag-car x) :fn-group-pin)))
 
 (defun fn-gidx-pin-control (x)
   (declare (xargs :guard t))
   (if (fn-gidx-pinp x)
-      (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))
+      (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))
     nil))
-
-(defun fn-gidx-pin-trie (x)
-  (declare (xargs :guard t))
-  (if (fn-gidx-pinp x) (fn-ag-car (fn-ag-cdr x)) x))
 
 (defun fn-gidx-pin-buckets (x)
   (declare (xargs :guard t))
   (if (fn-gidx-pinp x)
-      (fn-ag-car (fn-ag-cdr (fn-ag-cdr x)))
+      (fn-ag-car (fn-ag-cdr x))
     nil))
 
-(defthm fn-gidx-alistp-of-midx-branch-put
-  (implies (alistp branches)
-           (alistp (fn-midx-branch-put key value branches)))
-  :hints (("Goal" :induct (fn-midx-branch-put key value branches)
-           :in-theory (enable fn-midx-branch-put))))
-
-(defthm fn-gidx-alistp-of-midx-put-chars
-  (implies (alistp trie)
-           (alistp (fn-midx-put-chars characters article trie)))
-  :hints (("Goal" :induct (fn-midx-put-chars characters article trie)
-           :in-theory (enable fn-midx-put-chars))))
-
-(defthm fn-gidx-alistp-of-midx-build
-  (alistp (fn-midx-build articles))
-  :hints (("Goal" :induct (fn-midx-build articles)
-           :in-theory (enable fn-midx-build fn-midx-extend))))
-
-(defthm fn-gidx-alist-is-not-pin
-  (implies (alistp x) (not (fn-gidx-pinp x)))
-  :hints (("Goal" :in-theory (enable fn-gidx-pinp alistp))))
-
-(defthm fn-gidx-midx-build-not-pin
-  (not (fn-gidx-pinp (fn-midx-build articles)))
-  :hints (("Goal" :use ((:instance fn-gidx-alist-is-not-pin
-                                   (x (fn-midx-build articles))))
-           :in-theory (disable fn-gidx-pinp fn-midx-build))))
-
 (defthm fn-gidx-pinp-of-pin
-  (fn-gidx-pinp (fn-gidx-pin trie buckets)))
-(defthm fn-gidx-pin-trie-of-pin
-  (equal (fn-gidx-pin-trie (fn-gidx-pin trie buckets)) trie))
+  (fn-gidx-pinp (fn-gidx-pin buckets)))
 (defthm fn-gidx-pin-buckets-of-pin
-  (equal (fn-gidx-pin-buckets (fn-gidx-pin trie buckets)) buckets))
+  (equal (fn-gidx-pin-buckets (fn-gidx-pin buckets)) buckets))
 (defthm fn-gidx-pin-control-of-pin
-  (equal (fn-gidx-pin-control (fn-gidx-pin trie buckets)) nil))
+  (equal (fn-gidx-pin-control (fn-gidx-pin buckets)) nil))
 (defthm fn-gidx-pinp-of-pin-with-control
-  (fn-gidx-pinp (fn-gidx-pin-with-control trie buckets control)))
-(defthm fn-gidx-pin-trie-of-pin-with-control
-  (equal (fn-gidx-pin-trie (fn-gidx-pin-with-control trie buckets control)) trie))
+  (fn-gidx-pinp (fn-gidx-pin-with-control buckets control)))
 (defthm fn-gidx-pin-buckets-of-pin-with-control
-  (equal (fn-gidx-pin-buckets (fn-gidx-pin-with-control trie buckets control))
+  (equal (fn-gidx-pin-buckets (fn-gidx-pin-with-control buckets control))
          buckets))
 (defthm fn-gidx-pin-control-of-pin-with-control
-  (equal (fn-gidx-pin-control (fn-gidx-pin-with-control trie buckets control))
+  (equal (fn-gidx-pin-control (fn-gidx-pin-with-control buckets control))
          control))
 (defthm fn-gidx-pin-with-control-shape
-  (and (consp (fn-gidx-pin-with-control trie buckets control))
-       (true-listp (fn-gidx-pin-with-control trie buckets control))))
+  (and (consp (fn-gidx-pin-with-control buckets control))
+       (true-listp (fn-gidx-pin-with-control buckets control))))
 (in-theory (disable fn-gidx-pin-with-control))
 
 ; Proof-side cache relation.  Served transitions carry this relation; no

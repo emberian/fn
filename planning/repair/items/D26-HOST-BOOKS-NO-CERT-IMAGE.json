@@ -6,12 +6,14 @@
  "id": "D26-HOST-BOOKS-NO-CERT-IMAGE",
  "notes": [
   "2026-10-08 host-cert-images (557594c23 tried, then reverted): host added to DIRECTORIES + multi-root image host-attached (payload-arena-attach, history-paged-attach, catalog-paged-attach, catalog-may-seal; admitted by the attach rule, 32 host books, build 12.0-13.4 s, 398 MB core, store-events 4.1-4.3 s also built). Same tree, same hbox, alternating, certify-book wall of host/owner-host: plain 129.9 / 115.5 / 127.1 s, with image 136.3 / 108.0 s (hbox load 13-16, not the 16.2 s of train 27; certify-20261008T050334Z-2011651 plain 97.5 s, certify-20261008T051318Z-2102258 plain 85.2 s). The image makes the 7 held includes 7-8 s cheaper (payload-arena-attach 1.97 -> 0.37, catalog-may-seal 3.15 -> 1.48) but every later include is slower (rest of 165 include forms 108 s -> 123 s), net ~0. Also: certify_books schedules the longest book first, and the Runner never waits for a build, so owner-host (longest) started plain in a normal run; only later host books would see an image.",
-  "Even a held root's redundant include costs 0.4-1.5 s; the cost scales with something other than the loaded closure. Leave host/ out of DIRECTORIES until include cost per form is understood."
+  "Even a held root's redundant include costs 0.4-1.5 s; the cost scales with something other than the loaded closure. Leave host/ out of DIRECTORIES until include cost per form is understood.",
+  "2026-10-08 p-teeth-s11: persvati two-job run run-20261008T212932Z-823f (certify-20261008T213013Z-65395) measured host/owner-host 25.5 s, host/store-node-host 16.3 s, host/store-host 11.0 s. All touched S11 test books were below 5.4 s after the arena checker hint fix; this inherited host include-cost defect remains open.",
+  "p-teeth-s11 round 2, run-20261008T220615Z-5cb9 at two jobs: host/owner-host 26.502 s, host/consumer-remote-host 10.930 s, host/history-owner-view-host 10.575 s, host/admission-preparation-host 10.567 s. No host implementation changed; owner-host has comment updates. Costliest owner-host event was 0.01 s; the build remains dominated by loading its certified includes."
  ],
  "owner": "deputy-C",
  "severity": "medium",
  "source": "C7 attribution of certify-20261008T021042Z-3787838 (train 27 first certify), host--owner-host.certify.log",
  "state": "open",
  "title": "host/ books pay 14 of 16 s in include-book; a certification image does not remove it (measured), so the cost is per include form",
- "updated": "2026-10-08T05:40:00Z"
+ "updated": "2026-10-08T22:12:53Z"
 }

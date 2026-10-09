@@ -49,13 +49,6 @@
    ],
    "count": 1,
    "reason": "not generator-shaped (Deputy S 2026-10-07): fn-arena$x is a controller nesting fn-arena-paged with extent, stage and file arrays (like history-paged)"
-  },
-  "books/payload-arena.lisp": {
-   "kinds": [
-    "record-stobj"
-   ],
-   "count": 1,
-   "reason": "vocabulary-blocked until lane s-vocab: inner-octet read, stobj-range seal (S-DRAIN-MAP FITS AFTER)"
   }
  }
 }

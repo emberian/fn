@@ -138,10 +138,9 @@
 ;; fn-proto-command-dispatch-term; lane defprotocol-2 deleted the hand-written
 ;; copy, whose expansion it reproduces byte for byte): the reference
 ;; fn-nntp-command and fn-nntp-command-pinned and the pinned reference's
-;; concrete twins fn-pix-command-pinned (books/peer-offer-indexed.lisp) and
-;; fn-scr-command (books/served-catalog-chain.lisp) are each its expansion
-;; around their own archive dispatcher call, so the twins' -is- theorems
-;; (which unfold both sides) keep their proofs.  A :pinned row's :arms (today
+;; catalog twin fn-scr-command (books/served-catalog-chain.lisp) are each its
+;; expansion around their own archive dispatcher call, so the twin's -is-
+;; theorems (which unfold both sides) keep their proofs.  A :pinned row's :arms (today
 ;; XFNCATCHUP, PRF-325) is in the pinned expansion.  books/protocol-dispatch.lisp
 ;; proves the table's per-row reading of the whole pinned dispatcher equal to
 ;; fn-nntp-command-pinned.
@@ -199,9 +198,9 @@
 (in-theory (disable fn-nntp-vocabulary))
 
 ; Served connections carry an immutable accepted archive, its historical
-; verdict projection and the corresponding Message-ID trie.  Only the four
-; Message-ID retrieval spellings use the trie here; all other commands retain
-; the established archive dispatcher except the pinned :fn-verified HDR item.
+; verdict projection and the group buckets.  The Message-ID retrievals read the
+; archive's article list; all other commands retain the established archive
+; dispatcher except the pinned :fn-verified HDR item.
 (include-book "nntp-verdict")
 (include-book "nntp-range-indexed")
 (include-book "nntp-xref")
@@ -262,7 +261,7 @@
 (in-theory (disable fn-gidx-counts-line fn-gidx-counts-lines
                     fn-gidx-list-counts-command))
 
-; Withdrawal answers (packet C3, control-c3e).  The group pin's fourth slot
+; Withdrawal answers (packet C3, control-c3e).  The group pin's third slot
 ; carries the control pin of the view the connection is pinned to
 ; (`fn-ctl-pin': its withdrawn list W and withdrawal records WS,
 ; books/control-served.lisp).  A number or Message-ID the pinned archive does
@@ -272,7 +271,7 @@
 ; states the withdrawing article's status (design 2026-09-25 section 2.5).
 ; Cost: one walk of W per retrieval by number or Message-ID (W holds only
 ; withdrawn articles), then the archive scan the retrieval already performs
-; or one trie lookup; HDR :fn-control is two lookups for the article, two
+; or one Message-ID lookup; HDR :fn-control is two lookups for the article, two
 ; for its target, and one walk of WS.  books/nntp-control.lisp states the
 ; arms over the kernel.
 (include-book "control-served")
@@ -298,13 +297,13 @@
                 (not (consp (fn-nntp-find-group-number
                              group number (fn-state-articles archive)))))))))
 
-(defun fn-nntp-msgid-withdrawn-p (index token)
+(defun fn-nntp-msgid-withdrawn-p (archive index token)
   (declare (xargs :guard t))
   (and (fn-octet-listp token)
        (fn-ctl-msgid-withdrawn (fn-nntp-token-string token)
                                (fn-ctl-pin-withdrawn (fn-gidx-pin-control index)))
-       (not (consp (fn-midx-lookup (fn-nntp-token-string token)
-                                   (fn-gidx-pin-trie index))))
+       (not (consp (fn-find-article (fn-nntp-token-string token)
+                                    (fn-state-articles archive))))
        t))
 
 (defun fn-nntp-withdrawn-reply (session msgidp)
@@ -334,17 +333,16 @@
            (fn-nntp-message-id-tokenp (cadr args))
            (fn-octet-listp (cadr args)))
       (let* ((control (fn-gidx-pin-control index))
-             (trie (fn-gidx-pin-trie index))
              (visible (fn-state-articles archive))
              (withdrawn (fn-ctl-pin-withdrawn control))
-             (c (fn-ctl-served-held (fn-nntp-token-string (cadr args))
-                                    trie visible withdrawn)))
+             (c (fn-ctl-find-held (fn-nntp-token-string (cadr args))
+                                  visible withdrawn)))
         (if (not (consp c))
             (fn-nntp-single session (fn-proto-text "HDR" :no-msgid))
           (let* ((cbytes (fn-nntp-article-bytes c fn-arena))
                  (item (fn-nntp-string-octets
                         (fn-ctl-control-item
-                         (fn-ctl-served-status c cbytes trie visible withdrawn
+                         (fn-ctl-control-status c cbytes visible withdrawn
                                                (fn-ctl-pin-ws control) verdicts)
                          (fn-ctl-target-octets cbytes)))))
             (if (fn-nntp-control-cleanp item)
@@ -354,17 +352,12 @@
               (fn-nntp-single session (fn-proto-text "HDR" :no-control-status))))))
     (fn-nntp-single session (fn-proto-text "HDR" :syntax))))
 
-;; The pinned dispatcher's arms, ONE text (lane host-lints): the reference
-;; fn-nntp-archive-command-pinned below and its guard-verified twin
-;; fn-pix-archive-command-pinned (books/peer-offer-indexed.lisp) are this
-;; expansion, differing only in the Message-ID retrieval they call, so an arm
-;; added here is in both and fn-pix-archive-command-pinned-is-archive-command-
-;; pinned keeps its proof (both sides unfold to the same case split).  The
-;; caller's formals are SESSION ARCHIVE INDEX VERDICTS ENV KEYWORD ARGS
-;; FN-ARENA (the expansion names them).
-(defmacro fn-nntp-archive-pinned-arms (msgid-retrieval)
-  ;; R3 (PRF-206): the Xref arms first (books/nntp-xref.lisp).
-  `(let ((xref (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
+;; The pinned dispatcher's arms.  The caller's formals are SESSION ARCHIVE INDEX
+;; VERDICTS ENV KEYWORD ARGS FN-ARENA.
+(defun fn-nntp-archive-command-pinned
+    (session archive index verdicts env keyword args fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((xref (fn-nntp-xref-reply session archive index env keyword args fn-arena)))
     (if xref xref
       (cond
        ((and (fn-nntp-keywordp keyword "LIST")
@@ -388,7 +381,7 @@
                  (fn-nntp-keywordp keyword "STAT"))
              (consp args) (null (cdr args))
              (fn-nntp-message-id-tokenp (car args))
-             (fn-nntp-msgid-withdrawn-p index (car args)))
+             (fn-nntp-msgid-withdrawn-p archive index (car args)))
         (fn-nntp-withdrawn-reply session t))
        ;; PRF-243: the served compatibility arms (books/nntp-reader-compat.lisp),
        ;; after the withdrawn arms so a withdrawn article stays `withdrawn'.
@@ -400,8 +393,8 @@
                  (fn-nntp-keywordp keyword "STAT"))
              (consp args) (null (cdr args))
              (fn-nntp-message-id-tokenp (car args)))
-        (,msgid-retrieval
-         session archive (fn-gidx-pin-trie index)
+        (fn-nntp-msgid-retrieval
+         session archive
          (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
                ((fn-nntp-keywordp keyword "HEAD") :head)
                ((fn-nntp-keywordp keyword "BODY") :body)
@@ -417,7 +410,7 @@
              (consp args) (null (cdr args))
              (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
         (fn-nntp-over-range-indexed
-         session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
+         session (fn-gidx-pin-buckets index) (fn-state-articles archive)
          (car args) (fn-nntp-keywordp keyword "XOVER") fn-arena))
        ((and (fn-nntp-keywordp keyword "HDR")
              (consp args)
@@ -432,11 +425,6 @@
              (fn-nntp-keywordp (car args) ":FN-ENROLLMENT"))
         (fn-nntp-enrollment-hdr-response session archive index verdicts args))
        (t (fn-nntp-archive-command session archive env keyword args fn-arena))))))
-
-(defun fn-nntp-archive-command-pinned
-    (session archive index verdicts env keyword args fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (fn-nntp-archive-pinned-arms fn-nntp-msgid-retrieval-indexed))
 
 (defun fn-nntp-command-pinned (session archive index verdicts env tokens fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -474,11 +462,11 @@
           (fn-nntp-control-hdr-response session archive index verdicts args fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response)
-                                  (fn-ctl-control-item fn-ctl-served-status
-                                   fn-ctl-served-held fn-nntp-string-octets
+                                  (fn-ctl-control-item fn-ctl-control-status
+                                   fn-ctl-find-held fn-nntp-string-octets
                                    fn-nntp-control-cleanp fn-nntp-hdr-line
                                    fn-nntp-decimal-field fn-nntp-message-id-tokenp
-                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-gidx-pin-control
                                    fn-ctl-pin-withdrawn fn-ctl-pin-ws
                                    fn-nntp-token-string fn-ctl-target-octets
                                    fn-octet-listp)))))

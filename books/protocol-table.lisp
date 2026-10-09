@@ -375,7 +375,7 @@
     else))
 
 ;; The reader dispatchers' command layer (fn-nntp-command,
-;; fn-nntp-command-pinned, fn-pix-command-pinned, fn-scr-command): the
+;; fn-nntp-command-pinned, fn-scr-command): the
 ;; syntax pseudo-row, then with PINNED the :pinned rows, then the
 ;; session/archive split around the caller's ARCHIVE-CALL.  The expansion
 ;; names the caller's formals SESSION, ENV and TOKENS (and ARCHIVE, INDEX
@@ -577,7 +577,7 @@
   ("ARTICLE"
    :rfc "RFC 3977 6.2.1" :dispatch :archive
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
-   :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
+   :model (fn-nntp-retrieval fn-nntp-msgid-retrieval fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref (fn-rcompat-retrieval)
    :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("any" fn-rcompat-retrieval-cat))
    :arms (:archive
@@ -585,13 +585,13 @@
                   (fn-nntp-number-withdrawn-p session archive index (car args)))
              (fn-nntp-withdrawn-reply session nil))
            ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args))
-                  (fn-nntp-msgid-withdrawn-p index (car args)))
+                  (fn-nntp-msgid-withdrawn-p archive index (car args)))
              (fn-nntp-withdrawn-reply session t))
            ((fn-rcompat-reply session archive index env keyword args fn-arena)
              (fn-rcompat-reply session archive index env keyword args fn-arena))
            ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
-             (fn-nntp-msgid-retrieval-indexed
-              session archive (fn-gidx-pin-trie index) :article (car args) fn-arena))
+             (fn-nntp-msgid-retrieval
+              session archive :article (car args) fn-arena))
            (t (fn-nntp-retrieval session archive :article args fn-arena)))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
@@ -615,7 +615,7 @@
   ("HEAD"
    :rfc "RFC 3977 6.2.2" :dispatch :archive
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
-   :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
+   :model (fn-nntp-retrieval fn-nntp-msgid-retrieval fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref (fn-rcompat-retrieval)
    :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("any" fn-rcompat-retrieval-cat))
    :arms (:archive
@@ -623,13 +623,13 @@
                   (fn-nntp-number-withdrawn-p session archive index (car args)))
              (fn-nntp-withdrawn-reply session nil))
            ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args))
-                  (fn-nntp-msgid-withdrawn-p index (car args)))
+                  (fn-nntp-msgid-withdrawn-p archive index (car args)))
              (fn-nntp-withdrawn-reply session t))
            ((fn-rcompat-reply session archive index env keyword args fn-arena)
              (fn-rcompat-reply session archive index env keyword args fn-arena))
            ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
-             (fn-nntp-msgid-retrieval-indexed
-              session archive (fn-gidx-pin-trie index) :head (car args) fn-arena))
+             (fn-nntp-msgid-retrieval
+              session archive :head (car args) fn-arena))
            (t (fn-nntp-retrieval session archive :head args fn-arena)))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
@@ -653,7 +653,7 @@
   ("BODY"
    :rfc "RFC 3977 6.2.3" :dispatch :archive
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
-   :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
+   :model (fn-nntp-retrieval fn-nntp-msgid-retrieval fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref nil
    :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-current-retrieval-cat))
    :arms (:archive
@@ -661,11 +661,11 @@
                   (fn-nntp-number-withdrawn-p session archive index (car args)))
              (fn-nntp-withdrawn-reply session nil))
            ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args))
-                  (fn-nntp-msgid-withdrawn-p index (car args)))
+                  (fn-nntp-msgid-withdrawn-p archive index (car args)))
              (fn-nntp-withdrawn-reply session t))
            ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
-             (fn-nntp-msgid-retrieval-indexed
-              session archive (fn-gidx-pin-trie index) :body (car args) fn-arena))
+             (fn-nntp-msgid-retrieval
+              session archive :body (car args) fn-arena))
            (t (fn-nntp-retrieval session archive :body args fn-arena)))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
@@ -689,7 +689,7 @@
   ("STAT"
    :rfc "RFC 3977 6.2.4" :dispatch :archive
    :parser (fn-nntp-number-tokenp fn-nntp-message-id-tokenp)
-   :model (fn-nntp-retrieval fn-nntp-msgid-retrieval-indexed fn-nntp-withdrawn-reply)
+   :model (fn-nntp-retrieval fn-nntp-msgid-retrieval fn-nntp-withdrawn-reply)
    :cat (fn-nntp-number-retrieval-cat fn-nntp-msgid-retrieval-cat) :xref nil
    :live (("withdrawn-number" fn-nntp-number-withdrawn-p-cat) ("withdrawn" fn-nntp-withdrawn-reply) ("msgid" fn-nntp-msgid-retrieval-cat) ("number" fn-nntp-number-retrieval-cat) ("current" fn-nntp-current-retrieval-cat))
    :arms (:archive
@@ -697,11 +697,11 @@
                   (fn-nntp-number-withdrawn-p session archive index (car args)))
              (fn-nntp-withdrawn-reply session nil))
            ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args))
-                  (fn-nntp-msgid-withdrawn-p index (car args)))
+                  (fn-nntp-msgid-withdrawn-p archive index (car args)))
              (fn-nntp-withdrawn-reply session t))
            ((and (consp args) (null (cdr args)) (fn-nntp-message-id-tokenp (car args)))
-             (fn-nntp-msgid-retrieval-indexed
-              session archive (fn-gidx-pin-trie index) :stat (car args) fn-arena))
+             (fn-nntp-msgid-retrieval
+              session archive :stat (car args) fn-arena))
            (t (fn-nntp-retrieval session archive :stat args fn-arena)))
    :framing :command
    :fuzz ((:split (2/5 (:msgid)) (4/5 (:pool :ranges))))
@@ -733,7 +733,7 @@
            ((and (fn-gidx-pinp index) (consp args) (null (cdr args))
                   (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
              (fn-nntp-over-range-indexed
-              session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
+              session (fn-gidx-pin-buckets index) (fn-state-articles archive)
               (car args) nil fn-arena))
            (t (fn-nntp-over-response session archive args fn-arena)))
    :framing :command
@@ -764,7 +764,7 @@
            ((and (fn-gidx-pinp index) (consp args) (null (cdr args))
                   (fn-nntp-range-okp (fn-nntp-parse-range (car args))))
              (fn-nntp-over-range-indexed
-              session (fn-gidx-pin-buckets index) (fn-gidx-pin-trie index)
+              session (fn-gidx-pin-buckets index) (fn-state-articles archive)
               (car args) t fn-arena))
            (t (fn-nntp-xover-response session archive args fn-arena)))
    :framing :command
@@ -1191,7 +1191,7 @@
    :model (fn-cu-serve-reply) :cat nil :xref nil
    :live (("any" fn-cu-serve-reply))
    :arms (:pinned
-           (t (fn-cu-serve-reply session archive index args fn-arena)))
+           (t (fn-cu-serve-reply session archive args fn-arena)))
    :framing :command
    :fuzz ((:pool :wildmats) (:pool :ranges) (:choice "0" "x") (:pool :ranges))
    :replies ((291 :accepted :reader :batch "291 NEXT END done|more CHAIN" :computed)
@@ -1209,9 +1209,9 @@
    :live (("any" fn-zar-command))
    :arms (:pinned
            ((and (not (equal (fn-zdn-request args) :syntax))
-                 (fn-nntp-msgid-withdrawn-p index (cadr (fn-zdn-request args))))
+                 (fn-nntp-msgid-withdrawn-p archive index (cadr (fn-zdn-request args))))
              (fn-nntp-withdrawn-reply session t))
-           (t (fn-zar-command session archive (fn-gidx-pin-trie index) args fn-arena)))
+           (t (fn-zar-command session archive args fn-arena)))
    :framing :command
    :fuzz ((:msgid) (:choice "845aa5e18680ef219a9b0f0d0b959cd8886d5eabc12236aae19f301aed9de75e" "00" "x"))
    :replies ((229 :accepted :reader :stored "229 DIGEST N CLEN stored payload follows" :computed)

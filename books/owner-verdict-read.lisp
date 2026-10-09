@@ -478,7 +478,7 @@
                             fn-served-step fn-own-conn-live-session
                             fn-own-conn-wire fn-own-conn-archive fn-own-conn-config
                             fn-own-conn-observation fn-own-conn-verdicts
-                            fn-own-conn-index fn-own-conn-group-index
+                            fn-own-conn-group-index
                             fn-own-conn-control
                             fn-own-conn-session fn-own-find-conn
                             fn-wire-feed-byte fn-wire-feed-proper fn-wire-statep
@@ -511,5 +511,5 @@
            :in-theory (e/d (fn-own-step fn-own-complete fn-own-refresh
                             fn-own-open fn-own-store-idlep fn-snt-idle-phasep)
                            (fn-snt-finish-image fn-sn-finish fn-sn-completion-enabledp fn-own-view-make-group-indexed fn-own-conn-make-group-indexed
-                            fn-served-open-group-indexed fn-midx-refresh
+                            fn-served-open-group-indexed
                             fn-gidx-build)))))

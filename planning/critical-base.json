@@ -525,10 +525,6 @@
    "class": "authorization",
    "statement_digest": "a187ea3a8cfc0bd5d464c4db0424516fe658f2d3f5b4d3fa76277d94c2b2ace7"
   },
-  "fn-auth-view-trie-corresponds": {
-   "class": "authorization",
-   "statement_digest": "f8ef2cdd96b1833e63be141efce47866f6b288436b5bf7068c5717ff41e50fdf"
-  },
   "fn-auth-view-when-unrestricted": {
    "class": "authorization",
    "statement_digest": "384afd018dc354828e9ea3a655325c045fdfb321baf16d0648cd6373a6e1c61e"
@@ -4061,21 +4057,9 @@
    "class": "durability",
    "statement_digest": "71a97cf16799ed4669890b3d16429fc5965e19cd79b6b866b4ae04469de516e7"
   },
-  "fn-pidx-existing-action-is-store-existing-action": {
-   "class": "identity-binding",
-   "statement_digest": "ad61b21e379fb120ab8e2eee0469e450822ad343d5c7ded4674e209ca54b2f58"
-  },
-  "fn-pidx-find-article-is-find-article": {
-   "class": "identity-binding",
-   "statement_digest": "3ea97bb50bc95f71340b1500a5f4d5ae9536540c1301e37f52435f1dc85b8167"
-  },
   "fn-pidx-find-in-visible-is-find": {
    "class": "identity-binding",
    "statement_digest": "4a78313bbb2b83c8b20c0102581968c6a2b4bf76815d5c32dcef9fe2f7412076"
-  },
-  "fn-pidx-sbud-prepare-is-pcar-sbud-prepare": {
-   "class": "identity-binding",
-   "statement_digest": "6f21bcf35b54cc76c02bc3459019e090c58de22b7d73c29e91b1257277608f7d"
   },
   "fn-pidx-view-okp-of-live-owner": {
    "class": "identity-binding",

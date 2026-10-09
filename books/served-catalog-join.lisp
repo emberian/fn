@@ -208,13 +208,9 @@
                                     (fn-own-view-raw view)
                                     (fn-own-view-withdrawals view2)
                                     (fn-own-view-verdicts view2)))
-         (equal (fn-own-view-index view2)
-                (fn-midx-refresh (fn-own-view-index view)
-                                 (fn-state-articles (fn-own-view-archive view))
-                                 (fn-state-articles (fn-own-view-archive view2))))
          (equal (fn-own-view-version view2) (len (fn-sf-records (fn-sn-files s))))))
   :hints (("Goal" :in-theory (e/d (fn-crf-apply-article fn-own-view-fields-of-make-visible)
-                                  (fn-ctl-visible-add fn-midx-refresh fn-ctl-article-withdrawals
+                                  (fn-ctl-visible-add fn-ctl-article-withdrawals
                                    fn-ctl-prepend fn-ctl-resolve-tlocks fn-ctl-subseq-diff
                                    fn-gidx-refresh fn-ctl-visible-state-of fn-own-view-make-visible)))))
 
@@ -237,13 +233,11 @@
 (defthm fn-scj-joinp-of-article-finish
   (let* ((view2 (fn-crf-apply-article view a verdict s))
          (held (fn-pc-held pending))
-         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-own-view-index view2)
+         (c2 (mv-nth 2 (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                                       (fn-sca-targets-of (fn-record-msgid held)
                                                          (fn-own-view-withdrawals view2))
                                       fn-cat))))
     (implies (and (fn-scj-joinp view fn-arena fn-cat)
-                  (fn-midx-correspondencep (fn-own-view-index view)
-                                           (fn-state-articles (fn-own-view-archive view)))
                   (consp a)
                   (stringp (fn-article-msgid a))
                   (no-duplicatesp-equal
@@ -263,15 +257,10 @@
              (fn-scj-joinp view2 fn-arena c2)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories
-                       '(fn-scj-joinp fn-cat-view-articles fn-cat-count-is-len fn-midx-correspondencep
+                       '(fn-scj-joinp fn-cat-view-articles fn-cat-count-is-len
                          fn-scj-row-article-of-commit-after-withdraw-targets)
                        (theory 'minimal-theory))
            :use ((:instance fn-scj-apply-article-projections)
-                 (:instance fn-midx-refresh-preserves-correspondence
-                            (index (fn-own-view-index view))
-                            (old-articles (fn-state-articles (fn-own-view-archive view)))
-                            (new-articles (fn-state-articles
-                                           (fn-own-view-archive (fn-crf-apply-article view a verdict s)))))
                  (:instance fn-scj-join-of-finish-lists
                             (old (fn-own-view-raw view))
                             (ws (fn-own-view-withdrawals (fn-crf-apply-article view a verdict s)))
@@ -281,7 +270,7 @@
                             (v1 (fn-own-view-version view))
                             (v2 (fn-own-view-version (fn-crf-apply-article view a verdict s))))
                  (:instance fn-scj-seqs-below-of-finish
-                            (index (fn-own-view-index (fn-crf-apply-article view a verdict s)))
+                            (index (fn-state-articles (fn-own-view-archive (fn-crf-apply-article view a verdict s))))
                             (targets (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                         (fn-own-view-withdrawals
                                                          (fn-crf-apply-article view a verdict s))))
@@ -327,7 +316,7 @@
              (fn-cat-ocl-relation
               (fn-rix-ocfg-complete oc fn-hist)
               fn-arena
-              (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat)))))
+              (mv-nth 2 (fn-sca-finish token pending visible targets fn-cat)))))
   :hints (("Goal" :in-theory (theory 'minimal-theory)
            :use ((:instance fn-sca-ocl-relation-of-finish (cfg (fn-ocfg-config oc)))
                  (:instance fn-scj-identity-finish-owner-is-article-finish-owner

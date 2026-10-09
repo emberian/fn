@@ -44,9 +44,6 @@
                                                           (fn-ocfg-at-reader-view oc views)
                                                         oc))
                                        id fn-arena fn-cat)
-                (fn-scar-view-indexedp (fn-ocfg-owner (if (consp views)
-                                                          (fn-ocfg-at-reader-view oc views)
-                                                        oc)))
                 (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache))
            (let ((r (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat))
                  (twin (orrt-read-span-scar oc views id i end fn-octets fn-arena)))
@@ -57,7 +54,7 @@
                   (equal (fn-own-tls-result-repinned r) (fn-own-tls-result-repinned twin)))))
   :hints (("Goal" :in-theory (e/d (fn-orr-read-span fn-scr-ocfg-read-span-is-scar-ocfg-read-span
                                    fn-orr-tls-result-of-make)
-                                  (fn-scr-owner-catalogp fn-scar-view-indexedp fn-ocfg-at-reader-view)))))
+                                  (fn-scr-owner-catalogp fn-ocfg-at-reader-view)))))
 
 ; The effects' expansion on ground values (an empty arena and catalog: a
 ; GROUP reply carries no cursor, so the expansion is the identity here).
@@ -470,7 +467,7 @@
   (let* ((fn-octets (fn-octets-from-list octs fn-octets))
          (fn-arena (fn-arena-clear fn-arena))
          (fn-arena (fn-arn-seal-many payloads fn-arena))
-         (fn-cat (fn-sca-load-held-rows rows (fn-own-view-index (fn-own-view (fn-ocfg-owner oc)))
+         (fn-cat (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc)))))
                                         fn-arena fn-cat)))
     (mv (list (fn-orr-read-span oc views id 0 (len octs) nil fn-octets fn-arena fn-cat)
               (fn-cat-count fn-cat)

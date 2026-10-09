@@ -67,10 +67,10 @@
 ; `pinned' names the view a connection is pinned at: (version frontier
 ; repinned), REPINNED being t once the read in progress moved the pin.
 ; `live' is the owner's committed view as it stood when the read began --
-; the seven values the owner pins into a NEW connection (books/owner.lisp
-; fn-own-open: version, frontier, archive, verdicts, Message-ID trie, group
-; buckets, control pin) -- or nil on a connection that never advances (every
-; caller of the ten-argument constructor below).  GROUP and LISTGROUP move the
+; the six values the owner pins into a NEW connection (books/owner.lisp
+; fn-own-open: version, frontier, archive, verdicts, group buckets, control
+; pin) -- or nil on a connection that never advances (every
+; caller of the nine-argument constructor below).  GROUP and LISTGROUP move the
 ; pin to `live' before they answer (fn-served-repin under fn-served-dispatch);
 ; no other command reads `live'.
 
@@ -91,9 +91,9 @@
        (equal (fn-served-pinned-frontier (fn-served-pinned-make v f r)) f)
        (equal (fn-served-pinned-repinned (fn-served-pinned-make v f r)) r)))
 
-(defun fn-served-live-make (version frontier archive verdicts index buckets control)
+(defun fn-served-live-make (version frontier archive verdicts buckets control)
   (declare (xargs :guard t))
-  (list version frontier archive verdicts index buckets control))
+  (list version frontier archive verdicts buckets control))
 (defun fn-served-live-version (x)
   (declare (xargs :guard t))
   (fn-ag-car x))
@@ -106,36 +106,32 @@
 (defun fn-served-live-verdicts (x)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))
-(defun fn-served-live-index (x)
-  (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
 (defun fn-served-live-buckets (x)
   (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))
 (defun fn-served-live-control (x)
   (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))
+  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))
 (defthm fn-served-live-fields
-  (let ((x (fn-served-live-make version frontier archive verdicts index buckets control)))
+  (let ((x (fn-served-live-make version frontier archive verdicts buckets control)))
     (and x
          (equal (fn-served-live-version x) version)
          (equal (fn-served-live-frontier x) frontier)
          (equal (fn-served-live-archive x) archive)
          (equal (fn-served-live-verdicts x) verdicts)
-         (equal (fn-served-live-index x) index)
          (equal (fn-served-live-buckets x) buckets)
          (equal (fn-served-live-control x) control))))
 (in-theory (disable fn-served-pinned-make fn-served-pinned-version
                     fn-served-pinned-frontier fn-served-pinned-repinned
                     fn-served-live-make fn-served-live-version
                     fn-served-live-frontier fn-served-live-archive
-                    fn-served-live-verdicts fn-served-live-index
+                    fn-served-live-verdicts
                     fn-served-live-buckets fn-served-live-control))
 
 ; -----------------------------------------------------------------------------
 ; The connection record: wire framing state, POST session, pinned archive,
 ; posting configuration, clock observation, pinned historical verdicts, and
-; the Message-ID index for exactly that pinned archive.
+; the group buckets and control pin for exactly that pinned archive.
 ;
 ; The archive is the immutable snapshot the connection was opened against.  It
 ; is a field of the connection, not a global, because a served step must not be
@@ -146,7 +142,7 @@
 
 (defun fn-served-conn-shapep (x)
   (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 12)))
+  (and (true-listp x) (equal (len x) 11)))
 
 (defun fn-served-conn-wire (x)
   (declare (xargs :guard t))
@@ -190,34 +186,29 @@
        :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
 
-(defun fn-served-conn-index (x)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr (cdr (cdr (cdr (cdr x))))))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))))
-
 (defun fn-served-conn-group-index (x)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))))
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))
 
 ; The control pin (control-c3e): the pinned view's withdrawn list and
 ; withdrawal records (`fn-ctl-pin', books/control-served.lisp), nil on a
 ; connection opened without one.  Pinned with the archive; read only by the
-; dispatcher's withdrawal arms through the group pin's fourth slot.
+; dispatcher's withdrawal arms through the group pin's third slot.
 (defun fn-served-conn-control (x)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))))
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))))
 
 ; The pin identity (version frontier repinned) and the live view, above.
 (defun fn-served-conn-pinned (x)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))))))
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))))
 (defun fn-served-conn-live (x)
   (declare (xargs :guard t))
   (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x)))))))))))))
+              (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr x))))))))))))
 
 ; A connection whose view has no articles is pinned with its control pin
 ; too (PKT-443): a view whose visible list is empty but whose withdrawn list
@@ -225,43 +216,42 @@
 ; of no articles is nil), and without the control pin the dispatcher could
 ; not answer `430 withdrawn'.  Its nil buckets are the empty view's own, so
 ; the correspondence fn-served-connp carries holds as stated and GROUP and
-; LISTGROUP answer as the trie does (fn-gidx-listgroup-command-of-build).
+; LISTGROUP answer as the buckets do (fn-gidx-listgroup-command-of-build).
 ; The ONE definition of the choice (Q6, lane correctness-remainder-4): the
 ; connection's, the owner connection's (books/served-catalog-join-conns.lisp
 ; fn-scj-conn-pinned-index), the chain premise's
 ; (books/served-catalog-chain.lisp fn-scr-fields-catalogp) and the live
 ; view's (books/served-catalog-join-inv.lisp) all call it; before, each
 ; restated the test and three drifted out of step after PKT-443.
-(defun fn-served-pinned-index (archive index group-index control)
+(defun fn-served-pinned-index (archive group-index control)
   (declare (xargs :guard t))
   (if (or group-index
           (and control (not (consp (fn-state-articles archive)))))
-      (fn-gidx-pin-with-control index group-index control)
-    index))
+      (fn-gidx-pin-with-control group-index control)
+    nil))
 
 (defun fn-served-conn-pinned-index (conn)
   (declare (xargs :guard t))
   (fn-served-pinned-index (fn-served-conn-archive conn)
-                          (fn-served-conn-index conn)
                           (fn-served-conn-group-index conn)
                           (fn-served-conn-control conn)))
 
 (defun fn-served-make-conn-live
-    (wire session archive config observation injection verdicts index buckets
+    (wire session archive config observation injection verdicts buckets
           control pinned live)
   (declare (xargs :guard t))
-  (list wire session archive config observation injection verdicts index buckets
+  (list wire session archive config observation injection verdicts buckets
         control pinned live))
 
-; The ten-argument constructor: no pin identity and no live view, so a
+; The nine-argument constructor: no pin identity and no live view, so a
 ; connection built here never advances (every theorem written before NNT-042
 ; is about such a connection and holds as stated).
 (defun fn-served-make-conn-group-indexed
-    (wire session archive config observation injection verdicts index buckets
+    (wire session archive config observation injection verdicts buckets
           control)
   (declare (xargs :guard t))
   (fn-served-make-conn-live wire session archive config observation injection
-                            verdicts index buckets control nil nil))
+                            verdicts buckets control nil nil))
 
 ; The connection with only its wire framing state replaced: what the byte
 ; fold rebuilds at every byte (fn-served-feed-byte), keeping the pin and the
@@ -274,7 +264,6 @@
                             (fn-served-conn-observation conn)
                             (fn-served-conn-injection conn)
                             (fn-served-conn-verdicts conn)
-                            (fn-served-conn-index conn)
                             (fn-served-conn-group-index conn)
                             (fn-served-conn-control conn)
                             (fn-served-conn-pinned conn)
@@ -282,7 +271,7 @@
 
 (defthm fn-served-conn-fields-of-make-conn-live
   (let ((c (fn-served-make-conn-live wire session archive config observation
-                                     injection verdicts index buckets control
+                                     injection verdicts buckets control
                                      pinned live)))
     (and (fn-served-conn-shapep c)
          (equal (fn-served-conn-wire c) wire)
@@ -292,7 +281,6 @@
          (equal (fn-served-conn-observation c) observation)
          (equal (fn-served-conn-injection c) injection)
          (equal (fn-served-conn-verdicts c) verdicts)
-         (equal (fn-served-conn-index c) index)
          (equal (fn-served-conn-group-index c) buckets)
          (equal (fn-served-conn-control c) control)
          (equal (fn-served-conn-pinned c) pinned)
@@ -300,12 +288,12 @@
 
 (defthm fn-served-conn-pinned-of-make-group-indexed
   (equal (fn-served-conn-pinned
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts buckets control))
          nil))
 
 (defthm fn-served-conn-live-of-make-group-indexed
   (equal (fn-served-conn-live
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts buckets control))
          nil))
 
 (defthm fn-served-conn-fields-of-with-wire
@@ -318,23 +306,22 @@
          (equal (fn-served-conn-observation c) (fn-served-conn-observation conn))
          (equal (fn-served-conn-injection c) (fn-served-conn-injection conn))
          (equal (fn-served-conn-verdicts c) (fn-served-conn-verdicts conn))
-         (equal (fn-served-conn-index c) (fn-served-conn-index conn))
          (equal (fn-served-conn-group-index c) (fn-served-conn-group-index conn))
          (equal (fn-served-conn-control c) (fn-served-conn-control conn))
          (equal (fn-served-conn-pinned c) (fn-served-conn-pinned conn))
          (equal (fn-served-conn-live c) (fn-served-conn-live conn)))))
 
-; A connection is rebuilt from its twelve fields (the eta law the
+; A connection is rebuilt from its eleven fields (the eta law the
 ; per-command read books spend: books/nntp-auth-invariants.lisp,
 ; books/owner-verdict-read.lisp).
 (local
- (defthm fn-served-twelve-list-rebuilt
-   (implies (and (true-listp c) (equal (len c) 12))
+ (defthm fn-served-eleven-list-rebuilt
+   (implies (and (true-listp c) (equal (len c) 11))
             (equal (list (car c) (cadr c) (caddr c) (cadddr c)
                          (car (cddddr c)) (cadr (cddddr c))
                          (caddr (cddddr c)) (cadddr (cddddr c))
                          (car (cddddr (cddddr c))) (cadr (cddddr (cddddr c)))
-                         (caddr (cddddr (cddddr c))) (cadddr (cddddr (cddddr c))))
+                         (caddr (cddddr (cddddr c))))
                    c))
    :hints (("Goal" :in-theory (union-theories
                                '(len true-listp car-cons cdr-cons cons-car-cdr fix)
@@ -346,7 +333,7 @@
                    (fn-served-conn-wire c) (fn-served-conn-session c)
                    (fn-served-conn-archive c) (fn-served-conn-config c)
                    (fn-served-conn-observation c) (fn-served-conn-injection c)
-                   (fn-served-conn-verdicts c) (fn-served-conn-index c)
+                   (fn-served-conn-verdicts c)
                    (fn-served-conn-group-index c) (fn-served-conn-control c)
                    (fn-served-conn-pinned c) (fn-served-conn-live c))
                   c))
@@ -355,12 +342,12 @@
                                 fn-served-conn-wire fn-served-conn-session
                                 fn-served-conn-archive fn-served-conn-config
                                 fn-served-conn-observation fn-served-conn-injection
-                                fn-served-conn-verdicts fn-served-conn-index
+                                fn-served-conn-verdicts
                                 fn-served-conn-group-index fn-served-conn-control
                                 fn-served-conn-pinned fn-served-conn-live
                                 fn-ag-car fn-ag-cdr)
                               (theory 'ground-zero))
-           :use ((:instance fn-served-twelve-list-rebuilt)))))
+           :use ((:instance fn-served-eleven-list-rebuilt)))))
 
 (defthm fn-served-conn-with-wire-of-own-wire
   (implies (fn-served-conn-shapep c)
@@ -368,82 +355,78 @@
   :hints (("Goal" :in-theory (enable fn-served-conn-with-wire))))
 
 (defun fn-served-make-conn-indexed
-    (wire session archive config observation injection verdicts index)
+    (wire session archive config observation injection verdicts)
   (declare (xargs :guard t))
   (fn-served-make-conn-group-indexed wire session archive config observation
-                                     injection verdicts index nil nil))
+                                     injection verdicts nil nil))
 
 (defthm fn-served-conn-wire-of-make-group-indexed
   (equal (fn-served-conn-wire
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts buckets control))
          wire))
 
 (defthm fn-served-conn-session-of-make-group-indexed
   (equal (fn-served-conn-session
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts buckets control))
          session))
 
 (defthm fn-served-conn-archive-of-make-group-indexed
   (equal (fn-served-conn-archive
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts buckets control))
          archive))
 
 (defthm fn-served-conn-config-of-make-group-indexed
   (equal (fn-served-conn-config
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts buckets control))
          config))
 
 (defthm fn-served-conn-observation-of-make-group-indexed
   (equal (fn-served-conn-observation
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts buckets control))
          observation))
 
 (defthm fn-served-conn-injection-of-make-group-indexed
   (equal (fn-served-conn-injection
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts buckets control))
          injection))
 
 (defthm fn-served-conn-verdicts-of-make-group-indexed
   (equal (fn-served-conn-verdicts
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
+          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts buckets control))
          verdicts))
 
-(defthm fn-served-conn-index-of-make-group-indexed
-  (equal (fn-served-conn-index
-          (fn-served-make-conn-group-indexed wire session archive config observation injection verdicts index buckets control))
-         index))
 (defthm fn-served-conn-group-index-of-make
   (equal (fn-served-conn-group-index
           (fn-served-make-conn-group-indexed
            wire session archive config observation injection verdicts
-           index buckets control))
+           buckets control))
          buckets))
 (defthm fn-served-conn-control-of-make
   (equal (fn-served-conn-control
           (fn-served-make-conn-group-indexed
            wire session archive config observation injection verdicts
-           index buckets control))
+           buckets control))
          control))
 (defthm fn-served-conn-control-of-make-indexed
   (equal (fn-served-conn-control
           (fn-served-make-conn-indexed
-           wire session archive config observation injection verdicts index))
+           wire session archive config observation injection verdicts))
          nil))
 (defthm fn-served-conn-shapep-of-group-indexed
   (fn-served-conn-shapep
    (fn-served-make-conn-group-indexed
-    wire session archive config observation injection verdicts index buckets control)))
+    wire session archive config observation injection verdicts buckets control)))
 
 (defthm fn-served-conn-group-index-of-make-indexed
   (equal (fn-served-conn-group-index
           (fn-served-make-conn-indexed
-           wire session archive config observation injection verdicts index))
+           wire session archive config observation injection verdicts))
          nil))
 
 (defthm fn-served-conn-pinned-of-make-indexed
   (equal (fn-served-conn-pinned
           (fn-served-make-conn-indexed
-           wire session archive config observation injection verdicts index))
+           wire session archive config observation injection verdicts))
          nil)
   :hints (("Goal" :in-theory (enable fn-served-make-conn-indexed
                                      fn-served-make-conn-group-indexed))))
@@ -451,129 +434,62 @@
 (defthm fn-served-conn-live-of-make-indexed
   (equal (fn-served-conn-live
           (fn-served-make-conn-indexed
-           wire session archive config observation injection verdicts index))
+           wire session archive config observation injection verdicts))
          nil)
   :hints (("Goal" :in-theory (enable fn-served-make-conn-indexed
                                      fn-served-make-conn-group-indexed))))
 
-(defun fn-served-make-conn-pinned
-    (wire session archive config observation injection verdicts)
-  (declare (xargs :guard t))
-  (fn-served-make-conn-indexed wire session archive config observation
-                                injection verdicts
-                                (fn-midx-build (fn-state-articles archive))))
-
 (defthm fn-served-conn-wire-of-fn-served-make-conn-indexed
   (equal (fn-served-conn-wire
           (fn-served-make-conn-indexed wire session archive config observation
-                                        injection verdicts index))
+                                        injection verdicts))
          wire))
 
 (defthm fn-served-conn-shapep-of-fn-served-make-conn-indexed
   (fn-served-conn-shapep
    (fn-served-make-conn-indexed wire session archive config observation
-                                 injection verdicts index)))
+                                 injection verdicts)))
 
 (defthm fn-served-conn-session-of-fn-served-make-conn-indexed
   (equal (fn-served-conn-session
           (fn-served-make-conn-indexed wire session archive config observation
-                                        injection verdicts index))
+                                        injection verdicts))
          session))
 
 (defthm fn-served-conn-archive-of-fn-served-make-conn-indexed
   (equal (fn-served-conn-archive
           (fn-served-make-conn-indexed wire session archive config observation
-                                        injection verdicts index))
+                                        injection verdicts))
          archive))
 
 (defthm fn-served-conn-config-of-fn-served-make-conn-indexed
   (equal (fn-served-conn-config
           (fn-served-make-conn-indexed wire session archive config observation
-                                        injection verdicts index))
+                                        injection verdicts))
          config))
 
 (defthm fn-served-conn-observation-of-fn-served-make-conn-indexed
   (equal (fn-served-conn-observation
           (fn-served-make-conn-indexed wire session archive config observation
-                                        injection verdicts index))
+                                        injection verdicts))
          observation))
 
 (defthm fn-served-conn-injection-of-fn-served-make-conn-indexed
   (equal (fn-served-conn-injection
           (fn-served-make-conn-indexed wire session archive config observation
-                                        injection verdicts index))
+                                        injection verdicts))
          injection))
 
 (defthm fn-served-conn-verdicts-of-fn-served-make-conn-indexed
   (equal (fn-served-conn-verdicts
           (fn-served-make-conn-indexed wire session archive config observation
-                                        injection verdicts index))
+                                        injection verdicts))
          verdicts))
-
-(defthm fn-served-conn-index-of-fn-served-make-conn-indexed
-  (equal (fn-served-conn-index
-          (fn-served-make-conn-indexed wire session archive config observation
-                                        injection verdicts index))
-         index))
-
-(defthm fn-served-conn-index-of-fn-served-make-conn-pinned
-  (equal (fn-served-conn-index
-          (fn-served-make-conn-pinned wire session archive config observation
-                                       injection verdicts))
-         (fn-midx-build (fn-state-articles archive))))
 
 (defun fn-served-make-conn (wire session archive config observation injection)
   (declare (xargs :guard t))
-  (fn-served-make-conn-pinned wire session archive config observation
+  (fn-served-make-conn-indexed wire session archive config observation
                               injection nil))
-
-(defthm fn-served-conn-index-of-fn-served-make-conn
-  (equal (fn-served-conn-index
-          (fn-served-make-conn wire session archive config observation
-                               injection))
-         (fn-midx-build (fn-state-articles archive))))
-
-(defthm fn-served-conn-shapep-of-fn-served-make-conn-pinned
-  (fn-served-conn-shapep
-   (fn-served-make-conn-pinned wire session archive config observation
-                               injection verdicts)))
-
-(defthm fn-served-conn-wire-of-fn-served-make-conn-pinned
-  (equal (fn-served-conn-wire
-          (fn-served-make-conn-pinned wire session archive config observation
-                                      injection verdicts))
-         wire))
-(defthm fn-served-conn-session-of-fn-served-make-conn-pinned
-  (equal (fn-served-conn-session
-          (fn-served-make-conn-pinned wire session archive config observation
-                                      injection verdicts))
-         session))
-(defthm fn-served-conn-archive-of-fn-served-make-conn-pinned
-  (equal (fn-served-conn-archive
-          (fn-served-make-conn-pinned wire session archive config observation
-                                      injection verdicts))
-         archive))
-(defthm fn-served-conn-config-of-fn-served-make-conn-pinned
-  (equal (fn-served-conn-config
-          (fn-served-make-conn-pinned wire session archive config observation
-                                      injection verdicts))
-         config))
-(defthm fn-served-conn-observation-of-fn-served-make-conn-pinned
-  (equal (fn-served-conn-observation
-          (fn-served-make-conn-pinned wire session archive config observation
-                                      injection verdicts))
-         observation))
-(defthm fn-served-conn-injection-of-fn-served-make-conn-pinned
-  (equal (fn-served-conn-injection
-          (fn-served-make-conn-pinned wire session archive config observation
-                                      injection verdicts))
-         injection))
-
-(defthm fn-served-conn-verdicts-of-fn-served-make-conn-pinned
-  (equal (fn-served-conn-verdicts
-          (fn-served-make-conn-pinned wire session archive config observation
-                                      injection verdicts))
-         verdicts))
 
 (defthm fn-served-conn-verdicts-of-fn-served-make-conn
   (equal (fn-served-conn-verdicts
@@ -630,13 +546,12 @@
                     (:d fn-served-conn-session) (:d fn-served-conn-archive)
                     (:d fn-served-conn-config) (:d fn-served-conn-observation)
                     (:d fn-served-conn-injection)
-                    (:d fn-served-conn-verdicts) (:d fn-served-conn-index)
+                    (:d fn-served-conn-verdicts)
                     (:d fn-served-conn-group-index) (:d fn-served-conn-control)
                     (:d fn-served-conn-pinned) (:d fn-served-conn-live)
                     (:d fn-served-make-conn-live) (:d fn-served-conn-with-wire)
                     (:d fn-served-make-conn-group-indexed)
                     (:d fn-served-make-conn-indexed)
-                    (:d fn-served-make-conn-pinned)
                     (:d fn-served-make-conn)))
 
 ; The result record: the connection after the read, and the effects the host
@@ -678,7 +593,7 @@
       (fn-served-conn-wire conn) (fn-served-conn-session conn)
       (fn-served-conn-archive conn) (fn-served-conn-config conn)
       (fn-served-conn-observation conn) (fn-served-conn-injection conn)
-      verdicts (fn-served-conn-index conn)
+      verdicts
       (fn-served-conn-group-index conn) (fn-served-conn-control conn)
       (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (fn-served-result-effects result))))
@@ -710,7 +625,6 @@
           (and (equal w1 w2) (equal s1 s2) (equal a1 a2)
                (equal c1 c2) (equal o1 o2) (equal j1 j2)))
    :hints (("Goal" :in-theory (enable fn-served-make-conn
-                                      fn-served-make-conn-pinned
                                       fn-served-make-conn-indexed
                                       fn-served-make-conn-group-indexed
                                       fn-served-make-conn-live)))))
@@ -739,9 +653,6 @@
   (declare (xargs :guard t :verify-guards nil))
   (or (null live)
       (and (fn-nntp-projectionp (fn-served-live-archive live))
-           (fn-midx-correspondencep
-            (fn-served-live-index live)
-            (fn-state-articles (fn-served-live-archive live)))
            (implies (fn-served-live-buckets live)
                     (equal (fn-served-live-buckets live)
                            (fn-gidx-build
@@ -753,9 +664,6 @@
        (fn-wire-statep (fn-served-conn-wire c))
        (fn-auth-session-consistentp (fn-served-conn-session c)
                                     (fn-served-conn-archive c))
-       (fn-midx-correspondencep
-        (fn-served-conn-index c)
-        (fn-state-articles (fn-served-conn-archive c)))
        (implies (fn-served-conn-group-index c)
                 (equal (fn-served-conn-group-index c)
                        (fn-gidx-build
@@ -779,37 +687,15 @@
            (fn-auth-session-consistentp (fn-served-conn-session c)
                                         (fn-served-conn-archive c))))
 
-(defthm fn-served-connp-is-index-correspondence
-  (implies (fn-served-connp c)
-           (fn-midx-correspondencep
-            (fn-served-conn-index c)
-            (fn-state-articles (fn-served-conn-archive c)))))
-
 (defthm fn-served-connp-is-group-correspondence
   (implies (fn-served-connp c)
            (fn-gidx-pin-correspondencep
             (fn-served-conn-pinned-index c)
             (fn-served-conn-archive c)))
-  :hints (("Goal" :use ((:instance fn-gidx-midx-build-not-pin
-                                  (articles (fn-state-articles
-                                             (fn-served-conn-archive c)))))
-           :in-theory (e/d (fn-served-connp
-                            fn-served-conn-pinned-index
-                            fn-gidx-pin-correspondencep)
-                           (fn-midx-build fn-gidx-pinp)))))
-
-(defthm fn-served-connp-is-pinned-trie-correspondence
-  (implies (fn-served-connp c)
-           (fn-midx-correspondencep
-            (fn-gidx-pin-trie (fn-served-conn-pinned-index c))
-            (fn-state-articles (fn-served-conn-archive c))))
-  :hints (("Goal" :use ((:instance fn-gidx-midx-build-not-pin
-                                  (articles (fn-state-articles
-                                             (fn-served-conn-archive c)))))
-           :in-theory (e/d (fn-served-connp
-                            fn-served-conn-pinned-index
-                            fn-gidx-pin-trie)
-                           (fn-midx-build fn-gidx-pin fn-gidx-pinp)))))
+  :hints (("Goal" :in-theory (e/d (fn-served-connp
+                                   fn-served-conn-pinned-index
+                                   fn-gidx-pin-correspondencep)
+                                  (fn-gidx-pinp)))))
 
 (in-theory (disable fn-served-connp))
 
@@ -940,7 +826,6 @@
                           (fn-served-conn-observation conn)
                           (fn-served-conn-injection conn)
                           (fn-served-conn-verdicts conn)
-                          (fn-served-conn-index conn)
                           (fn-served-conn-group-index conn) (fn-served-conn-control conn)
                           (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (mbe :logic (append effects
@@ -987,9 +872,6 @@
         (equal (fn-served-conn-verdicts
                 (fn-served-result-conn (fn-served-dispatch-core conn event fn-arena)))
                (fn-served-conn-verdicts conn))
-        (equal (fn-served-conn-index
-                (fn-served-result-conn (fn-served-dispatch-core conn event fn-arena)))
-               (fn-served-conn-index conn))
         (equal (fn-served-conn-group-index
                 (fn-served-result-conn (fn-served-dispatch-core conn event fn-arena)))
                (fn-served-conn-group-index conn))
@@ -1102,10 +984,7 @@
            ; a connection's session IS an auth session: that dismisses
            ; fn-auth-step's non-session branch, which emits nothing
            :use ((:instance fn-served-connp-is-consistent-session (c conn))
-                 (:instance fn-served-connp-is-index-correspondence (c conn))
                  (:instance fn-served-connp-is-group-correspondence (c conn))
-                 (:instance fn-served-connp-is-pinned-trie-correspondence
-                            (c conn))
                  (:instance fn-auth-consistent-forward
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn)))
@@ -1191,7 +1070,7 @@
       (fn-post-make-session (fn-served-reselect (fn-post-session-base told) archive)
                             (fn-post-session-awaiting told))))))
 
-; The pin moves to the live view: archive, verdicts, trie, buckets and
+; The pin moves to the live view: archive, verdicts, buckets and
 ; control pin are the view's, the pin identity is the view's version and
 ; frontier with REPINNED set, the session is re-selected.  Without a live
 ; view the connection is returned as it is.
@@ -1209,7 +1088,6 @@
        (fn-served-conn-observation conn)
        (fn-served-conn-injection conn)
        (fn-served-live-verdicts live)
-       (fn-served-live-index live)
        (fn-served-live-buckets live)
        (fn-served-live-control live)
        (fn-served-pinned-make (fn-served-live-version live)
@@ -1405,7 +1283,7 @@
   :hints (("Goal"
            :in-theory (e/d (fn-served-connp fn-served-repin fn-served-live-okp)
                            (fn-auth-session-consistentp fn-nntp-projectionp
-                            fn-midx-correspondencep fn-gidx-build fn-wire-statep
+                            fn-gidx-build fn-wire-statep
                             fn-served-repin-session fn-auth-sessionp
                             fn-auth-consistent-forward))
            :use ((:instance fn-served-repin-session-is-consistent
@@ -1423,7 +1301,7 @@
            (fn-served-connp (fn-served-conn-with-wire conn wire)))
   :hints (("Goal" :in-theory (e/d (fn-served-connp)
                                   (fn-wire-statep fn-auth-session-consistentp
-                                   fn-midx-correspondencep fn-gidx-build
+                                   fn-gidx-build
                                    fn-served-live-okp)))))
 
 (defthm fn-served-dispatch-preserves-wire-statep
@@ -1741,7 +1619,7 @@
 ; -----------------------------------------------------------------------------
 ; The pin moves only to the live view (NNT-042 at the fold).
 ;
-; A connection's PIN is its archive, verdicts, Message-ID trie, group
+; A connection's PIN is its archive, verdicts, group
 ; buckets, control pin and pin identity.  After any dispatch, byte or read the
 ; pin is either what it was or the live view's, and the live view itself is
 ; never touched: the owner reads the pin back from the served connection
@@ -1750,13 +1628,13 @@
 (defun fn-served-conn-pin (c)
   (declare (xargs :guard t))
   (list (fn-served-conn-archive c) (fn-served-conn-verdicts c)
-        (fn-served-conn-index c) (fn-served-conn-group-index c)
+        (fn-served-conn-group-index c)
         (fn-served-conn-control c) (fn-served-conn-pinned c)))
 
 (defun fn-served-live-pin (live)
   (declare (xargs :guard t))
   (list (fn-served-live-archive live) (fn-served-live-verdicts live)
-        (fn-served-live-index live) (fn-served-live-buckets live)
+        (fn-served-live-buckets live)
         (fn-served-live-control live)
         (fn-served-pinned-make (fn-served-live-version live)
                                (fn-served-live-frontier live) t)))
@@ -1778,7 +1656,6 @@
   (implies (equal (fn-served-conn-pin a) (fn-served-conn-pin b))
            (and (equal (fn-served-conn-archive a) (fn-served-conn-archive b))
                 (equal (fn-served-conn-verdicts a) (fn-served-conn-verdicts b))
-                (equal (fn-served-conn-index a) (fn-served-conn-index b))
                 (equal (fn-served-conn-group-index a) (fn-served-conn-group-index b))
                 (equal (fn-served-conn-control a) (fn-served-conn-control b))
                 (equal (fn-served-conn-pinned a) (fn-served-conn-pinned b))))
@@ -1788,7 +1665,6 @@
   (implies (equal (fn-served-conn-pin a) (fn-served-live-pin live))
            (and (equal (fn-served-conn-archive a) (fn-served-live-archive live))
                 (equal (fn-served-conn-verdicts a) (fn-served-live-verdicts live))
-                (equal (fn-served-conn-index a) (fn-served-live-index live))
                 (equal (fn-served-conn-group-index a) (fn-served-live-buckets live))
                 (equal (fn-served-conn-control a) (fn-served-live-control live))
                 (equal (fn-served-conn-pinned a)
@@ -2263,23 +2139,22 @@
 ; written before this book carried authentication means.  `tlsp' is nil: a
 ; connection that is already inside TLS is the implicit-TLS listener and the
 ; host says so with the (:tls-established) event, never this entry.
-(defun fn-served-open-indexed (archive index verdicts line-limit body-limit
+(defun fn-served-open-indexed (archive verdicts line-limit body-limit
                                       config observation injection acfg)
   (declare (xargs :guard t))
   (let ((session (fn-auth-open-session archive nil nil nil acfg nil)))
     (fn-served-make-result
      (fn-served-make-conn-indexed
       (fn-wire-initial-state line-limit body-limit)
-      session archive config observation injection verdicts index)
+      session archive config observation injection verdicts)
      (list (fn-nntp-reply-effect (fn-served-greeting config session))))))
 
 (defthm fn-served-open-indexed-pins
   (let ((conn (fn-served-result-conn
                (fn-served-open-indexed
-                archive index verdicts line-limit body-limit config
+                archive verdicts line-limit body-limit config
                 observation injection acfg))))
-    (and (equal (fn-served-conn-index conn) index)
-         (equal (fn-served-conn-verdicts conn) verdicts)))
+    (equal (fn-served-conn-verdicts conn) verdicts))
   :hints (("Goal" :in-theory (enable fn-served-open-indexed))))
 
 (defun fn-served-pin-group-index (result buckets)
@@ -2290,17 +2165,17 @@
       (fn-served-conn-wire conn) (fn-served-conn-session conn)
       (fn-served-conn-archive conn) (fn-served-conn-config conn)
       (fn-served-conn-observation conn) (fn-served-conn-injection conn)
-      (fn-served-conn-verdicts conn) (fn-served-conn-index conn) buckets
+      (fn-served-conn-verdicts conn) buckets
       (fn-served-conn-control conn)
       (fn-served-conn-pinned conn) (fn-served-conn-live conn))
      (fn-served-result-effects result))))
 
 (defun fn-served-open-group-indexed
-    (archive index buckets verdicts line-limit body-limit config
+    (archive buckets verdicts line-limit body-limit config
              observation injection acfg)
   (declare (xargs :guard t))
   (fn-served-pin-group-index
-   (fn-served-open-indexed archive index verdicts line-limit body-limit
+   (fn-served-open-indexed archive verdicts line-limit body-limit
                            config observation injection acfg)
    buckets))
 
@@ -2308,7 +2183,7 @@
                                injection acfg)
   (declare (xargs :guard t))
   (fn-served-open-indexed
-   archive (fn-midx-build (fn-state-articles archive)) nil
+   archive nil
    line-limit body-limit config observation injection acfg))
 
 ; A peer connection (specs/peering.md section 1.1): the host resolved the
@@ -2331,31 +2206,30 @@
 ; changed, the same node advertised `AUTHINFO USER' and the login succeeded.
 ; The evidence is planning/evidence/auth-live-2026-09-21.md.
 (defun fn-served-open-peer-indexed
-    (archive index verdicts line-limit body-limit config observation
+    (archive verdicts line-limit body-limit config observation
              injection peer node cfg acfg)
   (declare (xargs :guard t))
   (let ((session (fn-auth-open-session archive peer node cfg acfg nil)))
     (fn-served-make-result
      (fn-served-make-conn-indexed
       (fn-wire-initial-state line-limit body-limit)
-      session archive config observation injection verdicts index)
+      session archive config observation injection verdicts)
      (list (fn-nntp-reply-effect (fn-served-greeting config session))))))
 
 (defthm fn-served-open-peer-indexed-pins
   (let ((conn (fn-served-result-conn
                (fn-served-open-peer-indexed
-                archive index verdicts line-limit body-limit config
+                archive verdicts line-limit body-limit config
                 observation injection peer node cfg acfg))))
-    (and (equal (fn-served-conn-index conn) index)
-         (equal (fn-served-conn-verdicts conn) verdicts)))
+    (equal (fn-served-conn-verdicts conn) verdicts))
   :hints (("Goal" :in-theory (enable fn-served-open-peer-indexed))))
 
 (defun fn-served-open-peer-group-indexed
-    (archive index buckets verdicts line-limit body-limit config observation
+    (archive buckets verdicts line-limit body-limit config observation
              injection peer node cfg acfg)
   (declare (xargs :guard t))
   (fn-served-pin-group-index
-   (fn-served-open-peer-indexed archive index verdicts line-limit body-limit
+   (fn-served-open-peer-indexed archive verdicts line-limit body-limit
                                 config observation injection peer node cfg acfg)
    buckets))
 
@@ -2363,7 +2237,7 @@
                                     injection peer node cfg acfg)
   (declare (xargs :guard t))
   (fn-served-open-peer-indexed
-   archive (fn-midx-build (fn-state-articles archive)) nil
+   archive nil
    line-limit body-limit config observation injection peer node cfg acfg))
 
 (defthm fn-served-open-is-a-connection

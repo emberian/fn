@@ -96,8 +96,8 @@
            :use ((:instance fn-sjh-col-handles-below-nth (rows c) (seq target))))))
 (defthm fn-sjh-col-handles-below-of-sca-withdraw-targets
   (implies (and (fn-scol-handles-below fn-cat n) (natp by))
-           (fn-scol-handles-below (fn-sca-withdraw-targets targets view-index by fn-cat) n))
-  :hints (("Goal" :induct (fn-sca-withdraw-targets targets view-index by fn-cat)
+           (fn-scol-handles-below (fn-sca-withdraw-targets targets visible by fn-cat) n))
+  :hints (("Goal" :induct (fn-sca-withdraw-targets targets visible by fn-cat)
            :in-theory (e/d (fn-sca-withdraw-targets)
                            (fn-cat-view-last-visible fn-cat-withdraw fn-midx-lookup fn-scol-handles-below)))))
 
@@ -106,7 +106,7 @@
   (implies (and (fn-scol-handles-below fn-cat n)
                 (fn-scol-handles-below (list (fn-pc-held pending)) n)
                 (or (null pending) (natp (fn-pc-expected pending))))
-           (fn-scol-handles-below (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat)) n))
+           (fn-scol-handles-below (mv-nth 2 (fn-sca-finish token pending visible targets fn-cat)) n))
   :hints (("Goal" :in-theory (e/d (fn-sca-finish fn-sca-complete fn-cat-complete fn-cat-complete-hidden)
                                   (fn-sca-withdraw-targets fn-cat-commit fn-held-with-withdrawn fn-midx-lookup
                                    fn-delta-of-row fn-cat-at fn-scol-handles-below)))))
@@ -116,7 +116,7 @@
 (defthm fn-sjh-colsp-at-finish
   (implies (and (fn-sjh-colsp pending fn-arena fn-cat)
                 (fn-pc-p pending))
-           (fn-sjh-colsp nil fn-arena (mv-nth 2 (fn-sca-finish token pending view-index targets fn-cat))))
+           (fn-sjh-colsp nil fn-arena (mv-nth 2 (fn-sca-finish token pending visible targets fn-cat))))
   :hints (("Goal" :in-theory (union-theories '(fn-sjh-colsp fn-sjh-pc-p-non-nil)
                                              (theory 'minimal-theory))
            :use ((:instance fn-scol-okp-of-sca-finish)

@@ -58,7 +58,7 @@
   (equal (fn-own-store (fn-own-start store max-conns)) store)
   :hints (("Goal" :in-theory (e/d (fn-own-start fn-own-refresh)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-own-prefix-archive fn-ctl-visible-state fn-midx-build fn-gidx-build
                                    fn-ctl-subseq-diff fn-ctl-visible-state-of))))))
 (defthm fn-hpo-ock-install-store

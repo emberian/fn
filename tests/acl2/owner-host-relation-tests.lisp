@@ -190,7 +190,6 @@
 ; configured owner *scar-t-oc*, view indexed, connection 1's wire a wire
 ; state; the carried read of "GROUP fn.live" keeps the relation.
 (assert-event (and (fn-ocl-relation *scar-t-oc*)
-                   (fn-scar-view-indexedp (fn-ocfg-owner *scar-t-oc*))
                    (fn-wire-statep (fn-own-conn-wire (fn-own-find-conn 1 (fn-own-conns (fn-ocfg-owner *scar-t-oc*)))))
                    (fn-ocl-relation (fn-own-tls-result-owner *scar-t-carried*))))
 ; EXPOSURE OPEN, reader arm (fn-ohr-exposure-open-preserves-ocl-relation with

@@ -6,12 +6,13 @@
   "Existing host-path control: tests/test_native_log.py::NativeLogTests::test_every_log_cut_recovers_to_a_prefix reaches fnn-recover-log and every fn-lgrc-program cut; tests/campaign/test_native_operator_campaign.py::NativeOperatorCampaignTests::test_served_owner_cuts_stop_and_production_refusals exercises the served owner, record-completing acknowledgement, recovery and re-submission.",
   "Missing adversarial host-path case: retain readable clean pages after a failed log-file barrier, restart the writable owner without a cache loss, copy that visible prefix, accept and acknowledge another record, then lose cache. The recovery scan must retain every acknowledged record. Controls: skip the copy file barrier, reuse the old inode, or acknowledge before the barrier; each must lose a record the response claims accepted or be refused before that response.",
   "Also interrupt after rename but before journal-directory fencing, keep the visible replacement across exit, restart and copy again, then lose cache. Assert the recovered durable binding and bytes include the entire acknowledged prefix, with no success reply sourced from an unfenced replacement. This covers fn-lgrc-open-keeps-the-relation-at-every-cut, fn-lgrc-acknowledge-from-the-copy, and the two fn-lgu acknowledgement claims. Existing kill-only cases do not model the failed-barrier clean-cache state.",
-  "Implement through the designated native storage fault harness and ACL2 decisions; Python must observe replies and ACL2 recovery results, not duplicate acceptance or recovery decisions. No new native test is written by this lane, as instructed."
+  "Implement through the designated native storage fault harness and ACL2 decisions; Python must observe replies and ACL2 recovery results, not duplicate acceptance or recovery decisions. No new native test is written by this lane, as instructed.",
+  "S11 round 2: S chose collapse of the two proof-only POST twins. VIEWIDX-PIDX-COLLAPSE records their retirement; their host-entry reds and native-test specifications are superseded, while the store-log fault-test debt above remains open."
  ],
  "owner": "deputy-P",
  "severity": "high",
  "source": "p-teeth-critical",
  "state": "open",
  "title": "Exercise the critical copy and acknowledgement claims after a failed barrier with cache retained",
- "updated": "2026-10-08T16:26:00Z"
+ "updated": "2026-10-08T22:07:00Z"
 }

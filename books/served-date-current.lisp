@@ -32,7 +32,7 @@
               fn-served-make-conn-live fn-served-conn-wire
               fn-served-conn-session fn-served-conn-archive fn-served-conn-config
               fn-served-conn-observation fn-served-conn-injection
-              fn-served-conn-verdicts fn-served-conn-index
+              fn-served-conn-verdicts 
               fn-served-conn-group-index fn-served-conn-control
               fn-served-conn-pinned fn-served-conn-live fn-served-conn-pinned-index
               fn-served-conn-with-wire fn-served-step fn-served-feed
@@ -89,7 +89,7 @@
    (fn-wire-initial-state 510 8192)
    (fn-served-conn-session conn) (fn-served-conn-archive conn)
    (fn-served-conn-config conn) pinned (fn-served-conn-injection conn)
-   (fn-served-conn-verdicts conn) (fn-served-conn-index conn)
+   (fn-served-conn-verdicts conn)
    (fn-served-conn-group-index conn) (fn-served-conn-control conn)
    (fn-served-conn-pinned conn) (fn-served-conn-live conn)))
 
@@ -152,7 +152,7 @@
               fn-served-make-conn-live fn-served-conn-wire
               fn-served-conn-session fn-served-conn-archive fn-served-conn-config
               fn-served-conn-observation fn-served-conn-injection
-              fn-served-conn-verdicts fn-served-conn-index
+              fn-served-conn-verdicts 
               fn-served-conn-group-index fn-served-conn-control
               fn-served-conn-pinned fn-served-conn-live fn-served-conn-pinned-index
               fn-served-conn-with-wire fn-served-step fn-served-feed

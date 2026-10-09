@@ -65,7 +65,7 @@
          (rows (fn-sf-records (fn-sn-files s)))
          (events0 (take (- (len rows) 1) rows))
          (event (car (last rows)))
-         (fn-cat (fn-sca-load-held-rows (take ncat rows) (fn-own-view-index view) fn-arena fn-cat))
+         (fn-cat (fn-sca-load-held-rows (take ncat rows) (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat))
          (row0 (fn-sn-completion-record s))
          (row (if msgid (fn-held-make (fn-record-sequence row0) (fn-record-txid row0)
                                       (fn-record-generation row0) msgid (fn-record-payload row0)
@@ -86,7 +86,6 @@
          (c0 (scjf-rows-of 0 fn-cat))
          (hyps (list (if (fn-ccar-completion-enabledp s) t nil)
                      (scjf-joinp view fn-arena fn-cat)
-                     (fn-scar-view-indexedp o)
                      (scjf-rows-invp c0 events0)
                      (if (fn-cst-relation s2) t nil)
                      (if (fn-own-store-idlep s2) t nil)
@@ -110,7 +109,7 @@
                                                      (fn-own-view-verdicts view2)))
                      (<= (nfix (fn-own-view-version view)) (len events0)))))
     (mv-let (word pending2 fn-cat)
-      (fn-sca-finish token pending (fn-own-view-index view2)
+      (fn-sca-finish token pending (fn-state-articles (fn-own-view-archive view2))
                      (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                         (fn-own-view-withdrawals view2))
                      fn-cat)
@@ -132,7 +131,7 @@
           (mv result fn-arena)))
       result)))
 
-(defconst *scjf-all* (make-list 18 :initial-element t))
+(defconst *scjf-all* (make-list 17 :initial-element t))
 
 ; 1. Reachable positive witness: all eighteen hypotheses and both conjuncts;
 ; the refreshed view shows one article, the catalog holds one row.
@@ -143,12 +142,12 @@
 ; <x>.  Every other hypothesis holds; the catalog commits <y>: the join and
 ; the rows invariant fail.
 (assert-event (equal (scjf-exec *cet-t2-oc* *cet-t2-payloads* 2 "<y@example>")
-                     (list (update-nth 9 nil *scjf-all*) (list nil nil) 1 1)))
+                     (list (update-nth 8 nil *scjf-all*) (list nil nil) 1 1)))
 
 ; The rows invariant removed, JOINTLY with the join before: the catalog is
 ; the load of all three rows (it already holds the article, which the old
 ; view does not show; the pending expects its count, 1); the finish commits
 ; it a second time: both conjuncts fail.
 (assert-event (equal (car (scjf-exec *cet-t2-oc* *cet-t2-payloads* 3 nil))
-                     (update-nth 1 nil (update-nth 3 nil *scjf-all*))))
+                     (update-nth 1 nil (update-nth 2 nil *scjf-all*))))
 (assert-event (equal (cadr (scjf-exec *cet-t2-oc* *cet-t2-payloads* 3 nil)) (list nil nil)))

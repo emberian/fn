@@ -1,0 +1,22 @@
+{
+ "category": "debt",
+ "disposition": "LOCAL",
+ "exposure": "none",
+ "file": "books/post-identity-index.lisp",
+ "id": "VIEWIDX-PIDX-COLLAPSE",
+ "notes": [
+  "First chain deletion, 40fee51cb4ee56c68bd844f5b71bdf95314e91de: removed fn-pidx-existing-action and fn-pidx-existing-action-is-store-existing-action. No production caller existed. The local-buffer test adapter now calls fn-store-existing-action with fn-octets-list and fn-own-store; served callers continue to use the independently certified catalog entry. Its bridge-only teeth and helpers were retired together.",
+  "Second chain deletion, 40fee51cb4ee56c68bd844f5b71bdf95314e91de: removed fn-pidx-sbud-prepare and fn-pidx-sbud-prepare-is-pcar-sbud-prepare. fn-osi-host-step :prepare-buffer, fn-lgoc-pidx-sbud-prepare-preserves-invariant, fn-prc-sbud-prepare-is-pidx-sbud-prepare and their tests now name fn-pcar-sbud-prepare. Downstream proofs use the reference bridge directly. All hypotheses, conclusions and rule classes of retained statements are preserved; planning/evidence/pidx-collapse-statements.json audits the substitutions against c039b7d592159969b0ea774daab9eb33d53443a3.",
+  "Critical retirement was emitted by tools/keystone_critical.py --lower-stale: two identity-binding rows removed from both critical-base and critical-owed. The remaining prepare-chain twins and catalog/retain refinements remain a separate collapse review; no host call was added to make a proof-only function reachable.",
+  "Round-2 certify run-20261008T220615Z-5cb9 passed all 83 rebuilt books at two jobs (1043-book closure). All changed logical implementations/proofs were below 6.1 s and all test books below 5.8 s. The under-10-second gate remains red for: books/owner-host-relation 31.775 s, host/owner-host 26.502 s, books/post-identity-source-cursor-refinement 25.883 s, books/owner-number-bound 10.942 s, host/consumer-remote-host 10.930 s, host/history-owner-view-host 10.575 s, host/admission-preparation-host 10.567 s. The non-host overs are unchanged dependent source books; the host edits are comments only. Record these measured D26 defects, not a green timing gate.",
+  "Full host-world validation exposed a separate certificate-image selector defect: def-generic declarations were expanded only into their proof obligations, hiding their attachable stobj definition. An nntp-auth image therefore preloaded fn-arena and made image-world-part-1 reject its later attachment (run-20261008T221211Z-524b). tools/cert_images.py now records that definition before expansion; the new synthetic fixture and existing real-tree umbrella checks pass (11 tests). No theorem or attachment rule was relaxed.",
+  "Post-fix host umbrella run-20261008T221937Z-a35b passed all four umbrella links (1227-book closure, two jobs). Their include-heavy certification also exceeds D26: image-world-part-1 49.4 s, part-2 56.1 s, part-3 47.9 s, image-world 19.1 s. These additional host-load prerequisites are separate from the seven timing overs in the requested affected closure. keystone_emit --check has zero findings; all retired-host-entry reds are resolved by deleting the twins, not by claiming host evidence for them.",
+  "Final non-timing gates: keystone_emit --check 0 findings; ledger --check OK; test_ledger + test_keystone_emit + test_keystone_critical 215 tests OK (one optional world fixture skipped); test_cert_images 11 tests OK; interface_emit --check 0; host_check --load --require-world 58/58 raw files loaded over the certified umbrella, 0 findings (45.2 s load). No bare-world fallback, no critical gate edits, no push."
+ ],
+ "owner": "deputy-S",
+ "severity": "low",
+ "source": "s-viewidx",
+ "state": "deferred",
+ "title": "Collapse the remaining post-identity prepare twins into their references; first two functions and bridges retired",
+ "updated": "2026-10-08T22:27:34Z"
+}

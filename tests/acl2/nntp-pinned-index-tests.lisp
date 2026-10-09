@@ -21,8 +21,6 @@
 (defconst *fn-pidx-session* (fn-nntp-open-session *fn-pidx-archive*))
 (defconst *fn-pidx-env* (fn-nntp-env nil nil nil))
 
-(assert-event (fn-midx-correspondencep *fn-pidx-index*
-                                        (fn-state-articles *fn-pidx-archive*)))
 
 (defun fn-pidx-line (verb)
   (append (fn-nntp-string-octets verb)

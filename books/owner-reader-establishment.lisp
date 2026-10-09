@@ -14,7 +14,7 @@
            (e/d (fn-own-start fn-own-refresh fn-own-configure fn-sn-statep)
                 (fn-own-prefix-archive fn-ctl-visible-state fn-ctl-visible-state-of
                  fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                 fn-ctl-refresh-withdrawn fn-midx-build fn-midx-refresh
+                 fn-ctl-refresh-withdrawn fn-midx-build
                  fn-gidx-build fn-gidx-refresh fn-ctl-subseq-diff
                  fn-node-statep fn-sf-statep fn-statep
                  fn-own-store-idlep fn-sn-verdict-listp))))))
@@ -57,8 +57,7 @@
            :in-theory
            (union-theories
             (theory 'minimal-theory)
-            '(fn-ocri-relation fn-ocri-viewp fn-ocri-conns-p
-              fn-scar-view-indexedp fn-owner-recover-from-checkpoint-equals-full-recover fn-ock-recover-full fn-ock-install
+            '(fn-ocri-relation fn-ocri-viewp fn-ocri-conns-p fn-owner-recover-from-checkpoint-equals-full-recover fn-ock-recover-full fn-ock-install
               fn-ocfg-owner fn-ocfg-make fn-sn-open-okp car-cons cdr-cons
               fn-orri-related-store-is-statep
               fn-orri-started-view-verdicts)))))

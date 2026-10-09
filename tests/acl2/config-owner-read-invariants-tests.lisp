@@ -13,10 +13,10 @@
 (defconst *ocri-third-open* (cdr (fn-ocfg-open *ocri-live* nil)))
 (assert-event (fn-ocri-relation *ocri-third-open*))
 (assert-event
- (equal (fn-own-conn-index
-         (fn-own-find-conn 2
-                           (fn-own-conns (fn-ocfg-owner *ocri-third-open*))))
-        (fn-own-view-index (fn-own-view (fn-ocfg-owner *ocri-live*)))))
+ (let ((conn (fn-own-find-conn 2 (fn-own-conns (fn-ocfg-owner *ocri-third-open*))))
+       (view (fn-own-view (fn-ocfg-owner *ocri-live*))))
+   (and (equal (fn-own-conn-archive conn) (fn-own-view-archive view))
+        (equal (fn-own-conn-group-index conn) (fn-own-view-group-index view)))))
 (assert-event
  (not (equal (fn-own-conn-archive
               (fn-own-find-conn 0
@@ -92,7 +92,7 @@
 (defconst *ocri-old-conn*
   (fn-own-find-conn 0 (fn-own-conns (fn-ocfg-owner *ocri-live*))))
 (defconst *ocri-bad-conn*
-  (fn-own-conn-make-indexed
+  (fn-own-conn-make-pinned
    0 (fn-own-conn-version *ocri-old-conn*)
    (fn-own-conn-frontier *ocri-old-conn*)
    *stp-cheap-only-wire*
@@ -100,8 +100,7 @@
    (fn-own-conn-archive *ocri-old-conn*)
    (fn-own-conn-config *ocri-old-conn*)
    (fn-own-conn-observation *ocri-old-conn*)
-   (fn-own-conn-verdicts *ocri-old-conn*)
-   (fn-own-conn-index *ocri-old-conn*)))
+   (fn-own-conn-verdicts *ocri-old-conn*)))
 (defconst *ocri-bad-oc*
   (fn-ocfg-with-owner
    *ocri-live*

@@ -7,15 +7,14 @@
 ;; recorded in books/owner-verdict-read.lisp equates that with fn-own-read on
 ;; the connection, and fn-own-read-is-served-step-on-pinned-prefix
 ;; (books/owner-invariants) with fn-served-step over the connection's pinned
-;; archive, trie and group buckets.  The keystones below are over
+;; archive and group buckets.  The keystones below are over
 ;; fn-served-step; the function-level keystones they carry are in
 ;; books/nntp-list-counts.lisp.
 ;;
-;; The two relations assumed here are the ones the owner carries for every
-;; connection (fn-own-conn-okp in fn-own-relation): the pinned trie is the
-;; build of the pinned archive's articles (fn-midx-correspondencep), and the
-;; group buckets are either absent or the build of those articles.  Framing
-;; is a hypothesis, as in books/owner-verdict-read.lisp.
+;; The relation assumed here is the one the owner carries for every
+;; connection (fn-own-conn-okp in fn-own-relation): the group buckets are
+;; either absent or the build of the pinned archive's articles.  Framing is a
+;; hypothesis, as in books/owner-verdict-read.lisp.
 (in-package "ACL2")
 (include-book "owner-verdict-read")
 (include-book "nntp-list-counts")
@@ -23,13 +22,10 @@
 
 (defun fn-olc-buckets-okp (conn)
   (declare (xargs :guard t :verify-guards nil))
-  (and (fn-midx-correspondencep
-        (fn-served-conn-index conn)
-        (fn-state-articles (fn-served-conn-archive conn)))
-       (or (null (fn-served-conn-group-index conn))
-           (equal (fn-served-conn-group-index conn)
-                  (fn-gidx-build
-                   (fn-state-articles (fn-served-conn-archive conn)))))))
+  (or (null (fn-served-conn-group-index conn))
+      (equal (fn-served-conn-group-index conn)
+             (fn-gidx-build
+              (fn-state-articles (fn-served-conn-archive conn))))))
 
 ;; A view with no article builds no buckets: the control pin over an empty
 ;; view (books/served.lisp fn-served-conn-pinned-index, PKT-443) corresponds.
@@ -45,33 +41,8 @@
             (fn-gidx-pin-correspondencep (fn-served-conn-pinned-index conn)
                                          (fn-served-conn-archive conn)))
    :hints (("Goal" :in-theory (e/d (fn-gidx-pin-correspondencep
-                                    fn-served-conn-pinned-index
-                                    fn-midx-correspondencep)
-                                   (fn-gidx-pinp fn-midx-build fn-gidx-build))))))
-
-(local
- (defthm fn-olc-buckets-okp-gives-trie
-   (implies (fn-olc-buckets-okp conn)
-            (fn-midx-correspondencep
-             (fn-served-conn-index conn)
-             (fn-state-articles (fn-served-conn-archive conn))))
-   :hints (("Goal" :in-theory (disable fn-midx-correspondencep)))))
-
-(local
- (defthm fn-olc-pin-trie-of-unpinned
-   (implies (not (fn-gidx-pinp x))
-            (equal (fn-gidx-pin-trie x) x))
-   :hints (("Goal" :in-theory (e/d (fn-gidx-pin-trie) (fn-gidx-pinp))))))
-
-(local
- (defthm fn-olc-pinned-trie-is-the-index
-   (implies (fn-olc-buckets-okp conn)
-            (equal (fn-gidx-pin-trie (fn-served-conn-pinned-index conn))
-                   (fn-served-conn-index conn)))
-   :hints (("Goal" :in-theory (e/d (fn-served-conn-pinned-index
-                                    fn-midx-correspondencep)
-                                   (fn-gidx-pin fn-gidx-pin-trie fn-gidx-pinp
-                                    fn-midx-build fn-gidx-build))))))
+                                    fn-served-conn-pinned-index)
+                                   (fn-gidx-pinp fn-gidx-build))))))
 
 (local
  (defthm fn-olc-list-counts-has-no-offer
@@ -321,7 +292,8 @@
                   (fn-nntp-message-id-tokenp (cadr tokens))
                   ; control-c3e: a Message-ID the pinned view withdrew is
                   ; answered `430 withdrawn' (books/nntp-control.lisp).
-                  (not (fn-nntp-msgid-withdrawn-p (fn-served-conn-pinned-index conn)
+                  (not (fn-nntp-msgid-withdrawn-p (fn-served-conn-archive conn)
+                                                  (fn-served-conn-pinned-index conn)
                                                   (cadr tokens))))
              (and (equal (fn-served-result-effects
                           (fn-served-dispatch conn (list :command line) fn-arena))
@@ -347,10 +319,8 @@
                                    fn-nntp-number-withdrawn-p
                                    fn-nntp-message-id-token-is-not-a-number-token)
                                   (fn-nntp-archive-command-pinned-msgid-arms-are-the-scan
-                                   fn-nntp-msgid-retrieval-indexed
                                    fn-nntp-msgid-retrieval
                                    fn-olc-buckets-okp fn-served-conn-pinned-index
-                                   fn-midx-correspondencep
                                    fn-nntp-tokenize fn-auth-sessionp
                                    fn-peer-sessionp fn-post-sessionp
                                    fn-nntp-sessionp fn-auth-gatedp
@@ -402,7 +372,8 @@
                   (fn-nntp-keyword-tokenp (car tokens))
                   (fn-olc-retrieval-keywordp (car tokens))
                   (fn-nntp-message-id-tokenp (cadr tokens))
-                  (not (fn-nntp-msgid-withdrawn-p (fn-served-conn-pinned-index conn)
+                  (not (fn-nntp-msgid-withdrawn-p (fn-served-conn-archive conn)
+                                                  (fn-served-conn-pinned-index conn)
                                                   (cadr tokens)))
                   (consp article))
              (equal (fn-served-result-effects

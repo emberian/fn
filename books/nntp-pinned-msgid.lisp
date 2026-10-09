@@ -2,18 +2,11 @@
 ;
 ; The served reader reaches fn-nntp-archive-command-pinned (books/nntp.lisp)
 ; on every archive command; ARTICLE, HEAD, BODY and STAT with a Message-ID
-; argument are answered from the connection's pinned trie
-; (fn-nntp-msgid-retrieval-indexed), never by walking the archive.  The
-; function-level keystone is fn-nntp-msgid-retrieval-indexed-refines-scan
-; (books/nntp-responses.lisp).  This book states it at the dispatcher the
-; served path calls: for those four keywords, and for every argument list,
-; the pinned dispatcher answers exactly what the unpinned archive dispatcher
-; fn-nntp-archive-command -- whose Message-ID arm is the linear
-; fn-find-article scan -- answers, given only that the pinned trie is the
-; build of the pinned archive's article list.  The owner carries that
-; relation for every connection (fn-own-conn-okp in fn-own-relation,
-; books/owner-invariants.lisp, preserved by fn-own-step-preserves-relation);
-; nothing evaluates it per command.
+; argument are answered by fn-nntp-msgid-retrieval, the linear
+; fn-find-article scan of the pinned archive's article list.  This book
+; states it at the dispatcher the served path calls: for those four keywords,
+; and for every argument list, the pinned dispatcher answers exactly what the
+; unpinned archive dispatcher fn-nntp-archive-command answers.
 (in-package "ACL2")
 (include-book "nntp")
 
@@ -34,10 +27,8 @@
 ; which answer the article's served representation carrying its Xref line
 ; (PRF-243; fn-nntp-archive-command-pinned-article-head-is-served below).
 (defthm fn-nntp-archive-command-pinned-msgid-arms-are-the-scan
-  (implies (and (fn-midx-correspondencep (fn-gidx-pin-trie index)
-                                         (fn-state-articles archive))
-                (not (fn-nntp-number-withdrawn-p session archive index (car args)))
-                (not (fn-nntp-msgid-withdrawn-p index (car args)))
+  (implies (and (not (fn-nntp-number-withdrawn-p session archive index (car args)))
+                (not (fn-nntp-msgid-withdrawn-p archive index (car args)))
                 (or (fn-nntp-keywordp keyword "BODY")
                     (fn-nntp-keywordp keyword "STAT")
                     (and (not (fn-nntp-xref-server env))
@@ -51,14 +42,11 @@
                             fn-rcompat-reply
                             fn-nntp-archive-command fn-nntp-keywordp
                             fn-nntp-retrieval
-                            fn-nntp-msgid-retrieval-indexed-refines-scan
                             fn-nntp-message-id-token-is-not-a-number-token)
-                           (fn-nntp-msgid-retrieval-indexed
-                            fn-nntp-msgid-retrieval
+                           (fn-nntp-msgid-retrieval
                             fn-nntp-number-retrieval
                             fn-nntp-current-retrieval
-                            fn-nntp-upcase-keyword
-                            fn-midx-correspondencep)))))
+                            fn-nntp-upcase-keyword)))))
 
 ; PRF-243 (PKT-668): on the served path ARTICLE and HEAD (no argument, a
 ; number or a Message-ID) are the served retrieval: the generic reply over
@@ -71,12 +59,12 @@
                 (or (null args) (and (consp args) (null (cdr args))))
                 (not (fn-nntp-number-withdrawn-p session archive index (car args)))
                 (not (and (fn-nntp-message-id-tokenp (car args))
-                          (fn-nntp-msgid-withdrawn-p index (car args))))
+                          (fn-nntp-msgid-withdrawn-p archive index (car args))))
                 (or (fn-nntp-keywordp keyword "ARTICLE")
                     (fn-nntp-keywordp keyword "HEAD")))
            (equal (fn-nntp-archive-command-pinned
                    session archive index verdicts env keyword args fn-arena)
-                  (fn-rcompat-retrieval session archive (fn-gidx-pin-trie index)
+                  (fn-rcompat-retrieval session archive (fn-state-articles archive)
                                         (fn-rcompat-retrieval-kind keyword)
                                         args (fn-nntp-xref-server env) fn-arena)))
   :hints (("Goal"

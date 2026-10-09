@@ -5,8 +5,7 @@
 ; The witness is one whole exchange as the two hosts drive it.  The serving
 ; view holds three articles, oldest first A1 and A2 in fn.test (A2 has a
 ; line that begins with ".", so the block's dot-stuffing is exercised) and
-; A3 in fn.other; a fourth, W, is in the view but not in its Message-ID trie
-; (a withdrawn article).  XFNCATCHUP fn.test from position 0 answers one
+; A3 in fn.other; a fourth, W, is withdrawn, so the view does not hold it.  XFNCATCHUP fn.test from position 0 answers one
 ; batch with A1 and A2; the requesting round (the spool controller) spools
 ; and verifies its chain, opens the local transit connection, offers A1 (335,
 ; then its body, 235) and A2 (435), journals the cursor at the batch's end
@@ -64,23 +63,26 @@
 (defconst *cut-w* (fn-make-article "<w@example.invalid>" 3 '("fn.test")
                                    (list (cons "fn.test" 3)) t 841000003))
 ;; Newest first, as the view holds them.
-(defconst *cut-articles* (list *cut-w* *cut-a3* *cut-a2* *cut-a1*))
+;; The served view: W is withdrawn, so it is not in the view (books/nntp.lisp
+;; `fn-nntp-msgid-withdrawn-p' answers it "430 withdrawn").
+(defconst *cut-view* (list *cut-a3* *cut-a2* *cut-a1*))
 (defconst *cut-state*
   (fn-make-state '("fn.test" "fn.other")
                  (list (cons "fn.test" 4) (cons "fn.other" 2))
-                 *cut-articles* 4 nil nil))
-;; W is not in the trie: a withdrawn article (books/nntp.lisp
-;; `fn-nntp-msgid-withdrawn-p' answers it "430 withdrawn").
-(defconst *cut-trie* (fn-midx-build (list *cut-a3* *cut-a2* *cut-a1*)))
+                 *cut-view* 4 nil nil))
+;; The entries a batch passes over in the direct select witnesses below: the
+;; view's and W, which the view does not hold (the clause of fn-cu-servedp
+;; that no view of the composition can fail; its teeth are the function's).
+(defconst *cut-articles* (list *cut-w* *cut-a3* *cut-a2* *cut-a1*))
 
 (defconst *cut-wildmat* (cut-octets "fn.test"))
 (defun cut-args (from chain quantum)
   (list *cut-wildmat* (fn-cu-u64-hex from) (fn-cu-hex chain)
         (fn-nntp-string-octets quantum)))
 
-(bpr-lift fn-cu-serve-reply 4)
+(bpr-lift fn-cu-serve-reply 3)
 (defun cut-reply (from chain quantum)
-  (cadr (car (cdr (in-arena-fn-cu-serve-reply *sr-arena* nil *cut-state* *cut-trie*
+  (cadr (car (cdr (in-arena-fn-cu-serve-reply *sr-arena* nil *cut-state*
                                               (cut-args from chain quantum))))))
 
 ;; The digest chain over A1 then A2, computed here from the definition.
@@ -105,7 +107,7 @@
 (assert-event
  (equal *cut-reply*
         (append (cut-line (concatenate 'string
-                                       "291 0000000000000004 0000000000000004 done "
+                                       "291 0000000000000003 0000000000000003 done "
                                        (coerce (fn-nntp-octets-chars (fn-cu-hex *cut-chain-2*))
                                                'string)))
                 (cut-line "R <a1@example.invalid> 0000000000000006")
@@ -118,7 +120,7 @@
 (assert-event
  (equal (take 55 (cut-reply 0 *fn-cu-zero-chain* "1"))
         (take 55 (cut-line (concatenate 'string
-                                        "291 0000000000000001 0000000000000004 more "
+                                        "291 0000000000000001 0000000000000003 more "
                                         (coerce (fn-nntp-octets-chars
                                                  (fn-cu-hex *cut-chain-1*))
                                                 'string))))))
@@ -130,7 +132,7 @@
 ; A malformed chain is a syntax error.
 (assert-event
  (equal (cadr (car (cdr (in-arena-fn-cu-serve-reply
-                         *sr-arena* nil *cut-state* *cut-trie*
+                         *sr-arena* nil *cut-state*
                          (list *cut-wildmat* (fn-cu-u64-hex 0) (cut-octets "00")
                                (cut-octets "1000"))))))
         (cut-line "501 syntax error")))
@@ -147,34 +149,34 @@
 (bpr-lift fn-cu-servedp 3)
 (defconst *cut-groups* '("fn.test"))
 (defconst *cut-selected*
-  (in-arena-cut-select *sr-arena* *cut-articles* 0 *cut-groups* *cut-trie* 1000))
+  (in-arena-cut-select *sr-arena* *cut-articles* 0 *cut-groups* *cut-view* 1000))
 (assert-event (equal *cut-selected* (list 4 (list *cut-a1* *cut-a2*))))
-(assert-event (in-arena-fn-cu-servedp *sr-arena* *cut-a1* *cut-groups* *cut-trie*))
+(assert-event (in-arena-fn-cu-servedp *sr-arena* *cut-a1* *cut-groups* *cut-view*))
 (assert-event (member-equal *cut-a3* *cut-articles*))
 (assert-event (member-equal *cut-w* *cut-articles*))
 (must-fail-checked
- (assert-event (in-arena-fn-cu-servedp *sr-arena* *cut-a3* *cut-groups* *cut-trie*)))
+ (assert-event (in-arena-fn-cu-servedp *sr-arena* *cut-a3* *cut-groups* *cut-view*)))
 (must-fail-checked
- (assert-event (in-arena-fn-cu-servedp *sr-arena* *cut-w* *cut-groups* *cut-trie*)))
+ (assert-event (in-arena-fn-cu-servedp *sr-arena* *cut-w* *cut-groups* *cut-view*)))
 
 ; KEYSTONE fn-cu-select-makes-progress.  Witness: from 0 below the end 4, NEXT
 ; is 4.  Tooth (FROM below the end): at the end, NEXT does not move past FROM.
 (assert-event (< 0 (car *cut-selected*)))
 (must-fail-checked
  (assert-event (< 4 (car (in-arena-cut-select *sr-arena* *cut-articles* 4
-                                              *cut-groups* *cut-trie* 1000)))))
+                                              *cut-groups* *cut-view* 1000)))))
 
 ; KEYSTONE fn-cu-select-stays-within-the-quantum.  Witness: quantum 1 serves
 ; A1 alone (larger than the quantum, never cut).  Tooth (natp quantum): with
 ; no entries and quantum -1 the batch is empty and 0 octets exceed -1.
 (bpr-lift fn-cu-octets-of 1)
 (defconst *cut-selected-q1*
-  (in-arena-cut-select *sr-arena* *cut-articles* 0 *cut-groups* *cut-trie* 1))
+  (in-arena-cut-select *sr-arena* *cut-articles* 0 *cut-groups* *cut-view* 1))
 (assert-event (equal *cut-selected-q1* (list 1 (list *cut-a1*))))
 (assert-event (< 1 (in-arena-fn-cu-octets-of *sr-arena* (cadr *cut-selected-q1*))))
 (must-fail-checked
  (assert-event
-  (let ((served (cadr (in-arena-cut-select *sr-arena* nil 0 *cut-groups* *cut-trie* -1))))
+  (let ((served (cadr (in-arena-cut-select *sr-arena* nil 0 *cut-groups* *cut-view* -1))))
     (or (<= (in-arena-fn-cu-octets-of *sr-arena* served) -1)
         (equal (len served) 1)))))
 
@@ -187,7 +189,7 @@
 (assert-event (equal (fn-cu-batch-entries) (fn-clq-payload-quantum)))
 (defconst *cut-eight* (append *cut-articles* *cut-articles*))
 (assert-event
- (equal (in-arena-cut-select *sr-arena* *cut-eight* 0 *cut-groups* *cut-trie* 1000)
+ (equal (in-arena-cut-select *sr-arena* *cut-eight* 0 *cut-groups* *cut-view* 1000)
         (list 4 (list *cut-a1* *cut-a2*))))
 (defun cut-select-whole (articles from groups trie quantum fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -198,10 +200,10 @@
     next))
 (bpr-lift cut-select-whole 5)
 (assert-event
- (equal (in-arena-cut-select-whole *sr-arena* *cut-eight* 0 *cut-groups* *cut-trie* 1000) 8))
+ (equal (in-arena-cut-select-whole *sr-arena* *cut-eight* 0 *cut-groups* *cut-view* 1000) 8))
 (must-fail-checked
  (assert-event
-  (<= (in-arena-cut-select-whole *sr-arena* *cut-eight* 0 *cut-groups* *cut-trie* 1000)
+  (<= (in-arena-cut-select-whole *sr-arena* *cut-eight* 0 *cut-groups* *cut-view* 1000)
       (+ 0 (fn-cu-batch-entries)))))
 
 ; KEYSTONE fn-cu-serve-reply-effects-well-formed: the reply is one
@@ -285,7 +287,7 @@
 
 (defconst *cut-replies* '("200 local ready" "335 send it" "235 stored" "435 duplicate"))
 (defconst *cut-round* (cut-round (fn-cu-fresh-cursor *cut-peer*) *cut-reply* 512 *cut-replies*))
-(defconst *cut-final-cursor* (fn-cu-cursor *cut-peer* 4 *cut-chain-2*))
+(defconst *cut-final-cursor* (fn-cu-cursor *cut-peer* 3 *cut-chain-2*))
 (defun cut-round-session (r) (declare (xargs :mode :program)) (fn-csp-session (cadr r)))
 
 ; The verified batch is offered oldest first: A1 by IHAVE, its body on the

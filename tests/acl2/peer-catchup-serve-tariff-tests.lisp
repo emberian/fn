@@ -36,13 +36,13 @@
 (defconst *cz-articles* (list *cz-s1* *cz-t2* *cz-t1*))
 (defconst *cz-state*
   (fn-make-state '("fn.test") (list (cons "fn.test" 3)) *cz-articles* 3 nil nil))
-(defconst *cz-trie* (fn-midx-build (list *cz-s1* *cz-t2* *cz-t1*)))
+(defconst *cz-view* (list *cz-s1* *cz-t2* *cz-t1*))
 (defconst *cz-groups* '("fn.test"))
 
-; The tiny article is served (the antecedent is real: trie, group, framed).
+; The tiny article is served (the antecedent is real: arts, group, framed).
 (bpr-lift fn-cu-servedp 3)
-(assert-event (in-arena-fn-cu-servedp *cz-arena* *cz-t1* *cz-groups* *cz-trie*))
-(assert-event (in-arena-fn-cu-servedp *cz-arena* *cz-s1* *cz-groups* *cz-trie*))
+(assert-event (in-arena-fn-cu-servedp *cz-arena* *cz-t1* *cz-groups* *cz-view*))
+(assert-event (in-arena-fn-cu-servedp *cz-arena* *cz-s1* *cz-groups* *cz-view*))
 
 ; The rendered record of the smallest framable article: 45 octets -- 2
 ; ("R ") + 20 (the msgid) + 1 (space) + 16 (the count's hex) + 2 (the
@@ -60,29 +60,29 @@
 ; end the round is done.  The charge is positive per record, so the
 ; positions advance on the entries themselves, never on a quantum that
 ; never fills.
-(defun cz-select (articles from groups trie quantum fn-arena)
+(defun cz-select (articles from groups arts quantum fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (mv-let (next served) (fn-cu-select articles from groups trie quantum fn-arena)
+  (mv-let (next served) (fn-cu-select articles from groups arts quantum fn-arena)
     (list next served)))
 (bpr-lift cz-select 5)
 (assert-event (equal (in-arena-cz-select *cz-arena* *cz-articles* 0 *cz-groups*
-                                          *cz-trie* 1)
+                                          *cz-view* 1)
                      (list 1 (list *cz-t1*))))
 (assert-event (equal (in-arena-cz-select *cz-arena* *cz-articles* 1 *cz-groups*
-                                          *cz-trie* 1)
+                                          *cz-view* 1)
                      (list 2 (list *cz-t2*))))
 (assert-event (equal (in-arena-cz-select *cz-arena* *cz-articles* 2 *cz-groups*
-                                          *cz-trie* 1)
+                                          *cz-view* 1)
                      (list 3 (list *cz-s1*))))
 (assert-event (equal (in-arena-cz-select *cz-arena* *cz-articles* 3 *cz-groups*
-                                          *cz-trie* 1)
+                                          *cz-view* 1)
                      (list 3 nil)))
 
 ; The bound arm of `fn-cu-select-stays-within-the-quantum' (restated over
 ; rendered octets): quantum 90 admits exactly the two tiny records (45 +
 ; 45 = 90, the boundary is inclusive) and stops at the small one.
 (assert-event (equal (in-arena-cz-select *cz-arena* *cz-articles* 0 *cz-groups*
-                                          *cz-trie* 90)
+                                          *cz-view* 90)
                      (list 2 (list *cz-t1* *cz-t2*))))
 ; The exception arm: at quantum 1 the 45-octet record exceeds it and the
 ; batch is that one record alone, whole, never cut.

@@ -357,3 +357,7 @@ class SpanReferenceTests(JoinFixture):
 
 if __name__ == "__main__":
     unittest.main()
+
+# Critical arena export: fnn-seal-live-buffer calls fn-arena-seal-buffer
+# after fn-owner-prepare-buffer answers :seal-buffer; the reread checks the
+# staged payload after durable commit and extent reseating.

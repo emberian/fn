@@ -64,6 +64,24 @@ class ImageForTests(unittest.TestCase):
 
 
 class AttachStobjTests(unittest.TestCase):
+    def test_generic_definition_blocks_an_image_before_attachment(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = tree(directory)
+            (root / "books/arena.lisp").write_text(
+                '(in-package "ACL2")\n(include-book "mid")\n'
+                '(def-generic st :model (:recognizer st$ap :creator create-st$a) '
+                ':exports ((:read st-count :logic st$a-count)))\n')
+            graph = cert_images.Graph(root)
+            images = [{"name": "generic", "roots": ["books/arena"]},
+                      {"name": "mid", "roots": ["books/mid"]},
+                      {"name": "attached", "roots": ["books/arena-attach"]}]
+            self.assertEqual(graph.defines(graph.nonlocal_closure("books/arena")),
+                             {"st"})
+            self.assertEqual([i["name"] for i in cert_images.applicable(
+                "books/umbrella", images, graph)], ["attached", "mid"])
+            self.assertEqual(cert_images.image_for("books/umbrella", images[:2], graph)
+                             ["name"], "mid")
+
     def test_no_image_defines_a_stobj_the_books_world_attaches(self):
         # batch BB: an image holding books/payload-arena (fn-arena) made the
         # umbrella's attach-stobj fail ("The name FN-ARENA is in use").

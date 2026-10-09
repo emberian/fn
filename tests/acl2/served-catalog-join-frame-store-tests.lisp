@@ -57,22 +57,23 @@
                               r)))))
 
 ; fn-scr-catalogp's body at a pin's fields (fn-scr-fields-catalogp).
-(defun scjs-fields-okp (archive index buckets control version fn-arena fn-cat)
+(defun scjs-fields-okp (archive buckets control version fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
   (let* ((c (scjs-rows-of 0 fn-cat))
-         (pidx (if buckets (fn-gidx-pin-with-control index buckets control) index))
+         (pidx (if (or buckets (and control (not (consp (fn-state-articles archive)))))
+                   (fn-gidx-pin-with-control buckets control)
+                 nil))
          (v (fn-scr-view-of version fn-cat)))
     (and (equal (fn-state-articles archive) (fn-cat-view-articles v fn-arena fn-cat))
          (fn-statep archive)
          (fn-gidx-pin-correspondencep pidx archive)
-         (fn-midx-correspondencep (fn-gidx-pin-trie pidx) (fn-state-articles archive))
          (fn-cnx-freshp c)
          t)))
 
 (defun scjs-conns-okp (conns fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
   (if (consp conns)
-      (and (scjs-fields-okp (fn-own-conn-archive (car conns)) (fn-own-conn-index (car conns))
+      (and (scjs-fields-okp (fn-own-conn-archive (car conns))
                             (fn-own-conn-group-index (car conns)) (fn-own-conn-control (car conns))
                             (fn-own-conn-version (car conns)) fn-arena fn-cat)
            (scjs-conns-okp (cdr conns) fn-arena fn-cat))
@@ -94,7 +95,7 @@
           (and (equal (fn-own-view-raw view)
                       (fn-state-articles (fn-node-acceptance (fn-sn-node s))))
                (equal (fn-own-view-verdicts view) (fn-sn-verdicts s)))
-          (scjs-fields-okp (fn-own-view-archive view) (fn-own-view-index view)
+          (scjs-fields-okp (fn-own-view-archive view)
                            (fn-own-view-group-index view) (fn-own-view-control view)
                            (fn-own-view-version view) fn-arena fn-cat)
           (scjs-conns-okp (fn-own-conns o) fn-arena fn-cat))))
@@ -138,7 +139,7 @@
          (s (fn-own-store o))
          (view (fn-own-view o))
          (records (fn-sf-records (fn-sn-files s)))
-         (fn-cat (fn-sca-load-held-rows (take ncat records) (fn-own-view-index view) fn-arena fn-cat))
+         (fn-cat (fn-sca-load-held-rows (take ncat records) (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat))
          (oc2 (if (equal arm :complete)
                   (fn-ocfg-complete oc)
                 (fn-ocfg-step oc arm fn-arena)))
@@ -146,7 +147,6 @@
          (inv (scjs-invp o fn-arena fn-cat))
          (common (list (equal inv '(t t t t t))
                        (if (scjs-seenp o) t nil)
-                       (if (fn-scar-view-indexedp o) t nil)
                        (if (scjs-historyp o) t nil)
                        (if (fn-statep (fn-own-view-archive (fn-own-view o2))) t nil)
                        (if (scjs-versionsp o) t nil)))
@@ -227,8 +227,8 @@
 (assert-event (equal (list (scjs-nrecords *scjs-r-attempted*) (scjs-nrecords *scjs-r-completing*))
                      '(0 1)))
 
-(defconst *scjs-store-all* (make-list 7 :initial-element t))
-(defconst *scjs-complete-all* (make-list 9 :initial-element t))
+(defconst *scjs-store-all* (make-list 6 :initial-element t))
+(defconst *scjs-complete-all* (make-list 8 :initial-element t))
 (defconst *scjs-concl* '((t t t t t) t t))
 
 ; 1a. The store I/O keystone at the directory's publishing observation: every
@@ -261,7 +261,7 @@
 ; and the pinned connections still hold): the view goes from no article to
 ; one, the catalog stays empty.
 (assert-event (equal (scjs-exec *cet-t2-oc* *cet-t2-payloads* :complete 2)
-                     (list (list t t t t t t t nil nil)
+                     (list (list t t t t t t nil nil)
                            '((nil nil t nil t) t t) '(0 1) 0)))
 
 ; -----------------------------------------------------------------------------
@@ -281,7 +281,7 @@
          (records (fn-sf-records (fn-sn-files s)))
          (b (butlast records 1))
          (v (fn-own-view-version view))
-         (fn-cat (fn-sca-load-held-rows (take ncat records) (fn-own-view-index view) fn-arena fn-cat)))
+         (fn-cat (fn-sca-load-held-rows (take ncat records) (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat)))
     (mv (list (list (equal (scjs-invp o fn-arena fn-cat) '(t t t t t))
                     (if (scjs-seenp o) t nil)
                     (if (scjs-historyp o) t nil)

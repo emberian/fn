@@ -4,17 +4,17 @@
 ; What this book is evidence FOR.  `fn-cat-view-find-article-is-walk',
 ; `fn-cat-view-number-entry-is-walk' and `fn-cat-view-number-article-is-row':
 ; over the view a version pins (the visible rows, newest first, as acceptance
-; articles), the Message-ID trie's lookup and the group bucket's number lookup
+; articles), the Message-ID lookup and the group bucket's number lookup
 ; -- the two reads the served machine runs today -- are walks of the visible
 ; rows, so the catalog's columns answer them.  The exec path builds the view
 ; on live stobjs from a mixed history and runs the machine's own lookups
-; (fn-midx-lookup of fn-midx-build, fn-gidx-number-article of fn-gidx-build)
+; (fn-find-article, fn-gidx-number-article of fn-gidx-build)
 ; against the walks; then a withdrawal shows the version semantics on the view
 ; (the target stays in the view at the version before the cancel, leaves it
 ; after).  The keystones get ground witnesses with their complete antecedents
 ; and the hypothesis-removal witness the composed lookup needs: a second
 ; visible row with the same Message-ID (production acceptance excludes it;
-; the catalog does not) makes the trie answer the newer row.
+; the catalog does not) makes the composed lookup answer the newer row.
 
 (in-package "ACL2")
 (include-book "../../books/catalog-view")
@@ -50,11 +50,10 @@
     (mv-let (fn-arena fn-cat)
       (fn-cat-load *cvt-h* nil 0 fn-arena fn-cat)
       (let* ((view (fn-cat-view-articles 2 fn-arena fn-cat))
-             (trie (fn-midx-build view))
              (buckets (fn-gidx-build view))
-             (by-msgid (fn-midx-lookup "<c@x>" trie))
+             (by-msgid (fn-find-article "<c@x>" view))
              (walk-msgid (fn-cat-view-find "<c@x>" 2 2 fn-cat))
-             (by-number (fn-gidx-number-article "fn.test" 2 buckets trie))
+             (by-number (fn-gidx-number-article "fn.test" 2 buckets view))
              (walk-number (fn-cat-view-bound-find "fn.test" 2 2 2 fn-cat))
              (loaded (list (len view)
                            (fn-article-msgid (car view))            ; newest first
@@ -65,8 +64,8 @@
                            (fn-article-payload by-number)          ; the row's handle
                            (fn-nntp-article-bytes by-number fn-arena) ; the bytes a reader serves
                            (fn-cat-view-msgids-okp 2 2 fn-cat)
-                           (fn-midx-lookup "<zz@x>" trie)          ; absent
-                           (fn-gidx-number-article "fn.test" 3 buckets trie)))
+                           (fn-find-article "<zz@x>" view)          ; absent
+                           (fn-gidx-number-article "fn.test" 3 buckets view)))
              ; the cancel of row 0 committed when the count is 2
              (fn-cat (fn-cat-withdraw 0 9 fn-cat))
              (after (list (len (fn-cat-view-articles 2 fn-arena fn-cat))   ; pinned before the cancel: still 2
@@ -112,7 +111,7 @@
   :rule-classes nil)
 
 ; KEYSTONE 1, reachable and non-degenerate: the walk finds row 1 and the
-; trie's article is that row's.
+; found article is that row's.
 (defthm cvt-w-find-article
   (and (equal (fn-cat-view-find "<c@x>" 2 2 *cvt-c*) 1)
        (equal (fn-find-article "<c@x>" (fn-cat-view-below 2 2 *cvt-a* *cvt-c*))
@@ -127,13 +126,12 @@
 (defthm cvt-w-number-article
   (and (posp 2) (<= 2 *fn-nntp-max-article-number*)
        (fn-cat-view-msgids-okp 2 2 *cvt-c*)
-       (fn-midx-string-article-listp (fn-cat-view-below 2 2 *cvt-a* *cvt-c*))
        (equal (fn-cat-view-bound-find "fn.test" 2 2 2 *cvt-c*) 1)
        (equal (fn-cat-view-find (fn-record-msgid (fn-cat-at 1 *cvt-c*)) 2 2 *cvt-c*) 1)
        (equal (fn-gidx-entry-number-article
                "fn.test" 2
                (fn-index-build (fn-cat-view-below 2 2 *cvt-a* *cvt-c*))
-               (fn-midx-build (fn-cat-view-below 2 2 *cvt-a* *cvt-c*)))
+               (fn-cat-view-below 2 2 *cvt-a* *cvt-c*))
               (fn-cat-row-article 1 *cvt-a* *cvt-c*)))
   :rule-classes nil)
 
@@ -150,19 +148,18 @@
 (defthm cvt-w-number-article-without-uniqueness
   (and (posp 2) (<= 2 *fn-nntp-max-article-number*)
        (fn-cat-view-msgids-okp 3 3 *cvt-c3*)
-       (fn-midx-string-article-listp (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*))
        (equal (fn-cat-view-bound-find "fn.test" 2 3 3 *cvt-c3*) 1)
        (not (equal (fn-cat-view-find (fn-record-msgid (fn-cat-at 1 *cvt-c3*)) 3 3 *cvt-c3*) 1))
        (equal (fn-cat-view-find (fn-record-msgid (fn-cat-at 1 *cvt-c3*)) 3 3 *cvt-c3*) 2)
        (not (equal (fn-gidx-entry-number-article
                     "fn.test" 2
                     (fn-index-build (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*))
-                    (fn-midx-build (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*)))
+                    (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*))
                    (fn-cat-row-article 1 *cvt-a3* *cvt-c3*)))
        (equal (fn-gidx-entry-number-article
                "fn.test" 2
                (fn-index-build (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*))
-               (fn-midx-build (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*)))
+               (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*))
               (fn-cat-row-article 2 *cvt-a3* *cvt-c3*)))
   :rule-classes nil)
 (must-fail-checked
@@ -170,7 +167,7 @@
    (equal (fn-gidx-entry-number-article
            "fn.test" 2
            (fn-index-build (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*))
-           (fn-midx-build (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*)))
+           (fn-cat-view-below 3 3 *cvt-a3* *cvt-c3*))
           (fn-cat-row-article 1 *cvt-a3* *cvt-c3*))
    :rule-classes nil))
 

@@ -489,7 +489,7 @@
       (fn-nov-served-lines-numbered
        (fn-scat-kf group k hi articles)
        (fn-gidx-bucket-numbers group (fn-gidx-build articles))
-       (fn-midx-build articles) server fn-arena)
+       articles server fn-arena)
     (fn-nov-lines-for-numbers group (fn-scat-kf group k hi articles) articles fn-arena)))
 
 ; What the served lines need beyond a fresh catalog.
@@ -510,7 +510,7 @@
                            (fn-cnx-range-aux fn-cnx-walk-range fn-scat-range-keep fn-scat-kf
                             fn-nov-lines-for-numbers-cat fn-nov-lines-for-numbers
                             fn-nov-served-lines-for-numbers-cat fn-nov-served-lines-numbered
-                            fn-nov-served-lines-numbered-col fn-gidx-build fn-midx-build
+                            fn-nov-served-lines-numbered-col fn-gidx-build
                             fn-gidx-bucket-numbers fn-scol-okp fn-article-listp
                             fn-cat-view-articles fn-cnx-freshp))
            :use ((:instance fn-scat-range-keep-of-walk (top hi))))))

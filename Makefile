@@ -318,9 +318,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/paged-checkpoint-image \
 	books/paged-checkpoint-open \
 	books/def-representation \
+	books/def-representation-generic \
 	books/def-representation-index-lib \
 	books/def-representation-index \
 	tests/acl2/def-representation-tests \
+	tests/acl2/def-generic-tests \
 	tests/acl2/def-representation-index-tests \
 	tests/acl2/def-representation-history-tests \
 	tests/acl2/def-representation-pages-tests \
@@ -1054,6 +1056,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/post-identity-index \
 	books/post-identity-catalog \
 	tests/acl2/post-identity-index-tests \
+	tests/acl2/post-identity-view-teeth-tests \
 	tests/acl2/post-identity-catalog-tests \
 	books/post-prepare-catalog \
 	tests/acl2/post-prepare-catalog-tests \
@@ -1517,7 +1520,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/wire-scan \
 	books/served-scan \
 	books/served-span \
-	books/owner-offer-indexed \
 	books/store-events-carried \
 	books/owner-commit-carried \
 	books/owner-prepare-carried \
@@ -1585,6 +1587,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/served-catalog-join-refresh \
 	books/served-catalog-join-step \
 	books/served-catalog-join \
+	books/owner-view-catalog-lookup \
+	books/peer-offer-catalog \
 	books/served-catalog-join-number \
 	books/served-catalog-join-open \
 	books/served-catalog-join-entry \
@@ -1639,6 +1643,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/string-line-cursor-cost-tests \
 	tests/acl2/served-plan-line-buffer-tests \
 	tests/acl2/payload-arena-tests \
+	tests/acl2/payload-arena-teeth-tests \
 	tests/acl2/payload-arena-paged-tests \
 	tests/acl2/payload-arena-extent-tests \
 	tests/acl2/payload-extent-tests \
@@ -1665,6 +1670,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-source-scan-tests \
 	tests/acl2/served-catalog-owner-tests \
 	tests/acl2/served-catalog-join-tests \
+	tests/acl2/owner-view-catalog-lookup-tests \
+	tests/acl2/peer-offer-catalog-tests \
 	tests/acl2/served-catalog-join-open-tests \
 	tests/acl2/served-catalog-join-entry-tests \
 	tests/acl2/served-catalog-join-finish-tests \
@@ -1898,6 +1905,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-owner-index-invariants \
 	tests/acl2/consumer-owner-index-invariants-tests \
 	tests/acl2/owner-tests \
+	tests/acl2/owner-completion-teeth-tests \
 	books/poster-bytes-invariants \
 	tests/acl2/poster-bytes-tests \
 	tests/acl2/source-routes-tests \
@@ -2117,6 +2125,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-available-commands-tests \
 	tests/acl2/served-available-read-tests \
 	tests/acl2/served-available-access-tests \
+	tests/acl2/served-available-critical-teeth-tests \
 	tests/acl2/served-access-revoke-tests \
 	books/def-cursor-batch \
 	books/newnews-stream-cursor \

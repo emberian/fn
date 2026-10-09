@@ -148,7 +148,7 @@
 (include-book "books/records-concrete-owner")
 ;; The octet buffer (D27 boundary 6) and the existing-article test over it:
 ;; fn-owner-existing-action-buffer and fn-owner-prepare-buffer
-;; (host/owner-host.lisp) call fn-pidx-existing-action, whose buffer
+;; (host/owner-host.lisp) call fn-pidx-existing-action-cat, whose buffer
 ;; comparison is fn-pbb-same-articlep.
 (include-book "books/octets-stobj")
 ;; The owner's automatic checkpoint publication over the PUBLICATION buffer
@@ -159,11 +159,11 @@
 (include-book "books/owner-checkpoint-pipeline")
 (include-book "books/poster-bytes-buffer")
 ;; D13 (STO-014): the tombstone-aware same-article test over the buffer
-;; (fn-rclb-same-articlep), which fn-pidx-existing-action, the served POST's
+;; (fn-rclb-same-articlep), which fn-pidx-existing-action-cat, the served POST's
 ;; duplicate verdict, calls.
 (include-book "books/store-reclaim-buffer")
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
-;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
+;; fn-pidx-existing-action-cat and the fn-ppc-sbud-prepare catalog chain.
 (include-book "books/post-identity-index")
 (include-book "books/post-identity-catalog")
 (include-book "books/post-prepare-catalog")

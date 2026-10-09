@@ -95,7 +95,7 @@
 
 (defthm fn-pcr-msgid-retrieval-answers-220-without-moving-the-cursor
   (let
-    ((article (fn-midx-lookup (fn-nntp-token-string token) trie)))
+    ((article (fn-find-article (fn-nntp-token-string token) arts)))
     (implies
       (and
         (fn-arena-p fn-arena)
@@ -107,28 +107,28 @@
           (fn-pcr-served-octets server article fn-arena)
           :article))
       (equal
-        (fn-rcompat-retrieval session archive trie :article (list token) server fn-arena)
+        (fn-rcompat-retrieval session archive arts :article (list token) server fn-arena)
         (fn-pcr-msgid-220-reply session article server fn-arena))))
   :rule-classes
   nil
   :hints
   (("Goal" :use
      ((:instance fn-rcompat-article-reply-exec-is-the-reply
-        (article (fn-midx-lookup (fn-nntp-token-string token) trie))
+        (article (fn-find-article (fn-nntp-token-string token) arts))
         (number
-          (fn-nntp-msgid-local-number session (fn-midx-lookup (fn-nntp-token-string token) trie)))
+          (fn-nntp-msgid-local-number session (fn-find-article (fn-nntp-token-string token) arts)))
         (kind :article)
         (updatep nil)
         (group nil))
       (:instance fn-nntp-response-of-bytes-session
-        (article (fn-midx-lookup (fn-nntp-token-string token) trie))
+        (article (fn-find-article (fn-nntp-token-string token) arts))
         (number
-          (fn-nntp-msgid-local-number session (fn-midx-lookup (fn-nntp-token-string token) trie)))
+          (fn-nntp-msgid-local-number session (fn-find-article (fn-nntp-token-string token) arts)))
         (kind :article)
         (updatep nil)
         (group nil)
         (bytes
-          (fn-pcr-served-octets server (fn-midx-lookup (fn-nntp-token-string token) trie) fn-arena))))
+          (fn-pcr-served-octets server (fn-find-article (fn-nntp-token-string token) arts) fn-arena))))
      :in-theory
      (e/d
        (fn-rcompat-retrieval fn-rcompat-article-reply-exec
@@ -146,7 +146,7 @@
          fn-nntp-retrieval-initial
          fn-nntp-make-result
          fn-nntp-reply-effect
-         fn-midx-lookup
+         fn-find-article
          fn-nntp-token-string
          fn-nntp-msgid-local-number
          fn-nntp-single
@@ -159,7 +159,7 @@
 
 (defthm fn-pcr-command-line-answers-the-message-id-article
   (let*
-    ((article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie index)))
+    ((article (fn-find-article (fn-nntp-token-string token) (fn-state-articles archive)))
      (server (fn-nntp-xref-server env)))
     (implies
       (and
@@ -176,7 +176,7 @@
         (fn-gidx-pinp index)
         (and
           (not (fn-nntp-number-withdrawn-p session archive index token))
-          (not (fn-nntp-msgid-withdrawn-p index token)))
+          (not (fn-nntp-msgid-withdrawn-p archive index token)))
         (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
         (fn-nntp-response-okp-of-bytes article
           (fn-pcr-served-octets server article fn-arena)
@@ -189,7 +189,7 @@
   :hints
   (("Goal" :use
      ((:instance fn-pcr-msgid-retrieval-answers-220-without-moving-the-cursor
-        (trie (fn-gidx-pin-trie index))
+        (arts (fn-state-articles archive))
         (server (fn-nntp-xref-server env)))
       (:instance fn-nntp-archive-command-pinned-article-head-is-served
         (keyword *fn-pcr-article-keyword*)
@@ -226,7 +226,7 @@
   (let*
     ((session (fn-post-session-base ps))
      (env (fn-post-reader-env config observation))
-     (article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie index)))
+     (article (fn-find-article (fn-nntp-token-string token) (fn-state-articles archive)))
      (server (fn-nntp-xref-server env))
      (r (fn-pcr-msgid-220-reply session article server fn-arena))
      (p
@@ -250,7 +250,7 @@
         (fn-gidx-pinp index)
         (and
           (not (fn-nntp-number-withdrawn-p session archive index token))
-          (not (fn-nntp-msgid-withdrawn-p index token)))
+          (not (fn-nntp-msgid-withdrawn-p archive index token)))
         (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
         (fn-nntp-response-okp-of-bytes article
           (fn-pcr-served-octets server article fn-arena)
@@ -270,7 +270,7 @@
       (:instance fn-pcr-article-line-is-an-ordinary-command)
       (:instance fn-pcr-msgid-220-is-a-reply-without-an-offer-by-definition
         (session (fn-post-session-base ps))
-        (article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie index)))
+        (article (fn-find-article (fn-nntp-token-string token) (fn-state-articles archive)))
         (server (fn-nntp-xref-server (fn-post-reader-env config observation)))))
      :in-theory
      (theory (quote minimal-theory)))))
@@ -280,7 +280,7 @@
     ((ps (fn-peer-session-base peer))
      (session (fn-post-session-base ps))
      (env (fn-post-reader-env config observation))
-     (article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie index)))
+     (article (fn-find-article (fn-nntp-token-string token) (fn-state-articles archive)))
      (server (fn-nntp-xref-server env))
      (r (fn-pcr-msgid-220-reply session article server fn-arena))
      (p
@@ -306,7 +306,7 @@
         (fn-gidx-pinp index)
         (and
           (not (fn-nntp-number-withdrawn-p session archive index token))
-          (not (fn-nntp-msgid-withdrawn-p index token)))
+          (not (fn-nntp-msgid-withdrawn-p archive index token)))
         (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
         (fn-nntp-response-okp-of-bytes article
           (fn-pcr-served-octets server article fn-arena)
@@ -337,7 +337,7 @@
      (ps (fn-peer-session-base peer))
      (session (fn-post-session-base ps))
      (env (fn-post-reader-env viewconfig observation))
-     (article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex)))
+     (article (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive)))
      (server (fn-nntp-xref-server env))
      (r (fn-pcr-msgid-220-reply session article server fn-arena))
      (p
@@ -369,7 +369,7 @@
         (fn-gidx-pinp viewindex)
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-          (not (fn-nntp-msgid-withdrawn-p viewindex token)))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))
         (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
         (fn-nntp-response-okp-of-bytes article
           (fn-pcr-served-octets server article fn-arena)
@@ -408,7 +408,7 @@
      (ps (fn-peer-session-base peer))
      (session (fn-post-session-base ps))
      (env (fn-post-reader-env viewconfig observation))
-     (article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex)))
+     (article (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive)))
      (server (fn-nntp-xref-server env))
      (r (fn-pcr-msgid-220-reply session article server fn-arena))
      (p (fn-served-dispatch conn (list :command line) fn-arena)))
@@ -437,7 +437,7 @@
         (fn-gidx-pinp viewindex)
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-          (not (fn-nntp-msgid-withdrawn-p viewindex token)))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))
         (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
         (fn-nntp-response-okp-of-bytes article
           (fn-pcr-served-octets server article fn-arena)
@@ -450,8 +450,7 @@
               (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p)))))
           (fn-nntp-result-session r))
         (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
-        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn))
-        (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn)))))
+        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)))))
   :rule-classes
   nil
   :hints
@@ -471,14 +470,9 @@
             (fn-peer-session-base
               (fn-auth-view-session (fn-served-conn-session conn) (fn-served-conn-config conn)))))
         (article
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string token)
-            (fn-gidx-pin-trie
-              (fn-auth-view-index
-                (fn-served-conn-session conn)
-                (fn-served-conn-config conn)
-                (fn-served-conn-archive conn)
-                (fn-served-conn-pinned-index conn)))))
+            (fn-state-articles (fn-auth-view-archive (fn-served-conn-session conn) (fn-served-conn-config conn) (fn-served-conn-archive conn)))))
         (server
           (fn-nntp-xref-server
             (fn-post-reader-env
@@ -512,7 +506,7 @@
      (ps (fn-peer-session-base peer))
      (session (fn-post-session-base ps))
      (env (fn-post-reader-env viewconfig observation))
-     (article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex)))
+     (article (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive)))
      (server (fn-nntp-xref-server env))
      (r (fn-pcr-msgid-220-reply session article server fn-arena))
      (p (fn-served-step conn (append line (quote (13 10))) fn-arena)))
@@ -550,7 +544,7 @@
         (fn-gidx-pinp viewindex)
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-          (not (fn-nntp-msgid-withdrawn-p viewindex token)))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))
         (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
         (fn-nntp-response-okp-of-bytes article
           (fn-pcr-served-octets server article fn-arena)
@@ -563,8 +557,7 @@
               (fn-auth-session-base (fn-served-conn-session (fn-served-result-conn p)))))
           (fn-nntp-result-session r))
         (equal (fn-served-conn-pinned (fn-served-result-conn p)) (fn-served-conn-pinned conn))
-        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn))
-        (equal (fn-served-conn-index (fn-served-result-conn p)) (fn-served-conn-index conn)))))
+        (equal (fn-served-conn-archive (fn-served-result-conn p)) (fn-served-conn-archive conn)))))
   :rule-classes
   nil
   :hints
@@ -586,14 +579,9 @@
              (fn-peer-session-base
                (fn-auth-view-session (fn-served-conn-session conn) (fn-served-conn-config conn)))))
          (article
-           (fn-midx-lookup
+           (fn-find-article
              (fn-nntp-token-string token)
-             (fn-gidx-pin-trie
-               (fn-auth-view-index
-                 (fn-served-conn-session conn)
-                 (fn-served-conn-config conn)
-                 (fn-served-conn-archive conn)
-                 (fn-served-conn-pinned-index conn)))))
+             (fn-state-articles (fn-auth-view-archive (fn-served-conn-session conn) (fn-served-conn-config conn) (fn-served-conn-archive conn)))))
          (server
            (fn-nntp-xref-server
              (fn-post-reader-env
@@ -656,7 +644,7 @@
         (equal ps (fn-peer-session-base peer))
         (equal session (fn-post-session-base ps))
         (equal env (fn-post-reader-env viewconfig observation))
-        (equal article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex)))
+        (equal article (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive)))
         (equal server (fn-nntp-xref-server env))
         (equal r (fn-pcr-msgid-220-reply session article server fn-arena))
         (equal p
@@ -687,7 +675,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp o)
         (fn-scr-owner-catalogp o id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         (natp i)
@@ -724,7 +711,7 @@
         server
         (fn-gidx-pinp viewindex)
         (and (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-          (not (fn-nntp-msgid-withdrawn-p viewindex token)))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))
         (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
         (fn-nntp-response-okp-of-bytes article
           (fn-pcr-served-octets server article fn-arena)
@@ -778,7 +765,7 @@
       (ps (fn-peer-session-base peer))
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
-      (article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex)))
+      (article (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server fn-arena))
       (p
@@ -821,7 +808,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp (fn-ocfg-owner oc))
         (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         (natp i)
@@ -861,7 +847,7 @@
         (fn-gidx-pinp viewindex)
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-          (not (fn-nntp-msgid-withdrawn-p viewindex token)))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))
         (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
         (fn-nntp-response-okp-of-bytes
           article
@@ -937,14 +923,10 @@
                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
             (fn-served-conn-observation (fn-own-tls-served-conn (fn-ocfg-owner oc)
                 (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))))
-        (article (fn-midx-lookup (fn-nntp-token-string token)
-            (fn-gidx-pin-trie (fn-auth-view-index (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                (fn-served-conn-pinned-index (fn-own-tls-served-conn (fn-ocfg-owner oc)
+        (article (fn-find-article (fn-nntp-token-string token)
+            (fn-state-articles (fn-auth-view-archive (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))))))
         (server (fn-nntp-xref-server (fn-post-reader-env (fn-auth-view-config (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
@@ -960,14 +942,10 @@
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
                   (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))
-            (fn-midx-lookup (fn-nntp-token-string token)
-              (fn-gidx-pin-trie (fn-auth-view-index (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-pinned-index (fn-own-tls-served-conn (fn-ocfg-owner oc)
+            (fn-find-article (fn-nntp-token-string token)
+              (fn-state-articles (fn-auth-view-archive (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))
             (fn-nntp-xref-server (fn-post-reader-env (fn-auth-view-config (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
@@ -1100,7 +1078,7 @@
         (equal ps (fn-peer-session-base peer))
         (equal session (fn-post-session-base ps))
         (equal env (fn-post-reader-env viewconfig observation))
-        (equal article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex)))
+        (equal article (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive)))
         (equal server (fn-nntp-xref-server env))
         (equal r (fn-pcr-msgid-220-reply session article server fn-arena))
         (equal p
@@ -1131,7 +1109,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp o)
         (fn-scr-owner-catalogp o id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         completed
@@ -1156,7 +1133,7 @@
         server
         (fn-gidx-pinp viewindex)
         (and (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-          (not (fn-nntp-msgid-withdrawn-p viewindex token)))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))
         (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
         (fn-nntp-response-okp-of-bytes article
           (fn-pcr-served-octets server article fn-arena)
@@ -1201,7 +1178,7 @@
       (ps (fn-peer-session-base peer))
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
-      (article (fn-midx-lookup (fn-nntp-token-string token) (fn-gidx-pin-trie viewindex)))
+      (article (fn-find-article (fn-nntp-token-string token) (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server fn-arena))
       (p
@@ -1244,7 +1221,6 @@
         (not (consp views))
         (fn-gacc-okp cache)
         (fn-ocl-relation oc)
-        (fn-scar-view-indexedp (fn-ocfg-owner oc))
         (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
         (fn-scol-okp fn-arena fn-cat)
         completed
@@ -1272,7 +1248,7 @@
         (fn-gidx-pinp viewindex)
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex token))
-          (not (fn-nntp-msgid-withdrawn-p viewindex token)))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex token)))
         (fn-nntp-response-okp-of-bytes article (fn-nntp-article-bytes article fn-arena) :article)
         (fn-nntp-response-okp-of-bytes
           article
@@ -1348,14 +1324,10 @@
                   (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))
             (fn-served-conn-observation (fn-own-tls-served-conn (fn-ocfg-owner oc)
                 (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))))
-        (article (fn-midx-lookup (fn-nntp-token-string token)
-            (fn-gidx-pin-trie (fn-auth-view-index (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                (fn-served-conn-pinned-index (fn-own-tls-served-conn (fn-ocfg-owner oc)
+        (article (fn-find-article (fn-nntp-token-string token)
+            (fn-state-articles (fn-auth-view-archive (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                    (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))))))
         (server (fn-nntp-xref-server (fn-post-reader-env (fn-auth-view-config (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
                     (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
@@ -1371,14 +1343,10 @@
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
                   (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))
-            (fn-midx-lookup (fn-nntp-token-string token)
-              (fn-gidx-pin-trie (fn-auth-view-index (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
-                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-                  (fn-served-conn-pinned-index (fn-own-tls-served-conn (fn-ocfg-owner oc)
+            (fn-find-article (fn-nntp-token-string token)
+              (fn-state-articles (fn-auth-view-archive (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-config (fn-own-tls-served-conn (fn-ocfg-owner oc)
+                      (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))) (fn-served-conn-archive (fn-own-tls-served-conn (fn-ocfg-owner oc)
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))))))
             (fn-nntp-xref-server (fn-post-reader-env (fn-auth-view-config (fn-served-conn-session (fn-own-tls-served-conn (fn-ocfg-owner oc)
                       (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))

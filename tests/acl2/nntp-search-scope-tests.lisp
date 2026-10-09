@@ -107,7 +107,7 @@
 (defconst *ss-w-session*
   (fn-nntp-set-cursor (fn-nntp-open-session *ss-w-archive*) "fn.mod.a" nil))
 (defconst *ss-w-index*
-  (fn-gidx-pin-with-control (fn-midx-build *csv-vis*) (fn-gidx-build *csv-vis*)
+  (fn-gidx-pin-with-control (fn-gidx-build *csv-vis*)
                             (fn-ctl-pin *csv-w* *csv-ws*)))
 ; Witness: the step's 423 arm fires for 1 (T, withdrawn), and 1 is not a hit
 ; of the pattern that selects everything; O at 2 is.
