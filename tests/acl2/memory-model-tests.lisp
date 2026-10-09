@@ -1,4 +1,4 @@
-; Witnesses for books/memory-model (Builder M, landing 1, revision 2): per
+; Witnesses for books/memory-model (Builder M, landing 1, revision 3): per
 ; keystone one reachable witness (every hypothesis and the conclusion hold)
 ; and, per hypothesis, a removal witness (the others hold, it fails, and the
 ; conclusion fails).  The figures are the small preset's over the production
@@ -14,19 +14,23 @@
 (defconst *mmt-p* *fn-heap-small-profile*)
 (defconst *mmt-img* (list (* 100 1048576) (* 23 1048576) 1090519))
 (defconst *mmt-img-big* (list (* 101 1048576) (* 23 1048576) 1090519))
-(defconst *mmt-cfg* (list 32 t 8388608 8388608 nil 0 1024 "/var/lib/fn/store"))
-(defconst *mmt-t0* (fn-mm-make-tot 0 0 0 0 0 0 :resident))
+(defconst *mmt-cfg* (list 32 t 8388608 8388608 nil 0 8388608 16 nil 64))
+(defconst *mmt-t0* (fn-mm-make-tot 0 0 0 0 0 0 0 0 :resident))
 ; W13's store: 1,000 POSTs of 2,048 octets, 600 header octets of which 40
-; are the Message-ID, one group each, 2,300 log octets a record; its
-; checkpoint at 900 records and the 100 past it.
+; are the Message-ID, one group each, 2,300 log octets and 2,400 octets of
+; padded SCC encoding a record; its checkpoint at 900 records and the 100
+; past it.  CHARGE is fn-sbud-bytes-used: payload, header charge, one
+; membership.
 (defun mmt-posts (k)
-  (fn-mm-make-tot k (* k 2048) (* k (+ (* 8 600) (* 12 40))) k 0 (* k 2300) :resident))
+  (let ((hc (* k (+ (* 8 600) (* 12 40)))))
+    (fn-mm-make-tot k (* k 2048) hc k 0 (* k 2300) (* k 2400) (+ (* k 2048) hc (* k 320))
+                    :resident)))
 (defconst *mmt-t1k* (mmt-posts 1000))
 (defconst *mmt-hdr* (mmt-posts 900))
 (defconst *mmt-suffix* (mmt-posts 100))
 ; What an observer that sizes by the profile's ceilings would charge: T
 ; records and H of history.
-(defconst *mmt-ceiling* (fn-mm-make-tot 16384 8388608 8388608 26214 0 8388608 :resident))
+(defconst *mmt-ceiling* (fn-mm-make-tot 16384 8388608 8388608 26214 0 8388608 8388608 8388608 :resident))
 
 (assert-event (<= (fn-mm-tot-charge *mmt-t1k*) 8388608))
 (assert-event (equal (fn-mm-observed-tot *mmt-hdr* *mmt-suffix*) *mmt-t1k*))
@@ -36,11 +40,11 @@
 (defun mmt-k1 (k s h pub)
   (list (<= (nfix k) (fn-mm-cfg-connections *mmt-cfg*))
         (<= (nfix s) (fn-heap-article-slots *mmt-p*))
-        (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp *mmt-cfg*) nil))
+        (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp *mmt-cfg*) (fn-mm-cfg-handshakes *mmt-cfg*)))
         (<= (fn-mm-need *mmt-p* *mmt-img* *mmt-cfg* *mmt-t1k* k s h pub)
             (fn-mm-sum *mmt-p* *mmt-img* *mmt-cfg* *mmt-t1k*))))
 (defconst *mmt-slots* (fn-heap-article-slots *mmt-p*))
-(defconst *mmt-hs* (fn-cbud-handshake-slots t nil))
+(defconst *mmt-hs* (fn-cbud-handshake-slots t 16))
 (assert-event (equal (mmt-k1 32 *mmt-slots* *mmt-hs* t) '(t t t t)))
 (assert-event (equal (mmt-k1 33 *mmt-slots* *mmt-hs* t) '(nil t t nil)))
 (assert-event (equal (mmt-k1 32 (+ 1 *mmt-slots*) *mmt-hs* t) '(t nil t nil)))
@@ -56,7 +60,7 @@
 ; K3 fn-mm-admitted-store-reopens.  Run with no connection and no TLS, where
 ; the reopen's workspace exceeds the serving sum, so the gate's limit is the
 ; reopen's and each removal bites on the reopen itself.
-(defconst *mmt-cfg0* (list 0 nil 8388608 8388608 nil 0 1024 "/var/lib/fn/store"))
+(defconst *mmt-cfg0* (list 0 nil 8388608 8388608 nil 0 8388608 16 nil 64))
 (defun mmt-k3 (limit adm tot hdr suffix img2)
   (let ((obs (fn-mm-observed-tot hdr suffix)))
     (list (fn-mm-gate-p *mmt-p* *mmt-img* *mmt-cfg0* limit adm)
@@ -98,7 +102,7 @@
 ; At C = 32 the OVER quantum's octet lists alone are 4.0 GiB of the sum
 ; (the figures below), so no launch below that exists; the launch witnesses
 ; run one connection.
-(defconst *mmt-cfg1* (list 1 t 8388608 8388608 nil 0 1024 "/var/lib/fn/store"))
+(defconst *mmt-cfg1* (list 1 t 8388608 8388608 nil 0 8388608 16 nil 64))
 (defconst *mmt-core* '(200411640 . 114644864))
 (defconst *mmt-nur* 8388608)
 (defconst *mmt-1g* (* 1024 1048576))
@@ -157,13 +161,13 @@
        :owner-empty (fn-mm-owner *mmt-t0* *mmt-cfg*)
        :owner-w13 (fn-mm-owner *mmt-t1k* *mmt-cfg*)
        :connections (* 32 (fn-mm-connection *mmt-p* *mmt-cfg*))
-       :over-window (fn-mm-over-window-octets *mmt-p*)
+       :over-window (fn-mm-over-window-octets *mmt-p* *mmt-cfg*)
        :inflight (fn-mm-inflight *mmt-p* *mmt-cfg*)
        :cold-reads (fn-mm-cold-reads *mmt-p* *mmt-cfg*)
-       :handshakes (fn-cbud-handshake-octets t nil)
+       :handshakes (fn-cbud-handshake-octets t 16)
        :maintenance-w13 (fn-mm-maintenance *mmt-t1k* *mmt-cfg*)
        :sum-empty (fn-mm-sum *mmt-p* *mmt-img* *mmt-cfg* *mmt-t0*)
        :sum-w13 (fn-mm-sum *mmt-p* *mmt-img* *mmt-cfg* *mmt-t1k*)
        :reopen-w13 (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg* *mmt-t1k*)
        :reopen-ceiling (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg* *mmt-ceiling*)
-       :sum-w13-one-connection (fn-mm-sum *mmt-p* *mmt-img* (list 1 t 8388608 8388608 nil 0 1024 "/var/lib/fn/store") *mmt-t1k*)))
+       :sum-w13-one-connection (fn-mm-sum *mmt-p* *mmt-img* (list 1 t 8388608 8388608 nil 0 8388608 16 nil 64) *mmt-t1k*)))

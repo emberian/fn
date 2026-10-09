@@ -1,6 +1,6 @@
 ; fn: the process's memory as five terms against one configured figure
-; (Builder M, landing 1, 2026-10-09; RUNTIME-MODEL section 6; revision 2
-; after Codex's cross-review, build/memory/l1/codex-review.final.md).
+; (Builder M, landing 1, 2026-10-09; RUNTIME-MODEL section 6; revision 3
+; after Codex's two cross-reviews, build/memory/l1/codex-review*.final.md).
 ;
 ;   M_base + M_owner + C x M_connection + M_inflight + M_maintenance
 ;     <= M_configured
@@ -28,25 +28,35 @@
 ;
 ; THE INPUTS, plain lists (decisions, not state):
 ;
-;   TOT   the charged totals
-;         (RECORDS PAYLOAD HCHARGE MEMBERSHIPS EVENTS LOG RESIDENCY):
-;         RECORDS the committed records (fn-sbud-used); PAYLOAD, HCHARGE and
-;         MEMBERSHIPS the held rows' payload octets, header charges
-;         (fn-sbud-held-heap-charge) and group memberships; EVENTS the
-;         encoded octets of every other record (fn-sbud-row-octets' other
-;         arms: the accepted-statement and non-article events); LOG the
-;         octets of the log's records, what a full replay reads; RESIDENCY
-;         :resident (payloads in the heap's arena, today) or :paged.
-;         PAYLOAD + HCHARGE + 320 MEMBERSHIPS + EVENTS is fn-sbud-bytes-used.
+;   TOT   the charged totals (RECORDS ARENA HCHARGE MEMBERSHIPS EVENTS LOG
+;         HISTORY CHARGE RESIDENCY), each read from the store, none derived:
+;         RECORDS the committed records (fn-sbud-used); ARENA the physical
+;         octets of every held payload (accepted-statement composites'
+;         included); HCHARGE the held rows' header charges
+;         (fn-sbud-held-heap-charge); MEMBERSHIPS their group memberships;
+;         EVENTS the encoded octets of every record that is not a plain held
+;         row (fn-sbud-row-octets' other arms: composites and non-article
+;         events); LOG the octets of the log's records, what a full replay
+;         reads; HISTORY the history image's event column, the padded SCC
+;         encodings (books/history-image-plan.lisp fn-hp-x-rowlen's third
+;         value, summed); CHARGE fn-sbud-bytes-used itself, the budget's
+;         coordinate (it is not the arena's: a composite's encoding carries
+;         its payload, Codex review 2 F6); RESIDENCY :resident (payloads in
+;         the heap's arena, today) or :paged.
 ;   IMG   the image's resident floor, MEASURED (FILE ANON THREAD): the
 ;         core's file-backed pages resident after the open, the runtime's
 ;         anonymous floor, one thread's resident areas.  A-IMAGE-RESIDENT.
-;   CFG   (CONNECTIONS TLSP TRIGGER PUB-TRIGGER RECLAIM-LIVE CACHE
-;          COLD-FILES ROOT): the connection cap C, whether a TLS context is
-;         loaded, the collector's trigger in service and during a
-;         publication, the live-reclaim opt-in, the paged payload cache's
-;         octets, the cold-read pool's file capacity and the store's root
-;         path (the pool's registration charges it).
+;   CFG   (CONNECTIONS TLSP TRIGGER PUB-TRIGGER RECLAIM-LIVE CACHE COLD
+;          HANDSHAKES OVER-WINDOW SERVER-OCTETS): the connection cap C,
+;         whether a TLS context is loaded, the collector's trigger in service
+;         and during a publication, the live-reclaim opt-in, the paged
+;         payload cache's octets, the cold-read pool's funded budget (its
+;         ledger's heap and native allowances: books/page-read-ledger.lisp,
+;         cached entries and full paths charged within it), the handshake
+;         allowance the served budget holds (the live limit, or the
+;         outstanding handshakes when a reconfiguration lowered it), the OVER
+;         cursor quantum the host uses (fn-splan-cursor-window of its
+;         override), and the server name's octets (each NOV line's Xref).
 ;
 ; A-GC-FOOTPRINT: the dynamic space's resident pages are at most its live
 ; objects plus twice the trigger in force, freed pages returned (MEM-003).
@@ -68,26 +78,21 @@
   (nfix (nth i (true-list-fix x))))
 
 (defun fn-mm-tot-records (tot) (declare (xargs :guard t)) (fn-mm-nat 0 tot))
-(defun fn-mm-tot-payload (tot) (declare (xargs :guard t)) (fn-mm-nat 1 tot))
+(defun fn-mm-tot-arena (tot) (declare (xargs :guard t)) (fn-mm-nat 1 tot))
 (defun fn-mm-tot-hcharge (tot) (declare (xargs :guard t)) (fn-mm-nat 2 tot))
 (defun fn-mm-tot-memberships (tot) (declare (xargs :guard t)) (fn-mm-nat 3 tot))
 (defun fn-mm-tot-events (tot) (declare (xargs :guard t)) (fn-mm-nat 4 tot))
 (defun fn-mm-tot-log (tot) (declare (xargs :guard t)) (fn-mm-nat 5 tot))
+(defun fn-mm-tot-history (tot) (declare (xargs :guard t)) (fn-mm-nat 6 tot))
+(defun fn-mm-tot-charge (tot) (declare (xargs :guard t)) (fn-mm-nat 7 tot))
 (defun fn-mm-tot-paged-p (tot)
   (declare (xargs :guard t))
-  (equal (nth 6 (true-list-fix tot)) :paged))
+  (equal (nth 8 (true-list-fix tot)) :paged))
 
-; The history the budget charges: fn-sbud-bytes-used's parts.
-(defun fn-mm-tot-charge (tot)
+(defun fn-mm-make-tot (records arena hcharge memberships events log history charge residency)
   (declare (xargs :guard t))
-  (+ (fn-mm-tot-payload tot) (fn-mm-tot-hcharge tot)
-     (* *fn-sbud-membership-octets* (fn-mm-tot-memberships tot))
-     (fn-mm-tot-events tot)))
-
-(defun fn-mm-make-tot (records payload hcharge memberships events log residency)
-  (declare (xargs :guard t))
-  (list (nfix records) (nfix payload) (nfix hcharge) (nfix memberships)
-        (nfix events) (nfix log)
+  (list (nfix records) (nfix arena) (nfix hcharge) (nfix memberships)
+        (nfix events) (nfix log) (nfix history) (nfix charge)
         (if (equal residency :paged) :paged :resident)))
 
 ; Componentwise order, residency equal: a store that is a prefix of
@@ -95,11 +100,13 @@
 (defun fn-mm-tot-le (a b)
   (declare (xargs :guard t))
   (and (<= (fn-mm-tot-records a) (fn-mm-tot-records b))
-       (<= (fn-mm-tot-payload a) (fn-mm-tot-payload b))
+       (<= (fn-mm-tot-arena a) (fn-mm-tot-arena b))
        (<= (fn-mm-tot-hcharge a) (fn-mm-tot-hcharge b))
        (<= (fn-mm-tot-memberships a) (fn-mm-tot-memberships b))
        (<= (fn-mm-tot-events a) (fn-mm-tot-events b))
        (<= (fn-mm-tot-log a) (fn-mm-tot-log b))
+       (<= (fn-mm-tot-history a) (fn-mm-tot-history b))
+       (<= (fn-mm-tot-charge a) (fn-mm-tot-charge b))
        (equal (fn-mm-tot-paged-p a) (fn-mm-tot-paged-p b))))
 
 ; Two totals together: a checkpoint's and the log's past it.  Residency is
@@ -107,11 +114,13 @@
 (defun fn-mm-tot-plus (a b)
   (declare (xargs :guard t))
   (fn-mm-make-tot (+ (fn-mm-tot-records a) (fn-mm-tot-records b))
-                  (+ (fn-mm-tot-payload a) (fn-mm-tot-payload b))
+                  (+ (fn-mm-tot-arena a) (fn-mm-tot-arena b))
                   (+ (fn-mm-tot-hcharge a) (fn-mm-tot-hcharge b))
                   (+ (fn-mm-tot-memberships a) (fn-mm-tot-memberships b))
                   (+ (fn-mm-tot-events a) (fn-mm-tot-events b))
                   (+ (fn-mm-tot-log a) (fn-mm-tot-log b))
+                  (+ (fn-mm-tot-history a) (fn-mm-tot-history b))
+                  (+ (fn-mm-tot-charge a) (fn-mm-tot-charge b))
                   (if (fn-mm-tot-paged-p a) :paged :resident)))
 
 (defun fn-mm-img-file (img) (declare (xargs :guard t)) (fn-mm-nat 0 img))
@@ -132,10 +141,12 @@
   (max (fn-mm-nat 3 cfg) (fn-mm-cfg-trigger cfg)))
 (defun fn-mm-cfg-reclaim-live-p (cfg) (declare (xargs :guard t)) (and (nth 4 (true-list-fix cfg)) t))
 (defun fn-mm-cfg-cache (cfg) (declare (xargs :guard t)) (fn-mm-nat 5 cfg))
-(defun fn-mm-cfg-cold-files (cfg) (declare (xargs :guard t)) (fn-mm-nat 6 cfg))
-(defun fn-mm-cfg-root (cfg)
+(defun fn-mm-cfg-cold (cfg) (declare (xargs :guard t)) (fn-mm-nat 6 cfg))
+(defun fn-mm-cfg-handshakes (cfg) (declare (xargs :guard t)) (fn-mm-nat 7 cfg))
+(defun fn-mm-cfg-over-window (cfg)
   (declare (xargs :guard t))
-  (let ((r (nth 7 (true-list-fix cfg)))) (if (stringp r) r "")))
+  (fn-splan-cursor-window (nth 8 (true-list-fix cfg))))
+(defun fn-mm-cfg-server-octets (cfg) (declare (xargs :guard t)) (fn-mm-nat 9 cfg))
 
 ; -----------------------------------------------------------------------------
 ; M_configured.  Ruling (coordinator 2026-10-09, reversible, for ember): the
@@ -188,12 +199,13 @@
 ; word a record and the event column of the log's octets, each region of U
 ; octets taking adt-cap U pages (a power of two), after one header page
 ; (books/history-image-open.lisp fn-his-layout over books/proto/adt-bytes
-; adt-end-l).  O-HROOT: the layout's plan is (RECORDS (8R 8R 8R 8R E)) with
-; E <= LOG.
-(defun fn-mm-hroot-npages (n log)
+; adt-end-l).  O-HROOT: the layout's plan is (RECORDS (8R 8R 8R 8R E)), E
+; the HISTORY total (the padded SCC encodings, not the wire log's octets:
+; Codex review 2 F1).
+(defun fn-mm-hroot-npages (n history)
   (declare (xargs :guard t))
   (let ((w (* 8 (nfix n))))
-    (adt-end-l (list w w w w (nfix log)) 1)))
+    (adt-end-l (list w w w w (nfix history)) 1)))
 
 (defthm fn-mm-adt-end-l-natp
   (natp (adt-end-l lens start))
@@ -206,9 +218,9 @@
   :hints (("Goal" :in-theory (disable adt-end-l))))
 
 ; One generation's demand, fn-heap-hroot-demand-bound's shape at the store.
-(defun fn-mm-hroot-demand (n log)
+(defun fn-mm-hroot-demand (n history)
   (declare (xargs :guard t))
-  (let ((img (fn-heap-hroot-image-octets (fn-mm-hroot-npages n log))))
+  (let ((img (fn-heap-hroot-image-octets (fn-mm-hroot-npages n history))))
     (+ (* 2 (+ img (* 8 (nfix n)) 4096))
        (* 64 (+ 1 (nfix n)))
        img)))
@@ -219,7 +231,7 @@
   (declare (xargs :guard t))
   (if (fn-mm-tot-paged-p tot)
       (+ (fn-heap-arena-octets 0) (fn-mm-cfg-cache cfg))
-    (fn-heap-arena-octets (fn-mm-tot-payload tot))))
+    (fn-heap-arena-octets (fn-mm-tot-arena tot))))
 
 ; The non-article records' heap: held as decoded events, at most sixteen
 ; heap octets an encoded octet, twice for the collector.  O-EVENTS (owed: a
@@ -241,21 +253,32 @@
        (* *fn-heap-charge-heap-octets* (fn-mm-tot-hcharge tot))
        (* 2 *fn-heap-membership-octets* (fn-mm-tot-memberships tot))
        (* *fn-mm-event-heap-octets* (fn-mm-tot-events tot))
-       (fn-mm-hroot-demand n (fn-mm-tot-log tot)))))
+       (fn-mm-hroot-demand n (fn-mm-tot-history tot)))))
 
 ; A reply a connection holds: the article (connection-budget's stated
 ; workload, 2A + 1,024) or an OVER/XOVER cursor quantum, W NOV lines built
-; as octet lists (books/over-window.lisp fn-ovw-step; W =
-; fn-splan-cursor-window), each line at most the header bound and its
-; number, size and line-count fields.  O-NOV-LINE (owed): a NOV line is at
-; most HDR + *fn-mm-nov-fields-octets* octets.
+; as octet lists (books/over-window.lisp fn-ovw-step; W the host's quantum,
+; CFG's OVER-WINDOW), each line at most the header bound, its number, size
+; and line-count fields, and the generated Xref: the server name and, for
+; each of at most G memberships, a space, the group name, a colon and the
+; article number (books/nntp-xref.lisp).  O-NOV-LINE (owed): a NOV line is
+; at most fn-mm-nov-line-octets.
 (defconst *fn-mm-nov-fields-octets* 128)
+(defconst *fn-mm-xref-membership-fixed-octets* 12)   ; " " ":" and 10 digits
 
-(defun fn-mm-over-window-octets (profile)
+(defun fn-mm-nov-line-octets (profile cfg)
   (declare (xargs :guard t))
-  (* 2 *fn-heap-list-octets-per-octet* (fn-splan-cursor-window nil)
-     (+ (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))
-        *fn-mm-nov-fields-octets*)))
+  (+ (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))
+     *fn-mm-nov-fields-octets*
+     (fn-mm-cfg-server-octets cfg)
+     (* (nfix (fn-bs-profile-max-groups-per-article profile))
+        (+ (nfix (fn-bs-profile-max-group-name-octets profile))
+           *fn-mm-xref-membership-fixed-octets*))))
+
+(defun fn-mm-over-window-octets (profile cfg)
+  (declare (xargs :guard t))
+  (* 2 *fn-heap-list-octets-per-octet* (fn-mm-cfg-over-window cfg)
+     (fn-mm-nov-line-octets profile cfg)))
 
 ; M_connection: one connection's heap and native parts as the served host
 ; holds them (fn-cbud-conn-octets: record, reads, the article reply, the
@@ -266,16 +289,16 @@
   (declare (xargs :guard t))
   (let ((a (fn-bs-profile-max-article-octets profile)))
     (+ (fn-cbud-conn-octets a (fn-mm-cfg-tlsp cfg))
-       (nfix (- (fn-mm-over-window-octets profile)
+       (nfix (- (fn-mm-over-window-octets profile cfg)
                 (+ (* 2 (nfix a)) *fn-cbud-reply-status-octets*))))))
 
-; The cold-read pool: its tables and registration at the configured files,
-; and its workers' read reserve (books/page-read-startup.lisp).
+; The cold-read pool: its funded budget, the ledger's heap and native
+; allowances (books/page-read-ledger.lisp fn-prl-make; tables, registration
+; with full paths, workers' reads and cached entries are all charged within
+; it).  O-COLD: the ledger's charges and baseline stay within its budget.
 (defun fn-mm-cold-reads (profile cfg)
-  (declare (xargs :guard t))
-  (+ (fn-prstartup-required-heap (fn-mm-cfg-cold-files cfg) *fn-heap-cold-workers*
-                                 (fn-mm-cfg-root cfg))
-     (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) *fn-heap-cold-workers*)))
+  (declare (xargs :guard t) (ignore profile))
+  (fn-mm-cfg-cold cfg))
 
 ; M_inflight: the request the owner serves (record and header lists, the
 ; taken submission, both octet buffers), the articles in flight (the slots'
@@ -284,7 +307,7 @@
   (declare (xargs :guard t))
   (+ (fn-heap-store-inflight-octets profile)
      (fn-heap-articles-octets profile)
-     (fn-cbud-handshake-octets (fn-mm-cfg-tlsp cfg) nil)
+     (fn-cbud-handshake-octets (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))
      (fn-mm-cold-reads profile cfg)))
 
 ; M_maintenance: the history root's candidate generation, the collector's
@@ -293,7 +316,7 @@
 (defun fn-mm-maintenance (tot cfg)
   (declare (xargs :guard t))
   (let ((n (fn-mm-tot-records tot)))
-    (+ (fn-mm-hroot-demand n (fn-mm-tot-log tot))
+    (+ (fn-mm-hroot-demand n (fn-mm-tot-history tot))
        (* 2 (nfix (- (fn-mm-cfg-pub-trigger cfg) (fn-mm-cfg-trigger cfg))))
        (if (fn-mm-cfg-reclaim-live-p cfg)
            (fn-heap-reclaim-demand-octets n (fn-mm-tot-charge tot))
@@ -420,7 +443,7 @@
 (defthm fn-mm-need-within-the-sum
   (implies (and (<= (nfix k) (fn-mm-cfg-connections cfg))
                 (<= (nfix s) (fn-heap-article-slots profile))
-                (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) nil)))
+                (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
            (<= (fn-mm-need profile img cfg tot k s h publishing)
                (fn-mm-sum profile img cfg tot)))
   :rule-classes nil
@@ -434,7 +457,7 @@
                  (:instance fn-mm-times-monotone (a (nfix k)) (b (fn-mm-cfg-connections cfg))
                             (c (fn-mm-connection profile cfg)))
                  (:instance fn-mm-times-monotone (a (nfix h))
-                            (b (nfix (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) nil)))
+                            (b (nfix (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
                             (c *fn-cbud-handshake-scratch-octets*))))
           (and stable-under-simplificationp '(:nonlinearp t))))
 (defthm fn-mm-pow2-at-least-covers-acc
@@ -483,27 +506,28 @@
 (defthm fn-mm-tot-charge-monotone
   (implies (fn-mm-tot-le a b) (<= (fn-mm-tot-charge a) (fn-mm-tot-charge b)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mm-tot-le fn-mm-tot-charge)
-                                  (fn-mm-tot-payload fn-mm-tot-hcharge fn-mm-tot-memberships
-                                   fn-mm-tot-events fn-mm-tot-records fn-mm-tot-log fn-mm-tot-paged-p))
-           :nonlinearp t)))
+  :hints (("Goal" :in-theory (e/d (fn-mm-tot-le)
+                                  (fn-mm-tot-arena fn-mm-tot-hcharge fn-mm-tot-memberships
+                                   fn-mm-tot-events fn-mm-tot-records fn-mm-tot-log fn-mm-tot-paged-p
+                                   fn-mm-tot-history fn-mm-tot-charge)))))
 (defthm fn-mm-owner-monotone
   (implies (fn-mm-tot-le a b) (<= (fn-mm-owner a cfg) (fn-mm-owner b cfg)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mm-owner fn-mm-payload-octets fn-mm-tot-le)
                                   (fn-mm-hroot-demand fn-heap-arena-octets
-                                   fn-mm-tot-payload fn-mm-tot-hcharge fn-mm-tot-memberships
+                                   fn-mm-tot-arena fn-mm-tot-hcharge fn-mm-tot-memberships
                                    fn-mm-tot-records fn-mm-tot-paged-p fn-mm-tot-events fn-mm-tot-log))
-           :use ((:instance fn-heap-arena-octets-monotone (u1 (fn-mm-tot-payload a)) (u2 (fn-mm-tot-payload b)))
+           :use ((:instance fn-heap-arena-octets-monotone (u1 (fn-mm-tot-arena a)) (u2 (fn-mm-tot-arena b)))
                  (:instance fn-mm-hroot-demand-monotone
                             (n1 (fn-mm-tot-records a)) (n2 (fn-mm-tot-records b))
-                            (l1 (fn-mm-tot-log a)) (l2 (fn-mm-tot-log b)))))))
+                            (l1 (fn-mm-tot-history a)) (l2 (fn-mm-tot-history b)))))))
 (defthm fn-mm-tot-le-parts
   (implies (fn-mm-tot-le a b)
            (and (<= (fn-mm-tot-records a) (fn-mm-tot-records b))
-                (<= (fn-mm-tot-log a) (fn-mm-tot-log b))))
+                (<= (fn-mm-tot-log a) (fn-mm-tot-log b))
+                (<= (fn-mm-tot-history a) (fn-mm-tot-history b))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mm-tot-le) (fn-mm-tot-records fn-mm-tot-log fn-mm-tot-payload
+  :hints (("Goal" :in-theory (e/d (fn-mm-tot-le) (fn-mm-tot-records fn-mm-tot-log fn-mm-tot-history fn-mm-tot-charge fn-mm-tot-arena
                                                    fn-mm-tot-hcharge fn-mm-tot-memberships
                                                    fn-mm-tot-events fn-mm-tot-paged-p)))))
 (defthm fn-mm-maintenance-monotone
@@ -511,7 +535,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mm-maintenance)
                                   (fn-mm-hroot-demand fn-mm-tot-charge fn-heap-reclaim-demand-octets
-                                   fn-mm-tot-le fn-mm-tot-records fn-mm-tot-log
+                                   fn-mm-tot-le fn-mm-tot-records fn-mm-tot-log fn-mm-tot-history
                                    fn-mm-cfg-pub-trigger fn-mm-cfg-trigger fn-mm-cfg-reclaim-live-p))
            :use (fn-mm-tot-charge-monotone fn-mm-tot-le-parts
                  (:instance fn-heap-reclaim-demand-octets-monotone
@@ -519,7 +543,7 @@
                             (c1 (fn-mm-tot-charge a)) (c2 (fn-mm-tot-charge b)))
                  (:instance fn-mm-hroot-demand-monotone
                             (n1 (fn-mm-tot-records a)) (n2 (fn-mm-tot-records b))
-                            (l1 (fn-mm-tot-log a)) (l2 (fn-mm-tot-log b)))))))
+                            (l1 (fn-mm-tot-history a)) (l2 (fn-mm-tot-history b)))))))
 ; KEYSTONE K2.  The sum grows with the store: a prefix of a store, or what
 ; a reclaim leaves of it, needs no more than the store.
 (defthm fn-mm-sum-grows-with-the-store
