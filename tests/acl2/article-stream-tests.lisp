@@ -103,13 +103,14 @@
 ; The render guard's cursor invariant (ARTICLE-PATH-UNVERIFIED-GUARDS): a cursor the
 ; owner publishes is a valid cursor and stays one at every unit of a full render;
 ; a cursor whose server octets or pair list are corrupt is refused by the recognizer.
-(defconst *astq-lit* '(nil 0 3 (65 66 67)))
-(defconst *astq-scan* (list :span '(nil 3 0 nil) *astq-lit* 2 1))
+(defconst *astq-lit* '(nil 0 13 (72 58 32 118 13 10 13 10 65 66 67 13 10)))
+(defconst *astq-scan* (list :span '(nil 13 0 nil) *astq-lit* 2 6 '(nil 8 5 (65 66 67 13 10))))
 
 (defun astq-cursorp-all (cur n fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
   (cond ((not (fn-ast-cursorp cur fn-arena)) nil)
-        ((or (zp n) (eq (car cur) :done)) (eq (car cur) :done))
+        ; the payload phase is rendered by the window a quantum at a time, not by render-one
+        ((or (zp n) (member-eq (car cur) '(:done :payload))) (member-eq (car cur) '(:done :payload)))
         (t (mv-let (out next) (fn-ast-render-one cur fn-arena)
              (declare (ignore out))
              (astq-cursorp-all next (- n 1) fn-arena)))))

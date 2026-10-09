@@ -312,7 +312,7 @@
                   (mv-list 4 (fn-asto-ready-plan-step
                               oc id plan2
                               (+ (fn-asx-nc (fn-nntp-token-string (car args)) (fn-state-articles archive)) e)
-                              fn-arena))))
+                              fn-arena fn-ast-ws))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-asto-selection-start fn-asto-selection-start-cat fn-asto-capture-selection
@@ -493,7 +493,7 @@
                   (mv-list 4 (fn-asto-ready-plan-step
                               oc id plan2
                               (+ (fn-asx-nc (fn-nntp-token-string (car args)) (fn-state-articles archive)) e)
-                              fn-arena))))
+                              fn-arena fn-ast-ws))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (theory 'minimal-theory)

@@ -626,15 +626,15 @@
                '(:in-theory (e/d (fn-nsp-nb-bd2 fn-nsp-nb-p2 fn-nsp-nb-s2)
                                  (fn-nsp-nb-acc fn-nsp-nb-m2 fn-nsp-nb-c2)))))))
 ; ---- k3e.lsp
-(local (defun fn-nsp-pat (m)
+(defun fn-nsp-pat (m)
   (cond ((eql m 1) (list 13)) ((eql m 2) (list 13 10)) ((eql m 3) (list 13 10 13))
-        ((eql m 4) (list 13 10 13 10)) (t nil))))
-(local (defun fn-nsp-sep (xs)
+        ((eql m 4) (list 13 10 13 10)) (t nil)))
+(defun fn-nsp-sep (xs)
   (cond ((and (consp xs) (consp (cdr xs)) (consp (cddr xs)) (consp (cdddr xs))
               (equal (car xs) 13) (equal (cadr xs) 10) (equal (caddr xs) 13) (equal (cadddr xs) 10))
          4)
         ((consp xs) (let ((r (fn-nsp-sep (cdr xs)))) (and r (+ 1 r))))
-        (t nil))))
+        (t nil)))
 (local (defthm fn-nsp-sep-type
   (or (null (fn-nsp-sep xs)) (natp (fn-nsp-sep xs)))
   :rule-classes :type-prescription))
@@ -926,6 +926,244 @@
                            (fn-nsp-nb-list-framing fn-nsp-nb-he-bound fn-nsp-slice-head fn-nsp-slice-tail
                             fn-nsp-frame-block-list fn-nsp-block-framedp fn-nntp-framed-of-bytes fn-nntp-split-article
                             fn-nsp-block-head-end fn-oct-slice-list fn-oct-slice-list-is-take-nthcdr)))))
+; ---- the framing fold over a list of any length (the windowed preflight's
+; facts, books/article-stream.lisp): the fold's low six bits (pend, start, bad,
+; the CRLFCRLF matcher) never depend on its count, so every flag fact holds
+; with no length bound; the count is exact over any window shorter than 2^52.
+(local (defun fn-nsp-nb-cnext (acc)
+  (let ((m (mod (floor acc 8) 8)) (c (floor acc 64)))
+    (if (or (eql m 4) (<= (expt 2 52) (+ 1 c))) c (+ 1 c)))))
+(local (defthm fn-nsp-nb-next-is-acc
+  (implies (natp acc)
+           (equal (fn-nsp-block-next acc o)
+                  (fn-nsp-nb-acc (fn-nsp-nb-p2 (fn-nsp-nb-pf acc) o)
+                                 (fn-nsp-nb-s2 (fn-nsp-nb-pf acc) (fn-nsp-nb-sf acc) o)
+                                 (fn-nsp-nb-bd2 (fn-nsp-nb-pf acc) (fn-nsp-nb-bdf acc) o)
+                                 (fn-nsp-nb-m2 (fn-nsp-nb-mf acc) o)
+                                 (fn-nsp-nb-cnext acc))))
+  :hints (("Goal" :in-theory (union-theories '(fn-nsp-block-next fn-nsp-nb-pf fn-nsp-nb-sf fn-nsp-nb-bdf fn-nsp-nb-mf
+                                     fn-nsp-nb-p2 fn-nsp-nb-s2 fn-nsp-nb-bd2 fn-nsp-nb-m2 fn-nsp-nb-cnext fn-nsp-nb-acc nfix natp)
+                                  (theory 'minimal-theory))))))
+(local (defthm fn-nsp-nb-m2-range-all
+  (and (natp (fn-nsp-nb-m2 m o)) (<= (fn-nsp-nb-m2 m o) 4))
+  :hints (("Goal" :in-theory (enable fn-nsp-nb-m2)))))
+(local (defthm fn-nsp-nb-cnext-natp
+  (implies (natp acc) (natp (fn-nsp-nb-cnext acc)))
+  :hints (("Goal" :in-theory (e/d (fn-nsp-nb-cnext) (fn-nsp-nb-floor-is-cf))))
+  :rule-classes (:rewrite :type-prescription)))
+(local (defthm fn-nsp-nb-next-fields
+  (implies (natp acc)
+           (let ((r (fn-nsp-block-next acc o)))
+             (and (equal (fn-nsp-nb-pf r) (fn-nsp-nb-p2 (fn-nsp-nb-pf acc) o))
+                  (equal (fn-nsp-nb-sf r) (fn-nsp-nb-s2 (fn-nsp-nb-pf acc) (fn-nsp-nb-sf acc) o))
+                  (equal (fn-nsp-nb-bdf r) (fn-nsp-nb-bd2 (fn-nsp-nb-pf acc) (fn-nsp-nb-bdf acc) o))
+                  (equal (fn-nsp-nb-mf r) (fn-nsp-nb-m2 (fn-nsp-nb-mf acc) o)))))
+  :hints (("Goal" :in-theory (e/d (fn-nsp-nb-p2 fn-nsp-nb-s2 fn-nsp-nb-bd2)
+                                  (fn-nsp-nb-acc fn-nsp-nb-m2 fn-nsp-nb-cnext fn-nsp-block-next))))))
+(local (defthm fn-nsp-nb-list-open-free
+  (implies (consp xs)
+           (equal (fn-nsp-frame-block-list acc xs)
+                  (fn-nsp-frame-block-list (fn-nsp-block-next acc (car xs)) (cdr xs))))
+  :hints (("Goal" :expand ((fn-nsp-frame-block-list acc xs))
+           :in-theory (disable fn-nsp-block-next fn-nsp-nb-next-is-acc)))))
+(local (defthm fn-nsp-nb-bad-sticky-free
+  (implies (and (natp acc) (equal (fn-nsp-nb-bdf acc) 1))
+           (equal (fn-nsp-nb-bdf (fn-nsp-frame-block-list acc xs)) 1))
+  :hints (("Goal" :induct (fn-nsp-frame-block-list acc xs)
+           :in-theory (e/d (fn-nsp-nb-bd2 (:induction fn-nsp-frame-block-list)) (fn-nsp-block-next fn-nsp-nb-next-is-acc fn-nsp-nb-acc fn-nsp-nb-list-step))))))
+(local (defthm fn-nsp-nb-pf-range (implies (natp r) (or (equal (fn-nsp-nb-pf r) 0) (equal (fn-nsp-nb-pf r) 1)))
+  :hints (("Goal" :in-theory (enable fn-nsp-nb-pf))) :rule-classes nil))
+(local (defthm fn-nsp-nb-sf-range (implies (natp r) (or (equal (fn-nsp-nb-sf r) 0) (equal (fn-nsp-nb-sf r) 1)))
+  :hints (("Goal" :in-theory (enable fn-nsp-nb-sf))) :rule-classes nil))
+(local (defthm fn-nsp-nb-flags-free
+  (implies (and (natp acc) (equal (fn-nsp-nb-bdf acc) 0) (true-listp xs))
+           (iff (let ((r (fn-nsp-frame-block-list acc xs)))
+                  (and (equal (fn-nsp-nb-pf r) 0) (equal (fn-nsp-nb-sf r) 1) (equal (fn-nsp-nb-bdf r) 0)))
+                (fn-nntp-crlf-validp (if (equal (fn-nsp-nb-pf acc) 1) (cons 13 xs) xs)
+                                     (equal (fn-nsp-nb-sf acc) 1))))
+  :hints (("Goal" :induct (fn-nsp-frame-block-list acc xs)
+           :in-theory (e/d ((:induction fn-nsp-frame-block-list)) (fn-nsp-block-next fn-nsp-nb-next-is-acc fn-nsp-nb-acc fn-nsp-nb-list-step fn-nsp-nb-p2 fn-nsp-nb-s2 fn-nsp-nb-bd2 fn-nsp-nb-m2)))
+          (and stable-under-simplificationp
+               '(:in-theory (e/d (fn-nsp-nb-bd2 fn-nsp-nb-p2 fn-nsp-nb-s2) (fn-nsp-block-next fn-nsp-nb-next-is-acc fn-nsp-nb-acc fn-nsp-nb-list-step fn-nsp-nb-m2))
+                 :use ((:instance fn-nsp-nb-pf-range (r acc)) (:instance fn-nsp-nb-sf-range (r acc))))))))
+(local (defthm fn-nsp-nb-fields-of-mod64
+  (implies (natp a)
+           (and (equal (fn-nsp-nb-pf (mod a 64)) (fn-nsp-nb-pf a))
+                (equal (fn-nsp-nb-sf (mod a 64)) (fn-nsp-nb-sf a))
+                (equal (fn-nsp-nb-bdf (mod a 64)) (fn-nsp-nb-bdf a))
+                (equal (fn-nsp-nb-mf (mod a 64)) (fn-nsp-nb-mf a))))
+  :hints (("Goal" :in-theory (e/d (fn-nsp-nb-pf fn-nsp-nb-sf fn-nsp-nb-bdf fn-nsp-nb-mf) (fn-nsp-nb-floor-is-cf fn-nsp-nb-decomp fn-nsp-nb-decomp-w))))))
+(local (defthm fn-nsp-nb-mod64-of-acc
+  (implies (and (natp p) (<= p 1) (natp s) (<= s 1) (natp bd) (<= bd 1) (natp m) (<= m 4) (natp c))
+           (equal (mod (fn-nsp-nb-acc p s bd m c) 64) (fn-nsp-nb-acc p s bd m 0)))
+  :hints (("Goal" :in-theory (enable fn-nsp-nb-acc)))))
+(local (defthm fn-nsp-mod64-split
+  (implies (natp r) (equal (mod r 64) (+ (mod r 8) (* 8 (mod (floor r 8) 8)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-nsp-nb-floor-is-cf fn-nsp-nb-decomp fn-nsp-nb-decomp-w)))))
+(local (defthm fn-nsp-nb-mod64-is-fields
+  (implies (natp a)
+           (equal (mod a 64)
+                  (fn-nsp-nb-acc (fn-nsp-nb-pf a) (fn-nsp-nb-sf a) (fn-nsp-nb-bdf a) (fn-nsp-nb-mf a) 0)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-nsp-mod64-split (r a)) (:instance fn-nsp-nb-decomp (r a)))
+           :in-theory (e/d (fn-nsp-nb-acc) (fn-nsp-nb-floor-is-cf fn-nsp-nb-decomp fn-nsp-nb-decomp-w))))))
+(local (defthm fn-nsp-nb-fields-eq-of-mod64
+  (implies (and (natp a) (natp b) (equal (mod a 64) (mod b 64)))
+           (and (equal (fn-nsp-nb-pf a) (fn-nsp-nb-pf b))
+                (equal (fn-nsp-nb-sf a) (fn-nsp-nb-sf b))
+                (equal (fn-nsp-nb-bdf a) (fn-nsp-nb-bdf b))
+                (equal (fn-nsp-nb-mf a) (fn-nsp-nb-mf b))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-nsp-nb-fields-of-mod64 (a a)) (:instance fn-nsp-nb-fields-of-mod64 (a b)))
+           :in-theory (disable fn-nsp-nb-fields-of-mod64)))))
+(local (defthm fn-nsp-nb-next-mod64
+  (implies (and (natp a) (natp b) (equal (mod a 64) (mod b 64)))
+           (equal (mod (fn-nsp-block-next a o) 64) (mod (fn-nsp-block-next b o) 64)))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-nsp-nb-fields-eq-of-mod64
+                        (:instance fn-nsp-nb-mod64-is-fields (a (fn-nsp-block-next a o)))
+                        (:instance fn-nsp-nb-mod64-is-fields (a (fn-nsp-block-next b o))))
+           :in-theory (disable fn-nsp-block-next fn-nsp-nb-next-is-acc fn-nsp-nb-acc fn-nsp-nb-p2 fn-nsp-nb-s2
+                               fn-nsp-nb-bd2 fn-nsp-nb-m2 fn-nsp-nb-floor-is-cf fn-nsp-nb-decomp fn-nsp-nb-decomp-w)))))
+(local (defun fn-nsp-nb-ind2 (a b xs)
+  (if (consp xs) (fn-nsp-nb-ind2 (fn-nsp-block-next a (car xs)) (fn-nsp-block-next b (car xs)) (cdr xs)) (list a b))))
+(defthm fn-nsp-frame-block-list-mod64
+  (implies (and (natp a) (natp b) (equal (mod a 64) (mod b 64)))
+           (equal (mod (fn-nsp-frame-block-list a xs) 64) (mod (fn-nsp-frame-block-list b xs) 64)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-nsp-nb-ind2 a b xs)
+           :in-theory (union-theories '(fn-nsp-nb-list-open-free fn-nsp-nb-list-nil fn-nsp-block-next-natp
+                                        (:induction fn-nsp-nb-ind2))
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/1" :use ((:instance fn-nsp-nb-next-mod64 (o (car xs)))))))
+(local (defthm fn-nsp-nb-mf-fold-range
+  (implies (and (natp acc) (<= (fn-nsp-nb-mf acc) 4))
+           (<= (fn-nsp-nb-mf (fn-nsp-frame-block-list acc xs)) 4))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-nsp-frame-block-list acc xs)
+           :in-theory (e/d ((:induction fn-nsp-frame-block-list))
+                           (fn-nsp-block-next fn-nsp-nb-next-is-acc fn-nsp-nb-acc fn-nsp-nb-list-step fn-nsp-nb-m2))))))
+(local (defthm fn-nsp-nb-mf-natp
+  (implies (natp acc) (natp (fn-nsp-nb-mf acc)))
+  :hints (("Goal" :in-theory (enable fn-nsp-nb-mf)))
+  :rule-classes :type-prescription))
+(local (defthm fn-nsp-nb-m2-4 (equal (fn-nsp-nb-m2 4 o) 4) :hints (("Goal" :in-theory (enable fn-nsp-nb-m2)))))
+(local (defthm fn-nsp-nb-m-free
+  (implies (and (natp acc) (<= (fn-nsp-nb-mf acc) 4) (true-listp xs))
+           (iff (equal (fn-nsp-nb-mf (fn-nsp-frame-block-list acc xs)) 4)
+                (fn-nsp-sep (append (fn-nsp-pat (fn-nsp-nb-mf acc)) xs))))
+  :hints (("Goal" :induct (fn-nsp-frame-block-list acc xs)
+           :in-theory (e/d ((:induction fn-nsp-frame-block-list))
+                           (fn-nsp-block-next fn-nsp-nb-next-is-acc fn-nsp-nb-acc fn-nsp-nb-list-step fn-nsp-nb-m2
+                            fn-nsp-pat fn-nsp-sep)))
+          ("Subgoal *1/1" :cases ((equal (fn-nsp-nb-mf acc) 4))
+           :use ((:instance fn-nsp-sep-step (m (fn-nsp-nb-mf acc)) (o (car xs)) (rest (cdr xs)))))
+          ("Subgoal *1/2" :cases ((equal (fn-nsp-nb-mf acc) 4))
+           :use ((:instance fn-nsp-sep-pat-nil (m (fn-nsp-nb-mf acc))))
+           :in-theory (e/d (fn-nsp-pat) (fn-nsp-sep-pat-nil))))))
+(local (defthm fn-nsp-sep-of-append-free
+  (implies (and (natp acc) (<= (fn-nsp-nb-mf acc) 3) (true-listp a)
+                (not (fn-nsp-sep (append (fn-nsp-pat (fn-nsp-nb-mf acc)) a))))
+           (equal (fn-nsp-sep (append (fn-nsp-pat (fn-nsp-nb-mf acc)) (append a b)))
+                  (let* ((m2 (fn-nsp-nb-mf (fn-nsp-frame-block-list acc a)))
+                         (e (fn-nsp-sep (append (fn-nsp-pat m2) b))))
+                    (and e (+ e (len a) (fn-nsp-nb-mf acc) (- m2))))))
+  :hints (("Goal" :induct (fn-nsp-frame-block-list acc a)
+           :in-theory (e/d ((:induction fn-nsp-frame-block-list))
+                           (fn-nsp-block-next fn-nsp-nb-next-is-acc fn-nsp-nb-acc fn-nsp-nb-list-step fn-nsp-nb-m2
+                            fn-nsp-pat fn-nsp-sep fn-nsp-sep-step)))
+          ("Subgoal *1/1" :cases ((equal (fn-nsp-nb-m2 (fn-nsp-nb-mf acc) (car a)) 4))
+           :use ((:instance fn-nsp-sep-step (m (fn-nsp-nb-mf acc)) (o (car a)) (rest (append (cdr a) b)))
+                 (:instance fn-nsp-sep-step (m (fn-nsp-nb-mf acc)) (o (car a)) (rest (cdr a))))))))
+(local (defthm fn-nsp-nb-count-window
+  (implies (and (natp f) (< f 64) (<= (fn-nsp-nb-mf f) 3) (true-listp xs) (< (len xs) 4503599627370496)
+                (fn-nsp-sep (append (fn-nsp-pat (fn-nsp-nb-mf f)) xs)))
+           (equal (floor (fn-nsp-frame-block-list f xs) 64)
+                  (- (fn-nsp-sep (append (fn-nsp-pat (fn-nsp-nb-mf f)) xs)) (fn-nsp-nb-mf f))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-nsp-nb-match (p (fn-nsp-nb-pf f)) (s (fn-nsp-nb-sf f)) (bd (fn-nsp-nb-bdf f))
+                                   (m (fn-nsp-nb-mf f)) (c 0))
+                        (:instance fn-nsp-nb-mod64-is-fields (a f))
+                        (:instance fn-nsp-nb-pf-range (r f)) (:instance fn-nsp-nb-sf-range (r f))
+                        (:instance fn-nsp-nb-bit-bdf (r f)) (:instance fn-nsp-nb-bit-bdf-nat (r f)))
+           :in-theory (disable fn-nsp-nb-match fn-nsp-nb-acc fn-nsp-pat fn-nsp-sep fn-nsp-nb-decomp fn-nsp-nb-decomp-w
+                               fn-nsp-nb-bit-bdf fn-nsp-nb-bit-bdf-nat)))))
+(local (defthm fn-nsp-framing-free-local
+  (implies (fn-octet-listp bytes)
+           (and (iff (fn-nsp-block-framedp (fn-nsp-frame-block-list 2 bytes)) (fn-nntp-framed-of-bytes bytes))
+                (implies (fn-nntp-framed-of-bytes bytes)
+                         (and (natp (fn-nsp-sep bytes)) (<= 4 (fn-nsp-sep bytes)) (<= (fn-nsp-sep bytes) (len bytes))
+                              (equal (fn-nntp-split-head (fn-nntp-split-article bytes))
+                                     (take (- (fn-nsp-sep bytes) 2) bytes))
+                              (equal (fn-nntp-split-body (fn-nntp-split-article bytes))
+                                     (nthcdr (fn-nsp-sep bytes) bytes))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-nsp-nb-framedp-fields (r (fn-nsp-frame-block-list 2 bytes)))
+                 (:instance fn-nsp-nb-list-natp (acc 2) (xs bytes))
+                 (:instance fn-nsp-nb-flags-free (acc 2) (xs bytes))
+                 (:instance fn-nsp-nb-m-free (acc 2) (xs bytes))
+                 fn-nsp-framed-of-bytes-is)
+           :in-theory (e/d (fn-nntp-split-article fn-nsp-sep-iff-blank
+                            fn-nntp-split-okp fn-nntp-split-head fn-nntp-split-body fn-nsp-split-aux-sep)
+                           (fn-nsp-nb-framedp-fields fn-nsp-nb-flags-free fn-nsp-nb-m-free
+                            fn-nsp-nb-list-natp fn-nsp-block-framedp fn-nsp-nb-acc fn-nsp-sep fn-nntp-crlf-lines
+                            fn-nntp-blank-linep fn-nntp-crlf-validp fn-nntp-split-article-aux fn-nsp-framed-of-bytes-is
+                            fn-nntp-framed-of-bytes))))))
+(defthm fn-nsp-frame-block-list-natp
+  (implies (natp acc) (natp (fn-nsp-frame-block-list acc xs)))
+  :rule-classes (:rewrite :type-prescription))
+(local (defthm fn-nsp-natp-mod64 (implies (natp acc) (natp (mod acc 64))) :rule-classes nil))
+(defthm fn-nsp-block-flags-of-mod64
+  (implies (natp acc)
+           (and (iff (fn-nsp-block-framedp (mod acc 64)) (fn-nsp-block-framedp acc))
+                (equal (mod (floor (mod acc 64) 8) 8) (mod (floor acc 8) 8))))
+  :hints (("Goal" :use ((:instance fn-nsp-nb-fields-of-mod64 (a acc)) fn-nsp-natp-mod64
+                        (:instance fn-nsp-nb-framedp-fields (r acc))
+                        (:instance fn-nsp-nb-framedp-fields (r (mod acc 64))))
+           :in-theory (union-theories '(fn-nsp-nb-mf natp) (theory 'minimal-theory)))))
+(defthm fn-nsp-frame-block-list-is-the-framing
+  (implies (fn-octet-listp bytes)
+           (and (iff (fn-nsp-block-framedp (fn-nsp-frame-block-list *fn-nsp-block-init* bytes))
+                     (fn-nntp-framed-of-bytes bytes))
+                (implies (fn-nntp-framed-of-bytes bytes)
+                         (and (natp (fn-nsp-sep bytes)) (<= 4 (fn-nsp-sep bytes)) (<= (fn-nsp-sep bytes) (len bytes))
+                              (equal (fn-nntp-split-head (fn-nntp-split-article bytes))
+                                     (take (- (fn-nsp-sep bytes) 2) bytes))
+                              (equal (fn-nntp-split-body (fn-nntp-split-article bytes))
+                                     (nthcdr (fn-nsp-sep bytes) bytes))))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-nsp-framing-free-local :in-theory nil)))
+(defthm fn-nsp-frame-block-list-matcher
+  (implies (and (natp acc) (<= (mod (floor acc 8) 8) 4) (true-listp xs))
+           (and (<= (mod (floor (fn-nsp-frame-block-list acc xs) 8) 8) 4)
+                (iff (equal (mod (floor (fn-nsp-frame-block-list acc xs) 8) 8) 4)
+                     (fn-nsp-sep (append (fn-nsp-pat (mod (floor acc 8) 8)) xs)))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-nsp-nb-m-free fn-nsp-nb-mf-fold-range)
+           :in-theory (e/d (fn-nsp-nb-mf) (fn-nsp-nb-m-free fn-nsp-nb-mf-fold-range fn-nsp-pat fn-nsp-sep
+                                           fn-nsp-nb-floor-is-cf fn-nsp-nb-decomp fn-nsp-nb-decomp-w)))))
+(defthm fn-nsp-frame-block-list-sep-of-append
+  (implies (and (natp acc) (<= (mod (floor acc 8) 8) 3) (true-listp a)
+                (not (fn-nsp-sep (append (fn-nsp-pat (mod (floor acc 8) 8)) a))))
+           (equal (fn-nsp-sep (append (fn-nsp-pat (mod (floor acc 8) 8)) (append a b)))
+                  (let* ((m2 (mod (floor (fn-nsp-frame-block-list acc a) 8) 8))
+                         (e (fn-nsp-sep (append (fn-nsp-pat m2) b))))
+                    (and e (+ e (len a) (mod (floor acc 8) 8) (- m2))))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-nsp-sep-of-append-free
+           :in-theory (e/d (fn-nsp-nb-mf) (fn-nsp-sep-of-append-free fn-nsp-pat fn-nsp-sep
+                                           fn-nsp-nb-floor-is-cf fn-nsp-nb-decomp fn-nsp-nb-decomp-w)))))
+(defthm fn-nsp-frame-block-list-count
+  (implies (and (natp f) (< f 64) (<= (mod (floor f 8) 8) 3) (true-listp xs) (< (len xs) (expt 2 52))
+                (fn-nsp-sep (append (fn-nsp-pat (mod (floor f 8) 8)) xs)))
+           (equal (floor (fn-nsp-frame-block-list f xs) 64)
+                  (- (fn-nsp-sep (append (fn-nsp-pat (mod (floor f 8) 8)) xs)) (mod (floor f 8) 8))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-nsp-nb-count-window
+           :in-theory (e/d (fn-nsp-nb-mf) (fn-nsp-pat fn-nsp-sep
+                                           fn-nsp-nb-floor-is-cf fn-nsp-nb-decomp fn-nsp-nb-decomp-w)))))
 ; ---- k4a.lsp
 (local (defthm fn-nsp-crlf-lines-aux-is-spec
   (implies (and (true-listp lines) (true-listp lr))

@@ -969,3 +969,491 @@
         (mv-let (w3 rest fn-ast-ws fn-dss-out)
           (fn-ast-render-run w2 fuel octets (- k 1) fn-arena fn-ast-ws fn-dss-out)
           (mv w3 (append sent rest) fn-ast-ws fn-dss-out))))))
+
+;; KS1, the preflight keystone.  The run over K quanta keeps, at every quantum
+;; boundary C, the invariant FN-AST-INV-AT: the source is the payload advanced
+;; by C, the accumulator's six flag bits are the framing fold's over the first C
+;; octets (books/nntp-spans.lisp: the flags never depend on the count), and once
+;; the CRLF CRLF is among them HE and BODY are its position less 2 and the source
+;; at it.  A source that cannot deliver what it claims ends refused.
+(local (defthm fn-ast-octet-listp-is-cbor
+  (equal (fn-octet-listp xs) (fn-cbor-octet-listp xs))
+  :hints (("Goal" :in-theory (enable fn-octet-listp fn-cbor-octet-listp fn-octetp fn-cbor-octetp)))))
+(local (defthm fn-ast-drop-drop
+  (implies (and (natp a) (natp b))
+           (equal (fn-ast-drop b (fn-ast-drop a xs)) (fn-ast-drop (+ a b) xs)))
+  :hints (("Goal" :induct (fn-ast-drop a xs)))))
+(local (defthm fn-ast-advance-advance
+  (implies (and (natp a) (natp b))
+           (equal (fn-ast-source-advance (fn-ast-source-advance s a) b)
+                  (fn-ast-source-advance s (+ a b))))
+  :hints (("Goal" :in-theory (disable fn-ast-drop)))))
+(local (defun fn-ast-src (s0 c)
+  (if (zp c) s0 (fn-ast-source-advance s0 c))))
+(local (defthm fn-ast-advance-of-src
+  (implies (and (natp c) (posp n))
+           (equal (fn-ast-source-advance (fn-ast-src s0 c) n) (fn-ast-src s0 (+ c n))))
+  :hints (("Goal" :in-theory (disable fn-ast-source-advance)))))
+(local (defun fn-ast-lit-ind3 (c r xs)
+  (if (or (zp c) (zp r) (atom xs)) (list c r xs) (fn-ast-lit-ind3 (- c 1) (- r 1) (cdr xs)))))
+(local (defthm fn-ast-lit-take-split
+  (implies (and (natp c) (natp r) (<= c (len (fn-ast-lit-take r xs))))
+           (equal (fn-ast-lit-take r xs)
+                  (append (fn-ast-lit-take c xs) (fn-ast-lit-take (- r c) (fn-ast-drop c xs)))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-ast-lit-ind3 c r xs)))))
+(local (defthm fn-ast-lit-take-len-mono
+  (implies (and (natp a) (natp b) (<= a b))
+           (<= (len (fn-ast-lit-take a xs)) (len (fn-ast-lit-take b xs))))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-ast-lit-ind2 a b xs)))))
+(local (defthm fn-ast-avail-le-rem
+  (<= (fn-ast-source-avail s fn-arena) (nfix (fn-ast-at 2 s)))
+  :rule-classes :linear))
+(local (defthm fn-ast-avail-natp
+  (natp (fn-ast-source-avail s fn-arena))
+  :rule-classes :type-prescription))
+(local (defthm fn-ast-lit-take-drop-len
+  (implies (and (natp c) (natp r) (<= c (len (fn-ast-lit-take r xs))))
+           (equal (len (fn-ast-lit-take (- r c) (fn-ast-drop c xs)))
+                  (- (len (fn-ast-lit-take r xs)) c)))
+  :hints (("Goal" :induct (fn-ast-lit-ind3 c r xs)))))
+(local (defthm fn-ast-avail-advance
+  (implies (and (posp c) (<= c (fn-ast-source-avail s0 fn-arena)))
+           (equal (fn-ast-source-avail (fn-ast-source-advance s0 c) fn-arena)
+                  (- (fn-ast-source-avail s0 fn-arena) c)))
+  :hints (("Goal" :in-theory (disable fn-ast-lit-take fn-ast-drop fn-ast-lit-take-drop-len)
+                  :use ((:instance fn-ast-lit-take-drop-len (r (nfix (fn-ast-at 2 s0))) (xs (fn-ast-at 3 s0))))))))
+(local (defthm fn-ast-avail-src
+  (implies (and (natp c) (<= c (fn-ast-source-avail s0 fn-arena)))
+           (equal (fn-ast-source-avail (fn-ast-src s0 c) fn-arena)
+                  (- (fn-ast-source-avail s0 fn-arena) c)))
+  :hints (("Goal" :in-theory (disable fn-ast-source-avail fn-ast-source-advance)))))
+(local (defun fn-ast-span-ind2 (at a)
+  (if (zp a) at (fn-ast-span-ind2 (+ 1 at) (1- a)))))
+(local (defthm fn-ast-get-span-additive
+  (implies (and (natp at) (natp a) (natp b))
+           (equal (append (fn-arena-get-span h at a fn-arena) (fn-arena-get-span h (+ at a) b fn-arena))
+                  (fn-arena-get-span h at (+ a b) fn-arena)))
+  :hints (("Goal" :induct (fn-ast-span-ind2 at a)
+           :in-theory (enable fn-arena-get-span-is-the-gets)))))
+(local (defthm fn-ast-window-additive-advance
+  (implies (and (posp c) (natp n) (<= (+ c n) (fn-ast-source-avail s0 fn-arena)))
+           (equal (append (fn-ast-source-window s0 c fn-arena)
+                          (fn-ast-source-window (fn-ast-source-advance s0 c) n fn-arena))
+                  (fn-ast-source-window s0 (+ c n) fn-arena)))
+  :hints (("Goal" :in-theory (disable fn-ast-lit-take fn-ast-drop fn-ast-get-span-additive)
+                  :use ((:instance fn-ast-lit-take-split (r (+ c n)) (xs (fn-ast-at 3 s0)))
+                        (:instance fn-ast-lit-take-len-prefix (n (+ c n)) (k (nfix (fn-ast-at 2 s0))) (xs (fn-ast-at 3 s0)))
+                        (:instance fn-ast-get-span-additive (h (fn-ast-at 0 s0)) (at (nfix (fn-ast-at 1 s0)))
+                                   (a c) (b n)))))))
+(local (defthm fn-ast-window-0
+  (equal (fn-ast-source-window s0 0 fn-arena) nil)
+  :hints (("Goal" :in-theory (enable fn-arena-get-span-is-the-gets)))))
+(local (defthm fn-ast-window-true-listp
+  (true-listp (fn-ast-source-window s n fn-arena))
+  :hints (("Goal" :in-theory (enable fn-arena-get-span-is-the-gets)))
+  :rule-classes (:rewrite :type-prescription)))
+(local (defthm fn-ast-window-additive
+  (implies (and (natp c) (natp n) (<= (+ c n) (fn-ast-source-avail s0 fn-arena)))
+           (equal (append (fn-ast-source-window s0 c fn-arena)
+                          (fn-ast-source-window (fn-ast-src s0 c) n fn-arena))
+                  (fn-ast-source-window s0 (+ c n) fn-arena)))
+  :hints (("Goal" :in-theory (disable fn-ast-source-window fn-ast-source-advance fn-ast-source-avail)))))
+(local (defthm fn-ast-rem-src
+  (implies (natp c)
+           (equal (nfix (fn-ast-at 2 (fn-ast-src s0 c))) (nfix (- (nfix (fn-ast-at 2 s0)) c))))))
+(local (defthm fn-ast-base-src
+  (implies (natp c)
+           (equal (nfix (- (nfix (fn-ast-at 1 (fn-ast-src s0 c))) (nfix (fn-ast-at 1 s0)))) c))))
+(local (defthm fn-ast-take-len-self
+  (implies (true-listp ws) (equal (take (len ws) ws) ws))))
+(local (defthm fn-ast-frame-block-of-list
+  (implies (true-listp ws)
+           (equal (fn-nsp-frame-block a 0 (len ws) ws) (fn-nsp-frame-block-list a ws)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-nsp-frame-block-is-list fn-oct-slice-list-is-take-nthcdr) (take))))))
+(local (defthm fn-ast-frame-block-list-ub59
+  (implies (and (unsigned-byte-p 59 a) (fn-cbor-octet-listp xs))
+           (unsigned-byte-p 59 (fn-nsp-frame-block-list a xs)))
+  :hints (("Goal" :use ((:instance fn-nsp-frame-block-acc-type (acc a) (i 0) (end (len xs)) (fn-octets xs)))
+           :in-theory (disable fn-nsp-frame-block-acc-type)))))
+(local (defthm fn-ast-p1-fold-flags
+  (implies (and (natp acc) (true-listp w)
+                (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 w) 64)))
+           (equal (mod (fn-nsp-frame-block-list (if f acc (mod acc 64)) x) 64)
+                  (mod (fn-nsp-frame-block-list 2 (append w x)) 64)))
+  :hints (("Goal" :use ((:instance fn-nsp-frame-block-list-mod64 (a (if f acc (mod acc 64)))
+                                   (b (fn-nsp-frame-block-list 2 w)) (xs x)))
+           :in-theory (enable fn-nsp-frame-block-list-of-append)))))
+(local (defthm fn-ast-p3-sep-prefix
+  (implies (fn-nsp-sep w) (equal (fn-nsp-sep (append w x)) (fn-nsp-sep w)))
+  :hints (("Goal" :in-theory (enable fn-nsp-sep)))))
+(local (defthm fn-ast-mf-of-fold2
+  (implies (true-listp w)
+           (and (<= (mod (floor (fn-nsp-frame-block-list 2 w) 8) 8) 4)
+                (iff (equal (mod (floor (fn-nsp-frame-block-list 2 w) 8) 8) 4) (fn-nsp-sep w))))
+  :hints (("Goal" :use ((:instance fn-nsp-frame-block-list-matcher (acc 2) (xs w)))))))
+(local (defthm fn-ast-sep-bounds
+  (implies (fn-nsp-sep xs)
+           (and (natp (fn-nsp-sep xs)) (<= 4 (fn-nsp-sep xs)) (<= (fn-nsp-sep xs) (len xs))))
+  :hints (("Goal" :in-theory (enable fn-nsp-sep)))))
+(local (defthm fn-ast-pat-len
+  (implies (and (natp m) (<= m 4)) (equal (len (fn-nsp-pat m)) m))
+  :hints (("Goal" :in-theory (enable fn-nsp-pat)))))
+(local (defthm fn-ast-mf-transfer
+  (implies (and (natp acc) (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 w) 64)))
+           (and (equal (mod (floor acc 8) 8) (mod (floor (fn-nsp-frame-block-list 2 w) 8) 8))
+                (equal (mod (floor (mod acc 64) 8) 8) (mod (floor acc 8) 8))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-nsp-block-flags-of-mod64 (acc acc))
+                        (:instance fn-nsp-block-flags-of-mod64 (acc (fn-nsp-frame-block-list 2 w))))
+           :in-theory (union-theories '(fn-nsp-frame-block-list-natp (natp)) (theory 'minimal-theory))))))
+(local (defthm fn-ast-natp-mf (implies (natp acc) (natp (mod (floor acc 8) 8))) :rule-classes nil))
+(local (defthm fn-ast-p2-m
+  (implies (and (natp acc) (true-listp w)
+                (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 w) 64))
+                (not (fn-nsp-sep w)))
+           (let ((m (mod (floor acc 8) 8)))
+             (and (natp m) (<= m 3)
+                  (equal (mod (floor (mod acc 64) 8) 8) m)
+                  (equal (mod (floor (fn-nsp-frame-block-list 2 w) 8) 8) m))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-ast-mf-transfer fn-ast-mf-of-fold2 fn-ast-natp-mf)
+           :in-theory (union-theories '(natp) (theory 'minimal-theory))))))
+(local (defthm fn-ast-p2-sep
+  (implies (and (natp acc) (true-listp w)
+                (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 w) 64))
+                (not (fn-nsp-sep w)))
+           (equal (fn-nsp-sep (append w x))
+                  (let ((e (fn-nsp-sep (append (fn-nsp-pat (mod (floor acc 8) 8)) x))))
+                    (and e (+ e (len w) (- (mod (floor acc 8) 8)))))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-ast-p2-m (:instance fn-nsp-frame-block-list-sep-of-append (acc 2) (a w) (b x)))
+           :in-theory (e/d ((:e fn-nsp-pat)) (fn-nsp-pat fn-nsp-sep fn-nsp-frame-block-list))))))
+(local (defthm fn-ast-p2-cnt
+  (implies (and (natp acc) (true-listp w) (true-listp x) (< (len x) (expt 2 52))
+                (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 w) 64))
+                (not (fn-nsp-sep w))
+                (fn-nsp-sep (append (fn-nsp-pat (mod (floor acc 8) 8)) x)))
+           (equal (floor (fn-nsp-frame-block-list (mod acc 64) x) 64)
+                  (- (fn-nsp-sep (append (fn-nsp-pat (mod (floor acc 8) 8)) x)) (mod (floor acc 8) 8))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-ast-p2-m (:instance fn-nsp-frame-block-list-count (f (mod acc 64)) (xs x)))
+           :in-theory (disable fn-nsp-pat fn-nsp-sep fn-nsp-frame-block-list)))))
+(local (defthm fn-ast-p2-count
+  (implies (and (natp acc) (true-listp w) (true-listp x) (< (len x) (expt 2 52))
+                (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 w) 64))
+                (not (fn-nsp-sep w)) (fn-nsp-sep (append w x)))
+           (let ((cnt (floor (fn-nsp-frame-block-list (mod acc 64) x) 64)))
+             (and (equal cnt (- (fn-nsp-sep (append w x)) (len w)))
+                  (<= cnt (len x)) (< 0 cnt))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-ast-p2-m fn-ast-p2-sep fn-ast-p2-cnt
+                 (:instance fn-ast-pat-len (m (mod (floor acc 8) 8)))
+                 (:instance fn-ast-sep-bounds (xs (append (fn-nsp-pat (mod (floor acc 8) 8)) x))))
+           :in-theory (disable fn-nsp-pat fn-nsp-sep fn-nsp-frame-block-list fn-ast-sep-bounds fn-ast-pat-len)))))
+(local (defthm fn-ast-frame-block-of-list-n
+  (implies (and (true-listp ws) (equal n (len ws)))
+           (equal (fn-nsp-frame-block a 0 n ws) (fn-nsp-frame-block-list a ws)))
+  :hints (("Goal" :use fn-ast-frame-block-of-list :in-theory (disable fn-ast-frame-block-of-list)))))
+(local (defun fn-ast-scan-at (s0 c acc he body)
+  (list :span (fn-ast-src s0 c) s0 acc he body)))
+(local (defthm fn-ast-scan-step-is
+  (implies (and (natp c) (< c (fn-ast-source-avail s0 fn-arena)) (posp fuel) (unsigned-byte-p 59 acc))
+           (let* ((src (fn-ast-src s0 c))
+                  (n (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)))
+                  (x (fn-ast-source-window src n fn-arena))
+                  (foundp (fn-ast-acc-foundp acc))
+                  (acc2 (fn-nsp-frame-block-list (if foundp acc (mod acc 64)) x)))
+             (equal (mv-nth 0 (fn-ast-scan-step (fn-ast-scan-at s0 c acc he body) fuel fn-arena fn-ast-ws))
+                    (mv-let (he2 body2) (fn-ast-found foundp (fn-ast-scan-at s0 c acc he body) src c n acc2)
+                      (fn-ast-scan-at s0 (+ c n) acc2 he2 body2)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-avail-le-rem (s (fn-ast-src s0 c)))
+                 (:instance fn-ast-avail-src) (:instance fn-ast-base-src))
+           :in-theory (e/d (fn-ast-scan-acc)
+                           (fn-ast-src fn-ast-source-avail fn-ast-source-window fn-ast-load fn-ast-found
+                            fn-nsp-frame-block-list fn-ast-acc-foundp fn-ast-source-advance fn-nsp-frame-block
+                            fn-ast-source-take fn-ast-avail-le-rem fn-ast-avail-src fn-nsp-frame-block-is-list fn-ast-base-src))))))
+(local (defun fn-ast-inv-at (s0 c acc he body fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((w (fn-ast-source-window s0 c fn-arena)))
+    (and (natp c) (<= c (fn-ast-source-avail s0 fn-arena))
+         (unsigned-byte-p 59 acc)
+         (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 w) 64))
+         (implies (fn-nsp-sep w)
+                  (and (equal he (- (fn-nsp-sep w) 2))
+                       (equal body (fn-ast-src s0 (fn-nsp-sep w)))))))))
+(local (defthm fn-ast-foundp-is-sep
+  (implies (and (natp acc) (true-listp w) (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 w) 64)))
+           (iff (fn-ast-acc-foundp acc) (fn-nsp-sep w)))
+  :hints (("Goal" :use (fn-ast-mf-transfer fn-ast-mf-of-fold2)
+           :in-theory (e/d (fn-ast-acc-foundp) (fn-ast-mf-of-fold2))))))
+(local (defthm fn-ast-step-window-facts
+  (implies (and (fn-arena-p fn-arena) (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel) (< c (fn-ast-source-avail s0 fn-arena)))
+           (and (equal (append (fn-ast-source-window s0 c fn-arena) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena))
+                (equal (len (fn-ast-source-window s0 c fn-arena)) c) (equal (len (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)))
+                (fn-cbor-octet-listp (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) (true-listp (fn-ast-source-window s0 c fn-arena))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ast-window-additive (n (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)))))
+           :in-theory (disable fn-ast-src fn-ast-source-avail fn-ast-source-window fn-ast-window-additive)))))
+(local (defthm fn-ast-step-acc
+  (implies (and (fn-arena-p fn-arena) (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel) (< c (fn-ast-source-avail s0 fn-arena)))
+           (and (unsigned-byte-p 59 (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))
+                (equal (mod (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) 64) (mod (fn-nsp-frame-block-list 2 (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena)) 64))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-ast-step-window-facts
+                 (:instance fn-ast-p1-fold-flags (w (fn-ast-source-window s0 c fn-arena)) (f (fn-ast-acc-foundp acc)) (x (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena))))
+           :in-theory (disable fn-ast-src fn-ast-source-avail fn-ast-source-window fn-ast-acc-foundp fn-nsp-sep
+                            fn-nsp-frame-block-list fn-ast-source-advance fn-ast-window-additive fn-ast-p1-fold-flags
+                            fn-ast-foundp-is-sep fn-ast-sep-bounds fn-ast-found fn-ast-scan-at)))))
+(local (defthm fn-ast-step-found-old
+  (implies (and (and (fn-arena-p fn-arena) (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel) (< c (fn-ast-source-avail s0 fn-arena))) (fn-nsp-sep (fn-ast-source-window s0 c fn-arena)))
+           (and (equal (fn-nsp-sep (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena)) (fn-nsp-sep (fn-ast-source-window s0 c fn-arena)))
+                (fn-ast-acc-foundp acc)
+                (equal (mv-nth 0 (fn-ast-found t (fn-ast-scan-at s0 c acc he body) src base m acc2)) he)
+                (equal (mv-nth 1 (fn-ast-found t (fn-ast-scan-at s0 c acc he body) src base m acc2)) body)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-ast-step-window-facts (:instance fn-ast-foundp-is-sep (w (fn-ast-source-window s0 c fn-arena)))
+                 (:instance fn-ast-p3-sep-prefix (w (fn-ast-source-window s0 c fn-arena)) (x (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena))))
+           :in-theory (e/d (fn-ast-found fn-ast-scan-at) (fn-ast-src fn-ast-source-avail fn-ast-source-window fn-ast-acc-foundp fn-nsp-sep
+                            fn-nsp-frame-block-list fn-ast-source-advance fn-ast-window-additive fn-ast-p1-fold-flags
+                            fn-ast-foundp-is-sep fn-ast-sep-bounds ))))))
+(local (defthm fn-ast-found-new-abstract
+  (implies (and (natp c) (natp n) (natp cnt) (< 0 cnt) (<= cnt n) (equal sw (+ c cnt)) (<= 4 sw)
+                (fn-ast-acc-foundp acc2) (equal (floor acc2 64) cnt))
+           (and (equal (mv-nth 0 (fn-ast-found nil scan src c n acc2)) (- sw 2))
+                (equal (mv-nth 1 (fn-ast-found nil scan src c n acc2)) (fn-ast-source-advance src cnt))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-ast-found) (fn-ast-acc-foundp fn-ast-source-advance))))))
+(local (defthm fn-ast-new-facts-abs
+  (implies (and (natp acc) (true-listp w) (true-listp x) (< (len x) (expt 2 52)) (equal (len w) c)
+                (equal w2 (append w x))
+                (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 w) 64))
+                (not (fn-nsp-sep w)) (fn-nsp-sep w2))
+           (let ((acc2 (fn-nsp-frame-block-list (mod acc 64) x)))
+             (and (fn-ast-acc-foundp acc2)
+                  (equal (floor acc2 64) (- (fn-nsp-sep w2) c))
+                  (<= (floor acc2 64) (len x)) (< 0 (floor acc2 64))
+                  (natp (fn-nsp-sep w2)) (<= 4 (fn-nsp-sep w2))
+                  (not (fn-ast-acc-foundp acc)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-ast-p2-count
+                 (:instance fn-ast-p1-fold-flags (f nil))
+                 (:instance fn-ast-foundp-is-sep (acc (fn-nsp-frame-block-list (mod acc 64) x)) (w (append w x)))
+                 (:instance fn-ast-foundp-is-sep)
+                 (:instance fn-ast-sep-bounds (xs (append w x))))
+           :in-theory (disable fn-ast-acc-foundp fn-nsp-sep fn-nsp-frame-block-list fn-ast-p1-fold-flags
+                               fn-ast-foundp-is-sep fn-ast-sep-bounds)))))
+(local (defthm fn-ast-inv-at-facts
+  (implies (fn-ast-inv-at s0 c acc he body fn-arena)
+           (and (natp c) (<= c (fn-ast-source-avail s0 fn-arena)) (natp acc) (unsigned-byte-p 59 acc)
+                (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 (fn-ast-source-window s0 c fn-arena)) 64))))
+  :rule-classes nil))
+(local (defthm fn-ast-step-new-facts
+  (implies (and (and (fn-arena-p fn-arena) (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel) (< c (fn-ast-source-avail s0 fn-arena))) (not (fn-nsp-sep (fn-ast-source-window s0 c fn-arena))) (fn-nsp-sep (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena)))
+           (and (fn-ast-acc-foundp (fn-nsp-frame-block-list (mod acc 64) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))
+                (equal (floor (fn-nsp-frame-block-list (mod acc 64) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) 64) (- (fn-nsp-sep (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena)) c))
+                (<= (floor (fn-nsp-frame-block-list (mod acc 64) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) 64) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) (< 0 (floor (fn-nsp-frame-block-list (mod acc 64) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) 64))
+                (natp (fn-nsp-sep (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena))) (<= 4 (fn-nsp-sep (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena)))
+                (not (fn-ast-acc-foundp acc))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-ast-step-window-facts fn-ast-inv-at-facts
+                 (:instance fn-ast-window-true-listp (s (fn-ast-src s0 c)) (n (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))))
+                 (:instance fn-ast-new-facts-abs (w (fn-ast-source-window s0 c fn-arena)) (x (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) (w2 (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena))))
+           :in-theory (union-theories '((expt) min) (theory 'minimal-theory))))))
+(local (defthm fn-ast-inv-at-sep
+  (implies (and (fn-ast-inv-at s0 c acc he body fn-arena) (fn-nsp-sep (fn-ast-source-window s0 c fn-arena)))
+           (and (equal he (- (fn-nsp-sep (fn-ast-source-window s0 c fn-arena)) 2))
+                (equal body (fn-ast-src s0 (fn-nsp-sep (fn-ast-source-window s0 c fn-arena))))))
+  :rule-classes nil))
+(local (defthm fn-ast-step-n-facts
+  (implies (and (fn-arena-p fn-arena) (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel) (< c (fn-ast-source-avail s0 fn-arena)))
+           (and (natp (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)))) (<= (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) (fn-ast-source-avail s0 fn-arena))
+                (posp (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) (<= (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) (expt 2 40))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-ast-inv-at-facts :in-theory (disable fn-ast-inv-at fn-ast-source-avail)))))
+(local (defthm fn-ast-plus-cancel (implies (acl2-numberp s) (equal (+ c (+ (- c) s)) s))))
+(local (defthm fn-ast-step-found-conj
+  (implies (and (and (fn-arena-p fn-arena) (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel) (< c (fn-ast-source-avail s0 fn-arena))) (fn-nsp-sep (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena)))
+           (and (equal (mv-nth 0 (fn-ast-found (fn-ast-acc-foundp acc) (fn-ast-scan-at s0 c acc he body) (fn-ast-src s0 c) c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))) (- (fn-nsp-sep (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena)) 2))
+                (equal (mv-nth 1 (fn-ast-found (fn-ast-acc-foundp acc) (fn-ast-scan-at s0 c acc he body) (fn-ast-src s0 c) c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))) (fn-ast-src s0 (fn-nsp-sep (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-nsp-sep (fn-ast-source-window s0 c fn-arena)))
+           :in-theory (union-theories (set-difference-theories (theory 'ground-zero) '(mod floor min nfix mv-nth))
+                                              '(fn-ast-plus-cancel (:type-prescription fn-ast-acc-foundp))))
+          ("Subgoal 2" :use (fn-ast-step-new-facts fn-ast-inv-at-facts fn-ast-step-n-facts
+                             (:instance fn-ast-found-new-abstract (scan (fn-ast-scan-at s0 c acc he body))
+                               (src (fn-ast-src s0 c)) (n (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) (acc2 (fn-nsp-frame-block-list (mod acc 64) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))
+                               (cnt (floor (fn-nsp-frame-block-list (mod acc 64) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) 64)) (sw (fn-nsp-sep (fn-ast-source-window s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) fn-arena))))
+                             (:instance fn-ast-advance-of-src (n (floor (fn-nsp-frame-block-list (mod acc 64) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) 64)))))
+          ("Subgoal 1" :use ((:instance fn-ast-step-found-old (src (fn-ast-src s0 c)) (base c) (m (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)))
+                               (acc2 (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena))))
+                             fn-ast-inv-at-sep fn-ast-inv-at-facts)))))
+(local (defthm fn-ast-inv-at-intro
+  (implies (and (natp c2) (<= c2 (fn-ast-source-avail s0 fn-arena)) (unsigned-byte-p 59 acc2)
+                (equal (mod acc2 64) (mod (fn-nsp-frame-block-list 2 (fn-ast-source-window s0 c2 fn-arena)) 64))
+                (implies (fn-nsp-sep (fn-ast-source-window s0 c2 fn-arena))
+                         (and (equal he2 (- (fn-nsp-sep (fn-ast-source-window s0 c2 fn-arena)) 2))
+                              (equal body2 (fn-ast-src s0 (fn-nsp-sep (fn-ast-source-window s0 c2 fn-arena)))))))
+           (fn-ast-inv-at s0 c2 acc2 he2 body2 fn-arena))
+  :rule-classes nil))
+(local (defthm fn-ast-inv-at-step
+  (implies (and (fn-arena-p fn-arena) (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel) (< c (fn-ast-source-avail s0 fn-arena)))
+           (fn-ast-inv-at s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) (mv-nth 0 (fn-ast-found (fn-ast-acc-foundp acc) (fn-ast-scan-at s0 c acc he body) (fn-ast-src s0 c) c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))) (mv-nth 1 (fn-ast-found (fn-ast-acc-foundp acc) (fn-ast-scan-at s0 c acc he body) (fn-ast-src s0 c) c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))) fn-arena))
+  :hints (("Goal" :do-not-induct t
+           :use (fn-ast-step-n-facts fn-ast-step-acc fn-ast-step-found-conj
+                 (:instance fn-ast-inv-at-intro (c2 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)))) (acc2 (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))
+                            (he2 (mv-nth 0 (fn-ast-found (fn-ast-acc-foundp acc) (fn-ast-scan-at s0 c acc he body) (fn-ast-src s0 c) c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena))))) (body2 (mv-nth 1 (fn-ast-found (fn-ast-acc-foundp acc) (fn-ast-scan-at s0 c acc he body) (fn-ast-src s0 c) c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))))))
+           :in-theory (union-theories (set-difference-theories (theory 'ground-zero) '(mod floor min nfix mv-nth))
+                                      '((:type-prescription fn-ast-acc-foundp)))))))
+(local (defun fn-ast-scan-final (scan s0 fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((rem (nfix (fn-ast-at 2 s0))) (bytes (fn-ast-source-window s0 rem fn-arena)))
+    (and (fn-ast-scan-donep scan)
+         (iff (fn-ast-scan-validp scan)
+              (and (equal (fn-ast-source-avail s0 fn-arena) rem) (fn-nntp-framed-of-bytes bytes)))
+         (implies (fn-ast-scan-validp scan)
+                  (and (equal (fn-ast-at 4 scan) (- (fn-nsp-sep bytes) 2))
+                       (equal (fn-ast-at 5 scan) (fn-ast-src s0 (fn-nsp-sep bytes)))))))))
+(local (defthm fn-ast-scan-run-done
+  (implies (fn-ast-scan-donep scan)
+           (equal (mv-nth 0 (fn-ast-scan-run scan fuel k fn-arena fn-ast-ws)) scan))
+  :hints (("Goal" :induct (fn-ast-scan-run scan fuel k fn-arena fn-ast-ws)
+           :in-theory (disable fn-ast-scan-donep))
+          ("Subgoal *1/2" :expand ((fn-ast-scan-step scan fuel fn-arena fn-ast-ws))
+           :in-theory (enable fn-ast-scan-donep)))))
+(local (defthm fn-ast-framedp-of-acc
+  (implies (and (natp acc) (equal (mod acc 64) (mod (fn-nsp-frame-block-list 2 w) 64))
+                (fn-octet-listp w))
+           (iff (fn-nsp-block-framedp acc) (fn-nntp-framed-of-bytes w)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-nsp-block-flags-of-mod64 (acc acc))
+                        (:instance fn-nsp-block-flags-of-mod64 (acc (fn-nsp-frame-block-list 2 w)))
+                        (:instance fn-nsp-frame-block-list-is-the-framing (bytes w)))
+           :in-theory (union-theories '(fn-nsp-frame-block-list-natp (natp)) (theory 'minimal-theory))))))
+(local (defthm fn-ast-final-at-end
+  (implies (and (fn-arena-p fn-arena) (fn-ast-inv-at s0 c acc he body fn-arena)
+                (<= (nfix (fn-ast-at 2 s0)) c))
+           (fn-ast-scan-final (fn-ast-scan-at s0 c acc he body) s0 fn-arena))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-framedp-of-acc (w (fn-ast-source-window s0 c fn-arena)))
+                 (:instance fn-ast-avail-le-rem (s s0))
+                 (:instance fn-nsp-frame-block-list-is-the-framing (bytes (fn-ast-source-window s0 c fn-arena)))
+                 (:instance fn-ast-source-window-octets (n c) (source s0)))
+           :in-theory (e/d (fn-ast-scan-at fn-ast-scan-validp fn-ast-scan-acc fn-ast-inv-at)
+                           (fn-ast-avail-le-rem fn-ast-src fn-ast-source-avail
+                            fn-ast-source-window fn-nsp-block-framedp fn-nsp-sep fn-nntp-framed-of-bytes
+                            fn-nsp-frame-block-list fn-ast-source-window-octets))))))
+(local (defthm fn-ast-final-refused
+  (implies (and (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel)
+                (equal c (fn-ast-source-avail s0 fn-arena)) (< c (nfix (fn-ast-at 2 s0))))
+           (fn-ast-scan-final (mv-nth 0 (fn-ast-scan-step (fn-ast-scan-at s0 c acc he body) fuel fn-arena fn-ast-ws))
+                              s0 fn-arena))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-avail-src) (:instance fn-ast-rem-src))
+           :in-theory (e/d (fn-ast-scan-at fn-ast-scan-validp fn-ast-scan-acc fn-ast-inv-at)
+                           (fn-ast-src fn-ast-source-avail fn-ast-source-window fn-nsp-sep fn-nntp-framed-of-bytes
+                            fn-nsp-frame-block-list fn-ast-load fn-ast-source-take fn-ast-avail-src fn-ast-rem-src
+                            fn-ast-found fn-ast-source-advance fn-nsp-frame-block))))))
+(local (defun-nx fn-ast-run-ind (s0 c acc he body fuel k ar ws)
+  (declare (xargs :measure (nfix k) :verify-guards nil))
+  (if (or (zp k) (not (< c (fn-ast-source-avail s0 ar))))
+      (list s0 c acc he body fuel ws)
+    (let* ((n (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 ar) c)))
+           (x (fn-ast-source-window (fn-ast-src s0 c) n ar))
+           (acc2 (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) x))
+           (found (fn-ast-found (fn-ast-acc-foundp acc) (fn-ast-scan-at s0 c acc he body) (fn-ast-src s0 c) c n acc2)))
+      (fn-ast-run-ind s0 (+ c n) acc2 (mv-nth 0 found) (mv-nth 1 found) fuel (- k 1) ar
+                      (mv-nth 1 (fn-ast-scan-step (fn-ast-scan-at s0 c acc he body) fuel ar ws)))))))
+(local (defthm fn-ast-run-case-a
+  (implies (and (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel) (< c (fn-ast-source-avail s0 fn-arena))
+                (posp k))
+           (equal (mv-nth 0 (fn-ast-scan-run (fn-ast-scan-at s0 c acc he body) fuel k fn-arena fn-ast-ws))
+                  (mv-nth 0 (fn-ast-scan-run (fn-ast-scan-at s0 (+ c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c))) (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)) (mv-nth 0 (fn-ast-found (fn-ast-acc-foundp acc) (fn-ast-scan-at s0 c acc he body) (fn-ast-src s0 c) c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))) (mv-nth 1 (fn-ast-found (fn-ast-acc-foundp acc) (fn-ast-scan-at s0 c acc he body) (fn-ast-src s0 c) c (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) (fn-nsp-frame-block-list (if (fn-ast-acc-foundp acc) acc (mod acc 64)) (fn-ast-source-window (fn-ast-src s0 c) (min (min fuel (expt 2 40)) (- (fn-ast-source-avail s0 fn-arena) c)) fn-arena)))))
+                                             fuel (- k 1) fn-arena (mv-nth 1 (fn-ast-scan-step (fn-ast-scan-at s0 c acc he body) fuel fn-arena fn-ast-ws))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-ast-scan-run (fn-ast-scan-at s0 c acc he body) fuel k fn-arena fn-ast-ws))
+           :use (fn-ast-inv-at-facts (:instance fn-ast-scan-step-is))
+           :in-theory (disable fn-ast-scan-final fn-ast-scan-at fn-ast-inv-at fn-ast-scan-step fn-ast-src
+                               fn-ast-source-avail fn-ast-source-window fn-ast-found fn-ast-acc-foundp
+                               fn-nsp-frame-block-list fn-ast-scan-donep fn-ast-scan-step-is)))))
+(local (defthm fn-ast-run-case-b
+  (implies (and (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel)
+                (equal c (fn-ast-source-avail s0 fn-arena)) (< c (nfix (fn-ast-at 2 s0))) (posp k))
+           (fn-ast-scan-final (mv-nth 0 (fn-ast-scan-run (fn-ast-scan-at s0 c acc he body) fuel k fn-arena fn-ast-ws))
+                              s0 fn-arena))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-ast-scan-run (fn-ast-scan-at s0 c acc he body) fuel k fn-arena fn-ast-ws))
+           :use (fn-ast-final-refused
+                 (:instance fn-ast-scan-run-done (scan (mv-nth 0 (fn-ast-scan-step (fn-ast-scan-at s0 c acc he body) fuel fn-arena fn-ast-ws))) (k (- k 1)) (fn-ast-ws (mv-nth 1 (fn-ast-scan-step (fn-ast-scan-at s0 c acc he body) fuel fn-arena fn-ast-ws)))))
+           :in-theory (disable fn-ast-scan-final fn-ast-scan-at fn-ast-inv-at fn-ast-scan-step fn-ast-src
+                               fn-ast-source-avail fn-ast-source-window fn-ast-scan-donep fn-ast-scan-run-done
+                               fn-ast-final-refused))
+          (and stable-under-simplificationp '(:in-theory (enable fn-ast-scan-final))))))
+(local (defthm fn-ast-scan-at-donep
+  (implies (and (natp c) (<= (nfix (fn-ast-at 2 s0)) c))
+           (fn-ast-scan-donep (fn-ast-scan-at s0 c acc he body)))
+  :hints (("Goal" :use fn-ast-rem-src :in-theory (e/d (fn-ast-scan-at fn-ast-scan-donep) (fn-ast-src fn-ast-rem-src))))))
+(local (defthm fn-ast-run-case-c
+  (implies (and (fn-arena-p fn-arena) (fn-ast-inv-at s0 c acc he body fn-arena) (<= (nfix (fn-ast-at 2 s0)) c))
+           (fn-ast-scan-final (mv-nth 0 (fn-ast-scan-run (fn-ast-scan-at s0 c acc he body) fuel k fn-arena fn-ast-ws))
+                              s0 fn-arena))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use (fn-ast-final-at-end fn-ast-inv-at-facts fn-ast-scan-at-donep
+                 (:instance fn-ast-scan-run-done (scan (fn-ast-scan-at s0 c acc he body))))
+           :in-theory (theory 'minimal-theory)))))
+(local (defthm fn-ast-scan-run-final
+  (implies (and (fn-arena-p fn-arena) (fn-ast-inv-at s0 c acc he body fn-arena) (posp fuel)
+                (< (- (nfix (fn-ast-at 2 s0)) c) k) (natp k))
+           (fn-ast-scan-final (mv-nth 0 (fn-ast-scan-run (fn-ast-scan-at s0 c acc he body) fuel k fn-arena fn-ast-ws))
+                              s0 fn-arena))
+  :hints (("Goal" :induct (fn-ast-run-ind s0 c acc he body fuel k fn-arena fn-ast-ws)
+           :do-not-induct t
+           :in-theory (union-theories '((:induction fn-ast-run-ind) fn-ast-run-ind natp posp zp nfix (expt) min fn-ast-avail-natp)
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/2" :use (fn-ast-inv-at-step fn-ast-step-n-facts fn-ast-inv-at-facts fn-ast-run-case-a))
+          ("Subgoal *1/1" :use (fn-ast-inv-at-facts fn-ast-run-case-b fn-ast-run-case-c
+                                (:instance fn-ast-avail-le-rem (s s0)))))))
+(local (defthm fn-ast-preflight-is-at
+  (equal (fn-ast-preflight source) (fn-ast-scan-at source 0 2 nil nil))
+  :hints (("Goal" :in-theory (enable fn-ast-preflight fn-ast-scan-at fn-ast-src)))))
+(local (defthm fn-ast-inv-at-start
+  (fn-ast-inv-at source 0 2 nil nil fn-arena)
+  :hints (("Goal" :in-theory (enable fn-ast-inv-at)))))
+(defthm fn-ast-scan-run-is-the-framing
+  (implies (and (fn-arena-p fn-arena) ; domain: the stobj recognizer, which every executable call satisfies
+                (posp fuel) (natp k) (< (nfix (fn-ast-at 2 source)) k))
+           (let* ((rem (nfix (fn-ast-at 2 source)))
+                  (bytes (fn-ast-source-window source rem fn-arena))
+                  (scan (mv-nth 0 (fn-ast-scan-run (fn-ast-preflight source) fuel k fn-arena fn-ast-ws)))
+                  (he (nfix (fn-ast-at 4 scan))))
+             (and (fn-ast-scan-donep scan)
+                  (iff (fn-ast-scan-validp scan)
+                       (and (equal (fn-ast-source-avail source fn-arena) rem)
+                            (fn-nntp-framed-of-bytes bytes)))
+                  (implies (fn-ast-scan-validp scan)
+                           (let ((split (fn-nntp-split-article bytes)))
+                             (and (equal (fn-nntp-split-head split) (take he bytes))
+                                  (equal (fn-nntp-split-body split) (nthcdr (+ 2 he) bytes))))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-scan-run-final (s0 source) (c 0) (acc 2) (he nil) (body nil))
+                 (:instance fn-nsp-frame-block-list-is-the-framing
+                            (bytes (fn-ast-source-window source (nfix (fn-ast-at 2 source)) fn-arena)))
+                 (:instance fn-ast-source-window-octets (n (nfix (fn-ast-at 2 source))))
+                 (:instance fn-ast-sep-bounds (xs (fn-ast-source-window source (nfix (fn-ast-at 2 source)) fn-arena))))
+           :in-theory (e/d (fn-ast-scan-final)
+                           (fn-ast-scan-run-final fn-ast-scan-at fn-ast-preflight fn-ast-scan-run fn-ast-scan-validp
+                            fn-ast-scan-donep fn-ast-source-window fn-ast-source-avail fn-nsp-sep fn-nntp-framed-of-bytes
+                            fn-nntp-split-article fn-ast-src fn-ast-source-window-octets fn-ast-sep-bounds fn-ast-scan-run-done fn-ast-scan-at-donep)))))
