@@ -34,10 +34,10 @@
  "severity": "high",
  "slice": "harness",
  "source": "N, drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (25 failures in 11 modules, each with EADDRINUSE at the node's bind)",
- "state": "ready",
+ "state": "landed",
  "test": "python3 -m unittest tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range",
  "title": "the native harness hands a node a probed loopback port it released, inside the kernel ephemeral range: any socket on the box (a client connect, another probe) can take it before the node binds (EADDRINUSE)",
- "updated": "2026-10-09T07:18:24Z",
+ "updated": "2026-10-09T07:44:02Z",
  "verify": {
   "base": "e197b71414c30dee15d805442c5281633a4e9aca",
   "base_observation": {
