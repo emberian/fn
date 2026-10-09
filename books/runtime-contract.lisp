@@ -1718,30 +1718,16 @@
 
 
 ; =============================================================================
-; STATEMENTS NOT YET PROVED (each moves above, unchanged, when proved)
+; The named host assumptions
 ;
 ; T1 `fn-rtc-init-establishes-invp' and T2 `fn-rtc-step-preserves-invp' are
 ; proved, as stated, in books/runtime-contract-invariant.lisp (over
-; runtime-contract-invariant-ops).  What remains here is the named host
-; assumption.
-;
-;; ; A-HOST-COMPLETES, the named assumption (an encapsulate in
-;; ; books/assumptions-runtime.lisp, statement here): the host delivers exactly
-;; ; one completion for every submitted action.  Over a host trace -- the actions
-;; ; the layer emitted and the events the host returned after them, in order --
-;; ; every non-:cancel action's key is the key of exactly one later completion.
-;; ;
-;; ;   (encapsulate (((fn-assume-host-completions *) => *))
-;; ;     (local (defun fn-assume-host-completions (actions)  ; witness: cancel all
-;; ;              (fn-rtc-cancel-all actions)))
-;; ;     (defthm fn-assume-host-completes-every-action
-;; ;       (implies (and (member-equal a actions) (not (equal (fn-rtc-get 0 a) :cancel)))
-;; ;                (equal (fn-rtc-count-key (fn-rtc-key a)
-;; ;                                         (fn-assume-host-completions actions))
-;; ;                       1)))
-;; ;     (defthm fn-assume-host-completions-are-completions
-;; ;       (fn-rtc-completion-listp (fn-assume-host-completions actions))))
-;; ;
-;; ; With T4 (only its own completion ends a use), T13 and A-HOST-COMPLETES, every
-;; ; draining slot is eventually retired: the pin a stuck action holds is bounded by
-;; ; the instance's deadline plus the host's completion of the cancel.
+; runtime-contract-invariant-ops).  The host assumptions are encapsulates in
+; books/assumptions-runtime.lisp: A-HOST-LANDS (what an :in completion
+; reports is in the buffer; taken by
+; `fn-rtc-host-landing-is-the-contract-step', books/runtime-contract-landing)
+; and A-HOST-COMPLETES (every submitted action other than :cancel is
+; completed exactly once).  With T4 (only its own completion ends a use), T13
+; and A-HOST-COMPLETES, every draining slot is eventually retired: the pin a
+; stuck action holds is bounded by the instance's deadline plus the host's
+; completion of the cancel.

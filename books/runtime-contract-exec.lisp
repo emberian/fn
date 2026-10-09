@@ -22,7 +22,8 @@
 ;
 ; for every shaped state, every event and every quantum.  That the landed
 ; octets are the octets the operation produced is the host's assumption
-; A-HOST-LANDS (books/runtime-contract.lisp, statements section): a worker
+; A-HOST-LANDS (books/assumptions-runtime.lisp; its consequence is proved in
+; books/runtime-contract-landing.lisp): a worker
 ; writes exactly an input operation's octets at its handle's offset before
 ; the host delivers its completion.
 

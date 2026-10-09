@@ -263,13 +263,16 @@
   (equal (fn-rtc-key (fn-rtc-landed e s)) (fn-rtc-key e))
   :hints (("Goal" :in-theory (theory 'fn-rtc-landed-thy))))
 
-(defthm fn-rtc-outcomep-boolean
-  (booleanp (fn-rtc-outcomep o))
-  :rule-classes :type-prescription)
+; The defuns' own type prescriptions are already *ts-boolean* with no
+; hypotheses; these restate them as runes the minimal-theory hints below can
+; name, and stay local so no includer sees a second copy.
+(local (defthm fn-rtc-outcomep-boolean
+         (booleanp (fn-rtc-outcomep o))
+         :rule-classes :type-prescription))
 
-(defthm fn-rtc-completionp-boolean
-  (booleanp (fn-rtc-completionp e))
-  :rule-classes :type-prescription)
+(local (defthm fn-rtc-completionp-boolean
+         (booleanp (fn-rtc-completionp e))
+         :rule-classes :type-prescription))
 
 (defthm fn-rtc-completionp-of-rebuilt
   (implies (fn-rtc-completionp e)
