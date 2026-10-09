@@ -75,15 +75,16 @@
   (declare (xargs :guard t))
   (let* ((storeless (fn-heap-storeless-action-p action))
          (obs (fn-heap-operation-observation action observed))
+         (held (fn-heap-action-profile action profile observed))
          (base-terms (if storeless
                          (list (cons :store-less-heap (fn-heap-storeless-figure-octets core nursery)))
-                       (fn-heap-breakdown-base profile core obs)))
+                       (fn-heap-breakdown-base held core obs)))
          (base (if storeless
                    (fn-heap-storeless-figure-octets core nursery)
-                 (fn-heap-store-base-octets profile core obs)))
+                 (fn-heap-store-base-octets held core obs)))
          (fig (if storeless
                   (fn-heap-storeless-figure-octets core nursery)
-                (fn-heap-store-figure-octets profile core nursery obs)))
+                (fn-heap-store-figure-octets held core nursery obs)))
          (mb (fn-heap-mb-of fig))
          (threads (fn-heap-thread-count connections))
          (stack-kib (fn-heap-stack-kib profile)))
