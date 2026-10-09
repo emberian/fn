@@ -234,7 +234,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-private-frame \
 	tests/acl2/consumer-account-config-row-carry-tests \
 	tests/acl2/consumer-account-private-frame-tests \
-	books/history-preparation-page-ready \
 	books/snapshot-row-source-remap \
 	books/history-census-controller \
 	books/snapshot-held-remap \
