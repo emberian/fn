@@ -1,0 +1,13 @@
+{
+ "detail": "`fn bp-node checkpoint JOURNAL NODE-ID` (the operator's rotation of a BP node's FNBS journal; FNN-COMMAND-BP-NODE-CHECKPOINT -> FNN-BPS-FOUNDATION-STEP -> FN-BPNP-ROTATE-STEP -> FN-BPNR-VALUE-OCTETS -> FN-BPNR-ENC-GO) runs at the launcher's decided heap, and fnn-heap-command-profile-base (host/native/heap.lisp:382) has no clause for it: fn-bph-command-plan plans only the served BP run, so it falls to the store-less default. Measured on hbox at image d8fb738b3: `heap -- bp-node checkpoint JOURNAL dtn://receiver/` answers heap=1024 MB profile=none. The SCN-077 journal (1,311 held rows of the 10 MiB article's 4 KiB fragments) dies 'Heap exhausted during garbage collection' at 1,063,794,032 of 1,073,741,824 octets in FN-AG-REV-ONTO under FN-BPNR-ENC-GO, 19.5 s into the rotation (log hbox:/tank/fn/scratch/d-fixtures-schema/bp-rotation-heap.log). Before 453fee28e the BP natives ran the image under a per-test env that named no deployed figures, which is why the 09-28 fixture's rotation passed. An operator rotating that node with the installed launcher dies the same way. Repair at the mechanism: the heap command profile sizes `bp-node checkpoint` by the journal it rotates (its held rows / node profile), as `owner run` and `operator` are sized by their store; not an env override in the fixture.",
+ "file": "host/native/heap.lisp",
+ "id": "BP-CHECKPOINT-HEAP-STORELESS",
+ "line": "382",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "high",
+ "source": "tools/fixtures.py rebuild --only bp-checkpoint-open-1311, hbox, image d8fb738b3, Builder D 2026-10-09 (after BRIDGE-SESSION-STORELESS-HEAP's repair let the fixture reach the rotation)",
+ "state": "open",
+ "title": "the launcher decides `bp-node checkpoint` a store-less 1,024 MB heap, so rotating SCN-077's 1,311-held-row BP journal exhausts it: bp-checkpoint-open-1311 cannot be rebuilt, and an operator's rotation of such a node dies",
+ "updated": "2026-10-09T23:50:00Z"
+}

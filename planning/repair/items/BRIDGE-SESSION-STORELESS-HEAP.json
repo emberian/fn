@@ -3,11 +3,13 @@
  "file": "tests/native_harness.py",
  "id": "BRIDGE-SESSION-STORELESS-HEAP",
  "line": "813",
- "notes": [],
+ "notes": [
+  "10-09 Builder D: repaired at the harness. The session is a tool's ACL2, so it names its heap as every ACL2 the project runs as a tool does: tools/acl2_slots.own_heap_user_args (the slot pool's cap where one applies, else ACL2's save-exec 32000 MB), which packaging/launcher-decide.sh keeps as the caller's own figure. Tooth: tests.test_native_harness.Acl2SessionHeapTests drives the real launcher-decide.sh with a probe answering 1,024 MB; the session keeps its heap, a stack-only caller takes the 1,024 MB. On hbox (image d8fb738b3) the fixture's 10 MiB encode now passes and all 1,311 fragments are sent; the fixture's next failure is the rotation's own heap (BP-CHECKPOINT-HEAP-STORELESS, builder-M). Also repaired: the fixture read self.env, which 453fee28e removed from the BP natives; it takes native_harness.environment."
+ ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "tools/fixtures.py rebuild --only bp-checkpoint-open-1311, hbox, image d8fb738b3, Builder D 2026-10-09; repro hbox:/tank/fn/scratch/d-fixtures-schema/bprepro.{py,out}",
- "state": "open",
+ "state": "landed",
  "title": "the harness's Acl2Session runs at the launcher's store-less decided heap (1,024 MB), so fn-bpa-encode of SCN-077's 10 MiB article exhausts it: bp-checkpoint-open-1311 cannot be rebuilt and test_ten_mebibyte_article_through_four_kib_fragments fails the same way",
- "updated": "2026-10-09T22:25:19Z"
+ "updated": "2026-10-09T23:50:00Z"
 }

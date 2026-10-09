@@ -5,6 +5,7 @@ sys.path.insert(0, os.getcwd())
 from pathlib import Path
 import tests.test_bp_fragment_node_native as bp_native
 from tests.test_bp_fragment_node_native import NativeBpFragmentNodeTests as Base, IMAGE, ROOT
+from tests.native_harness import environment
 
 FIX = Path(os.environ["FIXTURE_DIR"])
 WORK = FIX / "t"
@@ -36,13 +37,15 @@ class Fixture(Base):
         first.kill(); drained(120)
         print(f"FIXTURE sent={half} of {len(paths)}", flush=True)
         subprocess.run(["tar", "-C", str(FIX), "-cf", str(FIX / "pre-rotation.tar"), "t"], check=True)
-        env = dict(self.env); env["FN_BP_TEST_PROFILE"] = "999999"
+        # The native modules' environment (native_harness.environment, since
+        # 453fee28e moved them off a per-test self.env), plus the profile.
+        env = environment({"FN_BP_TEST_PROFILE": "999999"})
         t = time.monotonic()
         p = subprocess.run([str(IMAGE), "--fn", "bp-node", "checkpoint", str(self.journal),
                             "dtn://receiver/"], cwd=ROOT, env=env,
                            stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=7200)
         print(f"FIXTURE rotation rc={p.returncode} wall={time.monotonic()-t:.1f}s", flush=True)
-        self.assertEqual(p.returncode, 0, p.stderr[-2000:])
+        self.assertEqual(p.returncode, 0, p.stderr[:3000] + b"\n...\n" + p.stderr[-1500:])
         subprocess.run(["tar", "-C", str(FIX), "-cf", str(FIX / "post-rotation.tar"), "t"], check=True)
         print("FIXTURE-DONE", flush=True)
 
