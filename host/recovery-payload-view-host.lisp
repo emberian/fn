@@ -1,6 +1,9 @@
 ; Production recovery-only view and INITIAL role transaction. Source WIP:
 ; exact includes/caller admission are pending, never substitute live PVL.
 (in-package "ACL2")
+; The attachment precedes history-columns (reached through
+; snapshot-initial-host); host_check --standalone checks the order.
+(include-book "../books/history-paged-attach")
 (include-book "snapshot-initial-host")
 (include-book "page-read-host")
 (include-book "../books/recovery-payload-view")
