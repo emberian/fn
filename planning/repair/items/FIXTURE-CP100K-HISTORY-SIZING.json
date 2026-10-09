@@ -1,0 +1,13 @@
+{
+ "detail": "recipe_checkpoint_suffix (tools/fixtures.py) builds the 100,000-record store from a 1,000-article seed initialized with SYNTH_100K (T 131072, H 536,870,912) and capacity suffix_capacity(100000, 20000) = 244,000, checkpoints it, then POSTs 20,000 2 KiB articles. POST 17,270 (Message-ID 5017269) is refused '441 ... history-exhausted': 536,870,912 / about 118,270 articles is about 4,540 charged octets per 2,048-octet article (payload, its membership rows and header columns share H). tests/test_fixture_init_refusal.py CheckpointSuffixTests asserts that T and K hold seed + N + suffix but never H, so the recipe's sizing was not checked. The fixture was added by 64dc501b1 (09-28) and no fixture directory exists on hbox; no native reads it (its only reader is that unit test). Repair in the recipe: a seed profile whose H holds seed + N + suffix at the charged size, with the unit test asserting it from the charge (books' history charge per article, evaluated, not a hand constant); syn100k-2k and curve keep SYNTH_100K.",
+ "file": "tools/fixtures.py",
+ "id": "FIXTURE-CP100K-HISTORY-SIZING",
+ "line": "344",
+ "notes": [],
+ "owner": "builder-D",
+ "severity": "low",
+ "source": "tools/fixtures.py rebuild cp100k-sfx20k-2k, hbox, image d8fb738b3, Builder D 2026-10-09; log hbox:/dev/shm/fn-fixtures-d/cp100k-sfx20k-2k.log",
+ "state": "open",
+ "title": "cp100k-sfx20k-2k's recipe seeds with SYNTH_100K (H 512 MiB), which holds about 117,000 2 KiB articles under the history charge, not the 121,000 the fixture needs; it has never been built",
+ "updated": "2026-10-09T22:14:31Z"
+}
