@@ -45,14 +45,14 @@
 ; :stream --- dot-stuffing.  S is 0 at the start of a line, 1 within one.  A
 ; line that opens with "." is sent with ".." (RFC 3977 3.1.1); FINAL closes the
 ; block: CRLF if the body did not end at a line start, then ".\r\n".
-(defun fn-dss-fx-dot-step (s o)
+(defun-inline fn-dss-fx-dot-step (s o)
   (declare (xargs :guard (and (unsigned-byte-p 1 s) (fn-cbor-octetp o))))
   (let ((s2 (if (eql o 10) 0 1)))
     (if (and (eql s 0) (eql o 46))
         (mv s2 2 (+ 46 (* 256 46)) 0)
       (mv s2 1 o 0))))
 
-(defun fn-dss-fx-dot-final (s)
+(defun-inline fn-dss-fx-dot-final (s)
   (declare (xargs :guard (unsigned-byte-p 1 s)))
   (if (eql s 0)
       (mv 0 3 (+ 46 (* 256 13) (* 65536 10)) 0)
@@ -73,7 +73,7 @@
 ; the line (a held CR is the terminator's and is dropped); a held CR followed
 ; by anything else is emitted; a line that would pass LIMIT is refused, the
 ; octet unconsumed.  At the end of input an unterminated line is refused.
-(defun fn-dss-fx-line-step (limit s o)
+(defun-inline fn-dss-fx-line-step (limit s o)
   (declare (xargs :guard (and (unsigned-byte-p 59 limit) (unsigned-byte-p 59 s)
                               (fn-cbor-octetp o))))
   (let* ((s (nfix s))
@@ -121,7 +121,7 @@
       (mv (nfix next) 0 0 sig)
     (mv (nfix s) 0 0 2)))
 
-(defun fn-dss-fx-field-step (s o)
+(defun-inline fn-dss-fx-field-step (s o)
   (declare (xargs :guard (and (unsigned-byte-p 34 s) (fn-cbor-octetp o))))
   (let* ((s (nfix s))
          (o (mod (nfix o) 256))
@@ -142,7 +142,7 @@
                  (fn-dss-fx-field-put s (+ 3 (* 262144 len)) 1)
                (fn-dss-fx-field-put s (+ 2 (* 4 r) (* 262144 len)) 0)))))))
 
-(defun fn-dss-fx-field-final (s)
+(defun-inline fn-dss-fx-field-final (s)
   (declare (xargs :guard (unsigned-byte-p 34 s)))
   (let ((phase (mod (nfix s) 4)))
     (mv s 0 0 (if (or (eql phase 1) (eql phase 2)) 2 0))))
