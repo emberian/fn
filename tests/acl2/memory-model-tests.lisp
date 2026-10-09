@@ -1,7 +1,8 @@
-; Witnesses for books/memory-model (Builder M, landing 1, revision 3): per
-; keystone one reachable witness (every hypothesis and the conclusion hold)
-; and, per hypothesis, a removal witness (the others hold, it fails, and the
-; conclusion fails).  The figures are the small preset's over the production
+; Teeth for books/memory-model (Builder M, landing 1, revision 3): each of
+; K1-K5 carries a defteeth bound to the book's theorem, with one reachable
+; witness (every hypothesis and the conclusion hold), per hypothesis a
+; removal witness (the others hold, it fails, and the conclusion fails), and
+; one checked mutation naming the fault it models.  The figures are the small preset's over the production
 ; image's measured floor (MEMORY-20261006 2.1 and 2.4: about 100 MiB of core
 ; pages resident after the open, 23 MiB anonymous at an empty open, 1.04 MiB
 ; a thread at --tls-limit 65536).  Every store here is within the small
@@ -9,6 +10,7 @@
 ; admits today.
 (in-package "ACL2")
 (include-book "../../books/memory-model")
+(include-book "../../books/defkeystone")
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defconst *mmt-p* *fn-heap-small-profile*)
@@ -43,101 +45,175 @@
 (assert-event (<= 8 (fn-mm-hroot-npages 257 16448)))
 
 ; ---------------------------------------------------------------------------
-; K1 fn-mm-need-within-the-sum
-(defun mmt-k1 (k s h pub)
-  (list (<= (nfix k) (fn-mm-cfg-connections *mmt-cfg*))
-        (<= (nfix s) (fn-heap-article-slots *mmt-p*))
-        (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp *mmt-cfg*) (fn-mm-cfg-handshakes *mmt-cfg*)))
-        (<= (fn-mm-need *mmt-p* *mmt-img* *mmt-cfg* *mmt-t1k* k s h pub)
-            (fn-mm-sum *mmt-p* *mmt-img* *mmt-cfg* *mmt-t1k*))))
+; The keystones' teeth (coordinator ruling (b), 2026-10-09), bound to the
+; book's theorems as the world stores them: per keystone its reachable
+; witness, one removal per hypothesis and one mutation naming the fault it
+; models.
 (defconst *mmt-slots* (fn-heap-article-slots *mmt-p*))
 (defconst *mmt-hs* (fn-cbud-handshake-slots t 16))
-(assert-event (equal (mmt-k1 32 *mmt-slots* *mmt-hs* t) '(t t t t)))
-(assert-event (equal (mmt-k1 33 *mmt-slots* *mmt-hs* t) '(nil t t nil)))
-(assert-event (equal (mmt-k1 32 (+ 1 *mmt-slots*) *mmt-hs* t) '(t nil t nil)))
-(assert-event (equal (mmt-k1 32 *mmt-slots* (+ 1 *mmt-hs*) t) '(t t nil nil)))
 
-; K2 fn-mm-sum-grows-with-the-store
-(defun mmt-k2 (a b)
-  (list (fn-mm-tot-le a b)
-        (<= (fn-mm-sum *mmt-p* *mmt-img* *mmt-cfg* a) (fn-mm-sum *mmt-p* *mmt-img* *mmt-cfg* b))))
-(assert-event (equal (mmt-k2 *mmt-hdr* *mmt-t1k*) '(t t)))
-(assert-event (equal (mmt-k2 *mmt-t1k* *mmt-hdr*) '(nil nil)))
+; K1.  Every connection, article slot and handshake held, publishing.
+(defteeth fn-mm-need-within-the-sum
+  :claim (((connections (<= (nfix k) (fn-mm-cfg-connections cfg)))
+           (slots (<= (nfix s) (fn-heap-article-slots profile)))
+           (handshakes (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg)))))
+          (<= (fn-mm-need profile img cfg tot k s h publishing)
+              (fn-mm-sum profile img cfg tot)))
+  :subject fn-mm-need
+  :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
+            (k 32) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
+  :breaks ((connections ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
+                         (k 33) (s *mmt-slots*) (h *mmt-hs*) (publishing t)))
+           (slots ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
+                   (k 32) (s (+ 1 *mmt-slots*)) (h *mmt-hs*) (publishing t)))
+           (handshakes ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
+                        (k 32) (s *mmt-slots*) (h (+ 1 *mmt-hs*)) (publishing t))))
+  :mutations ((sum-without-inflight
+               (:conclusion (<= (fn-mm-need profile img cfg tot k s h publishing)
+                                (- (fn-mm-sum profile img cfg tot) (fn-mm-inflight profile cfg))))
+               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
+                (k 32) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
+               :fault "a sum that omits the in-flight term (capture buffers, article slots, handshakes, cold reads)")))
 
-; K3 fn-mm-admitted-store-reopens.  Run with no connection and no TLS, where
-; the reopen's workspace exceeds the serving sum, so the gate's limit is the
-; reopen's and each removal bites on the reopen itself.
+; K2.  A checkpoint at 900 records within the store at 1,000.
+(defteeth fn-mm-sum-grows-with-the-store
+  :claim (((within (fn-mm-tot-le a b)))
+          (<= (fn-mm-sum profile img cfg a) (fn-mm-sum profile img cfg b)))
+  :subject fn-mm-sum
+  :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (a *mmt-hdr*) (b *mmt-t1k*))
+  :breaks ((within ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (a *mmt-t1k*) (b *mmt-hdr*))))
+  :mutations ((sum-falls-with-the-store
+               (:conclusion (<= (fn-mm-sum profile img cfg b) (fn-mm-sum profile img cfg a)))
+               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (a *mmt-hdr*) (b *mmt-t1k*))
+               :fault "a sum that charges a smaller store more (a term antitone in a total)")))
+
+; K3.  Run with no connection and no TLS, where the reopen's workspace
+; exceeds the serving sum, so the gate's limit is the reopen's and each
+; removal bites on the reopen itself.  Reachable: W13's store crashed after
+; its checkpoint at 900 with 100 records past it, observed exactly.
 (defconst *mmt-cfg0* (list 0 nil 8388608 8388608 nil 0 8388608 16 nil 64))
-(defun mmt-k3 (limit adm tot hdr suffix img2)
-  (let ((obs (fn-mm-observed-tot hdr suffix)))
-    (list (fn-mm-gate-p *mmt-p* *mmt-img* *mmt-cfg0* limit adm)
-          (fn-mm-tot-le tot obs)
-          (fn-mm-tot-le obs adm)
-          (fn-mm-img-le img2 *mmt-img*)
-          (and (<= (fn-mm-reopen-need *mmt-p* img2 *mmt-cfg0* tot)
-                   (fn-mm-reopen-need *mmt-p* img2 *mmt-cfg0* obs))
-               (natp limit)
-               (<= (fn-mm-reopen-need *mmt-p* img2 *mmt-cfg0* obs) limit)))))
 (defun mmt-gate-limit (tot)
   (max (fn-mm-sum *mmt-p* *mmt-img* *mmt-cfg0* tot)
        (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg0* tot)))
 (defconst *mmt-limit* (mmt-gate-limit *mmt-t1k*))
 (assert-event (equal *mmt-limit* (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg0* *mmt-t1k*)))
-; reachable: W13's store crashed after its checkpoint at 900 with 100 records
-; past it (more than the fast path's K = 128 would also be read: the suffix
-; is observed, not bounded), observed exactly
-(assert-event (equal (mmt-k3 *mmt-limit* *mmt-t1k* *mmt-t1k* *mmt-hdr* *mmt-suffix* *mmt-img*)
-                     '(t t t t t)))
-; without the gate: a limit under the store's reopen
-(assert-event (equal (mmt-k3 (- (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg0* *mmt-t1k*) 1)
-                             *mmt-t1k* *mmt-t1k* *mmt-hdr* *mmt-suffix* *mmt-img*)
-                     '(nil t t t nil)))
-; without TOT within the observation: an observer that reads the header
-; and not the log past it
-(assert-event (equal (mmt-k3 *mmt-limit* *mmt-t1k* *mmt-t1k* *mmt-hdr* *mmt-t0* *mmt-img*)
-                     '(t nil t t nil)))
-; without the observation within the admitted store: an observer that
-; charges the profile's ceilings (today's figure's defect)
-(assert-event (equal (mmt-k3 *mmt-limit* *mmt-t1k* *mmt-t1k* *mmt-ceiling* *mmt-t0* *mmt-img*)
-                     '(t t nil t nil)))
-; without the image premise: a reopen on an image one MiB heavier
-(assert-event (equal (mmt-k3 *mmt-limit* *mmt-t1k* *mmt-t1k* *mmt-hdr* *mmt-suffix* *mmt-img-big*)
-                     '(t t t nil nil)))
+(defteeth fn-mm-admitted-store-reopens
+  :claim (((gate (fn-mm-gate-p profile img cfg limit adm))
+           (observes (fn-mm-tot-le tot (fn-mm-observed-tot hdr suffix)))
+           (admitted (fn-mm-tot-le (fn-mm-observed-tot hdr suffix) adm))
+           (image (fn-mm-img-le img2 img)))
+           (and (<= (fn-mm-reopen-need profile img2 cfg tot)
+                    (fn-mm-reopen-need profile img2 cfg (fn-mm-observed-tot hdr suffix)))
+                (natp limit)
+                (<= (fn-mm-reopen-need profile img2 cfg (fn-mm-observed-tot hdr suffix))
+                    limit)))
+  :subject fn-mm-reopen-need
+  :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (limit *mmt-limit*) (adm *mmt-t1k*)
+            (tot *mmt-t1k*) (hdr *mmt-hdr*) (suffix *mmt-suffix*) (img2 *mmt-img*))
+  ; gate: a limit under the store's reopen; observes: an observer that reads
+  ; the header and not the log past it; admitted: an observer that charges
+  ; the profile's ceilings (today's figure's defect); image: a reopen on an
+  ; image one MiB heavier
+  :breaks ((gate ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (limit (- *mmt-limit* 1))
+                  (adm *mmt-t1k*) (tot *mmt-t1k*) (hdr *mmt-hdr*) (suffix *mmt-suffix*) (img2 *mmt-img*)))
+           (observes ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (limit *mmt-limit*)
+                      (adm *mmt-t1k*) (tot *mmt-t1k*) (hdr *mmt-hdr*) (suffix *mmt-t0*) (img2 *mmt-img*)))
+           (admitted ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (limit *mmt-limit*)
+                      (adm *mmt-t1k*) (tot *mmt-t1k*) (hdr *mmt-ceiling*) (suffix *mmt-t0*) (img2 *mmt-img*)))
+           (image ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (limit *mmt-limit*)
+                   (adm *mmt-t1k*) (tot *mmt-t1k*) (hdr *mmt-hdr*) (suffix *mmt-suffix*) (img2 *mmt-img-big*))))
+  :mutations ((reopen-sized-from-the-header
+               (:conclusion (<= (fn-mm-reopen-need profile img2 cfg tot)
+                                (fn-mm-reopen-need profile img2 cfg hdr)))
+               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (limit *mmt-limit*) (adm *mmt-t1k*)
+                (tot *mmt-t1k*) (hdr *mmt-hdr*) (suffix *mmt-suffix*) (img2 *mmt-img*))
+               :fault "a reopen sized from the checkpoint header alone, the log suffix past it unread")))
 
-; K4 fn-mm-launch-holds-the-store-and-the-reservation; K5 fn-mm-launch-
-; refuses-only-by-the-model.  CORE the production image's (file . dynamic).
-; At C = 32 the OVER quantum's octet lists alone are 4.0 GiB of the sum
-; (the figures below), so no launch below that exists; the launch witnesses
-; run one connection.
+; K4 and K5.  CORE the production image's (file . dynamic).  At C = 32 the
+; OVER quantum's octet lists alone are 4.0 GiB of the sum (the figures
+; below), so no launch below that exists; the launch witnesses run one
+; connection.
 (defconst *mmt-cfg1* (list 1 t 8388608 8388608 nil 0 8388608 16 nil 64))
 (defconst *mmt-core* '(200411640 . 114644864))
 (defconst *mmt-nur* 8388608)
 (defconst *mmt-1g* (* 1024 1048576))
+(defconst *mmt-2g* (* 2 *mmt-1g*))
+(defconst *mmt-1t* (* 1024 *mmt-1g*))
 (defconst *mmt-256m* (* 256 1048576))
 (defconst *mmt-900m* (* 900 1048576))
 (defun mmt-launch (conf robs aobs)
   (fn-mm-launch-decide *mmt-p* *mmt-img* *mmt-cfg1* conf robs aobs *mmt-core* *mmt-nur* *mmt-t1k*))
-(defun mmt-k4 (conf robs aobs)
-  (let ((d (mmt-launch conf robs aobs))
-        (r (fn-mm-least-observation robs))
-        (a (fn-mm-least-observation aobs)))
-    (list (equal (car d) :launch)
-          (and (natp (cadr d)) (natp (caddr d))
-               (<= (fn-mm-sum *mmt-p* *mmt-img* *mmt-cfg1* *mmt-t1k*) (cadr d))
-               (<= (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg1* *mmt-t1k*) (cadr d))
-               (if (natp conf) (<= (cadr d) conf) t)
-               (if (natp r) (<= (cadr d) r) t)
-               (if (natp a)
-                   (<= (fn-mm-launch-reservation (cadr d) *mmt-core* *mmt-nur* *mmt-cfg1* *mmt-p*) a)
-                 t)
-               (<= (+ (fn-heap-core-dynamic *mmt-core*) (cadr d)) (caddr d))))))
-; A cgroup of 1 GiB, no address-space limit: launches with a reservation
-; over 1 GiB, since nothing resident is compared with it
-(assert-event (equal (mmt-k4 nil (list *mmt-1g*) nil) '(t t)))
+
+; K4.  A configured 2 GiB under a 1 GiB cgroup and a 1 TiB address space
+; launches at the cgroup's limit with a reservation over 1 GiB, since
+; nothing resident is compared with it (every limit is a number so each
+; conjunct runs under its guards); the removal: a configured 128 MiB the
+; store does not fit is refused and states no limit.
 (assert-event (< *mmt-1g* (fn-mm-launch-reservation *mmt-1g* *mmt-core* *mmt-nur* *mmt-cfg1* *mmt-p*)))
-; removal of the one hypothesis: a refused launch states no limit
-(assert-event (equal (mmt-k4 (* 128 1048576) nil nil) '(nil nil)))
-; a resident observation of 0 is a limit, not an absent one (Codex F8)
+(defteeth fn-mm-launch-holds-the-store-and-the-reservation
+  :claim (let ((d (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
+                                core nursery obs))
+        (r (fn-mm-least-observation resident-obs))
+        (a (fn-mm-least-observation address-obs)))
+    (((launch (equal (car d) :launch)))
+             (and (natp (cadr d))
+                  (<= (fn-mm-sum profile img cfg obs) (cadr d))
+                  (<= (fn-mm-reopen-need profile img cfg obs) (cadr d))
+                  (implies (natp configured) (<= (cadr d) configured))
+                  (implies (natp r) (<= (cadr d) r))
+                  (implies (natp a)
+                           (<= (fn-mm-launch-reservation (cadr d) core nursery cfg profile) a))
+                  (<= (+ (fn-heap-core-dynamic core) (cadr d)) (caddr d)))))
+  :subject fn-mm-launch-decide
+  :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured *mmt-2g*)
+            (resident-obs (list *mmt-1g*)) (address-obs (list *mmt-1t*)) (core *mmt-core*)
+            (nursery *mmt-nur*) (obs *mmt-t1k*))
+  :breaks ((launch ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured (* 128 1048576))
+                    (resident-obs nil) (address-obs nil) (core *mmt-core*) (nursery *mmt-nur*)
+                    (obs *mmt-t1k*))
+            :logical "a refused decision's second field is its reason, not a limit, so the conclusion's comparisons are evaluated for their logical value"))
+  :mutations ((reservation-against-the-resident-limit
+               (:conclusion (<= (fn-mm-launch-reservation (cadr d) core nursery cfg profile) (cadr d)))
+               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured *mmt-2g*)
+                (resident-obs (list *mmt-1g*)) (address-obs (list *mmt-1t*)) (core *mmt-core*)
+                (nursery *mmt-nur*) (obs *mmt-t1k*))
+               :fault "a launch that compares the address-space reservation with a resident limit (L-FRESH's refusals at 256 MB and 1 GB)")))
+
+; K5.  A 1 GiB cgroup launches; removals: a 256 MiB cgroup the store does
+; not pass the gate under, and a 1 GiB address-space limit under the
+; reservation.  Mutation: a gate on the serving sum alone, at a limit
+; between the sum and the reopen with no connection (where the reopen is
+; the larger), which the launch refuses.
+(defconst *mmt-sum0* (fn-mm-sum *mmt-p* *mmt-img* *mmt-cfg0* *mmt-t1k*))
+(assert-event (< *mmt-sum0* *mmt-limit*))
+(defteeth fn-mm-launch-refuses-only-by-the-model
+  :claim (let ((limit (fn-mm-resident-limit configured resident-obs))
+        (a (fn-mm-least-observation address-obs)))
+    (((gate (fn-mm-gate-p profile img cfg limit obs))
+      (address (or (not (natp a))
+                   (<= (fn-mm-launch-reservation limit core nursery cfg profile) a))))
+             (equal (car (fn-mm-launch-decide profile img cfg configured resident-obs
+                                              address-obs core nursery obs))
+                    :launch)))
+  :subject fn-mm-launch-decide
+  :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured nil)
+            (resident-obs (list *mmt-1g*)) (address-obs nil) (core *mmt-core*) (nursery *mmt-nur*)
+            (obs *mmt-t1k*))
+  :breaks ((gate ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured nil)
+                  (resident-obs (list *mmt-256m*)) (address-obs nil) (core *mmt-core*) (nursery *mmt-nur*)
+                  (obs *mmt-t1k*)))
+           (address ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured nil)
+                     (resident-obs (list *mmt-1g*)) (address-obs (list *mmt-1g*)) (core *mmt-core*)
+                     (nursery *mmt-nur*) (obs *mmt-t1k*))))
+  :mutations ((gate-without-the-reopen
+               (:hypothesis gate (<= (fn-mm-sum profile img cfg obs) limit))
+               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (configured *mmt-sum0*)
+                (resident-obs nil) (address-obs nil) (core *mmt-core*) (nursery *mmt-nur*)
+                (obs *mmt-t1k*))
+               :fault "a launch admitted by the serving sum alone, the store's reopen unchecked")))
+
+; Beside the keystones: a resident observation of 0 is a limit, not an
+; absent one (Codex F8); the tooth against today's decision; L-FRESH.
 (assert-event (equal (car (mmt-launch nil (list 0) nil)) :refused))
 (assert-event (equal (car (mmt-launch nil (list *mmt-1g*) (list 0))) :refused))
 ; A 900 MiB cgroup: today's decision refuses it by the threads' reservation
@@ -150,17 +226,6 @@
 ; connection (the figure the landing reports)
 (assert-event (equal (cadr (mmt-launch nil (list *mmt-256m*) nil))
                      :configured-memory-cannot-hold-the-store))
-
-(defun mmt-k5 (conf robs aobs)
-  (let ((limit (fn-mm-resident-limit conf robs))
-        (a (fn-mm-least-observation aobs)))
-    (list (fn-mm-gate-p *mmt-p* *mmt-img* *mmt-cfg1* limit *mmt-t1k*)
-          (or (not (natp a))
-              (<= (fn-mm-launch-reservation limit *mmt-core* *mmt-nur* *mmt-cfg1* *mmt-p*) a))
-          (equal (car (mmt-launch conf robs aobs)) :launch))))
-(assert-event (equal (mmt-k5 nil (list *mmt-1g*) nil) '(t t t)))
-(assert-event (equal (mmt-k5 nil (list *mmt-256m*) nil) '(nil t nil)))
-(assert-event (equal (mmt-k5 nil (list *mmt-1g*) (list *mmt-1g*)) '(t nil nil)))
 
 ; The figures the READY reports (evaluated, not asserted against a bar).
 (value-triple
