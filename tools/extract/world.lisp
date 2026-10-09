@@ -115,6 +115,7 @@
 (include-book "../../books/send-window")
 (include-book "../../books/idle-collection")
 (include-book "../../books/heap-reservation")
+(include-book "../../books/heap-command")
 (include-book "../../books/bp-heap-command")
 (include-book "../../books/cold-read-reservation")
 (include-book "../../books/output-reservation")

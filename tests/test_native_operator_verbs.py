@@ -733,6 +733,38 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual((room["transactions-used"], room["transactions-budget"]), (0, 1000))
         self.assertEqual((room["bytes-used"], room["history-bound"]), (0, 1 << 40))
 
+    def test_a_stopped_status_holds_no_store_and_a_replay_names_the_totals_it_cannot_see(self):
+        """K6 fn-heap-stopped-status-holds-no-store (books/heap-command.lisp,
+        PRF-10000): the probe's decision fn-heap-command-decide sizes a
+        stopped `status' -- the checkpoint header and lstat, nothing opened
+        -- as `init' is sized, whatever store the profile admits.  Tooth: the
+        image before lane memory refused it for `init --budget's D27 store
+        (machine-cannot-hold-profile heap=69306331 MB, the amended row
+        OPERATOR-STATUS-OBSERVED-SIZING).  `status --replay' opens the store:
+        until the checkpoint header carries the charged totals
+        (books/charged-totals.lisp, A's landing 2) it is sized by today's
+        figure and its line names the totals it cannot see (fn-mo-read-decide
+        sizes it once they are observed)."""
+        created = self.operator("init", "--budget", "99999999", "--profile", "default",
+                                "--max-transactions", "1000",
+                                "--max-article-octets", "20000", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        stopped = self.node.invoke("heap", "--", "operator", self.config, "status")
+        self.assertEqual(stopped.returncode, EXIT_OK, stopped.stderr.decode())
+        line = stopped.stdout.decode("ascii").strip()
+        self.assertTrue(line.startswith("heap="), line)
+        self.assertIn(" profile=default ", line)
+        self.assertNotIn("totals=", line)
+        # the store-less figure (books/heap-figure.lisp
+        # fn-heap-storeless-figure-octets), never the profile's
+        self.assertLess(int(line.split()[0].split("=")[1]), 4096, line)
+        replay = self.node.invoke("heap", "--", "operator", self.config, "status", "--replay")
+        self.assertEqual(replay.returncode, EXIT_REFUSED, replay.stderr.decode())
+        self.assertTrue(replay.stdout.decode("ascii").strip().endswith(
+            " totals=unobserved:arena,hcharge,memberships,events,log,history,charge,residency"),
+            replay.stdout)
+        self.assertEqual(self.profile_line()["max-history-octets"], 1 << 40)
+
     def test_init_capacity_fields_take_the_development_preset(self):
         """Row Q10b: with no --profile a capacity field takes development's
         other fields, never D27's 1 TiB history; a refused profile names its

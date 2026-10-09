@@ -97,17 +97,20 @@
        (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg0* tot)))
 (defconst *mmt-limit* (mmt-gate-limit *mmt-t1k*))
 (assert-event (equal *mmt-limit* (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg0* *mmt-t1k*)))
-(defteeth fn-mm-admitted-store-reopens
-  :claim (((gate (fn-mm-gate-p profile img cfg limit adm))
-           (observes (fn-mm-tot-le tot (fn-mm-observed-tot hdr suffix)))
-           (admitted (fn-mm-tot-le (fn-mm-observed-tot hdr suffix) adm))
-           (image (fn-mm-img-le img2 img)))
+(defkeystone mmt-admitted-store-reopens
+  (implies (and (fn-mm-gate-p profile img cfg limit adm)
+                (fn-mm-tot-le tot (fn-mm-observed-tot hdr suffix))
+                (fn-mm-tot-le (fn-mm-observed-tot hdr suffix) adm)
+                (fn-mm-img-le img2 img))
            (and (<= (fn-mm-reopen-need profile img2 cfg tot)
                     (fn-mm-reopen-need profile img2 cfg (fn-mm-observed-tot hdr suffix)))
                 (natp limit)
                 (<= (fn-mm-reopen-need profile img2 cfg (fn-mm-observed-tot hdr suffix))
                     limit)))
+  :id "PRF-10001"
   :subject fn-mm-reopen-need
+  :restates fn-mm-admitted-store-reopens
+  :hyps (gate observes admitted image)
   :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (limit *mmt-limit*) (adm *mmt-t1k*)
             (tot *mmt-t1k*) (hdr *mmt-hdr*) (suffix *mmt-suffix*) (img2 *mmt-img*))
   ; gate: a limit under the store's reopen; observes: an observer that reads
@@ -127,7 +130,8 @@
                                 (fn-mm-reopen-need profile img2 cfg hdr)))
                ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (limit *mmt-limit*) (adm *mmt-t1k*)
                 (tot *mmt-t1k*) (hdr *mmt-hdr*) (suffix *mmt-suffix*) (img2 *mmt-img*))
-               :fault "a reopen sized from the checkpoint header alone, the log suffix past it unread")))
+               :fault "a reopen sized from the checkpoint header alone, the log suffix past it unread"))
+  :hints (("Goal" :by fn-mm-admitted-store-reopens)))
 
 ; K4 and K5.  CORE the production image's (file . dynamic).  At C = 32 the
 ; OVER quantum's octet lists alone are 4.0 GiB of the sum (the figures

@@ -9356,6 +9356,28 @@
    "statement_digest": "884b178f98debc5919b8b3a0aebdaa624a2eb73898a8988c5e2295a2521738ba"
   },
   {
+   "book": "books/heap-command.lisp",
+   "book_digest": "a92461491272315893d77345169aeeb5cb14cac50f4ccf86ff825f66fa71d455",
+   "bounds": [],
+   "claim_digest": "b42094ad03f6baa78c7280074f4144f32a50f1a9f6f3f45122cdfe555bf83fb0",
+   "class": "generated",
+   "critical": "resource-reservation",
+   "mutations": "edits:1",
+   "name": "fn-heap-stopped-status-holds-no-store",
+   "owed_met": null,
+   "owner_book": "tests/acl2/heap-command-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "statement_digest": "bc0f74bca71576ad32d74675e560b4ad040f7495c7c3f39902379cab84b89e16",
+   "subject": "fn-heap-command-decide",
+   "witness": "executable"
+  },
+  {
    "book": "books/heap-store-figure.lisp",
    "class": "hand",
    "critical": "resource-reservation",
@@ -12174,7 +12196,7 @@
    "registry": true
   },
   {
-   "book_digest": "d3f2068b88961d2d2cb8a47b82d1ab4678395ae72f270dbd5b8f53fff598d907",
+   "book_digest": "bbb94c713511bd97bb83cb73d72784dbbef1d19c94146a78558a08fa2352432e",
    "bounds": [],
    "claim_digest": "112a2c0282c15b0d696560ad295bd35f50cd9bc65f76e305ea6e47d0a6fa48fb",
    "class": "generated",
@@ -12182,7 +12204,7 @@
    "name": "fn-mm-admitted-store-reopens",
    "owed_met": null,
    "owner_book": "tests/acl2/memory-model-tests.lisp",
-   "registry": false,
+   "registry": true,
    "removals": {
     "assumption": 0,
     "lemma": 0,
@@ -12193,7 +12215,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "d3f2068b88961d2d2cb8a47b82d1ab4678395ae72f270dbd5b8f53fff598d907",
+   "book_digest": "bbb94c713511bd97bb83cb73d72784dbbef1d19c94146a78558a08fa2352432e",
    "bounds": [],
    "claim_digest": "37430010ebd56d3cc82b685d5a4f42877cd5e85a3e72104b467d65bec90feaa9",
    "class": "generated",
@@ -12212,7 +12234,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "d3f2068b88961d2d2cb8a47b82d1ab4678395ae72f270dbd5b8f53fff598d907",
+   "book_digest": "bbb94c713511bd97bb83cb73d72784dbbef1d19c94146a78558a08fa2352432e",
    "bounds": [],
    "claim_digest": "cc9c353d190d91fa0f2b1f10c99bff36baefd4db67601af1bacec7e1ee7aafca",
    "class": "generated",
@@ -12231,7 +12253,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "d3f2068b88961d2d2cb8a47b82d1ab4678395ae72f270dbd5b8f53fff598d907",
+   "book_digest": "bbb94c713511bd97bb83cb73d72784dbbef1d19c94146a78558a08fa2352432e",
    "bounds": [],
    "claim_digest": "3d39a7a962efeeb6e682cc52a2cba64e138ca5c641d6786095718c5c27c7c46c",
    "class": "generated",
@@ -12250,7 +12272,7 @@
    "witness": "executable"
   },
   {
-   "book_digest": "d3f2068b88961d2d2cb8a47b82d1ab4678395ae72f270dbd5b8f53fff598d907",
+   "book_digest": "bbb94c713511bd97bb83cb73d72784dbbef1d19c94146a78558a08fa2352432e",
    "bounds": [],
    "claim_digest": "c0f4e6bcbf3dd9951f6ca990a71cbc70363a051e305a689b40f50789912de142",
    "class": "generated",
@@ -12266,6 +12288,44 @@
     "reachable": 1
    },
    "subject": "fn-mm-sum",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "a92461491272315893d77345169aeeb5cb14cac50f4ccf86ff825f66fa71d455",
+   "bounds": [],
+   "claim_digest": "8b77e41fa92ef1472b4e7b2eef9f164178dc465bf1efac32ed2b74c921165783",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-mo-read-holds-the-observed-store",
+   "owed_met": null,
+   "owner_book": "tests/acl2/heap-command-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-mo-read-decide",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "a92461491272315893d77345169aeeb5cb14cac50f4ccf86ff825f66fa71d455",
+   "bounds": [],
+   "claim_digest": "54c9f03e0d07a1d5c40b4b0626e66600cb9df3b45394033064f603bdbd0c8ad7",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-mo-read-refuses-only-by-the-model",
+   "owed_met": null,
+   "owner_book": "tests/acl2/heap-command-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-mo-read-decide",
    "witness": "executable"
   },
   {
