@@ -712,6 +712,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/resource-vector-tree-tests \
 	books/resource-operation \
 	tests/acl2/heap-figure-tests \
+	books/charged-totals \
+	books/memory-model \
+	tests/acl2/memory-model-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
 	tests/acl2/open-frontier-wire-tests \
