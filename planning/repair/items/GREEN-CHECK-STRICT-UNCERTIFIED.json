@@ -2,12 +2,14 @@
  "category": "certify",
  "file": "tools/green_check.py",
  "id": "GREEN-CHECK-STRICT-UNCERTIFIED",
- "notes": [],
+ "notes": [
+  "10-09 builder-B: full-tree certify of every Makefile root on hbox at dev e2ccc42ed (farm --all, run-20261009T145214Z-f2c2, certify-20261009T145614Z-1519819): 344 certified, 0 failed, 2784 from the cache; green_check --strict at e2ccc42ed: 0 of 3128 books not green at their closure key on the record toolchain. Trains keep it by certifying their affected closure on the exact artifact (COORDINATION section 5)."
+ ],
  "owner": "builder-B",
  "severity": "medium",
  "slice": "tree",
  "source": "builder-B static measure at dev 3a937ebc3, build/coordinator/lanedumps/b-static-green-strict.log",
- "state": "open",
+ "state": "landed",
  "title": "green_check --strict: 1701 of 3112 books are not certified at their closure key on the record toolchain (1354 of 3062 at 9fe2b6a88, CONVERGE-4 row 4)",
- "updated": "2026-10-09T07:20:02Z"
+ "updated": "2026-10-09T15:20:00Z"
 }

@@ -36,13 +36,6 @@
    "item": "LOCK-CHECKER-MODEL-GAPS",
    "owner": "deputy-C",
    "evidence": "NEW R1b fnn-arena-release-due *fnn-arena-release-custody* unlocked write host/native/io.lisp:8001 (owned; the train's lock gate passes on it); check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
-  },
-  {
-   "kind": "check",
-   "subject": "green_check --strict",
-   "item": "GREEN-CHECK-STRICT-UNCERTIFIED",
-   "owner": "builder-B",
-   "evidence": "1701 of 3112 books not certified at their closure key, dev 3a937ebc3 (build/coordinator/lanedumps/b-static-green-strict.log)"
   }
  ]
 }
