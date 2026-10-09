@@ -49,7 +49,10 @@ The image gate.  A train whose diff touches the heap probe, a launcher or
 host/native/ (IMAGE_RULES) must run the rule's native modules
 (test_native_operator_verbs, heap_from_profile and the served natives) on
 HEAD's image: `tools/hbox_native.sh HEAD MODULES`, then `train.py image`
-reads each module's rc and case statuses from the box.  The gate passes when
+reads each module's rc and case statuses from the box.  The obliged set may
+span several runs at HEAD (heap_from_profile runs under `--mem 2G`): each
+`train.py image --label L` adds its run's modules to HEAD's record, and a
+module read from two runs is refused.  The gate passes when
 every obliged module ran at HEAD and each red case is a `native` known red;
 a module that has not run (an interrupted image gate) refuses the push.
 Every command ends with one line `TRAIN-DONE CMD rc=N`.
@@ -993,9 +996,32 @@ def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
             unexplained.append(f"{m} (rc {rc}, no case recorded)")
         for c in reds:
             (known_seen if c in known else unexplained).append(c)
-    extra = {"need": sorted(need), "run": record.get("dir"), "missing": missing,
+    extra = {"need": sorted(need), "runs": sorted(record.get("runs") or {}), "missing": missing,
              "unexplained": unexplained, "known_reds": known_seen, "skipped": skipped}
     return (1 if missing or unexplained else 0), extra
+
+
+def merge_image_run(prior: dict | None, head: str, box: str, directory: str,
+                    modules: dict[str, dict]) -> dict:
+    """HEAD's image record with one more run read into it.  An obliged set can
+    need several runs at HEAD (heap_from_profile's small cases run only under
+    `hbox_native.sh --mem 2G`, the other modules at the default), so the record
+    keeps each module with the run it came from.  A record of another commit is
+    replaced; re-reading a run replaces that run's modules; a module already
+    read from a different run at HEAD is refused, so no module's verdict is
+    ever chosen between two runs."""
+    record = {"source": head, "runs": {}, "modules": {}}
+    if prior and prior.get("source") == head and "runs" in prior:
+        record["runs"] = {d: b for d, b in prior["runs"].items() if d != directory}
+        record["modules"] = {m: e for m, e in prior["modules"].items() if e.get("run") != directory}
+    twice = sorted(m for m in modules if m in record["modules"])
+    if twice:
+        raise TrainError("module(s) already read from another run at HEAD: " + ", ".join(
+            f"{m} ({record['modules'][m]['run']})" for m in twice) + f"; not read again from {directory}")
+    record["runs"][directory] = box
+    for m, e in modules.items():
+        record["modules"][m] = dict(e, run=directory)
+    return record
 
 
 def image_record_path(t: "Train", label: str) -> Path:
@@ -1003,8 +1029,9 @@ def image_record_path(t: "Train", label: str) -> Path:
 
 
 def cmd_image(t: Train, args) -> int:
-    """Read HEAD's image run from its box into the train state: each module's
-    rc and case statuses, for the image gate."""
+    """Read one of HEAD's image runs from its box into the train state: each
+    module's rc and case statuses and the run it came from, for the image gate
+    (merge_image_run: several runs at HEAD combine, one module per run)."""
     head = t.head()
     label = args.label or head[:12]
     path = image_record_path(t, label)
@@ -1020,12 +1047,12 @@ def cmd_image(t: Train, args) -> int:
     if p.returncode != 0:
         raise TrainError(f"reading {run['box']}:{run['dir']} failed (rc {p.returncode}): {p.stderr.strip()[:200]}")
     st = t.load()
-    st["image"] = {"source": head, "box": run["box"], "dir": run["dir"],
-                   "modules": parse_image_results(p.stdout)}
+    read = parse_image_results(p.stdout)
+    st["image"] = merge_image_run(st.get("image"), head, run["box"], run["dir"], read)
     t.save(st)
-    for m, e in sorted(st["image"]["modules"].items()):
+    for m, e in sorted(read.items()):
         reds = [c for c, s in e["cases"].items() if s not in IMAGE_CASE_PASS]
-        say(f"image {m}: rc {e['rc']}, {len(e['cases'])} cases, red {len(reds)}")
+        say(f"image {m}: rc {e['rc']}, {len(e['cases'])} cases, red {len(reds)} ({run['dir']})")
     return 0
 
 
@@ -1270,7 +1297,8 @@ def main(argv=None) -> int:
     c.add_argument("box", choices=("hbox", "persvati"))
     g = sub.add_parser("gate")
     i = sub.add_parser("image")
-    i.add_argument("--label", help="the run's label (default: HEAD's first 12 hex digits)")
+    i.add_argument("--label", help="the run's label (default: HEAD's first 12 hex digits); "
+                   "each run read at HEAD adds its modules to HEAD's image record")
     sub.add_parser("push")
     sub.add_parser("status")
     args = ap.parse_args(argv)
