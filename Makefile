@@ -68,6 +68,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/admission-preparation-intent-tests \
 	tests/acl2/admission-preparation-source-capture-tests \
 	tests/acl2/admission-semantic-census-source-guard-tests \
+	tests/acl2/admission-semantic-census-resident-tests \
 	tests/acl2/admission-semantic-exclusion-tests \
 	tests/acl2/bp-controller-registry-carry-tests \
 	tests/acl2/bp-node-crc0-receive-tests \
