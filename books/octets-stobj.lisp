@@ -18,16 +18,19 @@
 ; exactly as `defabsstobj-missing-events' prints it and proved before the
 ; `defabsstobj' event, which then admits them by name.  No `skip-proofs'.
 ;
-; The four exports a span loop calls once per octet -- len, get,
+; The five exports a span loop calls once per octet -- len, get, put,
 ; append-octet and append-word -- are `defun-inline' (their :exec is the
 ; $inline function), so a loop over the array compiles them in place rather
 ; than as a full call per octet (books/def-span-scan.lisp's disassembly
-; evidence, 2026-10-09).
+; evidence, 2026-10-09).  `put' and `truncate' carry no `:protect': each exec
+; is one store, and the atomicity line beside the export says why that is
+; sound.
 ;
 ; Exports (logic / exec):
 ;   fn-octets-len            (len st)                / the fill count
 ;   fn-octets-get i          (nth i st)              / one array read
 ;   fn-octets-put i o        (update-nth i o st)     / one array write
+;   fn-octets-truncate m     (take m st), m <= len   / fill := m
 ;   fn-octets-append-octet o (append st (list o))    / one array write
 ;   fn-octets-clear          nil                     / fill := 0
 ;   fn-octets-reserve n      st                      / grow the array to n
@@ -114,6 +117,14 @@
                   (append (fn-oct-list-from i n buf) (list (nth n buf)))))
   :rule-classes nil
   :hints (("Goal" :induct (fn-oct-list-from i n buf))))
+
+; The prefix of buf[i..n) is buf[i..m).  The truncate export's correspondence.
+(defthm fn-oct-list-from-take
+  (implies (and (natp i) (natp m) (natp n) (<= i m) (<= m n))
+           (equal (fn-oct-list-from i m buf)
+                  (take (- m i) (fn-oct-list-from i n buf))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-oct-list-from i m buf))))
 
 (defthm fn-oct-list-from-of-update-nth-outside
   (implies (and (natp j) (natp n) (or (< j (nfix i)) (<= n j)))
@@ -240,11 +251,18 @@
          (fn-octets$c (update-fn-octets$c-bufi n o fn-octets$c)))
     (update-fn-octets$c-fill (1+ n) fn-octets$c)))
 
-(defun fn-octets$c-put (i o fn-octets$c)
+(defun-inline fn-octets$c-put (i o fn-octets$c)
   (declare (xargs :stobjs fn-octets$c
                   :guard (and (natp i) (< i (fn-octets$c-fill fn-octets$c))
                               (fn-cbor-octetp o) (fn-octets$c-wfp fn-octets$c))))
   (update-fn-octets$c-bufi i o fn-octets$c))
+
+(defun fn-octets$c-truncate (m fn-octets$c)
+  ; Shorten the fill point to M; the array and its cells are untouched.
+  (declare (xargs :stobjs fn-octets$c
+                  :guard (and (natp m) (<= m (fn-octets$c-fill fn-octets$c))
+                              (fn-octets$c-wfp fn-octets$c))))
+  (update-fn-octets$c-fill m fn-octets$c))
 
 (defun fn-octets$c-clear (fn-octets$c)
   (declare (xargs :stobjs fn-octets$c))
@@ -589,6 +607,28 @@
   (declare (xargs :guard (fn-cbor-octetp o)))
   (fn-oct-snoc fn-octets$a o))
 
+; The first M octets.  Guard-free like the other :logic helpers, because an
+; exported function's guard cannot name the stobj in `true-listp'; equal to
+; `take' on every value of the stobj (`fn-oct-take-is-take').
+(defun fn-oct-take (m xs)
+  (declare (xargs :guard t :measure (nfix m)))
+  (if (and (posp m) (consp xs))
+      (cons (car xs) (fn-oct-take (1- m) (cdr xs)))
+    nil))
+
+(defthm fn-oct-take-is-take
+  (implies (and (true-listp xs) (natp m) (<= m (len xs)))
+           (equal (fn-oct-take m xs) (take m xs)))
+  :hints (("Goal" :induct (fn-oct-take m xs))))
+
+(defthm fn-oct-octet-listp-of-take
+  (implies (fn-cbor-octet-listp xs)
+           (fn-cbor-octet-listp (fn-oct-take m xs))))
+
+(defun fn-octets$a-truncate (m fn-octets$a)
+  (declare (xargs :guard (and (natp m) (<= m (fn-octets$a-len fn-octets$a)))))
+  (fn-oct-take m fn-octets$a))
+
 (defun fn-octets$a-clear (fn-octets$a)
   (declare (xargs :guard t) (ignore fn-octets$a))
   nil)
@@ -858,6 +898,14 @@
  (defthm fn-oct-minus-minus
    (implies (acl2-numberp x) (equal (- (- x)) x))))
 
+(local
+ (defthm fn-oct-take-of-list-from
+   (implies (and (natp m) (natp n) (<= m n))
+            (equal (fn-oct-take m (fn-oct-list-from 0 n buf))
+                   (fn-oct-list-from 0 m buf)))
+   :hints (("Goal" :use ((:instance fn-oct-list-from-take (i 0))
+                         (:instance fn-oct-take-is-take (xs (fn-oct-list-from 0 n buf))))))))
+
 ; -----------------------------------------------------------------------------
 ; The obligations, each as `defabsstobj-missing-events' states it.
 
@@ -905,6 +953,26 @@
   (implies (and (fn-octets$ap fn-octets)
                 (natp i) (< i (fn-octets$a-len fn-octets)) (fn-cbor-octetp o))
            (fn-octets$ap (fn-octets$a-put i o fn-octets)))
+  :rule-classes nil)
+
+(defthm fn-octets-truncate{correspondence}
+  (implies (and (fn-octets$corr fn-octets$c fn-octets)
+                (natp m) (<= m (fn-octets$a-len fn-octets)))
+           (fn-octets$corr (fn-octets$c-truncate m fn-octets$c)
+                           (fn-octets$a-truncate m fn-octets)))
+  :rule-classes nil)
+
+(defthm fn-octets-truncate{guard-thm}
+  (implies (and (fn-octets$corr fn-octets$c fn-octets)
+                (natp m) (<= m (fn-octets$a-len fn-octets)))
+           (and (natp m) (<= m (fn-octets$c-fill fn-octets$c))
+                (fn-octets$c-wfp fn-octets$c)))
+  :rule-classes nil)
+
+(defthm fn-octets-truncate{preserved}
+  (implies (and (fn-octets$ap fn-octets)
+                (natp m) (<= m (fn-octets$a-len fn-octets)))
+           (fn-octets$ap (fn-octets$a-truncate m fn-octets)))
   :rule-classes nil)
 
 (defthm fn-octets-append-octet{correspondence}
@@ -1043,7 +1111,14 @@
   :corr-fn fn-octets$corr
   :exports ((fn-octets-len :logic fn-octets$a-len :exec fn-octets$c-len$inline)
             (fn-octets-get :logic fn-octets$a-get :exec fn-octets$c-get$inline)
-            (fn-octets-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
+            ; Atomicity (no :protect): the exec is one array store and touches no
+            ; fill, so an interrupt leaves the concrete stobj equal to the state
+            ; before or after the store, and both correspond to the logic.
+            (fn-octets-put :logic fn-octets$a-put :exec fn-octets$c-put$inline)
+            ; Atomicity (no :protect): the exec is one store of the fill count,
+            ; so an interrupt leaves the fill at the old or the new value, and
+            ; the array is untouched either way.
+            (fn-octets-truncate :logic fn-octets$a-truncate :exec fn-octets$c-truncate)
             (fn-octets-append-octet :logic fn-octets$a-append-octet
                                     :exec fn-octets$c-append-octet$inline :protect t)
             (fn-octets-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
@@ -1089,6 +1164,9 @@
   (equal (fn-octets-append-word w k fn-octets)
          (append fn-octets (fn-oct-word-octets w k))))
 
+(defthm fn-oct-truncate-is-take
+  (equal (fn-octets-truncate m fn-octets) (fn-oct-take m fn-octets)))
+
 (defthm fn-oct-nth-of-octet-listp-is-octet
   (implies (and (fn-cbor-octet-listp xs) (natp k) (< k (len xs)))
            (and (integerp (nth k xs))
@@ -1110,7 +1188,7 @@
 
 (in-theory (disable fn-octets-p fn-octets-len fn-octets-get fn-octets-list
                     fn-octets-append-list fn-octets-append-back fn-octets-get-word
-                    fn-octets-append-word fn-oct-octets-p-is-octet-listp))
+                    fn-octets-append-word fn-octets-truncate fn-oct-octets-p-is-octet-listp))
 
 ; -----------------------------------------------------------------------------
 ; Derived readers over the abstract stobj: the vocabulary a codec twin reads

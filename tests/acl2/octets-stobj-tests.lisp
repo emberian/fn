@@ -30,7 +30,8 @@
 (assert-event
  (and (eq (symbol-class 'fn-octets$c-len$inline (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-octets$c-get$inline (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-octets$c-put (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-octets$c-put$inline (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-octets$c-truncate (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-octets$c-append-octet$inline (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-octets$c-clear (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-octets$c-reserve (w state)) :common-lisp-compliant)
@@ -72,9 +73,11 @@
          (fn-octets (fn-octets-append-octet 8 fn-octets))
          (b (list (fn-octets-len fn-octets) (fn-octets-get 1 fn-octets)
                   (fn-octets-get 3 fn-octets) (fn-octets-list fn-octets)))
+         (fn-octets (fn-octets-truncate 2 fn-octets))
+         (d (list (fn-octets-len fn-octets) (fn-octets-list fn-octets)))
          (fn-octets (fn-octets-clear fn-octets))
          (c (list (fn-octets-len fn-octets) (fn-octets-list fn-octets))))
-    (mv (list a b c) fn-octets)))
+    (mv (list a b d c) fn-octets)))
 
 (defun ost-exec-run-value ()
   (with-local-stobj fn-octets
@@ -84,6 +87,7 @@
  (equal (ost-exec-run-value)
         '((3 6 (5 6 7))
           (4 9 8 (5 9 7 8))
+          (2 (5 9))
           (0 nil))))
 
 (defun ost-ramp (n acc)
@@ -217,6 +221,49 @@
  (defthm ost-t-put-without-octet
    (implies (and (fn-octets$corr *ost-c* *ost-a*) (natp 1) (< 1 (fn-octets$a-len *ost-a*)))
             (fn-octets$corr (fn-octets$c-put 1 300 *ost-c*) (fn-octets$a-put 1 300 *ost-a*)))))
+
+; fn-octets-truncate{correspondence}: (corr c a), (natp m), (<= m (len a)).
+; The array and its cells stay; the fill count moves to m.
+(defthm ost-w-22 ; a ground witness, proved by evaluation
+ (and (fn-octets$corr *ost-c* *ost-a*) (natp 2) (<= 2 (fn-octets$a-len *ost-a*))
+      (equal (fn-octets$c-truncate 2 *ost-c*) '((5 6 7 0) 2))
+      (equal (fn-octets$a-truncate 2 *ost-a*) '(5 6))
+      (fn-octets$corr (fn-octets$c-truncate 2 *ost-c*) (fn-octets$a-truncate 2 *ost-a*)))
+ :rule-classes nil)
+; Without corr: the fill count past the array stays past it.
+(defthm ost-w-23 ; a ground witness, proved by evaluation
+ (and (not (fn-octets$corr *ost-c-over* *ost-a-over*))
+      (natp 5) (<= 5 (fn-octets$a-len *ost-a-over*))
+      (not (fn-octets$corr (fn-octets$c-truncate 5 *ost-c-over*)
+                           (fn-octets$a-truncate 5 *ost-a-over*))))
+ :rule-classes nil)
+(must-fail-checked
+ (defthm ost-t-truncate-without-corr
+   (implies (and (natp 5) (<= 5 (fn-octets$a-len *ost-a-over*)))
+            (fn-octets$corr (fn-octets$c-truncate 5 *ost-c-over*)
+                            (fn-octets$a-truncate 5 *ost-a-over*)))))
+; Without natp: a negative fill count is no fill count.
+(defthm ost-w-24 ; a ground witness, proved by evaluation
+ (and (fn-octets$corr *ost-c* *ost-a*) (not (natp -1)) (<= -1 (fn-octets$a-len *ost-a*))
+      (not (fn-octets$corr (fn-octets$c-truncate -1 *ost-c*)
+                           (fn-octets$a-truncate -1 *ost-a*))))
+ :rule-classes nil)
+(must-fail-checked
+ (defthm ost-t-truncate-without-natp
+   (implies (and (fn-octets$corr *ost-c* *ost-a*) (<= -1 (fn-octets$a-len *ost-a*)))
+            (fn-octets$corr (fn-octets$c-truncate -1 *ost-c*)
+                            (fn-octets$a-truncate -1 *ost-a*)))))
+; Without the bound: the fill count moves past the array.
+(defthm ost-w-25 ; a ground witness, proved by evaluation
+ (and (fn-octets$corr *ost-c* *ost-a*) (natp 5) (not (<= 5 (fn-octets$a-len *ost-a*)))
+      (not (fn-octets$corr (fn-octets$c-truncate 5 *ost-c*)
+                           (fn-octets$a-truncate 5 *ost-a*))))
+ :rule-classes nil)
+(must-fail-checked
+ (defthm ost-t-truncate-without-bound
+   (implies (and (fn-octets$corr *ost-c* *ost-a*) (natp 5))
+            (fn-octets$corr (fn-octets$c-truncate 5 *ost-c*)
+                            (fn-octets$a-truncate 5 *ost-a*)))))
 
 ; fn-octets-append-octet{correspondence}: (corr c a), (octetp o).  The
 ; array is full at three of four cells; a second append resizes it.
