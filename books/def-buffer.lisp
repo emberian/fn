@@ -42,11 +42,11 @@
        :foundation fn-octets$c
        :recognizer (,(def-buffer-sym n "-P") :logic fn-octets$ap :exec fn-octets$cp)
        :creator (,(def-buffer-creator n) :logic create-fn-octets$a :exec create-fn-octets$c)
-       :exports ((,(def-buffer-sym n "-LEN") :logic fn-octets$a-len :exec fn-octets$c-len)
-                 (,(def-buffer-sym n "-GET") :logic fn-octets$a-get :exec fn-octets$c-get)
+       :exports ((,(def-buffer-sym n "-LEN") :logic fn-octets$a-len :exec fn-octets$c-len$inline)
+                 (,(def-buffer-sym n "-GET") :logic fn-octets$a-get :exec fn-octets$c-get$inline)
                  (,(def-buffer-sym n "-PUT") :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
                  (,(def-buffer-sym n "-APPEND-OCTET") :logic fn-octets$a-append-octet
-                                       :exec fn-octets$c-append-octet :protect t)
+                                       :exec fn-octets$c-append-octet$inline :protect t)
                  (,(def-buffer-sym n "-CLEAR") :logic fn-octets$a-clear :exec fn-octets$c-clear)
                  (,(def-buffer-sym n "-RESERVE") :logic fn-octets$a-reserve :exec fn-octets$c-reserve
                                   :protect t)
@@ -59,7 +59,7 @@
                                       :exec fn-octets$c-append-back :protect t)
                  (,(def-buffer-sym n "-GET-WORD") :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
                  (,(def-buffer-sym n "-APPEND-WORD") :logic fn-octets$a-append-word
-                                      :exec fn-octets$c-append-word :protect t))
+                                      :exec fn-octets$c-append-word$inline :protect t))
        :congruent-to fn-octets)))
 
 ; `:view t' adds the logical view, opened, as books/octets-stobj.lisp states it for `fn-octets':

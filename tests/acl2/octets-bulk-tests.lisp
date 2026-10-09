@@ -20,7 +20,7 @@
       (eq (symbol-class 'fn-octets$c-get-word (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-oct-word7 (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-oct-word-down (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-octets$c-append-word (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-octets$c-append-word$inline (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-oct-word-loop (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-oct-back-copy (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-oct-word-at (w state)) :common-lisp-compliant)
