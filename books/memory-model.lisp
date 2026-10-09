@@ -62,6 +62,7 @@
 ; objects plus twice the trigger in force, freed pages returned (MEM-003).
 
 (in-package "ACL2")
+(include-book "charged-totals")
 (include-book "heap-reservation")
 (include-book "connection-budget")
 (include-book "page-read-startup")
@@ -72,56 +73,6 @@
 
 ; -----------------------------------------------------------------------------
 ; Accessors.
-
-(defun fn-mm-nat (i x)
-  (declare (xargs :guard (natp i)))
-  (nfix (nth i (true-list-fix x))))
-
-(defun fn-mm-tot-records (tot) (declare (xargs :guard t)) (fn-mm-nat 0 tot))
-(defun fn-mm-tot-arena (tot) (declare (xargs :guard t)) (fn-mm-nat 1 tot))
-(defun fn-mm-tot-hcharge (tot) (declare (xargs :guard t)) (fn-mm-nat 2 tot))
-(defun fn-mm-tot-memberships (tot) (declare (xargs :guard t)) (fn-mm-nat 3 tot))
-(defun fn-mm-tot-events (tot) (declare (xargs :guard t)) (fn-mm-nat 4 tot))
-(defun fn-mm-tot-log (tot) (declare (xargs :guard t)) (fn-mm-nat 5 tot))
-(defun fn-mm-tot-history (tot) (declare (xargs :guard t)) (fn-mm-nat 6 tot))
-(defun fn-mm-tot-charge (tot) (declare (xargs :guard t)) (fn-mm-nat 7 tot))
-(defun fn-mm-tot-paged-p (tot)
-  (declare (xargs :guard t))
-  (equal (nth 8 (true-list-fix tot)) :paged))
-
-(defun fn-mm-make-tot (records arena hcharge memberships events log history charge residency)
-  (declare (xargs :guard t))
-  (list (nfix records) (nfix arena) (nfix hcharge) (nfix memberships)
-        (nfix events) (nfix log) (nfix history) (nfix charge)
-        (if (equal residency :paged) :paged :resident)))
-
-; Componentwise order, residency equal: a store that is a prefix of
-; another, or what a reclaim leaves of it.
-(defun fn-mm-tot-le (a b)
-  (declare (xargs :guard t))
-  (and (<= (fn-mm-tot-records a) (fn-mm-tot-records b))
-       (<= (fn-mm-tot-arena a) (fn-mm-tot-arena b))
-       (<= (fn-mm-tot-hcharge a) (fn-mm-tot-hcharge b))
-       (<= (fn-mm-tot-memberships a) (fn-mm-tot-memberships b))
-       (<= (fn-mm-tot-events a) (fn-mm-tot-events b))
-       (<= (fn-mm-tot-log a) (fn-mm-tot-log b))
-       (<= (fn-mm-tot-history a) (fn-mm-tot-history b))
-       (<= (fn-mm-tot-charge a) (fn-mm-tot-charge b))
-       (equal (fn-mm-tot-paged-p a) (fn-mm-tot-paged-p b))))
-
-; Two totals together: a checkpoint's and the log's past it.  Residency is
-; the first's.
-(defun fn-mm-tot-plus (a b)
-  (declare (xargs :guard t))
-  (fn-mm-make-tot (+ (fn-mm-tot-records a) (fn-mm-tot-records b))
-                  (+ (fn-mm-tot-arena a) (fn-mm-tot-arena b))
-                  (+ (fn-mm-tot-hcharge a) (fn-mm-tot-hcharge b))
-                  (+ (fn-mm-tot-memberships a) (fn-mm-tot-memberships b))
-                  (+ (fn-mm-tot-events a) (fn-mm-tot-events b))
-                  (+ (fn-mm-tot-log a) (fn-mm-tot-log b))
-                  (+ (fn-mm-tot-history a) (fn-mm-tot-history b))
-                  (+ (fn-mm-tot-charge a) (fn-mm-tot-charge b))
-                  (if (fn-mm-tot-paged-p a) :paged :resident)))
 
 (defun fn-mm-img-file (img) (declare (xargs :guard t)) (fn-mm-nat 0 img))
 (defun fn-mm-img-anon (img) (declare (xargs :guard t)) (fn-mm-nat 1 img))
@@ -201,16 +152,22 @@
 ; (books/history-image-open.lisp fn-his-layout over books/proto/adt-bytes
 ; adt-end-l).  O-HROOT: the layout's plan is (RECORDS (8R 8R 8R 8R E)), E
 ; the HISTORY total (the padded SCC encodings, not the wire log's octets:
-; Codex review 2 F1).
-(defun fn-mm-hroot-npages (n history)
-  (declare (xargs :guard t))
-  (let ((w (* 8 (nfix n))))
-    (adt-end-l (list w w w w (nfix history)) 1)))
-
+; Codex review 2 F1).  The LIVE root is built incrementally
+; (host/native/history-root.lisp): a region that outgrows its capacity is
+; relocated to newly appended pages and the old ones stay in the backing
+; array (books/history-pages-relocate-step.lisp), so a region of final
+; capacity K has held at most 1 + 2 + ... + K < 2K pages; the live root is
+; charged twice the canonical layout (Codex review 3).  O-HROOT includes
+; that relocation bound.
 (defthm fn-mm-adt-end-l-natp
   (natp (adt-end-l lens start))
   :rule-classes :type-prescription
   :hints (("Goal" :induct (adt-end-l lens start) :in-theory (enable adt-end-l))))
+
+(defun fn-mm-hroot-npages (n history)
+  (declare (xargs :guard t))
+  (let ((w (* 8 (nfix n))))
+    (* 2 (adt-end-l (list w w w w (nfix history)) 1))))
 
 (defthm fn-mm-hroot-npages-natp
   (natp (fn-mm-hroot-npages n log))
@@ -486,7 +443,7 @@
   :hints (("Goal" :in-theory (enable adt-cap))))
 (defthm fn-mm-hroot-npages-is
   (equal (fn-mm-hroot-npages n log)
-         (+ 1 (* 4 (adt-cap (* 8 (nfix n)))) (adt-cap (nfix log))))
+         (* 2 (+ 1 (* 4 (adt-cap (* 8 (nfix n)))) (adt-cap (nfix log)))))
   :hints (("Goal" :in-theory (e/d (fn-mm-hroot-npages adt-end-l) (adt-cap)))))
 (defthm fn-mm-hroot-npages-monotone
   (implies (and (<= (nfix n1) (nfix n2)) (<= (nfix l1) (nfix l2)))

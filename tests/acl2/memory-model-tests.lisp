@@ -35,6 +35,13 @@
 (assert-event (<= (fn-mm-tot-charge *mmt-t1k*) 8388608))
 (assert-event (equal (fn-mm-observed-tot *mmt-hdr* *mmt-suffix*) *mmt-t1k*))
 
+; Codex review 3's live root: 257 retention events of 64 padded octets
+; each; the canonical layout is 7 pages, the incrementally built live root
+; holds 8 (one relocated event-column page left in the backing); the model
+; charges twice the canonical layout.
+(assert-event (equal (adt-end-l (list 2056 2056 2056 2056 16448) 1) 7))
+(assert-event (<= 8 (fn-mm-hroot-npages 257 16448)))
+
 ; ---------------------------------------------------------------------------
 ; K1 fn-mm-need-within-the-sum
 (defun mmt-k1 (k s h pub)
