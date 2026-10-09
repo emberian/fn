@@ -201,3 +201,46 @@
                       (if (fn-rcl-invp (fn-rtc-x-state fn-rtc-st)) :invp :invp-violated) :stable :init)))
       (mv-let (fn-rtc-st obs) (fn-rce-items 1 items fn-rtc-st)
         (mv fn-rtc-st (cons obs0 obs))))))
+
+; The exercise's script: two interleaved connections over 3 slots and 6
+; buffers of 64 octets -- pending read and send on one connection, a receive
+; held while a send is outstanding, a close with a send outstanding (the
+; slot drains), the late completion that retires it, a duplicate of that
+; completion, slot reuse at the next incarnation with a reused buffer at a
+; later generation, a stale completion naming the old incarnation, a short
+; send, a failed receive and a close.
+(defconst *fn-rce-exercise-cfg* '(3 6 64))
+
+(defconst *fn-rce-exercise-script*
+  '((:complete (:accept 0 0 0 (:done 7)))
+    (:complete (:accept 0 0 2 (:done 8)))
+    (:land (:recv 1 1 1 (:done 5)) (104 101 108 108 111))
+    (:land (:recv 2 1 3 (:done 3)) (97 98 99))
+    (:land (:recv 1 1 5 (:done 4)) (109 111 114 101))
+    (:complete (:send 1 1 4 (:done 5)))
+    (:complete (:recv 2 1 7 (:done 0)))
+    (:complete (:close 2 1 10 (:done 0)))
+    (:complete (:send 2 1 6 (:done 3)))
+    (:complete (:send 2 1 6 (:done 3)))
+    (:complete (:accept 0 0 11 (:done 9)))
+    (:land (:recv 2 1 7 (:done 2)) (120 121))
+    (:complete (:send 1 1 8 (:short 2)))
+    (:complete (:recv 1 1 9 (:failed :econnreset)))
+    (:complete (:close 1 1 13 (:done 0)))))
+
+; The script (VARIANT 0), or its first three steps followed by a fault
+; injection the checks must report: a host write into connection 1's
+; :out-leased buffer (1, :moved) or that buffer freed under its lease
+; (2, :invp-violated).
+(defun fn-rce-exercise-items (variant)
+  (declare (xargs :guard t))
+  (case variant
+    (1 (append (take 3 *fn-rce-exercise-script*)
+               '((:fault-write (:send 9 9 99 (:done 0)) 0 0 (1 2 3)))))
+    (2 (append (take 3 *fn-rce-exercise-script*)
+               '((:fault-meta (:send 9 9 99 (:done 0)) 0 2 (:free)))))
+    (otherwise *fn-rce-exercise-script*)))
+
+(defun fn-rce-exercise (variant fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st))
+  (fn-rce-run *fn-rce-exercise-cfg* (fn-rce-exercise-items variant) fn-rtc-st))

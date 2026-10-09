@@ -10,8 +10,9 @@
 ; incarnation, a short send, a failed receive and a close.  After every step
 ; the contract's invariant holds of the state read back, every outstanding
 ; :out use's octets are unchanged, and the two stale completions are
-; discarded (state and actions unchanged).  The same script is
-; tests/extract/rtc-exercise.sexp, which the extracted core runs.
+; discarded (state and actions unchanged).  The script is the book's
+; (`fn-rce-exercise'); the extraction gate's step 2b runs the same variants
+; through the developer image and fn-core (`--fn rtc-exercise run 0|1').
 ;
 ; Teeth: a host that writes into an :out-leased buffer is reported :moved
 ; (the invariant still holds: `fn-rtc-splice-keeps-invp'); a host that frees
@@ -21,29 +22,10 @@
 (include-book "../../books/runtime-contract-echo")
 (include-book "std/testing/assert-bang" :dir :system)
 
-(defconst *rce-cfg* '(3 6 64))
-
-(defconst *rce-script*
-  '((:complete (:accept 0 0 0 (:done 7)))
-    (:complete (:accept 0 0 2 (:done 8)))
-    (:land (:recv 1 1 1 (:done 5)) (104 101 108 108 111))
-    (:land (:recv 2 1 3 (:done 3)) (97 98 99))
-    (:land (:recv 1 1 5 (:done 4)) (109 111 114 101))
-    (:complete (:send 1 1 4 (:done 5)))
-    (:complete (:recv 2 1 7 (:done 0)))
-    (:complete (:close 2 1 10 (:done 0)))
-    (:complete (:send 2 1 6 (:done 3)))
-    (:complete (:send 2 1 6 (:done 3)))
-    (:complete (:accept 0 0 11 (:done 9)))
-    (:land (:recv 2 1 7 (:done 2)) (120 121))
-    (:complete (:send 1 1 8 (:short 2)))
-    (:complete (:recv 1 1 9 (:failed :econnreset)))
-    (:complete (:close 1 1 13 (:done 0)))))
-
-(defun rce-run-script (cfg items)
+(defun rce-run-variant (variant)
   (declare (xargs :guard t))
   (with-local-stobj fn-rtc-st
-    (mv-let (fn-rtc-st obs) (fn-rce-run cfg items fn-rtc-st)
+    (mv-let (fn-rtc-st obs) (fn-rce-exercise variant fn-rtc-st)
       obs)))
 
 (defun rce-all-sound (obs)
@@ -54,7 +36,7 @@
          (not (equal (fn-rtc-get 6 (car obs)) :unmatched-changed))
          (rce-all-sound (cdr obs)))))
 
-(defconst *rce-obs* (rce-run-script *rce-cfg* *rce-script*))
+(defconst *rce-obs* (rce-run-variant 0))
 
 (assert! (equal (len *rce-obs*) 16))
 (assert! (rce-all-sound *rce-obs*))
@@ -74,15 +56,9 @@
 
 ; Teeth.  Writing into buffer 0 while connection 1's send (op 4) holds it
 ; :out-leased moves its octets.
-(defconst *rce-moved*
-  (rce-run-script *rce-cfg*
-                  (append (take 3 *rce-script*)
-                          '((:fault-write (:send 9 9 99 (:done 0)) 0 0 (1 2 3))))))
+(defconst *rce-moved* (rce-run-variant 1))
 (assert! (equal (fn-rtc-get 5 (nth 4 *rce-moved*)) :moved))
 (assert! (equal (fn-rtc-get 4 (nth 4 *rce-moved*)) :invp))
 ; Freeing buffer 0 under that lease breaks the invariant.
-(defconst *rce-freed*
-  (rce-run-script *rce-cfg*
-                  (append (take 3 *rce-script*)
-                          '((:fault-meta (:send 9 9 99 (:done 0)) 0 2 (:free))))))
+(defconst *rce-freed* (rce-run-variant 2))
 (assert! (equal (fn-rtc-get 4 (nth 4 *rce-freed*)) :invp-violated))

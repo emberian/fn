@@ -548,6 +548,11 @@
 (definterface fn-blake3-of-prefixed-buffer-any
   :class :common-lisp-compliant)
 
+; host/native/rtc-exercise.lisp: the runtime contract's multi-instance
+; exercise over the live fn-rtc-st.
+(definterface fn-rce-exercise
+  :class :common-lisp-compliant)
+
 (definterface fn-bs-config-encode
   :class :common-lisp-compliant)
 

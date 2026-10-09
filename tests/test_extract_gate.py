@@ -55,6 +55,25 @@ if role == "sbcl":
             if FAULT == "rebind-exit":
                 print("rebind failed"); sys.exit(4)
             print("rebound"); sys.exit(0)
+        if verb == "rtc-exercise":
+            # variant 0: 16 observation lines, steps 10 and 12 discard stale
+            # completions; variant 1: the injected write reported, exit 4
+            if rest[1:] and rest[1] == "1":
+                for i in range(4):
+                    print("(%d :x nil nil :invp :stable :matched)" % i)
+                moved = ":stable" if FAULT == "rtc-fault-unreported" else ":moved"
+                print("(4 :send nil nil :invp %s :unmatched-changed)" % moved)
+                if os.environ.get("FAKE_CORE") and FAULT == "rtc-fault-core-differ":
+                    print("(5 :x nil nil :invp :stable :matched)")
+                sys.exit(4)
+            if FAULT == "rtc-image-exit" and not os.environ.get("FAKE_CORE"):
+                sys.exit(9)
+            for i in range(16):
+                tail = ":discarded" if i in (10, 12) and FAULT != "rtc-not-discarded" else ":matched"
+                print("(%d :x nil nil :invp :stable %s)" % (i, tail))
+            if os.environ.get("FAKE_CORE") and FAULT == "rtc-core-differ":
+                print("(16 :x nil nil :invp :stable :matched)")
+            sys.exit(0)
         if verb == "model":
             if FAULT == "model-empty":
                 sys.exit(0)
@@ -343,8 +362,10 @@ class ExtractGateTest(unittest.TestCase):
         self.assertEqual(rc, 0, out)
         self.assertIn("extract-check: PASS", out)
         self.assertEqual(status["status"], "PASS")
-        self.assertTrue(all(c["status"] == 0 for c in status["children"]), status["children"])
-        for step in ("core", "transcripts", "probes", "store", "stateful", "owner"):
+        # the rtc-exercise fault variant exits 4 by design on both sides
+        self.assertTrue(all(c["status"] == (4 if c["what"].endswith("rtc-exercise fault") else 0)
+                            for c in status["children"]), status["children"])
+        for step in ("core", "transcripts", "rtc-exercise", "probes", "store", "stateful", "owner"):
             self.assertIn(step, {c["step"] for c in status["children"]})
         m = json.loads((g.c / "extraction-manifest.json").read_text())
         for key in ("admitted_world", "foreign_libraries", "core", "toolchain", "image"):
@@ -430,6 +451,16 @@ class ExtractGateTest(unittest.TestCase):
 
     def test_transcripts_empty(self):
         self.assertFails("model-empty", "transcripts", "is empty")
+
+    # 2b rtc-exercise
+    def test_rtc_exercise_refuses_a_failed_image_run_and_a_differing_core(self):
+        for fault, reason in (("rtc-image-exit", "the image exited 9"),
+                              ("rtc-not-discarded", "discarded steps"),
+                              ("rtc-core-differ", "the core's reply differs"),
+                              ("rtc-fault-unreported", "not reported :moved"),
+                              ("rtc-fault-core-differ", "the core's reply differs")):
+            with self.subTest(fault=fault):
+                self.assertFails(fault, "rtc-exercise", reason)
 
     # 3 probes
     def test_probe_sbcl_exit(self):
