@@ -1,0 +1,13 @@
+{
+ "category": "certify",
+ "file": "tools/green_check.py",
+ "id": "GREEN-CHECK-STRICT-UNCERTIFIED",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "medium",
+ "slice": "tree",
+ "source": "builder-B static measure at dev 3a937ebc3, build/coordinator/lanedumps/b-static-green-strict.log",
+ "state": "open",
+ "title": "green_check --strict: 1701 of 3112 books are not certified at their closure key on the record toolchain (1354 of 3062 at 9fe2b6a88, CONVERGE-4 row 4)",
+ "updated": "2026-10-09T07:20:02Z"
+}
