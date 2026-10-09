@@ -19,7 +19,12 @@
 ;                                      exactly DATA;
 ;   fn-rtc-x-step-after-landing        so the executable step on the landed
 ;                                      state is the contract's step on the
-;                                      completion carrying DATA.
+;                                      completion carrying DATA;
+;   fn-rtc-landing-then-step-is-the-contract-step
+;                                      and it is the contract's step on the
+;                                      state BEFORE the landing: the host's
+;                                      landing plus the executable step is
+;                                      exactly the delivery of DATA.
 ;
 ; With A-HOST-LANDS (books/assumptions-runtime.lisp: DATA is the operation's
 ; own octets) the last is `fn-rtc-host-landing-is-the-contract-step'.
@@ -311,6 +316,223 @@
            (natp (fn-rtc-get 1 (fn-rtc-e-outcome e))))
   :hints (("Goal" :in-theory (enable fn-rtc-completionp fn-rtc-outcomep fn-rtc-e-outcome)))))
 
+(local (defthm fn-rtc-use-okp-in-holders
+  (implies (and (fn-rtc-use-okp u s) (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*))
+           (equal (fn-rtc-holders (fn-rtc-h-buf (fn-rtc-u-hd u)) (fn-rtc-h-gen (fn-rtc-u-hd u)) (fn-rtc-uses s))
+                  1))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-use-okp fn-rtc-usep fn-rtc-u-hd)
+                                  (fn-rtc-handlep fn-rtc-holders fn-rtc-current-p fn-rtc-get fn-rtc-h-off fn-rtc-h-len
+                                   fn-rtc-h-buf fn-rtc-h-gen))))))
+
+(defthm fn-rtc-splice-idempotent
+  (implies (and (true-listp bytes) (true-listp data) (natp off) (<= off (len bytes)))
+           (equal (fn-rtc-splice (fn-rtc-splice bytes off data) off data)
+                  (fn-rtc-splice bytes off data)))
+  :hints (("Goal" :in-theory (enable fn-rtc-splice))))
+
+(local (defthm fn-rtc-holders-of-remove-found
+  (implies (and (equal u (fn-rtc-find-use key uses)) u)
+           (equal (fn-rtc-holders h g (fn-rtc-remove-use key uses))
+                  (- (fn-rtc-holders h g uses)
+                     (if (and (fn-rtc-handlep (fn-rtc-u-hd u))
+                              (equal (fn-rtc-h-buf (fn-rtc-u-hd u)) h)
+                              (equal (fn-rtc-h-gen (fn-rtc-u-hd u)) g))
+                         1 0))))
+  :hints (("Goal" :induct (fn-rtc-remove-use key uses)
+           :in-theory (disable fn-rtc-key fn-rtc-handlep fn-rtc-h-buf fn-rtc-h-gen)))))
+
+; The :in use E completes holds its buffer alone, so its removal ends the lease.
+(local (defthm fn-rtc-in-lease-ends-on-its-completion
+  (implies (and (fn-rtc-invp st)
+                (equal u (fn-rtc-find-use key (fn-rtc-uses st))) u
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*))
+           (not (fn-rtc-holds-p (fn-rtc-h-buf (fn-rtc-u-hd u)) (fn-rtc-h-gen (fn-rtc-u-hd u))
+                                (fn-rtc-remove-use key (fn-rtc-uses st)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-invp-is-core-and-admission fn-rtc-holds-iff-positive-holders)
+                                  (fn-rtc-invp fn-rtc-core-invp fn-rtc-use-okp fn-rtc-find-use fn-rtc-remove-use
+                                   fn-rtc-holders fn-rtc-holds-p fn-rtc-key))
+           :use ((:instance fn-rtc-core-invp-found-use (s st))
+                 (:instance fn-rtc-use-okp-in-facts (s st))
+                 (:instance fn-rtc-use-okp-in-holders (s st)))))))
+
+(local (defthm fn-rtc-with-buffer-twice
+  (equal (fn-rtc-with-buffer h b2 (fn-rtc-with-uses uses (fn-rtc-with-buffer h b1 s)))
+         (fn-rtc-with-buffer h b2 (fn-rtc-with-uses uses s)))
+  :hints (("Goal" :in-theory (enable fn-rtc-with-buffer fn-rtc-with-uses)))))
+
+(local (defthm fn-rtc-lease-return-of-landed-bytes
+  (implies (and (true-listp bytes) (true-listp (fn-rtc-e-data e)) (natp (fn-rtc-h-off (fn-rtc-u-hd u)))
+                (<= (fn-rtc-h-off (fn-rtc-u-hd u)) (len bytes))
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
+                (member-eq (fn-rtc-get 0 (fn-rtc-delivered-outcome u e)) '(:done :short)))
+           (equal (fn-rtc-lease-return u e (list g o (fn-rtc-splice bytes (fn-rtc-h-off (fn-rtc-u-hd u))
+                                                                   (fn-rtc-e-data e)))
+                                       s)
+                  (fn-rtc-lease-return u e (list g o bytes) s)))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-rtc-lease-return fn-rtc-splice-idempotent fn-rtc-buffer-accessors))))))
+
+(local (defthm fn-rtc-octets-n-p-of-len
+  (implies (fn-cbor-octet-listp data) (fn-rtc-octets-n-p data (len data)))))
+
+(local (defthm fn-rtc-with-data-fields
+  (and (equal (fn-rtc-key (fn-rtc-with-data e data)) (fn-rtc-key e))
+       (equal (fn-rtc-e-data (fn-rtc-with-data e data)) data)
+       (equal (fn-rtc-e-outcome (fn-rtc-with-data e data)) (fn-rtc-e-outcome e))
+       (equal (fn-rtc-e-id (fn-rtc-with-data e data)) (fn-rtc-e-id e))
+       (equal (fn-rtc-e-inc (fn-rtc-with-data e data)) (fn-rtc-e-inc e))
+       (equal (fn-rtc-e-kind (fn-rtc-with-data e data)) (fn-rtc-e-kind e))
+       (implies (fn-rtc-completionp e) (fn-rtc-completionp (fn-rtc-with-data e data))))
+  :hints (("Goal" :in-theory (enable fn-rtc-with-data fn-rtc-key fn-rtc-completionp)))))
+
+(local (defthm fn-rtc-delivered-outcome-of-with-data
+  (implies (and (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
+                (member-eq (fn-rtc-get 0 (fn-rtc-e-outcome e)) '(:done :short))
+                (equal (fn-rtc-get 1 (fn-rtc-e-outcome e)) (len data))
+                (<= (len data) (fn-rtc-h-len (fn-rtc-u-hd u)))
+                (fn-cbor-octet-listp data))
+           (equal (fn-rtc-delivered-outcome u (fn-rtc-with-data e data)) (fn-rtc-e-outcome e)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-delivered-outcome) (fn-rtc-octets-n-p fn-cbor-octet-listp fn-rtc-with-data))))))
+
+(local (defthm fn-rtc-buffer-is-its-fields
+  (implies (and (fn-rtc-core-invp st) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config st))))
+           (equal (list (fn-rtc-b-gen (fn-rtc-buffer h st)) (fn-rtc-b-owner (fn-rtc-buffer h st))
+                        (fn-rtc-b-bytes (fn-rtc-buffer h st)))
+                  (fn-rtc-buffer h st)))
+  :hints (("Goal" :use (fn-rtc-core-invp-buffer-fields
+                        (:instance fn-rtc-core-invp-buffer (s st)))
+           :in-theory (e/d (fn-rtc-buffer-okp fn-rtc-bufferp fn-rtc-b-bytes fn-rtc-b-gen fn-rtc-b-owner)
+                           (fn-rtc-core-invp fn-rtc-core-invp-buffer-fields fn-rtc-core-invp-buffer
+                            fn-rtc-ownerp fn-cbor-octet-listp fn-rtc-holds-p fn-rtc-slot fn-rtc-buffer))
+           :expand ((len (fn-rtc-buffer h st)) (len (cdr (fn-rtc-buffer h st)))
+                    (len (cddr (fn-rtc-buffer h st))) (len (cdddr (fn-rtc-buffer h st))))))))
+
+(local (defthm fn-rtc-lease-return-reads-slots-only
+  (equal (fn-rtc-lease-return u e b (fn-rtc-with-uses r (fn-rtc-with-buffer h b2 s)))
+         (fn-rtc-lease-return u e b (fn-rtc-with-uses r s)))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-rtc-lease-return fn-rtc-current-p fn-rtc-slot-of-with))))))
+
+; End-use after a buffer's octets changed, when the completing use's lease on
+; that buffer ends: the lease return's octets decide.
+(local (defthm fn-rtc-end-use-of-rebytes
+  (implies (and (fn-rtc-completionp e)
+                (equal u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))) u
+                (fn-rtc-handlep (fn-rtc-u-hd u))
+                (equal h (fn-rtc-h-buf (fn-rtc-u-hd u)))
+                (not (fn-rtc-holds-p h (fn-rtc-h-gen (fn-rtc-u-hd u))
+                                     (fn-rtc-remove-use (fn-rtc-key e) (fn-rtc-uses s))))
+                (natp h) (< h (len (fn-rtc-pool s)))
+                (equal (fn-rtc-lease-return u e b2 (fn-rtc-with-uses (fn-rtc-remove-use (fn-rtc-key e) (fn-rtc-uses s)) s))
+                       (fn-rtc-lease-return u e (fn-rtc-buffer h s)
+                                            (fn-rtc-with-uses (fn-rtc-remove-use (fn-rtc-key e) (fn-rtc-uses s)) s))))
+           (equal (fn-rtc-end-use (fn-rtc-with-buffer h b2 s) e)
+                  (fn-rtc-end-use s e)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-end-use fn-rtc-end-lease)
+                                  (fn-rtc-lease-return fn-rtc-find-use fn-rtc-remove-use fn-rtc-holds-p
+                                   fn-rtc-retire-drained fn-rtc-key fn-rtc-completionp))))))
+
+(local (defthm fn-rtc-end-use-of-landing
+  (implies (and (fn-rtc-invp st)
+                (fn-rtc-completionp e)
+                (equal u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses st)))
+                u
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
+                (member-eq (fn-rtc-get 0 (fn-rtc-e-outcome e)) '(:done :short))
+                (equal (fn-rtc-get 1 (fn-rtc-e-outcome e)) (len data))
+                (<= (len data) (fn-rtc-h-len (fn-rtc-u-hd u)))
+                (fn-cbor-octet-listp data))
+           (equal (fn-rtc-end-use (fn-rtc-st-splice (fn-rtc-h-buf (fn-rtc-u-hd u))
+                                                    (fn-rtc-h-off (fn-rtc-u-hd u)) data st)
+                                  (fn-rtc-with-data e data))
+                  (fn-rtc-end-use st (fn-rtc-with-data e data))))
+  :hints (("Goal"
+           :use ((:instance fn-rtc-core-invp-found-use (s st) (key (fn-rtc-key e)))
+                 (:instance fn-rtc-use-okp-buffer-index (s st))
+                 (:instance fn-rtc-use-okp-in-facts (s st))
+                 (:instance fn-rtc-in-lease-ends-on-its-completion (key (fn-rtc-key e)))
+                 (:instance fn-rtc-core-invp-bytes (s st) (h (fn-rtc-h-buf (fn-rtc-u-hd u))))
+                 (:instance fn-rtc-core-invp-pool-len (s st))
+                 (:instance fn-rtc-buffer-is-its-fields (h (fn-rtc-h-buf (fn-rtc-u-hd u))))
+                 (:instance fn-rtc-st-splice-under-core-invp (h (fn-rtc-h-buf (fn-rtc-u-hd u)))
+                            (off (fn-rtc-h-off (fn-rtc-u-hd u))))
+                 (:instance fn-rtc-lease-return-of-landed-bytes (e (fn-rtc-with-data e data))
+                            (bytes (fn-rtc-b-bytes (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) st)))
+                            (g (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) st)))
+                            (o (fn-rtc-b-owner (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) st)))
+                            (s (fn-rtc-with-uses (fn-rtc-remove-use (fn-rtc-key e) (fn-rtc-uses st)) st)))
+                 (:instance fn-rtc-end-use-of-rebytes (s st) (e (fn-rtc-with-data e data))
+                            (h (fn-rtc-h-buf (fn-rtc-u-hd u)))
+                            (b2 (list (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) st))
+                                      (fn-rtc-b-owner (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) st))
+                                      (fn-rtc-splice (fn-rtc-b-bytes (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) st))
+                                                     (fn-rtc-h-off (fn-rtc-u-hd u)) data)))))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-rtc-invp-is-core-and-admission fn-rtc-with-data-fields
+                                        fn-rtc-delivered-outcome-of-with-data fn-rtc-splice-okp fn-rtc-bytes
+                                        fn-rtc-octet-listp-true-listp natp (:type-prescription len)
+                                        (:type-prescription fn-rtc-h-off) (:type-prescription fn-rtc-h-buf)
+                                        (:type-prescription fn-rtc-h-len) (:executable-counterpart tau-system)))))))
+
+(local (defthm fn-rtc-st-splice-tables
+  (and (equal (fn-rtc-config (fn-rtc-st-splice h off data st)) (fn-rtc-config st))
+       (equal (fn-rtc-slots (fn-rtc-st-splice h off data st)) (fn-rtc-slots st))
+       (equal (fn-rtc-mstates (fn-rtc-st-splice h off data st)) (fn-rtc-mstates st))
+       (equal (fn-rtc-next-op (fn-rtc-st-splice h off data st)) (fn-rtc-next-op st)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-st-splice fn-rtc-st$a-splice) (fn-rtc-splice-okp fn-rtc-splice
+                                                                          fn-rtc-st-splice-under-core-invp))))))
+
+(local (defthm fn-rtc-slot-of-st-splice
+  (equal (fn-rtc-slot id (fn-rtc-st-splice h off data st)) (fn-rtc-slot id st))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-slot fn-rtc-st-splice-tables))))))
+
+(local (defthm fn-rtc-acts-on-p-of-st-splice
+  (equal (fn-rtc-acts-on-p (fn-rtc-st-splice h off data st) e) (fn-rtc-acts-on-p st e))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                             '(fn-rtc-acts-on-p fn-rtc-slot-of-st-splice fn-rtc-uses-of-st-splice))))))
+
+(local (defthm fn-rtc-step*-of-landing
+  (implies (and (fn-rtc-invp st)
+                (fn-rtc-completionp e)
+                (equal u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses st)))
+                u
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
+                (member-eq (fn-rtc-get 0 (fn-rtc-e-outcome e)) '(:done :short))
+                (equal (fn-rtc-get 1 (fn-rtc-e-outcome e)) (len data))
+                (<= (len data) (fn-rtc-h-len (fn-rtc-u-hd u)))
+                (fn-cbor-octet-listp data))
+           (equal (fn-rtc-step* (fn-rtc-st-splice (fn-rtc-h-buf (fn-rtc-u-hd u))
+                                                  (fn-rtc-h-off (fn-rtc-u-hd u))
+                                                  data st)
+                                (fn-rtc-with-data e data) q)
+                  (fn-rtc-step* st (fn-rtc-with-data e data) q)))
+  :hints (("Goal" :expand ((:free (s) (fn-rtc-step* s (fn-rtc-with-data e data) q)))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '(fn-rtc-end-use-of-landing fn-rtc-acts-on-p-of-st-splice
+                                        fn-rtc-uses-of-st-splice fn-rtc-st-splice-tables))))))
+
+; L5. The pre-landing refinement: the executable step after the host lands
+; DATA at the :in use's handle is the contract's step, on the state BEFORE the
+; landing, of the completion carrying DATA -- whether or not the completion
+; acts on a live instance (the lease returns the landed octets either way).
+(defthm fn-rtc-landing-then-step-is-the-contract-step
+  (implies (and (fn-rtc-invp st)
+                (fn-rtc-completionp e)
+                (equal u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses st)))
+                u
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
+                (member-eq (fn-rtc-get 0 (fn-rtc-e-outcome e)) '(:done :short))
+                (equal (fn-rtc-get 1 (fn-rtc-e-outcome e)) (len data))
+                (<= (len data) (fn-rtc-h-len (fn-rtc-u-hd u)))
+                (fn-cbor-octet-listp data))
+           (equal (fn-rtc-x-step* e q (fn-rtc-st-splice (fn-rtc-h-buf (fn-rtc-u-hd u))
+                                                        (fn-rtc-h-off (fn-rtc-u-hd u))
+                                                        data st))
+                  (fn-rtc-step* st (fn-rtc-with-data e data) q)))
+  :hints (("Goal" :use (fn-rtc-x-step-after-landing fn-rtc-step*-of-landing)
+           :in-theory (theory 'minimal-theory))))
+
+; With A-HOST-LANDS: the octets the host lands are the operation's.
 (defthm fn-rtc-host-landing-is-the-contract-step
   (implies (and (fn-rtc-invp st)
                 (fn-rtc-completionp e)
@@ -319,13 +541,12 @@
                 (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
                 (member-eq (fn-rtc-get 0 (fn-rtc-e-outcome e)) '(:done :short))
                 (<= (fn-rtc-get 1 (fn-rtc-e-outcome e)) (fn-rtc-h-len (fn-rtc-u-hd u))))
-           (let* ((data (fn-assume-host-input (fn-rtc-e-op e) (fn-rtc-get 1 (fn-rtc-e-outcome e))))
-                  (st2 (fn-rtc-st-splice (fn-rtc-h-buf (fn-rtc-u-hd u))
-                                         (fn-rtc-h-off (fn-rtc-u-hd u))
-                                         data st)))
-             (equal (fn-rtc-x-step* e q st2)
-                    (fn-rtc-step* st2 (fn-rtc-with-data e data) q))))
-  :hints (("Goal" :use ((:instance fn-rtc-x-step-after-landing
+           (let ((data (fn-assume-host-input (fn-rtc-e-op e) (fn-rtc-get 1 (fn-rtc-e-outcome e)))))
+             (equal (fn-rtc-x-step* e q (fn-rtc-st-splice (fn-rtc-h-buf (fn-rtc-u-hd u))
+                                                          (fn-rtc-h-off (fn-rtc-u-hd u))
+                                                          data st))
+                    (fn-rtc-step* st (fn-rtc-with-data e data) q))))
+  :hints (("Goal" :use ((:instance fn-rtc-landing-then-step-is-the-contract-step
                                    (data (fn-assume-host-input (fn-rtc-e-op e) (fn-rtc-get 1 (fn-rtc-e-outcome e)))))
                         fn-rtc-completion-count-natp
                         (:instance fn-assume-host-input-is-n-octets (op (fn-rtc-e-op e)) (n (fn-rtc-get 1 (fn-rtc-e-outcome e)))))

@@ -3,14 +3,18 @@
 ; same buffer, and keeps one receive pending while a send is outstanding.
 (in-package "ACL2")
 (include-book "runtime-contract-layer")
+;; Octets one receive asks for; buffers a receive's search examines, at most
+;; (the search's charge is its bound, so the step's cost is a constant).
 (defconst *fn-rce-cap* 64)
+(defconst *fn-rce-window* 64)
 
-; The least buffer at or above I, other than SKIP, that is free.
+; The least buffer at or above I and below the window, other than SKIP, that
+; is free.
 (defun fn-rce-free (i skip fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st :guard (natp i)
-                  :measure (nfix (- (fn-rtc-st-b-count fn-rtc-st) (nfix i)))))
+                  :measure (nfix (- (min (fn-rtc-st-b-count fn-rtc-st) *fn-rce-window*) (nfix i)))))
   (let ((i (nfix i)))
-    (if (< i (fn-rtc-st-b-count fn-rtc-st))
+    (if (< i (min (fn-rtc-st-b-count fn-rtc-st) *fn-rce-window*))
         (if (and (not (equal i skip)) (equal (fn-rtc-st-b-owner i fn-rtc-st) '(:free)))
             i
           (fn-rce-free (+ 1 i) skip fn-rtc-st))
@@ -23,11 +27,12 @@
   (or (null (fn-rce-free i skip st)) (natp (fn-rce-free i skip st)))
   :rule-classes :type-prescription)
 
-; State (rv sd rd n): the buffer of the outstanding :recv, of the outstanding
-; :send, of received octets waiting for the send, and their count.
-(defun fn-rce-mk (rv sd rd n)
+; State (rv sd rd rn so sl): the buffer of the outstanding :recv; the buffer
+; of the outstanding :send, the offset and length it sends; the buffer of
+; received octets waiting for the send, and their count.
+(defun fn-rce-mk (rv sd rd rn so sl)
   (declare (xargs :guard t))
-  (list (and (natp rv) rv) (and (natp sd) sd) (and (natp rd) rd) (nfix n)))
+  (list (and (natp rv) rv) (and (natp sd) sd) (and (natp rd) rd) (nfix rn) (nfix so) (nfix sl)))
 
 ; Start a receive into a free buffer other than SKIP: (mv rv requests).
 (defun fn-rce-start-recv (skip fn-rtc-st)
@@ -38,36 +43,50 @@
           (mv h (list (list :acquire h) (list :submit :recv (list h g 0 *fn-rce-cap*) nil))))
       (mv nil nil))))
 
+; A send of [OFF, OFF+LEN) of buffer H, at its current generation.
+(defun fn-rce-send (h off len fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st))
+  (list :submit :send (list (nfix h) (fn-rtc-st-b-gen h fn-rtc-st) (nfix off) (nfix len)) nil))
+
+; The step's charge: one, plus the receive search at its bound.
+(defconst *fn-rce-charge* (+ 1 *fn-rce-window*))
+
 (defun fn-rce-step (m ev fn-rtc-st q)
   (declare (xargs :stobjs fn-rtc-st) (ignore q))
-  (let* ((rv (fn-rtc-get 0 m)) (sd (fn-rtc-get 1 m)) (rd (fn-rtc-get 2 m)) (rn (fn-rtc-get 3 m))
+  (let* ((rv (fn-rtc-get 0 m)) (sd (fn-rtc-get 1 m)) (rd (fn-rtc-get 2 m)) (rn (nfix (fn-rtc-get 3 m)))
+         (so (nfix (fn-rtc-get 4 m))) (sl (nfix (fn-rtc-get 5 m)))
          (kind (fn-rtc-get 0 ev)) (out (fn-rtc-get 1 ev))
          (tag (fn-rtc-get 0 out)) (n (nfix (fn-rtc-get 1 out))))
     (cond
      ((eq kind :accept)
       (mv-let (h reqs) (fn-rce-start-recv nil fn-rtc-st)
-        (mv (fn-rce-mk h nil nil 0) reqs 1)))
+        (mv (fn-rce-mk h nil nil 0 0 0) reqs *fn-rce-charge*)))
      ((and (eq kind :recv) (member-eq tag '(:done :short)) (< 0 n) (natp rv))
       (if (natp sd)
           ;; a send is outstanding: hold these octets
-          (mv (fn-rce-mk nil sd rv n) nil 1)
+          (mv (fn-rce-mk nil sd rv n so sl) nil *fn-rce-charge*)
         (mv-let (h reqs) (fn-rce-start-recv rv fn-rtc-st)
-          (mv (fn-rce-mk h rv nil 0)
-              (cons (list :submit :send (list rv (fn-rtc-st-b-gen rv fn-rtc-st) 0 n) nil) reqs)
-              1))))
+          (mv (fn-rce-mk h rv nil 0 0 n)
+              (cons (fn-rce-send rv 0 n fn-rtc-st) reqs)
+              *fn-rce-charge*))))
+     ((and (eq kind :send) (eq tag :short) (natp sd) (< n sl))
+      ;; a short send: send the rest
+      (mv (fn-rce-mk rv sd rd rn (+ so n) (- sl n))
+          (list (fn-rce-send sd (+ so n) (- sl n) fn-rtc-st))
+          *fn-rce-charge*))
      ((and (eq kind :send) (member-eq tag '(:done :short)) (natp sd))
       (let ((rel (list :release sd (fn-rtc-st-b-gen sd fn-rtc-st))))
         (if (natp rd)
             (if (natp rv)
-                (mv (fn-rce-mk rv rd nil 0)
-                    (list rel (list :submit :send (list rd (fn-rtc-st-b-gen rd fn-rtc-st) 0 (nfix rn)) nil))
-                    1)
+                (mv (fn-rce-mk rv rd nil 0 0 rn)
+                    (list rel (fn-rce-send rd 0 rn fn-rtc-st))
+                    *fn-rce-charge*)
               (mv-let (h reqs) (fn-rce-start-recv rd fn-rtc-st)
-                (mv (fn-rce-mk h rd nil 0)
-                    (list* rel (list :submit :send (list rd (fn-rtc-st-b-gen rd fn-rtc-st) 0 (nfix rn)) nil) reqs)
-                    1)))
-          (mv (fn-rce-mk rv nil nil 0) (list rel) 1))))
-     (t (mv (fn-rce-mk nil nil nil 0) (list (list :close)) 1)))))
+                (mv (fn-rce-mk h rd nil 0 0 rn)
+                    (list* rel (fn-rce-send rd 0 rn fn-rtc-st) reqs)
+                    *fn-rce-charge*)))
+          (mv (fn-rce-mk rv nil nil 0 0 0) (list rel) *fn-rce-charge*))))
+     (t (mv (fn-rce-mk nil nil nil 0 0 0) (list (list :close)) *fn-rce-charge*)))))
 
 (defthm fn-rce-start-recv-reads-borrow
   (equal (fn-rce-start-recv skip (fn-rtc-borrow-state st)) (fn-rce-start-recv skip st)))
@@ -84,21 +103,21 @@
                  (:rewrite :corollary (equal (fn-rtc-reqs-octets (mv-nth 1 (fn-rce-start-recv skip st))) 0))))
 
 (defthm fn-rce-mk-size
-  (<= (fn-rtc-size (fn-rce-mk rv sd rd n)) 9)
+  (<= (fn-rtc-size (fn-rce-mk rv sd rd rn so sl)) 13)
   :rule-classes :linear)
 
 (defthm fn-rce-step-facts
-  (and (equal (mv-nth 2 (fn-rce-step m ev st q)) 1)
+  (and (equal (mv-nth 2 (fn-rce-step m ev st q)) *fn-rce-charge*)
        (equal (fn-rtc-reqs-octets (mv-nth 1 (fn-rce-step m ev st q))) 0)
        (<= (len (mv-nth 1 (fn-rce-step m ev st q))) 4)
-       (<= (fn-rtc-size (mv-nth 0 (fn-rce-step m ev st q))) 9))
+       (<= (fn-rtc-size (mv-nth 0 (fn-rce-step m ev st q))) 13))
   :hints (("Goal" :in-theory (e/d (fn-rce-step) (fn-rce-start-recv fn-rce-mk fn-rtc-size fn-rce-free)))))
 
 (defun fn-rce-init () (declare (xargs :guard t)) nil)
 (defun fn-rce-committedp (m) (declare (xargs :guard t) (ignore m)) nil)
-(defun fn-rce-c () (declare (xargs :guard t)) 1)
+(defun fn-rce-c () (declare (xargs :guard t)) *fn-rce-charge*)
 (defun fn-rce-max-reqs () (declare (xargs :guard t)) 4)
-(defun fn-rce-max-state () (declare (xargs :guard t)) 9)
+(defun fn-rce-max-state () (declare (xargs :guard t)) 13)
 
 (fn-rtc-def-layer fn-rcl
   :step fn-rce-step :init fn-rce-init :committedp fn-rce-committedp :c fn-rce-c
@@ -148,38 +167,67 @@
         (fn-rtc-st-splice (fn-rtc-h-buf (fn-rtc-u-hd u)) (fn-rtc-h-off (fn-rtc-u-hd u)) data fn-rtc-st)
       fn-rtc-st)))
 
+;; X is an element of L.
+(defun fn-rce-in-p (x l)
+  (declare (xargs :guard t))
+  (if (atom l) nil (or (equal x (car l)) (fn-rce-in-p x (cdr l)))))
+
+;; Every use of USES other than the one keyed KEY is still in AFTER: only a
+;; completion ends a use, and only its own.
+(defun fn-rce-uses-kept-p (key uses after)
+  (declare (xargs :guard t))
+  (if (atom uses) t
+    (and (or (equal (fn-rtc-key (car uses)) key)
+             (fn-rce-in-p (car uses) after))
+         (fn-rce-uses-kept-p key (cdr uses) after))))
+
+; The host's half of an item, before the completion is delivered: a landing,
+; or a fault injection (for the checks' teeth: a host that writes octets at
+; (h off) whatever the buffer's state, or rewrites a buffer's generation and
+; owner).
+(defun fn-rce-host (item fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st))
+  (let ((e (fn-rtc-get 1 item)))
+    (case (fn-rtc-get 0 item)
+      (:land (fn-rce-land e (fn-rtc-get 2 item) fn-rtc-st))
+      (:fault-write (let ((h (nfix (fn-rtc-get 2 item))) (off (nfix (fn-rtc-get 3 item)))
+                          (data (fn-rtc-get 4 item)))
+                      (if (fn-cbor-octet-listp data)
+                          (fn-rtc-st-splice h off data fn-rtc-st)
+                        fn-rtc-st)))
+      (:fault-meta (fn-rtc-st-set-meta (nfix (fn-rtc-get 2 item)) (nfix (fn-rtc-get 3 item))
+                                       (fn-rtc-get 4 item) fn-rtc-st))
+      (otherwise fn-rtc-st))))
+
 ; One script item: (:complete E), (:land E DATA), or a fault injection
-; (:fault-write E H OFF DATA) / (:fault-meta E H GEN OWNER) before E.  Its observation:
-; (i kind acts refused invp stable discarded).
+; (:fault-write E H OFF DATA) / (:fault-meta E H GEN OWNER) before E.  Its
+; observation (i kind acts refused INV STAB MATCH): INV is :invp when the
+; invariant holds of the state read back after the host's half and after the
+; step; STAB is :stable when the host's half moved no outstanding :out use's
+; octets, the step moved none of the uses it kept, and the step ended no use
+; but the completion's own; MATCH is :matched, or :discarded for a completion
+; that matched no use and changed neither state nor actions.
 (defun fn-rce-item (i item fn-rtc-st)
-  (declare (xargs :stobjs fn-rtc-st ))
+  (declare (xargs :stobjs fn-rtc-st))
   (let* ((e (fn-rtc-get 1 item))
          (matched (and (fn-rtc-completionp e)
                        (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-st-uses fn-rtc-st))
                        t))
+         (snap0 (fn-rce-out-snapshot (fn-rtc-st-uses fn-rtc-st) fn-rtc-st))
+         (fn-rtc-st (fn-rce-host item fn-rtc-st))
          (before (fn-rtc-x-state fn-rtc-st))
-         (snap (fn-rce-out-snapshot (fn-rtc-st-uses fn-rtc-st) fn-rtc-st))
-         (fn-rtc-st (case (fn-rtc-get 0 item)
-                      (:land (fn-rce-land e (fn-rtc-get 2 item) fn-rtc-st))
-                      ;; fault injection, for the checks' teeth: a host that
-                      ;; writes octets at (h off) whatever the buffer's
-                      ;; state, or rewrites a buffer's generation and owner
-                      (:fault-write (let ((h (nfix (fn-rtc-get 2 item))) (off (nfix (fn-rtc-get 3 item)))
-                                          (data (fn-rtc-get 4 item)))
-                                      (if (fn-cbor-octet-listp data)
-                                          (fn-rtc-st-splice h off data fn-rtc-st)
-                                        fn-rtc-st)))
-                      (:fault-meta (fn-rtc-st-set-meta (nfix (fn-rtc-get 2 item)) (nfix (fn-rtc-get 3 item))
-                                                       (fn-rtc-get 4 item) fn-rtc-st))
-                      (otherwise fn-rtc-st))))
+         (uses1 (fn-rtc-st-uses fn-rtc-st))
+         (snap1 (fn-rce-out-snapshot uses1 fn-rtc-st)))
     (mv-let (fn-rtc-st acts refused cost)
       (fn-rcl-x-step* e 16 fn-rtc-st)
       (declare (ignore cost))
       (let ((after (fn-rtc-x-state fn-rtc-st)))
         (mv fn-rtc-st
             (list i (fn-rtc-get 0 e) acts refused
-                  (if (fn-rcl-invp after) :invp :invp-violated)
-                  (if (fn-rce-stable-p snap (fn-rce-out-snapshot (fn-rtc-st-uses fn-rtc-st) fn-rtc-st))
+                  (if (and (fn-rcl-invp before) (fn-rcl-invp after)) :invp :invp-violated)
+                  (if (and (fn-rce-stable-p snap0 snap1)
+                           (fn-rce-stable-p snap1 (fn-rce-out-snapshot (fn-rtc-st-uses fn-rtc-st) fn-rtc-st))
+                           (fn-rce-uses-kept-p (fn-rtc-key e) uses1 (fn-rtc-st-uses fn-rtc-st)))
                       :stable :moved)
                   (cond (matched :matched)
                         ((and (equal before after) (null acts)) :discarded)
@@ -208,7 +256,8 @@
 ; slot drains), the late completion that retires it, a duplicate of that
 ; completion, slot reuse at the next incarnation with a reused buffer at a
 ; later generation, a stale completion naming the old incarnation, a short
-; send, a failed receive and a close.
+; send and the send of its rest, a failed receive and a close with that send
+; outstanding, and the send's completion that retires the slot.
 (defconst *fn-rce-exercise-cfg* '(3 6 64))
 
 (defconst *fn-rce-exercise-script*
@@ -226,12 +275,14 @@
     (:land (:recv 2 1 7 (:done 2)) (120 121))
     (:complete (:send 1 1 8 (:short 2)))
     (:complete (:recv 1 1 9 (:failed :econnreset)))
-    (:complete (:close 1 1 13 (:done 0)))))
+    (:complete (:close 1 1 14 (:done 0)))
+    (:complete (:send 1 1 13 (:done 2)))))
 
 ; The script (VARIANT 0), or its first three steps followed by a fault
 ; injection the checks must report: a host write into connection 1's
-; :out-leased buffer (1, :moved) or that buffer freed under its lease
-; (2, :invp-violated).
+; :out-leased buffer with a stale completion (1, :moved), that buffer freed
+; under its lease (2, :invp-violated), or the write followed by that send's
+; own completion (3, :moved: the host's half is checked before the step).
 (defun fn-rce-exercise-items (variant)
   (declare (xargs :guard t))
   (case variant
@@ -239,6 +290,8 @@
                '((:fault-write (:send 9 9 99 (:done 0)) 0 0 (1 2 3)))))
     (2 (append (take 3 *fn-rce-exercise-script*)
                '((:fault-meta (:send 9 9 99 (:done 0)) 0 2 (:free)))))
+    (3 (append (take 3 *fn-rce-exercise-script*)
+               '((:fault-write (:send 1 1 4 (:done 5)) 0 0 (1 2 3)))))
     (otherwise *fn-rce-exercise-script*)))
 
 (defun fn-rce-exercise (variant fn-rtc-st)

@@ -685,7 +685,9 @@
 
 ; The buffer a lease returns to when its last use U ends by completion E: the
 ; return pair's workspace when that instance is live or closing, else :free;
-; generation + 1; an :in completion's data spliced in only when it is live.
+; generation + 1; an :in completion's octets spliced in whatever the return
+; pair's state, because the worker wrote them into the buffer whatever it is
+; (the executable pool's octets are where the worker left them).
 (defun fn-rtc-lease-return (u e b s)
   (declare (xargs :guard t))
   (let* ((hd (fn-rtc-u-hd u)) (o (fn-rtc-b-owner b))
@@ -693,9 +695,7 @@
          (back (and (fn-rtc-current-p rid rinc s)
                     (member-eq (fn-rtc-s-status (fn-rtc-slot rid s)) '(:live :closing))))
          (out (fn-rtc-delivered-outcome u e))
-         (bytes (if (and back
-                         (eq (fn-rtc-s-status (fn-rtc-slot rid s)) :live)
-                         (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
+         (bytes (if (and (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
                          (member-eq (fn-rtc-get 0 out) '(:done :short)))
                     (fn-rtc-splice (fn-rtc-b-bytes b) (fn-rtc-h-off hd) (fn-rtc-e-data e))
                   (fn-rtc-b-bytes b))))

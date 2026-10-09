@@ -123,3 +123,23 @@
            (and (equal (fn-rtc-buffer 0 s3) '(2 (:workspace 1 1) (65 66 67 68 69)))
                 (not (fn-rtc-find-use '(:recv 1 1 0) (fn-rtc-uses s3)))
                 (fn-rtc-invp s3))))
+
+; L5 (`fn-rtc-landing-then-step-is-the-contract-step'): the landing then the
+; step is the contract's step from the state before the landing.  Positive:
+; the live connection's :recv.
+(assert! (equal (mv-list 4 (fn-rtc-step* (fn-rtc-st$a-splice 0 2 *rtcz-data* *rtcz-st*)
+                              (fn-rtc-with-data *rtcz-e* *rtcz-data*) 5))
+                (mv-list 4 (fn-rtc-step* *rtcz-st* (fn-rtc-with-data *rtcz-e* *rtcz-data*) 5))))
+; And when the completion does not act on a live instance: slot 1 draining
+; with its :recv outstanding (the cross-review's state, 2026-10-09).  The
+; buffer returns :free holding the landed octet on both sides.
+(defconst *rtcz-drain* '((2 1 1) ((0 :live nil) (1 :draining 7)) ((1 (:leased 1 1 :in) nil))
+                         ((:recv 1 1 0 (0 1 0 1))) (nil nil) 1))
+(defconst *rtcz-drain-e* '(:recv 1 1 0 (:done 1)))
+(assert! (fn-rtc-invp *rtcz-drain*))
+(assert! (not (fn-rtc-acts-on-p *rtcz-drain* *rtcz-drain-e*)))
+(assert! (equal (mv-list 4 (fn-rtc-step* (fn-rtc-st$a-splice 0 0 '(42) *rtcz-drain*)
+                              (fn-rtc-with-data *rtcz-drain-e* '(42)) 5))
+                (mv-list 4 (fn-rtc-step* *rtcz-drain* (fn-rtc-with-data *rtcz-drain-e* '(42)) 5))))
+(assert! (equal (fn-rtc-buffer 0 (car (mv-list 2 (fn-rtc-step *rtcz-drain* (fn-rtc-with-data *rtcz-drain-e* '(42)) 5))))
+                '(2 (:free) (42))))

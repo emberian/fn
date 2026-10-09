@@ -15,8 +15,9 @@
 ; through the developer image and fn-core (`--fn rtc-exercise run 0|1').
 ;
 ; Teeth: a host that writes into an :out-leased buffer is reported :moved
-; (the invariant still holds: `fn-rtc-splice-keeps-invp'); a host that frees
-; a buffer under an outstanding lease is reported :invp-violated.
+; (the invariant still holds: `fn-rtc-splice-keeps-invp'), also when the
+; same item then completes that send; a host that frees a buffer under an
+; outstanding lease is reported :invp-violated.
 
 (in-package "ACL2")
 (include-book "../../books/runtime-contract-echo")
@@ -38,7 +39,7 @@
 
 (defconst *rce-obs* (rce-run-variant 0))
 
-(assert! (equal (len *rce-obs*) 16))
+(assert! (equal (len *rce-obs*) 17))
 (assert! (rce-all-sound *rce-obs*))
 ; the duplicate late completion and the stale completion of the old
 ; incarnation are discarded
@@ -62,3 +63,12 @@
 ; Freeing buffer 0 under that lease breaks the invariant.
 (defconst *rce-freed* (rce-run-variant 2))
 (assert! (equal (fn-rtc-get 4 (nth 4 *rce-freed*)) :invp-violated))
+; A host write into that buffer followed by the send's own completion is
+; still reported: the host's half is checked before the step.
+(defconst *rce-moved-then-completed* (rce-run-variant 3))
+(assert! (equal (fn-rtc-get 5 (nth 4 *rce-moved-then-completed*)) :moved))
+; The short send (step 13) resends the rest of the buffer.
+(assert! (equal (fn-rtc-get 2 (nth 13 *rce-obs*)) '((:send 1 1 13 ((2 3 2 2) 7)))))
+; The close with the resent rest outstanding drains slot 1; that send's
+; completion retires it and re-arms admission.
+(assert! (equal (fn-rtc-get 2 (nth 16 *rce-obs*)) '((:accept 0 0 15 (nil)))))

@@ -68,6 +68,8 @@
 (include-book "../books/owner-time-reconfig")
 (include-book "../books/clock-reading")
 (include-book "../books/store-profile-carried")
+; The runtime contract's multi-instance exercise (host/native/rtc-exercise.lisp).
+(include-book "../books/runtime-contract-echo")
 (include-book "../books/store-checkpoint-arena-load")
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/reclaim-chunked-seal")

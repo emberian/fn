@@ -330,7 +330,8 @@
     fn-rtc-last-completion-retires-a-draining-slot      ; T13
     fn-rtc-machine-states-are-bounded                   ; T15
     fn-rtc-x-step*-is fn-rtc-x-step-is
-    fn-rtc-x-step-after-landing fn-rtc-host-landing-is-the-contract-step))
+    fn-rtc-x-step-after-landing fn-rtc-landing-then-step-is-the-contract-step
+    fn-rtc-host-landing-is-the-contract-step))
 
 (defun fn-rtc-layer-names (prefix fs)
   (declare (xargs :mode :program))

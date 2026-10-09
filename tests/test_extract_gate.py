@@ -56,23 +56,25 @@ if role == "sbcl":
                 print("rebind failed"); sys.exit(4)
             print("rebound"); sys.exit(0)
         if verb == "rtc-exercise":
-            # variant 0: 16 observation lines, steps 10 and 12 discard stale
+            # variant 0: 17 observation lines, steps 10 and 12 discard stale
             # completions; variant 1: the injected write reported, exit 4
-            if rest[1:] and rest[1] == "1":
+            if rest[1:] and rest[1] in ("1", "2", "3"):
                 for i in range(4):
                     print("(%d :x nil nil :invp :stable :matched)" % i)
-                moved = ":stable" if FAULT == "rtc-fault-unreported" else ":moved"
-                print("(4 :send nil nil :invp %s :unmatched-changed)" % moved)
+                inv, stab = (":invp-violated", ":stable") if rest[1] == "2" else (":invp", ":moved")
+                if FAULT == "rtc-fault-unreported":
+                    inv, stab = ":invp", ":stable"
+                print("(4 :send nil nil %s %s :unmatched-changed)" % (inv, stab))
                 if os.environ.get("FAKE_CORE") and FAULT == "rtc-fault-core-differ":
                     print("(5 :x nil nil :invp :stable :matched)")
                 sys.exit(4)
             if FAULT == "rtc-image-exit" and not os.environ.get("FAKE_CORE"):
                 sys.exit(9)
-            for i in range(16):
+            for i in range(17):
                 tail = ":discarded" if i in (10, 12) and FAULT != "rtc-not-discarded" else ":matched"
                 print("(%d :x nil nil :invp :stable %s)" % (i, tail))
             if os.environ.get("FAKE_CORE") and FAULT == "rtc-core-differ":
-                print("(16 :x nil nil :invp :stable :matched)")
+                print("(17 :x nil nil :invp :stable :matched)")
             sys.exit(0)
         if verb == "model":
             if FAULT == "model-empty":
@@ -363,7 +365,7 @@ class ExtractGateTest(unittest.TestCase):
         self.assertIn("extract-check: PASS", out)
         self.assertEqual(status["status"], "PASS")
         # the rtc-exercise fault variant exits 4 by design on both sides
-        self.assertTrue(all(c["status"] == (4 if c["what"].endswith("rtc-exercise fault") else 0)
+        self.assertTrue(all(c["status"] == (4 if " rtc-exercise fault " in c["what"] + " " else 0)
                             for c in status["children"]), status["children"])
         for step in ("core", "transcripts", "rtc-exercise", "probes", "store", "stateful", "owner"):
             self.assertIn(step, {c["step"] for c in status["children"]})
@@ -457,7 +459,7 @@ class ExtractGateTest(unittest.TestCase):
         for fault, reason in (("rtc-image-exit", "the image exited 9"),
                               ("rtc-not-discarded", "discarded steps"),
                               ("rtc-core-differ", "the core's reply differs"),
-                              ("rtc-fault-unreported", "not reported :moved"),
+                              ("rtc-fault-unreported", "is not reported :moved"),
                               ("rtc-fault-core-differ", "the core's reply differs")):
             with self.subTest(fault=fault):
                 self.assertFails(fault, "rtc-exercise", reason)
