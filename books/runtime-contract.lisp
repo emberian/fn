@@ -1816,11 +1816,13 @@
                   (implies (fn-rtc-handlep (fn-rtc-u-hd u))
                            (let ((h (fn-rtc-h-buf (fn-rtc-u-hd u))))
                              (equal (fn-rtc-buffer h s2) (fn-rtc-buffer h s)))))))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-step fn-rtc-step* fn-rtc-leasedp)
-                                  (fn-rtc-invp fn-rtc-ends-use-p fn-rtc-acts-on-p fn-rtc-handlep fn-rtc-h-buf
-                                   fn-rtc-leasedp-of-use fn-rtc-end-use-keeps-other-leases mv-nth
-                                   fn-rtc-uses-of-end-use fn-rtc-delivered-outcome fn-rtc-e-id fn-rtc-e-inc
-                                   fn-rtc-e-kind fn-rtc-find-use fn-rtc-key))
+  :hints (("Goal"
+           :in-theory (union-theories
+                       (theory 'minimal-theory)
+                       '(fn-rtc-step fn-rtc-step* fn-rtc-leasedp
+                         fn-rtc-member-uses-of-end-use fn-rtc-rearm-frame
+                         fn-rtc-deliver-frame fn-rtc-accept-branch-frame
+                         fn-rtc-close-branch-frame))
            :do-not-induct t
            :use (fn-rtc-leasedp-of-use fn-rtc-end-use-keeps-other-leases))))
 
@@ -1863,9 +1865,9 @@
   (fn-rtc-gen-le h s (mv-nth 0 (fn-rtc-deliver s id inc ev q)))
   :hints (("Goal" :in-theory (e/d (fn-rtc-deliver) (fn-rtc-gen-le-of-requests fn-rtc-requests mv-nth))
            :use ((:instance fn-rtc-gen-le-of-requests
-                  (reqs (mv-nth 1 (fn-rtc-m-step (fn-rtc-mstate id s) ev (fn-rtc-borrow (fn-rtc-pool s)) (nfix q))))
+                  (reqs (mv-nth 1 (fn-rtc-m-step (fn-rtc-mstate id s) ev (fn-rtc-view id inc s) (nfix q))))
                   (s (fn-rtc-with-mstate id (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate id s) ev
-                                                                      (fn-rtc-borrow (fn-rtc-pool s)) (nfix q)))
+                                                                      (fn-rtc-view id inc s) (nfix q)))
                                          s)))))))
 (defthm fn-rtc-gen-le-of-rearm
   (fn-rtc-gen-le h s (mv-nth 0 (fn-rtc-rearm s)))
@@ -1903,7 +1905,7 @@
                                                    s1)))
                             (id (fn-rtc-free-slot 0 (fn-rtc-slots s1)))
                             (inc (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1))))
-                            (ev (list :accept out)))
+                            (ev (fn-rtc-ev :accept out (fn-rtc-free-slot 0 (fn-rtc-slots s1)) (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1))) nil)))
                  (:instance fn-rtc-gen-le-of-rearm
                             (s (mv-nth 0 (fn-rtc-deliver
                                           (fn-rtc-with-mstate (fn-rtc-free-slot 0 (fn-rtc-slots s1)) (fn-rtc-m-init)
@@ -1913,7 +1915,7 @@
                                                               s1))
                                           (fn-rtc-free-slot 0 (fn-rtc-slots s1))
                                           (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1)))
-                                          (list :accept out) q))))))))
+                                          (fn-rtc-ev :accept out (fn-rtc-free-slot 0 (fn-rtc-slots s1)) (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1))) nil) q))))))))
 (defthm fn-rtc-gen-le-of-close-branch
   (fn-rtc-gen-le h s1 (mv-nth 0 (fn-rtc-close-branch s1 id inc)))
   :hints (("Goal" :in-theory (e/d (fn-rtc-close-branch fn-rtc-gen)

@@ -69,6 +69,7 @@
          (fn-rtc-configp cfg)
          (equal (len (fn-rtc-slots s)) (fn-rtc-nslots cfg))
          (fn-rtc-slots-okp 0 (fn-rtc-slots s))
+         (fn-rtc-statics-okp 1 (fn-rtc-nstatic cfg) (fn-rtc-slots s))
          (equal (len (fn-rtc-pool s)) (fn-rtc-nbufs cfg))
          (fn-rtc-pool-okp 0 (fn-rtc-pool s) s)
          (fn-rtc-uses-okp (fn-rtc-uses s) s)
@@ -165,6 +166,15 @@
             (and (<= 1 (nfix (fn-rtc-get 1 o)))
                  (< (nfix (fn-rtc-get 1 o)) (fn-rtc-nslots (fn-rtc-config s)))
                  (fn-rtc-holds-p h (fn-rtc-b-gen b) (fn-rtc-uses s))))
+           (:handed
+                (and (<= 1 (nfix (fn-rtc-get 1 o)))
+                     (< (nfix (fn-rtc-get 1 o)) (fn-rtc-nslots (fn-rtc-config s)))
+                     (<= 1 (nfix (fn-rtc-get 3 o)))
+                     (< (nfix (fn-rtc-get 3 o)) (fn-rtc-nslots (fn-rtc-config s)))
+                     (not (equal (fn-rtc-get 3 o) (fn-rtc-get 1 o)))
+                     (implies (< (fn-rtc-nstatic (fn-rtc-config s)) (nfix (fn-rtc-get 1 o)))
+                              (<= (nfix (fn-rtc-get 3 o)) (fn-rtc-nstatic (fn-rtc-config s))))
+                     (fn-rtc-holds-p h (fn-rtc-b-gen b) (fn-rtc-uses s))))
            (otherwise t)))))
 
 (defthm fn-rtc-pool-okp-unfolds
@@ -210,6 +220,7 @@
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
             '(fn-rtc-use-okp fn-rtc-leasedp fn-rtc-current-p
+              (:executable-counterpart member-equal)
               fn-rtc-with-accessors fn-rtc-slot-of-with fn-rtc-buffer-of-with
               fn-rtc-next-op-of-with (:type-prescription fn-rtc-h-buf) nfix natp)))))
 
@@ -434,9 +445,17 @@
                                fn-rtc-s-res fn-rtc-s-status
                                fn-rtc-draining-okp fn-rtc-configp fn-rtc-get))))
 
-(defthm fn-rtc-core-invp-of-closing-slot
+(defthm fn-rtc-statics-okp-of-set-after
+  (implies (and (natp j) (natp n) (natp k) (<= (+ j n) k))
+           (equal (fn-rtc-statics-okp j n (fn-rtc-set k x slots))
+                  (fn-rtc-statics-okp j n slots)))
+  :hints (("Goal" :induct (fn-rtc-statics-okp j n slots)
+           :in-theory (disable fn-rtc-get fn-rtc-set))))
+
+(defthm fn-rtc-core-invp-of-closing-dynamic-slot
   (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s)
-                (fn-rtc-live-p id inc s))
+                (fn-rtc-live-p id inc s)
+                (< (fn-rtc-nstatic (fn-rtc-config s)) id))
            (fn-rtc-core-invp
             (fn-rtc-with-slot id (list inc :closing (fn-rtc-s-res (fn-rtc-slot id s))) s)))
   :hints (("Goal" :use fn-rtc-core-invp-slot
@@ -579,14 +598,16 @@
   (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s))
            (fn-rtc-core-invp (mv-nth 0 (fn-rtc-req-close r id inc s))))
   :hints (("Goal" :in-theory
-           (disable fn-rtc-core-invp fn-rtc-uses-okp fn-rtc-use-okp fn-rtc-kind-out-p
+           (disable mv-nth fn-rtc-use-bound fn-rtc-nbufs fn-rtc-nstatic fn-rtc-live-p
+                    fn-rtc-core-invp fn-rtc-uses-okp fn-rtc-use-okp fn-rtc-kind-out-p
                     fn-rtc-s-status fn-rtc-s-inc fn-rtc-s-res fn-rtc-nslots)
            :use ((:instance fn-rtc-live-slot-has-no-close (uses (fn-rtc-uses s)))))))
 
 ; A new holder must not join an existing input lease.
 (defun fn-rtc-compatible-use-p (new u)
   (declare (xargs :guard t))
-  (or (not (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*))
+  (or (not (or (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
+               (equal (fn-rtc-get 0 u) :hand)))
       (not (fn-rtc-handlep (fn-rtc-u-hd new)))
       (not (equal (fn-rtc-h-buf (fn-rtc-u-hd new)) (fn-rtc-h-buf (fn-rtc-u-hd u))))
       (not (equal (fn-rtc-h-gen (fn-rtc-u-hd new)) (fn-rtc-h-gen (fn-rtc-u-hd u))))))
@@ -625,29 +646,33 @@
                         '(fn-rtc-uses-okp fn-rtc-compatible-usesp
                           fn-rtc-use-okp-of-compatible-issue)))))
 
-(defthm fn-rtc-compatible-use-from-pool
+(defthm fn-rtc-compatible-use-from-shareable-pool
   (implies (and (fn-rtc-use-okp u s)
                 (or (not (fn-rtc-handlep (fn-rtc-u-hd new)))
                     (not (fn-rtc-leasedp (fn-rtc-h-buf (fn-rtc-u-hd new)) s))
-                    (not (equal (fn-rtc-get 3 (fn-rtc-b-owner
-                                  (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd new)) s))) :in))))
+                    (and (equal (fn-rtc-get 0 (fn-rtc-b-owner
+                                   (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd new)) s))) :leased)
+                         (equal (fn-rtc-get 3 (fn-rtc-b-owner
+                                   (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd new)) s))) :out))))
            (fn-rtc-compatible-use-p new u))
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
             '(fn-rtc-use-okp fn-rtc-usep fn-rtc-u-hd
-              fn-rtc-compatible-use-p fn-rtc-leasedp)))))
+              fn-rtc-compatible-use-p fn-rtc-leasedp (:executable-counterpart member-equal))))))
 
-(defthm fn-rtc-compatible-uses-from-pool
+(defthm fn-rtc-compatible-uses-from-shareable-pool
   (implies (and (fn-rtc-uses-okp uses s)
                 (or (not (fn-rtc-handlep (fn-rtc-u-hd new)))
                     (not (fn-rtc-leasedp (fn-rtc-h-buf (fn-rtc-u-hd new)) s))
-                    (not (equal (fn-rtc-get 3 (fn-rtc-b-owner
-                                  (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd new)) s))) :in))))
+                    (and (equal (fn-rtc-get 0 (fn-rtc-b-owner
+                                   (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd new)) s))) :leased)
+                         (equal (fn-rtc-get 3 (fn-rtc-b-owner
+                                   (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd new)) s))) :out))))
            (fn-rtc-compatible-usesp new uses))
   :hints (("Goal" :induct (fn-rtc-uses-okp uses s)
            :in-theory (union-theories (theory 'minimal-theory)
                         '(fn-rtc-uses-okp fn-rtc-compatible-usesp
-                          fn-rtc-compatible-use-from-pool)))))
+                          fn-rtc-compatible-use-from-shareable-pool)))))
 
 (defthm fn-rtc-core-invp-of-compatible-issue
   (implies (and (fn-rtc-core-invp s)
@@ -686,7 +711,7 @@
            (equal (fn-rtc-holders h g uses) 0))
   :hints (("Goal" :induct (fn-rtc-uses-okp uses s)
            :in-theory (union-theories (theory 'minimal-theory)
-                        '(fn-rtc-uses-okp fn-rtc-use-okp fn-rtc-leasedp
+                        '((:executable-counterpart member-equal) fn-rtc-uses-okp fn-rtc-use-okp fn-rtc-leasedp
                           fn-rtc-holders unicity-of-0 fix
                           (:type-prescription fn-rtc-holders))))))
 
@@ -742,7 +767,90 @@
                  fn-rtc-compatible-usesp fn-rtc-op-used-p
                  fn-rtc-buffered-submit-new-use-okp))
            :use (fn-rtc-buffered-submit-new-use-okp
+                 (:instance fn-rtc-compatible-uses-from-shareable-pool
+                   (uses (fn-rtc-uses s)) (new (list kind id inc (fn-rtc-next-op s) hd)))
                  (:instance fn-rtc-core-invp-buffer-bytes (h (fn-rtc-h-buf hd)))))))
+
+(defthm fn-rtc-core-invp-of-distinct-compatible-issue
+  (implies (and (fn-rtc-core-invp s)
+                (fn-rtc-compatible-usesp u (fn-rtc-uses s))
+                (fn-rtc-use-okp u (fn-rtc-issue u s))
+                (or (equal (fn-rtc-get 0 u) :hand)
+                    (not (fn-rtc-kind-out-p (fn-rtc-get 0 u) (fn-rtc-get 1 u)
+                                            (fn-rtc-get 2 u) (fn-rtc-uses s))))
+                (not (fn-rtc-op-used-p (fn-rtc-get 3 u) (fn-rtc-uses s))))
+           (fn-rtc-core-invp (fn-rtc-issue u s)))
+  :hints (("Goal" :in-theory
+           (disable fn-rtc-configp fn-rtc-slots-okp fn-rtc-pool-okp-unfolds
+                    fn-rtc-uses-okp fn-rtc-use-okp fn-rtc-mstates-okp
+                    fn-rtc-draining-okp fn-rtc-get fn-rtc-kind-out-p
+                    fn-rtc-op-used-p fn-rtc-compatible-usesp)
+           :expand ((fn-rtc-uses-okp (cons u (fn-rtc-uses s)) (fn-rtc-issue u s))))))
+
+(defthm fn-rtc-core-invp-of-exclusive-buffer-issue
+  (implies (and (fn-rtc-core-invp s) (natp h) (not (fn-rtc-leasedp h s))
+                (fn-rtc-compatible-usesp u (fn-rtc-uses s))
+                (fn-rtc-buffer-okp h b (fn-rtc-issue u (fn-rtc-with-buffer h b s)))
+                (fn-rtc-use-okp u (fn-rtc-issue u (fn-rtc-with-buffer h b s)))
+                (or (equal (fn-rtc-get 0 u) :hand)
+                    (not (fn-rtc-kind-out-p (fn-rtc-get 0 u) (fn-rtc-get 1 u)
+                                            (fn-rtc-get 2 u) (fn-rtc-uses s))))
+                (not (fn-rtc-op-used-p (fn-rtc-get 3 u) (fn-rtc-uses s))))
+           (fn-rtc-core-invp (fn-rtc-issue u (fn-rtc-with-buffer h b s))))
+  :hints (("Goal" :in-theory
+           (disable fn-rtc-configp fn-rtc-slots-okp fn-rtc-pool-okp-unfolds
+                    fn-rtc-uses-okp fn-rtc-use-okp fn-rtc-mstates-okp
+                    fn-rtc-draining-okp fn-rtc-get fn-rtc-kind-out-p fn-rtc-leasedp
+                    fn-rtc-op-used-p fn-rtc-compatible-usesp)
+           :expand ((fn-rtc-uses-okp (cons u (fn-rtc-uses s))
+                      (fn-rtc-issue u (fn-rtc-with-buffer h b s)))))))
+
+(defun fn-rtc-hand-submit-state (hd extra id inc s)
+  (declare (xargs :guard t))
+  (let* ((h (fn-rtc-h-buf hd)) (b (fn-rtc-buffer h s))
+         (s1 (fn-rtc-with-buffer h
+               (list (fn-rtc-b-gen b)
+                     (list :handed id inc (fn-rtc-get 0 extra) (fn-rtc-get 1 extra))
+                     (fn-rtc-b-bytes b)) s)))
+    (fn-rtc-issue (list :hand id inc (fn-rtc-next-op s1) hd) s1)))
+
+(defthm fn-rtc-hand-submit-new-use-okp
+  (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s)
+                (fn-rtc-live-p id inc s) (fn-rtc-submit-okp :hand hd id inc s))
+           (fn-rtc-use-okp (list :hand id inc (fn-rtc-next-op s) hd)
+                          (fn-rtc-hand-submit-state hd extra id inc s)))
+  :hints (("Goal" :in-theory
+           (disable fn-rtc-core-invp fn-rtc-handlep fn-rtc-holders fn-rtc-uses-okp
+                    fn-rtc-s-inc fn-rtc-s-status fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes
+                    fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len
+                    fn-rtc-nbufs fn-rtc-nslots fn-rtc-cap fn-rtc-configp)
+           :use ((:instance fn-rtc-holders-of-unleased-buffer
+                  (h (fn-rtc-h-buf hd)) (g (fn-rtc-h-gen hd)) (uses (fn-rtc-uses s)))))))
+
+(defthm fn-rtc-hand-submit-preserves-core-invp
+  (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s)
+                (fn-rtc-live-p id inc s) (fn-rtc-submit-okp :hand hd id inc s)
+                (fn-rtc-hand-target-okp extra id s))
+           (fn-rtc-core-invp (fn-rtc-hand-submit-state hd extra id inc s)))
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-buffer-okp)
+                (fn-rtc-core-invp fn-rtc-handlep fn-rtc-uses-okp fn-rtc-use-okp
+                 fn-rtc-s-inc fn-rtc-s-status fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes
+                 fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-cbor-octet-listp
+                 fn-rtc-nbufs fn-rtc-nslots fn-rtc-nstatic fn-rtc-cap fn-rtc-configp
+                 fn-rtc-kind-out-p fn-rtc-compatible-usesp fn-rtc-op-used-p
+                 fn-rtc-hand-submit-new-use-okp))
+           :use (fn-rtc-hand-submit-new-use-okp
+                 (:instance fn-rtc-compatible-uses-from-shareable-pool
+                   (uses (fn-rtc-uses s)) (new (list :hand id inc (fn-rtc-next-op s) hd)))
+                 (:instance fn-rtc-core-invp-buffer-bytes (h (fn-rtc-h-buf hd)))))))
+
+(defthm fn-rtc-hand-submit-okp-owner
+  (implies (fn-rtc-submit-okp :hand hd id inc s)
+           (equal (fn-rtc-b-owner (fn-rtc-buffer (fn-rtc-h-buf hd) s))
+                  (list :workspace id inc)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-submit-okp)
+                                  (fn-rtc-b-owner fn-rtc-buffer fn-rtc-h-buf fn-rtc-handlep)))))
 
 (defthm fn-rtc-submit-preserves-core-invp
   (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s))
@@ -752,8 +860,11 @@
                     fn-rtc-kind-out-p fn-rtc-use-okp fn-rtc-uses-okp
                     fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-s-res
                     fn-rtc-nslots fn-rtc-nbufs fn-rtc-configp fn-rtc-s-inc fn-rtc-s-status
-                    fn-rtc-h-buf fn-rtc-buffered-submit-preserves-core-invp)
-           :use ((:instance fn-rtc-buffered-submit-preserves-core-invp
+                    fn-rtc-h-buf fn-rtc-hand-target-okp fn-rtc-nstatic fn-rtc-use-bound mv-nth
+                    fn-rtc-buffered-submit-preserves-core-invp fn-rtc-hand-submit-preserves-core-invp)
+           :use ((:instance fn-rtc-hand-submit-preserves-core-invp
+                  (hd (fn-rtc-get 2 r)) (extra (fn-rtc-get 3 r)))
+                 (:instance fn-rtc-buffered-submit-preserves-core-invp
                   (kind (fn-rtc-get 1 r)) (hd (fn-rtc-get 2 r)))))))
 
 (defthm fn-rtc-request-preserves-core-invp
@@ -793,7 +904,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-rtc-deliver)
                 (mv-nth fn-rtc-core-invp fn-rtc-instance-active-p fn-rtc-requests
-                 fn-rtc-mstate fn-rtc-borrow fn-rtc-size)))))
+                 fn-rtc-mstate fn-rtc-view fn-rtc-size)))))
 
 (defthm fn-rtc-free-slot-of-set-nonfree
   (implies (and (natp i) (natp k)
@@ -859,7 +970,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-rtc-deliver)
                 (mv-nth fn-rtc-core-invp fn-rtc-instance-active-p fn-rtc-requests
-                 fn-rtc-free-slot fn-rtc-kind-out-p fn-rtc-mstate fn-rtc-borrow fn-rtc-size)))))
+                 fn-rtc-free-slot fn-rtc-kind-out-p fn-rtc-mstate fn-rtc-view fn-rtc-size)))))
 
 (defthm fn-rtc-core-invp-listener
   (implies (fn-rtc-core-invp s) (equal (fn-rtc-slot 0 s) *fn-rtc-listener*))
@@ -1064,7 +1175,8 @@
          (fn-rtc-lease-return u e b s))
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
-            '(fn-rtc-lease-return fn-rtc-current-p fn-rtc-slot-of-with)))))
+            '(fn-rtc-lease-return fn-rtc-current-p fn-rtc-handed-to-live-p
+              fn-rtc-live-p fn-rtc-slot-of-with)))))
 
 (defthm fn-rtc-core-invp-found-use
   (implies (and (fn-rtc-core-invp s) (fn-rtc-find-use key (fn-rtc-uses s)))

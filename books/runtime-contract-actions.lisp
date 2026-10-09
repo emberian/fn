@@ -63,18 +63,18 @@
   (and (equal (mv-nth 1 (fn-rtc-accept-branch s1 out q))
               (if (fn-rtc-accept-go-p s1 out)
                   (append (mv-nth 1 (fn-rtc-deliver (fn-rtc-accept-prepared s1 out) (fn-rtc-accept-slot s1)
-                                                    (fn-rtc-accept-inc s1) (list :accept out) q))
+                                                    (fn-rtc-accept-inc s1) (fn-rtc-ev :accept out (fn-rtc-accept-slot s1) (fn-rtc-accept-inc s1) nil) q))
                           (mv-nth 1 (fn-rtc-rearm (mv-nth 0 (fn-rtc-deliver (fn-rtc-accept-prepared s1 out)
                                                                             (fn-rtc-accept-slot s1)
                                                                             (fn-rtc-accept-inc s1)
-                                                                            (list :accept out) q)))))
+                                                                            (fn-rtc-ev :accept out (fn-rtc-accept-slot s1) (fn-rtc-accept-inc s1) nil) q)))))
                 (mv-nth 1 (fn-rtc-rearm s1))))
        (equal (mv-nth 0 (fn-rtc-accept-branch s1 out q))
               (if (fn-rtc-accept-go-p s1 out)
                   (mv-nth 0 (fn-rtc-rearm (mv-nth 0 (fn-rtc-deliver (fn-rtc-accept-prepared s1 out)
                                                                     (fn-rtc-accept-slot s1)
                                                                     (fn-rtc-accept-inc s1)
-                                                                    (list :accept out) q))))
+                                                                    (fn-rtc-ev :accept out (fn-rtc-accept-slot s1) (fn-rtc-accept-inc s1) nil) q))))
                 (mv-nth 0 (fn-rtc-rearm s1)))))
   :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (fn-rtc-deliver fn-rtc-rearm fn-rtc-free-slot)))))
 
@@ -160,23 +160,38 @@
   :hints (("Goal" :in-theory (disable fn-rtc-invp fn-rtc-uses-okp-ops-natp)
                   :use (fn-rtc-invp-uses-okp (:instance fn-rtc-uses-okp-ops-natp (uses (fn-rtc-uses s)))))))
 
+(defthm fn-rtc-req-pre-after-end-use
+  (implies (and (fn-rtc-invp s) (natp id) (natp inc))
+           (fn-rtc-req-pre id inc (fn-rtc-end-use s e)))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory)
+             '(fn-rtc-req-pre fn-rtc-slot-res-of-end-use fn-rtc-invp-slot-res
+               fn-rtc-ops-natp-of-end-use fn-rtc-invp-ops-natp)))))
+
+(defthm fn-rtc-hand-target-inc-natp
+  (implies (fn-rtc-hand-delivers-p s e)
+           (natp (fn-rtc-get 4 (fn-rtc-b-owner
+             (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd
+               (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))) s)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-hand-delivers-p fn-rtc-handed-to-live-p fn-rtc-live-p)
+                (fn-rtc-find-use fn-rtc-key fn-rtc-buffer fn-rtc-u-hd fn-rtc-h-buf
+                 fn-rtc-b-owner fn-rtc-slot fn-rtc-s-inc fn-rtc-s-status
+                 fn-rtc-delivered-outcome fn-rtc-completionp fn-rtc-handlep)))))
+
 (defthm fn-rtc-step-actions-ok
   (implies (fn-rtc-invp s)
            (fn-rtc-actions-okp (fn-rtc-step-actions s e q) (fn-rtc-step-state s e q)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-step-actions fn-rtc-step-state fn-rtc-req-pre)
-                                  (fn-rtc-invp mv-nth fn-rtc-acts-on-p fn-rtc-e-id fn-rtc-e-inc fn-rtc-e-kind
-                                   fn-rtc-delivered-outcome fn-rtc-find-use fn-rtc-key fn-rtc-end-use
-                                   fn-rtc-rearm fn-rtc-deliver fn-rtc-accept-branch fn-rtc-close-branch
-                                   fn-rtc-actions-okp fn-rtc-action-argp fn-rtc-s-res fn-rtc-slot
-                                   fn-rtc-accept-branch-actions-ok fn-rtc-ops-natp-of-end-use fn-rtc-invp-ops-natp
-                                   fn-rtc-uses-of-end-use))
-           :use (fn-rtc-invp-uses-okp
-                 (:instance fn-rtc-uses-okp-ops-natp (uses (fn-rtc-uses s)))
-                 (:instance fn-rtc-invp-slot-res (id (fn-rtc-e-id e)))
-                 (:instance fn-rtc-accept-branch-actions-ok (s1 (fn-rtc-end-use s e))
-                            (out (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e)))
-                 (:instance fn-rtc-ops-natp-of-end-use)
-                 fn-rtc-invp-ops-natp))))
+  :hints (("Goal" :in-theory
+           (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+             '(fn-rtc-step-actions fn-rtc-step* fn-rtc-step-state
+               fn-rtc-rearm-actions-ok fn-rtc-actions-okp-append fn-rtc-actions-okp-through-rearm
+               fn-rtc-deliver-actions-ok fn-rtc-accept-branch-actions-ok fn-rtc-close-branch-actions-ok
+               fn-rtc-req-pre-after-end-use fn-rtc-ops-natp-of-end-use fn-rtc-invp-ops-natp
+               (:type-prescription fn-rtc-e-id) (:type-prescription fn-rtc-e-inc)
+               (:type-prescription nfix) natp))
+           :do-not-induct t
+           :use fn-rtc-hand-target-inc-natp)))
 
 ; T10
 (defthm fn-rtc-every-action-is-outstanding
