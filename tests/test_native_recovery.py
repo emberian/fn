@@ -7,6 +7,7 @@ a claim about this source revision.
 """
 
 import re
+import time
 import unittest
 
 from tests import test_native_checkpoint_auto as checkpoint_auto
@@ -200,7 +201,11 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
             self.assertEqual(done.returncode, EXIT_OK,
                              (done.stdout, done.stderr, owner.stderr.since(0)[-1500:]))
             self.assertIn(b"installed", done.stdout, done.stdout)
-            self.assertRegex(done.stdout, rb"reclaimed=1\b")
+            deadline = time.monotonic() + 30
+            while (not re.search(rb"RECLAIM installed records=\d+ reclaimed=1 ", owner.stderr.since(0))
+                   and time.monotonic() < deadline):
+                time.sleep(0.25)
+            self.assertRegex(owner.stderr.since(0), rb"RECLAIM installed records=\d+ reclaimed=1 ")
             # The swapped owner serves the predicted rows' verdicts.
             swapped = {message_id: self.verified_header(node, message_id)
                        for message_id in expected}
