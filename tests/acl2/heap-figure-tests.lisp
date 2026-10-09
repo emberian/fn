@@ -611,8 +611,9 @@
   (declare (xargs :mode :program))
   (let* ((decision (fn-heap-operation-decide action profile core nursery observations
                                              observed))
-         (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
-    (and (<= (fn-heap-store-need profile core used n m ou on
+         (d (* *fn-heap-mib* (fn-heap-decision-mb decision)))
+         (held (fn-heap-action-profile action profile observed)))
+    (and (<= (fn-heap-store-need held core used n m ou on
                                  (fn-heap-nursery-trigger d nursery))
              d)
          (<= d (fn-heap-machine-octets observations)))))
@@ -625,10 +626,16 @@
                                               observed))
                :heap)
         (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
-            (nfix (fn-bs-profile-max-history-octets profile)))
-        (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-        (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
-        (<= (nfix on) (fn-heap-open-records-bound profile observed))))
+            (nfix (fn-bs-profile-max-history-octets
+                   (fn-heap-action-profile action profile observed))))
+        (<= (nfix n) (nfix (fn-bs-profile-max-transactions
+                            (fn-heap-action-profile action profile observed))))
+        (<= (nfix ou) (fn-heap-open-octets-bound
+                       (fn-heap-action-profile action profile observed)
+                       (fn-heap-operation-observation action observed)))
+        (<= (nfix on) (fn-heap-open-records-bound
+                       (fn-heap-action-profile action profile observed)
+                       (fn-heap-operation-observation action observed)))))
 
 (defconst *hft-1000* '(2465160 . 1000))
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hft-prod-core*
@@ -1159,6 +1166,29 @@
                 (< (fn-heap-store-figure-octets d *hft-core* *hft-nursery* nil)
                    (fn-heap-store-live-figure-octets d *hft-core* *hft-nursery* nil)))))
 
+;; The read-only class: `status' of a store made for a larger machine (the
+;; scale profile) holds the store it observes, an empty one, so it is
+;; accepted on a machine the profile's bounds do not fit; the grows class
+;; (`post') of the same store and observation is refused there.
+(defconst *hft-scale-empty* '(4096 . 1))
+(assert! (equal (car (fn-heap-operation-decide :status *hft-scale* *hft-prod-core* *hft-nursery*
+                                               (list *hft-2g*) *hft-scale-empty*))
+                :heap))
+(assert! (equal (car (fn-heap-operation-decide :post *hft-scale* *hft-prod-core* *hft-nursery*
+                                               (list *hft-2g*) *hft-scale-empty*))
+                :refused))
+(assert! (equal (hft-st-hyps :status *hft-scale* *hft-prod-core* *hft-nursery* (list *hft-2g*)
+                             *hft-scale-empty* 4096 1 0 4096 1)
+                '(t t t t t t t)))
+(assert! (hft-st-conclusion :status *hft-scale* *hft-prod-core* *hft-nursery* (list *hft-2g*)
+                            *hft-scale-empty* 4096 1 0 4096 1))
+; Unobserved, a read-only command is sized as the profile's bounds: the same
+; as the grows class.
+(assert! (equal (fn-heap-operation-decide :status *hft-scale* *hft-prod-core* *hft-nursery*
+                                          (list *hft-2g*) nil)
+                (fn-heap-operation-decide :post *hft-scale* *hft-prod-core* *hft-nursery*
+                                          (list *hft-2g*) nil)))
+
 ;; The evidence package of the two store keystones (ruling 22): generated
 ;; teeth over the subject the host calls (host/native/heap.lisp
 ;; fnn-heap-reservation through fn-heap-reserve-operation-decide).
@@ -1167,18 +1197,19 @@
   :claim
   (let* ((decision (fn-heap-operation-decide action profile core nursery observations
                                              observed))
-         (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
+         (d (* *fn-heap-mib* (fn-heap-decision-mb decision)))
+         (held (fn-heap-action-profile action profile observed)))
     (((store-opening (not (fn-heap-storeless-action-p action)))
       (admitted (fn-bs-profile-admittedp profile))
       (accepted (equal (car decision) :heap))
       (used-within (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
-                       (nfix (fn-bs-profile-max-history-octets profile))))
-      (records-within (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile))))
+                       (nfix (fn-bs-profile-max-history-octets held))))
+      (records-within (<= (nfix n) (nfix (fn-bs-profile-max-transactions held))))
       (open-octets (<= (nfix ou) (fn-heap-open-octets-bound
-                                  profile (fn-heap-operation-observation action observed))))
+                                  held (fn-heap-operation-observation action observed))))
       (open-records (<= (nfix on) (fn-heap-open-records-bound
-                                   profile (fn-heap-operation-observation action observed)))))
-     (and (<= (fn-heap-store-need profile core used n m ou on
+                                   held (fn-heap-operation-observation action observed)))))
+     (and (<= (fn-heap-store-need held core used n m ou on
                                   (fn-heap-nursery-trigger d nursery))
               d)
           (<= d (fn-heap-machine-octets observations)))))
@@ -1199,7 +1230,7 @@
    (open-records ((observed '(0 . 0)) (ou 0) (on (* 20 *hft-t*)))))
   :mutations
   ((image-only-heap
-    (:conclusion (<= (fn-heap-store-need profile core used n m ou on
+    (:conclusion (<= (fn-heap-store-need held core used n m ou on
                                          (fn-heap-nursery-trigger d nursery))
                      (fn-heap-core-dynamic core)))
     () :fault "A heap of the image's dynamic content alone read as holding the store.")))
