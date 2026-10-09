@@ -1261,8 +1261,11 @@ class Node:
         startup refusal ("invalid runtime capture", cold-start 2026-10-04)
         went unseen by all of them.  A test whose subject needs a fixed heap
         opts out by name with Node(image_heap=REASON), or by setting
-        SBCL_USER_ARGS or FN_TEST_HEAP_MB itself; tools/scenario_suite.py
-        lists the opt-outs."""
+        SBCL_USER_ARGS naming a heap or FN_TEST_HEAP_MB itself;
+        tools/scenario_suite.py lists the opt-outs.  A stack-only
+        SBCL_USER_ARGS starts the image's own launcher, which decides the
+        heap by the same probe and runs the caller's stack on it
+        (packaging/launcher-decide.sh)."""
         if self.launcher and image is None:
             return self.argv(image, words), self.environment(env)
         given = dict(self.env)
