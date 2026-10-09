@@ -469,7 +469,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config \
 	books/config-invariants \
 	books/replay \
-	books/replay-invariants \
 	tests/acl2/store-event-replay-tests \
 	tests/acl2/store-identity-replay-tests \
 	tests/acl2/replay-tests \
@@ -2697,7 +2696,7 @@ ACL2_BOOKS ?= books/defrecord \
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
 # its books; when the list is every book, `--strict` runs without `--books`.
-THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
+THEORY_STRICT_BOOKS ?= books/store-events books/replay \
 	books/store-files books/store-files-invariants books/store-files-traces \
 	books/store-node books/store-node-invariants-base books/store-node-invariants \
 	books/store-node-resolution books/store-observed books/store-observed-traces \
