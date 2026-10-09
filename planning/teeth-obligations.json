@@ -12174,6 +12174,101 @@
    "registry": true
   },
   {
+   "book_digest": "d3f2068b88961d2d2cb8a47b82d1ab4678395ae72f270dbd5b8f53fff598d907",
+   "bounds": [],
+   "claim_digest": "112a2c0282c15b0d696560ad295bd35f50cd9bc65f76e305ea6e47d0a6fa48fb",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-mm-admitted-store-reopens",
+   "owed_met": null,
+   "owner_book": "tests/acl2/memory-model-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 4
+   },
+   "subject": "fn-mm-reopen-need",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "d3f2068b88961d2d2cb8a47b82d1ab4678395ae72f270dbd5b8f53fff598d907",
+   "bounds": [],
+   "claim_digest": "37430010ebd56d3cc82b685d5a4f42877cd5e85a3e72104b467d65bec90feaa9",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-mm-launch-holds-the-store-and-the-reservation",
+   "owed_met": null,
+   "owner_book": "tests/acl2/memory-model-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 1,
+    "reachable": 0
+   },
+   "subject": "fn-mm-launch-decide",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "d3f2068b88961d2d2cb8a47b82d1ab4678395ae72f270dbd5b8f53fff598d907",
+   "bounds": [],
+   "claim_digest": "cc9c353d190d91fa0f2b1f10c99bff36baefd4db67601af1bacec7e1ee7aafca",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-mm-launch-refuses-only-by-the-model",
+   "owed_met": null,
+   "owner_book": "tests/acl2/memory-model-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 2
+   },
+   "subject": "fn-mm-launch-decide",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "d3f2068b88961d2d2cb8a47b82d1ab4678395ae72f270dbd5b8f53fff598d907",
+   "bounds": [],
+   "claim_digest": "3d39a7a962efeeb6e682cc52a2cba64e138ca5c641d6786095718c5c27c7c46c",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-mm-need-within-the-sum",
+   "owed_met": null,
+   "owner_book": "tests/acl2/memory-model-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 3
+   },
+   "subject": "fn-mm-need",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "d3f2068b88961d2d2cb8a47b82d1ab4678395ae72f270dbd5b8f53fff598d907",
+   "bounds": [],
+   "claim_digest": "c0f4e6bcbf3dd9951f6ca990a71cbc70363a051e305a689b40f50789912de142",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-mm-sum-grows-with-the-store",
+   "owed_met": null,
+   "owner_book": "tests/acl2/memory-model-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-mm-sum",
+   "witness": "executable"
+  },
+  {
    "book": "books/moderation.lisp",
    "class": "hand",
    "critical": "authorization",
