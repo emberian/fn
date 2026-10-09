@@ -456,3 +456,4 @@ anything a book does not already decide.
 | `fn-saw-` | `served-auth-wire-bridge`, `tests/acl2/served-auth-wire-bridge-tests` | Served command framing and authentication hold composition (PKT-390) |
 
 | `fn-rip-` | `native-redeem-input` | Redeem client credential and reply admission; actual native input and wire constructor subjects. |
+| `fn-rtc-` | `runtime-contract` | The runtime contract (RUNTIME-MODEL section 1): actions and completions keyed by (kind slot incarnation), the slot table with incarnations and drain-before-retire, the buffer pool in three ownership states over handles (h generation off len), the outstanding-use table, the charged work budget, and the commit observer, over a constrained instance machine `fn-rtc-m-step` |
