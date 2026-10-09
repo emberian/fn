@@ -1283,6 +1283,13 @@ class AddedRootTests(TrainBase):
         with self.assertRaises(train.TrainError):
             train.makefile_root_list("NOTHING = 1\n")
 
+    def test_no_makefile_selects_nothing_and_a_new_makefile_selects_every_root(self):
+        self.assertEqual(train._added_roots(train.Train(self.work)), [])
+        (self.work / "Makefile").write_text(self.MAKEFILE)
+        self.commit(self.work, "first Makefile")
+        self.assertEqual(train._added_roots(train.Train(self.work)),
+                         ["books/a", "books/b", "tests/acl2/b-tests"])
+
     def test_a_root_listed_by_the_train_is_selected_and_a_dropped_one_is_not(self):
         self.advance_dev({"Makefile": self.MAKEFILE})
         sh(self.work, "git", "fetch", "-q", "origin")
