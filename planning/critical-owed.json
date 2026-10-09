@@ -2566,11 +2566,6 @@
    "item": "PRF-1350",
    "book": "books/heap-figure.lisp"
   },
-  "fn-heap-operation-decide-holds-the-store": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-figure.lisp"
-  },
   "fn-heap-operation-decide-of-a-serve-action-is-heap-decide": {
    "class": "resource-reservation",
    "item": "PRF-1350",
