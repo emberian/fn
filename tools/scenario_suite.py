@@ -117,20 +117,26 @@ def image_reads(root: pathlib.Path, module: str, text: str) -> list[str]:
 
 
 HEAP_OPTOUT = re.compile(r"image_heap=|[\"']SBCL_USER_ARGS[\"']|[\"']FN_TEST_HEAP_MB[\"']")
+# A line whose SBCL_USER_ARGS names only the control stack keeps the decided
+# heap (packaging/launcher-decide.sh composes it after the decision), so it
+# chooses no heap of its own.
+STACK_ONLY = re.compile(r"[\"']SBCL_USER_ARGS[\"']\s*:\s*[\"']--control-stack-size [^\"']*[\"']")
 
 
 def heap_optouts(root: pathlib.Path = ROOT) -> list[str]:
     """Native test lines that run an owner at a heap of their own choosing
     instead of the installed launcher's decided figure (tests/native_harness.py
-    Node.launch): Node(image_heap=REASON), or SBCL_USER_ARGS / FN_TEST_HEAP_MB
-    set by the test.  The decided-launch ruling (2026-10-04) has them counted."""
+    Node.launch): Node(image_heap=REASON), or SBCL_USER_ARGS naming a heap /
+    FN_TEST_HEAP_MB set by the test (a stack-only SBCL_USER_ARGS keeps the
+    decided heap).  The decided-launch ruling (2026-10-04) has them counted."""
     out = []
     for path in sorted((root / "tests").glob("test_*.py")):
         if "native" not in path.name and not path.name.startswith("test_bp_"):
             continue
         for number, line in enumerate(path.read_text(encoding="utf-8", errors="replace")
                                       .splitlines(), 1):
-            if HEAP_OPTOUT.search(line) and not line.lstrip().startswith("#"):
+            if (HEAP_OPTOUT.search(line) and not line.lstrip().startswith("#")
+                    and not STACK_ONLY.search(line)):
                 out.append(f"{path.relative_to(root)}:{number}: {line.strip()[:120]}")
     return out
 
