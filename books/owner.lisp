@@ -416,68 +416,9 @@
 (in-theory (disable fn-own-sub-queued-decision))
 
 ; -----------------------------------------------------------------------------
-; The committed view record:
-;   (version frontier archive verdicts buckets withdrawals raw withdrawn
-;    keyring)
-; ARCHIVE is the state the view serves: the acceptance state of its prefix
-; with the withdrawn targets out of its article list (C3, D29,
-; `fn-ctl-visible-state').  WITHDRAWALS are the records decided for the
-; cancels among RAW, the acceptance archive's own article list, which the
-; next refresh compares with the grown archive to extend the visible list
-; incrementally (`fn-ctl-refresh-visible').
+; The committed view record: books/owner-view-record.lisp.
+(include-book "owner-view-record")
 
-; WITHDRAWN is the list of RAW's articles the view does not serve, carried
-; by `fn-ctl-refresh-withdrawn' (books/control-served.lisp) so a reader's
-; `423 withdrawn', `430 withdrawn' and `HDR :fn-control' read it without
-; walking RAW (control-c3e).
-(defun fn-own-view-shapep (x)
-  (declare (xargs :guard t))
-  (and (true-listp x) (equal (len x) 9)))
-(defun fn-own-view-version (v)
-  (declare (xargs :guard t))
-  (mbe :logic (car v) :exec (fn-ag-car v)))
-(defun fn-own-view-frontier (v)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr v)) :exec (fn-ag-car (fn-ag-cdr v))))
-(defun fn-own-view-archive (v)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr v))) :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr v)))))
-(defun fn-own-view-verdicts (v)
-  (declare (xargs :guard t))
-  (mbe :logic (car (cdr (cdr (cdr v))))
-       :exec (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v))))))
-(defun fn-own-view-group-index (v)
-  (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v))))))
-(defun fn-own-view-withdrawals (v)
-  (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v)))))))
-(defun fn-own-view-raw (v)
-  (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                                         (fn-ag-cdr v))))))))
-(defun fn-own-view-withdrawn (v)
-  (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-                                                         (fn-ag-cdr (fn-ag-cdr v)))))))))
-; KEYRING is the Store's keyring snapshots (`fn-sn-keyring-snapshots') at
-; the refresh that committed the view: the node's keyring view a reader of
-; this view is told the current enrollment against (HDR :fn-enrollment,
-; books/nntp-enrollment.lisp).  Pinned with the view, like the verdicts.
-(defun fn-own-view-keyring (v)
-  (declare (xargs :guard t))
-  (fn-ag-car (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr
-               (fn-ag-cdr (fn-ag-cdr (fn-ag-cdr v))))))))))
-(defun fn-own-view-make-visible
-    (version frontier archive verdicts buckets withdrawals raw withdrawn
-             keyring)
-  (declare (xargs :guard t))
-  (list version frontier archive verdicts buckets withdrawals raw
-        withdrawn keyring))
-(defun fn-own-view-make-group-indexed
-    (version frontier archive verdicts buckets)
-  (declare (xargs :guard t))
-  (list version frontier archive verdicts buckets nil nil nil nil))
 ; The control pin a connection opened or advanced on this view carries: the
 ; withdrawn list, the withdrawal records and the keyring view.
 (defun fn-own-view-control (v)

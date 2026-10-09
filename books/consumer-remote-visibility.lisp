@@ -5,6 +5,7 @@
 (include-book "consumer-remote-scan")
 (include-book "control-authority")
 (include-book "peer-inbound")
+(include-book "owner-view-record") ; the view's fields, by name
 
 ; Fixed10: key, event, its article Message-ID, visible suffix, withdrawn root,
 ; withdrawn suffix, withdrawal-record suffix, phase, selected target.
@@ -16,10 +17,10 @@
  (declare (xargs :guard t))
  (let ((article (fn-crps-row-article row)))
   (if (not article) '(:excluded :nonarticle)
-   (let ((withdrawn (fn-cp-nth 8 current-view)))
+   (let ((withdrawn (fn-own-view-withdrawn current-view)))
     (list :yield (fn-crv-state key row (fn-record-msgid article)
-      (fn-state-articles (fn-cp-nth 2 current-view)) withdrawn withdrawn
-      (fn-cp-nth 6 current-view) :own-withdrawn nil))))))
+      (fn-state-articles (fn-own-view-archive current-view)) withdrawn withdrawn
+      (fn-own-view-withdrawals current-view) :own-withdrawn nil))))))
 
 ; One maintained view row or withdrawal cell per tick; no FnHist prefix walk,
 ; whole state validator, arbitrary window, or inference from catalog gaps.

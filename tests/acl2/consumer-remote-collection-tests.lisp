@@ -12,7 +12,7 @@
         (scanner (fn-crps-state '(source) nil nil '((97) (98)) 1 3 3 :read nil nil nil))
         (cfg (fn-inj-make-config-full t nil '((97) (98)) 4096
                (list nil nil nil '(("a" "a" "*" 3) ("a" "b" "*" 0))) nil))
-        (view (list 3 3 (fn-make-state '("a" "b") nil nil 3 nil nil) nil nil
+        (view (fn-own-view-make-visible 3 3 (fn-make-state '("a" "b") nil nil 3 nil nil) nil nil
                '((:withdrawal "<a>" "<cause>" nil nil 0 nil)
                  (:withdrawal "<closed>" "<cause>" nil nil 0 nil)
                  (:withdrawal "<b>" "<cause>" nil nil 0 nil)) nil (list a closed b) nil)))

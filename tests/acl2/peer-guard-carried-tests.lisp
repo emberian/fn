@@ -63,10 +63,10 @@
 (include-book "arena-lift")
 ;; The payloads the arena holds at handles 0, 1, ...: none (no byte is read here).
 (defconst *sr-arena* nil)
-(bpr-lift fn-scar-peer-step-pinned 11)
-(bpr-lift pgc-arm 4)
+(bpr-lift fn-scar-peer-step-pinned 10)
+(bpr-lift pgc-arm 3)
 (bpr-lift pgc-ref 2)
-(bpr-lift pgc-scar 5)
+(bpr-lift pgc-scar 4)
 (assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "IHAVE <a1@example.invalid>") *pix-t-arts*)
                      (list (pt-reply "435 duplicate"))))
 (assert-event (equal (in-arena-pgc-scar *sr-arena* *pt-ps1* *pt-node1* (pt-cmd "CHECK <a1@example.invalid>") *pix-t-arts*)
