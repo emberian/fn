@@ -31,6 +31,9 @@
 (defun fn-arena-count (arena) (length arena))
 (defun fn-arena-payload-len (h arena) (length (nth h arena)))
 (defun fn-arena-get (h at arena) (aref (nth h arena) at))
+;; books/payload-arena.lisp fn-arena-get-span: the list of N octets from AT
+;; (the ARTICLE render reads a span at a time since 130529298).
+(defun fn-arena-get-span (h at n arena) (coerce (subseq (nth h arena) at (+ at n)) 'list))
 (defun fn-article-payload (article) (second article))
 (defun fn-article-msgid (article) (first article))
 ;; ACL2 primitive the shared article source now calls (books/article-stream.lisp).

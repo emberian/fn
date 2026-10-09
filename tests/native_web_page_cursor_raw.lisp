@@ -40,23 +40,33 @@
 (defun fn-octets-get (at in) (aref (svref in 0) at))
 (defun fn-octets-len (in) (svref in 1))
 (defun fn-oct-slice-list (s e in) (coerce (fnn-web-slice in s e) 'list))
+(load "tests/raw_def_loop.lisp")
 (defun load-page-forms (path &optional wanted)
-  (with-open-file (stream path)
-    (loop for f = (read stream nil :eof) until (eq f :eof)
-          when (and (consp f) (member (car f) '(defun defconst))
-                    (or (null wanted) (member (second f) wanted))) do
-          (eval (if (eq (car f) 'defconst) (cons 'defparameter (cdr f))
-                  (destructuring-bind (name args &rest body) (cdr f)
-                    `(defun ,name ,args ,@(remove-if
-                      (lambda (x) (and (consp x) (eq (car x) 'declare)
-                                       (consp (cadr x)) (eq (caadr x) 'xargs))) body))))))))
+  ;; defun, defconst and def-loop (expanded by the generator itself,
+  ;; tests/raw_def_loop.lisp); a WANTED name the source does not define is
+  ;; refused, never skipped (ef2747aae made fn-wr-pct-encode a def-loop and
+  ;; the defun-only loader dropped it silently).
+  (let ((missing (copy-list wanted)))
+    (with-open-file (stream path)
+      (loop for f = (read stream nil :eof) until (eq f :eof)
+            when (and (consp f) (member (car f) '(defun defconst def-loop))
+                      (or (null wanted) (member (second f) wanted))) do
+            (setf missing (remove (second f) missing))
+            (case (car f)
+              (def-loop (raw-def-loop-load path (second f)))
+              (defconst (eval (cons 'defparameter (cdr f))))
+              (t (eval (destructuring-bind (name args &rest body) (cdr f)
+                         `(defun ,name ,args ,@(remove-if
+                           (lambda (x) (and (consp x) (eq (car x) 'declare)
+                                            (consp (cadr x)) (eq (caadr x) 'xargs))) body))))))))
+    (assert (null missing) () "load-page-forms: ~a defines none of ~s" path missing)))
 (load-page-forms "books/octet-text.lisp"
  '(fn-ot-digitp fn-ot-upperp fn-ot-lowerp fn-ot-alphap fn-ot-hex-value
    fn-ot-hex-digit-upper fn-ot-downcase-octet))
 (defun fn-ot-downcase (xs) (mapcar #'fn-ot-downcase-octet xs))
 (load-page-forms "books/web-2047.lisp")
 (load-page-forms "books/web-render.lisp"
- '(fn-wr-escape-octet fn-wr-escape fn-wr-unreservedp fn-wr-pct-encode-loop
+ '(fn-wr-escape-octet fn-wr-escape fn-wr-unreservedp
    fn-wr-pct-encode fn-wr-unstuff fn-wr-piece fn-wr-seq))
 (load-page-forms "books/web-page-cursor.lisp")
 (load-page-forms "host/web-host.lisp" '(fn-web-host-page-cursor fn-web-host-page-step))
