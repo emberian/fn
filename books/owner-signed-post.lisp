@@ -290,7 +290,7 @@
            :in-theory (e/d (fn-own-step fn-own-complete fn-own-refresh)
                            (fn-sn-finish fn-sn-completion-enabledp
                             fn-own-view-make-group-indexed fn-own-conn-make-group-indexed
-                            fn-served-open-group-indexed fn-midx-refresh fn-gidx-build)))))
+                            fn-served-open-group-indexed fn-gidx-build)))))
 
 ; After the records flip the completion record is the retained ROW of the
 ; composite E the POST constructed (books/held-record.lisp fn-hstxa-p); the
@@ -374,7 +374,7 @@
                             fn-own-outcome-completion fn-own-completion-consumedp)
                            (fn-sn-finish fn-sn-completion-enabledp
                             fn-own-view-make-group-indexed fn-own-conn-make-group-indexed
-                            fn-served-open-group-indexed fn-midx-refresh fn-gidx-build)))))
+                            fn-served-open-group-indexed fn-gidx-build)))))
 
 ; -----------------------------------------------------------------------------
 ; The refused arm.  A present carrier the plan refuses is never the unsigned

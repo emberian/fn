@@ -30,7 +30,7 @@
   :hints (("Goal" :in-theory (e/d (fn-ccar-ocfg-prepare-identity fn-ocfg-with-owner fn-own-refresh)
                                   (fn-ccar-sn-prepare-identity fn-own-store-idlep
                                    fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-ctl-visible-state-of)))))
 
 (defthm fn-sjh-ccar-ocfg-prepare-identity-owner
@@ -43,7 +43,7 @@
   :hints (("Goal" :in-theory (e/d (fn-ccar-ocfg-prepare-identity fn-ocfg-with-owner fn-own-refresh)
                                   (fn-ccar-sn-prepare-identity fn-own-store-idlep
                                    fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-ctl-refresh-withdrawn fn-midx-refresh fn-gidx-refresh
+                                   fn-ctl-refresh-withdrawn fn-gidx-refresh
                                    fn-ctl-visible-state-of)))))
 
 (defthm fn-sjh-identity-prepared-next
@@ -260,8 +260,7 @@
              (fn-sjh-okp o2 pc arena2 fn-cat)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-sjh-okp fn-sjh-versionsp-is-versions-okp fn-sjh-invp-arena-free
-                                        fn-sjh-historyp-of-same-view-and-records
-                                        fn-sjh-indexedp-of-same-view fn-sjh-identity-row-of-composite
+                                        fn-sjh-historyp-of-same-view-and-records fn-sjh-identity-row-of-composite
                                         fn-sjh-ocl-facts-for-prepare)
                                       (theory 'minimal-theory))
            :use ((:instance fn-sjh-identity-prepared-staging (h (fn-arena-count fn-arena)))
@@ -315,8 +314,7 @@
              (fn-sjh-okp o2 nil fn-arena fn-cat)))
   :hints (("Goal" :do-not-induct t
            :in-theory (union-theories '(fn-sjh-okp fn-sjh-versionsp-is-versions-okp
-                                        fn-sjh-historyp-of-same-view-and-records
-                                        fn-sjh-indexedp-of-same-view fn-sjh-ocl-facts-for-prepare)
+                                        fn-sjh-historyp-of-same-view-and-records fn-sjh-ocl-facts-for-prepare)
                                       (theory 'minimal-theory))
            :use ((:instance fn-sjh-identity-prepared-staging (h (fn-arena-count fn-arena)))
                  (:instance fn-sjh-stxk-row-facts

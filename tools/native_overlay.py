@@ -849,9 +849,11 @@ def cmd_live(args) -> int:
     image = Path(args.image).resolve()
     config = root / "fn.toml"
     if not config.is_file():
-        with socketlib.socket() as sock:
-            sock.bind(("127.0.0.1", 0))
-            port = sock.getsockname()[1]
+        try:
+            from tools import ports
+        except ImportError:  # run as tools/native_overlay.py
+            import ports
+        port = ports.reserve()  # NATIVE-HARNESS-PORT-RACE
         config.write_text(f'[store]\npath = "{root}/store"\n[listener]\nhost = "127.0.0.1"\n'
                           f'port = {port}\n[control]\npath = "{root}/control.sock"\n')
         init = subprocess.run([str(image), "--fn", "operator", str(config), "init", "--budget",

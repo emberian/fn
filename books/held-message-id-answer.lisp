@@ -16,7 +16,7 @@
 ; The subject is what the host calls: host/native/owner.lisp `fnn-owner-attempt'
 ; reaches `fn-store-existing-action' (books/store-intern.lisp) through
 ; host/owner-host.lisp `fn-owner-existing-action-buffer' / `fn-pidx-existing-
-; action' (fn-pidx-existing-action-is-store-existing-action), and the
+; action-cat' (fn-pidx-existing-action-cat-is-store-existing-action), and the
 ; carried-signature ingress through `fn-owner-existing-action'.  The Store
 ; transition is `fn-sn-finish' (the owner's carried commit fn-ccar-sn-finish
 ; equals it, fn-ccar-sn-finish-is-sn-finish).  Its only hypothesis is that

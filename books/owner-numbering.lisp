@@ -331,7 +331,7 @@
            (equal (fn-state-nexts (fn-own-view-archive (fn-own-view (fn-own-refresh o))))
                   (fn-state-nexts (fn-node-acceptance (fn-sn-node (fn-own-store o)))))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-own-view-version fn-own-view-archive fn-own-view-raw fn-own-view-make-visible) (fn-own-store-idlep fn-midx-refresh fn-gidx-build fn-ctl-refresh-visible fn-ctl-refresh-withdrawals))))))
+  :hints (("Goal" :in-theory (e/d (fn-own-refresh fn-own-view-version fn-own-view-archive fn-own-view-raw fn-own-view-make-visible) (fn-own-store-idlep fn-gidx-build fn-ctl-refresh-visible fn-ctl-refresh-withdrawals))))))
 
 (local (defthm fn-own-writer-step-view-is-kept-or-the-idle-node
   (implies (fn-ocfg-writer-eventp event)
@@ -411,7 +411,7 @@
                                    (ws (fn-own-view-withdrawals view))
                                    (verdicts (fn-own-view-verdicts view))))
            :in-theory (e/d (fn-own-view-okp fn-own-prefix-archive fn-ctl-projectionp)
-                           (fn-sf-replay-node fn-midx-correspondencep fn-gidx-build
+                           (fn-sf-replay-node fn-gidx-build
                             fn-ctl-visible-state fn-ctl-subseqp fn-ctl-visible-state-is-a-projection))))))
 
 (local (defthm fn-own-related-node-is-statep

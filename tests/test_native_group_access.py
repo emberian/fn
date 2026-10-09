@@ -275,3 +275,7 @@ class NativeGroupAccessTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+# Critical served path: fn-gacc-grow is reached by fn-gacc-prepare on the
+# restricted view; fn-av-scr-auth-delegate and fn-av-scr-dispatch-core answer
+# the restricted GROUP/ARTICLE commands in test_two_accounts_one_private_group.

@@ -456,3 +456,7 @@ class TransitCommandRows(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+# Critical POST path: fn-pidx-view-okp is the prepare guard established by
+# the carried owner relation; fn-own-outcome is reached through fn-own-step
+# when fnn-owner-deliver consumes the completion (240 or uncertain).

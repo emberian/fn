@@ -4,6 +4,9 @@
 ;    `defabsstobj' books/pagestore-words.lisp wrote out by hand before the
 ;    generator (quoted below as it stood at 0566eef95): the generator
 ;    replaced the twin without changing what the page store's digest buffer is.
+;    Since ff65b80a2 the four exports a span loop calls per octet (len, get,
+;    append-octet, append-word) execute their `defun-inline' twins
+;    (books/octets-stobj.lisp), the only change to the quoted form.
 ; 2. A fresh instance runs: append a little-endian word, read it back as the
 ;    word, as the octets, and through the congruent `fn-octets' reader
 ;    (a function over `fn-octets' is applied to the clone).
@@ -20,11 +23,11 @@
            :foundation fn-octets$c
            :recognizer (fn-octets-pg-p :logic fn-octets$ap :exec fn-octets$cp)
            :creator (create-fn-octets-pg :logic create-fn-octets$a :exec create-fn-octets$c)
-           :exports ((fn-octets-pg-len :logic fn-octets$a-len :exec fn-octets$c-len)
-                     (fn-octets-pg-get :logic fn-octets$a-get :exec fn-octets$c-get)
+           :exports ((fn-octets-pg-len :logic fn-octets$a-len :exec fn-octets$c-len$inline)
+                     (fn-octets-pg-get :logic fn-octets$a-get :exec fn-octets$c-get$inline)
                      (fn-octets-pg-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
                      (fn-octets-pg-append-octet :logic fn-octets$a-append-octet
-                                                :exec fn-octets$c-append-octet :protect t)
+                                                :exec fn-octets$c-append-octet$inline :protect t)
                      (fn-octets-pg-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
                      (fn-octets-pg-reserve :logic fn-octets$a-reserve :exec fn-octets$c-reserve
                                            :protect t)
@@ -37,7 +40,7 @@
                                                :exec fn-octets$c-append-back :protect t)
                      (fn-octets-pg-get-word :logic fn-octets$a-get-word :exec fn-octets$c-get-word)
                      (fn-octets-pg-append-word :logic fn-octets$a-append-word
-                                               :exec fn-octets$c-append-word :protect t))
+                                               :exec fn-octets$c-append-word$inline :protect t))
            :congruent-to fn-octets)))
 
 (def-buffer dbt-buf :view t)

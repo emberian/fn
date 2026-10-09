@@ -1,0 +1,15 @@
+{
+ "category": "extraction",
+ "file": "tools/extract/faults_diff.py",
+ "id": "EXTRACT-FAULTS-DECIDED-HEAP",
+ "notes": [
+  "10-09 04:00 2026-10-09 builder-B lane b-corelaunch (coordinator ruling a): fn-core's launcher and bound_launch decide the heap per command. Extraction gate at b3e7263c7 PASS, faults 11 cases agree (hbox:/tank/fn/scratch/b-corelaunch/extract-b3e7263c7/run.log)."
+ ],
+ "owner": "builder-B",
+ "severity": "high",
+ "slice": "extraction",
+ "source": "N extraction comparison at 7c3940e6e, hbox:/tank/fn/scratch/n-train54/extract-7c3940e6e/run2.log; EXTRACTION-PROGRAM-20261007.md open item",
+ "state": "landed",
+ "title": "extraction gate step 6 (faults_diff.py) starts both sides under a fixed heap below the image's decided run figure, which s-admit-reopen raised to the full-store figure: 4 of 11 fault cases are refused at cold start",
+ "updated": "2026-10-09T08:00:22Z"
+}

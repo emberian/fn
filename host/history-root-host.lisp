@@ -293,7 +293,7 @@
 ; rebuilt capture's own records a chunk per call; together they are the
 ; keyed open over the whole list (books/reclaim-chunked-seal.lisp KEYSTONE
 ; fn-rcw-load-chunks-keyed-is-keyed-load).  Availability is each predicted
-; row's decided facts (fn-orcs-held-of), never an arena read.
+; row's decided facts (fn-intern-row-at), never an arena read.
 (defun fn-owner-orcp-load-catalog-begin (key fn-cat)
   (declare (xargs :stobjs fn-cat :mode :program))
   (let ((fn-cat (fn-cat-clear-keyed key fn-cat)))

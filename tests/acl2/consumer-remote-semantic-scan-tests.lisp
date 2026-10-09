@@ -10,7 +10,8 @@
  (fn-inj-make-config-full t nil '((97) (98)) 4096 (list nil nil nil table) nil))
 (defun fn-crm-test-view (visible withdrawn records)
  (declare (xargs :guard t))
- (list 3 3 (fn-make-state '("a" "b") nil visible 3 nil nil) nil nil nil records nil withdrawn nil))
+ (fn-own-view-make-visible 3 3 (fn-make-state '("a" "b") nil visible 3 nil nil)
+                           nil nil records nil withdrawn nil))
 (defun fn-crm-test-run (fuel answer key scope-key)
  (declare (xargs :guard (natp fuel) :measure (nfix fuel)))
  (if (or (zp fuel) (not (eq (fn-cp-nth 0 answer) :yield))) answer

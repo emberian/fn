@@ -84,7 +84,7 @@
                          (fn-own-conn-wire conn) (fn-own-conn-session conn)
                          (fn-own-conn-archive conn) (fn-own-conn-config conn)
                          (fn-own-conn-observation conn) (fn-own-clock o)
-                         (fn-own-conn-verdicts conn) (fn-own-conn-index conn)
+                         (fn-own-conn-verdicts conn)
                          (fn-own-conn-group-index conn) (fn-own-conn-control conn))
                         :durable)))
                ; and the octets the host writes for it are the 240 line

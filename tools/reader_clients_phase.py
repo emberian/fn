@@ -57,9 +57,12 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 
 def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        return probe.getsockname()[1]
+    """A listener port from tools/ports.py (NATIVE-HARNESS-PORT-RACE)."""
+    try:
+        from tools import ports
+    except ImportError:  # run as tools/<script>.py: tools/ is on sys.path
+        import ports
+    return ports.reserve()
 
 
 def run(command, **kwargs):

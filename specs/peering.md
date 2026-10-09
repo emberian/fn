@@ -2308,7 +2308,7 @@ account row in place. The credential file's `signing` fields stay the
 operator's statement: the owner publishes them at start, and again when
 `operator CONFIG principal bind|unbind` (after rewriting the file) sends
 control request 14 to the running owner, each time through the live
-reconfiguration (`fnn-owner-live-reconfigure-locked`, `fn-ocl-publish`) with
+reconfiguration (`fnn-owner-live-reconfigure`, `fn-ocl-publish`) with
 ACL2's plan `fn-lb-sync-plan` (one delta per login that differs, in records of
 at most 64). The verb answers `applied` only after the owner published it
 (`fn-native-auth-admin-effect-word`). The gate the host calls

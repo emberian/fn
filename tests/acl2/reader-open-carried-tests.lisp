@@ -32,9 +32,6 @@
 (assert-event (fn-rdc-readyp *rdc-t-sel*))
 (assert-event (fn-statep (fn-rdc-archive *rdc-t-sel*)))
 (assert-event (equal (fn-rdc-verdicts *rdc-t-sel*) *rdc-t-verdicts*))
-(assert-event (equal (fn-rdc-index *rdc-t-sel*)
-                     (fn-midx-build (fn-state-articles *rdc-t-archive*))))
-(assert-event (consp (fn-rdc-index *rdc-t-sel*)))
 (defconst *rdc-t-opened*
   (fn-rdc-reset *rdc-t-sel* 510 8192 *rdc-t-config* nil nil (fn-auth-open-config)))
 (assert-event
@@ -48,7 +45,6 @@
 (defconst *rdc-t-conn* (fn-served-result-conn *rdc-t-opened*))
 (assert-event (consp (fn-served-reply-octets (fn-served-result-effects *rdc-t-opened*))))
 (assert-event (equal (fn-served-conn-archive *rdc-t-conn*) *rdc-t-archive*))
-(assert-event (equal (fn-served-conn-index *rdc-t-conn*) (fn-rdc-index *rdc-t-sel*)))
 (assert-event (equal (fn-served-conn-verdicts *rdc-t-conn*) *rdc-t-verdicts*))
 (assert-event (equal (fn-nntp-session-projected
                       (fn-auth-reader-session (fn-served-conn-session *rdc-t-conn*)))
@@ -69,18 +65,10 @@
       (eq (symbol-class 'fn-rdc-selection (w state)) :common-lisp-compliant)))
 
 ; -----------------------------------------------------------------------------
-; Hypothesis removal, fn-rdc-served-open-is-served-open.
-; (1) Without the index hypothesis (fn-statep holds; the index is not the
-; archive's trie): the connection pins a different index.
-(assert-event (fn-statep *rdc-t-archive*))
-(assert-event (not (equal nil (fn-midx-build (fn-state-articles *rdc-t-archive*)))))
-(assert-event
- (not (equal (fn-rdc-served-open *rdc-t-archive* nil 510 8192 *rdc-t-config* nil nil
-                                 (fn-auth-open-config))
-             (fn-served-open *rdc-t-archive* 510 8192 *rdc-t-config* nil nil
-                             (fn-auth-open-config)))))
-; (2) Without fn-statep (corrupted-state witness: an article list the
-; acceptance recogniser refuses; the index hypothesis holds): the reference
+; Hypothesis removal, fn-rdc-served-open-is-served-open (its index hypothesis
+; went with the trie).
+; Without fn-statep (corrupted-state witness: an article list the
+; acceptance recogniser refuses): the reference
 ; records the projection as failed, the carried open, which took it from a
 ; selection, does not.
 (defconst *rdc-t-bad*
@@ -90,7 +78,7 @@
                  (fn-state-next-txid *rdc-t-archive*) nil nil))
 (assert-event (not (fn-statep *rdc-t-bad*)))
 (assert-event
- (not (equal (fn-rdc-served-open *rdc-t-bad* (fn-midx-build (fn-state-articles *rdc-t-bad*))
+ (not (equal (fn-rdc-served-open *rdc-t-bad*
                                  510 8192 *rdc-t-config* nil nil (fn-auth-open-config))
              (fn-served-open *rdc-t-bad* 510 8192 *rdc-t-config* nil nil
                              (fn-auth-open-config)))))
@@ -123,3 +111,27 @@
 (assert-event (not (fn-node-statep '(not a node))))
 (thm (not (fn-node-statep (fn-replay-advance-txid '(not a node) k)))
      :hints (("Goal" :in-theory (enable fn-replay-advance-txid))))
+
+(include-book "../../books/defkeystone")
+;; Mutation of selection: the ready record accidentally drops the verdicts.
+(defun rdct-selection-no-verdicts (archive verdicts)
+  (declare (ignore verdicts))
+  (if (fn-nntp-projectionp archive) (list :ready archive nil) :refused))
+(defteeth fn-rdc-selection-establishes
+ :subject fn-rdc-selection
+ :claim (((ready (fn-rdc-readyp (fn-rdc-selection archive verdicts))))
+         (and (fn-nntp-projectionp (fn-rdc-archive (fn-rdc-selection archive verdicts)))
+              (fn-statep (fn-rdc-archive (fn-rdc-selection archive verdicts)))
+              (equal (fn-rdc-archive (fn-rdc-selection archive verdicts)) archive)
+              (equal (fn-rdc-verdicts (fn-rdc-selection archive verdicts)) verdicts)))
+ :witness ((archive *rdc-t-archive*) (verdicts *rdc-t-verdicts*))
+ :breaks ((ready ((archive *rdc-t-bad*))))
+ :mutations ((drop-verdicts
+              (:conclusion
+               (and (fn-nntp-projectionp (fn-rdc-archive (rdct-selection-no-verdicts archive verdicts)))
+                    (fn-statep (fn-rdc-archive (rdct-selection-no-verdicts archive verdicts)))
+                    (equal (fn-rdc-archive (rdct-selection-no-verdicts archive verdicts)) archive)
+                    (equal (fn-rdc-verdicts (rdct-selection-no-verdicts archive verdicts)) verdicts)))
+              ((archive *rdc-t-archive*) (verdicts *rdc-t-verdicts*))
+              :fault "selection publishes the archive without its verdict pin")))
+(defteeth-check (fn-rdc-selection-establishes))

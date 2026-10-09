@@ -1,0 +1,14 @@
+{
+ "category": "tests",
+ "file": "tests/acl2/heap-reservation-tests.lisp",
+ "id": "HEAP-RESERVATION-TEST-PINNED-FIGURE",
+ "note": "Baseline exception: dev's own red, measured on dev by the train-64 certify, missed by the freeze baseline (the test was not in the far-consumer roots and no train reached it). Not added as a known-reds row: the fix lands in the same train, so the row would be added and retired together. Repair (D27): the test derives the run's figure from books/heap-figure.lisp (fn-heap-mb-of of fn-heap-store-figure-octets at observed NIL) and checks it is above the empty store's.",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "medium",
+ "slice": "memory",
+ "source": "train 64 affected-closure certify (build/train/logs/t64-certify.out); traced by Builder C to 337b6c3f7 and a521adb32",
+ "state": "landed",
+ "title": "tests/acl2/heap-reservation-tests pinned the small preset's run heap at 582 MB; since 337b6c3f7 (s-admit-reopen: a run is sized for the full store) the tree evaluates 724 MB and nothing recertified the test, so dev carried a red the freeze baseline did not record",
+ "updated": "2026-10-09T10:10:33Z"
+}

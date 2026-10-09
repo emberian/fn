@@ -34,7 +34,6 @@
                             (fn-served-conn-observation conn)
                             (fn-served-conn-injection conn)
                             (fn-served-conn-verdicts conn)
-                            (fn-served-conn-index conn)
                             (fn-served-conn-group-index conn)
                             (fn-served-conn-control conn)
                             (fn-served-conn-pinned conn)
@@ -55,7 +54,6 @@
        (equal (fn-served-conn-observation (fn-scl-with-live conn live)) (fn-served-conn-observation conn))
        (equal (fn-served-conn-injection (fn-scl-with-live conn live)) (fn-served-conn-injection conn))
        (equal (fn-served-conn-verdicts (fn-scl-with-live conn live)) (fn-served-conn-verdicts conn))
-       (equal (fn-served-conn-index (fn-scl-with-live conn live)) (fn-served-conn-index conn))
        (equal (fn-served-conn-group-index (fn-scl-with-live conn live)) (fn-served-conn-group-index conn))
        (equal (fn-served-conn-control (fn-scl-with-live conn live)) (fn-served-conn-control conn))
        (equal (fn-served-conn-pinned (fn-scl-with-live conn live)) (fn-served-conn-pinned conn))
@@ -64,11 +62,11 @@
 
 (defthm fn-scl-with-live-of-make-conn-live
   (equal (fn-scl-with-live (fn-served-make-conn-live wire session archive config observation
-                                                     injection verdicts index buckets
+                                                     injection verdicts buckets
                                                      control pinned live0)
                            live)
          (fn-served-make-conn-live wire session archive config observation
-                                   injection verdicts index buckets
+                                   injection verdicts buckets
                                    control pinned live))
   :hints (("Goal" :in-theory (enable fn-scl-with-live))))
 
@@ -336,10 +334,8 @@
                    (fn-own-tls-served-conn (fn-ocfg-owner oc) conn)
                    (fn-oct-slice-list i end fn-octets) fn-arena)
                   (fn-ocl-relation oc)
-                  (fn-scar-view-indexedp (fn-ocfg-owner oc))
                   (fn-scr-owner-catalogp (fn-ocfg-owner oc) id fn-arena fn-cat)
                   (fn-ocl-relation oc2)
-                  (fn-scar-view-indexedp (fn-ocfg-owner oc2))
                   (fn-scr-owner-catalogp (fn-ocfg-owner oc2) id fn-arena fn-cat)
                   (fn-scol-okp fn-arena fn-cat)
                   (natp i) (natp end))

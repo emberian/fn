@@ -156,22 +156,12 @@
    "item": "PRF-1348",
    "book": "books/payload-arena.lisp"
   },
-  "fn-arena-seal-buffer{correspondence}": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/payload-arena.lisp"
-  },
   "fn-arena-seal-extent-payload": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/payload-arena.lisp"
   },
   "fn-arena-seal-keeps-sealed": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/payload-arena.lisp"
-  },
-  "fn-arena-seal-list{correspondence}": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/payload-arena.lisp"
@@ -187,11 +177,6 @@
    "book": "books/payload-arena.lisp"
   },
   "fn-arena-seal-range-is-seal-list": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/payload-arena.lisp"
-  },
-  "fn-arena-seal-range{correspondence}": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/payload-arena.lisp"
@@ -656,11 +641,6 @@
    "item": "PRF-1344",
    "book": "books/nntp-auth.lisp"
   },
-  "fn-auth-view-trie-corresponds": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/nntp-auth.lisp"
-  },
   "fn-auth-view-when-unrestricted": {
    "class": "authorization",
    "item": "PRF-1344",
@@ -672,16 +652,6 @@
    "book": "books/auth-secret.lisp"
   },
   "fn-av-mca-read-span-restricted-is-legacy": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/served-available-access.lisp"
-  },
-  "fn-av-scr-auth-delegate-restricted-is-reference": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/served-available-access.lisp"
-  },
-  "fn-av-scr-dispatch-core-restricted-is-reference": {
    "class": "authorization",
    "item": "PRF-1344",
    "book": "books/served-available-access.lisp"
@@ -2436,11 +2406,6 @@
    "item": "PRF-1344",
    "book": "books/group-access.lisp"
   },
-  "fn-gacc-grow-builds": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/group-access-cache.lisp"
-  },
   "fn-gacc-prepare-keeps-okp": {
    "class": "authorization",
    "item": "PRF-1344",
@@ -2597,11 +2562,6 @@
    "book": "books/heap-open-nursery.lisp"
   },
   "fn-heap-operation-decide-holds-the-operation": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-figure.lisp"
-  },
-  "fn-heap-operation-decide-holds-the-store": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/heap-figure.lisp"
@@ -4486,11 +4446,6 @@
    "item": "PRF-1348",
    "book": "books/owner-reclaim-pass.lisp"
   },
-  "fn-orcs-predict-seal-refines-intern": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/owner-reclaim-seal.lisp"
-  },
   "fn-orli-live-record-decides-the-context": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
@@ -4766,11 +4721,6 @@
    "item": "PRF-1346",
    "book": "books/outcome-class.lisp"
   },
-  "fn-own-consumed-completion-is-240-or-uncertain": {
-   "class": "extraction",
-   "item": "PRF-1346",
-   "book": "books/owner-invariants-outcome.lisp"
-  },
   "fn-own-fault-clears-the-faulted-submission": {
    "class": "durability",
    "item": "PRF-1345",
@@ -5026,27 +4976,7 @@
    "item": "PRF-1345",
    "book": "books/assumptions-pgs-host-io.lisp"
   },
-  "fn-pidx-existing-action-is-store-existing-action": {
-   "class": "identity-binding",
-   "item": "PRF-1347",
-   "book": "books/post-identity-index.lisp"
-  },
-  "fn-pidx-find-article-is-find-article": {
-   "class": "identity-binding",
-   "item": "PRF-1347",
-   "book": "books/post-identity-index.lisp"
-  },
   "fn-pidx-find-in-visible-is-find": {
-   "class": "identity-binding",
-   "item": "PRF-1347",
-   "book": "books/post-identity-index.lisp"
-  },
-  "fn-pidx-sbud-prepare-is-pcar-sbud-prepare": {
-   "class": "identity-binding",
-   "item": "PRF-1347",
-   "book": "books/post-identity-index.lisp"
-  },
-  "fn-pidx-view-okp-of-live-owner": {
    "class": "identity-binding",
    "item": "PRF-1347",
    "book": "books/post-identity-index.lisp"
@@ -5711,17 +5641,7 @@
    "item": "PRF-1348",
    "book": "books/reclaim-chunked-walk.lisp"
   },
-  "fn-rcw-predict-acc-steps-is-predict": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/reclaim-chunked-seal.lisp"
-  },
   "fn-rdc-reset-is-served-open": {
-   "class": "extraction",
-   "item": "PRF-1346",
-   "book": "books/reader-open-carried.lisp"
-  },
-  "fn-rdc-selection-establishes": {
    "class": "extraction",
    "item": "PRF-1346",
    "book": "books/reader-open-carried.lisp"

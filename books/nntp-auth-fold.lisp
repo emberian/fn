@@ -220,11 +220,11 @@
   :hints (("Goal" :in-theory (e/d (fn-nntp-control-hdr-response fn-post-offeredp
                                    fn-nntp-reply-effect)
                                   (fn-nntp-single fn-nntp-multi
-                                   fn-ctl-control-item fn-ctl-served-status
-                                   fn-ctl-served-held fn-nntp-string-octets
+                                   fn-ctl-control-item fn-ctl-control-status
+                                   fn-ctl-find-held fn-nntp-string-octets
                                    fn-nntp-control-cleanp fn-nntp-hdr-line
                                    fn-nntp-decimal-field fn-nntp-message-id-tokenp
-                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-gidx-pin-control 
                                    fn-ctl-pin-withdrawn fn-ctl-pin-ws
                                    fn-nntp-token-string fn-ctl-target-octets
                                    fn-octet-listp)))))
@@ -236,16 +236,16 @@
   :hints (("Goal" :in-theory (e/d (fn-nntp-enrollment-hdr-response fn-post-offeredp
                                    fn-nntp-reply-effect)
                                   (fn-nntp-single fn-nntp-multi
-                                   fn-enr-item fn-stx-reader-lookup fn-midx-lookup
+                                   fn-enr-item fn-stx-reader-lookup fn-find-article
                                    fn-nntp-hdr-line
                                    fn-nntp-decimal-field fn-nntp-message-id-tokenp
-                                   fn-gidx-pin-control fn-gidx-pin-trie
+                                   fn-gidx-pin-control 
                                    fn-nntp-token-string fn-octet-listp)))))
 
 ;; R3: the served OVER renderers (books/nntp-xref.lisp) answer through
 ;; fn-nntp-single, -multi or -multi-octets.
 (defthm fn-auth-fold-nntp-over-range-served-has-no-offer
-  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-range-served session buckets trie token legacyp server fn-arena))))
+  (not (fn-post-offeredp (fn-nntp-result-effects (fn-nntp-over-range-served session buckets arts token legacyp server fn-arena))))
   :hints (("Goal" :in-theory (e/d (fn-nntp-over-range-served)
                                   (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets
                                    fn-post-offeredp fn-nov-served-lines-numbered fn-nntp-index-group-range-numbers fn-nntp-parse-range)))))
@@ -302,7 +302,7 @@
 (defthm fn-auth-fold-cu-serve-reply-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
-         (fn-cu-serve-reply session archive index args fn-arena))))
+         (fn-cu-serve-reply session archive args fn-arena))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-cu-serve-reply)
                            (fn-nntp-single fn-nntp-multi-octets fn-post-offeredp
@@ -313,9 +313,9 @@
 (defthm fn-auth-fold-zar-command-has-no-offer
   (not (fn-post-offeredp
         (fn-nntp-result-effects
-         (fn-zar-command session archive index args fn-arena))))
+         (fn-zar-command session archive args fn-arena))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-zar-command fn-nntp-msgid-retrieval-indexed fn-post-offeredp
+           :in-theory (e/d (fn-zar-command fn-post-offeredp
                             fn-nntp-msgid-retrieval
                             fn-nntp-reply-effect fn-nntp-article-response)
                            (fn-nntp-single fn-nntp-multi fn-nntp-multi-octets fn-zar-decide
@@ -330,8 +330,7 @@
           session archive index verdicts env keyword args fn-arena))))
   :hints (("Goal" :do-not-induct t
            :in-theory
-           (e/d (fn-nntp-archive-command-pinned
-                  fn-nntp-msgid-retrieval-indexed
+           (e/d (fn-nntp-archive-command-pinned fn-nntp-msgid-retrieval
                   fn-nntp-verdict-hdr-response fn-post-offeredp
                   fn-nntp-reply-effect fn-nntp-article-response
                   fn-nntp-withdrawn-reply)
@@ -930,10 +929,9 @@
            :in-theory (e/d (fn-auth-fold-safe-connp fn-served-dispatch-core)
                            (fn-served-connp fn-auth-step-pinned
                             fn-served-conn-pinned-index fn-gidx-pin-correspondencep
-                            fn-gidx-pin-trie fn-gidx-pinp
-                            fn-midx-correspondencep
+                            fn-gidx-pinp
                             fn-served-connp-is-group-correspondence
-                            fn-served-connp-is-pinned-trie-correspondence
+                            
                             fn-auth-fold-post-awaiting
                             fn-auth-config-no-postersp
                             fn-wire-begin-article-with-line-limit))
@@ -941,7 +939,6 @@
                  (:instance fn-served-connp-is-consistent-session
                             (c conn))
                  (:instance fn-served-connp-is-group-correspondence (c conn))
-                 (:instance fn-served-connp-is-pinned-trie-correspondence (c conn))
                  (:instance fn-auth-consistent-forward
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn)))
@@ -975,17 +972,15 @@
                             fn-auth-fold-no-local-effectsp)
                            (fn-served-connp fn-auth-step-pinned
                             fn-served-conn-pinned-index fn-gidx-pin-correspondencep
-                            fn-gidx-pin-trie fn-gidx-pinp
-                            fn-midx-correspondencep
+                            fn-gidx-pinp
                             fn-served-connp-is-group-correspondence
-                            fn-served-connp-is-pinned-trie-correspondence
+                            
                             fn-auth-fold-post-awaiting
                             fn-auth-effectsp fn-nntp-effectp
                             fn-wire-begin-article-with-line-limit))
            :use ((:instance fn-served-connp-is-consistent-session
                             (c conn))
                  (:instance fn-served-connp-is-group-correspondence (c conn))
-                 (:instance fn-served-connp-is-pinned-trie-correspondence (c conn))
                  (:instance fn-auth-consistent-forward
                             (as (fn-served-conn-session conn))
                             (archive (fn-served-conn-archive conn)))

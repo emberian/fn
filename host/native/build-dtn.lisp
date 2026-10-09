@@ -206,7 +206,7 @@
 ;; as in build.lisp: fn-owner-prepare-buffer and
 ;; fn-owner-existing-action-buffer (host/owner-host.lisp, which
 ;; host/native-admin-host.lisp `ld`s) take the fn-octets stobj and call
-;; fn-pidx-existing-action (its comparison fn-pbb-same-articlep).  Without
+;; fn-pidx-existing-action-cat (its comparison fn-pbb-same-articlep).  Without
 ;; them the DTN image did not build at
 ;; 32842f50 (planning/evidence/native-drift-2026-09-25.md, finding 3);
 ;; tools/build_lists_check.py `included` checks this now.
@@ -215,11 +215,11 @@
 ;; host/native/io.lisp fnn-subject-id-buffer calls fn-sidb-subject-id-bounded, as in build.lisp.
 (include-book "books/subject-id-buffer")
 ;; D13 (STO-014): the tombstone-aware same-article test over the buffer
-;; (fn-rclb-same-articlep), which fn-pidx-existing-action, the served POST's
+;; (fn-rclb-same-articlep), which fn-pidx-existing-action-cat, the served POST's
 ;; duplicate verdict, calls.
 (include-book "books/store-reclaim-buffer")
 ;; PRF-191: fn-owner-existing-action-buffer and fn-owner-prepare-buffer call
-;; fn-pidx-existing-action and fn-pidx-sbud-prepare.
+;; fn-pidx-existing-action-cat and the fn-ppc-sbud-prepare catalog chain.
 (include-book "books/post-identity-index")
 (include-book "books/post-identity-catalog")
 (include-book "books/post-prepare-catalog")
@@ -266,6 +266,8 @@
 ;; fn-otm-boottime-ms) and their keystones, books/clock-reading.
 (include-book "books/clock-reading")
 (ld "host/store-node-host.lisp" :ld-error-action :error)
+; developer inspection of the held-row verdicts (owner-held-verdicts-host)
+(ld "host/owner-held-verdicts-host.lisp" :ld-error-action :error)
 ; Opening a Store reads the clone fence (io.lisp `fnn-clone-fence-path'), whose
 ; name is ACL2's `fn-store-checkpoint-clone-fence-name'.  Without this file
 ; the DTN images could not `store init' (native-subsets-6c0626c5, failure 2).
@@ -352,6 +354,10 @@
 ; declaration (books/raw-dispatch-verdict.lisp): fnn-install-raw-dispatch
 ; admits a raw dispatch only on one, here and in the extracted core.
 (ld "host/raw-dispatch-verdicts.lisp" :ld-error-action :error)
+; Every carried row's owed writers, in the complete world: a name a
+; standalone certification left to host-ld is a function returning the
+; carried state here, or the build stops (books/def-carried.lisp).
+(def-carried-host-check)
 
 ; The entry save-exec's :return-from-lp form calls.  Its raw definition in
 ; host/native/io.lisp replaces this body; this one only reports its absence.

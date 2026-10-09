@@ -106,8 +106,7 @@
 (defthm fn-gidx-number-article-of-build
   (implies (fn-article-listp configured articles)
            (equal (fn-gidx-number-article
-                   group number (fn-gidx-build articles)
-                   (fn-midx-build articles))
+                   group number (fn-gidx-build articles) articles)
                   (fn-nntp-available-article group number articles)))
   :hints (("Goal"
            :do-not-induct t
@@ -117,15 +116,10 @@
                  (:instance fn-nntp-available-article-is-member)
                  (:instance fn-find-article-of-member-in-unique-list
                             (article (fn-nntp-available-article
-                                      group number articles)))
-                 (:instance fn-midx-lookup-of-build-is-find-article
-                            (msgid (fn-article-msgid
-                                    (fn-nntp-available-article
-                                     group number articles)))))
+                                      group number articles))))
            :cases ((consp (fn-nntp-available-article group number articles)))
            :in-theory (e/d (fn-gidx-number-article)
-                           (fn-midx-build fn-midx-lookup fn-midx-get-chars
-                            fn-gidx-find-number-entry fn-gidx-build
+                           (fn-gidx-find-number-entry fn-gidx-build
                             fn-index-build fn-nntp-available-article)))))
 
 (defthm fn-gidx-entry-number-article-of-built-bucket
@@ -133,7 +127,7 @@
            (equal (fn-gidx-entry-number-article
                    group number
                    (fn-gidx-bucket group (fn-gidx-build articles))
-                   (fn-midx-build articles))
+                   articles)
                   (fn-nntp-available-article group number articles)))
   :hints (("Goal" :use ((:instance fn-gidx-number-article-of-build))
            :in-theory (e/d (fn-gidx-number-article)

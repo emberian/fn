@@ -51,7 +51,7 @@
 ; payload in the buffer: fn-rcl-action-over with the buffer's comparison
 ; fn-rclb-same-articlep (the keystone's subject; the store-shaped twin
 ; fn-rclb-existing-action was retired, PKT-860, and the host's buffer
-; verdict is books/post-identity-index.lisp fn-pidx-existing-action).
+; verdict is books/post-identity-catalog.lisp fn-pidx-existing-action-cat).
 (defun rbt-rclb-action-over (msgid fn-octets groups articles)
   (declare (xargs :stobjs fn-octets :verify-guards nil))
   (let ((article (fn-find-article msgid articles)))

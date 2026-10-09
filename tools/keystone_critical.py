@@ -42,12 +42,21 @@ changed since the critical base is a finding).  Redundant hypotheses are not det
     python3 tools/keystone_critical.py --lower-stale           # shrink the owed and base rows
     python3 tools/keystone_critical.py --lower-complete        # remove fully evidenced owed rows
     python3 tools/keystone_critical.py --claim-owed    # claim items for unlisted existing criticals
+    python3 tools/keystone_critical.py --declare K --subject FN --host-test REF \
+        --trace-witness REF --mutation REF             # emit K's declared row
+    python3 tools/keystone_critical.py --redeclare-all # re-emit every declared row
+
+planning/critical-evidence.json is emitted by --declare, never typed: the tool
+checks each reference before it writes the row and stamps the row with a
+digest of its content; the gate refuses a row whose stamp is missing or does
+not match (a hand edit), naming it.
 """
 from __future__ import annotations
 
 import argparse
 import ast
 import fnmatch
+import hashlib
 import json
 from pathlib import Path
 import re
@@ -63,6 +72,21 @@ CBASE = ROOT / "planning/critical-base.json"
 INTERFACES = ROOT / "planning/interfaces.json"
 PARTS = ("premises", "wrong_answer", "host_test", "trace_witness", "mutation")
 DECLARED = ("host_test", "trace_witness", "mutation")
+DECLARED_FIELDS = ("subject",) + DECLARED
+STAMP = "keystone_critical.py --declare sha256:"
+
+
+def row_stamp(row: dict) -> str:
+    """The provenance stamp --declare writes: a digest of the row's content."""
+    content = {k: row.get(k) for k in DECLARED_FIELDS}
+    return STAMP + hashlib.sha256(json.dumps(content, sort_keys=True).encode()).hexdigest()
+
+
+def emitted_row(row: dict) -> dict:
+    """ROW's declared fields with the stamp --declare gives them."""
+    out = {k: row[k] for k in DECLARED_FIELDS if row.get(k) is not None}
+    out["provenance"] = row_stamp(out)
+    return out
 ROW_KEYS = {"class", "book", "theorem", "interface_class", "subsystem", "extraction", "why"}
 
 
@@ -235,10 +259,14 @@ def package(entry: dict, declared: dict | None, reachable, root: Path = ROOT) ->
                                else "no reachable removal or edit mutation")
     declared = declared or {}
     subject = declared.get("subject") or entry.get("subject")
+    unstamped = declared and declared.get("provenance") != row_stamp(declared)
     for part in DECLARED:
         ref = declared.get(part)
         if ref is None:
             out[part] = "not declared in planning/critical-evidence.json"
+        elif unstamped:
+            out[part] = ("the declared row was not emitted by keystone_critical.py --declare "
+                         "(missing or stale provenance stamp: a hand edit)")
         else:
             out[part] = _ref_problem(ref, subject if part == "host_test" else None, root)
     if out["host_test"] is None:
@@ -431,6 +459,42 @@ def load_declared() -> dict:
     return _load(EVIDENCE, "entries")
 
 
+def declare(name: str, row: dict, root: Path = ROOT, path: Path | None = None) -> list[str]:
+    """Write NAME's declared row, stamped, after checking every reference;
+    the problems instead when one fails (nothing is written then)."""
+    path = path or EVIDENCE
+    problems = []
+    if not row.get("subject"):
+        problems.append("no --subject")
+    for part in DECLARED:
+        why = _ref_problem(row.get(part), row.get("subject") if part == "host_test" else None, root)
+        if why:
+            problems.append(f"{part}: {why}")
+    if problems:
+        return problems
+    data = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"entries": {}}
+    entries = data.setdefault("entries", {})
+    entries[name] = emitted_row(row)
+    data["entries"] = dict(sorted(entries.items()))
+    path.write_text(json.dumps(data, indent=1) + "\n", encoding="utf-8")
+    return []
+
+
+def redeclare_all(root: Path = ROOT, path: Path | None = None) -> int:
+    """Re-emit every declared row through declare (the migration to stamped
+    rows); a row whose references fail is reported and left unstamped."""
+    path = path or EVIDENCE
+    entries = json.loads(path.read_text(encoding="utf-8")).get("entries", {})
+    bad = 0
+    for name, row in sorted(entries.items()):
+        problems = declare(name, row, root, path)
+        for why in problems:
+            print(f"keystone_critical: {name}: {why}")
+        bad += bool(problems)
+    print(f"keystone_critical: re-emitted {len(entries) - bad} declared row(s); {bad} refused")
+    return 1 if bad else 0
+
+
 def load_owed() -> dict:
     return _load(OWED, "items")
 
@@ -565,7 +629,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--write-critical-base", action="store_true",
                         help="write planning/critical-base.json once (the gate's cutover)")
     parser.add_argument("--lane", default=Path.cwd().name)
+    parser.add_argument("--declare", metavar="KEYSTONE",
+                        help="emit KEYSTONE's declared row (with --subject, --host-test, "
+                             "--trace-witness, --mutation)")
+    parser.add_argument("--subject")
+    parser.add_argument("--host-test")
+    parser.add_argument("--trace-witness")
+    parser.add_argument("--mutation")
+    parser.add_argument("--redeclare-all", action="store_true",
+                        help="re-emit every declared row through --declare's checks")
     args = parser.parse_args(argv)
+    if args.declare:
+        problems = declare(args.declare, {"subject": args.subject, "host_test": args.host_test,
+                                          "trace_witness": args.trace_witness,
+                                          "mutation": args.mutation})
+        for why in problems:
+            print(f"keystone_critical: {args.declare}: {why}")
+        return 1 if problems else 0
+    if args.redeclare_all:
+        return redeclare_all()
     if args.lower_complete:
         return lower_complete_main()
     if args.lower_stale:

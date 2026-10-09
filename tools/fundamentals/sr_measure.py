@@ -16,8 +16,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))  # tools/
 from rep_measure import decided_heap_env  # noqa: E402
 
 def free_port():
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0)); return s.getsockname()[1]
+    import ports  # tools/ is on sys.path; NATIVE-HARNESS-PORT-RACE
+    return ports.reserve()
 
 BULK = True
 class Conn:

@@ -468,23 +468,57 @@
      (* 2 (fn-heap-operation-list-octets action profile observed))
      (fn-heap-buffer-octets profile)))
 
-;; `init' makes the store: its first run opens nothing on disk (ACL2 says
-;; so, whatever the probe was handed).
-(defconst *fn-heap-empty-store-observation* '(0 . 0))
+;; `init' holds no store.  It writes its plan's files (books/store-init-log-
+;; publication.lisp fn-bs-init-log-files: the profile, one configuration
+;; record, the genesis, a segment of fn-store-log-initial-extent zeros, the
+;; node secret and the peer flight profile), none sized by the profile's
+;; bounds, and validates the staged store by the ordinary open of an EMPTY
+;; store (host/native/io.lisp fnn-staged-publication: no record to replay;
+;; the open's term over no input is nothing,
+;; fn-heap-storeless-figure-holds-the-empty-open below).  The store it writes
+;; may be one made for another machine (`init --budget MB').  So its figure is
+;; the store-less figure, whatever profile it writes: the store-less class.
+(defun fn-heap-storeless-action-p (action)
+  (declare (xargs :guard t))
+  (equal action :init))
+
+; The store-less heap, or the image's dynamic content with the collector's
+; room when that is larger.  Init's own files (the 1 MiB first segment and
+; records of a few KiB, host/native/io.lisp fnn-command-init-published) are
+; transient beside it.
+(defun fn-heap-storeless-figure-octets (core nursery)
+  (declare (xargs :guard t))
+  (max (* *fn-heap-storeless-mb* *fn-heap-mib*)
+       (fn-heap-with-nursery (fn-heap-core-dynamic core) nursery)))
 
 (defun fn-heap-operation-observation (action observed)
   (declare (xargs :guard t))
-  (cond ((equal action :init) *fn-heap-empty-store-observation*)
-        ((equal action :run) nil)
-        (t observed)))
+  (if (equal action :run) nil observed))
 
 (defun fn-heap-operation-figure-octets (action profile core nursery observed)
   (declare (xargs :guard t))
-  (if (member-equal action *fn-heap-list-actions*)
-      (max (fn-heap-operation-list-figure-octets action profile core nursery observed)
-           (fn-heap-store-figure-octets profile core nursery observed))
-    (fn-heap-store-figure-octets profile core nursery
-                                 (fn-heap-operation-observation action observed))))
+  (cond ((fn-heap-storeless-action-p action) (fn-heap-storeless-figure-octets core nursery))
+        ((member-equal action *fn-heap-list-actions*)
+         (max (fn-heap-operation-list-figure-octets action profile core nursery observed)
+              (fn-heap-store-figure-octets profile core nursery observed)))
+        (t (fn-heap-store-figure-octets profile core nursery
+                                        (fn-heap-operation-observation action observed)))))
+
+; The store-less figure holds the image's dynamic content and the open of an
+; empty store under any profile: what init's validation open replays.
+(defthm fn-heap-storeless-figure-holds-the-empty-open
+  (<= (+ (fn-heap-core-dynamic core) (fn-heap-store-open-octets profile 0 0))
+      (fn-heap-storeless-figure-octets core nursery))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-heap-storeless-figure-octets fn-heap-store-open-octets
+                                     fn-heap-with-nursery))))
+
+; The store-less action's figure: the same for every profile and observation.
+(defthm fn-heap-operation-figure-octets-of-a-storeless-action
+  (implies (fn-heap-storeless-action-p action)
+           (equal (fn-heap-operation-figure-octets action profile core nursery observed)
+                  (fn-heap-storeless-figure-octets core nursery)))
+  :hints (("Goal" :in-theory (enable fn-heap-operation-figure-octets))))
 
 ; KEYSTONE (ADMISSION-RESERVES-NOT-REOPEN, N's ruling B).  A run's figure is
 ; the store figure over NO observation: the profile's whole bound.
@@ -568,9 +602,13 @@
                                    fn-heap-machine-octets)))))
 
 (defthm fn-heap-operation-figure-holds-the-parts
-  (and (<= (fn-heap-store-figure-octets profile core nursery
-                                        (fn-heap-operation-observation action observed))
-           (fn-heap-operation-figure-octets action profile core nursery observed))
+  (and (implies (not (fn-heap-storeless-action-p action))
+                (<= (fn-heap-store-figure-octets profile core nursery
+                                                 (fn-heap-operation-observation action observed))
+                    (fn-heap-operation-figure-octets action profile core nursery observed)))
+       (implies (fn-heap-storeless-action-p action)
+                (equal (fn-heap-operation-figure-octets action profile core nursery observed)
+                       (fn-heap-storeless-figure-octets core nursery)))
        (implies (member-equal action *fn-heap-list-actions*)
                 (<= (fn-heap-operation-list-figure-octets action profile core nursery observed)
                     (fn-heap-operation-figure-octets action profile core nursery observed))))
@@ -637,11 +675,15 @@
 ; unobserved one, which holds every observation's); and it fits the machine.
 ; (A hypothesis (member action '(:recover :compact :reclaim :run)) was removed after
 ; proving the weakened theorem.)
+; Every action that opens the store: the store-less action (`init', which
+; holds no store) is excluded by name, and its accepted decision is the
+; store-less figure's (fn-heap-operation-decide-of-a-storeless-action below).
 (defthm fn-heap-operation-decide-holds-the-store
   (let* ((decision (fn-heap-operation-decide action profile core nursery observations
                                              observed))
          (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
-    (implies (and (fn-bs-profile-admittedp profile)
+    (implies (and (not (fn-heap-storeless-action-p action))
+                  (fn-bs-profile-admittedp profile)
                   (equal (car decision) :heap)
                   (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
                       (nfix (fn-bs-profile-max-history-octets profile)))
@@ -669,6 +711,23 @@
                                   (fn-heap-mb-of (fn-heap-operation-figure-octets
                                                   action profile core nursery
                                                   observed)))))))))
+
+; KEYSTONE (the store-less class).  An accepted decision of the store-less
+; action is the store-less figure's megabytes, whatever profile it writes,
+; and it fits the machine.
+(defthm fn-heap-operation-decide-of-a-storeless-action
+  (let ((decision (fn-heap-operation-decide action profile core nursery observations
+                                            observed)))
+    (implies (and (fn-heap-storeless-action-p action)
+                  (fn-bs-profile-admittedp profile)
+                  (equal (car decision) :heap))
+             (and (equal (fn-heap-decision-mb decision)
+                         (fn-heap-mb-of (fn-heap-storeless-figure-octets core nursery)))
+                  (<= (* *fn-heap-mib* (fn-heap-decision-mb decision))
+                      (fn-heap-machine-octets observations)))))
+  :hints (("Goal" :use (fn-heap-operation-decide-accepted
+                        fn-heap-operation-figure-octets-of-a-storeless-action)
+           :in-theory (theory 'minimal-theory))))
 
 ; The observation only ever lowers the figure: the observed figure is at most
 ; the unobserved one (the H figure the verb had before), so no accepted

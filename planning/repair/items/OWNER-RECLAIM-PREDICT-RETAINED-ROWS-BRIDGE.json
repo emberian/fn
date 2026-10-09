@@ -1,0 +1,18 @@
+{
+ "category": "proofs",
+ "id": "OWNER-RECLAIM-PREDICT-RETAINED-ROWS-BRIDGE",
+ "notes": [
+  "Finding (Codex, read-only review, no statement weaker or vacuous): fn-orcs-predict-rows-at keeps every non-record row as itself. The bridge to the replay fold (books/owner-reclaim-seal.lisp fn-orcs-predict-rows-at-is-the-fold) requires fn-orcs-fold-rowsp, which excludes fn-stxa-p composites and the retained fn-held-p / fn-hstxa-p rows. A bare fn-stxa-p composite in the predictor's input is a prediction/restart mismatch (restart produces fn-hstxa-make and advances the handle; the predictor's identity loop faults it :invalid-record), but valid served reclaim input carries retained fn-hstxa-p rows, not bare composites, so no reachable live-reclaim defect is established.",
+  "Owed: a refinement through fn-rows-wire-of that relates the predicted rows of a mixed history (plain records and retained held rows) to the replay of its wire projection, contexts preserved, arena handles related. The wire-input equation without fn-orcs-fold-rowsp is false in the current implementation; composite interning, payload accounting and identity advancement would change together.",
+  "Host evidence meanwhile: tests/test_native_recovery.py test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves (article A posted under generation 1 is a retained row at the swap; its verdict generation is 1 live and after a restart).",
+  "10-09 08:03 2026-10-09 builder-B: confirmed a separate lemma's coverage gap: fn-orcs-predict-rows-at-is-the-fold (the bridge to the replay fold) is used by no keystone proof; the critical keystones keep (natp h0) as their only premise and the lane adds no skip-proofs, defaxiom or ttag. Owner builder-B.",
+  "10-09 14:10 2026-10-09 builder-B: bridge proved in books/owner-reclaim-retained.lisp, fn-orcs-predict-rows-at-refines-the-replay: over a mixed history (plain records, retained fn-held-p and fn-hstxa-p rows, other wire events) the predicted rows over the sealed live arena and the replay fold's rows (fn-scka-intern-at of fn-rows-wire-of) over the replay arena have equal wire projections and equal per-row contexts, given handles in the arena, fn-rows-composites-okp, fn-orcr-fold-contexts-okp (each retained row's context is the fold context at its position) and a non-refused replay. Teeth in tests/acl2/store-checkpoint-fold-tests.lisp: positive witness on the rotation log, four reachable removals, nil/0 mutation. Scope: the fold-context premise is not shown for the live store; fn-sn-set-keyring recontexts rows at the new generation, which is exactly the fold-contexts removal witness."
+ ],
+ "owner": "builder-B",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "lane b-reclaim, Codex cross-review of the four restated critical statements (2026-10-09)",
+ "state": "landed",
+ "title": "fn-orcs-predict-rows-at-is-the-fold covers plain records and non-composite wire events only; the retained held rows (fn-held-p, fn-hstxa-p) of a mixed pass-3 history are not covered by the bridge to the replay fold",
+ "updated": "2026-10-09T14:10:00Z"
+}

@@ -113,11 +113,11 @@
 (defconst *scar-t-ev-conn*
   (fn-own-find-conn 1 (fn-own-conns (fn-ocfg-owner (cdr *scar-t-ev-carried*)))))
 
-; Positive witness: the whole antecedent (the relation, the view trie's
-; correspondence) and the conclusion, and the event did its work: no reply,
+; Positive witness: the carried relation and the conclusion, and the event
+; did its work: no reply,
 ; the connection kept, the context installed in its session, the store kept.
 (assert-event (and (fn-ocl-relation *scar-t-oc*)
-                   (fn-scar-view-indexedp *scar-t-o*)))
+                   ))
 (assert-event (equal *scar-t-ev-carried* *scar-t-ev-reference*))
 (assert-event (null (car *scar-t-ev-carried*)))
 (assert-event (and *scar-t-ev-conn*
@@ -147,7 +147,7 @@
                          (fn-auth-session-base (fn-own-conn-session c))
                          *scar-t-bad-node*))
      (fn-own-conn-archive c) (fn-own-conn-config c) (fn-own-conn-observation c)
-     (fn-own-conn-verdicts c) (fn-own-conn-index c) (fn-own-conn-group-index c)
+     (fn-own-conn-verdicts c)  (fn-own-conn-group-index c)
      (fn-own-conn-control c))))
 (defconst *scar-t-bad-ev-oc*
   (let ((o *scar-t-bad-o*))
@@ -171,14 +171,11 @@
            (cdr (in-arena-fn-ocfg-read-step *sr-arena* *scar-t-bad-ev-oc* 1 *scar-t-event*)))))))
 
 ;; The three theorems of PRF-1357 as registered keystones.  Each carries its
-;; premises as one labelled hypothesis: the node and view-trie premises are
-;; the carried invariant (books/owner-offer-indexed.lisp, fn-ocl-relation),
-;; and a state with the relation true and the trie uncorresponding is not
-;; reachable by an event the SASL context witness can exercise, so the
-;; removal witness drops the whole premise at the bad-node owner.
+;; carried relation as one labelled hypothesis.  The removal witness
+;; drops that premise at the bad-node owner.
 (defteeth fn-scar-ocfg-read-step-is-reference-under-ocl-relation
   :claim (((carried-premises (and (fn-ocl-relation oc)
-                                  (fn-scar-view-indexedp (fn-ocfg-owner oc)))))
+                                  )))
           (equal (fn-scar-ocfg-read-step oc id event fn-arena)
                  (fn-ocfg-read-step oc id event fn-arena)))
   :subject fn-scar-ocfg-read-step
@@ -193,7 +190,7 @@
 
 (defteeth fn-scar-ocfg-read-step-is-ocfg-read-step
   :claim (((carried-premises (and (fn-node-statep (fn-sn-node (fn-own-store (fn-ocfg-owner oc))))
-                                  (fn-scar-view-indexedp (fn-ocfg-owner oc)))))
+                                  )))
           (equal (fn-scar-ocfg-read-step oc id event fn-arena)
                  (fn-ocfg-read-step oc id event fn-arena)))
   :subject fn-scar-ocfg-read-step
@@ -208,7 +205,7 @@
 
 (defteeth fn-scar-own-read-step-full-is-own-read-step-full
   :claim (((carried-premises (and (fn-node-statep (fn-sn-node (fn-own-store o)))
-                                  (fn-scar-view-indexedp o))))
+                                  )))
           (equal (fn-scar-own-read-step-full o id event fn-arena)
                  (fn-own-read-step-full o id event fn-arena)))
   :subject fn-scar-own-read-step-full

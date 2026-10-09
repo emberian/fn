@@ -7,7 +7,7 @@
 ; host/owner-host.lisp fn-owner-take stages).  Those lines are injecting-node
 ; metadata, outside the authored source: the host's verdict
 ; (fn-store-existing-action, books/store-intern.lisp, reached through
-; fn-pidx-existing-action at host/owner-host.lisp
+; fn-pidx-existing-action-cat at host/owner-host.lisp
 ; fn-owner-existing-action-buffer and fn-owner-prepare-buffer; the held
 ; payload read through the payload arena by its handle) reads both payloads
 ; through books/cancel-lock-lines.lisp fn-cll-skip.  So:

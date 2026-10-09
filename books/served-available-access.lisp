@@ -73,9 +73,9 @@
 (defthm fn-av-scr-auth-delegate-restricted-is-reference
   (implies (and (fn-gacc-okp cache)
                 (fn-auth-access-read as config))
-           (equal (fn-av-scr-auth-delegate as live trie lver arts cache archive index verdicts
+           (equal (fn-av-scr-auth-delegate as live lver arts cache archive index verdicts
                                            config observation injection wire-event v fn-arena fn-cat)
-                  (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config
+                  (fn-scar-auth-delegate-pinned as live arts archive index verdicts config
                                                 observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-av-scr-auth-delegate fn-scar-auth-delegate-pinned
@@ -85,9 +85,9 @@
 (defthm fn-av-scr-auth-step-restricted-is-reference
   (implies (and (fn-gacc-okp cache)
                 (fn-auth-access-read as config))
-           (equal (fn-av-scr-auth-step as live trie lver arts cache archive index verdicts
+           (equal (fn-av-scr-auth-step as live lver arts cache archive index verdicts
                                        config observation injection wire-event v fn-arena fn-cat)
-                  (fn-scar-auth-step-pinned as live trie arts archive index verdicts config
+                  (fn-scar-auth-step-pinned as live arts archive index verdicts config
                                             observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-av-scr-auth-step fn-scar-auth-step-pinned
@@ -99,8 +99,8 @@
 (defthm fn-av-scr-dispatch-core-restricted-is-reference
   (implies (and (fn-gacc-okp cache)
                 (fn-auth-access-read (fn-served-conn-session conn) (fn-served-conn-config conn)))
-           (equal (fn-av-scr-dispatch-core conn event live trie lver arts cache fn-arena fn-cat)
-                  (fn-scar-dispatch-core conn event live trie arts fn-arena)))
+           (equal (fn-av-scr-dispatch-core conn event live lver arts cache fn-arena fn-cat)
+                  (fn-scar-dispatch-core conn event live arts fn-arena)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-av-scr-dispatch-core fn-scar-dispatch-core
                                 fn-av-scr-auth-step-restricted-is-reference)
@@ -110,9 +110,9 @@
 (defthm fn-scr-auth-delegate-restricted-is-reference
   (implies (and (fn-gacc-okp cache)
                 (fn-auth-access-read as config))
-           (equal (fn-scr-auth-delegate as live trie lver arts cache archive index verdicts
+           (equal (fn-scr-auth-delegate as live lver arts cache archive index verdicts
                                         config observation injection wire-event v fn-arena fn-cat)
-                  (fn-scar-auth-delegate-pinned as live trie arts archive index verdicts config
+                  (fn-scar-auth-delegate-pinned as live arts archive index verdicts config
                                                 observation injection wire-event fn-arena)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-scr-auth-delegate fn-scar-auth-delegate-pinned
@@ -122,8 +122,8 @@
 (defthm fn-scr-dispatch-core-restricted-is-reference
   (implies (and (fn-gacc-okp cache)
                 (fn-auth-access-read (fn-served-conn-session conn) (fn-served-conn-config conn)))
-           (equal (fn-scr-dispatch-core conn event live trie lver arts cache fn-arena fn-cat)
-                  (fn-scar-dispatch-core conn event live trie arts fn-arena)))
+           (equal (fn-scr-dispatch-core conn event live lver arts cache fn-arena fn-cat)
+                  (fn-scar-dispatch-core conn event live arts fn-arena)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-scr-dispatch-core fn-scar-dispatch-core fn-scr-auth-step
                                 fn-scar-auth-step-pinned
@@ -135,8 +135,8 @@
 (defthm fn-av-scr-dispatch-restricted-is-legacy
   (implies (and (fn-gacc-okp cache)
                 (fn-auth-access-read (fn-served-conn-session conn) (fn-served-conn-config conn)))
-           (equal (fn-av-scr-dispatch conn event live trie lver arts cache fn-arena fn-cat)
-                  (fn-scr-dispatch conn event live trie lver arts cache fn-arena fn-cat)))
+           (equal (fn-av-scr-dispatch conn event live lver arts cache fn-arena fn-cat)
+                  (fn-scr-dispatch conn event live lver arts cache fn-arena fn-cat)))
   :hints (("Goal" :in-theory (union-theories
                               '(fn-av-scr-dispatch fn-scr-dispatch
                                 fn-av-scr-dispatch-core-restricted-is-reference
@@ -147,45 +147,45 @@
 ; -----------------------------------------------------------------------------
 ; Per read: the restriction holds at every event the legacy fold dispatches.
 
-(defun fn-av-events-restrictedp (conn events live trie lver arts cache fn-arena fn-cat)
+(defun fn-av-events-restrictedp (conn events live lver arts cache fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil
                   :measure (acl2-count events)))
   (if (consp events)
       (and (fn-auth-access-read (fn-served-conn-session conn) (fn-served-conn-config conn))
            (fn-av-events-restrictedp
             (fn-served-result-conn
-             (fn-scr-dispatch conn (car events) live trie lver arts cache fn-arena fn-cat))
-            (cdr events) live trie lver arts cache fn-arena fn-cat))
+             (fn-scr-dispatch conn (car events) live lver arts cache fn-arena fn-cat))
+            (cdr events) live lver arts cache fn-arena fn-cat))
     t))
 
 (defthm fn-av-scr-dispatch-events-restricted-is-legacy
   (implies (and (fn-gacc-okp cache)
-                (fn-av-events-restrictedp conn events live trie lver arts cache fn-arena fn-cat))
-           (equal (fn-av-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat)
-                  (fn-scr-dispatch-events conn events live trie lver arts cache fn-arena fn-cat)))
-  :hints (("Goal" :induct (fn-av-events-restrictedp conn events live trie lver arts cache
+                (fn-av-events-restrictedp conn events live lver arts cache fn-arena fn-cat))
+           (equal (fn-av-scr-dispatch-events conn events live lver arts cache fn-arena fn-cat)
+                  (fn-scr-dispatch-events conn events live lver arts cache fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-av-events-restrictedp conn events live lver arts cache
                                                     fn-arena fn-cat)
            :in-theory (e/d (fn-av-events-restrictedp fn-av-scr-dispatch-events
                             fn-scr-dispatch-events fn-av-scr-dispatch-restricted-is-legacy)
                            (fn-av-scr-dispatch fn-scr-dispatch fn-auth-access-read)))))
 
-(defun fn-av-byte-restrictedp (conn byte live trie lver arts cache fn-arena fn-cat)
+(defun fn-av-byte-restrictedp (conn byte live lver arts cache fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil))
   (let ((fed (fn-wire-feed-byte (fn-served-conn-wire conn) byte)))
     (fn-av-events-restrictedp (fn-served-conn-with-wire conn (fn-wire-result-state fed))
-                              (fn-wire-result-events fed) live trie lver arts cache
+                              (fn-wire-result-events fed) live lver arts cache
                               fn-arena fn-cat)))
 
 (defthm fn-av-scr-feed-byte-restricted-is-legacy
   (implies (and (fn-gacc-okp cache)
-                (fn-av-byte-restrictedp conn byte live trie lver arts cache fn-arena fn-cat))
-           (equal (fn-av-scr-feed-byte conn byte live trie lver arts cache fn-arena fn-cat)
-                  (fn-scr-feed-byte conn byte live trie lver arts cache fn-arena fn-cat)))
+                (fn-av-byte-restrictedp conn byte live lver arts cache fn-arena fn-cat))
+           (equal (fn-av-scr-feed-byte conn byte live lver arts cache fn-arena fn-cat)
+                  (fn-scr-feed-byte conn byte live lver arts cache fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-av-byte-restrictedp fn-av-scr-feed-byte fn-scr-feed-byte)
                                   (fn-av-scr-dispatch-events fn-scr-dispatch-events
                                    fn-av-events-restrictedp)))))
 
-(defun fn-av-span-restrictedp (conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
+(defun fn-av-span-restrictedp (conn i end live lver arts cache fn-octets fn-arena fn-cat)
   (declare (xargs :stobjs (fn-octets fn-arena fn-cat) :verify-guards nil
                   :measure (nfix (- end i))
                   :hints (("Goal" :in-theory (disable fn-scr-feed-byte fn-served-submission
@@ -194,21 +194,21 @@
           (fn-served-closed-wirep (fn-served-conn-wire conn))
           (fn-served-haltedp conn))
       t
-    (and (fn-av-byte-restrictedp conn (fn-octets-get i fn-octets) live trie lver arts cache
+    (and (fn-av-byte-restrictedp conn (fn-octets-get i fn-octets) live lver arts cache
                                  fn-arena fn-cat)
-         (let ((here (fn-scr-feed-byte conn (fn-octets-get i fn-octets) live trie lver arts cache
+         (let ((here (fn-scr-feed-byte conn (fn-octets-get i fn-octets) live lver arts cache
                                        fn-arena fn-cat)))
            (if (fn-served-submission (fn-served-result-effects here))
                t
-             (fn-av-span-restrictedp (fn-served-result-conn here) (+ 1 i) end live trie lver arts
+             (fn-av-span-restrictedp (fn-served-result-conn here) (+ 1 i) end live lver arts
                                      cache fn-octets fn-arena fn-cat))))))
 
 (defthm fn-av-scr-feed-span-restricted-is-legacy
   (implies (and (fn-gacc-okp cache)
-                (fn-av-span-restrictedp conn i end live trie lver arts cache fn-octets fn-arena fn-cat))
-           (equal (fn-av-scr-feed-span conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
-                  (fn-scr-feed-span conn i end live trie lver arts cache fn-octets fn-arena fn-cat)))
-  :hints (("Goal" :induct (fn-av-span-restrictedp conn i end live trie lver arts cache
+                (fn-av-span-restrictedp conn i end live lver arts cache fn-octets fn-arena fn-cat))
+           (equal (fn-av-scr-feed-span conn i end live lver arts cache fn-octets fn-arena fn-cat)
+                  (fn-scr-feed-span conn i end live lver arts cache fn-octets fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-av-span-restrictedp conn i end live lver arts cache
                                                   fn-octets fn-arena fn-cat)
            :in-theory (e/d (fn-av-span-restrictedp fn-av-scr-feed-span fn-scr-feed-span
                             fn-av-scr-feed-byte-restricted-is-legacy)
@@ -217,9 +217,9 @@
 
 (defthm fn-av-scr-step-span-fast-restricted-is-legacy
   (implies (and (fn-gacc-okp cache)
-                (fn-av-span-restrictedp conn i end live trie lver arts cache fn-octets fn-arena fn-cat))
-           (equal (fn-av-scr-step-span-fast conn i end live trie lver arts cache fn-octets fn-arena fn-cat)
-                  (fn-scr-step-span-fast conn i end live trie lver arts cache fn-octets fn-arena fn-cat)))
+                (fn-av-span-restrictedp conn i end live lver arts cache fn-octets fn-arena fn-cat))
+           (equal (fn-av-scr-step-span-fast conn i end live lver arts cache fn-octets fn-arena fn-cat)
+                  (fn-scr-step-span-fast conn i end live lver arts cache fn-octets fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-av-scr-step-span-fast fn-scr-step-span-fast
                                    fn-av-scr-step-span-core fn-scr-step-span-core)
                                   (fn-av-scr-feed-span fn-scr-feed-span fn-av-span-restrictedp
@@ -231,7 +231,6 @@
     (or (not conn)
         (fn-av-span-restrictedp (fn-own-tls-served-conn o conn) i end
                                 (fn-sn-node (fn-own-store o))
-                                (fn-own-view-index (fn-own-view o))
                                 (fn-own-view-version (fn-own-view o))
                                 (fn-state-articles (fn-own-view-archive (fn-own-view o)))
                                 cache fn-octets fn-arena fn-cat))))

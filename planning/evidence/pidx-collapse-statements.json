@@ -1,0 +1,90 @@
+{
+  "base": "c039b7d592159969b0ea774daab9eb33d53443a3",
+  "changes": [
+    {
+      "file": "books/owner-log-ocl.lisp",
+      "event": "fn-lgoc-pidx-sbud-prepare-preserves-invariant",
+      "kind": "defthm",
+      "justification": "Identical statement/body after substituting fn-pcar-sbud-prepare for fn-pidx-sbud-prepare; all premises, conclusions and rule classes retained."
+    },
+    {
+      "file": "books/owner-store-indexed.lisp",
+      "event": "fn-osi-host-step",
+      "kind": "defun",
+      "justification": "Identical statement/body after substituting fn-pcar-sbud-prepare for fn-pidx-sbud-prepare; all premises, conclusions and rule classes retained."
+    },
+    {
+      "file": "books/post-identity-index.lisp",
+      "event": "fn-pidx-existing-action",
+      "kind": "defun",
+      "justification": "Retired twin/bridge as authorized by S."
+    },
+    {
+      "file": "books/post-identity-index.lisp",
+      "event": "fn-pidx-existing-action-is-store-existing-action",
+      "kind": "defthm",
+      "justification": "Retired twin/bridge as authorized by S."
+    },
+    {
+      "file": "books/post-identity-index.lisp",
+      "event": "fn-pidx-sbud-prepare",
+      "kind": "defun",
+      "justification": "Retired twin/bridge as authorized by S."
+    },
+    {
+      "file": "books/post-identity-index.lisp",
+      "event": "fn-pidx-sbud-prepare-is-pcar-sbud-prepare",
+      "kind": "defthm",
+      "justification": "Retired twin/bridge as authorized by S."
+    },
+    {
+      "file": "books/post-retain-carried.lisp",
+      "event": "fn-prc-sbud-prepare-is-pidx-sbud-prepare",
+      "kind": "defthm",
+      "justification": "Identical statement/body after substituting fn-pcar-sbud-prepare for fn-pidx-sbud-prepare; all premises, conclusions and rule classes retained."
+    },
+    {
+      "file": "tests/acl2/owner-prepare-served-events-tests.lisp",
+      "event": "g12b-lgoc-pidx-sbud-prepare-without-ceis-indexedp",
+      "kind": "defthm",
+      "justification": "Identical statement/body after substituting fn-pcar-sbud-prepare for fn-pidx-sbud-prepare; all premises, conclusions and rule classes retained."
+    },
+    {
+      "file": "tests/acl2/post-identity-index-tests.lisp",
+      "event": "pit-existing-in",
+      "kind": "defun",
+      "justification": "Test helper calls fn-store-existing-action with fn-octets-list of the local buffer and fn-own-store of the owner; same message, groups, arena and returned stobjs."
+    },
+    {
+      "file": "tests/acl2/post-identity-index-tests.lisp",
+      "event": "pitt-prepare-skipped",
+      "kind": "defun",
+      "justification": "Removed test helper solely supporting the retired bridge teeth."
+    },
+    {
+      "file": "tests/acl2/post-identity-index-tests.lisp",
+      "event": "pitt-existing-check",
+      "kind": "defun",
+      "justification": "Removed test helper solely supporting the retired bridge teeth."
+    },
+    {
+      "file": "tests/acl2/post-identity-index-tests.lisp",
+      "event": "pitt-existing-no-bytes",
+      "kind": "defun",
+      "justification": "Removed test helper solely supporting the retired bridge teeth."
+    },
+    {
+      "file": "tests/acl2/post-identity-index-tests.lisp",
+      "event": "pitt-existing-mutant-check",
+      "kind": "defun",
+      "justification": "Removed test helper solely supporting the retired bridge teeth."
+    },
+    {
+      "file": "tests/acl2/post-retain-carried-tests.lisp",
+      "event": "prct-prepare-without-carryp",
+      "kind": "defthm",
+      "justification": "Identical statement/body after substituting fn-pcar-sbud-prepare for fn-pidx-sbud-prepare; all premises, conclusions and rule classes retained."
+    }
+  ],
+  "result": "Only the authorized deletions and reference substitutions; no other statement/body changes."
+}

@@ -1,0 +1,13 @@
+{
+ "category": "memory",
+ "file": "tests/test_native_image_heap.py",
+ "id": "IMAGE-HEAP-LONG-RESIDENT",
+ "notes": [],
+ "owner": "deputy-N",
+ "severity": "medium",
+ "slice": "memory",
+ "source": "CONVERGE-4 row 23 (red by design under RULINGS priority 3; measured every convergence)",
+ "state": "open",
+ "title": "image_heap: the production image's long-resident VmHWM is about 160 MB against the 128 MB bar (fault-around over the page-cached core)",
+ "updated": "2026-10-09T06:57:21Z"
+}

@@ -1,0 +1,15 @@
+{
+ "category": "certify",
+ "file": "Makefile",
+ "id": "TEST-ROOTS-UNLISTED-OWNER-STATE",
+ "notes": [
+  "10-09 builder-B: the five owner state test books and tests/acl2/def-span-scan-tests (unlisted since train 65) added to ACL2_BOOKS after owner-retain-state-tests; test_roots_check rc 0 on lane/b-checkfast; each certifies in the train's closure."
+ ],
+ "owner": "builder-B",
+ "severity": "medium",
+ "slice": "tree",
+ "source": "check-fast at dev 3a937ebc3 on persvati (b-measure-check)",
+ "state": "landed",
+ "title": "test_roots_check: five owner state test books are in no Makefile ACL2_BOOKS, so nothing certifies them (owner-admission-state, owner-authority-state, owner-catalog-root-state, owner-publication-state, owner-readers-state -tests)",
+ "updated": "2026-10-09T14:40:00Z"
+}

@@ -21,10 +21,10 @@
 ; KEYSTONE fn-ppc-pout-prepare-article-cat-is-pout-prepare-article: the
 ; function the host calls, fn-ppc-pout-prepare-article-cat, IS
 ; fn-pout-prepare-article (both values) under the visible-list relation and
-; the trie's correspondence the reference's guard names (fn-pidx-view-okp)
+; fact the reference's guard names (fn-pidx-view-okp)
 ; and the join (fn-scj-joinp); its host form
 ; fn-ppc-pout-prepare-article-cat-of-live-owner takes fn-ocl-relation,
-; fn-scar-view-indexedp and fn-scj-invp, which fn-sjh-okp carries.  So every
+; and fn-scj-invp, which fn-sjh-okp carries.  So every
 ; theorem about fn-pout-prepare-article (join-f2-2's
 ; fn-sjh-okp-at-owner-prepare-buffer among them) holds of the host's call.
 
@@ -33,6 +33,18 @@
 (include-book "post-identity-catalog")
 (include-book "owner-prepare-outcome")
 (include-book "owner-prepare-served")
+
+; The pidx layer equals its reference by an unconditional equation (the view
+; carries no trie), so those equations are rewrite rules everywhere; the
+; equations of this book relate the catalog layers to the pidx layer itself,
+; so the rewrites stay off here and the proofs open the layers by name.
+(local (in-theory (disable fn-pidx-find-article-is-find-article-by-definition
+                           fn-pidx-accept-prepare-is-accept-prepare
+                           fn-pidx-node-prepare-is-node-prepare
+                           fn-pidx-sn-prepare-node-is-sn-prepare-node
+                           fn-pidx-spc-prepare-is-pcar-spc-prepare
+                           fn-pidx-opc-owner-prepare-is-pcar-opc-owner-prepare
+                           fn-pidx-opc-prepare-is-pcar-opc-prepare)))
 
 ; -----------------------------------------------------------------------------
 ; The layers.
@@ -74,13 +86,22 @@
                                   (fn-statep fn-make-state fn-make-pending
                                    fn-selection-validp)))))
 
+(local
+ (defthm fn-ppc-find-article-iff-acceptedp
+   (implies (stringp msgid)
+            (iff (fn-find-article msgid articles) (fn-acceptedp msgid articles)))
+   :hints (("Goal" :in-theory (enable fn-find-article fn-acceptedp fn-article-msgid)))))
+
 (defthm fn-ppc-accept-prepare-is-pidx
   (equal (fn-ppc-accept-prepare s generation msgid payload groups stamp
                                 (fn-pidx-find-article msgid (fn-state-articles s) view))
          (fn-pidx-accept-prepare s generation msgid payload groups stamp view))
-  :hints (("Goal" :in-theory (e/d (fn-ppc-accept-prepare fn-pidx-accept-prepare)
+  :hints (("Goal" :in-theory (e/d (fn-ppc-accept-prepare fn-accept-prepare
+                                   fn-pidx-find-article-is-find-article-by-definition
+                                   fn-pidx-accept-prepare-is-accept-prepare)
                                   (fn-statep fn-make-state fn-make-pending
-                                   fn-selection-validp fn-pidx-find-article)))))
+                                   fn-selection-validp fn-pidx-find-article))
+                  :cases ((stringp msgid)))))
 
 ; The reference: DUP the acceptance's own test.
 (defthm fn-ppc-accept-prepare-is-accept-prepare
@@ -414,7 +435,8 @@
                   (fn-find-article (fn-record-msgid record)
                                    (fn-state-articles
                                     (fn-node-acceptance (fn-sn-node (fn-own-store o)))))))
-  :hints (("Goal" :in-theory (e/d (fn-ppc-dup-of) (fn-find-article fn-pidx-find-article)))))
+  :hints (("Goal" :in-theory (e/d (fn-ppc-dup-of fn-pidx-find-article-is-find-article-by-definition)
+                                  (fn-find-article fn-pidx-find-article)))))
 
 (defthm fn-ppc-view-okp-gives-visible
   (implies (fn-pidx-view-okp view) (fn-ocl-view-visiblep view))
@@ -450,11 +472,10 @@
                  (:instance fn-ppc-psrv-prepare-is-psrv-prepare)
                  (:instance fn-ppc-view-okp-gives-visible (view (fn-own-view (fn-ocfg-owner oc))))))))
 
-; The host's owner: fn-ocl-relation and fn-scar-view-indexedp give the view
+; The host's owner: fn-ocl-relation gives the view
 ; facts (fn-pidx-view-okp-of-live-owner), fn-scj-invp the join.
 (defthm fn-ppc-pout-prepare-article-cat-of-live-owner
   (implies (and (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat))
            (and (equal (mv-nth 0 (fn-ppc-pout-prepare-article-cat oc record budget carry
                                                                   fn-arena fn-cat))
@@ -466,7 +487,6 @@
            :in-theory (e/d (fn-scj-invp)
                            (fn-ppc-pout-prepare-article-cat fn-pout-prepare-article
                             fn-scj-joinp fn-scj-rows-invp fn-scj-vvp fn-scj-live-okp
-                            fn-scj-conns-pinp fn-pidx-view-okp fn-ocl-relation
-                            fn-scar-view-indexedp))
+                            fn-scj-conns-pinp fn-pidx-view-okp fn-ocl-relation))
            :use ((:instance fn-pidx-view-okp-of-live-owner)
                  (:instance fn-ppc-pout-prepare-article-cat-is-pout-prepare-article)))))

@@ -127,7 +127,7 @@
          (equal (fn-own-conns o2) (fn-own-conns o))))
   :hints (("Goal" :in-theory (e/d (fn-ocl-owner-with-store fn-own-refresh)
                                   (fn-own-store-idlep fn-ctl-refresh-visible fn-ctl-refresh-withdrawals
-                                   fn-own-view-make-visible fn-ctl-refresh-withdrawn fn-midx-refresh
+                                   fn-own-view-make-visible fn-ctl-refresh-withdrawn
                                    fn-gidx-refresh fn-ctl-visible-state-of)))))
 
 
@@ -151,7 +151,6 @@
            :use ((:instance fn-sjh-okp-unfolds)
                  (:instance fn-scjs-owner-with-store-keeps-invp)
                  (:instance fn-scjs-owner-with-store-keeps-versions)
-                 (:instance fn-oix-ocl-owner-with-store-keeps-view-indexed)
                  (:instance fn-sjh-rc-historyp-of-owner-with-store)))))
 
 (defthm fn-sjh-rc-configure-framep
@@ -224,23 +223,22 @@
                   (fn-scj-conns-versions-atmostp (fn-own-conns o2) n))))
   :hints (("Goal" :in-theory (e/d (fn-ocar-own-open) (fn-ocar-served-open-group-indexed fn-own-conn-make-group-indexed
                                                       fn-scj-live-okp fn-scj-conn-pinp
-                                                      fn-own-view-group-index fn-own-view-index fn-own-view-archive
+                                                      fn-own-view-group-index fn-own-view-archive
                                                       fn-own-view-version)))))
 
 
 (defthm fn-sjh-op-conn-make-version
-  (equal (fn-own-conn-version (fn-own-conn-make-group-indexed id v fr wire sess arch cfg obs vd idx gidx ctl)) v)
+  (equal (fn-own-conn-version (fn-own-conn-make-group-indexed id v fr wire sess arch cfg obs vd gidx ctl)) v)
   :hints (("Goal" :in-theory (enable fn-own-conn-make-group-indexed fn-own-conn-version fn-ag-car fn-ag-cdr))))
 
 (defthm fn-sjh-op-conn-make-pinp
   (equal (fn-scj-conn-pinp (fn-own-conn-make-group-indexed (fn-own-conn-id c) (fn-own-conn-version c)
-                                                           fr wire sess (fn-own-conn-archive c) cfg obs vd
-                                                           (fn-own-conn-index c) (fn-own-conn-group-index c)
+                                                           fr wire sess (fn-own-conn-archive c) cfg obs vd (fn-own-conn-group-index c)
                                                            (fn-own-conn-control c))
                            fn-arena fn-cat)
          (fn-scj-conn-pinp c fn-arena fn-cat))
   :hints (("Goal" :in-theory (enable fn-scj-conn-pinp fn-scj-conn-pinned-index fn-own-conn-make-group-indexed
-                                     fn-own-conn-version fn-own-conn-archive fn-own-conn-index
+                                     fn-own-conn-version fn-own-conn-archive
                                      fn-own-conn-group-index fn-own-conn-control fn-ag-car fn-ag-cdr))))
 
 (defthm fn-sjh-op-ocar-reader-context-facts
@@ -255,8 +253,7 @@
                                   (fn-own-conn-make-group-indexed fn-scj-conn-pinp
                                    fn-scj-conns-pinp fn-own-find-conn fn-own-replace-conn
                                    fn-auth-with-base fn-ocar-peer-open-reader fn-cfgp
-                                   fn-own-conn-archive fn-own-conn-index
-                                   fn-own-conn-group-index fn-own-conn-control fn-scj-conns-versions-atmostp))
+                                   fn-own-conn-archive fn-own-conn-group-index fn-own-conn-control fn-scj-conns-versions-atmostp))
            :use ((:instance fn-scj-conns-pinp-find (conns (fn-own-conns o)))
                  (:instance fn-scj-versions-atmost-of-replace-conn
                             (conn (fn-own-conn-make-group-indexed
@@ -273,7 +270,6 @@
                                    (fn-own-conn-config (fn-own-find-conn id (fn-own-conns o)))
                                    (fn-own-conn-observation (fn-own-find-conn id (fn-own-conns o)))
                                    (fn-own-conn-verdicts (fn-own-find-conn id (fn-own-conns o)))
-                                   (fn-own-conn-index (fn-own-find-conn id (fn-own-conns o)))
                                    (fn-own-conn-group-index (fn-own-find-conn id (fn-own-conns o)))
                                    (fn-own-conn-control (fn-own-find-conn id (fn-own-conns o)))))
                             (conns (fn-own-conns o)))
@@ -403,7 +399,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-own-served-conn fn-scr-conn-okp fn-scr-conn-catalogp-unfolds
                                    fn-served-make-conn-live fn-served-conn-archive fn-served-conn-pinned-index
-                                   fn-served-conn-pinned fn-served-conn-live fn-served-conn-index
+                                   fn-served-conn-pinned fn-served-conn-live
                                    fn-served-conn-group-index fn-served-conn-control)
                                   (fn-scr-catalogp fn-scr-live-catalogp fn-scr-conn-catalogp)))))
 
@@ -422,12 +418,11 @@
                   (fn-scj-conns-pinp (fn-own-conns o) fn-arena fn-cat)
                   (fn-scj-live-okp (fn-own-view o) fn-arena fn-cat)
                   (fn-node-statep (fn-sn-node (fn-own-store o)))
-                  (fn-scar-view-indexedp o)
                   (fn-scj-conns-versions-atmostp (fn-own-conns o) n))
              (and (fn-scr-conn-okp (fn-served-result-conn result) fn-arena fn-cat)
                   (fn-scj-sconn-atmostp (fn-served-result-conn result) n))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(fn-scar-view-indexedp fn-own-tls-served-conn)
+  :hints (("Goal" :in-theory (union-theories '( fn-own-tls-served-conn)
                                              (theory 'minimal-theory))
            :use ((:instance fn-scj-served-conn-okp-of-pins)
                  (:instance fn-sjh-rs-served-conn-okp-session-free
@@ -438,19 +433,16 @@
                             (conn (fn-own-served-conn o (fn-own-find-conn id (fn-own-conns o))
                                                       (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))
                             (live (fn-sn-node (fn-own-store o)))
-                            (trie (fn-own-view-index (fn-own-view o)))
                             (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
                  (:instance fn-scr-conn-okp-of-scar-dispatch
                             (conn (fn-own-served-conn o (fn-own-find-conn id (fn-own-conns o))
                                                       (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))
                             (live (fn-sn-node (fn-own-store o)))
-                            (trie (fn-own-view-index (fn-own-view o)))
                             (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))
                  (:instance fn-scj-sconn-atmostp-of-scar-dispatch
                             (conn (fn-own-served-conn o (fn-own-find-conn id (fn-own-conns o))
                                                       (fn-own-conn-session (fn-own-find-conn id (fn-own-conns o)))))
                             (live (fn-sn-node (fn-own-store o)))
-                            (trie (fn-own-view-index (fn-own-view o)))
                             (arts (fn-state-articles (fn-own-view-archive (fn-own-view o))))
                             (n (fn-own-view-version (fn-own-view o))))
                  (:instance fn-sjh-rs-sconn-atmostp-of-own-served-conn
@@ -466,7 +458,6 @@
     (implies (and (fn-scj-conns-pinp (fn-own-conns o) fn-arena fn-cat)
                   (fn-scj-live-okp (fn-own-view o) fn-arena fn-cat)
                   (fn-node-statep (fn-sn-node (fn-own-store o)))
-                  (fn-scar-view-indexedp o)
                   (fn-scj-conns-versions-atmostp (fn-own-conns o) n))
              (and (equal (fn-own-store o2) (fn-own-store o))
                   (equal (fn-own-view o2) (fn-own-view o))
@@ -477,8 +468,7 @@
                            (fn-served-dispatch fn-own-served-conn fn-own-conn-make-group-indexed
                             fn-own-conn-boundedp fn-own-replace-conn fn-own-remove-conn fn-own-find-conn
                             fn-scj-conns-pinp fn-scj-conn-pinp fn-scj-live-okp fn-scr-conn-catalogp
-                            fn-scr-live-catalogp fn-scj-conns-versions-atmostp fn-own-result-repinned
-                            fn-scar-view-indexedp fn-node-statep)))
+                            fn-scr-live-catalogp fn-scj-conns-versions-atmostp fn-own-result-repinned fn-node-statep)))
           ("Subgoal 1" :use ((:instance fn-sjh-rs-dispatch-result-facts)
                              (:instance fn-scj-versions-atmost-of-replace-conn
                                         (conns (fn-own-conns o)) (n (fn-own-view-version (fn-own-view o)))
@@ -496,7 +486,6 @@
                                                                      (fn-own-conn-config conn)
                                                                      (fn-own-conn-observation conn)
                                                                      (fn-served-conn-verdicts sconn)
-                                                                     (fn-served-conn-index sconn)
                                                                      (fn-served-conn-group-index sconn)
                                                                      (fn-served-conn-control sconn)))))
                              (:instance fn-scj-versions-atmost-of-remove-conn

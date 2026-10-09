@@ -28,7 +28,7 @@
                  *gacct-articles* 3 nil nil))
 (assert-event (fn-nntp-projectionp *gacct-state*))
 (defconst *gacct-pin*
-  (fn-gidx-pin (fn-midx-build *gacct-articles*) (fn-gidx-build *gacct-articles*)))
+  (fn-gidx-pin (fn-gidx-build *gacct-articles*)))
 (defconst *gacct-text* "fn.*,!fn.private.*")
 (defconst *gacct-ctl* (fn-gidx-pin-control *gacct-pin*))
 
@@ -195,14 +195,14 @@
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (with-local-stobj fn-cat
     (mv-let (r fn-cat)
-      (mv (fn-scr-auth-delegate *gacct-bob* nil nil nil nil cache *gacct-state* *gacct-pin* nil
+      (mv (fn-scr-auth-delegate *gacct-bob* nil nil nil cache *gacct-state* *gacct-pin* nil
                                 *gacct-config* *gacct-obs* *gacct-obs*
                                 (list :command (fn-nntp-string-octets text)) 0 fn-arena fn-cat)
           fn-cat)
       r)))
 (defun gacct-reference (text fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (fn-scar-auth-delegate-pinned *gacct-bob* nil nil nil *gacct-state* *gacct-pin* nil
+  (fn-scar-auth-delegate-pinned *gacct-bob* nil nil *gacct-state* *gacct-pin* nil
                                 *gacct-config* *gacct-obs* *gacct-obs*
                                 (list :command (fn-nntp-string-octets text)) fn-arena))
 (bpr-lift gacct-served 2)
@@ -227,3 +227,43 @@
 (assert-event
  (not (equal (in-arena-gacct-served *sr-arena* *gacct-forged* "LIST ACTIVE")
              (in-arena-gacct-reference *sr-arena* "LIST ACTIVE"))))
+
+(include-book "../../books/defkeystone")
+;; Run acceptance from the empty archive; cache growth sees the accepted
+;; articles oldest first, just as fn-gacc-prefix leaves them.
+(defconst *gacct-trace0* (fn-initial-state *gacct-groups*))
+(defconst *gacct-trace1*
+ (fn-accept-complete
+  (fn-accept-prepare *gacct-trace0* 1 "<public@example.invalid>" 0 '("fn.public") 0)
+  0 1 :durable))
+(defconst *gacct-trace2*
+ (fn-accept-complete
+  (fn-accept-prepare *gacct-trace1* 2 "<private@example.invalid>" 1 '("fn.private.x") 0)
+  1 2 :durable))
+(defconst *gacct-grow-input* (reverse (fn-state-articles *gacct-trace2*)))
+(assert-event (equal (len *gacct-grow-input*) 2))
+;; Implementation mutation: step keeps every article instead of applying
+;; fn-gac-filter-groups / fn-gac-restrict-article.
+(defun gacct-grow-unrestricted (text as rarts buckets)
+ (declare (ignore text))
+ (if (consp as)
+     (gacct-grow-unrestricted nil (cdr as) (cons (car as) rarts)
+                             (fn-gidx-put-all (fn-index-article-entries (car as)) buckets))
+   (mv rarts buckets)))
+(defteeth fn-gacc-grow-builds
+ :subject fn-gacc-grow
+ :claim (()
+         (equal (fn-gacc-grow text as (fn-gac-restrict-articles text ys)
+                             (fn-gidx-build (fn-gac-restrict-articles text ys)))
+                (let ((r (fn-gac-restrict-articles text (revappend as ys))))
+                  (mv r (fn-gidx-build r)))))
+ :witness ((text *gacct-text*) (as *gacct-grow-input*) (ys nil))
+ :mutations ((unrestricted-grow
+              (:conclusion
+               (equal (gacct-grow-unrestricted text as (fn-gac-restrict-articles text ys)
+                                              (fn-gidx-build (fn-gac-restrict-articles text ys)))
+                      (let ((r (fn-gac-restrict-articles text (revappend as ys))))
+                        (mv r (fn-gidx-build r)))))
+              ((text *gacct-text*) (as *gacct-grow-input*) (ys nil))
+              :fault "cache growth inserts a private article without the access restriction")))
+(defteeth-check (fn-gacc-grow-builds))

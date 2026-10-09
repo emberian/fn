@@ -26,8 +26,8 @@
      nil)))
   *sawt-conn*))
 (defconst *sawt-repin*
- (update-nth 11
-  (fn-served-live-make 1 nil (fn-initial-state '("fn.other")) nil nil nil nil)
+ (update-nth 10
+  (fn-served-live-make 1 nil (fn-initial-state '("fn.other")) nil nil nil)
   (update-nth 1 *awt-open-s* *sawt-conn*)))
 (assert-event (and (fn-served-connp *sawt-conn*)
                    (fn-auth-sessionp (fn-served-conn-session *sawt-381-conn*))

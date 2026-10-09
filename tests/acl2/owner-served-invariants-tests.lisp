@@ -197,7 +197,6 @@
                                     (fn-own-conn-config conn)
                                     (fn-own-conn-observation conn)
                                     (fn-own-conn-verdicts conn)
-                                    (fn-own-conn-index conn)
                                     (fn-own-conn-group-index conn) (fn-own-conn-control conn))))
 (defconst *osi-unrelated*
   (fn-own-set-conns *own-taken*

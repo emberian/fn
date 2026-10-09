@@ -35,11 +35,11 @@
 
 ; The connection a reader listener opens: fn-own-open's call, whatever the
 ; pinned view.
-(defun fn-sit-opened (archive index buckets verdicts line-limit body-limit
+(defun fn-sit-opened (archive buckets verdicts line-limit body-limit
                               config observation injection acfg)
   (declare (xargs :guard t))
   (fn-served-result-conn
-   (fn-served-open-group-indexed archive index buckets verdicts line-limit
+   (fn-served-open-group-indexed archive buckets verdicts line-limit
                                  body-limit config observation injection acfg)))
 
 (in-theory (disable fn-sit-opened))
@@ -99,7 +99,7 @@
 (defthm fn-served-implicit-tls-is-the-starttls-session
   (implies (and (fn-auth-configp acfg)
                 (fn-auth-config-tls-availablep acfg))
-           (let ((c0 (fn-sit-opened archive index buckets verdicts line-limit
+           (let ((c0 (fn-sit-opened archive buckets verdicts line-limit
                                     body-limit config observation injection
                                     acfg)))
              (and (member-equal
@@ -132,7 +132,7 @@
 ; fn-auth-second-starttls-is-refused (books/nntp-auth.lisp).
 (defthm fn-served-implicit-tls-session-is-protected
   (let ((r (fn-served-dispatch
-            (fn-sit-opened archive index buckets verdicts line-limit body-limit
+            (fn-sit-opened archive buckets verdicts line-limit body-limit
                            config observation injection acfg)
             *fn-sit-established-event* fn-arena)))
     (and (null (fn-served-result-effects r))

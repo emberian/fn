@@ -39,7 +39,7 @@
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
   (let* ((o (fn-ocfg-owner *pit-oc*))
          (fn-cat (fn-sca-load-held-rows (fn-sf-records (fn-sn-files (fn-own-store o)))
-                                        (fn-own-view-index *pit-view*) fn-arena fn-cat))
+                                        (fn-midx-build (fn-state-articles (fn-own-view-archive *pit-view*))) fn-arena fn-cat))
          (verdict (fn-pak-post-admission pcarry profile *prwot-msgid-octets*
                                          payload-length (len *prwot-groups*) charge
                                          *prwot-key* fn-cat)))

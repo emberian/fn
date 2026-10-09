@@ -24,9 +24,10 @@
                       1
                       '("fn.letters" "fn.other") 841000001)
    1 1 :durable))
-(defconst *nlc-t-trie* (fn-midx-build (fn-state-articles *nlc-t-a2*)))
 (defconst *nlc-t-buckets* (fn-gidx-build (fn-state-articles *nlc-t-a2*)))
-(defconst *nlc-t-pin* (fn-gidx-pin *nlc-t-trie* *nlc-t-buckets*))
+(defconst *nlc-t-pin* (fn-gidx-pin *nlc-t-buckets*))
+; The unpinned dispatcher is given no pin.
+(defconst *nlc-t-unpinned* nil)
 (defconst *nlc-t-open* (fn-nntp-open-session *nlc-t-a2*))
 (defmacro nlc-t-in (group)
   `(fn-nntp-result-session (fn-nntp-group-result *nlc-t-open* *nlc-t-a2* ,group)))
@@ -67,7 +68,7 @@
 ; The unpinned dispatcher answers the same.
 (assert-event
  (equal (nlc-t-cmd *nlc-t-open* *nlc-t-pin* "LIST" ("COUNTS"))
-        (nlc-t-cmd *nlc-t-open* *nlc-t-trie* "LIST" ("COUNTS"))))
+        (nlc-t-cmd *nlc-t-open* *nlc-t-unpinned* "LIST" ("COUNTS"))))
 ; The count is LISTGROUP's length.
 (assert-event
  (equal (fn-nntp-group-count "fn.letters" (fn-state-articles *nlc-t-a2*))
@@ -102,7 +103,7 @@
                        (nlc-t-lines "fn.letters 2 1 2 m" "fn.other 1 1 1 n"
                                     "fn.empty 0 1 0 y"))))
 (assert-event
- (equal (nlc-t-cmd-env *nlc-t-open* *nlc-t-trie* "LIST" ("COUNTS"))
+ (equal (nlc-t-cmd-env *nlc-t-open* *nlc-t-unpinned* "LIST" ("COUNTS"))
         (nlc-t-cmd-env *nlc-t-open* *nlc-t-pin* "LIST" ("COUNTS"))))
 (assert-event
  (equal (nlc-t-cmd-env *nlc-t-open* *nlc-t-pin* "LIST" ("ACTIVE"))
@@ -149,10 +150,10 @@
 ; that are not the build of the archive (the first archive's) answer a
 ; different count for the same archive.
 (defconst *nlc-t-stale*
-  (fn-gidx-pin *nlc-t-trie* (fn-gidx-build (fn-state-articles *nlc-t-a1*))))
+  (fn-gidx-pin (fn-gidx-build (fn-state-articles *nlc-t-a1*))))
 (assert-event
  (not (equal (nlc-t-cmd *nlc-t-open* *nlc-t-stale* "LIST" ("COUNTS"))
-             (nlc-t-cmd *nlc-t-open* *nlc-t-trie* "LIST" ("COUNTS")))))
+             (nlc-t-cmd *nlc-t-open* *nlc-t-unpinned* "LIST" ("COUNTS")))))
 (must-fail-checked
  (with-prover-step-limit
   200000

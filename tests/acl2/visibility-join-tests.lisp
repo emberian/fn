@@ -112,7 +112,7 @@
         (fn-ctl-withdrawal-status *vjt-t* *vjt-ws* arts *vjt-verdicts*))))
 
 ;; The entry the host calls (books/store-intern.lisp fn-store-existing-action,
-;; which the buffer path reaches through fn-pidx-existing-action), over the
+;; which the buffer path reaches through fn-pidx-existing-action-cat), over the
 ;; arena that interned the Store's rows (*vjt-prior*: T, C, T's tombstone).
 (defun vjt-entry-in (msgid payload groups s fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))

@@ -140,7 +140,7 @@
 ; bytes).  The host's entry is books/store-intern.lisp
 ; fn-store-existing-action (host/owner-host.lisp fn-owner-existing-action and
 ; fn-owner-prepare, host/store-node-host.lisp's prepare/query sites; the
-; buffer entry fn-pidx-existing-action), which reads the held bytes through
+; buffer entry fn-pidx-existing-action-cat), which reads the held bytes through
 ; the arena; books/store-existing-alpha.lisp
 ; fn-store-existing-action-is-pb-over-alpha equates it with this decision
 ; over ALPHA of the Store's articles.  MSGID is the Store's string key; the

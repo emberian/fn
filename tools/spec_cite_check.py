@@ -200,6 +200,10 @@ def defined_names() -> set:
         # `(fn-arena-seal-buffer :logic ... :exec ...)' inside `defabsstobj'.
         names |= set(re.findall(r"\(deftheory\s+([a-z][^\s()]*)", text, re.I))
         names |= set(re.findall(r"\((fn[^\s()]*)\s+:logic\s", text, re.I))
+        # A def-generic's exports (books/def-representation-generic.lisp), each
+        # its :exports row's second word, `(:update fn-arena-seal-buffer :logic ...)',
+        # as host_check.stobj_names reads them.
+        names |= set(re.findall(r"\(:(?:read|update)\s+(fn[^\s()]*)\s+:logic\s", text, re.I))
         # A cursor's generated step (books/def-cursor.lisp: def-cursor and
         # def-cursor/output intern NAME-STEP), `(def-cursor/output fn-nnw-stream ...)'.
         names |= {name + "-step" for name in re.findall(

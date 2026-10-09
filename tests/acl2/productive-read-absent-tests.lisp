@@ -32,9 +32,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -98,7 +98,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         t
@@ -155,7 +154,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (and
         (equal (fn-otb-dependency-step 0 0 2000 t) :serve)
         (equal (fn-own-tls-result-consumed p) (+ 2 (len (fn-nntp-string-octets "ARTICLE 2"))))
@@ -209,9 +208,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -275,7 +274,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         (equal
@@ -331,7 +329,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not nil)
       (not
         (and
@@ -384,9 +382,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -428,7 +426,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-clocked-queued-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-clocked-queued-selected*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcrt-clocked-queued-selected*)
           0
@@ -490,7 +487,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not
         (equal
           (car
@@ -565,9 +562,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "1"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "1"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "1")))
       (p
@@ -631,7 +628,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         t
@@ -687,7 +683,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "1"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "1"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "1"))))))
       (not (not (consp article)))
       (not
         (and
@@ -740,9 +736,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -806,7 +802,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         t
@@ -867,7 +862,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (and
         (equal (fn-otb-dependency-step 0 0 2000 t) :serve)
         (equal
@@ -923,9 +918,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -989,7 +984,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         (equal
@@ -1049,7 +1043,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not nil)
       (not
         (and
@@ -1104,9 +1098,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -1148,7 +1142,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-clocked-queued-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-clocked-queued-selected*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcrt-clocked-queued-selected*)
           0
@@ -1214,7 +1207,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not
         (equal
           (car
@@ -1291,9 +1284,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<pcrt@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<pcrt@x>")))
       (p
@@ -1357,7 +1350,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         t
@@ -1417,7 +1409,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<pcrt@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))))
       (not (not (consp article)))
       (not
         (and
@@ -1472,9 +1464,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -1538,7 +1530,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         t
@@ -1589,7 +1580,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not
         (equal
           (fn-oct-slice-list 0 0 nil)
@@ -1645,9 +1636,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -1711,7 +1702,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         t
@@ -1766,7 +1756,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not
         (equal
           (fn-oct-slice-list 0 0 nil)
@@ -1825,9 +1815,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -1891,7 +1881,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-wire-closed-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-wire-closed-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-wire-closed-mutant*)
           0
@@ -1938,7 +1927,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not
         (equal
           (fn-served-conn-wire sc)
@@ -2007,9 +1996,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -2073,7 +2062,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-wire-closed-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-wire-closed-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-wire-closed-mutant*)
           0
@@ -2124,7 +2112,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not
         (equal
           (fn-served-conn-wire sc)
@@ -2195,9 +2183,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -2261,7 +2249,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-handshaking-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-handshaking-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-handshaking-mutant*)
           0
@@ -2322,7 +2309,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not (not (fn-auth-session-handshakingp as)))
       (not
         (and
@@ -2376,9 +2363,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -2442,7 +2429,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-handshaking-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-handshaking-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-handshaking-mutant*)
           0
@@ -2507,7 +2493,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not (not (fn-auth-session-handshakingp as)))
       (not
         (and
@@ -2563,9 +2549,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -2629,7 +2615,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-sasl-waiting-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-sasl-waiting-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-sasl-waiting-mutant*)
           0
@@ -2690,7 +2675,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not (not (fn-auth-sasl-waitingp as)))
       (not
         (and
@@ -2744,9 +2729,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -2810,7 +2795,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-sasl-waiting-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-sasl-waiting-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-sasl-waiting-mutant*)
           0
@@ -2875,7 +2859,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not (not (fn-auth-sasl-waitingp as)))
       (not
         (and
@@ -2931,9 +2915,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -2997,7 +2981,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-post-awaiting-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-post-awaiting-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-post-awaiting-mutant*)
           0
@@ -3058,7 +3041,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not (not (fn-post-session-awaiting ps)))
       (not
         (and
@@ -3112,9 +3095,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -3178,7 +3161,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-post-awaiting-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-post-awaiting-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-post-awaiting-mutant*)
           0
@@ -3243,7 +3225,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not (not (fn-post-session-awaiting ps)))
       (not
         (and
@@ -3299,9 +3281,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -3365,7 +3347,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-reader-closed-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-reader-closed-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-reader-closed-mutant*)
           0
@@ -3426,7 +3407,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not (equal (fn-nntp-session-openp session) t))
       (not
         (and
@@ -3480,9 +3461,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -3546,7 +3527,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-reader-closed-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-reader-closed-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-reader-closed-mutant*)
           0
@@ -3611,7 +3591,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not (equal (fn-nntp-session-openp session) t))
       (not
         (and
@@ -3667,9 +3647,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -3733,7 +3713,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-short-line-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-short-line-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-short-line-mutant*)
           0
@@ -3790,7 +3769,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not
         (<=
           (len (fn-nntp-string-octets "ARTICLE 2"))
@@ -3849,9 +3828,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -3915,7 +3894,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-short-line-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-short-line-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-short-line-mutant*)
           0
@@ -3976,7 +3954,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not
         (<=
           (len (fn-nntp-string-octets "ARTICLE <absent@x>"))
@@ -4037,9 +4015,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -4136,7 +4114,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-wide-line-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-wide-line-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-wide-line-mutant*)
           0
@@ -4221,7 +4198,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not
         (fn-nntp-command-inputp
           (append
@@ -4293,9 +4270,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -4392,7 +4369,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-wide-line-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-wide-line-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-wide-line-mutant*)
           0
@@ -4481,7 +4457,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not
         (fn-nntp-command-inputp
           (append
@@ -4553,9 +4529,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -4619,7 +4595,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-unauthenticated-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-unauthenticated-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-unauthenticated-mutant*)
           0
@@ -4678,7 +4653,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not
         (or
           (not (fn-auth-config-requiredp (fn-auth-session-config as)))
@@ -4735,9 +4710,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -4801,7 +4776,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-unauthenticated-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-unauthenticated-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-unauthenticated-mutant*)
           0
@@ -4864,7 +4838,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not
         (or
           (not (fn-auth-config-requiredp (fn-auth-session-config as)))
@@ -4923,9 +4897,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "2"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "2"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "2")))
       (p
@@ -4989,7 +4963,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-unprojected-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-unprojected-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-unprojected-mutant*)
           0
@@ -5050,7 +5023,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "2"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "2"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "2"))))))
       (not (fn-nntp-session-projected session))
       (not
         (and
@@ -5104,9 +5077,9 @@
         (if
           (fn-nntp-number-tokenp (fn-nntp-string-octets "<absent@x>"))
           (fn-nntp-find-group-number group number (fn-state-articles viewarchive))
-          (fn-midx-lookup
+          (fn-find-article
             (fn-nntp-token-string (fn-nntp-string-octets "<absent@x>"))
-            (fn-gidx-pin-trie viewindex))))
+            (fn-state-articles viewarchive))))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-absent-reply session (fn-nntp-string-octets "<absent@x>")))
       (p
@@ -5170,7 +5143,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-unprojected-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-unprojected-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-unprojected-mutant*)
           0
@@ -5235,7 +5207,7 @@
           (not
             (and
               (fn-nntp-message-id-tokenp (fn-nntp-string-octets "<absent@x>"))
-              (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<absent@x>"))))))
+              (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<absent@x>"))))))
       (not (fn-nntp-session-projected session))
       (not
         (and

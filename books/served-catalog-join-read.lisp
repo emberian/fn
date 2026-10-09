@@ -30,9 +30,9 @@
   (implies (fn-scr-conn-okp conn fn-arena fn-cat)
            (fn-scr-conn-okp (fn-served-result-conn
                              (fn-served-counted-result
-                              (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)))
+                              (fn-scar-feed-span conn i end live arts fn-octets fn-arena)))
                             fn-arena fn-cat))
-  :hints (("Goal" :induct (fn-scar-feed-span conn i end live trie arts fn-octets fn-arena)
+  :hints (("Goal" :induct (fn-scar-feed-span conn i end live arts fn-octets fn-arena)
            :in-theory (e/d (fn-scar-feed-span fn-served-counted-result fn-served-counted-make)
                            (fn-scr-conn-okp fn-scar-feed-byte fn-served-submission fn-scar-feed-span-is-feed-counted
                             fn-served-closed-wirep fn-served-haltedp)))))
@@ -41,7 +41,7 @@
   (implies (fn-scr-conn-okp conn fn-arena fn-cat)
            (fn-scr-conn-okp (fn-served-result-conn
                              (fn-served-counted-result
-                              (fn-scar-step-span-fast conn i end live trie arts fn-octets fn-arena)))
+                              (fn-scar-step-span-fast conn i end live arts fn-octets fn-arena)))
                             fn-arena fn-cat))
   :hints (("Goal" :in-theory (e/d (fn-scar-step-span-fast fn-scar-step-span-core)
                                   (fn-scr-conn-okp fn-scar-feed-span fn-served-closed-wirep fn-scar-feed-span-is-feed-counted fn-scar-step-span-core-is-step-counted-core fn-scar-step-span-fast-is-step-counted-fast
@@ -68,8 +68,7 @@
   (equal (fn-scj-conn-pinp
           (fn-own-conn-make-group-indexed
            id (fn-served-pinned-version (fn-served-conn-pinned sconn))
-           frontier wire session (fn-served-conn-archive sconn) config observation verdicts
-           (fn-served-conn-index sconn) (fn-served-conn-group-index sconn)
+           frontier wire session (fn-served-conn-archive sconn) config observation verdicts (fn-served-conn-group-index sconn)
            (fn-served-conn-control sconn))
           fn-arena fn-cat)
          (fn-scr-conn-catalogp sconn fn-arena fn-cat))
@@ -125,34 +124,18 @@
                                                  (fn-scar-step-span-fast
                                                   (fn-own-tls-served-conn o (fn-own-find-conn id (fn-own-conns o)))
                                                   i end (fn-sn-node (fn-own-store o))
-                                                  (fn-own-view-index (fn-own-view o))
                                                   (fn-state-articles (fn-own-view-archive (fn-own-view o)))
                                                   fn-octets fn-arena))))
                              (:instance fn-scj-served-conn-okp-of-pins)
                              (:instance fn-scj-conn-okp-of-scar-step-span-fast
                                         (conn (fn-own-tls-served-conn o (fn-own-find-conn id (fn-own-conns o))))
                                         (live (fn-sn-node (fn-own-store o)))
-                                        (trie (fn-own-view-index (fn-own-view o)))
                                         (arts (fn-state-articles (fn-own-view-archive (fn-own-view o)))))))))
-
-; A view's trie is its visible list's index (fn-scar-view-indexedp of an
-; owner holding it): the served chain's peer arm reads the catalog where the
-; scar arm reads that trie, so the chain equation asks it
-; (books/served-catalog-chain.lisp fn-scr-own-read-span-is-scar-own-read-span,
-; lane join-f2-midx).  fn-sjh-okp carries it for the working view, and
-; fn-sjh-views-okp for a captured one.
-(defun-nx fn-scj-trie-indexedp (v)
-  (fn-midx-correspondencep (fn-own-view-index v) (fn-state-articles (fn-own-view-archive v))))
-
-(defthm fn-scj-trie-indexedp-is-view-indexedp
-  (equal (fn-scar-view-indexedp o) (fn-scj-trie-indexedp (fn-own-view o)))
-  :hints (("Goal" :in-theory '(fn-scar-view-indexedp fn-scj-trie-indexedp))))
 
 (defthm fn-scj-scr-own-read-span-keeps
   (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-conns-pinp (fn-own-conns o) fn-arena fn-cat)
-                (fn-scj-live-okp (fn-own-view o) fn-arena fn-cat)
-                (fn-scar-view-indexedp o))
+                (fn-scj-live-okp (fn-own-view o) fn-arena fn-cat))
            (let ((o2 (fn-own-tls-result-owner (fn-scr-own-read-span o id i end cache fn-octets fn-arena fn-cat))))
              (and (fn-scj-conns-pinp (fn-own-conns o2) fn-arena fn-cat)
                   (equal (fn-own-view o2) (fn-own-view o))
@@ -174,8 +157,7 @@
 ; fn-scr-own-read-span leaves satisfies fn-scj-invp whenever the owner it
 ; read satisfied it.
 (defthm fn-scj-invp-of-scr-own-read-span
-  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache) (fn-scj-invp o fn-arena fn-cat)
-                (fn-scar-view-indexedp o))
+  (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache) (fn-scj-invp o fn-arena fn-cat))
            (fn-scj-invp (fn-own-tls-result-owner
                          (fn-scr-own-read-span o id i end cache fn-octets fn-arena fn-cat))
                         fn-arena fn-cat))
@@ -225,8 +207,7 @@
 (defthm fn-scj-read-at-view-keeps
   (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-conns-pinp (fn-own-conns (fn-ocfg-owner oc)) fn-arena fn-cat)
-                (fn-scj-live-okp v fn-arena fn-cat)
-                (fn-scj-trie-indexedp v))
+                (fn-scj-live-okp v fn-arena fn-cat))
            (let ((o2 (fn-ocfg-owner
                       (fn-ocfg-with-view
                        (fn-own-tls-result-owner
@@ -235,8 +216,7 @@
              (and (fn-scj-conns-pinp (fn-own-conns o2) fn-arena fn-cat)
                   (equal (fn-own-view o2) w)
                   (equal (fn-own-store o2) (fn-own-store (fn-ocfg-owner oc))))))
-  :hints (("Goal" :in-theory (union-theories '(fn-scj-scr-ocfg-read-span-owner
-                                               fn-scj-trie-indexedp-is-view-indexedp)
+  :hints (("Goal" :in-theory (union-theories '(fn-scj-scr-ocfg-read-span-owner)
                                              (theory 'minimal-theory))
            :use ((:instance fn-orr-with-view-fields)
                  (:instance fn-orr-with-view-fields
@@ -256,9 +236,7 @@
 (defthm fn-scj-invp-of-orr-read-span
   (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
-                (implies (consp views) (and (fn-scj-live-okp (car views) fn-arena fn-cat)
-                                            (fn-scj-trie-indexedp (car views)))))
+                (implies (consp views) (fn-scj-live-okp (car views) fn-arena fn-cat)))
            (fn-scj-invp (fn-ocfg-owner (fn-own-tls-result-owner
                                         (fn-orr-read-span oc views id i end cache fn-octets fn-arena fn-cat)))
                         fn-arena fn-cat))
@@ -286,7 +264,6 @@
 (defthm fn-scj-ocfg-read-span-is-reference-under-invp
   (implies (and (fn-scol-okp fn-arena fn-cat) (fn-gacc-okp cache)
                 (fn-ocl-relation oc)
-                (fn-scar-view-indexedp (fn-ocfg-owner oc))
                 (fn-scj-invp (fn-ocfg-owner oc) fn-arena fn-cat)
                 (natp i) (natp end))
            ;; Since join-f2-12 the chain's equation is fn-scr-tls-agrees:

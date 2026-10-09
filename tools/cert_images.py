@@ -87,7 +87,8 @@ FIXUP = (
 
 def stobj_events(text: str) -> tuple[frozenset[str], frozenset[str]]:
     """(stobjs a book defines, stobjs it attaches), from the ledger's reader:
-    every `defstobj`/`defabsstobj` and `attach-stobj` form, at any depth."""
+    every `defstobj`/`defabsstobj`/`def-generic` and `attach-stobj` form,
+    at any depth."""
     defined: set[str] = set()
     attached: set[str] = set()
     try:
@@ -99,6 +100,13 @@ def stobj_events(text: str) -> tuple[frozenset[str], frozenset[str]]:
         form = pending.pop()
         if not isinstance(form, list) or not form:
             continue
+        # The ledger mirrors def-generic's proof obligations, not the
+        # attachable defabsstobj it also creates. Record that definition
+        # before following the expansion, or an image can preload the
+        # generic and make a later attach-stobj impossible.
+        if (form[0] == "def-generic" and len(form) >= 2
+                and isinstance(form[1], ledger.Sym)):
+            defined.add(str(form[1]))
         expansion = ledger.generated_expansion(form)
         if expansion is not None:
             pending.extend(expansion)

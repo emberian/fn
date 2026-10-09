@@ -4,17 +4,15 @@
 ;
 ; A reader connection pins a VERSION v (books/owner.lisp fn-own-conn-version =
 ; fn-own-view-version = the committed count).  What it pins besides today --
-; the archive (fn-state-articles, newest first), the Message-ID trie
-; (fn-midx-build of it, books/msgid-index.lisp) and the group buckets
+; the archive (fn-state-articles, newest first) and the group buckets
 ; (fn-gidx-build of it, books/group-bucket-index.lisp) -- is a function of
 ; (v, fn-cat, fn-arena): the rows visible at v, newest first, each
 ; materialized as the acceptance article (fn-make-article, books/acceptance.lisp)
 ; from the row's wire positions, its handle and its numbers.  This book
 ; defines that function, fn-cat-view-articles, and proves that the two served
-; lookups the machine runs over the trie and the buckets BUILT FROM IT are
+; lookups the machine runs over the archive and the buckets BUILT FROM IT are
 ; walks of the visible rows the catalog's columns answer:
-;   fn-cat-view-find-article-is-walk: fn-find-article over the view (what
-;     fn-midx-lookup of fn-midx-build is: fn-midx-lookup-of-build-is-find-article)
+;   fn-cat-view-find-article-is-walk: fn-find-article over the view
 ;     is the newest visible row bound to the Message-ID;
 ;   fn-cat-view-number-entry-is-walk: fn-gidx-find-number-entry over
 ;     fn-index-build of the view (what the bucket's number index answers:
@@ -22,7 +20,7 @@
 ;     is the entry of the newest visible row binding (GROUP . N), when every
 ;     visible row's Message-ID is a served index key (fn-cat-view-msgids-okp);
 ;   fn-cat-view-number-article-is-row: the composed number lookup (entry, then
-;     the trie) is that row's article when its Message-ID names no newer
+;     the article list) is that row's article when its Message-ID names no newer
 ;     visible row;
 ;   fn-cat-view-find-is-msgid-column: the Message-ID walk over the whole
 ;     catalog is the newest visible seq of the Message-ID column
@@ -260,11 +258,10 @@
                             fn-index-membership-entries fn-cat-numbers-bind)))))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE 3: the composed number lookup (the entry, then the trie) is the
-; bound row's article when its Message-ID names no newer visible row.
+; KEYSTONE 3: the composed number lookup (the entry, then the article list) is
+; the bound row's article when its Message-ID names no newer visible row.
 
-; The bound row is visible below I, so its Message-ID is a served index key,
-; hence a string (the trie keystone's hypothesis).
+; The bound row is visible below I, so its Message-ID is a served index key.
 (defthm fn-cat-view-bound-find-msgid-okp
   (implies (and (fn-cat-view-msgids-okp i v fn-cat)
                 (fn-cat-view-bound-find group n i v fn-cat))
@@ -281,7 +278,6 @@
 (defthm fn-cat-view-number-article-is-row
   (implies (and (posp n) (<= n *fn-nntp-max-article-number*)
                 (fn-cat-view-msgids-okp i v fn-cat)
-                (fn-midx-string-article-listp (fn-cat-view-below i v fn-arena fn-cat))
                 (fn-cat-view-bound-find group n i v fn-cat)
                 (equal (fn-cat-view-find
                         (fn-record-msgid (fn-cat-at (fn-cat-view-bound-find group n i v fn-cat) fn-cat))
@@ -290,17 +286,16 @@
            (equal (fn-gidx-entry-number-article
                    group n
                    (fn-index-build (fn-cat-view-below i v fn-arena fn-cat))
-                   (fn-midx-build (fn-cat-view-below i v fn-arena fn-cat)))
+                   (fn-cat-view-below i v fn-arena fn-cat))
                   (fn-cat-row-article (fn-cat-view-bound-find group n i v fn-cat) fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-gidx-entry-number-article fn-index-entry fn-index-entry-msgid)
                                   (fn-cat-row-article fn-cat-visible-at fn-nntp-index-msgid-okp
                                    fn-cat-view-below fn-cat-view-find fn-cat-view-bound-find
-                                   fn-index-build fn-midx-build fn-find-article
-                                   fn-cat-view-msgids-okp fn-midx-string-article-listp))
+                                   fn-index-build fn-find-article
+                                   fn-cat-view-msgids-okp))
            :use ((:instance fn-cat-view-bound-find-msgid-okp)
-                 (:instance fn-midx-lookup-of-build-is-find-article
-                            (msgid (fn-record-msgid (fn-cat-at (fn-cat-view-bound-find group n i v fn-cat) fn-cat)))
-                            (articles (fn-cat-view-below i v fn-arena fn-cat)))))))
+                 (:instance fn-cat-view-find-article-is-walk
+                            (msgid (fn-record-msgid (fn-cat-at (fn-cat-view-bound-find group n i v fn-cat) fn-cat))))))))
 
 ; -----------------------------------------------------------------------------
 ; KEYSTONE 4: the Message-ID walk is the column.  The served lookup's exec is

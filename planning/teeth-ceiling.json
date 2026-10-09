@@ -2,8 +2,6 @@
  "about": "The shrink-only set of keystones without teeth (tools/keystone_emit.py --write-ceiling drops names freely; adding one needs its ACKS.md line, tools/ratchet.py).",
  "toothless": [
   "fn-av-mca-read-span-restricted-is-legacy",
-  "fn-av-scr-auth-delegate-restricted-is-reference",
-  "fn-av-scr-dispatch-core-restricted-is-reference",
   "fn-lst-active-command-is-av-list-active",
   "fn-lst-counts-command-is-av-list-counts",
   "fn-lst-one-finite-progress",
@@ -14,7 +12,6 @@
   "fn-nnw-stream-select-progresses",
   "fn-nnw-stream-step-residual",
   "fn-ocap-preview-keeps-input-prefix-bounds",
-  "fn-orcs-predict-seal-refines-intern",
   "fn-proto-archive-command-cat-is-pinned",
   "fn-qplan-cw-drain-is-a-prefix",
   "fn-scat-group-low-is-archive",

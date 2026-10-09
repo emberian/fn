@@ -3,7 +3,7 @@
 ; split from books/served-catalog-join.lisp to keep each book under 10 s).
 ;
 ; KEYSTONE fn-scj-join-of-finish-lists: the catalog after the host's
-; T4-then-T2 (fn-sca-finish, with the refreshed view's index and
+; T4-then-T2 (fn-sca-finish, with the refreshed view's shown and
 ; fn-sca-targets-of the completed Message-ID over the refreshed withdrawals)
 ; shows at the new count exactly the list the refresh's one-article step
 ; makes (fn-ctl-visible-add): the articles the cancel drops are the rows T4
@@ -80,12 +80,12 @@
 
 (defthm fn-scj-marks-below-of-withdraw-targets
   (implies (and (fn-scj-marks-below c b) (< (len c) b))
-           (fn-scj-marks-below (fn-sca-withdraw-targets targets view-index by c) b))
-  :hints (("Goal" :induct (fn-sca-withdraw-targets targets view-index by c)
+           (fn-scj-marks-below (fn-sca-withdraw-targets targets shown by c) b))
+  :hints (("Goal" :induct (fn-sca-withdraw-targets targets shown by c)
            :in-theory (enable fn-sca-withdraw-targets))))
 
 (defthm fn-scj-len-of-withdraw-targets
-  (equal (len (fn-sca-withdraw-targets targets view-index by fn-cat)) (len fn-cat))
+  (equal (len (fn-sca-withdraw-targets targets shown by fn-cat)) (len fn-cat))
   :hints (("Goal" :in-theory (enable fn-sca-withdraw-targets))))
 
 
@@ -109,29 +109,29 @@
            :in-theory (enable fn-cat-view-last-visible))))
 
 
-(defun-nx fn-scj-hitp (seq targets index n c)
+(defun-nx fn-scj-hitp (seq targets shown n c)
   (if (consp targets)
-      (or (and (not (fn-midx-lookup (car targets) index))
+      (or (and (not (fn-ctl-has-msgid-p (car targets) shown))
                (equal seq (fn-cat-view-last-visible (fn-cat-seqs-for (car targets) c 0) n c)))
-          (fn-scj-hitp seq (cdr targets) index n c))
+          (fn-scj-hitp seq (cdr targets) shown n c))
     nil))
 
 (defthm fn-scj-hitp-of-mark
   (implies (and (natp target) (equal n (len c)))
-           (equal (fn-scj-hitp seq targets index n (fn-cat-mark-withdrawn target n by c))
-                  (fn-scj-hitp seq targets index n c)))
+           (equal (fn-scj-hitp seq targets shown n (fn-cat-mark-withdrawn target n by c))
+                  (fn-scj-hitp seq targets shown n c)))
   :hints (("Goal" :in-theory (disable fn-cat-view-last-visible))))
 
 
 (defthm fn-scj-withdrawn-of-withdraw-targets
   (implies (natp seq)
-           (equal (fn-held-withdrawn (nth seq (fn-sca-withdraw-targets targets index by c)))
+           (equal (fn-held-withdrawn (nth seq (fn-sca-withdraw-targets targets shown by c)))
                   (if (and (< seq (len c))
-                           (fn-scj-hitp seq targets index (len c) c)
+                           (fn-scj-hitp seq targets shown (len c) c)
                            (null (fn-held-withdrawn (nth seq c))))
                       (cons (len c) by)
                     (fn-held-withdrawn (nth seq c)))))
-  :hints (("Goal" :induct (fn-sca-withdraw-targets targets index by c)
+  :hints (("Goal" :induct (fn-sca-withdraw-targets targets shown by c)
            :in-theory (e/d (fn-sca-withdraw-targets) (fn-cat-view-last-visible)))))
 
 (defthm fn-scj-row-article-of-mark
@@ -142,9 +142,9 @@
 
 (defthm fn-scj-row-article-of-withdraw-targets
   (implies (natp k)
-           (equal (fn-cat-row-article k fn-arena (fn-sca-withdraw-targets targets index by fn-cat))
+           (equal (fn-cat-row-article k fn-arena (fn-sca-withdraw-targets targets shown by fn-cat))
                   (fn-cat-row-article k fn-arena fn-cat)))
-  :hints (("Goal" :induct (fn-sca-withdraw-targets targets index by fn-cat)
+  :hints (("Goal" :induct (fn-sca-withdraw-targets targets shown by fn-cat)
            :in-theory (e/d (fn-sca-withdraw-targets) (fn-cat-view-last-visible fn-cat-row-article)))))
 
 (defthm fn-scj-view-find-names-its-msgid
@@ -184,11 +184,11 @@
   (implies (and (no-duplicatesp-equal (fn-article-msgids (fn-cat-view-below (len fn-cat) n fn-arena fn-cat)))
                 (natp seq) (< seq (len fn-cat))
                 (fn-cat-visible-at seq n fn-cat))
-           (iff (fn-scj-hitp seq targets index n fn-cat)
+           (iff (fn-scj-hitp seq targets shown n fn-cat)
                 (and (member-equal (fn-record-msgid (nth seq fn-cat)) targets)
-                     (not (fn-midx-lookup (fn-record-msgid (nth seq fn-cat)) index)))))
+                     (not (fn-ctl-has-msgid-p (fn-record-msgid (nth seq fn-cat)) shown)))))
   :hints (("Goal" :induct (len targets)
-           :in-theory (disable fn-cat-visible-at-is-visiblep fn-cat-view-find fn-midx-lookup))
+           :in-theory (disable fn-cat-visible-at-is-visiblep fn-cat-view-find))
           ("Subgoal *1/1" :use ((:instance fn-scj-view-find-of-visible-unique (i (len fn-cat)) (v n))
                                 (:instance fn-scj-view-find-names-its-msgid (m (car targets)) (i (len fn-cat)) (v n))))))
 
@@ -204,13 +204,13 @@
                 (no-duplicatesp-equal (fn-article-msgids (fn-cat-view-below (len fn-cat) (len fn-cat) fn-arena fn-cat)))
                 (natp seq) (< seq (len fn-cat)))
            (iff (fn-cat-visible-at seq (+ 1 (len fn-cat))
-                                   (fn-sca-withdraw-targets targets index by fn-cat))
+                                   (fn-sca-withdraw-targets targets shown by fn-cat))
                 (and (null (fn-held-withdrawn (nth seq fn-cat)))
                      (not (and (member-equal (fn-record-msgid (nth seq fn-cat)) targets)
-                               (not (fn-midx-lookup (fn-record-msgid (nth seq fn-cat)) index)))))))
+                               (not (fn-ctl-has-msgid-p (fn-record-msgid (nth seq fn-cat)) shown)))))))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-cat-visiblep) (fn-scj-hitp-iff fn-scj-visible-at-count-when-marks-below
-                                                              fn-midx-lookup fn-sca-withdraw-targets))
+                                                              fn-sca-withdraw-targets))
            :use ((:instance fn-scj-hitp-iff (n (len fn-cat)))
                  (:instance fn-scj-visible-at-count-when-marks-below)))))
 
@@ -219,10 +219,10 @@
                 (no-duplicatesp-equal (fn-article-msgids (fn-cat-view-below (len fn-cat) (len fn-cat) fn-arena fn-cat)))
                 (natp i) (<= i (len fn-cat)))
            (equal (fn-cat-view-below i (+ 1 (len fn-cat)) fn-arena
-                                     (fn-sca-withdraw-targets targets index by fn-cat))
-                  (fn-scj-keep (fn-cat-view-below i (len fn-cat) fn-arena fn-cat) targets index)))
+                                     (fn-sca-withdraw-targets targets shown by fn-cat))
+                  (fn-scj-keep (fn-cat-view-below i (len fn-cat) fn-arena fn-cat) targets shown)))
   :hints (("Goal" :induct (fn-cat-view-below i (len fn-cat) fn-arena fn-cat)
-           :in-theory (disable fn-cat-visible-at-is-visiblep fn-sca-withdraw-targets fn-midx-lookup
+           :in-theory (disable fn-cat-visible-at-is-visiblep fn-sca-withdraw-targets
                                fn-cat-row-article))
           ("Subgoal *1/2" :use ((:instance fn-scj-visible-after-withdraw-targets (seq (+ -1 i)))
                                 (:instance fn-scj-visible-at-count-when-marks-below (seq (+ -1 i)))))))
@@ -254,12 +254,12 @@
 
 ; The catalog after the host's finish (T4 then T2): the view at the new
 ; count is the kept rows, with the completed row on top when the refreshed
-; index shows its Message-ID.
+; shown shows its Message-ID.
 (defthm fn-scj-view-after-finish
-  (let ((c2 (mv-nth 2 (fn-sca-finish token pending index targets fn-cat)))
-        (c4 (fn-sca-withdraw-targets targets index (len fn-cat) fn-cat))
+  (let ((c2 (mv-nth 2 (fn-sca-finish token pending shown targets fn-cat)))
+        (c4 (fn-sca-withdraw-targets targets shown (len fn-cat) fn-cat))
         (x (fn-scj-keep (fn-cat-view-below (len fn-cat) (len fn-cat) fn-arena fn-cat)
-                        targets index)))
+                        targets shown)))
     (implies (and (fn-scj-marks-below fn-cat (len fn-cat))
                   (no-duplicatesp-equal
                    (fn-article-msgids (fn-cat-view-below (len fn-cat) (len fn-cat) fn-arena fn-cat)))
@@ -270,7 +270,7 @@
              (and (equal (len c2) (+ 1 (len fn-cat)))
                   (fn-scj-marks-below c2 (+ 1 (len fn-cat)))
                   (equal (fn-cat-view-articles (+ 1 (len fn-cat)) fn-arena c2)
-                         (if (fn-midx-lookup (fn-record-msgid (fn-pc-held pending)) index)
+                         (if (fn-ctl-has-msgid-p (fn-record-msgid (fn-pc-held pending)) shown)
                              (cons (fn-cat-row-article (len fn-cat) fn-arena
                                                        (fn-cat-commit (fn-pc-held pending) c4))
                                    x)
@@ -278,16 +278,16 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-sca-finish fn-sca-complete fn-cat-complete fn-cat-complete-hidden
                             fn-cat-view-articles fn-cat-visible-at-by-row)
-                           (fn-cat-visible-at-is-visiblep fn-sca-withdraw-targets fn-midx-lookup
+                           (fn-cat-visible-at-is-visiblep fn-sca-withdraw-targets
                             fn-cat-row-article fn-cat-view-below fn-cat-commit-is-append
                             fn-scj-keep))
            :expand ((fn-cat-view-below (+ 1 (len fn-cat)) (+ 1 (len fn-cat)) fn-arena
                                        (fn-cat-commit (fn-pc-held pending)
-                                                      (fn-sca-withdraw-targets targets index (len fn-cat) fn-cat)))
+                                                      (fn-sca-withdraw-targets targets shown (len fn-cat) fn-cat)))
                     (fn-cat-view-below (+ 1 (len fn-cat)) (+ 1 (len fn-cat)) fn-arena
                                        (fn-cat-commit (fn-held-with-withdrawn (fn-pc-held pending)
                                                                               (cons (len fn-cat) (len fn-cat)))
-                                                      (fn-sca-withdraw-targets targets index (len fn-cat) fn-cat))))
+                                                      (fn-sca-withdraw-targets targets shown (len fn-cat) fn-cat))))
            :use ((:instance fn-scj-view-below-after-withdraw-targets (i (len fn-cat)) (by (len fn-cat)))
                  (:instance fn-pc-p-fields (pc pending))))))
 
@@ -299,9 +299,9 @@
   (let* ((n (len fn-cat))
          (v (fn-cat-view-below n n fn-arena fn-cat))
          (v2 (fn-ctl-visible-add a v old ws verdicts))
-         (index (fn-midx-build v2))
+         (shown v2)
          (targets (fn-sca-targets-of (fn-article-msgid a) ws))
-         (c2 (mv-nth 2 (fn-sca-finish token pending index targets fn-cat))))
+         (c2 (mv-nth 2 (fn-sca-finish token pending shown targets fn-cat))))
     (implies (and (fn-scj-marks-below fn-cat n)
                   (consp a)
                   (stringp (fn-article-msgid a))
@@ -315,7 +315,7 @@
                   (equal (fn-record-msgid (fn-pc-held pending)) (fn-article-msgid a))
                   (equal (fn-cat-row-article n fn-arena
                                              (fn-cat-commit (fn-pc-held pending)
-                                                            (fn-sca-withdraw-targets targets index n fn-cat)))
+                                                            (fn-sca-withdraw-targets targets shown n fn-cat)))
                          a))
              (and (equal (fn-cat-view-articles (+ 1 n) fn-arena c2) v2)
                   (equal (len c2) (+ 1 n))
@@ -323,11 +323,11 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-ctl-visible-add)
                            (fn-scj-view-after-finish fn-scj-visible-add-kept-is-keep fn-scj-visible-add-shows-a
-                            fn-sca-finish fn-midx-build fn-midx-lookup fn-ctl-drop-via fn-ctl-causes-p
+                            fn-sca-finish  fn-ctl-drop-via fn-ctl-causes-p
                             fn-ctl-withdrawn-by-p fn-scj-keep fn-cat-view-below fn-cat-row-article
                             fn-sca-targets-of fn-sca-withdraw-targets fn-cat-commit-is-append))
            :use ((:instance fn-scj-view-after-finish
-                            (index (fn-midx-build (fn-ctl-visible-add a (fn-cat-view-below (len fn-cat) (len fn-cat) fn-arena fn-cat) old ws verdicts)))
+                            (shown (fn-ctl-visible-add a (fn-cat-view-below (len fn-cat) (len fn-cat) fn-arena fn-cat) old ws verdicts))
                             (targets (fn-sca-targets-of (fn-article-msgid a) ws)))
                  (:instance fn-scj-visible-add-kept-is-keep (v (fn-cat-view-below (len fn-cat) (len fn-cat) fn-arena fn-cat)))
                  (:instance fn-scj-visible-add-shows-a (v (fn-cat-view-below (len fn-cat) (len fn-cat) fn-arena fn-cat)))))))

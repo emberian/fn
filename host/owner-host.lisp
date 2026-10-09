@@ -128,8 +128,7 @@
 (include-book "../books/owner-bound-commit")
 (include-book "../books/owner-log-reopen")
 (include-book "../books/owner-prepare-carried")
-; PRF-191: a POST's Message-ID tests through the owner's view trie
-; (fn-pidx-existing-action, fn-pidx-sbud-prepare).
+; PRF-191: the reference prepare chain used by the catalog refinements.
 (include-book "../books/post-identity-index")
 ; join-f2-midx: the duplicate test's lookup through the catalog, not the trie
 ; (fn-pidx-existing-action-cat).
@@ -217,7 +216,7 @@
 ;; This file names what it calls, so every loader gets the same world: the
 ;; native images (host/native/build.lisp, build-dtn.lisp).
 ;; fn-owner-io calls fn-rcon-ocfg-io; fn-owner-prepare-buffer reads the
-;; fn-octets buffer and calls fn-pidx-existing-action, whose comparison is
+;; fn-octets buffer and calls fn-pidx-existing-action-cat, whose comparison is
 ;; books/store-reclaim-buffer's fn-rclb-same-articlep (D13, STO-014).
 (include-book "../books/records-concrete-owner")
 (include-book "../books/octets-stobj")
@@ -2247,8 +2246,8 @@
 ; owner state a concrete representation.  Everything after the record is
 ; the same prepare (fn-pcar-sbud-prepare) on the same record.
 ; The records flip: as fn-owner-prepare above, with the duplicate test
-; fn-pidx-existing-action over the arena (KEYSTONE
-; fn-pidx-existing-action-is-store-existing-action) and the payload sealed
+; fn-pidx-existing-action-cat over the arena (KEYSTONE
+; fn-pidx-existing-action-cat-is-store-existing-action) and the payload sealed
 ; from the buffer (fn-arena-seal-buffer: no list is retained; the wire
 ; record's list payload lives only for the facts, the context and the budget).
 
@@ -2332,7 +2331,7 @@
                  ; runs fn-psrv-prepare (lane prepare-served): the served test
                  ; is the prepare's own, then fn-prc-sbud-prepare (KEYSTONE
                  ; fn-psrv-prepare-preserves-invariant), equal to PRF-191's
-                 ; fn-pidx-sbud-prepare under fn-prc-carryp
+                 ; fn-pcar-sbud-prepare under fn-prc-carryp
                  ; (fn-prc-sbud-prepare-is-pidx-sbud-prepare), so to
                  ; fn-pcar-sbud-prepare over the owner's carried view
                  ; (fn-prc-sbud-prepare-of-refresh-is-pcar-sbud-prepare): the
@@ -2757,7 +2756,7 @@
                  (state (fn-orc-writer-enter state)))
             (mv-let (word pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
-                             pending (fn-own-view-index view)
+                             pending (fn-state-articles (fn-own-view-archive view))
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view))
                              fn-cat)
@@ -2810,7 +2809,7 @@
                  (state (fn-orc-writer-enter state)))
             (mv-let (cword pending2 fn-cat)
               (fn-sca-finish (cons (nfix (cdr completion)) (fn-pc-expected pending))
-                             pending (fn-own-view-index view)
+                             pending (fn-state-articles (fn-own-view-archive view))
                              (fn-sca-targets-of (fn-record-msgid (fn-pc-held pending))
                                                 (fn-own-view-withdrawals view))
                              fn-cat)
@@ -4315,9 +4314,9 @@
 ; (books/octets-stobj.lisp): host/native/owner.lisp fnn-owner-attempt fills
 ; the buffer once from the byte vector the owner handed back and asks this
 ; and fn-owner-prepare-buffer over it, so the payload is not consed into a
-; list for either.  The decision is fn-pidx-existing-action
-; (books/post-identity-index.lisp), equal to the Store's entry
-; fn-store-existing-action (fn-pidx-existing-action-is-store-existing-action),
+; list for either.  The decision is fn-pidx-existing-action-cat
+; (books/post-identity-catalog.lisp), equal to the Store's entry
+; fn-store-existing-action (fn-pidx-existing-action-cat-is-store-existing-action),
 ; which is the tombstone-aware fn-rcl-action-over over ALPHA of the Store's
 ; articles (fn-store-existing-action-is-the-verdict-over-alpha), itself
 ; fn-pb-action-over wherever the held payload is not a tombstone
@@ -4577,12 +4576,9 @@
 ; (fn-scr-ocfg-read-span-is-reference-under-ocl-relation, through
 ; books/owner-served-carried.lisp fn-scar-ocfg-read-tls-prefix): it takes the
 ; store node's fn-node-statep from that relation instead of re-evaluating it,
-; O(N^2) in the archive, four times per read.  It also passes the owner
-; view's Message-ID trie to the peer step, so an IHAVE/CHECK duplicate test is
-; one trie lookup instead of a scan of the node's articles and bindings
-; (books/peer-offer-indexed.lisp, fn-pix-history-hasp-is-peer-history-hasp);
-; the trie premise fn-scar-view-indexedp is carried by every owner transition
-; (books/owner-offer-indexed.lisp).  A peer session's events run
+; O(N^2) in the archive, four times per read.  An IHAVE/CHECK duplicate test
+; reads the node's articles and bindings (books/peer-offer-indexed.lisp,
+; fn-pix-history-hasp-is-peer-history-hasp).  A peer session's events run
 ; fn-pgc-peer-arm (books/peer-guard-carried.lisp, D24), whose guard names no
 ; node recognizer, so no peer event evaluates fn-node-statep either
 ; (fn-pgc-peer-arm-is-peer-step-pinned).
@@ -6145,14 +6141,6 @@ itself."
       (value (fn-ores-config-refused :reclaim-instant)))))
 
 
-(defun fn-owner-orcp-keyring (s)
-  (declare (xargs :mode :program))
-  (list (fn-sn-keyring s) (fn-sn-keyring-generation s)))
-
-; host/native/owner.lisp dispatches it (lane online-reclaim).
-(definterface fn-owner-orcp-keyring
-  :class ::program)
-
 ; Off the mutex, pure: the rebuild (fn-orcp-rebuild: KEYSTONE
 ; fn-orcp-rebuild-is-the-full-open) and the carried folds the install makes
 ; over the rebuilt Store (fn-owner-install-extended, fn-owner-install-
@@ -6189,9 +6177,13 @@ itself."
 (definterface fn-owner-orcp-salt
   :class ::program)
 
+;; The visible-set test of the reclaim's load reads a Message-ID trie built
+;; from the view's visible list here and dropped with the load.
+
 (defun fn-owner-orcp-view-index (oc)
   (declare (xargs :mode :program))
-  (fn-own-view-index (fn-own-view (fn-ocfg-owner oc))))
+  (fn-midx-build
+   (fn-state-articles (fn-own-view-archive (fn-own-view (fn-ocfg-owner oc))))))
 
 ; host/native/owner.lisp dispatches it (lane online-reclaim).
 (definterface fn-owner-orcp-view-index

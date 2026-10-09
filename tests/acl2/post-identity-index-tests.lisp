@@ -9,7 +9,7 @@
 ; the host's POST events reach with the Store :reserved for connection 4's
 ; submission, one article ("<one@example>") and a second one committed.  Its
 ; view is the one fn-own-refresh built from this node: the raw list IS the
-; node's article list, so the lookup takes the trie.
+; node's article list.
 
 (defconst *pit-o* *pcar-t-o*)
 (defconst *pit-oc* *pcar-t-oc*)
@@ -25,52 +25,37 @@
                    (not (fn-find-article *pit-fresh* *pit-arts*))
                    (equal *pit-arts* (fn-own-view-raw *pit-view*))
                    (null (fn-own-view-withdrawals *pit-view*))))
-; Both hypotheses hold, and so does the named premise of the prepare chain.
+; The named premise of the prepare chain's guards holds.
 (assert-event (and (fn-ocl-view-visiblep *pit-view*)
-                   (fn-midx-correspondencep
-                    (fn-own-view-index *pit-view*)
-                    (fn-state-articles (fn-own-view-archive *pit-view*)))
-                   (fn-scar-view-indexedp *pit-o*)
                    (fn-pidx-view-okp *pit-view*)))
 
-; -----------------------------------------------------------------------------
-; fn-pidx-find-article-is-find-article, reachable: a held and a fresh
-; Message-ID, both answered by the trie (every test of the fast path holds).
+;; -----------------------------------------------------------------------------
+; fn-pidx-find-article-is-find-article-by-definition, reachable: a held and a
+; fresh Message-ID are found as the scan finds them, and the answer is the
+; scan's for another article list too.
 
-(defun pit-fast-pathp (msgid arts view)
-  (and (stringp msgid) (< 0 (length msgid))
-       (equal arts (fn-own-view-raw view))
-       (not (fn-pidx-targetedp msgid (fn-own-view-withdrawals view)))))
-
-(assert-event (and (pit-fast-pathp *pit-held* *pit-arts* *pit-view*)
-                   (equal (fn-pidx-find-article *pit-held* *pit-arts* *pit-view*)
+(assert-event (and (equal (fn-pidx-find-article *pit-held* *pit-arts* *pit-view*)
                           *pit-held-article*)
-                   (equal (fn-mxc-lookup *pit-held* (fn-own-view-index *pit-view*))
-                          *pit-held-article*)))
-(assert-event (and (pit-fast-pathp *pit-fresh* *pit-arts* *pit-view*)
-                   (null (fn-pidx-find-article *pit-fresh* *pit-arts* *pit-view*))))
-; Another article list takes the scan and is answered for that list.
-(assert-event (and (not (pit-fast-pathp *pit-held* (cdr *pit-arts*) *pit-view*))
-                   (equal (fn-pidx-find-article *pit-held* (cdr *pit-arts*) *pit-view*)
-                          (fn-find-article *pit-held* (cdr *pit-arts*)))))
+                   (equal (fn-pidx-find-article *pit-held* *pit-arts* *pit-view*)
+                          (fn-find-article *pit-held* *pit-arts*))))
+(assert-event (and (null (fn-pidx-find-article *pit-fresh* *pit-arts* *pit-view*))
+                   (null (fn-find-article *pit-fresh* *pit-arts*))))
+(assert-event (equal (fn-pidx-find-article *pit-held* (cdr *pit-arts*) *pit-view*)
+                     (fn-find-article *pit-held* (cdr *pit-arts*))))
 
 ; A withdrawal record naming the held Message-ID (constructed: the record is
-; no withdrawal, so the visible list is unchanged and both hypotheses still
-; hold) sends the lookup to the scan, which answers the same.
-(defun pit-view-with (v archive index withdrawals)
+; no withdrawal, so the visible list is unchanged) leaves the answer the
+; scan's.
+(defun pit-view-with (v archive withdrawals)
   (fn-own-view-make-visible
    (fn-own-view-version v) (fn-own-view-frontier v) archive
-   (fn-own-view-verdicts v) index (fn-own-view-group-index v) withdrawals
+   (fn-own-view-verdicts v) (fn-own-view-group-index v) withdrawals
    (fn-own-view-raw v) (fn-own-view-withdrawn v) (fn-own-view-keyring v)))
 
 (defconst *pit-targeted-view*
   (pit-view-with *pit-view* (fn-own-view-archive *pit-view*)
-                 (fn-own-view-index *pit-view*)
                  (list (list :not-a-withdrawal *pit-held*))))
 (assert-event (and (fn-ocl-view-visiblep *pit-targeted-view*)
-                   (fn-midx-correspondencep
-                    (fn-own-view-index *pit-targeted-view*)
-                    (fn-state-articles (fn-own-view-archive *pit-targeted-view*)))
                    (fn-pidx-targetedp *pit-held*
                                       (fn-own-view-withdrawals *pit-targeted-view*))
                    (equal (fn-pidx-find-article *pit-held* *pit-arts*
@@ -78,8 +63,9 @@
                           *pit-held-article*)))
 
 ; -----------------------------------------------------------------------------
-; Hypothesis removal (CORRUPTED views: no owner transition builds them).  Each
-; adds an article under the fresh Message-ID to one side of the view only.
+; The view is no premise of any equation (CORRUPTED views: no owner transition
+; builds them).  Each adds an article under the fresh Message-ID to the
+; visible list only, which the lookup and the decisions below never read.
 
 (defconst *pit-fake-article*
   (fn-make-article *pit-fresh* (fn-article-payload *pit-held-article*)
@@ -90,50 +76,21 @@
 (defconst *pit-fake-visible*
   (cons *pit-fake-article* (fn-state-articles (fn-own-view-archive *pit-view*))))
 
-; Without fn-ocl-view-visiblep: the visible list (and its trie) holds the
-; fake article, the raw list does not.
 (defconst *pit-bad-visible-view*
   (pit-view-with *pit-view*
                  (fn-ctl-visible-state-of (fn-own-view-archive *pit-view*)
                                           *pit-fake-visible*)
-                 (fn-midx-build *pit-fake-visible*)
                  nil))
 (assert-event (and (not (fn-ocl-view-visiblep *pit-bad-visible-view*))
-                   (fn-midx-correspondencep
-                    (fn-own-view-index *pit-bad-visible-view*)
-                    (fn-state-articles (fn-own-view-archive *pit-bad-visible-view*)))
                    (equal (fn-pidx-find-article *pit-fresh* *pit-arts*
                                                 *pit-bad-visible-view*)
-                          *pit-fake-article*)
-                   (not (equal (fn-pidx-find-article *pit-fresh* *pit-arts*
-                                                     *pit-bad-visible-view*)
-                               (fn-find-article *pit-fresh* *pit-arts*)))))
-(must-fail-checked
- (defthm pit-find-without-visible
-   (equal (fn-pidx-find-article *pit-fresh* *pit-arts* *pit-bad-visible-view*)
-          (fn-find-article *pit-fresh* *pit-arts*))))
-
-; Without the trie's correspondence: the visible list is right, the trie
-; holds the fake article.
-(defconst *pit-bad-index-view*
-  (pit-view-with *pit-view* (fn-own-view-archive *pit-view*)
-                 (fn-midx-build *pit-fake-visible*)
-                 nil))
-(assert-event (and (fn-ocl-view-visiblep *pit-bad-index-view*)
-                   (not (fn-midx-correspondencep
-                         (fn-own-view-index *pit-bad-index-view*)
-                         (fn-state-articles (fn-own-view-archive *pit-bad-index-view*))))
-                   (not (equal (fn-pidx-find-article *pit-fresh* *pit-arts*
-                                                     *pit-bad-index-view*)
-                               (fn-find-article *pit-fresh* *pit-arts*)))))
-(must-fail-checked
- (defthm pit-find-without-index
-   (equal (fn-pidx-find-article *pit-fresh* *pit-arts* *pit-bad-index-view*)
-          (fn-find-article *pit-fresh* *pit-arts*))))
+                          (fn-find-article *pit-fresh* *pit-arts*))
+                   (null (fn-pidx-find-article *pit-fresh* *pit-arts*
+                                               *pit-bad-visible-view*))))
 
 ; -----------------------------------------------------------------------------
-; fn-pidx-existing-action-is-store-existing-action, on a live local buffer as
-; the host runs it.
+; The store reference, fed through a live local buffer and through its
+; logical payload list, gives the expected duplicate/conflict/fresh answers.
 
 (defun pit-owner-with-view (o v)
   (fn-own-make (fn-own-store o) v (fn-own-conns o) (fn-own-next-id o)
@@ -155,7 +112,7 @@
     (fn-hrt-events *pit-prior* nil 0 fn-arena)
     (declare (ignore ignored))
     (let ((fn-octets (fn-octets-from-list payload fn-octets)))
-      (mv (fn-pidx-existing-action msgid fn-octets groups o fn-arena)
+      (mv (fn-store-existing-action msgid (fn-octets-list fn-octets) groups (fn-own-store o) fn-arena)
           fn-octets fn-arena))))
 
 (defun pit-existing (msgid payload groups o)
@@ -204,14 +161,10 @@
       (null (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-o*))
       (null (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
 
-; PRF-191's keystone, literally, at the reached owner (audit-fixes item 1):
-; both view hypotheses hold and the host's decision equals
-; fn-store-existing-action over the same arena for all three answers.
-; (fn-octets-p fn-octets) is the stobj's recognizer: no executable buffer
-; violates it, so no removal witness is claimed for it.
+; The buffer-to-list test adapter preserves the store reference's answers
+; at the reached owner; the adapter is test code, not a served host call.
 (assert-event
  (and (fn-ocl-view-visiblep (fn-own-view *pit-o*))
-      (fn-scar-view-indexedp *pit-o*)
       (equal (pit-existing *pit-held* *pit-payload* *pit-groups* *pit-o*)
              (pit-store-existing *pit-held* *pit-payload* *pit-groups* *pit-store*))
       (equal (pit-existing *pit-held* *pit-changed* *pit-groups* *pit-o*)
@@ -219,32 +172,18 @@
       (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-o*)
              (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
 
-; Hypothesis removal (corrupted views, as above): the fresh Message-ID is
-; answered :duplicate from the fake article where the Store holds none.
+; The corrupted view above changes neither the decision nor the Store's entry:
+; the fresh Message-ID is answered nil by both.
 (defconst *pit-bad-visible-o* (pit-owner-with-view *pit-o* *pit-bad-visible-view*))
-(defconst *pit-bad-index-o* (pit-owner-with-view *pit-o* *pit-bad-index-view*))
 (assert-event
  (and (equal (fn-own-store *pit-bad-visible-o*) *pit-store*)
       (not (fn-ocl-view-visiblep (fn-own-view *pit-bad-visible-o*)))
-      (fn-scar-view-indexedp *pit-bad-visible-o*)
+      (null (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-visible-o*))
       (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-visible-o*)
-             :duplicate)
-      (equal (fn-own-store *pit-bad-index-o*) *pit-store*)
-      (fn-ocl-view-visiblep (fn-own-view *pit-bad-index-o*))
-      (not (fn-scar-view-indexedp *pit-bad-index-o*))
-      (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-index-o*)
-             :duplicate)))
-(must-fail-checked
- (defthm pit-existing-without-visible
-   (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-visible-o*)
-          (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
-(must-fail-checked
- (defthm pit-existing-without-index
-   (equal (pit-existing *pit-fresh* *pit-payload* *pit-groups* *pit-bad-index-o*)
-          (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
+             (pit-store-existing *pit-fresh* *pit-payload* *pit-groups* *pit-store*))))
 
 ; -----------------------------------------------------------------------------
-; fn-pidx-sbud-prepare-is-pcar-sbud-prepare, reachable: the submission's own
+; fn-pcar-sbud-prepare-is-sbud-prepare, reachable: the submission's own
 ; record stages; a record under the held Message-ID (its own obligation id,
 ; so retention admits it) is refused by the duplicate test; at the budget
 ; both are the identity.
@@ -270,9 +209,9 @@
 
 
 (assert-event
- (let ((a (fn-pidx-sbud-prepare *pit-oc* *pit-record* 100))
-       (b (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))
-       (c (fn-pidx-sbud-prepare *pit-oc* *pit-dup-record* 100)))
+ (let ((a (fn-pcar-sbud-prepare *pit-oc* *pit-record* 100))
+       (b (fn-pcar-sbud-prepare *pit-oc* *pit-fresh-record* 100))
+       (c (fn-pcar-sbud-prepare *pit-oc* *pit-dup-record* 100)))
    (and (equal a (fn-pcar-sbud-prepare *pit-oc* *pit-record* 100))
         (equal (pit-phase a) :record-staged)
         (equal b (fn-pcar-sbud-prepare *pit-oc* *pit-fresh-record* 100))
@@ -285,8 +224,8 @@
          (fn-node-retention (fn-sn-node (fn-own-store *pit-o*)))
          "own-pin:pit" "own-content:pit" :archive "own-release:pit" 2)
         (fn-acceptedp *pit-held* *pit-arts*)
-        (equal (fn-pidx-sbud-prepare *pit-oc* *pit-record* 2) *pit-oc*)
-        (equal (fn-pidx-sbud-prepare *pit-oc* *pit-record* 2)
+        (equal (fn-pcar-sbud-prepare *pit-oc* *pit-record* 2) *pit-oc*)
+        (equal (fn-pcar-sbud-prepare *pit-oc* *pit-record* 2)
                (fn-pcar-sbud-prepare *pit-oc* *pit-record* 2)))))
 
 ; The staged proposal carries the ledger fn-retain-admit builds (the second
@@ -294,37 +233,27 @@
 (assert-event
  (let* ((node (fn-sn-node (fn-own-store *pit-o*)))
         (after (fn-sn-node (fn-own-store (fn-ocfg-owner
-                                          (fn-pidx-sbud-prepare *pit-oc* *pit-fresh-record* 100))))))
+                                          (fn-pcar-sbud-prepare *pit-oc* *pit-fresh-record* 100))))))
    (equal (fn-node-stage-retention (fn-node-stage after))
           (fn-retain-admit (fn-node-retention node)
                            "own-pin:pit" "own-content:pit" :archive
                            "own-release:pit" 2))))
 
-; Hypothesis removal (corrupted views, as above): the fresh record is
-; refused as a duplicate of the fake article; the reference stages it.  The
-; prepare's guard carries the view facts, so the corrupted runs evaluate
-; without guard checking, as the host's raw call would.
+; The corrupted view changes neither prepare: the fresh record stages under
+; both.  The prepare's guard carries the view facts, so the corrupted run
+; evaluates without guard checking, as the host's raw call would.
 (defconst *pit-bad-visible-oc* (fn-ocfg-with-owner *pit-oc* *pit-bad-visible-o*))
-(defconst *pit-bad-index-oc* (fn-ocfg-with-owner *pit-oc* *pit-bad-index-o*))
 (make-event
  `(defconst *pit-bad-visible-prepared*
     ',(with-guard-checking
        :none
-       (fn-pidx-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100))))
-(make-event
- `(defconst *pit-bad-index-prepared*
-    ',(with-guard-checking
-       :none
-       (fn-pidx-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))))
-
-(must-fail-checked
- (defthm pit-prepare-without-visible
-   (equal (fn-pidx-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100)
-          (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100))))
-(must-fail-checked
- (defthm pit-prepare-without-index
-   (equal (fn-pidx-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100)
-          (fn-pcar-sbud-prepare *pit-bad-index-oc* *pit-fresh-record* 100))))
+       (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100))))
+(assert-event
+ (equal *pit-bad-visible-prepared*
+        (with-guard-checking
+         :none
+         (fn-pcar-sbud-prepare *pit-bad-visible-oc* *pit-fresh-record* 100))))
+(assert-event (equal (pit-phase *pit-bad-visible-prepared*) :record-staged))
 
 ; Removal of the third hypothesis, CORRUPTED (no Store transition builds it):
 ; the reachable owner whose Store's event index claims 100 records while the
@@ -351,23 +280,15 @@
 (assert-event
  (and (eq (symbol-class 'fn-pidx-targetedp (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pidx-find-article (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-pidx-existing-action (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-store-existing-action (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pidx-accept-prepare (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pidx-node-prepare (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pidx-sn-prepare-node (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pidx-spc-prepare (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pidx-opc-owner-prepare (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-pidx-opc-prepare (w state)) :common-lisp-compliant)
-      (eq (symbol-class 'fn-pidx-sbud-prepare (w state)) :common-lisp-compliant)))
+      (eq (symbol-class 'fn-pcar-sbud-prepare (w state)) :common-lisp-compliant)))
 (assert-event (and (equal (guard 'fn-pidx-accept-prepare nil (w state))
                           (guard 'fn-accept-prepare nil (w state)))
                    (equal (guard 'fn-pidx-node-prepare nil (w state))
-                          (guard 'fn-node-prepare nil (w state)))
-                   ; by specification: the flip -- the decision also reads
-                   ; the arena, so its guard is the buffer decision's
-                   ; (fn-octets-p) and the Store entry's (fn-arena-p), the
-                   ; two stobj recognizers and nothing more.
-                   (equal (guard 'fn-pidx-existing-action nil (w state))
-                          (list 'if (guard 'fn-rclb-same-articlep nil (w state))
-                                (guard 'fn-store-existing-action nil (w state))
-                                ''nil))))
+                          (guard 'fn-node-prepare nil (w state)))))

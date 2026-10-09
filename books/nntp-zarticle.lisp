@@ -13,7 +13,7 @@
 ;
 ; N is the payload's length, CLEN is C's.  Otherwise the answer is exactly
 ; what ARTICLE <message-id> answers by Message-ID
-; (fn-nntp-msgid-retrieval-indexed): 220 and the article, 430, and so on.
+; (fn-nntp-msgid-retrieval): 220 and the article, 430, and so on.
 ; A withdrawn identifier and a syntax error are the protocol table's arms
 ; (books/protocol-table.lisp row XFN-ZARTICLE); this book is its :model.
 ;
@@ -57,12 +57,12 @@
           (list 32) (fn-nntp-decimal-field (nfix n))
           (list 32) (fn-nntp-decimal-field (nfix clen))))
 
-(defun fn-zar-article (token index)
-  ; The article TOKEN names in the pinned Message-ID trie INDEX, as the ARTICLE
-  ; retrieval finds it (fn-nntp-msgid-retrieval-indexed).
+(defun fn-zar-article (token arts)
+  ; The article TOKEN names in the served article list ARTS, as the ARTICLE
+  ; retrieval finds it (fn-nntp-msgid-retrieval).
   (declare (xargs :guard t))
   (if (fn-octet-listp token)
-      (fn-midx-lookup (fn-nntp-token-string token) index)
+      (fn-find-article (fn-nntp-token-string token) arts)
     nil))
 
 ; The stored answer decodes to the article's octets (A-ARENA-STORED).
@@ -82,19 +82,19 @@
   :rule-classes nil)
 
 ; The decision: :syntax, (:stored DIGEST C N), or (:decoded TOKEN).
-(defun fn-zar-decide (args index fn-arena)
+(defun fn-zar-decide (args arts fn-arena)
   (declare (xargs :stobjs fn-arena :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-zar-stored)
                                  :use ((:instance fn-zdn-request-shape)
                                        (:instance fn-zar-stored-shape
                                                   (article (fn-zar-article
                                                             (cadr (fn-zdn-request args))
-                                                            index))))))))
+                                                            arts))))))))
   (let ((req (fn-zdn-request args)))
     (if (equal req :syntax)
         :syntax
       (let* ((token (cadr req))
-             (article (fn-zar-article token index))
+             (article (fn-zar-article token arts))
              (s (fn-zar-stored article fn-arena))
              (ch (fn-zdn-choose s (true-list-fix (caddr req)))))
         (if (and (consp ch) (equal (car ch) :stored))
@@ -127,7 +127,7 @@
   :hints (("Goal" :in-theory (enable fn-zdn-request))))
 
 (defthm fn-zar-decide-shape
-  (let ((d (fn-zar-decide args index fn-arena)))
+  (let ((d (fn-zar-decide args arts fn-arena)))
     (and (or (equal d :syntax) (and (consp d) (true-listp d)))
          (implies (not (equal d :syntax))
                   (and (consp (fn-zdn-request args))
@@ -135,20 +135,21 @@
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-zar-request-consp)))))
 
-(defun fn-zar-command (session archive index args fn-arena)
+(defun fn-zar-command (session archive args fn-arena)
   (declare (xargs :stobjs fn-arena :guard t
                   :guard-hints (("Goal" :in-theory (disable fn-zar-decide fn-zar-initial
                                                             fn-zar-line-okp)
-                                 :use ((:instance fn-zar-decide-shape))))))
-  (let ((d (fn-zar-decide args index fn-arena)))
+                                 :use ((:instance fn-zar-decide-shape
+                                                  (arts (fn-state-articles archive))))))))
+  (let ((d (fn-zar-decide args (fn-state-articles archive) fn-arena)))
     (if (equal d :syntax)
         (fn-nntp-single session (fn-proto-text * :syntax))
       (let ((initial (and (equal (car d) :stored)
                           (fn-zar-initial (nth 1 d) (nth 3 d) (len (nth 2 d))))))
         (if (and (equal (car d) :stored) (fn-zar-line-okp initial))
             (fn-nntp-multi-octets session initial (fn-zdn-body-lines (nth 2 d)))
-          (fn-nntp-msgid-retrieval-indexed
-           session archive index :article
+          (fn-nntp-msgid-retrieval
+           session archive :article
            (if (equal (car d) :stored) (cadr (fn-zdn-request args)) (cadr d))
            fn-arena))))))
 
@@ -156,8 +157,8 @@
 ; KEYSTONES.
 
 (defthm fn-zar-decide-stored-denotes
-  (let ((d (fn-zar-decide args index fn-arena))
-        (article (fn-zar-article (cadr (fn-zdn-request args)) index)))
+  (let ((d (fn-zar-decide args arts fn-arena))
+        (article (fn-zar-article (cadr (fn-zdn-request args)) arts)))
     (implies (equal (car d) :stored)
              (and (not (equal (fn-zdn-request args) :syntax))
                   (member-equal (nth 1 d) (caddr (fn-zdn-request args)))
@@ -169,10 +170,10 @@
                                       fn-zdn-dict-of-digest
                                       fn-zar-stored-denotes)
            :use ((:instance fn-zar-stored-denotes
-                            (article (fn-zar-article (cadr (fn-zdn-request args)) index)))
+                            (article (fn-zar-article (cadr (fn-zdn-request args)) arts)))
                  (:instance fn-zdn-choose-stored-only-shared
                             (stored (fn-zar-stored
-                                     (fn-zar-article (cadr (fn-zdn-request args)) index)
+                                     (fn-zar-article (cadr (fn-zdn-request args)) arts)
                                      fn-arena))
                             (digests (true-list-fix (caddr (fn-zdn-request args)))))))))
 
@@ -181,19 +182,19 @@
 
 (defthm fn-zar-decide-complete
   (let* ((req (fn-zdn-request args))
-         (s (fn-zar-stored (fn-zar-article (cadr req) index) fn-arena)))
+         (s (fn-zar-stored (fn-zar-article (cadr req) arts) fn-arena)))
     (implies (and (not (equal req :syntax))
                   s
                   (fn-zdn-digest-of-dict (car s))
                   (member-equal (fn-zdn-digest-of-dict (car s)) (caddr req)))
-             (equal (fn-zar-decide args index fn-arena)
+             (equal (fn-zar-decide args arts fn-arena)
                     (list :stored (fn-zdn-digest-of-dict (car s)) (cadr s) (caddr s)))))
   :hints (("Goal" :in-theory (disable fn-zdn-request fn-zar-stored fn-zar-article
                                       fn-zdn-digest-of-dict fn-zdn-choose
                                       fn-zdn-choose-complete)
            :use ((:instance fn-zdn-choose-complete
                             (stored (fn-zar-stored (fn-zar-article (cadr (fn-zdn-request args))
-                                                                   index)
+                                                                   arts)
                                                    fn-arena))
                             (digests (true-list-fix (caddr (fn-zdn-request args)))))))))
 
@@ -207,8 +208,8 @@
 ; XFN-ZARTICLE leaves the session as it was, as ARTICLE by message-id does
 ; (books/nntp-invariants.lisp's pinned-command preservation uses it).
 (defthm fn-zar-command-session
-  (equal (fn-nntp-result-session (fn-zar-command session archive index args fn-arena))
+  (equal (fn-nntp-result-session (fn-zar-command session archive args fn-arena))
          session)
   :hints (("Goal" :in-theory (e/d (fn-zar-command fn-nntp-single fn-nntp-multi-octets)
-                                  (fn-nntp-msgid-retrieval-indexed fn-zar-decide
+                                  (fn-nntp-msgid-retrieval fn-zar-decide
                                    fn-zdn-request)))))

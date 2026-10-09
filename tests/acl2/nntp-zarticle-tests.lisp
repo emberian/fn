@@ -6,7 +6,7 @@
 ; stream over baseline 1 -- and ACL2 admits the attachment only after
 ; proving A-ARENA-STORED's constraint of it.  Every witness below is an
 ; assert-event executed through that attachment: fn-zar-decide itself runs,
-; over a sealed arena and the pinned Message-ID trie ARTICLE uses.
+; over a sealed arena and the served article list ARTICLE uses.
 ;
 ; The attachment is a test realiser, not the host's: what it shows is that
 ; the keystones' antecedents are reachable together and each retained
@@ -85,10 +85,10 @@
         (equal payload (fn-nntp-string-octets "hi"))
         (not (equal (fn-lzr-lz-value (car s) (cadr s) (caddr s)) payload)))))
 
-;; The fixture: one article, handle 0, in the pinned trie ARTICLE reads.
+;; The fixture: one article, handle 0, in the served list ARTICLE reads.
 (defconst *zat-mid* (fn-nntp-string-octets "<a@b.example>"))
 (defconst *zat-article* (fn-make-article "<a@b.example>" 0 '("fn.test") nil nil nil))
-(defconst *zat-index* (fn-midx-build (list *zat-article*)))
+(defconst *zat-arts* (list *zat-article*))
 (defconst *zat-d1* *fn-lzd-baseline-1-blake3*)
 (defconst *zat-other* (make-list 32 :initial-element 7))
 
@@ -100,8 +100,8 @@
     (mv-let (r fn-arena)
       (let* ((fn-arena (fn-arn-seal-many payloads fn-arena))
              (req (fn-zdn-request args))
-             (article (fn-zar-article (cadr req) *zat-index*)))
-        (mv (list (fn-zar-decide args *zat-index* fn-arena)
+             (article (fn-zar-article (cadr req) *zat-arts*)))
+        (mv (list (fn-zar-decide args *zat-arts* fn-arena)
                   (fn-zar-stored article fn-arena)
                   (fn-nntp-article-bytes article fn-arena)
                   req)

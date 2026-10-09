@@ -2706,9 +2706,7 @@
 
 (in-theory (disable fn-nntp-responses-vocabulary))
 
-; The owner pins this trie with the immutable archive on connection open.
-; Message-ID retrieval uses it directly; the theorem below relates the
-; executed response to the canonical article-list scan.
+; The Message-ID key facts the reader arms below rest on.
 (include-book "msgid-index")
 
 (defthm fn-nntp-octets-chars-character-listp
@@ -2725,30 +2723,6 @@
   :hints (("Goal" :in-theory (enable fn-nntp-message-id-tokenp
                                       fn-nntp-token-string fn-midx-key-chars))))
 
-(defun fn-nntp-msgid-retrieval-indexed (session archive index kind token fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (if (not (fn-nntp-message-id-tokenp token))
-      (fn-nntp-single session (fn-proto-text * :syntax))
-    ; A raw direct caller can supply a dotted token accepted by the older
-    ; token predicate.  Wire tokenization never does, but retaining the old
-    ; answer on that malformed shape makes this refinement unconditional.
-    (if (not (fn-octet-listp token))
-        (fn-nntp-msgid-retrieval session archive kind token fn-arena)
-      (let ((article (fn-midx-lookup (fn-nntp-token-string token) index)))
-        (if (consp article)
-            (fn-nntp-article-response
-             session article (fn-nntp-msgid-local-number session article)
-             kind nil nil fn-arena)
-          (fn-nntp-single session (fn-proto-text * :no-msgid)))))))
-
-(defthm fn-nntp-msgid-retrieval-indexed-refines-scan
-  (implies (fn-midx-correspondencep index (fn-state-articles archive))
-           (equal (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena)
-                  (fn-nntp-msgid-retrieval session archive kind token fn-arena)))
-  :hints (("Goal" :in-theory
-           (e/d (fn-nntp-msgid-retrieval-indexed fn-nntp-msgid-retrieval)
-                (fn-midx-lookup fn-midx-key-chars fn-nntp-token-string)))))
-
 (defthm fn-nntp-article-response-without-update-preserves-session
   (equal (fn-nntp-result-session
           (fn-nntp-article-response session article number kind nil group fn-arena))
@@ -2757,33 +2731,3 @@
            (e/d (fn-nntp-article-response fn-nntp-result-session
                  fn-nntp-single fn-nntp-make-result)
                 (fn-nntp-article-tombstonep fn-nntp-article-section fn-nntp-article-framedp fn-nntp-stuff-lines fn-nntp-crlf fn-nntp-retrieval-initial fn-nntp-reply-effect)))))
-
-(local
- (defthm fn-nntp-msgid-car-preserves-session
-   (equal (car (fn-nntp-msgid-retrieval session archive kind token fn-arena)) session)
-   :hints (("Goal" :use ((:instance fn-nntp-msgid-preserves-session))
-            :in-theory (e/d (fn-nntp-result-session)
-                            (fn-nntp-msgid-preserves-session
-                             fn-nntp-msgid-retrieval))))))
-
-(local
- (defthm fn-nntp-article-response-without-update-car-preserves-session
-   (equal (car (fn-nntp-article-response
-                session article number kind nil group fn-arena))
-          session)
-   :hints (("Goal" :use ((:instance
-                           fn-nntp-article-response-without-update-preserves-session))
-            :in-theory
-            (e/d (fn-nntp-result-session)
-                 (fn-nntp-article-response-without-update-preserves-session
-                  fn-nntp-article-response))))))
-
-(defthm fn-nntp-msgid-retrieval-indexed-preserves-session
-  (equal (fn-nntp-result-session
-          (fn-nntp-msgid-retrieval-indexed session archive index kind token fn-arena))
-         session)
-  :hints (("Goal" :in-theory
-           (e/d (fn-nntp-msgid-retrieval-indexed fn-nntp-result-session)
-                (fn-nntp-msgid-retrieval fn-nntp-article-response)))))
-
-(verify-guards fn-nntp-msgid-retrieval-indexed)

@@ -101,7 +101,6 @@
 ; the arena holding the payloads).
 (assert-event (fn-ocl-relation *scje-oc*))
 (assert-event (fn-own-store-idlep (fn-own-store *scje-o*)))
-(assert-event (fn-scar-view-indexedp *scje-o*))
 (assert-event (scje-view-currentp *scje-o*))
 (assert-event (fn-scj-rows-clearp *scje-srows*))
 (assert-event (equal *scje-srows* *scje-rows*))
@@ -117,7 +116,7 @@
                                               (fn-own-view-verdicts *scje-view*))))
 (assert-event (fn-scj-rows-seqs-below *scje-srows* (fn-own-view-version *scje-view*)))
 ; The conclusion: the join's three conjuncts, and the row relation it uses.
-(assert-event (equal (scje-exec *scje-srows* (fn-own-view-index *scje-view*) *scje-view* *scje-acc*)
+(assert-event (equal (scje-exec *scje-srows* (fn-midx-build (fn-state-articles (fn-own-view-archive *scje-view*))) *scje-view* *scje-acc*)
                      (list t t t t 2 t)))
 
 ; -----------------------------------------------------------------------------
@@ -135,7 +134,7 @@
   (scje-with-row *scje-srows* 0 (fn-held-with-withdrawn (nth 0 *scje-srows*) (cons 0 0))))
 (assert-event (not (fn-scj-rows-clearp *scje-marked*)))
 (assert-event (fn-scj-rows-seqs-below *scje-marked* (fn-own-view-version *scje-view*)))
-(assert-event (equal (scje-exec *scje-marked* (fn-own-view-index *scje-view*) *scje-view* *scje-acc*)
+(assert-event (equal (scje-exec *scje-marked* (fn-midx-build (fn-state-articles (fn-own-view-archive *scje-view*))) *scje-view* *scje-acc*)
                      (list nil t t t 1 t)))
 
 ; (b) A row sequenced past the view's version: every other hypothesis holds,
@@ -154,7 +153,7 @@
 (assert-event (equal (fn-scj-row-art (nth 1 *scje-late*)) (fn-scj-row-art (nth 1 *scje-srows*))))
 (assert-event (fn-scj-rows-clearp *scje-late*))
 (assert-event (not (fn-scj-rows-seqs-below *scje-late* (fn-own-view-version *scje-view*))))
-(assert-event (equal (scje-exec *scje-late* (fn-own-view-index *scje-view*) *scje-view* *scje-acc*)
+(assert-event (equal (scje-exec *scje-late* (fn-midx-build (fn-state-articles (fn-own-view-archive *scje-view*))) *scje-view* *scje-acc*)
                      (list t t nil t 2 nil)))
 
 ; (c) The empty index, not built from the visible list: the rows load
@@ -164,19 +163,16 @@
                      (list nil t t t 0 t)))
 
 ; (d) A visible list that is not the acceptance's filter: the two articles
-; oldest first (its index built from it, the rows clear and sequenced, the
+; oldest first (the rows clear and sequenced, the
 ; relation holding); the catalog shows them newest first.
 (defconst *scje-arts* (fn-state-articles (fn-own-view-archive *scje-view*)))
 (defconst *scje-reversed*
-  (update-nth 2 (fn-ctl-visible-state-of *scje-acc* (reverse *scje-arts*))
-              (update-nth 4 (fn-midx-build (reverse *scje-arts*)) *scje-view*)))
+  (update-nth 2 (fn-ctl-visible-state-of *scje-acc* (reverse *scje-arts*)) *scje-view*))
 (assert-event (equal (fn-state-articles (fn-own-view-archive *scje-reversed*)) (reverse *scje-arts*)))
 (assert-event (not (equal (fn-state-articles (fn-own-view-archive *scje-reversed*))
                           (fn-ctl-visible-articles (fn-state-articles *scje-acc*)
                                                    (fn-own-view-withdrawals *scje-reversed*)
                                                    (fn-own-view-verdicts *scje-reversed*)))))
-(assert-event (equal (fn-own-view-index *scje-reversed*)
-                     (fn-midx-build (fn-state-articles (fn-own-view-archive *scje-reversed*)))))
 (assert-event (equal (fn-own-view-version *scje-reversed*) (fn-own-view-version *scje-view*)))
-(assert-event (equal (scje-exec *scje-srows* (fn-own-view-index *scje-reversed*) *scje-reversed* *scje-acc*)
+(assert-event (equal (scje-exec *scje-srows* (fn-midx-build (fn-state-articles (fn-own-view-archive *scje-reversed*))) *scje-reversed* *scje-acc*)
                      (list nil t t t 2 t)))

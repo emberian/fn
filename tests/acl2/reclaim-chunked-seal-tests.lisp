@@ -5,21 +5,21 @@
 (include-book "../../books/reclaim-chunked-seal")
 (include-book "../../books/defkeystone")
 (include-book "reclaim-chunked-walk-tests")
+(include-book "store-checkpoint-fold-tests")
 
-(defconst *rcs-keyring* (fn-sn-keyring *rpt-s*))
-(defconst *rcs-gen* (fn-sn-keyring-generation *rpt-s*))
+(defconst *rcs-id* (fn-sco-identity (fn-sco-capture *rcw-configs* nil)))
 (defconst *rcs-h0* 40)
 
 ; -----------------------------------------------------------------------------
 ; 1. KEYSTONE fn-rcw-predict-acc-steps-is-predict, reached: pass 3 over two
 ; chunkings is fn-orcs-predict of the whole rewritten history; the rewrite
 ; made records (the expired articles' tombstones), so payloads are sealed.
-(make-event `(defconst *rcs-whole* ',(fn-orcs-predict *rcw-new* *rcs-keyring* *rcs-gen* *rcs-h0*)))
+(make-event `(defconst *rcs-whole* ',(fn-orcs-predict *rcw-new* *rcs-id* *rcs-h0*)))
 (assert-event (not (eq (car *rcs-whole*) :bad)))
 (assert-event (< 0 (len (cadr *rcs-whole*))))
 (defmacro rcs-p3 (chunks)
   `(fn-rcw-predict-acc-steps (fn-rcw-acc-init *rcw-configs*) *rcw-configs* ,chunks
-                             *rcs-keyring* *rcs-gen* *rcs-h0* nil))
+                             *rcs-h0* nil))
 (make-event `(defconst *rcs-p3* ',(rcs-p3 *rcw-c2*)))
 (make-event `(defconst *rcs-p3b* ',(rcs-p3 *rcw-c1*)))
 (make-event `(defconst *rcs-cap* ',(fn-sco-capture *rcw-configs* (car *rcs-whole*))))
@@ -32,16 +32,15 @@
 (make-event
  `(defconst *rcs-reset* ',(let ((a (fn-rcw-predict-acc-step (fn-rcw-acc-init *rcw-configs*)
                                                             *rcw-configs* (take 2 *rcw-new*)
-                                                            *rcs-keyring* *rcs-gen* *rcs-h0*)))
+                                                            *rcs-h0*)))
                             (fn-rcw-predict-acc-step (car a) *rcw-configs* (nthcdr 2 *rcw-new*)
-                                                     *rcs-keyring* *rcs-gen* *rcs-h0*))))
+                                                     *rcs-h0*))))
 (assert-event (< 0 (len (fn-orcs-payloads (take 2 *rcw-new*)))))
 (must-fail-checked
  (assert-event (equal (fn-rcw-acc-finish (car *rcs-reset*)) *rcs-cap*)))
 ; A chunk carrying the intern's refusal word is :bad, as the whole is.
 (assert-event (equal (rcs-p3 (list (take 1 *rcw-new*) (list :bad))) :bad))
-(assert-event (equal (car (fn-orcs-predict (append *rcw-new* (list :bad)) *rcs-keyring*
-                                           *rcs-gen* *rcs-h0*))
+(assert-event (equal (car (fn-orcs-predict (append *rcw-new* (list :bad)) *rcs-id* *rcs-h0*))
                      :bad))
 
 ; -----------------------------------------------------------------------------
@@ -58,29 +57,64 @@
  (assert-event (equal (in-arena-fn-rcw-srcs-steps *rpt-payloads* (reverse *rcw-c2*) nil nil)
                       *rcs-walk*)))
 
+; The rotation trace: pass 3 over two chunks split at the rotation (the first
+; ends with the article posted under keyring generation 1, the second opens
+; with the enrollment that makes generation 2) rebuilds the capture of the
+; replay's own rows, handles included; the host's tombstone rows are interned
+; at the pair in force before each record, as a restart's fold does.
+(make-event `(defconst *rcs-rotation-chunks*
+               ',(fn-rcw-predict-acc-steps (fn-rcw-acc-init *scft-cfgs*) *scft-cfgs*
+                                           (list *scft-ws* *scft-vs*) 0 nil)))
+(assert-event
+ (and (not (eq *rcs-rotation-chunks* :bad))
+      (equal (fn-rcw-acc-finish (car *rcs-rotation-chunks*))
+             (fn-sco-capture *scft-cfgs* *scft-replay*))
+      (equal (caddr *rcs-rotation-chunks*) (fn-orcs-payloads *scft-log*))
+      (equal (cadr *rcs-rotation-chunks*) 2)))
+; Teeth: a pass 3 that predicts each chunk from the initial identity forgets
+; the enrollment the first chunk made; it serves the second article at another
+; generation than the restart does.
+(assert-event
+ (not (equal (fn-sco-capture *scft-cfgs*
+                             (append (fn-orcs-predict-rows-at *scft-ws* *scft-id0* 0)
+                                     (fn-orcs-predict-rows-at *scft-vs* *scft-id0* 1)))
+             (fn-sco-capture *scft-cfgs* *scft-replay*))))
+
 ; TEETH-62 BEGIN
 ; fn-rcw-predict-acc-steps-is-predict with its teeth (TEETH CONTRACT v1).
 (defteeth fn-rcw-predict-acc-steps-is-predict
   :claim (((start-handle (natp h0)))
           (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks
-                                              keyring generation h0 nil))
+                                              h0 nil))
                  (all (fn-rcw-concat chunks)))
              (and (equal (equal r :bad) (if (fn-orcs-has-bad all) t nil))
                   (implies (not (equal r :bad))
                            (and (equal (fn-rcw-acc-finish (car r))
                                        (fn-sco-capture configs
-                                                       (car (fn-orcs-predict all keyring
-                                                                             generation h0))))
+                                                       (car (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0))))
                                 (equal (caddr r)
-                                       (cadr (fn-orcs-predict all keyring generation h0)))
+                                       (cadr (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0)))
                                 (equal (cadr r) (+ h0 (len (caddr r)))))))))
   :subject fn-rcw-predict-acc-steps
-  :witness ((configs *rcw-configs*) (chunks *rcw-c2*) (keyring *rcs-keyring*) (generation *rcs-gen*) (h0 *rcs-h0*))
-  :breaks ((start-handle ((configs *rcw-configs*) (chunks *rcw-c2*) (keyring *rcs-keyring*) (generation *rcs-gen*) (h0 -5)) :logical "a negative start handle is outside the guard (natp h0) of the walk"))
+  :witness ((configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*))
+  :breaks ((start-handle ((configs *rcw-configs*) (chunks *rcw-c2*) (h0 -5)) :logical "a negative start handle is outside the guard (natp h0) of the walk"))
   :mutations ((handle-not-advanced
-               (:conclusion (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks keyring generation h0 nil))) (equal (cadr r) h0)))
-               ((configs *rcw-configs*) (chunks *rcw-c2*) (keyring *rcs-keyring*) (generation *rcs-gen*) (h0 *rcs-h0*))
-               :fault "the final handle left at the start handle")))
+               (:conclusion (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks h0 nil))) (equal (cadr r) h0)))
+               ((configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*))
+               :fault "the final handle left at the start handle")
+              (chunks-reset-identity
+               (:conclusion
+                (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks h0 nil)))
+                  (equal (fn-rcw-acc-finish (car r))
+                         (fn-sco-capture
+                          configs
+                          (append (fn-orcs-predict-rows-at
+                                   (car chunks) (fn-sco-identity (fn-sco-capture configs nil)) h0)
+                                  (fn-orcs-predict-rows-at
+                                   (cadr chunks) (fn-sco-identity (fn-sco-capture configs nil))
+                                   (+ h0 (len (fn-orcs-payloads (car chunks))))))))))
+               ((configs *scft-cfgs*) (chunks (list *scft-ws* *scft-vs*)) (h0 0))
+               :fault "each chunk is predicted from the initial identity, so the second forgets the enrollment the first made")))
 
 ; Host fnn-owner-reclaim-pass / fnn-checkpoint-walk, exercised by
 ; tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available.
@@ -108,28 +142,51 @@
 ; A full open that actually installs an owner (default config already creates fn.letters).
 (assert-event
  (not (equal (fn-ock-recover-full (list *fn-cfg-default-record*) 8
-              (car (fn-orcs-predict *rcw-new* *rcs-keyring* *rcs-gen* 0)) 4) :fault)))
+              (car (fn-orcs-predict *rcw-new* *rcs-id* 0)) 4) :fault)))
 (defteeth fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
  :claim (((handle (natp h0))) (equal (cadr (fn-owner-orcp-rebuild
                          (fn-rcw-acc-finish
                           (car (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks
-                                                         keyring generation h0 nil)))
+                                                         h0 nil)))
                          configs frontier max-conns))
                   (fn-ock-recover-full configs frontier
-                                       (car (fn-orcs-predict (fn-rcw-concat chunks) keyring
-                                                             generation h0))
+                                       (car (fn-orcs-predict (fn-rcw-concat chunks) (fn-sco-identity (fn-sco-capture configs nil)) h0))
                                        max-conns)))
  :subject fn-owner-orcp-rebuild
  :witness ((configs (list *fn-cfg-default-record*)) (chunks *rcw-c2*)
-           (keyring *rcs-keyring*) (generation *rcs-gen*) (h0 0) (frontier 8) (max-conns 4))
+           (h0 0) (frontier 8) (max-conns 4))
  :breaks ((handle ((h0 -1)) :logical "a negative predicted handle is outside the natural-handle guard"))
  :mutations ((skipped-chunk (:conclusion (equal (cadr (fn-owner-orcp-rebuild
                          (fn-rcw-acc-finish
                           (car (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs (cdr chunks)
-                                                         keyring generation h0 nil)))
+                                                         h0 nil)))
                          configs frontier max-conns))
                   (fn-ock-recover-full configs frontier
-                                       (car (fn-orcs-predict (fn-rcw-concat chunks) keyring
-                                                             generation h0))
+                                       (car (fn-orcs-predict (fn-rcw-concat chunks) (fn-sco-identity (fn-sco-capture configs nil)) h0))
                                        max-conns))) ()
               :fault "pass 3 advances past the first chunk before extending the capture")))
+
+; The actual pass-3 accumulator carries the enrollment across the chunk
+; boundary and observes the rotation in the next chunk.
+(make-event
+ `(defconst *rcs-rotation-first*
+    ',(fn-rcw-predict-acc-step (fn-rcw-acc-init *scft-cfgs*) *scft-cfgs* *scft-ws* 0)))
+(make-event
+ `(defconst *rcs-rotation-next*
+    ',(fn-rcw-predict-acc-step (car *rcs-rotation-first*) *scft-cfgs* *scft-vs*
+                              (cadr *rcs-rotation-first*))))
+(assert-event
+ (and (not (equal *rcs-rotation-next* :bad))
+      (equal (fn-sco-records (fn-rcw-acc-finish (car *rcs-rotation-next*))) *scft-replay*)
+      (equal (cadr *rcs-rotation-next*) 2)
+      (equal (append (caddr *rcs-rotation-first*) (caddr *rcs-rotation-next*))
+             (fn-orcs-payloads *scft-log*))))
+; Reset only the carried identity: preserve the capture columns and handle.
+(assert-event
+ (let* ((acc (car *rcs-rotation-first*))
+        (reset (fn-rcw-acc-make (fn-rcw-acc-rev acc) (fn-rcw-acc-n acc)
+                                (fn-sco-at 2 acc) *scft-id0* (fn-sco-at 4 acc)
+                                (fn-sco-at 5 acc) (fn-sco-at 6 acc)))
+        (r (fn-rcw-predict-acc-step reset *scft-cfgs* *scft-vs*
+                                    (cadr *rcs-rotation-first*))))
+   (not (equal (fn-sco-records (fn-rcw-acc-finish (car r))) *scft-replay*))))

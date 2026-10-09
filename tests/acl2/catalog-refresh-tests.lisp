@@ -103,7 +103,7 @@
 
 ; The conclusion: the refresh is the delta's application, and it is the view
 ; fn-own-complete installs; the version advanced by the one record, the raw
-; list and the visible list gained the article, the trie answers it.
+; list and the visible list gained the article, the scan finds it.
 (defconst *crt-refreshed* (fn-own-view (fn-own-refresh (fn-crf-with-store *crt-completing* *crt-s*))))
 (defconst *crt-applied* (fn-crf-apply-article *crt-view* *crt-a1* *crt-verdict* *crt-s*))
 (assert-event (equal *crt-refreshed* *crt-applied*))
@@ -112,7 +112,7 @@
 (assert-event (equal (fn-own-view-raw *crt-applied*) (cons *crt-a1* (fn-own-view-raw *crt-view*))))
 (assert-event (equal (fn-state-articles (fn-own-view-archive *crt-applied*))
                      (cons *crt-a1* (fn-state-articles (fn-own-view-archive *crt-view*)))))
-(assert-event (equal (fn-midx-lookup "<one@example>" (fn-own-view-index *crt-applied*)) *crt-a1*))
+(assert-event (equal (fn-find-article "<one@example>" (fn-state-articles (fn-own-view-archive *crt-applied*))) *crt-a1*))
 (assert-event (null (fn-own-view-withdrawn *crt-applied*)))
 
 ; Hypothesis removal: the store is NOT idle (its files are the completing
@@ -127,14 +127,12 @@
 ; acceptance did not grow over it).  The other hypotheses hold.
 (defun crt-view-with-raw (view raw)
   (fn-own-view-make-visible (fn-own-view-version view) (fn-own-view-frontier view)
-                            (fn-own-view-archive view) (fn-own-view-verdicts view)
-                            (fn-own-view-index view) (fn-own-view-group-index view)
+                            (fn-own-view-archive view) (fn-own-view-verdicts view) (fn-own-view-group-index view)
                             (fn-own-view-withdrawals view) raw (fn-own-view-withdrawn view)
                             (fn-own-view-keyring view)))
 (defun crt-view-with-verdicts (view verdicts)
   (fn-own-view-make-visible (fn-own-view-version view) (fn-own-view-frontier view)
-                            (fn-own-view-archive view) verdicts
-                            (fn-own-view-index view) (fn-own-view-group-index view)
+                            (fn-own-view-archive view) verdicts (fn-own-view-group-index view)
                             (fn-own-view-withdrawals view) (fn-own-view-raw view)
                             (fn-own-view-withdrawn view) (fn-own-view-keyring view)))
 (defun crt-owner-with-view (o view)
@@ -198,15 +196,13 @@
                           (fn-crf-apply-article *crt-view-atom* nil *crt-verdict* *crt-s-atom*))))
 
 ; The plain case (fn-crf-apply-article-plain) on the same state: the article
-; withdraws nothing and is not withdrawn, so the trie is extended and the
+; withdraws nothing and is not withdrawn, so the buckets are put and the
 ; raw and visible lists gain the article (asserted above).  This state's
 ; view carries NO group index (the initial owner's empty archive builds
 ; none), which is the hypothesis-removal witness for the theorem's
 ; `(fn-own-view-group-index view)': the apply builds the buckets from the
 ; visible list instead of putting the article's entries.
 (assert-event (and (null (fn-own-view-group-index *crt-view*))
-                   (equal (fn-own-view-index *crt-applied*)
-                          (fn-midx-extend *crt-a1* (fn-own-view-index *crt-view*)))
                    (equal (fn-own-view-group-index *crt-applied*)
                           (fn-gidx-build (fn-state-articles (fn-own-view-archive *crt-applied*))))))
 

@@ -32,7 +32,7 @@
       (ps (fn-peer-session-base peer))
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
-      (article (fn-midx-lookup (fn-nntp-token-string *pcrm-token*) (fn-gidx-pin-trie viewindex)))
+      (article (fn-find-article (fn-nntp-token-string *pcrm-token*) (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -96,7 +96,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         t
@@ -141,7 +140,7 @@
         (fn-gidx-pinp viewindex)
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *pcrm-token*))
-          (not (fn-nntp-msgid-withdrawn-p viewindex *pcrm-token*)))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex *pcrm-token*)))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -194,7 +193,7 @@
       (ps (fn-peer-session-base peer))
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
-      (article (fn-midx-lookup (fn-nntp-token-string *pcrm-token*) (fn-gidx-pin-trie viewindex)))
+      (article (fn-find-article (fn-nntp-token-string *pcrm-token*) (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -258,7 +257,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         (equal
@@ -302,7 +300,7 @@
         (fn-gidx-pinp viewindex)
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *pcrm-token*))
-          (not (fn-nntp-msgid-withdrawn-p viewindex *pcrm-token*)))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex *pcrm-token*)))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -357,7 +355,7 @@
       (ps (fn-peer-session-base peer))
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
-      (article (fn-midx-lookup (fn-nntp-token-string *pcrm-token*) (fn-gidx-pin-trie viewindex)))
+      (article (fn-find-article (fn-nntp-token-string *pcrm-token*) (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -399,7 +397,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-clocked-queued-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-clocked-queued-selected*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcrt-clocked-queued-selected*)
           0
@@ -449,7 +446,7 @@
         (fn-gidx-pinp viewindex)
         (and
           (not (fn-nntp-number-withdrawn-p session viewarchive viewindex *pcrm-token*))
-          (not (fn-nntp-msgid-withdrawn-p viewindex *pcrm-token*)))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex *pcrm-token*)))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -527,9 +524,9 @@
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
       (article
-        (fn-midx-lookup
+        (fn-find-article
           (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-gidx-pin-trie viewindex)))
+          (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -593,7 +590,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcrt-selected*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcrt-selected*))
         (fn-scr-owner-catalogp (fn-ocfg-owner *pcrt-selected*) 0 (list *pcrt-payload*) *pcrt-cat*)
         (fn-scol-okp (list *pcrt-payload*) *pcrt-cat*)
         t
@@ -642,7 +638,7 @@
               viewarchive
               viewindex
               (fn-nntp-string-octets "<pcrt@x>")))
-          (not (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -704,9 +700,9 @@
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
       (article
-        (fn-midx-lookup
+        (fn-find-article
           (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-gidx-pin-trie viewindex)))
+          (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -770,7 +766,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-wire-closed-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-wire-closed-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-wire-closed-mutant*)
           0
@@ -815,7 +810,7 @@
               viewarchive
               viewindex
               (fn-nntp-string-octets "<pcrt@x>")))
-          (not (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -889,9 +884,9 @@
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
       (article
-        (fn-midx-lookup
+        (fn-find-article
           (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-gidx-pin-trie viewindex)))
+          (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -955,7 +950,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-handshaking-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-handshaking-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-handshaking-mutant*)
           0
@@ -1014,7 +1008,7 @@
               viewarchive
               viewindex
               (fn-nntp-string-octets "<pcrt@x>")))
-          (not (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -1073,9 +1067,9 @@
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
       (article
-        (fn-midx-lookup
+        (fn-find-article
           (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-gidx-pin-trie viewindex)))
+          (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -1139,7 +1133,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-sasl-waiting-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-sasl-waiting-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-sasl-waiting-mutant*)
           0
@@ -1198,7 +1191,7 @@
               viewarchive
               viewindex
               (fn-nntp-string-octets "<pcrt@x>")))
-          (not (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -1257,9 +1250,9 @@
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
       (article
-        (fn-midx-lookup
+        (fn-find-article
           (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-gidx-pin-trie viewindex)))
+          (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -1323,7 +1316,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-post-awaiting-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-post-awaiting-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-post-awaiting-mutant*)
           0
@@ -1382,7 +1374,7 @@
               viewarchive
               viewindex
               (fn-nntp-string-octets "<pcrt@x>")))
-          (not (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -1441,9 +1433,9 @@
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
       (article
-        (fn-midx-lookup
+        (fn-find-article
           (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-gidx-pin-trie viewindex)))
+          (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -1507,7 +1499,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-reader-closed-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-reader-closed-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-reader-closed-mutant*)
           0
@@ -1566,7 +1557,7 @@
               viewarchive
               viewindex
               (fn-nntp-string-octets "<pcrt@x>")))
-          (not (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -1625,9 +1616,9 @@
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
       (article
-        (fn-midx-lookup
+        (fn-find-article
           (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-gidx-pin-trie viewindex)))
+          (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -1691,7 +1682,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-short-line-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-short-line-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-short-line-mutant*)
           0
@@ -1746,7 +1736,7 @@
               viewarchive
               viewindex
               (fn-nntp-string-octets "<pcrt@x>")))
-          (not (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -1810,9 +1800,9 @@
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
       (article
-        (fn-midx-lookup
+        (fn-find-article
           (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-gidx-pin-trie viewindex)))
+          (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -1909,7 +1899,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-wide-line-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-wide-line-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-wide-line-mutant*)
           0
@@ -1992,7 +1981,7 @@
               viewarchive
               viewindex
               (fn-nntp-string-octets "<pcrt@x>")))
-          (not (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -2067,9 +2056,9 @@
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
       (article
-        (fn-midx-lookup
+        (fn-find-article
           (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-gidx-pin-trie viewindex)))
+          (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -2133,7 +2122,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-unauthenticated-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-unauthenticated-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-unauthenticated-mutant*)
           0
@@ -2190,7 +2178,7 @@
               viewarchive
               viewindex
               (fn-nntp-string-octets "<pcrt@x>")))
-          (not (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))
@@ -2252,9 +2240,9 @@
       (session (fn-post-session-base ps))
       (env (fn-post-reader-env viewconfig observation))
       (article
-        (fn-midx-lookup
+        (fn-find-article
           (fn-nntp-token-string (fn-nntp-string-octets "<pcrt@x>"))
-          (fn-gidx-pin-trie viewindex)))
+          (fn-state-articles viewarchive)))
       (server (fn-nntp-xref-server env))
       (r (fn-pcr-msgid-220-reply session article server (list *pcrt-payload*)))
       (p
@@ -2318,7 +2306,6 @@
         (not (consp nil))
         (fn-gacc-okp nil)
         (fn-ocl-relation *pcr-unprojected-mutant*)
-        (fn-scar-view-indexedp (fn-ocfg-owner *pcr-unprojected-mutant*))
         (fn-scr-owner-catalogp
           (fn-ocfg-owner *pcr-unprojected-mutant*)
           0
@@ -2377,7 +2364,7 @@
               viewarchive
               viewindex
               (fn-nntp-string-octets "<pcrt@x>")))
-          (not (fn-nntp-msgid-withdrawn-p viewindex (fn-nntp-string-octets "<pcrt@x>"))))
+          (not (fn-nntp-msgid-withdrawn-p viewarchive viewindex (fn-nntp-string-octets "<pcrt@x>"))))
         (fn-nntp-response-okp-of-bytes
           article
           (fn-nntp-article-bytes article (list *pcrt-payload*))

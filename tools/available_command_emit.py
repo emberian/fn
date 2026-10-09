@@ -141,7 +141,6 @@ def render():
          (view (if selected (fn-nntp-available-archive archive fn-arena) archive))
          (view-index (if selected
                           (fn-gidx-pin-with-control
-                           (fn-midx-build (fn-state-articles view))
                            (fn-gidx-build (fn-state-articles view))
                            (fn-gidx-pin-control index))
                         index)))

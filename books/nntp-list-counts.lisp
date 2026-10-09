@@ -127,7 +127,7 @@
                             fn-nntp-list-active-times fn-nntp-list-response
                             fn-nntp-list-newsgroups-described fn-nntp-list-motd
                             fn-gidx-build fn-nntp-projectionp
-                            fn-nntp-msgid-retrieval-indexed
+                            fn-nntp-msgid-retrieval
                             fn-gidx-listgroup-command
                             fn-nntp-over-range-indexed
                             fn-nntp-verdict-hdr-response)))))

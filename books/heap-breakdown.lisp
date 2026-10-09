@@ -67,15 +67,23 @@
 
 ; The whole reservation of a store-figure ACTION (every action but the
 ; offline list verbs :recover, :compact, :reclaim, whose figure is the
-; larger of two) at CONNECTIONS, itemised.  The heap's own terms, then the
+; larger of two) or of the store-less action (`init': one term, the
+; store-less heap) at CONNECTIONS, itemised.  The heap's own terms, then the
 ; collector's room (the figure less the base), the rounding to SBCL's
 ; megabytes, the image outside the dynamic space and the threads.
 (defun fn-heap-breakdown (action profile core nursery observed connections)
   (declare (xargs :guard t))
-  (let* ((obs (fn-heap-operation-observation action observed))
-         (base-terms (fn-heap-breakdown-base profile core obs))
-         (base (fn-heap-store-base-octets profile core obs))
-         (fig (fn-heap-store-figure-octets profile core nursery obs))
+  (let* ((storeless (fn-heap-storeless-action-p action))
+         (obs (fn-heap-operation-observation action observed))
+         (base-terms (if storeless
+                         (list (cons :store-less-heap (fn-heap-storeless-figure-octets core nursery)))
+                       (fn-heap-breakdown-base profile core obs)))
+         (base (if storeless
+                   (fn-heap-storeless-figure-octets core nursery)
+                 (fn-heap-store-base-octets profile core obs)))
+         (fig (if storeless
+                  (fn-heap-storeless-figure-octets core nursery)
+                (fn-heap-store-figure-octets profile core nursery obs)))
          (mb (fn-heap-mb-of fig))
          (threads (fn-heap-thread-count connections))
          (stack-kib (fn-heap-stack-kib profile)))

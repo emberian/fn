@@ -148,7 +148,7 @@
 ; -----------------------------------------------------------------------------
 ; The offer decision
 
-(defun fn-pgc-decide-offer (node cfg peer session msgid clock inflight trie arts)
+(defun fn-pgc-decide-offer (node cfg peer session msgid clock inflight arts)
   (declare (xargs :guard t)
            (ignorable clock))
   (let ((record (fn-cfg-peer-find peer (fn-cfg-peers (fn-cfg-value cfg)))))
@@ -160,7 +160,7 @@
           ; PKT-858: the disk-slow posture, as fn-peer-decide-offer.
           ((fn-peer-shed-p session)
            (fn-peer-decision :defer :disk-slow))
-          ((fn-pix-history-hasp (fn-record-octets-string msgid) node trie arts)
+          ((fn-pix-history-hasp (fn-record-octets-string msgid) node arts)
            (fn-peer-decision :have :history))
           ; PRF-235: the refused-offer memory, as fn-peer-decide-offer.
           ((fn-peer-remembered-reason msgid session)
@@ -185,17 +185,16 @@
   :hints (("Goal" :in-theory (enable fn-node-statep)))))
 
 (defthm fn-pgc-decide-offer-is-peer-decide-offer
-  (implies (and (fn-node-statep node)
-                (fn-midx-correspondencep trie arts))
+  (implies (fn-node-statep node)
            (equal (fn-pgc-decide-offer node cfg peer session msgid clock
-                                       inflight trie arts)
+                                       inflight arts)
                   (fn-peer-decide-offer node cfg peer session msgid clock
                                         inflight)))
   :hints (("Goal" :in-theory (e/d (fn-pgc-decide-offer fn-peer-decide-offer)
                                   (fn-peer-shed-p fn-pgc-retain-admissiblep
                                    fn-retain-admissiblep
                                    fn-pix-history-hasp fn-peer-history-hasp
-                                   fn-node-statep fn-midx-correspondencep
+                                   fn-node-statep
                                    fn-retain-statep
                                    fn-peer-stagedp fn-cfg-peer-find
                                    fn-af-message-idp fn-record-octets-string)))))
@@ -219,7 +218,7 @@
            (fn-pgc-peer-sessionp x))
   :hints (("Goal" :in-theory (enable fn-peer-sessionp fn-pgc-peer-sessionp))))
 
-(defun fn-pgc-peer-command (ps keyword args trie arts)
+(defun fn-pgc-peer-command (ps keyword args arts)
   (declare (xargs :guard (fn-pgc-peer-sessionp ps) :verify-guards nil))
   (let ((node (fn-peer-session-node ps))
         (cfg (fn-peer-session-cfg ps))
@@ -230,7 +229,7 @@
       (if (not (fn-peer-msgid-argp args))
           (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
         (let ((d (fn-pgc-decide-offer node cfg peer ps (car args) nil inflight
-                                      trie arts)))
+                                      arts)))
           (if (equal (fn-peer-decision-kind d) :want)
               (fn-post-make-result
                (fn-peer-with-transfer ps (list :ihave (car args)) inflight)
@@ -243,7 +242,7 @@
       (if (not (fn-peer-msgid-argp args))
           (fn-post-make-result ps (fn-peer-single ps (fn-proto-text * :syntax)) nil)
         (let ((d (fn-pgc-decide-offer node cfg peer ps (car args) nil inflight
-                                      trie arts)))
+                                      arts)))
           (fn-post-make-result
            (if (equal (fn-peer-decision-kind d) :want)
                (fn-peer-with-transfer ps nil (+ 1 (nfix inflight)))
@@ -283,13 +282,12 @@
      (t nil))))
 
 (defthm fn-pgc-peer-command-is-peer-command
-  (implies (and (fn-node-statep (fn-peer-session-node ps))
-                (fn-midx-correspondencep trie arts))
-           (equal (fn-pgc-peer-command ps keyword args trie arts)
+  (implies (fn-node-statep (fn-peer-session-node ps))
+           (equal (fn-pgc-peer-command ps keyword args arts)
                   (fn-peer-command ps keyword args)))
   :hints (("Goal" :in-theory (e/d (fn-pgc-peer-command fn-peer-command)
                                   (fn-pgc-decide-offer fn-peer-decide-offer
-                                   fn-node-statep fn-midx-correspondencep
+                                   fn-node-statep
                                    fn-nntp-keywordp fn-peer-msgid-argp
                                    fn-peer-single fn-peer-echo-reply
                                    fn-peer-ihave-offer-line fn-peer-check-code
@@ -365,17 +363,15 @@
 ; -----------------------------------------------------------------------------
 ; The peer arm: fn-peer-step-pinned past its first two branches, for a
 ; peer session, with no session recognizer evaluated.  What the peer commands
-; do not answer goes to the reader delegate whose Message-ID retrieval walks
-; the trie by index (fn-pix-peer-delegate-pinned, equal to
-; fn-peer-delegate-pinned with no hypothesis: books/peer-offer-indexed.lisp).
+; do not answer goes to the reader delegate (fn-peer-delegate-pinned).
 
 (defun fn-pgc-peer-arm
-    (ps trie arts archive index verdicts config observation injection wire-event fn-arena)
+    (ps arts archive index verdicts config observation injection wire-event fn-arena)
   (declare (xargs :stobjs fn-arena :guard (fn-pgc-peer-sessionp ps)))
   (cond
    ((not (equal (fn-nntp-session-openp (fn-peer-reader-session ps)) t))
-    (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
-                                 injection wire-event fn-arena))
+    (fn-peer-delegate-pinned ps archive index verdicts config observation
+                            injection wire-event fn-arena))
    ((fn-peer-session-transfer ps) (fn-pgc-transfer-step ps wire-event))
    ((and (consp wire-event)
          (equal (car wire-event) :command)
@@ -386,23 +382,22 @@
       (if (and (consp tokens)
                (fn-nntp-keyword-tokenp (car tokens))
                (fn-nntp-command-arguments-at-mostp tokens))
-          (let ((r (fn-pgc-peer-command ps (car tokens) (cdr tokens) trie arts)))
+          (let ((r (fn-pgc-peer-command ps (car tokens) (cdr tokens) arts)))
             (if r r
-              (fn-pix-peer-delegate-pinned ps archive index verdicts config
+              (fn-peer-delegate-pinned ps archive index verdicts config
                                            observation injection wire-event fn-arena)))
-        (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
+        (fn-peer-delegate-pinned ps archive index verdicts config observation
                                      injection wire-event fn-arena))))
-   (t (fn-pix-peer-delegate-pinned ps archive index verdicts config observation
+   (t (fn-peer-delegate-pinned ps archive index verdicts config observation
                                    injection wire-event fn-arena))))
 
 ; KEYSTONE.  On a peer session, the arm is the reference step: the premise
-; is fn-peer-sessionp (so fn-node-statep of the session's node) and the
-; trie's correspondence; the arm itself evaluates neither.
+; is fn-peer-sessionp (so fn-node-statep of the session's node); the arm
+; itself evaluates neither.
 (defthm fn-pgc-peer-arm-is-peer-step-pinned
   (implies (and (fn-peer-sessionp ps)
-                (fn-peer-session-peer ps)
-                (fn-midx-correspondencep trie arts))
-           (equal (fn-pgc-peer-arm ps trie arts archive index verdicts config
+                (fn-peer-session-peer ps))
+           (equal (fn-pgc-peer-arm ps arts archive index verdicts config
                                    observation injection wire-event fn-arena)
                   (fn-peer-step-pinned ps archive index verdicts config
                                        observation injection wire-event fn-arena)))
@@ -411,8 +406,8 @@
                                   (fn-pgc-peer-command fn-peer-command
                                    fn-pgc-transfer-step fn-peer-step
                                    fn-node-statep fn-cfgp fn-post-sessionp
-                                   fn-peer-transferp fn-midx-correspondencep
-                                   fn-peer-delegate-pinned fn-pix-peer-delegate-pinned
+                                   fn-peer-transferp
+                                   fn-peer-delegate-pinned
                                    fn-nntp-tokenize fn-nntp-command-inputp)))))
 
 (in-theory (disable fn-pgc-obligation-ids fn-pgc-release-ids

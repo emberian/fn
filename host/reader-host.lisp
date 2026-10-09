@@ -89,8 +89,7 @@
 ; The store variant reads only the actual-node projection of the composed
 ; file/node state reconstructed by the store adapter.
 ;; The selection (books/reader-open-carried.lisp fn-rdc-selection): the
-;; archive recognised once, with its verdicts and its Message-ID trie built
-;; once.  The reader's archive is immutable under its shared lock, so every
+;; archive recognised once, with its verdicts.  The reader's archive is immutable under its shared lock, so every
 ;; connection opens over this one value (fn-rdc-reset-is-served-open).
 (defun fn-reader-install-selection (sel state)
   (declare (xargs :stobjs state :guard t))

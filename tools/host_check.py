@@ -348,7 +348,7 @@ def stobj_world_names() -> set[str]:
         paths = base.rglob("*.lisp") if directory == "books" else base.glob("*.lisp")
         for path in sorted(paths):
             text = path.read_text(encoding="utf-8", errors="replace").lower()
-            if "(defstobj" in text or "(defabsstobj" in text:
+            if "(defstobj" in text or "(defabsstobj" in text or "(def-generic" in text:
                 found |= {name.lower() for name in stobj_names(path)}
     return found
 
@@ -1406,6 +1406,82 @@ def standalone_scope(root: Path) -> list[Path]:
             if p.relative_to(root).as_posix() not in parked]
 
 
+def attach_order_findings(path: Path, root: Path = ROOT, parsed: dict | None = None) -> list[str]:
+    """Attachments PATH's certification would refuse: an `(attach-stobj S
+    IMPL)` reached after the world already defines stobj S.  ACL2 admits an
+    attachment only before its stobj exists ("The name FN-ARENA is in use, so
+    it cannot serve here as an attachable stobj"), so the order of includes
+    decides it: host/index-writer-operation-host reached payload-arena (which
+    defines fn-arena) through index-writer-begin-host before owner-host
+    included payload-arena-attach (HOST-ATTACH-ORDER-STANDALONE).  The walk
+    replays the root's events in order, its own local ones too, and each
+    included book's non-local ones, once each, as include-book does."""
+    import ledger
+    parsed = {} if parsed is None else parsed  # file -> its top-level forms, shared by the caller
+    defined: dict[str, str] = {}
+    loaded: set[Path] = set()
+    findings: list[str] = []
+    rel = lambda f: f.resolve().relative_to(root.resolve()).as_posix()
+
+    def book(file: Path, certifying: bool) -> None:
+        forms = parsed.get(file)
+        if forms is None:
+            try:
+                forms = ledger.Reader(file.read_text(encoding="latin-1")).top_level()
+            except (OSError, ledger.ReadError):
+                forms = []  # the symbol check reports an unreadable world
+            parsed[file] = forms
+        for form, line in forms:
+            event(file, form, line, certifying)
+
+    def event(file: Path, form, line: int, certifying: bool) -> None:
+        head = ledger.head(form)
+        if head is None:
+            return
+        if head == "local":
+            if certifying and len(form) > 1:
+                event(file, form[1], line, certifying)
+            return
+        if head in ("progn", "progn!", "defsection-progn"):
+            body = form[1:]
+        elif head == "defsection":
+            body = form[2:]
+        elif head == "encapsulate":
+            body = form[2:]
+        elif head == "with-output":
+            body = form[-1:]
+        else:
+            expansion = ledger.generated_expansion(form)
+            if expansion is not None:
+                body = expansion
+            elif head == "include-book" and len(form) > 1 and isinstance(form[1], str):
+                if ":dir" in [str(x) for x in form[2:]]:
+                    return  # a system book defines none of the project's stobjs
+                target = (file.parent / form[1]).with_suffix(".lisp").resolve()
+                if target not in loaded and target.is_file():
+                    loaded.add(target)
+                    book(target, False)
+                return
+            elif head in ("defstobj", "defabsstobj") and len(form) > 1:
+                defined.setdefault(str(form[1]).lower(), rel(file))
+                return
+            elif head == "attach-stobj" and len(form) > 1:
+                name = str(form[1]).lower()
+                if name in defined:
+                    findings.append(f"{rel(file)}:{line}: (attach-stobj {name} ...) comes after "
+                                    f"{defined[name]} defined {name} in {rel(path)}'s world: "
+                                    "include the attaching book before any book that defines the stobj")
+                return
+            else:
+                return
+        for inner in body:
+            event(file, inner, line, certifying)
+
+    loaded.add(path.resolve())
+    book(path, True)
+    return findings
+
+
 def standalone_findings(root: Path = ROOT) -> list[str]:
     """References in each host book against its OWN include world (no ACL2).
 
@@ -1418,6 +1494,11 @@ def standalone_findings(root: Path = ROOT) -> list[str]:
     world = BookWorld(root)
     builtins = ledger.acl2_builtins()
     findings = []
+    # attachment order holds for every host book, parked ones too: it needs
+    # no symbol world, and a parked book still certifies (far-consumer roots)
+    parsed: dict = {}
+    for path in sorted((root / "host").glob("*.lisp")):
+        findings.extend(attach_order_findings(path, root, parsed))
     for path in standalone_scope(root):
         names, macros, problems = world.closure(path, own=True)
         findings.extend(problems)
@@ -1660,6 +1741,17 @@ def stobj_names(path: Path) -> set[str]:
     def visit(form) -> None:
         if not isinstance(form, list) or not form:
             return
+        if form[0] == "def-generic" and len(form) >= 2:
+            # books/def-representation-generic.lisp: an attachable abstract
+            # stobj whose exports are the :exports rows' second words (its
+            # expansion below names only the obligations, s-twins' payload-arena
+            # export fn-arena-count went unseen by --world).
+            name = str(form[1])
+            found.update({name + "p", "create-" + name})
+            rows = ledger.keyword_plist(list(form[2:])).get(":exports")
+            for row in rows if isinstance(rows, list) else []:
+                if isinstance(row, list) and len(row) >= 2:
+                    found.add(str(row[1]))
         expansion = ledger.generated_expansion(form)
         if expansion is not None:
             for item in expansion:
@@ -2240,9 +2332,12 @@ def attach_pairs(root: Path) -> tuple[list[tuple[str, str, str]], list[AttachUnp
             continue
         for m in ATTACH_STOBJ.finditer(_attach_read(path)):
             gen = m.group(1).lower()
+            # an :attachable defabsstobj, or a def-generic, which is one by
+            # construction (books/def-representation-generic.lisp)
             generic = [p for p in sorted((root / "books").glob("*.lisp"))
-                       if re.search(r"\(defabsstobj\s+%s(?![A-Za-z0-9$*+-])" % re.escape(gen), _attach_read(p), re.I)
-                       and ":attachable t" in _attach_read(p).lower()]
+                       if (re.search(r"\(defabsstobj\s+%s(?![A-Za-z0-9$*+-])" % re.escape(gen), _attach_read(p), re.I)
+                           and ":attachable t" in _attach_read(p).lower())
+                       or re.search(r"\(def-generic\s+%s(?![A-Za-z0-9$*+-])" % re.escape(gen), _attach_read(p), re.I)]
             if len(generic) == 1:
                 found.append((gen, "books/" + generic[0].stem, rel))
             else:

@@ -277,9 +277,10 @@ pins the archive and corresponding trie together at open or after a durable
 posting outcome. Existing connections keep their earlier pair. The proof-side
 `fn-own-relation` includes exact trie-to-archive correspondence for the current
 view and every retained connection; it is established by `fn-own-start-relation`
-and carried by `fn-own-run-preserves-relation`. Under that premise,
-`fn-nntp-msgid-retrieval-indexed-refines-scan` equates the indexed answer with
-the original list lookup. The host-called `fn-own-read` is tied to the pinned
+and carried by `fn-own-run-preserves-relation`. The served Message-ID
+retrieval reads the catalog: `fn-nntp-msgid-retrieval-cat-is-scan`
+(books/served-catalog.lisp) equates its answer with the list lookup when the
+view's articles are the archive's. The host-called `fn-own-read` is tied to the pinned
 served step by `fn-own-read-is-served-step-on-pinned-prefix`. These are in-memory
 indexes, reconstructed from committed acceptance on recovery; they do not
 change acceptance authority or add disk index files. LISTGROUP range reads
@@ -620,7 +621,7 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | NEXT | the connection's pinned view | current |  |  | number-table probes from the current article to the next visible number, plus one catalog lookup / the reference fold over the projected pinned archive (fn-nntp-next-or-last) | NNT-042 (other reads); RFC 3977 6.1.4 |
 | NEXT / current | the connection's pinned view | current |  |  | generated: (fn-nntp-next-or-last-cat session archive :next v fn-arena fn-cat) |  |
 | NEXT / syntax | none (no archive) | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
-| ARTICLE | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / pinned Message-ID trie lookup or the reference number/current archive walk | NNT-042 (pinned retrieval; a cancel after the pin leaves the article visible); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot, number fields 0 on fallback; RFC 3977 6.2.1 |
+| ARTICLE | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / Message-ID scan of the pinned article list or the reference number/current archive walk | NNT-042 (pinned retrieval; a cancel after the pin leaves the article visible); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot, number fields 0 on fallback; RFC 3977 6.2.1 |
 | ARTICLE / number-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session nil) |  |
 | ARTICLE / msgid-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session t) |  |
 | ARTICLE / compatibility | the connection's pinned view | current |  |  | generated: test value |  |
@@ -628,7 +629,7 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | ARTICLE / number | the connection's pinned view | current |  |  | generated: (fn-nntp-number-retrieval-cat session v :article (car args) fn-arena fn-cat) |  |
 | ARTICLE / current | the connection's pinned view | current |  |  | generated: (fn-nntp-current-retrieval-cat session :article v fn-arena fn-cat) |  |
 | ARTICLE / syntax | none (no archive) | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
-| HEAD | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / pinned Message-ID trie lookup or the reference number/current archive walk | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.2 |
+| HEAD | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / Message-ID scan of the pinned article list or the reference number/current archive walk | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.2 |
 | HEAD / number-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session nil) |  |
 | HEAD / msgid-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session t) |  |
 | HEAD / compatibility | the connection's pinned view | current |  |  | generated: test value |  |
@@ -636,7 +637,7 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | HEAD / number | the connection's pinned view | current |  |  | generated: (fn-nntp-number-retrieval-cat session v :head (car args) fn-arena fn-cat) |  |
 | HEAD / current | the connection's pinned view | current |  |  | generated: (fn-nntp-current-retrieval-cat session :head v fn-arena fn-cat) |  |
 | HEAD / syntax | none (no archive) | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
-| BODY | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / pinned Message-ID trie lookup or the reference number/current archive walk | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.3 |
+| BODY | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / Message-ID scan of the pinned article list or the reference number/current archive walk | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.3 |
 | BODY / number-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session nil) |  |
 | BODY / msgid-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session t) |  |
 | BODY / compatibility | the connection's pinned view | current |  |  | generated: test value |  |
@@ -644,7 +645,7 @@ The EXECUTED rule per command and form; a ruling recorded but not landed is DEBT
 | BODY / number | the connection's pinned view | current |  |  | generated: (fn-nntp-number-retrieval-cat session v :body (car args) fn-arena fn-cat) |  |
 | BODY / current | the connection's pinned view | current |  |  | generated: (fn-nntp-current-retrieval-cat session :body v fn-arena fn-cat) |  |
 | BODY / syntax | none (no archive) | none |  |  | generated: (fn-nntp-archive-command session archive env keyword args fn-arena) |  |
-| STAT | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / pinned Message-ID trie lookup or the reference number/current archive walk | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.4 |
+| STAT | the connection's pinned view | current | the pinned article if retrievable there, else the completed snapshot (PRF-1238) |  | number and Message-ID catalog probes with the pinned withdrawal test and compatibility prelude; payload bytes only for the selected article / Message-ID scan of the pinned article list or the reference number/current archive walk | NNT-042 (pinned retrieval); the number, Message-ID and current forms; numeric success moves the current article; decided c07 C for the Message-ID form only: the pin first, then the completed snapshot; RFC 3977 6.2.4 |
 | STAT / number-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session nil) |  |
 | STAT / msgid-withdrawn | the connection's pinned view | none |  |  | generated: (fn-nntp-withdrawn-reply session t) |  |
 | STAT / compatibility | the connection's pinned view | current |  |  | generated: test value |  |
@@ -1015,7 +1016,7 @@ Message-ID (D25). The node answers it from the Store, not from a reader view:
 What is proved, over the decision the host calls
 (`books/visibility-join.lisp`; `host/native/owner.lisp` `fnn-owner-attempt`
 through `host/owner-host.lisp` `fn-owner-existing-action-buffer`, whose
-decision is `fn-pidx-existing-action`; the carried-signature ingress through
+decision is `fn-pidx-existing-action-cat`; the carried-signature ingress through
 `fn-owner-existing-action`, `fn-store-existing-action`): once a Message-ID is
 held, the decision answers `:duplicate` or `:conflict`, never nil, after any
 Store completion (`fn-vj-a-completion-keeps-a-held-message-id-answered`; the
@@ -1884,7 +1885,7 @@ gives them.
   fold stops at the end of that line, and the owner, under its mutex, reads a
   16-octet salt from the OS CSPRNG, runs `fn-acct-redeem-bounded-plan` over
   the live configuration, and publishes a `:redeem` plan's delta through
-  `fnn-owner-live-reconfigure-locked`. Only then does it feed the connection
+  `fnn-owner-live-reconfigure`. Only then does it feed the connection
   `(:account-outcome WORD)`: `281 account bound; authenticate with AUTHINFO on
   a new connection` when WORD is `:bound` (the record is durable, or was
   already durable for this login and password), otherwise `482 invitation

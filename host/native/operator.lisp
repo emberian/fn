@@ -422,6 +422,13 @@ refuses this one by its own line (fnn-peer-flight-profile)."
                    ;; (fn-native-admin-result-report-kind): `control list'
                    ;; reports the authority rows, `peer list' the peers.
                    ((and queryp (fnn-admin-plan-acceptedp plan))
+                    ;; PKT-344: the liveness observation first, as every
+                    ;; admin verb takes it: a crashed owner's socket node is
+                    ;; removed and its note printed before the read-only
+                    ;; report (a query prints only the :stale note).
+                    (when *fnn-operator-live-owner*
+                      (funcall (fnn-olo-admin-observe *fnn-operator-live-owner*)
+                               root control-path-list t))
                     (fnn-operator-status-once
                      root (and (fnn-octet-list-p control-path-list)
                                (consp control-path-list)

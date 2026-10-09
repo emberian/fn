@@ -8,9 +8,9 @@
 ; payload arena by its handle.  host/owner-host.lisp fn-owner-existing-action
 ; and fn-owner-prepare, and host/store-node-host.lisp
 ; fn-store-sn-existing-action and its prepare site, call it; the buffer path
-; fn-owner-existing-action-buffer reaches it through fn-pidx-existing-action
-; (fn-pidx-existing-action-is-store-existing-action, books/post-identity-
-; index.lisp).  The bytes under the held handle are either the injected
+; fn-owner-existing-action-buffer reaches it through fn-pidx-existing-action-cat
+; (fn-pidx-existing-action-cat-is-store-existing-action, books/post-identity-
+; catalog.lisp).  The bytes under the held handle are either the injected
 ; article or, after `store reclaim', that article's tombstone
 ; (fn-rcl-tombstone-of).  books/poster-bytes-invariants.lisp proves the retry
 ; and conflict keystones over fn-pb-action-over, the decision without

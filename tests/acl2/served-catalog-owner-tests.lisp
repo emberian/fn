@@ -107,10 +107,10 @@
 
 ;; The catalog from the same records under the owner's view index, and what
 ;; the join compares.
-(defun scot-run (records view fn-arena fn-cat)
+(defun scot-run (records view index fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
   (let* ((fn-arena (fn-arn-seal-many *scot-payloads* fn-arena))
-         (fn-cat (fn-sca-load-held-rows records (fn-own-view-index view) fn-arena fn-cat)))
+         (fn-cat (fn-sca-load-held-rows records index fn-arena fn-cat)))
     (let ((v (fn-scr-view-of (fn-own-view-version view) fn-cat)))
       (mv (list (fn-cat-count fn-cat)
                 (fn-cat-history-relation (fn-rows-wire-of records fn-arena) fn-arena fn-cat)
@@ -127,17 +127,19 @@
                 (fn-articles-wire-of (fn-state-articles (fn-own-view-archive view)) fn-arena))
           fn-arena fn-cat))))
 
-(defun scot-exec (records view)
+(defun scot-exec (records view index)
   (declare (xargs :mode :program))
   (with-local-stobj fn-arena
     (mv-let (result fn-arena)
       (with-local-stobj fn-cat
         (mv-let (result fn-arena fn-cat)
-          (scot-run records view fn-arena fn-cat)
+          (scot-run records view index fn-arena fn-cat)
           (mv result fn-arena)))
       result)))
 
-(defconst *scot-r* (scot-exec *scot-records* *scot-view*))
+(defconst *scot-r*
+  (scot-exec *scot-records* *scot-view*
+             (fn-midx-build (fn-state-articles (fn-own-view-archive *scot-view*)))))
 
 ;; R, <b@x>'s row (1) visible at the count, the view of the version (every
 ;; row), and THE JOIN (fn-sca-join, the hypothesis fn-scr-catalogp carries):
@@ -180,7 +182,7 @@
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
   (let* ((fn-arena (fn-arn-seal-many *scot-payloads* fn-arena))
          (hyp (list (fn-arena-p fn-arena) (fn-scol-history-okp records fn-arena)))
-         (fn-cat (fn-sca-load-held-rows records (fn-own-view-index view) fn-arena fn-cat)))
+         (fn-cat (fn-sca-load-held-rows records (fn-midx-build (fn-state-articles (fn-own-view-archive view))) fn-arena fn-cat)))
     (mv (list hyp
               (fn-scol-rows-okp (scot-cat-rows 0 fn-cat) fn-arena)
               (scot-decided (scot-cat-rows 0 fn-cat)))
@@ -203,17 +205,13 @@
 ;; (element 1).
 (assert-event (equal (nth 5 *scot-r*) t))
 
-;; A view that hides <b@x> (its index built without it) loads that row hidden:
+;; A load whose trie lacks <b@x> (the loader's visible-set test hides that row):
 ;; the catalog's view is the archive without it, and R still holds.
-(defconst *scot-hidden-view*
+(defconst *scot-hidden-index*
   (let ((arts (fn-state-articles (fn-own-view-archive *scot-view*))))
-    (fn-own-view-make-visible
-     (fn-own-view-version *scot-view*) (fn-own-view-frontier *scot-view*)
-     (fn-own-view-archive *scot-view*) nil
-     (fn-midx-build (list (car arts) (caddr arts)))
-     (fn-own-view-group-index *scot-view*) nil nil nil nil)))
+    (fn-midx-build (list (car arts) (caddr arts)))))
 
-(defconst *scot-rh* (scot-exec *scot-records* *scot-hidden-view*))
+(defconst *scot-rh* (scot-exec *scot-records* *scot-view* *scot-hidden-index*))
 
 (assert-event (equal (nth 0 *scot-rh*) 3))
 (assert-event (equal (nth 1 *scot-rh*) t))
@@ -255,22 +253,22 @@
 (defconst *scot-w3* (scot-record 3 3 "<d@x>" '("fn.test")))
 (defconst *scot-w4* (scot-record 3 3 "<e@x>" '("fn.test")))
 (defconst *scot-o4* (scot-post-exec *scot-o* *scot-w3* *scot-ws3*))
-(defconst *scot-index-without-b*
+(defconst *scot-shown-without-b*
   (let ((arts (fn-state-articles (fn-own-view-archive (fn-own-view *scot-o4*)))))
-    (fn-midx-build (list (car arts) (cadr arts) (cadddr arts)))))
+    (list (car arts) (cadr arts) (cadddr arts))))
 
 (assert-event (equal (fn-article-msgids (fn-state-articles (fn-own-view-archive (fn-own-view *scot-o4*))))
                      '("<d@x>" "<c@x>" "<b@x>" "<a@x>")))
-(assert-event (and (fn-midx-lookup "<d@x>" *scot-index-without-b*)
-                   (not (fn-midx-lookup "<b@x>" *scot-index-without-b*))
-                   (not (fn-midx-lookup "<e@x>" (fn-own-view-index *scot-view*)))))
+(assert-event (and (fn-ctl-has-msgid-p "<d@x>" *scot-shown-without-b*)
+                   (not (fn-ctl-has-msgid-p "<b@x>" *scot-shown-without-b*))
+                   (not (fn-ctl-has-msgid-p "<e@x>" (fn-state-articles (fn-own-view-archive *scot-view*))))))
 
-(defun scot-finish-run (w view-index targets reversedp fn-arena fn-cat)
+(defun scot-finish-run (w shown targets reversedp fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
   ;; Recovery (E), then the host's POST path: the store's row at the arena's
   ;; count, the one seal, the prepare after it (T1).
   (let* ((fn-arena (fn-arn-seal-many *scot-payloads* fn-arena))
-         (fn-cat (fn-sca-load-held-rows *scot-records* (fn-own-view-index *scot-view*) fn-arena fn-cat))
+         (fn-cat (fn-sca-load-held-rows *scot-records* (fn-midx-build (fn-state-articles (fn-own-view-archive *scot-view*))) fn-arena fn-cat))
          (row (fn-intern-row-at w nil 0 (fn-arena-count fn-arena)))
          (fn-arena (fn-arena-seal-list (fn-record-payload w) fn-arena)))
     (progn$
@@ -283,10 +281,10 @@
         (mv-let (word pending2 fn-cat)
           (if reversedp
               (mv-let (word pending2 fn-cat)
-                (fn-sca-complete token pending view-index fn-cat)
-                (let ((fn-cat (fn-sca-withdraw-targets targets view-index count fn-cat)))
+                (fn-sca-complete token pending shown fn-cat)
+                (let ((fn-cat (fn-sca-withdraw-targets targets shown count fn-cat)))
                   (mv word pending2 fn-cat)))
-            (fn-sca-finish token pending view-index targets fn-cat))
+            (fn-sca-finish token pending shown targets fn-cat))
           (mv (list (car word) pending2 count (fn-cat-count fn-cat) b-seq
                     (and (fn-cat-visible-at 1 count fn-cat) t)
                     (and (fn-cat-visible-at 1 (+ 1 count) fn-cat) t)
@@ -297,13 +295,13 @@
                     fresh-before)
               fn-arena fn-cat))))))
 
-(defun scot-finish-exec (w view-index targets reversedp)
+(defun scot-finish-exec (w shown targets reversedp)
   (declare (xargs :mode :program))
   (with-local-stobj fn-arena
     (mv-let (result fn-arena)
       (with-local-stobj fn-cat
         (mv-let (result fn-arena fn-cat)
-          (scot-finish-run w view-index targets reversedp fn-arena fn-cat)
+          (scot-finish-run w shown targets reversedp fn-arena fn-cat)
           (mv result fn-arena)))
       result)))
 
@@ -312,20 +310,20 @@
 ;; the target's last visible row, visible at the pinned version 3 and NOT at
 ;; 4, the first version showing the new row; the pinned view is unchanged;
 ;; the fresh view is d, c, a.
-(defconst *scot-f* (scot-finish-exec *scot-w3* *scot-index-without-b* '("<b@x>") nil))
+(defconst *scot-f* (scot-finish-exec *scot-w3* *scot-shown-without-b* '("<b@x>") nil))
 (assert-event (equal *scot-f* (list :article nil 3 4 1 t nil t t t '("<d@x>" "<c@x>" "<a@x>")
                                     '("<c@x>" "<b@x>" "<a@x>"))))
 
 ;; REVERSED (T2 then T4): <b@x> is still visible at version 4 -- the fresh
 ;; reader's pin shows the withdrawn target.  This is why the host calls
 ;; fn-sca-finish.
-(defconst *scot-rev* (scot-finish-exec *scot-w3* *scot-index-without-b* '("<b@x>") t))
+(defconst *scot-rev* (scot-finish-exec *scot-w3* *scot-shown-without-b* '("<b@x>") t))
 (assert-event (equal (nth 6 *scot-rev*) t))
 (assert-event (equal (nth 10 *scot-rev*) '("<d@x>" "<c@x>" "<b@x>" "<a@x>")))
 
 ;; R1: the view does not show <e@x>; its row (3) is committed and visible at
 ;; no version (4, 5); the fresh view is the pinned one.
-(defconst *scot-h* (scot-finish-exec *scot-w4* (fn-own-view-index *scot-view*) nil nil))
+(defconst *scot-h* (scot-finish-exec *scot-w4* (fn-state-articles (fn-own-view-archive *scot-view*)) nil nil))
 (assert-event (equal *scot-h* (list :article nil 3 4 1 t t nil nil t '("<c@x>" "<b@x>" "<a@x>")
                                     '("<c@x>" "<b@x>" "<a@x>"))))
 
@@ -333,13 +331,13 @@
 (defun scot-stale-run (fn-arena fn-cat)
   (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
   (let* ((fn-arena (fn-arn-seal-many *scot-payloads* fn-arena))
-         (fn-cat (fn-sca-load-held-rows *scot-records* (fn-own-view-index *scot-view*) fn-arena fn-cat))
+         (fn-cat (fn-sca-load-held-rows *scot-records* (fn-midx-build (fn-state-articles (fn-own-view-archive *scot-view*))) fn-arena fn-cat))
          (row (fn-intern-row-at *scot-w3* nil 0 (fn-arena-count fn-arena)))
          (fn-arena (fn-arena-seal-list (fn-record-payload *scot-w3*) fn-arena)))
     (progn$
       (let ((pending (fn-cat-prepare-sealed *scot-w3* row nil nil nil fn-arena fn-cat)))
         (mv-let (word pending2 fn-cat)
-          (fn-sca-finish (cons 99 3) pending *scot-index-without-b* '("<b@x>") fn-cat)
+          (fn-sca-finish (cons 99 3) pending *scot-shown-without-b* '("<b@x>") fn-cat)
           (mv (list (car word) (equal pending2 pending) (fn-cat-count fn-cat)
                     (and (fn-cat-visible-at 1 4 fn-cat) t))
               fn-arena fn-cat))))))
@@ -372,9 +370,9 @@
 ;; NOT separated: "not yet withdrawn" (hides-the-targets); a row visible at
 ;; the count and already withdrawn is withdrawn AT the count on every
 ;; reachable catalog, which no witness can exercise without corrupting one.
-(defconst *scot-index-with-b*
-  (fn-own-view-index (fn-own-view *scot-o4*)))
-(defconst *scot-shown* (scot-finish-exec *scot-w3* *scot-index-with-b* '("<b@x>") nil))
+(defconst *scot-shown-with-b*
+  (fn-state-articles (fn-own-view-archive (fn-own-view *scot-o4*))))
+(defconst *scot-shown* (scot-finish-exec *scot-w3* *scot-shown-with-b* '("<b@x>") nil))
 (assert-event (equal (nth 6 *scot-shown*) t))
 (assert-event (equal (nth 10 *scot-shown*) '("<d@x>" "<c@x>" "<b@x>" "<a@x>")))
 ;; Version 4 before the finish (element 11: c, b, a) and after it (element

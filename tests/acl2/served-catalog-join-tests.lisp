@@ -109,11 +109,9 @@
                     pending0))
          (held (fn-pc-held pending))
          (count (fn-cat-count fn-cat))
-         (index2 (fn-own-view-index *scjt-view2*))
+         (shown2 (fn-state-articles (fn-own-view-archive *scjt-view2*)))
          (targets (fn-sca-targets-of (fn-record-msgid held) (fn-own-view-withdrawals *scjt-view2*)))
-         (hyps (list (fn-midx-correspondencep (fn-own-view-index *scjt-view1*)
-                                              (fn-state-articles (fn-own-view-archive *scjt-view1*)))
-                     (consp *scjt-a*)
+         (hyps (list (consp *scjt-a*)
                      (stringp (fn-article-msgid *scjt-a*))
                      (no-duplicatesp-equal
                       (fn-article-msgids (cons *scjt-a* (fn-state-articles (fn-own-view-archive *scjt-view1*)))))
@@ -133,7 +131,7 @@
                          (mv (equal (fn-cat-row-article count fn-arena fn-cat) *scjt-a*) fn-cat)))
                      r))))
     (mv-let (word pending2 fn-cat)
-      (fn-sca-finish (fn-pc-token pending) pending index2 targets fn-cat)
+      (fn-sca-finish (fn-pc-token pending) pending shown2 targets fn-cat)
       (declare (ignore pending2))
       (mv (list joined-before sca-before hyps row-eq (car word) targets
                 (scjt-joinp *scjt-view2* fn-arena fn-cat (scjt-rows-from 0 fn-cat))
@@ -155,10 +153,10 @@
 ;; 1. The reachable witness: joined before; every hypothesis; the row
 ;; equation; an :article delta; the target T; joined after (the invariant
 ;; and the chain's fn-sca-join); the fresh view is C, the pinned one T.
-(defconst *scjt-1* (scjt-exec (fn-own-view-index *scjt-view1*) nil))
+(defconst *scjt-1* (scjt-exec (fn-midx-build (fn-state-articles (fn-own-view-archive *scjt-view1*))) nil))
 (assert-event (equal (nth 0 *scjt-1*) t))
 (assert-event (equal (nth 1 *scjt-1*) t))
-(assert-event (equal (nth 2 *scjt-1*) '(t t t t t t t t t t t t)))
+(assert-event (equal (nth 2 *scjt-1*) '(t t t t t t t t t t t)))
 (assert-event (equal (nth 3 *scjt-1*) t))
 (assert-event (equal (nth 4 *scjt-1*) :article))
 (assert-event (equal (nth 5 *scjt-1*) '("<lt@example>")))
@@ -177,9 +175,9 @@
 ;; 3. Hypothesis removal (null (fn-held-withdrawn held)): the pending row
 ;; marked withdrawn; every other hypothesis holds (and the join before and
 ;; the row equation's projections other than the mark), the conclusion fails.
-(defconst *scjt-3* (scjt-exec (fn-own-view-index *scjt-view1*) '(0 . 0)))
+(defconst *scjt-3* (scjt-exec (fn-midx-build (fn-state-articles (fn-own-view-archive *scjt-view1*))) '(0 . 0)))
 (assert-event (equal (nth 0 *scjt-3*) t))
-(assert-event (equal (nth 2 *scjt-3*) '(t t t t t t t t nil t t t)))
+(assert-event (equal (nth 2 *scjt-3*) '(t t t t t t t nil t t t)))
 (assert-event (equal (nth 3 *scjt-3*) t))
 (assert-event (equal (nth 6 *scjt-3*) nil))
 (assert-event (equal (nth 8 *scjt-3*) nil))
