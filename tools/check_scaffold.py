@@ -104,8 +104,16 @@ def evidence(entry: dict, advanced: set[str]) -> None:
         if not isinstance(path, str) or urlsplit(path).scheme or not path:
             fail(f"{entry['id']}: evidence must name a repository file")
         else:
-            link(path, ROOT / "README.md", entry["id"])
-            if not path.startswith(HISTORICAL_PREFIXES) and not (ROOT / path).exists():
+            # A prose entry is a finding, never a crash: an OSError here is a
+            # name no file system accepts (ENAMETOOLONG on a sentence).
+            try:
+                link(path, ROOT / "README.md", entry["id"])
+                missing = (not path.startswith(HISTORICAL_PREFIXES)
+                           and not (ROOT / path).exists())
+            except OSError as exc:
+                fail(f"{entry['id']}: evidence is not a path ({exc.strerror}): {path[:120]}")
+                continue
+            if missing:
                 fail(f"{entry['id']}: evidence is not a file: {path}")
 
 

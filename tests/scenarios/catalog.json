@@ -69,8 +69,7 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "books/store-node-existing-invariants.lisp",
-        "tests/acl2/store-node-existing-tests.lisp",
-        "tests/test_native_captured_attempt.py"
+        "tests/acl2/store-node-existing-tests.lisp"
       ],
       "execution_scope": "Validated for abstract atomic acceptance; the native path is one article posted to two groups through the operator, one local number in each group across a restart, an identical resubmission accepted as the duplicate and a changed source under the held Message-ID refused without replacing the stored octets (tests/test_native_conformance.py). The charged pin is not observed by that case. The Python-host implementation (tests/test_store.py) retired with the Python host. Captured-caller source transport fixture additionally executes the actual native attempt before frontier: actual runtime source unavailable refuses before fill; synthetic unfunded retained callbacks preserve one shared remaining quantum and returned effects before fault. This fixture does not validate parser/provider authority, installed runtime allowance, all-alias retirement or the changed served image.",
       "implementation": {
@@ -554,7 +553,6 @@
         "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md",
         "planning/evidence/native-owner-integrated-2026-09-21.md",
         "tests/test_native_control.py",
-        "planning/lanes/HANDOFF-w22-native-control.md",
         "planning/evidence/native-control-accept-shutdown-2026-09-21.md",
         "planning/evidence/native-raw-integration-w35-2026-09-21/README.md",
         "tests/native_io_progress_raw.lisp",
@@ -847,7 +845,6 @@
       "evidence": [
         "planning/evidence/feed-k5-w11-2026-09-21.md",
         "planning/evidence/feed-journal-w12-host.json",
-        "planning/lanes/HANDOFF-w12-feed-durability.md",
         "tests/test_native_peering.py",
         "tests/native_feed_peer_octets_raw-mock.lisp",
         "tests/native_feed_service_raw-mock.lisp",
@@ -7068,7 +7065,6 @@
         "planning/evidence/physical-window-source-2026-09-30.md",
         "planning/evidence/physical-window-coordinate-source-2026-09-30.md",
         "tests/native/page-window-lifecycle.lisp",
-        "tests/test_native_wire_dispatch.py",
         "planning/evidence/native-outgoing-cut-2026-09-30.md"
       ],
       "execution_scope": "Source model/adapter and staged raw wrapper only. Actual native observation, adequate native demand and served activation remain pending. Native unavailable-source recording fixture additionally passes exact actual Queue/QueuePlan/Flush and unpin cuts; synthetic family-only availability is rejected. No positive outgoing dispatcher/worker/receipt/runtime/image scope is inferred."
@@ -7523,21 +7519,9 @@
         "note": "Only the logical request codec component is implemented; full endpoint and all integration steps remain pending."
       },
       "evidence": [
-        "tests/acl2/consumer-remote-codec-tests.lisp",
-        "planning/consumer-remote-implementation.md",
-        "books/consumer-remote-position.lisp",
-        "tests/acl2/consumer-remote-position-tests.lisp",
         "planning/evidence/consumer-remote-components-2026-09-30.md",
         "books/consumer-authority-carried-result.lisp",
-        "books/consumer-authority-carried-result-model.lisp",
-        "tests/acl2/consumer-authority-carried-result-tests.lisp",
         "planning/evidence/consumer-authority-carried-result-2026-09-30/source.json",
-        "books/store-tree-size-info.lisp",
-        "books/consumer-checkpoint-carry-map.lisp",
-        "books/consumer-checkpoint-carry-map-model.lisp",
-        "books/consumer-checkpoint-carry-attribution.lisp",
-        "tests/acl2/consumer-checkpoint-carry-map-tests.lisp",
-        "tests/acl2/consumer-checkpoint-carry-attribution-tests.lisp",
         "planning/evidence/consumer-checkpoint-carry-map-2026-09-30/source.json",
         "tests/acl2/consumer-account-config-commit-tests.lisp",
         "tests/acl2/consumer-account-transaction-driver-tests.lisp",
@@ -8125,12 +8109,10 @@
         "planning/evidence/extent-window-compressed-source-2026-09-30.md",
         "tests/acl2/extent-window-compressed-input-tests.lisp",
         "planning/evidence/extent-window-input-source-2026-09-30.md",
-        "books/durable-lz-octet.lisp",
         "books/payload-arena-extent.lisp",
         "books/decoded-window-descriptor.lisp",
         "books/decoded-window-begin.lisp",
         "books/decoded-window-lease.lisp",
-        "tests/acl2/durable-lz-octet-tests.lisp",
         "tests/acl2/decoded-window-descriptor-tests.lisp",
         "tests/acl2/decoded-window-lease-tests.lisp",
         "planning/evidence/decoded-window-source-2026-09-30.md",
