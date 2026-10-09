@@ -52,28 +52,41 @@
 (defconst *mmt-slots* (fn-heap-article-slots *mmt-p*))
 (defconst *mmt-hs* (fn-cbud-handshake-slots t 16))
 
-; K1.  Every connection, article slot and handshake held, publishing.
+; K1.  Every connection, every holder, article slot and handshake held,
+; publishing; at P = 4 holders of C = 32 (contract v2.1's pool).
+(defconst *mmt-cfg-p4* (list 32 t 8388608 8388608 nil 0 8388608 16 nil 64 4))
+(assert-event (equal (fn-mm-cfg-holders *mmt-cfg-p4*) 4))
+(assert-event (equal (fn-mm-cfg-holders *mmt-cfg*) 32))
 (defteeth fn-mm-need-within-the-sum
   :claim (((connections (<= (nfix k) (fn-mm-cfg-connections cfg)))
+           (holders (<= (nfix j) (fn-mm-cfg-holders cfg)))
            (slots (<= (nfix s) (fn-heap-article-slots profile)))
            (handshakes (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg)))))
-          (<= (fn-mm-need profile img cfg tot k s h publishing)
+          (<= (fn-mm-need profile img cfg tot k j s h publishing)
               (fn-mm-sum profile img cfg tot)))
   :subject fn-mm-need
-  :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
-            (k 32) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
-  :breaks ((connections ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
-                         (k 33) (s *mmt-slots*) (h *mmt-hs*) (publishing t)))
-           (slots ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
-                   (k 32) (s (+ 1 *mmt-slots*)) (h *mmt-hs*) (publishing t)))
-           (handshakes ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
-                        (k 32) (s *mmt-slots*) (h (+ 1 *mmt-hs*)) (publishing t))))
+  :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 4) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
+  :breaks ((connections ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 33) (j 4) (s *mmt-slots*) (h *mmt-hs*) (publishing t)))
+           (holders ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 5) (s *mmt-slots*) (h *mmt-hs*) (publishing t)))
+           (slots ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 4) (s (+ 1 *mmt-slots*)) (h *mmt-hs*) (publishing t)))
+           (handshakes ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 4) (s *mmt-slots*) (h (+ 1 *mmt-hs*)) (publishing t))))
   :mutations ((sum-without-inflight
-               (:conclusion (<= (fn-mm-need profile img cfg tot k s h publishing)
+               (:conclusion (<= (fn-mm-need profile img cfg tot k j s h publishing)
                                 (- (fn-mm-sum profile img cfg tot) (fn-mm-inflight profile cfg))))
-               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
-                (k 32) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
-               :fault "a sum that omits the in-flight term (capture buffers, article slots, handshakes, cold reads)")))
+               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 4) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
+               :fault "a sum that omits the in-flight term (capture buffers, article slots, handshakes, cold reads)")
+              (sum-with-fixed-connections-only
+               (:conclusion (<= (fn-mm-need profile img cfg tot k j s h publishing)
+                                (- (fn-mm-sum profile img cfg tot) (fn-mm-large-pool profile cfg))))
+               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 4) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
+               :fault "a sum that charges no connection a large reply (the holders' pool omitted)")))
 
 ; K2.  A checkpoint at 900 records within the store at 1,000.
 (defteeth fn-mm-sum-grows-with-the-store
@@ -236,7 +249,9 @@
  (list :base (fn-mm-base *mmt-img* *mmt-cfg*)
        :owner-empty (fn-mm-owner *mmt-t0* *mmt-cfg*)
        :owner-w13 (fn-mm-owner *mmt-t1k* *mmt-cfg*)
-       :connections (* 32 (fn-mm-connection *mmt-p* *mmt-cfg*))
+       :connections (fn-mm-connections *mmt-p* *mmt-cfg*)
+       :connection-fixed (fn-mm-connection-fixed *mmt-p* *mmt-cfg*)
+       :large-reply (fn-mm-large-reply *mmt-p* *mmt-cfg*)
        :over-window (fn-mm-over-window-octets *mmt-p* *mmt-cfg*)
        :inflight (fn-mm-inflight *mmt-p* *mmt-cfg*)
        :cold-reads (fn-mm-cold-reads *mmt-p* *mmt-cfg*)

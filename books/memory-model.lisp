@@ -98,6 +98,16 @@
   (declare (xargs :guard t))
   (fn-splan-cursor-window (nth 8 (true-list-fix cfg))))
 (defun fn-mm-cfg-server-octets (cfg) (declare (xargs :guard t)) (fn-mm-nat 9 cfg))
+; P, the large-payload holders: how many connections may hold a large reply
+; (an article, an OVER quantum, a POST body) at once.  A natural at most C
+; when the host bounds them (contract v2.1's pool, a FIFO lease that waits);
+; otherwise C, today's host, where every connection may hold one.
+(defun fn-mm-cfg-holders (cfg)
+  (declare (xargs :guard t))
+  (let ((p (nth 10 (true-list-fix cfg))))
+    (if (natp p)
+        (min p (fn-mm-cfg-connections cfg))
+      (fn-mm-cfg-connections cfg))))
 
 ; -----------------------------------------------------------------------------
 ; M_configured.  Ruling (coordinator 2026-10-09, reversible, for ember): the
@@ -237,17 +247,41 @@
   (* 2 *fn-heap-list-octets-per-octet* (fn-mm-cfg-over-window cfg)
      (fn-mm-nov-line-octets profile cfg)))
 
-; M_connection: one connection's heap and native parts as the served host
-; holds them (fn-cbud-conn-octets: record, reads, the article reply, the
-; command line, COMPRESS, kernel buffers, TLS) and the OVER quantum's excess
-; over the article reply.  O-CONN: connection-budget's terms over the mux
-; state, and O-NOV-LINE.
+; M_connection, split by what holds it (coordinator ruling (d), 2026-10-09;
+; Builder A's contract v2.1).  FIXED: what every open connection holds
+; whatever it serves (fn-cbud-conn-octets at an article of 0: the record,
+; reads, the reply status, the command line, COMPRESS, kernel buffers,
+; TLS).  LARGE: the one large reply a holder holds, the article reply
+; (connection-budget's 2A + status) or the OVER cursor quantum, whichever is
+; larger.  The process holds C fixed parts and at most P large replies.
+; O-CONN: connection-budget's terms over the mux state, and O-NOV-LINE.
+; Adapter, owner Builder C: the OVER quantum is W NOV lines as octet lists
+; until C's OVER landing renders it into one leased buffer of the article
+; bound; then LARGE is the lease's capacity.
+(defun fn-mm-connection-fixed (profile cfg)
+  (declare (xargs :guard t) (ignore profile))
+  (fn-cbud-conn-octets 0 (fn-mm-cfg-tlsp cfg)))
+
+(defun fn-mm-large-reply (profile cfg)
+  (declare (xargs :guard t))
+  (max (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile)))
+          *fn-cbud-reply-status-octets*)
+       (fn-mm-over-window-octets profile cfg)))
+
+(defun fn-mm-large-pool (profile cfg)
+  (declare (xargs :guard t))
+  (* (fn-mm-cfg-holders cfg) (fn-mm-large-reply profile cfg)))
+
+; One connection holding a large reply, the figure before the split.
 (defun fn-mm-connection (profile cfg)
   (declare (xargs :guard t))
-  (let ((a (fn-bs-profile-max-article-octets profile)))
-    (+ (fn-cbud-conn-octets a (fn-mm-cfg-tlsp cfg))
-       (nfix (- (fn-mm-over-window-octets profile cfg)
-                (+ (* 2 (nfix a)) *fn-cbud-reply-status-octets*))))))
+  (+ (fn-mm-connection-fixed profile cfg) (fn-mm-large-reply profile cfg)))
+
+; C fixed parts and the holders' large replies.
+(defun fn-mm-connections (profile cfg)
+  (declare (xargs :guard t))
+  (+ (* (fn-mm-cfg-connections cfg) (fn-mm-connection-fixed profile cfg))
+     (fn-mm-large-pool profile cfg)))
 
 ; The cold-read pool: its funded budget, the ledger's heap and native
 ; allowances (books/page-read-ledger.lisp fn-prl-make; tables, registration
@@ -284,17 +318,19 @@
   (declare (xargs :guard t))
   (+ (fn-mm-base img cfg)
      (fn-mm-owner tot cfg)
-     (* (fn-mm-cfg-connections cfg) (fn-mm-connection profile cfg))
+     (fn-mm-connections profile cfg)
      (fn-mm-inflight profile cfg)
      (fn-mm-maintenance tot cfg)))
 
-; THE INSTANT: K connections open, S article slots in use, H handshakes in
-; flight, PUBLISHING whether a publication runs.
-(defun fn-mm-need (profile img cfg tot k s h publishing)
+; THE INSTANT: K connections open, J of them holding a large reply, S
+; article slots in use, H handshakes in flight, PUBLISHING whether a
+; publication runs.
+(defun fn-mm-need (profile img cfg tot k j s h publishing)
   (declare (xargs :guard t))
   (+ (fn-mm-base img cfg)
      (fn-mm-owner tot cfg)
-     (* (nfix k) (fn-mm-connection profile cfg))
+     (* (nfix k) (fn-mm-connection-fixed profile cfg))
+     (* (nfix j) (fn-mm-large-reply profile cfg))
      (fn-heap-store-inflight-octets profile)
      (* (nfix s) (fn-heap-article-reserve-octets profile))
      (* (nfix h) *fn-cbud-handshake-scratch-octets*)
@@ -390,33 +426,43 @@
 (defthm fn-mm-times-monotone
   (implies (and (natp a) (natp b) (natp c) (<= a b)) (<= (* a c) (* b c)))
   :rule-classes nil :hints (("Goal" :nonlinearp t)))
+;; fn-mm-connection-fixed and fn-mm-large-reply are naturals.
 (defthm fn-mm-terms-natp
   (and (natp (fn-mm-base img cfg)) (natp (fn-mm-owner tot cfg))
+       (natp (fn-mm-connection-fixed profile cfg)) (natp (fn-mm-large-reply profile cfg))
        (natp (fn-mm-connection profile cfg)) (natp (fn-mm-maintenance tot cfg))
-       (natp (fn-mm-cfg-connections cfg)) (natp (fn-mm-cold-reads profile cfg)))
+       (natp (fn-mm-cfg-connections cfg)) (natp (fn-mm-cfg-holders cfg))
+       (natp (fn-mm-cold-reads profile cfg)))
   :rule-classes nil)
-; KEYSTONE K1.  The instant within the sum: at most C connections, the
-; article slots and the TLS handshake slots in use, publishing or not.
+; KEYSTONE K1.  The instant within the sum: at most C connections open, at
+; most P of them holding a large reply, the article slots and the TLS
+; handshake slots in use, publishing or not.
 (defthm fn-mm-need-within-the-sum
   (implies (and (<= (nfix k) (fn-mm-cfg-connections cfg))
+                (<= (nfix j) (fn-mm-cfg-holders cfg))
                 (<= (nfix s) (fn-heap-article-slots profile))
                 (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
-           (<= (fn-mm-need profile img cfg tot k s h publishing)
+           (<= (fn-mm-need profile img cfg tot k j s h publishing)
                (fn-mm-sum profile img cfg tot)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mm-need fn-mm-sum fn-mm-inflight fn-cbud-handshake-octets)
-                                  (fn-mm-base fn-mm-owner fn-mm-connection fn-mm-maintenance fn-mm-cold-reads
+  :hints (("Goal" :in-theory (e/d (fn-mm-need fn-mm-sum fn-mm-inflight fn-cbud-handshake-octets
+                                   fn-mm-connections fn-mm-large-pool)
+                                  (fn-mm-base fn-mm-owner fn-mm-connection-fixed fn-mm-large-reply
+                                   fn-mm-maintenance fn-mm-cold-reads
                                    fn-heap-store-inflight-octets fn-heap-article-slots fn-cbud-handshake-slots
                                    fn-heap-articles-octets fn-heap-article-reserve-octets
-                                   fn-mm-cfg-connections fn-mm-cfg-tlsp))
+                                   fn-mm-cfg-connections fn-mm-cfg-holders fn-mm-cfg-tlsp))
            :use ((:instance fn-heap-article-slots-are-held (k s))
                  fn-mm-terms-natp
                  (:instance fn-mm-times-monotone (a (nfix k)) (b (fn-mm-cfg-connections cfg))
-                            (c (fn-mm-connection profile cfg)))
+                            (c (fn-mm-connection-fixed profile cfg)))
+                 (:instance fn-mm-times-monotone (a (nfix j)) (b (fn-mm-cfg-holders cfg))
+                            (c (fn-mm-large-reply profile cfg)))
                  (:instance fn-mm-times-monotone (a (nfix h))
                             (b (nfix (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
                             (c *fn-cbud-handshake-scratch-octets*))))
           (and stable-under-simplificationp '(:nonlinearp t))))
+
 (defthm fn-mm-pow2-at-least-covers-acc
   (implies (posp acc) (<= acc (adt-pow2-at-least k acc)))
   :rule-classes :linear
@@ -657,3 +703,33 @@
   :hints (("Goal" :in-theory (union-theories '(fn-mm-instance-quota) (theory 'minimal-theory))
            :use ((:instance fn-mm-terms-natp)
                  (:instance fn-mm-ceiling-quotient (c (fn-mm-connection profile cfg)) (k cap))))))
+
+; Contract v2.1 (Builder A): a connection's home buffers, QFIXED buffers of
+; CAPF octets, hold its fixed term; the pool's P buffers of CAPL octets hold
+; the holders' large replies, one a holder when the reply fits CAPL.
+(defun fn-mm-instance-qfixed (profile cfg capf)
+  (declare (xargs :guard t))
+  (if (posp capf)
+      (floor (+ (fn-mm-connection-fixed profile cfg) (- capf 1)) capf)
+    0))
+
+(defthm fn-mm-instance-qfixed-is-the-ceiling
+  (implies (posp capf)
+           (and (natp (fn-mm-instance-qfixed profile cfg capf))
+                (<= (fn-mm-connection-fixed profile cfg) (* capf (fn-mm-instance-qfixed profile cfg capf)))
+                (< (* capf (fn-mm-instance-qfixed profile cfg capf))
+                   (+ (fn-mm-connection-fixed profile cfg) capf))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-mm-instance-qfixed) (theory 'minimal-theory))
+           :use ((:instance fn-mm-terms-natp)
+                 (:instance fn-mm-ceiling-quotient (c (fn-mm-connection-fixed profile cfg)) (k capf))))))
+
+; The pool's leases hold the large term when one lease holds a large reply.
+(defthm fn-mm-large-pool-within-the-leases
+  (implies (and (natp capl) (<= (fn-mm-large-reply profile cfg) capl))
+           (<= (fn-mm-large-pool profile cfg) (* (fn-mm-cfg-holders cfg) capl)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mm-large-pool) (fn-mm-large-reply fn-mm-cfg-holders))
+           :use ((:instance fn-mm-terms-natp)
+                 (:instance fn-mm-times-monotone (a (fn-mm-large-reply profile cfg)) (b capl)
+                            (c (fn-mm-cfg-holders cfg)))))))
