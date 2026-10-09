@@ -25,7 +25,8 @@
            :creator (create-fn-octets-pg :logic create-fn-octets$a :exec create-fn-octets$c)
            :exports ((fn-octets-pg-len :logic fn-octets$a-len :exec fn-octets$c-len$inline)
                      (fn-octets-pg-get :logic fn-octets$a-get :exec fn-octets$c-get$inline)
-                     (fn-octets-pg-put :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
+                     (fn-octets-pg-put :logic fn-octets$a-put :exec fn-octets$c-put$inline)
+                     (fn-octets-pg-truncate :logic fn-octets$a-truncate :exec fn-octets$c-truncate)
                      (fn-octets-pg-append-octet :logic fn-octets$a-append-octet
                                                 :exec fn-octets$c-append-octet$inline :protect t)
                      (fn-octets-pg-clear :logic fn-octets$a-clear :exec fn-octets$c-clear)
