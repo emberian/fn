@@ -1240,6 +1240,28 @@ class ImageModuleTests(unittest.TestCase):
         self.assertEqual(rec["unexplained"], ["tests.test_native_owner (rc 137, no case recorded)"])
 
 
+class AddedRootTests(TrainBase):
+    """certify selects the roots a train adds to ACL2_BOOKS, changed or not."""
+
+    MAKEFILE = "ACL2_BOOKS ?= books/a \\\n\tbooks/b \\\n\ttests/acl2/b-tests\n\nOTHER = x\n"
+
+    def test_the_root_list_is_ledgers_reading(self):
+        self.assertEqual(train.makefile_root_list(self.MAKEFILE), ["books/a", "books/b", "tests/acl2/b-tests"])
+        with self.assertRaises(train.TrainError):
+            train.makefile_root_list("NOTHING = 1\n")
+
+    def test_a_root_listed_by_the_train_is_selected_and_a_dropped_one_is_not(self):
+        self.advance_dev({"Makefile": self.MAKEFILE})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
+        (self.work / "Makefile").write_text(self.MAKEFILE.replace(
+            "\tbooks/b \\\n", "\tbooks/kept-claim \\\n").replace(
+            "tests/acl2/b-tests\n", "tests/acl2/b-tests \\\n\ttests/acl2/rehooked-tests\n"))
+        self.commit(self.work, "roots")
+        self.assertEqual(train._added_roots(train.Train(self.work)),
+                         ["books/kept-claim", "tests/acl2/rehooked-tests"])
+
+
 class ImageGateTests(TrainBase):
     """The image gate inside `gate` and `push`."""
 
