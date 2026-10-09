@@ -157,10 +157,12 @@
 
 (local
  (defthm fn-hpo-canon-rows-true-listp
-   (implies (not (equal (fn-scka-canon-rows rows fn-arena h) :bad))
-            (true-listp (fn-scka-canon-rows rows fn-arena h)))
-   :hints (("Goal" :induct (fn-scka-canon-rows rows fn-arena h)
-            :in-theory (e/d (fn-scka-canon-rows) (fn-scka-intern-one fn-row-wire-of fn-scka-sealsp))))))
+   (implies (not (equal (fn-scka-canon-rows rows fn-arena h id) :bad))
+            (true-listp (fn-scka-canon-rows rows fn-arena h id)))
+   :hints (("Goal" :use ((:instance fn-scka-intern-at-true-listp (ws (fn-rows-wire-of rows fn-arena))))
+            :in-theory (e/d (fn-scka-canon-rows-is-intern-at-of-alpha)
+                            (fn-scka-intern-at-true-listp fn-scka-canon-rows fn-scka-intern-at
+                             fn-rows-wire-of))))))
 (local
  (defthm fn-hpo-take-len
    (implies (true-listp x) (equal (take (len x) x) x))))
@@ -175,7 +177,7 @@
 ; this snapshot publishes.
 (defthm fn-hpo-snapshot-image-is-next-checkpoint
   (let* ((h (fn-sco-records base))
-         (canon (fn-scka-canon-rows (nthcdr (len h) records) fn-arena h0))
+         (canon (fn-scka-canon-rows (nthcdr (len h) records) fn-arena h0 (fn-sco-identity base)))
          (res (fn-hp-x-append-all canon 0 salt (len h) lens starts np pgs-mem))
          (next (fn-scka-next-checkpoint base h0 configs records fn-arena))
          (h2 (append h canon)))
@@ -194,8 +196,10 @@
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :use ((:instance fn-hp-x-append-all-refines (h (fn-sco-records base)) (n (len (fn-sco-records base)))
-                            (evs (fn-scka-canon-rows (nthcdr (len (fn-sco-records base)) records) fn-arena h0)))
-                 (:instance fn-hpo-canon-rows-true-listp (rows (nthcdr (len (fn-sco-records base)) records)) (h h0)))
+                            (evs (fn-scka-canon-rows (nthcdr (len (fn-sco-records base)) records) fn-arena h0
+                                    (fn-sco-identity base))))
+                 (:instance fn-hpo-canon-rows-true-listp (rows (nthcdr (len (fn-sco-records base)) records)) (h h0)
+                            (id (fn-sco-identity base))))
            :in-theory (union-theories '(fn-scka-next-checkpoint fn-hpo-sco-records-of-extend fn-hpo-take-len
                                         fn-hpo-tlf-id fn-hpo-okp-true-listp)
                                       (theory 'minimal-theory)))))

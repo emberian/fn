@@ -1,5 +1,8 @@
 ; Public authoring boundary for the existing FN-Statement ML-DSA-65 suite.
 ; It reuses the enrolled stable principal. It is not FN-Authorship hybrid.
+; Props: the detached field uses the established 72-column continuation
+; folding; policy bytes use wire-grammar's 76-column body framing, whose
+; inverse is fn-stx-framed-body-round-trip. No signed bytes change.
 (in-package "ACL2")
 (include-book "stx-lace")
 (include-book "policy")
@@ -25,7 +28,7 @@
           (payload (if (eq k :article) (fn-stx-payload-for article initial) policy))
           (authored (if (eq k :article) source
                      (append (fn-stx-authored-header (fn-article-fields article))
-                      (append '(13 10) (fn-stx-b64-encode policy))))))
+                      (append '(13 10) (fn-wg-lines 76 (fn-stx-b64-encode policy)))))))
     (if (not (and (fn-stmt-payloadp payload) (consp payload)
                   (fn-cbor-octet-listp authored))) nil
      (let ((header (fn-stmt-make-header principal inc seq nil k (fn-stmt-payload-ref payload))))
@@ -40,7 +43,9 @@
         (statement (fn-stmt-make header payload signature)))
   (if (not (and (fn-stmt-p statement) (fn-cbor-octet-listp source))) nil
    (append (fn-record-string-octets "FN-Statement: ")
-    (append (fn-stx-header-value-parts header signature) (append '(13 10) source))))))
+    (let ((value (fn-stx-header-value-parts header signature)))
+     (append (fn-hc-take 72 value) '(13 10)
+             (fn-hc-fold-rest (fn-hc-drop 72 value)) source))))))
 
 (defun fn-nsm-check-rendered (principal key plan signature)
  (declare (xargs :guard t))

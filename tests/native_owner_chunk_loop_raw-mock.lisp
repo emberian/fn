@@ -298,6 +298,12 @@ unbounded (&rest or &key)."
 ;; The send window (fnn-mux-send-window: a setsockopt on the real socket) has no
 ;; socket here; the scripted transport above is the window.
 (defun fnn-mux-send-window (fd) (declare (ignore fd)) nil)
+;; The send window's observations (ioctl SIOCOUTQ / SIOCOUTQNSD on the real
+;; socket): the scripted transport keeps nothing unsent.
+(defun fnn-mux-socket-outq (fd) (declare (ignore fd)) 0)
+(defun fnn-mux-send-notsent (conn) (declare (ignore conn)) 0)
+(defvar *send-notsent* 0)
+(defun fnn-mux-send-notsent (conn) (declare (ignore conn)) *send-notsent*)
 
 ;; The ACL2 boundary.  fnn-owner-core, fnn-owner-action and fnn-core answer
 ;; the scenario's plan; each call the time model cares about is recorded on
@@ -463,6 +469,7 @@ unbounded (&rest or &key)."
     (fn-asto-plan-articlep nil)
     ;; The reply's send verdict (books/send-progress.lisp): every scripted
     ;; write is taken whole, so each look continues and the state is opaque.
+    (fn-send-window-render-p (< (first args) 65536))
     (fn-send-progress-begin (list :send-state (first args)))
     (fn-send-progress-decide :continue)
     (fn-send-progress-next (first args))
@@ -495,6 +502,7 @@ unbounded (&rest or &key)."
 (defparameter *roots*
   '(;; The connection's life, as the loop drives it.
     fnn-mux-begin fnn-mux-dispatch fnn-mux-take-arrived fnn-mux-guarded
+    fnn-mux-interest fnn-mux-send-check
     %make-fnn-mux-loop %make-fnn-mux-conn fnn-mux-loop-conns fnn-mux-conn-phase
     fnn-mux-conn-out fnn-mux-conn-out-at fnn-mux-conn-await fnn-mux-conn-cid
     ;; The committer's hand-over (host/native/owner.lisp).
@@ -767,6 +775,23 @@ unbounded (&rest or &key)."
 ; a reading is the plain monotonic one, so no :served disk event is made.
 (check (equal *timeline* '(:observe :observe :admit :observe :admit :observe :admit))
        "each read's admission does not follow its own clock reading: ~s" *timeline*)
+
+; A blocked render has no OUT buffer but still waits for output readiness and
+;;; retains the same progress clock through repeated notifications at W.
+(let* ((service (%make-fnn-owner-service :lock (sb-thread:make-mutex)))
+       (loop (%make-fnn-mux-loop :service service))
+       (conn (%make-fnn-mux-conn :phase :serving :cid 1 :response-identity :identity))
+       (plan (list (ascii "211 group"))) (*send-notsent* 65536))
+  (fnn-mux-queue-plan loop conn plan nil)
+  (let ((state (fnn-mux-conn-send-state conn)))
+    (check (and (eq (fnn-mux-conn-plan conn) plan) (null (fnn-mux-conn-out conn))
+                (eq (fnn-mux-conn-want conn) :send-window)
+                (= (fnn-mux-interest conn) +fnn-mux-pollout+)
+                (fnn-mux-conn-out-deadline conn)) "window wait lost custody or its timer")
+    (fnn-mux-dispatch loop conn)
+    (check (eq state (fnn-mux-conn-send-state conn)) "POLLOUT reset the stalled clock")
+    (fnn-mux-send-check loop conn)
+    (check (eq state (fnn-mux-conn-send-state conn)) "send verdict did not run while unrendered")))
 
 (format t "native owner chunk loop: ~d host definitions extracted, ~d declared ~
            unreached; suffix, refusal, no-progress, clock and time-event passed~%"

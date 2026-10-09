@@ -8,7 +8,7 @@
 (defconst *fn-bpckrs-base* (fn-bpn-initial-machine-state *fn-bpckrs-config* 4 1048576))
 (defconst *fn-bpckrs-state* (fn-bpnf-state *fn-bpckrs-base* nil nil nil nil nil nil 0 0))
 (defconst *fn-bpckrs-corrupt*
-  (fn-bpnr-checkpoint 1 nil '(:bpck-unknown-symbol-witness) nil 0 0))
+  (fn-bpnr-checkpoint 1 nil '(:bpck-unknown-symbol-witness) nil 0 0 nil 0))
 (assert-event
  (let* ((plan (list :selected *fn-bpckrs-corrupt*))
         (event (append (fn-bpnr-recover-auto-event *fn-bpckrs-state* nil :ready nil plan)

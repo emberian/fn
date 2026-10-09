@@ -505,6 +505,8 @@
       fn-bpnpp-queue-effects
       fn-bpn-step-preserves-machine-invariant
       fn-bpn-restart-step-preserves-machine-invariant
+      fn-bpn-restart-step-from-preserves-machine-invariant
+      fn-bpn-machine-invariant-components
       fn-bpn-propose-preserves-machine-invariant
       (:e fn-cbor-ag-car) (:e fn-bpnp-session-listp))
     (theory 'minimal-theory))))

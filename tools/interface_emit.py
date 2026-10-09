@@ -481,6 +481,36 @@ def raw_guarded_books(decls: list[dict], root: Path = ROOT) -> list[str]:
     return sorted({books[0] for books in definitions.values()})
 
 
+def raw_route_books(decls: list[dict], root: Path = ROOT) -> list[str]:
+    """The emitted raw routes need their entry/proof books as well as stobjs.
+
+    fn-hroot-*-demand lives outside the stobj-defining book; selecting only
+    ABI stobjs made interfaces-raw depend on the surrounding image world.
+    """
+    from tools import interfaces_relocate
+    books = raw_guarded_books(decls, root)
+    held = interfaces_relocate.include_closure(
+        root, ["books/definterface.lisp", *[book + ".lisp" for book in books]])
+    needed = {name for d in decls if (d.get("raw_with") or d.get("raw_guarded") is not None)
+              and not d.get("raw_with_carried")
+              for name in [d["name"], *d.get("raw_with", [])]}
+    # Parse only candidate definition sites. Generated creators are already
+    # covered by raw_guarded_books; missing declarations remain gate findings.
+    pattern = re.compile(r"\((?:defun|defund|defthm|defthmd)\s+(" +
+                         "|".join(re.escape(n) for n in sorted(needed)) + r")(?=[\s)])", re.I)
+    for path in sorted((root / "books").glob("*.lisp")) if needed else []:
+        if not pattern.search(path.read_text(encoding="utf-8")):
+            continue
+        book = ledger.analyze_book(path, path.relative_to(root).as_posix())
+        if not needed.intersection(book.definitions):
+            continue
+        rel = path.relative_to(root).as_posix()
+        if rel not in held:
+            books.append(rel[:-5])
+            held.update(interfaces_relocate.include_closure(root, [rel]))
+    return books
+
+
 def render_raw_declarations(decls: list[dict], rows: dict | None = None,
                             scope: set[str] | None = None, root: Path = ROOT) -> str:
     """Selected image table source; absent or invalid targets fail closed.
@@ -493,7 +523,7 @@ def render_raw_declarations(decls: list[dict], rows: dict | None = None,
              "; No availability filter: an absent target refuses the selected image.",
              '(in-package "ACL2")', '(include-book "../books/definterface")']
     forms.extend('(include-book "../{}")'.format(book)
-                 for book in raw_guarded_books(decls, root))
+                 for book in raw_route_books(decls, root))
     for d in decls:
         row_source = (rows.get(d.get("raw_with_carried") or "") or {}).get("source", "")
         if (scope is not None and row_source.startswith("host/")

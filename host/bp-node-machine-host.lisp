@@ -4,6 +4,7 @@
 
 (in-package "ACL2")
 (include-book "../books/bp-node-host-machine")
+(include-book "../books/definterface")
 
 (defun fn-bpn-host-ready-peers (st)
   ; fnn-bps-open checks the initial invariant once.  Its only later state
@@ -45,8 +46,8 @@
 (definterface fn-bpn-host-lifecycle-record-name
   :class ::ideal)
 
-(defun fn-bpn-host-lifecycle-recovery (names records)
-  (fn-bpn-lifecycle-recovery names records))
+(defun fn-bpn-host-lifecycle-recovery (names records start)
+  (fn-bpn-lifecycle-recovery-from names records start))
 
 (definterface fn-bpn-host-lifecycle-recovery
   :class ::ideal)

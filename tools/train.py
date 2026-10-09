@@ -7,7 +7,7 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
 
     train.py merge LANE@SHA [LANE@SHA ...]
     train.py regen [--label N]
-    train.py certify BOX             # books train: ONE farm run (install, certify), then the emits in its tree
+    train.py certify BOX [--transitive]  # ONE farm run (install, certify), then emits
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
     train.py gate
     train.py push
@@ -19,6 +19,11 @@ and check half of BOX_CMD over ssh in that run's tree, under swarm-build and a
 timeout.  It records the same box-step.json as `boxstep` plus the farm run, the
 certify id and the install/certify/emit wall seconds (also in the train state,
 shown by `status`).
+
+`certify BOX` always adds the critical witness tests of affected theorem
+books. `--transitive` also certifies every transitively affected Makefile root
+(about 2x the lane walls on train 51's changes, cold cache); the default keeps
+farm's lane selection (direct includers and companion tests).
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
 regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
@@ -77,6 +82,9 @@ REGEN_OUTPUTS = (
     "tools/extract/world*.lisp",
     "planning/proofs.json",
     "planning/teeth-obligations.json",
+    # harness_check --write-stubs rewrites only the marked derived-stub
+    # blocks; the tree is clean before regen, so only those changes match
+    "tests/*.lisp",
 )
 HBOX_OUTPUTS = ("planning/interfaces.json", "specs/wire-grammar.json")
 
@@ -323,6 +331,8 @@ def cmd_regen(t: Train, args) -> int:
         # first: the books it writes are what the ledger and teeth read
         ("world", [PY3, "tools/extract/world.py"]),
         ("ledger", [PY, "tools/ledger.py", "--write"]),
+        # the raw harnesses' derived-stub blocks (31 had drifted by train 51)
+        ("stubs", [PY, "tools/harness_check.py", "--write-stubs"]),
         # the teeth obligation manifest of the merged tree (the keystone gate
         # checks it; a conflict on it took the train side at merge)
         ("teeth", [PY, "tools/keystone_emit.py", "--write-manifest"]),
@@ -334,7 +344,7 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = f"Regenerate train {n}: image-world and extraction world files, proofs.json events, teeth obligation manifest"
+    msg = f"Regenerate train {n}: image-world and extraction world files, proofs.json events, derived harness stubs, teeth obligation manifest"
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1
@@ -376,6 +386,36 @@ def cmd_boxstep(t: Train, args) -> int:
 def _changed_roots(t: Train, prefix: str) -> list[str]:
     out = git(t.root, "diff", "--name-only", "--diff-filter=AM", "origin/dev", "HEAD", "--", prefix).stdout.split()
     return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
+
+
+def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
+    """Critical teeth whose theorem's closure changed, from regen's manifest.
+
+    `book` defines the theorem; `owner_book` supplies its teeth and may be
+    a test outside the Makefile roots. Include that test even when only a
+    transitive dependency of the theorem changed.
+    """
+    if not changed:
+        return []
+    import certs
+
+    manifest = root / "planning/teeth-obligations.json"
+    try:
+        entries = json.loads(manifest.read_text())["entries"]
+        witnesses: dict[str, set[str]] = {}
+        for entry in entries:
+            owner = entry.get("owner_book", "")
+            if entry.get("critical") and owner.startswith("tests/acl2/"):
+                book = entry["book"].removesuffix(".lisp")
+                witnesses.setdefault(book, set()).add(owner.removesuffix(".lisp"))
+        targets = set(changed)
+        selected = set()
+        for book, tests in witnesses.items():
+            if targets.intersection(certs.closure(root, book)):
+                selected.update(tests)
+        return sorted(selected)
+    except (OSError, ValueError, KeyError, TypeError) as error:
+        raise TrainError(f"cannot select critical witnesses from {manifest}: {error}") from error
 
 
 def cache_seed_command(t: Train, box: str, tree: str) -> tuple[str, str | None]:
@@ -436,10 +476,15 @@ def cmd_certify(t: Train, args) -> int:
     ran_at = t.head()
     books = _changed_roots(t, "books")
     tests = _changed_roots(t, "tests/acl2")
-    roots = list(dict.fromkeys(["books/wire-export", *books, *tests]))
+    # critical witness tests whose theorem closure changed: always, since a
+    # stale witness fails keystone_emit's critical gate (trains 52 and 55
+    # needed a hand certify of them)
+    witnesses = _critical_witness_roots(t.root, books)
+    roots = list(dict.fromkeys(["books/wire-export", *books, *tests, *witnesses]))
     argv = [PY, "tools/farm.py"]
     if books:
-        argv += ["--lane"]
+        if not args.transitive:
+            argv += ["--lane"]
         for b in books:
             argv += ["--affected-by", b]
     argv += ["--timeout-seconds", str(FARM_TIMEOUT_SECONDS), "submit", args.box, *roots]
@@ -597,12 +642,24 @@ def _ascii_gate(t: Train) -> int:
     return 1 if hits else 0
 
 
+def _launches_native_image(path: Path) -> bool:
+    """A suite that imports tests/native_harness starts the built image
+    (tests/test_bp_node_native.py and the other BP suites are named
+    *_native.py, not test_native_*; train 54 ran one and it found no image)."""
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError:
+        return False
+    return re.search(r"^\s*(from\s+tests\.native_harness\s+import|from\s+native_harness\s+import|"
+                     r"import\s+(tests\.)?native_harness\b)", text, re.M) is not None
+
+
 def unit_tests(root: Path, changed: list[str]) -> list[str]:
     """UNIT_TESTS, then the tests of what the train changed, in order, once each."""
     tests = list(UNIT_TESTS)
     for path in changed:
         p = Path(path)
-        if p.name.startswith("test_native_"):
+        if p.name.startswith("test_native_") or _launches_native_image(root / p):
             # needs a native image (build/fn-host-*); N's native gate on the
             # box is its gate, not this tree
             continue
@@ -800,6 +857,8 @@ def main(argv=None) -> int:
     b.add_argument("box", choices=("hbox", "persvati"))
     c = sub.add_parser("certify")
     c.add_argument("box", choices=("hbox", "persvati"))
+    c.add_argument("--transitive", action="store_true",
+                   help="certify all affected Makefile roots and critical witness tests")
     g = sub.add_parser("gate")
     sub.add_parser("push")
     sub.add_parser("status")

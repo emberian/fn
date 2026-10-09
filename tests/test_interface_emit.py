@@ -78,6 +78,16 @@ class DeclarationTests(unittest.TestCase):
         self.assertIn(include, rendered)
         self.assertLess(rendered.index(include), rendered.index('(definterface create-fn-resource-ledger'))
 
+    def test_raw_route_adds_the_entry_and_proof_books_not_only_abi_slots(self):
+        root = tree('(definterface fn-demand :class :common-lisp-compliant '
+                    ':raw-with (fn-demand-proof))\n')
+        (root / "books").mkdir()
+        (root / "books" / "demand.lisp").write_text('(defun fn-demand (x) x)\n')
+        (root / "books" / "proof.lisp").write_text('(defthm fn-demand-proof t)\n')
+        rendered = interface_emit.render_raw_declarations(interface_emit.declarations(root), root=root)
+        self.assertIn('(include-book "../books/demand")', rendered)
+        self.assertIn('(include-book "../books/proof")', rendered)
+
     def test_raw_input_output_stobjs_deduplicate_and_state_is_builtin(self):
         root = tree('(definterface fn-a :class :common-lisp-compliant '
                     ':raw-guarded (2 (state fn-bank) (nil fn-bank)))\n')

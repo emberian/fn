@@ -2317,10 +2317,6 @@
    "class": "identity-binding",
    "statement_digest": "ba87f0fbe39ff28440b180e8ee424e3cd0488b51f2cc4b1978d8e3ded265e915"
   },
-  "fn-intern-events-arena-is-payloads": {
-   "class": "durability",
-   "statement_digest": "14b379cabbd52bfb559420a089fae4a776bfe038e7ae1c6f0f5459280fd16aed"
-  },
   "fn-intern-events-budget-octets-are-the-stored-octets": {
    "class": "resource-reservation",
    "statement_digest": "2d9f4030db93b5f5a8ad4067295a25945f81a0ec7f1c76efbaa41c7478f5bb7a"
@@ -2328,10 +2324,6 @@
   "fn-intern-events-extents-okp": {
    "class": "resource-reservation",
    "statement_digest": "356b0eaf262b849a8b3ac6fb87ce6833d88b88eedb3116a04e6c2e2c9367f36b"
-  },
-  "fn-intern-events-is-intern-at": {
-   "class": "durability",
-   "statement_digest": "f1d7c969475c5abb0c876634229d19f84c62b7803fc8a737dbb84fec1bb39044"
   },
   "fn-irc-apply-record-is-replay-apply-record": {
    "class": "identity-binding",

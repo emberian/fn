@@ -1,10 +1,16 @@
 ; Trusted experimental adapter helpers.  ACL2 owns wire/session/archive state.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/owner-report-capture")
 (include-book "../books/store-node")
 (include-book "../books/served")
 (include-book "../books/reader-open-carried")
 (include-book "../books/state-globals")
+(include-book "../books/definterface")
+(include-book "../books/owner-agent")
 
 (defconst *fn-reader-groups* '("fn.letters"))
 (defconst *fn-reader-id* "<reader@example.invalid>")

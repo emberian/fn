@@ -2,6 +2,8 @@
 
 (in-package "ACL2")
 (include-book "../books/anchor-servers")
+(include-book "../books/definterface")
+(include-book "../books/payload-kinds")
 
 (set-state-ok t)
 (program)

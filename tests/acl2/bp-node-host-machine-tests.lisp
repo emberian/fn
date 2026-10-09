@@ -126,3 +126,36 @@
   (equal (fn-bpn-host-lifecycle-recovery-agrees-p
           *bpnhm-recovery* (nth 1 *bpnhm-tiny-replay*))
          t)))
+
+; KEYSTONE teeth (PRF-1046,
+; fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records).  The
+; witness starts at token 3 (not 0): a hidden stage, then the names of tokens
+; 3 and 4 are :ready with two records, and the frontier is 5 = 3 + 2.  A
+; ready plan forces START natural (the plan of anything else is a fault), so
+; that hypothesis is not stated and has no removal.  Tooth, hypothesis
+; "ready": a namespace with a gap (token 3's name, then token 5's) is a
+; :fault whose frontier slot is nil, not 3.  Mutation: the frontier as the
+; record count alone, forgetting the start.
+(defconst *bpnhm-from-names*
+  (list ".interrupted-stage"
+        (fn-bpn-lifecycle-record-name 3) (fn-bpn-lifecycle-record-name 4)))
+(defconst *bpnhm-from-gap-names*
+  (list (fn-bpn-lifecycle-record-name 3) (fn-bpn-lifecycle-record-name 5)))
+
+(defteeth fn-bpn-lifecycle-namespace-plan-from-frontier-counts-the-records
+  :claim (((ready (equal (car (fn-bpn-lifecycle-namespace-plan-from names start))
+                         :ready)))
+          (equal (nth 3 (fn-bpn-lifecycle-namespace-plan-from names start))
+                 (+ start
+                    (len (nth 1 (fn-bpn-lifecycle-namespace-plan-from
+                                 names start))))))
+  :subject fn-bpn-lifecycle-namespace-plan-from
+  :witness ((names *bpnhm-from-names*) (start 3))
+  :breaks ((ready ((names *bpnhm-from-gap-names*) (start 3))))
+  :mutations ((frontier-without-the-start
+               (:conclusion
+                (equal (nth 3 (fn-bpn-lifecycle-namespace-plan-from names start))
+                       (len (nth 1 (fn-bpn-lifecycle-namespace-plan-from
+                                    names start)))))
+               ((names *bpnhm-from-names*) (start 3))
+               :fault "a frontier that counts the records and forgets the start")))

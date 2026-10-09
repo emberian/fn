@@ -19,9 +19,15 @@
 ; retention carry and every other global pass through by the frame lemmas.
 
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
+(include-book "../books/catalog-paged-attach")
 (include-book "../books/owner-host-relation")
 (include-book "../books/owner-retain-transitions")
 (include-book "../books/owner-connection-callbacks")
+(include-book "owner-host")
 
 ; -----------------------------------------------------------------------------
 ; The frame: a write to any other global keeps the relation; an install of a

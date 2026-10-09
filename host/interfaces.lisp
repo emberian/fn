@@ -19,6 +19,11 @@
 ; lists the declared entries with no keystone or no guard verification.
 
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
+(include-book "../books/catalog-paged-attach")
 (include-book "../books/definterface")
 ; Keystones the declarations below name, in books no host file otherwise
 ; brings into the image world (decision-keystones-5; host_check --books).
@@ -182,6 +187,7 @@
 (include-book "../books/peer-flight-startup")
 (include-book "../books/live-profile-control")
 (include-book "../books/control-receipt-wire")
+(include-book "../books/send-window")
 
 ; A private owner syncer ledger is installed only after the parent's real
 ; startup :hold.  This is thread resident/worker custody, not full resource
@@ -2128,7 +2134,8 @@
 
 (definterface fn-bpn-host-lifecycle-recovery-agrees-p
   :class :common-lisp-compliant
-  :keystones (fn-bpn-host-lifecycle-recovery-agrees-with-the-replayed-machine))
+  :keystones (fn-bpn-host-lifecycle-recovery-from-agrees-with-the-replayed-machine
+              fn-bpn-host-lifecycle-recovery-from-nothing-agrees))
 
 
 
@@ -2352,7 +2359,7 @@
   :class :common-lisp-compliant
   :kinds ((plan true-listp)))
 
-(definterface fn-bpnf-mixed-recovery-plan
+(definterface fn-bpnf-mixed-recovery-plan-from
   :class :common-lisp-compliant)
 
 (definterface fn-bpnf-mixed-recovery-planp
@@ -2538,6 +2545,13 @@
 
 (definterface fn-bpnr-plan-generation
   :class ::ideal)
+
+(definterface fn-bpnr-plan-start-token
+  :class :common-lisp-compliant)
+
+(definterface fn-bpnr-seed-state
+  :class :common-lisp-compliant
+  :keystones (fn-bpnp-rotation-restart-keeps-owed-work))
 
 (definterface fn-bpnr-publish-action
   :class :common-lisp-compliant)
@@ -2832,7 +2846,12 @@
 
 (definterface fn-send-window-octets
   :class :common-lisp-compliant
-  :keystones (fn-send-window-octets-bounds-the-connection))
+  :kinds ())
+
+(definterface fn-send-window-render-p
+  :class :common-lisp-compliant
+  :kinds ((notsent natp))
+  :keystones (fn-send-window-render-p-bounds-the-quantum))
 
 (definterface fn-idle-gc-quiet
   :class :common-lisp-compliant

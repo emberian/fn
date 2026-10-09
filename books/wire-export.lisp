@@ -29,6 +29,7 @@
 
 (in-package "ACL2")
 (include-book "wire-grammar")
+(include-book "def-loop")
 (include-book "wire-family-fncu")
 (include-book "wire-family-identity")
 (include-book "live-profile-control")
@@ -61,14 +62,23 @@
   (declare (xargs :guard t))
   (let ((n (nfix n))) (if (< n 10) (+ 48 n) (+ 87 (min n 15)))))
 
-(defun fn-wgx-hex (octets)
-  (declare (xargs :guard t))
-  (if (consp octets)
-      (let ((o (nfix (car octets))))
-        (list* (fn-wgx-hex-digit (floor (mod o 256) 16))
-               (fn-wgx-hex-digit (mod o 16))
-               (fn-wgx-hex (cdr octets))))
-    nil))
+(def-loop fn-wgx-hex (octets)
+  :shape :concat :over octets :elt octet
+  :body (let ((o (nfix octet)))
+          (list (fn-wgx-hex-digit (floor (mod o 256) 16))
+                (fn-wgx-hex-digit (mod o 16)))))
+
+(defthm fn-wgx-hex-composition-by-definition
+  (equal (fn-wgx-hex octets)
+         (if (consp octets)
+             (let ((o (nfix (car octets))))
+               (list* (fn-wgx-hex-digit (floor (mod o 256) 16))
+                      (fn-wgx-hex-digit (mod o 16))
+                      (fn-wgx-hex (cdr octets))))
+           nil))
+  :hints (("Goal" :expand ((fn-wgx-hex octets))
+                  :in-theory (disable fn-wgx-hex fn-wgx-hex-digit floor mod)))
+  :rule-classes nil)
 
 (defun fn-wgx-quote (octets)
   ; A JSON string of octets that need no escape (names, hex, the fixed text).
@@ -726,13 +736,36 @@
 
 ; The file's text for the emitter (tools/protocol_emit.py --wire): the hex of
 ; its octets, so the host's printer decides nothing about them.
-(defun fn-wgx-code-chars (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (cons (code-char (let ((x (nfix (car xs)))) (if (< x 256) x 63)))
-            (fn-wgx-code-chars (cdr xs)))
-    nil))
+(def-loop fn-wgx-code-chars (xs)
+  :shape :map :over xs
+  :body (code-char (let ((x (nfix (car xs)))) (if (< x 256) x 63))))
+
+(defthm fn-wgx-code-chars-composition-by-definition
+  (equal (fn-wgx-code-chars xs)
+         (if (consp xs)
+             (cons (code-char (let ((x (nfix (car xs)))) (if (< x 256) x 63)))
+                   (fn-wgx-code-chars (cdr xs)))
+           nil))
+  :hints (("Goal" :expand ((fn-wgx-code-chars xs))
+                  :in-theory (disable fn-wgx-code-chars)))
+  :rule-classes nil)
+
+; Establish the result type once. The emitter's guard must not evaluate
+; the entire wire file's recursive conversion merely to prove COERCE safe.
+(defthm fn-wgx-code-chars-are-characters
+  (character-listp (fn-wgx-code-chars xs))
+  :hints (("Goal" :induct (fn-wgx-code-chars xs))))
+
+(defun fn-wgx-hex-string (octets)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory
+                                 (disable fn-wgx-code-chars fn-wgx-hex)))))
+  (coerce (fn-wgx-code-chars (fn-wgx-hex octets)) 'string))
+
+(defthm fn-wgx-hex-string-composition-by-definition
+  (equal (fn-wgx-hex-string octets)
+         (coerce (fn-wgx-code-chars (fn-wgx-hex octets)) 'string)))
 
 (defun fn-wgx-file-hex ()
   (declare (xargs :guard t))
-  (coerce (fn-wgx-code-chars (fn-wgx-hex *fn-wgx-file-octets*)) 'string))
+  (fn-wgx-hex-string *fn-wgx-file-octets*))

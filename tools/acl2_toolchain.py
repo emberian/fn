@@ -24,6 +24,10 @@ import sys
 
 
 SCHEMA = "fn-acl2-toolchain-v1"
+# This relative namespace is part of certification compatibility. Keep the
+# fingerprint module standalone: green_check and cert_cache_sync ship it to
+# the record box without requiring a matching checkout there.
+PROJECT_DIRECTORIES = {":FN": "."}
 PROOF_ENVIRONMENT = {
     "ACL2_CUSTOMIZATION": "NONE",
     "ACL2_BOOK_HASH_ALISTP": "NIL",
@@ -225,6 +229,8 @@ def fingerprint(launcher: Path, max_wrappers: int = 1) -> Fingerprint:
             executed, arguments, assignments = _launcher_exec(
                 current, str(info["sha256"]))
             launcher_environment.append(assignments)
+            if "ACL2_PROJECTS" in assignments:
+                raise ValueError("ACL2 launcher must inherit fn's ACL2_PROJECTS mapping")
             if "--core" in arguments:
                 core_path = _saved_core(arguments, current)
                 runtime = _file(executed, "Lisp runtime")
@@ -250,6 +256,8 @@ def fingerprint(launcher: Path, max_wrappers: int = 1) -> Fingerprint:
             "core_sha256": core["sha256"],
             "runtime_sha256": runtime["sha256"],
             "proof_environment": effective_proof_environment,
+            # Relative contract, never a machine's absolute worktree path.
+            "project_directories": PROJECT_DIRECTORIES,
             "launcher_environment": launcher_environment,
         }
         provenance = {

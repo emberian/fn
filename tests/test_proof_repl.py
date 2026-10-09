@@ -832,6 +832,7 @@ class RemoteTests(unittest.TestCase):
     def test_the_sync_is_tools_and_the_closure_never_planning(self):
         files = proof_repl.sync_files(["books/wildmat"], ["tests/acl2/extra.lisp"])
         self.assertIn("tools/proof_repl.py", files)
+        self.assertIn("acl2-projects", files)
         self.assertIn("books/wildmat.lisp", files)
         self.assertIn("tests/acl2/extra.lisp", files)
         # The host files a session may `ld` (item 14).
@@ -1320,11 +1321,19 @@ class SocketPathTests(unittest.TestCase):
             tree = base / ("a-very-long-worktree-name-" * 4) / "lane"
             shutil.copytree(ROOT / "tools", tree / "tools", ignore=shutil.ignore_patterns(
                 "__pycache__", "*.so", "*.o"))
+            # The launcher needs the same root mapping as a checkout or remote sync.
+            shutil.copy2(ROOT / "acl2-projects", tree / "acl2-projects")
             (tree / "tiny.lisp").write_text('(in-package "ACL2")\n')
             fake = base / "fake-acl2"
-            fake.write_text(FAKE_ACL2)
+            fake.write_text(
+                '#!/usr/bin/env python3\nimport os\nfrom pathlib import Path\n'
+                'projects = Path(os.environ["ACL2_PROJECTS"])\n'
+                'assert projects == Path.cwd() / "acl2-projects", projects\n'
+                'assert projects.read_text() == \':FN "."\\n\'\n'
+                + FAKE_ACL2)
             fake.chmod(0o755)
             env = {**os.environ, "FN_ACL2": str(fake),
+                   "ACL2_PROJECTS": str(base / "wrong-tree" / "acl2-projects"),
                    "FN_ACL2_SLOT_DIR": str(base / "slots"), "FN_ACL2_SLOTS": "1"}
             name = "longpath-test"
 
@@ -2961,11 +2970,13 @@ class SendFileTests(unittest.TestCase):
             out = io.StringIO()
             with mock.patch.object(proof_repl, "session_directory",
                                    return_value=proof_repl.ROOT / session_dir), \
-                    mock.patch.object(proof_repl.certs, "valid_looking", return_value=True), \
+                    mock.patch.object(proof_repl, "install_closure",
+                                      return_value=(True, "proof-repl: acquired (test)", [])) as acquired, \
                     mock.patch.object(proof_repl, "send_many", side_effect=fake_many), \
                     mock.patch.object(proof_repl, "record_sent") as recorded, \
                     contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
                 code = proof_repl.send_file(args)
+            self.acquired = acquired.call_args_list
             return code, sent, out.getvalue(), recorded
 
     def test_every_form_in_order_with_the_includes_made_the_sessions(self):
@@ -2977,6 +2988,8 @@ class SendFileTests(unittest.TestCase):
         self.assertEqual(sent[1][1], '(include-book "wire")')  # books/ is the session's dir
         self.assertIn("4 form(s) of tests/acl2/", out)
         recorded.assert_called_once()
+        # The include's closure is acquired (hermetically here) before any form goes.
+        self.assertEqual([call.args[0] for call in self.acquired], ["books/wire"])
 
     def test_a_form_leaving_the_loop_refuses_the_whole_file(self):
         code, sent, _, _ = self.run_send_file("(defthm o8-b (equal x x))\n(value :q)\n")

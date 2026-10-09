@@ -505,6 +505,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/native-admin-peer \
 	books/native-admin \
 	tests/acl2/native-admin-tests \
+	tests/acl2/native-admin-split-tests \
 	books/native-config-observation \
 	tests/acl2/native-config-observation-tests \
 	books/native-operator \
@@ -652,6 +653,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reader-establishment-tests \
 	tests/acl2/store-checkpoint-tables-tests \
 	tests/acl2/store-checkpoint-arena-tests \
+	tests/acl2/store-checkpoint-fold-tests \
 	tests/acl2/store-checkpoint-verify-tests \
 	books/heap-store-figure \
 	books/heap-figure \
@@ -1227,6 +1229,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-node-counterexamples-tests \
 	books/bp-node-rotation-due \
 	tests/acl2/bp-node-rotation-due-tests \
+	tests/acl2/bp-node-rotation-recovery-tests \
+	tests/acl2/bp-node-rotation-equivalence-tests \
+	tests/acl2/bp-node-rotation-critical-tests \
 	books/bp-node-progress-selection-invariants \
 	tests/acl2/bp-node-machine-teeth-tests \
 	books/bp-node-forward-retry \
@@ -1623,6 +1628,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-checkpoint-size-reader-tests \
 	books/owner-checkpoint-writer \
 	books/owner-checkpoint-pipeline \
+	books/store-checkpoint-fold \
 	books/store-checkpoint-arena \
 	books/store-checkpoint-share \
 	books/store-checkpoint-arena-size-load \
@@ -2022,6 +2028,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/tls-reload-tests \
 	books/wire-grammar \
 	tests/acl2/wire-grammar-tests \
+	tests/acl2/wire-export-tests \
 	books/wire-family-fncu \
 	tests/acl2/wire-family-fncu-tests \
 	books/wire-family-identity \
@@ -2383,6 +2390,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/statement-recover-stream \
 	books/statement-keyring-publication \
 	books/native-statement-material \
+	tests/acl2/native-statement-material-tests \
 	tests/acl2/statement-keyring-publication-tests \
 	tests/acl2/statement-recover-stream-tests \
 	books/article-subject \
@@ -2678,7 +2686,9 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/defteeth-removal-obstructions-tests \
     tests/acl2/extent-window-span-tests \
     tests/acl2/history-image-place-tests \
-    tests/acl2/history-image-canonical-tests
+    tests/acl2/history-image-canonical-tests \
+    tests/acl2/book-name-relative-tests \
+    tests/acl2/book-name-provenance-tests
 
 .PHONY: wire-grammar wire-grammar-check host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
@@ -2737,6 +2747,8 @@ check-lane:
 check-fast:
 	@$(PYTHON) tools/check_steps.py begin $(CHECK_STEPS_DIR)
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --read
+	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --standalone
+	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_host_check_standalone
 	@$(CHECK_STEP) $(PYTHON) tools/host_check.py --books
 	@$(CHECK_STEP) $(PYTHON) tools/merge_registry.py --reciprocate --check
 	@$(CHECK_STEP) $(PYTHON) tools/spec_cite_check.py --summary --strict

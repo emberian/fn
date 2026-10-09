@@ -1,11 +1,95 @@
 {
- "about": "Critical evidence declarations. S11 direct host-entry gaps for the two reference-only POST helpers are recorded in TEETH-CRITICAL-HOST-TESTS; no native host_test is claimed for those functions. Trace references run creators and transitions. Failed-barrier clean-cache coverage remains separately owed.",
+ "about": "Critical keystone evidence: premises and wrong_answer come from defteeth; declared host_test, trace_witness and mutation references name their tests. Native log crash campaigns check the model program against host cuts; they do not execute that program. Failed-barrier clean-cache coverage is separately owed in TEETH-CRITICAL-HOST-TESTS. S11: direct host-entry gaps for the two reference-only POST helpers are recorded in TEETH-CRITICAL-HOST-TESTS; no native host_test is claimed for those functions.",
  "entries": {
+  "fn-arena-seal-buffer{correspondence}": {
+   "subject": "fn-arena-seal-buffer",
+   "host_test": "tests/test_native_bounds_join.py::test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",
+   "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-buffer{correspondence}",
+   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
+  },
+  "fn-arena-seal-list{correspondence}": {
+   "subject": "fn-arena-seal-list",
+   "host_test": "tests/test_native_served_differential.py::test_whole_transcript_agrees",
+   "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-list{correspondence}",
+   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
+  },
+  "fn-arena-seal-range{correspondence}": {
+   "subject": "fn-arena-seal-range",
+   "host_test": "tests/test_native_state_checkpoint.py::test_checkpoint_open_equals_full_replay",
+   "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-range{correspondence}",
+   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
+  },
+  "fn-av-scr-auth-delegate-restricted-is-reference": {
+   "subject": "fn-av-scr-auth-delegate",
+   "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
+   "trace_witness": "tests/acl2/served-available-critical-teeth-tests.lisp::fn-av-scr-auth-delegate-restricted-is-reference",
+   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::access-route-skipped"
+  },
+  "fn-av-scr-dispatch-core-restricted-is-reference": {
+   "subject": "fn-av-scr-dispatch-core",
+   "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
+   "trace_witness": "tests/acl2/served-available-critical-teeth-tests.lisp::fn-av-scr-dispatch-core-restricted-is-reference",
+   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::reply-dropped"
+  },
+  "fn-bpn-step-preserves-lifecycle-invariant": {
+   "subject": "fn-bpn-step",
+   "host_test": "tests/test_bp_node_native.py::test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
+   "trace_witness": "tests/acl2/bp-node-machine-authorization-tests.lisp::fn-bpn-step-preserves-lifecycle-invariant",
+   "mutation": "tests/acl2/bp-node-machine-authorization-tests.lisp::bpna-mutant-step-with-unbound-send"
+  },
+  "fn-bpnj-rotation-restart-succeeds-with-owed-work": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-recovery-tests.lisp::fn-bpnj-rotation-restart-succeeds-with-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work": {
+   "subject": "fn-bpnp-rotate-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotation-recovery-seeds-owed-jobs": {
+   "subject": "fn-bpnp-rotate-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-recovery-seeds-owed-jobs",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnp-rotation-restart-keeps-owed-work": {
+   "subject": "fn-bpnr-seed-state",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-restart-keeps-owed-work",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-checkpoint-recovery-equals-full-machine": {
+   "subject": "fn-bpnj-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-equivalence-tests.lisp::fn-bpnr-checkpoint-recovery-equals-full-machine",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-recover-from-checkpoint-equals-full-recover": {
+   "subject": "fn-bphp-recover-auto-event",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-recover-from-checkpoint-equals-full-recover",
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+  },
+  "fn-bpnr-rotation-crash-recovers-old-or-new": {
+   "subject": "fn-bphp-recover-auto-event",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_killed_at_each_cut_keeps_held_rows",
+   "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-rotation-crash-recovers-old-or-new",
+   "mutation": "tests/acl2/bp-node-rotation-critical-tests.lisp::bprc-mutant-crash-visible-before-rename"
+  },
   "fn-dwj-retired-job-refuses-scalar-publication": {
    "subject": "fn-dwj-retire",
    "host_test": "tests/test_native_decoded_custody.py::test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
    "trace_witness": "tests/acl2/decoded-worker-job-teeth-tests.lisp::fn-dwj-retired-job-refuses-scalar-publication",
    "mutation": "tests/acl2/decoded-worker-job-teeth-tests.lisp::retirement-skipped"
+  },
+  "fn-gacc-grow-builds": {
+   "subject": "fn-gacc-grow",
+   "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
+   "trace_witness": "tests/acl2/group-access-cache-tests.lisp::fn-gacc-grow-builds",
+   "mutation": "tests/acl2/group-access-cache-tests.lisp::unrestricted-grow"
   },
   "fn-lg-open-program-keeps-the-relation": {
    "subject": "fn-lg-open-program",
@@ -61,11 +145,23 @@
    "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-budget-trace",
    "mutation": "tests/acl2/owner-time-held-tests.lisp::ignore-waiter-budget"
   },
+  "fn-own-consumed-completion-is-240-or-uncertain": {
+   "subject": "fn-own-outcome",
+   "host_test": "tests/test_native_commit_log.py::test_concurrent_posts_are_committed_through_the_log_and_served_again",
+   "trace_witness": "tests/acl2/owner-completion-teeth-tests.lisp::fn-own-consumed-completion-is-240-or-uncertain",
+   "mutation": "tests/acl2/owner-completion-teeth-tests.lisp::all-durable"
+  },
+  "fn-pidx-view-okp-of-live-owner": {
+   "subject": "fn-pidx-view-okp",
+   "host_test": "tests/test_native_conformance.py::test_post_cycle",
+   "trace_witness": "tests/acl2/post-identity-view-teeth-tests.lisp::fn-pidx-view-okp-of-live-owner",
+   "mutation": "tests/acl2/post-identity-view-teeth-tests.lisp::stale-visible"
+  },
   "fn-rcw-canon-acc-steps-is-the-checkpoint-capture": {
    "subject": "fn-scka-canon-rows",
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
-   "trace_witness": "tests/acl2/reclaim-chunked-walk-tests.lisp::fn-rcw-canon-acc-steps-is-the-checkpoint-capture",
-   "mutation": "tests/acl2/reclaim-chunked-walk-tests.lisp::reset-handle"
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-live-arena",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
   },
   "fn-rcw-load-chunks-is-load": {
    "subject": "fn-rcw-load-chunks",
@@ -91,65 +187,35 @@
    "trace_witness": "tests/acl2/reclaim-chunked-seal-tests.lisp::fn-rcw-srcs-steps-is-the-walk",
    "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::skip-first-chunk"
   },
-  "fn-sca-load-held-rows-establishes-byte-facts": {
-   "subject": "fn-sca-load-held-rows-keyed",
-   "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
-   "trace_witness": "tests/acl2/catalog-availability-owner-load-tests.lisp::fn-sca-load-held-rows-establishes-byte-facts",
-   "mutation": "tests/acl2/catalog-availability-owner-load-tests.lisp::stale-byte-facts"
-  },
   "fn-rdc-selection-establishes": {
    "subject": "fn-rdc-selection",
    "host_test": "tests/test_native_served_differential.py::test_whole_transcript_agrees",
    "trace_witness": "tests/acl2/reader-open-carried-tests.lisp::fn-rdc-selection-establishes",
    "mutation": "tests/acl2/reader-open-carried-tests.lisp::drop-verdicts"
   },
-  "fn-gacc-grow-builds": {
-   "subject": "fn-gacc-grow",
-   "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
-   "trace_witness": "tests/acl2/group-access-cache-tests.lisp::fn-gacc-grow-builds",
-   "mutation": "tests/acl2/group-access-cache-tests.lisp::unrestricted-grow"
+  "fn-sca-load-held-rows-establishes-byte-facts": {
+   "subject": "fn-sca-load-held-rows-keyed",
+   "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+   "trace_witness": "tests/acl2/catalog-availability-owner-load-tests.lisp::fn-sca-load-held-rows-establishes-byte-facts",
+   "mutation": "tests/acl2/catalog-availability-owner-load-tests.lisp::stale-byte-facts"
   },
-  "fn-own-consumed-completion-is-240-or-uncertain": {
-   "subject": "fn-own-outcome",
-   "host_test": "tests/test_native_commit_log.py::test_concurrent_posts_are_committed_through_the_log_and_served_again",
-   "trace_witness": "tests/acl2/owner-completion-teeth-tests.lisp::fn-own-consumed-completion-is-240-or-uncertain",
-   "mutation": "tests/acl2/owner-completion-teeth-tests.lisp::all-durable"
+  "fn-scka-fold-at-is-the-ssr-step": {
+   "subject": "fn-ssr-intern-step",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
   },
-  "fn-pidx-view-okp-of-live-owner": {
-   "subject": "fn-pidx-view-okp",
-   "host_test": "tests/test_native_conformance.py::test_post_cycle",
-   "trace_witness": "tests/acl2/post-identity-view-teeth-tests.lisp::fn-pidx-view-okp-of-live-owner",
-   "mutation": "tests/acl2/post-identity-view-teeth-tests.lisp::stale-visible"
+  "fn-scka-next-checkpoint-is-capture": {
+   "subject": "fn-scka-next-checkpoint",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
   },
-  "fn-arena-seal-list{correspondence}": {
-   "subject": "fn-arena-seal-list",
-   "host_test": "tests/test_native_served_differential.py::test_whole_transcript_agrees",
-   "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-list{correspondence}",
-   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
-  },
-  "fn-arena-seal-buffer{correspondence}": {
-   "subject": "fn-arena-seal-buffer",
-   "host_test": "tests/test_native_bounds_join.py::test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",
-   "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-buffer{correspondence}",
-   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
-  },
-  "fn-arena-seal-range{correspondence}": {
-   "subject": "fn-arena-seal-range",
-   "host_test": "tests/test_native_state_checkpoint.py::test_checkpoint_open_equals_full_replay",
-   "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-range{correspondence}",
-   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
-  },
-  "fn-av-scr-auth-delegate-restricted-is-reference": {
-   "subject": "fn-av-scr-auth-delegate",
-   "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
-   "trace_witness": "tests/acl2/served-available-critical-teeth-tests.lisp::fn-av-scr-auth-delegate-restricted-is-reference",
-   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::access-route-skipped"
-  },
-  "fn-av-scr-dispatch-core-restricted-is-reference": {
-   "subject": "fn-av-scr-dispatch-core",
-   "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
-   "trace_witness": "tests/acl2/served-available-critical-teeth-tests.lisp::fn-av-scr-dispatch-core-restricted-is-reference",
-   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::reply-dropped"
+  "fn-scka-recover-from-checkpoint-is-full-recover": {
+   "subject": "fn-ssr-intern-step",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-old-pair"
   }
  }
 }

@@ -2,6 +2,7 @@
 ; turn a peer label into a pathname themselves.
 (in-package "ACL2")
 (include-book "../books/feed-filename")
+(include-book "../books/definterface")
 (defun fn-feed-filename-host-okp (name) (declare (xargs :mode :program))
   (not (equal (fn-feed-filename-components name) :bad)))
 

@@ -54,7 +54,7 @@
 (bpr-lift fn-rcw-canon-acc-steps 4)
 (defun rcw-canon-of (rows h fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (fn-scka-canon-rows rows fn-arena h))
+  (fn-scka-canon-rows rows fn-arena h (fn-stxk-initial-context 0)))
 (bpr-lift rcw-canon-of 2)
 (bpr-lift fn-rcw-seal-count 1)
 (make-event `(defconst *rcw-canon* ',(in-arena-rcw-canon-of *rpt-payloads* *rcw-new* 0)))
@@ -121,7 +121,7 @@
 (defteeth fn-rcw-canon-acc-steps-is-the-checkpoint-capture
   :claim (()
     (let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena))
-          (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0)))
+          (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0))))
       (and (equal (eq r :bad) (eq all :bad))
            (implies (not (eq r :bad))
                     (equal (fn-rcw-acc-finish (car r)) (fn-sco-capture configs all))))))
@@ -133,6 +133,6 @@
                 (equal (fn-rcw-acc-finish
                         (rcw-reset-h-steps (fn-rcw-acc-init configs) configs chunks fn-arena))
                        (fn-sco-capture configs
-                         (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0))))
+                         (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0)))))
                ((configs *rcw-configs*) (chunks *rcw-c2*))
                :fault "the pass-2 loop restarts each chunk at handle zero")))

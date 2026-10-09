@@ -7,6 +7,7 @@
 (include-book "../books/history-paged-adopt")
 (include-book "../books/history-records")
 (include-book "../books/resource-vector-exec")
+(include-book "../books/history-root-credit")
 (definterface create-fn-decoded-job :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-decoded-job)))
 (definterface create-fn-hist$p :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hist$p)))
 (definterface create-fn-hrecs$c :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hrecs$c)))

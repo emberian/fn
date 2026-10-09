@@ -55,7 +55,7 @@ STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
          "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
          "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py",
-         "tests/test_keystone_critical.py"]
+         "tests/test_keystone_critical.py", "tools/harness_check.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in planning/interfaces.json specs/wire-grammar.json; do
@@ -370,7 +370,8 @@ class RegenTests(TrainBase):
         p = self.train("regen")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         log = [l.split()[0] + " " + (l.split()[1] if len(l.split()) > 1 else "") for l in self.stub_log()]
-        self.assertEqual(log, ["world ", "ledger --write", "keystone_emit --write-manifest"])
+        self.assertEqual(log, ["world ", "ledger --write", "harness_check --write-stubs",
+                               "keystone_emit --write-manifest"])
         subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
         self.assertTrue(subj.startswith("Regenerate train 1"), subj)
 
@@ -587,6 +588,17 @@ class PushTests(TrainBase):
                                       "tools/z.py", "tools/absent.py", "books/b.lisp"])
         self.assertEqual(got, list(train.UNIT_TESTS) + ["tests/test_y.py", "tests/test_z.py"])
 
+    def test_suites_that_start_the_native_image_are_left_to_the_native_gate(self):
+        root = Path(tempfile.mkdtemp(prefix="train-unit-"))
+        self.addCleanup(shutil.rmtree, root, True)
+        (root / "tests").mkdir()
+        (root / "tests" / "test_bp_x_native.py").write_text(
+            "import unittest\nfrom tests.native_harness import (\n    Node,\n)\n")
+        (root / "tests" / "test_plain_native.py").write_text(
+            "import unittest\n# mentions native_harness in a comment only\n")
+        got = train.unit_tests(root, ["tests/test_bp_x_native.py", "tests/test_plain_native.py"])
+        self.assertEqual(got, list(train.UNIT_TESTS) + ["tests/test_plain_native.py"])
+
     def test_a_missing_fixed_suite_fails_the_gate(self):
         self.ready()
         (self.work / "tests/test_farm.py").unlink()
@@ -701,6 +713,7 @@ class CertifyTests(TrainBase):
         self.ftree = self.tmp / "farm-tree"
         self.ftree.mkdir()
         (self.seed / "tools/farm.py").write_text(FARM_STUB)
+        (self.seed / "planning/teeth-obligations.json").write_text('{"entries": []}\n')
         self.commit(self.seed, "farm stub")
         sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
         sh(self.work, "git", "fetch", "-q", "origin")
@@ -735,6 +748,47 @@ class CertifyTests(TrainBase):
         self.assertNotIn("books/b.lisp", sub)
         self.assertTrue(farm[1].startswith("farm --root") or "wait hbox run-stub-1" in farm[1], farm[1])
         self.assertNotIn("remote_check", " ".join(self.stub_log()))
+
+    def test_transitive_certify_drops_lane_but_keeps_incremental_affected_selection(self):
+        self.books_train()
+        result = self.train("certify", "hbox", "--transitive")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        farm = [line for line in self.stub_log() if line.startswith("farm ")]
+        self.assertEqual(len(farm), 2)
+        self.assertNotIn("--lane", farm[0].split())
+        self.assertNotIn("--closure", farm[0].split())
+        for word in ("--affected-by books/b", "books/wire-export", "tests/acl2/t"):
+            self.assertIn(word, farm[0])
+
+    def test_certify_always_adds_critical_witnesses_of_transitively_affected_books(self):
+        (self.seed / "books").mkdir(exist_ok=True)
+        (self.seed / "tests/acl2").mkdir(parents=True, exist_ok=True)
+        critical = {"critical": "durability", "book": "books/theorem.lisp",
+                    "owner_book": "tests/acl2/special-witness.lisp"}
+        entries = [critical, dict(critical, name="another-theorem"),
+                   dict(critical, book="books/unrelated.lisp",
+                        owner_book="tests/acl2/unrelated-witness.lisp"),
+                   dict(critical, critical=None,
+                        owner_book="tests/acl2/noncritical-witness.lisp")]
+        self.advance_dev({
+            "books/b.lisp": '(in-package "ACL2")\n',
+            "books/middle.lisp": '(include-book "b")\n',
+            "books/theorem.lisp": '(include-book "middle")\n',
+            "books/unrelated.lisp": '(in-package "ACL2")\n',
+            "tests/acl2/special-witness.lisp": '(include-book "../../books/theorem")\n',
+            "tests/acl2/unrelated-witness.lisp": '(in-package "ACL2")\n',
+            "tests/acl2/noncritical-witness.lisp": '(in-package "ACL2")\n',
+            "planning/teeth-obligations.json": json.dumps({"entries": entries}),
+        })
+        sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
+        self.merge({"books/b.lisp": '(in-package "ACL2")\n; changed\n'})
+        result = self.train("certify", "hbox")  # witnesses ride the default lane mode too
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        submit = next(line for line in self.stub_log() if line.startswith("farm "))
+        words = submit.split()
+        self.assertEqual(words.count("tests/acl2/special-witness"), 1)
+        self.assertNotIn("tests/acl2/unrelated-witness", words)
+        self.assertNotIn("tests/acl2/noncritical-witness", words)
 
     def test_certify_emits_in_the_run_tree_commits_and_records_the_split(self):
         self.books_train()

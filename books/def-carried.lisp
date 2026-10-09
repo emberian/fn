@@ -161,6 +161,7 @@
 ; proved, discharge (each owed name is a ledger item).
 
 (in-package "ACL2")
+(include-book "book-name-relative")
 (include-book "std/testing/must-fail" :dir :system)
 
 ; ---------------------------------------------------------------------------
@@ -640,20 +641,28 @@
 
 (defun fn-cd-assumptions-bookp (book w)
   (declare (xargs :mode :program))
-  ; BOOK (a full book name) is assumptions.lisp or assumptions-*.lisp in the
+  ; BOOK (an absolute name or project sysfile) is assumptions.lisp or
+  ; assumptions-*.lisp in the
   ; directory of THIS book (books/def-carried.lisp, whose own include path
   ; the world records): a file of that name anywhere else is not one.  When
   ; this book was not included (a REPL loading it from source) the world
   ; has no path for it, and the directory is any one ending /books/ -- a
   ; certified world always has the path.
-  (let ((dir (or (fn-cd-dir-of (fn-cd-book-at (fn-cd-introduction 'fn-cd-get w)))
+  (let* ((projects (project-dir-alist w))
+         (name (book-name-relative book projects))
+         (dir (or (fn-cd-dir-of
+                   (book-name-relative
+                    (fn-cd-book-at (fn-cd-introduction 'fn-cd-get w)) projects))
+                 (and (sysfile-p book) (eq (car book) :fn) "books/")
                  (and (stringp book)
                       (let ((slash (search "/books/" book :from-end t)))
-                        (and slash (subseq book 0 (+ slash 7))))))))
-    (and dir (stringp book)
-         (< (length dir) (length book))
-         (equal (subseq book 0 (length dir)) dir)
-         (let ((file (subseq book (length dir) (length book))))
+                        (and slash
+                             (book-name-relative (subseq book 0 (+ slash 7))
+                                                 projects)))))))
+    (and dir (stringp name)
+         (< (length dir) (length name))
+         (equal (subseq name 0 (length dir)) dir)
+         (let ((file (subseq name (length dir) (length name))))
            (and (not (search "/" file))
                 (or (equal file "assumptions.lisp")
                     (and (< 17 (length file))

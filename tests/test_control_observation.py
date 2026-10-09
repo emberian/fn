@@ -49,6 +49,8 @@ class ControlReceipt(unittest.TestCase):
             diag.selected(ROOT/'books/native-admin-shape.lisp', ['fn-native-admin-result']),
             diag.selected(ROOT/'books/native-admin.lisp', ['fn-native-admin-arg', 'fn-native-admin-control-plan']),
             diag.selected(ROOT/'books/owner-compact-request.lisp', ['fn-ock-request-status']),
+            diag.selected(ROOT/'host/native/owner.lisp', [
+                'fnn-owner-maybe-publish', 'fnn-owner-maybe-publish-quantum']),
             diag.selected(ROOT/'host/native/admin.lisp', ['fnn-owner-compaction-request']),
             diag.selected(ROOT/'host/native/control.lisp', [
                 'fnn-control-receipt-step', 'fnn-control-receipt-work', 'fnn-control-handle-client']),

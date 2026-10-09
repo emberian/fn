@@ -52,9 +52,15 @@
 ; writers are defined by then) and before host/interfaces.lisp.
 
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
+(include-book "../books/catalog-paged-attach")
 (include-book "../books/definterface") ; def-carried, with the :incomplete escape
 (include-book "../books/owner-retain-carried") ; the pilot row and its open
 (include-book "../books/owner-post-carried") ; actual refusal/known-abort writers
+(include-book "owner-retain-host")
 
 (def-carried fn-owner-served-carried
   :invariant fn-owner-retain-statep

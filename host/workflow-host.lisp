@@ -1,5 +1,9 @@
 ; Program-mode bridge: decoded bounded local records enter the executable model.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/bp-workflow-constructors")
 (include-book "../books/bp-ion-workflow")
 (include-book "../books/bp-ion-lifetime")
@@ -11,6 +15,8 @@
 ; `fn-sn-node' is books/store-node's; include it rather than depend on a
 ; store session having been opened in this ACL2 first.
 (include-book "../books/store-node")
+(include-book "../books/definterface")
+(include-book "store-host")
 
 ; The workflow entries that form a request read the article's octets through
 ; the live payload arena (books/bp-outbound.lisp; the records flip): each takes

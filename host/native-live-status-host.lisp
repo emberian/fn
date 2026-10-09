@@ -5,6 +5,11 @@
 ; carries, and neither can update what it reads.  Raw Lisp transports the
 ; octets and prints them; it renders no field.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
+(include-book "../books/catalog-paged-attach")
 (include-book "../books/native-health")
 ; lane scale-reads: the owner's reclaim line reads the catalog's tombstone
 ; column, one walk (books/native-status-columns.lisp fn-nsc-answer-report).
@@ -19,6 +24,8 @@
 ; (books/native-live-pages.lisp).
 (include-book "../books/native-live-pages")
 (include-book "../books/owner-operation-report")
+(include-book "../books/definterface")
+(include-book "owner-host")
 
 (defun fn-native-operation-host-offline ()
  (declare (xargs :mode :program))

@@ -426,11 +426,14 @@
 ; Whether the probe observes the history for ACTION (host/native/heap.lisp
 ; fnn-heap-operator-profile asks).
 ; Every command that names a store opens it, so the probe observes the store
-; whatever the command (lane reservation-after-flip; before, only the offline
-; verbs were observed).
+; for each command but the run (lane reservation-after-flip; before, only the
+; offline verbs were observed).  The RUN is sized for the full store: a run
+; grows the store, and the heap it holds must admit every later open of it
+; under the same budget (lane s-admit-reopen, ADMISSION-RESERVES-NOT-REOPEN;
+; N's ruling B): see fn-heap-operation-figure-octets-of-a-run.
 (defun fn-heap-operation-observes-p (action)
-  (declare (xargs :guard t) (ignore action))
-  t)
+  (declare (xargs :guard t))
+  (not (equal action :run)))
 
 ; The probe lists each history directory to at most this many entries (the
 ; profile's transaction slots and 1,024 more for packs, checkpoint
@@ -471,7 +474,9 @@
 
 (defun fn-heap-operation-observation (action observed)
   (declare (xargs :guard t))
-  (if (equal action :init) *fn-heap-empty-store-observation* observed))
+  (cond ((equal action :init) *fn-heap-empty-store-observation*)
+        ((equal action :run) nil)
+        (t observed)))
 
 (defun fn-heap-operation-figure-octets (action profile core nursery observed)
   (declare (xargs :guard t))
@@ -480,6 +485,28 @@
            (fn-heap-store-figure-octets profile core nursery observed))
     (fn-heap-store-figure-octets profile core nursery
                                  (fn-heap-operation-observation action observed))))
+
+; KEYSTONE (ADMISSION-RESERVES-NOT-REOPEN, N's ruling B).  A run's figure is
+; the store figure over NO observation: the profile's whole bound.
+(defthm fn-heap-operation-figure-octets-of-a-run
+  (equal (fn-heap-operation-figure-octets :run profile core nursery observed)
+         (fn-heap-store-figure-octets profile core nursery nil))
+  :hints (("Goal" :in-theory (enable fn-heap-operation-figure-octets
+                                     fn-heap-operation-observation))))
+
+; The heap a run holds admits every later open of the same store at the same
+; core and collector: whatever the store has grown to, its figure is at most
+; the run's.
+(defthm fn-heap-run-figure-holds-every-later-open
+  (<= (fn-heap-store-figure-octets profile core nursery later)
+      (fn-heap-operation-figure-octets :run profile core nursery observed))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-heap-store-figure-observed-is-at-most-unobserved
+                                   (observed later))
+                        fn-heap-operation-figure-octets-of-a-run)
+           :in-theory (disable fn-heap-store-figure-observed-is-at-most-unobserved
+                               fn-heap-operation-figure-octets-of-a-run
+                               fn-heap-operation-figure-octets))))
 
 (defthm fn-heap-operation-figure-octets-natp
   (natp (fn-heap-operation-figure-octets action profile core nursery observed))
@@ -724,6 +751,16 @@
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 
+; The run is sized for the full store (fn-heap-operation-figure-octets-of-a-run):
+; the open term at the profile's H = 8 MiB and T = 16,384 is 130,023,424 octets
+; (64 x min(H, 1 MiB + R) = 79,691,776; 2 H = 16,777,216; 2,048 T =
+; 33,554,432) where the empty store's is 0.
+(defthm fn-heap-small-run-base-of-an-unobserved-store
+  (equal (fn-heap-store-base-octets *fn-heap-small-profile* core nil)
+         (+ (fn-heap-core-dynamic core) 471399818))
+  :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
+                                     fn-heap-open-records-bound))))
+
 ; (A hypothesis bounding the nursery cap was removed after proving the
 ; weakened theorem: the trigger is at most a sixteenth of the space.)
 (local
@@ -751,11 +788,12 @@
            (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile* core nursery
                                                  (list machine) '(0 . 0)))
                   :heap))
-  :hints (("Goal" :in-theory (e/d (fn-heap-mb-of fn-heap-store-figure-octets)
+  :hints (("Goal" :in-theory (e/d (fn-heap-mb-of fn-heap-store-figure-octets
+                                       fn-heap-operation-figure-octets-of-a-run)
                                   (fn-heap-profile-word))
            :use ((:instance fn-heap-with-nursery-below-eight-sevenths
                             (base (fn-heap-store-base-octets *fn-heap-small-profile* core
-                                                             '(0 . 0))))))))
+                                                             nil)))))))
 
 (defthm fn-heap-small-profile-run-fits-a-two-gib-machine
   (implies (and (<= (fn-heap-core-dynamic core) (* 512 *fn-heap-mib*))
@@ -763,11 +801,12 @@
            (equal (car (fn-heap-operation-decide :run *fn-heap-small-profile* core nursery
                                                  (list machine) '(0 . 0)))
                   :heap))
-  :hints (("Goal" :in-theory (e/d (fn-heap-mb-of fn-heap-store-figure-octets)
+  :hints (("Goal" :in-theory (e/d (fn-heap-mb-of fn-heap-store-figure-octets
+                                       fn-heap-operation-figure-octets-of-a-run)
                                   (fn-heap-profile-word))
            :use ((:instance fn-heap-with-nursery-below-eight-sevenths
                             (base (fn-heap-store-base-octets *fn-heap-small-profile* core
-                                                             '(0 . 0))))))))
+                                                             nil)))))))
 
 ; -----------------------------------------------------------------------------
 ; The report line `status' and `health' print, and the launcher reads:

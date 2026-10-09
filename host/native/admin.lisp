@@ -763,8 +763,13 @@ Observe its durable frontier/deferral through ACL2 until terminal."
       (fnn-fault "owner returned a malformed compaction answer ~a" word))
     (fnn-err "COMPACTION request answer=~(~a~)" word)
     (when (member word '(:requested :coalesced))
-      (fnn-owner-maybe-publish service)
       (loop
+        (multiple-value-bind (publication refusal) (fnn-owner-maybe-publish service)
+          (declare (ignore publication))
+          ;; Rotation/spare preparation can refuse before a producer starts,
+          ;; including the successor of a coalesced publication. Drive each
+          ;; observation turn so that refusal reaches this receipt's worker.
+          (when refusal (error refusal)))
         (let ((observed
                 (fnn-quantum-control
                  service nil

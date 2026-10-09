@@ -86,7 +86,7 @@
  (implies (and (natp d1)
                (<= (fn-prstartup-launch-floor profile core observed) d1)
                (equal (fn-heap-core-file owner-core) (fn-heap-core-file core)))
-          (<= (fn-heap-store-base-octets profile owner-core observed)
+          (<= (fn-heap-store-base-octets profile owner-core nil)
               (nfix (- d1 (* 2 (fn-heap-nursery-trigger
                                 d1 (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib))))))))
  :rule-classes nil
@@ -193,7 +193,7 @@
                  (d1 (* *fn-heap-mib* (fn-prstartup-nth 1
                        (fn-prstartup-extend-default-reservation base nil root workers cache-limit
                                                                 core observations profile observed))))
-                 (b (fn-heap-store-base-octets profile owner-core observed))
+                 (b (fn-heap-store-base-octets profile owner-core nil))
                  (extra (fn-pfr-at 0 peer))
                  (cap (* *fn-heap-mib* (fn-profile-limit :gc-nursery-mib)))
                  (dd (* *fn-heap-mib* (fn-pfr-at 1 (fn-pfr-extend-reservation

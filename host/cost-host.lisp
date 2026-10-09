@@ -3,8 +3,16 @@
 ; claim.  FN-READER-INSTALL-RESULT is itself unaccounted: its installer is
 ; too large/has unresolved dependencies for this derivation's inliner.
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
 (include-book "../books/def-cost")
 (include-book "../books/string-line-cursor-cost")
+(include-book "reader-host")
+(include-book "interfaces")
+(include-book "page-window-executor-host")
+(include-book "../books/output-tariff-families")
+(include-book "page-decoded-window-host")
 
 (def-cost fn-reader-chunk
   :visits (+ 1 request-octets)

@@ -12,6 +12,7 @@
     python3 tools/host_check.py --loaded        # static: every host file is loaded by some build
     python3 tools/host_check.py --convert [FILE...]  # on a box: every pre-image gate (make host-convert-check)
     python3 tools/host_check.py --build-lists   # static: the DTN image loads what the default image loads
+    python3 tools/host_check.py --standalone    # static: each host book owns its dependencies
     python3 tools/host_check.py --attach-order  # static: attach book precedes its stobj generic
     python3 tools/host_check.py --macro-order [FILE...]  # static: no raw macro used before its defmacro
 
@@ -171,6 +172,7 @@ lock -- the declaration names the lock; the review reads the accesses.
 from __future__ import annotations
 
 import argparse
+import json
 import os
 from pathlib import Path
 import re
@@ -1283,6 +1285,296 @@ def forward_references(build: str = BUILD_SCRIPT, root: Path = ROOT) -> list[str
     return found
 
 
+def acl2_symbol(name: str) -> str:
+    for prefix in ("acl2::", "acl2:", "common-lisp::", "common-lisp:"):
+        if name.startswith(prefix):
+            return name[len(prefix):]
+    return name
+
+
+class BookWorld:
+    """Cached source worlds, shared by image and standalone checks.
+
+    The root sees its local events; includers see only exported events. No ld
+    or raw load contributes definitions to a certified book's world.
+    """
+    def __init__(self, root: Path):
+        self.root = root
+        self.cache = {}
+        self.event_heads = {}
+
+    def read(self, path: Path, own=False):
+        import ledger
+        key = (path, own)
+        if key not in self.cache:
+            relative = path.relative_to(self.root).as_posix() if path.is_relative_to(self.root) else path.as_posix()
+            book = ledger.Book(path=relative)
+            invoked = set()
+            forms = ledger.Reader(path.read_text(encoding="utf-8")).top_level()
+            def record(form, line):
+                head = ledger.head(form)
+                if head == "local" and not own:
+                    return
+                if head in ledger.TRANSPARENT or head == "encapsulate":
+                    if head == "encapsulate":
+                        book.definitions.update(ledger.encapsulated_names(form[1]))
+                    for inner in form[2 if head == "encapsulate" else 1:]:
+                        record(inner, line)
+                    return
+                invoked.add(head)
+                ledger.record(book, form, line, local=False, suppressed=False)
+                if head == "def-carried":
+                    # A named fn-carried table row, referenced by :raw-with.
+                    book.definitions.add(str(form[1]))
+                if head == "def-cost":
+                    # books/def-cost.lisp fn-cost-dimension-name.
+                    opts = ledger.keyword_plist(form[2:])
+                    dimensions = ["visits"]
+                    if ":conses" in opts or ":cons-unaccounted" in opts:
+                        dimensions.append("conses")
+                    for dimension in dimensions:
+                        for suffix in ("-" + dimension, "-route-" + dimension):
+                            book.definitions.add(str(form[1]) + suffix)
+                        if ":" + dimension in opts:
+                            book.definitions.add(str(form[1]) + "-" + dimension + "-bound")
+            profiles = {}
+            for form, line in forms:
+                record(form, line)
+                if ledger.head(form) == "def-carried-profile":
+                    opts = ledger.keyword_plist(form[2:])
+                    profiles[str(form[1])] = opts.get(":suffix", opts.get(":invariant"))
+                if ledger.head(form) == "def-carried-writer":
+                    opts = ledger.keyword_plist(form[2:])
+                    suffix = profiles.get(str(opts.get(":profile")))
+                    if opts.get(":name"):
+                        book.definitions.add(str(opts[":name"]))
+                    elif suffix:
+                        book.definitions.add(str(form[1]) + "-preserves-" + str(suffix))
+            book.definitions.update(stobj_names(path))
+            self.cache[key] = (book, forms)
+            self.event_heads[key] = invoked
+        return self.cache[key]
+
+    def closure(self, path: Path, own=False):
+        return self.closures([path], own)
+
+    def closures(self, paths, own=False):
+        import ledger
+        names, macros, problems, seen = set(), set(), [], set()
+        stack = [(path, own) for path in paths]
+        macro_bodies, invoked = {}, set()
+        while stack:
+            current, local = stack.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            try:
+                book, forms = self.read(current, local)
+            except (OSError, ledger.ReadError) as error:
+                problems.append(f"{current}: {error}")
+                continue
+            names.update(acl2_symbol(name) for name in book.definitions)
+            macros.update(acl2_symbol(name) for name in book.macros)
+            macro_bodies.update(book.macro_bodies)
+            invoked.update(self.event_heads[(current, local)])
+            for _, reference in book.nonlocal_includes:
+                stack.append((world_resolve(self.root, current.parent, reference), False))
+        # A macro can emit literal event names (def-family-tariffs does).
+        # Count those only at an invocation in this closure, never just because
+        # its defining macro happens to mention them.
+        def literal_definitions(node):
+            head = ledger.head(node)
+            if head in ("unquote", "unquote-splicing"):
+                return
+            if head in ("defun", "defund", "defthm", "defthmd", "defconst", "defmacro"):
+                if len(node) > 1 and isinstance(node[1], ledger.Sym):
+                    names.add(str(node[1]))
+                return
+            if isinstance(node, list):
+                for part in node:
+                    literal_definitions(part)
+        for head in invoked:
+            if head in macro_bodies:
+                literal_definitions(macro_bodies[head])
+        return names, macros, problems
+
+
+def standalone_scope(root: Path) -> list[Path]:
+    parked_path = root / "planning/host-parked.json"
+    parked = json.loads(parked_path.read_text()).get("parked", {}) if parked_path.exists() else {}
+    return [p for p in sorted((root / "host").glob("*.lisp"))
+            if p.relative_to(root).as_posix() not in parked]
+
+
+def standalone_findings(root: Path = ROOT) -> list[str]:
+    """References in each host book against its OWN include world (no ACL2).
+
+    Executable terms use the ledger's binding/quote-aware reader. Declaration
+    targets and proof metadata are world names too, not executable calls.
+    Generators use the ledger's expansions, as in the image world reader.
+    Certification remains the authority for admission, guards and proofs.
+    """
+    import ledger
+    world = BookWorld(root)
+    builtins = ledger.acl2_builtins()
+    findings = []
+    for path in standalone_scope(root):
+        names, macros, problems = world.closure(path, own=True)
+        findings.extend(problems)
+        try:
+            book, forms = world.read(path, own=True)
+        except (OSError, ledger.ReadError):
+            continue  # closure already reported the unreadable root
+        rel = path.relative_to(root).as_posix()
+        refs = ledger.HostFile(path=rel)
+        def symbols(value):
+            if isinstance(value, ledger.Sym):
+                yield str(value)
+            elif isinstance(value, list):
+                for part in value:
+                    yield from symbols(part)
+        def term(value, line):
+            # stobj-let binds result variables separately from its producer;
+            # with-local-stobj binds a local stobj name. Neither is a call.
+            def normalize(node):
+                if isinstance(node, ledger.Sym):
+                    return ledger.Sym(acl2_symbol(str(node)))
+                head = ledger.head(node)
+                if head == "quote":
+                    return node
+                if head == "stobj-let":
+                    accessors = [b[1] for b in node[1] if isinstance(b, list) and len(b) > 1]
+                    return [ledger.Sym("progn"), *[normalize(x) for x in accessors + node[3:]]]
+                if head == "with-local-stobj":
+                    return [ledger.Sym("progn"), *[normalize(x) for x in node[2:]]]
+                if head == "er-let*":
+                    return [ledger.Sym("progn"), *[normalize(b[1]) for b in node[1]],
+                            *[normalize(x) for x in node[2:]]]
+                return [normalize(x) for x in node] if isinstance(node, list) else node
+            ledger.host_references(refs, normalize(value), line, macros)
+        def named(value, line):
+            for name in symbols(value):
+                name = acl2_symbol(name)
+                if ledger.referenceable(name) and name not in ("nil", "t"):
+                    refs.references.append((name, line))
+        def interface_options(opts, line):
+            for key in (":keystones", ":delegates", ":operation", ":raw-guarded"):
+                named(opts.get(key), line)
+            for pair in opts.get(":kinds", []):
+                if isinstance(pair, list) and len(pair) > 1:
+                    named(pair[1], line)
+            raw = opts.get(":raw-with", [])
+            if isinstance(raw, list):
+                # :assuming labels the row's explicit incompleteness, not a
+                # function/theorem reference (checked by def-carried itself).
+                stop = raw.index(":assuming") if ":assuming" in raw else len(raw)
+                named(raw[:stop], line)
+        def hints(value, line):
+            def proof_ref(node):
+                if isinstance(node, ledger.Sym):
+                    named(node, line)
+                elif isinstance(node, list):
+                    head = ledger.head(node)
+                    if head in (":instance", ":functional-instance"):
+                        if len(node) > 1:
+                            named(node[1], line)
+                        for binding in node[2:]:
+                            if isinstance(binding, list) and len(binding) > 1:
+                                term(binding[1], line)
+                    elif head == "quote":
+                        proof_ref(node[1])
+                    else:
+                        for child in node:
+                            proof_ref(child)
+            if not isinstance(value, list):
+                return
+            head = ledger.head(value)
+            if head in ("enable", "disable", "e/d"):
+                named(value[1:], line)
+                return
+            def theory_refs(node):
+                head = ledger.head(node)
+                if head == "quote":
+                    named(node[1], line)
+                elif isinstance(node, list):
+                    if head in ("enable", "disable", "e/d"):
+                        named(node[1:], line)
+                    elif head != "theory":
+                        for child in node[1:]:
+                            theory_refs(child)
+            for i, part in enumerate(value):
+                if part == ":in-theory" and i + 1 < len(value):
+                    theory_refs(value[i + 1])
+                elif isinstance(part, ledger.Sym) and part in (":use", ":by") and i + 1 < len(value):
+                    proof_ref(value[i + 1])
+                elif isinstance(part, list):
+                    hints(part, line)
+            metadata(value, line)
+        def metadata(value, line):
+            # Symbols under keyword metadata include variables and labels;
+            # project names and known world names denote dependencies.
+            for name in symbols(value):
+                if name.startswith(("fn-", "*fn-")):
+                    refs.references.append((name, line))
+        def visit(form, line):
+            head = ledger.head(form)
+            if head is None or head in ("quote", "quasiquote", "make-event"):
+                return
+            if head in ledger.TRANSPARENT or head == "encapsulate":
+                for inner in form[2 if head == "encapsulate" else 1:]:
+                    visit(inner, line)
+                return
+            expansion = ledger.generated_expansion(form)
+            if expansion is not None:
+                refs.references.append((head, line))
+                for inner in expansion:
+                    visit(inner, line)
+                return
+            if head in ("definterface", "def-carried", "def-cost", "def-cost-check", "def-operation-check"):
+                refs.references.append((head, line))
+                if head != "def-carried" and len(form) > 1:
+                    refs.references.append((str(form[1]), line))
+                opts = ledger.keyword_plist(form[2:])
+                if head == "definterface":
+                    interface_options(opts, line)
+                    return
+                for key, value in opts.items():
+                    # :incomplete declares owed writers; it explicitly does
+                    # not assert that those names are present in this world.
+                    if key != ":incomplete":
+                        metadata(value, line)
+            elif head in ("defthm", "defthmd"):
+                term(form[2], line)
+                hints(form[3:], line)
+            elif head.startswith("defun") or head in ("defund", "defund-inline"):
+                term(form, line)
+                for part in form[3:-1]:
+                    if ledger.head(part) == "declare":
+                        for declaration in part[1:]:
+                            if ledger.head(declaration) == "xargs":
+                                opts = ledger.keyword_plist(declaration[1:])
+                                for key in (":guard", ":measure"):
+                                    if key in opts:
+                                        term(opts[key], line)
+                                for key in (":hints", ":guard-hints"):
+                                    hints(opts.get(key), line)
+        for form, line in forms:
+            visit(form, line)
+        for name, line in sorted(set(refs.references), key=lambda x: (x[1], x[0])):
+            name = acl2_symbol(name)
+            if name not in names and name not in builtins:
+                findings.append(f"{rel}:{line}: {name} is not defined in its standalone include world")
+    return findings
+
+
+def standalone_main(root: Path = ROOT) -> int:
+    findings = standalone_findings(root)
+    for finding in findings:
+        print(f"FAIL {finding}")
+    print(f"host_check --standalone: {len(standalone_scope(root))} host books, {len(findings)} findings")
+    return int(bool(findings))
+
+
 def world_of(build: str, root: Path = ROOT,
              ld_definitions: bool = True) -> tuple[set[str], list[str], list[str]]:
     """(defined names, raw files loaded, problems) of BUILD's image.
@@ -1347,22 +1639,10 @@ def world_of(build: str, root: Path = ROOT,
     script = root / build
     for form, _ in ledger.Reader(script.read_text(encoding="utf-8")).top_level():
         walk(form, root, build)
-    while books:
-        path = books.pop()
-        if path in seen_books:
-            continue
-        seen_books.add(path)
-        if not path.is_file():
-            problems.append(f"{build}: includes {rel(path)}, which does not exist")
-            continue
-        book = ledger.analyze_book(path, rel(path))
-        if book.read_error:
-            problems.append(f"{rel(path)}: unreadable: {book.read_error}")
-        local = {f.name for f in book.functions if f.local}
-        defined.update(book.definitions - local)
-        defined.update(stobj_names(path))
-        for _, reference in book.nonlocal_includes:
-            books.append(world_resolve(root, path.parent, reference))
+    world = BookWorld(root)
+    names, _, errors = world.closures(books)
+    defined.update(names)
+    problems.extend(errors)
     return defined, raw, problems
 
 
@@ -1386,6 +1666,15 @@ def stobj_names(path: Path) -> set[str]:
                 visit(item)
             return
         head = form[0]
+        if head == "def-buffer" and len(form) >= 2:
+            # books/def-buffer.lisp: a congruent octet stobj's public exports.
+            name = str(form[1])
+            found.add("create-" + name)
+            found.update(name + suffix for suffix in
+                         ("-p", "-len", "-get", "-put", "-append-octet", "-clear",
+                          "-reserve", "-list", "-from-list", "-append-list", "-append-back",
+                          "-get-word", "-append-word"))
+            return
         if head in ("defstobj", "defabsstobj") and len(form) >= 2 and isinstance(form[1], str):
             name = str(form[1])
             found.update({name + "p", "create-" + name})
@@ -1971,10 +2260,21 @@ def attach_unpaired(root: Path) -> list[str]:
 
 
 def attach_scope(root: Path, world: AttachWorld) -> list[str]:
+    """Every host book the image reaches through the umbrellas, AND every certified
+    host book (host/*.lisp, except the parked families in planning/host-parked.json,
+    which are not loaded or certified; host/native/ is raw, ld'd): a host book
+    certified alone carries its own include order, so a generic met before its
+    attach refuses at certify (attach-stobj: "the name is in use") even when no
+    umbrella reaches the book."""
     hosts: set[str] = set()
     for umbrella in UMBRELLAS:
         if (root / (umbrella + ".lisp")).exists():
             hosts.update(b for b in world.closure(umbrella) if b.startswith("host/"))
+    parked_path = root / "planning" / "host-parked.json"
+    parked = (set(json.loads(parked_path.read_text(encoding="utf-8")).get("parked", {}))
+              if parked_path.exists() else set())
+    hosts.update("host/" + f.stem for f in (root / "host").glob("*.lisp")
+                 if "host/" + f.name not in parked)
     return sorted(hosts)
 
 
@@ -1990,7 +2290,44 @@ def attach_findings(root: Path = ROOT) -> list[str]:
     return findings
 
 
-def attach_order_main() -> int:
+ATTACH_COMMENT = ("; D61: the image attaches these (attach-stobj) before the generic they implement;\n"
+                  "; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).\n")
+
+
+def attach_fix(root: Path = ROOT) -> list[str]:
+    """The transformation for --attach-order findings: each host file whose closure
+    meets a generic before its attach book gets the attach book include-book'd right
+    after its (in-package ...) form, in the pairs' order, under the D61 comment.
+    Returns the files rewritten.  Idempotent: a second run finds nothing."""
+    world = AttachWorld(root)
+    need: dict[str, list[str]] = {}
+    for _gen, generic, attach in attach_pairs(root)[0]:
+        for host in attach_scope(root, world):
+            if world.generic_state(host, generic, attach) == "bare":
+                need.setdefault(host, []).append(attach)
+    changed = []
+    for host, attaches in sorted(need.items()):
+        path = root / (host + ".lisp")
+        text = path.read_text()
+        m = re.search(r'^\(in-package "ACL2"\)[^\n]*\n', text, re.M)
+        if not m:
+            raise SystemExit("host_check --attach-order --write: %s has no (in-package \"ACL2\") form" % host)
+        # The arena's attach first: the other attach books' closures reach
+        # books/payload-arena, so it must already be attached (owner-host's order).
+        order = {"books/payload-arena-attach": 0, "books/history-paged-attach": 1,
+                 "books/catalog-paged-attach": 2}
+        attaches = sorted(attaches, key=lambda a: order.get(a, 9))
+        lines = "".join('(include-book "../%s")\n' % a for a in attaches)
+        comment = "" if "D61: the image attaches these" in text else ATTACH_COMMENT
+        path.write_text(text[:m.end()] + comment + lines + text[m.end():])
+        changed.append(host)
+    return changed
+
+
+def attach_order_main(write: bool = False) -> int:
+    if write:
+        for host in attach_fix():
+            print("host_check --attach-order --write: %s.lisp" % host)
     findings = attach_findings()
     for line in findings:
         print("host_check --attach-order: " + line)
@@ -2579,6 +2916,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--log-dir", default=None,
                         help="write each session's transcript here")
     mode = parser.add_mutually_exclusive_group()
+    parser.add_argument("--write", action="store_true",
+                        help="with --attach-order: include-book each missing attach book first (the transformation)")
     mode.add_argument("--load", action="store_true",
                         help="load the raw host/native files in the build's order into one "
                              "bare ACL2 and report errors, arity, macro order and names "
@@ -2618,6 +2957,8 @@ def main(argv: list[str] | None = None) -> int:
     mode.add_argument("--macro-order", action="store_true",
                         help="static: no raw host macro is used before its defmacro in "
                              "build.lisp's load order (FILEs replace the order)")
+    mode.add_argument("--standalone", action="store_true",
+                        help="static: each non-parked host book names only its own include world")
     mode.add_argument("--attach-order", action="store_true",
                         help="static: no certified host file's include-book closure reaches "
                              "an attachable stobj generic before its attach book")
@@ -2632,6 +2973,8 @@ def main(argv: list[str] | None = None) -> int:
                              "(no ACL2; half a second)")
     args = parser.parse_args(argv)
 
+    if args.standalone:
+        return standalone_main()
     if args.books:
         return books_main(args.files)
     if args.loaded:
@@ -2641,7 +2984,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.build_lists:
         return build_lists_main()
     if args.attach_order:
-        return attach_order_main()
+        return attach_order_main(write=getattr(args, "write", False))
     if args.macro_order:
         return macro_order_main(args.files)
     if args.read:

@@ -83,12 +83,14 @@
        (<= (+ backing extra (* 2 (fn-heap-nursery-trigger next cap))) next)
        (<= (+ old extra) next))))
 
-; Launcher and startup agree (cold-start, 2026-10-04).  The launcher sizes a
-; run by the store on disk (books/heap-figure.lisp, lane
-; reservation-after-flip); the startup's protected allowance takes the same
-; observation.  A development store, freshly made, at exactly its launcher's
-; DEFAULT-extended figure is admitted; with the unobserved bound (what every
-; launched node of d5b0b9100 carried) the same heap is refused, by name.
+; Launcher and startup agree (cold-start, 2026-10-04; ADMISSION-RESERVES-NOT-REOPEN,
+; 2026-10-08).  A run is sized for the FULL store, so the launcher's figure and
+; the startup's protected allowance take the same (no) observation: a
+; development store at exactly its launcher's DEFAULT-extended figure is
+; admitted whatever the store on disk held, and a heap one MiB below the
+; DECIDED figure is refused by name, for each preset
+; (fn-prstartup-run-starts-at-the-decided-figure,
+; fn-prstartup-run-refuses-below-the-decided-figure).
 (defconst *prst-run-core* '(615110568 . 517243296))
 ; The host trigger the figures are taken at: books/profile-limits.lisp's :gc-nursery-mib
 ; (+fnn-gc-nursery-octets+), not a copy of its value.
@@ -108,11 +110,45 @@
         (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
                                    *prst-run-core* *prst-nursery* nil nil 32 "/tmp/store" 4 8 1024
                                    *prst-fresh*))
-       (equal (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
-                                         *prst-run-core* *prst-nursery* nil nil 32 "/tmp/store" 4 8 1024
-                                         nil)
-              '(:refused :default-pool-heap-not-held))
+       ; the observation is not read: unobserved and a grown store alike
+       (fn-prstartup-planp
+        (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
+                                   *prst-run-core* *prst-nursery* nil nil 32 "/tmp/store" 4 8 1024
+                                   nil))
+       (fn-prstartup-planp
+        (fn-prstartup-default-plan dyn (cdr *prst-run-core*) *fn-bs-profile-development*
+                                   *prst-run-core* *prst-nursery* nil nil 32 "/tmp/store" 4 8 1024
+                                   '(9437184)))
        (stringp (fn-prstartup-refusal-line '(:refused :default-pool-heap-not-held))))))
+
+; The decided figure starts and one MiB below it is refused by name, at the
+; trigger the host sets in that heap, for each preset (a 126 GiB machine).
+(defun prst-decided-agrees (profile)
+ (declare (xargs :mode :program))
+ (let* ((machine (list (* 126288 1048576)))
+        (decided (fn-heap-reserve-operation-decide :run profile *prst-run-core*
+                                                   *prst-nursery* machine 32 nil))
+        (dyn (* 1048576 (fn-prstartup-nth 1 decided)))
+        (below (- dyn 1048576)))
+  (and (equal (fn-prstartup-nth 0 decided) :heap)
+       (equal (fn-heap-operation-figure-octets :run profile *prst-run-core* *prst-nursery* nil)
+              (fn-heap-operation-figure-octets :run profile *prst-run-core* *prst-nursery*
+                                               '(9437184 . 100)))
+       (<= (fn-prstartup-protected profile *prst-run-core*
+                                   (fn-heap-nursery-trigger dyn *prst-nursery*)
+                                   nil 32 '(9437184))
+           dyn)
+       (< below
+          (fn-prstartup-protected profile *prst-run-core*
+                                  (fn-heap-nursery-trigger below *prst-nursery*)
+                                  nil 32 '(9437184)))
+       (equal (fn-prstartup-default-plan below (cdr *prst-run-core*) profile *prst-run-core*
+                                         (fn-heap-nursery-trigger below *prst-nursery*)
+                                         nil nil 32 "/tmp/store" 4 8 1024 '(9437184))
+              '(:refused :default-pool-heap-not-held)))))
+(assert-event (prst-decided-agrees *fn-bs-profile-development*))
+(assert-event (prst-decided-agrees *fn-heap-small-profile*))
+(assert-event (prst-decided-agrees *fn-bs-profile-scale*))
 
 ; KEYSTONE fn-prstartup-launch-admits-owner-protected, its fields
 ; (cold-start, 2026-10-04; scenarios-2 SCEN-INSTALLED-HEAP-NOT-HELD).

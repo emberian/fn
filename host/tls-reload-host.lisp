@@ -2,8 +2,13 @@
 ; (PRF-212, books/tls-reload.lisp).  Every decision is the book's; these
 ; wrappers only name it for the image (host/native/tls-reload.lisp).
 (in-package "ACL2")
+; D61: the image attaches these (attach-stobj) before the generic they implement;
+; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
+(include-book "../books/payload-arena-attach")
+(include-book "../books/history-paged-attach")
 (include-book "../books/tls-reload")
 (include-book "../books/tls-key-exchange")
+(include-book "../books/definterface")
 
 (defun fn-tlsr-host-facts (chain key match not-before not-after san now)
   (declare (xargs :mode :program))
