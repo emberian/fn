@@ -570,10 +570,13 @@ def _added_roots(t: "Train") -> list[str]:
     re-hooked) is affected by the train though no changed book reaches it;
     train 76 listed three such roots and the changed-book selection missed
     them."""
-    old = git(t.root, "show", "origin/dev:Makefile").stdout
-    new = (t.root / "Makefile").read_text(encoding="utf-8")
-    before = set(makefile_root_list(old))
-    return [r for r in makefile_root_list(new) if r not in before]
+    head = t.root / "Makefile"
+    if not head.is_file():
+        return []  # no Makefile, no roots
+    shown = git(t.root, "show", "origin/dev:Makefile", check=False)
+    # a Makefile new in this train makes every root it lists new
+    before = set(makefile_root_list(shown.stdout)) if shown.returncode == 0 else set()
+    return [r for r in makefile_root_list(head.read_text(encoding="utf-8")) if r not in before]
 
 
 def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
