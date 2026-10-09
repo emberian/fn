@@ -6,7 +6,7 @@ to one of seven classes (durability, authorization, identity-binding,
 ownership-reclamation, resource-reservation, parser-boundary, extraction) by
 its BOOK and the definterface entry that cites it.  The class is computed from
 the tree and the map, never typed per keystone; tools/keystone_emit.py records
-it in planning/teeth-obligations.json (`critical`, `statement_digest`) and its
+it in build/teeth-obligations.json (`critical`, `statement_digest`) and its
 --check applies the gate below.  Single source of truth: the map plus the tree.
 
 THE EVIDENCE PACKAGE (deputy P's five parts), per critical keystone:
@@ -69,7 +69,7 @@ MAP = ROOT / "tools/keystone_critical_map.json"
 EVIDENCE = ROOT / "planning/critical-evidence.json"
 OWED = ROOT / "planning/critical-owed.json"
 CBASE = ROOT / "planning/critical-base.json"
-INTERFACES = ROOT / "planning/interfaces.json"
+import box_artifacts  # noqa: E402
 PARTS = ("premises", "wrong_answer", "host_test", "trace_witness", "mutation")
 DECLARED = ("host_test", "trace_witness", "mutation")
 DECLARED_FIELDS = ("subject",) + DECLARED
@@ -101,10 +101,11 @@ def load_map(path: Path = MAP) -> dict:
     return data
 
 
-def interface_index(path: Path = INTERFACES) -> dict[str, list[dict]]:
-    """Each keystone theorem to the interface entries citing it."""
+def interface_index(root: Path = ROOT) -> dict[str, list[dict]]:
+    """Each keystone theorem to the interface entries citing it (the box
+    step's build/box/interfaces.json, tools/box_artifacts.py)."""
     index: dict[str, list[dict]] = {}
-    for entry in json.loads(path.read_text(encoding="utf-8"))["entries"]:
+    for entry in box_artifacts.load("interfaces.json", root)["entries"]:
         for keystone in entry.get("keystones", []):
             index.setdefault(keystone["theorem"], []).append(entry)
     return index

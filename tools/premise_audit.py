@@ -109,7 +109,7 @@ NEVER, PRESERVED, OFF_HOST, HOSTED = (
     "established by a hosted entry")
 FINDING_CLASSES = (NEVER, PRESERVED, OFF_HOST)
 GUARD = "established by a checked guard"
-INTERFACES = ROOT / "planning" / "interfaces.json"
+import box_artifacts  # noqa: E402
 
 
 def conjuncts(term) -> list:
@@ -326,10 +326,8 @@ def _applications(term, name):
 def native_guard_model(graph) -> GuardModel:
     """The model over the tree: the native files the image loads, the
     declared entries, the host ACL2 files' definitions."""
-    entries = {}
-    if INTERFACES.exists():
-        entries = {row["name"]: row for row in
-                   json.loads(INTERFACES.read_text())["entries"]}
+    entries = {row["name"]: row for row in
+               box_artifacts.load("interfaces.json", ROOT)["entries"]}
     acl2_hosts = [p for p in graph.hosts if "/native/" not in str(p)
                   and str(p.relative_to(ROOT)) in graph.loaded_hosts]
     host_defs = graph.read_definitions(acl2_hosts)

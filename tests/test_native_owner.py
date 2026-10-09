@@ -700,14 +700,16 @@ class NativeOwnerTests(unittest.TestCase):
     @staticmethod
     def declared_raw_entries():
         """The raw-dispatched entries the definterface forms declare, as
-        planning/interfaces.json lists them: the :raw-with rows (the owner's
+        the box step's build/box/interfaces.json lists them: the :raw-with rows (the owner's
         under fn-owner-served-carried and A-OWNER-INVARIANT-CARRIED, whose
         whole-Store guard is not evaluated per call in a production run, and
         the paged history's) and the :raw-guarded creators.  The image's
         dispatch table is filled from the same forms
         (fnn-install-raw-dispatch), and interface_emit.py --check, an image
         preflight, refuses a registry that disagrees with them."""
-        registry = json.loads((ROOT / "planning" / "interfaces.json").read_text())
+        sys.path.insert(0, str(ROOT / "tools"))
+        import box_artifacts
+        registry = box_artifacts.load("interfaces.json", ROOT)
         names = [row["name"] for row in registry["raw_dispatched"] + registry["raw_guarded"]]
         assert len(names) == len(set(names)), names
         return len(names)

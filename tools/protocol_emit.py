@@ -425,7 +425,9 @@ def check_keyword_literals(table: dict) -> list[str]:
 # The exported wire grammars (`--wire`): an ACL2 value, written or compared.
 
 WIRE_BOOK = "books/wire-export"
-WIRE_FILE = ROOT / "specs" / "wire-grammar.json"
+# a box-step artifact, never committed (tools/box_artifacts.py); the release
+# tarball ships it (packaging/release-tarball.sh)
+WIRE_FILE = ROOT / "build" / "box" / "wire-grammar.json"
 WIRE_MARK = "FNWGX"
 
 
@@ -485,6 +487,13 @@ def _stamped(key: str) -> bytes | None:
 
 def wire(write: bool) -> int:
     import hashlib
+    sys.path.insert(0, str(ROOT / "tools"))
+    import box_artifacts
+    try:
+        box_artifacts.path("wire-grammar.json", ROOT)
+    except box_artifacts.Refused as error:
+        print("FAIL %s" % error)
+        return 1
     key = _wire_key()
     octets = _stamped(key)
     if octets is not None:

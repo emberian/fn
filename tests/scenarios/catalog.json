@@ -9924,7 +9924,7 @@
         "`identity relative/control`; `identity /a /b`; `identity help`."
       ],
       "expected": [
-        "Exit 0; `fn-store-identity-v1 format=... node=HEX64 schema=HEX64 profile=HEX64 consumer=unbootstrapped created-revision=... running-revision=... grammar=HEX64`, grammar the BLAKE3 of specs/wire-grammar.json.",
+        "Exit 0; `fn-store-identity-v1 format=... node=HEX64 schema=HEX64 profile=HEX64 consumer=unbootstrapped created-revision=... running-revision=... grammar=HEX64`, grammar the BLAKE3 of the exported wire grammar (build/box/wire-grammar.json).",
         "Exit 0; `consumer=bootstrapped history=HEX incarnation=HEX`, every other field unchanged.",
         "Not exit 0, and no identity line.",
         "Exit 5 (usage) twice; `help` prints `usage: fn identity CONTROL ...` and exits 0."
