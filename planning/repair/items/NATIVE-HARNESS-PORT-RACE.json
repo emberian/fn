@@ -36,9 +36,36 @@
  "state": "in-progress",
  "test": "python3 -m unittest tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range",
  "title": "the native harness hands a node a probed loopback port it released, inside the kernel ephemeral range: any socket on the box (a client connect, another probe) can take it before the node binds (EADDRINUSE)",
- "updated": "2026-10-09T07:02:26Z",
+ "updated": "2026-10-09T07:02:30Z",
  "verify": {
   "base": "e197b71414c30dee15d805442c5281633a4e9aca",
+  "base_observation": {
+   "result": {
+    "assertions": [
+     {
+      "message": "False is not true : the harness handed out a port the kernel can give to another socket before the node binds it",
+      "test": "tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range",
+      "type": "AssertionError"
+     }
+    ],
+    "errors": [],
+    "executed": [
+     "tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_ports.py": "4eba18afb5f30ddc74f1281b260df2316957ec222afa69181bd6f8d451e760a7"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 1,
+   "revision": "e197b71414c30dee15d805442c5281633a4e9aca",
+   "stderr": "test_a_handed_out_port_is_outside_the_kernels_ephemeral_range (tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range) ... FAIL\n\n======================================================================\nFAIL: test_a_handed_out_port_is_outside_the_kernels_ephemeral_range (tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range)\n----------------------------------------------------------------------\nTraceback (most recent call last):\n  File \"/private/var/folders/r8/kfrtq04d5dq_f50zm3tx3phw0000gn/T/repair-verify-hv55us0l/wt/tests/test_ports.py\", line 36, in test_a_handed_out_port_is_outside_the_kernels_ephemeral_range\n    self.assertTrue(port < low, \"the harness handed out a port the kernel can give \"\n    ~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                                \"to another socket before the node binds it\")\n                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\nAssertionError: False is not true : the harness handed out a port the kernel can give to another socket before the node binds it\n\n----------------------------------------------------------------------\nRan 1 test in 0.026s\n\nFAILED (failures=1)\n",
+   "stdout": ""
+  },
   "changed_files": [
    "planning/repair/items/NATIVE-HARNESS-PORT-RACE.json",
    "tests/native_harness.py",
@@ -59,11 +86,44 @@
    "tools/thunderbird_drive.py"
   ],
   "diff_lines": 433,
-  "head": "db52e37638b7f458c1b682bfb6ccb186f588c509",
-  "ok": false,
-  "problems": [
-   "diff is 433 changed lines, over the budget of 400: escalate the item"
-  ],
-  "semantic_ok": false
+  "expected_failure": {
+   "message": "False is not true : the harness handed out a port the kernel can give to another socket before the node binds it",
+   "test": "tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range"
+  },
+  "green_at_head": true,
+  "harness": {
+   "tests/test_ports.py": "4eba18afb5f30ddc74f1281b260df2316957ec222afa69181bd6f8d451e760a7"
+  },
+  "head": "48b6098ff5d526992d5ac1267fe0666f4ba9625b",
+  "head_observation": {
+   "result": {
+    "assertions": [],
+    "errors": [],
+    "executed": [
+     "tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range"
+    ],
+    "expected_failures": [],
+    "python": "3.14.7 (main, Aug  5 2026, 10:29:49) [Clang 21.0.0 (clang-2100.1.1.101)]",
+    "skips": [],
+    "sources": {
+     "tests/test_ports.py": "4eba18afb5f30ddc74f1281b260df2316957ec222afa69181bd6f8d451e760a7"
+    },
+    "tests_run": 1,
+    "unexpected_successes": []
+   },
+   "returncode": 0,
+   "revision": "48b6098ff5d526992d5ac1267fe0666f4ba9625b",
+   "stderr": "test_a_handed_out_port_is_outside_the_kernels_ephemeral_range (tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range) ... ok\n\n----------------------------------------------------------------------\nRan 1 test in 0.029s\n\nOK\n",
+   "stdout": ""
+  },
+  "interpreter": "/opt/homebrew/bin/python3",
+  "ok": true,
+  "problems": [],
+  "red_at_base": true,
+  "runner_sha256": "ffc7d9542fbfe2d4e23f03f31dd170f32ef1a8529d41ebbccc36f18c52946106",
+  "same_tests": true,
+  "semantic_ok": true,
+  "test": "python3 -m unittest tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range",
+  "timeout": 1800.0
  }
 }
