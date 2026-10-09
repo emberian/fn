@@ -1,5 +1,5 @@
 {
- "note": "Append-only; never edited in place (the baseline gate refuses a rewritten or dropped record). Each record admits one planning/known-reds.json row added after the baseline entered (COORDINATION section 5, ruled 2026-10-09 13:05): the row's (kind, subject) key, the dev sha where the red was measured, the repair item, the owner, the coordinator ruling. An amendment that names no present row fails the gate, unless the row was retired and its item is closed.",
+ "note": "Append-only; never edited in place (the baseline gate refuses a rewritten or dropped record). Each record admits one planning/known-reds.json row added after the baseline entered (COORDINATION section 5, ruled 2026-10-09 13:05): the row's (kind, subject) key, the dev sha where the red was measured, the repair item, the owner, the coordinator ruling. An amendment that names no present row fails the gate, unless the row was retired and its item is closed. An owner transfer is a later record for the same row naming the owner it takes over from (transfer_from), with the same item and dev sha; the earlier record stays as the measured owner and the last record is the row's current owner (coordinator 2026-10-09).",
  "amendments": [
   {
    "kind": "native",
@@ -24,6 +24,15 @@
    "item": "LAUNCHER-STACK-ARGS-REPLACE-DECIDED-HEAP",
    "owner": "builder-B",
    "ruling": "coordinator 2026-10-09 13:05: a red found on dev after the baseline enters only by amendment"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_writes_the_operators_fields_and_status_prints_them",
+   "dev_sha": "ac66a0a23",
+   "item": "OPERATOR-STATUS-OBSERVED-SIZING",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-09: owner builder-A (measured at ac66a0a23) -> builder-M, the section-6 memory and admission model",
+   "transfer_from": "builder-A"
   }
  ]
 }

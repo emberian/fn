@@ -18,13 +18,17 @@ What it checks (``--check``): that every theorem cited by
 inside the Makefile root closure; that ``planning/proofs.json`` ``events``
 match the curated map; and that the ledger builds.  ``build/ledger/ledger.json``
 and ``ledger.md`` are views of the tree: written by ``--write``, printed by
-``--stdout``, never committed.
+``--stdout``, never committed.  Every row's ``evidence`` list carries an
+``evidence_digest`` stamp written by ``--repoint`` (the one writer of
+evidence lists); ``--check`` refuses a list whose stamp is missing or stale,
+that is, a list edited by hand.
 
 Usage:
     python3 tools/ledger.py            # report the ledger on stdout
     python3 tools/ledger.py --write    # regenerate proofs.json events; write build/ledger/*
     python3 tools/ledger.py --stdout   # print the ledger markdown
     python3 tools/ledger.py --check    # fail on drift; used by `make check`
+    python3 tools/ledger.py --repoint PRF-N --evidence PATH...   # write a row's evidence list
 """
 
 from __future__ import annotations
@@ -5160,6 +5164,116 @@ def apply_events(regenerated: dict[str, list[str]]) -> str:
 
 
 # --------------------------------------------------------------------------
+# evidence lists: written by this tool, never by hand
+# --------------------------------------------------------------------------
+
+# Citations under these prefixes name reports that left the tree (D71); a
+# repoint may keep them although the file is gone (tools/check_scaffold.py's
+# HISTORICAL_PREFIXES, the same rule).
+EVIDENCE_HISTORICAL = ("planning/evidence/", "docs/evidence/")
+
+
+def evidence_digest(ident: str, evidence: object) -> str:
+    """The provenance stamp of row IDENT's evidence list: the first 16 hex
+    digits of the SHA-256 of the canonical JSON of (id, evidence).  The id is
+    inside the hash, so a stamp copied onto another row does not match."""
+    text = json.dumps({"id": ident, "evidence": evidence}, sort_keys=True,
+                      separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def evidence_problems(registry: dict) -> list[str]:
+    """A row whose evidence list this tool did not write: no
+    ``evidence_digest``, or one that does not match the list."""
+    problems: list[str] = []
+    for entry in registry.get("proofs", []):
+        ident = entry.get("id", "?")
+        stamp = entry.get("evidence_digest")
+        if stamp is None:
+            reason = "has no evidence_digest"
+        elif stamp != evidence_digest(ident, entry.get("evidence")):
+            reason = "does not match its evidence_digest (edited by hand)"
+        else:
+            continue
+        problems.append(f"planning/proofs.json: {ident}: the evidence list {reason}; "
+                        f"evidence lists are written by `python3 tools/ledger.py "
+                        f"--repoint {ident} --evidence PATH...`")
+    return problems
+
+
+def stamped_evidence(entry: dict, evidence: object) -> dict:
+    """ENTRY with EVIDENCE and its stamp, the stamp placed after ``evidence``."""
+    stamp = evidence_digest(entry["id"], evidence)
+    out: dict = {}
+    for key, value in entry.items():
+        if key == "evidence_digest":
+            continue
+        out[key] = evidence if key == "evidence" else value
+        if key == "evidence":
+            out["evidence_digest"] = stamp
+    if "evidence" not in out:
+        out["evidence"] = evidence
+        out["evidence_digest"] = stamp
+    return out
+
+
+def _write_registry(registry: dict) -> None:
+    PROOFS.write_text(json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
+                      encoding="utf-8")
+
+
+def repoint_problems(ident: str, paths: list[str], registry: dict,
+                     root: Path) -> list[str]:
+    """Why PATHS cannot be row IDENT's evidence list (empty when they can)."""
+    problems: list[str] = []
+    if not any(entry.get("id") == ident for entry in registry.get("proofs", [])):
+        problems.append(f"{ident}: not a row of planning/proofs.json")
+    if not paths:
+        problems.append(f"{ident}: an evidence list names at least one file")
+    seen: set[str] = set()
+    for path in paths:
+        if path in seen:
+            problems.append(f"{ident}: {path}: named twice")
+        seen.add(path)
+        if (not path or path != path.strip() or "://" in path
+                or Path(path).is_absolute() or ".." in Path(path).parts):
+            problems.append(f"{ident}: {path!r}: not a repository-relative path")
+        elif not path.startswith(EVIDENCE_HISTORICAL) and not (root / path).is_file():
+            problems.append(f"{ident}: {path}: not a file in this tree")
+    return problems
+
+
+def repoint(ident: str, paths: list[str], root: Path = ROOT) -> list[str]:
+    """Write PATHS as row IDENT's evidence list, stamped; nothing is written
+    when any path is refused."""
+    registry = json.loads(PROOFS.read_text(encoding="utf-8"))
+    problems = repoint_problems(ident, paths, registry, root)
+    if problems:
+        return problems
+    registry["proofs"] = [stamped_evidence(entry, list(paths)) if entry.get("id") == ident
+                          else entry for entry in registry["proofs"]]
+    _write_registry(registry)
+    return []
+
+
+def seal_evidence() -> list[str]:
+    """Stamp every row's evidence list as it stands: run ONCE, when the stamp
+    entered (the lists before it were curated by hand; from here on they are
+    written by --repoint).  Refuses when any row already carries a stamp, so it
+    cannot launder a later hand edit."""
+    registry = json.loads(PROOFS.read_text(encoding="utf-8"))
+    stamped = [entry.get("id", "?") for entry in registry.get("proofs", [])
+               if "evidence_digest" in entry]
+    if stamped:
+        return [f"--seal-evidence runs once; {len(stamped)} row(s) already carry an "
+                f"evidence_digest (first {stamped[0]}); use --repoint"]
+    registry["proofs"] = [stamped_evidence(entry, entry.get("evidence", []))
+                          for entry in registry["proofs"]]
+    _write_registry(registry)
+    return []
+
+
+# --------------------------------------------------------------------------
 # entry points
 # --------------------------------------------------------------------------
 
@@ -5198,6 +5312,8 @@ def check_problems(tree: "Tree | None" = None) -> list[str]:
         problems.append(f"{relative}: missing; run `python3 tools/ledger.py --write`")
     elif PROOFS.read_text(encoding="utf-8") != expected:
         problems.append(f"{relative}: stale; run `python3 tools/ledger.py --write`")
+    if PROOFS.is_file():
+        problems.extend(evidence_problems(json.loads(PROOFS.read_text(encoding="utf-8"))))
     return problems
 
 
@@ -5292,7 +5408,35 @@ def _main(argv: list[str] | None = None) -> int:
                         help="analyse the tree into build/cache/ledger-tree and stop: "
                              "make check's first step, so the checkers that read the "
                              "tree load it instead of each analysing it at once")
+    parser.add_argument("--repoint", metavar="PRF-ID",
+                        help="write the evidence list of this proofs.json row (with "
+                             "--evidence) and its evidence_digest stamp; the only "
+                             "writer of evidence lists, which --check verifies")
+    parser.add_argument("--evidence", nargs="+", default=None, metavar="PATH",
+                        help="with --repoint: the row's whole evidence list, in order; "
+                             "each a file in this tree (planning/evidence/ and "
+                             "docs/evidence/ citations may name reports that left it)")
+    parser.add_argument("--seal-evidence", action="store_true",
+                        help="stamp every row's evidence list as it stands; runs once, "
+                             "refused when any row carries a stamp")
     arguments = parser.parse_args(argv)
+    if arguments.evidence is not None and not arguments.repoint:
+        parser.error("--evidence needs --repoint")
+    if arguments.repoint:
+        if arguments.evidence is None:
+            parser.error("--repoint needs --evidence PATH...")
+        problems = repoint(arguments.repoint, arguments.evidence)
+        for problem in problems:
+            print(f"ERROR: {problem}", file=sys.stderr)
+        if not problems:
+            print(f"{arguments.repoint}: evidence list written "
+                  f"({len(arguments.evidence)} file(s)), stamped")
+        return 1 if problems else 0
+    if arguments.seal_evidence:
+        problems = seal_evidence()
+        for problem in problems:
+            print(f"ERROR: {problem}", file=sys.stderr)
+        return 1 if problems else 0
     if arguments.load_tree:
         started = time.monotonic()
         tree = load_tree()
