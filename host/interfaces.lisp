@@ -2878,10 +2878,29 @@
 (definterface fn-heap-reserve-init-connections
   :class :common-lisp-compliant)
 
-(definterface fn-heap-reserve-operation-decide
+;; The probe's decision for every command (books/heap-command.lisp, lane
+;; memory landing 2): today's fn-heap-reserve-operation-decide for every class
+;; but the store-less one and the observed reads.
+(definterface fn-heap-command-decide
   :class :common-lisp-compliant
-  :keystones (fn-heap-status-decide-is-the-launchers-run-reservation
-              fn-heap-reserve-operation-decide-holds-the-operation))
+  :keystones (fn-heap-stopped-status-holds-no-store
+              fn-heap-command-decide-reads-is-the-read-decision
+              fn-heap-command-decide-otherwise-is-todays))
+
+(definterface fn-heap-command-growth
+  :class :common-lisp-compliant)
+
+(definterface fn-heap-command-line
+  :class :common-lisp-compliant)
+
+(definterface fn-heap-stack-kib
+  :class :common-lisp-compliant)
+
+(definterface fn-mo-img-observed
+  :class :common-lisp-compliant)
+
+(definterface fn-mo-observed-totals
+  :class :common-lisp-compliant)
 
 (definterface fn-crv-extend-reservation
   :class :common-lisp-compliant
