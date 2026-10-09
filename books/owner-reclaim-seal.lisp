@@ -32,38 +32,22 @@
 ; -----------------------------------------------------------------------------
 ; 1. The prediction.
 
-; The held record fn-cat-intern-list makes from W at handle H, without
-; sealing.
-(defun fn-orcs-held-of (w keyring generation h)
-  (declare (xargs :guard (and (fn-record-p w) (fn-prin-keyringp keyring) (natp generation))
-                  :guard-hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp)))))
-  (let ((bytes (fn-record-payload w)))
-    (fn-held-make (fn-record-sequence w) (fn-record-txid w)
-                  (fn-record-generation w) (fn-record-msgid w) h
-                  (fn-record-groups w) (fn-record-obligation-id w)
-                  (fn-record-content-subject w) (fn-record-release-evidence w)
-                  (fn-record-charge w) (fn-record-stamp w)
-                  (fn-held-facts-of bytes)
-                  (fn-held-context-of bytes keyring generation)
-                  nil nil)))
-
-(defthm fn-orcs-intern-list-is-held-of
-  (equal (fn-cat-intern-list w keyring generation fn-arena)
-         (mv (fn-orcs-held-of w keyring generation (fn-arena-count fn-arena))
-             (fn-arena-seal-list (fn-record-payload w) fn-arena)))
-  :hints (("Goal" :in-theory (enable fn-cat-intern-list))))
-
-(in-theory (disable fn-orcs-held-of))
-
-; The predicted rows and, in order, the payloads the swap seals.  Executes
-; by a loop (the rewritten rows are store data).
-(defun fn-orcs-predict-rows (rows keyring generation h)
-  (declare (xargs :guard (and (fn-prin-keyringp keyring) (natp generation) (natp h))))
-  (cond ((atom rows) nil)
-        ((fn-record-p (car rows))
-         (cons (fn-orcs-held-of (car rows) keyring generation h)
-               (fn-orcs-predict-rows (cdr rows) keyring generation (+ 1 h))))
-        (t (cons (car rows) (fn-orcs-predict-rows (cdr rows) keyring generation h)))))
+; Each row is predicted from the identity BEFORE that event. A one-row
+; replay uses the same invalid-record fault as the capture accumulator.
+(defun fn-orcs-predict-rows-at (rows id h)
+  (declare (xargs :guard (natp h)
+                  :guard-hints (("Goal" :in-theory (enable fn-ssr-statep)))))
+  (if (atom rows)
+      nil
+    (let* ((w (car rows))
+           (seed (fn-ssr-seed id))
+           (row (if (fn-record-p w)
+                    (fn-intern-row-at w (fn-ssr-at 1 seed) (fn-ssr-at 2 seed) h)
+                  w)))
+      (cons row
+            (fn-orcs-predict-rows-at
+             (cdr rows) (fn-replay-identity-loop (list row) id)
+             (if (fn-record-p w) (+ 1 h) h))))))
 
 (defun fn-orcs-payloads (rows)
   (declare (xargs :guard t))
@@ -72,16 +56,21 @@
          (cons (fn-record-payload (car rows)) (fn-orcs-payloads (cdr rows))))
         (t (fn-orcs-payloads (cdr rows)))))
 
-(defun fn-orcs-predict-loop (rows keyring generation h racc pacc)
-  (declare (xargs :guard (and (fn-prin-keyringp keyring) (natp generation) (natp h)
-                              (true-listp racc) (true-listp pacc))))
-  (cond ((atom rows) (list (revappend racc nil) (revappend pacc nil)))
-        ((fn-record-p (car rows))
-         (fn-orcs-predict-loop (cdr rows) keyring generation (+ 1 h)
-                               (cons (fn-orcs-held-of (car rows) keyring generation h) racc)
-                               (cons (fn-record-payload (car rows)) pacc)))
-        (t (fn-orcs-predict-loop (cdr rows) keyring generation h
-                                 (cons (car rows) racc) pacc))))
+(defun fn-orcs-predict-loop (rows id h racc pacc)
+  (declare (xargs :guard (and (natp h) (true-listp racc) (true-listp pacc))
+                  :guard-hints (("Goal" :in-theory (enable fn-ssr-statep)))))
+  (if (atom rows)
+      (list (revappend racc nil) (revappend pacc nil))
+    (let* ((w (car rows))
+           (seed (fn-ssr-seed id))
+           (row (if (fn-record-p w)
+                    (fn-intern-row-at w (fn-ssr-at 1 seed) (fn-ssr-at 2 seed) h)
+                  w)))
+      (fn-orcs-predict-loop
+       (cdr rows) (fn-replay-identity-loop (list row) id)
+       (if (fn-record-p w) (+ 1 h) h)
+       (cons row racc)
+       (if (fn-record-p w) (cons (fn-record-payload w) pacc) pacc)))))
 
 ; Whether a row IS the intern's refusal word (any value; no list needed).
 (defun fn-orcs-has-bad (rows)
@@ -93,18 +82,18 @@
 ; The host's call, off the owner mutex: (list ROWS PAYLOADS), or (list :bad
 ; nil) when a row is the intern's refusal word itself (the intern answered
 ; :bad then; the host defers :unencodable, as before).
-(defun fn-orcs-predict (rows keyring generation h)
-  (declare (xargs :guard (and (fn-prin-keyringp keyring) (natp generation) (natp h))
+(defun fn-orcs-predict (rows id h)
+  (declare (xargs :guard (natp h)
                   :verify-guards nil))
   (if (fn-orcs-has-bad rows)
       (list :bad nil)
-    (mbe :logic (list (fn-orcs-predict-rows rows keyring generation h)
+    (mbe :logic (list (fn-orcs-predict-rows-at rows id h)
                       (fn-orcs-payloads rows))
-         :exec (fn-orcs-predict-loop rows keyring generation h nil nil))))
+         :exec (fn-orcs-predict-loop rows id h nil nil))))
 
 (defthm fn-orcs-predict-loop-is-predict
-  (equal (fn-orcs-predict-loop rows keyring generation h racc pacc)
-         (list (revappend racc (fn-orcs-predict-rows rows keyring generation h))
+  (equal (fn-orcs-predict-loop rows id h racc pacc)
+         (list (revappend racc (fn-orcs-predict-rows-at rows id h))
                (revappend pacc (fn-orcs-payloads rows)))))
 
 (verify-guards fn-orcs-predict)
@@ -140,32 +129,42 @@
             (fn-cbor-octet-listp (fn-record-payload w)))
    :hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp)))))
 
-; KEYSTONE.  The hypothesis is the predict's own test (a row that IS the
-; word :bad makes the intern answer :bad).
+(local
+ (defthm fn-orcs-seal-is-the-intern-at
+   (implies (not (fn-orcs-has-bad rows))
+            (equal (fn-orcp-intern-rows-at rows id h fn-arena)
+                   (mv (fn-orcs-predict-rows-at rows id h)
+                       (fn-orcs-seal (fn-orcs-payloads rows) fn-arena))))
+   :hints (("Goal" :induct (fn-orcp-intern-rows-at rows id h fn-arena)
+            :in-theory (disable fn-intern-row-at fn-replay-identity-loop
+                                fn-ssr-seed fn-ssr-at fn-record-p
+                                fn-arena-seal-list-is-append fn-arena-count-is-len)))))
+
+; KEYSTONE. No row is the intern's refusal word itself.
 (defthm fn-orcs-seal-is-the-intern
   (implies (not (fn-orcs-has-bad rows))
-  (equal (fn-orcp-intern-rows rows keyring generation fn-arena)
-         (mv (fn-orcs-predict-rows rows keyring generation (fn-arena-count fn-arena))
-             (fn-orcs-seal (fn-orcs-payloads rows) fn-arena))))
-  :hints (("Goal" :induct (fn-orcp-intern-rows rows keyring generation fn-arena)
-           :in-theory (e/d (fn-intern-event) (fn-arena-seal-list-is-append
-                                              fn-arena-count-is-len)))))
+           (equal (fn-orcp-intern-rows rows id fn-arena)
+                  (mv (fn-orcs-predict-rows-at rows id (fn-arena-count fn-arena))
+                      (fn-orcs-seal (fn-orcs-payloads rows) fn-arena))))
+  :hints (("Goal" :in-theory (e/d (fn-orcp-intern-rows)
+                                  (fn-orcp-intern-rows-at fn-orcs-predict-rows-at
+                                   fn-orcs-seal fn-orcs-payloads)))))
 
 ; Boundary of the host-called tuple prediction and its arena sealing effect.
 (defthm fn-orcs-predict-seal-refines-intern
   (implies (not (fn-orcs-has-bad rows))
-           (equal (fn-orcp-intern-rows rows keyring generation fn-arena)
-                  (mv (car (fn-orcs-predict rows keyring generation
+           (equal (fn-orcp-intern-rows rows id fn-arena)
+                  (mv (car (fn-orcs-predict rows id
                                            (fn-arena-count fn-arena)))
                       (fn-orcs-seal
-                       (cadr (fn-orcs-predict rows keyring generation
+                       (cadr (fn-orcs-predict rows id
                                              (fn-arena-count fn-arena)))
                        fn-arena))))
   :hints (("Goal"
            :use ((:instance fn-orcs-seal-is-the-intern))
            :in-theory (e/d (fn-orcs-predict)
                            (fn-orcs-seal-is-the-intern fn-orcp-intern-rows
-                            fn-orcs-seal fn-orcs-predict-rows fn-orcs-payloads)))))
+                            fn-orcs-seal fn-orcs-predict-rows-at fn-orcs-payloads)))))
 
 ; -----------------------------------------------------------------------------
 ; 4. The seal word.
@@ -193,3 +192,111 @@
            (member-equal (fn-orcs-seal-word word count base)
                          (list word :moved)))
   :rule-classes nil)
+
+(defthm fn-orcs-predict-rows-at-true-listp
+  (true-listp (fn-orcs-predict-rows-at rows id h))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (disable fn-intern-row-at fn-replay-identity-loop
+                                     fn-ssr-seed fn-ssr-at fn-record-p))))
+
+(local
+ (defthm fn-orcs-identity-loop-cons
+   (implies (and (true-listp xs) (syntaxp (not (equal xs ''nil))))
+            (equal (fn-replay-identity-loop (cons x xs) id)
+                   (fn-replay-identity-loop xs (fn-replay-identity-loop (list x) id))))
+   :hints (("Goal" :use ((:instance fn-replay-identity-append-of-true-lists
+                                    (prefix (list x)) (suffix xs) (ctx id)))
+            :in-theory (disable fn-replay-identity-append-of-true-lists
+                                fn-replay-identity-loop)))))
+
+(local
+ (defthm fn-orcs-identity-loop-nil
+   (equal (fn-replay-identity-loop nil id) id)
+   :hints (("Goal" :in-theory (enable fn-replay-identity-loop)))))
+
+(defthm fn-orcs-predict-rows-at-of-append
+  (implies (natp h)
+           (equal (fn-orcs-predict-rows-at (append a b) id h)
+                  (append
+                   (fn-orcs-predict-rows-at a id h)
+                   (fn-orcs-predict-rows-at
+                    b (fn-replay-identity-loop (fn-orcs-predict-rows-at a id h) id)
+                    (+ h (len (fn-orcs-payloads a)))))))
+  :hints (("Goal" :induct (fn-orcs-predict-rows-at a id h)
+           :in-theory (disable fn-intern-row-at fn-replay-identity-loop
+                               fn-ssr-seed fn-ssr-at fn-record-p))))
+
+; Exactly the fold's plain-record and unchanged-wire-event arms.
+(defun fn-orcs-fold-rowsp (rows)
+  (declare (xargs :guard t))
+  (if (atom rows)
+      (null rows)
+    (and (or (fn-record-p (car rows))
+             (and (not (fn-stxa-p (car rows))) (fn-wire-event-p (car rows))))
+         (fn-orcs-fold-rowsp (cdr rows)))))
+
+(local
+ (defthm fn-orcs-rev-onto
+   (equal (fn-ag-rev-onto x acc) (revappend x acc))))
+
+(local
+ (defthm fn-orcs-rows-of-publish
+   (equal (fn-ssr-rows (fn-ssr-publish acc row wire id))
+          (append (fn-ssr-rows acc) (list row)))
+   :hints (("Goal" :in-theory (enable fn-ssr-publish fn-ssr-rows fn-ssr-state fn-ssr-at)))))
+(local
+ (defthm fn-orcs-id-of-publish
+   (equal (fn-ssr-at 3 (fn-ssr-publish acc row wire id)) id)
+   :hints (("Goal" :in-theory (enable fn-ssr-publish fn-ssr-state fn-ssr-at)))))
+(local
+ (defthm fn-orcs-rows-true-listp
+   (implies (not (equal acc :bad)) (true-listp (fn-ssr-rows acc)))
+   :hints (("Goal" :in-theory (enable fn-ssr-rows)))))
+(local
+ (defthm fn-orcs-invp-parts
+   (implies (fn-scka-invp acc)
+            (and (not (equal acc :bad))
+                 (natp (fn-ssr-at 2 acc))
+                 (equal (fn-ssr-at 1 (fn-ssr-seed (fn-ssr-at 3 acc)))
+                        (fn-ssr-at 1 acc))
+                 (equal (fn-ssr-at 2 (fn-ssr-seed (fn-ssr-at 3 acc)))
+                        (fn-ssr-at 2 acc))))
+   :hints (("Goal" :in-theory (enable fn-scka-invp fn-ssr-statep fn-ssr-seed
+                                     fn-ssr-state fn-ssr-at)))))
+(local
+ (defthm fn-orcs-loop-one-is-step
+   (implies (fn-store-event-p row)
+            (equal (fn-replay-identity-loop (list row) id)
+                   (fn-replay-identity-step id row)))
+   :hints (("Goal" :in-theory (e/d (fn-replay-identity-loop)
+                                   (fn-store-event-p fn-replay-identity-step))))))
+
+(local
+ (defthm fn-orcs-predict-is-fold-from
+   (implies (and (fn-orcs-fold-rowsp rows) (fn-scka-invp acc) (natp h)
+                 (not (equal (fn-scka-fold-at acc rows h) :bad)))
+            (equal (fn-ssr-rows (fn-scka-fold-at acc rows h))
+                   (append (fn-ssr-rows acc)
+                           (fn-orcs-predict-rows-at rows (fn-ssr-at 3 acc) h))))
+   :hints (("Goal" :induct (fn-scka-fold-at acc rows h)
+            :in-theory (e/d (fn-scka-fold-at fn-scka-intern-one fn-scka-sealsp)
+                            (fn-intern-row-at fn-ssr-seed fn-ssr-at fn-ssr-publish
+                             fn-ssr-rows fn-scka-invp fn-record-p fn-stxa-p
+                             fn-wire-event-p fn-store-event-p fn-replay-identity-step
+                             fn-replay-identity-loop fn-stxk-context-kind)))
+           (and stable-under-simplificationp
+                '(:use ((:instance fn-scka-invp-of-publish (wire (car rows)))
+                        (:instance fn-scka-intern-one-is-store-event
+                         (w (car rows)) (k (fn-ssr-at 1 acc)) (g (fn-ssr-at 2 acc)))))))))
+
+; KEYSTONE: exact row equality with the replay fold, handles included.
+(defthm fn-orcs-predict-rows-at-is-the-fold
+  (implies (and (fn-orcs-fold-rowsp rows) (natp h)
+                (not (equal (fn-scka-intern-at rows id h) :bad)))
+           (equal (fn-orcs-predict-rows-at rows id h)
+                  (fn-scka-intern-at rows id h)))
+  :hints (("Goal" :use ((:instance fn-orcs-predict-is-fold-from
+                                  (acc (fn-ssr-seed id))))
+           :in-theory (e/d (fn-scka-intern-at fn-ssr-rows)
+                           (fn-scka-fold-at fn-orcs-predict-rows-at
+                            fn-ssr-at fn-ssr-seed fn-orcs-predict-is-fold-from)))))

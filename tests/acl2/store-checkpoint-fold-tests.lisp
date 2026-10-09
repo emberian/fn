@@ -274,15 +274,89 @@
                                  (fn-sn-row-verdicts (fn-sco-records opened-split))))
                '(:unverified :malformed 2)))))
 
-;; The reclaim swap predicts the rewritten rows at ONE keyring and generation
-; (fn-orcs-predict-rows): after the rotation no single pair gives the replay's
-; rows (OWNER-RECLAIM-PREDICT-FOLD-CONTEXT).
+; The repaired predictor is the actual replay, with the same handles.
+(assert-event
+ (and (fn-orcs-fold-rowsp *scft-log*) (natp 0)
+      (not (equal (fn-scka-intern-at *scft-log* *scft-id0* 0) :bad))
+      (equal (fn-orcs-predict-rows-at *scft-log* *scft-id0* 0) *scft-replay*)))
+
+; The withdrawn single-pair computation stays inline as the wrong answer.
 (assert-event
  (let* ((acc (fn-scka-fold-at (fn-ssr-seed *scft-id0*) *scft-log* 0))
         (k (fn-ssr-at 1 acc)) (g (fn-ssr-at 2 acc)))
    (and (not (eq acc :bad))
-        (not (equal (fn-orcs-predict-rows *scft-log* nil 0 0) *scft-replay*))
-        (not (equal (fn-orcs-predict-rows *scft-log* k g 0) *scft-replay*)))))
+        (not (equal (list *scft-enroll* (fn-intern-row-at *scft-a* nil 0 0)
+                          *scft-rotate* (fn-intern-row-at *scft-b* nil 0 1))
+                    *scft-replay*))
+        (not (equal (list *scft-enroll* (fn-intern-row-at *scft-a* k g 0)
+                          *scft-rotate* (fn-intern-row-at *scft-b* k g 1))
+                    *scft-replay*)))))
+
+(local
+ (defthm scft-intern-row-generation
+   (equal (fn-hc-generation (fn-held-context (fn-intern-row-at w k g h))) g)
+   :hints (("Goal" :in-theory (enable fn-intern-row-at fn-held-context-of
+                                     fn-held-context fn-hc-generation fn-held-make fn-hc-make)))))
+(defthm scft-no-single-pair-is-the-replay
+  (not (equal (list *scft-enroll* (fn-intern-row-at *scft-a* k g 0)
+                    *scft-rotate* (fn-intern-row-at *scft-b* k g 1))
+              *scft-replay*))
+  :hints (("Goal" :use ((:instance scft-intern-row-generation
+                                  (w *scft-a*) (h 0))
+                        (:instance scft-intern-row-generation
+                                   (w *scft-b*) (h 1)))
+           :in-theory (disable fn-intern-row-at fn-held-context fn-hc-generation
+                               scft-intern-row-generation)))
+  :rule-classes nil)
+
+; Domain removal: a signed wire composite is interned by the fold, whereas
+; this predictor intentionally keeps it. Primitive signature results are
+; observations, as in store-identity-traces-tests.
+(make-event
+ `(defconst *scft-predict-composite*
+    ',(fn-hsig-authorized-article-event
+       1 1 1 1 (fn-stxk-snapshot *scft-enroll*) "<before@example>"
+       (fn-record-string-octets "s1") (fn-record-encode-impl *scft-a*)
+       *scft-principal* *scft-keys1* '(65 13 10)
+       (list (cons :ed25519 (make-list 64 :initial-element 17))
+             (cons :ml-dsa-65 (make-list 3309 :initial-element 19)))
+       (cdr (assoc-eq :ml-dsa-65 *scft-keys1*)) :verified :verified)))
+(defconst *scft-composite-log* (list *scft-enroll* *scft-predict-composite*))
+
+; Handle removal: an invalid negative handle yields a non-store-event row.
+; The fold's raw step accepts its NIL sequence from the malformed initial
+; identity; the predictor's one-row replay faults it as :invalid-record.
+(defconst *scft-negative-log*
+  (list *sckat-w1* (fn-stxk-make 1 1 1 1 '(1) '(1)) *sckat-w2*))
+
+(defteeth fn-orcs-predict-rows-at-is-the-fold
+ :claim (((fold-rows (fn-orcs-fold-rowsp rows))
+          (handle (natp h))
+          (not-refused (not (equal (fn-scka-intern-at rows id h) :bad))))
+         (equal (fn-orcs-predict-rows-at rows id h) (fn-scka-intern-at rows id h)))
+ :subject fn-orcs-predict-rows-at
+ :witness ((rows *scft-log*) (id *scft-id0*) (h 0))
+ :breaks ((fold-rows ((rows *scft-composite-log*)))
+          (handle ((rows *scft-negative-log*) (id (fn-stxk-initial-context nil)) (h -1))
+                  :logical "the fold's raw step and the capture's replay differ on the malformed held row")
+          (not-refused ((rows (list *scft-a*)))))
+ :mutations ((single-pair
+              (:conclusion
+               (equal (list *scft-enroll* (fn-intern-row-at *scft-a* nil 0 0)
+                            *scft-rotate* (fn-intern-row-at *scft-b* nil 0 1))
+                      (fn-scka-intern-at rows id h)))
+              () :fault "the old computation freezes every record at nil/0")))
+
+; The former S3 counterexample now splits correctly, without a new premise.
+(assert-event
+ (let* ((a '(nil)) (id (fn-stxk-initial-context nil))
+        (b (cdr *scft-negative-log*))
+        (pa (fn-orcs-predict-rows-at a id 0)))
+   (and (natp 0)
+        (equal (fn-orcs-predict-rows-at (append a b) id 0)
+               (append pa (fn-orcs-predict-rows-at
+                           b (fn-replay-identity-loop pa id)
+                           (+ 0 (len (fn-orcs-payloads a)))))))))
 
 ; --- 8. the keystone's teeth (Ruling 22 evidence package) -------------------------
 

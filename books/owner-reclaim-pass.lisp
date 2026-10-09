@@ -47,6 +47,7 @@
 (include-book "owner-credits")
 (include-book "owner-checkpoint-open")
 (include-book "replay-identity-index")
+(include-book "store-checkpoint-fold")
 
 ; -----------------------------------------------------------------------------
 ; 1. The pass's memory.
@@ -364,25 +365,39 @@
 ; -----------------------------------------------------------------------------
 ; 4. The rebuild and the swapped owner.
 
-; The rewritten rows interned: each tombstoned record (a plain record, the
-; only rows the rewrite makes: fn-orc-record-is-not-held) interned into the
-; live arena under the captured Store's keyring and generation
-; (fn-intern-event, as the open interns), every other row kept by pointer.
-; The host calls it a chunk at a time under the owner mutex (the arena is
-; appended by the owner's quanta only); the fresh handles are above every
-; count a reader captured, and no row the owner serves names them until
-; the swap.  (mv ROWS FN-ARENA), ROWS :bad when a record does not intern.
-; Executes by a loop (depth_check: a chunk of rewritten rows, data), as
-; books/store-intern.lisp fn-intern-events does: the :logic is the recursion,
-; the :exec the loop, equal by the bridge def-loop :fold generates, and the
-; guards are verified, so the host's call runs the loop.
-(def-loop fn-orcp-intern-rows (rows keyring generation fn-arena)
-  :shape :fold :over rows :st fn-arena :done (atom rows) :elt r
+; Reference interning of the rewritten history: seal plain records at the
+; pair of the identity before each event, and retain every other row. The
+; generated fold carries the identity and handle together; its wrapper
+; starts the handle at the arena count. Identity advancement uses the same
+; one-row replay as the predictor and capture accumulator, including faults.
+; A row equal to :bad refuses the result after any preceding arena effects.
+(defthm fn-orcp-seed-pair
+  (and (fn-prin-keyringp (fn-ssr-at 1 (fn-ssr-seed id)))
+       (natp (fn-ssr-at 2 (fn-ssr-seed id))))
+  :hints (("Goal" :use ((:instance fn-ssr-seed-establishes-statep (identity id)))
+           :in-theory (e/d (fn-ssr-statep) (fn-ssr-seed-establishes-statep)))))
+
+(def-loop fn-orcp-intern-rows-at (rows id h fn-arena)
+  :shape :fold :over (rows id h) :st fn-arena :done (atom rows) :elt r
+  :let ((seed (fn-ssr-seed id))
+        (row (if (fn-record-p r)
+                 (fn-intern-row-at r (fn-ssr-at 1 seed) (fn-ssr-at 2 seed) h)
+               r)))
   :row (if (fn-record-p r)
-           (fn-intern-event r keyring generation fn-arena)
-         (mv r fn-arena))
-  :next (cdr rows)
-  :guard (and (fn-prin-keyringp keyring) (natp generation)))
+           (let ((fn-arena (fn-arena-seal-list (fn-record-payload r) fn-arena)))
+             (mv row fn-arena))
+         (mv row fn-arena))
+  :next ((cdr rows) (fn-replay-identity-loop (list row) id)
+         (if (fn-record-p r) (+ 1 h) h))
+  :measure (len rows)
+  :guard (natp h)
+  :guard-hints (("Goal" :in-theory (enable fn-ssr-statep fn-record-p fn-record-payloadp))))
+
+; The handle cursor starts at the live arena's count; the generated fold
+; advances it alongside the identity, once per sealed plain record.
+(defun fn-orcp-intern-rows (rows id fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t))
+  (fn-orcp-intern-rows-at rows id (fn-arena-count fn-arena) fn-arena))
 
 ; The rebuild, off the mutex over the interned rewritten ROWS: the open's
 ; extension of the empty capture over them (fn-rii-sco-extend, the host's

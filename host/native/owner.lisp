@@ -8685,32 +8685,30 @@ publication).  Answers the reply word."
                  ;; rebuilt capture (KEYSTONES fn-rcw-predict-acc-steps-is-
                  ;; predict, fn-rcw-rebuild-of-the-chunked-capture-is-the-
                  ;; full-open); the chunks' seal payloads, in order.
-                 (destructuring-bind (keyring generation)
-                     (fnn-core 'fn-owner-orcp-keyring s)
-                   (setq base (fnn-owner-gated (service :control)
-                                (first (fnn-call 'fn-arena-count arena))))
-                   (let ((acc3 (fnn-core 'fn-rcw-acc-init configs)) (h3 base) (bad nil)
-                         (payload-chunks nil) (nrows 0))
-                     (fnn-owner-reclaim-walk
-                      records ctx arena service history-source
-                      (lambda (chunk)
-                        (fnn-checkpoint-yield "reclaim-walk" nrows)
-                        (unless bad
-                          (let ((r (fnn-core 'fn-rcw-predict-acc-step acc3 configs chunk
-                                             keyring generation h3)))
-                            (if (eq r :bad)
-                                (setq bad t)
-                              (progn (setq acc3 (first r) h3 (second r))
-                                     (when (third r) (push (third r) payload-chunks))))))
-                        (incf nrows (length chunk))))
-                     (when bad (deferred :unencodable) (return-from pass))
-                     (unless (= nrows count)
-                       (fnn-fault "the rewritten history is not the captured history's length"))
-                     (setq seal-payloads (let ((all nil))
-                                           (dolist (c payload-chunks all)
-                                             (setq all (append c all))))
-                           e (fnn-core 'fn-rcw-acc-finish acc3)
-                           acc3 nil)))
+                 (setq base (fnn-owner-gated (service :control)
+                              (first (fnn-call 'fn-arena-count arena))))
+                 (let ((acc3 (fnn-core 'fn-rcw-acc-init configs)) (h3 base) (bad nil)
+                       (payload-chunks nil) (nrows 0))
+                   (fnn-owner-reclaim-walk
+                    records ctx arena service history-source
+                    (lambda (chunk)
+                      (fnn-checkpoint-yield "reclaim-walk" nrows)
+                      (unless bad
+                        (let ((r (fnn-core 'fn-rcw-predict-acc-step acc3 configs chunk
+                                           h3)))
+                          (if (eq r :bad)
+                              (setq bad t)
+                            (progn (setq acc3 (first r) h3 (second r))
+                                   (when (third r) (push (third r) payload-chunks))))))
+                      (incf nrows (length chunk))))
+                   (when bad (deferred :unencodable) (return-from pass))
+                   (unless (= nrows count)
+                     (fnn-fault "the rewritten history is not the captured history's length"))
+                   (setq seal-payloads (let ((all nil))
+                                         (dolist (c payload-chunks all)
+                                           (setq all (append c all))))
+                         e (fnn-core 'fn-rcw-acc-finish acc3)
+                         acc3 nil))
                  ;; the walks are done: the context freed and the root pin
                  ;; returned before the swap is attempted
                  (fnn-core 'fn-owner-orc-ctx-free ctx)

@@ -6145,14 +6145,6 @@ itself."
       (value (fn-ores-config-refused :reclaim-instant)))))
 
 
-(defun fn-owner-orcp-keyring (s)
-  (declare (xargs :mode :program))
-  (list (fn-sn-keyring s) (fn-sn-keyring-generation s)))
-
-; host/native/owner.lisp dispatches it (lane online-reclaim).
-(definterface fn-owner-orcp-keyring
-  :class ::program)
-
 ; Off the mutex, pure: the rebuild (fn-orcp-rebuild: KEYSTONE
 ; fn-orcp-rebuild-is-the-full-open) and the carried folds the install makes
 ; over the rebuilt Store (fn-owner-install-extended, fn-owner-install-
