@@ -865,7 +865,7 @@
 (defthm fn-rtc-req-submit-lists
   (and (true-listp (mv-nth 1 (fn-rtc-req-submit r id inc s)))
        (true-listp (mv-nth 2 (fn-rtc-req-submit r id inc s))))
-  :hints (("Goal" :in-theory (disable fn-rtc-submit-okp fn-rtc-issue fn-rtc-with-buffer
+  :hints (("Goal" :in-theory (disable fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op fn-rtc-submit-okp fn-rtc-issue fn-rtc-with-buffer
                                       fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-buffered-kind-p
                                       fn-rtc-extrap))))
 
@@ -1283,7 +1283,7 @@
 (defthm fn-rtc-req-submit-keeps-leased
   (implies (fn-rtc-leasedp h s)
            (equal (fn-rtc-buffer h (mv-nth 0 (fn-rtc-req-submit r id inc s))) (fn-rtc-buffer h s)))
-  :hints (("Goal" :in-theory (disable fn-rtc-submit-okp fn-rtc-find-use fn-rtc-live-p))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op fn-rtc-submit-okp fn-rtc-find-use fn-rtc-live-p))))
 (defthm fn-rtc-request-keeps-leased
   (implies (fn-rtc-leasedp h s)
            (equal (fn-rtc-buffer h (mv-nth 0 (fn-rtc-request r id inc s))) (fn-rtc-buffer h s)))
@@ -1320,7 +1320,7 @@
            (and (equal (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) s))
                        (fn-rtc-h-gen (fn-rtc-u-hd u)))
                 (fn-rtc-leasedp (fn-rtc-h-buf (fn-rtc-u-hd u)) s)))
-  :hints (("Goal" :in-theory (disable fn-rtc-handlep fn-rtc-h-buf fn-rtc-h-gen fn-rtc-holders
+  :hints (("Goal" :in-theory (disable fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op fn-rtc-handlep fn-rtc-h-buf fn-rtc-h-gen fn-rtc-holders
                                       fn-rtc-current-p fn-rtc-usep))))
 
 
@@ -1441,12 +1441,42 @@
                  (:instance fn-rtc-invp-uses-okp)))))
 
 
+(defthm fn-rtc-req-acquire-keeps-uses
+  (implies (member-equal u (fn-rtc-uses s))
+           (member-equal u (fn-rtc-uses (mv-nth 0 (fn-rtc-req-acquire r id inc s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p fn-rtc-kind-op fn-rtc-b-gen fn-rtc-splice))))
+
+(defthm fn-rtc-req-write-keeps-uses
+  (implies (member-equal u (fn-rtc-uses s))
+           (member-equal u (fn-rtc-uses (mv-nth 0 (fn-rtc-req-write r id inc s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p fn-rtc-kind-op fn-rtc-b-gen fn-rtc-splice))))
+
+(defthm fn-rtc-req-release-keeps-uses
+  (implies (member-equal u (fn-rtc-uses s))
+           (member-equal u (fn-rtc-uses (mv-nth 0 (fn-rtc-req-release r id inc s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p fn-rtc-kind-op fn-rtc-b-gen fn-rtc-splice))))
+
+(defthm fn-rtc-req-close-keeps-uses
+  (implies (member-equal u (fn-rtc-uses s))
+           (member-equal u (fn-rtc-uses (mv-nth 0 (fn-rtc-req-close r id inc s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p fn-rtc-kind-op fn-rtc-b-gen fn-rtc-splice))))
+
+(defthm fn-rtc-req-cancel-keeps-uses
+  (implies (member-equal u (fn-rtc-uses s))
+           (member-equal u (fn-rtc-uses (mv-nth 0 (fn-rtc-req-cancel r id inc s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p fn-rtc-kind-op fn-rtc-b-gen fn-rtc-splice))))
+
+(defthm fn-rtc-req-submit-keeps-uses
+  (implies (member-equal u (fn-rtc-uses s))
+           (member-equal u (fn-rtc-uses (mv-nth 0 (fn-rtc-req-submit r id inc s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p fn-rtc-kind-op fn-rtc-b-gen fn-rtc-splice))))
+
 (defthm fn-rtc-request-keeps-uses
   (implies (member-equal u (fn-rtc-uses s))
            (member-equal u (fn-rtc-uses (mv-nth 0 (fn-rtc-request r id inc s)))))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
-                                   fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit)
-                                  (fn-rtc-submit-okp fn-rtc-find-use fn-rtc-live-p fn-rtc-current-p)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-request)
+                                  (mv-nth fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
+                                   fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit)))))
 
 (defthm fn-rtc-requests-keeps-uses
   (implies (member-equal u (fn-rtc-uses s))
@@ -1517,7 +1547,7 @@
        (implies (member-equal u (fn-rtc-uses s1))
                 (member-equal u (fn-rtc-uses (mv-nth 0 (fn-rtc-accept-branch s1 out q))))))
   :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch fn-rtc-leasedp)
-                                  (mv-nth fn-rtc-free-slot fn-rtc-s-inc)))))
+                                  (fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op mv-nth fn-rtc-free-slot fn-rtc-s-inc)))))
 
 (defthm fn-rtc-close-branch-frame
   (and (implies (fn-rtc-leasedp h s1)
@@ -1569,7 +1599,7 @@
 (defthm fn-rtc-gen-le-of-req-close (fn-rtc-gen-le h s (mv-nth 0 (fn-rtc-req-close r id inc s)))
   :hints (("Goal" :in-theory (enable fn-rtc-gen))))
 (defthm fn-rtc-gen-le-of-req-submit (fn-rtc-gen-le h s (mv-nth 0 (fn-rtc-req-submit r id inc s)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-gen) (fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-extrap)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-gen) (fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-extrap)))))
 (defthm fn-rtc-gen-le-of-request (fn-rtc-gen-le h s (mv-nth 0 (fn-rtc-request r id inc s)))
   :hints (("Goal" :in-theory (e/d (fn-rtc-request)
                                   (fn-rtc-gen-le fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
@@ -1615,7 +1645,7 @@
 (defthm fn-rtc-gen-le-of-accept-branch
   (fn-rtc-gen-le h s1 (mv-nth 0 (fn-rtc-accept-branch s1 out q)))
   :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch)
-                                  (fn-rtc-gen mv-nth fn-rtc-free-slot fn-rtc-gen-le-of-deliver fn-rtc-gen-le-of-rearm
+                                  (fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op fn-rtc-gen mv-nth fn-rtc-free-slot fn-rtc-gen-le-of-deliver fn-rtc-gen-le-of-rearm
                                    fn-rtc-deliver fn-rtc-rearm))
            :use ((:instance fn-rtc-gen-le-of-rearm (s s1))
                  (:instance fn-rtc-gen-le-of-deliver
@@ -1640,7 +1670,7 @@
 (defthm fn-rtc-gen-le-of-close-branch
   (fn-rtc-gen-le h s1 (mv-nth 0 (fn-rtc-close-branch s1 id inc)))
   :hints (("Goal" :in-theory (e/d (fn-rtc-close-branch fn-rtc-gen)
-                                  (mv-nth fn-rtc-uses-of-slot-p fn-rtc-rearm fn-rtc-gen-le-of-rearm))
+                                  (fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op mv-nth fn-rtc-uses-of-slot-p fn-rtc-rearm fn-rtc-gen-le-of-rearm))
            :use ((:instance fn-rtc-gen-le-of-rearm
                   (s (let* ((s2 (fn-rtc-make (fn-rtc-config s1) (fn-rtc-slots s1)
                                              (fn-rtc-release-all (fn-rtc-pool s1) id inc)
@@ -1693,15 +1723,16 @@
 
 (defthm fn-rtc-step-is-step-state
   (equal (mv-nth 0 (fn-rtc-step s e q)) (fn-rtc-step-state s e q))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-step fn-rtc-step*)
+  :hints (("Goal" :in-theory (e/d (fn-rtc-step fn-rtc-step* fn-rtc-step-state)
                                   (fn-rtc-acts-on-p fn-rtc-e-kind fn-rtc-e-id fn-rtc-e-inc
                                    fn-rtc-delivered-outcome fn-rtc-find-use fn-rtc-key fn-rtc-end-use
                                    fn-rtc-rearm fn-rtc-deliver fn-rtc-accept-branch fn-rtc-close-branch
-                                   fn-rtc-use-bound fn-rtc-nslots fn-rtc-nbufs fn-rtc-h-len fn-rtc-u-hd)))))
+                                   fn-rtc-use-bound fn-rtc-nslots fn-rtc-nbufs fn-rtc-h-len fn-rtc-u-hd
+                                   member-equal fn-rtc-config nfix fn-rtc-cap fn-rtc-uses)))))
 (defthm fn-rtc-gen-le-of-step-state
   (fn-rtc-gen-le h s (fn-rtc-step-state s e q))
   :hints (("Goal" :in-theory (e/d (fn-rtc-step-state)
-                                  (mv-nth fn-rtc-acts-on-p fn-rtc-e-kind fn-rtc-e-id fn-rtc-e-inc
+                                  (fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op mv-nth fn-rtc-acts-on-p fn-rtc-e-kind fn-rtc-e-id fn-rtc-e-inc
                                    fn-rtc-delivered-outcome fn-rtc-find-use fn-rtc-key fn-rtc-end-use
                                    fn-rtc-rearm fn-rtc-deliver fn-rtc-accept-branch fn-rtc-close-branch)))))
 
@@ -1743,7 +1774,7 @@
   (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-request r id inc s))) (fn-rtc-mstate j s))
   :hints (("Goal" :in-theory (e/d (fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
                                    fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit)
-                                  (fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p
+                                  (fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p
                                    fn-rtc-extrap fn-rtc-kind-op fn-rtc-splice)))))
 (defthm fn-rtc-requests-keeps-mstates
   (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-requests reqs id inc s))) (fn-rtc-mstate j s))
@@ -1761,7 +1792,7 @@
 (defthm fn-rtc-mstate-of-accept-branch
   (implies (not (equal (nfix j) (nfix (fn-rtc-free-slot 0 (fn-rtc-slots s1)))))
            (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-accept-branch s1 out q))) (fn-rtc-mstate j s1)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (mv-nth fn-rtc-free-slot fn-rtc-deliver fn-rtc-rearm)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op mv-nth fn-rtc-free-slot fn-rtc-deliver fn-rtc-rearm)))))
 (defthm fn-rtc-mstates-is-mstate
   (equal (fn-rtc-get j (fn-rtc-mstates s)) (fn-rtc-mstate j s))
   :hints (("Goal" :in-theory (enable fn-rtc-mstate))))
@@ -1771,7 +1802,7 @@
 (defthm fn-rtc-mstate-of-close-branch
   (implies (not (equal (nfix j) (nfix id)))
            (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-close-branch s1 id inc))) (fn-rtc-mstate j s1)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-close-branch) (mv-nth fn-rtc-uses-of-slot-p fn-rtc-rearm)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-close-branch) (fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op mv-nth fn-rtc-uses-of-slot-p fn-rtc-rearm)))))
 (defthm fn-rtc-mstate-of-accept-branch-not-done
   (implies (not (eq (fn-rtc-get 0 out) :done))
            (equal (fn-rtc-mstate j (mv-nth 0 (fn-rtc-accept-branch s1 out q))) (fn-rtc-mstate j s1)))
@@ -1839,7 +1870,7 @@
   (implies (not (fn-rtc-m-committedp (fn-rtc-mstate j s1)))
            (not (fn-rtc-m-committedp (fn-rtc-mstate j (mv-nth 0 (fn-rtc-accept-branch s1 out q))))))
   :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch fn-rtc-fsync-done-p)
-                                  (mv-nth fn-rtc-free-slot fn-rtc-deliver fn-rtc-rearm fn-rtc-m-commits-only-on-fsync-done))
+                                  (fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op mv-nth fn-rtc-free-slot fn-rtc-deliver fn-rtc-rearm fn-rtc-m-commits-only-on-fsync-done))
            :use ((:instance fn-rtc-m-commits-only-on-fsync-done
                   (m (fn-rtc-m-init)) (ev (list :accept out))
                   (pool (fn-rtc-borrow (fn-rtc-pool s1))) (q (nfix q)))))))
@@ -1903,7 +1934,7 @@
 (defthm fn-rtc-req-submit-keeps-foreign
   (implies (fn-rtc-foreign-ws-p h id s)
            (equal (fn-rtc-buffer h (mv-nth 0 (fn-rtc-req-submit r id inc s))) (fn-rtc-buffer h s)))
-  :hints (("Goal" :in-theory (disable fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-extrap))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-extrap))))
 (defthm fn-rtc-request-keeps-foreign
   (implies (fn-rtc-foreign-ws-p h id s)
            (equal (fn-rtc-buffer h (mv-nth 0 (fn-rtc-request r id inc s))) (fn-rtc-buffer h s)))
@@ -1922,7 +1953,7 @@
 (defthm fn-rtc-accept-branch-keeps-foreign
   (implies (fn-rtc-foreign-ws-p h (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1)
            (equal (fn-rtc-buffer h (mv-nth 0 (fn-rtc-accept-branch s1 out q))) (fn-rtc-buffer h s1)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (mv-nth fn-rtc-free-slot fn-rtc-deliver fn-rtc-rearm)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op mv-nth fn-rtc-free-slot fn-rtc-deliver fn-rtc-rearm)))))
 (defthm fn-rtc-close-branch-keeps-foreign
   (implies (fn-rtc-foreign-ws-p h id s1)
            (equal (fn-rtc-buffer h (mv-nth 0 (fn-rtc-close-branch s1 id inc))) (fn-rtc-buffer h s1)))
@@ -2006,7 +2037,7 @@
                 (not (fn-rtc-uses-of-slot-p id (fn-rtc-s-inc (fn-rtc-slot id s)) (fn-rtc-uses s)))
                 (< (nfix id) (len (fn-rtc-slots s))))
            (equal (fn-rtc-s-status (fn-rtc-slot id (fn-rtc-retire-drained id s))) :free))
-  :hints (("Goal" :in-theory (enable fn-rtc-retire-drained))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-retire-drained) (fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op)))))
 (defthm fn-rtc-use-okp-slot-range
   (implies (fn-rtc-use-okp u s)
            (and (natp (fn-rtc-get 1 u))
