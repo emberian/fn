@@ -157,17 +157,17 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
         self.assertEqual(status, b"225 headers follow\r\n")
         return body
 
-    def post(self, node, message_id, *headers):
+    def post(self, node, message_id, raw=None):
         with node.session(timeout=30, greeting=(b"200",)) as client:
-            offered, accepted = client.post(article(
-                message_id, headers=("FN-Statement: malformed",) + headers))
+            offered, accepted = client.post(raw or article(
+                message_id, headers=("FN-Statement: malformed",)))
         self.assertTrue(offered.startswith(b"340"), offered)
         self.assertEqual(accepted, b"240 article received OK\r\n")
 
     def test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves(self):
         node = Node(self, DEVELOPER, root=self.root / "node",
                     extra=expiry.reclaim_extra(True))
-        node.operator("init", "--profile", "development", "fn.test", expect=EXIT_OK)
+        node.operator("init", "--profile", "development", expiry.GROUP, expect=EXIT_OK)
         principal = self.root / "principal.bin"
         principal.write_bytes(bytes([85]) * 32)
         keysets = (self.root / "author-keys-1", self.root / "author-keys-2")
@@ -176,7 +176,7 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
         for keys in keysets:
             node.operator("peer", "keygen", keys, expect=EXIT_OK)
         before, expiring, after = (
-            "<reclaim-before@example.invalid>", "<reclaim-expired@example.invalid>",
+            "<reclaim-before@example.invalid>", expiry.msgid("rk"),
             "<reclaim-after@example.invalid>")
         expected = {before: b"0 unverified malformed keyring 1\r\n",
                     after: b"0 unverified malformed keyring 2\r\n"}
@@ -189,10 +189,10 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
                 if generation == 1:
                     self.post(node, before)
                     # The expired article is the record the pass rewrites.
-                    self.post(node, expiring, "Expires: " + expiry.PAST)
+                    self.post(node, expiring, expiry.article("rk", expiry.GROUP, expiry.PAST))
                 else:
                     self.post(node, after)
-            node.operator("retention", "expire", "fn.test", "purge", "30", expect=EXIT_OK)
+            node.operator("retention", "expire", expiry.GROUP, "purge", "30", expect=EXIT_OK)
             for message_id, verdict in expected.items():
                 self.assertEqual(self.verified_header(node, message_id), verdict)
 
