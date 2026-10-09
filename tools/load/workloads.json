@@ -1138,7 +1138,7 @@
    ]
   },
   "owner-per-record": {
-   "about": "The memory model's per-record owner term and base against measurement (Builder M, landing 3+4, 2026-10-09): W1's 2,048-octet one-group POSTs on one connection at the filled preset (H 256 MiB, so the history budget does not stop the fill), SBCL's dynamic-space census after a full GC and the process's VmRSS/anon/file at 0, 1,000 and 4,000 records, then 32 idle connections. The per-record live heap is the census slope between the fills; the base is the empty store's at-rest figures.",
+   "about": "The memory model's per-record owner term and base against measurement (Builder M, landing 3+4, 2026-10-09): W1's 2,048-octet one-group POSTs on one connection at the filled preset (H 256 MiB, so the history budget does not stop the fill), SBCL's dynamic-space census after a full GC and the process's VmRSS/anon/file at 0, 1,000, 4,000 and 16,000 records (the slope's linearity: the 2026-10-08 attribution's slope doubled past 25k), then 32 idle connections. The per-record live heap is the census slope between the fills; the base is the empty store's at-rest figures. The roots phases (m34-roots.lisp) name what holds the large u64 arrays a census finds live: at 16,000 records eight of 17.5 MB were (2026-10-09, m34-owner-core); a second census 60 s later says whether a publication in flight held them.",
    "preset": "filled",
    "groups": [
     "fn.letters",
@@ -1190,6 +1190,43 @@
      "kind": "census"
     },
     {
+     "name": "roots-4k",
+     "kind": "roots"
+    },
+    {
+     "name": "fill-16k",
+     "kind": "post",
+     "count": 12000,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "rest-16k",
+     "kind": "idle",
+     "seconds": 10
+    },
+    {
+     "name": "census-16k",
+     "kind": "census"
+    },
+    {
+     "name": "roots-16k",
+     "kind": "roots"
+    },
+    {
+     "name": "rest-16k-b",
+     "kind": "idle",
+     "seconds": 60
+    },
+    {
+     "name": "census-16k-b",
+     "kind": "census"
+    },
+    {
+     "name": "roots-16k-b",
+     "kind": "roots"
+    },
+    {
      "name": "idle-connections",
      "kind": "hold",
      "steps": [
@@ -1204,6 +1241,121 @@
      "kind": "idle",
      "seconds": 10,
      "measure": true
+    }
+   ],
+   "policy": {
+    "exposure-connections": 64
+   },
+   "roots": true
+  },
+  "owner-per-record-wide": {
+   "about": "The owner term's header and membership weights (Builder M, memory landing 3+4, 2026-10-09): owner-per-record's census at a second article shape, W1's 2,048-octet body with the Subject padded by 900 octets (one line within RFC 5322 section 2.1.1's 998) and cross-posted to sixteen groups, on one connection at the filled preset. Beside owner-per-record's W1 slope (one group, a 149-octet header) the two slopes separate the per-record, per-header-octet and per-membership live heap. Each census follows 60 s of rest so a publication in flight (its transient history-root arrays) has ended.",
+   "preset": "filled",
+   "groups": [
+    "fn.g01",
+    "fn.g02",
+    "fn.g03",
+    "fn.g04",
+    "fn.g05",
+    "fn.g06",
+    "fn.g07",
+    "fn.g08",
+    "fn.g09",
+    "fn.g10",
+    "fn.g11",
+    "fn.g12",
+    "fn.g13",
+    "fn.g14",
+    "fn.g15",
+    "fn.g16",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "census": true,
+   "phases": [
+    {
+     "name": "rest-0",
+     "kind": "idle",
+     "seconds": 10
+    },
+    {
+     "name": "census-0",
+     "kind": "census"
+    },
+    {
+     "name": "fill-1k",
+     "kind": "post",
+     "count": 1000,
+     "octets": 2048,
+     "connections": 1,
+     "shape": {
+      "newsgroups": [
+       "fn.g01",
+       "fn.g02",
+       "fn.g03",
+       "fn.g04",
+       "fn.g05",
+       "fn.g06",
+       "fn.g07",
+       "fn.g08",
+       "fn.g09",
+       "fn.g10",
+       "fn.g11",
+       "fn.g12",
+       "fn.g13",
+       "fn.g14",
+       "fn.g15",
+       "fn.g16"
+      ],
+      "subject_octets": 900
+     }
+    },
+    {
+     "name": "rest-1k",
+     "kind": "idle",
+     "seconds": 60
+    },
+    {
+     "name": "census-1k",
+     "kind": "census"
+    },
+    {
+     "name": "fill-4k",
+     "kind": "post",
+     "count": 3000,
+     "octets": 2048,
+     "connections": 1,
+     "shape": {
+      "newsgroups": [
+       "fn.g01",
+       "fn.g02",
+       "fn.g03",
+       "fn.g04",
+       "fn.g05",
+       "fn.g06",
+       "fn.g07",
+       "fn.g08",
+       "fn.g09",
+       "fn.g10",
+       "fn.g11",
+       "fn.g12",
+       "fn.g13",
+       "fn.g14",
+       "fn.g15",
+       "fn.g16"
+      ],
+      "subject_octets": 900
+     }
+    },
+    {
+     "name": "rest-4k",
+     "kind": "idle",
+     "seconds": 60
+    },
+    {
+     "name": "census-4k",
+     "kind": "census"
     }
    ],
    "policy": {
@@ -1246,7 +1398,9 @@
   "W6q": "catchup-quiet",
   "F2S": "fault-crash-boundary-survey",
   "W7": "extent-cache",
-  "F4R": "fault-index-saturation-reopen"
+  "F4R": "fault-index-saturation-reopen",
+  "M-OWNER": "owner-per-record",
+  "M-OWNER-WIDE": "owner-per-record-wide"
  },
  "stores": {
   "1k": 1000,

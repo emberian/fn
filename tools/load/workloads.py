@@ -25,11 +25,12 @@ PHASE_KINDS = {
     "fault_slow_reader": {"duration_s", "solo_s", "recv_sleep_s", "pipeline", "shrink_runs", "command_deadline_s"},
     "fault_framing": {"split_budget", "shrink_runs", "command_deadline_s", "fragment_pause_s", "rss_slack_kib"},
     "fault_crash_boundary": {"posts", "samples_per_boundary", "shrink_runs", "command_deadline_s", "recovery_s"},
-    "post": {"count", "duration_s", "octets", "connections", "rate_per_s", "background_readers"},
+    "post": {"count", "duration_s", "octets", "connections", "rate_per_s", "background_readers", "shape"},
     "commands": {"reps", "budget_s", "only", "greeting_reps"},
     "fresh_start": {"limits_mb"},
     "conn_capacity": {"presets", "max_try"},
     "census": set(),
+    "roots": set(),
     "prof": {"article_kib", "reps"},
     "publish": set(),
     "publish_live": {"rate_per_s", "octets", "before_s", "after_s", "max_wait_s"},
@@ -66,6 +67,8 @@ def validate(data):
             raise WorkloadError("%s: unknown preset %r" % (name, w.get("preset")))
         if not w.get("phases"):
             raise WorkloadError("%s: no phases" % name)
+        if "roots" in w and not (w["roots"] is True and w.get("census") is True):
+            raise WorkloadError("%s: roots needs census (its hook polls the census directory)" % name)
         if "lockwait" in w and not isinstance(w["lockwait"], bool):
             raise WorkloadError("%s: lockwait must be boolean" % name)
         if "sprof" in w:
