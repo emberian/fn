@@ -17,13 +17,6 @@
    "evidence": "certify-20261009T064705Z-890909 (hbox) at dev 3a937ebc3"
   },
   {
-   "kind": "certify",
-   "subject": "host/owner-served-carried",
-   "item": "HOST-BOOKS-STANDALONE-CERTIFY",
-   "owner": "builder-B",
-   "evidence": "certify-20261009T064705Z-890909 (hbox) at dev 3a937ebc3"
-  },
-  {
    "kind": "native",
    "subject": "tests.test_native_image_floor.ProductionTests.test_fresh_node_serves_in_256_mb",
    "item": "LOAD-L-FRESH-0b4d3b183",
