@@ -329,5 +329,21 @@ class NewWitnessClasses(unittest.TestCase):
         self.assertFalse(result["complete"])
 
 
+class ClaimEvidenceStampTests(unittest.TestCase):
+    def test_a_claimed_row_carries_the_ledger_evidence_stamp(self):
+        with tempfile.TemporaryDirectory() as directory:
+            proofs = Path(directory) / "proofs.json"
+            proofs.write_text(json.dumps({"proofs": []}) + "\n")
+            keystone = SimpleNamespace(name="k", registry_name="k", subject="s",
+                                       book="books/k.lisp")
+            answer = SimpleNamespace(stdout="claimed PRF-9999\n")
+            with mock.patch.object(ke, "PROOFS", proofs), \
+                    mock.patch.object(ke.subprocess, "run", return_value=answer):
+                self.assertEqual(ke.claim(keystone, "lane", "M5", "t"), "PRF-9999")
+            registry = json.loads(proofs.read_text())
+            self.assertEqual(registry["proofs"][0]["evidence"], ["books/k.lisp"])
+            self.assertEqual(ke.ledger.evidence_problems(registry), [])
+
+
 if __name__ == "__main__":
     unittest.main()
