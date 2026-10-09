@@ -1,13 +1,40 @@
 {
+ "budget": 400,
  "category": "tests",
+ "expect-failure": "tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range",
+ "failure-message": "False is not true : the harness handed out a port the kernel can give to another socket before the node binds it",
  "file": "tests/native_harness.py",
+ "harness": "tests/test_ports.py",
  "id": "NATIVE-HARNESS-PORT-RACE",
- "notes": [],
+ "native": "test_native_peering,test_native_peer_invite",
+ "notes": [
+  "10-09 03:02 claimed: scope=['tools/ports.py', 'tests/test_ports.py', 'tests/port_squatter.py', 'tests/native_harness.py', 'tools/fitness.py', 'tools/fundamentals/sr_measure.py', 'tools/hostile_campaign.py', 'tools/load/driver.py', 'tools/load/w7_extent.py', 'tools/msgid_measure.py', 'tools/mux_measure.py', 'tools/native_overlay.py', 'tools/native_two_host_protected_gate.py', 'tools/reader_clients_phase.py', 'tools/scale_curve.py', 'tools/thunderbird_drive.py', 'planning/repair/items/NATIVE-HARNESS-PORT-RACE.json'] test=python3 -m unittest tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range"
+ ],
  "owner": "builder-B",
+ "scope": [
+  "tools/ports.py",
+  "tests/test_ports.py",
+  "tests/port_squatter.py",
+  "tests/native_harness.py",
+  "tools/fitness.py",
+  "tools/fundamentals/sr_measure.py",
+  "tools/hostile_campaign.py",
+  "tools/load/driver.py",
+  "tools/load/w7_extent.py",
+  "tools/msgid_measure.py",
+  "tools/mux_measure.py",
+  "tools/native_overlay.py",
+  "tools/native_two_host_protected_gate.py",
+  "tools/reader_clients_phase.py",
+  "tools/scale_curve.py",
+  "tools/thunderbird_drive.py",
+  "planning/repair/items/NATIVE-HARNESS-PORT-RACE.json"
+ ],
  "severity": "high",
  "slice": "harness",
  "source": "N, drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (25 failures in 11 modules, each with EADDRINUSE at the node's bind)",
- "state": "open",
+ "state": "in-progress",
+ "test": "python3 -m unittest tests.test_ports.HarnessPortTests.test_a_handed_out_port_is_outside_the_kernels_ephemeral_range",
  "title": "the native harness hands a node a probed loopback port it released, inside the kernel ephemeral range: any socket on the box (a client connect, another probe) can take it before the node binds (EADDRINUSE)",
- "updated": "2026-10-09T06:57:21Z"
+ "updated": "2026-10-09T07:02:18Z"
 }
