@@ -33,6 +33,38 @@
    "owner": "builder-M",
    "ruling": "coordinator 2026-10-09: owner builder-A (measured at ac66a0a23) -> builder-M, the section-6 memory and admission model",
    "transfer_from": "builder-A"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start",
+   "dev_sha": "dd93a43f1",
+   "item": "MEMORY-2G-PROFILE-SEMANTICS",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-09 18:05"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",
+   "dev_sha": "dd93a43f1",
+   "item": "MEMORY-2G-PROFILE-SEMANTICS",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-09 18:05"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_store_init_admitted_fills_to_its_limit_and_still_restarts",
+   "dev_sha": "dd93a43f1",
+   "item": "MEMORY-2G-PROFILE-SEMANTICS",
+   "owner": "builder-M",
+   "ruling": "coordinator 2026-10-09 18:05"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_over_window.NativeOverWindowTests.test_whole_range_under_a_small_quantum_is_the_unbounded_reply",
+   "dev_sha": "3499082a6",
+   "item": "OVER-WINDOW-FIXTURE-SCHEMA",
+   "owner": "builder-D",
+   "ruling": "coordinator 2026-10-09: admitted by amendment, owner builder-D (the fixture rebuild)"
   }
  ]
 }

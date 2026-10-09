@@ -1,0 +1,12 @@
+{
+ "detail": "(1) test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start: init refuses the scale profile (init-budget-cannot-hold-profile, reservation 20710 MB, budget 2025 MB) where the test expects init to pass and start to refuse. (2) test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g: status reports the stopped store (checkpoint=97) with no open=checkpoint line, which now comes only with status --replay. (3) test_a_store_init_admitted_fills_to_its_limit_and_still_restarts: the refusal reason is history-exhausted where the test expects unaffordable. Builder M: the behaviour is right and the expectations are the defect; (1) and (2) are retired by memory landing 2 (store-less status of a store made for another machine, K6; --budget from init's own figure; reopen through status --replay), (3) by memory landing 3. Coordinator ruling 2026-10-09 18:05: admitted by amendment.",
+ "file": "tests/test_native_heap_from_profile.py",
+ "id": "MEMORY-2G-PROFILE-SEMANTICS",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "train 79 image run hbox native-d8fb738b3859-2g; control at dev dd93a43f1, hbox native-dd93a43f1-2g-control (same three failures)",
+ "state": "open",
+ "title": "heap_from_profile under --mem 2G: three cases expect the admission semantics before memory landings 2 and 3",
+ "updated": "2026-10-09T21:08:06Z"
+}
