@@ -2360,7 +2360,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/crypto-attach \
 	books/auth-secret \
 	tests/acl2/auth-secret-tests \
-	books/statement-items \
 	books/statement-codec \
 	books/statement-seam \
 	books/statement-attach \
