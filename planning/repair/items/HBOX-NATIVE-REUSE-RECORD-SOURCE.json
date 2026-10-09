@@ -1,0 +1,12 @@
+{
+ "detail": "tools/hbox_native.sh:431 sets SOURCE_ID='$(cat build/REUSED_SOURCE)' for --reuse-image, text meant for the box script (evaluated there at :710 after link-run writes REUSED_SOURCE). :899 writes the same literal into the local record build/hbox-native/LABEL.run as source=, so tools/train.py cmd_image (source != HEAD) refuses the run though its images may be HEAD's. The record must name the images' identity source as the reused run's log states it (its == source line), resolved at launch; a reused run whose source is not HEAD is then refused by train.py correctly.",
+ "file": "tools/hbox_native.sh",
+ "id": "HBOX-NATIVE-REUSE-RECORD-SOURCE",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "medium",
+ "source": "train 79: build/hbox-native/dfdd95398046-2g.run in build/integrate-20261006n",
+ "state": "open",
+ "title": "hbox_native.sh --reuse-image writes its record's source= as the unevaluated text $(cat build/REUSED_SOURCE), so train.py image refuses every reused run",
+ "updated": "2026-10-09T21:26:11Z"
+}

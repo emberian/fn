@@ -782,6 +782,36 @@ class DetachedByDefaultTests(unittest.TestCase):
             self.assertIn("pid=4242", status.stdout)
             self.assertIn("kill -0 '4242'", log.read_text())
 
+    def test_a_reused_run_records_the_source_its_images_were_built_from(self):
+        import os
+        import tempfile
+        source = "d" * 40
+        for log_line, want in ((f"== source commit {source}", source), ("== load 1 2 3", None)):
+            with tempfile.TemporaryDirectory() as directory:
+                for tool in ("ssh", "rsync"):
+                    stub = Path(directory) / tool
+                    stub.write_text('#!/bin/sh\ncase "$*" in *nohup*) echo 4242 ;; '
+                                    '*run.log*) printf "%%s\\n" "== load 1" %r ;; esac\n'
+                                    'cat > /dev/null\nexit 0\n' % log_line)
+                    stub.chmod(0o755)
+                env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}", "FN_HBOX": "hbox"}
+                label = "reuse-test-%d-%d" % (os.getpid(), want is None)
+                record = ROOT / "build" / "hbox-native" / f"{label}.run"
+                self.addCleanup(lambda: record.unlink(missing_ok=True))
+                started = subprocess.run(["sh", str(SCRIPT), "--reuse-image", "t/native-earlier",
+                                          "--images", "developer", "--name", "t", "--label", label,
+                                          "HEAD", "tests.test_native_owner"],
+                                         cwd=ROOT, env=env, capture_output=True, text=True, timeout=120,
+                                         stdin=subprocess.DEVNULL)
+                if want is None:
+                    self.assertEqual(started.returncode, 2, started.stdout + started.stderr)
+                    self.assertIn("names no `== source` line", started.stderr)
+                    self.assertFalse(record.exists())
+                    continue
+                self.assertEqual(started.returncode, 0, started.stdout + started.stderr)
+                fields = dict(line.split("=", 1) for line in record.read_text().splitlines())
+                self.assertEqual(fields["source"], want)
+
     def test_attach_without_a_record_names_the_runs_here(self):
         answer = subprocess.run(["sh", str(SCRIPT), "attach", "no-such-label"], cwd=ROOT,
                                 capture_output=True, text=True, timeout=60)

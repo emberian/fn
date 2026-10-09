@@ -859,6 +859,16 @@ if [ $BUILD -eq 0 ] && [ -z "$IMAGE_SET" ] && [ -z "$REUSE" ]; then
         fi
     fi
 fi
+# The local record names the images' identity source.  A reused run's is the
+# one its run.log names (the box script reads it from build/REUSED_SOURCE,
+# which link-run writes later), so read it here; train.py image compares it
+# with HEAD.
+RECORD_SOURCE=$SOURCE_ID
+if [ -n "$REUSE" ]; then
+    RECORD_SOURCE=$(ssh -n "$HOST" "grep '^== source ' $REUSE/run.log" \
+        | sed -nE 's/^== source (commit|worktree) ([^ ]+) *$/\2/p' | head -n 1)
+    [ -n "$RECORD_SOURCE" ] || { echo "hbox_native: --reuse-image $REUSE: its run.log names no \`== source\` line on $HOST; its images' source is unknown" >&2; exit 2; }
+fi
 echo "hbox_native: $SOURCE -> $HOST:$S"
 ssh -n "$HOST" "mkdir -p $S/tree $S/logs" || { echo "hbox_native: cannot create $S on $HOST" >&2; exit 3; }
 # --no-build keeps the tree's certificates: its images and any REPL session
@@ -896,7 +906,7 @@ PID=$(ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /d
 echo "hbox_native: started; progress in $HOST:$S/run.log"
 # The record here names the box (item 67): status and re-attach read it.
 mkdir -p "$HERE/build/hbox-native"
-printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$SOURCE_ID" \
+printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$RECORD_SOURCE" \
     > "$HERE/build/hbox-native/$LABEL.run"
 if [ $DETACH -eq 1 ]; then
     echo "hbox_native: detached (pid $PID on $HOST); re-attach with: tools/hbox_native.sh attach $LABEL   (status: tools/hbox_native.sh status $LABEL)"
