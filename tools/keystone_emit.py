@@ -618,12 +618,13 @@ def claim(keystone: Keystone, lane: str, milestone: str, title: str) -> str:
         raise SystemExit(f"keystone_emit: next_id.py claim printed no id: {answer.stdout}")
     ident = match.group(0)
     registry = json.loads(PROOFS.read_text(encoding="utf-8"))
-    registry["proofs"].append({
+    registry["proofs"].append(ledger.stamped_evidence({
         "id": ident, "title": title,
         "statement": (f"{keystone.registry_name} (defkeystone {keystone.name}, "
                       f"{keystone.book}); subject {keystone.subject}."),
         "milestone": milestone, "requirements": [], "depends_on": [],
-        "assumptions": [], "status": "planned", "evidence": [keystone.book]})
+        "assumptions": [], "status": "planned", "evidence": [keystone.book]},
+        [keystone.book]))
     PROOFS.write_text(json.dumps(registry, indent=2, ensure_ascii=False) + "\n",
                       encoding="utf-8")
     return ident
