@@ -700,10 +700,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/resource-vector-tests \
 	books/resource-vector-relations \
 	tests/acl2/resource-vector-relations-tests \
+	books/resource-vector-relations-heap \
 	books/resource-vector-exec \
 	tests/acl2/resource-vector-exec-tests \
 	books/resource-vector-tree \
 	tests/acl2/resource-vector-tree-tests \
+	books/resource-operation \
 	tests/acl2/heap-figure-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
