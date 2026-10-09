@@ -949,9 +949,254 @@
                                fn-dss-stream-loop-is-list-general fn-dss-stream-loop
                                fn-dss-stream-list-loop fn-oct-slice-list-is-take-nthcdr))))
 
+; Proof support for the partition property, local: the one-pass stream of a
+; concatenation, what one list-loop call consumes and emits, and the drive's
+; one-call step, STEP, from which the drive theorem follows by induction.
+(local
+ (defthm fn-dss-stream-items-shape
+  (equal (list (mv-nth 0 (fn-dss-stream-items s xs last))
+               (mv-nth 1 (fn-dss-stream-items s xs last))
+               (mv-nth 2 (fn-dss-stream-items s xs last)))
+         (fn-dss-stream-items s xs last))
+  :hints (("Goal" :induct (fn-dss-stream-items s xs last)))))
+
+(local
+ (defthm fn-dss-stream-items-shape-car
+  (equal (list (car (fn-dss-stream-items s xs last))
+               (mv-nth 1 (fn-dss-stream-items s xs last))
+               (mv-nth 2 (fn-dss-stream-items s xs last)))
+         (fn-dss-stream-items s xs last))
+  :hints (("Goal" :use fn-dss-stream-items-shape))))
+
+(local
+ (defthm fn-dss-items-append
+  (equal (fn-dss-stream-items s (append a b) last)
+         (mv-let (r1 s1 it1) (fn-dss-stream-items s a nil)
+           (if (eq r1 :refused)
+               (mv r1 s1 it1)
+             (mv-let (r2 s2 it2) (fn-dss-stream-items s1 b last)
+               (mv r2 s2 (append it1 it2))))))
+  :hints (("Goal" :induct (fn-dss-stream-items s a nil)))))
+
+(local
+ (defmacro fn-dss-mv3= (x a b c)
+  `(and (equal (mv-nth 0 ,x) ,a) (equal (mv-nth 1 ,x) ,b) (equal (mv-nth 2 ,x) ,c))))
+
+(local
+ (defthm fn-dss-list-loop-n-natp
+  (natp (mv-nth 3 (fn-dss-stream-list-loop s xs lp room)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use fn-dss-stream-list-loop-consumed))))
+
+(local
+ (defthm fn-dss-list-loop-n-bound
+  (<= (mv-nth 3 (fn-dss-stream-list-loop s xs lp room)) (len xs))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-dss-stream-list-loop-consumed))))
+
+(local
+ (defthm fn-dss-list-loop-items-prefix
+  (mv-let (r s2 outs n) (fn-dss-stream-list-loop s xs lp room)
+    (and (implies (eq r :need-input)
+                  (fn-dss-mv3= (fn-dss-stream-items s xs nil) :need-input s2 outs))
+         (implies (eq r :yield)
+                  (fn-dss-mv3= (fn-dss-stream-items s (take n xs) nil)
+                               :need-input s2 (append outs (list :yield))))
+         (implies (eq r :need-output)
+                  (fn-dss-mv3= (fn-dss-stream-items s (take n xs) nil) :need-input s2 outs))
+         (implies (and (eq r :refused) (< n (len xs)))
+                  (fn-dss-mv3= (fn-dss-stream-items s xs nil) :refused s2 outs))
+         (implies (and (or (eq r :refused) (eq r :done)) (not (< n (len xs))))
+                  (and lp (fn-dss-mv3= (fn-dss-stream-items s xs t) r s2 outs)))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-dss-stream-list-loop s xs lp room)
+           :in-theory (disable fn-dss-stream-items-shape fn-dss-stream-items-shape-car)))))
+
+(local
+ (defthm fn-dss-list-wrapper-is-loop
+  (implies (<= (fn-dss-floor) (nfix room))
+           (equal (fn-dss-stream-list s xs lp room)
+                  (fn-dss-stream-list-loop s xs lp room)))))
+
+(local
+ (defthm fn-dss-list-loop-progress
+  (implies (and (<= (fn-dss-floor) (nfix room))
+                (member-equal (mv-nth 0 (fn-dss-stream-list-loop s xs lp room)) '(:yield :need-output)))
+           (< 0 (mv-nth 3 (fn-dss-stream-list-loop s xs lp room))))
+  :rule-classes nil
+  :hints (("Goal" :expand ((fn-dss-stream-list-loop s xs lp room))))))
+
+(local
+ (defthm fn-dss-items-true-list-fix
+  (equal (fn-dss-stream-items s (append xs nil) last)
+         (fn-dss-stream-items s xs last))
+  :hints (("Goal" :induct (fn-dss-stream-items s xs last)))))
+
+(local
+ (defthm fn-dss-append-take-nthcdr
+  (implies (and (natp n) (<= n (len xs)))
+           (equal (append (take n xs) (append (nthcdr n xs) r))
+                  (append xs r)))))
+
+(local
+ (defthm fn-dss-list-loop-shape
+  (mv-let (r s2 outs n) (fn-dss-stream-list-loop s xs lp room)
+    (declare (ignore s2 outs))
+    (and (member-equal r '(:need-input :need-output :yield :refused :done))
+         (implies (eq r :done) (and lp (equal n (len xs))))
+         (implies (eq r :need-input) (and (not lp) (equal n (len xs))))
+         (implies (eq r :refused) (or (< n (len xs)) (and lp (equal n (len xs)))))
+         (implies (eq r :yield) (and (< 0 n) (<= n (len xs))))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-dss-stream-list-loop s xs lp room)))))
+
+(local
+ (defthm fn-dss-items-atom
+  (implies (not (consp xs))
+           (equal (fn-dss-stream-items s xs last)
+                  (if last
+                      (if (eql (fn-dss-st-fsig s) 2)
+                          (list :refused (fn-dss-st-fnext s) nil)
+                        (list :done (fn-dss-st-fnext s)
+                              (fn-oct-word-octets (fn-dss-st-fw s) (fn-dss-st-fk s))))
+                    (list :need-input s nil))))))
+
+(local
+ (defthm fn-dss-items-last-boolean
+  (implies (and last (syntaxp (not (equal last ''t))))
+           (equal (fn-dss-stream-items s xs last)
+                  (fn-dss-stream-items s xs t)))
+  :hints (("Goal" :induct (fn-dss-stream-items s xs last)))))
+
+(local
+ (defthm fn-dss-items-refused-any-last
+  (implies (equal (car (fn-dss-stream-items s xs nil)) :refused)
+           (equal (fn-dss-stream-items s xs last)
+                  (fn-dss-stream-items s xs nil)))
+  :hints (("Goal" :induct (fn-dss-stream-items s xs last)))))
+
+(local
+ (defthm fn-dss-items-refused-any-last-2
+  (implies (and (syntaxp (not (equal last ''nil)))
+                (equal (car (fn-dss-stream-items s xs nil)) :refused))
+           (equal (fn-dss-stream-items s xs last)
+                  (fn-dss-stream-items s xs nil)))
+  :hints (("Goal" :use fn-dss-items-refused-any-last))))
+
+(local (in-theory (disable fn-dss-items-refused-any-last)))
+
+(local
+ (defthm fn-dss-items-step
+  (implies (<= (fn-dss-floor) (nfix room))
+           (let ((xs (if (consp pieces) (car pieces) nil))
+                 (lp (and last (atom (cdr pieces)))))
+             (equal (fn-dss-stream-items s (fn-dss-flatten pieces) last)
+                    (mv-let (r s2 outs n) (fn-dss-stream-list-loop s xs lp room)
+                      (cond ((or (eq r :refused) (eq r :done)) (mv r s2 outs))
+                            ((eq r :need-input)
+                             (if (consp (cdr pieces))
+                                 (mv-let (r3 s3 it)
+                                   (fn-dss-stream-items s2 (fn-dss-flatten (cdr pieces)) last)
+                                   (mv r3 s3 (append outs it)))
+                               (mv r s2 outs)))
+                            (t (mv-let (r3 s3 it)
+                                 (fn-dss-stream-items
+                                  s2 (fn-dss-flatten (cons (nthcdr n xs) (cdr pieces))) last)
+                                 (mv r3 s3 (append outs (if (eq r :yield) (cons :yield it) it))))))))))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-dss-list-loop-shape
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces)))))
+                 (:instance fn-dss-list-loop-items-prefix
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces)))))
+                 (:instance fn-dss-list-loop-progress
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces)))))
+                 (:instance fn-dss-items-append
+                  (a (if (consp pieces) (car pieces) nil))
+                  (b (fn-dss-flatten (cdr pieces))))
+                 (:instance fn-dss-items-append
+                  (a (take (mv-nth 3 (fn-dss-stream-list-loop
+                                      s (if (consp pieces) (car pieces) nil)
+                                      (and last (atom (cdr pieces))) room))
+                           (if (consp pieces) (car pieces) nil)))
+                  (b (append (nthcdr (mv-nth 3 (fn-dss-stream-list-loop
+                                                s (if (consp pieces) (car pieces) nil)
+                                                (and last (atom (cdr pieces))) room))
+                                     (if (consp pieces) (car pieces) nil))
+                             (fn-dss-flatten (cdr pieces))))))
+           :in-theory (disable fn-dss-items-append fn-dss-stream-list-loop fn-dss-stream-items)
+           :expand ((fn-dss-flatten pieces)
+                    (fn-dss-flatten (cons (nthcdr (mv-nth 3 (fn-dss-stream-list-loop
+                                                             s (if (consp pieces) (car pieces) nil)
+                                                             (and last (atom (cdr pieces))) room))
+                                                  (if (consp pieces) (car pieces) nil))
+                                          (cdr pieces))))))))
+
 (defthm fn-dss-drive-is-items
   (equal (fn-dss-drive s pieces last rooms)
-         (fn-dss-stream-items s (fn-dss-flatten pieces) last)))
+         (fn-dss-stream-items s (fn-dss-flatten pieces) last))
+  :hints (("Goal" :induct (fn-dss-drive s pieces last rooms)
+           :expand ((fn-dss-drive s pieces last rooms))
+           :in-theory (disable fn-dss-stream-list-loop fn-dss-stream-items fn-dss-flatten
+                               fn-dss-stream-list fn-dss-items-append))
+          ("Subgoal *1/1"
+           :use ((:instance fn-dss-items-step
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-shape
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces))))
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces))))
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))))
+          ("Subgoal *1/2"
+           :use ((:instance fn-dss-items-step
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-shape
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces))))
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces))))
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))))
+          ("Subgoal *1/3"
+           :use ((:instance fn-dss-items-step
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-shape
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces))))
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces))))
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))))
+          ("Subgoal *1/4"
+           :use ((:instance fn-dss-items-step
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-shape
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces))))
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces))))
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))))
+          ("Subgoal *1/5"
+           :use ((:instance fn-dss-items-step
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-shape
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces))))
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress
+                  (xs (if (consp pieces) (car pieces) nil))
+                  (lp (and last (atom (cdr pieces))))
+                  (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))))))
 
 ; A-HOST-ROOM, the host's contract: each of the first FUEL calls is offered
 ; at least FLOOR octets of output room (the host sends and clears the output
@@ -1011,13 +1256,204 @@
 ; The partition property of the stobj loop: under A-HOST-ROOM and enough
 ; fuel, every split of the input and every room schedule yields the one-pass
 ; logical stream and final state.
+; Proof support for the stobj partition property, local: one host call is
+; the list model on the rest of the loaded piece, so the host loop under
+; A-HOST-ROOM and enough fuel is the drive on the unconsumed input.
+(local
+ (defthm fn-dss-take-len-self
+  (implies (true-listp x) (equal (take (len x) x) x))))
+
+(local
+ (defthm fn-dss-len-nthcdr-2
+  (implies (and (natp i) (<= i (len x)))
+           (equal (len (nthcdr i x)) (- (len x) i)))))
+
+(local
+ (defthm fn-dss-true-listp-nthcdr
+  (implies (true-listp x) (true-listp (nthcdr i x)))))
+
+(local
+ (defthm fn-dss-slice-to-end
+  (implies (and (natp i) (<= i (len st)) (true-listp st))
+           (equal (fn-oct-slice-list i (len st) st) (nthcdr i st)))
+  :hints (("Goal" :use ((:instance fn-oct-slice-list-is-take-nthcdr (n (len st)) (fn-octets st))
+                        (:instance fn-dss-take-len-self (x (nthcdr i st))))
+           :in-theory (disable fn-oct-slice-list-is-take-nthcdr fn-dss-take-len-self)))))
+
+(local
+ (defthm fn-dss-host-call
+  (implies (and (natp i) (natp cap) (true-listp st) (<= i (len st)))
+           (equal (fn-dss-stream s i (len st) lp cap st nil)
+                  (mv-let (r s2 outs n) (fn-dss-stream-list s (nthcdr i st) lp cap)
+                    (mv r s2 (+ i n) outs))))
+  :hints (("Goal" :use ((:instance fn-dss-stream-is-list (end (len st)) (fn-octets st)
+                                   (last lp) (fn-dss-out nil)))
+           :in-theory (disable fn-dss-stream-is-list fn-dss-stream fn-dss-stream-list)))))
+
+(local
+ (defthm fn-dss-nthcdr-nthcdr
+  (implies (and (natp i) (natp n))
+           (equal (nthcdr n (nthcdr i x)) (nthcdr (+ i n) x)))))
+
+(local
+ (defthm fn-dss-a-host-room-car
+  (implies (and (fn-dss-a-host-room floor rooms fuel) (not (zp fuel)))
+           (and (consp rooms) (<= (nfix floor) (nfix (car rooms)))
+                (fn-dss-a-host-room floor (cdr rooms) (1- fuel))))))
+
+(local
+ (defthm fn-dss-host-is-drive
+  (implies (and (true-list-listp pieces)
+                (equal fn-octets (if (consp pieces) (car pieces) nil))
+                (natp i) (<= i (len fn-octets))
+                (<= (+ 1 (len pieces) (- (fn-dss-sum-lens pieces) i)) (nfix fuel))
+                (fn-dss-a-host-room (fn-dss-floor) rooms fuel))
+           (let ((run (fn-dss-host s pieces i last rooms fuel fn-octets fn-dss-out)))
+             (equal (list (mv-nth 0 run) (mv-nth 1 run) (mv-nth 2 run))
+                    (fn-dss-drive s (cons (nthcdr i (if (consp pieces) (car pieces) nil)) (cdr pieces)) last rooms))))
+  :hints (("Goal" :induct (fn-dss-host s pieces i last rooms fuel fn-octets fn-dss-out)
+           :expand ((fn-dss-host s pieces i last rooms fuel fn-octets fn-dss-out)
+                    (fn-dss-drive s (cons (nthcdr i (if (consp pieces) (car pieces) nil)) (cdr pieces)) last rooms))
+           :in-theory (disable fn-dss-stream fn-dss-stream-list fn-dss-stream-list-loop
+                               fn-dss-drive-is-items fn-dss-stream-is-list
+                               fn-oct-slice-list-is-take-nthcdr))
+          ("Subgoal *1/1"
+           :use ((:instance fn-dss-host-call (st fn-octets) (lp (and last (atom (cdr pieces))))
+                            (cap (nfix (if (consp rooms) (car rooms) 0))))
+                 (:instance fn-dss-list-loop-shape (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-stream-list-consumed (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (last (and last (atom (cdr pieces))))
+                            (room (nfix (if (consp rooms) (car rooms) 0))))))
+          ("Subgoal *1/2"
+           :use ((:instance fn-dss-host-call (st fn-octets) (lp (and last (atom (cdr pieces))))
+                            (cap (nfix (if (consp rooms) (car rooms) 0))))
+                 (:instance fn-dss-list-loop-shape (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-stream-list-consumed (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (last (and last (atom (cdr pieces))))
+                            (room (nfix (if (consp rooms) (car rooms) 0))))))
+          ("Subgoal *1/3"
+           :use ((:instance fn-dss-host-call (st fn-octets) (lp (and last (atom (cdr pieces))))
+                            (cap (nfix (if (consp rooms) (car rooms) 0))))
+                 (:instance fn-dss-list-loop-shape (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-stream-list-consumed (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (last (and last (atom (cdr pieces))))
+                            (room (nfix (if (consp rooms) (car rooms) 0))))))
+          ("Subgoal *1/4"
+           :use ((:instance fn-dss-host-call (st fn-octets) (lp (and last (atom (cdr pieces))))
+                            (cap (nfix (if (consp rooms) (car rooms) 0))))
+                 (:instance fn-dss-list-loop-shape (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-stream-list-consumed (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (last (and last (atom (cdr pieces))))
+                            (room (nfix (if (consp rooms) (car rooms) 0))))))
+          ("Subgoal *1/5"
+           :use ((:instance fn-dss-host-call (st fn-octets) (lp (and last (atom (cdr pieces))))
+                            (cap (nfix (if (consp rooms) (car rooms) 0))))
+                 (:instance fn-dss-list-loop-shape (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-stream-list-consumed (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (last (and last (atom (cdr pieces))))
+                            (room (nfix (if (consp rooms) (car rooms) 0))))))
+          ("Subgoal *1/6"
+           :use ((:instance fn-dss-host-call (st fn-octets) (lp (and last (atom (cdr pieces))))
+                            (cap (nfix (if (consp rooms) (car rooms) 0))))
+                 (:instance fn-dss-list-loop-shape (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-stream-list-consumed (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (last (and last (atom (cdr pieces))))
+                            (room (nfix (if (consp rooms) (car rooms) 0))))))
+          ("Subgoal *1/7"
+           :use ((:instance fn-dss-host-call (st fn-octets) (lp (and last (atom (cdr pieces))))
+                            (cap (nfix (if (consp rooms) (car rooms) 0))))
+                 (:instance fn-dss-list-loop-shape (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-list-loop-progress (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (lp (and last (atom (cdr pieces)))) (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))
+                 (:instance fn-dss-stream-list-consumed (xs (nthcdr i (if (consp pieces) (car pieces) nil))) (last (and last (atom (cdr pieces))))
+                            (room (nfix (if (consp rooms) (car rooms) 0)))))))))
+
+(local
+ (defthm fn-dss-flatten-cons-car
+  (implies (true-list-listp pieces)
+           (equal (fn-dss-flatten (cons (if (consp pieces) (car pieces) nil) (cdr pieces)))
+                  (fn-dss-flatten pieces)))))
+
 (defthm fn-dss-drive-stobj-is-items
   (implies (and (true-list-listp pieces)
                 (<= (fn-dss-calls-bound pieces) (nfix fuel))
                 (fn-dss-a-host-room (fn-dss-floor) rooms fuel))
            (let ((run (fn-dss-host-run s pieces last rooms fuel fn-octets fn-dss-out)))
              (equal (list (mv-nth 0 run) (mv-nth 1 run) (mv-nth 2 run))
-                    (fn-dss-stream-items s (fn-dss-flatten pieces) last)))))
+                    (fn-dss-stream-items s (fn-dss-flatten pieces) last))))
+  :hints (("Goal" :use ((:instance fn-dss-host-is-drive (i 0)
+                         (fn-octets (if (consp pieces) (car pieces) nil)))
+                        (:instance fn-dss-drive-is-items
+                         (pieces (cons (if (consp pieces) (car pieces) nil) (cdr pieces)))))
+           :in-theory (disable fn-dss-host-is-drive fn-dss-drive-is-items fn-dss-host
+                               fn-dss-drive fn-dss-stream-items fn-dss-flatten))))
+
+; Proof support for the writes, state-type and progress theorems, local.
+(local
+ (defthm fn-dss-st-k-linear
+   (implies (fn-cbor-octetp o)
+            (<= (fn-dss-st-k s o) (fn-dss-st-emax)))
+   :rule-classes :linear
+   :hints (("Goal" :use fn-dss-st-emit-contract))))
+
+(local
+ (defthm fn-dss-st-k-natp
+   (implies (fn-cbor-octetp o) (natp (fn-dss-st-k s o)))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-dss-st-emit-contract))))
+
+(local
+ (defthm fn-dss-st-fk-linear
+   (<= (fn-dss-st-fk s) (fn-dss-st-fmax))
+   :rule-classes :linear
+   :hints (("Goal" :use fn-dss-st-emit-contract))))
+
+(local
+ (defthm fn-dss-st-fk-natp
+   (natp (fn-dss-st-fk s))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-dss-st-emit-contract))))
+
+(local
+ (defthm fn-dss-stream-loop-writes
+   (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
+                 (<= (len fn-dss-out) cap)
+                 (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
+            (mv-let (r s2 i2 out2) (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
+              (declare (ignore r s2))
+              (and (<= (len out2) cap)
+                   (<= (len out2)
+                       (+ (len fn-dss-out) (* (fn-dss-st-emax) (- i2 i)) (fn-dss-st-fmax)))
+                   (<= i i2)
+                   (or (<= i2 end) (equal i2 i)))))
+   :hints (("Goal" :induct (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
+            :in-theory (enable fn-oct-get-is-nth (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2))))))
+
+(local
+ (defthm fn-dss-st-next-keeps-type-rw
+   (implies (and (fn-dss-st-statep s) (fn-cbor-octetp o))
+            (fn-dss-st-statep (fn-dss-st-next s o)))
+   :hints (("Goal" :use fn-dss-st-next-keeps-type))))
+
+(local
+ (defthm fn-dss-st-fnext-keeps-type-rw
+   (implies (fn-dss-st-statep s)
+            (fn-dss-st-statep (fn-dss-st-fnext s)))
+   :hints (("Goal" :use (:instance fn-dss-st-next-keeps-type (o 0))))))
+
+(local
+ (defthm fn-dss-stream-loop-state-type
+   (implies (and (fn-dss-st-statep s) (natp i)
+                 (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
+            (fn-dss-st-statep (mv-nth 1 (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out))))
+   :hints (("Goal" :induct (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
+            :in-theory (enable fn-oct-get-is-nth (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2))))))
+
+(local
+ (defthm fn-dss-stream-loop-cursor-mono
+   (implies (natp i)
+            (<= i (mv-nth 2 (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out))))
+   :rule-classes :linear
+   :hints (("Goal" :induct (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)))))
 
 (defthm fn-dss-stream-writes
   (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
@@ -1029,7 +1465,11 @@
                   (<= (len out2)
                       (+ (len fn-dss-out) (* (fn-dss-st-emax) (- i2 i)) (fn-dss-st-fmax)))
                   (<= i i2)
-                  (or (<= i2 end) (equal i2 i))))))
+                  (or (<= i2 end) (equal i2 i)))))
+  :hints (("Goal" :use fn-dss-stream-loop-writes
+           :expand ((fn-dss-stream s i end last cap fn-octets fn-dss-out))
+           :in-theory (disable fn-dss-stream fn-dss-stream-loop fn-dss-stream-loop-writes
+                               fn-dss-stream-is-list fn-dss-stream-loop-is-list-general))))
 
 (defthm fn-dss-stream-state-type
   (implies (and (fn-dss-st-statep s) (natp i)
@@ -1041,13 +1481,36 @@
                 (<= (+ (len fn-dss-out) (fn-dss-floor)) cap))
            (mv-let (r s2 i2 out2) (fn-dss-stream s i end last cap fn-octets fn-dss-out)
              (declare (ignore s2 out2))
-             (or (equal r :refused) (< i i2)))))
+             (or (equal r :refused) (< i i2))))
+  :hints (("Goal" :expand ((fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)))))
+
+(local
+ (defthm fn-dss-st-cost-linear-natp
+   (implies (natp (fn-dss-st-cost s o))
+            (<= (fn-dss-st-cost s o) (fn-dss-st-cmax)))
+   :rule-classes :linear
+   :hints (("Goal" :use fn-dss-st-cost-contract))))
+
+(local
+ (defthm fn-dss-st-fcost-linear-natp
+   (implies (natp (fn-dss-st-fcost s))
+            (<= (fn-dss-st-fcost s) (fn-dss-st-fcmax)))
+   :rule-classes :linear
+   :hints (("Goal" :use fn-dss-st-cost-contract))))
+
+(local
+ (defthm fn-dss-st-cmax-natp
+   (and (natp (fn-dss-st-cmax)) (natp (fn-dss-st-fcmax)))
+   :rule-classes ((:type-prescription :corollary (natp (fn-dss-st-cmax)))
+                  (:type-prescription :corollary (natp (fn-dss-st-fcmax))))
+   :hints (("Goal" :use fn-dss-st-cost-contract))))
 
 (defthm fn-dss-stream-work-bound
   (<= (fn-dss-stream-work s i end last room fn-octets)
       (+ 1 (fn-dss-st-fcmax)
          (* (+ 1 (fn-dss-st-cmax)) (nfix (- (nfix end) (nfix i))))))
-  :rule-classes :linear)
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-dss-stream-work s i end last room fn-octets))))
 
 ; =============================================================================
 ; The generator.
@@ -1215,6 +1678,7 @@
         :rule-classes :linear
         :hints (("Goal" :use (,(fn-dss-use-contract cc elt)
                                      (:functional-instance fn-dss-find-work-bound ,@wsubst))
+                 :expand ((,work ,@ctx i end fn-octets))
                  :in-theory ,(fn-dss-defs-theory (list work)))))
       (verify-guards ,name
         :hints ,(or guard-hints
@@ -1297,6 +1761,7 @@
         :rule-classes :linear
         :hints (("Goal" :use (,(fn-dss-use-contract cc elt)
                                      (:functional-instance fn-dss-fold-work-bound ,@wsubst))
+                 :expand ((,work ,@ctx ,acc i end fn-octets))
                  :in-theory ,(fn-dss-defs-theory (list work)))))
       (verify-guards ,name
         :hints ,(or guard-hints
@@ -1388,7 +1853,8 @@
                                    (fn-dss-eq-cmax (lambda () ,cost-max))
                                    (fn-dss-eqs-work (lambda (i end fn-octets j fn-dss-b)
                                                       (,work ,@ctx i end fn-octets j fn-dss-b)))))
-                     :in-theory ,(fn-dss-defs-theory (list work)))))
+                     :expand ((,work ,@ctx i end fn-octets j fn-dss-b))
+                 :in-theory ,(fn-dss-defs-theory (list work)))))
           (verify-guards ,name
             :hints ,(or guard-hints
                         `(("Goal" :in-theory (enable ,@(fn-dss-guard-theory))))))
@@ -1451,7 +1917,8 @@
                                   (fn-dss-eqc-work (lambda (i end fn-octets xs)
                                                      (,work ,@ctx i end fn-octets xs))))
                                  (xs ',constant)))
-                   :in-theory ,(fn-dss-defs-theory (list work)))))
+                   :expand ((,work ,@ctx i end fn-octets xs))
+                 :in-theory ,(fn-dss-defs-theory (list work)))))
         (verify-guards ,loop
           :hints ,(or guard-hints
                       `(("Goal" :in-theory (enable ,@(fn-dss-guard-theory))))))
@@ -1552,6 +2019,7 @@
                                (fn-dss-copy-cmax (lambda () ,cost-max))
                                (fn-dss-copy-work (lambda (i end fn-octets)
                                                    (,work ,@ctx i end fn-octets)))))
+                 :expand ((,work ,@ctx i end fn-octets))
                  :in-theory ,(fn-dss-defs-theory (list work)))))
       (verify-guards ,loop
         :hints ,(or guard-hints
@@ -1878,6 +2346,7 @@
         :rule-classes :linear
         :hints (("Goal" :use (,usc ,(fn-dss-use-contract cc elt)
                               (:functional-instance fn-dss-stream-work-bound ,@wsubst))
+                 :expand ((,work ,@ctx s i end last room fn-octets))
                  :in-theory ,(fn-dss-defs-theory (list work)))
 ))
       (verify-guards ,name

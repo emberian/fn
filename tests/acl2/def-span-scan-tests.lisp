@@ -4,7 +4,7 @@
 ; dot-stuff a reply body, and frame a command line.
 (in-package "ACL2")
 (include-book "../../books/def-span-scan")
-(local (include-book "arithmetic/top" :dir :system))
+(local (include-book "arithmetic-5/top" :dir :system))
 
 ; :find --- the first octet equal to B.
 (def-span-scan fn-dss-fx-find-byte (b)
@@ -110,19 +110,19 @@
 ; (or copy the field) itself; the partition theorem says nothing about it.
 (defun fn-dss-fx-field-len (s)
   (declare (xargs :guard (natp s)))
-  (logand (ash (nfix s) -18) 65535))
+  (mod (floor (nfix s) 262144) 65536))
 
 (defun fn-dss-fx-field-step (s o)
   (declare (xargs :guard (and (unsigned-byte-p 34 s) (fn-cbor-octetp o))))
   (let* ((s (nfix s))
-         (o (logand (ifix o) 255))
-         (phase (logand s 3))
-         (rem (logand (ash s -2) 65535))
+         (o (mod (nfix o) 256))
+         (phase (mod s 4))
+         (rem (mod (floor s 4) 65536))
          (len (fn-dss-fx-field-len s)))
     (cond ((or (eql phase 0) (eql phase 3))
            (mv (+ 1 (* 262144 (* 256 o))) 0 0 0))
           ((eql phase 1)
-           (let ((n (logand (+ len o) 65535)))
+           (let ((n (mod (+ len o) 65536)))
              (if (eql n 0)
                  (mv 3 0 0 1)
                (mv (+ 2 (* 4 n) (* 262144 n)) 0 0 0))))
@@ -132,11 +132,9 @@
                  (mv (+ 3 (* 262144 len)) 0 0 1)
                (mv (+ 2 (* 4 r) (* 262144 len)) 0 0 0)))))))
 
-; At the end of input a field begun and not finished (phase 1 or 2) is
-; refused; between fields the stream is done.
 (defun fn-dss-fx-field-final (s)
   (declare (xargs :guard (unsigned-byte-p 34 s)))
-  (let ((phase (logand (nfix s) 3)))
+  (let ((phase (mod (nfix s) 4)))
     (mv s 0 0 (if (or (eql phase 1) (eql phase 2)) 2 0))))
 
 (def-span-scan fn-dss-fx-field ()
