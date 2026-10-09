@@ -7,7 +7,7 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
 
     train.py merge LANE@SHA [LANE@SHA ...]
     train.py regen [--label N]
-    train.py certify BOX [--transitive]  # ONE farm run (install, certify), then emits
+    train.py certify BOX             # ONE farm run (install, certify), then emits
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
     train.py gate
     train.py push
@@ -20,10 +20,21 @@ timeout.  It records the same box-step.json as `boxstep` plus the farm run, the
 certify id and the install/certify/emit wall seconds (also in the train state,
 shown by `status`).
 
-`certify BOX` always adds the critical witness tests of affected theorem
-books. `--transitive` also certifies every transitively affected Makefile root
-(about 2x the lane walls on train 51's changes, cold cache); the default keeps
-farm's lane selection (direct includers and companion tests).
+`certify BOX` certifies the affected closure of the train: every Makefile
+root transitively affected by a changed book, plus the critical witness tests
+of affected theorem books (COORDINATION section 5: the affected closure
+certifies on the exact artifact before a push, regardless of tree size; the
+lane selection, direct includers only, missed the far consumers of trains 49
+and 58).
+
+Known reds.  `planning/known-reds.json` is dev's recorded baseline of reds,
+each row owned by an open repair item.  A train is *non-regressing* when every
+red it meets is a row there; it is *green* only when the file has no rows, and
+`push` and `status` say which.  A certify whose failed books are all `certify`
+rows goes on to its emits and records them; any other failed or killed book
+fails it.  The `baseline` gate refuses a row this train adds relative to
+origin/dev (rows shrink only), a row whose item is missing or closed, and a
+malformed file.
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
 regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
@@ -137,7 +148,13 @@ UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-         "box_step", "lock_delta", "secrets", "unit")
+         "box_step", "lock_delta", "baseline", "secrets", "unit")
+
+# Dev's recorded reds with owners (COORDINATION section 5).  Each row is
+# {"kind", "subject", "item", "owner", "evidence"}; (kind, subject) is unique.
+KNOWN_REDS = "planning/known-reds.json"
+KNOWN_RED_KINDS = ("certify", "native", "check", "extraction")
+KNOWN_RED_FIELDS = ("kind", "subject", "item", "owner", "evidence")
 
 
 class TrainError(Exception):
@@ -211,6 +228,66 @@ class Train:
     def fetch(self) -> None:
         say("$ git fetch origin")
         git(self.root, "fetch", "--no-tags", "origin")
+
+
+# --------------------------------------------------------------------------- known reds
+
+def parse_known_reds(text: str) -> list[dict]:
+    """The rows of a known-reds file; TrainError when it is malformed."""
+    try:
+        data = json.loads(text)
+    except ValueError as error:
+        raise TrainError(f"{KNOWN_REDS} is not JSON: {error}") from error
+    rows = data.get("rows") if isinstance(data, dict) else None
+    if not isinstance(rows, list):
+        raise TrainError(f"{KNOWN_REDS} has no list 'rows'")
+    seen = set()
+    for row in rows:
+        if not isinstance(row, dict) or any(not isinstance(row.get(f), str) or not row.get(f)
+                                            for f in KNOWN_RED_FIELDS):
+            raise TrainError(f"{KNOWN_REDS}: a row lacks one of {', '.join(KNOWN_RED_FIELDS)}: {str(row)[:120]}")
+        if row["kind"] not in KNOWN_RED_KINDS:
+            raise TrainError(f"{KNOWN_REDS}: kind {row['kind']!r} is not one of {', '.join(KNOWN_RED_KINDS)}")
+        key = (row["kind"], row["subject"])
+        if key in seen:
+            raise TrainError(f"{KNOWN_REDS}: {key[0]} {key[1]} appears twice")
+        seen.add(key)
+    return rows
+
+
+def known_reds_at(t: "Train", rev: str) -> list[dict] | None:
+    """The rows at REV, or None when REV has no known-reds file."""
+    p = git(t.root, "show", f"{rev}:{KNOWN_REDS}", check=False)
+    return parse_known_reds(p.stdout) if p.returncode == 0 else None
+
+
+def verdict_words(rows: list[dict] | None) -> str:
+    if rows is None:
+        return f"no known-red baseline ({KNOWN_REDS} missing): not green"
+    if not rows:
+        return "green: the known-red baseline is empty"
+    return f"non-regressing against {len(rows)} known red(s) in {KNOWN_REDS}; NOT green"
+
+
+def certify_failures(root: Path, certify_id: str | None) -> tuple[list[str], list[str]] | None:
+    """(failed books, killed books) of a certify's manifest under build/acl2,
+    or None when no manifest came back (the verdict is then unknown)."""
+    if not certify_id:
+        return None
+    try:
+        manifest = json.loads((root / "build" / "acl2" / certify_id / "manifest.json").read_text())
+    except (OSError, ValueError):
+        return None
+    results = manifest.get("book_results") or {}
+    reasons = manifest.get("book_failures") or {}
+    import farm  # the one reading of a killed ACL2 (farm.verdict_lines)
+
+    failed, killed = [], []
+    for book in sorted(set(reasons) | {b for b, v in results.items() if v != "passed"}):
+        match = farm.KILLED_REASON.search("; ".join(reasons.get(book) or []))
+        signalled = farm.killed_signal(match.group(1)) if match else None
+        (killed if signalled is not None else failed).append(book)
+    return failed, killed
 
 
 # --------------------------------------------------------------------------- merge
@@ -482,11 +559,9 @@ def cmd_certify(t: Train, args) -> int:
     witnesses = _critical_witness_roots(t.root, books)
     roots = list(dict.fromkeys(["books/wire-export", *books, *tests, *witnesses]))
     argv = [PY, "tools/farm.py"]
-    if books:
-        if not args.transitive:
-            argv += ["--lane"]
-        for b in books:
-            argv += ["--affected-by", b]
+    # the affected closure: every Makefile root a changed book reaches
+    for b in books:
+        argv += ["--affected-by", b]
     argv += ["--timeout-seconds", str(FARM_TIMEOUT_SECONDS), "submit", args.box, *roots]
     t0 = time.monotonic()
     say("$ " + " ".join(argv))
@@ -502,10 +577,26 @@ def cmd_certify(t: Train, args) -> int:
     t1 = time.monotonic()
     rc = t.run(f"certify-wait-{args.box}", [PY, "tools/farm.py", "wait", args.box, run])
     t2 = time.monotonic()
-    if rc != 0:
-        say(f"certify on {args.box} failed (rc {rc}); nothing recorded")
-        return rc
     rec = json.loads((t.root / "build" / "farm" / f"{run}.json").read_text())
+    known_seen: list[str] = []
+    if rc != 0:
+        outcome = certify_failures(t.root, rec.get("certify_id"))
+        if outcome is None:
+            say(f"certify on {args.box} failed (rc {rc}) and no manifest came back; nothing recorded")
+            return rc
+        failed, killed = outcome
+        rows = known_reds_at(t, "HEAD") or []
+        known = {r["subject"] for r in rows if r["kind"] == "certify"}
+        new = [b for b in failed if b not in known]
+        if killed or new or not failed:
+            for b in new:
+                say(f"  NEW certify red (not in {KNOWN_REDS}): {b}")
+            for b in killed:
+                say(f"  KILLED (no verdict): {b}")
+            say(f"certify on {args.box} failed (rc {rc}); nothing recorded")
+            return rc
+        known_seen = failed
+        say(f"certify on {args.box}: {len(failed)} failed book(s), every one a known red: {', '.join(failed)}")
     tree = rec["remote_path"]
     env = subprocess.run([PY3, "tools/box_table.py", "env", args.box], cwd=t.root, capture_output=True, text=True)
     envs = env.stdout.strip() if env.returncode == 0 and env.stdout.strip() else "true"
@@ -533,13 +624,15 @@ def cmd_certify(t: Train, args) -> int:
     wall = {"install": round(t1 - t0), "certify": round(t2 - t1), "emit": round(t3 - t2), "total": round(t3 - t0), "emit_steps": steps}
     _commit_named(t, HBOX_OUTPUTS, f"interfaces.json, wire-grammar.json: the train certify's emits on {args.box} at {ran_at[:9]}")
     record = {"sha": t.head(), "ran_at": ran_at, "box": args.box, "run": run,
-              "certify_id": rec.get("certify_id"), "wall": wall, "cache_seed": cache_seed}
+              "certify_id": rec.get("certify_id"), "wall": wall, "cache_seed": cache_seed,
+              "known_reds_seen": known_seen}
     t.dir.mkdir(parents=True, exist_ok=True)
     box_record_path(t).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
     st = t.load()
     st["box_wall"] = wall
     st["box_run"] = run
     st["cache_seed"] = cache_seed
+    st["certify_known_reds_seen"] = known_seen
     t.save(st)
     say(f"certify recorded: {args.box} run {run} at {record['sha'][:9]}; wall install {wall['install']}s "
         f"certify {wall['certify']}s emit {wall['emit']}s "
@@ -640,6 +733,46 @@ def _ascii_gate(t: Train) -> int:
     for line in hits[:20]:
         say("  | " + line)
     return 1 if hits else 0
+
+
+def _baseline_gate(t: Train) -> tuple[int, dict]:
+    """(rc, record) of the known-reds gate: the file parses at HEAD, every
+    row's repair item exists and is open, and no row is added relative to
+    origin/dev (the first file is the baseline itself)."""
+    try:
+        head_rows = known_reds_at(t, "HEAD")
+        dev_rows = known_reds_at(t, "origin/dev")
+    except TrainError as error:
+        say(f"baseline: {error}")
+        return 1, {"error": str(error)}
+    if head_rows is None:
+        say(f"baseline: {KNOWN_REDS} is missing at HEAD")
+        return 1, {"error": "missing"}
+    items = t.root / "planning" / "repair" / "items"
+    unowned, closed = [], []
+    for row in head_rows:
+        path = items / f"{row['item']}.json"
+        try:
+            state = json.loads(path.read_text()).get("state")
+        except (OSError, ValueError):
+            unowned.append(f"{row['kind']} {row['subject']} ({row['item']})")
+            continue
+        if state in CLOSED_ITEM_STATES:
+            closed.append(f"{row['kind']} {row['subject']} ({row['item']} {state})")
+    keys = lambda rows: {(r["kind"], r["subject"]) for r in rows}
+    added = sorted(keys(head_rows) - keys(dev_rows)) if dev_rows is not None else []
+    gone = sorted(keys(dev_rows) - keys(head_rows)) if dev_rows is not None else []
+    for k in added:
+        say(f"  known red ADDED by this train (rows shrink only): {k[0]} {k[1]}")
+    for k in unowned:
+        say(f"  known red with no repair item: {k}")
+    for k in closed:
+        say(f"  known red whose item is closed (remove the row or reopen the item): {k}")
+    say(f"baseline: {len(head_rows)} row(s); added {len(added)}; gone {len(gone)}"
+        + ("; first baseline (none on origin/dev)" if dev_rows is None else ""))
+    rc = 1 if (added or unowned or closed) else 0
+    return rc, {"rows": len(head_rows), "added": [list(k) for k in added], "gone": [list(k) for k in gone],
+                "unowned": unowned, "closed_items": closed, "established": dev_rows is None}
 
 
 def _launches_native_image(path: Path) -> bool:
@@ -767,6 +900,9 @@ def cmd_gate(t: Train, args) -> int:
         rec("lock_delta", rc, added=added, gone=gone, unowned=unowned,
             closed_items=closed, owned_reds=reds)
 
+    base_rc, base_record = _baseline_gate(t)
+    rec("baseline", base_rc, **base_record)
+
     files = git(t.root, "diff", "--name-only", "origin/dev", "HEAD").stdout.split()
     if files:
         rec("secrets", t.run("gate-secrets", [PY3, "tools/secrets_check.py", *files]))
@@ -818,6 +954,7 @@ def cmd_push(t: Train, args) -> int:
             raise TrainError(f"push to {target} failed: {p.stderr.strip()}")
     carried = ", ".join(f"{l['name']}@{l['sha'][:9]}" for l in st["lanes"] if l["status"] == "merged")
     say(f"dev {old[:9]}..{head[:9]} carried: {carried or '-'}")
+    say("verdict: " + verdict_words(known_reds_at(t, "HEAD")))
     b = gates["box_step"]
     say("box step: " + (f"inherited from {b['inherits_from'][:9]} ({b['box']})" if "inherits_from" in b
                         else f"ran at HEAD on {b['ran_on']}"))
@@ -837,6 +974,10 @@ def cmd_status(t: Train, args) -> int:
     if st.get("box_wall"):
         w = st["box_wall"]
         say(f"  certify {st.get('box_run')}: install {w['install']}s, certify {w['certify']}s, emit {w['emit']}s, total {w['total']}s")
+    try:
+        say("  verdict: " + verdict_words(known_reds_at(t, "HEAD")))
+    except TrainError as error:
+        say(f"  verdict: {error}")
     for n in GATES:
         g = st.get("gates", {}).get(n)
         if g:
@@ -857,8 +998,6 @@ def main(argv=None) -> int:
     b.add_argument("box", choices=("hbox", "persvati"))
     c = sub.add_parser("certify")
     c.add_argument("box", choices=("hbox", "persvati"))
-    c.add_argument("--transitive", action="store_true",
-                   help="certify all affected Makefile roots and critical witness tests")
     g = sub.add_parser("gate")
     sub.add_parser("push")
     sub.add_parser("status")

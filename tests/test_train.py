@@ -73,6 +73,15 @@ with open(os.environ["STUB_LOG"], "a") as f:
     f.write("farm " + " ".join(args) + "\\n")
 act = [a for a in args if a in ("submit", "wait")][0]
 rc = int(os.environ.get("STUB_RC_farm_" + act, "0"))
+if act == "wait" and (os.environ.get("STUB_FAILED_BOOKS") or os.environ.get("STUB_KILLED_BOOKS")):
+    failed = [b for b in os.environ.get("STUB_FAILED_BOOKS", "").split(",") if b]
+    killed = [b for b in os.environ.get("STUB_KILLED_BOOKS", "").split(",") if b]
+    man = Path("build/acl2/certify-stub-1/manifest.json")
+    man.parent.mkdir(parents=True, exist_ok=True)
+    results = {"books/wire-export": "passed", **{b: "failed" for b in failed + killed}}
+    reasons = {**{b: ["ACL2 Error in (DEFTHM X ...)"] for b in failed},
+               **{b: ["ACL2 exited -9"] for b in killed}}
+    man.write_text(json.dumps({"status": "failed", "book_results": results, "book_failures": reasons}))
 if act == "submit":
     rec = Path("build/farm/run-stub-1.json")
     rec.parent.mkdir(parents=True, exist_ok=True)
@@ -218,6 +227,7 @@ class TrainBase(unittest.TestCase):
         (self.seed / "specs").mkdir(exist_ok=True)
         (self.seed / "specs/wire-grammar.json").write_text("base\n")
         (self.seed / "planning/decisions.md").write_text("d0\n")
+        (self.seed / "planning/known-reds.json").write_text('{"rows": []}\n')
         self.commit(self.seed, "init")
         sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
         self.work = self.tmp / "work"
@@ -437,6 +447,7 @@ class PushTests(TrainBase):
         self.assertEqual(self.origin_rev("dev"), self.head())
         self.assertEqual(self.origin_rev("integrate/t1"), self.head())
         self.assertIn(f"carried: a@{sha[:9]}", p.stdout)
+        self.assertIn("verdict: green: the known-red baseline is empty", p.stdout)
 
     # ruling 21: the lock gate's table.  The only green is "no key added
     # relative to dev"; dev's own keys are an owned red list; a checker that
@@ -742,23 +753,71 @@ class CertifyTests(TrainBase):
         farm = [l for l in self.stub_log() if l.startswith("farm ")]
         self.assertEqual(len(farm), 2, farm)
         sub = farm[0]
-        for word in ("--lane", "--affected-by books/b", "--timeout-seconds 1800",
+        for word in ("--affected-by books/b", "--timeout-seconds 1800",
                      "submit hbox", "books/wire-export", "books/b", "tests/acl2/t"):
             self.assertIn(word, sub)
+        # the affected closure, never the lane selection (direct includers)
+        self.assertNotIn("--lane", sub.split())
         self.assertNotIn("books/b.lisp", sub)
         self.assertTrue(farm[1].startswith("farm --root") or "wait hbox run-stub-1" in farm[1], farm[1])
         self.assertNotIn("remote_check", " ".join(self.stub_log()))
 
-    def test_transitive_certify_drops_lane_but_keeps_incremental_affected_selection(self):
+    def test_certify_has_no_lane_mode_to_choose(self):
         self.books_train()
         result = self.train("certify", "hbox", "--transitive")
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        farm = [line for line in self.stub_log() if line.startswith("farm ")]
-        self.assertEqual(len(farm), 2)
-        self.assertNotIn("--lane", farm[0].split())
-        self.assertNotIn("--closure", farm[0].split())
-        for word in ("--affected-by books/b", "books/wire-export", "tests/acl2/t"):
-            self.assertIn(word, farm[0])
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual([line for line in self.stub_log() if line.startswith("farm ")], [])
+
+    def known(self, *subjects, kind="certify", state="open"):
+        """Commit known-red rows for SUBJECTS, owned by item KR-X in STATE, on dev."""
+        rows = [{"kind": kind, "subject": b, "item": "KR-X", "owner": "builder-B",
+                 "evidence": "measured"} for b in subjects]
+        self.advance_dev({"planning/known-reds.json": json.dumps({"rows": rows}),
+                          "planning/repair/items/KR-X.json": json.dumps({"id": "KR-X", "state": state})})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "--no-edit", "origin/dev")
+
+    def test_a_certify_whose_failures_are_all_known_reds_goes_on_and_records_them(self):
+        (self.seed / "planning/repair/items").mkdir(parents=True, exist_ok=True)
+        self.known("host/far-a", "books/far-b")
+        self.books_train()
+        c = self.train("certify", "hbox", extra_env={"STUB_RC_farm_wait": "1",
+                                                     "STUB_FAILED_BOOKS": "host/far-a,books/far-b"})
+        self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
+        self.assertIn("every one a known red", c.stdout)
+        self.assertEqual(self.box()["known_reds_seen"], ["books/far-b", "host/far-a"])
+        self.assertEqual(len([l for l in self.stub_log() if l.startswith("ssh ")]), 1)
+
+    def test_a_certify_failure_outside_the_known_reds_records_nothing(self):
+        (self.seed / "planning/repair/items").mkdir(parents=True, exist_ok=True)
+        self.known("host/far-a")
+        self.books_train()
+        before = self.box()
+        c = self.train("certify", "hbox", extra_env={"STUB_RC_farm_wait": "1",
+                                                     "STUB_FAILED_BOOKS": "host/far-a,books/b"})
+        self.assertNotEqual(c.returncode, 0)
+        self.assertIn("NEW certify red (not in planning/known-reds.json): books/b", c.stdout)
+        self.assertEqual(self.box(), before)
+        self.assertEqual([l for l in self.stub_log() if l.startswith("ssh ")], [])
+
+    def test_a_killed_known_red_book_has_no_verdict_and_records_nothing(self):
+        (self.seed / "planning/repair/items").mkdir(parents=True, exist_ok=True)
+        self.known("host/far-a")
+        self.books_train()
+        before = self.box()
+        c = self.train("certify", "hbox", extra_env={"STUB_RC_farm_wait": "1",
+                                                     "STUB_KILLED_BOOKS": "host/far-a"})
+        self.assertNotEqual(c.returncode, 0)
+        self.assertIn("KILLED (no verdict): host/far-a", c.stdout)
+        self.assertEqual(self.box(), before)
+
+    def test_a_certify_row_of_another_kind_does_not_excuse_a_book(self):
+        (self.seed / "planning/repair/items").mkdir(parents=True, exist_ok=True)
+        self.known("host/far-a", kind="native")
+        self.books_train()
+        c = self.train("certify", "hbox", extra_env={"STUB_RC_farm_wait": "1",
+                                                     "STUB_FAILED_BOOKS": "host/far-a"})
+        self.assertNotEqual(c.returncode, 0)
 
     def test_certify_always_adds_critical_witnesses_of_transitively_affected_books(self):
         (self.seed / "books").mkdir(exist_ok=True)
@@ -876,6 +935,106 @@ class CertifyTests(TrainBase):
         self.assertNotEqual(self.train("certify", "hbox").returncode, 0)
         self.assertEqual([l for l in self.stub_log() if l.startswith("farm")], [])
 
+
+
+class BaselineGateTests(TrainBase):
+    """The known-red baseline: rows shrink only, each owned by an open item."""
+
+    def setUp(self):
+        super().setUp()
+        (self.seed / "planning/repair/items").mkdir(parents=True, exist_ok=True)
+
+    def rows(self, *subjects, item="KR-X"):
+        return json.dumps({"rows": [{"kind": "native", "subject": s, "item": item, "owner": "builder-B",
+                                     "evidence": "gate log"} for s in subjects]}) + "\n"
+
+    def on_dev(self, text, state="open"):
+        self.advance_dev({"planning/known-reds.json": text,
+                          "planning/repair/items/KR-X.json": json.dumps({"id": "KR-X", "state": state})})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
+
+    def gate_with(self, text=None, item_state=None):
+        if text is not None:
+            (self.work / "planning/known-reds.json").write_text(text)
+        if item_state is not None:
+            (self.work / "planning/repair/items/KR-X.json").write_text(
+                json.dumps({"id": "KR-X", "state": item_state}))
+        if text is not None or item_state is not None:
+            self.commit(self.work, "head baseline")
+        g = self.train("gate")
+        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        return g, st["gates"]["baseline"]
+
+    def test_unchanged_owned_rows_pass_and_status_says_not_green(self):
+        self.on_dev(self.rows("t.a", "t.b"))
+        g, rec = self.gate_with()
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual(rec["rows"], 2)
+        s = self.train("status")
+        self.assertIn("non-regressing against 2 known red(s)", s.stdout)
+        self.assertIn("NOT green", s.stdout)
+
+    def test_a_removed_row_passes(self):
+        self.on_dev(self.rows("t.a", "t.b"))
+        g, rec = self.gate_with(self.rows("t.a"))
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual(rec["gone"], [["native", "t.b"]])
+
+    def test_a_row_added_relative_to_dev_fails(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_with(self.rows("t.a", "t.new"))
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(rec["added"], [["native", "t.new"]])
+        self.assertIn("rows shrink only", g.stdout)
+
+    def test_the_first_baseline_is_established_when_dev_has_none(self):
+        sh(self.seed, "git", "fetch", "-q", "origin")
+        sh(self.seed, "git", "checkout", "-q", "-B", "devtip", "origin/dev")
+        sh(self.seed, "git", "rm", "-q", "planning/known-reds.json")
+        self.commit(self.seed, "no baseline")
+        sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
+        (self.work / "planning/repair/items").mkdir(parents=True, exist_ok=True)
+        g, rec = self.gate_with(self.rows("t.a"), item_state="open")
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertTrue(rec["established"])
+
+    def test_a_missing_baseline_at_head_fails(self):
+        sh(self.work, "git", "rm", "-q", "planning/known-reds.json")
+        self.commit(self.work, "drop baseline")
+        g, rec = self.gate_with()
+        self.assertEqual(rec["rc"], 1)
+
+    def test_a_row_whose_item_is_missing_fails(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_with(self.rows("t.a", item="KR-X") .replace("KR-X", "KR-NONE"))
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(len(rec["unowned"]), 1)
+
+    def test_a_row_whose_item_is_closed_fails(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_with(item_state="landed")
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(len(rec["closed_items"]), 1)
+
+    def test_a_malformed_file_fails(self):
+        self.on_dev(self.rows("t.a"))
+        for text in ('{"rows": [{"kind": "native"}]}\n', '{"rows": {}}\n', "not json\n",
+                     self.rows("t.a").replace('"native"', '"vibes"'),
+                     json.dumps({"rows": json.loads(self.rows("t.a"))["rows"] * 2})):
+            g, rec = self.gate_with(text)
+            self.assertEqual(rec["rc"], 1, text)
+
+    def test_push_refused_when_the_baseline_gate_fails(self):
+        self.on_dev(self.rows("t.a"))
+        before = self.origin_rev("dev")
+        self.gate_with(self.rows("t.a", "t.new"))
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("gate baseline failed", p.stdout)
+        self.assertEqual(self.origin_rev("dev"), before)
 
 
 class AsciiGateTests(unittest.TestCase):

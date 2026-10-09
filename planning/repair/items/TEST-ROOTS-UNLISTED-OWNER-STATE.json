@@ -1,0 +1,13 @@
+{
+ "category": "certify",
+ "file": "Makefile",
+ "id": "TEST-ROOTS-UNLISTED-OWNER-STATE",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "medium",
+ "slice": "tree",
+ "source": "check-fast at dev 3a937ebc3 on persvati (b-measure-check)",
+ "state": "open",
+ "title": "test_roots_check: five owner state test books are in no Makefile ACL2_BOOKS, so nothing certifies them (owner-admission-state, owner-authority-state, owner-catalog-root-state, owner-publication-state, owner-readers-state -tests)",
+ "updated": "2026-10-09T07:20:02Z"
+}

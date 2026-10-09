@@ -1,0 +1,13 @@
+{
+ "category": "docs",
+ "file": "tools/spec_cite_check.py",
+ "id": "SPEC-CITE-UNDEFINED-20261009",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "low",
+ "slice": "tree",
+ "source": "check-fast at dev 3a937ebc3 on persvati (b-measure-check)",
+ "state": "open",
+ "title": "spec_cite_check --strict: four cited names no book, test book or host file defines (fn-owner-cfg-native-admin-authorize-carried docs/prefixes.md:299; fn-owner-reconfigure-authorizedp specs/reconfiguration.md:1523; fnn-owner-commit-step-action docs/operator-internals.md:1059; fnn-owner-live-reconfigure-locked specs/bp-node-machine.md:4882, nntp.md:1887, peering.md:2311, reconfiguration.md:1522)",
+ "updated": "2026-10-09T07:20:02Z"
+}
