@@ -14195,6 +14195,44 @@
    "registry": true
   },
   {
+   "book_digest": "80ef897cfa686984e412d061ebdc5618b2917336bf598d414eaf02a37d9d3fc1",
+   "bounds": [],
+   "claim_digest": "df149bdbc6d149d126bd13b9ac5f900ba606fae55700b474fb8c25cfa84da71d",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-oadm-configure-reclaim-requires-opt-in",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-admission-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oadm-configure-reclaim",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "80ef897cfa686984e412d061ebdc5618b2917336bf598d414eaf02a37d9d3fc1",
+   "bounds": [],
+   "claim_digest": "da251d23a31f97f9d75740c1bd1079bef3526bc130817b61fb4044c64c974758",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-oadm-configured-request-composition-by-definition",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-admission-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-oadm-configure-reclaim",
+   "witness": "executable"
+  },
+  {
    "class": "hand",
    "name": "fn-oag-description-of-descs",
    "registry": true
@@ -14282,6 +14320,44 @@
    "name": "fn-oas-refusals-are-not-article",
    "registry": true,
    "statement_digest": "32bea69866d284894c4cf1de400162f4cf7943681a83cf5e8b256301df0d81e6"
+  },
+  {
+   "book_digest": "38e5c1d5aec1288480fffbd3e3b75ca5643ed6c91992344e6f9655c114f12f9c",
+   "bounds": [],
+   "claim_digest": "52d4d26799ea53f1bca8bce2e3322e09bdd5cd5cc09c631898604f64c2d89687",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-oauth-publication-does-not-invent-root",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-authority-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oauth-publication",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "38e5c1d5aec1288480fffbd3e3b75ca5643ed6c91992344e6f9655c114f12f9c",
+   "bounds": [],
+   "claim_digest": "9865305ca4cf3c8ca51ce88c2b0eb916e6bd9115ab87ab239f08400f048183e7",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-oauth-publication-rejects-published-root",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-authority-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-oauth-publication",
+   "witness": "executable"
   },
   {
    "book": "books/owner-bound-commit.lisp",
@@ -16160,6 +16236,63 @@
    "name": "fn-orcs-predict-seal-refines-intern",
    "registry": true,
    "statement_digest": "4ba070ae0ff312f8264177b3d94a93956c69685145536f838c3223d0e7174a5c"
+  },
+  {
+   "book_digest": "89b4211b93b7cc72d172cbc3a8368902b108ef0f1e0675247c3552e8c827409f",
+   "bounds": [],
+   "claim_digest": "95a36a4c201734d631c315faaa539836a69db7f0599914b2efc43918db7d31cc",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ordr-cache-install-frames-views",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-readers-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-ordr-cache-install",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "89b4211b93b7cc72d172cbc3a8368902b108ef0f1e0675247c3552e8c827409f",
+   "bounds": [],
+   "claim_digest": "1e25ea5273cf62ebec07cbe77425facfcc92d10cc8a5df1004f0283836007e12",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ordr-capture-composition-by-definition",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-readers-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-ordr-capture",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "89b4211b93b7cc72d172cbc3a8368902b108ef0f1e0675247c3552e8c827409f",
+   "bounds": [],
+   "claim_digest": "2d3978d857f1e106a3839f8de244cc915af176982d79098eaf4f9d8d154506ab",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-ordr-index-kind-composition-by-definition",
+   "owed_met": null,
+   "owner_book": "tests/acl2/owner-readers-state-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 0
+   },
+   "subject": "fn-ordr-index-kind",
+   "witness": "executable"
   },
   {
    "class": "hand",
@@ -26526,6 +26659,25 @@
    "name": "fn-stx-field-round-trip",
    "registry": true,
    "statement_digest": "6ab113f1f2bb52917184f0a665c0cb24adbcb2e8c06d7b85ae7638a55dc6ee29"
+  },
+  {
+   "book_digest": "adce186da0f3ba1b80d475037738d9c6896dbdf2b97b4487976649acc43624df",
+   "bounds": [],
+   "claim_digest": "6d23c0611b6c53f22f00b85f6b35c26c1b4ef49971e7a84384c339920884f065",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-stx-framed-body-round-trip",
+   "owed_met": null,
+   "owner_book": "tests/acl2/native-statement-material-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "subject": "fn-stx-body-payload",
+   "witness": "executable"
   },
   {
    "class": "hand",
