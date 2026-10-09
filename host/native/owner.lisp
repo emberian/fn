@@ -611,6 +611,19 @@ stop, caught before the first POST instead of at the second."
 (defun fnn-owner-core (name &rest args)
   (apply #'fnn-core-state name args))
 
+(defun fnn-dev-held-verdicts-dump (label)
+  "Developer image only (FN_NATIVE_TEST_HELD_VERDICTS_FILE): append LABEL and
+the owner's held-row verdicts (books fn-owner-held-verdicts) to the file, so a
+test compares the owner a reclaim swap installs with the one a restart opens.
+No served verb reaches it; a production image refuses the selector at start."
+  (let ((path (fnn-developer-selector "FN_NATIVE_TEST_HELD_VERDICTS_FILE")))
+    (when path
+      (let ((verdicts (first (fnn-call 'fn-owner-held-verdicts *the-live-state*))))
+        (with-open-file (out path :direction :output :if-exists :append
+                                  :if-does-not-exist :create)
+          (let ((*print-pretty* nil) (*print-readably* nil))
+            (format out "~a ~s~%" label verdicts)))))))
+
 (defun fnn-owner-refresh-read-octets (service)
   "Install ACL2's read size for the next served read (under the owner mutex:
 the exposure install, and every served step, so a live change of the step
@@ -8797,7 +8810,8 @@ publication).  Answers the reply word."
                                      ;; only after them, in this quantum
                                      ;; (fn-orrd-a-post-after-the-swap-is-
                                      ;; taken-as-before).
-                                     (fnn-owner-reclaim-barriers store))
+                                     (fnn-owner-reclaim-barriers store)
+                                     (fnn-dev-held-verdicts-dump "reclaim"))
                                    w)))))
                        (case sw
                          (:swap (return))
@@ -9425,6 +9439,7 @@ MORE-ADDRESSES are the (FAMILY . OCTETS) after the first of an ACL2-admitted
                         ;; Recovery is done: from here the owner serves.
                         (fnn-owner-release-recovery-garbage)
                         (fnn-owner-service-nursery)
+                        (fnn-dev-held-verdicts-dump "open")
                         (fnn-out "LISTENING ~d" bound-port)
                         ;; PRF-162: the implicit-TLS listener ACL2 offered
                         ;; (fn-native-operator-result-run-implicit-tls-port),

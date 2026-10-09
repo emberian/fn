@@ -144,9 +144,15 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
     swapped owner serves are the restart's: article A (posted under generation
     1) keeps generation 1 and article B (generation 2) keeps generation 2.
     The prediction used to intern every record at the store's current keyring
-    and generation (one pair), so after the swap A answered generation 2 and
-    the restart answered 1.  A malformed FN-Statement makes HDR :fn-verified
-    render the generation on an ordinary record (fn-stx-verified-item).
+    and generation (one pair).  Pass 3 rewrites only the tombstoned records,
+    and nothing serves a tombstone after expiry, so the defect has no served
+    observable: the keystone protects the owner's internal consistency after
+    a restart, not a reply.  The test therefore reads the owner's held-row
+    verdicts through the developer image's inspection
+    (FN_NATIVE_TEST_HELD_VERDICTS_FILE, host/owner-held-verdicts-host.lisp):
+    the swapped owner's must equal the restarted owner's, the tombstone's
+    included.  A malformed FN-Statement makes HDR :fn-verified render the
+    generation on an ordinary record (fn-stx-verified-item).
     """
 
     def setUp(self):
@@ -166,8 +172,10 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
         self.assertEqual(accepted, b"240 article received OK\r\n")
 
     def test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves(self):
+        held = self.root / "held-verdicts.txt"
         node = Node(self, DEVELOPER, root=self.root / "node",
-                    extra=expiry.reclaim_extra(True))
+                    extra=expiry.reclaim_extra(True),
+                    env={"FN_NATIVE_TEST_HELD_VERDICTS_FILE": held})
         node.operator("init", "--profile", "development", expiry.GROUP, expect=EXIT_OK)
         principal = self.root / "principal.bin"
         principal.write_bytes(bytes([85]) * 32)
@@ -221,6 +229,16 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
             node.stop(expect=None, grace=300)
         self.assertEqual(swapped, replayed)
         self.assertEqual(swapped, expected)
+        # The owner state the prediction decides: every held row's verdict,
+        # the rewritten tombstone's included, is the restart's.
+        lines = held.read_text().splitlines()
+        after_swap = [l[len("reclaim "):] for l in lines if l.startswith("reclaim ")]
+        reopened = [l[len("open "):] for l in lines if l.startswith("open ")]
+        self.assertEqual(len(after_swap), 1, lines)
+        self.assertGreaterEqual(len(reopened), 2, lines)
+        self.assertIn(expiring.strip("<>"), after_swap[0])
+        self.assertEqual(after_swap[0], reopened[-1],
+                         "the swapped owner's held-row verdicts differ from a restart's")
 
 
 class NativeRecoverySourceMapTests(unittest.TestCase):
