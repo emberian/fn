@@ -1763,7 +1763,7 @@ def stobj_names(path: Path) -> set[str]:
             name = str(form[1])
             found.add("create-" + name)
             found.update(name + suffix for suffix in
-                         ("-p", "-len", "-get", "-put", "-append-octet", "-clear",
+                         ("-p", "-len", "-get", "-put", "-truncate", "-append-octet", "-clear",
                           "-reserve", "-list", "-from-list", "-append-list", "-append-back",
                           "-get-word", "-append-word"))
             return

@@ -9,6 +9,7 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
     train.py regen [--label N]
     train.py certify BOX             # ONE farm run (install, certify), then emits
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
+    train.py image [--label L]       # read HEAD's image run (tools/hbox_native.sh) for the image gate
     train.py gate
     train.py push
     train.py status
@@ -21,7 +22,8 @@ certify id and the install/certify/emit wall seconds (also in the train state,
 shown by `status`).
 
 `certify BOX` certifies the affected closure of the train: every Makefile
-root transitively affected by a changed book, plus the critical witness tests
+root transitively affected by a changed book, every root the train adds to
+the Makefile's ACL2_BOOKS, plus the critical witness tests
 of affected theorem books (COORDINATION section 5: the affected closure
 certifies on the exact artifact before a push, regardless of tree size; the
 lane selection, direct includers only, missed the far consumers of trains 49
@@ -34,7 +36,23 @@ red it meets is a row there; it is *green* only when the file has no rows, and
 rows goes on to its emits and records them; any other failed or killed book
 fails it.  The `baseline` gate refuses a row this train adds relative to
 origin/dev (rows shrink only), a row whose item is missing or closed, and a
-malformed file.
+malformed file.  The one way in is an amendment record in
+`planning/known-reds-amendments.json` (append-only; the row, the dev sha where
+it was measured, the item, the owner, the coordinator ruling; ruled 2026-10-09
+13:05): the gate accepts exactly the added rows an amendment names, refuses a
+rewritten or dropped amendment record, and refuses an amendment that names no
+present row (unless the row was retired and its item is closed), so amendments
+cannot be stockpiled.  `push` and `status` print the amendment count beside
+the row count.
+
+The image gate.  A train whose diff touches the heap probe, a launcher or
+host/native/ (IMAGE_RULES) must run the rule's native modules
+(test_native_operator_verbs, heap_from_profile and the served natives) on
+HEAD's image: `tools/hbox_native.sh HEAD MODULES`, then `train.py image`
+reads each module's rc and case statuses from the box.  The gate passes when
+every obliged module ran at HEAD and each red case is a `native` known red;
+a module that has not run (an interrupted image gate) refuses the push.
+Every command ends with one line `TRAIN-DONE CMD rc=N`.
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
 regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
@@ -148,13 +166,43 @@ UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-         "box_step", "lock_delta", "baseline", "secrets", "unit")
+         "box_step", "lock_delta", "baseline", "secrets", "unit", "image")
+
+# The image gate (coordinator 2026-10-09, after train 74).  A train whose diff
+# against origin/dev touches a rule's paths runs the rule's native modules on
+# the train's own image in the same train (COORDINATION section 5), picked
+# from the diff rather than remembered: train 63 changed the launcher's heap
+# decision and no train ran test_native_served_line_stack until train 73,
+# which found it red.  A path ending in "/" is a directory prefix.
+SERVED_NATIVES = ("tests.test_native_served_differential", "tests.test_native_owner",
+                  "tests.test_native_article_slots", "tests.test_native_reader_index",
+                  "tests.test_native_bounds_blob", "tests.test_native_served_cost",
+                  "tests.test_native_served_line_stack", "tests.test_native_over_window")
+IMAGE_RULES = (
+    ("the heap probe, a launcher or host/native/",
+     ("books/heap-figure.lisp", "packaging/fn", "packaging/launcher-decide.sh",
+      "tools/build_native_host.sh", "tools/extract/core_launcher.py", "host/native/"),
+     ("tests.test_native_operator_verbs", "tests.test_native_heap_from_profile") + SERVED_NATIVES),
+)
+# tools/hbox_native.sh's local record of a run (box=, dir=, source=), under
+# the batch tree; LABEL is the first 12 hex digits of the run's commit.
+IMAGE_RUN_RECORD = "build/hbox-native/{label}.run"
+# a case status that is not a red (tools/test_budget.py's vocabulary)
+IMAGE_CASE_PASS = ("ok", "skip")
+# tools/hbox_native.sh's module status when it ran and every test skipped
+# (a fixture or memory cap absent): it ran, it is not a red, and the gate
+# prints it so the uncovered module is never silent
+IMAGE_RC_ALL_SKIPPED = 4
 
 # Dev's recorded reds with owners (COORDINATION section 5).  Each row is
 # {"kind", "subject", "item", "owner", "evidence"}; (kind, subject) is unique.
 KNOWN_REDS = "planning/known-reds.json"
 KNOWN_RED_KINDS = ("certify", "native", "check", "extraction")
 KNOWN_RED_FIELDS = ("kind", "subject", "item", "owner", "evidence")
+# Amendments admit a row added after the baseline entered (COORDINATION section 5).
+# Each record names its row by the same (kind, subject) key.
+KNOWN_RED_AMENDMENTS = "planning/known-reds-amendments.json"
+AMENDMENT_FIELDS = ("kind", "subject", "dev_sha", "item", "owner", "ruling")
 
 
 class TrainError(Exception):
@@ -261,12 +309,55 @@ def known_reds_at(t: "Train", rev: str) -> list[dict] | None:
     return parse_known_reds(p.stdout) if p.returncode == 0 else None
 
 
-def verdict_words(rows: list[dict] | None) -> str:
+def parse_amendments(text: str) -> list[dict]:
+    """The records of an amendments file; TrainError when it is malformed."""
+    try:
+        data = json.loads(text)
+    except ValueError as error:
+        raise TrainError(f"{KNOWN_RED_AMENDMENTS} is not JSON: {error}") from error
+    records = data.get("amendments") if isinstance(data, dict) else None
+    if not isinstance(records, list):
+        raise TrainError(f"{KNOWN_RED_AMENDMENTS} has no list 'amendments'")
+    last: dict = {}
+    for rec in records:
+        if not isinstance(rec, dict) or any(not isinstance(rec.get(f), str) or not rec.get(f)
+                                            for f in AMENDMENT_FIELDS):
+            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: a record lacks one of "
+                             f"{', '.join(AMENDMENT_FIELDS)}: {str(rec)[:120]}")
+        key = (rec["kind"], rec["subject"])
+        prev = last.get(key)
+        if prev is not None:
+            # An owner transfer (coordinator 2026-10-09): a later record for
+            # the same row names the owner it takes over from, with the first
+            # record's item and dev sha.  The earlier records stay as written
+            # (the measured owner); the last one is the row's current owner.
+            if not (rec.get("transfer_from") == prev["owner"] and rec["owner"] != prev["owner"]
+                    and rec["item"] == prev["item"] and rec["dev_sha"] == prev["dev_sha"]):
+                raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]} is amended twice "
+                                 "(a later record must be an owner transfer: transfer_from the "
+                                 "previous owner, the same item and dev_sha, a new owner)")
+        elif "transfer_from" in rec:
+            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]}: a transfer with no "
+                             "earlier record")
+        last[key] = rec
+    return records
+
+
+def amendments_at(t: "Train", rev: str) -> list[dict]:
+    """The amendment records at REV; none when REV has no amendments file."""
+    p = git(t.root, "show", f"{rev}:{KNOWN_RED_AMENDMENTS}", check=False)
+    return parse_amendments(p.stdout) if p.returncode == 0 else []
+
+
+def verdict_words(rows: list[dict] | None, amendments: list[dict] | None = None) -> str:
     if rows is None:
         return f"no known-red baseline ({KNOWN_REDS} missing): not green"
     if not rows:
         return "green: the known-red baseline is empty"
-    return f"non-regressing against {len(rows)} known red(s) in {KNOWN_REDS}; NOT green"
+    amended = {(a["kind"], a["subject"]) for a in amendments or []}
+    n_amended = sum(1 for r in rows if (r["kind"], r["subject"]) in amended)
+    return (f"non-regressing against {len(rows)} known reds, {n_amended} amended "
+            f"({KNOWN_REDS}, {KNOWN_RED_AMENDMENTS}); NOT green")
 
 
 def certify_failures(root: Path, certify_id: str | None) -> tuple[list[str], list[str]] | None:
@@ -465,6 +556,29 @@ def _changed_roots(t: Train, prefix: str) -> list[str]:
     return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
 
 
+def makefile_root_list(text: str) -> list[str]:
+    """The Makefile's ACL2_BOOKS roots (tools/ledger.py makefile_roots's reading)."""
+    match = re.search(r"(?ms)^ACL2_BOOKS\s*\??=\s*(.*?)(?=^\S|\Z)", text)
+    if not match:
+        raise TrainError("Makefile: no ACL2_BOOKS assignment")
+    return [token for token in match.group(1).replace("\\\n", " ").split() if token]
+
+
+def _added_roots(t: "Train") -> list[str]:
+    """Roots HEAD's Makefile lists that origin/dev's does not.  A book that
+    becomes a root without changing (a kept claim nothing certified, a test
+    re-hooked) is affected by the train though no changed book reaches it;
+    train 76 listed three such roots and the changed-book selection missed
+    them."""
+    head = t.root / "Makefile"
+    if not head.is_file():
+        return []  # no Makefile, no roots
+    shown = git(t.root, "show", "origin/dev:Makefile", check=False)
+    # a Makefile new in this train makes every root it lists new
+    before = set(makefile_root_list(shown.stdout)) if shown.returncode == 0 else set()
+    return [r for r in makefile_root_list(head.read_text(encoding="utf-8")) if r not in before]
+
+
 def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
     """Critical teeth whose theorem's closure changed, from regen's manifest.
 
@@ -557,7 +671,10 @@ def cmd_certify(t: Train, args) -> int:
     # stale witness fails keystone_emit's critical gate (trains 52 and 55
     # needed a hand certify of them)
     witnesses = _critical_witness_roots(t.root, books)
-    roots = list(dict.fromkeys(["books/wire-export", *books, *tests, *witnesses]))
+    added = _added_roots(t)
+    if added:
+        say(f"certify: {len(added)} root(s) new in the Makefile: " + ", ".join(added))
+    roots = list(dict.fromkeys(["books/wire-export", *books, *tests, *witnesses, *added]))
     argv = [PY, "tools/farm.py"]
     # the affected closure: every Makefile root a changed book reaches
     for b in books:
@@ -738,10 +855,13 @@ def _ascii_gate(t: Train) -> int:
 def _baseline_gate(t: Train) -> tuple[int, dict]:
     """(rc, record) of the known-reds gate: the file parses at HEAD, every
     row's repair item exists and is open, and no row is added relative to
-    origin/dev (the first file is the baseline itself)."""
+    origin/dev unless an amendment names it (the first file is the baseline
+    itself).  The amendments are append-only and each names a present row."""
     try:
         head_rows = known_reds_at(t, "HEAD")
         dev_rows = known_reds_at(t, "origin/dev")
+        head_amend = amendments_at(t, "HEAD")
+        dev_amend = amendments_at(t, "origin/dev")
     except TrainError as error:
         say(f"baseline: {error}")
         return 1, {"error": str(error)}
@@ -749,30 +869,164 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
         say(f"baseline: {KNOWN_REDS} is missing at HEAD")
         return 1, {"error": "missing"}
     items = t.root / "planning" / "repair" / "items"
+
+    def item_state(name):
+        try:
+            return json.loads((items / f"{name}.json").read_text()).get("state"), True
+        except (OSError, ValueError):
+            return None, False
+
     unowned, closed = [], []
     for row in head_rows:
-        path = items / f"{row['item']}.json"
-        try:
-            state = json.loads(path.read_text()).get("state")
-        except (OSError, ValueError):
+        state, found = item_state(row["item"])
+        if not found:
             unowned.append(f"{row['kind']} {row['subject']} ({row['item']})")
-            continue
-        if state in CLOSED_ITEM_STATES:
+        elif state in CLOSED_ITEM_STATES:
             closed.append(f"{row['kind']} {row['subject']} ({row['item']} {state})")
     keys = lambda rows: {(r["kind"], r["subject"]) for r in rows}
-    added = sorted(keys(head_rows) - keys(dev_rows)) if dev_rows is not None else []
+    row_by_key = {(r["kind"], r["subject"]): r for r in head_rows}
+    amended = {(a["kind"], a["subject"]): a for a in head_amend}
+    added_all = sorted(keys(head_rows) - keys(dev_rows)) if dev_rows is not None else []
+    added = [k for k in added_all if k not in amended]
+    admitted = [k for k in added_all if k in amended]
     gone = sorted(keys(dev_rows) - keys(head_rows)) if dev_rows is not None else []
+    # append-only: every record on origin/dev is at HEAD, unchanged and in order
+    rewritten = head_amend[:len(dev_amend)] != dev_amend
+    dangling, mismatched = [], []
+    for k, a in amended.items():
+        row = row_by_key.get(k)
+        if row is None:
+            state, found = item_state(a["item"])
+            if not (found and state in CLOSED_ITEM_STATES):
+                dangling.append(f"{k[0]} {k[1]}")
+        elif (row["item"], row["owner"]) != (a["item"], a["owner"]):
+            mismatched.append(f"{k[0]} {k[1]}")
     for k in added:
         say(f"  known red ADDED by this train (rows shrink only): {k[0]} {k[1]}")
+    for k in admitted:
+        say(f"  known red added by amendment ({amended[k]['item']}, measured at {amended[k]['dev_sha']}): {k[0]} {k[1]}")
+    if rewritten:
+        say(f"  {KNOWN_RED_AMENDMENTS} is append-only: a record on origin/dev was edited or dropped")
+    for k in dangling:
+        say(f"  amendment names no known-red row (amendments cannot be stockpiled): {k}")
+    for k in mismatched:
+        say(f"  amendment disagrees with its row on item or owner: {k}")
     for k in unowned:
         say(f"  known red with no repair item: {k}")
     for k in closed:
         say(f"  known red whose item is closed (remove the row or reopen the item): {k}")
-    say(f"baseline: {len(head_rows)} row(s); added {len(added)}; gone {len(gone)}"
+    n_amended = sum(1 for k in amended if k in row_by_key)
+    say(f"baseline: {len(head_rows)} row(s), {n_amended} amended; added {len(added)}; "
+        f"added by amendment {len(admitted)}; gone {len(gone)}"
         + ("; first baseline (none on origin/dev)" if dev_rows is None else ""))
-    rc = 1 if (added or unowned or closed) else 0
-    return rc, {"rows": len(head_rows), "added": [list(k) for k in added], "gone": [list(k) for k in gone],
+    rc = 1 if (added or unowned or closed or rewritten or dangling or mismatched) else 0
+    return rc, {"rows": len(head_rows), "amended": n_amended, "added": [list(k) for k in added],
+                "admitted": [list(k) for k in admitted], "gone": [list(k) for k in gone],
+                "amendments_rewritten": rewritten, "dangling_amendments": dangling,
+                "mismatched_amendments": mismatched,
                 "unowned": unowned, "closed_items": closed, "established": dev_rows is None}
+
+
+def image_modules(changed: list[str]) -> dict[str, list[str]]:
+    """The native modules the train's diff obliges (IMAGE_RULES), each with
+    the changed paths that oblige it."""
+    need: dict[str, list[str]] = {}
+    for _why, paths, modules in IMAGE_RULES:
+        hits = [f for f in changed
+                if any(f.startswith(p) if p.endswith("/") else f == p for p in paths)]
+        if hits:
+            for m in modules:
+                need.setdefault(m, [])
+                need[m] += [h for h in hits if h not in need[m]]
+    return need
+
+
+def parse_image_results(text: str) -> dict[str, dict]:
+    """The box's per-module outcome from the lines `RC MODULE N` (rc/test-MODULE)
+    and `FN_TEST_BUDGET_RESULT {...}` (logs/test-MODULE.log): module -> {"rc",
+    "cases": {case: status}}.  A module with an rc and no result line has no
+    cases (killed, or refused before its first test)."""
+    out: dict[str, dict] = {}
+    for line in text.splitlines():
+        words = line.split()
+        if len(words) == 3 and words[0] == "RC" and words[2].lstrip("-").isdigit():
+            out.setdefault(words[1], {"cases": {}})["rc"] = int(words[2])
+        elif line.startswith("FN_TEST_BUDGET_RESULT "):
+            try:
+                record = json.loads(line.split(" ", 1)[1])
+            except ValueError:
+                continue
+            module = record.get("module")
+            if isinstance(module, str):
+                entry = out.setdefault(module, {"cases": {}})
+                entry["cases"] = {c: s for c, s in record.get("cases") or []}
+    return {m: e for m, e in out.items() if "rc" in e}
+
+
+def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
+                  rows: list[dict] | None) -> tuple[int, dict]:
+    """The image gate's decision.  Green when nothing is obliged, or when every
+    obliged module ran on the image of HEAD and each red case in it is a
+    `native` row of planning/known-reds.json.  A module that did not run (an
+    interrupted image gate) refuses the push until it has; so does a module
+    that failed with no case recorded."""
+    if not need:
+        return 0, {"skipped": True}
+    if record is None:
+        return 1, {"error": "no image run recorded at HEAD; run tools/hbox_native.sh HEAD "
+                            "MODULES, then `train.py image`", "need": sorted(need)}
+    if record.get("source") != head:
+        return 1, {"error": "the recorded image run is of %s, not HEAD" % str(record.get("source"))[:9],
+                   "need": sorted(need)}
+    known = {r["subject"] for r in rows or [] if r.get("kind") == "native"}
+    results = record.get("modules", {})
+    missing = sorted(m for m in need if m not in results)
+    unexplained, known_seen, skipped = [], [], []
+    for m in sorted(need):
+        if m not in results:
+            continue
+        rc, cases = results[m]["rc"], results[m]["cases"]
+        reds = sorted(c for c, s in cases.items() if s not in IMAGE_CASE_PASS)
+        if rc == IMAGE_RC_ALL_SKIPPED and not reds:
+            skipped.append(m)
+        elif rc != 0 and not reds:
+            unexplained.append(f"{m} (rc {rc}, no case recorded)")
+        for c in reds:
+            (known_seen if c in known else unexplained).append(c)
+    extra = {"need": sorted(need), "run": record.get("dir"), "missing": missing,
+             "unexplained": unexplained, "known_reds": known_seen, "skipped": skipped}
+    return (1 if missing or unexplained else 0), extra
+
+
+def image_record_path(t: "Train", label: str) -> Path:
+    return t.root / IMAGE_RUN_RECORD.format(label=label)
+
+
+def cmd_image(t: Train, args) -> int:
+    """Read HEAD's image run from its box into the train state: each module's
+    rc and case statuses, for the image gate."""
+    head = t.head()
+    label = args.label or head[:12]
+    path = image_record_path(t, label)
+    if not path.is_file():
+        raise TrainError(f"no image run record {path}; run tools/hbox_native.sh {head[:9]} MODULES")
+    run = dict(l.split("=", 1) for l in path.read_text().splitlines() if "=" in l)
+    if run.get("source") != head:
+        raise TrainError(f"{path} is of {run.get('source', '?')[:9]}, not HEAD {head[:9]}")
+    script = ("cd %s && for f in rc/test-*; do [ -f \"$f\" ] && echo \"RC ${f#rc/test-} $(cat \"$f\")\"; done; "
+              "grep -h FN_TEST_BUDGET_RESULT logs/test-*.log 2>/dev/null; true") % shlex.quote(run["dir"])
+    p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], script],
+                       capture_output=True, text=True)
+    if p.returncode != 0:
+        raise TrainError(f"reading {run['box']}:{run['dir']} failed (rc {p.returncode}): {p.stderr.strip()[:200]}")
+    st = t.load()
+    st["image"] = {"source": head, "box": run["box"], "dir": run["dir"],
+                   "modules": parse_image_results(p.stdout)}
+    t.save(st)
+    for m, e in sorted(st["image"]["modules"].items()):
+        reds = [c for c, s in e["cases"].items() if s not in IMAGE_CASE_PASS]
+        say(f"image {m}: rc {e['rc']}, {len(e['cases'])} cases, red {len(reds)}")
+    return 0
 
 
 def _launches_native_image(path: Path) -> bool:
@@ -919,6 +1173,22 @@ def cmd_gate(t: Train, args) -> int:
             results[test] = t.run("gate-unit-" + Path(test).stem, [PY, "-m", "unittest", test])
     rec("unit", 0 if all(v == 0 for v in results.values()) else 1, tests=results)
 
+    need = image_modules(files)
+    image_rc, image_record = image_verdict(need, st.get("image"), head, known_reds_at(t, "HEAD"))
+    if need:
+        say(f"image: obliged {len(need)} module(s) by " + ", ".join(sorted({f for v in need.values() for f in v})[:5]))
+        for m in image_record.get("missing", []):
+            say(f"  NOT RUN on HEAD's image: {m}")
+        for c in image_record.get("unexplained", []):
+            say(f"  RED and not a known red: {c}")
+        for m in image_record.get("skipped", []):
+            say(f"  ran with every test skipped (not covered): {m}")
+        if "error" in image_record:
+            say(f"  {image_record['error']}")
+    else:
+        say("image: no change obliges an image module")
+    rec("image", image_rc, **image_record)
+
     bad = [n for n, g in gates.items() if g["rc"] != 0]
     say(f"gates at {head[:9]}: " + ", ".join(f"{n}={g['rc']}" for n, g in gates.items()))
     return 1 if bad else 0
@@ -954,7 +1224,7 @@ def cmd_push(t: Train, args) -> int:
             raise TrainError(f"push to {target} failed: {p.stderr.strip()}")
     carried = ", ".join(f"{l['name']}@{l['sha'][:9]}" for l in st["lanes"] if l["status"] == "merged")
     say(f"dev {old[:9]}..{head[:9]} carried: {carried or '-'}")
-    say("verdict: " + verdict_words(known_reds_at(t, "HEAD")))
+    say("verdict: " + verdict_words(known_reds_at(t, "HEAD"), amendments_at(t, "HEAD")))
     b = gates["box_step"]
     say("box step: " + (f"inherited from {b['inherits_from'][:9]} ({b['box']})" if "inherits_from" in b
                         else f"ran at HEAD on {b['ran_on']}"))
@@ -975,7 +1245,7 @@ def cmd_status(t: Train, args) -> int:
         w = st["box_wall"]
         say(f"  certify {st.get('box_run')}: install {w['install']}s, certify {w['certify']}s, emit {w['emit']}s, total {w['total']}s")
     try:
-        say("  verdict: " + verdict_words(known_reds_at(t, "HEAD")))
+        say("  verdict: " + verdict_words(known_reds_at(t, "HEAD"), amendments_at(t, "HEAD")))
     except TrainError as error:
         say(f"  verdict: {error}")
     for n in GATES:
@@ -999,16 +1269,21 @@ def main(argv=None) -> int:
     c = sub.add_parser("certify")
     c.add_argument("box", choices=("hbox", "persvati"))
     g = sub.add_parser("gate")
+    i = sub.add_parser("image")
+    i.add_argument("--label", help="the run's label (default: HEAD's first 12 hex digits)")
     sub.add_parser("push")
     sub.add_parser("status")
     args = ap.parse_args(argv)
     try:
         t = Train(toplevel(Path.cwd()))
-        return {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate,
-                "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
+        rc = {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate,
+              "image": cmd_image, "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
     except TrainError as e:
         say(f"train: {e}")
-        return 2
+        rc = 2
+    # one completion line per command, for a Monitor on a detached run
+    say(f"TRAIN-DONE {args.cmd} rc={rc}")
+    return rc
 
 
 if __name__ == "__main__":

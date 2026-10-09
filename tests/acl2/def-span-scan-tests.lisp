@@ -45,14 +45,14 @@
 ; :stream --- dot-stuffing.  S is 0 at the start of a line, 1 within one.  A
 ; line that opens with "." is sent with ".." (RFC 3977 3.1.1); FINAL closes the
 ; block: CRLF if the body did not end at a line start, then ".\r\n".
-(defun fn-dss-fx-dot-step (s o)
+(defun-inline fn-dss-fx-dot-step (s o)
   (declare (xargs :guard (and (unsigned-byte-p 1 s) (fn-cbor-octetp o))))
   (let ((s2 (if (eql o 10) 0 1)))
     (if (and (eql s 0) (eql o 46))
         (mv s2 2 (+ 46 (* 256 46)) 0)
       (mv s2 1 o 0))))
 
-(defun fn-dss-fx-dot-final (s)
+(defun-inline fn-dss-fx-dot-final (s)
   (declare (xargs :guard (unsigned-byte-p 1 s)))
   (if (eql s 0)
       (mv 0 3 (+ 46 (* 256 13) (* 65536 10)) 0)
@@ -73,7 +73,7 @@
 ; the line (a held CR is the terminator's and is dropped); a held CR followed
 ; by anything else is emitted; a line that would pass LIMIT is refused, the
 ; octet unconsumed.  At the end of input an unterminated line is refused.
-(defun fn-dss-fx-line-step (limit s o)
+(defun-inline fn-dss-fx-line-step (limit s o)
   (declare (xargs :guard (and (unsigned-byte-p 59 limit) (unsigned-byte-p 59 s)
                               (fn-cbor-octetp o))))
   (let* ((s (nfix s))
@@ -121,7 +121,7 @@
       (mv (nfix next) 0 0 sig)
     (mv (nfix s) 0 0 2)))
 
-(defun fn-dss-fx-field-step (s o)
+(defun-inline fn-dss-fx-field-step (s o)
   (declare (xargs :guard (and (unsigned-byte-p 34 s) (fn-cbor-octetp o))))
   (let* ((s (nfix s))
          (o (mod (nfix o) 256))
@@ -142,7 +142,7 @@
                  (fn-dss-fx-field-put s (+ 3 (* 262144 len)) 1)
                (fn-dss-fx-field-put s (+ 2 (* 4 r) (* 262144 len)) 0)))))))
 
-(defun fn-dss-fx-field-final (s)
+(defun-inline fn-dss-fx-field-final (s)
   (declare (xargs :guard (unsigned-byte-p 34 s)))
   (let ((phase (mod (nfix s) 4)))
     (mv s 0 0 (if (or (eql phase 1) (eql phase 2)) 2 0))))
@@ -167,3 +167,70 @@
   :emit-max 1
   :final-max 0
   :cost-max 1)
+
+; -----------------------------------------------------------------------------
+; L2.0 (landing 2): the output is extended once and written with `put', and
+; every exit of a :stream call truncates to the length written.  Ground
+; witnesses that the write-charge bounds are satisfied and attained, and that
+; the exits leave the output at the written length, not the zeroed window.
+
+(defun fxw-copy (fn-octets fn-dss-out)
+  (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
+  (let* ((fn-octets (fn-octets-from-list '(1 2 3 4 5) fn-octets))
+         (fn-dss-out (fn-dss-out-from-list '(9) fn-dss-out))
+         (ch (fn-dss-fx-copy-out-write-charge 1 4 10 fn-octets fn-dss-out))
+         (ch2 (fn-dss-fx-copy-out-write-charge 1 4 3 fn-octets fn-dss-out)))
+    (mv-let (sig fn-dss-out) (fn-dss-fx-copy-out 1 4 10 fn-octets fn-dss-out)
+      (let ((out (fn-dss-out-list fn-dss-out)))
+        (mv-let (sig2 fn-dss-out) (fn-dss-fx-copy-out 1 4 3 fn-octets fn-dss-out)
+          (mv (list sig out ch sig2 (fn-dss-out-list fn-dss-out) ch2) fn-octets fn-dss-out))))))
+
+(defun fxw-copy-value ()
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (v fn-octets)
+      (with-local-stobj fn-dss-out
+        (mv-let (v fn-octets fn-dss-out) (fxw-copy fn-octets fn-dss-out)
+          (mv v fn-octets)))
+      v)))
+
+; Extended by 3 and 3 stores: 6 = 2 (END - I), the bound attained; a refused
+; copy stores nothing and leaves the output as it was.
+(assert-event
+ (equal (fxw-copy-value)
+        '(:done (9 2 3 4) 6 :refused (9 2 3 4) 0)))
+
+(defun fxw-dot (cap fn-octets fn-dss-out)
+  (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
+  (let* ((fn-octets (fn-octets-from-list '(46 65 13 10) fn-octets))
+         (fn-dss-out (fn-dss-out-clear fn-dss-out))
+         (ch (fn-dss-fx-dot-stuff-write-charge 0 0 4 t cap fn-octets fn-dss-out)))
+    (mv-let (sig s i fn-dss-out) (fn-dss-fx-dot-stuff 0 0 4 t cap fn-octets fn-dss-out)
+      (declare (ignore s))
+      (mv (list sig i (fn-dss-out-len fn-dss-out) (fn-dss-out-list fn-dss-out) ch)
+          fn-octets fn-dss-out))))
+
+(defun fxw-dot-value (cap)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-octets
+    (mv-let (v fn-octets)
+      (with-local-stobj fn-dss-out
+        (mv-let (v fn-octets fn-dss-out) (fxw-dot cap fn-octets fn-dss-out)
+          (mv v fn-octets)))
+      v)))
+
+; Room for the whole block: 20 cells zeroed, 8 octets written and kept; the
+; charge 28 is within the bound 20 + 2 * 4 + 5.
+(assert-event
+ (equal (fxw-dot-value 20)
+        '(:done 4 8 (46 46 65 13 10 46 13 10) 28)))
+; Room for the body only: the final needs 5 more, the call answers
+; :need-output at the end of the input with the five octets written (6 cells
+; zeroed, 5 written: 11).
+(assert-event
+ (equal (fxw-dot-value 6)
+        '(:need-output 4 5 (46 46 65 13 10) 11)))
+; Below the floor: nothing is zeroed, written or truncated.
+(assert-event
+ (equal (fxw-dot-value 3)
+        '(:no-room 0 0 nil 0)))

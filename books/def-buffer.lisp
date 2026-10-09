@@ -7,14 +7,14 @@
 ; octet list), under its own live object, so a host worker's page buffer, a
 ; codec's output and the page store's digest buffer never share storage and
 ; all of them satisfy every theorem proved of `fn-octets'.  The exports are the
-; twelve a codec clone reads, NAME-{len, get, put, append-octet, clear,
+; thirteen a codec clone reads, NAME-{len, get, put, truncate, append-octet, clear,
 ; reserve, list, from-list, append-list, append-back, get-word, append-word},
 ; each the `fn-octets' logic and executable under the new name (`get-word' and
 ; `append-word' the little-endian K-octet word at I / the word appended).
 ; `:view t' also states the logical view opened, as books/octets-stobj.lisp
 ; does for `fn-octets': NAME-p is an octet list, clear is nil, list is the
 ; value, len is `len', get-word is `fn-oct-word-at', append-word is `append'
-; of `fn-oct-word-octets'.
+; of `fn-oct-word-octets', truncate is `fn-oct-take'.
 ; Nothing is proved here: the correspondence and guard obligations belong to
 ; `fn-octets' and `:congruent-to' reuses them; what is generated is the clone
 ; the tree used to write out by hand (25 copies, books/pagestore-words.lisp
@@ -44,7 +44,8 @@
        :creator (,(def-buffer-creator n) :logic create-fn-octets$a :exec create-fn-octets$c)
        :exports ((,(def-buffer-sym n "-LEN") :logic fn-octets$a-len :exec fn-octets$c-len$inline)
                  (,(def-buffer-sym n "-GET") :logic fn-octets$a-get :exec fn-octets$c-get$inline)
-                 (,(def-buffer-sym n "-PUT") :logic fn-octets$a-put :exec fn-octets$c-put :protect t)
+                 (,(def-buffer-sym n "-PUT") :logic fn-octets$a-put :exec fn-octets$c-put$inline)
+                 (,(def-buffer-sym n "-TRUNCATE") :logic fn-octets$a-truncate :exec fn-octets$c-truncate)
                  (,(def-buffer-sym n "-APPEND-OCTET") :logic fn-octets$a-append-octet
                                        :exec fn-octets$c-append-octet$inline :protect t)
                  (,(def-buffer-sym n "-CLEAR") :logic fn-octets$a-clear :exec fn-octets$c-clear)
@@ -88,9 +89,13 @@
         (equal (,(def-buffer-sym n "-APPEND-WORD") w k ,n)
                (append ,n (fn-oct-word-octets w k)))
         :hints (("Goal" :in-theory (enable ,(def-buffer-sym n "-APPEND-WORD")))))
+      (defthm ,(def-buffer-sym n "-TRUNCATE-IS-TAKE")
+        (equal (,(def-buffer-sym n "-TRUNCATE") m ,n) (fn-oct-take m ,n))
+        :hints (("Goal" :in-theory (enable ,(def-buffer-sym n "-TRUNCATE")))))
       (in-theory (disable ,(def-buffer-sym n "-P") ,(def-buffer-sym n "-CLEAR")
                           ,(def-buffer-sym n "-LIST") ,(def-buffer-sym n "-LEN")
-                          ,(def-buffer-sym n "-GET-WORD") ,(def-buffer-sym n "-APPEND-WORD"))))))
+                          ,(def-buffer-sym n "-GET-WORD") ,(def-buffer-sym n "-APPEND-WORD")
+                          ,(def-buffer-sym n "-TRUNCATE"))))))
 
 (defmacro def-buffer (name &key view)
   `(progn

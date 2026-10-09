@@ -321,8 +321,10 @@ if [ -n "$STACK_KIB" ]; then
     # (:default-pool-read-headroom-unavailable).  So a bare launch of the image
     # decides its heap as packaging/fn's installed branch does: the image's own
     # `heap -- ARGV' probe (ACL2's fn-heap-decide), through the very lines
-    # packaging/fn defines as fn_decide_heap.  A caller's SBCL_USER_ARGS is its
-    # own figure and wins; FN_TEST_HEAP_MB is the tests' named override.
+    # packaging/fn defines as fn_decide_heap.  A caller's SBCL_USER_ARGS that
+    # names a heap is its own figure and wins; one that names only the stack
+    # composes after the decided figures (packaging/launcher-decide.sh);
+    # FN_TEST_HEAP_MB is the tests' named override.
     {
         echo '#!/bin/sh'
         sed -n '/^# BEGIN fn_decide_heap/,/^# END fn_decide_heap/p' packaging/fn

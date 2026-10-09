@@ -972,7 +972,7 @@ class BaselineGateTests(TrainBase):
         self.assertEqual(rec["rc"], 0, g.stdout)
         self.assertEqual(rec["rows"], 2)
         s = self.train("status")
-        self.assertIn("non-regressing against 2 known red(s)", s.stdout)
+        self.assertIn("non-regressing against 2 known reds, 0 amended", s.stdout)
         self.assertIn("NOT green", s.stdout)
 
     def test_a_removed_row_passes(self):
@@ -1036,6 +1036,134 @@ class BaselineGateTests(TrainBase):
         self.assertIn("gate baseline failed", p.stdout)
         self.assertEqual(self.origin_rev("dev"), before)
 
+    def amendment(self, subject, item="KR-X", owner="builder-B"):
+        return {"kind": "native", "subject": subject, "dev_sha": "abc123def", "item": item,
+                "owner": owner, "ruling": "coordinator: test"}
+
+    def amendments(self, *records):
+        return json.dumps({"note": "append-only", "amendments": list(records)}) + "\n"
+
+    def gate_amended(self, rows, amend):
+        (self.work / "planning/known-reds-amendments.json").write_text(amend)
+        return self.gate_with(rows)
+
+    def test_an_unamended_addition_is_refused_with_the_usual_message(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_amended(self.rows("t.a", "t.new"), self.amendments())
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(rec["added"], [["native", "t.new"]])
+        self.assertIn("known red ADDED by this train (rows shrink only): native t.new", g.stdout)
+
+    def test_an_amended_addition_is_accepted_and_counted(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_amended(self.rows("t.a", "t.new"), self.amendments(self.amendment("t.new")))
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual(rec["admitted"], [["native", "t.new"]])
+        self.assertEqual((rec["rows"], rec["amended"]), (2, 1))
+
+    def test_an_amendment_covers_only_the_row_it_names(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_amended(self.rows("t.a", "t.new", "t.other"),
+                                   self.amendments(self.amendment("t.new")))
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(rec["added"], [["native", "t.other"]])
+
+    def test_a_dangling_amendment_fails(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_amended(self.rows("t.a"), self.amendments(self.amendment("t.stock")))
+        self.assertEqual(rec["rc"], 1)
+        self.assertEqual(rec["dangling_amendments"], ["native t.stock"])
+        self.assertIn("amendments cannot be stockpiled", g.stdout)
+
+    def test_an_amendment_of_a_retired_row_with_a_closed_item_is_history(self):
+        self.on_dev(self.rows("t.a", "t.new"))
+        (self.work / "planning/known-reds-amendments.json").write_text(
+            self.amendments(self.amendment("t.new")))
+        g, rec = self.gate_with(self.rows("t.a"))
+        self.assertEqual(rec["rc"], 1, "item still open: the amendment dangles")
+        g, rec = self.gate_with(self.rows("t.a"), item_state="landed")
+        self.assertEqual(rec["dangling_amendments"], [])
+
+    def test_a_rewritten_or_dropped_amendment_fails(self):
+        self.on_dev(self.rows("t.a", "t.new"))
+        self.advance_dev({"planning/known-reds-amendments.json": self.amendments(self.amendment("t.new"))})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
+        g, rec = self.gate_amended(self.rows("t.a", "t.new"),
+                                   self.amendments(self.amendment("t.new", owner="builder-B") | {"ruling": "edited"}))
+        self.assertTrue(rec["amendments_rewritten"])
+        self.assertEqual(rec["rc"], 1)
+        g, rec = self.gate_amended(self.rows("t.a", "t.new"), self.amendments())
+        self.assertTrue(rec["amendments_rewritten"])
+        self.assertEqual(rec["rc"], 1)
+
+    def test_an_amendment_disagreeing_with_its_row_fails(self):
+        self.on_dev(self.rows("t.a"))
+        g, rec = self.gate_amended(self.rows("t.a", "t.new"),
+                                   self.amendments(self.amendment("t.new", owner="someone-else")))
+        self.assertEqual(rec["mismatched_amendments"], ["native t.new"])
+        self.assertEqual(rec["rc"], 1)
+
+    def test_an_owner_transfer_appends_a_record_and_the_row_takes_the_new_owner(self):
+        # coordinator 2026-10-09: the measured owner's record stays as written,
+        # a later record names the owner it takes over from
+        self.on_dev(self.rows("t.a", "t.new"))
+        first = self.amendment("t.new")
+        self.advance_dev({"planning/known-reds-amendments.json": self.amendments(first)})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
+        moved = json.loads(self.rows("t.a", "t.new"))
+        moved["rows"][1]["owner"] = "builder-M"
+        transfer = dict(first, owner="builder-M", transfer_from=first["owner"], ruling="moved")
+        g, rec = self.gate_amended(json.dumps(moved) + "\n", self.amendments(first, transfer))
+        self.assertEqual(rec["rc"], 0, g.stdout)
+        self.assertEqual((rec["rows"], rec["amended"], rec["mismatched_amendments"]), (2, 1, []))
+        # without the transfer record the moved row disagrees with its amendment
+        g, rec = self.gate_amended(json.dumps(moved) + "\n", self.amendments(first))
+        self.assertEqual(rec["mismatched_amendments"], ["native t.new"])
+
+    def test_a_second_record_that_is_not_a_proper_transfer_is_malformed(self):
+        first = self.amendment("t.a")
+        bad = [dict(first, owner="builder-M"),                                   # no transfer_from
+               dict(first, owner="builder-M", transfer_from="someone-else"),     # wrong previous owner
+               dict(first, transfer_from=first["owner"]),                        # same owner
+               dict(first, owner="builder-M", transfer_from=first["owner"], item="OTHER"),
+               dict(first, owner="builder-M", transfer_from=first["owner"], dev_sha="0000000")]
+        for second in bad:
+            with self.assertRaises(train.TrainError, msg=str(second)):
+                train.parse_amendments(self.amendments(first, second))
+        with self.assertRaises(train.TrainError):
+            train.parse_amendments(self.amendments(dict(first, transfer_from="x")))
+        ok = dict(first, owner="builder-M", transfer_from=first["owner"])
+        self.assertEqual(len(train.parse_amendments(self.amendments(first, ok))), 2)
+
+    def test_a_malformed_amendments_file_fails(self):
+        self.on_dev(self.rows("t.a"))
+        for text in ("not json\n", '{"amendments": {}}\n', '{"amendments": [{"kind": "native"}]}\n',
+                     self.amendments(self.amendment("t.a"), self.amendment("t.a"))):
+            g, rec = self.gate_amended(self.rows("t.a"), text)
+            self.assertEqual(rec["rc"], 1, text)
+
+    def test_status_shows_the_row_count_and_the_amendment_count(self):
+        self.on_dev(self.rows("t.a"))
+        self.gate_amended(self.rows("t.a", "t.new"), self.amendments(self.amendment("t.new")))
+        s = self.train("status")
+        self.assertIn("non-regressing against 2 known reds, 1 amended", s.stdout)
+        self.assertIn("NOT green", s.stdout)
+
+    def test_status_says_green_only_when_there_are_no_rows(self):
+        self.on_dev(self.rows())
+        self.gate_with()
+        s = self.train("status")
+        self.assertIn("green: the known-red baseline is empty", s.stdout)
+        self.assertNotIn("NOT green", s.stdout)
+
+    def test_the_verdict_words_push_prints_carry_the_amendment_count(self):
+        self.assertEqual(train.verdict_words(json.loads(self.rows("t.a", "t.b"))["rows"],
+                                             [self.amendment("t.b")]),
+                         "non-regressing against 2 known reds, 1 amended "
+                         "(planning/known-reds.json, planning/known-reds-amendments.json); NOT green")
+
 
 class AsciiGateTests(unittest.TestCase):
     def gate(self, changed, refusals):
@@ -1056,6 +1184,186 @@ class AsciiGateTests(unittest.TestCase):
 
     def test_nothing_changed_skips(self):
         self.assertEqual(self.gate([], ["books/blake3-tree.lisp:627:17"]), 0)
+
+class ImageModuleTests(unittest.TestCase):
+    """The image gate's pure half: which modules a diff obliges, the box's
+    lines parsed, and the verdict."""
+
+    HEAD = "a" * 40
+
+    def ran(self, modules, source=None):
+        return {"source": source or self.HEAD, "dir": "/box/run",
+                "modules": {m: {"rc": 0, "cases": {m + ".T.test_ok": "ok"}} for m in modules}}
+
+    def test_a_launcher_change_obliges_the_served_natives_operator_verbs_and_heap_from_profile(self):
+        need = train.image_modules(["packaging/launcher-decide.sh", "README.md"])
+        self.assertEqual(set(need), {"tests.test_native_operator_verbs",
+                                     "tests.test_native_heap_from_profile", *train.SERVED_NATIVES})
+        self.assertIn("tests.test_native_served_line_stack", need)
+        self.assertEqual(need["tests.test_native_owner"], ["packaging/launcher-decide.sh"])
+
+    def test_heap_probe_and_host_native_oblige_and_unrelated_paths_do_not(self):
+        self.assertTrue(train.image_modules(["books/heap-figure.lisp"]))
+        self.assertTrue(train.image_modules(["host/native/admin.lisp"]))
+        self.assertTrue(train.image_modules(["tools/extract/core_launcher.py"]))
+        self.assertEqual(train.image_modules(["host/owner-host.lisp", "tools/train.py",
+                                              "books/heap-figure-tests.lisp", "packaging/fn.md"]), {})
+
+    def test_parse_reads_rc_and_cases_and_keeps_a_caseless_crash(self):
+        text = "\n".join([
+            "RC tests.test_native_owner 0",
+            "RC tests.test_native_operator_verbs 1",
+            "RC tests.test_native_served_cost 137",
+            'FN_TEST_BUDGET_RESULT {"module": "tests.test_native_owner", "cases": [["o.T.a", "ok"], ["o.T.b", "skip"]]}',
+            'FN_TEST_BUDGET_RESULT {"module": "tests.test_native_operator_verbs", "cases": [["v.T.a", "FAIL"]]}',
+            'FN_TEST_BUDGET_RESULT {"module": "tests.test_native_not_run_here", "cases": [["n.T.a", "ok"]]}',
+            "FN_TEST_BUDGET_RESULT {not json"])
+        got = train.parse_image_results(text)
+        self.assertEqual(got, {"tests.test_native_owner": {"rc": 0, "cases": {"o.T.a": "ok", "o.T.b": "skip"}},
+                               "tests.test_native_operator_verbs": {"rc": 1, "cases": {"v.T.a": "FAIL"}},
+                               "tests.test_native_served_cost": {"rc": 137, "cases": {}}})
+
+    def test_nothing_obliged_is_green_without_a_run(self):
+        self.assertEqual(train.image_verdict({}, None, self.HEAD, []), (0, {"skipped": True}))
+
+    def test_obliged_without_a_run_or_with_another_commits_run_refuses(self):
+        need = train.image_modules(["packaging/fn"])
+        self.assertEqual(train.image_verdict(need, None, self.HEAD, [])[0], 1)
+        rc, rec = train.image_verdict(need, self.ran(need, source="b" * 40), self.HEAD, [])
+        self.assertEqual(rc, 1)
+        self.assertIn("not HEAD", rec["error"])
+
+    def test_every_obliged_module_green_at_head_passes(self):
+        need = train.image_modules(["packaging/fn"])
+        self.assertEqual(train.image_verdict(need, self.ran(need), self.HEAD, [])[0], 0)
+
+    def test_an_interrupted_image_gate_refuses_naming_the_missing_modules(self):
+        need = train.image_modules(["packaging/fn"])
+        partial = self.ran([m for m in need if m != "tests.test_native_served_line_stack"])
+        rc, rec = train.image_verdict(need, partial, self.HEAD, [])
+        self.assertEqual(rc, 1)
+        self.assertEqual(rec["missing"], ["tests.test_native_served_line_stack"])
+
+    def test_a_red_case_passes_only_as_a_native_known_red(self):
+        need = train.image_modules(["packaging/fn"])
+        run = self.ran(need)
+        red = "tests.test_native_operator_verbs.C.test_status"
+        run["modules"]["tests.test_native_operator_verbs"] = {"rc": 1, "cases": {red: "FAIL", "x.ok": "ok"}}
+        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        self.assertEqual((rc, rec["unexplained"]), (1, [red]))
+        row = {"kind": "native", "subject": red, "item": "I", "owner": "o", "evidence": "e"}
+        rc, rec = train.image_verdict(need, run, self.HEAD, [row])
+        self.assertEqual((rc, rec["known_reds"]), (0, [red]))
+        # a row of another kind with the same subject does not excuse it
+        self.assertEqual(train.image_verdict(need, run, self.HEAD, [dict(row, kind="check")])[0], 1)
+
+    def test_a_module_whose_every_test_skipped_passes_and_is_listed(self):
+        need = train.image_modules(["packaging/fn"])
+        run = self.ran(need)
+        run["modules"]["tests.test_native_over_window"] = {"rc": 4, "cases": {}}
+        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        self.assertEqual((rc, rec["skipped"]), (0, ["tests.test_native_over_window"]))
+
+    def test_a_failed_module_with_no_case_recorded_refuses(self):
+        need = train.image_modules(["packaging/fn"])
+        run = self.ran(need)
+        run["modules"]["tests.test_native_owner"] = {"rc": 137, "cases": {}}
+        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        self.assertEqual(rc, 1)
+        self.assertEqual(rec["unexplained"], ["tests.test_native_owner (rc 137, no case recorded)"])
+
+
+class AddedRootTests(TrainBase):
+    """certify selects the roots a train adds to ACL2_BOOKS, changed or not."""
+
+    MAKEFILE = "ACL2_BOOKS ?= books/a \\\n\tbooks/b \\\n\ttests/acl2/b-tests\n\nOTHER = x\n"
+
+    def test_the_root_list_is_ledgers_reading(self):
+        self.assertEqual(train.makefile_root_list(self.MAKEFILE), ["books/a", "books/b", "tests/acl2/b-tests"])
+        with self.assertRaises(train.TrainError):
+            train.makefile_root_list("NOTHING = 1\n")
+
+    def test_no_makefile_selects_nothing_and_a_new_makefile_selects_every_root(self):
+        self.assertEqual(train._added_roots(train.Train(self.work)), [])
+        (self.work / "Makefile").write_text(self.MAKEFILE)
+        self.commit(self.work, "first Makefile")
+        self.assertEqual(train._added_roots(train.Train(self.work)),
+                         ["books/a", "books/b", "tests/acl2/b-tests"])
+
+    def test_a_root_listed_by_the_train_is_selected_and_a_dropped_one_is_not(self):
+        self.advance_dev({"Makefile": self.MAKEFILE})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "checkout", "-q", "-B", "integrate/t1", "origin/dev")
+        (self.work / "Makefile").write_text(self.MAKEFILE.replace(
+            "\tbooks/b \\\n", "\tbooks/kept-claim \\\n").replace(
+            "tests/acl2/b-tests\n", "tests/acl2/b-tests \\\n\ttests/acl2/rehooked-tests\n"))
+        self.commit(self.work, "roots")
+        self.assertEqual(train._added_roots(train.Train(self.work)),
+                         ["books/kept-claim", "tests/acl2/rehooked-tests"])
+
+
+class ImageGateTests(TrainBase):
+    """The image gate inside `gate` and `push`."""
+
+    def launcher_train(self):
+        (self.work / "packaging").mkdir(exist_ok=True)
+        (self.work / "packaging/launcher-decide.sh").write_text("# decide\n")
+        self.commit(self.work, "launcher change")
+
+    def set_image(self, modules):
+        path = self.work / "build/train/integrate__t1.json"
+        st = json.loads(path.read_text()) if path.exists() else {"lanes": []}
+        st["image"] = {"source": self.head(), "box": "hbox", "dir": "/r",
+                       "modules": {m: {"rc": 0, "cases": {m + ".T.a": "ok"}} for m in modules}}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(st))
+
+    def gate(self):
+        g = self.train("gate")
+        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        return g, st["gates"]["image"]
+
+    def test_a_train_with_no_obliging_change_skips_the_image_gate(self):
+        (self.work / "other.txt").write_text("x\n")
+        self.commit(self.work, "unrelated")
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 0, g.stdout)
+        self.assertEqual((rec["rc"], rec.get("skipped")), (0, True))
+        self.assertIn("TRAIN-DONE gate rc=0", g.stdout)
+
+    def test_a_launcher_train_without_an_image_run_cannot_push(self):
+        self.launcher_train()
+        before = self.origin_rev("dev")
+        g, rec = self.gate()
+        self.assertNotEqual(g.returncode, 0)
+        self.assertEqual(rec["rc"], 1)
+        self.assertIn("TRAIN-DONE gate rc=1", g.stdout)
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("gate image failed", p.stdout)
+        self.assertEqual(self.origin_rev("dev"), before)
+
+    def test_an_interrupted_image_run_blocks_until_the_missing_modules_ran(self):
+        self.launcher_train()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        self.set_image(need[:-1])
+        g, rec = self.gate()
+        self.assertNotEqual(g.returncode, 0)
+        self.assertEqual(rec["missing"], need[-1:])
+        self.assertIn("NOT RUN on HEAD's image: " + need[-1], g.stdout)
+        self.set_image(need)
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 0, g.stdout)
+        p = self.train("push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(self.origin_rev("dev"), self.head())
+
+    def test_image_without_a_run_record_refuses_by_name(self):
+        p = self.train("image")
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("no image run record", p.stdout)
+        self.assertIn("TRAIN-DONE image rc=2", p.stdout)
+
 
 if __name__ == "__main__":
     unittest.main()

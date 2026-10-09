@@ -11,6 +11,18 @@
 ; `(fn-oct-slice-list I END ST)', which is `(take (- END I) (nthcdr I ST))'
 ; when END is within the buffer (`fn-oct-slice-list-is-take-nthcdr').
 ;
+; Writes.  The output stobj's per-octet appends are gone from the :copy and
+; :stream loops (landing 2, L2.0): the output is extended once by the exported
+; zero-word append (`fn-dss-out-append-word 0 N'), each octet is one inline
+; `put' at its index, and the fill point moves once more at the end (a :copy
+; touches it not at all after the extend; a :stream truncates to the length
+; written on every exit).  `put' and `truncate' are exports without `:protect'
+; (books/octets-stobj.lisp, the atomicity line beside each).  The physical
+; stores are the charge model NAME-WRITE-CHARGE, bounded by NAME-WRITE-CHARGE-BOUND.
+; The :copy guard names CAP a 59-bit fixnum and the :stream guard names the
+; output's length one (the index arithmetic is fixnum); both are guards of the
+; executable, not of any theorem here.
+;
 ; Each SHAPE is one family of loops.  Its executable form walks the array by
 ; index and, under A-BODY-COST below, conses nothing; its meaning is a recursion over the span's list;
 ; the BRIDGE between the two, the WORK bound and the other exported facts are
@@ -78,8 +90,13 @@
 ;                 BODY COST CONTRACT) and the exit 1; c1 = 1 + cost-max;
 ;   writes        stated separately: :find, :fold, :equal return no stobj (the
 ;                 buffer is borrowed, read only); :copy writes exactly END - I
-;                 octets or none; :stream writes at most EMIT-MAX per consumed
-;                 octet plus FINAL-MAX, and never past CAP (NAME-WRITES);
+;                 octets or none, and counts at most 2 (END - I) physical stores,
+;                 the extend's zeroing included (NAME-WRITE-CHARGE-BOUND);
+;                 :stream writes at most EMIT-MAX per consumed octet plus
+;                 FINAL-MAX, and never past CAP (NAME-WRITES), and counts at
+;                 most the zeroed window (CAP - len) plus those octets as
+;                 physical stores (NAME-WRITE-CHARGE-BOUND, under the octet-list
+;                 hypotheses of NAME-WRITES);
 ;   workspace     stated separately: the loop's indices and, for :fold, ACC
 ;                 (one ACC-TYPE scalar) and, for :stream, S (one STATE-TYPE
 ;                 value) and nothing else; NAME-ACC-TYPE / NAME-STATE-TYPE say
@@ -170,7 +187,8 @@
   (equal (fn-octets-from-list xs fn-octets) xs)
   :hints (("Goal" :in-theory (enable fn-octets-from-list))))
 
-(in-theory (disable fn-dss-out-append-octet fn-dss-out-reserve fn-dss-b-get))
+(in-theory (disable fn-dss-out-append-octet fn-dss-out-reserve fn-dss-b-get
+                    fn-dss-out-put))
 
 ; Proof support, local: the slice opened one octet at a time, appends, and
 ; the monotonicity of a natural slope.
@@ -534,23 +552,27 @@
       (cons (fn-dss-copy-f (car xs)) (fn-dss-copy-list (cdr xs)))
     nil))
 
-; Onto a distinct instance.
-(defun fn-dss-copy-loop (i end fn-octets fn-dss-out)
+; Onto a distinct instance.  The caller has extended the destination by the
+; span's length (zero octets, once, after the capacity check); the loop stores
+; each octet at its index J, one `put' per octet, and touches no fill point.
+(defun fn-dss-copy-loop (i end j fn-octets fn-dss-out)
   (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil
                   :measure (nfix (- (nfix end) (nfix i)))
                   :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
   (if (and (mbt (and (natp i) (natp end))) (< i end))
-      (let ((fn-dss-out (fn-dss-out-append-octet
-                         (fn-dss-copy-f (fn-octets-get i fn-octets)) fn-dss-out)))
-        (fn-dss-copy-loop (+ 1 i) end fn-octets fn-dss-out))
+      (let ((fn-dss-out (fn-dss-out-put j (fn-dss-copy-f (fn-octets-get i fn-octets)) fn-dss-out)))
+        (fn-dss-copy-loop (+ 1 i) end (+ 1 j) fn-octets fn-dss-out))
     fn-dss-out))
 
 (defun fn-dss-copy (i end cap fn-octets fn-dss-out)
   (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
-  (let ((dss-n (+ (fn-dss-out-len fn-dss-out) (nfix (- (nfix end) (nfix i))))))
-    (if (<= dss-n (nfix cap))
-        (let* ((fn-dss-out (fn-dss-out-reserve dss-n fn-dss-out))
-               (fn-dss-out (fn-dss-copy-loop i end fn-octets fn-dss-out)))
+  (let ((dss-m (nfix (- (nfix end) (nfix i)))))
+    (if (<= (+ (fn-dss-out-len fn-dss-out) dss-m) (nfix cap))
+        (let* ((dss-j (fn-dss-out-len fn-dss-out))
+               (fn-dss-out (fn-dss-out-reserve (+ dss-j dss-m) fn-dss-out))
+               (fn-dss-out (fn-dss-out-append-word 0 (if (and (natp i) (natp end)) dss-m 0)
+                                                   fn-dss-out))
+               (fn-dss-out (fn-dss-copy-loop i end dss-j fn-octets fn-dss-out)))
           (mv :done fn-dss-out))
       (mv :refused fn-dss-out))))
 
@@ -583,13 +605,59 @@
          (fn-dss-copy-work (+ 1 i) end fn-octets))
     1))
 
+;  Proof support, local: the destination as a prefix and a tail of cells
+; the loop overwrites in order.
 (local
- (defthm fn-dss-copy-loop-is-append
-   (implies (true-listp fn-dss-out)
-            (equal (fn-dss-copy-loop i end fn-octets fn-dss-out)
-                   (append fn-dss-out (fn-dss-copy-list (fn-oct-slice-list i end fn-octets)))))
-   :hints (("Goal" :induct (fn-dss-copy-loop i end fn-octets fn-dss-out)
-            :in-theory (enable fn-oct-get-is-nth)))))
+ (defthm fn-dss-len-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local
+ (defthmd fn-dss-out-put-is-update
+   (equal (fn-dss-out-put i o fn-dss-out) (fn-oct-update i o fn-dss-out))
+   :hints (("Goal" :in-theory (enable fn-dss-out-put)))))
+
+(local
+ (defun fn-dss-copy-ind (i end pre rest st)
+   (declare (xargs :measure (nfix (- (nfix end) (nfix i)))))
+   (if (and (natp i) (natp end) (< i end))
+       (fn-dss-copy-ind (+ 1 i) end (append pre (list (fn-dss-copy-f (nth i st)))) (cdr rest) st)
+     (list i end pre rest st))))
+
+(local
+ (defthm fn-dss-update-nth-append-len
+   (implies (and (true-listp pre) (consp rest))
+            (equal (update-nth (len pre) v (append pre rest))
+                   (append pre (cons v (cdr rest)))))
+   :hints (("Goal" :in-theory (enable update-nth)))))
+
+(local
+ (defthm fn-dss-oct-update-append-len
+   (implies (and (true-listp pre) (true-listp rest) (consp rest))
+            (equal (fn-oct-update (len pre) v (append pre rest))
+                   (append pre (cons v (cdr rest)))))
+   :hints (("Goal" :use ((:instance fn-oct-update-is-update-nth (i (len pre)) (o v)
+                                    (xs (append pre rest)))
+                         fn-dss-update-nth-append-len)
+            :in-theory (disable fn-oct-update-is-update-nth fn-dss-update-nth-append-len)))))
+
+(local
+ (defthm fn-dss-copy-loop-general
+   (implies (and (true-listp pre) (true-listp rest) (natp i) (natp end)
+                 (<= (nfix (- end i)) (len rest)))
+            (equal (fn-dss-copy-loop i end (len pre) fn-octets (append pre rest))
+                   (append pre (fn-dss-copy-list (fn-oct-slice-list i end fn-octets))
+                           (nthcdr (nfix (- end i)) rest))))
+   :hints (("Goal" :induct (fn-dss-copy-ind i end pre rest fn-octets)
+            :expand ((fn-dss-copy-loop i end (len pre) fn-octets (append pre rest)))
+            :in-theory (e/d (fn-oct-get-is-nth fn-dss-out-put-is-update)
+                            (fn-oct-slice-list-is-take-nthcdr))))))
+
+(local
+ (defthm fn-dss-nthcdr-of-word-octets
+   (implies (natp n) (equal (nthcdr n (fn-oct-word-octets w n)) nil))
+   :hints (("Goal" :use ((:instance fn-oct-len-of-word-octets (k n))
+                         (:instance fn-oct-true-listp-of-word-octets (k n)))
+            :in-theory (disable fn-oct-len-of-word-octets fn-oct-true-listp-of-word-octets)))))
 
 (defthm fn-dss-copy-is-list
   (implies (true-listp fn-dss-out)
@@ -597,7 +665,42 @@
                   (if (<= (+ (len fn-dss-out) (nfix (- (nfix end) (nfix i)))) (nfix cap))
                       (mv :done (append fn-dss-out
                                         (fn-dss-copy-list (fn-oct-slice-list i end fn-octets))))
-                    (mv :refused fn-dss-out)))))
+                    (mv :refused fn-dss-out))))
+  :hints (("Goal" :cases ((and (natp i) (natp end)))
+           :do-not-induct t
+           :in-theory (e/d (fn-dss-out-len-is-len fn-dss-out-reserve-is-identity
+                            fn-dss-out-append-word-is-append)
+                           (fn-oct-slice-list-is-take-nthcdr fn-dss-copy-loop-general))
+           :use ((:instance fn-dss-copy-loop-general (pre fn-dss-out)
+                            (rest (fn-oct-word-octets 0 (nfix (- (nfix end) (nfix i))))))))))
+
+; The physical writes of one :copy call, as a charge model beside NAME-WORK:
+; the extend zeroes the span's length in cells, then each octet is one store.
+; That the compiled loop stores no more than the charge is the disassembly
+; evidence's, as A-BODY-COST is for work; A-RESERVED is unchanged (the array
+; is reserved at allocation, and the extend only moves the fill point).
+(local
+ (defthm fn-dss-len-of-copy-list
+   (equal (len (fn-dss-copy-list xs)) (len xs))))
+
+(local
+ (defthm fn-dss-len-of-slice-list
+   (<= (len (fn-oct-slice-list i end fn-octets)) (nfix (- (nfix end) (nfix i))))
+   :rule-classes :linear
+   :hints (("Goal" :induct (fn-dss-idx-ind i end)
+            :in-theory (e/d (fn-dss-slice-open fn-dss-slice-empty) (fn-oct-slice-list-is-take-nthcdr))))))
+
+(defun fn-dss-copy-write-charge (i end cap fn-octets fn-dss-out)
+  (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
+  (let ((dss-m (nfix (- (nfix end) (nfix i)))))
+    (if (<= (+ (fn-dss-out-len fn-dss-out) dss-m) (nfix cap))
+        (+ dss-m (len (fn-dss-copy-list (fn-oct-slice-list i end fn-octets))))
+      0)))
+
+(defthm fn-dss-copy-write-charge-bound
+  (<= (fn-dss-copy-write-charge i end cap fn-octets fn-dss-out)
+      (* 2 (nfix (- (nfix end) (nfix i)))))
+  :rule-classes :linear)
 
 ; Within one instance: the buffer is the original followed by what has been
 ; written, and every read is below the original fill point.
@@ -720,40 +823,160 @@
 (defun fn-dss-floor ()
   (max (nfix (fn-dss-st-emax)) (nfix (fn-dss-st-fmax))))
 
-; The stobj loop.
-(defun fn-dss-stream-loop (s i end last cap fn-octets fn-dss-out)
+; The octets of the word W, K of them, stored at IDX, IDX+1, ...: one `put'
+; each.  The logic is the recursion `fn-dss-put-word-rec'; the executable is
+; the same stores unrolled for the K <= 7 a step or final emits, as an inline
+; function, so a loop over the span makes no call per emitted octet.
+(defun fn-dss-put-word-rec (w k idx fn-dss-out)
+  (declare (xargs :stobjs fn-dss-out :verify-guards nil :measure (nfix k)))
+  (if (zp k)
+      fn-dss-out
+    (let ((fn-dss-out (fn-dss-out-put idx (mod (nfix w) 256) fn-dss-out)))
+      (fn-dss-put-word-rec (floor (nfix w) 256) (1- k) (1+ idx) fn-dss-out))))
+
+(defthm fn-dss-len-of-out-put
+  (implies (and (natp i) (< i (len xs)) (true-listp xs))
+           (equal (len (fn-dss-out-put i o xs)) (len xs)))
+  :hints (("Goal" :in-theory (enable fn-dss-out-put-is-update))))
+
+(defthm fn-dss-true-listp-of-out-put
+  (implies (true-listp xs) (true-listp (fn-dss-out-put i o xs)))
+  :hints (("Goal" :in-theory (enable fn-dss-out-put-is-update))))
+
+(defthm fn-dss-octet-listp-true-listp
+  (implies (fn-cbor-octet-listp x) (true-listp x))
+  :rule-classes :forward-chaining)
+
+(defun-inline fn-dss-put-word-exec (w k idx fn-dss-out)
+  (declare (type (unsigned-byte 56) w) (type (integer 0 7) k) (type (unsigned-byte 59) idx)
+           (xargs :stobjs fn-dss-out
+                  :guard (and (unsigned-byte-p 56 w) (natp k) (<= k 7) (unsigned-byte-p 59 idx)
+                              (<= (+ idx k) (fn-dss-out-len fn-dss-out)))
+                  :guard-hints (("Goal" :in-theory (e/d (fn-oct-mod-256-octet fn-oct-floor-256-natp
+                                                         fn-oct-floor-256-ub56)
+                                                        (mod floor))))))
+  (let* ((fn-dss-out (if (< 0 k) (fn-dss-out-put idx (mod w 256) fn-dss-out) fn-dss-out))
+         (w (floor w 256))
+         (idx (+ idx 1))
+         (fn-dss-out (if (< 1 k) (fn-dss-out-put idx (mod w 256) fn-dss-out) fn-dss-out))
+         (w (floor w 256))
+         (idx (+ idx 1))
+         (fn-dss-out (if (< 2 k) (fn-dss-out-put idx (mod w 256) fn-dss-out) fn-dss-out))
+         (w (floor w 256))
+         (idx (+ idx 1))
+         (fn-dss-out (if (< 3 k) (fn-dss-out-put idx (mod w 256) fn-dss-out) fn-dss-out))
+         (w (floor w 256))
+         (idx (+ idx 1))
+         (fn-dss-out (if (< 4 k) (fn-dss-out-put idx (mod w 256) fn-dss-out) fn-dss-out))
+         (w (floor w 256))
+         (idx (+ idx 1))
+         (fn-dss-out (if (< 5 k) (fn-dss-out-put idx (mod w 256) fn-dss-out) fn-dss-out))
+         (w (floor w 256))
+         (idx (+ idx 1))
+         (fn-dss-out (if (< 6 k) (fn-dss-out-put idx (mod w 256) fn-dss-out) fn-dss-out)))
+    fn-dss-out))
+
+(local
+ (defthm fn-dss-put-word-exec-is-rec
+   (implies (and (natp w) (natp k) (<= k 7))
+            (equal (fn-dss-put-word-exec w k idx fn-dss-out)
+                   (fn-dss-put-word-rec w k idx fn-dss-out)))
+   :hints (("Goal" :do-not-induct t
+            :cases ((equal k 0) (equal k 1) (equal k 2) (equal k 3)
+                    (equal k 4) (equal k 5) (equal k 6) (equal k 7))
+            :in-theory (e/d (fn-dss-put-word-exec$inline)
+                            (fn-oct-update-is-update-nth fn-oct-update))
+            :expand ((:free (w k idx out) (fn-dss-put-word-rec w k idx out)))))))
+
+(defun-inline fn-dss-put-word (w k idx fn-dss-out)
+  (declare (type (unsigned-byte 56) w) (type (integer 0 7) k) (type (unsigned-byte 59) idx)
+           (xargs :stobjs fn-dss-out
+                  :guard (and (unsigned-byte-p 56 w) (natp k) (<= k 7) (unsigned-byte-p 59 idx)
+                              (<= (+ idx k) (fn-dss-out-len fn-dss-out)))
+                  :guard-hints (("Goal" :use fn-dss-put-word-exec-is-rec
+                                 :in-theory (disable fn-dss-put-word-exec-is-rec
+                                                     fn-dss-put-word-exec$inline
+                                                     fn-dss-put-word-rec)))))
+  (mbe :logic (fn-dss-put-word-rec w k idx fn-dss-out)
+       :exec (fn-dss-put-word-exec w k idx fn-dss-out)))
+
+; The writes stay inside the output (the guard of `fn-dss-put-word' says so),
+; so its length is unchanged; instances' guard proofs use this.
+(defthm fn-dss-update-len-in-range
+  (implies (and (true-listp xs) (natp i) (< i (len xs)))
+           (equal (len (fn-oct-update i v xs)) (len xs)))
+  :hints (("Goal" :induct (fn-oct-update i v xs) :in-theory (enable fn-oct-update))))
+
+(defthm fn-dss-update-true-listp-in-range
+  (implies (and (true-listp xs) (natp i) (< i (len xs)))
+           (true-listp (fn-oct-update i v xs)))
+  :hints (("Goal" :induct (fn-oct-update i v xs) :in-theory (enable fn-oct-update))))
+
+(defthm fn-dss-put-word-rec-len
+  (implies (and (true-listp out) (natp idx) (natp k) (<= (+ idx k) (len out)))
+           (and (equal (len (fn-dss-put-word-rec w k idx out)) (len out))
+                (true-listp (fn-dss-put-word-rec w k idx out))))
+  :hints (("Goal" :induct (fn-dss-put-word-rec w k idx out)
+           :in-theory (e/d (fn-dss-out-put-is-update) (fn-oct-update)))))
+
+(defthm fn-dss-put-word-len
+  (implies (and (true-listp out) (natp idx) (natp k) (<= (+ idx k) (len out)))
+           (and (equal (len (fn-dss-put-word w k idx out)) (len out))
+                (true-listp (fn-dss-put-word w k idx out))))
+  :hints (("Goal" :in-theory (enable fn-dss-put-word$inline))))
+
+; The stobj loop.  IDX is the length written so far (the output's first IDX
+; cells are the stream), ROOM the room left in the extended window, both
+; carried so the loop reads no length and adds one fixnum per emitted word.
+; Every exit truncates the output to IDX: the cells past it are the window the
+; entry zeroed and the loop did not reach.
+(defun fn-dss-stream-loop (s i end last idx room fn-octets fn-dss-out)
   (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil
                   :measure (nfix (- (nfix end) (nfix i)))
                   :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
   (if (and (mbt (and (natp i) (natp end))) (< i end))
-      (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) (fn-dss-st-emax))
-          (mv :need-output s i fn-dss-out)
+      (if (< (nfix room) (fn-dss-st-emax))
+          (let ((fn-dss-out (fn-dss-out-truncate idx fn-dss-out)))
+            (mv :need-output s i fn-dss-out))
         (let* ((dss-o (fn-octets-get i fn-octets))
                (dss-sig (fn-dss-st-sig s dss-o)))
           (if (eql dss-sig 2)
-              (mv :refused (fn-dss-st-next s dss-o) i fn-dss-out)
-            (let ((fn-dss-out (fn-dss-out-append-word (fn-dss-st-w s dss-o) (fn-dss-st-k s dss-o)
-                                                      fn-dss-out)))
+              (let ((fn-dss-out (fn-dss-out-truncate idx fn-dss-out)))
+                (mv :refused (fn-dss-st-next s dss-o) i fn-dss-out))
+            (let* ((dss-k (nfix (fn-dss-st-k s dss-o)))
+                   (fn-dss-out (fn-dss-put-word (fn-dss-st-w s dss-o) dss-k idx fn-dss-out))
+                   (dss-idx (+ idx dss-k))
+                   (dss-room (- (nfix room) dss-k)))
               (if (eql dss-sig 1)
-                  (mv :yield (fn-dss-st-next s dss-o) (+ 1 i) fn-dss-out)
-                (fn-dss-stream-loop (fn-dss-st-next s dss-o) (+ 1 i) end last cap
-                               fn-octets fn-dss-out))))))
+                  (let ((fn-dss-out (fn-dss-out-truncate dss-idx fn-dss-out)))
+                    (mv :yield (fn-dss-st-next s dss-o) (+ 1 i) fn-dss-out))
+                (fn-dss-stream-loop (fn-dss-st-next s dss-o) (+ 1 i) end last dss-idx dss-room
+                                    fn-octets fn-dss-out))))))
     (if last
-        (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) (fn-dss-st-fmax))
-            (mv :need-output s i fn-dss-out)
+        (if (< (nfix room) (fn-dss-st-fmax))
+            (let ((fn-dss-out (fn-dss-out-truncate idx fn-dss-out)))
+              (mv :need-output s i fn-dss-out))
           (if (eql (fn-dss-st-fsig s) 2)
-              (mv :refused (fn-dss-st-fnext s) i fn-dss-out)
-            (let ((fn-dss-out (fn-dss-out-append-word (fn-dss-st-fw s) (fn-dss-st-fk s)
-                                                      fn-dss-out)))
+              (let ((fn-dss-out (fn-dss-out-truncate idx fn-dss-out)))
+                (mv :refused (fn-dss-st-fnext s) i fn-dss-out))
+            (let* ((dss-k (nfix (fn-dss-st-fk s)))
+                   (fn-dss-out (fn-dss-put-word (fn-dss-st-fw s) dss-k idx fn-dss-out))
+                   (fn-dss-out (fn-dss-out-truncate (+ idx dss-k) fn-dss-out)))
               (mv :done (fn-dss-st-fnext s) i fn-dss-out))))
-      (mv :need-input s i fn-dss-out))))
+      (let ((fn-dss-out (fn-dss-out-truncate idx fn-dss-out)))
+        (mv :need-input s i fn-dss-out)))))
 
-; One call: the room check at entry, then the loop.
+; One call: the room check at entry, then the output extended once to CAP
+; (by the zero-word append: ROOM zero octets after the IDX octets already
+; there), then the loop.
 (defun fn-dss-stream (s i end last cap fn-octets fn-dss-out)
   (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
-  (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) (fn-dss-floor))
-      (mv :no-room s i fn-dss-out)
-    (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)))
+  (let* ((dss-len (fn-dss-out-len fn-dss-out))
+         (dss-room (nfix (- cap dss-len))))
+    (if (< dss-room (fn-dss-floor))
+        (mv :no-room s i fn-dss-out)
+      (let ((fn-dss-out (fn-dss-out-append-word 0 dss-room fn-dss-out)))
+        (fn-dss-stream-loop s i end last dss-len dss-room fn-octets fn-dss-out)))))
 
 ; The list model of one call: XS the octets from I to END, ROOM the output
 ; room (- CAP (len out)).  Answers (mv SIGNAL S' OUTS N): the octets written
@@ -903,10 +1126,6 @@
    (implies (natp x) (equal (nfix x) x))))
 
 (local
- (defthm fn-dss-len-append
-   (equal (len (append a b)) (+ (len a) (len b)))))
-
-(local
  (defthm fn-dss-len-word-octets
    (equal (len (fn-oct-word-octets w dss-k)) (nfix dss-k))))
 
@@ -918,27 +1137,53 @@
                             (fn-dss-stream-list-loop s xs last room))))))
 
 (local
- (defun fn-dss-stream-ind (s i end cap st out room)
-   (declare (xargs :measure (nfix (- (nfix end) (nfix i)))))
-   (if (and (natp i) (natp end) (< i end))
-       (let* ((dss-o (nth i st)))
-         (fn-dss-stream-ind (fn-dss-st-next s dss-o) (+ 1 i) end cap st
-                            (append out (fn-oct-word-octets (fn-dss-st-w s dss-o) (fn-dss-st-k s dss-o)))
-                            (- (nfix room) (nfix (fn-dss-st-k s dss-o)))))
-     (list s i end cap st out room))))
+ (defthm fn-dss-update-facts
+   (implies (and (true-listp xs) (natp i) (<= i (len xs)))
+            (and (true-listp (fn-oct-update i v xs))
+                 (equal (len (fn-oct-update i v xs)) (max (len xs) (+ 1 i)))
+                 (equal (take (+ 1 i) (fn-oct-update i v xs)) (append (take i xs) (list v)))))
+   :hints (("Goal" :induct (fn-oct-update i v xs)
+            :in-theory (enable fn-oct-update)))))
+
+; Writing the word at IDX, from a cell at or before the end: the output's
+; first IDX+K cells are what was there up to IDX followed by the word, and
+; the output did not shrink.
+(local
+ (defthm fn-dss-put-word-rec-zero
+   (implies (zp k) (equal (fn-dss-put-word-rec w k idx out) out))
+   :hints (("Goal" :expand ((fn-dss-put-word-rec w k idx out))))))
 
 (local
+ (defthm fn-dss-put-word-rec-prefix
+   (implies (and (true-listp out) (natp idx) (natp k) (<= idx (len out)))
+            (and (true-listp (fn-dss-put-word-rec w k idx out))
+                 (<= (len out) (len (fn-dss-put-word-rec w k idx out)))
+                 (<= (+ idx k) (len (fn-dss-put-word-rec w k idx out)))
+                 (equal (take (+ idx k) (fn-dss-put-word-rec w k idx out))
+                        (append (take idx out) (fn-oct-word-octets w k)))))
+   :hints (("Goal" :induct (fn-dss-put-word-rec w k idx out)
+            :in-theory (e/d (fn-dss-out-put-is-update) (fn-oct-update take))))))
+
+; The stobj loop is the list loop: IDX cells of the output are the stream so
+; far, the rest the window the entry zeroed, and every exit keeps the first
+; IDX.  Total: nothing here assumes the step meets its contract.
+(local
  (defthm fn-dss-stream-loop-is-list-general
-   (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
-                 (equal (nfix room) (nfix (- cap (len fn-dss-out)))))
-            (equal (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
+   (implies (and (natp i) (natp idx) (true-listp fn-dss-out)
+                 (<= idx (len fn-dss-out)))
+            (equal (fn-dss-stream-loop s i end last idx room fn-octets fn-dss-out)
                    (mv-let (dss-r dss-s2 dss-outs dss-n)
                      (fn-dss-stream-list-loop s (fn-oct-slice-list i end fn-octets) last room)
-                     (mv dss-r dss-s2 (+ i dss-n) (append fn-dss-out dss-outs)))))
-   :hints (("Goal" :induct (fn-dss-stream-ind s i end cap fn-octets fn-dss-out room)
-            :in-theory (e/d (fn-oct-get-is-nth)
+                     (mv dss-r dss-s2 (+ i dss-n) (append (take idx fn-dss-out) dss-outs)))))
+   :hints (("Goal" :induct (fn-dss-stream-loop s i end last idx room fn-octets fn-dss-out)
+            :in-theory (e/d (fn-oct-get-is-nth fn-dss-put-word$inline)
                             (fn-oct-slice-list-is-take-nthcdr
-                             fn-dss-stream-list-loop-nfix-room))))))
+                             fn-dss-stream-list-loop-nfix-room
+                             fn-dss-put-word-rec))))))
+
+(local
+ (defthm fn-dss-take-len-append
+   (implies (true-listp x) (equal (take (len x) (append x y)) x))))
 
 (defthm fn-dss-stream-is-list
   (implies (and (natp i) (natp cap) (true-listp fn-dss-out))
@@ -947,11 +1192,9 @@
                     (fn-dss-stream-list s (fn-oct-slice-list i end fn-octets) last
                                         (nfix (- cap (len fn-dss-out))))
                     (mv dss-r dss-s2 (+ i dss-n) (append fn-dss-out dss-outs)))))
-  :hints (("Goal" :use ((:instance fn-dss-stream-loop-is-list-general
-                         (room (nfix (- cap (len fn-dss-out))))))
-           :in-theory (disable nfix fn-dss-stream-list-loop-nfix-room
-                               fn-dss-stream-loop-is-list-general fn-dss-stream-loop
-                               fn-dss-stream-list-loop fn-oct-slice-list-is-take-nthcdr))))
+  :hints (("Goal" :in-theory (e/d (fn-dss-out-len-is-len fn-dss-out-append-word-is-append)
+                                  (nfix fn-dss-stream-list-loop-nfix-room fn-dss-stream-loop
+                                   fn-dss-stream-list-loop fn-oct-slice-list-is-take-nthcdr)))))
 
 ; Proof support for the partition property, local: the one-pass stream of a
 ; concatenation, what one list-loop call consumes and emits, and the drive's
@@ -1418,19 +1661,26 @@
    :hints (("Goal" :use fn-dss-st-emit-contract))))
 
 (local
+ (defthm fn-dss-len-of-take
+   (implies (and (natp m) (<= m (len x)))
+            (equal (len (take m x)) m))))
+
+(local
  (defthm fn-dss-stream-loop-writes
-   (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
-                 (<= (len fn-dss-out) cap)
+   (implies (and (natp i) (natp idx) (true-listp fn-dss-out) (<= idx (len fn-dss-out))
                  (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
-            (mv-let (dss-r dss-s2 dss-i2 dss-out2) (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
+            (mv-let (dss-r dss-s2 dss-i2 dss-out2)
+              (fn-dss-stream-loop s i end last idx room fn-octets fn-dss-out)
               (declare (ignore dss-r dss-s2))
-              (and (<= (len dss-out2) cap)
+              (and (<= (len dss-out2) (+ idx (nfix room)))
                    (<= (len dss-out2)
-                       (+ (len fn-dss-out) (* (fn-dss-st-emax) (- dss-i2 i)) (fn-dss-st-fmax)))
+                       (+ idx (* (fn-dss-st-emax) (- dss-i2 i)) (fn-dss-st-fmax)))
                    (<= i dss-i2)
                    (or (<= dss-i2 end) (equal dss-i2 i)))))
-   :hints (("Goal" :induct (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
-            :in-theory (enable fn-oct-get-is-nth (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2))))))
+   :hints (("Goal" :induct (fn-dss-stream-loop s i end last idx room fn-octets fn-dss-out)
+            :in-theory (e/d (fn-oct-get-is-nth fn-dss-put-word$inline
+                             (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2))
+                            (fn-dss-put-word-rec))))))
 
 (local
  (defthm fn-dss-st-next-keeps-type-rw
@@ -1448,16 +1698,16 @@
  (defthm fn-dss-stream-loop-state-type
    (implies (and (fn-dss-st-statep s) (natp i)
                  (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
-            (fn-dss-st-statep (mv-nth 1 (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out))))
-   :hints (("Goal" :induct (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
+            (fn-dss-st-statep (mv-nth 1 (fn-dss-stream-loop s i end last idx room fn-octets fn-dss-out))))
+   :hints (("Goal" :induct (fn-dss-stream-loop s i end last idx room fn-octets fn-dss-out)
             :in-theory (enable fn-oct-get-is-nth (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2))))))
 
 (local
  (defthm fn-dss-stream-loop-cursor-mono
    (implies (natp i)
-            (<= i (mv-nth 2 (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out))))
+            (<= i (mv-nth 2 (fn-dss-stream-loop s i end last idx room fn-octets fn-dss-out))))
    :rule-classes :linear
-   :hints (("Goal" :induct (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)))))
+   :hints (("Goal" :induct (fn-dss-stream-loop s i end last idx room fn-octets fn-dss-out)))))
 
 (defthm fn-dss-stream-writes
   (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
@@ -1470,15 +1720,29 @@
                       (+ (len fn-dss-out) (* (fn-dss-st-emax) (- dss-i2 i)) (fn-dss-st-fmax)))
                   (<= i dss-i2)
                   (or (<= dss-i2 end) (equal dss-i2 i)))))
-  :hints (("Goal" :use fn-dss-stream-loop-writes
+  :hints (("Goal" :use ((:instance fn-dss-stream-loop-writes
+                                   (idx (len fn-dss-out))
+                                   (room (nfix (- cap (len fn-dss-out))))
+                                   (fn-dss-out (fn-dss-out-append-word 0 (nfix (- cap (len fn-dss-out)))
+                                                                       fn-dss-out))))
            :expand ((fn-dss-stream s i end last cap fn-octets fn-dss-out))
-           :in-theory (disable fn-dss-stream fn-dss-stream-loop fn-dss-stream-loop-writes
-                               fn-dss-stream-is-list fn-dss-stream-loop-is-list-general))))
+           :in-theory (e/d (fn-dss-out-len-is-len fn-dss-out-append-word-is-append)
+                           (fn-dss-stream fn-dss-stream-loop fn-dss-stream-loop-writes
+                            fn-dss-stream-is-list fn-dss-stream-loop-is-list-general)))))
 
 (defthm fn-dss-stream-state-type
   (implies (and (fn-dss-st-statep s) (natp i)
                 (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
-           (fn-dss-st-statep (mv-nth 1 (fn-dss-stream s i end last cap fn-octets fn-dss-out)))))
+           (fn-dss-st-statep (mv-nth 1 (fn-dss-stream s i end last cap fn-octets fn-dss-out))))
+  :hints (("Goal" :use ((:instance fn-dss-stream-loop-state-type
+                                   (idx (fn-dss-out-len fn-dss-out))
+                                   (room (nfix (- cap (fn-dss-out-len fn-dss-out))))
+                                   (fn-dss-out (fn-dss-out-append-word
+                                                0 (nfix (- cap (fn-dss-out-len fn-dss-out)))
+                                                fn-dss-out))))
+           :expand ((fn-dss-stream s i end last cap fn-octets fn-dss-out))
+           :in-theory (disable fn-dss-stream fn-dss-stream-loop fn-dss-stream-loop-state-type
+                               fn-dss-stream-is-list fn-dss-stream-loop-is-list-general))))
 
 (defthm fn-dss-stream-progress
   (implies (and (natp i) (natp end) (< i end) (natp cap)
@@ -1486,7 +1750,74 @@
            (mv-let (dss-r dss-s2 dss-i2 dss-out2) (fn-dss-stream s i end last cap fn-octets fn-dss-out)
              (declare (ignore dss-s2 dss-out2))
              (or (equal dss-r :refused) (< i dss-i2))))
-  :hints (("Goal" :expand ((fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)))))
+  :hints (("Goal" :expand ((fn-dss-stream s i end last cap fn-octets fn-dss-out)
+                           (:free (idx room out) (fn-dss-stream-loop s i end last idx room fn-octets out)))
+           :in-theory (e/d (fn-dss-out-len-is-len fn-dss-out-append-word-is-append)
+                           (fn-dss-stream-loop-is-list-general)))))
+
+; Physical writes of one :stream call, a charge model beside NAME-WORK: the
+; entry zeroes the window of the output up to CAP (ROOM cells), then each
+; emitted octet is one store (the length of the list model's output).  That
+; the compiled loop stores no more than the charge is the disassembly
+; evidence's; A-RESERVED is unchanged.
+(local
+ (defthm fn-dss-octet-listp-of-slice
+   (implies (and (fn-cbor-octet-listp st) (<= end (len st)))
+            (fn-cbor-octet-listp (fn-oct-slice-list i end st)))
+   :hints (("Goal" :induct (fn-dss-idx-ind i end)
+            :in-theory (e/d (fn-dss-slice-open fn-dss-slice-empty fn-oct-get-is-nth
+                             (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2))
+                            (fn-oct-slice-list-is-take-nthcdr))))))
+
+(local
+ (defthm fn-dss-emax-nonneg-product
+   (implies (natp n) (and (natp (* (fn-dss-st-emax) n)) (<= 0 (* (fn-dss-st-emax) n))))
+   :hints (("Goal" :use fn-dss-st-emax-natp :in-theory (disable fn-dss-st-emax-natp)))))
+
+(local
+ (defthm fn-dss-list-loop-out-bound
+   (implies (fn-cbor-octet-listp xs)
+            (<= (len (mv-nth 2 (fn-dss-stream-list-loop s xs last room)))
+                (+ (* (fn-dss-st-emax) (mv-nth 3 (fn-dss-stream-list-loop s xs last room)))
+                   (fn-dss-st-fmax))))
+   :hints (("Goal" :induct (fn-dss-stream-list-loop s xs last room)
+            :in-theory (enable (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2))))))
+
+(defun fn-dss-stream-write-charge (s i end last cap fn-octets fn-dss-out)
+  (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
+  (let ((dss-room (nfix (- (nfix cap) (fn-dss-out-len fn-dss-out)))))
+    (if (< dss-room (fn-dss-floor))
+        0
+      (mv-let (dss-r dss-s2 dss-outs dss-n)
+        (fn-dss-stream-list-loop s (fn-oct-slice-list i end fn-octets) last dss-room)
+        (declare (ignore dss-r dss-s2 dss-n))
+        (+ dss-room (len dss-outs))))))
+
+(local
+ (defthm fn-dss-list-loop-out-bound-span
+   (implies (and (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
+            (<= (len (mv-nth 2 (fn-dss-stream-list-loop s (fn-oct-slice-list i end fn-octets) last room)))
+                (+ (* (fn-dss-st-emax) (nfix (- (nfix end) (nfix i)))) (fn-dss-st-fmax))))
+   :hints (("Goal" :use ((:instance fn-dss-list-loop-out-bound (xs (fn-oct-slice-list i end fn-octets)))
+                         (:instance fn-dss-list-loop-n-bound (xs (fn-oct-slice-list i end fn-octets)) (lp last))
+                         fn-dss-len-of-slice-list
+                         (:instance fn-dss-octet-listp-of-slice (st fn-octets))
+                         (:instance fn-dss-emax-nonneg-product (n (nfix (- (nfix end) (nfix i))))))
+            :in-theory (disable fn-dss-list-loop-out-bound fn-dss-list-loop-n-bound
+                                fn-dss-len-of-slice-list fn-dss-octet-listp-of-slice
+                                fn-dss-emax-nonneg-product)))))
+
+(defthm fn-dss-stream-write-charge-bound
+  (implies (and (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
+           (<= (fn-dss-stream-write-charge s i end last cap fn-octets fn-dss-out)
+               (+ (nfix (- (nfix cap) (len fn-dss-out)))
+                  (* (fn-dss-st-emax) (nfix (- (nfix end) (nfix i))))
+                  (fn-dss-st-fmax))))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-dss-list-loop-out-bound-span
+                                   (room (nfix (- (nfix cap) (fn-dss-out-len fn-dss-out))))))
+           :do-not-induct t
+           :in-theory (e/d (fn-dss-out-len-is-len) (fn-dss-list-loop-out-bound-span nfix)))))
 
 (local
  (defthm fn-dss-st-cost-linear-natp
@@ -1562,7 +1893,9 @@
   (declare (xargs :mode :program))
   '((:rewrite fn-oct-nth-of-octet-listp-is-octet . 1)
     (:rewrite fn-oct-nth-of-octet-listp-is-octet . 2)
-    fn-oct-octets-p-is-octet-listp fn-oct-octet-listp-of-append fn-dss-guard-len-append))
+    fn-oct-octets-p-is-octet-listp fn-oct-octet-listp-of-append fn-dss-guard-len-append
+    fn-dss-put-word-len fn-dss-out-len-is-len fn-dss-out-append-word-is-append
+    fn-dss-out-truncate-is-take fn-dss-len-of-out-put))
 
 (defun fn-dss-defs-theory (names)
   ; The instance's definitions, unfolded once, in `minimal-theory' plus what
@@ -1951,6 +2284,8 @@
          (work (fn-dss-name (list name (if exec "-EXEC-WORK" "-WORK")) name))
          (bridge (fn-dss-name (list name "-IS-LIST") name))
          (wb (fn-dss-name (list name (if exec "-EXEC-WORK-BOUND" "-WORK-BOUND")) name))
+         (wc (fn-dss-name (list name "-WRITE-CHARGE") name))
+         (wcb (fn-dss-name (list name "-WRITE-CHARGE-BOUND") name))
          (mapf `(lambda (,elt) ,map))
          (dst (if within 'fn-octets 'fn-dss-out))
          (dst-len (if within '(fn-octets-len fn-octets) '(fn-dss-out-len fn-dss-out)))
@@ -1961,7 +2296,9 @@
          (subst `((fn-dss-copy-f ,mapf)
                   (fn-dss-copy-list (lambda (xs) (,lst ,@ctx xs)))
                   (,(if within 'fn-dss-copyw-loop 'fn-dss-copy-loop)
-                   (lambda (i end ,@sfs) (,loop ,@ctx i end ,@sfs)))
+                   ,(if within
+                        `(lambda (i end ,@sfs) (,loop ,@ctx i end ,@sfs))
+                      `(lambda (i end j ,@sfs) (,loop ,@ctx i end j ,@sfs))))
                   (,(if within 'fn-dss-copyw 'fn-dss-copy)
                    (lambda (i end cap ,@sfs) (,name ,@ctx i end cap ,@sfs))))))
     `(,(fn-dss-contract mc `(implies (fn-cbor-octetp ,elt) (fn-cbor-octetp ,map))
@@ -1970,30 +2307,64 @@
                         'fn-dss-copy-cost-contract
                         `((fn-dss-copy-cost (lambda (,elt) ,cost)) (fn-dss-copy-cmax (lambda () ,cost-max)))
                         `((o ,elt)) ch)
-      (defun ,loop (,@ctx i end ,@sfs)
-        (declare (xargs :stobjs ,stobjs
-                        :guard ,(fn-dss-and guard
-                                            `(and ,*fn-dss-span-guard*
-                                                  ,@(and within '((<= end (fn-octets-len fn-octets))))))
-                        :measure (nfix (- (nfix end) (nfix i)))
-                  :hints (("Goal" :in-theory (fn-dss-measure-theory)))
-                        :verify-guards nil)
-                 (type (unsigned-byte 59) i end))
-        (if (and (mbt (and (natp i) (natp end))) (< i end))
-            (let ((,dst (,dst-append (let ((,elt (fn-octets-get i fn-octets))) (declare (ignorable ,elt)) ,map) ,dst)))
-              (,loop ,@ctx (+ 1 i) end ,@sfs))
-          ,dst))
-      (defun ,name (,@ctx i end cap ,@sfs)
-        (declare (xargs :stobjs ,stobjs
-                        :guard ,(fn-dss-and guard `(and ,*fn-dss-span-guard* (natp cap)))
-                        :verify-guards nil)
-                 (type (unsigned-byte 59) i end))
-        (let ((dss-n (+ ,dst-len (nfix (- (nfix end) (nfix i))))))
-          (if (<= dss-n (nfix cap))
-              (let* ((,dst (,dst-reserve dss-n ,dst))
-                     (,dst (,loop ,@ctx i end ,@sfs)))
-                (mv :done ,dst))
-            (mv :refused ,dst))))
+      ,@(if within
+            `((defun ,loop (,@ctx i end ,@sfs)
+                (declare (xargs :stobjs ,stobjs
+                                :guard ,(fn-dss-and guard
+                                                    `(and ,*fn-dss-span-guard*
+                                                          (<= end (fn-octets-len fn-octets))))
+                                :measure (nfix (- (nfix end) (nfix i)))
+                                :hints (("Goal" :in-theory (fn-dss-measure-theory)))
+                                :verify-guards nil)
+                         (type (unsigned-byte 59) i end))
+                (if (and (mbt (and (natp i) (natp end))) (< i end))
+                    (let ((,dst (,dst-append (let ((,elt (fn-octets-get i fn-octets))) (declare (ignorable ,elt)) ,map) ,dst)))
+                      (,loop ,@ctx (+ 1 i) end ,@sfs))
+                  ,dst))
+              (defun ,name (,@ctx i end cap ,@sfs)
+                (declare (xargs :stobjs ,stobjs
+                                :guard ,(fn-dss-and guard `(and ,*fn-dss-span-guard* (natp cap)))
+                                :verify-guards nil)
+                         (type (unsigned-byte 59) i end))
+                (let ((dss-n (+ ,dst-len (nfix (- (nfix end) (nfix i))))))
+                  (if (<= dss-n (nfix cap))
+                      (let* ((,dst (,dst-reserve dss-n ,dst))
+                             (,dst (,loop ,@ctx i end ,@sfs)))
+                        (mv :done ,dst))
+                    (mv :refused ,dst)))))
+          ; The destination is extended once by END - I zero octets after the
+          ; capacity check (the exported zero-word append), then the loop stores
+          ; each octet at its index J with `put'.  The loop touches no fill point.
+          `((defun ,loop (,@ctx i end j ,@sfs)
+              (declare (xargs :stobjs ,stobjs
+                              :guard ,(fn-dss-and guard
+                                                  `(and ,*fn-dss-span-guard*
+                                                        (unsigned-byte-p 59 j)
+                                                        (unsigned-byte-p 59 (+ j (- end i)))
+                                                        (<= (+ j (- end i)) (fn-dss-out-len fn-dss-out))))
+                              :measure (nfix (- (nfix end) (nfix i)))
+                              :hints (("Goal" :in-theory (fn-dss-measure-theory)))
+                              :verify-guards nil)
+                       (type (unsigned-byte 59) i end j))
+              (if (and (mbt (and (natp i) (natp end))) (< i end))
+                  (let ((fn-dss-out (fn-dss-out-put j (let ((,elt (fn-octets-get i fn-octets))) (declare (ignorable ,elt)) ,map)
+                                                    fn-dss-out)))
+                    (,loop ,@ctx (+ 1 i) end (+ 1 j) ,@sfs))
+                fn-dss-out))
+            (defun ,name (,@ctx i end cap ,@sfs)
+              (declare (xargs :stobjs ,stobjs
+                              :guard ,(fn-dss-and guard `(and ,*fn-dss-span-guard* (unsigned-byte-p 59 cap)))
+                              :verify-guards nil)
+                       (type (unsigned-byte 59) i end))
+              (let ((dss-m (nfix (- (nfix end) (nfix i)))))
+                (if (<= (+ (fn-dss-out-len fn-dss-out) dss-m) (nfix cap))
+                    (let* ((dss-j (fn-dss-out-len fn-dss-out))
+                           (fn-dss-out (fn-dss-out-reserve (+ dss-j dss-m) fn-dss-out))
+                           (fn-dss-out (fn-dss-out-append-word 0 (if (and (natp i) (natp end)) dss-m 0)
+                                                               fn-dss-out))
+                           (fn-dss-out (,loop ,@ctx i end dss-j ,@sfs)))
+                      (mv :done fn-dss-out))
+                  (mv :refused fn-dss-out))))))
       (defun ,lst (,@ctx xs)
         (declare (xargs :verify-guards nil))
         (if (consp xs)
@@ -2033,6 +2404,26 @@
                                                    (,work ,@ctx i end fn-octets)))))
                  :expand ((,work ,@ctx i end fn-octets))
                  :in-theory ,(fn-dss-defs-theory (list work)))))
+      ,@(and (not within)
+             `((defun ,wc (,@ctx i end cap fn-octets fn-dss-out)
+                 (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
+                 (let ((dss-m (nfix (- (nfix end) (nfix i)))))
+                   (if (<= (+ (fn-dss-out-len fn-dss-out) dss-m) (nfix cap))
+                       (+ dss-m (len (,lst ,@ctx (fn-oct-slice-list i end fn-octets))))
+                     0)))
+               (defthm ,wcb
+                 (<= (,wc ,@ctx i end cap fn-octets fn-dss-out)
+                     (* 2 (nfix (- (nfix end) (nfix i)))))
+                 :rule-classes :linear
+                 :hints (("Goal" :use (,(fn-dss-use-contract mc elt)
+                                       (:functional-instance
+                                        fn-dss-copy-write-charge-bound
+                                        (fn-dss-copy-f ,mapf)
+                                        (fn-dss-copy-list (lambda (xs) (,lst ,@ctx xs)))
+                                        (fn-dss-copy-write-charge
+                                         (lambda (i end cap fn-octets fn-dss-out)
+                                           (,wc ,@ctx i end cap fn-octets fn-dss-out)))))
+                          :in-theory ,(fn-dss-defs-theory (list wc lst)))))))
       (verify-guards ,loop
         :hints ,(or guard-hints
                     `(("Goal" :in-theory (enable ,@(fn-dss-guard-theory))))))
@@ -2040,7 +2431,8 @@
       (table fn-generated ',name
              '(:def-span-scan :shape :copy :within ,within :loop ,loop :list ,lst :work ,work
                               :bridge ,bridge :c0 1 :c1 (+ 1 ,cost-max)
-                              :writes (- end i) :workspace (i))))))
+                              :writes ,(if within '(- end i) '(* 2 (- end i)))
+                              :workspace (i))))))
 
 ; ---- :stream
 
@@ -2064,6 +2456,14 @@
          (writes (fn-dss-name (list name "-WRITES") name))
          (ty (fn-dss-name (list name "-STATE-TYPE") name))
          (prog (fn-dss-name (list name "-PROGRESS") name))
+         (wc (fn-dss-name (list name "-WRITE-CHARGE") name))
+         (wcb (fn-dss-name (list name "-WRITE-CHARGE-BOUND") name))
+         (fk (fn-dss-name (list name "-STEP-K-NATP") name))
+         (fkb (fn-dss-name (list name "-STEP-K-BOUND") name))
+         (fw (fn-dss-name (list name "-STEP-W-BYTES") name))
+         (ffk (fn-dss-name (list name "-FINAL-K-NATP") name))
+         (ffkb (fn-dss-name (list name "-FINAL-K-BOUND") name))
+         (ffw (fn-dss-name (list name "-FINAL-W-BYTES") name))
          (wb (fn-dss-name (list name (if exec "-EXEC-WORK-BOUND" "-WORK-BOUND")) name))
          (statep (fn-dss-type-pred state-type 's wrld))
          (stepf `(lambda (s ,elt) ,step))
@@ -2083,8 +2483,8 @@
          (ssubst `(,@core ,@lsubst
                    (fn-dss-stream (lambda (s i end last cap fn-octets fn-dss-out)
                                     (,name ,@ctx s i end last cap fn-octets fn-dss-out)))
-                   (fn-dss-stream-loop (lambda (s i end last cap fn-octets fn-dss-out)
-                                         (,loopn ,@ctx s i end last cap fn-octets fn-dss-out)))))
+                   (fn-dss-stream-loop (lambda (s i end last idx room fn-octets fn-dss-out)
+                                         (,loopn ,@ctx s i end last idx room fn-octets fn-dss-out)))))
          (hsubst `(,@ssubst
                    (fn-dss-stream-items (lambda (s xs last) (,items ,@ctx s xs last)))
                    (fn-dss-host (lambda (s pieces i last rooms fuel fn-octets fn-dss-out)
@@ -2101,6 +2501,10 @@
                    (fn-dss-st-fcmax (lambda () ,final-cost-max))
                    (fn-dss-stream-work (lambda (s i end last room fn-octets)
                                          (,work ,@ctx s i end last room fn-octets)))))
+         (wcsubst `(,@core ,@lsubst
+                    (fn-dss-stream-write-charge
+                     (lambda (s i end last cap fn-octets fn-dss-out)
+                       (,wc ,@ctx s i end last cap fn-octets fn-dss-out)))))
          (sc (fn-dss-name (list name "-STEP-CONTRACT") name))
          (stc (fn-dss-name (list name "-STEP-TYPE") name))
          (cc (fn-dss-name (list name (if exec "-EXEC-COST-CONTRACT" "-COST-CONTRACT")) name))
@@ -2121,6 +2525,30 @@
                                            ,(fn-dss-type-pred state-type `(mv-nth 0 ,final) wrld)))
                         'fn-dss-st-next-keeps-type
                         `((fn-dss-st-statep (lambda (s) ,statep)) ,@core) `((o ,elt)) constraint-hints)
+      ; The step contract's facts as rules, for the guard proofs of the loop's
+      ; arithmetic (the word's octet count and bytes).
+      (defthm ,fk
+        (implies (fn-cbor-octetp ,elt) (natp (mv-nth 1 ,step)))
+        :rule-classes ((:rewrite) (:type-prescription))
+        :hints (("Goal" :use (,usc))))
+      (defthm ,fkb
+        (implies (fn-cbor-octetp ,elt) (<= (mv-nth 1 ,step) ,emit-max))
+        :rule-classes :linear
+        :hints (("Goal" :use (,usc))))
+      (defthm ,fw
+        (implies (fn-cbor-octetp ,elt) (unsigned-byte-p 56 (mv-nth 2 ,step)))
+        :hints (("Goal" :use (,usc))))
+      (defthm ,ffk
+        (natp (mv-nth 1 ,final))
+        :rule-classes ((:rewrite) (:type-prescription))
+        :hints (("Goal" :use (,usc))))
+      (defthm ,ffkb
+        (<= (mv-nth 1 ,final) ,final-max)
+        :rule-classes :linear
+        :hints (("Goal" :use (,usc))))
+      (defthm ,ffw
+        (unsigned-byte-p 56 (mv-nth 2 ,final))
+        :hints (("Goal" :use (,usc))))
       ,(fn-dss-contract cc `(and (natp ,cost-max) (<= (nfix ,cost) ,cost-max)
                                  (natp ,final-cost-max) (<= (nfix ,final-cost) ,final-cost-max))
                         'fn-dss-st-cost-contract
@@ -2128,45 +2556,64 @@
                           (fn-dss-st-fcost (lambda (s) ,final-cost))
                           (fn-dss-st-fcmax (lambda () ,final-cost-max)))
                         `((o ,elt)) constraint-hints)
-      (defun ,loopn (,@ctx s i end last cap fn-octets fn-dss-out)
+      (defun ,loopn (,@ctx s i end last idx room fn-octets fn-dss-out)
         (declare (xargs :stobjs (fn-octets fn-dss-out)
-                        :guard ,(fn-dss-and guard `(and ,*fn-dss-span-guard* (natp cap)
-                                                       (unsigned-byte-p 59 cap)))
+                        :guard ,(fn-dss-and guard `(and ,*fn-dss-span-guard*
+                                                       (unsigned-byte-p 59 idx)
+                                                       (unsigned-byte-p 59 room)
+                                                       (unsigned-byte-p 59 (+ idx room))
+                                                       (<= (+ idx room) (fn-dss-out-len fn-dss-out))))
                         :measure (nfix (- (nfix end) (nfix i)))
                   :hints (("Goal" :in-theory (fn-dss-measure-theory)))
                         :verify-guards nil)
                  (type ,state-type s)
-                 (type (unsigned-byte 59) i end cap))
+                 (type (unsigned-byte 59) i end idx room))
         (if (and (mbt (and (natp i) (natp end))) (< i end))
-            (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) ,emit-max)
-                (mv :need-output s i fn-dss-out)
+            (if (< (nfix room) ,emit-max)
+                (let ((fn-dss-out (fn-dss-out-truncate idx fn-dss-out)))
+                  (mv :need-output s i fn-dss-out))
               (let ((,elt (fn-octets-get i fn-octets))) (declare (ignorable ,elt))
                 (mv-let (dss-s2 dss-k dss-w dss-sig) ,step
                   (if (eql dss-sig 2)
-                      (mv :refused dss-s2 i fn-dss-out)
-                    (let ((fn-dss-out (fn-dss-out-append-word dss-w dss-k fn-dss-out)))
+                      (let ((fn-dss-out (fn-dss-out-truncate idx fn-dss-out)))
+                        (mv :refused dss-s2 i fn-dss-out))
+                    (let* ((dss-k (mbe :logic (nfix dss-k) :exec (the (integer 0 ,emit-max) dss-k)))
+                           (fn-dss-out (fn-dss-put-word dss-w dss-k idx fn-dss-out))
+                           (dss-idx (+ idx dss-k))
+                           (dss-room (- (nfix room) dss-k)))
                       (if (eql dss-sig 1)
-                          (mv :yield dss-s2 (+ 1 i) fn-dss-out)
-                        (,loopn ,@ctx dss-s2 (+ 1 i) end last cap fn-octets fn-dss-out)))))))
+                          (let ((fn-dss-out (fn-dss-out-truncate dss-idx fn-dss-out)))
+                            (mv :yield dss-s2 (+ 1 i) fn-dss-out))
+                        (,loopn ,@ctx dss-s2 (+ 1 i) end last dss-idx dss-room
+                                fn-octets fn-dss-out)))))))
           (if last
-              (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) ,final-max)
-                  (mv :need-output s i fn-dss-out)
+              (if (< (nfix room) ,final-max)
+                  (let ((fn-dss-out (fn-dss-out-truncate idx fn-dss-out)))
+                    (mv :need-output s i fn-dss-out))
                 (mv-let (dss-s2 dss-k dss-w dss-sig) ,final
                   (if (eql dss-sig 2)
-                      (mv :refused dss-s2 i fn-dss-out)
-                    (let ((fn-dss-out (fn-dss-out-append-word dss-w dss-k fn-dss-out)))
+                      (let ((fn-dss-out (fn-dss-out-truncate idx fn-dss-out)))
+                        (mv :refused dss-s2 i fn-dss-out))
+                    (let* ((dss-k (mbe :logic (nfix dss-k) :exec (the (integer 0 ,final-max) dss-k)))
+                           (fn-dss-out (fn-dss-put-word dss-w dss-k idx fn-dss-out))
+                           (fn-dss-out (fn-dss-out-truncate (+ idx dss-k) fn-dss-out)))
                       (mv :done dss-s2 i fn-dss-out)))))
-            (mv :need-input s i fn-dss-out))))
+            (let ((fn-dss-out (fn-dss-out-truncate idx fn-dss-out)))
+              (mv :need-input s i fn-dss-out)))))
       (defun ,name (,@ctx s i end last cap fn-octets fn-dss-out)
         (declare (xargs :stobjs (fn-octets fn-dss-out)
                         :guard ,(fn-dss-and guard `(and ,*fn-dss-span-guard* (natp cap)
-                                                       (unsigned-byte-p 59 cap)))
+                                                       (unsigned-byte-p 59 cap)
+                                                       (unsigned-byte-p 59 (fn-dss-out-len fn-dss-out))))
                         :verify-guards nil)
                  (type ,state-type s)
                  (type (unsigned-byte 59) i end cap))
-        (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) ,floor)
-            (mv :no-room s i fn-dss-out)
-          (,loopn ,@ctx s i end last cap fn-octets fn-dss-out)))
+        (let* ((dss-len (fn-dss-out-len fn-dss-out))
+               (dss-room (nfix (- cap dss-len))))
+          (if (< dss-room ,floor)
+              (mv :no-room s i fn-dss-out)
+            (let ((fn-dss-out (fn-dss-out-append-word 0 dss-room fn-dss-out)))
+              (,loopn ,@ctx s i end last dss-len dss-room fn-octets fn-dss-out)))))
       (defun ,lstl (,@ctx s xs last room)
         (declare (xargs :verify-guards nil :measure (len xs)
                         :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
@@ -2335,6 +2782,24 @@
         :hints (("Goal" :use (,usc (:functional-instance fn-dss-stream-writes ,@ssubst))
                  :in-theory ,(fn-dss-defs-theory (list name loopn lst lstl)))
 ))
+      (defun ,wc (,@ctx s i end last cap fn-octets fn-dss-out)
+        (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
+        (let ((dss-room (nfix (- (nfix cap) (fn-dss-out-len fn-dss-out)))))
+          (if (< dss-room ,floor)
+              0
+            (mv-let (dss-r dss-s2 dss-outs dss-n)
+              (,lstl ,@ctx s (fn-oct-slice-list i end fn-octets) last dss-room)
+              (declare (ignore dss-r dss-s2 dss-n))
+              (+ dss-room (len dss-outs))))))
+      (defthm ,wcb
+        (implies (and (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
+                 (<= (,wc ,@ctx s i end last cap fn-octets fn-dss-out)
+                     (+ (nfix (- (nfix cap) (len fn-dss-out)))
+                        (* ,emit-max (nfix (- (nfix end) (nfix i))))
+                        ,final-max)))
+        :rule-classes :linear
+        :hints (("Goal" :use (,usc (:functional-instance fn-dss-stream-write-charge-bound ,@wcsubst))
+                 :in-theory ,(fn-dss-defs-theory (list wc lst lstl)))))
       (defthm ,ty
         (implies (and ,statep (natp i)
                       (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
@@ -2367,13 +2832,16 @@
       (verify-guards ,loopn
         :hints ,(or guard-hints
                     `(("Goal" :in-theory (enable ,@(fn-dss-guard-theory))))))
-      (verify-guards ,name)
+      (verify-guards ,name
+        :hints ,(or guard-hints
+                    `(("Goal" :in-theory (enable ,@(fn-dss-guard-theory))))))
       (table fn-generated ',name
              '(:def-span-scan :shape :stream :loop ,loopn :list ,lst :items ,items :drive ,drive
                               :host ,host :partition-stobj ,spart :assumes (:a-host-room)
                               :work ,work :bridge ,bridge :partition ,part
                               :c0 (+ 1 ,final-cost-max) :c1 (+ 1 ,cost-max)
                               :writes (+ (* ,emit-max (- dss-i2 i)) ,final-max)
+                              :write-charge ,wc
                               :workspace (i s :type ,state-type))))))
 
 ; ---- the macro
