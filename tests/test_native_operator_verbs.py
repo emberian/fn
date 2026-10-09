@@ -707,6 +707,11 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         # is named (`init --budget MB', a store for another machine).  (With
         # no --profile, a capacity field takes development's other fields,
         # row Q10b: test_init_capacity_fields_take_the_development_preset.)
+        # The second init's own process is sized as a store-less command
+        # (books/heap-figure.lisp, fn-heap-reserve-operation-decide over the
+        # store-less action): init holds no store, so a store made for another
+        # machine is written here although this machine could not run it
+        # (fn-heap-operation-decide-of-a-storeless-action).
         refused = self.operator("init", "--profile", "default", "--max-transactions", "1000",
                                 "--max-article-octets", "20000", "fn.test")
         self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr.decode())

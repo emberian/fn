@@ -1172,7 +1172,7 @@
 ; fn-heap-operation-decide-of-a-serve-action-is-heap-decide.  Reachable:
 ; `run' unobserved is heap-figure's decision.  Without "not an offline
 ; verb": the reclaim's figure (1,840 MB) is not the serve figure (1,736).
-; Without "not init": init's first-run figure (668 MB) is not it either.
+; Without "not init": init's store-less figure (lane b-init-heap) is not it either.
 (assert! (equal (fn-heap-operation-decide :run *fn-heap-small-profile* *hrt-core* *hrt-nursery*
                                           *hrt-2g* nil)
                 (fn-heap-decide *fn-heap-small-profile* *hrt-core* *hrt-nursery* *hrt-2g*)))
