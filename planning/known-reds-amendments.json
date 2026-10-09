@@ -8,6 +8,22 @@
    "item": "OPERATOR-STATUS-OBSERVED-SIZING",
    "owner": "builder-A",
    "ruling": "coordinator 2026-10-09 13:05: a red found on dev after the baseline enters only by amendment"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_served_line_stack.ServedLineStackTests.test_developer_serves_two_million_lines_at_one_mib_of_stack",
+   "dev_sha": "1bec0755d",
+   "item": "LAUNCHER-STACK-ARGS-REPLACE-DECIDED-HEAP",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-09 13:05: a red found on dev after the baseline enters only by amendment"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_served_line_stack.ServedLineStackTests.test_production_serves_two_million_lines_at_one_mib_of_stack",
+   "dev_sha": "1bec0755d",
+   "item": "LAUNCHER-STACK-ARGS-REPLACE-DECIDED-HEAP",
+   "owner": "builder-B",
+   "ruling": "coordinator 2026-10-09 13:05: a red found on dev after the baseline enters only by amendment"
   }
  ]
 }
