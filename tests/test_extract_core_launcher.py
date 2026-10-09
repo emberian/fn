@@ -70,6 +70,71 @@ class CoreLauncherTests(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertIn("fn: refused machine-cannot-hold-profile", result.stderr)
 
+    def figures(self, words):
+        sizes = [words[i + 1] for i, w in enumerate(words) if w == "--dynamic-space-size"]
+        stacks = [words[i + 1] for i, w in enumerate(words) if w == "--control-stack-size"]
+        return sizes, stacks
+
+    def test_a_callers_stack_alone_runs_on_the_decided_heap(self):
+        # LAUNCHER-STACK-ARGS-REPLACE-DECIDED-HEAP: a stack-only SBCL_USER_ARGS
+        # (tests/test_native_served_line_stack.py, 1 MiB) once skipped the
+        # decision, so the start ran at the launcher's 1772 and the store's
+        # cold startup refused; now the decided figures come first and the
+        # caller's stack last, which SBCL takes
+        launcher, env = self.decide_world("heap=3000 MB profile=development machine=9 MB stack=512 KB threads=1")
+        env["SBCL_USER_ARGS"] = "--control-stack-size 1MB"
+        result = subprocess.run(["sh", str(launcher), "--fn", "operator", "/cfg", "run"],
+                                env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        sizes, stacks = self.figures(result.stdout.splitlines())
+        self.assertEqual((sizes, stacks), (["1772", "3000"], ["1024KB", "512KB", "1MB"]))
+
+    def test_a_callers_stack_alone_is_still_refused_where_the_heap_is(self):
+        # composing never skips the probe: a profile the machine cannot hold
+        # is refused by name with or without a caller's stack
+        launcher, env = self.decide_world("refused machine-cannot-hold-profile need=9 MB", 1)
+        env["SBCL_USER_ARGS"] = "--control-stack-size 1MB"
+        result = subprocess.run(["sh", str(launcher), "--fn", "operator", "/cfg", "run"],
+                                env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 1)
+        self.assertEqual(result.stdout, "")
+        self.assertIn("fn: refused machine-cannot-hold-profile", result.stderr)
+
+    def test_the_tests_named_heap_keeps_a_callers_stack(self):
+        launcher, env = self.decide_world("refused never-probed", 1)
+        env.update(SBCL_USER_ARGS="--control-stack-size 1MB", FN_TEST_HEAP_MB="700")
+        result = subprocess.run(["sh", str(launcher), "--fn", "operator", "/cfg", "run"],
+                                env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.figures(result.stdout.splitlines()),
+                         (["1772", "700"], ["1024KB", "1MB"]))
+
+    def test_a_callers_heap_is_its_own_figure_and_runs_no_probe(self):
+        launcher, env = self.decide_world("refused never-probed", 1)
+        env["SBCL_USER_ARGS"] = "--dynamic-space-size 2048 --control-stack-size 1MB"
+        result = subprocess.run(["sh", str(launcher), "--fn", "operator", "/cfg", "run"],
+                                env=env, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(self.figures(result.stdout.splitlines()),
+                         (["1772", "2048"], ["1024KB", "1MB"]))
+
+    def test_the_developer_launchers_named_heap_keeps_a_callers_stack(self):
+        # packaging/fn's developer branch: FN_TEST_HEAP_MB once replaced the
+        # caller's SBCL_USER_ARGS whole, dropping its stack
+        with tempfile.TemporaryDirectory() as tmp:
+            image = Path(tmp) / "fn-host"
+            image.write_text('#!/bin/sh\nprintf "%s\\n" "$SBCL_USER_ARGS"\n')
+            image.chmod(0o755)
+            (Path(tmp) / "fn-host.core").write_bytes(b"\0")
+            result = subprocess.run(["sh", str(ROOT / "packaging" / "fn"), "operator", "/cfg", "run"],
+                                    env={"PATH": "/usr/bin:/bin", "FN_NATIVE_HOST": str(image),
+                                         "FN_TEST_HEAP_MB": "700",
+                                         "SBCL_USER_ARGS": "--control-stack-size 1MB"},
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.split(),
+                             ["--control-stack-size", "1MB", "--dynamic-space-size", "700"])
+
     def test_the_image_and_fn_core_carry_the_same_decision(self):
         prelude = module.decision_prelude()
         self.assertIn('fn_decide_heap "$0" "$@"', prelude)
