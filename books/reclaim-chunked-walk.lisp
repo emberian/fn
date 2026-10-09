@@ -467,7 +467,7 @@
 ; rebuilt capture's records a chunk per call (the records are the capture's
 ; own list: nothing is copied).  Availability comes from each held row's
 ; decided facts, which the prediction set from the rewritten record's own
-; payload (books/owner-reclaim-seal.lisp fn-orcs-held-of), so a reclaimed
+; payload (books/owner-reclaim-seal.lisp fn-intern-row-at), so a reclaimed
 ; row is unavailable with no read of the arena's tombstone bit
 ; (books/catalog-availability.lisp fn-cat-row-availablep).
 

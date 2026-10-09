@@ -4879,7 +4879,7 @@ The same-owner socket observation and the existing FNCT concrete-buffer
 refinement are reused. `fn-bpnc-turn-plan` grants exactly the parsed accepted
 `bp-route add` or `bp-route remove` plan, rejecting other request and admin
 kinds. `fnn-bpnc-execute` uses the ordinary owner scheduler's control class and
-`fnn-owner-live-reconfigure-locked`: acceptance follows durable configuration
+`fnn-owner-live-reconfigure`: acceptance follows durable configuration
 publication and installation. There is no direct Store fallback after a live
 transport ambiguity. The operator's actual CONFIG selects the same path.
 

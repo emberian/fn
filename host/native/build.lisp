@@ -400,6 +400,8 @@
 (ld "host/anchor-server-host.lisp" :ld-error-action :error)
 (ld "host/reader-host.lisp" :ld-error-action :error)
 (ld "host/owner-host.lisp" :ld-error-action :error)
+; developer inspection of the held-row verdicts (owner-held-verdicts-host)
+(ld "host/owner-held-verdicts-host.lisp" :ld-error-action :error)
 (ld "host/history-root-host.lisp" :ld-error-action :error)
 ;; Stage 5 (lane raw-dispatch-3): the owner's carried relation
 ;; (fn-owner-retain-statep) across the host writers converted to :logic.

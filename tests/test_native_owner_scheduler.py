@@ -200,10 +200,13 @@ class SchedulerNativeTests(unittest.TestCase):
         # worker's idle polls (host/native/feed-service.lisp fnn-feed-worker:
         # fnn-feed-peer-list every +fnn-feed-poll-seconds+ = 1/20 s, one
         # :transit quantum each), so they grow with the window and by no more
-        # than it allows.
+        # than it allows, plus one quantum for each commit that wakes the idle
+        # worker early (fnn-feed-idle-wait answers :commit, S145): here the
+        # one post.  The window is timed from before the first sample, so the
+        # polls the first sample's own request spans are inside it.
+        started = time.monotonic()
         bound, before = self.sched()
         self.assertEqual(bound, 3)
-        started = time.monotonic()
         conn, stream = self.connect()
         with conn:
             for _ in range(10):
@@ -232,7 +235,8 @@ class SchedulerNativeTests(unittest.TestCase):
         self.assertEqual(after["poster"][0] - before["poster"][0], 1, (before, after))
         transit = after["transit"][0] - before["transit"][0]
         self.assertGreaterEqual(transit, 1, (before, after))
-        self.assertLessEqual(transit, int(elapsed * 20) + 2, (elapsed, before, after))
+        commits = after["poster"][0] - before["poster"][0]
+        self.assertLessEqual(transit, int(elapsed * 20) + 2 + commits, (elapsed, before, after))
         for name, row in after.items():
             self.assertEqual(sum(row[1:6]), row[0], (name, row))
 

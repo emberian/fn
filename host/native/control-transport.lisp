@@ -65,6 +65,20 @@ owner mutex.")
       (ignore-errors (fnn-flock fd +fnn-lock-un+))
       (ignore-errors (fnn-close fd)))))
 
+(defun fnn-control-unlink-installed (control path)
+  "Unlink PATH only when ACL2 says the node there is the socket this run
+installed (fn-native-control-socket-removal-decides).  A run that never bound
+holds no identity and removes nothing, whatever node sits at PATH."
+  (let* ((info (fnn-lstat path))
+         (socketp (fnn-control-socket-path-p info)))
+    (when (eq :remove
+              (fnn-core 'fn-native-control-host-socket-removal
+                        (fnn-control-state-device control)
+                        (fnn-control-state-inode control)
+                        (and socketp (sb-posix:stat-dev info))
+                        (and socketp (sb-posix:stat-ino info))))
+      (fnn-unlink path))))
+
 (defun fnn-control-remove-stale-offline (path-octets)
   "Remove a crashed owner's socket node for an offline verb (PKT-344), after
 ACL2 decided :stale (fn-native-control-liveness).  Performed as

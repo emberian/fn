@@ -85,6 +85,12 @@ class SpecCiteCheckTests(unittest.TestCase):
         # books/native-control-buffer.lisp: (def-buffer fn-octets-ctl)
         self.assertIn("fn-octets-ctl", scc.defined_names())
 
+    def test_a_def_generic_export_is_defined(self):
+        # books/payload-arena.lisp: (def-generic fn-arena ... :exports
+        # ((:update fn-arena-seal-buffer :logic fn-arena$a-seal-buffer) ...))
+        self.assertIn("fn-arena-seal-buffer", scc.defined_names())
+        self.assertNotIn("fn-arena-seal-no-such-export", scc.defined_names())
+
     def test_the_tree_is_green_under_strict(self):
         self.assertEqual(scc.main(["--summary", "--strict"]), 0)
 

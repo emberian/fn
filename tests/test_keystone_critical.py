@@ -6,6 +6,7 @@ owed when existing, a noncritical toothless one stays under the ceiling."""
 from __future__ import annotations
 
 from pathlib import Path
+import json
 import sys
 import os
 import subprocess
@@ -179,9 +180,9 @@ class Gate(unittest.TestCase):
         (self.root / "tests/host.lisp").write_text("(deftest host-rotation (fn-s x))")
         (self.root / "tests/trace.lisp").write_text("(deftest trace-rotation)")
         (self.root / "tests/mut.lisp").write_text("(deftest mut-rotation)")
-        self.full = {"host_test": "tests/host.lisp::host-rotation",
-                     "trace_witness": "tests/trace.lisp::trace-rotation",
-                     "mutation": "tests/mut.lisp::mut-rotation"}
+        self.full = kc.emitted_row({"host_test": "tests/host.lisp::host-rotation",
+                                    "trace_witness": "tests/trace.lisp::trace-rotation",
+                                    "mutation": "tests/mut.lisp::mut-rotation"})
 
     def run_gate(self, current, base_names, declared=None, owed=None, reachable=lambda s: True,
                  base_extra=None):
@@ -240,10 +241,33 @@ class Gate(unittest.TestCase):
         self.assertTrue(any("HARD FAIL" in f for f in found))
         self.assertTrue(any("cannot be owed" in f for f in found), found)
 
+    def test_a_hand_edited_declared_row_is_refused(self):
+        typed = {k: v for k, v in self.full.items() if k != "provenance"}
+        found, _ = self.run_gate([teeth("k")], [], {"k": typed})
+        self.assertTrue(any("not emitted by keystone_critical.py --declare" in f for f in found), found)
+        edited = dict(self.full, mutation="tests/host.lisp::host-rotation")
+        found, _ = self.run_gate([teeth("k")], [], {"k": edited})
+        self.assertTrue(any("not emitted by keystone_critical.py --declare" in f for f in found), found)
+
+    def test_declare_checks_the_references_and_stamps_the_row(self):
+        path = self.root / "critical-evidence.json"
+        row = {"subject": "fn-s", "host_test": "tests/host.lisp::host-rotation",
+               "trace_witness": "tests/trace.lisp::trace-rotation",
+               "mutation": "tests/mut.lisp::absent"}
+        self.assertTrue(kc.declare("k", row, self.root, path))
+        self.assertFalse(path.exists())
+        row["mutation"] = "tests/mut.lisp::mut-rotation"
+        self.assertEqual(kc.declare("k", row, self.root, path), [])
+        written = json.loads(path.read_text())["entries"]["k"]
+        self.assertEqual(written, kc.emitted_row(row))
+        found, _ = self.run_gate([teeth("k")], [], {"k": written})
+        self.assertEqual(found, [])
+
     def test_each_missing_part_is_named(self):
         for part, why in (("host_test", "host_test"), ("trace_witness", "trace_witness"),
                           ("mutation", "mutation")):
-            declared = {k: v for k, v in self.full.items() if k != part}
+            declared = {k: v for k, v in self.full.items() if k not in (part, "provenance")}
+            declared = kc.emitted_row(declared)
             found, _ = self.run_gate([teeth("k")], [], {"k": declared})
             self.assertTrue(any(why + " (" in f for f in found), (part, found))
 
@@ -278,7 +302,7 @@ class Gate(unittest.TestCase):
         native = self.root / "tests/test_native_cuts.py"
         # A native-looking filename and a static verifier are not execution.
         native.write_text("# fn-s\ndef host_rotation():\n    verify_log_cut_map()\n")
-        full = dict(self.full, host_test="tests/test_native_cuts.py::host_rotation")
+        full = kc.emitted_row(dict(self.full, host_test="tests/test_native_cuts.py::host_rotation"))
         found, _ = self.run_gate([teeth("k")], [], {"k": full}, reachable=reachable)
         self.assertTrue(any("does not drive fault cuts" in f for f in found), found)
         native.write_text("# fn-s\nimport subprocess\ndef host_rotation():\n"
@@ -292,8 +316,8 @@ class Gate(unittest.TestCase):
         self.assertEqual((found, summary["complete"]), ([], 1))
         # Static verification elsewhere in a native module is still not the test.
         native.write_text(native.read_text() + "def table_only():\n    verify_log_cut_map()\n")
-        found, _ = self.run_gate([teeth("k")], [], {"k": dict(full,
-                                 host_test="tests/test_native_cuts.py::table_only")}, reachable=reachable)
+        found, _ = self.run_gate([teeth("k")], [], {"k": kc.emitted_row(dict(full,
+                                 host_test="tests/test_native_cuts.py::table_only"))}, reachable=reachable)
         self.assertTrue(any("does not drive fault cuts" in f for f in found), found)
 
     def test_positive_witness_kind_and_current_certification_are_distinct(self):
@@ -396,8 +420,8 @@ class LowerStale(unittest.TestCase):
                     ("complete", "uncertified", "missing-host", "gone")}
             current = {n: teeth(n) for n in owed if n != "gone"}
             current["uncertified"]["certified"] = False
-            declared = {n: dict(full) for n in current}
-            del declared["missing-host"]["host_test"]
+            declared = {n: kc.emitted_row(full) for n in current}
+            declared["missing-host"] = kc.emitted_row({k: v for k, v in full.items() if k != "host_test"})
             kept, dropped = kc.lower_complete(current, owed, declared, lambda s: True, root)
             self.assertEqual(dropped, ["complete"])
             self.assertEqual(kept, {n: row for n, row in owed.items() if n != "complete"})

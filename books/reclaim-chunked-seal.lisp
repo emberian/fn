@@ -27,15 +27,6 @@
 ; 1. The prediction over a concatenation.
 
 (local
- (defthm fn-rcw-predict-rows-of-append
-   (implies (natp h)
-            (equal (fn-orcs-predict-rows (append a b) keyring generation h)
-                   (append (fn-orcs-predict-rows a keyring generation h)
-                           (fn-orcs-predict-rows b keyring generation
-                                                 (+ h (len (fn-orcs-payloads a)))))))
-   :hints (("Goal" :in-theory (disable fn-orcs-held-of fn-record-p)))))
-
-(local
  (defthm fn-rcw-payloads-of-append
    (equal (fn-orcs-payloads (append a b))
           (append (fn-orcs-payloads a) (fn-orcs-payloads b)))
@@ -48,15 +39,17 @@
 
 (local
  (defthm fn-rcw-predict-of-true-list-fix
-   (and (equal (fn-orcs-predict-rows (true-list-fix rows) keyring generation h)
-               (fn-orcs-predict-rows rows keyring generation h))
+   (and (equal (fn-orcs-predict-rows-at (true-list-fix rows) id h)
+               (fn-orcs-predict-rows-at rows id h))
         (equal (fn-orcs-payloads (true-list-fix rows)) (fn-orcs-payloads rows))
         (equal (fn-orcs-has-bad (true-list-fix rows)) (fn-orcs-has-bad rows)))
-   :hints (("Goal" :in-theory (disable fn-orcs-held-of fn-record-p)))))
+   :hints (("Goal" :induct (fn-orcs-predict-rows-at rows id h)
+            :in-theory (disable fn-intern-row-at fn-record-p fn-replay-identity-loop
+                                fn-ssr-seed fn-ssr-at)))))
 
 (local
  (defthm fn-rcw-predict-rows-true-listp
-   (true-listp (fn-orcs-predict-rows rows keyring generation h))
+   (true-listp (fn-orcs-predict-rows-at rows id h))
    :rule-classes :type-prescription))
 
 ; -----------------------------------------------------------------------------
@@ -64,11 +57,11 @@
 ; refusal word (fn-orcs-predict answers (:bad nil) then), else (ACC' H'
 ; PAYLOADS): ACC extended by the chunk's predicted rows from H, H advanced by
 ; the chunk's sealed payloads, which are returned for the swap's seal.
-(defun fn-rcw-predict-acc-step (acc configs chunk keyring generation h)
+(defun fn-rcw-predict-acc-step (acc configs chunk h)
   (declare (xargs :guard t :verify-guards nil))
   (if (fn-orcs-has-bad chunk)
       :bad
-    (let ((rows (fn-orcs-predict-rows chunk keyring generation (nfix h)))
+    (let ((rows (fn-orcs-predict-rows-at chunk (fn-sco-at 3 acc) (nfix h)))
           (payloads (fn-orcs-payloads chunk)))
       (list (fn-rcw-acc-step acc configs rows)
             (+ (nfix h) (len payloads))
@@ -76,16 +69,16 @@
 
 (local
  (defthm fn-rcw-predict-acc-step-parts
-   (and (equal (equal (fn-rcw-predict-acc-step acc configs chunk keyring generation h) :bad)
+   (and (equal (equal (fn-rcw-predict-acc-step acc configs chunk h) :bad)
                (if (fn-orcs-has-bad chunk) t nil))
-        (equal (car (fn-rcw-predict-acc-step acc configs chunk keyring generation h))
+        (equal (car (fn-rcw-predict-acc-step acc configs chunk h))
                (if (fn-orcs-has-bad chunk)
                    nil
                  (fn-rcw-acc-step acc configs
-                                  (fn-orcs-predict-rows chunk keyring generation (nfix h)))))
-        (equal (cadr (fn-rcw-predict-acc-step acc configs chunk keyring generation h))
+                                  (fn-orcs-predict-rows-at chunk (fn-sco-at 3 acc) (nfix h)))))
+        (equal (cadr (fn-rcw-predict-acc-step acc configs chunk h))
                (if (fn-orcs-has-bad chunk) nil (+ (nfix h) (len (fn-orcs-payloads chunk)))))
-        (equal (caddr (fn-rcw-predict-acc-step acc configs chunk keyring generation h))
+        (equal (caddr (fn-rcw-predict-acc-step acc configs chunk h))
                (if (fn-orcs-has-bad chunk) nil (fn-orcs-payloads chunk))))
    :hints (("Goal" :in-theory (union-theories '(fn-rcw-predict-acc-step car-cons cdr-cons)
                                               (theory 'minimal-theory))))))
@@ -93,27 +86,41 @@
 (local (in-theory (disable fn-rcw-predict-acc-step fn-rcw-acc-step)))
 
 ; The steps, and the payloads they return in order (the host nconcs them).
-(defun fn-rcw-predict-acc-steps (acc configs chunks keyring generation h payloads)
+(defun fn-rcw-predict-acc-steps (acc configs chunks h payloads)
   (declare (xargs :guard t :verify-guards nil :measure (len chunks)))
   (if (consp chunks)
-      (let ((r (fn-rcw-predict-acc-step acc configs (car chunks) keyring generation h)))
+      (let ((r (fn-rcw-predict-acc-step acc configs (car chunks) h)))
         (if (eq r :bad)
             :bad
-          (fn-rcw-predict-acc-steps (car r) configs (cdr chunks) keyring generation
-                                    (cadr r) (append payloads (caddr r)))))
+          (fn-rcw-predict-acc-steps (car r) configs (cdr chunks) (cadr r) (append payloads (caddr r)))))
     (list acc h payloads)))
 
 (local
- (defun fn-rcw-predict-ind (acc configs chunks keyring generation h payloads prefix)
+ (defun fn-rcw-predict-ind (acc configs chunks h payloads prefix)
    (declare (xargs :verify-guards nil :measure (len chunks)))
    (if (consp chunks)
-       (let ((r (fn-rcw-predict-acc-step acc configs (car chunks) keyring generation h)))
+       (let ((r (fn-rcw-predict-acc-step acc configs (car chunks) h)))
          (if (eq r :bad)
              (list prefix)
-           (fn-rcw-predict-ind (car r) configs (cdr chunks) keyring generation
-                               (cadr r) (append payloads (caddr r))
+           (fn-rcw-predict-ind (car r) configs (cdr chunks) (cadr r) (append payloads (caddr r))
                                (append prefix (true-list-fix (car chunks))))))
      (list acc h payloads prefix))))
+
+(local
+ (defthm fn-rcw-empty-identity
+   (equal (fn-sco-identity (fn-sco-capture configs nil))
+          (fn-stxk-initial-context 0))
+   :hints (("Goal" :in-theory (enable fn-sco-capture fn-sco-identity
+                                     fn-sco-make fn-sco-at fn-replay-identity-loop)))))
+(local
+ (defthm fn-rcw-carried-identity
+   (implies (equal (fn-rcw-acc-finish acc) (fn-sco-capture configs prefix))
+            (equal (fn-sco-at 3 acc)
+                   (fn-replay-identity-loop (true-list-fix prefix)
+                                            (fn-stxk-initial-context 0))))
+   :hints (("Goal" :in-theory (e/d (fn-rcw-acc-finish fn-sco-capture fn-sco-make fn-sco-at)
+                                   (fn-replay-identity-loop fn-sco-cpr-prefix
+                                    fn-cpe-projection-replay fn-th-prefix-loop fn-cei-build-aux))))))
 
 (local
  (defthm fn-rcw-predict-steps-from
@@ -123,37 +130,33 @@
                  (equal payloads (fn-orcs-payloads prefix))
                  (equal (fn-rcw-acc-finish acc)
                         (fn-sco-capture configs
-                                        (fn-orcs-predict-rows prefix keyring generation h0))))
-            (let ((r (fn-rcw-predict-acc-steps acc configs chunks keyring generation h payloads))
+                                        (fn-orcs-predict-rows-at prefix (fn-sco-identity (fn-sco-capture configs nil)) h0))))
+            (let ((r (fn-rcw-predict-acc-steps acc configs chunks h payloads))
                   (all (append prefix (fn-rcw-concat chunks))))
               (and (equal (equal r :bad) (if (fn-orcs-has-bad all) t nil))
                    (implies (not (equal r :bad))
                             (and (equal (fn-rcw-acc-finish (car r))
                                         (fn-sco-capture configs
-                                                        (fn-orcs-predict-rows all keyring
-                                                                              generation h0)))
+                                                        (fn-orcs-predict-rows-at all (fn-sco-identity (fn-sco-capture configs nil)) h0)))
                                  (equal (cadr r) (+ h0 (len (fn-orcs-payloads all))))
                                  (equal (caddr r) (fn-orcs-payloads all)))))))
-   :hints (("Goal" :induct (fn-rcw-predict-ind acc configs chunks keyring generation h
+   :hints (("Goal" :induct (fn-rcw-predict-ind acc configs chunks h
                                                payloads prefix)
             :in-theory (disable fn-rcw-acc-finish fn-rcw-accp fn-sco-capture fn-sco-extend
-                                fn-orcs-held-of fn-record-p))
+                                fn-intern-row-at fn-record-p))
            ("Subgoal *1/2" :use ((:instance fn-sco-extend-of-capture
-                                            (prefix (fn-orcs-predict-rows prefix keyring
-                                                                          generation h0))
-                                            (suffix (fn-orcs-predict-rows (car chunks) keyring
-                                                                          generation h)))
+                                            (prefix (fn-orcs-predict-rows-at prefix (fn-sco-identity (fn-sco-capture configs nil)) h0))
+                                            (suffix (fn-orcs-predict-rows-at (car chunks) (fn-sco-at 3 acc) h)))
                                  (:instance fn-rcw-finish-of-step
-                                            (chunk (fn-orcs-predict-rows (car chunks) keyring
-                                                                         generation h))))
+                                            (chunk (fn-orcs-predict-rows-at (car chunks) (fn-sco-at 3 acc) h))))
             :in-theory (e/d (fn-rcw-concat)
                             (fn-rcw-acc-finish fn-rcw-accp fn-sco-capture fn-sco-extend
-                             fn-orcs-held-of fn-record-p))))))
+                             fn-intern-row-at fn-record-p))))))
 
 (local
  (defthm fn-rcw-predict-of-atom
    (implies (atom rows)
-            (and (equal (fn-orcs-predict-rows rows keyring generation h) nil)
+            (and (equal (fn-orcs-predict-rows-at rows id h) nil)
                  (equal (fn-orcs-payloads rows) nil)
                  (equal (fn-orcs-has-bad rows) nil)))))
 
@@ -162,23 +165,22 @@
 (defthm fn-rcw-predict-acc-steps-is-predict
   (implies (natp h0)
            (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks
-                                              keyring generation h0 nil))
+                                              h0 nil))
                  (all (fn-rcw-concat chunks)))
              (and (equal (equal r :bad) (if (fn-orcs-has-bad all) t nil))
                   (implies (not (equal r :bad))
                            (and (equal (fn-rcw-acc-finish (car r))
                                        (fn-sco-capture configs
-                                                       (car (fn-orcs-predict all keyring
-                                                                             generation h0))))
+                                                       (car (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0))))
                                 (equal (caddr r)
-                                       (cadr (fn-orcs-predict all keyring generation h0)))
+                                       (cadr (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0)))
                                 (equal (cadr r) (+ h0 (len (caddr r)))))))))
   :hints (("Goal" :use ((:instance fn-rcw-predict-steps-from
                                    (acc (fn-rcw-acc-init configs)) (h h0) (payloads nil)
                                    (prefix nil)))
            :in-theory (e/d (fn-orcs-predict)
                            (fn-rcw-acc-init fn-rcw-acc-finish fn-rcw-predict-acc-steps
-                            fn-sco-capture fn-rcw-accp fn-orcs-predict-rows
+                            fn-sco-capture fn-rcw-accp fn-orcs-predict-rows-at
                             fn-orcs-payloads fn-orcs-has-bad)))))
 
 ; -----------------------------------------------------------------------------
@@ -209,16 +211,15 @@
            (equal (cadr (fn-owner-orcp-rebuild
                          (fn-rcw-acc-finish
                           (car (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks
-                                                         keyring generation h0 nil)))
+                                                         h0 nil)))
                          configs frontier max-conns))
                   (fn-ock-recover-full configs frontier
-                                       (car (fn-orcs-predict (fn-rcw-concat chunks) keyring
-                                                             generation h0))
+                                       (car (fn-orcs-predict (fn-rcw-concat chunks) (fn-sco-identity (fn-sco-capture configs nil)) h0))
                                        max-conns)))
  :hints (("Goal" :do-not-induct t
- :cases ((equal (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks keyring generation h0 nil) :bad))
- :use (fn-rcw-predict-acc-steps-is-predict (:instance fn-owner-orcp-rebuild-of-capture-is-the-full-open (rows (car (fn-orcs-predict (fn-rcw-concat chunks) keyring generation h0)))))
- :in-theory (union-theories '(fn-orcs-predict car-cons fn-rcw-rebuild-of-bad-is-fault fn-rcw-full-of-bad-is-fault (:type-prescription fn-orcs-predict-rows)) (theory 'minimal-theory)))))
+ :cases ((equal (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks h0 nil) :bad))
+ :use (fn-rcw-predict-acc-steps-is-predict (:instance fn-owner-orcp-rebuild-of-capture-is-the-full-open (rows (car (fn-orcs-predict (fn-rcw-concat chunks) (fn-sco-identity (fn-sco-capture configs nil)) h0)))))
+ :in-theory (union-theories '(fn-orcs-predict car-cons fn-rcw-rebuild-of-bad-is-fault fn-rcw-full-of-bad-is-fault (:type-prescription fn-orcs-predict-rows-at)) (theory 'minimal-theory)))))
 
 ; -----------------------------------------------------------------------------
 ; 4. Pass 2's writer walk, chunk by chunk.

@@ -2566,11 +2566,6 @@
    "item": "PRF-1350",
    "book": "books/heap-figure.lisp"
   },
-  "fn-heap-operation-decide-holds-the-store": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-figure.lisp"
-  },
   "fn-heap-operation-decide-of-a-serve-action-is-heap-decide": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -4451,11 +4446,6 @@
    "item": "PRF-1348",
    "book": "books/owner-reclaim-pass.lisp"
   },
-  "fn-orcs-predict-seal-refines-intern": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/owner-reclaim-seal.lisp"
-  },
   "fn-orli-live-record-decides-the-context": {
    "class": "ownership-reclamation",
    "item": "PRF-1348",
@@ -5650,11 +5640,6 @@
    "class": "ownership-reclamation",
    "item": "PRF-1348",
    "book": "books/reclaim-chunked-walk.lisp"
-  },
-  "fn-rcw-predict-acc-steps-is-predict": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/reclaim-chunked-seal.lisp"
   },
   "fn-rdc-reset-is-served-open": {
    "class": "extraction",

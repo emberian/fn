@@ -5,217 +5,274 @@
    "subject": "fn-arena-seal-buffer",
    "host_test": "tests/test_native_bounds_join.py::test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",
    "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-buffer{correspondence}",
-   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
+   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped",
+   "provenance": "keystone_critical.py --declare sha256:4af67cd90472f54ad41ec1961e94bf153711293fd9db158ad707e5204df74474"
   },
   "fn-arena-seal-list{correspondence}": {
    "subject": "fn-arena-seal-list",
    "host_test": "tests/test_native_served_differential.py::test_whole_transcript_agrees",
    "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-list{correspondence}",
-   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
+   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped",
+   "provenance": "keystone_critical.py --declare sha256:5e8899fba71df0fcf2da5bd7bfe12031abaf8ea189c06bb56825a1e8e141af22"
   },
   "fn-arena-seal-range{correspondence}": {
    "subject": "fn-arena-seal-range",
    "host_test": "tests/test_native_state_checkpoint.py::test_checkpoint_open_equals_full_replay",
    "trace_witness": "tests/acl2/payload-arena-teeth-tests.lisp::fn-arena-seal-range{correspondence}",
-   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped"
+   "mutation": "tests/acl2/payload-arena-teeth-tests.lisp::seal-skipped",
+   "provenance": "keystone_critical.py --declare sha256:42df67c6eecea9304ea89acbaedcde15121b35934ca501b02bec7703711bc447"
   },
   "fn-av-scr-auth-delegate-restricted-is-reference": {
    "subject": "fn-av-scr-auth-delegate",
    "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
    "trace_witness": "tests/acl2/served-available-critical-teeth-tests.lisp::fn-av-scr-auth-delegate-restricted-is-reference",
-   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::access-route-skipped"
+   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::access-route-skipped",
+   "provenance": "keystone_critical.py --declare sha256:3cb9ea56b2abfa9d61adb7875b8b2567da036d15c9c2b3aeb4f5b2110c6241ea"
   },
   "fn-av-scr-dispatch-core-restricted-is-reference": {
    "subject": "fn-av-scr-dispatch-core",
    "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
    "trace_witness": "tests/acl2/served-available-critical-teeth-tests.lisp::fn-av-scr-dispatch-core-restricted-is-reference",
-   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::reply-dropped"
+   "mutation": "tests/acl2/served-available-critical-teeth-tests.lisp::reply-dropped",
+   "provenance": "keystone_critical.py --declare sha256:659afb3609fe7547ee057fb937d5311b9f63b4bebcdf0085013d682377009596"
   },
   "fn-bpn-step-preserves-lifecycle-invariant": {
    "subject": "fn-bpn-step",
    "host_test": "tests/test_bp_node_native.py::test_disconnected_delivery_restarts_and_releases_only_matching_obligation",
    "trace_witness": "tests/acl2/bp-node-machine-authorization-tests.lisp::fn-bpn-step-preserves-lifecycle-invariant",
-   "mutation": "tests/acl2/bp-node-machine-authorization-tests.lisp::bpna-mutant-step-with-unbound-send"
+   "mutation": "tests/acl2/bp-node-machine-authorization-tests.lisp::bpna-mutant-step-with-unbound-send",
+   "provenance": "keystone_critical.py --declare sha256:24a427246f1b1ba319924e14637d3ba77a1bc9ef0b8d2b35b56ec5773a1f2be6"
   },
   "fn-bpnj-rotation-restart-succeeds-with-owed-work": {
    "subject": "fn-bpnj-step",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
    "trace_witness": "tests/acl2/bp-node-rotation-recovery-tests.lisp::fn-bpnj-rotation-restart-succeeds-with-owed-work",
-   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
+   "provenance": "keystone_critical.py --declare sha256:c1fe79d4f2b0d398ab3e46b4092186850b9175f81c70dc277b12cc1935f5373a"
   },
   "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work": {
    "subject": "fn-bpnp-rotate-step",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
    "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work",
-   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
+   "provenance": "keystone_critical.py --declare sha256:1da93cc3fc5858d99ace5f2ad74ea007cc442642ba1031c3e6faac06cf15f8fb"
   },
   "fn-bpnp-rotation-recovery-seeds-owed-jobs": {
    "subject": "fn-bpnp-rotate-step",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
    "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-recovery-seeds-owed-jobs",
-   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
+   "provenance": "keystone_critical.py --declare sha256:9dc197c52a9e4b5392b10835792efe0c0b615c4011d6578bc2a3bc246bb23102"
   },
   "fn-bpnp-rotation-restart-keeps-owed-work": {
    "subject": "fn-bpnr-seed-state",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
    "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotation-restart-keeps-owed-work",
-   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
+   "provenance": "keystone_critical.py --declare sha256:fc66300fdfb4bcb809ad57105e31b9a63b800d8e42cac863f06e9cd361588d8e"
   },
   "fn-bpnr-checkpoint-recovery-equals-full-machine": {
    "subject": "fn-bpnj-step",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
    "trace_witness": "tests/acl2/bp-node-rotation-equivalence-tests.lisp::fn-bpnr-checkpoint-recovery-equals-full-machine",
-   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
+   "provenance": "keystone_critical.py --declare sha256:e3835a58031e3c6a6f8f8a6cfb53fdf97009910e9ea3528495baff040f87c1bb"
   },
   "fn-bpnr-recover-from-checkpoint-equals-full-recover": {
    "subject": "fn-bphp-recover-auto-event",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
    "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-recover-from-checkpoint-equals-full-recover",
-   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed"
+   "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
+   "provenance": "keystone_critical.py --declare sha256:5310ea65b082902059dee2ec8c2e0b42331b5d036dbf4fb831f0868fd16b0446"
   },
   "fn-bpnr-rotation-crash-recovers-old-or-new": {
    "subject": "fn-bphp-recover-auto-event",
    "host_test": "tests/test_bp_node_native.py::test_rotation_killed_at_each_cut_keeps_held_rows",
    "trace_witness": "tests/acl2/bp-node-rotation-critical-tests.lisp::fn-bpnr-rotation-crash-recovers-old-or-new",
-   "mutation": "tests/acl2/bp-node-rotation-critical-tests.lisp::bprc-mutant-crash-visible-before-rename"
+   "mutation": "tests/acl2/bp-node-rotation-critical-tests.lisp::bprc-mutant-crash-visible-before-rename",
+   "provenance": "keystone_critical.py --declare sha256:398d47c52caeb02a4c33b4462bc442e50d91e63467332c77509b06ddebb1352f"
   },
   "fn-dwj-retired-job-refuses-scalar-publication": {
    "subject": "fn-dwj-retire",
    "host_test": "tests/test_native_decoded_custody.py::test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
    "trace_witness": "tests/acl2/decoded-worker-job-teeth-tests.lisp::fn-dwj-retired-job-refuses-scalar-publication",
-   "mutation": "tests/acl2/decoded-worker-job-teeth-tests.lisp::retirement-skipped"
+   "mutation": "tests/acl2/decoded-worker-job-teeth-tests.lisp::retirement-skipped",
+   "provenance": "keystone_critical.py --declare sha256:0225aaee16582fba008cfedfb39e6d3dd584184116f719645eeff63a6a9c544a"
   },
   "fn-gacc-grow-builds": {
    "subject": "fn-gacc-grow",
    "host_test": "tests/test_native_group_access.py::test_two_accounts_one_private_group",
    "trace_witness": "tests/acl2/group-access-cache-tests.lisp::fn-gacc-grow-builds",
-   "mutation": "tests/acl2/group-access-cache-tests.lisp::unrestricted-grow"
+   "mutation": "tests/acl2/group-access-cache-tests.lisp::unrestricted-grow",
+   "provenance": "keystone_critical.py --declare sha256:ab4d4c07601cc571032a1eebb9cd3b428b05977b2eeec1992b9f83a672bbab45"
+  },
+  "fn-heap-operation-decide-holds-the-store": {
+   "subject": "fn-heap-reserve-operation-decide",
+   "host_test": "tests/test_native_operator_verbs.py::test_init_writes_the_operators_fields_and_status_prints_them",
+   "trace_witness": "tests/acl2/heap-figure-tests.lisp::(fn-heap-operation-decide :init *fn-heap-small-profile*",
+   "mutation": "tests/acl2/heap-figure-tests.lisp::hft-st-without-store-opening-action",
+   "provenance": "keystone_critical.py --declare sha256:226aecddb8fe46016e2a25170b570e42b25bdb80b266ee0e88b75917670cfe24"
   },
   "fn-lg-open-program-keeps-the-relation": {
    "subject": "fn-lg-open-program",
    "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
    "trace_witness": "tests/acl2/store-log-route-programs-tests.lisp::fn-lg-open-program-keeps-the-relation",
-   "mutation": "tests/acl2/store-log-route-programs-tests.lisp::stale-kernel"
+   "mutation": "tests/acl2/store-log-route-programs-tests.lisp::stale-kernel",
+   "provenance": "keystone_critical.py --declare sha256:88e1259b2c07edfba199e813596aea15afbd4e0107ec3a1eaed89d32c0ff0fa6"
   },
   "fn-lgob-three-barrier-open-after-the-copy-is-the-five": {
    "subject": "fn-lg-open-program",
    "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
    "trace_witness": "tests/acl2/store-log-open-barriers-tests.lisp::fn-lgob-three-barrier-open-after-the-copy-is-the-five",
-   "mutation": "tests/acl2/store-log-open-barriers-tests.lisp::skipped-replay-cut"
+   "mutation": "tests/acl2/store-log-open-barriers-tests.lisp::skipped-replay-cut",
+   "provenance": "keystone_critical.py --declare sha256:03ff3266fc738110f120df01d9c7df4f991b2b943fa1740a2ba4d4ab437febdb"
   },
   "fn-lgrc-acknowledge-from-the-copy": {
    "subject": "fn-lgu-acknowledge",
    "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
    "trace_witness": "tests/acl2/store-log-copy-ack-teeth-tests.lisp::fn-lgrc-acknowledge-from-the-copy",
-   "mutation": "tests/acl2/store-log-copy-ack-teeth-tests.lisp::skipped-file-fence"
+   "mutation": "tests/acl2/store-log-copy-ack-teeth-tests.lisp::skipped-file-fence",
+   "provenance": "keystone_critical.py --declare sha256:85e4f8dc148010a6a9f6d5d9059439b9bba5d205cdbd2efbde3b56f0834bd6fb"
   },
   "fn-lgrc-open-keeps-the-relation-at-every-cut": {
    "subject": "fn-lgrc-program",
    "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
    "trace_witness": "tests/acl2/store-log-copy-teeth-tests.lisp::fn-lgrc-open-keeps-the-relation-at-every-cut",
-   "mutation": "tests/acl2/store-log-copy-teeth-tests.lisp::skip-file-barrier"
+   "mutation": "tests/acl2/store-log-copy-teeth-tests.lisp::skip-file-barrier",
+   "provenance": "keystone_critical.py --declare sha256:54e60fcf21ef69d52990e4a3caf1929a3f250bc0d888f16fd0f455af5f47368b"
   },
   "fn-lgu-acknowledge-acknowledges-only-recoverable-records": {
    "subject": "fn-lgu-acknowledge",
    "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
    "trace_witness": "tests/acl2/store-log-critical-teeth-tests.lisp::fn-lgu-acknowledge-acknowledges-only-recoverable-records",
-   "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode"
+   "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode",
+   "provenance": "keystone_critical.py --declare sha256:215f482e5be0c5064d00f3f341c9648befc8b04de32fe8e64144eb4567c23285"
   },
   "fn-lgu-host-kernel-acknowledges-only-recoverable-records": {
    "subject": "fn-lgc-host-run",
    "host_test": "tests/test_native_log.py::test_every_log_cut_recovers_to_a_prefix",
    "trace_witness": "tests/acl2/store-log-critical-teeth-tests.lisp::fn-lgu-host-kernel-acknowledges-only-recoverable-records",
-   "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode"
+   "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode",
+   "provenance": "keystone_critical.py --declare sha256:02422ef1703b7be6f7ba649454e5cb3942760f6697d2880d5620f31203fc5ac1"
+  },
+  "fn-orcs-predict-seal-refines-intern": {
+   "subject": "fn-orcs-predict-rows-at",
+   "host_test": "tests/test_native_recovery.py::test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-predict-seal-rotation",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-single-pair-predict-mutant",
+   "provenance": "keystone_critical.py --declare sha256:37313d042d49c0a47edcae463f441f4fa9bae7d13a5a2004f78cd5479b8ae573"
   },
   "fn-otm-held-plan-complete-only-after-the-barrier": {
    "subject": "fn-otm-held-plan",
    "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
    "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-barrier-trace",
-   "mutation": "tests/acl2/owner-time-held-tests.lisp::forged-barrier"
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::forged-barrier",
+   "provenance": "keystone_critical.py --declare sha256:9b0b2629dc9f3ff96b2e0048484c28c026ccd3a8d35714cb26f1210e9d3c2552"
   },
   "fn-otm-held-plan-in-flight-until-completed": {
    "subject": "fn-otm-held-plan",
    "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
    "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-barrier-trace",
-   "mutation": "tests/acl2/owner-time-held-tests.lisp::clear-before-completed"
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::clear-before-completed",
+   "provenance": "keystone_critical.py --declare sha256:634fd8aa559596f3d15d2b36cda8885e944ae27e64d7b34a3a4f4ffa50381210"
   },
   "fn-otm-held-wake-no-start-next-while-a-shut-out-class-waits": {
    "subject": "fn-otm-held-committer-wake",
    "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
    "trace_witness": "tests/acl2/owner-time-held-tests.lisp::plan-budget-trace",
-   "mutation": "tests/acl2/owner-time-held-tests.lisp::ignore-waiter-budget"
+   "mutation": "tests/acl2/owner-time-held-tests.lisp::ignore-waiter-budget",
+   "provenance": "keystone_critical.py --declare sha256:b63635ae175247ad88d3f89b60a2042956b056bc75effaf82b6f9d60d92bd88b"
   },
   "fn-own-consumed-completion-is-240-or-uncertain": {
    "subject": "fn-own-outcome",
    "host_test": "tests/test_native_commit_log.py::test_concurrent_posts_are_committed_through_the_log_and_served_again",
    "trace_witness": "tests/acl2/owner-completion-teeth-tests.lisp::fn-own-consumed-completion-is-240-or-uncertain",
-   "mutation": "tests/acl2/owner-completion-teeth-tests.lisp::all-durable"
+   "mutation": "tests/acl2/owner-completion-teeth-tests.lisp::all-durable",
+   "provenance": "keystone_critical.py --declare sha256:31a6b9a8a660e19c009ad4439ab810089b960731924322573aed8921da448ebc"
   },
   "fn-pidx-view-okp-of-live-owner": {
    "subject": "fn-pidx-view-okp",
    "host_test": "tests/test_native_conformance.py::test_post_cycle",
    "trace_witness": "tests/acl2/post-identity-view-teeth-tests.lisp::fn-pidx-view-okp-of-live-owner",
-   "mutation": "tests/acl2/post-identity-view-teeth-tests.lisp::stale-visible"
+   "mutation": "tests/acl2/post-identity-view-teeth-tests.lisp::stale-visible",
+   "provenance": "keystone_critical.py --declare sha256:4ab1e40aa1c83133c9b2fc4523b1c3f644fc835def20e1bed8ed42650f49d372"
   },
   "fn-rcw-canon-acc-steps-is-the-checkpoint-capture": {
    "subject": "fn-scka-canon-rows",
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-live-arena",
-   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows",
+   "provenance": "keystone_critical.py --declare sha256:6897f9e1a1de5f7127b7ea125e1b62b992f0bdc83ccbb0efff9dc9badfc6d0f5"
   },
   "fn-rcw-load-chunks-is-load": {
    "subject": "fn-rcw-load-chunks",
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
    "trace_witness": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::fn-rcw-load-chunks-is-load",
-   "mutation": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::missing-clear"
+   "mutation": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::missing-clear",
+   "provenance": "keystone_critical.py --declare sha256:b1f697a546648c35dc7f833c37323e729c3d073087d9fea62c37af9636300efd"
   },
   "fn-rcw-load-chunks-keyed-is-keyed-load": {
    "subject": "fn-rcw-load-chunks",
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
    "trace_witness": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::fn-rcw-load-chunks-keyed-is-keyed-load",
-   "mutation": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::missing-keyed-clear"
+   "mutation": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::missing-keyed-clear",
+   "provenance": "keystone_critical.py --declare sha256:9a7b9c1b04884446ebba5b98f5c86a2c0b353ce84cdaf76c99dca92b5fecaf06"
+  },
+  "fn-rcw-predict-acc-steps-is-predict": {
+   "subject": "fn-rcw-predict-acc-steps",
+   "host_test": "tests/test_native_recovery.py::test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves",
+   "trace_witness": "tests/acl2/reclaim-chunked-seal-tests.lisp::rcs-rotation-chunks",
+   "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::chunks-reset-identity",
+   "provenance": "keystone_critical.py --declare sha256:abe04aefcc0f304f2c10656e926c84e6bea21dd7864b7533132be58f95f45ca3"
   },
   "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open": {
    "subject": "fn-owner-orcp-rebuild",
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
    "trace_witness": "tests/acl2/reclaim-chunked-seal-tests.lisp::fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open",
-   "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::skipped-chunk"
+   "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::skipped-chunk",
+   "provenance": "keystone_critical.py --declare sha256:30262f798b4116ad021259fa72dd91953321b45792e0f82a229a55ae96085b98"
   },
   "fn-rcw-srcs-steps-is-the-walk": {
    "subject": "fn-scka-srcs-n",
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
    "trace_witness": "tests/acl2/reclaim-chunked-seal-tests.lisp::fn-rcw-srcs-steps-is-the-walk",
-   "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::skip-first-chunk"
+   "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::skip-first-chunk",
+   "provenance": "keystone_critical.py --declare sha256:58449a11e7544300d127a3e6ce0074d3878cb49d9dcda5065ecc7eba3969803c"
   },
   "fn-rdc-selection-establishes": {
    "subject": "fn-rdc-selection",
    "host_test": "tests/test_native_served_differential.py::test_whole_transcript_agrees",
    "trace_witness": "tests/acl2/reader-open-carried-tests.lisp::fn-rdc-selection-establishes",
-   "mutation": "tests/acl2/reader-open-carried-tests.lisp::drop-verdicts"
+   "mutation": "tests/acl2/reader-open-carried-tests.lisp::drop-verdicts",
+   "provenance": "keystone_critical.py --declare sha256:8c31a8d5277047b1d09ab9bdcd39d14d14fd51a26d6cf15bc5a9c8b5047bfbab"
   },
   "fn-sca-load-held-rows-establishes-byte-facts": {
    "subject": "fn-sca-load-held-rows-keyed",
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
    "trace_witness": "tests/acl2/catalog-availability-owner-load-tests.lisp::fn-sca-load-held-rows-establishes-byte-facts",
-   "mutation": "tests/acl2/catalog-availability-owner-load-tests.lisp::stale-byte-facts"
+   "mutation": "tests/acl2/catalog-availability-owner-load-tests.lisp::stale-byte-facts",
+   "provenance": "keystone_critical.py --declare sha256:d0a7c09b4df491496353963a26af89ea881a26f8446172f3b64e15bb4874e4ad"
   },
   "fn-scka-fold-at-is-the-ssr-step": {
    "subject": "fn-ssr-intern-step",
    "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
-   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows",
+   "provenance": "keystone_critical.py --declare sha256:22c72aea357b8c2e0e01bb7fcddebf0fd8874d66d9decc7f0ede6bcb71f027b4"
   },
   "fn-scka-next-checkpoint-is-capture": {
    "subject": "fn-scka-next-checkpoint",
    "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
-   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows"
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows",
+   "provenance": "keystone_critical.py --declare sha256:dc322d65dc6accdaafc4ee41e5890e681320309bfb2c8d77ec41e45394a5e0a7"
   },
   "fn-scka-recover-from-checkpoint-is-full-recover": {
    "subject": "fn-ssr-intern-step",
    "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
-   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-old-pair"
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-old-pair",
+   "provenance": "keystone_critical.py --declare sha256:b55fa7efa831876621e511634a97d988ca2eb599c16457595996d55dd3db2607"
   }
  }
 }

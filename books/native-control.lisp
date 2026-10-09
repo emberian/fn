@@ -729,6 +729,83 @@ distinguish an unobserved refusal from a durable acceptance."
   :hints (("Goal" :in-theory (enable fn-native-control-liveness
                                      fn-native-control-liveness-offlinep))))
 
+;
+; The profile a command's heap is decided over (host/native/heap.lisp
+; fnn-heap-operator-store-profile).  A RUN opens its own store, so it is sized
+; by that store's saved profile and its probe observes no liveness: the owner
+; at its control path is this store's, whose lock refuses the run, or another
+; store's, whose profile is not this run's and whose socket a probe must not
+; treat as stale (tests/test_native_control.py
+; test_shared_control_path_is_not_stolen_by_another_store).  Every other
+; command reads the live owner's decided profile (:owner), is refused while
+; the store is held (:held), and otherwise reads the stopped store (:store).
+(defun fn-native-control-profile-observes-p (action)
+  (declare (xargs :guard t))
+  (not (equal action :run)))
+
+(defun fn-native-control-profile-source (action liveness)
+  (declare (xargs :guard t))
+  (cond ((not (fn-native-control-profile-observes-p action)) :store)
+        ((equal liveness :live) :owner)
+        ((equal liveness :held) :held)
+        ((fn-native-control-liveness-offlinep liveness) :store)
+        (t :invalid)))
+
+(defthm fn-native-control-profile-source-of-a-run
+  (equal (fn-native-control-profile-source :run liveness) :store))
+
+(defthm fn-native-control-profile-source-reads-the-owner-only-live
+  (implies (equal (fn-native-control-profile-source action liveness) :owner)
+           (and (fn-native-control-profile-observes-p action)
+                (equal liveness :live)))
+  :rule-classes nil)
+
+; The socket node a closing run may unlink.  A run unlinks the node at its
+; control path only when it installed a socket (its device and inode are
+; set) and the node there is that same socket; a run that never bound (its
+; lease was refused, its bind failed) installed nothing and removes nothing,
+; whatever node another store's owner has at the path.  OBSERVED-DEV and
+; OBSERVED-INO are the lstat of a socket node at the path, or NIL when the
+; path holds no socket.
+(defun fn-native-control-socket-removal (installed-dev installed-ino
+                                                       observed-dev observed-ino)
+  (declare (xargs :guard t))
+  (if (and (integerp installed-dev) (integerp installed-ino)
+           (equal installed-dev observed-dev)
+           (equal installed-ino observed-ino))
+      :remove
+    :keep))
+
+; KEYSTONE.  The subject is `fn-native-control-socket-removal', which the host
+; calls through `fn-native-control-host-socket-removal' (host/native/control.lisp
+; fnn-control-close, bp-control.lisp, dev-repl.lisp).  The node is removed
+; exactly when this run installed one and the node observed is the installed
+; one; a run that installed nothing never removes.
+(defthm fn-native-control-socket-removal-decides
+  (and (iff (equal (fn-native-control-socket-removal
+                    installed-dev installed-ino observed-dev observed-ino)
+                   :remove)
+            (and (integerp installed-dev) (integerp installed-ino)
+                 (equal installed-dev observed-dev)
+                 (equal installed-ino observed-ino)))
+       (member-equal (fn-native-control-socket-removal
+                      installed-dev installed-ino observed-dev observed-ino)
+                     '(:remove :keep)))
+  :hints (("Goal" :in-theory (enable fn-native-control-socket-removal))))
+
+; Teeth.  The positive witness: the installed socket is removed.  The
+; hypothesis-removal witnesses: with the installed identity unset the same
+; observed node is kept (the failed-startup shape), and so is a node of
+; another identity.
+(defthm fn-native-control-socket-removal-teeth
+  (and (equal (fn-native-control-socket-removal 16777220 4242 16777220 4242)
+              :remove)
+       (equal (fn-native-control-socket-removal nil nil 16777220 4242) :keep)
+       (equal (fn-native-control-socket-removal 16777220 4242 16777220 4243)
+              :keep)
+       (equal (fn-native-control-socket-removal 16777220 4242 nil nil) :keep))
+  :hints (("Goal" :in-theory (enable fn-native-control-socket-removal))))
+
 (defun fn-native-control-max-active-clients ()
   "The fixed local transport worker ceiling selected by ACL2 policy."
   (declare (xargs :guard t))

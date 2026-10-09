@@ -277,9 +277,10 @@ pins the archive and corresponding trie together at open or after a durable
 posting outcome. Existing connections keep their earlier pair. The proof-side
 `fn-own-relation` includes exact trie-to-archive correspondence for the current
 view and every retained connection; it is established by `fn-own-start-relation`
-and carried by `fn-own-run-preserves-relation`. Under that premise,
-`fn-nntp-msgid-retrieval-indexed-refines-scan` equates the indexed answer with
-the original list lookup. The host-called `fn-own-read` is tied to the pinned
+and carried by `fn-own-run-preserves-relation`. The served Message-ID
+retrieval reads the catalog: `fn-nntp-msgid-retrieval-cat-is-scan`
+(books/served-catalog.lisp) equates its answer with the list lookup when the
+view's articles are the archive's. The host-called `fn-own-read` is tied to the pinned
 served step by `fn-own-read-is-served-step-on-pinned-prefix`. These are in-memory
 indexes, reconstructed from committed acceptance on recovery; they do not
 change acceptance authority or add disk index files. LISTGROUP range reads
@@ -1015,7 +1016,7 @@ Message-ID (D25). The node answers it from the Store, not from a reader view:
 What is proved, over the decision the host calls
 (`books/visibility-join.lisp`; `host/native/owner.lisp` `fnn-owner-attempt`
 through `host/owner-host.lisp` `fn-owner-existing-action-buffer`, whose
-decision is `fn-pidx-existing-action`; the carried-signature ingress through
+decision is `fn-pidx-existing-action-cat`; the carried-signature ingress through
 `fn-owner-existing-action`, `fn-store-existing-action`): once a Message-ID is
 held, the decision answers `:duplicate` or `:conflict`, never nil, after any
 Store completion (`fn-vj-a-completion-keeps-a-held-message-id-answered`; the
@@ -1884,7 +1885,7 @@ gives them.
   fold stops at the end of that line, and the owner, under its mutex, reads a
   16-octet salt from the OS CSPRNG, runs `fn-acct-redeem-bounded-plan` over
   the live configuration, and publishes a `:redeem` plan's delta through
-  `fnn-owner-live-reconfigure-locked`. Only then does it feed the connection
+  `fnn-owner-live-reconfigure`. Only then does it feed the connection
   `(:account-outcome WORD)`: `281 account bound; authenticate with AUTHINFO on
   a new connection` when WORD is `:bound` (the record is durable, or was
   already durable for this login and password), otherwise `482 invitation

@@ -891,6 +891,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-forget-tests \
 	books/arena-forget-columns \
 	books/owner-reclaim-seal \
+	books/owner-reclaim-retained \
 	books/reclaim-chunked-walk \
 	books/reclaim-chunked-seal \
 	books/catalog-may-seal \
@@ -2259,6 +2260,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/reclaim-chunked-load-teeth-tests \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \
+	tests/acl2/owner-admission-state-tests \
+	tests/acl2/owner-authority-state-tests \
+	tests/acl2/owner-catalog-root-state-tests \
+	tests/acl2/owner-publication-state-tests \
+	tests/acl2/owner-readers-state-tests \
+	tests/acl2/def-span-scan-tests \
 	tests/acl2/owner-reclaim-ready-tests \
 	tests/acl2/control-request-word-tests \
 	tests/acl2/packed-submission-tests \
@@ -2754,6 +2761,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/pinned_figures_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 	@$(CHECK_STEP) $(PYTHON) tools/lock_discipline_check.py --check --summary
