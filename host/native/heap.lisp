@@ -297,15 +297,20 @@ fn-native-operator-result-init-budget / -init-sizing, row Q10b)."
 ;; command the operator plan refuses has no profile, and the command itself
 ;; reports the refusal under the no-store figure.
 (defun fnn-heap-operator-store-profile (root result)
-  "ACL2's liveness word selects the owner snapshot or the stopped-store open."
+  "ACL2's profile source (books/native-control.lisp
+fn-native-control-profile-source) selects the owner snapshot or the
+stopped-store open; a run observes no liveness."
   (let* ((live *fnn-operator-live-owner*)
          (path (fnn-core 'fn-omr-control-path-octets result))
-         (liveness (if live (funcall (fnn-olo-admin-observe live) root path t) :offline)))
-    (case liveness
-      (:live (funcall (fnn-olo-profile live) path))
+         (action (fnn-core 'fn-native-operator-host-result-native-action result))
+         (liveness (if (and live (fnn-core 'fn-native-control-profile-observes-p action))
+                       (funcall (fnn-olo-admin-observe live) root path t)
+                     :offline)))
+    (case (fnn-core 'fn-native-control-profile-source action liveness)
+      (:owner (funcall (fnn-olo-profile live) path))
       (:held (fnn-refuse "store-held: the owner's profile is unavailable"))
-      ((:offline :stale) (fnn-heap-store-profile root))
-      (otherwise (fnn-fault "ACL2 returned an invalid profile liveness word")))))
+      (:store (fnn-heap-store-profile root))
+      (otherwise (fnn-fault "ACL2 returned an invalid profile source")))))
 
 (defun fnn-heap-operator-profile (config-path words)
   (handler-case

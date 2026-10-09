@@ -48,7 +48,16 @@ the owner's; a render never observes a half-applied transition)."
                             (fnn-core 'fn-lpf-reply-bound))
     (declare (ignore stage))
     (let ((profile (and frame (fnn-core 'fn-lpf-reply-read (fnn-octet-list frame)))))
-      (unless profile (fnn-fault "no decided profile from the live owner"))
+      (unless profile
+        ;; A plain status the owner answered instead (the control worker
+        ;; ceiling's busy) is a refusal by that word: the command reports it
+        ;; under the no-store figure, as a held store's is.
+        (let ((status (and frame (fnn-core 'fn-native-control-host-reply-decode
+                                           (fnn-octet-list frame)))))
+          (if (and (member status (fnn-core 'fn-native-control-host-statuses))
+                   (eq (fnn-core 'fn-native-control-host-status-class status) :refused))
+              (fnn-refuse "~(~a~): the live owner answered ~(~a~) for its profile" status status)
+            (fnn-fault "no decided profile from the live owner"))))
       profile)))
 
 (defun fnn-store-identity-control-handle (service frame)

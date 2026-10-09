@@ -29,14 +29,8 @@
                   (sb-bsd-sockets:socket-close listener)))
               ;; Remove only the socket inode this run installed.  Retain
               ;; the path lease until that removal has finished.
-              (let* ((path (fnn-octets-string (fnn-octets (second action))))
-                     (info (fnn-lstat path)))
-                (when (and (fnn-control-socket-path-p info)
-                           (eql (sb-posix:stat-dev info)
-                                (fnn-control-state-device control))
-                           (eql (sb-posix:stat-ino info)
-                                (fnn-control-state-inode control)))
-                  (fnn-unlink path)))
+              (fnn-control-unlink-installed
+               control (fnn-octets-string (fnn-octets (second action))))
               (fnn-bpnc-release-lease control))
           (error (condition)
             (setq failure condition)

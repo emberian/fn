@@ -18,45 +18,10 @@
   },
   {
    "kind": "native",
-   "subject": "tests.test_native_control.NativeControlCutGateTests.test_the_reply_is_the_owners_status",
-   "item": "FILL-CONTROL-3-RED",
-   "owner": "builder-B",
-   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_control.NativeControlTests.test_control_worker_ceiling_returns_busy",
-   "item": "FILL-CONTROL-3-RED",
-   "owner": "builder-B",
-   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_control.NativeControlTests.test_shared_control_path_is_not_stolen_by_another_store",
-   "item": "FILL-CONTROL-3-RED",
-   "owner": "builder-B",
-   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_control.NativeControlTests.test_sigkilled_owner_socket_is_stale_and_control_list_runs_offline",
-   "item": "FILL-CONTROL-3-RED",
-   "owner": "builder-B",
-   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_owner_scheduler.SchedulerNativeTests.test_health_carries_the_scheduler_lines_and_counts_the_classes",
-   "item": "FILL-OWNER-SCHEDULER-2-RED",
-   "owner": "builder-B",
-   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
-  },
-  {
-   "kind": "native",
    "subject": "tests.test_native_bounds_join.PostHeapUnderMutexTests.test_large_post_allocates_less_than_one_article_list_under_the_mutex",
    "item": "FILL-BOUNDS-JOIN-POST-HEAP",
-   "owner": "builder-B",
-   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
+   "owner": "builder-A",
+   "evidence": "drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd) ; coordinator ruling 2026-10-09: owner builder-A, retired by A's landing 2 (the POST to commit path over C's spans, RUNTIME-MODEL section 2) with test_native_bounds_join as its gate; no second article representation (s-postheap's ART form is not built)"
   },
   {
    "kind": "check",
