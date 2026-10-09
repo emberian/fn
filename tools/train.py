@@ -14,6 +14,12 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
     train.py push
     train.py status
 
+`push` and `status` print the shrink line (tools/shrink_line.py): the book
+count and the executable book lines (the call closure of what the host
+names) with their change against the dev this train replaces, and the net
+lines per directory.  A READY that grows them names the deletion that pays
+for it, or why there is none yet; the gate on it is the coordinator's switch.
+
 A books train runs `certify BOX`: one farm run of books/wire-export plus the
 train's changed books and tests (one cache install, one certify), then the emit
 and check half of BOX_CMD over ssh in that run's tree, under swarm-build and a
@@ -1255,7 +1261,22 @@ def cmd_push(t: Train, args) -> int:
     b = gates["box_step"]
     say("box step: " + (f"inherited from {b['inherits_from'][:9]} ({b['box']})" if "inherits_from" in b
                         else f"ran at HEAD on {b['ran_on']}"))
+    say(shrink_words(t, old, head))
     return 0
+
+
+def shrink_words(t: "Train", base: str, head: str) -> str:
+    """The shrink line (tools/shrink_line.py): book count, executable book
+    lines and net lines per directory against BASE.  A status line, not a
+    gate: a measure that cannot be taken is printed, never a refusal."""
+    try:
+        here = str(Path(__file__).resolve().parent)
+        if here not in sys.path:
+            sys.path.insert(0, here)
+        import shrink_line
+        return shrink_line.line(t.root, base, head)
+    except Exception as error:  # noqa: BLE001 - the push already happened
+        return f"shrink: unavailable ({type(error).__name__}: {error})"
 
 
 # --------------------------------------------------------------------------- status
@@ -1275,6 +1296,8 @@ def cmd_status(t: Train, args) -> int:
         say("  verdict: " + verdict_words(known_reds_at(t, "HEAD"), amendments_at(t, "HEAD")))
     except TrainError as error:
         say(f"  verdict: {error}")
+    fork = git(t.root, "merge-base", "HEAD", "origin/dev", check=False).stdout.strip()
+    say("  " + (shrink_words(t, fork, head) if fork else "shrink: unavailable (no fork point with origin/dev)"))
     for n in GATES:
         g = st.get("gates", {}).get(n)
         if g:
