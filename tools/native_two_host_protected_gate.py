@@ -150,8 +150,8 @@ def remote_sha(host, path):
 
 
 def free_port():
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0)); return probe.getsockname()[1]
+    from tools import ports  # NATIVE-HARNESS-PORT-RACE
+    return ports.reserve()
 
 
 def remote_port(host):

@@ -1,0 +1,13 @@
+{
+ "category": "extraction",
+ "file": "tools/extract/faults_diff.py",
+ "id": "EXTRACT-FAULTS-DECIDED-HEAP",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "high",
+ "slice": "extraction",
+ "source": "N extraction comparison at 7c3940e6e, hbox:/tank/fn/scratch/n-train54/extract-7c3940e6e/run2.log; EXTRACTION-PROGRAM-20261007.md open item",
+ "state": "open",
+ "title": "extraction gate step 6 (faults_diff.py) starts both sides under a fixed heap below the image's decided run figure, which s-admit-reopen raised to the full-store figure: 4 of 11 fault cases are refused at cold start",
+ "updated": "2026-10-09T06:57:21Z"
+}
