@@ -1152,5 +1152,149 @@ class AsciiGateTests(unittest.TestCase):
     def test_nothing_changed_skips(self):
         self.assertEqual(self.gate([], ["books/blake3-tree.lisp:627:17"]), 0)
 
+class ImageModuleTests(unittest.TestCase):
+    """The image gate's pure half: which modules a diff obliges, the box's
+    lines parsed, and the verdict."""
+
+    HEAD = "a" * 40
+
+    def ran(self, modules, source=None):
+        return {"source": source or self.HEAD, "dir": "/box/run",
+                "modules": {m: {"rc": 0, "cases": {m + ".T.test_ok": "ok"}} for m in modules}}
+
+    def test_a_launcher_change_obliges_the_served_natives_operator_verbs_and_heap_from_profile(self):
+        need = train.image_modules(["packaging/launcher-decide.sh", "README.md"])
+        self.assertEqual(set(need), {"tests.test_native_operator_verbs",
+                                     "tests.test_native_heap_from_profile", *train.SERVED_NATIVES})
+        self.assertIn("tests.test_native_served_line_stack", need)
+        self.assertEqual(need["tests.test_native_owner"], ["packaging/launcher-decide.sh"])
+
+    def test_heap_probe_and_host_native_oblige_and_unrelated_paths_do_not(self):
+        self.assertTrue(train.image_modules(["books/heap-figure.lisp"]))
+        self.assertTrue(train.image_modules(["host/native/admin.lisp"]))
+        self.assertTrue(train.image_modules(["tools/extract/core_launcher.py"]))
+        self.assertEqual(train.image_modules(["host/owner-host.lisp", "tools/train.py",
+                                              "books/heap-figure-tests.lisp", "packaging/fn.md"]), {})
+
+    def test_parse_reads_rc_and_cases_and_keeps_a_caseless_crash(self):
+        text = "\n".join([
+            "RC tests.test_native_owner 0",
+            "RC tests.test_native_operator_verbs 1",
+            "RC tests.test_native_served_cost 137",
+            'FN_TEST_BUDGET_RESULT {"module": "tests.test_native_owner", "cases": [["o.T.a", "ok"], ["o.T.b", "skip"]]}',
+            'FN_TEST_BUDGET_RESULT {"module": "tests.test_native_operator_verbs", "cases": [["v.T.a", "FAIL"]]}',
+            'FN_TEST_BUDGET_RESULT {"module": "tests.test_native_not_run_here", "cases": [["n.T.a", "ok"]]}',
+            "FN_TEST_BUDGET_RESULT {not json"])
+        got = train.parse_image_results(text)
+        self.assertEqual(got, {"tests.test_native_owner": {"rc": 0, "cases": {"o.T.a": "ok", "o.T.b": "skip"}},
+                               "tests.test_native_operator_verbs": {"rc": 1, "cases": {"v.T.a": "FAIL"}},
+                               "tests.test_native_served_cost": {"rc": 137, "cases": {}}})
+
+    def test_nothing_obliged_is_green_without_a_run(self):
+        self.assertEqual(train.image_verdict({}, None, self.HEAD, []), (0, {"skipped": True}))
+
+    def test_obliged_without_a_run_or_with_another_commits_run_refuses(self):
+        need = train.image_modules(["packaging/fn"])
+        self.assertEqual(train.image_verdict(need, None, self.HEAD, [])[0], 1)
+        rc, rec = train.image_verdict(need, self.ran(need, source="b" * 40), self.HEAD, [])
+        self.assertEqual(rc, 1)
+        self.assertIn("not HEAD", rec["error"])
+
+    def test_every_obliged_module_green_at_head_passes(self):
+        need = train.image_modules(["packaging/fn"])
+        self.assertEqual(train.image_verdict(need, self.ran(need), self.HEAD, [])[0], 0)
+
+    def test_an_interrupted_image_gate_refuses_naming_the_missing_modules(self):
+        need = train.image_modules(["packaging/fn"])
+        partial = self.ran([m for m in need if m != "tests.test_native_served_line_stack"])
+        rc, rec = train.image_verdict(need, partial, self.HEAD, [])
+        self.assertEqual(rc, 1)
+        self.assertEqual(rec["missing"], ["tests.test_native_served_line_stack"])
+
+    def test_a_red_case_passes_only_as_a_native_known_red(self):
+        need = train.image_modules(["packaging/fn"])
+        run = self.ran(need)
+        red = "tests.test_native_operator_verbs.C.test_status"
+        run["modules"]["tests.test_native_operator_verbs"] = {"rc": 1, "cases": {red: "FAIL", "x.ok": "ok"}}
+        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        self.assertEqual((rc, rec["unexplained"]), (1, [red]))
+        row = {"kind": "native", "subject": red, "item": "I", "owner": "o", "evidence": "e"}
+        rc, rec = train.image_verdict(need, run, self.HEAD, [row])
+        self.assertEqual((rc, rec["known_reds"]), (0, [red]))
+        # a row of another kind with the same subject does not excuse it
+        self.assertEqual(train.image_verdict(need, run, self.HEAD, [dict(row, kind="check")])[0], 1)
+
+    def test_a_failed_module_with_no_case_recorded_refuses(self):
+        need = train.image_modules(["packaging/fn"])
+        run = self.ran(need)
+        run["modules"]["tests.test_native_owner"] = {"rc": 137, "cases": {}}
+        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        self.assertEqual(rc, 1)
+        self.assertEqual(rec["unexplained"], ["tests.test_native_owner (rc 137, no case recorded)"])
+
+
+class ImageGateTests(TrainBase):
+    """The image gate inside `gate` and `push`."""
+
+    def launcher_train(self):
+        (self.work / "packaging").mkdir(exist_ok=True)
+        (self.work / "packaging/launcher-decide.sh").write_text("# decide\n")
+        self.commit(self.work, "launcher change")
+
+    def set_image(self, modules):
+        path = self.work / "build/train/integrate__t1.json"
+        st = json.loads(path.read_text()) if path.exists() else {"lanes": []}
+        st["image"] = {"source": self.head(), "box": "hbox", "dir": "/r",
+                       "modules": {m: {"rc": 0, "cases": {m + ".T.a": "ok"}} for m in modules}}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(st))
+
+    def gate(self):
+        g = self.train("gate")
+        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        return g, st["gates"]["image"]
+
+    def test_a_train_with_no_obliging_change_skips_the_image_gate(self):
+        (self.work / "other.txt").write_text("x\n")
+        self.commit(self.work, "unrelated")
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 0, g.stdout)
+        self.assertEqual((rec["rc"], rec.get("skipped")), (0, True))
+        self.assertIn("TRAIN-DONE gate rc=0", g.stdout)
+
+    def test_a_launcher_train_without_an_image_run_cannot_push(self):
+        self.launcher_train()
+        before = self.origin_rev("dev")
+        g, rec = self.gate()
+        self.assertNotEqual(g.returncode, 0)
+        self.assertEqual(rec["rc"], 1)
+        self.assertIn("TRAIN-DONE gate rc=1", g.stdout)
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("gate image failed", p.stdout)
+        self.assertEqual(self.origin_rev("dev"), before)
+
+    def test_an_interrupted_image_run_blocks_until_the_missing_modules_ran(self):
+        self.launcher_train()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        self.set_image(need[:-1])
+        g, rec = self.gate()
+        self.assertNotEqual(g.returncode, 0)
+        self.assertEqual(rec["missing"], need[-1:])
+        self.assertIn("NOT RUN on HEAD's image: " + need[-1], g.stdout)
+        self.set_image(need)
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 0, g.stdout)
+        p = self.train("push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(self.origin_rev("dev"), self.head())
+
+    def test_image_without_a_run_record_refuses_by_name(self):
+        p = self.train("image")
+        self.assertEqual(p.returncode, 2)
+        self.assertIn("no image run record", p.stdout)
+        self.assertIn("TRAIN-DONE image rc=2", p.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

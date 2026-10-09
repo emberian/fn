@@ -9,6 +9,7 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
     train.py regen [--label N]
     train.py certify BOX             # ONE farm run (install, certify), then emits
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
+    train.py image [--label L]       # read HEAD's image run (tools/hbox_native.sh) for the image gate
     train.py gate
     train.py push
     train.py status
@@ -42,6 +43,15 @@ rewritten or dropped amendment record, and refuses an amendment that names no
 present row (unless the row was retired and its item is closed), so amendments
 cannot be stockpiled.  `push` and `status` print the amendment count beside
 the row count.
+
+The image gate.  A train whose diff touches the heap probe, a launcher or
+host/native/ (IMAGE_RULES) must run the rule's native modules
+(test_native_operator_verbs, heap_from_profile and the served natives) on
+HEAD's image: `tools/hbox_native.sh HEAD MODULES`, then `train.py image`
+reads each module's rc and case statuses from the box.  The gate passes when
+every obliged module ran at HEAD and each red case is a `native` known red;
+a module that has not run (an interrupted image gate) refuses the push.
+Every command ends with one line `TRAIN-DONE CMD rc=N`.
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
 regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
@@ -155,7 +165,29 @@ UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-         "box_step", "lock_delta", "baseline", "secrets", "unit")
+         "box_step", "lock_delta", "baseline", "secrets", "unit", "image")
+
+# The image gate (coordinator 2026-10-09, after train 74).  A train whose diff
+# against origin/dev touches a rule's paths runs the rule's native modules on
+# the train's own image in the same train (COORDINATION section 5), picked
+# from the diff rather than remembered: train 63 changed the launcher's heap
+# decision and no train ran test_native_served_line_stack until train 73,
+# which found it red.  A path ending in "/" is a directory prefix.
+SERVED_NATIVES = ("tests.test_native_served_differential", "tests.test_native_owner",
+                  "tests.test_native_article_slots", "tests.test_native_reader_index",
+                  "tests.test_native_bounds_blob", "tests.test_native_served_cost",
+                  "tests.test_native_served_line_stack", "tests.test_native_over_window")
+IMAGE_RULES = (
+    ("the heap probe, a launcher or host/native/",
+     ("books/heap-figure.lisp", "packaging/fn", "packaging/launcher-decide.sh",
+      "tools/build_native_host.sh", "tools/extract/core_launcher.py", "host/native/"),
+     ("tests.test_native_operator_verbs", "tests.test_native_heap_from_profile") + SERVED_NATIVES),
+)
+# tools/hbox_native.sh's local record of a run (box=, dir=, source=), under
+# the batch tree; LABEL is the first 12 hex digits of the run's commit.
+IMAGE_RUN_RECORD = "build/hbox-native/{label}.run"
+# a case status that is not a red (tools/test_budget.py's vocabulary)
+IMAGE_CASE_PASS = ("ok", "skip")
 
 # Dev's recorded reds with owners (COORDINATION section 5).  Each row is
 # {"kind", "subject", "item", "owner", "evidence"}; (kind, subject) is unique.
@@ -852,6 +884,106 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
                 "unowned": unowned, "closed_items": closed, "established": dev_rows is None}
 
 
+def image_modules(changed: list[str]) -> dict[str, list[str]]:
+    """The native modules the train's diff obliges (IMAGE_RULES), each with
+    the changed paths that oblige it."""
+    need: dict[str, list[str]] = {}
+    for _why, paths, modules in IMAGE_RULES:
+        hits = [f for f in changed
+                if any(f.startswith(p) if p.endswith("/") else f == p for p in paths)]
+        if hits:
+            for m in modules:
+                need.setdefault(m, [])
+                need[m] += [h for h in hits if h not in need[m]]
+    return need
+
+
+def parse_image_results(text: str) -> dict[str, dict]:
+    """The box's per-module outcome from the lines `RC MODULE N` (rc/test-MODULE)
+    and `FN_TEST_BUDGET_RESULT {...}` (logs/test-MODULE.log): module -> {"rc",
+    "cases": {case: status}}.  A module with an rc and no result line has no
+    cases (killed, or refused before its first test)."""
+    out: dict[str, dict] = {}
+    for line in text.splitlines():
+        words = line.split()
+        if len(words) == 3 and words[0] == "RC" and words[2].lstrip("-").isdigit():
+            out.setdefault(words[1], {"cases": {}})["rc"] = int(words[2])
+        elif line.startswith("FN_TEST_BUDGET_RESULT "):
+            try:
+                record = json.loads(line.split(" ", 1)[1])
+            except ValueError:
+                continue
+            module = record.get("module")
+            if isinstance(module, str):
+                entry = out.setdefault(module, {"cases": {}})
+                entry["cases"] = {c: s for c, s in record.get("cases") or []}
+    return {m: e for m, e in out.items() if "rc" in e}
+
+
+def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
+                  rows: list[dict] | None) -> tuple[int, dict]:
+    """The image gate's decision.  Green when nothing is obliged, or when every
+    obliged module ran on the image of HEAD and each red case in it is a
+    `native` row of planning/known-reds.json.  A module that did not run (an
+    interrupted image gate) refuses the push until it has; so does a module
+    that failed with no case recorded."""
+    if not need:
+        return 0, {"skipped": True}
+    if record is None:
+        return 1, {"error": "no image run recorded at HEAD; run tools/hbox_native.sh HEAD "
+                            "MODULES, then `train.py image`", "need": sorted(need)}
+    if record.get("source") != head:
+        return 1, {"error": "the recorded image run is of %s, not HEAD" % str(record.get("source"))[:9],
+                   "need": sorted(need)}
+    known = {r["subject"] for r in rows or [] if r.get("kind") == "native"}
+    results = record.get("modules", {})
+    missing = sorted(m for m in need if m not in results)
+    unexplained, known_seen = [], []
+    for m in sorted(need):
+        if m not in results:
+            continue
+        rc, cases = results[m]["rc"], results[m]["cases"]
+        reds = sorted(c for c, s in cases.items() if s not in IMAGE_CASE_PASS)
+        if rc != 0 and not reds:
+            unexplained.append(f"{m} (rc {rc}, no case recorded)")
+        for c in reds:
+            (known_seen if c in known else unexplained).append(c)
+    extra = {"need": sorted(need), "run": record.get("dir"), "missing": missing,
+             "unexplained": unexplained, "known_reds": known_seen}
+    return (1 if missing or unexplained else 0), extra
+
+
+def image_record_path(t: "Train", label: str) -> Path:
+    return t.root / IMAGE_RUN_RECORD.format(label=label)
+
+
+def cmd_image(t: Train, args) -> int:
+    """Read HEAD's image run from its box into the train state: each module's
+    rc and case statuses, for the image gate."""
+    head = t.head()
+    label = args.label or head[:12]
+    path = image_record_path(t, label)
+    if not path.is_file():
+        raise TrainError(f"no image run record {path}; run tools/hbox_native.sh {head[:9]} MODULES")
+    run = dict(l.split("=", 1) for l in path.read_text().splitlines() if "=" in l)
+    if run.get("source") != head:
+        raise TrainError(f"{path} is of {run.get('source', '?')[:9]}, not HEAD {head[:9]}")
+    script = ("cd %s && for f in rc/test-*; do [ -f \"$f\" ] && echo \"RC ${f#rc/test-} $(cat \"$f\")\"; done; "
+              "grep -h FN_TEST_BUDGET_RESULT logs/test-*.log 2>/dev/null; true") % shlex.quote(run["dir"])
+    p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], script],
+                       capture_output=True, text=True)
+    if p.returncode != 0:
+        raise TrainError(f"reading {run['box']}:{run['dir']} failed (rc {p.returncode}): {p.stderr.strip()[:200]}")
+    st = t.load()
+    st["image"] = {"source": head, "box": run["box"], "dir": run["dir"],
+                   "modules": parse_image_results(p.stdout)}
+    t.save(st)
+    for m, e in sorted(st["image"]["modules"].items()):
+        reds = [c for c, s in e["cases"].items() if s not in IMAGE_CASE_PASS]
+        say(f"image {m}: rc {e['rc']}, {len(e['cases'])} cases, red {len(reds)}")
+    return 0
+
+
 def _launches_native_image(path: Path) -> bool:
     """A suite that imports tests/native_harness starts the built image
     (tests/test_bp_node_native.py and the other BP suites are named
@@ -996,6 +1128,20 @@ def cmd_gate(t: Train, args) -> int:
             results[test] = t.run("gate-unit-" + Path(test).stem, [PY, "-m", "unittest", test])
     rec("unit", 0 if all(v == 0 for v in results.values()) else 1, tests=results)
 
+    need = image_modules(files)
+    image_rc, image_record = image_verdict(need, st.get("image"), head, known_reds_at(t, "HEAD"))
+    if need:
+        say(f"image: obliged {len(need)} module(s) by " + ", ".join(sorted({f for v in need.values() for f in v})[:5]))
+        for m in image_record.get("missing", []):
+            say(f"  NOT RUN on HEAD's image: {m}")
+        for c in image_record.get("unexplained", []):
+            say(f"  RED and not a known red: {c}")
+        if "error" in image_record:
+            say(f"  {image_record['error']}")
+    else:
+        say("image: no change obliges an image module")
+    rec("image", image_rc, **image_record)
+
     bad = [n for n, g in gates.items() if g["rc"] != 0]
     say(f"gates at {head[:9]}: " + ", ".join(f"{n}={g['rc']}" for n, g in gates.items()))
     return 1 if bad else 0
@@ -1076,16 +1222,21 @@ def main(argv=None) -> int:
     c = sub.add_parser("certify")
     c.add_argument("box", choices=("hbox", "persvati"))
     g = sub.add_parser("gate")
+    i = sub.add_parser("image")
+    i.add_argument("--label", help="the run's label (default: HEAD's first 12 hex digits)")
     sub.add_parser("push")
     sub.add_parser("status")
     args = ap.parse_args(argv)
     try:
         t = Train(toplevel(Path.cwd()))
-        return {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate,
-                "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
+        rc = {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate,
+              "image": cmd_image, "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
     except TrainError as e:
         say(f"train: {e}")
-        return 2
+        rc = 2
+    # one completion line per command, for a Monitor on a detached run
+    say(f"TRAIN-DONE {args.cmd} rc={rc}")
+    return rc
 
 
 if __name__ == "__main__":
