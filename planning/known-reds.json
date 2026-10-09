@@ -1,5 +1,5 @@
 {
- "note": "Dev's recorded reds, each owned by an open repair item (COORDINATION section 5). A train is non-regressing when every red it meets is a row here and green only when there are no rows; rows shrink only (tools/train.py, gate baseline). Rewritten by the train that removes a row, never hand-grown: a new dev red is a RED message first.",
+ "note": "Dev's recorded reds, each owned by an open repair item (COORDINATION section 5). A train is non-regressing when every red it meets is a row here and green only when there are no rows; rows shrink only (tools/train.py, gate baseline). Rewritten by the train that removes a row, never hand-grown: a new dev red is a RED message first and enters only through a record in planning/known-reds-amendments.json.",
  "measured_at": "3a937ebc3 (freeze-20261009), 2026-10-09",
  "rows": [
   {
@@ -36,6 +36,13 @@
    "item": "LOCK-CHECKER-MODEL-GAPS",
    "owner": "deputy-C",
    "evidence": "NEW R1b fnn-arena-release-due *fnn-arena-release-custody* unlocked write host/native/io.lisp:8001 (owned; the train's lock gate passes on it); check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_writes_the_operators_fields_and_status_prints_them",
+   "item": "OPERATOR-STATUS-OBSERVED-SIZING",
+   "owner": "builder-A",
+   "evidence": "measured red at dev ac66a0a23 on image native-ac66a0a23ad7 (the `operator status` step: refused machine-cannot-hold-profile, heap=23095730 MB); admitted by amendment, coordinator 2026-10-09 13:05; retirement: status sized by the store's charged totals from the checkpoint header (RUNTIME-MODEL section 6 observation form)"
   }
  ]
 }
