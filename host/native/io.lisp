@@ -461,6 +461,39 @@ return the index the bytes begin at."
             (or (cdr (assoc 'fn-hist (user-stobj-alist *the-live-state*)))
                 (fnn-fault "the history stobj is not in this image")))))
 
+;;; The ARTICLE render's two buffers (adapter A2, owner Builder A; lane/spans
+;;; step 3): `fn-ast-ws' (books/article-stream.lisp), the render's workspace,
+;;; and `fn-dss-out' (books/def-span-scan.lisp), the window it renders into,
+;;; both def-buffer stobjs congruent to `fn-octets' (the live object is the
+;;; two-slot vector: the array, the fill count).  One pair for the process:
+;;; every caller runs under the owner mutex (owner.lisp
+;;; fnn-owner-cursor-step-serialized), and the window's octets are copied
+;;; out under it (`fnn-dss-out-octets'), so no render sees another's.
+;;; Retired when the reader's ARTICLE path renders into its own leased
+;;; buffer (RUNTIME-MODEL section 4: per-connection machines; Builder A,
+;;; landing 2).
+(defvar *fnn-ast-ws* nil)
+(defvar *fnn-dss-out* nil)
+
+(defun fnn-live-ast-ws ()
+  (or *fnn-ast-ws*
+      (setq *fnn-ast-ws*
+            (or (cdr (assoc 'fn-ast-ws (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the article render workspace stobj is not in this image")))))
+
+(defun fnn-live-dss-out ()
+  (or *fnn-dss-out*
+      (setq *fnn-dss-out*
+            (or (cdr (assoc 'fn-dss-out (user-stobj-alist *the-live-state*)))
+                (fnn-fault "the span output stobj is not in this image")))))
+
+(defun fnn-dss-out-octets ()
+  "A fresh byte vector of the span output's octets [0, fill): the window the
+render left there (books/article-stream-owner.lisp fn-asto-plan-render-window).
+Called under the owner mutex; the caller sends the copy after releasing it."
+  (let ((st (fnn-live-dss-out)))
+    (subseq (the fnn-octets (svref st 0)) 0 (svref st 1))))
+
 (defun fnn-live-owner-st ()
   ;; Resolve the authoritative live binding, never an independently cached
   ;; owner copy. Until the caller-threading migration installs this stobj,
@@ -470,7 +503,8 @@ return the index the bytes begin at."
 
 (defun fnn-trailing-kind (name)
   "The names of NAME's live stobjs just before its trailing state, in order:
-the longest run of fn-arena, fn-cat, fn-hist and fn-owner-st there (NIL for none)."
+the longest run of fn-arena, fn-ast-ws, fn-cat, fn-hist and fn-owner-st there
+(NIL for none)."
   (multiple-value-bind (known found) (gethash name *fnn-trailing-stobjs*)
     (if found
         known
@@ -479,13 +513,14 @@ the longest run of fn-arena, fn-cat, fn-hist and fn-owner-st there (NIL for none
                   (run nil))
               (when (eq (car ins) 'state)
                 (loop for sym in (cdr ins)
-                      while (member sym '(fn-arena fn-cat fn-hist fn-owner-st))
+                      while (member sym '(fn-arena fn-ast-ws fn-cat fn-hist fn-owner-st))
                       do (push sym run)))
               run)))))
 
 (defun fnn-live-stobj (sym)
   (ecase sym
     (fn-arena (fnn-live-arena))
+    (fn-ast-ws (fnn-live-ast-ws))
     (fn-cat (fnn-live-cat))
     (fn-hist (fnn-live-hist))
     (fn-owner-st (fnn-live-owner-st))))
