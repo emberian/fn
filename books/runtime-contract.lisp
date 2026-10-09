@@ -799,7 +799,8 @@
 ; May instance (ID INC) submit KIND on handle HD?  An :in kind needs its own
 ; workspace (the worker will write it); an :out kind its own workspace or a
 ; buffer already leased :out at the handle's generation (shared, immutable).
-; An :in lease is never shared.
+; An :in lease is never shared.  Either way the handle lies within the
+; configured capacity, so an action names at most CAP octets (T12).
 (defun fn-rtc-submit-okp (kind hd id inc s)
   (declare (xargs :guard t))
   (let* ((h (fn-rtc-h-buf hd)) (b (fn-rtc-buffer h s)) (o (fn-rtc-b-owner b))
@@ -814,7 +815,9 @@
                       (fn-rtc-cap (fn-rtc-config s))))
            (and (or own (and (eq (fn-rtc-get 0 o) :leased) (eq (fn-rtc-get 3 o) :out)))
                 (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd))
-                    (len (fn-rtc-b-bytes b))))))))
+                    (len (fn-rtc-b-bytes b)))
+                (<= (+ (fn-rtc-h-off hd) (fn-rtc-h-len hd))
+                    (fn-rtc-cap (fn-rtc-config s))))))))
 
 (defun fn-rtc-req-submit (r id inc s)
   (declare (xargs :guard t))
@@ -1087,14 +1090,17 @@
     (declare (ignore s2 acts refused))
     cost))
 
-; Retained output of a step: the octets the emitted actions name.  An action
-; carries a handle, never bytes; the handle's len is within the configured
-; buffer capacity (`fn-rtc-use-okp'), so this is the measure section 1 bounds.
+; Retained output of a step: the octets the emitted actions name.  A buffered
+; action carries a handle, never bytes, as its first argument, and the handle
+; lies within the configured capacity (`fn-rtc-submit-okp'); this is the
+; measure section 1 bounds (T12).
 (defun fn-rtc-actions-octets (acts)
   (declare (xargs :guard t))
   (if (consp acts)
       (+ (let ((hd (fn-rtc-get 0 (fn-rtc-get 4 (car acts)))))
-           (if (fn-rtc-handlep hd) (fn-rtc-h-len hd) 0))
+           (if (and (fn-rtc-buffered-kind-p (fn-rtc-get 0 (car acts))) (fn-rtc-handlep hd))
+               (fn-rtc-h-len hd)
+             0))
          (fn-rtc-actions-octets (cdr acts)))
     0))
 
@@ -2427,25 +2433,44 @@
                              (fn-rtc-with-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) (list inc :live r) s1))))
   :hints (("Goal" :in-theory (disable fn-rtc-free-slot))))
 
+(defun fn-rtc-accept-slot (s1) (declare (xargs :guard t)) (fn-rtc-free-slot 0 (fn-rtc-slots s1)))
+(defun fn-rtc-accept-inc (s1) (declare (xargs :guard t))
+  (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1))))
+(defun fn-rtc-accept-go-p (s1 out) (declare (xargs :guard t))
+  (and (eq (fn-rtc-get 0 out) :done) (fn-rtc-free-slot 0 (fn-rtc-slots s1))
+       (natp (fn-rtc-get 1 out)) (< (fn-rtc-get 1 out) (expt 2 64))))
+(defun fn-rtc-accept-prepared (s1 out) (declare (xargs :guard t))
+  (fn-rtc-with-mstate (fn-rtc-accept-slot s1) (fn-rtc-m-init)
+    (fn-rtc-with-slot (fn-rtc-accept-slot s1) (list (fn-rtc-accept-inc s1) :live (fn-rtc-get 1 out)) s1)))
+
+(defthm fn-rtc-accept-branch-parts
+  (and (equal (mv-nth 1 (fn-rtc-accept-branch s1 out q))
+              (if (fn-rtc-accept-go-p s1 out)
+                  (append (mv-nth 1 (fn-rtc-deliver (fn-rtc-accept-prepared s1 out) (fn-rtc-accept-slot s1)
+                                                    (fn-rtc-accept-inc s1) (list :accept out) q))
+                          (mv-nth 1 (fn-rtc-rearm (mv-nth 0 (fn-rtc-deliver (fn-rtc-accept-prepared s1 out)
+                                                                            (fn-rtc-accept-slot s1)
+                                                                            (fn-rtc-accept-inc s1)
+                                                                            (list :accept out) q)))))
+                (mv-nth 1 (fn-rtc-rearm s1))))
+       (equal (mv-nth 0 (fn-rtc-accept-branch s1 out q))
+              (if (fn-rtc-accept-go-p s1 out)
+                  (mv-nth 0 (fn-rtc-rearm (mv-nth 0 (fn-rtc-deliver (fn-rtc-accept-prepared s1 out)
+                                                                    (fn-rtc-accept-slot s1)
+                                                                    (fn-rtc-accept-inc s1)
+                                                                    (list :accept out) q))))
+                (mv-nth 0 (fn-rtc-rearm s1)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (fn-rtc-deliver fn-rtc-rearm fn-rtc-free-slot)))))
+
 (defthm fn-rtc-accept-branch-actions-ok
   (implies (fn-rtc-uses-ops-natp (fn-rtc-uses s1))
            (and (fn-rtc-actions-okp (mv-nth 1 (fn-rtc-accept-branch s1 out q)) (mv-nth 0 (fn-rtc-accept-branch s1 out q)))
                 (fn-rtc-actions-kinded-p (mv-nth 1 (fn-rtc-accept-branch s1 out q)))))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch)
-                                  (mv-nth fn-rtc-free-slot fn-rtc-deliver fn-rtc-rearm fn-rtc-actions-okp
-                                   fn-rtc-actions-kinded-p fn-rtc-deliver-actions-ok fn-rtc-req-pre fn-rtc-req-pre-at-accept))
-           :use ((:instance fn-rtc-deliver-actions-ok
-                  (s (fn-rtc-with-mstate (fn-rtc-free-slot 0 (fn-rtc-slots s1)) (fn-rtc-m-init)
-                       (fn-rtc-with-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1))
-                                         (list (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1)))
-                                               :live (fn-rtc-get 1 out))
-                                         s1)))
-                  (id (fn-rtc-free-slot 0 (fn-rtc-slots s1)))
-                  (inc (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1))))
-                  (ev (list :accept out)))
-                 (:instance fn-rtc-req-pre-at-accept (r (fn-rtc-get 1 out)) (m (fn-rtc-m-init))
-                  (inc (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s1)) s1)))))))
-))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-go-p fn-rtc-accept-slot fn-rtc-accept-prepared)
+                                  (fn-rtc-accept-branch fn-rtc-deliver fn-rtc-rearm fn-rtc-actions-okp
+                                   fn-rtc-actions-kinded-p fn-rtc-free-slot fn-rtc-accept-inc mv-nth
+                                   fn-rtc-req-pre fn-rtc-with-mstate fn-rtc-with-slot)))))
+
 
 (defun fn-rtc-close-prepared (s1 id inc)
   (declare (xargs :guard t))
@@ -2553,6 +2578,288 @@
                         (:instance fn-rtc-actions-okp-member (acts (fn-rtc-step-actions s e q))
                                    (s (fn-rtc-step-state s e q)))))))
 
+
+; The work budget.
+(defun fn-rtc-req-octets (r)
+  (declare (xargs :guard t))
+  (if (eq (fn-rtc-get 0 r) :write) (len (fn-rtc-get 4 r)) 0))
+
+(defthm fn-rtc-reqs-octets-def
+  (equal (fn-rtc-reqs-octets reqs)
+         (if (consp reqs) (+ (fn-rtc-req-octets (car reqs)) (fn-rtc-reqs-octets (cdr reqs))) 0))
+  :rule-classes :definition)
+
+(defthm fn-rtc-submit-okp-within-cap
+  (implies (fn-rtc-submit-okp kind hd id inc s)
+           (<= (fn-rtc-h-len hd) (fn-rtc-cap (fn-rtc-config s))))
+  :rule-classes :linear)
+
+(defun fn-rtc-act-octets (a)
+  (declare (xargs :guard t))
+  (let ((hd (fn-rtc-get 0 (fn-rtc-get 4 a))))
+    (if (and (fn-rtc-buffered-kind-p (fn-rtc-get 0 a)) (fn-rtc-handlep hd)) (fn-rtc-h-len hd) 0)))
+
+(defthm fn-rtc-actions-octets-def
+  (equal (fn-rtc-actions-octets acts)
+         (if (consp acts) (+ (fn-rtc-act-octets (car acts)) (fn-rtc-actions-octets (cdr acts))) 0))
+  :rule-classes :definition)
+
+(defthm fn-rtc-actions-octets-append
+  (equal (fn-rtc-actions-octets (append a b)) (+ (fn-rtc-actions-octets a) (fn-rtc-actions-octets b))))
+
+(defthm fn-rtc-req-acquire-budget
+  (let ((x (fn-rtc-req-acquire r id inc s)) (u (fn-rtc-use-bound (fn-rtc-config s))))
+   (implies (equal (fn-rtc-get 0 r) :acquire)
+    (and (<= (mv-nth 3 x) (+ 1 u (fn-rtc-req-octets r)))
+         (<= (len (mv-nth 1 x)) 1)
+         (<= (fn-rtc-actions-octets (mv-nth 1 x)) (fn-rtc-cap (fn-rtc-config s)))
+         (equal (fn-rtc-config (mv-nth 0 x)) (fn-rtc-config s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-s-inc fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-nbufs fn-cbor-octet-listp fn-rtc-buffer fn-rtc-live-p fn-rtc-current-p fn-rtc-slot fn-rtc-s-res fn-rtc-extrap fn-rtc-kind-out-p fn-rtc-kind-op member-equal fn-rtc-next-op))))
+
+(defthm fn-rtc-req-write-budget
+  (let ((x (fn-rtc-req-write r id inc s)) (u (fn-rtc-use-bound (fn-rtc-config s))))
+   (implies (equal (fn-rtc-get 0 r) :write)
+    (and (<= (mv-nth 3 x) (+ 1 u (fn-rtc-req-octets r)))
+         (<= (len (mv-nth 1 x)) 1)
+         (<= (fn-rtc-actions-octets (mv-nth 1 x)) (fn-rtc-cap (fn-rtc-config s)))
+         (equal (fn-rtc-config (mv-nth 0 x)) (fn-rtc-config s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-s-inc fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-nbufs fn-cbor-octet-listp fn-rtc-buffer fn-rtc-live-p fn-rtc-current-p fn-rtc-slot fn-rtc-s-res fn-rtc-extrap fn-rtc-kind-out-p fn-rtc-kind-op member-equal fn-rtc-next-op))))
+
+(defthm fn-rtc-req-release-budget
+  (let ((x (fn-rtc-req-release r id inc s)) (u (fn-rtc-use-bound (fn-rtc-config s))))
+   (implies (equal (fn-rtc-get 0 r) :release)
+    (and (<= (mv-nth 3 x) (+ 1 u (fn-rtc-req-octets r)))
+         (<= (len (mv-nth 1 x)) 1)
+         (<= (fn-rtc-actions-octets (mv-nth 1 x)) (fn-rtc-cap (fn-rtc-config s)))
+         (equal (fn-rtc-config (mv-nth 0 x)) (fn-rtc-config s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-s-inc fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-nbufs fn-cbor-octet-listp fn-rtc-buffer fn-rtc-live-p fn-rtc-current-p fn-rtc-slot fn-rtc-s-res fn-rtc-extrap fn-rtc-kind-out-p fn-rtc-kind-op member-equal fn-rtc-next-op))))
+
+(defthm fn-rtc-req-close-budget
+  (let ((x (fn-rtc-req-close r id inc s)) (u (fn-rtc-use-bound (fn-rtc-config s))))
+   (implies (equal (fn-rtc-get 0 r) :close)
+    (and (<= (mv-nth 3 x) (+ 1 u (fn-rtc-req-octets r)))
+         (<= (len (mv-nth 1 x)) 1)
+         (<= (fn-rtc-actions-octets (mv-nth 1 x)) (fn-rtc-cap (fn-rtc-config s)))
+         (equal (fn-rtc-config (mv-nth 0 x)) (fn-rtc-config s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-s-inc fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-nbufs fn-cbor-octet-listp fn-rtc-buffer fn-rtc-live-p fn-rtc-current-p fn-rtc-slot fn-rtc-s-res fn-rtc-extrap fn-rtc-kind-out-p fn-rtc-kind-op member-equal fn-rtc-next-op))))
+
+(defthm fn-rtc-req-cancel-budget
+  (let ((x (fn-rtc-req-cancel r id inc s)) (u (fn-rtc-use-bound (fn-rtc-config s))))
+   (implies (equal (fn-rtc-get 0 r) :cancel)
+    (and (<= (mv-nth 3 x) (+ 1 u (fn-rtc-req-octets r)))
+         (<= (len (mv-nth 1 x)) 1)
+         (<= (fn-rtc-actions-octets (mv-nth 1 x)) (fn-rtc-cap (fn-rtc-config s)))
+         (equal (fn-rtc-config (mv-nth 0 x)) (fn-rtc-config s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-s-inc fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-nbufs fn-cbor-octet-listp fn-rtc-buffer fn-rtc-live-p fn-rtc-current-p fn-rtc-slot fn-rtc-s-res fn-rtc-extrap fn-rtc-kind-out-p fn-rtc-kind-op member-equal fn-rtc-next-op))))
+
+(defthm fn-rtc-req-submit-budget
+  (let ((x (fn-rtc-req-submit r id inc s)) (u (fn-rtc-use-bound (fn-rtc-config s))))
+   (implies (equal (fn-rtc-get 0 r) :submit)
+    (and (<= (mv-nth 3 x) (+ 1 u (fn-rtc-req-octets r)))
+         (<= (len (mv-nth 1 x)) 1)
+         (<= (fn-rtc-actions-octets (mv-nth 1 x)) (fn-rtc-cap (fn-rtc-config s)))
+         (equal (fn-rtc-config (mv-nth 0 x)) (fn-rtc-config s)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-s-inc fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-nbufs fn-cbor-octet-listp fn-rtc-buffer fn-rtc-live-p fn-rtc-current-p fn-rtc-slot fn-rtc-s-res fn-rtc-extrap fn-rtc-kind-out-p fn-rtc-kind-op member-equal fn-rtc-next-op))))
+
+(defthm fn-rtc-request-budget
+  (let ((x (fn-rtc-request r id inc s)) (u (fn-rtc-use-bound (fn-rtc-config s))))
+    (and (<= (mv-nth 3 x) (+ 1 u (fn-rtc-req-octets r)))
+         (<= (len (mv-nth 1 x)) 1)
+         (<= (fn-rtc-actions-octets (mv-nth 1 x)) (fn-rtc-cap (fn-rtc-config s)))
+         (equal (fn-rtc-config (mv-nth 0 x)) (fn-rtc-config s))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-request)
+                                  (mv-nth fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close
+                                   fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-req-octets fn-rtc-use-bound
+                                   fn-rtc-actions-octets fn-rtc-cap)))))
+
+(defthm fn-rtc-request-budget-linear
+  (and (<= (mv-nth 3 (fn-rtc-request r id inc s))
+           (+ 1 (fn-rtc-use-bound (fn-rtc-config s)) (fn-rtc-req-octets r)))
+       (<= (len (mv-nth 1 (fn-rtc-request r id inc s))) 1)
+       (<= (fn-rtc-actions-octets (mv-nth 1 (fn-rtc-request r id inc s))) (fn-rtc-cap (fn-rtc-config s))))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-rtc-request-budget :in-theory (disable fn-rtc-request-budget fn-rtc-request))))
+
+(defthm fn-rtc-len-append (equal (len (append a b)) (+ (len a) (len b))))
+
+(defthm fn-rtc-requests-budget
+  (let ((x (fn-rtc-requests reqs id inc s)) (u (fn-rtc-use-bound (fn-rtc-config s))))
+    (and (<= (mv-nth 3 x) (+ (* (len reqs) (+ 1 u)) (fn-rtc-reqs-octets reqs)))
+         (<= (len (mv-nth 1 x)) (len reqs))
+         (<= (fn-rtc-actions-octets (mv-nth 1 x)) (* (len reqs) (fn-rtc-cap (fn-rtc-config s))))
+         (equal (fn-rtc-config (mv-nth 0 x)) (fn-rtc-config s))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-requests)
+                                  (mv-nth fn-rtc-request fn-rtc-req-octets fn-rtc-use-bound fn-rtc-actions-octets
+                                   fn-rtc-cap))
+           :induct (fn-rtc-requests reqs id inc s))
+          ("Subgoal *1/1'" :nonlinearp t)))
+
+(defthm fn-rtc-deliver-budget
+  (implies (natp q)
+           (let ((x (fn-rtc-deliver s id inc ev q)) (u (fn-rtc-use-bound (fn-rtc-config s))))
+             (and (<= (mv-nth 3 x) (+ q (fn-rtc-m-c) (* (fn-rtc-m-max-reqs) (+ 1 u))))
+                  (<= (len (mv-nth 1 x)) (fn-rtc-m-max-reqs))
+                  (<= (fn-rtc-actions-octets (mv-nth 1 x)) (* (fn-rtc-m-max-reqs) (fn-rtc-cap (fn-rtc-config s)))))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-deliver)
+                                  (fn-rtc-requests mv-nth fn-rtc-use-bound fn-rtc-actions-octets fn-rtc-cap
+                                   fn-rtc-m-step-is-charged fn-rtc-m-step-requests-are-bounded fn-rtc-requests-budget))
+           :use ((:instance fn-rtc-m-step-is-charged (m (fn-rtc-mstate id s)) (pool (fn-rtc-borrow (fn-rtc-pool s))))
+                 (:instance fn-rtc-m-step-requests-are-bounded (m (fn-rtc-mstate id s))
+                            (pool (fn-rtc-borrow (fn-rtc-pool s))) (q (nfix q)))
+                 (:instance fn-rtc-requests-budget
+                            (reqs (mv-nth 1 (fn-rtc-m-step (fn-rtc-mstate id s) ev (fn-rtc-borrow (fn-rtc-pool s)) q)))
+                            (s (fn-rtc-with-mstate id (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate id s) ev
+                                                                                (fn-rtc-borrow (fn-rtc-pool s)) q))
+                                                   s))))
+           :nonlinearp t)))
+
+(defthm fn-rtc-rearm-budget
+  (and (<= (len (mv-nth 1 (fn-rtc-rearm s))) 1)
+       (equal (fn-rtc-actions-octets (mv-nth 1 (fn-rtc-rearm s))) 0))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-rearm) (fn-rtc-free-slot fn-rtc-kind-out-p)))))
+
+(defun fn-rtc-step-cost-of (s e q)
+  (declare (xargs :guard t))
+  (let* ((cfg (fn-rtc-config s))
+         (base (+ 4 (* 6 (fn-rtc-use-bound cfg)) (* 2 (fn-rtc-nslots cfg)))))
+    (if (not (fn-rtc-acts-on-p s e))
+        base
+      (let* ((s1 (fn-rtc-end-use s e))
+             (kind (fn-rtc-e-kind e))
+             (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))
+             (out (fn-rtc-delivered-outcome u e))
+             (base (+ base (if (member-eq kind *fn-rtc-in-kinds*) (fn-rtc-h-len (fn-rtc-u-hd u)) 0))))
+        (cond ((eq kind :accept)
+               (mv-let (s2 a r c) (fn-rtc-accept-branch s1 out q) (declare (ignore s2 a r)) (+ base (nfix c))))
+              ((eq kind :close) (+ base (fn-rtc-nbufs cfg)))
+              (t (mv-let (s2 a r c) (fn-rtc-deliver s1 (fn-rtc-e-id e) (fn-rtc-e-inc e) (list kind out) q)
+                   (declare (ignore s2 a r)) (+ base c))))))))
+
+(defthm fn-rtc-step-cost-is
+  (equal (fn-rtc-step-cost s e q) (fn-rtc-step-cost-of s e q))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-step-cost fn-rtc-step* fn-rtc-step-cost-of)
+                                  (fn-rtc-acts-on-p fn-rtc-e-kind fn-rtc-e-id fn-rtc-e-inc
+                                   fn-rtc-delivered-outcome fn-rtc-find-use fn-rtc-key fn-rtc-end-use
+                                   fn-rtc-rearm fn-rtc-deliver fn-rtc-accept-branch fn-rtc-close-branch
+                                   fn-rtc-use-bound fn-rtc-nslots fn-rtc-nbufs fn-rtc-h-len fn-rtc-u-hd
+                                   member-equal fn-rtc-config fn-rtc-cap fn-rtc-uses)))))
+
+(in-theory (disable fn-rtc-step-cost-of fn-rtc-step-cost))
+
+(defthm fn-rtc-config-of-end-use
+  (equal (fn-rtc-config (fn-rtc-end-use s e)) (fn-rtc-config s))
+  :hints (("Goal" :in-theory (enable fn-rtc-end-use))))
+
+(defthm fn-rtc-config-of-accept-prepared
+  (equal (fn-rtc-config (fn-rtc-accept-prepared s1 out)) (fn-rtc-config s1)))
+
+(defthm fn-rtc-accept-branch-cost-part
+  (equal (mv-nth 3 (fn-rtc-accept-branch s1 out q))
+         (if (fn-rtc-accept-go-p s1 out)
+             (mv-nth 3 (fn-rtc-deliver (fn-rtc-accept-prepared s1 out) (fn-rtc-accept-slot s1)
+                                       (fn-rtc-accept-inc s1) (list :accept out) q))
+           0))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-accept-branch) (fn-rtc-deliver fn-rtc-rearm fn-rtc-free-slot)))))
+
+(defthm fn-rtc-rearm-budget-linear
+  (<= (len (mv-nth 1 (fn-rtc-rearm s))) 1)
+  :rule-classes :linear
+  :hints (("Goal" :use fn-rtc-rearm-budget :in-theory (disable fn-rtc-rearm-budget fn-rtc-rearm))))
+
+(defthm fn-rtc-accept-branch-budget
+  (implies (natp q)
+           (let ((x (fn-rtc-accept-branch s1 out q)) (u (fn-rtc-use-bound (fn-rtc-config s1))))
+             (and (<= (nfix (mv-nth 3 x)) (+ q (fn-rtc-m-c) (* (fn-rtc-m-max-reqs) (+ 1 u))))
+                  (<= (len (mv-nth 1 x)) (+ 1 (fn-rtc-m-max-reqs)))
+                  (<= (fn-rtc-actions-octets (mv-nth 1 x)) (* (fn-rtc-m-max-reqs) (fn-rtc-cap (fn-rtc-config s1)))))))
+  :hints (("Goal" :in-theory (disable fn-rtc-accept-branch fn-rtc-deliver fn-rtc-rearm mv-nth fn-rtc-use-bound
+                                      fn-rtc-actions-octets fn-rtc-cap fn-rtc-deliver-budget fn-rtc-accept-go-p
+                                      fn-rtc-accept-prepared fn-rtc-accept-slot fn-rtc-accept-inc)
+           :use ((:instance fn-rtc-deliver-budget
+                  (s (fn-rtc-accept-prepared s1 out)) (id (fn-rtc-accept-slot s1)) (inc (fn-rtc-accept-inc s1))
+                  (ev (list :accept out)))))))
+
+(defthm fn-rtc-close-branch-budget
+  (and (<= (len (mv-nth 1 (fn-rtc-close-branch s1 id inc))) 1)
+       (equal (fn-rtc-actions-octets (mv-nth 1 (fn-rtc-close-branch s1 id inc))) 0))
+  :hints (("Goal" :in-theory (disable fn-rtc-close-prepared fn-rtc-rearm))))
+
+(defthm fn-rtc-in-use-within-cap
+  (implies (and (fn-rtc-invp s)
+                (fn-rtc-find-use k (fn-rtc-uses s))
+                (member-equal (fn-rtc-get 0 (fn-rtc-find-use k (fn-rtc-uses s))) *fn-rtc-in-kinds*))
+           (<= (fn-rtc-h-len (fn-rtc-u-hd (fn-rtc-find-use k (fn-rtc-uses s))))
+               (fn-rtc-cap (fn-rtc-config s))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-rtc-use-okp) (fn-rtc-invp fn-rtc-uses-okp-member fn-rtc-current-p fn-rtc-holders
+                                                   fn-rtc-buffer fn-rtc-slot fn-rtc-find-use))
+                  :use (fn-rtc-invp-uses-okp
+                        (:instance fn-rtc-find-use-is-member (uses (fn-rtc-uses s)))
+                        (:instance fn-rtc-uses-okp-member (uses (fn-rtc-uses s))
+                                   (u (fn-rtc-find-use k (fn-rtc-uses s)))))
+                  :expand ((fn-rtc-usep (fn-rtc-find-use k (fn-rtc-uses s)))))))
+
+(defthm fn-rtc-deliver-budget-linear
+  (implies (natp q)
+           (and (<= (mv-nth 3 (fn-rtc-deliver s id inc ev q))
+                    (+ q (fn-rtc-m-c) (* (fn-rtc-m-max-reqs) (+ 1 (fn-rtc-use-bound (fn-rtc-config s))))))
+                (<= (len (mv-nth 1 (fn-rtc-deliver s id inc ev q))) (fn-rtc-m-max-reqs))
+                (<= (fn-rtc-actions-octets (mv-nth 1 (fn-rtc-deliver s id inc ev q)))
+                    (* (fn-rtc-m-max-reqs) (fn-rtc-cap (fn-rtc-config s))))))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-rtc-deliver-budget :in-theory (disable fn-rtc-deliver-budget fn-rtc-deliver))))
+
+(defthm fn-rtc-accept-branch-budget-linear
+  (implies (natp q)
+           (and (<= (nfix (mv-nth 3 (fn-rtc-accept-branch s1 out q)))
+                    (+ q (fn-rtc-m-c) (* (fn-rtc-m-max-reqs) (+ 1 (fn-rtc-use-bound (fn-rtc-config s1))))))
+                (<= (len (mv-nth 1 (fn-rtc-accept-branch s1 out q))) (+ 1 (fn-rtc-m-max-reqs)))
+                (<= (fn-rtc-actions-octets (mv-nth 1 (fn-rtc-accept-branch s1 out q)))
+                    (* (fn-rtc-m-max-reqs) (fn-rtc-cap (fn-rtc-config s1))))))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-rtc-accept-branch-budget :in-theory (disable fn-rtc-accept-branch-budget fn-rtc-accept-branch))))
+
+(defthm fn-rtc-close-branch-budget-linear
+  (and (<= (len (mv-nth 1 (fn-rtc-close-branch s1 id inc))) 1)
+       (<= (fn-rtc-actions-octets (mv-nth 1 (fn-rtc-close-branch s1 id inc))) 0))
+  :rule-classes :linear
+  :hints (("Goal" :use fn-rtc-close-branch-budget :in-theory (disable fn-rtc-close-branch-budget fn-rtc-close-branch))))
+
+(defthm fn-rtc-completionp-consp
+  (implies (fn-rtc-completionp e) (consp e))
+  :rule-classes :forward-chaining)
+
+(defthm fn-rtc-invp-found-use-consp
+  (implies (and (fn-rtc-invp s) (fn-rtc-find-use k (fn-rtc-uses s)))
+           (consp (fn-rtc-find-use k (fn-rtc-uses s))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-use-okp) (fn-rtc-invp fn-rtc-uses-okp-member fn-rtc-current-p fn-rtc-holders
+                                                   fn-rtc-buffer fn-rtc-slot fn-rtc-find-use))
+                  :use (fn-rtc-invp-uses-okp
+                        (:instance fn-rtc-find-use-is-member (uses (fn-rtc-uses s)))
+                        (:instance fn-rtc-uses-okp-member (uses (fn-rtc-uses s))
+                                   (u (fn-rtc-find-use k (fn-rtc-uses s)))))
+                  :expand ((fn-rtc-usep (fn-rtc-find-use k (fn-rtc-uses s)))))))
+
+; T12
+(defthm fn-rtc-step-is-charged
+  (implies (and (fn-rtc-invp s) (natp q))
+           (and (<= (fn-rtc-step-cost s e q)
+                    (+ q (fn-rtc-step-c (fn-rtc-config s))))
+                (<= (len (mv-nth 1 (fn-rtc-step s e q)))
+                    (+ 1 (fn-rtc-m-max-reqs)))
+                (<= (fn-rtc-actions-octets (mv-nth 1 (fn-rtc-step s e q)))
+                    (* (fn-rtc-m-max-reqs) (fn-rtc-cap (fn-rtc-config s))))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-step-cost-of fn-rtc-step-actions fn-rtc-step-c fn-rtc-acts-on-p)
+                                  (fn-rtc-invp mv-nth fn-rtc-e-id fn-rtc-e-inc
+                                   fn-rtc-delivered-outcome fn-rtc-find-use fn-rtc-key fn-rtc-end-use
+                                   fn-rtc-rearm fn-rtc-deliver fn-rtc-accept-branch fn-rtc-close-branch
+                                   fn-rtc-use-bound fn-rtc-actions-octets fn-rtc-cap fn-rtc-h-len fn-rtc-u-hd
+                                   fn-rtc-config fn-rtc-nslots fn-rtc-nbufs fn-rtc-end-use-structure
+                                   fn-rtc-delivered-outcome fn-rtc-completionp))
+           :use ((:instance fn-rtc-in-use-within-cap (k (fn-rtc-key e)))
+                 (:instance fn-rtc-key-of-find-use (k (fn-rtc-key e)) (uses (fn-rtc-uses s)))
+                 (:instance fn-rtc-key-equal-parts (e (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))) (u e))))))
+
 ; =============================================================================
 ; STATEMENTS NOT YET PROVED (each moves above, unchanged, when proved)
 ;
@@ -2568,18 +2875,6 @@
 ;; (defthm fn-rtc-step-preserves-invp
 ;;   (implies (fn-rtc-invp s)
 ;;            (fn-rtc-invp (mv-nth 0 (fn-rtc-step s e q)))))
-;;
-;; ; T12. The work budget: one step costs at most the quantum plus a term of the
-;; ; configuration, emits a bounded number of actions, and the octets those
-;; ; actions name (its retained output) are bounded by the configuration.
-;; (defthm fn-rtc-step-is-charged
-;;   (implies (and (fn-rtc-invp s) (natp q))
-;;            (and (<= (fn-rtc-step-cost s e q)
-;;                     (+ q (fn-rtc-step-c (fn-rtc-config s))))
-;;                 (<= (len (mv-nth 1 (fn-rtc-step s e q)))
-;;                     (+ 1 (fn-rtc-m-max-reqs)))
-;;                 (<= (fn-rtc-actions-octets (mv-nth 1 (fn-rtc-step s e q)))
-;;                     (* (fn-rtc-m-max-reqs) (fn-rtc-cap (fn-rtc-config s)))))))
 ;;
 ;; ; A-HOST-COMPLETES, the named assumption (an encapsulate in
 ;; ; books/assumptions-runtime.lisp, statement here): the host delivers exactly
