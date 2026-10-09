@@ -318,16 +318,28 @@ def parse_amendments(text: str) -> list[dict]:
     records = data.get("amendments") if isinstance(data, dict) else None
     if not isinstance(records, list):
         raise TrainError(f"{KNOWN_RED_AMENDMENTS} has no list 'amendments'")
-    seen = set()
+    last: dict = {}
     for rec in records:
         if not isinstance(rec, dict) or any(not isinstance(rec.get(f), str) or not rec.get(f)
                                             for f in AMENDMENT_FIELDS):
             raise TrainError(f"{KNOWN_RED_AMENDMENTS}: a record lacks one of "
                              f"{', '.join(AMENDMENT_FIELDS)}: {str(rec)[:120]}")
         key = (rec["kind"], rec["subject"])
-        if key in seen:
-            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]} is amended twice")
-        seen.add(key)
+        prev = last.get(key)
+        if prev is not None:
+            # An owner transfer (coordinator 2026-10-09): a later record for
+            # the same row names the owner it takes over from, with the first
+            # record's item and dev sha.  The earlier records stay as written
+            # (the measured owner); the last one is the row's current owner.
+            if not (rec.get("transfer_from") == prev["owner"] and rec["owner"] != prev["owner"]
+                    and rec["item"] == prev["item"] and rec["dev_sha"] == prev["dev_sha"]):
+                raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]} is amended twice "
+                                 "(a later record must be an owner transfer: transfer_from the "
+                                 "previous owner, the same item and dev_sha, a new owner)")
+        elif "transfer_from" in rec:
+            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]}: a transfer with no "
+                             "earlier record")
+        last[key] = rec
     return records
 
 
