@@ -702,6 +702,7 @@ def native_peer_add(image, store, words, env, cwd):
 # --- Outcomes ---------------------------------------------------------------
 
 ROOT = Path(__file__).resolve().parent.parent
+from tools import ports  # noqa: E402
 from tools.outcome_codes import (  # noqa: E402,F401  (re-exported: the one table, read from ACL2's book)
     EXIT, EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_USAGE, OUTCOME_BOOK,
     outcome_codes, outcome_name)
@@ -1051,24 +1052,14 @@ def environment(extra=None, *, stack=True):
     return env
 
 
-_PORTS_GIVEN = set()
-_PORTS_LOCK = threading.Lock()
-
-
 def free_port():
-    """A loopback port nothing held a moment ago, and none this process
-    already handed out: the kernel gives the same ephemeral port to two
-    probes that close before anything binds it, and a node whose [listener]
-    port equals its tls_port is an invalid configuration
-    (fn-ncfg-tls-port-okp)."""
-    while True:
-        with socket.socket() as probe:
-            probe.bind(("127.0.0.1", 0))
-            port = probe.getsockname()[1]
-        with _PORTS_LOCK:
-            if port not in _PORTS_GIVEN:
-                _PORTS_GIVEN.add(port)
-                return port
+    """A loopback port for a node's listener that no other caller of
+    tools/ports.py on the box holds and the kernel never assigns: below the
+    ephemeral range, locked for this process's life (NATIVE-HARNESS-PORT-RACE;
+    a probed bind(0) port could be taken by any socket before the node bound
+    it).  Never one this process already handed out, so a node's [listener]
+    port and its tls_port differ (fn-ncfg-tls-port-okp)."""
+    return ports.reserve()
 
 
 def run(argv, *, env=None, timeout=180, cwd=None, stdin=None, input=None, text=False):

@@ -320,9 +320,8 @@ def make_template(image, tdir):
                           env=env, capture_output=True, text=True, timeout=900)
     if "accepted operator init" not in init.stdout + init.stderr:
         raise SystemExit("init refused: " + (init.stdout + init.stderr)[-600:])
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
+    from tools import ports  # NATIVE-HARNESS-PORT-RACE
+    port = ports.reserve()
     config.write_text(config.read_text().replace("port = 1\n", "port = %d\n" % port))
     _decide(image, config, env)
     err = open(tdir / "owner.stderr", "wb")
@@ -362,9 +361,8 @@ def run_cell(image, readers, run_index, workdir, mode="stats", label=None, templ
         exe = launcher(image, workdir, mode)
     else:
         exe = str(image)
-    with socket.socket() as probe:
-        probe.bind(("127.0.0.1", 0))
-        port = probe.getsockname()[1]
+    from tools import ports  # NATIVE-HARNESS-PORT-RACE
+    port = ports.reserve()
     config = workdir / "fn.toml"
     config.write_text('[store]\npath = "%s"\n[listener]\nhost = "127.0.0.1"\nport = %d\n'
                       '[control]\npath = "%s"\n' % (workdir / "store", port, workdir / "c.sock"))
