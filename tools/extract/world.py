@@ -101,6 +101,10 @@ EPILOGUE = ("(assert-event (equal (len (global-val 'include-book-alist (w state)
 # ld'd alone into a session over the umbrella (coverage.py dump, proof_repl
 # start cov books/image-world) it assigns them itself, so the closure check
 # at its end has its reference (coverage-crawler's ask, 2026-09-29).
+# The carried rows' owed writers, checked once every host file is loaded
+# (books/def-carried.lisp def-carried-host-check), as the image drivers do.
+CARRIED_HOST_CHECK = "(def-carried-host-check)"
+
 HOST_PROLOGUE = (
     "(if (boundp-global 'fn-image-world-books state)",
     "    (value :fn-image-world-prologue-already-run)",
@@ -316,6 +320,7 @@ def render(variant="default"):
             + '(in-package "ACL2")\n'
             + "".join(line + "\n" for line in HOST_PROLOGUE)
             + "".join('(ld "../../%s" :ld-error-action :error)\n' % h for h in hosts)
+            + CARRIED_HOST_CHECK + "\n"
             + "".join(line + "\n" for line in EPILOGUE))
     world = world.replace("from host/native/build.lisp:", "from " + build + ":")
     host = host.replace("from host/native/build.lisp:", "from " + build + ":")
