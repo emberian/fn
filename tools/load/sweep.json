@@ -181,6 +181,24 @@
           "key": "f3",
           "cell": "F3",
           "timeout": 14400
+        },
+        {
+          "key": "f4",
+          "cell": "F4",
+          "timeout": 7200,
+          "image": "fn-host-developer"
+        },
+        {
+          "key": "f4r",
+          "cell": "F4R",
+          "timeout": 7200,
+          "image": "fn-host-developer"
+        },
+        {
+          "key": "f1",
+          "cell": "F1",
+          "timeout": 7200,
+          "image": "fn-host-developer"
         }
       ]
     }
