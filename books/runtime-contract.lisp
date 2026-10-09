@@ -71,6 +71,10 @@
 ; deadline (a :timer) followed by a cancel bounds how long any action pins its
 ; slot and its buffer.
 ;
+; Hands are exempt: an instance may have a :hand outstanding per buffer it
+; hands (the owner hands acknowledgements to many posters), and a :hand cannot
+; be cancelled (the host completes it at once).
+;
 ; v1 limitation: one outstanding action per (kind id inc), so an instance cannot
 ; keep two :pread in flight (no double-buffered reads).  Revisit when a
 ; measured served path needs it: cold ARTICLE of a multi-extent article whose
@@ -563,6 +567,8 @@
                      (<= 1 (nfix (fn-rtc-get 3 o)))
                      (< (nfix (fn-rtc-get 3 o)) (fn-rtc-nslots (fn-rtc-config s)))
                      (not (equal (fn-rtc-get 3 o) (fn-rtc-get 1 o)))
+                     (implies (< (fn-rtc-nstatic (fn-rtc-config s)) (nfix (fn-rtc-get 1 o)))
+                              (<= (nfix (fn-rtc-get 3 o)) (fn-rtc-nstatic (fn-rtc-config s))))
                      (fn-rtc-holds-p h (fn-rtc-b-gen b) (fn-rtc-uses s))))
                (otherwise t))
              (fn-rtc-pool-okp (+ 1 h) (cdr pool) s)))
@@ -638,8 +644,9 @@
   (declare (xargs :guard t))
   (if (consp uses)
       (and (fn-rtc-use-okp (car uses) s)
-           (not (fn-rtc-kind-out-p (fn-rtc-get 0 (car uses)) (fn-rtc-get 1 (car uses))
-                                   (fn-rtc-get 2 (car uses)) (cdr uses)))
+           (or (eq (fn-rtc-get 0 (car uses)) :hand)
+               (not (fn-rtc-kind-out-p (fn-rtc-get 0 (car uses)) (fn-rtc-get 1 (car uses))
+                                       (fn-rtc-get 2 (car uses)) (cdr uses))))
            (not (fn-rtc-op-used-p (fn-rtc-get 3 (car uses)) (cdr uses)))
            (fn-rtc-uses-okp (cdr uses) s))
     (null uses)))
@@ -730,6 +737,9 @@
     (cond ((eq tag :failed)
            (if (member-eq n *fn-rtc-failure-reasons*) o '(:failed :other)))
           ((not (member-eq tag '(:done :short))) o)
+          ;; a hand completes (:done 0) or not at all
+          ((member-eq kind *fn-rtc-hand-kinds*)
+           (if (and (eq tag :done) (equal n 0)) o '(:failed :malformed-completion)))
           ((member-eq kind *fn-rtc-in-kinds*)
            (if (and (natp n)
                     (<= n (fn-rtc-h-len hd))
@@ -841,11 +851,13 @@
 ; Requests from one instance (ID INC)
 
 ; The cost model: one table probe or update is 1, one octet written is 1, and
-; a scan of the outstanding-use table is charged at its bound, one use per
-; (slot, kind) (`fn-rtc-uses-okp' keeps keys distinct and current).
+; a scan of the outstanding-use table is charged at its bound: one use per
+; (slot, kind), plus the :hand uses, which are not one per kind but each hold
+; a buffer of their own, so at most one per buffer (`fn-rtc-uses-okp' keeps
+; keys distinct and current, an :in or :hand lease exclusive).
 (defun fn-rtc-use-bound (cfg)
   (declare (xargs :guard t))
-  (* (fn-rtc-nslots cfg) (len *fn-rtc-kinds*)))
+  (+ (* (fn-rtc-nslots cfg) (len *fn-rtc-kinds*)) (fn-rtc-nbufs cfg)))
 
 (defun fn-rtc-buffered-kind-p (kind)
   (declare (xargs :guard t))
@@ -934,13 +946,18 @@
                     (fn-rtc-cap (fn-rtc-config s)))))))))
 
 ; A hand's extra arguments name its target (to tinc): an instance slot other
-; than the sender's.  Its liveness is checked when the hand completes.
+; than the sender's, and a static one when the sender is not static, so that
+; connections pass octets only through the owner and a connection's hand
+; never learns whether another connection is live.  The target's liveness is
+; checked when the hand completes.
 (defun fn-rtc-hand-target-okp (extra id s)
   (declare (xargs :guard t))
-  (let ((to (fn-rtc-get 0 extra)) (tinc (fn-rtc-get 1 extra)))
+  (let ((to (fn-rtc-get 0 extra)) (tinc (fn-rtc-get 1 extra))
+        (ns (fn-rtc-nstatic (fn-rtc-config s))))
     (and (natp to) (natp tinc)
          (<= 1 to) (< to (fn-rtc-nslots (fn-rtc-config s)))
-         (not (equal to (nfix id))))))
+         (not (equal to (nfix id)))
+         (implies (< ns (nfix id)) (<= to ns)))))
 
 (defun fn-rtc-req-submit (r id inc s)
   (declare (xargs :guard t))
@@ -952,7 +969,7 @@
                 (fn-rtc-live-p id inc s)
                 (fn-rtc-extrap extra)
                 (implies (eq kind :hand) (fn-rtc-hand-target-okp extra id s))
-                (not (fn-rtc-kind-out-p kind id inc (fn-rtc-uses s)))))
+                (or (eq kind :hand) (not (fn-rtc-kind-out-p kind id inc (fn-rtc-uses s))))))
       (mv s nil (list r) cost))
      ((not (fn-rtc-buffered-kind-p kind))
       (if (null hd)
@@ -1005,6 +1022,7 @@
   (declare (xargs :guard t))
   (let ((kind (fn-rtc-get 1 r)))
     (if (and (member-eq kind *fn-rtc-machine-kinds*)
+             (not (eq kind :hand))
              (fn-rtc-current-p id inc s)
              (fn-rtc-kind-out-p kind id inc (fn-rtc-uses s)))
         (mv s (list (list :cancel id inc (fn-rtc-kind-op kind id inc (fn-rtc-uses s)) (list kind)))
@@ -1251,9 +1269,11 @@
           (let* ((h (fn-rtc-h-buf (fn-rtc-u-hd u))) (b (fn-rtc-buffer h s))
                  (o (fn-rtc-b-owner b)) (to (nfix (fn-rtc-get 3 o))) (tinc (fn-rtc-get 4 o))
                  (hd2 (list h (+ 1 (fn-rtc-b-gen b)) 0 (len (fn-rtc-b-bytes b)))))
+            ;; the sender may have been draining and is retired now
             (mv-let (s2 acts refused c)
               (fn-rtc-deliver s1 to tinc (fn-rtc-ev :handed out to tinc (list id inc hd2)) q)
-              (mv s2 acts refused (+ base c)))))
+              (mv-let (s3 acts2) (fn-rtc-rearm s2)
+                (mv s3 (append acts acts2) refused (+ base c))))))
          ((eq kind :accept)
           (mv-let (s2 acts refused c) (fn-rtc-accept-branch s1 out q)
             (mv s2 acts refused (+ base (nfix c)))))
@@ -1428,9 +1448,10 @@
            (fn-rtc-find-use (fn-rtc-key e) uses)))
 
 
+; Held by outstanding uses: leased, or handed (a hand's use holds it).
 (defun fn-rtc-leasedp (h s)
   (declare (xargs :guard t))
-  (eq (fn-rtc-get 0 (fn-rtc-b-owner (fn-rtc-buffer h s))) :leased))
+  (and (member-eq (fn-rtc-get 0 (fn-rtc-b-owner (fn-rtc-buffer h s))) '(:leased :handed)) t))
 
 (defthm fn-rtc-buffer-of-with
   (and (equal (fn-rtc-buffer h (fn-rtc-with-buffer k b s))
