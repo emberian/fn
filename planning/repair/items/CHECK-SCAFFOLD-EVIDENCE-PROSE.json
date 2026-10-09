@@ -1,0 +1,12 @@
+{
+ "detail": "check_scaffold.evidence calls (ROOT / path).exists() on each evidence entry; an entry like 'tests/acl2/reclaim-chunked-walk-tests.lisp (the owner fixture store ...)' raises OSError ENAMETOOLONG and the tool exits 'malformed scaffold' before any other check. Measured at dev: 709 rows, 7,346 entries; 440 rows cite something that is not a tracked file (prose, or reports under planning/evidence/ that left the tree, which D71 allows); 3 rows hold a string, not a list. make check (not check-fast, not a train gate) is red on it. The repair is the lists, rewritten through ledger.py --repoint (lane/b-ledger-evidence), and check_scaffold reporting a non-path entry as a finding instead of crashing.",
+ "file": "tools/check_scaffold.py",
+ "id": "CHECK-SCAFFOLD-EVIDENCE-PROSE",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "medium",
+ "source": "check_scaffold at dev 5f09a03e3 (Builder B seat 5, 2026-10-09)",
+ "state": "open",
+ "title": "make check's check_scaffold crashes on a proofs.json evidence entry that is prose, not a path",
+ "updated": "2026-10-09T20:12:47Z"
+}
