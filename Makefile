@@ -891,6 +891,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/arena-forget-tests \
 	books/arena-forget-columns \
 	books/owner-reclaim-seal \
+	books/owner-reclaim-retained \
 	books/reclaim-chunked-walk \
 	books/reclaim-chunked-seal \
 	books/catalog-may-seal \
