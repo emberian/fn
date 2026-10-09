@@ -55,8 +55,8 @@
 (defun fn-dss-fx-dot-final (s)
   (declare (xargs :guard (unsigned-byte-p 1 s)))
   (if (eql s 0)
-      (mv 3 (+ 46 (* 256 13) (* 65536 10)))
-    (mv 5 (+ 13 (* 256 10) (* 65536 46) (* 16777216 13) (* 4294967296 10)))))
+      (mv 0 3 (+ 46 (* 256 13) (* 65536 10)) 0)
+    (mv 0 5 (+ 13 (* 256 10) (* 65536 46) (* 16777216 13) (* 4294967296 10)) 0)))
 
 (def-span-scan fn-dss-fx-dot-stuff ()
   :shape :stream
@@ -71,7 +71,8 @@
 ; :stream --- command-line framing into a workspace of at most LIMIT octets.
 ; S is 2N + CR: N octets emitted, CR set when a CR is held back.  LF yields
 ; the line (a held CR is the terminator's and is dropped); a held CR followed
-; by anything else is emitted; a line that would pass LIMIT is refused.
+; by anything else is emitted; a line that would pass LIMIT is refused, the
+; octet unconsumed.  At the end of input an unterminated line is refused.
 (defun fn-dss-fx-line-step (limit s o)
   (declare (xargs :guard (and (unsigned-byte-p 59 limit) (unsigned-byte-p 59 s)
                               (fn-cbor-octetp o))))
@@ -91,7 +92,7 @@
   :shape :stream
   :state-type (unsigned-byte 59)
   :step (fn-dss-fx-line-step limit s o)
-  :final (mv 0 0)
+  :final (mv s 0 0 (if (eql s 0) 0 2))
   :emit-max 2
   :final-max 0
   :cost-max 1
@@ -128,11 +129,30 @@
                  (mv (+ 3 (* 262144 len)) 0 0 1)
                (mv (+ 2 (* 4 r) (* 262144 len)) 0 0 0)))))))
 
+; At the end of input a field begun and not finished (phase 1 or 2) is
+; refused; between fields the stream is done.
+(defun fn-dss-fx-field-final (s)
+  (declare (xargs :guard (unsigned-byte-p 34 s)))
+  (let ((phase (logand (nfix s) 3)))
+    (mv s 0 0 (if (or (eql phase 1) (eql phase 2)) 2 0))))
+
 (def-span-scan fn-dss-fx-field ()
   :shape :stream
   :state-type (unsigned-byte 34)
   :step (fn-dss-fx-field-step s o)
-  :final (mv 0 0)
+  :final (fn-dss-fx-field-final s)
   :emit-max 0
+  :final-max 0
+  :cost-max 1)
+
+; Hygiene (review F3 of 07d0c6686): a context formal named S2, the name a
+; generated local once had.  Its drive must keep the caller's S2 on every
+; resume: with S2 = 1 every step emits 65.
+(def-span-scan fn-dss-fx-context-s2 (s2)
+  :shape :stream
+  :state-type (unsigned-byte 1)
+  :step (mv 0 1 (if (eql s2 1) 65 66) 1)
+  :final (mv s 0 0 0)
+  :emit-max 1
   :final-max 0
   :cost-max 1)
