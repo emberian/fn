@@ -16280,7 +16280,7 @@
    "statement_digest": "1e2113a692f097a2f90ec77c7e647a0c905f020140e40eaa18a2d9e5fcfed4bc"
   },
   {
-   "book_digest": "a6961ba948462e0e0c925385c5680e604bc26e2fd6c48803f67ced3452d82b2d",
+   "book_digest": "a3c8ffeb2e9e0a9bd5d189c969b587ea37ee8de4fd9e0004ae07e6e6a4b3ed93",
    "bounds": [],
    "claim_digest": "c9568cf4fd23199717ce5e09d7b001508df7cae802bbb6f01a19b92d904065e3",
    "class": "generated",
@@ -16294,6 +16294,25 @@
     "lemma": 0,
     "logical": 1,
     "reachable": 2
+   },
+   "subject": "fn-orcs-predict-rows-at",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "a3c8ffeb2e9e0a9bd5d189c969b587ea37ee8de4fd9e0004ae07e6e6a4b3ed93",
+   "bounds": [],
+   "claim_digest": "55437a36a64c1590159edf24646c7e0299e349e2535fde32454f5ad452dd7712",
+   "class": "generated",
+   "mutations": "edits:1",
+   "name": "fn-orcs-predict-rows-at-refines-the-replay",
+   "owed_met": null,
+   "owner_book": "tests/acl2/store-checkpoint-fold-tests.lisp",
+   "registry": false,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 4
    },
    "subject": "fn-orcs-predict-rows-at",
    "witness": "executable"
@@ -24254,7 +24273,7 @@
   },
   {
    "book": "books/store-checkpoint-fold.lisp",
-   "book_digest": "a6961ba948462e0e0c925385c5680e604bc26e2fd6c48803f67ced3452d82b2d",
+   "book_digest": "a3c8ffeb2e9e0a9bd5d189c969b587ea37ee8de4fd9e0004ae07e6e6a4b3ed93",
    "bounds": [],
    "claim_digest": "64e014adbc0503762c716c25096ab139976f2820a4dbdb3e231ba13e70b2c8ba",
    "class": "generated",
@@ -24284,7 +24303,7 @@
   },
   {
    "book": "books/store-checkpoint-arena-writer.lisp",
-   "book_digest": "a6961ba948462e0e0c925385c5680e604bc26e2fd6c48803f67ced3452d82b2d",
+   "book_digest": "a3c8ffeb2e9e0a9bd5d189c969b587ea37ee8de4fd9e0004ae07e6e6a4b3ed93",
    "bounds": [],
    "claim_digest": "5fe573196377bfee83d413e3116e5842140831c472ab631868f7f7cca950619d",
    "class": "generated",
@@ -24314,7 +24333,7 @@
   },
   {
    "book": "books/store-checkpoint-arena.lisp",
-   "book_digest": "a6961ba948462e0e0c925385c5680e604bc26e2fd6c48803f67ced3452d82b2d",
+   "book_digest": "a3c8ffeb2e9e0a9bd5d189c969b587ea37ee8de4fd9e0004ae07e6e6a4b3ed93",
    "bounds": [],
    "claim_digest": "be6b6bafef1b6f31616bde12b561de8a3726ae405e56104bfe6fc9c160056fb9",
    "class": "generated",

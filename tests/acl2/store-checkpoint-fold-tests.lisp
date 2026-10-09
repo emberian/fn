@@ -28,6 +28,7 @@
 (include-book "../../books/defkeystone")
 (include-book "../../books/reclaim-chunked-walk")
 (include-book "../../books/owner-reclaim-seal")
+(include-book "../../books/owner-reclaim-retained")
 
 (defconst *scft-principal* (make-list 32 :initial-element 7))
 (defconst *scft-keys1*
@@ -546,3 +547,112 @@
 
 (defteeth-check (fn-scka-next-checkpoint-is-capture fn-rcw-canon-acc-steps-is-the-checkpoint-capture
                  fn-scka-fold-at-is-the-ssr-step))
+
+; --- 9. the retained-rows bridge (books/owner-reclaim-retained.lisp) ----------
+
+; A list rendering of a row's wire form over an arena given as a list: what
+; fn-rows-wire-of reads of the arena is its length and its elements.
+(defun scft-orcr-rows-wire (rows a)
+  (declare (xargs :verify-guards nil))
+  (if (atom rows)
+      nil
+    (cons (let ((row (car rows)))
+            (cond ((fn-held-p row)
+                   (fn-held-wire row (if (and (natp (fn-record-payload row))
+                                              (< (fn-record-payload row) (len a)))
+                                         (nth (fn-record-payload row) a)
+                                       nil)))
+                  ((fn-hstxa-p row) (fn-hstxa-stxa row))
+                  (t row)))
+          (scft-orcr-rows-wire (cdr rows) a))))
+
+(defthm scft-orcr-rows-wire-is
+  (equal (fn-rows-wire-of rows a) (scft-orcr-rows-wire rows a))
+  :hints (("Goal" :in-theory (enable fn-row-wire-of fn-row-bytes))))
+
+; The claim's conclusion, run on the live arena: the replay arena is a list,
+; and the predicted payloads are sealed into the live arena last.
+(defun scft-orcr-conclusion (rows id r0 fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let* ((w (fn-rows-wire-of rows fn-arena))
+         (p (fn-orcs-predict-rows-at rows id (fn-arena-count fn-arena)))
+         (f (fn-scka-intern-at w id (len r0)))
+         (replay-ok (equal (scft-orcr-rows-wire f (append r0 (fn-scka-payloads w))) w))
+         (contexts-ok (equal (fn-orcr-contexts p) (fn-orcr-contexts f))))
+    (let ((fn-arena (fn-orcs-seal (fn-orcs-payloads rows) fn-arena)))
+      (mv (and (equal (fn-rows-wire-of p fn-arena) w) replay-ok contexts-ok)
+          fn-arena))))
+
+; The rotation log's replay rows, kept as the reclaim input: article A
+; retained (held at handle 0, generation 1, its bytes in the live arena),
+; B rewritten to a plain record (interned at handle 1, generation 2).
+(defconst *scft-orcr-rows*
+  (list *scft-enroll* (nth 1 *scft-canon*) *scft-rotate* *scft-b*))
+; A retained after a keyring rotation recontexted it at generation 2, as
+; fn-sn-set-keyring does: a replay decides generation 1 for A.
+(defconst *scft-orcr-recontexted*
+  (list *scft-enroll*
+        (fn-held-with-context (nth 1 *scft-canon*) (fn-held-context (nth 3 *scft-canon*)))
+        *scft-rotate* *scft-b*))
+; A retained with a handle the live arena does not hold: its bytes read as
+; none before the seal and as B's after it.
+(make-event `(defconst *scft-orcr-seed1*
+               ',(fn-ssr-seed (fn-replay-identity-loop (list *scft-enroll*) *scft-id0*))))
+(defconst *scft-orcr-dangling*
+  (list *scft-enroll*
+        (fn-held-with-context (fn-intern-row-at *scft-a* nil 0 1)
+                              (fn-held-context-of nil (fn-ssr-at 1 *scft-orcr-seed1*)
+                                                  (fn-ssr-at 2 *scft-orcr-seed1*)))
+        *scft-rotate* *scft-b*))
+
+(defteeth fn-orcs-predict-rows-at-refines-the-replay
+  :subject fn-orcs-predict-rows-at
+  :claim
+  (((handles (fn-rows-handles-inp rows fn-arena))
+    (composites (fn-rows-composites-okp rows fn-arena))
+    (fold-contexts (fn-orcr-fold-contexts-okp rows id (fn-arena-count fn-arena) fn-arena))
+    (replays (not (equal (fn-scka-intern-at (fn-rows-wire-of rows fn-arena) id (len r0))
+                         :bad))))
+   (and (equal (fn-rows-wire-of (fn-orcs-predict-rows-at rows id (fn-arena-count fn-arena))
+                                (fn-orcs-seal (fn-orcs-payloads rows) fn-arena))
+               (fn-rows-wire-of rows fn-arena))
+        (equal (fn-rows-wire-of (fn-scka-intern-at (fn-rows-wire-of rows fn-arena) id
+                                                   (len r0))
+                                (append r0 (fn-scka-payloads
+                                            (fn-rows-wire-of rows fn-arena))))
+               (fn-rows-wire-of rows fn-arena))
+        (equal (fn-orcr-contexts (fn-orcs-predict-rows-at rows id
+                                                          (fn-arena-count fn-arena)))
+               (fn-orcr-contexts (fn-scka-intern-at (fn-rows-wire-of rows fn-arena) id
+                                                    (len r0))))))
+  :witness ((rows *scft-orcr-rows*) (id *scft-id0*) (r0 nil)
+            (live (list (fn-record-payload *scft-a*))))
+  :stobjs ((fn-arena (sckat-seal-all live fn-arena)))
+  :stobj-checks
+  (((and (equal (fn-rows-wire-of (fn-orcs-predict-rows-at rows id (fn-arena-count fn-arena))
+                                 (fn-orcs-seal (fn-orcs-payloads rows) fn-arena))
+                (fn-rows-wire-of rows fn-arena))
+         (equal (fn-rows-wire-of (fn-scka-intern-at (fn-rows-wire-of rows fn-arena) id
+                                                    (len r0))
+                                 (append r0 (fn-scka-payloads
+                                             (fn-rows-wire-of rows fn-arena))))
+                (fn-rows-wire-of rows fn-arena))
+         (equal (fn-orcr-contexts (fn-orcs-predict-rows-at rows id
+                                                           (fn-arena-count fn-arena)))
+                (fn-orcr-contexts (fn-scka-intern-at (fn-rows-wire-of rows fn-arena) id
+                                                     (len r0)))))
+    (scft-orcr-conclusion rows id r0 fn-arena)
+    :hints (("Goal" :in-theory '(scft-orcr-conclusion scft-orcr-rows-wire-is)))))
+  :breaks
+  ((handles ((rows *scft-orcr-dangling*)))
+   (composites ((rows *scft-composite-log*) (live nil)))
+   (fold-contexts ((rows *scft-orcr-recontexted*)))
+   (replays ((rows (list *scft-a*)) (live nil))))
+  :mutations
+  ((nil-zero-replay
+    (:conclusion (equal (fn-orcr-contexts (fn-orcs-predict-rows-at rows id
+                                                                   (fn-arena-count fn-arena)))
+                        (fn-orcr-contexts (scft-nil0-rows (fn-rows-wire-of rows fn-arena)))))
+    () :fault "The restart interns every row at keyring NIL and generation 0, as the capture did before s-capture-intern.")))
+
+(defteeth-check (fn-orcs-predict-rows-at-refines-the-replay))
