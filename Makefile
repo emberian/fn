@@ -234,7 +234,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-private-frame \
 	tests/acl2/consumer-account-config-row-carry-tests \
 	tests/acl2/consumer-account-private-frame-tests \
-	books/admission-authority-install-plan \
 	books/history-preparation-page-ready \
 	books/snapshot-row-source-remap \
 	books/history-census-controller \
@@ -2507,8 +2506,6 @@ ACL2_BOOKS ?= books/defrecord \
     books/post-identity-source-cursor-source-body \
     books/post-identity-source-cursor-source-complete \
     books/public-exposure-selectors \
-    books/query-payload-byte-boundary \
-    books/query-payload-length-boundary \
     books/query-payload-scalar \
     books/query-payload-state \
     tests/acl2/bpsec-operation-tests \
