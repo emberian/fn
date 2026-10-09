@@ -1,16 +1,18 @@
 {
- "id": "OWNER-RECLAIM-PREDICT-FOLD-CONTEXT",
  "category": "proofs",
- "owner": "deputy-S",
- "severity": "high",
- "slice": "storage",
- "source": "lane s-capture-intern (follow-up of OWNER-CAPTURE-NIL0-INTERN)",
- "state": "open",
- "title": "The reclaim swap predicts the rewritten rows at one keyring and generation, not in the fold context a replay of the rewritten history uses",
+ "id": "OWNER-RECLAIM-PREDICT-FOLD-CONTEXT",
  "notes": [
   "Class: the same as OWNER-CAPTURE-NIL0-INTERN. books/owner-reclaim-seal.lisp fn-orcs-predict-rows interns every wire record of the rewritten history at the single KEYRING and GENERATION it is handed (fn-orcs-held-of), and fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open / fn-orcp-rebuild-is-the-full-open take those predicted rows as the history the full open (fn-ock-recover-full) replays. A restart replays the rewritten history through fn-ssr-intern-step, which freezes the keyring and generation in force before each row (books/store-checkpoint-fold.lisp). After a keyring rotation the two differ for the articles before the rotation or after it.",
   "Evidence: tests/acl2/store-checkpoint-fold-tests.lisp, the assert-event on fn-orcs-predict-rows: on the log enroll, article A, rotate, article B no single (keyring, generation) pair gives the replay's rows (not at nil/0, not at the rotated keyring/2).",
   "Fix shape: fn-orcs-predict-rows over the rewritten wire rows becomes fn-scka-fold-at from the seed of the base identity (fn-scka-intern-at), carried per chunk like fn-rcw-canon-acc-step; fn-rcw-predict-acc-step carries the identity in the accumulator already (fn-sco-at 3 acc); the seal quantum must intern the same rows. Needs the Ruling 22 package (ownership-reclamation).",
-  "Not verified here: whether the live swap passes the store's current keyring/generation or nil/0 (host/owner-host.lisp near 5619); either way the rows are single-context."
- ]
+  "Not verified here: whether the live swap passes the store's current keyring/generation or nil/0 (host/owner-host.lisp near 5619); either way the rows are single-context.",
+  "10-09 08:49 2026-10-09 builder-B: predictor carries the fold identity (fn-orcs-predict-rows-at); 4 critical keystones restated, package emitted by keystone_critical.py --declare. Finding: the defect has no served observable (pass 3 rewrites only tombstoned records, unserved after expiry); the keystone protects internal consistency after restart. Host test reads held-row verdicts through the developer inspection FN_NATIVE_TEST_HELD_VERDICTS_FILE: PASS on the lane image (hbox:/tank/fn/scratch/b-reclaim-real/native-real-c1b5c376e, recovery 16 OK) and FAILS on the old single-pair predictor with the same inspection (hbox:/tank/fn/scratch/b-reclaim-oldpred/native-oldpred-449121e19: the tombstone's verdict generation 2 after the swap, 1 after restart)."
+ ],
+ "owner": "builder-B",
+ "severity": "high",
+ "slice": "storage",
+ "source": "lane s-capture-intern (follow-up of OWNER-CAPTURE-NIL0-INTERN)",
+ "state": "landed",
+ "title": "The reclaim swap predicts the rewritten rows at one keyring and generation, not in the fold context a replay of the rewritten history uses",
+ "updated": "2026-10-09T12:49:06Z"
 }
