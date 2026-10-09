@@ -1361,6 +1361,98 @@
    "policy": {
     "exposure-connections": 64
    }
+  },
+  "owner-per-record-gcp": {
+   "about": "owner-per-record's W1 fill with a candidate collector policy (planning/evidence/load/hooks/m34-gc-policy.lisp): a full collection whenever the dynamic usage passes 1.25 times the live usage at the last full collection plus twice the trigger. Builder M, memory landing 3+4: whether that policy holds the resident set to the equation's collector term, and what its pauses cost.",
+   "preset": "filled",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "census": true,
+   "gc_policy": {
+    "rho_percent": 25
+   },
+   "phases": [
+    {
+     "name": "rest-0",
+     "kind": "idle",
+     "seconds": 10
+    },
+    {
+     "name": "census-0",
+     "kind": "census"
+    },
+    {
+     "name": "fill-1k",
+     "kind": "post",
+     "count": 1000,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "rest-1k",
+     "kind": "idle",
+     "seconds": 10
+    },
+    {
+     "name": "census-1k",
+     "kind": "census"
+    },
+    {
+     "name": "fill-4k",
+     "kind": "post",
+     "count": 3000,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "rest-4k",
+     "kind": "idle",
+     "seconds": 10
+    },
+    {
+     "name": "census-4k",
+     "kind": "census"
+    },
+    {
+     "name": "fill-16k",
+     "kind": "post",
+     "count": 12000,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "rest-16k",
+     "kind": "idle",
+     "seconds": 10
+    },
+    {
+     "name": "census-16k",
+     "kind": "census"
+    },
+    {
+     "name": "idle-connections",
+     "kind": "hold",
+     "steps": [
+      8,
+      24
+     ],
+     "step_settle_s": 2,
+     "close": true
+    },
+    {
+     "name": "rest-conn",
+     "kind": "idle",
+     "seconds": 10,
+     "measure": true
+    }
+   ],
+   "policy": {
+    "exposure-connections": 64
+   }
   }
  },
  "cells": {
@@ -1400,7 +1492,8 @@
   "W7": "extent-cache",
   "F4R": "fault-index-saturation-reopen",
   "M-OWNER": "owner-per-record",
-  "M-OWNER-WIDE": "owner-per-record-wide"
+  "M-OWNER-WIDE": "owner-per-record-wide",
+  "M-OWNER-GCP": "owner-per-record-gcp"
  },
  "stores": {
   "1k": 1000,

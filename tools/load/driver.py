@@ -56,6 +56,7 @@ HOOKS = ROOT / "planning" / "evidence" / "load" / "hooks"
 HOOK = HOOKS / "w13-idle-gc.lisp"
 CENSUS_HOOK = HOOKS / "w15-census.lisp"
 ROOTS_HOOK = HOOKS / "m34-roots.lisp"   # what holds the large arrays a census finds live (memory landing 3+4)
+GC_POLICY_HOOK = HOOKS / "m34-gc-policy.lisp"   # a candidate collector policy, measured (memory landing 3+4)
 LOCKS_HOOK = HOOKS / "w2-lockwait.lisp"
 SPROF_HOOK = HOOKS / "w6-prof.lisp"
 FIXTURES = "/tank/fn/scratch/fixtures-0b4d3b183"
@@ -969,6 +970,8 @@ class Run:
         keep = Path(self.args.out) / ("census-%s.txt" % re.sub(r"[^A-Za-z0-9]+", "_", "%s-%s" % (self.cell_id, ph.get("name", "census"))))
         shutil.copy(d / "census.txt", keep) if (d / "census.txt").exists() else None
         err = (d / "census.err").read_text() if (d / "census.err").exists() else None
+        if (d / "gc-policy.log").exists():
+            shutil.copy(d / "gc-policy.log", Path(self.args.out) / ("gc-policy-%s.log" % re.sub(r"[^A-Za-z0-9]+", "_", self.cell_id)))
         return {"census_file": keep.name, "census": cells_mod.parse_census((d / "census.txt").read_text("utf-8", "replace"))
                 if (d / "census.txt").exists() else None, "census_error": err, "census_s": round(time.monotonic() - t0, 1)}
 
@@ -1341,6 +1344,9 @@ def cell_hooks(spec, work, arm=None, gc_hook=False):
         env_extra["FN_LOAD_CENSUS_DIR"] = str(work / "census")
         if spec.get("roots"):
             hooks.append(ROOTS_HOOK)
+        if spec.get("gc_policy"):
+            hooks.append(GC_POLICY_HOOK)
+            env_extra["FN_LOAD_GC_RHO"] = str(spec["gc_policy"].get("rho_percent", 25))
     if spec.get("lockwait"):
         hooks.append(LOCKS_HOOK)
         env_extra["FN_LOAD_LOCKS"] = str(work / "locks.log")

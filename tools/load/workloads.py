@@ -67,6 +67,8 @@ def validate(data):
             raise WorkloadError("%s: unknown preset %r" % (name, w.get("preset")))
         if not w.get("phases"):
             raise WorkloadError("%s: no phases" % name)
+        if "gc_policy" in w and not (isinstance(w["gc_policy"], dict) and w.get("census") is True):
+            raise WorkloadError("%s: gc_policy is an object and needs census (its hook writes to the census directory)" % name)
         if "roots" in w and not (w["roots"] is True and w.get("census") is True):
             raise WorkloadError("%s: roots needs census (its hook polls the census directory)" % name)
         if "lockwait" in w and not isinstance(w["lockwait"], bool):
