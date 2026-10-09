@@ -58,7 +58,9 @@
 ;            Before each octet the output must have room for EMIT-MAX more
 ;            octets under CAP, else the call stops with :need-output.  At END
 ;            the call answers :need-input, or, when LAST, writes FINAL's
-;            (mv K W) (K <= FINAL-MAX <= 7) and answers :done.  The result is
+;            (mv K W) (K <= FINAL-MAX <= 7) and answers :done.  A call whose
+;            output room is below max(EMIT-MAX, FINAL-MAX) answers :no-room at
+;            entry, consuming nothing (A-HOST-ROOM).  The result is
 ;            (mv SIGNAL S' I' fn-dss-out).  The state S is one value of the
 ;            instance's STATE-TYPE: the transducer's whole workspace.
 ;
@@ -82,18 +84,32 @@
 ;   guards        verified, with I and END (unsigned-byte 59) fixnums declared
 ;                 in the loop and END within the buffer.
 ;
-; :stream additionally exports the PARTITION property, NAME-DRIVE-IS-ITEMS:
-; NAME-ITEMS is the logical stream of one pass over an octet list (the
-; emitted octets with :yield marking each yield, and the final status and
-; state); NAME-DRIVE runs the list model the way a host drives the stobj loop
-; -- input split into any list of PIECES, resumed after every :yield and
-; :need-output with the rest of the piece, the next piece after :need-input,
-; LAST given with the final piece only, each call's output room any value of
-; the schedule ROOMS raised to the progress floor (max EMIT-MAX FINAL-MAX) --
-; and the theorem says every such run yields NAME-ITEMS of the concatenated
-; input: any permitted split of the input gives the same logical stream and
-; final state.  With NAME-IS-LIST (each stobj call is the list model on the
-; octets it consumes) this is the property of the stobj loop.
+; :stream additionally exports the PARTITION property of the stobj loop,
+; NAME-DRIVE-STOBJ-IS-ITEMS.  NAME-ITEMS is the logical stream of one pass over
+; an octet list (the emitted octets with :yield marking each yield, and the
+; final status and state).  NAME-HOST-RUN is the host loop over the stobj
+; calls: the input split into any list of PIECES, each loaded whole into the
+; input buffer; a call at the returned cursor after every :yield and
+; :need-output, the next piece after :need-input; LAST with the final piece
+; only; each call offered the next room of the schedule ROOMS on a cleared
+; output; FUEL calls at most.  Under A-HOST-ROOM and FUEL at least one call per
+; consumed octet, per piece and one more, the run's status, final state and
+; stream equal NAME-ITEMS of the concatenated input: any permitted split gives
+; the same logical stream and final state.  A call offered less room than
+; max(EMIT-MAX, FINAL-MAX) answers :no-room before reading anything.
+; NAME-DRIVE-IS-ITEMS is the same property of the list model alone.
+
+; Named assumptions, recorded per instance in the world table
+; `fn-dss-assumptions' (a tool reads the world, not this comment):
+;
+;   A-BODY-COST   an instance that gives no :cost term charges its body the
+;                 constant :cost-max; that the compiled body does at most that
+;                 much work is then an assumption, discharged per instance by
+;                 the disassembly evidence of the landing that ships it.
+;   A-HOST-ROOM   (`fn-dss-a-host-room') every :stream call is offered at least
+;                 max(EMIT-MAX, FINAL-MAX) octets of output room.  A call
+;                 offered less answers :no-room and consumes and writes
+;                 nothing; NAME-DRIVE-STOBJ-IS-ITEMS has it as a hypothesis.
 ;
 ; Not here: a CRLF index (`:lines') is built only where a consumer needs random
 ; access; it is not a shape until one does.  A transducer whose workspace is
@@ -484,8 +500,14 @@
          (<= (nfix (fn-dss-st-fcost s)) (fn-dss-st-fcmax)))
     :rule-classes nil))
 
+; The room every call must be offered, A-HOST-ROOM: enough for one step's
+; output and for the final.  A call offered less is refused by name,
+; :no-room, and consumes and writes nothing.
+(defun fn-dss-floor ()
+  (max (nfix (fn-dss-st-emax)) (nfix (fn-dss-st-fmax))))
+
 ; The stobj loop.
-(defun fn-dss-stream (s i end last cap fn-octets fn-dss-out)
+(defun fn-dss-stream-loop (s i end last cap fn-octets fn-dss-out)
   (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil
                   :measure (nfix (- (nfix end) (nfix i)))
                   :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
@@ -500,7 +522,7 @@
                                                       fn-dss-out)))
               (if (eql sig 1)
                   (mv :yield (fn-dss-st-next s o) (+ 1 i) fn-dss-out)
-                (fn-dss-stream (fn-dss-st-next s o) (+ 1 i) end last cap
+                (fn-dss-stream-loop (fn-dss-st-next s o) (+ 1 i) end last cap
                                fn-octets fn-dss-out))))))
     (if last
         (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) (fn-dss-st-fmax))
@@ -510,10 +532,17 @@
             (mv :done s i fn-dss-out)))
       (mv :need-input s i fn-dss-out))))
 
+; One call: the room check at entry, then the loop.
+(defun fn-dss-stream (s i end last cap fn-octets fn-dss-out)
+  (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
+  (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) (fn-dss-floor))
+      (mv :no-room s i fn-dss-out)
+    (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)))
+
 ; The list model of one call: XS the octets from I to END, ROOM the output
 ; room (- CAP (len out)).  Answers (mv SIGNAL S' OUTS N): the octets written
 ; and the number consumed.
-(defun fn-dss-stream-list (s xs last room)
+(defun fn-dss-stream-list-loop (s xs last room)
   (declare (xargs :measure (len xs) :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
   (if (consp xs)
       (if (< (nfix room) (fn-dss-st-emax))
@@ -526,7 +555,7 @@
               (if (eql sig 1)
                   (mv :yield (fn-dss-st-next s o) ws 1)
                 (mv-let (r s2 outs n)
-                  (fn-dss-stream-list (fn-dss-st-next s o) (cdr xs) last
+                  (fn-dss-stream-list-loop (fn-dss-st-next s o) (cdr xs) last
                                       (- (nfix room) (nfix (fn-dss-st-k s o))))
                   (mv r s2 (append ws outs) (+ 1 n))))))))
     (if last
@@ -534,6 +563,11 @@
             (mv :need-output s nil 0)
           (mv :done s (fn-oct-word-octets (fn-dss-st-fw s) (fn-dss-st-fk s)) 0))
       (mv :need-input s nil 0))))
+
+(defun fn-dss-stream-list (s xs last room)
+  (if (< (nfix room) (fn-dss-floor))
+      (mv :no-room s nil 0)
+    (fn-dss-stream-list-loop s xs last room)))
 
 ; The logical stream of one pass, with no output bound: the emitted octets,
 ; :yield after each yielding octet's output, and the status and state.
@@ -557,9 +591,6 @@
       (append (car pieces) (fn-dss-flatten (cdr pieces)))
     nil))
 
-(defun fn-dss-floor ()
-  (max (fn-dss-st-emax) (fn-dss-st-fmax)))
-
 (defun fn-dss-sum-lens (pieces)
   (if (consp pieces)
       (+ (len (car pieces)) (fn-dss-sum-lens (cdr pieces)))
@@ -567,10 +598,17 @@
 
 ; What one call consumes: a count within its input.  The drive's measure
 ; rests on it, here and in every instance (by `:functional-instance').
+(defthm fn-dss-stream-list-loop-consumed
+  (let ((n (mv-nth 3 (fn-dss-stream-list-loop s xs last room))))
+    (and (natp n) (<= n (len xs))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-dss-stream-list-loop s xs last room))))
+
 (defthm fn-dss-stream-list-consumed
   (let ((n (mv-nth 3 (fn-dss-stream-list s xs last room))))
     (and (natp n) (<= n (len xs))))
-  :rule-classes nil)
+  :rule-classes nil
+  :hints (("Goal" :use fn-dss-stream-list-loop-consumed)))
 
 (defthm fn-dss-len-nthcdr
   (implies (and (natp n) (<= n (len xs)))
@@ -635,6 +673,72 @@
   (equal (fn-dss-drive s pieces last rooms)
          (fn-dss-stream-items s (fn-dss-flatten pieces) last)))
 
+; A-HOST-ROOM, the host's contract: each of the first FUEL calls is offered
+; at least FLOOR octets of output room (the host sends and clears the output
+; before the next call).  A call offered less is refused by name (:no-room)
+; and consumes nothing, so the theorem below is not made true by a host that
+; never makes room: it is a hypothesis, stated, and a host that breaks it sees
+; :no-room.
+(defun fn-dss-a-host-room (floor rooms fuel)
+  (if (zp fuel)
+      t
+    (and (consp rooms)
+         (<= (nfix floor) (nfix (car rooms)))
+         (fn-dss-a-host-room floor (cdr rooms) (1- fuel)))))
+
+; The calls a run needs: one per consumed octet, one per piece, one to end.
+(defun fn-dss-calls-bound (pieces)
+  (+ 1 (len pieces) (fn-dss-sum-lens pieces)))
+
+; The host loop over the stobj calls: the current piece is the input buffer's
+; whole content, I the cursor in it; each call is offered the next room of
+; ROOMS on a cleared output, whose octets the host then takes as sent; after
+; :yield or :need-output the host calls again at the returned cursor, after
+; :need-input it loads the next piece at cursor 0, and LAST is given with the
+; final piece only.  FUEL bounds the calls; the run ends :fuel when it is out.
+(defun fn-dss-host (s pieces i last rooms fuel fn-octets fn-dss-out)
+  (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil
+                  :measure (nfix fuel)))
+  (if (zp fuel)
+      (mv :fuel s nil fn-octets fn-dss-out)
+    (let* ((fn-dss-out (fn-dss-out-clear fn-dss-out))
+           (lastp (and last (atom (cdr pieces))))
+           (cap (nfix (if (consp rooms) (car rooms) 0))))
+      (mv-let (r s2 i2 fn-dss-out)
+        (fn-dss-stream s i (fn-octets-len fn-octets) lastp cap fn-octets fn-dss-out)
+        (let ((outs (fn-dss-out-list fn-dss-out)))
+          (cond ((or (eq r :refused) (eq r :done) (eq r :no-room))
+                 (mv r s2 outs fn-octets fn-dss-out))
+                ((eq r :need-input)
+                 (if (consp (cdr pieces))
+                     (let ((fn-octets (fn-octets-from-list (cadr pieces) fn-octets)))
+                       (mv-let (r3 s3 items fn-octets fn-dss-out)
+                         (fn-dss-host s2 (cdr pieces) 0 last (cdr rooms) (1- fuel)
+                                      fn-octets fn-dss-out)
+                         (mv r3 s3 (append outs items) fn-octets fn-dss-out)))
+                   (mv r s2 outs fn-octets fn-dss-out)))
+                (t
+                 (mv-let (r3 s3 items fn-octets fn-dss-out)
+                   (fn-dss-host s2 pieces i2 last (cdr rooms) (1- fuel) fn-octets fn-dss-out)
+                   (mv r3 s3 (append outs (if (eq r :yield) (cons :yield items) items))
+                       fn-octets fn-dss-out)))))))))
+
+(defun fn-dss-host-run (s pieces last rooms fuel fn-octets fn-dss-out)
+  (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
+  (let ((fn-octets (fn-octets-from-list (if (consp pieces) (car pieces) nil) fn-octets)))
+    (fn-dss-host s pieces 0 last rooms fuel fn-octets fn-dss-out)))
+
+; The partition property of the stobj loop: under A-HOST-ROOM and enough
+; fuel, every split of the input and every room schedule yields the one-pass
+; logical stream and final state.
+(defthm fn-dss-drive-stobj-is-items
+  (implies (and (true-list-listp pieces)
+                (<= (fn-dss-calls-bound pieces) (nfix fuel))
+                (fn-dss-a-host-room (fn-dss-floor) rooms fuel))
+           (let ((run (fn-dss-host-run s pieces last rooms fuel fn-octets fn-dss-out)))
+             (equal (list (mv-nth 0 run) (mv-nth 1 run) (mv-nth 2 run))
+                    (fn-dss-stream-items s (fn-dss-flatten pieces) last)))))
+
 (defthm fn-dss-stream-writes
   (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
                 (<= (len fn-dss-out) cap)
@@ -654,7 +758,7 @@
 
 (defthm fn-dss-stream-progress
   (implies (and (natp i) (natp end) (< i end) (natp cap)
-                (<= (+ (len fn-dss-out) (fn-dss-st-emax)) cap))
+                (<= (+ (len fn-dss-out) (fn-dss-floor)) cap))
            (mv-let (r s2 i2 out2) (fn-dss-stream s i end last cap fn-octets fn-dss-out)
              (declare (ignore s2 out2))
              (or (equal r :refused) (< i i2)))))
@@ -1119,7 +1223,13 @@
                                   cost cost-max final-cost final-cost-max guard guard-hints
                                   constraint-hints wrld)
   (declare (xargs :mode :program))
-  (let* ((lst (fn-dss-name (list name "-LIST") name))
+  (let* ((loopn (fn-dss-name (list name "-LOOP") name))
+         (lst (fn-dss-name (list name "-LIST") name))
+         (lstl (fn-dss-name (list name "-LIST-LOOP") name))
+         (host (fn-dss-name (list name "-HOST") name))
+         (run (fn-dss-name (list name "-HOST-RUN") name))
+         (spart (fn-dss-name (list name "-DRIVE-STOBJ-IS-ITEMS") name))
+         (floor (max emit-max final-max))
          (items (fn-dss-name (list name "-ITEMS") name))
          (drive (fn-dss-name (list name "-DRIVE") name))
          (work (fn-dss-name (list name "-WORK") name))
@@ -1139,15 +1249,23 @@
                  (fn-dss-st-fw (lambda (s) (mv-nth 1 ,final)))
                  (fn-dss-st-emax (lambda () ,emit-max))
                  (fn-dss-st-fmax (lambda () ,final-max))))
-         (ssubst `(,@core
+         (lsubst `((fn-dss-floor (lambda () ,floor))
+                   (fn-dss-stream-list (lambda (s xs last room) (,lst ,@ctx s xs last room)))
+                   (fn-dss-stream-list-loop (lambda (s xs last room) (,lstl ,@ctx s xs last room)))))
+         (ssubst `(,@core ,@lsubst
                    (fn-dss-stream (lambda (s i end last cap fn-octets fn-dss-out)
                                     (,name ,@ctx s i end last cap fn-octets fn-dss-out)))
-                   (fn-dss-stream-list (lambda (s xs last room) (,lst ,@ctx s xs last room)))))
-         (isubst `(,@core
-                   (fn-dss-stream-list (lambda (s xs last room) (,lst ,@ctx s xs last room)))
+                   (fn-dss-stream-loop (lambda (s i end last cap fn-octets fn-dss-out)
+                                         (,loopn ,@ctx s i end last cap fn-octets fn-dss-out)))))
+         (hsubst `(,@ssubst
                    (fn-dss-stream-items (lambda (s xs last) (,items ,@ctx s xs last)))
-                   (fn-dss-drive (lambda (s pieces last rooms) (,drive ,@ctx s pieces last rooms)))
-                   (fn-dss-floor (lambda () (max ,emit-max ,final-max)))))
+                   (fn-dss-host (lambda (s pieces i last rooms fuel fn-octets fn-dss-out)
+                                  (,host ,@ctx s pieces i last rooms fuel fn-octets fn-dss-out)))
+                   (fn-dss-host-run (lambda (s pieces last rooms fuel fn-octets fn-dss-out)
+                                      (,run ,@ctx s pieces last rooms fuel fn-octets fn-dss-out)))))
+         (isubst `(,@core ,@lsubst
+                   (fn-dss-stream-items (lambda (s xs last) (,items ,@ctx s xs last)))
+                   (fn-dss-drive (lambda (s pieces last rooms) (,drive ,@ctx s pieces last rooms)))))
          (wsubst `(,@core
                    (fn-dss-st-cost (lambda (s ,elt) ,cost))
                    (fn-dss-st-cmax (lambda () ,cost-max))
@@ -1175,7 +1293,7 @@
       ,(fn-dss-contract cc `(and (natp ,cost-max) (<= (nfix ,cost) ,cost-max)
                                  (natp ,final-cost-max) (<= (nfix ,final-cost) ,final-cost-max))
                         constraint-hints)
-      (defun ,name (,@ctx s i end last cap fn-octets fn-dss-out)
+      (defun ,loopn (,@ctx s i end last cap fn-octets fn-dss-out)
         (declare (xargs :stobjs (fn-octets fn-dss-out)
                         :guard ,(fn-dss-and guard `(and ,*fn-dss-span-guard* (natp cap)
                                                        (unsigned-byte-p 59 cap)))
@@ -1194,7 +1312,7 @@
                     (let ((fn-dss-out (fn-dss-out-append-word dss-w dss-k fn-dss-out)))
                       (if (eql dss-sig 1)
                           (mv :yield dss-s2 (+ 1 i) fn-dss-out)
-                        (,name ,@ctx dss-s2 (+ 1 i) end last cap fn-octets fn-dss-out)))))))
+                        (,loopn ,@ctx dss-s2 (+ 1 i) end last cap fn-octets fn-dss-out)))))))
           (if last
               (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) ,final-max)
                   (mv :need-output s i fn-dss-out)
@@ -1202,7 +1320,17 @@
                   (let ((fn-dss-out (fn-dss-out-append-word dss-w dss-k fn-dss-out)))
                     (mv :done s i fn-dss-out))))
             (mv :need-input s i fn-dss-out))))
-      (defun ,lst (,@ctx s xs last room)
+      (defun ,name (,@ctx s i end last cap fn-octets fn-dss-out)
+        (declare (xargs :stobjs (fn-octets fn-dss-out)
+                        :guard ,(fn-dss-and guard `(and ,*fn-dss-span-guard* (natp cap)
+                                                       (unsigned-byte-p 59 cap)))
+                        :verify-guards nil)
+                 (type ,state-type s)
+                 (type (unsigned-byte 59) i end cap))
+        (if (< (nfix (- cap (fn-dss-out-len fn-dss-out))) ,floor)
+            (mv :no-room s i fn-dss-out)
+          (,loopn ,@ctx s i end last cap fn-octets fn-dss-out)))
+      (defun ,lstl (,@ctx s xs last room)
         (declare (xargs :verify-guards nil :measure (len xs)
                         :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
         (if (consp xs)
@@ -1215,7 +1343,7 @@
                     (if (eql dss-sig 1)
                         (mv :yield dss-s2 (fn-oct-word-octets dss-w dss-k) 1)
                       (mv-let (dss-r s2 dss-outs dss-n)
-                        (,lst ,@ctx dss-s2 (cdr xs) last (- (nfix room) (nfix dss-k)))
+                        (,lstl ,@ctx dss-s2 (cdr xs) last (- (nfix room) (nfix dss-k)))
                         (mv dss-r s2 (append (fn-oct-word-octets dss-w dss-k) dss-outs)
                             (+ 1 dss-n))))))))
           (if last
@@ -1224,6 +1352,11 @@
                 (mv-let (dss-k dss-w) ,final
                   (mv :done s (fn-oct-word-octets dss-w dss-k) 0)))
             (mv :need-input s nil 0))))
+      (defun ,lst (,@ctx s xs last room)
+        (declare (xargs :verify-guards nil))
+        (if (< (nfix room) ,floor)
+            (mv :no-room s nil 0)
+          (,lstl ,@ctx s xs last room)))
       (defun ,items (,@ctx s xs last)
         (declare (xargs :verify-guards nil :measure (len xs)
                         :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
@@ -1245,17 +1378,15 @@
                         :hints (("Goal" :use (,usc
                                               (:instance
                                                (:functional-instance
-                                                fn-dss-stream-list-consumed ,@core
-                                                (fn-dss-stream-list
-                                                 (lambda (s xs last room) (,lst ,@ctx s xs last room))))
+                                                fn-dss-stream-list-consumed ,@core ,@lsubst)
                                                (xs (if (consp pieces) (car pieces) nil))
                                                (last (and last (atom (cdr pieces))))
-                                               (room (max (max ,emit-max ,final-max)
+                                               (room (max ,floor
                                                           (nfix (if (consp rooms) (car rooms) 0))))))
                                  :in-theory (e/d (fn-dss-len-nthcdr) (,lst nthcdr))))))
         (let* ((xs (if (consp pieces) (car pieces) nil))
                (dss-lastp (and last (atom (cdr pieces))))
-               (dss-room (max (max ,emit-max ,final-max) (nfix (if (consp rooms) (car rooms) 0)))))
+               (dss-room (max ,floor (nfix (if (consp rooms) (car rooms) 0)))))
           (mv-let (dss-r s2 dss-outs dss-n) (,lst ,@ctx s xs dss-lastp dss-room)
             (cond ((or (eq dss-r :refused) (eq dss-r :done))
                    (mv dss-r s2 dss-outs))
@@ -1271,6 +1402,38 @@
                      (mv r3 s3 (append dss-outs (if (eq dss-r :yield)
                                                     (cons :yield dss-items)
                                                   dss-items)))))))))
+      (defun ,host (,@ctx s pieces i last rooms fuel fn-octets fn-dss-out)
+        (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil
+                        :measure (nfix fuel)))
+        (if (zp fuel)
+            (mv :fuel s nil fn-octets fn-dss-out)
+          (let* ((fn-dss-out (fn-dss-out-clear fn-dss-out))
+                 (dss-lastp (and last (atom (cdr pieces))))
+                 (cap (nfix (if (consp rooms) (car rooms) 0))))
+            (mv-let (dss-r s2 i2 fn-dss-out)
+              (,name ,@ctx s i (fn-octets-len fn-octets) dss-lastp cap fn-octets fn-dss-out)
+              (let ((dss-outs (fn-dss-out-list fn-dss-out)))
+                (cond ((or (eq dss-r :refused) (eq dss-r :done) (eq dss-r :no-room))
+                       (mv dss-r s2 dss-outs fn-octets fn-dss-out))
+                      ((eq dss-r :need-input)
+                       (if (consp (cdr pieces))
+                           (let ((fn-octets (fn-octets-from-list (cadr pieces) fn-octets)))
+                             (mv-let (r3 s3 dss-items fn-octets fn-dss-out)
+                               (,host ,@ctx s2 (cdr pieces) 0 last (cdr rooms) (1- fuel)
+                                      fn-octets fn-dss-out)
+                               (mv r3 s3 (append dss-outs dss-items) fn-octets fn-dss-out)))
+                         (mv dss-r s2 dss-outs fn-octets fn-dss-out)))
+                      (t
+                       (mv-let (r3 s3 dss-items fn-octets fn-dss-out)
+                         (,host ,@ctx s2 pieces i2 last (cdr rooms) (1- fuel) fn-octets fn-dss-out)
+                         (mv r3 s3 (append dss-outs (if (eq dss-r :yield)
+                                                        (cons :yield dss-items)
+                                                      dss-items))
+                             fn-octets fn-dss-out)))))))))
+      (defun ,run (,@ctx s pieces last rooms fuel fn-octets fn-dss-out)
+        (declare (xargs :stobjs (fn-octets fn-dss-out) :verify-guards nil))
+        (let ((fn-octets (fn-octets-from-list (if (consp pieces) (car pieces) nil) fn-octets)))
+          (,host ,@ctx s pieces 0 last rooms fuel fn-octets fn-dss-out)))
       (defun ,work (,@ctx s i end last room fn-octets)
         (declare (xargs :stobjs fn-octets :verify-guards nil
                         :measure (nfix (- (nfix end) (nfix i)))
@@ -1295,14 +1458,23 @@
                                 (nfix (- cap (len fn-dss-out))))
                           (mv dss-r s2 (+ i dss-n) (append fn-dss-out dss-outs)))))
         :hints (("Goal" :use (,usc (:functional-instance fn-dss-stream-is-list ,@ssubst))
-                 :in-theory ,(fn-dss-defs-theory (list name lst)))
+                 :in-theory ,(fn-dss-defs-theory (list name loopn lst lstl)))
 ))
       (defthm ,part
         (equal (,drive ,@ctx s pieces last rooms)
                (,items ,@ctx s (fn-dss-flatten pieces) last))
         :hints (("Goal" :use (,usc (:functional-instance fn-dss-drive-is-items ,@isubst))
-                 :in-theory ,(fn-dss-defs-theory (list drive items lst)))
+                 :in-theory ,(fn-dss-defs-theory (list drive items lst lstl)))
 ))
+      (defthm ,spart
+        (implies (and (true-list-listp pieces)
+                      (<= (fn-dss-calls-bound pieces) (nfix fuel))
+                      (fn-dss-a-host-room ,floor rooms fuel))
+                 (let ((dss-run (,run ,@ctx s pieces last rooms fuel fn-octets fn-dss-out)))
+                   (equal (list (mv-nth 0 dss-run) (mv-nth 1 dss-run) (mv-nth 2 dss-run))
+                          (,items ,@ctx s (fn-dss-flatten pieces) last))))
+        :hints (("Goal" :use (,usc (:functional-instance fn-dss-drive-stobj-is-items ,@hsubst))
+                 :in-theory ,(fn-dss-defs-theory (list name loopn lst lstl items host run)))))
       (defthm ,writes
         (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
                       (<= (len fn-dss-out) cap)
@@ -1314,7 +1486,7 @@
                         (<= i i2)
                         (or (<= i2 end) (equal i2 i)))))
         :hints (("Goal" :use (,usc (:functional-instance fn-dss-stream-writes ,@ssubst))
-                 :in-theory ,(fn-dss-defs-theory (list name lst)))
+                 :in-theory ,(fn-dss-defs-theory (list name loopn lst lstl)))
 ))
       (defthm ,ty
         (implies (and ,statep (natp i)
@@ -1325,16 +1497,16 @@
         :hints (("Goal" :use (,usc ,(fn-dss-use-contract stc elt)
                               (:functional-instance fn-dss-stream-state-type
                                 (fn-dss-st-statep (lambda (s) ,statep)) ,@ssubst))
-                 :in-theory ,(fn-dss-defs-theory (list name lst)))
+                 :in-theory ,(fn-dss-defs-theory (list name loopn lst lstl)))
 ))
       (defthm ,prog
         (implies (and (natp i) (natp end) (< i end) (natp cap)
-                      (<= (+ (len fn-dss-out) ,emit-max) cap))
+                      (<= (+ (len fn-dss-out) ,floor) cap))
                  (mv-let (dss-r s2 i2 out2) (,name ,@ctx s i end last cap fn-octets fn-dss-out)
                    (declare (ignore s2 out2))
                    (or (equal dss-r :refused) (< i i2))))
         :hints (("Goal" :use (,usc (:functional-instance fn-dss-stream-progress ,@ssubst))
-                 :in-theory ,(fn-dss-defs-theory (list name lst)))
+                 :in-theory ,(fn-dss-defs-theory (list name loopn lst lstl)))
 ))
       (defthm ,wb
         (<= (,work ,@ctx s i end last room fn-octets)
@@ -1348,7 +1520,8 @@
         :hints ,(or guard-hints
                     `(("Goal" :in-theory (enable ,@(fn-dss-guard-theory))))))
       (table fn-generated ',name
-             '(:def-span-scan :shape :stream :list ,lst :items ,items :drive ,drive
+             '(:def-span-scan :shape :stream :loop ,loopn :list ,lst :items ,items :drive ,drive
+                              :host ,host :partition-stobj ,spart :assumes (:a-host-room)
                               :work ,work :bridge ,bridge :partition ,part
                               :c0 (+ 1 ,final-cost-max) :c1 (+ 1 ,cost-max)
                               :writes (+ (* ,emit-max (- i2 i)) ,final-max)
@@ -1394,6 +1567,10 @@
         (value
          `(encapsulate
             ()
+            (local (set-irrelevant-formals-ok t))
+            (table fn-dss-assumptions ',name
+                   ',(append (and (null cost) '(:a-body-cost))
+                             (and (eq shape :stream) '(:a-host-room))))
             ,@(case shape
                 (:find (fn-dss-find-events name ctx elt body (or cost cost-max) cost-max
                                            guard guard-hints constraint-hints))

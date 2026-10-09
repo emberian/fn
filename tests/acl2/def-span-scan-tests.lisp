@@ -4,6 +4,7 @@
 ; dot-stuff a reply body, and frame a command line.
 (in-package "ACL2")
 (include-book "../../books/def-span-scan")
+(local (include-book "arithmetic/top" :dir :system))
 
 ; :find --- the first octet equal to B.
 (def-span-scan fn-dss-fx-find-byte (b)
@@ -95,3 +96,43 @@
   :final-max 0
   :cost-max 1
   :guard (unsigned-byte-p 59 limit))
+
+; :stream --- a length-prefixed field: two octets of big-endian length, then
+; that many octets, no output.  S packs PHASE (2 bits: 0/3 expecting the high
+; length octet, 1 the low one, 2 inside the field, 3 field complete), REM (16
+; bits, octets still to come) and LEN (16 bits, the field's length).  The step
+; yields at the field's last octet (or at the low length octet of an empty
+; field); the host then has the field as the span [I' - LEN, I') of the input,
+; LEN = (fn-dss-fx-field-len S'), by arithmetic: no octet of it is copied.
+(defun fn-dss-fx-field-len (s)
+  (declare (xargs :guard (natp s)))
+  (logand (ash (nfix s) -18) 65535))
+
+(defun fn-dss-fx-field-step (s o)
+  (declare (xargs :guard (and (unsigned-byte-p 34 s) (fn-cbor-octetp o))))
+  (let* ((s (nfix s))
+         (o (logand (ifix o) 255))
+         (phase (logand s 3))
+         (rem (logand (ash s -2) 65535))
+         (len (fn-dss-fx-field-len s)))
+    (cond ((or (eql phase 0) (eql phase 3))
+           (mv (+ 1 (* 262144 (* 256 o))) 0 0 0))
+          ((eql phase 1)
+           (let ((n (logand (+ len o) 65535)))
+             (if (eql n 0)
+                 (mv 3 0 0 1)
+               (mv (+ 2 (* 4 n) (* 262144 n)) 0 0 0))))
+          (t
+           (let ((r (if (< 0 rem) (- rem 1) 0)))
+             (if (eql r 0)
+                 (mv (+ 3 (* 262144 len)) 0 0 1)
+               (mv (+ 2 (* 4 r) (* 262144 len)) 0 0 0)))))))
+
+(def-span-scan fn-dss-fx-field ()
+  :shape :stream
+  :state-type (unsigned-byte 34)
+  :step (fn-dss-fx-field-step s o)
+  :final (mv 0 0)
+  :emit-max 0
+  :final-max 0
+  :cost-max 1)
