@@ -19,13 +19,13 @@ marker and zero executed cases each FAIL with a named reason.  Steps:
   2. transcripts: every case transcripts.py lists (its manifest.json),
      through IMAGE's and fn-core's `--fn model', byte-identical;
   2b. rtc-exercise: the runtime contract's multi-instance exercise
-     (`--fn rtc-exercise run 0..3', host/native/rtc-exercise.lisp): two
+     (`--fn rtc-exercise run 0..4', host/native/rtc-exercise.lisp): two
      interleaved connections over the executable layer and its array-backed
      pool; the image exits 0 (invariant, :out octets stable, no unmatched
      completion changed the state at any step), steps 10 and 12 discard
-     stale completions, three injected host faults are reported by both
-     sides (exit 4: :moved, :invp-violated, :moved), and fn-core's lines are
-     the image's bytes;
+     stale completions, four injected host faults are reported by both
+     sides (exit 4: :moved, :invp-violated, :moved, :moved), and fn-core's
+     lines are the image's bytes;
   3. probes: the boundary probes through both sides, every probe identical;
   3b. obligations: X1's O2 and O3 (EXTRACTION-PROGRAM-20261007.md section 7) through
       both sides (obligations.py): every extracted global, every ACL2 state global
@@ -282,11 +282,12 @@ class Gate:
         fn-rce-exercise).  Variant 0: the image exits 0 (every step kept the
         invariant and the outstanding :out octets, no unmatched completion
         changed the state), steps 10 and 12 discard stale completions, and
-        the core's lines are the image's bytes.  Variants 1-3 inject a host
+        the core's lines are the image's bytes.  Variants 1-4 inject a host
         fault (a write into an :out-leased buffer, that buffer freed under its
-        lease, the write followed by the send's own completion): both sides
-        exit 4 (fault) with the step reported :moved, :invp-violated, :moved,
-        line for line identical."""
+        lease, the write followed by the send's own completion, the lease
+        redirected to another instance): both sides exit 4 (fault) with the
+        step reported :moved, :invp-violated, :moved, :moved, line for line
+        identical."""
         self.step = "rtc-exercise"
         d = self.c / "cmp"
         d.mkdir(exist_ok=True)
@@ -303,7 +304,7 @@ class Gate:
             self.fail("rtc-exercise: discarded steps %s, not [10, 12]" % discarded)
         self.core_same("rtc-exercise", [self.core_exe, "--fn", "rtc-exercise", "run", "0"],
                        a, d / "rtc-exercise.core.err")
-        for variant, mark in (("1", ":moved"), ("2", ":invp-violated"), ("3", ":moved")):
+        for variant, mark in (("1", ":moved"), ("2", ":invp-violated"), ("3", ":moved"), ("4", ":moved")):
             f = d / ("rtc-exercise-fault-%s.sbcl" % variant)
             rc = self.run("image rtc-exercise fault " + variant,
                           [self.image, "--fn", "rtc-exercise", "run", variant],
@@ -323,7 +324,7 @@ class Gate:
                 self.fail("rtc-exercise fault %s: the core's reply differs from the image's (%s against %s)"
                           % (variant, g, f))
         print("rtc-exercise: 17 steps, invariant held, stale completions 10 and 12 discarded; "
-              "the three injected faults reported; core identical")
+              "the four injected faults reported; core identical")
 
     def probes(self):
         self.step = "probes"

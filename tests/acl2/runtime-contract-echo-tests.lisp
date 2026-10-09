@@ -72,3 +72,8 @@
 ; The close with the resent rest outstanding drains slot 1; that send's
 ; completion retires it and re-arms admission.
 (assert! (equal (fn-rtc-get 2 (nth 16 *rce-obs*)) '((:accept 0 0 15 (nil)))))
+; Redirecting that buffer's lease to another instance keeps the invariant
+; but is not a landing: reported :moved (the cross-review's case).
+(defconst *rce-redirected* (rce-run-variant 4))
+(assert! (equal (fn-rtc-get 5 (nth 4 *rce-redirected*)) :moved))
+(assert! (equal (fn-rtc-get 4 (nth 4 *rce-redirected*)) :invp))

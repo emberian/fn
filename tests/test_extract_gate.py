@@ -58,7 +58,7 @@ if role == "sbcl":
         if verb == "rtc-exercise":
             # variant 0: 17 observation lines, steps 10 and 12 discard stale
             # completions; variant 1: the injected write reported, exit 4
-            if rest[1:] and rest[1] in ("1", "2", "3"):
+            if rest[1:] and rest[1] in ("1", "2", "3", "4"):
                 for i in range(4):
                     print("(%d :x nil nil :invp :stable :matched)" % i)
                 inv, stab = (":invp-violated", ":stable") if rest[1] == "2" else (":invp", ":moved")

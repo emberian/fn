@@ -33,7 +33,9 @@
 ; BORROWED, the third ownership state, exists only inside one call: the
 ; instance machine receives `fn-rtc-borrow' of the pool, which it cannot write
 ; and in which the bytes of every :in-leased buffer are hidden, so no machine
-; observes bytes a worker may be writing.  The executable pool's read export
+; observes bytes a worker may be writing.  It is in-flight-write isolation, not
+; confidentiality: every other buffer's octets (another instance's workspace,
+; an :out lease, a :free buffer's last octets) are in the view.  The executable pool's read export
 ; refuses an :in-leased buffer, which is what this view models.
 ;
 ; A completion that matches no outstanding use -- a duplicate, a forgery, a late

@@ -1,6 +1,14 @@
 ; fn: the echo machine, the runtime contract's first instance: each
 ; connection receives into a leased buffer, sends the octets back from the
 ; same buffer, and keeps one receive pending while a send is outstanding.
+;
+; Scope of the instance's keystones: the echo never commits (its observer is
+; constantly false), so its instance of the commit keystone holds vacuously;
+; the commit point's non-vacuous instance is landing 2's transaction machine.
+; The borrow view gives in-flight-write isolation (no machine reads an
+; :in-leased buffer), not confidentiality between instances: a machine can
+; read every other buffer's octets, free ones included; the echo reads only
+; owners and generations.
 (in-package "ACL2")
 (include-book "runtime-contract-layer")
 ;; Octets one receive asks for; buffers a receive's search examines, at most
@@ -167,6 +175,18 @@
         (fn-rtc-st-splice (fn-rtc-h-buf (fn-rtc-u-hd u)) (fn-rtc-h-off (fn-rtc-u-hd u)) data fn-rtc-st)
       fn-rtc-st)))
 
+;; The host's half changed nothing but octets of :in-leased buffers: the
+;; tables are as they were and the pools agree off the :in leases (what
+;; `fn-rtc-landing-is-hidden' proves a landing does).
+(defun fn-rce-landing-only-p (s0 s1)
+  (declare (xargs :guard t))
+  (and (equal (fn-rtc-config s1) (fn-rtc-config s0))
+       (equal (fn-rtc-slots s1) (fn-rtc-slots s0))
+       (equal (fn-rtc-uses s1) (fn-rtc-uses s0))
+       (equal (fn-rtc-mstates s1) (fn-rtc-mstates s0))
+       (equal (fn-rtc-next-op s1) (fn-rtc-next-op s0))
+       (fn-rtc-pools-agree-off-in-leases-p (fn-rtc-pool s0) (fn-rtc-pool s1))))
+
 ;; X is an element of L.
 (defun fn-rce-in-p (x l)
   (declare (xargs :guard t))
@@ -203,9 +223,10 @@
 ; (:fault-write E H OFF DATA) / (:fault-meta E H GEN OWNER) before E.  Its
 ; observation (i kind acts refused INV STAB MATCH): INV is :invp when the
 ; invariant holds of the state read back after the host's half and after the
-; step; STAB is :stable when the host's half moved no outstanding :out use's
-; octets, the step moved none of the uses it kept, and the step ended no use
-; but the completion's own; MATCH is :matched, or :discarded for a completion
+; step; STAB is :stable when the host's half changed nothing but octets of
+; :in-leased buffers, moved no outstanding :out use's octets, the step moved
+; none of the uses it kept, and the step ended no use but the completion's
+; own; MATCH is :matched, or :discarded for a completion
 ; that matched no use and changed neither state nor actions.
 (defun fn-rce-item (i item fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st))
@@ -214,6 +235,7 @@
                        (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-st-uses fn-rtc-st))
                        t))
          (snap0 (fn-rce-out-snapshot (fn-rtc-st-uses fn-rtc-st) fn-rtc-st))
+         (s0 (fn-rtc-x-state fn-rtc-st))
          (fn-rtc-st (fn-rce-host item fn-rtc-st))
          (before (fn-rtc-x-state fn-rtc-st))
          (uses1 (fn-rtc-st-uses fn-rtc-st))
@@ -225,7 +247,8 @@
         (mv fn-rtc-st
             (list i (fn-rtc-get 0 e) acts refused
                   (if (and (fn-rcl-invp before) (fn-rcl-invp after)) :invp :invp-violated)
-                  (if (and (fn-rce-stable-p snap0 snap1)
+                  (if (and (fn-rce-landing-only-p s0 before)
+                           (fn-rce-stable-p snap0 snap1)
                            (fn-rce-stable-p snap1 (fn-rce-out-snapshot (fn-rtc-st-uses fn-rtc-st) fn-rtc-st))
                            (fn-rce-uses-kept-p (fn-rtc-key e) uses1 (fn-rtc-st-uses fn-rtc-st)))
                       :stable :moved)
@@ -282,7 +305,9 @@
 ; injection the checks must report: a host write into connection 1's
 ; :out-leased buffer with a stale completion (1, :moved), that buffer freed
 ; under its lease (2, :invp-violated), or the write followed by that send's
-; own completion (3, :moved: the host's half is checked before the step).
+; own completion (3, :moved: the host's half is checked before the step), or
+; that buffer's lease redirected to another instance (4, :moved: the host's
+; half may change only octets of :in-leased buffers).
 (defun fn-rce-exercise-items (variant)
   (declare (xargs :guard t))
   (case variant
@@ -292,6 +317,8 @@
                '((:fault-meta (:send 9 9 99 (:done 0)) 0 2 (:free)))))
     (3 (append (take 3 *fn-rce-exercise-script*)
                '((:fault-write (:send 1 1 4 (:done 5)) 0 0 (1 2 3)))))
+    (4 (append (take 3 *fn-rce-exercise-script*)
+               '((:fault-meta (:send 9 9 99 (:done 0)) 0 2 (:leased 2 1 :out)))))
     (otherwise *fn-rce-exercise-script*)))
 
 (defun fn-rce-exercise (variant fn-rtc-st)
