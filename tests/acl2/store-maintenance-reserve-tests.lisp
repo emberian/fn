@@ -96,7 +96,9 @@
 (defconst *smt-h2* 1000000)
 (assert-event (fn-bs-profile-admittedp *smt-p*))
 (defconst *smt-fig* (fn-sbud-article-figure 32768 400))
-(assert-event (equal *smt-fig* 266251))
+; The article's figure (fn-sbud-article-figure) is past the old profile's whole
+; history budget, which is why it is unaffordable at 0 below.
+(assert-event (< *smt-h* *smt-fig*))
 (assert-event (equal (fn-smr-article-verdict-at *pmt-old* 1 0 32768 400) :unaffordable))
 (defconst *smt-gate* (fn-sbud-article-gate-figure 32768 400))
 (defconst *smt-safe* (- (- *smt-h2* *smt-gate*) 4096))

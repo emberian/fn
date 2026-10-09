@@ -36,7 +36,9 @@
 
 ; One article's reserve at the small preset (fn-heap-article-reserve-octets;
 ; the packed article since lane chunked-body-2).
-(defconst *mcat-r* 107552)
+(defconst *mcat-r* (fn-heap-article-reserve-octets *fn-heap-small-profile*))
+; The articles' pool at the small preset: 32 reserves (fn-heap-articles-octets).
+(defconst *mcat-pool* (fn-heap-articles-octets *fn-heap-small-profile*))
 ; A ledger with ROOM octets free: 100 MiB of base, nothing else held.
 (defun mcat-ledger (room ops)
   (declare (xargs :mode :program))
@@ -197,7 +199,7 @@
 (assert-event (fn-mcr-fundedp *mcat-small*))
 (assert-event (equal (fn-mcr-budget *mcat-small*)
                      (fn-heap-figure-octets *fn-heap-small-profile* *mcat-core* nil)))
-(assert-event (equal (- (fn-mcr-budget *mcat-small*) (fn-mcr-total *mcat-small*)) 3441664))
+(assert-event (equal (- (fn-mcr-budget *mcat-small*) (fn-mcr-total *mcat-small*)) *mcat-pool*))
 (assert-event (equal (fn-mcr-completion *mcat-small*) (fn-mca-owner-octets *fn-heap-small-profile* nil)))
 (defun mcat-admit-n (l n r)
   (declare (xargs :mode :program))
@@ -215,20 +217,27 @@
 ; small preset the live reclaim's demand at the bounds, 358,006,784, exceeds
 ; the open's transient, 130,023,424, so the reserve is the demand; without
 ; it the reserve is the open's transient alone.
-(assert-event (equal (fn-mca-owner-octets *fn-heap-small-profile* t) 358006784))
-(assert-event (equal (fn-mca-owner-octets *fn-heap-small-profile* nil) 130023424))
+; (The demand is fn-heap-reclaim-octets, the open's transient
+; fn-heap-store-open-octets at the profile's bounds; neither figure is pinned.)
+(defconst *mcat-demand* (fn-heap-reclaim-octets *fn-heap-small-profile*))
+(defconst *mcat-open*
+  (fn-heap-store-open-octets *fn-heap-small-profile*
+                             (fn-bs-profile-max-history-octets *fn-heap-small-profile*)
+                             (fn-bs-profile-max-transactions *fn-heap-small-profile*)))
+(assert-event (< *mcat-open* *mcat-demand*))
+(assert-event (equal (fn-mca-owner-octets *fn-heap-small-profile* t) *mcat-demand*))
+(assert-event (equal (fn-mca-owner-octets *fn-heap-small-profile* nil) *mcat-open*))
 ; KEYSTONE fn-mca-roots-draw-the-reserve-and-never-the-articles at the small
 ; preset: the roots' reserve is funded whole in the ledger, drawn to the last
-; octet it leaves the pool at 3,441,664 and admitted whole, and one octet more
+; octet it leaves the pool at *mcat-pool* and admitted whole, and one octet more
 ; of root is refused by name.
 (assert-event (equal (fn-mcr-hroot *mcat-small*) (fn-heap-hroot-reserve-octets *fn-heap-small-profile*)))
 (defconst *mcat-small-roots*
   (cadr (fn-mcr-hroot-resize *mcat-small* :root-a (fn-heap-hroot-reserve-octets *fn-heap-small-profile*))))
-(assert-event (equal (- (fn-mcr-budget *mcat-small-roots*) (fn-mcr-total *mcat-small-roots*)) 3441664))
-(assert-event (equal (car (fn-mcr-resize *mcat-small-roots* :article-pool 3441664)) :ok))
+(assert-event (equal (- (fn-mcr-budget *mcat-small-roots*) (fn-mcr-total *mcat-small-roots*)) *mcat-pool*))
+(assert-event (equal (car (fn-mcr-resize *mcat-small-roots* :article-pool *mcat-pool*)) :ok))
 (assert-event (equal (fn-mcr-hroot-resize *mcat-small-roots* :root-b 1)
                      '(:refused :history-root-reserve-exhausted)))
-(assert-event (equal (fn-heap-store-open-octets *fn-heap-small-profile* 8388608 16384) 130023424))
 
 ; KEYSTONE fn-mca-served-steps-keep-pass-free (K2), with
 ; fn-mca-initial-is-pass-free: the run's ledger is pass-free, and 32 articles
@@ -260,10 +269,11 @@
 (assert-event (fn-mcr-fundedp *mcat-small-live*))
 (assert-event (equal (fn-mca-figure-octets *fn-heap-small-profile* *mcat-core* nil nil)
                      (fn-heap-figure-octets *fn-heap-small-profile* *mcat-core* nil)))
-(assert-event (equal (- (fn-mcr-budget *mcat-small-live*) (fn-mcr-budget *mcat-small*)) 227983360))
+(assert-event (equal (- (fn-mcr-budget *mcat-small-live*) (fn-mcr-budget *mcat-small*))
+                     (- *mcat-demand* *mcat-open*)))
 (assert-event (equal (- (fn-mcr-budget *mcat-small-live*) (fn-mcr-total *mcat-small-live*))
                      (- (fn-mcr-budget *mcat-small*) (fn-mcr-total *mcat-small*))))
-(assert-event (equal (fn-mcr-completion *mcat-small-live*) 358006784))
+(assert-event (equal (fn-mcr-completion *mcat-small-live*) *mcat-demand*))
 (assert-event (fn-mca-pass-free-p *mcat-small-live* *fn-heap-small-profile* t))
 (assert-event (fn-mcr-fundedp (mcat-admit-n *mcat-small-live* 32 *mcat-r*)))
 (assert-event (equal (mcat-admit-n *mcat-small-live* 33 *mcat-r*) :refused))

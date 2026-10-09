@@ -2754,6 +2754,7 @@ check-fast:
 	@$(CHECK_STEP) $(PYTHON) tools/current_view.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
 	@$(CHECK_STEP) $(PYTHON) tools/test_roots_check.py
+	@$(CHECK_STEP) $(PYTHON) tools/pinned_figures_check.py
 	@$(CHECK_STEP) $(PYTHON) tools/main_last_check.py
 	@$(CHECK_STEP) $(PYTHON) -m unittest -q tests.test_main_last_check
 	@$(CHECK_STEP) $(PYTHON) tools/lock_discipline_check.py --check --summary

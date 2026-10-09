@@ -25,16 +25,22 @@
 ; Reachable positive witnesses: the complete conclusion at each input, and
 ; the value the host sets.
 ; The F1 store: 4 x its history, under the figure's 48.75 MiB.
-(assert! (equal (fn-heap-nursery-trigger *hont-d* *hont-nursery*) 51118080))
+; The figure's trigger is books/heap-store-figure.lisp fn-heap-nursery-trigger,
+; the open's is the garbage per history octet over the history; neither is
+; pinned (D27, PINNED-FIGURES).
+(defconst *hont-trigger* (fn-heap-nursery-trigger *hont-d* *hont-nursery*))
+(defconst *hont-f1-trigger*
+  (* *fn-heap-open-garbage-per-history-octet* *hont-f1-history*))
+(assert! (< *hont-f1-trigger* *hont-trigger*))
 (assert! (equal (fn-heap-open-nursery-trigger *hont-d* *hont-nursery* *hont-f1-history*)
-                17553520))
+                *hont-f1-trigger*))
 (assert! (hont-conclusion *hont-d* *hont-nursery* *hont-f1-history*))
 ; A history past the cap (40,000 x 2 KiB, F6's): the figure's trigger.
 (assert! (equal (fn-heap-open-nursery-trigger *hont-d* *hont-nursery* 100000000)
-                51118080))
+                *hont-trigger*))
 (assert! (hont-conclusion *hont-d* *hont-nursery* 100000000))
 ; Unobserved: the figure's trigger.
-(assert! (equal (fn-heap-open-nursery-trigger *hont-d* *hont-nursery* nil) 51118080))
+(assert! (equal (fn-heap-open-nursery-trigger *hont-d* *hont-nursery* nil) *hont-trigger*))
 (assert! (hont-conclusion *hont-d* *hont-nursery* nil))
 ; A fresh store: the least trigger.
 (assert! (equal (fn-heap-open-nursery-trigger *hont-d* *hont-nursery* 1274)
