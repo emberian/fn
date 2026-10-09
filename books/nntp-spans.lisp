@@ -1685,3 +1685,27 @@
                             fn-nsp-frame-list-open fn-nsp-frame-list fn-nsp-frame-wsp fn-nsp-frame
                             fn-nsp-frame-state-of fn-wire-span-fold fn-oct-slice-list fn-oct-slice-list-is-take-nthcdr
                             fn-wire-statep fn-nsp-sl)))))
+
+; The section a valid ARTICLE/HEAD/BODY serves, at the list level: F_node's
+; section of a framed article, dot-stuffed line by line and terminated, is
+; the one-pass stream of the stuff transducer over the kind's octets (the
+; whole payload, the head before the CRLF CRLF, the body after it).  No
+; length bound: books/article-stream.lisp composes this with its windowed run.
+(defthm fn-nsp-section-stuff-of-framed
+  (implies (and (fn-octet-listp bytes) (fn-nntp-framed-of-bytes bytes)
+                (member-equal kind '(:article :head :body)))
+           (let* ((split (fn-nntp-split-article bytes))
+                  (section (fn-nntp-section-of-bytes bytes kind))
+                  (x (cond ((eq kind :article) bytes)
+                           ((eq kind :head) (fn-nntp-split-head split))
+                           (t (fn-nntp-split-body split)))))
+             (and (equal (car section) :ok)
+                  (equal (fn-nsp-stuff-items 0 x t)
+                         (list :done 0 (append (fn-nntp-stuff-lines (cadr section)) '(46 13 10)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-nsp-k4-list) (:instance fn-nsp-framed-of-bytes-is)
+                 (:instance fn-nsp-sep-iff-blank (xs bytes)))
+           :in-theory (disable fn-nsp-k4-list fn-nsp-framed-of-bytes-is fn-nntp-framed-of-bytes
+                               fn-nntp-section-of-bytes fn-nntp-split-article fn-nsp-stuff-items
+                               fn-nntp-stuff-lines fn-nntp-crlf-validp fn-nntp-blank-linep fn-nsp-sep))))
