@@ -57,6 +57,29 @@
  (assert-event (equal (in-arena-fn-rcw-srcs-steps *rpt-payloads* (reverse *rcw-c2*) nil nil)
                       *rcs-walk*)))
 
+; The rotation trace: pass 3 over two chunks split at the rotation (the first
+; ends with the article posted under keyring generation 1, the second opens
+; with the enrollment that makes generation 2) rebuilds the capture of the
+; replay's own rows, handles included; the host's tombstone rows are interned
+; at the pair in force before each record, as a restart's fold does.
+(make-event `(defconst *rcs-rotation-chunks*
+               ',(fn-rcw-predict-acc-steps (fn-rcw-acc-init *scft-cfgs*) *scft-cfgs*
+                                           (list *scft-ws* *scft-vs*) 0 nil)))
+(assert-event
+ (and (not (eq *rcs-rotation-chunks* :bad))
+      (equal (fn-rcw-acc-finish (car *rcs-rotation-chunks*))
+             (fn-sco-capture *scft-cfgs* *scft-replay*))
+      (equal (caddr *rcs-rotation-chunks*) (fn-orcs-payloads *scft-log*))
+      (equal (cadr *rcs-rotation-chunks*) 2)))
+; Teeth: a pass 3 that predicts each chunk from the initial identity forgets
+; the enrollment the first chunk made; it serves the second article at another
+; generation than the restart does.
+(assert-event
+ (not (equal (fn-sco-capture *scft-cfgs*
+                             (append (fn-orcs-predict-rows-at *scft-ws* *scft-id0* 0)
+                                     (fn-orcs-predict-rows-at *scft-vs* *scft-id0* 1)))
+             (fn-sco-capture *scft-cfgs* *scft-replay*))))
+
 ; TEETH-62 BEGIN
 ; fn-rcw-predict-acc-steps-is-predict with its teeth (TEETH CONTRACT v1).
 (defteeth fn-rcw-predict-acc-steps-is-predict
@@ -78,7 +101,20 @@
   :mutations ((handle-not-advanced
                (:conclusion (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks h0 nil))) (equal (cadr r) h0)))
                ((configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*))
-               :fault "the final handle left at the start handle")))
+               :fault "the final handle left at the start handle")
+              (chunks-reset-identity
+               (:conclusion
+                (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks h0 nil)))
+                  (equal (fn-rcw-acc-finish (car r))
+                         (fn-sco-capture
+                          configs
+                          (append (fn-orcs-predict-rows-at
+                                   (car chunks) (fn-sco-identity (fn-sco-capture configs nil)) h0)
+                                  (fn-orcs-predict-rows-at
+                                   (cadr chunks) (fn-sco-identity (fn-sco-capture configs nil))
+                                   (+ h0 (len (fn-orcs-payloads (car chunks))))))))))
+               ((configs *scft-cfgs*) (chunks (list *scft-ws* *scft-vs*)) (h0 0))
+               :fault "each chunk is predicted from the initial identity, so the second forgets the enrollment the first made")))
 
 ; Host fnn-owner-reclaim-pass / fnn-checkpoint-walk, exercised by
 ; tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available.

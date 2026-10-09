@@ -91,6 +91,12 @@
    "trace_witness": "tests/acl2/store-log-critical-teeth-tests.lisp::fn-lgu-host-kernel-acknowledges-only-recoverable-records",
    "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode"
   },
+  "fn-orcs-predict-seal-refines-intern": {
+   "subject": "fn-orcs-predict-rows-at",
+   "host_test": "tests/test_native_recovery.py::test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves",
+   "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-predict-seal-rotation",
+   "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-single-pair-predict-mutant"
+  },
   "fn-otm-held-plan-complete-only-after-the-barrier": {
    "subject": "fn-otm-held-plan",
    "host_test": "tests/test_held_commit_host.py::test_committer_plan_state_effects_and_waiter_counts",
@@ -126,6 +132,12 @@
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
    "trace_witness": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::fn-rcw-load-chunks-keyed-is-keyed-load",
    "mutation": "tests/acl2/reclaim-chunked-load-teeth-tests.lisp::missing-keyed-clear"
+  },
+  "fn-rcw-predict-acc-steps-is-predict": {
+   "subject": "fn-rcw-predict-acc-steps",
+   "host_test": "tests/test_native_recovery.py::test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves",
+   "trace_witness": "tests/acl2/reclaim-chunked-seal-tests.lisp::rcs-rotation-chunks",
+   "mutation": "tests/acl2/reclaim-chunked-seal-tests.lisp::chunks-reset-identity"
   },
   "fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open": {
    "subject": "fn-owner-orcp-rebuild",

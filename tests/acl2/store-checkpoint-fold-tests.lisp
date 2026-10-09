@@ -347,6 +347,33 @@
                       (fn-scka-intern-at rows id h)))
               () :fault "the old computation freezes every record at nil/0")))
 
+;; fn-orcs-predict-seal-refines-intern, reached on the rotation log: the host's
+; prediction names the rows the reference intern (the fold's step, the
+; replay's) returns, B at generation 2 and A at generation 1, and the seal
+; adds exactly the predicted payloads.
+(defun scft-predict-seal-rotation (rows id)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (out fn-arena)
+      (mv-let (got fn-arena) (fn-orcp-intern-rows rows id fn-arena)
+        (mv (list got (fn-arena-count fn-arena)) fn-arena))
+      out)))
+(assert-event
+ (let ((ran (scft-predict-seal-rotation *scft-log* *scft-id0*))
+       (predicted (fn-orcs-predict *scft-log* *scft-id0* 0)))
+   (and (not (fn-orcs-has-bad *scft-log*))
+        (equal (car ran) (car predicted))
+        (equal (car ran) *scft-replay*)
+        (equal (cadr ran) (len (cadr predicted))))))
+; Mutation: the withdrawn single-pair prediction is not the intern's rows.
+(defconst *scft-single-pair-predict-mutant*
+  (list *scft-enroll* (fn-intern-row-at *scft-a* nil 0 0)
+        *scft-rotate* (fn-intern-row-at *scft-b* nil 0 1)))
+(must-fail-checked
+ (assert-event
+  (equal (car (scft-predict-seal-rotation *scft-log* *scft-id0*))
+         *scft-single-pair-predict-mutant*)))
+
 ; The former S3 counterexample now splits correctly, without a new premise.
 (assert-event
  (let* ((a '(nil)) (id (fn-stxk-initial-context nil))
