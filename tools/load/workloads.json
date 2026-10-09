@@ -1136,6 +1136,79 @@
    "hooks": [
     "planning/evidence/load/hooks/f4-index.lisp"
    ]
+  },
+  "owner-per-record": {
+   "about": "The memory model's per-record owner term and base against measurement (Builder M, landing 3+4, 2026-10-09): W1's 2,048-octet one-group POSTs on one connection at the filled preset (H 256 MiB, so the history budget does not stop the fill), SBCL's dynamic-space census after a full GC and the process's VmRSS/anon/file at 0, 1,000 and 4,000 records, then 32 idle connections. The per-record live heap is the census slope between the fills; the base is the empty store's at-rest figures.",
+   "preset": "filled",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "census": true,
+   "phases": [
+    {
+     "name": "rest-0",
+     "kind": "idle",
+     "seconds": 10
+    },
+    {
+     "name": "census-0",
+     "kind": "census"
+    },
+    {
+     "name": "fill-1k",
+     "kind": "post",
+     "count": 1000,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "rest-1k",
+     "kind": "idle",
+     "seconds": 10
+    },
+    {
+     "name": "census-1k",
+     "kind": "census"
+    },
+    {
+     "name": "fill-4k",
+     "kind": "post",
+     "count": 3000,
+     "octets": 2048,
+     "connections": 1
+    },
+    {
+     "name": "rest-4k",
+     "kind": "idle",
+     "seconds": 10
+    },
+    {
+     "name": "census-4k",
+     "kind": "census"
+    },
+    {
+     "name": "idle-connections",
+     "kind": "hold",
+     "steps": [
+      8,
+      24
+     ],
+     "step_settle_s": 2,
+     "close": true
+    },
+    {
+     "name": "rest-conn",
+     "kind": "idle",
+     "seconds": 10,
+     "measure": true
+    }
+   ],
+   "policy": {
+    "exposure-connections": 64
+   }
   }
  },
  "cells": {
