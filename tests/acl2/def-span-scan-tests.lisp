@@ -103,8 +103,11 @@
 ; length octet, 1 the low one, 2 inside the field, 3 field complete), REM (16
 ; bits, octets still to come) and LEN (16 bits, the field's length).  The step
 ; yields at the field's last octet (or at the low length octet of an empty
-; field); the host then has the field as the span [I' - LEN, I') of the input,
-; LEN = (fn-dss-fx-field-len S'), by arithmetic: no octet of it is copied.
+; field), LEN = (fn-dss-fx-field-len S').  When the field lies within the
+; current input buffer (I' >= LEN) it is the span [I' - LEN, I') of that
+; buffer, found by arithmetic, no octet copied.  A field that crosses
+; arrivals is not in any one buffer: the host must retain the earlier input
+; (or copy the field) itself; the partition theorem says nothing about it.
 (defun fn-dss-fx-field-len (s)
   (declare (xargs :guard (natp s)))
   (logand (ash (nfix s) -18) 65535))

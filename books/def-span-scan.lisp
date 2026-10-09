@@ -106,8 +106,9 @@
 ; `fn-dss-assumptions' (a tool reads the world, not this comment):
 ;
 ;   A-BODY-COST   NAME-WORK charges each examined octet 1 plus the :cost term
-;                 (the constant :cost-max when omitted).  That the compiled body
-;                 (BODY, NORM, MAP or STEP) does at most that much work and
+;                 (the constant :cost-max when omitted), and a :stream's final
+;                 call 1 plus its :final-cost term.  That the compiled body
+;                 (BODY, NORM, MAP, STEP or FINAL) does at most that much work and
 ;                 allocates nothing is an assumption for EVERY instance that has
 ;                 one, whether :cost is given or not: no equation ties the term
 ;                 to the compiled code.  Discharged per instance by the
@@ -137,6 +138,7 @@
 (in-package "ACL2")
 (include-book "octets-stobj")
 (include-book "def-buffer")
+(include-book "assumptions-spans")
 
 ; The two other congruent instances the shapes name: a second input
 ; (`:equal :against :span') and an output (`:copy', `:stream').  Callers pass
@@ -877,13 +879,75 @@
                                    (- (nfix room) (nfix (fn-dss-st-k s o))) fn-octets)))))
     (+ 1 (if last (nfix (fn-dss-st-fcost s)) 0))))
 
+; Proof support for the stream bridge, local.  The list loop sees its room
+; only through nfix; the stobj loop is the list loop at any room equal to the
+; output's under nfix (the induction carries it explicitly).
+(local
+ (defthm fn-dss-st-emax-natp
+   (natp (fn-dss-st-emax))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-dss-st-emit-contract))))
+
+(local
+ (defthm fn-dss-st-fmax-natp
+   (natp (fn-dss-st-fmax))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-dss-st-emit-contract))))
+
+(local
+ (defthm fn-dss-nfix-of-nat
+   (implies (natp x) (equal (nfix x) x))))
+
+(local
+ (defthm fn-dss-len-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local
+ (defthm fn-dss-len-word-octets
+   (equal (len (fn-oct-word-octets w k)) (nfix k))))
+
+(local
+ (defthm fn-dss-stream-list-loop-nfix-room
+   (equal (fn-dss-stream-list-loop s xs last (nfix room))
+          (fn-dss-stream-list-loop s xs last room))
+   :hints (("Goal" :expand ((fn-dss-stream-list-loop s xs last (nfix room))
+                            (fn-dss-stream-list-loop s xs last room))))))
+
+(local
+ (defun fn-dss-stream-ind (s i end cap st out room)
+   (declare (xargs :measure (nfix (- (nfix end) (nfix i)))))
+   (if (and (natp i) (natp end) (< i end))
+       (let* ((o (nth i st)))
+         (fn-dss-stream-ind (fn-dss-st-next s o) (+ 1 i) end cap st
+                            (append out (fn-oct-word-octets (fn-dss-st-w s o) (fn-dss-st-k s o)))
+                            (- (nfix room) (nfix (fn-dss-st-k s o)))))
+     (list s i end cap st out room))))
+
+(local
+ (defthm fn-dss-stream-loop-is-list-general
+   (implies (and (natp i) (natp cap) (true-listp fn-dss-out)
+                 (equal (nfix room) (nfix (- cap (len fn-dss-out)))))
+            (equal (fn-dss-stream-loop s i end last cap fn-octets fn-dss-out)
+                   (mv-let (r s2 outs n)
+                     (fn-dss-stream-list-loop s (fn-oct-slice-list i end fn-octets) last room)
+                     (mv r s2 (+ i n) (append fn-dss-out outs)))))
+   :hints (("Goal" :induct (fn-dss-stream-ind s i end cap fn-octets fn-dss-out room)
+            :in-theory (e/d (fn-oct-get-is-nth)
+                            (fn-oct-slice-list-is-take-nthcdr
+                             fn-dss-stream-list-loop-nfix-room))))))
+
 (defthm fn-dss-stream-is-list
-  (implies (and (natp i) (true-listp fn-dss-out))
+  (implies (and (natp i) (natp cap) (true-listp fn-dss-out))
            (equal (fn-dss-stream s i end last cap fn-octets fn-dss-out)
                   (mv-let (r s2 outs n)
                     (fn-dss-stream-list s (fn-oct-slice-list i end fn-octets) last
                                         (nfix (- cap (len fn-dss-out))))
-                    (mv r s2 (+ i n) (append fn-dss-out outs))))))
+                    (mv r s2 (+ i n) (append fn-dss-out outs)))))
+  :hints (("Goal" :use ((:instance fn-dss-stream-loop-is-list-general
+                         (room (nfix (- cap (len fn-dss-out))))))
+           :in-theory (disable nfix fn-dss-stream-list-loop-nfix-room
+                               fn-dss-stream-loop-is-list-general fn-dss-stream-loop
+                               fn-dss-stream-list-loop fn-oct-slice-list-is-take-nthcdr))))
 
 (defthm fn-dss-drive-is-items
   (equal (fn-dss-drive s pieces last rooms)
@@ -1075,15 +1139,15 @@
 
 ; ---- :find
 
-(defun fn-dss-find-events (name ctx elt body cost cost-max guard guard-hints ch)
+(defun fn-dss-find-events (name ctx elt body cost cost-max guard guard-hints ch exec)
   (declare (xargs :mode :program))
-  (let* ((cc (fn-dss-name (list name "-COST-CONTRACT") name))
+  (let* ((cc (fn-dss-name (list name (if exec "-EXEC-COST-CONTRACT" "-COST-CONTRACT")) name))
          (lst (fn-dss-name (list name "-LIST") name))
-         (work (fn-dss-name (list name "-WORK") name))
+         (work (fn-dss-name (list name (if exec "-EXEC-WORK" "-WORK")) name))
          (bridge (fn-dss-name (list name "-IS-LIST") name))
          (hit (fn-dss-name (list name "-HIT") name))
          (least (fn-dss-name (list name "-LEAST") name))
-         (wb (fn-dss-name (list name "-WORK-BOUND") name))
+         (wb (fn-dss-name (list name (if exec "-EXEC-WORK-BOUND" "-WORK-BOUND")) name))
          (subst `((fn-dss-find-p (lambda (,elt) ,body))
                   (fn-dss-find (lambda (i end fn-octets) (,name ,@ctx i end fn-octets)))
                   (fn-dss-find-list (lambda (xs) (,lst ,@ctx xs)))))
@@ -1161,21 +1225,23 @@
 
 ; ---- :fold
 
-(defun fn-dss-fold-events (name ctx elt acc acc-type body cost cost-max guard guard-hints ch wrld)
+(defun fn-dss-fold-events (name ctx elt acc acc-type body cost cost-max guard guard-hints ch wrld exec)
   (declare (xargs :mode :program))
-  (let* ((cc (fn-dss-name (list name "-COST-CONTRACT") name))
+  (let* ((cc (fn-dss-name (list name (if exec "-EXEC-COST-CONTRACT" "-COST-CONTRACT")) name))
          (tc (fn-dss-name (list name "-BODY-TYPE") name))
          (lst (fn-dss-name (list name "-LIST") name))
-         (work (fn-dss-name (list name "-WORK") name))
+         (work (fn-dss-name (list name (if exec "-EXEC-WORK" "-WORK")) name))
          (bridge (fn-dss-name (list name "-IS-LIST") name))
          (ty (fn-dss-name (list name "-ACC-TYPE") name))
-         (wb (fn-dss-name (list name "-WORK-BOUND") name))
+         (wb (fn-dss-name (list name (if exec "-EXEC-WORK-BOUND" "-WORK-BOUND")) name))
          (accp (fn-dss-type-pred acc-type acc wrld))
          (subst `((fn-dss-fold-f (lambda (,acc ,elt) ,body))
+                  (fn-dss-fold-accp (lambda (,acc) ,accp))
                   (fn-dss-fold (lambda (,acc i end fn-octets) (,name ,@ctx ,acc i end fn-octets)))
                   (fn-dss-fold-list (lambda (,acc xs) (,lst ,@ctx ,acc xs)))))
-         (tsubst `((fn-dss-fold-accp (lambda (,acc) ,accp)) ,@subst))
+         (tsubst subst)
          (wsubst `((fn-dss-fold-f (lambda (,acc ,elt) ,body))
+                   (fn-dss-fold-accp (lambda (,acc) ,accp))
                    (fn-dss-fold-cost (lambda (,acc ,elt) ,cost))
                    (fn-dss-fold-cmax (lambda () ,cost-max))
                    (fn-dss-fold-work (lambda (,acc i end fn-octets)
@@ -1242,9 +1308,9 @@
 
 ; ---- :equal
 
-(defun fn-dss-equal-events (name ctx elt norm cost cost-max against constant guard guard-hints ch)
+(defun fn-dss-equal-events (name ctx elt norm cost cost-max against constant guard guard-hints ch exec)
   (declare (xargs :mode :program))
-  (let* ((cc (fn-dss-name (list name "-COST-CONTRACT") name))
+  (let* ((cc (fn-dss-name (list name (if exec "-EXEC-COST-CONTRACT" "-COST-CONTRACT")) name))
          (ccv (fn-dss-contract cc `(and (natp ,cost-max) (<= (nfix ,cost) ,cost-max))
                                'fn-dss-eq-cost-contract
                                `((fn-dss-eq-cost (lambda (,elt) ,cost)) (fn-dss-eq-cmax (lambda () ,cost-max)))
@@ -1255,9 +1321,9 @@
          (unc (fn-dss-use-contract nc elt))
          (loop (fn-dss-name (list name "-LOOP") name))
          (lst (fn-dss-name (list name "-LIST") name))
-         (work (fn-dss-name (list name "-WORK") name))
+         (work (fn-dss-name (list name (if exec "-EXEC-WORK" "-WORK")) name))
          (bridge (fn-dss-name (list name "-IS-LIST") name))
-         (wb (fn-dss-name (list name "-WORK-BOUND") name))
+         (wb (fn-dss-name (list name (if exec "-EXEC-WORK-BOUND" "-WORK-BOUND")) name))
          (normf `(lambda (,elt) ,norm))
          (lsubst `((fn-dss-eq-norm ,normf)
                    (fn-dss-eq-list (lambda (xs) (,lst ,@ctx xs)))))
@@ -1397,15 +1463,15 @@
 
 ; ---- :copy
 
-(defun fn-dss-copy-events (name ctx elt map cost cost-max within guard guard-hints ch)
+(defun fn-dss-copy-events (name ctx elt map cost cost-max within guard guard-hints ch exec)
   (declare (xargs :mode :program))
-  (let* ((cc (fn-dss-name (list name "-COST-CONTRACT") name))
+  (let* ((cc (fn-dss-name (list name (if exec "-EXEC-COST-CONTRACT" "-COST-CONTRACT")) name))
          (mc (fn-dss-name (list name "-MAP-OCTET") name))
          (loop (fn-dss-name (list name "-LOOP") name))
          (lst (fn-dss-name (list name "-LIST") name))
-         (work (fn-dss-name (list name "-WORK") name))
+         (work (fn-dss-name (list name (if exec "-EXEC-WORK" "-WORK")) name))
          (bridge (fn-dss-name (list name "-IS-LIST") name))
-         (wb (fn-dss-name (list name "-WORK-BOUND") name))
+         (wb (fn-dss-name (list name (if exec "-EXEC-WORK-BOUND" "-WORK-BOUND")) name))
          (mapf `(lambda (,elt) ,map))
          (dst (if within 'fn-octets 'fn-dss-out))
          (dst-len (if within '(fn-octets-len fn-octets) '(fn-dss-out-len fn-dss-out)))
@@ -1500,7 +1566,7 @@
 
 (defun fn-dss-stream-events (name ctx elt state-type step final emit-max final-max
                                   cost cost-max final-cost final-cost-max guard guard-hints
-                                  constraint-hints wrld)
+                                  constraint-hints wrld exec)
   (declare (xargs :mode :program))
   (let* ((loopn (fn-dss-name (list name "-LOOP") name))
          (lst (fn-dss-name (list name "-LIST") name))
@@ -1512,13 +1578,13 @@
          (floor (max emit-max final-max))
          (items (fn-dss-name (list name "-ITEMS") name))
          (drive (fn-dss-name (list name "-DRIVE") name))
-         (work (fn-dss-name (list name "-WORK") name))
+         (work (fn-dss-name (list name (if exec "-EXEC-WORK" "-WORK")) name))
          (bridge (fn-dss-name (list name "-IS-LIST") name))
          (part (fn-dss-name (list name "-DRIVE-IS-ITEMS") name))
          (writes (fn-dss-name (list name "-WRITES") name))
          (ty (fn-dss-name (list name "-STATE-TYPE") name))
          (prog (fn-dss-name (list name "-PROGRESS") name))
-         (wb (fn-dss-name (list name "-WORK-BOUND") name))
+         (wb (fn-dss-name (list name (if exec "-EXEC-WORK-BOUND" "-WORK-BOUND")) name))
          (statep (fn-dss-type-pred state-type 's wrld))
          (stepf `(lambda (s ,elt) ,step))
          (core `((fn-dss-st-next (lambda (s ,elt) (mv-nth 0 ,step)))
@@ -1557,7 +1623,7 @@
                                          (,work ,@ctx s i end last room fn-octets)))))
          (sc (fn-dss-name (list name "-STEP-CONTRACT") name))
          (stc (fn-dss-name (list name "-STEP-TYPE") name))
-         (cc (fn-dss-name (list name "-COST-CONTRACT") name))
+         (cc (fn-dss-name (list name (if exec "-EXEC-COST-CONTRACT" "-COST-CONTRACT")) name))
          (usc (fn-dss-use-contract sc elt)))
     (declare (ignorable stepf))
     `(,(fn-dss-contract
@@ -1749,7 +1815,7 @@
                               fn-octets))))))
           (+ 1 (if last (nfix ,final-cost) 0))))
       (defthm ,bridge
-        (implies (and (natp i) (true-listp fn-dss-out))
+        (implies (and (natp i) (natp cap) (true-listp fn-dss-out))
                  (equal (,name ,@ctx s i end last cap fn-octets fn-dss-out)
                         (mv-let (dss-r dss-s2 dss-outs dss-n)
                           (,lst ,@ctx s (fn-oct-slice-list i end fn-octets) last
@@ -1827,6 +1893,34 @@
 
 ; ---- the macro
 
+; One instance's events for SHAPE; EXEC names the work model, its bound and
+; its cost contract NAME-EXEC-..., for the real-cost copy.
+(defun fn-dss-shape-events (name ctx shape elt body norm map against constant within
+                                 acc acc-type state-type step final emit-max final-max
+                                 cost cost-max final-cost final-cost-max
+                                 guard guard-hints constraint-hints wrld exec)
+  (declare (xargs :mode :program))
+  (case shape
+    (:find (fn-dss-find-events name ctx elt body cost cost-max
+                               guard guard-hints constraint-hints exec))
+    (:fold (fn-dss-fold-events name ctx elt acc acc-type body cost
+                               cost-max guard guard-hints constraint-hints wrld exec))
+    (:equal (fn-dss-equal-events name ctx elt (or norm elt) cost
+                                 cost-max against constant guard guard-hints constraint-hints exec))
+    (:copy (fn-dss-copy-events name ctx elt (or map elt) cost
+                               cost-max within guard guard-hints constraint-hints exec))
+    (otherwise
+     (fn-dss-stream-events name ctx elt state-type step final emit-max final-max
+                           cost cost-max final-cost final-cost-max
+                           guard guard-hints constraint-hints wrld exec))))
+
+(defun fn-dss-keep-named (names evs)
+  (declare (xargs :mode :program))
+  (cond ((atom evs) nil)
+        ((and (consp (car evs)) (member-eq (cadr (car evs)) names))
+         (cons (car evs) (fn-dss-keep-named names (cdr evs))))
+        (t (fn-dss-keep-named names (cdr evs)))))
+
 ; The workspace types: one non-negative fixnum word.
 (defun fn-dss-word-typep (ty)
   (declare (xargs :mode :program))
@@ -1891,20 +1985,30 @@
                                   '(:a-body-cost))
                              (and (member-eq shape '(:copy :stream)) '(:a-reserved))
                              (and (eq shape :stream) '(:a-host-room))))
-            ,@(case shape
-                (:find (fn-dss-find-events name ctx elt body (or cost cost-max) cost-max
-                                           guard guard-hints constraint-hints))
-                (:fold (fn-dss-fold-events name ctx elt acc acc-type body (or cost cost-max)
-                                           cost-max guard guard-hints constraint-hints wrld))
-                (:equal (fn-dss-equal-events name ctx elt (or norm elt) (or cost cost-max)
-                                             cost-max against constant guard guard-hints constraint-hints))
-                (:copy (fn-dss-copy-events name ctx elt (or map elt) (or cost cost-max)
-                                           cost-max within guard guard-hints constraint-hints))
-                (otherwise
-                 (fn-dss-stream-events name ctx elt state-type step final emit-max final-max
-                                       (or cost cost-max) cost-max
-                                       (or final-cost (or final-cost-max 0)) (or final-cost-max 0)
-                                       guard guard-hints constraint-hints wrld))))))))))
+            ,@(fn-dss-shape-events name ctx shape elt body norm map against constant within
+                                   acc acc-type state-type step final emit-max final-max
+                                   (or cost cost-max) cost-max
+                                   (or final-cost (or final-cost-max 0)) (or final-cost-max 0)
+                                   guard guard-hints constraint-hints wrld nil)
+            ; A-BODY-COST (books/assumptions-spans.lisp): the same work bound over
+            ; the real-cost model, for every instance with a body.
+            ,@(and (or (member-eq shape '(:find :fold :stream)) norm map)
+                   (fn-dss-keep-named
+                    (list (fn-dss-name (list name "-EXEC-COST-CONTRACT") name)
+                          (fn-dss-name (list name "-EXEC-WORK") name)
+                          (fn-dss-name (list name "-EXEC-WORK-BOUND") name))
+                    (fn-dss-shape-events
+                     name ctx shape elt body norm map against constant within
+                     acc acc-type state-type step final emit-max final-max
+                     `(fn-assume-span-exec-cost
+                       ',name :body
+                       (list ,@(and (eq shape :fold) (list acc))
+                             ,@(and (eq shape :stream) (list 's))
+                             ,elt ,@ctx))
+                     `(fn-assume-span-cost-bound ',name :body)
+                     `(fn-assume-span-exec-cost ',name :final (list s ,@ctx))
+                     `(fn-assume-span-cost-bound ',name :final)
+                     guard guard-hints constraint-hints wrld t))))))))))
 
 (defmacro def-span-scan (name ctx &key shape (elt 'o) body norm map against constant within
                               (acc 'acc) acc-type state-type step final emit-max final-max
