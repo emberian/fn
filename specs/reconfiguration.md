@@ -1519,8 +1519,8 @@ and their order), the known abort.
 
 ### The live request's authorization from the carried state (2026-09-27)
 
-Before publication, `fnn-owner-live-reconfigure-locked` asks the owner
-`fn-owner-reconfigure-authorizedp`, ACL2's `fn-oclc-live-authorizep`
+Before publication, `fnn-owner-live-reconfigure` (host/native/admin.lisp,
+its first quantum's `:authorize`) asks ACL2's `fn-oclc-live-authorizep`
 (`books/config-owner-carried.lisp`, PRF-287): the staged record applies to
 the owner's carried node and configuration. It reads no record. An
 authorized record's completion is `:durable` and an unauthorized one's

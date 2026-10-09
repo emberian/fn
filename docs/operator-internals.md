@@ -1056,7 +1056,7 @@ the reply are the ones the image gives without it. It exists because the
 handler that turns a memory fault into exit 4 has already unwound the stack
 when it runs, so the log names only the condition (`Unhandled memory fault at
 #x0`). With the selector the first frames name the function that faulted
-(2026-09-27: frame 0 `FNN-OWNER-COMMIT-STEP-ACTION`, a stale `(first ...)` of a
+(2026-09-27: frame 0 named the owner's commit step, a stale `(first ...)` of a
 keyword, found in one run). Reproduce a production fault on the developer
 image of the same source revision with it set.
 

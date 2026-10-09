@@ -2260,6 +2260,12 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/reclaim-chunked-load-teeth-tests \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \
+	tests/acl2/owner-admission-state-tests \
+	tests/acl2/owner-authority-state-tests \
+	tests/acl2/owner-catalog-root-state-tests \
+	tests/acl2/owner-publication-state-tests \
+	tests/acl2/owner-readers-state-tests \
+	tests/acl2/def-span-scan-tests \
 	tests/acl2/owner-reclaim-ready-tests \
 	tests/acl2/control-request-word-tests \
 	tests/acl2/packed-submission-tests \
