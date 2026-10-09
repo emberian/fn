@@ -18931,7 +18931,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-heap-stopped-status-holds-no-store"
+          "name": "fn-mo-header-decide-holds-the-header"
         }
       ]
     },

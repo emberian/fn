@@ -15,7 +15,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-CLASSES = {":serves", ":grows", ":lists", ":reads", ":store-less"}
+CLASSES = {":serves", ":grows", ":lists", ":reads", ":header", ":store-less"}
 
 
 def defun_body(text: str, name: str) -> str:
@@ -85,21 +85,24 @@ class HeapActionGrowthTests(unittest.TestCase):
         self.assertEqual(table[":init"], ":store-less")
         self.assertEqual(table[":status"], ":reads")
 
-    def test_a_stopped_status_holds_no_store(self):
+    def test_a_stopped_status_reads_the_header(self):
         """`status' opens the store only with `--replay'
         (host/native/operator.lisp fnn-operator-status-once: the stopped
-        report is the checkpoint header's); fn-heap-command-growth classes
-        the stopped one store-less, and its keystone says so."""
+        report is the checkpoint header's); `pins', `obligations' and the
+        reports share its native action and replay (Codex, landing-2 F1), so
+        the class takes the operator's word too."""
         text = (ROOT / "books/heap-command.lisp").read_text(encoding="utf-8")
         body = defun_body(text, "fn-heap-command-growth")
-        self.assertIn("(and (equal action :status) (not replayp))", body)
-        self.assertIn(":store-less", body)
-        self.assertIn("(defthm fn-heap-stopped-status-holds-no-store", text)
+        self.assertIn('(and (equal action :status) (equal command "status") (not replayp))', body)
+        self.assertIn(":header", body)
+        self.assertIn("(defthm fn-mo-header-decide-holds-the-header", text)
 
     def test_the_offline_readers_that_open_the_store_read(self):
         table = growth_table()
-        for action in (":health", ":inspect", ":inspect-group"):
+        for action in (":status", ":inspect", ":inspect-group"):
             self.assertEqual(table[action], ":reads", action)
+        # offline `health' renders the stopped report (Codex, landing-2 F5)
+        self.assertEqual(table[":health"], ":header")
         for action in (":operation", ":export-status"):
             self.assertEqual(table[action], ":store-less", action)
         # Codex (b-heap-growth review): account-hash reads a credential file

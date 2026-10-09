@@ -734,10 +734,11 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual((room["bytes-used"], room["history-bound"]), (0, 1 << 40))
 
     def test_a_stopped_status_holds_no_store_and_a_replay_names_the_totals_it_cannot_see(self):
-        """K6 fn-heap-stopped-status-holds-no-store (books/heap-command.lisp,
+        """K6 fn-mo-header-decide-holds-the-header (books/heap-command.lisp,
         PRF-10000): the probe's decision fn-heap-command-decide sizes a
-        stopped `status' -- the checkpoint header and lstat, nothing opened
-        -- as `init' is sized, whatever store the profile admits.  Tooth: the
+        stopped `status' -- the checkpoint header, config.json and lstat,
+        nothing opened -- as `init' is sized, raised by the configuration
+        history it loads, whatever store the profile admits (fn-mo-header-decide).  Tooth: the
         image before lane memory refused it for `init --budget's D27 store
         (machine-cannot-hold-profile heap=69306331 MB, the amended row
         OPERATOR-STATUS-OBSERVED-SIZING).  `status --replay' opens the store:

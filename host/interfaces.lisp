@@ -177,6 +177,7 @@
 (include-book "../books/history-paged-adopt")
 (include-book "../books/history-root-credit")
 (include-book "../books/decoded-worker-job")
+(include-book "../books/heap-command")
 (include-book "../books/bp-heap-command")
 (include-book "../books/bp-session-scheduler")
 (include-book "../books/bp-forward-cursor")
@@ -2883,7 +2884,7 @@
 ;; but the store-less one and the observed reads.
 (definterface fn-heap-command-decide
   :class :common-lisp-compliant
-  :keystones (fn-heap-stopped-status-holds-no-store
+  :keystones (fn-heap-stopped-status-is-sized-without-the-store
               fn-heap-command-decide-reads-is-the-read-decision
               fn-heap-command-decide-otherwise-is-todays))
 

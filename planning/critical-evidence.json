@@ -113,13 +113,6 @@
    "mutation": "tests/acl2/heap-figure-tests.lisp::hft-st-without-store-opening-action",
    "provenance": "keystone_critical.py --declare sha256:226aecddb8fe46016e2a25170b570e42b25bdb80b266ee0e88b75917670cfe24"
   },
-  "fn-heap-stopped-status-holds-no-store": {
-   "subject": "fn-heap-command-decide",
-   "host_test": "tests/test_native_operator_verbs.py::test_a_stopped_status_holds_no_store_and_a_replay_names_the_totals_it_cannot_see",
-   "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-stopped-status-holds-no-store",
-   "mutation": "tests/acl2/heap-command-tests.lisp::status-sized-as-the-profiles-store",
-   "provenance": "keystone_critical.py --declare sha256:bd33e451194ebe46bafe20d3506f223b7f2790678a877be36871d9fc942b1618"
-  },
   "fn-lg-open-program-keeps-the-relation": {
    "subject": "fn-lg-open-program",
    "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
@@ -161,6 +154,13 @@
    "trace_witness": "tests/acl2/store-log-critical-teeth-tests.lisp::fn-lgu-host-kernel-acknowledges-only-recoverable-records",
    "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode",
    "provenance": "keystone_critical.py --declare sha256:02422ef1703b7be6f7ba649454e5cb3942760f6697d2880d5620f31203fc5ac1"
+  },
+  "fn-mo-header-decide-holds-the-header": {
+   "subject": "fn-mo-header-decide",
+   "host_test": "tests/test_native_operator_verbs.py::test_a_stopped_status_holds_no_store_and_a_replay_names_the_totals_it_cannot_see",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-stopped-status-holds-the-header",
+   "mutation": "tests/acl2/heap-command-tests.lisp::configuration-history-uncharged",
+   "provenance": "keystone_critical.py --declare sha256:83f445db6ad11fb61c209beaff185dc54a0feb128795c2944f5da85c8bddb691"
   },
   "fn-orcs-predict-seal-refines-intern": {
    "subject": "fn-orcs-predict-rows-at",

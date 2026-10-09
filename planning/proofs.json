@@ -22938,10 +22938,10 @@
         "tests/acl2/heap-command-tests.lisp"
       ],
       "keystone_subjects": {
-        "fn-heap-stopped-status-holds-no-store": "fn-heap-command-decide"
+        "fn-mo-header-decide-holds-the-header": "fn-mo-header-decide"
       },
       "events": [
-        "fn-heap-stopped-status-holds-no-store"
+        "fn-mo-header-decide-holds-the-header"
       ]
     },
     {

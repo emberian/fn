@@ -374,9 +374,11 @@ stopped-store open; a run observes no liveness."
                (fnn-absolute root)
                nil
                (fnn-core 'fn-native-operator-host-result-run-reclaim-live result)
-               ;; `status --replay' opens the store; a stopped `status'
-               ;; reads its checkpoint header (books/heap-command.lisp
-               ;; fn-heap-command-growth).
+               ;; The operator's word and `--replay': a stopped `status'
+               ;; reads its checkpoint header, `status --replay' and the
+               ;; reports that share its action open the store
+               ;; (books/heap-command.lisp fn-heap-command-growth).
+               (fnn-core 'fn-native-operator-host-result-command result)
                (fnn-core 'fn-omr-status-replayp result))))))
     (fnn-store-error (condition)
       ;; A named semantic refusal has no profile; a broken core, ambiguous
@@ -400,11 +402,11 @@ normalized store root for the pre-open DEFAULT backing reservation."
          (fnn-refuse "~a" (fnn-core 'fn-bph-refusal-line (second bp-plan))))
         ((and (string= (or (first argv) "") "operator") (second argv))
          (multiple-value-bind (profile connections action observed cold-resources output-resources root
-                               peer reclaim-live replayp)
+                               peer reclaim-live command replayp)
              (fnn-heap-operator-profile (second argv) (cddr argv))
            (declare (ignore peer))
            (values profile (if (integerp connections) connections 0) action observed cold-resources output-resources root
-                   nil reclaim-live replayp)))
+                   nil reclaim-live command replayp)))
         ;; The developer owner (`owner run ROOT PORT ONCE MAX-CONNECTIONS'):
         ;; a served run over ROOT's store, sized as the operator's run is by
         ;; that store's profile.  Left to the final clause it answered
@@ -434,13 +436,13 @@ normalized store root for the pre-open DEFAULT backing reservation."
 Only ACL2-selected served launches observe that file; all command families
 share this boundary, including standalone BP owners."
   (multiple-value-bind (profile connections action observed cold output root ignored reclaim-live
-                        replayp)
+                        command replayp)
       (fnn-heap-command-profile-base argv)
     (declare (ignore ignored))
     (values profile connections action observed cold output root
             (when (fnn-core 'fn-pfr-operation-observes-p action)
               (fnn-peer-flight-profile root))
-            reclaim-live replayp)))
+            reclaim-live command replayp)))
 
 ;; The whole reservation (books/heap-reservation.lisp
 ;; fn-heap-reserve-operation-decide, HST-025, PKT-686): heap-figure's heap for
@@ -504,32 +506,51 @@ to a space that already holds it."
   (declare (ignore root))
   (fnn-core 'fn-mo-observed-totals nil nil))
 
+;; The configuration history's octets on disk (config/, the lstat sizes of
+;; its regular files under the profile's listing bound), which loading the
+;; profile reads whole (fnn-load-config-overlay); NIL when unobserved.
+(defun fnn-heap-config-octets (root profile)
+  (handler-case
+      (and (stringp root) profile
+           (fnn-heap-directory-octets (fnn-config-dir (make-fnn-store root))
+                                      (fnn-heap-listing-bound profile)))
+    (error () nil)))
+
+;; The collector's card size of this image (SBCL's gencgc), NIL when the
+;; runtime does not name one.
+(defun fnn-heap-card-octets ()
+  #+gencgc sb-vm:gencgc-card-bytes
+  #-gencgc nil)
+
 ;; The command's decision (books/heap-command.lisp fn-heap-command-decide) and
-;; the totals and image it read: (values DECISION TOTALS IMG).
+;; what it read: (values DECISION TOTALS IMG CONFIG-OCTETS CARD).
 (defun fnn-heap-reservation (profile connections &optional action observed cold-resources output-resources root peer reclaim-live
-                             bp-terms replayp)
+                             bp-terms command replayp)
   (let* ((core (fnn-heap-image-observation))
          (machine (fnn-heap-observations))
-         (reads (eq (fnn-core 'fn-heap-command-growth action replayp) :reads))
+         (class (fnn-core 'fn-heap-command-growth action command replayp))
+         (reads (eq class :reads))
          (totals (and reads (fnn-heap-charged-totals root)))
          (img (and reads profile (fnn-heap-img-observation profile)))
-         (base (fnn-core 'fn-heap-command-decide action replayp profile core
-                         +fnn-gc-nursery-octets+ machine connections observed totals img
+         (config (and (member class '(:reads :header)) (fnn-heap-config-octets root profile)))
+         (card (and reads (fnn-heap-card-octets)))
+         (base (fnn-core 'fn-heap-command-decide action command replayp profile core
+                         +fnn-gc-nursery-octets+ machine connections observed totals img config card
                          (fnn-heap-resident-observations) (fnn-heap-address-observations))))
     (values (fnn-heap-extend-reservation base action cold-resources output-resources root core machine
                                          profile observed peer reclaim-live bp-terms)
-            totals img)))
+            totals img config card)))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
     (error 'fnn-usage-error :message "heap -- ARGV..."))
   (multiple-value-bind (profile connections action observed cold-resources output-resources root peer
-                        reclaim-live replayp)
+                        reclaim-live command replayp)
       (fnn-heap-command-profile argv)
-    (multiple-value-bind (decision totals img)
+    (multiple-value-bind (decision totals img config card)
         (fnn-heap-reservation profile connections action observed cold-resources output-resources root peer
-                              reclaim-live (fnn-heap-bp-terms argv) replayp)
-      (let ((line (fnn-core 'fn-heap-command-line decision action replayp totals img))
+                              reclaim-live (fnn-heap-bp-terms argv) command replayp)
+      (let ((line (fnn-core 'fn-heap-command-line decision action command replayp totals img config card))
             (code (fnn-core 'fn-heap-decision-exit-code decision)))
         ;; The decision line on stdout whatever it is: the launcher tells
         ;; ACL2's refusal (a line, exit 1) from a runtime that never reached

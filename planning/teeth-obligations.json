@@ -9356,28 +9356,6 @@
    "statement_digest": "884b178f98debc5919b8b3a0aebdaa624a2eb73898a8988c5e2295a2521738ba"
   },
   {
-   "book": "books/heap-command.lisp",
-   "book_digest": "a92461491272315893d77345169aeeb5cb14cac50f4ccf86ff825f66fa71d455",
-   "bounds": [],
-   "claim_digest": "b42094ad03f6baa78c7280074f4144f32a50f1a9f6f3f45122cdfe555bf83fb0",
-   "class": "generated",
-   "critical": "resource-reservation",
-   "mutations": "edits:1",
-   "name": "fn-heap-stopped-status-holds-no-store",
-   "owed_met": null,
-   "owner_book": "tests/acl2/heap-command-tests.lisp",
-   "registry": true,
-   "removals": {
-    "assumption": 0,
-    "lemma": 0,
-    "logical": 0,
-    "reachable": 1
-   },
-   "statement_digest": "bc0f74bca71576ad32d74675e560b4ad040f7495c7c3f39902379cab84b89e16",
-   "subject": "fn-heap-command-decide",
-   "witness": "executable"
-  },
-  {
    "book": "books/heap-store-figure.lisp",
    "class": "hand",
    "critical": "resource-reservation",
@@ -12291,9 +12269,31 @@
    "witness": "executable"
   },
   {
-   "book_digest": "a92461491272315893d77345169aeeb5cb14cac50f4ccf86ff825f66fa71d455",
+   "book": "books/heap-command.lisp",
+   "book_digest": "629dc8790d36c89ce7b7dbe5de035c96f3909bee9ff0a36295d102aef8e31b8d",
    "bounds": [],
-   "claim_digest": "8b77e41fa92ef1472b4e7b2eef9f164178dc465bf1efac32ed2b74c921165783",
+   "claim_digest": "d0f054588c3a9c0224ae45b17523a22d9478ec69df8c1253b21785323c679777",
+   "class": "generated",
+   "critical": "resource-reservation",
+   "mutations": "edits:1",
+   "name": "fn-mo-header-decide-holds-the-header",
+   "owed_met": null,
+   "owner_book": "tests/acl2/heap-command-tests.lisp",
+   "registry": true,
+   "removals": {
+    "assumption": 0,
+    "lemma": 0,
+    "logical": 0,
+    "reachable": 1
+   },
+   "statement_digest": "f61d55921ee47cc8db4200f8490410c4e60cb9595675f326b0bf69f1b99a1b93",
+   "subject": "fn-mo-header-decide",
+   "witness": "executable"
+  },
+  {
+   "book_digest": "629dc8790d36c89ce7b7dbe5de035c96f3909bee9ff0a36295d102aef8e31b8d",
+   "bounds": [],
+   "claim_digest": "05188c04d56a5ef104d5b80f662342ae1aa33558da7ae3666112004e84c7fbcb",
    "class": "generated",
    "mutations": "edits:1",
    "name": "fn-mo-read-holds-the-observed-store",
@@ -12310,9 +12310,9 @@
    "witness": "executable"
   },
   {
-   "book_digest": "a92461491272315893d77345169aeeb5cb14cac50f4ccf86ff825f66fa71d455",
+   "book_digest": "629dc8790d36c89ce7b7dbe5de035c96f3909bee9ff0a36295d102aef8e31b8d",
    "bounds": [],
-   "claim_digest": "54c9f03e0d07a1d5c40b4b0626e66600cb9df3b45394033064f603bdbd0c8ad7",
+   "claim_digest": "099dfd2a42d461130e4099ce96b9f7cc92def7b5babb3e56a2867d97c10a9165",
    "class": "generated",
    "mutations": "edits:1",
    "name": "fn-mo-read-refuses-only-by-the-model",
