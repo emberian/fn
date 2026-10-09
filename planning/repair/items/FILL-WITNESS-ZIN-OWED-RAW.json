@@ -3,11 +3,13 @@
  "detail": "Two witness_check lines: 'needs-acl2, but the convergence checklist does not name it' and 'no scenario-catalog row cites it or a tests/*.lisp it drives'. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
  "file": "tests/test_native_zin_owed_raw.sh",
  "id": "FILL-WITNESS-ZIN-OWED-RAW",
- "notes": [],
- "owner": "unowned",
+ "notes": [
+  "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): still red: witness_check names tests/test_native_zin_owed_raw.sh (needs-acl2, not in planning/release-v6.6.0.md's checklist; no scenario row cites it or a tests/*.lisp it drives), and tests.test_witness_check.test_the_tree_is_clean fails on the same finding. Owner unowned -> builder-D."
+ ],
+ "owner": "builder-D",
  "severity": "medium",
  "source": "fill-20261004",
  "state": "open",
  "title": "witness_check (and tests.test_witness_check.test_the_tree_is_clean) red again after CL08/CL09 landed: tests/test_native_zin_owed_raw.sh is needs-acl2 but planning/release-v6.6.0.md does not name it and no scenario-catalog row cites it",
- "updated": "2026-10-04T19:12:27Z"
+ "updated": "2026-10-09T22:00:00Z"
 }

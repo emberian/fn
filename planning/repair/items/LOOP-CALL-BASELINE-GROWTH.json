@@ -1,0 +1,12 @@
+{
+ "detail": "New or grown since the baseline: host/native/admin.lisp 2 (not in the baseline), control-transport.lisp 1 (not in the baseline), extent.lisp 10 (8), immutable-publish.lisp 2 (1), io.lisp 33 (32; builder-A's file), mux.lisp 3 (2). tests.test_loop_call_check.test_the_tree_is_at_its_baseline fails on the same rows. Each loop is reshaped or enters the baseline with a reason.",
+ "file": "tools/loop_call_check.py",
+ "id": "LOOP-CALL-BASELINE-GROWTH",
+ "notes": [],
+ "owner": "builder-D",
+ "severity": "medium",
+ "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
+ "state": "open",
+ "title": "loop_call_check: 131 host loops that call ACL2 or take a lock per iteration against baseline 123",
+ "updated": "2026-10-09T22:00:00Z"
+}

@@ -1,0 +1,12 @@
+{
+ "detail": "cite_check: 488 citations of 246 absent paths; by citer: 13 load-bearing, 77 spec, 101 tool, 297 planning. The 13 load-bearing ones first; the planning rows go with the register burndown.",
+ "file": "tools/cite_check.py",
+ "id": "CITE-CHECK-ABSENT-PATHS",
+ "notes": [],
+ "owner": "builder-D",
+ "severity": "medium",
+ "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
+ "state": "open",
+ "title": "cite_check: 488 citations of 246 absent paths (195 phantom, 293 drift), 13 of them load-bearing",
+ "updated": "2026-10-09T22:00:00Z"
+}

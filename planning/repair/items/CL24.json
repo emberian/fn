@@ -8,12 +8,13 @@
  "line": "",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-04 15:12 FILL 10-04: still red at 55ff708a6 (cloud1 make check): premise_audit 1401 unestablished vs baseline 949, NEW incl. adt-pg-pokp, fn-acg-reachablep, fn-ach-reachablep, fn-aec-physical-installationp, fn-aec-pool-statep, fn-aec-statep, fn-af-id-rightp, fn-af-msg-id-closep; log cloud1:/tank/fn/scratch/fill-wt-check.log"
+  "10-04 15:12 FILL 10-04: still red at 55ff708a6 (cloud1 make check): premise_audit 1401 unestablished vs baseline 949, NEW incl. adt-pg-pokp, fn-acg-reachablep, fn-ach-reachablep, fn-aec-physical-installationp, fn-aec-pool-statep, fn-aec-statep, fn-af-id-rightp, fn-af-msg-id-closep; log cloud1:/tank/fn/scratch/fill-wt-check.log",
+  "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): premise_audit: 1,185 of 1,872 premises at hosted entries unestablished (baseline 753); 437 NEW (first: adt-pg-pokp, established off the host path, assumed by adt-pg-put-tree-is-put-field; adt-scalar-seq-p, preserved only; adt-tp-seq-lens-ok, never concluded, assumed by fn-pck-x-image-after-commit). PREMISE-STATE-INHABITATION and PREMISE-VALUE-DOMAIN are the standing families. Owner sweep-gates -> builder-D."
  ],
- "owner": "sweep-gates",
+ "owner": "builder-D",
  "severity": "medium",
  "source": "check-lane-355a5c843",
  "state": "open",
  "title": "check-lane red: premise_audit",
- "updated": "2026-10-04T19:12:27Z"
+ "updated": "2026-10-09T22:00:00Z"
 }

@@ -1,0 +1,12 @@
+{
+ "detail": "tests.test_fn_verify.SpecBookTieTests.test_the_spec_the_books_and_the_verifier_agree: ['the spec cites `fn-stx-field-octets`, which no book defines']. The spec follows the books' current name, or the definition is restored where the verifier needs it.",
+ "file": "specs/identity.md",
+ "id": "SPEC-IDENTITY-CITES-UNDEFINED",
+ "notes": [],
+ "owner": "builder-D",
+ "severity": "medium",
+ "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
+ "state": "open",
+ "title": "specs/identity.md cites fn-stx-field-octets, which no book defines (tests.test_fn_verify.SpecBookTieTests)",
+ "updated": "2026-10-09T22:00:00Z"
+}
