@@ -6,14 +6,14 @@
    "kind": "native",
    "subject": "tests.test_native_image_floor.ProductionTests.test_fresh_node_serves_in_256_mb",
    "item": "LOAD-L-FRESH-0b4d3b183",
-   "owner": "deputy-L",
+   "owner": "builder-M",
    "evidence": "CONVERGE-4 row 19b, red by design (RULINGS priority 3); drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
   },
   {
    "kind": "native",
    "subject": "tests.test_native_image_heap.ImageHeapBarTests.test_nmem3_clean_resident_set_is_within_the_bar",
    "item": "IMAGE-HEAP-LONG-RESIDENT",
-   "owner": "deputy-N",
+   "owner": "builder-M",
    "evidence": "CONVERGE-4 row 23, red by design (RULINGS priority 3); drain image gate hbox:/tank/fn/scratch/drain/native-drain-c0e35e156 (c0e35e156; dev 3a937ebc3 adds only s-capture-intern, gated green at native-sci3-a17c1a7dd)"
   },
   {
@@ -27,21 +27,21 @@
    "kind": "check",
    "subject": "check-fast:merge_registry",
    "item": "PRL-GROWTH-HOST-WIRING",
-   "owner": "deputy-C",
+   "owner": "builder-M",
    "evidence": "MISSING HST-045 proof_targets += PRF-1343; check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
   },
   {
    "kind": "check",
    "subject": "check-fast:lock_discipline_check",
    "item": "LOCK-CHECKER-MODEL-GAPS",
-   "owner": "deputy-C",
+   "owner": "builder-B",
    "evidence": "NEW R1b fnn-arena-release-due *fnn-arena-release-custody* unlocked write host/native/io.lisp:8001 (owned; the train's lock gate passes on it); check-fast at dev 3a937ebc3 on persvati (lane b-measure, build/remote-check/persvati-check-fast.log)"
   },
   {
    "kind": "native",
    "subject": "tests.test_native_operator_verbs.NativeOperatorCapacityTests.test_init_writes_the_operators_fields_and_status_prints_them",
    "item": "OPERATOR-STATUS-OBSERVED-SIZING",
-   "owner": "builder-A",
+   "owner": "builder-M",
    "evidence": "measured red at dev ac66a0a23 on image native-ac66a0a23ad7 (the `operator status` step: refused machine-cannot-hold-profile, heap=23095730 MB); admitted by amendment, coordinator 2026-10-09 13:05; retirement: status sized by the store's charged totals from the checkpoint header (RUNTIME-MODEL section 6 observation form)"
   }
  ]
