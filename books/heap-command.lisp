@@ -410,6 +410,23 @@
 (defconst *fn-mo-adapter-words*
   " sized by the offline adapter (pre-payload-only figure, under-bounds the store): ")
 
+;; An observed store-opening line names the totals the decision read (the
+;; header's fold plus the scanned suffix, books/charged-totals.lisp), so a
+;; native can hold them against the store's replayed report: RECORDS, ARENA,
+;; HCHARGE, MEMBERSHIPS, EVENTS, LOG, HISTORY, CHARGE, then the residency.
+(defun fn-mo-totals-words (tot)
+  (declare (xargs :guard t))
+  (concatenate 'string " totals="
+               (fn-heap-decimal (fn-mm-tot-records tot)) ","
+               (fn-heap-decimal (fn-mm-tot-arena tot)) ","
+               (fn-heap-decimal (fn-mm-tot-hcharge tot)) ","
+               (fn-heap-decimal (fn-mm-tot-memberships tot)) ","
+               (fn-heap-decimal (fn-mm-tot-events tot)) ","
+               (fn-heap-decimal (fn-mm-tot-log tot)) ","
+               (fn-heap-decimal (fn-mm-tot-history tot)) ","
+               (fn-heap-decimal (fn-mm-tot-charge tot)) ","
+               (if (fn-mm-tot-paged-p tot) "paged" "resident")))
+
 (defun fn-mo-unseen-suffix (class totals img config-octets card)
   (declare (xargs :guard t))
   (cond ((and (equal class :header) (not (natp config-octets))) " config=unobserved")
@@ -419,7 +436,7 @@
         ((not (fn-mm-img-p img)) (concatenate 'string *fn-mo-adapter-words* "img unobserved"))
         ((not (natp config-octets)) (concatenate 'string *fn-mo-adapter-words* "config unobserved"))
         ((not (posp card)) (concatenate 'string *fn-mo-adapter-words* "card unobserved"))
-        (t "")))
+        (t (fn-mo-totals-words totals))))
 
 (defun fn-heap-command-line (decision action command replayp totals img config-octets card)
   (declare (xargs :guard t

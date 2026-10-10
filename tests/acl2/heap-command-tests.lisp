@@ -364,3 +364,11 @@
                      "memory capacity=32 of 32"))
 (assert-event (equal (fn-mo-run-capacity-line (hct-run 128 nil) "refused memory-cannot-hold-the-store capacity=0")
                      "refused memory-cannot-hold-the-store capacity=0"))
+
+; An observed store-opening line names the totals it read, in field order,
+; with the residency word (fn-mo-totals-words).
+(assert-event
+ (let ((tot (fn-mm-make-tot 3 4 5 6 7 8 9 10 :resident)))
+   (and (fn-mm-tot-p tot)
+        (equal (fn-mo-unseen-suffix :reads tot '(1 2 3) 0 4096)
+               " totals=3,4,5,6,7,8,9,10,resident"))))
