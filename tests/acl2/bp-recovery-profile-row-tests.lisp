@@ -217,3 +217,206 @@
 (assert-event
  (and (< 1 (len (fn-bpn-nth 1 (fn-bpn-nth 6 *bprw-reassembled*))))
       (bprw-tooth 6 *bprw-reassembled* '(1 1048576 65538 1048576))))
+
+; ===========================================================================
+; 4. Handoffs and jobs (fn-bprpf-handoff-wfp, fn-bprpf-job-wfp, and the admit's
+; arms after the held rows).  Every witness is produced by the real path.
+;
+; (a) The producer of an honest handoff: the kind-7 delivery record applied by
+; fn-bpnr-replay-from to a selected checkpoint's honest held row.
+(defconst *bprh-ingress* (list :cl (cons 1 1) 1 *bprw-sender* '(112) 0))
+(defconst *bprh-held*
+  (fn-bpnf-held (fn-bpnf-ingress-principal *bprh-ingress*) (fn-bpb-bundle-id *bprw-bundle*) 0
+                *bprh-ingress* nil nil *bprw-bundle* (fn-bpb-encode *bprw-bundle*)
+                nil nil nil '(:dispatch-pending) nil nil 0))
+
+; (b) The producer of an honest job: the machine's own enqueue step and its durable record.
+(defconst *bprh-route* (list :route '(97) 4556 '(98) 1 2 3))
+(defconst *bprh-obs* (fn-clock-observation 1000 0 0 nil))
+(defconst *bprh-b0* (fn-bpn-initial-machine-state *bprw-config* 4 1048576))
+(defconst *bprh-b1*
+  (fn-bpn-answer-state
+   (fn-bpn-step (fn-bpn-answer-state
+                 (fn-bpn-step *bprh-b0*
+                   (list :enqueue '(119 49) '(97 49) 0 7 *bprh-route* *bprw-sender*
+                         *bprw-adu* *bprh-obs*)))
+                '(:persist-result 0 :durable))))
+(defconst *bprh-jobs* (fn-bpn-machine-state-jobs *bprh-b1*))
+(defconst *bprh-job* (car *bprh-jobs*))
+
+; The honest checkpoint with a real handoff (:owed) and a real job: file, decode, plan.
+(defconst *bprh-ck0* (fn-bpnr-checkpoint 4 (list *bprh-held*) nil '(3 . 0) 1 0 nil 0))
+(defconst *bprh-sel0*
+  (fn-bpnr-checkpoint-decode (fn-bpnr-checkpoint-octets *bprh-ck0* *bprw-budget*) *bprw-budget*))
+(defconst *bprh-id* (fn-bpp-primary-identity (fn-bpb-bundle-primary *bprw-bundle*)))
+(defconst *bprh-deliv* (fn-bpah-delivery-record 3 1 0 *bprh-id* :request-accepted '(114 105 100)))
+(defconst *bprh-rows*
+  (list (list (fn-bpnf-stored-record-name 3 1) (fn-bpah-delivery-frame *bprh-deliv*))))
+(defconst *bprh-replay* (fn-bpnr-replay-from *bprh-sel0* *bprh-rows* *bprh-b0*))
+(defconst *bprh-handoff* (car (fn-bpn-nth 2 *bprh-replay*)))
+(defconst *bprh-ck1*
+  (fn-bpnr-checkpoint-of-replay 5 *bprh-replay* 1 *bprh-jobs*
+                                (fn-bpn-machine-state-next-token *bprh-b1*)))
+(defconst *bprh-sel1*
+  (fn-bpnr-checkpoint-decode (fn-bpnr-checkpoint-octets *bprh-ck1* *bprw-budget*) *bprw-budget*))
+(defconst *bprh-plan1* (list :selected *bprh-sel1*))
+(assert-event
+ (and (equal (car *bprh-replay*) :ready)
+      (equal (len (fn-bpn-nth 2 *bprh-replay*)) 1)
+      (equal (car *bprh-handoff*) :bpnf-handoff)
+      (equal (fn-bpn-nth 3 *bprh-handoff*) :owed)
+      (equal (len *bprh-jobs*) 1)
+      (equal (fn-bpn-job-status *bprh-job*) :queued)
+      (equal *bprh-sel1* *bprh-ck1*)
+      (fn-bpnr-checkpointp *bprh-sel1*)
+      (equal (fn-bpnr-checkpoint-handoffs *bprh-sel1*) (list *bprh-handoff*))
+      (equal (fn-bpnr-checkpoint-jobs *bprh-sel1*) *bprh-jobs*)
+      (fn-bprpf-handoff-wfp *bprh-handoff* *bprw-default*)
+      (fn-bprpf-job-wfp *bprh-job* *bprw-default*)
+      (equal (fn-bprpf-selection-admit *bprh-plan1* *bprw-default*) '(:ready))))
+
+; the :handed-off disposition, produced by fn-bpah-handoff-effective-status's shape
+(defconst *bprh-handed*
+  (fn-bpnf-handoff (fn-bpn-nth 1 *bprh-handoff*) (fn-bpn-nth 2 *bprh-handoff*)
+                   (list :handed-off (fn-bpn-job-sequence *bprh-job*))))
+(assert-event (fn-bprpf-handoff-wfp *bprh-handed* *bprw-default*))
+
+; honest rev2 checkpoint (no handoffs, no jobs) still admitted: *bprw-w-plan* above.
+
+; (c) The forged checkpoint, built like ce3: a 65,536-octet principal, carried now in the
+; HANDOFF's trigger.  Its only held row is honest; the pre-fix admit answered :ready.
+(defconst *bprh-big-trigger*
+  (fn-bpnf-held-key (make-list 65536 :initial-element 97) (fn-bpb-bundle-id *bprw-bundle*)))
+(defconst *bprh-forged-handoff*
+  (fn-bpnf-handoff (fn-bpn-nth 1 *bprh-handoff*) *bprh-big-trigger* :owed))
+(defconst *bprh-forged-ck*
+  (fn-bpnr-checkpoint 4 (list *bprh-held*) (list *bprh-forged-handoff*) '(3 . 0) 1 0 nil 0))
+(defconst *bprh-forged-sel*
+  (fn-bpnr-checkpoint-decode (fn-bpnr-checkpoint-octets *bprh-forged-ck* *bprw-budget*)
+                             *bprw-budget*))
+(assert-event
+ (and (equal *bprh-forged-sel* *bprh-forged-ck*)           ; the file round-trips: selected
+      (fn-bpnr-checkpointp *bprh-forged-sel*)
+      (fn-bpnf-handoffp *bprh-forged-handoff*)             ; the producers' own shape recognizer admits it
+      (fn-bprpf-rows-wfp (fn-bpnr-checkpoint-held *bprh-forged-sel*) *bprw-default*)
+      (fn-bprpf-held-adus-fitp (fn-bpnr-checkpoint-held *bprh-forged-sel*)
+                               (fn-bpnpf-adu-octets *bprw-default*))
+      (not (fn-bprpf-handoff-wfp *bprh-forged-handoff* *bprw-default*))
+      (equal (fn-bprpf-selection-admit (list :selected *bprh-forged-sel*) *bprw-default*)
+             '(:fault :row-outside-the-profile))))
+
+; The same, forged in a job: a wire beyond the profile's bundle octets.
+(defconst *bprh-big-job*
+  (fn-bpn-make-job '(119 49) '(97 49) 0 7 (fn-bpn-job-age-anchor *bprh-job*) *bprw-sender*
+                   *bprh-route* (fn-bpn-job-bundle *bprh-job*)
+                   (make-list 1048577 :initial-element 0) :queued 0))
+(defconst *bprh-forged-job-ck*
+  (fn-bpnr-checkpoint 4 nil nil '(3 . 0) 1 0 (list *bprh-big-job*) 0))
+(assert-event
+ (and (fn-bpnr-checkpointp *bprh-forged-job-ck*)           ; the pre-fix checkpoint recognizer admits it
+      (not (fn-bprpf-job-wfp *bprh-big-job* *bprw-default*))
+      (equal (fn-bprpf-selection-admit (list :selected *bprh-forged-job-ck*) *bprw-default*)
+             '(:fault :row-outside-the-profile))))
+
+; ---------------------------------------------------------------------------
+; 5. One removal per conjunct, for the handoff and the job.
+(defun bprh-hconjuncts (x profile)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((limit (nfix (fn-bpnpf-bundle-octets profile)))
+        (id (nth 1 (fn-bpn-nth 2 x))))
+    (list (fn-bpnpf-profilep profile)                                     ; 0
+          (and (true-listp x) (equal (len x) 4) (equal (car x) :bpnf-handoff)) ; 1 shape
+          (fn-cbor-octet-listp (fn-bpn-nth 1 x))                          ; 2 receipt id octets
+          (consp (fn-bpn-nth 1 x))                                        ; 3 non-empty
+          (<= (len (fn-bpn-nth 1 x)) 256)                                 ; 4 at most 256
+          (fn-bphs-exact-listp (fn-bpn-nth 2 x) 2)                        ; 5 trigger shape
+          (or (null (nth 0 (fn-bpn-nth 2 x)))
+              (fn-bpn-machine-textp (nth 0 (fn-bpn-nth 2 x))))            ; 6 principal
+          (fn-bphs-bundle-idp id)                                         ; 7 bundle id shape
+          (fn-bprpf-eid-fitsp (nth 1 id) limit)                           ; 8 source EID within bundle octets
+          (or (null (nth 4 id)) (fn-bpp-timep (nth 4 id)))                ; 9 fragment offset
+          (or (null (nth 5 id)) (<= (nth 5 id) limit))                    ; 10 fragment total
+          (or (equal (fn-bpn-nth 3 x) :owed)
+              (and (fn-bphs-exact-listp (fn-bpn-nth 3 x) 2)
+                   (equal (nth 0 (fn-bpn-nth 3 x)) :handed-off)
+                   (fn-bpp-timep (nth 1 (fn-bpn-nth 3 x))))))))           ; 11 disposition
+
+(defun bprh-htooth (k x profile)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (equal (fn-bprpf-handoff-wfp x profile)
+              (if (bprw-all-tp (bprh-hconjuncts x profile)) t nil))
+       (bprw-only-false (bprh-hconjuncts x profile) k)
+       (not (fn-bprpf-handoff-wfp x profile))
+       (equal (len (bprh-hconjuncts x profile)) 12)))
+
+(defun bprh-with-trigger (x i v)
+  (declare (xargs :guard t :verify-guards nil))
+  (update-nth 2 (update-nth i v (fn-bpn-nth 2 x)) x))
+(defun bprh-with-id (x i v)
+  (declare (xargs :guard t :verify-guards nil))
+  (bprh-with-trigger x 1 (update-nth i v (nth 1 (fn-bpn-nth 2 x)))))
+
+(defconst *bprh-tiny-bundle* '(8 1048576 65538 3))   ; below the honest source EID (dtn://sender/)
+
+(assert-event (bprh-htooth 0 *bprh-handoff* '(8 1048576 65538 2000000000)))
+(assert-event (bprh-htooth 1 (update-nth 0 :bpnf-handoff-x *bprh-handoff*) *bprw-default*))
+(assert-event (bprh-htooth 2 (update-nth 1 '(300) *bprh-handoff*) *bprw-default*))
+(assert-event (bprh-htooth 3 (update-nth 1 nil *bprh-handoff*) *bprw-default*))
+(assert-event (bprh-htooth 4 (update-nth 1 (make-list 257 :initial-element 1) *bprh-handoff*)
+                           *bprw-default*))
+(assert-event (bprh-htooth 5 (update-nth 2 (append (fn-bpn-nth 2 *bprh-handoff*) '(0)) *bprh-handoff*)
+                           *bprw-default*))
+(assert-event (bprh-htooth 6 (bprh-with-trigger *bprh-handoff* 0 (make-list 65536 :initial-element 97))
+                           *bprw-default*))
+(assert-event (bprh-htooth 7 (bprh-with-id *bprh-handoff* 0 :fn-bp-bundle-idx) *bprw-default*))
+(assert-event (bprh-htooth 8 *bprh-handoff* *bprh-tiny-bundle*))
+(assert-event (bprh-htooth 9 (bprh-with-id (bprh-with-id *bprh-handoff* 4 18446744073709551616)
+                                           5 0)
+                           *bprw-default*))
+(assert-event (bprh-htooth 10 (bprh-with-id (bprh-with-id *bprh-handoff* 4 0) 5 1048577)
+                            *bprw-default*))
+(assert-event (bprh-htooth 11 (update-nth 3 '(:handed-off 18446744073709551616) *bprh-handoff*)
+                            *bprw-default*))
+(assert-event (bprh-htooth 11 (update-nth 3 :bogus *bprh-handoff*) *bprw-default*))
+; the producers' shape recognizer fn-bpnf-handoffp admits the forged ones that tooth 6, 8-10 refuse
+(assert-event
+ (and (fn-bpnf-handoffp (bprh-with-trigger *bprh-handoff* 0 (make-list 65536 :initial-element 97)))
+      (fn-bpnf-handoffp (update-nth 1 (make-list 257 :initial-element 1) *bprh-handoff*))))
+
+(defun bprh-jconjuncts (j profile)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (fn-bpnpf-profilep profile)                                       ; 0
+        (fn-bpn-jobp j)                                                   ; 1
+        (equal (fn-bpn-job-wire j) (fn-bpb-encode (fn-bpn-job-bundle j))) ; 2 wire is the bundle's encoding
+        (<= (len (fn-bpn-job-wire j)) (fn-bpnpf-bundle-octets profile))  ; 3 profile bundle octets
+        (<= (len (fn-bpn-job-wire j)) *fn-bpn-machine-max-job-octets*)   ; 4 enqueue capacity bound
+        (<= (fn-bpnpf-bundle-adu-length (fn-bpn-job-bundle j))
+            (fn-bpnpf-adu-octets profile))))                              ; 5 ADU octets
+
+(defun bprh-jtooth (k j profile)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (equal (fn-bprpf-job-wfp j profile)
+              (if (bprw-all-tp (bprh-jconjuncts j profile)) t nil))
+       (bprw-only-false (bprh-jconjuncts j profile) k)
+       (not (fn-bprpf-job-wfp j profile))
+       (equal (len (bprh-jconjuncts j profile)) 6)))
+
+(defconst *bprh-jwire-len* (len (fn-bpn-job-wire *bprh-job*)))
+(defconst *bprh-big-payload-bundle*      ; a job bundle whose encoding passes 131072 octets
+  (fn-bpb-make-bundle (fn-bpb-bundle-primary (fn-bpn-job-bundle *bprh-job*))
+                      (fn-bpb-bundle-blocks (fn-bpn-job-bundle *bprh-job*))
+                      (fn-bpb-payload-block 2 (make-list 140000 :initial-element 97))))
+(assert-event (bprh-jtooth 0 *bprh-job* '(8 1048576 65538 2000000000)))
+(assert-event (bprh-jtooth 1 (update-nth 10 :bogus *bprh-job*) *bprw-default*))
+(assert-event (bprh-jtooth 2 (update-nth 9 (append (fn-bpn-job-wire *bprh-job*) '(0)) *bprh-job*)
+                           *bprw-default*))
+(assert-event (bprh-jtooth 3 *bprh-job* (list 8 1048576 65538 (1- *bprh-jwire-len*))))
+(assert-event (bprh-jtooth 4 (fn-bpn-make-job '(119 49) '(97 49) 0 7 (fn-bpn-job-age-anchor *bprh-job*)
+                                              *bprw-sender* *bprh-route* *bprh-big-payload-bundle*
+                                              (fn-bpb-encode *bprh-big-payload-bundle*) :queued 0)
+                           '(8 1048576 1048576 1048576)))
+(assert-event (bprh-jtooth 5 *bprh-job* '(8 1048576 7 1048576)))
+; fn-bpn-job-listp (the checkpoint's own recognizer) admits the forged jobs that teeth 2, 4 refuse
+(assert-event
+ (and (fn-bpn-job-listp (list *bprh-big-job*))
+      (fn-bpn-job-listp (list (update-nth 9 (append (fn-bpn-job-wire *bprh-job*) '(0)) *bprh-job*)))))
