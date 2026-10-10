@@ -1,0 +1,4 @@
+{
+ "_doc": "tools/invariant_risk_check.py: declared host entries that carry ACL2's invariant-risk property in the image world, by name, each 'owner: why'. The list only shrinks (fix the entry, delete the line). Empty because the set was NOT measured when this file was written (no core.json existed to read, and no ACL2 run was permitted). Measure with: python3 tools/invariant_risk_check.py --list  (after tools/extract/core.sh has written build/core/core.json); any entry it prints is a current red to list here with its owner before the step is wired into tools/extract/gate.py.",
+ "marked": {}
+}
