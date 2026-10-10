@@ -9930,7 +9930,10 @@
           "theorem": "fn-heap-stopped-status-is-sized-without-the-store"
         },
         {
-          "theorem": "fn-heap-command-decide-reads-is-the-read-decision"
+          "theorem": "fn-heap-command-decide-store-opening-is-the-model"
+        },
+        {
+          "theorem": "fn-heap-command-decide-store-opening-unobserved-is-the-adapter"
         },
         {
           "theorem": "fn-heap-command-decide-otherwise-is-todays"
