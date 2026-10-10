@@ -147,4 +147,4 @@
 (def-cost fn-nco-owner-publication-word)
 (def-cost fn-owner-cfg-capture)
 (def-cost fn-owner-held-verdicts)
-(def-cost fn-owner-sco-count)
+(def-cost fn-owner-sco-count :unaccounted (fn-sf-records-count))

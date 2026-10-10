@@ -12977,7 +12977,9 @@
    "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-sf-records-count"
+   ],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"
   },
