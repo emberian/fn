@@ -64,13 +64,6 @@
    "item": "MEMORY-2G-PROFILE-SEMANTICS",
    "owner": "builder-M",
    "evidence": "measured red at dev dd93a43f1 under --mem 2G (hbox native-dd93a43f1-2g-control) and on train 79's image (native-d8fb738b3859-2g): the fill's refusal reason is history-exhausted where the test expects unaffordable; retirement: memory landing 3; admitted by amendment, coordinator 2026-10-09 18:05"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_over_window.NativeOverWindowTests.test_whole_range_under_a_small_quantum_is_the_unbounded_reply",
-   "item": "OVER-WINDOW-FIXTURE-SCHEMA",
-   "owner": "builder-D",
-   "evidence": "measured red at dev 3499082a6 (hbox native-3499082a6a6e) and on train 79's image (native-d8fb738b3859): the open refuses the syn100k-2k fixture store (schema-digest; built 2026-09-28 at 9127a2912, before 00a3713c4 changed the schema); admitted by amendment, coordinator 2026-10-09; retirement: the rebuilt fixture"
   }
  ]
 }
