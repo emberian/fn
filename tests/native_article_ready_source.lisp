@@ -37,12 +37,17 @@
 (defun fn-ag-append (x y) (append x y))
 (defun fn-cfg-ag-car (x) (fn-ag-car x))
 (defun fn-ng-char-code (x) (char-code x))
+;; A def-loop form (fn-own-replace-conn) is expanded by books/def-loop.lisp's
+;; own generator (tests/raw_def_loop.lisp), never by a hand-copied defun.
+(load "tests/raw_def_loop.lisp")
 (defun fixture-load (path predicate)
   (with-open-file (in path)
     (loop for form = (read in nil :end) until (eq form :end)
-          when (and (consp form) (member (car form) '(defun defmacro))
+          when (and (consp form) (member (car form) '(defun defmacro def-loop))
                     (funcall predicate (symbol-name (second form))))
-          do (eval form))))
+          do (eval (if (eq (car form) 'def-loop)
+                       (progn (raw-def-loop-load-generator) form)
+                     form)))))
 (fixture-load "books/injection-shape.lisp"
               (lambda (n) (member n '("FN-INJ-CAR" "FN-INJ-CDR" "FN-INJ-NTH") :test #'equal)))
 (fixture-load "books/owner.lisp"
