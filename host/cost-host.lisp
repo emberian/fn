@@ -80,3 +80,11 @@
 (def-cost fn-owner-page-decoded-job-span-at :unaccounted (fn-owner-page-read-ledger fn-dwj-span-at))
 (def-cost fn-owner-page-decoded-window-cache-span-at
   :unaccounted (fn-owner-page-read-ledger fn-pwz-cache-span-at))
+
+; The runtime contract's exercise entry (books/runtime-contract-echo.lisp,
+; `fn runtime-contract exercise'): the script selection is bounded outright
+; (a fixed table, at most eight visits for a fault variant); the exercise is
+; derived, partial over fn-rce-run, whose layer initialization and per-item
+; step have no row of their own.
+(def-cost fn-rce-exercise-items :visits 8)
+(def-cost fn-rce-exercise :unaccounted (fn-rce-run))
