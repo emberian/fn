@@ -57,13 +57,6 @@
    "item": "MEMORY-2G-PROFILE-SEMANTICS",
    "owner": "builder-M",
    "evidence": "measured red at dev dd93a43f1 under --mem 2G (hbox native-dd93a43f1-2g-control) and on train 79's image (native-d8fb738b3859-2g): the fill's refusal reason is history-exhausted where the test expects unaffordable; retirement: memory landing 3; admitted by amendment, coordinator 2026-10-09 18:05"
-  },
-  {
-   "kind": "native",
-   "subject": "tests.test_native_header_limits.NativeHeaderLimitsTests.test_a_live_limit_change_keeps_the_sealed_header_limits",
-   "item": "LIVE-LIMITS-RESET-HEADER-BOUNDS",
-   "owner": "builder-C",
-   "evidence": "measured on persvati (developer image of lane/spans int 9b03401cd, fn-osb-config unchanged on dev 877786836): a store sealed at max-header-fields 10 refuses a 12-field POST before `policy set max-transactions 14' and accepts it after; retirement: lane spans-osb-limits; admitted by amendment, coordinator 2026-10-10"
   }
  ]
 }
