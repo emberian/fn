@@ -4,12 +4,13 @@
  "file": "tools/depth_check.py",
  "id": "DEPTH-EXCESS-D",
  "notes": [
-  "2026-10-10 Builder D: lane/d-depth-excess-d closes 63; see its READY."
+  "2026-10-10 Builder D: lane/d-depth-excess-d closes 63; see its READY.",
+  "10-10 17:07 2026-10-10 Builder D, lane/d-release-guards: fn-owner-workflow-request-plan, -store-waive and -pending-waivers are :logic, guard-verified CLC with constant-time guards (boundp-global of the workflow and owner globals); their callees in bp-release, bp-request-plan, bp-payload-gate and bp-carry-control verified at guard t (fn-bprl-work-pin an mbe over a guard-t lookup twin). Open: fn-web-host-page-step and -window-page-step, and the constant-time wpf guards (lane/d-web-guards follow-up)."
  ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "depth_check at lane/d-registry-findings (dev 9b580dd36 + D's queued lanes), Builder D 2026-10-10, CL13 attributed by area under the CL24 ruling's pattern",
  "state": "in-progress",
  "title": "depth_check: 17 unclassified host-closure findings in builder-D's area (80 at CL13; 2 more left to retiring landings)",
- "updated": "2026-10-10T04:30:00Z"
+ "updated": "2026-10-10T21:07:42Z"
 }
