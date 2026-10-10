@@ -367,6 +367,14 @@
   (fn-ct-totals-cache-validp (cons 0 (fn-ct-zero-tot residency)) records residency)
   :hints (("Goal" :in-theory (e/d (fn-ct-totals-cache-validp) ()))))
 
+; The fold over an append is the sum of the folds: the open's seed from the
+; checkpoint header's totals plus the suffix scan's (A's charged-totals header).
+(defthm fn-ct-charged-of-append
+  (equal (fn-ct-charged (append a b) res)
+         (fn-mm-tot-plus (fn-ct-charged a res) (fn-ct-charged b res)))
+  :hints (("Goal" :induct (len a)
+           :in-theory (e/d () (fn-mm-tot-plus fn-ct-row-tot fn-ct-zero-tot)))))
+
 ; The log's records' octets a full replay reads, charged.
 (defun fn-ct-log-of-records (records)
   (declare (xargs :guard t :verify-guards nil))
