@@ -55,6 +55,8 @@ BOX_BASE = os.environ.get("FN_LOAD_BOX_BASE", "/tank/fn/scratch/load-harness")
 HOOKS = ROOT / "planning" / "evidence" / "load" / "hooks"
 HOOK = HOOKS / "w13-idle-gc.lisp"
 CENSUS_HOOK = HOOKS / "w15-census.lisp"
+ROOTS_HOOK = HOOKS / "m34-roots.lisp"   # what holds the large arrays a census finds live (memory landing 3+4)
+GC_POLICY_HOOK = HOOKS / "m34-gc-policy.lisp"   # a candidate collector policy, measured (memory landing 3+4)
 LOCKS_HOOK = HOOKS / "w2-lockwait.lisp"
 SPROF_HOOK = HOOKS / "w6-prof.lisp"
 FIXTURES = "/tank/fn/scratch/fixtures-0b4d3b183"
@@ -386,7 +388,23 @@ class Counters:
             self.refusals[refusal_name(reply)] += 1
 
 
-def post_one(conn, ctr, octets, retries=40):
+def shaped_article(r, i, octets, shape=None):
+    """rep_measure's article, reshaped by a post phase's SHAPE (memory landing 3+4: the owner term's header and
+    membership weights need a second article shape beside W1's): `newsgroups' replaces the one group, and
+    `subject_octets' pads the Subject header by that many octets.  The body is the same."""
+    art = r.article(i, octets)
+    if shape:
+        if shape.get("newsgroups"):
+            art = art.replace(b"Newsgroups: fn.test\r\n",
+                              b"Newsgroups: " + ",".join(shape["newsgroups"]).encode("ascii") + b"\r\n", 1)
+        if shape.get("subject_octets"):
+            k = art.index(b"Subject: ")
+            e = art.index(b"\r\n", k)
+            art = art[:e] + b" " + b"s" * (shape["subject_octets"] - 1) + art[e:]
+    return art
+
+
+def post_one(conn, ctr, octets, retries=40, shape=None):
     """One POST that counts its refusals by name and retries a refused POST command; seconds or None."""
     m, r = _clients()
     i = ctr.next_id()
@@ -397,7 +415,7 @@ def post_one(conn, ctr, octets, retries=40):
             ctr.refuse(first)
             time.sleep(0.25)
             continue
-        conn.stream.write(r.article(i, octets) + b".\r\n")
+        conn.stream.write(shaped_article(r, i, octets, shape) + b".\r\n")
         final = conn.readline()
         dt_ = time.perf_counter() - t0
         if final.startswith(b"240"):
@@ -552,7 +570,7 @@ class Run:
                                 break
                     elif time.monotonic() >= stop_at:
                         break
-                    d = post_one(c, self.ctr, octets)
+                    d = post_one(c, self.ctr, octets, shape=ph.get("shape"))
                     if d is not None:
                         lat[k].append(d)
                 c.close()
@@ -948,11 +966,33 @@ class Run:
             if time.monotonic() - t0 > 900:
                 raise CellError("census hook did not finish in 900 s (is the hook loaded?)")
             time.sleep(0.5)
-        keep = Path(self.args.out) / ("census-%s.txt" % re.sub(r"[^A-Za-z0-9]+", "_", self.cell_id))
+        # One file a census phase: a workload that takes several (owner-per-record) keeps each.
+        keep = Path(self.args.out) / ("census-%s.txt" % re.sub(r"[^A-Za-z0-9]+", "_", "%s-%s" % (self.cell_id, ph.get("name", "census"))))
         shutil.copy(d / "census.txt", keep) if (d / "census.txt").exists() else None
         err = (d / "census.err").read_text() if (d / "census.err").exists() else None
+        if (d / "gc-policy.log").exists():
+            shutil.copy(d / "gc-policy.log", Path(self.args.out) / ("gc-policy-%s.log" % re.sub(r"[^A-Za-z0-9]+", "_", self.cell_id)))
         return {"census_file": keep.name, "census": cells_mod.parse_census((d / "census.txt").read_text("utf-8", "replace"))
                 if (d / "census.txt").exists() else None, "census_error": err, "census_s": round(time.monotonic() - t0, 1)}
+
+    def phase_roots(self, ph):
+        """The m34-roots hook (a workload with census and roots): the history-root generations held and the
+        root path of each large u64 array live after a full collection, kept as roots-CELL-PHASE.txt."""
+        d = Path(self.node.work) / "census"
+        for f in ("roots-done", "roots-go", "roots.txt", "roots.err"):
+            with contextlib.suppress(OSError):
+                (d / f).unlink()
+        (d / "roots-go").write_text("")
+        t0 = time.monotonic()
+        while not (d / "roots-done").exists():
+            if time.monotonic() - t0 > 900:
+                raise CellError("roots hook did not finish in 900 s (is the hook loaded?)")
+            time.sleep(0.5)
+        keep = Path(self.args.out) / ("roots-%s.txt" % re.sub(r"[^A-Za-z0-9]+", "_", "%s-%s" % (self.cell_id, ph.get("name", "roots"))))
+        if (d / "roots.txt").exists():
+            shutil.copy(d / "roots.txt", keep)
+        err = (d / "roots.err").read_text() if (d / "roots.err").exists() else None
+        return {"roots_file": keep.name, "roots_error": err, "roots_s": round(time.monotonic() - t0, 1)}
 
     def phase_publish(self, ph):
         """Stop the owner, publish a checkpoint offline: wall, CPU, octets in files it touched, component sizes."""
@@ -1302,6 +1342,11 @@ def cell_hooks(spec, work, arm=None, gc_hook=False):
         hooks.append(CENSUS_HOOK)
         (work / "census").mkdir()
         env_extra["FN_LOAD_CENSUS_DIR"] = str(work / "census")
+        if spec.get("roots"):
+            hooks.append(ROOTS_HOOK)
+        if spec.get("gc_policy"):
+            hooks.append(GC_POLICY_HOOK)
+            env_extra["FN_LOAD_GC_RHO"] = str(spec["gc_policy"].get("rho_percent", 25))
     if spec.get("lockwait"):
         hooks.append(LOCKS_HOOK)
         env_extra["FN_LOAD_LOCKS"] = str(work / "locks.log")

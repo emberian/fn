@@ -1630,13 +1630,15 @@ The decision (PKT-169, 2026-09-26) and its two halves:
   keystone in PRF-129 yet.)
 - **The release record.** A release is a Store record (the `:release`
   retention event). The served gates (`fn-smr-verdict-at` for every record
-  kind, `fn-smr-article-budget-for` for the served POST and BP transit,
-  `fn-smr-article-verdict-at` for the developer `store post`) admit a
-  record other than a release only if, after it, the profile's own gate
-  still admits one release record: one transaction of the profile's budget
-  and the release record's codec ceiling (4,096 octets) within H
-  (`fn-smr-admission-keeps-the-reserve`, `fn-smr-prepare-keeps-the-reserve`,
-  `fn-smr-article-verdict-keeps-the-reserve`). A release consumes the
+  kind but the article; for an article, the served POST, the BP transit
+  and the developer `store post`, the capacity vector's
+  `fn-cvec-article-budget-for` and `fn-cvec-article-verdict-at`, which at
+  no open undertaking are this reservation) admit a record other than a
+  release only if, after it, the profile's own gate still admits one
+  release record: one transaction of the profile's budget and the release
+  record's codec ceiling (4,096 octets) within H
+  (`fn-smr-admission-keeps-the-reserve`, `fn-cvec-prepare-keeps-the-vector`,
+  `fn-cvec-article-verdict-keeps-the-vector`). A release consumes the
   reservation (`fn-smr-reserve-admits-the-release`). The reservation holds
   at init under every admitted profile and is kept by a profile upgrade.
   It is the profile's gate at kind `:release`, not a constant of its own;

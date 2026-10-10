@@ -29,6 +29,7 @@
 (in-package "ACL2")
 (include-book "store-budget")
 (include-book "history-image-plan")
+(include-book "frame-octets")
 
 (local (in-theory (disable (tau-system))))
 
@@ -95,6 +96,12 @@
   (fn-mm-tot-p (fn-mm-make-tot records arena hcharge memberships events log history charge
                                residency))
   :hints (("Goal" :in-theory (e/d (fn-mm-make-tot fn-mm-tot-p) (nfix)))))
+
+; One record's frame in the log: the batch's four-octet length, the frame
+; header, the 32-octet chain value the frame carries and its trailer
+; (books/history-totals-carried.lisp fn-ct-row-log charges each record one).
+(defconst *fn-ct-log-frame-octets*
+  (+ 4 *fn-frame-header-octets* *fn-frame-trailer-octets* *fn-frame-trailer-octets*))
 
 ; -----------------------------------------------------------------------------
 ; The per-record definitions over a store's records (fn-sf-records).

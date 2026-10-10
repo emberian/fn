@@ -369,6 +369,7 @@
 (include-book "../../books/public-exposure")
 (include-book "../../books/public-exposure-reply")
 (include-book "../../books/connection-budget")
+(include-book "../../books/admission-memory")
 (include-book "../../books/tls-proxy")
 (include-book "../../books/owner-open-carried")
 (include-book "../../books/owner-reader-view")

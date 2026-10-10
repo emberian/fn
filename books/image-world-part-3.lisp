@@ -7,9 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
-(include-book "owner-prepare-correspondence")
-(include-book "owner-store-budget")
-(include-book "store-identity-reserve")
 (include-book "owner-identity-prepare")
 (include-book "consumer-event-charge")
 (include-book "consumer-publication-budget")
@@ -34,6 +31,7 @@
 (include-book "owner-ack-after-barrier")
 (include-book "login-binding-live")
 (include-book "connection-budget")
+(include-book "admission-memory")
 (include-book "tls-proxy")
 (include-book "owner-readers-transitions")
 (include-book "owner-stop-drain")

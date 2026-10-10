@@ -165,3 +165,5 @@
 (include-book "owner-log-reopen")
 (include-book "owner-prepare-carried")
 (include-book "post-identity-index")
+(include-book "post-identity-catalog")
+(include-book "post-prepare-catalog")

@@ -44,12 +44,43 @@
            (e/d (fn-owner-callback-install-effects fn-owner-install-served-effects)
                 (put-global)))))
 
+; The run's capacity by the memory model (ruling (b), 2026-10-10;
+; host/owner-host.lisp fn-owner-memory-configure installs C' as
+; `fn-owner-memory-capacity', books/admission-memory.lisp fn-adm-capacity):
+; the owner's bound is lowered to C' readers and the operator's one, so the
+; exposure total is at most C' (KEYSTONE
+; fn-owner-callback-exposure-total-within-the-memory-capacity).  Before a run
+; configured it, the owner's bound as before.
+(defun fn-owner-memory-max-conns (state)
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
+  (let ((m (fn-own-max-conns (fn-owner-core state)))
+        (c (and (boundp-global 'fn-owner-memory-capacity state)
+                (f-get-global 'fn-owner-memory-capacity state))))
+    (if (posp c) (min (nfix m) (1+ c)) m)))
+
 (defun fn-owner-callback-exposure-limits (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (fn-exp-limits (fn-cfg-value (fn-owner-config state))
-                 (fn-own-max-conns (fn-owner-core state))
+                 (fn-owner-memory-max-conns state)
                  (fn-owner-exposure-publicp state)
                  (fn-auth-config-requiredp (fn-owner-auth state))))
+
+; KEYSTONE: a run whose memory capacity is C' accepts at most C' readers (the
+; exposure decision refuses at its total, fn-exp-open-refuses-exactly-at-the-
+; capacity's 400).
+(defthm fn-owner-callback-exposure-total-within-the-memory-capacity
+  (implies (and (boundp-global 'fn-owner-memory-capacity state)
+                (posp (f-get-global 'fn-owner-memory-capacity state)))
+           (<= (fn-exp-lim-total (fn-owner-callback-exposure-limits state))
+               (f-get-global 'fn-owner-memory-capacity state)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-owner-callback-exposure-limits
+                                     fn-owner-memory-max-conns
+                                     fn-exp-limits fn-exp-socket-cap)
+                                  (fn-exp-or fn-exp-anonymous fn-exp-trusted-of fn-exp-trusted-word-of
+                                   fn-exp-row fn-exp-connections-capacity fn-exp-trusted-of-word
+                                   fn-owner-config fn-owner-core fn-own-max-conns fn-owner-exposure-publicp
+                                   fn-auth-config-requiredp fn-owner-auth fn-cfg-value)))))
 
 (defun fn-owner-callback-at-reader-view (state)
   (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))

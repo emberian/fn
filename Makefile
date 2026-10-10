@@ -714,7 +714,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/heap-figure-tests \
 	books/charged-totals \
 	books/memory-model \
+	books/memory-entry-cost \
 	tests/acl2/memory-model-tests \
+	tests/acl2/admission-memory-tests \
+	tests/acl2/history-totals-carried-tests \
+	tests/acl2/heap-command-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
 	tests/acl2/open-frontier-wire-tests \
@@ -994,6 +998,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-maintenance-reserve-tests \
 	books/store-capacity-vector \
 	tests/acl2/store-capacity-vector-tests \
+	tests/acl2/store-capacity-vector-prepare-tests \
 	books/store-capacity-config \
 	books/served-auth-wire-bridge \
 	tests/acl2/served-auth-wire-bridge-tests \

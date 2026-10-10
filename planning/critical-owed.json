@@ -2096,26 +2096,6 @@
    "item": "PRF-1350",
    "book": "books/store-capacity-vector.lisp"
   },
-  "fn-cvec-article-refusal-word-names-the-memberships": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
-  "fn-cvec-article-verdict-keeps-the-vector": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
-  "fn-cvec-article-verdict-keeps-the-vector-at-producer-width": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
-  "fn-cvec-article-verdict-keeps-the-vector-for-a-held-row": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
   "fn-cvec-config-publication-keeps-the-release-generation": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -2126,20 +2106,10 @@
    "item": "PRF-1350",
    "book": "books/store-capacity-vector.lisp"
   },
-  "fn-cvec-held-row-within-its-figure": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
   "fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/store-capacity-config.lisp"
-  },
-  "fn-cvec-prepare-keeps-the-vector": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
   },
   "fn-cvec-record-keeps-the-vector": {
    "class": "resource-reservation",
@@ -2182,11 +2152,6 @@
    "book": "books/store-capacity-vector.lisp"
   },
   "fn-cvec-statement-admission-keeps-the-vector": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
-  "fn-cvec-statement-row-within-its-figure": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/store-capacity-vector.lisp"
@@ -2456,11 +2421,6 @@
    "item": "PRF-1350",
    "book": "books/heap-breakdown.lisp"
   },
-  "fn-heap-decide-admits-every-store-the-profile-admits": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-figure.lisp"
-  },
   "fn-heap-decide-refuses-exactly-past-the-machine": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -2621,22 +2581,7 @@
    "item": "PRF-1350",
    "book": "books/heap-reservation.lisp"
   },
-  "fn-heap-store-figure-holds-every-store": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-store-figure.lisp"
-  },
-  "fn-heap-store-figure-holds-every-store-at-the-open-trigger": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-open-nursery.lisp"
-  },
   "fn-heap-store-figure-observed-is-at-most-unobserved": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-store-figure.lisp"
-  },
-  "fn-heap-store-history-holds-payload-and-memberships": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/heap-store-figure.lisp"
@@ -6186,26 +6131,6 @@
    "item": "PRF-1350",
    "book": "books/store-budget-article.lisp"
   },
-  "fn-sbud-article-gate-figure-bounds-every-record": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
-  "fn-sbud-article-verdict-keeps-history": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
-  "fn-sbud-article-verdict-keeps-history-at-producer-width": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
-  "fn-sbud-article-verdict-keeps-history-for-every-record": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
   "fn-sbud-budget-is-the-profile-admissibility": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -6276,16 +6201,6 @@
    "item": "PRF-1350",
    "book": "books/owner-store-budget.lisp"
   },
-  "fn-sbud-prepare-under-article-budget-keeps-history": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
-  "fn-sbud-prepare-under-article-budget-keeps-history-at-producer-width": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
   "fn-sbud-record-octets-is-the-stored-octets": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -6296,20 +6211,10 @@
    "item": "PRF-1350",
    "book": "books/store-budget.lisp"
   },
-  "fn-sbud-record-octets-pays-the-memberships": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget.lisp"
-  },
   "fn-sbud-refusal-kind-at-budget-is-unaffordable": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/owner-store-budget.lisp"
-  },
-  "fn-sbud-row-octets-pays-its-memberships": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget.lisp"
   },
   "fn-sbud-used-names-the-transaction-namespace": {
    "class": "resource-reservation",
@@ -6657,16 +6562,6 @@
    "book": "books/store-maintenance-reserve.lisp"
   },
   "fn-smr-admitted-profile-starts-reserved": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-maintenance-reserve.lisp"
-  },
-  "fn-smr-article-verdict-keeps-the-reserve": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-maintenance-reserve.lisp"
-  },
-  "fn-smr-prepare-keeps-the-reserve": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/store-maintenance-reserve.lisp"
