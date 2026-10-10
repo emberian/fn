@@ -1755,8 +1755,8 @@
 (defun fn-owner-memory-pools (profile cold output peer workers cache-limit root)
   (declare (xargs :guard t))
   (+ (if cold
-         (car (fn-crv-pool-budget cold profile))
-       (fn-prstartup-launch-extra profile workers cache-limit root))
+         (nfix (car (fn-crv-pool-budget cold profile)))
+       (nfix (fn-prstartup-launch-extra profile workers cache-limit root)))
      (if (consp output) (nfix (car output)) 0)
      (if (consp peer) (nfix (car peer)) 0)))
 
