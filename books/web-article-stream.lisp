@@ -1,39 +1,88 @@
 ; Bounded ARTICLE metadata scanner over replayable logical NNTP plans.
-; Program definitions: the reference comparison is executable evidence, not
-; a guard/refinement claim. Offsets name the immutable virtual reply.
+; The guards are verified; the reference comparison is executable evidence,
+; not a refinement claim. Offsets name the immutable virtual reply.
 (in-package "ACL2")
 (include-book "web-list-stream")
 (include-book "web-page-cursor")
 
-(defun fn-was-get (key x) (declare (xargs :verify-guards nil)) (cdr (assoc-eq key x)))
+(defun fn-was-get (key x)
+  (declare (xargs :guard (and (symbolp key) (alistp x))))
+  (cdr (assoc-eq key x)))
 (defun fn-was-put (key value x)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard (alistp x)))
   (if (consp x)
       (if (equal key (caar x)) (cons (cons key value) (cdr x))
         (cons (car x) (fn-was-put key value (cdr x))))
     (list (cons key value))))
+(defthm fn-was-alistp-of-put
+  (implies (alistp x) (alistp (fn-was-put key value x))))
+
+(defthm fn-was-get-of-put
+  (implies (and key k2)
+           (equal (fn-was-get key (fn-was-put k2 v x))
+                  (if (equal key k2) v (fn-was-get key x)))))
+
 (defun fn-was-start (login)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard (true-listp login)))
   (list (cons :kind :article) (cons :phase :group) (cons :at 0) (cons :ls 0) (cons :prefix nil)
         (cons :last nil) (cons :slot nil) (cons :vs nil) (cons :fe 0)
         (cons :name nil) (cons :colon nil) (cons :skipping nil)
         (cons :fields (list nil nil nil nil nil)) (cons :body nil) (cons :be nil)
         (cons :status-end nil) (cons :pattern (append (list 60) login (list 64)))
         (cons :tail nil) (cons :own nil)))
+;; What fn-was-octet reads of the scan state: positions and counters are
+;; naturals, the buffers are lists, and the open field's slot and value start
+;; are naturals when set.
+(defun fn-was-statep (x)
+  (declare (xargs :guard t))
+  (and (alistp x)
+       (natp (fn-was-get :at x)) (natp (fn-was-get :ls x)) (natp (fn-was-get :fe x))
+       (true-listp (fn-was-get :prefix x)) (true-listp (fn-was-get :name x))
+       (true-listp (fn-was-get :tail x)) (true-listp (fn-was-get :pattern x))
+       (or (null (fn-was-get :vs x)) (natp (fn-was-get :vs x)))
+       (or (null (fn-was-get :slot x)) (natp (fn-was-get :slot x)))))
+
+;; The facts the guards read off a scan state, and a put keeps them.
+(defthm fn-was-statep-facts
+  (implies (fn-was-statep x)
+           (and (alistp x)
+                (natp (fn-was-get :at x)) (natp (fn-was-get :ls x)) (natp (fn-was-get :fe x))
+                (true-listp (fn-was-get :prefix x)) (true-listp (fn-was-get :name x))
+                (true-listp (fn-was-get :tail x)) (true-listp (fn-was-get :pattern x))
+                (or (null (fn-was-get :vs x)) (natp (fn-was-get :vs x)))
+                (or (null (fn-was-get :slot x)) (natp (fn-was-get :slot x)))))
+  :rule-classes :forward-chaining)
+
+(defun fn-was-field-okp (key v)
+  (declare (xargs :guard t))
+  (case key
+    ((:at :ls :fe) (natp v))
+    ((:prefix :name :tail :pattern) (true-listp v))
+    ((:vs :slot) (or (null v) (natp v)))
+    (otherwise t)))
+
+(defthm fn-was-statep-of-put
+  (implies (and (fn-was-statep x) key (symbolp key) (fn-was-field-okp key v))
+           (fn-was-statep (fn-was-put key v x)))
+  :hints (("Goal" :in-theory (enable fn-was-statep fn-was-field-okp)
+                  :use (fn-was-statep-facts))))
+
 (defun fn-was-commit (x)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard (fn-was-statep x)))
   (let ((slot (fn-was-get :slot x)) (vs (fn-was-get :vs x)))
     (if (and slot vs)
         (fn-was-put :fields (fn-wss-put-span slot (cons vs (fn-was-get :fe x))
                                             (fn-was-get :fields x)) x)
       x)))
 (defun fn-was-code (prefix)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard (true-listp prefix)))
   (let ((a (car prefix)) (b (cadr prefix)) (c (caddr prefix)))
     (and (fn-ot-digitp a) (fn-ot-digitp b) (fn-ot-digitp c)
          (+ (* 100 (- a 48)) (* 10 (- b 48)) (- c 48)))))
 (defun fn-was-octet (o x)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard (fn-was-statep x)
+                  :guard-hints (("Goal" :in-theory (disable fn-was-get fn-was-put fn-was-statep
+                                                            (:executable-counterpart tau-system))))))
   (let* ((at (fn-was-get :at x)) (ls (fn-was-get :ls x))
          (phase (fn-was-get :phase x)) (first (equal at ls))
          (prefix (fn-was-get :prefix x))
@@ -82,16 +131,100 @@
                       (otherwise x))))
             (fn-was-put :ls (1+ at) (fn-was-put :prefix nil (fn-was-put :last o x))))
         (fn-was-put :last o x)))))
+(defthm fn-was-commit-statep
+  (implies (fn-was-statep x) (fn-was-statep (fn-was-commit x)))
+  :hints (("Goal" :in-theory (disable fn-was-get fn-was-put fn-was-statep
+                                      (:executable-counterpart tau-system))
+                  :expand ((fn-was-commit x)))))
+
+(defthm fn-was-octet-statep
+  (implies (fn-was-statep x) (fn-was-statep (fn-was-octet o x)))
+  :hints (("Goal" :in-theory (disable fn-was-get fn-was-put fn-was-statep
+                                      (:executable-counterpart tau-system)))))
+
 (defun fn-was-scan (i end x fn-web-in)
-  (declare (xargs :verify-guards nil :stobjs fn-web-in
+  (declare (xargs :stobjs fn-web-in
+                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-web-in))
+                              (fn-was-statep x))
+                  :guard-hints (("Goal" :in-theory (disable fn-was-octet)))
                   :measure (nfix (- (nfix end) (nfix i)))))
   (if (>= (nfix i) (nfix end)) x
     (fn-was-scan (1+ (nfix i)) end (fn-was-octet (fn-octets-get i fn-web-in) x) fn-web-in)))
 
+;; The :v-list rows' segments are plan segments (a kind, then a list).
+(local
+ (defthm fn-was-octets-only-listp
+   (or (consp (fn-wr-octets-only xs)) (equal (fn-wr-octets-only xs) nil))
+   :hints (("Goal" :in-theory (enable fn-wr-octets-only)))
+   :rule-classes :type-prescription))
+
+(local
+ (defthm fn-was-cdr-txt
+   (equal (cdr (fn-wr-txt xs)) (fn-wr-octets-only xs))
+   :hints (("Goal" :in-theory (enable fn-wr-txt)))))
+
+(defthm fn-wgl-segs-wsegsp
+  (implies (fn-wgl-rowp row) (fn-wpc-wsegsp (fn-wgl-segs row))))
+
+;; A windowed cursor: the plain cursor's seven fields over segments whose
+;; spans may lie anywhere in the virtual reply (only the window is in
+;; fn-web-in), a :v-list span carrying its row parser and nothing pending.
+(defun fn-wpc-wcursorp (cursor)
+  (declare (xargs :guard t))
+  (and (true-listp cursor) (equal (len cursor) 7)
+       (fn-wpc-wsegsp (fn-wrq-nth 0 cursor))
+       (member (fn-wrq-nth 1 cursor) (cons nil (remove :w *fn-wpc-kinds*)))
+       (implies (null (fn-wrq-nth 1 cursor)) (null (fn-wrq-nth 6 cursor)))
+       (implies (equal (fn-wrq-nth 1 cursor) :v-list)
+                (and (null (fn-wrq-nth 6 cursor))
+                     (or (null (fn-wrq-nth 2 cursor))
+                         (fn-wgl-statep (fn-wrq-nth 2 cursor)))))))
+
+;; What the window functions read off a windowed cursor (stated over nth and
+;; car: the rewriter has already turned fn-wrq-nth into them where these fire).
+(defthm fn-wpc-wcursorp-facts
+  (implies (fn-wpc-wcursorp cursor)
+           (and (true-listp cursor) (equal (len cursor) 7) (consp cursor)
+                (fn-wpc-wsegsp (car cursor))
+                (member (nth 1 cursor) (cons nil (remove :w *fn-wpc-kinds*)))))
+  :hints (("Goal" :in-theory (enable fn-wpc-wcursorp fn-wrq-nth-is-nth)))
+  :rule-classes :forward-chaining)
+
+(defthm fn-wpc-wcursorp-pending
+  (implies (and (fn-wpc-wcursorp cursor) (null (nth 1 cursor)))
+           (null (nth 6 cursor)))
+  :hints (("Goal" :in-theory (enable fn-wpc-wcursorp fn-wrq-nth-is-nth)))
+  :rule-classes :forward-chaining)
+
+(defthm fn-wpc-wcursorp-v-list
+  (implies (and (fn-wpc-wcursorp cursor) (equal (nth 1 cursor) :v-list))
+           (and (null (nth 6 cursor))
+                (or (null (nth 2 cursor)) (fn-wgl-statep (nth 2 cursor)))))
+  :hints (("Goal" :in-theory (enable fn-wpc-wcursorp fn-wrq-nth-is-nth)))
+  :rule-classes :forward-chaining)
+
+(defthm fn-wpc-wsegsp-head
+  (implies (fn-wpc-wsegsp segs)
+           (if (consp segs)
+               (and (consp (car segs))
+                    (member (car (car segs)) *fn-wpc-kinds*)
+                    (or (consp (cdr (car segs))) (null (cdr (car segs))))
+                    (fn-wpc-wsegsp (cdr segs)))
+             (null segs)))
+  :hints (("Goal" :in-theory (enable fn-wpc-wsegsp)))
+  :rule-classes nil)
+
 ; The window cursor returns a fifth value NEED=(START . END). It never
 ; advances a virtual source without those exact source octets being present.
 (defun fn-wpc-window-next (cursor base fn-web-in)
-  (declare (xargs :verify-guards nil :stobjs fn-web-in))
+  (declare (xargs :stobjs fn-web-in
+                  :guard (and (natp base) (fn-wpc-wcursorp cursor))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :use ((:instance fn-wpc-wcursorp-facts (cursor cursor))
+                                       (:instance fn-wpc-wcursorp-v-list (cursor cursor))
+                                       (:instance fn-wpc-wcursorp-pending (cursor cursor))
+                                       (:instance fn-wpc-wsegsp-head (segs (car cursor))))
+                                 :in-theory (disable fn-wpc-next fn-wpc-wcursorp)))))
   (let* ((kind (fn-wrq-nth 1 cursor)) (s (nfix (fn-wrq-nth 3 cursor)))
          (e (nfix (fn-wrq-nth 4 cursor))) (seg (car (fn-wrq-nth 0 cursor)))
          (wk (and (not kind) (consp seg) (equal (car seg) :w)))
@@ -140,8 +273,115 @@
                         (list (car next) (cadr next) nil (+ base (fn-wrq-nth 3 next))
                               (+ base (fn-wrq-nth 4 next)) (fn-wrq-nth 5 next) (fn-wrq-nth 6 next)) next)
                     done nil)))))))))))
+;; A window step keeps the windowed cursor in its vocabulary.  One lemma per
+;; kind of cursor (the step is a different path in each), then their union.
+(defthm fn-wpc-wsegsp-append
+  (implies (and (fn-wpc-wsegsp a) (fn-wpc-wsegsp b))
+           (fn-wpc-wsegsp (append a b)))
+  :hints (("Goal" :in-theory (enable fn-wpc-wsegsp))))
+
+(defthm fn-wgl-feed-segs-wsegsp
+  (implies (and (natp at) (fn-wgl-statep x) (car (fn-wgl-feed o at x)))
+           (fn-wpc-wsegsp (fn-wgl-segs (car (fn-wgl-feed o at x)))))
+  :hints (("Goal" :use ((:instance fn-wgl-feed-rowp) (:instance fn-wgl-segs-wsegsp (row (car (fn-wgl-feed o at x)))))
+                  :in-theory (disable fn-wgl-feed fn-wgl-segs fn-wgl-rowp fn-wgl-feed-rowp fn-wgl-segs-wsegsp))))
+
+(defthm fn-wpc-wcursorp-of-list
+  (equal (fn-wpc-wcursorp (list segs kind xs s e bol pending))
+         (and (fn-wpc-wsegsp segs)
+              (member kind (cons nil (remove :w *fn-wpc-kinds*)))
+              (implies (null kind) (null pending))
+              (implies (equal kind :v-list)
+                       (and (null pending) (or (null xs) (fn-wgl-statep xs))))))
+  :hints (("Goal" :in-theory (enable fn-wpc-wcursorp))))
+
+(defthm fn-wpc-wcursorp-of-facts
+  ; a cursor of the vocabulary that is not a :v-list span
+  (implies (and (true-listp c) (equal (len c) 7)
+                (fn-wpc-wsegsp (car c))
+                (member (nth 1 c) (cons nil (remove :w *fn-wpc-kinds*)))
+                (implies (null (nth 1 c)) (null (nth 6 c)))
+                (not (equal (nth 1 c) :v-list)))
+           (fn-wpc-wcursorp c))
+  :hints (("Goal" :in-theory (enable fn-wpc-wcursorp))))
+
+(defthm wn-vlist
+  (implies (and (natp base) (fn-wpc-wcursorp cursor) (equal (nth 1 cursor) :v-list))
+           (fn-wpc-wcursorp (mv-nth 2 (fn-wpc-window-next cursor base fn-web-in))))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-wpc-wcursorp-facts (cursor cursor))
+                        (:instance fn-wpc-wcursorp-v-list (cursor cursor))
+                        (:instance fn-wpc-wsegsp-head (segs (car cursor))))
+                  :in-theory (disable fn-wpc-next fn-wpc-wcursorp fn-wgl-feed fn-wgl-start fn-wgl-segs))))
+
+(defthm wn-vu
+  (implies (and (natp base) (fn-wpc-wcursorp cursor) (equal (nth 1 cursor) :v-u))
+           (fn-wpc-wcursorp (mv-nth 2 (fn-wpc-window-next cursor base fn-web-in))))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-wpc-wcursorp-facts (cursor cursor))
+                        (:instance fn-wpc-wsegsp-head (segs (car cursor))))
+                  :in-theory (disable fn-wpc-next fn-wpc-wcursorp fn-wgl-feed fn-wgl-start fn-wgl-segs))))
+
+(defthm wn-span
+  (implies (and (natp base) (fn-wpc-wcursorp cursor) (member (nth 1 cursor) '(:s :d)))
+           (fn-wpc-wcursorp (mv-nth 2 (fn-wpc-window-next cursor base fn-web-in))))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-wpc-wcursorp-facts (cursor cursor))
+                        (:instance fn-wpc-wcursorp-pending (cursor cursor))
+                        (:instance fn-wpc-next-shape
+                                   (cursor (list (car cursor) (nth 1 cursor) nil
+                                                 (+ (nfix (nth 3 cursor)) (- base))
+                                                 (+ (nfix (nth 4 cursor)) (- base))
+                                                 (nth 5 cursor) (nth 6 cursor))))
+                        (:instance fn-wpc-next-not-v-list
+                                   (cursor (list (car cursor) (nth 1 cursor) nil
+                                                 (+ (nfix (nth 3 cursor)) (- base))
+                                                 (+ (nfix (nth 4 cursor)) (- base))
+                                                 (nth 5 cursor) (nth 6 cursor)))))
+                  :in-theory (disable fn-wpc-next fn-wpc-wcursorp fn-wgl-feed fn-wgl-start fn-wgl-segs))))
+
+(defthm wn-text
+  (implies (and (natp base) (fn-wpc-wcursorp cursor) (member (nth 1 cursor) '(:m :t :u)))
+           (fn-wpc-wcursorp (mv-nth 2 (fn-wpc-window-next cursor base fn-web-in))))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-wpc-wcursorp-facts (cursor cursor))
+                        (:instance fn-wpc-wcursorp-pending (cursor cursor))
+                        (:instance fn-wpc-next-shape (cursor cursor))
+                        (:instance fn-wpc-next-not-v-list (cursor cursor)))
+                  :in-theory (disable fn-wpc-next fn-wpc-wcursorp fn-wgl-feed fn-wgl-start fn-wgl-segs))))
+
+(defthm wn-none
+  (implies (and (natp base) (fn-wpc-wcursorp cursor) (null (nth 1 cursor)))
+           (fn-wpc-wcursorp (mv-nth 2 (fn-wpc-window-next cursor base fn-web-in))))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-wpc-wcursorp-facts (cursor cursor))
+                        (:instance fn-wpc-wcursorp-pending (cursor cursor))
+                        (:instance fn-wpc-wsegsp-head (segs (car cursor)))
+                        (:instance fn-wpc-next-shape (cursor cursor))
+                        (:instance fn-wpc-next-not-v-list (cursor cursor))
+                        (:instance fn-wpc-next-shape
+                                   (cursor (list (cons (cons :w (cons (+ (nfix (cadr (car (car cursor)))) (- base))
+                                                                      (+ (nfix (cddr (car (car cursor)))) (- base))))
+                                                       (cdr (car cursor)))
+                                                 nil nil 0 0 t nil)))
+                        (:instance fn-wpc-next-not-v-list
+                                   (cursor (list (cons (cons :w (cons (+ (nfix (cadr (car (car cursor)))) (- base))
+                                                                      (+ (nfix (cddr (car (car cursor)))) (- base))))
+                                                       (cdr (car cursor)))
+                                                 nil nil 0 0 t nil))))
+                  :in-theory (disable fn-wpc-next fn-wpc-wcursorp fn-wgl-feed fn-wgl-start fn-wgl-segs))))
+
+(defthm fn-wpc-window-next-wcursorp
+  (implies (and (natp base) (fn-wpc-wcursorp cursor))
+           (fn-wpc-wcursorp (mv-nth 2 (fn-wpc-window-next cursor base fn-web-in))))
+  :hints (("Goal" :use (wn-vlist wn-vu wn-span wn-text wn-none)
+                  :in-theory (disable fn-wpc-window-next))))
+
 (defun fn-wpc-window-drive (fuel cursor base count emitp rev fn-web-in)
-  (declare (xargs :verify-guards nil :stobjs fn-web-in))
+  (declare (xargs :stobjs fn-web-in
+                  :guard (and (natp fuel) (natp base) (natp count)
+                              (fn-wpc-wcursorp cursor) (true-listp rev))
+                  :guard-hints (("Goal" :in-theory (disable fn-wpc-window-next)))))
   (if (zp fuel) (mv (reverse rev) cursor count nil nil)
     (mv-let (present octet next done need) (fn-wpc-window-next cursor base fn-web-in)
       (if (or done need) (mv (reverse rev) next count done need)
@@ -149,7 +389,7 @@
                              emitp (if (and present emitp) (cons octet rev) rev) fn-web-in)))))
 
 (defun fn-was-page (config flow scan)
-  (declare (xargs :verify-guards nil))
+  (declare (xargs :guard (alistp scan)))
   (let* ((ctx (fn-wss-f-ctx flow)) (session (fn-wss-c-session ctx))
          (group (fn-wrq-nth 0 (fn-wss-f-data flow)))
          (ok (equal (fn-was-get :phase scan) :done))

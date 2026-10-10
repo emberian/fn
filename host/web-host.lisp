@@ -255,16 +255,19 @@
 ; Count and emit use the same immutable segment cursor outside the owner
 ; section. IN remains the exact retained NNTP reply through the HTTP body.
 (defun fn-web-host-page-cursor (segs)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-wpc-cursor segs))
 
-(definterface fn-web-host-page-cursor :class ::program)
+(definterface fn-web-host-page-cursor :class :common-lisp-compliant)
 
+; The cursor is one fn-web-host-page-cursor made and fn-wpc-step returned: its
+; spans end inside the retained reply (fn-wpc-cursorp).
 (defun fn-web-host-page-step (cursor count emitp fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :stobjs fn-web-in
+                  :guard (fn-wpc-cursorp cursor (fn-octets-len fn-web-in))))
   (fn-wpc-step cursor count emitp fn-web-in))
 
-(definterface fn-web-host-page-step :class ::program)
+(definterface fn-web-host-page-step :class :common-lisp-compliant)
 
 (defun fn-web-host-private-reply-p (flow event)
   (declare (xargs :guard t))
@@ -295,10 +298,12 @@
   (declare (xargs :mode :program))
   (fn-was-page config flow scan))
 (defun fn-web-host-window-page-step (cursor base count emitp fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :stobjs fn-web-in
+                  :guard (and (natp base) (natp count) (fn-wpc-wcursorp cursor))))
   (fn-wpc-window-drive 4096 cursor base count emitp nil fn-web-in))
 
-(definterface fn-web-host-window-page-step :class ::program)
+(definterface fn-web-host-window-page-step :class :common-lisp-compliant
+  :kinds ((base natp) (count natp)))
 (defun fn-web-host-replay-slice (at length need)
   (declare (xargs :guard (consp need)))
   (let ((s (max (nfix at) (nfix (car need))))
@@ -314,48 +319,65 @@
 
 (definterface fn-web-host-replay-forward-p :class :common-lisp-compliant)
 
-(defun fn-web-host-stream-p (flow) (declare (xargs :mode :program)) (fn-wrs-p flow))
+(defun fn-web-host-stream-p (flow) (declare (xargs :guard t)) (fn-wrs-p flow))
 
-(definterface fn-web-host-stream-p :class ::program)
-(defun fn-web-host-stream-start (flow) (declare (xargs :mode :program)) (fn-wrs-start flow))
+(definterface fn-web-host-stream-p :class :common-lisp-compliant)
+(defun fn-web-host-stream-start (flow) (declare (xargs :guard t)) (fn-wrs-start flow))
 
-(definterface fn-web-host-stream-start :class ::program)
+(definterface fn-web-host-stream-start :class :common-lisp-compliant)
+
+; The scan is one fn-web-host-stream-start made and fn-web-host-stream-scan
+; returned (fn-wrs-statep).
 (defun fn-web-host-stream-scan (scan fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in)) (fn-wrs-scan scan fn-web-in))
+  (declare (xargs :stobjs fn-web-in :guard (fn-wrs-statep scan)))
+  (fn-wrs-scan scan fn-web-in))
 
-(definterface fn-web-host-stream-scan :class ::program)
+(definterface fn-web-host-stream-scan :class :common-lisp-compliant)
 (defun fn-web-host-stream-page (config flow scan)
-  (declare (xargs :mode :program)) (fn-wrs-page config flow scan))
+  (declare (xargs :guard (fn-wrs-statep scan)))
+  (fn-wrs-page config flow scan))
 
-(definterface fn-web-host-stream-page :class ::program)
+(definterface fn-web-host-stream-page :class :common-lisp-compliant)
 
 (defun fn-web-host-private-begin-step (config action fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (declare (xargs :stobjs (fn-web-in fn-web-out)
+                  :guard (and (true-listp config) (true-listp action))))
   (fn-wpf-private-begin (append (take 6 config) (list :page-plan :private-begin))
                              action fn-web-in fn-web-out))
 
-(definterface fn-web-host-private-begin-step :class ::program)
+(definterface fn-web-host-private-begin-step :class :common-lisp-compliant
+  :kinds ((config true-listp) (action true-listp)))
 
+; The cursor is one fn-wps-header-cursor made (the form's finish) and this
+; function returned; its encoded body [I, E) lies in the source (fn-wps-cursorp).
 (defun fn-web-host-post-window (cursor fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (declare (xargs :stobjs (fn-web-in fn-web-out)
+                  :guard (fn-wps-cursorp cursor (fn-octets-len fn-web-in))))
   (mv-let (bytes next done) (fn-wps-window 4096 cursor nil fn-web-in)
     (let* ((fn-web-out (fn-octets-clear fn-web-out))
            (fn-web-out (fn-octets-append-list bytes fn-web-out)))
       (mv next done fn-web-out))))
 
-(definterface fn-web-host-post-window :class ::program)
+(definterface fn-web-host-post-window :class :common-lisp-compliant)
 (defun fn-web-host-post-reply-step (config flow event cursor fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (declare (xargs :stobjs (fn-web-in fn-web-out) :guard (true-listp config)))
   (fn-wps-private-reply (append (take 6 config) (list :page-plan :private-begin))
                         flow event cursor fn-web-in fn-web-out))
 
-(definterface fn-web-host-post-reply-step :class ::program)
+(definterface fn-web-host-post-reply-step :class :common-lisp-compliant
+  :kinds ((config true-listp)))
 
+; The traversal is one fn-wpf-start made (fn-web-host-private-begin-step) and
+; this function returned; it reads fn-web-in only inside the form span
+; (fn-wpf-statep).
 (defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (declare (xargs :stobjs (fn-web-in fn-web-out)
+                  :guard (and (true-listp config)
+                              (fn-wpf-statep prep (fn-octets-len fn-web-in)))))
   (mv-let (next done) (fn-wpf-drive 4096 prep fn-web-in)
     (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
                            next fn-web-in fn-web-out)
       (mv (list :post-form next) fn-web-out))))
 
-(definterface fn-web-host-post-form-step :class ::program)
+(definterface fn-web-host-post-form-step :class :common-lisp-compliant
+  :kinds ((config true-listp)))

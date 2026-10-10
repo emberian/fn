@@ -213,16 +213,7 @@
    "fn-frb-site-decode": "the first argument is the result of fn-frb-control-decode-with, the six-element tuple (list reasoned request admin moderation topic consumer) built at the end of that function (books/native-control-buffer.lisp), a fixed shape, never a list of data",
    "fn-aj-record-name-chars": "the first argument is a number's decimal digits (fn-bs-txn-digits: 20 digits, fixed width)",
    "fn-bpnf-stored-record-values": "the first argument is a fixed record of 11 fields (base), never a list of data",
-   "fn-bpaj-ref-metadata": "the first argument is the fixed fields of a request head (fn-bpaj-head-read), a fixed shape",
-   "fn-was-start": "the first argument is the session login, at most 64 octets (fn-wss-loginp: fn-wss-argp x 64)",
-   "fn-was-octet": "each first argument is a status/header prefix or field name kept below 17 octets (the (< (len ...) 17) tests in its body), or the login pattern tail, at most 66 octets (64-octet login, fn-wss-loginp, plus < and @)",
-   "fn-wgl-feed": "the first argument is (take 11 next): the LIST row parser's fixed 11 scalar fields",
-   "fn-wls-octet": "the first argument is the status prefix, kept below 17 octets (the (< (len prefix) 17) test in its body)",
-   "fn-wov-octet": "each first argument is the status prefix (below 17 octets) or the row's column spans, at most 4 (appended only while field < 4)",
-   "fn-wpc-window-next": "the first argument is one LIST ACTIVE row's segment plan (fn-wgl-segs: fn-wr-group-row-segments of one row), a fixed shape",
-   "fn-wpf-step": "the first argument is the decoded form values, at most 4 (csrf, g, subject, body: index < 3 before the append)",
-   "fn-wps-header-cursor": "each first argument is a fixed header word or the From field (64-octet login, fn-wss-loginp; domain at most *fn-ncfg-max-text* = 256) or the group (fn-wss-groupp: 497 octets)",
-   "fn-wps-next": "each first argument is a fixed RFC 2047 delimiter, CR LF, or the base64 of at most 45 subject octets (fn-wss-utf8-take ... 45): one encoded word of at most 75 octets"
+   "fn-bpaj-ref-metadata": "the first argument is the fixed fields of a request head (fn-bpaj-head-read), a fixed shape"
   },
   "debt": {}
  },
