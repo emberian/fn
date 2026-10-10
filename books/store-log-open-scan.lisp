@@ -61,7 +61,7 @@
 ; The handle and the context are the two fields the scan cannot know; no
 ; total but HISTORY reads them.
 (defun fn-lgo-held-of (a)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-record-p a) :verify-guards nil))
   (let ((bytes (fn-record-payload a)))
     (fn-held-make (fn-record-sequence a) (fn-record-txid a)
                   (fn-record-generation a) (fn-record-msgid a) 0
@@ -87,11 +87,11 @@
 (defun fn-lgo-wire-tot (w allow)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((row (fn-lgo-wire-row w))
-         (tot (fn-ct-row-tot row :resident)))
+         (tot (ec-call (fn-ct-row-tot row :resident))))
     (fn-mm-make-tot 1 (fn-mm-tot-arena tot) (fn-mm-tot-hcharge tot)
                     (fn-mm-tot-memberships tot) (fn-mm-tot-events tot)
                     (fn-mm-tot-log tot)
-                    (+ (nfix allow) (* 3 (fn-sbud-row-octets row)))
+                    (+ (nfix allow) (* 3 (ec-call (fn-sbud-row-octets row))))
                     (fn-mm-tot-charge tot) :resident)))
 
 (defun fn-lgo-wire-fold (ws allow)
@@ -105,10 +105,10 @@
 ; dictionaries DICTS, or the record itself), expanded and decoded as the
 ; open decodes it, then charged; :bad where either refuses.
 (defun fn-lgo-record-tot (z dicts allow)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (fn-lzr-dictsp dicts) (fn-cbor-octet-listp z)) :verify-guards nil))
   (let ((x (fn-lzr-expand dicts z)))
     (if (and (consp x) (eq (car x) :ok))
-        (let ((ws (fn-srs-decode (list (cadr x)))))
+        (let ((ws (ec-call (fn-srs-decode (list (cadr x))))))
           (if (consp ws) (fn-lgo-wire-tot (car ws) allow) :bad))
       :bad)))
 
@@ -118,21 +118,21 @@
 ; (mv SKIP' ACC').
 
 (defun fn-lgo-add (acc z dicts allow)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (fn-lzr-dictsp dicts) (fn-cbor-octet-listp z)) :verify-guards nil))
   (if (eq acc :bad)
       :bad
     (let ((r (fn-lgo-record-tot z dicts allow)))
       (if (eq r :bad) :bad (fn-mm-tot-plus acc r)))))
 
 (defun fn-lgo-fold (zs skip acc dicts allow)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (fn-lzr-dictsp dicts) (fn-octet-list-listp zs)) :verify-guards nil))
   (cond ((atom zs) (mv (nfix skip) acc))
         ((posp skip) (fn-lgo-fold (cdr zs) (1- skip) acc dicts allow))
         (t (fn-lgo-fold (cdr zs) 0 (fn-lgo-add acc (car zs) dicts allow) dicts allow))))
 
 ; The expansions of the records ZS, or :bad.
 (defun fn-lgo-expansions (zs dicts)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (and (fn-lzr-dictsp dicts) (fn-octet-list-listp zs)) :verify-guards nil))
   (if (consp zs)
       (let ((x (fn-lzr-expand dicts (car zs)))
             (rest (fn-lgo-expansions (cdr zs) dicts)))
@@ -140,6 +140,23 @@
             (cons (cadr x) rest)
           :bad))
     nil))
+
+; The fold executes on the host, one entry's records at a time; its callees
+; that are not guard-verified run through ec-call.
+(local
+ (defthm fn-lgo-lzr-expand-shape
+   (implies (and (consp (fn-lzr-expand dicts z)) (equal (car (fn-lzr-expand dicts z)) :ok))
+            (consp (cdr (fn-lzr-expand dicts z))))
+   :hints (("Goal" :in-theory (enable fn-lzr-expand)))))
+(verify-guards fn-lgo-held-of
+  :hints (("Goal" :in-theory (enable fn-record-p fn-record-payloadp fn-record-internals))))
+(verify-guards fn-lgo-wire-row)
+(verify-guards fn-lgo-wire-tot)
+(verify-guards fn-lgo-wire-fold)
+(verify-guards fn-lgo-record-tot)
+(verify-guards fn-lgo-add)
+(verify-guards fn-lgo-fold)
+(verify-guards fn-lgo-expansions)
 
 ; -----------------------------------------------------------------------------
 ; 3. The stream: fn-lgw-run's loop with each step's records folded at once.
@@ -168,10 +185,10 @@
 ; Every row within the HISTORY clause (K-BOUND's, books/admission-memory.lisp
 ; fn-adm-row-within-p, at ALLOW = fn-adm-row-allowance PROFILE).
 (defun fn-lgo-rows-history-within (rows allow)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (if (consp rows)
       (and (<= (nfix (fn-ct-row-history (car rows)))
-               (+ (nfix allow) (* 3 (fn-sbud-row-octets (car rows)))))
+               (+ (nfix allow) (* 3 (ec-call (fn-sbud-row-octets (car rows))))))
            (fn-lgo-rows-history-within (cdr rows) allow))
     t))
 
@@ -992,9 +1009,11 @@
 ; from a valid (K . TOT) cache for the opened ROWS, the rows past K the
 ; replay's, each within the HISTORY clause, the scan's total from the cache's
 ; TOT bounds the charged fold of ROWS.  Whether the replay or the scan
-; refuses is not a hypothesis: a refused replay leaves no row past K (the
-; fold is the cache's TOT), and a replay that does not refuse decoded every
-; record past J, so the scan did not refuse.
+; refuses is not a hypothesis.  A replay that does not refuse decoded every
+; record past J, so the scan did not refuse.  A refused replay meets the tail
+; premise only for ROWS of exactly K cons cells ending in :bad, never an
+; opened store's proper list (the host refuses the open there); its charged
+; fold is the cache's TOT, so the claim holds there trivially (Codex l-l2b Q3).
 (defthm fn-lgo-observed-covers-the-opened-store
   (let* ((k (car cache))
          (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow)))
@@ -1019,3 +1038,14 @@
                  (:instance fn-lgo-charged-of-cache)
                  (:instance fn-lgo-fold-0-does-not-refuse (zs (nthcdr j zs)) (acc (fn-ct-zero-tot :resident)))
                  (:instance fn-lgo-fold-past-the-skip (skip j) (acc (fn-ct-zero-tot :resident)))))))
+
+; -----------------------------------------------------------------------------
+; 8. What the scan carries between entries: the stream state, SKIP and ACC,
+; which stays a nine-field total or :bad (no record is kept past its step).
+(defthm fn-lgo-fold-keeps-a-tot
+  (implies (or (fn-mm-tot-p acc) (equal acc :bad))
+           (let ((acc2 (mv-nth 1 (fn-lgo-fold zs skip acc dicts allow))))
+             (or (fn-mm-tot-p acc2) (equal acc2 :bad))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-lgo-fold zs skip acc dicts allow)
+           :in-theory (disable fn-lgo-record-tot fn-mm-tot-p))))
