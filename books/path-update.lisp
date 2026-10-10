@@ -247,21 +247,66 @@
 
 ; The specification side of "nothing else changed": the article with every
 ; Path and Xref field (and their continuation lines) removed.
-(defun fn-pu-strip (x dropping)
-  (declare (xargs :guard t :measure (acl2-count x)))
+; Executes by a loop (PKT-877, lane d-depth-excess-d), as fn-pu-walk does: the
+; recursion took one control-stack frame per header line.  The :logic is the
+; recursion, unchanged.
+(defun fn-pu-strip-loop (x dropping acc)
+  (declare (xargs :guard (true-listp acc) :measure (acl2-count x) :verify-guards nil))
   (if (atom x)
-      x
+      (revappend acc x)
     (let ((line (fn-pu-line x))
           (rest (fn-pu-after-line x)))
-      (cond ((equal line '(13 10)) x)
+      (cond ((equal line '(13 10)) (revappend acc x))
             ((fn-pu-wspp (car line))
              (if dropping
-                 (fn-pu-strip rest t)
-               (fn-pu-append line (fn-pu-strip rest nil))))
+                 (fn-pu-strip-loop rest t acc)
+               (fn-pu-strip-loop rest nil (fn-ag-rev-onto line acc))))
             ((or (fn-pu-named-p line *fn-pu-xref-colon*)
                  (fn-pu-named-p line *fn-pu-path-colon*))
-             (fn-pu-strip rest t))
-            (t (fn-pu-append line (fn-pu-strip rest nil)))))))
+             (fn-pu-strip-loop rest t acc))
+            (t (fn-pu-strip-loop rest nil (fn-ag-rev-onto line acc)))))))
+
+(defun fn-pu-strip (x dropping)
+  (declare (xargs :guard t :measure (acl2-count x) :verify-guards nil))
+  (mbe :logic
+       (if (atom x)
+           x
+         (let ((line (fn-pu-line x))
+               (rest (fn-pu-after-line x)))
+           (cond ((equal line '(13 10)) x)
+                 ((fn-pu-wspp (car line))
+                  (if dropping
+                      (fn-pu-strip rest t)
+                    (fn-pu-append line (fn-pu-strip rest nil))))
+                 ((or (fn-pu-named-p line *fn-pu-xref-colon*)
+                      (fn-pu-named-p line *fn-pu-path-colon*))
+                  (fn-pu-strip rest t))
+                 (t (fn-pu-append line (fn-pu-strip rest nil))))))
+       :exec (fn-pu-strip-loop x dropping nil)))
+
+(encapsulate ()
+  (local
+   (defthm fn-pu-strip-append-is-append
+     (equal (fn-pu-append a b) (append a b))))
+
+  (local
+   (defthm fn-pu-strip-revappend-rev-onto
+     (equal (revappend (fn-ag-rev-onto x acc) y)
+            (revappend acc (append x y)))))
+
+  (local
+   (defthm fn-pu-strip-loop-is-revappend
+     (equal (fn-pu-strip-loop x dropping acc)
+            (revappend acc (fn-pu-strip x dropping)))
+     :hints (("Goal" :induct (fn-pu-strip-loop x dropping acc)
+                     :in-theory (disable fn-pu-line fn-pu-after-line fn-pu-wspp fn-pu-named-p)))))
+
+  (verify-guards fn-pu-strip-loop)
+
+  (verify-guards fn-pu-strip
+    :hints (("Goal" :in-theory (disable fn-pu-strip-loop fn-pu-line fn-pu-after-line fn-pu-wspp
+                                        fn-pu-named-p)
+                    :use ((:instance fn-pu-strip-loop-is-revappend (acc nil)))))))
 
 ; No field line of the header block is an Xref.
 (defun fn-pu-xref-freep (x)

@@ -198,12 +198,19 @@
   "fn-zin-go-bindings": ":program macro-expansion helper of fn-zin-go: walks the literal field writes written in one fn-zin-go form (a fixed shape, expanded at compile time)",
   "fn-was-put": "walks the scan record's fixed alist: at most 19 keys (fn-was-start, fn-wov-start, fn-wls-start), a fixed shape",
   "fn-wov-rows": "walks the OVER rows, at most *fn-wss-window* (fn-wov-octet marks :invalid rather than keep another row)",
-  "fn-wps-subject-prefix": "walks at most FUEL octets; its only caller passes 46 (one 45-octet RFC 2047 chunk plus one)"
+  "fn-wps-subject-prefix": "walks at most FUEL octets; its only caller passes 46 (one 45-octet RFC 2047 chunk plus one)",
+  "fn-pat-digits-rev": "walks the decimal digits of one number (log10 n, at most 20 for a u64 day, year or counter), never a list of data",
+  "fn-pat-zeros": "k is (nfix (- width (len digits))) for fn-pat-padded, whose only callers pass the literal width 2 or 4 (the date fields of fn-pat-date-text), so k <= 4",
+  "fn-pfp-fields": "walks a flight policy, which fn-pfp-write admits only when fn-pfr-policy-p holds (books/peer-flight-reservation.lisp: a true-list of length 6), depth <= 6",
+  "fn-pfp-take": "n is the literal 4 (the prefix, fn-pfp-read) or 8 (one u64 field, fn-pfp-values), depth <= 8",
+  "fn-pfp-values": "n is the literal 6 at its only caller fn-pfp-read, the six u64 fields of a flight policy (fn-pfr-policy-p demands len 6), depth <= 6",
+  "fn-sdg-canon-list": "its (cdr x) recursion is a tail call; the non-tail call descends into (car x) through fn-sdg-canon-rev, so the depth is the value's car-nesting depth (a stored row's fixed shape), not a list's length"
  },
  "debt": {},
  "append": {
   "_doc": "tools/depth_check.py's data-sized append rule (lane depth-debt-2): an `append' whose first argument is not a literal, a constant or a (list ...), in a function on the host-called closure whose guards are not verified (so the host's *1* call runs binary-append's recursion, one frame per element of that argument). bounded names the bound as the recursions' entries do; debt only shrinks (verify the function's guards).",
   "bounded": {
+   "fn-frb-site-decode": "the first argument is the result of fn-frb-control-decode-with, the six-element tuple (list reasoned request admin moderation topic consumer) built at the end of that function (books/native-control-buffer.lisp), a fixed shape, never a list of data",
    "fn-aj-record-name-chars": "the first argument is a number's decimal digits (fn-bs-txn-digits: 20 digits, fixed width)",
    "fn-bpnf-stored-record-values": "the first argument is a fixed record of 11 fields (base), never a list of data",
    "fn-bpaj-ref-metadata": "the first argument is the fixed fields of a request head (fn-bpaj-head-read), a fixed shape",

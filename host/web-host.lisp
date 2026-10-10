@@ -70,14 +70,14 @@
 ; post's From when [web] names none (books/web-config.lisp fn-web-plan-domain).
 ; Octets, or nil while the policy is unset.
 (defun fn-web-host-identity (state)
-  (declare (xargs :mode :program :stobjs state))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((identity (fn-cfg-policy (fn-cfg-value (fn-owner-config state)) "path-identity")))
     (if (and (stringp identity) (not (equal identity "")))
         (fn-record-string-octets identity)
       nil)))
 
 (definterface fn-web-host-identity
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (defun fn-web-host-limits (article-limit)
   (declare (xargs :mode :program))
@@ -193,45 +193,45 @@
 ; Q10d: observe only the fixed scheduler/disk and checkpoint values, no
 ; whole-state walk. Called under the existing owner mutex by the web face.
 (defun fn-web-host-health-observe (sched state)
-  (declare (xargs :mode :program :stobjs state))
+  (declare (xargs :stobjs state :guard t))
   (fn-whl-observe sched (fn-owner-sco-deferred state)))
 
 ; Q10d bounded observation for the owner's web readiness route.
 (definterface fn-web-host-health-observe
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-whl-success-requires-observed-clear-owner :via fn-whl-observe)))
 
 ; Scheduling ceilings are the configured supported profile and a work window,
 ; never a truncation of a stored article. The HTTP actor consumes these exact
 ; core decisions before allocating/reading or slicing a continuation.
 (defun fn-web-host-connection-limit (config)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-wss-cfg-max config))
 
 ; HTTP reactor uses these actual ACL2 scheduling and lease projections.
-(definterface fn-web-host-connection-limit :class ::program)
+(definterface fn-web-host-connection-limit :class :common-lisp-compliant)
 
 (defun fn-web-host-request-end (end request)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (+ (nfix end) (fn-web-req-clen request)))
 
-(definterface fn-web-host-request-end :class ::program)
+(definterface fn-web-host-request-end :class :common-lisp-compliant)
 
 (defun fn-web-host-window-end (start end)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (min (nfix end) (+ (nfix start) 4096)))
 
-(definterface fn-web-host-window-end :class ::program)
+(definterface fn-web-host-window-end :class :common-lisp-compliant)
 
 (defun fn-web-host-read-size (used limits end request)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (min 4096 (nfix (- (if request (fn-web-host-request-end end request)
                        (fn-wrq-limits-head limits)) (nfix used)))))
 
-(definterface fn-web-host-read-size :class ::program)
+(definterface fn-web-host-read-size :class :common-lisp-compliant)
 
 (defun fn-web-host-event-cid (config flow event state)
-  (declare (xargs :mode :program :stobjs state))
+  (declare (xargs :stobjs state :guard t))
   (if (or (equal (fn-wss-car event) :begin) (equal (fn-wss-f-route flow) :expire))
       (let* ((begin (if (equal (fn-wss-car event) :begin) event (fn-wss-f-data flow)))
              (request (fn-wrq-nth 1 begin)) (now (nfix (fn-wrq-nth 4 begin)))
@@ -243,14 +243,14 @@
         (and session (fn-wss-s-cid session)))
     nil))
 
-(definterface fn-web-host-event-cid :class ::program)
+(definterface fn-web-host-event-cid :class :common-lisp-compliant)
 
 (defun fn-web-host-reserve-size (need capacity)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (if (<= (nfix need) (nfix capacity)) (nfix capacity)
     (max 1024 (* 2 (nfix need)))))
 
-(definterface fn-web-host-reserve-size :class ::program)
+(definterface fn-web-host-reserve-size :class :common-lisp-compliant)
 
 ; Count and emit use the same immutable segment cursor outside the owner
 ; section. IN remains the exact retained NNTP reply through the HTTP body.
@@ -267,17 +267,18 @@
 (definterface fn-web-host-page-step :class ::program)
 
 (defun fn-web-host-private-reply-p (flow event)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-web-private-reply-p flow event))
 
-(definterface fn-web-host-private-reply-p :class ::program)
+(definterface fn-web-host-private-reply-p :class :common-lisp-compliant)
 
 (defun fn-web-host-private-reply-step (config flow event fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (declare (xargs :stobjs (fn-web-in fn-web-out) :guard (true-listp config)))
   (fn-web-private-reply-step (append (take 6 config) (list :page-plan :private-begin))
                             flow event fn-web-in fn-web-out))
 
-(definterface fn-web-host-private-reply-step :class ::program)
+(definterface fn-web-host-private-reply-step :class :common-lisp-compliant
+  :kinds ((config true-listp)))
 
 ; Virtual ARTICLE source: scan only one rendered window, then replay the
 ; retained logical plans for the exact spans requested by the page cursor.
@@ -299,19 +300,19 @@
 
 (definterface fn-web-host-window-page-step :class ::program)
 (defun fn-web-host-replay-slice (at length need)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard (consp need)))
   (let ((s (max (nfix at) (nfix (car need))))
         (e (min (+ (nfix at) (nfix length)) (nfix (cdr need)))))
     (list (max 0 (- s (nfix at))) (max 0 (- e (nfix at)))
           (+ (nfix at) (nfix length)) (>= (+ (nfix at) (nfix length)) (nfix (cdr need))))))
 
-(definterface fn-web-host-replay-slice :class ::program)
+(definterface fn-web-host-replay-slice :class :common-lisp-compliant)
 
 (defun fn-web-host-replay-forward-p (need base end)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard (consp need)))
   (and (<= (nfix base) (nfix (car need))) (<= (nfix (car need)) (nfix end))))
 
-(definterface fn-web-host-replay-forward-p :class ::program)
+(definterface fn-web-host-replay-forward-p :class :common-lisp-compliant)
 
 (defun fn-web-host-stream-p (flow) (declare (xargs :mode :program)) (fn-wrs-p flow))
 

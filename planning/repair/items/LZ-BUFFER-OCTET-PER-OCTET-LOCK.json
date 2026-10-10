@@ -3,11 +3,13 @@
  "detail": "host/native/extent.lisp fnn-extent-lz-buffer-octet, reached through fn-durable-realize-lz-octet outside window mode (the arena scalar export, one call per octet index I), takes *fnn-extent-lock* and compares the buffer key once per octet even when the decoded block is already buffered. The D27 class PERF-REGRESSION-20261005 measured for the scalar window borrow (a lock and calls per octet, about 6 us each). Found by loop_call_check's new-site review (LOOP-CALL-BASELINE-GROWTH); accepted into the baseline in planning/repair/ACKS.md under this item. Repair: serve the scalar export from a borrowed decoded window (a span), as window mode already does, with a measurement before and after.",
  "file": "host/native/extent.lisp",
  "id": "LZ-BUFFER-OCTET-PER-OCTET-LOCK",
- "notes": [],
+ "notes": [
+  "10-10 00:16 2026-10-10 Builder D under ember's collapse-list rule: host/native/extent.lisp's per-octet work under *fnn-extent-lock* is lock discipline the one-executor loop retires (PLAN-20261010 collapse list); not repaired; known-reds amendment requested with retirement 'retired by the one-executor loop (A, landing 2)'"
+ ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "loop_call_check review, Builder D 2026-10-10",
- "state": "open",
+ "state": "deferred",
  "title": "fnn-extent-lz-buffer-octet takes the extent lock once per octet of the LZ scalar export (D27 class)",
- "updated": "2026-10-10T02:20:00Z"
+ "updated": "2026-10-10T04:16:49Z"
 }

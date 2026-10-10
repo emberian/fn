@@ -126,16 +126,39 @@
   (declare (xargs :guard (natp j)))
   (fn-pull-at (nfix j) (fn-csp-conns s)))
 
+; Executes by a loop (PKT-877, lane d-depth-excess-d): the recursion took one
+; control-stack frame per connection index.  The :logic is the recursion,
+; unchanged; the :exec carries the passed prefix reversed.
+(defun fn-csp-conns-set-loop (conns j c acc)
+  (declare (xargs :guard (and (natp j) (true-listp acc)) :measure (nfix j)
+                  :verify-guards nil))
+  (if (zp j)
+      (revappend acc (if (consp conns) (cons c (cdr conns)) (list c)))
+    (if (consp conns)
+        (fn-csp-conns-set-loop (cdr conns) (1- j) c (cons (car conns) acc))
+      (fn-csp-conns-set-loop nil (1- j) c (cons nil acc)))))
+
 (defun fn-csp-conns-set (conns j c)
   ; UPDATE-NTH's placement without its true-listp guard demand (the conns of
   ; a real state are a true-list, FN-CSP-INV below): past the end this pads
   ; with nil exactly as UPDATE-NTH does, so its placement lemmas carry over.
-  (declare (xargs :guard (natp j)))
-  (if (zp j)
-      (if (consp conns) (cons c (cdr conns)) (list c))
-    (if (consp conns)
-        (cons (car conns) (fn-csp-conns-set (cdr conns) (1- j) c))
-      (cons nil (fn-csp-conns-set nil (1- j) c)))))
+  (declare (xargs :guard (natp j) :verify-guards nil))
+  (mbe :logic
+       (if (zp j)
+           (if (consp conns) (cons c (cdr conns)) (list c))
+         (if (consp conns)
+             (cons (car conns) (fn-csp-conns-set (cdr conns) (1- j) c))
+           (cons nil (fn-csp-conns-set nil (1- j) c))))
+       :exec (fn-csp-conns-set-loop conns j c nil)))
+
+(local
+ (defthm fn-csp-conns-set-loop-is-revappend
+   (equal (fn-csp-conns-set-loop conns j c acc)
+          (revappend acc (fn-csp-conns-set conns j c)))
+   :hints (("Goal" :induct (fn-csp-conns-set-loop conns j c acc)))))
+
+(verify-guards fn-csp-conns-set-loop)
+(verify-guards fn-csp-conns-set)
 
 (defun fn-csp-conns-idlep (conns)
   ; No (msgid . phase) binding: every offered record settled.
@@ -179,9 +202,31 @@
     (+ (if (and (consp (car conns)) (eq (cdr (car conns)) phase)) 1 0)
        (fn-csp-conns-phase-count (cdr conns) phase))))
 
+; Executes by a loop (PKT-877, lane d-depth-excess-d): the recursion took one
+; control-stack frame per connection of the window.  The :logic is the
+; recursion, unchanged; the :exec fills an accumulator.
+(defun fn-csp-conns-of-loop (n c acc)
+  (declare (xargs :guard (natp n) :measure (nfix n) :verify-guards nil))
+  (if (zp n) acc (fn-csp-conns-of-loop (1- n) c (cons c acc))))
+
 (defun fn-csp-conns-of (n c)
-  (declare (xargs :guard (natp n)))
-  (if (zp n) nil (cons c (fn-csp-conns-of (- n 1) c))))
+  (declare (xargs :guard (natp n) :verify-guards nil))
+  (mbe :logic (if (zp n) nil (cons c (fn-csp-conns-of (- n 1) c)))
+       :exec (fn-csp-conns-of-loop n c nil)))
+
+(local
+ (defthm fn-csp-conns-of-append-cons
+   (equal (append (fn-csp-conns-of n c) (cons c acc))
+          (cons c (append (fn-csp-conns-of n c) acc)))))
+
+(local
+ (defthm fn-csp-conns-of-loop-is-append
+   (equal (fn-csp-conns-of-loop n c acc)
+          (append (fn-csp-conns-of n c) acc))
+   :hints (("Goal" :induct (fn-csp-conns-of-loop n c acc)))))
+
+(verify-guards fn-csp-conns-of-loop)
+(verify-guards fn-csp-conns-of)
 
 (defun fn-csp-session-with-round (s r)
   (declare (xargs :guard t))
