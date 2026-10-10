@@ -741,12 +741,13 @@ range), which the caller runs under the owner mutex
 ;;; (fn-ovw-expand), for every W and however the socket paced them; with
 ;;; fn-ovw-run-is-over-range-cat that is the unbounded reader's reply.
 (defun fnn-owner-over-window ()
-  "ACL2's cursor quantum, the developer selector's override passed through."
-  (let ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")))
-    (fnn-core 'fn-splan-cursor-window
-              (and raw (> (length raw) 0)
-                   (every #'digit-char-p raw)
-                   (parse-integer raw)))))
+  "ACL2's cursor quantum, the developer selector's override passed through; under a configured run, the run's W' (A-OVER-WINDOW-FIT: books/memory-model.lisp fn-mm-over-window-fit, installed by host/owner-host.lisp fn-owner-memory-configure), at most that quantum."
+  (let* ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW"))
+         (w (fnn-core 'fn-splan-cursor-window
+                      (and raw (> (length raw) 0) (every #'digit-char-p raw) (parse-integer raw))))
+         (fit (and (boundp-global 'fn-owner-memory-over-window *the-live-state*)
+                   (fnn-global 'fn-owner-memory-over-window))))
+    (if (and (integerp fit) (plusp fit)) (min w fit) w)))
 
 (defun fnn-owner-article-window ()
   "ACL2's ARTICLE quantum (fn-asto-quantum), the developer selector's override

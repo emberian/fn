@@ -263,9 +263,44 @@
         (+ (nfix (fn-bs-profile-max-group-name-octets profile))
            *fn-mm-xref-membership-fixed-octets*))))
 
+;; A-OVER-WINDOW-FIT (named adapter, COORDINATION section 6b rule 5; owner
+;; Builder C, the OVER path; retirement: row O1's pool lease on dev, when the
+;; quantum is rendered into one leased buffer of the article bound and LARGE
+;; is the lease's capacity).  Until then the host builds the quantum's W NOV
+;; lines as octet lists, 2 x 16 octets a line octet, and at a profile whose
+;; Xref term prices G memberships a line (development: G 65,535, a line of
+;; 17,579,912 octets, 144 GB at W = 256) no connection fits.  The served
+;; quantum is W', the largest W up to the host's quantum whose list window is
+;; within the article reply or one line, whichever is larger; W' >= 1, so a
+;; cursor always progresses (books/over-window.lisp fn-ovw-run-is-over-range-cat
+;; holds at every W >= 1).  The run installs W' at configure
+;; (host/owner-host.lisp fn-owner-memory-configure, global
+;; fn-owner-memory-over-window) and the host's quantum
+;; (host/native/owner.lisp fnn-owner-over-window) serves it, so the term the
+;; gate charges is the window the host builds.
+(defun fn-mm-article-reply-octets (profile)
+  (declare (xargs :guard t))
+  (+ (* 2 (nfix (fn-bs-profile-max-article-octets profile)))
+     *fn-cbud-reply-status-octets*))
+
+(defun fn-mm-window-fit (w line large)
+  (declare (xargs :guard t))
+  (let ((unit (* 2 *fn-heap-list-octets-per-octet* (max 1 (nfix line)))))
+    (max 1 (min (nfix w) (floor (max (nfix large) unit) unit)))))
+
+(defthm fn-mm-window-fit-posp
+  (posp (fn-mm-window-fit w line large))
+  :rule-classes :type-prescription)
+
+(defun fn-mm-over-window-fit (profile cfg)
+  (declare (xargs :guard t))
+  (fn-mm-window-fit (fn-mm-cfg-over-window cfg)
+                    (fn-mm-nov-line-octets profile cfg)
+                    (fn-mm-article-reply-octets profile)))
+
 (defun fn-mm-over-window-octets (profile cfg)
   (declare (xargs :guard t))
-  (* 2 *fn-heap-list-octets-per-octet* (fn-mm-cfg-over-window cfg)
+  (* 2 *fn-heap-list-octets-per-octet* (fn-mm-over-window-fit profile cfg)
      (fn-mm-nov-line-octets profile cfg)))
 
 ; M_connection, split by what holds it (coordinator ruling (d), 2026-10-09;
@@ -600,6 +635,42 @@
        (natp (fn-mm-cfg-connections cfg)) (natp (fn-mm-cfg-holders cfg))
        (natp (fn-mm-cold-reads profile cfg)))
   :rule-classes nil)
+;; A-OVER-WINDOW-FIT's statements (the adapter beside fn-mm-over-window-octets).
+;; KEYSTONE: W' is at least one, at most the host's quantum, its list window
+;; within the article reply or one line, and the largest such: a W' below the
+;; quantum is short only because one more line would not fit.
+(defthm fn-mm-window-fit-is-the-largest-that-fits
+  (let ((wp (fn-mm-window-fit w line large))
+        (unit (* 2 *fn-heap-list-octets-per-octet* (max 1 (nfix line)))))
+    (and (posp wp)
+         (<= wp (max 1 (nfix w)))
+         (<= (* unit wp) (max (nfix large) unit))
+         (implies (< wp (nfix w))
+                  (< (max (nfix large) unit) (* unit (+ 1 wp))))))
+  :hints (("Goal" :in-theory (enable fn-mm-window-fit)
+           :nonlinearp t)))
+
+;; The gate's OVER term is the window the host builds with W' (the global
+;; fn-owner-memory-over-window the host serves).
+(defthm fn-mm-over-window-octets-is-the-served-window
+  (equal (fn-mm-over-window-octets profile cfg)
+         (* 2 *fn-heap-list-octets-per-octet* (fn-mm-over-window-fit profile cfg)
+            (fn-mm-nov-line-octets profile cfg)))
+  :hints (("Goal" :in-theory (enable fn-mm-over-window-octets))))
+
+;; KEYSTONE: so one holder's large reply is the article reply or one line's
+;; list window, whichever is larger (no longer W lines of it).
+(defthm fn-mm-large-reply-is-the-article-or-one-line
+  (<= (fn-mm-large-reply profile cfg)
+      (max (fn-mm-article-reply-octets profile)
+           (* 2 *fn-heap-list-octets-per-octet* (fn-mm-nov-line-octets profile cfg))))
+  :hints (("Goal" :in-theory (e/d (fn-mm-large-reply fn-mm-over-window-octets fn-mm-over-window-fit
+                                   fn-mm-article-reply-octets)
+                                  (fn-mm-window-fit fn-mm-nov-line-octets))
+           :use ((:instance fn-mm-window-fit-is-the-largest-that-fits
+                            (w (fn-mm-cfg-over-window cfg))
+                            (line (fn-mm-nov-line-octets profile cfg))
+                            (large (fn-mm-article-reply-octets profile)))))))
 (defthm fn-mm-collector-monotone
   (implies (<= (nfix a) (nfix b))
            (<= (fn-mm-collector a cfg) (fn-mm-collector b cfg)))

@@ -1777,6 +1777,10 @@
                                         window (nfix config) cap)
                                   state))
              (state (f-put-global 'fn-owner-memory-capacity cap state))
+             ; A-OVER-WINDOW-FIT: the OVER quantum the gate charges, which
+             ; the host serves (host/native/owner.lisp fnn-owner-over-window).
+             (state (f-put-global 'fn-owner-memory-over-window
+                                  (fn-mm-over-window-fit profile cfg) state))
              (state (f-put-global 'fn-owner-memory-capacity-line
                                   (fn-record-string-octets
                                    (fn-adm-capacity-line profile img cfg limit tot))

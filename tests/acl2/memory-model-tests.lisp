@@ -262,3 +262,27 @@
        :reopen-w13 (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg* *mmt-t1k*)
        :reopen-ceiling (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg* *mmt-ceiling*)
        :sum-w13-one-connection (fn-mm-sum *mmt-p* *mmt-img* (list 1 t 8388608 8388608 nil 0 8388608 16 nil 64) *mmt-t1k*)))
+
+; A-OVER-WINDOW-FIT (books/memory-model.lisp fn-mm-over-window-fit; owner
+; Builder C; retirement: row O1's pool lease).  Witnesses per preset at the
+; host's quantum (256) and a 20-octet server name: development's line prices
+; 65,535 Xref memberships (17,579,912 octets), so W' = 1 and one holder's
+; large reply is that line's list window, 562,557,184 octets, where 256 lines
+; were 144,014,639,104; the default profile's W' is 1 too (a 35,656,320-octet
+; window against 9,128,017,920).  The teeth: the fitted window is below the
+; quantum's at both, and W' is the largest that fits (two lines do not).
+(defconst *mmt-cfg-w256* (list 1 t 67108864 67108864 nil 0 0 16 256 20))
+(defconst *mmt-dev-line* (fn-mm-nov-line-octets *fn-bs-profile-development* *mmt-cfg-w256*))
+(assert-event (equal *mmt-dev-line* 17579912))
+(assert-event (equal (fn-mm-over-window-fit *fn-bs-profile-development* *mmt-cfg-w256*) 1))
+(assert-event (equal (fn-mm-large-reply *fn-bs-profile-development* *mmt-cfg-w256*) 562557184))
+(assert-event (< (fn-mm-large-reply *fn-bs-profile-development* *mmt-cfg-w256*)
+                 (* 2 *fn-heap-list-octets-per-octet* 256 *mmt-dev-line*)))
+(assert-event (< (fn-mm-article-reply-octets *fn-bs-profile-development*)
+                 (* 2 *fn-heap-list-octets-per-octet* 2 *mmt-dev-line*)))
+(assert-event (equal (fn-mm-over-window-fit *fn-bs-profile-defaults* *mmt-cfg-w256*) 1))
+(assert-event (equal (fn-mm-large-reply *fn-bs-profile-defaults* *mmt-cfg-w256*) 35656320))
+; A quantum the article reply holds several lines of keeps them: a 128 MiB
+; reply at a 1,000-octet line holds 4,194 lines, so W' is the host's 256.
+(assert-event (equal (fn-mm-window-fit 256 1000 (* 2 67108864)) 256))
+(assert-event (equal (fn-mm-window-fit 256 1000 100000) 3))
