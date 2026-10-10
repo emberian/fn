@@ -23668,6 +23668,82 @@
       "events": [
         "fn-mm-admitted-store-reopens"
       ]
+    },
+    {
+      "id": "PRF-10002",
+      "title": "The serving sum bounds the instant: at most C connections, P holders, the article slots and handshake slots in use, publishing or not, never exceed what the memory gate charges (RUNTIME-MODEL section 4)",
+      "statement": "fn-mm-need-within-the-sum (defkeystone mmt-need-within-the-sum, tests/acl2/memory-model-tests.lisp); subject fn-mm-sum (books/memory-model.lisp): if k connections are open (at most C), j of them hold a large reply (at most the configuration's holders), s article slots (at most the profile's) and h TLS handshake slots (at most the configured ones) are in use, then the instant's need (fn-mm-need), publishing or not, is at most the serving sum (fn-mm-sum) at the same totals.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/memory-model-tests.lisp"
+      ],
+      "evidence_digest": "dbd5b986d8957871",
+      "keystone_subjects": {
+        "fn-mm-need-within-the-sum": "fn-mm-sum"
+      },
+      "events": [
+        "fn-mm-need-within-the-sum"
+      ]
+    },
+    {
+      "id": "PRF-10003",
+      "title": "The serving sum never falls as the store grows (RUNTIME-MODEL section 4)",
+      "statement": "fn-mm-sum-grows-with-the-store (defkeystone mmt-sum-grows-with-the-store, tests/acl2/memory-model-tests.lisp); subject fn-mm-sum (books/memory-model.lisp): if the charged totals a are within the totals b (fn-mm-tot-le), the serving sum at a is at most the serving sum at b, at the same profile, image and configuration.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/memory-model-tests.lisp"
+      ],
+      "evidence_digest": "0423b6b8efc3b39f",
+      "keystone_subjects": {
+        "fn-mm-sum-grows-with-the-store": "fn-mm-sum"
+      },
+      "events": [
+        "fn-mm-sum-grows-with-the-store"
+      ]
+    },
+    {
+      "id": "PRF-10004",
+      "title": "A run the model launches holds its carried store and its reopen at its capacity C', within the resident limit and the address space (ruling (b), RUNTIME-MODEL section 4)",
+      "statement": "fn-mo-run-decide-holds-the-store-at-its-capacity (defkeystone hct-run-holds-the-store-at-its-capacity, tests/acl2/heap-command-tests.lisp); subject fn-mo-run-decide (books/heap-command.lisp): when the run's launch decision answers :heap, the capacity C' (fn-adm-capacity) is positive and at most the configured C, the resident limit is a natural, the serving sum and the reopen's need at C' connections are within it, the reservation at C' is within every address-space observation, and the megabytes of the decision hold the core's content and the limit.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/heap-command-tests.lisp"
+      ],
+      "evidence_digest": "b37f8b5da950b750",
+      "keystone_subjects": {
+        "fn-mo-run-decide-holds-the-store-at-its-capacity": "fn-mo-run-decide"
+      },
+      "events": [
+        "fn-mo-run-decide-holds-the-store-at-its-capacity"
+      ]
+    },
+    {
+      "id": "PRF-10005",
+      "title": "The run's launch refuses only by the model: a positive capacity C' and a reservation within the address space launch (ruling (b), RUNTIME-MODEL section 4)",
+      "statement": "fn-mo-run-decide-refuses-only-by-the-model (defkeystone hct-run-refuses-only-by-the-model, tests/acl2/heap-command-tests.lisp); subject fn-mo-run-decide (books/heap-command.lisp): when the capacity C' (fn-adm-capacity at the resident limit) is positive and the reservation at C' is within every address-space observation (or none is observed), the run's launch decision answers :heap.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/heap-command-tests.lisp"
+      ],
+      "evidence_digest": "7e4fc34b02f19695",
+      "keystone_subjects": {
+        "fn-mo-run-decide-refuses-only-by-the-model": "fn-mo-run-decide"
+      },
+      "events": [
+        "fn-mo-run-decide-refuses-only-by-the-model"
+      ]
     }
   ]
 }

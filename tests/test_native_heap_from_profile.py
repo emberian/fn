@@ -489,7 +489,16 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         400.  Each reader then POSTs: the room C' leaves is under one
         connection's charge, so POSTs are admitted (240) while the gate
         holds after the row and from the first it cannot hold every one is
-        refused by the memory's word (K-ADMIT)."""
+        refused by the memory's word (K-ADMIT).
+
+        The registered keystones this exercises: the run starts only when
+        the owner's configure answers :hold, which is the launch decision
+        fn-mo-run-decide answering :heap (books/heap-command.lisp,
+        PRF-10004 holds the store at C', PRF-10005 refuses only by the
+        model) over the serving sum fn-mm-sum (books/memory-model.lisp,
+        PRF-10002 the instant within the sum, PRF-10003 the sum grows with
+        the store): the capacity line is C' of C, and the POSTs are admitted
+        exactly while the sum holds after the row."""
         config, port = self.config("capacity")
         made = self.run_fn("operator", config, "init", *CAPACITY_FLAGS, "local.test")
         self.assertEqual(made.returncode, EXIT_OK, text(made))

@@ -237,3 +237,130 @@
                 (config-octets *hct-config*) (card *hct-card*) (resident (list *hct-16g*))
                 (address (list *hct-1t*)))
                :fault "an offline figure that bounds the records but not their memberships (H no longer does)")))
+
+;; THE RUN'S LAUNCH at C' (MEMORY-RUN-LAUNCH-MODEL, ruling (b)): the small
+;; preset, the image and 32-connection configuration of
+;; tests/acl2/admission-memory-tests.lisp, the empty store.
+(defconst *hct-run-img* (list (* 100 1048576) (* 23 1048576) 1090519))
+(defconst *hct-run-cfg* (list 32 t 8388608 8388608 nil 0 8388608 16 nil 64))
+(defconst *hct-run-empty* (fn-mm-make-tot 0 0 0 0 0 0 0 0 :resident))
+(defun hct-mib (n) (* n 1048576))
+(defun hct-run (mb address)
+  (fn-mo-run-decide *hct-small* *hct-run-img* *hct-run-cfg* nil (list (hct-mib mb)) address *hct-core*
+                    *hct-nur* *hct-run-empty*))
+;; the small preset at 2 GiB: C' is C (32 of 32), the heap the launch's dynamic
+;; space, the threads those of C'
+(assert-event (equal (hct-run 2048 nil) '(:heap 2174 "small" 2048 1024 35)))
+(assert-event (equal (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg* (hct-mib 2048) *hct-run-empty*)
+                     32))
+;; 230 MiB: C' is 18 of 32 and the run launches at it ...
+(assert-event (equal (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg* (hct-mib 230) *hct-run-empty*)
+                     18))
+(assert-event (equal (car (hct-run 230 nil)) :heap))
+(assert-event (equal (nth 5 (hct-run 230 nil)) (fn-heap-thread-count 18)))
+;; ... where the launch decided at the configured C refuses: "the launch at C
+;; always agrees with the launch at C'" is false.
+(assert-event (equal (car (fn-mm-launch-decide *hct-small* *hct-run-img* *hct-run-cfg* nil (list (hct-mib 230))
+                                               nil *hct-core* *hct-nur* *hct-run-empty*))
+                     :refused))
+(assert-event (not (equal (car (fn-mm-launch-decide *hct-small* *hct-run-img* *hct-run-cfg* nil
+                                                    (list (hct-mib 230)) nil *hct-core* *hct-nur*
+                                                    *hct-run-empty*))
+                          (car (hct-run 230 nil)))))
+;; 128 MiB: no connection count holds the store; read's refusal shape, MB figures
+(assert-event (null (fn-adm-capacity *hct-small* *hct-run-img* *hct-run-cfg* (hct-mib 128) *hct-run-empty*)))
+(assert-event (equal (hct-run 128 nil) '(:refused :machine-cannot-hold-the-store 204 128)))
+(assert-event (equal (fn-heap-command-line (hct-run 128 nil) :run "run" nil nil nil nil nil)
+                     "refused machine-cannot-hold-the-store need=204 MB machine=128 MB"))
+;; the address space below the reservation
+(assert-event (equal (hct-run 2048 (list (hct-mib 100)))
+                     '(:refused :address-space-cannot-hold-the-reservation 2541 100)))
+;; no resident observation: refused by name, nothing launched
+(assert-event (equal (fn-mo-run-decide *hct-small* *hct-run-img* *hct-run-cfg* nil nil nil *hct-core*
+                                       *hct-nur* *hct-run-empty*)
+                     '(:refused :machine-memory-unobserved 0 0)))
+;; no connection at all (C = 0): the gate holds with none, nothing is served
+(assert-event (equal (car (fn-mo-run-decide *hct-small* *hct-run-img* (update-nth 0 0 *hct-run-cfg*) nil
+                                            (list (hct-mib 2048)) nil *hct-core* *hct-nur* *hct-run-empty*))
+                     :refused))
+
+(defkeystone hct-run-holds-the-store-at-its-capacity
+  (implies (equal (car (fn-mo-run-decide profile img cfg configured resident address core nursery tot))
+                  :heap)
+           (let* ((d (fn-mo-run-decide profile img cfg configured resident address core nursery tot))
+                  (limit (fn-mm-resident-limit configured resident))
+                  (c (fn-adm-capacity profile img cfg limit tot)))
+             (and (posp c)
+                  (<= c (fn-mm-cfg-connections cfg))
+                  (natp limit)
+                  (<= (fn-mm-sum profile img (fn-adm-cfg-at cfg c) tot) limit)
+                  (<= (fn-mm-reopen-need profile img (fn-adm-cfg-at cfg c) tot) limit)
+                  (implies (natp (fn-mm-least-observation address))
+                           (<= (fn-mm-launch-reservation limit core nursery (fn-adm-cfg-at cfg c) profile)
+                               (fn-mm-least-observation address)))
+                  (<= (+ (fn-heap-core-dynamic core) limit)
+                      (* (cadr d) *fn-heap-mib*)))))
+  :id "PRF-10004"
+  :rule-classes nil
+  :restates fn-mo-run-decide-holds-the-store-at-its-capacity
+  :hyps (accepted)
+  :subject fn-mo-run-decide
+  :witness ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
+            (resident (list (hct-mib 230))) (address (list (* 1024 1048576 1024))) (core *hct-core*)
+            (nursery *hct-nur*) (tot *hct-run-empty*))
+  :breaks ((accepted ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
+                      (resident (list (hct-mib 128))) (address (list (* 1024 1048576 1024))) (core *hct-core*)
+                      (nursery *hct-nur*) (tot *hct-run-empty*))))
+  :mutations ((sum-at-the-configured-connections
+               (:conclusion (let* ((limit (fn-mm-resident-limit configured resident))
+                                   (c (fn-adm-capacity profile img cfg limit tot)))
+                              (and (posp c) (<= (fn-mm-sum profile img cfg tot) limit))))
+               ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
+                (resident (list (hct-mib 230))) (address (list (* 1024 1048576 1024))) (core *hct-core*) (nursery *hct-nur*)
+                (tot *hct-run-empty*))
+               :fault "a launch held to the store's sum at the configured C, which the capacity line does not promise"))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use fn-mo-run-decide-holds-the-store-at-its-capacity)))
+
+(defkeystone hct-run-refuses-only-by-the-model
+  (implies (and (posp (fn-adm-capacity profile img cfg (fn-mm-resident-limit configured resident) tot))
+                (or (not (natp (fn-mm-least-observation address)))
+                    (<= (fn-mm-launch-reservation
+                         (fn-mm-resident-limit configured resident) core nursery
+                         (fn-adm-cfg-at cfg (fn-adm-capacity profile img cfg
+                                                             (fn-mm-resident-limit configured resident) tot))
+                         profile)
+                        (fn-mm-least-observation address))))
+           (equal (car (fn-mo-run-decide profile img cfg configured resident address core nursery tot))
+                  :heap))
+  :id "PRF-10005"
+  :rule-classes nil
+  :restates fn-mo-run-decide-refuses-only-by-the-model
+  :hyps (capacity address-space)
+  :subject fn-mo-run-decide
+  :witness ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
+            (resident (list (hct-mib 230))) (address nil) (core *hct-core*) (nursery *hct-nur*)
+            (tot *hct-run-empty*))
+  :breaks ((capacity ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
+                      (resident (list (hct-mib 128))) (address nil) (core *hct-core*) (nursery *hct-nur*)
+                      (tot *hct-run-empty*)))
+           (address-space ((profile *hct-small*) (img *hct-run-img*) (cfg *hct-run-cfg*) (configured nil)
+                           (resident (list (hct-mib 2048))) (address (list (hct-mib 100))) (core *hct-core*)
+                           (nursery *hct-nur*) (tot *hct-run-empty*))))
+  :mutations ((zero-connections-taken-as-a-capacity
+               (:hypothesis capacity (natp (fn-adm-capacity profile img cfg (fn-mm-resident-limit configured resident) tot)))
+               ((profile *hct-small*) (img *hct-run-img*) (cfg (update-nth 0 0 *hct-run-cfg*))
+                (configured nil) (resident (list (hct-mib 2048))) (address nil) (core *hct-core*)
+                (nursery *hct-nur*) (tot *hct-run-empty*))
+               :fault "a capacity of no connections taken as a capacity: the run holds the store and serves nobody"))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use fn-mo-run-decide-refuses-only-by-the-model)))
+
+;; The run's configure line: the address-space refusal is named, every other
+;; case keeps the capacity line's own words.
+(assert-event (equal (fn-mo-run-capacity-line (hct-run 2048 (list (hct-mib 100))) "memory capacity=32 of 32")
+                     "refused address-space-cannot-hold-the-reservation reservation=2541 MB address-space=100 MB"))
+(assert-event (equal (fn-mo-run-capacity-line (hct-run 2048 nil) "memory capacity=32 of 32")
+                     "memory capacity=32 of 32"))
+(assert-event (equal (fn-mo-run-capacity-line (hct-run 128 nil) "refused memory-cannot-hold-the-store capacity=0")
+                     "refused memory-cannot-hold-the-store capacity=0"))

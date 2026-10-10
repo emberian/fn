@@ -30,6 +30,7 @@
 ; records nor memberships).
 (in-package "ACL2")
 (include-book "memory-model")
+(include-book "admission-memory")
 
 (defconst *fn-heap-action-growth*
   '((:run . :serves)
@@ -321,6 +322,41 @@
   (declare (xargs :guard t))
   (fn-heap-reserve-operation-decide action profile core nursery observations connections observed))
 
+; The run's launch (ruling (b)): the model's launch decided at C', the most
+; connections at which the gate holds at the resident limit over TOT
+; (fn-adm-capacity), never at the configured C.  The accepted decision is
+; read's shape (:heap MB PROFILE-WORD LIMIT-MB STACK-KIB THREADS) with the
+; threads of C'; a refusal is read's shape (:refused WORD NEED-MB LIMIT-MB),
+; in the words fn-mo-read-refusal-line and fn-heap-reserve-report-line print.
+(defun fn-mo-run-refusal (d need)
+  (declare (xargs :guard t))
+  (let ((d (true-list-fix d)))
+    (cond ((equal (nth 1 d) :address-space-cannot-hold-the-reservation)
+           (list :refused :address-space-cannot-hold-the-reservation
+                 (fn-heap-mb-of (nth 2 d)) (floor (nfix (nth 3 d)) *fn-heap-mib*)))
+          ((equal (car d) :refused)
+           (if (equal (nth 1 d) :memory-unbounded)
+               (list :refused :machine-memory-unobserved 0 0)
+             (list :refused :machine-cannot-hold-the-store
+                   (fn-heap-mb-of (nth 2 d)) (floor (nfix (nth 3 d)) *fn-heap-mib*))))
+          (t (list :refused :machine-cannot-hold-the-store
+                   (fn-heap-mb-of need) (floor (nfix (nth 1 d)) *fn-heap-mib*))))))
+
+(defun fn-mo-run-decide (profile img cfg configured resident address core nursery tot)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((limit (fn-mm-resident-limit configured resident))
+         (cap (fn-adm-capacity profile img cfg limit tot))
+         (d (fn-mm-launch-decide profile img (fn-adm-cfg-at cfg (nfix cap)) configured resident
+                                 address core nursery tot)))
+    (if (and (equal (car d) :launch) (posp cap))
+        (list :heap (fn-heap-mb-of (caddr d)) (fn-heap-profile-word profile)
+              (floor (cadr d) *fn-heap-mib*) (fn-heap-stack-kib profile)
+              (fn-heap-thread-count cap))
+      (fn-mo-run-refusal
+       d
+       (let ((one (fn-adm-cfg-at cfg (min 1 (fn-mm-cfg-connections cfg)))))
+         (max (fn-mm-sum profile img one tot) (fn-mm-reopen-need profile img one tot)))))))
+
 (defun fn-heap-command-decide (action command replayp profile core nursery observations connections
                                       observed totals img config-octets card resident address)
   (declare (xargs :guard t))
@@ -350,6 +386,18 @@
           (t (concatenate 'string "refused address-space-cannot-hold-the-reservation reservation="
                           (fn-heap-decimal (nth 2 d)) " MB address-space="
                           (fn-heap-decimal (nth 3 d)) " MB")))))
+
+; The line the run logs and refuses with at configure: the capacity line
+; (books/admission-memory.lisp fn-adm-capacity-line), unless the run's launch
+; (fn-mo-run-decide) was refused by the address space with a capacity C'
+; standing, which no capacity line says.
+(defun fn-mo-run-capacity-line (d capacity-line)
+  (declare (xargs :guard t))
+  (let ((d (true-list-fix d)))
+    (if (and (equal (car d) :refused)
+             (equal (nth 1 d) :address-space-cannot-hold-the-reservation))
+        (fn-mo-read-refusal-line d)
+      capacity-line)))
 
 ; What a decision was sized without, by name: a store-opening command the
 ; adapter decided says so and what the equation could not see.
@@ -601,3 +649,132 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mo-unseen-suffix fn-mo-store-opening-p)
                                   (fn-heap-command-growth fn-mm-tot-p)))))
+
+; -----------------------------------------------------------------------------
+; THE RUN'S LAUNCH, K4 and K5 at C' (MEMORY-RUN-LAUNCH-MODEL; ruling (b)):
+; the launch fn-mo-run-decide decides is the model's at C', never at the
+; configured C, which would refuse every run the capacity line holds.  Not
+; yet a line of fn-heap-command-decide: the arm waits on the run's cfg at the
+; probe (host/native/heap.lisp; see the repair item).
+(defthm fn-mo-run-refusal-is-a-refusal
+  (equal (car (fn-mo-run-refusal d need)) :refused)
+  :hints (("Goal" :in-theory (enable fn-mo-run-refusal))))
+
+; The accepted run decision is the model's launch at C' with C' positive, and
+; its heap is the launch's dynamic space in MB.
+(defthm fn-mo-run-decide-heap-is-the-launch-at-its-capacity
+  (let* ((limit (fn-mm-resident-limit configured resident))
+         (cap (fn-adm-capacity profile img cfg limit tot))
+         (dl (fn-mm-launch-decide profile img (fn-adm-cfg-at cfg (nfix cap)) configured resident
+                                  address core nursery tot)))
+    (implies (equal (car (fn-mo-run-decide profile img cfg configured resident address core nursery tot))
+                    :heap)
+             (and (equal (car dl) :launch)
+                  (posp cap)
+                  (equal (cadr (fn-mo-run-decide profile img cfg configured resident address core
+                                                 nursery tot))
+                         (fn-heap-mb-of (caddr dl))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-mo-run-decide fn-mo-run-refusal-is-a-refusal
+                                               car-cons cdr-cons nfix)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-mo-run-decide-launches-at-its-capacity
+  (let* ((limit (fn-mm-resident-limit configured resident))
+         (cap (fn-adm-capacity profile img cfg limit tot))
+         (dl (fn-mm-launch-decide profile img (fn-adm-cfg-at cfg (nfix cap)) configured resident
+                                  address core nursery tot)))
+    (implies (and (posp cap) (equal (car dl) :launch))
+             (equal (car (fn-mo-run-decide profile img cfg configured resident address core nursery tot))
+                    :heap)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-mo-run-decide fn-mo-run-refusal-is-a-refusal
+                                               car-cons cdr-cons nfix)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-mm-launch-decide-launches-at-the-resident-limit
+  (implies (equal (car (fn-mm-launch-decide profile img cfg configured resident address core nursery tot))
+                  :launch)
+           (equal (cadr (fn-mm-launch-decide profile img cfg configured resident address core nursery tot))
+                  (fn-mm-resident-limit configured resident)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mm-launch-decide)
+                                  (fn-mm-gate-p fn-mm-launch-dynamic fn-mm-launch-reservation
+                                   fn-mm-resident-limit fn-mm-sum fn-mm-reopen-need
+                                   fn-mm-least-observation)))))
+
+(defthm fn-mm-launch-decide-dynamic-is-natp
+  (implies (equal (car (fn-mm-launch-decide profile img cfg configured resident address core nursery tot))
+                  :launch)
+           (natp (caddr (fn-mm-launch-decide profile img cfg configured resident address core nursery tot))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mm-launch-decide fn-mm-launch-dynamic)
+                                  (fn-mm-gate-p fn-mm-launch-reservation
+                                   fn-mm-resident-limit fn-mm-sum fn-mm-reopen-need
+                                   fn-mm-least-observation)))))
+
+(defthm fn-mo-run-decide-holds-the-store-at-its-capacity
+  (implies (equal (car (fn-mo-run-decide profile img cfg configured resident address core nursery tot))
+                  :heap)
+           (let* ((d (fn-mo-run-decide profile img cfg configured resident address core nursery tot))
+                  (limit (fn-mm-resident-limit configured resident))
+                  (c (fn-adm-capacity profile img cfg limit tot)))
+             (and (posp c)
+                  (<= c (fn-mm-cfg-connections cfg))
+                  (natp limit)
+                  (<= (fn-mm-sum profile img (fn-adm-cfg-at cfg c) tot) limit)
+                  (<= (fn-mm-reopen-need profile img (fn-adm-cfg-at cfg c) tot) limit)
+                  (implies (natp (fn-mm-least-observation address))
+                           (<= (fn-mm-launch-reservation limit core nursery (fn-adm-cfg-at cfg c) profile)
+                               (fn-mm-least-observation address)))
+                  (<= (+ (fn-heap-core-dynamic core) limit)
+                      (* (cadr d) *fn-heap-mib*)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (disable fn-mm-launch-decide fn-adm-capacity fn-mo-run-decide fn-adm-cfg-at
+                               fn-mm-resident-limit fn-mm-sum fn-mm-reopen-need fn-mm-launch-reservation
+                               fn-mm-least-observation fn-heap-core-dynamic fn-heap-mb-of fn-mm-cfg-connections
+                               fn-mm-gate-p)
+           :use ((:instance fn-mo-run-decide-heap-is-the-launch-at-its-capacity)
+                 (:instance fn-mm-launch-decide-dynamic-is-natp
+                            (cfg (fn-adm-cfg-at cfg (nfix (fn-adm-capacity profile img cfg (fn-mm-resident-limit configured resident) tot)))))
+                 (:instance fn-mm-launch-decide-launches-at-the-resident-limit
+                            (cfg (fn-adm-cfg-at cfg (nfix (fn-adm-capacity profile img cfg (fn-mm-resident-limit configured resident) tot))))
+                            (tot tot))
+                 (:instance fn-adm-capacity-fits
+                            (limit (fn-mm-resident-limit configured resident)))
+                 (:instance fn-mm-launch-holds-the-store-and-the-reservation
+                            (cfg (fn-adm-cfg-at cfg (nfix (fn-adm-capacity profile img cfg
+                                                                           (fn-mm-resident-limit configured resident) tot))))
+                            (resident-obs resident) (address-obs address) (obs tot))
+                 (:instance fn-heap-mb-of-covers
+                            (octets (caddr (fn-mm-launch-decide
+                                            profile img
+                                            (fn-adm-cfg-at cfg (nfix (fn-adm-capacity profile img cfg
+                                                                                      (fn-mm-resident-limit configured resident) tot)))
+                                            configured resident address core nursery tot))))))))
+
+(defthm fn-mo-run-decide-refuses-only-by-the-model
+  (implies (and (posp (fn-adm-capacity profile img cfg (fn-mm-resident-limit configured resident) tot))
+                (or (not (natp (fn-mm-least-observation address)))
+                    (<= (fn-mm-launch-reservation
+                         (fn-mm-resident-limit configured resident) core nursery
+                         (fn-adm-cfg-at cfg (fn-adm-capacity profile img cfg
+                                                             (fn-mm-resident-limit configured resident) tot))
+                         profile)
+                        (fn-mm-least-observation address))))
+           (equal (car (fn-mo-run-decide profile img cfg configured resident address core nursery tot))
+                  :heap))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (disable fn-mm-launch-decide fn-adm-capacity fn-mo-run-decide fn-adm-cfg-at
+                               fn-mm-resident-limit fn-mm-sum fn-mm-reopen-need fn-mm-launch-reservation
+                               fn-mm-least-observation fn-heap-core-dynamic fn-heap-mb-of fn-mm-cfg-connections
+                               fn-mm-gate-p)
+           :use ((:instance fn-mo-run-decide-launches-at-its-capacity)
+                 (:instance fn-adm-capacity-fits
+                            (limit (fn-mm-resident-limit configured resident)))
+                 (:instance fn-mm-launch-refuses-only-by-the-model
+                            (cfg (fn-adm-cfg-at cfg (nfix (fn-adm-capacity profile img cfg
+                                                                           (fn-mm-resident-limit configured resident) tot))))
+                            (resident-obs resident) (address-obs address) (obs tot))))))

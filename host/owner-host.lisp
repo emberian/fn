@@ -262,6 +262,7 @@
 (include-book "../books/connection-budget")
 ;; K-ADMIT: the memory gate the prepare applies (memory landing 3+4a).
 (include-book "../books/admission-memory")
+(include-book "../books/heap-command")
 (include-book "../books/cold-read-reservation")
 ; PRF-986 (PKT-639): the TLS handshake admission (fn-owner-handshake-admit/
 ; -done/-leave) and the PROXY header on a trusted path (fn-owner-proxy-*);
@@ -1762,7 +1763,7 @@
 
 (defun fn-owner-memory-configure (img resident-obs trigger pub-trigger profile tlsp live cold
                                       output peer workers cache-limit root window config
-                                      fn-hist state)
+                                      address-obs core nursery fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((least (fn-mm-resident-limit nil resident-obs))
          (pools (fn-owner-memory-pools profile cold output peer workers cache-limit root))
@@ -1772,6 +1773,12 @@
              (cfg (fn-owner-memory-cfg (fn-cfg-value ocfg) tlsp trigger pub-trigger live cold
                                        profile window (fn-oag-agent ocfg) (nfix config)))
              (cap (fn-adm-capacity profile img cfg limit tot))
+             ; The run's launch by the model at C' (books/heap-command.lisp
+             ; fn-mo-run-decide): LIMIT is the configured figure (after the
+             ; pools) and no resident observation remains, so the launch's
+             ; resident limit is LIMIT.  :heap implies (posp cap)
+             ; (fn-mo-run-decide-holds-the-store-at-its-capacity).
+             (d (fn-mo-run-decide profile img cfg limit nil address-obs core nursery tot))
              (state (f-put-global 'fn-owner-memory-run
                                   (list img limit trigger pub-trigger profile tlsp live cold
                                         window (nfix config) cap)
@@ -1783,9 +1790,10 @@
                                   (fn-mm-over-window-fit profile cfg) state))
              (state (f-put-global 'fn-owner-memory-capacity-line
                                   (fn-record-string-octets
-                                   (fn-adm-capacity-line profile img cfg limit tot))
+                                   (fn-mo-run-capacity-line
+                                    d (fn-adm-capacity-line profile img cfg limit tot)))
                                   state)))
-        (mv nil (if (posp cap) :hold :refused) fn-hist state)))))
+        (mv nil (if (equal (car d) :heap) :hold :refused) fn-hist state)))))
 
 (definterface fn-owner-memory-configure
   :class ::program)

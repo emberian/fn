@@ -57,14 +57,17 @@
 (defconst *mmt-cfg-p4* (list 32 t 8388608 8388608 nil 0 8388608 16 nil 64 4))
 (assert-event (equal (fn-mm-cfg-holders *mmt-cfg-p4*) 4))
 (assert-event (equal (fn-mm-cfg-holders *mmt-cfg*) 32))
-(defteeth fn-mm-need-within-the-sum
-  :claim (((connections (<= (nfix k) (fn-mm-cfg-connections cfg)))
-           (holders (<= (nfix j) (fn-mm-cfg-holders cfg)))
-           (slots (<= (nfix s) (fn-heap-article-slots profile)))
-           (handshakes (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg)))))
-          (<= (fn-mm-need profile img cfg tot k j s h publishing)
-              (fn-mm-sum profile img cfg tot)))
-  :subject fn-mm-need
+(defkeystone mmt-need-within-the-sum
+  (implies (and (<= (nfix k) (fn-mm-cfg-connections cfg))
+                (<= (nfix j) (fn-mm-cfg-holders cfg))
+                (<= (nfix s) (fn-heap-article-slots profile))
+                (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
+           (<= (fn-mm-need profile img cfg tot k j s h publishing)
+               (fn-mm-sum profile img cfg tot)))
+  :id "PRF-10002"
+  :subject fn-mm-sum
+  :restates fn-mm-need-within-the-sum
+  :hyps (connections holders slots handshakes)
   :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
                 (k 32) (j 4) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
   :breaks ((connections ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
@@ -86,19 +89,24 @@
                                 (- (fn-mm-sum profile img cfg tot) (fn-mm-large-pool profile cfg))))
                ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
                 (k 32) (j 4) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
-               :fault "a sum that charges no connection a large reply (the holders' pool omitted)")))
+               :fault "a sum that charges no connection a large reply (the holders' pool omitted)"))
+  :hints (("Goal" :by fn-mm-need-within-the-sum)))
 
 ; K2.  A checkpoint at 900 records within the store at 1,000.
-(defteeth fn-mm-sum-grows-with-the-store
-  :claim (((within (fn-mm-tot-le a b)))
-          (<= (fn-mm-sum profile img cfg a) (fn-mm-sum profile img cfg b)))
+(defkeystone mmt-sum-grows-with-the-store
+  (implies (fn-mm-tot-le a b)
+           (<= (fn-mm-sum profile img cfg a) (fn-mm-sum profile img cfg b)))
+  :id "PRF-10003"
   :subject fn-mm-sum
+  :restates fn-mm-sum-grows-with-the-store
+  :hyps (within)
   :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (a *mmt-hdr*) (b *mmt-t1k*))
   :breaks ((within ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (a *mmt-t1k*) (b *mmt-hdr*))))
   :mutations ((sum-falls-with-the-store
                (:conclusion (<= (fn-mm-sum profile img cfg b) (fn-mm-sum profile img cfg a)))
                ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (a *mmt-hdr*) (b *mmt-t1k*))
-               :fault "a sum that charges a smaller store more (a term antitone in a total)")))
+               :fault "a sum that charges a smaller store more (a term antitone in a total)"))
+  :hints (("Goal" :by fn-mm-sum-grows-with-the-store)))
 
 ; K3.  Run with no connection and no TLS, where the reopen's workspace
 ; exceeds the serving sum, so the gate's limit is the reopen's and each

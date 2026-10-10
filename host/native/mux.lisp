@@ -2237,7 +2237,9 @@ the run's (exit 1), named on stderr and in the service log."
                                   (fnn-peer-flight-profile (fnn-store-root store))
                                   (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit)
                                   (fnn-store-root store)
-                                  (fnn-owner-over-window) config-octets))
+                                  (fnn-owner-over-window) config-octets
+                                  (fnn-heap-address-observations) core
+                                  +fnn-gc-nursery-octets+))
                   ;; Store figure is captured before both allowance extensions.
                   ;; ACL2 validates dynamic >= store + exact cold + output pool.
                   (fnn-owner-output-install

@@ -18929,6 +18929,42 @@
           "name": "fn-mm-admitted-store-reopens"
         }
       ]
+    },
+    {
+      "id": "PRF-10004",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-run-decide-holds-the-store-at-its-capacity"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10005",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-run-decide-refuses-only-by-the-model"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10002",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mm-need-within-the-sum"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10003",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mm-sum-grows-with-the-store"
+        }
+      ]
     }
   ]
 }

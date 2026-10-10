@@ -155,12 +155,40 @@
    "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode",
    "provenance": "keystone_critical.py --declare sha256:02422ef1703b7be6f7ba649454e5cb3942760f6697d2880d5620f31203fc5ac1"
   },
+  "fn-mm-need-within-the-sum": {
+   "subject": "fn-mm-sum",
+   "host_test": "tests/test_native_heap_from_profile.py::test_the_run_states_its_capacity_and_admits_every_post_up_to_it",
+   "trace_witness": "tests/acl2/memory-model-tests.lisp::mmt-need-within-the-sum",
+   "mutation": "tests/acl2/memory-model-tests.lisp::sum-without-inflight",
+   "provenance": "keystone_critical.py --declare sha256:1d340ee1bd05bdb3ac1a5b254eae0bf04db19d59c9e9c1c29bf5953e2e8164f2"
+  },
+  "fn-mm-sum-grows-with-the-store": {
+   "subject": "fn-mm-sum",
+   "host_test": "tests/test_native_heap_from_profile.py::test_the_run_states_its_capacity_and_admits_every_post_up_to_it",
+   "trace_witness": "tests/acl2/memory-model-tests.lisp::mmt-sum-grows-with-the-store",
+   "mutation": "tests/acl2/memory-model-tests.lisp::sum-falls-with-the-store",
+   "provenance": "keystone_critical.py --declare sha256:66296d68f50ac3e8f35f4a6a260de8aa1f680d8982a5aa77fb2c29b60fe87062"
+  },
   "fn-mo-header-decide-holds-the-header": {
    "subject": "fn-mo-header-decide",
    "host_test": "tests/test_native_operator_verbs.py::test_a_stopped_status_holds_no_store_and_a_replay_names_the_totals_it_cannot_see",
    "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-stopped-status-holds-the-header",
    "mutation": "tests/acl2/heap-command-tests.lisp::configuration-history-uncharged",
    "provenance": "keystone_critical.py --declare sha256:83f445db6ad11fb61c209beaff185dc54a0feb128795c2944f5da85c8bddb691"
+  },
+  "fn-mo-run-decide-holds-the-store-at-its-capacity": {
+   "subject": "fn-mo-run-decide",
+   "host_test": "tests/test_native_heap_from_profile.py::test_the_run_states_its_capacity_and_admits_every_post_up_to_it",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-run-holds-the-store-at-its-capacity",
+   "mutation": "tests/acl2/heap-command-tests.lisp::sum-at-the-configured-connections",
+   "provenance": "keystone_critical.py --declare sha256:a4e45022055463f22e8beb65bf339429e9b659169e62bc10069ad2e8a9ae1ec2"
+  },
+  "fn-mo-run-decide-refuses-only-by-the-model": {
+   "subject": "fn-mo-run-decide",
+   "host_test": "tests/test_native_heap_from_profile.py::test_the_run_states_its_capacity_and_admits_every_post_up_to_it",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-run-refuses-only-by-the-model",
+   "mutation": "tests/acl2/heap-command-tests.lisp::zero-connections-taken-as-a-capacity",
+   "provenance": "keystone_critical.py --declare sha256:2a5fccf38b3bf430b0cfb0dc2c3d9eb3eca503eb7b4f742bd4b44457c67ce1d8"
   },
   "fn-orcs-predict-seal-refines-intern": {
    "subject": "fn-orcs-predict-rows-at",
