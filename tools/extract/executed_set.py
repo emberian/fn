@@ -8,6 +8,7 @@ the product's workloads, and the census of what the core carries but never ran
     executed_set.py books IMAGE OUT [--tree TREE]
     executed_set.py sizes CORE OUT
     executed_set.py census OUT CORE_DIR [--books BOOKS_TSV] [--sizes SIZES_TSV] [--tree TREE] [--json FILE]
+    executed_set.py line CENSUS_JSON [--baseline CENSUS_JSON]
 
 `run` drives CORE (TREE/build/core/fn-core, a developer core) through a wrapper
 launcher OUT/bin/fn-core that sets XL_HOOK=executed_set.lisp and FN_XC_OUT=OUT/raw,
@@ -518,6 +519,40 @@ def census(args):
     return 0
 
 
+LINE_KEYS = ("units", "executed", "never", "removable", "code_mb", "never_mb", "removable_mb")
+
+
+def figures(doc):
+    tot = Counter()
+    for c in doc["families"].values():
+        tot.update(c)
+    return {"units": doc["functions"], "executed": doc["executed"], "never": doc["never"],
+            "removable": len(doc["removable"]),
+            "code_mb": round(tot["octets"] / 1e6, 2), "never_mb": round(tot["octets_never"] / 1e6, 2),
+            "removable_mb": round(tot["octets_removable"] / 1e6, 2)}
+
+
+def line(args):
+    """The train's shrink line, one line, KEY=VALUE separated by single spaces:
+         census: units=N executed=N never=N removable=N code_mb=F never_mb=F removable_mb=F
+    and with a baseline census.json a second line of signed differences (this minus baseline):
+         census-delta: units=+N executed=-N ... code_mb=-F ..."""
+    doc = json.loads(Path(args.census).read_text())
+    if not doc.get("families") or not doc.get("functions"):
+        raise Refused("line: %s holds no census" % args.census)
+    if not any(c.get("octets") for c in doc["families"].values()):
+        raise Refused("line: %s has no code sizes (census without --sizes)" % args.census)
+    f = figures(doc)
+    print("census: " + " ".join("%s=%s" % (k, f[k]) for k in LINE_KEYS))
+    if args.baseline:
+        b = figures(json.loads(Path(args.baseline).read_text()))
+        def d(k):
+            v = round(f[k] - b[k], 2)
+            return ("%+d" % v) if isinstance(f[k], int) else ("%+.2f" % v)
+        print("census-delta: " + " ".join("%s=%s" % (k, d(k)) for k in LINE_KEYS))
+    return 0
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -538,6 +573,8 @@ def main(argv=None):
     c.add_argument("--books"); c.add_argument("--json")
     c.add_argument("--sizes", help="sizes.tsv: code octets per unit for the MB columns")
     c.add_argument("--tree", help="the tree whose claim registers name books (the unclaimed column)")
+    ln = sub.add_parser("line")
+    ln.add_argument("census"); ln.add_argument("--baseline")
     a = p.parse_args(argv)
     try:
         if a.cmd == "run":
@@ -548,6 +585,8 @@ def main(argv=None):
             return books(a)
         if a.cmd == "sizes":
             return sizes(a)
+        if a.cmd == "line":
+            return line(a)
         return census(a)
     except Refused as e:
         print("executed-set: REFUSED: %s" % e, file=sys.stderr)

@@ -655,6 +655,19 @@ class ExecutedSetRefuses(unittest.TestCase):
         self.assertEqual(doc["families"]["zz"]["removable"], 1)
         self.assertEqual(doc["families"]["host/aa"]["executed"], 1)
         self.assertEqual(doc["books"]["/t/tree/books/zz-dead.lisp"]["removable"], 1)
+        # the train's shrink line: a census without code sizes is refused; with sizes, one line
+        self.refused("line", str(js))
+        sz = self.out / "sizes.tsv"
+        sz.write_text("ACL2::FN-A\t100\nACL2::FN-F\t40\nACL2_*1*_ACL2::FN-B\t8\n")
+        with contextlib.redirect_stdout(io.StringIO()):
+            executed_set.main(["census", str(self.out), str(cd), "--json", str(js),
+                               "--books", str(bk), "--sizes", str(sz)])
+        with contextlib.redirect_stdout(io.StringIO()) as o:
+            self.assertEqual(executed_set.main(["line", str(js), "--baseline", str(js)]), 0)
+        first, delta = o.getvalue().splitlines()
+        self.assertEqual(first, "census: units=8 executed=2 never=5 removable=1 code_mb=0.0 "
+                                "never_mb=0.0 removable_mb=0.0")
+        self.assertTrue(delta.startswith("census-delta: units=+0 executed=+0 "))
 
 
 if __name__ == "__main__":
