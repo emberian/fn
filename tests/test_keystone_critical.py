@@ -395,8 +395,11 @@ class LowerStale(unittest.TestCase):
         current = {"live": teeth("live"), "demoted": {"name": "demoted", "registry": True}}
         cbase = {n: {"class": "durability", "statement_digest": "d1"} for n in ("live", "demoted", "gone")}
         owed = {n: {"class": "durability", "item": "PRF-1345"} for n in ("live", "demoted", "gone")}
-        new_base, new_owed, dropped = kc.lower_stale(current, cbase, owed)
-        self.assertEqual((sorted(new_base), sorted(new_owed)), (["live"], ["live"]))
+        declared = {n: {"subject": "fn-" + n} for n in ("live", "demoted", "gone")}
+        new_base, new_owed, new_declared, dropped = kc.lower_stale(current, cbase, owed, declared)
+        self.assertEqual((sorted(new_base), sorted(new_owed), sorted(new_declared)), (["live"], ["live"], ["live"]))
+        self.assertEqual(sorted(dropped["declared:?"]), ["demoted", "gone"])
+        self.assertEqual(new_declared["live"], declared["live"])
         self.assertEqual(sorted(dropped["owed:durability"]), ["demoted", "gone"])
         self.assertEqual(sorted(dropped["base:durability"]), ["demoted", "gone"])
         self.assertEqual(new_owed["live"], owed["live"])
@@ -430,8 +433,8 @@ class LowerStale(unittest.TestCase):
 
     def test_a_new_critical_is_never_added(self):
         current = {"fresh": teeth("fresh")}
-        new_base, new_owed, dropped = kc.lower_stale(current, {}, {})
-        self.assertEqual((new_base, new_owed, dropped), ({}, {}, {}))
+        new_base, new_owed, new_declared, dropped = kc.lower_stale(current, {}, {}, {})
+        self.assertEqual((new_base, new_owed, new_declared, dropped), ({}, {}, {}, {}))
 
 
 if __name__ == "__main__":

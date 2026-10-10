@@ -1,0 +1,15 @@
+{
+ "category": "implementation",
+ "detail": "tools/depth_check.py findings on the host-called closure that tools/depth_baseline.json does not classify, in surviving code with no live concept owner (web reader, BP). lane/d-depth-excess-d closed 63 of the 80 attributed at CL13: 39 loop twins, 7 named bounds, 17 :program host entries made :logic and guard-verified. Open (15 :program entries): fn-web-host-page-cursor, -page-step, -window-page-step, -stream-p, -stream-start, -stream-scan, -stream-page, -private-begin-step, -post-window, -post-reply-step, -post-form-step (host/web-host.lisp; their callees in books/web-page-cursor, web-reply-stream, web-post-stream, web-article-stream are :verify-guards nil, 37 defuns: verify those guards, then flip the wrappers); fn-owner-workflow-request-plan, -store-waive, -pending-waivers (host/bp-release-owner-host.lisp; callees :program in host/workflow-host.lisp and vg-nil in books/bp-carry-control.lisp, bp-payload-gate.lisp); fn-rdv-row-digest (books/raw-dispatch-verdict.lisp: it reads the world through ACL2's :program `guard' and `getpropc', so it cannot be :logic; its input is build-time world data; needs a restructure or a ruling). Left unrepaired under ember's collapse-list rule (known-reds amendments requested): fn-rcw-seal-count (books/reclaim-chunked-walk.lisp, the owner reclaim pass over retained history) and fn-rpin-remove (books/response-plan-pins.lisp, pins under the owner mutex). The baseline never grows to absorb these.",
+ "file": "tools/depth_check.py",
+ "id": "DEPTH-EXCESS-D",
+ "notes": [
+  "2026-10-10 Builder D: lane/d-depth-excess-d closes 63; see its READY."
+ ],
+ "owner": "builder-D",
+ "severity": "medium",
+ "source": "depth_check at lane/d-registry-findings (dev 9b580dd36 + D's queued lanes), Builder D 2026-10-10, CL13 attributed by area under the CL24 ruling's pattern",
+ "state": "in-progress",
+ "title": "depth_check: 17 unclassified host-closure findings in builder-D's area (80 at CL13; 2 more left to retiring landings)",
+ "updated": "2026-10-10T04:30:00Z"
+}

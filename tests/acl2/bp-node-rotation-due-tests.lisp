@@ -708,3 +708,115 @@
                ((st (bprd-owed-q)) (generation 1) (ck (bprd-owed-ck))
                 (fresh *bpcx-raw-s0*))
                :fault "a reopen that restarts from the fresh machine instead of the checkpoint's seed (jobs lost)")))
+
+;; ---------------------------------------------------------------------------
+;; Teeth of fn-bpnp-rotate-step-proposes-only-own-projection, restated with
+;; the successor-epoch conclusion (Codex cross-review of PREMISE-EXCESS-D:
+;; quiescence checks the epoch, not the epoch after it, so a state at the
+;; ceiling epoch published a checkpoint whose restart refuses).
+;;
+;; The ceiling fixture is N16's recovered state reached by the same recovery
+;; step at epoch *fn-frame-max-nat*: the replay's operation frontier is the
+;; epoch below it, which a recovery from a checkpoint of that epoch carries.
+(defun bprd-ceiling-event ()
+  (list :recover-fnbs *fn-frame-max-nat* nil :ready
+        (update-nth 3 (cons (1- *fn-frame-max-nat*) 0) *bpcx-n16-replay*) 1))
+(defun bprd-ceiling-q ()
+  (fn-bpnf-answer-state (fn-bpnp-step *bpcx-raw-s0* (bprd-ceiling-event))))
+(defun bprd-ceiling-ck ()
+  (fn-bpnr-checkpoint-of-event (bprd-ceiling-event) 1 (bprd-ceiling-q)))
+(defun bprd-ceiling-budget ()
+  (fn-bpnr-depth-budget (fn-bpn-machine-state-max-jobs (fn-bpnf-base (bprd-ceiling-q)))))
+
+;; The mutant: fn-bpnp-rotate-step without its successor-epoch conjunct (the
+;; definition before the repair).
+(defun bprd-mutant-rotate-step-on-quiescence (st generation ck)
+  (if (not (and (fn-bpnp-rotation-quiescentp st)
+                (fn-frame-natp generation) (< 0 generation)
+                (fn-bpnr-checkpoint-of-statep ck st generation)
+                (let ((octets (fn-bpnr-checkpoint-octets
+                               (fn-bpnr-rotation-checkpoint
+                                ck (fn-bpnf-epoch st))
+                               (fn-bpnr-depth-budget
+                                   (fn-bpn-machine-state-max-jobs
+                                    (fn-bpnf-base st))))))
+                  (and octets
+                       (<= (len octets)
+                           (fn-bpnr-read-bound
+                            (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))
+                            (fn-bpn-machine-state-max-octets
+                             (fn-bpnf-base st))))))))
+      (fn-bpnf-answer st (list (list :rotation-refused generation)))
+    (fn-bpnf-answer
+     (update-nth 9 1
+                 (update-nth 6 (fn-bpnf-operation (fn-bpnf-epoch st) 0
+                                                  :checkpoint generation
+                                                  :pending)
+                             st))
+     (list (list :persist-checkpoint (fn-bpnf-epoch st) 0 generation
+                 (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))))))
+(defun bprd-mutant-ceiling-eff ()
+  (car (fn-bpnf-answer-effects
+        (bprd-mutant-rotate-step-on-quiescence (bprd-ceiling-q) 1 (bprd-ceiling-ck)))))
+(defun bprd-mutant-ceiling-reopen ()
+  (fn-bpnr-recover-auto-event
+   *bpcx-raw-s0* nil :ready nil
+   (fn-bpnr-selection-plan
+    t (fn-bpnr-checkpoint-octets (fn-bpn-nth 4 (bprd-mutant-ceiling-eff))
+                                 (bprd-ceiling-budget))
+    (bprd-ceiling-budget))))
+
+;; The defect, end to end.  The ceiling state is recovered :restart-ready,
+;; quiescent, and every other admission conjunct holds; the mutant proposes
+;; the publication, and the restart from the file it publishes names epoch
+;; *fn-frame-max-nat* + 1 and is refused.  The repaired machine refuses the
+;; rotation instead.
+(assert-event
+ (let ((st (bprd-ceiling-q)) (ck (bprd-ceiling-ck)))
+   (and (equal (car (car (fn-bpnf-answer-effects
+                          (fn-bpnp-step *bpcx-raw-s0* (bprd-ceiling-event)))))
+               :restart-ready)
+        (equal (fn-bpnf-epoch st) *fn-frame-max-nat*)
+        (fn-bpnp-rotation-quiescentp st)
+        (fn-bpnr-checkpoint-of-statep ck st 1)
+        (not (fn-frame-natp (+ 1 (fn-bpnf-epoch st))))
+        (equal (car (bprd-mutant-ceiling-eff)) :persist-checkpoint)
+        (equal (car (bprd-mutant-ceiling-reopen)) :recover-fnbs)
+        (equal (fn-bpn-nth 1 (bprd-mutant-ceiling-reopen)) (+ 1 *fn-frame-max-nat*))
+        (equal (car (car (fn-bpnf-answer-effects
+                          (fn-bpnp-step *bpcx-raw-s0* (bprd-mutant-ceiling-reopen)))))
+               :restart-fault)
+        (equal (fn-bpnf-answer-effects (fn-bpnp-rotate-step st 1 ck))
+               '((:rotation-refused 1))))))
+(must-fail-checked
+ (assert-event
+  (equal (car (car (fn-bpnf-answer-effects
+                    (fn-bpnp-step *bpcx-raw-s0* (bprd-mutant-ceiling-reopen)))))
+         :restart-ready)))
+
+;; Witness: the traced recovered state (reached from the initial state by
+;; fn-bpnj-step) proposes, at epoch 2 whose successor is a frame natural.
+;; Removal of the one hypothesis: at the ceiling the rotation is refused and
+;; the successor epoch is not a frame natural.  Mutation: the claim with
+;; quiescence alone as its hypothesis (Codex's finding) fails at the ceiling.
+(defteeth fn-bpnp-rotate-step-proposes-only-own-projection
+  :claim (((proposes (equal (car (car (fn-bpnf-answer-effects
+                                       (fn-bpnp-rotate-step st generation ck))))
+                            :persist-checkpoint)))
+          (and (fn-bpnr-checkpoint-of-statep ck st generation)
+               (fn-bpnp-rotation-quiescentp st)
+               (fn-frame-natp (+ 1 (fn-bpnf-epoch st)))
+               (equal (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
+                                          (fn-bpnp-rotate-step st generation ck))))
+                      (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
+               (fn-bpnr-checkpoint-octets
+                (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st))
+                (fn-bpnr-depth-budget
+                 (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))))))
+  :subject fn-bpnp-rotate-step
+  :witness ((st (bprd-traced-q)) (generation 1) (ck (bprd-traced-ck)))
+  :breaks ((proposes ((st (bprd-ceiling-q)) (generation 1) (ck (bprd-ceiling-ck)))))
+  :mutations ((rotates-on-quiescence
+               (:hypothesis proposes (fn-bpnp-rotation-quiescentp st))
+               ((st (bprd-ceiling-q)) (generation 1) (ck (bprd-ceiling-ck)))
+               :fault "a rotation admitted on quiescence alone, which the ceiling epoch satisfies")))

@@ -2,6 +2,7 @@
 ; config's mutation fold can invalidate receipts without a dependency cycle.
 ; These reserved rows are adoption evidence, never generic operator input.
 (in-package "ACL2")
+(include-book "def-loop")
 
 (defun fn-par-field (n row)
   (declare (xargs :guard (natp n)))
@@ -19,21 +20,15 @@
   (declare (xargs :guard t))
   (fn-par-receipt-slotp (fn-par-field 1 row)))
 
-(defun fn-par-without-receipts (rows)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (if (fn-par-receipt-rowp (car rows))
-          (fn-par-without-receipts (cdr rows))
-        (cons (car rows) (fn-par-without-receipts (cdr rows))))
-    nil))
+(def-loop fn-par-without-receipts (rows)
+  :shape :map :over rows :elt r
+  :keep (not (fn-par-receipt-rowp r))
+  :body r)
 
-(defun fn-par-only-receipts (rows)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (if (fn-par-receipt-rowp (car rows))
-          (cons (car rows) (fn-par-only-receipts (cdr rows)))
-        (fn-par-only-receipts (cdr rows)))
-    nil))
+(def-loop fn-par-only-receipts (rows)
+  :shape :map :over rows :elt r
+  :keep (fn-par-receipt-rowp r)
+  :body r)
 
 (defun fn-par-receipt-freep (rows)
   (declare (xargs :guard t))

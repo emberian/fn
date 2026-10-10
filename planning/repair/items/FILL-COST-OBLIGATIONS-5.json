@@ -3,11 +3,13 @@
  "detail": "Generated file planning/cost-obligations.json is the integrator's; the four entries owe a def-cost or a baseline row. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
  "file": "planning/cost-baseline.json",
  "id": "FILL-COST-OBLIGATIONS-5",
- "notes": [],
- "owner": "unowned",
+ "notes": [
+  "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): cost_obligations: 75 findings; 63 are new guard-verified dispatched entries with no def-cost and not in planning/cost-baseline.json (first: fn-asto-resume-ms, books/article-stream-owner.lisp:647; fn-bpnf-mixed-recovery-plan-from; fn-bpnr-plan-start-token; fn-bpnr-seed-state). Owner unowned -> builder-D."
+ ],
+ "owner": "builder-D",
  "severity": "medium",
  "source": "fill-20261004",
  "state": "open",
  "title": "cost_obligations --check red: planning/cost-obligations.json is stale and 4 new guard-verified dispatched entries have no def-cost and are not in planning/cost-baseline.json: fn-owner-article-preflight-unavailable, fn-owner-page-window-cache-byte-at, fn-owner-page-window-executor-cache, fn-prd-pause-ms",
- "updated": "2026-10-04T19:12:27Z"
+ "updated": "2026-10-09T22:00:00Z"
 }

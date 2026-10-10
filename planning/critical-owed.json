@@ -951,11 +951,6 @@
    "item": "PRF-1344",
    "book": "books/bp-fnbs-forward-publication.lisp"
   },
-  "fn-bpnp-rotate-step-proposes-only-own-projection": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/bp-node-rotation.lisp"
-  },
   "fn-bpnp-step-rotate-is-rotate-step": {
    "class": "durability",
    "item": "PRF-1345",

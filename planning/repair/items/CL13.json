@@ -9,13 +9,15 @@
  "line": "",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-04 15:12 FILL 10-04: still red at 55ff708a6 on cloud1 make check: depth_check lists non-tail recursions incl. adt-tree-ndig, adt-tree-okp, fn-arx-attach-trailers(-buffer), fn-ast-scan-step, fn-asto-ready-rest, fn-auth-mechanism-words, fn-av-scr-dispatch-events, fn-rof-first; log cloud1:/tank/fn/scratch/fill-wt-check.log"
+  "10-04 15:12 FILL 10-04: still red at 55ff708a6 on cloud1 make check: depth_check lists non-tail recursions incl. adt-tree-ndig, adt-tree-okp, fn-arx-attach-trailers(-buffer), fn-ast-scan-step, fn-asto-ready-rest, fn-auth-mechanism-words, fn-av-scr-dispatch-events, fn-rof-first; log cloud1:/tank/fn/scratch/fill-wt-check.log",
+  "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): depth_check: 293 findings, non-tail recursions on the host-called closure (first: adt-tree-ndig and adt-tree-okp in books/def-representation-tree-walk.lisp, fn-ak-grammar-row-values and fn-ak-line in books/article-kind-codec.lisp), plus a :program host-called entry fn-native-operator-host-self-signed-refused (host/native-operator-host.lisp:666). Owner sweep-gates -> builder-D.",
+  "10-10 builder-D: 292 findings = 3 stale baseline entries (removed: fn-cpt-walk, fn-oct-word-octets bounded; fn-owner-feed-journal-scan program) + 289 unclassified, attributed by area in DEPTH-EXCESS-A (166: 121 :program host entries, 41 recursions, 4 appends), DEPTH-EXCESS-C (40), DEPTH-EXCESS-M (3), DEPTH-EXCESS-D (80). 263 of the 289 definitions predate the 2026-10-07 baseline cut. CL13 stays red until those rows close; no rebase."
  ],
- "owner": "sweep-gates",
+ "owner": "builder-D",
  "severity": "medium",
  "slice": "carrier",
  "source": "check-lane-355a5c843",
  "state": "open",
  "title": "check-lane red: depth_check",
- "updated": "2026-10-04T19:12:27Z"
+ "updated": "2026-10-10T05:00:00Z"
 }

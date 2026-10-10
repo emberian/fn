@@ -48,7 +48,7 @@
 ; Replay retains the existing fn-feed-apply-record semantics, not drivenp:
 ; config changes and historical no-op records are not retroactively refused.
 (defun fn-feed-journal-scan (peer prefix frame offset)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-cbor-octet-listp frame)))
   (let ((plan (fn-feed-journal-prefix prefix)))
     (cond ((equal plan :end) (list :end (nfix offset) nil))
           ((equal plan :repair) (list :repair (nfix offset) nil))

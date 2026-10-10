@@ -35,7 +35,7 @@ a = p.parse_args()
 tree, image, work = Path(a.tree), Path(a.image).resolve(), Path(a.work)
 sys.path.insert(0, str(tree))
 from tests.test_fn_verify import big_body, source_for, dot_stuff  # noqa: E402
-from tests.native_process import wait_for_announcement, stop_and_diagnostics  # noqa: E402
+from tests.native_harness import wait_for_announcement, stop_and_diagnostics  # noqa: E402 (native_process folded in, 8f5707f49)
 sys.path.insert(0, str(tree / "tools"))
 from rep_measure import decided_heap_env  # noqa: E402
 OPENSSL = "/tank/fn/toolchains/openssl-3.5.8/bin/openssl"
