@@ -259,6 +259,8 @@ that was never accepted.
 
 ## 5. RFC 9174 clause matrix
 
+REP-016: A TCPCL passive entity that receives a Contact Header of a version it does not implement sends its own header and SESS_TERM Version mismatch and closes at once: nothing after the peer's header is parsed as a TCPCLv4 message and no MSG_REJECT is sent (RFC 9174 section 4.3).
+
 | Clause | Status | Where / why |
 | --- | --- | --- |
 | §4.1 active sends CH first, passive waits, CH timeout | source implemented; retained-controller fixture passes, current native timeout unexecuted | `fn-tcl-open`, `fn-tcl-recv-contact`; actual `fnn-tcl-turn` consumes ACL2 `fn-tcrt-contact-timeout-p` at captured60s deadline and calls `fn-tcl-tcp-closed` (PRF-1295, SCN-1126). This is Contact Header reception, not SESS_INIT or an established-session bound |

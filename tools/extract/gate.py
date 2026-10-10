@@ -18,6 +18,14 @@ marker and zero executed cases each FAIL with a named reason.  Steps:
      core's products, the foreign libraries);
   2. transcripts: every case transcripts.py lists (its manifest.json),
      through IMAGE's and fn-core's `--fn model', byte-identical;
+  2b. rtc-exercise: the runtime contract's multi-instance exercise
+     (`--fn rtc-exercise run 0..4', host/native/rtc-exercise.lisp): two
+     interleaved connections over the executable layer and its array-backed
+     pool; the image exits 0 (invariant, :out octets stable, no unmatched
+     completion changed the state at any step), steps 10 and 12 discard
+     stale completions, four injected host faults are reported by both
+     sides (exit 4: :moved, :invp-violated, :moved, :moved), and fn-core's
+     lines are the image's bytes;
   3. probes: the boundary probes through both sides, every probe identical;
   3b. obligations: X1's O2 and O3 (EXTRACTION-PROGRAM-20261007.md section 7) through
       both sides (obligations.py): every extracted global, every ACL2 state global
@@ -266,6 +274,57 @@ class Gate:
             self.core_same("transcript " + n, [self.core_exe, "--fn", "model", d / (n + ".chunks"), "-"],
                            a, self.c / "cmp" / ("%s.core.err" % n))
         print("transcripts: %d of %d identical (image, core)" % (len(expected), len(expected)))
+
+    def rtc_exercise(self):
+        """The runtime contract's multi-instance exercise: two interleaved
+        connections over the executable layer and its array-backed pool
+        (host/native/rtc-exercise.lisp, books/runtime-contract-echo.lisp
+        fn-rce-exercise).  Variant 0: the image exits 0 (every step kept the
+        invariant and the outstanding :out octets, no unmatched completion
+        changed the state), steps 10 and 12 discard stale completions, and
+        the core's lines are the image's bytes.  Variants 1-4 inject a host
+        fault (a write into an :out-leased buffer, that buffer freed under its
+        lease, the write followed by the send's own completion, the lease
+        redirected to another instance): both sides exit 4 (fault) with the
+        step reported :moved, :invp-violated, :moved, :moved, line for line
+        identical."""
+        self.step = "rtc-exercise"
+        d = self.c / "cmp"
+        d.mkdir(exist_ok=True)
+        a = d / "rtc-exercise.sbcl"
+        rc = self.run("image rtc-exercise", [self.image, "--fn", "rtc-exercise", "run", "0"],
+                      stdout=a, stderr=str(a) + ".err", env=self.acl2_env)
+        if rc != 0:
+            self.fail("rtc-exercise: the image %s%s" % (describe_status(rc), self.tail(str(a) + ".err", 1)))
+        lines = a.read_text().splitlines()
+        if len(lines) != 17:
+            self.fail("rtc-exercise: %d observation lines, not 17" % len(lines))
+        discarded = [l.split()[0].lstrip("(") for l in lines if l.endswith(":discarded)")]
+        if discarded != ["10", "12"]:
+            self.fail("rtc-exercise: discarded steps %s, not [10, 12]" % discarded)
+        self.core_same("rtc-exercise", [self.core_exe, "--fn", "rtc-exercise", "run", "0"],
+                       a, d / "rtc-exercise.core.err")
+        for variant, mark in (("1", ":moved"), ("2", ":invp-violated"), ("3", ":moved"), ("4", ":moved")):
+            f = d / ("rtc-exercise-fault-%s.sbcl" % variant)
+            rc = self.run("image rtc-exercise fault " + variant,
+                          [self.image, "--fn", "rtc-exercise", "run", variant],
+                          stdout=f, stderr=str(f) + ".err", env=self.acl2_env)
+            if rc != 4:
+                self.fail("rtc-exercise fault %s: the image %s, not exit 4" % (variant, describe_status(rc)))
+            last = f.read_text().splitlines()[-1:]
+            if not last or mark not in last[0]:
+                self.fail("rtc-exercise fault %s: the injected fault is not reported %s" % (variant, mark))
+            g = d / ("rtc-exercise-fault-%s.core" % variant)
+            rc = self.run("core rtc-exercise fault " + variant,
+                          [self.core_exe, "--fn", "rtc-exercise", "run", variant],
+                          stdout=g, stderr=str(g) + ".err", env=self.acl2_env)
+            if rc != 4:
+                self.fail("rtc-exercise fault %s: the core %s, not exit 4" % (variant, describe_status(rc)))
+            if g.read_bytes() != f.read_bytes():
+                self.fail("rtc-exercise fault %s: the core's reply differs from the image's (%s against %s)"
+                          % (variant, g, f))
+        print("rtc-exercise: 17 steps, invariant held, stale completions 10 and 12 discarded; "
+              "the four injected faults reported; core identical")
 
     def probes(self):
         self.step = "probes"
@@ -533,7 +592,8 @@ class Gate:
             if self.t.variant not in ("default", "dtn"):
                 self.fail("unsupported extraction variant " + self.t.variant)
             for name, stepfn in (("1 core", self.core), ("1b manifest", self.manifest),
-                                 ("2 transcripts", self.transcripts), ("3 probes", self.probes),
+                                 ("2 transcripts", self.transcripts),
+                                 ("2b rtc-exercise", self.rtc_exercise), ("3 probes", self.probes),
                                  ("3b obligations", self.obligations),
                                  ("4 store", self.store), ("5 stateful", self.stateful),
                                  ("5b owner", self.owner), ("6 faults", self.faults)):

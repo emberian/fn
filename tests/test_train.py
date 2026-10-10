@@ -44,6 +44,8 @@ if name == "world" and os.environ.get("STUB_WORLD"):
         f.write("new part\\n")
     if os.path.exists("books/image-world-part-1.lisp"):
         os.remove("books/image-world-part-1.lisp")
+if name == "premise_audit" and mode == "json":
+    print(os.environ.get("STUB_PREMISES", "{}"))
 if mode == "write" and name == "ledger":
     with open("planning/proofs.json", "a") as f:
         f.write("regen\\n")
@@ -55,10 +57,10 @@ STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
          "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
          "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py",
-         "tests/test_keystone_critical.py", "tools/harness_check.py"]
+         "tests/test_keystone_critical.py", "tools/harness_check.py", "tools/premise_audit.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
-for out in planning/interfaces.json specs/wire-grammar.json; do
+for out in build/box/wire-grammar.json; do
   [ -n "$STUB_EMIT" ] && mkdir -p "$(dirname $out)" && echo "$STUB_EMIT" > "$out"
 done
 exit "${STUB_RC_remote_check:-0}"
@@ -100,7 +102,7 @@ esac
 echo "ssh $*" >> "$STUB_LOG"
 if [ "${STUB_RC_ssh:-0}" = 0 ]; then
   [ -z "$STUB_CACHE_SEED" ] || echo "== cache seed $STUB_CACHE_SEED"
-  for out in planning/interfaces.json specs/wire-grammar.json; do
+  for out in build/box/wire-grammar.json; do
     mkdir -p "$FARM_TREE/$(dirname $out)" && echo "${STUB_EMIT:-emitted}" > "$FARM_TREE/$out"
   done
 fi
@@ -224,8 +226,7 @@ class TrainBase(unittest.TestCase):
         (self.seed / ".gitignore").write_text("build/\n__pycache__/\n")
         (self.seed / "lockkeys.json").write_text("[]\n")
         (self.seed / "src.txt").write_text("a\nb\nc\n")
-        (self.seed / "specs").mkdir(exist_ok=True)
-        (self.seed / "specs/wire-grammar.json").write_text("base\n")
+        (self.seed / "tools/extract/world.lisp").write_text("base\n")
         (self.seed / "planning/decisions.md").write_text("d0\n")
         (self.seed / "planning/known-reds.json").write_text('{"rows": []}\n')
         self.commit(self.seed, "init")
@@ -289,29 +290,49 @@ class TrainBase(unittest.TestCase):
 class MergeTests(TrainBase):
     def test_generated_conflict_takes_train_side(self):
         # train side first changes the ledger on dev; the lane changes it too.
-        sha = self.lane("a", {"specs/wire-grammar.json": "lane version\n", "src.txt": "a\nb\nc\nlane\n"})
-        self.advance_dev({"specs/wire-grammar.json": "dev version\n"})
+        sha = self.lane("a", {"tools/extract/world.lisp": "lane version\n", "src.txt": "a\nb\nc\nlane\n"})
+        self.advance_dev({"tools/extract/world.lisp": "dev version\n"})
         sh(self.work, "git", "fetch", "-q", "origin")
         sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
         p = self.train("merge", f"a@{sha}")
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertEqual((self.work / "specs/wire-grammar.json").read_text(), "dev version\n")
+        self.assertEqual((self.work / "tools/extract/world.lisp").read_text(), "dev version\n")
         self.assertIn("lane", (self.work / "src.txt").read_text())
         parents = sh(self.work, "git", "rev-list", "--parents", "-n1", "HEAD").stdout.split()
         self.assertEqual(len(parents), 3, "expected a merge commit")
         self.assertIn(f"Merge lane/a @{sha} into integrate/t1", sh(self.work, "git", "log", "-1", "--format=%s").stdout)
 
-    def test_teeth_manifest_conflict_takes_train_side_and_regen_rewrites_it(self):
-        sha = self.lane("k", {"planning/teeth-obligations.json": "lane manifest\n"})
-        self.advance_dev({"planning/teeth-obligations.json": "dev manifest\n"})
-        sh(self.work, "git", "fetch", "-q", "origin")
-        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
-        p = self.train("merge", f"k@{sha}")
-        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertEqual((self.work / "planning/teeth-obligations.json").read_text(), "dev manifest\n")
+    def test_retired_register_conflict_goes_back_to_the_lane(self):
+        # the three registers left git (build/box/, build/teeth-obligations.json):
+        # a lane that still commits one conflicts like source, never "ours"
+        for path in ("planning/interfaces.json", "specs/wire-grammar.json",
+                     "planning/teeth-obligations.json"):
+            with self.subTest(path=path):
+                self.setUp()
+                (self.seed / Path(path).parent).mkdir(parents=True, exist_ok=True)
+                sha = self.lane("k", {path: "lane register\n"})
+                sh(self.seed, "git", "checkout", "-q", "-B", "devtip", "origin/dev")
+                (self.seed / Path(path).parent).mkdir(parents=True, exist_ok=True)
+                self.advance_dev({path: "dev register\n"})
+                sh(self.work, "git", "fetch", "-q", "origin")
+                sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+                p = self.train("merge", f"k@{sha}")
+                self.assertNotEqual(p.returncode, 0, p.stdout)
+                self.assertIn(f"source conflict in {path}", p.stdout)
+                self.assertFalse((self.work / ".git" / "MERGE_HEAD").exists())
+
+    def test_regen_commits_no_teeth_manifest(self):
+        stub = self.work / "tools/keystone_emit.py"
+        stub.write_text(STUB.replace("import json, os, sys", "import json, os, sys\nfrom pathlib import Path\n"
+                                     "Path('build').mkdir(exist_ok=True)\n"
+                                     "Path('build/teeth-obligations.json').write_text('{}')", 1))
+        self.commit(self.work, "manifest-writing stub")
         r = self.train("regen")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertIn("keystone_emit --write-manifest", self.stub_log())
+        self.assertTrue((self.work / "build/teeth-obligations.json").is_file())
+        self.assertEqual(sh(self.work, "git", "ls-files", "build", "planning/teeth-obligations.json").stdout, "")
+        self.assertEqual(sh(self.work, "git", "status", "--porcelain").stdout.strip(), "")
 
     def test_world_part_conflict_takes_train_side(self):
         (self.seed / "books").mkdir(exist_ok=True)
@@ -448,6 +469,65 @@ class PushTests(TrainBase):
         self.assertEqual(self.origin_rev("integrate/t1"), self.head())
         self.assertIn(f"carried: a@{sha[:9]}", p.stdout)
         self.assertIn("verdict: green: the known-red baseline is empty", p.stdout)
+        self.assertIn(f"STATE: dev = {self.head()[:9]} (integrate/t1): carries a@{sha[:9]}; green", p.stdout)
+
+    def test_push_renames_the_landed_lanes_readies_and_names_them_in_the_state_line(self):
+        sha = self.ready()
+        ready = self.tmp / "ready"
+        ready.mkdir()
+        (ready / "a.md").write_text("# READY: lane/a\n")
+        (ready / "a-landing.md").write_text(f"# READY (landing): lane/a @ {sha[:9]}\n")
+        (ready / "ab.md").write_text(f"# READY: lane/ab @ {sha[:9]}\n")
+        (ready / "landed-old.md").write_text("# READY: lane/a\n")
+        env = {"FN_READY_DIR": str(ready)}
+        self.assertEqual(self.train("gate", extra_env=env).returncode, 0)
+        p = self.train("push", "--label", "9", extra_env=env)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(sorted(f.name for f in ready.iterdir()),
+                         ["ab.md", "landed-a-landing.md", "landed-a.md", "landed-old.md"])
+        self.assertIn(f"STATE: dev = {self.head()[:9]} (train 9): carries a@{sha[:9]}", p.stdout)
+        self.assertIn("READY landed: landed-a-landing.md, landed-a.md", p.stdout)
+
+    def test_push_refused_when_dev_moved_after_gating(self):
+        self.ready()
+        self.assertEqual(self.train("gate").returncode, 0)
+        self.advance_dev({"elsewhere.txt": "x\n"})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "--no-edit", "origin/dev")
+        self.assertEqual(self.train("gate").returncode, 0)
+        before = self.origin_rev("dev")
+        # a gate record of the earlier dev, at the same HEAD
+        path = self.work / "build/train/integrate__t1.json"
+        st = json.loads(path.read_text())
+        st["gates"]["ledger"]["dev"] = "0" * 40
+        path.write_text(json.dumps(st))
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0, p.stdout)
+        self.assertIn("re-run gate", p.stdout)
+        self.assertEqual(self.origin_rev("dev"), before)
+
+    def test_a_train_stacked_on_an_unlanded_train_waits_for_it(self):
+        first = self.ready()
+        sh(self.work, "git", "checkout", "-q", "-b", "integrate/t2")
+        sha = self.lane("b", {"b.txt": "b\n"})
+        self.assertEqual(self.train("merge", f"b@{sha}").returncode, 0)
+        self.assertEqual(self.train("gate").returncode, 0)
+        before = self.origin_rev("dev")
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0, p.stdout)
+        self.assertIn("HEAD carries integrate/t1's merges", p.stdout)
+        self.assertEqual(self.origin_rev("dev"), before)
+        # once t1 lands, t2 re-gates and pushes
+        sh(self.work, "git", "checkout", "-q", "integrate/t1")
+        self.assertEqual(self.train("gate").returncode, 0)
+        self.assertEqual(self.train("push").returncode, 0)
+        sh(self.work, "git", "checkout", "-q", "integrate/t2")
+        self.assertEqual(self.train("gate").returncode, 0)
+        p = self.train("push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(self.origin_rev("dev"), self.head())
+        self.assertIn(f"carried: b@{sha[:9]}", p.stdout)
+        self.assertNotIn(first[:9], p.stdout.split("carried:")[1].splitlines()[0])
 
     # ruling 21: the lock gate's table.  The only green is "no key added
     # relative to dev"; dev's own keys are an owned red list; a checker that
@@ -695,15 +775,44 @@ class BoxStepTests(TrainBase):
         self.merge({"tools/x.py": "x\n"})
         self.assertNotEqual(self.train("gate").returncode, 0)
 
-    def test_boxstep_records_and_commits_the_emits_then_the_gate_passes_at_head(self):
+    def test_boxstep_fetches_the_emits_into_build_box_uncommitted_then_the_gate_passes_at_head(self):
         (self.seed / "books").mkdir(exist_ok=True)
         self.merge({"books/b.lisp": "changed\n"})
         self.assertNotEqual(self.train("gate").returncode, 0)
+        before = self.head()
         b = self.train("boxstep", "persvati", extra_env={"STUB_EMIT": "emitted"})
         self.assertEqual(b.returncode, 0, b.stdout + b.stderr)
-        self.assertEqual(self.box()["sha"], self.head())
-        self.assertEqual((self.work / "planning/interfaces.json").read_text(), "emitted\n")
+        self.assertEqual(self.head(), before, "the box step commits nothing")
+        self.assertEqual(self.box()["sha"], before)
+        self.assertEqual((self.work / "build/box/wire-grammar.json").read_text(), "emitted\n")
+        self.assertFalse((self.work / "build/box/interfaces.json").exists())
+        self.assertFalse((self.work / "planning/interfaces.json").exists())
+        stamp = json.loads((self.work / "build/box/stamp.json").read_text())
+        self.assertEqual((stamp["sha"], stamp["box"]), (before, "persvati"))
+        log = " | ".join(self.stub_log())
+        self.assertIn("--fetch build/box/wire-grammar.json", log)
+        # the certified world's witness runs in the box step, required
+        self.assertIn("books/wire-export books/image-world books/image-world-dtn", log)
+        self.assertIn("FN_CERT_WORLD_REQUIRED=1 python3 -m unittest tests.test_cert_world_checks", log)
+        self.assertNotIn("interfaces.json", log)
         self.assertIn("remote_check persvati", " | ".join(self.stub_log()))
+        g = self.train("gate")
+        self.assertEqual(g.returncode, 0, g.stdout)
+        self.assertIn("ran at HEAD on persvati", g.stdout)
+
+    def test_two_branches_alternating_in_one_tree_keep_their_own_box_steps(self):
+        (self.seed / "books").mkdir(exist_ok=True)
+        (self.seed / "specs").mkdir(exist_ok=True)
+        self.merge({"books/b.lisp": "first\n"})
+        self.assertEqual(self.train("boxstep", "persvati").returncode, 0)
+        first = self.head()
+        sh(self.work, "git", "checkout", "-q", "-b", "integrate/t2", "origin/dev")
+        sha = self.lane("c", {"specs/c.md": "second\n"})
+        self.assertEqual(self.train("merge", f"c@{sha}").returncode, 0)
+        self.assertEqual(self.train("boxstep", "persvati").returncode, 0)
+        self.assertEqual(self.box()["sha"], self.head(), "the tree's latest box step is t2's")
+        sh(self.work, "git", "checkout", "-q", "integrate/t1")
+        self.assertEqual(self.head(), first)
         g = self.train("gate")
         self.assertEqual(g.returncode, 0, g.stdout)
         self.assertIn("ran at HEAD on persvati", g.stdout)
@@ -716,6 +825,20 @@ class BoxStepTests(TrainBase):
         self.assertEqual(self.box(), before)
 
 
+class CertWorldWitnessTests(unittest.TestCase):
+    def test_the_witness_fails_rather_than_skips_where_the_box_step_requires_it(self):
+        env = {k: v for k, v in os.environ.items() if k != "FN_ACL2"}
+        skipped = subprocess.run([sys.executable, "-m", "unittest", "tests.test_cert_world_checks"],
+                                 cwd=REPO, capture_output=True, text=True, env=env, timeout=120)
+        self.assertEqual(skipped.returncode, 0, skipped.stderr)
+        self.assertIn("skipped", skipped.stderr)
+        required = subprocess.run([sys.executable, "-m", "unittest", "tests.test_cert_world_checks"],
+                                  cwd=REPO, capture_output=True, text=True, timeout=120,
+                                  env=dict(env, FN_CERT_WORLD_REQUIRED="1"))
+        self.assertNotEqual(required.returncode, 0, required.stderr)
+        self.assertIn("FN_CERT_WORLD_REQUIRED and no ACL2 launcher", required.stderr)
+
+
 class CertifyTests(TrainBase):
     """`train.py certify BOX`: one farm run, then the emits in that run's tree."""
 
@@ -724,11 +847,12 @@ class CertifyTests(TrainBase):
         self.ftree = self.tmp / "farm-tree"
         self.ftree.mkdir()
         (self.seed / "tools/farm.py").write_text(FARM_STUB)
-        (self.seed / "planning/teeth-obligations.json").write_text('{"entries": []}\n')
         self.commit(self.seed, "farm stub")
         sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
         sh(self.work, "git", "fetch", "-q", "origin")
         sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
+        # the regen step's manifest (keystone_emit --write-manifest), uncommitted
+        (self.work / "build/teeth-obligations.json").write_text('{"entries": []}\n')
         ssh = self.tmp / "ssh-stub"
         ssh.write_text(SSH_STUB)
         ssh.chmod(0o755)
@@ -754,7 +878,8 @@ class CertifyTests(TrainBase):
         self.assertEqual(len(farm), 2, farm)
         sub = farm[0]
         for word in ("--affected-by books/b", "--timeout-seconds 1800",
-                     "submit hbox", "books/wire-export", "books/b", "tests/acl2/t"):
+                     "submit hbox", "books/wire-export", "books/image-world", "books/image-world-dtn",
+                     "books/b", "tests/acl2/t"):
             self.assertIn(word, sub)
         # the affected closure, never the lane selection (direct includers)
         self.assertNotIn("--lane", sub.split())
@@ -837,8 +962,8 @@ class CertifyTests(TrainBase):
             "tests/acl2/special-witness.lisp": '(include-book "../../books/theorem")\n',
             "tests/acl2/unrelated-witness.lisp": '(in-package "ACL2")\n',
             "tests/acl2/noncritical-witness.lisp": '(in-package "ACL2")\n',
-            "planning/teeth-obligations.json": json.dumps({"entries": entries}),
         })
+        (self.work / "build/teeth-obligations.json").write_text(json.dumps({"entries": entries}))
         sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
         self.merge({"books/b.lisp": '(in-package "ACL2")\n; changed\n'})
         result = self.train("certify", "hbox")  # witnesses ride the default lane mode too
@@ -849,17 +974,22 @@ class CertifyTests(TrainBase):
         self.assertNotIn("tests/acl2/unrelated-witness", words)
         self.assertNotIn("tests/acl2/noncritical-witness", words)
 
-    def test_certify_emits_in_the_run_tree_commits_and_records_the_split(self):
+    def test_certify_emits_in_the_run_tree_fetches_into_build_box_and_records_the_split(self):
         self.books_train()
+        before = self.head()
         c = self.train("certify", "hbox")
         self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
         ssh = [l for l in self.stub_log() if l.startswith("ssh ")]
         self.assertEqual(len(ssh), 1, ssh)
         for word in (str(self.ftree), "timeout", "swarm-build", "interface_emit.py --write --check",
-                     "protocol_emit.py --wire --check", "host_check.py --world"):
+                     "protocol_emit.py --wire --check", "host_check.py --world",
+                     "FN_CERT_WORLD_REQUIRED=1 python3 -m unittest tests.test_cert_world_checks"):
             self.assertIn(word, ssh[0])
         self.assertNotIn("certify_books", ssh[0])
-        self.assertEqual((self.work / "planning/interfaces.json").read_text(), "emitted\n")
+        self.assertEqual(self.head(), before, "the certify's emits are not committed")
+        self.assertEqual((self.work / "build/box/wire-grammar.json").read_text(), "emitted\n")
+        self.assertFalse((self.work / "planning/interfaces.json").exists())
+        self.assertEqual(json.loads((self.work / "build/box/stamp.json").read_text())["sha"], before)
         rec = self.box()
         self.assertEqual(rec["sha"], self.head())
         self.assertEqual((rec["box"], rec["run"], rec["certify_id"]), ("hbox", "run-stub-1", "certify-stub-1"))
@@ -889,14 +1019,14 @@ class CertifyTests(TrainBase):
         self.assertLess(ssh[0].index("cp -a /old/farm-tree/build/cache/."),
                         ssh[0].index("tools/interface_emit.py"))
 
-    def test_a_books_free_train_certifies_wire_export_alone(self):
+    def test_a_books_free_train_certifies_wire_export_and_the_world_alone(self):
         self.merge({"tools/x.py": "x\n"})
         c = self.train("certify", "hbox")
         self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
         sub = [l for l in self.stub_log() if l.startswith("farm") and " submit " in l][0]
         self.assertNotIn("--lane", sub)
         self.assertNotIn("--affected-by", sub)
-        self.assertTrue(sub.endswith("submit hbox books/wire-export"), sub)
+        self.assertTrue(sub.endswith("submit hbox books/wire-export books/image-world books/image-world-dtn"), sub)
 
     def test_failed_certify_records_nothing(self):
         self.books_train()
@@ -1165,6 +1295,62 @@ class BaselineGateTests(TrainBase):
                          "(planning/known-reds.json, planning/known-reds-amendments.json); NOT green")
 
 
+class PremiseBaselineTests(TrainBase):
+    """planning/premise-baseline.json is shrink-only across merges
+    (PREMISE-BASELINE-MERGE-LOSS: a merge resolved 1,171 entries to 753)."""
+
+    def baseline(self, *names):
+        return json.dumps({"note": "n", "accepted": {n: "why " + n for n in names}},
+                          indent=2, sort_keys=True) + "\n"
+
+    def on_dev(self, *names):
+        self.advance_dev({"planning/premise-baseline.json": self.baseline(*names)})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+
+    def gate(self, premises):
+        g = self.train("gate", extra_env={"STUB_PREMISES": json.dumps(premises)})
+        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        return g, st["gates"]["premise_baseline"]
+
+    def test_a_conflict_takes_the_union_of_both_sides_entries(self):
+        self.on_dev("a", "b", "c")
+        sha = self.lane("p", {"planning/premise-baseline.json": self.baseline("a", "c", "d")})
+        self.advance_dev({"planning/premise-baseline.json": self.baseline("a", "b", "e")})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+        m = self.train("merge", f"p@{sha}")
+        if m.returncode:
+            sys.stderr.write(m.stdout + m.stderr)
+        self.assertEqual(m.returncode, 0, "the conflict on the premise baseline did not resolve")
+        merged = json.loads((self.work / "planning/premise-baseline.json").read_text())
+        self.assertEqual(sorted(merged["accepted"]), ["a", "b", "c", "d", "e"])
+
+    def test_a_dropped_entry_still_a_finding_refuses_and_a_resolved_one_passes(self):
+        self.on_dev("a", "b", "c")
+        sha = self.lane("p", {"planning/premise-baseline.json": self.baseline("a"),
+                              "tools/x.py": "x\n"})
+        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
+        lost, record = self.gate({"a": {"class": "never concluded"},
+                                  "b": {"class": "preserved only"},
+                                  "c": {"class": "established by a hosted entry"}})
+        self.assertNotEqual(lost.returncode, 0)
+        self.assertEqual((record["rc"], record["dropped"], record["lost"]), (1, ["b", "c"], ["b"]))
+        self.assertIn("LOST an entry that is still a finding (preserved only): b", lost.stdout)
+        resolved, record = self.gate({"a": {"class": "never concluded"},
+                                      "b": {"class": "established by a hosted entry"}})
+        self.assertEqual(record["rc"], 0, resolved.stdout)
+        self.assertEqual(record["lost"], [])
+
+    def test_no_drop_runs_no_audit(self):
+        self.on_dev("a")
+        sha = self.lane("p", {"tools/x.py": "x\n"})
+        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
+        _, record = self.gate({})
+        self.assertEqual((record["rc"], record["dropped"]), (0, []))
+        self.assertNotIn("premise_audit --json", self.stub_log())
+
+
 class AsciiGateTests(unittest.TestCase):
     def gate(self, changed, refusals):
         temporary = tempfile.TemporaryDirectory(prefix="train-ascii-")
@@ -1272,6 +1458,27 @@ class ImageModuleTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertEqual(rec["unexplained"], ["tests.test_native_owner (rc 137, no case recorded)"])
 
+    def test_runs_at_head_merge_by_module_and_a_module_from_two_runs_is_refused(self):
+        a = {"tests.test_native_owner": {"rc": 0, "cases": {"o.T.a": "ok"}}}
+        b = {"tests.test_native_heap_from_profile": {"rc": 1, "cases": {"h.T.a": "FAIL"}}}
+        one = train.merge_image_run(None, self.HEAD, "hbox", "/r/main", a)
+        both = train.merge_image_run(one, self.HEAD, "hbox", "/r/2g", b)
+        self.assertEqual(both["runs"], {"/r/main": "hbox", "/r/2g": "hbox"})
+        self.assertEqual({m: e["run"] for m, e in both["modules"].items()},
+                         {"tests.test_native_owner": "/r/main",
+                          "tests.test_native_heap_from_profile": "/r/2g"})
+        with self.assertRaises(train.TrainError) as refused:
+            train.merge_image_run(both, self.HEAD, "hbox", "/r/third", a)
+        self.assertIn("tests.test_native_owner (/r/main)", str(refused.exception))
+        # re-reading a run replaces that run's modules only
+        again = train.merge_image_run(both, self.HEAD, "hbox", "/r/main",
+                                      {"tests.test_native_owner": {"rc": 1, "cases": {"o.T.a": "FAIL"}}})
+        self.assertEqual(again["modules"]["tests.test_native_owner"]["rc"], 1)
+        self.assertIn("tests.test_native_heap_from_profile", again["modules"])
+        # a record of another commit is replaced, never merged
+        other = train.merge_image_run(dict(both, source="b" * 40), self.HEAD, "hbox", "/r/3", a)
+        self.assertEqual(sorted(other["modules"]), ["tests.test_native_owner"])
+
 
 class AddedRootTests(TrainBase):
     """certify selects the roots a train adds to ACL2_BOOKS, changed or not."""
@@ -1363,6 +1570,78 @@ class ImageGateTests(TrainBase):
         self.assertEqual(p.returncode, 2)
         self.assertIn("no image run record", p.stdout)
         self.assertIn("TRAIN-DONE image rc=2", p.stdout)
+
+    def image_runs(self, runs):
+        """A stub ssh answering each run dir with its modules' rc and cases, and
+        one hbox_native.sh record per label at HEAD."""
+        stubs = self.tmp / "stubs"
+        stubs.mkdir(exist_ok=True)
+        lines = {d: "\n".join([f"RC {m} {rc}" for m, (rc, _) in mods.items()] + [
+            "FN_TEST_BUDGET_RESULT " + json.dumps({"module": m, "cases": [[m + ".T.a", case]]})
+            for m, (_, case) in mods.items()]) for d, mods in runs.items()}
+        (stubs / "answers.json").write_text(json.dumps(lines))
+        (stubs / "ssh").write_text("#!%s\nimport json, sys\nanswers = json.load(open(%r))\n"
+                                   "print(next(v for d, v in answers.items() if d in sys.argv[-1]))\n"
+                                   % (sys.executable, str(stubs / "answers.json")))
+        (stubs / "ssh").chmod(0o755)
+        records = self.work / "build/hbox-native"
+        records.mkdir(parents=True, exist_ok=True)
+        for d in runs:
+            (records / f"{d.rsplit('/', 1)[-1]}.run").write_text(
+                f"box=hbox\ndir={d}\nsource={self.head()}\n")
+        return {"PATH": f"{stubs}:{os.environ['PATH']}"}
+
+    def test_a_run_on_heads_tree_reuses_a_ready_image_only_when_no_image_input_differs(self):
+        self.launcher_train()
+        built = self.head()
+        (self.work / "planning").mkdir(exist_ok=True)
+        (self.work / "planning/notes.md").write_text("n\n")
+        (self.work / "tests/more_helper.py").write_text("x = 1\n")
+        self.commit(self.work, "planning and a Python suite only")
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        env = self.image_runs({"/s/reuse": {m: (0, "ok") for m in need}})
+        record = self.work / "build/hbox-native/reuse.run"
+        record.write_text(f"box=hbox\ndir=/s/reuse\nsource={built}\ntree={self.head()}\n")
+        p = self.train("image", "--label", "reuse", extra_env=env)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn(f"reuses the images of {built[:9]}", p.stdout)
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 0, g.stdout)
+        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        self.assertEqual(st["image"]["images_from"], {"/s/reuse": built})
+        # an image input changed since the images were built: refused by name
+        (self.work / "packaging/launcher-decide.sh").write_text("# decide again\n")
+        self.commit(self.work, "launcher again")
+        record.write_text(f"box=hbox\ndir=/s/reuse\nsource={built}\ntree={self.head()}\n")
+        p = self.train("image", "--label", "reuse", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn("1 image input(s) differ", p.stdout)
+        self.assertIn("packaging/launcher-decide.sh", p.stdout)
+        # a run whose tree is not HEAD is refused as before
+        record.write_text(f"box=hbox\ndir=/s/reuse\nsource={built}\ntree={built}\n")
+        p = self.train("image", "--label", "reuse", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn(f"not HEAD {self.head()[:9]}", p.stdout)
+
+    def test_the_obliged_set_may_span_two_runs_at_head(self):
+        self.launcher_train()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        heap = "tests.test_native_heap_from_profile"
+        env = self.image_runs({"/s/main": {m: (0, "ok") for m in need if m != heap},
+                               "/s/2gb": {heap: (0, "ok")}})
+        for label in ("main", "2gb"):
+            p = self.train("image", "--label", label, extra_env=env)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 0, g.stdout)
+        self.assertEqual((rec["missing"], rec["runs"]), ([], ["/s/2gb", "/s/main"]))
+        # a third run that repeats a module is refused and changes nothing
+        env = self.image_runs({"/s/main": {}, "/s/2gb": {}, "/s/again": {heap: (1, "FAIL")}})
+        p = self.train("image", "--label", "again", extra_env=env)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("already read from another run at HEAD", p.stdout)
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 0, g.stdout)
 
 
 if __name__ == "__main__":

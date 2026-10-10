@@ -349,6 +349,8 @@ merge, and the fork survives every later merge.
 
 ### 2.4 Versioned legacy article subjects (relay-v1; OBJ-008 / PRF-1058)
 
+OBJ-008: Versioned route-independent legacy article subject.
+
 Four objects remain distinct: the received/stored-byte commitment
 (`fn-id-subject-of-payload`), the route-independent legacy article subject
 (`fn-asj-subject`), the reception record (peer, provenance, event identity and
@@ -1217,6 +1219,8 @@ are separate coordinates. No durable article-subject/Message-ID conflict
 binding or store adoption is asserted by this bridge.
 
 ### Committed transcript collision boundary
+
+SUB-008: Committed membership transcript retains signed commit-ID conflicts and refuses their authority before any epoch evidence merge.
 
 SUB-008 requires a membership transcript to preserve the actual signed carrier
 statement beside the decoded `(id base actor op subject)` commit and the actual

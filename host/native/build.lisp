@@ -151,6 +151,10 @@
 ;; (host/owner-host.lisp) call fn-pidx-existing-action-cat, whose buffer
 ;; comparison is fn-pbb-same-articlep.
 (include-book "books/octets-stobj")
+;; The runtime contract's executable layer over the array-backed pool and its
+;; first instance, the echo machine with the multi-instance exercise
+;; (host/native/rtc-exercise.lisp, developer images).
+(include-book "books/runtime-contract-echo")
 ;; The owner's automatic checkpoint publication over the PUBLICATION buffer
 ;; fn-octets-pub (a second stobj congruent to fn-octets): host/native/owner.lisp
 ;; fnn-owner-publish-captured calls fn-ock-publication-stream; host/owner-host.lisp
@@ -651,6 +655,8 @@
         ; `acl2 session': developer images only (the test fixtures' ACL2).
         (load "host/native/acl2-session.lisp")
         (load "host/native/dev-repl.lisp")
+        ; `rtc-exercise run SCRIPT': developer images only.
+        (load "host/native/rtc-exercise.lisp")
         ; Native anchor acquisition and its real primitive facility.  The
         ; anchor command calls fnn-crypto-startup in the restarted image, so
         ; it never trusts the serialized FFI readiness state.

@@ -1,0 +1,13 @@
+{
+ "detail": "Measured with the heap verb on hbox at image d8fb738b3: 'heap -- store <absent root> import <archive>' answers heap=1024 MB profile=none threads=1, while 'heap -- store <the source store> export' answers heap=13595 MB profile=custom. fnn-heap-command-profile reaches fnn-heap-store-profile (host/native/heap.lisp:158), which returns NIL when ROOT holds no config.json, and an import's ROOT never does: the store is made from the archive, whose configuration rows carry the profile. tools/fixtures.py recipe_synth_lz exports syn100k-2k (100,000 records, 401 MB archive) and imports it with FN_NATIVE_IMPORT_COMPRESS_MIN_TEST=64; the import died 'Heap exhausted during garbage collection' at 1,061,903,072 of 1,073,741,824 octets. Why the 09-28 18:24 fixture's import succeeded is not traced here (that image is not the one measured). Repair at the mechanism: the import's figure is the archive's profile (its configuration rows) at the import action, refused by name when the archive names none; not an env override in the recipe.",
+ "file": "host/native/heap.lisp",
+ "id": "HEAP-IMPORT-SIZED-BY-ABSENT-DESTINATION",
+ "line": "158",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "tools/fixtures.py rebuild syn100k-2k-lz, hbox, image d8fb738b3 (dev dd93a43f1), Builder D 2026-10-09; log hbox:/dev/shm/fn-fixtures-d/syn100k-2k-lz.log",
+ "state": "open",
+ "title": "the launcher sizes 'store ROOT import ARCHIVE' by ROOT's store, which an import has not made yet: profile none, 1,024 MB, and a 100,000-record import exhausts the heap (syn100k-2k-lz cannot be rebuilt)",
+ "updated": "2026-10-09T22:14:31Z"
+}

@@ -6,11 +6,12 @@
 ;;; -publication-abandoned) and the deployed ACL2 decisions they ask
 ;;; (books/owner-checkpoint-open.lisp, owner-checkpoint-writer.lisp,
 ;;; owner-compact-request.lisp, owner-reclaim.lisp,
-;;; owner-publication-lifecycle.lisp), against the owner's globals as a
-;;; table.  MOCK: the store's I/O (the walk, the history image, the staged
+;;; owner-publication-lifecycle.lisp, owner-publication-state.lisp,
+;;; owner-publication-transitions.lisp), against the owner's globals as a
+;;; table holding the carried publication record.  MOCK: the store's I/O (the walk, the history image, the staged
 ;;; write) and the thread boundary's classifier are stubbed, so it is cited
 ;;; by no claim; the native witness is tests/test_native_checkpoint_abandon.py.
-;;; Each case asserts the slot (fn-owner-sco-inflight) after the publication,
+;;; Each case asserts the slot (the record's :inflight) after the publication,
 ;;; then the recorded deferral and the next due decisions.
 (require :sb-posix)
 (require :sb-bsd-sockets)
@@ -77,17 +78,26 @@ or a file that is absent is skipped (the base tree, before RL-02's fix)."
 (defun member-eq (x l) (member x l :test #'eq))
 (defun member-equal (x l) (member x l :test #'equal))
 (defmacro value (x) `(values nil ,x state))
+(defmacro mv (&rest xs) `(values ,@xs))
+(defmacro mv-let (vars form &body body) `(multiple-value-bind ,vars ,form ,@body))
+(defun update-nth (n v l)
+  (if (zerop n) (cons v (cdr l)) (cons (car l) (update-nth (1- n) v (cdr l)))))
 (defmacro mbe (&key logic exec) (declare (ignore logic)) exec)
 
-;; The owner's globals.
+;; The owner's globals, as ACL2's state holds them: a table.  The publication
+;; fields are one carried record in the global fn-owner-publication
+;; (books/owner-publication-state.lisp), read and installed by the deployed
+;; fn-ost-publication / fn-ost-install-publication.
 (defvar *state* (make-hash-table))
 (defun boundp-global (key state) (nth-value 1 (gethash key state)))
 (defun f-get-global (key state) (gethash key state))
 (defun f-put-global (key val state) (setf (gethash key state) val) state)
+(load-deployed-forms "books/owner-publication-state.lisp"
+ '((defun fn-opub-initial) (defun fn-opub-index) (defun fn-opub-get) (defun fn-opub-put)
+   (defun fn-ost-publication) (defun fn-ost-install-publication)))
 
 (load-deployed-forms "books/owner-reclaim.lisp" '((defun fn-orc-release-slot)))
-(load-deployed-forms "books/owner-state-accessors.lisp"
- '((defun fn-owner-sco-global) (defun fn-owner-sco-deferred)))
+(load-deployed-forms "books/owner-state-accessors.lisp" '((defun fn-owner-sco-deferred)))
 (load-deployed-forms "books/consumer-position-fields.lisp" '((defun fn-cp-nth)))
 (load-deployed-forms "books/store-checkpoint-accessors.lisp" '((defun fn-sco-at)))
 (load-deployed-forms "books/store-checkpoint-open.lisp"
@@ -104,6 +114,9 @@ or a file that is absent is skipped (the base tree, before RL-02's fix)."
    (defun fn-opl-eligiblep) (defun fn-opl-blockedp) (defun fn-opl-next-serial)
    (defun fn-opl-holdsp) (defun fn-opl-settle) (defun fn-opl-attempted))
  :optional t)
+(load-deployed-forms "books/owner-publication-transitions.lisp"
+ '((defun fn-opub-due) (defun fn-opub-request) (defun fn-opub-capture)
+   (defun fn-opub-capture-context) (defun fn-opub-done) (defun fn-opub-abandoned)))
 (load-deployed-forms "host/owner-host.lisp"
  '((defun fn-owner-sco-count) (defun fn-owner-sco-budget) (defun fn-owner-sco-due)
    (defun fn-owner-sco-capture) (defun fn-owner-sco-setup-of)
@@ -244,8 +257,8 @@ CL reader cannot read whole), or nothing when there is none."
 
 (defun check (ok label)
   (unless ok (format t "CHECKPOINT_ABANDON_ASSERTION:~a~%" label) (error "~a" label)))
-(defun inflight () (gethash 'fn-owner-sco-inflight *state*))
-(defun deferred () (gethash 'fn-owner-sco-deferred *state*))
+(defun inflight () (fn-opub-get :inflight (fn-ost-publication *state*)))
+(defun deferred () (fn-owner-sco-deferred *state*))
 (defun fresh-owner ()
   (clrhash *state*)
   (setq *log* nil *now* 1000 *rows* (make-list 64 :initial-element :row)))
@@ -334,7 +347,7 @@ CL reader cannot read whole), or nothing when there is none."
 (publish :write-refused (capture))
 (check (null (inflight)) "a refused write left fn-owner-sco-inflight set")
 (check (eq (nth 4 (deferred)) :backoff) "a refused write backs off, its record kept by done")
-(check (equal (gethash 'fn-owner-sco-base *state*) (list :next *rows*)) "done installed NEXT")
+(check (equal (fn-opub-get :base (fn-ost-publication *state*)) (list :next *rows*)) "done installed NEXT")
 (format t "PASS refused staged write: settled, then done keeps the record~%")
 
 (format t "checkpoint abandon passed (5 cases)~%")

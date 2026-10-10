@@ -66,6 +66,11 @@
                 fnn-octet-list-p fnn-make-octets fnn-string-octets
                 fnn-bridge-config-initial fnn-constants)
               '(fnn-octets))
+; ACL2's profile source for the heap probe (books/native-control.lisp, since
+; f8a78b7b8): the actual definitions, which fnn-core below answers with.
+(source-forms "books/native-control.lisp"
+              '(fn-native-control-liveness-offlinep fn-native-control-profile-observes-p
+                fn-native-control-profile-source))
 ; The BP node's contact MRUs (host/native/tcpcl.lisp), read by the heap probe's BP terms.
 (defparameter +fnn-tcl-transfer-mru+ 1048576)
 (defparameter +fnn-tcl-segment-mru+ 1024)
@@ -102,11 +107,13 @@
 (defun fnn-heap-reservation (&rest args) args)
 (defun fnn-out (control &rest args) (apply #'format *fnn-stdout* control args))
 (defun fnn-core (entry &rest args)
-  (declare (ignore args)) (maybe-condition entry)
+  (maybe-condition entry)
   (case entry
     (fn-pfr-operation-observes-p (eq (first args) :run))
     (fn-native-operator-host-preflight :preflight)
     (fn-omr-control-path-octets nil)
+    ((fn-native-control-profile-observes-p fn-native-control-profile-source)
+     (apply entry args))
     (fn-native-operator-host-preflight-needs-config-path-p nil)
     (fn-native-operator-host-preflight-needs-config-p t)
     (fn-native-config-host-max-octets 8192)

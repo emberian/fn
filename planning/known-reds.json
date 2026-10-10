@@ -43,6 +43,27 @@
    "item": "OPERATOR-STATUS-OBSERVED-SIZING",
    "owner": "builder-M",
    "evidence": "measured red at dev ac66a0a23 on image native-ac66a0a23ad7 (the `operator status` step: refused machine-cannot-hold-profile, heap=23095730 MB); admitted by amendment, coordinator 2026-10-09 13:05; retirement: status sized by the store's charged totals from the checkpoint header (RUNTIME-MODEL section 6 observation form)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_profile_the_machine_cannot_hold_is_refused_by_name_at_start",
+   "item": "MEMORY-2G-PROFILE-SEMANTICS",
+   "owner": "builder-M",
+   "evidence": "measured red at dev dd93a43f1 under --mem 2G (hbox native-dd93a43f1-2g-control) and on train 79's image (native-d8fb738b3859-2g): init refuses the scale profile (init-budget-cannot-hold-profile, 20710 MB against a 2025 MB budget) where the test expects init to pass and start to refuse; retirement: memory landing 2; admitted by amendment, coordinator 2026-10-09 18:05"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",
+   "item": "MEMORY-2G-PROFILE-SEMANTICS",
+   "owner": "builder-M",
+   "evidence": "measured red at dev dd93a43f1 under --mem 2G (hbox native-dd93a43f1-2g-control) and on train 79's image (native-d8fb738b3859-2g): status of the stopped store shows checkpoint=97 and no open=checkpoint line, which now comes only with status --replay; retirement: memory landing 2; admitted by amendment, coordinator 2026-10-09 18:05"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_heap_from_profile.HeapFromProfileTests.test_a_store_init_admitted_fills_to_its_limit_and_still_restarts",
+   "item": "MEMORY-2G-PROFILE-SEMANTICS",
+   "owner": "builder-M",
+   "evidence": "measured red at dev dd93a43f1 under --mem 2G (hbox native-dd93a43f1-2g-control) and on train 79's image (native-d8fb738b3859-2g): the fill's refusal reason is history-exhausted where the test expects unaffordable; retirement: memory landing 3; admitted by amendment, coordinator 2026-10-09 18:05"
   }
  ]
 }

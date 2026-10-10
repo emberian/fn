@@ -1,0 +1,12 @@
+{
+ "detail": "owner_globals_check: host/admission-preparation-host.lisp 0 (baseline 2), host/admission-semantic-census-host.lisp 0 (baseline 2), host/admission-semantic-node-host.lisp 0 (baseline 3): 'under the baseline: lower it (--write-baseline)'. 530d93d37 (Delete the parked F10/F06 admission chain under D68) removed them. A ratchet write, through the tool.",
+ "file": "tools/owner_globals_baseline.json",
+ "id": "OWNER-GLOBALS-BELOW-BASELINE",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
+ "state": "open",
+ "title": "owner_globals_check: the admission host files touch 0 owner globals against baselines of 2-3 since the D68 deletion; the shrink-only baseline must be lowered",
+ "updated": "2026-10-09T22:00:00Z"
+}

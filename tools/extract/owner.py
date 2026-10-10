@@ -13,8 +13,10 @@ import hashlib
 import json
 import re
 from pathlib import Path
+import os
 import socket
 import sys
+import tempfile
 import time
 import unittest
 
@@ -65,7 +67,30 @@ def fingerprint(program):
             "source_provenance": "build marker only" if marker.is_file() else "unknown"}
 
 
+def short_root(directory):
+    """A short path to DIRECTORY for the node's root: a symlink in a fresh
+    private directory under the system temporary directory.  The node's
+    control socket lives at ROOT/control.sock and a Unix socket path holds at
+    most 103 octets, so a deep tree (a box's integration scratch) made the node
+    refuse with CONTROL-PATH-TOO-LONG (train 80, step 5b).  Every file still
+    lands in DIRECTORY; the caller removes the link and its directory."""
+    directory.mkdir(parents=True, exist_ok=True)
+    holder = Path(tempfile.mkdtemp(prefix="fnx-"))
+    link = holder / "n"
+    link.symlink_to(directory.absolute(), target_is_directory=True)
+    return holder, link
+
+
 def exercise(image, directory):
+    holder, root = short_root(directory)
+    try:
+        return exercise_at(image, root)
+    finally:
+        (holder / "n").unlink(missing_ok=True)
+        os.rmdir(holder)
+
+
+def exercise_at(image, directory):
     case = unittest.TestCase()
     node = Node(case, image, root=directory, env={"FN_NATIVE_TEST_CLOCK": "73000:1759000000:250000",
                                                "FN_NATIVE_TEST_ENTROPY": "17"})

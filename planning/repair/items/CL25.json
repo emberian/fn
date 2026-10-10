@@ -8,12 +8,14 @@
  "line": "",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-04 15:12 FILL 10-04: still red at 55ff708a6 (cloud1 make check): hot_path_check 188 traversals, 172 unexpected; log cloud1:/tank/fn/scratch/fill-wt-check.log"
+  "10-04 15:12 FILL 10-04: still red at 55ff708a6 (cloud1 make check): hot_path_check 188 traversals, 172 unexpected; log cloud1:/tank/fn/scratch/fill-wt-check.log",
+  "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): hot_path_check: 195 traversals of retained state from 149 host entries (179 unexpected); 17 NEW and 1 STALE against planning/hot-path-findings.json (first NEW: fn-bpn-find-attempting and fn-bpn-ready-peers-loop in books/bp-node-machine.lisp, last changed 6677cada7). Owner sweep-gates -> builder-D.",
+  "10-10 Builder D, lane d-hot-path, coordinator ruling (a): hot_path_check --strict is green. The 3 BP job walks (J) are classified `bounded` by a bound stated in the checker (tools/hot_path_dimensions.json `bounds`: J is the profile's max-jobs term, fn-bpn-machine-statep's (<= (len jobs) max-jobs), max-jobs capped by fn-bpn-machine-limitp at 16,777,216). The 14 retained-history walks (N) are listed under two owned packets: HOT-PATH-OPEN-WALKS-N (builder-A: index and rii builds at open and recover) and HOT-PATH-SERVED-WALKS-N (builder-C: the nntp group loops, fn-ctl-msgid-withdrawn and the store-files state walks; fn-oig-rows-loop on the offline status report is there pending the owner's word). One STALE entry (fn-bpn-restart-step*1*) removed by --refresh-stale."
  ],
- "owner": "sweep-gates",
+ "owner": "builder-D",
  "severity": "medium",
  "source": "check-lane-355a5c843",
- "state": "open",
+ "state": "landed",
  "title": "check-lane red: hot_path_check",
- "updated": "2026-10-04T19:12:27Z"
+ "updated": "2026-10-10T02:50:00Z"
 }

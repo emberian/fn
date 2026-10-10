@@ -168,6 +168,10 @@ CATALOGUE = {
     "tests/test_cite_check.py": "its cases, which are absent paths",
     "planning/lanes/HANDOFF-w11-phantom-cites.md":
         "the triage of every finding this tool reported",
+    "tests/acl2/book-name-relative-tests.lisp":
+        "book-name-relative's cases: path strings it maps, not files",
+    "tests/acl2/book-name-provenance-tests.lisp":
+        "fn-cd-assumptions-bookp's cases: book names it must refuse",
 }
 
 # A citation the surrounding prose already says is empty.  Disclosure is the
