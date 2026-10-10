@@ -38,10 +38,16 @@
 (def-span-scan fn-ovr-copy-string ()
   :shape :copy-string)
 
+(defun fn-ovr-string-len (s)
+  (declare (xargs :guard t))
+  (if (stringp s) (length s) 0))
+
 ; A string's octets appended to the lease: the :copy-string instance, its capacity the
 ; lease's length plus the string's (the quantum's fit test is what holds CAP).
 (defun fn-ovr-put-string (s fn-ovr-lease)
-  (declare (xargs :stobjs fn-ovr-lease :verify-guards nil))
+  (declare (xargs :stobjs fn-ovr-lease
+                  :guard (unsigned-byte-p 59 (+ (fn-ovr-lease-len fn-ovr-lease) (fn-ovr-string-len s)))
+                  :verify-guards nil))
   (if (stringp s)
       (mv-let (dss-st fn-ovr-lease)
         (fn-ovr-copy-string 0 (length s) (+ (fn-ovr-lease-len fn-ovr-lease) (length s)) s fn-ovr-lease)
@@ -310,6 +316,108 @@
   :hints (("Goal" :in-theory (enable fn-nntp-string-octets fn-xref-wordp)
            :expand ((fn-nntp-string-octets-aux (coerce s 'list))))))
 
+
+; The article number of GROUP in MS for an article whose Message-ID test is IDP.
+(defun fn-ovr-article-number (group ms idp)
+  (declare (xargs :guard t))
+  (let ((number (fn-nntp-membership-number group ms)))
+    (if (and (posp number) (<= number *fn-nntp-max-article-number*) idp) number 0)))
+
+(defthm fn-nntp-article-idp-is-msgid-idp
+  (equal (fn-nntp-article-idp article) (fn-scat-msgid-idp (fn-article-msgid article)))
+  :hints (("Goal" :in-theory (enable fn-nntp-article-idp fn-scat-msgid-idp))))
+
+(defthm fn-ovr-article-number-is-number
+  (equal (fn-ovr-article-number group (fn-article-memberships article)
+                                (fn-scat-msgid-idp (fn-article-msgid article)))
+         (fn-nntp-article-number group article))
+  :hints (("Goal" :in-theory (enable fn-nntp-article-number))))
+
+; fn-scat-available-article with the Message-ID tested in place.
+(defun fn-ovr-available-article (group n v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp v) :verify-guards nil))
+  (if (and (posp n) (<= n *fn-nntp-max-article-number*))
+      (let ((article (fn-scat-number-article group n v fn-arena fn-cat)))
+        (if (and article (fn-ovr-msgid-okp (fn-article-msgid article))) article nil))
+    nil))
+
+(defthm fn-ovr-available-article-is-available
+  (equal (fn-ovr-available-article group n v fn-arena fn-cat)
+         (fn-scat-available-article group n v fn-arena fn-cat))
+  :hints (("Goal" :in-theory (e/d (fn-scat-available-article) (fn-scat-number-article fn-ovr-msgid-okp)))))
+
+; The lengths the fit test reads, computed as the writers write, with no octet list.
+
+(defun fn-ovr-decimal-field-len (n)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (and (natp n) (<= (fn-ovr-digits-len n) *fn-nntp-max-decimal-octets*)) (fn-ovr-digits-len n) 1))
+
+
+(defun fn-ovr-decimal-len (n)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (natp n) (fn-ovr-digits-len n) 0))
+
+(defun fn-ovr-xref-len (ms all idp)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp ms)
+      (let ((m (car ms)))
+        (+ (if (and (consp m) (stringp (car m)) (fn-ovr-xref-wordp (car m)) (posp (cdr m))
+                    (equal (fn-ovr-article-number (car m) all idp) (cdr m)))
+               (+ 2 (fn-ovr-string-len (car m)) (fn-ovr-decimal-field-len (cdr m)))
+             0)
+           (fn-ovr-xref-len (cdr ms) all idp)))
+    0))
+
+(defun fn-ovr-column-line-len (n nov octets body server ms idp)
+  (declare (xargs :guard t :verify-guards nil))
+  (+ (fn-ovr-decimal-field-len n)
+     (fn-ovr-string-len (fn-hnov-subject nov)) (fn-ovr-string-len (fn-hnov-from nov))
+     (fn-ovr-string-len (fn-hnov-date nov)) (fn-ovr-string-len (fn-hnov-msgid nov))
+     (fn-ovr-string-len (fn-hnov-references nov))
+     (fn-ovr-decimal-len octets) (fn-ovr-decimal-len body)
+     7
+     (if server
+         (+ 1 (len *fn-xref-name*) (len (if (true-listp server) server nil)) (fn-ovr-xref-len ms ms idp))
+       0)
+     2))
+
+(defun fn-ovr-number-len (group n server v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp v) :verify-guards nil))
+  (let ((article (fn-ovr-available-article group n v fn-arena fn-cat)))
+    (if (not (consp article))
+        0
+      (if server
+          (let ((facts (fn-scol-facts article fn-cat)))
+            (if facts
+                (let ((nov (fn-hf-nov facts)))
+                  (if (or (fn-hnov-tomb nov) (not (fn-hnov-ok nov)))
+                      0
+                    (fn-ovr-column-line-len n nov (fn-nntp-article-length article fn-arena)
+                                            (fn-hf-body-lines facts) server
+                                            (fn-article-memberships article)
+                                            (fn-ovr-msgid-okp (fn-article-msgid article)))))
+              (if (fn-nntp-article-tombstonep article fn-arena)
+                  0
+                (let ((over (fn-nov-overview article fn-arena)))
+                  (if (fn-nov-okp over)
+                      (len (fn-nntp-crlf (fn-nov-served-line n over server article)))
+                    0)))))
+        (if (fn-nntp-article-tombstonep article fn-arena)
+            0
+          (let ((over (fn-nov-overview article fn-arena)))
+            (if (fn-nov-okp over) (len (fn-nntp-crlf (fn-nov-line n over))) 0)))))))
+
+(defun fn-ovr-probe-len (group j server v fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp j) (natp v)) :verify-guards nil))
+  (let ((s (and (natp j) (fn-cnx-view-seq group j v fn-cat))))
+    (if (and s (natp s) (< s (fn-cat-count fn-cat)))
+        (let* ((h (fn-cat-at s fn-cat)) (n (fn-held-number-in group h)))
+          (if (and (posp n) (<= n *fn-nntp-max-article-number*) (fn-ovr-msgid-okp (fn-record-msgid h)))
+              (fn-ovr-number-len group n server v fn-arena fn-cat)
+            0))
+      0)))
+
+;; Each length is the length its writer appends.
 ; The decimal field and the Xref locations, written in place.
 
 (defthm fn-ovr-true-listp-append
@@ -360,25 +468,11 @@
                                   (fn-nntp-decimal fn-ovr-put-digits fn-ovr-digits-len))
            :use ((:instance fn-ovr-digits-len-is-decimal-len)))))
 
-; The article number of GROUP in MS for an article whose Message-ID test is IDP.
-(defun fn-ovr-article-number (group ms idp)
-  (declare (xargs :guard t))
-  (let ((number (fn-nntp-membership-number group ms)))
-    (if (and (posp number) (<= number *fn-nntp-max-article-number*) idp) number 0)))
-
-(defthm fn-nntp-article-idp-is-msgid-idp
-  (equal (fn-nntp-article-idp article) (fn-scat-msgid-idp (fn-article-msgid article)))
-  :hints (("Goal" :in-theory (enable fn-nntp-article-idp fn-scat-msgid-idp))))
-
-(defthm fn-ovr-article-number-is-number
-  (equal (fn-ovr-article-number group (fn-article-memberships article)
-                                (fn-scat-msgid-idp (fn-article-msgid article)))
-         (fn-nntp-article-number group article))
-  :hints (("Goal" :in-theory (enable fn-nntp-article-number))))
-
 ; The Xref locations of the pairs of MS that name ALL's numbers.
 (defun fn-ovr-put-xref (ms all idp fn-ovr-lease)
-  (declare (xargs :stobjs fn-ovr-lease :guard (fn-ovr-lease-p fn-ovr-lease) :verify-guards nil))
+  (declare (xargs :stobjs fn-ovr-lease
+                  :guard (unsigned-byte-p 59 (+ (fn-ovr-lease-len fn-ovr-lease) (fn-ovr-xref-len ms all idp)))
+                  :verify-guards nil))
   (if (consp ms)
       (let ((m (car ms)))
         (if (and (consp m) (stringp (car m)) (fn-ovr-xref-wordp (car m)) (posp (cdr m))
@@ -421,7 +515,11 @@
 ; payload's octet count OCTETS and body lines BODY, then CRLF.  SERVER, ALL, IDP and MS:
 ; the Xref field (MS the memberships, ALL the same, IDP the article's Message-ID test).
 (defun fn-ovr-put-column-line (n nov octets body server ms idp fn-ovr-lease)
-  (declare (xargs :stobjs fn-ovr-lease :guard (fn-ovr-lease-p fn-ovr-lease) :verify-guards nil))
+  (declare (xargs :stobjs fn-ovr-lease
+                  :guard (and (fn-cbor-octet-listp server)
+                              (unsigned-byte-p 59 (+ (fn-ovr-lease-len fn-ovr-lease)
+                                                     (fn-ovr-column-line-len n nov octets body server ms idp))))
+                  :verify-guards nil))
   (let* ((fn-ovr-lease (fn-ovr-put-decimal-field n fn-ovr-lease))
          (fn-ovr-lease (fn-ovr-lease-append-octet 9 fn-ovr-lease))
          (fn-ovr-lease (fn-ovr-put-string (fn-hnov-subject nov) fn-ovr-lease))
@@ -447,24 +545,15 @@
          (fn-ovr-lease (fn-ovr-lease-append-octet 13 fn-ovr-lease)))
     (fn-ovr-lease-append-octet 10 fn-ovr-lease)))
 
-; fn-scat-available-article with the Message-ID tested in place.
-(defun fn-ovr-available-article (group n v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp v) :verify-guards nil))
-  (if (and (posp n) (<= n *fn-nntp-max-article-number*))
-      (let ((article (fn-scat-number-article group n v fn-arena fn-cat)))
-        (if (and article (fn-ovr-msgid-okp (fn-article-msgid article))) article nil))
-    nil))
-
-(defthm fn-ovr-available-article-is-available
-  (equal (fn-ovr-available-article group n v fn-arena fn-cat)
-         (fn-scat-available-article group n v fn-arena fn-cat))
-  :hints (("Goal" :in-theory (e/d (fn-scat-available-article) (fn-scat-number-article fn-ovr-msgid-okp)))))
-
 ; The octets of the line of number N, written: the column when the row's is decided, the
 ; payload's parse otherwise (the cold arm, an octet list), nothing for an absent or
 ; tombstoned article or one whose overview does not parse.
 (defun fn-ovr-put-number (group n server v fn-ovr-lease fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-ovr-lease fn-arena fn-cat) :guard (natp v) :verify-guards nil))
+  (declare (xargs :stobjs (fn-ovr-lease fn-arena fn-cat)
+                  :guard (and (natp v) (fn-cbor-octet-listp server)
+                              (unsigned-byte-p 59 (+ (fn-ovr-lease-len fn-ovr-lease)
+                                                     (fn-ovr-number-len group n server v fn-arena fn-cat))))
+                  :verify-guards nil))
   (let ((article (fn-ovr-available-article group n v fn-arena fn-cat)))
     (if (not (consp article))
         fn-ovr-lease
@@ -495,7 +584,10 @@
 
 ; The probe of number J: the row the view binds to J, kept as fn-scat-range-keep keeps it.
 (defun fn-ovr-put-probe (group j server v fn-ovr-lease fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-ovr-lease fn-arena fn-cat) :guard (and (natp j) (natp v))
+  (declare (xargs :stobjs (fn-ovr-lease fn-arena fn-cat)
+                  :guard (and (natp j) (natp v) (fn-cbor-octet-listp server)
+                              (unsigned-byte-p 59 (+ (fn-ovr-lease-len fn-ovr-lease)
+                                                     (fn-ovr-probe-len group j server v fn-arena fn-cat))))
                   :verify-guards nil))
   (let ((s (and (natp j) (fn-cnx-view-seq group j v fn-cat))))
     (if (and s (natp s) (< s (fn-cat-count fn-cat)))
@@ -646,81 +738,6 @@
            :expand ((fn-cnx-range-aux group j j v fn-cat)
                     (fn-cnx-range-aux group (+ 1 j) j v fn-cat)))))
 
-; The lengths the fit test reads, computed as the writers write, with no octet list.
-
-(defun fn-ovr-decimal-field-len (n)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (and (natp n) (<= (fn-ovr-digits-len n) *fn-nntp-max-decimal-octets*)) (fn-ovr-digits-len n) 1))
-
-(defun fn-ovr-string-len (s)
-  (declare (xargs :guard t))
-  (if (stringp s) (length s) 0))
-
-(defun fn-ovr-decimal-len (n)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (natp n) (fn-ovr-digits-len n) 0))
-
-(defun fn-ovr-xref-len (ms all idp)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp ms)
-      (let ((m (car ms)))
-        (+ (if (and (consp m) (stringp (car m)) (fn-ovr-xref-wordp (car m)) (posp (cdr m))
-                    (equal (fn-ovr-article-number (car m) all idp) (cdr m)))
-               (+ 2 (fn-ovr-string-len (car m)) (fn-ovr-decimal-field-len (cdr m)))
-             0)
-           (fn-ovr-xref-len (cdr ms) all idp)))
-    0))
-
-(defun fn-ovr-column-line-len (n nov octets body server ms idp)
-  (declare (xargs :guard t :verify-guards nil))
-  (+ (fn-ovr-decimal-field-len n)
-     (fn-ovr-string-len (fn-hnov-subject nov)) (fn-ovr-string-len (fn-hnov-from nov))
-     (fn-ovr-string-len (fn-hnov-date nov)) (fn-ovr-string-len (fn-hnov-msgid nov))
-     (fn-ovr-string-len (fn-hnov-references nov))
-     (fn-ovr-decimal-len octets) (fn-ovr-decimal-len body)
-     7
-     (if server
-         (+ 1 (len *fn-xref-name*) (len (if (true-listp server) server nil)) (fn-ovr-xref-len ms ms idp))
-       0)
-     2))
-
-(defun fn-ovr-number-len (group n server v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp v) :verify-guards nil))
-  (let ((article (fn-ovr-available-article group n v fn-arena fn-cat)))
-    (if (not (consp article))
-        0
-      (if server
-          (let ((facts (fn-scol-facts article fn-cat)))
-            (if facts
-                (let ((nov (fn-hf-nov facts)))
-                  (if (or (fn-hnov-tomb nov) (not (fn-hnov-ok nov)))
-                      0
-                    (fn-ovr-column-line-len n nov (fn-nntp-article-length article fn-arena)
-                                            (fn-hf-body-lines facts) server
-                                            (fn-article-memberships article)
-                                            (fn-ovr-msgid-okp (fn-article-msgid article)))))
-              (if (fn-nntp-article-tombstonep article fn-arena)
-                  0
-                (let ((over (fn-nov-overview article fn-arena)))
-                  (if (fn-nov-okp over)
-                      (len (fn-nntp-crlf (fn-nov-served-line n over server article)))
-                    0)))))
-        (if (fn-nntp-article-tombstonep article fn-arena)
-            0
-          (let ((over (fn-nov-overview article fn-arena)))
-            (if (fn-nov-okp over) (len (fn-nntp-crlf (fn-nov-line n over))) 0)))))))
-
-(defun fn-ovr-probe-len (group j server v fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp j) (natp v)) :verify-guards nil))
-  (let ((s (and (natp j) (fn-cnx-view-seq group j v fn-cat))))
-    (if (and s (natp s) (< s (fn-cat-count fn-cat)))
-        (let* ((h (fn-cat-at s fn-cat)) (n (fn-held-number-in group h)))
-          (if (and (posp n) (<= n *fn-nntp-max-article-number*) (fn-ovr-msgid-okp (fn-record-msgid h)))
-              (fn-ovr-number-len group n server v fn-arena fn-cat)
-            0))
-      0)))
-
-;; Each length is the length its writer appends.
 (local (defthm fn-ovr-len-append (equal (len (append a b)) (+ (len a) (len b)))))
 
 (defthm fn-ovr-decimal-field-len-is-len
@@ -787,6 +804,164 @@
                                    fn-scat-msgid-idp fn-ovr-msgid-okp fn-nntp-stuff-lines))
            :expand ((fn-cnx-range-aux group j j v fn-cat)
                     (fn-cnx-range-aux group (+ 1 j) j v fn-cat)))))
+
+;; ---------------------------------------------------------------------------
+;; Guards.  Each writer's guard is that the lease's length plus what it writes is a
+;; 59-bit fixnum (the :copy-string instance's index type); the quantum's capacity test
+;; discharges it at the entry.
+
+(in-theory (disable fn-ovr-string-len-is-len fn-ovr-decimal-field-len-is-len fn-ovr-decimal-len-is-len
+                    fn-ovr-xref-len-is-len))
+
+(verify-guards fn-ovr-put-string)
+(verify-guards fn-ovr-put-digits)
+(verify-guards fn-ovr-digits-len)
+(verify-guards fn-ovr-decimal-field-len)
+(verify-guards fn-ovr-decimal-len)
+(verify-guards fn-ovr-xref-len)
+(verify-guards fn-ovr-put-decimal-field)
+(verify-guards fn-ovr-put-decimal)
+(verify-guards fn-ovr-column-line-len)
+(verify-guards fn-ovr-available-article)
+(verify-guards fn-ovr-number-len)
+(verify-guards fn-ovr-probe-len)
+(local (defthm fn-ovr-g-len-append (equal (len (append a b)) (+ (len a) (len b)))))
+(local (defthm fn-ovr-g-octet-listp-true-listp (implies (fn-cbor-octet-listp x) (true-listp x))
+         :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+(local (defthm fn-ovr-g-lease-true-listp (implies (fn-ovr-lease-p x) (true-listp x))))
+(defthm fn-ovr-len-put-string
+  (implies (true-listp fn-ovr-lease)
+           (equal (len (fn-ovr-put-string s fn-ovr-lease)) (+ (len fn-ovr-lease) (fn-ovr-string-len s))))
+  :hints (("Goal" :in-theory (e/d (fn-ovr-string-len-is-len) (fn-ovr-put-string)))))
+(defthm fn-ovr-len-put-decimal-field
+  (implies (true-listp fn-ovr-lease)
+           (equal (len (fn-ovr-put-decimal-field n fn-ovr-lease)) (+ (len fn-ovr-lease) (fn-ovr-decimal-field-len n))))
+  :hints (("Goal" :in-theory (e/d (fn-ovr-decimal-field-len-is-len) (fn-ovr-put-decimal-field fn-ovr-decimal-field-len)))))
+(defthm fn-ovr-true-listp-put-string
+  (implies (true-listp fn-ovr-lease) (true-listp (fn-ovr-put-string s fn-ovr-lease)))
+  :hints (("Goal" :in-theory (disable fn-ovr-put-string))))
+(defthm fn-ovr-true-listp-put-decimal-field
+  (implies (true-listp fn-ovr-lease) (true-listp (fn-ovr-put-decimal-field n fn-ovr-lease)))
+  :hints (("Goal" :in-theory (disable fn-ovr-put-decimal-field))))
+(defthm fn-ovr-xref-len-natp (natp (fn-ovr-xref-len ms all idp)) :rule-classes :type-prescription)
+(defthm fn-ovr-decimal-field-len-natp (natp (fn-ovr-decimal-field-len n)) :rule-classes :type-prescription)
+(defthm fn-ovr-len-string-octets
+  (equal (len (fn-nntp-string-octets s)) (fn-ovr-string-len s))
+  :hints (("Goal" :in-theory (enable fn-nntp-string-octets fn-ovr-string-len length))))
+(verify-guards fn-ovr-put-xref
+  :hints (("Goal" :expand ((fn-ovr-xref-len ms all idp))
+           :in-theory (e/d (fn-ovr-lease-append-octet fn-oct-snoc)
+                           (fn-ovr-put-string fn-ovr-put-decimal-field fn-ovr-xref-len fn-ovr-string-len-is-len
+                            fn-ovr-decimal-field-len fn-ovr-article-number fn-ovr-xref-wordp
+                            fn-ovr-put-string-is-octets fn-ovr-put-decimal-field-is-field)))))
+
+(defthm fn-ovr-len-put-xref
+  (implies (true-listp fn-ovr-lease)
+           (equal (len (fn-ovr-put-xref ms all idp fn-ovr-lease))
+                  (+ (len fn-ovr-lease) (fn-ovr-xref-len ms all idp))))
+  :hints (("Goal" :induct (fn-ovr-put-xref ms all idp fn-ovr-lease)
+           :in-theory (e/d (fn-ovr-lease-append-octet fn-oct-snoc fn-ovr-string-len-is-len
+                            fn-ovr-decimal-field-len-is-len)
+                           (fn-ovr-put-string fn-ovr-put-decimal-field fn-ovr-len-string-octets
+                            fn-ovr-article-number fn-ovr-xref-wordp
+                            fn-ovr-decimal-field-len fn-ovr-string-len)))))
+(defthm fn-ovr-true-listp-put-xref
+  (implies (true-listp fn-ovr-lease) (true-listp (fn-ovr-put-xref ms all idp fn-ovr-lease)))
+  :hints (("Goal" :induct (fn-ovr-put-xref ms all idp fn-ovr-lease)
+           :in-theory (e/d (fn-ovr-lease-append-octet fn-oct-snoc)
+                           (fn-ovr-put-string fn-ovr-put-decimal-field fn-ovr-article-number fn-ovr-xref-wordp)))))
+(defthm fn-ovr-len-put-decimal
+  (implies (true-listp fn-ovr-lease)
+           (equal (len (fn-ovr-put-decimal n fn-ovr-lease)) (+ (len fn-ovr-lease) (fn-ovr-decimal-len n))))
+  :hints (("Goal" :in-theory (e/d (fn-ovr-decimal-len-is-len) (fn-ovr-put-decimal fn-ovr-decimal-len)))))
+(defthm fn-ovr-true-listp-put-decimal
+  (implies (true-listp fn-ovr-lease) (true-listp (fn-ovr-put-decimal n fn-ovr-lease)))
+  :hints (("Goal" :in-theory (disable fn-ovr-put-decimal))))
+(defthm fn-ovr-decimal-len-natp (natp (fn-ovr-decimal-len n)) :rule-classes :type-prescription)
+(defthm fn-ovr-string-len-natp (natp (fn-ovr-string-len n)) :rule-classes :type-prescription)
+(verify-guards fn-ovr-put-column-line
+  :hints (("Goal" :expand ((fn-ovr-column-line-len n nov octets body server ms idp))
+           :in-theory (e/d (fn-ovr-lease-append-octet fn-oct-snoc fn-ovr-lease-append-list fn-octets$a-append-list)
+                           (fn-ovr-put-string fn-ovr-put-decimal-field fn-ovr-put-decimal fn-ovr-put-xref
+                            fn-ovr-string-len-is-len fn-ovr-decimal-field-len-is-len fn-ovr-decimal-len-is-len
+                            fn-ovr-xref-len-is-len fn-ovr-len-string-octets
+                            fn-ovr-put-string-is-octets fn-ovr-put-decimal-field-is-field
+                            fn-ovr-put-decimal-is-decimal fn-ovr-put-xref-is-locations
+                            fn-ovr-xref-len fn-ovr-decimal-field-len fn-ovr-decimal-len fn-ovr-string-len)))))
+
+(defthm fn-ovr-len-put-column-line
+  (implies (true-listp fn-ovr-lease)
+           (equal (len (fn-ovr-put-column-line n nov octets body server ms idp fn-ovr-lease))
+                  (+ (len fn-ovr-lease) (fn-ovr-column-line-len n nov octets body server ms idp))))
+  :hints (("Goal" :in-theory (e/d (fn-ovr-put-column-line fn-ovr-column-line-len fn-ovr-lease-append-octet
+                                   fn-oct-snoc fn-ovr-lease-append-list fn-octets$a-append-list)
+                                  (fn-ovr-put-string fn-ovr-put-decimal-field fn-ovr-put-decimal fn-ovr-put-xref
+                                   fn-ovr-put-string-is-octets fn-ovr-put-decimal-field-is-field
+                                   fn-ovr-put-decimal-is-decimal fn-ovr-put-xref-is-locations
+                                   fn-ovr-xref-len fn-ovr-decimal-field-len fn-ovr-decimal-len fn-ovr-string-len)))))
+
+(local (defthm fn-ovr-g-octets-append
+  (equal (fn-cbor-octet-listp (append a b))
+         (and (fn-cbor-octet-listp (true-list-fix a)) (fn-cbor-octet-listp b)))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+(local (defthm fn-ovr-g-octets-string-aux
+  (fn-cbor-octet-listp (fn-nntp-string-octets-aux cs))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp fn-nntp-string-octets-aux)))))
+(local (defthm fn-ovr-g-octets-string
+  (fn-cbor-octet-listp (fn-nntp-string-octets s))
+  :hints (("Goal" :in-theory (enable fn-nntp-string-octets)))))
+(local (defthm fn-ovr-g-octets-decimal
+  (fn-cbor-octet-listp (fn-nntp-decimal n))
+  :hints (("Goal" :in-theory (enable fn-nntp-decimal fn-nntp-decimal-rev)))))
+(local (defthm fn-ovr-g-octets-decimal-field
+  (fn-cbor-octet-listp (fn-nntp-decimal-field n))
+  :hints (("Goal" :in-theory (enable fn-nntp-decimal-field)))))
+(local (defthm fn-ovr-g-octets-xref-locations
+  (fn-cbor-octet-listp (fn-xref-locations pairs))
+  :hints (("Goal" :in-theory (e/d (fn-xref-locations) (fn-nntp-string-octets fn-nntp-decimal-field))))))
+(local (defthm fn-ovr-g-tlf-octets (implies (fn-cbor-octet-listp x) (fn-cbor-octet-listp (true-list-fix x)))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(defthm fn-ovr-nov-overview-line-octets
+  (implies (fn-cbor-octet-listp server)
+           (and (fn-cbor-octet-listp (fn-nntp-crlf (fn-nov-line n (fn-nov-overview article fn-arena))))
+                (fn-cbor-octet-listp (fn-nntp-crlf (fn-nov-served-line n (fn-nov-overview article fn-arena)
+                                                                       server article)))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-crlf fn-nov-served-line fn-nov-line fn-nntp-append-pieces fn-xref-field
+                                   fn-nov-overview fn-nov-subject fn-nov-from fn-nov-date fn-nov-msgid
+                                   fn-nov-references fn-nov-bytes fn-nov-lines)
+                                  (fn-nntp-decimal fn-nntp-decimal-field fn-nntp-string-octets fn-xref-locations
+                                   fn-nov-header-content fn-xref-pairs fn-article-parse fn-nntp-article-length
+                                   fn-nov-body-line-count)))))
+
+(defthm fn-ovr-column-line-len-natp (natp (fn-ovr-column-line-len n nov octets body server ms idp))
+  :rule-classes :type-prescription)
+(defthm fn-ovr-number-len-natp (natp (fn-ovr-number-len group n server v fn-arena fn-cat))
+  :rule-classes :type-prescription)
+(verify-guards fn-ovr-put-number
+  :hints (("Goal" :in-theory (e/d (fn-ovr-number-len fn-ovr-lease-append-list fn-octets$a-append-list)
+                                  (fn-ovr-put-column-line fn-ovr-column-line-len fn-nov-served-line fn-nov-line
+                                   fn-nov-overview fn-scol-facts fn-ovr-available-article fn-nntp-crlf
+                                   fn-nntp-article-tombstonep fn-nntp-article-length fn-hf-nov fn-ovr-msgid-okp
+                                   fn-ovr-put-column-line-is-the-line fn-ovr-available-article-is-available
+                                   fn-scat-available-article fn-scol-tombstonep fn-scol-overview-of
+                                   fn-ovr-column-line-len-is-len fn-ovr-number-len-is-len)))))
+(defthm fn-ovr-len-put-number
+  (implies (true-listp fn-ovr-lease)
+           (equal (len (fn-ovr-put-number group n server v fn-ovr-lease fn-arena fn-cat))
+                  (+ (len fn-ovr-lease) (fn-ovr-number-len group n server v fn-arena fn-cat))))
+  :hints (("Goal" :in-theory (e/d (fn-ovr-put-number fn-ovr-number-len fn-ovr-lease-append-list fn-octets$a-append-list)
+                                  (fn-ovr-put-column-line fn-ovr-column-line-len fn-nov-served-line fn-nov-line
+                                   fn-nov-overview fn-scol-facts fn-ovr-available-article fn-nntp-crlf
+                                   fn-nntp-article-tombstonep fn-nntp-article-length fn-hf-nov fn-ovr-msgid-okp
+                                   fn-ovr-put-column-line-is-the-line fn-ovr-available-article-is-available
+                                   fn-scat-available-article fn-scol-tombstonep fn-scol-overview-of
+                                   fn-ovr-column-line-len-is-len fn-ovr-number-len-is-len)))))
+(verify-guards fn-ovr-put-probe
+  :hints (("Goal" :in-theory (e/d (fn-ovr-probe-len)
+                                  (fn-ovr-put-number fn-ovr-number-len fn-cnx-view-seq fn-held-number-in
+                                   fn-ovr-msgid-okp fn-ovr-put-number-is-the-lines fn-ovr-number-len-is-len
+                                   fn-ovr-probe-len-is-the-length fn-ovr-put-probe-is-the-served-octets)))))
 
 ; The two framing texts of a window.
 (defun fn-ovr-status-octets ()
