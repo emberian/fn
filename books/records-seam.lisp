@@ -39,7 +39,16 @@
 ;   fn-record-encode-producer-length-bound   a record whose charge fits u32 encodes within
 ;                                            that same ceiling, with sequence, txid,
 ;                                            generation and stamp at any u64
-; Every other exported theorem in this book is derived from those nine
+;   fn-record-encode-splits-at-the-payload   a record's encoding is its head, its payload's
+;                                            octets, its groups section and its tail
+;                                            (`fn-record-head-octets', `-groups-octets',
+;                                            `-tail-octets'), in that order
+;   fn-record-head-octets-bound              the head within *fn-record-head-max-octets*
+;   fn-record-groups-octets-bound            the groups section within
+;                                            `fn-record-groups-octets-ceiling' of the groups
+;   fn-record-tail-octets-bound              the tail within *fn-record-tail-max-octets*
+;   fn-record-pieces-are-octets              the three pieces are octet lists
+; Every other exported theorem in this book is derived from those fourteen
 ; below the `encapsulate'.  The header is two constraints, not one six-octet
 ; constraint, so that the acceptance stamp (specs/acceptance-stamp.md section 2.1)
 ; widens the grammar behind the seam -- schema 1, whose version octet is 1
@@ -58,7 +67,10 @@
 
 (encapsulate
   (((fn-record-encode *) => * :formals (record) :guard t)
-   ((fn-record-decode-exact *) => * :formals (octets) :guard t))
+   ((fn-record-decode-exact *) => * :formals (octets) :guard t)
+   ((fn-record-head-octets *) => * :formals (record) :guard t)
+   ((fn-record-groups-octets *) => * :formals (record) :guard t)
+   ((fn-record-tail-octets *) => * :formals (record) :guard t))
 
   (local (include-book "records-canonicality"))
 
@@ -69,6 +81,18 @@
   (local (defun fn-record-decode-exact (octets)
            (declare (xargs :guard t))
            (fn-record-decode-exact-impl octets)))
+
+  (local (defun fn-record-head-octets (record)
+           (declare (xargs :guard t))
+           (fn-record-head-octets-impl record)))
+
+  (local (defun fn-record-groups-octets (record)
+           (declare (xargs :guard t))
+           (fn-record-groups-octets-impl record)))
+
+  (local (defun fn-record-tail-octets (record)
+           (declare (xargs :guard t))
+           (fn-record-tail-octets-impl record)))
 
   (defthm fn-record-encode-domain
     (implies (not (fn-record-p record))
@@ -128,6 +152,39 @@
                   (len (fn-record-payload record))
                   (len (fn-record-groups record)))))
     :hints (("Goal" :use fn-record-impl-encode-producer-length-bound))
+    :rule-classes nil)
+
+  (defthm fn-record-encode-splits-at-the-payload
+    (implies (fn-record-p record)
+             (equal (fn-record-encode record)
+                    (append (fn-record-head-octets record)
+                            (fn-record-payload record)
+                            (fn-record-groups-octets record)
+                            (fn-record-tail-octets record))))
+    :hints (("Goal" :use fn-record-impl-encode-splits-at-the-payload))
+    :rule-classes nil)
+
+  (defthm fn-record-head-octets-bound
+    (<= (len (fn-record-head-octets record)) *fn-record-head-max-octets*)
+    :hints (("Goal" :use fn-record-impl-head-octets-bound))
+    :rule-classes :linear)
+
+  (defthm fn-record-groups-octets-bound
+    (<= (len (fn-record-groups-octets record))
+        (fn-record-groups-octets-ceiling (fn-record-groups record)))
+    :hints (("Goal" :use fn-record-impl-groups-octets-bound))
+    :rule-classes :linear)
+
+  (defthm fn-record-tail-octets-bound
+    (<= (len (fn-record-tail-octets record)) *fn-record-tail-max-octets*)
+    :hints (("Goal" :use fn-record-impl-tail-octets-bound))
+    :rule-classes :linear)
+
+  (defthm fn-record-pieces-are-octets
+    (and (fn-cbor-octet-listp (fn-record-head-octets record))
+         (fn-cbor-octet-listp (fn-record-groups-octets record))
+         (fn-cbor-octet-listp (fn-record-tail-octets record)))
+    :hints (("Goal" :use fn-record-impl-pieces-are-octets))
     :rule-classes nil)
 
   (defthm fn-record-accepted-schema-is-the-stamp-kind

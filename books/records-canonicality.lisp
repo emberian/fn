@@ -1235,3 +1235,269 @@
 ; enabled (as provenance-codec's item-length lemmas enable it) the two loop.
 ; Its uses are above; a later book that needs it names it in a hint.
 (in-theory (disable fn-record-cbor-encode-bounded-of-uint-value))
+
+;; -----------------------------------------------------------------------------
+;; The encoding in three pieces around the payload's octets (records-seam
+;; `fn-record-encode-splits-at-the-payload' and the three piece bounds): a
+;; streaming writer lays the record out as head ++ payload ++ groups ++ tail
+;; from workspaces bounded by records-shape's *fn-record-head-max-octets* and
+;; *fn-record-tail-max-octets*.  Both constants are attained
+;; (tests/acl2/records-payload-split-tests.lisp).
+
+(local
+ (defthm fn-record-pieces-item-encode-payload
+   (implies (fn-record-payloadp p)
+            (equal (fn-record-item-encode (cons :bytes p))
+                   (append (fn-cbor-encode-argument 2 (len p)) p)))
+   :hints (("Goal" :in-theory (enable fn-record-item-encode fn-record-payloadp
+                                      fn-cbor-encode-bounded fn-cbor-valuep-bounded)))))
+
+(local
+ (defthm fn-record-pieces-encode-impl-non-nil
+   (implies (fn-record-p record) (fn-record-encode-impl record))
+   :rule-classes nil
+   :hints (("Goal" :use fn-record-impl-round-trip
+            :in-theory (disable fn-record-impl-round-trip fn-record-encode-impl)))))
+
+(local
+ (defthm fn-record-pieces-payloadp
+   (implies (fn-record-p r) (fn-record-payloadp (fn-record-payload r)))
+   :hints (("Goal" :in-theory (enable fn-record-p)))))
+
+(defthm fn-record-impl-encode-splits-at-the-payload
+  (implies (fn-record-p record)
+           (equal (fn-record-encode-impl record)
+                  (append (fn-record-head-octets-impl record)
+                          (fn-record-payload record)
+                          (fn-record-groups-octets-impl record)
+                          (fn-record-tail-octets-impl record))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-record-pieces-encode-impl-non-nil
+                        fn-record-pieces-payloadp
+                        (:instance fn-record-pieces-item-encode-payload
+                                   (p (fn-record-payload record))))
+           :in-theory (e/d (fn-record-encode-impl)
+                           (fn-record-pieces-payloadp fn-record-payloadp
+                            fn-record-pieces-item-encode-payload fn-cbor-at-mostp
+                            fn-record-item-encode fn-record-uint-encode
+                            fn-record-encode-groups fn-record-string-octets)))))
+
+(local
+ (defthm fn-record-pieces-len-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local
+ (defthm fn-record-pieces-item-short
+   (implies (<= (len x) 255)
+            (<= (len (fn-record-item-encode (cons :bytes x))) (+ 2 (len x))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-record-item-encode fn-cbor-encode-bounded
+                                      fn-cbor-encode-argument)))))
+
+(local
+ (defthm fn-record-pieces-item-mid
+   (implies (<= (len x) 65535)
+            (<= (len (fn-record-item-encode (cons :bytes x))) (+ 3 (len x))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-record-item-encode fn-cbor-encode-bounded
+                                      fn-cbor-encode-argument fn-cbor-u16-bytes)))))
+
+(local
+ (defthm fn-record-pieces-argument-5
+   (<= (len (fn-cbor-encode-argument 2 n)) 5)
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-cbor-encode-argument fn-cbor-u16-bytes
+                                      fn-cbor-u32-bytes)))))
+
+(local
+ (defthm fn-record-pieces-schema-1
+   (<= (len (fn-record-uint-encode (fn-record-schema-octet r))) 1)
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-record-schema-octet fn-record-uint-encode
+                                      fn-cbor-encode-uint-wide fn-cbor-encode-argument)))))
+
+(local
+ (defthm fn-record-pieces-msgid-len
+   (implies (fn-record-p r)
+            (<= (len (fn-record-string-octets (fn-record-msgid r))) *fn-record-max-msgid*))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-record-p fn-record-msgidp
+                                      fn-record-nonempty-at-mostp)))))
+
+(defthm fn-record-impl-head-octets-bound
+  (<= (len (fn-record-head-octets-impl record)) *fn-record-head-max-octets*)
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-record-uint-encode-length-bound (n (fn-record-sequence record)))
+                 (:instance fn-record-uint-encode-length-bound (n (fn-record-txid record)))
+                 (:instance fn-record-uint-encode-length-bound (n (fn-record-generation record)))
+                 (:instance fn-record-pieces-item-short
+                            (x (fn-record-string-octets (fn-record-msgid record))))
+                 (:instance fn-record-pieces-msgid-len (r record))
+                 (:instance fn-record-pieces-schema-1 (r record))
+                 (:instance fn-record-pieces-argument-5 (n (len (fn-record-payload record)))))
+           :in-theory (disable fn-record-item-encode fn-record-uint-encode
+                               fn-cbor-encode-argument fn-record-string-octets))))
+
+(local
+ (defthm fn-record-pieces-metadata-len
+   (implies (fn-record-metadata-bytes-p x)
+            (<= (len (fn-record-string-octets x)) *fn-record-max-metadata*))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-record-metadata-bytes-p
+                                      fn-record-nonempty-at-mostp)))))
+
+(local
+ (defthm fn-record-pieces-record-metadata
+   (implies (fn-record-p r)
+            (and (fn-record-metadata-bytes-p (fn-record-obligation-id r))
+                 (fn-record-metadata-bytes-p (fn-record-content-subject r))
+                 (fn-record-metadata-bytes-p (fn-record-release-evidence r))))
+   :hints (("Goal" :in-theory (enable fn-record-p)))))
+
+(defthm fn-record-impl-tail-octets-bound
+  (<= (len (fn-record-tail-octets-impl record)) *fn-record-tail-max-octets*)
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-record-pieces-record-metadata (r record))
+                 (:instance fn-record-pieces-metadata-len (x (fn-record-obligation-id record)))
+                 (:instance fn-record-pieces-metadata-len (x (fn-record-content-subject record)))
+                 (:instance fn-record-pieces-metadata-len (x (fn-record-release-evidence record)))
+                 (:instance fn-record-pieces-item-mid
+                            (x (fn-record-string-octets (fn-record-obligation-id record))))
+                 (:instance fn-record-pieces-item-mid
+                            (x (fn-record-string-octets (fn-record-content-subject record))))
+                 (:instance fn-record-pieces-item-mid
+                            (x (fn-record-string-octets (fn-record-release-evidence record))))
+                 (:instance fn-record-uint-encode-length-bound (n (fn-record-charge record)))
+                 (:instance fn-record-uint-encode-length-bound (n (fn-record-stamp record))))
+           :in-theory (disable fn-record-pieces-record-metadata fn-record-pieces-metadata-len
+                               fn-record-metadata-bytes-p fn-record-item-encode
+                               fn-record-uint-encode fn-cbor-encode-argument
+                               fn-record-string-octets))))
+
+(local
+ (defthm fn-record-pieces-group-list-bound
+   (implies (fn-record-group-listp gs)
+            (<= (len (fn-record-encode-groups gs))
+                (- (fn-record-groups-octets-ceiling gs) 3)))
+   :hints (("Goal" :induct (len gs)
+            :in-theory (disable fn-record-item-encode fn-record-string-octets
+                                fn-record-group-namep))
+           ("Subgoal *1/1"
+            :expand ((fn-record-encode-groups gs))
+            :use ((:instance fn-record-group-namep-bounds-length-by-definition (text (car gs)))
+                  (:instance fn-record-pieces-item-mid (x (fn-record-string-octets (car gs)))))))))
+
+(local
+ (defthm fn-record-pieces-uint-3
+   (implies (and (natp n) (<= n 65535))
+            (<= (len (fn-record-uint-encode n)) 3))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-record-uint-encode fn-cbor-encode-uint-wide
+                                      fn-cbor-encode-argument fn-cbor-u16-bytes
+                                      fn-cbor-encode fn-cbor-encode-bounded
+                                      fn-cbor-valuep-bounded)))))
+
+(local
+ (defthm fn-record-pieces-record-groups
+   (implies (fn-record-p r)
+            (and (fn-record-group-listp (fn-record-groups r))
+                 (<= (len (fn-record-groups r)) *fn-record-max-groups*)))
+   :hints (("Goal" :in-theory (enable fn-record-p fn-record-groups-validp
+                                      fn-record-groupsp)))))
+
+(defthm fn-record-impl-groups-octets-bound
+  (<= (len (fn-record-groups-octets-impl record))
+      (fn-record-groups-octets-ceiling (fn-record-groups record)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-record-pieces-record-groups (r record))
+                 (:instance fn-record-pieces-group-list-bound (gs (fn-record-groups record)))
+                 (:instance fn-record-pieces-uint-3 (n (len (fn-record-groups record)))))
+           :in-theory (disable fn-record-pieces-record-groups
+                               fn-record-pieces-group-list-bound
+                               fn-record-pieces-uint-3 fn-record-uint-encode
+                               fn-record-encode-groups))))
+
+(local
+ (defthm fn-record-pieces-encode-octets
+   (implies (fn-record-p record) (fn-cbor-octet-listp (fn-record-encode-impl record)))
+   :rule-classes nil
+   :hints (("Goal" :use (fn-record-impl-round-trip
+                         (:instance fn-record-impl-accepted-input-bounds
+                                    (octets (fn-record-encode-impl record))))
+            :in-theory (e/d (fn-record-result-okp fn-record-parse-okp fn-record-parse-shapep)
+                            (fn-record-encode-impl fn-record-impl-round-trip))))))
+
+(local
+ (defthm fn-record-pieces-append-octets
+   (implies (fn-record-p record)
+            (fn-cbor-octet-listp (append (fn-record-head-octets-impl record)
+                                         (fn-record-payload record)
+                                         (fn-record-groups-octets-impl record)
+                                         (fn-record-tail-octets-impl record))))
+   :rule-classes nil
+   :hints (("Goal" :use (fn-record-impl-encode-splits-at-the-payload
+                         fn-record-pieces-encode-octets)
+            :in-theory (theory 'minimal-theory)))))
+
+(local
+ (defthm fn-record-pieces-octet-list-is-true-list
+   (implies (fn-cbor-octet-listp x) (true-listp x))
+   :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+
+(local
+ (defthm fn-record-pieces-payload-octets
+   (implies (fn-record-p r)
+            (and (fn-cbor-octet-listp (fn-record-payload r))
+                 (true-listp (fn-record-payload r))))
+   :rule-classes nil
+   :hints (("Goal" :use (fn-record-pieces-payloadp
+                         (:instance fn-record-pieces-octet-list-is-true-list
+                                    (x (fn-record-payload r))))
+            :in-theory (e/d (fn-record-payloadp)
+                            (fn-record-pieces-payloadp
+                             fn-record-pieces-octet-list-is-true-list))))))
+
+(local
+ (defthm fn-record-pieces-true-lists
+   (and (true-listp (fn-record-head-octets-impl r))
+        (true-listp (fn-record-groups-octets-impl r))
+        (true-listp (fn-record-tail-octets-impl r)))
+   :rule-classes nil))
+
+(local
+ (defthm fn-record-pieces-octets-of-a-record
+   (implies (fn-record-p record)
+            (and (fn-cbor-octet-listp (fn-record-head-octets-impl record))
+                 (fn-cbor-octet-listp (fn-record-groups-octets-impl record))
+                 (fn-cbor-octet-listp (fn-record-tail-octets-impl record))))
+   :rule-classes nil
+   :hints (("Goal"
+            :use (fn-record-pieces-append-octets
+                  (:instance fn-record-pieces-true-lists (r record))
+                  (:instance fn-record-pieces-payload-octets (r record))
+                  (:instance fn-cbor-octet-listp-append
+                             (xs (fn-record-payload record))
+                             (ys (append (fn-record-groups-octets-impl record)
+                                         (fn-record-tail-octets-impl record))))
+                  (:instance fn-cbor-octet-listp-append
+                             (xs (fn-record-groups-octets-impl record))
+                             (ys (fn-record-tail-octets-impl record)))
+                  (:instance fn-cbor-octet-listp-append
+                             (xs (fn-record-head-octets-impl record))
+                             (ys (append (fn-record-payload record)
+                                         (fn-record-groups-octets-impl record)
+                                         (fn-record-tail-octets-impl record)))))
+            :in-theory (disable fn-cbor-octet-listp-append fn-record-encode-impl
+                                fn-record-head-octets-impl fn-record-groups-octets-impl
+                                fn-record-tail-octets-impl)))))
+
+(defthm fn-record-impl-pieces-are-octets
+  (and (fn-cbor-octet-listp (fn-record-head-octets-impl record))
+       (fn-cbor-octet-listp (fn-record-groups-octets-impl record))
+       (fn-cbor-octet-listp (fn-record-tail-octets-impl record)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-record-pieces-octets-of-a-record
+           :cases ((fn-record-p record)))))

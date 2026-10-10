@@ -468,6 +468,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
 	tests/acl2/records-ceiling-tests \
+	tests/acl2/records-payload-split-tests \
 	tests/acl2/records-shape-tests \
 	books/provenance-codec \
 	tests/acl2/provenance-tests \

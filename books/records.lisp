@@ -154,6 +154,44 @@
       (if (fn-cbor-at-mostp octets *fn-record-max-octets*) octets nil))))
 (local (in-theory (enable (:type-prescription true-listp-append))))
 
+;; The encoding's three pieces around the payload's octets (records-shape
+;; *fn-record-head-max-octets*; records-seam `fn-record-head-octets' and its
+;; siblings constrain these): nil for a non-record.
+(defun fn-record-head-octets-impl (record)
+  (if (not (fn-record-p record))
+      nil
+    (append (fn-record-item-encode (cons :bytes *fn-record-magic*))
+            (fn-record-uint-encode (fn-record-schema-octet record))
+            (fn-record-uint-encode (fn-record-sequence record))
+            (fn-record-uint-encode (fn-record-txid record))
+            (fn-record-uint-encode (fn-record-generation record))
+            (fn-record-item-encode (cons :bytes
+                                  (fn-record-string-octets
+                                   (fn-record-msgid record))))
+            (fn-cbor-encode-argument 2 (len (fn-record-payload record))))))
+
+(defun fn-record-groups-octets-impl (record)
+  (if (not (fn-record-p record))
+      nil
+    (append (fn-record-uint-encode (len (fn-record-groups record)))
+            (fn-record-encode-groups (fn-record-groups record)))))
+
+(defun fn-record-tail-octets-impl (record)
+  (if (not (fn-record-p record))
+      nil
+    (append (fn-record-item-encode (cons :bytes
+                                  (fn-record-string-octets
+                                   (fn-record-obligation-id record))))
+            (fn-record-item-encode (cons :bytes
+                                  (fn-record-string-octets
+                                   (fn-record-content-subject record))))
+            (fn-record-item-encode (cons :bytes
+                                  (fn-record-string-octets
+                                   (fn-record-release-evidence record))))
+            (fn-record-uint-encode (fn-record-charge record))
+            (fn-record-uint-encode (fn-record-stamp record)))))
+
+
 
 (defun fn-record-read-uint (octets)
   (declare (xargs :guard (fn-cbor-octet-listp octets)
@@ -339,6 +377,9 @@
 (verify-guards fn-record-encode-groups)
 (verify-guards fn-record-encode-impl
   :hints (("Goal" :use fn-record-cbor-octet-list-true-listp)))
+(verify-guards fn-record-head-octets-impl)
+(verify-guards fn-record-groups-octets-impl)
+(verify-guards fn-record-tail-octets-impl)
 
 (defthm fn-record-cbor-decode-argument-success-domain
   (implies

@@ -36,6 +36,9 @@
 ; keystone rewrites the attached function to it.
 (defattach (fn-record-encode fn-rcon-record-encode-impl)
            (fn-record-decode-exact fn-record-decode-exact-exec)
+           (fn-record-head-octets fn-record-head-octets-impl)
+           (fn-record-groups-octets fn-record-groups-octets-impl)
+           (fn-record-tail-octets fn-record-tail-octets-impl)
            :hints (("Goal"
                     :use (fn-record-impl-encode-domain
                           fn-record-impl-round-trip
@@ -45,7 +48,12 @@
                           fn-record-impl-accepted-schema-is-the-stamp-kind
                           fn-record-impl-encode-length-bound
                           fn-record-impl-encode-narrow-length-bound
-                          fn-record-impl-encode-producer-length-bound)
+                          fn-record-impl-encode-producer-length-bound
+                          fn-record-impl-encode-splits-at-the-payload
+                          fn-record-impl-head-octets-bound
+                          fn-record-impl-groups-octets-bound
+                          fn-record-impl-tail-octets-bound
+                          fn-record-impl-pieces-are-octets)
                     :in-theory (union-theories
                                  '(fn-rcon-record-encode-impl-is-record-encode-impl
                                    fn-record-decode-exact-exec-is-impl-by-definition)

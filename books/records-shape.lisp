@@ -249,6 +249,33 @@
      (* (+ 5 *fn-record-max-group-name*) group-count)
      *fn-record-wide-overhead-octets*))
 
+;; The record's encoding in three pieces around the payload's octets
+;; (records-seam `fn-record-encode-splits-at-the-payload'): the head, every
+;; field before the payload's octets with the payload's byte-string head;
+;; the groups section, the group count and each group's byte string; the
+;; tail, the three metadata strings, the charge and the stamp.  A streaming
+;; writer (books/post-transaction.lisp, the record as PRE ++ article ++ SUF)
+;; writes the head and the tail from workspaces bounded by these constants.
+;; The head at its widest: magic 5, schema 1, sequence, txid and generation
+;; 9 each (the wide uint head), the Message-ID's head 2 and its octets, the
+;; payload's head 5 (a payload within *fn-record-max-payload* takes the u32
+;; argument).
+(defconst *fn-record-head-max-octets*
+  (+ 5 1 (* 3 9) (+ 2 *fn-record-max-msgid*) 5))
+;; The tail at its widest: three metadata strings of at most
+;; *fn-record-max-metadata* octets with a 3-octet head each, the charge and
+;; the stamp at 9 each.
+(defconst *fn-record-tail-max-octets*
+  (+ (* 3 (+ 3 *fn-record-max-metadata*)) 9 9))
+;; The groups section of GROUPS at its widest: the count's head (at most 3
+;; for *fn-record-max-groups*) and each name with a 3-octet head.
+(defun fn-record-groups-octets-ceiling (groups)
+  (declare (xargs :guard t))
+  (if (consp groups)
+      (+ 3 (len (fn-record-string-octets (car groups)))
+         (fn-record-groups-octets-ceiling (cdr groups)))
+    3))
+
 (defthm fn-record-encoded-octets-ceiling-below-wide
   (<= (fn-record-encoded-octets-ceiling payload-octets group-count)
       (fn-record-wide-encoded-octets-ceiling payload-octets group-count))
