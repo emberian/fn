@@ -89,3 +89,28 @@ body
 (assert-event (equal (nth 11 (p3-check *p3-src-cancel*)) '(11 11 634)))
 (assert-event (let ((r (p3-check *p3-long-path*)))
                 (and (equal (nth 1 r) t) (equal (nth 3 r) nil) (equal (nth 5 r) nil))))
+
+; P4-1 (fn-o1-served-post-files-within-the-stored): an ordinary POST files
+; fn.letters, a cancel files control.cancel, a supplied Path files
+; fn.letters, each filed within the stored bytes; the cancel without
+; control.cancel in the domain is refused (no :file).
+(defun p4-arm1 (source domain) (declare (xargs :mode :program))
+  (let* ((config (p3-inj-at source))
+         (d (fn-inj-decide source config *p3-obs*))
+         (stored (fn-o1-post-stored-octets source config *p3-obs* *p3-ring* *p3-account* *p3-cfg1*))
+         (plan (fn-pa-filing-plan stored (fn-inj-decision-groups d) domain)))
+    (list (fn-article-result-okp (fn-article-parse stored)) plan
+          (fn-o1-filed-octets-within-sourcep (cadr plan) stored))))
+(assert-event (equal (p4-arm1 *p3-src-gen* (list "fn.letters"))
+                     (list t (list :file (list (p3-octets "fn.letters"))) t)))
+(assert-event (equal (p4-arm1 *p3-src-cancel* (list "fn.letters" "control.cancel"))
+                     (list t (list :file (list (p3-octets "control.cancel"))) t)))
+(assert-event (equal (p4-arm1 *p3-src-path* (list "fn.letters"))
+                     (list t (list :file (list (p3-octets "fn.letters"))) t)))
+(assert-event (equal (cadr (p4-arm1 *p3-src-cancel* (list "fn.letters")))
+                     '(:refused :control-not-filed)))
+; teeth: a group the stored Newsgroups does not name is not filed within it
+(assert-event (not (fn-o1-filed-octets-within-sourcep
+                    (list (p3-octets "fn.other"))
+                    (fn-o1-post-stored-octets *p3-src-gen* (p3-inj-at *p3-src-gen*) *p3-obs*
+                                              *p3-ring* *p3-account* *p3-cfg1*))))
