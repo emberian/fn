@@ -141,6 +141,12 @@ elif role == "core":
     os.chmod(exe, 0o755)
     print("core: built (stand-in)")
 
+elif role == "invariant-risk":
+    # stand-in for tools/invariant_risk_check.py --ir CORE_JSON
+    if FAULT == "invariant-risk-marked":
+        print("invariant-risk: fn-x (host/x.lisp:1): a declared host entry carries invariant-risk")
+        print("invariant-risk: FAIL (1 problem(s))"); sys.exit(1)
+    print("invariant-risk: PASS (1 declared, 0 marked and baselined)")
 elif role == "obligations":
     # stand-in for tools/extract/obligations.py VERB ...: two items; compare is the real one
     sys.path.insert(0, os.environ["FAKE_EXTRACT_DIR"])
@@ -276,6 +282,7 @@ class Fixture:
                                 owner=[PY, str(self.standin), "owner"],
                                 obligations=[PY, str(self.standin), "obligations"],
                                 faults=[PY, str(self.standin), "faults"],
+                                invariant_risk=[PY, str(self.standin), "invariant-risk"],
                                 core=[PY, str(self.standin), "core", str(t)],
                                 store=str(self.store), source="stand-in")
         self.env = {"FAKE_EXTRACT_DIR": str(ROOT / "tools" / "extract"),
@@ -388,6 +395,9 @@ class ExtractGateTest(unittest.TestCase):
 
     def test_core_evidence_names_other_defs(self):
         self.assertFails("core-evidence-sha", "core", "names other defs.lisp bytes")
+
+    def test_invariant_risk_marked_entry(self):
+        self.assertFails("invariant-risk-marked", "invariant-risk", "invariant_risk_check.py exited 1")
 
     def test_obligations_differ(self):
         self.assertFails("obligations-differ", "obligations", "ENTRY ACL2::F")

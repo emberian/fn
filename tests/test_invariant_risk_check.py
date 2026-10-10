@@ -46,6 +46,17 @@ class InvariantRiskTests(unittest.TestCase):
         problems, _, _ = r.check([decl("fn-good")], ir, {"marked": {}})
         self.assertEqual(problems, [])
 
+    def test_a_marked_guard_verified_entry_is_reported_not_failed(self):
+        verified = dict(fn("FN-VERIFIED", True), **{"class": "common-lisp-compliant"})
+        program = dict(fn("FN-PROGRAM", True), **{"class": "program"})
+        ir = self.ir([verified, program])
+        decls = [decl("fn-verified"), decl("fn-program", 9)]
+        problems, marked, _ = r.check(decls, ir, {"marked": {}})
+        self.assertEqual(list(marked), ["fn-program"])
+        self.assertEqual(len(problems), 1)
+        by_name, _ = r.load_ir(ir)
+        self.assertEqual(r.verified_marked(decls, by_name), ["fn-verified"])
+
     def test_the_baseline_only_shrinks(self):
         ir = self.ir([fn("FN-BAD", True), fn("FN-FIXED")])
         listed = {"marked": {"fn-bad": "b: x", "fn-fixed": "b: was marked"}}

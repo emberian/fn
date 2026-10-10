@@ -1,4 +1,16 @@
 {
- "_doc": "tools/invariant_risk_check.py: declared host entries that carry ACL2's invariant-risk property in the image world, by name, each 'owner: why'. The list only shrinks (fix the entry, delete the line). Empty because the set was NOT measured when this file was written (no core.json existed to read, and no ACL2 run was permitted). Measure with: python3 tools/invariant_risk_check.py --list  (after tools/extract/core.sh has written build/core/core.json); any entry it prints is a current red to list here with its owner before the step is wired into tools/extract/gate.py.",
- "marked": {}
+ "_doc": "tools/invariant_risk_check.py: declared host entries that are not guard-verified and carry ACL2's invariant-risk property in the image world, so their *1* runs every callee interpreted with its guard checked. Each 'owner: why'. Measured from hbox:/tank/fn/scratch/integrate-20261006n/native-adc9e4ed3a55-x/tree/build/core/core.json (python3 tools/invariant_risk_check.py --ir ... --list): 11 such entries; 37 more are marked but guard-verified (reported, not failed). The list only shrinks: fix the entry (make it guard-verified :logic, or move the with-local-stobj below a guard-verified function) and delete its line.",
+ "marked": {
+  "fn-owner-post-boundary": "builder-C: the POST path C measured at 10.7 s, linear in the store (fn-pak-post-admission); C's fix at the mechanism retires it",
+  "fn-native-live-status-host-answer": "builder-M: the live status answer (the observation form); its chain reads state and the arena through :program accessors",
+  "fn-owner-finish-identity": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
+  "fn-owner-finish-submission": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
+  "fn-owner-recover-from-store-open": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
+  "fn-owner-orcp-load-catalog-begin": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
+  "fn-owner-orcp-load-catalog-chunk": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
+  "fn-store-cfg-native-admin-authorize": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
+  "fn-store-sco-image-open": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
+  "fn-web-host-post-form-step": "builder-D: the web reader's POST form step (surviving code), :program over fn-wpf-finish",
+  "fn-web-host-post-window": "builder-D: the web reader's POST window (surviving code), :program over the fn-web-in window"
+ }
 }

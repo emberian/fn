@@ -2,7 +2,8 @@
 """tools/invariant_risk_check.py [--ir build/core/core.json] [--baseline FILE] [--list]
 
 No host entry declared in the image's interface registry carries ACL2's
-`invariant-risk' property in the image world.
+`invariant-risk' property in the image world while its *1* code runs its
+body (any class but :common-lisp-compliant; see `interpreted').
 
 Why.  A command-path adapter that uses `with-local-stobj' of a def-buffer
 stobj makes ACL2 mark its :program caller `invariant-risk', and the whole chain
@@ -103,15 +104,38 @@ def cause(rows: list[dict], by_name: dict) -> list[str]:
     return out
 
 
+VERIFIED = "common-lisp-compliant"
+
+
+def interpreted(row: dict) -> bool:
+    """A marked row whose *1* runs its body: any class but guard-verified.
+    ACL2 (defuns.lisp put-invariant-risk; translate.lisp, the **1*-as-raw*
+    note): the *1* code of an invariant-risk :program function evaluates its
+    callees as *1* with their guards checked, the cost C measured; a
+    guard-verified entry's *1* checks its own guard and then runs raw Lisp
+    (ACL2 marks one only when its guard is not t, remove-guard-t, so that the
+    guard check is not skipped), so under guard-checking t the mark costs it
+    nothing.  A row without a class is counted as interpreted (fail closed)."""
+    return bool(row.get("invariant_risk")) and row.get("class") != VERIFIED
+
+
+def verified_marked(decls: list[dict], by_name: dict) -> list[str]:
+    """Declared entries marked in the world but guard-verified (reported, not failed)."""
+    return sorted(d["name"] for d in decls
+                  if any(r.get("invariant_risk") and r.get("class") == VERIFIED
+                         for r in by_name.get(d["name"].upper(), [])))
+
+
 def measure(decls: list[dict], by_name: dict) -> tuple[dict, list[str]]:
-    """({entry: where-and-cause} for marked declared entries, unmeasured names)."""
+    """({entry: where-and-cause} for marked declared entries whose *1* is
+    interpreted, unmeasured names)."""
     marked, unmeasured = {}, []
     for d in decls:
         rows = by_name.get(d["name"].upper())
         if not rows:
             unmeasured.append(d["name"])
             continue
-        if any(r.get("invariant_risk") for r in rows):
+        if any(interpreted(r) for r in rows):
             via = cause(rows, by_name)
             marked[d["name"]] = "{}:{}{}".format(
                 d["source"], d["line"], "; via " + ", ".join(via) if via else "")
@@ -168,8 +192,10 @@ def main(argv=None) -> int:
     if problems:
         print("invariant-risk: FAIL ({} problem(s))".format(len(problems)))
         return 1
-    print("invariant-risk: PASS ({} declared, {} marked and baselined, {} not in the IR, unmeasured)"
-          .format(len(decls), len(marked), len(unmeasured)))
+    by_name, _ = load_ir(Path(a.ir))
+    print("invariant-risk: PASS ({} declared, {} marked and baselined, {} marked but guard-verified, "
+          "{} not in the IR, unmeasured)"
+          .format(len(decls), len(marked), len(verified_marked(decls, by_name)), len(unmeasured)))
     return 0
 
 
