@@ -6,7 +6,8 @@
 ;;; The script is the book's (books/runtime-contract-echo.lisp
 ;;; `fn-rce-exercise'): host completions over two interleaved connections,
 ;;; which completions the host delivers and which input it lands first;
-;;; VARIANT 0 (the default) is the script, 1 and 2 inject a host fault the
+;;; The book supplies the seven-field configuration and reserves three fixed
+;;; buffers per connection. VARIANT 0 is the script; 1-4 inject a host fault the
 ;;; checks must report.  The run is the extracted
 ;;; executable layer `fn-rcl-x-step*' over the abstract stobj `fn-rtc-st',
 ;;; the one array-backed pool; one line per step, the step's observation:

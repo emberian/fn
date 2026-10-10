@@ -362,6 +362,13 @@
   :hints (("Goal" :induct (fn-dss-fold acc i end fn-octets)
            :in-theory (enable fn-oct-get-is-nth))))
 
+; The split: a fold over two pieces is the fold of the second from the first's
+; result, so a span folded window by window (each window its own buffer
+; contents) is the fold of the whole.
+(defthm fn-dss-fold-list-of-append
+  (equal (fn-dss-fold-list acc (append dss-xs dss-ys))
+         (fn-dss-fold-list (fn-dss-fold-list acc dss-xs) dss-ys)))
+
 (defthm fn-dss-fold-acc-type
   (implies (and (fn-dss-fold-accp acc)
                 (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
@@ -1445,6 +1452,51 @@
                   (lp (and last (atom (cdr pieces))))
                   (room (max (fn-dss-floor) (nfix (if (consp rooms) (car rooms) 0)))))))))
 
+; The partition property's two parts, exported for a caller that streams one
+; window per call and refills the next window from where the call stopped
+; (books/article-stream.lisp): the one-pass stream of a concatenation, and
+; what one call over a window consumed and wrote against the one-pass stream.
+(defthm fn-dss-items-of-append
+  (equal (fn-dss-stream-items s (append a b) last)
+         (mv-let (dss-r1 dss-s1 dss-it1) (fn-dss-stream-items s a nil)
+           (if (eq dss-r1 :refused)
+               (mv dss-r1 dss-s1 dss-it1)
+             (mv-let (dss-r2 dss-s2 dss-it2) (fn-dss-stream-items dss-s1 b last)
+               (mv dss-r2 dss-s2 (append dss-it1 dss-it2))))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-dss-items-append :in-theory (disable fn-dss-items-append))))
+
+(defthm fn-dss-list-items-prefix
+  (implies (<= (fn-dss-floor) (nfix room))
+           (mv-let (dss-r dss-s2 dss-outs dss-n) (fn-dss-stream-list s xs lp room)
+             (and (implies (eq dss-r :need-input)
+                           (equal (fn-dss-stream-items s xs nil) (list :need-input dss-s2 dss-outs)))
+                  (implies (eq dss-r :yield)
+                           (equal (fn-dss-stream-items s (take dss-n xs) nil)
+                                  (list :need-input dss-s2 (append dss-outs (list :yield)))))
+                  (implies (eq dss-r :need-output)
+                           (equal (fn-dss-stream-items s (take dss-n xs) nil)
+                                  (list :need-input dss-s2 dss-outs)))
+                  (implies (and (eq dss-r :refused) (< dss-n (len xs)))
+                           (equal (fn-dss-stream-items s xs nil) (list :refused dss-s2 dss-outs)))
+                  (implies (and (or (eq dss-r :refused) (eq dss-r :done)) (not (< dss-n (len xs))))
+                           (and lp (equal (fn-dss-stream-items s xs t) (list dss-r dss-s2 dss-outs))))
+                  (natp dss-n) (<= dss-n (len xs))
+                  (member-equal dss-r '(:need-input :need-output :yield :refused :done))
+                  (implies (eq dss-r :need-input) (and (not lp) (equal dss-n (len xs))))
+                  (implies (member-equal dss-r '(:yield :need-output)) (< 0 dss-n)))))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-dss-list-loop-items-prefix
+                        fn-dss-list-loop-shape fn-dss-list-loop-progress
+                        (:instance fn-dss-stream-list-loop-consumed (last lp))
+                        (:instance fn-dss-stream-items-shape (last t))
+                        (:instance fn-dss-stream-items-shape (last nil))
+                        (:instance fn-dss-stream-items-shape (last nil)
+                                   (xs (take (mv-nth 3 (fn-dss-stream-list-loop s xs lp room)) xs))))
+           :in-theory (e/d (fn-dss-list-wrapper-is-loop)
+                           (fn-dss-stream-list fn-dss-stream-list-loop fn-dss-stream-items
+                            fn-dss-stream-items-shape fn-dss-stream-items-shape-car)))))
+
 ; A-HOST-ROOM, the host's contract: each of the first FUEL calls is offered
 ; at least FLOOR octets of output room (the host sends and clears the output
 ; before the next call).  A call offered less is refused by name (:no-room)
@@ -2041,6 +2093,7 @@
          (lst (fn-dss-name (list name "-LIST") name))
          (work (fn-dss-name (list name (if exec "-EXEC-WORK" "-WORK")) name))
          (bridge (fn-dss-name (list name "-IS-LIST") name))
+         (split (fn-dss-name (list name "-LIST-OF-APPEND") name))
          (ty (fn-dss-name (list name "-ACC-TYPE") name))
          (wb (fn-dss-name (list name (if exec "-EXEC-WORK-BOUND" "-WORK-BOUND")) name))
          (accp (fn-dss-type-pred acc-type acc wrld))
@@ -2093,6 +2146,12 @@
                (,lst ,@ctx ,acc (fn-oct-slice-list i end fn-octets)))
         :hints (("Goal" :use ((:functional-instance fn-dss-fold-is-list ,@subst))
                  :in-theory ,(fn-dss-defs-theory (list name lst)))))
+      (defthm ,split
+        (equal (,lst ,@ctx ,acc (append dss-xs dss-ys))
+               (,lst ,@ctx (,lst ,@ctx ,acc dss-xs) dss-ys))
+        :hints (("Goal" :use ((:instance (:functional-instance fn-dss-fold-list-of-append ,@subst)
+                                          (acc ,acc)))
+                 :in-theory ,(fn-dss-defs-theory (list name lst)))))
       (defthm ,ty
         (implies (and ,accp
                       (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
@@ -2112,7 +2171,7 @@
         :hints ,(or guard-hints
                     `(("Goal" :in-theory (enable ,@(fn-dss-guard-theory))))))
       (table fn-generated ',name
-             '(:def-span-scan :shape :fold :list ,lst :work ,work :bridge ,bridge
+             '(:def-span-scan :shape :fold :list ,lst :work ,work :bridge ,bridge :split ,split
                               :c0 1 :c1 (+ 1 ,cost-max) :writes 0
                               :workspace (i ,acc :type ,acc-type))))))
 
@@ -2453,6 +2512,8 @@
          (work (fn-dss-name (list name (if exec "-EXEC-WORK" "-WORK")) name))
          (bridge (fn-dss-name (list name "-IS-LIST") name))
          (part (fn-dss-name (list name "-DRIVE-IS-ITEMS") name))
+         (iapp (fn-dss-name (list name "-ITEMS-OF-APPEND") name))
+         (lpre (fn-dss-name (list name "-LIST-PREFIX") name))
          (writes (fn-dss-name (list name "-WRITES") name))
          (ty (fn-dss-name (list name "-STATE-TYPE") name))
          (prog (fn-dss-name (list name "-PROGRESS") name))
@@ -2757,6 +2818,39 @@
         :hints (("Goal" :use (,usc (:functional-instance fn-dss-drive-is-items ,@isubst))
                  :in-theory ,(fn-dss-defs-theory (list drive items lst lstl)))
 ))
+      (defthm ,iapp
+        (equal (,items ,@ctx s (append dss-a dss-b) last)
+               (mv-let (dss-r1 dss-s1 dss-it1) (,items ,@ctx s dss-a nil)
+                 (if (eq dss-r1 :refused)
+                     (mv dss-r1 dss-s1 dss-it1)
+                   (mv-let (dss-r2 dss-s2 dss-it2) (,items ,@ctx dss-s1 dss-b last)
+                     (mv dss-r2 dss-s2 (append dss-it1 dss-it2))))))
+        :rule-classes nil
+        :hints (("Goal" :use (,usc (:instance (:functional-instance fn-dss-items-of-append ,@isubst)
+                                              (a dss-a) (b dss-b)))
+                 :in-theory ,(fn-dss-defs-theory (list drive items lst lstl)))))
+      (defthm ,lpre
+        (implies (<= ,floor (nfix room))
+                 (mv-let (dss-r dss-s2 dss-outs dss-n) (,lst ,@ctx s xs lp room)
+                   (and (implies (eq dss-r :need-input)
+                                 (equal (,items ,@ctx s xs nil) (list :need-input dss-s2 dss-outs)))
+                        (implies (eq dss-r :yield)
+                                 (equal (,items ,@ctx s (take dss-n xs) nil)
+                                        (list :need-input dss-s2 (append dss-outs (list :yield)))))
+                        (implies (eq dss-r :need-output)
+                                 (equal (,items ,@ctx s (take dss-n xs) nil)
+                                        (list :need-input dss-s2 dss-outs)))
+                        (implies (and (eq dss-r :refused) (< dss-n (len xs)))
+                                 (equal (,items ,@ctx s xs nil) (list :refused dss-s2 dss-outs)))
+                        (implies (and (or (eq dss-r :refused) (eq dss-r :done)) (not (< dss-n (len xs))))
+                                 (and lp (equal (,items ,@ctx s xs t) (list dss-r dss-s2 dss-outs))))
+                        (natp dss-n) (<= dss-n (len xs))
+                        (member-equal dss-r '(:need-input :need-output :yield :refused :done))
+                        (implies (eq dss-r :need-input) (and (not lp) (equal dss-n (len xs))))
+                        (implies (member-equal dss-r '(:yield :need-output)) (< 0 dss-n)))))
+        :rule-classes nil
+        :hints (("Goal" :use (,usc (:functional-instance fn-dss-list-items-prefix ,@isubst))
+                 :in-theory ,(fn-dss-defs-theory (list drive items lst lstl)))))
       (defthm ,spart
         (implies (and (true-list-listp pieces)
                       (<= (fn-dss-calls-bound pieces) (nfix fuel))
@@ -2839,6 +2933,7 @@
              '(:def-span-scan :shape :stream :loop ,loopn :list ,lst :items ,items :drive ,drive
                               :host ,host :partition-stobj ,spart :assumes (:a-host-room)
                               :work ,work :bridge ,bridge :partition ,part
+                              :items-of-append ,iapp :list-prefix ,lpre
                               :c0 (+ 1 ,final-cost-max) :c1 (+ 1 ,cost-max)
                               :writes (+ (* ,emit-max (- dss-i2 i)) ,final-max)
                               :write-charge ,wc
