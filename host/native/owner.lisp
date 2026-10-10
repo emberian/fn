@@ -740,13 +740,18 @@ range), which the caller runs under the owner mutex
 ;;; quanta together write the reply the served machine decided, expanded
 ;;; (fn-ovw-expand), for every W and however the socket paced them; with
 ;;; fn-ovw-run-is-over-range-cat that is the unbounded reader's reply.
+(defun fnn-owner-over-quantum ()
+  "ACL2's cursor quantum, the developer selector's override passed through:
+the window the memory gate's configure fits (fn-owner-memory-configure)."
+  (let ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")))
+    (fnn-core 'fn-splan-cursor-window
+              (and raw (> (length raw) 0) (every #'digit-char-p raw) (parse-integer raw)))))
+
 (defun fnn-owner-over-window ()
-  "ACL2's cursor quantum, the developer selector's override passed through; under a configured run, the run's W' (A-OVER-WINDOW-FIT: books/memory-model.lisp fn-mm-over-window-fit, installed by host/owner-host.lisp fn-owner-memory-configure), at most that quantum."
-  (let* ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW"))
-         (w (fnn-core 'fn-splan-cursor-window
-                      (and raw (> (length raw) 0) (every #'digit-char-p raw) (parse-integer raw))))
-         (fit (and (boundp-global 'fn-owner-memory-over-window *the-live-state*)
-                   (fnn-global 'fn-owner-memory-over-window))))
+  "ACL2's cursor quantum (fnn-owner-over-quantum); under a configured run, the run's W' (A-OVER-WINDOW-FIT: books/memory-model.lisp fn-mm-over-window-fit, installed by host/owner-host.lisp fn-owner-memory-configure), at most that quantum."
+  (let ((w (fnn-owner-over-quantum))
+        (fit (and (boundp-global 'fn-owner-memory-over-window *the-live-state*)
+                  (fnn-global 'fn-owner-memory-over-window))))
     (if (and (integerp fit) (plusp fit)) (min w fit) w)))
 
 (defun fnn-owner-article-window ()
@@ -1714,6 +1719,9 @@ one ring, so the table's key and the served boundary's are one source."
               ;; checkpoint's then faults by name (fnn-log-history-plan).
               (fnn-core-state 'fn-store-sco-clear)
               (fnn-log-history-release-prefix store)
+              ;; K-ADMIT's gate for this process, before it admits anything
+              ;; (host/native/mux.lisp fnn-owner-memory-install).
+              (fnn-owner-memory-install service)
               service))
         (error (e)
           ;; Neither cleanup condition replaces E. Keep the actual Store
@@ -5734,6 +5742,12 @@ own result vocabulary."
               (fnn-fault "owner bound completion returned ~a" result))
             (when (eq result :uncertain)
               (fnn-indeterminate "owner bound Store outcome is uncertain"))
+            ;; The BP application's refusal line names the Store's own word
+            ;; (as fnn-owner-complete-bp-transit-submission does); the
+            ;; control callers answer by their status instead.
+            (when (and (not name-conflict) (eq result :refused)
+                       (keywordp word) (not (eq word :refused)))
+              (fnn-owner-transit-refused word))
             (if name-conflict
                 (fnn-core 'fn-native-control-completion-status result word)
               result)))))))
@@ -5813,6 +5827,12 @@ own result vocabulary."
                 (unless (member result '(:accepted :duplicate :refused
                                          :clock-unusable :uncertain))
                   (fnn-fault "owner BP transit completion returned ~a" result))
+                ;; The Store's own word for a refusal (:memory,
+                ;; :history-exhausted, :unaffordable ...) is the refusal
+                ;; line's reason: the outcome answers :refused alone.
+                (when (and (eq result :refused) (keywordp word)
+                           (not (eq word :refused)))
+                  (fnn-owner-transit-refused word))
                 (when (eq result :uncertain)
                   (fnn-indeterminate "owner BP transit Store outcome is uncertain"))
                 result))))))))
