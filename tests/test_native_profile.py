@@ -2,11 +2,14 @@
 
 A post's service log line lands in the file `[log] path` names, the served
 POST's line names the agent its article's Injection-Info carries, and that
-agent is the store's `path-identity` policy; `[posting] agent` and a relative
-`[log] path` are refused by `run` with the key named.  The ACL2 side of each
-claim is books/owner-agent.lisp, books/owner-log.lisp and
-books/native-config.lisp (fn-native-config-unsupported-key); this file is
-the measurement that the image wires them.
+agent is the store's `path-identity` policy; `[posting] agent` is refused by
+`run` with the key named; a relative `[log] path` names a file under
+fn.toml's own directory (row S8, books/native-config-paths.lisp), so the
+log lands beside fn.toml whatever directory `run` starts from.  The ACL2
+side of each claim is books/owner-agent.lisp, books/owner-log.lisp,
+books/native-config.lisp (fn-native-config-unsupported-key) and
+books/native-config-paths.lisp; this file is the measurement that the image
+wires them.
 """
 import os
 import time
@@ -122,14 +125,34 @@ class NativeProfileTests(unittest.TestCase):
                       owner.stderr.since(0))
         self.assertFalse(self.log.exists())
 
-    def test_posting_agent_and_a_relative_log_are_refused_by_name(self):
-        for name, extra, key in (
-                ("agent.toml", "[posting]\nagent = \"fn@hbox.ember.software\"\n",
-                 b"UNSUPPORTED-PROFILE agent"),
-                ("relative.toml", "[log]\npath = \"fn.log\"\n",
-                 b"UNSUPPORTED-PROFILE log")):
-            with self.subTest(name=name):
-                result = self.image("operator", str(self.config(name, extra)), "run",
-                                    timeout=120)
-                self.assertEqual(result.returncode, EXIT.USAGE, result.stderr.decode())
-                self.assertIn(key, result.stderr)
+    def test_posting_agent_is_refused_by_name(self):
+        config = self.config("fn.toml",
+                             "[posting]\nagent = \"fn@hbox.ember.software\"\n")
+        result = self.image("operator", str(config), "run", timeout=120)
+        self.assertEqual(result.returncode, EXIT.USAGE, result.stderr.decode())
+        self.assertIn(b"UNSUPPORTED-PROFILE agent", result.stderr)
+
+    def test_a_relative_log_path_lands_beside_fn_toml(self):
+        # Row S8: `fn.log' resolves under fn.toml's directory before `run'
+        # plans, so the profile is runnable and the lines go to that file,
+        # not to the configured absolute log and not to stderr.
+        config = self.config("fn.toml", "[log]\npath = \"fn.log\"\n")
+        beside = config.parent / "fn.log"
+        self.assertFalse(beside.exists())
+        owner = self.start(config)
+        control = self.control_post(config, "<relative-log@example.invalid>")
+        self.assertEqual(control.returncode, 0, control.stderr.decode())
+        deadline = time.monotonic() + 30
+        text = ""
+        while time.monotonic() < deadline:
+            text = beside.read_text(encoding="ascii") if beside.exists() else ""
+            if "message-id=<relative-log@example.invalid>" in text:
+                break
+            time.sleep(0.2)
+        self.stop(owner)
+        lines = [line for line in text.splitlines()
+                 if "message-id=<relative-log@example.invalid>" in line]
+        self.assertEqual(len(lines), 1, text)
+        self.assertTrue(lines[0].startswith("accepted post path=control "), lines)
+        self.assertFalse(self.log.exists())
+        self.assertNotIn(b"path=control", owner.stderr.since(0))

@@ -355,6 +355,8 @@ neither allocates backing pages nor proves platform file-offset representation.
 
 ## Running and stopped snapshot producer
 
+HST-040: Running and stopped snapshot producers capture one committed Store frontier and coherent identity/configuration epoch, restore the retained state, and fund bounded work with marker-last completion.
+
 HST-040 remains planned: the producer must capture one committed Store
 frontier, its configuration history, genesis identity, retained identity
 snapshots/verdicts and keyring generation. Restore must recover retained

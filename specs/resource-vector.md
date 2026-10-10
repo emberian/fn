@@ -1,5 +1,7 @@
 # The resource vector and the bank (HST-045)
 
+HST-045: Every resource spent on a user's behalf is drawn from that user's bank before the effect: one resource vector, the owner's needs reserved first, teardown returns the sub-bank.
+
 This is fn's internal accounting contract, not an RFC requirement. The
 founding goal it serves is ember's warranty: a full up-front accounting of
 every resource spent on a user's behalf
@@ -238,7 +240,7 @@ from the loaded world:
    "refusal preserves funded rescue capability" becomes a statement about
    an entry; the ledger books prove it of the ledger only.
 5. **The dispatch row**: `interface_emit` adds kind, tariff, slot and
-   settlement to the entry's `planning/interfaces.json` row; D40's
+   settlement to the entry's row in the box step's `build/box/interfaces.json`; D40's
    dispatcher passes the ledger stobj; the host observes (machine, rlimits,
    free octets, RLIMIT_NOFILE) and never computes a tariff.
 6. **Teeth**: the positive witness evaluates the twin on `:witness` and
@@ -259,6 +261,8 @@ not spent and revokes its tokens). Nothing of this is wired into a served
 path by this lane (MODE 2026-10-01 section 3: no gate before its producer).
 
 ## Physical operation custody (HST-046)
+
+HST-046: Issued resource custody remains debited until physical termination and operation completion; timeout and connection close do not authorize settlement.
 
 A draw's debit remains held until its physical actor has terminated and its
 matching operation outcome has been consumed. The resource generation and
@@ -346,6 +350,8 @@ restart retrieval. The selector is prepared; image execution is pending.
 Optional diagnostics cannot change custody if formatting or output fails.
 
 ## Shared output pool (HST-047)
+
+HST-047: A shared output heap pool is funded before materialization and connection generations retain each response lease until output and physical custody end.
 
 The output pool is an explicit heap allowance beyond the composed store,
 thread and cold-resource launch reservation. `resources.output_heap_octets`
@@ -680,6 +686,8 @@ source alone does not claim the new startup/retirement consumers have executed.
 
 ### DEFAULT page-read startup (HST-048)
 
+HST-048: DEFAULT page-read startup prepays selected persistent backing before Store open and validates same-pool worker readiness.
+
 The launcher's heap probe carries the normalized Store root and captures the
 actual direct-worker count and cache limit. For a served `:run`,
 `fn-prstartup-extend-operation-reservation` adds DEFAULT's selected minimum
@@ -754,6 +762,8 @@ reports uncertainty. Orphan cleanup clears the startup marker only after
 both the executor roster and global arena return observation settle.
 
 ### Independent peer flight pool (HST-049)
+
+HST-049: Independent catchup spool flight backing is drawn before buffers, descriptors and worker construction.
 
 Catchup spool flights use a distinct private typed bank. The operator policy
 captures heap octets, spool disk octets, maximum flights, maximum workers,

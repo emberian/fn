@@ -69,8 +69,7 @@
         "tests/evidence/2026-09-18-storage.md",
         "tests/evidence/2026-09-18-storage.json",
         "books/store-node-existing-invariants.lisp",
-        "tests/acl2/store-node-existing-tests.lisp",
-        "tests/test_native_captured_attempt.py"
+        "tests/acl2/store-node-existing-tests.lisp"
       ],
       "execution_scope": "Validated for abstract atomic acceptance; the native path is one article posted to two groups through the operator, one local number in each group across a restart, an identical resubmission accepted as the duplicate and a changed source under the held Message-ID refused without replacing the stored octets (tests/test_native_conformance.py). The charged pin is not observed by that case. The Python-host implementation (tests/test_store.py) retired with the Python host. Captured-caller source transport fixture additionally executes the actual native attempt before frontier: actual runtime source unavailable refuses before fill; synthetic unfunded retained callbacks preserve one shared remaining quantum and returned effects before fault. This fixture does not validate parser/provider authority, installed runtime allowance, all-alias retirement or the changed served image.",
       "implementation": {
@@ -554,7 +553,6 @@
         "planning/evidence/store-prepare-correspondence-w18-2026-09-21.md",
         "planning/evidence/native-owner-integrated-2026-09-21.md",
         "tests/test_native_control.py",
-        "planning/lanes/HANDOFF-w22-native-control.md",
         "planning/evidence/native-control-accept-shutdown-2026-09-21.md",
         "planning/evidence/native-raw-integration-w35-2026-09-21/README.md",
         "tests/native_io_progress_raw.lisp",
@@ -847,7 +845,6 @@
       "evidence": [
         "planning/evidence/feed-k5-w11-2026-09-21.md",
         "planning/evidence/feed-journal-w12-host.json",
-        "planning/lanes/HANDOFF-w12-feed-durability.md",
         "tests/test_native_peering.py",
         "tests/native_feed_peer_octets_raw-mock.lisp",
         "tests/native_feed_service_raw-mock.lisp",
@@ -922,7 +919,9 @@
         "cases": [
           "test_local_handler_fault_uses_core_fault_and_preserves_other_clients"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_owner.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       }
     },
     {
@@ -5827,7 +5826,7 @@
         "PLUS with the exporter value is 283; with another value 481.",
         "The redeemed account's SCRAM login is 283 and its POST 240."
       ],
-      "execution_scope": "Written before the lane's image was built; not yet run.",
+      "execution_scope": "Ran natively 2026-10-10: tests.test_native_sasl, all 7 cases OK, against the developer image of lane d-cost-rows at 163e9f3cc (hbox:/tank/fn/scratch/d-registry-findings/native-sasl1, image reused from d-cost-rows/native-c3).",
       "implementation": {
         "test": "tests.test_native_sasl",
         "cases": [
@@ -5839,8 +5838,13 @@
           "NativeSaslTests.test_scram_replayed_final_is_481",
           "NativeSaslTests.test_scram_plus_with_tls_exporter"
         ],
-        "native": true
-      }
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_sasl.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
+      },
+      "evidence": [
+        "tests/test_native_sasl.py"
+      ]
     },
     {
       "id": "SCN-197",
@@ -6029,11 +6033,13 @@
           "NativeBpCarryAbandonTests.test_a_waiver_cut_before_its_store_release_is_completed_once"
         ],
         "native": true,
-        "record": "planning/evidence/carry-abandon-2026-09-29.md"
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_bp_carry_abandon.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_bp_obligation_native.py",
-        "planning/evidence/operations-2026-09-28.md"
+        "planning/evidence/operations-2026-09-28.md",
+        "planning/evidence/carry-abandon-2026-09-29.md"
       ]
     },
     {
@@ -6049,12 +6055,14 @@
       "steps": [
         "tests/test_native_compress.py on the production image: before and after AUTHINFO, COMPRESS DEFLATE, then CAPABILITIES, GROUP, ARTICLE, POST and QUIT through the stream; COMPRESS/STARTTLS/AUTHINFO after 206; COMPRESS with an unknown and a malformed algorithm; compressed octets pipelined behind the COMPRESS line; a 1 MiB run of zeros; a malformed stream.",
         "tests/test_native_compression.py on the developer image: two twin stores given the same articles, one with `policy set compress-min-octets'; `store ROOT compression'; every article served from both; recover twice; a torn last entry. Then XFN-DICT in CAPABILITIES; XFN-ZARTICLE naming the shipped baseline's digest, and naming another digest; XFN-ZARTICLE with a malformed digest.",
-        "tests/native_deflater_raw.lisp (raw SBCL, no image): the encoder's code lengths for 0 or 1 used symbols over the 19-, 30- and 286-symbol alphabets, and 30 payloads whose matches use one distance code (0, 1, 9, 10, 11, 29) or none, each stream inflated by Python's zlib."
+        "tests/native_deflater_raw.lisp (raw SBCL, no image): the encoder's code lengths for 0 or 1 used symbols over the 19-, 30- and 286-symbol alphabets, and 30 payloads whose matches use one distance code (0, 1, 9, 10, 11, 29) or none, each stream inflated by Python's zlib.",
+        "sh tests/test_native_zin_owed_raw.sh (ACL2 world, raw mode over books/deflate-inflate, needs-acl2): host/native/deflate.lisp's fnn-zin-inflate over ACL2's fn-zin-feed with one fixed-Huffman block of \"DATE\" CR LF and sixteen 258-octet matches, whose last match crosses the 4096th output octet; tests/test_native_compress.py's test_plaintext_the_inflater_still_owes_is_served sends the same stream through the production image."
       ],
       "expected": [
         "480 before a login, 206 after; the label withdrawn once active; 502 for a second COMPRESS, STARTTLS and AUTHINFO; 503 unknown, 501 malformed; pipelined octets are the stream's first; the bomb refused (compress-bomb) and the malformed stream (compress-malformed), each closing the connection.",
         "The compressed store reports every article record compressed and `dictionaries=' the shipped baseline's DICT-ID 2220533217, holds fewer octets, and serves every article octet for octet as its uncompressed twin, after both recovers and the torn tail. XFN-DICT lists the shipped digests; a peer naming the baseline's digest gets 229 with the stored block, escaped in lines of at most 128 octets, which unescaped has the stated stored length and inflates against the baseline dictionary to ARTICLE's octets; a peer naming another digest gets ARTICLE's 220 reply octet for octet; a malformed digest gets 501.",
-        "Every stream the stored-payload encoder writes is a valid RFC 1951 stream: a block whose matches use one distance code (or none) gets a complete two-code tree, and the streams inflate octet for octet under Python's zlib (tests/native_deflater_raw.lisp); ACL2's decoder frames such a stream and refuses the oversubscribed one the encoder wrote before (tests/acl2/payload-lz-append-tests.lisp)."
+        "Every stream the stored-payload encoder writes is a valid RFC 1951 stream: a block whose matches use one distance code (or none) gets a complete two-code tree, and the streams inflate octet for octet under Python's zlib (tests/native_deflater_raw.lisp); ACL2's decoder frames such a stream and refuses the oversubscribed one the encoder wrote before (tests/acl2/payload-lz-append-tests.lisp).",
+        "At output limits of 4,096 and 512 octets, the inflater reports plaintext pending after each :full stop with every input octet read, and calls with no new input deliver all 4,134 octets (\"DATE\" CR LF 689 times) to the steps; the drain ends asking for more input (:more). The line printed is native_zin_owed_raw: PASS."
       ]
     },
     {
@@ -6076,7 +6084,9 @@
         "cases": [
           "MaintenanceLiveTests.test_recover_and_inspect_answer_on_the_running_owner_and_a_stopped_status_reads_the_header"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_maintenance_live.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_checkpoint_auto.py",
@@ -6102,7 +6112,9 @@
         "cases": [
           "OperatorRefusalTests.test_a_post_the_store_refuses_names_its_reason_and_policy_set_refuses_by_name"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_operator_refusals.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_checkpoint_auto.py",
@@ -6128,7 +6140,9 @@
         "cases": [
           "test_store_export_answers_on_the_running_owner_and_the_archive_imports"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_maintenance_live.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "books/owner-export-request.lisp",
@@ -6180,8 +6194,12 @@
       ],
       "implementation": {
         "test": "tests.test_native_maintenance_live",
-        "cases": [],
-        "native": true
+        "cases": [
+          "MaintenanceLiveTests.test_inspect_group_lists_the_memberships_live_and_offline"
+        ],
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_maintenance_live.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "books/owner-export-request.lisp",
@@ -6192,7 +6210,7 @@
       "id": "SCN-211",
       "title": "A restored backup that diverged is a new lineage: its checkpoint is refused by name against this log, and this store's against its, with or without a suffix; an ordinary restart is not a new lineage",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-035"
       ],
@@ -6219,7 +6237,8 @@
           "test_this_checkpoint_against_the_copy_log_is_refused_by_name"
         ],
         "native": true
-      }
+      },
+      "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; tests.test_native_store_lineage fails its 3 cases on the native image (hbox native-scn1; FILL-STORE-LINEAGE-DIVERGED-CHECKPOINT). It returns to implemented when a passing run's log is archived and cited."
     },
     {
       "id": "SCN-214",
@@ -6241,7 +6260,9 @@
           "test_upgrade_beside_and_rollback_walk_with_the_printed_gap",
           "test_a_release_that_refuses_the_store_switches_nothing"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_install.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "packaging/install.sh",
@@ -6303,7 +6324,9 @@
           "test_stopped_copy_blesses_reopens_and_names_missing_and_malformed_inputs",
           "test_foreign_lineage_is_refused_and_complete_old_lineage_is_explicitly_allowed"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_snapshot_bless.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_snapshot_bless.py",
@@ -6881,7 +6904,9 @@
         "cases": [
           "test_health_is_bounded_readiness_in_the_running_owner_without_login"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_web.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_web.py",
@@ -6913,7 +6938,9 @@
         "cases": [
           "test_posts_land_in_the_configured_log_and_name_the_path_identity"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_profile.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_profile.py",
@@ -7068,7 +7095,6 @@
         "planning/evidence/physical-window-source-2026-09-30.md",
         "planning/evidence/physical-window-coordinate-source-2026-09-30.md",
         "tests/native/page-window-lifecycle.lisp",
-        "tests/test_native_wire_dispatch.py",
         "planning/evidence/native-outgoing-cut-2026-09-30.md"
       ],
       "execution_scope": "Source model/adapter and staged raw wrapper only. Actual native observation, adequate native demand and served activation remain pending. Native unavailable-source recording fixture additionally passes exact actual Queue/QueuePlan/Flush and unpin cuts; synthetic family-only availability is rejected. No positive outgoing dispatcher/worker/receipt/runtime/image scope is inferred."
@@ -7523,21 +7549,9 @@
         "note": "Only the logical request codec component is implemented; full endpoint and all integration steps remain pending."
       },
       "evidence": [
-        "tests/acl2/consumer-remote-codec-tests.lisp",
-        "planning/consumer-remote-implementation.md",
-        "books/consumer-remote-position.lisp",
-        "tests/acl2/consumer-remote-position-tests.lisp",
         "planning/evidence/consumer-remote-components-2026-09-30.md",
         "books/consumer-authority-carried-result.lisp",
-        "books/consumer-authority-carried-result-model.lisp",
-        "tests/acl2/consumer-authority-carried-result-tests.lisp",
         "planning/evidence/consumer-authority-carried-result-2026-09-30/source.json",
-        "books/store-tree-size-info.lisp",
-        "books/consumer-checkpoint-carry-map.lisp",
-        "books/consumer-checkpoint-carry-map-model.lisp",
-        "books/consumer-checkpoint-carry-attribution.lisp",
-        "tests/acl2/consumer-checkpoint-carry-map-tests.lisp",
-        "tests/acl2/consumer-checkpoint-carry-attribution-tests.lisp",
         "planning/evidence/consumer-checkpoint-carry-map-2026-09-30/source.json",
         "tests/acl2/consumer-account-config-commit-tests.lisp",
         "tests/acl2/consumer-account-transaction-driver-tests.lisp",
@@ -7712,7 +7726,7 @@
       "id": "SCN-1071",
       "title": "Persistent forest carry and exact NIL candidate publication replay",
       "milestone": "M2",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-10003"
       ],
@@ -7729,7 +7743,12 @@
       "evidence": [
         "tests/acl2/history-event-directory-tests.lisp",
         "tests/acl2/history-event-backing-tests.lisp"
-      ]
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-event-directory-tests.lisp",
+        "native": false
+      },
+      "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; its test is an ACL2 test book with no archived certify log. It returns to implemented when a passing run's log is archived and cited."
     },
     {
       "id": "SCN-1073",
@@ -8125,12 +8144,10 @@
         "planning/evidence/extent-window-compressed-source-2026-09-30.md",
         "tests/acl2/extent-window-compressed-input-tests.lisp",
         "planning/evidence/extent-window-input-source-2026-09-30.md",
-        "books/durable-lz-octet.lisp",
         "books/payload-arena-extent.lisp",
         "books/decoded-window-descriptor.lisp",
         "books/decoded-window-begin.lisp",
         "books/decoded-window-lease.lisp",
-        "tests/acl2/durable-lz-octet-tests.lisp",
         "tests/acl2/decoded-window-descriptor-tests.lisp",
         "tests/acl2/decoded-window-lease-tests.lisp",
         "planning/evidence/decoded-window-source-2026-09-30.md",
@@ -8271,11 +8288,10 @@
       },
       "evidence": [
         "books/host-model-machine.lisp",
-        "tests/acl2/host-model-tests.lisp",
-        "planning/evidence/manifests/certify-20261003T062320Z-3305.json",
-        "planning/evidence/manifests/certify-20261003T080416Z-85944.json"
+        "tests/acl2/host-model-tests.lisp"
       ],
-      "execution_scope": "ACL2 actual direct host-called subjects within concurrent reference schedules; native bridge and funded-pool extension remain owed."
+      "execution_scope": "ACL2 actual direct host-called subjects within concurrent reference schedules; native bridge and funded-pool extension remain owed.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/manifests/certify-20261003T062320Z-3305.json, planning/evidence/manifests/certify-20261003T080416Z-85944.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1083",
@@ -8304,11 +8320,10 @@
       "evidence": [
         "tools/native_mixed_workload.py",
         "planning/empirical-workloads.md",
-        "tests/test_native_mixed_history.py",
-        "planning/evidence/native-mixed-45e05c7f-2026-10-03/report.md",
-        "planning/evidence/native-mixed-1a946582c-2026-10-03/report.md"
+        "tests/test_native_mixed_history.py"
       ],
-      "execution_scope": "Historical45e paired smoke and current developer image1a946582c baseline finite correctness passed: 48 acknowledged articles retain exact served hashes and local numbers after checkpoint/restart, 36 concurrent reads match and24 concurrent posts accept. Quiet reclaim credit-refused estimate16,680,640, so maintenance coverage incomplete. Current baseline4.198s total/0.314s mixed phase; no matched current perturbation or performance improvement inference. Exact image/tool inputs and sampling errors archived. No deployment, cold filesystem cache, socket-backpressure, later funded/cursor/observer or whole-image qualification claim."
+      "execution_scope": "Historical45e paired smoke and current developer image1a946582c baseline finite correctness passed: 48 acknowledged articles retain exact served hashes and local numbers after checkpoint/restart, 36 concurrent reads match and24 concurrent posts accept. Quiet reclaim credit-refused estimate16,680,640, so maintenance coverage incomplete. Current baseline4.198s total/0.314s mixed phase; no matched current perturbation or performance improvement inference. Exact image/tool inputs and sampling errors archived. No deployment, cold filesystem cache, socket-backpressure, later funded/cursor/observer or whole-image qualification claim.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/native-mixed-45e05c7f-2026-10-03/report.md, planning/evidence/native-mixed-1a946582c-2026-10-03/report.md were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1084",
@@ -8347,10 +8362,10 @@
         "tests/acl2/newnews-candidate-selector-tests.lisp",
         "tests/test_cursor_cold_poll.py",
         "tests/cursor_cold_poll_recording-mock.lisp",
-        "planning/evidence/cursor-cold-poll-20261003/checks-final.json",
         "tests/acl2/newnews-matching-selector-tests.lisp",
         "tests/acl2/wildmat-cursor-tests.lisp"
-      ]
+      ],
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/cursor-cold-poll-20261003/checks-final.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1085",
@@ -8374,11 +8389,10 @@
       ],
       "evidence": [
         "tools/native_sparse_newnews.py",
-        "planning/empirical-workloads.md",
-        "planning/evidence/native-sparse-newnews-45e05c7f-2026-10-03/report.md",
-        "planning/evidence/native-sparse-1a946582c-2026-10-03/report.md"
+        "planning/empirical-workloads.md"
       ],
-      "execution_scope": "Historical45e and current1a946582c finite whole-scan command correctness passed: ten exact blocks of four remaining matches over24seed rows including two actual tombstones, eight competing ARTICLEs/four POSTs, 26retained articles and two tombstones correct on reopen. Current total4.829s; offline expiry/reclaim accepted2, live reclaim credit-refused estimate8,098,624. Exact image/input/config/resource errors archived; per-command payload-I/O attribution, later bounded cursor qualification and whole-image assurance remain open."
+      "execution_scope": "Historical45e and current1a946582c finite whole-scan command correctness passed: ten exact blocks of four remaining matches over24seed rows including two actual tombstones, eight competing ARTICLEs/four POSTs, 26retained articles and two tombstones correct on reopen. Current total4.829s; offline expiry/reclaim accepted2, live reclaim credit-refused estimate8,098,624. Exact image/input/config/resource errors archived; per-command payload-I/O attribution, later bounded cursor qualification and whole-image assurance remain open.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/native-sparse-newnews-45e05c7f-2026-10-03/report.md, planning/evidence/native-sparse-1a946582c-2026-10-03/report.md were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1087",
@@ -8538,10 +8552,9 @@
       "evidence": [
         "tests/acl2/protocol-served-tests.lisp",
         "books/protocol-served.lisp",
-        "books/protocol-served-table.lisp",
-        "planning/evidence/dc02-switch-20261003/checks.json",
-        "planning/evidence/dc02-switch-20261003/command-repl.log.gz"
-      ]
+        "books/protocol-served-table.lisp"
+      ],
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/dc02-switch-20261003/checks.json, planning/evidence/dc02-switch-20261003/command-repl.log.gz were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1094",
@@ -8563,7 +8576,23 @@
         "tests/native_checkpoint_image_readback_raw-mock.lisp",
         "tests/test_native_state_checkpoint.py"
       ],
-      "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim."
+      "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim.",
+      "expected": [
+        "Valid bytes install the staged checkpoint exactly once and the private writer snapshot is released.",
+        "A corrupted used page or unwritten zero page is refused before checkpoint replacement; the old checkpoint is retained byte for byte, no replacement or drop is authorized, and the snapshot is released.",
+        "A damaged header is refused; a raw nonlocal exit and a prewrite deferral each release the snapshot; a successful stage returns the snapshot before publication admission can reopen the publisher slot.",
+        "A stop fence is observed after the first image page and before the next is read, the stage is refused before replacement and snapshot custody returns; readback never exceeds one 16384-octet page.",
+        "The snapshot is released exactly once on every publication exit."
+      ],
+      "implementation": {
+        "test": "tests.test_native_checkpoint_image_readback",
+        "cases": [
+          "CheckpointImageReadback.test_stage_custody_and_readback"
+        ],
+        "native": false,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_checkpoint_image_readback.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
+      }
     },
     {
       "id": "SCN-1096",
@@ -8582,7 +8611,19 @@
       "evidence": [
         "tests/native_reclaim_capture_raw.lisp"
       ],
-      "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending."
+      "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending.",
+      "expected": [
+        "With a stale committed-history census (reserve 10000, demand 54544 for 2 records charging 300 octets) the capture is deferred with :credit and the actual current estimate, nothing is captured, the credits are unchanged and the unrelated reservation is retained.",
+        "With a sufficient reserve (60000) the capture is admitted exactly once, the reclaim reservation equals the current estimate for the committed history, and the borrow leaves the articles' room total unchanged.",
+        "A stale, missing or out-of-range (ahead) cache is recomputed from authoritative state so the cache count and sum advance together to 2 and 300; sync visits only the new committed row.",
+        "A held slot (pass or publication in flight) is refused by name with the credits, census cache, history and capture untouched; without the operator opt-in the capture is refused :offline-only with nothing captured."
+      ],
+      "implementation": {
+        "test": "tests/native_reclaim_capture_raw.lisp",
+        "native": false,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/native_reclaim_capture_raw.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
+      }
     },
     {
       "id": "SCN-1090",
@@ -8660,10 +8701,10 @@
       },
       "evidence": [
         "tests/native_retire_observation_source-mock.lisp",
-        "tests/acl2/native-retire-observation-tests.lisp",
-        "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
+        "tests/acl2/native-retire-observation-tests.lisp"
       ],
-      "execution_scope": "SBCL actual source with explicit clock/scheduling/owner/stat observations; no saved-image or physical durability qualification."
+      "execution_scope": "SBCL actual source with explicit clock/scheduling/owner/stat observations; no saved-image or physical durability qualification.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/operator-retire-observation-2026-10-03-v2.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1099",
@@ -8703,7 +8744,7 @@
       "id": "SCN-1101",
       "title": "Private history relocation yields by page without changing its completed concrete",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-017",
         "STO-026"
@@ -8718,7 +8759,19 @@
         "books/history-pages-relocate-step.lisp",
         "tests/acl2/history-pages-relocate-step-tests.lisp"
       ],
-      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result."
+      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result.",
+      "expected": [
+        "The page-stepped relocation completes with the same six concrete arrays and placement as the existing relocation: the starts become (1 2 3 4 7) with 11 pages, the moved words land at their new addresses and the old region is zeroed.",
+        "Each ordinary tick changes at most 2048 words, every successful yield strictly reduces the rank, and no replacement placement is available before :done.",
+        "A cold table wait or page wait returns :need-table or :need-page with the cursor and every concrete array unchanged; after the fixture cache completion the exact cursor is retried and yields a new cursor.",
+        "Insufficient capacity is refused (:refused :capacity) and an inconsistent image size is refused (:refused :image), each with the concrete unchanged and no cursor.",
+        "A run short of fuel is refused :continuation-fuel and does not have the final concrete, so partial completion cannot stand for :done."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-pages-relocate-step-tests.lisp",
+        "native": false
+      },
+      "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; its test is an ACL2 test book with no archived certify log. It returns to implemented when a passing run's log is archived and cited."
     },
     {
       "id": "SCN-1103",
@@ -8828,10 +8881,10 @@
         "test": "tests/test_native_operator_diagnostics_source.py"
       },
       "evidence": [
-        "tests/native_operator_diagnostics_source-mock.lisp",
-        "planning/evidence/operator-diagnostics-classification-2026-10-03.json"
+        "tests/native_operator_diagnostics_source-mock.lisp"
       ],
-      "execution_scope": "Actual source plus deliberate model/I/O observations, with actual closed ACL2 condition classifier. Saved-image matching consumer qualification remains Integration work."
+      "execution_scope": "Actual source plus deliberate model/I/O observations, with actual closed ACL2 condition classifier. Saved-image matching consumer qualification remains Integration work.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/operator-diagnostics-classification-2026-10-03.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1100",
@@ -8857,10 +8910,10 @@
       "evidence": [
         "tests/native_init_resume_source-mock.lisp",
         "tests/acl2/native-init-resume-tests.lisp",
-        "tests/test_native_init_resume.py",
-        "planning/evidence/operator-init-resume-2026-10-03-v2.json"
+        "tests/test_native_init_resume.py"
       ],
-      "execution_scope": "Actual-source SBCL and warm ACL2 literal exact-codec witnesses. Four saved-image cases are prepared but not executed; no physical durability qualification."
+      "execution_scope": "Actual-source SBCL and warm ACL2 literal exact-codec witnesses. Four saved-image cases are prepared but not executed; no physical durability qualification.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/operator-init-resume-2026-10-03-v2.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1105",
@@ -8947,10 +9000,10 @@
       "evidence": [
         "tests/native_journal_stream_source.lisp",
         "tests/acl2/owner-time-journal-stream-tests.lisp",
-        "tests/test_native_journal_stream.py",
-        "planning/evidence/operator-journal-stream-2026-10-03-v2.json"
+        "tests/test_native_journal_stream.py"
       ],
-      "execution_scope": "Actual host/fold source with explicit physical/model-operation seams, and separate finite full-model ACL2 equivalence tests. Matching image is prepared but not executed; no universal refinement or heap/durability qualification."
+      "execution_scope": "Actual host/fold source with explicit physical/model-operation seams, and separate finite full-model ACL2 equivalence tests. Matching image is prepared but not executed; no universal refinement or heap/durability qualification.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/operator-journal-stream-2026-10-03-v2.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1106",
@@ -9220,16 +9273,13 @@
       "evidence": [
         "tests/acl2/served-available-commands-tests.lisp",
         "tests/acl2/served-available-read-tests.lisp",
-        "planning/evidence/served-available-owner-20261003/checks.json",
         "tests/acl2/served-query-plan-tests.lisp",
         "tests/acl2/list-row-cursor-tests.lisp",
-        "tests/acl2/list-status-cursor-tests.lisp",
-        "planning/evidence/list-row-stream-20261003/checks.json",
-        "planning/evidence/list-status-stream-20261003/checks.json",
-        "planning/evidence/list-status-progress-20261003/checks-final.json"
+        "tests/acl2/list-status-cursor-tests.lisp"
       ],
       "execution_scope": "Actual source-loaded guarded command book plus PROGRAM event/owner-credit endpoints; twenty command/event comparisons and two full owner GROUP endpoints pass. No saved image/certificate or selective owner invariant transfer.",
-      "notes": "LIST ACTIVE/COUNTS source dispatcher/query-plan/row/status producer is connected. Full query residual/finite progress, current sparse owner composition, completed discovery authority, upstream config setup, PROGRAM guards/refinement and physical tariffs remain open."
+      "notes": "LIST ACTIVE/COUNTS source dispatcher/query-plan/row/status producer is connected. Full query residual/finite progress, current sparse owner composition, completed discovery authority, upstream config setup, PROGRAM guards/refinement and physical tariffs remain open.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/served-available-owner-20261003/checks.json, planning/evidence/list-row-stream-20261003/checks.json, planning/evidence/list-status-stream-20261003/checks.json, planning/evidence/list-status-progress-20261003/checks-final.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1118",
@@ -9289,7 +9339,9 @@
       "evidence": [
         "tests/fixtures/owner_operation_report.lisp"
       ],
-      "execution_scope": "Ordinary Lisp selected literal source; STATE map and framing/digest are explicit fixture adapters, not full native process or proof evidence."
+      "execution_scope": "Ordinary Lisp selected literal source; STATE map and framing/digest are explicit fixture adapters, not full native process or proof evidence.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1119",
@@ -9342,18 +9394,11 @@
       "evidence": [
         "tests/native_article_stream_source.lisp",
         "tests/native_article_ready_source.lisp",
-        "planning/evidence/article-stream-source-20261003.log",
-        "planning/evidence/article-stream-source-20261003-selection.log",
-        "planning/evidence/article-source-cache-admission-20261003.log",
         "tests/acl2/article-stream-server-tests.lisp",
-        "planning/evidence/article-server-source-20261003.log",
-        "tests/acl2/article-stream-tests.lisp",
-        "planning/evidence/article-selector-guards-source-20261003.log",
-        "planning/evidence/article-selector-guards-warm-20261003.log",
-        "planning/evidence/article-msgid-source-20261003.log",
-        "planning/evidence/article-msgid-warm-20261003.log"
+        "tests/acl2/article-stream-tests.lisp"
       ],
-      "execution_scope": "Actual shared core function bodies69488 finite checks; actual owner completion, PROGRAM wrapper and native READY/render helpers execute with recorded list-arena, owner-state installation and cold I/O seams (70841 aggregate checks). Selection commits once after complete framing; replay does not install again; RAW and READY cold continuations are retained by identity; exact503/423/430 refusals and unchanged reader selection; global generation change under unchanged per-connection pin is allowed. Web actual source stress fbcae3cd0 has independent recorded consumer evidence. Full actual parsed factory and physical decoded-window/browser execution, guard proofs and universal owner/reference boundary remain pending. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Resumable numeric/current selection and withdrawn lookup now pass126385 core/127949 aggregate checks including absent420/423 and withdrawn423, with unchanged selection until READY. Actual parsed factory and physical runtime remain pending. Exact selected definitions and PROGRAM factory/READY wrappers normally admitted in fresh ad8+gate336 cached source world, then raw native helpers reached CLI entry; ordinary renderer ABI mismatch remains explicit. No parsed factory, socket or physical decoded execution claim. Resumed source tests184344 core/185908 aggregate cover incremental server validation including long5000-octet valid/invalid/improper candidates; current native window-activation executes uncaptured branch in recorded seam. Universal pinned-server capture boundary and moderator/mutation/improper teeth admitted separately. Physical decoder/factory/socket join remains Runtime/History-owned. Guard-verified selector reached fn-statep positive, numeric/current reference equality, partitioned fuel and absent-number outcomes; malformed comparison state is separately labeled corrupted-state evidence. Current core warm admission and recorded source185908 aggregate pass; certificate at39d72 applies only to its earlier core bytes. Complete owner/reference and physical consumer remain open. Resumable Message-ID setup/current group projection passes184480 core/187518 aggregate actual-source checks, including missing/withdrawn430 distinctions and all ARTICLE/HEAD/BODY cold READY/replay paths. The Message-ID selected reader and recorded owner installation remain unchanged. First duplicate ID and first duplicate membership match original reference; oversized/unavailable local number yields0. Current guard/fuel theorem and literal warm teeth pass. These recorded seams do not claim full parsed factory/physical decoder execution."
+      "execution_scope": "Actual shared core function bodies69488 finite checks; actual owner completion, PROGRAM wrapper and native READY/render helpers execute with recorded list-arena, owner-state installation and cold I/O seams (70841 aggregate checks). Selection commits once after complete framing; replay does not install again; RAW and READY cold continuations are retained by identity; exact503/423/430 refusals and unchanged reader selection; global generation change under unchanged per-connection pin is allowed. Web actual source stress fbcae3cd0 has independent recorded consumer evidence. Full actual parsed factory and physical decoded-window/browser execution, guard proofs and universal owner/reference boundary remain pending. Subsequent lazy Xref captures original membership spine, filters one word/lookup character per transition, preserves duplicate and invalid-word reference behavior; source126337 core/127690 aggregate owner-native checks pass5000-character group cases, windows1/3/4096. Changed core34forms and component bounds warm admitted0.08s. Full initial selection/setup and owner/Xref boundary proofs remain open. Resumable numeric/current selection and withdrawn lookup now pass126385 core/127949 aggregate checks including absent420/423 and withdrawn423, with unchanged selection until READY. Actual parsed factory and physical runtime remain pending. Exact selected definitions and PROGRAM factory/READY wrappers normally admitted in fresh ad8+gate336 cached source world, then raw native helpers reached CLI entry; ordinary renderer ABI mismatch remains explicit. No parsed factory, socket or physical decoded execution claim. Resumed source tests184344 core/185908 aggregate cover incremental server validation including long5000-octet valid/invalid/improper candidates; current native window-activation executes uncaptured branch in recorded seam. Universal pinned-server capture boundary and moderator/mutation/improper teeth admitted separately. Physical decoder/factory/socket join remains Runtime/History-owned. Guard-verified selector reached fn-statep positive, numeric/current reference equality, partitioned fuel and absent-number outcomes; malformed comparison state is separately labeled corrupted-state evidence. Current core warm admission and recorded source185908 aggregate pass; certificate at39d72 applies only to its earlier core bytes. Complete owner/reference and physical consumer remain open. Resumable Message-ID setup/current group projection passes184480 core/187518 aggregate actual-source checks, including missing/withdrawn430 distinctions and all ARTICLE/HEAD/BODY cold READY/replay paths. The Message-ID selected reader and recorded owner installation remain unchanged. First duplicate ID and first duplicate membership match original reference; oversized/unavailable local number yields0. Current guard/fuel theorem and literal warm teeth pass. These recorded seams do not claim full parsed factory/physical decoder execution.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/article-stream-source-20261003.log, planning/evidence/article-stream-source-20261003-selection.log, planning/evidence/article-source-cache-admission-20261003.log, planning/evidence/article-server-source-20261003.log, planning/evidence/article-selector-guards-source-20261003.log, planning/evidence/article-selector-guards-warm-20261003.log, planning/evidence/article-msgid-source-20261003.log, planning/evidence/article-msgid-warm-20261003.log were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1121",
@@ -9379,7 +9424,9 @@
         "test": "tests/test_dev_repl.py",
         "native_test": "tests/dev_repl_native.py"
       },
-      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open. Subsequent actual native owner scenario-v2 covers prover exhaustion/refusal, later evaluation and proof admission recovery, hook reload deduplication, SIGTERM cleanup and fault fence on the named initialized cache with current developer module. Indexed dev-repl native execution evidence accompanies source a5d6c496d and tests/dev_repl_native.py; whole current union remains pending."
+      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open. Subsequent actual native owner scenario-v2 covers prover exhaustion/refusal, later evaluation and proof admission recovery, hook reload deduplication, SIGTERM cleanup and fault fence on the named initialized cache with current developer module. Indexed dev-repl native execution evidence accompanies source a5d6c496d and tests/dev_repl_native.py; whole current union remains pending.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1123",
@@ -9402,7 +9449,9 @@
         "test": "tests/test_control_observation.py",
         "native_test": "tests.test_native_bounds_join.TenMibArticleTests.test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post"
       },
-      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks pass. Actual native ten MiB NNTP and operator POST accepted with exact readback and owner alive: 1 test/0 skips/28.443s, supported 128 MiB history/16 MiB article/64 transactions. Indexed control-observation-ten-mib-native.json/log/execution.json bind the ad8 initialized-source cache plus ordinary observer overlay. No whole current-kernel, complete funding or overloaded deadline guarantee follows."
+      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks pass. Actual native ten MiB NNTP and operator POST accepted with exact readback and owner alive: 1 test/0 skips/28.443s, supported 128 MiB history/16 MiB article/64 transactions. Indexed control-observation-ten-mib-native.json/log/execution.json bind the ad8 initialized-source cache plus ordinary observer overlay. No whole current-kernel, complete funding or overloaded deadline guarantee follows.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1124",
@@ -9425,7 +9474,9 @@
         "test": "tests/test_moderation_outcome.py",
         "native_test": "tests/test_native_moderation_outcome.py"
       },
-      "execution_scope": "Actual source dispatcher, normal ACL2 formatter book49forms/7425steps and65literal teeth pass. Actual native partial publication/restart/retry PASS1test/0skips/10.444s: durable authorization, named uncertainty/exit3 on known cause refusal, healthy owner and target readable, row preserved after restart, retry accepted and target withdrawn. Indexed native-moderation-outcome evidence binds historical ad8 initialized cache plus exact current formatter/consumer overlay, not whole current union. Concurrent authority/generation interactions remain an investigation item, not an established defect or atomicity guarantee."
+      "execution_scope": "Actual source dispatcher, normal ACL2 formatter book49forms/7425steps and65literal teeth pass. Actual native partial publication/restart/retry PASS1test/0skips/10.444s: durable authorization, named uncertainty/exit3 on known cause refusal, healthy owner and target readable, row preserved after restart, retry accepted and target withdrawn. Indexed native-moderation-outcome evidence binds historical ad8 initialized cache plus exact current formatter/consumer overlay, not whole current union. Concurrent authority/generation interactions remain an investigation item, not an established defect or atomicity guarantee.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1122",
@@ -9450,11 +9501,9 @@
         "tests/native_web_post_stream_raw.lisp",
         "tests/acl2/web-post-stream-tests.lisp",
         "planning/evidence/web-post-and-producer-source-2026-10-03.md",
-        "planning/evidence/web-post-browser-red-2026-10-03.md",
-        "planning/evidence/web-post-action-fix-2026-10-03/browser-one.err",
-        "planning/evidence/web-post-action-fix-2026-10-03/execution.json"
+        "planning/evidence/web-post-browser-red-2026-10-03.md"
       ],
-      "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open. The original fullbrowser failure is retained. Firsthand stderr traced malformed web action to three emitted POST continuation tags absent from the actual classifier; source49c933f02 accepts those exact tags and refuses unknowns. The same scoped initialized source coordinate plus normally admitted classifier passes the real account/POST/read/remove case in16.702s,1test,0skips; producer/raw regression also passes through the actual classifier. Latest current-union decoded/P3/runtime, TLS/concurrent endpoints and complete funding remain unexecuted or open; status remains specified."
+      "note": "Actual source programs admit and exact valid/badCSRF/remove/UTF8/duplicate and long subject tests pass, with concrete fill invariant-risk. Native4096 form turns and partial117 feed pass. Full retained request/subject and refused form path, profile-dependent fixed prefix construction and qualified funding remain open. The original fullbrowser failure is retained. Firsthand stderr traced malformed web action to three emitted POST continuation tags absent from the actual classifier; source49c933f02 accepts those exact tags and refuses unknowns. The same scoped initialized source coordinate plus normally admitted classifier passes the real account/POST/read/remove case in16.702s,1test,0skips; producer/raw regression also passes through the actual classifier. Latest current-union decoded/P3/runtime, TLS/concurrent endpoints and complete funding remain unexecuted or open; status remains specified. Evidence owed (Builder D, 2026-10-09): planning/evidence/web-post-action-fix-2026-10-03/browser-one.err, planning/evidence/web-post-action-fix-2026-10-03/execution.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1125",
@@ -9590,10 +9639,10 @@
       },
       "evidence": [
         "tests/native_decoded_hold_raw.lisp",
-        "tests/test_native_decoded_custody.py",
-        "planning/evidence/native-decoded-custody-seam-2026-10-03/manifest.json"
+        "tests/test_native_decoded_custody.py"
       ],
-      "execution_scope": "Actual developer hold seam and physical pread/thread active+inactive fixture pass in0.224s; existing retained controller recording fixture0.166s and17 source-coordinate/history tests pass. Four objects archived with manifest63c5579c686181eb95fb0f45647dcba0caed157b074f6db66fa6b841fb4c2ce2. Connected native selector is prepared, not executed: current initialized host entry and real default funded-pool producer remain required. Fixed-storage scope is partial; no allocator/GC/full funding, full HM replay or proof claim."
+      "execution_scope": "Actual developer hold seam and physical pread/thread active+inactive fixture pass in0.224s; existing retained controller recording fixture0.166s and17 source-coordinate/history tests pass. Four objects archived with manifest63c5579c686181eb95fb0f45647dcba0caed157b074f6db66fa6b841fb4c2ce2. Connected native selector is prepared, not executed: current initialized host entry and real default funded-pool producer remain required. Fixed-storage scope is partial; no allocator/GC/full funding, full HM replay or proof claim.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/native-decoded-custody-seam-2026-10-03/manifest.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1131",
@@ -9655,12 +9704,10 @@
         "test": "tests/test_native_owner_pool_startup_source.py"
       },
       "evidence": [
-        "tests/native_owner_pool_startup_source-mock.lisp",
-        "planning/evidence/operator-pool-startup-source-2026-10-03-v2.json",
-        "planning/evidence/operator-executor-custody-source-2026-10-03.json",
-        "planning/evidence/operator-arena-custody-source-2026-10-03.json"
+        "tests/native_owner_pool_startup_source-mock.lisp"
       ],
-      "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates. The actual E-locked executor-drained helper is composed with owner-run in the joined-but-debt case; stop/constructor physical effects remain recorded seams. Actual global arena observation executes from Horse Exits db2e4c87a; prior owner-run and helper bodies independently refute lost custody/preconstructor guard."
+      "execution_scope": "Actual native function bodies with observed physical constructors and deliberate core startup results; actual service-settlement ACL2 functions. Numerical producer proof, actual allocator/worker composition and matching image are separate coordinates. The actual E-locked executor-drained helper is composed with owner-run in the joined-but-debt case; stop/constructor physical effects remain recorded seams. Actual global arena observation executes from Horse Exits db2e4c87a; prior owner-run and helper bodies independently refute lost custody/preconstructor guard.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/operator-pool-startup-source-2026-10-03-v2.json, planning/evidence/operator-executor-custody-source-2026-10-03.json, planning/evidence/operator-arena-custody-source-2026-10-03.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1133",
@@ -9684,10 +9731,10 @@
         "test": "tests/test_native_owner_startup_custody_source.py"
       },
       "evidence": [
-        "tests/native_owner_startup_custody_source.lisp",
-        "planning/evidence/operator-startup-custody-composition-2026-10-03.json"
+        "tests/native_owner_startup_custody_source.lisp"
       ],
-      "execution_scope": "Actual owner-install, failed-open close helper, Store-close debt, retained authority and terminal settlement bodies; actual ACL2 service settlement decisions. Open provider and physical close/unlock/unlink calls are recorded observations, not live filesystem durability or saved-image qualification."
+      "execution_scope": "Actual owner-install, failed-open close helper, Store-close debt, retained authority and terminal settlement bodies; actual ACL2 service settlement decisions. Open provider and physical close/unlock/unlink calls are recorded observations, not live filesystem durability or saved-image qualification.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/operator-startup-custody-composition-2026-10-03.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1134",
@@ -9718,11 +9765,10 @@
         "test": "tests/test_native_bp_owner_startup_source.py"
       },
       "evidence": [
-        "tests/native_bp_owner_startup_source-mock.lisp",
-        "planning/evidence/bp-served-startup-source-2026-10-03.json",
-        "planning/evidence/bp-startup-peer-join-20261003/result.json"
+        "tests/native_bp_owner_startup_source-mock.lisp"
       ],
-      "execution_scope": "Actual production BP entry/helper functions and ACL2 service-settlement decisions with recorded physical seams. Complete DEFAULT/BP tariffs, actual allocator/worker/Store composition and current source-native joins remain open."
+      "execution_scope": "Actual production BP entry/helper functions and ACL2 service-settlement decisions with recorded physical seams. Complete DEFAULT/BP tariffs, actual allocator/worker/Store composition and current source-native joins remain open.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/bp-served-startup-source-2026-10-03.json, planning/evidence/bp-startup-peer-join-20261003/result.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1135",
@@ -9752,17 +9798,10 @@
       "evidence": [
         "tests/acl2/legacy-header-query-tests.lisp",
         "tests/native_header_query_source.lisp",
-        "planning/evidence/header-query-source-20261003.log",
-        "planning/evidence/header-query-warm-20261003.log",
-        "planning/evidence/header-query-bounds-source-20261003.log",
-        "planning/evidence/header-query-bounds-warm-20261003.log",
-        "planning/evidence/header-query-continuation-source-20261003.log",
-        "planning/evidence/header-query-continuation-warm-20261003.log",
-        "planning/evidence/header-query-grammar-source-20261003.log",
-        "planning/evidence/header-query-grammar-warm-20261003.log",
         "tests/acl2/legacy-parser-validity-tests.lisp"
       ],
-      "execution_scope": "Actual shared parser/query/normalizer functions237330 recorded list-arena/cold checks; guard and literal work/source/ready/bounds/reference arena teeth warm pass. Actual Served dispatch/owner/physical compressed execution and universal arbitrary-name span/parser/refinement remain pending. Arbitrary scheduling split cursor+USED proofs and exact actual arena/source transition bridge warm PASS with literal positive, fuel mutation and READ guard-removal teeth. Generic shared header transition/run grammar-control correspondence proves independent of requested names, warm81validity/62literal testforms PASS; full query old-field-value bridge remains open."
+      "execution_scope": "Actual shared parser/query/normalizer functions237330 recorded list-arena/cold checks; guard and literal work/source/ready/bounds/reference arena teeth warm pass. Actual Served dispatch/owner/physical compressed execution and universal arbitrary-name span/parser/refinement remain pending. Arbitrary scheduling split cursor+USED proofs and exact actual arena/source transition bridge warm PASS with literal positive, fuel mutation and READ guard-removal teeth. Generic shared header transition/run grammar-control correspondence proves independent of requested names, warm81validity/62literal testforms PASS; full query old-field-value bridge remains open.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/header-query-source-20261003.log, planning/evidence/header-query-warm-20261003.log, planning/evidence/header-query-bounds-source-20261003.log, planning/evidence/header-query-bounds-warm-20261003.log, planning/evidence/header-query-continuation-source-20261003.log, planning/evidence/header-query-continuation-warm-20261003.log, planning/evidence/header-query-grammar-source-20261003.log, planning/evidence/header-query-grammar-warm-20261003.log were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1136",
@@ -9795,11 +9834,10 @@
       },
       "evidence": [
         "tests/native_heap_default_source-mock.lisp",
-        "planning/evidence/operator-default-heap-source-2026-10-03.json",
-        "tests/native_heap_diagnostic_policy_source-mock.lisp",
-        "planning/evidence/operator-default-heap-source-2026-10-03-v2.json"
+        "tests/native_heap_diagnostic_policy_source-mock.lisp"
       ],
-      "execution_scope": "Actual native heap/profile/status bodies and actual selected ACL2 reservation/layout arithmetic. Base heap figure, config/machine capture and explicit output extension are deliberate seams; no complete allocation, expanded init/reopen theorem, nonempty recovery, saved-image or deployment qualification. Configured diagnostic cases execute actual STATUS/HEALTH and config field projections plus real output reservation arithmetic. Explicit cold arithmetic remains a declared seam; complete cold startup remains unsupported."
+      "execution_scope": "Actual native heap/profile/status bodies and actual selected ACL2 reservation/layout arithmetic. Base heap figure, config/machine capture and explicit output extension are deliberate seams; no complete allocation, expanded init/reopen theorem, nonempty recovery, saved-image or deployment qualification. Configured diagnostic cases execute actual STATUS/HEALTH and config field projections plus real output reservation arithmetic. Explicit cold arithmetic remains a declared seam; complete cold startup remains unsupported.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/operator-default-heap-source-2026-10-03.json, planning/evidence/operator-default-heap-source-2026-10-03-v2.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1137",
@@ -9849,11 +9887,10 @@
         "test": "tests/test_native_bp_prefix_probe_source.py"
       },
       "evidence": [
-        "tests/native_bp_prefix_probe_source.lisp",
-        "planning/evidence/bp-prefix-probe-source-2026-10-03.json",
-        "planning/evidence/manifests/certify-20261003T180302Z-2794821.json"
+        "tests/native_bp_prefix_probe_source.lisp"
       ],
-      "execution_scope": "Actual trusted repository function bodies with Common Lisp shims and two MBE choices; normal ACL2 guards prove branch equivalence. No native endpoint, full semantic decode quantum or GC tariff claim."
+      "execution_scope": "Actual trusted repository function bodies with Common Lisp shims and two MBE choices; normal ACL2 guards prove branch equivalence. No native endpoint, full semantic decode quantum or GC tariff claim.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/bp-prefix-probe-source-2026-10-03.json, planning/evidence/manifests/certify-20261003T180302Z-2794821.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "SCN-1139",
@@ -9924,7 +9961,7 @@
         "`identity relative/control`; `identity /a /b`; `identity help`."
       ],
       "expected": [
-        "Exit 0; `fn-store-identity-v1 format=... node=HEX64 schema=HEX64 profile=HEX64 consumer=unbootstrapped created-revision=... running-revision=... grammar=HEX64`, grammar the BLAKE3 of specs/wire-grammar.json.",
+        "Exit 0; `fn-store-identity-v1 format=... node=HEX64 schema=HEX64 profile=HEX64 consumer=unbootstrapped created-revision=... running-revision=... grammar=HEX64`, grammar the BLAKE3 of the exported wire grammar (build/box/wire-grammar.json).",
         "Exit 0; `consumer=bootstrapped history=HEX incarnation=HEX`, every other field unchanged.",
         "Not exit 0, and no identity line.",
         "Exit 5 (usage) twice; `help` prints `usage: fn identity CONTROL ...` and exits 0."
@@ -9980,6 +10017,218 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-1147",
+      "title": "Once-only allocating scheduling turn uses an installed worker slot, finishes once, and fences raw escapes",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-042"
+      ],
+      "steps": [
+        "Install a concrete allocation-turn slot store with more than one slot and enter turns on distinct slots through the internal entry with a role symbol; hold a connection lifetime holder separately.",
+        "Prepay the body of a turn once, continue a prepaid body in draining, and offer a gate-owned unpaid body while draining.",
+        "Finish with the matching slot and nonce; then repeat the finish, finish with a stale nonce, finish a reused slot with the old nonce, and finish from an intent or faulted phase.",
+        "Make the gate, the nonce issuer, the draining mode and the role refuse an entry in turn.",
+        "Interrupt an entry, body prepayment or finish between its physical updates (raw cut)."
+      ],
+      "expected": [
+        "A connection holder is lifetime custody and gives no turn authority; each turn draws a direct installed slot, with no served resize, free-list search or slot scan.",
+        "Entry returns the word, the scalar nonce, the slots and the pool; the receipt is SLOT and NONCE as two scalars, never a newly allocated list.",
+        "A matching finish in phase 2, 3 or 4 under active or draining mode with a positive active count retains phase 5, decrements the active count once and returns the slot idle, keeping the last nonce.",
+        "A stale, duplicate or reused-slot old nonce leaves the complete state unchanged; intent and faulted phases cannot finish.",
+        "A definite gate refusal restores idle with no issued receipt; a definite issuer refusal consumes the temporary turn once while retaining the gate prepayment.",
+        "A gate-owned unpaid body yields in draining and returns within the gate rather than waiting for a collection with an active turn; a prepaid body continuation keeps the same receipt.",
+        "A raw escape between physical updates fences and retains the exact partial transition, roots, identity and allocation debt; recovery never silently consumes a receipt.",
+        "Source declaration admission is not native execution or image qualification; actual operation allowance composition and the process-wide executor join remain open."
+      ]
+    },
+    {
+      "id": "SCN-1148",
+      "title": "Resource spent for a user draws from that user's bank first and teardown returns the sub-bank",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-045"
+      ],
+      "steps": [
+        "Install a root bank whose budget is a nine-coordinate resource vector (resident, disk, descriptors, workers, read identities, transaction identities, configuration generations, connection identities, work), with the owner's baseline drawn in slot 0 and the maintenance reserve opened in slot 1 before any user slot exists.",
+        "Open a connection sub-bank from the root, draw reads on it with their completion tokens, refund part of a draw, settle a draw, and settle it a second time.",
+        "Draw a slot, settle it, draw it again, and replay the first draw's completion token.",
+        "Draw ten reads so the read-identity coordinate is exhausted while every octet has returned.",
+        "Request a draw whose demand plus the drawn vector is not within the budget; request a refund past what the draw holds; destroy a sub-bank that overspent its spent coordinates.",
+        "Destroy the connection sub-bank, and grow the reserve by the owner's dW+ before an acceptance."
+      ],
+      "expected": [
+        "A draw is admitted exactly when drawn plus demand is within the budget and charges exactly the demand, answering the slot's new generation as the completion token; the check precedes every effect.",
+        "Reusable coordinates return at settle; spent coordinates (identities and work) stay drawn, so the exhausted read-identity coordinate refuses further reads by name (:resources-unavailable) with every octet returned.",
+        "A second settle of the same token is never admitted; a replayed first-draw token on a slot drawn again is :stale and leaves the bank.",
+        "Every refused step returns the bank itself, so the slack is unchanged; refusals are named (:invalid-draw, :slot-busy, :resources-unavailable, :invalid-slot, :stale, :invalid-refund, :past-what-it-holds, :invalid-grow, :invalid-destroy, :sub-bank-overspent).",
+        "A user's step never draws the reserve at slot 1, and the owner's baseline and reserve are drawn first at install.",
+        "Destroying the sub-bank returns exactly its budget less what it spent, covering the reusable part of every draw it still held.",
+        "The refusal's own transient execution is not accounted by these books, and no served entry draws on a bank until definterface :operation lands."
+      ]
+    },
+    {
+      "id": "SCN-1149",
+      "title": "Independent catchup spool flight backing is drawn before buffers, descriptors and worker construction",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-049"
+      ],
+      "steps": [
+        "Capture a peer-flight policy of heap octets, spool disk octets, maximum flights, maximum workers, spool allowance per flight and total metered work; also supply policies that are malformed or unsupported, and a policy whose spool allowance is not below 2^63.",
+        "Start without any peer-flight-profile file, and with a profile file that is FNP1 followed by six big-endian u64 fields in policy order, with and without a trailing extra byte.",
+        "Run launcher and startup for a store with the peer allowance, at a heap fraction the protected check admits and at one it refuses (85 percent heap).",
+        "Begin a flight, drawing its lifetime row and its work row, then exhaust the work row mid-batch.",
+        "Settle a flight after peer ACK, local response, timeout or cancellation."
+      ],
+      "expected": [
+        "Each flight has separate lifetime and work rows selected by ACL2, and the actual draw precedes the private buffer, spool and worker constructors.",
+        "Absence of the profile file creates no grant; malformed or unsupported fields refuse, and a spool allowance not below 2^63 is rejected before install because native seeks cannot represent it.",
+        "Startup checks the actual dynamic capture and protects the other banks: DEFAULT protects the peer heap rather than consuming it as spare headroom, and an 85 percent heap is refused.",
+        "Work exhaustion refuses before cursor mutation and cannot silently truncate an accepted batch.",
+        "The flight lease survives peer ACK, local response, timeout and cancellation; settlement requires actual worker return and join, physical socket closure, spool cleanup and no future publication or owner-close callback custody.",
+        "The producer is explicitly :partial-fixed-storage; native cells, pointed-to hash frames, controller and temporary cons, TLS and collector behavior are not covered, and no complete-profile activation claim is made."
+      ]
+    },
+    {
+      "id": "SCN-1150",
+      "title": "Authentication failures: three per connection, the third answered 481 then 400 and close",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "NNT-1002"
+      ],
+      "steps": [
+        "On one connection, send in one read ten AUTHINFO USER / AUTHINFO PASS pairs with a wrong password, followed by a GROUP command.",
+        "Repeat with failures through AUTHINFO SASL exchanges that fail, mixed with a syntax error, a 483, a 503, a 504 and a cancelled exchange.",
+        "Fail twice, upgrade the connection with STARTTLS, and fail again.",
+        "After the closing connection, open a new connection and log in with the right password."
+      ],
+      "expected": [
+        "The replies are 381 and 481 three times, then 400 (400 too many authentication failures; closing connection), then end of file; the fourth guess and the GROUP are never framed or answered.",
+        "A failure is a 481 to AUTHINFO PASS or a failed AUTHINFO SASL exchange; a syntax error, a 483, a 503, a 504 or a cancelled exchange (481 authentication cancelled) is not counted.",
+        "The count is per connection, kept in the auth session, and survives STARTTLS.",
+        "No connection has more than three passwords checked, however many USER/PASS pairs one read carries.",
+        "The per-address exposure budget is separate and unchanged; the owner keeps serving and a new connection can log in with the right password.",
+        "The stored verifier remains one fast salted digest per guess; an iterated or memory-hard verifier is not part of this requirement."
+      ]
+    },
+    {
+      "id": "SCN-1151",
+      "title": "Redeem client bounds input before accumulation and sends only validated credential commands",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-1003"
+      ],
+      "steps": [
+        "Feed the redeem client a password one character at a time: a nonempty graphic ASCII token at exactly 496 octets, one longer, one empty, one with whitespace or a non-octet character, and one ending in a single CR before LF or EOF.",
+        "Build the XREDEEM and AUTHINFO commands from CODE and LOGIN tokens containing an embedded CR/LF, whitespace, or the reserved word PASS in CODE.",
+        "Read a server reply whose LF falls within the 512 octet response bound, one whose LF is beyond it, and a single chunk carrying both an oversized prefix and LF."
+      ],
+      "expected": [
+        "A token of at most 496 octets is retained; a longer or invalid token is refused before more input is retained, and one terminal CR before LF or EOF is permitted.",
+        "The 496 octet width lets both the 13 octet XREDEEM PASS prefix and the 14 octet AUTHINFO PASS prefix fit the 510 octet command content bound of RFC 3977 section 3.1.",
+        "The complete command is built and validated by ACL2 for token boundaries and wire width; the reserved PASS keyword in CODE is refused, and no embedded CR/LF, whitespace token splitting or non-octet character reaches the wire.",
+        "The reply LF position is checked against the 512 octet bound before the line is interpreted, including inside one chunk; a malformed or overlong reply ends the exchange as loss, never as a definitive account refusal, so the existing redemption stage decides unreachable or uncertain.",
+        "Whether a syntactically valid login or invitation is usable remains the server's account policy; the input-policy proofs are narrower than host-loop refinement or a saved-image interoperability claim."
+      ]
+    },
+    {
+      "id": "SCN-1152",
+      "title": "TCPCL passive entity refuses a foreign Contact Header version with SESS_TERM Version mismatch and no MSG_REJECT",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-016"
+      ],
+      "steps": [
+        "Start a TCPCLv4 passive receiver and connect with a TCPCLv3 contact header: dtn! magic, version 3, flags 0, keepalive 15, an SDNV EID length and the EID ipn:150.0, all in one write.",
+        "Hold the connection open and read until the passive side closes, within a deadline.",
+        "Send a version 3 contact to an active entity in the Contact phase, to a passive entity that is already Messaging, and a version 4 contact to a passive entity.",
+        "Send a bad magic string and a peer CAN_TLS flag without local willingness."
+      ],
+      "expected": [
+        "The passive side sends its own v4 Contact Header (CAN_TLS clear) and a SESS_TERM with flags 0 and reason 2 (Version mismatch), then closes at once; the reply is exactly those octets and then end of file.",
+        "The remainder of the peer's v3 header is never parsed as v4 messages and draws no MSG_REJECT; a further SESS_TERM from the peer produces no events.",
+        "An active entity in Contact closes with no SESS_TERM; version 4 to the passive entity reaches Messaging; a passive entity already Messaging ignores a second contact header.",
+        "A bad magic string closes silently before any message; Enable TLS is the conjunction, so CAN_TLS from the peer alone negotiates no TLS.",
+        "Version fallback to TCPCLv3 is deferred: fn implements version 4 only."
+      ]
+    },
+    {
+      "id": "SCN-1153",
+      "title": "Store limits are operator policy changed in place: applied now, applied at next start, or refused by name",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-038"
+      ],
+      "steps": [
+        "Publish a :set-limit configuration record for a live field (max-transactions, max-history-octets or max-article-octets) with a raise that fits the heap reservation the process started with.",
+        "Publish a raise that needs more heap than the running reservation; decide the same raise offline, with no process holding a reservation.",
+        "Request a lowering below the store's current use (99 transactions with 100 committed, 999999 history octets with 1000000 charged), a field that is not live (max-record-octets), an invalid profile (zero transactions), a value past the representation ceiling, and a figure a 2 GiB machine cannot hold.",
+        "Replay a configuration history with several :set-limit rows, including a later lowering of the same field and the rows in the opposite order, and open the store from that history alone.",
+        "Lower max-transactions below max-open-suffix."
+      ],
+      "expected": [
+        "A raise within the running reservation is :applied now; a raise beyond it is :at-restart with no data moved; offline, every accepted change is :at-restart.",
+        "A lowering below current use is refused by name as below-current-use with the use; a field that is not live is refused :not-a-live-limit; an invalid profile is refused with its reason; a figure the machine cannot hold is refused :machine-cannot-hold-profile with both numbers; a value past the ceiling is refused as above-representation-ceiling.",
+        "An accepted change leaves the use within the new limit, and no limit change moves data or needs an export and an import.",
+        "The effective profile is the sealed one with each live field overridden by its last row, computed from configuration history alone, so the profile an owner installs on applying a record is the one every later open computes; the opposite row order gives a different profile.",
+        "A lowered T lowers max-open-suffix with it, as init resolution does.",
+        "A change recorded for the next start does not fund; admission reads the funded limit, and config.json is never rewritten."
+      ]
+    },
+    {
+      "id": "SCN-1154",
+      "title": "Explicit durable group authority binding is installed, replaced, removed and pinned per connection",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "SUB-007"
+      ],
+      "steps": [
+        "Create group fn.test, then publish group-authority records installing a canonical 64-character lowercase hexadecimal principal, replacing it with another, and setting it to ungoverned (empty string); replay the four-record history.",
+        "Use operator CONFIG group authority with a valid principal, with ungoverned, with an invalid spelling, and for a group that does not exist.",
+        "On a running node, open a connection, post by transit under an installed authority, replace the binding with ungoverned and post on the old connection and on a new connection, then bind another principal and restart.",
+        "Post by transit on a connection opened after the restart."
+      ],
+      "expected": [
+        "The :set-group-authority delta (code 29) installs the principal and the local configuration generation and preserves all six prior group fields; its sole antecedent is that the named group exists, so with no group the conclusion fails.",
+        "Replay of creation, installation, replacement and removal yields each binding in turn; fresh creation and revival start ungoverned at generation zero.",
+        "Configuration publication admits only a live configured group, a valid principal spelling or the empty string, and zero/nil unused fields.",
+        "Authority is read from the transit connection's pinned configuration: a replacement governs later connections and leaves an old connection's pin intact; the old connection still logs authority=no-statement, a new connection after ungoverned logs authority=ungoverned, and a post after the restart logs authority=no-statement for the replacement.",
+        "An authority binding names a principal and does not enroll keys or manufacture a verified statement; byte admission still uses the current delivery configuration.",
+        "A productive :admitted authority claim, native qualification on the new immutable image and the legacy statement key index with the hybrid snapshot bridge remain open."
+      ]
+    },
+    {
+      "id": "SCN-1155",
+      "title": "Committed membership transcript retains commit-ID conflicts and refuses their authority before any epoch merge",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "SUB-008"
+      ],
+      "steps": [
+        "Scan a membership transcript holding a signed envelope E1 for a commit in a group, then offer a distinct authority-signed envelope E2 with the same commit id in the same group (a different decoded commit, same id).",
+        "Offer the exact envelope E1 again.",
+        "Offer a same-id envelope from a principal other than the selected authority before the authority's own commit.",
+        "Run the publication with a scan cursor whose duplicate witness is omitted, or whose transcript is corrupt, and resume a comparison one retained envelope at a time."
+      ],
+      "expected": [
+        "Both envelopes remain evidence; the same commit id cannot disappear through the epoch merge's id suppression, and the authority is refused as :commit-id-conflict.",
+        "An exact envelope retransmission is :retransmission and leaves the transcript with the single retained envelope.",
+        "Prior evidence by a principal other than the selected authority cannot poison that authority's commit id.",
+        "Publication requires a completed conflict scan, a verified candidate, a nonempty authority and a statement creator equal to the commit actor; omitting the duplicate witness makes the retention conclusion fail.",
+        "The payload id is not the statement identity, and byte acceptance and persistence remain separate.",
+        "Verification is conditional on the signature seam and A-CRYPTO; actual persistence completion, cold replay installation and the 513-octet-ID codec disagreement (decode-exact answers :limit at its 512 cap) remain open."
+      ]
     }
   ]
 }

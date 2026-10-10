@@ -2,22 +2,6 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-core (name &rest args)
-  (declare (ignorable name args))
-  (harness-stub-reached 'fnn-core "host/native/io.lisp"))
-;;; ---- derived stubs: END ----
 (defun source-definition (path kind name)
   (with-open-file (stream path)
     (let* ((text (make-string (file-length stream)))
@@ -52,6 +36,12 @@
 (defun fnn-lim-plan-p (plan) (eq plan :limit))
 (defun fnn-admin-execute-limit (&rest args) (declare (ignore args)) 7)
 (defun fnn-admin-clock-plan () :clock)
+;; The fixture's plans are offline administrative requests: ACL2's
+;; fn-native-admin-host-owner-requestp names no running-owner request.
+(defun fnn-core (name &rest args)
+  (case name
+    (fn-native-admin-host-owner-requestp nil)
+    (otherwise (harness-stub-reached name (format nil "fnn-core ~(~a~) ~s" name args)))))
 (defun fnn-admin-reconfigure (&rest args) (declare (ignore args)) (values :record nil))
 (defun fnn-admin-publish-record (&rest args) (declare (ignore args)) (values 1 "record" :verified))
 ;; The escape path of the macro below: the deployed helper and ACL2 decisions it calls.

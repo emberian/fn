@@ -1511,7 +1511,7 @@ def registry_findings(books: dict[str, list[Assertion]]) -> list[Finding]:
             continue
         out.append(Finding(
             "keystone-without-witness", "planning/proofs.json", 0,
-            f"{target['id']} ({target['status']}): {len(missing)} of "
+            f"{target['id']}: {len(missing)} of "
             f"{len(target['events'])} events are named in no test book: "
             + ", ".join(sorted(missing)[:6])
             + (" ..." if len(missing) > 6 else "")))
@@ -2151,7 +2151,7 @@ def main(argv: list[str] | None = None) -> int:
             generated, hand = generated_coverage()
             print(f"teeth: {generated} registry keystones have generated teeth "
                   f"(defkeystone/defteeth forms), {hand} hand teeth; tools/"
-                  f"keystone_emit.py holds planning/teeth-obligations.json to its base")
+                  f"keystone_emit.py holds build/teeth-obligations.json to its base")
         for check, number in sorted(by_check.items()):
             print(f"teeth: {number} {check}")
         if not by_check:

@@ -8,12 +8,15 @@
  "line": "",
  "locus": "gates-tests-packaging",
  "notes": [
-  "10-04 15:12 FILL 10-04: still red at 55ff708a6 (cloud1 make check): premise_audit 1401 unestablished vs baseline 949, NEW incl. adt-pg-pokp, fn-acg-reachablep, fn-ach-reachablep, fn-aec-physical-installationp, fn-aec-pool-statep, fn-aec-statep, fn-af-id-rightp, fn-af-msg-id-closep; log cloud1:/tank/fn/scratch/fill-wt-check.log"
+  "10-04 15:12 FILL 10-04: still red at 55ff708a6 (cloud1 make check): premise_audit 1401 unestablished vs baseline 949, NEW incl. adt-pg-pokp, fn-acg-reachablep, fn-ach-reachablep, fn-aec-physical-installationp, fn-aec-pool-statep, fn-aec-statep, fn-af-id-rightp, fn-af-msg-id-closep; log cloud1:/tank/fn/scratch/fill-wt-check.log",
+  "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): premise_audit: 1,185 of 1,872 premises at hosted entries unestablished (baseline 753); 437 NEW (first: adt-pg-pokp, established off the host path, assumed by adt-pg-put-tree-is-put-field; adt-scalar-seq-p, preserved only; adt-tp-seq-lens-ok, never concluded, assumed by fn-pck-x-image-after-commit). PREMISE-STATE-INHABITATION and PREMISE-VALUE-DOMAIN are the standing families. Owner sweep-gates -> builder-D.",
+  "10-10 Builder D, coordinator ruling (a), attribution at dev 9b580dd36: premise_audit 1215 unestablished against baseline 753, 467 excess (the coordinator's 1185 was an earlier dev). 401 of the 467 were accepted in 32e0fb4fc's baseline (1171 entries) and were dropped by the integrate merge eb3317521, which resolved the baseline to 753 while they were still findings: row PREMISE-BASELINE-MERGE-LOSS (builder-B). The other 66 are assumed by theorems introduced since the baseline: builder-A 57 (runtime contract bab3f3fd3/989bf16b8/0ef4593d8/3fc70cc66/e5b454aed/9c9ace32a/b856325bb, MEM-013 B' 4cb04e18b, paged-checkpoint-image 6e35612a6, catalog and checkpoint-payloads lanes, account adoption ebbaec08b, control receipts d755652ae), builder-C 5 (130529298 ARTICLE render, 6e46455f1 landing-2 keystones, b2e42f60e LIST cursor, 191fa5f7d send window, eb481f4b1 def-representation), builder-M 2 (437e0fe23 cold-read wait, 7ffea70e5 heap init figure), builder-D 2 (2afb42b8f BP rotation restart): rows PREMISE-EXCESS-A/C/M/D. Stays red until each is established or back at or under 753.",
+  "10-10 Builder D: per ruling, the 401 merge-lost entries are restored (PREMISE-BASELINE-MERGE-LOSS) and 5 resolved entries removed: baseline 753 -> 1149. premise_audit --strict now names exactly the 66 true excess premises as NEW, held red by PREMISE-EXCESS-A/C/M/D."
  ],
- "owner": "sweep-gates",
+ "owner": "builder-D",
  "severity": "medium",
  "source": "check-lane-355a5c843",
  "state": "open",
  "title": "check-lane red: premise_audit",
- "updated": "2026-10-04T19:12:27Z"
+ "updated": "2026-10-10T03:10:00Z"
 }

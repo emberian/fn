@@ -46,5 +46,37 @@ class ScaffoldIDTests(unittest.TestCase):
         self.assertEqual(found, ["STO-999", "STO-1000", "STO-10000"])
 
 
+    def test_prose_evidence_entry_is_a_finding_not_a_crash(self):
+        # A sentence as a path component made the file system raise
+        # ENAMETOOLONG (Linux) and the tool exit "malformed scaffold" before
+        # any other check; whether stat raises or answers False depends on
+        # the platform, so the raising branch is also forced.
+        prose = "tests/acl2/x-tests.lisp (" + "a witness and its teeth, " * 20 + ")"
+        too_long = OSError(36, "File name too long")
+        for forced in (False, True):
+            with self.subTest(forced=forced), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory).resolve()
+                (root / "README.md").write_text("")
+                (root / "books").mkdir()
+                (root / "books" / "x.lisp").write_text("")
+                real_link = check_scaffold.link
+
+                def link(target, base, context):
+                    if forced and target == prose:
+                        raise too_long
+                    return real_link(target, base, context)
+                with mock.patch.object(check_scaffold, "ROOT", root), \
+                        mock.patch.object(check_scaffold, "ERRORS", []), \
+                        mock.patch.object(check_scaffold, "link", link):
+                    check_scaffold.evidence({"id": "PRF-1000",
+                                             "evidence": ["books/x.lisp", prose]}, set())
+                    errors = list(check_scaffold.ERRORS)
+                self.assertTrue(errors)
+                self.assertTrue(all(e.startswith("PRF-1000: ") and "x-tests.lisp (" in e
+                                    for e in errors), errors)
+                if forced:
+                    self.assertEqual(errors, ["PRF-1000: evidence is not a path "
+                                              f"(File name too long): {prose[:120]}"])
+
 if __name__ == "__main__":
     unittest.main()

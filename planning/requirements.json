@@ -425,8 +425,6 @@
         "tests/acl2/byte-store-relation-tests.lisp",
         "tests/acl2/byte-store-program-invariants-tests.lisp",
         "planning/evidence/wave-realignment-2026-09-19.md",
-        "planning/lanes/HANDOFF-w13-storage-initializer.md",
-        "planning/lanes/HANDOFF-w13-transaction-name-codec.md",
         "planning/evidence/native-initializer-composition-w18-2026-09-21.md",
         "planning/evidence/power-loss-2026-09-26.md"
       ],
@@ -543,8 +541,6 @@
         "books/byte-store-program-invariants.lisp",
         "tests/acl2/byte-store-relation-tests.lisp",
         "tests/acl2/byte-store-program-invariants-tests.lisp",
-        "planning/lanes/HANDOFF-w13-storage-initializer.md",
-        "planning/lanes/HANDOFF-w13-transaction-name-codec.md",
         "planning/evidence/native-initializer-composition-w18-2026-09-21.md",
         "planning/evidence/native-txn-namespace-u13-2026-09-21.md",
         "books/byte-store-fault-keystones.lisp",
@@ -1592,7 +1588,8 @@
         "PRF-1060",
         "PRF-1067",
         "PRF-1231",
-        "PRF-1232"
+        "PRF-1232",
+        "PRF-1357"
       ],
       "verification": [
         "proof",
@@ -1606,10 +1603,7 @@
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/evidence/native-owner-integrated-2026-09-21.md",
         "planning/evidence/native-auth-runtime-2026-09-21/README.md",
-        "planning/lanes/HANDOFF-w22-native-control.md",
         "planning/evidence/native-control-accept-shutdown-2026-09-21.md",
-        "planning/lanes/HANDOFF-w22-native-outbound-feed.md",
-        "planning/lanes/HANDOFF-w23-native-auth-admin.md",
         "planning/evidence/egress-span-2026-09-26.md"
       ],
       "implementation_note": "D07 requires a Python-free deployed Lisp node, operator CLI and helpers calling the executable ACL2 core. The frozen 03eb3ba native default/DTN images build from the recorded certified closure and pass their scoped owner/operator/storage/BP runtime suites, including public operator run and NNTP greeting/QUIT. Python is only an external test driver there. The full installed CLI/service, native outbound feed/protected transport/identity features and Python-free two-peer dependency gate remain open; the development bin/fn still invokes Python. The later native AUTHINFO startup receiver has scoped certified-image login evidence; it is not part of frozen03. Native public control/post is now integrated through fn-owner-control-submit and the shared completion helper, with separate ACL2 closure and exact-raw Darwin runtime evidence. Its clean combined image and complete installed two-peer gate remain open. The native outbound-feed component and credential administrator are integrated but await owner activation and public CLI composition respectively; their component evidence does not qualify the assembled service.",
@@ -1646,7 +1640,6 @@
         "tests/evidence/2026-09-18-integrated.json",
         "planning/evidence/wave-realignment-2026-09-19.md",
         "planning/evidence/native-owner-integrated-2026-09-21.md",
-        "planning/lanes/HANDOFF-w22-native-control.md",
         "planning/evidence/native-control-accept-shutdown-2026-09-21.md",
         "planning/evidence/native-raw-integration-w35-2026-09-21/README.md",
         "books/bp-node-control.lisp",
@@ -1784,7 +1777,6 @@
       "evidence": [
         "planning/evidence/owner-survival-2026-09-21.md",
         "planning/evidence/native-owner-integrated-2026-09-21.md",
-        "planning/lanes/HANDOFF-w22-native-control.md",
         "planning/evidence/native-control-accept-shutdown-2026-09-21.md"
       ],
       "implementation_note": "The development Python owner has per-connection/per-peer fault boundaries; its reader/control coverage remains limited. Frozen03 native runtime now exercises ordinary disconnect isolation, uncertainty fencing under the shared mutex and worker cleanup. The native unexpected serious-condition handler still stops the whole service; attributable unexpected connection-local fault survival remains an implementation task, not discharged by a conservative global stop. Shared/core/persistence uncertainty must continue to fence the owner. Orderly SIGTERM is now integrated with scoped native shutdown/reopen evidence; it does not discharge unexpected connection-local fault survival.",
@@ -5037,10 +5029,10 @@
         "books/owner-prepare-served.lisp",
         "books/owner-prepare-served-ocl.lisp",
         "planning/evidence/prepare-served-2026-09-27.md",
-        "tests/test_cursor_cold_poll.py",
-        "planning/evidence/cursor-cold-poll-20261003/checks-final.json"
+        "tests/test_cursor_cold_poll.py"
       ],
-      "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read). Slice 2 (PKT-688 (4), PRF-267, books/owner-commit-steps.lisp): on a log-route store the committer's batch is three steps, START and COMPLETE as :commit quanta and the log barrier between them with the owner released; while a batch is in flight only :commit and :inspect (the live status and health pages) are admitted, and a waiting :inspect runs within one quantum in either regime. Cursor cold dependencies now suspend to the existing mux timer and resume the retained plan, with first-miss deadline retained; shared-loop cold-await removed. Actual native-body I/O doubles discriminate suspension/continuation/refusal. Matching image and cache-independent progress remain open."
+      "implementation_note": "Four service classes (control, reader, poster, transit) in the cyclic order control first; the class of a quantum is the socket it arrived on (a host observation), the pick and the bound are ACL2's (fn-osch-next). A quantum is one bounded semantic step, unchanged: the served read with its drain, one control request, one transit step; the journal writes stay inside. The render window is 65,536 octets; the live octet buffer fn-octets is input-only under the mutex; each connection renders into its own fn-octets$c object. The exposure charge (PRF-161) is decided in the same critical section as the step it admits (one gate pass per read). Slice 2 (PKT-688 (4), PRF-267, books/owner-commit-steps.lisp): on a log-route store the committer's batch is three steps, START and COMPLETE as :commit quanta and the log barrier between them with the owner released; while a batch is in flight only :commit and :inspect (the live status and health pages) are admitted, and a waiting :inspect runs within one quantum in either regime. Cursor cold dependencies now suspend to the existing mux timer and resume the retained plan, with first-miss deadline retained; shared-loop cold-await removed. Actual native-body I/O doubles discriminate suspension/continuation/refusal. Matching image and cache-independent progress remain open.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/cursor-cold-poll-20261003/checks-final.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "CNS-008",
@@ -5980,7 +5972,7 @@
       "title": "Running and stopped snapshot producers capture one committed Store frontier and coherent identity/configuration epoch, restore the retained state, and fund bounded work with marker-last completion",
       "specification": "specs/checkpoint.md#running-and-stopped-snapshot-producer",
       "milestone": "M5",
-      "status": "planned",
+      "status": "specified",
       "proof_targets": [
         "PRF-1068",
         "PRF-1086",
@@ -6116,53 +6108,35 @@
       ],
       "evidence": [
         "books/consumer-remote-codec.lisp",
-        "tests/acl2/consumer-remote-codec-tests.lisp",
-        "planning/consumer-remote-implementation.md",
-        "books/consumer-remote-position.lisp",
-        "tests/acl2/consumer-remote-position-tests.lisp",
         "planning/evidence/consumer-remote-components-2026-09-30.md",
-        "tests/acl2/consumer-authority-carry-tests.lisp",
         "planning/evidence/consumer-authority-source-2026-09-30.md",
         "books/consumer-publication-budget.lisp",
-        "tests/acl2/consumer-publication-budget-tests.lisp",
         "books/consumer-authority-revision.lisp",
-        "tests/acl2/consumer-authority-revision-tests.lisp",
         "planning/evidence/consumer-budget-revision-source-2026-09-30.md",
         "books/consumer-event-charge.lisp",
-        "tests/acl2/consumer-event-charge-tests.lisp",
         "planning/evidence/consumer-event-charge-source-2026-09-30.md",
         "host/owner-host.lisp",
         "host/native/owner.lisp",
         "tests/native_owner_consumer_raw.lisp",
         "planning/evidence/consumer-owner-charge-source-2026-09-30.md",
         "books/consumer-authority-codec.lisp",
-        "tests/acl2/consumer-authority-codec-tests.lisp",
         "planning/evidence/consumer-authority-codec-source-2026-09-30.md",
         "books/consumer-account-adoption.lisp",
         "tests/acl2/consumer-account-adoption-tests.lisp",
         "planning/evidence/consumer-account-adoption-source-2026-09-30.json",
-        "books/consumer-authority-fold.lisp",
         "books/control-visible-effect.lisp",
-        "tests/acl2/consumer-authority-fold-tests.lisp",
-        "tests/acl2/consumer-authority-store-tests.lisp",
-        "tests/acl2/control-visible-effect-tests.lisp",
         "planning/evidence/consumer-authority-producer-source-2026-09-30.json",
         "books/consumer-account-carried.lisp",
-        "tests/acl2/consumer-account-carried-tests.lisp",
         "planning/evidence/consumer-account-carried-source-2026-09-30.json",
         "books/consumer-config-authority.lisp",
         "books/owner-authority-proposal-state.lisp",
-        "tests/acl2/consumer-config-authority-tests.lisp",
-        "tests/consumer_config_authority_route_raw.lisp",
         "planning/evidence/consumer-config-authority-source-2026-09-30/owner-host-preflight.patch",
         "planning/evidence/consumer-config-authority-source-2026-09-30.json",
         "planning/evidence/consumer-account-constructor-source-2026-09-30.json",
         "planning/evidence/consumer-config-publication-source-2026-09-30.json",
         "books/consumer-account-initial.lisp",
-        "tests/acl2/consumer-account-initial-tests.lisp",
         "planning/evidence/consumer-account-initial-source-2026-09-30.json",
         "books/consumer-account-relation.lisp",
-        "tests/acl2/consumer-account-relation-tests.lisp",
         "planning/evidence/consumer-account-relation-2026-09-30/README.md",
         "planning/evidence/manifests/certify-20260930T105312Z-1258820.json",
         "books/consumer-account-auth.lisp",
@@ -6170,51 +6144,20 @@
         "tests/acl2/consumer-account-auth-tests.lisp",
         "planning/evidence/consumer-account-auth-source-2026-09-30.json",
         "planning/evidence/consumer-account-auth-source-2026-09-30/owner-host-auth.patch",
-        "books/consumer-account-relation-stage.lisp",
-        "tests/acl2/consumer-account-relation-stage-tests.lisp",
         "planning/evidence/consumer-account-stage-relation-2026-09-30/README.md",
         "planning/evidence/manifests/certify-20260930T111318Z-1485686.json",
-        "books/consumer-account-row-relation.lisp",
-        "tests/acl2/consumer-account-row-relation-tests.lisp",
         "planning/evidence/consumer-account-row-relation-2026-09-30/manifest.json",
         "planning/evidence/consumer-account-row-relation-2026-09-30/current-replay.json",
-        "tests/acl2/consumer-authority-publication-budget-tests.lisp",
         "planning/evidence/consumer-authority-publication-budget-2026-09-30/source-assembly.json",
-        "books/consumer-account-planner-stage-relation.lisp",
-        "books/consumer-account-metadata.lisp",
-        "books/consumer-account-metadata-domain.lisp",
-        "books/consumer-account-metadata-preserved.lisp",
-        "books/consumer-account-metadata-transition.lisp",
-        "books/consumer-account-metadata-planner.lisp",
-        "books/consumer-account-metadata-step.lisp",
-        "tests/acl2/consumer-account-planner-stage-relation-tests.lisp",
-        "tests/acl2/consumer-account-metadata-domain-tests.lisp",
-        "tests/acl2/consumer-account-metadata-tests.lisp",
-        "tests/acl2/consumer-account-metadata-step-tests.lisp",
         "planning/evidence/consumer-account-metadata-2026-09-30/source.json",
         "books/consumer-account-carries-state.lisp",
-        "books/consumer-config-metadata.lisp",
-        "tests/acl2/consumer-config-metadata-tests.lisp",
         "planning/evidence/consumer-config-metadata-2026-09-30/source.json",
         "planning/evidence/consumer-config-metadata-2026-09-30/owner-host.patch",
         "books/consumer-progress-carried.lisp",
-        "books/consumer-progress-metadata.lisp",
         "books/consumer-entry-preparation.lisp",
-        "books/consumer-entry-preparation-model.lisp",
-        "tests/acl2/consumer-progress-metadata-tests.lisp",
-        "tests/acl2/consumer-entry-preparation-tests.lisp",
         "planning/evidence/consumer-progress-five-2026-09-30/source.json",
-        "planning/evidence/consumer-progress-five-2026-09-30/owner-host.patch",
         "books/consumer-authority-carried-result.lisp",
-        "books/consumer-authority-carried-result-model.lisp",
-        "tests/acl2/consumer-authority-carried-result-tests.lisp",
         "planning/evidence/consumer-authority-carried-result-2026-09-30/source.json",
-        "books/store-tree-size-info.lisp",
-        "books/consumer-checkpoint-carry-map.lisp",
-        "books/consumer-checkpoint-carry-map-model.lisp",
-        "books/consumer-checkpoint-carry-attribution.lisp",
-        "tests/acl2/consumer-checkpoint-carry-map-tests.lisp",
-        "tests/acl2/consumer-checkpoint-carry-attribution-tests.lisp",
         "planning/evidence/consumer-checkpoint-carry-map-2026-09-30/source.json",
         "books/consumer-account-input.lisp",
         "books/consumer-account-adoption-driver.lisp",
@@ -6324,7 +6267,7 @@
       ],
       "implementation_note": "Source request codec and logical remote-position kernel only. Remote10 metadata, atomic kernel proposals, fresh-epoch rebasing and metadata-preserving ACK exist. The scalar actual-charge/release-vector component is source-admitted (consumer-actual-charge-source-2026-09-30); constructor correspondence, profile adapter, durable event encoding/reservation and authenticated host dispatch remain unimplemented. Original full remote/multigroup/restore contract remains open. CP7 authority representation now source-admits adopted account rows, deletion tombstones and pending candidate separation; exact progress/frontier authority preservation and inherited local/remote kernel tests pass. No staged producer, authority writer/replay correspondence, owner carry installation or endpoint completion is claimed. The current-profile actual-charge adapter and fixed-field active authority revision/discard step are source-admitted with literal witnesses. Actual constructor/canonical carry, atomic config/account publisher, joint replay and authenticated endpoint remain open; no host activation or qualification is claimed. The fixed existing CPE scalar charge now has an exact fn-cpe-encode length correspondence and all-six-kind/maximum-ACK source witnesses; variable remote/adoption constructors and actual host integration remain open. Actual legacy CPE publication now routes the event-specific carried-profile verdict before native frontier allocation. Proper source composition proves exact persisted row charge and retained release headroom; eight assertions and actual deployed-form routing/order harness pass. Full owner translation/canonical allocation and remote/account/authority endpoint remain open; no original Q13 completion or native qualification. Source account-staging version2 codec has complete event roundtrip, structural321octet bound and exact scalar charge at u64 coordinates; no Store acceptance/authority producer/namespace or native activation yet. Proper narrow source now admits authority Store/concrete routing, shared full-result account interpreter, exact configuration-order extraction and actual control/visibility/candidate effect companions. Ordinary verified/plain noncontrol append preserves; cancellation, pending target arrival and older verdict change fence. Annotated model effects are not actual recovery. Actual owner/config/recovery publication, CP7/root/canonical carry funding, prefrontier captured-coordinate validation and authenticated FNCR remain open. Actual fn-caac-step now maintains same-pass staged trie/list/fixed-spine metadata through all seven authority operations and refines the complete logical decision. Narrow source guards/boundaries and 29-transition exact-carry fixtures pass. Global metadata preservation/cold establishment, prefrontier funding and atomic owner/config/recovery publication remain open; no activation or endpoint completion. Saved ACL2 configuration authority preflight/STATE single-consume components are source-admitted. Exact selected actual host prepare hunk refuses exhausted authority before staging/write and captures approved result at poststage epoch; stubbed routing harness passes. Coordinates alone do not prove payload identity, explicitly witnessed. Actual durable install/recovery, maintained metadata/funding and complete owner/endpoint execution remain open. Exact newly allocated account row and credential carry boundaries are source-admitted with complete positive witnesses and six row hypothesis removals plus malformed credential refuter. Full maintained metadata/cold/funding and actual publication/recovery remain open. Actual saved-result config completion/collector routing source is assembled, five opaque-stub routing observations pass; new publication book/theorems/fixtures and current owner collector remain NOTREADY until matching ACL2 source admission/funding/recovery. The actual fn-cp-initial bounded metadata seed now has exact sevenfield correspondence and seven literal assertions with all five hypothesis removals; guard verified. No installed bootstrap, usable authority/root, nonempty recovery or funding claim. Proper normal source certification now proves the complete proof-only account relation: ordered rows correspond to exact credential/descriptor trie bindings with no phantom entries, live credential projection and selected auth configuration. Actual seal/prepare preserve it and fence publishes it under explicit watermark equality; current-binding lookup belongs to adopted live rows with exact login. Two-account and deletion/tombstone lifecycle teeth plus all hypothesis removals pass. Stage/begin establishment, same-pass metadata/cold/funding and actual owner/live/recovery publication remain open; PRF-1140 is still planned. Current-account authentication now has a guarded bounded scalar publication-freshness/exact maintained-trie source boundary. Its nontrivial theorem ties accepted principal/token to current CP7 adopted live rows under the complete maintained root relation; same-password distinct accounts, TLS refusal, unknown/wrong credentials, stale epoch/revision WAIT, alias and phantom relation-removal fixtures pass. Selected actual readonly owner wrapper is assembled but unadmitted; publication/carry/funding/readscope/endpoint remains unavailable until complete actual producers join. Actual begin now establishes the complete empty merge relation; actual selected-stage preserves complete ordered row/index/credential reconstruction under explicit last-name/fresh-key/watermark and valid-new-binding hypotheses. Normal exact47subjects38cache9fresh hashes+nonce verified, eighteen literal testbody forms pass. Actual row/tombstone planner discharge, old-cursor coverage, same-pass size/funding/owner/cold establishment remain open. Actual row/tombstone planner full-binding boundaries are proper source-admitted with four reachable new/retained/resurrected/tombstone positives and all eight retained-hypothesis removals. Redundant row-kind/birth-positivity and tombstone codec/event/namespace premises were proved unnecessary. Full stage composition, same-pass metadata/cold/funding and actual owner installation remain open; source-only, no normal certificate/activation claim. Paired guarded account/config source now retains one actual decision as full6 CP7/root/fence-count/metadata5/rootcarry. Actual create/delete/tombstone/recreate and config executions preserve complete produced values; canonical namespace40/revision slots and stale/swapped publication rejection execute against the actual bounded availability accessor. Packing facts are existing-boundary corollaries, not new publication keystones. High Store callback and attributed same-load cfg-first metadata remain NOTREADY; all-writer source/funding/atomic owner installation/remote endpoint and original full Q13 remain OPEN. Normal affected-root certification establishes the bounded actual account candidate feed/tick denotation and complete ready output with literal first-source duplicate, oversized-name/refusal and selected-row codec witnesses (certify-20260930T194919Z-473745; 51 subjects,45 matching cached,6 fresh). Global ordered-input invariant, signing provenance, request/job admission, typed C account/config publication, same-pass configured cold replay and endpoint remain open; PRF1140 planned. Paired typed source executes E begin/row/required FNCE3 binding/seal/resumable preparation and sole typed C commit: final CP7/root/credential/signing configuration and unchanged E frontier are checked; missing binding and legacy E fence refuse. Static-first signing provenance, explicit unbind and redeemed preservation execute; selector consumes a candidate only after its binding persists. Guard/source evidence only (account-transaction-source-2026-09-30), not runtime acceptance. Pooled startup/reload refuses before allocation until installed issuer; typed adapters/Store classification/cfg-first replay/canonical/funding/maintained relation/scoped endpoint remain open; PRF1140 planned.",
       "progress_note": " NOTREADY source assembly: additive authority-specific FNCE publication budget uses exact codec row charge and proposed actual host account-publication wrapper, preserving existing CPE APIs. Selected wrapper patch applies cleanly to current owner union. No matching ACL2 admission/assertion execution or allocation/quantum/retirement funding is claimed; account activation remains unavailable. Proper protected source now composes the actual row/tombstone planners with complete merge/no-skip old-cursor relations and exact same-pass carry production. Whole fn-caac-step preserves full CP7 seven-field/account/preparation metadata under maintained authority size, actual stage relation/trie, complete prepare relation and successful decision; final fence returns exact root carry. Redundant namespace validity premise was removed only after proving the weakened statement. Whole-step/root literal positives and every retained-hypothesis removal pass, plus actual carry-producing create/delete/tombstone/recreate lifecycle. Source-only; no normal certification, host activation or native/image transfer. Actual empty/nonempty cold bootstrap, Store/cfg-first carried interpreter threading, operation census/quantum/retirement funding and atomic owner/account publication remain open; PRF-1140 and full Q13 stay planned/open. Actual config preflight now reads the sole owner-installed metadata4 and has a source-admitted whole correspondence theorem with reachable adopted-account/pending-discard positives and all four retained hypothesis removals. The selected actual host argument/include patch applies cleanly; no duplicate global, whole-state reconstruction or canonical readiness inference. Shared carried event/cfg-first recovery, ordinary CPE entry mutations, installed initial/cold relation, funding and atomic owner publication remain open; PRF1140 planned. Fixed5 successor source preserves the first four account metadata meanings and adds maintained CP-entry list annotations in the sole tuple. Actual initial/authority/config producers preserve its complete relation; old4 explicitly refuses instead of defaulting. A real one-cell seek/rebuild cursor preserves exact first selected entry/removal and parallel annotations, with reachable actual-registration positives and separately labeled duplicate-state corruption witnesses. Full final FnCPApply classification/entry carry, source revalidation, cold/all-writer establishment and funded atomic actual publication remain open; no normal or endpoint qualification.",
-      "note": " Selected final local CPE proposal and application now consume the same prepared first-match/removal instead of table scans; exact original decision/application boundary and local8/remote10 ACK canonical carry proofs have executable literal teeth. Four local carried outcomes execute against complete fixed5 annotation, but whole fixed5 completion preservation, actual current-source/all-writer establishment, profile/quantum/retirement funding, carried shared live/cfg-first replay and remote definition producer/endpoint remain open. Remote register/rebase explicitly unavailable at this component until the bounded parsed definition is integrated. Bounded checkpoint annotation mapping now source-admitted: one cell/child return per tick, complete target preserved through inner and context yields, exact finish, and real generic parser provenance supplies exact list/trie annotations only with explicit child coverage. Six literal boundaries have complete positives and all retained hypothesis removals; missing child infos refuse. Sameparse CP7 full metadata establishment, persistent committed root/policy association, actual cfg-first iterator/host installation, source-holder lifecycle, census/quantum/retirement funding and native endpoint remain open. Source-only; generic test infos are not a wire-parse observation."
+      "note": " Selected final local CPE proposal and application now consume the same prepared first-match/removal instead of table scans; exact original decision/application boundary and local8/remote10 ACK canonical carry proofs have executable literal teeth. Four local carried outcomes execute against complete fixed5 annotation, but whole fixed5 completion preservation, actual current-source/all-writer establishment, profile/quantum/retirement funding, carried shared live/cfg-first replay and remote definition producer/endpoint remain open. Remote register/rebase explicitly unavailable at this component until the bounded parsed definition is integrated. Bounded checkpoint annotation mapping now source-admitted: one cell/child return per tick, complete target preserved through inner and context yields, exact finish, and real generic parser provenance supplies exact list/trie annotations only with explicit child coverage. Six literal boundaries have complete positives and all retained hypothesis removals; missing child infos refuse. Sameparse CP7 full metadata establishment, persistent committed root/policy association, actual cfg-first iterator/host installation, source-holder lifecycle, census/quantum/retirement funding and native endpoint remain open. Source-only; generic test infos are not a wire-parse observation. Evidence owed (Builder D, 2026-10-09): planning/evidence/consumer-progress-five-2026-09-30/owner-host.patch were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "HST-043",
@@ -6363,11 +6306,7 @@
       "status": "specified",
       "proof_targets": [
         "PRF-1154",
-        "PRF-1158",
         "PRF-1159",
-        "PRF-1163",
-        "PRF-1161",
-        "PRF-1162",
         "PRF-1182",
         "PRF-1200"
       ],
@@ -6376,22 +6315,12 @@
         "scenario"
       ],
       "evidence": [
-        "books/connection-operation-ticket.lisp",
         "books/allocation-epoch-domain.lisp",
         "books/allocation-epoch.lisp",
         "books/allocation-epoch-pool.lisp",
-        "tests/acl2/allocation-epoch-tests.lisp",
         "books/allocation-epoch-observation.lisp",
         "books/allocation-epoch-collection-request.lisp",
-        "tests/acl2/allocation-epoch-observation-tests.lisp",
-        "tests/acl2/allocation-epoch-collection-request-tests.lisp",
-        "host/connection-operation-ticket-host.lisp",
-        "tests/acl2/connection-operation-ticket-tests.lisp",
-        "specs/connection-ticket.md",
-        "tests/native/runtime-geometry-lock-component.lisp",
         "planning/evidence/runtime-geometry-lock-2026-09-30",
-        "specs/connection-operation.md",
-        "tests/native/connection-start-core-component.lisp",
         "planning/evidence/connection-native-start-2026-09-30",
         "books/connection-receiver-source-invariants.lisp",
         "tests/acl2/connection-receiver-source-tests.lisp",
@@ -6408,7 +6337,7 @@
         "planning/evidence/manifests/certify-20261001T025802Z-1029297.json",
         "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
       ],
-      "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation. Request-budget and physical-fit recognizers are distinct; request admission retains positive pinned reserve policy with no physical-fit or GC-success authority. SCN-1074 covers scalar separation; genuine issuance/caller and physical qualification remain open."
+      "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation. Request-budget and physical-fit recognizers are distinct; request admission retains positive pinned reserve policy with no physical-fit or GC-success authority. SCN-1074 covers scalar separation; genuine issuance/caller and physical qualification remain open. Proof targets PRF-1158, PRF-1161, PRF-1162 and PRF-1163 are rows only on the unmerged branch origin/codex/allocation-turns (fd3759b4f), never on dev; the references were removed 2026-10-10 (CL04) and return with those rows if that branch lands."
     },
     {
       "id": "REP-018",
@@ -6454,7 +6383,7 @@
       "title": "Committed membership transcript retains signed commit-ID conflicts and refuses their authority before any epoch evidence merge",
       "specification": "specs/substrate-transport.md#committed-transcript-collision-boundary",
       "milestone": "M4",
-      "status": "planned",
+      "status": "specified",
       "proof_targets": [
         "PRF-1176",
         "PRF-1189",
@@ -6589,7 +6518,8 @@
       "proof_targets": [
         "PRF-1209",
         "PRF-1210",
-        "PRF-1211"
+        "PRF-1211",
+        "PRF-1343"
       ],
       "verification": [
         "proof"
@@ -6694,10 +6624,9 @@
         "books/native-retire.lisp",
         "host/native/operator.lisp",
         "tests/acl2/native-retire-observation-tests.lisp",
-        "tests/test_native_retire_observation_source.py",
-        "planning/evidence/operator-retire-observation-2026-10-03-v2.json"
+        "tests/test_native_retire_observation_source.py"
       ],
-      "note": "Actual source host consumes the ACL2 observation decision; expiry after requested drain plus60s reports uncertainty without owner/custody effects. Warm REPL admission and actual-source positive/prior-source timeout recorded; normal certification and matching image remain pending. No physical process-stop deadline is claimed."
+      "note": "Actual source host consumes the ACL2 observation decision; expiry after requested drain plus60s reports uncertainty without owner/custody effects. Warm REPL admission and actual-source positive/prior-source timeout recorded; normal certification and matching image remain pending. No physical process-stop deadline is claimed. Evidence owed (Builder D, 2026-10-09): planning/evidence/operator-retire-observation-2026-10-03-v2.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "WEB-006",
@@ -6764,10 +6693,9 @@
         "host/native/io.lisp",
         "tests/acl2/native-init-resume-tests.lisp",
         "tests/test_native_init_resume_source.py",
-        "tests/test_native_init_resume.py",
-        "planning/evidence/operator-init-resume-2026-10-03-v2.json"
+        "tests/test_native_init_resume.py"
       ],
-      "note": "Actual init checks requested profile against sealed configuration and exact generation-one changes under the writer lock before resume publication. Stamps and later limit history are not initial intent. Warm source admission and actual-source regression passed; normal certification and matching image remain pending."
+      "note": "Actual init checks requested profile against sealed configuration and exact generation-one changes under the writer lock before resume publication. Stamps and later limit history are not initial intent. Warm source admission and actual-source regression passed; normal certification and matching image remain pending. Evidence owed (Builder D, 2026-10-09): planning/evidence/operator-init-resume-2026-10-03-v2.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "HST-048",
@@ -6787,10 +6715,10 @@
         "books/page-read-startup.lisp",
         "tests/acl2/page-read-startup-tests.lisp",
         "tests/acl2/page-read-startup-host-tests.lisp",
-        "tests/test_native_heap_default_source.py",
-        "planning/evidence/bp-startup-peer-join-20261003/result.json"
+        "tests/test_native_heap_default_source.py"
       ],
-      "implementation_note": "Actual runtime captures derive a partial DEFAULT fixed-storage allowance. Five table constructors, guard cache, selected reusable decoder backing and native worker reservation precede Store open. Captured headroom and OS descriptor allowance bound registration capacity without imposing a stored-data ceiling. DATA8 preserves existing revision and tracks reserved worker count/readiness; native constructor and eager reserve must finish before readiness/free-roster publication. SCN-1130 owns actual native ordering and orphan cleanup. Complete collector/controller/source-graph, recovery transient and work coverage remains open; explicit complete cold policies refuse. Selected actual source guards pass for composed heap wrappers and decoded acquire. The launcher prepays the exact minimum DEFAULT backing before run, with whole-machine validation; offline and explicit cold-policy reservations stay unchanged. Base init-to-run affordability does not yet include this added DEFAULT requirement. Protected recovery workspace partition and nonempty Store composition remain open. SCN-1136 connects the actual heap probe and next-run diagnostic to this ACL2 DEFAULT contribution with normalized root, worker and cache captures. Expanded initialization-budget/reopen refinement remains open. STATUS/HEALTH now project actual accepted configuration cold/output descriptors through the shared launcher extension chain; actual output arithmetic and both diagnostic callers execute in SCN-1136. Independent peer file capture is propagated through launcher/next-run diagnostics and pre-open plan/native grant. The retained service owns its private bank before ledger construction; constructor escape retains calling custody. Snapshot and peer bank drained observations gate owner-run terminal close. Standalone BP now consumes the second capture and retains its bank through constructor escapes; snapshot/peer/executor drain observations gate settlement. SCN-1134 selected source cases pass. Current nonempty Store execution and complete funding remain open."
+      "implementation_note": "Actual runtime captures derive a partial DEFAULT fixed-storage allowance. Five table constructors, guard cache, selected reusable decoder backing and native worker reservation precede Store open. Captured headroom and OS descriptor allowance bound registration capacity without imposing a stored-data ceiling. DATA8 preserves existing revision and tracks reserved worker count/readiness; native constructor and eager reserve must finish before readiness/free-roster publication. SCN-1130 owns actual native ordering and orphan cleanup. Complete collector/controller/source-graph, recovery transient and work coverage remains open; explicit complete cold policies refuse. Selected actual source guards pass for composed heap wrappers and decoded acquire. The launcher prepays the exact minimum DEFAULT backing before run, with whole-machine validation; offline and explicit cold-policy reservations stay unchanged. Base init-to-run affordability does not yet include this added DEFAULT requirement. Protected recovery workspace partition and nonempty Store composition remain open. SCN-1136 connects the actual heap probe and next-run diagnostic to this ACL2 DEFAULT contribution with normalized root, worker and cache captures. Expanded initialization-budget/reopen refinement remains open. STATUS/HEALTH now project actual accepted configuration cold/output descriptors through the shared launcher extension chain; actual output arithmetic and both diagnostic callers execute in SCN-1136. Independent peer file capture is propagated through launcher/next-run diagnostics and pre-open plan/native grant. The retained service owns its private bank before ledger construction; constructor escape retains calling custody. Snapshot and peer bank drained observations gate owner-run terminal close. Standalone BP now consumes the second capture and retains its bank through constructor escapes; snapshot/peer/executor drain observations gate settlement. SCN-1134 selected source cases pass. Current nonempty Store execution and complete funding remain open.",
+      "note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/bp-startup-peer-join-20261003/result.json were never committed and are in neither the evidence archive nor any tree searched; dropped."
     },
     {
       "id": "NNT-1003",

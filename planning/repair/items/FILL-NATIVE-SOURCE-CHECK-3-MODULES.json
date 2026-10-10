@@ -3,11 +3,14 @@
  "detail": "Source-level (no image) tests; read the log lines 2636, 2669, 2760 of the local copy for the assertion text. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
  "file": "tools/native_source_check.py",
  "id": "FILL-NATIVE-SOURCE-CHECK-3-MODULES",
- "notes": [],
- "owner": "unowned",
+ "notes": [
+  "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): now 12 modules FAILED on the laptop: test_native_admin_cleanup, auth_admin_fidelity (2), checkpoint_abandon_raw, cut_map, harness (installed launcher at the decided heap), heap_default_source, init_status_probe, nntp_post_probe, operator_diagnostics_source, raw_scripts, reconfig_phased (live heap profile). Mechanism not yet traced per module; the platform (macOS laptop vs Linux box) is the first question, and the heap modules route to builder-M once traced. Owner unowned -> builder-D.",
+  "10-10 Builder D, lane d-native-source: none of the 12 was the platform; each is test-side drift, traced to its mechanism. Repaired here (9 modules OK under native_source_check): cut_map (the inventory pin 13 -> 15 after RL-01 A2 8d6c5127f's recover-copy cuts; the post-log check found `(fnn-owner-drain-one ` with a space, the call now breaks the line: a regex), nntp_post_probe (the same check), init_status_probe (the fidelity case runs `status --replay` in a command loop; the probe reads that case's commands), operator_diagnostics_source + heap_default_source + reconfig_phased (f8a78b7b8's fn-native-control-profile-source had no answer in the mock: it now loads the three real definitions from books/native-control.lisp; the live-profile mock's `group create' runs as ACL2's :admin), harness InstalledLaunch (a fake image needs no real OpenSSL: its own empty shipped prefix), admin_cleanup (fnn-admin-execute asks fn-native-admin-host-owner-requestp since the owner-request split: the mock answers it for its offline plans), auth_admin_fidelity (its drivers include uncertified books on a tree with no certificates, where def-representation's local :lemmas vanish: a capability skip naming the uncertified include, run on a certified tree). Remaining: raw_scripts (6 drifted raw harnesses) and checkpoint_abandon_raw (873f97931's carried publication record), with a worker on lane d-raw-harness-7."
+ ],
+ "owner": "builder-D",
  "severity": "medium",
  "source": "fill-20261004",
  "state": "open",
  "title": "native_source_check red (CL02 landed): FAILED tests.test_native_catchup_spool_source CatchupSpoolSourceTests.test_anonymous_spool_and_held_cancel; tests.test_native_feed_fair_round FeedFairRoundTests.test_peer_that_never_answers_is_dropped_at_the_reply_deadline; tests.test_native_peer_round_driver (test_round_core_fault_survives_cleanup_failure, test_single_attempt_kernel_connect_read_and_write_preserve_custody, test_trickling_pull_cannot_starve_healthy_pull_and_catchup)",
- "updated": "2026-10-04T19:12:27Z"
+ "updated": "2026-10-10T02:40:00Z"
 }

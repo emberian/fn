@@ -1583,6 +1583,8 @@ records)`: the decoded configuration journal and the decoded Store journal.
 
 ### Explicit group authority (SUB-007, PRF-1061)
 
+SUB-007: Explicit durable group authority binding.
+
 The executable group entry is `(name created-gen created-stamp retired-gen
 policy-id next authority authority-gen)`. Posting policy remains a string in
 `policy-id`. `authority` is either the empty string, meaning ungoverned, or a

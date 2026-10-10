@@ -1,6 +1,7 @@
 ;;; Actual live-limit adapter order and mutex composition with I/O observations.
 ;;; The ACL2 allocation decisions are fixtures here, not proof or physical Store I/O.
 (require :sb-posix)
+(require :sb-bsd-sockets)
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
@@ -16,11 +17,12 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
-(defun fnn-owner-reconfigure-unstage ()
-  (harness-stub-reached 'fnn-owner-reconfigure-unstage "host/native/admin.lisp"))
-(defun fnn-rc-begin (run reserve)
-  (declare (ignorable run reserve))
-  (harness-stub-reached 'fnn-rc-begin "host/native/admin.lisp"))
+(defun fnn-owner-feed-replay (peer entries offset)
+  (declare (ignorable peer entries offset))
+  (harness-stub-reached 'fnn-owner-feed-replay "host/native/owner.lisp"))
+(defun fnn-rc-do-feed-io (run peer)
+  (declare (ignorable run peer))
+  (harness-stub-reached 'fnn-rc-do-feed-io "host/native/admin.lisp"))
 (defun fnn-refuse (control &rest args)
   (declare (ignorable control args))
   (harness-stub-reached 'fnn-refuse "host/native/io.lisp"))
@@ -39,7 +41,20 @@
                                    (cdddr f))))
           (push (cadr f) found))))
     (assert (null (set-difference names found)))))
-(load-limit-source "books/limits-live.lisp" '(fn-lim-pool-decision fn-lim-article-decision))
+(load-limit-source "books/limits-live.lisp"
+                   '(fn-lim-pool-decision fn-lim-article-decision
+                     fn-lim-decision-appliedp fn-lim-funded-after))
+;; fn-orp-step (books/owner-reconfig-phased.lisp) orders the reconfiguration's
+;; quanta and windows; the host runs the effects it answers.  Its book body.
+(defmacro mv (&rest xs) `(values ,@xs))
+(defun true-list-fix (x) (if (consp x) (cons (car x) (true-list-fix (cdr x))) nil))
+(load-limit-source "books/owner-reconfig-phased.lisp"
+                   '(fn-orp-car fn-orp-cdr fn-orp-replay-peers fn-orp-label fn-orp-refused-in-q2 fn-orp-convert-tail
+                     fn-orp-convert-event fn-orp-step))
+(defun fnn-call (name &rest args)
+  (case name
+    (fn-orp-step (multiple-value-list (apply #'fn-orp-step args)))
+    (otherwise (error "unexpected dispatched call ~s" name))))
 (defun fn-bs-profile-max-article-octets (p) (declare (ignore p)) 100)
 (defvar *fnn-extent-lock* (sb-thread:make-mutex :name "fixture extent"))
 (defvar *fixture-owner-lock* (sb-thread:make-mutex :name "fixture owner"))
@@ -76,7 +91,39 @@
      (push :carry *events*)
      (if (equal (car (third args)) :applied) 'candidate 'funded))
     (fn-owner-apply-limit-profile (push :profile *events*) :installed)
+    (fn-owner-open 1)
+    (fn-owner-cfg-capture :capture)
+    (fn-owner-feed-journal-prefix-size 0)
     (otherwise (error "unexpected owner call ~s" name))))
+;; The owner's other actions (host/native/owner.lisp fnn-owner-action); the
+;; answers are the words fn-orp-step reads.
+(defun fnn-owner-action (name &rest args)
+  (declare (ignore args))
+  (case name
+    (fn-owner-close :closed)
+    (fn-owner-reconfigure-complete :durable)
+    (fn-owner-reconfigure-unstage :unstaged)
+    (otherwise (error "unexpected owner action ~s" name))))
+;; The gate's hold, taken in the quantum that leaves for window A and released
+;; in the quantum whose step answered :done (fn-otm-hold-begin / -end).
+(defvar *hold* nil)
+(defun fnn-owner-reconfig-hold (service entry)
+  (declare (ignore service))
+  (ecase entry
+    (:begin (assert (not *hold*)) (setq *hold* t) :held)
+    (:end (assert *hold*) (setq *hold* nil) :released)))
+;; Store cache, feeds and lock observation are not the subject: no new peer.
+(defun fnn-owner-refresh-config-cache (service generation)
+  (declare (ignore service generation)) :refreshed)
+(defun fnn-owner-feed-configured-missing (service) (declare (ignore service)) nil)
+(defun fnn-owner-feed-close-entries (entries) (assert (null entries)))
+(defun fnn-owner-feed-install (service opened) (declare (ignore service opened)) nil)
+(defun fnn-admin-lock-observation (store) (declare (ignore store)) :lock-owned)
+(defun fnn-octets (x) x)
+(defun fnn-octet-list (x) x)
+(defun fnn-config-dir (s) (declare (ignore s)) "config")
+(defun fnn-join (a b) (concatenate 'string a "/" b))
+(defun fnn-lstat (path) (declare (ignore path)) nil)
 (defun fnn-lim-plan-field (p) (declare (ignore p)) "max-transactions")
 (defun fnn-lim-plan-n (p) (declare (ignore p)) 200)
 (defun fnn-lim-decision (&rest args) (declare (ignore args)) '(:applied 257))
@@ -87,14 +134,26 @@
     (fn-lim-protected-growth 20)
     (fn-lim-apply-row 'candidate)
     (fn-lim-pool-decision (apply #'fn-lim-pool-decision args))
-    (fn-lim-article-decision (apply #'fn-lim-article-decision args))
+    ;; The decision is taken in the preview's hold of E: the competing draw
+    ;; has not run.
+    (fn-lim-article-decision (assert (not *issuer-acquired*))
+                             (apply #'fn-lim-article-decision args))
     (fn-lim-decision-status :accepted)
+    (fn-lim-funded-after (apply #'fn-lim-funded-after args))
+    (fn-lim-decision-appliedp (apply #'fn-lim-decision-appliedp args))
+    (fn-ores-config-word :staged)
+    (fn-ores-config-octets '(1 2 3))
+    (fn-oclc-live-authorizep t)
+    (fn-olau-next-name "000000000001")
+    (fn-olau-authorize-observed :authorization)
+    (fn-native-admin-host-publication-status :accepted)
+    (fn-orp-convert-event (fn-orp-convert-event (first args)))
     (otherwise (error "unexpected pure call ~s" name))))
 (defun fnn-core-page-read-pool (name &rest args)
   (assert (eq (sb-thread:mutex-owner *fnn-extent-lock*) sb-thread:*current-thread*))
-  (assert (equal args '(20)))
   (case name
     (fn-owner-page-read-protected-growth-preview
+     (assert (equal args '(20)))
      (push :preview *events*)
      (setq *issuer* (sb-thread:make-thread
                     (lambda ()
@@ -103,28 +162,74 @@
                         (setq *issuer-acquired* t))) :name "competing draw"))
      (loop until *issuer-started* do (sb-thread:thread-yield))
      (list *preview*))
-    (fn-owner-page-read-protected-growth
-     (assert (not *issuer-acquired*))
-     (push :pool *events*) (list :protected-growth-admitted))
+    ;; The reservation takes E itself, after the preview's hold ended.
+    (fn-owner-page-read-growth-reserve
+     (assert (equal args '(20)))
+     (push :reserve *events*) (list :admitted :token))
+    (fn-owner-page-read-growth-convert
+     (assert (equal args '(:token 20)))
+     (push :convert *events*) (list :protected-growth-admitted))
+    (fn-owner-page-read-growth-release
+     (assert (equal args '(:token)))
+     (push :release *events*) (list :evicted))
     (otherwise (error "unexpected pool call ~s" name))))
-(defun fnn-owner-result (&rest args) (declare (ignore args)) (error "fixture stage unused"))
+(defun fnn-owner-result (&rest args) (declare (ignore args)) :staged-result)
 (defun fnn-store-config (s) (declare (ignore s)) nil)
 (defun (setf fnn-store-config) (v s) (declare (ignore s)) v)
+(defvar *fenced* nil)
+(defun (setf fnn-store-fenced) (v s) (declare (ignore s)) (setq *fenced* v))
 (defun fnn-err (&rest args) (declare (ignore args)) nil)
 (defun fnn-fault (&rest args) (error "fault ~s" args))
 (defun fnn-indeterminate (&rest args) (error "uncertain ~s" args))
+;; Window A (no O, no E): the immutable publication's physical I/O is not the
+;; subject; its outcome is the fixture's PUBLICATION word.
+(defun fnn-admin-publish-effect (store record authorization)
+  (declare (ignore store record authorization))
+  (assert (not (sb-thread:mutex-owner *fixture-owner-lock*)))
+  (assert (not (sb-thread:mutex-owner *fnn-extent-lock*)))
+  (push :publish *events*)
+  (values (ecase *publication* (:accepted :durable) (:refused :refused) (:uncertain :uncertain))
+          1 "000000000001"))
+(defun fnn-immutable-drain-cleanups (&optional stage) (declare (ignore stage)) nil)
 (defun limit-pool-fixture (preview publication expected)
-  (setq *issuer-started* nil *issuer-acquired* nil)
+  (setq *issuer-started* nil *issuer-acquired* nil *fenced* nil)
   (let ((*events* nil) (*preview* preview) (*publication* publication)
-        (*issuer* nil))
+        (*issuer* nil) (*hold* nil))
     (handler-case (fnn-owner-limit-serialized 'store 'plan)
       (error (e) (unless (eq publication :uncertain) (error e))))
     (sb-thread:join-thread *issuer*)
     (assert *issuer-acquired*)
+    (assert (null *hold*))
+    (assert (eq (eq publication :uncertain) (and *fenced* t)))
     (assert (equal (reverse *events*) expected))))
-(load-limit-source "host/native/admin.lisp" '(fnn-owner-limit-serialized))
-(limit-pool-fixture :affordable :accepted '(:preview :publish :carry :pool :profile))
-(limit-pool-fixture :at-restart :accepted '(:preview :publish :carry))
-(limit-pool-fixture :affordable :refused '(:preview :publish))
-(limit-pool-fixture :affordable :uncertain '(:preview :publish))
+(defun load-admin-forms (path wanted)
+  "Evaluate PATH's top-level forms named by WANTED, (KIND NAME) each, in file
+order; a name the file does not hold is an error."
+  (let ((missing (copy-list wanted)))
+    (with-open-file (s path)
+      (loop for f = (read s nil :eof) until (eq f :eof) do
+        (when (consp f)
+          (let ((key (list (car f) (if (consp (cadr f)) (car (cadr f)) (cadr f)))))
+            (when (member key wanted :test #'equal)
+              (eval f)
+              (setq missing (remove key missing :test #'equal)))))))
+    (when missing (error "deployed forms missing from ~a: ~s" path missing))))
+(load-admin-forms "host/native/io.lisp"
+ '((define-condition fnn-store-error) (define-condition fnn-store-fault)
+   (define-condition fnn-store-indeterminate) (defun fnn-nat)))
+(load-admin-forms "host/native/admin.lisp"
+ '((defstruct fnn-reconfig) (defmacro fnn-owner-live-reconfigure)
+   (defun fnn-owner-reconfigure-unstage)
+   (defun fnn-rc-begin) (defun fnn-rc-advance) (defun fnn-rc-next-feed-event)
+   (defun fnn-rc-prime) (defun fnn-rc-resignal) (defun fnn-rc-do-stage)
+   (defun fnn-rc-do-authorize) (defun fnn-rc-do-complete) (defun fnn-rc-do-refresh)
+   (defun fnn-rc-do-replay) (defun fnn-rc-do-install) (defun fnn-rc-owner-effect)
+   (defun fnn-rc-hold) (defun fnn-rc-leave) (defun fnn-rc-owner-quantum)
+   (defun fnn-rc-classify) (defun fnn-rc-do-observe) (defun fnn-rc-do-publish)
+   (defun fnn-rc-close-scanned) (defun fnn-rc-window)
+   (defun fnn-owner-limit-serialized)))
+(limit-pool-fixture :affordable :accepted '(:preview :reserve :publish :convert :carry :profile))
+(limit-pool-fixture :at-restart :accepted '(:preview :reserve :publish :convert :carry))
+(limit-pool-fixture :affordable :refused '(:preview :reserve :publish :release))
+(limit-pool-fixture :affordable :uncertain '(:preview :reserve :publish))
 (format t "actual live limit adapter: mutex/carry/pool/profile order passed~%")

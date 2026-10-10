@@ -33,6 +33,7 @@ import unittest
 from pathlib import Path
 
 from tests.native_harness import Client, Node, executable, native_image
+from tools import fixtures
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
@@ -48,6 +49,9 @@ class NativeOverCursorCost(unittest.TestCase):
     def node(self, name):
         source = Path(FIXTURES) / name / "store"
         self.assertTrue(source.is_dir(), source)
+        refusal = fixtures.schema_refusal(source.parent, fixtures.schema_digest())
+        if refusal:
+            self.fail(refusal)
         work = Path(tempfile.mkdtemp(prefix="fn-over-cost-", dir=os.environ.get("FN_OPEN_DEPTH_WORK")))
         self.addCleanup(shutil.rmtree, work, True)
         node = Node(self, IMAGE, root=work / name, name=name)

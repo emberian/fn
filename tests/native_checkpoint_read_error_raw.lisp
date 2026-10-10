@@ -30,11 +30,26 @@
 (defun zp (x) (or (not (integerp x)) (<= x 0)))
 (defmacro mbe (&key logic exec) (declare (ignore logic)) exec)
 (defconstant *fn-lgs-max-segment* 999999)
+(load "tests/raw_def_loop.lisp")
+(defmacro mv (&rest xs) `(values ,@xs))
+(defmacro mv-let (vars form &body body) `(multiple-value-bind ,vars ,form ,@body))
+(defun true-listp (x) (and (listp x) (null (cdr (last x)))))
+(defun fix-true-list (x) (if (consp x) (cons (car x) (fix-true-list (cdr x))) nil))
+(defun member-equal (x l) (member x l :test #'equal))
+(defun subsetp-eq (a b) (subsetp a b :test #'eq))
+(defun pairlis$ (a b) (mapcar #'cons a b))
+(defun strip-cdrs (l) (mapcar #'cdr l))
+(defun assoc-eq (x al) (assoc x al :test #'eq))
 (book-defuns "books/store-log-segments.lisp"
              '(fn-lgs-digit-char fn-lgs-digits fn-lgs-segment-name fn-lgs-digits-value
-               fn-lgs-segment-index fn-lgs-indices-loop fn-lgs-indices fn-lgs-max-index
-               fn-lgs-range-loop fn-lgs-range fn-lgs-all-present fn-lgs-below-loop
-               fn-lgs-below fn-lgs-open-plan))
+               fn-lgs-segment-index fn-lgs-max-index fn-lgs-all-present fn-lgs-open-plan))
+(dolist (name '(fn-lgs-indices fn-lgs-range fn-lgs-below))
+  (unless (raw-def-loop-load "books/store-log-segments.lisp" name)
+    (error "books/store-log-segments.lisp: def-loop ~a not found" name)))
+;; The served octet buffer (io.lisp fnn-live-octets): a refused checkpoint
+;; read gives it back (fnn-octets-release, S071), so the live object is the
+;; two-slot vector the deployed code expects, not an image's stobj alist.
+(setq *fnn-octets* (vector (make-array 0 :element-type '(unsigned-byte 8)) 0))
 (defun fnn-call (name &rest args)
   (case name
     (fn-lgs-open-plan (list (apply name args)))
