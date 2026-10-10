@@ -237,3 +237,11 @@
                 (config-octets *hct-config*) (card *hct-card*) (resident (list *hct-16g*))
                 (address (list *hct-1t*)))
                :fault "an offline figure that bounds the records but not their memberships (H no longer does)")))
+
+; An observed store-opening line names the totals it read, in field order,
+; with the residency word (fn-mo-totals-words).
+(assert-event
+ (let ((tot (fn-mm-make-tot 3 4 5 6 7 8 9 10 :resident)))
+   (and (fn-mm-tot-p tot)
+        (equal (fn-mo-unseen-suffix :reads tot '(1 2 3) 0 4096)
+               " totals=3,4,5,6,7,8,9,10,resident"))))
