@@ -264,24 +264,34 @@
        :sum-w13-one-connection (fn-mm-sum *mmt-p* *mmt-img* (list 1 t 8388608 8388608 nil 0 8388608 16 nil 64) *mmt-t1k*)))
 
 ; A-OVER-WINDOW-FIT (books/memory-model.lisp fn-mm-over-window-fit; owner
-; Builder C; retirement: row O1's pool lease).  Witnesses per preset at the
-; host's quantum (256) and a 20-octet server name: development's line prices
-; 65,535 Xref memberships (17,579,912 octets), so W' = 1 and one holder's
-; large reply is that line's list window, 562,557,184 octets, where 256 lines
-; were 144,014,639,104; the default profile's W' is 1 too (a 35,656,320-octet
-; window against 9,128,017,920).  The teeth: the fitted window is below the
-; quantum's at both, and W' is the largest that fits (two lines do not).
+; Builder C; retirement: row O1's pool lease) over the NOV line bounded by the
+; article's own header (fn-mm-nov-line-header-bound, the lesser of it and the
+; G-priced bound).  Witnesses at the host's quantum (256) and a 20-octet
+; server name: development's line is 131,126 octets (header 16,384; the
+; G-priced bound was 17,579,912 at G 65,535), its article reply 66,560, so W'
+; = 1 and a holder's large reply is one line's list window, 4,196,032 octets
+; (1,074,184,192 at W = 256); the default profile's 16 MiB articles hold 7
+; lines (W' = 7, the large reply the article's 33,555,456); the small
+; preset's line is the G-priced 20,820 (G 16), W' = 1.  The teeth: the
+; fitted window is below the quantum's, and one more line would not fit.
 (defconst *mmt-cfg-w256* (list 1 t 67108864 67108864 nil 0 0 16 256 20))
 (defconst *mmt-dev-line* (fn-mm-nov-line-octets *fn-bs-profile-development* *mmt-cfg-w256*))
-(assert-event (equal *mmt-dev-line* 17579912))
+(assert-event (equal *mmt-dev-line* 131126))
+(assert-event (< *mmt-dev-line* (fn-mm-nov-line-group-bound *fn-bs-profile-development* *mmt-cfg-w256*)))
 (assert-event (equal (fn-mm-over-window-fit *fn-bs-profile-development* *mmt-cfg-w256*) 1))
-(assert-event (equal (fn-mm-large-reply *fn-bs-profile-development* *mmt-cfg-w256*) 562557184))
+(assert-event (equal (fn-mm-large-reply *fn-bs-profile-development* *mmt-cfg-w256*) 4196032))
 (assert-event (< (fn-mm-large-reply *fn-bs-profile-development* *mmt-cfg-w256*)
                  (* 2 *fn-heap-list-octets-per-octet* 256 *mmt-dev-line*)))
 (assert-event (< (fn-mm-article-reply-octets *fn-bs-profile-development*)
                  (* 2 *fn-heap-list-octets-per-octet* 2 *mmt-dev-line*)))
-(assert-event (equal (fn-mm-over-window-fit *fn-bs-profile-defaults* *mmt-cfg-w256*) 1))
-(assert-event (equal (fn-mm-large-reply *fn-bs-profile-defaults* *mmt-cfg-w256*) 35656320))
+(defconst *mmt-def-line* (fn-mm-nov-line-octets *fn-bs-profile-defaults* *mmt-cfg-w256*))
+(assert-event (equal (fn-mm-over-window-fit *fn-bs-profile-defaults* *mmt-cfg-w256*) 7))
+(assert-event (equal (fn-mm-large-reply *fn-bs-profile-defaults* *mmt-cfg-w256*) 33555456))
+(assert-event (< (fn-mm-article-reply-octets *fn-bs-profile-defaults*)
+                 (* 2 *fn-heap-list-octets-per-octet* 8 *mmt-def-line*)))
+(assert-event (equal (fn-mm-nov-line-octets *fn-heap-small-profile* *mmt-cfg-w256*)
+                     (fn-mm-nov-line-group-bound *fn-heap-small-profile* *mmt-cfg-w256*)))
+(assert-event (equal (fn-mm-over-window-fit *fn-heap-small-profile* *mmt-cfg-w256*) 1))
 ; A quantum the article reply holds several lines of keeps them: a 128 MiB
 ; reply at a 1,000-octet line holds 4,194 lines, so W' is the host's 256.
 (assert-event (equal (fn-mm-window-fit 256 1000 (* 2 67108864)) 256))
