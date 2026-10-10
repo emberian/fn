@@ -144,7 +144,8 @@ def arm_gate(tree, image, w, out, jobs):
         rows.append(child("rtc-exercise " + v, [w, "--fn", "rtc-exercise", "run", v],
                           d / ("rtc-%s.log" % v), cwd=tree, timeout=600))
     for tool in ("stateful", "owner", "faults_diff"):
-        rows.append(child(tool, ["python3", X / (tool + ".py"), image, w, d / tool],
+        fresh = d / ("%s-%s" % (tool, time.strftime("%Y%m%dT%H%M%S")))   # owner.py refuses an existing OUT
+        rows.append(child(tool, ["python3", X / (tool + ".py"), image, w, fresh],
                           d / (tool + ".log"), cwd=tree, timeout=5400))
     if not any(r["name"].startswith("model ") for r in rows):
         raise Refused("gate arm: no transcripts under build/extract/check (run check.sh first)")
@@ -347,9 +348,14 @@ def removable(kinds, roots, edges, executed, unobserved):
     return never, r
 
 
+def qualified(uid):
+    """raw:ACL2::FN-X / star1:ACL2::FN-X -> ACL2::FN-X (books.tsv's key)"""
+    return uid.split(":", 1)[1]
+
+
 def family(uid, books):
-    name = uid.split("::", 1)[-1]
-    book = books.get(name)
+    name = qualified(uid).split("::", 1)[-1]
+    book = books.get(qualified(uid))
     if book:
         key = book_key(book)
         return ("host/" if key.startswith("host/") else "") + Path(key).name.split("-")[0]
@@ -422,12 +428,12 @@ def census(args):
         fam[f]["removable"] += u in r
     per_book = defaultdict(Counter)
     for u in fns:
-        b = books.get(u.split("::", 1)[-1], "")
+        b = books.get(qualified(u), "")
         per_book[b]["core"] += 1
         per_book[b]["removable"] += u in r
     if claimed is not None:
         for u in r:
-            b = books.get(u.split("::", 1)[-1], "")
+            b = books.get(qualified(u), "")
             if b and book_key(b) not in claimed:
                 fam[family(u, books)]["removable_unclaimed"] += 1
     doc = {"functions": len(fns), "executed": len(fns & executed), "never": len(never),

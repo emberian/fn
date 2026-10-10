@@ -642,13 +642,19 @@ class ExecutedSetRefuses(unittest.TestCase):
             "raw:ACL2::FN-D\traw:ACL2::FN-G\nraw:ACL2::FN-F\traw:ACL2::FN-E raw:ACL2::FN-F\n"
             "var:ACL2::*T*\traw:ACL2::FN-E\n")
         js = self.out / "census.json"
+        bk = self.out / "books.tsv"
+        bk.write_text("ACL2::FN-F\t/t/tree/books/zz-dead.lisp\tfn\nACL2::FN-A\thost/aa-live.lisp\tfn\n")
         with contextlib.redirect_stdout(io.StringIO()):
-            self.assertEqual(executed_set.main(["census", str(self.out), str(cd), "--json", str(js)]), 0)
+            self.assertEqual(executed_set.main(["census", str(self.out), str(cd), "--json", str(js),
+                                                "--books", str(bk)]), 0)
         doc = json.loads(js.read_text())
         self.assertEqual(doc["never"], 5)          # C D E F G; U is unobserved, so never counted
         # C, D and G hang below the executed A, E below a variable: only F, called by no one
         # but itself, is removable.
         self.assertEqual(doc["removable"], ["raw:ACL2::FN-F"])
+        self.assertEqual(doc["families"]["zz"]["removable"], 1)
+        self.assertEqual(doc["families"]["host/aa"]["executed"], 1)
+        self.assertEqual(doc["books"]["/t/tree/books/zz-dead.lisp"]["removable"], 1)
 
 
 if __name__ == "__main__":
