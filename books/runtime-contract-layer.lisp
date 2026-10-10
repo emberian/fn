@@ -29,12 +29,12 @@
 
 (defconst *fn-rtc-layer-spec-fns*
   '(fn-rtc-mstates-okp fn-rtc-invp fn-rtc-deliver fn-rtc-accept-branch fn-rtc-close-branch
-    fn-rtc-step* fn-rtc-step fn-rtc-step-cost fn-rtc-step-actions-bound fn-rtc-step-c fn-rtc-static-mstates fn-rtc-init))
+    fn-rtc-step* fn-rtc-step fn-rtc-step-cost fn-rtc-step-actions-bound fn-rtc-step-c fn-rtc-static-mstates fn-rtc-arm-opened fn-rtc-init))
 
 (defconst *fn-rtc-layer-exec-fns*
   '(fn-rtc-x-free-pool-buf-loop fn-rtc-x-free-pool-buf fn-rtc-x-arm-grant fn-rtc-x-rearm
     fn-rtc-x-grant-one fn-rtc-x-grant fn-rtc-x-deliver fn-rtc-x-accept-branch fn-rtc-x-close-branch
-    fn-rtc-x-step* fn-rtc-x-step fn-rtc-x-statics fn-rtc-x-init))
+    fn-rtc-x-step* fn-rtc-x-step fn-rtc-x-statics fn-rtc-x-arm-opened fn-rtc-x-init))
 
 (defun fn-rtc-layer-name (prefix f)
   (declare (xargs :mode :program))
@@ -91,6 +91,7 @@
   '((fn-rtc-x-free-pool-buf-loop (fn-rtc-x-free-pool-buf-loop h n fn-rtc-st) nil :maybe-nat)
     (fn-rtc-x-free-pool-buf (fn-rtc-x-free-pool-buf fn-rtc-st) nil :maybe-nat)
     (fn-rtc-x-arm-grant (fn-rtc-x-arm-grant fn-rtc-st) (1) nil)
+    (fn-rtc-x-arm-opened (fn-rtc-x-arm-opened j n fn-rtc-st) (1) nil)
     (fn-rtc-x-rearm (fn-rtc-x-rearm fn-rtc-st) (1) nil)
     (fn-rtc-x-grant-one (fn-rtc-x-grant-one fn-rtc-st) (1) nil)
     (fn-rtc-x-grant (fn-rtc-x-grant n fn-rtc-st) (1) nil)

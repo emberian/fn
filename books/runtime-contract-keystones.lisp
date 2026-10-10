@@ -47,6 +47,14 @@
                          id inc (list hd2)) q)
             (declare (ignore a r c))
             (mv-let (s3 a2) (fn-rtc-rearm s2) (declare (ignore a2)) s3))))
+       ((eq kind :opened)
+        (mv-let (s2 a r c)
+          (fn-rtc-deliver s1 id inc
+            (fn-rtc-ev kind out id inc
+                       (if (eq (fn-rtc-get 0 out) :done) (list (fn-rtc-e-data e)) nil))
+            q)
+          (declare (ignore a r c))
+          (mv-let (s3 a2) (fn-rtc-rearm s2) (declare (ignore a2)) s3)))
        (t (mv-let (s2 a r c)
             (fn-rtc-deliver s1 id inc (fn-rtc-ev kind out id inc nil) q)
             (declare (ignore a r c))

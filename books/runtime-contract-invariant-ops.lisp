@@ -574,7 +574,7 @@
                           fn-rtc-live-p nfix natp)))))
 
 (defthm fn-rtc-fresh-unbuffered-use-okp
-  (implies (and (member-eq kind '(:fsync :close :accept :timer))
+  (implies (and (member-eq kind '(:fsync :close :accept :timer :extend))
                 (natp id) (natp inc) (< id (fn-rtc-nslots (fn-rtc-config s)))
                 (fn-rtc-current-p id inc s)
                 (iff (eq kind :accept) (equal id 0))
@@ -587,7 +587,7 @@
 (defthm fn-rtc-core-invp-of-fresh-unbuffered-issue
   (implies (and (fn-rtc-core-invp s)
                 (equal op (fn-rtc-next-op s))
-                (member-eq kind '(:fsync :close :accept :timer))
+                (member-eq kind '(:fsync :close :accept :timer :extend))
                 (natp id) (natp inc) (< id (fn-rtc-nslots (fn-rtc-config s)))
                 (fn-rtc-current-p id inc s)
                 (iff (eq kind :accept) (equal id 0))

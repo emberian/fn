@@ -191,6 +191,12 @@
 
 (defthm fn-rtc-nil-not-machine-kind (not (member-equal nil *fn-rtc-machine-kinds*)))
 
+(defthm fn-rtc-extend-extrap-args-1
+  (implies (and (fn-rtc-extend-extrap x) (fn-rtc-action-argp a)) (fn-rtc-action-argsp (cons a x)))
+  :hints (("Goal" :expand ((fn-rtc-action-argsp (cons a x)) (fn-rtc-action-argsp x) (fn-rtc-action-argsp (cdr x))
+                           (fn-rtc-action-argsp (cddr x)) (fn-rtc-action-argsp (cdddr x)))
+                  :in-theory (disable fn-rtc-action-argsp))))
+
 (defthm fn-rtc-req-submit-actions-ok-fast
   (implies (and (natp id) (natp inc) (fn-rtc-action-argp (fn-rtc-s-res (fn-rtc-slot id s)))
                 (fn-rtc-uses-ops-natp (fn-rtc-uses s)))
@@ -200,7 +206,7 @@
                                       fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner
                                       fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer
                                       fn-rtc-submit-okp fn-rtc-live-p fn-rtc-current-p fn-rtc-slot fn-rtc-s-res
-                                      fn-rtc-extrap fn-rtc-action-argsp member-equal fn-rtc-kind-out-p fn-rtc-handlep))
+                                      fn-rtc-extrap fn-rtc-extend-extrap fn-rtc-action-argsp member-equal fn-rtc-kind-out-p fn-rtc-handlep))
           ("Goal'" :use ((:instance fn-rtc-submit-okp-handlep (kind (fn-rtc-get 1 r)) (hd (fn-rtc-get 2 r)))))))
 
 (defthm fn-rtc-req-cancel-actions-ok-fast
