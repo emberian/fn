@@ -557,6 +557,112 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                   cap, configured, term, len(readers), admitted, refused, hwm))
         self.assertLess(hwm * 1024, LIMIT)
 
+    def test_an_accepted_statement_composite_is_admitted_by_the_memory_gate_like_a_post(self):
+        """F5 (commit 13a07d63d): a signed key statement POSTed as an article,
+        which the owner retains as an :hstxa composite row, is admitted by the
+        run's MEMORY gate exactly as an ordinary POST is.  Once the gate cannot
+        hold the store after the row, the composite is refused and nothing is
+        written.
+
+        Mechanism: books/owner-identity*.lisp fn-owner-identity-publication-verdict
+        answers :memory after the transaction and history verdicts, over the row
+        fn-oii-identity-row interns at the arena's count; host/native/owner.lisp
+        fnn-owner-identity-commit refuses with that word before the Store is
+        called ("Store refuses ... transaction (memory)").  The satisfiable side
+        is the same kind of statement admitted with room (a succession, 240).
+        The tooth: before 13a07d63d the composite bypassed the gate, so the
+        statement past the fill was admitted (240) and the store grew by its row;
+        and until fnn-owner-identity-commit-or-word the refusal reached the
+        poster as the generic "441 posting failed; the article was refused"
+        (the verdict's word was lost as :refused), so the reply is asserted
+        to be the memory's own.
+
+        The fill is the fill test's (a bare init under the 2 GiB cgroup, one
+        reader, 30 KiB articles until the first refusal); every figure is read from the node (the capacity line, `status
+        --replay'), none pinned (D27).  The key setup is
+        tests/test_native_key_statements.py's, imported, not copied."""
+        from tests import test_native_key_statements as keystatements
+        helper = keystatements.NativeKeyStatementTests(
+            "test_succession_revocation_and_carried_statement")
+        helper.setUp()
+        self.addCleanup(helper.doCleanups)
+        old, new, principal = helper.keys["old"], helper.keys["new"], helper.principal_file
+        config, port = self.config("composite")
+        # The capacity test's profile with T and H raised so that neither the
+        # transactions nor the history is spent before the memory gate is:
+        # the room C' leaves is under one connection's charge, which small
+        # rows spend.
+        flags = [w for pair in zip(CAPACITY_FLAGS[0::2], CAPACITY_FLAGS[1::2])
+                 for w in (pair if pair[0] not in ("--max-transactions", "--max-history-octets")
+                           else (pair[0], "24576" if pair[0] == "--max-transactions"
+                                 else "12582912"))]
+        made = self.run_fn("operator", config, "init", *flags, "local.test", "fn.keys")
+        self.assertEqual(made.returncode, EXIT_OK, text(made))
+        policy = self.run_fn("operator", config, "policy", "set",
+                             "exposure-connections", str(CAPACITY_CONNECTIONS))
+        self.assertEqual(policy.returncode, EXIT_OK, text(policy))
+
+        def counts():
+            replay = self.run_fn("operator", config, "status", "--replay")
+            self.assertEqual(replay.returncode, EXIT_OK, text(replay))
+            return {k: int(v) for k, v in re.findall(
+                r"\b(articles|signed)=(\d+)", replay.stdout.decode())}
+
+        # With room: P enrolled and granted `keys', a succession is admitted.
+        self.start()
+        helper.enrol_and_grant(self.node)
+        with Client(port, timeout=300) as client:
+            first, final = client.post(helper.carrier(
+                principal, old,
+                helper.succession("<succession@keys.invalid>", keystatements.P, old, new),
+                "succession"))
+            self.assertTrue(first.startswith(b"340"), first)
+            self.assertTrue(final.startswith(b"240 "), final)
+        self.stop()
+        base = counts()
+        self.assertGreaterEqual(base["signed"], 1, base)
+
+        # Without room: fill with one reader and minimal posts
+        # until an ordinary POST is refused, which must be by the memory's
+        # word, then POST the revocation, signed by the succeeded keys.
+        self.start()
+        cap, configured, term = self.capacity()
+        body = "y\r\n"
+        revocation = helper.carrier(principal, new,
+                                    helper.revocation("<revocation@keys.invalid>",
+                                                      keystatements.P),
+                                    "revocation")
+        admitted, composite = 0, None
+        with Client(port, timeout=600) as client:
+            for n in range(200000):
+                first, final = client.post(article("<comp-{}@example.invalid>".format(n),
+                                                   groups="local.test", subject="fill",
+                                                   date=None, body=body.encode("ascii")))
+                self.assertTrue(first.startswith(b"340"), first)
+                final = final.rstrip(b"\r\n")
+                if final.startswith(b"240"):
+                    admitted += 1
+                    continue
+                self.assertEqual(final, MEMORY_REFUSAL, n)
+                first, composite = client.post(revocation)
+                self.assertTrue(first.startswith(b"340"), first)
+                break
+        self.assertIsNotNone(composite, "the fill never reached the memory's refusal")
+        print("NATIVE-HEAP composite capacity={} of {} admitted={} reply={!r}".format(
+            cap, configured, admitted, composite))
+        self.stop()
+        # The composite's verdict (fn-owner-identity-publication-verdict) is
+        # T, then H, then the memory, so the memory's word means T and H
+        # admitted it.  fnn-owner-identity-commit raises it as
+        # fnn-identity-verdict-refusal and fnn-owner-identity-commit-or-word
+        # answers the word as the attempt's outcome (host/native/owner.lisp),
+        # rendered as an ordinary POST's is: fn-post-store-refusal-text of
+        # :memory (books/nntp-post.lisp).
+        self.assertEqual(composite.rstrip(b"\r\n"), MEMORY_REFUSAL)
+        after = counts()
+        self.assertEqual(after["articles"], base["articles"] + admitted, (base, after))
+        self.assertEqual(after["signed"], base["signed"], (base, after))
+
     def test_a_store_init_admitted_fills_to_its_limit_and_still_restarts(self):
         """The coordinator's release blocker (friend-path, packet A): a store
         `init' sized within this machine's budget must reopen on this machine

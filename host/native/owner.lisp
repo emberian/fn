@@ -3598,6 +3598,16 @@ follows is justified only by this line."
         (fnn-core-buffer-state 'fn-owner-transit-verdict-buffer
                                (and nntp-transit-p t) nil nil)))
 
+;; The publication verdict's refusal of an identity event, carrying ACL2's
+;; word (host/owner-host.lisp fn-owner-identity-publication-verdict:
+;; :unaffordable, :handle-space, :memory).  fnn-owner-identity-commit raises
+;; it before anything is reserved; the served POST and transit sites in
+;; fnn-owner-attempt-filled answer the word itself, as the article path
+;; does, so the reply names it (books/nntp-post.lisp
+;; fn-post-store-refusal-text); every other caller sees an fnn-store-error.
+(define-condition fnn-identity-verdict-refusal (fnn-store-error)
+  ((word :initarg :word :reader fnn-identity-verdict-word)))
+
 (defun fnn-owner-transit-refused (detail)
   (setq *fnn-owner-transit-detail*
         (if (and (consp detail) (eq (first detail) :refused)
@@ -3733,7 +3743,7 @@ theorems).  Only a present carrier's arm builds the article's list, once."
                      (return-from fnn-owner-attempt-filled
                        (fnn-owner-statement-committed
                         service event
-                        (fnn-owner-identity-commit service event))))))
+                        (fnn-owner-identity-commit-or-word service event))))))
                ;; PRF-098: the :revoked arm (NNTP transit only) takes the
                ;; same two primitive observations as :ok, over the carrier's
                ;; keys, and commits fn-pa-revoked-event's composite.
@@ -3800,7 +3810,7 @@ theorems).  Only a present carrier's arm builds the article's list, once."
                                                    (first ml-observation))
                    (fnn-owner-statement-committed
                     service event
-                    (fnn-owner-identity-commit service event)))))))))))))
+                    (fnn-owner-identity-commit-or-word service event)))))))))))))
 
 ;;; PRF-098: the key-statement executor, run by the owner right after it
 ;;; committed a kind-4 composite (books/key-statements.lisp, through
@@ -4004,8 +4014,10 @@ theorems).  Only a present carrier's arm builds the article's list, once."
     ;; names the verdict's word (:memory among them).
     (let ((verdict (fnn-owner-core 'fn-owner-identity-publication-verdict event)))
       (unless (eq verdict :admissible)
-        (fnn-refuse "Store refuses ~(~a~) transaction (~(~a~))"
-                    (fnn-core 'fn-wire-event-kind event) verdict)))
+        (error 'fnn-identity-verdict-refusal
+               :word verdict
+               :message (format nil "Store refuses ~(~a~) transaction (~(~a~))"
+                                (fnn-core 'fn-wire-event-kind event) verdict))))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
                 (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
@@ -4038,6 +4050,14 @@ theorems).  Only a present carrier's arm builds the article's list, once."
           ;; fn-psrv-identity-refusal-kind).
           (fnn-refuse "canonical Store refused identity event (~(~a~))" prepared)))
       (fnn-owner-publish-prepared service "identity"))))
+
+(defun fnn-owner-identity-commit-or-word (service event)
+  "fnn-owner-identity-commit for a served POST or transit: its publication
+verdict's refusal answers the verdict's word (:memory, :handle-space,
+:unaffordable) as the attempt's outcome, so the reply names it; nothing was
+reserved when it is raised."
+  (handler-case (fnn-owner-identity-commit service event)
+    (fnn-identity-verdict-refusal (c) (fnn-identity-verdict-word c))))
 
 (defun fnn-owner-consumer-commit (service event)
   "Publish one ACL2-constructed consumer event through the durable Store gate."
