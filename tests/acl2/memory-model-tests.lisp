@@ -52,28 +52,41 @@
 (defconst *mmt-slots* (fn-heap-article-slots *mmt-p*))
 (defconst *mmt-hs* (fn-cbud-handshake-slots t 16))
 
-; K1.  Every connection, article slot and handshake held, publishing.
+; K1.  Every connection, every holder, article slot and handshake held,
+; publishing; at P = 4 holders of C = 32 (contract v2.1's pool).
+(defconst *mmt-cfg-p4* (list 32 t 8388608 8388608 nil 0 8388608 16 nil 64 4))
+(assert-event (equal (fn-mm-cfg-holders *mmt-cfg-p4*) 4))
+(assert-event (equal (fn-mm-cfg-holders *mmt-cfg*) 32))
 (defteeth fn-mm-need-within-the-sum
   :claim (((connections (<= (nfix k) (fn-mm-cfg-connections cfg)))
+           (holders (<= (nfix j) (fn-mm-cfg-holders cfg)))
            (slots (<= (nfix s) (fn-heap-article-slots profile)))
            (handshakes (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg)))))
-          (<= (fn-mm-need profile img cfg tot k s h publishing)
+          (<= (fn-mm-need profile img cfg tot k j s h publishing)
               (fn-mm-sum profile img cfg tot)))
   :subject fn-mm-need
-  :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
-            (k 32) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
-  :breaks ((connections ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
-                         (k 33) (s *mmt-slots*) (h *mmt-hs*) (publishing t)))
-           (slots ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
-                   (k 32) (s (+ 1 *mmt-slots*)) (h *mmt-hs*) (publishing t)))
-           (handshakes ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
-                        (k 32) (s *mmt-slots*) (h (+ 1 *mmt-hs*)) (publishing t))))
+  :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 4) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
+  :breaks ((connections ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 33) (j 4) (s *mmt-slots*) (h *mmt-hs*) (publishing t)))
+           (holders ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 5) (s *mmt-slots*) (h *mmt-hs*) (publishing t)))
+           (slots ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 4) (s (+ 1 *mmt-slots*)) (h *mmt-hs*) (publishing t)))
+           (handshakes ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 4) (s *mmt-slots*) (h (+ 1 *mmt-hs*)) (publishing t))))
   :mutations ((sum-without-inflight
-               (:conclusion (<= (fn-mm-need profile img cfg tot k s h publishing)
+               (:conclusion (<= (fn-mm-need profile img cfg tot k j s h publishing)
                                 (- (fn-mm-sum profile img cfg tot) (fn-mm-inflight profile cfg))))
-               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg*) (tot *mmt-t1k*)
-                (k 32) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
-               :fault "a sum that omits the in-flight term (capture buffers, article slots, handshakes, cold reads)")))
+               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 4) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
+               :fault "a sum that omits the in-flight term (capture buffers, article slots, handshakes, cold reads)")
+              (sum-with-fixed-connections-only
+               (:conclusion (<= (fn-mm-need profile img cfg tot k j s h publishing)
+                                (- (fn-mm-sum profile img cfg tot) (fn-mm-large-pool profile cfg))))
+               ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg-p4*) (tot *mmt-t1k*)
+                (k 32) (j 4) (s *mmt-slots*) (h *mmt-hs*) (publishing t))
+               :fault "a sum that charges no connection a large reply (the holders' pool omitted)")))
 
 ; K2.  A checkpoint at 900 records within the store at 1,000.
 (defteeth fn-mm-sum-grows-with-the-store
@@ -97,17 +110,20 @@
        (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg0* tot)))
 (defconst *mmt-limit* (mmt-gate-limit *mmt-t1k*))
 (assert-event (equal *mmt-limit* (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg0* *mmt-t1k*)))
-(defteeth fn-mm-admitted-store-reopens
-  :claim (((gate (fn-mm-gate-p profile img cfg limit adm))
-           (observes (fn-mm-tot-le tot (fn-mm-observed-tot hdr suffix)))
-           (admitted (fn-mm-tot-le (fn-mm-observed-tot hdr suffix) adm))
-           (image (fn-mm-img-le img2 img)))
+(defkeystone mmt-admitted-store-reopens
+  (implies (and (fn-mm-gate-p profile img cfg limit adm)
+                (fn-mm-tot-le tot (fn-mm-observed-tot hdr suffix))
+                (fn-mm-tot-le (fn-mm-observed-tot hdr suffix) adm)
+                (fn-mm-img-le img2 img))
            (and (<= (fn-mm-reopen-need profile img2 cfg tot)
                     (fn-mm-reopen-need profile img2 cfg (fn-mm-observed-tot hdr suffix)))
                 (natp limit)
                 (<= (fn-mm-reopen-need profile img2 cfg (fn-mm-observed-tot hdr suffix))
                     limit)))
+  :id "PRF-10001"
   :subject fn-mm-reopen-need
+  :restates fn-mm-admitted-store-reopens
+  :hyps (gate observes admitted image)
   :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (limit *mmt-limit*) (adm *mmt-t1k*)
             (tot *mmt-t1k*) (hdr *mmt-hdr*) (suffix *mmt-suffix*) (img2 *mmt-img*))
   ; gate: a limit under the store's reopen; observes: an observer that reads
@@ -127,7 +143,8 @@
                                 (fn-mm-reopen-need profile img2 cfg hdr)))
                ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg0*) (limit *mmt-limit*) (adm *mmt-t1k*)
                 (tot *mmt-t1k*) (hdr *mmt-hdr*) (suffix *mmt-suffix*) (img2 *mmt-img*))
-               :fault "a reopen sized from the checkpoint header alone, the log suffix past it unread")))
+               :fault "a reopen sized from the checkpoint header alone, the log suffix past it unread"))
+  :hints (("Goal" :by fn-mm-admitted-store-reopens)))
 
 ; K4 and K5.  CORE the production image's (file . dynamic).  At C = 32 the
 ; OVER quantum's octet lists alone are 4.0 GiB of the sum (the figures
@@ -232,7 +249,9 @@
  (list :base (fn-mm-base *mmt-img* *mmt-cfg*)
        :owner-empty (fn-mm-owner *mmt-t0* *mmt-cfg*)
        :owner-w13 (fn-mm-owner *mmt-t1k* *mmt-cfg*)
-       :connections (* 32 (fn-mm-connection *mmt-p* *mmt-cfg*))
+       :connections (fn-mm-connections *mmt-p* *mmt-cfg*)
+       :connection-fixed (fn-mm-connection-fixed *mmt-p* *mmt-cfg*)
+       :large-reply (fn-mm-large-reply *mmt-p* *mmt-cfg*)
        :over-window (fn-mm-over-window-octets *mmt-p* *mmt-cfg*)
        :inflight (fn-mm-inflight *mmt-p* *mmt-cfg*)
        :cold-reads (fn-mm-cold-reads *mmt-p* *mmt-cfg*)
@@ -243,3 +262,27 @@
        :reopen-w13 (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg* *mmt-t1k*)
        :reopen-ceiling (fn-mm-reopen-need *mmt-p* *mmt-img* *mmt-cfg* *mmt-ceiling*)
        :sum-w13-one-connection (fn-mm-sum *mmt-p* *mmt-img* (list 1 t 8388608 8388608 nil 0 8388608 16 nil 64) *mmt-t1k*)))
+
+; A-OVER-WINDOW-FIT (books/memory-model.lisp fn-mm-over-window-fit; owner
+; Builder C; retirement: row O1's pool lease).  Witnesses per preset at the
+; host's quantum (256) and a 20-octet server name: development's line prices
+; 65,535 Xref memberships (17,579,912 octets), so W' = 1 and one holder's
+; large reply is that line's list window, 562,557,184 octets, where 256 lines
+; were 144,014,639,104; the default profile's W' is 1 too (a 35,656,320-octet
+; window against 9,128,017,920).  The teeth: the fitted window is below the
+; quantum's at both, and W' is the largest that fits (two lines do not).
+(defconst *mmt-cfg-w256* (list 1 t 67108864 67108864 nil 0 0 16 256 20))
+(defconst *mmt-dev-line* (fn-mm-nov-line-octets *fn-bs-profile-development* *mmt-cfg-w256*))
+(assert-event (equal *mmt-dev-line* 17579912))
+(assert-event (equal (fn-mm-over-window-fit *fn-bs-profile-development* *mmt-cfg-w256*) 1))
+(assert-event (equal (fn-mm-large-reply *fn-bs-profile-development* *mmt-cfg-w256*) 562557184))
+(assert-event (< (fn-mm-large-reply *fn-bs-profile-development* *mmt-cfg-w256*)
+                 (* 2 *fn-heap-list-octets-per-octet* 256 *mmt-dev-line*)))
+(assert-event (< (fn-mm-article-reply-octets *fn-bs-profile-development*)
+                 (* 2 *fn-heap-list-octets-per-octet* 2 *mmt-dev-line*)))
+(assert-event (equal (fn-mm-over-window-fit *fn-bs-profile-defaults* *mmt-cfg-w256*) 1))
+(assert-event (equal (fn-mm-large-reply *fn-bs-profile-defaults* *mmt-cfg-w256*) 35656320))
+; A quantum the article reply holds several lines of keeps them: a 128 MiB
+; reply at a 1,000-octet line holds 4,194 lines, so W' is the host's 256.
+(assert-event (equal (fn-mm-window-fit 256 1000 (* 2 67108864)) 256))
+(assert-event (equal (fn-mm-window-fit 256 1000 100000) 3))

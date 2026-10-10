@@ -155,6 +155,13 @@
    "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode",
    "provenance": "keystone_critical.py --declare sha256:02422ef1703b7be6f7ba649454e5cb3942760f6697d2880d5620f31203fc5ac1"
   },
+  "fn-mo-header-decide-holds-the-header": {
+   "subject": "fn-mo-header-decide",
+   "host_test": "tests/test_native_operator_verbs.py::test_a_stopped_status_holds_no_store_and_a_replay_names_the_totals_it_cannot_see",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-stopped-status-holds-the-header",
+   "mutation": "tests/acl2/heap-command-tests.lisp::configuration-history-uncharged",
+   "provenance": "keystone_critical.py --declare sha256:83f445db6ad11fb61c209beaff185dc54a0feb128795c2944f5da85c8bddb691"
+  },
   "fn-orcs-predict-seal-refines-intern": {
    "subject": "fn-orcs-predict-rows-at",
    "host_test": "tests/test_native_recovery.py::test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves",

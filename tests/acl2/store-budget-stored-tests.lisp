@@ -7,6 +7,7 @@
 ; whose facts disagree with its extent) is labelled as such.
 (in-package "ACL2")
 (include-book "../../books/store-budget-stored")
+(include-book "../../books/charged-totals")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
 
@@ -17,6 +18,14 @@
         (fn-record-make 1 1 0 "<b@example.invalid>" '(65 66 67 68 69) *sbst-groups*
                         "p" "s" "r" 2 841000000)))
 (assert-event (fn-wire-event-listp *sbst-ws*))
+
+; The octets a held row is charged: its payload alone (the memberships are the
+; memory equation's term), summed over the events the open interns.
+(defun sbst-payload-octets (ws)
+  (declare (xargs :verify-guards nil))
+  (if (consp ws)
+      (+ (len (fn-record-payload (car ws))) (sbst-payload-octets (cdr ws)))
+    0))
 
 ; The open: the rows, the budget's octets, the stored octets over the arena,
 ; the relation, and the pre-flip count (the wire encoder over each row).
@@ -47,27 +56,27 @@
 ; REACHABLE (fn-intern-events-budget-octets-are-the-stored-octets,
 ; fn-intern-events-extents-okp): every hypothesis holds (the arena is the
 ; live one, generation 0, a wire event list); the relation holds; the budget
-; counts 3 + 5 = 8 payload octets and each row's one membership at 320
-; (lane membership-budget): 648, the stored charges, where the pre-flip count
-; was 0.
+; counts 3 + 5 = 8 payload octets, the stored charges (a held row is charged
+; its payload alone; its memberships are the memory equation's MEMBERSHIPS,
+; books/charged-totals.lisp), where the pre-flip count was 0.
 (defconst *sbst-open* (sbst-open *sbst-ws* 0))
 (assert-event (natp 0))
 (assert-event (fn-held-listp (nth 4 *sbst-open*)))
 (assert-event (equal (nth 2 *sbst-open*) t))
-(assert-event (equal (nth 0 *sbst-open*) 808))
-(assert-event (equal (nth 1 *sbst-open*) 808))
+(assert-event (equal (nth 0 *sbst-open*) (sbst-payload-octets *sbst-ws*)))
+(assert-event (equal (nth 1 *sbst-open*) (sbst-payload-octets *sbst-ws*)))
 (assert-event (equal (nth 3 *sbst-open*) 0))
 
 ; The same through the store the host reads (fn-sbud-bytes-used over the
 ; kernel's records; fn-sbud-bytes-used-is-the-stored-octets).
 (defconst *sbst-store*
   (list nil nil (fn-sf-make :ready 2 nil (nth 4 *sbst-open*) nil nil nil 0)))
-(assert-event (equal (fn-sbud-bytes-used *sbst-store*) 808))
+(assert-event (equal (fn-sbud-bytes-used *sbst-store*) (sbst-payload-octets *sbst-ws*)))
 ; The carried sum from a prefix cache agrees (fn-sbud-bytes-used-is-kernel-sum).
 (assert-event (equal (fn-sbud-bytes-extend
                       (cons 1 (fn-sbud-record-octets (take 1 (nth 4 *sbst-open*))))
                       (nth 4 *sbst-open*))
-                     808))
+                     (sbst-payload-octets *sbst-ws*)))
 ; A wire row still counts its encoding (fn-sbud-row-octets-of-wire-row).
 (assert-event (equal (fn-sbud-row-octets (car *sbst-ws*))
                      (len (fn-store-event-encode (car *sbst-ws*)))))
@@ -77,7 +86,7 @@
 ; fn-sbud-record-octets-is-the-stored-octets, whose one hypothesis is the
 ; relation): the first row with its facts claiming 7 octets where its handle's
 ; extent is 3.  The relation fails, and so does the conclusion: the budget
-; counts 7 + 5 + 640 = 652, the stored charges are 3 + 5 + 640 = 648.
+; counts 7 + 5 = 12, the stored charges are 3 + 5 = 8.
 (defconst *sbst-row0* (car (nth 4 *sbst-open*)))
 (defconst *sbst-lying*
   (fn-held-make (fn-record-sequence *sbst-row0*) (fn-record-txid *sbst-row0*)
@@ -112,8 +121,9 @@
 
 (defconst *sbst-lie* (sbst-lying *sbst-ws*))
 (assert-event (equal (nth 0 *sbst-lie*) nil))
-(assert-event (equal (nth 1 *sbst-lie*) 892))
-(assert-event (equal (nth 2 *sbst-lie*) 888))
+(assert-event (equal (nth 1 *sbst-lie*)
+                     (+ 7 (sbst-payload-octets (cdr *sbst-ws*)))))
+(assert-event (equal (nth 2 *sbst-lie*) (sbst-payload-octets *sbst-ws*)))
 ; The same refutation as a theorem over the arena's logical value (the two
 ; payloads the open sealed): the conclusion is false at these rows, so the
 ; theorem without its hypothesis fails.
@@ -133,11 +143,10 @@
 ; open's exact decoder hands it.  No removal witness is claimed for them.
 
 ; -----------------------------------------------------------------------------
-; Lane membership-budget (2026-09-27).  fn-sbud-record-octets-pays-the-
-; memberships (books/store-budget.lisp; no hypothesis): a reachable held row
-; interned from a wire record crossposted to three groups is charged its
-; payload and 3 x 320 = 960 octets, and holds 3 memberships; the history of
-; it and the open's two rows pays 320 x 5 memberships out of 1,613 octets.
+; H charges a held row its payload alone (memory landing 3+4; the
+; memberships are the memory equation's MEMBERSHIPS, books/charged-totals.lisp
+; fn-ct-row): a reachable held row interned from a wire record crossposted to
+; three groups is charged its four payload octets, and holds 3 memberships.
 (defconst *sbst-cross-ws*
   (list (fn-record-make 2 2 0 "<c@example.invalid>" '(70 71 72 73)
                         '("fn.a" "fn.b" "fn.c") "p" "s" "r" 2 841000000)))
@@ -146,24 +155,15 @@
 (defconst *sbst-cross-row* (car (nth 4 *sbst-cross*)))
 (assert-event (fn-held-p *sbst-cross-row*))
 (assert-event (equal (fn-sbud-row-memberships *sbst-cross-row*) 3))
-;; (and its header charge, lane heap-pool)
 (assert-event (equal (fn-sbud-row-octets *sbst-cross-row*)
-                     (+ 4 960 (fn-sbud-held-heap-charge *sbst-cross-row*))))
-(assert-event (equal (fn-sbud-row-octets *sbst-cross-row*) 1044))
-(assert-event (equal (nth 0 *sbst-cross*) 1044))
-(assert-event (equal (nth 1 *sbst-cross*) 1044))
+                     (nfix (fn-hf-octets (fn-held-facts *sbst-cross-row*)))))
+(assert-event (equal (fn-sbud-row-octets *sbst-cross-row*) 4))
+(assert-event (equal (nth 0 *sbst-cross*) (fn-sbud-row-octets *sbst-cross-row*)))
+(assert-event (equal (nth 1 *sbst-cross*) (fn-sbud-row-octets *sbst-cross-row*)))
 (assert-event (equal (nth 2 *sbst-cross*) t))
 (defconst *sbst-all-rows* (append (nth 4 *sbst-open*) (nth 4 *sbst-cross*)))
-(assert-event (equal (fn-sbud-record-memberships *sbst-all-rows*) 5))
-(assert-event (equal (fn-sbud-record-octets *sbst-all-rows*) 1852))
-(assert-event (<= (* *fn-sbud-membership-octets*
-                     (fn-sbud-record-memberships *sbst-all-rows*))
-                  (fn-sbud-record-octets *sbst-all-rows*)))
+; The memberships are counted where the equation charges them, not in H.
+(assert-event (equal (nth 2 (fn-ct-of-records *sbst-all-rows*)) 5))
 ; A wire row (no groups of its own counted) holds no membership.
 (assert-event (equal (fn-sbud-row-memberships (car *sbst-ws*)) 0))
-; MUTATION (the charge before this lane): a row charged only its payload
-; would not pay: 320 x 3 > 4.
-(assert-event (not (<= (* *fn-sbud-membership-octets*
-                          (fn-sbud-row-memberships *sbst-cross-row*))
-                       (nfix (fn-hf-octets (fn-held-facts *sbst-cross-row*))))))
 

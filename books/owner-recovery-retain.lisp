@@ -90,6 +90,13 @@
          (state (f-put-global 'fn-owner-record-octets (nth 3 rebuilt) state))
          (state (f-put-global 'fn-owner-record-debt (nth 4 rebuilt) state))
          (state (f-put-global 'fn-owner-carried-usage (nth 5 rebuilt) state))
+         ; K-TOTALS: the reclaim rewrote rows the totals cache folded, so
+         ; the cache restarts empty (fn-ct-totals-empty-cache-is-valid) and
+         ; the next query folds the swapped store from the history stobj.
+         ; (0 . TOT), TOT the empty store's (fn-ct-zero-tot :resident).
+         (state (f-put-global 'fn-owner-record-totals
+                              '(0 0 0 0 0 0 0 0 0 :resident)
+                              state))
          ; The rebuilt base has no canonical H0. Reset durable/attempted to
          ; COUNT and release the slot; pending/requested/serial survive.
          (state (fn-ost-install-publication

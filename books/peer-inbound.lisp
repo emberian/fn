@@ -1060,7 +1060,7 @@
           ((equal completion :uncertain) 436)
           ((equal completion :clock-unusable) 436)
           ((equal completion :unaffordable) 436)
-          ((equal completion :memberships) 436)
+          ((equal completion :memory) 436)
           ;; H exhausted is "not now" as a full T is: reclaim or a raised
           ;; H frees it, and the sender keeps the article.
           ((equal completion :history-exhausted) 436)
@@ -1097,7 +1097,7 @@
                        (list (fn-nntp-close-effect))))
               ((equal completion :clock-unusable)
                (fn-peer-single ps (fn-proto-text "IHAVE" :retry-no-clock)))
-              ((member-equal completion '(:unaffordable :memberships
+              ((member-equal completion '(:unaffordable :memory
                                           :history-exhausted :feed-queue-full))
                (fn-peer-single ps (string-append "436 retry later; "
                                                  (fn-post-store-refusal-text completion))))

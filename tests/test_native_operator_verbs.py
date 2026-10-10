@@ -572,34 +572,24 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
                        date=None, body=b"x\r\n")
         return text.index(b"\r\n\r\n") + 4
 
-    # The history charge of one stored article (books/store-budget.lisp
-    # fn-sbud-row-octets): its stored octets, 320 a group, and since lane
-    # heap-pool its header charge, 8 a header octet and 12 a Message-ID octet.
-    @staticmethod
-    def charge(stored, header, msgid, groups):
-        return stored + 320 * groups + 8 * header + 12 * len(msgid)
-
-    def test_a_crosspost_is_charged_per_group_and_refused_by_name_past_the_budget(self):
-        """Lane membership-budget (ember, 2026-09-27): each group an article is
-        filed in is charged 320 octets of the history budget
-        (books/store-budget.lisp `*fn-sbud-membership-octets*'), so a
-        crosspost is allowed but paid for; when the article alone would fit
-        and its memberships do not, the POST is refused by name,
-        `441 ... (memberships)', distinct from the full store's
-        (unaffordable) (books/store-capacity-vector.lisp
-        `fn-cvec-article-refusal-word-names-the-memberships')."""
+    def test_a_crosspost_is_charged_its_payload_alone(self):
+        """Memory landing 3+4 (RULINGS 2026-10-09 21:50): the history budget H
+        charges a held article its stored payload octets alone
+        (books/store-budget.lisp fn-sbud-row-octets); its group memberships and
+        header columns are the memory equation's MEMBERSHIPS and HCHARGE terms
+        (books/memory-model.lisp fn-mm-owner), not H's.  The tooth: a
+        crosspost to three groups and the same article in one group are
+        charged exactly their stored lengths, so the two more groups cost H
+        only the octets they add to the Newsgroups line, where the deleted
+        membership charge took 320 octets each."""
         groups = ["fn.g{}".format(n) for n in range(12)]
         created = self.operator(
             "init", "--profile", "development", "--max-history-octets", "262144",
             "--max-record-octets", "196608", "--max-article-octets", "32768",
             "--max-groups-per-article", "16", *groups)
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        before = self.headroom()["bytes-used"]
         self.node.start()
-        # One group, then three: the stored charge is the payload as stored
-        # (the owner injects the same Path and Injection-Info into both: the
-        # Message-IDs have one length) plus 320 per group, plus (lane
-        # heap-pool) the header charge: the two groups more are header octets,
-        # charged 1 + 8 each.
         reply, one = self.post_article("<xp-a01@example.invalid>", groups[:1], b"body")
         self.assertEqual(reply, "240 article received OK")
         self.node.stop()
@@ -609,76 +599,13 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertEqual(reply, "240 article received OK")
         self.node.stop()
         after_three = self.headroom()["bytes-used"]
-        self.assertEqual(after_three - 2 * after_one, 9 * (three - one) + 640)
-        # The injected octets are header octets: the first article's charge
-        # is charge(one + i, header + i, its Message-ID, 1).
-        header_one = self.header_octets("<xp-a01@example.invalid>", groups[:1])
-        base = self.charge(one, header_one, "<xp-a01@example.invalid>", 1)
-        self.assertEqual((after_one - base) % 9, 0, (after_one, base))
-        injected = (after_one - base) // 9
-        # Fill with one-group articles to leave ROOM octets of history: a
-        # 10-group article of stored payload P is charged at its figure,
-        # P + 1083 + 261 x 10 and its header charge at its worst, 8 P +
-        # 12 x 250 (books/store-budget-article.lisp fn-sbud-article-figure),
-        # without its memberships, and 3,200 more with them, beside the
-        # 4,096-octet maintenance reservation.  Aim the room at the middle of
-        # that window.
-        room = self.headroom()
-        target_payload = 600
-        record = 9 * target_payload + 1083 + 261 * 10 + 3000
-        want_left = record + 4096 + 1600
-        filler_total = room["history-bound"] - room["bytes-used"] - want_left
-        self.node.start()
-        fill, count = 0, 0
-        while filler_total - fill > 0:
-            filler_id = "<xp-f{:03d}@example.invalid>".format(count)
-            header = self.header_octets(filler_id, groups[:1]) + injected
-            # The gate admits a filler of stored payload P at its figure,
-            # 9 P + 1,083 + 261 + 320 + 3,000, beside the 4,096 reserve
-            # (lane heap-pool), though it is charged far less.
-            remaining = room["history-bound"] - room["bytes-used"] - fill
-            gate_cap = (remaining - (1083 + 261 + 320 + 3000 + 4096) - 200) // 9 - header
-            size = min(30000, gate_cap, filler_total - fill - 320 - 9 * injected - 8 * header
-                       - 12 * len(filler_id) - 200)
-            if size < 200:
-                break
-            body = self.body_of(size)
-            reply, sent = self.post_article(filler_id, groups[:1], body)
-            self.assertEqual(reply, "240 article received OK")
-            fill += self.charge(sent + injected, header, filler_id, 1)
-            count += 1
-        self.node.stop()
-        left = self.headroom()
-        # The crosspost's stored payload P: its bytes plus the injected
-        # headers.  Choose P so the room is 1,600 octets past its record
-        # figure and the reservation: it fits without its memberships (3,200).
-        room_left = left["history-bound"] - left["bytes-used"]
-        bare = len(b"From: author@example.invalid\r\nNewsgroups: " +
-                   ",".join(groups[:10]).encode("ascii") +
-                   b"\r\nSubject: crosspost\r\nMessage-ID: <xp-x10@example.invalid>"
-                   b"\r\n\r\n\r\n")
-        stored = (room_left - (1083 + 261 * 10 + 3000 + 4096 + 1600)) // 9
-        pad = stored - injected - bare
-        print("NATIVE-CROSSPOST room_left={} injected={} bare={} stored={} pad={} left={}"
-              .format(room_left, injected, bare, stored, pad, left))
-        self.assertGreater(pad, 0, left)
-        self.node.start()
-        crosspost, _ = self.post_article("<xp-x10@example.invalid>", groups[:10],
-                                         self.body_of(pad, b"y"))
-        self.assertEqual(
-            crosspost,
-            "441 posting failed; the store cannot pay for this article's groups: each "
-            "group it is posted to is charged to the history budget, and the article "
-            "alone would fit; post it to fewer groups (memberships)",
-            left)
-        # The same article in one group fits: the refusal was the memberships.
-        single, _ = self.post_article("<xp-x01@example.invalid>", groups[:1],
-                                      self.body_of(pad, b"y"))
-        self.assertEqual(single, "240 article received OK", left)
-        self.node.stop()
-        # Nothing of the refused crosspost was written.
-        final = self.headroom()
-        self.assertEqual(final["transactions-used"], left["transactions-used"] + 1)
+        # The owner injects the same headers into both (the Message-IDs have
+        # one length): each charge is the bytes sent plus that injection.
+        injected = after_one - before - one
+        self.assertGreaterEqual(injected, 0, (before, after_one, one))
+        self.assertEqual(after_three - after_one, three + injected,
+                         (before, after_one, after_three, one, three))
+        self.assertEqual(three - one, len(",fn.g1,fn.g2"))
 
     def test_the_scale_profile_is_reachable_from_init(self):
         created = self.operator("init", "--profile", "scale", "fn.test")
@@ -732,6 +659,42 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         room = self.headroom()
         self.assertEqual((room["transactions-used"], room["transactions-budget"]), (0, 1000))
         self.assertEqual((room["bytes-used"], room["history-bound"]), (0, 1 << 40))
+
+    def test_a_stopped_status_holds_no_store_and_a_replay_names_the_totals_it_cannot_see(self):
+        """K6 fn-mo-header-decide-holds-the-header (books/heap-command.lisp,
+        PRF-10000): the probe's decision fn-heap-command-decide sizes a
+        stopped `status' -- the checkpoint header, config.json and lstat,
+        nothing opened -- as `init' is sized, raised by the configuration
+        history it loads, whatever store the profile admits (fn-mo-header-decide).  Tooth: the
+        image before lane memory refused it for `init --budget's D27 store
+        (machine-cannot-hold-profile heap=69306331 MB, the amended row
+        OPERATOR-STATUS-OBSERVED-SIZING).  `status --replay' opens the store:
+        until the checkpoint header carries the charged totals
+        (books/charged-totals.lisp, A's landing 2) it is sized by today's
+        figure and its line names the totals it cannot see (fn-mo-read-decide
+        sizes it once they are observed)."""
+        created = self.operator("init", "--budget", "99999999", "--profile", "default",
+                                "--max-transactions", "1000",
+                                "--max-article-octets", "20000", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        stopped = self.node.invoke("heap", "--", "operator", self.config, "status")
+        self.assertEqual(stopped.returncode, EXIT_OK, stopped.stderr.decode())
+        line = stopped.stdout.decode("ascii").strip()
+        self.assertTrue(line.startswith("heap="), line)
+        self.assertIn(" profile=custom ", line)  # D27 with the fields init's flags set
+        self.assertNotIn("totals=", line)
+        # the store-less figure (books/heap-figure.lisp
+        # fn-heap-storeless-figure-octets), never the profile's
+        self.assertLess(int(line.split()[0].split("=")[1]), 4096, line)
+        replay = self.node.invoke("heap", "--", "operator", self.config, "status", "--replay")
+        self.assertEqual(replay.returncode, EXIT_REFUSED, replay.stderr.decode())
+        # the offline adapter names itself and the totals it could not see
+        # (books/heap-command.lisp fn-mo-unseen-suffix)
+        self.assertTrue(replay.stdout.decode("ascii").strip().endswith(
+            " sized by the offline adapter (pre-payload-only figure, under-bounds the store):"
+            " header totals unseen"),
+            replay.stdout)
+        self.assertEqual(self.profile_line()["max-history-octets"], 1 << 40)
 
     def test_init_capacity_fields_take_the_development_preset(self):
         """Row Q10b: with no --profile a capacity field takes development's

@@ -22,27 +22,15 @@
 
 ; One row's stored charge, read from the arena: a held row's handle extent
 ; (0 for a handle outside the arena), a composite row's wire composite, any
-; other row its wire encoding; and an article row (held or composite) its
-; memberships at `*fn-sbud-membership-octets*' each (lane membership-budget:
-; the groups it is filed in, read from the row, not the arena), and its
-; header charge (lane heap-pool: `fn-sbud-held-heap-charge' of the held
-; article, read from the row's facts and Message-ID, not the arena).
-(defun fn-sbud-row-header-charge (row)
-  (declare (xargs :guard t))
-  (cond ((fn-held-p row) (fn-sbud-held-heap-charge row))
-        ((fn-hstxa-p row) (fn-sbud-held-heap-charge (fn-hstxa-held row)))
-        (t 0)))
-
+; other row its wire encoding.
 (defun fn-sbud-row-stored-octets (row fn-arena)
   (declare (xargs :stobjs fn-arena :guard t))
-  (+ (cond ((fn-held-p row)
-            (if (fn-row-handle-inp row fn-arena)
-                (fn-arena-payload-len (fn-record-payload row) fn-arena)
-              0))
-           ((fn-hstxa-p row) (len (fn-store-event-encode (fn-hstxa-stxa row))))
-           (t (len (fn-store-event-encode row))))
-     (* *fn-sbud-membership-octets* (fn-sbud-row-memberships row))
-     (fn-sbud-row-header-charge row)))
+  (cond ((fn-held-p row)
+         (if (fn-row-handle-inp row fn-arena)
+             (fn-arena-payload-len (fn-record-payload row) fn-arena)
+           0))
+        ((fn-hstxa-p row) (len (fn-store-event-encode (fn-hstxa-stxa row))))
+        (t (len (fn-store-event-encode row)))))
 
 ; Executes by a loop (PKT-876, lane open-depth): one frame per row, read at
 ; the owner's start.  The :logic is the recursion, unchanged; equal by the
@@ -100,8 +88,7 @@
   :hints (("Goal" :induct (fn-sbud-rows-extents-okp rows fn-arena)
            :expand ((fn-sbud-record-octets rows)
                     (fn-sbud-stored-octets rows fn-arena))
-           :in-theory (e/d (fn-sbud-row-octets fn-sbud-row-memberships
-                            fn-sbud-row-header-charge)
+           :in-theory (e/d (fn-sbud-row-octets)
                            (fn-store-event-encode fn-row-handle-inp
                             fn-arena-payload-len fn-sbud-held-heap-charge)))))
 

@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
-(include-book "owner-feed-live-carried")
-(include-book "owner-feed-reconfigure-counted")
 (include-book "owner-outcome-counted")
 (include-book "feed-link-backoff")
 (include-book "feed-pause")
@@ -52,6 +50,7 @@
 (include-book "public-exposure")
 (include-book "public-exposure-reply")
 (include-book "connection-budget")
+(include-book "admission-memory")
 (include-book "tls-proxy")
 (include-book "owner-open-carried")
 (include-book "owner-reader-view")

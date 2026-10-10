@@ -447,8 +447,9 @@
 ;
 ; AGENTS.md: "Uncertain, refused and accepted stay distinct at every
 ; boundary."  A member whose attempt was refused for capacity (:unaffordable,
-; :memberships, :history-exhausted: books/store-capacity-vector.lisp
-; fn-cvec-article-refusal-word)
+; :history-exhausted: books/store-capacity-vector.lisp
+; fn-cvec-article-refusal-word; :memory: books/admission-memory.lisp
+; fn-adm-article-word)
 ; or for its inputs (:malformed) staged no record: the prepare refused before
 ; any Store mutation and the host consumed the refused reservation
 ; (host/native/owner.lisp fnn-owner-attempt; host/owner-host.lisp
@@ -475,7 +476,7 @@
 ; the outcome it reports, nothing stored, holds whatever they become.
 
 (defconst *fn-ocs-drain-refusals*
-  '(:unaffordable :memberships :history-exhausted :malformed))
+  '(:unaffordable :memory :history-exhausted :malformed))
 
 (defun fn-ocs-told-at-drain-p (word)
   (declare (xargs :guard t))

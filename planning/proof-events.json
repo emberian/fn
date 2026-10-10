@@ -4479,16 +4479,6 @@
         {
           "kind": "theorem",
           "name": "fn-sbud-article-figure-bounds-the-record"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sbud-article-gate-figure-bounds-every-record",
-          "note": "Lane heap-pool: the gate figure (the record figure and the header charge at its worst) bounds every record of two payload octets or more, wide or narrow, at any producer width (the widest overhead is 28 octets past the narrow ceiling)."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sbud-article-verdict-keeps-history-for-every-record",
-          "note": "KEYSTONE (lane heap-pool): an article the gate admits never pushes history past H, for every record of two payload octets or more, without the narrowness or u32-charge hypotheses (the gate's header figure covers the widening). Teeth tests/acl2/store-budget-article-tests.lisp."
         }
       ]
     },
@@ -4833,14 +4823,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-sbud-article-verdict-keeps-history-at-producer-width"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sbud-prepare-under-article-budget-keeps-history-at-producer-width"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-bs-frontier-impl-round-trip"
         },
         {
@@ -4858,6 +4840,16 @@
         {
           "kind": "theorem",
           "name": "fn-bs-k0-host-frontier-frame-is-concrete-codec"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-article-verdict-keeps-history",
+          "note": "Memory landing 3+4: H charges the stored octets alone, so the article verdict keeps the history within H with no producer-width premise; replaces -at-producer-width."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-sbud-prepare-under-article-budget-keeps-history",
+          "note": "Replaces -at-producer-width (no width premise since H charges the stored octets)."
         }
       ]
     },
@@ -5253,10 +5245,6 @@
         {
           "kind": "theorem",
           "name": "fn-cvec-article-verdict-keeps-the-vector"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-cvec-article-verdict-keeps-the-vector-at-producer-width"
         },
         {
           "kind": "theorem",
@@ -6988,10 +6976,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-heap-decide-admits-every-store-the-profile-admits"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-heap-decide-refuses-exactly-past-the-machine"
         },
         {
@@ -7080,19 +7064,11 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-store-figure-holds-every-store"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-heap-with-nursery-holds-the-trigger"
         },
         {
           "kind": "theorem",
           "name": "fn-heap-store-figure-observed-is-at-most-unobserved"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-heap-operation-decide-holds-the-store"
         },
         {
           "kind": "theorem",
@@ -7105,10 +7081,6 @@
         {
           "kind": "theorem",
           "name": "fn-heap-reserve-full-store-accepted-is-within-the-machine"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-heap-store-history-holds-payload-and-memberships"
         },
         {
           "kind": "theorem",
@@ -7128,6 +7100,28 @@
           "kind": "theorem",
           "name": "fn-heap-record-charge-is-the-budgets-charge",
           "note": "Lane heap-pool: the model's record charge is the history budget's charge of a held row (fn-sbud-held-heap-charge over fn-sbud-held-header-octets and fn-sbud-held-msgid-octets)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-capacity-fits",
+          "note": "KEYSTONE (memory landing 3+4a, ruling (b)): the run's capacity C' fits the memory gate; with the gate's admission and reopen keystones it replaces the store figure's keystones (fn-heap-store-figure-holds-every-store, fn-heap-decide-admits-every-store-the-profile-admits, fn-heap-operation-decide-holds-the-store), whose need model was deleted. Host: host/owner-host.lisp fn-owner-memory-configure."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-admitted-row-keeps-the-gate"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mm-admitted-store-reopens"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mo-read-holds-the-observed-store",
+          "note": "The offline verbs' reservation (books/heap-command.lisp), replacing fn-heap-operation-decide-holds-the-store."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-mo-read-holds-every-store-within-its-totals"
         }
       ]
     },
@@ -11142,15 +11136,6 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-sbud-record-octets-pays-the-memberships",
-          "note": "KEYSTONE (the budget pays for every membership). Host: host/owner-host.lisp fn-owner-publication-verdict / fn-owner-prepare read fn-sbud-bytes-carried, which is fn-sbud-bytes-used (fn-sbud-bytes-carried-is-the-fold), the sum of fn-sbud-row-octets."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-sbud-row-octets-pays-its-memberships"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-sbud-record-octets-is-the-stored-octets",
           "note": "KEYSTONE restated: the budget is the sum of the stored charges (payload extent + 320 per membership)."
         },
@@ -11160,21 +11145,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-cvec-article-refusal-word-names-the-memberships",
-          "note": "KEYSTONE (the crosspost refusal by name). Host: host/owner-host.lisp fn-owner-prepare and fn-owner-prepare-buffer over fn-pout-prepare-article's word."
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cvec-record-keeps-the-vector"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-heap-store-history-holds-payload-and-memberships",
-          "note": "KEYSTONE (the heap's history term is a function of H: the payload and the memberships share the budget; lane f8-reservation replaced the separate membership bound). Host: host/native/heap.lisp via fn-heap-operation-decide / fn-heap-status-decide, whose figure's base is fn-heap-store-state-bound."
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-heap-store-figure-holds-every-store"
         },
         {
           "kind": "theorem",
@@ -11197,6 +11168,20 @@
           "kind": "theorem",
           "name": "fn-cvec-held-row-within-its-figure",
           "note": "Lane heap-pool: a held row's charge (payload, 320 a group, its header charge) is within the figure its article was admitted at (fn-sbud-article-figure: the charge at its worst, 8 P + 12 x 250)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-adm-article-word-under-the-budget-names-the-resource",
+          "note": "KEYSTONE (the crosspost refusal by name, since memory landing 3+4: the word :memory, the memberships charged by the memory equation's MEMBERSHIPS term). Host: host/owner-host.lisp fn-owner-prepare and fn-owner-prepare-buffer. Replaces fn-cvec-article-refusal-word-names-the-memberships."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ct-charged-covers-the-store",
+          "note": "The carried totals count every membership (replaces fn-sbud-record-octets-pays-the-memberships and fn-heap-store-history-holds-payload-and-memberships)."
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-ct-charged-is-the-store-but-the-log"
         }
       ]
     },
@@ -12259,11 +12244,12 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-store-figure-holds-every-store-at-the-open-trigger"
+          "name": "fn-heap-open-nursery-trigger-natp"
         },
         {
           "kind": "theorem",
-          "name": "fn-heap-open-nursery-trigger-natp"
+          "name": "fn-mm-admitted-store-reopens",
+          "note": "The admitted store reopens within the run's limit, the collector term included; replaces fn-heap-store-figure-holds-every-store-at-the-open-trigger."
         }
       ]
     },
@@ -18923,6 +18909,24 @@
         {
           "kind": "theorem",
           "name": "fn-scar-own-read-step-full-is-own-read-step-full"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10000",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-header-decide-holds-the-header"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10001",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mm-admitted-store-reopens"
         }
       ]
     }

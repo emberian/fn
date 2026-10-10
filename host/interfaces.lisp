@@ -179,6 +179,7 @@
 (include-book "../books/history-paged-adopt")
 (include-book "../books/history-root-credit")
 (include-book "../books/decoded-worker-job")
+(include-book "../books/heap-command")
 (include-book "../books/bp-heap-command")
 (include-book "../books/bp-session-scheduler")
 (include-book "../books/bp-forward-cursor")
@@ -2885,10 +2886,41 @@
 (definterface fn-heap-reserve-init-connections
   :class :common-lisp-compliant)
 
-(definterface fn-heap-reserve-operation-decide
+;; The probe's decision for every command (books/heap-command.lisp, memory
+;; landings 2 and 3+4a): the stopped status store-less; every store-opening
+;; class by the equation over the observed totals, else the named offline
+;; adapter; today's fn-heap-reserve-operation-decide for the rest.
+(definterface fn-heap-command-decide
   :class :common-lisp-compliant
-  :keystones (fn-heap-status-decide-is-the-launchers-run-reservation
-              fn-heap-reserve-operation-decide-holds-the-operation))
+  :keystones (fn-heap-stopped-status-is-sized-without-the-store
+              fn-heap-command-decide-store-opening-is-the-model
+              fn-heap-command-decide-store-opening-unobserved-is-the-adapter
+              fn-heap-command-decide-otherwise-is-todays))
+
+(definterface fn-heap-command-growth
+  :class :common-lisp-compliant)
+
+(definterface fn-heap-command-line
+  :class :common-lisp-compliant)
+
+(definterface fn-heap-stack-kib
+  :class :common-lisp-compliant)
+
+(definterface fn-mo-img-observed
+  :class :common-lisp-compliant)
+
+(definterface fn-mo-observed-totals
+  :class :common-lisp-compliant)
+
+;; The collector policy's decision after a collection and its view of the
+;; configuration (books/memory-model.lisp; host/native/heap.lisp
+;; fnn-heap-collector-after-gc; memory landing 3+4).
+(definterface fn-mm-collector-due-p
+  :class :common-lisp-compliant
+  :keystones (fn-mm-collector-not-due-is-within-the-term))
+
+(definterface fn-mm-collector-cfg
+  :class :common-lisp-compliant)
 
 (definterface fn-crv-extend-reservation
   :class :common-lisp-compliant
