@@ -1272,6 +1272,27 @@ class ImageModuleTests(unittest.TestCase):
         self.assertEqual(rc, 1)
         self.assertEqual(rec["unexplained"], ["tests.test_native_owner (rc 137, no case recorded)"])
 
+    def test_runs_at_head_merge_by_module_and_a_module_from_two_runs_is_refused(self):
+        a = {"tests.test_native_owner": {"rc": 0, "cases": {"o.T.a": "ok"}}}
+        b = {"tests.test_native_heap_from_profile": {"rc": 1, "cases": {"h.T.a": "FAIL"}}}
+        one = train.merge_image_run(None, self.HEAD, "hbox", "/r/main", a)
+        both = train.merge_image_run(one, self.HEAD, "hbox", "/r/2g", b)
+        self.assertEqual(both["runs"], {"/r/main": "hbox", "/r/2g": "hbox"})
+        self.assertEqual({m: e["run"] for m, e in both["modules"].items()},
+                         {"tests.test_native_owner": "/r/main",
+                          "tests.test_native_heap_from_profile": "/r/2g"})
+        with self.assertRaises(train.TrainError) as refused:
+            train.merge_image_run(both, self.HEAD, "hbox", "/r/third", a)
+        self.assertIn("tests.test_native_owner (/r/main)", str(refused.exception))
+        # re-reading a run replaces that run's modules only
+        again = train.merge_image_run(both, self.HEAD, "hbox", "/r/main",
+                                      {"tests.test_native_owner": {"rc": 1, "cases": {"o.T.a": "FAIL"}}})
+        self.assertEqual(again["modules"]["tests.test_native_owner"]["rc"], 1)
+        self.assertIn("tests.test_native_heap_from_profile", again["modules"])
+        # a record of another commit is replaced, never merged
+        other = train.merge_image_run(dict(both, source="b" * 40), self.HEAD, "hbox", "/r/3", a)
+        self.assertEqual(sorted(other["modules"]), ["tests.test_native_owner"])
+
 
 class AddedRootTests(TrainBase):
     """certify selects the roots a train adds to ACL2_BOOKS, changed or not."""
@@ -1363,6 +1384,46 @@ class ImageGateTests(TrainBase):
         self.assertEqual(p.returncode, 2)
         self.assertIn("no image run record", p.stdout)
         self.assertIn("TRAIN-DONE image rc=2", p.stdout)
+
+    def image_runs(self, runs):
+        """A stub ssh answering each run dir with its modules' rc and cases, and
+        one hbox_native.sh record per label at HEAD."""
+        stubs = self.tmp / "stubs"
+        stubs.mkdir(exist_ok=True)
+        lines = {d: "\n".join([f"RC {m} {rc}" for m, (rc, _) in mods.items()] + [
+            "FN_TEST_BUDGET_RESULT " + json.dumps({"module": m, "cases": [[m + ".T.a", case]]})
+            for m, (_, case) in mods.items()]) for d, mods in runs.items()}
+        (stubs / "answers.json").write_text(json.dumps(lines))
+        (stubs / "ssh").write_text("#!%s\nimport json, sys\nanswers = json.load(open(%r))\n"
+                                   "print(next(v for d, v in answers.items() if d in sys.argv[-1]))\n"
+                                   % (sys.executable, str(stubs / "answers.json")))
+        (stubs / "ssh").chmod(0o755)
+        records = self.work / "build/hbox-native"
+        records.mkdir(parents=True, exist_ok=True)
+        for d in runs:
+            (records / f"{d.rsplit('/', 1)[-1]}.run").write_text(
+                f"box=hbox\ndir={d}\nsource={self.head()}\n")
+        return {"PATH": f"{stubs}:{os.environ['PATH']}"}
+
+    def test_the_obliged_set_may_span_two_runs_at_head(self):
+        self.launcher_train()
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        heap = "tests.test_native_heap_from_profile"
+        env = self.image_runs({"/s/main": {m: (0, "ok") for m in need if m != heap},
+                               "/s/2gb": {heap: (0, "ok")}})
+        for label in ("main", "2gb"):
+            p = self.train("image", "--label", label, extra_env=env)
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 0, g.stdout)
+        self.assertEqual((rec["missing"], rec["runs"]), ([], ["/s/2gb", "/s/main"]))
+        # a third run that repeats a module is refused and changes nothing
+        env = self.image_runs({"/s/main": {}, "/s/2gb": {}, "/s/again": {heap: (1, "FAIL")}})
+        p = self.train("image", "--label", "again", extra_env=env)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("already read from another run at HEAD", p.stdout)
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 0, g.stdout)
 
 
 if __name__ == "__main__":

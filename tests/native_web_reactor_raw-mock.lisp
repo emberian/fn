@@ -17,12 +17,24 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-concat (&rest strings)
+  (declare (ignorable strings))
+  (harness-stub-reached 'fnn-concat "host/native/io.lisp"))
+(defun fnn-emit (stream text)
+  (declare (ignorable stream text))
+  (harness-stub-reached 'fnn-emit "host/native/io.lisp"))
 (defun fnn-extent-window-cancel (worker token)
   (declare (ignorable worker token))
   (harness-stub-reached 'fnn-extent-window-cancel "host/native/extent.lisp"))
+(defun fnn-log-offer (destination octets)
+  (declare (ignorable destination octets))
+  (harness-stub-reached 'fnn-log-offer "host/native/io.lisp"))
 (defun fnn-owner-cold-window-result-locked (service read)
   (declare (ignorable service read))
   (harness-stub-reached 'fnn-owner-cold-window-result-locked "host/native/owner.lisp"))
+(defun fnn-string-octets (string)
+  (declare (ignorable string))
+  (harness-stub-reached 'fnn-string-octets "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 (deftype fnn-octets () '(simple-array (unsigned-byte 8) (*)))
 (define-condition fnn-os-error (error) ())
@@ -156,7 +168,19 @@
 (defun fnn-socket-fd (socket) socket)
 (defun fnn-mux-poll (fds events timeout)
   (declare (ignore events)) (setq *poll-timeout* timeout) (make-array (length fds) :initial-element 0))
-(load (or (sb-ext:posix-getenv "FN_WEB_REACTOR_SOURCE") "host/native/web-host.lisp"))
+;; web-host.lisp's actor body and listener start expand host/native/io.lisp's
+;; fnn-unwind-cleanups: the deployed macro and its escape-path helper, as
+;; every cleanup harness loads them.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
+(unwind-prelude-load-forms *unwind-prelude-io-source* '((defmacro fnn-unwind-cleanups)))
+;; A form that does not compile here (an unloaded macro compiles as an
+;; illegal call, which no PASS line reaches) refuses the harness by name.
+(with-compilation-unit (:override t)
+  (load (or (sb-ext:posix-getenv "FN_WEB_REACTOR_SOURCE") "host/native/web-host.lisp"))
+  (when (plusp sb-c::*compiler-error-count*)
+    (error "web-host.lisp: ~d form(s) do not compile in this harness (the compiler's report is above)"
+           sb-c::*compiler-error-count*)))
 (defun fixture-conn (socket phase &optional cid)
   (%make-fnn-web-conn :socket socket :fd socket :phase phase :cid cid
                      :in (create-fn-octets$c) :out (create-fn-octets$c) :deadline 15))
