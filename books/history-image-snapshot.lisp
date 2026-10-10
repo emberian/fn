@@ -313,9 +313,10 @@
 
 (defun fn-his-readback-page (write octets fn-hrecs$c)
   (declare (xargs :stobjs fn-hrecs$c
-                  :guard (or (null write)
-                             (and (true-listp write) (equal (len write) 2)
-                                  (natp (car write)) (natp (cadr write))))))
+                  :guard (and (or (null write)
+                                  (and (true-listp write) (equal (len write) 2)
+                                       (natp (car write)) (natp (cadr write))))
+                              (fn-cbor-octet-listp octets))))
   (let ((words (if write
                    (fn-his-words (car write) (cadr write) fn-hrecs$c)
                  (make-list 2048 :initial-element 0))))

@@ -5,12 +5,13 @@
  "id": "FILL-HARNESS-ENTRY-GUARDS-23",
  "notes": [
   "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): harness_check now: acl2-arity 5 findings (tests/test_interface_emit.py:547-621, fn-bpsp-node-startup/-capacity and fn-bph-extend-reservation spelled with 1 argument), entry-guards 33 findings, including a stale definterface :exempt on fn-native-operator-host-self-signed-refused in host/interfaces.lisp. Owner unowned -> builder-D.",
-  "10-10 Builder D, lane d-cite-load-bearing: acl2-arity 5 -> 0. The five strings in tests/test_interface_emit.py (lines 547-621) are synthetic one-argument definitions the call-closure reader is tested on, now declared on their lines as acl2-arity-fixture (8 declared fixtures in all). Still open: entry-guards 33 = 26 byte-named formals with no kind (counts named *-octets among them) and 7 stale :exempt rows in host/native-operator-host.lisp."
+  "10-10 Builder D, lane d-cite-load-bearing: acl2-arity 5 -> 0. The five strings in tests/test_interface_emit.py (lines 547-621) are synthetic one-argument definitions the call-closure reader is tested on, now declared on their lines as acl2-arity-fixture (8 declared fixtures in all). Still open: entry-guards 33 = 26 byte-named formals with no kind (counts named *-octets among them) and 7 stale :exempt rows in host/native-operator-host.lisp.",
+  "10-10 Builder D, lane d-entry-guards: entry-guards 33 -> 0. 20 byte-carrying formals of 18 entries now carry the kind fn-cbor-octet-listp in their guard, and the definterface :kinds says the same (every host call site already passes fnn-octet-list or NIL; none has a guard-verified defun caller in books/ or host/). 6 formals named *-octets or frame are not bytes and are :exempt with the reason (a max-octets bound, a stream length, two consed counts, a pending count, a frame descriptor over the fn-octets stobj). 7 stale :exempt rows in host/native-operator-host.lisp are removed (non-byte formals the lint never asks about). The acl2-arity half is on lane d-cite-load-bearing (f68081119)."
  ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "fill-20261004",
  "state": "open",
  "title": "harness_check entry-guards: 23 findings (CL10 landed): formal octets/config-octets carries bytes but the entry guard names no kind (books/payload-kinds.lisp *fn-entry-guard-kinds*), e.g. fn-aj-host-profile-write-octets, fn-bpnb-read, fn-bpnc-startup",
- "updated": "2026-10-10T02:35:00Z"
+ "updated": "2026-10-10T02:50:00Z"
 }
