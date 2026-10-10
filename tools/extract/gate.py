@@ -16,6 +16,10 @@ marker and zero executed cases each FAIL with a named reason.  Steps:
      runs' completion evidence (image_run.py, one nonce, defs.lisp's SHA-256);
   1b. manifest: the frozen record of what was extracted (world digest, the
      core's products, the foreign libraries);
+  1c. invariant-risk: no declared host entry that is not guard-verified
+      carries ACL2's invariant-risk in core.json's world (its *1* would run
+      every callee interpreted, guards checked: C's POST at 10.7 s); the
+      shrink-only baseline is tools/invariant_risk_baseline.json;
   2. transcripts: every case transcripts.py lists (its manifest.json),
      through IMAGE's and fn-core's `--fn model', byte-identical;
   2b. rtc-exercise: the runtime contract's multi-instance exercise
@@ -91,6 +95,7 @@ class Tools:
     owner: list = field(default_factory=lambda: ["python3", str(X / "owner.py")])
     obligations: list = field(default_factory=lambda: ["python3", str(X / "obligations.py")])
     faults: list = field(default_factory=lambda: ["python3", str(X / "faults_diff.py")])
+    invariant_risk: list = field(default_factory=lambda: ["python3", str(X.parent / "invariant_risk_check.py")])
     fault_traces: list = field(default_factory=list)
     store: str = "/tank/fn/scratch/fixtures/n1k-2k/store"
     source: str = None
@@ -584,6 +589,18 @@ class Gate:
         path.write_text(json.dumps(doc, indent=1) + "\n")
         print("manifest: world %s; %d units -> %s" % (digest[:16], self.core_units, path))
 
+    def invariant_risk(self):
+        """1c: no declared host entry whose *1* runs its body carries ACL2's
+        invariant-risk in the world core.sh exported (tools/invariant_risk_check.py,
+        its shrink-only baseline tools/invariant_risk_baseline.json)."""
+        self.step = "invariant-risk"
+        log = self.c / "invariant-risk.log"
+        self.need("invariant_risk_check.py",
+                  self.t.invariant_risk + ["--ir", self.tree / "build" / "core" / "core.json"],
+                  stdout=log, stderr="stdout", log=log)
+        self.nonempty(log, "invariant-risk")
+        print(log.read_text().strip().splitlines()[-1])
+
     def main(self):
         if self.c.exists():
             shutil.rmtree(self.c)
@@ -593,6 +610,7 @@ class Gate:
             if self.t.variant not in ("default", "dtn"):
                 self.fail("unsupported extraction variant " + self.t.variant)
             for name, stepfn in (("1 core", self.core), ("1b manifest", self.manifest),
+                                 ("1c invariant-risk", self.invariant_risk),
                                  ("2 transcripts", self.transcripts),
                                  ("2b rtc-exercise", self.rtc_exercise), ("3 probes", self.probes),
                                  ("3b obligations", self.obligations),
