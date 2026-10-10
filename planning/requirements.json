@@ -1588,7 +1588,8 @@
         "PRF-1060",
         "PRF-1067",
         "PRF-1231",
-        "PRF-1232"
+        "PRF-1232",
+        "PRF-1357"
       ],
       "verification": [
         "proof",
@@ -6521,7 +6522,8 @@
       "proof_targets": [
         "PRF-1209",
         "PRF-1210",
-        "PRF-1211"
+        "PRF-1211",
+        "PRF-1343"
       ],
       "verification": [
         "proof"
