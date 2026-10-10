@@ -34,7 +34,15 @@
 ;; on any name in it.
 (with-compilation-unit ()
 (load (concatenate 'string (sb-ext:posix-getenv "XL_X") "clruntime.lisp"))
+;; The emitted definitions are compiled at DEBUG 0: SBCL then keeps each code object's name and entry point but
+;; drops its variable and block maps (a census of the 2026-10-09 core measured the debug-info at 12.9 MB of 86.1 MB).
+;; The prologue's declaim in defs.lisp (O1: ACL2's own form) sets only compilation-speed, speed, space and safety, so
+;; it leaves this quality alone; host/native below is compiled at the default debug level and keeps its debug info,
+;; which the fault-backtrace reports (host/native/io.lisp fnn-stack-exhaustion-report, owner.lisp
+;; fnn-owner-shared-action-locked) read for frame names.
+(proclaim '(optimize (debug 0)))
 (cl-user::xl-eval-forms (cl-user::xl-path "defs.lisp") :latin-1)
+(proclaim '(optimize (debug 1)))
 (load (cl-user::xl-path "core-world.lisp") :external-format :utf-8)
 ;; named through its symbol: this form is compiled before defs.lisp defines it
 (funcall 'acl2::xl-make-live-stobjs)
