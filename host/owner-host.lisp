@@ -1505,6 +1505,18 @@
                 (fn-ocfg-step (fn-owner-ocfg state) event fn-arena) state)))
     state))
 
+; A staged configuration record grows the history the run holds by its
+; encoding (counted at staging: a write that fails over-counts, never
+; under-counts).
+(defun fn-owner-memory-config-grow (octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (and (boundp-global 'fn-owner-memory-run state)
+           (consp (f-get-global 'fn-owner-memory-run state)))
+      (let ((r (f-get-global 'fn-owner-memory-run state)))
+        (f-put-global 'fn-owner-memory-run
+                      (update-nth 9 (+ (nfix (nth 9 r)) (nfix octets)) r) state))
+    state))
+
 ; The live control path is deliberately small for this packet: a configured
 ; client asks to create or retire one group.  ACL2 constructs the delta
 ; (`fn-ocl-request-deltas', books/config-owner-publish.lisp), checks the
@@ -1773,18 +1785,6 @@
 
 (definterface fn-owner-memory-configure
   :class ::program)
-
-; A staged configuration record grows the history the run holds by its
-; encoding (counted at staging: a write that fails over-counts, never
-; under-counts).
-(defun fn-owner-memory-config-grow (octets state)
-  (declare (xargs :stobjs state :mode :program))
-  (if (and (boundp-global 'fn-owner-memory-run state)
-           (consp (f-get-global 'fn-owner-memory-run state)))
-      (let ((r (f-get-global 'fn-owner-memory-run state)))
-        (f-put-global 'fn-owner-memory-run
-                      (update-nth 9 (+ (nfix (nth 9 r)) (nfix octets)) r) state))
-    state))
 
 ; (IMG CFG LIMIT): the CFG rebuilt from the live configuration; LIMIT NIL
 ; until a run configured it, so the gate (fn-mm-gate-p: LIMIT a natural)
