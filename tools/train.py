@@ -1183,6 +1183,16 @@ def image_record_path(t: "Train", label: str) -> Path:
     return t.root / IMAGE_RUN_RECORD.format(label=label)
 
 
+def image_read_script(directory: str) -> str:
+    """The box-side shell that prints a run's `RC MODULE N` lines and its
+    FN_TEST_BUDGET_RESULT lines (parse_image_results reads both).  grep -a:
+    a module log holding a non-text octet (an article body a test echoed)
+    is a "binary file" to grep, which then prints no line, and the module
+    read as one with no case recorded (train 86, test_native_key_statements)."""
+    return ("cd %s && for f in rc/test-*; do [ -f \"$f\" ] && echo \"RC ${f#rc/test-} $(cat \"$f\")\"; done; "
+            "grep -ah FN_TEST_BUDGET_RESULT logs/test-*.log 2>/dev/null; true") % shlex.quote(directory)
+
+
 def cmd_image(t: Train, args) -> int:
     """Read one of HEAD's image runs from its box into the train state: each
     module's rc and case statuses and the run it came from, for the image gate
@@ -1209,9 +1219,7 @@ def cmd_image(t: Train, args) -> int:
                              f"differ at HEAD {head[:9]} (first: {inputs[0]}); build HEAD's images")
         images_from = source
         say(f"image run at HEAD's tree reuses the images of {source[:9]} (no image input differs)")
-    script = ("cd %s && for f in rc/test-*; do [ -f \"$f\" ] && echo \"RC ${f#rc/test-} $(cat \"$f\")\"; done; "
-              "grep -h FN_TEST_BUDGET_RESULT logs/test-*.log 2>/dev/null; true") % shlex.quote(run["dir"])
-    p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], script],
+    p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], image_read_script(run["dir"])],
                        capture_output=True, text=True)
     if p.returncode != 0:
         raise TrainError(f"reading {run['box']}:{run['dir']} failed (rc {p.returncode}): {p.stderr.strip()[:200]}")
@@ -1469,10 +1477,17 @@ def ready_dir(t: "Train") -> Path:
     return common.parent / "build" / "ready"
 
 
+READY_LANE_SHA = re.compile(r"lane/([\w./-]+)\s+@?\s*([0-9a-f]{7,40})\b")
+
+
 def rename_landed_readies(t: "Train", lanes: list[dict]) -> list[str]:
     """Rename each carried lane's READY file to landed-<file>: the file named
     for the lane, or one whose first line names lane/<name> at the merged
-    sha.  Prints the lanes no READY file was found for."""
+    sha.  Prints the lanes no READY file was found for.  Then every other
+    READY whose first line names lane/<x> at a sha HEAD contains has landed
+    too: a lane stacked inside a carried one (train 85 carried d-cost-rows,
+    d-entry-guards, d-bp-rotation-fairness and lane/memory inside
+    b-host-85, and their READYs were renamed by hand)."""
     directory = ready_dir(t)
     files = sorted(p for p in directory.glob("*.md") if not p.name.startswith("landed-")) \
         if directory.is_dir() else []
@@ -1501,7 +1516,24 @@ def rename_landed_readies(t: "Train", lanes: list[dict]) -> list[str]:
             files.remove(p)
             renamed.append(target.name)
             say(f"READY: {p.name} -> {target.name}")
-    return renamed
+    for p in list(files):
+        try:
+            first = p.read_text(encoding="utf-8").splitlines()[:1]
+        except (OSError, UnicodeDecodeError):
+            continue
+        m = READY_LANE_SHA.search(first[0]) if first else None
+        if not m:
+            continue
+        if git(t.root, "merge-base", "--is-ancestor", m.group(2), "HEAD", check=False).returncode != 0:
+            continue
+        target = p.with_name("landed-" + p.name)
+        if target.exists():
+            say(f"READY: {target.name} exists; {p.name} left in place")
+            continue
+        p.rename(target)
+        renamed.append(target.name)
+        say(f"READY: {p.name} -> {target.name} (lane/{m.group(1)}@{m.group(2)[:9]} is in HEAD, stacked)")
+    return sorted(renamed)
 
 
 def shrink_words(t: "Train", base: str, head: str) -> str:

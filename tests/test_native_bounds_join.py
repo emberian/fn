@@ -231,6 +231,41 @@ class TenMibArticleTests(JoinFixture):
         self.assertTrue(alive, "the owner stopped serving after the 10 MiB articles")
 
 
+INIT_PROFILE_24M = ("--profile", "development", "--max-transactions", "64",
+                    "--max-history-octets", str(256 << 20),
+                    "--max-record-octets", str((24 << 20) + 65536),
+                    "--max-article-octets", str(24 << 20),
+                    "--max-groups-per-article", "16")
+MIB20 = 20 << 20
+
+
+class ArticleAboveTheBatchCeilingTests(JoinFixture):
+    """The log's packed-batch ceiling (books/store-log.lisp
+    *fn-lg-batch-payload-max*, 16 MiB) is a chunk size, never a bound on an
+    article: a record above it is written as its own single-record entry,
+    opened under the profile's record bound.  A 20 MiB article on a 24 MiB
+    profile is POSTed, reread identical, and reread again after the node
+    stops and reopens the store.
+    """
+
+    def test_a_20_mib_article_lands_and_rereads_across_a_reopen(self):
+        created = self.op("init", *INIT_PROFILE_24M, "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.node.start(image=self.image)
+        try:
+            rows = self.post_and_reread([MIB20])
+        finally:
+            self.node.stop()
+        self.assertTrue(rows[MIB20][0].startswith("240"), rows)
+        self.assertTrue(rows[MIB20][1], "the 20 MiB POST did not reread identical")
+        self.node.start(image=self.image)
+        try:
+            again = self.reread("<join-{}@example.invalid>".format(MIB20), MIB20)
+        finally:
+            self.node.stop()
+        self.assertTrue(again, "the 20 MiB article did not reread identical after the reopen")
+
+
 class PostHeapUnderMutexTests(JoinFixture):
     """Sweep S002 (D27): a served POST at a large article's size does not
     build the article as a cons list (16 octets of heap per octet) under the
