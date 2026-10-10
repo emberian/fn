@@ -3,11 +3,13 @@
  "file": "tools/fixtures.py",
  "id": "FIXTURE-CP100K-HISTORY-SIZING",
  "line": "344",
- "notes": [],
+ "notes": [
+  "10-09 Builder D: repaired in post-suffix, from ACL2's own figures, not a hand constant. The recipe posts the first suffix article and reads its bytes-used delta from status (4,623 octets at d8fb738b3; the synthesized records' average, 4,571, under-sized it and was refused at post 19,992). It evaluates the POST gate's charge in the image's session (fn-sbud-article-gate-figure: 23,096) and the maintenance reserve from status (4,096), and raises max-history-octets through `operator policy set` to used + (remaining - 1) x charge + gate + reserve (550,502,400), restarting the owner and refusing by name if the raise is not in force. Rebuilt on hbox at d8fb738b3 in 255.8 s: 20,000 posts, `fixtures.py check` SHA256SUMS ok. Teeth: tests.test_fixture_init_refusal.CheckpointSuffixTests (the raise, the refusal, the bound)."
+ ],
  "owner": "builder-D",
  "severity": "low",
  "source": "tools/fixtures.py rebuild cp100k-sfx20k-2k, hbox, image d8fb738b3, Builder D 2026-10-09; log hbox:/dev/shm/fn-fixtures-d/cp100k-sfx20k-2k.log",
- "state": "open",
+ "state": "landed",
  "title": "cp100k-sfx20k-2k's recipe seeds with SYNTH_100K (H 512 MiB), which holds about 117,000 2 KiB articles under the history charge, not the 121,000 the fixture needs; it has never been built",
- "updated": "2026-10-09T22:14:31Z"
+ "updated": "2026-10-10T00:40:00Z"
 }
