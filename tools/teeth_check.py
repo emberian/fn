@@ -1511,7 +1511,7 @@ def registry_findings(books: dict[str, list[Assertion]]) -> list[Finding]:
             continue
         out.append(Finding(
             "keystone-without-witness", "planning/proofs.json", 0,
-            f"{target['id']} ({target['status']}): {len(missing)} of "
+            f"{target['id']}: {len(missing)} of "
             f"{len(target['events'])} events are named in no test book: "
             + ", ".join(sorted(missing)[:6])
             + (" ..." if len(missing) > 6 else "")))

@@ -57,7 +57,10 @@ def box():
                                 "--plain"], stdout=subprocess.PIPE, text=True, timeout=30).stdout
     except Exception as ex:  # noqa: BLE001
         units = repr(ex)
-    return {"loadavg": Path("/proc/loadavg").read_text().strip(),
+    # os.getloadavg is the same three figures as /proc/loadavg's first
+    # three, on Linux and macOS alike (/proc does not exist on macOS, where
+    # the refused-init test runs this before init).
+    return {"loadavg": "%.2f %.2f %.2f" % os.getloadavg(),
             "running_user_units": [u.split()[0] for u in units.splitlines() if u.strip()]}
 
 

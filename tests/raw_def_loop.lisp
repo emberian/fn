@@ -3,7 +3,7 @@
 ;;; helpers (every fn-dl- defun) and its def-loop macro textually, so a mock's
 ;;; (def-loop NAME) is expanded by the generator itself, never by a hand-copied
 ;;; defun.  Only ACL2 plumbing is stubbed: the world-reading read-only-stobj
-;;; check (ACL2 certified the book already), er/value/make-event/encapsulate,
+;;; and stobj-name checks (ACL2 certified the book already), er/value/make-event/encapsulate,
 ;;; and the proof-only events (local defthm, verify-guards, in-theory, table),
 ;;; which expand to nothing.  mbe takes :exec, as the deployed image does.
 ;;; Loaded by tests/native_section_envelope_raw.lisp (package ACL2).
@@ -41,10 +41,17 @@
 (defun symbol-listp (l) (and (listp l) (every #'symbolp l)))
 (defun no-duplicatesp-eq (l) (= (length l) (length (remove-duplicates l))))
 (defun member-eq (x l) (member x l :test #'eq))
+(defun assoc-eq (x a) (assoc x a :test #'eq))
+(defun subsetp-eq (a b) (subsetp a b :test #'eq))
+(defun pairlis$ (x y) (loop for a in x for rest = y then (cdr rest) collect (cons a (car rest))))
 (defun intersectp-eq (a b) (and (intersection a b :test #'eq) t))
 (defun remove1-eq (x l) (remove x l :test #'eq :count 1))
 (defun fn-dl-readonly-check (name stobjs terms state)
   (declare (ignore name stobjs terms)) (values nil nil state))
+;; The stobj half of the world check: each :stobjs name is a formal (ACL2
+;; certified that it names a stobj).
+(defun fn-dl-stobjs-knownp (stobjs formals wrld)
+  (declare (ignore wrld)) (subsetp stobjs formals :test #'eq))
 
 (defun strip-xargs (body)
   (remove-if (lambda (f) (and (consp f) (eq (car f) 'declare) (consp (cadr f))
@@ -63,7 +70,7 @@
                  (cond ((and (eq (car form) 'defun)
                              (let ((n (symbol-name (cadr form))))
                                (and (> (length n) 6) (string= "FN-DL-" n :end2 6)))
-                             (not (eq (cadr form) 'fn-dl-readonly-check)))
+                             (not (member (cadr form) '(fn-dl-readonly-check fn-dl-stobjs-knownp))))
                         (eval `(defun ,(cadr form) ,(caddr form) ,@(strip-xargs (cdddr form)))))
                        ((eq (car form) 'defmacro)
                         (when (eq (cadr form) 'def-loop) (eval form))))))))

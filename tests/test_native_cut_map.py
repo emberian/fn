@@ -8,7 +8,10 @@ class NativeCutMapTests(unittest.TestCase):
         native_cuts.verify_native_cut_map()
 
     def test_log_cuts_match_the_log_programs(self):
-        self.assertEqual(native_cuts.verify_log_cut_inventory(), (13, 7))
+        # 8 record-log cuts (RL-01 A2, 8d6c5127f, replaced log-truncated with
+        # P-LOG-RECOVER-COPY's log-copied, log-copy-fenced and log-swapped)
+        # and 7 segment cuts.
+        self.assertEqual(native_cuts.verify_log_cut_inventory(), (15, 7))
         native_cuts.verify_log_cut_map()
         native_cuts.verify_post_log_cut_map()
         native_cuts.verify_log_segment_cut_map()
