@@ -1855,13 +1855,17 @@
                                              (fn-arena-count fn-arena)))
                    (gate (fn-owner-memory-gate state)))
               (mv nil
-                  (if (and (equal verdict :admissible)
-                           (not (equal row :bad))
-                           (not (fn-adm-memory-admitp (fn-owner-store-profile state)
-                                                      (first gate) (second gate)
-                                                      (third gate) tot row)))
-                      :memory
-                    verdict)
+                  ; The handle space (fn-adm-handle-room-p at N = 1: the
+                  ; row's handle is the arena's count), then the memory.
+                  (cond ((not (equal verdict :admissible)) verdict)
+                        ((not (fn-adm-handle-room-p (fn-arena-count fn-arena) 1))
+                         :handle-space)
+                        ((and (not (equal row :bad))
+                              (not (fn-adm-memory-admitp (fn-owner-store-profile state)
+                                                         (first gate) (second gate)
+                                                         (third gate) tot row)))
+                         :memory)
+                        (t verdict))
                   fn-hist state))))))))
 
 (definterface fn-owner-identity-publication-verdict
@@ -2251,8 +2255,12 @@
       ; prepare-served): the host makes no served test of its own.
       (let* ((msgid (fn-store-octets->string msgid-octets))
              (existing (fn-store-existing-action msgid payload groups s fn-arena)))
-        (if existing
-            (mv nil existing fn-arena fn-hist state)
+        ; K-BOUND P3 (books/admission-memory.lisp fn-adm-handle-room-p): the
+        ; row's handle is the arena's count and its seal adds one, so a POST
+        ; with no handle left is refused by the handle space's word before a
+        ; handle is predicted (KEYSTONE fn-adm-handle-room-is-u64-room).
+        (if (or existing (not (fn-adm-handle-room-p (fn-arena-count fn-arena) 1)))
+            (mv nil (or existing :handle-space) fn-arena fn-hist state)
           (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
           (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
           (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
@@ -2468,8 +2476,12 @@
              ; fn-pidx-existing-action-cat-of-live-owner).
              (existing (fn-pidx-existing-action-cat msgid fn-octets groups
                                                     (fn-owner-core state) fn-arena fn-cat)))
-        (if existing
-            (mv nil existing fn-arena fn-hist state)
+        ; K-BOUND P3 (books/admission-memory.lisp fn-adm-handle-room-p): the
+        ; row's handle is the arena's count and its seal adds one, so a POST
+        ; with no handle left is refused by the handle space's word before a
+        ; handle is predicted (KEYSTONE fn-adm-handle-room-is-u64-room).
+        (if (or existing (not (fn-adm-handle-room-p (fn-arena-count fn-arena) 1)))
+            (mv nil (or existing :handle-space) fn-arena fn-hist state)
           (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
           (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
           (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)

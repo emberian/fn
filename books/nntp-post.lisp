@@ -565,6 +565,10 @@
                        ;; memory.lisp fn-adm-article-word; K-ADMIT):
                        ;; "441 posting failed; the store is full: no capacity for this article (memory); ..."
                        :memory
+                       ;; The arena has no handle left for the article's row
+                       ;; (books/admission-memory.lisp fn-adm-handle-room-p;
+                       ;; K-BOUND P3).
+                       :handle-space
                        ;; The history budget H refuses the article: the
                        ;; history gate or the capacity vector's octet
                        ;; reservation, the transactions admitting it
@@ -620,6 +624,8 @@
     "the store is full: no capacity for this article (unaffordable); the node's operator can raise it")
    ((equal kind :memory)
     "the store is full: no capacity for this article (memory); the node's operator can raise it")
+   ((equal kind :handle-space)
+    "the store has no payload handle left for this article, nothing was stored (handle-space)")
    ((equal kind :history-exhausted)
     "the store's history budget is exhausted (history-exhausted); the node's operator can raise max-history-octets or reclaim")
    ((equal kind :article-numbers-exhausted)

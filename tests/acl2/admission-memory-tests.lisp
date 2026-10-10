@@ -400,3 +400,21 @@
 (assert-event (< 0 (cadr *adt-sweep*)))
 (assert-event (< (cadr *adt-sweep*) (car *adt-sweep*)))
 (assert-event (equal (caddr *adt-sweep*) 0))
+
+; --- THE HANDLE SPACE (K-BOUND P3, landing 4b) ---------------------------------
+; The last admitted batch ends exactly at the largest u64 count; one handle more
+; is refused.  The witness is a fresh arena's count (0) and the POST's N (1).
+(defconst *adt-u64-top* (1- (expt 2 64)))
+(assert-event (fn-adm-handle-room-p (- *adt-u64-top* 1) 1))
+(assert-event (not (fn-adm-handle-room-p *adt-u64-top* 1)))
+(defteeth fn-adm-handle-room-is-u64-room
+  :claim (((room (fn-adm-handle-room-p count n)))
+          (and (unsigned-byte-p 64 count)
+               (unsigned-byte-p 64 (+ count n))))
+  :subject fn-adm-handle-room-p
+  :witness ((count 0) (n 1))
+  :breaks ((room ((count *adt-u64-top*) (n 1))))
+  :mutations ((one-handle-more
+               (:conclusion (unsigned-byte-p 64 (+ count n 1)))
+               ((count (- *adt-u64-top* 1)) (n 1))
+               :fault "a decision with no spare handle: the batch that ends at the largest u64 count would be called one handle short")))

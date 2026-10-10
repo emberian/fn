@@ -315,6 +315,34 @@
   :hints (("Goal" :in-theory (disable fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity
                                       fn-mm-cfg-connections fn-mm-sum fn-mm-reopen-need
                                       fn-mm-cfg-holders fn-mm-over-window-octets))))
+
+; THE HANDLE SPACE (K-BOUND P3; Builder M, memory landing 4b, 2026-10-10; Codex rev-7
+; finding 5).  A row's handle is the arena's count at its seal and a seal adds one
+; (books/payload-arena.lisp fn-arena-seal-new-handle, fn-arena-seal-count), so the handle domain
+; (unsigned-byte-p 64), the one fn-adm-held-share reads, is the arena invariant
+; (unsigned-byte-p 64 (fn-arena-count fn-arena)).  It is DECIDED, never a guard: a batch of N
+; seals is admitted only when the count after it is a u64, else it is refused by the word
+; :handle-space before a handle is predicted.  The POST's intern decides it at N = 1
+; (host/owner-host.lisp fn-owner-prepare, fn-owner-prepare-buffer); reclaim's tombstone batch
+; and replay's re-intern decide it at their seal counts (PR-RECLAIM, PR-REPLAY).
+(defun fn-adm-handle-room-p (count n)
+  (declare (xargs :guard t))
+  (and (natp count) (natp n) (<= (+ count n) (1- (expt 2 64)))))
+
+; KEYSTONE: a batch the decision admits seals at a u64 handle and leaves a u64 count.
+(defthm fn-adm-handle-room-is-u64-room
+  (implies (fn-adm-handle-room-p count n)
+           (and (unsigned-byte-p 64 count)
+                (unsigned-byte-p 64 (+ count n)))))
+
+; The POST's seal (either form) under the decision at N = 1: the new row's handle, the old
+; count, is a u64 and so is the count after it.
+(defthm fn-adm-handle-room-keeps-every-handle-u64
+  (implies (fn-adm-handle-room-p (fn-arena-count fn-arena) 1)
+           (and (unsigned-byte-p 64 (fn-arena-count fn-arena))
+                (unsigned-byte-p 64 (fn-arena-count (fn-arena-seal-list xs fn-arena)))
+                (unsigned-byte-p 64 (fn-arena-count (fn-arena-seal-buffer fn-octets fn-arena)))))
+  :hints (("Goal" :in-theory (e/d (fn-arena-count) (fn-arena-seal-buffer fn-arena-seal-list)))))
 ;
 ; K-BOUND AGGREGATE (revision 8; Builder M, memory landing 4b, 2026-10-10; Codex approved the
 ; statement to prove, build/memory/l34/m10/codex-kbound8.final.md).  The profile bound
