@@ -1,6 +1,13 @@
 {
  "about": "Critical keystone evidence: premises and wrong_answer come from defteeth; declared host_test, trace_witness and mutation references name their tests. Native log crash campaigns check the model program against host cuts; they do not execute that program. Failed-barrier clean-cache coverage is separately owed in TEETH-CRITICAL-HOST-TESTS. S11: direct host-entry gaps for the two reference-only POST helpers are recorded in TEETH-CRITICAL-HOST-TESTS; no native host_test is claimed for those functions.",
  "entries": {
+  "fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths": {
+   "subject": "fn-acct-admin-deltas",
+   "host_test": "tests/test_native_friends_accounts.py::test_a_code_invited_while_the_node_is_stopped_redeems",
+   "trace_witness": "tests/acl2/accounts-tests.lisp::fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths",
+   "mutation": "tests/acl2/accounts-tests.lisp::expires-as-seconds",
+   "provenance": "keystone_critical.py --declare sha256:f130342d91ee15af0777c99358eff4733f9e7e1ee7e9aac5ce551752150bb8de"
+  },
   "fn-arena-seal-buffer{correspondence}": {
    "subject": "fn-arena-seal-buffer",
    "host_test": "tests/test_native_bounds_join.py::test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",
