@@ -437,9 +437,13 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         rung the budget holds, judged by its FULL store since lane
         membership-budget: books/heap-reservation.lisp
         `fn-heap-init-accepted-store-always-reopens'), filled with 30 KiB
-        articles until the store refuses by name (the history budget, which
-        now also pays for every group membership), then `status' and a
-        restart are accepted and the articles are served."""
+        articles until the store refuses by name, then `status' and a
+        restart are accepted and the articles are served.  The refusal is
+        the resource the decision names (books/admission-memory.lisp
+        fn-adm-article-word: the transactions T, then the history H, then the
+        memory gate at the run's limit), read back from the stopped store's
+        headroom: T spent, else H without room for one more article and the
+        maintenance reserve, else the memory."""
         config, port = self.config("fill")
         began = time.monotonic()
         made = self.run_fn("operator", config, "init", "local.test")
@@ -465,12 +469,28 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 stored.append(message_id)
         print("NATIVE-HEAP fill init-and-start-s={:.1f} fill-s={:.1f} posts={}".format(
             started - began, time.monotonic() - started, len(stored)))
-        with node_log_on_failure(self.node.process):
-            self.assertEqual(reply.decode("ascii"),
-                             "441 posting failed; the store is full: no capacity for this "
-                             "article (unaffordable); the node's operator can raise it",
-                             "after {} posts".format(len(stored)))
         hwm1 = self.stop()
+        replay = self.run_fn("operator", config, "status", "--replay")
+        self.assertEqual(replay.returncode, EXIT_OK, text(replay))
+        room = {}
+        for line in replay.stdout.decode("ascii").splitlines():
+            if line.startswith("headroom "):
+                room = {k: int(v) for k, v in (w.split("=", 1) for w in line.split()[1:])}
+        self.assertTrue(room, text(replay))
+        per_post = room["bytes-used"] // max(1, len(stored))
+        if room["transactions-used"] + 1 > room["transactions-budget"]:
+            expected = ("441 posting failed; the store is full: no capacity for this "
+                        "article (unaffordable); the node's operator can raise it")
+        elif room["bytes-used"] + per_post + 4096 > room["history-bound"]:
+            expected = ("441 posting failed; the store's history budget is exhausted "
+                        "(history-exhausted); the node's operator can raise "
+                        "max-history-octets or reclaim")
+        else:
+            expected = ("441 posting failed; the store is full: no capacity for this "
+                        "article (memory); the node's operator can raise it")
+        print("NATIVE-HEAP fill refusal={!r} headroom={}".format(reply.decode("ascii"), room))
+        self.assertEqual(reply.decode("ascii"), expected,
+                         "after {} posts, headroom {}".format(len(stored), room))
         print("NATIVE-HEAP fill posts={} vmhwm kB={} init-reservation={} MB".format(
             len(stored), hwm1, reservation))
         status = self.run_fn("operator", config, "status")

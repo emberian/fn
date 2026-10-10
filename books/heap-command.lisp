@@ -576,8 +576,7 @@
            :use ((:instance fn-mm-terms-natp (cfg (fn-mo-read-cfg nursery)))))))
 
 (defthm fn-mo-read-refuses-only-by-the-model
-  (implies (and (natp (fn-mm-least-observation resident))
-                (<= (fn-mo-read-resident action class profile img core nursery tot config-octets card)
+  (implies (and (<= (fn-mo-read-resident action class profile img core nursery tot config-octets card)
                     (fn-mm-least-observation resident))
                 (or (not (natp (fn-mm-least-observation address)))
                     (<= (fn-mo-read-reservation action class profile img core nursery tot config-octets)
@@ -588,7 +587,9 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mo-read-decide)
                                   (fn-mo-read-resident fn-mo-read-reservation fn-mo-read-dynamic
-                                   fn-mm-least-observation)))))
+                                   fn-mm-least-observation))
+           :use ((:instance fn-mo-read-resident-positive)
+                 (:instance fn-mm-least-observation-type (obs resident))))))
 
 ; The line of a store-opening command the adapter decided names it.
 (defthm fn-heap-command-line-names-the-adapter

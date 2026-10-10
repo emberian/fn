@@ -423,17 +423,41 @@
   (* 2 *fn-heap-list-octets-per-octet* *fn-cbud-reply-status-octets*))
 
 ; The state checkpoint the open loads whole into the octet buffer
-; (host/native/io.lisp fnn-octets-fill; released after the load): at most the
-; reader's file bound, past which it refuses the checkpoint and replays.
-(defun fn-mm-checkpoint-load-octets (profile)
+; (host/native/io.lisp fnn-state-checkpoint-plan; released after the load):
+; at most the reader's file bound, past which it refuses the checkpoint and
+; replays.  That bound is the lesser of the profile's (fn-ock-capture-budget,
+; 3H and a segment) and the same bound over the store the file encodes:
+; fn-sccr-file-read-bound at the store's LOG, three times the octets of its
+; records' encodings and a segment (the arena run and P hold the payloads,
+; E the events less them, R the fold roots, each within the encodings).  A
+; profile-sized term charged to an observed store is D27's defect: at D27's
+; profile it was 3 TiB for W13's thousand posts.  The reader takes the
+; header's totals for this bound (Builder A, io.lisp's reader, with the
+; charged-totals header); a file past it is refused and the log replays.
+(defthm fn-mm-sccr-file-read-bound-natp
+  (natp (fn-sccr-file-read-bound h r))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-sccr-file-read-bound fn-scc-segment-max-octets))))
+
+(defun fn-mm-checkpoint-load-octets (profile tot)
   (declare (xargs :guard t))
-  (fn-ock-capture-budget profile))
+  (min (fn-ock-capture-budget profile)
+       (fn-sccr-file-read-bound (fn-mm-tot-log tot)
+                                (fn-bs-profile-max-record-octets profile))))
+
+(defthm fn-mm-checkpoint-load-octets-monotone
+  (implies (<= (fn-mm-tot-log a) (fn-mm-tot-log b))
+           (<= (fn-mm-checkpoint-load-octets profile a) (fn-mm-checkpoint-load-octets profile b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mm-checkpoint-load-octets fn-sccr-file-read-bound)
+                                  (fn-ock-capture-budget fn-scc-segment-max-octets fn-mm-tot-log
+                                   fn-bs-profile-max-record-octets)))))
 
 (defun fn-mm-reopen-live (profile cfg tot)
   (declare (xargs :guard t))
   (+ (fn-mm-owner tot cfg)
      (fn-heap-store-open-octets profile (fn-mm-tot-log tot) (fn-mm-tot-records tot))
-     (fn-mm-checkpoint-load-octets profile)
+     (fn-mm-checkpoint-load-octets profile tot)
      (fn-mm-maintenance tot cfg)
      *fn-mm-failure-headroom-octets*))
 
@@ -751,6 +775,7 @@
                                    fn-mm-checkpoint-load-octets
                                    fn-mm-tot-le fn-mm-tot-log fn-mm-tot-records))
            :use (fn-mm-owner-monotone fn-mm-maintenance-monotone fn-mm-tot-le-parts
+                 fn-mm-checkpoint-load-octets-monotone
                  (:instance fn-mm-open-octets-monotone
                             (ou1 (fn-mm-tot-log a)) (ou2 (fn-mm-tot-log b))
                             (on1 (fn-mm-tot-records a)) (on2 (fn-mm-tot-records b)))))))
