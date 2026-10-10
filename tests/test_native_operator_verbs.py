@@ -688,8 +688,11 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         self.assertLess(int(line.split()[0].split("=")[1]), 4096, line)
         replay = self.node.invoke("heap", "--", "operator", self.config, "status", "--replay")
         self.assertEqual(replay.returncode, EXIT_REFUSED, replay.stderr.decode())
+        # the offline adapter names itself and the totals it could not see
+        # (books/heap-command.lisp fn-mo-unseen-suffix)
         self.assertTrue(replay.stdout.decode("ascii").strip().endswith(
-            " totals=unobserved:arena,hcharge,memberships,events,log,history,charge,residency"),
+            " sized by the offline adapter (pre-payload-only figure, under-bounds the store):"
+            " header totals unseen"),
             replay.stdout)
         self.assertEqual(self.profile_line()["max-history-octets"], 1 << 40)
 
