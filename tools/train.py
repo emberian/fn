@@ -113,6 +113,13 @@ def _generated(path: str) -> bool:
 # keystone), so a conflict there goes back to the lane like source does.
 # Tail-append files: keep both sides' lines.
 UNION = ("planning/decisions.md",)
+# planning/premise-baseline.json is shrink-only: an entry leaves only when its
+# premise stops being a finding (tools/premise_audit.py).  A conflict on it
+# takes the union of both sides' accepted entries, never one side; the
+# premise_baseline gate then refuses any entry dev had that HEAD dropped while
+# it is still a finding (the merge eb3317521 resolved 1,171 entries to 753,
+# 401 of them still findings, and nothing noticed: PREMISE-BASELINE-MERGE-LOSS).
+PREMISE_BASELINE = "planning/premise-baseline.json"
 
 # Files the regen step is allowed to commit (only those that exist/changed).
 REGEN_OUTPUTS = (
@@ -175,7 +182,7 @@ UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-         "box_step", "lock_delta", "baseline", "secrets", "unit", "image")
+         "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
 
 # The image gate (coordinator 2026-10-09, after train 74).  A train whose diff
 # against origin/dev touches a rule's paths runs the rule's native modules on
@@ -413,6 +420,69 @@ def _union_resolve(t: Train, path: str) -> None:
     git(t.root, "add", "--", path)
 
 
+def _premise_union_resolve(t: Train, path: str) -> None:
+    """Both sides' accepted entries (ours' text where both have one): an
+    entry either side dropped is restored and the gate decides whether its
+    premise really resolved."""
+    sides = []
+    for n in (2, 3):
+        text = _stage(t.root, n, path)
+        try:
+            sides.append(json.loads(text) if text else {})
+        except ValueError as error:
+            raise TrainError(f"{path}: stage {n} does not parse ({error}); resolve by hand") from error
+    ours, theirs = sides
+    accepted = dict(theirs.get("accepted", {}))
+    accepted.update(ours.get("accepted", {}))
+    merged = dict(theirs, **ours)
+    merged["accepted"] = {k: accepted[k] for k in sorted(accepted)}
+    (t.root / path).write_text(json.dumps(merged, indent=2, sort_keys=True) + "\n")
+    git(t.root, "add", "--", path)
+
+
+def _premise_baseline_gate(t: Train) -> tuple[int, dict]:
+    """(rc, record): every entry origin/dev's premise baseline accepts that
+    HEAD's does not is no longer a finding at HEAD (premise_audit --json)."""
+    def accepted_at(rev):
+        p = git(t.root, "show", f"{rev}:{PREMISE_BASELINE}", check=False)
+        return set(json.loads(p.stdout).get("accepted", {})) if p.returncode == 0 else None
+    try:
+        dev = accepted_at("origin/dev")
+        head = accepted_at("HEAD")
+    except ValueError as error:
+        say(f"premise baseline: does not parse: {error}")
+        return 1, {"error": str(error)}
+    if dev is None:
+        say("premise baseline: none on origin/dev")
+        return 0, {"skipped": True}
+    if head is None:
+        say(f"premise baseline: {PREMISE_BASELINE} is gone at HEAD")
+        return 1, {"error": "missing"}
+    dropped = sorted(dev - head)
+    if not dropped:
+        say(f"premise baseline: {len(head)} entries, none dropped")
+        return 0, {"entries": len(head), "dropped": []}
+    p = subprocess.run([PY, "tools/premise_audit.py", "--json"], cwd=t.root,
+                       capture_output=True, text=True)
+    t.logs.mkdir(parents=True, exist_ok=True)
+    (t.logs / "gate-premise-audit.log").write_text(p.stderr)
+    try:
+        premises = json.loads(p.stdout) if p.returncode == 0 else None
+    except ValueError:
+        premises = None
+    if premises is None:
+        say(f"premise baseline: premise_audit --json failed (rc {p.returncode}); "
+            f"{len(dropped)} dropped entries unverified")
+        return 1, {"error": "premise_audit failed", "dropped": dropped}
+    import premise_audit
+    lost = [r for r in dropped if premises.get(r, {}).get("class") in premise_audit.FINDING_CLASSES]
+    for r in lost:
+        say(f"  premise baseline LOST an entry that is still a finding ({premises[r]['class']}): {r}")
+    say(f"premise baseline: {len(head)} entries; dropped {len(dropped)}, "
+        f"{len(dropped) - len(lost)} resolved, {len(lost)} still findings")
+    return (1 if lost else 0), {"entries": len(head), "dropped": dropped, "lost": lost}
+
+
 def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
     name = lane[5:] if lane.startswith("lane/") else lane
     target = t.branch if t.branch.startswith("integrate/") else f"integrate/{t.branch}"
@@ -432,7 +502,7 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
         say(f"  lane {name}: merge failed without conflicts: {entry['files'][0]}")
         t.save(st)
         return False
-    bad = [f for f in conflicted if not _generated(f) and f not in UNION]
+    bad = [f for f in conflicted if not _generated(f) and f not in UNION and f != PREMISE_BASELINE]
     if bad:
         git(t.root, "merge", "--abort", check=False)
         entry.update(status="conflict", files=bad)
@@ -446,6 +516,9 @@ def merge_one(t: Train, st: dict, lane: str, sha: str) -> bool:
                 git(t.root, "add", "--", f)
             else:
                 git(t.root, "rm", "-q", "--", f)
+        elif f == PREMISE_BASELINE:
+            say(f"  conflict {f}: union of both sides' accepted entries")
+            _premise_union_resolve(t, f)
         else:
             say(f"  conflict {f}: union of both sides")
             _union_resolve(t, f)
@@ -1189,6 +1262,8 @@ def cmd_gate(t: Train, args) -> int:
 
     base_rc, base_record = _baseline_gate(t)
     rec("baseline", base_rc, **base_record)
+    premise_rc, premise_record = _premise_baseline_gate(t)
+    rec("premise_baseline", premise_rc, **premise_record)
 
     files = git(t.root, "diff", "--name-only", "origin/dev", "HEAD").stdout.split()
     if files:
