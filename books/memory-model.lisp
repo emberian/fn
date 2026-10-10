@@ -246,33 +246,20 @@
 ; A reply a connection holds: the article (connection-budget's stated
 ; workload, 2A + 1,024) or an OVER/XOVER cursor quantum, W NOV lines built
 ; as octet lists (books/over-window.lisp fn-ovw-step; W the host's quantum,
-; CFG's OVER-WINDOW).  One line is bounded by the article's own header, not
-; by the profile's G (coordinator, 2026-10-10: no admitted article is
-; crossposted to every group the profile permits): its five overview fields
-; are values of the header (at most HDR, the profile's header bound); its
-; number, octets and line-count fields; the Xref, whose group names are the
-; article's Newsgroups entries (at most HDR together) and whose memberships
-; number at most (HDR + 1)/2, each a space, a colon and an article number;
-; and the server name.  O-NOV-LINE, header form (OWED, Builder C, row O1's
-; first step, over the span rendering): books/over-window.lisp
-; fn-ovw-nov-line-within-the-header-bound, a served NOV line of an article
-; the profile's parse admitted at HDR, within payload octets A, is at most
-; fn-mm-nov-line-header-bound HDR A SERVER.  The line is also within the
-; G-priced bound (books/over-window.lisp fn-ovw-nov-line-within-the-bound,
-; PROVED: at most G memberships, each name at most GN), which is the tighter
-; one at a small G (the small preset: G 16); the term is the lesser.
-(defun fn-mm-nov-line-header-bound (hdr a server-octets)
-  (declare (xargs :guard t))
-  (+ (* 2 (nfix hdr))
-     *fn-nntp-max-decimal-octets* 7
-     (* 2 (len (fn-nntp-decimal (nfix a))))
-     1 (len *fn-xref-name*) (nfix server-octets)
-     (* (floor (+ (nfix hdr) 1) 2) (+ 2 *fn-nntp-max-decimal-octets*))))
-
+; CFG's OVER-WINDOW), each line at most the header bound, its number, size
+; and line-count fields, and the generated Xref: the server name and, for
+; each of at most G memberships, a space, the group name, a colon and the
+; article number (books/nntp-xref.lisp).  O-NOV-LINE (PROVED,
+; books/over-window.lisp fn-ovw-nov-line-within-the-bound): a NOV line is at
+; most fn-mm-nov-line-octets.  It prices G memberships a line, not the
+; article's own Newsgroups: no invariant ties a stored article's memberships
+; to its header (a signed article takes its groups from the signed source,
+; unchecked; Builder C, 2026-10-10), so a header-bounded line is row O1's to
+; state with that invariant before the gate may charge it.
 (defconst *fn-mm-nov-fields-octets* 128)
 (defconst *fn-mm-xref-membership-fixed-octets* 12)   ; " " ":" and 10 digits
 
-(defun fn-mm-nov-line-group-bound (profile cfg)
+(defun fn-mm-nov-line-octets (profile cfg)
   (declare (xargs :guard t))
   (+ (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))
      *fn-mm-nov-fields-octets*
@@ -280,14 +267,6 @@
      (* (nfix (fn-bs-profile-max-groups-per-article profile))
         (+ (nfix (fn-bs-profile-max-group-name-octets profile))
            *fn-mm-xref-membership-fixed-octets*))))
-
-(defun fn-mm-nov-line-octets (profile cfg)
-  (declare (xargs :guard t))
-  (min (fn-mm-nov-line-header-bound
-        (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile)
-        (fn-bs-profile-max-article-octets profile)
-        (fn-mm-cfg-server-octets cfg))
-       (fn-mm-nov-line-group-bound profile cfg)))
 
 ;; A-OVER-WINDOW-FIT (named adapter, COORDINATION section 6b rule 5; owner
 ;; Builder C, the OVER path; retirement: row O1's pool lease on dev, when the
