@@ -65,13 +65,11 @@
   (or (fn-o1-control-filedp groups source)
       (fn-o1-subseqp (fn-o1-groups-octets groups) (fn-o1-source-newsgroups source))))
 
-(local
- (defun o1-octet-list-listp (xs) (declare (xargs :guard t))
-  (if (consp xs) (and (fn-cbor-octet-listp (car xs)) (o1-octet-list-listp (cdr xs))) t)))
+(local (include-book "filed-parse"))
 
 (local
  (defthm o1-groups-octets-of-strings
-  (implies (o1-octet-list-listp names)
+  (implies (o1p-octet-list-listp names)
            (equal (fn-o1-groups-octets (fn-hsig-octet-fields-to-strings names)) (true-list-fix names)))
   :hints (("Goal" :induct (len names) :in-theory (e/d (fn-hsig-octet-fields-to-strings) (fn-record-string-octets fn-record-octets-string)))
           ("Subgoal *1/1" :use ((:instance fn-record-string-octets-of-octets-string (octets (car names))))))))
@@ -97,45 +95,13 @@
              fn-inj-mandatory-reason fn-article-syntax-p))))))
 
 (local
- (defun o1-names-okp (xs) (declare (xargs :guard t))
-  (if (consp xs) (and (true-listp (car xs)) (fn-af-newsgroup-namep (car xs)) (o1-names-okp (cdr xs))) t)))
-
-(local
- (defthm o1-name-aux-octets
-  (implies (and (true-listp b) (fn-af-newsgroup-name-aux b w)) (fn-cbor-octet-listp b))
-  :hints (("Goal" :in-theory (enable fn-af-newsgroup-name-aux fn-af-newsgroup-component-charp fn-cbor-octet-listp fn-cbor-octetp)))))
-
-(local
- (defthm o1-names-ok-octets
-  (implies (o1-names-okp xs) (o1-octet-list-listp xs))
-  :hints (("Goal" :in-theory (enable fn-af-newsgroup-namep)))))
-
-(local
- (defthm o1-names-ok-revappend
-  (implies (and (o1-names-okp a) (o1-names-okp b)) (o1-names-okp (revappend a b)))
-  :hints (("Goal" :induct (revappend a b) :in-theory (disable fn-af-newsgroup-namep)))))
-
-(local
- (defthm o1-take-token-name-true-listp
-  (implies (true-listp rev) (true-listp (cadr (fn-af-take-newsgroup-token bytes rev))))
-  :hints (("Goal" :in-theory (enable fn-af-take-newsgroup-token)))))
-
-(local
- (defthm o1-list-parse-aux-names-ok
-  (implies (and (o1-names-okp names-rev)
-                (equal (car (fn-af-newsgroup-list-parse-aux bytes names-rev need fuel)) :ok))
-           (o1-names-okp (cadr (fn-af-newsgroup-list-parse-aux bytes names-rev need fuel))))
-  :hints (("Goal" :induct (fn-af-newsgroup-list-parse-aux bytes names-rev need fuel)
-           :in-theory (e/d (fn-af-newsgroup-list-parse-aux) (fn-af-newsgroup-namep fn-af-take-newsgroup-token fn-af-skip-wsp))))))
-
-(local
  (defthm o1-source-newsgroups-octets
-  (o1-octet-list-listp (fn-o1-source-newsgroups source))
+  (o1p-octet-list-listp (fn-o1-source-newsgroups source))
   :hints (("Goal" :in-theory (e/d (fn-o1-source-newsgroups fn-af-newsgroups-status fn-af-newsgroups-field-value
                                      fn-af-newsgroup-list-parse)
                                   (fn-af-newsgroup-list-parse-aux fn-article-parse fn-article-get-headers))
-           :use ((:instance o1-names-ok-octets (xs (fn-o1-source-newsgroups source)))
-                 (:instance o1-list-parse-aux-names-ok
+           :use ((:instance o1p-names-ok-octets (xs (fn-o1-source-newsgroups source)))
+                 (:instance o1p-list-parse-aux-names-ok
                             (bytes (fn-af-skip-wsp (cdr (fn-article-field-unfolded-value
                                     (car (fn-article-get-headers (cadr (fn-article-parse source)) *fn-af-newsgroups-name*))))))
                             (names-rev nil) (need t) (fuel *fn-af-max-field-value-octets*)))))))
@@ -384,15 +350,7 @@
                                        (fn-o1-control-filedp fn-article-parse fn-article-parse-under
                                         fn-o1-octet-sum fn-record-string-octets)))))
 
-(local
- (defthm o1-nntp-string-octets-aux-is-record
-  (equal (fn-nntp-string-octets-aux chars) (fn-record-string-octets-aux chars))
-  :hints (("Goal" :in-theory (enable fn-nntp-string-octets-aux fn-record-string-octets-aux)))))
-
-(local
- (defthm o1-nntp-string-octets-is-record
-  (equal (fn-nntp-string-octets x) (fn-record-string-octets x))
-  :hints (("Goal" :in-theory (enable fn-nntp-string-octets fn-record-string-octets)))))
+(local (include-book "filed-names"))
 
 (local
  (defun o1-subseqp-ind (xs ys)
@@ -488,8 +446,6 @@
 ; drops only reserved fields; none is Newsgroups, Control or Supersedes, so
 ; the reparse keeps the fields the invariant reads (o1e-filed-within-by-
 ; agreement).
-
-(local (include-book "filed-parse"))
 
 (local
  (in-theory (disable o1p-fieldvp o1p-closedp)))

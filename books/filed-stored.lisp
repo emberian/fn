@@ -2640,270 +2640,51 @@
 ;; header), the scoped groups are a subsequence of them, and the filing plan
 ;; follows from o1t-core-abs.
 
-(local
- (defun o1r-field-wfp (field)
-  (declare (xargs :guard t))
-  (let ((lines (if (true-listp field) (fn-article-field-raw-lines field) nil)))
-    (and (true-listp field)
-         (consp lines)
-         (fn-article-plain-linesp lines)
-         (fn-article-wsp-startsp (cdr lines))
-         (consp (car lines))
-         (not (fn-pu-wspp (car (car lines))))
-         (fn-article-has-colonp (car lines))
-         (equal (fn-article-field-name field)
-                (fn-article-ascii-downcase
-                 (fn-article-name-before-colon (car lines))))))))
-
-(local
- (defun o1r-fields-wfp (fields)
-  (declare (xargs :guard t))
-  (if (consp fields)
-      (and (o1r-field-wfp (car fields))
-           (o1r-fields-wfp (cdr fields)))
-    (null fields))))
-
-(local
- (defun o1r-path-or-xref-fieldp (field)
-  (declare (xargs :guard t))
-  (let ((line (append (if (and (true-listp field)
-                               (consp (fn-article-field-raw-lines field))
-                               (true-listp (car (fn-article-field-raw-lines field))))
-                          (car (fn-article-field-raw-lines field))
-                        nil)
-                      '(13 10))))
-    (or (fn-pu-named-p line *fn-pu-xref-colon*)
-        (fn-pu-named-p line *fn-pu-path-colon*)))))
-
-(local
- (defun o1r-drop-path-xref (fields)
-  (declare (xargs :guard t))
-  (if (consp fields)
-      (if (o1r-path-or-xref-fieldp (car fields))
-          (o1r-drop-path-xref (cdr fields))
-        (cons (car fields) (o1r-drop-path-xref (cdr fields))))
-    nil)))
-
-(local
- (defthm o1r-pu-append-is-append
-   (equal (fn-pu-append a b) (append a b))
-   :hints (("Goal" :in-theory (enable fn-pu-append)))))
-
-(local
- (defthm o1r-line-of-a-plain-line
-   (implies (fn-article-crlf-freep l)
-            (equal (fn-pu-line (append l (cons 13 (cons 10 r))))
-                   (append l '(13 10))))
-   :hints (("Goal" :in-theory (enable fn-pu-line fn-pu-crlf-atp)))))
-
-(local
- (defthm o1r-after-a-plain-line
-   (implies (fn-article-crlf-freep l)
-            (equal (fn-pu-after-line (append l (cons 13 (cons 10 r))))
-                   r))
-   :hints (("Goal" :in-theory (enable fn-pu-after-line fn-pu-crlf-atp)))))
-
-(local
- (defthm o1r-blank-line
-   (and (equal (fn-pu-line (cons 13 (cons 10 r))) '(13 10))
-        (equal (fn-pu-after-line (cons 13 (cons 10 r))) r))
-   :hints (("Goal" :in-theory (enable fn-pu-line fn-pu-after-line fn-pu-crlf-atp)))))
-
-(local
- (defthm o1r-car-of-plain-line
-   (implies (consp l)
-            (equal (car (append l r)) (car l)))))
-
-(local
- (defthm o1r-plain-line-not-blank
-   (implies (and (consp l) (fn-article-crlf-freep l))
-            (not (equal (append l '(13 10)) '(13 10))))))
-
-(local
- (defthm o1r-strip-continuations-dropped
-   (implies (and (fn-article-plain-linesp conts)
-                 (fn-article-wsp-startsp conts))
-            (equal (fn-pu-strip (append (fn-article-lines-octets conts) r) t)
-                   (fn-pu-strip r t)))
-   :hints (("Goal" :induct (fn-article-lines-octets conts)
-            :in-theory (enable fn-article-lines-octets fn-pu-wspp)
-            :expand ((fn-pu-strip (append (car conts)
-                                          (cons 13 (cons 10 (append (fn-article-lines-octets (cdr conts)) r))))
-                                  t))))))
-
-(local
- (defthm o1r-strip-continuations-kept
-   (implies (and (fn-article-plain-linesp conts)
-                 (fn-article-wsp-startsp conts))
-            (equal (fn-pu-strip (append (fn-article-lines-octets conts) r) nil)
-                   (append (fn-article-lines-octets conts) (fn-pu-strip r nil))))
-   :hints (("Goal" :induct (fn-article-lines-octets conts)
-            :in-theory (enable fn-article-lines-octets fn-pu-wspp)
-            :expand ((fn-pu-strip (append (car conts)
-                                          (cons 13 (cons 10 (append (fn-article-lines-octets (cdr conts)) r))))
-                                  nil))))))
-
-(local
- (defthm o1r-strip-of-a-field-line
-   (implies (and (consp l) (fn-article-crlf-freep l) (not (fn-pu-wspp (car l))))
-            (equal (fn-pu-strip (append l (cons 13 (cons 10 r))) d)
-                   (if (or (fn-pu-named-p (append l '(13 10)) *fn-pu-xref-colon*)
-                           (fn-pu-named-p (append l '(13 10)) *fn-pu-path-colon*))
-                       (fn-pu-strip r t)
-                     (append (append l '(13 10)) (fn-pu-strip r nil)))))
-   :hints (("Goal" :expand ((fn-pu-strip (append l (cons 13 (cons 10 r))) d))))))
-
-(local
- (defthm o1r-strip-of-the-blank-line
-   (equal (fn-pu-strip (cons 13 (cons 10 r)) d) (cons 13 (cons 10 r)))
-   :hints (("Goal" :expand ((fn-pu-strip (cons 13 (cons 10 r)) d))))))
-
-(local
- (defun o1r-fields-induct (fields d)
-   (if (consp fields)
-       (list (o1r-fields-induct (cdr fields) t)
-             (o1r-fields-induct (cdr fields) nil))
-     d)))
-
-(local
- (defthm o1r-fields-octets-of-cons
-   (equal (fn-article-fields-octets (cons f rest))
-          (append (fn-article-lines-octets (fn-article-field-raw-lines f))
-                  (fn-article-fields-octets rest)))
-   :hints (("Goal" :in-theory (enable fn-article-fields-octets)))))
-
-(local
- (defthm o1r-strip-of-a-field
-   (implies (and (consp fields) (o1r-field-wfp (car fields)))
-            (equal (fn-pu-strip (append (fn-article-fields-octets fields) r) d)
-                   (if (o1r-path-or-xref-fieldp (car fields))
-                       (fn-pu-strip (append (fn-article-fields-octets (cdr fields)) r) t)
-                     (append (fn-article-lines-octets (fn-article-field-raw-lines (car fields)))
-                             (fn-pu-strip (append (fn-article-fields-octets (cdr fields)) r) nil)))))
-   :hints (("Goal" :in-theory (e/d (fn-article-lines-octets) (fn-article-fields-octets fn-pu-named-p fn-pu-strip))
-            :expand ((fn-article-fields-octets fields))
-            :do-not '(generalize fertilize)))))
-
-(local
- (defthm o1r-strip-of-wf-fields
-   (implies (o1r-fields-wfp fields)
-            (equal (fn-pu-strip (append (fn-article-fields-octets fields)
-                                        (cons 13 (cons 10 body)))
-                                d)
-                   (append (fn-article-fields-octets (o1r-drop-path-xref fields))
-                           (cons 13 (cons 10 body)))))
-   :hints (("Goal" :induct (o1r-fields-induct fields d)
-            :in-theory (e/d () (fn-article-fields-octets o1r-field-wfp o1r-path-or-xref-fieldp fn-pu-strip)))
-           )))
-
-(local
- (defun o1r-colon-freep (n)
-   (declare (xargs :guard t))
-   (if (consp n) (and (not (equal (car n) 58)) (o1r-colon-freep (cdr n))) (null n))))
-
-(local
- (defthm o1r-named-p-names-the-field
-   (implies (and (fn-pu-named-p line (append n '(58)))
-                 (o1r-colon-freep n))
-            (equal (fn-article-ascii-downcase (fn-article-name-before-colon line)) n))
-   :hints (("Goal" :induct (fn-pu-named-p line n)
-            :in-theory (enable fn-pu-named-p fn-pu-downcase)))))
-
-(local
- (defthm o1r-a-named-line-opens-with-ftext
-   (implies (fn-article-namep (fn-article-ascii-downcase (fn-article-name-before-colon l)))
-            (and (consp l) (not (fn-pu-wspp (car l)))))
-   :hints (("Goal" :in-theory (enable fn-pu-wspp)
-            :expand ((fn-article-name-before-colon l)
-                     (fn-article-ascii-downcase (fn-article-name-before-colon l)))))))
-
-(local
- (defthm o1r-a-parsed-field-is-wf
-   (implies (and (fn-article-field-correspondsp f) (fn-article-fieldp f))
-            (o1r-field-wfp f))
-   :hints (("Goal" :in-theory (e/d (fn-article-lower-namep)
-                                   (fn-article-unfold-reference fn-article-namep fn-article-ascii-downcase
-                                    fn-article-header-bytes-p fn-article-name-before-colon
-                                    fn-article-has-colonp fn-article-plain-linesp fn-article-wsp-startsp))
-            :use ((:instance o1r-a-named-line-opens-with-ftext
-                   (l (car (fn-article-field-raw-lines f)))))))))
-
-(local
- (defthm o1r-parsed-fields-are-wf
-   (implies (and (fn-article-fields-correspondp fields) (fn-article-field-listp fields))
-            (o1r-fields-wfp fields))
-   :hints (("Goal" :in-theory (disable o1r-field-wfp fn-article-field-correspondsp fn-article-fieldp)))))
-
-(local
- (defthm o1r-a-parsed-article-is-its-fields
-   (implies (fn-article-result-okp (fn-article-parse y))
-            (let ((article (fn-article-result-article (fn-article-parse y))))
-              (and (true-listp article)
-                   (o1r-fields-wfp (fn-article-fields article))
-                   (true-listp (fn-article-body article))
-                   (equal y (append (fn-article-fields-octets (fn-article-fields article))
-                                    (cons 13 (cons 10 (fn-article-body article))))))))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (union-theories '(fn-article-syntax-p fn-article-source
-                                                fn-article-octet-list-true-listp
-                                                fn-article-append-associative (:e binary-append) binary-append car-cons cdr-cons)
-                                              (theory 'minimal-theory))
-            :use ((:instance fn-article-successful-parse-syntax-p (octets y))
-                  (:instance fn-article-successful-parse-fields-correspond (octets y))
-                  (:instance fn-article-successful-parse-preserves-source (octets y))
-                  (:instance fn-article-successful-parse-fields-recompose-header (octets y))
-                  (:instance o1r-parsed-fields-are-wf
-                   (fields (fn-article-fields (fn-article-result-article (fn-article-parse y))))))))))
-
-(local
- (defthm o1r-name-before-colon-of-append
-   (implies (fn-article-has-colonp l)
-            (equal (fn-article-name-before-colon (append l r))
-                   (fn-article-name-before-colon l)))))
+(local (include-book "relay-parse"))
 
 (local
  (defthm o1r-px-field-not-newsgroups
-   (implies (and (o1r-field-wfp f) (o1r-path-or-xref-fieldp f))
+   (implies (and (rsp-field-wfp f) (rsp-path-or-xref-fieldp f))
             (not (equal (fn-article-field-name f) *fn-af-newsgroups-name*)))
-   :hints (("Goal" :in-theory (disable o1r-named-p-names-the-field fn-pu-named-p)
-            :use ((:instance o1r-named-p-names-the-field
+   :hints (("Goal" :in-theory (disable rsp-named-p-names-the-field fn-pu-named-p)
+            :use ((:instance rsp-named-p-names-the-field
                    (line (append (car (fn-article-field-raw-lines f)) '(13 10)))
                    (n '(112 97 116 104)))
-                  (:instance o1r-named-p-names-the-field
+                  (:instance rsp-named-p-names-the-field
                    (line (append (car (fn-article-field-raw-lines f)) '(13 10)))
                    (n '(120 114 101 102))))))))
 
 (local
  (defthm o1r-headers-of-drop
-   (implies (o1r-fields-wfp fs)
-            (equal (fn-article-get-headers-aux (o1r-drop-path-xref fs) *fn-af-newsgroups-name*)
+   (implies (rsp-fields-wfp fs)
+            (equal (fn-article-get-headers-aux (rsp-drop-path-xref fs) *fn-af-newsgroups-name*)
                    (fn-article-get-headers-aux fs *fn-af-newsgroups-name*)))
-   :hints (("Goal" :induct (o1r-drop-path-xref fs)
-            :in-theory (e/d (o1r-drop-path-xref o1r-fields-wfp)
-                            (o1r-field-wfp o1r-path-or-xref-fieldp fn-article-field-name))
+   :hints (("Goal" :induct (rsp-drop-path-xref fs)
+            :in-theory (e/d (rsp-drop-path-xref rsp-fields-wfp)
+                            (rsp-field-wfp rsp-path-or-xref-fieldp fn-article-field-name))
             :do-not-induct nil))))
 
 (local
  (defthm o1r-fieldsvp-drop
-   (implies (o1p-fieldsvp fs) (o1p-fieldsvp (o1r-drop-path-xref fs)))
-   :hints (("Goal" :induct (o1r-drop-path-xref fs)
-            :in-theory (e/d (o1r-drop-path-xref o1p-fieldsvp) (o1r-path-or-xref-fieldp))))))
+   (implies (o1p-fieldsvp fs) (o1p-fieldsvp (rsp-drop-path-xref fs)))
+   :hints (("Goal" :induct (rsp-drop-path-xref fs)
+            :in-theory (e/d (rsp-drop-path-xref o1p-fieldsvp) (rsp-path-or-xref-fieldp))))))
 
 (local
  (defthm o1r-fo-len-drop
-   (<= (len (fn-article-fields-octets (o1r-drop-path-xref fs)))
+   (<= (len (fn-article-fields-octets (rsp-drop-path-xref fs)))
        (len (fn-article-fields-octets fs)))
    :rule-classes :linear
-   :hints (("Goal" :induct (o1r-drop-path-xref fs)
-            :in-theory (e/d (o1r-drop-path-xref fn-article-fields-octets) (o1r-path-or-xref-fieldp))))))
+   :hints (("Goal" :induct (rsp-drop-path-xref fs)
+            :in-theory (e/d (rsp-drop-path-xref fn-article-fields-octets) (rsp-path-or-xref-fieldp))))))
 
 (local
  (defthm o1r-fo-octets-drop
    (implies (fn-cbor-octet-listp (append (fn-article-fields-octets fs) tail))
-            (fn-cbor-octet-listp (append (fn-article-fields-octets (o1r-drop-path-xref fs)) tail)))
-   :hints (("Goal" :induct (o1r-drop-path-xref fs)
-            :in-theory (e/d (o1r-drop-path-xref o1r-fields-octets-of-cons)
-                            (o1r-path-or-xref-fieldp fn-article-fields-octets))))))
+            (fn-cbor-octet-listp (append (fn-article-fields-octets (rsp-drop-path-xref fs)) tail)))
+   :hints (("Goal" :induct (rsp-drop-path-xref fs)
+            :in-theory (e/d (rsp-drop-path-xref rsp-fields-octets-of-cons)
+                            (rsp-path-or-xref-fieldp fn-article-fields-octets))))))
 
 (local
  (defthm o1r-len-append
@@ -2911,18 +2692,18 @@
 
 (local
  (defthm o1r-parse-of-strip-aux
-   (implies (and (o1p-fieldsvp fw) (o1r-fields-wfp fw) (fn-article-body-crlfp bw)
+   (implies (and (o1p-fieldsvp fw) (rsp-fields-wfp fw) (fn-article-body-crlfp bw)
                  (equal x (append (fn-article-fields-octets fw) (cons 13 (cons 10 bw))))
                  (fn-cbor-octet-listp x)
                  (<= (len x) *fn-article-max-octets*))
             (equal (fn-article-parse (fn-pu-strip x nil))
-                   (fn-article-ok (fn-article-make (fn-article-fields-octets (o1r-drop-path-xref fw))
-                                                   bw (o1r-drop-path-xref fw)))))
+                   (fn-article-ok (fn-article-make (fn-article-fields-octets (rsp-drop-path-xref fw))
+                                                   bw (rsp-drop-path-xref fw)))))
    :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-article-parse fn-pu-strip fn-article-fields-octets o1r-drop-path-xref
+            :in-theory (disable fn-article-parse fn-pu-strip fn-article-fields-octets rsp-drop-path-xref
                                 fn-article-body-crlfp fn-article-ok fn-article-make)
-            :use ((:instance o1r-strip-of-wf-fields (fields fw) (body bw) (d nil))
-                  (:instance o1p-parse-of-fields (fs (o1r-drop-path-xref fw)) (body bw))
+            :use ((:instance rsp-strip-of-wf-fields (fields fw) (body bw) (d nil))
+                  (:instance o1p-parse-of-fields (fs (rsp-drop-path-xref fw)) (body bw))
                   (:instance o1r-fo-octets-drop (fs fw) (tail (cons 13 (cons 10 bw))))
                   (:instance o1r-fo-len-drop (fs fw))
                   (:instance o1r-fieldsvp-drop (fs fw)))))))
@@ -2932,12 +2713,12 @@
    (implies (fn-article-result-okp (fn-article-parse x))
             (and (fn-article-result-okp (fn-article-parse (fn-pu-strip x nil)))
                  (equal (fn-article-fields (fn-article-result-article (fn-article-parse (fn-pu-strip x nil))))
-                        (o1r-drop-path-xref (fn-article-fields (fn-article-result-article (fn-article-parse x)))))))
+                        (rsp-drop-path-xref (fn-article-fields (fn-article-result-article (fn-article-parse x)))))))
    :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-article-parse fn-pu-strip fn-article-fields-octets o1r-drop-path-xref
+            :in-theory (disable fn-article-parse fn-pu-strip fn-article-fields-octets rsp-drop-path-xref
                                 fn-article-body-crlfp)
             :use ((:instance o1p-parse-reconstructs (y x))
-                  (:instance o1r-a-parsed-article-is-its-fields (y x))
+                  (:instance rsp-a-parsed-article-is-its-fields (y x))
                   (:instance o1r-parse-of-strip-aux
                              (fw (fn-article-fields (fn-article-result-article (fn-article-parse x))))
                              (bw (fn-article-body (fn-article-result-article (fn-article-parse x)))))
@@ -2957,14 +2738,14 @@
                     *fn-af-newsgroups-name*)))
    :rule-classes nil
    :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-article-parse fn-pu-strip fn-pu-relay-article o1r-drop-path-xref
+            :in-theory (disable fn-article-parse fn-pu-strip fn-pu-relay-article rsp-drop-path-xref
                                 fn-article-result-article fn-article-fields fn-article-get-headers-aux)
             :use ((:instance o1r-parse-of-strip (x w))
                   (:instance o1r-parse-of-strip (x (fn-pu-relay-article w id exp)))
                   (:instance fn-pu-relay-article-changes-only-path-and-xref
                              (octets w) (identity id) (expected exp))
-                  (:instance o1r-a-parsed-article-is-its-fields (y w))
-                  (:instance o1r-a-parsed-article-is-its-fields (y (fn-pu-relay-article w id exp)))
+                  (:instance rsp-a-parsed-article-is-its-fields (y w))
+                  (:instance rsp-a-parsed-article-is-its-fields (y (fn-pu-relay-article w id exp)))
                   (:instance o1r-headers-of-drop
                              (fs (fn-article-fields (fn-article-result-article (fn-article-parse w)))))
                   (:instance o1r-headers-of-drop
@@ -2972,66 +2753,22 @@
                                                      (fn-article-parse (fn-pu-relay-article w id exp)))))))))))
 
 (local
- (defun o1r-octet-list-listp (xs) (declare (xargs :guard t))
-  (if (consp xs) (and (fn-cbor-octet-listp (car xs)) (o1r-octet-list-listp (cdr xs))) t)))
-
-(local
- (defun o1r-names-okp (xs) (declare (xargs :guard t))
-  (if (consp xs) (and (true-listp (car xs)) (fn-af-newsgroup-namep (car xs)) (o1r-names-okp (cdr xs))) t)))
-
-(local
- (defthm o1r-name-aux-octets
-  (implies (and (true-listp b) (fn-af-newsgroup-name-aux b w)) (fn-cbor-octet-listp b))
-  :hints (("Goal" :in-theory (enable fn-af-newsgroup-name-aux fn-af-newsgroup-component-charp fn-cbor-octet-listp fn-cbor-octetp)))))
-
-(local
- (defthm o1r-names-ok-octets
-  (implies (o1r-names-okp xs) (o1r-octet-list-listp xs))
-  :hints (("Goal" :in-theory (enable fn-af-newsgroup-namep)))))
-
-(local
- (defthm o1r-names-ok-revappend
-  (implies (and (o1r-names-okp a) (o1r-names-okp b)) (o1r-names-okp (revappend a b)))
-  :hints (("Goal" :induct (revappend a b) :in-theory (disable fn-af-newsgroup-namep)))))
-
-(local
- (defthm o1r-take-token-name-true-listp
-  (implies (true-listp rev) (true-listp (cadr (fn-af-take-newsgroup-token bytes rev))))
-  :hints (("Goal" :in-theory (enable fn-af-take-newsgroup-token)))))
-
-(local
- (defthm o1r-list-parse-aux-names-ok
-  (implies (and (o1r-names-okp names-rev)
-                (equal (car (fn-af-newsgroup-list-parse-aux bytes names-rev need fuel)) :ok))
-           (o1r-names-okp (cadr (fn-af-newsgroup-list-parse-aux bytes names-rev need fuel))))
-  :hints (("Goal" :induct (fn-af-newsgroup-list-parse-aux bytes names-rev need fuel)
-           :in-theory (e/d (fn-af-newsgroup-list-parse-aux) (fn-af-newsgroup-namep fn-af-take-newsgroup-token fn-af-skip-wsp))))))
-
-(local
  (defthm o1r-field-value-octets
    (implies (equal (car (fn-af-newsgroups-field-value f)) :ok)
-            (o1r-octet-list-listp (cadr (fn-af-newsgroups-field-value f))))
+            (o1p-octet-list-listp (cadr (fn-af-newsgroups-field-value f))))
    :hints (("Goal" :do-not-induct t
             :in-theory (e/d (fn-af-newsgroups-field-value fn-af-newsgroup-list-parse)
-                            (fn-af-newsgroup-list-parse-aux o1r-names-ok-octets o1r-list-parse-aux-names-ok
+                            (fn-af-newsgroup-list-parse-aux o1p-names-ok-octets o1p-list-parse-aux-names-ok
                              fn-af-skip-wsp fn-cbor-at-mostp))
-            :use ((:instance o1r-names-ok-octets
+            :use ((:instance o1p-names-ok-octets
                              (xs (cadr (fn-af-newsgroup-list-parse-aux
                                         (fn-af-skip-wsp (cdr (fn-article-field-unfolded-value f)))
                                         nil t *fn-af-max-field-value-octets*))))
-                  (:instance o1r-list-parse-aux-names-ok
+                  (:instance o1p-list-parse-aux-names-ok
                              (bytes (fn-af-skip-wsp (cdr (fn-article-field-unfolded-value f))))
                              (names-rev nil) (need t) (fuel *fn-af-max-field-value-octets*)))))))
 
-(local
- (defthm o1r-nntp-string-octets-aux-is-record
-   (equal (fn-nntp-string-octets-aux chars) (fn-record-string-octets-aux chars))
-   :hints (("Goal" :in-theory (enable fn-nntp-string-octets-aux fn-record-string-octets-aux)))))
-
-(local
- (defthm o1r-nntp-string-octets-is-record
-   (equal (fn-nntp-string-octets x) (fn-record-string-octets x))
-   :hints (("Goal" :in-theory (enable fn-nntp-string-octets fn-record-string-octets)))))
+(local (include-book "filed-names"))
 
 (local
  (defthm o1r-roundtrip
@@ -3039,8 +2776,8 @@
             (equal (fn-nntp-string-octets (fn-record-octets-string g)) g))
    :hints (("Goal" :do-not-induct t
             :in-theory (disable fn-record-string-octets fn-record-octets-string fn-nntp-string-octets)
-            :use (o1r-nntp-string-octets-is-record
-                  (:instance o1r-nntp-string-octets-is-record (x (fn-record-octets-string g)))
+            :use (o1n-nntp-string-octets-is-record
+                  (:instance o1n-nntp-string-octets-is-record (x (fn-record-octets-string g)))
                   (:instance fn-record-string-octets-of-octets-string (octets g)))))))
 
 (local
@@ -3068,10 +2805,10 @@
 
 (local
  (defthm o1r-scope-within
-   (implies (o1r-octet-list-listp g)
+   (implies (o1p-octet-list-listp g)
             (fn-o1-subseqp (fn-oag-group-octets (fn-peer-scope-groups g record cfg)) g))
    :hints (("Goal" :induct (fn-peer-scope-groups g record cfg)
-            :in-theory (e/d (o1r-octet-list-listp)
+            :in-theory (e/d (o1p-octet-list-listp)
                             (fn-nntp-string-octets fn-record-octets-string fn-o1-subseqp
                              fn-peer-wildmat-matchp fn-cfg-group-livep))
             :expand ((fn-peer-scope-groups g record cfg)
@@ -3081,7 +2818,7 @@
 (local
  (defthm o1r-status-octets
    (implies (equal (car (fn-af-newsgroups-status a)) :single)
-            (o1r-octet-list-listp (cadr (fn-af-newsgroups-status a))))
+            (o1p-octet-list-listp (cadr (fn-af-newsgroups-status a))))
    :hints (("Goal" :do-not-induct t
             :in-theory (e/d (fn-af-newsgroups-status)
                             (fn-article-get-headers fn-af-newsgroups-field-value o1r-field-value-octets))

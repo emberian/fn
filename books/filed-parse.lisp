@@ -748,3 +748,32 @@
 
 (defthm o1p-cons-car-cdr
   (implies (consp x) (equal (cons (car x) (cdr x)) x)))
+
+(defun o1p-octet-list-listp (xs) (declare (xargs :guard t))
+  (if (consp xs) (and (fn-cbor-octet-listp (car xs)) (o1p-octet-list-listp (cdr xs))) t))
+
+(defun o1p-names-okp (xs) (declare (xargs :guard t))
+  (if (consp xs) (and (true-listp (car xs)) (fn-af-newsgroup-namep (car xs)) (o1p-names-okp (cdr xs))) t))
+
+(defthm o1p-name-aux-octets
+  (implies (and (true-listp b) (fn-af-newsgroup-name-aux b w)) (fn-cbor-octet-listp b))
+  :hints (("Goal" :in-theory (enable fn-af-newsgroup-name-aux fn-af-newsgroup-component-charp fn-cbor-octet-listp fn-cbor-octetp))))
+
+(defthm o1p-names-ok-octets
+  (implies (o1p-names-okp xs) (o1p-octet-list-listp xs))
+  :hints (("Goal" :in-theory (enable fn-af-newsgroup-namep))))
+
+(defthm o1p-names-ok-revappend
+  (implies (and (o1p-names-okp a) (o1p-names-okp b)) (o1p-names-okp (revappend a b)))
+  :hints (("Goal" :induct (revappend a b) :in-theory (disable fn-af-newsgroup-namep))))
+
+(defthm o1p-take-token-name-true-listp
+  (implies (true-listp rev) (true-listp (cadr (fn-af-take-newsgroup-token bytes rev))))
+  :hints (("Goal" :in-theory (enable fn-af-take-newsgroup-token))))
+
+(defthm o1p-list-parse-aux-names-ok
+  (implies (and (o1p-names-okp names-rev)
+                (equal (car (fn-af-newsgroup-list-parse-aux bytes names-rev need fuel)) :ok))
+           (o1p-names-okp (cadr (fn-af-newsgroup-list-parse-aux bytes names-rev need fuel))))
+  :hints (("Goal" :induct (fn-af-newsgroup-list-parse-aux bytes names-rev need fuel)
+           :in-theory (e/d (fn-af-newsgroup-list-parse-aux) (fn-af-newsgroup-namep fn-af-take-newsgroup-token fn-af-skip-wsp)))))
