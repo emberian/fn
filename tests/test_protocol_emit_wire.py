@@ -19,7 +19,7 @@ import protocol_emit  # noqa: E402
 
 class WireCheck(unittest.TestCase):
     def run_check(self, committed, rendered, write=False, key="k1", stamp=None, d=None,
-                  committed_copy=None):
+                  committed_copy=None, store=None):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(d or tmp)
             path = d / "build" / "box" / "wire-grammar.json"
@@ -34,7 +34,9 @@ class WireCheck(unittest.TestCase):
                 stamp_path.parent.mkdir(parents=True, exist_ok=True)
                 stamp_path.write_text(stamp)
             evaluate = mock.Mock(return_value=rendered)
-            with mock.patch.object(protocol_emit, "WIRE_FILE", path), \
+            store = Path(store) if store else d / "store"
+            with mock.patch.object(protocol_emit, "_wire_store", return_value=store), \
+                 mock.patch.object(protocol_emit, "WIRE_FILE", path), \
                  mock.patch.object(protocol_emit, "WIRE_STAMP", stamp_path), \
                  mock.patch.object(protocol_emit, "ROOT", d), \
                  mock.patch.object(protocol_emit, "_wire_key", return_value=key), \
@@ -61,6 +63,26 @@ class WireCheck(unittest.TestCase):
         code, _ = self.run_check(b'{"v":9}', b'{"v":1}', key="k1",
                                  stamp=self.stamp_for("k1", b'{"v":1}'))
         self.assertEqual((code, self.evaluated), (1, True))
+
+    def test_another_trees_evaluation_at_the_key_is_reused(self):
+        with tempfile.TemporaryDirectory() as store:
+            code, after = self.run_check(None, b'{"v":1}', write=True, key="k1", store=store)
+            self.assertEqual((code, self.evaluated, after), (0, True, b'{"v":1}'))
+            # a fresh tree, same key: no evaluation, the stored octets
+            code, after = self.run_check(None, b'{"v":2}', write=True, key="k1", store=store)
+            self.assertEqual((code, self.evaluated, after), (0, False, b'{"v":1}'))
+            code, _ = self.run_check(b'{"v":1}', b'{"v":2}', key="k1", store=store)
+            self.assertEqual((code, self.evaluated), (0, False))
+            # another key evaluates
+            code, after = self.run_check(None, b'{"v":3}', write=True, key="k2", store=store)
+            self.assertEqual((code, self.evaluated, after), (0, True, b'{"v":3}'))
+
+    def test_a_damaged_store_entry_is_not_used(self):
+        with tempfile.TemporaryDirectory() as store:
+            self.run_check(None, b'{"v":1}', write=True, key="k1", store=store)
+            (Path(store) / "k1.json").write_bytes(b'{"v":7}')
+            code, after = self.run_check(None, b'{"v":1}', write=True, key="k1", store=store)
+            self.assertEqual((code, self.evaluated, after), (0, True, b'{"v":1}'))
 
     def test_stale_file_is_red(self):
         code, _ = self.run_check(b'{"version":1,"families":[]}', b'{"version":1,"families":[1]}')
