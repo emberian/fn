@@ -7,6 +7,14 @@
 (include-book "reclaim-chunked-walk-tests")
 (include-book "store-checkpoint-fold-tests")
 
+;; The accumulator steps are guarded by the carried invariant
+;; (fn-rcw-acc-carriedp), whose fn-rii-okp is a defun-sk: no evaluator runs
+;; it, and guard checking cannot be switched off for a whole book.  Every
+;; ground call of a value function below therefore runs under
+;; (with-guard-checking :none ...), as tests/acl2/acceptance-tests.lisp runs
+;; its out-of-guard calls; the invariant itself is witnessed by proved ground
+;; facts (:witness-lemma, :lemma).
+
 (defconst *rcs-id* (fn-sco-identity (fn-sco-capture *rcw-configs* nil)))
 (defconst *rcs-h0* 40)
 
@@ -14,48 +22,48 @@
 ; 1. KEYSTONE fn-rcw-predict-acc-steps-is-predict, reached: pass 3 over two
 ; chunkings is fn-orcs-predict of the whole rewritten history; the rewrite
 ; made records (the expired articles' tombstones), so payloads are sealed.
-(make-event `(defconst *rcs-whole* ',(fn-orcs-predict *rcw-new* *rcs-id* *rcs-h0*)))
-(assert-event (not (eq (car *rcs-whole*) :bad)))
-(assert-event (< 0 (len (cadr *rcs-whole*))))
+(make-event `(defconst *rcs-whole* ',(with-guard-checking :none (fn-orcs-predict *rcw-new* *rcs-id* *rcs-h0*))))
+(assert-event (with-guard-checking :none (not (eq (car *rcs-whole*) :bad))))
+(assert-event (with-guard-checking :none (< 0 (len (cadr *rcs-whole*)))))
 (defmacro rcs-p3 (chunks)
   `(fn-rcw-predict-acc-steps (fn-rcw-acc-init *rcw-configs*) *rcw-configs* ,chunks
                              *rcs-h0* nil))
-(make-event `(defconst *rcs-p3* ',(rcs-p3 *rcw-c2*)))
-(make-event `(defconst *rcs-p3b* ',(rcs-p3 *rcw-c1*)))
-(make-event `(defconst *rcs-cap* ',(fn-sco-capture *rcw-configs* (car *rcs-whole*))))
-(assert-event (equal (fn-rcw-acc-finish (car *rcs-p3*)) *rcs-cap*))
-(assert-event (equal (fn-rcw-acc-finish (car *rcs-p3b*)) *rcs-cap*))
-(assert-event (equal (caddr *rcs-p3*) (cadr *rcs-whole*)))
-(assert-event (equal (cadr *rcs-p3*) (+ *rcs-h0* (len (cadr *rcs-whole*)))))
+(make-event `(defconst *rcs-p3* ',(with-guard-checking :none (rcs-p3 *rcw-c2*))))
+(make-event `(defconst *rcs-p3b* ',(with-guard-checking :none (rcs-p3 *rcw-c1*))))
+(make-event `(defconst *rcs-cap* ',(with-guard-checking :none (fn-sco-capture *rcw-configs* (car *rcs-whole*)))))
+(assert-event (with-guard-checking :none (equal (fn-rcw-acc-finish (car *rcs-p3*)) *rcs-cap*)))
+(assert-event (with-guard-checking :none (equal (fn-rcw-acc-finish (car *rcs-p3b*)) *rcs-cap*)))
+(assert-event (with-guard-checking :none (equal (caddr *rcs-p3*) (cadr *rcs-whole*))))
+(assert-event (with-guard-checking :none (equal (cadr *rcs-p3*) (+ *rcs-h0* (len (cadr *rcs-whole*))))))
 ; Teeth: a host that restarts the handle at the base for every chunk (does
 ; not carry H) predicts other handles once an earlier chunk sealed one.
 (make-event
- `(defconst *rcs-reset* ',(let ((a (fn-rcw-predict-acc-step (fn-rcw-acc-init *rcw-configs*)
+ `(defconst *rcs-reset* ',(with-guard-checking :none (let ((a (fn-rcw-predict-acc-step (fn-rcw-acc-init *rcw-configs*)
                                                             *rcw-configs* (take 2 *rcw-new*)
                                                             *rcs-h0*)))
                             (fn-rcw-predict-acc-step (car a) *rcw-configs* (nthcdr 2 *rcw-new*)
-                                                     *rcs-h0*))))
-(assert-event (< 0 (len (fn-orcs-payloads (take 2 *rcw-new*)))))
+                                                     *rcs-h0*)))))
+(assert-event (with-guard-checking :none (< 0 (len (fn-orcs-payloads (take 2 *rcw-new*))))))
 (must-fail-checked
- (assert-event (equal (fn-rcw-acc-finish (car *rcs-reset*)) *rcs-cap*)))
+ (assert-event (with-guard-checking :none (equal (fn-rcw-acc-finish (car *rcs-reset*)) *rcs-cap*))))
 ; A chunk carrying the intern's refusal word is :bad, as the whole is.
-(assert-event (equal (rcs-p3 (list (take 1 *rcw-new*) (list :bad))) :bad))
-(assert-event (equal (car (fn-orcs-predict (append *rcw-new* (list :bad)) *rcs-id* *rcs-h0*))
-                     :bad))
+(assert-event (with-guard-checking :none (equal (rcs-p3 (list (take 1 *rcw-new*) (list :bad))) :bad)))
+(assert-event (with-guard-checking :none (equal (car (fn-orcs-predict (append *rcw-new* (list :bad)) *rcs-id* *rcs-h0*))
+                     :bad)))
 
 ; -----------------------------------------------------------------------------
 ; 2. KEYSTONE fn-rcw-srcs-steps-is-the-walk, reached: the chunked writer walk
 ; is the one walk over the whole history, and it is not empty.
 (bpr-lift fn-rcw-srcs-steps 3)
 (bpr-lift fn-scka-srcs-n 4)
-(make-event `(defconst *rcs-walk* ',(in-arena-fn-rcw-srcs-steps *rpt-payloads* *rcw-c2* nil nil)))
-(assert-event (equal *rcs-walk*
-                     (in-arena-fn-scka-srcs-n *rpt-payloads* *rcw-new* (len *rcw-new*) nil nil)))
-(assert-event (consp (cadr *rcs-walk*)))
+(make-event `(defconst *rcs-walk* ',(with-guard-checking :none (in-arena-fn-rcw-srcs-steps *rpt-payloads* *rcw-c2* nil nil))))
+(assert-event (with-guard-checking :none (equal *rcs-walk*
+                     (in-arena-fn-scka-srcs-n *rpt-payloads* *rcw-new* (len *rcw-new*) nil nil))))
+(assert-event (with-guard-checking :none (consp (cadr *rcs-walk*))))
 ; Teeth: chunks out of order walk the payloads in another order.
 (must-fail-checked
- (assert-event (equal (in-arena-fn-rcw-srcs-steps *rpt-payloads* (reverse *rcw-c2*) nil nil)
-                      *rcs-walk*)))
+ (assert-event (with-guard-checking :none (equal (in-arena-fn-rcw-srcs-steps *rpt-payloads* (reverse *rcw-c2*) nil nil)
+                      *rcs-walk*))))
 
 ; The rotation trace: pass 3 over two chunks split at the rotation (the first
 ; ends with the article posted under keyring generation 1, the second opens
@@ -63,22 +71,22 @@
 ; replay's own rows, handles included; the host's tombstone rows are interned
 ; at the pair in force before each record, as a restart's fold does.
 (make-event `(defconst *rcs-rotation-chunks*
-               ',(fn-rcw-predict-acc-steps (fn-rcw-acc-init *scft-cfgs*) *scft-cfgs*
-                                           (list *scft-ws* *scft-vs*) 0 nil)))
+               ',(with-guard-checking :none (fn-rcw-predict-acc-steps (fn-rcw-acc-init *scft-cfgs*) *scft-cfgs*
+                                           (list *scft-ws* *scft-vs*) 0 nil))))
 (assert-event
- (and (not (eq *rcs-rotation-chunks* :bad))
+(with-guard-checking :none  (and (not (eq *rcs-rotation-chunks* :bad))
       (equal (fn-rcw-acc-finish (car *rcs-rotation-chunks*))
              (fn-sco-capture *scft-cfgs* *scft-replay*))
       (equal (caddr *rcs-rotation-chunks*) (fn-orcs-payloads *scft-log*))
-      (equal (cadr *rcs-rotation-chunks*) 2)))
+      (equal (cadr *rcs-rotation-chunks*) 2))))
 ; Teeth: a pass 3 that predicts each chunk from the initial identity forgets
 ; the enrollment the first chunk made; it serves the second article at another
 ; generation than the restart does.
 (assert-event
- (not (equal (fn-sco-capture *scft-cfgs*
+(with-guard-checking :none  (not (equal (fn-sco-capture *scft-cfgs*
                              (append (fn-orcs-predict-rows-at *scft-ws* *scft-id0* 0)
                                      (fn-orcs-predict-rows-at *scft-vs* *scft-id0* 1)))
-             (fn-sco-capture *scft-cfgs* *scft-replay*))))
+             (fn-sco-capture *scft-cfgs* *scft-replay*)))))
 
 ; TEETH-62 BEGIN
 ; fn-rcw-predict-acc-steps-is-predict with its teeth (TEETH CONTRACT v1).
@@ -135,14 +143,14 @@
                ((chunks *rcw-c2*) (lacc nil) (sacc nil))
                :fault "the writer advances its chunk cursor before consuming the first chunk")))
 (assert-event
- (let ((chunks (list (append (take 2 *rcw-new*) 'tail) (nthcdr 2 *rcw-new*))))
+(with-guard-checking :none  (let ((chunks (list (append (take 2 *rcw-new*) 'tail) (nthcdr 2 *rcw-new*))))
    (and (not (true-list-listp chunks))
-        (equal (in-arena-fn-rcw-srcs-steps *rpt-payloads* chunks nil nil) *rcs-walk*))))
+        (equal (in-arena-fn-rcw-srcs-steps *rpt-payloads* chunks nil nil) *rcs-walk*)))))
 
 ; A full open that actually installs an owner (default config already creates fn.letters).
 (assert-event
- (not (equal (fn-ock-recover-full (list *fn-cfg-default-record*) 8
-              (car (fn-orcs-predict *rcw-new* *rcs-id* 0)) 4) :fault)))
+(with-guard-checking :none  (not (equal (fn-ock-recover-full (list *fn-cfg-default-record*) 8
+              (car (fn-orcs-predict *rcw-new* *rcs-id* 0)) 4) :fault))))
 (defteeth fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
  :claim (((handle (natp h0))) (equal (cadr (fn-owner-orcp-rebuild
                          (fn-rcw-acc-finish
@@ -170,23 +178,23 @@
 ; boundary and observes the rotation in the next chunk.
 (make-event
  `(defconst *rcs-rotation-first*
-    ',(fn-rcw-predict-acc-step (fn-rcw-acc-init *scft-cfgs*) *scft-cfgs* *scft-ws* 0)))
+    ',(with-guard-checking :none (fn-rcw-predict-acc-step (fn-rcw-acc-init *scft-cfgs*) *scft-cfgs* *scft-ws* 0))))
 (make-event
  `(defconst *rcs-rotation-next*
-    ',(fn-rcw-predict-acc-step (car *rcs-rotation-first*) *scft-cfgs* *scft-vs*
-                              (cadr *rcs-rotation-first*))))
+    ',(with-guard-checking :none (fn-rcw-predict-acc-step (car *rcs-rotation-first*) *scft-cfgs* *scft-vs*
+                              (cadr *rcs-rotation-first*)))))
 (assert-event
- (and (not (equal *rcs-rotation-next* :bad))
+(with-guard-checking :none  (and (not (equal *rcs-rotation-next* :bad))
       (equal (fn-sco-records (fn-rcw-acc-finish (car *rcs-rotation-next*))) *scft-replay*)
       (equal (cadr *rcs-rotation-next*) 2)
       (equal (append (caddr *rcs-rotation-first*) (caddr *rcs-rotation-next*))
-             (fn-orcs-payloads *scft-log*))))
+             (fn-orcs-payloads *scft-log*)))))
 ; Reset only the carried identity: preserve the capture columns and handle.
 (assert-event
- (let* ((acc (car *rcs-rotation-first*))
+(with-guard-checking :none  (let* ((acc (car *rcs-rotation-first*))
         (reset (fn-rcw-acc-make (fn-rcw-acc-rev acc) (fn-rcw-acc-n acc)
                                 (fn-sco-at 2 acc) *scft-id0* (fn-sco-at 4 acc)
-                                (fn-sco-at 5 acc) (fn-sco-at 6 acc)))
+                                (fn-sco-at 5 acc) (fn-sco-at 6 acc) (fn-rcw-acc-ix acc)))
         (r (fn-rcw-predict-acc-step reset *scft-cfgs* *scft-vs*
                                     (cadr *rcs-rotation-first*))))
-   (not (equal (fn-sco-records (fn-rcw-acc-finish (car r))) *scft-replay*))))
+   (not (equal (fn-sco-records (fn-rcw-acc-finish (car r))) *scft-replay*)))))
