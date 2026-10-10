@@ -1,11 +1,6 @@
 {
  "about": "Existing critical keystones that lack the evidence package, each owned by a claimed item (tools/keystone_critical.py --claim-owed). Shrink-only: --lower-stale removes obsolete rows; --lower-complete removes only rows whose full package passes with current-closure certification. New or changed critical keystones cannot be owed.",
  "items": {
-  "fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/accounts.lisp"
-  },
   "fn-acct-bound-row-succeeds": {
    "class": "authorization",
    "item": "PRF-1344",

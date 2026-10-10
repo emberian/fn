@@ -488,9 +488,9 @@
         ((and (true-listp eid) (equal (len eid) 3)
               (equal (car eid) :ipn) (natp (cadr eid)) (natp (caddr eid)))
          (string-append
-          "ipn:" (string-append (fn-prov-nat-string (cadr eid))
+          "ipn:" (string-append (fn-decimal-text (cadr eid))
                                  (string-append "."
-                                                (fn-prov-nat-string
+                                                (fn-decimal-text
                                                  (caddr eid))))))
         (t "")))
 

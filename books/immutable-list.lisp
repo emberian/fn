@@ -2,6 +2,7 @@
 ; evaluated once in order. The head is always new; only constant trailing NIL
 ; fields share storage. Never use this macro for a destructively modified list.
 (in-package "ACL2")
+(include-book "decimal-text")
 
 (defun fn-iml-nil-tests (values)
   (declare (xargs :mode :program))
@@ -26,7 +27,7 @@
   (if (consp values)
       (cons (list (intern-in-package-of-symbol
                    (concatenate 'string "FN-IML-ARG-"
-                     (coerce (explode-nonnegative-integer index 10 nil) 'string))
+                     (fn-decimal-text index))
                    'fn-list/immutable)
                   (car values))
             (fn-iml-bindings (cdr values) (1+ index))) nil))

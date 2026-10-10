@@ -351,17 +351,15 @@
 (definterface fn-web-host-private-begin-step :class :common-lisp-compliant
   :kinds ((config true-listp) (action true-listp)))
 
-; The cursor is one fn-wps-header-cursor made (the form's finish) and this
-; function returned; its encoded body [I, E) lies in the source (fn-wps-cursorp).
+; Guard t, logic mode, guards verified.  ec-call is the identity in the logic
+; and runs the callee's own checked *1*: fn-wps-window and fn-octets-append-list
+; (guard fn-cbor-octet-listp of the window bytes) keep their guards, so this
+; entry reaches no stobj updater with a non-trivial guard.
 (defun fn-web-host-post-window (cursor fn-web-in fn-web-out)
-  (declare (xargs :stobjs (fn-web-in fn-web-out)
-                  :guard (fn-wps-cursorp cursor (fn-octets-len fn-web-in))
-                  :guard-hints (("Goal" :do-not-induct t
-                                 :in-theory (disable fn-wps-window fn-wps-cursorp)
-                                 :use ((:instance fn-wps-window-octets (fuel 4096) (acc nil)))))))
-  (mv-let (bytes next done) (fn-wps-window 4096 cursor nil fn-web-in)
+  (declare (xargs :mode :logic :guard t :stobjs (fn-web-in fn-web-out)))
+  (mv-let (bytes next done) (ec-call (fn-wps-window 4096 cursor nil fn-web-in))
     (let* ((fn-web-out (fn-octets-clear fn-web-out))
-           (fn-web-out (fn-octets-append-list bytes fn-web-out)))
+           (fn-web-out (ec-call (fn-octets-append-list bytes fn-web-out))))
       (mv next done fn-web-out))))
 
 (definterface fn-web-host-post-window :class :common-lisp-compliant)
@@ -373,15 +371,12 @@
 (definterface fn-web-host-post-reply-step :class :common-lisp-compliant
   :kinds ((config true-listp)))
 
-;; :program for the reason fn-web-host-page-step gives: fn-wpf-statep
-;; (verified) walks the decoded value collected so far, and the host calls
-;; this once per 4096-octet drive, so an evaluated guard is quadratic in the
-;; posted body.
 (defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
-  (mv-let (next done) (fn-wpf-drive 4096 prep fn-web-in)
-    (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
-                           next fn-web-in fn-web-out)
+  (declare (xargs :mode :logic :guard t :stobjs (fn-web-in fn-web-out)))
+  (mv-let (next done) (ec-call (fn-wpf-drive 4096 prep fn-web-in))
+    (if done (ec-call (fn-wpf-finish
+                       (append (ec-call (take 6 config)) (list :page-plan :private-begin))
+                       next fn-web-in fn-web-out))
       (mv (list :post-form next) fn-web-out))))
 
-(definterface fn-web-host-post-form-step :class ::program)
+(definterface fn-web-host-post-form-step :class :common-lisp-compliant)
