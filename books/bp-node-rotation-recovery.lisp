@@ -444,3 +444,88 @@
                           (served (append (fn-bprpf-admit-recovery (fn-bpnr-recover-auto-event (fn-bpnr-seed-state (fn-bpnr-open-fresh st) (fn-bpnr-published-plan st generation ck)) nil :ready nil (fn-bpnr-published-plan st generation ck)) profile) (list domain)))
                           (answer (fn-bpnj-step (fn-bpnr-seed-state (fn-bpnr-open-fresh st) (fn-bpnr-published-plan st generation ck)) (append (fn-bprpf-admit-recovery (fn-bpnr-recover-auto-event (fn-bpnr-seed-state (fn-bpnr-open-fresh st) (fn-bpnr-published-plan st generation ck)) nil :ready nil (fn-bpnr-published-plan st generation ck)) profile) (list domain))))))
            :in-theory (theory 'minimal-theory))))
+
+;; PREMISE-EXCESS-D: the host establishes fn-bpnp-clock-domain-admitsp.
+;; host/native/bp-service.lisp builds the served recovery event as the
+;; profile-admitted recover-auto event with ACL2's clock-domain plan appended
+;; (fn-bphp-recover-auto-event, equal to fn-bpnr-recover-auto-event by
+;; fn-bphp-recover-auto-event-is-bpnr).  Of that event the premise of the
+;; rotation-restart keystones above holds exactly when the plan is :same, or
+;; :initialize over a namespace with no lifecycle records and no received
+;; rows; a :fence plan never admits.
+(local
+ (defthm fn-bpnp-cdm-admit-recovery-keeps-the-shape
+   (implies (and (true-listp e) (equal (len e) 6))
+            (and (true-listp (fn-bprpf-admit-recovery e profile))
+                 (equal (len (fn-bprpf-admit-recovery e profile)) 6)
+                 (equal (nth 2 (fn-bprpf-admit-recovery e profile)) (nth 2 e))
+                 (equal (nth 5 (fn-bprpf-admit-recovery e profile)) (nth 5 e))))
+   :hints (("Goal" :in-theory (enable fn-bprpf-admit-recovery)))))
+
+(local
+ (defthm fn-bpnp-cdm-recover-event-shape
+   (and (true-listp (fn-bpnr-recover-auto-event st records sequence rows gplan))
+        (equal (len (fn-bpnr-recover-auto-event st records sequence rows gplan)) 6)
+        (equal (nth 2 (fn-bpnr-recover-auto-event st records sequence rows gplan)) records)
+        (equal (nth 5 (fn-bpnr-recover-auto-event st records sequence rows gplan)) (len rows)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (union-theories '(fn-bpnr-recover-auto-event)
+                                       (theory 'ground-zero))))))
+
+(local
+ (defthm fn-bpnp-cdm-bpn-nth-is-nth
+   (implies (natp n) (equal (fn-bpn-nth n xs) (nth n xs)))
+   :hints (("Goal" :in-theory (enable fn-bpn-nth fn-cbor-ag-car nth)))))
+
+(local
+ (defthm fn-bpnp-cdm-same-plan-carries-a-boot-id
+   (let ((plan (fn-bpnf-clock-domain-plan saved present observed legacy lock final-absent)))
+     (implies (equal (fn-bpnf-clock-domain-plan-status plan) :same)
+              (consp (nth 1 plan))))
+   :hints (("Goal" :in-theory (enable fn-bpnf-clock-domain-plan
+                                      fn-bpnf-clock-domain-plan-status
+                                      fn-bpcd-observed-id fn-bpcd-boot-idp)))))
+
+(local
+ (defthm fn-bpnp-cdm-nth-of-append
+   (implies (natp n)
+            (equal (nth n (append a b))
+                   (if (< n (len a)) (nth n a) (nth (- n (len a)) b))))
+   :hints (("Goal" :induct (nth n a) :in-theory (enable nth append len)))))
+
+(defthm fn-bpnp-hosted-recovery-admits-the-same-or-a-fresh-domain
+  (let ((plan (fn-bpnf-clock-domain-plan saved present observed legacy lock final-absent))
+        (event (fn-bprpf-admit-recovery
+                (fn-bpnr-recover-auto-event st records sequence rows gplan) profile)))
+    (implies (or (equal (fn-bpnf-clock-domain-plan-status plan) :same)
+                 (and (equal (fn-bpnf-clock-domain-plan-status plan) :initialize)
+                      (null records)
+                      (equal (len rows) 0)))
+             (fn-bpnp-clock-domain-admitsp (append event (list plan)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bpnp-clock-domain-admitsp fn-cbor-ag-car
+                            fn-bpnf-clock-domain-plan-status)
+                           (fn-bpnf-clock-domain-plan fn-bprpf-admit-recovery
+                            fn-bpnr-recover-auto-event))
+           :use ((:instance fn-bpnp-cdm-same-plan-carries-a-boot-id)
+                 (:instance fn-bpnp-cdm-admit-recovery-keeps-the-shape
+                            (e (fn-bpnr-recover-auto-event st records sequence rows gplan)))))))
+
+(defthm fn-bpnp-hosted-recovery-admits-only-the-same-or-a-fresh-domain
+  (let ((plan (fn-bpnf-clock-domain-plan saved present observed legacy lock final-absent))
+        (event (fn-bprpf-admit-recovery
+                (fn-bpnr-recover-auto-event st records sequence rows gplan) profile)))
+    (implies (fn-bpnp-clock-domain-admitsp (append event (list plan)))
+             (or (equal (fn-bpnf-clock-domain-plan-status plan) :same)
+                 (and (equal (fn-bpnf-clock-domain-plan-status plan) :initialize)
+                      (null records)
+                      (equal (len rows) 0)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-bpnp-clock-domain-admitsp fn-cbor-ag-car
+                            fn-bpnf-clock-domain-plan-status)
+                           (fn-bpnf-clock-domain-plan fn-bprpf-admit-recovery
+                            fn-bpnr-recover-auto-event))
+           :use ((:instance fn-bpnp-cdm-admit-recovery-keeps-the-shape
+                            (e (fn-bpnr-recover-auto-event st records sequence rows gplan)))))))

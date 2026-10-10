@@ -619,9 +619,7 @@
   (fn-native-operator-self-signed-outcome result cert-exists key-exists))
 
 (definterface fn-native-operator-host-self-signed-outcome
-  :class :program
-  :exempt ((cert-exists "the host's lstat of tls_cert, a boolean ACL2 reads as observed")
-           (key-exists "the host's lstat of tls_key, a boolean ACL2 reads as observed")))
+  :class :program)
 
 (defun fn-tls-self-signed-host-plan (names days now-ms has-wall serial spki)
   (declare (xargs :mode :program
@@ -631,10 +629,6 @@
 (definterface fn-tls-self-signed-host-plan
   :class :program
   :kinds ((serial fn-cbor-octet-listp) (spki fn-cbor-octet-listp))
-  :exempt ((names "ACL2's own names from fn-native-operator-host-result-self-signed, handed back unchanged; fn-ssc-plan refuses a bad one by name")
-           (days "ACL2's own days from the same request")
-           (now-ms "the wall reading fn-otm-wall-reading returned")
-           (has-wall "the wall reading's usable flag; fn-ssc-plan refuses :clock without it"))
   :keystones ((fn-ssc-plan-body-is-one-sequence :via fn-ssc-plan)))
 
 (defun fn-tls-self-signed-host-serial-octets ()
@@ -668,5 +662,4 @@
   (fn-native-operator-self-signed-refused result reason))
 
 (definterface fn-native-operator-host-self-signed-refused
-  :class :program
-  :exempt ((reason "the refusal word fn-tls-self-signed-host-plan or -pem returned; any other value is refused as :self-signed")))
+  :class :program)

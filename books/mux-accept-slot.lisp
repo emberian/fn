@@ -24,6 +24,7 @@
 ; not yet begun sockets never exceed the loop count.
 
 (in-package "ACL2")
+(include-book "def-loop")
 (local (include-book "arithmetic-5/top" :dir :system))
 
 ; One loop's observation: (RESERVED PENDING CLOSED), PENDING a natural.
@@ -61,10 +62,9 @@
     (and (<= (fn-mxa-loop-pending (car loops)) 1)
          (fn-mxa-at-most-one-each (cdr loops)))))
 
-(defun fn-mxa-pending-total (loops)
-  (declare (xargs :guard t))
-  (if (atom loops) 0
-    (+ (fn-mxa-loop-pending (car loops)) (fn-mxa-pending-total (cdr loops)))))
+(def-loop fn-mxa-pending-total (loops)
+  :shape :sum :over loops :elt l
+  :body (fn-mxa-loop-pending l))
 
 ; The observation after the grant: loop K's slot reserved.
 (defun fn-mxa-grant (k loops)

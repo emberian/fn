@@ -22,10 +22,11 @@
 (definterface fn-stid-host-request :class ::program)
 
 (defun fn-stid-host-request-p (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program :guard (fn-cbor-octet-listp octets)))
   (fn-stid-request-p octets))
 
-(definterface fn-stid-host-request-p :class ::program)
+(definterface fn-stid-host-request-p :class ::program
+  :kinds ((octets fn-cbor-octet-listp)))
 
 ; The owner's reply: the open's verdict this process installed
 ; (fn-store-genesis), the owner's consumer state, and RUNNING, the image's
@@ -54,10 +55,11 @@
 (definterface fn-stid-host-usage :class ::program)
 
 (defun fn-stid-host-reply-read (octets)
-  (declare (xargs :mode :program))
+  (declare (xargs :mode :program :guard (fn-cbor-octet-listp octets)))
   (fn-stid-reply-read octets))
 
-(definterface fn-stid-host-reply-read :class ::program)
+(definterface fn-stid-host-reply-read :class ::program
+  :kinds ((octets fn-cbor-octet-listp)))
 
 (defun fn-stid-host-line (value)
   (declare (xargs :mode :program))

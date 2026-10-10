@@ -4854,7 +4854,7 @@
 ;; SOURCE) or (:refuse REASON LINE), LINE the service log's line naming the
 ;; transport peer (FAMILY . ADDRESS).
 (defun fn-owner-proxy-step (family address octets deadline now state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program :guard (fn-cbor-octet-listp octets)))
   (let ((r (fn-pxy-observe octets deadline now)))
     (value (if (equal (car r) :refuse)
                (list :refuse (cadr r) (fn-pxy-refusal-line (cadr r) (cons family address)))
@@ -4862,7 +4862,8 @@
 
 ; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
 (definterface fn-owner-proxy-step
-  :class :program)
+  :class :program
+  :kinds ((octets fn-cbor-octet-listp)))
 
 ;; A timer observation: nil while time remains, otherwise ACL2's refusal
 ;; line. The same check runs before a read; fn-owner-proxy-step checks again
@@ -5132,13 +5133,13 @@
       (if (eq (car charge) :ok) (cons result (cadr charge))
         (cons (fn-mca-shut-read oc id start stop) credits))))))
 
-(defun fn-owner-article-ready-plan-step (id plan quantum fn-arena state)
- (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-article-ready-plan-step (id plan quantum fn-arena fn-ast-ws state)
+ (declare (xargs :stobjs (fn-arena fn-ast-ws state) :mode :program))
  (let ((before (fn-owner-ocfg state)))
-  (mv-let (word after next) (fn-asto-ready-plan-step before id plan quantum fn-arena)
+  (mv-let (word after next fn-ast-ws) (fn-asto-ready-plan-step before id plan quantum fn-arena fn-ast-ws)
    (let ((state (if (and (eq word :ready) (not (equal before after)))
                     (fn-owner-install-ocfg after state) state)))
-    (value (list word next))))))
+    (mv nil (list word next) fn-ast-ws state)))))
 
 ; One retained preflight quantum, with selection installed once on READY;
 ; replay consumes the immutable render plan without repeating authority.

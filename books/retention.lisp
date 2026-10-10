@@ -15,13 +15,19 @@
 (in-package "ACL2")
 (include-book "acceptance-alloc")
 (include-book "def-keyset-check")
+(include-book "def-loop")
 (include-book "defrecord")
 (include-book "provenance")
 
 ; No pin id among the release ids: quadratic in :logic, one local keyset in
 ; :exec past eight release ids (books/def-keyset-check.lisp; the walk below
 ; the threshold).
-(def-keyset-check fn-retain-ks-disjointp (xs ys) :sense :absent)
+(def-loop fn-retain-ks-disjointp-keys (ys)
+  :shape :map :over ys :elt y
+  :body y)
+
+(def-keyset-check fn-retain-ks-disjointp (xs ys) :sense :absent
+  :keys fn-retain-ks-disjointp-keys)
 
 (local
  (defthm fn-retain-ks-keys-member

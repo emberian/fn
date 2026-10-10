@@ -37,6 +37,8 @@
 
 (in-package "ACL2")
 (include-book "article-kind")
+(include-book "def-loop")
+(include-book "rev-onto")
 (local (include-book "arithmetic-5/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -94,11 +96,9 @@
 ; -----------------------------------------------------------------------------
 ; 2. Words: octets of lowercase names, decimals.
 
-(defun fn-pat-octets-of-chars (cs)
-  (declare (xargs :guard (character-listp cs)))
-  (if (consp cs)
-      (cons (char-code (car cs)) (fn-pat-octets-of-chars (cdr cs)))
-    nil))
+(def-loop fn-pat-octets-of-chars (cs)
+  :shape :map :over cs :elt c :guard (character-listp cs)
+  :body (char-code c))
 
 (defun fn-pat-word (sym)
   (declare (xargs :guard (symbolp sym)))
@@ -237,26 +237,24 @@
                  (list :deliver) (list :ack))))
     (otherwise (list nil nil))))
 
-(defun fn-pat-steps-needs (steps)
-  (declare (xargs :guard t))
-  (if (consp steps)
-      (append (cdr (assoc-eq (and (consp (car steps)) (caar steps))
-                             *fn-pat-step-needs*))
-              (fn-pat-steps-needs (cdr steps)))
-    nil))
+(def-loop fn-pat-steps-needs (steps)
+  :shape :concat :over steps :elt s
+  :body (cdr (assoc-eq (and (consp s) (car s)) *fn-pat-step-needs*)))
+
+(local
+ (defthm fn-pat-steps-needs-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
 
 (defun fn-pat-plan-needs (plan)
   (declare (xargs :guard t))
   (append (fn-pat-steps-needs (and (consp plan) (car plan)))
           (fn-pat-steps-needs (and (consp plan) (consp (cdr plan)) (cadr plan)))))
 
-(defun fn-pat-order-filter (order needs)
-  (declare (xargs :guard (true-listp needs)))
-  (if (consp order)
-      (if (member-equal (car order) needs)
-          (cons (car order) (fn-pat-order-filter (cdr order) needs))
-        (fn-pat-order-filter (cdr order) needs))
-    nil))
+(def-loop fn-pat-order-filter (order needs)
+  :shape :map :over order :elt o :guard (true-listp needs)
+  :keep (member-equal o needs)
+  :body o)
 
 (defun fn-pat-plan-args (plan)
   (declare (xargs :guard t))
@@ -426,12 +424,14 @@
       (true-list-fix group-upword)
     (if (symbolp arg) (fn-pat-upword arg) nil)))
 
-(defun fn-pat-arg-words (args group-upword)
-  (declare (xargs :guard t))
-  (if (consp args)
-      (append '(32) (fn-pat-arg-word (car args) group-upword)
-              (fn-pat-arg-words (cdr args) group-upword))
-    nil))
+(def-loop fn-pat-arg-words (args group-upword)
+  :shape :concat :over args :elt a
+  :body (append '(32) (fn-pat-arg-word a group-upword)))
+
+(local
+ (defthm fn-pat-arg-words-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
 
 ; "fn pattern NAME ROLE ARG ... [--timeout S] [--count N]" for one role.
 (defun fn-pat-role-usage (name-word role-row)
@@ -447,20 +447,23 @@
               nil)
             '(10))))
 
-(defun fn-pat-roles-usage (name-word role-rows)
-  (declare (xargs :guard t))
-  (if (consp role-rows)
-      (append (fn-pat-role-usage name-word (car role-rows))
-              (fn-pat-roles-usage name-word (cdr role-rows)))
-    nil))
+(def-loop fn-pat-roles-usage (name-word role-rows)
+  :shape :concat :over role-rows :elt r
+  :body (fn-pat-role-usage name-word r))
 
-(defun fn-pat-rows-usage (rows)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (append (fn-pat-roles-usage (and (consp (car rows)) (caar rows))
-                                  (fn-pat-row-roles (car rows)))
-              (fn-pat-rows-usage (cdr rows)))
-    nil))
+(local
+ (defthm fn-pat-roles-usage-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(def-loop fn-pat-rows-usage (rows)
+  :shape :concat :over rows :elt r
+  :body (fn-pat-roles-usage (and (consp r) (car r)) (fn-pat-row-roles r)))
+
+(local
+ (defthm fn-pat-rows-usage-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
 
 (defun fn-pat-usage-text ()
   (declare (xargs :guard t))
@@ -470,11 +473,10 @@
           (fn-pat-rows-usage *fn-pat-patterns*)))
 
 ; Bind ARGS to the words of ARGV in order: ((ARG . WORD) ...).
-(defun fn-pat-bind (args argv)
-  (declare (xargs :guard t))
-  (if (and (consp args) (consp argv))
-      (cons (cons (car args) (car argv)) (fn-pat-bind (cdr args) (cdr argv)))
-    nil))
+(def-loop fn-pat-bind (args argv)
+  :shape :step :over (args argv) :done (or (atom args) (atom argv)) :elt a
+  :body (cons a (car argv))
+  :next ((cdr args) (cdr argv)))
 
 (defconst *fn-pat-timeout-word* '(45 45 116 105 109 101 111 117 116)) ; --timeout
 (defconst *fn-pat-count-word* '(45 45 99 111 117 110 116))            ; --count

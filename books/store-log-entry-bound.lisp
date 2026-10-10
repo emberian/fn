@@ -9,8 +9,8 @@
 ; that look like a header after a tear, had the host read up to the rest of
 ; the segment (GiBs) into one array, and the probe made an octet list of it.
 ; The frame open bounds the payload only after that read
-; (fn-lg-open-bound: the record bound MAX, or the frame's own limit for a
-; packed batch, kind 2).
+; (fn-lg-open-bound: the record bound MAX, or the batch payload ceiling
+; *fn-lg-batch-payload-max* for a packed batch, kind 2).
 ;
 ; The host now calls the BOUNDED lengths here: NIL also when the declared
 ; length is past the overhead plus the bound the open would apply, decided
@@ -176,3 +176,15 @@
                                       (theory 'minimal-theory)))))
 
 (in-theory (disable fn-lg-entry-len-bound fn-lgw-entry-len-bounded fn-lgdm-entry-len-bounded))
+
+; Builder M charges one batch at this bound in its reopen workspace term.
+(defun fn-lg-batch-entry-bound ()
+  (declare (xargs :guard t))
+  (+ *fn-frame-overhead-octets* *fn-lg-batch-payload-max*))
+
+(defthm fn-lg-entry-len-bound-of-batch-kind
+  (implies (equal (nth 5 h) *fn-lg-batch-kind*)
+           (equal (fn-lg-entry-len-bound h max)
+                  (fn-lg-batch-entry-bound)))
+  :hints (("Goal" :in-theory (enable fn-lg-entry-len-bound fn-lg-open-bound
+                                     fn-lg-batch-entry-bound))))

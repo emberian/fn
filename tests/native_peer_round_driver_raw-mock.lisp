@@ -69,7 +69,10 @@
   (> (- (get-internal-real-time) *started*) (/ internal-time-units-per-second 2)))
 (defun fnn-owner-transit-serialized (service cid thunk)
   (declare (ignore service cid)) (funcall thunk))
-(defun fnn-owner-core (subject)
+;; host/native/owner.lisp fnn-owner-core takes (name &rest args); the
+;; open-peer call passes the peer's octets (pull-service.lisp).
+(defun fnn-owner-core (subject &rest args)
+  (declare (ignore args))
   (case subject (fn-owner-pull-plans *plans*) (fn-owner-catchup-plans *cu-plans*)
     ;; (bmax omax): fn-olr-bounds of the default configuration
     (fn-owner-log-bounds (list *fn-olr-batch-records-default* *fn-olr-batch-octets-default*))

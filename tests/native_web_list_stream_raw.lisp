@@ -13,17 +13,29 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-concat (&rest strings)
+  (declare (ignorable strings))
+  (harness-stub-reached 'fnn-concat "host/native/io.lisp"))
+(defun fnn-emit (stream text)
+  (declare (ignorable stream text))
+  (harness-stub-reached 'fnn-emit "host/native/io.lisp"))
 (defun fnn-extent-window-cancel (worker token)
   (declare (ignorable worker token))
   (harness-stub-reached 'fnn-extent-window-cancel "host/native/extent.lisp"))
+(defun fnn-log-offer (destination octets)
+  (declare (ignorable destination octets))
+  (harness-stub-reached 'fnn-log-offer "host/native/io.lisp"))
 (defun fnn-owner-cold-window-result-locked (service read)
   (declare (ignorable service read))
   (harness-stub-reached 'fnn-owner-cold-window-result-locked "host/native/owner.lisp"))
+(defun fnn-string-octets (string)
+  (declare (ignorable string))
+  (harness-stub-reached 'fnn-string-octets "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 (load-page-forms "books/octet-text.lisp"
  '(fn-ot-digit-value fn-ot-maxp fn-ot-nat-parse-aux fn-ot-nat-parse fn-ot-decimal-parse))
 (load-page-forms "books/web-session.lisp"
- '(fn-wss-active-row fn-wss-active-rows-loop fn-wss-active-rows))
+ '(fn-wss-active-row fn-wss-active-rows))
 (load-page-forms "books/web-render.lisp"
  '(fn-wr-group-row-segments fn-wr-group-rows-step fn-wr-group-rows-loop fn-wr-group-rows
    fn-wr-groups-main-segments fn-wr-groups-main))

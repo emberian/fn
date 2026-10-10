@@ -69,7 +69,7 @@
           (t (update-nth 0 :malformed st)))))
 
 (defun fn-otjs-consume (octets st)
-  (declare (xargs :guard t :measure (len octets)))
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :measure (len octets)))
   (if (consp octets)
       (fn-otjs-consume (cdr octets) (fn-otjs-octet (car octets) st))
     st))

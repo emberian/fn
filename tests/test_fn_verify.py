@@ -498,9 +498,10 @@ def spec_section(text):
 
 
 def book_forms():
-    """Every name a book defines, and each defconst's value text."""
+    """Every name a book defines, and each defconst's value text.  def-loop
+    (books/def-loop.lisp) defines its named function as a defun does."""
     names, consts = set(), {}
-    form = re.compile(r"^\((defun|defund|defthm|defconst|defmacro)\s+(\S+)\s*(.*)$")
+    form = re.compile(r"^\((defun|defund|defthm|defconst|defmacro|def-loop)\s+(\S+)\s*(.*)$")
     for path in sorted((ROOT / "books").glob("*.lisp")):
         lines = path.read_text(encoding="utf-8").splitlines()
         for i, line in enumerate(lines):
@@ -583,6 +584,11 @@ class SpecBookTieTests(unittest.TestCase):
                                        "`fn-hc-authored-source-v0`")
         self.assertIn("the spec cites `fn-hc-authored-source-v0`, which no book defines",
                       spec_book_problems(drifted, self.names, self.consts))
+
+    def test_a_def_loop_defines_its_name(self):
+        # SPEC-IDENTITY-CITES-UNDEFINED: fn-stx-field-octets became a def-loop
+        # (fba899b44) and the spec's citation of it read as undefined.
+        self.assertIn("fn-stx-field-octets", self.names)
 
     def test_a_changed_width_is_caught(self):
         consts = dict(self.consts)

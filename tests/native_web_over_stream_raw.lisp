@@ -13,19 +13,31 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-concat (&rest strings)
+  (declare (ignorable strings))
+  (harness-stub-reached 'fnn-concat "host/native/io.lisp"))
+(defun fnn-emit (stream text)
+  (declare (ignorable stream text))
+  (harness-stub-reached 'fnn-emit "host/native/io.lisp"))
 (defun fnn-extent-window-cancel (worker token)
   (declare (ignorable worker token))
   (harness-stub-reached 'fnn-extent-window-cancel "host/native/extent.lisp"))
+(defun fnn-log-offer (destination octets)
+  (declare (ignorable destination octets))
+  (harness-stub-reached 'fnn-log-offer "host/native/io.lisp"))
 (defun fnn-owner-cold-window-result-locked (service read)
   (declare (ignorable service read))
   (harness-stub-reached 'fnn-owner-cold-window-result-locked "host/native/owner.lisp"))
+(defun fnn-string-octets (string)
+  (declare (ignorable string))
+  (harness-stub-reached 'fnn-string-octets "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 (load-page-forms "books/octet-text.lisp"
  '(fn-ot-radixp fn-ot-hex-digit fn-ot-nat-digits fn-ot-nat-octets fn-ot-decimal-octets))
 (load-page-forms "books/web-session.lisp"
- '(*fn-wss-window* *fn-wss-msg-unreachable* fn-wss-f-stage fn-wss-split-loop fn-wss-split fn-wss-over-rows))
+ '(*fn-wss-window* *fn-wss-msg-unreachable* fn-wss-f-stage fn-wss-split fn-wss-over-rows))
 (load-page-forms "books/web-render.lisp"
- '(fn-wr-over-row-segments fn-wr-over-rows-loop fn-wr-over-rows fn-wr-group-main-segments fn-wr-group-main))
+ '(fn-wr-over-row-segments fn-wr-over-rows fn-wr-group-main-segments fn-wr-group-main))
 (load-page-forms "books/web-reply-stream.lisp")
 (load-page-forms "host/web-host.lisp"
  '(fn-web-host-stream-p fn-web-host-stream-start fn-web-host-stream-scan fn-web-host-stream-page))

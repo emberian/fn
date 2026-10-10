@@ -1,0 +1,12 @@
+{
+ "detail": "Fixed in lane/d-evidence-prose 4d4182a93: the keystone-without-witness finding names the row by id; teeth_check --summary completes (359 keystone-without-witness among its counts).",
+ "file": "tools/teeth_check.py",
+ "id": "TEETH-CHECK-STORED-STATUS",
+ "notes": [],
+ "owner": "builder-D",
+ "severity": "medium",
+ "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
+ "state": "landed",
+ "title": "teeth_check crashed with KeyError 'status': registry_findings read a stored proof status that proofs.json rows never carry",
+ "updated": "2026-10-09T22:00:00Z"
+}

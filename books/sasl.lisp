@@ -72,11 +72,29 @@
   (declare (xargs :guard t))
   (fn-sasl-32p x))
 
-(defun fn-sasl-firstn (n xs)
-  (declare (xargs :guard t :measure (nfix n)))
+; Executes by a loop (PKT-877, lane d-depth-excess-d): see fn-scram-split-aux.
+(defun fn-sasl-firstn-loop (n xs acc)
+  (declare (xargs :guard (true-listp acc) :measure (nfix n) :verify-guards nil))
   (if (or (zp (nfix n)) (atom xs))
-      nil
-    (cons (car xs) (fn-sasl-firstn (- (nfix n) 1) (cdr xs)))))
+      (revappend acc nil)
+    (fn-sasl-firstn-loop (- (nfix n) 1) (cdr xs) (cons (car xs) acc))))
+
+(defun fn-sasl-firstn (n xs)
+  (declare (xargs :guard t :measure (nfix n) :verify-guards nil))
+  (mbe :logic
+       (if (or (zp (nfix n)) (atom xs))
+           nil
+         (cons (car xs) (fn-sasl-firstn (- (nfix n) 1) (cdr xs))))
+       :exec (fn-sasl-firstn-loop n xs nil)))
+
+(local
+ (defthm fn-sasl-firstn-loop-is-revappend
+   (equal (fn-sasl-firstn-loop n xs acc)
+          (revappend acc (fn-sasl-firstn n xs)))
+   :hints (("Goal" :induct (fn-sasl-firstn-loop n xs acc)))))
+
+(verify-guards fn-sasl-firstn-loop)
+(verify-guards fn-sasl-firstn)
 
 ; -----------------------------------------------------------------------------
 ; Mechanisms
@@ -214,13 +232,33 @@
 ; no proxy authorization (RFC 4616 section 2: the server MUST fail when the
 ; authcid may not act as the authzid).
 
-(defun fn-sasl-split-nul (xs field)
-  (declare (xargs :guard (true-listp field)))
+; Executes by a loop (PKT-877, lane d-depth-excess-d): see fn-scram-split-aux.
+(defun fn-sasl-split-nul-loop (xs field acc)
+  (declare (xargs :guard (and (true-listp field) (true-listp acc)) :verify-guards nil))
   (if (consp xs)
       (if (equal (car xs) 0)
-          (cons (revappend field nil) (fn-sasl-split-nul (cdr xs) nil))
-        (fn-sasl-split-nul (cdr xs) (cons (car xs) field)))
-    (list (revappend field nil))))
+          (fn-sasl-split-nul-loop (cdr xs) nil (cons (revappend field nil) acc))
+        (fn-sasl-split-nul-loop (cdr xs) (cons (car xs) field) acc))
+    (revappend (cons (revappend field nil) acc) nil)))
+
+(defun fn-sasl-split-nul (xs field)
+  (declare (xargs :guard (true-listp field) :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (if (equal (car xs) 0)
+               (cons (revappend field nil) (fn-sasl-split-nul (cdr xs) nil))
+             (fn-sasl-split-nul (cdr xs) (cons (car xs) field)))
+         (list (revappend field nil)))
+       :exec (fn-sasl-split-nul-loop xs field nil)))
+
+(local
+ (defthm fn-sasl-split-nul-loop-is-revappend
+   (equal (fn-sasl-split-nul-loop xs field acc)
+          (revappend acc (fn-sasl-split-nul xs field)))
+   :hints (("Goal" :induct (fn-sasl-split-nul-loop xs field acc)))))
+
+(verify-guards fn-sasl-split-nul-loop)
+(verify-guards fn-sasl-split-nul)
 
 (defun fn-sasl-plain-parse (msg)
   (declare (xargs :guard t))
