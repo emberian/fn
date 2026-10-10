@@ -310,6 +310,54 @@
    (fn-charge-for-payload (len *pat-relayed*))
    *pat-after-revocation* *tha-ml-key* :verified :refused
    (fn-clock-observation 1 841000000000 0 t))))
+; TRANSIT-REVOKED-CONTROL-REFUSED (fn-pa-revoked-event-files-the-sources-
+; filed-groups).  A signed cancel under the key revoked here, relayed over
+; IHAVE: the plan is the revoked arm and the composite lists its filing group
+; control.cancel, the groups replay's revoked branch binds.  Mutation: the
+; Newsgroups it names (fn.test), the conjunct the arm had before this fix,
+; gives no composite, so the cancel was refused on every transit.
+(make-event
+ `(defconst *pat-rv-cancel-source*
+    ',(append (tha-line "From: claimed@example.invalid")
+              (tha-line "Date: Wed, 23 Sep 2026 12:00:00 +0000")
+              (tha-line "Newsgroups: fn.test")
+              (tha-line "Subject: cmsg cancel <x@example.invalid>")
+              (tha-line "Control: cancel <x@example.invalid>")
+              (tha-line "Message-ID: <topic-binding@example.invalid>")
+              (fn-th-field-wire *tha-root*) '(13 10 98 111 100 121 13 10))))
+(make-event
+ `(defconst *pat-rv-cancel-relayed*
+    ',(append (tha-line "Path: gateway.example!fn")
+              (fn-hc-render-at-most *fn-article-max-octets* *pat-rv-cancel-source*
+                                    *tha-principal* *tha-keys* *tha-signatures*))))
+(make-event `(defconst *pat-rv-cancel-subject-id*
+               ',(fn-id-subject-of-payload *pat-rv-cancel-relayed*)))
+(defun pat-rv-cancel-event (groups)
+  (fn-pa-revoked-event
+   2 3 4 "<topic-binding@example.invalid>" *pat-rv-cancel-relayed* groups
+   (fn-record-octets-string
+    (fn-id-text (fn-id-obligation-of
+                 (fn-record-string-octets "<topic-binding@example.invalid>")
+                 *pat-rv-cancel-subject-id*)))
+   (fn-record-octets-string (fn-id-text *pat-rv-cancel-subject-id*))
+   "gateway-peer-evidence" (fn-charge-for-payload (len *pat-rv-cancel-relayed*))
+   *pat-after-revocation* *tha-ml-key* :verified :verified
+   (fn-clock-observation 1 841000000000 0 t)))
+(assert-event (equal (car (fn-ctl-classify-octets *pat-rv-cancel-source*)) :control))
+(assert-event
+ (equal (car (fn-pa-current-plan *pat-rv-cancel-relayed* *pat-after-revocation* nil t))
+        :revoked))
+(make-event `(defconst *pat-rv-cancel-event*
+               ',(pat-rv-cancel-event '("control.cancel"))))
+(assert-event (fn-stxa-p *pat-rv-cancel-event*))
+(assert-event (fn-hsig-article-event-revoked-bindsp *pat-rv-cancel-event*))
+(assert-event
+ (equal (fn-stxe-token (fn-stmt-value (fn-stxe-decode-exact
+                                        (fn-stxa-verdict-event *pat-rv-cancel-event*))))
+        :revoked))
+(assert-event (equal (fn-stxa-authored-source *pat-rv-cancel-event*)
+                     *pat-rv-cancel-source*))
+(must-fail-checked (assert-event (pat-rv-cancel-event '("fn.test"))))
 ; The reader never sees `verified' for it: the item begins `revoked'.
 (assert-event
  (equal (take 7 (fn-stx-verified-item
