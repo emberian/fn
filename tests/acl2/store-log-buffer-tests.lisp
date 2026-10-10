@@ -7,7 +7,11 @@
 ; fn-lgb-decide-count-is-decide, fn-lgb-broken-is-broken-slice,
 ; fn-lgb-span-records-are-the-records) have no hypothesis to remove; the
 ; cursor's two (fn-lgb-span-within-max, fn-lgb-descriptor-is-the-attached-
-; place) carry theirs.  Witnesses, all REACHABLE (the host's own loop,
+; place) carry theirs, as do the chain-field packet's two
+; (fn-lg-entry-okp-holds-the-chain-field: an accepted entry; and
+; fn-lgb-descriptor-of-an-accepted-record: J below COUNT), whose removals
+; run on the refused 42-octet empty frame and whose tight witness is the
+; 74-octet entry of one empty record.  Witnesses, all REACHABLE (the host's own loop,
 ; spelled over the live buffer):
 ;   (1) three one-record entries chained from genesis, walked by the count
 ;       step and the cursor and by the list step: the same records, the
@@ -225,7 +229,8 @@
 ; 75 zero octets with kind 1 and a declared payload of 33: no digest holds.
 (defun slbt-b75 () (declare (xargs :guard t :verify-guards nil))
   (update-nth 9 33 (update-nth 5 1 (fn-bs-zeros 75))))
-; The accepted 42-octet frame with an empty payload.
+; The 42-octet frame with an empty payload, below the chain field: refused
+; since LOG-DECIDE-SHORT-CHAIN-FIELD (it decided one empty record before).
 (defun slbt-empty () (declare (xargs :guard t :verify-guards nil))
   (fn-frame-seal *fn-lg-magic* *fn-lg-version* 1 nil))
 
@@ -405,6 +410,23 @@
                ()
                :fault "the cursor slices from the length prefix to the trailer")))
 
+; The tight accepted entry: one empty record under genesis, 74 octets
+; (header 10, chain field 32, trailer 32).
+(defun slbt-e74 () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-frame *fn-lg-genesis* (list nil)))
+
+; Keystone fn-lg-entry-okp-holds-the-chain-field (C1).
+(defteeth fn-lg-entry-okp-holds-the-chain-field
+  :claim (((okp (fn-lg-entry-okp e prev max)))
+          (<= 74 (len e)))
+  :subject fn-lg-entry-okp
+  :witness ((e (slbt-e74)) (prev *fn-lg-genesis*) (max 4096))
+  :breaks ((okp ((e (slbt-empty)))))
+  :mutations ((floor-one-octet-high
+               (:conclusion (<= 75 (len e)))
+               ()
+               :fault "the floor counts a record octet the empty record does not have")))
+
 ; Keystone fn-lgb-span-within-max.
 (defun slbt6-check (i j prev max fn-octets)
   (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
@@ -414,12 +436,12 @@
             (< (nfix j) k))
         (mv-let (start len next) (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)
           (declare (ignore start next))
-          (if (equal i 1) (<= len (nfix max)) (<= len (1- max)))))
+          (if (equal i 1) (<= (+ 32 len) (nfix max)) (<= (+ 32 len) (1- max)))))
       fn-octets))
 
 (defteeth fn-lgb-span-within-max
   :claim (((below-count (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))))
-          (<= (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets))
+          (<= (+ 32 (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)))
               (nfix max)))
   :subject fn-lgb-span
   :witness ((prev *fn-lg-genesis*) (max 4096) (j 1) (buffer (slbt-batch3)))
@@ -428,21 +450,21 @@
   (((< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
     (slbt6-check 0 j prev max fn-octets)
     :hints (("Goal" :in-theory (union-theories '(slbt6-check) (theory 'minimal-theory)))))
-   ((<= (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets))
+   ((<= (+ 32 (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)))
         (nfix max))
     (slbt6-check 1 j prev max fn-octets)
     :hints (("Goal" :in-theory (union-theories '(slbt6-check) (theory 'minimal-theory)))))
-   ((<= (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets))
+   ((<= (+ 32 (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)))
         (1- max))
     (slbt6-check 2 j prev max fn-octets)
     :hints (("Goal" :in-theory (union-theories '(slbt6-check) (theory 'minimal-theory))))))
   :breaks ((below-count ((prev nil) (max 0) (j 0) (buffer (slbt-b75)))))
   :mutations ((bound-one-below-max
                (:conclusion
-                (<= (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets))
+                (<= (+ 32 (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)))
                     (1- max)))
-               ((prev *fn-lg-genesis*) (max 0) (j 0) (buffer (slbt-empty)))
-               :fault "the hold charged one octet short")))
+               ((prev *fn-lg-genesis*) (max 33) (j 0) (buffer (slbt-one)))
+               :fault "the hold charged one octet short (the tight record: 32 + 1 = MAX 33)")))
 
 ; Keystone fn-lgb-descriptor-is-the-attached-place.
 (defun slbt7-check (i pos j unit prev max fn-octets)
@@ -521,6 +543,54 @@
                ((buffer (slbt-one)) (max 33) (j 0))
                :fault "the extent descriptor names the record, not the entry")))
 
+; Keystone fn-lgb-descriptor-of-an-accepted-record (C4).  The conclusion
+; reads only the entry's header, so the below-count removal's witness is the
+; refused 42-octet frame; the mutation adds that the record is non-empty,
+; false at the tight 74-octet entry.
+(defun slbt8-check (i pos j prev max fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
+  (mv (if (equal i 0)
+          (mv-let (ok k) (fn-lgb-decide-count prev max fn-octets)
+            (declare (ignore ok))
+            (< (nfix j) k))
+        (mv-let (start len next) (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)
+          (declare (ignore next))
+          (if (equal i 1)
+              (consp (fn-lgb-descriptor pos start len fn-octets))
+            (and (consp (fn-lgb-descriptor pos start len fn-octets)) (< 0 len)))))
+      fn-octets))
+
+(defteeth fn-lgb-descriptor-of-an-accepted-record
+  :claim (((below-count (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))))
+          (mv-let (start len next) (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)
+            (declare (ignore next))
+            (consp (fn-lgb-descriptor pos start len fn-octets))))
+  :subject fn-lgb-descriptor
+  :witness ((pos 0) (j 0) (prev *fn-lg-genesis*) (max 4096) (buffer (slbt-e74)))
+  :stobjs ((fn-octets (fn-octets-from-list buffer fn-octets)))
+  :stobj-checks
+  (((< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
+    (slbt8-check 0 pos j prev max fn-octets)
+    :hints (("Goal" :in-theory (union-theories '(slbt8-check) (theory 'minimal-theory)))))
+   ((mv-let (start len next) (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)
+      (declare (ignore next))
+      (consp (fn-lgb-descriptor pos start len fn-octets)))
+    (slbt8-check 1 pos j prev max fn-octets)
+    :hints (("Goal" :in-theory (union-theories '(slbt8-check) (theory 'minimal-theory)))))
+   ((mv-let (start len next) (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)
+      (declare (ignore next))
+      (and (consp (fn-lgb-descriptor pos start len fn-octets)) (< 0 len)))
+    (slbt8-check 2 pos j prev max fn-octets)
+    :hints (("Goal" :in-theory (union-theories '(slbt8-check) (theory 'minimal-theory))))))
+  :breaks ((below-count ((buffer (slbt-empty)))))
+  :mutations ((every-record-is-non-empty
+               (:conclusion
+                (mv-let (start len next) (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)
+                  (declare (ignore next))
+                  (and (consp (fn-lgb-descriptor pos start len fn-octets)) (< 0 len))))
+               ()
+               :fault "the host takes a zero-length span for no record (the 74-octet entry)")))
+
 ; The positive witnesses of the cursor's two conditional keystones at every
 ; record of an accepted entry (J below COUNT, POS 0): the batch's three
 ; records, and the one-record entry's.
@@ -548,4 +618,5 @@
 
 (defteeth-check (fn-lgw-step-buf-count-is-step fn-lgb-decide-count-is-decide
                   fn-lgb-broken-is-broken-slice fn-lgb-span-records-are-the-records
-                  fn-lgb-span-within-max fn-lgb-descriptor-is-the-attached-place))
+                  fn-lgb-span-within-max fn-lgb-descriptor-is-the-attached-place
+                  fn-lg-entry-okp-holds-the-chain-field fn-lgb-descriptor-of-an-accepted-record))

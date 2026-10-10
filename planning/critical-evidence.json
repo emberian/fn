@@ -120,6 +120,13 @@
    "mutation": "tests/acl2/heap-figure-tests.lisp::hft-st-without-store-opening-action",
    "provenance": "keystone_critical.py --declare sha256:226aecddb8fe46016e2a25170b570e42b25bdb80b266ee0e88b75917670cfe24"
   },
+  "fn-lg-entry-okp-holds-the-chain-field": {
+   "subject": "fn-lg-entry-okp",
+   "host_test": "tests/test_native_log.py::test_append_then_scan_on_both_images",
+   "trace_witness": "tests/acl2/store-log-buffer-tests.lisp::fn-lg-entry-okp-holds-the-chain-field",
+   "mutation": "tests/acl2/store-log-buffer-tests.lisp::floor-one-octet-high",
+   "provenance": "keystone_critical.py --declare sha256:59866a476383a4ef54dbe6d408a93000aaf458abe96ed40bb0a989de43e725d3"
+  },
   "fn-lg-open-program-keeps-the-relation": {
    "subject": "fn-lg-open-program",
    "host_test": "tests/campaign/native_operator_campaign.py::run_cut",
@@ -147,6 +154,13 @@
    "trace_witness": "tests/acl2/store-log-buffer-tests.lisp::fn-lgb-descriptor-is-the-attached-place",
    "mutation": "tests/acl2/store-log-buffer-tests.lisp::descriptor-length-is-the-record",
    "provenance": "keystone_critical.py --declare sha256:d0c583c7817f12ab5e4292e1322bc9d8121ceba46490d510c78c962924097b52"
+  },
+  "fn-lgb-descriptor-of-an-accepted-record": {
+   "subject": "fn-lgb-descriptor",
+   "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",
+   "trace_witness": "tests/acl2/store-log-buffer-tests.lisp::fn-lgb-descriptor-of-an-accepted-record",
+   "mutation": "tests/acl2/store-log-buffer-tests.lisp::every-record-is-non-empty",
+   "provenance": "keystone_critical.py --declare sha256:6d3e60d51a45c05c412a1054dc71a53ee3d40621ec8649bcd083653b0ef47bbe"
   },
   "fn-lgb-span-records-are-the-records": {
    "subject": "fn-lgb-span",

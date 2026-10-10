@@ -60,10 +60,12 @@ def lines(result):
 # copy performed by fnn-log-recover before those acknowledgements.
 # Critical host path: `fn log scan` and every recovery read the segment
 # through fnn-log-stream-segment, whose step per entry is
-# fn-lgw-step-buf-count (deciding by fn-lgb-decide-count, classifying the
-# stop's entry by fn-lgb-broken) and whose cursor per record is fn-lgb-span
-# with fn-lgb-slice; test_append_then_scan_on_both_images reads five
-# three-record batch entries back through them on both images.
+# fn-lgw-step-buf-count (deciding by fn-lgb-decide-count, whose verdict is
+# the entry decision fn-lg-entry-okp over the buffer, so every accepted entry
+# holds the 32-octet chain field; classifying the stop's entry by
+# fn-lgb-broken) and whose cursor per record is fn-lgb-span with
+# fn-lgb-slice; test_append_then_scan_on_both_images reads five three-record
+# batch entries back through them on both images.
 @unittest.skipUnless(DEVELOPER and PRODUCTION,
                      "FN_NATIVE_DEVELOPER_HOST and FN_NATIVE_HOST name the images")
 class NativeLogTests(unittest.TestCase):

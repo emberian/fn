@@ -1393,11 +1393,11 @@
                  (:instance fn-lgb-descriptor-of-span-places (i 42)
                             (k (mv-nth 1 (fn-lgb-decide-count prev max fn-octets))))))))
 
-; KEYSTONE (C4): every record of an accepted entry has a descriptor, so S5's
-; NIL arm is unreachable on the host's path (LOG-DECIDE-SHORT-CHAIN-FIELD).
+; KEYSTONE (C4): every record of an accepted entry has a descriptor, at any
+; POS, so S5's NIL arm is unreachable on the host's path
+; (LOG-DECIDE-SHORT-CHAIN-FIELD).
 (defthm fn-lgb-descriptor-of-an-accepted-record
-  (implies (and (natp pos)
-                (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets))))
+  (implies (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
            (mv-let (start len next) (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)
              (declare (ignore next))
              (consp (fn-lgb-descriptor pos start len fn-octets))))
