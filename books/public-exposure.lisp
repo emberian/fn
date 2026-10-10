@@ -74,6 +74,7 @@
 ; This book owns the prefix `fn-exp-' (docs/prefixes.md).
 
 (in-package "ACL2")
+(include-book "decimal-text")
 (include-book "public-exposure-rows")
 (include-book "def-loop")
 (include-book "profile-limits") ; its figures are rows there
@@ -645,8 +646,7 @@
 
 (defun fn-exp-decimal (n)
   (declare (xargs :guard t))
-  (fn-record-string-octets
-   (coerce (explode-nonnegative-integer (nfix n) 10 nil) 'string)))
+  (fn-record-string-octets (fn-decimal-text n)))
 
 (defun fn-exp-text (s)
   (declare (xargs :guard t))

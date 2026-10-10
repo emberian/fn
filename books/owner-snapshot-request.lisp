@@ -35,6 +35,7 @@
 ; observation is taken (fn-osn-bless-open-needed).
 
 (in-package "ACL2")
+(include-book "decimal-text")
 (include-book "native-control-reason")
 
 ; -----------------------------------------------------------------------------
@@ -150,19 +151,6 @@
                   (fn-osn-bless-word markerp :never-observed keysp))))
 
 ; -----------------------------------------------------------------------------
-; The decimal renderer: the tree's (explode-nonnegative-integer, as
-; books/provenance.lisp fn-prov-nat-string uses it).
-
-(local
- (defthm fn-osn-explode-characters
-   (implies (and (natp number) (character-listp accumulator))
-            (character-listp (explode-nonnegative-integer number 10 accumulator)))))
-
-(defun fn-osn-nat-string (n)
-  (declare (xargs :guard t))
-  (coerce (explode-nonnegative-integer (nfix n) 10 nil) 'string))
-
-; -----------------------------------------------------------------------------
 ; The marker's lines (rendered, never read for a decision: provenance).
 ; INDEX the active segment's index at the capture, FRONTIER its committed
 ; octets, FILES the number of files the copy holds.
@@ -171,9 +159,9 @@
   (declare (xargs :guard (and (natp index) (natp frontier) (natp files))))
   (concatenate 'string
                "fn snapshot 1" (coerce (list #\Newline) 'string)
-               "active-segment=" (fn-osn-nat-string index)
-               " frontier=" (fn-osn-nat-string frontier)
-               " files=" (fn-osn-nat-string files)
+               "active-segment=" (fn-decimal-text index)
+               " frontier=" (fn-decimal-text frontier)
+               " files=" (fn-decimal-text files)
                (coerce (list #\Newline) 'string)))
 
 ; -----------------------------------------------------------------------------
@@ -217,7 +205,7 @@
   (declare (xargs :guard (and (stringp dir) (natp transactions))))
   (cond ((equal word :blessed)
          (concatenate 'string "blessed snapshot=" dir " transactions="
-                      (fn-osn-nat-string transactions)
+                      (fn-decimal-text transactions)
                       ": it opens as a store of this lineage and holds the node secret; `cp -a' restores it (docs/operator.md, Back up)"))
         ((equal word :snapshot-incomplete)
          (concatenate 'string "bless-snapshot refused reason=snapshot-incomplete: " dir

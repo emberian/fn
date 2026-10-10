@@ -262,3 +262,104 @@
                             fn-article-census-octets fn-article-limit-fields
                             fn-article-limit-lines fn-article-limit-octets)))))
 
+; -----------------------------------------------------------------------------
+; Header-length facts every bound over an admitted article's fields reads
+; (O1's Newsgroups charge, OVER's NOV line).
+
+(local
+ (defthm fn-ahl-parse-lines-header-len
+   (implies (and (true-listp octets)
+                 (true-listp header-rev)
+                 (natp header-bytes)
+                 (<= (len header-rev) header-bytes)
+                 (fn-article-result-okp
+                  (fn-article-parse-lines octets limits lines-left header-bytes nfields
+                                          fields-rev current header-rev)))
+            (<= (len (fn-article-header
+                      (fn-article-result-article
+                       (fn-article-parse-lines octets limits lines-left header-bytes nfields
+                                               fields-rev current header-rev))))
+                (max header-bytes (fn-article-limit-octets limits))))
+   :rule-classes nil
+   :hints (("Goal"
+            :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields
+                                            fields-rev current header-rev)
+            :in-theory (e/d (fn-article-parse-lines
+                             fn-article-ok fn-article-make fn-article-header
+                             fn-article-header-rev-add-line
+                             fn-article-result-okp fn-article-result-article)
+                            (fn-article-next-line fn-article-next-line-aux
+                             fn-article-new-field fn-article-add-fold
+                             fn-article-finish-fields fn-article-body-crlfp
+                             fn-article-line-value fn-article-line-rest
+                             fn-article-limit-octets))))))
+
+;; An admitted article's header is at most the limits' header octets.
+(defthm fn-article-parse-under-header-within-the-limit
+  (implies (fn-article-result-okp (fn-article-parse-under octets limits))
+           (<= (len (fn-article-header
+                     (fn-article-result-article (fn-article-parse-under octets limits))))
+               (fn-article-limit-octets limits)))
+  :rule-classes nil
+  :hints (("Goal"
+           :use ((:instance fn-ahl-parse-lines-header-len
+                            (lines-left (1+ (fn-article-limit-lines limits)))
+                            (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
+           :in-theory (e/d (fn-article-parse-under)
+                           (fn-article-parse-lines fn-article-limit-octets fn-article-limit-lines
+                            fn-article-header fn-article-result-article fn-article-result-okp
+                            fn-cbor-at-mostp fn-cbor-octet-listp)))))
+
+;; The ceiling parse and a successful parse under LIMITS are one parse.
+(defthm fn-article-parse-agrees-with-parse-under
+  (implies (and (fn-article-result-okp (fn-article-parse octets))
+                (fn-article-result-okp (fn-article-parse-under octets limits)))
+           (equal (fn-article-parse octets) (fn-article-parse-under octets limits)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-article-parse-under-admits-exactly-the-limits
+                                   (wider limits) (limits *fn-article-ceiling-limits*))
+                        (:instance fn-article-parse-is-the-ceiling-limits-by-definition))
+           :in-theory (disable fn-article-parse-under fn-article-parse
+                               fn-article-census-within fn-article-header-census fn-article-limit-reasonp))))
+
+(local
+ (defthm fn-ahl-unfold-len
+   (<= (len (fn-article-unfold-octets x)) (len x))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-article-unfold-octets)))))
+
+(local
+ (defthm fn-ahl-after-colon-len
+   (<= (len (fn-article-value-after-colon x)) (len x))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-ahl-join-len
+   (<= (len (fn-article-join-crlf lines)) (len (fn-article-lines-octets lines)))
+   :rule-classes :linear))
+
+;; A field's unfolded value is no longer than its raw lines.
+(defthm fn-article-field-unfolded-within-raw
+  (implies (fn-article-field-correspondsp field)
+           (<= (len (fn-article-field-unfolded-value field))
+               (len (fn-article-lines-octets (fn-article-field-raw-lines field)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-article-field-correspondsp fn-article-unfold-reference)
+                                  (fn-article-lines-octets fn-article-join-crlf fn-article-unfold-octets fn-article-value-after-colon))
+           :use ((:instance fn-ahl-join-len (lines (fn-article-field-raw-lines field)))
+                 (:instance fn-ahl-unfold-len (x (fn-article-join-crlf (fn-article-field-raw-lines field))))
+                 (:instance fn-ahl-after-colon-len (x (fn-article-unfold-octets (fn-article-join-crlf (fn-article-field-raw-lines field)))))))))
+
+;; Any one field's unfolded value is within the fields' raw octets.
+(defthm fn-article-fields-unfolded-within-header
+  (implies (and (fn-article-fields-correspondp fields)
+                (member-equal field fields))
+           (<= (len (fn-article-field-unfolded-value field))
+               (len (fn-article-fields-octets fields))))
+  :rule-classes nil
+  :hints (("Goal" :induct (len fields)
+           :do-not '(generalize eliminate-destructors)
+           :in-theory (disable fn-article-lines-octets fn-article-field-correspondsp fn-article-field-unfolded-value
+                               fn-article-field-raw-lines))
+          ("Subgoal *1/1" :expand ((fn-article-fields-correspondp fields) (fn-article-fields-octets fields))
+           :use ((:instance fn-article-field-unfolded-within-raw (field (car fields)))))))

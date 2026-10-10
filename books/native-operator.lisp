@@ -522,14 +522,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-init-field-text (name i values)
   (declare (xargs :guard (and (stringp name) (natp i))))
-  (concatenate 'string name " " (fn-acct-decimal-text (fn-bs-pf i values))))
+  (concatenate 'string name " " (fn-decimal-text (fn-bs-pf i values))))
 
 (defthm fn-nop-init-field-text-stringp
   (stringp (fn-nop-init-field-text name i values))
-  :rule-classes :type-prescription)
-
-(defthm fn-nop-acct-decimal-text-stringp
-  (stringp (fn-acct-decimal-text n))
   :rule-classes :type-prescription)
 
 (in-theory (disable fn-nop-init-field-text))
@@ -546,7 +542,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                           fn-nop-parse-init-request
                                           fn-nop-parse-init-sizing
                                           fn-bs-profile-invalid-reason
-                                          fn-bs-pf fn-acct-decimal-text
+                                          fn-bs-pf fn-decimal-text
                                           fn-record-encoded-octets-ceiling)))))
   (let* ((split (fn-nop-parse-init-sizing words nil nil))
          (parsed (if (consp split) (fn-nop-parse-init-request (caddr split)) :bad))
@@ -563,10 +559,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         (cond ((equal reason :max-history-octets-below-max-record-octets)
                (concatenate 'string "init: " h " is below " r
                             "; pass --max-history-octets "
-                            (fn-acct-decimal-text (fn-bs-pf *fn-bs-pf-max-record-octets* values))
+                            (fn-decimal-text (fn-bs-pf *fn-bs-pf-max-record-octets* values))
                             " or more, or a smaller --max-record-octets"))
               ((equal reason :max-record-octets-below-the-article-record)
-               (let ((need (fn-acct-decimal-text
+               (let ((need (fn-decimal-text
                             (fn-record-encoded-octets-ceiling
                              (nfix (fn-bs-pf *fn-bs-pf-max-article-octets* values))
                              (nfix (fn-bs-pf *fn-bs-pf-max-groups-per-article* values))))))

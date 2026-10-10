@@ -280,14 +280,14 @@
 (defun fn-bplc-runtime-line (st)
   (declare (xargs :guard t))
   (string-append "BP NODE GENERATION "
-   (string-append (fn-acct-decimal-text (fn-bplc-generation st))
+   (string-append (fn-decimal-text (fn-bplc-generation st))
     (string-append " LISTENER-FDS "
-     (string-append (fn-acct-decimal-text (fn-bplc-descriptors st))
+     (string-append (fn-decimal-text (fn-bplc-descriptors st))
       (string-append " PEAK "
-       (string-append (fn-acct-decimal-text (fn-bplc-peak st))
+       (string-append (fn-decimal-text (fn-bplc-peak st))
         (string-append " SESSION "
          (if (fn-bplc-session st)
-             (fn-acct-decimal-text (fn-ncfg-nth 1 (fn-bplc-session st))) "none")))))))))
+             (fn-decimal-text (fn-ncfg-nth 1 (fn-bplc-session st))) "none")))))))))
 
 (defconst *fn-bplc-death-cuts*
   '(:configuration-published :before-bind :after-bind :before-install
