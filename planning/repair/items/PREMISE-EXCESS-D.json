@@ -4,12 +4,14 @@
  "file": "tools/premise_audit.py",
  "id": "PREMISE-EXCESS-D",
  "notes": [
-  "2026-10-10 Builder D, lane/d-premise-establish: fn-bpnp-clock-domain-admitsp established by a hosted entry (books/bp-node-rotation-recovery.lisp fn-bpnp-hosted-recovery-admits-the-same-or-a-fresh-domain, with its converse); fn-bpnr-recovery-replayp remains."
+  "2026-10-10 Builder D, lane/d-premise-establish: fn-bpnp-clock-domain-admitsp established by a hosted entry (books/bp-node-rotation-recovery.lisp fn-bpnp-hosted-recovery-admits-the-same-or-a-fresh-domain, with its converse); fn-bpnr-recovery-replayp remains.",
+  "10-10 12:03 2026-10-10 Builder D, lane/d-replayp-invariant: fn-bpnr-recovery-replayp is carried by the invariant fn-bpnr-replay-readyp, established at the open (fn-bpnr-open-is-replay-ready) and preserved by fn-bpnj-step (fn-bpnj-step-preserves-replay-readiness); the restart keystones and their helper take it; premise_audit lists no premise of this item."
  ],
  "owner": "builder-D",
  "severity": "medium",
+ "sha": "d6c40cd05",
  "source": "premise_audit at dev 9b580dd36, Builder D 2026-10-10 under the coordinator's CL24 ruling (a)",
- "state": "open",
+ "state": "ready",
  "title": "premise_audit: 1 unestablished host premise added since the baseline (BP serve rotation restart)",
- "updated": "2026-10-10T04:00:00Z"
+ "updated": "2026-10-10T16:03:05Z"
 }
