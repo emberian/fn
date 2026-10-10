@@ -75,7 +75,12 @@
              (fn-sbud-article-gate-figure (len (fn-record-payload record))
                                           (len (fn-record-groups record)))
              debt)
-            (fn-adm-memory-admitp profile img cfg limit tot row))))
+            (fn-adm-memory-admitp profile img cfg limit tot row)))
+  :hints (("Goal" :use ((:instance fn-cvec-article-budget-for-admits-exactly-both-sides))
+           :in-theory (e/d (fn-adm-article-budget fn-sbud-admitp)
+                           (fn-adm-memory-admitp fn-cvec-article-budget-for
+                            fn-cvec-article-transactions-admitp fn-cvec-article-history-admitp
+                            fn-sbud-article-gate-figure fn-cvec-article-budget-for-admits-exactly-both-sides)))))
 
 ; KEYSTONE K-ADMIT (2): under the budget the host handed, a refusal names
 ; the first resource that refused.
@@ -89,21 +94,31 @@
          (mx (fn-adm-memory-admitp profile img cfg limit tot row))
          (w (fn-adm-article-word :unaffordable profile img cfg limit used bytes-used
                                  record debt tot row)))
-    (implies (and (natp used)
-                  (not (fn-sbud-admitp (fn-adm-article-budget profile img cfg limit used
-                                                              bytes-used record debt tot row)
-                                       used)))
+    (implies (not (fn-sbud-admitp (fn-adm-article-budget profile img cfg limit used
+                                                         bytes-used record debt tot row)
+                                  used))
              (and (member-equal w '(:unaffordable :history-exhausted :memory))
                   (iff (equal w :unaffordable) (not tx))
                   (iff (equal w :history-exhausted) (and tx (not hx)))
-                  (iff (equal w :memory) (and tx hx (not mx)))))))
+                  (iff (equal w :memory) (and tx hx (not mx))))))
+  :hints (("Goal" :use ((:instance fn-adm-article-budget-admits-exactly-the-three)
+                        (:instance fn-cvec-article-budget-for-admits-exactly-both-sides)
+                        (:instance fn-cvec-article-refusal-word-under-the-budget-names-the-resource))
+           :in-theory (e/d (fn-adm-article-word fn-cvec-article-refusal-word)
+                           (fn-adm-article-budget fn-adm-memory-admitp fn-cvec-article-budget-for
+                            fn-cvec-article-transactions-admitp fn-cvec-article-history-admitp
+                            fn-sbud-article-gate-figure fn-sbud-admitp
+                            fn-adm-article-budget-admits-exactly-the-three
+                            fn-cvec-article-budget-for-admits-exactly-both-sides
+                            fn-cvec-article-refusal-word-under-the-budget-names-the-resource)))))
 
 ; A word other than :unaffordable passes through.
 (defthm fn-adm-article-word-passes-other-words
   (implies (not (equal word :unaffordable))
            (equal (fn-adm-article-word word profile img cfg limit used bytes-used
                                        record debt tot row)
-                  word)))
+                  word))
+  :hints (("Goal" :in-theory (enable fn-adm-article-word fn-cvec-article-refusal-word))))
 
 ; KEYSTONE K-ADMIT (3): a row the budget admitted leaves the totals within
 ; the gate: the store it commits serves within LIMIT (K1) and reopens
@@ -113,4 +128,9 @@
                                                   record debt tot row)
                            used)
            (and (<= (fn-mm-sum profile img cfg (fn-adm-after tot row)) limit)
-                (<= (fn-mm-reopen-need profile img cfg (fn-adm-after tot row)) limit))))
+                (<= (fn-mm-reopen-need profile img cfg (fn-adm-after tot row)) limit)))
+  :hints (("Goal" :use ((:instance fn-adm-article-budget-admits-exactly-the-three))
+           :in-theory (e/d (fn-adm-memory-admitp fn-mm-gate-p)
+                           (fn-adm-article-budget fn-adm-article-budget-admits-exactly-the-three fn-mm-sum fn-mm-reopen-need fn-adm-after fn-mm-tot-plus
+                            fn-cvec-article-transactions-admitp fn-cvec-article-history-admitp
+                            fn-sbud-article-gate-figure fn-sbud-admitp)))))

@@ -260,6 +260,9 @@
 ; PKT-605 (PRF-223): the connection budget the run installs and every live
 ; reconfiguration keeps (fn-owner-connection-budget, fn-owner-reconfigure-deltas).
 (include-book "../books/connection-budget")
+;; K-ADMIT: the memory gate the prepare applies (memory landing 3+4a).
+(include-book "../books/admission-memory")
+(include-book "../books/cold-read-reservation")
 ; PRF-986 (PKT-639): the TLS handshake admission (fn-owner-handshake-admit/
 ; -done/-leave) and the PROXY header on a trusted path (fn-owner-proxy-*);
 ; books/tls-proxy includes the budget, the decision and the source.
@@ -664,6 +667,15 @@
                                     state))
                (state (f-put-global 'fn-owner-carried-usage
                                     (cons count (fn-pcb-tally-records records nil))
+                                    state))
+               ; K-TOTALS: the charged totals, folded once here
+               ; (fn-ct-totals-cache-validp of the fold,
+               ; fn-ct-totals-extend-of-a-valid-cache) and advanced from the
+               ; history stobj after (fn-owner-record-totals).  Residency
+               ; :resident charges every held payload in the arena, an
+               ; upper bound of the paged store.
+               (state (f-put-global 'fn-owner-record-totals
+                                    (cons count (fn-ct-charged records :resident))
                                     state)))
           (value :installed))
       (value :refused)))))
@@ -1365,6 +1377,24 @@
                               (cons (fn-hist-count fn-hist) bytes) state)))
     (mv bytes fn-hist state)))
 
+; The charged totals of the carried Store (books/charged-totals.lisp), the
+; memory gate's TOT, carried as (K . TOT) like the record octets and advanced
+; one history row per record committed since (books/history-totals-
+; carried.lisp fn-hist-totals-carried; KEYSTONE fn-hist-totals-carried-is-
+; totals-extend under R, the fold for a valid cache by fn-ct-totals-extend-
+; of-a-valid-cache).  Synced as fn-owner-record-octets syncs.
+(defun fn-owner-record-totals (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (let* ((s (fn-owner-store state))
+         (fn-hist (fn-hist-sync (fn-sn-files s) fn-hist))
+         (cache (if (boundp-global 'fn-owner-record-totals state)
+                    (f-get-global 'fn-owner-record-totals state)
+                  nil))
+         (tot (fn-hist-totals-carried cache s :resident fn-hist))
+         (state (f-put-global 'fn-owner-record-totals
+                              (cons (fn-hist-count fn-hist) tot) state)))
+    (mv tot fn-hist state)))
+
 ; The completion debt of the carried Store (the open forward undertakings,
 ; each owing a release record), carried as (K . DEBT) and advanced over the
 ; records committed since through the synced history stobj
@@ -1698,6 +1728,46 @@
 
 (definterface fn-owner-connection-budget
   :class ::program)
+
+; THE MEMORY GATE's coordinates (K-ADMIT, books/admission-memory.lisp), once
+; per run after the connection budget holds (host/native/mux.lisp
+; fnn-mux-budget-install): IMG the image as this process observes itself
+; (fn-mo-img-observed), LIMIT the resident limit (fn-mm-resident-limit: no
+; operator figure exists, so the least resident observation, physical memory
+; or a cgroup's memory.max), CFG the run's: the live capacity C, TLS, the
+; serving trigger and the publication's, the live-reclaim opt-in, no paged
+; cache (the totals are :resident), the cold pool's budget
+; (fn-crv-pool-budget) when the operator set one, the handshakes in flight,
+; the OVER window and the Xref server name the listing carries
+; (fn-oag-agent).  P (holders) is C until contract v2.1's pool lands.
+(defun fn-owner-memory-cfg (v capacity tlsp trigger pub-trigger live cold profile window server)
+  (declare (xargs :guard t))
+  (list capacity tlsp trigger pub-trigger live 0
+        (if cold (car (fn-crv-pool-budget cold profile)) 0)
+        (fn-cfg-limit v "tls-handshakes-in-flight")
+        window (len server) nil nil))
+
+(defun fn-owner-memory-configure (img resident-obs trigger pub-trigger profile tlsp live cold
+                                      window state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((cfg (fn-owner-config state))
+         (v (fn-cfg-value cfg))
+         (mcfg (fn-owner-memory-cfg v (fn-exp-connections-capacity v) tlsp trigger pub-trigger
+                                    live cold profile window (fn-oag-agent cfg)))
+         (limit (fn-mm-resident-limit nil resident-obs))
+         (state (f-put-global 'fn-owner-memory-gate (list img mcfg limit) state)))
+    (value limit)))
+
+(definterface fn-owner-memory-configure
+  :class ::program)
+
+; (IMG CFG LIMIT) as configured; LIMIT NIL until then, so the gate
+; (fn-mm-gate-p: LIMIT a natural) admits nothing a run did not configure.
+(defun fn-owner-memory-gate (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-memory-gate state)
+      (f-get-global 'fn-owner-memory-gate state)
+    (list nil nil nil)))
 
 (defun fn-owner-reconfigure (id kind name-octets fn-arena state)
   ; Answers a ConfigResult: :staged with exactly one encoded configuration
@@ -2087,6 +2157,7 @@
             (mv nil existing fn-arena fn-hist state)
           (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
           (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
+          (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid payload groups
@@ -2115,11 +2186,11 @@
                  ; `fn-cvec-prepare-keeps-the-vector').
                  ; PRF-284: fn-pvc-article-budget-carried-is-cvec-
                  ; article-budget-for (the carry satisfies fn-pvc-carryp).
-                 (budget (fn-pvc-article-budget-carried
-                          (fn-owner-profile-carry state)
-                          (fn-owner-store-profile state)
-                          (fn-sf-records-count (fn-sn-files s))
-                          bytes record debt))
+                 (budget-tx (fn-pvc-article-budget-carried
+                             (fn-owner-profile-carry state)
+                             (fn-owner-store-profile state)
+                             (fn-sf-records-count (fn-sn-files s))
+                             bytes record debt))
                  (before (fn-owner-ocfg state))
                  (row (if (equal record :clock-unusable)
                           nil
@@ -2129,6 +2200,20 @@
                                               (fn-sn-keyring-generation s)
                                               (fn-arena-count fn-arena)
                                               (fn-owner-parse-carry state))))
+                 ; K-ADMIT (books/admission-memory.lisp): the memory gate at the
+                 ; run's LIMIT over the carried totals plus this ROW, built
+                 ; before the prepare so it is charged exactly.  BUDGET is
+                 ; fn-adm-article-budget: BUDGET-TX is fn-cvec-article-budget-
+                 ; for (PRF-284), handed on exactly when fn-adm-memory-admitp,
+                 ; else 0 (KEYSTONES fn-adm-article-budget-admits-exactly-the-
+                 ; three, fn-adm-admitted-row-keeps-the-gate).
+                 (gate (fn-owner-memory-gate state))
+                 (budget (if (and row
+                                  (fn-adm-memory-admitp (fn-owner-store-profile state)
+                                                        (first gate) (second gate) (third gate)
+                                                        tot row))
+                             budget-tx
+                           0))
                  (carry (fn-prc-refresh (fn-owner-retain-carry state)
                                         (fn-node-retention (fn-sn-node s))))
                  ; fn-pout-prepare-article (books/owner-prepare-outcome.lisp):
@@ -2140,18 +2225,13 @@
                               nil
                             (mv-let (word next)
                               (fn-pout-prepare-article before row budget carry)
-                              ; Lane membership-budget: an :unaffordable
-                              ; that the membership charge alone caused is
-                              ; :memberships (books/store-capacity-vector.lisp
-                              ; KEYSTONE fn-cvec-article-refusal-word-names-
-                              ; the-memberships), and one the history budget
-                              ; caused :history-exhausted (lane m1-durable-2,
-                              ; KEYSTONE fn-cvec-article-refusal-word-names-
-                              ; the-history), over the same count, octets,
-                              ; record and debt the budget was decided from.
-                              (cons (fn-cvec-article-refusal-word
+                              ; K-ADMIT: T, then H, then :memory
+                              ; (KEYSTONE fn-adm-article-word-under-the-
+                              ; budget-names-the-resource).
+                              (cons (fn-adm-article-word
                                      word (fn-owner-store-profile state)
-                                     (fn-sbud-count s) bytes record debt)
+                                     (first gate) (second gate) (third gate)
+                                     (fn-sbud-count s) bytes record debt tot row)
                                     next))))
                  (state (if (equal record :clock-unusable)
                             state
@@ -2166,7 +2246,7 @@
               ; and the host seals it with one fn-arena-seal-list call
               ; (tools/run_owner.py prepare), exactly when ACL2 answered
               ; :prepared.
-              (mv nil (list :seal payload) fn-arena fn-hist state)))))))))))
+              (mv nil (list :seal payload) fn-arena fn-hist state))))))))))))
 
 ; Step 8 (catalog slice) after the records flip: the host sealed the POST's
 ; payload (host/native/owner.lisp fnn-owner-attempt, after
@@ -2294,6 +2374,7 @@
             (mv nil existing fn-arena fn-hist state)
           (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
           (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
+          (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
           (let* ((record (fn-sn-article-record
                           s (fn-own-clock (fn-owner-core state))
                           msgid (fn-octets-list fn-octets) groups
@@ -2309,11 +2390,11 @@
                  ; `fn-cvec-prepare-keeps-the-vector').
                  ; PRF-284: fn-pvc-article-budget-carried-is-cvec-
                  ; article-budget-for (the carry satisfies fn-pvc-carryp).
-                 (budget (fn-pvc-article-budget-carried
-                          (fn-owner-profile-carry state)
-                          (fn-owner-store-profile state)
-                          (fn-sf-records-count (fn-sn-files s))
-                          bytes record debt))
+                 (budget-tx (fn-pvc-article-budget-carried
+                             (fn-owner-profile-carry state)
+                             (fn-owner-store-profile state)
+                             (fn-sf-records-count (fn-sn-files s))
+                             bytes record debt))
                  (before (fn-owner-ocfg state))
                  (row (if (equal record :clock-unusable)
                           nil
@@ -2323,6 +2404,20 @@
                                               (fn-sn-keyring-generation s)
                                               (fn-arena-count fn-arena)
                                               (fn-owner-parse-carry state))))
+                 ; K-ADMIT (books/admission-memory.lisp): the memory gate at the
+                 ; run's LIMIT over the carried totals plus this ROW, built
+                 ; before the prepare so it is charged exactly.  BUDGET is
+                 ; fn-adm-article-budget: BUDGET-TX is fn-cvec-article-budget-
+                 ; for (PRF-284), handed on exactly when fn-adm-memory-admitp,
+                 ; else 0 (KEYSTONES fn-adm-article-budget-admits-exactly-the-
+                 ; three, fn-adm-admitted-row-keeps-the-gate).
+                 (gate (fn-owner-memory-gate state))
+                 (budget (if (and row
+                                  (fn-adm-memory-admitp (fn-owner-store-profile state)
+                                                        (first gate) (second gate) (third gate)
+                                                        tot row))
+                             budget-tx
+                           0))
                  ; The carried obligation-id trie, brought to the Store
                  ; node's ledger (a commit puts one id, a release none).
                  (carry (fn-prc-refresh (fn-owner-retain-carry state)
@@ -2353,18 +2448,13 @@
                             (mv-let (word next)
                               (fn-ppc-pout-prepare-article-cat before row budget carry
                                                                fn-arena fn-cat)
-                              ; Lane membership-budget: an :unaffordable
-                              ; that the membership charge alone caused is
-                              ; :memberships (books/store-capacity-vector.lisp
-                              ; KEYSTONE fn-cvec-article-refusal-word-names-
-                              ; the-memberships), and one the history budget
-                              ; caused :history-exhausted (lane m1-durable-2,
-                              ; KEYSTONE fn-cvec-article-refusal-word-names-
-                              ; the-history), over the same count, octets,
-                              ; record and debt the budget was decided from.
-                              (cons (fn-cvec-article-refusal-word
+                              ; K-ADMIT: T, then H, then :memory
+                              ; (KEYSTONE fn-adm-article-word-under-the-
+                              ; budget-names-the-resource).
+                              (cons (fn-adm-article-word
                                      word (fn-owner-store-profile state)
-                                     (fn-sbud-count s) bytes record debt)
+                                     (first gate) (second gate) (third gate)
+                                     (fn-sbud-count s) bytes record debt tot row)
                                     next))))
                  (state (if (equal record :clock-unusable)
                             state
@@ -2384,7 +2474,7 @@
               ; catalog's prepare after that seal (fn-owner-cat-prepare-sealed;
               ; books/served-catalog-owner.lisp fn-cat-prepare-sealed).
               (let ((state (f-put-global 'fn-owner-cat-candidate (cons record row) state)))
-                (mv nil :seal-buffer fn-arena fn-hist state))))))))))))
+                (mv nil :seal-buffer fn-arena fn-hist state)))))))))))))
 
 (defun fn-owner-prepare-retention
   (kind id-octets subject-octets evidence-octets charge fn-arena state)

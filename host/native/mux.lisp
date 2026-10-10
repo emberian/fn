@@ -2189,6 +2189,11 @@ the run's (exit 1), named on stderr and in the service log."
          ;; machine's memory figures are I/O the owner mutex never holds.
          (machine (fnn-heap-machine-octets))
          (core (fnn-heap-core-octets))
+         ;; K-ADMIT's coordinates, observed here for the same reason: the
+         ;; image as this process finds itself and the resident limits
+         ;; (host/native/heap.lisp).
+         (img (fnn-heap-img-observation (fnn-store-config store)))
+         (resident (fnn-heap-resident-observations))
          (decision
            (fnn-owner-serialized
             service nil
@@ -2209,6 +2214,18 @@ the run's (exit 1), named on stderr and in the service log."
                               (fnn-owner-service-reclaim-live service))))
                 (when (eq word :hold)
                   (fnn-owner-syncer-install service threads stack)
+                  ;; The memory gate every POST's prepare applies
+                  ;; (host/owner-host.lisp fn-owner-memory-configure,
+                  ;; books/admission-memory.lisp): the image, the resident
+                  ;; limit, the serving and publication triggers, and the
+                  ;; run's configuration.
+                  (fnn-owner-core 'fn-owner-memory-configure
+                                  img resident
+                                  +fnn-owner-service-nursery-octets+ (fnn-gc-nursery-octets)
+                                  (fnn-store-config store) (and tls-context t)
+                                  (fnn-owner-service-reclaim-live service)
+                                  (fnn-owner-service-cold-resources service)
+                                  (fnn-owner-over-window))
                   ;; Store figure is captured before both allowance extensions.
                   ;; ACL2 validates dynamic >= store + exact cold + output pool.
                   (fnn-owner-output-install

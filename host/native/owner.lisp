@@ -3396,11 +3396,11 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; answers are D25's :duplicate / :conflict (books/store-intern.lisp fn-store-existing-action,
 ;; keyed on the poster's source through the injection inverse, D25), :clock-unusable,
 ;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), its
-;; history budget's :memberships or :history-exhausted
-;; (fn-cvec-article-refusal-word), or :refused.
+;; history budget's :history-exhausted (fn-cvec-article-refusal-word), the
+;; memory gate's :memory (fn-adm-article-word), or :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
   (case prepared
-    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships
+    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memory
       :history-exhausted :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
      prepared)
     (:invalid :malformed)
@@ -5646,7 +5646,7 @@ owner's recovery fence."
                 (fnn-store-fault (condition) (error condition))
                 (fnn-store-error () :refused))))
     (unless (member word '(:durable :duplicate :conflict :malformed :unaffordable
-                           :memberships :history-exhausted :article-numbers-exhausted
+                           :memory :history-exhausted :article-numbers-exhausted
                            :storage-failed :refused :clock-unusable :uncertain))
       (fnn-fault "owner bound commit returned ~a" word))
     word))
