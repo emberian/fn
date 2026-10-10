@@ -1,0 +1,13 @@
+{
+ "category": "proofs",
+ "detail": "Trigger: memory landing 4b. K-BOUND (fn-mm-profile-bound-holds-every-admitted-store: under T records, payload octets within H and every held row within G groups, fn-ct-charged is within books/memory-model.lisp fn-mm-profile-bound-tot) is FALSE as stated; landing 3+4a ships fn-mm-profile-bound-tot labelled stated-not-proved and the offline adapter's under-bound table quoted against the stated bound (coordinator ruling (a), 2026-10-09). Counterexample 1 (build/memory/l34/m7/sonnet/kbound-counterexample.lisp): an hstxa pairs any held row with any stxa, so a 250,000-octet held payload rides a 5,883-octet composite and ARENA 250,000 > H 200,000 (profile T 128, H 200,000, G 2); restated with the producer's fact, a composite's held payload within its stxa encoding (the held row is the intern of fn-replay-composite-record of the composite, books/served-catalog-join-host-columns-open.lisp:45; proof owed, it needs the codec). Counterexample 2 (kbound-counterexample2.lisp): a held row with 100,000 (group . posp) numbers passes fn-held-p and fn-adm-rows-admitted; its history image row is 1,500,160 octets against the profile's HISTORY bound 415,424 (T x record log + H), the log charge 1,422. The three producer facts no book states: (1) at most one number per group (len numbers <= len groups), (2) each number within 2^31 (RFC 3977 section 6), (3) a bound on the held context's lace delta. Restate K-BOUND over admitted rows carrying those facts, prove each fact of the producers (fn-intern-row-at, the number assignment, the context the parse builds), then K-BOUND; test? and witnesses first.",
+ "file": "books/admission-memory.lisp",
+ "id": "MEMORY-K-BOUND-ADMITTED-ROWS",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "memory-l34a",
+ "state": "open",
+ "title": "K-BOUND restated over admitted rows: the producer facts bounding a held row's history image and a composite's payload",
+ "updated": "2026-10-10T02:23:21Z"
+}

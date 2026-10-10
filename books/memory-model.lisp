@@ -475,7 +475,8 @@
   (fn-mm-tot-plus hdr suffix))
 
 ; THE PROFILE'S BOUND: the charged totals of the largest store a profile
-; admits, the sound size of a store-opening command whose totals are unseen
+; admits as stated (not proved: below), the size of a store-opening
+; command whose totals are unseen
 ; (books/heap-command.lisp decides those by its offline adapter, which
 ; under-bounds this until A's charged-totals header; coordinator ruling
 ; 2026-10-09).  T records; H payload octets in the
@@ -489,10 +490,12 @@
 ; fn-record-encoded-octets-ceiling is the payload plus that) a record, with
 ; the held payloads and the other records' encodings, which the budget's
 ; charge holds within H together (the open's input bound B of
-; books/store-replay-bound.lisp, framed).  KEYSTONE
-; fn-mm-profile-bound-holds-every-admitted-store
-; (books/history-totals-carried.lisp) states every store the profile admits
-; is within it.
+; books/store-replay-bound.lisp, framed).  STATED, NOT PROVED: that every
+; store the profile admits is within it (K-BOUND) is false over the rows the
+; recognizers admit -- a composite pairing any held row (ARENA past H) and a
+; held row with unboundedly many article numbers (HISTORY 1.5 MB against
+; 415 KB) -- and holds only over rows carrying producer facts no book states
+; yet (repair item MEMORY-K-BOUND-ADMITTED-ROWS, memory landing 4b).
 (defun fn-mm-profile-record-log (profile)
   (declare (xargs :guard t))
   (+ *fn-ct-log-frame-octets*

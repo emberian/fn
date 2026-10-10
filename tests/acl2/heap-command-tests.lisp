@@ -56,7 +56,7 @@
                       (fn-heap-reserve-operation-decide :inspect *hct-d27* *hct-core* *hct-nur*
                                                         (list *hct-16g*) 0 nil))
                      *fn-mo-adapter-words* "header totals unseen")))
-;; The adapter under-bounds: at the small preset the sound bound's need (the
+;; The adapter under-bounds: at the small preset the stated bound's need (the
 ;; equation at fn-mm-profile-bound-tot) is past the adapter's heap.
 (assert-event
  (< (* *fn-heap-mib*
