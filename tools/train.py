@@ -132,12 +132,22 @@ REGEN_OUTPUTS = (
 HBOX_OUTPUTS = tuple(str(box_artifacts.DIR / name) for name in box_artifacts.ARTIFACTS)
 TEETH_MANIFEST = "build/teeth-obligations.json"
 
+# The certified world's three make-check steps (protocol_emit --wire,
+# host_check, system_books) say NOT RUN on a tree without it, a capability
+# skip (MAKE-CHECK-CERT-WORLD-NOT-RUN, coordinator ruling 2026-10-10); the
+# box step certifies that world and runs their witness, required, so nothing
+# reaches dev with them unrun.
+CERT_WORLD_BOOKS = ("books/image-world", "books/image-world-dtn")
+CERT_WORLD_CMD = "FN_CERT_WORLD_REQUIRED=1 python3 -m unittest tests.test_cert_world_checks"
+
 BOX_CMD = (
-    "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export && "
+    "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export "
+    + " ".join(CERT_WORLD_BOOKS) + " && "
     "python3 tools/interface_emit.py --write && python3 tools/interface_emit.py --check && "
     "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check && "
     "python3 tools/extract/world.py --check && python3 tools/host_check.py --build-lists && "
-    "python3 tools/host_check.py --read && python3 tools/host_check.py --world"
+    "python3 tools/host_check.py --read && python3 tools/host_check.py --world && "
+    + CERT_WORLD_CMD
 )
 
 # The half of BOX_CMD after the certify step; `certify` runs it in the farm tree.
@@ -150,6 +160,7 @@ EMIT_STEPS = (
     ("build_lists", "python3 tools/host_check.py --build-lists"),
     ("host_read", "python3 tools/host_check.py --read"),
     ("host_world", "python3 tools/host_check.py --world"),
+    ("cert_world", CERT_WORLD_CMD),
 )
 EMIT_CMD = " && ".join(
     f"{{ s=$(date +%s); {c}; r=$?; echo \"== step {n} $(( $(date +%s) - s ))\"; [ $r = 0 ]; }}"
@@ -690,7 +701,8 @@ def cmd_certify(t: Train, args) -> int:
     added = _added_roots(t)
     if added:
         say(f"certify: {len(added)} root(s) new in the Makefile: " + ", ".join(added))
-    roots = list(dict.fromkeys(["books/wire-export", *books, *tests, *witnesses, *added]))
+    roots = list(dict.fromkeys(["books/wire-export", *CERT_WORLD_BOOKS, *books, *tests,
+                                *witnesses, *added]))
     argv = [PY, "tools/farm.py"]
     # the affected closure: every Makefile root a changed book reaches
     for b in books:

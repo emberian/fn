@@ -730,6 +730,9 @@ class BoxStepTests(TrainBase):
         self.assertEqual((stamp["sha"], stamp["box"]), (before, "persvati"))
         log = " | ".join(self.stub_log())
         self.assertIn("--fetch build/box/wire-grammar.json", log)
+        # the certified world's witness runs in the box step, required
+        self.assertIn("books/wire-export books/image-world books/image-world-dtn", log)
+        self.assertIn("FN_CERT_WORLD_REQUIRED=1 python3 -m unittest tests.test_cert_world_checks", log)
         self.assertNotIn("interfaces.json", log)
         self.assertIn("remote_check persvati", " | ".join(self.stub_log()))
         g = self.train("gate")
@@ -742,6 +745,20 @@ class BoxStepTests(TrainBase):
         b = self.train("boxstep", "hbox", extra_env={"STUB_RC_remote_check": "3"})
         self.assertNotEqual(b.returncode, 0)
         self.assertEqual(self.box(), before)
+
+
+class CertWorldWitnessTests(unittest.TestCase):
+    def test_the_witness_fails_rather_than_skips_where_the_box_step_requires_it(self):
+        env = {k: v for k, v in os.environ.items() if k != "FN_ACL2"}
+        skipped = subprocess.run([sys.executable, "-m", "unittest", "tests.test_cert_world_checks"],
+                                 cwd=REPO, capture_output=True, text=True, env=env, timeout=120)
+        self.assertEqual(skipped.returncode, 0, skipped.stderr)
+        self.assertIn("skipped", skipped.stderr)
+        required = subprocess.run([sys.executable, "-m", "unittest", "tests.test_cert_world_checks"],
+                                  cwd=REPO, capture_output=True, text=True, timeout=120,
+                                  env=dict(env, FN_CERT_WORLD_REQUIRED="1"))
+        self.assertNotEqual(required.returncode, 0, required.stderr)
+        self.assertIn("FN_CERT_WORLD_REQUIRED and no ACL2 launcher", required.stderr)
 
 
 class CertifyTests(TrainBase):
@@ -783,7 +800,8 @@ class CertifyTests(TrainBase):
         self.assertEqual(len(farm), 2, farm)
         sub = farm[0]
         for word in ("--affected-by books/b", "--timeout-seconds 1800",
-                     "submit hbox", "books/wire-export", "books/b", "tests/acl2/t"):
+                     "submit hbox", "books/wire-export", "books/image-world", "books/image-world-dtn",
+                     "books/b", "tests/acl2/t"):
             self.assertIn(word, sub)
         # the affected closure, never the lane selection (direct includers)
         self.assertNotIn("--lane", sub.split())
@@ -886,7 +904,8 @@ class CertifyTests(TrainBase):
         ssh = [l for l in self.stub_log() if l.startswith("ssh ")]
         self.assertEqual(len(ssh), 1, ssh)
         for word in (str(self.ftree), "timeout", "swarm-build", "interface_emit.py --write --check",
-                     "protocol_emit.py --wire --check", "host_check.py --world"):
+                     "protocol_emit.py --wire --check", "host_check.py --world",
+                     "FN_CERT_WORLD_REQUIRED=1 python3 -m unittest tests.test_cert_world_checks"):
             self.assertIn(word, ssh[0])
         self.assertNotIn("certify_books", ssh[0])
         self.assertEqual(self.head(), before, "the certify's emits are not committed")
@@ -922,14 +941,14 @@ class CertifyTests(TrainBase):
         self.assertLess(ssh[0].index("cp -a /old/farm-tree/build/cache/."),
                         ssh[0].index("tools/interface_emit.py"))
 
-    def test_a_books_free_train_certifies_wire_export_alone(self):
+    def test_a_books_free_train_certifies_wire_export_and_the_world_alone(self):
         self.merge({"tools/x.py": "x\n"})
         c = self.train("certify", "hbox")
         self.assertEqual(c.returncode, 0, c.stdout + c.stderr)
         sub = [l for l in self.stub_log() if l.startswith("farm") and " submit " in l][0]
         self.assertNotIn("--lane", sub)
         self.assertNotIn("--affected-by", sub)
-        self.assertTrue(sub.endswith("submit hbox books/wire-export"), sub)
+        self.assertTrue(sub.endswith("submit hbox books/wire-export books/image-world books/image-world-dtn"), sub)
 
     def test_failed_certify_records_nothing(self):
         self.books_train()

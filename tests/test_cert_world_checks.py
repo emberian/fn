@@ -36,6 +36,10 @@ class CertifiedWorldTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         missing = world()
+        if missing and os.environ.get("FN_CERT_WORLD_REQUIRED"):
+            # the train's box step certifies the world and sets this: a skip
+            # there would let the three steps reach dev unrun
+            raise AssertionError("FN_CERT_WORLD_REQUIRED and " + missing)
         if missing:
             raise unittest.SkipTest("capability -- " + missing +
                                     "; the train's box step runs this module")
