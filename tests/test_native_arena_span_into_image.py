@@ -76,10 +76,17 @@ HELPERS = r"""
              (cons (- (* 2 cap) 1) (- plen (- (* 2 cap) 1))) (cons 0 (+ (* 2 cap) 1))
              (cons (+ cap 3) (- plen cap 3))))
       :test #'equal)))
+ ;; The twin is fn-arena-get-span's octets: an extent's one host span, any
+ ;; other kind octet by octet (fn-arx-get-loop's definition, which conses one
+ ;; frame per octet and exhausts the owner's stack on a 53 KB payload).
+ (defun fn-spi-span (arena h at n)
+   (if (fn-arn-extentp (fn-arena$x-exti h arena))
+       (fn-arena-get-span h at n arena)
+     (loop for k from at below (+ at n) collect (fn-arena$x-get h k arena))))
  (defun fn-spi-check (arena h at n prefix)
    (let ((into (fn-spi-buffer prefix)) (twin (fn-spi-buffer prefix)))
      (fn-arena-get-span-into h at n arena into)
-     (fn-octets-append-list (fn-arena-get-span h at n arena) twin)
+     (fn-octets-append-list (fn-spi-span arena h at n) twin)
      (if (and (equal (fn-octets-list into) (fn-octets-list twin))
               (= (fn-octets-len into) (+ (length prefix) n)))
          nil
@@ -105,7 +112,7 @@ HELPERS = r"""
  (defun fn-spi-scratch (live)
    (let ((s (create-fn-arena$x)) (buf (create-fn-octets$c)) (ext nil) (lz nil))
      (dotimes (h (fn-arena$x-count live))
-       (let ((e (fn-arena$x-exti live h)))
+       (let ((e (fn-arena$x-exti h live)))
          (when (and (null ext) (fn-arn-extentp e) (> (nth 4 e) 16384)) (setq ext e))
          (when (and (null lz) (fn-arn-lz-extentp e) (> (nth 6 e) 0)) (setq lz e))))
      (when (or (null ext) (null lz)) (error "live arena lacks an extent or an lz handle"))
@@ -137,7 +144,7 @@ HELPERS = r"""
      (list (if (eq word :returned) :returned :cold)
            (equal (fn-octets-list out)
                   (if (eq word :returned)
-                      (append (list 1 2 3) (fn-arena-get-span h 0 n arena))
+                      (append (list 1 2 3) (fn-spi-span arena h 0 n))
                     (list 1 2 3)))))))
 """
 
@@ -234,8 +241,12 @@ class ArenaSpanIntoImageTests(verbs.NativeOperatorVerbFixture):
         self.assertTrue(ok, text)
 
     def repl(self, form, timeout=180):
-        ok, text = fn_dev.evaluate(self.sock, form, timeout)
-        self.assertTrue(ok, text[-1500:])
+        with self.node.log_on_failure():
+            try:
+                ok, text = fn_dev.evaluate(self.sock, form, timeout)
+            except ValueError as error:   # the owner went away mid-reply
+                self.fail("{}: {}".format(error, form[:200]))
+            self.assertTrue(ok, text[-1500:])
         return text
 
     LIVE = "(fnn-live-arena)"
@@ -319,9 +330,12 @@ class ArenaSpanIntoImageTests(verbs.NativeOperatorVerbFixture):
         self.open_owner()
         for message_id in (self.big[0], self.big_lz[0]):
             reads = []
-            with self.node.session(timeout=180) as client:
+            with self.node.log_on_failure(), self.node.session(timeout=180) as client:
                 for _ in range(3):
-                    reads.append(client.article(message_id))
+                    try:
+                        reads.append(client.article(message_id))
+                    except EOFError as error:   # the node closed the connection
+                        self.fail("{}: ARTICLE {} read {}".format(error, message_id, len(reads)))
             self.assertIsNotNone(reads[0], message_id)
             self.assertEqual(reads[1], reads[0], message_id)
             self.assertEqual(reads[2], reads[0], message_id)
