@@ -335,14 +335,18 @@
 
 (definterface fn-web-host-private-begin-step :class ::program)
 
+; Guard t, logic mode, guards verified.  ec-call is the identity in the logic
+; and runs the callee's own checked *1*: fn-wps-window and fn-octets-append-list
+; (guard fn-cbor-octet-listp of the window bytes) keep their guards, so this
+; entry reaches no stobj updater with a non-trivial guard.
 (defun fn-web-host-post-window (cursor fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
-  (mv-let (bytes next done) (fn-wps-window 4096 cursor nil fn-web-in)
+  (declare (xargs :mode :logic :guard t :stobjs (fn-web-in fn-web-out)))
+  (mv-let (bytes next done) (ec-call (fn-wps-window 4096 cursor nil fn-web-in))
     (let* ((fn-web-out (fn-octets-clear fn-web-out))
-           (fn-web-out (fn-octets-append-list bytes fn-web-out)))
+           (fn-web-out (ec-call (fn-octets-append-list bytes fn-web-out))))
       (mv next done fn-web-out))))
 
-(definterface fn-web-host-post-window :class ::program)
+(definterface fn-web-host-post-window :class :common-lisp-compliant)
 (defun fn-web-host-post-reply-step (config flow event cursor fn-web-in fn-web-out)
   (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
   (fn-wps-private-reply (append (take 6 config) (list :page-plan :private-begin))
@@ -351,10 +355,11 @@
 (definterface fn-web-host-post-reply-step :class ::program)
 
 (defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
-  (mv-let (next done) (fn-wpf-drive 4096 prep fn-web-in)
-    (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
-                           next fn-web-in fn-web-out)
+  (declare (xargs :mode :logic :guard t :stobjs (fn-web-in fn-web-out)))
+  (mv-let (next done) (ec-call (fn-wpf-drive 4096 prep fn-web-in))
+    (if done (ec-call (fn-wpf-finish
+                       (append (ec-call (take 6 config)) (list :page-plan :private-begin))
+                       next fn-web-in fn-web-out))
       (mv (list :post-form next) fn-web-out))))
 
-(definterface fn-web-host-post-form-step :class ::program)
+(definterface fn-web-host-post-form-step :class :common-lisp-compliant)
