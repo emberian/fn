@@ -508,8 +508,9 @@ HDR the checkpoint's charged-totals header as the open reads it
 (io.lisp fnn-checkpoint-header-observation, books/charged-totals-header.lisp
 fn-cth-header-open), SUFFIX the log's past the header's S.  ADAPTER (owner
 Builder L, retired by L's store-log-open-scan): SUFFIX is the zero tot only
-when the log observably holds no record past S -- journal/ holds exactly one
-segment and no octet of it past a headed segment's padded head is nonzero
+when the log observably holds no record past S -- no octet of any segment in
+journal/ but the genesis (journal/000000.log, segment 0, which holds no
+record) is nonzero past a headed segment's padded head
 (books/store-log-lineage.lisp fn-lgl-head-len; every entry opens with a
 nonzero header, and the rotation preallocates the segment with zeros, so a
 fresh segment's extent is past its head) -- else NIL, and the decision says
@@ -522,11 +523,13 @@ the header's totals are unseen.  Unlocked: as fresh as the read."
          (hdr (and (consp open) (eq (first open) :ok) (second open)))
          (empty (and hdr
                      (handler-case
-                         (let ((names (fnn-log-segment-names store)))
-                           (and (= (length names) 1)
-                                (null (fnn-log-first-nonzero
-                                       (fnn-join (fnn-journal-dir store) (first names))
-                                       (fnn-nat (fnn-core 'fn-lgl-head-len (fnn-store-log-unit)))))))
+                         (let ((genesis (fnn-segment-path-at store 0))
+                               (head (fnn-nat (fnn-core 'fn-lgl-head-len (fnn-store-log-unit)))))
+                           (every (lambda (name)
+                                    (let ((path (fnn-join (fnn-journal-dir store) name)))
+                                      (or (equal path genesis)
+                                          (null (fnn-log-first-nonzero path head)))))
+                                  (fnn-log-segment-names store)))
                        ((or fnn-os-error fnn-store-error) () nil)))))
     (fnn-core 'fn-mo-observed-totals hdr
               (and empty (fnn-core 'fn-cth-empty-suffix hdr)))))
