@@ -357,7 +357,7 @@ removal or mutation logically only when its entry says `:logical "why"`
 (recorded in the row and counted as debt), takes mutations as checked edits
 of the claim with a named fault, states cost bounds (`:visits`,
 `:allocation`) with the state that attains them, and emits the
-`fn-teeth` row the obligation manifest (`planning/teeth-obligations.json`,
+`fn-teeth` row the obligation manifest (`build/teeth-obligations.json`, regenerated, never committed;
 `tools/keystone_emit.py`, the protected base `planning/teeth-base.json`)
 holds every registry keystone to. A generator that admits a keystone
 records its debt as `fn-teeth-owed`; `(defteeth-check)` refuses teeth that

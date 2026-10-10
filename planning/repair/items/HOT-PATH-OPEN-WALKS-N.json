@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Open and recover walk retained history N: fn-index-build-loop (books/index.lisp:111, via fn-owner-recover-from-store-open -> fn-ock-install -> fn-own-start -> fn-gidx-build), fn-rii-kbuild-pins-loop and fn-rii-kbuild-releases-loop (books/replay-identity-index.lisp:478-480, via fn-owner-recover-rows -> fn-rii-sco-extend -> fn-rii-sco-cpr-resume -> fn-rii-ix-of -> fn-rii-kbuild). N is the store's retained history; the bound today is N itself. Coordinator ruling 2026-10-10 (CL25): Builder A owns them under the lazy-open shape, since a walk of N at open is what the reopen protocol forbids. Each find is listed under this packet in planning/hot-path-findings.json; the packet closes when hot_path_check no longer reports them.",
+ "file": "host/native/owner.lisp",
+ "id": "HOT-PATH-OPEN-WALKS-N",
+ "notes": [],
+ "owner": "builder-A",
+ "severity": "medium",
+ "source": "hot_path_check, Builder D 2026-10-10 under the coordinator's CL25 ruling",
+ "state": "open",
+ "title": "index and replay-identity builds walk retained history N at open and recover",
+ "updated": "2026-10-10T02:50:00Z"
+}

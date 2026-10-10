@@ -146,6 +146,33 @@ echo REACHED
             self.assertEqual(cached.stdout.splitlines(), ["tools/native_preflight.py", "--cache",
                 "/tank/fn/scratch/.native-preflight-cache", "--gate", "interfaces-check"])
 
+    def test_the_box_artifacts_are_made_in_the_shipped_tree_and_stamped_with_its_source(self):
+        # build/box/ is never committed (tools/box_artifacts.py), so a shipped
+        # tree makes it: the wire grammar after the certify step, the stamp
+        # before any module; the registry is no file (interface_emit.registry)
+        sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
+                             text=True, check=True).stdout.strip()
+        built = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
+        self.assertEqual(built.returncode, 0, built.stderr)
+        out = built.stdout
+        wire = out.index("step box-wire swarm-build python3 tools/protocol_emit.py --wire --write")
+        self.assertLess(out.index("step certify "), wire)
+        self.assertLess(wire, out.index("acquire_step acquire default"))
+        stamp = out.index("step box-stamp")
+        self.assertIn(f"write_stamp(Path('.'), '{sha}', 'hbox', '{sha}')", out[stamp:])
+        self.assertLess(stamp, out.index("tstep "))
+        self.assertNotIn("--write-registry", out)
+        linked = dry("--image-set", sha, "--images", "developer", "HEAD", "tests.test_native_owner")
+        self.assertEqual(linked.returncode, 0, linked.stderr)
+        out = linked.stdout
+        self.assertNotIn("certify_books", out)
+        self.assertNotIn("--write-registry", out)
+        wire = out.index("step box-wire swarm-build python3 tools/protocol_emit.py --wire --write")
+        self.assertLess(out.index("if [ -f books/wire-export.cert ]"), wire)
+        self.assertIn("rm -f build/box/wire-grammar.json", out)
+        self.assertLess(wire, out.index("step box-stamp"))
+        self.assertLess(out.index("step box-stamp"), out.index("tstep "))
+
     def test_an_image_set_links_prebuilt_images_instead_of_building(self):
         sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=ROOT, capture_output=True,
                              text=True, check=True).stdout.strip()

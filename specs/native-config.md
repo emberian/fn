@@ -153,6 +153,8 @@ local file allocator refuses before opening beyond `cold_file_ids`.
 
 ### Retire operator observation (PKT-895)
 
+PKT-895: Bounded retire operator observation with honest uncertainty.
+
 `retire [--drain SECONDS]` asks the live owner to retire and observes its
 socket/store-lock state. ACL2's `fn-nret-observation-step` bounds this
 observation to the accepted drain window plus a 60-second operator allowance,
@@ -187,6 +189,8 @@ widths, is a fault. These checks preserve HST-008/HST-009's shared outcome
 classes; they do not manufacture a policy refusal from an image defect.
 
 ## Resumable developer init (STO-10005)
+
+STO-10005: Resumable developer init preserves its sealed profile and initial groups.
 
 `store ROOT init` may resume interrupted initialization. Under its exclusive
 writer lock, it supplies the requested decoded profile, the immutable sealed

@@ -2151,7 +2151,7 @@ def main(argv: list[str] | None = None) -> int:
             generated, hand = generated_coverage()
             print(f"teeth: {generated} registry keystones have generated teeth "
                   f"(defkeystone/defteeth forms), {hand} hand teeth; tools/"
-                  f"keystone_emit.py holds planning/teeth-obligations.json to its base")
+                  f"keystone_emit.py holds build/teeth-obligations.json to its base")
         for check, number in sorted(by_check.items()):
             print(f"teeth: {number} {check}")
         if not by_check:

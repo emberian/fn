@@ -1683,6 +1683,8 @@ without replaying the logical transition.
 
 ### Authentication failures (NNT-1002)
 
+NNT-1002: One connection gets at most three failed authentications; the third is answered 481, then 400, and the connection closes, whatever the read still holds.
+
 One connection gets three failed authentications. A failure is a 481 to
 AUTHINFO PASS (a wrong password for the cached name) or to an AUTHINFO SASL
 exchange (`fn-auth-sasl-finish`'s failed arm); a syntax error, a 483, a 503,
