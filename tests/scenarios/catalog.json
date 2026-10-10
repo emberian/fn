@@ -919,7 +919,9 @@
         "cases": [
           "test_local_handler_fault_uses_core_fault_and_preserves_other_clients"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_owner.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       }
     },
     {
@@ -5839,7 +5841,9 @@
           "NativeSaslTests.test_scram_replayed_final_is_481",
           "NativeSaslTests.test_scram_plus_with_tls_exporter"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_sasl.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       }
     },
     {
@@ -6028,7 +6032,9 @@
           "NativeBpCarryAbandonTests.test_waiver_of_an_obligation_not_held_is_refused",
           "NativeBpCarryAbandonTests.test_a_waiver_cut_before_its_store_release_is_completed_once"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_bp_carry_abandon.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_bp_obligation_native.py",
@@ -6078,7 +6084,9 @@
         "cases": [
           "MaintenanceLiveTests.test_recover_and_inspect_answer_on_the_running_owner_and_a_stopped_status_reads_the_header"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_maintenance_live.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_checkpoint_auto.py",
@@ -6104,7 +6112,9 @@
         "cases": [
           "OperatorRefusalTests.test_a_post_the_store_refuses_names_its_reason_and_policy_set_refuses_by_name"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_operator_refusals.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_checkpoint_auto.py",
@@ -6130,7 +6140,9 @@
         "cases": [
           "test_store_export_answers_on_the_running_owner_and_the_archive_imports"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_maintenance_live.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "books/owner-export-request.lisp",
@@ -6185,7 +6197,9 @@
         "cases": [
           "MaintenanceLiveTests.test_inspect_group_lists_the_memberships_live_and_offline"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_maintenance_live.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "books/owner-export-request.lisp",
@@ -6196,7 +6210,7 @@
       "id": "SCN-211",
       "title": "A restored backup that diverged is a new lineage: its checkpoint is refused by name against this log, and this store's against its, with or without a suffix; an ordinary restart is not a new lineage",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-035"
       ],
@@ -6223,7 +6237,8 @@
           "test_this_checkpoint_against_the_copy_log_is_refused_by_name"
         ],
         "native": true
-      }
+      },
+      "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; tests.test_native_store_lineage fails its 3 cases on the native image (hbox native-scn1; FILL-STORE-LINEAGE-DIVERGED-CHECKPOINT). It returns to implemented when a passing run's log is archived and cited."
     },
     {
       "id": "SCN-214",
@@ -6245,7 +6260,9 @@
           "test_upgrade_beside_and_rollback_walk_with_the_printed_gap",
           "test_a_release_that_refuses_the_store_switches_nothing"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_install.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "packaging/install.sh",
@@ -6307,7 +6324,9 @@
           "test_stopped_copy_blesses_reopens_and_names_missing_and_malformed_inputs",
           "test_foreign_lineage_is_refused_and_complete_old_lineage_is_explicitly_allowed"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_snapshot_bless.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_snapshot_bless.py",
@@ -6885,7 +6904,9 @@
         "cases": [
           "test_health_is_bounded_readiness_in_the_running_owner_without_login"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_web.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_web.py",
@@ -6917,7 +6938,9 @@
         "cases": [
           "test_posts_land_in_the_configured_log_and_name_the_path_identity"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_profile.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_profile.py",
@@ -7703,7 +7726,7 @@
       "id": "SCN-1071",
       "title": "Persistent forest carry and exact NIL candidate publication replay",
       "milestone": "M2",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-10003"
       ],
@@ -7724,7 +7747,8 @@
       "evidence": [
         "tests/acl2/history-event-directory-tests.lisp",
         "tests/acl2/history-event-backing-tests.lisp"
-      ]
+      ],
+      "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; its test is an ACL2 test book with no archived certify log. It returns to implemented when a passing run's log is archived and cited."
     },
     {
       "id": "SCN-1073",
@@ -8559,7 +8583,9 @@
         "cases": [
           "CheckpointImageReadback.test_stage_custody_and_readback"
         ],
-        "native": false
+        "native": false,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_checkpoint_image_readback.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_checkpoint_image_readback.py",
@@ -8590,7 +8616,9 @@
       ],
       "implementation": {
         "test": "tests/native_reclaim_capture_raw.lisp",
-        "native": false
+        "native": false,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/native_reclaim_capture_raw.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/native_reclaim_capture_raw.lisp"
@@ -8716,7 +8744,7 @@
       "id": "SCN-1101",
       "title": "Private history relocation yields by page without changing its completed concrete",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-017",
         "STO-026"
@@ -8742,7 +8770,8 @@
         "books/history-pages-relocate-step.lisp",
         "tests/acl2/history-pages-relocate-step-tests.lisp"
       ],
-      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result."
+      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result.",
+      "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; its test is an ACL2 test book with no archived certify log. It returns to implemented when a passing run's log is archived and cited."
     },
     {
       "id": "SCN-1103",
