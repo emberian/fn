@@ -7,8 +7,16 @@
 ; FN-O1-CAT-POSITIONALP has no live removal witness: every executable
 ; catalog is built by fn-cat-commit, positional by
 ; FN-O1-ASSIGN-IS-POSITIONAL (labelled, not witnessed).
+; Packet 4: FN-O1-CATALOG-ROWS-WITHIN-HEADER-AT-A-PREFIX on a catalog holding
+; one row of a two-record history (the prefix relation holds and the
+; history relation does not), with removals of the filed history and of the
+; prefix relation; FN-O1-SERVED-CATALOG-ROWS-WITHIN-HEADER's idle arm on the
+; owner recovered over the interned rows and the host's catalog load, its
+; conjuncts evaluated, with the removal of the filed history (an unfiled row
+; recovery accepts).
 (in-package "ACL2")
 (include-book "../../books/filed-catalog")
+(include-book "../../books/served-catalog-owner")   ; the host's load over rows; store-intern
 (include-book "../../books/crypto-attach")
 (include-book "../../books/codec-attach")
 
@@ -103,3 +111,93 @@
 ; (fn-held-with-numbers (fn-held-plain *p3-w0* 0) '(("other" . 1) ("fn.letters" . 1)))
 ; over an arena holding *o1-src* meets the relation and the filed history for
 ; (list *p3-w0*) at I = 0 and fails the conclusion; no public updater builds it.
+
+; -----------------------------------------------------------------------------
+; Packet 4.  P4-0a (FN-O1-CATALOG-ROWS-WITHIN-HEADER-AT-A-PREFIX): the
+; catalog holds the first record of a two-record history, the state between
+; the durable write of the second and the finish; the prefix relation holds
+; where the history relation does not.
+(defun p4-prefix-run (loaded claimed i fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((fn-arena (fn-arena-clear fn-arena)) (fn-cat (fn-cat-clear fn-cat)))
+    (mv-let (fn-arena fn-cat)
+      (fn-cat-load loaded nil 0 fn-arena fn-cat)
+      (let ((article (fn-cat-row-article i fn-arena fn-cat)))
+        (mv (list (fn-cat-count fn-cat)
+                  (fn-cat-history-prefix-relation claimed fn-arena fn-cat)
+                  (fn-o1-records-filedp claimed)
+                  (fn-o1-cat-positionalp fn-cat)
+                  (fn-o1-article-within-headerp article (fn-nntp-article-bytes article fn-arena))
+                  (fn-cat-history-relation claimed fn-arena fn-cat))
+            fn-arena fn-cat)))))
+(defun p4-prefix-exec (loaded claimed i)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (r fn-arena fn-cat) (p4-prefix-run loaded claimed i fn-arena fn-cat) (mv r fn-arena)))
+      r)))
+; satisfiable: one row of two, prefix, filed, positional, conclusion; not the history relation
+(assert-event (equal (p4-prefix-exec (list *p3-w0*) *p3-h* 0) '(1 t t t t nil)))
+; removal of FN-O1-RECORDS-FILEDP: two rows of three, the second unfiled
+(assert-event (equal (p4-prefix-exec *p3-hbad* (append *p3-hbad* (list *p3-w1*)) 1)
+                     '(2 t nil t nil nil)))
+; removal of the prefix relation: the catalog is not a prefix of the claim
+(assert-event (equal (take 5 (p4-prefix-exec *p3-hbad* *p3-h* 1)) '(2 nil t t nil)))
+
+; P4-0b (FN-O1-SERVED-CATALOG-ROWS-WITHIN-HEADER) at the idle arm: the
+; owner recovered over the interned rows of a history, the host's catalog
+; loaded by fn-sca-load-held-rows over the arena holding the payloads.
+; fn-cat-ocl-relation is non-executable (defun-nx); its conjuncts are
+; evaluated: fn-ocl-relation, the idle store and the history relation over
+; the served articles of the store's rows.  The non-idle arm is P4-0a's.
+(defconst *p4-configs* (list *fn-cfg-default-record*))
+(defun p4-rows (ws)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (rows fn-arena) (fn-intern-events ws nil 0 fn-arena) rows)))
+(defun p4-open (ws)
+  (declare (xargs :verify-guards nil))
+  (fn-ock-recover-extended (fn-sco-extend (fn-sco-capture *p4-configs* nil) *p4-configs* (p4-rows ws))
+                           *p4-configs* 8 4))
+(defun p4-payloads (ws)
+  (declare (xargs :mode :program))
+  (if (consp ws) (cons (fn-record-payload (car ws)) (p4-payloads (cdr ws))) nil))
+(defun p4-served-run (oc payloads i fn-arena fn-cat)
+  (declare (xargs :mode :program :stobjs (fn-arena fn-cat)))
+  (let* ((own (fn-ocfg-owner oc))
+         (rows (fn-sf-records (fn-sn-files (fn-own-store own))))
+         (view (fn-own-view own))
+         (fn-arena (fn-arena-clear fn-arena))
+         (fn-arena (fn-arn-seal-many payloads fn-arena))
+         (fn-cat (fn-sca-load-held-rows rows (fn-midx-build (fn-state-articles (fn-own-view-archive view)))
+                                        fn-arena fn-cat))
+         (history (fn-cat-history-articles rows fn-arena))
+         (article (fn-cat-row-article i fn-arena fn-cat)))
+    (mv (list (fn-cat-count fn-cat)
+              (fn-ocl-relation oc)
+              (if (fn-own-store-idlep (fn-own-store own)) t nil)
+              (fn-cat-history-relation history fn-arena fn-cat)
+              (fn-o1-records-filedp history)
+              (fn-o1-cat-positionalp fn-cat)
+              (fn-o1-article-within-headerp article (fn-nntp-article-bytes article fn-arena)))
+        fn-arena fn-cat)))
+(defun p4-served-exec (ws i)
+  (declare (xargs :mode :program))
+  (with-local-stobj fn-arena
+    (mv-let (r fn-arena)
+      (with-local-stobj fn-cat
+        (mv-let (r fn-arena fn-cat) (p4-served-run (p4-open ws) (p4-payloads ws) i fn-arena fn-cat) (mv r fn-arena)))
+      r)))
+; an unfiled record that recovery accepts: its groups name the source's two
+; groups out of order (the catalog-entries payload with no Newsgroups is
+; refused by the recovery itself, (p4-open *p3-hbad*) = :fault)
+(defconst *p4-swap* (p3-record 1 "<w3@b.example>" *o1-src* '("fn.letters" "fn.test")))
+(assert-event (and (not (equal (p4-open *p3-h*) :fault))
+                   (not (equal (p4-open (list *p3-w0* *p4-swap*)) :fault))
+                   (equal (p4-open *p3-hbad*) :fault)))
+; satisfiable at both rows
+(assert-event (equal (p4-served-exec *p3-h* 0) '(2 t t t t t t)))
+(assert-event (equal (p4-served-exec *p3-h* 1) '(2 t t t t t t)))
+; removal of FN-O1-RECORDS-FILEDP over the served history: the swapped row fails
+(assert-event (equal (p4-served-exec (list *p3-w0* *p4-swap*) 1) '(2 t t t nil t nil)))

@@ -8,6 +8,11 @@
 ; gives every row, at any index, FN-O1-ARTICLE-WITHIN-HEADERP over the bytes
 ; its handle denotes (FN-O1-CATALOG-ROWS-WITHIN-HEADER), the hypothesis
 ; books/filed-groups' FN-O1-XREF-WITHIN-THE-HEADER asks of a served article.
+;  Packet 4 states the same per row under the prefix relation, between
+; the durable write and the finish (FN-O1-CATALOG-ROWS-WITHIN-HEADER-AT-A-
+; PREFIX), and so under the owner's catalog relation, idle or not, over the
+; served articles of the store's rows (FN-O1-SERVED-CATALOG-ROWS-WITHIN-
+; HEADER).
 
 (in-package "ACL2")
 
@@ -238,3 +243,95 @@
                             (p (fn-nntp-article-bytes (fn-cat-row-article i fn-arena fn-cat) fn-arena)))
                  (:instance o1c-row-within-past-the-count (i 0)
                             (p (fn-nntp-article-bytes (fn-cat-row-article 0 fn-arena fn-cat) fn-arena)))))))
+
+; -----------------------------------------------------------------------------
+; Packet 4 (P4-0a, P4-0b): the same per-row conclusion while the store is
+; between the durable write and the finish (the prefix relation,
+; books/catalog-entries.lisp:174), and over the owner's catalog relation,
+; idle or not (FN-CAT-OCL-RELATION), whose history is the served articles of
+; the store's rows (FN-CAT-HISTORY-ARTICLES).  catalog-entries is included
+; here, below packet 3, so packet 3's proofs keep their world.
+
+(include-book "catalog-entries")
+
+(local
+ (defthm o1c-all-filedp-prefix
+   (implies (and (fn-sf-prefixp xs ys) (o1c-all-filedp ys)) (o1c-all-filedp xs))
+   :hints (("Goal" :in-theory (enable fn-sf-prefixp) :induct (fn-sf-prefixp xs ys)))))
+
+(local
+ (defthm o1c-prefix-row-within-below-the-count
+   (implies (and (fn-cat-history-prefix-relation records fn-arena fn-cat)
+                 (fn-o1-records-filedp records)
+                 (fn-o1-cat-positionalp fn-cat)
+                 (natp i) (< i (fn-cat-count fn-cat)))
+            (let ((article (fn-cat-row-article i fn-arena fn-cat)))
+              (fn-o1-article-within-headerp
+               article (fn-nntp-article-bytes article fn-arena))))
+   :rule-classes nil
+   :hints (("Goal"
+            :do-not-induct t
+            :in-theory (e/d (fn-cat-history-prefix-relation fn-o1-article-within-headerp fn-cat-row-article
+                             fn-nntp-article-bytes fn-nntp-payload-bytes o1c-rowp)
+                            (fn-o1-filed-within-sourcep fn-membership-listp fn-cat-wire-list
+                             fn-cat-at-is-nth fn-cat-count-is-len fn-arena-payload-is-nth fn-arena-count-is-len
+                             fn-arena-payload fn-arena-count fn-sf-prefixp
+                             fn-cat-handles-inp fn-cat-handles-inp-at o1c-rowsp-nth o1c-all-filedp-prefix
+                             o1c-positionalp-is-rowsp fn-o1-records-filedp o1c-filedp-article-records
+                             fn-cat-row-payload-natp))
+            :use ((:instance o1c-wire-filed)
+                  (:instance o1c-filedp-article-records)
+                  (:instance o1c-all-filedp-prefix (xs (fn-cat-wire-list 0 fn-arena fn-cat))
+                             (ys (fn-sf-article-records records)))
+                  (:instance o1c-positionalp-is-rowsp (c fn-cat))
+                  (:instance fn-cat-row-payload-natp (seq i))
+                  (:instance fn-cat-handles-inp-at (n (fn-cat-count fn-cat)) (seq i))
+                  (:instance o1c-rowsp-nth (c fn-cat) (k i))
+                  (:instance fn-cat-at-is-nth (seq i))
+                  (:instance fn-cat-count-is-len))))))
+
+; P4-0a K-O1-PREFIX-ROWS-WITHIN
+(defthm fn-o1-catalog-rows-within-header-at-a-prefix
+  (implies (and (fn-cat-history-prefix-relation records fn-arena fn-cat)
+                (fn-o1-records-filedp records)
+                (fn-o1-cat-positionalp fn-cat))
+           (let ((article (fn-cat-row-article i fn-arena fn-cat)))
+             (fn-o1-article-within-headerp
+              article (fn-nntp-article-bytes article fn-arena))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :cases ((and (natp i) (< i (fn-cat-count fn-cat)))
+                   (natp i)
+                   (< 0 (fn-cat-count fn-cat)))
+           :in-theory (disable fn-cat-row-article fn-o1-article-within-headerp fn-nntp-article-bytes
+                               fn-cat-history-prefix-relation fn-o1-records-filedp fn-o1-cat-positionalp)
+           :use (o1c-prefix-row-within-below-the-count
+                 (:instance o1c-prefix-row-within-below-the-count (i 0))
+                 o1c-row-article-non-natp
+                 (:instance o1c-row-within-past-the-count
+                            (p (fn-nntp-article-bytes (fn-cat-row-article i fn-arena fn-cat) fn-arena)))
+                 (:instance o1c-row-within-past-the-count (i 0)
+                            (p (fn-nntp-article-bytes (fn-cat-row-article 0 fn-arena fn-cat) fn-arena)))))))
+
+; P4-0b K-O1-SERVED-ROWS-WITHIN
+(defthm fn-o1-served-catalog-rows-within-header
+  (implies (and (fn-cat-ocl-relation oc fn-arena fn-cat)
+                (fn-o1-records-filedp
+                 (fn-cat-history-articles
+                  (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena))
+                (fn-o1-cat-positionalp fn-cat))
+           (let ((article (fn-cat-row-article i fn-arena fn-cat)))
+             (fn-o1-article-within-headerp
+              article (fn-nntp-article-bytes article fn-arena))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-cat-ocl-relation)
+                           (fn-cat-row-article fn-o1-article-within-headerp fn-nntp-article-bytes
+                            fn-cat-history-prefix-relation fn-cat-history-relation fn-o1-records-filedp
+                            fn-o1-cat-positionalp fn-cat-history-articles fn-ocl-relation))
+           :use ((:instance fn-o1-catalog-rows-within-header
+                            (records (fn-cat-history-articles
+                                      (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)))
+                 (:instance fn-o1-catalog-rows-within-header-at-a-prefix
+                            (records (fn-cat-history-articles
+                                      (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)))))))
