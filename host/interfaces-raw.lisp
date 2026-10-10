@@ -6,12 +6,15 @@
 (include-book "../books/history-paged")
 (include-book "../books/history-paged-adopt")
 (include-book "../books/history-records")
+(include-book "../books/reclaim-chunked-walk")
 (include-book "../books/resource-vector-exec")
 (include-book "../books/history-root-credit")
+(include-book "../books/reclaim-chunked-seal")
 (definterface create-fn-decoded-job :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-decoded-job)))
 (definterface create-fn-hist$p :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hist$p)))
 (definterface create-fn-hrecs$c :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hrecs$c)))
 (definterface create-fn-hrecs$s :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-hrecs$s)))
+(definterface create-fn-rcwacc :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-rcwacc)))
 (definterface create-fn-resource-ledger :class :common-lisp-compliant :kinds () :raw-guarded (0 nil (fn-resource-ledger)))
 (definterface fn-hist$p-append :class :common-lisp-compliant :kinds () :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-append-keeps-wfp))
 (definterface fn-hist$p-candidate-word :class :common-lisp-compliant :kinds ((expected-count natp)) :raw-with (fn-hist$pcorr-implies-wfp fn-hist$p-count-natp))
@@ -28,3 +31,5 @@
 ; outside the DTN image: fn-owner-prepare-topic :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-refuse-reservation :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
 ; outside the DTN image: fn-owner-take :raw-with (:carried fn-owner-served-carried), whose row is defined in host/owner-served-carried.lisp, which host/native/build-dtn.lisp does not load
+(definterface fn-rcwacc-canon-step :class :common-lisp-compliant :kinds () :raw-with (fn-rcwacc-carriedp-of-init fn-rcwacc-carriedp-of-canon-step fn-rcwacc-carriedp-of-predict-step))
+(definterface fn-rcwacc-predict-step :class :common-lisp-compliant :kinds () :raw-with (fn-rcwacc-carriedp-of-init fn-rcwacc-carriedp-of-canon-step fn-rcwacc-carriedp-of-predict-step))
