@@ -115,6 +115,17 @@
   (declare (xargs :guard t))
   (let ((r (nth 11 (true-list-fix cfg))))
     (if (natp r) r 25)))
+; CONFIG: the octets of the configuration history the run holds (config/,
+; the lstat sizes), the operator's data; NIL or absent is none.
+(defun fn-mm-cfg-config (cfg) (declare (xargs :guard t)) (fn-mm-nat 12 cfg))
+; The configuration's heap: its records read whole and decoded into the live
+; limits, *fn-mm-config-heap-per-octet* heap octets an octet (a 16-octet
+; cons a list element, twice: the list and its decoding, and the vector
+; beside it).  O-CONFIG (owed, measured): the overlay's heap is within it.
+(defconst *fn-mm-config-heap-per-octet* 33)
+(defun fn-mm-config-heap (config-octets)
+  (declare (xargs :guard t))
+  (* *fn-mm-config-heap-per-octet* (nfix config-octets)))
 
 ; -----------------------------------------------------------------------------
 ; M_configured: the operator's figure when one is given, else the machine's
@@ -229,7 +240,8 @@
        (fn-mm-tot-hcharge tot)
        (* *fn-heap-membership-octets* (fn-mm-tot-memberships tot))
        (* *fn-heap-list-octets-per-octet* (fn-mm-tot-events tot))
-       (fn-mm-hroot-live n (fn-mm-tot-history tot)))))
+       (fn-mm-hroot-live n (fn-mm-tot-history tot))
+       (fn-mm-config-heap (fn-mm-cfg-config cfg)))))
 
 ; A reply a connection holds: the article (connection-budget's stated
 ; workload, 2A + 1,024) or an OVER/XOVER cursor quantum, W NOV lines built
@@ -336,13 +348,16 @@
            (fn-heap-reclaim-demand-octets n (fn-mm-reclaim-charge tot))
          0))))
 
-; THE COLLECTOR, a stated policy and not an assumption (memory landing 3+4):
-; after any collection whose dynamic usage exceeds the live usage at the last
-; full collection, plus RHO percent of it, plus twice the trigger in force,
-; one full collection runs (host/native/heap.lisp fnn-heap-collector-policy).
-; O-COLLECTOR: under it the dynamic space's resident pages are at most the
-; live heap, RHO percent of it, and twice the trigger (a publication's raise
-; is maintenance's 2 (PUB-TRIGGER - TRIGGER)).  Measured on fn-core: without
+; THE COLLECTOR, a stated policy (memory landing 3+4): after any collection
+; whose dynamic usage exceeds the live usage at the last full collection,
+; plus RHO percent of it, plus twice the trigger in force, a full collection
+; is signalled and runs on the collector thread (host/native/heap.lisp
+; fnn-heap-collector-policy).  O-COLLECTOR, a MEASURED obligation and not a
+; guarantee: the policy signals after the excess is observed and does not
+; fence allocation, so between the signal and the collection the dynamic
+; space may pass live + RHO% + 2 x trigger (Codex 3+4a review F8); the term
+; is checked against VmHWM by the census, never assumed (a publication's
+; raise is maintenance's 2 (PUB-TRIGGER - TRIGGER)).  Measured on fn-core: without
 ; the policy the resident set at rest was 2-4 x the live heap (W1 at 4,000
 ; records: 245-302 MB against 74 MB live), so the former A-GC-FOOTPRINT (live
 ; + 2 x trigger) was false; with it at RHO 25, full collections of 57-111 ms
@@ -427,9 +442,12 @@
 ; at most the reader's file bound, past which it refuses the checkpoint and
 ; replays.  That bound is the lesser of the profile's (fn-ock-capture-budget,
 ; 3H and a segment) and the same bound over the store the file encodes:
-; fn-sccr-file-read-bound at the store's LOG, three times the octets of its
-; records' encodings and a segment (the arena run and P hold the payloads,
-; E the events less them, R the fold roots, each within the encodings).  A
+; fn-sccr-file-read-bound at the store's LOG and its configuration's octets,
+; three times those and a segment (the arena run and P hold the payloads, E
+; the events less them, R the fold roots: the configuration fold's groups
+; and limits within the configuration's octets, the rest within the
+; records' encodings; Codex 3+4a review F2: 1,000 configured groups of 256
+; octets put 256,000 octets in R for a 3,470-octet LOG).  A
 ; profile-sized term charged to an observed store is D27's defect: at D27's
 ; profile it was 3 TiB for W13's thousand posts.  The reader takes the
 ; header's totals for this bound (Builder A, io.lisp's reader, with the
@@ -439,25 +457,25 @@
   :rule-classes :type-prescription
   :hints (("Goal" :in-theory (enable fn-sccr-file-read-bound fn-scc-segment-max-octets))))
 
-(defun fn-mm-checkpoint-load-octets (profile tot)
+(defun fn-mm-checkpoint-load-octets (profile tot cfg)
   (declare (xargs :guard t))
   (min (fn-ock-capture-budget profile)
-       (fn-sccr-file-read-bound (fn-mm-tot-log tot)
+       (fn-sccr-file-read-bound (+ (fn-mm-tot-log tot) (fn-mm-cfg-config cfg))
                                 (fn-bs-profile-max-record-octets profile))))
 
 (defthm fn-mm-checkpoint-load-octets-monotone
   (implies (<= (fn-mm-tot-log a) (fn-mm-tot-log b))
-           (<= (fn-mm-checkpoint-load-octets profile a) (fn-mm-checkpoint-load-octets profile b)))
+           (<= (fn-mm-checkpoint-load-octets profile a cfg) (fn-mm-checkpoint-load-octets profile b cfg)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mm-checkpoint-load-octets fn-sccr-file-read-bound)
                                   (fn-ock-capture-budget fn-scc-segment-max-octets fn-mm-tot-log
-                                   fn-bs-profile-max-record-octets)))))
+                                   fn-mm-cfg-config fn-bs-profile-max-record-octets)))))
 
 (defun fn-mm-reopen-live (profile cfg tot)
   (declare (xargs :guard t))
   (+ (fn-mm-owner tot cfg)
      (fn-heap-store-open-octets profile (fn-mm-tot-log tot) (fn-mm-tot-records tot))
-     (fn-mm-checkpoint-load-octets profile tot)
+     (fn-mm-checkpoint-load-octets profile tot cfg)
      (fn-mm-maintenance tot cfg)
      *fn-mm-failure-headroom-octets*))
 

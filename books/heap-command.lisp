@@ -80,10 +80,12 @@
     nil))
 
 ; A read-only command serves nothing: no connection, no TLS, no handshake,
-; no cold-read pool, no cache, no reclaim, the collector at the nursery.
-(defun fn-mo-read-cfg (nursery)
+; no cold-read pool, no cache, no reclaim, the collector at the nursery; it
+; holds the store's configuration, CONFIG-OCTETS of it (the owner's
+; fn-mm-config-heap, and the checkpoint's configuration fold).
+(defun fn-mo-read-cfg (nursery config-octets)
   (declare (xargs :guard t))
-  (list 0 nil (nfix nursery) (nfix nursery) nil 0 0 0 nil 0))
+  (list 0 nil (nfix nursery) (nfix nursery) nil 0 0 0 nil 0 nil nil (nfix config-octets)))
 
 ; IMG observed by the probe: (FILE ANON THREAD), each natural.
 (defun fn-mm-img-p (img)
@@ -97,14 +99,13 @@
 ;; limits) -- a profile-sized input (Codex, landing-2 review F2: the history's
 ;; allowance admits a million records).  It is charged from the octets the
 ;; probe observes in config/ (the lstat sizes), at
-;; *fn-mo-config-heap-per-octet* heap octets an octet: a 16-octet cons a list
-;; element, twice (the list and its decoding), the vector beside it.
-;; O-CONFIG (owed, measured in landing 4): the overlay's heap is within it.
-(defconst *fn-mo-config-heap-per-octet* 33)
+;; books/memory-model.lisp fn-mm-config-heap (the same term the run's owner
+;; charges over its CFG's configuration octets; a read's CFG carries none, so
+;; it is charged once).
 
 (defun fn-mo-config-heap (config-octets)
   (declare (xargs :guard t))
-  (* *fn-mo-config-heap-per-octet* (nfix config-octets)))
+  (fn-mm-config-heap config-octets))
 
 ;; THE COLLECTOR'S CARD TABLE.  SBCL's generational collector marks one
 ;; octet a card of dynamic space and touches the whole table at start
@@ -160,11 +161,10 @@
 
 (defun fn-mo-read-need (action class profile img nursery tot config-octets)
   (declare (xargs :guard t))
-  (let ((cfg (fn-mo-read-cfg nursery)))
+  (let ((cfg (fn-mo-read-cfg nursery config-octets)))
     (+ (if (equal class :reads)
            (fn-mm-reopen-need profile img cfg tot)
          (max (fn-mm-sum profile img cfg tot) (fn-mm-reopen-need profile img cfg tot)))
-       (fn-mo-config-heap config-octets)
        (fn-mo-list-octets action profile tot))))
 
 (defun fn-mo-read-dynamic (action class profile img core nursery tot config-octets)
@@ -533,8 +533,8 @@
                (fn-mo-read-need action class profile img nursery b config-octets)))
   :rule-classes nil
   :hints (("Goal" :in-theory (union-theories '(fn-mo-read-need max) (theory 'minimal-theory))
-           :use ((:instance fn-mm-sum-grows-with-the-store (cfg (fn-mo-read-cfg nursery)))
-                 (:instance fn-mm-reopen-need-monotone (cfg (fn-mo-read-cfg nursery))
+           :use ((:instance fn-mm-sum-grows-with-the-store (cfg (fn-mo-read-cfg nursery config-octets)))
+                 (:instance fn-mm-reopen-need-monotone (cfg (fn-mo-read-cfg nursery config-octets))
                             (i1 img) (i2 img))
                  (:instance fn-mm-img-le-reflexive (i img))
                  fn-mm-tot-le-parts
@@ -573,7 +573,7 @@
                                   (fn-mm-base fn-mm-owner fn-mm-maintenance fn-mm-sum fn-mo-list-octets
                                    fn-heap-store-open-octets fn-mo-read-dynamic fn-heap-mb-of
                                    fn-mm-collector fn-mm-checkpoint-load-octets))
-           :use ((:instance fn-mm-terms-natp (cfg (fn-mo-read-cfg nursery)))))))
+           :use ((:instance fn-mm-terms-natp (cfg (fn-mo-read-cfg nursery config-octets)))))))
 
 (defthm fn-mo-read-refuses-only-by-the-model
   (implies (and (<= (fn-mo-read-resident action class profile img core nursery tot config-octets card)

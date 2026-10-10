@@ -179,7 +179,7 @@
                            (tot *hct-w13*) (config-octets *hct-config*) (card *hct-card*)
                            (resident (list *hct-16g*)) (address (list *hct-512m*)))))
   :mutations ((held-to-the-owner-state-alone
-               (:hypothesis fits (<= (fn-mm-owner tot (fn-mo-read-cfg nursery))
+               (:hypothesis fits (<= (fn-mm-owner tot (fn-mo-read-cfg nursery config-octets))
                                      (fn-mm-least-observation resident)))
                ((action :inspect) (class :reads) (profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*) (tot *hct-w13*)
                 (config-octets *hct-config*) (card *hct-card*) (resident (list *hct-256m*)) (address nil))

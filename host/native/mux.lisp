@@ -2194,6 +2194,8 @@ the run's (exit 1), named on stderr and in the service log."
          ;; (host/native/heap.lisp).
          (img (fnn-heap-img-observation (fnn-store-config store)))
          (resident (fnn-heap-resident-observations))
+         ;; the configuration history's octets (config/'s lstat sizes)
+         (config-octets (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store)))
          (decision
            (fnn-owner-serialized
             service nil
@@ -2225,7 +2227,11 @@ the run's (exit 1), named on stderr and in the service log."
                                   (fnn-store-config store) (and tls-context t)
                                   (fnn-owner-service-reclaim-live service)
                                   (fnn-owner-service-cold-resources service)
-                                  (fnn-owner-over-window))
+                                  (fnn-owner-service-output-resources service)
+                                  (fnn-peer-flight-profile (fnn-store-root store))
+                                  (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit)
+                                  (fnn-store-root store)
+                                  (fnn-owner-over-window) config-octets)
                   ;; Store figure is captured before both allowance extensions.
                   ;; ACL2 validates dynamic >= store + exact cold + output pool.
                   (fnn-owner-output-install

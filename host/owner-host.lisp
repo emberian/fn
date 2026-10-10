@@ -668,14 +668,16 @@
                (state (f-put-global 'fn-owner-carried-usage
                                     (cons count (fn-pcb-tally-records records nil))
                                     state))
-               ; K-TOTALS: the charged totals, folded once here
-               ; (fn-ct-totals-cache-validp of the fold,
-               ; fn-ct-totals-extend-of-a-valid-cache) and advanced from the
-               ; history stobj after (fn-owner-record-totals).  Residency
-               ; :resident charges every held payload in the arena, an
-               ; upper bound of the paged store.
+               ; K-TOTALS: the charged totals start from the empty cache
+               ; (fn-ct-totals-empty-cache-is-valid) and the first query
+               ; folds the recovered store from the history stobj one row a
+               ; record, tail-recursively (fn-hist-totals-advance; the
+               ; list fold fn-ct-charged would hold one frame a record on
+               ; a 1 MiB control stack).  Residency :resident charges every
+               ; held payload in the arena, an upper bound of the paged
+               ; store.
                (state (f-put-global 'fn-owner-record-totals
-                                    (cons count (fn-ct-charged records :resident))
+                                    (cons 0 (fn-ct-zero-tot :resident))
                                     state)))
           (value :installed))
       (value :refused)))))
@@ -1565,7 +1567,10 @@
                       (if staged
                           (fn-owner-authority-proposal-capture
                            (fn-owner-canonical-epoch state) cp staged approved state)
-                        (fn-owner-authority-proposal-clear state)))))
+                        (fn-owner-authority-proposal-clear state))))
+             (state (if (and staged (not reason))
+                        (fn-owner-memory-config-grow (len (fn-cfg-encode staged)) state)
+                      state)))
         (value (fn-ores-config-staged-result staged reason))))))
 
 ;; PKT-605 (PRF-223): the bound the run installed (fn-owner-connection-budget)
@@ -1731,42 +1736,77 @@
 
 ; THE MEMORY GATE's coordinates (K-ADMIT, books/admission-memory.lisp), once
 ; per run after the connection budget holds (host/native/mux.lisp
-; fnn-mux-budget-install): IMG the image as this process observes itself
-; (fn-mo-img-observed), LIMIT the resident limit (fn-mm-resident-limit: no
-; operator figure exists, so the least resident observation, physical memory
-; or a cgroup's memory.max), CFG the run's: the live capacity C, TLS, the
-; serving trigger and the publication's, the live-reclaim opt-in, no paged
-; cache (the totals are :resident), the cold pool's budget
-; (fn-crv-pool-budget) when the operator set one, the handshakes in flight,
-; the OVER window and the Xref server name the listing carries
-; (fn-oag-agent).  P (holders) is C until contract v2.1's pool lands.
-(defun fn-owner-memory-cfg (v capacity tlsp trigger pub-trigger live cold profile window server)
+; fnn-mux-budget-install):
+;   IMG the image as this process observes itself (fn-mo-img-observed);
+;   LIMIT the resident limit (fn-mm-resident-limit: no operator figure exists,
+;     so the least resident observation, physical memory or a cgroup's
+;     memory.max) LESS the runtime pools the launch funded beside the model's
+;     terms (fn-owner-memory-pools: the page-read pool, the explicit cold
+;     policy's or the default plan's, the output pool, the peer flight's;
+;     memory landing 4b's launch model makes them terms);
+;   the run's CFG coordinates: the serving and publication triggers, TLS,
+;     the live-reclaim opt-in, the cold policy, the OVER window, and the
+;     configuration history's octets (observed at start, grown by each staged
+;     record).  The CFG itself is rebuilt from the live configuration at each
+;     use (fn-owner-memory-gate), so a live reconfiguration's capacity,
+;     handshakes and server name are the ones charged (Codex 3+4a review F4).
+; P (holders) is C until contract v2.1's pool lands.
+(defun fn-owner-memory-cfg (v tlsp trigger pub-trigger live cold profile window server config)
   (declare (xargs :guard t))
-  (list capacity tlsp trigger pub-trigger live 0
+  (list (fn-exp-connections-capacity v) tlsp trigger pub-trigger live 0
         (if cold (car (fn-crv-pool-budget cold profile)) 0)
         (fn-cfg-limit v "tls-handshakes-in-flight")
-        window (len server) nil nil))
+        window (len server) nil nil (nfix config)))
+
+(defun fn-owner-memory-pools (profile cold output peer workers cache-limit root)
+  (declare (xargs :guard t))
+  (+ (if cold
+         (car (fn-crv-pool-budget cold profile))
+       (fn-prstartup-launch-extra profile workers cache-limit root))
+     (if (consp output) (nfix (car output)) 0)
+     (if (consp peer) (nfix (car peer)) 0)))
 
 (defun fn-owner-memory-configure (img resident-obs trigger pub-trigger profile tlsp live cold
-                                      window state)
+                                      output peer workers cache-limit root window config state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((cfg (fn-owner-config state))
-         (v (fn-cfg-value cfg))
-         (mcfg (fn-owner-memory-cfg v (fn-exp-connections-capacity v) tlsp trigger pub-trigger
-                                    live cold profile window (fn-oag-agent cfg)))
-         (limit (fn-mm-resident-limit nil resident-obs))
-         (state (f-put-global 'fn-owner-memory-gate (list img mcfg limit) state)))
+  (let* ((least (fn-mm-resident-limit nil resident-obs))
+         (pools (fn-owner-memory-pools profile cold output peer workers cache-limit root))
+         (limit (and (natp least) (nfix (- least pools))))
+         (state (f-put-global 'fn-owner-memory-run
+                              (list img limit trigger pub-trigger profile tlsp live cold
+                                    window (nfix config))
+                              state)))
     (value limit)))
 
 (definterface fn-owner-memory-configure
   :class ::program)
 
-; (IMG CFG LIMIT) as configured; LIMIT NIL until then, so the gate
-; (fn-mm-gate-p: LIMIT a natural) admits nothing a run did not configure.
+; A staged configuration record grows the history the run holds by its
+; encoding (counted at staging: a write that fails over-counts, never
+; under-counts).
+(defun fn-owner-memory-config-grow (octets state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (and (boundp-global 'fn-owner-memory-run state)
+           (consp (f-get-global 'fn-owner-memory-run state)))
+      (let ((r (f-get-global 'fn-owner-memory-run state)))
+        (f-put-global 'fn-owner-memory-run
+                      (update-nth 9 (+ (nfix (nth 9 r)) (nfix octets)) r) state))
+    state))
+
+; (IMG CFG LIMIT): the CFG rebuilt from the live configuration; LIMIT NIL
+; until a run configured it, so the gate (fn-mm-gate-p: LIMIT a natural)
+; admits nothing a run did not configure.
 (defun fn-owner-memory-gate (state)
   (declare (xargs :stobjs state :mode :program))
-  (if (boundp-global 'fn-owner-memory-gate state)
-      (f-get-global 'fn-owner-memory-gate state)
+  (if (and (boundp-global 'fn-owner-memory-run state)
+           (consp (f-get-global 'fn-owner-memory-run state)))
+      (let* ((r (f-get-global 'fn-owner-memory-run state))
+             (cfg (fn-owner-config state))
+             (v (fn-cfg-value cfg)))
+        (list (nth 0 r)
+              (fn-owner-memory-cfg v (nth 5 r) (nth 2 r) (nth 3 r) (nth 6 r) (nth 7 r)
+                                   (nth 4 r) (nth 8 r) (fn-oag-agent cfg) (nth 9 r))
+              (nth 1 r)))
     (list nil nil nil)))
 
 (defun fn-owner-reconfigure (id kind name-octets fn-arena state)

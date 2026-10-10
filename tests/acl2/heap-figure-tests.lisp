@@ -669,6 +669,8 @@
 ;; The evidence package of the store-less keystone (ruling 22): generated
 ;; teeth over the subject the host calls (host/native/heap.lisp
 ;; fnn-heap-reservation through fn-heap-reserve-operation-decide).
+; The scale preset, the store-less action's witness profile.
+(defconst *hft-scale* (fn-bs-profile-resolve '(:scale nil) nil))
 (defteeth fn-heap-operation-decide-of-a-storeless-action
   :subject fn-heap-reserve-operation-decide
   :claim
