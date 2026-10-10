@@ -362,5 +362,41 @@ class InstalledLaunchTests(unittest.TestCase):
         self.assertIn("args=--fn operator {} status".format(plain.config), out)
 
 
+class Acl2SessionHeapTests(unittest.TestCase):
+    """BRIDGE-SESSION-STORELESS-HEAP: the session's options pass through the
+    image launcher's real heap decision (packaging/launcher-decide.sh, with
+    fn_decide_heap standing in for the image's `heap --' probe answering a
+    store-less command's 1,024 MB) and keep the session's own heap."""
+
+    def launched_args(self, user_args):
+        import os, tempfile
+        decide = (native_harness.ROOT / "packaging" / "launcher-decide.sh").read_text()
+        with tempfile.TemporaryDirectory() as work:
+            launcher = os.path.join(work, "image")
+            with open(launcher, "w") as out:
+                out.write("#!/bin/sh\n"
+                          "fn_decide_heap() { SBCL_USER_ARGS='--dynamic-space-size 1024 "
+                          "--control-stack-size 1024KB'; }\n")
+                out.write(decide)
+                out.write('\nprintf %s "$SBCL_USER_ARGS"\n')
+            os.chmod(launcher, 0o755)
+            env = dict(os.environ, SBCL_USER_ARGS=user_args)
+            env.pop("FN_TEST_HEAP_MB", None)
+            return subprocess.run([launcher, "--fn", "acl2", "session"], env=env,
+                                  capture_output=True, text=True, check=True).stdout.split()
+
+    def test_the_session_runs_at_its_own_heap_not_the_store_less_decision(self):
+        args = self.launched_args(native_harness.acl2_session_user_args())
+        self.assertNotIn("1024", args)
+        heap = args[len(args) - 1 - args[::-1].index("--dynamic-space-size") + 1]
+        self.assertGreater(int(heap), 1024)
+        self.assertEqual(args[-2:], ["--control-stack-size", "64MB"])
+
+    def test_a_stack_only_session_takes_the_store_less_decision(self):
+        args = self.launched_args("--control-stack-size 64MB")
+        self.assertEqual(args, ["--dynamic-space-size", "1024", "--control-stack-size", "1024KB",
+                                "--control-stack-size", "64MB"])
+
+
 if __name__ == "__main__":
     unittest.main()

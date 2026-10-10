@@ -30,6 +30,7 @@ import unittest
 from pathlib import Path
 
 from tests.native_harness import Client, Node, executable, native_image, table_reply
+from tools import fixtures
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 FIXTURES = os.environ.get("FN_OPEN_DEPTH_FIXTURES")
@@ -52,6 +53,9 @@ class NativeOverWindowTests(unittest.TestCase):
         source = Path(FIXTURES) / NAME / "store"
         if not source.is_dir():
             self.skipTest("no fixture store {}".format(source))
+        refusal = fixtures.schema_refusal(source.parent, fixtures.schema_digest())
+        if refusal:
+            self.fail(refusal)
         self.work = Path(tempfile.mkdtemp(prefix="fn-over-window-", dir=os.environ.get("FN_OPEN_DEPTH_WORK")))
         self.addCleanup(shutil.rmtree, self.work, True)
         self.node = Node(self, IMAGE, root=self.work / NAME, name=NAME)

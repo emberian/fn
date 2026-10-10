@@ -702,7 +702,7 @@ def native_peer_add(image, store, words, env, cwd):
 # --- Outcomes ---------------------------------------------------------------
 
 ROOT = Path(__file__).resolve().parent.parent
-from tools import ports  # noqa: E402
+from tools import acl2_slots, ports  # noqa: E402
 from tools.outcome_codes import (  # noqa: E402,F401  (re-exported: the one table, read from ACL2's book)
     EXIT, EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, EXIT_USAGE, OUTCOME_BOOK,
     outcome_codes, outcome_name)
@@ -800,6 +800,12 @@ def acl2_keyword(output):
 ACL2_SESSION_PROMPT = re.compile(rb"ACL2 [a-z]*!?>+\s*\Z")
 
 
+def acl2_session_user_args():
+    """SBCL runtime options of the harness's ACL2 session: a tool's own heap
+    and ACL2's save-exec control stack."""
+    return acl2_slots.own_heap_user_args() + " --control-stack-size 64MB"
+
+
 class Acl2Session:
     """`fn acl2 session` of a developer image (host/native/acl2-session.lisp):
     ACL2's loop over the image's own certified world, for the fixtures only
@@ -821,9 +827,14 @@ class Acl2Session:
             # The session is the test's own ACL2, not the node under test: it
             # runs at ACL2's save-exec stack (64 MiB, what the retired bridge
             # session had), because printing a 49 KiB bundle's octet list
-            # recurses past the deployed node's 1 MiB control stack.
+            # recurses past the deployed node's 1 MiB control stack; and it
+            # names its heap as every ACL2 the project runs as a tool does
+            # (acl2_slots.own_heap_user_args), because the launcher's
+            # decision for a store-less command is a node's 1,024 MB, which
+            # SCN-077's 10 MiB article exhausts in fn-bpa-encode
+            # (BRIDGE-SESSION-STORELESS-HEAP).
             [str(self.image), "--fn", "acl2", "session"], cwd=ROOT,
-            env=environment({"SBCL_USER_ARGS": "--control-stack-size 64MB"}, stack=False),
+            env=environment({"SBCL_USER_ARGS": acl2_session_user_args()}, stack=False),
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         try:
             self._until_prompt()
