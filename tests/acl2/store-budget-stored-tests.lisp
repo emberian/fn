@@ -48,27 +48,27 @@
 ; REACHABLE (fn-intern-events-budget-octets-are-the-stored-octets,
 ; fn-intern-events-extents-okp): every hypothesis holds (the arena is the
 ; live one, generation 0, a wire event list); the relation holds; the budget
-; counts 3 + 5 = 8 payload octets and each row's one membership at 320
-; (lane membership-budget): 648, the stored charges, where the pre-flip count
-; was 0.
+; counts 3 + 5 = 8 payload octets, the stored charges (a held row is charged
+; its payload alone; its memberships are the memory equation's MEMBERSHIPS,
+; books/charged-totals.lisp), where the pre-flip count was 0.
 (defconst *sbst-open* (sbst-open *sbst-ws* 0))
 (assert-event (natp 0))
 (assert-event (fn-held-listp (nth 4 *sbst-open*)))
 (assert-event (equal (nth 2 *sbst-open*) t))
-(assert-event (equal (nth 0 *sbst-open*) 808))
-(assert-event (equal (nth 1 *sbst-open*) 808))
+(assert-event (equal (nth 0 *sbst-open*) 8))
+(assert-event (equal (nth 1 *sbst-open*) 8))
 (assert-event (equal (nth 3 *sbst-open*) 0))
 
 ; The same through the store the host reads (fn-sbud-bytes-used over the
 ; kernel's records; fn-sbud-bytes-used-is-the-stored-octets).
 (defconst *sbst-store*
   (list nil nil (fn-sf-make :ready 2 nil (nth 4 *sbst-open*) nil nil nil 0)))
-(assert-event (equal (fn-sbud-bytes-used *sbst-store*) 808))
+(assert-event (equal (fn-sbud-bytes-used *sbst-store*) 8))
 ; The carried sum from a prefix cache agrees (fn-sbud-bytes-used-is-kernel-sum).
 (assert-event (equal (fn-sbud-bytes-extend
                       (cons 1 (fn-sbud-record-octets (take 1 (nth 4 *sbst-open*))))
                       (nth 4 *sbst-open*))
-                     808))
+                     8))
 ; A wire row still counts its encoding (fn-sbud-row-octets-of-wire-row).
 (assert-event (equal (fn-sbud-row-octets (car *sbst-ws*))
                      (len (fn-store-event-encode (car *sbst-ws*)))))
@@ -78,7 +78,7 @@
 ; fn-sbud-record-octets-is-the-stored-octets, whose one hypothesis is the
 ; relation): the first row with its facts claiming 7 octets where its handle's
 ; extent is 3.  The relation fails, and so does the conclusion: the budget
-; counts 7 + 5 + 640 = 652, the stored charges are 3 + 5 + 640 = 648.
+; counts 7 + 5 = 12, the stored charges are 3 + 5 = 8.
 (defconst *sbst-row0* (car (nth 4 *sbst-open*)))
 (defconst *sbst-lying*
   (fn-held-make (fn-record-sequence *sbst-row0*) (fn-record-txid *sbst-row0*)
@@ -113,8 +113,8 @@
 
 (defconst *sbst-lie* (sbst-lying *sbst-ws*))
 (assert-event (equal (nth 0 *sbst-lie*) nil))
-(assert-event (equal (nth 1 *sbst-lie*) 892))
-(assert-event (equal (nth 2 *sbst-lie*) 888))
+(assert-event (equal (nth 1 *sbst-lie*) 12))
+(assert-event (equal (nth 2 *sbst-lie*) 8))
 ; The same refutation as a theorem over the arena's logical value (the two
 ; payloads the open sealed): the conclusion is false at these rows, so the
 ; theorem without its hypothesis fails.
