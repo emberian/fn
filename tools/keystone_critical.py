@@ -69,7 +69,7 @@ MAP = ROOT / "tools/keystone_critical_map.json"
 EVIDENCE = ROOT / "planning/critical-evidence.json"
 OWED = ROOT / "planning/critical-owed.json"
 CBASE = ROOT / "planning/critical-base.json"
-import box_artifacts  # noqa: E402
+sys.path.insert(0, str(ROOT))  # tools.interface_emit, which interface_index reads
 PARTS = ("premises", "wrong_answer", "host_test", "trace_witness", "mutation")
 DECLARED = ("host_test", "trace_witness", "mutation")
 DECLARED_FIELDS = ("subject",) + DECLARED
@@ -102,10 +102,11 @@ def load_map(path: Path = MAP) -> dict:
 
 
 def interface_index(root: Path = ROOT) -> dict[str, list[dict]]:
-    """Each keystone theorem to the interface entries citing it (the box
-    step's build/box/interfaces.json, tools/box_artifacts.py)."""
+    """Each keystone theorem to the interface entries citing it (the
+    registry rendered from ROOT's declarations, tools/interface_emit.py)."""
+    from tools import interface_emit
     index: dict[str, list[dict]] = {}
-    for entry in box_artifacts.load("interfaces.json", root)["entries"]:
+    for entry in interface_emit.registry(root)["entries"]:
         for keystone in entry.get("keystones", []):
             index.setdefault(keystone["theorem"], []).append(entry)
     return index

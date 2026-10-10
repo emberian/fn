@@ -9,7 +9,8 @@ image's world when host/native/build.lisp loads host/interfaces.lisp (the
 extraction world loads the same file, tools/extract/world-host.lisp).  This reads
 the same forms with the ledger's non-evaluating reader and GENERATES:
 
-* planning/interfaces.json -- one row per declared entry: its class, the
+* the registry (`registry(root)`, rendered on read and never written: a
+  function of the source alone, so no file carries it) -- one row per declared entry: its class, the
   kinds its guard gives the host entry guard, its exempt formals with their
   reasons, its keystones, its extraction role, whether the raw host applies
   it directly, the theorems of its `:raw-with` argument (D40: the host
@@ -88,11 +89,9 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from tools import box_artifacts, interfaces_relocate, ledger  # noqa: E402
+from tools import interfaces_relocate, ledger  # noqa: E402
 
 SOURCES = ("host/interfaces.lisp", "host/account-adoption-interfaces.lisp")
-# a box-step artifact, never committed (tools/box_artifacts.py)
-REGISTRY = ROOT / box_artifacts.DIR / "interfaces.json"
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
 RAW_DECLARATIONS = ROOT / "host" / "interfaces-raw.lisp"
 STEP_OF_STATUS = "keystone via fold; host-loop correspondence owed"
@@ -618,6 +617,21 @@ def subsystem_of(d: dict, reading: dict) -> str:
     return subsystem(d["name"], reading["dispatched"].get(d["name"], ()))
 
 
+_REGISTRY: dict[Path, dict] = {}
+
+
+def registry(root: Path = ROOT) -> dict:
+    """The interface registry of ROOT's tree, rendered from its declarations
+    and its host reading on every read (once per process and tree).  It is a
+    function of the source alone, so no file carries it: the readers that
+    took build/box/interfaces.json from the box step failed in any tree no
+    box step had run in (train 81's regen, which precedes certify)."""
+    root = Path(root).resolve()
+    if root not in _REGISTRY:
+        _REGISTRY[root] = json.loads(render_registry(declarations(root), host_reading(root)))
+    return _REGISTRY[root]
+
+
 def render_registry(decls: list[dict], reading: dict) -> str:
     rows = []
     for d in decls:
@@ -787,13 +801,6 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
     if not ROOTS_SH.is_file() or ROOTS_SH.read_text() != render_roots(decls):
         out.append("tools/extract/roots.sh is not what the declarations say; "
                    "run tools/interface_emit.py --write")
-    try:
-        box_artifacts.path("interfaces.json", root)
-    except box_artifacts.Refused as error:
-        out.append(str(error))
-    if not REGISTRY.is_file() or REGISTRY.read_text() != render_registry(decls, reading):
-        out.append("build/box/interfaces.json is not what the declarations say; "
-                   "run tools/interface_emit.py --write (the box step)")
     if (not RAW_DECLARATIONS.is_file()
             or RAW_DECLARATIONS.read_text() != render_raw_declarations(
                 decls, carried_rows(root), dtn_host_files(root / "host" / "native" / "build-dtn.lisp"))):
@@ -984,10 +991,6 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true")
     parser.add_argument("--write", action="store_true")
-    parser.add_argument("--write-registry", action="store_true",
-                        help="write build/box/interfaces.json from the declarations and "
-                             "nothing else (roots.sh and interfaces-raw.lisp stay checked): "
-                             "a tree shipped without build/, as tools/hbox_native.sh's")
     parser.add_argument("--kinds", action="store_true",
                         help="also report :class/:kinds disagreements without --check")
     args = parser.parse_args(argv)
@@ -996,10 +999,6 @@ def main(argv=None) -> int:
         acl2_slots.refuse_on_laptop("tools/interface_emit.py --write")
     decls = declarations()
     reading = host_reading()
-    if args.write or args.write_registry:
-        box_artifacts.path("interfaces.json")  # refuses a committed copy by name
-        REGISTRY.parent.mkdir(parents=True, exist_ok=True)
-        REGISTRY.write_text(render_registry(decls, reading))
     if args.write:
         ROOTS_SH.write_text(render_roots(decls))
         RAW_DECLARATIONS.write_text(render_raw_declarations(decls, carried_rows(), dtn_host_files()))
