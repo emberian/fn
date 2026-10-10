@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-capacity-vector")
 (include-book "../../books/store-intern")
+(include-book "../../books/codec-attach") ; the teeth evaluate fn-record-encode
 (include-book "must-fail-checked")
 (include-book "../../books/defkeystone")
 
