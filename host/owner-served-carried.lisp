@@ -207,6 +207,7 @@
                 fn-owner-live-post-config fn-owner-log-bounds
                 fn-owner-log-reopen fn-owner-login-bindings-plan
                 fn-owner-login-gate-buffer fn-owner-memory-configure
+                fn-owner-memory-gate-install
                 fn-owner-moderation-plan
                 fn-owner-next-store-coordinates fn-owner-next-txid
                 fn-owner-observe fn-owner-oex-capture fn-owner-open
