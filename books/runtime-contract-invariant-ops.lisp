@@ -82,11 +82,14 @@
   (equal (fn-rtc-invp s)
          (and (fn-rtc-core-invp s)
               (iff (fn-rtc-free-slot 0 (fn-rtc-slots s))
-                   (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s)))))
+                   (fn-rtc-kind-out-p :accept 0 0 (fn-rtc-uses s)))
+              (iff (and (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s))
+                        (fn-rtc-oldest-wait (fn-rtc-uses s)))
+                   (fn-rtc-kind-out-p :grant 0 0 (fn-rtc-uses s)))))
   :hints (("Goal" :in-theory
            (disable fn-rtc-slots-okp fn-rtc-pool-okp fn-rtc-uses-okp
                     fn-rtc-mstates-okp fn-rtc-draining-okp fn-rtc-free-slot
-                    fn-rtc-kind-out-p))))
+                    fn-rtc-kind-out-p fn-rtc-free-pool-buf fn-rtc-oldest-wait))))
 
 (defthm fn-rtc-next-op-of-with
   (and (equal (fn-rtc-next-op (fn-rtc-with-buffer h b s)) (fn-rtc-next-op s))
@@ -155,7 +158,7 @@
 (defun fn-rtc-buffer-okp (h b s)
   (declare (xargs :guard t))
   (let ((o (fn-rtc-b-owner b)))
-    (and (fn-rtc-bufferp b (fn-rtc-cap (fn-rtc-config s)))
+    (and (fn-rtc-bufferp b (fn-rtc-buf-cap h (fn-rtc-config s)))
          (case (fn-rtc-get 0 o)
            (:workspace
             (let ((slot (fn-rtc-slot (fn-rtc-get 1 o) s)))
@@ -274,7 +277,7 @@
            (fn-rtc-core-invp (mv-nth 0 (fn-rtc-req-release r id inc s))))
   :hints (("Goal" :in-theory
            (e/d (fn-rtc-req-release fn-rtc-buffer-okp)
-                (fn-rtc-core-invp fn-rtc-s-inc fn-rtc-s-status fn-rtc-b-gen))
+                (fn-rtc-core-invp fn-rtc-s-inc fn-rtc-s-status fn-rtc-b-gen fn-rtc-buf-cap))
            :use ((:instance fn-rtc-core-invp-buffer (h (fn-rtc-get 1 r)))))))
 
 (defthm fn-rtc-octets-append
@@ -315,13 +318,27 @@
                   (max (len bytes) (+ off (len data)))))
   :hints (("Goal" :in-theory (disable take nthcdr true-list-fix))))
 
+(defthm fn-rtc-buf-cap-at-most-cap
+  (<= (fn-rtc-buf-cap h cfg) (fn-rtc-cap cfg))
+  :hints (("Goal" :in-theory (disable fn-rtc-pool-buf-p)))
+  :rule-classes :linear)
+
+(defthm fn-rtc-buffer-okp-local-bytes
+  (implies (fn-rtc-buffer-okp h b s)
+           (and (fn-cbor-octet-listp (fn-rtc-b-bytes b))
+                (<= (len (fn-rtc-b-bytes b)) (fn-rtc-buf-cap h (fn-rtc-config s)))))
+  :hints (("Goal" :in-theory
+           (e/d (fn-rtc-buffer-okp)
+                (fn-rtc-buf-cap fn-cbor-octet-listp fn-rtc-holds-p fn-rtc-s-inc fn-rtc-s-status))))
+  :rule-classes :forward-chaining)
+
 (defthm fn-rtc-buffer-okp-change-bytes
   (implies (and (fn-rtc-buffer-okp h b s) (fn-cbor-octet-listp bytes)
-                (<= (len bytes) (fn-rtc-cap (fn-rtc-config s))))
+                (<= (len bytes) (fn-rtc-buf-cap h (fn-rtc-config s))))
            (fn-rtc-buffer-okp h (list (fn-rtc-b-gen b) (fn-rtc-b-owner b) bytes) s))
   :hints (("Goal" :in-theory
            (e/d (fn-rtc-buffer-okp)
-                (fn-rtc-holds-p fn-rtc-s-inc fn-rtc-s-status fn-cbor-octet-listp)))))
+                (fn-rtc-buf-cap fn-rtc-holds-p fn-rtc-s-inc fn-rtc-s-status fn-cbor-octet-listp)))))
 
 (defthm fn-rtc-buffer-okp-bytes
   (implies (fn-rtc-buffer-okp h b s)
@@ -329,7 +346,7 @@
                 (<= (len (fn-rtc-b-bytes b)) (fn-rtc-cap (fn-rtc-config s)))))
   :hints (("Goal" :in-theory
            (e/d (fn-rtc-buffer-okp)
-                (fn-cbor-octet-listp fn-rtc-holds-p fn-rtc-s-inc fn-rtc-s-status))))
+                (fn-rtc-buf-cap fn-rtc-cap fn-cbor-octet-listp fn-rtc-holds-p fn-rtc-s-inc fn-rtc-s-status))))
   :rule-classes :forward-chaining)
 
 (defthm fn-rtc-workspace-not-leased
@@ -343,7 +360,7 @@
   :hints (("Goal" :in-theory
            (e/d (fn-rtc-req-write)
                 (fn-rtc-core-invp fn-rtc-s-inc fn-rtc-s-status fn-rtc-b-gen
-                 fn-rtc-b-owner fn-rtc-b-bytes fn-rtc-get fn-rtc-cap
+                 fn-rtc-b-owner fn-rtc-b-bytes fn-rtc-get fn-rtc-cap fn-rtc-buf-cap
                  fn-rtc-nbufs fn-rtc-leasedp fn-rtc-splice fn-cbor-octet-listp
                  fn-rtc-core-invp-buffer fn-rtc-core-invp-of-unleased-update
                  fn-rtc-buffer-okp-change-bytes))
@@ -397,7 +414,7 @@
   :hints (("Goal" :induct (fn-rtc-pool-okp i pool s)
            :in-theory
            (e/d (fn-rtc-pool-okp fn-rtc-buffer-okp)
-                (fn-rtc-pool-okp-unfolds fn-rtc-bufferp fn-rtc-holds-p
+                (fn-rtc-buf-cap fn-rtc-pool-okp-unfolds fn-rtc-bufferp fn-rtc-holds-p
                  fn-rtc-s-inc fn-rtc-s-status fn-rtc-b-owner fn-rtc-b-gen)))))
 
 (defthm fn-rtc-use-okp-of-closing-slot
@@ -607,7 +624,7 @@
 (defun fn-rtc-compatible-use-p (new u)
   (declare (xargs :guard t))
   (or (not (or (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
-               (equal (fn-rtc-get 0 u) :hand)))
+               (member-eq (fn-rtc-get 0 u) '(:hand :pool))))
       (not (fn-rtc-handlep (fn-rtc-u-hd new)))
       (not (equal (fn-rtc-h-buf (fn-rtc-u-hd new)) (fn-rtc-h-buf (fn-rtc-u-hd u))))
       (not (equal (fn-rtc-h-gen (fn-rtc-u-hd new)) (fn-rtc-h-gen (fn-rtc-u-hd u))))))
@@ -636,7 +653,8 @@
            (union-theories (theory 'minimal-theory)
             '(fn-rtc-use-okp fn-rtc-current-p fn-rtc-issue-frame fn-rtc-compatible-use-p
               fn-rtc-holders-cons (:type-prescription fn-rtc-next-op)
-              (:type-prescription fn-rtc-holders) unicity-of-0 fix)))))
+              (:type-prescription fn-rtc-holders) (:executable-counterpart member-equal)
+              unicity-of-0 fix)))))
 
 (defthm fn-rtc-uses-okp-of-compatible-issue
   (implies (and (fn-rtc-uses-okp uses s) (fn-rtc-compatible-usesp new uses))
@@ -658,7 +676,7 @@
   :hints (("Goal" :in-theory
            (union-theories (theory 'minimal-theory)
             '(fn-rtc-use-okp fn-rtc-usep fn-rtc-u-hd
-              fn-rtc-compatible-use-p fn-rtc-leasedp (:executable-counterpart member-equal))))))
+              fn-rtc-compatible-use-p fn-rtc-leasedp member-equal)))))
 
 (defthm fn-rtc-compatible-uses-from-shareable-pool
   (implies (and (fn-rtc-uses-okp uses s)
@@ -751,6 +769,16 @@
                         (:instance fn-rtc-buffer-okp-bytes (b (fn-rtc-buffer h s))))
            :in-theory (theory 'minimal-theory))))
 
+(local (defthm fn-rtc-core-invp-buffer-local-bytes
+  (implies (and (fn-rtc-core-invp s) (natp h)
+                (< h (fn-rtc-nbufs (fn-rtc-config s))))
+           (and (fn-cbor-octet-listp (fn-rtc-b-bytes (fn-rtc-buffer h s)))
+                (<= (len (fn-rtc-b-bytes (fn-rtc-buffer h s)))
+                    (fn-rtc-buf-cap h (fn-rtc-config s)))))
+  :hints (("Goal" :use ((:instance fn-rtc-core-invp-buffer)
+                        (:instance fn-rtc-buffer-okp-local-bytes (b (fn-rtc-buffer h s))))
+           :in-theory (theory 'minimal-theory)))))
+
 (defthm fn-rtc-buffered-submit-preserves-core-invp
   (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s)
                 (fn-rtc-live-p id inc s)
@@ -765,11 +793,11 @@
                  fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-cbor-octet-listp
                  fn-rtc-nbufs fn-rtc-nslots fn-rtc-cap fn-rtc-configp fn-rtc-kind-out-p
                  fn-rtc-compatible-usesp fn-rtc-op-used-p
-                 fn-rtc-buffered-submit-new-use-okp))
+                 fn-rtc-buf-cap fn-rtc-buffered-submit-new-use-okp))
            :use (fn-rtc-buffered-submit-new-use-okp
                  (:instance fn-rtc-compatible-uses-from-shareable-pool
                    (uses (fn-rtc-uses s)) (new (list kind id inc (fn-rtc-next-op s) hd)))
-                 (:instance fn-rtc-core-invp-buffer-bytes (h (fn-rtc-h-buf hd)))))))
+                 (:instance fn-rtc-core-invp-buffer-local-bytes (h (fn-rtc-h-buf hd)))))))
 
 (defthm fn-rtc-core-invp-of-distinct-compatible-issue
   (implies (and (fn-rtc-core-invp s)
@@ -839,11 +867,11 @@
                  fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-cbor-octet-listp
                  fn-rtc-nbufs fn-rtc-nslots fn-rtc-nstatic fn-rtc-cap fn-rtc-configp
                  fn-rtc-kind-out-p fn-rtc-compatible-usesp fn-rtc-op-used-p
-                 fn-rtc-hand-submit-new-use-okp))
+                 fn-rtc-buf-cap fn-rtc-hand-submit-new-use-okp))
            :use (fn-rtc-hand-submit-new-use-okp
                  (:instance fn-rtc-compatible-uses-from-shareable-pool
                    (uses (fn-rtc-uses s)) (new (list :hand id inc (fn-rtc-next-op s) hd)))
-                 (:instance fn-rtc-core-invp-buffer-bytes (h (fn-rtc-h-buf hd)))))))
+                 (:instance fn-rtc-core-invp-buffer-local-bytes (h (fn-rtc-h-buf hd)))))))
 
 (defthm fn-rtc-hand-submit-okp-owner
   (implies (fn-rtc-submit-okp :hand hd id inc s)
@@ -851,6 +879,14 @@
                   (list :workspace id inc)))
   :hints (("Goal" :in-theory (e/d (fn-rtc-submit-okp)
                                   (fn-rtc-b-owner fn-rtc-buffer fn-rtc-h-buf fn-rtc-handlep)))))
+
+(local (defthm fn-rtc-fresh-wait-use-okp
+  (implies (and (natp id) (not (equal id 0)) (natp inc)
+                (< id (fn-rtc-nslots (fn-rtc-config s)))
+                (fn-rtc-current-p id inc s))
+           (fn-rtc-use-okp (list :wait id inc (fn-rtc-next-op s) nil)
+             (fn-rtc-issue (list :wait id inc (fn-rtc-next-op s) nil) s)))
+  :hints (("Goal" :in-theory (disable fn-rtc-get-of-non-natp)))))
 
 (defthm fn-rtc-submit-preserves-core-invp
   (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s))
@@ -1112,7 +1148,7 @@
                 (fn-rtc-bufferp fn-rtc-handlep fn-rtc-u-hd fn-rtc-h-buf fn-rtc-h-gen
                  fn-rtc-holds-p fn-rtc-holds-iff-positive-holders fn-rtc-remove-use fn-rtc-find-use
                  fn-rtc-b-owner fn-rtc-b-gen fn-rtc-s-inc fn-rtc-s-status fn-rtc-get
-                 fn-rtc-cap fn-rtc-nslots))
+                 fn-rtc-buf-cap fn-rtc-cap fn-rtc-nslots))
            :cases ((equal (fn-rtc-b-gen b)
                           (fn-rtc-h-gen (fn-rtc-u-hd (fn-rtc-find-use key (fn-rtc-uses s)))))))))
 

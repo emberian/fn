@@ -103,9 +103,111 @@
                ;; another instance puts a buffer in flight to J, or takes
                ;; one in flight to J back (and may hand it again)
                (and (fn-rtc-others-or-incoming-p (car l1) j)
-                    (fn-rtc-others-or-incoming-p (car l2) j)))
+                    (fn-rtc-others-or-incoming-p (car l2) j))
+               ;; v2.1: the listener's grant leases J a fresh pool buffer
+               (and (equal (car l1) :other)
+                    (fn-rtc-pool-buf-p h cfg)
+                    (equal (fn-rtc-get 0 (fn-rtc-b-owner (car l2))) :leased)
+                    (equal (fn-rtc-get 1 (fn-rtc-b-owner (car l2))) j)
+                    (equal (fn-rtc-get 3 (fn-rtc-b-owner (car l2))) :in)
+                    (null (fn-rtc-b-bytes (car l2)))))
            (fn-rtc-local-returns-p j cfg (+ 1 h) (cdr l1) (cdr l2) (cdr pool2)))
     (atom l2)))
+
+; Contract v2.1 vocabulary: the pool (build/vertical-runs/landing2/v21-statements.lsp).
+
+; J's uses before and after a step that is not J's: the same, except that a
+; waiting request of J's may have been granted (same instance, incarnation
+; and operation; a :pool use with a handle).
+(defun fn-rtc-uses-granted-p (u1s u2s)
+  (declare (xargs :guard t))
+  (if (consp u1s)
+      (and (consp u2s)
+           (or (equal (car u1s) (car u2s))
+               (and (equal (fn-rtc-get 0 (car u1s)) :wait)
+                    (equal (fn-rtc-get 0 (car u2s)) :pool)
+                    (equal (fn-rtc-get 1 (car u1s)) (fn-rtc-get 1 (car u2s)))
+                    (equal (fn-rtc-get 2 (car u1s)) (fn-rtc-get 2 (car u2s)))
+                    (equal (fn-rtc-get 3 (car u1s)) (fn-rtc-get 3 (car u2s)))
+                    (fn-rtc-handlep (fn-rtc-get 4 (car u2s)))))
+           (fn-rtc-uses-granted-p (cdr u1s) (cdr u2s)))
+    (atom u2s)))
+
+; Operation A is a waiting request; operation B a granted (:pool) one.
+(defun fn-rtc-waiting-op-p (a uses)
+  (declare (xargs :guard t))
+  (if (consp uses)
+      (or (and (equal (fn-rtc-get 0 (car uses)) :wait) (equal (fn-rtc-get 3 (car uses)) a))
+          (fn-rtc-waiting-op-p a (cdr uses)))
+    nil))
+
+(defun fn-rtc-pool-op-p (b uses)
+  (declare (xargs :guard t))
+  (if (consp uses)
+      (or (and (equal (fn-rtc-get 0 (car uses)) :pool) (equal (fn-rtc-get 3 (car uses)) b))
+          (fn-rtc-pool-op-p b (cdr uses)))
+    nil))
+
+; A's place in the queue: the waiting requests issued no later than A.
+(defun fn-rtc-wait-position (a uses)
+  (declare (xargs :guard t))
+  (if (consp uses)
+      (+ (if (and (equal (fn-rtc-get 0 (car uses)) :wait)
+                  (<= (nfix (fn-rtc-get 3 (car uses))) (nfix a)))
+             1 0)
+         (fn-rtc-wait-position a (cdr uses)))
+    0))
+
+; The pool's free buffers, and the pool buffers a step frees.
+(defun fn-rtc-pool-free-count (h pool cfg)
+  (declare (xargs :guard (natp h) :measure (len pool)))
+  (if (consp pool)
+      (+ (if (and (fn-rtc-pool-buf-p h cfg) (equal (fn-rtc-b-owner (car pool)) '(:free))) 1 0)
+         (fn-rtc-pool-free-count (+ 1 (nfix h)) (cdr pool) cfg))
+    0))
+
+(defun fn-rtc-pool-freed-count (h p1 p2 cfg)
+  (declare (xargs :guard (natp h) :measure (len p1)))
+  (if (consp p1)
+      (+ (if (and (fn-rtc-pool-buf-p h cfg)
+                  (not (equal (fn-rtc-b-owner (car p1)) '(:free)))
+                  (equal (fn-rtc-b-owner (fn-rtc-get 0 p2)) '(:free)))
+             1 0)
+         (fn-rtc-pool-freed-count (+ 1 (nfix h)) (cdr p1) (if (consp p2) (cdr p2) nil) cfg))
+    0))
+
+; A run of the layer over EVENTS, and the pool buffers it frees.
+(defun fn-rtc-run (s events q)
+  (declare (xargs :guard t))
+  (if (consp events)
+      (mv-let (s2 acts) (fn-rtc-step s (car events) q)
+        (declare (ignore acts))
+        (fn-rtc-run s2 (cdr events) q))
+    s))
+
+(defun fn-rtc-run-frees (s events q)
+  (declare (xargs :guard t))
+  (if (consp events)
+      (mv-let (s2 acts) (fn-rtc-step s (car events) q)
+        (declare (ignore acts))
+        (+ (fn-rtc-pool-freed-count 0 (fn-rtc-pool s) (fn-rtc-pool s2) (fn-rtc-config s))
+           (fn-rtc-run-frees s2 (cdr events) q)))
+    0))
+
+; The operation numbers of the :pool actions in ACTS, in order.
+(defun fn-rtc-pool-action-ops (acts)
+  (declare (xargs :guard t))
+  (if (consp acts)
+      (if (equal (fn-rtc-get 0 (car acts)) :pool)
+          (cons (fn-rtc-get 3 (car acts)) (fn-rtc-pool-action-ops (cdr acts)))
+        (fn-rtc-pool-action-ops (cdr acts)))
+    nil))
+
+(defun fn-rtc-ascending-p (xs)
+  (declare (xargs :guard t))
+  (if (and (consp xs) (consp (cdr xs)))
+      (and (< (nfix (car xs)) (nfix (cadr xs))) (natp (car xs)) (fn-rtc-ascending-p (cdr xs)))
+    t))
 
 ; Contract v2 keystones, statements only (Builder A, landing 2, 2026-10-09).
 ; Vocabulary: build/vertical-runs/landing2/v2-statements.lsp (fn-rtc-of-slot-p,
@@ -136,10 +238,7 @@
            (equal (fn-rtc-view id inc s1) (fn-rtc-view id inc s2)))
   :hints (("Goal" :in-theory (enable fn-rtc-view))))
 
-(local
- (defthm fn-rtc-get-of-cons
-   (equal (fn-rtc-get n (cons a d))
-          (if (zp n) a (fn-rtc-get (- n 1) d)))))
+; fn-rtc-get-of-cons is supplied by runtime-contract.
 
 (local
  (defthm fn-rtc-request-foreign-workspace-frame
@@ -222,7 +321,7 @@
            (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
             '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-end-use-keeps-workspaces
               fn-rtc-rearm-frame fn-rtc-deliver-workspace-owner fn-rtc-accept-workspace-owner
-              fn-rtc-close-workspace-owner)))))
+              fn-rtc-close-workspace-owner fn-rtc-grant-keeps-workspaces)))))
 
 (local
  (defun fn-rtc-owner-at-p (o id inc)
@@ -241,7 +340,7 @@
  '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
    fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-owner-at-p
    fn-rtc-buffer-of-with fn-rtc-buffer-accessors fn-rtc-issue-frame
-   fn-rtc-get-of-cons fn-rtc-get-of-non-natp fn-rtc-buffer-of-non-natp
+   fn-rtc-get-of-cons (:executable-counterpart nfix) fn-rtc-get-of-non-natp fn-rtc-buffer-of-non-natp
    car-cons cdr-cons nfix natp zp-open
    (:type-prescription fn-rtc-h-buf)
    (:executable-counterpart member-equal) (:executable-counterpart fn-rtc-get)
@@ -275,7 +374,7 @@
    :hints (("Goal" :in-theory
             (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
              '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-leasedp
-               fn-rtc-rearm-frame fn-rtc-deliver-frame fn-rtc-accept-branch-frame fn-rtc-close-branch-frame
+               fn-rtc-grant-keeps-leased fn-rtc-rearm-frame fn-rtc-deliver-frame fn-rtc-accept-branch-frame fn-rtc-close-branch-frame
                (:executable-counterpart member-equal)))))))
 
 (local
@@ -338,9 +437,11 @@
                    (fn-rtc-lease-return (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))
                                         e (fn-rtc-buffer h s) s)))
    :hints (("Goal" :in-theory
-            (e/d (fn-rtc-end-use fn-rtc-end-lease)
-                 (fn-rtc-completionp fn-rtc-find-use fn-rtc-remove-use fn-rtc-key fn-rtc-e-id
-                  fn-rtc-u-hd fn-rtc-handlep fn-rtc-h-buf fn-rtc-h-gen fn-rtc-holds-p fn-rtc-lease-return))))))
+     (union-theories (theory 'minimal-theory)
+       '(fn-rtc-end-use fn-rtc-end-lease fn-rtc-retire-drained-frame
+         fn-rtc-buffer-of-with fn-rtc-with-accessors fn-rtc-lease-return-of-with-uses
+         fn-rtc-buffer-of-non-natp fn-rtc-buffer-of-nfix nfix natp
+         car-cons cdr-cons (:type-prescription fn-rtc-h-buf)))))))
 
 (local
  (defthm fn-rtc-found-use-buffer-ownerp
@@ -428,12 +529,12 @@
   :rule-classes nil
   :hints (("Goal" :in-theory
            (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
-            '(fn-rtc-owner-equality-fields fn-rtc-buffer-equality-owner fn-rtc-buffer-of-non-natp fn-rtc-acts-on-p
+            '(fn-rtc-owner-equality-fields fn-rtc-buffer-equality-owner fn-rtc-buffer-of-non-natp
               fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-rearm-frame
               fn-rtc-deliver-owner-fields fn-rtc-owner-at-p fn-rtc-of-workspace
               fn-rtc-hand-delivers-p fn-rtc-target fn-rtc-hand-to fn-rtc-handed-to-live-p
               fn-rtc-lease-return fn-rtc-buffer-accessors fn-rtc-buffer-of-nfix
-              fn-rtc-ownerp nfix natp fn-rtc-get-of-cons car-cons cdr-cons
+              fn-rtc-ownerp nfix natp fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons
               (:executable-counterpart zp) (:executable-counterpart binary-+) (:executable-counterpart unary--)
               (:executable-counterpart member-equal) (:executable-counterpart equal)))
            :use (fn-rtc-changed-hand-use fn-rtc-changed-hand-ownerp
@@ -515,7 +616,7 @@
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
              '(fn-rtc-owner-equality-fields fn-rtc-same-but-foreign-octets-p fn-rtc-submit-okp fn-rtc-of-slot-p
-               fn-rtc-get fn-rtc-get-of-cons nfix natp zp-open car-cons cdr-cons
+               fn-rtc-get fn-rtc-get-of-cons (:executable-counterpart nfix) nfix natp zp-open car-cons cdr-cons
                (:executable-counterpart binary-+) (:executable-counterpart unary--) (:executable-counterpart fn-rtc-get)
                (:executable-counterpart member-equal) (:executable-counterpart zp)
                (:executable-counterpart equal)))
@@ -534,7 +635,7 @@
                fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-issue
                fn-rtc-same-but-foreign-octets-p fn-rtc-of-slot-p
                fn-rtc-with-accessors fn-rtc-next-op-of-with fn-rtc-make-accessors fn-rtc-owner-equality-fields
-               fn-rtc-pools-agree-for-set fn-rtc-get-of-cons fn-rtc-get-of-non-natp
+               fn-rtc-pools-agree-for-set fn-rtc-get-of-cons (:executable-counterpart nfix) fn-rtc-get-of-non-natp
                fn-rtc-buffer-of-non-natp fn-rtc-buffer-accessors
                nfix natp zp-open car-cons cdr-cons
                (:type-prescription fn-rtc-next-op)
@@ -582,6 +683,13 @@
             (union-theories (theory 'minimal-theory) '(fn-rtc-mstate fn-rtc-same-but-foreign-octets-p))))))
 
 (local
+ (defthm fn-rtc-foreign-octets-config
+   (implies (fn-rtc-same-but-foreign-octets-p j s1 s2)
+            (equal (fn-rtc-config s1) (fn-rtc-config s2)))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                               '(fn-rtc-same-but-foreign-octets-p))))))
+
+(local
  (defthm fn-rtc-deliver-foreign-octets
    (implies (fn-rtc-same-but-foreign-octets-p j s1 s2)
             (and (equal (mv-nth 1 (fn-rtc-deliver s1 j inc ev q)) (mv-nth 1 (fn-rtc-deliver s2 j inc ev q)))
@@ -592,11 +700,11 @@
             (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
              '(fn-rtc-deliver fn-rtc-foreign-octets-with-mstate))
             :use ((:instance fn-rtc-requests-foreign-octets
-                    (reqs (mv-nth 1 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-view j inc s1) (nfix q))))
-                    (s1 (fn-rtc-with-mstate j (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-view j inc s1) (nfix q))) s1))
-                    (s2 (fn-rtc-with-mstate j (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-view j inc s1) (nfix q))) s2)))
+                    (reqs (mv-nth 1 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-make (fn-rtc-config s1) nil (fn-rtc-view j inc s1) nil nil 0) (nfix q))))
+                    (s1 (fn-rtc-with-mstate j (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-make (fn-rtc-config s1) nil (fn-rtc-view j inc s1) nil nil 0) (nfix q))) s1))
+                    (s2 (fn-rtc-with-mstate j (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-make (fn-rtc-config s1) nil (fn-rtc-view j inc s1) nil nil 0) (nfix q))) s2)))
                   (:instance fn-rtc-foreign-octets-mstate (id j))
-                  fn-rtc-foreign-octets-views-equal
+                  fn-rtc-foreign-octets-config fn-rtc-foreign-octets-views-equal
                   (:instance fn-rtc-foreign-octets-control-fields (id j)))))))
 
 (local
@@ -608,6 +716,41 @@
             :in-theory (disable fn-rtc-b-gen fn-rtc-b-owner fn-rtc-of-slot-p)))))
 
 (local
+ (defthm fn-rtc-ownerp-instance-fields-natural
+   (implies (and (fn-rtc-ownerp o)
+                 (member-eq (fn-rtc-get 0 o) '(:leased :handed)))
+            (and (natp (fn-rtc-get 1 o)) (natp (fn-rtc-get 2 o))
+                 (implies (equal (fn-rtc-get 0 o) :handed)
+                          (and (natp (fn-rtc-get 3 o)) (natp (fn-rtc-get 4 o))))))
+   :hints (("Goal" :in-theory
+            (union-theories (theory 'minimal-theory)
+               '(fn-rtc-ownerp natp member-equal car-cons cdr-cons
+                 fn-rtc-get-of-cons (:executable-counterpart nfix) nfix zp
+                 (:executable-counterpart equal) (:executable-counterpart member-equal)))))))
+
+(local
+ (defthm fn-rtc-lease-return-same-slots
+   (implies (equal (fn-rtc-slots s1) (fn-rtc-slots s2))
+            (equal (fn-rtc-lease-return u e b s1) (fn-rtc-lease-return u e b s2)))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+       '(fn-rtc-lease-return fn-rtc-handed-to-live-p fn-rtc-live-p fn-rtc-current-p fn-rtc-slot))))))
+(local
+ (defthm fn-rtc-lease-return-pair-agrees
+   (implies (and (fn-rtc-pools-agree-for-p j (list b1) (list b2))
+                 (fn-rtc-ownerp (fn-rtc-b-owner b1))
+                 (member-eq (fn-rtc-get 0 (fn-rtc-b-owner b1)) '(:leased :handed)))
+            (fn-rtc-pools-agree-for-p j (list (fn-rtc-lease-return u e b1 s))
+                                          (list (fn-rtc-lease-return u e b2 s))))
+   :hints (("Goal" :cases ((equal b1 b2))
+            :use ((:instance fn-rtc-ownerp-instance-fields-natural (o (fn-rtc-b-owner b1))))
+            :in-theory (union-theories (theory 'minimal-theory)
+              '(fn-rtc-pools-agree-for-p fn-rtc-of-slot-p fn-rtc-lease-return fn-rtc-handed-to-live-p
+                fn-rtc-buffer-accessors fn-rtc-get-of-cons (:executable-counterpart nfix)
+                nfix natp member-equal car-cons cdr-cons
+                (:executable-counterpart equal) (:executable-counterpart zp)
+                (:executable-counterpart unary--) (:executable-counterpart binary-+)))))))
+
+(local
  (defthm fn-rtc-foreign-octets-lease-return
    (implies (and (fn-rtc-same-but-foreign-octets-p j s1 s2)
                  (fn-rtc-pools-agree-for-p j (list b1) (list b2))
@@ -615,14 +758,10 @@
                  (member-eq (fn-rtc-get 0 (fn-rtc-b-owner b1)) '(:leased :handed)))
             (fn-rtc-pools-agree-for-p j (list (fn-rtc-lease-return u e b1 s1))
                                           (list (fn-rtc-lease-return u e b2 s2))))
-   :hints (("Goal" :in-theory
-            (union-theories (theory 'minimal-theory)
-             '(fn-rtc-pools-agree-for-p fn-rtc-of-slot-p fn-rtc-lease-return fn-rtc-handed-to-live-p
-               fn-rtc-ownerp fn-rtc-buffer-accessors fn-rtc-get-of-cons fn-rtc-owner-equality-fields
-               fn-rtc-same-but-foreign-octets-p fn-rtc-current-p fn-rtc-live-p fn-rtc-slot
-               nfix natp member-equal car-cons cdr-cons
-               (:executable-counterpart equal) (:executable-counterpart zp)
-               (:executable-counterpart unary--) (:executable-counterpart binary-+)))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                                    '(fn-rtc-same-but-foreign-octets-p))
+            :use ((:instance fn-rtc-lease-return-pair-agrees (s s1))
+                  (:instance fn-rtc-lease-return-same-slots (b b2)))))))
 
 (local
  (defthm fn-rtc-foreign-octets-buffer-pair
@@ -662,13 +801,30 @@
                     (b2 (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))) s2))))))))
 
 (local
+ (defthm fn-rtc-pools-agree-free-pool-buf
+   (implies (fn-rtc-pools-agree-for-p j p1 p2)
+            (equal (fn-rtc-free-pool-buf h p1 cfg) (fn-rtc-free-pool-buf h p2 cfg)))
+   :hints (("Goal" :induct (list (fn-rtc-free-pool-buf h p1 cfg)
+                                 (fn-rtc-pools-agree-for-p j p1 p2))
+             :in-theory (e/d (fn-rtc-free-pool-buf fn-rtc-pools-agree-for-p)
+                             (fn-rtc-b-owner fn-rtc-b-gen fn-rtc-of-slot-p fn-rtc-pool-buf-p))))))
+(local
+ (defthm fn-rtc-foreign-octets-free-pool-buf
+   (implies (fn-rtc-same-but-foreign-octets-p j s1 s2)
+            (equal (fn-rtc-free-pool-buf h (fn-rtc-pool s1) (fn-rtc-config s1))
+                   (fn-rtc-free-pool-buf h (fn-rtc-pool s2) (fn-rtc-config s2))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+              '(fn-rtc-same-but-foreign-octets-p fn-rtc-pools-agree-free-pool-buf))))))
+
+(local
  (defthm fn-rtc-rearm-foreign-octets
    (implies (fn-rtc-same-but-foreign-octets-p j s1 s2)
             (and (equal (mv-nth 1 (fn-rtc-rearm s1)) (mv-nth 1 (fn-rtc-rearm s2)))
                  (fn-rtc-same-but-foreign-octets-p j (mv-nth 0 (fn-rtc-rearm s1)) (mv-nth 0 (fn-rtc-rearm s2)))))
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
-             '(fn-rtc-rearm fn-rtc-issue fn-rtc-same-but-foreign-octets-p fn-rtc-make-accessors))))))
+             '(fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant fn-rtc-pools-agree-free-pool-buf
+               fn-rtc-issue fn-rtc-same-but-foreign-octets-p fn-rtc-make-accessors))))))
 
 (local
  (defthm fn-rtc-release-all-foreign-octets
@@ -684,9 +840,16 @@
             (and (equal (mv-nth 1 (fn-rtc-close-branch s1 id inc)) (mv-nth 1 (fn-rtc-close-branch s2 id inc)))
                  (fn-rtc-same-but-foreign-octets-p j (mv-nth 0 (fn-rtc-close-branch s1 id inc))
                                                       (mv-nth 0 (fn-rtc-close-branch s2 id inc)))))
-   :hints (("Goal" :in-theory
+   :hints (("Goal"
+            :use ((:instance fn-rtc-release-all-foreign-octets (p1 (fn-rtc-pool s1)) (p2 (fn-rtc-pool s2)))
+                  (:instance fn-rtc-pools-agree-free-pool-buf
+                    (p1 (fn-rtc-release-all (fn-rtc-pool s1) id inc))
+                    (p2 (fn-rtc-release-all (fn-rtc-pool s2) id inc))
+                    (h 0) (cfg (fn-rtc-config s1))))
+            :in-theory
             (union-theories (theory 'minimal-theory)
-             '(fn-rtc-close-branch fn-rtc-rearm fn-rtc-issue fn-rtc-slot
+             '(fn-rtc-close-branch fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant
+               fn-rtc-pools-agree-free-pool-buf fn-rtc-issue fn-rtc-slot
                fn-rtc-same-but-foreign-octets-p fn-rtc-with-accessors fn-rtc-next-op-of-with
                fn-rtc-make-accessors fn-rtc-release-all-foreign-octets))))))
 
@@ -852,6 +1015,85 @@
                   (:instance fn-rtc-close-branch-foreign-octets (s1 (fn-rtc-end-use s1 e)) (s2 (fn-rtc-end-use s2 e)) (id (fn-rtc-e-id e)) (inc (fn-rtc-e-inc e))))))))
 
 (local
+ (defthm fn-rtc-grant-one-foreign-octets
+   (implies (fn-rtc-same-but-foreign-octets-p j s1 s2)
+            (and (equal (mv-nth 1 (fn-rtc-grant-one s1)) (mv-nth 1 (fn-rtc-grant-one s2)))
+                 (fn-rtc-same-but-foreign-octets-p j
+                   (mv-nth 0 (fn-rtc-grant-one s1)) (mv-nth 0 (fn-rtc-grant-one s2)))))
+   :hints (("Goal" :in-theory
+     (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-grant-one fn-rtc-same-but-foreign-octets-p fn-rtc-pools-agree-for-set
+         fn-rtc-with-accessors fn-rtc-next-op-of-with fn-rtc-slot car-cons cdr-cons))
+     :use ((:instance fn-rtc-foreign-octets-free-pool-buf (h 0))
+           (:instance fn-rtc-foreign-octets-buffer-fields
+             (h (fn-rtc-free-pool-buf 0 (fn-rtc-pool s1) (fn-rtc-config s1)))))))))
+(local
+ (defun-nx fn-rtc-grant-pair-induct (n s1 s2)
+   (declare (xargs :measure (nfix n)))
+   (if (zp n) (list s1 s2)
+     (fn-rtc-grant-pair-induct (- n 1) (mv-nth 0 (fn-rtc-grant-one s1))
+                                                     (mv-nth 0 (fn-rtc-grant-one s2))))))
+(local
+ (defthm fn-rtc-grant-foreign-octets
+   (implies (fn-rtc-same-but-foreign-octets-p j s1 s2)
+            (and (equal (mv-nth 1 (fn-rtc-grant n s1)) (mv-nth 1 (fn-rtc-grant n s2)))
+                 (fn-rtc-same-but-foreign-octets-p j
+                   (mv-nth 0 (fn-rtc-grant n s1)) (mv-nth 0 (fn-rtc-grant n s2)))))
+   :hints (("Goal" :induct (fn-rtc-grant-pair-induct n s1 s2)
+      :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+        '(fn-rtc-grant-pair-induct fn-rtc-grant fn-rtc-grant-one-foreign-octets
+          nfix natp zp car-cons cdr-cons (:executable-counterpart binary-+)
+          (:executable-counterpart unary--)))))))
+
+(local
+ (defthm fn-rtc-foreign-octets-pool-buffer
+   (implies (and (fn-rtc-invp s1) (fn-rtc-same-but-foreign-octets-p j s1 s2)
+                 (equal j (fn-rtc-target s1 e)) (equal (fn-rtc-e-kind e) :pool)
+                 (fn-rtc-completionp e) (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))
+            (let ((h (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1))))))
+              (equal (fn-rtc-buffer h s1) (fn-rtc-buffer h s2))))
+   :hints (("Goal" :in-theory
+            (union-theories (theory 'minimal-theory)
+             '(fn-rtc-target fn-rtc-hand-to fn-rtc-of-slot-p fn-rtc-use-okp fn-rtc-usep fn-rtc-u-hd
+               fn-rtc-ownerp natp nfix (:executable-counterpart member-equal) (:executable-counterpart equal)))
+            :use ((:instance fn-rtc-hand-delivers-kind (s s1))
+                  (:instance fn-rtc-invp-implies-core-invp (s s1))
+                  (:instance fn-rtc-core-invp-found-use (s s1) (key (fn-rtc-key e)))
+                  (:instance fn-rtc-matching-use-fields (uses (fn-rtc-uses s1)))
+                  (:instance fn-rtc-found-use-buffer-ownerp (s s1) (key (fn-rtc-key e)))
+                  (:instance fn-rtc-foreign-octets-buffer-fields
+                    (h (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))))))))))
+
+(local
+ (defthm fn-rtc-deliver-rearm-foreign-octets
+   (implies (fn-rtc-same-but-foreign-octets-p j s1 s2)
+            (let ((d1 (fn-rtc-deliver s1 j inc ev q)) (d2 (fn-rtc-deliver s2 j inc ev q)))
+              (and (equal (append (mv-nth 1 d1) (mv-nth 1 (fn-rtc-rearm (mv-nth 0 d1))))
+                          (append (mv-nth 1 d2) (mv-nth 1 (fn-rtc-rearm (mv-nth 0 d2)))))
+                   (fn-rtc-same-but-foreign-octets-p j
+                     (mv-nth 0 (fn-rtc-rearm (mv-nth 0 d1)))
+                     (mv-nth 0 (fn-rtc-rearm (mv-nth 0 d2)))))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+            :use (fn-rtc-deliver-foreign-octets
+                  (:instance fn-rtc-rearm-foreign-octets
+                    (s1 (mv-nth 0 (fn-rtc-deliver s1 j inc ev q)))
+                    (s2 (mv-nth 0 (fn-rtc-deliver s2 j inc ev q)))))))))
+(local
+ (defthm fn-rtc-grant-rearm-foreign-octets
+   (implies (fn-rtc-same-but-foreign-octets-p j s1 s2)
+            (let ((d1 (fn-rtc-grant n s1)) (d2 (fn-rtc-grant n s2)))
+              (and (equal (append (mv-nth 1 d1) (mv-nth 1 (fn-rtc-rearm (mv-nth 0 d1))))
+                          (append (mv-nth 1 d2) (mv-nth 1 (fn-rtc-rearm (mv-nth 0 d2)))))
+                   (fn-rtc-same-but-foreign-octets-p j
+                     (mv-nth 0 (fn-rtc-rearm (mv-nth 0 d1)))
+                     (mv-nth 0 (fn-rtc-rearm (mv-nth 0 d2)))))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+            :use (fn-rtc-grant-foreign-octets
+                  (:instance fn-rtc-rearm-foreign-octets
+                    (s1 (mv-nth 0 (fn-rtc-grant n s1)))
+                    (s2 (mv-nth 0 (fn-rtc-grant n s2)))))))))
+
+(local
  (defthm fn-rtc-step-foreign-octets-deliver
    (implies (and (fn-rtc-invp s1) (fn-rtc-same-but-foreign-octets-p j s1 s2) (equal j (fn-rtc-target s1 e)) (fn-rtc-acts-on-p s1 e) (not (fn-rtc-hand-delivers-p s1 e)) (not (equal (fn-rtc-e-kind e) :accept)) (not (equal (fn-rtc-e-kind e) :close)))
             (and (equal (mv-nth 1 (fn-rtc-step s1 e q)) (mv-nth 1 (fn-rtc-step s2 e q)))
@@ -865,10 +1107,12 @@
             :use (fn-rtc-foreign-octets-plain-fields
                   fn-rtc-foreign-octets-step-control
                   fn-rtc-end-use-foreign-octets
-                  fn-rtc-foreign-octets-hand-buffer
+                  fn-rtc-foreign-octets-hand-buffer fn-rtc-foreign-octets-pool-buffer
+                  (:instance fn-rtc-deliver-rearm-foreign-octets (s1 (fn-rtc-end-use s1 e)) (s2 (fn-rtc-end-use s2 e)) (inc (fn-rtc-e-inc e)) (ev (fn-rtc-ev (fn-rtc-e-kind e) (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)) e) j (fn-rtc-e-inc e) (list (list (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))) (+ 1 (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))) s1))) 0 (len (fn-rtc-b-bytes (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))) s1))))))))
+                  (:instance fn-rtc-grant-rearm-foreign-octets (n (fn-rtc-npool (fn-rtc-config s1))) (s1 (fn-rtc-end-use s1 e)) (s2 (fn-rtc-end-use s2 e)))
                   (:instance fn-rtc-acting-matches-use (s s1))
-                  (:instance fn-rtc-deliver-foreign-octets (s1 (fn-rtc-end-use s1 e)) (s2 (fn-rtc-end-use s2 e)) (inc (fn-rtc-e-inc e)) (ev (fn-rtc-ev (fn-rtc-e-kind e) (if (equal (fn-rtc-get 0 (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)) e)) :done) '(:failed :gone) (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)) e)) j (fn-rtc-e-inc e) (list (list (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))) (+ 1 (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))) s1))) 0 (len (fn-rtc-b-bytes (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))) s1))))))))
-                  (:instance fn-rtc-deliver-foreign-octets (s1 (fn-rtc-end-use s1 e)) (s2 (fn-rtc-end-use s2 e)) (inc (fn-rtc-e-inc e)) (ev (fn-rtc-ev (fn-rtc-e-kind e) (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)) e) j (fn-rtc-e-inc e) nil))))))))
+                  (:instance fn-rtc-deliver-rearm-foreign-octets (s1 (fn-rtc-end-use s1 e)) (s2 (fn-rtc-end-use s2 e)) (inc (fn-rtc-e-inc e)) (ev (fn-rtc-ev (fn-rtc-e-kind e) (if (equal (fn-rtc-get 0 (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)) e)) :done) '(:failed :gone) (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)) e)) j (fn-rtc-e-inc e) (list (list (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))) (+ 1 (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))) s1))) 0 (len (fn-rtc-b-bytes (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)))) s1))))))))
+                  (:instance fn-rtc-deliver-rearm-foreign-octets (s1 (fn-rtc-end-use s1 e)) (s2 (fn-rtc-end-use s2 e)) (inc (fn-rtc-e-inc e)) (ev (fn-rtc-ev (fn-rtc-e-kind e) (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s1)) e) j (fn-rtc-e-inc e) nil))))))))
 
 (local
  (defthm fn-rtc-step-foreign-octets
@@ -1041,7 +1285,7 @@
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
              '(fn-rtc-submit-okp fn-rtc-local-ranked-equal-parts fn-rtc-visible-buffer fn-rtc-of-slot-p
-               fn-rtc-owner-equality-fields fn-rtc-get-of-cons car-cons cdr-cons natp nfix
+               fn-rtc-owner-equality-fields fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons natp nfix
                (:type-prescription fn-rtc-h-buf)
                (:executable-counterpart equal) (:executable-counterpart member-equal)
                (:executable-counterpart fn-rtc-b-owner) (:executable-counterpart fn-rtc-get)
@@ -1068,7 +1312,7 @@
                fn-rtc-local-ranked-equal-parts fn-rtc-ranked-equal-p fn-rtc-uses-of
                fn-rtc-visible-buffer fn-rtc-of-slot-p fn-rtc-owner-equality-fields
                fn-rtc-with-accessors fn-rtc-slot-of-with fn-rtc-mstate-of-with fn-rtc-issue-frame fn-rtc-next-op-of-with
-               fn-rtc-live-index-in-slots fn-rtc-slot-accessors fn-rtc-buffer-accessors fn-rtc-get-of-cons
+               fn-rtc-live-index-in-slots fn-rtc-slot-accessors fn-rtc-buffer-accessors fn-rtc-get-of-cons (:executable-counterpart nfix)
                fn-rtc-buffer-of-non-natp fn-rtc-get-of-non-natp nfix natp car-cons cdr-cons
                (:type-prescription fn-rtc-h-buf)
                (:executable-counterpart fn-rtc-b-owner) (:executable-counterpart fn-rtc-get)
@@ -1090,7 +1334,7 @@
                fn-rtc-local-ranked-equal-parts fn-rtc-ranked-equal-p fn-rtc-uses-of
                fn-rtc-visible-buffer fn-rtc-of-slot-p fn-rtc-owner-equality-fields
                fn-rtc-with-accessors fn-rtc-slot-of-with fn-rtc-mstate-of-with fn-rtc-issue-frame fn-rtc-next-op-of-with
-               fn-rtc-live-index-in-slots fn-rtc-slot-accessors fn-rtc-buffer-accessors fn-rtc-get-of-cons
+               fn-rtc-live-index-in-slots fn-rtc-slot-accessors fn-rtc-buffer-accessors fn-rtc-get-of-cons (:executable-counterpart nfix)
                fn-rtc-buffer-of-non-natp fn-rtc-get-of-non-natp nfix natp car-cons cdr-cons
                (:type-prescription fn-rtc-h-buf)
                (:executable-counterpart fn-rtc-b-owner) (:executable-counterpart fn-rtc-get)
@@ -1101,8 +1345,25 @@
                   (:instance fn-rtc-local-ranked-control (kind (fn-rtc-get 1 r)) (extra (fn-rtc-get 3 r))))))))
 
 (local
- (defthm fn-rtc-request-local-ranked-submit
-   (implies (and (equal (fn-rtc-get 0 r) :submit) (natp j) (equal (fn-rtc-local-ranked j s1) (fn-rtc-local-ranked j s2)))
+ (defthm fn-rtc-request-local-ranked-pool-submit
+   (implies (and (equal (fn-rtc-get 1 r) :pool) (equal (fn-rtc-get 0 r) :submit) (natp j) (equal (fn-rtc-local-ranked j s1) (fn-rtc-local-ranked j s2)))
+            (and (equal (fn-rtc-local-ranked j (mv-nth 0 (fn-rtc-request r j inc s1)))
+                        (fn-rtc-local-ranked j (mv-nth 0 (fn-rtc-request r j inc s2))))
+                 (fn-rtc-ranked-equal-p (mv-nth 1 (fn-rtc-request r j inc s1))
+                                        (mv-nth 1 (fn-rtc-request r j inc s2)))))
+   :hints (("Goal" :in-theory
+      (union-theories (theory 'minimal-theory)
+       '(fn-rtc-request fn-rtc-req-submit fn-rtc-local-ranked-equal-parts
+         fn-rtc-ranked-equal-p fn-rtc-uses-of fn-rtc-issue-frame
+         fn-rtc-get-of-cons (:executable-counterpart nfix) fn-rtc-get-of-non-natp
+         nfix natp car-cons cdr-cons (:executable-counterpart member-equal)
+         (:executable-counterpart equal) (:executable-counterpart zp)
+         (:executable-counterpart unary--) (:executable-counterpart binary-+)))
+      :use ((:instance fn-rtc-local-ranked-control (kind :wait) (extra (fn-rtc-get 3 r))))))))
+
+(local
+ (defthm fn-rtc-request-local-ranked-nonpool-submit
+   (implies (and (not (equal (fn-rtc-get 1 r) :pool)) (equal (fn-rtc-get 0 r) :submit) (natp j) (equal (fn-rtc-local-ranked j s1) (fn-rtc-local-ranked j s2)))
             (and (equal (fn-rtc-local-ranked j (mv-nth 0 (fn-rtc-request r j inc s1)))
                         (fn-rtc-local-ranked j (mv-nth 0 (fn-rtc-request r j inc s2))))
                  (fn-rtc-ranked-equal-p (mv-nth 1 (fn-rtc-request r j inc s1))
@@ -1113,7 +1374,7 @@
                fn-rtc-local-ranked-equal-parts fn-rtc-ranked-equal-p fn-rtc-uses-of
                fn-rtc-visible-buffer fn-rtc-of-slot-p fn-rtc-owner-equality-fields
                fn-rtc-with-accessors fn-rtc-slot-of-with fn-rtc-mstate-of-with fn-rtc-issue-frame fn-rtc-next-op-of-with
-               fn-rtc-live-index-in-slots fn-rtc-slot-accessors fn-rtc-buffer-accessors fn-rtc-get-of-cons
+               fn-rtc-live-index-in-slots fn-rtc-slot-accessors fn-rtc-buffer-accessors fn-rtc-get-of-cons (:executable-counterpart nfix)
                fn-rtc-buffer-of-non-natp fn-rtc-get-of-non-natp nfix natp car-cons cdr-cons
                (:type-prescription fn-rtc-h-buf)
                (:executable-counterpart fn-rtc-b-owner) (:executable-counterpart fn-rtc-get)
@@ -1123,6 +1384,16 @@
                   (:instance fn-rtc-local-ranked-control (kind (fn-rtc-get 1 r)) (extra (fn-rtc-get 3 r)))
                   (:instance fn-rtc-local-ranked-submit-okp (kind (fn-rtc-get 1 r)) (hd (fn-rtc-get 2 r)))
                   (:instance fn-rtc-local-ranked-visible (h (fn-rtc-h-buf (fn-rtc-get 2 r)))))))))
+
+(local
+ (defthm fn-rtc-request-local-ranked-submit
+   (implies (and (equal (fn-rtc-get 0 r) :submit) (natp j) (equal (fn-rtc-local-ranked j s1) (fn-rtc-local-ranked j s2)))
+            (and (equal (fn-rtc-local-ranked j (mv-nth 0 (fn-rtc-request r j inc s1)))
+                        (fn-rtc-local-ranked j (mv-nth 0 (fn-rtc-request r j inc s2))))
+                 (fn-rtc-ranked-equal-p (mv-nth 1 (fn-rtc-request r j inc s1))
+                                        (mv-nth 1 (fn-rtc-request r j inc s2)))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+            :use (fn-rtc-request-local-ranked-pool-submit fn-rtc-request-local-ranked-nonpool-submit)))))
 
 (local
  (defthm fn-rtc-request-local-ranked-other
@@ -1137,7 +1408,7 @@
                fn-rtc-local-ranked-equal-parts fn-rtc-ranked-equal-p fn-rtc-uses-of
                fn-rtc-visible-buffer fn-rtc-of-slot-p fn-rtc-owner-equality-fields
                fn-rtc-with-accessors fn-rtc-slot-of-with fn-rtc-mstate-of-with fn-rtc-issue-frame fn-rtc-next-op-of-with
-               fn-rtc-live-index-in-slots fn-rtc-slot-accessors fn-rtc-buffer-accessors fn-rtc-get-of-cons
+               fn-rtc-live-index-in-slots fn-rtc-slot-accessors fn-rtc-buffer-accessors fn-rtc-get-of-cons (:executable-counterpart nfix)
                fn-rtc-buffer-of-non-natp fn-rtc-get-of-non-natp nfix natp car-cons cdr-cons
                (:type-prescription fn-rtc-h-buf)
                (:executable-counterpart fn-rtc-b-owner) (:executable-counterpart fn-rtc-get)
@@ -1198,11 +1469,11 @@
             (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth)) '(fn-rtc-deliver))
             :use (fn-rtc-local-ranked-view
                   fn-rtc-local-ranked-equal-parts
-                  (:instance fn-rtc-local-ranked-with-mstate (m (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-view j inc s1) (nfix q)))))
+                  (:instance fn-rtc-local-ranked-with-mstate (m (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-make (fn-rtc-config s1) nil (fn-rtc-view j inc s1) nil nil 0) (nfix q)))))
                   (:instance fn-rtc-requests-local-ranked
-                    (reqs (mv-nth 1 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-view j inc s1) (nfix q))))
-                    (s1 (fn-rtc-with-mstate j (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-view j inc s1) (nfix q))) s1))
-                    (s2 (fn-rtc-with-mstate j (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-view j inc s1) (nfix q))) s2))))))))
+                    (reqs (mv-nth 1 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-make (fn-rtc-config s1) nil (fn-rtc-view j inc s1) nil nil 0) (nfix q))))
+                    (s1 (fn-rtc-with-mstate j (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-make (fn-rtc-config s1) nil (fn-rtc-view j inc s1) nil nil 0) (nfix q))) s1))
+                    (s2 (fn-rtc-with-mstate j (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate j s1) ev (fn-rtc-make (fn-rtc-config s1) nil (fn-rtc-view j inc s1) nil nil 0) (nfix q))) s2))))))))
 
 (local
  (defthm fn-rtc-request-config-is-constant
@@ -1238,8 +1509,8 @@
      (atom p2))))
 
 (local
- (defthm fn-rtc-pool-transfer-frame-is-local-returns
-   (equal (fn-rtc-pool-transfer-frame-p j cfg h p1 p2)
+ (defthm fn-rtc-pool-transfer-frame-implies-local-returns
+   (implies (fn-rtc-pool-transfer-frame-p j cfg h p1 p2)
           (fn-rtc-local-returns-p j cfg h (fn-rtc-local-buffers j cfg h p1)
                                           (fn-rtc-local-buffers j cfg h p2) p2))
    :hints (("Goal" :induct (fn-rtc-pool-transfer-frame-p j cfg h p1 p2)
@@ -1252,7 +1523,7 @@
 
 (local
  (defthm fn-rtc-pool-transfer-frame-refl (fn-rtc-pool-transfer-frame-p j cfg h p p)
-   :hints (("Goal" :in-theory (disable fn-rtc-pool-transfer-frame-is-local-returns fn-rtc-buffer-transfer-frame-p)))))
+   :hints (("Goal" :in-theory (disable fn-rtc-pool-transfer-frame-implies-local-returns fn-rtc-buffer-transfer-frame-p)))))
 
 (local
  (defthm fn-rtc-buffer-transfer-frame-trans
@@ -1269,7 +1540,7 @@
    :hints (("Goal" :induct (list (fn-rtc-pool-transfer-frame-p j cfg h p1 p2)
                                  (fn-rtc-pool-transfer-frame-p j cfg h p2 p3))
             :in-theory (e/d (fn-rtc-pool-transfer-frame-p)
-                             (fn-rtc-pool-transfer-frame-is-local-returns fn-rtc-buffer-transfer-frame-p))))))
+                             (fn-rtc-pool-transfer-frame-implies-local-returns fn-rtc-buffer-transfer-frame-p))))))
 
 (local
  (defthm fn-rtc-pool-transfer-frame-set
@@ -1278,7 +1549,7 @@
             (fn-rtc-pool-transfer-frame-p j cfg h pool (fn-rtc-set k b pool)))
    :hints (("Goal" :induct (fn-rtc-pool-index-pair-induct k h pool pool)
             :in-theory (e/d (fn-rtc-pool-transfer-frame-p fn-rtc-get fn-rtc-set)
-                             (fn-rtc-pool-transfer-frame-is-local-returns fn-rtc-buffer-transfer-frame-p
+                             (fn-rtc-pool-transfer-frame-implies-local-returns fn-rtc-buffer-transfer-frame-p
                               fn-rtc-pool-transfer-frame-trans))))))
 
 (local
@@ -1286,7 +1557,7 @@
    (implies (and (natp k) (fn-rtc-buffer-transfer-frame-p j cfg k (fn-rtc-get k pool) b))
             (fn-rtc-pool-transfer-frame-p j cfg 0 pool (fn-rtc-set k b pool)))
    :hints (("Goal" :in-theory
-            (disable fn-rtc-pool-transfer-frame-p fn-rtc-pool-transfer-frame-is-local-returns
+            (disable fn-rtc-pool-transfer-frame-p fn-rtc-pool-transfer-frame-implies-local-returns
                      fn-rtc-buffer-transfer-frame-p fn-rtc-get fn-rtc-set fn-rtc-pool-transfer-frame-set)
             :use ((:instance fn-rtc-pool-transfer-frame-set (h 0)))))))
 
@@ -1308,7 +1579,7 @@
              '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit
                fn-rtc-foreign-workspace-update-frame fn-rtc-with-accessors fn-rtc-issue-frame fn-rtc-pool-transfer-frame-update fn-rtc-pool-transfer-frame-refl
                fn-rtc-buffer-transfer-frame-p fn-rtc-visible-buffer fn-rtc-others-or-incoming-p fn-rtc-of-slot-p
-               fn-rtc-pool-is-buffers fn-rtc-buffer-accessors fn-rtc-owner-equality-fields fn-rtc-get-of-cons
+               fn-rtc-pool-is-buffers fn-rtc-buffer-accessors fn-rtc-owner-equality-fields fn-rtc-get-of-cons (:executable-counterpart nfix)
                fn-rtc-buffer-of-non-natp fn-rtc-get-of-non-natp nfix natp zp-open car-cons cdr-cons
                (:type-prescription fn-rtc-h-buf)
                (:executable-counterpart fn-rtc-get) (:executable-counterpart fn-rtc-b-owner)
@@ -1330,7 +1601,7 @@
              '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit
                fn-rtc-foreign-workspace-update-frame fn-rtc-with-accessors fn-rtc-issue-frame fn-rtc-pool-transfer-frame-update fn-rtc-pool-transfer-frame-refl
                fn-rtc-buffer-transfer-frame-p fn-rtc-visible-buffer fn-rtc-others-or-incoming-p fn-rtc-of-slot-p
-               fn-rtc-pool-is-buffers fn-rtc-buffer-accessors fn-rtc-owner-equality-fields fn-rtc-get-of-cons
+               fn-rtc-pool-is-buffers fn-rtc-buffer-accessors fn-rtc-owner-equality-fields fn-rtc-get-of-cons (:executable-counterpart nfix)
                fn-rtc-buffer-of-non-natp fn-rtc-get-of-non-natp nfix natp zp-open car-cons cdr-cons
                (:type-prescription fn-rtc-h-buf)
                (:executable-counterpart fn-rtc-get) (:executable-counterpart fn-rtc-b-owner)
@@ -1348,7 +1619,7 @@
              '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit
                fn-rtc-foreign-workspace-update-frame fn-rtc-with-accessors fn-rtc-issue-frame fn-rtc-pool-transfer-frame-update fn-rtc-pool-transfer-frame-refl
                fn-rtc-buffer-transfer-frame-p fn-rtc-visible-buffer fn-rtc-others-or-incoming-p fn-rtc-of-slot-p
-               fn-rtc-pool-is-buffers fn-rtc-buffer-accessors fn-rtc-owner-equality-fields fn-rtc-get-of-cons
+               fn-rtc-pool-is-buffers fn-rtc-buffer-accessors fn-rtc-owner-equality-fields fn-rtc-get-of-cons (:executable-counterpart nfix)
                fn-rtc-buffer-of-non-natp fn-rtc-get-of-non-natp nfix natp zp-open car-cons cdr-cons
                (:type-prescription fn-rtc-h-buf)
                (:executable-counterpart fn-rtc-get) (:executable-counterpart fn-rtc-b-owner)
@@ -1367,7 +1638,7 @@
              '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit
                fn-rtc-foreign-workspace-update-frame fn-rtc-with-accessors fn-rtc-issue-frame fn-rtc-pool-transfer-frame-update fn-rtc-pool-transfer-frame-refl
                fn-rtc-buffer-transfer-frame-p fn-rtc-visible-buffer fn-rtc-others-or-incoming-p fn-rtc-of-slot-p
-               fn-rtc-pool-is-buffers fn-rtc-buffer-accessors fn-rtc-owner-equality-fields fn-rtc-get-of-cons
+               fn-rtc-pool-is-buffers fn-rtc-buffer-accessors fn-rtc-owner-equality-fields fn-rtc-get-of-cons (:executable-counterpart nfix)
                fn-rtc-buffer-of-non-natp fn-rtc-get-of-non-natp nfix natp zp-open car-cons cdr-cons
                (:type-prescription fn-rtc-h-buf)
                (:executable-counterpart fn-rtc-get) (:executable-counterpart fn-rtc-b-owner)
@@ -1412,13 +1683,13 @@
             (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
              '(fn-rtc-deliver fn-rtc-with-accessors fn-rtc-pool-transfer-frame-refl))
             :use ((:instance fn-rtc-requests-chain-pool-frame (p (fn-rtc-pool s))
-                    (s (fn-rtc-with-mstate id (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate id s) ev (fn-rtc-view id inc s) (nfix q))) s))
-                    (reqs (mv-nth 1 (fn-rtc-m-step (fn-rtc-mstate id s) ev (fn-rtc-view id inc s) (nfix q))))))))))
+                    (s (fn-rtc-with-mstate id (mv-nth 0 (fn-rtc-m-step (fn-rtc-mstate id s) ev (fn-rtc-make (fn-rtc-config s) nil (fn-rtc-view id inc s) nil nil 0) (nfix q))) s))
+                    (reqs (mv-nth 1 (fn-rtc-m-step (fn-rtc-mstate id s) ev (fn-rtc-make (fn-rtc-config s) nil (fn-rtc-view id inc s) nil nil 0) (nfix q))))))))))
 
 (local
  (defthm fn-rtc-pool-of-rearm
    (equal (fn-rtc-pool (mv-nth 0 (fn-rtc-rearm s))) (fn-rtc-pool s))
-   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-rearm fn-rtc-issue-frame))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant fn-rtc-issue-frame))))))
 
 (local
  (defthm fn-rtc-request-foreign-fields
@@ -1429,7 +1700,7 @@
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
              '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit
-               fn-rtc-slot-of-with fn-rtc-with-accessors fn-rtc-issue-frame fn-rtc-uses-of fn-rtc-get-of-cons
+               fn-rtc-slot-of-with fn-rtc-with-accessors fn-rtc-issue-frame fn-rtc-uses-of fn-rtc-get-of-cons (:executable-counterpart nfix)
                nfix natp car-cons cdr-cons (:executable-counterpart member-equal) (:executable-counterpart equal)
                (:executable-counterpart zp) (:executable-counterpart unary--) (:executable-counterpart binary-+)))))))
 
@@ -1467,9 +1738,10 @@
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
              '(fn-rtc-end-use fn-rtc-end-lease fn-rtc-retire-drained fn-rtc-with-accessors fn-rtc-lease-return-of-with-uses
-               fn-rtc-handed-to-live-p fn-rtc-use-okp fn-rtc-buffer-of-with fn-rtc-target fn-rtc-hand-to fn-rtc-hand-delivers-p fn-rtc-leasedp
+               fn-rtc-handed-to-live-p fn-rtc-buffer-of-with fn-rtc-target fn-rtc-hand-to fn-rtc-hand-delivers-p fn-rtc-leasedp
                fn-rtc-pool-transfer-frame-refl fn-rtc-pool-is-buffers natp (:type-prescription fn-rtc-h-buf)))
-            :use (fn-rtc-invp-is-core-and-admission
+            :use ((:instance fn-rtc-use-of-handed-buffer (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))))
+                  fn-rtc-invp-implies-core-invp
                   (:instance fn-rtc-core-invp-found-use (key (fn-rtc-key e)))
                   (:instance fn-rtc-matching-use-fields (uses (fn-rtc-uses s)))
                   fn-rtc-matched-use-owner-source fn-rtc-hand-delivers-kind
@@ -1505,7 +1777,7 @@
             (union-theories (theory 'minimal-theory)
              '(fn-rtc-end-use fn-rtc-retire-drained fn-rtc-end-lease-frame fn-rtc-retire-drained-frame
                fn-rtc-slot-of-with fn-rtc-with-accessors fn-rtc-uses-of-remove-other
-               fn-rtc-completionp fn-rtc-e-id fn-rtc-key fn-rtc-get-of-cons nfix natp car-cons cdr-cons
+               fn-rtc-completionp fn-rtc-e-id fn-rtc-key fn-rtc-get-of-cons (:executable-counterpart nfix) nfix natp car-cons cdr-cons
                (:type-prescription fn-rtc-e-id) (:executable-counterpart equal)
                (:executable-counterpart zp) (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
 
@@ -1534,7 +1806,7 @@
                  (equal (fn-rtc-uses-of j (fn-rtc-uses (mv-nth 0 (fn-rtc-rearm s)))) (fn-rtc-uses-of j (fn-rtc-uses s)))))
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
-             '(fn-rtc-rearm fn-rtc-issue-frame fn-rtc-uses-of fn-rtc-get-of-cons car-cons cdr-cons
+             '(fn-rtc-arm-accept fn-rtc-arm-grant fn-rtc-rearm fn-rtc-issue-frame fn-rtc-uses-of fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons
                (:executable-counterpart equal) (:executable-counterpart zp)
                (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
 
@@ -1556,7 +1828,7 @@
             (union-theories (theory 'minimal-theory)
              '((:induction fn-rtc-local-buffers) fn-rtc-pool-transfer-frame-p fn-rtc-release-all fn-rtc-buffer-transfer-frame-p
                fn-rtc-visible-buffer fn-rtc-of-slot-p fn-rtc-others-or-incoming-p
-               fn-rtc-buffer-accessors fn-rtc-owner-equality-fields fn-rtc-get-of-cons car-cons cdr-cons
+               fn-rtc-buffer-accessors fn-rtc-owner-equality-fields fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons
                (:executable-counterpart fn-rtc-b-owner) (:executable-counterpart fn-rtc-get)
                (:executable-counterpart member-equal) (:executable-counterpart equal)
                (:executable-counterpart zp) (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
@@ -1637,8 +1909,9 @@
                     (p1 p) (p2 (fn-rtc-pool s)) (p3 (fn-rtc-pool (mv-nth 0 (fn-rtc-accept-branch s out q))))))))))
 
 (local
- (defthm fn-rtc-other-step-frame
-   (implies (and (fn-rtc-invp s) (natp j) (<= 1 j)
+ (defthm fn-rtc-other-step-nongrant-frame
+   (implies (and (not (and (fn-rtc-acts-on-p s e) (equal (fn-rtc-e-kind e) :grant)))
+                 (fn-rtc-invp s) (natp j) (<= 1 j)
                  (not (equal (fn-rtc-target s e) j))
                  (not (and (fn-rtc-hand-delivers-p s e) (equal (fn-rtc-e-id e) j))))
             (let ((s2 (mv-nth 0 (fn-rtc-step s e q))))
@@ -1655,6 +1928,7 @@
                (:executable-counterpart equal)))
             :use ((:instance fn-rtc-accept-branch-foreign-frame (s (fn-rtc-end-use s e)) (out (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e)))
                   (:instance fn-rtc-accept-not-done-foreign-frame (s (fn-rtc-end-use s e)) (out (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e)))
+                  (:instance fn-rtc-deliver-chain-pool-frame (s (fn-rtc-end-use s e)) (p (fn-rtc-pool s)) (id (fn-rtc-e-id e)) (inc (fn-rtc-e-inc e)) (ev (fn-rtc-ev (fn-rtc-e-kind e) (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e) (fn-rtc-e-id e) (fn-rtc-e-inc e) (list (list (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))) (+ 1 (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))) s))) 0 (len (fn-rtc-b-bytes (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))) s))))))))
                   fn-rtc-other-step-other-id
                   fn-rtc-end-use-pool-transfer-frame
                   fn-rtc-end-use-foreign-fields
@@ -1666,6 +1940,224 @@
                   (:instance fn-rtc-close-chain-pool-frame (s (fn-rtc-end-use s e)) (p (fn-rtc-pool s)) (id (fn-rtc-e-id e)) (inc (fn-rtc-e-inc e)))
                   (:instance fn-rtc-accept-chain-pool-frame (s (fn-rtc-end-use s e)) (p (fn-rtc-pool s)) (out (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e))))))))
 
+(local
+ (defun fn-rtc-grant-buffer-frame-p (cfg h b1 b2)
+   (or (equal b1 b2)
+       (and (equal (fn-rtc-b-owner b1) '(:free)) (fn-rtc-pool-buf-p h cfg)
+            (equal (fn-rtc-get 0 (fn-rtc-b-owner b2)) :leased)
+            (equal (fn-rtc-get 3 (fn-rtc-b-owner b2)) :in)
+            (null (fn-rtc-b-bytes b2))))))
+(local
+ (defun fn-rtc-grant-pool-frame-p (cfg h p1 p2)
+   (declare (xargs :measure (len p1)))
+   (if (consp p1)
+       (and (consp p2) (fn-rtc-grant-buffer-frame-p cfg h (car p1) (car p2))
+            (fn-rtc-grant-pool-frame-p cfg (+ 1 h) (cdr p1) (cdr p2)))
+     (atom p2))))
+(local (defthm fn-rtc-grant-buffer-frame-refl (fn-rtc-grant-buffer-frame-p cfg h b b)))
+(local
+ (defthm fn-rtc-grant-pool-frame-refl (fn-rtc-grant-pool-frame-p cfg h p p)
+   :hints (("Goal" :in-theory (disable fn-rtc-grant-buffer-frame-p)))))
+(local
+ (defthm fn-rtc-grant-buffer-frame-trans
+   (implies (and (fn-rtc-grant-buffer-frame-p cfg h b1 b2)
+                 (fn-rtc-grant-buffer-frame-p cfg h b2 b3))
+            (fn-rtc-grant-buffer-frame-p cfg h b1 b3))
+   :hints (("Goal" :in-theory (e/d (fn-rtc-grant-buffer-frame-p)
+                                  (fn-rtc-b-owner fn-rtc-b-bytes fn-rtc-pool-buf-p))))))
+(local
+ (defthm fn-rtc-grant-pool-frame-trans
+   (implies (and (fn-rtc-grant-pool-frame-p cfg h p1 p2)
+                 (fn-rtc-grant-pool-frame-p cfg h p2 p3))
+            (fn-rtc-grant-pool-frame-p cfg h p1 p3))
+   :hints (("Goal" :induct (list (fn-rtc-grant-pool-frame-p cfg h p1 p2)
+                                 (fn-rtc-grant-pool-frame-p cfg h p2 p3))
+            :in-theory (e/d (fn-rtc-grant-pool-frame-p)
+                             (fn-rtc-grant-buffer-frame-p))))))
+(local
+ (defthm fn-rtc-grant-pool-frame-set
+   (implies (and (natp h) (natp k)
+                 (fn-rtc-grant-buffer-frame-p cfg (+ h k) (fn-rtc-get k pool) b))
+            (fn-rtc-grant-pool-frame-p cfg h pool (fn-rtc-set k b pool)))
+   :hints (("Goal" :induct (fn-rtc-pool-index-pair-induct k h pool pool)
+            :in-theory (e/d (fn-rtc-grant-pool-frame-p fn-rtc-get fn-rtc-set)
+                             (fn-rtc-grant-buffer-frame-p fn-rtc-grant-pool-frame-trans))))))
+(local
+ (defthm fn-rtc-grant-pool-frame-update
+   (implies (and (natp k) (fn-rtc-grant-buffer-frame-p cfg k (fn-rtc-get k pool) b))
+            (fn-rtc-grant-pool-frame-p cfg 0 pool (fn-rtc-set k b pool)))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(natp unicity-of-0 fix default-+-1 default-+-2))
+            :use ((:instance fn-rtc-grant-pool-frame-set (h 0)))))))
+
+(local
+ (defthm fn-rtc-grant-one-pool-frame
+   (fn-rtc-grant-pool-frame-p (fn-rtc-config s) 0 (fn-rtc-pool s)
+                              (fn-rtc-pool (mv-nth 0 (fn-rtc-grant-one s))))
+   :hints (("Goal" :in-theory
+     (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-grant-one fn-rtc-grant-buffer-frame-p fn-rtc-grant-pool-frame-refl
+         fn-rtc-with-accessors fn-rtc-buffer-accessors fn-rtc-buffer
+         fn-rtc-get-of-cons (:executable-counterpart nfix) nfix natp
+         car-cons cdr-cons unicity-of-0 fix commutativity-of-+ default-+-1 default-+-2
+         (:executable-counterpart zp) (:executable-counterpart equal)
+         (:executable-counterpart binary-+) (:executable-counterpart unary--)))
+     :use ((:instance fn-rtc-free-pool-buf-is-free (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s)))
+           (:instance fn-rtc-free-pool-buf-pool-index (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s)))
+           (:instance fn-rtc-free-pool-buf-natural (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s)))
+           (:instance fn-rtc-grant-pool-frame-update (cfg (fn-rtc-config s)) (pool (fn-rtc-pool s))
+             (k (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s)))
+             (b (list (+ 1 (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s)) s))) (list :leased (nfix (fn-rtc-get 1 (fn-rtc-oldest-wait (fn-rtc-uses s)))) (fn-rtc-get 2 (fn-rtc-oldest-wait (fn-rtc-uses s))) :in) nil))))))))
+
+(local
+ (defthm fn-rtc-grant-one-chain-pool-frame
+   (implies (fn-rtc-grant-pool-frame-p (fn-rtc-config s) 0 p (fn-rtc-pool s))
+            (fn-rtc-grant-pool-frame-p (fn-rtc-config s) 0 p
+                                       (fn-rtc-pool (mv-nth 0 (fn-rtc-grant-one s)))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+     :use (fn-rtc-grant-one-pool-frame
+           (:instance fn-rtc-grant-pool-frame-trans (cfg (fn-rtc-config s)) (h 0)
+             (p1 p) (p2 (fn-rtc-pool s)) (p3 (fn-rtc-pool (mv-nth 0 (fn-rtc-grant-one s))))))))))
+(local
+ (defthm fn-rtc-grant-chain-pool-frame
+   (implies (fn-rtc-grant-pool-frame-p (fn-rtc-config s) 0 p (fn-rtc-pool s))
+            (fn-rtc-grant-pool-frame-p (fn-rtc-config s) 0 p
+                                       (fn-rtc-pool (mv-nth 0 (fn-rtc-grant n s)))))
+   :hints (("Goal" :induct (fn-rtc-grant n s)
+            :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+                '(fn-rtc-grant fn-rtc-grant-one-chain-pool-frame fn-rtc-grant-one-frame))))))
+(local
+ (defthm fn-rtc-pool-buffer-home-zero
+   (implies (fn-rtc-pool-buf-p h cfg) (equal (fn-rtc-home h cfg) 0))
+   :hints (("Goal" :in-theory (e/d (fn-rtc-pool-buf-p fn-rtc-home)
+                                  (fn-rtc-nhome fn-rtc-qfixed fn-rtc-nbufs))))))
+(local
+ (defthm fn-rtc-grant-frame-is-local-returns
+   (implies (and (not (equal j 0)) (fn-rtc-grant-pool-frame-p cfg h p1 p2))
+            (fn-rtc-local-returns-p j cfg h (fn-rtc-local-buffers j cfg h p1)
+                                          (fn-rtc-local-buffers j cfg h p2) p2))
+   :hints (("Goal" :induct (fn-rtc-grant-pool-frame-p cfg h p1 p2)
+      :in-theory (e/d (fn-rtc-grant-pool-frame-p fn-rtc-grant-buffer-frame-p
+                      fn-rtc-local-returns-p fn-rtc-local-buffers fn-rtc-of-slot-p)
+                     (fn-rtc-home fn-rtc-pool-buf-p fn-rtc-b-owner fn-rtc-b-bytes))))))
+(local
+ (defthm fn-rtc-grant-local-returns
+   (implies (not (equal j 0))
+            (fn-rtc-local-returns-p j (fn-rtc-config s) 0
+              (fn-rtc-local-buffers j (fn-rtc-config s) 0 (fn-rtc-pool s))
+              (fn-rtc-local-buffers j (fn-rtc-config s) 0 (fn-rtc-pool (mv-nth 0 (fn-rtc-grant n s))))
+              (fn-rtc-pool (mv-nth 0 (fn-rtc-grant n s)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-grant-pool-frame-refl))
+     :use ((:instance fn-rtc-grant-chain-pool-frame (p (fn-rtc-pool s)))
+           (:instance fn-rtc-grant-frame-is-local-returns (cfg (fn-rtc-config s)) (h 0)
+             (p1 (fn-rtc-pool s)) (p2 (fn-rtc-pool (mv-nth 0 (fn-rtc-grant n s))))))))))
+
+(local
+ (defthm fn-rtc-uses-granted-refl (fn-rtc-uses-granted-p xs xs)))
+(local
+ (defthm fn-rtc-uses-granted-trans
+   (implies (and (fn-rtc-uses-granted-p xs ys) (fn-rtc-uses-granted-p ys zs))
+            (fn-rtc-uses-granted-p xs zs))
+   :hints (("Goal" :induct (list (fn-rtc-uses-granted-p xs ys) (fn-rtc-uses-granted-p ys zs))
+            :in-theory (e/d (fn-rtc-uses-granted-p) (fn-rtc-get fn-rtc-handlep))))))
+(local
+ (defthm fn-rtc-uses-granted-replace-wait
+   (implies (and (equal (fn-rtc-get 0 w) :wait) (natp (fn-rtc-get 1 w)) (fn-rtc-handlep hd))
+            (fn-rtc-uses-granted-p (fn-rtc-uses-of j uses)
+              (fn-rtc-uses-of j
+                (fn-rtc-replace-use (fn-rtc-key w)
+                  (list :pool (nfix (fn-rtc-get 1 w)) (fn-rtc-get 2 w) (fn-rtc-get 3 w) hd) uses))))
+   :hints (("Goal" :induct (fn-rtc-replace-use (fn-rtc-key w) nil uses)
+            :in-theory (e/d (fn-rtc-replace-use fn-rtc-key fn-rtc-uses-of fn-rtc-uses-granted-p)
+                             (fn-rtc-get fn-rtc-handlep))))))
+(local
+ (defthm fn-rtc-core-oldest-wait-id-natural
+   (implies (and (fn-rtc-core-invp s) (fn-rtc-oldest-wait (fn-rtc-uses s)))
+            (natp (fn-rtc-get 1 (fn-rtc-oldest-wait (fn-rtc-uses s)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-use-okp fn-rtc-usep))
+     :use (fn-rtc-core-invp-uses
+           (:instance fn-rtc-oldest-wait-member (uses (fn-rtc-uses s)))
+           (:instance fn-rtc-uses-okp-member (uses (fn-rtc-uses s)) (u (fn-rtc-oldest-wait (fn-rtc-uses s)))))))))
+(local
+ (defthm fn-rtc-grant-one-uses-granted
+   (implies (fn-rtc-core-invp s)
+            (fn-rtc-uses-granted-p (fn-rtc-uses-of j (fn-rtc-uses s))
+              (fn-rtc-uses-of j (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s))))))
+   :hints (("Goal" :in-theory
+     (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-grant-one fn-rtc-with-accessors fn-rtc-uses-granted-refl
+         fn-rtc-handlep fn-rtc-get-of-cons (:executable-counterpart nfix) nfix natp len true-listp
+         car-cons cdr-cons (:type-prescription fn-rtc-b-gen)
+         (:executable-counterpart equal) (:executable-counterpart zp)
+         (:executable-counterpart binary-+) (:executable-counterpart unary--)))
+     :use (fn-rtc-core-oldest-wait-id-natural
+           (:instance fn-rtc-oldest-wait-kind (uses (fn-rtc-uses s)))
+           (:instance fn-rtc-free-pool-buf-natural (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s)))
+           (:instance fn-rtc-uses-granted-replace-wait (uses (fn-rtc-uses s))
+             (w (fn-rtc-oldest-wait (fn-rtc-uses s)))
+             (hd (list (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s))
+                       (+ 1 (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s)) s))) 0 0))))))))
+
+(local
+ (defthm fn-rtc-grant-one-chain-uses-granted
+   (implies (and (fn-rtc-core-invp s) (fn-rtc-uses-granted-p us (fn-rtc-uses-of j (fn-rtc-uses s))))
+            (fn-rtc-uses-granted-p us (fn-rtc-uses-of j (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s))))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+     :use (fn-rtc-grant-one-uses-granted
+           (:instance fn-rtc-uses-granted-trans (xs us) (ys (fn-rtc-uses-of j (fn-rtc-uses s)))
+             (zs (fn-rtc-uses-of j (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s)))))))))))
+(local
+ (defthm fn-rtc-grant-chain-uses-granted
+   (implies (and (fn-rtc-core-invp s) (fn-rtc-uses-granted-p us (fn-rtc-uses-of j (fn-rtc-uses s))))
+            (fn-rtc-uses-granted-p us (fn-rtc-uses-of j (fn-rtc-uses (mv-nth 0 (fn-rtc-grant n s))))))
+   :hints (("Goal" :induct (fn-rtc-grant n s)
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-grant fn-rtc-grant-one-chain-uses-granted fn-rtc-grant-one-preserves-core-invp))))))
+(local
+ (defthm fn-rtc-grant-uses-granted
+   (implies (fn-rtc-core-invp s)
+            (fn-rtc-uses-granted-p (fn-rtc-uses-of j (fn-rtc-uses s))
+              (fn-rtc-uses-of j (fn-rtc-uses (mv-nth 0 (fn-rtc-grant n s))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-uses-granted-refl))
+     :use ((:instance fn-rtc-grant-chain-uses-granted (us (fn-rtc-uses-of j (fn-rtc-uses s)))))))))
+
+(local
+ (defthm fn-rtc-grant-end-use-keeps-pool
+   (implies (and (fn-rtc-invp s) (equal (fn-rtc-e-kind e) :grant))
+            (equal (fn-rtc-pool (fn-rtc-end-use s e)) (fn-rtc-pool s)))
+   :hints (("Goal" :in-theory
+     (union-theories (theory 'minimal-theory)
+       '(fn-rtc-end-use fn-rtc-end-lease fn-rtc-retire-drained fn-rtc-with-accessors
+         fn-rtc-use-okp fn-rtc-usep fn-rtc-u-hd fn-rtc-get-of-cons (:executable-counterpart nfix)
+         car-cons cdr-cons (:executable-counterpart fn-rtc-handlep)
+         (:executable-counterpart equal) (:executable-counterpart member-equal)))
+     :use (fn-rtc-invp-implies-core-invp
+           (:instance fn-rtc-core-invp-found-use (key (fn-rtc-key e)))
+           (:instance fn-rtc-matching-use-fields (uses (fn-rtc-uses s))))))))
+(local
+ (defthm fn-rtc-grant-step-foreign-frame
+   (implies (and (fn-rtc-invp s) (fn-rtc-acts-on-p s e) (equal (fn-rtc-e-kind e) :grant)
+                 (natp j) (<= 1 j))
+            (let ((s2 (mv-nth 0 (fn-rtc-step s e q))))
+              (and (equal (fn-rtc-slot j s2) (fn-rtc-slot j s))
+                   (fn-rtc-uses-granted-p (fn-rtc-uses-of j (fn-rtc-uses s))
+                                          (fn-rtc-uses-of j (fn-rtc-uses s2)))
+                   (fn-rtc-local-returns-p j (fn-rtc-config s) 0
+                     (fn-rtc-local-buffers j (fn-rtc-config s) 0 (fn-rtc-pool s))
+                     (fn-rtc-local-buffers j (fn-rtc-config s) 0 (fn-rtc-pool s2))
+                     (fn-rtc-pool s2)))))
+   :hints (("Goal" :in-theory
+      (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+        '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-rearm-foreign-fields
+          fn-rtc-grant-frame fn-rtc-end-use-config fn-rtc-pool-of-rearm
+          fn-rtc-grant-end-use-keeps-pool fn-rtc-end-use-foreign-fields
+          natp (:executable-counterpart equal)))
+      :use (fn-rtc-grant-event-listener fn-rtc-hand-delivers-kind
+            fn-rtc-invp-implies-core-invp fn-rtc-end-use-preserves-core-invp
+            (:instance fn-rtc-grant-uses-granted (s (fn-rtc-end-use s e))
+               (n (fn-rtc-npool (fn-rtc-config s))))
+            (:instance fn-rtc-grant-local-returns (s (fn-rtc-end-use s e))
+               (n (fn-rtc-npool (fn-rtc-config s)))))))))
+
 ; T17c others' steps touch J's local part only by explicit transfer
 (defthm fn-rtc-others-touch-an-instance-only-by-transfer
   (implies (and (fn-rtc-invp s) (natp j) (<= 1 j)
@@ -1674,15 +2166,16 @@
            (let ((s2 (mv-nth 0 (fn-rtc-step s e q))))
              (and (equal (fn-rtc-slot j s2) (fn-rtc-slot j s))
                   (equal (fn-rtc-mstate j s2) (fn-rtc-mstate j s))
-                  (equal (fn-rtc-uses-of j (fn-rtc-uses s2)) (fn-rtc-uses-of j (fn-rtc-uses s)))
+                  (fn-rtc-uses-granted-p (fn-rtc-uses-of j (fn-rtc-uses s))
+                                         (fn-rtc-uses-of j (fn-rtc-uses s2)))
                   (fn-rtc-local-returns-p j (fn-rtc-config s) 0
                                           (fn-rtc-local-buffers j (fn-rtc-config s) 0 (fn-rtc-pool s))
                                           (fn-rtc-local-buffers j (fn-rtc-config s) 0 (fn-rtc-pool s2))
                                           (fn-rtc-pool s2)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(natp nfix))
-           :use (fn-rtc-other-step-frame fn-rtc-machine-changes-only-when-delivered-to
-                 (:instance fn-rtc-pool-transfer-frame-is-local-returns (cfg (fn-rtc-config s)) (h 0)
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(natp nfix fn-rtc-uses-granted-refl))
+           :use (fn-rtc-grant-step-foreign-frame fn-rtc-other-step-nongrant-frame fn-rtc-machine-changes-only-when-delivered-to
+                 (:instance fn-rtc-pool-transfer-frame-implies-local-returns (cfg (fn-rtc-config s)) (h 0)
                    (p1 (fn-rtc-pool s)) (p2 (fn-rtc-pool (mv-nth 0 (fn-rtc-step s e q)))))))))
 
 (local
@@ -1698,7 +2191,7 @@
    (implies (not (equal j 0)) (equal (fn-rtc-uses-of j (mv-nth 1 (fn-rtc-rearm s))) nil))
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
-             '(fn-rtc-rearm fn-rtc-uses-of fn-rtc-get-of-cons car-cons cdr-cons
+             '(fn-rtc-arm-accept fn-rtc-arm-grant binary-append fn-rtc-rearm fn-rtc-uses-of fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons
                (:executable-counterpart equal) (:executable-counterpart zp)
                (:executable-counterpart unary--) (:executable-counterpart binary-+)))))))
 
@@ -2013,7 +2506,7 @@
                                           (fn-rtc-uses-of j (fn-rtc-remove-use (fn-rtc-key e2) (fn-rtc-uses s2)))))))
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
-             '(fn-rtc-corresponding-event fn-rtc-e-id fn-rtc-key fn-rtc-get-of-cons fn-rtc-get-of-set
+             '(fn-rtc-corresponding-event fn-rtc-e-id fn-rtc-key fn-rtc-get-of-cons (:executable-counterpart nfix) fn-rtc-get-of-set
                fn-rtc-find-use-of-uses-of fn-rtc-uses-of-remove-own fn-rtc-remove-unmatched
                fn-rtc-uses-of-okp fn-rtc-invp-uses-okp fn-rtc-uses-okp-no-nil fn-rtc-uses-of-true-listp
                fn-rtc-local-ranked-equal-parts fn-rtc-key-rank-found fn-rtc-fresh-event-unmatched
@@ -2426,6 +2919,24 @@
                   (:instance fn-rtc-matching-use-fields (uses (fn-rtc-uses s))))))))
 
 (local
+ (defthm fn-rtc-matched-pool-handle
+   (implies (and (fn-rtc-invp s) (fn-rtc-completionp e) (equal (fn-rtc-e-kind e) :pool)
+                 (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))
+            (fn-rtc-handlep (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))))
+   :hints (("Goal" :in-theory
+            (union-theories (theory 'minimal-theory) '(fn-rtc-use-okp fn-rtc-usep fn-rtc-u-hd (:executable-counterpart member-equal)))
+            :use (fn-rtc-invp-implies-core-invp
+                  (:instance fn-rtc-core-invp-found-use (key (fn-rtc-key e)))
+                  (:instance fn-rtc-matching-use-fields (uses (fn-rtc-uses s))))))))
+
+(local
+ (defthm fn-rtc-uses-of-append-with-no-own-tail
+   (implies (not (fn-rtc-uses-of j b))
+            (equal (fn-rtc-uses-of j (append a b)) (fn-rtc-uses-of j a)))
+   :hints (("Goal" :induct (append a b)
+            :in-theory (e/d (fn-rtc-uses-of) (fn-rtc-get))))))
+
+(local
  (defthm fn-rtc-corresponding-step-deliver
    (implies (and (and (fn-rtc-invp s) (fn-rtc-invp s2) (natp j) (< 0 j)
                   (< (fn-rtc-nstatic (fn-rtc-config s)) j)
@@ -2438,11 +2949,13 @@
    :hints (("Goal" :in-theory
             (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
              '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-step-actions-is fn-rtc-step-actions fn-rtc-step*
-               fn-rtc-local-ranked-rearm fn-rtc-uses-of-rearm-actions fn-rtc-end-use-column-lengths
+               fn-rtc-uses-of-append-with-no-own-tail fn-rtc-local-ranked-rearm fn-rtc-uses-of-rearm-actions fn-rtc-end-use-column-lengths
                fn-rtc-ranked-equal-is-ranked fn-rtc-ranked-equal-uses-of fn-rtc-u-hd
                (:executable-counterpart fn-rtc-ranked-equal-p) (:executable-counterpart fn-rtc-ranked) (:executable-counterpart equal)
                (:executable-counterpart member-equal) natp))
-            :use (fn-rtc-matched-hand-handle fn-rtc-corresponding-acts fn-rtc-corresponding-hand fn-rtc-own-target-not-hand-delivery
+            :use (fn-rtc-grant-event-listener fn-rtc-matched-pool-handle
+                  (:instance fn-rtc-deliver-local-ranked (s1 (fn-rtc-end-use s e)) (s2 (fn-rtc-end-use s2 (fn-rtc-corresponding-event j e s s2))) (inc (fn-rtc-e-inc e)) (ev (fn-rtc-ev (fn-rtc-e-kind e) (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e) j (fn-rtc-e-inc e) (list (list (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))) (+ 1 (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))) s))) 0 (len (fn-rtc-b-bytes (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))) s))))))))
+                  fn-rtc-matched-hand-handle fn-rtc-corresponding-acts fn-rtc-corresponding-hand fn-rtc-own-target-not-hand-delivery
                   fn-rtc-corresponding-end-use fn-rtc-corresponding-fields fn-rtc-corresponding-matching
                   fn-rtc-corresponding-outcome fn-rtc-corresponding-buffer fn-rtc-local-ranked-shape
                   fn-rtc-acting-matches-use (:instance fn-rtc-deliver-local-ranked (s1 (fn-rtc-end-use s e)) (s2 (fn-rtc-end-use s2 (fn-rtc-corresponding-event j e s s2))) (inc (fn-rtc-e-inc e)) (ev (fn-rtc-ev (fn-rtc-e-kind e) (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e) j (fn-rtc-e-inc e) nil)))
@@ -2491,7 +3004,7 @@
              '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
                fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-submit-okp
                fn-rtc-actions-held-p fn-rtc-action-held-p fn-rtc-held-by-p fn-rtc-leasedp
-               fn-rtc-buffer-of-with fn-rtc-issue-frame fn-rtc-buffer-accessors fn-rtc-get-of-cons
+               fn-rtc-buffer-of-with fn-rtc-issue-frame fn-rtc-buffer-accessors fn-rtc-get-of-cons (:executable-counterpart nfix)
                fn-rtc-owner-equality-fields fn-rtc-buffer-of-non-natp fn-rtc-next-op-of-with
                nfix natp car-cons cdr-cons member-equal
                (:type-prescription fn-rtc-h-buf)
@@ -2531,7 +3044,7 @@
             (union-theories (theory 'minimal-theory)
              '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
                fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-issue-frame
-               fn-rtc-with-accessors fn-rtc-slot-of-with fn-rtc-len-of-set fn-rtc-s-res fn-rtc-get-of-cons
+               fn-rtc-with-accessors fn-rtc-slot-of-with fn-rtc-len-of-set fn-rtc-s-res fn-rtc-get-of-cons (:executable-counterpart nfix)
                car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp)
                (:executable-counterpart unary--) (:executable-counterpart binary-+)
                (:executable-counterpart member-equal)))))))
@@ -2602,7 +3115,8 @@
  (defun fn-rtc-actions-owned-p (acts id s)
    (if (consp acts)
        (and (let* ((a (car acts)) (hd (fn-rtc-get 0 (fn-rtc-get 4 a))))
-              (and (or (equal (fn-rtc-get 1 a) id) (equal (fn-rtc-get 0 a) :accept))
+              (and (or (equal (fn-rtc-get 1 a) id) (member-eq (fn-rtc-get 0 a) '(:accept :grant))
+                       (and (equal id 0) (equal (fn-rtc-get 0 a) :pool)))
                    (implies (fn-rtc-handlep hd)
                             (fn-rtc-held-by-p (fn-rtc-b-owner (fn-rtc-buffer (fn-rtc-h-buf hd) s))
                                               (fn-rtc-get 1 a)))))
@@ -2635,7 +3149,8 @@
    (fn-rtc-actions-owned-p (mv-nth 1 (fn-rtc-rearm s)) id (mv-nth 0 (fn-rtc-rearm s)))
    :hints (("Goal" :in-theory
             (union-theories (theory 'minimal-theory)
-             '(fn-rtc-rearm fn-rtc-actions-owned-p fn-rtc-get-of-cons car-cons cdr-cons
+             '(fn-rtc-arm-accept fn-rtc-arm-grant fn-rtc-actions-owned-append
+               (:executable-counterpart member-equal) fn-rtc-rearm fn-rtc-actions-owned-p fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons
                (:executable-counterpart equal) (:executable-counterpart fn-rtc-handlep)
                (:executable-counterpart zp) (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
 
@@ -2693,6 +3208,43 @@
    :hints (("Goal" :in-theory (theory 'minimal-theory) :use fn-rtc-accept-actions-owned))))
 
 (local
+ (defthm fn-rtc-grant-keeps-held-buffer
+   (implies (fn-rtc-held-by-p (fn-rtc-b-owner (fn-rtc-buffer h s)) id)
+            (equal (fn-rtc-buffer h (mv-nth 0 (fn-rtc-grant n s))) (fn-rtc-buffer h s)))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+             '(fn-rtc-held-by-p member-equal (:executable-counterpart fn-rtc-get)))
+            :use fn-rtc-grant-keeps-occupied))))
+(local
+ (defthm fn-rtc-actions-owned-through-grant
+   (implies (fn-rtc-actions-owned-p acts id s)
+            (fn-rtc-actions-owned-p acts id (mv-nth 0 (fn-rtc-grant n s))))
+   :hints (("Goal" :induct (fn-rtc-actions-owned-p acts id s)
+      :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+         '(fn-rtc-actions-owned-p fn-rtc-grant-keeps-held-buffer))))))
+(local
+ (defthm fn-rtc-grant-one-actions-owned
+   (fn-rtc-actions-owned-p (mv-nth 1 (fn-rtc-grant-one s)) 0 (mv-nth 0 (fn-rtc-grant-one s)))
+   :hints (("Goal" :in-theory
+     (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-grant-one fn-rtc-actions-owned-p fn-rtc-held-by-p
+         fn-rtc-buffer-of-with fn-rtc-with-accessors fn-rtc-buffer-accessors
+         fn-rtc-get-of-cons (:executable-counterpart nfix) fn-rtc-h-buf nfix natp
+         car-cons cdr-cons unicity-of-0 fix commutativity-of-+ default-+-1 default-+-2
+         (:executable-counterpart zp) (:executable-counterpart equal)
+         (:executable-counterpart member-equal) (:executable-counterpart binary-+)
+         (:executable-counterpart unary--)))
+     :use ((:instance fn-rtc-free-pool-buf-natural (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s)))
+           (:instance fn-rtc-free-pool-buf-upper-bound (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s))))))))
+(local
+ (defthm fn-rtc-grant-actions-owned
+   (fn-rtc-actions-owned-p (mv-nth 1 (fn-rtc-grant n s)) 0 (mv-nth 0 (fn-rtc-grant n s)))
+   :hints (("Goal" :induct (fn-rtc-grant n s)
+     :expand ((:free (z) (fn-rtc-actions-owned-p nil 0 z)))
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+        '(fn-rtc-grant fn-rtc-actions-owned-append fn-rtc-actions-owned-through-grant
+          fn-rtc-grant-one-actions-owned))))))
+
+(local
  (defthm fn-rtc-step-actions-owned
    (implies (fn-rtc-invp s)
             (fn-rtc-actions-owned-p (mv-nth 1 (fn-rtc-step s e q)) (fn-rtc-target s e)
@@ -2703,16 +3255,17 @@
                fn-rtc-target fn-rtc-hand-to fn-rtc-slots-of-end-use-when-acting
                (:executable-counterpart member-equal) (:executable-counterpart equal)
                fn-rtc-actions-owned-append fn-rtc-actions-owned-through-rearm
-               fn-rtc-rearm-actions-owned fn-rtc-deliver-actions-owned fn-rtc-accept-actions-owned-at
+               fn-rtc-grant-actions-owned fn-rtc-rearm-actions-owned fn-rtc-deliver-actions-owned fn-rtc-accept-actions-owned-at
                fn-rtc-accept-not-done-actions-owned fn-rtc-close-actions-owned
                fn-rtc-core-action-context fn-rtc-end-use-preserves-core-invp fn-rtc-delivered-outcome-done))
-            :use (fn-rtc-invp-is-core-and-admission fn-rtc-hand-delivers-kind
+            :use (fn-rtc-grant-event-listener fn-rtc-invp-implies-core-invp fn-rtc-hand-delivers-kind
                   (:instance fn-rtc-delivered-outcome-done (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))))))))
 
 (local
  (defthm fn-rtc-actions-owned-member
    (implies (and (fn-rtc-actions-owned-p acts id s) (member-equal a acts))
-            (and (or (equal (fn-rtc-get 1 a) id) (equal (fn-rtc-get 0 a) :accept))
+            (and (or (equal (fn-rtc-get 1 a) id) (member-eq (fn-rtc-get 0 a) '(:accept :grant))
+                       (and (equal id 0) (equal (fn-rtc-get 0 a) :pool)))
                  (implies (fn-rtc-handlep (fn-rtc-get 0 (fn-rtc-get 4 a)))
                           (fn-rtc-held-by-p (fn-rtc-b-owner (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-get 0 (fn-rtc-get 4 a))) s))
                                            (fn-rtc-get 1 a)))))
@@ -2723,13 +3276,16 @@
 ; and names only buffers of its own instance
 (defthm fn-rtc-actions-name-only-their-instances-buffers
   (implies (and (fn-rtc-invp s) (member-equal a (mv-nth 1 (fn-rtc-step s e q))))
-           (and (or (equal (fn-rtc-get 1 a) (fn-rtc-target s e)) (equal (fn-rtc-get 0 a) :accept))
+           (and (or (equal (fn-rtc-get 1 a) (fn-rtc-target s e))
+                    (equal (fn-rtc-get 0 a) :accept)
+                    (equal (fn-rtc-get 0 a) :grant)
+                    (and (equal (fn-rtc-get 0 a) :pool) (equal (fn-rtc-target s e) 0)))
                 (implies (fn-rtc-handlep (fn-rtc-get 0 (fn-rtc-get 4 a)))
                          (fn-rtc-held-by-p
                           (fn-rtc-b-owner (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-get 0 (fn-rtc-get 4 a)))
                                                          (mv-nth 0 (fn-rtc-step s e q))))
                           (fn-rtc-get 1 a)))))
-  :hints (("Goal" :in-theory (theory 'minimal-theory)
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(member-equal))
            :use (fn-rtc-step-actions-owned
                  (:instance fn-rtc-actions-owned-member (acts (mv-nth 1 (fn-rtc-step s e q)))
                    (id (fn-rtc-target s e)) (s (mv-nth 0 (fn-rtc-step s e q))))))))
@@ -2740,7 +3296,7 @@
    :hints (("Goal" :in-theory
  (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
  '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-deliver fn-rtc-accept-branch
-   fn-rtc-close-branch fn-rtc-end-use-config fn-rtc-rearm-frame
+   fn-rtc-grant-frame fn-rtc-close-branch fn-rtc-end-use-config fn-rtc-rearm-frame
    fn-rtc-make-accessors fn-rtc-with-accessors fn-rtc-requests-config-is-constant
    car-cons cdr-cons))))))
 
@@ -2755,3 +3311,874 @@
  :use (fn-rtc-step-preserves-invp
        (:instance fn-rtc-statics-okp-get (j 1) (n (fn-rtc-nstatic (fn-rtc-config s)))
          (k j) (slots (fn-rtc-slots (mv-nth 0 (fn-rtc-step s e q)))))))))
+
+(local
+ (defthm fn-rtc-waiting-op-is-used
+   (implies (fn-rtc-waiting-op-p a uses) (fn-rtc-op-used-p a uses))
+   :hints (("Goal" :induct (fn-rtc-waiting-op-p a uses)
+            :in-theory (e/d (fn-rtc-waiting-op-p fn-rtc-op-used-p) (fn-rtc-get))))))
+(local
+ (defthm fn-rtc-member-op-is-used
+   (implies (member-equal u uses) (fn-rtc-op-used-p (fn-rtc-get 3 u) uses))
+   :hints (("Goal" :induct (member-equal u uses)
+            :in-theory (e/d (fn-rtc-op-used-p) (fn-rtc-get))))))
+(local
+ (defthm fn-rtc-waiting-op-is-natural
+   (implies (and (fn-rtc-uses-ops-natp uses) (fn-rtc-waiting-op-p a uses)) (natp a))
+   :hints (("Goal" :induct (fn-rtc-waiting-op-p a uses)
+            :in-theory (e/d (fn-rtc-uses-ops-natp fn-rtc-waiting-op-p) (fn-rtc-get))))))
+(local
+ (defthm fn-rtc-pool-op-is-natural
+   (implies (and (fn-rtc-uses-ops-natp uses) (fn-rtc-pool-op-p a uses)) (natp a))
+   :hints (("Goal" :induct (fn-rtc-pool-op-p a uses)
+            :in-theory (e/d (fn-rtc-uses-ops-natp fn-rtc-pool-op-p) (fn-rtc-get))))))
+(local
+ (defthm fn-rtc-oldest-wait-op-natural
+   (implies (and (fn-rtc-uses-ops-natp uses) (fn-rtc-oldest-wait uses))
+            (natp (fn-rtc-get 3 (fn-rtc-oldest-wait uses))))
+   :hints (("Goal" :induct (fn-rtc-oldest-wait uses)
+            :in-theory (e/d (fn-rtc-oldest-wait fn-rtc-uses-ops-natp) (fn-rtc-get))))))
+(local
+ (defthm fn-rtc-oldest-wait-is-minimum
+   (implies (fn-rtc-waiting-op-p a uses)
+            (and (fn-rtc-oldest-wait uses)
+                 (<= (nfix (fn-rtc-get 3 (fn-rtc-oldest-wait uses))) (nfix a))))
+   :hints (("Goal" :induct (fn-rtc-oldest-wait uses)
+            :in-theory (e/d (fn-rtc-oldest-wait fn-rtc-waiting-op-p) (fn-rtc-get))))))
+(local
+ (defthm fn-rtc-waiting-op-of-replace-other
+   (implies (and (not (equal (fn-rtc-get 0 v) :wait))
+                 (fn-rtc-waiting-op-p a (fn-rtc-replace-use key v uses)))
+            (fn-rtc-waiting-op-p a uses))
+   :hints (("Goal" :induct (fn-rtc-replace-use key v uses)
+            :in-theory (e/d (fn-rtc-replace-use fn-rtc-waiting-op-p) (fn-rtc-get fn-rtc-key))))))
+(local
+ (defthm fn-rtc-pool-op-of-replace
+   (implies (fn-rtc-pool-op-p a (fn-rtc-replace-use key v uses))
+            (or (fn-rtc-pool-op-p a uses)
+                (and (equal (fn-rtc-get 0 v) :pool) (equal a (fn-rtc-get 3 v)))))
+   :hints (("Goal" :induct (fn-rtc-replace-use key v uses)
+            :in-theory (e/d (fn-rtc-replace-use fn-rtc-pool-op-p) (fn-rtc-get fn-rtc-key))))))
+(local
+ (defthm fn-rtc-replaced-wait-op-gone
+   (implies (and (fn-rtc-uses-okp uses s) (member-equal w uses)
+                 (not (equal (fn-rtc-get 0 v) :wait)))
+            (not (fn-rtc-waiting-op-p (fn-rtc-get 3 w)
+                                     (fn-rtc-replace-use (fn-rtc-key w) v uses))))
+   :hints (("Goal" :induct (fn-rtc-replace-use (fn-rtc-key w) v uses)
+            :in-theory (e/d (fn-rtc-replace-use fn-rtc-waiting-op-p fn-rtc-uses-okp fn-rtc-key)
+                             (fn-rtc-get fn-rtc-use-okp fn-rtc-kind-out-p fn-rtc-op-used-p))))))
+
+(local
+ (defthm fn-rtc-wait-after-oldest-is-later
+   (implies (and (fn-rtc-uses-okp uses s) (not (equal (fn-rtc-get 0 v) :wait))
+                 (fn-rtc-waiting-op-p a (fn-rtc-replace-use (fn-rtc-key (fn-rtc-oldest-wait uses)) v uses)))
+            (< (fn-rtc-get 3 (fn-rtc-oldest-wait uses)) a))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(nfix natp))
+      :use (fn-rtc-uses-okp-ops-natp fn-rtc-oldest-wait-is-minimum fn-rtc-oldest-wait-op-natural
+            fn-rtc-waiting-op-is-natural fn-rtc-oldest-wait-member
+            (:instance fn-rtc-waiting-op-of-replace-other (key (fn-rtc-key (fn-rtc-oldest-wait uses))))
+            (:instance fn-rtc-replaced-wait-op-gone (w (fn-rtc-oldest-wait uses))))))))
+(local
+ (defthm fn-rtc-replace-oldest-pool-order
+   (implies (and (fn-rtc-uses-okp uses s) (not (equal (fn-rtc-get 0 v) :wait))
+                 (equal (fn-rtc-get 3 v) (fn-rtc-get 3 (fn-rtc-oldest-wait uses)))
+                 (fn-rtc-waiting-op-p a (fn-rtc-replace-use (fn-rtc-key (fn-rtc-oldest-wait uses)) v uses))
+                 (fn-rtc-pool-op-p b (fn-rtc-replace-use (fn-rtc-key (fn-rtc-oldest-wait uses)) v uses))
+                 (not (fn-rtc-pool-op-p b uses)))
+            (< b a))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+      :use (fn-rtc-wait-after-oldest-is-later
+            (:instance fn-rtc-pool-op-of-replace (a b) (key (fn-rtc-key (fn-rtc-oldest-wait uses)))))))))
+
+(local
+ (defthm fn-rtc-grant-one-wait-subset
+   (implies (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s))))
+            (fn-rtc-waiting-op-p a (fn-rtc-uses s)))
+   :hints (("Goal" :in-theory
+       (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+         '(fn-rtc-grant-one fn-rtc-with-accessors fn-rtc-get-of-cons (:executable-counterpart nfix)
+           car-cons cdr-cons (:executable-counterpart zp) (:executable-counterpart equal)
+           (:executable-counterpart binary-+) (:executable-counterpart unary--)))
+     :use ((:instance fn-rtc-waiting-op-of-replace-other
+              (uses (fn-rtc-uses s)) (key (fn-rtc-key (fn-rtc-oldest-wait (fn-rtc-uses s)))) (v (list :pool (nfix (fn-rtc-get 1 (fn-rtc-oldest-wait (fn-rtc-uses s)))) (fn-rtc-get 2 (fn-rtc-oldest-wait (fn-rtc-uses s))) (fn-rtc-get 3 (fn-rtc-oldest-wait (fn-rtc-uses s))) (list (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s)) (+ 1 (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s)) s))) 0 0)))))))))
+(local
+ (defthm fn-rtc-grant-one-queue-order
+   (implies (and (fn-rtc-core-invp s)
+                 (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s))))
+                 (fn-rtc-pool-op-p b (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s))))
+                 (not (fn-rtc-pool-op-p b (fn-rtc-uses s))))
+            (< b a))
+   :hints (("Goal" :in-theory
+       (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+         '(fn-rtc-grant-one fn-rtc-with-accessors fn-rtc-get-of-cons (:executable-counterpart nfix)
+           car-cons cdr-cons (:executable-counterpart zp) (:executable-counterpart equal)
+           (:executable-counterpart binary-+) (:executable-counterpart unary--)))
+     :use (fn-rtc-core-invp-uses
+           (:instance fn-rtc-replace-oldest-pool-order (uses (fn-rtc-uses s)) (v (list :pool (nfix (fn-rtc-get 1 (fn-rtc-oldest-wait (fn-rtc-uses s)))) (fn-rtc-get 2 (fn-rtc-oldest-wait (fn-rtc-uses s))) (fn-rtc-get 3 (fn-rtc-oldest-wait (fn-rtc-uses s))) (list (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s)) (+ 1 (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s)) s))) 0 0)))))))))
+
+(local
+ (defthm fn-rtc-grant-wait-subset
+   (implies (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-grant n s))))
+            (fn-rtc-waiting-op-p a (fn-rtc-uses s)))
+   :hints (("Goal" :induct (fn-rtc-grant n s)
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-grant fn-rtc-grant-one-wait-subset))))))
+(local
+ (defthm fn-rtc-grant-queue-order
+   (implies (and (fn-rtc-core-invp s)
+                 (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-grant n s))))
+                 (fn-rtc-pool-op-p b (fn-rtc-uses (mv-nth 0 (fn-rtc-grant n s))))
+                 (not (fn-rtc-pool-op-p b (fn-rtc-uses s))))
+            (< b a))
+   :hints (("Goal" :induct (fn-rtc-grant n s)
+      :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+        '(fn-rtc-grant fn-rtc-grant-one-preserves-core-invp fn-rtc-grant-one-queue-order)))
+           ("Subgoal *1/2" :use (fn-rtc-grant-one-queue-order
+                    (:instance fn-rtc-grant-wait-subset (s (mv-nth 0 (fn-rtc-grant-one s))) (n (- n 1))))))))
+
+(local
+ (defthm fn-rtc-pool-op-of-cons
+   (equal (fn-rtc-pool-op-p b (cons u uses))
+          (or (and (equal (fn-rtc-get 0 u) :pool) (equal (fn-rtc-get 3 u) b))
+              (fn-rtc-pool-op-p b uses)))
+   :hints (("Goal" :expand ((fn-rtc-pool-op-p b (cons u uses)))))))
+(local
+ (defthm fn-rtc-wait-op-of-cons
+   (equal (fn-rtc-waiting-op-p a (cons u uses))
+          (or (and (equal (fn-rtc-get 0 u) :wait) (equal (fn-rtc-get 3 u) a))
+              (fn-rtc-waiting-op-p a uses)))
+   :hints (("Goal" :expand ((fn-rtc-waiting-op-p a (cons u uses)))))))
+(local
+ (defthm fn-rtc-rearm-pool-and-wait-ops
+   (and (equal (fn-rtc-pool-op-p b (fn-rtc-uses (mv-nth 0 (fn-rtc-rearm s))))
+               (fn-rtc-pool-op-p b (fn-rtc-uses s)))
+        (equal (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-rearm s))))
+               (fn-rtc-waiting-op-p a (fn-rtc-uses s))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+        '(fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant fn-rtc-issue-frame
+          fn-rtc-pool-op-of-cons fn-rtc-wait-op-of-cons fn-rtc-get-of-cons
+          (:executable-counterpart nfix) car-cons cdr-cons (:executable-counterpart equal)
+          (:executable-counterpart zp) (:executable-counterpart binary-+)
+          (:executable-counterpart unary--)))))))
+(local
+ (defthm fn-rtc-request-pool-ops
+   (equal (fn-rtc-pool-op-p b (fn-rtc-uses (mv-nth 0 (fn-rtc-request r id inc s))))
+          (fn-rtc-pool-op-p b (fn-rtc-uses s)))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+       '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
+         fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-issue-frame fn-rtc-with-accessors
+         fn-rtc-pool-op-of-cons fn-rtc-get-of-cons (:executable-counterpart nfix)
+         car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart member-equal)
+         (:executable-counterpart zp) (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
+(local
+ (defthm fn-rtc-requests-pool-ops
+   (equal (fn-rtc-pool-op-p b (fn-rtc-uses (mv-nth 0 (fn-rtc-requests rs id inc s))))
+          (fn-rtc-pool-op-p b (fn-rtc-uses s)))
+   :hints (("Goal" :induct (fn-rtc-requests rs id inc s)
+       :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+          '(fn-rtc-requests fn-rtc-request-pool-ops))))))
+(local
+ (defthm fn-rtc-deliver-pool-ops
+   (equal (fn-rtc-pool-op-p b (fn-rtc-uses (mv-nth 0 (fn-rtc-deliver s id inc ev q))))
+          (fn-rtc-pool-op-p b (fn-rtc-uses s)))
+   :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+          '(fn-rtc-deliver fn-rtc-requests-pool-ops fn-rtc-with-accessors))))))
+(local
+ (defthm fn-rtc-accept-close-pool-ops
+   (and (equal (fn-rtc-pool-op-p b (fn-rtc-uses (mv-nth 0 (fn-rtc-accept-branch s out q))))
+               (fn-rtc-pool-op-p b (fn-rtc-uses s)))
+        (equal (fn-rtc-pool-op-p b (fn-rtc-uses (mv-nth 0 (fn-rtc-close-branch s id inc))))
+               (fn-rtc-pool-op-p b (fn-rtc-uses s))))
+   :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+          '(fn-rtc-accept-branch fn-rtc-close-branch fn-rtc-with-accessors fn-rtc-make-accessors
+            fn-rtc-deliver-pool-ops fn-rtc-rearm-pool-and-wait-ops))))))
+(local
+ (defthm fn-rtc-pool-op-remove-subset
+   (implies (fn-rtc-pool-op-p b (fn-rtc-remove-use key uses)) (fn-rtc-pool-op-p b uses))
+   :hints (("Goal" :induct (fn-rtc-remove-use key uses)
+            :in-theory (e/d (fn-rtc-remove-use fn-rtc-pool-op-p) (fn-rtc-key fn-rtc-get))))))
+(local
+ (defthm fn-rtc-end-use-pool-op-subset
+   (implies (fn-rtc-pool-op-p b (fn-rtc-uses (fn-rtc-end-use s e)))
+            (fn-rtc-pool-op-p b (fn-rtc-uses s)))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+      '(fn-rtc-end-use fn-rtc-end-lease fn-rtc-retire-drained fn-rtc-with-accessors fn-rtc-pool-op-remove-subset))))))
+
+; T20 grants go oldest first: a request granted in a step was issued before
+; every request still waiting after it (with operation numbers issued in
+; order, the k-th waiter is granted by the k-th grant)
+(defthm fn-rtc-pool-grants-oldest-first
+  (let ((s2 (mv-nth 0 (fn-rtc-step s e q))))
+    (implies (and (fn-rtc-invp s)
+                  (fn-rtc-waiting-op-p a (fn-rtc-uses s2))
+                  (fn-rtc-pool-op-p b (fn-rtc-uses s2))
+                  (not (fn-rtc-pool-op-p b (fn-rtc-uses s))))
+             (< b a)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+    (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+      '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-rearm-pool-and-wait-ops
+        fn-rtc-deliver-pool-ops fn-rtc-accept-close-pool-ops))
+    :use (fn-rtc-invp-implies-core-invp fn-rtc-end-use-preserves-core-invp
+          fn-rtc-end-use-pool-op-subset
+          (:instance fn-rtc-grant-queue-order (s (fn-rtc-end-use s e))
+                     (n (fn-rtc-npool (fn-rtc-config s))))))))
+
+; Grant actions follow the same oldest-first order as the use-table transition.
+(local
+ (defun fn-rtc-ops-are-waits-p (ops uses)
+   (if (consp ops) (and (fn-rtc-waiting-op-p (car ops) uses)
+                        (fn-rtc-ops-are-waits-p (cdr ops) uses)) t)))
+(local
+ (defthm fn-rtc-ops-are-waits-append
+   (equal (fn-rtc-ops-are-waits-p (append xs ys) uses)
+          (and (fn-rtc-ops-are-waits-p xs uses) (fn-rtc-ops-are-waits-p ys uses)))
+   :hints (("Goal" :induct (append xs ys) :in-theory (disable fn-rtc-waiting-op-p)))))
+(local
+ (defthm fn-rtc-ops-waits-before-grant-one
+   (implies (fn-rtc-ops-are-waits-p ops (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s))))
+            (fn-rtc-ops-are-waits-p ops (fn-rtc-uses s)))
+   :hints (("Goal" :induct (fn-rtc-ops-are-waits-p ops (fn-rtc-uses s))
+      :in-theory (union-theories (theory 'minimal-theory)
+                   '(fn-rtc-ops-are-waits-p fn-rtc-grant-one-wait-subset))))))
+(local
+ (defthm fn-rtc-pool-action-ops-append
+   (equal (fn-rtc-pool-action-ops (append xs ys))
+          (append (fn-rtc-pool-action-ops xs) (fn-rtc-pool-action-ops ys)))
+   :hints (("Goal" :induct (append xs ys) :in-theory (disable fn-rtc-get)))))
+(local
+ (defthm fn-rtc-oldest-wait-waits
+   (implies (fn-rtc-oldest-wait uses)
+            (fn-rtc-waiting-op-p (fn-rtc-get 3 (fn-rtc-oldest-wait uses)) uses))
+   :hints (("Goal" :induct (fn-rtc-oldest-wait uses)
+             :in-theory (e/d (fn-rtc-waiting-op-p fn-rtc-oldest-wait) (fn-rtc-get))))))
+(local
+ (defthm fn-rtc-grant-one-action-ops-wait
+   (fn-rtc-ops-are-waits-p (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-grant-one s)))
+                          (fn-rtc-uses s))
+   :hints (("Goal" :in-theory
+      (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+        '(fn-rtc-grant-one fn-rtc-pool-action-ops fn-rtc-ops-are-waits-p fn-rtc-oldest-wait-waits
+          fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons
+          (:executable-counterpart zp) (:executable-counterpart equal)
+          (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
+(local
+ (defthm fn-rtc-grant-action-ops-wait
+   (fn-rtc-ops-are-waits-p (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-grant n s)))
+                          (fn-rtc-uses s))
+   :hints (("Goal" :induct (fn-rtc-grant n s)
+      :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+        '(fn-rtc-grant fn-rtc-pool-action-ops-append fn-rtc-ops-are-waits-append
+          fn-rtc-grant-one-action-ops-wait fn-rtc-ops-waits-before-grant-one
+          (:executable-counterpart fn-rtc-pool-action-ops)))
+      :expand ((:free (u) (fn-rtc-ops-are-waits-p nil u)))))))
+(local
+ (defthm fn-rtc-grant-one-waits-later
+   (implies (and (fn-rtc-core-invp s) (consp (mv-nth 1 (fn-rtc-grant-one s)))
+                 (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s)))))
+            (< (fn-rtc-get 3 (fn-rtc-oldest-wait (fn-rtc-uses s))) a))
+   :hints (("Goal" :in-theory
+       (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+         '(fn-rtc-grant-one fn-rtc-with-accessors fn-rtc-get-of-cons (:executable-counterpart nfix)
+           car-cons cdr-cons (:executable-counterpart zp) (:executable-counterpart equal)
+           (:executable-counterpart binary-+) (:executable-counterpart unary--)))
+     :use (fn-rtc-core-invp-uses
+           (:instance fn-rtc-wait-after-oldest-is-later (uses (fn-rtc-uses s))
+              (v (list :pool (nfix (fn-rtc-get 1 (fn-rtc-oldest-wait (fn-rtc-uses s))))
+                       (fn-rtc-get 2 (fn-rtc-oldest-wait (fn-rtc-uses s)))
+                       (fn-rtc-get 3 (fn-rtc-oldest-wait (fn-rtc-uses s)))
+                       (list (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s))
+                             (+ 1 (fn-rtc-b-gen (fn-rtc-buffer (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s)) s))) 0 0)))))))))
+(local
+ (defthm fn-rtc-grant-one-action-ops
+   (equal (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-grant-one s)))
+          (if (consp (mv-nth 1 (fn-rtc-grant-one s)))
+              (list (fn-rtc-get 3 (fn-rtc-oldest-wait (fn-rtc-uses s)))) nil))
+   :hints (("Goal" :in-theory
+     (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+      '(fn-rtc-grant-one fn-rtc-pool-action-ops fn-rtc-get-of-cons (:executable-counterpart nfix)
+        car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart zp)
+        (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
+(local
+ (defthm fn-rtc-grant-one-ordered-prefix
+   (implies (and (fn-rtc-core-invp s) (fn-rtc-ascending-p xs)
+                 (fn-rtc-ops-are-waits-p xs (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s)))))
+            (fn-rtc-ascending-p (append (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-grant-one s))) xs)))
+   :hints (("Goal" :in-theory
+     (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+      '(fn-rtc-grant-one-action-ops fn-rtc-ascending-p fn-rtc-ops-are-waits-p binary-append nfix natp car-cons cdr-cons cons-car-cdr))
+     :use ((:instance fn-rtc-grant-one-waits-later (a (car xs)))
+           (:instance fn-rtc-oldest-wait-op-natural (uses (fn-rtc-uses s)))
+           (:instance fn-rtc-oldest-wait-is-minimum (uses (fn-rtc-uses s)) (a (car xs)))
+           (:instance fn-rtc-grant-one-wait-subset (a (car xs)))
+           (:instance fn-rtc-waiting-op-is-natural (uses (fn-rtc-uses s)) (a (car xs)))
+           fn-rtc-core-invp-uses
+           (:instance fn-rtc-uses-okp-ops-natp (uses (fn-rtc-uses s))))))))
+(local
+ (defthm fn-rtc-grant-actions-ascending
+   (implies (fn-rtc-core-invp s)
+            (fn-rtc-ascending-p (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-grant n s)))))
+   :hints (("Goal" :induct (fn-rtc-grant n s)
+      :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+        '(fn-rtc-grant fn-rtc-pool-action-ops-append fn-rtc-grant-one-preserves-core-invp
+          (:executable-counterpart fn-rtc-pool-action-ops) (:executable-counterpart fn-rtc-ascending-p))))
+     ("Subgoal *1/2" :use ((:instance fn-rtc-grant-one-ordered-prefix
+                             (xs (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-grant (- n 1) (mv-nth 0 (fn-rtc-grant-one s)))))))
+                          (:instance fn-rtc-grant-action-ops-wait (n (- n 1)) (s (mv-nth 0 (fn-rtc-grant-one s)))))))))
+(local
+ (defthm fn-rtc-pool-action-ops-cons
+   (equal (fn-rtc-pool-action-ops (cons a acts))
+          (if (equal (fn-rtc-get 0 a) :pool)
+              (cons (fn-rtc-get 3 a) (fn-rtc-pool-action-ops acts))
+            (fn-rtc-pool-action-ops acts)))
+   :hints (("Goal" :expand ((fn-rtc-pool-action-ops (cons a acts)))))))
+(local
+ (defthm fn-rtc-request-no-pool-actions
+   (equal (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-request r id inc s))) nil)
+   :hints (("Goal" :in-theory
+     (union-theories (theory 'minimal-theory)
+       '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
+         fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-pool-action-ops-cons
+         fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons
+         (:executable-counterpart fn-rtc-pool-action-ops) (:executable-counterpart member-equal)
+         (:executable-counterpart equal) (:executable-counterpart zp)
+         (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
+(local
+ (defthm fn-rtc-requests-no-pool-actions
+   (equal (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-requests rs id inc s))) nil)
+   :hints (("Goal" :induct (fn-rtc-requests rs id inc s)
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-requests fn-rtc-request-no-pool-actions fn-rtc-pool-action-ops-append
+         (:executable-counterpart binary-append) (:executable-counterpart fn-rtc-pool-action-ops)))))))
+(local
+ (defthm fn-rtc-rearm-no-pool-actions
+   (equal (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-rearm s))) nil)
+   :hints (("Goal" :in-theory
+     (union-theories (theory 'minimal-theory)
+       '(fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant fn-rtc-pool-action-ops-cons
+         fn-rtc-pool-action-ops-append fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons
+         (:executable-counterpart fn-rtc-pool-action-ops) (:executable-counterpart binary-append)
+         (:executable-counterpart equal) (:executable-counterpart zp)
+         (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
+(local
+ (defthm fn-rtc-deliver-no-pool-actions
+   (equal (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-deliver s id inc ev q))) nil)
+   :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+                               '(fn-rtc-deliver fn-rtc-requests-no-pool-actions))))))
+(local
+ (defthm fn-rtc-accept-close-no-pool-actions
+   (and (equal (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-accept-branch s out q))) nil)
+        (equal (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-close-branch s id inc))) nil))
+   :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+          '(fn-rtc-accept-branch fn-rtc-close-branch fn-rtc-deliver-no-pool-actions
+            fn-rtc-rearm-no-pool-actions fn-rtc-pool-action-ops-append (:executable-counterpart binary-append)))))))
+(local
+ (defthm fn-rtc-ascending-append-nil
+   (equal (fn-rtc-ascending-p (append xs nil)) (fn-rtc-ascending-p xs))
+   :hints (("Goal" :induct (fn-rtc-ascending-p xs)))))
+; T20o the pool grants one step emits go to the host oldest first
+(defthm fn-rtc-pool-grant-actions-are-oldest-first
+  (implies (fn-rtc-invp s)
+           (fn-rtc-ascending-p (fn-rtc-pool-action-ops (mv-nth 1 (fn-rtc-step s e q)))))
+  :hints (("Goal" :in-theory
+    (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+      '(fn-rtc-step fn-rtc-step* fn-rtc-rearm-no-pool-actions fn-rtc-deliver-no-pool-actions
+        fn-rtc-accept-close-no-pool-actions fn-rtc-pool-action-ops-append binary-append fn-rtc-ascending-append-nil
+        (:executable-counterpart member-equal)
+        (:executable-counterpart fn-rtc-ascending-p)))
+    :use (fn-rtc-invp-implies-core-invp fn-rtc-end-use-preserves-core-invp
+          (:instance fn-rtc-grant-actions-ascending (s (fn-rtc-end-use s e))
+                     (n (fn-rtc-npool (fn-rtc-config s))))))))
+
+(local
+ (defthm fn-rtc-wait-position-natural
+   (natp (fn-rtc-wait-position a uses)) :rule-classes :type-prescription))
+(local
+ (defthm fn-rtc-wait-position-positive
+   (implies (fn-rtc-waiting-op-p a uses) (< 0 (fn-rtc-wait-position a uses)))
+   :rule-classes :linear
+   :hints (("Goal" :induct (fn-rtc-wait-position a uses)
+            :in-theory (e/d (fn-rtc-wait-position fn-rtc-waiting-op-p) (fn-rtc-get))))))
+(local
+ (defthm fn-rtc-wait-position-cons
+   (equal (fn-rtc-wait-position a (cons u uses))
+          (+ (if (and (equal (fn-rtc-get 0 u) :wait) (<= (nfix (fn-rtc-get 3 u)) (nfix a))) 1 0)
+             (fn-rtc-wait-position a uses)))
+   :hints (("Goal" :expand ((fn-rtc-wait-position a (cons u uses)))))))
+(local
+ (defthm fn-rtc-wait-position-remove-other
+   (implies (not (equal (fn-rtc-get 0 key) :wait))
+            (and (equal (fn-rtc-wait-position a (fn-rtc-remove-use key uses)) (fn-rtc-wait-position a uses))
+                 (equal (fn-rtc-waiting-op-p a (fn-rtc-remove-use key uses)) (fn-rtc-waiting-op-p a uses))))
+   :hints (("Goal" :induct (fn-rtc-remove-use key uses)
+      :in-theory (e/d (fn-rtc-remove-use fn-rtc-key fn-rtc-wait-position fn-rtc-waiting-op-p) (fn-rtc-get))))))
+(local
+ (defthm fn-rtc-end-use-wait-queue
+   (and (equal (fn-rtc-wait-position a (fn-rtc-uses (fn-rtc-end-use s e))) (fn-rtc-wait-position a (fn-rtc-uses s)))
+        (equal (fn-rtc-waiting-op-p a (fn-rtc-uses (fn-rtc-end-use s e))) (fn-rtc-waiting-op-p a (fn-rtc-uses s))))
+   :hints (("Goal" :in-theory
+     (union-theories (theory 'minimal-theory)
+       '(fn-rtc-end-use fn-rtc-end-lease fn-rtc-retire-drained fn-rtc-with-accessors
+         fn-rtc-wait-position-remove-other fn-rtc-completionp fn-rtc-e-kind fn-rtc-key
+         fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons member-equal
+         (:executable-counterpart equal) (:executable-counterpart zp)
+         (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
+(local
+ (defthm fn-rtc-rearm-wait-position
+   (equal (fn-rtc-wait-position a (fn-rtc-uses (mv-nth 0 (fn-rtc-rearm s)))) (fn-rtc-wait-position a (fn-rtc-uses s)))
+   :hints (("Goal" :in-theory
+     (union-theories (theory 'minimal-theory)
+       '(fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant fn-rtc-issue-frame fn-rtc-wait-position-cons
+         fn-rtc-get-of-cons (:executable-counterpart nfix) car-cons cdr-cons
+         (:executable-counterpart equal) (:executable-counterpart zp)
+         (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
+(local
+ (defthm fn-rtc-request-old-wait-queue
+   (implies (< (nfix a) (fn-rtc-next-op s))
+     (and (equal (fn-rtc-wait-position a (fn-rtc-uses (mv-nth 0 (fn-rtc-request r id inc s)))) (fn-rtc-wait-position a (fn-rtc-uses s)))
+          (equal (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-request r id inc s)))) (fn-rtc-waiting-op-p a (fn-rtc-uses s)))))
+   :hints (("Goal" :in-theory
+     (union-theories (theory 'minimal-theory)
+       '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
+         fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-issue-frame fn-rtc-with-accessors
+         fn-rtc-next-op-of-with fn-rtc-wait-position-cons fn-rtc-wait-op-of-cons nfix natp
+         (:type-prescription fn-rtc-next-op) fn-rtc-get-of-cons (:executable-counterpart nfix)
+         car-cons cdr-cons (:executable-counterpart equal) (:executable-counterpart member-equal)
+         (:executable-counterpart zp) (:executable-counterpart binary-+) (:executable-counterpart unary--)))))))
+(local
+ (defthm fn-rtc-request-next-op-monotone
+   (<= (fn-rtc-next-op s) (fn-rtc-next-op (mv-nth 0 (fn-rtc-request r id inc s))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory
+     (union-theories (theory 'minimal-theory)
+       '(fn-rtc-request fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release
+         fn-rtc-req-close fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-issue-frame fn-rtc-next-op-of-with))))))
+(local
+ (defthm fn-rtc-requests-old-wait-queue
+   (implies (< (nfix a) (fn-rtc-next-op s))
+     (and (equal (fn-rtc-wait-position a (fn-rtc-uses (mv-nth 0 (fn-rtc-requests rs id inc s)))) (fn-rtc-wait-position a (fn-rtc-uses s)))
+          (equal (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-requests rs id inc s)))) (fn-rtc-waiting-op-p a (fn-rtc-uses s)))))
+   :hints (("Goal" :induct (fn-rtc-requests rs id inc s)
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-requests fn-rtc-request-old-wait-queue fn-rtc-request-next-op-monotone))))))
+(local
+ (defthm fn-rtc-deliver-old-wait-queue
+   (implies (< (nfix a) (fn-rtc-next-op s))
+     (and (equal (fn-rtc-wait-position a (fn-rtc-uses (mv-nth 0 (fn-rtc-deliver s id inc ev q)))) (fn-rtc-wait-position a (fn-rtc-uses s)))
+          (equal (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-deliver s id inc ev q)))) (fn-rtc-waiting-op-p a (fn-rtc-uses s)))))
+   :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-deliver fn-rtc-requests-old-wait-queue fn-rtc-with-accessors fn-rtc-next-op-of-with))))))
+(local
+ (defthm fn-rtc-accept-close-old-wait-queue
+   (implies (< (nfix a) (fn-rtc-next-op s))
+     (and (equal (fn-rtc-wait-position a (fn-rtc-uses (mv-nth 0 (fn-rtc-accept-branch s out q)))) (fn-rtc-wait-position a (fn-rtc-uses s)))
+          (equal (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-accept-branch s out q)))) (fn-rtc-waiting-op-p a (fn-rtc-uses s)))
+          (equal (fn-rtc-wait-position a (fn-rtc-uses (mv-nth 0 (fn-rtc-close-branch s id inc)))) (fn-rtc-wait-position a (fn-rtc-uses s)))
+          (equal (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-close-branch s id inc)))) (fn-rtc-waiting-op-p a (fn-rtc-uses s)))))
+   :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-accept-branch fn-rtc-close-branch fn-rtc-with-accessors fn-rtc-make-accessors
+         fn-rtc-next-op-of-with fn-rtc-deliver-old-wait-queue fn-rtc-rearm-wait-position fn-rtc-rearm-pool-and-wait-ops))))))
+(local
+ (defthm fn-rtc-wait-position-replace
+   (implies (and (member-equal w uses) (equal (fn-rtc-get 0 w) :wait)
+                 (<= (nfix (fn-rtc-get 3 w)) (nfix a)) (not (equal (fn-rtc-get 0 v) :wait)))
+            (equal (fn-rtc-wait-position a (fn-rtc-replace-use (fn-rtc-key w) v uses))
+                   (- (fn-rtc-wait-position a uses) 1)))
+   :hints (("Goal" :induct (fn-rtc-replace-use (fn-rtc-key w) v uses)
+      :in-theory (e/d (fn-rtc-replace-use fn-rtc-wait-position fn-rtc-key) (fn-rtc-get))))))
+(local
+ (defthm fn-rtc-wait-position-replace-oldest
+   (implies (and (fn-rtc-waiting-op-p a uses) (not (equal (fn-rtc-get 0 v) :wait)))
+            (equal (fn-rtc-wait-position a (fn-rtc-replace-use (fn-rtc-key (fn-rtc-oldest-wait uses)) v uses))
+                   (- (fn-rtc-wait-position a uses) 1)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+      :use (fn-rtc-oldest-wait-is-minimum fn-rtc-oldest-wait-member fn-rtc-oldest-wait-kind
+            (:instance fn-rtc-wait-position-replace (w (fn-rtc-oldest-wait uses))))))))
+(local
+ (defthm fn-rtc-pool-free-count-natural
+   (natp (fn-rtc-pool-free-count h pool cfg)) :rule-classes :type-prescription))
+(local
+ (defthm fn-rtc-free-count-of-set
+   (implies (and (natp h) (natp k) (< k (len pool)))
+     (equal (fn-rtc-pool-free-count h (fn-rtc-set k b pool) cfg)
+            (+ (fn-rtc-pool-free-count h pool cfg)
+               (if (and (fn-rtc-pool-buf-p (+ h k) cfg) (equal (fn-rtc-b-owner b) '(:free))) 1 0)
+               (- (if (and (fn-rtc-pool-buf-p (+ h k) cfg)
+                            (equal (fn-rtc-b-owner (fn-rtc-get k pool)) '(:free))) 1 0)))))
+   :hints (("Goal" :induct (fn-rtc-index-induct k h pool)
+      :in-theory (e/d (fn-rtc-pool-free-count fn-rtc-set fn-rtc-get)
+                      (fn-rtc-pool-buf-p fn-rtc-b-owner))))))
+(local
+ (defthm fn-rtc-free-pool-buf-in-range
+   (implies (and (natp i) (fn-rtc-free-pool-buf i pool cfg))
+            (< (fn-rtc-free-pool-buf i pool cfg) (+ i (len pool))))
+   :hints (("Goal" :induct (fn-rtc-free-pool-buf i pool cfg)
+      :in-theory (e/d (fn-rtc-free-pool-buf) (fn-rtc-pool-buf-p fn-rtc-b-owner))))))
+(local
+ (defthm fn-rtc-grant-one-count-balance
+   (implies (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s))))
+     (equal (+ (fn-rtc-pool-free-count 0 (fn-rtc-pool (mv-nth 0 (fn-rtc-grant-one s))) (fn-rtc-config s))
+               (fn-rtc-wait-position a (fn-rtc-uses s)))
+            (+ (fn-rtc-pool-free-count 0 (fn-rtc-pool s) (fn-rtc-config s))
+               (fn-rtc-wait-position a (fn-rtc-uses (mv-nth 0 (fn-rtc-grant-one s)))))))
+   :hints (("Goal" :in-theory
+     (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-grant-one fn-rtc-with-accessors fn-rtc-free-count-of-set fn-rtc-wait-position-replace-oldest
+         fn-rtc-b-owner fn-rtc-get-of-cons car-cons cdr-cons (:executable-counterpart nfix)
+         (:executable-counterpart equal) (:executable-counterpart zp) (:executable-counterpart natp)
+         (:executable-counterpart binary-+) (:executable-counterpart unary--)
+         unicity-of-0 fix natp nfix commutativity-of-+))
+     :use (fn-rtc-grant-one-wait-subset
+           (:instance fn-rtc-free-pool-buf-type (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s)))
+           (:instance fn-rtc-free-pool-buf-is-free (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s)))
+           (:instance fn-rtc-free-pool-buf-in-range (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s)))
+           (:instance fn-rtc-free-pool-buf-pool-index (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s))))))))
+(local
+ (defthm fn-rtc-grant-count-balance
+   (implies (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-grant n s))))
+     (equal (+ (fn-rtc-pool-free-count 0 (fn-rtc-pool (mv-nth 0 (fn-rtc-grant n s))) (fn-rtc-config s))
+               (fn-rtc-wait-position a (fn-rtc-uses s)))
+            (+ (fn-rtc-pool-free-count 0 (fn-rtc-pool s) (fn-rtc-config s))
+               (fn-rtc-wait-position a (fn-rtc-uses (mv-nth 0 (fn-rtc-grant n s)))))))
+   :hints (("Goal" :induct (fn-rtc-grant n s)
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-grant fn-rtc-grant-one-frame)))
+     ("Subgoal *1/3" :use fn-rtc-grant-one-count-balance)
+     ("Subgoal *1/2" :use (fn-rtc-grant-one-count-balance
+             (:instance fn-rtc-grant-wait-subset (s (mv-nth 0 (fn-rtc-grant-one s))) (n (- n 1))))))))
+(local
+ (defun fn-rtc-free-loss (h p1 p2 cfg)
+   (declare (xargs :measure (len p1)))
+   (if (consp p1)
+       (if (and (fn-rtc-pool-buf-p h cfg) (equal (fn-rtc-b-owner (car p1)) '(:free))
+                (not (equal (fn-rtc-b-owner (fn-rtc-get 0 p2)) '(:free))))
+           0
+         (let ((k (fn-rtc-free-loss (+ 1 (nfix h)) (cdr p1) (if (consp p2) (cdr p2) nil) cfg)))
+           (if k (+ 1 k) nil)))
+     nil)))
+(local
+ (defthm fn-rtc-free-loss-type
+   (or (null (fn-rtc-free-loss h p1 p2 cfg)) (natp (fn-rtc-free-loss h p1 p2 cfg)))
+   :rule-classes :type-prescription))
+(local
+ (defthm fn-rtc-free-loss-witness
+   (implies (and (natp h) (fn-rtc-free-loss h p1 p2 cfg))
+     (and (fn-rtc-pool-buf-p (+ h (fn-rtc-free-loss h p1 p2 cfg)) cfg)
+          (equal (fn-rtc-b-owner (fn-rtc-get (fn-rtc-free-loss h p1 p2 cfg) p1)) '(:free))
+          (not (equal (fn-rtc-b-owner (fn-rtc-get (fn-rtc-free-loss h p1 p2 cfg) p2)) '(:free)))))
+   :hints (("Goal" :induct (fn-rtc-free-loss h p1 p2 cfg)
+     :in-theory (e/d (fn-rtc-free-loss fn-rtc-get) (fn-rtc-pool-buf-p fn-rtc-b-owner))))))
+(local
+ (defthm fn-rtc-free-loss-count-balance
+   (implies (not (fn-rtc-free-loss h p1 p2 cfg))
+     (<= (+ (fn-rtc-pool-free-count h p1 cfg) (fn-rtc-pool-freed-count h p1 p2 cfg))
+         (fn-rtc-pool-free-count h p2 cfg)))
+   :hints (("Goal" :induct (fn-rtc-free-loss h p1 p2 cfg)
+     :in-theory (e/d (fn-rtc-free-loss fn-rtc-pool-free-count fn-rtc-pool-freed-count fn-rtc-get)
+                     (fn-rtc-pool-buf-p fn-rtc-b-owner))))))
+(local
+ (defthm fn-rtc-grant-frame-frees-none
+   (implies (and (natp h) (fn-rtc-grant-pool-frame-p cfg h p1 p2))
+            (equal (fn-rtc-pool-freed-count h p1 p2 cfg) 0))
+   :hints (("Goal" :induct (fn-rtc-grant-pool-frame-p cfg h p1 p2)
+      :in-theory (e/d (fn-rtc-grant-pool-frame-p fn-rtc-grant-buffer-frame-p fn-rtc-pool-freed-count)
+                      (fn-rtc-pool-buf-p fn-rtc-b-owner fn-rtc-b-bytes))))))
+(local
+ (defthm fn-rtc-free-loss-refl (equal (fn-rtc-free-loss h p p cfg) nil)
+   :hints (("Goal" :in-theory (disable fn-rtc-pool-buf-p fn-rtc-b-owner)))))
+(local
+ (defun fn-rtc-three-pools-induct (h p1 p2 p3)
+   (declare (xargs :measure (len p1)))
+   (if (consp p1)
+       (fn-rtc-three-pools-induct (+ 1 (nfix h)) (cdr p1) (if (consp p2) (cdr p2) nil) (if (consp p3) (cdr p3) nil))
+     (list h p2 p3))))
+(local
+ (defthm fn-rtc-free-loss-trans
+   (implies (and (not (fn-rtc-free-loss h p1 p2 cfg)) (not (fn-rtc-free-loss h p2 p3 cfg)))
+            (not (fn-rtc-free-loss h p1 p3 cfg)))
+   :hints (("Goal" :induct (fn-rtc-three-pools-induct h p1 p2 p3)
+      :in-theory (e/d (fn-rtc-free-loss fn-rtc-get) (fn-rtc-pool-buf-p fn-rtc-b-owner))))))
+(local
+ (defthm fn-rtc-transfer-frame-has-no-free-loss
+   (implies (and (natp h) (fn-rtc-pool-transfer-frame-p 0 cfg h p1 p2))
+            (not (fn-rtc-free-loss h p1 p2 cfg)))
+   :hints (("Goal" :induct (fn-rtc-pool-transfer-frame-p 0 cfg h p1 p2)
+      :in-theory (e/d (fn-rtc-free-loss fn-rtc-pool-transfer-frame-p fn-rtc-buffer-transfer-frame-p
+                       fn-rtc-visible-buffer fn-rtc-others-or-incoming-p fn-rtc-of-slot-p)
+                      (fn-rtc-pool-buf-p fn-rtc-home fn-rtc-b-owner fn-rtc-b-bytes))))))
+(local
+ (defthm fn-rtc-deliver-no-free-loss
+   (implies (posp id)
+      (not (fn-rtc-free-loss 0 (fn-rtc-pool s) (fn-rtc-pool (mv-nth 0 (fn-rtc-deliver s id inc ev q))) (fn-rtc-config s))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(posp natp (:executable-counterpart natp)))
+      :use ((:instance fn-rtc-deliver-pool-transfer-frame (j 0))
+            (:instance fn-rtc-transfer-frame-has-no-free-loss (h 0) (cfg (fn-rtc-config s))
+               (p1 (fn-rtc-pool s)) (p2 (fn-rtc-pool (mv-nth 0 (fn-rtc-deliver s id inc ev q))))))))))
+(local
+ (defthm fn-rtc-end-use-no-free-loss
+   (implies (fn-rtc-core-invp s)
+      (not (fn-rtc-free-loss 0 (fn-rtc-pool s) (fn-rtc-pool (fn-rtc-end-use s e)) (fn-rtc-config s))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+      '(fn-rtc-buffer natp nfix unicity-of-0 fix commutativity-of-+
+        fn-rtc-free-loss-type (:executable-counterpart natp)))
+      :use ((:instance fn-rtc-free-loss-witness (h 0) (cfg (fn-rtc-config s))
+              (p1 (fn-rtc-pool s)) (p2 (fn-rtc-pool (fn-rtc-end-use s e))))
+            (:instance fn-rtc-end-use-keeps-free-buffer
+              (h (fn-rtc-free-loss 0 (fn-rtc-pool s) (fn-rtc-pool (fn-rtc-end-use s e)) (fn-rtc-config s)))))))))
+(local
+ (defthm fn-rtc-deliver-chain-no-free-loss
+   (implies (and (posp id) (not (fn-rtc-free-loss 0 p (fn-rtc-pool s) (fn-rtc-config s))))
+      (not (fn-rtc-free-loss 0 p (fn-rtc-pool (mv-nth 0 (fn-rtc-deliver s id inc ev q))) (fn-rtc-config s))))
+   :hints (("Goal" :in-theory (theory 'minimal-theory)
+      :use (fn-rtc-deliver-no-free-loss
+            (:instance fn-rtc-free-loss-trans (h 0) (cfg (fn-rtc-config s))
+              (p1 p) (p2 (fn-rtc-pool s)) (p3 (fn-rtc-pool (mv-nth 0 (fn-rtc-deliver s id inc ev q))))))))))
+(local
+ (defthm fn-rtc-release-all-no-free-loss
+   (not (fn-rtc-free-loss h pool (fn-rtc-release-all pool id inc) cfg))
+   :hints (("Goal" :induct (fn-rtc-free-loss h pool pool cfg)
+      :in-theory (e/d (fn-rtc-free-loss fn-rtc-release-all) (fn-rtc-pool-buf-p fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes))))))
+(local
+ (defthm fn-rtc-close-chain-no-free-loss
+   (implies (not (fn-rtc-free-loss 0 p (fn-rtc-pool s) (fn-rtc-config s)))
+      (not (fn-rtc-free-loss 0 p (fn-rtc-pool (mv-nth 0 (fn-rtc-close-branch s id inc))) (fn-rtc-config s))))
+   :hints (("Goal" :in-theory
+      (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+        '(fn-rtc-close-branch fn-rtc-pool-of-rearm fn-rtc-with-accessors fn-rtc-make-accessors))
+      :use ((:instance fn-rtc-release-all-no-free-loss (h 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s)))
+            (:instance fn-rtc-free-loss-trans (h 0) (cfg (fn-rtc-config s))
+              (p1 p) (p2 (fn-rtc-pool s)) (p3 (fn-rtc-release-all (fn-rtc-pool s) id inc))))))))
+(local
+ (defthm fn-rtc-accept-chain-no-free-loss
+   (implies (not (fn-rtc-free-loss 0 p (fn-rtc-pool s) (fn-rtc-config s)))
+      (not (fn-rtc-free-loss 0 p (fn-rtc-pool (mv-nth 0 (fn-rtc-accept-branch s out q))) (fn-rtc-config s))))
+   :hints (("Goal" :in-theory
+      (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+        '(fn-rtc-accept-branch fn-rtc-pool-of-rearm fn-rtc-with-accessors
+          fn-rtc-deliver-chain-no-free-loss (:executable-counterpart natp)))
+       :use ((:instance fn-rtc-free-slot-result (i 0) (slots (fn-rtc-slots s)))
+             (:instance fn-rtc-deliver-chain-no-free-loss
+               (id (fn-rtc-free-slot 0 (fn-rtc-slots s)))
+               (inc (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s)) s))))
+               (s (fn-rtc-with-mstate (fn-rtc-free-slot 0 (fn-rtc-slots s)) (fn-rtc-m-init)
+                    (fn-rtc-with-slot (fn-rtc-free-slot 0 (fn-rtc-slots s))
+                      (list (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s)) s))) :live (fn-rtc-get 1 out)) s)))
+               (ev (fn-rtc-ev :accept out (fn-rtc-free-slot 0 (fn-rtc-slots s))
+                       (+ 1 (fn-rtc-s-inc (fn-rtc-slot (fn-rtc-free-slot 0 (fn-rtc-slots s)) s))) nil))))))))
+(local
+ (defthm fn-rtc-acting-machine-positive
+   (implies (and (fn-rtc-core-invp s) (fn-rtc-acts-on-p s e) (not (fn-rtc-hand-delivers-p s e))
+                 (not (member-eq (fn-rtc-e-kind e) '(:accept :grant))))
+            (posp (fn-rtc-e-id e)))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-instance-active-p))
+      :use fn-rtc-acting-instance-active))))
+(local
+ (defthm fn-rtc-hand-target-positive
+   (implies (and (fn-rtc-core-invp s) (fn-rtc-hand-delivers-p s e))
+            (posp (nfix (fn-rtc-get 3 (fn-rtc-b-owner (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))) s))))))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-instance-active-p))
+      :use fn-rtc-hand-target-active))))
+(local
+ (defthm fn-rtc-deliver-chain-no-free-loss-config
+   (implies (and (equal cfg (fn-rtc-config s)) (posp id) (not (fn-rtc-free-loss 0 p (fn-rtc-pool s) cfg)))
+      (not (fn-rtc-free-loss 0 p (fn-rtc-pool (mv-nth 0 (fn-rtc-deliver s id inc ev q))) cfg)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory) :use fn-rtc-deliver-chain-no-free-loss))))
+(local
+ (defthm fn-rtc-accept-chain-no-free-loss-config
+   (implies (and (equal cfg (fn-rtc-config s)) t (not (fn-rtc-free-loss 0 p (fn-rtc-pool s) cfg)))
+      (not (fn-rtc-free-loss 0 p (fn-rtc-pool (mv-nth 0 (fn-rtc-accept-branch s out q))) cfg)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory) :use fn-rtc-accept-chain-no-free-loss))))
+(local
+ (defthm fn-rtc-close-chain-no-free-loss-config
+   (implies (and (equal cfg (fn-rtc-config s)) t (not (fn-rtc-free-loss 0 p (fn-rtc-pool s) cfg)))
+      (not (fn-rtc-free-loss 0 p (fn-rtc-pool (mv-nth 0 (fn-rtc-close-branch s id inc))) cfg)))
+   :hints (("Goal" :in-theory (theory 'minimal-theory) :use fn-rtc-close-chain-no-free-loss))))
+(local
+ (defthm fn-rtc-nongrant-step-no-free-loss
+   (implies (and (fn-rtc-invp s) (not (and (fn-rtc-acts-on-p s e) (equal (fn-rtc-e-kind e) :grant))))
+     (not (fn-rtc-free-loss 0 (fn-rtc-pool s) (fn-rtc-pool (mv-nth 0 (fn-rtc-step s e q))) (fn-rtc-config s))))
+   :hints (("Goal" :in-theory
+      (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+        '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-pool-of-rearm fn-rtc-end-use-config
+          fn-rtc-deliver-chain-no-free-loss-config fn-rtc-accept-chain-no-free-loss-config fn-rtc-close-chain-no-free-loss-config
+          fn-rtc-end-use-no-free-loss member-equal (:executable-counterpart equal)))
+      :use (fn-rtc-invp-implies-core-invp fn-rtc-acting-machine-positive fn-rtc-hand-target-positive)))))
+(local
+ (defthm fn-rtc-end-use-next-op
+   (equal (fn-rtc-next-op (fn-rtc-end-use s e)) (fn-rtc-next-op s))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+      '(fn-rtc-end-use fn-rtc-end-lease fn-rtc-retire-drained fn-rtc-next-op-of-with))))))
+(local
+ (defthm fn-rtc-nongrant-step-old-wait-queue
+   (implies (and (< (nfix a) (fn-rtc-next-op s))
+                 (not (and (fn-rtc-acts-on-p s e) (equal (fn-rtc-e-kind e) :grant))))
+     (and (equal (fn-rtc-wait-position a (fn-rtc-uses (mv-nth 0 (fn-rtc-step s e q)))) (fn-rtc-wait-position a (fn-rtc-uses s)))
+          (equal (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-step s e q)))) (fn-rtc-waiting-op-p a (fn-rtc-uses s)))))
+   :hints (("Goal" :in-theory
+     (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-end-use-next-op fn-rtc-end-use-wait-queue
+         fn-rtc-rearm-wait-position fn-rtc-rearm-pool-and-wait-ops
+         fn-rtc-accept-close-old-wait-queue fn-rtc-deliver-old-wait-queue))))))
+(local
+ (defthm fn-rtc-grant-frees-none
+   (equal (fn-rtc-pool-freed-count 0 (fn-rtc-pool s) (fn-rtc-pool (mv-nth 0 (fn-rtc-grant n s))) (fn-rtc-config s)) 0)
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-grant-pool-frame-refl (:executable-counterpart natp)))
+      :use ((:instance fn-rtc-grant-chain-pool-frame (p (fn-rtc-pool s)))
+            (:instance fn-rtc-grant-frame-frees-none (cfg (fn-rtc-config s)) (h 0)
+              (p1 (fn-rtc-pool s)) (p2 (fn-rtc-pool (mv-nth 0 (fn-rtc-grant n s))))))))))
+(local
+ (defthm fn-rtc-step-old-wait-subset
+   (implies (and (< (nfix a) (fn-rtc-next-op s))
+                 (fn-rtc-waiting-op-p a (fn-rtc-uses (mv-nth 0 (fn-rtc-step s e q)))))
+            (fn-rtc-waiting-op-p a (fn-rtc-uses s)))
+   :hints (("Goal" :in-theory
+     (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-end-use-next-op fn-rtc-end-use-wait-queue
+         fn-rtc-rearm-pool-and-wait-ops fn-rtc-accept-close-old-wait-queue fn-rtc-deliver-old-wait-queue
+         fn-rtc-grant-wait-subset))
+      :use ((:instance fn-rtc-grant-wait-subset (s (fn-rtc-end-use s e)) (n (fn-rtc-npool (fn-rtc-config s)))))))))
+(local
+ (defthm fn-rtc-step-supply-accounting
+   (let ((s2 (mv-nth 0 (fn-rtc-step s e q))) (cfg (fn-rtc-config s)))
+     (implies (and (fn-rtc-invp s) (< (nfix a) (fn-rtc-next-op s))
+                   (fn-rtc-waiting-op-p a (fn-rtc-uses s2)))
+       (<= (+ (fn-rtc-pool-free-count 0 (fn-rtc-pool s) cfg)
+              (fn-rtc-pool-freed-count 0 (fn-rtc-pool s) (fn-rtc-pool s2) cfg)
+              (fn-rtc-wait-position a (fn-rtc-uses s2)))
+           (+ (fn-rtc-pool-free-count 0 (fn-rtc-pool s2) cfg)
+              (fn-rtc-wait-position a (fn-rtc-uses s))))))
+   :hints (("Goal" :cases ((and (fn-rtc-acts-on-p s e) (equal (fn-rtc-e-kind e) :grant)))
+      :in-theory (set-difference-theories (theory 'minimal-theory) '(mv-nth)))
+     ("Subgoal 2" :use (fn-rtc-nongrant-step-old-wait-queue fn-rtc-nongrant-step-no-free-loss
+                 (:instance fn-rtc-free-loss-count-balance (h 0) (cfg (fn-rtc-config s))
+                   (p1 (fn-rtc-pool s)) (p2 (fn-rtc-pool (mv-nth 0 (fn-rtc-step s e q)))))))
+     ("Subgoal 1" :in-theory
+       (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+         '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-pool-of-rearm fn-rtc-rearm-wait-position
+           fn-rtc-rearm-pool-and-wait-ops fn-rtc-grant-end-use-keeps-pool fn-rtc-end-use-config
+           fn-rtc-end-use-wait-queue (:executable-counterpart equal)))
+       :use (fn-rtc-hand-delivers-kind
+             (:instance fn-rtc-grant-count-balance (s (fn-rtc-end-use s e)) (n (fn-rtc-npool (fn-rtc-config s))))
+             (:instance fn-rtc-grant-frees-none (s (fn-rtc-end-use s e)) (n (fn-rtc-npool (fn-rtc-config s)))))))))
+(local
+ (defthm fn-rtc-requests-next-op-monotone
+   (<= (fn-rtc-next-op s) (fn-rtc-next-op (mv-nth 0 (fn-rtc-requests rs id inc s))))
+   :rule-classes :linear
+   :hints (("Goal" :induct (fn-rtc-requests rs id inc s)
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-requests fn-rtc-request-next-op-monotone))))))
+(local
+ (defthm fn-rtc-deliver-next-op-monotone
+   (<= (fn-rtc-next-op s) (fn-rtc-next-op (mv-nth 0 (fn-rtc-deliver s id inc ev q))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-deliver fn-rtc-next-op-of-with fn-rtc-requests-next-op-monotone))))))
+(local
+ (defthm fn-rtc-rearm-next-op-monotone
+   (<= (fn-rtc-next-op s) (fn-rtc-next-op (mv-nth 0 (fn-rtc-rearm s))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+       '(fn-rtc-rearm fn-rtc-arm-accept fn-rtc-arm-grant fn-rtc-issue-frame))))))
+(local
+ (defthm fn-rtc-accept-close-next-op-monotone
+   (and (<= (fn-rtc-next-op s) (fn-rtc-next-op (mv-nth 0 (fn-rtc-accept-branch s out q))))
+        (<= (fn-rtc-next-op s) (fn-rtc-next-op (mv-nth 0 (fn-rtc-close-branch s id inc)))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-accept-branch fn-rtc-close-branch fn-rtc-next-op-of-with fn-rtc-make-accessors nfix natp (:type-prescription fn-rtc-next-op)
+         fn-rtc-deliver-next-op-monotone fn-rtc-rearm-next-op-monotone))))))
+(local
+ (defthm fn-rtc-step-next-op-monotone
+   (<= (fn-rtc-next-op s) (fn-rtc-next-op (mv-nth 0 (fn-rtc-step s e q))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-step-is-step-state fn-rtc-step-state fn-rtc-end-use-next-op fn-rtc-grant-frame
+         fn-rtc-accept-close-next-op-monotone fn-rtc-deliver-next-op-monotone fn-rtc-rearm-next-op-monotone))))))
+(local
+ (defthm fn-rtc-old-wait-is-below-next-op
+   (implies (and (fn-rtc-core-invp s) (fn-rtc-waiting-op-p a (fn-rtc-uses s)))
+            (< (nfix a) (fn-rtc-next-op s)))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(nfix natp))
+     :use (fn-rtc-core-invp-uses
+           (:instance fn-rtc-uses-okp-ops-natp (uses (fn-rtc-uses s)))
+           (:instance fn-rtc-waiting-op-is-natural (uses (fn-rtc-uses s)))
+           (:instance fn-rtc-waiting-op-is-used (uses (fn-rtc-uses s)))
+           (:instance fn-rtc-op-not-used-above-next (uses (fn-rtc-uses s)) (op a)))))))
+(local
+ (defthm fn-rtc-run-preserves-invp
+   (implies (fn-rtc-invp s) (fn-rtc-invp (fn-rtc-run s events q)))
+   :hints (("Goal" :induct (fn-rtc-run s events q)
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-run fn-rtc-step-preserves-invp))))))
+(local
+ (defthm fn-rtc-run-config-is-constant
+   (equal (fn-rtc-config (fn-rtc-run s events q)) (fn-rtc-config s))
+   :hints (("Goal" :induct (fn-rtc-run s events q)
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-run fn-rtc-step-config-is-constant))))))
+(local
+ (defthm fn-rtc-run-old-wait-subset
+   (implies (and (< (nfix a) (fn-rtc-next-op s)) (fn-rtc-waiting-op-p a (fn-rtc-uses (fn-rtc-run s events q))))
+            (fn-rtc-waiting-op-p a (fn-rtc-uses s)))
+   :hints (("Goal" :induct (fn-rtc-run s events q)
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-run fn-rtc-step-next-op-monotone)))
+     ("Subgoal *1/1" :use ((:instance fn-rtc-step-old-wait-subset (e (car events))))))))
+(local
+ (defthm fn-rtc-run-supply-accounting
+   (let ((s2 (fn-rtc-run s events q)) (cfg (fn-rtc-config s)))
+     (implies (and (fn-rtc-invp s) (< (nfix a) (fn-rtc-next-op s))
+                   (fn-rtc-waiting-op-p a (fn-rtc-uses s2)))
+       (<= (+ (fn-rtc-pool-free-count 0 (fn-rtc-pool s) cfg)
+              (fn-rtc-run-frees s events q)
+              (fn-rtc-wait-position a (fn-rtc-uses s2)))
+           (+ (fn-rtc-pool-free-count 0 (fn-rtc-pool s2) cfg)
+              (fn-rtc-wait-position a (fn-rtc-uses s))))))
+   :hints (("Goal" :induct (fn-rtc-run s events q)
+     :in-theory (union-theories (set-difference-theories (theory 'minimal-theory) '(mv-nth))
+       '(fn-rtc-run fn-rtc-run-frees fn-rtc-step-next-op-monotone fn-rtc-step-preserves-invp
+         fn-rtc-step-config-is-constant)))
+     ("Subgoal *1/1" :use ((:instance fn-rtc-step-supply-accounting (e (car events)))
+                            (:instance fn-rtc-run-old-wait-subset (s (mv-nth 0 (fn-rtc-step s (car events) q))) (events (cdr events))))))))
+(local
+ (defthm fn-rtc-pool-free-count-zero
+   (implies (and (natp h) (not (fn-rtc-free-pool-buf h pool cfg))) (equal (fn-rtc-pool-free-count h pool cfg) 0))
+   :hints (("Goal" :induct (fn-rtc-free-pool-buf h pool cfg)
+     :in-theory (e/d (fn-rtc-free-pool-buf fn-rtc-pool-free-count) (fn-rtc-pool-buf-p fn-rtc-b-owner))))))
+(local
+ (defthm fn-rtc-no-grant-wait-means-no-free
+   (implies (and (fn-rtc-invp s) (fn-rtc-waiting-op-p a (fn-rtc-uses s))
+                 (not (fn-rtc-kind-out-p :grant 0 0 (fn-rtc-uses s))))
+            (equal (fn-rtc-pool-free-count 0 (fn-rtc-pool s) (fn-rtc-config s)) 0))
+   :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '((:executable-counterpart natp)))
+      :use (fn-rtc-invp-grant-admission
+            (:instance fn-rtc-oldest-wait-is-minimum (uses (fn-rtc-uses s)))
+            (:instance fn-rtc-pool-free-count-zero (h 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s))))))))
+
+; T20L the layer's half of liveness: a request at queue position K (the
+; waiting requests issued no later) is granted once K pool buffers have been
+; supplied (free at the start or freed during the run) and the host has
+; completed the grants the run armed.  The machine half (owed, stated with the
+; first machine that takes pool leases): every pool buffer returns to :free
+; within a bound of the deliveries to its holders since its grant -- a hand
+; does NOT discharge it (Codex r1: two machines handing one pool buffer back
+; and forth forever keep the supply at zero); the rule is that a connection
+; hands a pool buffer at most once, to a static instance, which releases it
+; within its bound -- under fair delivery that makes the supply grow;
+; A-HOST-COMPLETES makes the last premise reachable.
+(defthm fn-rtc-pool-wait-is-granted-by-supply
+  (let ((s2 (fn-rtc-run s events q)))
+    (implies (and (fn-rtc-invp s)
+                  (fn-rtc-waiting-op-p a (fn-rtc-uses s))
+                  (<= (fn-rtc-wait-position a (fn-rtc-uses s))
+                      (+ (fn-rtc-pool-free-count 0 (fn-rtc-pool s) (fn-rtc-config s))
+                         (fn-rtc-run-frees s events q)))
+                  (not (fn-rtc-kind-out-p :grant 0 0 (fn-rtc-uses s2))))
+             (not (fn-rtc-waiting-op-p a (fn-rtc-uses s2)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+    :use (fn-rtc-invp-implies-core-invp fn-rtc-old-wait-is-below-next-op
+          fn-rtc-run-preserves-invp fn-rtc-run-config-is-constant fn-rtc-run-supply-accounting
+          (:instance fn-rtc-no-grant-wait-means-no-free (s (fn-rtc-run s events q)))
+          (:instance fn-rtc-wait-position-positive (uses (fn-rtc-uses (fn-rtc-run s events q))))))))
