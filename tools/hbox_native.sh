@@ -457,6 +457,9 @@ export FN_TEST_OPENSSL_BIN=\$S/bin/openssl-test
 # durable_root: hbox's root ext4 on NVMe, where an init's fsyncs cost 0.24 s;
 # the tank's ZFS cost 4.7 s at load 33 and one command 194 s (tooling-truth-3).
 export FN_TEST_DURABLE_TMP=\${FN_TEST_DURABLE_TMP:-/var/tmp}
+# The box's fixture stores (tools/native_box.sh FIXTURES); tools/native_env.py
+# sets FN_OPEN_DEPTH_FIXTURES from it for each module that reads it.
+export FN_FIXTURES_DIR=$FIXTURES
 export FN_ACL2=\$ACL2 FN_CERT_CACHE=\$CACHE FN_CERT_ORIGIN_KIND=run
 # One install per run (tools/certs.py INSTALL_RECORD): the install step and
 # the incremental certify share this id, so the certify reuses the install

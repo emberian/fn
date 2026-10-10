@@ -322,6 +322,25 @@ echo REACHED
         self.assertNotIn("--profile dtn", answer.stdout)
         self.assertNotIn("FN_NATIVE_BP_HOST", answer.stdout)
 
+    def test_the_box_names_its_fixture_stores_for_the_modules_that_read_them(self):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from tools import native_env
+        lines, _refused, _notes = native_env.plan(["developer"], {}, ["tests.test_native_over_window"])
+        self.assertIn("FN_OPEN_DEPTH_FIXTURES=$FN_FIXTURES_DIR", " ".join(lines))
+        # an explicit --env still wins
+        lines, _refused, _notes = native_env.plan(
+            ["developer"], {"FN_OPEN_DEPTH_FIXTURES": "/x"}, ["tests.test_native_over_window"])
+        self.assertNotIn("$FN_FIXTURES_DIR", " ".join(lines))
+        for box, fixtures in (("hbox", "/tank/fn/scratch/fixtures"),
+                              ("persvati", "/home/u/fn-gates/fixtures")):
+            row = subprocess.run(["sh", str(ROOT / "tools/native_box.sh"), box, str(ROOT), "/home/u"],
+                                 capture_output=True, text=True)
+            self.assertIn(f"FIXTURES='{fixtures}'", row.stdout, row.stderr)
+        answer = dry("HEAD", "tests.test_native_over_window")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertIn("export FN_FIXTURES_DIR=/tank/fn/scratch/fixtures", answer.stdout)
+
     def test_bp_service_native_takes_the_dtn_developer_image(self):
         import sys
         sys.path.insert(0, str(ROOT))
@@ -728,7 +747,7 @@ class BoxRowTests(unittest.TestCase):
         row = self.row("hbox")
         self.assertEqual(row, {"BASE": "'/tank/fn/scratch'", "CACHE": "'/tank/fn/certcache'",
                                "WRAP": "'swarm-build'", "IMAGES_BASE": "'/tank/fn/images'",
-                               "OPENSSL": "'bundled'"})
+                               "OPENSSL": "'bundled'", "FIXTURES": "'/tank/fn/scratch/fixtures'"})
         script = dry("--box", "hbox", "HEAD", "tests.test_native_owner").stdout
         self.assertIn("S=/tank/fn/scratch/t/native-l", script)
         self.assertIn("CACHE=/tank/fn/certcache", script)
@@ -740,7 +759,8 @@ class BoxRowTests(unittest.TestCase):
     def test_persvati_row(self):
         row = self.row("persvati")
         self.assertEqual(row, {"BASE": "'~/fn-gates'", "CACHE": "'~/fn-certcache'",
-                               "WRAP": "'/tank/fn/bin/persvati-jobs'", "IMAGES_BASE": "''", "OPENSSL": "'bundled'"})
+                               "WRAP": "'/tank/fn/bin/persvati-jobs'", "IMAGES_BASE": "''", "OPENSSL": "'bundled'",
+                               "FIXTURES": "'~/fn-gates/fixtures'"})
         resolved = self.row("persvati", "/home/u")
         self.assertEqual((resolved["BASE"], resolved["CACHE"]),
                          ("'/home/u/fn-gates'", "'/home/u/fn-certcache'"))

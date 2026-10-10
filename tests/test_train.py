@@ -1481,12 +1481,25 @@ class ImageModuleTests(unittest.TestCase):
         # a row of another kind with the same subject does not excuse it
         self.assertEqual(train.image_verdict(need, run, self.HEAD, [dict(row, kind="check")])[0], 1)
 
-    def test_a_module_whose_every_test_skipped_passes_and_is_listed(self):
+    def test_an_obliged_module_whose_every_test_skipped_refuses_and_is_named(self):
         need = train.image_modules(["packaging/fn"])
         run = self.ran(need)
         run["modules"]["tests.test_native_over_window"] = {"rc": 4, "cases": {}}
         rc, rec = train.image_verdict(need, run, self.HEAD, [])
-        self.assertEqual((rc, rec["skipped"]), (0, ["tests.test_native_over_window"]))
+        self.assertEqual((rc, rec["skipped"]), (1, ["tests.test_native_over_window"]))
+
+    def test_a_skipped_case_of_an_obliged_module_refuses(self):
+        need = train.image_modules(["packaging/fn"])
+        run = self.ran(need)
+        run["modules"]["tests.test_native_owner"] = {"rc": 0, "cases": {"o.T.a": "ok", "o.T.b": "skip"}}
+        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        self.assertEqual((rc, rec["skipped"]), (1, ["o.T.b"]))
+
+    def test_a_skip_in_a_module_nothing_obliges_is_not_read(self):
+        need = train.image_modules(["packaging/fn"])
+        run = self.ran(need)
+        run["modules"]["tests.test_native_mux"] = {"rc": 4, "cases": {}}
+        self.assertEqual(train.image_verdict(need, run, self.HEAD, [])[0], 0)
 
     def test_a_failed_module_with_no_case_recorded_refuses(self):
         need = train.image_modules(["packaging/fn"])
@@ -1495,6 +1508,22 @@ class ImageModuleTests(unittest.TestCase):
         rc, rec = train.image_verdict(need, run, self.HEAD, [])
         self.assertEqual(rc, 1)
         self.assertEqual(rec["unexplained"], ["tests.test_native_owner (rc 137, no case recorded)"])
+
+    def test_a_later_run_supersedes_a_skipped_module_and_only_a_skipped_one(self):
+        skipped = {"tests.test_native_over_window": {"rc": 4, "cases": {}},
+                   "tests.test_native_owner": {"rc": 0, "cases": {"o.T.a": "ok", "o.T.b": "skip"}},
+                   "tests.test_native_served_cost": {"rc": 0, "cases": {"s.T.a": "ok"}}}
+        one = train.merge_image_run(None, self.HEAD, "hbox", "/r/main", skipped)
+        rerun = {"tests.test_native_over_window": {"rc": 0, "cases": {"w.T.a": "ok"}},
+                 "tests.test_native_owner": {"rc": 0, "cases": {"o.T.a": "ok", "o.T.b": "ok"}}}
+        two = train.merge_image_run(one, self.HEAD, "hbox", "/r/fixtures", rerun)
+        self.assertEqual({m: e["run"] for m, e in two["modules"].items()},
+                         {"tests.test_native_over_window": "/r/fixtures",
+                          "tests.test_native_owner": "/r/fixtures",
+                          "tests.test_native_served_cost": "/r/main"})
+        with self.assertRaises(train.TrainError):
+            train.merge_image_run(two, self.HEAD, "hbox", "/r/third",
+                                  {"tests.test_native_served_cost": {"rc": 0, "cases": {"s.T.a": "ok"}}})
 
     def test_runs_at_head_merge_by_module_and_a_module_from_two_runs_is_refused(self):
         a = {"tests.test_native_owner": {"rc": 0, "cases": {"o.T.a": "ok"}}}
