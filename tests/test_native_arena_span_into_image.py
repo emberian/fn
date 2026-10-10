@@ -277,12 +277,20 @@ class ArenaSpanIntoImageTests(verbs.NativeOperatorVerbFixture):
 
     def test_every_entry_kind_equals_the_append_of_its_span_in_a_scratch_arena(self):
         self.open_owner()
-        text = self.repl("(let ((arena (fn-spi-scratch {}))) (fn-spi-sweep arena))".format(self.LIVE))
-        self.assertEqual(failures(text), [], text[-1500:])
-        got = counts(text)
+        # Built once in the owner's world, then swept one handle per call (its
+        # lz handle is the live arena's, about 68 us an octet: see above).
+        self.repl("(progn (defparameter *fn-spi-s* (fn-spi-scratch {})) t)".format(self.LIVE))
+        held = survey(self.repl("(fn-spi-survey *fn-spi-s*)"))
+        got, fails = {}, []
+        for h, _kind, _n in held:
+            text = self.repl("(fn-spi-sweep *fn-spi-s* {})".format(h), timeout=900)
+            fails += failures(text)
+            for kind, n in counts(text).items():
+                got[kind] = got.get(kind, 0) + n
+        self.assertEqual(fails, [], fails[:20])
         for kind in KINDS:
             # a forgotten handle has the empty payload: its one case is (0 . 0)
-            self.assertGreater(got.get(kind, 0), 0, "{} not covered: {}".format(kind, text[-800:]))
+            self.assertGreater(got.get(kind, 0), 0, "{} not covered: {}".format(kind, got))
 
     def test_a_span_crossing_run_boundaries_is_covered_for_the_big_extent_and_lz_handles(self):
         self.open_owner()
