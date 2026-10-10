@@ -6,6 +6,7 @@
 ; the report lines and the exit code.
 (in-package "ACL2")
 (include-book "../../books/heap-reservation")
+(include-book "../../books/memory-model")
 (include-book "../../books/codec-attach")
 (include-book "../../books/connection-budget")
 (include-book "../../books/store-recover-stream")
@@ -1332,32 +1333,20 @@
 
 ; THE GATE's profile (tools/throughput_gate.py: `init --profile scale
 ; --max-transactions 1048576 --max-article-octets 4096') at G = 65,535 groups
-; an article (the scale preset's, the codec's ceiling).  Before lane
-; membership-budget its state was 41,967,792 MB, all but 0.07 % of it the
-; membership product 2 x T x 320 x G: no bound but G limited a store's
-; memberships.  Now each membership is charged 320 octets of the history
-; budget (books/store-budget.lisp `fn-sbud-record-octets-pays-the-memberships'),
-; so a store holds at most H / 320 of them and the state no longer depends
-; on G: the same figure at G = 16.
+; an article (the scale preset's, the codec's ceiling), and at G = 16.  H
+; charges a held row its payload alone (memory landing 3+4), so H bounds no
+; membership: a store-opening command whose totals are unseen is sized at T x
+; G of them (books/memory-model.lisp fn-mm-profile-bound-tot, ruling (a)),
+; and the bound depends on G again.
 (defconst *hrt-gate* (fn-bs-profile-resolve
                       (fn-heap-article-held '(:scale ((1 . 1048576) (4 . 4096)))) nil))
 (defconst *hrt-gate-16* (fn-bs-profile-resolve
                          (fn-heap-article-held '(:scale ((1 . 1048576) (4 . 4096) (5 . 16))))
                          nil))
-(defun hrt-state (p)
-  (fn-heap-store-state-octets p (fn-bs-profile-max-history-octets p)
-                              (fn-bs-profile-max-transactions p)
-                              (fn-heap-membership-bound p)))
-(assert! (equal (fn-heap-mb-of (hrt-state *hrt-gate*)) 16820))
-(assert! (equal (hrt-state *hrt-gate*) (hrt-state *hrt-gate-16*)))
-; fn-heap-membership-term-is-at-most-twice-h, reachable: the gate's
-; membership term is at most 2 H (1,536 MiB), where it was 2 x T x 320 x G.
-(assert! (equal (fn-heap-membership-bound *hrt-gate*)
-                (floor (fn-bs-profile-max-history-octets *hrt-gate*) 320)))
-(assert! (<= (* 2 *fn-heap-membership-octets* (fn-heap-membership-bound *hrt-gate*))
-             (* 2 (fn-bs-profile-max-history-octets *hrt-gate*))))
-(assert! (< (* 2 *fn-heap-membership-octets* (fn-heap-membership-bound *hrt-gate*))
-            (* 2 1048576 *fn-heap-membership-octets* 65535)))
+(assert! (equal (fn-mm-tot-memberships (fn-mm-profile-bound-tot *hrt-gate-16* :resident))
+                (* 1048576 16)))
+(assert! (< (fn-mm-tot-memberships (fn-mm-profile-bound-tot *hrt-gate-16* :resident))
+            (fn-mm-tot-memberships (fn-mm-profile-bound-tot *hrt-gate* :resident))))
 
 ; THE STATUS LINE: fn-heap-status-decide-is-the-launchers-run-reservation.
 ; Reachable witness: an observed small store on a 123 GiB machine, the

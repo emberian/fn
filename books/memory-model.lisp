@@ -314,6 +314,16 @@
      (fn-cbud-handshake-octets (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))
      (fn-mm-cold-reads profile cfg)))
 
+; The octets a live reclaim's second generation is charged over
+; (books/heap-store-figure.lisp fn-heap-reclaim-demand-octets' C): the
+; payloads' budget charge, the header charges and the memberships' rows.
+; CHARGE alone is the payloads' since H charges a held row its payload
+; (memory landing 3+4), so the header and membership terms are named here.
+(defun fn-mm-reclaim-charge (tot)
+  (declare (xargs :guard t))
+  (+ (fn-mm-tot-charge tot) (fn-mm-tot-hcharge tot)
+     (* *fn-heap-membership-octets* (fn-mm-tot-memberships tot))))
+
 ; M_maintenance: the history root's candidate generation, the collector's
 ; raise while a publication runs, and, opted in, a live reclaim's second
 ; generation over the store's shape.
@@ -323,7 +333,7 @@
     (+ (fn-mm-hroot-demand n (fn-mm-tot-history tot))
        (* 2 (nfix (- (fn-mm-cfg-pub-trigger cfg) (fn-mm-cfg-trigger cfg))))
        (if (fn-mm-cfg-reclaim-live-p cfg)
-           (fn-heap-reclaim-demand-octets n (fn-mm-tot-charge tot))
+           (fn-heap-reclaim-demand-octets n (fn-mm-reclaim-charge tot))
          0))))
 
 ; THE COLLECTOR, a stated policy and not an assumption (memory landing 3+4):
@@ -439,6 +449,44 @@
 (defun fn-mm-observed-tot (hdr suffix)
   (declare (xargs :guard t))
   (fn-mm-tot-plus hdr suffix))
+
+; THE PROFILE'S BOUND: the charged totals of the largest store a profile
+; admits, the sound size of a store-opening command whose totals are unseen
+; (books/heap-command.lisp decides those by its offline adapter, which
+; under-bounds this until A's charged-totals header; coordinator ruling
+; 2026-10-09).  T records; H payload octets in the
+; arena and of budget charge; header charges at most 20 heap octets a
+; payload octet (*fn-sbud-header-weight* a header octet and
+; *fn-sbud-msgid-weight* a Message-ID octet, each within the payload:
+; books/store-budget.lisp), so 20 H; T x G memberships; the other records'
+; events within the budget charge, H; and the log and the history image at
+; one frame and one article record's fixed part (its encoding ceiling at no
+; payload and G groups: books/records-shape.lisp
+; fn-record-encoded-octets-ceiling is the payload plus that) a record, with
+; the held payloads and the other records' encodings, which the budget's
+; charge holds within H together (the open's input bound B of
+; books/store-replay-bound.lisp, framed).  KEYSTONE
+; fn-mm-profile-bound-holds-every-admitted-store
+; (books/history-totals-carried.lisp) states every store the profile admits
+; is within it.
+(defun fn-mm-profile-record-log (profile)
+  (declare (xargs :guard t))
+  (+ *fn-ct-log-frame-octets*
+     (fn-record-encoded-octets-ceiling 0 (nfix (fn-bs-profile-max-groups-per-article profile)))))
+
+(defun fn-mm-profile-bound-tot (profile residency)
+  (declare (xargs :guard t))
+  (let ((tt (nfix (fn-bs-profile-max-transactions profile)))
+        (h (nfix (fn-bs-profile-max-history-octets profile)))
+        (g (nfix (fn-bs-profile-max-groups-per-article profile))))
+    (fn-mm-make-tot tt h
+                    (* (+ *fn-sbud-header-weight* *fn-sbud-msgid-weight*) h)
+                    (* tt g)
+                    h
+                    (+ (* tt (fn-mm-profile-record-log profile)) h)
+                    (+ (* tt (fn-mm-profile-record-log profile)) h)
+                    h
+                    residency)))
 
 ; -----------------------------------------------------------------------------
 ; THE GATE: a store's totals are admissible under LIMIT when the process
@@ -641,7 +689,9 @@
   (implies (fn-mm-tot-le a b)
            (and (<= (fn-mm-tot-records a) (fn-mm-tot-records b))
                 (<= (fn-mm-tot-log a) (fn-mm-tot-log b))
-                (<= (fn-mm-tot-history a) (fn-mm-tot-history b))))
+                (<= (fn-mm-tot-history a) (fn-mm-tot-history b))
+                (<= (fn-mm-tot-hcharge a) (fn-mm-tot-hcharge b))
+                (<= (fn-mm-tot-memberships a) (fn-mm-tot-memberships b))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mm-tot-le) (fn-mm-tot-records fn-mm-tot-log fn-mm-tot-history fn-mm-tot-charge fn-mm-tot-arena
                                                    fn-mm-tot-hcharge fn-mm-tot-memberships
@@ -649,14 +699,15 @@
 (defthm fn-mm-maintenance-monotone
   (implies (fn-mm-tot-le a b) (<= (fn-mm-maintenance a cfg) (fn-mm-maintenance b cfg)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mm-maintenance)
+  :hints (("Goal" :in-theory (e/d (fn-mm-maintenance fn-mm-reclaim-charge)
                                   (fn-mm-hroot-demand fn-mm-tot-charge fn-heap-reclaim-demand-octets
+                                   fn-mm-tot-hcharge fn-mm-tot-memberships
                                    fn-mm-tot-le fn-mm-tot-records fn-mm-tot-log fn-mm-tot-history
                                    fn-mm-cfg-pub-trigger fn-mm-cfg-trigger fn-mm-cfg-reclaim-live-p))
            :use (fn-mm-tot-charge-monotone fn-mm-tot-le-parts
                  (:instance fn-heap-reclaim-demand-octets-monotone
                             (n1 (fn-mm-tot-records a)) (n2 (fn-mm-tot-records b))
-                            (c1 (fn-mm-tot-charge a)) (c2 (fn-mm-tot-charge b)))
+                            (c1 (fn-mm-reclaim-charge a)) (c2 (fn-mm-reclaim-charge b)))
                  (:instance fn-mm-hroot-demand-monotone
                             (n1 (fn-mm-tot-records a)) (n2 (fn-mm-tot-records b))
                             (l1 (fn-mm-tot-history a)) (l2 (fn-mm-tot-history b)))))))

@@ -3,7 +3,9 @@
 ; another machine) on a 16 GiB machine, the production image's core, W13's
 ; store of 1,000 POSTs as the observed totals.  Today's decision refuses
 ; both a stopped `status' and an `inspect' of it (machine-cannot-hold-
-; profile, 69,306,331 MB); the observation form admits both.
+; profile); the observation form admits both, and an `inspect' while the
+; header carries no totals is sized at the profile's bound (ruling (a)) and
+; refused by name, saying so.
 (in-package "ACL2")
 (include-book "../../books/heap-command")
 (include-book "../../books/defkeystone")
@@ -38,12 +40,30 @@
 (assert-event (equal (car (fn-heap-reserve-operation-decide :inspect *hct-d27* *hct-core* *hct-nur*
                                                             (list *hct-16g*) 0 nil))
                      :refused))
-; The line a read prints while the header carries no totals.
+;; The offline adapter: a read while the header carries no totals is today's
+;; decision, and its line says the adapter under-bounds the store.
+(assert-event
+ (equal (fn-heap-command-decide :inspect "inspect" nil *hct-d27* *hct-core* *hct-nur*
+                                (list *hct-16g*) 0 nil nil *hct-img* 4096 512 (list *hct-16g*) nil)
+        (fn-heap-reserve-operation-decide :inspect *hct-d27* *hct-core* *hct-nur* (list *hct-16g*) 0 nil)))
 (assert-event
  (equal (fn-heap-command-line (fn-heap-command-decide :inspect "inspect" nil *hct-d27* *hct-core* *hct-nur*
-                                                      (list *hct-16g*) 0 nil nil nil 4096 512 nil nil)
-                              :inspect "inspect" nil nil nil 4096 512)
-        "refused machine-cannot-hold-profile heap=69306331 MB machine=16384 MB totals=unobserved:arena,hcharge,memberships,events,log,history,charge,residency"))
+                                                      (list *hct-16g*) 0 nil nil *hct-img* 4096 512
+                                                      (list *hct-16g*) nil)
+                              :inspect "inspect" nil nil *hct-img* 4096 512)
+        (concatenate 'string
+                     (fn-heap-reserve-report-line
+                      (fn-heap-reserve-operation-decide :inspect *hct-d27* *hct-core* *hct-nur*
+                                                        (list *hct-16g*) 0 nil))
+                     *fn-mo-adapter-words* "header totals unseen")))
+;; The adapter under-bounds: at the small preset the sound bound's need (the
+;; equation at fn-mm-profile-bound-tot) is past the adapter's heap.
+(assert-event
+ (< (* *fn-heap-mib*
+       (fn-heap-decision-mb (fn-heap-reserve-operation-decide :inspect *fn-heap-small-profile* *hct-core*
+                                                              *hct-nur* (list *hct-1t*) 0 nil)))
+    (fn-mo-read-need :inspect :reads *fn-heap-small-profile* *hct-img* *hct-nur*
+                     (fn-mm-profile-bound-tot *fn-heap-small-profile* :resident) 4096)))
 ; IMG from /proc/self/status ("Name: sbcl", "VmRSS: 135500 kB", "RssAnon: 23552 kB")
 (defconst *hct-status* '(78 97 109 101 58 9 115 98 99 108 10 86 109 82 83 83 58 9 32 32 49 51 53 53 48 48 32 107 66 10 82 115 115 65 110 111 110 58 9 32 32 32 50 51 53 53 50 32 107 66 10))
 (assert-event (equal (fn-mo-img-observed 200411640 *hct-status* 1024 524288)
@@ -101,74 +121,119 @@
 (assert-event (equal (car (fn-mo-header-decide *hct-d27* *hct-core* *hct-nur* (list *hct-16g*) 0
                                                *hct-config*))
                      :heap))
-; `pins' shares the action :status and replays: a read, today's figure
+; `pins' shares the action :status and replays: a read
 (assert-event (equal (fn-heap-command-growth :status "pins" nil) :reads))
 (assert-event (equal (car (fn-heap-command-decide :status "pins" nil *hct-d27* *hct-core* *hct-nur*
                                                   (list *hct-16g*) 0 nil nil nil *hct-config* nil nil nil))
                      :refused))
 
-;; K7 and K8': teeth bound to the book's theorems; registered as critical
-;; keystones in A's landing-2 train, when the observed branch first runs on
-;; a host (repair item MEMORY-OBSERVED-BRANCH-CRITICAL).
+;; K7 and K8: teeth bound to the book's theorems (critical registration:
+;; repair item MEMORY-OBSERVED-BRANCH-CRITICAL).
 (defteeth fn-mo-read-holds-the-observed-store
-  :claim (((accepted (equal (car (fn-mo-read-decide profile img core nursery totals config-octets card
+  :claim (((accepted (equal (car (fn-mo-read-decide action class profile img core nursery tot config-octets card
                                                     resident address))
                             :heap)))
           (and (natp (fn-mm-least-observation resident))
-               (<= (fn-mo-read-resident profile img core nursery totals config-octets card)
+               (<= (fn-mo-read-resident action class profile img core nursery tot config-octets card)
                    (fn-mm-least-observation resident))
                (<= (+ (fn-heap-core-dynamic core)
-                      (fn-mo-read-need profile img nursery totals config-octets))
+                      (fn-mo-read-need action class profile img nursery tot config-octets))
                    (* *fn-heap-mib*
                       (fn-heap-decision-mb
-                       (fn-mo-read-decide profile img core nursery totals config-octets card
+                       (fn-mo-read-decide action class profile img core nursery tot config-octets card
                                           resident address))))
                (implies (natp (fn-mm-least-observation address))
-                        (<= (fn-mo-read-reservation profile img core nursery totals config-octets)
+                        (<= (fn-mo-read-reservation action class profile img core nursery tot config-octets)
                             (fn-mm-least-observation address)))))
   :subject fn-mo-read-decide
-  :witness ((profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*) (totals *hct-w13*)
+  :witness ((action :inspect) (class :reads) (profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*) (tot *hct-w13*)
             (config-octets *hct-config*) (card *hct-card*)
             (resident (list *hct-16g*)) (address (list *hct-1t*)))
-  :breaks ((accepted ((profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*)
-                      (totals *hct-w13*) (config-octets *hct-config*) (card *hct-card*)
+  :breaks ((accepted ((action :inspect) (class :reads) (profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*)
+                      (tot *hct-w13*) (config-octets *hct-config*) (card *hct-card*)
                       (resident (list *hct-256m*)) (address (list *hct-1t*)))))
   :mutations ((read-sized-at-the-ceilings
-               (:conclusion (<= (fn-mo-read-need profile img nursery (hct-ceiling profile) config-octets)
+               (:conclusion (<= (fn-mo-read-need action class profile img nursery (hct-ceiling profile) config-octets)
                                 (fn-mm-least-observation resident)))
-               ((profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*) (totals *hct-w13*)
+               ((action :inspect) (class :reads) (profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*) (tot *hct-w13*)
                 (config-octets *hct-config*) (card *hct-card*)
                 (resident (list *hct-16g*)) (address (list *hct-1t*)))
-               :fault "a read sized by the profile's ceilings, not the store it observes (today's figure)")))
+               :fault "a read with observed totals sized by the profile's ceilings, not the store it observes")))
 
 (defteeth fn-mo-read-refuses-only-by-the-model
-  :claim (((fits (<= (fn-mo-read-resident profile img core nursery totals config-octets card)
+  :claim (((fits (<= (fn-mo-read-resident action class profile img core nursery tot config-octets card)
                      (fn-mm-least-observation resident)))
            (address-space (or (not (natp (fn-mm-least-observation address)))
-                              (<= (fn-mo-read-reservation profile img core nursery totals config-octets)
+                              (<= (fn-mo-read-reservation action class profile img core nursery tot config-octets)
                                   (fn-mm-least-observation address)))))
-          (equal (car (fn-mo-read-decide profile img core nursery totals config-octets card
+          (equal (car (fn-mo-read-decide action class profile img core nursery tot config-octets card
                                          resident address))
                  :heap))
   :subject fn-mo-read-decide
-  :witness ((profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*) (totals *hct-w13*)
+  :witness ((action :inspect) (class :reads) (profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*) (tot *hct-w13*)
             (config-octets *hct-config*) (card *hct-card*) (resident (list *hct-16g*)) (address nil))
-  :breaks ((fits ((profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*)
-                  (totals *hct-w13*) (config-octets *hct-config*) (card *hct-card*)
+  :breaks ((fits ((action :inspect) (class :reads) (profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*)
+                  (tot *hct-w13*) (config-octets *hct-config*) (card *hct-card*)
                   (resident (list *hct-256m*)) (address nil)))
-           (address-space ((profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*)
-                           (totals *hct-w13*) (config-octets *hct-config*) (card *hct-card*)
+           (address-space ((action :inspect) (class :reads) (profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*)
+                           (tot *hct-w13*) (config-octets *hct-config*) (card *hct-card*)
                            (resident (list *hct-16g*)) (address (list *hct-512m*)))))
   :mutations ((held-to-the-owner-state-alone
-               (:hypothesis fits (<= (fn-mm-owner totals (fn-mo-read-cfg nursery))
+               (:hypothesis fits (<= (fn-mm-owner tot (fn-mo-read-cfg nursery))
                                      (fn-mm-least-observation resident)))
-               ((profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*) (totals *hct-w13*)
+               ((action :inspect) (class :reads) (profile *hct-d27*) (img *hct-img*) (core *hct-core*) (nursery *hct-nur*) (tot *hct-w13*)
                 (config-octets *hct-config*) (card *hct-card*) (resident (list *hct-256m*)) (address nil))
                :fault "a read held to the store's owner state alone, the image and the open's workspace uncharged")))
 
 ; Codex F4's input: ten million posts on a 1 TiB machine pick a dynamic
 ; space whose card table alone is past the old base; it is charged.
 (assert-event
- (< (fn-mo-read-need *hct-d27* *hct-img* *hct-nur* (hct-posts 10000000) *hct-config*)
-    (fn-mo-read-resident *hct-d27* *hct-img* *hct-core* *hct-nur* (hct-posts 10000000) *hct-config*
+ (< (fn-mo-read-need :inspect :reads *hct-d27* *hct-img* *hct-nur* (hct-posts 10000000) *hct-config*)
+    (fn-mo-read-resident :inspect :reads *hct-d27* *hct-img* *hct-core* *hct-nur* (hct-posts 10000000) *hct-config*
                          *hct-card*)))
+
+;; K7b: `post' (a writer) decided by the equation at the small preset's
+;; profile bound on a 16 GiB machine holds every store within the bound
+;; (W13's here), the decision the host makes once A's header carries totals.
+(defconst *hct-small* *fn-heap-small-profile*)
+(defconst *hct-small-bound* (fn-mm-profile-bound-tot *hct-small* :resident))
+(assert-event (fn-mm-tot-le *hct-w13* *hct-small-bound*))
+(assert-event (equal (fn-heap-command-decide :post "post" nil *hct-small* *hct-core* *hct-nur*
+                                             (list *hct-16g*) 0 nil *hct-small-bound* *hct-img* *hct-config*
+                                             *hct-card* (list *hct-16g*) (list *hct-1t*))
+                     (fn-mo-read-decide :post :grows *hct-small* *hct-img* *hct-core* *hct-nur*
+                                        *hct-small-bound* *hct-config* *hct-card*
+                                        (list *hct-16g*) (list *hct-1t*))))
+(defteeth fn-mo-read-holds-every-store-within-its-totals
+  :claim (((accepted (equal (car (fn-mo-read-decide action class profile img core nursery tot config-octets
+                                                    card resident address))
+                            :heap))
+           (within (fn-mm-tot-le a tot)))
+          (and (<= (fn-mo-read-need action class profile img nursery a config-octets)
+                   (fn-mm-least-observation resident))
+               (<= (+ (fn-heap-core-dynamic core)
+                      (fn-mo-read-need action class profile img nursery a config-octets))
+                   (* *fn-heap-mib*
+                      (fn-heap-decision-mb
+                       (fn-mo-read-decide action class profile img core nursery tot config-octets card
+                                          resident address))))))
+  :subject fn-mo-read-decide
+  :witness ((action :post) (class :grows) (profile *hct-small*) (img *hct-img*) (core *hct-core*)
+            (nursery *hct-nur*) (tot *hct-small-bound*) (a *hct-w13*) (config-octets *hct-config*)
+            (card *hct-card*) (resident (list *hct-16g*)) (address (list *hct-1t*)))
+  :breaks ((accepted ((action :post) (class :grows) (profile *hct-small*) (img *hct-img*) (core *hct-core*)
+                      (nursery *hct-nur*) (tot *hct-small-bound*) (a *hct-w13*)
+                      (config-octets *hct-config*) (card *hct-card*) (resident (list *hct-256m*))
+                      (address (list *hct-1t*))))
+           (within ((action :post) (class :grows) (profile *hct-small*) (img *hct-img*) (core *hct-core*)
+                    (nursery *hct-nur*) (tot *hct-small-bound*) (a (hct-posts 10000000))
+                    (config-octets *hct-config*) (card *hct-card*) (resident (list *hct-16g*))
+                    (address (list *hct-1t*)))))
+  :mutations ((memberships-unbounded
+               (:hypothesis within (<= (fn-mm-tot-records a) (fn-mm-tot-records tot)))
+               ((action :post) (class :grows) (profile *hct-small*) (img *hct-img*) (core *hct-core*)
+                (nursery *hct-nur*) (tot *hct-small-bound*)
+                (a (fn-mm-make-tot 16384 0 0 1000000000 0 0 0 0 :resident))
+                (config-octets *hct-config*) (card *hct-card*) (resident (list *hct-16g*))
+                (address (list *hct-1t*)))
+               :fault "an offline figure that bounds the records but not their memberships (H no longer does)")))

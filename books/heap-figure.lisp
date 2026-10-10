@@ -40,10 +40,11 @@
 ;            open.  Byte vectors, one byte per octet, large objects the
 ;            collector does not copy.
 ;
-; H bounds the history a store holds (the store budget refuses the commit past
-; it, books/store-budget.lisp `fn-sbud-verdict-at'), so every store the
-; profile admits fits the figure: `fn-heap-decide-admits-every-store-the-
-; profile-admits'.  The figure in SBCL's megabytes (MiB) is the octets rounded
+; The figure states no store it holds (memory landing 3+4): every
+; store-opening command is decided by the memory equation
+; (books/heap-command.lisp fn-heap-command-decide, books/memory-model.lisp
+; fn-mm-launch-decide); `init' and the store-less commands keep this book's
+; store-less decision.  The figure in SBCL's megabytes (MiB) is the octets rounded
 ; up.  The machine is the least of the host's observations (physical memory;
 ; on Linux the cgroup's memory.max up the hierarchy and RLIMIT_AS; RLIMIT_DATA
 ; everywhere): a figure above it is refused by name, class :refused (exit 1,
@@ -321,42 +322,6 @@
                                    (fn-heap-figure-octets fn-heap-mb-of fn-heap-machine-octets
                                     fn-bs-profile-admittedp fn-heap-profile-word
                                     fn-heap-storeless-decide))))))
-
-; KEYSTONE (PRF-198, re-derived by reservation-after-flip).  An accepted
-; figure holds every store the profile admits: in the dynamic space the
-; launcher passes (the decision's megabytes), any store of USED payload
-; octets within H and N records within T fits with its open's transient, the
-; request in flight, both buffers, the image's dynamic content and the
-; collector's room at the trigger the host sets in that space
-; (books/heap-store-figure.lisp `fn-heap-store-need'); and that space fits
-; the machine.
-(defthm fn-heap-decide-admits-every-store-the-profile-admits
-  (let* ((decision (fn-heap-decide profile core nursery observations))
-         (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
-    (implies (and (fn-bs-profile-admittedp profile)
-                  (equal (car decision) :heap)
-                  (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
-                      (nfix (fn-bs-profile-max-history-octets profile)))
-                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-                  (<= (nfix ou) (nfix (fn-bs-profile-max-history-octets profile)))
-                  (<= (nfix on) (nfix (fn-bs-profile-max-transactions profile))))
-             (and (<= (fn-heap-store-need profile core used n m ou on
-                                          (fn-heap-nursery-trigger d nursery))
-                      d)
-                  (<= d (fn-heap-machine-octets observations)))))
-  :hints (("Goal" :in-theory (e/d (fn-heap-figure-octets)
-                                  (fn-heap-decide fn-heap-store-need fn-heap-nursery-trigger
-                                   fn-heap-mb-of fn-heap-store-figure-octets fn-heap-machine-octets
-                                   fn-heap-decision-mb fn-bs-profile-admittedp
-                                   fn-bs-profile-max-history-octets fn-bs-profile-max-transactions))
-           :use (fn-heap-decide-heap-is-the-figure-within-the-machine
-                 (:instance fn-heap-mb-of-covers
-                            (octets (fn-heap-figure-octets profile core nursery)))
-                 (:instance fn-heap-store-figure-holds-every-store
-                            (observed nil)
-                            (d (* *fn-heap-mib*
-                                  (fn-heap-decision-mb
-                                   (fn-heap-decide profile core nursery observations)))))))))
 
 ; The refusal is exact and names both numbers: an admitted profile is refused
 ; exactly when its figure exceeds the observed machine.
@@ -666,51 +631,6 @@
                  (:instance fn-heap-mb-of-covers
                             (octets (fn-heap-operation-figure-octets
                                      action profile core nursery observed)))))))
-
-; KEYSTONE (reservation-after-flip).  An accepted operation figure holds
-; every store the profile admits -- USED within H, N within T, the collector's room at the trigger
-; the host sets in the launcher's space -- with the open's transient over any
-; input within the observation (OU octets, ON records: what is on disk when
-; the probe ran; for a command that observes nothing its figure is the
-; unobserved one, which holds every observation's); and it fits the machine.
-; (A hypothesis (member action '(:recover :compact :reclaim :run)) was removed after
-; proving the weakened theorem.)
-; Every action that opens the store: the store-less action (`init', which
-; holds no store) is excluded by name, and its accepted decision is the
-; store-less figure's (fn-heap-operation-decide-of-a-storeless-action below).
-(defthm fn-heap-operation-decide-holds-the-store
-  (let* ((decision (fn-heap-operation-decide action profile core nursery observations
-                                             observed))
-         (d (* *fn-heap-mib* (fn-heap-decision-mb decision))))
-    (implies (and (not (fn-heap-storeless-action-p action))
-                  (fn-bs-profile-admittedp profile)
-                  (equal (car decision) :heap)
-                  (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
-                      (nfix (fn-bs-profile-max-history-octets profile)))
-                  (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-                  (<= (nfix ou) (fn-heap-open-octets-bound
-                                 profile (fn-heap-operation-observation action observed)))
-                  (<= (nfix on) (fn-heap-open-records-bound
-                                 profile (fn-heap-operation-observation action observed))))
-             (and (<= (fn-heap-store-need profile core used n m ou on
-                                          (fn-heap-nursery-trigger d nursery))
-                      d)
-                  (<= d (fn-heap-machine-octets observations)))))
-  :hints (("Goal" :in-theory (union-theories
-                              '(fn-heap-mb-of-natp fn-heap-operation-figure-octets-natp
-                                fn-heap-nfix-of-operation-figure-octets natp)
-                              (theory 'minimal-theory))
-           :use (fn-heap-operation-decide-accepted
-                 fn-heap-operation-figure-holds-the-parts
-                 (:instance fn-heap-mb-of-covers
-                            (octets (fn-heap-operation-figure-octets
-                                     action profile core nursery observed)))
-                 (:instance fn-heap-store-figure-holds-every-store
-                            (observed (fn-heap-operation-observation action observed))
-                            (d (* *fn-heap-mib*
-                                  (fn-heap-mb-of (fn-heap-operation-figure-octets
-                                                  action profile core nursery
-                                                  observed)))))))))
 
 ; KEYSTONE (the store-less class).  An accepted decision of the store-less
 ; action is the store-less figure's megabytes, whatever profile it writes,

@@ -7,6 +7,7 @@
 ; whose facts disagree with its extent) is labelled as such.
 (in-package "ACL2")
 (include-book "../../books/store-budget-stored")
+(include-book "../../books/charged-totals")
 (include-book "../../books/codec-attach")
 (include-book "must-fail-checked")
 
@@ -133,11 +134,10 @@
 ; open's exact decoder hands it.  No removal witness is claimed for them.
 
 ; -----------------------------------------------------------------------------
-; Lane membership-budget (2026-09-27).  fn-sbud-record-octets-pays-the-
-; memberships (books/store-budget.lisp; no hypothesis): a reachable held row
-; interned from a wire record crossposted to three groups is charged its
-; payload and 3 x 320 = 960 octets, and holds 3 memberships; the history of
-; it and the open's two rows pays 320 x 5 memberships out of 1,613 octets.
+; H charges a held row its payload alone (memory landing 3+4; the
+; memberships are the memory equation's MEMBERSHIPS, books/charged-totals.lisp
+; fn-ct-row): a reachable held row interned from a wire record crossposted to
+; three groups is charged its four payload octets, and holds 3 memberships.
 (defconst *sbst-cross-ws*
   (list (fn-record-make 2 2 0 "<c@example.invalid>" '(70 71 72 73)
                         '("fn.a" "fn.b" "fn.c") "p" "s" "r" 2 841000000)))
@@ -146,24 +146,15 @@
 (defconst *sbst-cross-row* (car (nth 4 *sbst-cross*)))
 (assert-event (fn-held-p *sbst-cross-row*))
 (assert-event (equal (fn-sbud-row-memberships *sbst-cross-row*) 3))
-;; (and its header charge, lane heap-pool)
 (assert-event (equal (fn-sbud-row-octets *sbst-cross-row*)
-                     (+ 4 960 (fn-sbud-held-heap-charge *sbst-cross-row*))))
-(assert-event (equal (fn-sbud-row-octets *sbst-cross-row*) 1044))
-(assert-event (equal (nth 0 *sbst-cross*) 1044))
-(assert-event (equal (nth 1 *sbst-cross*) 1044))
+                     (nfix (fn-hf-octets (fn-held-facts *sbst-cross-row*)))))
+(assert-event (equal (fn-sbud-row-octets *sbst-cross-row*) 4))
+(assert-event (equal (nth 0 *sbst-cross*) (fn-sbud-row-octets *sbst-cross-row*)))
+(assert-event (equal (nth 1 *sbst-cross*) (fn-sbud-row-octets *sbst-cross-row*)))
 (assert-event (equal (nth 2 *sbst-cross*) t))
 (defconst *sbst-all-rows* (append (nth 4 *sbst-open*) (nth 4 *sbst-cross*)))
-(assert-event (equal (fn-sbud-record-memberships *sbst-all-rows*) 5))
-(assert-event (equal (fn-sbud-record-octets *sbst-all-rows*) 1852))
-(assert-event (<= (* *fn-sbud-membership-octets*
-                     (fn-sbud-record-memberships *sbst-all-rows*))
-                  (fn-sbud-record-octets *sbst-all-rows*)))
+; The memberships are counted where the equation charges them, not in H.
+(assert-event (equal (nth 2 (fn-ct-of-records *sbst-all-rows*)) 5))
 ; A wire row (no groups of its own counted) holds no membership.
 (assert-event (equal (fn-sbud-row-memberships (car *sbst-ws*)) 0))
-; MUTATION (the charge before this lane): a row charged only its payload
-; would not pay: 320 x 3 > 4.
-(assert-event (not (<= (* *fn-sbud-membership-octets*
-                          (fn-sbud-row-memberships *sbst-cross-row*))
-                       (nfix (fn-hf-octets (fn-held-facts *sbst-cross-row*))))))
 
