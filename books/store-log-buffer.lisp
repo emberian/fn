@@ -40,6 +40,7 @@
 (include-book "store-log-stream")
 (include-book "frame-digest-buffer")
 (include-book "payload-extent")
+(include-book "payload-extent-read")
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -331,56 +332,18 @@
 
 (in-theory (disable fn-lgb-slice-acc))
 
-; The records, each sliced once.
-; Executes by a loop (PKT-877, lane serve-depth): the recursion took one
-; control-stack frame per element.  The :logic is the recursion, unchanged;
-; the :exec collects onto an accumulator and reverses it (revappend).
-(defun fn-lgb-unpack-loop (i end fn-octets acc)
-  (declare (xargs :stobjs fn-octets :measure (nfix (- end i)) :guard (and (and (natp i) (natp end) (<= end (fn-octets-len fn-octets)) (< end (expt 2 59))) (true-listp acc)) :verify-guards nil))
-  (if (and (natp i) (natp end) (< i end) (<= (+ i 4) end))
-      (let ((n (fn-lgb-u32-at i fn-octets)))
-        (if (and (natp n) (<= (+ i 4 n) end))
-            (fn-lgb-unpack-loop (+ i 4 n)
-                                end
-                                fn-octets
-                                (cons (fn-lgb-slice-acc (+ i 4) (+ i 4 n) nil fn-octets)
-                                      acc))
-          (revappend acc nil)))
-    (revappend acc nil)))
-
-(defun fn-lgb-unpack (i end fn-octets)
-  (declare (xargs :verify-guards nil :stobjs fn-octets
-                  :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-octets))
-                              (< end (expt 2 59)))
-                  :measure (nfix (- end i))))
-  (mbe :logic
-       (if (and (natp i) (natp end) (< i end) (<= (+ i 4) end))
-           (let ((n (fn-lgb-u32-at i fn-octets)))
-             (if (and (natp n) (<= (+ i 4 n) end))
-                 (cons (fn-lgb-slice-acc (+ i 4) (+ i 4 n) nil fn-octets)
-                       (fn-lgb-unpack (+ i 4 n) end fn-octets))
-               nil))
-         nil)
-       :exec (fn-lgb-unpack-loop i end fn-octets nil)))
-
+;; The records, each sliced: the logic the count and the cursor are proved
+;; against (no host caller: the host slices one record at a time, section 4).
 (local
- (defthm fn-lgb-unpack-loop-is-revappend
-   (equal (fn-lgb-unpack-loop i end fn-octets acc)
-          (revappend acc (fn-lgb-unpack i end fn-octets)))
-   :hints (("Goal" :induct (fn-lgb-unpack-loop i end fn-octets acc)
-                   :in-theory (disable fn-lgb-u32-at fn-lgb-slice-acc)))))
-
-(verify-guards fn-lgb-unpack-loop)
-
-(verify-guards fn-lgb-unpack
-  :hints (("Goal"
-           :in-theory
-           (union-theories '(revappend fn-lgb-unpack)
-                           (union-theories (theory 'minimal-theory)
-                                           (executable-counterpart-theory :here)))
-           :use
-           ((:instance fn-lgb-unpack-loop-is-revappend (acc nil))))))
-
+ (defun fn-lgb-unpack (i end fn-octets)
+   (declare (xargs :stobjs fn-octets :verify-guards nil :measure (nfix (- end i))))
+   (if (and (natp i) (natp end) (< i end) (<= (+ i 4) end))
+       (let ((n (fn-lgb-u32-at i fn-octets)))
+         (if (and (natp n) (<= (+ i 4 n) end))
+             (cons (fn-lgb-slice-acc (+ i 4) (+ i 4 n) nil fn-octets)
+                   (fn-lgb-unpack (+ i 4 n) end fn-octets))
+           nil))
+     nil)))
 
 ; Each is its list twin over the window [I, END) of the buffer's octets.
 (defthm fn-lgb-exactp-is-unpack-exactp
@@ -391,13 +354,14 @@
            :in-theory (disable fn-lgb-u32-at fn-cbor-u32-from)
            :expand ((fn-lg-unpack-exactp (take (- end i) (nthcdr i fn-octets)))))))
 
-(defthm fn-lgb-unpack-is-unpack
-  (implies (and (fn-octets-p fn-octets) (natp i) (natp end) (<= i end) (<= end (len fn-octets)))
-           (equal (fn-lgb-unpack i end fn-octets)
-                  (fn-lg-unpack (take (- end i) (nthcdr i fn-octets)))))
-  :hints (("Goal" :induct (fn-lgb-unpack i end fn-octets)
-           :in-theory (disable fn-lgb-u32-at fn-cbor-u32-from)
-           :expand ((fn-lg-unpack (take (- end i) (nthcdr i fn-octets)))))))
+(local
+ (defthm fn-lgb-unpack-is-unpack
+   (implies (and (fn-octets-p fn-octets) (natp i) (natp end) (<= i end) (<= end (len fn-octets)))
+            (equal (fn-lgb-unpack i end fn-octets)
+                   (fn-lg-unpack (take (- end i) (nthcdr i fn-octets)))))
+   :hints (("Goal" :induct (fn-lgb-unpack i end fn-octets)
+            :in-theory (disable fn-lgb-u32-at fn-cbor-u32-from)
+            :expand ((fn-lg-unpack (take (- end i) (nthcdr i fn-octets))))))))
 
 (defthm fn-lgb-count-is-len-unpack
   (implies (and (fn-octets-p fn-octets) (natp i) (natp end) (<= i end) (<= end (len fn-octets)))
@@ -416,72 +380,156 @@
            :in-theory (disable fn-lgb-u32-at fn-cbor-u32-from)
            :expand ((fn-lg-unpack (take (- end i) (nthcdr i fn-octets)))))))
 
-(in-theory (disable fn-lgb-exactp fn-lgb-count fn-lgb-records-okp fn-lgb-unpack))
+(in-theory (disable fn-lgb-exactp fn-lgb-count fn-lgb-records-okp))
+(local (in-theory (disable fn-lgb-unpack)))
 
-; The decision.  The trailer check comes last: a wrong chain link or kind is
-; refused before any digest is computed.
-(defun fn-lgb-decide-fast (prev max fn-octets)
-  (declare (xargs :stobjs fn-octets :guard t
-                  :guard-hints (("Goal" :in-theory (enable fn-octets-len)))))
-  (let ((n (fn-octets-len fn-octets)))
-    (if (and (<= *fn-lgb-min* n) (< n (expt 2 59))
-             (natp max) (<= max *fn-frame-max-payload*))
-        (let* ((kind (fn-lgb-cell 5 fn-octets))
-               (bound (if (equal kind *fn-lg-batch-kind*) *fn-lg-batch-payload-max* max))
-               (declared (fn-lgb-u32-at 6 fn-octets))
-               (end (- n 32)))
-          (if (and (<= declared bound)
-                   (equal n (+ declared 42))
-                   (fn-oct-prefix-equalp 0 *fn-lg-magic* fn-octets)
-                   (equal (fn-lgb-cell 4 fn-octets) *fn-lg-version*)
-                   (or (equal kind *fn-lg-record-kind*)
-                       (and (equal kind *fn-lg-batch-kind*)
-                            (fn-lgb-exactp 42 end fn-octets)
-                            (<= 2 (fn-lgb-count 42 end fn-octets))
-                            (fn-lgb-records-okp 42 end max fn-octets))
-                       ; a rotation entry (lane store-lineage): no record
-                       (and (equal kind *fn-lg-rotation-kind*)
-                            (equal (- end 42) *fn-lg-rotation-body-octets*)))
-                   (true-listp prev)
-                   (equal (len prev) 32)
-                   (fn-oct-prefix-equalp 10 prev fn-octets)
-                   (fn-oct-suffix-equalp end (fn-frame-digest-range nil 0 end fn-octets)
-                                         fn-octets))
-              (mv t (cond ((equal kind *fn-lg-batch-kind*)
-                           (fn-lgb-unpack 42 end fn-octets))
-                          ((equal kind *fn-lg-rotation-kind*) nil)
-                          (t (list (fn-lgb-slice-acc 42 end nil fn-octets)))))
-            (mv nil nil)))
-      (fn-lgw-decide (fn-octets-list fn-octets) prev max))))
+; -----------------------------------------------------------------------------
+; 3. The decision from the buffer, no record copied.
 
-; On an octet buffer it is the list step's decision on the buffer's octets.
-(defthm fn-lgb-decide-fast-is-decide
-  (implies (fn-octets-p fn-octets)
-           (equal (fn-lgb-decide-fast prev max fn-octets)
-                  (fn-lgw-decide fn-octets prev max)))
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-lgb-flat fn-shr-win)
-                           (fn-lgw-decide fn-lg-unpack fn-lg-unpack-exactp fn-lg-recordsp
-                            fn-cbor-u32-from)))))
-
-(in-theory (disable fn-lgb-decide-fast))
-
-; The decision the step makes.  Its logical value on a value that is not an
-; octet list (never a live buffer: the stobj's recognizer is that) is the
-; list step's, so the equality below needs no hypothesis.
-(defun fn-lgb-decide (prev max fn-octets)
+; The range the buffer decision answers in place: an entry of at least 74
+; octets under a payload bound the frame grammar admits.  Outside it the
+; list decision runs on the buffer's octets (an entry below 74 octets holds
+; at most 73; a MAX outside the range is never the host's, fn-lgu-log-max).
+(defun fn-lgb-fast-range-p (max fn-octets)
   (declare (xargs :stobjs fn-octets :guard t))
-  (mbe :logic (if (fn-cbor-octet-listp (fn-octets-list fn-octets))
-                  (fn-lgb-decide-fast prev max fn-octets)
-                (fn-lgw-decide (fn-octets-list fn-octets) prev max))
-       :exec (fn-lgb-decide-fast prev max fn-octets)))
+  (let ((n (fn-octets-len fn-octets)))
+    (and (<= *fn-lgb-min* n) (< n (expt 2 59)) (natp max) (<= max *fn-frame-max-payload*))))
 
-(defthm fn-lgb-decide-is-decide
-  (equal (fn-lgb-decide prev max fn-octets)
-         (fn-lgw-decide fn-octets prev max))
-  :hints (("Goal" :in-theory (enable fn-octets-p))))
+; The acceptance, (mv OK KIND END), END the trailer's start.  The trailer
+; check comes last: a wrong chain link or kind is refused before any digest
+; is computed.
+(defun fn-lgb-accept (prev max fn-octets)
+  (declare (xargs :stobjs fn-octets :guard (fn-lgb-fast-range-p max fn-octets)
+                  :guard-hints (("Goal" :in-theory (enable fn-octets-len)))))
+  (let* ((n (fn-octets-len fn-octets))
+         (kind (fn-lgb-cell 5 fn-octets))
+         (bound (if (equal kind *fn-lg-batch-kind*) *fn-lg-batch-payload-max* max))
+         (declared (fn-lgb-u32-at 6 fn-octets))
+         (end (- n 32)))
+    (if (and (<= declared bound)
+             (equal n (+ declared 42))
+             (fn-oct-prefix-equalp 0 *fn-lg-magic* fn-octets)
+             (equal (fn-lgb-cell 4 fn-octets) *fn-lg-version*)
+             (or (equal kind *fn-lg-record-kind*)
+                 (and (equal kind *fn-lg-batch-kind*)
+                      (fn-lgb-exactp 42 end fn-octets)
+                      (<= 2 (fn-lgb-count 42 end fn-octets))
+                      (fn-lgb-records-okp 42 end max fn-octets))
+                 ; a rotation entry (lane store-lineage): no record
+                 (and (equal kind *fn-lg-rotation-kind*)
+                      (equal (- end 42) *fn-lg-rotation-body-octets*)))
+             (true-listp prev)
+             (equal (len prev) 32)
+             (fn-oct-prefix-equalp 10 prev fn-octets)
+             (fn-oct-suffix-equalp end (fn-frame-digest-range nil 0 end fn-octets)
+                                   fn-octets))
+        (mv t kind end)
+      (mv nil 0 0))))
 
-(in-theory (disable fn-lgb-decide))
+(defthm fn-lgb-accept-ok-boolean
+  (booleanp (car (fn-lgb-accept prev max fn-octets)))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-lgb-accept))))
+
+(defthm fn-lgb-accept-end-bounds
+  (implies (car (fn-lgb-accept prev max fn-octets))
+           (and (natp (mv-nth 2 (fn-lgb-accept prev max fn-octets)))
+                (<= (mv-nth 2 (fn-lgb-accept prev max fn-octets)) (fn-octets-len fn-octets))))
+  :hints (("Goal" :in-theory (enable fn-lgb-accept))))
+
+(defthm fn-lgb-accept-end-within-len
+  (implies (car (fn-lgb-accept prev max fn-octets))
+           (<= (mv-nth 2 (fn-lgb-accept prev max fn-octets)) (len fn-octets)))
+  :hints (("Goal" :in-theory (enable fn-lgb-accept))))
+
+
+; The list decision's records, from the acceptance (the logic the count is
+; proved against; nothing executes it).
+(local
+ (defun fn-lgb-decide-fast (prev max fn-octets)
+   (declare (xargs :stobjs fn-octets :verify-guards nil))
+   (if (fn-lgb-fast-range-p max fn-octets)
+       (mv-let (ok kind end) (fn-lgb-accept prev max fn-octets)
+         (if ok
+             (mv t (cond ((equal kind *fn-lg-batch-kind*) (fn-lgb-unpack 42 end fn-octets))
+                         ((equal kind *fn-lg-rotation-kind*) nil)
+                         (t (list (fn-lgb-slice-acc 42 end nil fn-octets)))))
+           (mv nil nil)))
+     (fn-lgw-decide (fn-octets-list fn-octets) prev max))))
+
+(local
+ (defthm fn-lgb-decide-fast-is-decide
+   (implies (fn-octets-p fn-octets)
+            (equal (fn-lgb-decide-fast prev max fn-octets)
+                   (fn-lgw-decide fn-octets prev max)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-lgb-flat fn-shr-win fn-lgb-accept fn-lgb-fast-range-p)
+                            (fn-lgw-decide fn-lg-unpack fn-lg-unpack-exactp fn-lg-recordsp
+                             fn-cbor-u32-from))))))
+
+; How many records the accepted entry carries.
+(defun fn-lgb-entry-count (kind end fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp end) (<= end (fn-octets-len fn-octets)))))
+  (cond ((equal kind *fn-lg-batch-kind*) (fn-lgb-count 42 end fn-octets))
+        ((equal kind *fn-lg-rotation-kind*) 0)
+        (t 1)))
+
+(local
+ (defthm fn-lgb-len-unpack-is-count
+   (equal (len (fn-lgb-unpack i end fn-octets)) (fn-lgb-count i end fn-octets))
+   :hints (("Goal" :induct (fn-lgb-unpack i end fn-octets)
+            :in-theory (e/d (fn-lgb-unpack fn-lgb-count) (fn-lgb-u32-at fn-lgb-slice-acc))))))
+
+(local
+ (defthm fn-lgb-decide-fast-count
+   (implies (fn-lgb-fast-range-p max fn-octets)
+            (equal (mv-let (ok records) (fn-lgb-decide-fast prev max fn-octets)
+                     (mv ok (len records)))
+                   (mv-let (ok kind end) (fn-lgb-accept prev max fn-octets)
+                     (mv ok (if ok (fn-lgb-entry-count kind end fn-octets) 0)))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-lgb-decide-fast fn-lgb-entry-count)
+                            (fn-lgw-decide fn-lgb-accept fn-lgb-fast-range-p))))))
+
+(local
+ (defthm fn-lgb-decide-count-exec-is-logic
+   (implies (and (fn-octets-p fn-octets) (fn-lgb-fast-range-p max fn-octets))
+            (equal (mv-let (ok kind end) (fn-lgb-accept prev max fn-octets)
+                     (mv ok (if ok (fn-lgb-entry-count kind end fn-octets) 0)))
+                   (mv-let (ok records) (fn-lgw-decide fn-octets prev max)
+                     (mv ok (len records)))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-lgb-decide-fast-is-decide) (:instance fn-lgb-decide-fast-count))
+            :in-theory (theory 'minimal-theory)))))
+
+
+; The decision and the record count, no record copied.
+(defun fn-lgb-decide-count (prev max fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
+  (mbe :logic (mv-let (ok records) (fn-lgw-decide (fn-octets-list fn-octets) prev max)
+                (mv ok (len records)))
+       :exec (if (fn-lgb-fast-range-p max fn-octets)
+                 (mv-let (ok kind end) (fn-lgb-accept prev max fn-octets)
+                   (mv ok (if ok (fn-lgb-entry-count kind end fn-octets) 0)))
+               (mv-let (ok records) (fn-lgw-decide (fn-octets-list fn-octets) prev max)
+                 (mv ok (len records))))))
+
+(verify-guards fn-lgb-decide-count
+  :hints (("Goal" :in-theory (e/d (fn-octets-p)
+                                  (fn-lgw-decide fn-lgb-accept fn-lgb-fast-range-p fn-lgb-entry-count
+                                   fn-lgw-decide-is-okp-and-records))
+           :use ((:instance fn-lgb-decide-count-exec-is-logic)))))
+
+; KEYSTONE: the count decision is the list decision on the buffer's octets,
+; its records answered by their count; no hypothesis.
+(defthm fn-lgb-decide-count-is-decide
+  (equal (fn-lgb-decide-count prev max fn-octets)
+         (mv-let (ok records) (fn-lgw-decide fn-octets prev max)
+           (mv ok (len records))))
+  :hints (("Goal" :in-theory (e/d (fn-lgb-decide-count fn-octets-p) (fn-lgw-decide)))))
+
+
 
 ; The chain's next trailer: the entry's last 32 octets.
 (defun fn-lgb-trailer-fast (fn-octets)
@@ -511,155 +559,475 @@
 
 (in-theory (disable fn-lgb-trailer fn-lgb-trailer-fast))
 
-; -----------------------------------------------------------------------------
-; 3. The step the host calls.  The buffer holds the octets fn-lgw-entry-len
-;    named, read at POS (empty: no entry there).
+; The predecessor a refused entry claims, as the broken check reads it: the
+; chain field [10, 42), or zeros for a batch whose declared length passes
+; MAX (where fn-lgs-claimed-prev's open under MAX answers no payload).  It is
+; not fn-lgs-claimed-prev, which answers zeros wherever that open refuses;
+; the two differ only where the entry validates under neither, so the broken
+; check is the same (fn-lgb-broken's guard proof).
+(defun fn-lgb-claimed (max fn-octets)
+  (declare (xargs :stobjs fn-octets :guard (fn-lgb-fast-range-p max fn-octets)))
+  (if (and (equal (fn-lgb-cell 5 fn-octets) *fn-lg-batch-kind*)
+           (< max (fn-lgb-u32-at 6 fn-octets)))
+      (fn-bs-zeros 32)
+    (fn-lgb-slice-acc 10 42 nil fn-octets)))
 
-(defun fn-lgw-step-buf (st unit max extent fn-octets)
-  (declare (xargs :stobjs fn-octets :guard (true-listp st)))
+; The refused entry's classification (fn-lgw-broken-slice-p) from the
+; buffer: no copy of the entry in the range.
+(defun fn-lgb-broken (last max fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
+  (mbe :logic (fn-lgw-broken-slice-p (fn-octets-list fn-octets) last max)
+       :exec (if (fn-lgb-fast-range-p max fn-octets)
+                 (let ((claimed (fn-lgb-claimed max fn-octets)))
+                   (mv-let (ok k) (fn-lgb-decide-count claimed max fn-octets)
+                     (declare (ignore k))
+                     (and ok (not (equal claimed last)) t)))
+               (fn-lgw-broken-slice-p (fn-octets-list fn-octets) last max))))
+
+(local
+ (defthm fn-lgb-claimed-prev-flat
+   (implies (and (fn-cbor-octet-listp e) (<= *fn-lgb-min* (len e))
+                 (natp max) (<= max *fn-frame-max-payload*))
+            (equal (fn-lgs-claimed-prev e max)
+                   (let* ((n (len e))
+                          (declared (fn-cbor-u32-from (take 4 (nthcdr 6 e)))))
+                     (if (and (<= declared max)
+                              (equal n (+ declared 42))
+                              (equal (nthcdr (- n 32) e) (fn-frame-digest (take (- n 32) e))))
+                         (take 32 (nthcdr 10 e))
+                       (fn-bs-zeros 32)))))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-lgs-claimed-prev fn-frame-open fn-frame-decode fn-frame-head-fields
+                             fn-frame-protected-prefix fn-frame-item fn-frame-digestp)
+                            (fn-lgw-unpack-okp fn-lgw-unpack fn-lg-unpack-okp fn-lg-unpack
+                             fn-cbor-u32-from len fn-bs-take))))))
+
+(local
+ (defthm fn-lgb-entry-okp-is-flat
+   (implies (and (fn-cbor-octet-listp e) (<= *fn-lgb-min* (len e))
+                 (natp max) (<= max *fn-frame-max-payload*))
+            (equal (fn-lg-entry-okp e p max)
+                   (if (car (fn-lgb-flat e p max)) t nil)))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-lgw-decide-is-okp-and-records (prev p))
+                  (:instance fn-lgb-decide-is-flat (prev p)))
+            :in-theory (disable fn-lgw-decide-is-okp-and-records fn-lgb-decide-is-flat
+                                fn-lgw-decide fn-lg-entry-okp)))))
+
+(local
+ (defthm fn-lgb-broken-exec-is-logic
+   (implies (and (fn-octets-p fn-octets) (fn-lgb-fast-range-p max fn-octets))
+            (equal (let ((claimed (fn-lgb-claimed max fn-octets)))
+                     (and (car (fn-lgw-decide fn-octets claimed max))
+                          (not (equal claimed last)) t))
+                   (fn-lgw-broken-slice-p fn-octets last max)))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-lgb-claimed fn-lgb-fast-range-p fn-octets-p fn-octets-len
+                             fn-lgb-flat)
+                            (fn-lgw-decide fn-lg-entry-okp fn-lgs-claimed-prev
+                             fn-lgw-unpack-okp fn-lgw-unpack fn-cbor-u32-from fn-frame-digest))))))
+
+(verify-guards fn-lgb-broken
+  :hints (("Goal" :in-theory (e/d (fn-octets-p fn-lgb-decide-count)
+                                  (fn-lgw-decide fn-lgb-claimed fn-lgb-fast-range-p
+                                   fn-lgw-broken-slice-p fn-lgw-decide-is-okp-and-records))
+           :use ((:instance fn-lgb-broken-exec-is-logic)))))
+
+; KEYSTONE (S6): the refused entry's classification from the buffer is the
+; list step's; no hypothesis.
+(defthm fn-lgb-broken-is-broken-slice
+  (equal (fn-lgb-broken last max fn-octets)
+         (fn-lgw-broken-slice-p fn-octets last max))
+  :hints (("Goal" :in-theory (e/d (fn-lgb-broken fn-octets-p) (fn-lgw-broken-slice-p)))))
+
+
+; -----------------------------------------------------------------------------
+; 4. The cursor: one record at a time.
+;
+; The record at I of the entry in the buffer, as (mv START LEN NEXT): a batch
+; entry's record is the u32-prefixed window at I, any other entry's [I, END),
+; END the trailer's start.  Nothing is copied.
+(defun fn-lgb-span (i fn-octets)
+  (declare (xargs :stobjs fn-octets :guard (natp i)))
+  (let* ((n (fn-octets-len fn-octets))
+         (end (nfix (- n 32)))
+         (i (nfix i)))
+    (cond ((not (and (< 5 n) (<= i end))) (mv end 0 end))
+          ((equal (fn-lgb-cell 5 fn-octets) *fn-lg-batch-kind*)
+           (if (<= (+ i 4) end)
+               (let ((rl (fn-lgb-u32-at i fn-octets)))
+                 (if (<= (+ i 4 rl) end)
+                     (mv (+ i 4) rl (+ i 4 rl))
+                   (mv end 0 end)))
+             (mv end 0 end)))
+          (t (mv i (- end i) end)))))
+
+; A span is a window of the entry: START + LEN <= NEXT <= the trailer's start.
+(local
+ (defthm fn-lgb-span-bounds
+   (mv-let (start len next) (fn-lgb-span i fn-octets)
+     (and (natp start) (natp len) (natp next)
+          (<= (+ start len) next)
+          (<= next (nfix (- (fn-octets-len fn-octets) 32)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable fn-lgb-span)))))
+
+(local
+ (defthm fn-lgb-span-start-natp
+   (natp (car (fn-lgb-span i fn-octets)))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-lgb-span-bounds))))
+
+(local
+ (defthm fn-lgb-span-len-natp
+   (natp (mv-nth 1 (fn-lgb-span i fn-octets)))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-lgb-span-bounds))))
+
+(local
+ (defthm fn-lgb-span-next-natp
+   (natp (mv-nth 2 (fn-lgb-span i fn-octets)))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use fn-lgb-span-bounds))))
+
+(local
+ (defthm fn-lgb-span-window
+   (and (<= (+ (car (fn-lgb-span i fn-octets)) (mv-nth 1 (fn-lgb-span i fn-octets)))
+            (fn-octets-len fn-octets))
+        (<= (mv-nth 2 (fn-lgb-span i fn-octets)) (fn-octets-len fn-octets)))
+   :rule-classes :linear
+   :hints (("Goal" :use fn-lgb-span-bounds))))
+
+
+; The record a span names, copied as an octet list: the one copy the
+; consumer holds.
+(defun fn-lgb-slice (start len fn-octets)
+  (declare (xargs :stobjs fn-octets
+                  :guard (and (natp start) (natp len)
+                              (<= (+ start len) (fn-octets-len fn-octets))
+                              (< (+ start len) (expt 2 59)))))
+  (fn-lgb-slice-acc start (+ start len) nil fn-octets))
+
+; K records by the cursor from I: the logic of the host's loop.
+(defun fn-lgb-span-records (k i fn-octets)
+  (declare (xargs :stobjs fn-octets :guard (natp i) :verify-guards nil
+                  :measure (nfix k)))
+  (if (zp k)
+      nil
+    (mv-let (start len next) (fn-lgb-span i fn-octets)
+      (cons (fn-lgb-slice-acc start (+ start len) nil fn-octets)
+            (fn-lgb-span-records (1- k) next fn-octets)))))
+
+; The cursor after K records from I.
+(defun fn-lgb-span-cursor (k i fn-octets)
+  (declare (xargs :stobjs fn-octets :guard (natp i) :verify-guards nil
+                  :measure (nfix k)))
+  (if (zp k)
+      (nfix i)
+    (mv-let (start len next) (fn-lgb-span i fn-octets)
+      (declare (ignore start len))
+      (fn-lgb-span-cursor (1- k) next fn-octets))))
+
+; The stream's txid fold over the K records from I, one record live at a
+; time.
+(defun fn-lgb-next-fold-spans (k i next fn-octets)
+  (declare (xargs :stobjs fn-octets :verify-guards nil
+                  :guard (and (natp k) (natp i) (< (fn-octets-len fn-octets) (expt 2 59)))
+                  :measure (nfix k)))
+  (if (zp k)
+      (nfix next)
+    (mv-let (start len i2) (fn-lgb-span i fn-octets)
+      (fn-lgb-next-fold-spans (1- k) i2
+                              (fn-lgw-next-after-one
+                               (fn-lgb-slice-acc start (+ start len) nil fn-octets) next)
+                              fn-octets))))
+
+
+(verify-guards fn-lgb-next-fold-spans
+  :hints (("Goal" :in-theory (e/d (fn-octets-len) (fn-lgb-span))
+           :use ((:instance fn-lgb-span-bounds)))))
+
+; The extent path's descriptor of the record a span names, in the entry at
+; POS: the place (POS N START' LEN) with the entry's trailer attached as the
+; host's places get it (fn-arx-attach-trailers-buffer); NIL when the
+; declared payload is shorter than the chain field, where
+; fn-arx-list-places answers no places (LOG-DECIDE-SHORT-CHAIN-FIELD).
+(defun fn-lgb-descriptor (pos start len fn-octets)
+  (declare (xargs :stobjs fn-octets :guard (and (natp pos) (natp start) (natp len))))
+  (let ((n (fn-octets-len fn-octets)))
+    (if (or (< n 10) (< (fn-lgb-u32-at 6 fn-octets) 32))
+        nil
+      (car (fn-arx-attach-trailers-buffer (list (list pos n (+ pos start) len)) pos fn-octets)))))
+
+; -----------------------------------------------------------------------------
+; The cursor's keystones.
+
+(local
+ (defthm fn-lgb-span-records-of-batch
+   (implies (and (equal (fn-lgb-cell 5 fn-octets) *fn-lg-batch-kind*)
+                 (equal end (nfix (- (fn-octets-len fn-octets) 32)))
+                 (< 5 (fn-octets-len fn-octets))
+                 (natp i) (<= i end))
+            (equal (fn-lgb-span-records (fn-lgb-count i end fn-octets) i fn-octets)
+                   (fn-lgb-unpack i end fn-octets)))
+   :hints (("Goal" :induct (fn-lgb-unpack i end fn-octets)
+            :in-theory (e/d (fn-lgb-unpack fn-lgb-count) (fn-lgb-u32-at fn-lgb-slice-acc fn-lgb-cell))))))
+
+(local
+ (defthm fn-lgb-split-short
+   (implies (and (natp n) (< (len xs) n))
+            (equal (fn-frame-split n xs) nil))
+   :hints (("Goal" :induct (fn-frame-split n xs) :in-theory (enable fn-frame-split)))))
+
+(local
+ (defthm fn-lgb-take-declared-payload
+   (implies (and (syntaxp (and (consp u) (eq (car u) 'fn-cbor-u32-from)))
+                 (equal (+ -10 (len e)) (+ 32 u)))
+            (equal (take u y) (take (+ -42 (len e)) y)))
+   :hints (("Goal" :in-theory (disable take len) :cases ((equal u (+ -42 (len e))))))))
+
+(local
+ (defthm fn-lgb-frame-open-shape
+   (implies (fn-frame-result-okp (fn-frame-open e b))
+            (and (fn-cbor-octet-listp e)
+                 (<= 42 (len e))
+                 (equal (fn-frame-result-payload (fn-frame-open e b))
+                        (take (- (len e) 42) (nthcdr 10 e)))
+                 (equal (fn-frame-result-kind (fn-frame-open e b)) (nth 5 e))))
+   :hints (("Goal" :do-not-induct t :cases ((< (len e) 10) (and (<= 10 (len e)) (< (len e) 42)))
+            :in-theory (e/d (fn-frame-open fn-frame-decode fn-frame-head-fields
+                             fn-frame-protected-prefix fn-frame-item fn-frame-digestp)
+                            (fn-lgw-unpack-okp fn-lgw-unpack fn-lg-unpack-okp fn-lg-unpack fn-cbor-u32-from len fn-bs-take))))))
+
+(local
+ (defthm fn-lgw-decide-records-when-refused
+   (implies (not (mv-nth 0 (fn-lgw-decide e prev max)))
+            (equal (mv-nth 1 (fn-lgw-decide e prev max)) nil))
+   :hints (("Goal" :in-theory (e/d (fn-lgw-decide) (fn-frame-open fn-lg-unpack-okp fn-lg-unpack fn-lgw-unpack-okp fn-lgw-unpack fn-bs-take fn-lg-open-bound fn-lgw-decide-is-okp-and-records fn-lgb-frame-open-shape))))))
+
+(local
+ (defthm fn-lgb-entry-okp-frame
+   (implies (fn-lg-entry-okp e prev max)
+            (and (fn-frame-result-okp (fn-frame-open e (fn-lg-open-bound e max)))
+                 (member (nth 5 e) (list *fn-lg-record-kind* *fn-lg-batch-kind* *fn-lg-rotation-kind*))))
+   :hints (("Goal" :in-theory (e/d (fn-lg-entry-okp) (fn-frame-open fn-lg-unpack-okp fn-lg-open-bound))
+            :use ((:instance fn-lgb-frame-open-shape (b (fn-lg-open-bound e max))))))))
+
+(local
+ (defthm fn-lgb-nthcdr-past
+   (implies (and (true-listp y) (natp a) (<= (len y) a))
+            (equal (nthcdr a y) nil))
+   :hints (("Goal" :in-theory (enable nthcdr)))))
+
+(local
+ (defthm fn-lgb-nthcdr-take-past
+   (implies (and (natp a) (natp b) (< b a))
+            (equal (nthcdr a (take b x)) nil))
+   :hints (("Goal" :use ((:instance fn-lgb-nthcdr-past (y (take b x))))
+            :in-theory (disable fn-lgb-nthcdr-past)))))
+
+(local
+ (defthm fn-lgb-cell-5-of-octets
+   (implies (and (fn-cbor-octet-listp e) (< 5 (len e)))
+            (equal (fn-lgb-cell 5 e) (nth 5 e)))
+   :hints (("Goal" :use ((:instance fn-lgb-cell-is-nth (fn-octets e) (i 5)))
+            :in-theory (enable fn-octets-p)))))
+
+(local
+ (defthm fn-lgb-span-records-of-record
+   (implies (and (fn-cbor-octet-listp e) (<= 74 (len e)) (not (equal (nth 5 e) 2)))
+            (equal (fn-lgb-span-records 1 42 e) (list (take (- (len e) 74) (nthcdr 42 e)))))
+   :hints (("Goal" :expand ((fn-lgb-span-records 1 42 e))
+            :in-theory (enable fn-lgb-span fn-octets-len fn-octets$a-len)))))
+
+(local
+ (defthm fn-lgb-span-records-of-short
+   (implies (and (fn-cbor-octet-listp e) (< (len e) 74))
+            (equal (fn-lgb-span-records 1 42 e) (list nil)))
+   :hints (("Goal" :expand ((fn-lgb-span-records 1 42 e))
+            :in-theory (enable fn-lgb-span fn-octets-len fn-octets$a-len)))))
+
+(local
+ (defthm fn-lgb-octets-p-of-octet-list-fc
+   (implies (fn-cbor-octet-listp e) (fn-octets-p e))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-octets-p)))))
+
+(local
+ (defthm fn-lgb-span-records-are-the-records-on-a-list
+   (equal (fn-lgb-span-records (len (mv-nth 1 (fn-lgw-decide e prev max))) 42 e)
+          (mv-nth 1 (fn-lgw-decide e prev max)))
+   :hints (("Goal" :do-not-induct t
+            :cases ((not (fn-lg-entry-okp e prev max)) (< (len e) 74))
+            :in-theory (e/d (fn-lg-slice-records)
+                            (fn-lgw-decide fn-frame-open fn-lg-unpack fn-lg-entry-okp fn-lg-open-bound
+                             fn-lgb-unpack-is-unpack fn-lgw-decide-is-okp-and-records fn-lgb-frame-open-shape fn-lgb-entry-okp-frame fn-lgb-span-records-of-batch fn-lgb-count-is-len-unpack))
+            :use ((:instance fn-lgw-decide-is-okp-and-records)
+                  (:instance fn-lgb-entry-okp-frame)
+                  (:instance fn-lgb-frame-open-shape (b (fn-lg-open-bound e max)))
+                  (:instance fn-lgb-unpack-is-unpack (fn-octets e) (i 42) (end (- (len e) 32)))
+                  (:instance fn-lgb-span-records-of-batch (fn-octets e) (i 42) (end (- (len e) 32))))))))
+
+; KEYSTONE (S2): the cursor yields the records, in order, and nothing else:
+; COUNT records from 42 are the list decision's records, for every PREV and
+; MAX, accepted or not.
+(defthm fn-lgb-span-records-are-the-records
+  (equal (fn-lgb-span-records (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)) 42 fn-octets)
+         (mv-nth 1 (fn-lgw-decide fn-octets prev max)))
+  :hints (("Goal" :in-theory (disable fn-lgw-decide)
+           :use ((:instance fn-lgb-span-records-are-the-records-on-a-list (e fn-octets))))))
+
+(local
+ (defthm fn-lgb-next-fold-spans-is-next-fold
+   (equal (fn-lgb-next-fold-spans k i next fn-octets)
+          (fn-lgw-next-fold (fn-lgb-span-records k i fn-octets) next))
+   :hints (("Goal" :induct (fn-lgb-next-fold-spans k i next fn-octets)
+            :in-theory (disable fn-lgb-span fn-lgw-next-after-one fn-lgw-next-fold-is-next-after)))))
+
+(local
+ (defthm fn-lgb-frame-open-len-bound
+   (implies (fn-frame-result-okp (fn-frame-open e b))
+            (< (len e) (expt 2 59)))
+   :rule-classes :linear
+   :hints (("Goal" :do-not-induct t :cases ((< (len e) 10) (and (<= 10 (len e)) (< (len e) 42)))
+            :in-theory (e/d (fn-frame-open fn-frame-decode fn-frame-head-fields
+                             fn-frame-protected-prefix fn-frame-item fn-frame-digestp)
+                            (fn-lgw-unpack-okp fn-lgw-unpack fn-lg-unpack-okp fn-lg-unpack len fn-bs-take))))))
+
+(local
+ (defthm fn-lgb-frame-open-len-within-bound
+   (implies (fn-frame-result-okp (fn-frame-open e b))
+            (<= (len e) (+ 42 (nfix b))))
+   :rule-classes :linear
+   :hints (("Goal" :do-not-induct t :cases ((< (len e) 10) (and (<= 10 (len e)) (< (len e) 42)))
+            :in-theory (e/d (fn-frame-open fn-frame-decode fn-frame-head-fields
+                             fn-frame-protected-prefix fn-frame-item fn-frame-digestp)
+                            (fn-lgw-unpack-okp fn-lgw-unpack fn-lg-unpack-okp fn-lg-unpack len fn-bs-take))))))
+
+(local
+ (defthm fn-lgb-recordsp-nth-within
+   (implies (and (fn-lg-recordsp rs max) (< (nfix j) (len rs)))
+            (<= (len (nth j rs)) (nfix max)))
+   :hints (("Goal" :induct (nth j rs) :in-theory (enable nth)))))
+
+(local
+ (defthm fn-lgb-nth-singleton
+   (equal (nth j (cons x nil)) (if (zp j) x nil))
+   :hints (("Goal" :in-theory (enable nth)))))
+
+(local
+ (defthm fn-lgb-slice-records-within
+   (implies (and (fn-lg-entry-okp e prev max)
+                 (< (nfix j) (len (fn-lg-slice-records e max))))
+            (<= (len (nth j (fn-lg-slice-records e max))) (nfix max)))
+   :hints (("Goal" :do-not-induct t
+            :cases ((equal (nth 5 e) 2))
+            :in-theory (e/d (fn-lg-slice-records fn-lg-entry-okp fn-lg-open-bound)
+                            (fn-frame-open fn-lg-unpack fn-lg-recordsp fn-lg-unpack-exactp
+                             fn-lgb-frame-open-shape fn-lgb-entry-okp-frame nth len
+                             fn-lgb-recordsp-nth-within))
+            :use ((:instance fn-lgb-recordsp-nth-within
+                             (rs (fn-lg-unpack (nthcdr 32 (fn-frame-result-payload
+                                                           (fn-frame-open e *fn-lg-batch-payload-max*))))))
+                  (:instance fn-lgb-frame-open-shape (b max))
+                  (:instance fn-lgb-frame-open-shape (b *fn-lg-batch-payload-max*)))))))
+
+(local
+ (defthm fn-lgb-decide-records-within
+   (implies (< (nfix j) (len (mv-nth 1 (fn-lgw-decide e prev max))))
+            (<= (len (nth j (mv-nth 1 (fn-lgw-decide e prev max)))) (nfix max)))
+   :hints (("Goal" :do-not-induct t
+            :cases ((fn-lg-entry-okp e prev max))
+            :in-theory (disable fn-lgw-decide fn-lg-entry-okp fn-lg-slice-records
+                                fn-lgw-decide-records-when-refused nth fn-lgb-slice-records-within)
+            :use ((:instance fn-lgw-decide-records-when-refused)
+                  (:instance fn-lgb-slice-records-within))))))
+
+(local
+ (defthm fn-lgb-nth-span-records
+   (implies (and (natp i) (< (nfix j) (nfix k)))
+            (equal (nth j (fn-lgb-span-records k i fn-octets))
+                   (mv-let (start len next) (fn-lgb-span (fn-lgb-span-cursor j i fn-octets) fn-octets)
+                     (declare (ignore next))
+                     (fn-lgb-slice-acc start (+ start len) nil fn-octets))))
+   :hints (("Goal" :induct (list (fn-lgb-span-cursor j i fn-octets) (fn-lgb-span-records k i fn-octets))
+            :in-theory (e/d (nth) (fn-lgb-span))))))
+
+(local
+ (defthm fn-lgb-len-slice-of-span
+   (mv-let (start len next) (fn-lgb-span i fn-octets)
+     (declare (ignore next))
+     (equal (len (fn-lgb-slice-acc start (+ start len) nil fn-octets)) len))
+   :hints (("Goal" :in-theory (e/d (fn-octets-len) (fn-lgb-span))
+            :use (fn-lgb-span-bounds)))))
+
+; KEYSTONE (S4, the hold M's reopen term cites): each record the cursor yields
+; of an accepted entry is within the log's per-record payload bound MAX, so
+; a consumer holding one slice holds at most MAX octets of list.
+(defthm fn-lgb-span-within-max
+  (implies (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
+           (<= (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets))
+               (nfix max)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgb-decide-count-is-decide)
+                           (fn-lgw-decide fn-lgb-span fn-lgb-span-cursor fn-lgb-span-records
+                            fn-lgb-nth-span-records fn-lgb-len-slice-of-span
+                            fn-lgb-decide-records-within fn-lgb-span-records-are-the-records))
+           :use ((:instance fn-lgb-span-records-are-the-records)
+                 (:instance fn-lgb-nth-span-records (i 42)
+                            (k (mv-nth 1 (fn-lgb-decide-count prev max fn-octets))))
+                 (:instance fn-lgb-len-slice-of-span (i (fn-lgb-span-cursor j 42 fn-octets)))
+                 (:instance fn-lgb-decide-records-within (e fn-octets))))))
+
+
+; -----------------------------------------------------------------------------
+; 5. The step the host calls: the list step with its records answered by
+;    their count.  The buffer holds the octets fn-lgw-entry-len named, read
+;    at POS (empty: no entry there).
+
+(defun fn-lgw-step-buf-count (st unit max extent fn-octets)
+  (declare (xargs :stobjs fn-octets :guard (true-listp st) :verify-guards nil))
   (let ((pos (fn-lgw-pos st)) (prev (fn-lgw-prev st))
         (count (fn-lgw-count st)) (next (fn-lgw-next st)))
-    (cond ((fn-lgw-stop st) (mv nil nil st))
-          (t (mv-let (ok records) (fn-lgb-decide prev max fn-octets)
+    (cond ((fn-lgw-stop st) (mv nil 0 st))
+          (t (mv-let (ok k) (fn-lgb-decide-count prev max fn-octets)
                (if (not ok)
-                   (mv nil nil (fn-lgw-make pos prev count next t
-                                            (fn-lgw-broken-slice-p (fn-octets-list fn-octets)
-                                                                   prev max)))
+                   (mv nil 0 (fn-lgw-make pos prev count next t
+                                          (fn-lgb-broken prev max fn-octets)))
                  (let* ((n (fn-octets-len fn-octets))
                         (step (+ n (fn-lg-pad-len n unit)))
                         (last (fn-lgb-trailer fn-octets)))
-                   (mv t records
-                       (fn-lgw-make (+ pos step) last (+ count (len records))
-                                    (fn-lgw-next-fold records next)
+                   (mv t k
+                       (fn-lgw-make (+ pos step) last (+ count k)
+                                    (fn-lgb-next-fold-spans k 42 next fn-octets)
                                     (not (< (+ pos step) (nfix extent))) nil)))))))))
 
-; KEYSTONE: the buffer step is the list step on the buffer's octets, with no
-; hypothesis.
-(defthm fn-lgw-step-buf-is-step
-  (equal (fn-lgw-step-buf st unit max extent fn-octets)
-         (fn-lgw-step fn-octets st unit max extent))
+; An entry the decision accepts is below 2^59 octets (its frame's declared
+; length is a u32): the slices the fold makes are in the buffer's range.
+(local
+ (defthm fn-lgb-decide-count-ok-len-bound
+   (implies (car (fn-lgb-decide-count prev max fn-octets))
+            (< (fn-octets-len fn-octets) (expt 2 59)))
+   :hints (("Goal" :in-theory (e/d (fn-lgb-decide-count-is-decide fn-octets-len)
+                                   (fn-lgw-decide fn-lgb-decide-count fn-lg-entry-okp
+                                    fn-lgb-entry-okp-frame))
+            :use ((:instance fn-lgw-decide-is-okp-and-records (e fn-octets))
+                  (:instance fn-lgb-entry-okp-frame (e fn-octets)))))))
+
+(verify-guards fn-lgw-step-buf-count
+  :hints (("Goal" :in-theory (disable fn-lgb-decide-count fn-lgb-broken fn-lgw-decide))))
+
+; KEYSTONE (S1a): the counting step is the list step on the buffer's octets,
+; its records answered by their count; no hypothesis.
+(defthm fn-lgw-step-buf-count-is-step
+  (equal (fn-lgw-step-buf-count st unit max extent fn-octets)
+         (mv-let (took records st2) (fn-lgw-step fn-octets st unit max extent)
+           (mv took (len records) st2)))
   :hints (("Goal" :in-theory (e/d (fn-lgw-step)
                                   (fn-lgw-decide fn-lg-trailer fn-lgw-broken-slice-p
-                                   fn-lgw-next-fold fn-lg-pad-len)))))
+                                   fn-lgw-next-fold fn-lg-pad-len fn-lgb-decide-count
+                                   fn-lgb-span-records fn-lgb-next-fold-spans
+                                   fn-lgw-decide-is-okp-and-records fn-lg-entry-okp
+                                   fn-lg-open-bound))
+           :use ((:instance fn-lgb-span-records-are-the-records (prev (fn-lgw-prev st)))))))
 
-; -----------------------------------------------------------------------------
-; 4. The accepted entry's record places, from the buffer: fn-arx-list-places
-;    by index (TAIL is the octets from J, QTAIL from QJ).
-
-(defun fn-lgb-nth (j fn-octets)
-  (declare (xargs :stobjs fn-octets :guard (natp j)))
-  (if (and (natp j) (< j (fn-octets-len fn-octets))) (fn-lgb-cell j fn-octets) nil))
-
-(defthm fn-lgb-nth-is-nth
-  (implies (and (fn-octets-p fn-octets) (natp j))
-           (equal (fn-lgb-nth j fn-octets) (nth j fn-octets)))
-  :hints (("Goal" :in-theory (enable nth))))
-
-(defun fn-lgb-u32-list-at (j fn-octets)
-  (declare (xargs :stobjs fn-octets :guard (natp j)))
-  (+ (* 16777216 (nfix (fn-lgb-nth j fn-octets))) (* 65536 (nfix (fn-lgb-nth (+ j 1) fn-octets)))
-     (* 256 (nfix (fn-lgb-nth (+ j 2) fn-octets))) (nfix (fn-lgb-nth (+ j 3) fn-octets))))
-
-(defthm fn-lgb-u32-list-at-is-u32-list
-  (implies (and (fn-octets-p fn-octets) (natp j))
-           (equal (fn-lgb-u32-list-at j fn-octets) (fn-arx-u32-list (nthcdr j fn-octets))))
-  :hints (("Goal" :in-theory (enable fn-arx-u32-list))))
-
-(in-theory (disable fn-lgb-nth fn-lgb-u32-list-at))
-
-(defun fn-lgb-places (j p count unit ep en qj q qend acc fn-octets)
-  (declare (xargs :stobjs fn-octets
-                  :guard (and (natp j) (natp p) (natp count) (natp ep) (natp en) (natp qj)
-                              (natp q) (natp qend) (true-listp acc))
-                  :measure (nfix count)
-                  :hints (("Goal" :in-theory (disable fn-lg-pad-len)))))
-  (cond ((zp count) (revappend acc nil))
-        ((and (natp q) (natp qend) (< q qend))
-         (let* ((rlen (fn-lgb-u32-list-at qj fn-octets))
-                (r (+ q 4))
-                (q2 (+ r rlen))
-                (acc (cons (list (nfix ep) (nfix en) r rlen) acc)))
-           (cond ((< qend q2) nil)
-                 ((equal q2 qend)
-                  (let ((np (+ (nfix ep) (nfix en) (fn-lg-pad-len en unit))))
-                    (fn-lgb-places (+ (nfix j) (nfix (- np (nfix p)))) np (1- count) unit
-                                   0 0 0 0 0 acc fn-octets)))
-                 (t (fn-lgb-places j p (1- count) unit ep en (+ (nfix qj) 4 rlen) q2 qend acc
-                                   fn-octets)))))
-        (t
-         (let* ((p (nfix p))
-                (j (nfix j))
-                (kind (nfix (fn-lgb-nth (+ j 5) fn-octets)))
-                (l (fn-lgb-u32-list-at (+ j 6) fn-octets))
-                (n (+ 10 l *fn-frame-trailer-octets*)))
-           (cond ((not (< (+ j 9) (fn-octets-len fn-octets))) nil)
-                 ((< l 32) nil)
-                 ((equal kind 1)
-                  (let ((np (+ p n (fn-lg-pad-len n unit))))
-                    (fn-lgb-places (+ j (nfix (- np p))) np (1- count) unit 0 0 0 0 0
-                                   (cons (list p n (+ p *fn-arx-record-at*) (- l 32)) acc)
-                                   fn-octets)))
-                 ((and (equal kind 2) (<= 4 (- l 32)))
-                  (let* ((q (+ p *fn-arx-record-at*))
-                         (qend (+ q (- l 32)))
-                         (qj (+ j *fn-arx-record-at*))
-                         (rlen (fn-lgb-u32-list-at qj fn-octets))
-                         (r (+ q 4))
-                         (q2 (+ r rlen))
-                         (acc (cons (list p n r rlen) acc)))
-                    (cond ((< qend q2) nil)
-                          ((equal q2 qend)
-                           (let ((np (+ p n (fn-lg-pad-len n unit))))
-                             (fn-lgb-places (+ j (nfix (- np p))) np (1- count) unit
-                                            0 0 0 0 0 acc fn-octets)))
-                          (t (fn-lgb-places j p (1- count) unit p n (+ qj 4 rlen) q2 qend acc
-                                            fn-octets)))))
-                 (t nil))))))
-
-; Outside a batch body the list walk never reads QTAIL.
-(local
- (defthm fn-lgb-list-places-ignores-qtail
-   (implies (and (syntaxp (not (equal qtail ''nil))) (not (and (natp q) (natp qend) (< q qend))))
-            (equal (fn-arx-list-places tail p count unit ep en qtail q qend acc)
-                   (fn-arx-list-places tail p count unit ep en nil q qend acc)))
-   :hints (("Goal" :do-not-induct t
-            :in-theory (disable fn-lg-pad-len fn-arx-u32-list nth fn-arx-list-places)
-            :expand ((fn-arx-list-places tail p count unit ep en qtail q qend acc)
-                     (fn-arx-list-places tail p count unit ep en nil q qend acc))))))
-
-(defthm fn-lgb-places-is-list-places
-  (implies (and (fn-octets-p fn-octets) (natp j) (natp qj))
-           (equal (fn-lgb-places j p count unit ep en qj q qend acc fn-octets)
-                  (fn-arx-list-places (nthcdr j fn-octets) p count unit ep en
-                                      (nthcdr qj fn-octets) q qend acc)))
-  :hints (("Goal" :induct (fn-lgb-places j p count unit ep en qj q qend acc fn-octets)
-           :in-theory (e/d ((:induction fn-lgb-places))
-                           (fn-lg-pad-len fn-arx-u32-list (:definition fn-lgb-places)
-                            fn-arx-list-places fn-lgb-nth-beyond true-listp fn-lgb-car-nthcdr
-                            fn-lgb-take-len fn-lgc-take-all fn-cbor-octet-listp))
-           ;; Each side opened once per induction case (:free: the places'
-           ;; bounds and accumulator are rewritten before the expansion).
-           :expand ((:free (p ep en q qend acc)
-                           (fn-lgb-places j p count unit ep en qj q qend acc fn-octets))
-                    (:free (p ep en q qend acc)
-                           (fn-arx-list-places (nthcdr j fn-octets) p count unit ep en
-                                               (nthcdr qj fn-octets) q qend acc))
-                    (:free (p ep en q qend acc)
-                           (fn-arx-list-places (nthcdr j fn-octets) p count unit ep en
-                                               nil q qend acc))))))
-
-; The host's call: the COUNT records of the entry at POS.
-(defun fn-lgb-entry-places (pos count unit fn-octets)
-  (declare (xargs :stobjs fn-octets :guard (and (natp pos) (natp count))
-                  :guard-hints (("Goal" :in-theory (enable fn-octets-p)))))
-  (mbe :logic (if (fn-cbor-octet-listp (fn-octets-list fn-octets))
-                  (fn-lgb-places 0 pos count unit 0 0 0 0 0 nil fn-octets)
-                (fn-arx-list-places (fn-octets-list fn-octets) pos count unit 0 0 nil 0 0 nil))
-       :exec (fn-lgb-places 0 pos count unit 0 0 0 0 0 nil fn-octets)))
-
-; KEYSTONE: they are fn-arx-list-places over the buffer's octets, with no
-; hypothesis.
-(defthm fn-lgb-entry-places-is-list-places
-  (equal (fn-lgb-entry-places pos count unit fn-octets)
-         (fn-arx-list-places fn-octets pos count unit 0 0 nil 0 0 nil))
-  :hints (("Goal" :in-theory (enable fn-octets-p))))
