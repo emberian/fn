@@ -7,11 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
-(include-book "store-identity-reserve")
-(include-book "owner-identity-prepare")
-(include-book "consumer-event-charge")
-(include-book "consumer-publication-budget")
-(include-book "post-admission-keyed")
 (include-book "moderation-verbs")
 (include-book "owner-results")
 (include-book "owner-served-bound")
@@ -166,3 +161,5 @@
 (include-book "../host/reader-host")
 (include-book "../host/interfaces")
 (include-book "../host/page-decoded-window-host")
+(include-book "../host/native-control-host")
+(include-book "../host/owner-held-verdicts-host")

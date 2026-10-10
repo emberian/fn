@@ -7,8 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
-(include-book "store-recover-stream")
-(include-book "payload-commit-extent")
 (include-book "payload-extent-read")
 (include-book "page-read-ownership")
 (include-book "payload-lz-append")
@@ -182,3 +180,8 @@
 (include-book "served-catalog-owner-keyed")
 (include-book "owner-prepare-correspondence")
 (include-book "owner-store-budget")
+(include-book "store-identity-reserve")
+(include-book "owner-identity-prepare")
+(include-book "consumer-event-charge")
+(include-book "consumer-publication-budget")
+(include-book "post-admission-keyed")

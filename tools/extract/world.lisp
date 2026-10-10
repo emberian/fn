@@ -545,3 +545,5 @@
 (include-book "../../host/reader-host")
 (include-book "../../host/interfaces")
 (include-book "../../host/page-decoded-window-host")
+(include-book "../../host/native-control-host")
+(include-book "../../host/owner-held-verdicts-host")
