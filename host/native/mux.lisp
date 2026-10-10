@@ -2201,28 +2201,35 @@ history's octets (config/'s lstat sizes)."
         (fnn-heap-resident-observations)
         (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store))))
 
-(defun fnn-owner-memory-configure-locked (service tls-context observed
-                                          &optional (interface 'fn-owner-memory-configure))
-  "ACL2's INTERFACE (fn-owner-memory-configure, or fn-owner-memory-gate-install
-for the gate alone) over OBSERVED and SERVICE's run coordinates; the caller
-holds the owner serialization or is the single-threaded install.  The
-configure answers :hold or :refused (no connection fits the limit at the
-carried store); the gate alone answers :hold."
+(defun fnn-owner-memory-configure-locked (service tls-context observed &optional gate-only)
+  "ACL2's fn-owner-memory-configure over OBSERVED and SERVICE's run
+coordinates, or with GATE-ONLY fn-owner-memory-gate-install (the gate alone,
+no C'); the caller holds the owner serialization or is the single-threaded
+install.  The configure answers :hold or :refused (no connection fits the
+limit at the carried store); the gate alone answers :hold."
   (let ((store (fnn-owner-service-store service)))
     (destructuring-bind (img resident config-octets) observed
-      (fnn-owner-core interface
-                      img resident
-                      +fnn-owner-service-nursery-octets+ (fnn-gc-nursery-octets)
-                      (fnn-store-config store) (and tls-context t)
-                      (fnn-owner-service-reclaim-live service)
-                      (fnn-owner-service-cold-resources service)
-                      (fnn-owner-service-output-resources service)
-                      (fnn-peer-flight-profile (fnn-store-root store))
-                      (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit)
-                      (fnn-store-root store)
-                      ;; the quantum, not a W' an earlier configure of
-                      ;; this process installed (fnn-owner-over-window)
-                      (fnn-owner-over-quantum) config-octets))))
+      (let ((trigger +fnn-owner-service-nursery-octets+)
+            (pub-trigger (fnn-gc-nursery-octets))
+            (profile (fnn-store-config store))
+            (tlsp (and tls-context t))
+            (live (fnn-owner-service-reclaim-live service))
+            (cold (fnn-owner-service-cold-resources service))
+            (output (fnn-owner-service-output-resources service))
+            (peer (fnn-peer-flight-profile (fnn-store-root store)))
+            (workers (fnn-core 'fn-pio-direct-workers))
+            (cache-limit (fnn-extent-cache-limit))
+            (root (fnn-store-root store))
+            ;; the quantum, not a W' an earlier configure of this process
+            ;; installed (fnn-owner-over-window)
+            (window (fnn-owner-over-quantum)))
+        (if gate-only
+            (fnn-owner-core 'fn-owner-memory-gate-install
+                            img resident trigger pub-trigger profile tlsp live cold output
+                            peer workers cache-limit root window config-octets)
+          (fnn-owner-core 'fn-owner-memory-configure
+                          img resident trigger pub-trigger profile tlsp live cold output
+                          peer workers cache-limit root window config-octets))))))
 
 (defun fnn-owner-memory-install (service)
   "The memory gate for an owner process before it admits anything, called
@@ -2234,8 +2241,7 @@ by name); C' and its capacity line are the mux run's statement, after the
 run's connection budget holds (fnn-mux-budget-install), which configures
 again with the run's coordinates and refuses a run no connection fits."
   (let* ((observed (fnn-owner-memory-observe (fnn-owner-service-store service)))
-         (memory (fnn-owner-memory-configure-locked service nil observed
-                                                    'fn-owner-memory-gate-install)))
+         (memory (fnn-owner-memory-configure-locked service nil observed t)))
     (unless (eq memory :hold)
       (fnn-fault "owner returned a malformed memory gate"))
     memory))
