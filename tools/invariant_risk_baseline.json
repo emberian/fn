@@ -3,14 +3,14 @@
  "marked": {
   "fn-owner-post-boundary": "builder-C: the POST path C measured at 10.7 s, linear in the store (fn-pak-post-admission); C's fix at the mechanism retires it",
   "fn-native-live-status-host-answer": "builder-M: the live status answer (the observation form); its chain reads state and the arena through :program accessors",
-  "fn-owner-finish-identity": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
-  "fn-owner-finish-submission": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
-  "fn-owner-recover-from-store-open": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
-  "fn-owner-orcp-load-catalog-begin": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
-  "fn-owner-orcp-load-catalog-chunk": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
-  "fn-store-cfg-native-admin-authorize": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
-  "fn-store-sco-image-open": "builder-A: an owner/store entry the runtime contract's landing 2 retires or re-hosts (owner policy subfamilies); until then its :program chain runs *1* with guard checks",
-  "fn-web-host-post-form-step": "builder-D: the web reader's POST form step (surviving code), :program over fn-wpf-finish",
-  "fn-web-host-post-window": "builder-D: the web reader's POST window (surviving code), :program over the fn-web-in window"
+  "fn-owner-finish-identity": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-owner-finish-submission": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-owner-recover-from-store-open": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-owner-orcp-load-catalog-begin": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-owner-orcp-load-catalog-chunk": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-store-cfg-native-admin-authorize": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-store-sco-image-open": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-web-host-post-form-step": "builder-C: the web reader's POST form step (surviving code), :program over fn-wpf-finish (reassigned from parked D, coordinator 2026-10-10)",
+  "fn-web-host-post-window": "builder-C: the web reader's POST window (surviving code), :program over the fn-web-in window (reassigned from parked D, coordinator 2026-10-10)"
  }
 }
