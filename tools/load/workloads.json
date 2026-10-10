@@ -95,9 +95,9 @@
    "--profile",
    "development",
    "--max-transactions",
-   "4096",
+   "256",
    "--max-history-octets",
-   "1073741824",
+   "268435456",
    "--max-record-octets",
    "3473408",
    "--max-article-octets",
@@ -106,7 +106,7 @@
    "16"
   ]
  },
- "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up).",
+ "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up). huge-articles is development with 256 transactions, 256 MiB of history and articles up to 3.25 MiB, sized to W2M's 64 preloaded 3 MiB articles (4096 transactions reserved 25.7 GB, past the 16 GB cell budget).",
  "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384",
  "workloads": {
   "smoke": {
