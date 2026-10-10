@@ -2,11 +2,13 @@
  "detail": "host_shape_check: 122 findings over 131 host files. First rows: host/index-connection-owner-host.lisp:26 fn-mio-connection-finish-open (3 values where an argument of stobj-let requires one), :51 fn-owner-index-open (one value where an mv-let of 3 requires an error triple).",
  "file": "tools/host_shape_check.py",
  "id": "HOST-SHAPE-FINDINGS",
- "notes": [],
+ "notes": [
+  "10-10 Builder D, lane d-host-shape: landed. All 122 findings were the checker's, not the host's: it read `stobj-let` (BINDINGS PRODUCER-VARIABLES PRODUCER CONSUMER) as a function call, so its producer and consumer each 'required one value', and a definition whose body is a stobj-let got shape 1, which then disagreed with every mv-let of its real arity. The host files certify. The checker now models stobj-let (bindings single, the producer one value per producer variable, the form the consumer's shape) and with-local-stobj (its mv-let's shape): 0 findings over 131 host files. Teeth in tests.test_host_shape_check (25 OK): a 2-variable producer returning a triple and a multi-valued binding are flagged; a stobj-let-bodied definition's 3-value shape propagates to its callers."
+ ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
- "state": "open",
+ "state": "landed",
  "title": "host_shape_check: 122 multi-value shape findings in host files (first: host/index-connection-owner-host.lisp fn-mio-connection-finish-open returns an error triple where stobj-let needs one value)",
- "updated": "2026-10-09T22:00:00Z"
+ "updated": "2026-10-10T03:05:00Z"
 }
