@@ -4,12 +4,13 @@
  "file": "tools/depth_check.py",
  "id": "DEPTH-EXCESS-D",
  "notes": [
-  "2026-10-10 Builder D: lane/d-depth-excess-d closes 63; see its READY."
+  "2026-10-10 Builder D: lane/d-depth-excess-d closes 63; see its READY.",
+  "10-10 15:56 2026-10-10 Builder D, lane/d-web-guards: 8 of the 11 web wrappers :logic and guard-verified over the five web stream books (their 37 callees verified); depth_check 234 -> 226 problems on this tree. fn-web-host-page-step, -window-page-step and -post-form-step stay :program: their verified guards (fn-wpc-cursorp, fn-wpc-wcursorp, fn-wpf-statep) grow with the reply or posted body and the host calls each once per window, and :raw-with refuses a carried conjunct over a host formal; closing them needs constant-time step guards (each pop checks the segment it pops). Open also: the 3 bp-release-owner wrappers."
  ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "depth_check at lane/d-registry-findings (dev 9b580dd36 + D's queued lanes), Builder D 2026-10-10, CL13 attributed by area under the CL24 ruling's pattern",
  "state": "in-progress",
  "title": "depth_check: 17 unclassified host-closure findings in builder-D's area (80 at CL13; 2 more left to retiring landings)",
- "updated": "2026-10-10T04:30:00Z"
+ "updated": "2026-10-10T19:56:13Z"
 }
