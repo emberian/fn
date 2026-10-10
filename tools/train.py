@@ -11,8 +11,16 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
     train.py image [--label L]       # read HEAD's image run (tools/hbox_native.sh) for the image gate
     train.py gate
-    train.py push
+    train.py push [--label N]
     train.py status
+
+Pipelined trains.  A second batch tree may start the next train from this
+train's integrate HEAD while this one waits on its image gate.  `push`
+refuses while HEAD carries another integrate branch's lane merges that are
+not on dev, and refuses gates measured against a dev that has since moved,
+so the second train lands only after the first, re-gated.  `push` renames
+each carried lane's READY file in build/ready/ to landed-<file> and prints
+the STATE line.
 
 `push` and `status` print the shrink line (tools/shrink_line.py): the book
 count and the executable book lines (the call closure of what the host
@@ -61,13 +69,19 @@ span several runs at HEAD (heap_from_profile runs under `--mem 2G`): each
 module read from two runs is refused.  The gate passes when
 every obliged module ran at HEAD and each red case is a `native` known red;
 a module that has not run (an interrupted image gate) refuses the push.
+A run whose modules ran in HEAD's tree on images built at another commit
+(`hbox_native.sh --reuse-image` of a lane's READY image) counts for HEAD
+when the two commits differ in no image input (IMAGE_NEUTRAL: planning/,
+docs/, the Python suites); the record names the commit in images_from.
 Every command ends with one line `TRAIN-DONE CMD rc=N`.
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
 emits wire-grammar.json there, runs the interface, world, build-list and
 host checks, fetches the grammar into build/box/ (tools/box_artifacts.py,
 stamped with the sha it was made at; never committed) and records that sha
-in build/train/box-step.json.  The `box_step` gate passes
+in build/train/<branch>.box-step.json (and the tree's latest in
+box-step.json, which a branch with none of its own inherits and the cache
+seed reads).  The `box_step` gate passes
 when that sha is HEAD, or when it is an ancestor of HEAD, no file under
 books/, specs/ or tests/acl2/ changed since it, and the local checks
 (LOCAL_BOX_CHECKS) are all 0 at HEAD; the gate then records the sha it
@@ -220,6 +234,24 @@ IMAGE_RULES = (
 # tools/hbox_native.sh's local record of a run (box=, dir=, source=), under
 # the batch tree; LABEL is the first 12 hex digits of the run's commit.
 IMAGE_RUN_RECORD = "build/hbox-native/{label}.run"
+# Paths no native image is built from: a run at HEAD's tree whose images
+# came from another commit (hbox_native.sh --reuse-image, a lane's READY
+# image) stands for HEAD's own when the two commits differ only here.  The
+# Python suites run from HEAD's tree, so their bytes are HEAD's either way;
+# tests/acl2/ books are certified, and stay inputs.
+IMAGE_NEUTRAL = ("planning/", "docs/")
+
+
+def image_inputs_changed(paths: list[str]) -> list[str]:
+    """The paths among PATHS that a native image is built from."""
+    def neutral(p: str) -> bool:
+        if p.startswith(IMAGE_NEUTRAL):
+            return True
+        q = Path(p)
+        return q.parts[0] == "tests" and len(q.parts) >= 2 and q.parts[1] != "acl2" and q.suffix == ".py"
+    return [p for p in paths if not neutral(p)]
+
+
 # a case status that is not a red (tools/test_budget.py's vocabulary)
 IMAGE_CASE_PASS = ("ok", "skip")
 # tools/hbox_native.sh's module status when it ran and every test skipped
@@ -623,12 +655,33 @@ def cmd_regen(t: Train, args) -> int:
 # --------------------------------------------------------------------------- box step
 
 def box_record_path(t: Train) -> Path:
+    """The tree's latest box step, of whichever branch ran it: the cache
+    seed's source, and what a branch with no box step of its own inherits."""
     return t.dir / "box-step.json"
+
+
+def branch_box_record_path(t: Train) -> Path:
+    """This branch's own box step.  One file per tree let two integrate
+    branches alternating in one batch tree clobber each other's record
+    ("box step X is not an ancestor"), so the gate reads the branch's."""
+    return t.dir / (t.branch.replace("/", "__") + ".box-step.json")
 
 
 def load_box_record(t: Train) -> dict | None:
     path = box_record_path(t)
     return json.loads(path.read_text()) if path.exists() else None
+
+
+def load_branch_box_record(t: Train) -> dict | None:
+    path = branch_box_record_path(t)
+    return json.loads(path.read_text()) if path.exists() else load_box_record(t)
+
+
+def save_box_record(t: Train, record: dict) -> None:
+    t.dir.mkdir(parents=True, exist_ok=True)
+    text = json.dumps(record, indent=2, sort_keys=True) + "\n"
+    branch_box_record_path(t).write_text(text)
+    box_record_path(t).write_text(text)
 
 
 def cmd_boxstep(t: Train, args) -> int:
@@ -645,8 +698,7 @@ def cmd_boxstep(t: Train, args) -> int:
         return rc
     box_artifacts.write_stamp(t.root, ran_at, args.box, ran_at)
     record = {"sha": ran_at, "ran_at": ran_at, "box": args.box}
-    t.dir.mkdir(parents=True, exist_ok=True)
-    box_record_path(t).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    save_box_record(t, record)
     say(f"box step recorded: {args.box} at {record['sha'][:9]}")
     return 0
 
@@ -844,8 +896,7 @@ def cmd_certify(t: Train, args) -> int:
     record = {"sha": ran_at, "ran_at": ran_at, "box": args.box, "run": run,
               "certify_id": rec.get("certify_id"), "wall": wall, "cache_seed": cache_seed,
               "known_reds_seen": known_seen}
-    t.dir.mkdir(parents=True, exist_ok=True)
-    box_record_path(t).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    save_box_record(t, record)
     st = t.load()
     st["box_wall"] = wall
     st["box_run"] = run
@@ -1100,23 +1151,29 @@ def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
 
 
 def merge_image_run(prior: dict | None, head: str, box: str, directory: str,
-                    modules: dict[str, dict]) -> dict:
+                    modules: dict[str, dict], images_from: str | None = None) -> dict:
     """HEAD's image record with one more run read into it.  An obliged set can
     need several runs at HEAD (heap_from_profile's small cases run only under
     `hbox_native.sh --mem 2G`, the other modules at the default), so the record
     keeps each module with the run it came from.  A record of another commit is
     replaced; re-reading a run replaces that run's modules; a module already
     read from a different run at HEAD is refused, so no module's verdict is
-    ever chosen between two runs."""
+    ever chosen between two runs.  IMAGES_FROM names the commit a run's
+    images were built at when it is not HEAD (READY-image reuse)."""
     record = {"source": head, "runs": {}, "modules": {}}
     if prior and prior.get("source") == head and "runs" in prior:
         record["runs"] = {d: b for d, b in prior["runs"].items() if d != directory}
         record["modules"] = {m: e for m, e in prior["modules"].items() if e.get("run") != directory}
+        kept = {d: c for d, c in prior.get("images_from", {}).items() if d != directory}
+        if kept:
+            record["images_from"] = kept
     twice = sorted(m for m in modules if m in record["modules"])
     if twice:
         raise TrainError("module(s) already read from another run at HEAD: " + ", ".join(
             f"{m} ({record['modules'][m]['run']})" for m in twice) + f"; not read again from {directory}")
     record["runs"][directory] = box
+    if images_from:
+        record.setdefault("images_from", {})[directory] = images_from
     for m, e in modules.items():
         record["modules"][m] = dict(e, run=directory)
     return record
@@ -1136,8 +1193,22 @@ def cmd_image(t: Train, args) -> int:
     if not path.is_file():
         raise TrainError(f"no image run record {path}; run tools/hbox_native.sh {head[:9]} MODULES")
     run = dict(l.split("=", 1) for l in path.read_text().splitlines() if "=" in l)
+    images_from = None
     if run.get("source") != head:
-        raise TrainError(f"{path} is of {run.get('source', '?')[:9]}, not HEAD {head[:9]}")
+        source = run.get("source", "")
+        if run.get("tree") != head:
+            raise TrainError(f"{path} is of {source[:9] or '?'}, not HEAD {head[:9]}")
+        # READY-image reuse: the modules ran in HEAD's tree on images built
+        # at SOURCE; they stand for HEAD's images when no input differs.
+        diff = git(t.root, "diff", "--name-only", source, head, check=False)
+        if diff.returncode != 0:
+            raise TrainError(f"{path}: its images' source {source[:9] or '?'} is not a commit here")
+        inputs = image_inputs_changed(diff.stdout.split())
+        if inputs:
+            raise TrainError(f"{path}: its images are of {source[:9]}, and {len(inputs)} image input(s) "
+                             f"differ at HEAD {head[:9]} (first: {inputs[0]}); build HEAD's images")
+        images_from = source
+        say(f"image run at HEAD's tree reuses the images of {source[:9]} (no image input differs)")
     script = ("cd %s && for f in rc/test-*; do [ -f \"$f\" ] && echo \"RC ${f#rc/test-} $(cat \"$f\")\"; done; "
               "grep -h FN_TEST_BUDGET_RESULT logs/test-*.log 2>/dev/null; true") % shlex.quote(run["dir"])
     p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], script],
@@ -1146,7 +1217,7 @@ def cmd_image(t: Train, args) -> int:
         raise TrainError(f"reading {run['box']}:{run['dir']} failed (rc {p.returncode}): {p.stderr.strip()[:200]}")
     st = t.load()
     read = parse_image_results(p.stdout)
-    st["image"] = merge_image_run(st.get("image"), head, run["box"], run["dir"], read)
+    st["image"] = merge_image_run(st.get("image"), head, run["box"], run["dir"], read, images_from)
     t.save(st)
     for m, e in sorted(read.items()):
         reds = [c for c, s in e["cases"].items() if s not in IMAGE_CASE_PASS]
@@ -1194,9 +1265,11 @@ def cmd_gate(t: Train, args) -> int:
     head = t.head()
     gates: dict = {}
     st["gates"] = gates
+    # the dev every gate measured against: push refuses when dev has moved
+    dev = git(t.root, "rev-parse", "origin/dev").stdout.strip()
 
     def rec(name: str, rc: int, **extra) -> None:
-        gates[name] = {"rc": rc, "head": head, **extra}
+        gates[name] = {"rc": rc, "head": head, "dev": dev, **extra}
         t.save(st)
 
     anc = git(t.root, "merge-base", "--is-ancestor", "origin/dev", "HEAD", check=False).returncode
@@ -1220,7 +1293,7 @@ def cmd_gate(t: Train, args) -> int:
 
     rec("ascii", _ascii_gate(t))
 
-    box = load_box_record(t)
+    box = load_branch_box_record(t)
     if box is None:
         say("box_step: no box step recorded; run `train.py boxstep BOX`")
         rec("box_step", 1, error="no box step recorded")
@@ -1344,6 +1417,14 @@ def cmd_push(t: Train, args) -> int:
     if git(t.root, "merge-base", "--is-ancestor", "origin/dev", "HEAD", check=False).returncode != 0:
         raise TrainError("origin/dev is no longer an ancestor of HEAD; re-merge and re-gate")
     old = git(t.root, "rev-parse", "origin/dev").stdout.strip()
+    moved = sorted({g.get("dev", "?")[:9] for g in gates.values() if g.get("dev") != old})
+    if moved:
+        raise TrainError(f"the gates measured against dev {', '.join(moved)}, and origin/dev is now "
+                         f"{old[:9]}; re-run gate")
+    stacked = _stacked_on(t)
+    if stacked:
+        raise TrainError(f"HEAD carries {stacked[0]}'s merges, which are not on dev yet; "
+                         "push that train first, then re-gate this one")
     for target in ("dev", t.branch):
         say(f"$ git push origin HEAD:{target}")
         p = git(t.root, "push", "origin", f"HEAD:{target}", check=False)
@@ -1355,8 +1436,72 @@ def cmd_push(t: Train, args) -> int:
     b = gates["box_step"]
     say("box step: " + (f"inherited from {b['inherits_from'][:9]} ({b['box']})" if "inherits_from" in b
                         else f"ran at HEAD on {b['ran_on']}"))
-    say(shrink_words(t, old, head))
+    shrink = shrink_words(t, old, head)
+    say(shrink)
+    landed = rename_landed_readies(t, [l for l in st["lanes"] if l["status"] == "merged"])
+    train_name = f"train {args.label}" if getattr(args, "label", None) else t.branch
+    say(f"STATE: dev = {head[:9]} ({train_name}): carries {carried or '-'}; "
+        f"{verdict_words(known_reds_at(t, 'HEAD'), amendments_at(t, 'HEAD'))}; {shrink}"
+        + (f"; READY landed: {', '.join(landed)}" if landed else ""))
     return 0
+
+
+def _stacked_on(t: "Train") -> list[str]:
+    """Other integrate branches whose lane merges sit on HEAD's first-parent
+    line above origin/dev: a train started from another train's HEAD (the
+    pipelined second batch tree) pushes only after that train landed."""
+    log = git(t.root, "log", "--first-parent", "--merges", "--format=%s", "origin/dev..HEAD").stdout
+    mine = t.branch if t.branch.startswith("integrate/") else f"integrate/{t.branch}"
+    others = []
+    for subject in log.splitlines():
+        m = re.match(r"Merge lane/\S+ @[0-9a-f]+ into (\S+)$", subject)
+        if m and m.group(1) != mine and m.group(1) not in others:
+            others.append(m.group(1))
+    return others
+
+
+def ready_dir(t: "Train") -> Path:
+    """build/ready/ of the main checkout (the batch tree is a worktree of it);
+    FN_READY_DIR overrides."""
+    if os.environ.get("FN_READY_DIR"):
+        return Path(os.environ["FN_READY_DIR"])
+    common = Path(git(t.root, "rev-parse", "--path-format=absolute", "--git-common-dir").stdout.strip())
+    return common.parent / "build" / "ready"
+
+
+def rename_landed_readies(t: "Train", lanes: list[dict]) -> list[str]:
+    """Rename each carried lane's READY file to landed-<file>: the file named
+    for the lane, or one whose first line names lane/<name> at the merged
+    sha.  Prints the lanes no READY file was found for."""
+    directory = ready_dir(t)
+    files = sorted(p for p in directory.glob("*.md") if not p.name.startswith("landed-")) \
+        if directory.is_dir() else []
+    renamed = []
+    for lane in lanes:
+        name, sha = lane["name"], lane["sha"]
+        found = []
+        for p in files:
+            if p.stem == name:
+                found.append(p)
+                continue
+            try:
+                first = p.read_text(encoding="utf-8").splitlines()[:1]
+            except (OSError, UnicodeDecodeError):
+                continue
+            if first and re.search(rf"lane/{re.escape(name)}(?![\w-])", first[0]) and sha[:9] in first[0]:
+                found.append(p)
+        if not found:
+            say(f"READY: none found for {name}@{sha[:9]} in {directory}")
+        for p in found:
+            target = p.with_name("landed-" + p.name)
+            if target.exists():
+                say(f"READY: {target.name} exists; {p.name} left in place")
+                continue
+            p.rename(target)
+            files.remove(p)
+            renamed.append(target.name)
+            say(f"READY: {p.name} -> {target.name}")
+    return renamed
 
 
 def shrink_words(t: "Train", base: str, head: str) -> str:
@@ -1413,7 +1558,8 @@ def main(argv=None) -> int:
     i = sub.add_parser("image")
     i.add_argument("--label", help="the run's label (default: HEAD's first 12 hex digits); "
                    "each run read at HEAD adds its modules to HEAD's image record")
-    sub.add_parser("push")
+    pu = sub.add_parser("push")
+    pu.add_argument("--label", metavar="N", help="the train number for the STATE line")
     sub.add_parser("status")
     args = ap.parse_args(argv)
     try:

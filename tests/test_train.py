@@ -469,6 +469,65 @@ class PushTests(TrainBase):
         self.assertEqual(self.origin_rev("integrate/t1"), self.head())
         self.assertIn(f"carried: a@{sha[:9]}", p.stdout)
         self.assertIn("verdict: green: the known-red baseline is empty", p.stdout)
+        self.assertIn(f"STATE: dev = {self.head()[:9]} (integrate/t1): carries a@{sha[:9]}; green", p.stdout)
+
+    def test_push_renames_the_landed_lanes_readies_and_names_them_in_the_state_line(self):
+        sha = self.ready()
+        ready = self.tmp / "ready"
+        ready.mkdir()
+        (ready / "a.md").write_text("# READY: lane/a\n")
+        (ready / "a-landing.md").write_text(f"# READY (landing): lane/a @ {sha[:9]}\n")
+        (ready / "ab.md").write_text(f"# READY: lane/ab @ {sha[:9]}\n")
+        (ready / "landed-old.md").write_text("# READY: lane/a\n")
+        env = {"FN_READY_DIR": str(ready)}
+        self.assertEqual(self.train("gate", extra_env=env).returncode, 0)
+        p = self.train("push", "--label", "9", extra_env=env)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(sorted(f.name for f in ready.iterdir()),
+                         ["ab.md", "landed-a-landing.md", "landed-a.md", "landed-old.md"])
+        self.assertIn(f"STATE: dev = {self.head()[:9]} (train 9): carries a@{sha[:9]}", p.stdout)
+        self.assertIn("READY landed: landed-a-landing.md, landed-a.md", p.stdout)
+
+    def test_push_refused_when_dev_moved_after_gating(self):
+        self.ready()
+        self.assertEqual(self.train("gate").returncode, 0)
+        self.advance_dev({"elsewhere.txt": "x\n"})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "--no-edit", "origin/dev")
+        self.assertEqual(self.train("gate").returncode, 0)
+        before = self.origin_rev("dev")
+        # a gate record of the earlier dev, at the same HEAD
+        path = self.work / "build/train/integrate__t1.json"
+        st = json.loads(path.read_text())
+        st["gates"]["ledger"]["dev"] = "0" * 40
+        path.write_text(json.dumps(st))
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0, p.stdout)
+        self.assertIn("re-run gate", p.stdout)
+        self.assertEqual(self.origin_rev("dev"), before)
+
+    def test_a_train_stacked_on_an_unlanded_train_waits_for_it(self):
+        first = self.ready()
+        sh(self.work, "git", "checkout", "-q", "-b", "integrate/t2")
+        sha = self.lane("b", {"b.txt": "b\n"})
+        self.assertEqual(self.train("merge", f"b@{sha}").returncode, 0)
+        self.assertEqual(self.train("gate").returncode, 0)
+        before = self.origin_rev("dev")
+        p = self.train("push")
+        self.assertNotEqual(p.returncode, 0, p.stdout)
+        self.assertIn("HEAD carries integrate/t1's merges", p.stdout)
+        self.assertEqual(self.origin_rev("dev"), before)
+        # once t1 lands, t2 re-gates and pushes
+        sh(self.work, "git", "checkout", "-q", "integrate/t1")
+        self.assertEqual(self.train("gate").returncode, 0)
+        self.assertEqual(self.train("push").returncode, 0)
+        sh(self.work, "git", "checkout", "-q", "integrate/t2")
+        self.assertEqual(self.train("gate").returncode, 0)
+        p = self.train("push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(self.origin_rev("dev"), self.head())
+        self.assertIn(f"carried: b@{sha[:9]}", p.stdout)
+        self.assertNotIn(first[:9], p.stdout.split("carried:")[1].splitlines()[0])
 
     # ruling 21: the lock gate's table.  The only green is "no key added
     # relative to dev"; dev's own keys are an owned red list; a checker that
@@ -737,6 +796,23 @@ class BoxStepTests(TrainBase):
         self.assertIn("FN_CERT_WORLD_REQUIRED=1 python3 -m unittest tests.test_cert_world_checks", log)
         self.assertNotIn("interfaces.json", log)
         self.assertIn("remote_check persvati", " | ".join(self.stub_log()))
+        g = self.train("gate")
+        self.assertEqual(g.returncode, 0, g.stdout)
+        self.assertIn("ran at HEAD on persvati", g.stdout)
+
+    def test_two_branches_alternating_in_one_tree_keep_their_own_box_steps(self):
+        (self.seed / "books").mkdir(exist_ok=True)
+        (self.seed / "specs").mkdir(exist_ok=True)
+        self.merge({"books/b.lisp": "first\n"})
+        self.assertEqual(self.train("boxstep", "persvati").returncode, 0)
+        first = self.head()
+        sh(self.work, "git", "checkout", "-q", "-b", "integrate/t2", "origin/dev")
+        sha = self.lane("c", {"specs/c.md": "second\n"})
+        self.assertEqual(self.train("merge", f"c@{sha}").returncode, 0)
+        self.assertEqual(self.train("boxstep", "persvati").returncode, 0)
+        self.assertEqual(self.box()["sha"], self.head(), "the tree's latest box step is t2's")
+        sh(self.work, "git", "checkout", "-q", "integrate/t1")
+        self.assertEqual(self.head(), first)
         g = self.train("gate")
         self.assertEqual(g.returncode, 0, g.stdout)
         self.assertIn("ran at HEAD on persvati", g.stdout)
@@ -1514,6 +1590,38 @@ class ImageGateTests(TrainBase):
             (records / f"{d.rsplit('/', 1)[-1]}.run").write_text(
                 f"box=hbox\ndir={d}\nsource={self.head()}\n")
         return {"PATH": f"{stubs}:{os.environ['PATH']}"}
+
+    def test_a_run_on_heads_tree_reuses_a_ready_image_only_when_no_image_input_differs(self):
+        self.launcher_train()
+        built = self.head()
+        (self.work / "planning").mkdir(exist_ok=True)
+        (self.work / "planning/notes.md").write_text("n\n")
+        (self.work / "tests/more_helper.py").write_text("x = 1\n")
+        self.commit(self.work, "planning and a Python suite only")
+        need = sorted(train.image_modules(["packaging/launcher-decide.sh"]))
+        env = self.image_runs({"/s/reuse": {m: (0, "ok") for m in need}})
+        record = self.work / "build/hbox-native/reuse.run"
+        record.write_text(f"box=hbox\ndir=/s/reuse\nsource={built}\ntree={self.head()}\n")
+        p = self.train("image", "--label", "reuse", extra_env=env)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn(f"reuses the images of {built[:9]}", p.stdout)
+        g, rec = self.gate()
+        self.assertEqual(g.returncode, 0, g.stdout)
+        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        self.assertEqual(st["image"]["images_from"], {"/s/reuse": built})
+        # an image input changed since the images were built: refused by name
+        (self.work / "packaging/launcher-decide.sh").write_text("# decide again\n")
+        self.commit(self.work, "launcher again")
+        record.write_text(f"box=hbox\ndir=/s/reuse\nsource={built}\ntree={self.head()}\n")
+        p = self.train("image", "--label", "reuse", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn("1 image input(s) differ", p.stdout)
+        self.assertIn("packaging/launcher-decide.sh", p.stdout)
+        # a run whose tree is not HEAD is refused as before
+        record.write_text(f"box=hbox\ndir=/s/reuse\nsource={built}\ntree={built}\n")
+        p = self.train("image", "--label", "reuse", extra_env=env)
+        self.assertEqual(p.returncode, 2, p.stdout)
+        self.assertIn(f"not HEAD {self.head()[:9]}", p.stdout)
 
     def test_the_obliged_set_may_span_two_runs_at_head(self):
         self.launcher_train()
