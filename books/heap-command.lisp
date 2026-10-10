@@ -80,9 +80,10 @@
 ; when unobserved.  The open's reader allocates an entry's declared length
 ; before the step validates it (host/native/io.lisp fnn-log-stream-segment,
 ; books/store-log-entry-bound.lisp fn-lgw-entry-len-bounded), and that
-; length is capped only by the extent past the reader's position
-; (books/store-log-stream.lisp fn-lgw-entry-len): a damaged or padded file
-; longer than its records' LOG is read in full.  So the observation's LOG is
+; length is capped by the extent past the reader's position
+; (books/store-log-stream.lisp fn-lgw-entry-len) and by the kind's open bound,
+; which for a batch (kind 2) is the frame's payload limit: a damaged or padded
+; file longer than its records' LOG is read in full.  So the observation's LOG is
 ; at least EXTENT, and the read's open terms over LOG charge the entry
 ; scratch (KEYSTONE fn-mo-observed-log-holds-every-entry-read).  An
 ; unobserved extent leaves the totals unseen (the offline adapter).
