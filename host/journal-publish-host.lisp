@@ -67,6 +67,7 @@
 
 (definterface fn-aj-host-profile-write-octets
   :class ::ideal
+  :exempt ((octets "the profile's max-octets bound, a natural the operator gave, not bytes"))
   :keystones ((fn-ajpf-write-keeps-the-journal :via fn-ajpf-write-octets)))
 (defun fn-aj-host-recover (frontier name frame-length kind)
   (fn-aj-recover-record frontier name frame-length kind))

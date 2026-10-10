@@ -23463,6 +23463,42 @@
         "planning/critical-owed.json"
       ],
       "evidence_digest": "f750496a75fded89"
+    },
+    {
+      "id": "PRF-10000",
+      "title": "A command's reservation states what it holds: a stopped status holds no store, a read the reopen of the totals it observes (RUNTIME-MODEL section 4, the observation form)",
+      "statement": "fn-heap-stopped-status-holds-no-store (defkeystone hct-stopped-status-holds-no-store, tests/acl2/heap-command-tests.lisp); subject fn-heap-command-decide.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/heap-command-tests.lisp"
+      ],
+      "keystone_subjects": {
+        "fn-mo-header-decide-holds-the-header": "fn-mo-header-decide"
+      },
+      "events": [
+        "fn-mo-header-decide-holds-the-header"
+      ]
+    },
+    {
+      "id": "PRF-10001",
+      "title": "A command's reservation states what it holds: a stopped status holds no store, a read the reopen of the totals it observes (RUNTIME-MODEL section 4, the observation form)",
+      "statement": "fn-mm-admitted-store-reopens (defkeystone mmt-admitted-store-reopens, tests/acl2/memory-model-tests.lisp); subject fn-mm-reopen-need.",
+      "milestone": "M5",
+      "requirements": [],
+      "depends_on": [],
+      "assumptions": [],
+      "evidence": [
+        "tests/acl2/memory-model-tests.lisp"
+      ],
+      "keystone_subjects": {
+        "fn-mm-admitted-store-reopens": "fn-mm-reopen-need"
+      },
+      "events": [
+        "fn-mm-admitted-store-reopens"
+      ]
     }
   ]
 }

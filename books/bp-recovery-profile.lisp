@@ -57,7 +57,7 @@
 ; frame for replay.  In particular a later deletion cannot hide an ADU
 ; that would already have exceeded the profile during family replay.
 (defun fn-bprpf-row-admit (octets profile)
-  (declare (xargs :guard t
+  (declare (xargs :guard (fn-cbor-octet-listp octets)
                   :guard-hints
                   (("Goal" :in-theory
                     (disable fn-bpnf-stored-record-unframe

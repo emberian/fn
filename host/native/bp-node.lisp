@@ -610,7 +610,9 @@ process could take the journal)."
 ;;; reopened in place.  Every held row -- every fragment of every family in
 ;;; flight -- is held after it (fn-bpnrd-rotation-keeps-every-held-family),
 ;;; and a death anywhere in it is a death in an open or in PRF-081's
-;;; publication and retirement programs.  Answers T when it rotated.
+;;; publication and retirement programs.  Answers :ROTATED when it rotated,
+;;; :DECLINED when it was due but the open-time decision over the in-place
+;;; recovery did not rotate, and NIL when it was not due.
 (defun fnn-bps-serve-rotate-when-due (bp journal config wall wall-error)
   (when (eq (fnn-core 'fn-bpnrd-serve-rotation-due-p
                       (fnn-bps-state bp) (fnn-bps-node-profile bp))
@@ -619,9 +621,10 @@ process could take the journal)."
              (fnn-core 'fn-bpnp-used (fnn-bps-state bp))
              (fnn-core 'fn-bpnpf-rotate-records (fnn-bps-node-profile bp)))
     (fnn-bps-reopen-in-place bp journal config wall wall-error)
-    (when (fnn-bps-rotate-when-due bp)
-      (fnn-bps-reopen-in-place bp journal config wall wall-error)
-      t)))
+    (cond ((fnn-bps-rotate-when-due bp)
+           (fnn-bps-reopen-in-place bp journal config wall wall-error)
+           :rotated)
+          (t :declined))))
 
 ;;; `bp-node profile JOURNAL NODE-ID ROWS OCTETS [ADU BUNDLE [ROTATE]]': raise the
 ;;; node's profile: the held rows and held octets its FNBS machine may hold,
@@ -1177,7 +1180,7 @@ over N rows takes ceiling(N/64) turns and resumes where it yielded.")
              (setq listener (fnn-bplc-start listen-port))
              (when control (setf (fnn-bpnc-listeners control) listener))
              (let ((outbox-after nil) (report-after nil) (observe-after nil) (forward-tried nil) (forward-awaiting nil)
-                   (forward-cursor nil)
+                   (forward-cursor nil) (rotation-declined nil)
                    (receipt-contact (make-fnn-bp-receipt-cursor)))
               (fnn-bp-session-loop
                bank control listener
@@ -1259,10 +1262,24 @@ over N rows takes ceiling(N/64) turns and resumes where it yielded.")
                  (:rotation
                   ;; No retained operation crosses an owner reopen.
                   (when (zerop (hash-table-count (fnn-bpsb-held bank)))
-                   (fnn-bps-serve-rotate-when-due bp journal-root config wall wall-error)))))
+                   (case (fnn-bps-serve-rotate-when-due bp journal-root config wall wall-error)
+                    (:rotated (setq rotation-declined nil))
+                    (:declined (setq rotation-declined t)))))))
                (lambda () (or outbox-after report-after forward-awaiting forward-cursor
                                (not (fnn-bp-receipt-cursor-done receipt-contact))
-                               (fnn-bps-fragment-work-p bp))))))
+                               (fnn-bps-fragment-work-p bp)))
+               ;; Inbound admission (books/bp-session-scheduler
+               ;; fn-bpsched-admit-p): while a rotation is due the loop
+               ;; accepts no new session, so the bank drains and the next
+               ;; :rotation turn takes it
+               ;; (fn-bpsched-due-rotation-is-taken-once-the-bank-drains);
+               ;; a rotation the in-place recovery refused reopens it.
+               (lambda ()
+                (fnn-core 'fn-bpsched-admit-p
+                          (eq (fnn-core 'fn-bpnrd-serve-rotation-due-p
+                                        (fnn-bps-state bp) (fnn-bps-node-profile bp))
+                              t)
+                          rotation-declined)))))
            ;; ACL2's code for the node's evidence with the last session's
            ;; (fn-bprc-run-exit-code; specs/host.md "BP run classes").
            (fnn-core 'fn-bprc-run-exit-code
