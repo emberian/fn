@@ -35,15 +35,22 @@
 
 (defun fn-pak-post-admission (carry profile msgid-octets payload-length
                                     group-count charge key fn-cat)
-  (declare (xargs :stobjs fn-cat
-                  :guard (and (fn-mpxt-keyp key)
-                              (equal (len key) *fn-mpxt-key-octets*))))
+  ;; Guard t (the stobj recognizer only): the key's shape is tested here and
+  ;; a malformed key takes the index by ec-call (guard-checked, the logic
+  ;; unchanged), so the index's fn-mlh writes carry no invariant-risk into
+  ;; the :program host entry fn-owner-post-boundary, which then runs raw
+  ;; (tools/invariant_risk_baseline.json).
+  (declare (xargs :stobjs fn-cat))
   (let ((verdict (fn-pvc-post-boundary-carried carry profile msgid-octets
                                                payload-length group-count
                                                charge)))
     (cond ((not (equal verdict :ok)) verdict)
-          ((fn-cat-msgid-saturatedp key (fn-record-octets-string msgid-octets)
-                                    fn-cat)
+          ((if (and (fn-mpxt-keyp key)
+                    (equal (len key) *fn-mpxt-key-octets*))
+               (fn-cat-msgid-saturatedp key (fn-record-octets-string msgid-octets)
+                                        fn-cat)
+             (ec-call (fn-cat-msgid-saturatedp key (fn-record-octets-string msgid-octets)
+                                               fn-cat)))
            :mpx-saturated)
           (t :ok))))
 
