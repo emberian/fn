@@ -9,7 +9,8 @@ image's world when host/native/build.lisp loads host/interfaces.lisp (the
 extraction world loads the same file, tools/extract/world-host.lisp).  This reads
 the same forms with the ledger's non-evaluating reader and GENERATES:
 
-* planning/interfaces.json -- one row per declared entry: its class, the
+* the registry (`registry(root)`, rendered on read and never written: a
+  function of the source alone, so no file carries it) -- one row per declared entry: its class, the
   kinds its guard gives the host entry guard, its exempt formals with their
   reasons, its keystones, its extraction role, whether the raw host applies
   it directly, the theorems of its `:raw-with` argument (D40: the host
@@ -91,7 +92,6 @@ sys.path.insert(0, str(ROOT))
 from tools import interfaces_relocate, ledger  # noqa: E402
 
 SOURCES = ("host/interfaces.lisp", "host/account-adoption-interfaces.lisp")
-REGISTRY = ROOT / "planning" / "interfaces.json"
 ROOTS_SH = ROOT / "tools" / "extract" / "roots.sh"
 RAW_DECLARATIONS = ROOT / "host" / "interfaces-raw.lisp"
 STEP_OF_STATUS = "keystone via fold; host-loop correspondence owed"
@@ -617,6 +617,21 @@ def subsystem_of(d: dict, reading: dict) -> str:
     return subsystem(d["name"], reading["dispatched"].get(d["name"], ()))
 
 
+_REGISTRY: dict[Path, dict] = {}
+
+
+def registry(root: Path = ROOT) -> dict:
+    """The interface registry of ROOT's tree, rendered from its declarations
+    and its host reading on every read (once per process and tree).  It is a
+    function of the source alone, so no file carries it: the readers that
+    took build/box/interfaces.json from the box step failed in any tree no
+    box step had run in (train 81's regen, which precedes certify)."""
+    root = Path(root).resolve()
+    if root not in _REGISTRY:
+        _REGISTRY[root] = json.loads(render_registry(declarations(root), host_reading(root)))
+    return _REGISTRY[root]
+
+
 def render_registry(decls: list[dict], reading: dict) -> str:
     rows = []
     for d in decls:
@@ -785,9 +800,6 @@ def findings(decls: list[dict], reading: dict, root: Path = ROOT) -> list[str]:
                        name, ", ".join(sorted(reading["direct"][name]))))
     if not ROOTS_SH.is_file() or ROOTS_SH.read_text() != render_roots(decls):
         out.append("tools/extract/roots.sh is not what the declarations say; "
-                   "run tools/interface_emit.py --write")
-    if not REGISTRY.is_file() or REGISTRY.read_text() != render_registry(decls, reading):
-        out.append("planning/interfaces.json is not what the declarations say; "
                    "run tools/interface_emit.py --write")
     if (not RAW_DECLARATIONS.is_file()
             or RAW_DECLARATIONS.read_text() != render_raw_declarations(
@@ -989,7 +1001,6 @@ def main(argv=None) -> int:
     reading = host_reading()
     if args.write:
         ROOTS_SH.write_text(render_roots(decls))
-        REGISTRY.write_text(render_registry(decls, reading))
         RAW_DECLARATIONS.write_text(render_raw_declarations(decls, carried_rows(), dtn_host_files()))
     problems = findings(decls, reading)
     # the raw host reaches a book function only through the dispatcher

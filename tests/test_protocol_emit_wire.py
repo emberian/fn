@@ -1,5 +1,6 @@
-"""`protocol_emit.py --wire --check` is red when specs/wire-grammar.json is
-not the bytes ACL2 renders now, and green only when it is.
+"""`protocol_emit.py --wire --check` is red when build/box/wire-grammar.json
+(the box step's artifact, never committed) is not the bytes ACL2 renders now,
+and green only when it is; a committed specs/wire-grammar.json is refused.
 
 ACL2 is not run here: `wire_octets' (the evaluation of books/wire-export.lisp
 fn-wgx-file-hex) is replaced by a stub, so this pins the comparison itself --
@@ -17,10 +18,14 @@ import protocol_emit  # noqa: E402
 
 
 class WireCheck(unittest.TestCase):
-    def run_check(self, committed, rendered, write=False, key="k1", stamp=None, d=None):
+    def run_check(self, committed, rendered, write=False, key="k1", stamp=None, d=None,
+                  committed_copy=None):
         with tempfile.TemporaryDirectory() as tmp:
             d = Path(d or tmp)
-            path = d / "specs" / "wire-grammar.json"
+            path = d / "build" / "box" / "wire-grammar.json"
+            if committed_copy is not None:
+                (d / "specs").mkdir(parents=True, exist_ok=True)
+                (d / "specs" / "wire-grammar.json").write_bytes(committed_copy)
             if committed is not None:
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_bytes(committed)
@@ -72,6 +77,13 @@ class WireCheck(unittest.TestCase):
     def test_write_writes_the_rendering(self):
         code, after = self.run_check(b'{"old":1}', b'{"new":1}', write=True)
         self.assertEqual((code, after), (0, b'{"new":1}'))
+
+    def test_committed_copy_is_refused(self):
+        # the box artifact is current, but a committed copy reappeared
+        for write in (False, True):
+            code, after = self.run_check(b'{"version":1}', b'{"version":1}', write=write,
+                                         committed_copy=b'{"version":1}')
+            self.assertEqual((code, self.evaluated, after), (1, False, b'{"version":1}'))
 
     def test_unreadable_rendering_is_refused(self):
         with self.assertRaises(ValueError):
