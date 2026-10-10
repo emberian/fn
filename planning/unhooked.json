@@ -145,7 +145,7 @@
     {
       "book": "tests/acl2/consumer-remote-store-category-tests",
       "decision": "D46",
-      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists"
+      "why": "depends on the FNCE consumer/authority event kinds reverted from the wire-event grammar until their producer exists; on return it also needs (include-book \"../../books/consumer-remote-event-codec\") for fn-crev-eventp, which it calls without including"
     },
     {
       "book": "tests/acl2/index-backing-publication-row-carry-tests",
