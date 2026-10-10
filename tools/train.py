@@ -1469,10 +1469,17 @@ def ready_dir(t: "Train") -> Path:
     return common.parent / "build" / "ready"
 
 
+READY_LANE_SHA = re.compile(r"lane/([\w./-]+)\s+@?\s*([0-9a-f]{7,40})\b")
+
+
 def rename_landed_readies(t: "Train", lanes: list[dict]) -> list[str]:
     """Rename each carried lane's READY file to landed-<file>: the file named
     for the lane, or one whose first line names lane/<name> at the merged
-    sha.  Prints the lanes no READY file was found for."""
+    sha.  Prints the lanes no READY file was found for.  Then every other
+    READY whose first line names lane/<x> at a sha HEAD contains has landed
+    too: a lane stacked inside a carried one (train 85 carried d-cost-rows,
+    d-entry-guards, d-bp-rotation-fairness and lane/memory inside
+    b-host-85, and their READYs were renamed by hand)."""
     directory = ready_dir(t)
     files = sorted(p for p in directory.glob("*.md") if not p.name.startswith("landed-")) \
         if directory.is_dir() else []
@@ -1501,7 +1508,24 @@ def rename_landed_readies(t: "Train", lanes: list[dict]) -> list[str]:
             files.remove(p)
             renamed.append(target.name)
             say(f"READY: {p.name} -> {target.name}")
-    return renamed
+    for p in list(files):
+        try:
+            first = p.read_text(encoding="utf-8").splitlines()[:1]
+        except (OSError, UnicodeDecodeError):
+            continue
+        m = READY_LANE_SHA.search(first[0]) if first else None
+        if not m:
+            continue
+        if git(t.root, "merge-base", "--is-ancestor", m.group(2), "HEAD", check=False).returncode != 0:
+            continue
+        target = p.with_name("landed-" + p.name)
+        if target.exists():
+            say(f"READY: {target.name} exists; {p.name} left in place")
+            continue
+        p.rename(target)
+        renamed.append(target.name)
+        say(f"READY: {p.name} -> {target.name} (lane/{m.group(1)}@{m.group(2)[:9]} is in HEAD, stacked)")
+    return sorted(renamed)
 
 
 def shrink_words(t: "Train", base: str, head: str) -> str:

@@ -477,7 +477,8 @@ class PushTests(TrainBase):
         ready.mkdir()
         (ready / "a.md").write_text("# READY: lane/a\n")
         (ready / "a-landing.md").write_text(f"# READY (landing): lane/a @ {sha[:9]}\n")
-        (ready / "ab.md").write_text(f"# READY: lane/ab @ {sha[:9]}\n")
+        # lane/ab at a sha HEAD does not contain: not lane a's, not landed
+        (ready / "ab.md").write_text("# READY: lane/ab @ 0123456789ab\n")
         (ready / "landed-old.md").write_text("# READY: lane/a\n")
         env = {"FN_READY_DIR": str(ready)}
         self.assertEqual(self.train("gate", extra_env=env).returncode, 0)
@@ -487,6 +488,26 @@ class PushTests(TrainBase):
                          ["ab.md", "landed-a-landing.md", "landed-a.md", "landed-old.md"])
         self.assertIn(f"STATE: dev = {self.head()[:9]} (train 9): carries a@{sha[:9]}", p.stdout)
         self.assertIn("READY landed: landed-a-landing.md, landed-a.md", p.stdout)
+
+    def test_push_renames_the_readies_of_lanes_stacked_inside_a_carried_one(self):
+        # train 85: b-host-85 carried d-cost-rows, whose READY names its own
+        # lane and sha; that sha is in HEAD, so its READY has landed too
+        inner = self.lane("s", {"stacked.txt": "s\n"})
+        sha = self.lane("a", {"other.txt": "ok\n"}, base=inner)
+        self.assertEqual(self.train("merge", f"a@{sha}").returncode, 0)
+        ready = self.tmp / "ready"
+        ready.mkdir()
+        (ready / "s.md").write_text(f"# READY: lane/s @ {inner[:9]} (stacked)\n")
+        (ready / "m.md").write_text(f"# READY (landing): memory (lane/s {inner[:9]})\n")
+        (ready / "x.md").write_text("# READY: lane/x @ 0123456789ab\n")
+        (ready / "packet.md").write_text("# Statements: no lane named\n")
+        env = {"FN_READY_DIR": str(ready)}
+        self.assertEqual(self.train("gate", extra_env=env).returncode, 0)
+        p = self.train("push", "--label", "9", extra_env=env)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(sorted(f.name for f in ready.iterdir()),
+                         ["landed-m.md", "landed-s.md", "packet.md", "x.md"])
+        self.assertIn("READY landed: landed-m.md, landed-s.md", p.stdout)
 
     def test_push_refused_when_dev_moved_after_gating(self):
         self.ready()
