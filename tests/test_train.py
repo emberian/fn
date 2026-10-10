@@ -44,6 +44,8 @@ if name == "world" and os.environ.get("STUB_WORLD"):
         f.write("new part\\n")
     if os.path.exists("books/image-world-part-1.lisp"):
         os.remove("books/image-world-part-1.lisp")
+if name == "premise_audit" and mode == "json":
+    print(os.environ.get("STUB_PREMISES", "{}"))
 if mode == "write" and name == "ledger":
     with open("planning/proofs.json", "a") as f:
         f.write("regen\\n")
@@ -55,7 +57,7 @@ STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
          "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
          "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py",
-         "tests/test_keystone_critical.py", "tools/harness_check.py"]
+         "tests/test_keystone_critical.py", "tools/harness_check.py", "tools/premise_audit.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in build/box/wire-grammar.json; do
@@ -1215,6 +1217,62 @@ class BaselineGateTests(TrainBase):
                                              [self.amendment("t.b")]),
                          "non-regressing against 2 known reds, 1 amended "
                          "(planning/known-reds.json, planning/known-reds-amendments.json); NOT green")
+
+
+class PremiseBaselineTests(TrainBase):
+    """planning/premise-baseline.json is shrink-only across merges
+    (PREMISE-BASELINE-MERGE-LOSS: a merge resolved 1,171 entries to 753)."""
+
+    def baseline(self, *names):
+        return json.dumps({"note": "n", "accepted": {n: "why " + n for n in names}},
+                          indent=2, sort_keys=True) + "\n"
+
+    def on_dev(self, *names):
+        self.advance_dev({"planning/premise-baseline.json": self.baseline(*names)})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+
+    def gate(self, premises):
+        g = self.train("gate", extra_env={"STUB_PREMISES": json.dumps(premises)})
+        st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        return g, st["gates"]["premise_baseline"]
+
+    def test_a_conflict_takes_the_union_of_both_sides_entries(self):
+        self.on_dev("a", "b", "c")
+        sha = self.lane("p", {"planning/premise-baseline.json": self.baseline("a", "c", "d")})
+        self.advance_dev({"planning/premise-baseline.json": self.baseline("a", "b", "e")})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
+        m = self.train("merge", f"p@{sha}")
+        if m.returncode:
+            sys.stderr.write(m.stdout + m.stderr)
+        self.assertEqual(m.returncode, 0, "the conflict on the premise baseline did not resolve")
+        merged = json.loads((self.work / "planning/premise-baseline.json").read_text())
+        self.assertEqual(sorted(merged["accepted"]), ["a", "b", "c", "d", "e"])
+
+    def test_a_dropped_entry_still_a_finding_refuses_and_a_resolved_one_passes(self):
+        self.on_dev("a", "b", "c")
+        sha = self.lane("p", {"planning/premise-baseline.json": self.baseline("a"),
+                              "tools/x.py": "x\n"})
+        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
+        lost, record = self.gate({"a": {"class": "never concluded"},
+                                  "b": {"class": "preserved only"},
+                                  "c": {"class": "established by a hosted entry"}})
+        self.assertNotEqual(lost.returncode, 0)
+        self.assertEqual((record["rc"], record["dropped"], record["lost"]), (1, ["b", "c"], ["b"]))
+        self.assertIn("LOST an entry that is still a finding (preserved only): b", lost.stdout)
+        resolved, record = self.gate({"a": {"class": "never concluded"},
+                                      "b": {"class": "established by a hosted entry"}})
+        self.assertEqual(record["rc"], 0, resolved.stdout)
+        self.assertEqual(record["lost"], [])
+
+    def test_no_drop_runs_no_audit(self):
+        self.on_dev("a")
+        sha = self.lane("p", {"tools/x.py": "x\n"})
+        self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
+        _, record = self.gate({})
+        self.assertEqual((record["rc"], record["dropped"]), (0, []))
+        self.assertNotIn("premise_audit --json", self.stub_log())
 
 
 class AsciiGateTests(unittest.TestCase):
