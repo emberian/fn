@@ -352,7 +352,10 @@
 ; function returned; its encoded body [I, E) lies in the source (fn-wps-cursorp).
 (defun fn-web-host-post-window (cursor fn-web-in fn-web-out)
   (declare (xargs :stobjs (fn-web-in fn-web-out)
-                  :guard (fn-wps-cursorp cursor (fn-octets-len fn-web-in))))
+                  :guard (fn-wps-cursorp cursor (fn-octets-len fn-web-in))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-wps-window fn-wps-cursorp)
+                                 :use ((:instance fn-wps-window-octets (fuel 4096) (acc nil)))))))
   (mv-let (bytes next done) (fn-wps-window 4096 cursor nil fn-web-in)
     (let* ((fn-web-out (fn-octets-clear fn-web-out))
            (fn-web-out (fn-octets-append-list bytes fn-web-out)))
