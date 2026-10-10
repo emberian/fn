@@ -5,7 +5,7 @@ the product's workloads, and the census of what the core carries but never ran
 
     executed_set.py run TREE IMAGE CORE OUT [--arm gate|served|load ...] [--jobs N]
     executed_set.py union OUT
-    executed_set.py books IMAGE OUT
+    executed_set.py books IMAGE OUT [--tree TREE]
     executed_set.py census OUT CORE_DIR [--books BOOKS_TSV] [--tree TREE] [--json FILE]
 
 `run` drives CORE (TREE/build/core/fn-core, a developer core) through a wrapper
@@ -33,7 +33,8 @@ no recorded name, or an instrumented process that wrapped nothing.
 `books` writes OUT/books.tsv (`NAME<TAB>BOOK<TAB>fn|thm`): each function and theorem
 in IMAGE's world (a developer image's `fn acl2 session') with the book whose
 inclusion introduced it, read from the world's include-book-path at its FORMALS or
-THEOREM property.
+THEOREM property; with TREE, the definitions of TREE/host/*.lisp, which the image
+build `ld's outside any book.
 
 `census` joins the executed set with the static closure CORE_DIR/manifest.tsv
 and edges.tsv (core.sh's outputs): every function unit never executed, and the
@@ -231,40 +232,60 @@ def union(out: Path) -> int:
 
 # ---------------------------------------------------------------- books
 
-BOOKS_WALK = r"""
-(let ((path nil) (seen (make-hash-table :test 'equal)) (n 0))
-  (with-open-file (o (sb-ext:posix-getenv "FN_XC_BOOKS") :direction :output :if-exists :supersede)
-    (dolist (trip (reverse (w *the-live-state*)))
-      (cond ((and (eq (car trip) 'include-book-path) (eq (cadr trip) 'global-value))
-             (setq path (cddr trip)))
-            ((and (member (cadr trip) '(formals theorem)) (car path)
-                  (not (gethash (cons (car trip) (cadr trip)) seen)))
-             (setf (gethash (cons (car trip) (cadr trip)) seen) t)
-             (incf n)
-             (let ((b (car path)))
-               (format o "~A~C~A~C~A~%"
-                       (let ((*package* (find-package :keyword))) (prin1-to-string (car trip)))
-                       #\Tab (if (consp b) (cdr b) b)
-                       #\Tab (if (eq (cadr trip) 'formals) "fn" "thm")))))))
-  (format t "~&BOOKS-DONE ~D~%" n))
+BOOKS_WALK = """(set-fmt-hard-right-margin 100000 state)
+(set-fmt-soft-right-margin 99999 state)
+(defun xc-walk (trips path)
+  (declare (xargs :mode :program))
+  (if (endp trips)
+      nil
+    (let* ((trip (car trips))
+           (path (if (and (eq (car trip) 'include-book-path)
+                          (eq (cadr trip) 'global-value))
+                     (cddr trip)
+                   path)))
+      (prog2$ (if (and (member-eq (cadr trip) '(formals theorem)) (car path))
+                  (let ((b (car path)))
+                    (cw "XCB ~s0::~s1 ~s2 ~s3~%"
+                        (symbol-package-name (car trip)) (symbol-name (car trip))
+                        (if (consp b) (cdr b) b)
+                        (if (eq (cadr trip) 'formals) "fn" "thm")))
+                nil)
+              (xc-walk (cdr trips) path)))))
+(xc-walk (reverse (w state)) nil)
 """
+HOST_DEF = re.compile(r"^\(def(?:un|und|ine|un-inline|un-sk|macro-fn)?\s+([^\s()]+)", re.M | re.I)
 
 
 def books(args):
+    """IMAGE's world walked oldest first: each FORMALS or THEOREM property with the
+    innermost book of the include-book-path in force; the host files build.lisp
+    `ld's are outside any include, so their functions are read from TREE/host/*.lisp."""
     out = Path(args.out).resolve()
     out.mkdir(parents=True, exist_ok=True)
-    tsv, walk = out / "books.tsv", out / "books-walk.lisp"
-    walk.write_text(BOOKS_WALK)
-    env = dict(os.environ, FN_XC_BOOKS=str(tsv), ACL2_CUSTOMIZATION="NONE",
-               SBCL_USER_ARGS="--control-stack-size 64MB")
-    p = subprocess.run([args.image, "--fn", "acl2", "session"], input=(
-        ':q\n(load "%s")\n(sb-ext:exit :code 0 :abort t)\n' % walk).encode(),
-        env=env, capture_output=True, timeout=1800)
-    done = re.search(rb"BOOKS-DONE (\d+)", p.stdout)
-    if not done or int(done.group(1)) == 0 or not tsv.is_file():
-        raise Refused("books: the world walk wrote nothing (status %s): %s"
+    env = dict(os.environ, ACL2_CUSTOMIZATION="NONE", SBCL_USER_ARGS="--control-stack-size 64MB")
+    p = subprocess.run([args.image, "--fn", "acl2", "session"], input=BOOKS_WALK.encode(),
+                       env=env, capture_output=True, timeout=1800)
+    rows, seen = [], set()
+    for m in re.finditer(rb"XCB (\S+) (\S+) (fn|thm)", p.stdout):
+        name, book, kind = (g.decode() for g in m.groups())
+        if (name, kind) not in seen:
+            seen.add((name, kind))
+            rows.append((name, book, kind))
+    if not rows:
+        raise Refused("books: the world walk printed nothing (status %s): %s"
                       % (p.returncode, p.stdout[-400:].decode(errors="replace")))
-    print("executed-set: %s functions attributed to books in %s" % (done.group(1).decode(), tsv))
+    tree = Path(args.tree).resolve() if args.tree else None
+    host = 0
+    if tree:
+        for f in sorted((tree / "host").glob("*.lisp")):
+            for m in HOST_DEF.finditer(f.read_text(errors="replace")):
+                name = "ACL2::" + m.group(1).upper()
+                if (name, "fn") not in seen:
+                    seen.add((name, "fn"))
+                    rows.append((name, "host/" + f.name, "fn"))
+                    host += 1
+    (out / "books.tsv").write_text("".join("%s\t%s\t%s\n" % r for r in rows))
+    print("executed-set: %d names attributed (%d from host/*.lisp) in %s" % (len(rows), host, out / "books.tsv"))
     return 0
 
 
@@ -432,6 +453,7 @@ def main(argv=None):
     u.add_argument("out")
     k = sub.add_parser("books")
     k.add_argument("image"); k.add_argument("out")
+    k.add_argument("--tree", help="attribute host/*.lisp definitions (build.lisp ld's them outside any book)")
     c = sub.add_parser("census")
     c.add_argument("out"); c.add_argument("core_dir")
     c.add_argument("--books"); c.add_argument("--json")
