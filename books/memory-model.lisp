@@ -507,9 +507,6 @@
        (natp (fn-mm-cfg-connections cfg)) (natp (fn-mm-cfg-holders cfg))
        (natp (fn-mm-cold-reads profile cfg)))
   :rule-classes nil)
-; KEYSTONE K1.  The instant within the sum: at most C connections open, at
-; most P of them holding a large reply, the article slots and the TLS
-; handshake slots in use, publishing or not.
 (defthm fn-mm-collector-monotone
   (implies (<= (nfix a) (nfix b))
            (<= (fn-mm-collector a cfg) (fn-mm-collector b cfg)))
@@ -554,6 +551,9 @@
 (defthm fn-mm-live-natp (natp (fn-mm-live profile cfg tot)) :rule-classes :type-prescription)
 (defthm fn-mm-need-live-natp (natp (fn-mm-need-live profile cfg tot k j s h publishing))
   :rule-classes :type-prescription)
+; KEYSTONE K1.  The instant within the sum: at most C connections open, at
+; most P of them holding a large reply, the article slots and the TLS
+; handshake slots in use, publishing or not.
 (defthm fn-mm-need-within-the-sum
   (implies (and (<= (nfix k) (fn-mm-cfg-connections cfg))
                 (<= (nfix j) (fn-mm-cfg-holders cfg))
