@@ -716,6 +716,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/memory-model \
 	tests/acl2/memory-model-tests \
 	books/charged-totals-header \
+	books/charged-totals-header-writes \
 	tests/acl2/charged-totals-header-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \

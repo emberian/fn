@@ -31,9 +31,10 @@
 ;   K8c fn-cth-admit-run-of-append
 ;   K9  fn-cth-seed-of-one-capture-is-valid
 ;   K10 fn-cth-header-run-is-one-segment
-; Stated in the packet, owed in this book: K8a fn-cth-arena-write-is-admitted
-; and K8t fn-cth-table-write-is-admitted (the writer runs' admission from a
-; carried total).
+;   K8a fn-cth-arena-write-is-admitted and K8t fn-cth-table-write-is-admitted
+;   are proved in books/charged-totals-header-writes.lisp (this book's
+;   definitions with the packet world's includes and none of this book's
+;   local lemmas, as Codex round 6 proved them).
 ;
 ; The host's composition (end of the book): fn-cth-publication, both
 ; writers' one setup call (the header step, then K8's setup; a capture's
@@ -51,7 +52,6 @@
 (include-book "store-checkpoint-open")
 (include-book "store-checkpoint-arena-writer")
 (include-book "owner-checkpoint-pipeline")
-(include-book "native-live-status-words")
 
 ; ---------------------------------------------------------------------------
 ; Definitions (the packet's, as reviewed).
@@ -1158,6 +1158,10 @@
                                         (:executable-counterpart zp) (:executable-counterpart binary-+)
                                         (:executable-counterpart equal) car-cons cdr-cons nth)
                                       (theory 'minimal-theory)))))
+
+; The status words (fn-nls-text, fn-nls-nat), included here, after the
+; keystones, so their rules are not in the K8a/K8t proofs' world.
+(include-book "native-live-status-words")
 
 ; A stopped store's `status' line for the header (host/native/io.lisp
 ; fnn-command-stopped-status): the header phase's totals, or `absent' when
