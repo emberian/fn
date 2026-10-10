@@ -376,7 +376,11 @@
 (defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
   (declare (xargs :stobjs (fn-web-in fn-web-out)
                   :guard (and (true-listp config)
-                              (fn-wpf-statep prep (fn-octets-len fn-web-in)))))
+                              (fn-wpf-statep prep (fn-octets-len fn-web-in)))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-wpf-drive fn-wpf-statep)
+                                 :use ((:instance fn-wpf-drive-statep (fuel 4096) (p prep)
+                                                  (n (fn-octets-len fn-web-in))))))))
   (mv-let (next done) (fn-wpf-drive 4096 prep fn-web-in)
     (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
                            next fn-web-in fn-web-out)
