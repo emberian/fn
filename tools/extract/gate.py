@@ -277,8 +277,9 @@ class Gate:
 
     def rtc_exercise(self):
         """The runtime contract's multi-instance exercise: two interleaved
-        connections over the executable layer and its array-backed pool
-        (host/native/rtc-exercise.lisp, books/runtime-contract-echo.lisp
+        connections over the executable layer and its array-backed pool,
+        with the book's seven-field configuration and three fixed buffers
+        reserved per connection (host/native/rtc-exercise.lisp, books/runtime-contract-echo.lisp
         fn-rce-exercise).  Variant 0: the image exits 0 (every step kept the
         invariant and the outstanding :out octets, no unmatched completion
         changed the state), steps 10 and 12 discard stale completions, and
