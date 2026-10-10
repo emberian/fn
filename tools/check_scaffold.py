@@ -138,16 +138,20 @@ def scenario_implementation(ident: str, entry: dict) -> None:
     a harness script; `cases`, the TestCase classes or methods that run the
     steps (required for a module; each must occur in its text); `native`,
     whether the run was against a native image (false: the Python host or a
-    fake peer); `log`, a committed log of a passing run; and `record`, the
-    evidence record that reports that run.  The record must name the test or
-    the log's file, and the log must name the test or a case, or else the
-    record must name the log's file.  Whether a scenario is `validated` is the
-    qualification's mapping, not this check's.
+    fake peer); and optionally `log`, the log of a passing run, with `record`,
+    the evidence record that reports it.  Under D71 (planning/decisions.md:
+    evidence files are not committed and planning/evidence/ is ignored) a
+    run's log is optional: the test and its cases are the scenario's
+    executable record, and whether a run was recorded is
+    tools/coverage_gap.py's report.  A row that names either names both; the
+    record must name the test or the log's file, and the log must name the
+    test or a case, or else the record must name the log's file.  Whether a
+    scenario is `validated` is the qualification's mapping, not this check's.
     """
     impl = entry.get("implementation")
     if not isinstance(impl, dict):
         fail(f"{ident}: status {entry.get('status')} needs an `implementation` "
-             "naming the test module and the evidence log")
+             "naming the test module and its cases")
         return
     test = impl.get("test")
     if not isinstance(test, str) or not test:
@@ -172,6 +176,8 @@ def scenario_implementation(ident: str, entry: dict) -> None:
     if not isinstance(impl.get("native"), bool):
         fail(f"{ident}: implementation.native must say whether a native image ran it")
     log, record = impl.get("log"), impl.get("record")
+    if log is None and record is None:
+        return  # no run cited (D71); tools/coverage_gap.py reports it unrecorded
     historical = []
     for field, value in (("log", log), ("record", record)):
         if not isinstance(value, str) or not value:

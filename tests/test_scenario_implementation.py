@@ -1,4 +1,4 @@
-"""tools/check_scaffold.py: an implemented scenario names its test and its log."""
+"""tools/check_scaffold.py: an implemented scenario names its test and cases; a cited run names its log and record."""
 import copy
 import json
 from pathlib import Path
@@ -42,8 +42,23 @@ class ScenarioImplementationTests(unittest.TestCase):
 
     def test_a_log_that_names_neither_the_test_nor_is_named_is_refused(self):
         entry = copy.deepcopy(self.entry)
-        entry["implementation"]["log"] = "planning/evidence/width-producers-2-2026-09-26/gate-served.log"
+        # Both committed (a cited planning/evidence/ path that left the tree
+        # is not cross-read, D71), and neither names the other or the test.
+        entry["implementation"]["log"] = "LICENSE"
+        entry["implementation"]["record"] = "docs/testing.md"
         self.assertTrue(any("neither" in e for e in self.errors(entry)))
+
+    def test_a_test_without_a_cited_run_passes(self):
+        # D71: the test and its cases are the record; a run log is optional.
+        entry = copy.deepcopy(self.entry)
+        del entry["implementation"]["log"], entry["implementation"]["record"]
+        self.assertEqual(self.errors(entry), [])
+
+    def test_a_log_without_its_record_is_refused(self):
+        entry = copy.deepcopy(self.entry)
+        del entry["implementation"]["record"]
+        self.assertTrue(any("implementation.record must name a file" in e
+                            for e in self.errors(entry)))
 
     def test_native_must_be_stated(self):
         entry = copy.deepcopy(self.entry)
