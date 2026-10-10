@@ -202,3 +202,12 @@
     (and (equal (mv-nth 0 (fn-ovr-quantum c 5 two nil *ovrt-a* *ovrt-c*)) 2)
          (equal (mv-nth 0 (fn-ovr-quantum c 5 (- two 1) nil *ovrt-a* *ovrt-c*)) 1)))
   :rule-classes nil)
+
+; Removal of the fixnum-capacity hypothesis (KO5, KO7): a capacity of 2^59 takes no number
+; although every window fits, and its run stalls.
+(defthm ovrt-cap-fixnum-teeth
+  (let ((c (ovrt-start "fn.test" "1-10" nil *ovrt-server*)))
+    (and (equal (mv-nth 0 (fn-ovr-quantum c 5 (expt 2 59) nil *ovrt-a* *ovrt-c*)) 0)
+         (equal (mv-nth 0 (fn-ovr-quantum c 5 (- (expt 2 59) 1) nil *ovrt-a* *ovrt-c*)) 5)
+         (not (mv-nth 0 (fn-ovr-run c 5 (expt 2 59) nil *ovrt-a* *ovrt-c*)))))
+  :rule-classes nil)

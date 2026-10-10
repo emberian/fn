@@ -1000,7 +1000,8 @@
 ; (the served arm's server is fn-xref-serverp or nil, fn-nntp-xref-server-is-a-server).
 (defun fn-ovr-quantum (cur w cap fn-ovr-lease fn-arena fn-cat)
   (declare (xargs :stobjs (fn-ovr-lease fn-arena fn-cat) :verify-guards nil))
-  (if (or (not (consp cur)) (nth 7 cur) (not (fn-cbor-octet-listp (nth 6 cur))))
+  (if (or (not (consp cur)) (nth 7 cur) (not (fn-cbor-octet-listp (nth 6 cur)))
+          (not (unsigned-byte-p 59 cap)) (< cap (fn-ovr-lease-len fn-ovr-lease)))
       (mv 0 cur fn-ovr-lease)
     (let* ((group (nth 0 cur)) (k (nfix (nth 1 cur))) (top (nfix (nth 2 cur)))
            (v (nfix (nth 3 cur))) (legacyp (nth 4 cur)) (owedp (nth 5 cur)) (server (nth 6 cur)))
