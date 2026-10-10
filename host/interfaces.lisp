@@ -382,7 +382,7 @@
   :kinds ()
   :direct "the install path's check of the carried tables' row digests (host/native/raw-trap.lisp fnn-check-carried-tables); a load-time decision, no client data")
 (definterface fn-rdv-raw-declared-p
-  :class :program
+  :class :common-lisp-compliant
   :direct "the install path's selection of the raw-declared rows (host/native/raw-trap.lisp); a build-time decision, no client data")
 (definterface fn-rdv-row-digest
   :class :program

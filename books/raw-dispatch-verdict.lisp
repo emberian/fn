@@ -69,7 +69,7 @@
   (fn-blake3 (fn-sdg-canon (fn-rdv-row name kvs w))))
 
 (defun fn-rdv-raw-declared-p (kvs)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard (keyword-value-listp kvs)))
   (or (assoc-keyword :raw-with kvs) (assoc-keyword :raw-guarded kvs)))
 
 (defun fn-rdv-judge (name kvs w)

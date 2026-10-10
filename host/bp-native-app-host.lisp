@@ -17,11 +17,11 @@
 (include-book "owner-host")
 
 (defun fn-owner-bp-session-admission (channel announced-uri state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-bpaj-session-admission (fn-owner-config state) channel announced-uri)))
 
 (definterface fn-owner-bp-session-admission
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (defun fn-owner-bp-tcpcl-ingress
     (fnbs-state session-counter xfer-id channel announced-uri state)
@@ -54,22 +54,22 @@
 
 ; Actual owner configuration is captured on this sole serialized writer.
 (defun fn-owner-bplc-recover (mode state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-bplc-recover mode (fn-owner-config state))))
 
-(definterface fn-owner-bplc-recover :class ::program)
+(definterface fn-owner-bplc-recover :class :common-lisp-compliant)
 
 (defun fn-owner-bplc-begin (carry mode state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-bplc-begin carry mode (fn-owner-config state))))
 
-(definterface fn-owner-bplc-begin :class ::program)
+(definterface fn-owner-bplc-begin :class :common-lisp-compliant)
 
 (defun fn-owner-bplc-turn-plan (ownerp admin carry state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-bplc-turn-plan ownerp admin (fn-owner-config state) carry)))
 
-(definterface fn-owner-bplc-turn-plan :class ::program)
+(definterface fn-owner-bplc-turn-plan :class :common-lisp-compliant)
 
 (defun fn-owner-bp-request-trustedp (view state)
   (declare (xargs :stobjs state :mode :program))

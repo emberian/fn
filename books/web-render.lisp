@@ -59,11 +59,14 @@
     (39 (fn-wrq-oct "&#39;"))
     (otherwise (list o))))
 
-(defun fn-wr-escape (xs)
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (append (fn-wr-escape-octet (car xs)) (fn-wr-escape (cdr xs)))
-    nil))
+(def-loop fn-wr-escape (xs)
+  :shape :concat :over xs :elt x
+  :body (fn-wr-escape-octet x))
+
+(local
+ (defthm fn-wr-escape-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
 
 ; What an escaped piece is: no < > " ', and each & opens an entity.
 (defconst *fn-wr-entity-tails*

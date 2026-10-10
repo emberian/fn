@@ -6,6 +6,7 @@
 (include-book "heap-store-figure")
 (include-book "profile-limits")
 (include-book "output-reservation")
+(include-book "def-loop")
 
 (defun fn-bph-decimal-characters (chars value)
  (declare (xargs :guard (and (true-listp chars) (natp value))))
@@ -75,11 +76,10 @@
 
 ; `bp-node serve' arguments the node reads before and after an optional trailing
 ; `--control-config CONFIG' pair: JOURNAL is argument 3, the transfer MRU argument 18.
-(defun fn-bph-before-control (argv)
- (declare (xargs :guard (true-listp argv)))
- (cond ((endp argv) nil)
-       ((equal (car argv) "--control-config") nil)
-       (t (cons (car argv) (fn-bph-before-control (cdr argv))))))
+(def-loop fn-bph-before-control (argv)
+  :shape :map :over argv :elt a :guard (true-listp argv)
+  :stop (equal a "--control-config") :stop-value 'nil
+  :body a)
 (defun fn-bph-node-serve-p (argv)
  (declare (xargs :guard (true-listp argv)))
  (and (equal (nth 0 argv) "bp-node") (equal (nth 1 argv) "serve")
