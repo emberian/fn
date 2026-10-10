@@ -5,6 +5,8 @@
 (include-book "../../books/store-capacity-vector")
 (include-book "../../books/store-intern")
 (include-book "must-fail-checked")
+(include-book "owner-store-budget-tests")
+(include-book "../../books/defkeystone")
 
 (defconst *cvt-p*
   (fn-bs-profile-set-fields *fn-bs-profile-defaults*
@@ -628,3 +630,132 @@
                      :history-exhausted))
 (assert-event (equal (fn-cvec-article-verdict-word *cvt-p* 8 *cvt-mb* 1000 10 0)
                      :unaffordable))
+
+; -----------------------------------------------------------------------------
+; Teeth bound to the keystones named below (defteeth; witness, one removal per
+; hypothesis and an edit mutation, derived from the fixtures above).  The
+; verdict keystones' article is *cvt-record* / its retained row *cvt-row*
+; (payload length 1 000, one group, one undertaking open); the served
+; prepare's is owner-store-budget-tests' held row *osbt-second* on its owner
+; *osbt-reserved* (one committed record, so the prepare stages), the row the
+; host stages, its payload field the arena handle.
+(defconst *cvt-pl* (len (fn-record-payload *cvt-record*)))
+(defconst *cvt-gc* (len (fn-record-groups *cvt-record*)))
+(defconst *cvt-row-gate*
+  (fn-sbud-article-gate-figure (len (fn-record-payload *osbt-second*))
+                               (len (fn-record-groups *osbt-second*))))
+(defconst *cvt-row-safe* (- (- *cvt-h* *cvt-row-gate*) (* 2 *cvt-r*)))
+
+; A composite whose encoding is just past the publication ceiling (its
+; payload list as long as the ceiling is in octets), the smallest the removals
+; below need.
+(defconst *cvt-stxa-over*
+  (fn-stxa-make 1 5 5 0 '(1) '(1)
+                (make-list (fn-store-publication-ceiling :accepted-statement) :initial-element 7)
+                '(1)))
+(defconst *cvt-hstxa-over* (fn-hstxa-make *cvt-stxa-over* *cvt-row*))
+
+(defteeth fn-cvec-article-verdict-keeps-the-vector
+  :claim (((verdict (equal (fn-cvec-article-verdict-at profile used bytes-used
+                                                       payload-length group-count debt)
+                           :admissible))
+           (payload (<= (len (fn-record-payload record)) (nfix payload-length))))
+          (fn-cvec-roomp profile (+ 1 used)
+                         (+ bytes-used (len (fn-record-payload record)))
+                         debt))
+  :subject fn-cvec-article-verdict-at
+  :witness ((profile *cvt-p*) (used 1) (bytes-used *cvt-a*) (payload-length *cvt-pl*)
+            (group-count *cvt-gc*) (debt 1) (record *cvt-record*))
+  :breaks ((verdict ((profile *cvt-p*) (used 1) (bytes-used (+ *cvt-a* *cvt-r*))
+                     (payload-length *cvt-pl*) (group-count *cvt-gc*) (debt 1)
+                     (record *cvt-record*)))
+           (payload ((profile *cvt-p*) (used 1) (bytes-used *cvt-a*) (payload-length *cvt-pl*)
+                     (group-count *cvt-gc*) (debt 1) (record (cvt-full-record 1)))))
+  :mutations ((vector-spent-on-the-whole-encoding
+               (:conclusion (fn-cvec-roomp profile (+ 1 used)
+                                           (+ bytes-used (len (fn-record-encode record)))
+                                           debt))
+               ((profile *cvt-p*) (used 1) (bytes-used *cvt-a*) (payload-length *cvt-pl*)
+                (group-count *cvt-gc*) (debt 1) (record *cvt-record*))
+               :fault "an admitted article leaving the vector charged its whole encoding, not its payload")))
+
+(defteeth fn-cvec-article-verdict-keeps-the-vector-for-a-held-row
+  :claim (((verdict (equal (fn-cvec-article-verdict-at profile used bytes-used
+                                                       (fn-cvec-row-payload-length record)
+                                                       group-count debt)
+                           :admissible)))
+          (fn-cvec-roomp profile (+ 1 used)
+                         (+ bytes-used (fn-cvec-row-payload-length record))
+                         debt))
+  :subject fn-cvec-article-verdict-at
+  :witness ((profile *cvt-p*) (used 1) (bytes-used *cvt-a*) (group-count *cvt-gc*)
+            (debt 1) (record *cvt-row*))
+  :breaks ((verdict ((profile *cvt-p*) (used 1)
+                     (bytes-used (+ *cvt-a* *cvt-r* 1)) (group-count *cvt-gc*)
+                     (debt 1) (record *cvt-row*))))
+  :mutations ((verdict-forgets-an-open-undertaking
+               (:conclusion (fn-cvec-roomp profile (+ 1 used)
+                                           (+ bytes-used (fn-cvec-row-payload-length record))
+                                           (+ 1 debt)))
+               ((profile *cvt-p*) (used 1) (bytes-used *cvt-a*) (group-count *cvt-gc*)
+                (debt 1) (record *cvt-row*))
+               :fault "the verdict read one open undertaking too few, its release's room spent")))
+
+(defteeth fn-cvec-held-row-within-its-figure
+  :claim (()
+          (equal (fn-sbud-article-gate-figure (fn-cvec-row-payload-length record) group-count)
+                 (fn-cvec-row-payload-length record)))
+  :subject fn-sbud-article-gate-figure
+  :witness ((record *cvt-row*) (group-count *cvt-gc*))
+  :breaks ()
+  :mutations ((gate-charges-the-groups-again
+               (:conclusion (equal (fn-sbud-article-gate-figure
+                                    (fn-cvec-row-payload-length record) group-count)
+                                   (+ (fn-cvec-row-payload-length record) group-count)))
+               ((record *cvt-row*) (group-count *cvt-gc*))
+               :fault "the gate figure charging the row's groups again, the deleted membership charge")))
+
+(defteeth fn-cvec-statement-row-within-its-figure
+  :claim (((composite (fn-hstxa-p row))
+           (encoding (<= (len (fn-store-event-encode (fn-hstxa-stxa row)))
+                         (fn-store-publication-ceiling :accepted-statement))))
+          (<= (fn-sbud-row-octets row)
+              (fn-cvec-statement-figure (fn-sbud-row-memberships row))))
+  :subject fn-sbud-row-octets
+  :witness ((row *cvt-hstxa*))
+  :breaks ((composite ((row *cvt-stxa-over*))
+                      :logical "a wire statement event is no composite row; fn-hstxa-stxa reads it outside its guard")
+           (encoding ((row *cvt-hstxa-over*))))
+  :mutations ((figure-read-as-the-group-count
+               (:conclusion (<= (fn-sbud-row-octets row) (fn-sbud-row-memberships row)))
+               ((row *cvt-hstxa*))
+               :fault "the statement figure read as the row's group count, not the publication ceiling")))
+
+(defteeth fn-cvec-prepare-keeps-the-vector
+  :claim (((staged (not (equal (fn-sbud-prepare
+                                oc record
+                                (fn-cvec-article-budget-for
+                                 profile (fn-sbud-used (fn-sbud-oc-store oc))
+                                 bytes-used record debt))
+                               oc))))
+          (and (fn-cvec-roomp profile
+                              (+ 1 (fn-sbud-used (fn-sbud-oc-store oc)))
+                              (+ bytes-used (len (fn-record-payload record)))
+                              debt)
+               (fn-profile-replay-within-boundp
+                profile (+ bytes-used (len (fn-record-payload record))))))
+  :subject fn-sbud-prepare
+  :witness ((oc *osbt-reserved*) (record *osbt-second*) (profile *cvt-p*)
+            (bytes-used *cvt-row-safe*) (debt 1))
+  :breaks ((staged ((oc *osbt-reserved*) (record *osbt-second*) (profile *cvt-p*)
+                    (bytes-used (+ *cvt-row-safe* *cvt-r*)) (debt 1))))
+  :mutations ((prepare-forgets-an-open-undertaking
+               (:conclusion (and (fn-cvec-roomp profile
+                                                (+ 1 (fn-sbud-used (fn-sbud-oc-store oc)))
+                                                (+ bytes-used (len (fn-record-payload record)))
+                                                (+ 1 debt))
+                                 (fn-profile-replay-within-boundp
+                                  profile (+ bytes-used (len (fn-record-payload record))))))
+               ((oc *osbt-reserved*) (record *osbt-second*) (profile *cvt-p*)
+                (bytes-used *cvt-row-safe*) (debt 1))
+               :fault "a staged row leaving the vector one open undertaking short")))

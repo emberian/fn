@@ -5,6 +5,7 @@
 (include-book "store-budget-article-tests")
 (include-book "../../books/store-maintenance-reserve")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 
 (defconst *smt-h* 250000)
 ; *pmt-old* budgets 4 transactions: the fourth is the release's.
@@ -143,3 +144,69 @@
 ; The status report.
 (assert-event (equal (fn-smr-report *pmt-old* 3 (- *smt-h* 4096)) '(4096 1 :held)))
 (assert-event (equal (fn-smr-report *pmt-old* 3 (- *smt-h* 4095)) '(4096 1 :short)))
+
+; -----------------------------------------------------------------------------
+; Teeth bound to the two article keystones (defteeth; witness, one removal per
+; hypothesis and an edit mutation, derived from the fixtures above).  The
+; verdict keystone's article is packet 1's (*pmt-record*); the served
+; prepare's is store-budget-article-tests' held row *osbt-second* on its owner
+; *osbt-reserved* (one committed record, so the prepare stages), the row the
+; host stages, its payload field the arena handle.
+(defconst *smt-pl* (len (fn-record-payload *pmt-record*)))
+(defconst *smt-gc* (len (fn-record-groups *pmt-record*)))
+(defconst *smt-row-gate*
+  (fn-sbud-article-gate-figure (len (fn-record-payload *osbt-second*))
+                               (len (fn-record-groups *osbt-second*))))
+(defconst *smt-row-safe* (- (- *smt-h* *smt-row-gate*) (fn-smr-reserve-octets)))
+
+(defteeth fn-smr-article-verdict-keeps-the-reserve
+  :claim (((verdict (equal (fn-smr-article-verdict-at profile used bytes-used
+                                                      payload-length group-count)
+                           :admissible))
+           (payload (<= (len (fn-record-payload record)) (nfix payload-length))))
+          (fn-smr-roomp profile (+ 1 used)
+                        (+ bytes-used (len (fn-record-payload record)))))
+  :subject fn-smr-article-verdict-at
+  :witness ((profile *pmt-old*) (used 1)
+            (bytes-used (- (- *smt-h* *smt-pl*) (fn-smr-reserve-octets)))
+            (payload-length *smt-pl*) (group-count *smt-gc*) (record *pmt-record*))
+  :breaks ((verdict ((profile *pmt-old*) (used 1)
+                     (bytes-used (1+ (- (- *smt-h* *smt-pl*) (fn-smr-reserve-octets))))
+                     (payload-length *smt-pl*) (group-count *smt-gc*) (record *pmt-record*)))
+           (payload ((profile *pmt-old*) (used 1)
+                     (bytes-used (- *smt-h* (fn-smr-reserve-octets)))
+                     (payload-length 0) (group-count 1) (record *pmt-record*))))
+  :mutations ((reserve-spent-on-the-whole-encoding
+               (:conclusion (fn-smr-roomp profile (+ 1 used)
+                                          (+ bytes-used (len (fn-record-encode record)))))
+               ((profile *pmt-old*) (used 1)
+                (bytes-used (- (- *smt-h* *smt-pl*) (fn-smr-reserve-octets)))
+                (payload-length *smt-pl*) (group-count *smt-gc*) (record *pmt-record*))
+               :fault "an admitted article leaving the release's room charged its whole encoding, not its payload")))
+
+(defteeth fn-smr-prepare-keeps-the-reserve
+  :claim (((staged (not (equal (fn-sbud-prepare
+                                oc record
+                                (fn-smr-article-budget-for
+                                 profile (fn-sbud-used (fn-sbud-oc-store oc))
+                                 bytes-used record))
+                               oc))))
+          (and (fn-smr-roomp profile
+                             (+ 1 (fn-sbud-used (fn-sbud-oc-store oc)))
+                             (+ bytes-used (len (fn-record-payload record))))
+               (fn-profile-replay-within-boundp
+                profile (+ bytes-used (len (fn-record-payload record))))))
+  :subject fn-sbud-prepare
+  :witness ((oc *osbt-reserved*) (record *osbt-second*) (profile *pmt-old*)
+            (bytes-used *smt-row-safe*))
+  :breaks ((staged ((oc *osbt-reserved*) (record *osbt-second*) (profile *pmt-old*)
+                    (bytes-used (1+ *smt-row-safe*)))))
+  :mutations ((release-room-one-octet-short
+               (:conclusion (and (fn-smr-roomp profile
+                                               (+ 1 (fn-sbud-used (fn-sbud-oc-store oc)))
+                                               (+ 1 bytes-used (len (fn-record-payload record))))
+                                 (fn-profile-replay-within-boundp
+                                  profile (+ bytes-used (len (fn-record-payload record))))))
+               ((oc *osbt-reserved*) (record *osbt-second*) (profile *pmt-old*)
+                (bytes-used *smt-row-safe*))
+               :fault "a staged row leaving the release's reserve one octet short of the record ceiling")))

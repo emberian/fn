@@ -92,6 +92,27 @@
    "mutation": "tests/acl2/bp-node-rotation-critical-tests.lisp::bprc-mutant-crash-visible-before-rename",
    "provenance": "keystone_critical.py --declare sha256:398d47c52caeb02a4c33b4462bc442e50d91e63467332c77509b06ddebb1352f"
   },
+  "fn-cvec-held-row-within-its-figure": {
+   "subject": "fn-sbud-article-gate-figure",
+   "host_test": "tests/test_native_bounds_join.py::test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",
+   "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-held-row-within-its-figure",
+   "mutation": "tests/acl2/store-capacity-vector-tests.lisp::gate-charges-the-groups-again",
+   "provenance": "keystone_critical.py --declare sha256:b80ad6269f1ad86cdf0f15d2ce73813614f17111e295f6a238898ecd89ecff27"
+  },
+  "fn-cvec-prepare-keeps-the-vector": {
+   "subject": "fn-sbud-prepare",
+   "host_test": "tests/test_native_operator_verbs.py::test_the_development_profile_budget_is_reported_and_refused_by_name",
+   "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-prepare-keeps-the-vector",
+   "mutation": "tests/acl2/store-capacity-vector-tests.lisp::prepare-forgets-an-open-undertaking",
+   "provenance": "keystone_critical.py --declare sha256:d3030415dc6f7c71998b422c834598d2003519a4f3f5bc16a826156fe3c4d59b"
+  },
+  "fn-cvec-statement-row-within-its-figure": {
+   "subject": "fn-sbud-row-octets",
+   "host_test": "tests/test_native_operator_verbs.py::test_a_crosspost_is_charged_its_payload_alone",
+   "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-statement-row-within-its-figure",
+   "mutation": "tests/acl2/store-capacity-vector-tests.lisp::figure-read-as-the-group-count",
+   "provenance": "keystone_critical.py --declare sha256:d32dad001065dd44a76d841a7839e4e4f5aa119461a493e2115b208973e0b4d7"
+  },
   "fn-dwj-retired-job-refuses-scalar-publication": {
    "subject": "fn-dwj-retire",
    "host_test": "tests/test_native_decoded_custody.py::test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
@@ -253,6 +274,13 @@
    "mutation": "tests/acl2/reader-open-carried-tests.lisp::drop-verdicts",
    "provenance": "keystone_critical.py --declare sha256:8c31a8d5277047b1d09ab9bdcd39d14d14fd51a26d6cf15bc5a9c8b5047bfbab"
   },
+  "fn-sbud-prepare-under-article-budget-keeps-history": {
+   "subject": "fn-sbud-prepare",
+   "host_test": "tests/test_native_operator_verbs.py::test_the_development_profile_budget_is_reported_and_refused_by_name",
+   "trace_witness": "tests/acl2/store-budget-article-tests.lisp::fn-sbud-prepare-under-article-budget-keeps-history",
+   "mutation": "tests/acl2/store-budget-article-tests.lisp::prepare-leaves-one-octet-past-h",
+   "provenance": "keystone_critical.py --declare sha256:be86cbc3a974c5fe459fc024daf56df84da03d6a533ed1a9eeb1a77f7040e0de"
+  },
   "fn-sca-load-held-rows-establishes-byte-facts": {
    "subject": "fn-sca-load-held-rows-keyed",
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
@@ -280,6 +308,13 @@
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
    "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-old-pair",
    "provenance": "keystone_critical.py --declare sha256:b55fa7efa831876621e511634a97d988ca2eb599c16457595996d55dd3db2607"
+  },
+  "fn-smr-prepare-keeps-the-reserve": {
+   "subject": "fn-sbud-prepare",
+   "host_test": "tests/test_native_operator_verbs.py::test_the_development_profile_budget_is_reported_and_refused_by_name",
+   "trace_witness": "tests/acl2/store-maintenance-reserve-tests.lisp::fn-smr-prepare-keeps-the-reserve",
+   "mutation": "tests/acl2/store-maintenance-reserve-tests.lisp::release-room-one-octet-short",
+   "provenance": "keystone_critical.py --declare sha256:de06f3902b4aac777ded659cb53b787f98f5dc4cbb21094d1670e27b5e442e9e"
   }
  }
 }
