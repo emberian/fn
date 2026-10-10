@@ -130,6 +130,46 @@ def evidence(entry: dict, advanced: set[str]) -> None:
                 fail(f"{entry['id']}: evidence is not a file: {path}")
 
 
+# The evidence archive (D71): content-addressed bytes on hbox under
+# /tank/fn/evidence, indexed by its history-ledger*.tsv files (SHA256 SIZE
+# GITBLOB PATH per line).  A citation of a file that left the tree is
+# checked against the ledger's paths: read from FN_EVIDENCE_ARCHIVE (the
+# archive directory, on the box), else from build/evidence-archive/paths.txt
+# (`--fetch-archive BOX` writes it), else not readable (None).
+ARCHIVE_ENV = "FN_EVIDENCE_ARCHIVE"
+ARCHIVE_DIR = "/tank/fn/evidence"
+ARCHIVE_COPY = ROOT / "build" / "evidence-archive" / "paths.txt"
+
+
+@functools.lru_cache(maxsize=None)
+def archive_paths() -> frozenset[str] | None:
+    directory = os.environ.get(ARCHIVE_ENV) or (ARCHIVE_DIR if Path(ARCHIVE_DIR).is_dir() else "")
+    if directory:
+        paths = set()
+        for ledger_file in sorted(Path(directory).glob("history-ledger*.tsv")):
+            for line in ledger_file.read_text(errors="replace").splitlines():
+                fields = line.split()
+                if len(fields) >= 4:
+                    paths.add(fields[-1])
+        return frozenset(paths)
+    if ARCHIVE_COPY.is_file():
+        return frozenset(ARCHIVE_COPY.read_text().split())
+    return None
+
+
+def fetch_archive(box: str) -> int:
+    """Copy the archive ledger's path column from BOX into ARCHIVE_COPY."""
+    command = ("cat %s/history-ledger*.tsv | awk 'NF>=4 {print $NF}' | sort -u" % ARCHIVE_DIR)
+    result = subprocess.run(["ssh", box, command], capture_output=True, text=True, timeout=300)
+    if result.returncode != 0 or not result.stdout.strip():
+        print(f"check_scaffold: --fetch-archive {box} failed: {result.stderr.strip()}", file=sys.stderr)
+        return 1
+    ARCHIVE_COPY.parent.mkdir(parents=True, exist_ok=True)
+    ARCHIVE_COPY.write_text(result.stdout)
+    print(f"wrote {ARCHIVE_COPY.relative_to(ROOT)}: {len(result.stdout.split())} archived paths from {box}")
+    return 0
+
+
 def scenario_implementation(ident: str, entry: dict) -> None:
     """An implemented scenario names the test that runs it and the run's log.
 
@@ -138,20 +178,20 @@ def scenario_implementation(ident: str, entry: dict) -> None:
     a harness script; `cases`, the TestCase classes or methods that run the
     steps (required for a module; each must occur in its text); `native`,
     whether the run was against a native image (false: the Python host or a
-    fake peer); and optionally `log`, the log of a passing run, with `record`,
-    the evidence record that reports it.  Under D71 (planning/decisions.md:
-    evidence files are not committed and planning/evidence/ is ignored) a
-    run's log is optional: the test and its cases are the scenario's
-    executable record, and whether a run was recorded is
-    tools/coverage_gap.py's report.  A row that names either names both; the
-    record must name the test or the log's file, and the log must name the
-    test or a case, or else the record must name the log's file.  Whether a
+    fake peer); `log`, the log of a passing run; and `record`, the evidence
+    record that reports it.  D71 keeps evidence out of git, so a log or record
+    that is not in the tree is cited by its path in the evidence archive
+    (hbox:/tank/fn/evidence) and must be one of the archive ledger's paths
+    (`archive_paths`); a path neither in the tree nor in the archive is
+    refused, never accepted unread.  The record must name the test or the
+    log's file, and the log must name the test or a case, or else the record
+    must name the log's file (cross-read when both are in the tree).  Whether a
     scenario is `validated` is the qualification's mapping, not this check's.
     """
     impl = entry.get("implementation")
     if not isinstance(impl, dict):
         fail(f"{ident}: status {entry.get('status')} needs an `implementation` "
-             "naming the test module and its cases")
+             "naming the test module and the evidence log")
         return
     test = impl.get("test")
     if not isinstance(test, str) or not test:
@@ -176,14 +216,22 @@ def scenario_implementation(ident: str, entry: dict) -> None:
     if not isinstance(impl.get("native"), bool):
         fail(f"{ident}: implementation.native must say whether a native image ran it")
     log, record = impl.get("log"), impl.get("record")
-    if log is None and record is None:
-        return  # no run cited (D71); tools/coverage_gap.py reports it unrecorded
     historical = []
     for field, value in (("log", log), ("record", record)):
         if not isinstance(value, str) or not value:
             fail(f"{ident}: implementation.{field} must name a file: {value!r}")
             return
         if value.startswith(HISTORICAL_PREFIXES) and not (ROOT / value).exists():
+            archived = archive_paths()
+            if archived is None:
+                fail(f"{ident}: implementation.{field} {value} is not in the tree and no "
+                     "evidence-archive ledger is readable to confirm it (set "
+                     f"{ARCHIVE_ENV}, or `python3 tools/check_scaffold.py --fetch-archive BOX`)")
+                return
+            if value not in archived:
+                fail(f"{ident}: implementation.{field} {value} is neither in the tree nor "
+                     "in the evidence archive")
+                return
             historical.append(value)
         elif not (ROOT / value).exists():
             fail(f"{ident}: implementation.{field} must be a committed file: {value!r}")
@@ -380,6 +428,8 @@ def main() -> int:
 
 
 if __name__ == "__main__":
+    if len(sys.argv) == 3 and sys.argv[1] == "--fetch-archive":
+        sys.exit(fetch_archive(sys.argv[2]))
     try:
         sys.exit(main())
     except (OSError, ValueError, TypeError, KeyError, AttributeError) as exc:

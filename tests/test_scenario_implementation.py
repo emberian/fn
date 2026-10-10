@@ -1,6 +1,10 @@
-"""tools/check_scaffold.py: an implemented scenario names its test and cases; a cited run names its log and record."""
+"""tools/check_scaffold.py: an implemented scenario names its test and its run log, in the tree or the evidence archive."""
 import copy
 import json
+import os
+import shutil
+import tempfile
+from unittest import mock
 from pathlib import Path
 import sys
 import unittest
@@ -21,9 +25,6 @@ class ScenarioImplementationTests(unittest.TestCase):
         check_scaffold.ERRORS.clear()
         check_scaffold.scenario_implementation(entry["id"], entry)
         return list(check_scaffold.ERRORS)
-
-    def test_the_catalog_entry_passes(self):
-        self.assertEqual(self.errors(self.entry), [])
 
     def test_no_implementation_is_refused(self):
         entry = copy.deepcopy(self.entry)
@@ -48,14 +49,37 @@ class ScenarioImplementationTests(unittest.TestCase):
         entry["implementation"]["record"] = "docs/testing.md"
         self.assertTrue(any("neither" in e for e in self.errors(entry)))
 
-    def test_a_test_without_a_cited_run_passes(self):
-        # D71: the test and its cases are the record; a run log is optional.
-        entry = copy.deepcopy(self.entry)
-        del entry["implementation"]["log"], entry["implementation"]["record"]
-        self.assertEqual(self.errors(entry), [])
+    def archive(self, paths):
+        """Point check_scaffold at a temporary archive ledger holding PATHS."""
+        directory = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, directory)
+        Path(directory, "history-ledger-test.tsv").write_text(
+            "".join(f"{'0' * 64} 1 {'0' * 40} {p}\n" for p in paths))
+        patcher = mock.patch.dict(os.environ, {check_scaffold.ARCHIVE_ENV: directory})
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        check_scaffold.archive_paths.cache_clear()
+        self.addCleanup(check_scaffold.archive_paths.cache_clear)
+
+    def test_an_archived_log_passes(self):
+        impl = self.entry["implementation"]
+        self.archive([impl["log"], impl["record"]])
+        self.assertEqual(self.errors(self.entry), [])
+
+    def test_a_log_in_neither_tree_nor_archive_is_refused(self):
+        self.archive([self.entry["implementation"]["record"]])
+        self.assertTrue(any("neither in the tree nor in the evidence archive" in e
+                            for e in self.errors(self.entry)))
+
+    def test_without_a_readable_ledger_an_absent_log_is_refused(self):
+        patcher = mock.patch.object(check_scaffold, "archive_paths", lambda: None)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        self.assertTrue(any("no evidence-archive ledger" in e for e in self.errors(self.entry)))
 
     def test_a_log_without_its_record_is_refused(self):
         entry = copy.deepcopy(self.entry)
+        self.archive([entry["implementation"]["log"]])
         del entry["implementation"]["record"]
         self.assertTrue(any("implementation.record must name a file" in e
                             for e in self.errors(entry)))
