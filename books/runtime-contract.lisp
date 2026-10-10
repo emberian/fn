@@ -118,7 +118,7 @@
 ; Vocabulary
 
 (defconst *fn-rtc-kinds*
-  '(:recv :send :pread :pwrite :fsync :close :accept :timer :bp-send :hand :pool :grant))
+  '(:recv :send :pread :pwrite :fsync :close :accept :timer :bp-send :hand :pool :grant :extend))
 
 ; The worker writes the buffer (:in) or reads it (:out); the rest carry none.
 (defconst *fn-rtc-in-kinds* '(:recv :pread))
@@ -146,7 +146,7 @@
 ; What an instance may submit; :close has its own request and :accept is the
 ; layer's.
 (defconst *fn-rtc-machine-kinds*
-  '(:recv :send :pread :pwrite :fsync :timer :bp-send :hand :pool))
+  '(:recv :send :pread :pwrite :fsync :timer :bp-send :hand :pool :extend))
 
 ; Actions are the completion kinds plus :cancel, which has no completion of its
 ; own: it asks the host to finish the named action early.
@@ -164,6 +164,24 @@
   (and (true-listp x) (<= (len x) 2)
        (or (atom x) (and (natp (car x)) (< (car x) (expt 2 64))))
        (or (atom (cdr x)) (and (natp (cadr x)) (< (cadr x) (expt 2 64))))))
+
+;; The extent request (v2.2, Builder P's POST machine): (:submit :extend nil
+;; (FILE FROM TO)) asks the host to make FILE's preallocated extent reach TO
+;; from FROM (host meaning: fnn-log-preallocate).  It is unbuffered and has
+;; :fsync's discipline: one outstanding per instance, cancellable, its
+;; completion (:done 0) | (:failed r) | (:cancelled).  Its extras are three
+;; naturals below 2^64 with FROM < TO; every other kind keeps `fn-rtc-extrap'.
+(defun fn-rtc-extend-extrap (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 3)
+       (natp (car x)) (< (car x) (expt 2 64))
+       (natp (cadr x)) (< (cadr x) (expt 2 64))
+       (natp (caddr x)) (< (caddr x) (expt 2 64))
+       (< (cadr x) (caddr x))))
+
+(defun fn-rtc-kind-extrap (kind x)
+  (declare (xargs :guard t))
+  (if (eq kind :extend) (fn-rtc-extend-extrap x) (fn-rtc-extrap x)))
 
 (defun fn-rtc-get (i l)
   (declare (xargs :guard t))
@@ -242,7 +260,10 @@
     (+ 1 (floor (nfix h) (fn-rtc-qfixed c)))))
 
 ; A static slot's record: incarnation 1, live, resource 0 (it has no socket).
+; Its resource field is the slot's open mark: 0 until the host's :opened
+; event for it is delivered, 1 after (`*fn-rtc-opened-static-slot*').
 (defconst *fn-rtc-static-slot* '(1 :live 0))
+(defconst *fn-rtc-opened-static-slot* '(1 :live 1))
 
 ; -----------------------------------------------------------------------------
 ; Handles, actions, completions
@@ -785,7 +806,8 @@
   (declare (xargs :guard (and (natp j) (natp n)) :measure (nfix n)))
   (if (zp n)
       t
-    (and (equal (fn-rtc-get j slots) *fn-rtc-static-slot*)
+    (and (or (equal (fn-rtc-get j slots) *fn-rtc-static-slot*)
+             (equal (fn-rtc-get j slots) *fn-rtc-opened-static-slot*))
          (fn-rtc-statics-okp (+ 1 (nfix j)) (- n 1) slots))))
 
 (defun fn-rtc-invp (s)
@@ -845,8 +867,9 @@
     (cond ((eq tag :failed)
            (if (member-eq n *fn-rtc-failure-reasons*) o '(:failed :other)))
           ((not (member-eq tag '(:done :short))) o)
-          ;; a hand, a grant and a pool lease complete (:done 0) or not at all
-          ((member-eq kind '(:hand :pool :grant))
+          ;; a hand, a grant, a pool lease and an extent complete (:done 0)
+          ;; or not at all
+          ((member-eq kind '(:hand :pool :grant :extend))
            (if (and (eq tag :done) (equal n 0)) o '(:failed :malformed-completion)))
           ((member-eq kind *fn-rtc-in-kinds*)
            (if (and (natp n)
@@ -1076,7 +1099,7 @@
     (cond
      ((not (and (member-eq kind *fn-rtc-machine-kinds*)
                 (fn-rtc-live-p id inc s)
-                (fn-rtc-extrap extra)
+                (fn-rtc-kind-extrap kind extra)
                 (implies (eq kind :hand) (fn-rtc-hand-target-okp extra id s))
                 (or (eq kind :hand)
                     (not (fn-rtc-kind-out-p (if (eq kind :pool) :wait kind) id inc
@@ -1292,6 +1315,30 @@
               (fn-rtc-handed-to-live-p (fn-rtc-b-owner (fn-rtc-buffer (fn-rtc-h-buf hd) s))
                                        (fn-rtc-delivered-outcome u e) s)))))
 
+; The store-opened event (v2.2, Builder P's POST machine): (:opened ID INC
+; DATA), DATA = (KD EXT GEO), which the host emits once, right after the store
+; opens and before it accepts.  It is not a completion: it names no operation,
+; no use and no buffer.  It acts only on a static slot at its incarnation whose
+; open mark is still 0; that slot's machine is stepped with
+; (:opened (:done 0) ID INC DATA) and the mark becomes 1, so a second :opened
+; for the slot changes nothing and emits nothing, like an unmatched completion.
+(defun fn-rtc-opened-event-p (e)
+  (declare (xargs :guard t))
+  (and (true-listp e) (equal (len e) 4)
+       (eq (fn-rtc-get 0 e) :opened)
+       (natp (fn-rtc-get 1 e)) (natp (fn-rtc-get 2 e))))
+
+(defun fn-rtc-opened-acts-p (s e)
+  (declare (xargs :guard t))
+  (and (fn-rtc-opened-event-p e)
+       (<= 1 (fn-rtc-get 1 e))
+       (<= (fn-rtc-get 1 e) (fn-rtc-nstatic (fn-rtc-config s)))
+       (equal (fn-rtc-slot (fn-rtc-get 1 e) s) *fn-rtc-static-slot*)
+       (equal (fn-rtc-get 2 e) (fn-rtc-s-inc *fn-rtc-static-slot*))))
+
+; The DATA a delivered :opened event carries (Builder P reads it here).
+(defun fn-rtc-ev-opened-data (ev) (declare (xargs :guard t)) (fn-rtc-get 4 ev))
+
 (defun fn-rtc-acts-on-p (s e)
   (declare (xargs :guard t))
   (or (and (fn-rtc-completionp e)
@@ -1439,9 +1486,19 @@
                                                             fn-rtc-delivered-outcome fn-rtc-find-use)))))
   (let* ((cfg (fn-rtc-config s))
          (base (+ 4 (* 8 (fn-rtc-use-bound cfg)) (* 2 (fn-rtc-nslots cfg)) (fn-rtc-nbufs cfg))))
-    (if (not (fn-rtc-acts-on-p s e))
+    (cond
+     ((fn-rtc-opened-acts-p s e)
+      ;; the store opened: mark the static slot opened, step its machine
+      (let ((id (nfix (fn-rtc-get 1 e))) (inc (fn-rtc-get 2 e)))
+        (mv-let (s2 acts refused c)
+          (fn-rtc-deliver (fn-rtc-with-slot id *fn-rtc-opened-static-slot* s) id inc
+                          (fn-rtc-ev :opened '(:done 0) id inc (list (fn-rtc-get 3 e))) q)
+          (mv-let (s3 acts2) (fn-rtc-rearm s2)
+            (mv s3 (append acts acts2) refused (+ base c))))))
+     ((not (fn-rtc-acts-on-p s e))
         (mv-let (s2 acts) (fn-rtc-rearm (fn-rtc-end-use s e))
-          (mv s2 acts nil base))
+          (mv s2 acts nil base)))
+     (t
       (let* ((s1 (fn-rtc-end-use s e))
              (kind (fn-rtc-e-kind e)) (id (fn-rtc-e-id e)) (inc (fn-rtc-e-inc e))
              (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)))
@@ -1506,7 +1563,7 @@
           (mv-let (s2 acts refused c)
             (fn-rtc-deliver s1 id inc (fn-rtc-ev kind out id inc nil) q)
             (mv-let (s3 acts2) (fn-rtc-rearm s2)
-              (mv s3 (append acts acts2) refused (+ base c))))))))))
+              (mv s3 (append acts acts2) refused (+ base c)))))))))))
 
 (defun fn-rtc-step (s e q)
   (declare (xargs :guard t))
