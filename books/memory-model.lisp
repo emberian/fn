@@ -629,3 +629,31 @@
                                    fn-mm-launch-dynamic fn-mm-resident-limit fn-mm-least-observation))
            :use ((:instance (:definition fn-mm-gate-p)
                             (limit (fn-mm-resident-limit configured resident-obs)) (tot obs))))))
+
+; -----------------------------------------------------------------------------
+; THE INSTANCE QUOTA (contract v2's per-instance buffer quota, Builder A's
+; config term; coordinator ruling 2026-10-09): M_connection in buffers of CAP
+; octets, rounded up, so QUOTA buffers hold the connection's term and waste
+; less than one buffer.  CAP is A's (the payload span size from the path).
+(defun fn-mm-instance-quota (profile cfg cap)
+  (declare (xargs :guard t))
+  (if (posp cap)
+      (floor (+ (fn-mm-connection profile cfg) (- cap 1)) cap)
+    0))
+
+(defthm fn-mm-ceiling-quotient
+  (implies (and (natp c) (posp k))
+           (and (natp (floor (+ c (- k 1)) k))
+                (<= c (* k (floor (+ c (- k 1)) k)))
+                (< (* k (floor (+ c (- k 1)) k)) (+ c k))))
+  :rule-classes nil)
+
+(defthm fn-mm-instance-quota-is-the-ceiling
+  (implies (posp cap)
+           (and (natp (fn-mm-instance-quota profile cfg cap))
+                (<= (fn-mm-connection profile cfg) (* cap (fn-mm-instance-quota profile cfg cap)))
+                (< (* cap (fn-mm-instance-quota profile cfg cap)) (+ (fn-mm-connection profile cfg) cap))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-mm-instance-quota) (theory 'minimal-theory))
+           :use ((:instance fn-mm-terms-natp)
+                 (:instance fn-mm-ceiling-quotient (c (fn-mm-connection profile cfg)) (k cap))))))

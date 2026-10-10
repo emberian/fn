@@ -305,7 +305,10 @@ class NativeKeyStatementTests(unittest.TestCase):
         # status line (fn-rcl-store-classes-partition-the-articles); the
         # served statements and the signed articles are `signed' (retained
         # with the identity state, never released by article retention).
-        status = self.fn("operator", b.config, "status").stdout.decode("ascii", "replace")
+        # Row S3: B is stopped, and a stopped store's plain `status' is its
+        # checkpoint header; the replayed counts are `--replay'.
+        status = self.fn("operator", b.config, "status", "--replay").stdout.decode(
+            "ascii", "replace")
         counts = {k: int(v) for k, v in re.findall(
             r"\b(articles|reclaimable|held|reclaimed|signed|kept)=(\d+)", status)}
         witness("status classes", counts)
@@ -540,7 +543,9 @@ class NativeKeyStatementTests(unittest.TestCase):
         return node
 
     def transactions_used(self, node):
-        status = self.fn("operator", node.config, "status").stdout.decode("ascii", "replace")
+        # Row S3: NODE is stopped; the headroom line is the replay's.
+        status = self.fn("operator", node.config, "status", "--replay").stdout.decode(
+            "ascii", "replace")
         for line in status.splitlines():
             if line.startswith("headroom "):
                 fields = dict(w.split("=", 1) for w in line.split()[1:])

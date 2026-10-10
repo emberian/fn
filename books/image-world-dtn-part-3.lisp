@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
+(include-book "owner-served-invariants")
+(include-book "owner-feed-port")
 (include-book "owner-feed-live-carried")
 (include-book "owner-feed-reconfigure-counted")
 (include-book "owner-outcome-counted")

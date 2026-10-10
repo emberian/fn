@@ -1372,6 +1372,9 @@ class ArtifactSet:
     entries: dict[str, tuple[Path, dict]] = field(default_factory=dict)
     required: tuple[str, ...] = ()
     source_identity: str = ""
+    # Resident certificates outside the closure that this set's pairs cannot
+    # sit under (`resident_parents`); installing the set removes them.
+    displaced: tuple[str, ...] = ()
 
     @property
     def missing(self) -> tuple[str, ...]:
@@ -1495,24 +1498,30 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
             grouped[group_key].entries.setdefault(name, (directory, meta))
 
     candidates = list(grouped.values())
+    pins: dict[str, tuple[Path, dict]] = {}
     if acl2 is not None:
         if pair_checker is None:
             pair_checker = memoized_pair_checker(cache)
+        pins = resident_parents(root, cache, required, toolchain_identity)
         for candidate in candidates:
             if candidate.complete:
-                candidate.entries = compatible_partial_choices(
+                candidate.entries, candidate.displaced = choose_among_resident(
                     root, {name: [entry] for name, entry in candidate.entries.items()},
-                    acl2, pair_checker)
+                    acl2, pair_checker, pins)
     for toolchain_id, (toolchain, by_book) in pooled.items():
         ordered = {name: sorted(entries, key=lambda entry: (
             str(entry[1].get("published_at", "")), str(entry[0])), reverse=True)
                    for name, entries in by_book.items()}
-        chosen = (compatible_partial_choices(root, ordered, acl2, pair_checker)
-                  if acl2 is not None else
-                  {name: newest(entries) for name, entries in by_book.items()})
+        displaced: tuple[str, ...] = ()
+        if acl2 is not None:
+            chosen, displaced = choose_among_resident(
+                root, ordered, acl2, pair_checker, pins)
+        else:
+            chosen = {name: newest(entries) for name, entries in by_book.items()}
         origins = {str(meta.get("origin_root", "")) for _, meta in chosen.values()}
         if len(origins) < 2 and (acl2 is None or any(
                 candidate.complete and candidate.entries == chosen
+                and candidate.displaced == displaced
                 for candidate in candidates)):
             # One origin covers everything it can: that origin's own group
             # already is this set.
@@ -1532,17 +1541,18 @@ def artifact_sets(root: Path, cache: Path, roots: Iterable[str],
             toolchain=toolchain,
             entries=chosen,
             required=required,
-            source_identity=source_id)
+            source_identity=source_id,
+            displaced=displaced)
         candidates.append(composed)
 
-    def order(candidate: ArtifactSet) -> tuple[int, int, int, int, str]:
+    def order(candidate: ArtifactSet) -> tuple[int, int, int, int, int, str]:
         # Complete first, then the set that covers most of the requested
         # closure; a single origin before a composed one of the same
         # coverage, and among single origins this tree, then a snapshot.
         own = candidate.origin_root == target
         snapshot = candidate.origin_kind != LIVE_ORIGIN
-        return (int(candidate.complete), len(candidate.entries),
-                int(not candidate.composed),
+        return (int(candidate.complete), -len(candidate.displaced),
+                len(candidate.entries), int(not candidate.composed),
                 int(own) * 2 + int(snapshot), candidate.identity)
 
     return sorted(candidates, key=order, reverse=True)
@@ -1663,6 +1673,7 @@ def install_artifact_set(root: Path, cache: Path, roots: Iterable[str],
                 report.installed += 1
             else:
                 report.kept += 1
+        report.removed_foreign += remove_installed(root, chosen.displaced)
     except EntryChanged:
         if _attempt >= ENTRY_ATTEMPTS - 1:
             raise
@@ -1678,6 +1689,7 @@ def compatible_partial_choices(
     root: Path, options: dict[str, list[tuple[Path, dict]]], acl2: Path,
     pair_checker=cert_alists.acl2_certificate_pairs,
     prefer: Iterable[str] = (),
+    pinned: Iterable[str] = (),
 ) -> dict[str, tuple[Path, dict]]:
     """Choose a partial set whose ACL2 certificate alists actually agree.
 
@@ -1697,6 +1709,11 @@ def compatible_partial_choices(
     here includes) that is still missing gets another search started from each
     of its pairs with every dependency on a version that pair agrees with.
     The answer keeps the most preferred books, then the most books.
+
+    PINNED names options that are resident certificates outside the closure
+    being installed (`resident_parents`); they are preferred before all else,
+    so a child is switched to a version they agree with before a pinned book
+    is given up, and one that is given up is absent from the answer.
     """
     indexed: list[tuple[str, Path, dict]] = []
     ids: dict[str, list[int]] = {}
@@ -1705,7 +1722,17 @@ def compatible_partial_choices(
         for directory, meta in options[name]:
             ids[name].append(len(indexed))
             indexed.append((name, directory, meta))
-    dependencies = {name: set(closure(root, name)) - {name} for name in options}
+    # A pinned book is a resident parent outside the closure being installed:
+    # only its dependencies inside OPTIONS are this install's to agree with.
+    # The rest are not chosen here and stay as they are, so counting them as
+    # unchosen would give up every such parent (train 86 on hbox: protocol
+    # --wire's install of books/wire-export's closure removed the image-world
+    # certificates the same run had just certified, since each includes books
+    # outside that closure).
+    pinned = list(dict.fromkeys(pinned))
+    dependencies = {name: (set(closure(root, name)) - {name}) & (set(options) if name in pinned else
+                                                                 set(closure(root, name)))
+                    for name in options}
     pairs = [(p, c) for parent in sorted(options)
              for child in sorted(dependencies[parent]) if child in ids
              for p in ids[parent] for c in ids[child]]
@@ -1837,9 +1864,11 @@ def compatible_partial_choices(
                         break
         return selected
 
-    wanted = [name for name in (prefer or [n for n in options
-                                           if not any(n in dependencies[o] for o in options)])
-              if ids.get(name)]
+    pinned = [name for name in dict.fromkeys(pinned) if ids.get(name)]
+    wanted = pinned + [name for name in (prefer or [n for n in options
+                                                    if not any(n in dependencies[o]
+                                                               for o in options)])
+                       if ids.get(name) and name not in pinned]
 
     def score(chosen: dict[str, int]) -> tuple[int, int]:
         return (sum(1 for name in wanted if name in chosen), len(chosen))
@@ -1862,6 +1891,75 @@ def compatible_partial_choices(
                 best = trial
     return {name: (indexed[candidate][1], indexed[candidate][2])
             for name, candidate in best.items()}
+
+
+def resident_parents(root: Path, cache: Path, required: Iterable[str],
+                     toolchain_identity: str | None
+                     ) -> dict[str, tuple[Path, dict]]:
+    """Cache entries for the certificates already in ROOT that include a book
+    of REQUIRED but are not themselves being installed.
+
+    An install of a smaller closure (the dtn profile's, after the default's)
+    chooses its pairs among its own books only.  A resident parent outside
+    it then keeps a certificate whose recorded book-hash of the replaced
+    child is another certification's, and ACL2 refuses the pair at the next
+    include (persvati, 2026-10-10, native-eefe81c43a0d-r2: the default
+    acquire left image-world-part-1 over one bp-recovery-profile; the dtn
+    acquire, whose closure holds bp-recovery-profile but not
+    image-world-part-1, installed another, and every image build warned
+    [Uncertified]).  A resident is found by content among the cache entries
+    of its book; one the cache does not hold cannot be probed and is left
+    alone.
+    """
+    needed = set(required)
+    found: dict[str, tuple[Path, dict]] = {}
+    for source in book_sources(root):
+        cert = source.with_suffix(".cert")
+        name = book_name(root, source)
+        if name in needed or not cert.is_file():
+            continue
+        try:
+            if not needed.intersection(closure(root, name)):
+                continue
+            entries = book_entries(
+                root, cache, name,
+                lambda meta: (not toolchain_identity
+                              or meta.get("toolchain_identity") == toolchain_identity))
+        except (UnreadableBook, OSError):
+            continue
+        digest = content_hash(cert)
+        for directory, meta in entries:
+            if content_hash(directory / "book.cert") == digest:
+                found[name] = (directory, meta)
+                break
+    return found
+
+
+def choose_among_resident(root: Path, options: dict[str, list[tuple[Path, dict]]],
+                          acl2: Path, pair_checker,
+                          pins: dict[str, tuple[Path, dict]], prefer: Iterable[str] = ()
+                          ) -> tuple[dict[str, tuple[Path, dict]], tuple[str, ...]]:
+    """`compatible_partial_choices` over OPTIONS and the resident parents PINS:
+    the choice for OPTIONS' books, and the pinned books it could not keep."""
+    chosen = compatible_partial_choices(
+        root, {**options, **{name: [entry] for name, entry in pins.items()}},
+        acl2, pair_checker, prefer=prefer, pinned=pins)
+    displaced = tuple(sorted(name for name in pins if name not in chosen))
+    return ({name: entry for name, entry in chosen.items() if name not in pins},
+            displaced)
+
+
+def remove_installed(root: Path, names: Iterable[str]) -> int:
+    """Delete the local pair of each of NAMES; how many files went."""
+    removed = 0
+    for name in names:
+        source = root / f"{name}.lisp"
+        for suffix in (".cert", ".port", ".fasl"):
+            artifact = source.with_suffix(suffix)
+            if artifact.is_file():
+                artifact.unlink()
+                removed += 1
+    return removed
 
 
 # The image umbrellas (obstructions-7 item 64): remote_check's per-book
@@ -2084,8 +2182,10 @@ def install_partial(root: Path, cache: Path, roots: Iterable[str],
                          "certificate-alist compatibility")
     if pair_checker is None:
         pair_checker = memoized_pair_checker(cache)
-    selected = compatible_partial_choices(root, options, acl2, pair_checker,
-                                          prefer=roots)
+    selected, displaced = choose_among_resident(
+        root, options, acl2, pair_checker,
+        resident_parents(root, cache, required, toolchain_identity), prefer=roots)
+    report.removed_foreign += remove_installed(root, displaced)
     for name in sorted(required):
         source = root / f"{name}.lisp"
         chosen = selected.get(name)

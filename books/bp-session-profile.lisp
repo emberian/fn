@@ -47,7 +47,7 @@
  (implies (and (true-listp rows) (equal (len rows) 6) (fn-bpsp-lines xs line rows))
   (and (true-listp (fn-bpsp-lines xs line rows)) (equal (len (fn-bpsp-lines xs line rows)) 6))))
 (defun fn-bpsp-read (octets)
- (declare (xargs :guard t))
+ (declare (xargs :guard (fn-cbor-octet-listp octets)))
  (and (<= (len octets) 256)
   (let* ((r (fn-bpsp-lines octets nil '(nil nil nil nil nil nil)))
          (p (and r (list (if (first r) (first r) 2)

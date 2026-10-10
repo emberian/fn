@@ -44,14 +44,16 @@ class CertifiedWorldTests(unittest.TestCase):
             raise unittest.SkipTest("capability -- " + missing +
                                     "; the train's box step runs this module")
 
-    def test_each_world_step_runs_rather_than_reporting_not_run(self):
+    def test_each_world_step_runs_and_passes(self):
         for name, command in STEPS:
             with self.subTest(step=name):
                 done = subprocess.run(command, cwd=ROOT, capture_output=True, text=True,
                                       timeout=3600)
                 said = done.stdout + done.stderr
-                self.assertNotEqual(done.returncode, 2, said[-2000:])
                 self.assertNotIn("NOT RUN", said, said[-2000:])
+                # with the world in hand each step's verdict is the box step's:
+                # a red blocks the train, as a skip does (ruling (b) 2026-10-10)
+                self.assertEqual(done.returncode, 0, said[-2000:])
 
 
 if __name__ == "__main__":

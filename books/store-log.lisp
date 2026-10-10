@@ -90,9 +90,14 @@
 ; frame whose payload is the chain and the records PACKED, each after its
 ; length in four octets.  A batch's log is its greedy chunks
 ; (fn-lg-chunk-len): as many records as fit one frame's payload bound,
-; *fn-frame-max-payload*; a batch below four GiB is one entry.
+; *fn-lg-batch-payload-max*; a batch below sixteen MiB is one entry.
 
 (defconst *fn-lg-batch-kind* 2)
+
+; The packed-batch payload ceiling: the writer cuts batches at it, the open
+; bounds a kind-2 entry by it; it equals owner-log-route's
+; *fn-olr-batch-octets-default*, the writer's per-step work bound.
+(defconst *fn-lg-batch-payload-max* 16777216)
 
 ; The log's functions execute guard-verified, every walk by a loop (lane
 ; depth-debt-2, PRF-919): the host reaches fn-lg-log, fn-lg-last-trailer and
@@ -218,7 +223,7 @@
 (defun fn-lg-fit-count-loop (records used acc)
   (declare (xargs :guard (and (natp used) (acl2-numberp acc)) :verify-guards nil))
   (if (and (consp records)
-           (<= (+ (nfix used) 4 (len (car records))) *fn-frame-max-payload*))
+           (<= (+ (nfix used) 4 (len (car records))) *fn-lg-batch-payload-max*))
       (fn-lg-fit-count-loop (cdr records)
                             (+ (nfix used) 4 (len (car records)))
                             (+ 1 acc))
@@ -228,7 +233,7 @@
   (declare (xargs :verify-guards nil :guard (natp used)))
   (mbe :logic
        (if (and (consp records)
-                (<= (+ (nfix used) 4 (len (car records))) *fn-frame-max-payload*))
+                (<= (+ (nfix used) 4 (len (car records))) *fn-lg-batch-payload-max*))
            (1+ (fn-lg-fit-count (cdr records) (+ (nfix used) 4 (len (car records)))))
          0)
        :exec (fn-lg-fit-count-loop records used 0)))
@@ -336,7 +341,7 @@
        (fn-lg-recordsp chunk max)
        (or (atom (cdr chunk))
            (<= (+ *fn-frame-trailer-octets* (fn-lg-pack-len chunk))
-               *fn-frame-max-payload*))))
+               *fn-lg-batch-payload-max*))))
 
 ; -----------------------------------------------------------------------------
 ; The scan.
@@ -366,12 +371,12 @@
     (if (and n (<= n (len octets))) (fn-bs-take n octets) nil)))
 
 ; The payload bound the slice is opened under: a KIND 2 header (its sixth
-; octet) names a packed chunk, bounded by the frame's own limit; any other
+; octet) names a packed chunk, bounded by the batch payload ceiling; any other
 ; is one record under the log's record bound MAX, as before.
 (defun fn-lg-open-bound (slice max)
   (declare (xargs :guard t :verify-guards nil))
   (if (and (consp slice) (equal (nth 5 slice) *fn-lg-batch-kind*))
-      *fn-frame-max-payload*
+      *fn-lg-batch-payload-max*
     max))
 
 ; A packed body the scan accepts: exactly its records, at least two, each
@@ -595,7 +600,7 @@
 
 (defun fn-lg-kind-bound (chunk max)
   (declare (xargs :guard t))
-  (if (equal (fn-lg-frame-kind chunk) *fn-lg-batch-kind*) *fn-frame-max-payload* max))
+  (if (equal (fn-lg-frame-kind chunk) *fn-lg-batch-kind*) *fn-lg-batch-payload-max* max))
 
 ; The packed body: its length, its octets, and its records read back.
 (local
@@ -940,6 +945,13 @@
    :hints (("Goal" :induct (fn-lg-fit-count records used)))))
 
 (local
+ (defthm fn-lg-fit-count-fits-batch
+   (implies (and (natp used) (<= used *fn-lg-batch-payload-max*))
+            (<= (+ used (fn-lg-pack-len (fn-bs-take (fn-lg-fit-count records used) records)))
+                *fn-lg-batch-payload-max*))
+   :hints (("Goal" :induct (fn-lg-fit-count records used)))))
+
+(local
  (defthm fn-lg-recordsp-of-take
    (implies (and (fn-lg-recordsp records max) (<= (nfix k) (len records)))
             (fn-lg-recordsp (fn-bs-take k records) max))
@@ -964,9 +976,9 @@
   (implies (and (fn-lg-recordsp records max) (consp records))
            (fn-lg-chunkp (fn-bs-take (fn-lg-chunk-len records) records) max))
   :hints (("Goal" :do-not-induct t
-           :in-theory (disable fn-lg-recordsp fn-lg-fit-count-fits)
+           :in-theory (disable fn-lg-recordsp fn-lg-fit-count-fits fn-lg-fit-count-fits-batch)
            :cases ((<= (fn-lg-fit-count records *fn-frame-trailer-octets*) 1))
-           :use ((:instance fn-lg-fit-count-fits (used *fn-frame-trailer-octets*))))))
+           :use ((:instance fn-lg-fit-count-fits-batch (used *fn-frame-trailer-octets*))))))
 
 (local
  (defthm fn-lg-take-then-nthcdr-append
@@ -979,6 +991,18 @@
             (equal (append (fn-bs-take k x) (append (nthcdr k x) y)) (append x y)))
    :hints (("Goal" :use fn-lg-take-then-nthcdr-append
             :in-theory (disable fn-lg-take-then-nthcdr-append)))))
+
+; The ceiling is a chunk size, not a bound on a record: a record that does
+; not fit a batch is cut as its own single-record entry of the record kind,
+; opened under the record bound MAX.
+(defthm fn-lg-oversized-record-is-its-own-entry
+  (implies (and (consp records)
+                (< *fn-lg-batch-payload-max* (+ 4 (len (car records)))))
+           (and (equal (fn-lg-chunk-len records) 1)
+                (equal (fn-lg-frame-kind (fn-bs-take 1 records)) *fn-lg-record-kind*)))
+  :hints (("Goal" :in-theory (enable fn-lg-chunk-len fn-lg-frame-kind)
+           :expand ((fn-lg-fit-count records *fn-frame-trailer-octets*)
+                    (fn-bs-take 1 records) (fn-bs-take 0 (cdr records))))))
 
 (in-theory (disable fn-lg-chunk-len))
 

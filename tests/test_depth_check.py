@@ -212,6 +212,31 @@ class ProgramEntryTests(unittest.TestCase):
     def test_a_baseline_without_the_key_refuses_every_entry(self):
         self.assertEqual(len(d.check_program([self.ROW], {"bounded": {}, "debt": {}})), 1)
 
+    def test_a_build_time_entry_mentioned_off_its_callers_fails(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "raw-trap.lisp").write_text("(fn-rdv-row-digest name kvs w)\n")
+            served = root / "host" / "native" / "nntp-serve.lisp"
+            served.write_text("(fn-rdv-row-digest-other x)\n")
+            base = {"program": {"fn-rdv-row-digest": "build time only"},
+                    "program_build_time": {"fn-rdv-row-digest": ["host/native/raw-trap.lisp"]}}
+            self.assertEqual(d.check_build_time(base, root), [])
+            served.write_text("(fn-rdv-row-digest name kvs w)\n")
+            problems = d.check_build_time(base, root)
+            self.assertEqual(len(problems), 1)
+            self.assertIn("host/native/nntp-serve.lisp", problems[0])
+            unlisted = d.check_build_time({"program": {}, "program_build_time":
+                                           {"fn-rdv-row-digest": ["host/native/raw-trap.lisp",
+                                                                  "host/native/nntp-serve.lisp"]}}, root)
+            self.assertEqual(len(unlisted), 1)
+            self.assertIn("not under \"program\"", unlisted[0])
+
+    def test_the_loaded_baseline_carries_the_build_time_list(self):
+        self.assertIn("fn-rdv-row-digest", d.load_baseline()["program_build_time"])
+        self.assertEqual(d.check_build_time(d.load_baseline()), [])
+
     def test_only_program_definitions_are_rows(self):
         defs = {
             "fn-a": d.callgraph.Definition(

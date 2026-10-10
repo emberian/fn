@@ -57,6 +57,13 @@
    "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
    "provenance": "keystone_critical.py --declare sha256:c1fe79d4f2b0d398ab3e46b4092186850b9175f81c70dc277b12cc1935f5373a"
   },
+  "fn-bpnp-rotate-step-proposes-only-own-projection": {
+   "subject": "fn-bpnp-rotate-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotate-step-proposes-only-own-projection",
+   "mutation": "tests/acl2/bp-node-rotation-due-tests.lisp::bprd-mutant-rotate-step-on-quiescence",
+   "provenance": "keystone_critical.py --declare sha256:03821dce8e899473fb7aeb65bf5e6763c03f401089c98ce49606578e91a54eee"
+  },
   "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work": {
    "subject": "fn-bpnp-rotate-step",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
@@ -161,6 +168,13 @@
    "trace_witness": "tests/acl2/store-log-critical-teeth-tests.lisp::fn-lgu-host-kernel-acknowledges-only-recoverable-records",
    "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode",
    "provenance": "keystone_critical.py --declare sha256:02422ef1703b7be6f7ba649454e5cb3942760f6697d2880d5620f31203fc5ac1"
+  },
+  "fn-mo-header-decide-holds-the-header": {
+   "subject": "fn-mo-header-decide",
+   "host_test": "tests/test_native_operator_verbs.py::test_a_stopped_status_holds_no_store_and_a_replay_names_the_totals_it_cannot_see",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-stopped-status-holds-the-header",
+   "mutation": "tests/acl2/heap-command-tests.lisp::configuration-history-uncharged",
+   "provenance": "keystone_critical.py --declare sha256:83f445db6ad11fb61c209beaff185dc54a0feb128795c2944f5da85c8bddb691"
   },
   "fn-orcs-predict-seal-refines-intern": {
    "subject": "fn-orcs-predict-rows-at",

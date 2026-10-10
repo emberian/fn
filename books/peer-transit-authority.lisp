@@ -120,20 +120,49 @@
 ; group has an authority.  The column is keyed by the policy's group name in
 ; octets (fn-pol-namep), the configuration by the string.
 
-(defun fn-pta-groups-verdict (index keyring v gen names s)
-  (declare (xargs :guard (fn-prin-keyringp keyring)))
+; Executes by a loop (PKT-877, lane d-depth-excess-d): the recursion took one
+; control-stack frame per group name.  The :logic is the recursion, unchanged;
+; the :exec walks the names once, carrying whether an earlier group admitted.
+(defun fn-pta-groups-verdict-loop (index keyring v gen names s admitted)
+  (declare (xargs :guard (fn-prin-keyringp keyring) :verify-guards nil))
   (if (atom names)
-      :ungoverned
+      (if admitted :admitted :ungoverned)
     (let ((authority (fn-pta-group-authority v gen (car names))))
       (if (not (and (stringp (car names)) authority))
-          (fn-pta-groups-verdict index keyring v gen (cdr names) s)
+          (fn-pta-groups-verdict-loop index keyring v gen (cdr names) s admitted)
         (let ((verdict (fn-pta-group-verdict index keyring
                                              (fn-record-string-octets (car names))
                                              authority s)))
           (if (equal verdict :admitted)
-              (let ((rest (fn-pta-groups-verdict index keyring v gen (cdr names) s)))
-                (if (equal rest :ungoverned) :admitted rest))
-            verdict))))))
+              (fn-pta-groups-verdict-loop index keyring v gen (cdr names) s t)
+            (if (and admitted (equal verdict :ungoverned)) :admitted verdict)))))))
+
+(defun fn-pta-groups-verdict (index keyring v gen names s)
+  (declare (xargs :guard (fn-prin-keyringp keyring) :verify-guards nil))
+  (mbe :logic
+       (if (atom names)
+           :ungoverned
+         (let ((authority (fn-pta-group-authority v gen (car names))))
+           (if (not (and (stringp (car names)) authority))
+               (fn-pta-groups-verdict index keyring v gen (cdr names) s)
+             (let ((verdict (fn-pta-group-verdict index keyring
+                                                  (fn-record-string-octets (car names))
+                                                  authority s)))
+               (if (equal verdict :admitted)
+                   (let ((rest (fn-pta-groups-verdict index keyring v gen (cdr names) s)))
+                     (if (equal rest :ungoverned) :admitted rest))
+                 verdict)))))
+       :exec (fn-pta-groups-verdict-loop index keyring v gen names s nil)))
+
+(local
+ (defthm fn-pta-groups-verdict-loop-is-verdict
+   (equal (fn-pta-groups-verdict-loop index keyring v gen names s admitted)
+          (let ((r (fn-pta-groups-verdict index keyring v gen names s)))
+            (if admitted (if (equal r :ungoverned) :admitted r) r)))
+   :hints (("Goal" :induct (fn-pta-groups-verdict-loop index keyring v gen names s admitted)))))
+
+(verify-guards fn-pta-groups-verdict-loop)
+(verify-guards fn-pta-groups-verdict)
 
 ; Its specification, member by member.
 (defun fn-pta-some-governed (v gen names)

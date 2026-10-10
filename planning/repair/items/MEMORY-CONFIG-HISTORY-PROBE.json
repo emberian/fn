@@ -1,0 +1,13 @@
+{
+ "category": "bug",
+ "detail": "Codex re-check of memory landing 2 (build/memory/l2/codex-review2.final.md in lane/memory, F1 and F4). (1) host/native/heap.lisp fnn-heap-store-profile loads the effective profile (fnn-load-config with its overlay: every configuration record as a vector and an octet list, io.lisp:1812) inside the probe, whose boot heap is the core's MiB + 128 (packaging/fn:96), before the configuration octets are observed. A store with a million 256-octet path-identity records needs about 4 GB of conses there. Offline operation takes the same path. (2) status --watch reloads the configuration each iteration (the next-run heap line, the live limits), so a history grown after the observation is never charged. Fix shape: observe config/ octets first and size or refuse by name before loading; reload under the charged observation only, or refuse a grown history by name. O-CONFIG (33 heap octets an octet, books/heap-command.lisp fn-mo-config-heap) is measured in landing 4.",
+ "file": "host/native/heap.lisp",
+ "id": "MEMORY-CONFIG-HISTORY-PROBE",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "memory-l2",
+ "state": "open",
+ "title": "The heap probe and a watching status load the whole configuration history before any figure funds it",
+ "updated": "2026-10-09T21:47:38Z"
+}

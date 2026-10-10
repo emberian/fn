@@ -419,7 +419,9 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         hwm1 = self.stop()
         print("NATIVE-HEAP vmhwm run=1 kB={}".format(hwm1))
 
-        reopened = self.run_fn("operator", config, "status")
+        # Row S3: a stopped `status' is its checkpoint header's; the open
+        # line is the replay's (`status --replay' reopens the store).
+        reopened = self.run_fn("operator", config, "status", "--replay")
         self.assertEqual(reopened.returncode, EXIT_OK, text(reopened))
         self.assertRegex(reopened.stdout.decode(), r"open=checkpoint:\d+")
         self.start()
@@ -492,7 +494,8 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         2026-09-27: lane membership-budget), unless `init --budget MB' names a
         target budget that holds it: then it is written for that machine
         (`within-budget=no target-budget=16384 MB', the scale preset) and
-        the launcher refuses its run and status here by name."""
+        the launcher refuses its run here by name; its stopped status holds
+        no store and is accepted."""
         config, port = self.config("development")
         refused = self.run_fn("operator", config, "init", "--profile", "development",
                               "local.test")
@@ -518,21 +521,35 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         # an EMPTY development store's run fits 2 GiB (the open's chunk is
         # bounded by the input, and a run sizes the open by the store on
         # disk), so the launcher's refusal is shown on the scale preset,
-        # whose state at its bounds alone is past 2 GiB.
-        made = self.run_fn("operator", config, "init", "--budget", "16384", "--profile", "scale",
+        # whose state at its bounds alone is past 2 GiB.  The target budget
+        # is the scale store's own reservation, as init's refusal names it
+        # (never a figure written here: 16384 MB held it until the scale
+        # figure grew past it).
+        asked = self.run_fn("operator", config, "init", "--profile", "scale", "local.test",
+                            command=[IMAGE, "--fn"])
+        self.assertEqual(asked.returncode, EXIT_REFUSED, text(asked))
+        target = INIT_REFUSED.search(text(asked))
+        self.assertIsNotNone(target, text(asked))
+        made = self.run_fn("operator", config, "init", "--budget", target.group(3), "--profile", "scale",
                            "local.test", command=[IMAGE, "--fn"])
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         self.assertRegex(made.stdout.decode(),
                          r"init: profile=scale sizing=requested reservation=\d+ MB "
-                         r"budget=\d+ MB within-budget=no target-budget=16384 MB")
-        for verb in ("run", "status"):
-            result = self.run_fn("operator", config, verb)
-            self.assertEqual(result.returncode, EXIT_REFUSED, text(result))
-            found = REFUSED.search(text(result))
-            self.assertIsNotNone(found, text(result))
-            self.assertGreater(int(found.group(1)), int(found.group(2)))
-            self.assertEqual(int(found.group(2)), LIMIT // (1024 * 1024))
-            self.assertEqual(result.stdout, b"")
+                         r"budget=\d+ MB within-budget=no target-budget=" + target.group(3) + " MB")
+        # The launcher refuses its run by name; its stopped `status' holds the
+        # checkpoint header and the configuration history, not the store
+        # (books/heap-command.lisp fn-mo-header-decide-holds-the-header), so
+        # it is accepted here (lane memory, landing 2).
+        result = self.run_fn("operator", config, "run")
+        self.assertEqual(result.returncode, EXIT_REFUSED, text(result))
+        found = REFUSED.search(text(result))
+        self.assertIsNotNone(found, text(result))
+        self.assertGreater(int(found.group(1)), int(found.group(2)))
+        self.assertEqual(int(found.group(2)), LIMIT // (1024 * 1024))
+        self.assertEqual(result.stdout, b"")
+        status = self.run_fn("operator", config, "status")
+        self.assertEqual(status.returncode, EXIT_OK, text(status))
+        self.assertIn("max-history-octets=", status.stdout.decode())
         with self.assertRaises(OSError):
             socket.create_connection(("127.0.0.1", port), timeout=2).close()
 

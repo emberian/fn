@@ -11,26 +11,13 @@
 ; Emitted actions are well formed and recorded.
 (defun fn-rtc-step-actions (s e q)
   (declare (xargs :guard t))
-  (if (not (fn-rtc-acts-on-p s e))
-      (mv-let (s2 a) (fn-rtc-rearm (fn-rtc-end-use s e)) (declare (ignore s2)) a)
-    (let ((s1 (fn-rtc-end-use s e))
-          (kind (fn-rtc-e-kind e))
-          (out (fn-rtc-delivered-outcome (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) e)))
-      (cond ((eq kind :accept)
-             (mv-let (s2 a r c) (fn-rtc-accept-branch s1 out q) (declare (ignore s2 r c)) a))
-            ((eq kind :close)
-             (mv-let (s2 a) (fn-rtc-close-branch s1 (fn-rtc-e-id e) (fn-rtc-e-inc e)) (declare (ignore s2)) a))
-            (t (mv-let (s2 a r c) (fn-rtc-deliver s1 (fn-rtc-e-id e) (fn-rtc-e-inc e) (list kind out) q)
-                 (declare (ignore s2 r c)) a))))))
+  (mv-let (s2 a r c) (fn-rtc-step* s e q)
+    (declare (ignore s2 r c)) a))
 
 (defthm fn-rtc-step-actions-is
   (equal (mv-nth 1 (fn-rtc-step s e q)) (fn-rtc-step-actions s e q))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-step fn-rtc-step* fn-rtc-step-actions)
-                                  (fn-rtc-acts-on-p fn-rtc-e-kind fn-rtc-e-id fn-rtc-e-inc
-                                   fn-rtc-delivered-outcome fn-rtc-find-use fn-rtc-key fn-rtc-end-use
-                                   fn-rtc-rearm fn-rtc-deliver fn-rtc-accept-branch fn-rtc-close-branch
-                                   fn-rtc-use-bound fn-rtc-nslots fn-rtc-nbufs fn-rtc-h-len fn-rtc-u-hd
-                                   member-equal fn-rtc-config nfix fn-rtc-cap fn-rtc-uses)))))
+  :hints (("Goal" :in-theory
+           (union-theories (theory 'minimal-theory) '(fn-rtc-step fn-rtc-step-actions)))))
 
 (in-theory (disable fn-rtc-step-actions))
 

@@ -4674,7 +4674,7 @@
 ;; SOURCE) or (:refuse REASON LINE), LINE the service log's line naming the
 ;; transport peer (FAMILY . ADDRESS).
 (defun fn-owner-proxy-step (family address octets deadline now state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :mode :program :guard (fn-cbor-octet-listp octets)))
   (let ((r (fn-pxy-observe octets deadline now)))
     (value (if (equal (car r) :refuse)
                (list :refuse (cadr r) (fn-pxy-refusal-line (cadr r) (cons family address)))
@@ -4682,7 +4682,8 @@
 
 ; host/native/mux.lisp dispatches it (lane tls-handshake-budget-3).
 (definterface fn-owner-proxy-step
-  :class :program)
+  :class :program
+  :kinds ((octets fn-cbor-octet-listp)))
 
 ;; A timer observation: nil while time remains, otherwise ACL2's refusal
 ;; line. The same check runs before a read; fn-owner-proxy-step checks again

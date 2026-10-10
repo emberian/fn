@@ -39,5 +39,5 @@
 ; BUDGET) as fn-ock-publication-stream answered it, or nil; the status
 ; report carries it (host/native-live-status-host.lisp).
 (defun fn-owner-sco-deferred (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (fn-opub-get :deferred (fn-ost-publication state)))

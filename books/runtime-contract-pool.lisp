@@ -6,12 +6,12 @@
 ; keystones are about, and its EXECUTABLE is arrays: the slot table and the
 ; machine states one cell per slot, each buffer's (generation owner fill) one
 ; cell per buffer, and every buffer's octets in ONE (unsigned-byte 8) array,
-; buffer h at cells [h*cap, h*cap + cap).  No buffer's bytes are ever a list
+; buffer h at cells [base(h), base(h) + cap(h)).  No buffer's bytes are ever a list
 ; at run time; a worker's input lands in the array in place.
 ;
 ; Every export's :logic is the contract's own state operation (fn-rtc-slot,
 ; fn-rtc-with-slot, fn-rtc-with-buffer of the buffer's fields, fn-rtc-issue,
-; fn-rtc-release-all, fn-rtc-borrow ...), so a function written over the
+; fn-rtc-release-all, fn-rtc-view ...), so a function written over the
 ; exports IS, logically, the contract's function over the list state; the
 ; executable layer (books/runtime-contract-exec.lisp) proves that equality
 ; once and the keystones follow.
@@ -40,7 +40,7 @@
        (equal (fn-rtc-next-op (fn-rtc-c-abs c)) (nfix (nth *fn-rtc-c-nop* c)))
        (equal (fn-rtc-pool (fn-rtc-c-abs c))
               (fn-rtc-c-pool 0 (fn-rtc-nbufs (nth *fn-rtc-c-cfg* c))
-                             (fn-rtc-cap (nth *fn-rtc-c-cfg* c))
+                             (nth *fn-rtc-c-cfg* c)
                              (nth *fn-rtc-c-metai* c) (nth *fn-rtc-c-bytesi* c)))))
 
 (in-theory (disable fn-rtc-c-get-is-nth fn-rtc-c-get-non-natp fn-rtc-c-abs))
@@ -48,11 +48,14 @@
 (defthm fn-rtc-c-abs-buffer
   (equal (fn-rtc-buffer h (fn-rtc-c-abs c))
          (if (< (nfix h) (fn-rtc-nbufs (nth *fn-rtc-c-cfg* c)))
-             (fn-rtc-c-buffer (nfix h) (fn-rtc-cap (nth *fn-rtc-c-cfg* c))
+             (fn-rtc-c-buffer (nfix h) (nth *fn-rtc-c-cfg* c)
                               (nth *fn-rtc-c-metai* c) (nth *fn-rtc-c-bytesi* c))
            nil))
   :hints (("Goal" :do-not '(preprocess) :in-theory (e/d (fn-rtc-buffer fn-rtc-c-get-non-natp) (fn-rtc-c-buffer))
            :cases ((natp h)))))
+
+(local (defun fn-rtc-c-ind-km (i k meta)
+  (if (or (zp i) (atom meta)) (list i k meta) (fn-rtc-c-ind-km (- i 1) (+ 1 k) (cdr meta)))))
 
 (local (defun fn-rtc-c-ind-nth (i j n)
   (if (or (zp i) (zp n)) (list i j n) (fn-rtc-c-ind-nth (- i 1) (+ 1 (nfix j)) (- n 1)))))
@@ -79,18 +82,24 @@
   :hints (("Goal" :induct (fn-rtc-c-free-slot-loop i c)
            :in-theory (disable nthcdr))))
 
-(defthm fn-rtc-c-get-of-borrow
-  (equal (fn-rtc-get h (fn-rtc-borrow pool))
-         (if (< (nfix h) (len pool))
-             (let ((b (fn-rtc-get h pool)))
-               (if (and (eq (fn-rtc-get 0 (fn-rtc-b-owner b)) :leased)
-                        (eq (fn-rtc-get 3 (fn-rtc-b-owner b)) :in))
-                   (list (fn-rtc-b-gen b) (fn-rtc-b-owner b) nil)
-                 b))
-           nil)))
+(local (defun fn-rtc-c-ind-vp (j k pool)
+  (if (or (zp j) (atom pool)) (list j k pool) (fn-rtc-c-ind-vp (- j 1) (+ 1 k) (cdr pool)))))
 
-(defthm fn-rtc-c-len-of-borrow
-  (equal (len (fn-rtc-borrow pool)) (len pool)))
+(defthm fn-rtc-c-get-of-view-pool
+  (implies (and (natp j) (natp k))
+           (equal (fn-rtc-get j (fn-rtc-view-pool id inc cfg k pool))
+                  (if (< j (len pool))
+                      (let* ((b (fn-rtc-get j pool)) (o (fn-rtc-b-owner b)))
+                        (cond ((fn-rtc-view-own-p o id inc) b)
+                              ((fn-rtc-view-mine-p o (+ k j) id inc cfg) (list (fn-rtc-b-gen b) o nil))
+                              (t '(0 (:other) nil))))
+                    nil)))
+  :hints (("Goal" :induct (fn-rtc-c-ind-vp j k pool)
+           :in-theory (disable fn-rtc-view-own-p fn-rtc-view-mine-p fn-rtc-b-gen fn-rtc-b-owner)
+           :expand ((fn-rtc-view-pool id inc cfg k pool)))))
+
+(defthm fn-rtc-c-len-of-view-pool
+  (equal (len (fn-rtc-view-pool id inc cfg k pool)) (len pool)))
 
 (defthm fn-rtc-c-read-octets-is
   (implies (fn-rtc-st$cp c)
@@ -102,18 +111,16 @@
 
 (defthm fn-rtc-c-cp-of-meta-facts (implies (fn-rtc-st$cp c) (fn-rtc-c-bytesp (nth *fn-rtc-c-bytesi* c))) :rule-classes nil)
 
-(defthm fn-rtc-c-b-pool-loop-is
-  (implies (and (fn-rtc-st$cp c) (fn-rtc-c-wfp c) (natp h)
+(defthm fn-rtc-c-v-pool-loop-is
+  (implies (and (fn-rtc-st$cp c) (natp h)
                 (<= (+ h (nfix n)) (len (nth *fn-rtc-c-metai* c))))
-           (equal (fn-rtc-c-b-pool-loop h n c)
-                  (fn-rtc-borrow (fn-rtc-c-pool h n (fn-rtc-cap (nth *fn-rtc-c-cfg* c))
-                                                (nth *fn-rtc-c-metai* c) (nth *fn-rtc-c-bytesi* c)))))
-  :hints (("Goal" :induct (fn-rtc-c-b-pool-loop h n c)
-           :in-theory (disable fn-rtc-get fn-rtc-c-wfp fn-rtc-st$cp))
-          ("Subgoal *1/2" :use ((:instance fn-rtc-c-gen-of-metas-okp (j h) (meta (nth *fn-rtc-c-metai* c))
-                                           (cap (fn-rtc-cap (nth *fn-rtc-c-cfg* c))))
-                                (:instance fn-rtc-c-cp-of-meta-facts))
-           :in-theory (e/d (fn-rtc-c-wfp) (fn-rtc-get fn-rtc-st$cp)))))
+           (equal (fn-rtc-c-v-pool-loop h n id inc c)
+                  (fn-rtc-view-pool id inc (nth *fn-rtc-c-cfg* c) h
+                                    (fn-rtc-c-pool h n (nth *fn-rtc-c-cfg* c)
+                                                   (nth *fn-rtc-c-metai* c) (nth *fn-rtc-c-bytesi* c)))))
+  :hints (("Goal" :induct (fn-rtc-c-v-pool-loop h n id inc c)
+           :in-theory (disable fn-rtc-get fn-rtc-st$cp fn-rtc-view-own-p fn-rtc-view-mine-p))
+          ("Subgoal *1/2" :in-theory (e/d (fn-rtc-b-gen fn-rtc-b-owner) (fn-rtc-st$cp fn-rtc-view-own-p fn-rtc-view-mine-p)))))
 
 (defthm fn-rtc-c-nth-past-len
   (implies (<= (len l) (nfix n)) (equal (nth n l) nil))
@@ -172,34 +179,51 @@
   :hints (("Goal" :in-theory (disable fn-rtc-c-free-slot-loop)))
   :rule-classes nil)
 
-(defthm fn-rtc-st-b-count{correspondence}
+(defthm fn-rtc-c-vb-of-abs
+  (implies (and (fn-rtc-st$cp c) (fn-rtc-c-wfp c))
+           (equal (fn-rtc-vb h id inc (fn-rtc-c-abs c))
+                  (if (< (nfix h) (fn-rtc-nbufs (nth *fn-rtc-c-cfg* c)))
+                      (let* ((m (nth (nfix h) (nth *fn-rtc-c-metai* c))) (o (fn-rtc-get 1 m))
+                             (b (fn-rtc-c-buffer (nfix h) (nth *fn-rtc-c-cfg* c)
+                                                 (nth *fn-rtc-c-metai* c) (nth *fn-rtc-c-bytesi* c))))
+                        (cond ((fn-rtc-view-own-p o id inc) b)
+                              ((fn-rtc-view-mine-p o (nfix h) id inc (nth *fn-rtc-c-cfg* c))
+                               (list (nfix (fn-rtc-get 0 m)) o nil))
+                              (t '(0 (:other) nil))))
+                    nil)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-vb fn-rtc-view fn-rtc-c-abs fn-rtc-c-get-non-natp fn-rtc-b-gen fn-rtc-b-owner)
+                                  (fn-rtc-view-own-p fn-rtc-view-mine-p fn-rtc-view-pool))
+           :cases ((natp h)))))
+
+(defthm fn-rtc-st-v-owner{correspondence}
   (implies (fn-rtc-st$corr fn-rtc-st$c fn-rtc-st)
-           (equal (fn-rtc-st$c-b-count fn-rtc-st$c) (fn-rtc-st$a-b-count fn-rtc-st)))
+           (equal (fn-rtc-st$c-v-owner h id inc fn-rtc-st$c) (fn-rtc-st$a-v-owner h id inc fn-rtc-st)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-b-owner) (fn-rtc-view-own-p fn-rtc-view-mine-p fn-rtc-vb))))
   :rule-classes nil)
 
-(defthm fn-rtc-st-b-owner{correspondence}
+(defthm fn-rtc-st-v-gen{correspondence}
   (implies (fn-rtc-st$corr fn-rtc-st$c fn-rtc-st)
-           (equal (fn-rtc-st$c-owner h fn-rtc-st$c) (fn-rtc-st$a-b-owner h fn-rtc-st)))
+           (equal (fn-rtc-st$c-v-gen h id inc fn-rtc-st$c) (fn-rtc-st$a-v-gen h id inc fn-rtc-st)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-b-gen) (fn-rtc-view-own-p fn-rtc-view-mine-p fn-rtc-vb))))
   :rule-classes nil)
 
-(defthm fn-rtc-st-b-gen{correspondence}
+(defthm fn-rtc-st-v-fill{correspondence}
   (implies (fn-rtc-st$corr fn-rtc-st$c fn-rtc-st)
-           (equal (fn-rtc-st$c-gen h fn-rtc-st$c) (fn-rtc-st$a-b-gen h fn-rtc-st)))
+           (equal (fn-rtc-st$c-v-fill h id inc fn-rtc-st$c) (fn-rtc-st$a-v-fill h id inc fn-rtc-st)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-b-bytes) (fn-rtc-view-own-p fn-rtc-view-mine-p fn-rtc-vb))))
   :rule-classes nil)
 
-(defthm fn-rtc-st-b-fill{correspondence}
+(defthm fn-rtc-st-v-byte{correspondence}
   (implies (fn-rtc-st$corr fn-rtc-st$c fn-rtc-st)
-           (equal (fn-rtc-st$c-b-fill h fn-rtc-st$c) (fn-rtc-st$a-b-fill h fn-rtc-st)))
+           (equal (fn-rtc-st$c-v-byte h i id inc fn-rtc-st$c) (fn-rtc-st$a-v-byte h i id inc fn-rtc-st)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-b-bytes) (fn-rtc-view-own-p fn-rtc-view-mine-p fn-rtc-vb))
+           :use (fn-rtc-st-byte{correspondence})))
   :rule-classes nil)
 
-(defthm fn-rtc-st-b-byte{correspondence}
+(defthm fn-rtc-st-v-pool{correspondence}
   (implies (fn-rtc-st$corr fn-rtc-st$c fn-rtc-st)
-           (equal (fn-rtc-st$c-b-byte h i fn-rtc-st$c) (fn-rtc-st$a-b-byte h i fn-rtc-st)))
-  :rule-classes nil)
-
-(defthm fn-rtc-st-b-pool{correspondence}
-  (implies (fn-rtc-st$corr fn-rtc-st$c fn-rtc-st)
-           (equal (fn-rtc-st$c-b-pool fn-rtc-st$c) (fn-rtc-st$a-b-pool fn-rtc-st)))
+           (equal (fn-rtc-st$c-v-pool id inc fn-rtc-st$c) (fn-rtc-st$a-v-pool id inc fn-rtc-st)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-view fn-rtc-c-abs) (fn-rtc-c-v-pool-loop fn-rtc-view-pool))))
   :rule-classes nil)
 
 (defthm fn-rtc-c-set-is-update-nth
@@ -221,16 +245,30 @@
   :hints (("Goal" :in-theory (enable update-nth))))
 
 (defthm fn-rtc-c-metas-okp-of-update-nth
-  (implies (and (fn-rtc-c-metas-okp meta cap) (< (nfix i) (len meta))
-                (natp (fn-rtc-get 0 v)) (natp (fn-rtc-get 2 v)) (<= (fn-rtc-get 2 v) (nfix cap)))
-           (fn-rtc-c-metas-okp (update-nth i v meta) cap))
-  :hints (("Goal" :in-theory (enable update-nth))))
+  (implies (and (fn-rtc-c-metas-okp k meta cfg) (natp k) (natp i) (< i (len meta))
+                (natp (fn-rtc-get 0 v)) (natp (fn-rtc-get 2 v)) (<= (fn-rtc-get 2 v) (fn-rtc-buf-cap (+ k i) cfg)))
+           (fn-rtc-c-metas-okp k (update-nth i v meta) cfg))
+  :hints (("Goal" :induct (fn-rtc-c-ind-km i k meta) :in-theory (e/d (update-nth) (fn-rtc-buf-cap)))))
+
+(local (defun fn-rtc-c-ind-set (i k pool)
+  (if (or (zp i) (atom pool)) (list i k pool) (fn-rtc-c-ind-set (- i 1) (+ 1 k) (cdr pool)))))
 
 (defthm fn-rtc-c-pool-shapep-of-set
-  (implies (and (fn-rtc-pool-shapep pool cap)
+  (implies (and (fn-rtc-pool-shapep k pool cfg) (natp k) (natp i)
                 (true-listp b) (equal (len b) 3) (natp (fn-rtc-get 0 b))
-                (fn-cbor-octet-listp (fn-rtc-get 2 b)) (<= (len (fn-rtc-get 2 b)) (nfix cap)))
-           (fn-rtc-pool-shapep (fn-rtc-set i b pool) cap)))
+                (fn-cbor-octet-listp (fn-rtc-get 2 b)) (<= (len (fn-rtc-get 2 b)) (fn-rtc-buf-cap (+ k i) cfg)))
+           (fn-rtc-pool-shapep k (fn-rtc-set i b pool) cfg))
+  :hints (("Goal" :induct (fn-rtc-c-ind-set i k pool) :in-theory (disable fn-rtc-buf-cap fn-rtc-c-set-is-update-nth))))
+
+; The same over update-nth, the form fn-rtc-c-set-is-update-nth leaves.
+(defthm fn-rtc-c-pool-shapep-of-update-nth
+  (implies (and (fn-rtc-pool-shapep k pool cfg) (natp k) (natp i) (< i (len pool))
+                (true-listp b) (equal (len b) 3) (natp (fn-rtc-get 0 b))
+                (fn-cbor-octet-listp (fn-rtc-get 2 b)) (<= (len (fn-rtc-get 2 b)) (fn-rtc-buf-cap (+ k i) cfg)))
+           (fn-rtc-pool-shapep k (update-nth i b pool) cfg))
+  :hints (("Goal" :use (fn-rtc-c-pool-shapep-of-set
+                        (:instance fn-rtc-c-set-is-update-nth (v b) (l pool)))
+           :in-theory (disable fn-rtc-c-pool-shapep-of-set fn-rtc-c-set-is-update-nth fn-rtc-buf-cap))))
 
 (defthm fn-rtc-st-set-slot{correspondence}
   (implies (fn-rtc-st$corr fn-rtc-st$c fn-rtc-st)
@@ -291,13 +329,13 @@
   :hints (("Goal" :in-theory (enable fn-rtc-with-buffer fn-rtc-c-abs)
            :use ((:instance fn-rtc-c-fill-of-metas-okp (j (nfix h))
                             (meta (nth *fn-rtc-c-metai* fn-rtc-st$c))
-                            (cap (fn-rtc-cap (nth *fn-rtc-c-cfg* fn-rtc-st$c)))))))
+                            (cfg (nth *fn-rtc-c-cfg* fn-rtc-st$c))))))
   :rule-classes nil)
 
 (defthm fn-rtc-c-pool-shapep-get
-  (implies (fn-rtc-pool-shapep pool cap)
+  (implies (and (fn-rtc-pool-shapep k pool cfg) (natp k))
            (and (fn-cbor-octet-listp (fn-rtc-get 2 (fn-rtc-get h pool)))
-                (<= (len (fn-rtc-get 2 (fn-rtc-get h pool))) (nfix cap))
+                (<= (len (fn-rtc-get 2 (fn-rtc-get h pool))) (fn-rtc-buf-cap (+ k (nfix h)) cfg))
                 (implies (< (nfix h) (len pool))
                          (and (natp (fn-rtc-get 0 (fn-rtc-get h pool)))
                               (true-listp (fn-rtc-get h pool))
@@ -306,14 +344,14 @@
 (defthm fn-rtc-c-shapep-buffer
   (implies (fn-rtc-shapep s)
            (and (fn-cbor-octet-listp (fn-rtc-get 2 (fn-rtc-buffer h s)))
-                (<= (len (fn-rtc-get 2 (fn-rtc-buffer h s))) (fn-rtc-cap (fn-rtc-config s)))
+                (<= (len (fn-rtc-get 2 (fn-rtc-buffer h s))) (fn-rtc-buf-cap h (fn-rtc-config s)))
                 (implies (< (nfix h) (fn-rtc-nbufs (fn-rtc-config s)))
                          (and (natp (fn-rtc-get 0 (fn-rtc-buffer h s)))
                               (true-listp (fn-rtc-buffer h s))
                               (equal (len (fn-rtc-buffer h s)) 3)))))
   :hints (("Goal" :in-theory (e/d () (fn-rtc-c-pool-shapep-get))
-           :use ((:instance fn-rtc-c-pool-shapep-get (pool (fn-rtc-pool s))
-                            (cap (fn-rtc-cap (fn-rtc-config s))))))))
+           :use ((:instance fn-rtc-c-pool-shapep-get (pool (fn-rtc-pool s)) (k 0)
+                            (cfg (fn-rtc-config s)))))))
 
 (defthm fn-rtc-st-set-meta{preserved}
   (implies (fn-rtc-st$ap fn-rtc-st)
@@ -329,7 +367,7 @@
   :hints (("Goal" :in-theory (enable fn-rtc-with-buffer fn-rtc-c-abs)
            :use ((:instance fn-rtc-c-fill-of-metas-okp (j (nfix h))
                             (meta (nth *fn-rtc-c-metai* fn-rtc-st$c))
-                            (cap (fn-rtc-cap (nth *fn-rtc-c-cfg* fn-rtc-st$c)))))))
+                            (cfg (nth *fn-rtc-c-cfg* fn-rtc-st$c))))))
   :rule-classes nil)
 
 (defthm fn-rtc-st-reset{preserved}
@@ -339,20 +377,28 @@
            :use ((:instance fn-rtc-c-shapep-buffer (s fn-rtc-st)))))
   :rule-classes nil)
 
-(defthm fn-rtc-c-fill-natp-of-metas-okp
-  (implies (and (fn-rtc-c-metas-okp meta cap) (natp j) (< j (len meta)))
+(defthm fn-rtc-c-fill-natp-of-metas-okp-at
+  (implies (and (fn-rtc-c-metas-okp k meta cfg) (natp k) (natp j) (< j (len meta)))
            (natp (fn-rtc-get 2 (nth j meta))))
-  :hints (("Goal" :in-theory (enable nth))))
+  :hints (("Goal" :induct (fn-rtc-c-ind-km j k meta) :in-theory (e/d (nth) (fn-rtc-buf-cap)))))
+
+(defthm fn-rtc-c-fill-natp-of-metas-okp
+  (implies (and (fn-rtc-c-metas-okp 0 meta cfg) (natp j) (< j (len meta)))
+           (natp (fn-rtc-get 2 (nth j meta))))
+  :hints (("Goal" :use ((:instance fn-rtc-c-fill-natp-of-metas-okp-at (k 0))))))
 
 (defthm fn-rtc-c-set-of-set-same
   (equal (fn-rtc-set i v (fn-rtc-set i w l)) (fn-rtc-set i v l)))
 
 (defthm fn-rtc-c-splice-region
-  (implies (and (natp h) (natp cap) (natp nb) (< h nb) (natp off) (<= (+ off len) cap))
-           (and (<= (+ (* h cap) off len) (* nb cap))
-                (<= (* h cap) (+ (* h cap) off))
-                (<= (+ (* h cap) off len) (+ cap (* h cap)))))
-  :hints (("Goal" :nonlinearp t))
+  (implies (and (fn-rtc-configp cfg) (natp h) (< h (fn-rtc-nbufs cfg)) (natp off) (natp len)
+                (<= (+ off len) (fn-rtc-buf-cap h cfg)))
+           (and (<= (+ (fn-rtc-buf-base h cfg) off len) (fn-rtc-octets-total cfg))
+                (<= (fn-rtc-buf-base h cfg) (+ (fn-rtc-buf-base h cfg) off))
+                (<= (+ (fn-rtc-buf-base h cfg) off len) (+ (fn-rtc-buf-base h cfg) (fn-rtc-buf-cap h cfg)))))
+  :hints (("Goal" :in-theory (disable fn-rtc-buf-base-monotone fn-rtc-buf-base-of-nbufs fn-rtc-buf-cap)
+           :use ((:instance fn-rtc-buf-base-monotone (j h) (h (fn-rtc-nbufs cfg)))
+                 fn-rtc-buf-base-of-nbufs)))
   :rule-classes nil)
 
 (defthm fn-rtc-c-abs-of-splice
@@ -360,27 +406,26 @@
                 (natp h) (< h (len (nth *fn-rtc-c-metai* c)))
                 (natp off) (fn-cbor-octet-listp data)
                 (<= off (nfix (fn-rtc-get 2 (nth h (nth *fn-rtc-c-metai* c)))))
-                (<= (+ off (len data)) (fn-rtc-cap (nth *fn-rtc-c-cfg* c))))
-           (equal (fn-rtc-c-pool 0 (fn-rtc-nbufs (nth *fn-rtc-c-cfg* c)) (fn-rtc-cap (nth *fn-rtc-c-cfg* c))
+                (<= (+ off (len data)) (fn-rtc-buf-cap h (nth *fn-rtc-c-cfg* c))))
+           (equal (fn-rtc-c-pool 0 (fn-rtc-nbufs (nth *fn-rtc-c-cfg* c)) (nth *fn-rtc-c-cfg* c)
                                  (update-nth h (list (fn-rtc-get 0 (nth h (nth *fn-rtc-c-metai* c)))
                                                      (fn-rtc-get 1 (nth h (nth *fn-rtc-c-metai* c)))
                                                      (fn-rtc-c-max (nfix (fn-rtc-get 2 (nth h (nth *fn-rtc-c-metai* c))))
                                                           (+ off (len data))))
                                              (nth *fn-rtc-c-metai* c))
-                                 (fn-rtc-c-write-list (+ (* h (fn-rtc-cap (nth *fn-rtc-c-cfg* c))) off) data
+                                 (fn-rtc-c-write-list (+ (fn-rtc-buf-base h (nth *fn-rtc-c-cfg* c)) off) data
                                                       (nth *fn-rtc-c-bytesi* c)))
                   (fn-rtc-set h (list (fn-rtc-get 0 (nth h (nth *fn-rtc-c-metai* c)))
                                       (fn-rtc-get 1 (nth h (nth *fn-rtc-c-metai* c)))
-                                      (fn-rtc-splice (fn-rtc-c-octets (* h (fn-rtc-cap (nth *fn-rtc-c-cfg* c)))
+                                      (fn-rtc-splice (fn-rtc-c-octets (fn-rtc-buf-base h (nth *fn-rtc-c-cfg* c))
                                                                       (nfix (fn-rtc-get 2 (nth h (nth *fn-rtc-c-metai* c))))
                                                                       (nth *fn-rtc-c-bytesi* c))
                                                      off data))
-                              (fn-rtc-c-pool 0 (fn-rtc-nbufs (nth *fn-rtc-c-cfg* c)) (fn-rtc-cap (nth *fn-rtc-c-cfg* c))
+                              (fn-rtc-c-pool 0 (fn-rtc-nbufs (nth *fn-rtc-c-cfg* c)) (nth *fn-rtc-c-cfg* c)
                                              (nth *fn-rtc-c-metai* c) (nth *fn-rtc-c-bytesi* c)))))
   :hints (("Goal" :in-theory (disable fn-rtc-splice fn-rtc-c-octets-of-splice fn-rtc-get)
-           :use ((:instance fn-rtc-c-splice-region (cap (fn-rtc-cap (nth *fn-rtc-c-cfg* c)))
-                            (nb (fn-rtc-nbufs (nth *fn-rtc-c-cfg* c))) (len (len data)))
-                 (:instance fn-rtc-c-octets-of-splice (base (* h (fn-rtc-cap (nth *fn-rtc-c-cfg* c))))
+           :use ((:instance fn-rtc-c-splice-region (cfg (nth *fn-rtc-c-cfg* c)) (len (len data)))
+                 (:instance fn-rtc-c-octets-of-splice (base (fn-rtc-buf-base h (nth *fn-rtc-c-cfg* c)))
                             (fl (nfix (fn-rtc-get 2 (nth h (nth *fn-rtc-c-metai* c)))))
                             (bytes (nth *fn-rtc-c-bytesi* c)))))))
 
@@ -394,13 +439,13 @@
            :use ((:instance fn-rtc-c-abs-of-splice (c fn-rtc-st$c))
                  (:instance fn-rtc-c-fill-of-metas-okp (j h)
                             (meta (nth *fn-rtc-c-metai* fn-rtc-st$c))
-                            (cap (fn-rtc-cap (nth *fn-rtc-c-cfg* fn-rtc-st$c))))
+                            (cfg (nth *fn-rtc-c-cfg* fn-rtc-st$c)))
                  (:instance fn-rtc-c-fill-natp-of-metas-okp (j h)
                             (meta (nth *fn-rtc-c-metai* fn-rtc-st$c))
-                            (cap (fn-rtc-cap (nth *fn-rtc-c-cfg* fn-rtc-st$c))))
+                            (cfg (nth *fn-rtc-c-cfg* fn-rtc-st$c)))
                  (:instance fn-rtc-c-gen-of-metas-okp (j h)
                             (meta (nth *fn-rtc-c-metai* fn-rtc-st$c))
-                            (cap (fn-rtc-cap (nth *fn-rtc-c-cfg* fn-rtc-st$c)))))))
+                            (cfg (nth *fn-rtc-c-cfg* fn-rtc-st$c))))))
   :rule-classes nil)
 
 (defthm fn-rtc-c-l-octets-append
@@ -481,20 +526,21 @@
        (equal (fn-rtc-get 2 (fn-rtc-c-release-meta m id inc)) (fn-rtc-get 2 m))))
 
 (defthm fn-rtc-c-metas-okp-of-same-fields
-  (implies (and (fn-rtc-c-metas-okp meta cap) (natp j) (< j (len meta))
+  (implies (and (fn-rtc-c-metas-okp k meta cfg) (natp k) (natp j) (< j (len meta))
                 (equal (fn-rtc-get 0 v) (fn-rtc-get 0 (nth j meta)))
                 (equal (fn-rtc-get 2 v) (fn-rtc-get 2 (nth j meta))))
-           (fn-rtc-c-metas-okp (update-nth j v meta) cap))
-  :hints (("Goal" :in-theory (e/d (update-nth nth) (fn-rtc-get)))))
+           (fn-rtc-c-metas-okp k (update-nth j v meta) cfg))
+  :hints (("Goal" :induct (fn-rtc-c-ind-km j k meta)
+           :in-theory (e/d (update-nth nth) (fn-rtc-get fn-rtc-buf-cap)))))
 
 (defthm fn-rtc-c-metas-okp-of-release-meta
-  (implies (and (fn-rtc-c-metas-okp meta cap) (natp j) (< j (len meta)))
-           (fn-rtc-c-metas-okp (update-nth j (fn-rtc-c-release-meta (nth j meta) id inc) meta) cap))
+  (implies (and (fn-rtc-c-metas-okp 0 meta cfg) (natp j) (< j (len meta)))
+           (fn-rtc-c-metas-okp 0 (update-nth j (fn-rtc-c-release-meta (nth j meta) id inc) meta) cfg))
   :hints (("Goal" :in-theory (disable fn-rtc-get fn-rtc-c-release-meta))))
 
 (defthm fn-rtc-c-metas-okp-of-release-metas
-  (implies (fn-rtc-c-metas-okp meta cap)
-           (fn-rtc-c-metas-okp (fn-rtc-c-release-metas h meta id inc) cap))
+  (implies (fn-rtc-c-metas-okp 0 meta cfg)
+           (fn-rtc-c-metas-okp 0 (fn-rtc-c-release-metas h meta id inc) cfg))
   :hints (("Goal" :induct (fn-rtc-c-release-metas h meta id inc)
            :in-theory (disable fn-rtc-c-release-meta))))
 
@@ -510,16 +556,16 @@
                           id inc)))
 
 (defthm fn-rtc-c-pool-of-release-metas
-  (implies (and (fn-rtc-c-metas-okp meta cap) (natp k) (equal (+ k (nfix n)) (len meta)))
-           (equal (fn-rtc-c-pool k n cap (fn-rtc-c-release-metas k meta id inc) bytes)
-                  (fn-rtc-release-all (fn-rtc-c-pool k n cap meta bytes) id inc)))
+  (implies (and (fn-rtc-c-metas-okp 0 meta cfg) (natp k) (equal (+ k (nfix n)) (len meta)))
+           (equal (fn-rtc-c-pool k n cfg (fn-rtc-c-release-metas k meta id inc) bytes)
+                  (fn-rtc-release-all (fn-rtc-c-pool k n cfg meta bytes) id inc)))
   :hints (("Goal" :induct (fn-rtc-c-ind-release k n meta id inc))
           ("Subgoal *1/2" :expand ((fn-rtc-c-release-metas k meta id inc))
            :use ((:instance fn-rtc-c-gen-of-metas-okp (j k))))))
 
 (defthm fn-rtc-c-pool-shapep-of-release-all
-  (implies (fn-rtc-pool-shapep pool cap)
-           (fn-rtc-pool-shapep (fn-rtc-release-all pool id inc) cap)))
+  (implies (fn-rtc-pool-shapep k pool cfg)
+           (fn-rtc-pool-shapep k (fn-rtc-release-all pool id inc) cfg)))
 
 (defthm fn-rtc-c-len-of-release-all
   (equal (len (fn-rtc-release-all pool id inc)) (len pool)))
@@ -623,11 +669,15 @@
 
 (defthm fn-rtc-c-pool-of-rep-free
   (implies (and (natp k) (<= (+ k (nfix n)) (nfix bign)))
-           (equal (fn-rtc-c-pool k n cap (fn-rtc-c-rep bign '(0 (:free) 0)) bytes)
+           (equal (fn-rtc-c-pool k n cfg (fn-rtc-c-rep bign '(0 (:free) 0)) bytes)
                   (fn-rtc-free-pool n))))
 
+(local (defun fn-rtc-c-ind-rk (n k)
+  (if (zp n) (list n k) (fn-rtc-c-ind-rk (- n 1) (+ 1 (nfix k))))))
+
 (defthm fn-rtc-c-metas-okp-of-rep-free
-  (fn-rtc-c-metas-okp (fn-rtc-c-rep n '(0 (:free) 0)) cap))
+  (fn-rtc-c-metas-okp k (fn-rtc-c-rep n '(0 (:free) 0)) cfg)
+  :hints (("Goal" :induct (fn-rtc-c-ind-rk n k) :in-theory (disable fn-rtc-buf-cap))))
 
 (defthm fn-rtc-c-len-of-resize-list
   (equal (len (resize-list l n d)) (nfix n)))
@@ -653,7 +703,8 @@
   (equal (fn-rtc-free-pool n) (fn-rtc-c-rep n '(0 (:free) nil))))
 
 (defthm fn-rtc-c-pool-shapep-of-rep-free
-  (fn-rtc-pool-shapep (fn-rtc-c-rep n '(0 (:free) nil)) cap))
+  (fn-rtc-pool-shapep k (fn-rtc-c-rep n '(0 (:free) nil)) cfg)
+  :hints (("Goal" :induct (fn-rtc-c-ind-rk n k) :in-theory (disable fn-rtc-buf-cap))))
 
 (verify-guards fn-rtc-st$c-init)
 
@@ -698,12 +749,11 @@
             (fn-rtc-st-fill :logic fn-rtc-st$a-fill :exec fn-rtc-st$c-fill)
             (fn-rtc-st-byte :logic fn-rtc-st$a-byte :exec fn-rtc-st$c-byte)
             (fn-rtc-st-free-slot :logic fn-rtc-st$a-free-slot :exec fn-rtc-st$c-free-slot)
-            (fn-rtc-st-b-count :logic fn-rtc-st$a-b-count :exec fn-rtc-st$c-b-count)
-            (fn-rtc-st-b-owner :logic fn-rtc-st$a-b-owner :exec fn-rtc-st$c-owner)
-            (fn-rtc-st-b-gen :logic fn-rtc-st$a-b-gen :exec fn-rtc-st$c-gen)
-            (fn-rtc-st-b-fill :logic fn-rtc-st$a-b-fill :exec fn-rtc-st$c-b-fill)
-            (fn-rtc-st-b-byte :logic fn-rtc-st$a-b-byte :exec fn-rtc-st$c-b-byte)
-            (fn-rtc-st-b-pool :logic fn-rtc-st$a-b-pool :exec fn-rtc-st$c-b-pool)
+            (fn-rtc-st-v-owner :logic fn-rtc-st$a-v-owner :exec fn-rtc-st$c-v-owner)
+            (fn-rtc-st-v-gen :logic fn-rtc-st$a-v-gen :exec fn-rtc-st$c-v-gen)
+            (fn-rtc-st-v-fill :logic fn-rtc-st$a-v-fill :exec fn-rtc-st$c-v-fill)
+            (fn-rtc-st-v-byte :logic fn-rtc-st$a-v-byte :exec fn-rtc-st$c-v-byte)
+            (fn-rtc-st-v-pool :logic fn-rtc-st$a-v-pool :exec fn-rtc-st$c-v-pool)
             (fn-rtc-st-set-slot :logic fn-rtc-st$a-set-slot :exec fn-rtc-st$c-set-slot)
             (fn-rtc-st-set-mstate :logic fn-rtc-st$a-set-mstate :exec fn-rtc-st$c-set-mstate)
             (fn-rtc-st-set-uses :logic fn-rtc-st$a-set-uses :exec fn-rtc-st$c-set-uses)

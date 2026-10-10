@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
+(include-book "owner-prepare-correspondence")
+(include-book "owner-store-budget")
 (include-book "store-identity-reserve")
 (include-book "owner-identity-prepare")
 (include-book "consumer-event-charge")

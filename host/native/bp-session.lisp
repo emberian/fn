@@ -162,8 +162,10 @@ write (fnn-tcl-turn-local), has not run yet."
              thereis (and grant (fnn-bpsg-conn grant)
                           (fnn-tclc-progress (fnn-bpsg-conn grant)) t)))))
 
-(defun fnn-bp-session-loop (bank control listeners begin once service pending)
- "One writer: one installed listener attempt, one retained slot, one local turn."
+(defun fnn-bp-session-loop (bank control listeners begin once service pending &optional admit)
+ "One writer: one installed listener attempt, one retained slot, one local turn.
+ADMIT, when supplied, answers whether this pass may accept an inbound session
+(the BP node's rotation drain, books/bp-session-scheduler fn-bpsched-admit-p)."
  (let ((slot 2) (phase 0) (accepted nil) (once-tail nil) (listener-index 0)
        (work-credit 0) turn-status turn-action)
   (loop
@@ -172,7 +174,9 @@ write (fnn-tcl-turn-local), has not run yet."
    (let* ((live (fnn-bplc-live listeners))
           (index (and (consp live) (not (and once accepted))
                    (let ((at (fnn-core 'fn-bpsched-listener-index listener-index (length live))))
-                     (and (fnn-poll-readable (list (fnn-socket-fd (nth at live))) 0) at)))))
+                     (and (fnn-poll-readable (list (fnn-socket-fd (nth at live))) 0)
+                          (or (null admit) (funcall admit))
+                          at)))))
     (setq listener-index (+ listener-index 1))
     (setf (fnn-bpsb-contended bank)
           (fnn-core 'fn-bpsp-incoming-contended (and index t) (fnn-bpsb-incoming-held bank)

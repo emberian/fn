@@ -5,10 +5,9 @@
 ; Scope of the instance's keystones: the echo never commits (its observer is
 ; constantly false), so its instance of the commit keystone holds vacuously;
 ; the commit point's non-vacuous instance is landing 2's transaction machine.
-; The borrow view gives in-flight-write isolation (no machine reads an
-; :in-leased buffer), not confidentiality between instances: a machine can
-; read every other buffer's octets, free ones included; the echo reads only
-; owners and generations.
+; Each machine sees its own view of the pool, with input-lease octets
+; hidden and foreign buffers opaque. The echo reads configuration, owners
+; and generations; its three fixed buffers per connection are reserved by home.
 (in-package "ACL2")
 (include-book "runtime-contract-layer")
 ;; Octets one receive asks for; buffers a receive's search examines, at most
@@ -18,21 +17,23 @@
 
 ; The least buffer at or above I and below the window, other than SKIP, that
 ; is free.
-(defun fn-rce-free (i skip fn-rtc-st)
+(defun fn-rce-free (i skip id inc fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st :guard (natp i)
-                  :measure (nfix (- (min (fn-rtc-st-b-count fn-rtc-st) *fn-rce-window*) (nfix i)))))
+                  :hints (("Goal" :in-theory (disable fn-rtc-st-v-owner fn-rtc-st-config fn-rtc-nbufs)))
+                  :measure (nfix (- (min (fn-rtc-nbufs (fn-rtc-st-config fn-rtc-st)) *fn-rce-window*) (nfix i)))))
   (let ((i (nfix i)))
-    (if (< i (min (fn-rtc-st-b-count fn-rtc-st) *fn-rce-window*))
-        (if (and (not (equal i skip)) (equal (fn-rtc-st-b-owner i fn-rtc-st) '(:free)))
+    (if (< i (min (fn-rtc-nbufs (fn-rtc-st-config fn-rtc-st)) *fn-rce-window*))
+        (if (and (not (equal i skip)) (equal (fn-rtc-st-v-owner i id inc fn-rtc-st) '(:free)))
             i
-          (fn-rce-free (+ 1 i) skip fn-rtc-st))
+          (fn-rce-free (+ 1 i) skip id inc fn-rtc-st))
       nil)))
 
-(defthm fn-rce-free-reads-borrow
-  (equal (fn-rce-free i skip (fn-rtc-borrow-state st)) (fn-rce-free i skip st)))
+(defthm fn-rce-free-reads-view
+  (equal (fn-rce-free i skip id inc (fn-rtc-view-state id inc st)) (fn-rce-free i skip id inc st))
+  :hints (("Goal" :in-theory (disable fn-rtc-st-v-owner fn-rtc-st-config fn-rtc-nbufs))))
 
 (defthm fn-rce-free-type
-  (or (null (fn-rce-free i skip st)) (natp (fn-rce-free i skip st)))
+  (or (null (fn-rce-free i skip id inc st)) (natp (fn-rce-free i skip id inc st)))
   :rule-classes :type-prescription)
 
 ; State (rv sd rd rn so sl): the buffer of the outstanding :recv; the buffer
@@ -43,18 +44,18 @@
   (list (and (natp rv) rv) (and (natp sd) sd) (and (natp rd) rd) (nfix rn) (nfix so) (nfix sl)))
 
 ; Start a receive into a free buffer other than SKIP: (mv rv requests).
-(defun fn-rce-start-recv (skip fn-rtc-st)
+(defun fn-rce-start-recv (skip id inc fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st))
-  (let ((h (fn-rce-free 0 skip fn-rtc-st)))
+  (let ((h (fn-rce-free 0 skip id inc fn-rtc-st)))
     (if h
-        (let ((g (+ 1 (fn-rtc-st-b-gen h fn-rtc-st))))
+        (let ((g (+ 1 (fn-rtc-st-v-gen h id inc fn-rtc-st))))
           (mv h (list (list :acquire h) (list :submit :recv (list h g 0 *fn-rce-cap*) nil))))
       (mv nil nil))))
 
 ; A send of [OFF, OFF+LEN) of buffer H, at its current generation.
-(defun fn-rce-send (h off len fn-rtc-st)
+(defun fn-rce-send (h off len id inc fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st))
-  (list :submit :send (list (nfix h) (fn-rtc-st-b-gen h fn-rtc-st) (nfix off) (nfix len)) nil))
+  (list :submit :send (list (nfix h) (fn-rtc-st-v-gen h id inc fn-rtc-st) (nfix off) (nfix len)) nil))
 
 ; The step's charge: one, plus the receive search at its bound.
 (defconst *fn-rce-charge* (+ 1 *fn-rce-window*))
@@ -63,52 +64,57 @@
   (declare (xargs :stobjs fn-rtc-st) (ignore q))
   (let* ((rv (fn-rtc-get 0 m)) (sd (fn-rtc-get 1 m)) (rd (fn-rtc-get 2 m)) (rn (nfix (fn-rtc-get 3 m)))
          (so (nfix (fn-rtc-get 4 m))) (sl (nfix (fn-rtc-get 5 m)))
+         (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev))
          (kind (fn-rtc-get 0 ev)) (out (fn-rtc-get 1 ev))
          (tag (fn-rtc-get 0 out)) (n (nfix (fn-rtc-get 1 out))))
     (cond
      ((eq kind :accept)
-      (mv-let (h reqs) (fn-rce-start-recv nil fn-rtc-st)
+      (mv-let (h reqs) (fn-rce-start-recv nil id inc fn-rtc-st)
         (mv (fn-rce-mk h nil nil 0 0 0) reqs *fn-rce-charge*)))
      ((and (eq kind :recv) (member-eq tag '(:done :short)) (< 0 n) (natp rv))
       (if (natp sd)
           ;; a send is outstanding: hold these octets
           (mv (fn-rce-mk nil sd rv n so sl) nil *fn-rce-charge*)
-        (mv-let (h reqs) (fn-rce-start-recv rv fn-rtc-st)
+        (mv-let (h reqs) (fn-rce-start-recv rv id inc fn-rtc-st)
           (mv (fn-rce-mk h rv nil 0 0 n)
-              (cons (fn-rce-send rv 0 n fn-rtc-st) reqs)
+              (cons (fn-rce-send rv 0 n id inc fn-rtc-st) reqs)
               *fn-rce-charge*))))
      ((and (eq kind :send) (eq tag :short) (natp sd) (< n sl))
       ;; a short send: send the rest
       (mv (fn-rce-mk rv sd rd rn (+ so n) (- sl n))
-          (list (fn-rce-send sd (+ so n) (- sl n) fn-rtc-st))
+          (list (fn-rce-send sd (+ so n) (- sl n) id inc fn-rtc-st))
           *fn-rce-charge*))
      ((and (eq kind :send) (member-eq tag '(:done :short)) (natp sd))
-      (let ((rel (list :release sd (fn-rtc-st-b-gen sd fn-rtc-st))))
+      (let ((rel (list :release sd (fn-rtc-st-v-gen sd id inc fn-rtc-st))))
         (if (natp rd)
             (if (natp rv)
                 (mv (fn-rce-mk rv rd nil 0 0 rn)
-                    (list rel (fn-rce-send rd 0 rn fn-rtc-st))
+                    (list rel (fn-rce-send rd 0 rn id inc fn-rtc-st))
                     *fn-rce-charge*)
-              (mv-let (h reqs) (fn-rce-start-recv rd fn-rtc-st)
+              (mv-let (h reqs) (fn-rce-start-recv rd id inc fn-rtc-st)
                 (mv (fn-rce-mk h rd nil 0 0 rn)
-                    (list* rel (fn-rce-send rd 0 rn fn-rtc-st) reqs)
+                    (list* rel (fn-rce-send rd 0 rn id inc fn-rtc-st) reqs)
                     *fn-rce-charge*)))
           (mv (fn-rce-mk rv nil nil 0 0 0) (list rel) *fn-rce-charge*))))
      (t (mv (fn-rce-mk nil nil nil 0 0 0) (list (list :close)) *fn-rce-charge*)))))
 
-(defthm fn-rce-start-recv-reads-borrow
-  (equal (fn-rce-start-recv skip (fn-rtc-borrow-state st)) (fn-rce-start-recv skip st)))
+(defthm fn-rce-start-recv-reads-view
+  (equal (fn-rce-start-recv skip id inc (fn-rtc-view-state id inc st)) (fn-rce-start-recv skip id inc st))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                  '(fn-rce-start-recv fn-rce-free-reads-view fn-rtc-v-readers-of-view-state)))))
 
-(defthm fn-rce-step-reads-borrow
-  (equal (fn-rce-step m ev (fn-rtc-borrow-state st) q) (fn-rce-step m ev st q))
-  :hints (("Goal" :in-theory (disable fn-rce-start-recv))))
+(defthm fn-rce-step-reads-view
+  (equal (fn-rce-step m ev (fn-rtc-view-state (fn-rtc-ev-id ev) (fn-rtc-ev-inc ev) st) q) (fn-rce-step m ev st q))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                  '(fn-rce-step fn-rce-send fn-rce-start-recv-reads-view fn-rtc-v-readers-of-view-state)))))
 
 (defthm fn-rce-start-recv-facts
-  (and (<= (len (mv-nth 1 (fn-rce-start-recv skip st))) 2)
-       (equal (fn-rtc-reqs-octets (mv-nth 1 (fn-rce-start-recv skip st))) 0)
-       (or (null (mv-nth 0 (fn-rce-start-recv skip st))) (natp (mv-nth 0 (fn-rce-start-recv skip st)))))
-  :rule-classes ((:linear :corollary (<= (len (mv-nth 1 (fn-rce-start-recv skip st))) 2))
-                 (:rewrite :corollary (equal (fn-rtc-reqs-octets (mv-nth 1 (fn-rce-start-recv skip st))) 0))))
+  (and (<= (len (mv-nth 1 (fn-rce-start-recv skip id inc st))) 2)
+       (equal (fn-rtc-reqs-octets (mv-nth 1 (fn-rce-start-recv skip id inc st))) 0)
+       (or (null (mv-nth 0 (fn-rce-start-recv skip id inc st))) (natp (mv-nth 0 (fn-rce-start-recv skip id inc st)))))
+  :hints (("Goal" :in-theory (disable fn-rce-free fn-rtc-st-v-gen)))
+  :rule-classes ((:linear :corollary (<= (len (mv-nth 1 (fn-rce-start-recv skip id inc st))) 2))
+                 (:rewrite :corollary (equal (fn-rtc-reqs-octets (mv-nth 1 (fn-rce-start-recv skip id inc st))) 0))))
 
 (defthm fn-rce-mk-size
   (<= (fn-rtc-size (fn-rce-mk rv sd rd rn so sl)) 13)
@@ -119,19 +125,25 @@
        (equal (fn-rtc-reqs-octets (mv-nth 1 (fn-rce-step m ev st q))) 0)
        (<= (len (mv-nth 1 (fn-rce-step m ev st q))) 4)
        (<= (fn-rtc-size (mv-nth 0 (fn-rce-step m ev st q))) 13))
-  :hints (("Goal" :in-theory (e/d (fn-rce-step) (fn-rce-start-recv fn-rce-mk fn-rtc-size fn-rce-free)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+       '(fn-rce-step fn-rce-send fn-rce-start-recv-facts fn-rce-mk-size
+         fn-rtc-reqs-octets fn-rtc-get-of-cons len mv-nth nfix natp zp member-equal (:executable-counterpart fn-rtc-get)
+         car-cons cdr-cons unicity-of-0 fix (:type-prescription len)
+         (:type-prescription fn-rce-mk) (:type-prescription fn-rce-start-recv)
+         (:type-prescription fn-rtc-size) (:type-prescription nfix))))))
 
 (defun fn-rce-init () (declare (xargs :guard t)) nil)
+(defun fn-rce-static-init (j) (declare (xargs :guard t) (ignore j)) nil)
 (defun fn-rce-committedp (m) (declare (xargs :guard t) (ignore m)) nil)
 (defun fn-rce-c () (declare (xargs :guard t)) *fn-rce-charge*)
 (defun fn-rce-max-reqs () (declare (xargs :guard t)) 4)
 (defun fn-rce-max-state () (declare (xargs :guard t)) 13)
 
 (fn-rtc-def-layer fn-rcl
-  :step fn-rce-step :init fn-rce-init :committedp fn-rce-committedp :c fn-rce-c
-  :max-reqs fn-rce-max-reqs :max-state fn-rce-max-state :reads-borrow fn-rce-step-reads-borrow
+  :step fn-rce-step :init fn-rce-init :static-init fn-rce-static-init :committedp fn-rce-committedp :c fn-rce-c
+  :max-reqs fn-rce-max-reqs :max-state fn-rce-max-state :reads-view fn-rce-step-reads-view
   :hints (("Goal" :in-theory (enable fn-rcl-m-step)
-           :use ((:instance fn-rce-step-facts (st (fn-rtc-make nil nil pool nil nil 0)))))))
+           :use ((:instance fn-rce-step-facts (st pool))))))
 
 ; -----------------------------------------------------------------------------
 ; The multi-instance exercise (RUNTIME-MODEL section 9 item 1): a script of
@@ -213,7 +225,11 @@
       (:fault-write (let ((h (nfix (fn-rtc-get 2 item))) (off (nfix (fn-rtc-get 3 item)))
                           (data (fn-rtc-get 4 item)))
                       (if (fn-cbor-octet-listp data)
-                          (fn-rtc-st-splice h off data fn-rtc-st)
+                          (let* ((g (fn-rtc-st-gen h fn-rtc-st))
+                                 (owner (fn-rtc-st-owner h fn-rtc-st))
+                                 (fn-rtc-st (fn-rtc-st-set-meta h g '(:workspace 1 1) fn-rtc-st))
+                                 (fn-rtc-st (fn-rtc-st-splice h off data fn-rtc-st)))
+                            (fn-rtc-st-set-meta h g owner fn-rtc-st))
                         fn-rtc-st)))
       (:fault-meta (fn-rtc-st-set-meta (nfix (fn-rtc-get 2 item)) (nfix (fn-rtc-get 3 item))
                                        (fn-rtc-get 4 item) fn-rtc-st))
@@ -267,21 +283,21 @@
 ; observation is the initial state's.
 (defun fn-rce-run (cfg items fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st))
-  (mv-let (fn-rtc-st acts) (fn-rtc-x-init cfg fn-rtc-st)
+  (mv-let (fn-rtc-st acts) (fn-rcl-x-init cfg fn-rtc-st)
     (let ((obs0 (list 0 :init acts nil
                       (if (fn-rcl-invp (fn-rtc-x-state fn-rtc-st)) :invp :invp-violated) :stable :init)))
       (mv-let (fn-rtc-st obs) (fn-rce-items 1 items fn-rtc-st)
         (mv fn-rtc-st (cons obs0 obs))))))
 
 ; The exercise's script: two interleaved connections over 3 slots and 6
-; buffers of 64 octets -- pending read and send on one connection, a receive
+; buffers of 64 octets (three reserved for each connection, no shared pool) -- pending read and send on one connection, a receive
 ; held while a send is outstanding, a close with a send outstanding (the
 ; slot drains), the late completion that retires it, a duplicate of that
 ; completion, slot reuse at the next incarnation with a reused buffer at a
 ; later generation, a stale completion naming the old incarnation, a short
 ; send and the send of its rest, a failed receive and a close with that send
 ; outstanding, and the send's completion that retires the slot.
-(defconst *fn-rce-exercise-cfg* '(3 6 64))
+(defconst *fn-rce-exercise-cfg* '(3 6 64 0 3 0 64))
 
 (defconst *fn-rce-exercise-script*
   '((:complete (:accept 0 0 0 (:done 7)))
