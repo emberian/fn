@@ -472,10 +472,6 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
   (stringp (fn-nop-init-field-text name i values))
   :rule-classes :type-prescription)
 
-(defthm fn-nop-acct-decimal-text-stringp
-  (stringp (fn-decimal-text n))
-  :rule-classes :type-prescription)
-
 (in-theory (disable fn-nop-init-field-text))
 
 ; Row Q10b: a refused init profile names its numbers (the review's walk:
