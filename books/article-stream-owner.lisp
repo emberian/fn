@@ -326,15 +326,10 @@
       (fn-ast-preflight source))))
 
 (local
- (progn
-   (defthm fn-asto-tokenize-aux-true-listp
-     (true-listp (fn-nntp-tokenize-aux xs word-rev words-rev))
-     :rule-classes :type-prescription
-     :hints (("Goal" :in-theory (enable fn-nntp-tokenize-aux))))
-   (defthm fn-asto-tokenize-true-listp
-     (true-listp (fn-nntp-tokenize line))
-     :rule-classes :type-prescription
-     :hints (("Goal" :in-theory (enable fn-nntp-tokenize))))))
+ (defthm fn-asto-line-tokens-true-listp
+   (true-listp (fn-nsp-line-tokens line))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-nsp-line-tokens fn-nsp-tokens-of)))))
 
 (defun fn-asto-capture (oc id w cache fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
@@ -348,15 +343,19 @@
          (sc (and conn (fn-own-tls-served-conn o conn)))
          (as (fn-served-conn-session sc)) (config (fn-served-conn-config sc))
          (events (fn-wsp-events w)) (event (car events))
+         ;; A3: the tokens by the fn-nsp-tokens stream (nil unless the
+         ;; line passes the RFC 3977 section 3.1 preflight;
+         ;; fn-nsp-line-tokens-is-tokenize).
          (tokens (and (equal (car event) :command)
-                       (fn-nntp-tokenize (cadr event))))
+                      (fn-cbor-octet-listp (cadr event))
+                      (unsigned-byte-p 59 (len (cadr event)))
+                      (fn-nsp-line-tokens (cadr event))))
          (keyword (car tokens))
          (kind (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
                      ((fn-nntp-keywordp keyword "HEAD") :head)
                      ((fn-nntp-keywordp keyword "BODY") :body)
                      (t nil))))
     (if (not (and conn kind (null (cdr events))
-                  (fn-nntp-command-inputp (cadr event))
                   (fn-nntp-keyword-tokenp keyword)
                   (fn-nntp-command-arguments-at-mostp tokens)
                   (fn-scar-auth-sessionp as (fn-sn-node (fn-own-store o)))
@@ -393,13 +392,67 @@
 ; One wire event per request: a following NEXT/ARTICLE remains unconsumed
 ; while this retrieval's preflight owns its response. This is a core parser
 ; boundary, independent of the optional physical funding policy.
+;; A1: a command-mode connection's first event by the fn-nsp-frame stream
+;; into a line workspace (the partial line carried in the wire state's
+;; line-rev reloaded first; adapter A1, owner Builder C, retired when a
+;; connection owns its line workspace span); fn-asto-first-event-is-span-fold
+;; ties it to the byte fold.  An article-mode connection (a POST body) keeps
+;; fn-wire-scan, the POST family's scanner.
+(defun fn-asto-frame-line (ws start end fn-octets fn-ast-ws)
+  (declare (xargs :stobjs (fn-octets fn-ast-ws)
+                  :guard (and (fn-wire-fast-statep ws)
+                              (equal (fn-wire-state-mode ws) :command)
+                              (unsigned-byte-p 55 (fn-wire-state-line-limit ws))
+                              (fn-cbor-octet-listp (fn-wire-state-line-rev ws))
+                              (unsigned-byte-p 59 start) (unsigned-byte-p 59 end) (<= start end)
+                              (<= end (fn-octets-len fn-octets)))
+                  :guard-hints (("Goal" :in-theory (disable fn-nsp-frame fn-nsp-frame-wsp)))))
+  (let* ((ll (fn-wire-state-line-limit ws))
+         (fn-ast-ws (fn-ast-ws-from-list (fn-wire-reverse-octets (fn-wire-state-line-rev ws)) fn-ast-ws)))
+    (mv-let (r s2 i2 fn-ast-ws)
+      (fn-nsp-frame ll (fn-nsp-frame-state-of ws) start end nil (+ 1 ll) fn-octets fn-ast-ws)
+      (mv (fn-nsp-frame-wsp r s2 i2 (fn-ast-ws-list fn-ast-ws) ws) fn-ast-ws))))
+(defun fn-asto-frame-casep (ws start end)
+  (declare (xargs :guard t))
+  (and (fn-wire-statep ws)
+       (equal (fn-wire-state-mode ws) :command)
+       (unsigned-byte-p 55 (fn-wire-state-line-limit ws))
+       (unsigned-byte-p 59 start) (unsigned-byte-p 59 end)))
+(defthm fn-asto-frame-line-is-span-fold
+  (implies (and (fn-octets-p fn-octets)
+                (fn-asto-frame-casep ws start end) (<= start end) (<= end (fn-octets-len fn-octets)))
+           (equal (mv-nth 0 (fn-asto-frame-line ws start end fn-octets fn-ast-ws))
+                  (fn-wire-span-fold ws start end fn-octets)))
+  :hints (("Goal" :use ((:instance fn-nsp-frame-is-wire-span-fold (i start)
+                                   (fn-dss-out (fn-wire-reverse-octets (fn-wire-state-line-rev ws)))))
+           :in-theory (disable fn-nsp-frame-is-wire-span-fold fn-nsp-frame fn-nsp-frame-wsp fn-wire-span-fold
+                               fn-wire-statep fn-nsp-frame-state-of))))
 (defun fn-asto-first-event (oc id start end fn-octets)
   (declare (xargs :stobjs fn-octets
                   :guard (and (natp start) (natp end) (<= start end)
-                              (<= end (fn-octets-len fn-octets)))))
-  (let ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-    (and conn (fn-wire-fast-statep (fn-own-conn-wire conn))
-         (fn-wire-scan (fn-own-conn-wire conn) start end fn-octets))))
+                              (<= end (fn-octets-len fn-octets)))
+                  :guard-hints (("Goal" :in-theory (disable fn-asto-frame-line fn-wire-scan fn-wire-statep)))))
+  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+         (ws (and conn (fn-own-conn-wire conn))))
+    (and conn (fn-wire-fast-statep ws)
+         (if (fn-asto-frame-casep ws start end)
+             (with-local-stobj fn-ast-ws
+               (mv-let (w fn-ast-ws) (fn-asto-frame-line ws start end fn-octets fn-ast-ws)
+                 w))
+           (fn-wire-scan ws start end fn-octets)))))
+(defthm fn-asto-first-event-is-span-fold
+  (implies (and (fn-octets-p fn-octets) (natp start) (natp end) (<= start end)
+                (<= end (fn-octets-len fn-octets)))
+           (equal (fn-asto-first-event oc id start end fn-octets)
+                  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+                         (ws (and conn (fn-own-conn-wire conn))))
+                    (and conn (fn-wire-fast-statep ws)
+                         (fn-wire-span-fold ws start end fn-octets)))))
+  :hints (("Goal" :use ((:instance fn-wire-scan-is-span-fold
+                                   (wire-state (fn-own-conn-wire (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+                                   (i start)))
+           :in-theory (disable fn-wire-scan-is-span-fold fn-wire-scan fn-wire-span-fold fn-asto-frame-line
+                               fn-asto-frame-casep fn-wire-fast-statep))))
 
 (defun fn-asto-captured-result (oc capture consumed)
   (declare (xargs :guard t))
