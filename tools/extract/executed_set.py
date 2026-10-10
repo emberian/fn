@@ -99,13 +99,19 @@ class Refused(Exception):
 # ---------------------------------------------------------------- run
 
 def wrapper(core: Path, out: Path) -> Path:
-    """OUT/bin/fn-core: CORE's launcher with the instrument in its environment;
-    OUT/bin/fn-core.core names CORE's core (the load driver reads its digest)."""
+    """OUT/bin/fn-core: CORE's own launcher text with the instrument exported after
+    its first line, so every reader of a launcher (owner.py's one --core and one
+    exec, the load driver's core digest) reads CORE's; OUT/bin/fn-core.core names
+    CORE's core for the launcher's own heap probe."""
     b = out / "bin"
     b.mkdir(parents=True, exist_ok=True)
     w = b / "fn-core"
-    w.write_text("#!/bin/sh\nXL_HOOK=%s FN_XC_OUT=%s exec %s \"$@\"\n"
-                 % (X / "executed_set.lisp", out / "raw", core.resolve()))
+    text = core.resolve().read_text()
+    if not text.startswith("#!"):
+        raise Refused("%s is not a launcher script" % core)
+    first, _, rest = text.partition("\n")
+    w.write_text("%s\nXL_HOOK=%s FN_XC_OUT=%s\nexport XL_HOOK FN_XC_OUT\n%s"
+                 % (first, X / "executed_set.lisp", out / "raw", rest))
     w.chmod(0o755)
     real = Path(str(core.resolve()) + ".core")
     link = b / "fn-core.core"
