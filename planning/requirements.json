@@ -5972,7 +5972,7 @@
       "title": "Running and stopped snapshot producers capture one committed Store frontier and coherent identity/configuration epoch, restore the retained state, and fund bounded work with marker-last completion",
       "specification": "specs/checkpoint.md#running-and-stopped-snapshot-producer",
       "milestone": "M5",
-      "status": "planned",
+      "status": "specified",
       "proof_targets": [
         "PRF-1068",
         "PRF-1086",
@@ -6306,11 +6306,7 @@
       "status": "specified",
       "proof_targets": [
         "PRF-1154",
-        "PRF-1158",
         "PRF-1159",
-        "PRF-1163",
-        "PRF-1161",
-        "PRF-1162",
         "PRF-1182",
         "PRF-1200"
       ],
@@ -6341,7 +6337,7 @@
         "planning/evidence/manifests/certify-20261001T025802Z-1029297.json",
         "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
       ],
-      "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation. Request-budget and physical-fit recognizers are distinct; request admission retains positive pinned reserve policy with no physical-fit or GC-success authority. SCN-1074 covers scalar separation; genuine issuance/caller and physical qualification remain open."
+      "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation. Request-budget and physical-fit recognizers are distinct; request admission retains positive pinned reserve policy with no physical-fit or GC-success authority. SCN-1074 covers scalar separation; genuine issuance/caller and physical qualification remain open. Proof targets PRF-1158, PRF-1161, PRF-1162 and PRF-1163 are rows only on the unmerged branch origin/codex/allocation-turns (fd3759b4f), never on dev; the references were removed 2026-10-10 (CL04) and return with those rows if that branch lands."
     },
     {
       "id": "REP-018",
@@ -6387,7 +6383,7 @@
       "title": "Committed membership transcript retains signed commit-ID conflicts and refuses their authority before any epoch evidence merge",
       "specification": "specs/substrate-transport.md#committed-transcript-collision-boundary",
       "milestone": "M4",
-      "status": "planned",
+      "status": "specified",
       "proof_targets": [
         "PRF-1176",
         "PRF-1189",

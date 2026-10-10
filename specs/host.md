@@ -1350,7 +1350,7 @@ verbs.
 
 ### Operation diagnosis on the existing inspect route
 
-HST-044 (specified): the existing private status/health exchange adds ACL2-produced operation correlation, producer/current phase, wait or refusal reason, captured source/publication coordinates, outstanding charged custody and recovery fault. An unavailable observation is reported as unavailable, rather than an observed idle operation. Identifiers come from actual issued operation receipts; no host-generated correlation value or prepared object graph is reported. Request-budget mode is reported as such and does not assert physical fit.
+HST-044: the existing private status/health exchange adds ACL2-produced operation correlation, producer/current phase, wait or refusal reason, captured source/publication coordinates, outstanding charged custody and recovery fault. An unavailable observation is reported as unavailable, rather than an observed idle operation. Identifiers come from actual issued operation receipts; no host-generated correlation value or prepared object graph is reported. Request-budget mode is reported as such and does not assert physical fit.
 
 The source-specific response recipe and exact `:owner-control` allocation-turn ticket precede rendering. One nonyielding composed call uses the same original request/cache for source lookup, prepayment and BODY; a resumed report obtains a fresh turn over its retained report job. Existing status/health fields and paging remain complete. Fresh preparation retains the original immutable OC/config/pins/profile/observation references under an actually issued report claim. A singleton registered job owns each bounded cursor. Borrowed catalog/arena sources have a sticky invalidation fence installed before every relevant write or swap; an invalid job refuses before the next borrowed read and remains held until cleanup. A completed immutable report buffer no longer depends on those mutable sources. Publishing its buffer/digest occurs only at completion. The scalar renderer component is certified separately. Actual installed inspect authority, report capture, resumable preparation and transport remain open.
 
@@ -1766,10 +1766,14 @@ HST-034: Compaction needs no stop (PKT-868, PRF-908). `store compact` and `store
 
 HST-035: The operator lists, inspects, pauses, resumes and drops the BP carry obligations (PKT-869, PRF-914) with `operator CONFIG carry JOURNAL ...`; each control is a durable record of the carry journal (domain `:carry`, frame FNCC) ACL2 decides, and a paused or dropped work's request is refused by name before anything is written (KEYSTONE `fn-bpcc-gate-refuses-a-held-work`). A drop keeps the Store pin: only the receipt's evidence releases it, or the operator's waiver, `carry JOURNAL drop WORK --abandon REASON` (PRF-950): a `:waive` record of the carry journal (the principal, ACL2's rendering of the effective uid, and the reason) decided only while the pin stands (`reason=not-held` otherwise), made durable before the Store retention event it authors, which is the receipt's own event (the pin's id, subject and evidence; `fnn-owner-retention-commit`), so retention has one release path. A waiver durable without its Store event (a process death between the two) is completed at the next writable owner open; once the pin is gone ACL2 authors no second event, and a later receipt for the work is refused (`carry-waived`) (KEYSTONE `fn-bpcw-waiver-releases-exactly-once`; `fn-bpcw-only-a-waiver-waives`).
 
+HST-037: Operator refusals name their reason: a `post' the Store refuses at completion answers the Store's word (never a bare REFUSED) and logs ` reason=WORD'; `policy set KEY VALUE' with a key the node does not have, or a counted key with a value that is no decimal count, is refused by name (unknown-policy-key, policy-value-not-a-number) with what it would take, never the usage line; SIGHUP's log reopen is documented.
+
+HST-038: Maintenance while serving, the group listing: `store inspect --group GROUP' prints the group's memberships (article numbers to Message-IDs, in number order, after `inspect group=GROUP members=N') from the archive the running owner serves, read through the status exchange (FNLS frame kind 3, as `moderation list GROUP' is), and the same report from the archive a stopped store's open replays from the checkpoint and its suffix; a group the node does not carry is refused by name with what it would take, exit 1; refused by name when an owner holds the lock and answers nothing.
+
 
 ### Offline snapshot blessing
 
-HST-039 (S7a, local fn policy): `operator CONFIG store bless-snapshot DIR`
+HST-039: (S7a, local fn policy) `operator CONFIG store bless-snapshot DIR`
 (or `store ROOT bless-snapshot DIR`) validates the named copy read-only.
 It requires a regular `DIR/SNAPSHOT` completion marker before opening the
 copy. ACL2 `fn-osn-bless-open-needed` omits the open when the marker is

@@ -919,7 +919,9 @@
         "cases": [
           "test_local_handler_fault_uses_core_fault_and_preserves_other_clients"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_owner.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       }
     },
     {
@@ -5824,7 +5826,7 @@
         "PLUS with the exporter value is 283; with another value 481.",
         "The redeemed account's SCRAM login is 283 and its POST 240."
       ],
-      "execution_scope": "Written before the lane's image was built; not yet run.",
+      "execution_scope": "Ran natively 2026-10-10: tests.test_native_sasl, all 7 cases OK, against the developer image of lane d-cost-rows at 163e9f3cc (hbox:/tank/fn/scratch/d-registry-findings/native-sasl1, image reused from d-cost-rows/native-c3).",
       "implementation": {
         "test": "tests.test_native_sasl",
         "cases": [
@@ -5836,8 +5838,13 @@
           "NativeSaslTests.test_scram_replayed_final_is_481",
           "NativeSaslTests.test_scram_plus_with_tls_exporter"
         ],
-        "native": true
-      }
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_sasl.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
+      },
+      "evidence": [
+        "tests/test_native_sasl.py"
+      ]
     },
     {
       "id": "SCN-197",
@@ -6026,11 +6033,13 @@
           "NativeBpCarryAbandonTests.test_a_waiver_cut_before_its_store_release_is_completed_once"
         ],
         "native": true,
-        "record": "planning/evidence/carry-abandon-2026-09-29.md"
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_bp_carry_abandon.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_bp_obligation_native.py",
-        "planning/evidence/operations-2026-09-28.md"
+        "planning/evidence/operations-2026-09-28.md",
+        "planning/evidence/carry-abandon-2026-09-29.md"
       ]
     },
     {
@@ -6075,7 +6084,9 @@
         "cases": [
           "MaintenanceLiveTests.test_recover_and_inspect_answer_on_the_running_owner_and_a_stopped_status_reads_the_header"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_maintenance_live.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_checkpoint_auto.py",
@@ -6101,7 +6112,9 @@
         "cases": [
           "OperatorRefusalTests.test_a_post_the_store_refuses_names_its_reason_and_policy_set_refuses_by_name"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_operator_refusals.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_checkpoint_auto.py",
@@ -6127,7 +6140,9 @@
         "cases": [
           "test_store_export_answers_on_the_running_owner_and_the_archive_imports"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_maintenance_live.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "books/owner-export-request.lisp",
@@ -6179,8 +6194,12 @@
       ],
       "implementation": {
         "test": "tests.test_native_maintenance_live",
-        "cases": [],
-        "native": true
+        "cases": [
+          "MaintenanceLiveTests.test_inspect_group_lists_the_memberships_live_and_offline"
+        ],
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_maintenance_live.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "books/owner-export-request.lisp",
@@ -6191,7 +6210,7 @@
       "id": "SCN-211",
       "title": "A restored backup that diverged is a new lineage: its checkpoint is refused by name against this log, and this store's against its, with or without a suffix; an ordinary restart is not a new lineage",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-035"
       ],
@@ -6218,7 +6237,8 @@
           "test_this_checkpoint_against_the_copy_log_is_refused_by_name"
         ],
         "native": true
-      }
+      },
+      "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; tests.test_native_store_lineage fails its 3 cases on the native image (hbox native-scn1; FILL-STORE-LINEAGE-DIVERGED-CHECKPOINT). It returns to implemented when a passing run's log is archived and cited."
     },
     {
       "id": "SCN-214",
@@ -6240,7 +6260,9 @@
           "test_upgrade_beside_and_rollback_walk_with_the_printed_gap",
           "test_a_release_that_refuses_the_store_switches_nothing"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_install.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "packaging/install.sh",
@@ -6302,7 +6324,9 @@
           "test_stopped_copy_blesses_reopens_and_names_missing_and_malformed_inputs",
           "test_foreign_lineage_is_refused_and_complete_old_lineage_is_explicitly_allowed"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_snapshot_bless.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_snapshot_bless.py",
@@ -6880,7 +6904,9 @@
         "cases": [
           "test_health_is_bounded_readiness_in_the_running_owner_without_login"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_web.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_web.py",
@@ -6912,7 +6938,9 @@
         "cases": [
           "test_posts_land_in_the_configured_log_and_name_the_path_identity"
         ],
-        "native": true
+        "native": true,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_profile.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
       },
       "evidence": [
         "tests/test_native_profile.py",
@@ -7698,7 +7726,7 @@
       "id": "SCN-1071",
       "title": "Persistent forest carry and exact NIL candidate publication replay",
       "milestone": "M2",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-10003"
       ],
@@ -7715,7 +7743,12 @@
       "evidence": [
         "tests/acl2/history-event-directory-tests.lisp",
         "tests/acl2/history-event-backing-tests.lisp"
-      ]
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-event-directory-tests.lisp",
+        "native": false
+      },
+      "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; its test is an ACL2 test book with no archived certify log. It returns to implemented when a passing run's log is archived and cited."
     },
     {
       "id": "SCN-1073",
@@ -8543,7 +8576,23 @@
         "tests/native_checkpoint_image_readback_raw-mock.lisp",
         "tests/test_native_state_checkpoint.py"
       ],
-      "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim."
+      "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim.",
+      "expected": [
+        "Valid bytes install the staged checkpoint exactly once and the private writer snapshot is released.",
+        "A corrupted used page or unwritten zero page is refused before checkpoint replacement; the old checkpoint is retained byte for byte, no replacement or drop is authorized, and the snapshot is released.",
+        "A damaged header is refused; a raw nonlocal exit and a prewrite deferral each release the snapshot; a successful stage returns the snapshot before publication admission can reopen the publisher slot.",
+        "A stop fence is observed after the first image page and before the next is read, the stage is refused before replacement and snapshot custody returns; readback never exceeds one 16384-octet page.",
+        "The snapshot is released exactly once on every publication exit."
+      ],
+      "implementation": {
+        "test": "tests.test_native_checkpoint_image_readback",
+        "cases": [
+          "CheckpointImageReadback.test_stage_custody_and_readback"
+        ],
+        "native": false,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_checkpoint_image_readback.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
+      }
     },
     {
       "id": "SCN-1096",
@@ -8562,7 +8611,19 @@
       "evidence": [
         "tests/native_reclaim_capture_raw.lisp"
       ],
-      "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending."
+      "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending.",
+      "expected": [
+        "With a stale committed-history census (reserve 10000, demand 54544 for 2 records charging 300 octets) the capture is deferred with :credit and the actual current estimate, nothing is captured, the credits are unchanged and the unrelated reservation is retained.",
+        "With a sufficient reserve (60000) the capture is admitted exactly once, the reclaim reservation equals the current estimate for the committed history, and the borrow leaves the articles' room total unchanged.",
+        "A stale, missing or out-of-range (ahead) cache is recomputed from authoritative state so the cache count and sum advance together to 2 and 300; sync visits only the new committed row.",
+        "A held slot (pass or publication in flight) is refused by name with the credits, census cache, history and capture untouched; without the operator opt-in the capture is refused :offline-only with nothing captured."
+      ],
+      "implementation": {
+        "test": "tests/native_reclaim_capture_raw.lisp",
+        "native": false,
+        "log": "planning/evidence/cl04-scenario-runs-2026-10-10/native_reclaim_capture_raw.log",
+        "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
+      }
     },
     {
       "id": "SCN-1090",
@@ -8683,7 +8744,7 @@
       "id": "SCN-1101",
       "title": "Private history relocation yields by page without changing its completed concrete",
       "milestone": "M5",
-      "status": "implemented",
+      "status": "specified",
       "requirements": [
         "STO-017",
         "STO-026"
@@ -8698,7 +8759,19 @@
         "books/history-pages-relocate-step.lisp",
         "tests/acl2/history-pages-relocate-step-tests.lisp"
       ],
-      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result."
+      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result.",
+      "expected": [
+        "The page-stepped relocation completes with the same six concrete arrays and placement as the existing relocation: the starts become (1 2 3 4 7) with 11 pages, the moved words land at their new addresses and the old region is zeroed.",
+        "Each ordinary tick changes at most 2048 words, every successful yield strictly reduces the rank, and no replacement placement is available before :done.",
+        "A cold table wait or page wait returns :need-table or :need-page with the cursor and every concrete array unchanged; after the fixture cache completion the exact cursor is retried and yields a new cursor.",
+        "Insufficient capacity is refused (:refused :capacity) and an inconsistent image size is refused (:refused :image), each with the concrete unchanged and no cursor.",
+        "A run short of fuel is refused :continuation-fuel and does not have the final concrete, so partial completion cannot stand for :done."
+      ],
+      "implementation": {
+        "test": "tests/acl2/history-pages-relocate-step-tests.lisp",
+        "native": false
+      },
+      "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; its test is an ACL2 test book with no archived certify log. It returns to implemented when a passing run's log is archived and cited."
     },
     {
       "id": "SCN-1103",
@@ -9266,7 +9339,9 @@
       "evidence": [
         "tests/fixtures/owner_operation_report.lisp"
       ],
-      "execution_scope": "Ordinary Lisp selected literal source; STATE map and framing/digest are explicit fixture adapters, not full native process or proof evidence."
+      "execution_scope": "Ordinary Lisp selected literal source; STATE map and framing/digest are explicit fixture adapters, not full native process or proof evidence.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1119",
@@ -9349,7 +9424,9 @@
         "test": "tests/test_dev_repl.py",
         "native_test": "tests/dev_repl_native.py"
       },
-      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open. Subsequent actual native owner scenario-v2 covers prover exhaustion/refusal, later evaluation and proof admission recovery, hook reload deduplication, SIGTERM cleanup and fault fence on the named initialized cache with current developer module. Indexed dev-repl native execution evidence accompanies source a5d6c496d and tests/dev_repl_native.py; whole current union remains pending."
+      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open. Subsequent actual native owner scenario-v2 covers prover exhaustion/refusal, later evaluation and proof admission recovery, hook reload deduplication, SIGTERM cleanup and fault fence on the named initialized cache with current developer module. Indexed dev-repl native execution evidence accompanies source a5d6c496d and tests/dev_repl_native.py; whole current union remains pending.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1123",
@@ -9372,7 +9449,9 @@
         "test": "tests/test_control_observation.py",
         "native_test": "tests.test_native_bounds_join.TenMibArticleTests.test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post"
       },
-      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks pass. Actual native ten MiB NNTP and operator POST accepted with exact readback and owner alive: 1 test/0 skips/28.443s, supported 128 MiB history/16 MiB article/64 transactions. Indexed control-observation-ten-mib-native.json/log/execution.json bind the ad8 initialized-source cache plus ordinary observer overlay. No whole current-kernel, complete funding or overloaded deadline guarantee follows."
+      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks pass. Actual native ten MiB NNTP and operator POST accepted with exact readback and owner alive: 1 test/0 skips/28.443s, supported 128 MiB history/16 MiB article/64 transactions. Indexed control-observation-ten-mib-native.json/log/execution.json bind the ad8 initialized-source cache plus ordinary observer overlay. No whole current-kernel, complete funding or overloaded deadline guarantee follows.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1124",
@@ -9395,7 +9474,9 @@
         "test": "tests/test_moderation_outcome.py",
         "native_test": "tests/test_native_moderation_outcome.py"
       },
-      "execution_scope": "Actual source dispatcher, normal ACL2 formatter book49forms/7425steps and65literal teeth pass. Actual native partial publication/restart/retry PASS1test/0skips/10.444s: durable authorization, named uncertainty/exit3 on known cause refusal, healthy owner and target readable, row preserved after restart, retry accepted and target withdrawn. Indexed native-moderation-outcome evidence binds historical ad8 initialized cache plus exact current formatter/consumer overlay, not whole current union. Concurrent authority/generation interactions remain an investigation item, not an established defect or atomicity guarantee."
+      "execution_scope": "Actual source dispatcher, normal ACL2 formatter book49forms/7425steps and65literal teeth pass. Actual native partial publication/restart/retry PASS1test/0skips/10.444s: durable authorization, named uncertainty/exit3 on known cause refusal, healthy owner and target readable, row preserved after restart, retry accepted and target withdrawn. Indexed native-moderation-outcome evidence binds historical ad8 initialized cache plus exact current formatter/consumer overlay, not whole current union. Concurrent authority/generation interactions remain an investigation item, not an established defect or atomicity guarantee.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1122",
@@ -9936,6 +10017,218 @@
         ],
         "native": true
       }
+    },
+    {
+      "id": "SCN-1147",
+      "title": "Once-only allocating scheduling turn uses an installed worker slot, finishes once, and fences raw escapes",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-042"
+      ],
+      "steps": [
+        "Install a concrete allocation-turn slot store with more than one slot and enter turns on distinct slots through the internal entry with a role symbol; hold a connection lifetime holder separately.",
+        "Prepay the body of a turn once, continue a prepaid body in draining, and offer a gate-owned unpaid body while draining.",
+        "Finish with the matching slot and nonce; then repeat the finish, finish with a stale nonce, finish a reused slot with the old nonce, and finish from an intent or faulted phase.",
+        "Make the gate, the nonce issuer, the draining mode and the role refuse an entry in turn.",
+        "Interrupt an entry, body prepayment or finish between its physical updates (raw cut)."
+      ],
+      "expected": [
+        "A connection holder is lifetime custody and gives no turn authority; each turn draws a direct installed slot, with no served resize, free-list search or slot scan.",
+        "Entry returns the word, the scalar nonce, the slots and the pool; the receipt is SLOT and NONCE as two scalars, never a newly allocated list.",
+        "A matching finish in phase 2, 3 or 4 under active or draining mode with a positive active count retains phase 5, decrements the active count once and returns the slot idle, keeping the last nonce.",
+        "A stale, duplicate or reused-slot old nonce leaves the complete state unchanged; intent and faulted phases cannot finish.",
+        "A definite gate refusal restores idle with no issued receipt; a definite issuer refusal consumes the temporary turn once while retaining the gate prepayment.",
+        "A gate-owned unpaid body yields in draining and returns within the gate rather than waiting for a collection with an active turn; a prepaid body continuation keeps the same receipt.",
+        "A raw escape between physical updates fences and retains the exact partial transition, roots, identity and allocation debt; recovery never silently consumes a receipt.",
+        "Source declaration admission is not native execution or image qualification; actual operation allowance composition and the process-wide executor join remain open."
+      ]
+    },
+    {
+      "id": "SCN-1148",
+      "title": "Resource spent for a user draws from that user's bank first and teardown returns the sub-bank",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-045"
+      ],
+      "steps": [
+        "Install a root bank whose budget is a nine-coordinate resource vector (resident, disk, descriptors, workers, read identities, transaction identities, configuration generations, connection identities, work), with the owner's baseline drawn in slot 0 and the maintenance reserve opened in slot 1 before any user slot exists.",
+        "Open a connection sub-bank from the root, draw reads on it with their completion tokens, refund part of a draw, settle a draw, and settle it a second time.",
+        "Draw a slot, settle it, draw it again, and replay the first draw's completion token.",
+        "Draw ten reads so the read-identity coordinate is exhausted while every octet has returned.",
+        "Request a draw whose demand plus the drawn vector is not within the budget; request a refund past what the draw holds; destroy a sub-bank that overspent its spent coordinates.",
+        "Destroy the connection sub-bank, and grow the reserve by the owner's dW+ before an acceptance."
+      ],
+      "expected": [
+        "A draw is admitted exactly when drawn plus demand is within the budget and charges exactly the demand, answering the slot's new generation as the completion token; the check precedes every effect.",
+        "Reusable coordinates return at settle; spent coordinates (identities and work) stay drawn, so the exhausted read-identity coordinate refuses further reads by name (:resources-unavailable) with every octet returned.",
+        "A second settle of the same token is never admitted; a replayed first-draw token on a slot drawn again is :stale and leaves the bank.",
+        "Every refused step returns the bank itself, so the slack is unchanged; refusals are named (:invalid-draw, :slot-busy, :resources-unavailable, :invalid-slot, :stale, :invalid-refund, :past-what-it-holds, :invalid-grow, :invalid-destroy, :sub-bank-overspent).",
+        "A user's step never draws the reserve at slot 1, and the owner's baseline and reserve are drawn first at install.",
+        "Destroying the sub-bank returns exactly its budget less what it spent, covering the reusable part of every draw it still held.",
+        "The refusal's own transient execution is not accounted by these books, and no served entry draws on a bank until definterface :operation lands."
+      ]
+    },
+    {
+      "id": "SCN-1149",
+      "title": "Independent catchup spool flight backing is drawn before buffers, descriptors and worker construction",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "HST-049"
+      ],
+      "steps": [
+        "Capture a peer-flight policy of heap octets, spool disk octets, maximum flights, maximum workers, spool allowance per flight and total metered work; also supply policies that are malformed or unsupported, and a policy whose spool allowance is not below 2^63.",
+        "Start without any peer-flight-profile file, and with a profile file that is FNP1 followed by six big-endian u64 fields in policy order, with and without a trailing extra byte.",
+        "Run launcher and startup for a store with the peer allowance, at a heap fraction the protected check admits and at one it refuses (85 percent heap).",
+        "Begin a flight, drawing its lifetime row and its work row, then exhaust the work row mid-batch.",
+        "Settle a flight after peer ACK, local response, timeout or cancellation."
+      ],
+      "expected": [
+        "Each flight has separate lifetime and work rows selected by ACL2, and the actual draw precedes the private buffer, spool and worker constructors.",
+        "Absence of the profile file creates no grant; malformed or unsupported fields refuse, and a spool allowance not below 2^63 is rejected before install because native seeks cannot represent it.",
+        "Startup checks the actual dynamic capture and protects the other banks: DEFAULT protects the peer heap rather than consuming it as spare headroom, and an 85 percent heap is refused.",
+        "Work exhaustion refuses before cursor mutation and cannot silently truncate an accepted batch.",
+        "The flight lease survives peer ACK, local response, timeout and cancellation; settlement requires actual worker return and join, physical socket closure, spool cleanup and no future publication or owner-close callback custody.",
+        "The producer is explicitly :partial-fixed-storage; native cells, pointed-to hash frames, controller and temporary cons, TLS and collector behavior are not covered, and no complete-profile activation claim is made."
+      ]
+    },
+    {
+      "id": "SCN-1150",
+      "title": "Authentication failures: three per connection, the third answered 481 then 400 and close",
+      "milestone": "M6",
+      "status": "specified",
+      "requirements": [
+        "NNT-1002"
+      ],
+      "steps": [
+        "On one connection, send in one read ten AUTHINFO USER / AUTHINFO PASS pairs with a wrong password, followed by a GROUP command.",
+        "Repeat with failures through AUTHINFO SASL exchanges that fail, mixed with a syntax error, a 483, a 503, a 504 and a cancelled exchange.",
+        "Fail twice, upgrade the connection with STARTTLS, and fail again.",
+        "After the closing connection, open a new connection and log in with the right password."
+      ],
+      "expected": [
+        "The replies are 381 and 481 three times, then 400 (400 too many authentication failures; closing connection), then end of file; the fourth guess and the GROUP are never framed or answered.",
+        "A failure is a 481 to AUTHINFO PASS or a failed AUTHINFO SASL exchange; a syntax error, a 483, a 503, a 504 or a cancelled exchange (481 authentication cancelled) is not counted.",
+        "The count is per connection, kept in the auth session, and survives STARTTLS.",
+        "No connection has more than three passwords checked, however many USER/PASS pairs one read carries.",
+        "The per-address exposure budget is separate and unchanged; the owner keeps serving and a new connection can log in with the right password.",
+        "The stored verifier remains one fast salted digest per guess; an iterated or memory-hard verifier is not part of this requirement."
+      ]
+    },
+    {
+      "id": "SCN-1151",
+      "title": "Redeem client bounds input before accumulation and sends only validated credential commands",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "NNT-1003"
+      ],
+      "steps": [
+        "Feed the redeem client a password one character at a time: a nonempty graphic ASCII token at exactly 496 octets, one longer, one empty, one with whitespace or a non-octet character, and one ending in a single CR before LF or EOF.",
+        "Build the XREDEEM and AUTHINFO commands from CODE and LOGIN tokens containing an embedded CR/LF, whitespace, or the reserved word PASS in CODE.",
+        "Read a server reply whose LF falls within the 512 octet response bound, one whose LF is beyond it, and a single chunk carrying both an oversized prefix and LF."
+      ],
+      "expected": [
+        "A token of at most 496 octets is retained; a longer or invalid token is refused before more input is retained, and one terminal CR before LF or EOF is permitted.",
+        "The 496 octet width lets both the 13 octet XREDEEM PASS prefix and the 14 octet AUTHINFO PASS prefix fit the 510 octet command content bound of RFC 3977 section 3.1.",
+        "The complete command is built and validated by ACL2 for token boundaries and wire width; the reserved PASS keyword in CODE is refused, and no embedded CR/LF, whitespace token splitting or non-octet character reaches the wire.",
+        "The reply LF position is checked against the 512 octet bound before the line is interpreted, including inside one chunk; a malformed or overlong reply ends the exchange as loss, never as a definitive account refusal, so the existing redemption stage decides unreachable or uncertain.",
+        "Whether a syntactically valid login or invitation is usable remains the server's account policy; the input-policy proofs are narrower than host-loop refinement or a saved-image interoperability claim."
+      ]
+    },
+    {
+      "id": "SCN-1152",
+      "title": "TCPCL passive entity refuses a foreign Contact Header version with SESS_TERM Version mismatch and no MSG_REJECT",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "REP-016"
+      ],
+      "steps": [
+        "Start a TCPCLv4 passive receiver and connect with a TCPCLv3 contact header: dtn! magic, version 3, flags 0, keepalive 15, an SDNV EID length and the EID ipn:150.0, all in one write.",
+        "Hold the connection open and read until the passive side closes, within a deadline.",
+        "Send a version 3 contact to an active entity in the Contact phase, to a passive entity that is already Messaging, and a version 4 contact to a passive entity.",
+        "Send a bad magic string and a peer CAN_TLS flag without local willingness."
+      ],
+      "expected": [
+        "The passive side sends its own v4 Contact Header (CAN_TLS clear) and a SESS_TERM with flags 0 and reason 2 (Version mismatch), then closes at once; the reply is exactly those octets and then end of file.",
+        "The remainder of the peer's v3 header is never parsed as v4 messages and draws no MSG_REJECT; a further SESS_TERM from the peer produces no events.",
+        "An active entity in Contact closes with no SESS_TERM; version 4 to the passive entity reaches Messaging; a passive entity already Messaging ignores a second contact header.",
+        "A bad magic string closes silently before any message; Enable TLS is the conjunction, so CAN_TLS from the peer alone negotiates no TLS.",
+        "Version fallback to TCPCLv3 is deferred: fn implements version 4 only."
+      ]
+    },
+    {
+      "id": "SCN-1153",
+      "title": "Store limits are operator policy changed in place: applied now, applied at next start, or refused by name",
+      "milestone": "M5",
+      "status": "specified",
+      "requirements": [
+        "STO-038"
+      ],
+      "steps": [
+        "Publish a :set-limit configuration record for a live field (max-transactions, max-history-octets or max-article-octets) with a raise that fits the heap reservation the process started with.",
+        "Publish a raise that needs more heap than the running reservation; decide the same raise offline, with no process holding a reservation.",
+        "Request a lowering below the store's current use (99 transactions with 100 committed, 999999 history octets with 1000000 charged), a field that is not live (max-record-octets), an invalid profile (zero transactions), a value past the representation ceiling, and a figure a 2 GiB machine cannot hold.",
+        "Replay a configuration history with several :set-limit rows, including a later lowering of the same field and the rows in the opposite order, and open the store from that history alone.",
+        "Lower max-transactions below max-open-suffix."
+      ],
+      "expected": [
+        "A raise within the running reservation is :applied now; a raise beyond it is :at-restart with no data moved; offline, every accepted change is :at-restart.",
+        "A lowering below current use is refused by name as below-current-use with the use; a field that is not live is refused :not-a-live-limit; an invalid profile is refused with its reason; a figure the machine cannot hold is refused :machine-cannot-hold-profile with both numbers; a value past the ceiling is refused as above-representation-ceiling.",
+        "An accepted change leaves the use within the new limit, and no limit change moves data or needs an export and an import.",
+        "The effective profile is the sealed one with each live field overridden by its last row, computed from configuration history alone, so the profile an owner installs on applying a record is the one every later open computes; the opposite row order gives a different profile.",
+        "A lowered T lowers max-open-suffix with it, as init resolution does.",
+        "A change recorded for the next start does not fund; admission reads the funded limit, and config.json is never rewritten."
+      ]
+    },
+    {
+      "id": "SCN-1154",
+      "title": "Explicit durable group authority binding is installed, replaced, removed and pinned per connection",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "SUB-007"
+      ],
+      "steps": [
+        "Create group fn.test, then publish group-authority records installing a canonical 64-character lowercase hexadecimal principal, replacing it with another, and setting it to ungoverned (empty string); replay the four-record history.",
+        "Use operator CONFIG group authority with a valid principal, with ungoverned, with an invalid spelling, and for a group that does not exist.",
+        "On a running node, open a connection, post by transit under an installed authority, replace the binding with ungoverned and post on the old connection and on a new connection, then bind another principal and restart.",
+        "Post by transit on a connection opened after the restart."
+      ],
+      "expected": [
+        "The :set-group-authority delta (code 29) installs the principal and the local configuration generation and preserves all six prior group fields; its sole antecedent is that the named group exists, so with no group the conclusion fails.",
+        "Replay of creation, installation, replacement and removal yields each binding in turn; fresh creation and revival start ungoverned at generation zero.",
+        "Configuration publication admits only a live configured group, a valid principal spelling or the empty string, and zero/nil unused fields.",
+        "Authority is read from the transit connection's pinned configuration: a replacement governs later connections and leaves an old connection's pin intact; the old connection still logs authority=no-statement, a new connection after ungoverned logs authority=ungoverned, and a post after the restart logs authority=no-statement for the replacement.",
+        "An authority binding names a principal and does not enroll keys or manufacture a verified statement; byte admission still uses the current delivery configuration.",
+        "A productive :admitted authority claim, native qualification on the new immutable image and the legacy statement key index with the hybrid snapshot bridge remain open."
+      ]
+    },
+    {
+      "id": "SCN-1155",
+      "title": "Committed membership transcript retains commit-ID conflicts and refuses their authority before any epoch merge",
+      "milestone": "M4",
+      "status": "specified",
+      "requirements": [
+        "SUB-008"
+      ],
+      "steps": [
+        "Scan a membership transcript holding a signed envelope E1 for a commit in a group, then offer a distinct authority-signed envelope E2 with the same commit id in the same group (a different decoded commit, same id).",
+        "Offer the exact envelope E1 again.",
+        "Offer a same-id envelope from a principal other than the selected authority before the authority's own commit.",
+        "Run the publication with a scan cursor whose duplicate witness is omitted, or whose transcript is corrupt, and resume a comparison one retained envelope at a time."
+      ],
+      "expected": [
+        "Both envelopes remain evidence; the same commit id cannot disappear through the epoch merge's id suppression, and the authority is refused as :commit-id-conflict.",
+        "An exact envelope retransmission is :retransmission and leaves the transcript with the single retained envelope.",
+        "Prior evidence by a principal other than the selected authority cannot poison that authority's commit id.",
+        "Publication requires a completed conflict scan, a verified candidate, a nonempty authority and a statement creator equal to the commit actor; omitting the duplicate witness makes the retention conclusion fail.",
+        "The payload id is not the statement identity, and byte acceptance and persistence remain separate.",
+        "Verification is conditional on the signature seam and A-CRYPTO; actual persistence completion, cold replay installation and the 513-octet-ID codec disagreement (decode-exact answers :limit at its 512 cap) remain open."
+      ]
     }
   ]
 }
