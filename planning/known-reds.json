@@ -57,6 +57,13 @@
    "item": "MEMORY-2G-PROFILE-SEMANTICS",
    "owner": "builder-M",
    "evidence": "measured red at dev dd93a43f1 under --mem 2G (hbox native-dd93a43f1-2g-control) and on train 79's image (native-d8fb738b3859-2g): the fill's refusal reason is history-exhausted where the test expects unaffordable; retirement: memory landing 3; admitted by amendment, coordinator 2026-10-09 18:05"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_control_filing.NativeControlFilingTests.test_transit_revoked_signed_cancel",
+   "item": "TRANSIT-REVOKED-CONTROL-REFUSED",
+   "owner": "builder-C",
+   "evidence": "measured red on hbox (native-rv-red2, developer image of lane/spans 41aa1f457, dev b713f35e6 merged; fn-pa-revoked-event unchanged on dev): a signed cancel under a key revoked on the receiver, relayed over IHAVE, is answered 437 (the signed article did not form a Store event) while the ordinary article of the same key is accepted 235 as revoked evidence; retirement: the O1 packet-4 READY (lane/spans); admitted by amendment, coordinator 2026-10-10"
   }
  ]
 }

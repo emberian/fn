@@ -65,6 +65,14 @@
    "item": "OVER-WINDOW-FIXTURE-SCHEMA",
    "owner": "builder-D",
    "ruling": "coordinator 2026-10-09: admitted by amendment, owner builder-D (the fixture rebuild)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_control_filing.NativeControlFilingTests.test_transit_revoked_signed_cancel",
+   "dev_sha": "b713f35e6",
+   "item": "TRANSIT-REVOKED-CONTROL-REFUSED",
+   "owner": "builder-C",
+   "ruling": "coordinator 2026-10-10: dev serves this defect today; enters by amendment, retired by the packet-4 READY"
   }
  ]
 }
