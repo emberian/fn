@@ -513,7 +513,7 @@ class StateCheckpointTests(StateCheckpointFixture):
         the empty one, so the decision is the observed branch: exit 0, a
         `heap=' line, none of the offline adapter's words, and the totals it
         read (fn-mo-totals-words) are the stopped status's header line, with
-        HISTORY the replayed headroom's bytes-used.  (2) Two records past the
+        CHARGE the replayed headroom's bytes-used.  (2) Two records past the
         checkpoint: SUFFIX is unseen (L's adapter), so the line says so.  (3)
         No checkpoint at all: the same."""
         created = self.op("init", "--profile", "development", "fn.test")
@@ -538,7 +538,9 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(observed, [header[k] for k in ("records", "arena", "hcharge", "memberships",
                                                         "events", "log", "history", "charge")])
         self.assertEqual(observed[0], 3)
-        self.assertEqual(observed[6], self.headroom()["bytes-used"])
+        # CHARGE is the store budget's row octets (fn-sbud-row-octets), whose
+        # sum the replayed headroom reports as bytes-used
+        self.assertEqual(observed[7], self.headroom()["bytes-used"])
         # (2) records past S
         self.post(self.ids[3:])
         code, line = self.heap_replay_line()
