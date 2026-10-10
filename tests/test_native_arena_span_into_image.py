@@ -91,17 +91,19 @@ HELPERS = r"""
               (= (fn-octets-len into) (+ (length prefix) n)))
          nil
        (list :fail h at n (length prefix) (fn-octets-len into) (fn-octets-len twin)))))
- ;; Every case of every handle of ARENA, with and without a prefix already in OUT.
- (defun fn-spi-sweep (arena)
+ ;; Every case of every handle of ARENA (or of handle ONLY), with and without a
+ ;; prefix already in OUT.
+ (defun fn-spi-sweep (arena &optional only)
    (let ((counts nil) (fails nil))
      (dotimes (h (fn-arena$x-count arena))
+       (when (or (null only) (eql h only))
        (let ((kind (fn-spi-kind arena h)) (plen (fn-arena$x-payload-len h arena)))
          (dolist (c (fn-spi-cases plen))
            (dolist (prefix (list nil (list 9 8 7)))
              (let ((f (fn-spi-check arena h (car c) (cdr c) prefix)))
                (if f (push f fails)
                  (let ((cell (assoc kind counts)))
-                   (if cell (incf (cdr cell)) (push (cons kind 1) counts)))))))))
+                   (if cell (incf (cdr cell)) (push (cons kind 1) counts))))))))))
      (list :counts counts :fails (reverse fails))))
  ;; The kinds and payload lengths of ARENA's handles.
  (defun fn-spi-survey (arena)
@@ -260,11 +262,18 @@ class ArenaSpanIntoImageTests(verbs.NativeOperatorVerbFixture):
         self.assertTrue({"extent", "lz"} <= kinds, held)
         self.assertTrue(any(n >= BIG for _h, kind, n in held if kind == "extent"), held)
         self.assertTrue(any(n >= BIG for _h, kind, n in held if kind == "lz"), held)
-        text = self.repl("(fn-spi-sweep {})".format(self.LIVE))
-        self.assertEqual(failures(text), [], text[-1500:])
-        got = counts(text)
+        # One handle per REPL call: an lz handle reads about 68 us an octet
+        # (fn-durable-realize-lz-octet, on hbox), so a 53 KB handle's cases
+        # take about 90 s, past one call's bound for the whole arena.
+        got, fails = {}, []
+        for h, _kind, _n in held:
+            text = self.repl("(fn-spi-sweep {} {})".format(self.LIVE, h), timeout=900)
+            fails += failures(text)
+            for kind, n in counts(text).items():
+                got[kind] = got.get(kind, 0) + n
+        self.assertEqual(fails, [], fails[:20])
         for kind in ("extent", "lz"):
-            self.assertGreater(got.get(kind, 0), 0, text[-800:])
+            self.assertGreater(got.get(kind, 0), 0, got)
 
     def test_every_entry_kind_equals_the_append_of_its_span_in_a_scratch_arena(self):
         self.open_owner()
