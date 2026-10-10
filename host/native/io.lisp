@@ -471,21 +471,18 @@ return the index the bytes begin at."
 ;;; out under it (`fnn-dss-out-octets'), so no render sees another's.
 ;;; Retired when the reader's ARTICLE path renders into its own leased
 ;;; buffer (RUNTIME-MODEL section 4: per-connection machines; Builder A,
-;;; landing 2).
-(defvar *fnn-ast-ws* nil)
-(defvar *fnn-dss-out* nil)
+;;; landing 2).  Each call resolves the live binding (as fnn-live-owner-st
+;;; does) rather than caching it in a global: a lazily set global is a write
+;;; no lock covers, reached from every actor through fnn-live-stobj
+;;; (lock_discipline_check R1b, train 87).
 
 (defun fnn-live-ast-ws ()
-  (or *fnn-ast-ws*
-      (setq *fnn-ast-ws*
-            (or (cdr (assoc 'fn-ast-ws (user-stobj-alist *the-live-state*)))
-                (fnn-fault "the article render workspace stobj is not in this image")))))
+  (or (cdr (assoc 'fn-ast-ws (user-stobj-alist *the-live-state*)))
+      (fnn-fault "the article render workspace stobj is not in this image")))
 
 (defun fnn-live-dss-out ()
-  (or *fnn-dss-out*
-      (setq *fnn-dss-out*
-            (or (cdr (assoc 'fn-dss-out (user-stobj-alist *the-live-state*)))
-                (fnn-fault "the span output stobj is not in this image")))))
+  (or (cdr (assoc 'fn-dss-out (user-stobj-alist *the-live-state*)))
+      (fnn-fault "the span output stobj is not in this image")))
 
 (defun fnn-dss-out-octets ()
   "A fresh byte vector of the span output's octets [0, fill): the window the
