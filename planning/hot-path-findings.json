@@ -88,10 +88,6 @@
       "class": "unexpected",
       "packet": "PKT-308"
     },
-    "fn-bpn-restart-step*1* len J": {
-      "class": "unexpected",
-      "packet": "PKT-308"
-    },
     "fn-bpnd-held-list-debt-loop recursion F": {
       "class": "unexpected",
       "note": "[batch AZ: serve-depth (PRF-362) runs this walk as a loop; moved from 'fn-bpnd-held-list-debt recursion F', same traversal, same class]",
@@ -787,6 +783,76 @@
       "class": "unexpected",
       "packet": "open",
       "note": "check-sweep 2026-10-04: first reported at books/store-reclaim-holders.lisp:112 (walk of the retained-state dimension N), reached via fn-store-reclaim-context -> fn-xpy-ctx -> fn-rclp-ctx-expiring -> fn-rcl-store-holders -> fn-rcl-bp-holders -> fn-rcl-forward-subjects; owning book books/store-reclaim-holders.lisp, last changed ce8cf421d. No carried invariant or measured bound is cited and no packet owns it yet; the owner files one or removes the traversal."
+    },
+    "fn-ctl-msgid-withdrawn recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/control-served.lisp:191 (a walk of N, retained Store history), reached via fn-owner-account-outcome -> fn-scar-ocfg-read-step -> fn-scar-own-read-step-full -> fn-scar-dispatch -> fn-scar-dispatch-core -> fn-scar-auth-step-pinned -> fn-scar-auth-delegate-pinned -> fn-scar-peer-step-pinned -> fn-peer-delegate-pinned -> fn-nntp-post-step-pinned -> fn-nntp-step-pinned -> fn-nn; owning book books/control-served.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-index-build-loop recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-OPEN-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/index.lisp:111 (a walk of N, retained Store history), reached via fn-owner-recover-from-store-open -> fn-ock-install -> fn-own-start -> fn-gidx-build -> fn-index-build -> fn-index-build-loop [recursion]; owning book books/index.lisp. Owned by HOT-PATH-OPEN-WALKS-N (builder-A, under the lazy-open shape: a walk of N at open or recover is what the reopen protocol forbids); the bound is N until the packet replaces the walk."
+    },
+    "fn-nntp-group-count-loop recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/nntp-projection.lisp:1079 (a walk of N, retained Store history), reached via fn-owner-account-outcome -> fn-scar-ocfg-read-step -> fn-scar-own-read-step-full -> fn-scar-dispatch -> fn-scar-dispatch-core -> fn-scar-auth-step-pinned -> fn-scar-auth-delegate-pinned -> fn-scar-peer-step-pinned -> fn-peer-delegate-pinned -> fn-nntp-post-step-pinned -> fn-nntp-post-step -> fn-nntp; owning book books/nntp-projection.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-nntp-group-high-loop recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/nntp-projection.lisp:1085 (a walk of N, retained Store history), reached via fn-owner-account-outcome -> fn-scar-ocfg-read-step -> fn-scar-own-read-step-full -> fn-scar-dispatch -> fn-scar-dispatch-core -> fn-scar-auth-step-pinned -> fn-scar-auth-delegate-pinned -> fn-scar-peer-step-pinned -> fn-peer-delegate-pinned -> fn-nntp-post-step-pinned -> fn-nntp-post-step -> fn-nntp; owning book books/nntp-projection.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-nntp-group-last-number-loop recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/nntp-projection.lisp:1093 (a walk of N, retained Store history), reached via fn-owner-account-outcome -> fn-scar-ocfg-read-step -> fn-scar-own-read-step-full -> fn-scar-dispatch -> fn-scar-dispatch-core -> fn-scar-auth-step-pinned -> fn-scar-auth-delegate-pinned -> fn-scar-peer-step-pinned -> fn-peer-delegate-pinned -> fn-nntp-post-step-pinned -> fn-nntp-post-step -> fn-nntp; owning book books/nntp-projection.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-nntp-group-low-loop recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/nntp-projection.lisp:1084 (a walk of N, retained Store history), reached via fn-owner-account-outcome -> fn-scar-ocfg-read-step -> fn-scar-own-read-step-full -> fn-scar-dispatch -> fn-served-repin -> fn-served-repin-session -> fn-served-reselect -> fn-nntp-group-low -> fn-nntp-group-low-loop [recursion]; owning book books/nntp-projection.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-nntp-group-next-number-loop recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/nntp-projection.lisp:132 (a walk of N, retained Store history), reached via fn-owner-account-outcome -> fn-scar-ocfg-read-step -> fn-scar-own-read-step-full -> fn-scar-dispatch -> fn-scar-dispatch-core -> fn-scar-auth-step-pinned -> fn-scar-auth-delegate-pinned -> fn-scar-peer-step-pinned -> fn-peer-delegate-pinned -> fn-nntp-post-step-pinned -> fn-nntp-post-step -> fn-nntp; owning book books/nntp-projection.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-oig-rows-loop recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/owner-inspect-group.lisp:38 (a walk of N, retained Store history), reached via fn-native-live-status-host-offline -> fn-cev-offline-report -> fn-oig-report -> fn-oig-rows -> fn-oig-rows-loop [recursion]; owning book books/owner-inspect-group.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-rii-kbuild-pins-loop recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-OPEN-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/replay-identity-index.lisp:480 (a walk of N, retained Store history), reached via fn-owner-recover-rows -> fn-rii-sco-extend -> fn-rii-sco-cpr-resume -> fn-rii-ix-of -> fn-rii-kbuild -> fn-rii-kbuild-pins -> fn-rii-kbuild-pins-loop [recursion]; owning book books/replay-identity-index.lisp. Owned by HOT-PATH-OPEN-WALKS-N (builder-A, under the lazy-open shape: a walk of N at open or recover is what the reopen protocol forbids); the bound is N until the packet replaces the walk."
+    },
+    "fn-rii-kbuild-releases-loop recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-OPEN-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/replay-identity-index.lisp:478 (a walk of N, retained Store history), reached via fn-owner-recover-rows -> fn-rii-sco-extend -> fn-rii-sco-cpr-resume -> fn-rii-ix-of -> fn-rii-kbuild -> fn-rii-kbuild-releases -> fn-rii-kbuild-releases-loop [recursion]; owning book books/replay-identity-index.lisp. Owned by HOT-PATH-OPEN-WALKS-N (builder-A, under the lazy-open shape: a walk of N at open or recover is what the reopen protocol forbids); the bound is N until the packet replaces the walk."
+    },
+    "fn-sf-record-has-pair-walkp recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/store-files.lisp:559 (a walk of N, retained Store history), reached via fn-reader-use-store -> fn-rdc-store-selection -> fn-sn-statep -> fn-sf-statep -> fn-sf-phase-shapep -> fn-sf-record-has-pairp -> fn-sf-record-has-pair-walkp [recursion]; owning book books/store-files.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-sf-record-list-walkp recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/store-files.lisp:510 (a walk of N, retained Store history), reached via fn-reader-use-store -> fn-rdc-store-selection -> fn-sn-statep -> fn-sf-statep -> fn-sf-record-listp -> fn-sf-record-list-walkp [recursion]; owning book books/store-files.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-sf-success-listp-fill recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/store-files.lisp:594 (a walk of N, retained Store history), reached via fn-reader-use-store -> fn-rdc-store-selection -> fn-sn-statep -> fn-sf-statep -> fn-sf-success-listp -> fn-sf-success-listp-ks -> fn-sf-success-listp-fill [recursion]; owning book books/store-files.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
+    },
+    "fn-sf-success-listp-scan recursion N": {
+      "class": "unexpected",
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/store-files.lisp:601 (a walk of N, retained Store history), reached via fn-reader-use-store -> fn-rdc-store-selection -> fn-sn-statep -> fn-sf-statep -> fn-sf-success-listp -> fn-sf-success-listp-ks -> fn-sf-success-listp-scan [recursion]; owning book books/store-files.lisp. Owned by HOT-PATH-SERVED-WALKS-N (builder-C, a served-path row after ARTICLE); the bound is N until the packet replaces the walk."
     }
   },
   "note": "Every traversal of retained state that tools/hot_path_check.py finds on a path from a host entry, keyed 'function primitive dimension', with the packet that owns it (planning/backlog-2026-09-25.md; PKT-448's lettered items are the finds no earlier packet owned). This is a list, not a baseline: every entry here is a find the report prints, whatever its class. --strict fails on an unexpected find not listed here (NEW) and on a listed key that no longer occurs (STALE): remove an entry by removing the walk, in the same commit. 'confirmed' names the scaling row (planning/evidence/hot-path-checker-2026-09-26.md) that measured it; absent means static only."

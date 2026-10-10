@@ -150,6 +150,21 @@ class FakeTree(unittest.TestCase):
         self.assertEqual(find.klass, "resumable")
         self.assertEqual(find.bound, "at most 64 records per step")
 
+    def test_a_dimension_bound_makes_a_bounded_find(self) -> None:
+        # CL25 (coordinator ruling 2026-10-10): a profile bound on a dimension,
+        # stated in the dimensions file, classifies every walk of it `bounded`
+        # with that bound; without it the same walk is unexpected.
+        find = self.finds["fk-contact member-equal J"]
+        self.assertNotEqual(find.klass, "bounded")
+        root = Path(self.directory.name)
+        bounded = dict(DIMENSIONS, bounds={"note": "", "J": "at most max-jobs jobs"})
+        (root / "tools" / "dims-bounded.json").write_text(json.dumps(bounded))
+        analysis = hot_path_check.analyze(root, root / "tools" / "dims-bounded.json")
+        find = analysis.finds["fk-contact member-equal J"]
+        self.assertEqual((find.klass, find.bound), ("bounded", "at most max-jobs jobs"))
+        self.assertEqual(analysis.finds["fk-count len N"].klass,
+                         self.finds["fk-count len N"].klass)
+
     def test_a_formal_seed_carries_its_dimension(self) -> None:
         self.assertEqual(set(self.finds["fk-contact member-equal J"].entries),
                          {"fnn-fk-contact"})
