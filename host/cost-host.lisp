@@ -80,3 +80,6 @@
 (def-cost fn-owner-page-decoded-job-span-at :unaccounted (fn-owner-page-read-ledger fn-dwj-span-at))
 (def-cost fn-owner-page-decoded-window-cache-span-at
   :unaccounted (fn-owner-page-read-ledger fn-pwz-cache-span-at))
+; The BP serve loop's inbound admission (books/bp-session-scheduler), asked
+; once per pass that finds a listener readable: two boolean steps, no size.
+(def-cost fn-bpsched-admit-p :visits 0)
