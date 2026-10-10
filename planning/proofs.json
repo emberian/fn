@@ -23479,6 +23479,7 @@
       "evidence": [
         "tests/acl2/heap-command-tests.lisp"
       ],
+      "evidence_digest": "0bf84087893942b5",
       "keystone_subjects": {
         "fn-mo-header-decide-holds-the-header": "fn-mo-header-decide"
       },
@@ -23497,6 +23498,7 @@
       "evidence": [
         "tests/acl2/memory-model-tests.lisp"
       ],
+      "evidence_digest": "ef946b0ab2131d96",
       "keystone_subjects": {
         "fn-mm-admitted-store-reopens": "fn-mm-reopen-need"
       },
