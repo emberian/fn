@@ -372,6 +372,11 @@ else
     SOURCE="commit $FULL"
     [ -n "$LABEL" ] || LABEL=$(echo "$FULL" | cut -c1-12)
 fi
+# The tree the modules run in; the images' identity source (SOURCE_ID) may
+# differ under --image-set or --reuse-image.  train.py image accepts a run
+# at HEAD's tree whose images come from another commit only when no image
+# input differs between the two (READY-image reuse).
+TREE_ID=$SOURCE_ID
 case $LABEL in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: bad --label $LABEL" >&2; exit 2 ;; esac
 # The overlay's plan, here where git is: a refusal stops the launch, naming
 # each change an image build must carry instead.
@@ -934,7 +939,7 @@ PID=$(ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /d
 echo "hbox_native: started; progress in $HOST:$S/run.log"
 # The record here names the box (item 67): status and re-attach read it.
 mkdir -p "$HERE/build/hbox-native"
-printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$RECORD_SOURCE" \
+printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\ntree=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$RECORD_SOURCE" "$TREE_ID" \
     > "$HERE/build/hbox-native/$LABEL.run"
 if [ $DETACH -eq 1 ]; then
     echo "hbox_native: detached (pid $PID on $HOST); re-attach with: tools/hbox_native.sh attach $LABEL   (status: tools/hbox_native.sh status $LABEL)"
