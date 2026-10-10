@@ -74,10 +74,30 @@
 ; schema-3 header (books/store-tree-codec.lisp, 37 octets) carries none of
 ; the nine but RECORDS of the checkpointed prefix, so until A's field the
 ; host passes NIL and the observation is NIL.
-(defun fn-mo-observed-totals (hdr suffix)
+;
+; EXTENT is the log's physical length the probe observes (the largest
+; journal segment's lstat size; Builder A's fnn-log-observed-extent), NIL
+; when unobserved.  The open's reader allocates an entry's declared length
+; before the step validates it (host/native/io.lisp fnn-log-stream-segment,
+; books/store-log-entry-bound.lisp fn-lgw-entry-len-bounded), and that
+; length is capped only by the extent past the reader's position
+; (books/store-log-stream.lisp fn-lgw-entry-len): a damaged or padded file
+; longer than its records' LOG is read in full.  So the observation's LOG is
+; at least EXTENT, and the read's open terms over LOG charge the entry
+; scratch (KEYSTONE fn-mo-observed-log-holds-every-entry-read).  An
+; unobserved extent leaves the totals unseen (the offline adapter).
+(defun fn-mo-tot-log-at-least (tot extent)
   (declare (xargs :guard t))
-  (if (and (fn-mm-tot-p hdr) (fn-mm-tot-p suffix))
-      (fn-mm-observed-tot hdr suffix)
+  (fn-mm-make-tot (fn-mm-tot-records tot) (fn-mm-tot-arena tot) (fn-mm-tot-hcharge tot)
+                  (fn-mm-tot-memberships tot) (fn-mm-tot-events tot)
+                  (max (fn-mm-tot-log tot) (nfix extent))
+                  (fn-mm-tot-history tot) (fn-mm-tot-charge tot)
+                  (if (fn-mm-tot-paged-p tot) :paged :resident)))
+
+(defun fn-mo-observed-totals (hdr suffix extent)
+  (declare (xargs :guard t))
+  (if (and (fn-mm-tot-p hdr) (fn-mm-tot-p suffix) (natp extent))
+      (fn-mo-tot-log-at-least (fn-mm-observed-tot hdr suffix) extent)
     nil))
 
 ; A read-only command serves nothing: no connection, no TLS, no handshake,

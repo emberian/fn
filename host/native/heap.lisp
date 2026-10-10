@@ -504,7 +504,7 @@ to a space that already holds it."
 
 (defun fnn-heap-charged-totals (root)
   (declare (ignore root))
-  (fnn-core 'fn-mo-observed-totals nil nil))
+  (fnn-core 'fn-mo-observed-totals nil nil nil))
 
 ;; The configuration history's octets on disk (config/, the lstat sizes of
 ;; its regular files under the profile's listing bound), which loading the

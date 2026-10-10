@@ -27,6 +27,7 @@
 (def-cost fn-mm-tot-paged-p :unaccounted (true-list-fix))
 (def-cost fn-mm-tot-plus :unaccounted (true-list-fix))
 (def-cost fn-mm-observed-tot :unaccounted (true-list-fix))
+(def-cost fn-mo-tot-log-at-least :unaccounted (true-list-fix))
 (def-cost fn-mo-observed-totals :unaccounted (true-list-fix))
 (def-cost fn-mo-prefixp)
 (def-cost fn-mo-drop-key)
