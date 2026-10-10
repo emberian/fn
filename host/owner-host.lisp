@@ -1469,51 +1469,6 @@
 
 (definterface fn-owner-consumer-publication-verdict :class :program)
 
-; The identity preflight's verdict on one ACL2-constructed EVENT (lane
-; bp-retention-leftovers).  Its kind is the WIRE event's
-; (`fn-wire-event-kind'; the row reading `fn-store-event-kind' answered NIL
-; for a wire composite, so the preflight charged a composite nothing); any
-; kind but an accepted-statement composite as before.  A composite carries an
-; article, so it is admitted as a POST is (K-ADMIT,
-; books/admission-memory.lisp): first the transaction and history verdict at
-; its figure, the kind's ceiling
-; (`fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at'), then the
-; memory gate at the run's LIMIT over the carried totals plus the ROW the
-; prepare will stage (`fn-oii-identity-row' at the arena's count, exactly the
-; row fn-owner-prepare-identity interns under the same serialization), :memory
-; when that gate refuses (KEYSTONE fn-adm-memory-admitp; the word order T,
-; then H, then the memory, as fn-adm-article-word's).
-(defun fn-owner-identity-publication-verdict (event fn-arena fn-hist state)
-  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
-  (let ((kind (fn-wire-event-kind event)))
-    (if (not (equal kind :accepted-statement))
-        (fn-owner-publication-verdict kind fn-hist state)
-      (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
-        (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
-          (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
-            (let* ((s (fn-owner-store state))
-                   (verdict (fn-pvc-statement-verdict-carried
-                             (fn-owner-profile-carry state)
-                             (fn-owner-store-profile state)
-                             (fn-sf-records-count (fn-sn-files s)) bytes
-                             (fn-oii-publication-group-count event) debt))
-                   (row (fn-oii-identity-row event (fn-sn-keyring s)
-                                             (fn-sn-keyring-generation s)
-                                             (fn-arena-count fn-arena)))
-                   (gate (fn-owner-memory-gate state)))
-              (mv nil
-                  (if (and (equal verdict :admissible)
-                           (not (equal row :bad))
-                           (not (fn-adm-memory-admitp (fn-owner-store-profile state)
-                                                      (first gate) (second gate)
-                                                      (third gate) tot row)))
-                      :memory
-                    verdict)
-                  fn-hist state))))))))
-
-(definterface fn-owner-identity-publication-verdict
-  :class ::program)
-
 ; One imminent reservation, checked under the native owner's serialization.
 ; OPERATION is the canonical retention publication or NIL for ordinary work.
 ; The purpose is derived from current replay/consumer eligibility in ACL2.
@@ -1854,6 +1809,51 @@
                 full)
               (nth 1 r)))
     (list nil nil nil)))
+
+; The identity preflight's verdict on one ACL2-constructed EVENT (lane
+; bp-retention-leftovers).  Its kind is the WIRE event's
+; (`fn-wire-event-kind'; the row reading `fn-store-event-kind' answered NIL
+; for a wire composite, so the preflight charged a composite nothing); any
+; kind but an accepted-statement composite as before.  A composite carries an
+; article, so it is admitted as a POST is (K-ADMIT,
+; books/admission-memory.lisp): first the transaction and history verdict at
+; its figure, the kind's ceiling
+; (`fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at'), then the
+; memory gate at the run's LIMIT over the carried totals plus the ROW the
+; prepare will stage (`fn-oii-identity-row' at the arena's count, exactly the
+; row fn-owner-prepare-identity interns under the same serialization), :memory
+; when that gate refuses (KEYSTONE fn-adm-memory-admitp; the word order T,
+; then H, then the memory, as fn-adm-article-word's).
+(defun fn-owner-identity-publication-verdict (event fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
+  (let ((kind (fn-wire-event-kind event)))
+    (if (not (equal kind :accepted-statement))
+        (fn-owner-publication-verdict kind fn-hist state)
+      (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
+        (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
+          (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+            (let* ((s (fn-owner-store state))
+                   (verdict (fn-pvc-statement-verdict-carried
+                             (fn-owner-profile-carry state)
+                             (fn-owner-store-profile state)
+                             (fn-sf-records-count (fn-sn-files s)) bytes
+                             (fn-oii-publication-group-count event) debt))
+                   (row (fn-oii-identity-row event (fn-sn-keyring s)
+                                             (fn-sn-keyring-generation s)
+                                             (fn-arena-count fn-arena)))
+                   (gate (fn-owner-memory-gate state)))
+              (mv nil
+                  (if (and (equal verdict :admissible)
+                           (not (equal row :bad))
+                           (not (fn-adm-memory-admitp (fn-owner-store-profile state)
+                                                      (first gate) (second gate)
+                                                      (third gate) tot row)))
+                      :memory
+                    verdict)
+                  fn-hist state))))))))
+
+(definterface fn-owner-identity-publication-verdict
+  :class ::program)
 
 (defun fn-owner-reconfigure (id kind name-octets fn-arena state)
   ; Answers a ConfigResult: :staged with exactly one encoded configuration

@@ -1717,17 +1717,9 @@
    "class": "resource-reservation",
    "statement_digest": "63fcf4ec01d8341ec0f738645e0cad002d412d174f3d9cb04846fcac32ca5a8c"
   },
-  "fn-cvec-article-refusal-word-names-the-memberships": {
-   "class": "resource-reservation",
-   "statement_digest": "8be4ce7ee6155d80a274e56c7de610533396252c2efef9e1c1e45e218fd4c8c4"
-  },
   "fn-cvec-article-verdict-keeps-the-vector": {
    "class": "resource-reservation",
    "statement_digest": "86cadbba4d23310306c028c9921ab4d83c90d500953bc75ef4c6f227c0ff8bdf"
-  },
-  "fn-cvec-article-verdict-keeps-the-vector-at-producer-width": {
-   "class": "resource-reservation",
-   "statement_digest": "019cf82ff768233d70fe450c80bfc5530973aa65160758c47f89076e52618e14"
   },
   "fn-cvec-article-verdict-keeps-the-vector-for-a-held-row": {
    "class": "resource-reservation",
@@ -2013,10 +2005,6 @@
    "class": "resource-reservation",
    "statement_digest": "026e75a0cd381e05ba99dcc3bc570f447974eb4423cea4544f0a8efefe2b54e3"
   },
-  "fn-heap-decide-admits-every-store-the-profile-admits": {
-   "class": "resource-reservation",
-   "statement_digest": "c8d5aa6f323a37c43286a87ee2913317523895181001b900719b32f78f528f75"
-  },
   "fn-heap-decide-refuses-exactly-past-the-machine": {
    "class": "resource-reservation",
    "statement_digest": "c571af9d8431fb1db1d641c5056d7859841e005fd3dbb4f583be10e2c643d5b7"
@@ -2093,10 +2081,6 @@
    "class": "resource-reservation",
    "statement_digest": "dab2268d3dfd091d114d55e3e2588504c37cab800a9b581bd86951044d5720e0"
   },
-  "fn-heap-operation-decide-holds-the-store": {
-   "class": "resource-reservation",
-   "statement_digest": "63476fdb77f9d5e5b5b271e530e8849b227509c7a29a7bb1c184d8e577940617"
-  },
   "fn-heap-operation-decide-of-a-serve-action-is-heap-decide": {
    "class": "resource-reservation",
    "statement_digest": "52a07c14e382fcf8f2d730466f85fe5bfc7993c7d0144d114e200db4a5a6f8c9"
@@ -2149,21 +2133,9 @@
    "class": "resource-reservation",
    "statement_digest": "884b178f98debc5919b8b3a0aebdaa624a2eb73898a8988c5e2295a2521738ba"
   },
-  "fn-heap-store-figure-holds-every-store": {
-   "class": "resource-reservation",
-   "statement_digest": "3a236e2839579745a36a9b41f79668a9015acfa56792014988d52c2cd8631f74"
-  },
-  "fn-heap-store-figure-holds-every-store-at-the-open-trigger": {
-   "class": "resource-reservation",
-   "statement_digest": "2fbfe747dacc20d14cdd1f6de3947d0d402183fdaf6d53b09ccaa50ef10d0375"
-  },
   "fn-heap-store-figure-observed-is-at-most-unobserved": {
    "class": "resource-reservation",
    "statement_digest": "71c82a47d403c5be3e8358801551dd03b9f6a93eaa13f747cbe495959bff6586"
-  },
-  "fn-heap-store-history-holds-payload-and-memberships": {
-   "class": "resource-reservation",
-   "statement_digest": "161425c8a5cc5be78279759b74a05146ddc8f8fe609e1e70359fa26c307894c4"
   },
   "fn-heap-storeless-decide-is-small-and-fits": {
    "class": "resource-reservation",
@@ -5065,21 +5037,9 @@
    "class": "resource-reservation",
    "statement_digest": "77161349c417e625478e200b5bb6052ebde419361f9b95231d7bd0d9c127c6e9"
   },
-  "fn-sbud-article-gate-figure-bounds-every-record": {
-   "class": "resource-reservation",
-   "statement_digest": "d805536a1b466f99cf76f1f171bd8e7df2ca4ad76e92f3b0fa6e9b349412fc67"
-  },
   "fn-sbud-article-verdict-keeps-history": {
    "class": "resource-reservation",
    "statement_digest": "bf1c9299d4e96dad81650fa6679e29d8b847f55a2032f591bf0cd0ba30e1fdd9"
-  },
-  "fn-sbud-article-verdict-keeps-history-at-producer-width": {
-   "class": "resource-reservation",
-   "statement_digest": "62cde9d8e975fb52fdcbdeea9498996e024f49778e841ccb75ab91a32e895013"
-  },
-  "fn-sbud-article-verdict-keeps-history-for-every-record": {
-   "class": "resource-reservation",
-   "statement_digest": "f67a919774314b5340b219b4bb5a31b1002828d80e2281536b57d0d43f5a8f1c"
   },
   "fn-sbud-budget-is-the-profile-admissibility": {
    "class": "resource-reservation",
@@ -5141,10 +5101,6 @@
    "class": "resource-reservation",
    "statement_digest": "aa67b5cdafa2bbd7b033e2be33cd8239304e6c9fd44d2d64067973ebadda5b0c"
   },
-  "fn-sbud-prepare-under-article-budget-keeps-history-at-producer-width": {
-   "class": "resource-reservation",
-   "statement_digest": "65cbeec3dc3682a0ca19ecc26528d03ee98ec9f9e41ed1728f8eb39f78aceddc"
-  },
   "fn-sbud-record-octets-is-the-stored-octets": {
    "class": "resource-reservation",
    "statement_digest": "8f0f1abb781b579b6f10667b2ae690d6cd52081dc19eab956b8b616b603920c8"
@@ -5153,17 +5109,9 @@
    "class": "resource-reservation",
    "statement_digest": "16603343affc66a6abc59a540f97c93ad6ff0bf40c29d23fc878ee0f107df9a1"
   },
-  "fn-sbud-record-octets-pays-the-memberships": {
-   "class": "resource-reservation",
-   "statement_digest": "201381ae05d5ac823aebbd71053b7f49dba1216302a29d832a2a6095c4704ba2"
-  },
   "fn-sbud-refusal-kind-at-budget-is-unaffordable": {
    "class": "resource-reservation",
    "statement_digest": "1407816b81f34a72f22618b6d301e26b98f8448010de7c61bb2bd96ac222ec7c"
-  },
-  "fn-sbud-row-octets-pays-its-memberships": {
-   "class": "resource-reservation",
-   "statement_digest": "379768e3d5d3a955e9bf7512c2edc0ac2c4c5a13b242f6c975fbaed28f8977fd"
   },
   "fn-sbud-used-names-the-transaction-namespace": {
    "class": "resource-reservation",
