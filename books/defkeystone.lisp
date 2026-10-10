@@ -171,7 +171,8 @@
 ; row whose :claim, :subject and every owed bound (V, B, :rests-on) are
 ; EQUAL and whose :formula is still the world's theorem; (3) the late gate
 ; in `make check', tools/keystone_emit.py --check over the obligation
-; manifest planning/teeth-obligations.json (one entry per registry event and
+; manifest build/teeth-obligations.json (regenerated, never committed; one
+; entry per registry event and
 ; per owed row; generated never downgrades; a new name must be generated).
 ;
 ; The static tools read the SAME expansion without evaluating anything:
