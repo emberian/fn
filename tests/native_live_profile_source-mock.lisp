@@ -102,7 +102,8 @@
   (assert (equal path "/c")) (assert (equal request '(26))) (assert (= bound 676))
   (incf *profile-asks*) (values #(27) :after-submission))
 (assert (equal (fnn-live-profile-owner-reply (make-fixture-store)) '(27)))
-(let ((*fnn-operator-live-owner*
+(let ((*native-action* :admin) ; `group create': ACL2's action, which observes the owner
+      (*fnn-operator-live-owner*
         (make-fnn-operator-live-owner
          :admin-observe (lambda (root path queryp)
                           (assert (equal root "/fixture")) (assert (equal path '(47 99)))
