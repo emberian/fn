@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "store-budget-article-tests")
 (include-book "../../books/store-maintenance-reserve")
+(include-book "../../books/store-capacity-vector")
 (include-book "must-fail-checked")
 
 (defconst *smt-h* 250000)
@@ -85,9 +86,12 @@
                    (not (fn-smr-roomp '(7 1 2 3 4 5) 0 0))))
 
 ; -----------------------------------------------------------------------------
-; The article gates (fn-smr-article-verdict-keeps-the-reserve and
-; fn-smr-prepare-keeps-the-reserve), charged the payload since memory landing
-; 3+4 (the memberships and header columns are the memory equation's).  Packet
+; The article gates at no open undertaking: the capacity vector's
+; (books/store-capacity-vector.lisp fn-cvec-article-verdict-at and
+; fn-cvec-article-budget-for at debt 0, which is this reservation; the twins
+; this book had left in memory landing 3+4a), charged the payload since
+; memory landing 3+4 (the memberships and header columns are the memory
+; equation's).  Packet
 ; 1's article (32 768 octets, 400 groups) under packet 1's H of 250 000.
 (defconst *smt-gate* (fn-sbud-article-gate-figure 32768 400))
 (assert-event (equal *smt-gate* 32768))
@@ -96,10 +100,10 @@
 ; gates, the served budget is the profile's, and after the record the
 ; reservation holds and H is kept.
 (assert-event
- (and (equal (fn-smr-article-verdict-at *pmt-old* 1 *smt-safe* 32768 400) :admissible)
+ (and (equal (fn-cvec-article-verdict-at *pmt-old* 1 *smt-safe* 32768 400 0) :admissible)
       (equal (len (fn-record-payload *pmt-record*)) 32768)
-      (equal (fn-smr-article-budget-for *pmt-old* 1 *smt-safe* *pmt-record*) 4)
-      (fn-sbud-admitp (fn-smr-article-budget-for *pmt-old* 1 *smt-safe* *pmt-record*) 1)
+      (equal (fn-cvec-article-budget-for *pmt-old* 1 *smt-safe* *pmt-record* 0) 4)
+      (fn-sbud-admitp (fn-cvec-article-budget-for *pmt-old* 1 *smt-safe* *pmt-record* 0) 1)
       (fn-smr-roomp *pmt-old* 2 (+ *smt-safe* (len (fn-record-payload *pmt-record*))))
       (fn-profile-replay-within-boundp
        *pmt-old* (+ *smt-safe* (len (fn-record-payload *pmt-record*))))))
@@ -107,8 +111,8 @@
 ; reserving gate refuses (budget 0), the owner answers :unaffordable.
 (assert-event
  (and (equal (fn-sbud-article-budget-for *pmt-old* (1+ *smt-safe*) *pmt-record*) 4)
-      (equal (fn-smr-article-budget-for *pmt-old* 1 (1+ *smt-safe*) *pmt-record*) 0)
-      (equal (fn-smr-article-verdict-at *pmt-old* 1 (1+ *smt-safe*) 32768 400)
+      (equal (fn-cvec-article-budget-for *pmt-old* 1 (1+ *smt-safe*) *pmt-record* 0) 0)
+      (equal (fn-cvec-article-verdict-at *pmt-old* 1 (1+ *smt-safe*) 32768 400 0)
              :unaffordable)))
 ; Tooth, the verdict / the staged prepare: at H - payload packet 1's gate
 ; admits the article and after it no release fits.
@@ -126,20 +130,21 @@
 (assert-event
  (let ((r *sbat-tight-charge*)
        (b (- (- 1000000 65536) 4096)))
-   (and (equal (fn-smr-article-verdict-at *sbat-p* 1 b 65536 0) :admissible)
+   (and (equal (fn-cvec-article-verdict-at *sbat-p* 1 b 65536 0 0) :admissible)
         (fn-record-widep r)
         (fn-smr-roomp *sbat-p* 2 (+ b (len (fn-record-payload r)))))))
 ; Tooth, the payload count: asked for (0, 1), the 32 768-octet article is
 ; admitted at H - 4 096 and no release fits after it.
 (assert-event
  (let ((b (- *smt-h* 4096)))
-   (and (equal (fn-smr-article-verdict-at *pmt-old* 1 b 0 1) :admissible)
+   (and (equal (fn-cvec-article-verdict-at *pmt-old* 1 b 0 1 0) :admissible)
         (not (fn-smr-roomp *pmt-old* 2 (+ b (len (fn-record-payload *pmt-record*))))))))
 ; A non-natural BYTES-USED is refused by the budget itself (the history gate
 ; reads a natural committed sum), so the prepare keystone needs no such
 ; hypothesis: at -1 000 000 the budget is 0.
-(assert-event (equal (fn-smr-article-budget-for *pmt-old* 1 -1000000 *pmt-record*) 0))
+(assert-event (equal (fn-cvec-article-budget-for *pmt-old* 1 -1000000 *pmt-record* 0) 0))
 
 ; The status report.
 (assert-event (equal (fn-smr-report *pmt-old* 3 (- *smt-h* 4096)) '(4096 1 :held)))
 (assert-event (equal (fn-smr-report *pmt-old* 3 (- *smt-h* 4095)) '(4096 1 :short)))
+

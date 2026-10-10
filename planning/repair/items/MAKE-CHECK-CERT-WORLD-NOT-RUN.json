@@ -1,0 +1,12 @@
+{
+ "detail": "protocol_emit --wire --check: ACL2 Error in (INCLUDE-BOOK \"books/wire-export\"): no certificate in the lane worktree. host_check: host_translate_check NOT RUN, 202 of the books host/native/build.lisp includes have no certificate here (exit 2). system_books: NOT RUN, no ACL2 launcher (--acl2 or FN_ACL2) (exit 2). None is a defect of the tree: each needs the cert world or FN_ACL2. Open: whether make check on a lane tree points these at the record box's cert cache, or reports them NOT RUN without failing (they are the same three on every lane worktree).",
+ "file": "Makefile",
+ "id": "MAKE-CHECK-CERT-WORLD-NOT-RUN",
+ "notes": [],
+ "owner": "builder-D",
+ "severity": "medium",
+ "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
+ "state": "open",
+ "title": "make check on a tree without the certified world: protocol_emit, host_check and system_books report NOT RUN or an uncertified include as a red step",
+ "updated": "2026-10-09T22:00:00Z"
+}

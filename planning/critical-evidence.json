@@ -50,6 +50,13 @@
    "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
    "provenance": "keystone_critical.py --declare sha256:c1fe79d4f2b0d398ab3e46b4092186850b9175f81c70dc277b12cc1935f5373a"
   },
+  "fn-bpnp-rotate-step-proposes-only-own-projection": {
+   "subject": "fn-bpnp-rotate-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotate-step-proposes-only-own-projection",
+   "mutation": "tests/acl2/bp-node-rotation-due-tests.lisp::bprd-mutant-rotate-step-on-quiescence",
+   "provenance": "keystone_critical.py --declare sha256:03821dce8e899473fb7aeb65bf5e6763c03f401089c98ce49606578e91a54eee"
+  },
   "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work": {
    "subject": "fn-bpnp-rotate-step",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
@@ -92,6 +99,41 @@
    "mutation": "tests/acl2/bp-node-rotation-critical-tests.lisp::bprc-mutant-crash-visible-before-rename",
    "provenance": "keystone_critical.py --declare sha256:398d47c52caeb02a4c33b4462bc442e50d91e63467332c77509b06ddebb1352f"
   },
+  "fn-cvec-article-verdict-keeps-the-vector": {
+   "subject": "fn-cvec-article-verdict-at",
+   "host_test": "tests/test_native_capacity_vector.py::test_store_post_admits_to_the_last_octet_of_h_and_the_last_transaction_of_t",
+   "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-article-verdict-keeps-the-vector",
+   "mutation": "tests/acl2/store-capacity-vector-tests.lisp::vector-spent-on-the-whole-encoding",
+   "provenance": "keystone_critical.py --declare sha256:cfd54968d1944aa2030a98d098e75fb13a16d2dffd293b1bb362a81cfdb5aad0"
+  },
+  "fn-cvec-article-verdict-keeps-the-vector-for-a-held-row": {
+   "subject": "fn-cvec-article-verdict-at",
+   "host_test": "tests/test_native_capacity_vector.py::test_store_post_admits_to_the_last_octet_of_h_and_the_last_transaction_of_t",
+   "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-article-verdict-keeps-the-vector-for-a-held-row",
+   "mutation": "tests/acl2/store-capacity-vector-tests.lisp::verdict-forgets-an-open-undertaking",
+   "provenance": "keystone_critical.py --declare sha256:00603777b94180fdd734b0b55a6825ffcf8674e535c88a1d82bbcc0ea6f96c23"
+  },
+  "fn-cvec-held-row-within-its-figure": {
+   "subject": "fn-sbud-article-gate-figure",
+   "host_test": "tests/test_native_bounds_join.py::test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",
+   "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-held-row-within-its-figure",
+   "mutation": "tests/acl2/store-capacity-vector-tests.lisp::gate-charges-the-groups-again",
+   "provenance": "keystone_critical.py --declare sha256:b80ad6269f1ad86cdf0f15d2ce73813614f17111e295f6a238898ecd89ecff27"
+  },
+  "fn-cvec-prepare-keeps-the-vector": {
+   "subject": "fn-prc-sbud-prepare",
+   "host_test": "tests/test_native_operator_verbs.py::test_the_development_profile_budget_is_reported_and_refused_by_name",
+   "trace_witness": "tests/acl2/store-capacity-vector-prepare-tests.lisp::fn-cvec-prepare-keeps-the-vector",
+   "mutation": "tests/acl2/store-capacity-vector-prepare-tests.lisp::prepare-forgets-an-open-undertaking",
+   "provenance": "keystone_critical.py --declare sha256:ddb9ff860e046e4b6b345d23c2f6bb16d5280aed1033c2970d795a30f810bc93"
+  },
+  "fn-cvec-statement-row-within-its-figure": {
+   "subject": "fn-sbud-row-octets",
+   "host_test": "tests/test_native_operator_verbs.py::test_a_crosspost_is_charged_its_payload_alone",
+   "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-statement-row-within-its-figure",
+   "mutation": "tests/acl2/store-capacity-vector-tests.lisp::figure-read-as-the-group-count",
+   "provenance": "keystone_critical.py --declare sha256:d32dad001065dd44a76d841a7839e4e4f5aa119461a493e2115b208973e0b4d7"
+  },
   "fn-dwj-retired-job-refuses-scalar-publication": {
    "subject": "fn-dwj-retire",
    "host_test": "tests/test_native_decoded_custody.py::test_held_decoded_read_allows_post_then_cancel_return_release_and_reopen",
@@ -105,13 +147,6 @@
    "trace_witness": "tests/acl2/group-access-cache-tests.lisp::fn-gacc-grow-builds",
    "mutation": "tests/acl2/group-access-cache-tests.lisp::unrestricted-grow",
    "provenance": "keystone_critical.py --declare sha256:ab4d4c07601cc571032a1eebb9cd3b428b05977b2eeec1992b9f83a672bbab45"
-  },
-  "fn-heap-operation-decide-holds-the-store": {
-   "subject": "fn-heap-reserve-operation-decide",
-   "host_test": "tests/test_native_operator_verbs.py::test_init_writes_the_operators_fields_and_status_prints_them",
-   "trace_witness": "tests/acl2/heap-figure-tests.lisp::(fn-heap-operation-decide :init *fn-heap-small-profile*",
-   "mutation": "tests/acl2/heap-figure-tests.lisp::hft-st-without-store-opening-action",
-   "provenance": "keystone_critical.py --declare sha256:226aecddb8fe46016e2a25170b570e42b25bdb80b266ee0e88b75917670cfe24"
   },
   "fn-lg-open-program-keeps-the-relation": {
    "subject": "fn-lg-open-program",
@@ -280,6 +315,20 @@
    "trace_witness": "tests/acl2/reader-open-carried-tests.lisp::fn-rdc-selection-establishes",
    "mutation": "tests/acl2/reader-open-carried-tests.lisp::drop-verdicts",
    "provenance": "keystone_critical.py --declare sha256:8c31a8d5277047b1d09ab9bdcd39d14d14fd51a26d6cf15bc5a9c8b5047bfbab"
+  },
+  "fn-sbud-article-verdict-keeps-history": {
+   "subject": "fn-sbud-article-verdict-at",
+   "host_test": "tests/test_native_capacity_vector.py::test_store_post_admits_to_the_last_octet_of_h_and_the_last_transaction_of_t",
+   "trace_witness": "tests/acl2/store-budget-article-tests.lisp::fn-sbud-article-verdict-keeps-history",
+   "mutation": "tests/acl2/store-budget-article-tests.lisp::history-charged-the-whole-encoding",
+   "provenance": "keystone_critical.py --declare sha256:84a1db29ddde89e970ec08e379d2fb63c7e774256d687bb82c582bdf53d8e2fa"
+  },
+  "fn-sbud-prepare-under-article-budget-keeps-history": {
+   "subject": "fn-prc-sbud-prepare",
+   "host_test": "tests/test_native_operator_verbs.py::test_the_development_profile_budget_is_reported_and_refused_by_name",
+   "trace_witness": "tests/acl2/store-budget-article-tests.lisp::fn-sbud-prepare-under-article-budget-keeps-history",
+   "mutation": "tests/acl2/store-budget-article-tests.lisp::prepare-leaves-one-octet-past-h",
+   "provenance": "keystone_critical.py --declare sha256:81a4a7a3f11bea8b11cfb8b6b928e6b85bc1330ca75ce296ae3d90304f1598a3"
   },
   "fn-sca-load-held-rows-establishes-byte-facts": {
    "subject": "fn-sca-load-held-rows-keyed",

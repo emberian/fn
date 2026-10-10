@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Served paths walk retained history N: the group count, high, low, last-number and next-number loops (books/nntp-projection.lisp:136, 1079-1093) and fn-ctl-msgid-withdrawn (books/control-served.lisp:191), all via fn-owner-account-outcome -> fn-scar-ocfg-read-step -> fn-scar-own-read-step-full -> fn-scar-dispatch; the store-files state walks fn-sf-record-list-walkp, fn-sf-record-has-pair-walkp, fn-sf-success-listp-scan and -fill (books/store-files.lisp:510-601), via fn-reader-use-store -> fn-rdc-store-selection -> fn-sn-statep; and fn-oig-rows-loop (books/owner-inspect-group.lisp:38) via the offline live-status report (fn-native-live-status-host-offline), which the ruling did not name and which may belong with the offline verbs: owner to confirm. N is the store's retained history; the bound today is N. Coordinator ruling 2026-10-10 (CL25): Builder C owns them as served-path rows after ARTICLE, each to name its N and its bound. Listed under this packet in planning/hot-path-findings.json.",
+ "file": "books/nntp-projection.lisp",
+ "id": "HOT-PATH-SERVED-WALKS-N",
+ "notes": [],
+ "owner": "builder-C",
+ "severity": "medium",
+ "source": "hot_path_check, Builder D 2026-10-10 under the coordinator's CL25 ruling",
+ "state": "open",
+ "title": "served account-outcome and store-selection paths walk retained history N",
+ "updated": "2026-10-10T02:50:00Z"
+}

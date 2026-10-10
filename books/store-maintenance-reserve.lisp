@@ -36,14 +36,15 @@
 ;   Store is admitted by the same host-called Store gates as a POST (the
 ;   transit prepare is `fn-owner-prepare'), so this reservation covers it.
 ;
-; Host calls: host/owner-host.lisp `fn-owner-prepare' and
-; `fn-owner-prepare-buffer' (the served POST and the BP transit) hand
-; `fn-smr-article-budget-for' to `fn-pcar-sbud-prepare';
-; `fn-owner-publication-verdict' (every other served record kind, BP
-; admission's retention, identity, consumer and topic events) answers
-; `fn-smr-verdict-at'; host/store-node-host.lisp
-; `fn-store-sn-article-verdict' (the developer `store post') answers
-; `fn-smr-article-verdict-at'.
+; Host calls: host/owner-host.lisp `fn-owner-publication-verdict' (every
+; served record kind but the article: BP admission's retention, identity,
+; consumer and topic events) answers `fn-smr-verdict-at'.  An article's gate,
+; served POST and developer `store post' alike, is the capacity vector's
+; (books/store-capacity-vector.lisp `fn-cvec-article-budget-for',
+; `fn-cvec-article-verdict-at'), which at no open undertaking is this
+; reservation (`fn-cvec-roomp' at debt 0 is `fn-smr-roomp'); the article
+; gates this book once had beside it were twins no host called and left in
+; memory landing 3+4a.
 (in-package "ACL2")
 (include-book "store-budget-article")
 
@@ -89,36 +90,6 @@ after it at its worst case."
                            (+ (nfix bytes-used) (fn-store-publication-ceiling kind))))
         :admissible
       :unaffordable)))
-
-(defun fn-smr-article-verdict-at (profile used bytes-used payload-length group-count)
-  "The article verdict of the developer `store post': the article's own
-figure, and the reservation after it."
-  (declare (xargs :guard t))
-  (if (and (equal (fn-sbud-article-verdict-at profile used bytes-used
-                                              payload-length group-count)
-                  :admissible)
-           (fn-smr-roomp profile (+ 1 (nfix used))
-                         (+ (nfix bytes-used)
-                            (fn-sbud-article-gate-figure payload-length group-count))))
-      :admissible
-    :unaffordable))
-
-(defun fn-smr-article-budget (profile used bytes-used payload-length group-count)
-  "The transaction budget the served prepare is handed for one article:
-`fn-sbud-article-budget' when the reservation holds after the article at its
-figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
-  (declare (xargs :guard t))
-  (if (fn-smr-roomp profile (+ 1 (nfix used))
-                    (+ (nfix bytes-used)
-                       (fn-sbud-article-gate-figure payload-length group-count)))
-      (fn-sbud-article-budget profile bytes-used payload-length group-count)
-    0))
-
-(defun fn-smr-article-budget-for (profile used bytes-used record)
-  (declare (xargs :guard t))
-  (fn-smr-article-budget profile used bytes-used
-                         (len (fn-record-payload record))
-                         (len (fn-record-groups record))))
 
 ; -----------------------------------------------------------------------------
 ; Keystones
@@ -180,71 +151,6 @@ figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
            (equal (fn-sbud-verdict-at profile kind used bytes-used) :admissible))
   :rule-classes nil)
 
-;  KEYSTONE (the served article prepare keeps the reservation).  A prepare
-; that staged under the reserving budget of the record it stages, at the
-; count the prepare reads and BYTES-USED committed octets, leaves room for a
-; release once the record commits, and keeps the history within H.
-(defthm fn-smr-prepare-keeps-the-reserve
-  (implies (and (not (equal (fn-sbud-prepare
-                             oc record
-                             (fn-smr-article-budget-for
-                              profile (fn-sbud-used (fn-sbud-oc-store oc))
-                              bytes-used record))
-                            oc)))
-           (and (fn-smr-roomp profile
-                              (+ 1 (fn-sbud-used (fn-sbud-oc-store oc)))
-                              (+ bytes-used (len (fn-record-payload record))))
-                (fn-profile-replay-within-boundp
-                 profile (+ bytes-used (len (fn-record-payload record))))))
-  :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-smr-roomp-antitone-in-octets
-                                   (used (+ 1 (fn-sbud-used (fn-sbud-oc-store oc))))
-                                   (b (+ bytes-used
-                                         (fn-sbud-article-gate-figure
-                                          (len (fn-record-payload record))
-                                          (len (fn-record-groups record)))))
-                                   (b2 (+ bytes-used (len (fn-record-payload record)))))
-                        (:instance fn-smr-roomp-is-within-the-bound
-                                   (used (+ 1 (fn-sbud-used (fn-sbud-oc-store oc))))
-                                   (b (+ bytes-used (len (fn-record-payload record))))))
-           :in-theory (e/d (fn-sbud-prepare fn-smr-article-budget-for
-                            fn-smr-article-budget fn-sbud-admitp fn-sbud-article-gate-figure
-                            fn-sbud-article-budget fn-bs-history-admissiblep)
-                           (fn-smr-roomp
-                            fn-sbud-article-budget-for
-                            fn-opc-prepare fn-sbud-budget fn-sbud-used
-                            fn-profile-replay-within-boundp)))))
-
-; The article verdict admits only natural counts and octets.
-(local
- (defthm fn-smr-article-verdict-naturals
-   (implies (equal (fn-sbud-article-verdict-at profile used bytes-used
-                                               payload-length group-count)
-                   :admissible)
-            (and (natp used) (natp bytes-used)))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-sbud-article-verdict-at fn-sbud-admitp
-                                    fn-bs-history-admissiblep)
-                                   (fn-sbud-budget))))))
-
-;  KEYSTONE (the developer `store post' keeps the reservation).
-(defthm fn-smr-article-verdict-keeps-the-reserve
-  (implies (and (equal (fn-smr-article-verdict-at profile used bytes-used
-                                                  payload-length group-count)
-                       :admissible)
-                (<= (len (fn-record-payload record)) (nfix payload-length)))
-           (fn-smr-roomp profile (+ 1 used)
-                         (+ bytes-used (len (fn-record-payload record)))))
-  :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-smr-roomp-antitone-in-octets
-                                   (used (+ 1 used))
-                                   (b (+ bytes-used (fn-sbud-article-gate-figure
-                                                     payload-length group-count)))
-                                   (b2 (+ bytes-used (len (fn-record-payload record)))))
-                        (:instance fn-smr-article-verdict-naturals))
-           :in-theory (e/d (fn-smr-article-verdict-at fn-sbud-article-gate-figure)
-                           (fn-smr-roomp fn-sbud-article-verdict-at)))))
-
 ;  KEYSTONE (the reservation holds from init).  A fresh store under any
 ; profile a store may be opened under starts with the reservation: the
 ; profile validation's minimum record ceiling (196,608) is above the release
@@ -268,5 +174,4 @@ figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
                             fn-sbud-verdict-is-the-count-and-history-admissibility
                             fn-bs-profile-of)))))
 
-(in-theory (disable fn-smr-roomp fn-smr-verdict-at fn-smr-article-verdict-at
-                    fn-smr-article-budget fn-smr-article-budget-for fn-smr-report))
+(in-theory (disable fn-smr-roomp fn-smr-verdict-at fn-smr-report))

@@ -169,7 +169,7 @@
 ; Window A consumes the captured owner and the single lstat observation.
 ; Unknown observations are faults, never evidence that a name is absent.
 (defun fn-olau-authorize-observed (oc record-octets lock-owned observation profile)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-cbor-octet-listp record-octets)))
   (if (not (member-equal observation '(:present :absent)))
       (fn-native-admin-publication-result :fault :observation nil nil nil)
     (let ((parsed (fn-cfg-decode-exact record-octets)))

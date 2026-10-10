@@ -79,6 +79,8 @@
 (in-package "ACL2")
 (include-book "connection-budget") ; public-exposure (the trusted range), heap-figure, profile-limits
 (include-book "tls-handshake-source") ; the source key, the override list
+(include-book "def-loop")
+(include-book "rev-onto") ; the loop twins' step (PKT-877)
 
 ; -----------------------------------------------------------------------------
 ; The limits.
@@ -218,22 +220,16 @@
   (<= (fn-hsb-cap rate) (fn-hsb-level row rate now)))
 
 ; Drop the rows that refilled to full by NOW (they are the absent row).
-(defun fn-hsb-prune (rows hl now)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (if (and (consp (car rows))
-               (not (fn-hsb-fullp (cdr (car rows)) (fn-hsb-source-rate hl (car (car rows))) now)))
-          (cons (car rows) (fn-hsb-prune (cdr rows) hl now))
-        (fn-hsb-prune (cdr rows) hl now))
-    nil))
+(def-loop fn-hsb-prune (rows hl now)
+  :shape :map :over rows :elt r
+  :keep (and (consp r)
+             (not (fn-hsb-fullp (cdr r) (fn-hsb-source-rate hl (car r)) now)))
+  :body r)
 
-(defun fn-hsb-drop (key rows)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (if (and (consp (car rows)) (equal (car (car rows)) key))
-          (fn-hsb-drop key (cdr rows))
-        (cons (car rows) (fn-hsb-drop key (cdr rows))))
-    nil))
+(def-loop fn-hsb-drop (key rows)
+  :shape :map :over rows :elt r
+  :keep (not (and (consp r) (equal (car r) key)))
+  :body r)
 
 (defun fn-hsb-put (key level stamp rows)
   (declare (xargs :guard t))
@@ -288,13 +284,10 @@
 ; -----------------------------------------------------------------------------
 ; The flight: (ID . SOURCE) pairs.
 
-(defun fn-hsb-remove (id flight)
-  (declare (xargs :guard t))
-  (if (consp flight)
-      (if (and (consp (car flight)) (equal (car (car flight)) id))
-          (fn-hsb-remove id (cdr flight))
-        (cons (car flight) (fn-hsb-remove id (cdr flight))))
-    nil))
+(def-loop fn-hsb-remove (id flight)
+  :shape :map :over flight :elt f
+  :keep (not (and (consp f) (equal (car f) id)))
+  :body f)
 
 (defthm fn-hsb-len-of-remove
   (<= (len (fn-hsb-remove id flight)) (len flight))
@@ -387,14 +380,42 @@
   (declare (xargs :guard t))
   (explode-nonnegative-integer (nfix n) 10 nil))
 
-(defun fn-hsb-octets-chars (octets sep)
-  (declare (xargs :guard (characterp sep)))
+; Executes by a loop (PKT-877, lane d-depth-excess-d): the recursion took one
+; control-stack frame per octet.  The :logic is the recursion, unchanged; the
+; :exec carries the output reversed.
+(defun fn-hsb-octets-chars-loop (octets sep acc)
+  (declare (xargs :guard (and (characterp sep) (true-listp acc)) :verify-guards nil))
   (if (consp octets)
-      (append (fn-hsb-decimal-chars (car octets))
-              (if (consp (cdr octets))
-                  (cons sep (fn-hsb-octets-chars (cdr octets) sep))
-                nil))
-    nil))
+      (let ((acc (fn-ag-rev-onto (fn-hsb-decimal-chars (car octets)) acc)))
+        (if (consp (cdr octets))
+            (fn-hsb-octets-chars-loop (cdr octets) sep (cons sep acc))
+          (revappend acc nil)))
+    (revappend acc nil)))
+
+(defun fn-hsb-octets-chars (octets sep)
+  (declare (xargs :guard (characterp sep) :verify-guards nil))
+  (mbe :logic
+       (if (consp octets)
+           (append (fn-hsb-decimal-chars (car octets))
+                   (if (consp (cdr octets))
+                       (cons sep (fn-hsb-octets-chars (cdr octets) sep))
+                     nil))
+         nil)
+       :exec (fn-hsb-octets-chars-loop octets sep nil)))
+
+(local
+ (defthm fn-hsb-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-hsb-octets-chars-loop-is-revappend
+   (equal (fn-hsb-octets-chars-loop octets sep acc)
+          (revappend acc (fn-hsb-octets-chars octets sep)))
+   :hints (("Goal" :induct (fn-hsb-octets-chars-loop octets sep acc)))))
+
+(verify-guards fn-hsb-octets-chars-loop)
+(verify-guards fn-hsb-octets-chars)
 
 (defun fn-hsb-hex4-chars (hi lo)
   (declare (xargs :guard t))
@@ -404,14 +425,38 @@
           (fn-hsb-hex-digit (mod (floor v 16) 16))
           (fn-hsb-hex-digit (mod v 16)))))
 
-(defun fn-hsb-hex-chars (octets)
-  (declare (xargs :guard t :measure (len octets)))
+; Executes by a loop (PKT-877, lane d-depth-excess-d): see fn-hsb-octets-chars.
+(defun fn-hsb-hex-chars-loop (octets acc)
+  (declare (xargs :guard (true-listp acc) :measure (len octets) :verify-guards nil))
   (if (and (consp octets) (consp (cdr octets)))
-      (append (fn-hsb-hex4-chars (car octets) (cadr octets))
-              (if (consp (cddr octets))
-                  (cons #\: (fn-hsb-hex-chars (cddr octets)))
-                nil))
-    nil))
+      (let ((acc (fn-ag-rev-onto (fn-hsb-hex4-chars (car octets) (cadr octets)) acc)))
+        (if (consp (cddr octets))
+            (fn-hsb-hex-chars-loop (cddr octets) (cons #\: acc))
+          (revappend acc nil)))
+    (revappend acc nil)))
+
+(defun fn-hsb-hex-chars (octets)
+  (declare (xargs :guard t :measure (len octets) :verify-guards nil))
+  (mbe :logic
+       (if (and (consp octets) (consp (cdr octets)))
+           (append (fn-hsb-hex4-chars (car octets) (cadr octets))
+                   (if (consp (cddr octets))
+                       (cons #\: (fn-hsb-hex-chars (cddr octets)))
+                     nil))
+         nil)
+       :exec (fn-hsb-hex-chars-loop octets nil)))
+
+(local
+ (defthm fn-hsb-hex-chars-loop-is-revappend
+   (equal (fn-hsb-hex-chars-loop octets acc)
+          (revappend acc (fn-hsb-hex-chars octets)))
+   :hints (("Goal" :induct (fn-hsb-hex-chars-loop octets acc)
+                   :in-theory (disable fn-hsb-hex4-chars)))))
+
+(verify-guards fn-hsb-hex-chars-loop
+  :hints (("Goal" :in-theory (disable fn-hsb-hex4-chars))))
+(verify-guards fn-hsb-hex-chars
+  :hints (("Goal" :in-theory (disable fn-hsb-hex4-chars))))
 
 (local
  (defthm fn-hsb-character-listp-of-append

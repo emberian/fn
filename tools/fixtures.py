@@ -28,7 +28,8 @@ the revision it was built from.  Each fixture:
      inside `systemd-run --user --scope -p MemoryMax=SIZE` when systemd-run
      exists;
   2. the result is assembled in ROOT/.staging/NAME with FIXTURE.json (name,
-     recipe, image, the image core's SHA-256, REV, UTC, seconds), README and
+     recipe, image, the image core's SHA-256, REV, UTC, seconds, and the
+     store schema digest TREE's images write into a genesis), README and
      SHA256SUMS (every file);
   3. only then ROOT/NAME is replaced: the old directory moves to
      ROOT/.previous/NAME (one previous kept) and the staged one is renamed in;
@@ -37,9 +38,12 @@ the revision it was built from.  Each fixture:
      as they were and makes the exit status 1.
 
 A static fixture (a corpus, no store) is not rebuilt: `rebuild` and `check`
-verify its SHA256SUMS.  `check` verifies every registered fixture's
-SHA256SUMS and names each one whose MANIFEST row is missing or (with --rev)
-was built from another revision; exit 1 if any is missing or mismatched.
+verify its SHA256SUMS.  `check` prints this tree's store schema digest,
+verifies every registered fixture's SHA256SUMS and refuses by name each store
+fixture built under another schema or before the schema was recorded
+(`schema_refusal`), and names each one whose MANIFEST row is missing or
+(with --rev) was built from another revision; exit 1 if any is missing,
+mismatched or of another schema.  `path` refuses the same way.
 `opens` copies each store a fixture holds, rebinds the copy
 (`store COPY rebind-filesystem`, as every consumer's copy must be) and runs
 `store COPY recover`
@@ -149,6 +153,59 @@ def copy_entries(src: Path, dest: Path, names, skip=()) -> None:
                                                        if e in skip or e.endswith(".sock")])
         else:
             shutil.copy2(s, dest / name)
+
+
+# The schema every store's genesis records (books/store-genesis.lisp): the
+# image writes fn-digest -- BLAKE3, books/crypto-attach.lisp -- of the
+# defconst's text into journal/000000.log, and its open refuses a store of
+# another digest by name (reason=schema-digest).  A rebuild records the
+# digest of TREE's text (the tree whose image built the store) in FIXTURE.json
+# and the MANIFEST row; `check', `path' and the native modules that copy a
+# fixture compare it with their own tree's before an image opens the copy, so
+# a fixture older than a schema change is refused by name here and not as a
+# refused open in the middle of a native run (OVER-WINDOW-FIXTURE-SCHEMA,
+# 2026-10-09: syn100k-2k predated 00a3713c4 for ten days, unseen).
+GENESIS_BOOK = "books/store-genesis.lisp"
+SCHEMA_CONSTANT = "*fn-gen-schema-octets*"
+
+
+def schema_digest(tree: Path = TREE) -> str:
+    """BLAKE3 (hex) of TREE's schema text, read by tools/ledger.py's reader."""
+    sys.path.insert(0, str(tree))
+    from tools import ledger  # noqa: E402 -- the s-expression reader, no evaluation
+    import blake3_ref  # noqa: E402
+    for form in ledger.read_forms((tree / GENESIS_BOOK).read_text(encoding="utf-8")):
+        if (isinstance(form, list) and len(form) == 3 and str(form[0]) == "defconst"
+                and str(form[1]) == SCHEMA_CONSTANT):
+            value = form[2]
+            if (isinstance(value, list) and len(value) == 3 and str(value[0]) == "coerce"
+                    and isinstance(value[1], str)):
+                return blake3_ref.blake3(value[1].encode("ascii")).hex()
+    raise SystemExit("{}: no (defconst {} (coerce \"...\" 'list))".format(
+        GENESIS_BOOK, SCHEMA_CONSTANT))
+
+
+def schema_refusal(where: Path, tree_digest: str) -> str | None:
+    """Why the fixture at WHERE was not built under TREE_DIGEST's schema, or
+    None when it was (or it is a static fixture, which holds no store)."""
+    fixture = BY_NAME.get(where.name)
+    if fixture is not None and fixture.static:
+        return None
+    try:
+        record = json.loads((where / "FIXTURE.json").read_text())
+    except (OSError, ValueError):
+        return "schema-unrecorded: {} has no readable FIXTURE.json".format(where)
+    recorded = record.get("schema_digest")
+    if not recorded:
+        return ("schema-unrecorded: {} was built at {} before fixtures recorded the store "
+                "schema; rebuild it (tools/fixtures.py rebuild --only {})".format(
+                    where.name, record.get("rev", "?"), where.name))
+    if recorded != tree_digest:
+        return ("schema-digest: {} was built under schema {} at {}; this tree's is {} "
+                "({} changed); rebuild it (tools/fixtures.py rebuild --only {})".format(
+                    where.name, recorded[:16], record.get("rev", "?"), tree_digest[:16],
+                    GENESIS_BOOK, where.name))
+    return None
 
 
 class Context:
@@ -363,6 +420,44 @@ def recipe_checkpoint_suffix(ctx: Context, n: int, suffix: int) -> None:
     shutil.copy2(ctx.work / "suffix.json", ctx.dest / "suffix.json")
 
 
+def suffix_room(image, config, env) -> dict:
+    """The running owner's status figures the suffix's room is decided by:
+    max-history-octets (profile), bytes-used (headroom: the history octets
+    the records are charged) and the maintenance reserve's octets."""
+    import re
+    done = subprocess.run([str(image), "--fn", "operator", str(config), "status"], env=env,
+                          capture_output=True, text=True, check=False)
+    status = done.stdout
+    found = {name: re.search(pattern, status, re.M) for name, pattern in (
+        ("history", r"^profile .*\bmax-history-octets=(\d+)"),
+        ("used", r"^headroom .*\bbytes-used=(\d+)"),
+        ("reserve", r"^maintenance-reserve octets=(\d+)"))}
+    if not all(found.values()):
+        raise RuntimeError("post-suffix: status (exit {}) lacks {}:\n{}\n{}".format(
+            done.returncode, [k for k, v in found.items() if not v], status, done.stderr))
+    return {name: int(match.group(1)) for name, match in found.items()}
+
+
+def gate_figure(image, octets: int) -> int:
+    """ACL2's gate charge for one suffix post (one group): the history octets
+    the POST gate asks room for (books/store-budget-article.lisp
+    fn-sbud-article-gate-figure), evaluated in the image's own session."""
+    import rep_measure  # noqa: E402
+    from tests.native_harness import Acl2Session, acl2_result
+    length = len(rep_measure.article(SUFFIX_FIRST, octets))
+    with Acl2Session(image) as session:
+        return int(acl2_result(session.call("(fn-sbud-article-gate-figure %d 1)" % length)))
+
+
+def raised_history(used: int, each: int, remaining: int, gate: int, reserve: int) -> int:
+    """The H that admits REMAINING more posts each charged EACH: the gate
+    admits a post when the committed history plus its gate charge plus the
+    maintenance reserve fits H (fn-cvec-article-history-admitp), so the last
+    needs USED + (REMAINING - 1) x EACH + GATE + RESERVE, rounded up to a MiB."""
+    need = used + (max(remaining, 1) - 1) * each + gate + reserve
+    return -(-need // 1048576) * 1048576
+
+
 def cmd_post_suffix(args) -> int:
     """recipe_checkpoint_suffix's step on STORE: rebind, checkpoint offline,
     then N POSTs to one owner with the automatic checkpoint deferred."""
@@ -389,16 +484,50 @@ def cmd_post_suffix(args) -> int:
     proc, opened, stderr = rep_measure.start_owner(image, config, owner_env,
                                                    work / "suffix-owner.stderr")
     out["open_seconds"] = round(opened, 1)
+    # The history budget H was set at the seed's init for the synthesized
+    # records, which leaves room for about 18,000 of the suffix's 20,000 posts.
+    # The room the suffix needs is ACL2's figures (the store's bytes-used and
+    # reserve from status, the POST gate's charge from the image's session),
+    # raised through `policy set' when short (FIXTURE-CP100K-HISTORY-SIZING).
     started = time.monotonic()
     posted = 0
     try:
+        # One post first: its bytes-used delta is what each suffix post is
+        # charged (the synthesized records' average is not: a suffix
+        # article's Message-ID and headers differ).
+        room = suffix_room(image, config, env)
         conn = msgid_measure.Conn(port)
-        for i in range(args.n):
+        rep_measure.post(conn, SUFFIX_FIRST, args.octets)
+        posted = 1
+        conn.close()
+        after = suffix_room(image, config, env)
+        each = after["used"] - room["used"]
+        out["status"], out["post_charge"] = after, each
+        need = raised_history(after["used"], each, args.n - posted,
+                              gate_figure(image, args.octets), after["reserve"])
+        out["history_needed"] = need
+        if after["history"] < need:
+            subprocess.run([str(image), "--fn", "operator", str(config), "policy", "set",
+                            "max-history-octets", str(need)], env=env, check=True)
+            rep_measure.stop_owner(proc, stderr)
+            proc = None
+            proc, opened, stderr = rep_measure.start_owner(image, config, owner_env,
+                                                           work / "suffix-owner.stderr")
+            room = suffix_room(image, config, env)
+            out["raised_status"] = room
+            if room["history"] < need:
+                print("post-suffix: refused: the raise to max-history-octets {} is in force "
+                      "at {}".format(need, room["history"]), file=sys.stderr)
+                return 1
+        started = time.monotonic()
+        conn = msgid_measure.Conn(port)
+        for i in range(posted, args.n):
             rep_measure.post(conn, SUFFIX_FIRST + i, args.octets)
             posted += 1
         conn.close()
     finally:
-        rep_measure.stop_owner(proc, stderr)
+        if proc is not None:
+            rep_measure.stop_owner(proc, stderr)
         out["posted"] = posted
         out["post_seconds"] = round(time.monotonic() - started, 1)
         Path(args.json).write_text(json.dumps(out, indent=1) + "\n")
@@ -653,6 +782,7 @@ def rebuild_one(fixture: Fixture, args, core_sha: str) -> tuple[str, str]:
     work.mkdir(parents=True)
     staging.parent.mkdir(exist_ok=True)
     ctx = Context(Path(args.image), args.rev, work, staging, fixture.mem)
+    schema = schema_digest()
     started = time.time()
     try:
         fixture.recipe(ctx)
@@ -662,7 +792,8 @@ def rebuild_one(fixture: Fixture, args, core_sha: str) -> tuple[str, str]:
     record = {"name": fixture.name, "rev": args.rev, "image": str(args.image),
               "image_core_sha256": core_sha,
               "built_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-              "seconds": seconds, "recipe": ctx.commands, "tree": str(TREE)}
+              "seconds": seconds, "recipe": ctx.commands, "tree": str(TREE),
+              "schema_digest": schema}
     (staging / "FIXTURE.json").write_text(json.dumps(record, indent=1) + "\n")
     (staging / "README").write_text(
         "{}\n\n{}\nBuilt by tools/fixtures.py rebuild from revision {} (FIXTURE.json). "
@@ -673,7 +804,8 @@ def rebuild_one(fixture: Fixture, args, core_sha: str) -> tuple[str, str]:
     os.rename(staging, root / fixture.name)
     manifest_update(root, fixture.name, {
         "rev": args.rev, "image_core_sha256": core_sha, "built_utc": record["built_utc"],
-        "seconds": seconds, "sha256sums_sha256": sha256_file(root / fixture.name / "SHA256SUMS")})
+        "seconds": seconds, "schema_digest": schema,
+        "sha256sums_sha256": sha256_file(root / fixture.name / "SHA256SUMS")})
     shutil.rmtree(work, ignore_errors=True)
     return fixture.name, "rebuilt in {} s".format(seconds)
 
@@ -712,6 +844,8 @@ def cmd_check(args) -> int:
     path = root / "MANIFEST.json"
     manifest = json.loads(path.read_text())["fixtures"] if path.exists() else {}
     status = 0
+    tree_schema = schema_digest()
+    print("schema {} ({} {})".format(tree_schema, GENESIS_BOOK, SCHEMA_CONSTANT))
     for fixture in REGISTRY:
         where = root / fixture.name
         if not where.is_dir():
@@ -719,6 +853,9 @@ def cmd_check(args) -> int:
             status = 1
             continue
         bad = verify_fixture(fixture, where)
+        refusal = schema_refusal(where, tree_schema)
+        if refusal:
+            bad.append(refusal)
         row = manifest.get(fixture.name)
         if bad:
             status = 1
@@ -794,6 +931,9 @@ def cmd_path(args) -> int:
         return 2
     where = Path(args.root) / fixture.name
     bad = verify_fixture(fixture, where) if where.is_dir() else ["MISSING"]
+    if not bad:
+        refusal = schema_refusal(where, schema_digest())
+        bad = [refusal] if refusal else []
     if bad:
         print("fixtures: {} at {}: {}".format(fixture.name, where, ", ".join(bad[:5])),
               file=sys.stderr)

@@ -2022,4 +2022,5 @@ reopen predicate, writer-lock observation and observed final namespace."
 
 ; host/native/io.lisp, host/native/owner.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-his-file-octets
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :exempt ((stream-octets "the history stream's length, a natural (nfixed), not bytes")))

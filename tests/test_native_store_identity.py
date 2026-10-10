@@ -4,7 +4,7 @@
 The owner answers FNCT kind 25 (books/store-identity.lisp over the exported
 wire grammar), and the client prints ACL2's line: the format word, the
 genesis node identity, schema and profile digests, the consumer arm, both
-image revisions and the digest of specs/wire-grammar.json.  Before a
+image revisions and the digest of the wire grammar (build/box/wire-grammar.json).  Before a
 consumer bootstrap the arm is `unbootstrapped' (never an empty field);
 after `consumer bootstrap' it carries the history id and incarnation.  The
 grammar digest is BLAKE3 of the committed file, so Mini pins the file it
@@ -49,7 +49,9 @@ class StoreIdentity(unittest.TestCase):
         before = LINE.match(self.identity(control, expect=EXIT.OK))
         self.assertIsNotNone(before)
         self.assertEqual(before.group(5), "unbootstrapped")
-        grammar = blake3_ref.blake3((ROOT / "specs" / "wire-grammar.json").read_bytes()).hex()
+        import box_artifacts
+        box_artifacts.load("wire-grammar.json", ROOT)  # refuses absent, committed or foreign
+        grammar = blake3_ref.blake3(box_artifacts.path("wire-grammar.json", ROOT).read_bytes()).hex()
         self.assertEqual(before.group(8), grammar)
         self.assertNotEqual(before.group(2), "00" * 32)
 

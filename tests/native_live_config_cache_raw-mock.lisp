@@ -28,6 +28,9 @@
 (defun fnn-owner-export-status (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-export-status "host/native/admin.lisp"))
+(defun fnn-owner-feed-replay (peer entries offset)
+  (declare (ignorable peer entries offset))
+  (harness-stub-reached 'fnn-owner-feed-replay "host/native/owner.lisp"))
 (defun fnn-owner-inspect-request (service msgid)
   (declare (ignorable service msgid))
   (harness-stub-reached 'fnn-owner-inspect-request "host/native/admin.lisp"))
@@ -40,9 +43,9 @@
 (defun fnn-owner-retire-begin (service seconds)
   (declare (ignorable service seconds))
   (harness-stub-reached 'fnn-owner-retire-begin "host/native/owner.lisp"))
-(defun fnn-rc-begin (run reserve)
-  (declare (ignorable run reserve))
-  (harness-stub-reached 'fnn-rc-begin "host/native/admin.lisp"))
+(defun fnn-rc-do-feed-io (run peer)
+  (declare (ignorable run peer))
+  (harness-stub-reached 'fnn-rc-do-feed-io "host/native/admin.lisp"))
 ;;; ---- derived stubs: END ----
 
 (defstruct test-store config-generation config-served config-domain fenced)
@@ -78,6 +81,8 @@
   (declare (ignore service)) *store*)
 ;; The retire request (books/native-retire.lisp fn-nret-request, row S9) is
 ;; the real ACL2 definition: a reconfiguration argv is not one.
+(defmacro mv (&rest xs) `(values ,@xs))
+(defun true-list-fix (x) (if (consp x) (cons (car x) (true-list-fix (cdr x))) nil))
 (unless (macro-function 'mbe)
   (defmacro mbe (&key logic exec) (declare (ignore logic)) exec))
 (unless (fboundp 'natp) (defun natp (x) (and (integerp x) (<= 0 x))))
@@ -86,7 +91,12 @@
 (dolist (spec '(("books/records-shape.lisp" fn-record-string-octets-rev fn-record-string-octets-aux
                  fn-record-string-octets)
                 ("books/native-retire.lisp" *fn-nret-max-drain-seconds* fn-nret-u32-value
-                 fn-nret-request)))
+                 fn-nret-request)
+                ("books/owner-reconfig-phased.lisp" fn-orp-car fn-orp-cdr fn-orp-replay-peers
+                 fn-orp-label fn-orp-refused-in-q2 fn-orp-convert-tail fn-orp-convert-event
+                 fn-orp-step)
+                ("books/control-observation.lisp" fn-nco-at)
+                ("books/control-receipt-wire.lisp" fn-nco-receipt-command)))
   (with-open-file (stream (first spec))
     (loop for form = (read stream nil :eof) until (eq form :eof)
           when (and (consp form) (member (car form) '(defun defconst))
@@ -100,6 +110,9 @@
   (push (cons name args) *calls*)
   (case name
     (fn-nret-request (apply #'fn-nret-request args))
+    ;; Receipt reads are served by the control owner: a reconfiguration argv
+    ;; is not one (the real ACL2 definition).
+    (fn-nco-receipt-command (apply #'fn-nco-receipt-command args))
     (fn-native-admin-host-plan :plan)
     ;; A configuration mutation, not an owner request (compaction or
     ;; reclaim: ACL2's fn-native-admin-result-owner-requestp).
@@ -107,6 +120,11 @@
     ;; ... nor a store-limit plan (limits-live's fnn-lim-plan-p asks the kind).
     (fn-native-admin-result-kind :reconfigure)
     ;; The staging step's ConfigResult fields (books/owner-results.lisp).
+    (fn-olau-next-name "000000000002")
+    (fn-olau-authorize-observed :authorization)
+    (fn-native-admin-host-publication-status :accepted)
+    (fn-oclc-live-authorizep t)
+    (fn-orp-convert-event (fn-orp-convert-event (first args)))
     (fn-ores-config-word (second (first args)))
     (fn-ores-config-octets (third (first args)))
     (fn-ores-config-reason (fourth (first args)))
@@ -115,6 +133,8 @@
   (push (cons name args) *calls*)
   (case name
     (fn-owner-open 7)
+    (fn-owner-cfg-capture :capture)
+    (fn-owner-feed-journal-prefix-size 0)
     ;; PKT-827 (b): the staged record applies to the carried configuration.
     (fn-owner-reconfigure-authorizedp t)
     (fn-owner-config-generation 2)
@@ -140,9 +160,48 @@
 (defun fnn-config-records-from-observation (observation)
   (declare (ignore observation)) nil)
 (defun fnn-durable-records (store) (declare (ignore store)) nil)
-(defun fnn-admin-publish (&rest args)
-  (declare (ignore args)) (push '(publish) *calls*) (values 2 "generation-2"))
+;; Window A's immutable publication (physical I/O) and the lstat of the next
+;; generation's name are not the subject.
+(defun fnn-admin-publish-effect (&rest args)
+  (declare (ignore args)) (push '(publish) *calls*) (values :durable 2 "generation-2"))
+(defun fnn-immutable-drain-cleanups (&optional stage) (declare (ignore stage)) nil)
+(defun fnn-admin-lock-observation (store) (declare (ignore store)) :lock-owned)
+(defun fnn-octet-list (x) x)
+(defun fnn-config-dir (store) (declare (ignore store)) "config")
+(defun fnn-join (a b) (concatenate 'string a "/" b))
+(defun fnn-lstat (path) (declare (ignore path)) nil)
+(defun fnn-store-config (store) (declare (ignore store)) nil)
+(defun fnn-nat (v) (if (and (integerp v) (<= 0 v)) v (error "non-natural")))
+;; The gate's hold, taken for window A and released with the step's :done.
+(defvar *hold* nil)
+(defun fnn-owner-reconfig-hold (service entry)
+  (declare (ignore service))
+  (ecase entry
+    (:begin (assert (not *hold*)) (setq *hold* t) :held)
+    (:end (assert *hold*) (setq *hold* nil) :released)))
+;; The feed table follows the refreshed configuration: no new peer here.
+(defun fnn-owner-feed-configured-missing (service)
+  (declare (ignore service)) (push '(feed-refresh) *calls*) nil)
+(defun fnn-owner-feed-install (service opened) (declare (ignore service opened)) nil)
+(defun fnn-owner-feed-close-entries (entries) (assert (null entries)))
+(defun fnn-call (name &rest args)
+  (case name
+    (fn-orp-step (multiple-value-list (apply #'fn-orp-step args)))
+    (otherwise (error "unexpected dispatched call ~s" name))))
 
+(with-open-file (stream "host/native/admin.lisp")
+  (let ((wanted '(fnn-reconfig fnn-owner-live-reconfigure fnn-rc-begin fnn-rc-advance
+                  fnn-rc-next-feed-event fnn-rc-prime fnn-rc-resignal fnn-rc-do-stage
+                  fnn-rc-do-authorize fnn-rc-do-complete fnn-rc-do-refresh fnn-rc-do-replay
+                  fnn-rc-do-install fnn-rc-owner-effect fnn-rc-hold fnn-rc-leave
+                  fnn-rc-owner-quantum fnn-rc-classify fnn-rc-do-observe fnn-rc-do-publish
+                  fnn-rc-close-scanned fnn-rc-window fnn-owner-reconfigure-unstage)))
+    (loop for form = (read stream nil :eof) until (eq form :eof)
+          when (and (consp form) (member (car form) '(defstruct defmacro defun))
+                    (member (if (consp (cadr form)) (car (cadr form)) (cadr form)) wanted))
+            do (eval form)
+               (setq wanted (remove (if (consp (cadr form)) (car (cadr form)) (cadr form)) wanted)))
+    (when wanted (error "deployed forms missing from admin.lisp: ~s" wanted))))
 (dolist (spec '(("host/native/io.lisp" fnn-decode-joined-names)
                 ("host/native/admin.lisp" fnn-admin-test-fault)
                 ("host/native/admin.lisp" fnn-owner-refresh-config-cache)

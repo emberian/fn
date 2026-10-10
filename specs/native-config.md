@@ -49,8 +49,11 @@ present. It consumes an absolute `[log] path`: `run` opens it append-only
 writes there, instead of to stderr, one line per served post, control post
 and accepted connection, each rendered by `books/owner-log.lisp` with the
 reply's outcome word first; fn never truncates or rotates the file. A
-relative path is refused (`log`), since the service's working directory is
-not part of the profile.
+relative path names a file under fn.toml's own directory (row S8,
+`books/native-config-paths.lisp`): every verb resolves it before it plans, so
+the service's working directory is never part of the profile. The `log`
+refusal remains for a configuration loaded without that resolution
+(`fn-native-config-unsupported-key`).
 
 `[posting] agent` is refused (`agent`) whatever it says, the former default
 `fn-operator@localhost` included, and that is a decision, not a missing
@@ -153,6 +156,8 @@ local file allocator refuses before opening beyond `cold_file_ids`.
 
 ### Retire operator observation (PKT-895)
 
+PKT-895: Bounded retire operator observation with honest uncertainty.
+
 `retire [--drain SECONDS]` asks the live owner to retire and observes its
 socket/store-lock state. ACL2's `fn-nret-observation-step` bounds this
 observation to the accepted drain window plus a 60-second operator allowance,
@@ -187,6 +192,8 @@ widths, is a fault. These checks preserve HST-008/HST-009's shared outcome
 classes; they do not manufacture a policy refusal from an image defect.
 
 ## Resumable developer init (STO-10005)
+
+STO-10005: Resumable developer init preserves its sealed profile and initial groups.
 
 `store ROOT init` may resume interrupted initialization. Under its exclusive
 writer lock, it supplies the requested decoded profile, the immutable sealed

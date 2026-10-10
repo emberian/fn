@@ -74,6 +74,7 @@
 (include-book "../../books/owner-prepare-carried")
 (include-book "../../books/records-concrete-owner")
 (include-book "../../books/octets-stobj")
+(include-book "../../books/runtime-contract-echo")
 (include-book "../../books/owner-checkpoint-pipeline")
 (include-book "../../books/poster-bytes-buffer")
 (include-book "../../books/store-reclaim-buffer")

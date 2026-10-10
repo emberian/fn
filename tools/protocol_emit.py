@@ -425,8 +425,14 @@ def check_keyword_literals(table: dict) -> list[str]:
 # The exported wire grammars (`--wire`): an ACL2 value, written or compared.
 
 WIRE_BOOK = "books/wire-export"
-WIRE_FILE = ROOT / "specs" / "wire-grammar.json"
+# a box-step artifact, never committed (tools/box_artifacts.py); the release
+# tarball ships it (packaging/release-tarball.sh)
+WIRE_FILE = ROOT / "build" / "box" / "wire-grammar.json"
 WIRE_MARK = "FNWGX"
+
+
+class NotRun(RuntimeError):
+    """The check needs the certified world, which this tree does not have."""
 
 
 def wire_octets(timeout: int = 900) -> bytes:
@@ -437,6 +443,11 @@ def wire_octets(timeout: int = 900) -> bytes:
     names = list(certs.closure(ROOT, WIRE_BOOK))
     subprocess.run([sys.executable, str(ROOT / "tools" / "certs.py"), "install", *names],
                    capture_output=True, text=True, cwd=ROOT)
+    uncertified = [name for name in names if not (ROOT / (name + ".cert")).is_file()]
+    if uncertified:
+        raise NotRun("%d of the %d books %s includes have no certificate in this tree "
+                     "(e.g. %s); a tree with the certified world runs this check"
+                     % (len(uncertified), len(names), WIRE_BOOK, uncertified[0]))
     # The file is the value of the CERTIFIED book at these bytes: an
     # uncertified include would render a world whose fn-wgx-vectors-decode
     # was never proved, so the include must be certified (:uncertified-okp nil).
@@ -485,13 +496,26 @@ def _stamped(key: str) -> bytes | None:
 
 def wire(write: bool) -> int:
     import hashlib
+    sys.path.insert(0, str(ROOT / "tools"))
+    import box_artifacts
+    try:
+        box_artifacts.path("wire-grammar.json", ROOT)
+    except box_artifacts.Refused as error:
+        print("FAIL %s" % error)
+        return 1
     key = _wire_key()
     octets = _stamped(key)
     if octets is not None:
         print("protocol_emit --wire: closure key unchanged since this tree evaluated it; "
               "%s is fn-wgx-file (%d octets)" % (WIRE_FILE.relative_to(ROOT), len(octets)))
         return 0
-    octets = wire_octets()
+    try:
+        octets = wire_octets()
+    except NotRun as reason:
+        # A capability skip (exit 2, the tree's NOT RUN), never a red: the
+        # train's box step has the world and runs this on every train.
+        print("protocol_emit --wire: NOT RUN: %s" % reason)
+        return 2
     json.loads(octets)  # a file Mini's JSON reader cannot read is no export
     if write:
         WIRE_FILE.parent.mkdir(parents=True, exist_ok=True)

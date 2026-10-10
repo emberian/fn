@@ -27,6 +27,7 @@
 
 (in-package "ACL2")
 (include-book "sha256")
+(include-book "def-loop")
 
 (local (include-book "arithmetic/top" :dir :system))
 (local (include-book "ihs/quotient-remainder-lemmas" :dir :system))
@@ -48,13 +49,11 @@
   (declare (xargs :guard t))
   (fn-sha256-byte (logxor (fn-sha256-byte a) (fn-sha256-byte b))))
 
-(defun fn-hmac-xor (xs ys)
+(def-loop fn-hmac-xor (xs ys)
   ; Pointwise xor of two octet lists, as long as the shorter.
-  (declare (xargs :guard t))
-  (if (and (consp xs) (consp ys))
-      (cons (fn-hmac-xor-octet (car xs) (car ys))
-            (fn-hmac-xor (cdr xs) (cdr ys)))
-    nil))
+  :shape :step :over (xs ys) :done (or (atom xs) (atom ys)) :elt x
+  :body (fn-hmac-xor-octet x (car ys))
+  :next ((cdr xs) (cdr ys)))
 
 (defthm fn-hmac-octet-listp-of-xor
   (fn-sha256-octet-listp (fn-hmac-xor xs ys)))
@@ -136,12 +135,10 @@
   :hints (("Goal" :induct (fn-hmac-xor xs ys)
            :in-theory (disable fn-hmac-xor-octet))))
 
-(defun fn-hmac-xor-const (xs c)
+(def-loop fn-hmac-xor-const (xs c)
   ; Every octet of XS xor the octet C.
-  (declare (xargs :guard t))
-  (if (consp xs)
-      (cons (fn-hmac-xor-octet (car xs) c) (fn-hmac-xor-const (cdr xs) c))
-    nil))
+  :shape :map :over xs :elt x
+  :body (fn-hmac-xor-octet x c))
 
 (defthm fn-hmac-octet-listp-of-xor-const
   (fn-sha256-octet-listp (fn-hmac-xor-const xs c)))

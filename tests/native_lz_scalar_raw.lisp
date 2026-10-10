@@ -18,15 +18,12 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
-(defun fnn-extent-decoded-span-hit (worker token file eoff elen poff compressed trailer decoded dict i)
-  (declare (ignorable worker token file eoff elen poff compressed trailer decoded dict i))
-  (harness-stub-reached 'fnn-extent-decoded-span-hit "host/native/extent-decoded.lisp"))
-(defun fnn-extent-decoded-window-cache-byte (file eoff elen poff compressed trailer decoded dict-id i)
-  (declare (ignorable file eoff elen poff compressed trailer decoded dict-id i))
-  (harness-stub-reached 'fnn-extent-decoded-window-cache-byte "host/native/extent-decoded.lisp"))
-(defun fnn-extent-decoded-window-span-octet (worker token file eoff elen poff compressed trailer decoded dict dict-id i)
-  (declare (ignorable worker token file eoff elen poff compressed trailer decoded dict dict-id i))
-  (harness-stub-reached 'fnn-extent-decoded-window-span-octet "host/native/extent-decoded.lisp"))
+(defun fnn-core-page-read-pool (name &rest arguments)
+  (declare (ignorable name arguments))
+  (harness-stub-reached 'fnn-core-page-read-pool "host/native/extent.lisp"))
+(defun fnn-extent-where (file eoff)
+  (declare (ignorable file eoff))
+  (harness-stub-reached 'fnn-extent-where "host/native/extent.lisp"))
 ;;; ---- derived stubs: END ----
 (defun natp (x) (and (integerp x) (<= 0 x)))
 (defun zp (x) (not (and (integerp x) (< 0 x))))
@@ -34,12 +31,25 @@
 (load-deployed-forms "host/native/extent.lisp"
  '((defvar *fnn-extent-window-mode*) (defvar *fnn-extent-window-worker*)
    (defvar *fnn-extent-window-token*) (defmacro fnn-core-cold-single)
-   (defun fn-durable-realize-lz-octet)))
+   (defvar *fnn-extent-lz-buffer-key*) (defvar *fnn-extent-stats*) (defvar *fnn-extent-lock*)
+   (defun fnn-extent-lz-buffer-octet) (defun fn-durable-realize-lz-octet)))
 (defvar *scalar-full-calls* nil)
 (defvar *scalar-borrow-calls* nil)
 (defvar *scalar-borrow-word* :byte)
-(defun fn-durable-realize-lz (&rest args)
-  (push args *scalar-full-calls*) '(65 66 67))
+;; The normal arm decodes the whole block once into the generated buffer
+;; (fnn-extent-lz-buffer-octet): the compressed read and the decode into the
+;; buffer are the recording boundaries; the buffer holds the decoded octets.
+(defvar *dlz-buffer* (list nil))
+(defvar *fnn-dlz* *dlz-buffer*)
+(defun fn-durable-realize-octets (&rest args)
+  (push args *scalar-full-calls*) :compressed)
+(defun fnn-pzd-decode-into (dict compressed n sink)
+  (declare (ignore dict compressed n))
+  (funcall sink '(65 66 67))
+  :ok)
+(defun fn-dlz-fill-from (out st) (setf (car st) out))
+(defun fn-dlz-nth (i st) (nth i (car st)))
+(defun fnn-live-dlz () *fnn-dlz*)
 (defun fnn-core (subject &rest args)
   (assert (member subject '(fn-oct-nth fn-pwz-cold-descriptor fn-pwz-nth)))
   (apply (symbol-function subject) args))
@@ -51,7 +61,7 @@
     (otherwise (error "unexpected cold scalar subject ~s" subject))))
 (let ((*fnn-extent-window-mode* nil))
   (assert (= 66 (fn-durable-realize-lz-octet 7 100 320 120 40 99 3 nil 1)))
-  (assert (equal *scalar-full-calls* '((7 100 320 120 40 99 3 nil)))))
+  (assert (equal *scalar-full-calls* '((7 100 320 120 40 99)))))
 ;; No physical provider installed: the existing named ACL2 refusal survives.
 (let ((*fnn-extent-window-mode* t))
   (assert (eq :decoded-window-unavailable
@@ -60,8 +70,25 @@
 (load-deployed-forms "books/decoded-window-descriptor.lisp"
  '((defun fn-pwz-nth) (defun fn-pwz-cold-descriptor)))
 (load-deployed-forms "host/native/extent.lisp" '((define-condition fnn-extent-fault)))
+(load-deployed-forms "host/native/extent.lisp"
+ '((defvar *fnn-extent-window-cache*) (defvar *fnn-extent-cache-span*)
+   (defvar *fnn-extent-cache-span-dst*)))
 (load-deployed-forms "host/native/extent-decoded.lisp"
- '((defun fnn-extent-decoded-window-realize-octet)))
+ '((defun fnn-extent-decoded-window-realize-octet)
+   (defun fnn-extent-decoded-window-cache-byte)))
+;; The worker's span copy and span borrow (fnn-extent-decoded-span-hit,
+;; fnn-extent-decoded-window-span-octet) are not this fixture's subject: no
+;; span is held, and a span miss falls through to the scalar borrow
+;; (fnn-extent-decoded-window-byte-at, recorded below), as the deployed
+;; span-octet does when ACL2 answers no span.
+(defun fnn-extent-decoded-span-hit (worker token file eoff elen poff compressed trailer decoded dict i)
+  (declare (ignore worker token file eoff elen poff compressed trailer decoded dict i))
+  nil)
+(defun fnn-extent-decoded-window-span-octet (worker token file eoff elen poff compressed trailer
+                                             decoded dict dict-id i)
+  (declare (ignore dict))
+  (fnn-extent-decoded-window-byte-at worker token file eoff elen poff compressed
+                                     trailer decoded dict-id i))
 (defun fnn-extent-decoded-window-byte-at (&rest args)
   (push args *scalar-borrow-calls*) (values *scalar-borrow-word* 66))
 (let ((*fnn-extent-window-mode* t) (*fnn-extent-window-worker* nil))

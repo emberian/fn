@@ -29,12 +29,14 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
 import time
 import unittest
 from pathlib import Path
 
 import tests.test_bp_app_native as base
-from tests.native_harness import Client, Node
+from tests.native_harness import (
+    EXIT_OK, EXIT_REFUSED, Client, Node, environment, executable, native_image, run)
 
 HIST = int(os.environ.get("FN_CV_HIST", "300000"))
 # T well above what H admits, so the history bound is the one the fill meets
@@ -319,6 +321,123 @@ class NativeCapacityVectorTests(_Bp):
         self.out(tag="cuts", failures=bad)
         self.assertEqual(bad, [])
         self.assertTrue(all(a.startswith("240") for a in reused), reused)
+
+
+DEVELOPER = native_image("FN_NATIVE_DEVELOPER_HOST")
+
+
+@unittest.skipUnless(executable(DEVELOPER), "build/fn-host-developer is required")
+class NativeStorePostVerdictTests(unittest.TestCase):
+    """Memory landing 3+4a: the developer `store post' asks ACL2's article
+    verdict before it writes (host/native/io.lisp fnn-command-post ->
+    host/store-node-host.lisp fn-store-sn-article-verdict-word ->
+    books/store-capacity-vector.lisp fn-cvec-article-verdict-word, whose
+    :admissible is exactly fn-cvec-article-verdict-at's, the count gate and
+    the history gate fn-sbud-article-verdict-at at the article's own figure,
+    then the capacity vector after it).  KEYSTONES
+    fn-cvec-article-verdict-keeps-the-vector,
+    fn-cvec-article-verdict-keeps-the-vector-for-a-held-row and
+    fn-sbud-article-verdict-keeps-history: an article the verdict admits
+    leaves the committed history plus its payload within H with the
+    maintenance reserve still held.  Every figure is read back from the
+    store's own report (`status --replay': the headroom line and the
+    maintenance-reserve line), none is pinned: an article of exactly the room
+    left (H less the history and the reserve) is admitted and fills H to the
+    reserve, one octet more is refused by the history's word, and the
+    transactions are admitted while one more record and the release's fit T,
+    then refused by their word; a refusal writes nothing."""
+
+    STEP = 30000
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.base = Path(self.tmp.name)
+        self.serial = 0
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def fn(self, *words):
+        return run([DEVELOPER, "--fn", *[str(w) for w in words]], timeout=600,
+                   env=environment({}))
+
+    def init(self, name, *flags):
+        store = self.base / name
+        made = self.fn("store", store, "init", "--profile", "development",
+                       "--max-record-octets", "196608", "--max-article-octets", "32768",
+                       "--max-groups-per-article", "16", *flags, GROUP)
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr)
+        return store
+
+    def report(self, store):
+        status = self.fn("store", store, "status", "--replay")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr)
+        room, reserve = {}, {}
+        for line in status.stdout.decode("ascii").splitlines():
+            words = line.split()
+            if words and words[0] == "headroom":
+                room = {k: int(v) for k, v in (w.split("=", 1) for w in words[1:])}
+            elif words and words[0] == "maintenance-reserve":
+                reserve = dict(w.split("=", 1) for w in words[1:] if "=" in w)
+                reserve["held"] = words[-1] == "held"
+        self.assertTrue(room and reserve, status.stdout)
+        return room, int(reserve["octets"]), int(reserve["debt"]), reserve["held"]
+
+    def post(self, store, octets):
+        self.serial += 1
+        payload = self.base / "payload-{}".format(self.serial)
+        payload.write_bytes(b"p" * octets)
+        return self.fn("store", store, "post",
+                       "<verdict-{}@capacity.example.invalid>".format(self.serial),
+                       payload, "-", "-", GROUP)
+
+    def assert_refused(self, store, octets, word):
+        before = self.report(store)
+        refused = self.post(store, octets)
+        self.assertEqual(refused.returncode, EXIT_REFUSED, refused.stderr)
+        self.assertIn(word, refused.stderr)
+        self.assertEqual(self.report(store), before)
+
+    def test_store_post_admits_to_the_last_octet_of_h_and_the_last_transaction_of_t(self):
+        store = self.init("history", "--max-history-octets", "262144")
+        room, reserve, debt, held = self.report(store)
+        self.assertEqual(debt, 0)
+        self.assertTrue(held)
+
+        def left(r, octets):
+            return r["history-bound"] - r["bytes-used"] - octets
+        while left(room, reserve) > self.STEP:
+            posted = self.post(store, self.STEP)
+            self.assertEqual(posted.returncode, EXIT_OK, posted.stderr)
+            after, reserve, debt, held = self.report(store)
+            self.assertEqual(after["bytes-used"], room["bytes-used"] + self.STEP)
+            self.assertLessEqual(after["bytes-used"] + reserve, after["history-bound"])
+            self.assertTrue(held)
+            room = after
+        last = left(room, reserve)
+        self.assertGreaterEqual(last, 1)
+        self.assertLess(last, 32768)
+        self.assert_refused(store, last + 1, b"(history-exhausted)")
+        posted = self.post(store, last)
+        self.assertEqual(posted.returncode, EXIT_OK, posted.stderr)
+        full, reserve, debt, held = self.report(store)
+        self.assertEqual(full["bytes-used"] + reserve, full["history-bound"])
+        self.assertTrue(held)
+        self.assert_refused(store, 1, b"(history-exhausted)")
+
+        store = self.init("transactions", "--max-transactions", "4",
+                          "--max-history-octets", "262144")
+        room, reserve, debt, held = self.report(store)
+        budget = room["transactions-budget"]
+        while room["transactions-used"] + 1 < budget:
+            posted = self.post(store, 1)
+            self.assertEqual(posted.returncode, EXIT_OK, posted.stderr)
+            after, reserve, debt, held = self.report(store)
+            self.assertEqual(after["transactions-used"], room["transactions-used"] + 1)
+            self.assertTrue(held)
+            room = after
+        self.assertEqual(room["transactions-used"], budget - 1)
+        self.assert_refused(store, 1, b"(transaction count)")
 
 
 if __name__ == "__main__":

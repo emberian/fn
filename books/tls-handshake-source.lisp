@@ -17,6 +17,8 @@
 (include-book "node-config")    ; fn-cfg-policy
 (include-book "profile-limits") ; fn-profile-limit
 (include-book "records-shape")  ; fn-record-string-octets
+(include-book "def-loop")
+(include-book "rev-onto")
 (include-book "public-exposure-rows") ; the CIDR list (fn-exp-trusted-of-word)
 
 ; An IPv4-mapped IPv6 address (::ffff:a.b.c.d, RFC 4291 section 2.5.5.2:
@@ -79,13 +81,12 @@
            (cons (fn-hsb-source-key (cons :inet6 v6)) n))
           (t :bad))))
 
-(defun fn-hsb-override-entries (fields)
-  (declare (xargs :guard t))
-  (if (consp fields)
-      (let ((e (fn-hsb-override-entry (fn-ncfg-trim (car fields))))
-            (rest (fn-hsb-override-entries (cdr fields))))
-        (if (or (equal e :bad) (equal rest :bad)) :bad (cons e rest)))
-    nil))
+(def-loop fn-hsb-override-entries (fields)
+  :shape :foldr :over fields :elt f
+  :combine (let ((e (fn-hsb-override-entry (fn-ncfg-trim f))))
+             (if (or (equal e :bad) (equal acc :bad)) :bad (cons e acc)))
+  :init nil
+  :rev fn-ag-rev-onto)
 
 ;; The row's word -> the list, or the refusal's name.
 (defun fn-hsb-overrides-of-word (word most)
