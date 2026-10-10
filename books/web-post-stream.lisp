@@ -370,9 +370,7 @@
   :hints (("Goal" :in-theory (enable fn-wpf-store))))
 
 (defun fn-wpf-step (p fn-web-in)
-  (declare (xargs :stobjs fn-web-in
-                  :guard (fn-wpf-statep p (fn-octets-len fn-web-in))
-                  :guard-hints (("Goal" :do-not-induct t))))
+  (declare (xargs :verify-guards nil :stobjs fn-web-in))
   (let* ((at (nth 1 p)) (end (nth 2 p)) (name (nth 3 p)) (start (nth 4 p))
          (spans (nth 5 p)) (phase (nth 6 p)) (index (nth 7 p))
          (pos (nth 8 p)) (rev (nth 9 p)) (vals (nth 10 p)))
@@ -420,9 +418,7 @@
                   :in-theory (disable nth update-nth fn-wss-decode-at fn-wpf-store))))
 
 (defun fn-wpf-drive (fuel p fn-web-in)
-  (declare (xargs :stobjs fn-web-in
-                  :guard (and (natp fuel) (fn-wpf-statep p (fn-octets-len fn-web-in)))
-                  :guard-hints (("Goal" :in-theory (disable fn-wpf-step fn-wpf-statep mv-nth)))))
+  (declare (xargs :verify-guards nil :stobjs fn-web-in))
   (if (zp fuel) (mv p nil)
     (mv-let (next done) (fn-wpf-step p fn-web-in)
       (if done (mv next t) (fn-wpf-drive (1- fuel) next fn-web-in)))))
@@ -433,8 +429,7 @@
   :hints (("Goal" :in-theory (disable fn-wpf-step fn-wpf-statep mv-nth))))
 
 (defun fn-wpf-finish (config p fn-web-in fn-web-out)
-  (declare (xargs :stobjs (fn-web-in fn-web-out)
-                  :guard (fn-wpf-statep p (fn-octets-len fn-web-in))))
+  (declare (xargs :verify-guards nil :stobjs (fn-web-in fn-web-out)))
   (let* ((action (nth 0 p)) (session (nth 2 action)) (ctx (nth 3 action))
          (vals (nth 10 p)) (csrf (nth 0 vals)) (group (nth 1 vals))
          (subject (nth 2 vals)) (span (nth 3 (nth 5 p))))
