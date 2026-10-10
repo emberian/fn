@@ -50,6 +50,7 @@ IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
 # Plain and compressible bodies.  Three runs of fnn-extent-span-capacity (16384)
 # and a remainder: a span from 0 crosses two run boundaries.
 BIG = 3 * 16384 + 4321
+ARTICLE_OCTETS = 2 * BIG
 KINDS = ("extent", "lz", "resident", "staged", "forgotten")
 
 # The helpers, one form (the REPL evaluates one form per connection).
@@ -205,7 +206,13 @@ class ArenaSpanIntoImageTests(verbs.NativeOperatorVerbFixture):
         return ids
 
     def build_store(self):
-        created = self.node.operator("init", "--profile", "development", "fn.test")
+        # The development profile refuses an article of 32 KiB and up; BIG needs
+        # its own bound (a whole article: BIG's body plus the header), and the
+        # record of one such article must fit, so the groups per article are
+        # bounded as in test_native_article_slots.
+        created = self.node.operator("init", "--profile", "development",
+                                     "--max-article-octets", str(ARTICLE_OCTETS),
+                                     "--max-groups-per-article", "16", "fn.test")
         self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
         self.node.start()
         self.big = self.post(False, BIG, 2)
