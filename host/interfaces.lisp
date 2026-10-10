@@ -4218,6 +4218,9 @@
   :keystones (fn-bpfc-turn-advances-at-most-quantum
               fn-bpfc-turn-after-a-yield-is-the-larger-turn
               (fn-bpfc-run-is-the-plan-choice :step-of fn-bpfc-run)))
+(definterface fn-bpsched-admit-p
+  :class :common-lisp-compliant
+  :keystones (fn-bpsched-refused-rotation-keeps-admission-open))
 (definterface fn-bpsched-idle-p :class :common-lisp-compliant)
 (definterface fn-bpsched-listener-index :class :common-lisp-compliant)
 (definterface fn-bpsched-listener-step :class :common-lisp-compliant)
