@@ -1,0 +1,12 @@
+{
+ "detail": "After an applied live limit change the owner serves POST and control under the default header limits (64 256 16384), not the store's sealed profile limits: books/owner-served-bound.lisp fn-osb-config passes the bare natural (fn-sbud-payload-bound profile) to fn-inj-make-config-full, and a bare natural selects *fn-article-default-limits* (books/injection.lisp:447); fn-owner-apply-limit-profile -> fn-osb-install runs on the live-limit path (host/native/admin.lisp:1074) with no fn-owner-posting-configure after it; a restart repairs it. Measured: a store sealed at max-header-fields 10 refused a 12-field POST before `policy set max-transactions 14' and accepted it after (persvati, developer image of lane/spans int 9b03401cd; fn-osb-config is unchanged on dev 877786836). Retirement: lane spans-osb-limits (fn-osb-config passes fn-inj-post-bound of the profile's article octets and header limits; keystone fn-osb-install-serves-the-profile-header-limits; the native test is the subject row).",
+ "file": "books/owner-served-bound.lisp",
+ "id": "LIVE-LIMITS-RESET-HEADER-BOUNDS",
+ "notes": [],
+ "owner": "builder-C",
+ "severity": "high",
+ "source": "Codex O1 packet-3 review F1 (build/spans/o1/p3/codex-findings-o1-3.md on lane/spans); probe build/spans/o1/p3/probe_osb_reset.py",
+ "state": "open",
+ "title": "a live limit change resets the served header limits to the defaults",
+ "updated": "2026-10-10T19:30:00Z"
+}

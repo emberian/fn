@@ -65,6 +65,14 @@
    "item": "OVER-WINDOW-FIXTURE-SCHEMA",
    "owner": "builder-D",
    "ruling": "coordinator 2026-10-09: admitted by amendment, owner builder-D (the fixture rebuild)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_header_limits.NativeHeaderLimitsTests.test_a_live_limit_change_keeps_the_sealed_header_limits",
+   "dev_sha": "877786836",
+   "item": "LIVE-LIMITS-RESET-HEADER-BOUNDS",
+   "owner": "builder-C",
+   "ruling": "coordinator 2026-10-10: dev serves this defect today; it enters by amendment, retired by lane spans-osb-limits"
   }
  ]
 }
