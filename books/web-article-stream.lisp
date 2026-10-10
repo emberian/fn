@@ -217,18 +217,22 @@
 ; The window cursor returns a fifth value NEED=(START . END). It never
 ; advances a virtual source without those exact source octets being present.
 (defun fn-wpc-window-next (cursor base fn-web-in)
-  (declare (xargs :stobjs fn-web-in
-                  :guard (and (natp base) (fn-wpc-wcursorp cursor))
+  ; Guard: a natural BASE.  Every read is total or tested on its path (the
+  ; cursor's lists are taken apart by guard-t car/cdr, the parser state is
+  ; checked at its use, and fn-wpc-get answers nil off the buffer), so the
+  ; step needs no recognizer over the segments.  For a windowed cursor
+  ; (fn-wpc-wcursorp) every one of those is the plain car, cdr, state and
+  ; octet read.
+  (declare (xargs :stobjs fn-web-in :guard (natp base)
                   :guard-hints (("Goal" :do-not-induct t
-                                 :use ((:instance fn-wpc-wcursorp-facts (cursor cursor))
-                                       (:instance fn-wpc-wcursorp-v-list (cursor cursor))
-                                       (:instance fn-wpc-wcursorp-pending (cursor cursor))
-                                       (:instance fn-wpc-wsegsp-head (segs (car cursor))))
-                                 :in-theory (disable fn-wpc-next fn-wpc-wcursorp)))))
+                                 :in-theory (disable fn-wpc-next fn-wgl-feed fn-wgl-statep
+                                                     fn-wpc-get fn-wgl-segs fn-wgl-rowp fn-wgl-start)))))
   (let* ((kind (fn-wrq-nth 1 cursor)) (s (nfix (fn-wrq-nth 3 cursor)))
-         (e (nfix (fn-wrq-nth 4 cursor))) (seg (car (fn-wrq-nth 0 cursor)))
+         (e (nfix (fn-wrq-nth 4 cursor))) (segs (fn-wpc-car cursor))
+         (seg (fn-wpc-car segs))
          (wk (and (not kind) (consp seg) (equal (car seg) :w)))
-         (s (if wk (nfix (cadr seg)) s)) (e (if wk (nfix (cddr seg)) e))
+         (s (if wk (nfix (fn-wpc-car (fn-wpc-cdr seg))) s))
+         (e (if wk (nfix (fn-wpc-cdr (fn-wpc-cdr seg))) e))
          (spanp (or wk (member kind '(:s :d :v-u :v-list))))
          (need-end (if (and wk (<= (- e s) *fn-w47-max*)) e
                      (min e (+ s 4096))))
@@ -240,38 +244,43 @@
         (mv nil nil cursor nil (cons s need-end))
       (if (equal kind :v-list)
           (if (< s e)
-              (mv-let (row parser) (fn-wgl-feed (fn-octets-get (- s base) fn-web-in) s
-                                              (or (fn-wrq-nth 2 cursor) (fn-wgl-start s)))
+              (mv-let (row parser) (fn-wgl-feed (fn-wpc-get (- s base) fn-web-in) s
+                                              (if (fn-wgl-statep (fn-wrq-nth 2 cursor))
+                                                  (fn-wrq-nth 2 cursor)
+                                                (fn-wgl-start s)))
                 (mv nil nil
-                    (if row
+                    (if (fn-wgl-rowp row)
                         (fn-wpc-cursor (append (fn-wgl-segs row)
-                          (cons (cons :v-list (cons (1+ s) e)) (car cursor))))
-                      (list (car cursor) kind parser (1+ s) e t nil)) nil nil))
-            (mv nil nil (fn-wpc-cursor (car cursor)) nil nil))
+                          (cons (cons :v-list (cons (1+ s) e)) segs)))
+                      (list segs kind parser (1+ s) e t nil)) nil nil))
+            (mv nil nil (fn-wpc-cursor segs) nil nil))
       (if (and (equal kind :v-u) (consp (fn-wrq-nth 6 cursor)))
           (mv t (car (fn-wrq-nth 6 cursor))
-              (list (car cursor) kind nil s e t (cdr (fn-wrq-nth 6 cursor))) nil nil)
+              (list segs kind nil s e t (cdr (fn-wrq-nth 6 cursor))) nil nil)
       (if (equal kind :v-u)
           (if (< s e)
-              (mv nil nil (list (car cursor) kind nil (1+ s) e t
+              (mv nil nil (list segs kind nil (1+ s) e t
                                (fn-wr-escape (fn-wr-pct-encode
-                                              (list (fn-octets-get (- s base) fn-web-in))))) nil nil)
-            (mv nil nil (fn-wpc-cursor (car cursor)) nil nil))
+                                              (list (fn-wpc-get (- s base) fn-web-in))))) nil nil)
+            (mv nil nil (fn-wpc-cursor segs) nil nil))
         (let* ((local (if (member kind '(:s :d))
-                          (list (car cursor) kind nil (- s base) (- e base)
+                          (list segs kind nil (- s base) (- e base)
                                 (fn-wrq-nth 5 cursor) (fn-wrq-nth 6 cursor))
                         (if (and wk (<= (- e s) *fn-w47-max*))
-                            (list (cons (cons :w (cons (- s base) (- e base))) (cdr (car cursor)))
+                            (list (cons (cons :w (cons (- s base) (- e base))) (fn-wpc-cdr segs))
                                   nil nil 0 0 t nil) cursor))))
           (if (and (not kind) (consp seg) (member (car seg) '(:s :d :v-u :v-list)))
-              (mv nil nil (list (cdr (car cursor)) (car seg) nil (cadr seg) (cddr seg) t nil) nil nil)
+              (mv nil nil (list (fn-wpc-cdr segs) (car seg) nil (fn-wpc-car (fn-wpc-cdr seg))
+                                (fn-wpc-cdr (fn-wpc-cdr seg)) t nil) nil nil)
             (if (and wk (> (- e s) *fn-w47-max*))
-                (mv nil nil (list (cdr (car cursor)) :s nil s e t nil) nil nil)
+                (mv nil nil (list (fn-wpc-cdr segs) :s nil s e t nil) nil nil)
               (mv-let (present octet next done) (fn-wpc-next local fn-web-in)
                 (mv present octet
                     (if (member (fn-wrq-nth 1 next) '(:s :d))
-                        (list (car next) (cadr next) nil (+ base (fn-wrq-nth 3 next))
-                              (+ base (fn-wrq-nth 4 next)) (fn-wrq-nth 5 next) (fn-wrq-nth 6 next)) next)
+                        (list (fn-wpc-car next) (fn-wpc-car (fn-wpc-cdr next)) nil
+                              (+ base (nfix (fn-wrq-nth 3 next)))
+                              (+ base (nfix (fn-wrq-nth 4 next)))
+                              (fn-wrq-nth 5 next) (fn-wrq-nth 6 next)) next)
                     done nil)))))))))))
 ;; A window step keeps the windowed cursor in its vocabulary.  One lemma per
 ;; kind of cursor (the step is a different path in each), then their union.
@@ -285,6 +294,14 @@
            (fn-wpc-wsegsp (fn-wgl-segs (car (fn-wgl-feed o at x)))))
   :hints (("Goal" :use ((:instance fn-wgl-feed-rowp) (:instance fn-wgl-segs-wsegsp (row (car (fn-wgl-feed o at x)))))
                   :in-theory (disable fn-wgl-feed fn-wgl-segs fn-wgl-rowp fn-wgl-feed-rowp fn-wgl-segs-wsegsp))))
+
+(defthm fn-wgl-feed-statep-unless-rowp
+  ; The row is nil or a row (fn-wgl-feed-rowp): no row means a next state.
+  (implies (and (natp at) (fn-wgl-statep x)
+                (not (fn-wgl-rowp (mv-nth 0 (fn-wgl-feed o at x)))))
+           (fn-wgl-statep (mv-nth 1 (fn-wgl-feed o at x))))
+  :hints (("Goal" :use (fn-wgl-feed-statep fn-wgl-feed-rowp)
+                  :in-theory (disable fn-wgl-feed-statep fn-wgl-feed-rowp fn-wgl-feed))))
 
 (defthm fn-wpc-wcursorp-of-list
   (equal (fn-wpc-wcursorp (list segs kind xs s e bol pending))
@@ -378,13 +395,14 @@
                   :in-theory (disable fn-wpc-window-next))))
 
 (defun fn-wpc-window-drive (fuel cursor base count emitp rev fn-web-in)
+  ; The guard is three naturals: the window step is total (see
+  ; fn-wpc-window-next), so no recognizer over the segments or the emitted
+  ; octets is evaluated.
   (declare (xargs :stobjs fn-web-in
-                  :guard (and (natp fuel) (natp base) (natp count)
-                              (fn-wpc-wcursorp cursor) (true-listp rev))
-                  :guard-hints (("Goal" :in-theory (disable fn-wpc-window-next)))))
-  (if (zp fuel) (mv (reverse rev) cursor count nil nil)
+                  :guard (and (natp fuel) (natp base) (natp count))))
+  (if (zp fuel) (mv (fn-wpc-rev rev nil) cursor count nil nil)
     (mv-let (present octet next done need) (fn-wpc-window-next cursor base fn-web-in)
-      (if (or done need) (mv (reverse rev) next count done need)
+      (if (or done need) (mv (fn-wpc-rev rev nil) next count done need)
         (fn-wpc-window-drive (1- fuel) next base (if present (1+ count) count)
                              emitp (if (and present emitp) (cons octet rev) rev) fn-web-in)))))
 
