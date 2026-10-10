@@ -431,7 +431,7 @@
                   (fn-wire-span-fold ws start end fn-octets)))
   :hints (("Goal" :use ((:instance fn-nsp-frame-is-wire-span-fold (i start)
                                    (fn-dss-out (fn-wire-reverse-octets (fn-wire-state-line-rev ws)))))
-           :in-theory (disable fn-nsp-frame-is-wire-span-fold fn-nsp-frame fn-nsp-frame-wsp fn-wire-span-fold
+           :in-theory (disable fn-nsp-frame fn-nsp-frame-wsp fn-wire-span-fold
                                fn-wire-statep fn-nsp-frame-state-of))))
 (defun fn-asto-first-event (oc id start end fn-octets)
   (declare (xargs :stobjs fn-octets
