@@ -659,11 +659,17 @@
       (mv-let (word oc2 next fn-ast-ws) (fn-asto-ready-rest oc id (cdr rest) fuel fn-arena fn-ast-ws)
         (mv word oc2 (cons (car rest) next) fn-ast-ws)))))
 
+;; Guard t (the stobj recognizers only): the plan's shape is tested here and
+;; a plan without it takes fn-asto-ready-rest by ec-call (guard-checked, the
+;; logic unchanged), so the fn-ast-ws writes below carry no invariant-risk
+;; into the :program caller host/owner-host.lisp
+;; fn-owner-article-ready-plan-step, which then runs raw.
 (defun fn-asto-ready-plan-step (oc id plan fuel fn-arena fn-ast-ws)
-  (declare (xargs :stobjs (fn-arena fn-ast-ws)
-                  :guard (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)))
+  (declare (xargs :stobjs (fn-arena fn-ast-ws)))
   (mv-let (word oc2 rest fn-ast-ws)
-    (fn-asto-ready-rest oc id (fn-splan-rest plan) fuel fn-arena fn-ast-ws)
+    (if (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)
+        (fn-asto-ready-rest oc id (fn-splan-rest plan) fuel fn-arena fn-ast-ws)
+      (ec-call (fn-asto-ready-rest oc id (fn-splan-rest plan) fuel fn-arena fn-ast-ws)))
     (mv word oc2 (cons (fn-splan-cur plan) rest) fn-ast-ws)))
 
 (defthm fn-asto-ready-rest-keeps-cursor-effectsp
