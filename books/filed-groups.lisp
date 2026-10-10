@@ -1468,3 +1468,105 @@
                             (ml-dsa-65-observation ml-observation)
                             (observation clock-observation)
                             (projection-ok (fn-hc-okp (fn-hc-received-plan received))))))))
+
+; -----------------------------------------------------------------------------
+; Packet 4, P4-6a and P4-6b: the two transit arms of the signed carrier.
+; Their events bind the signed source's filed groups
+; (fn-pa-carried-event-files-the-sources-filed-groups,
+; fn-pa-revoked-event-files-the-sources-filed-groups), the source is the one
+; the received carrier carries, and P2-3's argument carries the filing to
+; the received bytes.
+
+(local
+ (defthm o1e-pa-transit-arms-have-an-ok-carrier
+  (let ((plan (fn-pa-current-plan received snapshots carried transitp)))
+    (implies (or (equal (car plan) :carried) (equal (car plan) :revoked))
+             (equal (car (fn-pa-carrier-form received)) :ok)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pa-current-plan)
+                                  (fn-pa-carrier-form fn-pa-carrier-kind fn-hc-received-plan
+                                   fn-hl-current-for-principal fn-hl-current-enrollment
+                                   fn-pa-carriesp fn-pa-revoked-tombstonep))))))
+
+(local
+ (defthm o1e-ok-carrier-form-source
+  (implies (equal (car (fn-pa-carrier-form received)) :ok)
+           (and (fn-hc-okp (fn-hc-received-plan received))
+                (equal (nth 1 (fn-pa-carrier-form received))
+                       (car (fn-hc-value (fn-hc-received-plan received))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-pa-carrier-form)
+                                  (fn-pa-carrier-kind fn-hc-received-plan fn-hc-okp fn-hc-value))))))
+
+(local
+ (defthm o1e-pa-carried-or-revoked-plan-source
+  (implies (or (eq (car (fn-pa-current-plan received snapshots carried transitp)) :carried)
+               (eq (car (fn-pa-current-plan received snapshots carried transitp)) :revoked))
+           (and (fn-hc-okp (fn-hc-received-plan received))
+                (equal (nth 1 (fn-pa-current-plan received snapshots carried transitp))
+                       (car (fn-hc-value (fn-hc-received-plan received))))))
+  :hints (("Goal" :in-theory (disable fn-pa-current-plan fn-pa-carrier-form fn-hc-received-plan
+                                      fn-hc-okp fn-hc-value
+                                      fn-pa-carried-arm-needs-the-list-and-no-local-snapshot
+                                      fn-pa-revoked-arm-needs-transit-a-tombstone-and-once-enrolled-keys)
+           :use (o1e-pa-transit-arms-have-an-ok-carrier o1e-ok-carrier-form-source
+                 fn-pa-carried-arm-needs-the-list-and-no-local-snapshot
+                 fn-pa-revoked-arm-needs-transit-a-tombstone-and-once-enrolled-keys)))))
+
+(local
+ (defthm o1e-filed-groups-filed-within-the-source
+  (implies (and (fn-hsig-authored-source-fields source)
+                (equal groups (fn-hsig-source-filed-groups
+                               source (fn-hsig-authored-source-fields source))))
+           (fn-o1-filed-within-sourcep groups source))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance o1-authored-fields-are-the-newsgroups)
+                        (:instance o1-groups-octets-of-strings (names (fn-o1-source-newsgroups source)))
+                        o1-source-newsgroups-octets)
+           :in-theory (e/d (fn-hsig-source-filed-groups fn-o1-filed-within-sourcep fn-o1-control-filedp fn-hsig-second)
+                           (fn-hsig-authored-source-fields fn-o1-source-newsgroups
+                            fn-ctl-classify-octets fn-hsig-octet-fields-to-strings fn-o1-groups-octets fn-record-p))))))
+
+; P4-6a.  The carried transit event's groups are filed within the received
+; carrier: they are its signed source's filed groups
+; (fn-pa-carried-event-files-the-sources-filed-groups), and the source is the
+; one the carrier carries.
+(defthm fn-pa-carried-groups-filed-within-the-received
+  (implies (fn-pa-carried-event
+            sequence txid generation msgid received groups obligation-id
+            content-subject release-evidence charge snapshots carried
+            clock-observation)
+           (fn-o1-filed-within-sourcep groups received))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (disable fn-pa-current-plan fn-hc-received-plan fn-hc-okp fn-hc-value
+                               fn-o1-filed-within-sourcep fn-pa-carried-event
+                               fn-hsig-source-filed-groups fn-hsig-authored-source-fields
+                               o1e-received-filed-within o1e-pa-carried-or-revoked-plan-source)
+           :use (fn-pa-carried-event-requires-the-carried-arm
+                 fn-pa-carried-event-files-the-sources-filed-groups
+                 (:instance o1e-pa-carried-or-revoked-plan-source (transitp t))
+                 (:instance o1e-filed-groups-filed-within-the-source
+                            (source (nth 1 (fn-pa-current-plan received snapshots carried t))))
+                 (:instance o1e-received-filed-within (r received) (g groups))))))
+
+; P4-6b.  The same for the revoked transit event, now that it binds the
+; filed groups (TRANSIT-REVOKED-CONTROL-REFUSED).
+(defthm fn-pa-revoked-groups-filed-within-the-received
+  (implies (fn-pa-revoked-event
+            sequence txid generation msgid received groups obligation-id
+            content-subject release-evidence charge snapshots
+            observed-ml-key ed-observation ml-observation clock-observation)
+           (fn-o1-filed-within-sourcep groups received))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (disable fn-pa-current-plan fn-hc-received-plan fn-hc-okp fn-hc-value
+                               fn-o1-filed-within-sourcep fn-pa-revoked-event
+                               fn-hsig-source-filed-groups fn-hsig-authored-source-fields
+                               o1e-received-filed-within o1e-pa-carried-or-revoked-plan-source)
+           :use (fn-pa-revoked-event-binds-the-arm-and-both-observations
+                 fn-pa-revoked-event-files-the-sources-filed-groups
+                 (:instance o1e-pa-carried-or-revoked-plan-source (carried nil) (transitp t))
+                 (:instance o1e-filed-groups-filed-within-the-source
+                            (source (nth 1 (fn-pa-current-plan received snapshots nil t))))
+                 (:instance o1e-received-filed-within (r received) (g groups))))))

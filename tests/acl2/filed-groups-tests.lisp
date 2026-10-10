@@ -93,6 +93,15 @@
 ; P2-3: the peer event exists and files within the relayed payload.
 (assert-event (and *pat-event* (fn-o1-filed-within-sourcep '("fn.test") *pat-relayed*)))
 (assert-event (not (fn-o1-filed-within-sourcep '("fn.other") *pat-relayed*)))
+; P4-6a: the carried event exists and files within the relayed payload.
+(assert-event (and *pat-carried-event*
+                   (fn-o1-filed-within-sourcep '("fn.test") *pat-relayed*)))
+; P4-6b: the revoked event of a signed cancel exists and its filing group is
+; filed within the relayed cancel (the control arm of the invariant); a
+; filing group the cancel does not name is not.
+(assert-event (and *pat-rv-cancel-event*
+                   (fn-o1-filed-within-sourcep '("control.cancel") *pat-rv-cancel-relayed*)))
+(assert-event (not (fn-o1-filed-within-sourcep '("control.other") *pat-rv-cancel-relayed*)))
 
 ; P2-4, the multi-name branch: both hypotheses and the header-charge
 ; conclusion (17 + 2 <= 16385); tooth: drop the parse hypothesis (limit 0),
