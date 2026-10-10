@@ -95,10 +95,16 @@
   (fn-store-sco-segment-header-octets 37)
   (fn-store-sco-trailer-octets 1)
   (fn-store-sco-segment-admit '(:ok 39 1))
+  (fn-store-sco-segment-read-bound 1000)
+  ;; the charged-totals header segment (books/charged-totals-header.lisp
+  ;; fn-cth-header-open): admitted, its totals, its extent, the load bound,
+  ;; the frame's sequence
+  (fn-cth-header-open '(:ok :tot 39 1000 2))
   (fn-sccv-initial 0)
   (fn-sccv-step (1+ (first args)))
   (fn-sccv-final (if (= (first args) 5) '(:ok 2) '(:refused :frames)))
   (otherwise (error "unexpected core subject ~s" subject))))
+(defun fnn-heap-config-octets (root profile) (declare (ignore root profile)) 0)
 (defun fnn-join (a b) (concatenate 'string a "/" b))
 (defun fnn-staging (s) (fnn-store-root s))
 (defun fnn-state-checkpoint-path (s) (fnn-join (fnn-store-root s) "checkpoint"))
@@ -146,7 +152,8 @@
       (apply #'fnn-state-checkpoint-write store
        (lambda (fd)
         (fnn-history-image-write fd image)
-        (dotimes (i 5) (declare (ignore i)) (fnn-write-all fd (fnn-make-octets 39))))
+        ;; the header segment H, then the five runs' segments
+        (dotimes (i 6) (declare (ignore i)) (fnn-write-all fd (fnn-make-octets 39))))
        2 (if *readback-new* (list image) nil))
       (image-check (null *snapshot*) "snapshot returned before install can reopen publisher slot")
       :accepted))

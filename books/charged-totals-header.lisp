@@ -1,5 +1,5 @@
 ; fn: the charged-totals header (Builder A, lane vertical, 2026-10-10;
-; statement packet build/vertical-runs/ct2/packet-v31.md, Codex rounds 1-4
+; statement packet build/vertical-runs/ct2/packet-v31.md, Codex rounds 1-6
 ; in build/vertical-runs/codex/review-ct2/).
 ;
 ; The checkpoint file is the history image region, then a HEADER RUN H --
@@ -34,6 +34,15 @@
 ; Stated in the packet, owed in this book: K8a fn-cth-arena-write-is-admitted
 ; and K8t fn-cth-table-write-is-admitted (the writer runs' admission from a
 ; carried total).
+;
+; The host's composition (end of the book): fn-cth-publication, both
+; writers' one setup call (the header step, then K8's setup; a capture's
+; smaller budget only narrows the plan:
+; fn-cth-publication-only-narrows-the-plan); fn-cth-header-open, the
+; reader's and the readback's header phase (fn-cth-read-file is that phase
+; then the rest: fn-cth-read-file-is-the-header-open); fn-cth-config-cfg,
+; the load bound's CFG from the configuration history's octets;
+; fn-cth-status-text, the stopped `status' line; fn-cth-empty-suffix.
 
 (in-package "ACL2")
 (include-book "memory-model")
@@ -42,6 +51,7 @@
 (include-book "store-checkpoint-open")
 (include-book "store-checkpoint-arena-writer")
 (include-book "owner-checkpoint-pipeline")
+(include-book "native-live-status-words")
 
 ; ---------------------------------------------------------------------------
 ; Definitions (the packet's, as reviewed).
@@ -197,22 +207,26 @@
 ; image region, before the arena run): the header run's octets for the
 ; capture NEXT, admitted from 0 under one segment's framing and the
 ; publication budget by the reader's own admission, with that total and the
-; budget; or (:deferred REASON) and nothing is written.  (list :ok OCTETS
-; TOTAL BUDGET) | (list :deferred :header-unencodable) | (list :deferred
-; :header-bound EXTENT-OR-REASON).
+; budget; or the publication's verdict and nothing is written, in the
+; setup's own vocabulary (fn-ockp-decide's deferral, the capture's
+; :unencodable): (list :ok OCTETS TOTAL BUDGET) | :unencodable (a total or S
+; past the u64 field) | (list :deferred :header-bound HOCTETS BUDGET) (the
+; header segment refused by the reader's admission: past one segment's
+; framing or the budget).
 (defun fn-cth-header-step (next profile cfg)
   (declare (xargs :guard t :verify-guards nil))
   (let* ((row (fn-cth-header-of-capture next))
          (s (len (fn-sco-records next))))
     (if (not (and (fn-cth-header-encodablep row) (< s *fn-scc-u64-bound*)))
-        (list :deferred :header-unencodable)
+        :unencodable
       (let* ((segs (fn-cth-header-segments row s))
+             (octets (fn-scc-concat segs))
              (budget (fn-cth-publication-budget profile next cfg))
              (sb (fn-cth-segment-bound profile))
              (total (fn-cth-admit-run segs 0 sb budget)))
         (if (natp total)
-            (list :ok (fn-scc-concat segs) total budget)
-          (list :deferred :header-bound (cadr total)))))))
+            (list :ok octets total budget)
+          (list :deferred :header-bound (len octets) (nfix budget)))))))
 
 ; The owner's carried-totals cache seeded from the header: (S . TOT) when
 ; TOT is a tot for S records at the owner's residency, else the empty cache.
@@ -1001,3 +1015,194 @@
   (equal (cdr (append (fn-cth-header-segments row s) rest)) rest)
   :rule-classes nil
   :hints (("Goal" :use k10-try :in-theory (theory (quote minimal-theory)))))
+
+
+; ---------------------------------------------------------------------------
+; The host's composition: the two writers' one setup call and the reader's
+; header phase, each the definitions above in the order the keystones take
+; them.
+
+; The memory model's CFG as the load bound reads it: fn-mm-checkpoint-load-
+; octets reads CFG's configuration octets alone (field 12, fn-mm-cfg-config).
+; Writer, readback and reader build it from the configuration history's
+; octets the host observes (host/native/heap.lisp fnn-heap-config-octets).
+(defun fn-cth-config-cfg (config)
+  (declare (xargs :guard t))
+  (update-nth 12 (nfix config) nil))
+
+(defthm fn-cth-config-cfg-is-the-configuration
+  (equal (fn-mm-cfg-config (fn-cth-config-cfg config)) (nfix config)))
+
+; The publication's setup, both writers' one call (host/owner-host.lisp
+; fn-owner-sco-setup-of, host/store-node-host.lisp fn-store-sco-publish-
+; setup-of): the header step first; its refusal is the setup's verdict and
+; nothing is written; else the setup with the header's octets counted
+; (fn-cth-publication-setup, K8) and the arena run's first state carrying
+; the header's admitted total (K8a's T0).  WS is fn-scka-lens-setup's (N KS
+; COUNT ALEN), SRCS the walk's sources.  CAP, when a natural, is a smaller
+; checkpoint budget the owner's capture was handed (the developer image's
+; FN_NATIVE_CHECKPOINT_BUDGET_TEST, host/owner-host.lisp fn-owner-sco-budget):
+; a plan whose estimate exceeds it defers by fn-ockp-decide's name; it only
+; narrows (fn-cth-publication-only-narrows-the-plan).  (list SETUP HOCTETS
+; BUDGET ARUN), ARUN (N COUNT STATE0) as fnn-checkpoint-write-arena-steps
+; takes it; the host writes HOCTETS after the history image region and
+; admits every later frame under BUDGET.
+(defun fn-cth-publication (next frontier revision log seg profile config cap free ws srcs)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((cfg (fn-cth-config-cfg config))
+         (h (fn-cth-header-step next profile cfg)))
+    (if (not (and (consp h) (eq (car h) :ok)))
+        (list (list h nil nil nil nil 0 0) nil 0 nil)
+      (let* ((setup (fn-cth-publication-setup next frontier revision log (nfix seg) profile cfg free
+                                              (nfix (fn-sco-at 3 ws)) (len (fn-sco-at 1 h))))
+             (verdict (car setup))
+             (setup (if (and (natp cap) (consp verdict) (eq (car verdict) :plan)
+                             (< cap (nfix (fn-sco-at 1 verdict))))
+                        (cons (list :deferred :exceeds-budget (nfix (fn-sco-at 1 verdict)) cap)
+                              (cdr setup))
+                      setup)))
+        (list setup
+              (fn-sco-at 1 h)
+              (fn-sco-at 3 h)
+              (list (fn-sco-at 0 ws) (fn-sco-at 2 ws)
+                    (fn-scka-initial-state srcs (fn-sco-at 1 ws) (fn-sco-at 2 h))))))))
+
+(local
+ (defthm k-header-step-is-never-a-plan
+   (not (equal (car (fn-cth-header-step next profile cfg)) :plan))
+   :hints (("Goal" :in-theory (union-theories '(fn-cth-header-step car-cons (:executable-counterpart car)
+                                                (:executable-counterpart equal))
+                                              (theory 'minimal-theory))))))
+
+; Every plan the publication answers is the stated setup's plan (K8's
+; fn-cth-publication-setup over the header step's octets): CAP only turns a
+; plan into a deferral, never the reverse.
+(defthm fn-cth-publication-only-narrows-the-plan
+  (let ((pub (fn-cth-publication next frontier revision log seg profile config cap free ws srcs))
+        (h (fn-cth-header-step next profile (fn-cth-config-cfg config))))
+    (implies (equal (car (car (car pub))) :plan)
+             (and (equal (car h) :ok)
+                  (equal (car pub)
+                         (fn-cth-publication-setup next frontier revision log (nfix seg) profile
+                                                   (fn-cth-config-cfg config) free
+                                                   (nfix (fn-sco-at 3 ws)) (len (fn-sco-at 1 h)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-cth-publication car-cons cdr-cons
+                                        (:executable-counterpart equal) k-header-step-is-never-a-plan)
+                                      (theory 'minimal-theory)))))
+
+; The reader's header phase over the file's first segment SEG (its header,
+; chunk and trailer octets; host/native/io.lisp fnn-state-checkpoint-plan
+; and fnn-state-checkpoint-verify read it into a vector of its own): (list
+; :ok TOT T1 BOUND S), T1 the header's admitted octets, BOUND M's load bound
+; at TOT and the configuration's octets (every later segment's file bound),
+; S the frame's sequence; else fn-cth-read-file's own refusal.  KEYSTONE
+; below: fn-cth-read-file is this phase, then the rest admitted from T1
+; under BOUND.
+(defun fn-cth-header-open (seg profile config)
+  (declare (xargs :guard (fn-scc-octet-listp seg) :verify-guards nil))
+  (let* ((sb (fn-cth-segment-bound profile))
+         (t1 (fn-cth-admit-run (list seg) 0 sb sb)))
+    (if (not (natp t1))
+        (list :refused :header-segment (cadr t1))
+      (let ((tot (fn-cth-header-tot (list seg))))
+        (if (not (fn-mm-tot-p tot))
+            (list :refused :header-row :malformed)
+          (list :ok tot t1
+                (fn-mm-checkpoint-load-octets profile tot (fn-cth-config-cfg config))
+                (nth 3 (fn-scc-parse-header seg))))))))
+
+(verify-guards fn-cth-publication)
+(verify-guards fn-cth-header-open
+  :hints (("Goal" :in-theory (e/d (fn-scc-segment-listp)
+                                  (fn-cth-admit-run fn-cth-header-tot fn-mm-checkpoint-load-octets
+                                   fn-cth-segment-bound)))))
+
+(local
+ (defthm k-take-segs-1
+   (implies (consp segs)
+            (equal (fn-sct-take-segs 1 segs) (fn-sct-take-segs 1 (list (car segs)))))
+   :hints (("Goal" :expand ((fn-sct-take-segs 1 segs) (fn-sct-take-segs 1 (list (car segs)))
+                            (fn-sct-take-segs 0 (cdr segs)) (fn-sct-take-segs 0 nil))))))
+
+; The header row is decoded from the first segment alone (a run of count 1).
+(local
+ (defthm k-header-tot-of-first
+   (implies (consp segs)
+            (equal (fn-cth-header-tot segs) (fn-cth-header-tot (list (car segs)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-cth-header-tot fn-sct-run-decode)
+                                   (fn-scc-join fn-scc-parse-header fn-scc-decode-tree fn-sct-take-segs
+                                    fn-sct-drop-segs fn-cth-header-rowp k-take-segs-1))
+            :use k-take-segs-1))))
+
+; The host's reader is the book's: fn-cth-read-file (K5, K5b, K7's reader) is
+; the header phase the host runs on the first segment (fn-cth-header-open),
+; then the rest admitted from its T1 under its BOUND, the configuration
+; history's octets standing for CFG.
+(defthm fn-cth-read-file-is-the-header-open
+  (implies (consp segs)
+           (equal (fn-cth-read-file segs profile (fn-cth-config-cfg config))
+                  (let ((o (fn-cth-header-open (car segs) profile config)))
+                    (if (eq (car o) :ok)
+                        (let ((t2 (fn-cth-admit-run (cdr segs) (nth 2 o) (fn-cth-segment-bound profile)
+                                                    (nth 3 o))))
+                          (if (natp t2) (list :ok t2 (nth 1 o)) (list :refused :rest (cadr t2))))
+                      o))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance k-header-tot-of-first))
+           :expand ((take 1 segs) (take 0 (cdr segs)))
+           :in-theory (union-theories '(fn-cth-read-file fn-cth-header-open natp
+                                        (:executable-counterpart zp) (:executable-counterpart binary-+)
+                                        (:executable-counterpart equal) car-cons cdr-cons nth)
+                                      (theory 'minimal-theory)))))
+
+; A stopped store's `status' line for the header (host/native/io.lisp
+; fnn-command-stopped-status): the header phase's totals, or `absent' when
+; there is no header the reader takes (no file, a refusal by name, another
+; schema).
+(defun fn-cth-status-field (name n)
+  (declare (xargs :guard t :guard-hints (("Goal" :in-theory (disable fn-nls-text fn-nls-nat)))))
+  (append (fn-nls-text " ") (fn-nls-text name) (fn-nls-text "=") (fn-nls-nat (nfix n))))
+
+(local
+ (defthm k-nls-digits-true-listp
+   (implies (true-listp acc) (true-listp (fn-nls-digits n acc)))
+   :rule-classes (:rewrite :type-prescription)
+   :hints (("Goal" :in-theory (disable floor mod)))))
+
+(defthm fn-cth-status-field-true-listp
+  (true-listp (fn-cth-status-field name n))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (disable fn-nls-text fn-nls-digits))))
+
+(defun fn-cth-status-text (open)
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-mm-tot-p fn-mm-tot-records fn-mm-tot-arena
+                                                            fn-mm-tot-hcharge fn-mm-tot-memberships
+                                                            fn-mm-tot-events fn-mm-tot-log fn-mm-tot-history
+                                                            fn-mm-tot-charge fn-mm-tot-paged-p
+                                                            fn-cth-status-field fn-nls-text)))))
+  (if (and (consp open) (eq (car open) :ok) (consp (cdr open)) (fn-mm-tot-p (cadr open)))
+      (let ((tot (cadr open)))
+        (append (fn-nls-text "charged-totals")
+                (fn-cth-status-field "records" (fn-mm-tot-records tot))
+                (fn-cth-status-field "arena" (fn-mm-tot-arena tot))
+                (fn-cth-status-field "hcharge" (fn-mm-tot-hcharge tot))
+                (fn-cth-status-field "memberships" (fn-mm-tot-memberships tot))
+                (fn-cth-status-field "events" (fn-mm-tot-events tot))
+                (fn-cth-status-field "log" (fn-mm-tot-log tot))
+                (fn-cth-status-field "history" (fn-mm-tot-history tot))
+                (fn-cth-status-field "charge" (fn-mm-tot-charge tot))
+                (fn-nls-text (if (fn-mm-tot-paged-p tot) " residency=paged" " residency=resident"))
+                (list 10)))
+    (append (fn-nls-text "charged-totals=absent") (list 10))))
+
+; The log's totals past S when it holds no record there: the zero tot at
+; the header's residency (host/native/heap.lisp fnn-heap-charged-totals, the
+; read-only heap command's SUFFIX).
+(defun fn-cth-empty-suffix (hdr)
+  (declare (xargs :guard t))
+  (fn-ct-zero-tot (if (fn-mm-tot-paged-p hdr) :paged :resident)))

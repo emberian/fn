@@ -142,10 +142,9 @@ or a file that is absent is skipped (the base tree, before RL-02's fix)."
 (defun fn-gen-node (v) (declare (ignore v)) :node)
 (defun fn-gen-verdict-salt (v) (declare (ignore v)) :salt)
 (defun fn-scka-strip-base (next) next)
-(defun fn-scka-publication-setup (next frontier revision log seg budget free n)
-  (declare (ignore next frontier revision log seg budget free n))
-  (list '(:plan 1) nil nil nil nil 0 0))
-(defun fn-scka-initial-state (walked n k) (declare (ignore walked n k)) :initial)
+(defun fn-cth-publication (next frontier revision log seg profile config cap free ws srcs)
+  (declare (ignore next frontier revision log seg profile config cap free ws srcs))
+  (list (list '(:plan 1) nil nil nil nil 0 0) '(0) 1000000000 :arun))
 
 ;;; The publication thread's seams.  *CASE* picks the early failure.
 (defvar *case* nil)
@@ -220,6 +219,8 @@ CL reader cannot read whole), or nothing when there is none."
 (defun fnn-history-image-write (fd image) (declare (ignore fd image)) nil)
 (defun fnn-store-log (store) (declare (ignore store)) :log)
 (defun fnn-store-config (store) (declare (ignore store)) :config)
+(defun fnn-store-root (store) (declare (ignore store)) "/nonexistent")
+(defun fnn-heap-config-octets (root profile) (declare (ignore root profile)) 0)
 (defun fnn-log-make-durable (log) (declare (ignore log)) nil)
 (defun fnn-state-checkpoint-write (store writer sequence image)
   (declare (ignore store writer sequence image))

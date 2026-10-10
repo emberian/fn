@@ -502,9 +502,33 @@ to a space that already holds it."
             #+linux (fnn-heap-read-small "/proc/self/status") #-linux nil
             (fnn-core 'fn-heap-stack-kib profile) (fnn-heap-tls-octets)))
 
-(defun fnn-heap-charged-totals (root)
-  (declare (ignore root))
-  (fnn-core 'fn-mo-observed-totals nil nil))
+(defun fnn-heap-charged-totals (root profile)
+  "The read decision's totals (books/heap-command.lisp fn-mo-observed-totals):
+HDR the checkpoint's charged-totals header as the open reads it
+(io.lisp fnn-checkpoint-header-observation, books/charged-totals-header.lisp
+fn-cth-header-open), SUFFIX the log's past the header's S.  ADAPTER (owner
+Builder L, retired by L's store-log-open-scan): SUFFIX is the zero tot only
+when the log observably holds no record past S -- journal/ holds exactly one
+segment and its extent is at most a headed segment's padded head
+(books/store-log-lineage.lisp fn-lgl-head-len; an unheaded segment is 0, a
+zero extension past the head answers unseen) -- else NIL, and the decision
+says the header's totals are unseen.  Unlocked: as fresh as the lstat."
+  (let* ((store (and (stringp root) profile (make-fnn-store root)))
+         (open (and store
+                    (progn (setf (fnn-store-config store) profile)
+                           (handler-case (fnn-checkpoint-header-observation store)
+                             (fnn-os-error () nil)))))
+         (hdr (and (consp open) (eq (first open) :ok) (second open)))
+         (empty (and hdr
+                     (handler-case
+                         (let ((names (fnn-log-segment-names store)))
+                           (and (= (length names) 1)
+                                (<= (fnn-log-observed-extent
+                                     (fnn-join (fnn-journal-dir store) (first names)))
+                                    (fnn-nat (fnn-core 'fn-lgl-head-len (fnn-store-log-unit))))))
+                       ((or fnn-os-error fnn-store-error) () nil)))))
+    (fnn-core 'fn-mo-observed-totals hdr
+              (and empty (fnn-core 'fn-cth-empty-suffix hdr)))))
 
 ;; The configuration history's octets on disk (config/, the lstat sizes of
 ;; its regular files under the profile's listing bound), which loading the
@@ -532,7 +556,7 @@ to a space that already holds it."
          (machine (fnn-heap-observations))
          (class (fnn-core 'fn-heap-command-growth action command replayp))
          (reads (eq class :reads))
-         (totals (and reads (fnn-heap-charged-totals root)))
+         (totals (and reads (fnn-heap-charged-totals root profile)))
          (img (and reads profile (fnn-heap-img-observation profile)))
          (config (and (member class '(:reads :header)) (fnn-heap-config-octets root profile)))
          (card (and reads (fnn-heap-card-octets)))

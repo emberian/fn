@@ -1662,8 +1662,16 @@ one ring, so the table's key and the served boundary's are one source."
               (fnn-log-line (fnn-core 'fn-native-health-host-run-opened-line ms)))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
-            (unless (eq (fnn-owner-core 'fn-owner-install-profile
-                                        (fnn-store-config store))
+            ;; With it the charged-totals cache's seed: the checkpoint
+            ;; header's totals at S when this open went over that checkpoint
+            ;; (open-mode :checkpoint), else the empty cache
+            ;; (books/charged-totals-header.lisp fn-cth-installed-seed, K9).
+            (unless (eq (let ((mode (fnn-store-open-mode store)))
+                          (fnn-owner-core 'fn-owner-install-profile
+                                          (fnn-store-config store)
+                                          (eq (first mode) :checkpoint)
+                                          (second mode)
+                                          (fnn-store-checkpoint-header store)))
                         :installed)
               (fnn-fault "owner refused the store profile"))
             ;; The recovery barriers again (three, fnn-store-recovery-barriers):
@@ -7826,7 +7834,7 @@ the crash keystone) and serving continues."
               ;; (host/native/io.lisp fnn-history-image-build), then the
               ;; setup over that position and the space the image leaves
               ;; (fn-owner-sco-setup-of): fn-owner-sco-prepare in two halves.
-              (destructuring-bind (setup prepared-next n arun)
+              (destructuring-bind (setup prepared-next n arun hoctets file-bound)
                   (let ((prepared (let ((walk (fnn-checkpoint-walk records arena)))
                                     (fnn-extent-with-read-refusal
                                      :checkpoint-walk
@@ -7839,8 +7847,17 @@ the crash keystone) and serving continues."
                                                      (first ident) (second ident) position)
                             (values position nil))
                       (setq image image2)
-                      (fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2 segment
-                                budget (fnn-core 'fn-his-stream-free free (fnn-history-image-np image)))))
+                      ;; the charged-totals header first (books/charged-totals-
+                      ;; header.lisp fn-cth-publication), under the load bound at
+                      ;; the configuration history's octets; BUDGET (the capture's)
+                      ;; only narrows the plan
+                      (let ((profile (fnn-store-config (fnn-owner-service-store service))))
+                        (fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2 segment
+                                  profile
+                                  (fnn-heap-config-octets
+                                   (fnn-store-root (fnn-owner-service-store service)) profile)
+                                  budget
+                                  (fnn-core 'fn-his-stream-free free (fnn-history-image-np image))))))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq next prepared-next payloads n)
@@ -7875,7 +7892,8 @@ the crash keystone) and serving continues."
                                    (fnn-history-image-write fd image)
                                    (setq steps (fnn-checkpoint-write-steps
                                                 fd setup segment sequence (fnn-store-config store)
-                                                (fnn-live-octets-pub) arun arena)))
+                                                (fnn-live-octets-pub) arun arena
+                                                hoctets file-bound)))
                                  sequence image)
                              ;; the buffer's array back (PKT-PRS-2)
                              (fnn-octets-pub-release))
@@ -8669,7 +8687,7 @@ publication).  Answers the reply word."
                    ;; as a publication stages it (fnn-owner-publish-captured):
                    ;; NEXT, the history image of NEXT's records with its
                    ;; binding into the F row's position, then the setup
-                   (destructuring-bind (setup next n arun)
+                   (destructuring-bind (setup next n arun hoctets file-bound)
                        (let ((prepared (fnn-core 'fn-owner-sco-next-of
                                                  (fnn-core 'fn-rcw-acc-finish acc2)
                                                  (list nil lacc sacc) segment)))
@@ -8682,7 +8700,9 @@ publication).  Answers the reply word."
                                  (values position nil))
                            (setq image image2)
                            (fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2
-                                     segment budget
+                                     segment profile
+                                     (fnn-heap-config-octets (fnn-store-root store) profile)
+                                     budget
                                      (fnn-core 'fn-his-stream-free free*
                                                (fnn-history-image-np image)))))
                      (declare (ignore next n))
@@ -8699,7 +8719,7 @@ publication).  Answers the reply word."
                                          (fnn-history-image-write fd image)
                                          (fnn-checkpoint-write-steps
                                           fd setup segment count (fnn-store-config store)
-                                          (fnn-live-octets-pub) arun arena))
+                                          (fnn-live-octets-pub) arun arena hoctets file-bound))
                                        count image))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)

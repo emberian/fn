@@ -199,9 +199,11 @@ class StateCheckpointSourceTests(unittest.TestCase):
         node_next = native_cuts.host_function(node_host, "fn-store-sco-publish-next")
         node_setup = native_cuts.host_function(node_host, "fn-store-sco-publish-setup-of")
         self.assertIn("(fn-scka-next-checkpoint e (len lens) configs records fn-arena)", node_next)
-        self.assertIn("(fn-scka-publication-setup next (fn-sf-frontier (fn-sn-files st))", node_setup)
+        # charged-totals header: the header step first, then the setup with
+        # its octets counted, the arena run from the header's total
+        # (books/charged-totals-header.lisp fn-cth-publication)
+        self.assertIn("(fn-cth-publication next (fn-sf-frontier (fn-sn-files st)) revision log", node_setup)
         self.assertIn("(fn-scka-lens-setup lens segment-octets)", node_setup)
-        self.assertIn("(fn-scka-initial-state srcs (nth 1 ws) 0)", node_setup)
         self.assertIn("'fn-store-sco-publish-next", publish_steps_io := native_cuts.host_function(
             io, "fnn-state-checkpoint-publish-steps"))
         self.assertIn("(fnn-history-image-build", publish_steps_io)

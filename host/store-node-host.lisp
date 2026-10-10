@@ -54,6 +54,7 @@
 (include-book "../books/store-finalize-incremental") ; fn-sfi-extend-open (fn-store-sn-recover-from-checkpoint)
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/owner-checkpoint-pipeline")
+(include-book "../books/charged-totals-header") ; fn-cth-publication, fn-cth-header-open
 ; PKT-444 (1): the open names a pre-C1 control record instead of faulting.
 (include-book "../books/store-open-pre-c1")
 (include-book "../books/store-open-replay-refusal")
@@ -837,26 +838,19 @@ reopen predicate, writer-lock observation and observed final namespace."
 (definterface fn-store-sco-trailer-octets
   :class ::program)
 
-; The most octets of checkpoint file the reader holds in the buffer, from
-; the profile (books/store-checkpoint-reader.lisp fn-sccr-file-read-bound:
-; three times the history bound plus one segment's framing).
-(defun fn-store-sco-file-read-bound (profile)
-  (declare (xargs :mode :program))
-  (fn-sccr-file-read-bound (fn-bs-profile-max-history-octets profile)
-                           (fn-bs-profile-max-record-octets profile)))
-
-(definterface fn-store-sco-file-read-bound
-  :class ::program)
-
 ; Whether the segment whose HEADER the host holds is read, given the
-; octets read so far: (:ok EXTENT CHUNK-OCTETS), (:refused :header) or
-; (:refused :exceeds-bound).  The host reads exactly EXTENT - 37 more
-; octets on :ok and nothing on a refusal (fnn-state-checkpoint-plan).
-(defun fn-store-sco-segment-admit (header total profile)
+; octets read so far and the file bound in force: (:ok EXTENT
+; CHUNK-OCTETS), (:refused :header), (:refused :schema) or (:refused
+; :exceeds-bound).  The host reads exactly EXTENT - 37 more octets on :ok
+; and nothing on a refusal (fnn-state-checkpoint-plan, fnn-state-checkpoint-
+; verify).  FILE-BOUND is the segment bound for the charged-totals header
+; segment, then the header's load bound (books/charged-totals-header.lisp
+; fn-cth-header-open; KEYSTONE fn-cth-read-file-is-the-header-open).
+(defun fn-store-sco-segment-admit (header total profile file-bound)
   (declare (xargs :mode :program))
   (fn-sccr-admit-segment header total
                          (fn-store-sco-segment-read-bound profile)
-                         (fn-store-sco-file-read-bound profile)))
+                         file-bound))
 
 (definterface fn-store-sco-segment-admit
   :class ::program)
@@ -1089,33 +1083,29 @@ reopen predicate, writer-lock observation and observed final namespace."
 (definterface fn-store-sco-publish-next
   :class ::program)
 
-(defun fn-store-sco-publish-setup-of (prepared segment-octets budget free revision log state)
+(defun fn-store-sco-publish-setup-of (prepared segment-octets profile config free revision log state)
   ; The second half: PREPARED from fn-store-sco-publish-next, LOG the F
   ; row's log position (with the history image's binding when the
-  ; publication carries one).
+  ; publication carries one), CONFIG the configuration history's octets.
+  ; (list SETUP S ARUN HOCTETS BUDGET): the charged-totals header first,
+  ; then the setup with its octets counted (books/charged-totals-header.lisp
+  ; fn-cth-publication); the host writes HOCTETS after the image region and
+  ; admits every later frame under BUDGET.
   (declare (xargs :stobjs state :mode :program))
   (let* ((st (f-get-global 'fn-store-sn state))
          (state (f-put-global 'fn-store-sco-pass nil state)))
     (if (not (consp prepared))
-        (value (list (list :unencodable nil nil nil nil 0 0) 0 nil))
+        (value (list (list :unencodable nil nil nil nil 0 0) 0 nil nil 0))
       (let* ((next (nth 0 prepared)) (lens (nth 1 prepared)) (srcs (nth 2 prepared))
-             (ws (fn-scka-lens-setup lens segment-octets))
-             (setup (fn-scka-publication-setup next (fn-sf-frontier (fn-sn-files st))
-                                               revision log segment-octets budget free
-                                               (nth 3 ws))))
-        (value (list setup (fn-sco-sequence next)
-                     (list (nth 0 ws) (nth 2 ws)
-                           (fn-scka-initial-state srcs (nth 1 ws) 0))))))))
+             (pub (fn-cth-publication next (fn-sf-frontier (fn-sn-files st)) revision log
+                                      segment-octets profile config nil free
+                                      (fn-scka-lens-setup lens segment-octets) srcs)))
+        (value (list (nth 0 pub) (fn-sco-sequence next) (nth 3 pub) (nth 1 pub) (nth 2 pub)))))))
 
 ; host/native/io.lisp dispatches it (lane composed-owner / limits-live / correctness-remainder).
 (definterface fn-store-sco-publish-setup-of
   :class ::program
   :exempt ((segment-octets "a segment descriptor, not bytes")))
-
-(defun fn-store-sco-publish-setup (segment-octets budget free revision log fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
-  (er-let* ((prepared (fn-store-sco-publish-next fn-arena state)))
-    (fn-store-sco-publish-setup-of prepared segment-octets budget free revision log state)))
 
 ; The history image of the checkpoint the open read (lane composed-owner;
 ; books/history-image-snapshot.lisp): the binding its F row's log position

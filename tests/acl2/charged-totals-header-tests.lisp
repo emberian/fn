@@ -335,3 +335,70 @@
 ; --- K10 (one segment): both histories
 (assert-event (equal (cdr *ct31-file*) *ct31-rest*))
 (assert-event (equal (len (fn-cth-header-segments *ct3-h-held* 3)) 1))
+
+; --- The host's composition.  The reader's header phase on the file's first
+; segment, then the rest, is fn-cth-read-file (ground instance of
+; fn-cth-read-file-is-the-header-open), the configuration's octets standing
+; for CFG.
+(defconst *ctc-open* (fn-cth-header-open (car *ct31-file*) *fn-heap-small-profile* nil))
+(value-triple (list :header-open *ctc-open*))
+(assert-event (and (eq (car *ctc-open*) :ok)
+                   (equal (nth 1 *ctc-open*) (fn-cth-header-tot *ct31-file*))
+                   (equal (nth 2 *ctc-open*) (fn-cth-admit-run *ct3-hsegs-ev* 0 *sb* *sb*))
+                   (equal (nth 3 *ctc-open*)
+                          (fn-mm-checkpoint-load-octets *fn-heap-small-profile* (nth 1 *ctc-open*)
+                                                        (fn-cth-config-cfg nil)))
+                   (equal (nth 4 *ctc-open*) 2)))
+(assert-event (equal (fn-cth-read-file *ct31-file* *fn-heap-small-profile* (fn-cth-config-cfg nil))
+                     (list :ok (fn-cth-admit-run (cdr *ct31-file*) (nth 2 *ctc-open*) *sb* (nth 3 *ctc-open*))
+                           (nth 1 *ctc-open*))))
+; tooth: a flipped octet in H is refused by the header phase, as by the reader
+(assert-event (equal (car (fn-cth-header-open (car (ct3-flip *ct3-hsegs-ev* 40)) *fn-heap-small-profile* nil))
+                     :refused))
+; the configuration's octets reach the bound (field 12 alone)
+(assert-event (equal (fn-mm-cfg-config (fn-cth-config-cfg 2000)) 2000))
+(assert-event (< (nth 3 *ctc-open*)
+                 (nth 3 (fn-cth-header-open (car *ct31-file*) *fn-heap-small-profile* 2000))))
+
+; The writer's one call.  The header step's octets are H's, admitted from 0;
+; the publication's arena run starts at that total; a capture's smaller
+; budget turns the plan into fn-ockp-decide's deferral, and only a plan.
+(defconst *ctc-h* (fn-cth-header-step *ct2-cap-ev* *fn-heap-small-profile* (fn-cth-config-cfg nil)))
+(assert-event (and (eq (car *ctc-h*) :ok)
+                   (equal (nth 1 *ctc-h*) (fn-scc-concat *ct3-hsegs-ev*))
+                   (equal (nth 2 *ctc-h*) (len (nth 1 *ctc-h*)))))
+(defconst *ctc-ws* (fn-scka-lens-setup nil 64))
+(defconst *ctc-pub* (fn-cth-publication *ct2-cap-ev* 9 "rev" nil 64 *fn-heap-small-profile* nil nil
+                                        (expt 2 40) *ctc-ws* nil))
+(value-triple (list :publication (car (car *ctc-pub*)) :budget (nth 2 *ctc-pub*)))
+(assert-event (and (eq (car (car (car *ctc-pub*))) :plan)
+                   (equal (nth 1 *ctc-pub*) (nth 1 *ctc-h*))
+                   (equal (nth 2 *ctc-pub*) (nth 3 *ctc-h*))
+                   (equal (nth 4 (nth 2 (nth 3 *ctc-pub*))) (nth 2 *ctc-h*))))
+(defconst *ctc-pub-cap* (fn-cth-publication *ct2-cap-ev* 9 "rev" nil 64 *fn-heap-small-profile* nil 1
+                                            (expt 2 40) *ctc-ws* nil))
+(assert-event (equal (car (car *ctc-pub-cap*))
+                     (list :deferred :exceeds-budget (nth 1 (car (car *ctc-pub*))) 1)))
+; the header step's refusal is the publication's verdict (no profile: no
+; segment fits) and nothing is to be written
+(defconst *ctc-pub-nil* (fn-cth-publication *ct2-cap-ev* 9 "rev" nil 64 nil nil nil
+                                            (expt 2 40) *ctc-ws* nil))
+(assert-event (and (eq (car (car (car *ctc-pub-nil*))) :deferred)
+                   (eq (nth 1 (car (car *ctc-pub-nil*))) :header-bound)
+                   (null (nth 1 *ctc-pub-nil*))))
+
+; The stopped `status' line and the read-only SUFFIX.
+(assert-event (equal (fn-cth-status-text *ctc-open*)
+                     (append (fn-nls-text "charged-totals")
+                             (fn-cth-status-field "records" 2)
+                             (fn-cth-status-field "arena" (fn-mm-tot-arena (nth 1 *ctc-open*)))
+                             (fn-cth-status-field "hcharge" (fn-mm-tot-hcharge (nth 1 *ctc-open*)))
+                             (fn-cth-status-field "memberships" (fn-mm-tot-memberships (nth 1 *ctc-open*)))
+                             (fn-cth-status-field "events" (fn-mm-tot-events (nth 1 *ctc-open*)))
+                             (fn-cth-status-field "log" (fn-mm-tot-log (nth 1 *ctc-open*)))
+                             (fn-cth-status-field "history" (fn-mm-tot-history (nth 1 *ctc-open*)))
+                             (fn-cth-status-field "charge" (fn-mm-tot-charge (nth 1 *ctc-open*)))
+                             (fn-nls-text " residency=resident") (list 10))))
+(assert-event (equal (fn-cth-status-text '(:refused :header-segment :schema))
+                     (append (fn-nls-text "charged-totals=absent") (list 10))))
+(assert-event (equal (fn-cth-empty-suffix (nth 1 *ctc-open*)) (fn-ct-zero-tot :resident)))
