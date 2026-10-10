@@ -208,6 +208,3 @@
 (include-book "store-checkpoint-buffer")
 (include-book "store-checkpoint-reader")
 (include-book "store-checkpoint-tables")
-(include-book "store-checkpoint-tables-reader")
-(include-book "store-intern")
-(include-book "open-frontier-wire")
