@@ -3,7 +3,7 @@
 the product's workloads, and the census of what the core carries but never ran
 (the measured collapse; CORE-CENSUS-20261010.md).
 
-    executed_set.py run TREE IMAGE CORE OUT [--arm gate|served|load ...] [--jobs N]
+    executed_set.py run TREE IMAGE CORE OUT [--arm gate|served|load ...] [--jobs N] [--module M ...]
     executed_set.py union OUT
     executed_set.py books IMAGE OUT [--tree TREE]
     executed_set.py census OUT CORE_DIR [--books BOOKS_TSV] [--tree TREE] [--json FILE]
@@ -88,6 +88,7 @@ PASS_PRODUCT = ("FN_NATIVE_HOST",)
 PASS_DEVELOPER = ("FN_NATIVE_HOST", "FN_NATIVE_DEVELOPER_HOST", "FN_NATIVE_CRASH_HOST",
                   "FN_NATIVE_DEVELOPER_STRIPPED_HOST")
 LOAD_CELL = "W1/small"
+MODULES_ONLY = []          # run --module: rerun these served modules only
 STAR1 = "ACL2_*1*_ACL2::"
 NOT_REMOVABLE_KINDS = ("var", "global", "stobj", "decl", "guard", "attach", "macro",
                        "registry", "struct")
@@ -156,7 +157,7 @@ def arm_served(tree, image, w, out, jobs):
     work = []
     for label, names in (("product", PASS_PRODUCT), ("developer", PASS_DEVELOPER)):
         env = dict(os.environ, **{n: str(w) for n in names})
-        for m in SERVED_MODULES:
+        for m in (MODULES_ONLY or SERVED_MODULES):
             if not (tree / (m.replace(".", "/") + ".py")).is_file():
                 raise Refused("served arm: no module %s in %s" % (m, tree))
             work.append(("%s %s" % (label, m), ["python3", "-m", "unittest", m],
@@ -184,14 +185,19 @@ def run(args):
         if not os.access(p, os.X_OK):
             raise Refused("not executable: %s" % p)
     (out / "raw").mkdir(parents=True, exist_ok=True)
+    MODULES_ONLY[:] = args.module or []
     w = wrapper(core, out)
     arms = json.loads((out / "arms.json").read_text()) if (out / "arms.json").is_file() else {}
     for a in args.arm or list(ARMS):
         print("executed-set: arm %s" % a, flush=True)
-        arms[a] = ARMS[a](tree, image, w, out, args.jobs)
+        rows = {r["name"]: r for r in arms.get(a, [])}
+        rows.update((r["name"], r) for r in ARMS[a](tree, image, w, out, args.jobs))
+        arms[a] = list(rows.values())
         (out / "arms.json").write_text(json.dumps(arms, indent=1) + "\n")
         bad = [r for r in arms[a] if r["status"] != 0]
         print("executed-set: arm %s: %d children, %d nonzero" % (a, len(arms[a]), len(bad)), flush=True)
+        for r in bad:
+            print("executed-set:   status %s after %ss: %s" % (r["status"], r["seconds"], r["name"]), flush=True)
     return union(out)
 
 
@@ -449,6 +455,7 @@ def main(argv=None):
     r.add_argument("tree"); r.add_argument("image"); r.add_argument("core"); r.add_argument("out")
     r.add_argument("--arm", action="append", choices=sorted(ARMS))
     r.add_argument("--jobs", type=int, default=4)
+    r.add_argument("--module", action="append", help="served arm: rerun only this module (its rows replace the earlier ones)")
     u = sub.add_parser("union")
     u.add_argument("out")
     k = sub.add_parser("books")
