@@ -396,6 +396,8 @@
          (and (fn-frame-result-okp r)
               (equal (fn-frame-result-magic r) *fn-lg-magic*)
               (equal (fn-frame-result-version r) *fn-lg-version*)
+              ; the payload holds the whole chain field (LOG-DECIDE-SHORT-CHAIN-FIELD)
+              (<= *fn-frame-trailer-octets* (len (fn-frame-result-payload r)))
               (or (equal (fn-frame-result-kind r) *fn-lg-record-kind*)
                   (and (equal (fn-frame-result-kind r) *fn-lg-batch-kind*)
                        (fn-lg-unpack-okp (nthcdr *fn-frame-trailer-octets*

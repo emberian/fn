@@ -758,7 +758,8 @@
 ; POS: the place (POS N START' LEN) with the entry's trailer attached as the
 ; host's places get it (fn-arx-attach-trailers-buffer); NIL when the
 ; declared payload is shorter than the chain field, where
-; fn-arx-list-places answers no places (LOG-DECIDE-SHORT-CHAIN-FIELD).
+; fn-arx-list-places answers no places: never for a record of an accepted
+; entry (fn-lgb-descriptor-of-an-accepted-record).
 (defun fn-lgb-descriptor (pos start len fn-octets)
   (declare (xargs :stobjs fn-octets :guard (and (natp pos) (natp start) (natp len))))
   (let ((n (fn-octets-len fn-octets)))
@@ -914,7 +915,7 @@
 (local
  (defthm fn-lgb-recordsp-nth-within
    (implies (and (fn-lg-recordsp rs max) (< (nfix j) (len rs)))
-            (<= (len (nth j rs)) (nfix max)))
+            (<= (+ 32 (len (nth j rs))) (nfix max)))
    :hints (("Goal" :induct (nth j rs) :in-theory (enable nth)))))
 
 (local
@@ -926,7 +927,7 @@
  (defthm fn-lgb-slice-records-within
    (implies (and (fn-lg-entry-okp e prev max)
                  (< (nfix j) (len (fn-lg-slice-records e max))))
-            (<= (len (nth j (fn-lg-slice-records e max))) (nfix max)))
+            (<= (+ 32 (len (nth j (fn-lg-slice-records e max)))) (nfix max)))
    :hints (("Goal" :do-not-induct t
             :cases ((equal (nth 5 e) 2))
             :in-theory (e/d (fn-lg-slice-records fn-lg-entry-okp fn-lg-open-bound)
@@ -942,7 +943,7 @@
 (local
  (defthm fn-lgb-decide-records-within
    (implies (< (nfix j) (len (mv-nth 1 (fn-lgw-decide e prev max))))
-            (<= (len (nth j (mv-nth 1 (fn-lgw-decide e prev max)))) (nfix max)))
+            (<= (+ 32 (len (nth j (mv-nth 1 (fn-lgw-decide e prev max))))) (nfix max)))
    :hints (("Goal" :do-not-induct t
             :cases ((fn-lg-entry-okp e prev max))
             :in-theory (disable fn-lgw-decide fn-lg-entry-okp fn-lg-slice-records
@@ -969,11 +970,13 @@
             :use (fn-lgb-span-bounds)))))
 
 ; KEYSTONE (S4, the hold M's reopen term cites): each record the cursor yields
-; of an accepted entry is within the log's per-record payload bound MAX, so
-; a consumer holding one slice holds at most MAX octets of list.
+; of an accepted entry, with the 32-octet chain field its frame carries, is
+; within the log's per-record payload bound MAX, so a consumer holding one
+; slice holds at most MAX less 32 octets of list (LOG-DECIDE-SHORT-CHAIN-FIELD
+; retired: the decision refuses a payload shorter than the chain field).
 (defthm fn-lgb-span-within-max
   (implies (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets)))
-           (<= (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets))
+           (<= (+ 32 (mv-nth 1 (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)))
                (nfix max)))
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-lgb-decide-count-is-decide)
@@ -986,6 +989,16 @@
                  (:instance fn-lgb-len-slice-of-span (i (fn-lgb-span-cursor j 42 fn-octets)))
                  (:instance fn-lgb-decide-records-within (e fn-octets))))))
 
+
+; KEYSTONE (C1, the decision's floor): an entry the log accepts is at least
+; 74 octets, header 10, chain field 32 and trailer 32
+; (LOG-DECIDE-SHORT-CHAIN-FIELD: a 42-octet record frame under the genesis
+; predecessor was accepted with one empty record before the chain-field
+; conjunct of fn-lg-entry-okp).
+(defthm fn-lg-entry-okp-holds-the-chain-field
+  (implies (fn-lg-entry-okp e prev max)
+           (<= 74 (len e)))
+  :rule-classes :linear)
 
 ; The extent path's descriptor (S5): the places walk over an accepted entry
 ; is the cursor's, one place per record.
@@ -1348,9 +1361,8 @@
 ; KEYSTONE (S5, the extent path's descriptor): the J-th record's descriptor
 ; the host binds for the sink (the place with the entry's trailer attached,
 ; fn-arx-attach-trailers-buffer) is the cursor's, so the host forms each
-; beside its record and holds no list of them; NIL where the places walk
-; answers none (a declared payload below the chain field:
-; LOG-DECIDE-SHORT-CHAIN-FIELD).
+; beside its record and holds no list of them (both sides non-NIL:
+; fn-lgb-descriptor-of-an-accepted-record).
 (defthm fn-lgb-descriptor-is-the-attached-place
   (implies (and (natp pos)
                 (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets))))
@@ -1380,6 +1392,28 @@
                  (:instance fn-lgb-s5-places-in-range)
                  (:instance fn-lgb-descriptor-of-span-places (i 42)
                             (k (mv-nth 1 (fn-lgb-decide-count prev max fn-octets))))))))
+
+; KEYSTONE (C4): every record of an accepted entry has a descriptor, so S5's
+; NIL arm is unreachable on the host's path (LOG-DECIDE-SHORT-CHAIN-FIELD).
+(defthm fn-lgb-descriptor-of-an-accepted-record
+  (implies (and (natp pos)
+                (< (nfix j) (mv-nth 1 (fn-lgb-decide-count prev max fn-octets))))
+           (mv-let (start len next) (fn-lgb-span (fn-lgb-span-cursor j 42 fn-octets) fn-octets)
+             (declare (ignore next))
+             (consp (fn-lgb-descriptor pos start len fn-octets))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((not (fn-octets-p fn-octets)))
+           :in-theory (e/d (fn-lgb-descriptor fn-octets-len fn-lgb-decide-count-is-decide)
+                           (fn-lgw-decide fn-lgb-decide-count fn-lgb-span fn-lgb-span-cursor
+                            fn-lg-entry-okp fn-frame-open fn-lgb-u32-at fn-cbor-u32-from
+                            fn-arx-attach-trailers-buffer fn-lg-open-bound))
+           :use ((:instance fn-lgb-count-of-non-octets)
+                 (:instance fn-lgw-decide-is-okp-and-records (e fn-octets))
+                 (:instance fn-lgw-decide-records-when-refused (e fn-octets))
+                 (:instance fn-lg-entry-okp-holds-the-chain-field (e fn-octets))
+                 (:instance fn-lgb-entry-okp-frame (e fn-octets))
+                 (:instance fn-lgb-frame-open-declared (e fn-octets) (b (fn-lg-open-bound fn-octets max)))
+                 (:instance fn-lgb-u32-at-is-u32 (i 6))))))
 
 ; -----------------------------------------------------------------------------
 ; 5. The step the host calls: the list step with its records answered by
