@@ -210,10 +210,11 @@
  "append": {
   "_doc": "tools/depth_check.py's data-sized append rule (lane depth-debt-2): an `append' whose first argument is not a literal, a constant or a (list ...), in a function on the host-called closure whose guards are not verified (so the host's *1* call runs binary-append's recursion, one frame per element of that argument). bounded names the bound as the recursions' entries do; debt only shrinks (verify the function's guards).",
   "bounded": {
-   "fn-frb-site-decode": "the first argument is the result of fn-frb-control-decode-with, the six-element tuple (list reasoned request admin moderation topic consumer) built at the end of that function (books/native-control-buffer.lisp), a fixed shape, never a list of data",
    "fn-aj-record-name-chars": "the first argument is a number's decimal digits (fn-bs-txn-digits: 20 digits, fixed width)",
+   "fn-bpaj-ref-metadata": "the first argument is the fixed fields of a request head (fn-bpaj-head-read), a fixed shape",
    "fn-bpnf-stored-record-values": "the first argument is a fixed record of 11 fields (base), never a list of data",
-   "fn-bpaj-ref-metadata": "the first argument is the fixed fields of a request head (fn-bpaj-head-read), a fixed shape"
+   "fn-frb-site-decode": "the first argument is the result of fn-frb-control-decode-with, the six-element tuple (list reasoned request admin moderation topic consumer) built at the end of that function (books/native-control-buffer.lisp), a fixed shape, never a list of data",
+   "fn-wpf-step": "the first argument is the decoded form values, at most 4 (csrf, g, subject, body: index < 3 before the append)"
   },
   "debt": {}
  },
