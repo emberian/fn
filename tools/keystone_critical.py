@@ -39,7 +39,7 @@ changed since the critical base is a finding).  Redundant hypotheses are not det
 
     python3 tools/keystone_critical.py --report        # classes, examples, package status
     python3 tools/keystone_critical.py --write-critical-base   # the cutover, once
-    python3 tools/keystone_critical.py --lower-stale           # shrink the owed and base rows
+    python3 tools/keystone_critical.py --lower-stale           # shrink the base, owed and declared rows
     python3 tools/keystone_critical.py --lower-complete        # remove fully evidenced owed rows
     python3 tools/keystone_critical.py --claim-owed    # claim items for unlisted existing criticals
     python3 tools/keystone_critical.py --declare K --subject FN --host-test REF \
@@ -345,7 +345,7 @@ def findings(current: dict[str, dict], cbase: dict | None, declared: dict, owed:
                             f"cannot be owed: it ships with its package")
     for name in sorted(set(declared) - set(critical)):
         problems.append(f"critical gate: planning/critical-evidence.json declares {name}, which "
-                        f"is not a critical registry keystone")
+                        f"is not a critical registry keystone (tools/keystone_critical.py --lower-stale)")
     return problems, summary
 
 
@@ -376,32 +376,40 @@ def write_critical_base(current: dict[str, dict]) -> int:
     return 0
 
 
-def lower_stale(current: dict[str, dict], cbase: dict, owed: dict) -> tuple[dict, dict, dict[str, list[str]]]:
-    """Shrink-only: (cbase, owed, dropped-by-class) without the rows whose
-    keystone is gone from the registry or no longer critical.  Never adds or
-    edits a row; a result that held a row the inputs lacked is refused."""
+def lower_stale(current: dict[str, dict], cbase: dict, owed: dict,
+                declared: dict | None = None) -> tuple[dict, dict, dict, dict[str, list[str]]]:
+    """Shrink-only: (cbase, owed, declared, dropped-by-table) without the rows
+    whose keystone is gone from the registry or no longer critical: the base
+    and owed rows, and the declared rows of planning/critical-evidence.json
+    (the gate's "declares NAME, which is not a critical registry keystone").
+    Never adds or edits a row; a result that held a row the inputs lacked is
+    refused."""
     live = {n for n, e in current.items() if e.get("critical")}
+    declared = declared or {}
     dropped: dict[str, list[str]] = {}
     new_base = {n: r for n, r in cbase.items() if n in live}
     new_owed = {n: r for n, r in owed.items() if n in live}
-    for table, kept, rows in (("base", new_base, cbase), ("owed", new_owed, owed)):
+    new_declared = {n: r for n, r in declared.items() if n in live}
+    for table, kept, rows in (("base", new_base, cbase), ("owed", new_owed, owed),
+                              ("declared", new_declared, declared)):
         for n in rows:
             if n not in kept:
                 dropped.setdefault(f"{table}:{rows[n].get('class', '?')}", []).append(n)
-    if not (set(new_base) <= set(cbase) and set(new_owed) <= set(owed)):
+    if not (set(new_base) <= set(cbase) and set(new_owed) <= set(owed)
+            and set(new_declared) <= set(declared)):
         raise ValueError("lower-stale would add a row")
-    return new_base, new_owed, dropped
+    return new_base, new_owed, new_declared, dropped
 
 
 def lower_stale_main(write: bool = True) -> int:
     _, current = _current()
-    cbase, owed = load_critical_base(), load_owed()
+    cbase, owed, declared = load_critical_base(), load_owed(), load_declared()
     if cbase is None:
         print("planning/critical-base.json is missing")
         return 1
-    new_base, new_owed, dropped = lower_stale(current, cbase, owed)
+    new_base, new_owed, new_declared, dropped = lower_stale(current, cbase, owed, declared)
     for key, names in sorted(dropped.items()):
-        print(f"dropped {len(names)} {key}")
+        print(f"dropped {len(names)} {key}: {', '.join(sorted(names))}")
     if not dropped:
         print("nothing stale")
         return 0
@@ -412,7 +420,12 @@ def lower_stale_main(write: bool = True) -> int:
         owed_doc = json.loads(OWED.read_text(encoding="utf-8"))
         owed_doc["items"] = new_owed
         OWED.write_text(json.dumps(owed_doc, indent=1) + "\n", encoding="utf-8")
-        print(f"wrote {CBASE.name} ({len(new_base)}) and {OWED.name} ({len(new_owed)})")
+        if len(new_declared) != len(declared):
+            evidence_doc = json.loads(EVIDENCE.read_text(encoding="utf-8"))
+            evidence_doc["entries"] = new_declared
+            EVIDENCE.write_text(json.dumps(evidence_doc, indent=1) + "\n", encoding="utf-8")
+        print(f"wrote {CBASE.name} ({len(new_base)}), {OWED.name} ({len(new_owed)}) "
+              f"and {EVIDENCE.name} ({len(new_declared)})")
     return 0
 
 
