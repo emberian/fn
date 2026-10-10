@@ -1825,24 +1825,36 @@
                             (s 0) (pieces (list line)) (last t)
                             (rooms (fn-nsp-a3-rooms cap fuel))
                             (fn-octets line) (fn-dss-out nil)))))))
+(local (defthm fn-nsp-a3-long-line-is-not-command-input
+  (implies (not (unsigned-byte-p 59 (len line))) (not (fn-nntp-command-inputp line)))
+  :hints (("Goal" :in-theory (enable fn-nntp-command-inputp fn-cbor-at-mostp)))))
+; Guard t, its preconditions tested in the body: a guard-verified function
+; whose guard is t carries no invariant-risk (ACL2 put-invariant-risk skips
+; it), so the local stobj writes below do not mark the :program read chain
+; that calls it (host/owner-host.lisp fn-asto-mca-read-span).  With the old
+; guard the chain ran as *1* code and checked fn-asto-capture's guard, a walk
+; of the whole catalog, on every read (POST cost linear in the store,
+; spans-after-8bdd8cb).
 (defun fn-nsp-line-tokens (line)
-  (declare (xargs :guard (and (fn-cbor-octet-listp line)
-                              (unsigned-byte-p 59 (len line)))))
-  (with-local-stobj fn-dss-b
-    (mv-let (res fn-dss-b)
-      (let ((fn-dss-b (fn-dss-b-from-list line fn-dss-b)))
-        (with-local-stobj fn-dss-out
-          (mv-let (res fn-dss-out)
-            (mv-let (r s items fn-dss-out)
-              (fn-nsp-tokens-run 0 0 512 (+ 2 (len line)) fn-dss-b fn-dss-out)
-              (declare (ignore s))
-              (mv (fn-nsp-tokens-of r items) fn-dss-out))
-            (mv res fn-dss-b))))
-      res)))
+  (declare (xargs :guard t))
+  (and (fn-cbor-octet-listp line)
+       (unsigned-byte-p 59 (len line))
+       (with-local-stobj fn-dss-b
+         (mv-let (res fn-dss-b)
+           (let ((fn-dss-b (fn-dss-b-from-list line fn-dss-b)))
+             (with-local-stobj fn-dss-out
+               (mv-let (res fn-dss-out)
+                 (mv-let (r s items fn-dss-out)
+                   (fn-nsp-tokens-run 0 0 512 (+ 2 (len line)) fn-dss-b fn-dss-out)
+                   (declare (ignore s))
+                   (mv (fn-nsp-tokens-of r items) fn-dss-out))
+                 (mv res fn-dss-b))))
+           res))))
 (defthm fn-nsp-line-tokens-is-tokenize
   (implies (fn-octet-listp line)
            (equal (fn-nsp-line-tokens line)
                   (and (fn-nntp-command-inputp line) (fn-nntp-tokenize line))))
-  :hints (("Goal" :in-theory (disable fn-nsp-tokens-run fn-nsp-tokens-items fn-nsp-tokens-of)
+  :hints (("Goal" :cases ((unsigned-byte-p 59 (len line)))
+           :in-theory (disable fn-nsp-tokens-run fn-nsp-tokens-items fn-nsp-tokens-of)
            :use ((:instance fn-nsp-a3-run-is-items (cap 512) (fuel (+ 2 (len line))))
-                 fn-nsp-tokens-is-tokenize))))
+                 fn-nsp-tokens-is-tokenize fn-nsp-a3-long-line-is-not-command-input))))

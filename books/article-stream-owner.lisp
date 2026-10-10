@@ -437,14 +437,16 @@
                                    (fn-dss-out (fn-wire-reverse-octets (fn-wire-state-line-rev ws)))))
            :in-theory (disable fn-nsp-frame fn-nsp-frame-wsp fn-wire-span-fold
                                fn-wire-statep fn-nsp-frame-state-of))))
+;; Guard t (the stobj's recognizer only), the range tested in the body: as
+;; fn-nsp-line-tokens, so the local fn-ast-ws writes carry no invariant-risk
+;; up the :program read chain (host/owner-host.lisp fn-asto-mca-read-span).
 (defun fn-asto-first-event (oc id start end fn-octets)
   (declare (xargs :stobjs fn-octets
-                  :guard (and (natp start) (natp end) (<= start end)
-                              (<= end (fn-octets-len fn-octets)))
                   :guard-hints (("Goal" :in-theory (disable fn-asto-frame-line fn-wire-scan fn-wire-statep)))))
   (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
          (ws (and conn (fn-own-conn-wire conn))))
-    (and conn (fn-wire-fast-statep ws)
+    (and (natp start) (natp end) (<= start end) (<= end (fn-octets-len fn-octets))
+         conn (fn-wire-fast-statep ws)
          (if (fn-asto-frame-casep ws start end)
              (with-local-stobj fn-ast-ws
                (mv-let (w fn-ast-ws) (fn-asto-frame-line ws start end fn-octets fn-ast-ws)
