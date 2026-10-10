@@ -38,7 +38,7 @@
    (equal (append (append a b) c) (append a (append b c)))))
 
 (defconst *fn-scc-magic* '(70 78 83 67))         ; "FNSC"
-(defconst *fn-scc-schema* 3)
+(defconst *fn-scc-schema* 4)
 (defconst *fn-scc-segment-header-octets* 37)    ; 4 + 1 + 4 * 8
 (defconst *fn-scc-op-nil* 0)
 (defconst *fn-scc-op-nat* 1)

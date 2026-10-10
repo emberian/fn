@@ -5736,17 +5736,16 @@ error for the same reason."
                  (fnn-refuse "conflicting immutable Message-ID")))
              ;; ACL2's article verdict: the count gate, the history gate and
              ;; the vector at this article's own figure, and its word
-             ;; (fn-cvec-article-verdict-word): :memberships when the
-             ;; membership charge alone refused it, :history-exhausted
-             ;; when the history budget did, :unaffordable when the
+             ;; (fn-cvec-article-verdict-word, one of :admissible,
+             ;; :history-exhausted and :unaffordable by
+             ;; fn-cvec-article-verdict-word-by-definition): :history-exhausted
+             ;; when the history budget refused it, :unaffordable when the
              ;; transactions did, named as the served POST names them
              ;; (books/nntp-post.lisp).
              (case (fnn-core-state 'fn-store-sn-article-verdict-word
                                    (fnn-store-config store) (length payload)
                                    (length codes))
                (:admissible nil)
-               (:memberships
-                (fnn-refuse "store budget refuses the article's groups (memberships): each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups"))
                (:history-exhausted
                 (fnn-refuse "store history budget is exhausted (history-exhausted): raise max-history-octets or reclaim"))
                (:unaffordable

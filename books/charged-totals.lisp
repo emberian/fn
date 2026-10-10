@@ -168,3 +168,331 @@
   (equal (nth 4 (fn-ct-of-records records)) (nfix (fn-sbud-record-octets records)))
   :hints (("Goal" :induct (fn-ct-of-records records)
            :in-theory (e/d (fn-sbud-record-octets) (fn-ct-row fn-sbud-row-octets)))))
+
+; -----------------------------------------------------------------------------
+; The charged fold (Builder M, books/history-totals-carried.lisp K-TOTALS;
+; moved here verbatim by Builder A's charged-totals header, 2026-10-10, so
+; the checkpoint's F row (books/store-checkpoint-tables.lisp) folds them
+; without the history stobj's closure).
+
+(defun fn-ct-row-log (row)
+  (declare (xargs :guard t :verify-guards nil))
+  (+ *fn-ct-log-frame-octets*
+     (cond ((fn-held-p row)
+            (fn-record-encoded-octets-ceiling (nfix (fn-hf-octets (fn-held-facts row)))
+                                              (len (fn-record-groups row))))
+           ((fn-hstxa-p row) (len (fn-store-event-encode (fn-hstxa-stxa row))))
+           (t (len (fn-store-event-encode row))))))
+
+(defun fn-ct-row-history (row)
+  (declare (xargs :guard t))
+  (mv-let (err tl plen) (fn-hp-x-rowlen row)
+    (declare (ignore err tl))
+    (nfix plen)))
+
+; One record's charged totals.
+(defun fn-ct-row-tot (row residency)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((r (fn-ct-row row)))
+    (fn-mm-make-tot 1 (nth 0 r) (nth 1 r) (nth 2 r) (nth 3 r)
+                    (fn-ct-row-log row) (fn-ct-row-history row) (nth 4 r)
+                    residency)))
+
+(defun fn-ct-zero-tot (residency)
+  (declare (xargs :guard t))
+  (fn-mm-make-tot 0 0 0 0 0 0 0 0 residency))
+
+; The fold: the charged totals of RECORDS at RESIDENCY.
+(defun fn-ct-charged (records residency)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp records)
+      (fn-mm-tot-plus (fn-ct-row-tot (car records) residency)
+                      (fn-ct-charged (cdr records) residency))
+    (fn-ct-zero-tot residency)))
+
+; The log's records' octets a full replay reads, charged.
+(defun fn-ct-log-of-records (records)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp records)
+      (+ (fn-ct-row-log (car records)) (fn-ct-log-of-records (cdr records)))
+    0))
+
+(verify-guards fn-ct-row)
+(verify-guards fn-ct-row-log)
+(verify-guards fn-ct-row-tot)
+(verify-guards fn-ct-charged)
+(verify-guards fn-ct-log-of-records)
+
+(local (in-theory (disable fn-ct-row fn-ct-row-log fn-ct-row-history)))
+
+; The algebra of the fold (the technique of Builder M's K-TOTALS lemmas in
+; books/history-totals-carried.lisp): a tot is the list of its nine fields,
+; the sum is associative, and the zero of a residency is its identity.
+(local
+ (defthm fn-ct-take-len (implies (true-listp x) (equal (take (len x) x) x))))
+
+(local
+ (defthm fn-ct-take9
+   (equal (take 9 x) (list (nth 0 x) (nth 1 x) (nth 2 x) (nth 3 x) (nth 4 x)
+                           (nth 5 x) (nth 6 x) (nth 7 x) (nth 8 x)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable nth)
+            :expand ((take 9 x) (take 8 (cdr x)) (take 7 (cddr x)) (take 6 (cdddr x))
+                     (take 5 (cddddr x)) (take 4 (cdr (cddddr x))) (take 3 (cddr (cddddr x)))
+                     (take 2 (cdddr (cddddr x))) (take 1 (cddddr (cddddr x)))
+                     (take 0 (cdr (cddddr (cddddr x)))))))))
+
+(local
+ (defthm fn-ct-tot-shape
+   (implies (fn-mm-tot-p tot)
+            (equal tot (list (nth 0 tot) (nth 1 tot) (nth 2 tot) (nth 3 tot) (nth 4 tot)
+                             (nth 5 tot) (nth 6 tot) (nth 7 tot) (nth 8 tot))))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-ct-take-len (x tot)) (:instance fn-ct-take9 (x tot)))
+            :in-theory (e/d (fn-mm-tot-p) (fn-ct-take-len))))))
+
+(local
+ (defthm fn-ct-plus-zero-list
+   (implies (and (natp a) (natp b) (natp c) (natp d) (natp e) (natp f) (natp g) (natp h)
+                 (member-equal r '(:resident :paged)))
+            (and (equal (fn-mm-tot-plus (list a b c d e f g h r) (fn-ct-zero-tot res))
+                        (list a b c d e f g h r))
+                 (implies (equal (equal r :paged) (equal res :paged))
+                          (equal (fn-mm-tot-plus (fn-ct-zero-tot res) (list a b c d e f g h r))
+                                 (list a b c d e f g h r)))))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-plus fn-ct-zero-tot fn-mm-make-tot
+                             fn-mm-tot-records fn-mm-tot-arena fn-mm-tot-hcharge fn-mm-tot-memberships
+                             fn-mm-tot-events fn-mm-tot-log fn-mm-tot-history fn-mm-tot-charge
+                             fn-mm-tot-paged-p fn-mm-nat)))))
+
+(local
+ (defthm fn-ct-plus-zero
+   (implies (fn-mm-tot-p tot)
+            (and (equal (fn-mm-tot-plus tot (fn-ct-zero-tot res)) tot)
+                 (implies (equal (fn-mm-tot-paged-p tot) (equal res :paged))
+                          (equal (fn-mm-tot-plus (fn-ct-zero-tot res) tot) tot))))
+   :hints (("Goal" :use (fn-ct-tot-shape
+                         (:instance fn-ct-plus-zero-list (a (nth 0 tot)) (b (nth 1 tot))
+                                    (c (nth 2 tot)) (d (nth 3 tot)) (e (nth 4 tot))
+                                    (f (nth 5 tot)) (g (nth 6 tot)) (h (nth 7 tot))
+                                    (r (nth 8 tot))))
+            :in-theory (e/d (fn-mm-tot-p fn-mm-tot-paged-p) (fn-ct-plus-zero-list))))))
+
+(local
+ (defthm fn-ct-nfix-nfix (equal (nfix (nfix a)) (nfix a))))
+
+(local
+ (defthm fn-ct-records-of-make
+   (equal (fn-mm-tot-records (fn-mm-make-tot a b c d e f g h r)) (nfix a))
+   :hints (("Goal" :in-theory (e/d (fn-mm-tot-records fn-mm-nat fn-mm-make-tot) (nfix))))))
+
+(local
+ (defthm fn-ct-natp-records
+   (natp (fn-mm-tot-records a))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-mm-tot-records fn-mm-nat)))))
+
+(local
+ (defthm fn-ct-arena-of-make
+   (equal (fn-mm-tot-arena (fn-mm-make-tot a b c d e f g h r)) (nfix b))
+   :hints (("Goal" :in-theory (e/d (fn-mm-tot-arena fn-mm-nat fn-mm-make-tot) (nfix))))))
+
+(local
+ (defthm fn-ct-natp-arena
+   (natp (fn-mm-tot-arena a))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-mm-tot-arena fn-mm-nat)))))
+
+(local
+ (defthm fn-ct-hcharge-of-make
+   (equal (fn-mm-tot-hcharge (fn-mm-make-tot a b c d e f g h r)) (nfix c))
+   :hints (("Goal" :in-theory (e/d (fn-mm-tot-hcharge fn-mm-nat fn-mm-make-tot) (nfix))))))
+
+(local
+ (defthm fn-ct-natp-hcharge
+   (natp (fn-mm-tot-hcharge a))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-mm-tot-hcharge fn-mm-nat)))))
+
+(local
+ (defthm fn-ct-memberships-of-make
+   (equal (fn-mm-tot-memberships (fn-mm-make-tot a b c d e f g h r)) (nfix d))
+   :hints (("Goal" :in-theory (e/d (fn-mm-tot-memberships fn-mm-nat fn-mm-make-tot) (nfix))))))
+
+(local
+ (defthm fn-ct-natp-memberships
+   (natp (fn-mm-tot-memberships a))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-mm-tot-memberships fn-mm-nat)))))
+
+(local
+ (defthm fn-ct-events-of-make
+   (equal (fn-mm-tot-events (fn-mm-make-tot a b c d e f g h r)) (nfix e))
+   :hints (("Goal" :in-theory (e/d (fn-mm-tot-events fn-mm-nat fn-mm-make-tot) (nfix))))))
+
+(local
+ (defthm fn-ct-natp-events
+   (natp (fn-mm-tot-events a))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-mm-tot-events fn-mm-nat)))))
+
+(local
+ (defthm fn-ct-log-of-make
+   (equal (fn-mm-tot-log (fn-mm-make-tot a b c d e f g h r)) (nfix f))
+   :hints (("Goal" :in-theory (e/d (fn-mm-tot-log fn-mm-nat fn-mm-make-tot) (nfix))))))
+
+(local
+ (defthm fn-ct-natp-log
+   (natp (fn-mm-tot-log a))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-mm-tot-log fn-mm-nat)))))
+
+(local
+ (defthm fn-ct-history-of-make
+   (equal (fn-mm-tot-history (fn-mm-make-tot a b c d e f g h r)) (nfix g))
+   :hints (("Goal" :in-theory (e/d (fn-mm-tot-history fn-mm-nat fn-mm-make-tot) (nfix))))))
+
+(local
+ (defthm fn-ct-natp-history
+   (natp (fn-mm-tot-history a))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-mm-tot-history fn-mm-nat)))))
+
+(local
+ (defthm fn-ct-charge-of-make
+   (equal (fn-mm-tot-charge (fn-mm-make-tot a b c d e f g h r)) (nfix h))
+   :hints (("Goal" :in-theory (e/d (fn-mm-tot-charge fn-mm-nat fn-mm-make-tot) (nfix))))))
+
+(local
+ (defthm fn-ct-natp-charge
+   (natp (fn-mm-tot-charge a))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-mm-tot-charge fn-mm-nat)))))
+
+(local
+ (defthm fn-ct-paged-of-make
+   (equal (fn-mm-tot-paged-p (fn-mm-make-tot a b c d e f g h r)) (equal r :paged))
+   :hints (("Goal" :in-theory (e/d (fn-mm-tot-paged-p fn-mm-make-tot) (nfix))))))
+
+(local
+ (defthm fn-ct-plus-assoc
+   (equal (fn-mm-tot-plus (fn-mm-tot-plus a b) c) (fn-mm-tot-plus a (fn-mm-tot-plus b c)))
+   :hints (("Goal" :in-theory (e/d (fn-mm-tot-plus)
+                                   (fn-mm-make-tot fn-mm-tot-records fn-mm-tot-arena
+                                    fn-mm-tot-hcharge fn-mm-tot-memberships fn-mm-tot-events
+                                    fn-mm-tot-log fn-mm-tot-history fn-mm-tot-charge
+                                    fn-mm-tot-paged-p))))))
+
+(local
+ (defthm fn-ct-tot-p-of-plus (fn-mm-tot-p (fn-mm-tot-plus a b))
+   :hints (("Goal" :in-theory (union-theories '(fn-mm-tot-plus fn-mm-make-tot-is-a-tot)
+                                            (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-ct-tot-p-of-zero (fn-mm-tot-p (fn-ct-zero-tot r))
+   :hints (("Goal" :in-theory (union-theories '(fn-ct-zero-tot fn-mm-make-tot-is-a-tot)
+                                            (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-ct-paged-of-charged
+   (equal (fn-mm-tot-paged-p (fn-ct-charged rs res)) (equal res :paged))
+   :hints (("Goal" :induct (fn-ct-charged rs res)
+            :in-theory (e/d (fn-mm-tot-plus fn-ct-row-tot fn-ct-zero-tot)
+                            (fn-mm-make-tot fn-mm-tot-paged-p fn-mm-tot-p))))))
+
+(local
+ (defthm fn-ct-tot-p-of-charged (fn-mm-tot-p (fn-ct-charged rs res))
+   :hints (("Goal" :expand ((fn-ct-charged rs res))
+            :in-theory (disable fn-mm-tot-p fn-mm-tot-plus fn-ct-zero-tot)))))
+
+(local
+ (in-theory (disable fn-mm-tot-plus fn-ct-zero-tot (:e fn-ct-zero-tot) fn-ct-row-tot fn-mm-tot-p)))
+
+; The fold over an append is the sum of the folds (the checkpoint's header
+; plus its suffix, books/charged-totals-header.lisp).  No hypothesis.
+(defthm fn-ct-charged-of-append
+  (equal (fn-ct-charged (append a b) residency)
+         (fn-mm-tot-plus (fn-ct-charged a residency) (fn-ct-charged b residency)))
+  :hints (("Goal" :induct (len a))))
+
+; The fold's shape, for its readers (the checkpoint's header, the open's
+; seed): a tot, its RECORDS the record count, its residency the argument's,
+; blind to a list's terminator, and equal at two residency words that are
+; equally :paged.
+(defthm fn-ct-charged-is-a-tot
+  (fn-mm-tot-p (fn-ct-charged records residency))
+  :hints (("Goal" :expand ((fn-ct-charged records residency)))))
+
+(defthm fn-ct-charged-records
+  (equal (fn-mm-tot-records (fn-ct-charged records residency)) (len records))
+  :hints (("Goal" :induct (len records)
+           :in-theory (e/d (fn-mm-tot-plus fn-ct-row-tot fn-ct-zero-tot)
+                           (fn-mm-make-tot fn-mm-tot-records fn-mm-tot-arena fn-mm-tot-hcharge
+                            fn-mm-tot-memberships fn-mm-tot-events fn-mm-tot-log
+                            fn-mm-tot-history fn-mm-tot-charge fn-mm-tot-paged-p)))))
+
+(defthm fn-ct-charged-paged-p
+  (equal (fn-mm-tot-paged-p (fn-ct-charged records residency)) (equal residency :paged))
+  :hints (("Goal" :expand ((fn-ct-charged records residency)))))
+
+(defthm fn-ct-charged-of-true-list-fix
+  (equal (fn-ct-charged (true-list-fix records) residency) (fn-ct-charged records residency))
+  :hints (("Goal" :induct (len records) :in-theory (enable fn-ct-charged))))
+
+(defthm fn-ct-charged-residency-word
+  (implies (equal (equal r1 :paged) (equal r2 :paged))
+           (equal (fn-ct-charged records r1) (fn-ct-charged records r2)))
+  :rule-classes nil
+  :hints (("Goal" :induct (len records)
+           :in-theory (enable fn-ct-charged fn-mm-tot-plus fn-ct-row-tot fn-ct-zero-tot
+                              fn-mm-make-tot fn-mm-tot-paged-p))))
+
+; The fold with an accumulator: one frame however many records (the list
+; fold holds one a record).  The checkpoint's writer runs it through
+; fn-ct-charged-exec; fn-ct-charged-acc-is-the-fold makes it the fold.
+(defun fn-ct-charged-acc (records residency acc)
+  (declare (xargs :guard t))
+  (if (consp records)
+      (fn-ct-charged-acc (cdr records) residency
+                         (fn-mm-tot-plus acc (fn-ct-row-tot (car records) residency)))
+    acc))
+
+(local
+ (defthm fn-ct-tot-p-of-row-tot (fn-mm-tot-p (fn-ct-row-tot r res))
+   :hints (("Goal" :in-theory (union-theories '(fn-ct-row-tot fn-mm-make-tot-is-a-tot)
+                                            (theory 'minimal-theory))))))
+
+(local
+ (defthm fn-ct-charged-of-singleton
+   (equal (fn-ct-charged (list r) res) (fn-ct-row-tot r res))
+   :hints (("Goal" :expand ((fn-ct-charged (list r) res))))))
+
+(local
+ (defun fn-ct-acc-ind (records a)
+   (if (consp records)
+       (fn-ct-acc-ind (cdr records) (append a (list (car records))))
+     a)))
+
+(local
+ (defthm fn-ct-append-assoc-singleton
+   (equal (append (append a (list x)) y) (append a (cons x y)))))
+
+(local
+ (defthm fn-ct-charged-acc-is-plus
+   (equal (fn-ct-charged-acc records residency (fn-ct-charged a residency))
+          (fn-ct-charged (append a records) residency))
+   :hints (("Goal" :induct (fn-ct-acc-ind records a)
+            :expand ((fn-ct-charged-acc records residency (fn-ct-charged a residency))))
+           ("Subgoal *1/1" :use ((:instance fn-ct-charged-of-append (a a) (b (list (car records)))))))))
+
+(defthm fn-ct-charged-acc-is-the-fold
+  (equal (fn-ct-charged-acc records residency (fn-ct-zero-tot residency))
+         (fn-ct-charged records residency))
+  :hints (("Goal" :use ((:instance fn-ct-charged-acc-is-plus (a nil)))
+           :in-theory (e/d (fn-ct-charged) (fn-ct-charged-acc-is-plus)))))
+
+; The executable fold: the list fold in the logic, the accumulator at run time.
+(defun fn-ct-charged-exec (records residency)
+  (declare (xargs :guard t))
+  (mbe :logic (fn-ct-charged records residency)
+       :exec (fn-ct-charged-acc records residency (fn-ct-zero-tot residency))))
