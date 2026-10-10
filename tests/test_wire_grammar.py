@@ -1,4 +1,4 @@
-"""specs/wire-grammar.json read by a second, independent interpreter.
+"""build/box/wire-grammar.json (the box step's artifact) read by a second, independent interpreter.
 
 The file is ACL2's (books/wire-export.lisp, written by
 `tools/protocol_emit.py --wire --write`).  This test is the contract's other
@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import blake3_ref  # noqa: E402
 
-WIRE = ROOT / "specs" / "wire-grammar.json"
+import box_artifacts  # noqa: E402
 
 
 class Refused(Exception):
@@ -448,7 +448,7 @@ class WellFormedness(unittest.TestCase):
 
 class WireGrammarFile(unittest.TestCase):
     def setUp(self):
-        self.doc = json.loads(WIRE.read_bytes())
+        self.doc = box_artifacts.load("wire-grammar.json", ROOT)
 
     def test_header(self):
         self.assertEqual(self.doc["format"], "fn-wire-grammar")

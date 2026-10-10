@@ -544,7 +544,7 @@ function returning the carried state there. A defined owed name that returns
 another state still fails at certification.
 The entry guard's arity and kind checks run before
 either dispatch, and
-`planning/interfaces.json` (`raw_dispatched`) lists every such entry. The
+the box step's `build/box/interfaces.json` (`raw_dispatched`) lists every such entry. The
 developer image keeps the counterpart path behind
 `FN_NATIVE_DISPATCH_COUNTERPART=1` so a native can compare both.
 

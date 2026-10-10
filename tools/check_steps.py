@@ -135,9 +135,28 @@ def step_name(command: list[str]) -> str:
     return first[:-3] if first.endswith(".py") else first
 
 
+# A step that exits 2 and says NOT RUN lacks a capability this tree has not
+# built (no certified world, no ACL2 launcher): a capability skip that says
+# why, never a red (coordinator ruling 2026-10-10, MAKE-CHECK-CERT-WORLD-NOT-RUN).
+# The train's box step has the world and runs those steps on every train.
+NOT_RUN = re.compile(r"\bNOT RUN\b")
+
+
+def capability_skip(row: dict) -> bool:
+    return row.get("exit") == 2 and bool(NOT_RUN.search(row.get("finding") or ""))
+
+
+def red(row: dict) -> bool:
+    return row["exit"] != 0 and not capability_skip(row)
+
+
 def first_finding(lines: list[str]) -> str:
-    """The first line that reads like a finding, else the last line printed."""
+    """The NOT RUN line of a capability skip, else the first line that reads
+    like a finding, else the last line printed."""
     printed = [line.strip() for line in lines if line.strip()]
+    for line in printed:
+        if NOT_RUN.search(line):
+            return line[:160]
     for pattern in (STRONG, FINDING):
         for line in printed:
             if pattern.search(line):
@@ -205,10 +224,13 @@ def read_results(directory: Path) -> list[dict]:
 
 def table_lines(rows: list[dict], footer: str = "") -> list[str]:
     width = max(len(row["step"]) for row in rows)
-    failed = [row for row in rows if row["exit"] != 0]
-    lines = [f"== check: {len(rows)} steps, {len(failed)} failed{footer}"]
+    failed = [row for row in rows if red(row)]
+    skipped = sum(1 for row in rows if capability_skip(row))
+    lines = [f"== check: {len(rows)} steps, {len(failed)} failed"
+             f"{f', {skipped} not run (capability)' if skipped else ''}{footer}"]
     for row in rows:
-        verdict = "ok" if row["exit"] == 0 else f"exit {row['exit']}"
+        verdict = ("ok" if row["exit"] == 0 else "not run" if capability_skip(row)
+                   else f"exit {row['exit']}")
         line = f"  {row['step']:{width}}  {verdict:8} {row['seconds']:7.1f} s"
         if row["exit"] != 0 and row["finding"]:
             line += f"  {row['finding']}"
@@ -230,7 +252,7 @@ def summary(directory: Path, footer: str = "", baseline: Path | None = None,
         write_baseline.parent.mkdir(parents=True, exist_ok=True)
         write_baseline.write_text("\n".join(lines) + "\n", encoding="utf-8")
         print(f"check: step table written to {write_baseline}")
-    failed = [row for row in rows if row["exit"] != 0]
+    failed = [row for row in rows if red(row)]
     if baseline is None:
         return 1 if failed else 0
     return 1 if vs_baseline(rows, baseline) else 0
@@ -238,7 +260,7 @@ def summary(directory: Path, footer: str = "", baseline: Path | None = None,
 
 # ----------------------------------------------------------------- baseline
 
-BASELINE_ROW = re.compile(r"^\s{2}(\S+)\s+(ok|exit -?\d+)\s+\d+(?:\.\d+)? s(?:\s{2}(.*))?$")
+BASELINE_ROW = re.compile(r"^\s{2}(\S+)\s+(ok|not run|exit -?\d+)\s+\d+(?:\.\d+)? s(?:\s{2}(.*))?$")
 
 
 def read_baseline(text: str) -> list[dict]:
@@ -252,7 +274,7 @@ def read_baseline(text: str) -> list[dict]:
             continue
         found = BASELINE_ROW.match(line)
         if found and (rows or "== check:" in text):
-            rows.append({"step": found[1], "red": found[2] != "ok",
+            rows.append({"step": found[1], "red": found[2] not in ("ok", "not run"),
                          "finding": (found[3] or "").strip()})
     return rows
 
@@ -281,7 +303,7 @@ def new_reds(current: list[dict], baseline: list[dict]) -> list[dict]:
     fresh = []
     leftovers = []
     for row in current:
-        if row["exit"] == 0:
+        if not red(row):
             continue
         shapes = pool.get(row["step"], [])
         shape = finding_shape(row.get("finding", ""))
@@ -310,12 +332,12 @@ def vs_baseline(rows: list[dict], baseline: Path) -> bool:
         return True
     ran = [row for row in rows if not row.get("skipped")]
     fresh = new_reds(ran, known)
-    red = [row for row in ran if row["exit"] != 0]
-    seen = {row["step"] for row in ran if row["exit"] == 0}
+    reds = [row for row in ran if red(row)]
+    seen = {row["step"] for row in ran if not red(row)}
     fixed = sorted({row["step"] for row in known if row["red"]}
-                   & seen - {row["step"] for row in red})
+                   & seen - {row["step"] for row in reds})
     print(f"== baseline {baseline}: {sum(1 for r in known if r['red'])} red in it, "
-          f"{len(red)} red now, {len(red) - len(fresh)} carried over, "
+          f"{len(reds)} red now, {len(reds) - len(fresh)} carried over, "
           f"{len(fixed)} fixed" + (f" ({', '.join(fixed)})" if fixed else ""))
     if fresh:
         print(f"NEW reds vs baseline: {', '.join(row['step'] for row in fresh)}")

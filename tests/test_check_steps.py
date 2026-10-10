@@ -428,12 +428,22 @@ class ExecuteTests(ExecuteBase):
         red = [PY, "-c", f"import sys; print(open({str(self.data / 'a')!r}).read(), 'NOT RUN');"
                          " sys.exit(2)"]
         plan(self.steps, red)
-        self.assertEqual(execute(self.steps, self.cache)[0], 1)
-        self.assertEqual(list((self.cache / "steps").glob("*")), [])  # a failure is not cached
+        # NOT RUN (exit 2) is a capability skip, not a red: the verdict passes,
+        # and a non-verdict is never cached (MAKE-CHECK-CERT-WORLD-NOT-RUN).
+        self.assertEqual(execute(self.steps, self.cache)[0], 0)
+        self.assertEqual(list((self.cache / "steps").glob("*")), [])  # a non-verdict is not cached
         verdict, text, rows = self.scoped({"other": "M"})
         self.assertEqual((verdict, [bool(r.get("skipped")) for r in rows]), (0, [True]))
         verdict, text, rows = self.scoped({"a": "M"})
-        self.assertEqual((verdict, self.ran(rows)), (1, [True]))
+        self.assertEqual((verdict, self.ran(rows)), (0, [True]))
+        self.assertIn("not run", text)
+
+    def test_an_exit_2_that_does_not_say_not_run_is_red(self):
+        # argparse's usage error is exit 2 too: only a step that says NOT RUN
+        # is a capability skip.
+        usage = [PY, "-c", "import sys; print('usage: x [-h]'); print('x: error: bad flag'); sys.exit(2)"]
+        plan(self.steps, usage)
+        self.assertEqual(execute(self.steps, self.cache)[0], 1)
 
     def test_a_step_never_traced_or_untraceable_always_runs(self):
         (self.data / "a").write_text("alpha\n")
@@ -603,7 +613,7 @@ class BaselineTests(unittest.TestCase):
         text = "\n".join(check_steps.table_lines(rows, " (jobs 1, wall 1.0 s)"))
         self.assertEqual([(r["step"], r["red"], r["finding"])
                           for r in check_steps.read_baseline(text)],
-                         [("a", False, "cached (inputs unchanged since x)"), ("b", True, "b: NOT RUN"),
+                         [("a", False, "cached (inputs unchanged since x)"), ("b", False, "b: NOT RUN"),
                           ("c", False, "skipped (unaffected)")])
 
     def test_only_a_red_the_baseline_did_not_have_is_new(self):

@@ -27,8 +27,8 @@ What "the executed path" means here:
     counterpart's guard check performs at the host boundary (fn-sn-statep
     of the live Store for the owner's served entries) is never on the
     path this tool traverses.  That walk is accounted by the raw-dispatch
-    list instead: an entry declared `:raw-with` (D40; planning/
-    interfaces.json `raw_dispatched`) runs its guard-verified definition
+    list instead: an entry declared `:raw-with` (D40; the box step's
+    the interface registry's `raw_dispatched`) runs its guard-verified definition
     and skips it; every other guard-verified host entry still pays it once
     per call.  Do not read a silent report here as "no boundary walk".
   * A constrained function runs its `defattach` (edges from
@@ -1230,7 +1230,7 @@ def main(argv=None) -> int:
         description=__doc__.splitlines()[0],
         epilog="A host entry's OWN guard (the *1* counterpart's check at the host "
                "boundary) is not modelled here; the raw-dispatch list (D40, "
-               "planning/interfaces.json raw_dispatched) accounts for that walk.")
+               "the interface registry's raw_dispatched) accounts for that walk.")
     parser.add_argument("--report", action="store_true",
                         help="every find, grouped by host entry, with its path")
     parser.add_argument("--summary", action="store_true",
