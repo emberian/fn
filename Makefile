@@ -993,6 +993,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-maintenance-reserve-tests \
 	books/store-capacity-vector \
 	tests/acl2/store-capacity-vector-tests \
+	tests/acl2/store-capacity-vector-prepare-tests \
 	books/store-capacity-config \
 	books/served-auth-wire-bridge \
 	tests/acl2/served-auth-wire-bridge-tests \

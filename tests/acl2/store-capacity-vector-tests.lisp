@@ -5,7 +5,6 @@
 (include-book "../../books/store-capacity-vector")
 (include-book "../../books/store-intern")
 (include-book "must-fail-checked")
-(include-book "owner-store-budget-tests")
 (include-book "../../books/defkeystone")
 
 (defconst *cvt-p*
@@ -637,15 +636,11 @@
 ; hypothesis and an edit mutation, derived from the fixtures above).  The
 ; verdict keystones' article is *cvt-record* / its retained row *cvt-row*
 ; (payload length 1 000, one group, one undertaking open); the served
-; prepare's is owner-store-budget-tests' held row *osbt-second* on its owner
-; *osbt-reserved* (one committed record, so the prepare stages), the row the
-; host stages, its payload field the arena handle.
+; prepare's teeth are in store-capacity-vector-prepare-tests (its witness is
+; owner-store-budget-tests' owner, whose arena constant this book's includers
+; also define).
 (defconst *cvt-pl* (len (fn-record-payload *cvt-record*)))
 (defconst *cvt-gc* (len (fn-record-groups *cvt-record*)))
-(defconst *cvt-row-gate*
-  (fn-sbud-article-gate-figure (len (fn-record-payload *osbt-second*))
-                               (len (fn-record-groups *osbt-second*))))
-(defconst *cvt-row-safe* (- (- *cvt-h* *cvt-row-gate*) (* 2 *cvt-r*)))
 
 ; A composite whose encoding is just past the publication ceiling (its
 ; payload list as long as the ceiling is in octets), the smallest the removals
@@ -731,32 +726,3 @@
                (:conclusion (<= (fn-sbud-row-octets row) (fn-sbud-row-memberships row)))
                ((row *cvt-hstxa*))
                :fault "the statement figure read as the row's group count, not the publication ceiling")))
-
-(defteeth fn-cvec-prepare-keeps-the-vector
-  :claim (((staged (not (equal (fn-sbud-prepare
-                                oc record
-                                (fn-cvec-article-budget-for
-                                 profile (fn-sbud-used (fn-sbud-oc-store oc))
-                                 bytes-used record debt))
-                               oc))))
-          (and (fn-cvec-roomp profile
-                              (+ 1 (fn-sbud-used (fn-sbud-oc-store oc)))
-                              (+ bytes-used (len (fn-record-payload record)))
-                              debt)
-               (fn-profile-replay-within-boundp
-                profile (+ bytes-used (len (fn-record-payload record))))))
-  :subject fn-sbud-prepare
-  :witness ((oc *osbt-reserved*) (record *osbt-second*) (profile *cvt-p*)
-            (bytes-used *cvt-row-safe*) (debt 1))
-  :breaks ((staged ((oc *osbt-reserved*) (record *osbt-second*) (profile *cvt-p*)
-                    (bytes-used (+ *cvt-row-safe* *cvt-r*)) (debt 1))))
-  :mutations ((prepare-forgets-an-open-undertaking
-               (:conclusion (and (fn-cvec-roomp profile
-                                                (+ 1 (fn-sbud-used (fn-sbud-oc-store oc)))
-                                                (+ bytes-used (len (fn-record-payload record)))
-                                                (+ 1 debt))
-                                 (fn-profile-replay-within-boundp
-                                  profile (+ bytes-used (len (fn-record-payload record))))))
-               ((oc *osbt-reserved*) (record *osbt-second*) (profile *cvt-p*)
-                (bytes-used *cvt-row-safe*) (debt 1))
-               :fault "a staged row leaving the vector one open undertaking short")))

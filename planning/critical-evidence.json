@@ -123,9 +123,9 @@
   "fn-cvec-prepare-keeps-the-vector": {
    "subject": "fn-prc-sbud-prepare",
    "host_test": "tests/test_native_operator_verbs.py::test_the_development_profile_budget_is_reported_and_refused_by_name",
-   "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-prepare-keeps-the-vector",
-   "mutation": "tests/acl2/store-capacity-vector-tests.lisp::prepare-forgets-an-open-undertaking",
-   "provenance": "keystone_critical.py --declare sha256:eba17180ef90e91ec1eb3e0d9187fc141a8dc3cb14a09fb848509f1645151010"
+   "trace_witness": "tests/acl2/store-capacity-vector-prepare-tests.lisp::fn-cvec-prepare-keeps-the-vector",
+   "mutation": "tests/acl2/store-capacity-vector-prepare-tests.lisp::prepare-forgets-an-open-undertaking",
+   "provenance": "keystone_critical.py --declare sha256:ddb9ff860e046e4b6b345d23c2f6bb16d5280aed1033c2970d795a30f810bc93"
   },
   "fn-cvec-statement-row-within-its-figure": {
    "subject": "fn-sbud-row-octets",
