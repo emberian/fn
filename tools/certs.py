@@ -1722,7 +1722,17 @@ def compatible_partial_choices(
         for directory, meta in options[name]:
             ids[name].append(len(indexed))
             indexed.append((name, directory, meta))
-    dependencies = {name: set(closure(root, name)) - {name} for name in options}
+    # A pinned book is a resident parent outside the closure being installed:
+    # only its dependencies inside OPTIONS are this install's to agree with.
+    # The rest are not chosen here and stay as they are, so counting them as
+    # unchosen would give up every such parent (train 86 on hbox: protocol
+    # --wire's install of books/wire-export's closure removed the image-world
+    # certificates the same run had just certified, since each includes books
+    # outside that closure).
+    pinned = list(dict.fromkeys(pinned))
+    dependencies = {name: (set(closure(root, name)) - {name}) & (set(options) if name in pinned else
+                                                                 set(closure(root, name)))
+                    for name in options}
     pairs = [(p, c) for parent in sorted(options)
              for child in sorted(dependencies[parent]) if child in ids
              for p in ids[parent] for c in ids[child]]
