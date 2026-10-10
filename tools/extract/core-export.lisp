@@ -284,7 +284,11 @@
                   (list (cons :xl-stobj-event (get-event name w))
                         (cons :xl-stobj-creator (get-stobj-creator name w))
                         (cons :xl-stobj-recognizer (get-stobj-recognizer name w)))))))
-      (cons (cons name (append computed (xt-snapshot-stored-properties name w nil)))
+      ; a stored property the computed rows already carry is not carried again: getpropc answers the
+      ; first pair of its row (clruntime.lisp assoc), so the later pair is never read (closure_why.py
+      ; --check-props refuses a row that carries a property twice)
+      (cons (cons name (append computed
+                               (xt-snapshot-stored-properties name w (strip-cars computed))))
             (xt-world-snapshot (cdr names) tables verdicts manifest w)))))
 
 ; D40's raw-dispatch verdicts (books/raw-dispatch-verdict.lisp), judged HERE

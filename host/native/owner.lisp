@@ -881,16 +881,25 @@ Empty progress yields; a cold read retains the exact original plan/capture."
                (let ((attempt
                        (catch 'fnn-extent-cold
                          (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
-                           (destructuring-bind (word bytes next done)
+                           ;; Adapter A2 (Builder A): the window is rendered
+                           ;; into fn-dss-out and copied out here, under the
+                           ;; owner mutex, before another render reuses it.
+                           (destructuring-bind (word next done &rest ignored)
                                (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-article-window)
-                                         (fnn-live-stobj 'fn-arena))
-                             (list :warm word bytes next done))))))))
+                                         (fnn-live-stobj 'fn-arena) (fnn-live-ast-ws)
+                                         (fnn-live-dss-out))
+                             (declare (ignore ignored))
+                             ;; :ordinary renders nothing and leaves the
+                             ;; buffer as it was: no octets then
+                             (list :warm word
+                                   (if (eq word :article) (fnn-dss-out-octets) (fnn-make-octets 0))
+                                   next done))))))))
                  (if (eq (car attempt) :warm) attempt
                    (list :cold (fnn-owner-cold-issue-locked service cid attempt))))) class)))
       (when (eq (car article) :cold)
         (return-from fnn-owner-render-next-quantum
           (values (fnn-make-octets 0) plan nil nil (second article) 0)))
-      (let ((bytes (fnn-octets (third article))))
+      (let ((bytes (third article)))
         (return-from fnn-owner-render-next-quantum
           (values bytes (fourth article) (fifth article)
                   (and (zerop (length bytes)) (not (fifth article))) nil (length bytes))))))

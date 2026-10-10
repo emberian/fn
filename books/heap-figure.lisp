@@ -65,6 +65,7 @@
 ; by the host and is deleted: Q3a, assurance-hygiene-5).
 
 (in-package "ACL2")
+(include-book "decimal-text")
 (include-book "owner-checkpoint-pipeline")
 (include-book "outcome-class")
 (include-book "heap-store-figure")
@@ -794,7 +795,7 @@
 
 (defun fn-heap-decimal (n)
   (declare (xargs :guard t))
-  (coerce (explode-nonnegative-integer (nfix n) 10 nil) 'string))
+  (fn-decimal-text n))
 
 (defun fn-heap-reason-word (reason)
   (declare (xargs :guard t))

@@ -477,7 +477,8 @@ class PushTests(TrainBase):
         ready.mkdir()
         (ready / "a.md").write_text("# READY: lane/a\n")
         (ready / "a-landing.md").write_text(f"# READY (landing): lane/a @ {sha[:9]}\n")
-        (ready / "ab.md").write_text(f"# READY: lane/ab @ {sha[:9]}\n")
+        # lane/ab at a sha HEAD does not contain: not lane a's, not landed
+        (ready / "ab.md").write_text("# READY: lane/ab @ 0123456789ab\n")
         (ready / "landed-old.md").write_text("# READY: lane/a\n")
         env = {"FN_READY_DIR": str(ready)}
         self.assertEqual(self.train("gate", extra_env=env).returncode, 0)
@@ -487,6 +488,26 @@ class PushTests(TrainBase):
                          ["ab.md", "landed-a-landing.md", "landed-a.md", "landed-old.md"])
         self.assertIn(f"STATE: dev = {self.head()[:9]} (train 9): carries a@{sha[:9]}", p.stdout)
         self.assertIn("READY landed: landed-a-landing.md, landed-a.md", p.stdout)
+
+    def test_push_renames_the_readies_of_lanes_stacked_inside_a_carried_one(self):
+        # train 85: b-host-85 carried d-cost-rows, whose READY names its own
+        # lane and sha; that sha is in HEAD, so its READY has landed too
+        inner = self.lane("s", {"stacked.txt": "s\n"})
+        sha = self.lane("a", {"other.txt": "ok\n"}, base=inner)
+        self.assertEqual(self.train("merge", f"a@{sha}").returncode, 0)
+        ready = self.tmp / "ready"
+        ready.mkdir()
+        (ready / "s.md").write_text(f"# READY: lane/s @ {inner[:9]} (stacked)\n")
+        (ready / "m.md").write_text(f"# READY (landing): memory (lane/s {inner[:9]})\n")
+        (ready / "x.md").write_text("# READY: lane/x @ 0123456789ab\n")
+        (ready / "packet.md").write_text("# Statements: no lane named\n")
+        env = {"FN_READY_DIR": str(ready)}
+        self.assertEqual(self.train("gate", extra_env=env).returncode, 0)
+        p = self.train("push", "--label", "9", extra_env=env)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(sorted(f.name for f in ready.iterdir()),
+                         ["landed-m.md", "landed-s.md", "packet.md", "x.md"])
+        self.assertIn("READY landed: landed-m.md, landed-s.md", p.stdout)
 
     def test_push_refused_when_dev_moved_after_gating(self):
         self.ready()
@@ -1380,6 +1401,23 @@ class ImageModuleTests(unittest.TestCase):
     def ran(self, modules, source=None):
         return {"source": source or self.HEAD, "dir": "/box/run",
                 "modules": {m: {"rc": 0, "cases": {m + ".T.test_ok": "ok"}} for m in modules}}
+
+    def test_a_module_log_with_a_non_text_octet_still_reads_its_cases(self):
+        # train 86: a NUL in test_native_key_statements' log made grep call it
+        # a binary file and print nothing, so the module read with no case
+        with tempfile.TemporaryDirectory() as d:
+            run = Path(d)
+            (run / "rc").mkdir()
+            (run / "logs").mkdir()
+            (run / "rc" / "test-tests.m").write_text("1\n")
+            record = {"module": "tests.m", "cases": [["tests.m.T.test_a", "ok"], ["tests.m.T.test_b", "FAIL"]]}
+            (run / "logs" / "test-tests.m.log").write_bytes(
+                b"article \x00\xff body\n" + b"FN_TEST_BUDGET_RESULT " + json.dumps(record).encode() + b"\n")
+            out = subprocess.run(["sh", "-c", train.image_read_script(str(run))],
+                                 capture_output=True, text=True, check=True).stdout
+        read = train.parse_image_results(out)
+        self.assertEqual(read["tests.m"]["rc"], 1)
+        self.assertEqual(read["tests.m"]["cases"], {"tests.m.T.test_a": "ok", "tests.m.T.test_b": "FAIL"})
 
     def test_a_launcher_change_obliges_the_served_natives_operator_verbs_and_heap_from_profile(self):
         need = train.image_modules(["packaging/launcher-decide.sh", "README.md"])

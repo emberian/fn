@@ -643,8 +643,7 @@
            :use ((:instance fn-lgk-relp-at-rest)
                  (:instance fn-lgu-two-steps-are-the-extended-state)
                  (:instance fn-lg-extension-keeps-the-relation)))))
-(local
- (defthm fn-lgu-sealed-extent-facts
+(defthm fn-lgu-sealed-extent-facts
    (implies (and (posp unit) (natp extent) (equal (mod extent unit) 0))
             (let ((next (fn-lgk-sealed-extent ks extent unit)))
               (and (natp next) (equal (mod next unit) 0) (<= extent next))))
@@ -653,7 +652,7 @@
             :in-theory (disable fn-lgc-sealed-extent fn-lgk-sealed-extent fn-lgc-fitsp mod
                                 fn-lgc-sealed-extent-fits-the-batch fn-lgc-sealed-extent-of-abstraction)
             :use ((:instance fn-lgc-sealed-extent-fits-the-batch (c (fn-lgc-of ks)))
-                  (:instance fn-lgc-sealed-extent-of-abstraction))))))
+                  (:instance fn-lgc-sealed-extent-of-abstraction)))))
 (local
  (defthm fn-lgu-fields-of-append
    (let ((k2 (fn-lgk-append ks unit extent)))
@@ -682,15 +681,14 @@
             :use ((:instance fn-lgu-safep-acked-within)
                   (:instance fn-lgu-safep-when-fields-agree (k2 (fn-lgk-append ks unit extent)))
                   (:instance fn-lgu-safep-when-fields-agree (k2 (fn-lgk-fence-failed ks))))))))
-(local
- (defthm fn-lgu-relp-content-shape
+(defthm fn-lgu-relp-content-shape
    (implies (fn-lgk-relp bs ks ino genesis max)
             (and (posp (fn-bs-unit bs))
                  (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-lgk-relp fn-lgk-content-okp)
                                    (fn-lg-scan fn-lg-scan-last fn-lg-log fn-bs-take fn-lg-zerosp
-                                    fn-lg-recordsp fn-frame-digestp fn-bs-durable-content mod))))))
+                                    fn-lg-recordsp fn-frame-digestp fn-bs-durable-content mod)))))
 (local
  (defthm fn-lgu-seal-step-from-the-relation
    (implies (and (fn-lgk-relp bs ks ino genesis max)
@@ -1210,3 +1208,39 @@
                  (:instance fn-lgu-acknowledged-records-are-recovered-at-every-cut
                             (ks (fn-lgt-recover (fn-lgd-octets s) genesis (fn-bs-unit bs) max floor))
                             (ops (append ops (fn-lgu-finishes n))))))))
+
+; -----------------------------------------------------------------------------
+; 9. Exports for the commit driver (books/post-transaction-durable.lisp): the
+; section 3, 6 and 8 facts it composes, as :rule-classes nil copies of local
+; lemmas so no includer's theory changes.
+
+(defthm fn-lgu-host-step-of-a-kernel-op-export
+  (implies (and (fn-lgu-kernel-op-p op)
+                (implies (member-equal (car op) '(:prepare :take))
+                         (equal (fn-lgu-take-verdict (nth 1 op) max) :admissible)))
+           (equal (fn-lgu-host-step bs ks op ino max)
+                  (list (list (cons bs (fn-lgk-host-step ks op))) bs (fn-lgk-host-step ks op))))
+  :rule-classes nil
+  :hints (("Goal" :by fn-lgu-host-step-of-a-kernel-op)))
+
+(defthm fn-lgu-kernel-op-keeps-the-relation-export
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (fn-lgu-kernel-op-p op)
+                (implies (member-equal (car op) '(:prepare :take))
+                         (fn-lg-recordp (nth 1 op) max)))
+           (fn-lgk-relp bs (fn-lgk-host-step ks op) ino genesis max))
+  :rule-classes nil
+  :hints (("Goal" :by fn-lgu-kernel-op-keeps-the-relation)))
+
+(defthm fn-lgu-host-final-of-append-export
+  (equal (fn-lgu-host-final bs ks (append x y) ino max)
+         (let ((f (fn-lgu-host-final bs ks x ino max)))
+           (fn-lgu-host-final (car f) (cdr f) y ino max)))
+  :rule-classes nil
+  :hints (("Goal" :by fn-lgu-host-final-of-append)))
+
+(defthm fn-lgu-host-final-is-a-cut-export
+  (member-equal (fn-lgu-host-final bs ks ops ino max) (fn-lgu-host-run bs ks ops ino max))
+  :rule-classes nil
+  :hints (("Goal" :by fn-lgu-host-final-is-a-cut)))
+

@@ -38,6 +38,7 @@
 ; (the Path diagnostic carries identity OCTETS), `defrecord' for the macro.
 
 (in-package "ACL2")
+(include-book "decimal-text")
 (include-book "acceptance-alloc")
 (include-book "defrecord")
 (include-book "cbor")
@@ -446,21 +447,6 @@
 ; `coerce' to a string needs its answer to be a character list.
 (local (include-book "arithmetic/top" :dir :system))
 
-(local
- (defthm fn-prov-explode-characters-aux
-   (implies (and (natp number) (character-listp accumulator))
-            (character-listp
-             (explode-nonnegative-integer number 10 accumulator)))))
-
-(local
- (defthm fn-prov-explode-characters
-   (implies (natp number)
-            (character-listp (explode-nonnegative-integer number 10 nil)))))
-
-(defun fn-prov-nat-string (n)
-  (declare (xargs :guard t))
-  (coerce (explode-nonnegative-integer (nfix n) 10 nil) 'string))
-
 (defun fn-prov-append3 (a b c)
   (declare (xargs :guard (and (stringp a) (stringp b) (stringp c))))
   (string-append a (string-append b c)))
@@ -483,7 +469,7 @@
          (fn-prov-append3
           "post principal=" (fn-prov-post-principal x)
           (string-append " generation="
-                         (fn-prov-nat-string (fn-prov-post-generation x)))))
+                         (fn-decimal-text (fn-prov-post-generation x)))))
         ((fn-prov-transitp x)
          (fn-prov-append3
           "peer-transit peer=" (fn-prov-transit-peer x)
@@ -495,7 +481,7 @@
             " diagnostic="
             (fn-prov-diagnostic-string (fn-prov-transit-diagnostic x)))
            (string-append " generation="
-                          (fn-prov-nat-string
+                          (fn-decimal-text
                            (fn-prov-transit-generation x))))))
         ((fn-prov-bpp x)
          (fn-prov-append3
@@ -530,7 +516,7 @@
   :recognizers (fn-provp)
   :also (fn-prov-transit-kindp fn-prov-diagnosticp fn-prov-kind
          fn-prov-kindp fn-prov-render fn-prov-describe
-         fn-prov-nat-string fn-prov-append3 fn-prov-transit-kind-string
+         fn-prov-append3 fn-prov-transit-kind-string
          fn-prov-diagnostic-string fn-prov-diagnostic-match
          fn-prov-diagnostic-mismatch))
 

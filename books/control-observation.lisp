@@ -7,6 +7,7 @@
 ; S3a (C8, statement first): Over the actual fn-nco-owner-step, in every reachable owner state each requested receipt has exactly one pending producer job naming it, and every pending producer job names exactly one requested receipt. Acceptance creates both atomically; only that job's terminal outcome leaves requested and consumes the job, mapping to exactly one terminal status. The host executes the job held by that state, not an untracked copy of its request.
 ; S3b (C8, statement first): Over fn-nco-wire-step, the status entry the host calls, a status query for a receipt the owner does not hold (after death/restart or for an unissued serial) answers the distinct word receipt-unknown, never requested and never a terminal word. The ACL2 client decision maps receipt-unknown to uncertain, exit 3, and stops polling. Persistence across process death is not claimed beyond this observation contract.
 (in-package "ACL2")
+(include-book "decimal-text")
 
 (defconst *fn-nco-reply-grace-seconds* 10)
 (defconst *fn-nco-observation-octets-per-second* 65536)
@@ -221,18 +222,12 @@
         (requested :requested)
         (t :blocked)))
 
-(local
- (defthm fn-nco-explode-characters
-   (implies (and (natp n) (character-listp acc))
-            (character-listp (explode-nonnegative-integer n 10 acc)))))
-
 (defun fn-nco-token-text (token)
   (declare (xargs :guard t))
   (concatenate 'string
                (if (stringp (fn-nco-at 0 token)) (fn-nco-at 0 token) "")
                "-"
-               (coerce (explode-nonnegative-integer
-                        (nfix (fn-nco-at 1 token)) 10 nil) 'string)))
+               (fn-decimal-text (fn-nco-at 1 token))))
 
 
 ; A retry retains an earlier deferral until it publishes. That old word

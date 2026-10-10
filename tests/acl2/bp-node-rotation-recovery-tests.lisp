@@ -13,12 +13,7 @@
     (((proposes (equal (car (car (fn-bpnf-answer-effects
                           (fn-bpnp-rotate-step st generation ck)))) :persist-checkpoint))
       (invariant (fn-bpn-machine-invariantp (fn-bpnf-base st)))
-      (projection (fn-bpnr-recovery-replayp
-         0 (+ 1 (fn-bpnf-epoch st))
-         (list :ready (fn-bpnf-held-list st) (fn-bpnf-handoffs st)
-               (cons (fn-bpnf-epoch st) 0) (fn-bpnf-next-arrival st))
-         (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))
-         (fn-bpn-machine-state-max-octets (fn-bpnf-base st))))
+      (ready (fn-bpnr-replay-readyp st))
       (profile (or (not (equal (fn-bpn-nth 0 (fn-bpn-nth 4 event)) :ready))
             (and (fn-bpnpf-profilep profile)
              (fn-bprpf-held-adus-fitp (fn-bpn-nth 1 (fn-bpn-nth 4 event))
@@ -38,7 +33,7 @@
   :breaks ((proposes ((ck (update-nth 7 nil (bprd-owed-ck))) (st (bprd-owed-q))))
            (invariant ((st (bprd-token-q 5000))
                        (ck (update-nth 8 5000 (bprd-owed-ck)))))
-           (projection ((st (update-nth 10 0 (bprd-owed-q)))
+           (ready ((st (update-nth 10 0 (bprd-owed-q)))
                         (ck (update-nth 5 0 (bprd-owed-ck)))))
            (profile ((profile nil) (st (bprd-owed-q)) (ck (bprd-owed-ck))))
            (domain ((domain '(:fence :different-boot)) (st (bprd-owed-q)) (ck (bprd-owed-ck)))))
@@ -134,3 +129,34 @@
                 (records '(:lifecycle-record)) (sequence nil) (rows nil)
                 (gplan nil) (profile nil))
                :fault "a fresh domain initialized over recovered lifecycle records")))
+
+;; PREMISE-EXCESS-D: the replay premise as an invariant of the host's state.
+;; The open establishes it; every fn-bpnj-step answer preserves it.
+(defteeth fn-bpnr-open-is-replay-ready
+  :claim (let ((st (fn-bpnr-seed-state (fn-bpnf-initial-state config max-held max-octets) plan)))
+           (((opened st))
+            (fn-bpnr-replay-readyp st)))
+  :subject fn-bpnr-seed-state
+  :witness ((config *bpcx-config*) (max-held 8) (max-octets 1048576)
+            (plan (bprr-traced-plan)))
+  :breaks ((opened ((config nil) (max-held 8) (max-octets 1048576)
+                    (plan (bprr-traced-plan)))))
+  :mutations (:not-applicable "the one hypothesis is that the open produced a state; nothing weaker is a claim about one"))
+
+(defun bprr-pending-store-st ()
+  (update-nth 6 (fn-bpnf-operation 0 0 :store nil :pending) (bprd-trace-fresh)))
+(defteeth fn-bpnj-step-preserves-replay-readiness
+  :claim (((ready (fn-bpnr-replay-readyp st)))
+          (fn-bpnr-replay-readyp (fn-bpnf-answer-state (fn-bpnj-step st event))))
+  :subject fn-bpnj-step
+  :witness ((st (bprd-traced-q)) (event (list :rotate 1 (bprd-traced-ck))))
+  :breaks ((ready ((st (update-nth 10 0 (bprd-owed-q)))
+                   (event (list :job-result (fn-bpn-job-key (bprd-owed-job)) 999 :failed)))))
+  :mutations ((issued-unfenced
+               (:hypothesis ready
+                (and (natp (fn-bpnf-next-op st))
+                     (implies (equal (fn-bpnf-next-op st) 0)
+                              (implies (fn-frame-natp (+ 1 (fn-bpnf-epoch st)))
+                                       (fn-bpnr-own-replayp st)))))
+               ((st (bprr-pending-store-st)) (event '(:persist-result 0 0 :durable)))
+               :fault "an operation pending at counter zero settles held rows no recovery validated")))

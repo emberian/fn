@@ -172,4 +172,6 @@ python3 "$X/core_launcher.py" "$OUT/$NAME" --runtime "$SBCL" --home "$SBCL_HOME"
 # The image loads its libraries from lib/ beside its core: the same files here.
 ln -sfn "$LIB" "$OUT/lib"
 [ -f "$TREE/build/source-revision" ] && cp "$TREE/build/source-revision" "$OUT/source-revision"
+# Item 8: the fault boundaries and backtrace readers kept their debug info (debug-keep.txt), and nothing else is compiled to need it.
+python3 "$X/debug_keep.py" "$OUT/$NAME" "$X/debug-keep.txt" || { echo "core: a debug-keep function lacks its debug-info (item 8); see above" >&2; exit 1; }
 echo "core: built $OUT/$NAME"

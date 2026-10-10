@@ -287,7 +287,7 @@
   (list (fn-record-string-octets "account")
         (fn-record-string-octets "invite")
         (fn-record-string-octets digest)
-        (fn-record-string-octets (fn-acct-decimal-text seconds))))
+        (fn-record-string-octets (fn-decimal-text seconds))))
 
 (definterface fn-acct-host-invite-argv
   :class ::ideal)

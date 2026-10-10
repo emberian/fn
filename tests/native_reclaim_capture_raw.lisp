@@ -18,6 +18,8 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-live-ast-ws ()
+  (harness-stub-reached 'fnn-live-ast-ws "host/native/io.lisp"))
 (defun fnn-live-owner-st ()
   (harness-stub-reached 'fnn-live-owner-st "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----

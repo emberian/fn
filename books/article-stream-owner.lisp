@@ -326,15 +326,10 @@
       (fn-ast-preflight source))))
 
 (local
- (progn
-   (defthm fn-asto-tokenize-aux-true-listp
-     (true-listp (fn-nntp-tokenize-aux xs word-rev words-rev))
-     :rule-classes :type-prescription
-     :hints (("Goal" :in-theory (enable fn-nntp-tokenize-aux))))
-   (defthm fn-asto-tokenize-true-listp
-     (true-listp (fn-nntp-tokenize line))
-     :rule-classes :type-prescription
-     :hints (("Goal" :in-theory (enable fn-nntp-tokenize))))))
+ (defthm fn-asto-line-tokens-true-listp
+   (true-listp (fn-nsp-line-tokens line))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-nsp-line-tokens fn-nsp-tokens-of)))))
 
 (defun fn-asto-capture (oc id w cache fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
@@ -348,15 +343,19 @@
          (sc (and conn (fn-own-tls-served-conn o conn)))
          (as (fn-served-conn-session sc)) (config (fn-served-conn-config sc))
          (events (fn-wsp-events w)) (event (car events))
+         ;; A3: the tokens by the fn-nsp-tokens stream (nil unless the
+         ;; line passes the RFC 3977 section 3.1 preflight;
+         ;; fn-nsp-line-tokens-is-tokenize).
          (tokens (and (equal (car event) :command)
-                       (fn-nntp-tokenize (cadr event))))
+                      (fn-cbor-octet-listp (cadr event))
+                      (unsigned-byte-p 59 (len (cadr event)))
+                      (fn-nsp-line-tokens (cadr event))))
          (keyword (car tokens))
          (kind (cond ((fn-nntp-keywordp keyword "ARTICLE") :article)
                      ((fn-nntp-keywordp keyword "HEAD") :head)
                      ((fn-nntp-keywordp keyword "BODY") :body)
                      (t nil))))
     (if (not (and conn kind (null (cdr events))
-                  (fn-nntp-command-inputp (cadr event))
                   (fn-nntp-keyword-tokenp keyword)
                   (fn-nntp-command-arguments-at-mostp tokens)
                   (fn-scar-auth-sessionp as (fn-sn-node (fn-own-store o)))
@@ -393,13 +392,79 @@
 ; One wire event per request: a following NEXT/ARTICLE remains unconsumed
 ; while this retrieval's preflight owns its response. This is a core parser
 ; boundary, independent of the optional physical funding policy.
+;; A1: a command-mode connection's first event by the fn-nsp-frame stream
+;; into a line workspace (the partial line carried in the wire state's
+;; line-rev reloaded first; adapter A1, owner Builder C, retired when a
+;; connection owns its line workspace span); fn-asto-first-event-is-span-fold
+;; ties it to the byte fold.  An article-mode connection (a POST body) keeps
+;; fn-wire-scan, the POST family's scanner.
+(local (defthm fn-asto-octet-listp-rev
+  (implies (fn-cbor-octet-listp x) (fn-cbor-octet-listp (rev x)))
+  :hints (("Goal" :in-theory (enable rev fn-cbor-octet-listp)))))
+(defun fn-asto-frame-line (ws start end fn-octets fn-ast-ws)
+  (declare (xargs :stobjs (fn-octets fn-ast-ws)
+                  :guard (and (fn-wire-fast-statep ws)
+                              (equal (fn-wire-state-mode ws) :command)
+                              (unsigned-byte-p 55 (fn-wire-state-line-limit ws))
+                              (fn-cbor-octet-listp (fn-wire-state-line-rev ws))
+                              (unsigned-byte-p 58 (len (fn-wire-state-line-rev ws)))
+                              (unsigned-byte-p 59 start) (unsigned-byte-p 59 end) (<= start end)
+                              (<= end (fn-octets-len fn-octets)))
+                  :guard-hints (("Goal" :in-theory (disable fn-nsp-frame fn-nsp-frame-wsp)))))
+  (let* ((ll (fn-wire-state-line-limit ws))
+         (fn-ast-ws (fn-ast-ws-from-list (fn-wire-reverse-octets (fn-wire-state-line-rev ws)) fn-ast-ws)))
+    (mv-let (r s2 i2 fn-ast-ws)
+      (fn-nsp-frame ll (ec-call (fn-nsp-frame-state-of ws)) start end nil (+ 1 ll) fn-octets fn-ast-ws)
+      (mv (ec-call (fn-nsp-frame-wsp r s2 i2 (fn-ast-ws-list fn-ast-ws) ws)) fn-ast-ws))))
+; The mode is tested first: in :article mode fn-wire-statep walks the
+; accumulated body (fn-bch-body-okp over body-rev), which on every read of a
+; POST body made the upload quadratic (a 3 MiB POST did not finish in 400 s on
+; hbox, spans-a2-237cdbb); a command-mode state's walk is its one line.
+(defun fn-asto-frame-casep (ws start end)
+  (declare (xargs :guard t))
+  (and (equal (fn-wire-state-mode ws) :command)
+       (fn-wire-statep ws)
+       (unsigned-byte-p 55 (fn-wire-state-line-limit ws))
+       (fn-cbor-octet-listp (fn-wire-state-line-rev ws))
+       (unsigned-byte-p 58 (len (fn-wire-state-line-rev ws)))
+       (unsigned-byte-p 59 start) (unsigned-byte-p 59 end)))
+(defthm fn-asto-frame-line-is-span-fold
+  (implies (and (fn-octets-p fn-octets)
+                (fn-asto-frame-casep ws start end) (<= start end) (<= end (fn-octets-len fn-octets)))
+           (equal (mv-nth 0 (fn-asto-frame-line ws start end fn-octets fn-ast-ws))
+                  (fn-wire-span-fold ws start end fn-octets)))
+  :hints (("Goal" :use ((:instance fn-nsp-frame-is-wire-span-fold (i start)
+                                   (fn-dss-out (fn-wire-reverse-octets (fn-wire-state-line-rev ws)))))
+           :in-theory (disable fn-nsp-frame fn-nsp-frame-wsp fn-wire-span-fold
+                               fn-wire-statep fn-nsp-frame-state-of))))
+;; Guard t (the stobj's recognizer only), the range tested in the body: as
+;; fn-nsp-line-tokens, so the local fn-ast-ws writes carry no invariant-risk
+;; up the :program read chain (host/owner-host.lisp fn-asto-mca-read-span).
 (defun fn-asto-first-event (oc id start end fn-octets)
   (declare (xargs :stobjs fn-octets
-                  :guard (and (natp start) (natp end) (<= start end)
-                              (<= end (fn-octets-len fn-octets)))))
-  (let ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
-    (and conn (fn-wire-fast-statep (fn-own-conn-wire conn))
-         (fn-wire-scan (fn-own-conn-wire conn) start end fn-octets))))
+                  :guard-hints (("Goal" :in-theory (disable fn-asto-frame-line fn-wire-scan fn-wire-statep)))))
+  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+         (ws (and conn (fn-own-conn-wire conn))))
+    (and (natp start) (natp end) (<= start end) (<= end (fn-octets-len fn-octets))
+         conn (fn-wire-fast-statep ws)
+         (if (fn-asto-frame-casep ws start end)
+             (with-local-stobj fn-ast-ws
+               (mv-let (w fn-ast-ws) (fn-asto-frame-line ws start end fn-octets fn-ast-ws)
+                 w))
+           (fn-wire-scan ws start end fn-octets)))))
+(defthm fn-asto-first-event-is-span-fold
+  (implies (and (fn-octets-p fn-octets) (natp start) (natp end) (<= start end)
+                (<= end (fn-octets-len fn-octets)))
+           (equal (fn-asto-first-event oc id start end fn-octets)
+                  (let* ((conn (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc))))
+                         (ws (and conn (fn-own-conn-wire conn))))
+                    (and conn (fn-wire-fast-statep ws)
+                         (fn-wire-span-fold ws start end fn-octets)))))
+  :hints (("Goal" :use ((:instance fn-wire-scan-is-span-fold
+                                   (wire-state (fn-own-conn-wire (fn-own-find-conn id (fn-own-conns (fn-ocfg-owner oc)))))
+                                   (i start)))
+           :in-theory (disable fn-wire-scan-is-span-fold fn-wire-scan fn-wire-span-fold fn-asto-frame-line
+                               fn-asto-frame-casep fn-wire-fast-statep))))
 
 (defun fn-asto-captured-result (oc capture consumed)
   (declare (xargs :guard t))
@@ -570,42 +635,48 @@
                                      (fn-ast-at fn-ast-ready-memberships fn-ast-windowp)))))))
 
 
-(defun fn-asto-ready-rest (oc id rest fuel fn-arena)
-  (declare (xargs :stobjs fn-arena :guard (fn-asto-cursor-effectsp rest fn-arena)
+(defun fn-asto-ready-rest (oc id rest fuel fn-arena fn-ast-ws)
+  (declare (xargs :stobjs (fn-arena fn-ast-ws) :guard (fn-asto-cursor-effectsp rest fn-arena)
                   :guard-hints (("Goal" :in-theory (disable fn-asto-selection-ready
-                                                            fn-asto-finish)))))
-  (if (atom rest) (mv :ready oc rest)
+                                                            fn-asto-finish fn-ast-scan-step)))))
+  (if (atom rest) (mv :ready oc rest fn-ast-ws)
     (if (eq (caar rest) :article-preflight)
         (let ((capture (cadar rest)))
           (if (eq (fn-ast-at 0 (fn-ast-at 2 capture)) :article-select)
               (if (not (equal id (fn-own-conn-id (fn-ast-at 0 capture))))
-                  (mv :stale oc rest)
+                  (mv :stale oc rest fn-ast-ws)
                 (mv-let (word oc2 effects) (fn-asto-selection-ready oc capture fuel fn-arena)
-                  (mv word oc2 (append effects (cdr rest)))))
-          (mv-let (scan used)
-            (fn-ast-scan-step (fn-ast-at 5 capture) (nfix fuel) fn-arena)
-            (declare (ignore used))
-            (let ((next (fn-asto-capture-with-scan capture scan)))
-              (if (not (equal id (fn-own-conn-id (fn-ast-at 0 capture))))
-                  (mv :stale oc rest)
-                (if (not (fn-ast-scan-donep scan))
-                  (mv :yield oc (cons (list :article-preflight next) (cdr rest)))
-                (mv-let (word oc2 effects) (fn-asto-finish oc next fn-arena)
-                  (mv word oc2 (append effects (cdr rest))))))))))
-      (mv-let (word oc2 next) (fn-asto-ready-rest oc id (cdr rest) fuel fn-arena)
-        (mv word oc2 (cons (car rest) next))))))
+                  (mv word oc2 (append effects (cdr rest)) fn-ast-ws)))
+            (if (not (equal id (fn-own-conn-id (fn-ast-at 0 capture))))
+                (mv :stale oc rest fn-ast-ws)
+              (mv-let (scan fn-ast-ws)
+                (fn-ast-scan-step (fn-ast-at 5 capture) (nfix fuel) fn-arena fn-ast-ws)
+                (let ((next (fn-asto-capture-with-scan capture scan)))
+                  (if (not (fn-ast-scan-donep scan))
+                      (mv :yield oc (cons (list :article-preflight next) (cdr rest)) fn-ast-ws)
+                    (mv-let (word oc2 effects) (fn-asto-finish oc next fn-arena)
+                      (mv word oc2 (append effects (cdr rest)) fn-ast-ws))))))))
+      (mv-let (word oc2 next fn-ast-ws) (fn-asto-ready-rest oc id (cdr rest) fuel fn-arena fn-ast-ws)
+        (mv word oc2 (cons (car rest) next) fn-ast-ws)))))
 
-(defun fn-asto-ready-plan-step (oc id plan fuel fn-arena)
-  (declare (xargs :stobjs fn-arena
-                  :guard (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)))
-  (mv-let (word oc2 rest) (fn-asto-ready-rest oc id (fn-splan-rest plan) fuel fn-arena)
-    (mv word oc2 (cons (fn-splan-cur plan) rest))))
+;; Guard t (the stobj recognizers only): the plan's shape is tested here and
+;; a plan without it takes fn-asto-ready-rest by ec-call (guard-checked, the
+;; logic unchanged), so the fn-ast-ws writes below carry no invariant-risk
+;; into the :program caller host/owner-host.lisp
+;; fn-owner-article-ready-plan-step, which then runs raw.
+(defun fn-asto-ready-plan-step (oc id plan fuel fn-arena fn-ast-ws)
+  (declare (xargs :stobjs (fn-arena fn-ast-ws)))
+  (mv-let (word oc2 rest fn-ast-ws)
+    (if (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)
+        (fn-asto-ready-rest oc id (fn-splan-rest plan) fuel fn-arena fn-ast-ws)
+      (ec-call (fn-asto-ready-rest oc id (fn-splan-rest plan) fuel fn-arena fn-ast-ws)))
+    (mv word oc2 (cons (fn-splan-cur plan) rest) fn-ast-ws)))
 
 (defthm fn-asto-ready-rest-keeps-cursor-effectsp
   (implies (fn-asto-cursor-effectsp rest fn-arena)
            (fn-asto-cursor-effectsp
-            (mv-nth 2 (fn-asto-ready-rest oc id rest fuel fn-arena)) fn-arena))
-  :hints (("Goal" :induct (fn-asto-ready-rest oc id rest fuel fn-arena)
+            (mv-nth 2 (fn-asto-ready-rest oc id rest fuel fn-arena fn-ast-ws)) fn-arena))
+  :hints (("Goal" :induct (fn-asto-ready-rest oc id rest fuel fn-arena fn-ast-ws)
                   :in-theory (e/d (fn-asto-cursor-effectsp)
                                   (fn-asto-selection-ready fn-asto-finish fn-ast-at
                                    fn-ast-scan-step fn-asto-capture-with-scan)))))
@@ -613,7 +684,7 @@
 (defthm fn-asto-ready-plan-step-keeps-cursor-effectsp
   (implies (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)
            (fn-asto-cursor-effectsp
-            (fn-splan-rest (mv-nth 2 (fn-asto-ready-plan-step oc id plan fuel fn-arena)))
+            (fn-splan-rest (mv-nth 2 (fn-asto-ready-plan-step oc id plan fuel fn-arena fn-ast-ws)))
             fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-asto-ready-plan-step fn-splan-rest)
                                   (fn-asto-ready-rest)))))
@@ -664,19 +735,6 @@
                 (not (fn-qplan-lst-cursorp plan)))
            (posp (fn-asto-resume-ms plan))))
 
-(defun fn-asto-plan-render-step (plan fuel fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (let ((rest (fn-splan-rest plan)))
-    (if (and (not (consp (fn-splan-cur plan))) (eq (caar rest) :article-cursor))
-        (mv-let (bytes next used)
-          (fn-ast-render-step (cadar rest) (nfix fuel) fn-arena)
-          (declare (ignore used))
-          (let ((done (eq (car next) :done)))
-            (mv :article bytes
-                (cons nil (if done (cdr rest) (cons (list :article-cursor next) (cdr rest))))
-                (and done (fn-splan-rest-donep (cdr rest))))))
-      (mv :ordinary nil plan nil))))
-
 ;; The ARTICLE quantum: how many payload octets one hold of the owner mutex
 ;; scans (preflight fuel) or renders (window), and so how many octets one
 ;; write carries.  It was the OVER cursor's 256 (a NOV line's worth of
@@ -684,7 +742,8 @@
 ;; and a scheduling turn.  An article octet costs about a microsecond, so
 ;; 16384 (the verified window) holds the mutex for milliseconds, the same
 ;; order a 256-line OVER quantum does; every bound over the quantum is
-;; parametric (fn-ast-render-window-byte-bound, fn-ast-scan-work-bounded).
+;; parametric (fn-ast-render-window-byte-bound; a preflight quantum loads at
+;; most the quantum's octets, fn-ast-scan-step).
 (defconst *fn-asto-quantum* 16384)
 
 (defun fn-asto-quantum (override)
@@ -695,25 +754,29 @@
   (posp (fn-asto-quantum override))
   :rule-classes (:rewrite :type-prescription))
 
-(defun fn-asto-plan-render-window (plan window fn-arena)
-  (declare (xargs :stobjs fn-arena
+; One ARTICLE quantum: the window's octets are fn-dss-out's [0, len) after the
+; call (the host sends exactly those; their lifetime from here to the socket
+; write is the host's, books/article-stream.lisp fn-ast-render-window).
+(defun fn-asto-plan-render-window (plan window fn-arena fn-ast-ws fn-dss-out)
+  (declare (xargs :stobjs (fn-arena fn-ast-ws fn-dss-out)
                   :guard (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)
                   :guard-hints (("Goal" :in-theory (disable fn-ast-render-window fn-ast-window-donep
                                                             fn-ast-windowp fn-splan-rest-donep)))))
   (let ((rest (fn-splan-rest plan)))
     (if (and (not (consp (fn-splan-cur plan))) (eq (caar rest) :article-cursor))
-        (mv-let (bytes next)
-          (fn-ast-render-window (cadar rest) (nfix window) (nfix window) fn-arena)
+        (mv-let (next fn-ast-ws fn-dss-out)
+          (fn-ast-render-window (cadar rest) (nfix window) (nfix window) fn-arena fn-ast-ws fn-dss-out)
           (let ((done (fn-ast-window-donep next)))
-            (mv :article bytes
+            (mv :article
                 (cons nil (if done (cdr rest) (cons (list :article-cursor next) (cdr rest))))
-                (and done (fn-splan-rest-donep (cdr rest))))))
-      (mv :ordinary nil plan nil))))
+                (and done (fn-splan-rest-donep (cdr rest)))
+                fn-ast-ws fn-dss-out)))
+      (mv :ordinary plan nil fn-ast-ws fn-dss-out))))
 
 (defthm fn-asto-plan-render-window-keeps-cursor-effectsp
   (implies (fn-asto-cursor-effectsp (fn-splan-rest plan) fn-arena)
            (fn-asto-cursor-effectsp
-            (fn-splan-rest (mv-nth 2 (fn-asto-plan-render-window plan window fn-arena)))
+            (fn-splan-rest (mv-nth 1 (fn-asto-plan-render-window plan window fn-arena fn-ast-ws fn-dss-out)))
             fn-arena))
   :hints (("Goal" :in-theory (e/d (fn-asto-plan-render-window fn-asto-cursor-effectsp fn-splan-rest)
                                   (fn-ast-render-window fn-ast-window-donep fn-ast-windowp fn-splan-rest-donep))

@@ -11,6 +11,7 @@
 ; PRF-374: the witnesses reach the plan the host builds (fn-native-admin-plan).
 (include-book "../../books/native-admin")
 (include-book "must-fail-checked")
+(include-book "../../books/defkeystone")
 
 (defconst *at-code* (fn-record-string-octets "k3y-friend-0001-7f3a"))
 (defconst *at-code-2* (fn-record-string-octets "k3y-friend-0002-19c4"))
@@ -411,7 +412,7 @@
 (assert-event
  (not (fn-cfg-account-livep
        (fn-cfg-row-make (at-digest) "operator"
-                        (fn-acct-decimal-text
+                        (fn-decimal-text
                          (+ (floor *at-now-ms* 1000) (* 1000 3600)))
                         0)
        (fn-clock-observation 9 *at-now-ms* 250 t))))
@@ -819,3 +820,56 @@
                       (fn-cfg-value (at-cfg-zz)) 2 *at-past* 0 1000
                       (fn-cfg-record-change (at-zz-late)))
                      :account-digest))
+
+; ---------------------------------------------------------------------------
+; The critical package of fn-acct-admin-deltas-expire-at-now-plus-expires-on-
+; both-paths (authorization class; its statement names fn-decimal-text since
+; the decimal-text landing).  The witnesses above, as one defteeth: the
+; reached invite plan at the reached instant; per hypothesis a removal that
+; keeps the others and fails the conclusion; bug M1's arithmetic (expires
+; read as seconds, not x 1000) as the mutation.
+(defteeth fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths
+  :claim (((status (equal (fn-native-admin-result-status plan) :accepted))
+           (kind (equal (fn-native-admin-result-kind plan) :account-invite))
+           (capacity (posp (fn-native-admin-result-capacity plan)))
+           (wall-natural (natp wall))
+           (err-natural (natp err)))
+          (let ((row (list (fn-cfg-account-invite
+                            (fn-record-octets-string
+                             (fn-native-admin-result-name plan))
+                            *fn-acct-issuer*
+                            (fn-decimal-text
+                             (+ wall err
+                                (* 1000 (fn-native-admin-result-capacity
+                                         plan))))))))
+            (and (equal (fn-acct-admin-deltas
+                         plan (fn-acct-live-invite-reading
+                               (fn-clock-observation monotonic wall err t)))
+                        row)
+                 (equal (fn-acct-admin-deltas
+                         plan (fn-acct-offline-invite-reading
+                               (fn-clock-observation monotonic wall err t)))
+                        row))))
+  :subject fn-acct-admin-deltas
+  :witness ((plan (at-inv-plan)) (monotonic 7) (wall *at-now-ms*) (err 250))
+  :breaks ((status ((plan (fn-native-admin-result :refused nil :account-invite
+                                                  (fn-native-admin-result-name (at-inv-plan)) 3600 nil nil))
+                    (monotonic 7) (wall *at-now-ms*) (err 250)))
+           (kind ((plan (fn-native-admin-result :accepted nil :account-list
+                                                (fn-native-admin-result-name (at-inv-plan)) 3600 nil nil))
+                  (monotonic 7) (wall *at-now-ms*) (err 250)))
+           (capacity ((plan (at-zero-plan)) (monotonic 7) (wall *at-now-ms*) (err 250)))
+           (wall-natural ((plan (at-inv-plan)) (monotonic 7) (wall -5) (err 250)))
+           (err-natural ((plan (at-inv-plan)) (monotonic 7) (wall *at-now-ms*) (err -1))))
+  :mutations ((expires-as-seconds
+               (:conclusion
+                (equal (fn-acct-admin-deltas
+                        plan (fn-acct-offline-invite-reading
+                              (fn-clock-observation monotonic wall err t)))
+                       (list (fn-cfg-account-invite
+                              (fn-record-octets-string (fn-native-admin-result-name plan))
+                              *fn-acct-issuer*
+                              (fn-decimal-text (+ wall err (fn-native-admin-result-capacity plan)))))))
+               ((plan (at-inv-plan)) (monotonic 7) (wall *at-now-ms*) (err 250))
+               :fault "bug M1: the expiry adds expires as seconds to a milliseconds clock")))
+(defteeth-check (fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths))

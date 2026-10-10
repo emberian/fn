@@ -920,6 +920,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-extend-tests \
 	books/store-log-durable \
 	tests/acl2/store-log-durable-tests \
+	books/post-transaction-durable \
+	tests/acl2/post-transaction-durable-tests \
 	tests/acl2/store-log-critical-teeth-tests \
 	tests/acl2/store-log-copy-teeth-tests \
 	tests/acl2/store-log-copy-ack-teeth-tests \
@@ -2371,6 +2373,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/topic-history-local-control-tests \
 	tests/acl2/topic-history-native-vector-tests \
 	tests/acl2/hybrid-store-tests \
+	books/filed-groups \
+	tests/acl2/filed-groups-tests \
 	books/crypto-attach \
 	books/auth-secret \
 	tests/acl2/auth-secret-tests \
