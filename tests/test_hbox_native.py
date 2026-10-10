@@ -753,6 +753,13 @@ class FromTrainDryRunTests(unittest.TestCase):
         self.assertIn("step validate-dtn ", out)
         self.assertLess(out.index("== reuse:"), out.index("step validate "))
 
+    def test_the_claim_is_taken_before_the_link_and_the_pid_recorded_after_the_start(self):
+        text = SCRIPT.read_text()
+        self.assertLess(text.index("native_reuse.py claim --root $REUSE_TREE --owner $S\""),
+                        text.index("ln -sfn $REUSE_TREE $S/tree"))
+        self.assertLess(text.index("echo \"hbox_native: started;"),
+                        text.index("--owner $S --pid $PID"))
+
     def test_from_train_refuses_no_build_and_a_working_tree(self):
         for extra, rev in (("--no-build", "HEAD"), ("", ".")):
             with self.subTest(extra=extra, rev=rev):

@@ -6,6 +6,7 @@ import contextlib
 import hashlib
 import io
 import json
+import os
 import shutil
 import subprocess
 import sys
@@ -270,6 +271,56 @@ class VerifyTests(unittest.TestCase):
                                       "--acl2", "/x", "--profile", "default"])
         self.assertEqual(code, 1)
         self.assertIn("unqualified ACL2 launcher", out.getvalue())
+
+
+class ClaimTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.dead = subprocess.Popen([sys.executable, "-c", "pass"])
+        self.dead.wait()  # a pid that has exited and been reaped
+
+    def test_the_first_claim_is_taken_and_a_second_while_the_pid_lives_is_refused(self):
+        self.assertEqual(native_reuse.claim(self.root, "/s/main"), "")
+        native_reuse.claim(self.root, "/s/main", pid=os.getpid())
+        with self.assertRaises(native_reuse.Refusal) as caught:
+            native_reuse.claim(self.root, "/s/heap")
+        self.assertIn("the train tree is claimed by /s/main", str(caught.exception))
+
+    def test_a_claim_whose_pid_is_dead_is_taken_over_and_said(self):
+        native_reuse.claim(self.root, "/s/main")
+        native_reuse.claim(self.root, "/s/main", pid=self.dead.pid)
+        note = native_reuse.claim(self.root, "/s/heap")
+        self.assertIn("took over the stale claim of /s/main", note)
+        owner = (self.root / "build" / "native-reuse.claim" / "owner").read_text().strip()
+        self.assertEqual(owner, "/s/heap")
+        self.assertFalse((self.root / "build" / "native-reuse.claim" / "pid").exists())
+
+    def test_a_claim_with_no_pid_yet_holds_until_it_is_old(self):
+        native_reuse.claim(self.root, "/s/main")
+        with self.assertRaises(native_reuse.Refusal):
+            native_reuse.claim(self.root, "/s/heap")
+        later = __import__("time").time() + native_reuse.PENDING_SECONDS + 5
+        self.assertIn("took over", native_reuse.claim(self.root, "/s/heap", now=later))
+
+    def test_a_pid_is_recorded_only_on_the_owners_own_claim(self):
+        native_reuse.claim(self.root, "/s/main")
+        with self.assertRaises(native_reuse.Refusal):
+            native_reuse.claim(self.root, "/s/other", pid=1)
+
+    def test_the_cli_exits_1_naming_the_holder(self):
+        out = io.StringIO()
+        base = ["claim", "--root", str(self.root)]
+        with contextlib.redirect_stdout(out):
+            self.assertEqual(native_reuse.main([*base, "--owner", "/s/main"]), 0)
+            self.assertEqual(native_reuse.main([*base, "--owner", "/s/main", "--pid", str(os.getpid())]), 0)
+            self.assertEqual(native_reuse.main([*base, "--owner", "/s/heap"]), 1)
+        self.assertIn("the train tree is claimed by /s/main", out.getvalue())
+
+    def test_the_claim_does_not_disturb_the_trees_verify(self):
+        native_reuse.claim(self.root, "/s/main")
+        self.assertEqual(native_reuse.tree_differences(self.root, {}), [])
 
 
 if __name__ == "__main__":

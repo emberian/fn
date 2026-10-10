@@ -973,7 +973,16 @@ if [ -n "$REUSE_TREE" ]; then
     fi
     rm -f "$EXPECT"
     if [ -n "$REUSE_TREE" ]; then
-        ssh -n "$HOST" "ln -sfn $REUSE_TREE $S/tree" || { reuse_refused "cannot link $S/tree"; }
+        # One image run per train tree: two builds in its one build/ clobber
+        # each other.  The claim stays while the run's images are there.
+        if CLAIMED=$(ssh -n "$HOST" "python3 $S/bin/native_reuse.py claim --root $REUSE_TREE --owner $S" 2>&1); then
+            echo "$CLAIMED"
+            ssh -n "$HOST" "ln -sfn $REUSE_TREE $S/tree" || {
+                ssh -n "$HOST" "rm -rf $REUSE_TREE/build/native-reuse.claim" || true  # no image is in the tree yet
+                reuse_refused "cannot link $S/tree"; }
+        else
+            reuse_refused "${CLAIMED#native_reuse: }"
+        fi
     fi
     [ -z "$REUSE_TREE" ] || REUSE_LINKED=1
 fi
@@ -1016,6 +1025,7 @@ if [ -n "$OVERLAY" ]; then
 fi
 PID=$(ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null & echo \$!") || exit 3
 echo "hbox_native: started; progress in $HOST:$S/run.log"
+[ -z "$REUSE_LINKED" ] || ssh -n "$HOST" "python3 $S/bin/native_reuse.py claim --root $REUSE_TREE --owner $S --pid $PID" >/dev/null 2>&1 || true
 # The record here names the box (item 67): status and re-attach read it.
 mkdir -p "$HERE/build/hbox-native"
 printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\ntree=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$RECORD_SOURCE" "$TREE_ID" \

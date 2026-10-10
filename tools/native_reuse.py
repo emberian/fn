@@ -31,6 +31,16 @@ built at the path the certificates were made at.
               this toolchain), with the entry's port and compiled file.
         Anything else prints each difference and exits 1: the caller then
         takes the ordinary install, certify and acquire path.
+    native_reuse.py claim --root FARMTREE --owner S [--pid N]
+        On the box, after verify and before the link.  Two image runs on one
+        box (the main run and the 2G heap run) must not build into one tree's
+        build/.  Atomically creates FARMTREE/build/native-reuse.claim holding
+        the claiming run's S and pid.  Exits 1 ("the train tree is claimed by
+        S") when the claim exists and its pid is alive; a claim whose pid is
+        dead (or, with no pid recorded yet, older than PENDING_SECONDS) is
+        taken over, and the takeover is said.  `claim --pid N` on a claim
+        that OWNER holds records the started run's pid.  The run never
+        releases the claim while its images are in that tree.
 """
 from __future__ import annotations
 
@@ -50,6 +60,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 GENERATED_SUFFIXES = (".cert", ".port", ".fasl", ".pyc")
 SKIPPED_DIRECTORIES = {"build", ".git", "__pycache__", ".venv"}
 MAX_SHOWN = 12
+CLAIM = Path("build") / "native-reuse.claim"
+PENDING_SECONDS = 600  # a claim whose run has not reported its pid yet
 
 
 class Refusal(Exception):
@@ -233,6 +245,74 @@ def cert_differences(root: Path, roots: list[str], toolchain_identity: str,
     return diffs
 
 
+# --------------------------------------------------------------- the claim
+
+
+def _pid_alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _claim_state(directory: Path, now: float) -> tuple[str, bool]:
+    """(owner, alive) of an existing claim.  An unreadable claim is a dead one
+    only once it is old enough that its writer must have finished."""
+    try:
+        owner = (directory / "owner").read_text(encoding="utf-8").strip()
+    except OSError:
+        owner = "(unreadable)"
+    try:
+        pid = int((directory / "pid").read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        try:
+            return owner, now - directory.stat().st_mtime < PENDING_SECONDS
+        except OSError:
+            return owner, False
+    return owner, _pid_alive(pid)
+
+
+def claim(root: Path, owner: str, pid: int | None = None, now: float | None = None) -> str:
+    """Take the exclusive claim on ROOT for OWNER, or raise Refusal.  Returns
+    a note ("" or the takeover said)."""
+    import shutil  # noqa: PLC0415
+    import time  # noqa: PLC0415
+    now = time.time() if now is None else now
+    directory = root / CLAIM
+    if pid is not None:  # record the started run's pid on OWNER's own claim
+        held = (directory / "owner").read_text(encoding="utf-8").strip() \
+            if (directory / "owner").is_file() else None
+        if held != owner:
+            raise Refusal(f"the train tree is claimed by {held or 'nobody'}, not {owner}")
+        (directory / "pid").write_text(f"{pid}\n", encoding="utf-8")
+        return ""
+    (root / "build").mkdir(exist_ok=True)
+    note = ""
+    for _ in range(3):
+        try:
+            directory.mkdir()
+        except FileExistsError:
+            held, alive = _claim_state(directory, now)
+            if alive:
+                raise Refusal(f"the train tree is claimed by {held}") from None
+            # Only one racer's rename of the stale claim succeeds; the mkdir
+            # above then decides among the rest.
+            stale = directory.with_name(f"{directory.name}.stale-{os.getpid()}")
+            try:
+                os.rename(directory, stale)
+            except OSError:
+                continue
+            shutil.rmtree(stale, ignore_errors=True)
+            note = f"took over the stale claim of {held} (its run is gone)"
+            continue
+        (directory / "owner").write_text(owner + "\n", encoding="utf-8")
+        return note
+    raise Refusal("the train tree's claim is contended")
+
+
 # --------------------------------------------------------------------- cli
 
 
@@ -274,7 +354,7 @@ def cmd_verify(arguments) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("action", choices=("plan", "expect", "verify"))
+    parser.add_argument("action", choices=("plan", "expect", "verify", "claim"))
     parser.add_argument("--repo")
     parser.add_argument("--rev")
     parser.add_argument("--box")
@@ -284,6 +364,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--cache")
     parser.add_argument("--acl2")
     parser.add_argument("--profile", action="append", default=[])
+    parser.add_argument("--owner")
+    parser.add_argument("--pid", type=int)
     arguments = parser.parse_args(argv)
     try:
         if arguments.action == "plan":
@@ -292,6 +374,12 @@ def main(argv: list[str] | None = None) -> int:
         if arguments.action == "expect":
             Path(arguments.out).write_text(
                 json.dumps(expected_tree(Path(arguments.repo), arguments.rev)), encoding="utf-8")
+            return 0
+        if arguments.action == "claim":
+            if not (arguments.root and arguments.owner):
+                parser.error("claim takes --root and --owner")
+            note = claim(Path(arguments.root), arguments.owner, arguments.pid)
+            print("native_reuse: " + (note or f"claimed {arguments.root} for {arguments.owner}"))
             return 0
         if not (arguments.root and arguments.expect and arguments.cache and arguments.acl2
                 and arguments.profile):
