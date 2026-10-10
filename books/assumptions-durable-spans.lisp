@@ -10,7 +10,7 @@
 ; fnn-extent-window-realize-span with one `replace' per decided run from the
 ; trailer-verified window (fnn-extent-entry's check stays before any byte is
 ; exposed) into the buffer's array, and builds no list; every other entry kind
-; appends the arena's own span.  The family's native test asserts byte
+; writes `fn-arena$x-get' octet by octet into the buffer, likewise no list.  The family's native test asserts byte
 ; equality with `fn-arena-get-span' on the same window over every entry kind.
 ;
 ; Owner: Builder C.  Retired when Builder A's leased-handle read

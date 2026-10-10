@@ -1457,3 +1457,660 @@
                            (fn-ast-scan-run-final fn-ast-scan-at fn-ast-preflight fn-ast-scan-run fn-ast-scan-validp
                             fn-ast-scan-donep fn-ast-source-window fn-ast-source-avail fn-nsp-sep fn-nntp-framed-of-bytes
                             fn-nntp-split-article fn-ast-src fn-ast-source-window-octets fn-ast-sep-bounds fn-ast-scan-run-done fn-ast-scan-at-donep)))))
+
+; ---------------------------------------------------------------------------
+; KS2: the windowed render run is the one-pass stuffing (packet revision 3).
+; The proof is a window invariant (fn-ast-aux-inv): each quantum keeps
+; OUT ++ PENDING ++ REST(CUR) and strictly lowers the potential
+; |PENDING| + 3 + 3*REMAINING, so a run of K >= 4(R+4) calls ends done with the
+; stream's whole output.  KS3 composes KS1 and KS2 with nntp-spans'
+; fn-nsp-section-stuff-of-framed: the served payload of a valid ARTICLE, HEAD or
+; BODY is F_node's section, dot-stuffed and terminated.
+(local (defthm fn-ast-stuff-loop-shape
+  (implies (or (equal s 0) (equal s 1))
+           (and (not (equal (mv-nth 0 (fn-nsp-stuff-list-loop s xs last room)) :yield))
+                (not (equal (mv-nth 0 (fn-nsp-stuff-list-loop s xs last room)) :no-room))
+                (or (equal (mv-nth 1 (fn-nsp-stuff-list-loop s xs last room)) 0)
+                    (equal (mv-nth 1 (fn-nsp-stuff-list-loop s xs last room)) 1))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-nsp-stuff-list-loop s xs last room)
+           :in-theory (enable fn-nsp-stuff-list-loop fn-nsp-stuff-step fn-nsp-stuff-final)))))
+(local (defthm fn-ast-stuff-list-shape
+  (implies (and (or (equal s 0) (equal s 1)) (<= 3 (nfix room)))
+           (and (not (equal (mv-nth 0 (fn-nsp-stuff-list s xs last room)) :yield))
+                (not (equal (mv-nth 0 (fn-nsp-stuff-list s xs last room)) :no-room))
+                (or (equal (mv-nth 1 (fn-nsp-stuff-list s xs last room)) 0)
+                    (equal (mv-nth 1 (fn-nsp-stuff-list s xs last room)) 1))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-ast-stuff-loop-shape
+           :in-theory (enable fn-nsp-stuff-list)))))
+(local (defthm fn-ast-stuff-loop-done-len
+  (implies (equal (mv-nth 0 (fn-nsp-stuff-list-loop s xs last room)) :done)
+           (equal (mv-nth 3 (fn-nsp-stuff-list-loop s xs last room)) (len xs)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-nsp-stuff-list-loop s xs last room)
+           :in-theory (enable fn-nsp-stuff-list-loop fn-nsp-stuff-step fn-nsp-stuff-final)))))
+(local (defthm fn-ast-stuff-list-done-len
+  (implies (equal (mv-nth 0 (fn-nsp-stuff-list s xs last room)) :done)
+           (equal (mv-nth 3 (fn-nsp-stuff-list s xs last room)) (len xs)))
+  :rule-classes nil
+  :hints (("Goal" :use fn-ast-stuff-loop-done-len :in-theory (enable fn-nsp-stuff-list)))))
+(local (defthm fn-ast-stuff-loop-outs-bound
+  (<= (len (mv-nth 2 (fn-nsp-stuff-list-loop s xs last room))) (nfix room))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-nsp-stuff-list-loop s xs last room)
+           :in-theory (enable fn-nsp-stuff-list-loop fn-nsp-stuff-step fn-nsp-stuff-final fn-oct-word-octets)))))
+(local (defthm fn-ast-stuff-list-outs
+  (and (<= (len (mv-nth 2 (fn-nsp-stuff-list s xs last room))) (nfix room))
+       (true-listp (mv-nth 2 (fn-nsp-stuff-list s xs last room))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-ast-stuff-loop-outs-bound :in-theory (enable fn-nsp-stuff-list)))))
+(local (defthm fn-ast-take-take
+  (implies (and (natp k) (natp n) (<= k n) (<= n (len b)))
+           (equal (take k (take n b)) (take k b)))))
+(local (defthm fn-ast-take-nthcdr-append
+  (implies (and (natp k) (<= k (len b)) (true-listp b))
+           (equal (append (take k b) (nthcdr k b)) b))))
+(local (defthm fn-ast-q-split
+  (implies (and (natp k) (<= k (len b)) (true-listp b)
+                (equal (fn-nsp-stuff-items s (take k b) nil) (list :need-input s2 outs)))
+           (equal (fn-nsp-stuff-items s b last)
+                  (mv-let (r2 s3 it2) (fn-nsp-stuff-items s2 (nthcdr k b) last)
+                    (mv r2 s3 (append outs it2)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-nsp-stuff-items-of-append (dss-a (take k b)) (dss-b (nthcdr k b))))
+           :in-theory (disable fn-nsp-stuff-items)))))
+(local (defthm fn-ast-q-refused
+  (implies (and (natp n) (<= n (len b)) (true-listp b)
+                (equal (fn-nsp-stuff-items s (take n b) nil) (list :refused s2 outs)))
+           (equal (mv-nth 0 (fn-nsp-stuff-items s b t)) :refused))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-nsp-stuff-items-of-append (dss-a (take n b)) (dss-b (nthcdr n b)) (last t)))
+           :in-theory (disable fn-nsp-stuff-items)))))
+(local (defthm fn-ast-len-take (equal (len (take n b)) (nfix n))))
+(local (defthm fn-ast-take-of-len
+  (implies (and (true-listp b) (equal (len b) n)) (equal (take n b) b))))
+(local (defthm fn-ast-q-list
+  (implies (and (or (equal s 0) (equal s 1)) (true-listp b) (posp left) (equal n (min left (len b)))
+                (equal (mv-nth 0 (fn-nsp-stuff-items s b t)) :done))
+           (mv-let (r s2 outs k) (fn-nsp-stuff-list s (take n b) (equal n (len b)) (max left 3))
+             (and (natp k) (<= k n)
+                  (or (equal s2 0) (equal s2 1))
+                  (if (or (equal r :done) (equal r :refused))
+                      (and (equal r :done) (equal k (len b)) (equal outs (mv-nth 2 (fn-nsp-stuff-items s b t))))
+                    (and (< 0 k)
+                         (equal (mv-nth 0 (fn-nsp-stuff-items s2 (nthcdr k b) t)) :done)
+                         (equal (append outs (mv-nth 2 (fn-nsp-stuff-items s2 (nthcdr k b) t)))
+                                (mv-nth 2 (fn-nsp-stuff-items s b t))))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-nsp-stuff-list-prefix (xs (take n b)) (lp (equal n (len b))) (room (max left 3)))
+                 (:instance fn-ast-stuff-list-shape (xs (take n b)) (last (equal n (len b))) (room (max left 3)))
+                 (:instance fn-ast-stuff-list-done-len (xs (take n b)) (last (equal n (len b))) (room (max left 3)))
+                 (:instance fn-ast-q-split (k (mv-nth 3 (fn-nsp-stuff-list s (take n b) (equal n (len b)) (max left 3))))
+                            (s2 (mv-nth 1 (fn-nsp-stuff-list s (take n b) (equal n (len b)) (max left 3))))
+                            (outs (mv-nth 2 (fn-nsp-stuff-list s (take n b) (equal n (len b)) (max left 3))))
+                            (last t))
+                 (:instance fn-ast-q-refused
+                            (s2 (mv-nth 1 (fn-nsp-stuff-list s (take n b) (equal n (len b)) (max left 3))))
+                            (outs (mv-nth 2 (fn-nsp-stuff-list s (take n b) (equal n (len b)) (max left 3))))))
+           :in-theory (disable fn-nsp-stuff-items fn-nsp-stuff-list take nthcdr)))))
+(local (defthm fn-ast-nthcdr-cons-nth
+  (implies (and (natp i) (< i (len x)))
+           (equal (nthcdr i x) (cons (nth i x) (nthcdr (+ 1 i) x))))
+  :rule-classes nil))
+(local (defthm fn-ast-out-tail-is-take-nthcdr
+  (implies (and (natp i) (natp end) (<= end (len x)) (<= i end))
+           (equal (fn-ast-out-tail i end x) (take (- end i) (nthcdr i x))))
+  :hints (("Goal" :induct (fn-ast-out-tail i end x)
+           :in-theory (enable fn-dss-out-get fn-octets$a-get))
+          ("Subgoal *1/1" :use fn-ast-nthcdr-cons-nth))))
+(local (defthm fn-ast-out-tail-is-nthcdr
+  (implies (and (natp i) (true-listp x) (<= i (len x)))
+           (equal (fn-ast-out-tail i (len x) x) (nthcdr i x)))))
+(local (defthm fn-ast-split-excess-is
+  (implies (and (natp bound) (true-listp x))
+           (equal (fn-ast-split-excess bound x)
+                  (if (< bound (len x)) (mv (nthcdr bound x) (take bound x)) (mv nil x))))
+  :hints (("Goal" :in-theory (e/d (fn-ast-split-excess fn-oct-take-is-take) (fn-ast-out-tail))))))
+(local (defthm fn-ast-take-len-append-local (implies (true-listp a) (and (equal (take (len a) (append a b)) a) (equal (nthcdr (len a) (append a b)) b)))))
+(local (defthm fn-ast-window-take-drop
+  (implies (and (natp k) (<= k r) (natp r) (<= r (fn-ast-source-avail s fn-arena)))
+           (and (equal (fn-ast-source-window s k fn-arena) (take k (fn-ast-source-window s r fn-arena)))
+                (implies (posp k)
+                         (equal (fn-ast-source-window (fn-ast-source-advance s k) (- r k) fn-arena)
+                                (nthcdr k (fn-ast-source-window s r fn-arena))))))
+  :rule-classes nil
+  :hints (("Goal" :cases ((posp k))
+           :use ((:instance fn-ast-window-additive-advance (s0 s) (c k) (n (- r k)))
+                 (:instance fn-ast-source-window-len (source s) (n k))
+                 (:instance fn-ast-take-len-append-local (a (fn-ast-source-window s k fn-arena))
+                            (b (fn-ast-source-window (fn-ast-source-advance s k) (- r k) fn-arena))))
+           :in-theory (disable fn-ast-window-additive-advance fn-ast-source-window fn-ast-source-avail
+                               fn-ast-source-advance fn-ast-source-window-len)))))
+(local (defun fn-ast-pay (src f) (list :payload nil 0 nil src f nil)))
+(local (defun fn-ast-done-cur () (list :done nil 0 nil nil nil nil)))
+(local (defun fn-ast-bytes-of (src fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (fn-ast-source-window src (nfix (fn-ast-at 2 src)) fn-arena)))
+(local (defun fn-ast-pay-goodp (src f fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (and (equal (fn-ast-source-avail src fn-arena) (nfix (fn-ast-at 2 src)))
+       (mv-let (r s2 it) (fn-nsp-stuff-items (if f 0 1) (fn-ast-bytes-of src fn-arena) t)
+         (declare (ignore s2 it))
+         (equal r :done)))))
+(local (defun fn-ast-pay-rest (src f fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (r s2 it) (fn-nsp-stuff-items (if f 0 1) (fn-ast-bytes-of src fn-arena) t)
+    (declare (ignore r s2))
+    it)))
+(local (defthm fn-ast-stuff-list-outs-true
+  (true-listp (mv-nth 2 (fn-nsp-stuff-list s xs last room)))
+  :hints (("Goal" :use fn-ast-stuff-list-outs))))
+(local (defthm fn-ast-true-listp-append (equal (true-listp (append a b)) (true-listp b))))
+(local (defthm fn-ast-nthcdr-plus-append
+  (implies (natp n) (equal (nthcdr (+ n (len a)) (append a b)) (nthcdr n b)))))
+(local (defthm fn-ast-take-plus-append
+  (implies (natp n) (equal (take (+ n (len a)) (append a b)) (append a (take n b))))))
+(local (defthm fn-ast-min-facts
+  (implies (and (natp a) (natp b))
+           (and (natp (min a b)) (<= (min a b) a) (<= (min a b) b) (equal (min (min a b) (min a b)) (min a b))
+                (iff (equal (min a b) b) (<= b a))))
+  :rule-classes ((:rewrite) (:linear :corollary (implies (and (natp a) (natp b)) (and (<= (min a b) a) (<= (min a b) b)))))))
+(local (defthm fn-ast-max-facts
+  (implies (natp a) (and (natp (max a 3)) (<= a (max a 3)) (<= 3 (max a 3))))
+  :rule-classes ((:rewrite) (:linear :corollary (implies (natp a) (and (<= a (max a 3)) (<= 3 (max a 3))))))))
+(local (defthm fn-ast-quantum-is
+  (implies (and (fn-ast-pay-goodp src f fn-arena)
+                (posp left) (true-listp out))
+           (let* ((r0 (nfix (fn-ast-at 2 src)))
+                  (b (fn-ast-bytes-of src fn-arena))
+                  (n (min left r0))
+                  (s (if f 0 1))
+                  (lst (fn-nsp-stuff-list s (take n b) (equal n r0) (max left 3)))
+                  (r (mv-nth 0 lst)) (s2 (mv-nth 1 lst)) (outs (mv-nth 2 lst)) (k (mv-nth 3 lst))
+                  (q (fn-ast-payload-quantum (fn-ast-pay src f) left fn-arena fn-ast-ws out)))
+             (and (equal (mv-nth 0 q) (if (< left (len outs)) (nthcdr left outs) nil))
+                  (equal (mv-nth 1 q) (if (or (eq r :done) (eq r :refused)) (fn-ast-done-cur)
+                                        (fn-ast-pay (fn-ast-source-advance src k) (eql s2 0))))
+                  (equal (mv-nth 4 q) (append out (if (< left (len outs)) (take left outs) outs)))
+                  (equal (mv-nth 2 q) (if (< left (len outs)) left (len outs))))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-window-take-drop (s src) (k (min left (nfix (fn-ast-at 2 src))))
+                            (r (nfix (fn-ast-at 2 src))))
+                 (:instance fn-ast-stuff-list-outs (s (if f 0 1))
+                            (xs (take (min left (nfix (fn-ast-at 2 src))) (fn-ast-bytes-of src fn-arena)))
+                            (last (equal (min left (nfix (fn-ast-at 2 src))) (nfix (fn-ast-at 2 src))))
+                            (room (max left 3)))
+                 (:instance fn-nsp-stuff-list-consumed (s (if f 0 1))
+                            (xs (take (min left (nfix (fn-ast-at 2 src))) (fn-ast-bytes-of src fn-arena)))
+                            (last (equal (min left (nfix (fn-ast-at 2 src))) (nfix (fn-ast-at 2 src))))
+                            (room (max left 3)))
+                 (:instance fn-ast-split-excess-is (bound (+ left (len out)))
+                            (x (append out (mv-nth 2 (fn-nsp-stuff-list (if f 0 1)
+                                 (take (min left (nfix (fn-ast-at 2 src))) (fn-ast-bytes-of src fn-arena))
+                                 (equal (min left (nfix (fn-ast-at 2 src))) (nfix (fn-ast-at 2 src)))
+                                 (max left 3)))))))
+           :in-theory (e/d (fn-ast-payload-quantum fn-nsp-stuff-is-list fn-ast-bytes-of)
+                           (fn-nsp-stuff-list fn-ast-source-window fn-ast-source-avail fn-ast-source-advance
+                            fn-ast-load fn-nsp-stuff-items fn-ast-split-excess take min max))))))
+(local (defun fn-ast-cur-rest (cur fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (if (equal cur (fn-ast-done-cur)) nil (fn-ast-pay-rest (fn-ast-at 4 cur) (fn-ast-at 5 cur) fn-arena))))
+(local (defun fn-ast-cur-good (cur fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (or (equal cur (fn-ast-done-cur))
+      (and (equal cur (fn-ast-pay (fn-ast-at 4 cur) (fn-ast-at 5 cur)))
+           (fn-ast-pay-goodp (fn-ast-at 4 cur) (fn-ast-at 5 cur) fn-arena)))))
+(local (defun fn-ast-cur-pot (cur)
+  (if (equal cur (fn-ast-done-cur)) 0 (+ 3 (* 3 (nfix (fn-ast-at 2 (fn-ast-at 4 cur))))))))
+(local (defthm fn-ast-rem-advance
+  (implies (natp k) (equal (nfix (fn-ast-at 2 (fn-ast-source-advance s k))) (nfix (- (nfix (fn-ast-at 2 s)) k))))))
+(local (defthm fn-ast-pay-facts
+  (and (not (equal (fn-ast-pay s f) (fn-ast-done-cur)))
+       (equal (fn-ast-at 0 (fn-ast-pay s f)) :payload)
+       (equal (fn-ast-at 1 (fn-ast-pay s f)) nil)
+       (equal (fn-ast-at 4 (fn-ast-pay s f)) s)
+       (equal (fn-ast-at 5 (fn-ast-pay s f)) f)
+       (equal (fn-ast-at 0 (fn-ast-done-cur)) :done))
+  :hints (("Goal" :in-theory (enable fn-ast-pay fn-ast-done-cur)))))
+(local (in-theory (disable fn-ast-pay fn-ast-done-cur (fn-ast-done-cur))))
+(local (defthm fn-ast-stuff-items-octets
+  (fn-cbor-octet-listp (mv-nth 2 (fn-nsp-stuff-items s xs last)))
+  :hints (("Goal" :induct (fn-nsp-stuff-items s xs last)
+           :in-theory (enable fn-nsp-stuff-items fn-nsp-stuff-step fn-nsp-stuff-final)))))
+(local (defthm fn-ast-octets-nthcdr
+  (implies (fn-cbor-octet-listp x) (fn-cbor-octet-listp (nthcdr n x)))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+(local (defthm fn-ast-octets-take-of
+  (implies (and (fn-cbor-octet-listp x) (<= (nfix n) (len x))) (fn-cbor-octet-listp (take n x)))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp)))))
+(local (defthm fn-ast-max-le
+  (implies (posp a) (<= (max a 3) (+ a 2)))
+  :rule-classes :linear))
+(local (defthm fn-ast-take-nthcdr-append-assoc
+  (implies (and (natp n) (<= n (len x)))
+           (equal (append (take n x) (append (nthcdr n x) y)) (append x y)))))
+(local (defthm fn-ast-quantum-sem
+  (implies (and (fn-ast-pay-goodp src f fn-arena) (posp left) (true-listp out))
+           (let* ((cur (fn-ast-pay src f))
+                  (q (fn-ast-payload-quantum cur left fn-arena fn-ast-ws out))
+                  (pending (mv-nth 0 q)) (next (mv-nth 1 q)) (used (mv-nth 2 q)) (out2 (mv-nth 4 q))
+                  (e (nthcdr (len out) out2)))
+             (and (equal out2 (append out e))
+                  (equal (len e) used) (natp used) (<= used left)
+                  (implies (consp pending) (equal used left))
+                  (<= (len pending) 2)
+                  (equal (append e pending (fn-ast-cur-rest next fn-arena)) (fn-ast-cur-rest cur fn-arena))
+                  (fn-ast-cur-good next fn-arena)
+                  (< (+ (len pending) (fn-ast-cur-pot next)) (fn-ast-cur-pot cur)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-q-list (s (if f 0 1)) (b (fn-ast-bytes-of src fn-arena))
+                            (n (min left (nfix (fn-ast-at 2 src)))))
+                 (:instance fn-ast-stuff-list-outs (s (if f 0 1))
+                            (xs (take (min left (nfix (fn-ast-at 2 src))) (fn-ast-bytes-of src fn-arena)))
+                            (last (equal (min left (nfix (fn-ast-at 2 src))) (nfix (fn-ast-at 2 src))))
+                            (room (max left 3)))
+                 (:instance fn-ast-window-take-drop (s src)
+                            (k (mv-nth 3 (fn-nsp-stuff-list (if f 0 1)
+                                 (take (min left (nfix (fn-ast-at 2 src))) (fn-ast-bytes-of src fn-arena))
+                                 (equal (min left (nfix (fn-ast-at 2 src))) (nfix (fn-ast-at 2 src)))
+                                 (max left 3))))
+                            (r (nfix (fn-ast-at 2 src))))
+                 (:instance fn-ast-avail-advance (s0 src)
+                            (c (mv-nth 3 (fn-nsp-stuff-list (if f 0 1)
+                                 (take (min left (nfix (fn-ast-at 2 src))) (fn-ast-bytes-of src fn-arena))
+                                 (equal (min left (nfix (fn-ast-at 2 src))) (nfix (fn-ast-at 2 src)))
+                                 (max left 3))))))
+           :in-theory (e/d (fn-ast-pay-goodp fn-ast-pay-rest)
+                           (fn-ast-pay fn-ast-done-cur fn-ast-payload-quantum fn-nsp-stuff-list fn-nsp-stuff-items
+                            fn-ast-source-window fn-ast-source-avail fn-ast-source-advance take nthcdr min max
+                            fn-ast-avail-advance))))))
+(local (defun fn-ast-win-pot (cur pending) (+ (len pending) (fn-ast-cur-pot cur))))
+(local (defthm fn-ast-at-congruent (implies (equal x y) (equal (fn-ast-at i x) (fn-ast-at i y))) :rule-classes nil))
+(local (defthm fn-ast-cur-good-pay-fields
+  (implies (and (fn-ast-cur-good cur fn-arena) (not (equal cur (fn-ast-done-cur))))
+           (and (equal (fn-ast-at 0 cur) :payload)
+                (equal (fn-ast-at 1 cur) nil)
+                (fn-ast-pay-goodp (fn-ast-at 4 cur) (fn-ast-at 5 cur) fn-arena)))
+  :hints (("Goal" :use ((:instance fn-ast-at-congruent (i 0) (x cur) (y (fn-ast-pay (fn-ast-at 4 cur) (fn-ast-at 5 cur))))
+                        (:instance fn-ast-at-congruent (i 1) (x cur) (y (fn-ast-pay (fn-ast-at 4 cur) (fn-ast-at 5 cur)))))
+           :in-theory (disable fn-ast-pay-goodp fn-ast-at)))))
+(local (defthm fn-ast-quantum-of-good
+  (implies (and (syntaxp (variablep cur))
+                (fn-ast-cur-good cur fn-arena) (not (equal cur (fn-ast-done-cur))))
+           (equal (fn-ast-payload-quantum cur left fn-arena fn-ast-ws out)
+                  (fn-ast-payload-quantum (fn-ast-pay (fn-ast-at 4 cur) (fn-ast-at 5 cur)) left fn-arena fn-ast-ws out)))
+  :hints (("Goal" :in-theory (disable fn-ast-pay-goodp fn-ast-payload-quantum)))))
+(local (defthm fn-ast-rest-pot-of-good
+  (implies (and (syntaxp (variablep cur))
+                (fn-ast-cur-good cur fn-arena) (not (equal cur (fn-ast-done-cur))))
+           (and (equal (fn-ast-cur-rest cur fn-arena) (fn-ast-cur-rest (fn-ast-pay (fn-ast-at 4 cur) (fn-ast-at 5 cur)) fn-arena))
+                (equal (fn-ast-cur-pot cur) (fn-ast-cur-pot (fn-ast-pay (fn-ast-at 4 cur) (fn-ast-at 5 cur))))))
+  :hints (("Goal" :in-theory (disable fn-ast-pay-goodp fn-ast-cur-rest fn-ast-cur-pot)))))
+(local (defthm fn-ast-oct-snoc-is-append
+  (implies (true-listp xs) (equal (fn-oct-snoc xs o) (append xs (list o))))
+  :hints (("Goal" :in-theory (enable fn-oct-snoc)))))
+(local (defthm fn-ast-cur-good-done
+  (and (fn-ast-cur-good (fn-ast-done-cur) fn-arena)
+       (equal (fn-ast-cur-rest (fn-ast-done-cur) fn-arena) nil)
+       (equal (fn-ast-cur-pot (fn-ast-done-cur)) 0))))
+(local (defthm fn-ast-cur-good-at0
+  (implies (fn-ast-cur-good cur fn-arena)
+           (and (equal (equal (fn-ast-at 0 cur) :done) (equal cur (fn-ast-done-cur)))
+                (implies (not (equal cur (fn-ast-done-cur)))
+                         (and (equal (fn-ast-at 0 cur) :payload)
+                              (equal (fn-ast-at 1 cur) nil)))))
+  :hints (("Goal" :cases ((equal cur (fn-ast-done-cur)))
+           :use fn-ast-cur-good-pay-fields
+           :in-theory (disable fn-ast-cur-good fn-ast-cur-good-pay-fields)))))
+(local (defthm fn-ast-cur-pot-pos
+  (implies (not (equal cur (fn-ast-done-cur))) (<= 3 (fn-ast-cur-pot cur)))
+  :rule-classes :linear))
+(local (defthm fn-ast-q-step-true
+  (implies (and (fn-ast-cur-good cur fn-arena) (not (equal cur (fn-ast-done-cur)))
+                (posp left) (true-listp out))
+           (true-listp (mv-nth 4 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws out))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-quantum-is (src (fn-ast-at 4 cur)) (f (fn-ast-at 5 cur)))
+                 (:instance fn-ast-quantum-of-good)
+                 (:instance fn-ast-cur-good-pay-fields)
+                 (:instance fn-ast-stuff-list-outs-true
+                            (s (if (fn-ast-at 5 cur) 0 1))
+                            (xs (take (min left (nfix (fn-ast-at 2 (fn-ast-at 4 cur))))
+                                      (fn-ast-bytes-of (fn-ast-at 4 cur) fn-arena)))
+                            (last (equal (min left (nfix (fn-ast-at 2 (fn-ast-at 4 cur))))
+                                         (nfix (fn-ast-at 2 (fn-ast-at 4 cur)))))
+                            (room (max left 3))))
+           :in-theory '(fn-ast-true-listp-append (:type-prescription take) (:type-prescription true-listp))))))
+(local (defthm fn-ast-append-assoc
+  (equal (append (append a b) c) (append a (append b c)))))
+(local (defthm fn-ast-append-chain
+  (implies (and (equal o2 (append o e)) (equal (append e p r2) r1))
+           (equal (append o2 p r2) (append o r1)))
+  :rule-classes nil))
+(local (defthm fn-ast-q-step
+  (implies (and (fn-ast-cur-good cur fn-arena) (not (equal cur (fn-ast-done-cur)))
+                (posp left) (true-listp out))
+           (let ((q (fn-ast-payload-quantum cur left fn-arena fn-ast-ws out)))
+             (and (natp (mv-nth 2 q))
+                  (<= (mv-nth 2 q) left)
+                  (fn-ast-cur-good (mv-nth 1 q) fn-arena)
+                  (equal (append (mv-nth 4 q) (append (mv-nth 0 q) (fn-ast-cur-rest (mv-nth 1 q) fn-arena)))
+                         (append out (fn-ast-cur-rest cur fn-arena)))
+                  (< (fn-ast-win-pot (mv-nth 1 q) (mv-nth 0 q)) (fn-ast-cur-pot cur)))))
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-quantum-sem (src (fn-ast-at 4 cur)) (f (fn-ast-at 5 cur)))
+                 (:instance fn-ast-cur-good-pay-fields)
+                 (:instance fn-ast-append-chain
+                  (o out)
+                  (e (nthcdr (len out) (mv-nth 4 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws out))))
+                  (o2 (mv-nth 4 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws out)))
+                  (p (mv-nth 0 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws out)))
+                  (r2 (fn-ast-cur-rest (mv-nth 1 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws out)) fn-arena))
+                  (r1 (fn-ast-cur-rest cur fn-arena))))
+           :in-theory (e/d (fn-ast-quantum-of-good fn-ast-rest-pot-of-good)
+                           (fn-ast-quantum-is fn-ast-cur-good-pay-fields
+                            fn-ast-payload-quantum fn-ast-cur-good fn-ast-cur-rest fn-ast-cur-pot
+                            fn-ast-pay-goodp fn-ast-pay-rest fn-nsp-stuff-list take nthcdr min max))))))
+(local (defthm fn-ast-window-parts
+  (and (equal (fn-ast-window-cur (list :window p c)) c)
+       (equal (fn-ast-window-pending (list :window p c)) p))
+  :hints (("Goal" :in-theory (enable fn-ast-window-cur fn-ast-window-pending fn-ast-at)))))
+(local (defun-nx fn-ast-aux-inv (cur pending fuel left out w out2 ar)
+  (let ((c2 (fn-ast-window-cur w)) (p2 (fn-ast-window-pending w)))
+    (and (true-listp out2)
+         (fn-ast-cur-good c2 ar)
+         (equal (append out2 (append p2 (fn-ast-cur-rest c2 ar)))
+                (append out (append pending (fn-ast-cur-rest cur ar))))
+         (<= (fn-ast-win-pot c2 p2) (fn-ast-win-pot cur pending))
+         (implies (and (posp fuel) (posp left)
+                       (or (consp pending) (not (equal cur (fn-ast-done-cur)))))
+                  (< (fn-ast-win-pot c2 p2) (fn-ast-win-pot cur pending)))))))
+(local (defthm fn-ast-aux-inv-stop
+  (implies (and (fn-ast-cur-good cur ar) (true-listp out)
+                (or (zp fuel) (zp left) (and (not (consp pending)) (equal cur (fn-ast-done-cur)))))
+           (fn-ast-aux-inv cur pending fuel left out (list :window pending cur) out ar))
+  :hints (("Goal" :in-theory (disable fn-ast-cur-good fn-ast-cur-rest fn-ast-cur-pot)))))
+(local (defthm fn-ast-aux-inv-pending
+  (implies (and (consp pending) (true-listp out) (not (zp fuel)) (not (zp left))
+                (fn-ast-aux-inv cur (cdr pending) (- fuel 1) (- left 1) (fn-oct-snoc out (car pending)) w out2 ar))
+           (fn-ast-aux-inv cur pending fuel left out w out2 ar))
+  :hints (("Goal" :in-theory (disable fn-ast-cur-good fn-ast-cur-rest fn-ast-cur-pot)))))
+(local (defthm fn-ast-aux-inv-quantum-abs
+  (implies (and (fn-ast-cur-good next ar)
+                (equal (append outq (append pend2 (fn-ast-cur-rest next ar))) (append out (fn-ast-cur-rest cur ar)))
+                (< (fn-ast-win-pot next pend2) (fn-ast-cur-pot cur))
+                (not (consp pending))
+                (fn-ast-aux-inv next pend2 fuel2 left2 outq w out2 ar))
+           (fn-ast-aux-inv cur pending fuel left out w out2 ar))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-ast-cur-good fn-ast-cur-rest fn-ast-cur-pot fn-ast-window-cur
+                                      fn-ast-window-pending)))))
+(local (defthm fn-ast-aux-inv-quantum
+  (implies (and (fn-ast-cur-good cur ar) (not (equal cur (fn-ast-done-cur)))
+                (not (consp pending)) (true-listp out) (posp left)
+                (fn-ast-aux-inv (mv-nth 1 (fn-ast-payload-quantum cur left ar ws out))
+                                (mv-nth 0 (fn-ast-payload-quantum cur left ar ws out))
+                                fuel2 left2
+                                (mv-nth 4 (fn-ast-payload-quantum cur left ar ws out))
+                                w out2 ar))
+           (fn-ast-aux-inv cur pending fuel left out w out2 ar))
+  :hints (("Goal" :use ((:instance fn-ast-q-step (fn-arena ar) (fn-ast-ws ws))
+                        (:instance fn-ast-aux-inv-quantum-abs
+                         (next (mv-nth 1 (fn-ast-payload-quantum cur left ar ws out)))
+                         (pend2 (mv-nth 0 (fn-ast-payload-quantum cur left ar ws out)))
+                         (outq (mv-nth 4 (fn-ast-payload-quantum cur left ar ws out)))))
+           :in-theory (theory 'minimal-theory)))))
+(local (defthm fn-ast-not-done-when-payload
+  (implies (equal (fn-ast-at 0 cur) :payload) (not (equal cur (fn-ast-done-cur))))))
+(local (defthm fn-ast-aux-stop
+  (implies (or (zp fuel) (zp left) (and (not (consp pending)) (eq (fn-ast-at 0 cur) :done)))
+           (equal (fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out)
+                  (mv (list :window pending cur) fn-ast-ws fn-dss-out)))
+  :hints (("Goal" :expand ((fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out))))))
+(local (defthm fn-ast-aux-sem
+  (implies (and (fn-ast-cur-good cur fn-arena) (true-listp fn-dss-out) (natp left))
+           (fn-ast-aux-inv cur pending fuel left fn-dss-out
+                           (mv-nth 0 (fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out))
+                           (mv-nth 2 (fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out))
+                           fn-arena))
+  :hints (("Goal" :induct (fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out)
+           :expand ((fn-ast-render-window-aux cur pending fuel left fn-arena fn-ast-ws fn-dss-out))
+           :in-theory (disable fn-ast-payload-quantum fn-ast-render-one fn-ast-cur-good fn-ast-cur-rest
+                               fn-ast-cur-pot fn-ast-window-cur fn-ast-window-pending fn-ast-at fn-ast-aux-inv
+                               fn-ast-pay-goodp fn-ast-pay-rest fn-ast-quantum-is fn-ast-quantum-of-good
+                               fn-ast-rest-pot-of-good fn-nsp-stuff-list take nthcdr min max
+                               (:definition fn-ast-render-window-aux)))
+          ("Subgoal *1/3"
+           :use ((:instance fn-ast-aux-inv-quantum
+                  (ar fn-arena) (ws fn-ast-ws) (out fn-dss-out) (fuel2 (- fuel 1))
+                  (left2 (nfix (- left (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))))
+                  (w (mv-nth 0 (fn-ast-render-window-aux
+                                (mv-nth 1 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out))
+                                (mv-nth 0 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out))
+                                (- fuel 1)
+                                (nfix (- left (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out))))
+                                fn-arena
+                                (mv-nth 3 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out))
+                                (mv-nth 4 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))))
+                  (out2 (mv-nth 2 (fn-ast-render-window-aux
+                                (mv-nth 1 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out))
+                                (mv-nth 0 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out))
+                                (- fuel 1)
+                                (nfix (- left (mv-nth 2 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out))))
+                                fn-arena
+                                (mv-nth 3 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out))
+                                (mv-nth 4 (fn-ast-payload-quantum cur left fn-arena fn-ast-ws fn-dss-out)))))))))
+  :rule-classes nil))
+(local (defun fn-ast-wpot (w) (fn-ast-win-pot (fn-ast-window-cur w) (fn-ast-window-pending w))))
+(local (defun-nx fn-ast-wrest (w ar) (append (fn-ast-window-pending w) (fn-ast-cur-rest (fn-ast-window-cur w) ar))))
+(local (defthm fn-ast-rw-sem
+  (implies (and (fn-ast-cur-good (fn-ast-window-cur w) fn-arena))
+           (fn-ast-aux-inv (fn-ast-window-cur w) (fn-ast-window-pending w) (nfix fuel)
+                           (min (nfix octets) *fn-ast-window-max*) nil
+                           (mv-nth 0 (fn-ast-render-window w fuel octets fn-arena fn-ast-ws fn-dss-out))
+                           (mv-nth 2 (fn-ast-render-window w fuel octets fn-arena fn-ast-ws fn-dss-out))
+                           fn-arena))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ast-aux-sem (cur (fn-ast-window-cur w)) (pending (fn-ast-window-pending w))
+                         (fuel (nfix fuel)) (left (min (nfix octets) *fn-ast-window-max*)) (fn-dss-out nil)))
+           :in-theory (e/d (fn-dss-out-clear-is-nil)
+                           (fn-ast-render-window-aux fn-ast-aux-inv fn-ast-cur-good fn-ast-window-cur
+                            fn-ast-window-pending))))))
+(local (defthm fn-ast-rw-step
+  (implies (and (fn-ast-cur-good (fn-ast-window-cur w) fn-arena)
+                (posp fuel) (posp octets))
+           (let* ((r (fn-ast-render-window w fuel octets fn-arena fn-ast-ws fn-dss-out))
+                  (w2 (mv-nth 0 r)) (out2 (mv-nth 2 r)))
+             (and (true-listp out2)
+                  (fn-ast-cur-good (fn-ast-window-cur w2) fn-arena)
+                  (equal (append out2 (fn-ast-wrest w2 fn-arena)) (fn-ast-wrest w fn-arena))
+                  (<= (fn-ast-wpot w2) (fn-ast-wpot w))
+                  (implies (not (fn-ast-window-donep w)) (< (fn-ast-wpot w2) (fn-ast-wpot w))))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-ast-rw-sem
+           :in-theory (e/d (fn-ast-window-donep)
+                           (fn-ast-render-window fn-ast-cur-good fn-ast-cur-rest fn-ast-cur-pot
+                            fn-ast-window-cur fn-ast-window-pending fn-ast-at))))))
+(local (defthm fn-ast-pot0
+  (implies (and (fn-ast-cur-good (fn-ast-window-cur w) ar) (<= (fn-ast-wpot w) 0))
+           (and (fn-ast-window-donep w) (equal (fn-ast-wrest w ar) nil)))
+  :rule-classes nil
+  :hints (("Goal" :cases ((equal (fn-ast-window-cur w) (fn-ast-done-cur)))
+           :expand ((len (fn-ast-window-pending w)))
+           :in-theory (e/d (fn-ast-window-donep) (fn-ast-cur-good fn-ast-cur-rest fn-ast-cur-pot fn-ast-window-cur
+                                                  fn-ast-window-pending fn-ast-at))))))
+(local (defthm fn-ast-donep-pot0
+  (implies (and (fn-ast-cur-good (fn-ast-window-cur w) ar) (fn-ast-window-donep w))
+           (equal (fn-ast-wpot w) 0))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ast-cur-good-at0 (cur (fn-ast-window-cur w)) (fn-arena ar)))
+           :in-theory (e/d (fn-ast-window-donep) (fn-ast-cur-good-at0 fn-ast-cur-good fn-ast-cur-rest fn-ast-cur-pot
+                                                  fn-ast-window-cur fn-ast-window-pending fn-ast-at))))))
+(local (defthm fn-ast-run-sem
+  (implies (and (fn-ast-cur-good (fn-ast-window-cur w) fn-arena)
+                (posp fuel) (posp octets) (natp k) (<= (fn-ast-wpot w) k))
+           (let ((run (fn-ast-render-run w fuel octets k fn-arena fn-ast-ws fn-dss-out)))
+             (and (fn-ast-window-donep (mv-nth 0 run))
+                  (equal (mv-nth 1 run) (fn-ast-wrest w fn-arena)))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-ast-render-run w fuel octets k fn-arena fn-ast-ws fn-dss-out)
+           :in-theory (e/d (fn-dss-out-list-is-identity)
+                           (fn-ast-render-window fn-ast-cur-good fn-ast-wrest fn-ast-wpot fn-ast-window-donep
+                            fn-ast-window-cur fn-ast-window-pending)))
+          ("Subgoal *1/1" :use ((:instance fn-ast-pot0 (ar fn-arena))))
+          ("Subgoal *1/2" :use ((:instance fn-ast-rw-step) (:instance fn-ast-donep-pot0 (ar fn-arena)))))))
+(defthm fn-ast-render-run-is-the-stuffing
+  (implies (and
+                (posp fuel) (posp octets) (natp k)
+                (equal (fn-ast-source-avail source fn-arena) (nfix (fn-ast-at 2 source)))
+                (<= (* 4 (+ 4 (nfix (fn-ast-at 2 source)))) k))
+           (let ((bytes (fn-ast-source-window source (nfix (fn-ast-at 2 source)) fn-arena))
+                 (run (fn-ast-render-run (list :window nil (list :payload nil 0 nil source t nil))
+                                         fuel octets k fn-arena fn-ast-ws fn-dss-out)))
+             (implies (equal (mv-nth 0 (fn-nsp-stuff-items 0 bytes t)) :done)
+                      (and (fn-ast-window-donep (mv-nth 0 run))
+                           (equal (mv-nth 1 run) (mv-nth 2 (fn-nsp-stuff-items 0 bytes t)))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ast-run-sem (w (list :window nil (fn-ast-pay source t)))))
+           :in-theory (e/d (fn-ast-pay fn-ast-wpot fn-ast-wrest fn-ast-cur-good fn-ast-cur-rest fn-ast-cur-pot
+                            fn-ast-pay-goodp fn-ast-pay-rest fn-ast-bytes-of)
+                           (fn-ast-render-run fn-ast-window-donep fn-nsp-stuff-items fn-ast-source-window
+                            fn-ast-source-avail)))))
+(local (defthm fn-ast-scan-step-original
+  (equal (fn-ast-at 2 (mv-nth 0 (fn-ast-scan-step scan fuel fn-arena fn-ast-ws))) (fn-ast-at 2 scan))
+  :hints (("Goal" :in-theory (union-theories '(fn-ast-scan-step fn-ast-at-of-cons mv-nth (:e natp) (:e zp)
+                                               car-cons cdr-cons)
+                                             (theory 'minimal-theory))))))
+(local (defthm fn-ast-scan-run-original
+  (equal (fn-ast-at 2 (mv-nth 0 (fn-ast-scan-run scan fuel k fn-arena fn-ast-ws))) (fn-ast-at 2 scan))
+  :hints (("Goal" :induct (fn-ast-scan-run scan fuel k fn-arena fn-ast-ws)
+           :in-theory (disable fn-ast-scan-step fn-ast-at)))))
+(local (defthm fn-ast-left-facts
+  (implies (and (natp e) (<= e (nfix (fn-ast-at 2 s))) (equal (fn-ast-source-avail s fn-arena) (nfix (fn-ast-at 2 s))))
+           (and (equal (nfix (fn-ast-at 2 (fn-ast-source-left s e))) e)
+                (equal (fn-ast-source-avail (fn-ast-source-left s e) fn-arena) e)
+                (equal (fn-ast-source-window (fn-ast-source-left s e) e fn-arena)
+                       (take e (fn-ast-source-window s (nfix (fn-ast-at 2 s)) fn-arena)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ast-window-take-drop (k e) (r (nfix (fn-ast-at 2 s))))
+                        (:instance fn-ast-lit-take-len-min (a e) (b (nfix (fn-ast-at 2 s))) (xs (fn-ast-at 3 s))))
+           :in-theory (e/d (fn-ast-at) (fn-ast-lit-take fn-ast-lit-take-len-min))))))
+(local (defthm fn-ast-advance-facts
+  (implies (and (posp c) (<= c (nfix (fn-ast-at 2 s))) (equal (fn-ast-source-avail s fn-arena) (nfix (fn-ast-at 2 s))))
+           (and (equal (nfix (fn-ast-at 2 (fn-ast-source-advance s c))) (- (nfix (fn-ast-at 2 s)) c))
+                (equal (fn-ast-source-avail (fn-ast-source-advance s c) fn-arena) (- (nfix (fn-ast-at 2 s)) c))
+                (equal (fn-ast-source-window (fn-ast-source-advance s c) (- (nfix (fn-ast-at 2 s)) c) fn-arena)
+                       (nthcdr c (fn-ast-source-window s (nfix (fn-ast-at 2 s)) fn-arena)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ast-window-take-drop (k c) (r (nfix (fn-ast-at 2 s))))
+                        (:instance fn-ast-avail-advance (s0 s)))
+           :in-theory (disable fn-ast-source-window fn-ast-source-avail fn-ast-avail-advance)))))
+(local (defthm fn-ast-scan-at-original
+  (equal (fn-ast-at 2 (fn-ast-scan-at s0 c acc he body)) s0)
+  :hints (("Goal" :in-theory (enable fn-ast-scan-at)))))
+(local (defthm fn-ast-ks3-scan-facts
+  (implies (and (fn-arena-p fn-arena) (posp fuel) (natp k) (< (nfix (fn-ast-at 2 source)) k)
+                (fn-ast-scan-validp (mv-nth 0 (fn-ast-scan-run (fn-ast-preflight source) fuel k fn-arena fn-ast-ws))))
+           (let* ((rem (nfix (fn-ast-at 2 source)))
+                  (bytes (fn-ast-source-window source rem fn-arena))
+                  (scan (mv-nth 0 (fn-ast-scan-run (fn-ast-preflight source) fuel k fn-arena fn-ast-ws))))
+             (and (equal (fn-ast-source-avail source fn-arena) rem)
+                  (fn-nntp-framed-of-bytes bytes)
+                  (fn-octet-listp bytes)
+                  (equal (fn-ast-at 2 scan) source)
+                  (natp (fn-nsp-sep bytes)) (<= 4 (fn-nsp-sep bytes)) (<= (fn-nsp-sep bytes) rem)
+                  (equal (fn-ast-at 4 scan) (- (fn-nsp-sep bytes) 2))
+                  (equal (fn-ast-at 5 scan) (fn-ast-source-advance source (fn-nsp-sep bytes)))
+                  (equal (fn-nntp-split-head (fn-nntp-split-article bytes)) (take (- (fn-nsp-sep bytes) 2) bytes))
+                  (equal (fn-nntp-split-body (fn-nntp-split-article bytes)) (nthcdr (fn-nsp-sep bytes) bytes)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-scan-run-final (s0 source) (c 0) (acc 2) (he nil) (body nil))
+                 (:instance fn-ast-scan-run-is-the-framing)
+                 (:instance fn-ast-scan-run-original (scan (fn-ast-scan-at source 0 2 nil nil)))
+                 (:instance fn-nsp-frame-block-list-is-the-framing
+                            (bytes (fn-ast-source-window source (nfix (fn-ast-at 2 source)) fn-arena)))
+                 (:instance fn-ast-source-window-octets (n (nfix (fn-ast-at 2 source))))
+                 (:instance fn-ast-source-window-len (n (nfix (fn-ast-at 2 source))))
+                 (:instance fn-ast-sep-bounds (xs (fn-ast-source-window source (nfix (fn-ast-at 2 source)) fn-arena))))
+           :in-theory (e/d (fn-ast-scan-final fn-ast-src)
+                           (fn-ast-scan-run-final fn-ast-scan-run-original fn-ast-scan-at fn-ast-preflight fn-ast-scan-run fn-ast-scan-validp
+                            fn-ast-scan-donep fn-ast-source-window fn-ast-source-avail fn-nsp-sep fn-nntp-framed-of-bytes
+                            fn-nntp-split-article fn-ast-source-window-octets fn-ast-sep-bounds fn-ast-scan-run-done
+                            fn-ast-scan-at-donep fn-ast-source-advance fn-ast-source-window-len))))))
+(local (defthm fn-ast-advance-facts2
+  (implies (and (posp c) (<= c (nfix (fn-ast-at 2 s))) (equal (fn-ast-source-avail s fn-arena) (nfix (fn-ast-at 2 s))))
+           (equal (fn-ast-source-window (fn-ast-source-advance s c) (nfix (fn-ast-at 2 (fn-ast-source-advance s c))) fn-arena)
+                  (nthcdr c (fn-ast-source-window s (nfix (fn-ast-at 2 s)) fn-arena))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-ast-advance-facts
+           :in-theory (disable fn-ast-source-window fn-ast-source-avail fn-ast-source-advance)))))
+(local (defthm fn-ast-ready-at4
+  (equal (fn-ast-at 4 (fn-ast-ready scan kind number article server pairs))
+         (cond ((eq kind :body) (fn-ast-at 5 scan))
+               ((eq kind :head) (fn-ast-source-left (fn-ast-at 2 scan) (nfix (fn-ast-at 4 scan))))
+               (t (fn-ast-at 2 scan))))
+  :hints (("Goal" :in-theory (e/d (fn-ast-ready fn-ast-at) (fn-ast-source-left fn-ast-initial-pieces))))))
+(local (defthm fn-ast-ready-src-facts
+  (implies (and (fn-arena-p fn-arena) (posp fuel) (natp k) (< (nfix (fn-ast-at 2 source)) k)
+                (member-equal kind '(:article :head :body))
+                (fn-ast-scan-validp (mv-nth 0 (fn-ast-scan-run (fn-ast-preflight source) fuel k fn-arena fn-ast-ws))))
+           (let* ((rem (nfix (fn-ast-at 2 source)))
+                  (bytes (fn-ast-source-window source rem fn-arena))
+                  (split (fn-nntp-split-article bytes))
+                  (scan (mv-nth 0 (fn-ast-scan-run (fn-ast-preflight source) fuel k fn-arena fn-ast-ws)))
+                  (src (fn-ast-at 4 (fn-ast-ready scan kind number article server pairs)))
+                  (x (cond ((eq kind :article) bytes)
+                           ((eq kind :head) (fn-nntp-split-head split))
+                           (t (fn-nntp-split-body split)))))
+             (and (equal (fn-ast-source-avail src fn-arena) (nfix (fn-ast-at 2 src)))
+                  (<= (nfix (fn-ast-at 2 src)) rem)
+                  (equal (fn-ast-source-window src (nfix (fn-ast-at 2 src)) fn-arena) x))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-ks3-scan-facts)
+                 (:instance fn-ast-left-facts (s source)
+                            (e (- (fn-nsp-sep (fn-ast-source-window source (nfix (fn-ast-at 2 source)) fn-arena)) 2)))
+                 (:instance fn-ast-advance-facts2 (s source)
+                            (c (fn-nsp-sep (fn-ast-source-window source (nfix (fn-ast-at 2 source)) fn-arena))))
+                 (:instance fn-ast-advance-facts (s source)
+                            (c (fn-nsp-sep (fn-ast-source-window source (nfix (fn-ast-at 2 source)) fn-arena)))))
+           :in-theory (e/d () (fn-ast-scan-run fn-ast-preflight fn-ast-preflight-is-at fn-ast-scan-at fn-ast-scan-run-original fn-ast-scan-validp fn-ast-source-window
+                               fn-ast-source-avail fn-ast-source-left fn-ast-source-advance fn-nsp-sep
+                               fn-nntp-split-article fn-nntp-split-head fn-nntp-split-body fn-ast-ready))))))
+(defthm fn-ast-ready-payload-is-the-section
+  (implies (and (fn-arena-p fn-arena) ; domain: the stobj recognizer
+                (posp fuel) (posp octets) (natp k) (natp k2)
+                (< (nfix (fn-ast-at 2 source)) k)
+                (<= (* 4 (+ 4 (nfix (fn-ast-at 2 source)))) k2)
+                (member-equal kind '(:article :head :body))
+                (fn-ast-scan-validp
+                 (mv-nth 0 (fn-ast-scan-run (fn-ast-preflight source) fuel k fn-arena fn-ast-ws))))
+           (let* ((bytes (fn-ast-source-window source (nfix (fn-ast-at 2 source)) fn-arena))
+                  (scan (mv-nth 0 (fn-ast-scan-run (fn-ast-preflight source) fuel k fn-arena fn-ast-ws)))
+                  (cur (fn-ast-ready scan kind number article server pairs))
+                  (run (fn-ast-render-run (list :window nil (list :payload nil 0 nil (fn-ast-at 4 cur) t nil))
+                                          fuel octets k2 fn-arena ws2 fn-dss-out))
+                  (section (fn-nntp-section-of-bytes bytes kind)))
+             (and (equal (car section) :ok)
+                  (fn-ast-window-donep (mv-nth 0 run))
+                  (equal (mv-nth 1 run)
+                         (append (fn-nntp-stuff-lines (cadr section)) '(46 13 10))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-ast-ready-src-facts)
+                 (:instance fn-ast-ks3-scan-facts)
+                 (:instance fn-nsp-section-stuff-of-framed
+                            (bytes (fn-ast-source-window source (nfix (fn-ast-at 2 source)) fn-arena)))
+                 (:instance fn-ast-render-run-is-the-stuffing
+                            (source (fn-ast-at 4 (fn-ast-ready (mv-nth 0 (fn-ast-scan-run (fn-ast-preflight source) fuel k fn-arena fn-ast-ws))
+                                                               kind number article server pairs)))
+                            (k k2) (fn-ast-ws ws2)))
+           :in-theory (e/d () (fn-ast-scan-run fn-ast-preflight fn-ast-preflight-is-at fn-ast-scan-at fn-ast-scan-run-original fn-ast-scan-validp fn-ast-source-window
+                               fn-ast-source-avail fn-nsp-sep fn-nntp-split-article fn-nntp-split-head
+                               fn-nntp-split-body fn-ast-ready fn-ast-ready-at4 fn-ast-render-run fn-ast-window-donep
+                               fn-nntp-section-of-bytes fn-nsp-stuff-items fn-nntp-stuff-lines
+                               fn-nntp-framed-of-bytes)))))

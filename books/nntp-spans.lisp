@@ -1685,3 +1685,176 @@
                             fn-nsp-frame-list-open fn-nsp-frame-list fn-nsp-frame-wsp fn-nsp-frame
                             fn-nsp-frame-state-of fn-wire-span-fold fn-oct-slice-list fn-oct-slice-list-is-take-nthcdr
                             fn-wire-statep fn-nsp-sl)))))
+
+; The section a valid ARTICLE/HEAD/BODY serves, at the list level: F_node's
+; section of a framed article, dot-stuffed line by line and terminated, is
+; the one-pass stream of the stuff transducer over the kind's octets (the
+; whole payload, the head before the CRLF CRLF, the body after it).  No
+; length bound: books/article-stream.lisp composes this with its windowed run.
+(defthm fn-nsp-section-stuff-of-framed
+  (implies (and (fn-octet-listp bytes) (fn-nntp-framed-of-bytes bytes)
+                (member-equal kind '(:article :head :body)))
+           (let* ((split (fn-nntp-split-article bytes))
+                  (section (fn-nntp-section-of-bytes bytes kind))
+                  (x (cond ((eq kind :article) bytes)
+                           ((eq kind :head) (fn-nntp-split-head split))
+                           (t (fn-nntp-split-body split)))))
+             (and (equal (car section) :ok)
+                  (equal (fn-nsp-stuff-items 0 x t)
+                         (list :done 0 (append (fn-nntp-stuff-lines (cadr section)) '(46 13 10)))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-nsp-k4-list) (:instance fn-nsp-framed-of-bytes-is)
+                 (:instance fn-nsp-sep-iff-blank (xs bytes)))
+           :in-theory (disable fn-nsp-k4-list fn-nsp-framed-of-bytes-is fn-nntp-framed-of-bytes
+                               fn-nntp-section-of-bytes fn-nntp-split-article fn-nsp-stuff-items
+                               fn-nntp-stuff-lines fn-nntp-crlf-validp fn-nntp-blank-linep fn-nsp-sep))))
+
+; ---------------------------------------------------------------------------
+; A3: a command line's tokens by the fn-nsp-tokens stream.  fn-nsp-tokens-run
+; is the instance's host loop (fn-dss-host) over one piece with a constant
+; room; fn-nsp-line-tokens loads the line into a local input buffer and
+; answers what fn-nntp-tokenize answers after the RFC 3977 section 3.1
+; preflight (fn-nsp-line-tokens-is-tokenize).  The tokens are lists (adapter
+; A3, owner Builder C, retired with the nntp family's seam drain).
+(local (defthm fn-nsp-tokens-a3-loop-true-listp
+  (true-listp (mv-nth 2 (fn-nsp-tokens-list-loop s xs last room)))
+  :hints (("Goal" :induct (fn-nsp-tokens-list-loop s xs last room)
+           :in-theory (disable fn-nsp-tok-step$inline fn-nsp-tok-final$inline)))
+  :rule-classes (:rewrite :type-prescription)))
+(local (defthm fn-nsp-tokens-a3-out-true-listp
+  (implies (and (natp i) (natp cap) (true-listp fn-dss-out))
+           (true-listp (mv-nth 3 (fn-nsp-tokens s i end last cap fn-octets fn-dss-out))))
+  :hints (("Goal" :in-theory (disable fn-nsp-tokens fn-nsp-tokens-is-list fn-nsp-tok-step$inline fn-nsp-tok-final$inline)
+           :use fn-nsp-tokens-is-list))))
+(local (defthm fn-nsp-tokens-a3-octets-p-cbor
+  (implies (fn-octets-p x) (fn-cbor-octet-listp x))))
+(local (defthm fn-nsp-tokens-a3-call-i2-natp
+  (implies (and (natp i) (natp cap) (fn-cbor-octet-listp fn-octets) (<= i end) (<= end (len fn-octets)))
+           (natp (mv-nth 2 (fn-nsp-tokens s i end last cap fn-octets nil))))
+  :hints (("Goal" :in-theory (disable fn-nsp-tokens fn-nsp-tokens-is-list fn-nsp-tokens-list fn-nsp-tokens-list-loop fn-nsp-tok-step$inline fn-nsp-tok-final$inline)
+           :use ((:instance fn-nsp-tokens-is-list (fn-dss-out nil))
+                 (:instance fn-nsp-tokens-list-consumed
+                            (xs (fn-oct-slice-list i end fn-octets))
+                            (room (nfix cap))))))
+  :rule-classes (:rewrite :type-prescription)))
+(local (defthm fn-nsp-tokens-a3-call-i2-le
+  (implies (and (natp i) (natp cap) (fn-cbor-octet-listp fn-octets) (<= i end) (<= end (len fn-octets)))
+           (<= (mv-nth 2 (fn-nsp-tokens s i end last cap fn-octets nil)) end))
+  :hints (("Goal" :in-theory (disable fn-nsp-tokens fn-nsp-tokens-is-list fn-nsp-tokens-list fn-nsp-tokens-list-loop fn-nsp-tok-step$inline fn-nsp-tok-final$inline)
+           :use ((:instance fn-nsp-tokens-writes (fn-dss-out nil)))))
+  :rule-classes :linear))
+(local (defthm fn-nsp-tokens-a3-call-len
+  (implies (and (natp i) (natp cap) (fn-cbor-octet-listp fn-octets) (<= i end) (<= end (len fn-octets)))
+           (<= (len (mv-nth 3 (fn-nsp-tokens s i end last cap fn-octets nil))) cap))
+  :hints (("Goal" :in-theory (disable fn-nsp-tokens fn-nsp-tokens-is-list fn-nsp-tokens-list fn-nsp-tokens-list-loop fn-nsp-tok-step$inline fn-nsp-tok-final$inline)
+           :use ((:instance fn-nsp-tokens-writes (fn-dss-out nil)))))
+  :rule-classes :linear))
+(local (defthm fn-nsp-tokens-a3-call-s2
+  (implies (and (unsigned-byte-p 13 s) (natp i) (fn-cbor-octet-listp fn-octets) (<= end (len fn-octets)))
+           (unsigned-byte-p 13 (mv-nth 1 (fn-nsp-tokens s i end last cap fn-octets nil))))
+  :hints (("Goal" :in-theory (disable fn-nsp-tokens fn-nsp-tokens-is-list fn-nsp-tokens-list fn-nsp-tokens-list-loop fn-nsp-tok-step$inline fn-nsp-tok-final$inline)
+           :use ((:instance fn-nsp-tokens-state-type (fn-dss-out nil)))))))
+(defun fn-nsp-tokens-run (s i cap fuel fn-octets fn-dss-out)
+  (declare (xargs :stobjs (fn-octets fn-dss-out)
+                  :measure (nfix fuel)
+                  :hints (("Goal" :in-theory (disable fn-nsp-tokens fn-nsp-tokens-is-list)))
+                  :guard (and (unsigned-byte-p 13 s) (unsigned-byte-p 59 i)
+                              (unsigned-byte-p 59 cap) (natp fuel)
+                              (<= i (fn-octets-len fn-octets))
+                              (unsigned-byte-p 59 (fn-octets-len fn-octets)))
+                  :guard-hints (("Goal" :in-theory (disable fn-nsp-tokens fn-nsp-tokens-is-list)))))
+  (if (zp fuel)
+      (mv :fuel s nil fn-dss-out)
+    (let ((fn-dss-out (fn-dss-out-clear fn-dss-out)))
+      (mv-let (r s2 i2 fn-dss-out)
+        (fn-nsp-tokens s i (fn-octets-len fn-octets) t cap fn-octets fn-dss-out)
+        (let ((outs (fn-dss-out-list fn-dss-out)))
+          (if (or (eq r :yield) (eq r :need-output))
+              (mv-let (r3 s3 items fn-dss-out)
+                (fn-nsp-tokens-run s2 i2 cap (1- fuel) fn-octets fn-dss-out)
+                (mv r3 s3 (append outs (if (eq r :yield) (cons :yield items) items))
+                    fn-dss-out))
+            (mv r s2 outs fn-dss-out)))))))
+(local (defthm fn-nsp-tokens-a3-call-r
+  (implies (and (natp i) (natp cap) (<= 1 cap))
+           (let ((r (mv-nth 0 (fn-nsp-tokens s i end last cap fn-octets nil))))
+             (or (equal r :need-input) (equal r :need-output) (equal r :yield)
+                 (equal r :refused) (equal r :done))))
+  :hints (("Goal" :in-theory (disable fn-nsp-tokens fn-nsp-tokens-is-list fn-nsp-tokens-list fn-nsp-tokens-list-loop fn-nsp-tok-step$inline fn-nsp-tok-final$inline)
+           :use ((:instance fn-nsp-tokens-is-list (fn-dss-out nil))
+                 (:instance fn-nsp-tokens-list-prefix
+                            (xs (fn-oct-slice-list i end fn-octets))
+                            (lp last) (room cap)))))
+  :rule-classes nil))
+(local (defun fn-nsp-a3-rooms (cap n)
+  (declare (xargs :guard (natp n)))
+  (if (zp n) nil (cons cap (fn-nsp-a3-rooms cap (1- n))))))
+(local (defthm fn-nsp-a3-rooms-open
+  (implies (not (zp n))
+           (equal (fn-nsp-a3-rooms cap n) (cons cap (fn-nsp-a3-rooms cap (1- n)))))))
+(local (in-theory (disable fn-nsp-a3-rooms)))
+(local (defthm fn-nsp-tokens-run-is-host
+  (implies (and (unsigned-byte-p 13 s) (natp i) (natp cap) (<= 1 cap) (natp fuel)
+                (fn-octets-p fn-octets) (<= i (len fn-octets)))
+           (let ((a (fn-nsp-tokens-run s i cap fuel fn-octets fn-dss-out))
+                 (b (fn-nsp-tokens-host s (list fn-octets) i t (fn-nsp-a3-rooms cap fuel)
+                                        fuel fn-octets fn-dss-out)))
+             (equal (list (mv-nth 0 a) (mv-nth 1 a) (mv-nth 2 a))
+                    (list (mv-nth 0 b) (mv-nth 1 b) (mv-nth 2 b)))))
+  :hints (("Goal" :induct (fn-nsp-tokens-run s i cap fuel fn-octets fn-dss-out)
+           :in-theory (disable fn-nsp-tokens fn-nsp-tokens-is-list fn-nsp-tok-step$inline fn-nsp-tok-final$inline))
+          ("Subgoal *1/3" :use ((:instance fn-nsp-tokens-a3-call-r (end (len fn-octets)) (last t))) :expand ((:free (rooms) (fn-nsp-tokens-host s (list fn-octets) i t rooms fuel fn-octets fn-dss-out))))
+          ("Subgoal *1/2" :expand ((:free (rooms) (fn-nsp-tokens-host s (list fn-octets) i t rooms fuel fn-octets fn-dss-out))))
+          ("Subgoal *1/1" :expand ((:free (rooms) (fn-nsp-tokens-host s (list fn-octets) i t rooms fuel fn-octets fn-dss-out)))))))
+(local (defthm fn-nsp-a3-octet-listp-is-cbor
+  (implies (fn-octet-listp l) (fn-cbor-octet-listp l))))
+(local (defthm fn-nsp-a3-rooms-ok
+  (implies (and (natp cap) (<= 1 cap))
+           (fn-dss-a-host-room 1 (fn-nsp-a3-rooms cap fuel) fuel))
+  :hints (("Goal" :in-theory (enable fn-nsp-a3-rooms)))))
+(local (defthm fn-nsp-a3-run-is-items
+  (implies (and (fn-octet-listp line) (natp cap) (<= 1 cap)
+                (<= (+ 2 (len line)) fuel) (natp fuel))
+           (let ((run (fn-nsp-tokens-run 0 0 cap fuel line nil)))
+             (equal (list (mv-nth 0 run) (mv-nth 1 run) (mv-nth 2 run))
+                    (fn-nsp-tokens-items 0 line t))))
+  :hints (("Goal" :in-theory (disable fn-nsp-tokens-run fn-nsp-tokens-host fn-nsp-tokens-items)
+           :use ((:instance fn-nsp-tokens-run-is-host (s 0) (i 0) (fn-octets line) (fn-dss-out nil))
+                 (:instance fn-nsp-tokens-drive-stobj-is-items
+                            (s 0) (pieces (list line)) (last t)
+                            (rooms (fn-nsp-a3-rooms cap fuel))
+                            (fn-octets line) (fn-dss-out nil)))))))
+(local (defthm fn-nsp-a3-long-line-is-not-command-input
+  (implies (not (unsigned-byte-p 59 (len line))) (not (fn-nntp-command-inputp line)))
+  :hints (("Goal" :in-theory (enable fn-nntp-command-inputp fn-cbor-at-mostp)))))
+; Guard t, its preconditions tested in the body: a guard-verified function
+; whose guard is t carries no invariant-risk (ACL2 put-invariant-risk skips
+; it), so the local stobj writes below do not mark the :program read chain
+; that calls it (host/owner-host.lisp fn-asto-mca-read-span).  With the old
+; guard the chain ran as *1* code and checked fn-asto-capture's guard, a walk
+; of the whole catalog, on every read (POST cost linear in the store,
+; spans-after-8bdd8cb).
+(defun fn-nsp-line-tokens (line)
+  (declare (xargs :guard t))
+  (and (fn-cbor-octet-listp line)
+       (unsigned-byte-p 59 (len line))
+       (with-local-stobj fn-dss-b
+         (mv-let (res fn-dss-b)
+           (let ((fn-dss-b (fn-dss-b-from-list line fn-dss-b)))
+             (with-local-stobj fn-dss-out
+               (mv-let (res fn-dss-out)
+                 (mv-let (r s items fn-dss-out)
+                   (fn-nsp-tokens-run 0 0 512 (+ 2 (len line)) fn-dss-b fn-dss-out)
+                   (declare (ignore s))
+                   (mv (fn-nsp-tokens-of r items) fn-dss-out))
+                 (mv res fn-dss-b))))
+           res))))
+(defthm fn-nsp-line-tokens-is-tokenize
+  (implies (fn-octet-listp line)
+           (equal (fn-nsp-line-tokens line)
+                  (and (fn-nntp-command-inputp line) (fn-nntp-tokenize line))))
+  :hints (("Goal" :cases ((unsigned-byte-p 59 (len line)))
+           :in-theory (disable fn-nsp-tokens-run fn-nsp-tokens-items fn-nsp-tokens-of)
+           :use ((:instance fn-nsp-a3-run-is-items (cap 512) (fuel (+ 2 (len line))))
+                 fn-nsp-tokens-is-tokenize fn-nsp-a3-long-line-is-not-command-input))))

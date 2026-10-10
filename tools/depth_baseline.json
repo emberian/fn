@@ -722,7 +722,8 @@
   "fn-owner-orc-ctx": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
   "fn-owner-orc-decide": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
   "fn-owner-orc-finish": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
-  "fn-owner-orc-request": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)"
+  "fn-owner-orc-request": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-rdv-row-digest": "build: a :program entry by nature (coordinator ruling 2026-10-10 on DEPTH-EXCESS-D): it reads the world through ACL2's own :program accessors (guard, stobjs-in, stobjs-out, getpropc), so it cannot be :logic; its one caller is fnn-install-raw-dispatch (host/native/raw-trap.lisp), at build time, once per raw-declared interface row, with no client data and never on a served path. The condition is checked: \"program_build_time\" names the only host files that may mention it, and depth_check fails on any other mention (books/raw-dispatch-verdict.lisp)"
  },
  "raw": {
   "_doc": "tools/depth_check.py --raw's classification of every non-tail recursion in the raw host code (host/native/*.lisp), with tools/depth_check.py's rules: bounded names its bound (a *constant* the tree defines, a number, or a structural bound); debt only shrinks; operator data is never a bound (D27).  Introduced empty of debt (lane depth-debt, 2026-09-28).",
@@ -743,5 +744,12 @@
    "fnn-tcl-apply": "depth 2: its non-tail call (through fnn-tcl-turn-lost, which applies the tcp-closed result) is under the :refused arm of the passive admission, which runs once per connection because fnn-tclc-session-admitted is set before the admission is asked, so the inner apply skips it"
   },
   "debt": {}
+ },
+ "program_build_time": {
+  "_doc": "A :program entry listed here is safe only off the served path: depth_check refuses any mention of it in a host/ or tools/extract/ file not named in its list (tools/depth_check.py check_build_time).",
+  "fn-rdv-row-digest": [
+   "host/interfaces.lisp",
+   "host/native/raw-trap.lisp"
+  ]
  }
 }

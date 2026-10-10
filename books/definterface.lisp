@@ -101,7 +101,8 @@
 ; and then records the declaration in the table `fn-interfaces'.  A failed
 ; check is a soft error naming the entry and the check.  The registry half
 ; is tools/interface_emit.py, which reads the same forms without evaluating
-; them and generates planning/interfaces.json and tools/extract/roots.sh; its
+; them and renders the interface registry on read (`interface_emit.py
+; registry'; no committed copy) and tools/extract/roots.sh; its
 ; host-binding check reads the raw host itself (a declared entry the host
 ; never dispatches is stale; see that tool).
 ;

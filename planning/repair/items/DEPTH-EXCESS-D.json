@@ -4,12 +4,13 @@
  "file": "tools/depth_check.py",
  "id": "DEPTH-EXCESS-D",
  "notes": [
-  "2026-10-10 Builder D: lane/d-depth-excess-d closes 63; see its READY."
+  "2026-10-10 Builder D: lane/d-depth-excess-d closes 63; see its READY.",
+  "10-10 12:08 2026-10-10 Builder D, lane/d-rdv-build-time: fn-rdv-row-digest is program-listed by the coordinator's ruling (a) with its reason and call site; tools/depth_check.py check_build_time refuses any mention of it outside host/interfaces.lisp and host/native/raw-trap.lisp. Open: 11 web wrappers (Builder D's Sonnet, lane/d-web-guards) and 3 bp-release-owner wrappers."
  ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "depth_check at lane/d-registry-findings (dev 9b580dd36 + D's queued lanes), Builder D 2026-10-10, CL13 attributed by area under the CL24 ruling's pattern",
  "state": "in-progress",
  "title": "depth_check: 17 unclassified host-closure findings in builder-D's area (80 at CL13; 2 more left to retiring landings)",
- "updated": "2026-10-10T04:30:00Z"
+ "updated": "2026-10-10T16:08:24Z"
 }

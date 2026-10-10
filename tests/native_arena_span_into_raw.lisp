@@ -12,6 +12,23 @@
 (defpackage "ACL2" (:use "CL"))
 (defpackage "ACL2_*1*_ACL2" (:use "CL"))
 (in-package "ACL2")
+
+;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
+(define-condition harness-stub-reached (serious-condition)
+  ((name :initarg :name :reader harness-stub-reached-name)
+   (source :initarg :source :reader harness-stub-reached-source))
+  (:report (lambda (c s)
+             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
+                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
+(defun harness-stub-reached (name source)
+  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
+          name source)
+  (finish-output *error-output*)
+  (error 'harness-stub-reached :name name :source source))
+(defun fnn-make-octets (n)
+  (declare (ignorable n))
+  (harness-stub-reached 'fnn-make-octets "host/native/io.lisp"))
+;;; ---- derived stubs: END ----
 (deftype fnn-octets () '(simple-array (unsigned-byte 8) (*)))
 (define-condition fnn-store-fault (error) ((message :initarg :message :reader fault-message)))
 (defmacro fnn-with-observed-mutex ((lock label &rest options) &body body)
@@ -22,7 +39,7 @@
   *fnn-extent-window-worker* *fnn-extent-window-token* *fnn-extent-window-cache*
   *fnn-extent-run-dst* fnn-extent-copy-span fnn-extent-window-run-at
   fnn-extent-window-cache-run fnn-extent-window-realize-run
-  fnn-extent-window-realize-span fn-durable-realize-span fn-arena-get-span-into))
+  fnn-extent-window-realize-span fn-durable-realize-span fnn-ew-span-array fn-arena-get-span-into))
 (with-open-file (in "host/native/extent.lisp")
   (loop for f = (read in nil :eof) until (eq f :eof)
         for name = (and (consp f) (consp (cdr f)) (if (consp (cadr f)) (caadr f) (cadr f)))
@@ -32,9 +49,10 @@
 (when *wanted* (error "missing forms ~s" *wanted*))
 
 ;;; The image's side, modelled.
-(defun create-fn-ew-span () (vector (make-array 16384 :element-type '(unsigned-byte 8))))
+;;; ACL2 represents fn-ew-span (one array field) as the array itself.
+(defun create-fn-ew-span () (make-array 16384 :element-type '(unsigned-byte 8)))
 (declaim (inline fn-ew-span-bytesi))
-(defun fn-ew-span-bytesi (k dst) (aref (svref dst 0) k))
+(defun fn-ew-span-bytesi (k dst) (aref dst k))
 (defstruct worker row result)
 (defun fnn-cold-worker-row (w) (worker-row w))
 (defun fnn-cold-worker-result (w) (worker-result w))
@@ -54,13 +72,13 @@
      (destructuring-bind (row token plan file eoff elen poff plen trailer i j window dst) args
        (declare (ignore row token plan file eoff elen plen trailer window))
        (incf *runs*)
-       (replace (svref dst 0) *source* :start2 (+ poff i) :end2 (+ poff j))
+       (replace dst *source* :start2 (+ poff i) :end2 (+ poff j))
        (list :span)))
     (fn-owner-page-window-cache-span-at
      (destructuring-bind (token plan file eoff elen poff plen trailer i j window dst) args
        (declare (ignore token plan file eoff elen plen trailer window))
        (incf *runs*)
-       (replace (svref dst 0) *source* :start2 (+ poff i) :end2 (+ poff j))
+       (replace dst *source* :start2 (+ poff i) :end2 (+ poff j))
        (list :span)))))
 (defvar *fnn-extent-stats* (list 0 0 0))
 (defun fnn-extent-entry (file eoff elen trailer)
@@ -73,10 +91,15 @@
 (defun fn-arena$x-exti (h a) (let ((e (aref a h))) (if (eq (car e) :list) :other e)))
 (defun fn-arena$x-payload-len (h a)
   (let ((e (aref a h))) (if (eq (car e) :list) (length (second e)) (nth 4 e))))
+(defun fn-arena$x-get (h i a)
+  (let ((e (aref a h)))
+    (if (eq (car e) :list)
+        (aref (second e) i)
+      (let ((*fnn-extent-window-mode* nil)) (first (fn-durable-realize-span (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e) i 1))))))
 (defun fn-arena$x-get-span (h at n a)
   (let ((e (aref a h)))
     (if (eq (car e) :list)
-        (subseq (second e) at (+ at n))
+        (coerce (subseq (second e) at (+ at n)) 'list)
       (let ((*fnn-extent-window-mode* nil)) (fn-durable-realize-span (nth 0 e) (nth 1 e) (nth 2 e) (nth 3 e) (nth 4 e) (nth 5 e) at n)))))
 (defun fn-octets$c-reserve (n st)
   (when (> n (length (svref st 0)))
@@ -98,7 +121,8 @@
 (setq *arena*
       (vector (list 1 0 50000 100 40000 :t0)       ; multi-run extent (40000 > 2 x 16384)
               (list 1 60000 9000 60010 8000 :t1)   ; second extent
-              (list :list (loop for i below 300 collect (mod (* 7 i) 256))))) ; staged/paged/lz stand-in
+              (list :list (coerce (loop for i below 300 collect (mod (* 7 i) 256)) 'vector))   ; staged/paged/lz stand-in
+              (list :list (coerce (loop for i below 70000 collect (mod (* 13 i) 251)) 'vector)))) ; a long one (the image's per-octet span recursed)
 (defun model-token () (list :window nil 1 0 50000 100 40000 0 :t0))
 (defun check (h at n prefix mode)
   (let* ((*fnn-extent-window-mode* (not (eq mode :sync)))
@@ -117,7 +141,7 @@
       (assert (= *runs* (ceiling n 16384))))
     (when (and extent-p (> n 0) (eq mode :sync)) (assert (= *entry-reads* 1)))))
 (dolist (mode '(:sync :worker :cache))
-  (dolist (h (if (eq mode :cache) '(0 2) '(0 1 2)))   ; the cached window is extent 0's
+  (dolist (h (if (eq mode :cache) '(0 2 3) '(0 1 2 3)))   ; the cached window is extent 0's
     (let ((plen (fn-arena$x-payload-len h *arena*)))
       (dolist (prefix (list nil '(9 8 7)))
         (dolist (w (list (cons 0 plen) (cons 5 100) (cons 0 0) (cons plen 0) (cons (- plen 17) 17)
@@ -126,7 +150,7 @@
           (when (and (<= 0 (car w)) (<= 0 (cdr w)) (<= (+ (car w) (cdr w)) plen))
             (check h (car w) (cdr w) prefix mode)))))))
 ;;; Past the payload end is refused and leaves the buffer as it was.
-(dolist (bad '((0 0 40001) (0 40000 1) (1 8000 1) (2 299 2) (3 0 0) (0 -1 1)))
+(dolist (bad '((0 0 40001) (0 40000 1) (1 8000 1) (2 299 2) (3 69999 2) (4 0 0) (0 -1 1)))
   (let ((buf (make-buf '(1 2 3))) (*fnn-extent-window-mode* nil))
     (handler-case (progn (fn-arena-get-span-into (first bad) (second bad) (third bad) *arena* buf)
                          (error "accepted ~s" bad))

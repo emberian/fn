@@ -1751,6 +1751,19 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 (defun acl2_*1*_acl2::fn-durable-realize-span (file eoff elen poff plen trailer i n)
   (fn-durable-realize-span file eoff elen poff plen trailer i n))
 
+;;; The fn-ew-span stobj's octets.  ACL2 represents a stobj whose one field is
+;;; an array as that array itself (no field vector), so the live fn-ew-span IS
+;;; the (unsigned-byte 8) array fn-ew-span-bytesi reads; a field vector read
+;;; (svref DST 0) under safety 0 reads the array's header word instead.  The
+;;; check below makes a change of that representation an image-load error.
+(declaim (inline fnn-ew-span-array))
+(defun fnn-ew-span-array (dst)
+  (the fnn-octets dst))
+
+(unless (typep (create-fn-ew-span) 'fnn-octets)
+  (error "fn-ew-span is no longer represented as its octet array: ~s"
+         (type-of (create-fn-ew-span))))
+
 ;;; A-ARENA-SPAN-INTO (books/assumptions-durable-spans.lisp): the same N octets
 ;;; appended to the octet buffer, no list.  FN-ARENA is the concrete
 ;;; fn-arena-extent object and FN-OCTETS the concrete fn-octets$c (or a
@@ -1762,7 +1775,9 @@ Anything but :stale removes the row (the file pin) and idles the worker."
 ;;; synchronous route copies one REPLACE from the trailer-verified entry
 ;;; (fnn-extent-entry) under the one lock.  The fill moves once, after the last
 ;;; run, so a cold throw or refusal leaves the buffer as it was.  Every other
-;;; entry kind appends the arena's own span.
+;;; entry kind appends the arena's own octets, fn-arena$x-get from AT to AT+N
+;;; (the octets fn-arena$x-get-span lists by fn-arx-get-loop, one frame per
+;;; octet; written here in one loop, no list and no recursion).
 (defun fn-arena-get-span-into (h at n fn-arena fn-octets)
   (unless (and (integerp h) (<= 0 h) (< h (fn-arena$x-count fn-arena))
                (integerp at) (<= 0 at) (integerp n) (<= 0 n)
@@ -1772,7 +1787,14 @@ Anything but :stale removes the row (the file pin) and idles the worker."
                             at at n h)))
   (let ((e (fn-arena$x-exti h fn-arena)))
     (if (not (fn-arn-extentp e))
-        (fn-oct-write-list (fn-arena$x-get-span h at n fn-arena) fn-octets)
+        (let ((fill (svref fn-octets 1)))
+          (declare (type fixnum fill n at))
+          (fn-octets$c-reserve (+ fill n) fn-octets)
+          (let ((buf (svref fn-octets 0)))
+            (declare (type fnn-octets buf))
+            (loop for k of-type fixnum from 0 below n
+                  do (setf (aref buf (+ fill k)) (fn-arena$x-get h (+ at k) fn-arena))))
+          (setf (svref fn-octets 1) (+ fill n)))
       (let ((fill (svref fn-octets 1)))
         (declare (type fixnum fill n))
         (fn-octets$c-reserve (+ fill n) fn-octets)
@@ -1785,7 +1807,7 @@ Anything but :stale removes the row (the file pin) and idles the worker."
               (flet ((sink (dst count)
                        (declare (type fixnum count))
                        (replace (the fnn-octets (svref fn-octets 0))
-                                (the fnn-octets (svref dst 0))
+                                (fnn-ew-span-array dst)
                                 :start1 pos :end2 count)
                        (incf pos count)))
                 (declare (dynamic-extent #'sink))
