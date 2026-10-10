@@ -4953,13 +4953,13 @@
       (if (eq (car charge) :ok) (cons result (cadr charge))
         (cons (fn-mca-shut-read oc id start stop) credits))))))
 
-(defun fn-owner-article-ready-plan-step (id plan quantum fn-arena state)
- (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-article-ready-plan-step (id plan quantum fn-arena fn-ast-ws state)
+ (declare (xargs :stobjs (fn-arena fn-ast-ws state) :mode :program))
  (let ((before (fn-owner-ocfg state)))
-  (mv-let (word after next) (fn-asto-ready-plan-step before id plan quantum fn-arena)
+  (mv-let (word after next fn-ast-ws) (fn-asto-ready-plan-step before id plan quantum fn-arena fn-ast-ws)
    (let ((state (if (and (eq word :ready) (not (equal before after)))
                     (fn-owner-install-ocfg after state) state)))
-    (value (list word next))))))
+    (mv nil (list word next) fn-ast-ws state)))))
 
 ; One retained preflight quantum, with selection installed once on READY;
 ; replay consumes the immutable render plan without repeating authority.

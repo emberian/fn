@@ -912,12 +912,40 @@ def check_program(rows: list[dict], baseline: dict) -> list[str]:
     return problems
 
 
+def check_build_time(baseline: dict, root: Path = ROOT) -> list[str]:
+    """A :program entry that is safe only at build time (listed under
+    "program_build_time" with the host files allowed to mention it) must stay
+    off the served path: any mention of it in another host/ or tools/extract/
+    file is refused.  An entry here must also be listed under "program"."""
+    problems = []
+    listed = baseline.get("program", {})
+    files = sorted(list((root / "host").rglob("*.lisp"))
+                   + list((root / "tools" / "extract").rglob("*.lisp")))
+    for fn, allowed in sorted(baseline.get("program_build_time", {}).items()):
+        if fn not in listed:
+            problems.append("{}: listed under \"program_build_time\" but not under \"program\" "
+                            "in tools/depth_baseline.json".format(fn))
+        pattern = re.compile(r"(?<![A-Za-z0-9*+!?<>=/$%&^~:.-])" + re.escape(fn)
+                             + r"(?![A-Za-z0-9*+!?<>=/$%&^~:.-])", re.IGNORECASE)
+        for path in files:
+            rel = path.relative_to(root).as_posix()
+            if rel in allowed:
+                continue
+            if pattern.search(path.read_text(encoding="utf-8", errors="replace")):
+                problems.append("{} ({}): a build-time-only :program entry is mentioned outside "
+                                "its listed callers ({}); a served-path caller is refused".format(
+                                    fn, rel, ", ".join(allowed)))
+    return problems
+
+
 def load_baseline(path: Path = BASELINE) -> dict:
     data = json.loads(path.read_text(encoding="utf-8"))
     app = data.get("append", {})
     return {"bounded": dict(data.get("bounded", {})), "debt": dict(data.get("debt", {})),
             "append": {"bounded": dict(app.get("bounded", {})), "debt": dict(app.get("debt", {}))},
             "program": dict(data.get("program", {})),
+            "program_build_time": {k: list(v) for k, v in data.get("program_build_time", {}).items()
+                                   if not k.startswith("_")},
             "raw": {k: dict(data.get("raw", {}).get(k, {})) for k in ("bounded", "debt")}}
 
 
@@ -1381,6 +1409,7 @@ def main(argv: list[str] | None = None) -> int:
                 "listed" if r["function"] in listed else "UNLISTED", r["function"],
                 r["where"], listed.get(r["function"], "")))
     problems += check_program(program_rows, baseline)
+    problems += check_build_time(baseline)
     for p in problems:
         print("depth_check: " + p, file=sys.stderr)
     print("depth_check: {} host-called root(s), {} function(s) in the closure, {} non-tail "

@@ -397,6 +397,27 @@
   :keystones (fn-octets-reserve{correspondence})
   :direct "the octet buffer's stobj primitive (host/native/io.lisp fnn-live-octets)")
 
+;; A-ARENA-SPAN-INTO (books/assumptions-durable-spans.lisp, adapter A4 of
+;; spans step 3; owner Builder C, retired with A's leased-handle read): the
+;; host fn-arena-get-span-into (host/native/extent.lisp) checks its window
+;; against the payload at entry and reads the arena's own fields and octets.
+(definterface fn-arena$x-count
+  :class :common-lisp-compliant
+  :kinds ()
+  :direct "A-ARENA-SPAN-INTO's host (host/native/extent.lisp fn-arena-get-span-into): the handle bound of the window check, after its own bounds check at entry")
+(definterface fn-arena$x-payload-len
+  :class :common-lisp-compliant
+  :kinds ((h natp))
+  :direct "A-ARENA-SPAN-INTO's host (host/native/extent.lisp fn-arena-get-span-into): the payload bound of the window check, after its own bounds check at entry")
+(definterface fn-arn-extentp
+  :class :common-lisp-compliant
+  :kinds ()
+  :direct "A-ARENA-SPAN-INTO's host (host/native/extent.lisp fn-arena-get-span-into): the entry kind (an extent takes the verified-window route), after its own bounds check at entry")
+(definterface fn-arena$x-get
+  :class :common-lisp-compliant
+  :kinds ((h natp) (i natp))
+  :direct "A-ARENA-SPAN-INTO's host (host/native/extent.lisp fn-arena-get-span-into): every other entry kind's octets, AT to AT+N, written into the octet buffer, after its own bounds check at entry")
+
 (definterface fn-outcome-host-condition-exit-code
   :class :common-lisp-compliant
   :keystones (fn-outcome-host-condition-fences-iff-indeterminate)

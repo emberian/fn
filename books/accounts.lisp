@@ -32,6 +32,7 @@
 ; reply.  That a guessed code finds a row is the crypto seam's preimage
 ; resistance (A-CRYPTO), never claimed here.
 (in-package "ACL2")
+(include-book "decimal-text")
 (include-book "config")
 (include-book "auth-secret")
 (include-book "identity")
@@ -844,19 +845,8 @@
       (fn-acct-hex-text entropy)
     nil))
 
-; `explode-nonnegative-integer' is the tree's decimal renderer
-; (books/provenance.lisp `fn-prov-nat-string' proves the same two facts).
+; Later proofs in this book are developed under the arithmetic books.
 (local (include-book "arithmetic/top" :dir :system))
-
-(local
- (defthm fn-acct-explode-characters-aux
-   (implies (and (natp number) (character-listp accumulator))
-            (character-listp
-             (explode-nonnegative-integer number 10 accumulator)))))
-
-(defun fn-acct-decimal-text (n)
-  (declare (xargs :guard t))
-  (coerce (explode-nonnegative-integer (nfix n) 10 nil) 'string))
 
 (defun fn-acct-invite-expiry (seconds reading)
   (declare (xargs :guard t))
@@ -872,7 +862,7 @@
   (let ((expiry (fn-acct-invite-expiry seconds reading)))
     (if expiry
         (fn-cfg-account-invite digest *fn-acct-issuer*
-                               (fn-acct-decimal-text expiry))
+                               (fn-decimal-text expiry))
       nil)))
 
 ; The two readings an invitation is issued at.  Running: the live owner's
@@ -933,7 +923,7 @@
                              (fn-record-octets-string
                               (fn-native-admin-result-name plan))
                              *fn-acct-issuer*
-                             (fn-acct-decimal-text
+                             (fn-decimal-text
                               (+ wall err
                                  (* 1000 (fn-native-admin-result-capacity
                                           plan))))))))

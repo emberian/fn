@@ -90,9 +90,23 @@
    "16",
    "--max-open-suffix",
    "128"
+  ],
+  "huge-articles": [
+   "--profile",
+   "development",
+   "--max-transactions",
+   "256",
+   "--max-history-octets",
+   "268435456",
+   "--max-record-octets",
+   "3473408",
+   "--max-article-octets",
+   "3407872",
+   "--max-groups-per-article",
+   "16"
   ]
  },
- "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up).",
+ "preset_notes": "development takes 127 POSTs (max-transactions 128); small takes 16384 POSTs or 8 MiB of history, about 4000 articles of 2 KiB; filled is small with 100000 transactions and 256 MiB of history; scale-1m is service_envelope's scale-1m profile. big-articles is development with 4096 transactions, 512 MiB of history and articles up to 1 MiB + 64 KiB (the default max-article-octets refuses 32 KiB and up). huge-articles is development with 256 transactions, 256 MiB of history and articles up to 3.25 MiB, sized to W2M's 64 preloaded 3 MiB articles (4096 transactions reserved 25.7 GB, past the 16 GB cell budget).",
  "sbcl_user_args": "--dynamic-space-size 1068MB --tls-limit 16384",
  "workloads": {
   "smoke": {
@@ -1136,6 +1150,40 @@
    "hooks": [
     "planning/evidence/load/hooks/f4-index.lisp"
    ]
+  },
+  "readers-3m": {
+   "about": "W2 at 3 MiB (spans step 3's bench): readers looping ARTICLE over a store of 64 preloaded 3 MiB articles, at R = 1 and 16, no poster. The variant R<n> runs one R.",
+   "preset": "huge-articles",
+   "groups": [
+    "fn.letters",
+    "fn.test"
+   ],
+   "sampler_s": 1.0,
+   "settle_s": 3,
+   "store": {
+    "preload": 64,
+    "octets": 3145728
+   },
+   "phases": [
+    {
+     "name": "R1",
+     "kind": "read",
+     "readers": 1,
+     "duration_s": 20,
+     "cmd": "ARTICLE"
+    },
+    {
+     "name": "R16",
+     "kind": "read",
+     "readers": 16,
+     "duration_s": 20,
+     "cmd": "ARTICLE",
+     "measure": true
+    }
+   ],
+   "policy": {
+    "exposure-connections": 128
+   }
   }
  },
  "cells": {
@@ -1173,7 +1221,8 @@
   "W6q": "catchup-quiet",
   "F2S": "fault-crash-boundary-survey",
   "W7": "extent-cache",
-  "F4R": "fault-index-saturation-reopen"
+  "F4R": "fault-index-saturation-reopen",
+  "W2M": "readers-3m"
  },
  "stores": {
   "1k": 1000,

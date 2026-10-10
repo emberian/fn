@@ -1,7 +1,7 @@
 ; fn: the exported wire grammars, rendered by ACL2 (Mini M5;
 ; planning/design/wire-grammar-2026-10-04.md section 3).
 ;
-; specs/wire-grammar.json is `fn-wgx-file' below: its octets are an ACL2
+; build/box/wire-grammar.json is `fn-wgx-file' below: its octets are an ACL2
 ; value.  tools/protocol_emit.py --wire evaluates it through tools/acl2 and
 ; only writes (or, with --check, compares) the octets; nothing outside ACL2
 ; decides a byte of the file.
