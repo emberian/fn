@@ -1760,27 +1760,62 @@
      (if (consp output) (nfix (car output)) 0)
      (if (consp peer) (nfix (car peer)) 0)))
 
+; THE GATE ALONE, for every owner process (host/native/mux.lisp
+; fnn-owner-memory-install, called by fnn-owner-install): the run's coordinates
+; and the OVER window, with no C' (NIL: fn-owner-memory-gate then prices the
+; configured C).  C' is the mux run's statement (fn-owner-memory-configure
+; below): fn-adm-capacity walks down from C one connection at a time, so at a
+; configured C the machine cannot hold (4,000,000 in test_native_mux) an
+; install that computed it never returned, before the run's connection budget
+; could refuse.  Answers the LIMIT and the CFG.
+(defun fn-owner-memory-configure-gate (img resident-obs trigger pub-trigger profile tlsp live
+                                           cold output peer workers cache-limit root window
+                                           config state)
+  (declare (xargs :stobjs state :mode :program))
+  (let* ((least (fn-mm-resident-limit nil resident-obs))
+         (pools (fn-owner-memory-pools profile cold output peer workers cache-limit root))
+         (limit (and (natp least) (nfix (- least pools))))
+         (ocfg (fn-owner-config state))
+         (cfg (fn-owner-memory-cfg (fn-cfg-value ocfg) tlsp trigger pub-trigger live cold
+                                   profile window (fn-oag-agent ocfg) (nfix config)))
+         (state (f-put-global 'fn-owner-memory-run
+                              (list img limit trigger pub-trigger profile tlsp live cold
+                                    window (nfix config) nil)
+                              state))
+         ; A-OVER-WINDOW-FIT: the OVER quantum the gate charges, which
+         ; the host serves (host/native/owner.lisp fnn-owner-over-window).
+         (state (f-put-global 'fn-owner-memory-over-window
+                              (fn-mm-over-window-fit profile cfg) state)))
+    (mv limit cfg state)))
+
+(defun fn-owner-memory-gate-install (img resident-obs trigger pub-trigger profile tlsp live
+                                         cold output peer workers cache-limit root window
+                                         config state)
+  (declare (xargs :stobjs state :mode :program))
+  (mv-let (limit cfg state)
+    (fn-owner-memory-configure-gate img resident-obs trigger pub-trigger profile tlsp live
+                                    cold output peer workers cache-limit root window
+                                    config state)
+    (declare (ignore limit cfg))
+    (value :hold)))
+
+(definterface fn-owner-memory-gate-install
+  :class ::program)
+
 (defun fn-owner-memory-configure (img resident-obs trigger pub-trigger profile tlsp live cold
                                       output peer workers cache-limit root window config
                                       fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
-  (let* ((least (fn-mm-resident-limit nil resident-obs))
-         (pools (fn-owner-memory-pools profile cold output peer workers cache-limit root))
-         (limit (and (natp least) (nfix (- least pools)))))
+  (mv-let (limit cfg state)
+    (fn-owner-memory-configure-gate img resident-obs trigger pub-trigger profile tlsp live
+                                    cold output peer workers cache-limit root window
+                                    config state)
     (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
-      (let* ((ocfg (fn-owner-config state))
-             (cfg (fn-owner-memory-cfg (fn-cfg-value ocfg) tlsp trigger pub-trigger live cold
-                                       profile window (fn-oag-agent ocfg) (nfix config)))
-             (cap (fn-adm-capacity profile img cfg limit tot))
+      (let* ((cap (fn-adm-capacity profile img cfg limit tot))
              (state (f-put-global 'fn-owner-memory-run
-                                  (list img limit trigger pub-trigger profile tlsp live cold
-                                        window (nfix config) cap)
+                                  (update-nth 10 cap (f-get-global 'fn-owner-memory-run state))
                                   state))
              (state (f-put-global 'fn-owner-memory-capacity cap state))
-             ; A-OVER-WINDOW-FIT: the OVER quantum the gate charges, which
-             ; the host serves (host/native/owner.lisp fnn-owner-over-window).
-             (state (f-put-global 'fn-owner-memory-over-window
-                                  (fn-mm-over-window-fit profile cfg) state))
              (state (f-put-global 'fn-owner-memory-capacity-line
                                   (fn-record-string-octets
                                    (fn-adm-capacity-line profile img cfg limit tot))

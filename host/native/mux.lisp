@@ -2201,13 +2201,16 @@ history's octets (config/'s lstat sizes)."
         (fnn-heap-resident-observations)
         (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store))))
 
-(defun fnn-owner-memory-configure-locked (service tls-context observed)
-  "ACL2's fn-owner-memory-configure over OBSERVED and SERVICE's run
-coordinates; the caller holds the owner serialization.  Answers :hold or
-:refused (no connection fits the limit at the carried store)."
+(defun fnn-owner-memory-configure-locked (service tls-context observed
+                                          &optional (interface 'fn-owner-memory-configure))
+  "ACL2's INTERFACE (fn-owner-memory-configure, or fn-owner-memory-gate-install
+for the gate alone) over OBSERVED and SERVICE's run coordinates; the caller
+holds the owner serialization or is the single-threaded install.  The
+configure answers :hold or :refused (no connection fits the limit at the
+carried store); the gate alone answers :hold."
   (let ((store (fnn-owner-service-store service)))
     (destructuring-bind (img resident config-octets) observed
-      (fnn-owner-core 'fn-owner-memory-configure
+      (fnn-owner-core interface
                       img resident
                       +fnn-owner-service-nursery-octets+ (fnn-gc-nursery-octets)
                       (fnn-store-config store) (and tls-context t)
@@ -2224,16 +2227,17 @@ coordinates; the caller holds the owner serialization.  Answers :hold or
 (defun fnn-owner-memory-install (service)
   "The memory gate for an owner process before it admits anything, called
 by fnn-owner-install while the process is still single-threaded (as its
-other install steps reach the owner).  A :refused gate is not refused
-here (the process may serve no connection: the gate then refuses each
-article by :memory, by name); the capacity line is the run's statement,
-logged once by the mux's budget install, which configures again with the
-run's coordinates and refuses a run no connection fits."
+other install steps reach the owner).  Nothing is refused
+here, and no C' is computed (fn-owner-memory-gate-install: the gate then
+prices the configured C and refuses each article it cannot hold by :memory,
+by name); C' and its capacity line are the mux run's statement, after the
+run's connection budget holds (fnn-mux-budget-install), which configures
+again with the run's coordinates and refuses a run no connection fits."
   (let* ((observed (fnn-owner-memory-observe (fnn-owner-service-store service)))
-         (memory (fnn-owner-memory-configure-locked service nil observed)))
-    (unless (and (member memory '(:hold :refused))
-                 (fnn-octet-list-p (fnn-global 'fn-owner-memory-capacity-line)))
-      (fnn-fault "owner returned a malformed memory capacity"))
+         (memory (fnn-owner-memory-configure-locked service nil observed
+                                                    'fn-owner-memory-gate-install)))
+    (unless (eq memory :hold)
+      (fnn-fault "owner returned a malformed memory gate"))
     memory))
 
 (defun fnn-mux-budget-install (service tls-context)
