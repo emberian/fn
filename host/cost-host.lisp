@@ -13,6 +13,12 @@
 (include-book "page-window-executor-host")
 (include-book "../books/output-tariff-families")
 (include-book "page-decoded-window-host")
+; Hosts whose entries rows below cost: fn-nco-owner-publication-word (the
+; control host), fn-owner-cfg-capture and fn-owner-sco-count (the owner host),
+; fn-owner-held-verdicts.  The image loads each before this file.
+(include-book "native-control-host")
+(include-book "owner-host")
+(include-book "owner-held-verdicts-host")
 
 (def-cost fn-reader-chunk
   :visits (+ 1 request-octets)
