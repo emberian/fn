@@ -712,6 +712,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/resource-vector-tree-tests \
 	books/resource-operation \
 	tests/acl2/heap-figure-tests \
+	books/charged-totals \
+	books/memory-model \
+	tests/acl2/memory-model-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
 	tests/acl2/open-frontier-wire-tests \
@@ -2837,7 +2840,8 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
-# The exported wire grammars (Mini M5): specs/wire-grammar.json is the value
+# The exported wire grammars (Mini M5): build/box/wire-grammar.json, the box
+# step's artifact (tools/box_artifacts.py), is the value
 # ACL2 renders (books/wire-export.lisp fn-wgx-file), and a second interpreter
 # written from the language's description reads every vector in it.
 	@$(CHECK_STEP) $(PYTHON) tools/protocol_emit.py --wire --check
@@ -3284,7 +3288,7 @@ test-modules:
 
 # Current captured and RX component roots; proof/native scope stays explicit.
 
-# The exported wire grammars (Mini M5): write specs/wire-grammar.json from
+# The exported wire grammars (Mini M5): write build/box/wire-grammar.json from
 # ACL2's fn-wgx-file; `make wire-grammar-check' compares.
 wire-grammar:
 	$(PYTHON) tools/protocol_emit.py --wire --write

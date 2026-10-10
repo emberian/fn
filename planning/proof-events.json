@@ -18925,6 +18925,24 @@
           "name": "fn-scar-own-read-step-full-is-own-read-step-full"
         }
       ]
+    },
+    {
+      "id": "PRF-10000",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-header-decide-holds-the-header"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10001",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mm-admitted-store-reopens"
+        }
+      ]
     }
   ]
 }

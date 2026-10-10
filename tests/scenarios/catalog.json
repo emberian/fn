@@ -5811,9 +5811,6 @@
       "requirements": [
         "NNT-056"
       ],
-      "evidence": [
-        "tests/test_native_sasl.py"
-      ],
       "steps": [
         "Node A runs with a plaintext reader listener offering STARTTLS, an implicit-TLS listener, `[auth] required = true, protected_only = false`, and one credential written by `principal set-password`.",
         "CAPABILITIES in clear, after STARTTLS, on the TLS port, and after a login.",
@@ -5844,7 +5841,10 @@
         "native": true,
         "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_sasl.log",
         "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
-      }
+      },
+      "evidence": [
+        "tests/test_native_sasl.py"
+      ]
     },
     {
       "id": "SCN-197",
@@ -7740,14 +7740,14 @@
         "NIL is an actual :row result; registered txid mismatch refuses; repeated completion/publication retains full logical backing and does not append again.",
         "No native activation, shaped allocator grant or final physical lifetime return is inferred."
       ],
-      "implementation": {
-        "test": "tests/acl2/history-event-directory-tests.lisp",
-        "native": false
-      },
       "evidence": [
         "tests/acl2/history-event-directory-tests.lisp",
         "tests/acl2/history-event-backing-tests.lisp"
       ],
+      "implementation": {
+        "test": "tests/acl2/history-event-directory-tests.lisp",
+        "native": false
+      },
       "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; its test is an ACL2 test book with no archived certify log. It returns to implemented when a passing run's log is archived and cited."
     },
     {
@@ -8571,6 +8571,12 @@
         "Reject a damaged header; release on raw nonlocal exit and prewrite deferral; successful stage returns snapshot before publication admission can reopen.",
         "A stop fence after the first image page is observed before the next page; refuse before replacement and return snapshot custody."
       ],
+      "evidence": [
+        "tests/test_native_checkpoint_image_readback.py",
+        "tests/native_checkpoint_image_readback_raw-mock.lisp",
+        "tests/test_native_state_checkpoint.py"
+      ],
+      "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim.",
       "expected": [
         "Valid bytes install the staged checkpoint exactly once and the private writer snapshot is released.",
         "A corrupted used page or unwritten zero page is refused before checkpoint replacement; the old checkpoint is retained byte for byte, no replacement or drop is authorized, and the snapshot is released.",
@@ -8586,13 +8592,7 @@
         "native": false,
         "log": "planning/evidence/cl04-scenario-runs-2026-10-10/test_native_checkpoint_image_readback.log",
         "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
-      },
-      "evidence": [
-        "tests/test_native_checkpoint_image_readback.py",
-        "tests/native_checkpoint_image_readback_raw-mock.lisp",
-        "tests/test_native_state_checkpoint.py"
-      ],
-      "implementation_note": "Actual raw host stage/readback/install, ACL2 header/page codec and kernel files exercised with recorded snapshot storage and framed-run verifier boundaries. Matching saved-image scenario and certification pending; no image/deployment claim."
+      }
     },
     {
       "id": "SCN-1096",
@@ -8608,6 +8608,10 @@
         "A budget sufficient only for stale history refuses the actual current estimate, captures no pass and retains unrelated reservations.",
         "A sufficient budget reserves the current estimate and captures once; missing and out-of-range caches recompute from authoritative state."
       ],
+      "evidence": [
+        "tests/native_reclaim_capture_raw.lisp"
+      ],
+      "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending.",
       "expected": [
         "With a stale committed-history census (reserve 10000, demand 54544 for 2 records charging 300 octets) the capture is deferred with :credit and the actual current estimate, nothing is captured, the credits are unchanged and the unrelated reservation is retained.",
         "With a sufficient reserve (60000) the capture is admitted exactly once, the reclaim reservation equals the current estimate for the committed history, and the borrow leaves the articles' room total unchanged.",
@@ -8619,11 +8623,7 @@
         "native": false,
         "log": "planning/evidence/cl04-scenario-runs-2026-10-10/native_reclaim_capture_raw.log",
         "record": "planning/evidence/cl04-scenario-runs-2026-10-10.md"
-      },
-      "evidence": [
-        "tests/native_reclaim_capture_raw.lisp"
-      ],
-      "implementation_note": "Actual host capture/census, history sync/byte-advance, credit-resize and native trailing-stobj dispatch with recorded Store/array/row-byte-cost/capture boundaries. Source fixture; normal loaded host and image followthrough pending."
+      }
     },
     {
       "id": "SCN-1090",
@@ -8755,6 +8755,11 @@
         "Cold table and page waits preserve the cursor and every concrete array; verified cache completion retries that exact cursor.",
         "Insufficient capacity and inconsistent image sizes refuse before mutation."
       ],
+      "evidence": [
+        "books/history-pages-relocate-step.lisp",
+        "tests/acl2/history-pages-relocate-step-tests.lisp"
+      ],
+      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result.",
       "expected": [
         "The page-stepped relocation completes with the same six concrete arrays and placement as the existing relocation: the starts become (1 2 3 4 7) with 11 pages, the moved words land at their new addresses and the old region is zeroed.",
         "Each ordinary tick changes at most 2048 words, every successful yield strictly reduces the rank, and no replacement placement is available before :done.",
@@ -8766,11 +8771,6 @@
         "test": "tests/acl2/history-pages-relocate-step-tests.lisp",
         "native": false
       },
-      "evidence": [
-        "books/history-pages-relocate-step.lisp",
-        "tests/acl2/history-pages-relocate-step-tests.lisp"
-      ],
-      "implementation_note": "Concrete ACL2 stobj schedules. Private snapshot consumer integration and matching certificate follow separately; flat-array growth and event encoding are not bounded by this page-step result.",
       "execution_scope": "Demoted 2026-10-10 under COORDINATION 6b rule 4 (cite or demote): no archived run log; its test is an ACL2 test book with no archived certify log. It returns to implemented when a passing run's log is archived and cited."
     },
     {
@@ -9317,8 +9317,6 @@
     {
       "id": "SCN-1120",
       "title": "Operation readout reports actual retained admission without scanning Store",
-      "milestone": "M4",
-      "status": "specified",
       "requirements": [
         "HST-008"
       ],
@@ -9341,7 +9339,9 @@
       "evidence": [
         "tests/fixtures/owner_operation_report.lisp"
       ],
-      "execution_scope": "Ordinary Lisp selected literal source; STATE map and framing/digest are explicit fixture adapters, not full native process or proof evidence."
+      "execution_scope": "Ordinary Lisp selected literal source; STATE map and framing/digest are explicit fixture adapters, not full native process or proof evidence.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1119",
@@ -9403,8 +9403,6 @@
     {
       "id": "SCN-1121",
       "title": "Trusted live developer REPL preserves its world and bounds output",
-      "milestone": "M4",
-      "status": "specified",
       "requirements": [
         "HST-008"
       ],
@@ -9426,13 +9424,13 @@
         "test": "tests/test_dev_repl.py",
         "native_test": "tests/dev_repl_native.py"
       },
-      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open. Subsequent actual native owner scenario-v2 covers prover exhaustion/refusal, later evaluation and proof admission recovery, hook reload deduplication, SIGTERM cleanup and fault fence on the named initialized cache with current developer module. Indexed dev-repl native execution evidence accompanies source a5d6c496d and tests/dev_repl_native.py; whole current union remains pending."
+      "execution_scope": "Actual socket fixtures plus real native owner admission/refusal continuation, normal shutdown and fault-fence exit4/socket cleanup. Native coordinate: ad8 source cache +gate336+cde lexical fixes +177b21dfb dev REPL/trace overlays; not whole current dev qualification. Source720d66c29 adds ordinary with-prover-step-limit (default200000 per perform; explicit override/NIL allowed). Actual ACL2 worker and socket4testsPASS1.436s establish refusal recovery, unchanged global allowance and later-form suppression; full current-owner composition and wall-time/arbitrary-Lisp bounds remain open. Subsequent actual native owner scenario-v2 covers prover exhaustion/refusal, later evaluation and proof admission recovery, hook reload deduplication, SIGTERM cleanup and fault fence on the named initialized cache with current developer module. Indexed dev-repl native execution evidence accompanies source a5d6c496d and tests/dev_repl_native.py; whole current union remains pending.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1123",
       "title": "Local client waits according to submission size without inventing acceptance",
-      "milestone": "M4",
-      "status": "specified",
       "requirements": [
         "HST-008"
       ],
@@ -9451,13 +9449,13 @@
         "test": "tests/test_control_observation.py",
         "native_test": "tests.test_native_bounds_join.TenMibArticleTests.test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post"
       },
-      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks pass. Actual native ten MiB NNTP and operator POST accepted with exact readback and owner alive: 1 test/0 skips/28.443s, supported 128 MiB history/16 MiB article/64 transactions. Indexed control-observation-ten-mib-native.json/log/execution.json bind the ad8 initialized-source cache plus ordinary observer overlay. No whole current-kernel, complete funding or overloaded deadline guarantee follows."
+      "execution_scope": "Actual source consumer and normal ACL2 guard/boundary checks pass. Actual native ten MiB NNTP and operator POST accepted with exact readback and owner alive: 1 test/0 skips/28.443s, supported 128 MiB history/16 MiB article/64 transactions. Indexed control-observation-ten-mib-native.json/log/execution.json bind the ad8 initialized-source cache plus ordinary observer overlay. No whole current-kernel, complete funding or overloaded deadline guarantee follows.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1124",
       "title": "Withdrawal authorization remains visible when cause submission fails",
-      "milestone": "M4",
-      "status": "specified",
       "requirements": [
         "HST-008"
       ],
@@ -9476,7 +9474,9 @@
         "test": "tests/test_moderation_outcome.py",
         "native_test": "tests/test_native_moderation_outcome.py"
       },
-      "execution_scope": "Actual source dispatcher, normal ACL2 formatter book49forms/7425steps and65literal teeth pass. Actual native partial publication/restart/retry PASS1test/0skips/10.444s: durable authorization, named uncertainty/exit3 on known cause refusal, healthy owner and target readable, row preserved after restart, retry accepted and target withdrawn. Indexed native-moderation-outcome evidence binds historical ad8 initialized cache plus exact current formatter/consumer overlay, not whole current union. Concurrent authority/generation interactions remain an investigation item, not an established defect or atomicity guarantee."
+      "execution_scope": "Actual source dispatcher, normal ACL2 formatter book49forms/7425steps and65literal teeth pass. Actual native partial publication/restart/retry PASS1test/0skips/10.444s: durable authorization, named uncertainty/exit3 on known cause refusal, healthy owner and target readable, row preserved after restart, retry accepted and target withdrawn. Indexed native-moderation-outcome evidence binds historical ad8 initialized cache plus exact current formatter/consumer overlay, not whole current union. Concurrent authority/generation interactions remain an investigation item, not an established defect or atomicity guarantee.",
+      "milestone": "M4",
+      "status": "specified"
     },
     {
       "id": "SCN-1122",
@@ -9961,7 +9961,7 @@
         "`identity relative/control`; `identity /a /b`; `identity help`."
       ],
       "expected": [
-        "Exit 0; `fn-store-identity-v1 format=... node=HEX64 schema=HEX64 profile=HEX64 consumer=unbootstrapped created-revision=... running-revision=... grammar=HEX64`, grammar the BLAKE3 of specs/wire-grammar.json.",
+        "Exit 0; `fn-store-identity-v1 format=... node=HEX64 schema=HEX64 profile=HEX64 consumer=unbootstrapped created-revision=... running-revision=... grammar=HEX64`, grammar the BLAKE3 of the exported wire grammar (build/box/wire-grammar.json).",
         "Exit 0; `consumer=bootstrapped history=HEX incarnation=HEX`, every other field unchanged.",
         "Not exit 0, and no identity line.",
         "Exit 5 (usage) twice; `help` prints `usage: fn identity CONTROL ...` and exits 0."

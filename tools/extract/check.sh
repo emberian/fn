@@ -4,7 +4,7 @@
 # of one build (specs/failures.md).  Run on hbox, in a tree whose books are
 # certified and whose developer image IMAGE is built (tools/hbox_native.sh
 # makes both; `make extract-check' runs this there).  The gate is
-# tools/extract/gate.py: core, transcripts, probes, store, stateful, owner, each
+# tools/extract/gate.py: core, transcripts, rtc-exercise, probes, store, stateful, owner, each
 # fatal, every child's exit status checked, every stage's output held to
 # its manifest.  Writes TREE/build/extract/check/ (status.json,
 # extraction-manifest.json, the logs) and prints `extract-check: PASS' or

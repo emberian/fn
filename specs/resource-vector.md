@@ -240,7 +240,7 @@ from the loaded world:
    "refusal preserves funded rescue capability" becomes a statement about
    an entry; the ledger books prove it of the ledger only.
 5. **The dispatch row**: `interface_emit` adds kind, tariff, slot and
-   settlement to the entry's `planning/interfaces.json` row; D40's
+   settlement to the entry's row in the box step's `build/box/interfaces.json`; D40's
    dispatcher passes the ledger stobj; the host observes (machine, rlimits,
    free octets, RLIMIT_NOFILE) and never computes a tariff.
 6. **Teeth**: the positive witness evaluates the twin on `:witness` and
