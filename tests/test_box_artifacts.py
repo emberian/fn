@@ -1,7 +1,7 @@
 """The box step's artifacts and the teeth manifest are read from build/, and a
 committed copy that reappears is refused by name (coordinator ruling
 2026-10-09 19:50 on the registers DECISION): tools/box_artifacts.py for
-planning/interfaces.json and specs/wire-grammar.json, tools/keystone_emit.py
+specs/wire-grammar.json, tools/keystone_emit.py
 for planning/teeth-obligations.json."""
 from __future__ import annotations
 
@@ -37,19 +37,19 @@ class BoxArtifacts(unittest.TestCase):
         git(self.root, "commit", "-q", "-m", "one")
         self.head = git(self.root, "rev-parse", "HEAD")
 
-    def emit(self, name="interfaces.json", doc=None, sha=None):
+    def emit(self, name="wire-grammar.json", doc=None, sha=None):
         (self.root / "build" / "box").mkdir(parents=True, exist_ok=True)
         (self.root / "build" / "box" / name).write_text(json.dumps(doc or {"entries": []}))
         box_artifacts.write_stamp(self.root, sha or self.head, "hbox", sha or self.head)
 
     def test_current_artifact_is_read(self):
         self.emit(doc={"entries": [{"name": "fn-x"}]})
-        self.assertEqual(box_artifacts.load("interfaces.json", self.root)["entries"][0]["name"],
+        self.assertEqual(box_artifacts.load("wire-grammar.json", self.root)["entries"][0]["name"],
                          "fn-x")
 
     def test_absent_artifact_is_refused_by_name(self):
-        with self.assertRaisesRegex(box_artifacts.Refused, r"build/box/interfaces.json is absent"):
-            box_artifacts.load("interfaces.json", self.root)
+        with self.assertRaisesRegex(box_artifacts.Refused, r"build/box/wire-grammar.json is absent"):
+            box_artifacts.load("wire-grammar.json", self.root)
 
     def test_committed_copy_is_refused_even_beside_a_current_artifact(self):
         for name, committed in box_artifacts.ARTIFACTS.items():
@@ -70,7 +70,7 @@ class BoxArtifacts(unittest.TestCase):
         git(self.root, "checkout", "-q", "-")
         self.emit(sha=other)
         with self.assertRaisesRegex(box_artifacts.Refused, "not an ancestor of HEAD"):
-            box_artifacts.load("interfaces.json", self.root)
+            box_artifacts.load("wire-grammar.json", self.root)
 
     def test_an_ancestors_artifact_is_read_and_its_lag_reported(self):
         self.emit()
@@ -78,7 +78,7 @@ class BoxArtifacts(unittest.TestCase):
         git(self.root, "commit", "-q", "-am", "two")
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
-            box_artifacts.load("interfaces.json", self.root)
+            box_artifacts.load("wire-grammar.json", self.root)
         self.assertIn("predates 1 change(s)", err.getvalue())
         self.assertIn("books/a.lisp", err.getvalue())
 

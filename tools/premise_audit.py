@@ -109,7 +109,6 @@ NEVER, PRESERVED, OFF_HOST, HOSTED = (
     "established by a hosted entry")
 FINDING_CLASSES = (NEVER, PRESERVED, OFF_HOST)
 GUARD = "established by a checked guard"
-import box_artifacts  # noqa: E402
 
 
 def conjuncts(term) -> list:
@@ -326,8 +325,9 @@ def _applications(term, name):
 def native_guard_model(graph) -> GuardModel:
     """The model over the tree: the native files the image loads, the
     declared entries, the host ACL2 files' definitions."""
+    from tools import interface_emit
     entries = {row["name"]: row for row in
-               box_artifacts.load("interfaces.json", ROOT)["entries"]}
+               interface_emit.registry(ROOT)["entries"]}
     acl2_hosts = [p for p in graph.hosts if "/native/" not in str(p)
                   and str(p.relative_to(ROOT)) in graph.loaded_hosts]
     host_defs = graph.read_definitions(acl2_hosts)

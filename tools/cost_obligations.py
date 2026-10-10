@@ -60,7 +60,6 @@ sys.path.insert(0, str(ROOT))
 
 from tools import ledger  # noqa: E402
 from tools import ratchet  # noqa: E402
-from tools import box_artifacts  # noqa: E402
 
 OBLIGATIONS = ROOT / "planning" / "cost-obligations.json"
 CONTRACTS = ROOT / "planning" / "cost-contracts.json"
@@ -146,7 +145,8 @@ def claim(decl: dict | None) -> str:
 
 
 def build(root: Path = ROOT) -> dict:
-    interfaces = box_artifacts.load("interfaces.json", root)
+    from tools import interface_emit
+    interfaces = interface_emit.registry(root)
     decls = declarations(root)
     rows = []
     for entry in interfaces["entries"]:

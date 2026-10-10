@@ -19,6 +19,20 @@ sys.path.insert(0, str(ROOT))
 
 from tools import coverage  # noqa: E402
 
+
+# The registry is rendered from a tree's declarations (tools/interface_emit.py
+# registry); these fixture trees declare nothing, so each stands its registry
+# beside it and the seam reads that one.
+def _fixture_registry(root=None):
+    return json.loads((Path(root) / "build" / "box" / "interfaces.json").read_text())
+
+
+def setUpModule():
+    from tools import interface_emit
+    patcher = mock.patch.object(interface_emit, "registry", _fixture_registry)
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
+
 BOOK = "/box/tree/books/served.lisp"
 
 

@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import contextlib
 import io
+import json
 from pathlib import Path
 import sys
 import unittest
@@ -357,14 +358,12 @@ class HostBindingTests(unittest.TestCase):
                         "(definterface fn-z :class :program)\n" if declared else ""))
                     decls = interface_emit.declarations(root)
                     roots = root / "roots.sh"
-                    registry = root / "interfaces.json"
                     raw = root / "interfaces-raw.lisp"
                     roots.write_text(interface_emit.render_roots(decls))
-                    registry.write_text(interface_emit.render_registry(decls, observed))
                     raw.write_text(interface_emit.render_raw_declarations(decls))
                     output = io.StringIO()
                     with mock.patch.multiple(interface_emit, ROOTS_SH=roots,
-                                             REGISTRY=registry, RAW_DECLARATIONS=raw), \
+                                             RAW_DECLARATIONS=raw), \
                             mock.patch.object(interface_emit, "declarations", return_value=decls), \
                             mock.patch.object(interface_emit, "host_reading", return_value=observed), \
                             mock.patch.object(interface_emit, "findings", side_effect=lambda d, r:
@@ -644,26 +643,20 @@ class KeystoneFormulaTests(unittest.TestCase):
         self.assertLessEqual(len(unresolved), 1)  # fn-tariff-family-...: a defmacro template
 
 
-class WriteRegistryTests(unittest.TestCase):
-    """--write-registry: a tree shipped without build/ (tools/hbox_native.sh's
-    git archive) gets build/box/interfaces.json from its declarations, and
-    roots.sh and interfaces-raw.lisp are left to the check, not rewritten."""
+class RegistryTests(unittest.TestCase):
+    """The registry is rendered from the tree on read, in any tree: no file,
+    no box step (train 81's regen read it before any box step had run)."""
 
-    def test_writes_the_registry_and_nothing_else(self):
-        with tempfile.TemporaryDirectory() as work:
-            work = Path(work)
-            registry, roots, raw = work / "box" / "interfaces.json", work / "roots.sh", work / "raw.lisp"
-            with mock.patch.object(interface_emit, "REGISTRY", registry), \
-                    mock.patch.object(interface_emit, "ROOTS_SH", roots), \
-                    mock.patch.object(interface_emit, "RAW_DECLARATIONS", raw), \
-                    contextlib.redirect_stdout(io.StringIO()):
-                interface_emit.main(["--write-registry"])
-                expected = interface_emit.render_registry(interface_emit.declarations(),
-                                                          interface_emit.host_reading())
-            self.assertEqual(registry.read_text(), expected)
-            self.assertFalse(roots.exists())
-            self.assertFalse(raw.exists())
+    def test_the_registry_is_the_render_of_the_declarations(self):
+        expected = json.loads(interface_emit.render_registry(interface_emit.declarations(),
+                                                             interface_emit.host_reading()))
+        self.assertEqual(interface_emit.registry(), expected)
+        self.assertGreater(len(expected["entries"]), 0)
 
+    def test_no_box_artifact_carries_it(self):
+        from tools import box_artifacts
+        self.assertNotIn("interfaces.json", box_artifacts.ARTIFACTS)
+        self.assertFalse(hasattr(interface_emit, "REGISTRY"))
 
 if __name__ == "__main__":
     unittest.main()

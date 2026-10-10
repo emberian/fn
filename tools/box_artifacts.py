@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
 """The box step's artifacts: generated on a build box, never committed.
 
-planning/interfaces.json (tools/interface_emit.py --write) and
-specs/wire-grammar.json (tools/protocol_emit.py --wire --write) need the
-certified wire-export world, so they are made by the box step
+specs/wire-grammar.json (tools/protocol_emit.py --wire --write) needs the
+certified wire-export world, so it is made by the box step
 (tools/train.py boxstep, or its certify path) and fetched into build/box/
 with stamp.json naming the sha they were made at (coordinator ruling
 2026-10-09 19:50 on Builder D's registers DECISION; COORDINATION section 5:
-generated files are regenerated into build/, never committed).
+generated files are regenerated into build/, never committed).  The
+interface registry, once planning/interfaces.json, is not one of them: it is
+a function of the source alone, rendered on read (tools/interface_emit.py
+registry), so no tree waits on a box step for it (train 81's regen did).
 
 Every reader takes them through `load` (or `path`), which refuses by name:
   * a committed copy at the old path (it would be read in preference by a
@@ -34,7 +36,6 @@ DIR = Path("build") / "box"
 STAMP = "stamp.json"
 # artifact name -> the committed path it replaced
 ARTIFACTS = {
-    "interfaces.json": "planning/interfaces.json",
     "wire-grammar.json": "specs/wire-grammar.json",
 }
 # what the emitted artifacts depend on (tools/train.py BOX_PATHS)
