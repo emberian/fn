@@ -53,7 +53,9 @@
 ;; without the work's :forward pin live in the Store reclaim honours, and
 ;; never one carrying a reclaim tombstone.
 (defun fn-owner-workflow-request-plan (work-id attempt-id fn-arena state)
- (declare (xargs :stobjs (fn-arena state) :mode :program))
+ (declare (xargs :stobjs (fn-arena state)
+                 :guard (and (boundp-global 'fn-owner state)
+                             (boundp-global 'fn-workflow-state state))))
  (mv-let (erp plan state)
    (fn-workflow-request-plan work-id attempt-id fn-arena state)
   (declare (ignore erp))
@@ -63,7 +65,7 @@
 
 ; host/native/bp-obligation.lisp dispatches it (lane reclaim-retention).
 (definterface fn-owner-workflow-request-plan
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (defun fn-owner-workflow-forward-pinnedp (work-id state)
  (declare (xargs :stobjs state :mode :program))
@@ -113,24 +115,24 @@
 ;; event shape, the pin's own id, subject and evidence), or nil when the
 ;; carry journal holds no waiver of it or its pin is already released.
 (defun fn-owner-workflow-store-waive (work-id state)
- (declare (xargs :stobjs state :mode :program))
+ (declare (xargs :stobjs state :guard (boundp-global 'fn-workflow-state state)))
  (value (fn-bpcc-waiver-release-event (f-get-global 'fn-workflow-state state)
                                       (fn-workflow-carry-state-of state)
                                       work-id)))
 
 ; host/native/bp-obligation.lisp dispatches it (lane carry-abandon).
 (definterface fn-owner-workflow-store-waive
-  :class ::program)
+  :class :common-lisp-compliant)
 
 ;; The waivers durable in the carry journal whose Store event did not land.
 (defun fn-owner-workflow-pending-waivers (state)
- (declare (xargs :stobjs state :mode :program))
+ (declare (xargs :stobjs state :guard (boundp-global 'fn-workflow-state state)))
  (value (fn-bpcc-pending-waivers (f-get-global 'fn-workflow-state state)
                                  (fn-workflow-carry-state-of state))))
 
 ; host/native/bp-obligation.lisp dispatches it (lane carry-abandon).
 (definterface fn-owner-workflow-pending-waivers
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (defun fn-owner-workflow-apply-record (record fn-arena state)
  (declare (xargs :stobjs (fn-arena state) :mode :program))

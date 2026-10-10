@@ -107,7 +107,7 @@
 ; PKT-869: the carry overlay the carry journal replayed (fn-workflow-carry-
 ; install below), or the empty overlay when no carry journal is installed.
 (defun fn-workflow-carry-state-of (state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard t))
   (if (boundp-global 'fn-workflow-carry-state state)
       (f-get-global 'fn-workflow-carry-state state)
     (fn-bpcc-initial)))
@@ -265,7 +265,8 @@
 ; one work, from the attempt record to the request ADU and its destination
 ; (books/bp-request-plan.lisp, keystone fn-bprq-plan-is-the-works-request).
 (defun fn-workflow-request-plan (work-id attempt-id fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+  (declare (xargs :stobjs (fn-arena state)
+                  :guard (boundp-global 'fn-workflow-state state)))
   ;; PKT-869: a paused or dropped work's request is refused by name
   ;; (books/bp-carry-control.lisp fn-bpcc-request-gate).
   (value (fn-bpcc-request-gate

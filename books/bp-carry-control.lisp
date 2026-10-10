@@ -287,7 +287,7 @@
 ; (host/bp-release-owner-host.lisp fn-owner-workflow-store-release): the
 ; obligation id, subject, and the evidence the pin demands, charge 0.
 (defun fn-bpcc-waiver-release-event (bp c work-id)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (let ((work (fn-bp-find-work work-id (fn-bp-state-works bp))))
     (if (and (consp (fn-bpcc-waiver-entry c work-id))
              (consp work)
@@ -300,7 +300,7 @@
 ; crash between the waiver's append and its Store publication): the writable
 ; owner open completes each (host/native/bp-obligation.lisp).
 (defun fn-bpcc-pending-waivers-loop (bp c waived acc)
-  (declare (xargs :guard (true-listp acc) :verify-guards nil))
+  (declare (xargs :guard (true-listp acc)))
   (if (consp waived)
       (fn-bpcc-pending-waivers-loop
        bp c (cdr waived)
@@ -312,7 +312,7 @@
     (reverse acc)))
 
 (defun fn-bpcc-pending-waivers (bp c)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-bpcc-pending-waivers-loop bp c (fn-bpcc-waived c) nil))
 
 ; A receipt for a waived work is refused by name: its obligation was
