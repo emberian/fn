@@ -50,6 +50,13 @@
    "mutation": "tests/acl2/bp-node-rotation-recovery-tests.lisp::bprr-mutant-open-without-seed",
    "provenance": "keystone_critical.py --declare sha256:c1fe79d4f2b0d398ab3e46b4092186850b9175f81c70dc277b12cc1935f5373a"
   },
+  "fn-bpnp-rotate-step-proposes-only-own-projection": {
+   "subject": "fn-bpnp-rotate-step",
+   "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
+   "trace_witness": "tests/acl2/bp-node-rotation-due-tests.lisp::fn-bpnp-rotate-step-proposes-only-own-projection",
+   "mutation": "tests/acl2/bp-node-rotation-due-tests.lisp::bprd-mutant-rotate-step-on-quiescence",
+   "provenance": "keystone_critical.py --declare sha256:03821dce8e899473fb7aeb65bf5e6763c03f401089c98ce49606578e91a54eee"
+  },
   "fn-bpnp-rotate-step-refuses-checkpoint-dropping-owed-work": {
    "subject": "fn-bpnp-rotate-step",
    "host_test": "tests/test_bp_node_native.py::test_rotation_with_owed_jobs_restarts_with_them",
