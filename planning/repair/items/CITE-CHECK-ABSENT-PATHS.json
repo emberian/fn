@@ -2,11 +2,13 @@
  "detail": "cite_check: 488 citations of 246 absent paths; by citer: 13 load-bearing, 77 spec, 101 tool, 297 planning. The 13 load-bearing ones first; the planning rows go with the register burndown.",
  "file": "tools/cite_check.py",
  "id": "CITE-CHECK-ABSENT-PATHS",
- "notes": [],
+ "notes": [
+  "10-10 Builder D, lane d-cite-load-bearing: load-bearing 13 -> 1. tools/holder_check.py (8 citations in books/def-holder, handle-holds, page-read-direct) and tools/must_fail_check.py (tests/acl2/must-fail-checked) are disclosed in planning/retired-paths.json with the tools they were folded into (lock_discipline_check --holders, 5c6edcd77; teeth_check --must-fail, 37a55735e), so no certified book is edited. books/local.lisp and books/not-assumptions.lisp were path strings under test in tests/acl2/book-name-{relative,provenance}-tests.lisp, now in cite_check's CATALOGUE. The one left, books/runtime-contract.lisp cited by books/def-span-scan.lisp (builder-C's file), is Builder A's book on lane/vertical and resolves when that lands. Open: 77 spec, 100 tool, 292 planning citations."
+ ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
  "state": "open",
  "title": "cite_check: 488 citations of 246 absent paths (195 phantom, 293 drift), 13 of them load-bearing",
- "updated": "2026-10-09T22:00:00Z"
+ "updated": "2026-10-10T01:40:00Z"
 }

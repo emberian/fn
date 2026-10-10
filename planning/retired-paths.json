@@ -221,6 +221,8 @@
     "host/admission-authority-preparation-host.lisp": "deleted under D68 (coordinator 2026-10-08): F10/F06 admission chain, uncertifiable since D46 removed fn-evc-authorityp; the claim survives in decisions.md D46",
     "host/admission-authority-dispatch-host.lisp": "deleted under D68 (coordinator 2026-10-08): F10/F06 admission chain, uncertifiable since D46 removed fn-evc-authorityp; the claim survives in decisions.md D46",
     "books/admission-semantic-census-begin-refinement.lisp": "deleted under D68 (coordinator 2026-10-08): F10/F06 admission chain, uncertifiable since D46 removed fn-evc-authorityp; the claim survives in decisions.md D46",
-    "tests/acl2/admission-semantic-census-begin-model-tests.lisp": "deleted under D68 (coordinator 2026-10-08): F10/F06 admission chain, uncertifiable since D46 removed fn-evc-authorityp; the claim survives in decisions.md D46"
+    "tests/acl2/admission-semantic-census-begin-model-tests.lisp": "deleted under D68 (coordinator 2026-10-08): F10/F06 admission chain, uncertifiable since D46 removed fn-evc-authorityp; the claim survives in decisions.md D46",
+    "tools/holder_check.py": "folded into tools/lock_discipline_check.py --holders (5c6edcd77): the def-holder declarations closed over the host, and with --strict a declared cut with no host marker",
+    "tools/must_fail_check.py": "folded into tools/teeth_check.py --must-fail (37a55735e): no bare must-fail in tests/acl2"
   }
 }
