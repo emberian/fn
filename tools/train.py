@@ -230,6 +230,18 @@ IMAGE_RULES = (
      ("books/heap-figure.lisp", "packaging/fn", "packaging/launcher-decide.sh",
       "tools/build_native_host.sh", "tools/extract/core_launcher.py", "host/native/"),
      ("tests.test_native_operator_verbs", "tests.test_native_heap_from_profile") + SERVED_NATIVES),
+    # The store's memory and reservation model: what a full store admits and
+    # keeps for its maintenance work (train 89: a charge change let the store
+    # fill until the reserved BP transfer was refused; the module passed on
+    # dev and nothing obliged it; coordinator 2026-10-10).
+    ("the memory and reservation model",
+     ("books/memory-model.lisp", "books/admission-memory.lisp", "books/heap-figure.lisp",
+      "books/heap-command.lisp", "books/heap-store-figure.lisp", "books/charged-totals.lisp",
+      "books/history-totals-carried.lisp", "books/store-budget.lisp",
+      "books/store-budget-article.lisp", "books/store-budget-naming.lisp",
+      "books/store-budget-stored.lisp", "books/store-budget-stored-post.lisp",
+      "books/store-capacity-vector.lisp", "books/store-maintenance-reserve.lisp"),
+     ("tests.test_native_capacity_vector",)),
 )
 # tools/hbox_native.sh's local record of a run (box=, dir=, source=), under
 # the batch tree; LABEL is the first 12 hex digits of the run's commit.
