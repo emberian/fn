@@ -5809,6 +5809,9 @@
       "requirements": [
         "NNT-056"
       ],
+      "evidence": [
+        "tests/test_native_sasl.py"
+      ],
       "steps": [
         "Node A runs with a plaintext reader listener offering STARTTLS, an implicit-TLS listener, `[auth] required = true, protected_only = false`, and one credential written by `principal set-password`.",
         "CAPABILITIES in clear, after STARTTLS, on the TLS port, and after a login.",
@@ -5824,7 +5827,7 @@
         "PLUS with the exporter value is 283; with another value 481.",
         "The redeemed account's SCRAM login is 283 and its POST 240."
       ],
-      "execution_scope": "Written before the lane's image was built; not yet run.",
+      "execution_scope": "Ran natively 2026-10-10: tests.test_native_sasl, all 7 cases OK, against the developer image of lane d-cost-rows at 163e9f3cc (hbox:/tank/fn/scratch/d-registry-findings/native-sasl1, image reused from d-cost-rows/native-c3).",
       "implementation": {
         "test": "tests.test_native_sasl",
         "cases": [
