@@ -2181,6 +2181,61 @@ constants must agree with it or the budget is refused as a fault."
       (fnn-fault "the host's thread constants disagree with ACL2's thread count"))
     threads))
 
+;;; THE MEMORY GATE, configured in every process that owns a Store.  Every
+;;; article prepare applies it (host/owner-host.lisp fn-owner-prepare ->
+;;; fn-owner-memory-gate -> books/admission-memory.lisp fn-adm-memory-admitp),
+;;; and fn-mm-gate-p admits nothing at a LIMIT that is not a natural: a
+;;; process whose run was never configured refused every article by
+;;; :memory.  That was every owner but the mux's (bp-app, bp-node, bp send,
+;;; bp-obligation, the checkpoint's): train 89's BP delivery into a fresh
+;;; Store, refused.  So fnn-owner-install configures it for its own process
+;;; (fnn-owner-memory-install), and the mux's budget install configures it
+;;; again with the run's cold, output and TLS coordinates.
+
+(defun fnn-owner-memory-observe (store)
+  "K-ADMIT's coordinates as this process observes them, outside the owner
+mutex (a stat of the core file and the machine's memory figures are I/O):
+the image (fn-mo-img-observed), the resident limits, and the configuration
+history's octets (config/'s lstat sizes)."
+  (list (fnn-heap-img-observation (fnn-store-config store))
+        (fnn-heap-resident-observations)
+        (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store))))
+
+(defun fnn-owner-memory-configure-locked (service tls-context observed)
+  "ACL2's fn-owner-memory-configure over OBSERVED and SERVICE's run
+coordinates; the caller holds the owner serialization.  Answers :hold or
+:refused (no connection fits the limit at the carried store)."
+  (let ((store (fnn-owner-service-store service)))
+    (destructuring-bind (img resident config-octets) observed
+      (fnn-owner-core 'fn-owner-memory-configure
+                      img resident
+                      +fnn-owner-service-nursery-octets+ (fnn-gc-nursery-octets)
+                      (fnn-store-config store) (and tls-context t)
+                      (fnn-owner-service-reclaim-live service)
+                      (fnn-owner-service-cold-resources service)
+                      (fnn-owner-service-output-resources service)
+                      (fnn-peer-flight-profile (fnn-store-root store))
+                      (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit)
+                      (fnn-store-root store)
+                      ;; the quantum, not a W' an earlier configure of
+                      ;; this process installed (fnn-owner-over-window)
+                      (fnn-owner-over-quantum) config-octets))))
+
+(defun fnn-owner-memory-install (service)
+  "The memory gate for an owner process before it admits anything, called
+by fnn-owner-install while the process is still single-threaded (as its
+other install steps reach the owner).  A :refused gate is not refused
+here (the process may serve no connection: the gate then refuses each
+article by :memory, by name); the capacity line is the run's statement,
+logged once by the mux's budget install, which configures again with the
+run's coordinates and refuses a run no connection fits."
+  (let* ((observed (fnn-owner-memory-observe (fnn-owner-service-store service)))
+         (memory (fnn-owner-memory-configure-locked service nil observed)))
+    (unless (and (member memory '(:hold :refused))
+                 (fnn-octet-list-p (fnn-global 'fn-owner-memory-capacity-line)))
+      (fnn-fault "owner returned a malformed memory capacity"))
+    memory))
+
 (defun fnn-mux-budget-install (service tls-context)
   "ACL2 decides whether this machine holds the live capacity; a refusal is
 the run's (exit 1), named on stderr and in the service log."
@@ -2189,13 +2244,9 @@ the run's (exit 1), named on stderr and in the service log."
          ;; machine's memory figures are I/O the owner mutex never holds.
          (machine (fnn-heap-machine-octets))
          (core (fnn-heap-core-octets))
-         ;; K-ADMIT's coordinates, observed here for the same reason: the
-         ;; image as this process finds itself and the resident limits
-         ;; (host/native/heap.lisp).
-         (img (fnn-heap-img-observation (fnn-store-config store)))
-         (resident (fnn-heap-resident-observations))
-         ;; the configuration history's octets (config/'s lstat sizes)
-         (config-octets (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store)))
+         ;; K-ADMIT's coordinates, observed here for the same reason
+         ;; (fnn-owner-memory-observe).
+         (observed (fnn-owner-memory-observe store))
          ;; the memory gate's word: :hold with C' >= 1, :refused when no
          ;; connection fits the limit at the carried store (ruling (b))
          (memory nil)
@@ -2227,17 +2278,7 @@ the run's (exit 1), named on stderr and in the service log."
                   ;; of C over the carried totals (fn-adm-capacity) and
                   ;; bounds the readers accepted by it.
                   (setq memory
-                   (fnn-owner-core 'fn-owner-memory-configure
-                                  img resident
-                                  +fnn-owner-service-nursery-octets+ (fnn-gc-nursery-octets)
-                                  (fnn-store-config store) (and tls-context t)
-                                  (fnn-owner-service-reclaim-live service)
-                                  (fnn-owner-service-cold-resources service)
-                                  (fnn-owner-service-output-resources service)
-                                  (fnn-peer-flight-profile (fnn-store-root store))
-                                  (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit)
-                                  (fnn-store-root store)
-                                  (fnn-owner-over-window) config-octets))
+                   (fnn-owner-memory-configure-locked service tls-context observed))
                   ;; Store figure is captured before both allowance extensions.
                   ;; ACL2 validates dynamic >= store + exact cold + output pool.
                   (fnn-owner-output-install
