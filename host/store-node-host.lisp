@@ -9,6 +9,7 @@
 ; a certified host file carries the same order in its own world (tools/attach_order_check.py).
 (include-book "../books/payload-arena-attach")
 (include-book "../books/history-paged-attach")
+(include-book "../books/catalog-paged-attach") ; D61: before the charged-totals header's closure reaches books/catalog
 (include-book "../books/store-observed")
 (include-book "../books/history-columns-relation")
 (include-book "../books/open-frontier")

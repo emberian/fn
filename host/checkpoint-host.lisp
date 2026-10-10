@@ -10,6 +10,7 @@
 ; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
 (include-book "../books/payload-arena-attach")
 (include-book "../books/history-paged-attach")
+(include-book "../books/catalog-paged-attach") ; D61: before the charged-totals header's closure reaches books/catalog
 (include-book "../books/checkpoint-publish")
 (include-book "../books/checkpoint-auxiliary")
 (include-book "../books/store-reclaim-stream")
