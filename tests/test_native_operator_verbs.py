@@ -524,8 +524,16 @@ class NativeOperatorCapacityTests(NativeOperatorVerbFixture):
         # PKT-169 (STO-019): admission keeps the maintenance reservation, one
         # release record, including its transaction.  So an article is
         # admitted while used + 1 < budget: the last one at used = 126, and
-        # the 128th transaction stays the release's
-        # (books/store-maintenance-reserve.lisp `fn-smr-article-budget').
+        # the 128th transaction stays the release's.  The served prepare is
+        # host/owner-host.lisp fn-owner-prepare -> fn-pout-prepare-article ->
+        # fn-psrv-prepare -> fn-prc-sbud-prepare, handed the capacity
+        # vector's budget (books/store-capacity-vector.lisp
+        # `fn-cvec-article-budget-for' through K-ADMIT's
+        # fn-adm-article-budget); fn-prc-sbud-prepare is fn-sbud-prepare by
+        # fn-prc-sbud-prepare-is-pidx-sbud-prepare and
+        # fn-pcar-sbud-prepare-is-sbud-prepare, so these POSTs, staged and
+        # refused, are KEYSTONES fn-cvec-prepare-keeps-the-vector and
+        # fn-sbud-prepare-under-article-budget-keeps-history on the host.
         replies = self.post_many(ids[1:127])
         self.assertEqual(replies, ["240 article received OK"] * 126)
         # used = budget-1 and it stays there: refused by name, twice.  A

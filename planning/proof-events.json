@@ -4724,14 +4724,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-smr-prepare-keeps-the-reserve"
-        },
-        {
-          "kind": "theorem",
-          "name": "fn-smr-article-verdict-keeps-the-reserve"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-smr-reserve-admits-the-release"
         },
         {

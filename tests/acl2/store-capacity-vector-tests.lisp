@@ -227,11 +227,12 @@
       (<= (len (fn-record-payload *cvt-record*)) 1000)
       (<= (len (fn-record-groups *cvt-record*)) 1)
       (fn-cvec-roomp *cvt-p* 2 (+ *cvt-a* (len (fn-record-payload *cvt-record*))) 1)))
-; Tooth, the verdict: PRF-129's article gate admits at H - figure - R with
-; debt 1 open, and the vector refuses (budget 0): the open undertaking's
-; release would be the room the article took.
+; Tooth, the verdict: the gate blind to the open undertaking (the vector at
+; debt 0, PRF-129's reservation) admits at H - figure - R, and with debt 1
+; open the vector refuses (budget 0): the open undertaking's release would be
+; the room the article took.
 (assert-event
- (and (equal (fn-smr-article-verdict-at *cvt-p* 1 (+ *cvt-a* *cvt-r*) 1000 1)
+ (and (equal (fn-cvec-article-verdict-at *cvt-p* 1 (+ *cvt-a* *cvt-r*) 1000 1 0)
              :admissible)
       (equal (fn-cvec-article-verdict-at *cvt-p* 1 (+ *cvt-a* *cvt-r*) 1000 1 1)
              :unaffordable)

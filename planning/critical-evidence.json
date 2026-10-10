@@ -99,6 +99,20 @@
    "mutation": "tests/acl2/bp-node-rotation-critical-tests.lisp::bprc-mutant-crash-visible-before-rename",
    "provenance": "keystone_critical.py --declare sha256:398d47c52caeb02a4c33b4462bc442e50d91e63467332c77509b06ddebb1352f"
   },
+  "fn-cvec-article-verdict-keeps-the-vector": {
+   "subject": "fn-cvec-article-verdict-at",
+   "host_test": "tests/test_native_capacity_vector.py::test_store_post_admits_to_the_last_octet_of_h_and_the_last_transaction_of_t",
+   "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-article-verdict-keeps-the-vector",
+   "mutation": "tests/acl2/store-capacity-vector-tests.lisp::vector-spent-on-the-whole-encoding",
+   "provenance": "keystone_critical.py --declare sha256:cfd54968d1944aa2030a98d098e75fb13a16d2dffd293b1bb362a81cfdb5aad0"
+  },
+  "fn-cvec-article-verdict-keeps-the-vector-for-a-held-row": {
+   "subject": "fn-cvec-article-verdict-at",
+   "host_test": "tests/test_native_capacity_vector.py::test_store_post_admits_to_the_last_octet_of_h_and_the_last_transaction_of_t",
+   "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-article-verdict-keeps-the-vector-for-a-held-row",
+   "mutation": "tests/acl2/store-capacity-vector-tests.lisp::verdict-forgets-an-open-undertaking",
+   "provenance": "keystone_critical.py --declare sha256:00603777b94180fdd734b0b55a6825ffcf8674e535c88a1d82bbcc0ea6f96c23"
+  },
   "fn-cvec-held-row-within-its-figure": {
    "subject": "fn-sbud-article-gate-figure",
    "host_test": "tests/test_native_bounds_join.py::test_ten_mib_article_posts_and_rereads_over_nntp_and_operator_post",
@@ -107,11 +121,11 @@
    "provenance": "keystone_critical.py --declare sha256:b80ad6269f1ad86cdf0f15d2ce73813614f17111e295f6a238898ecd89ecff27"
   },
   "fn-cvec-prepare-keeps-the-vector": {
-   "subject": "fn-sbud-prepare",
+   "subject": "fn-prc-sbud-prepare",
    "host_test": "tests/test_native_operator_verbs.py::test_the_development_profile_budget_is_reported_and_refused_by_name",
    "trace_witness": "tests/acl2/store-capacity-vector-tests.lisp::fn-cvec-prepare-keeps-the-vector",
    "mutation": "tests/acl2/store-capacity-vector-tests.lisp::prepare-forgets-an-open-undertaking",
-   "provenance": "keystone_critical.py --declare sha256:d3030415dc6f7c71998b422c834598d2003519a4f3f5bc16a826156fe3c4d59b"
+   "provenance": "keystone_critical.py --declare sha256:eba17180ef90e91ec1eb3e0d9187fc141a8dc3cb14a09fb848509f1645151010"
   },
   "fn-cvec-statement-row-within-its-figure": {
    "subject": "fn-sbud-row-octets",
@@ -133,13 +147,6 @@
    "trace_witness": "tests/acl2/group-access-cache-tests.lisp::fn-gacc-grow-builds",
    "mutation": "tests/acl2/group-access-cache-tests.lisp::unrestricted-grow",
    "provenance": "keystone_critical.py --declare sha256:ab4d4c07601cc571032a1eebb9cd3b428b05977b2eeec1992b9f83a672bbab45"
-  },
-  "fn-heap-operation-decide-holds-the-store": {
-   "subject": "fn-heap-reserve-operation-decide",
-   "host_test": "tests/test_native_operator_verbs.py::test_init_writes_the_operators_fields_and_status_prints_them",
-   "trace_witness": "tests/acl2/heap-figure-tests.lisp::(fn-heap-operation-decide :init *fn-heap-small-profile*",
-   "mutation": "tests/acl2/heap-figure-tests.lisp::hft-st-without-store-opening-action",
-   "provenance": "keystone_critical.py --declare sha256:226aecddb8fe46016e2a25170b570e42b25bdb80b266ee0e88b75917670cfe24"
   },
   "fn-lg-open-program-keeps-the-relation": {
    "subject": "fn-lg-open-program",
@@ -281,12 +288,19 @@
    "mutation": "tests/acl2/reader-open-carried-tests.lisp::drop-verdicts",
    "provenance": "keystone_critical.py --declare sha256:8c31a8d5277047b1d09ab9bdcd39d14d14fd51a26d6cf15bc5a9c8b5047bfbab"
   },
+  "fn-sbud-article-verdict-keeps-history": {
+   "subject": "fn-sbud-article-verdict-at",
+   "host_test": "tests/test_native_capacity_vector.py::test_store_post_admits_to_the_last_octet_of_h_and_the_last_transaction_of_t",
+   "trace_witness": "tests/acl2/store-budget-article-tests.lisp::fn-sbud-article-verdict-keeps-history",
+   "mutation": "tests/acl2/store-budget-article-tests.lisp::history-charged-the-whole-encoding",
+   "provenance": "keystone_critical.py --declare sha256:84a1db29ddde89e970ec08e379d2fb63c7e774256d687bb82c582bdf53d8e2fa"
+  },
   "fn-sbud-prepare-under-article-budget-keeps-history": {
-   "subject": "fn-sbud-prepare",
+   "subject": "fn-prc-sbud-prepare",
    "host_test": "tests/test_native_operator_verbs.py::test_the_development_profile_budget_is_reported_and_refused_by_name",
    "trace_witness": "tests/acl2/store-budget-article-tests.lisp::fn-sbud-prepare-under-article-budget-keeps-history",
    "mutation": "tests/acl2/store-budget-article-tests.lisp::prepare-leaves-one-octet-past-h",
-   "provenance": "keystone_critical.py --declare sha256:be86cbc3a974c5fe459fc024daf56df84da03d6a533ed1a9eeb1a77f7040e0de"
+   "provenance": "keystone_critical.py --declare sha256:81a4a7a3f11bea8b11cfb8b6b928e6b85bc1330ca75ce296ae3d90304f1598a3"
   },
   "fn-sca-load-held-rows-establishes-byte-facts": {
    "subject": "fn-sca-load-held-rows-keyed",
@@ -315,13 +329,6 @@
    "trace_witness": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-file-open",
    "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-old-pair",
    "provenance": "keystone_critical.py --declare sha256:b55fa7efa831876621e511634a97d988ca2eb599c16457595996d55dd3db2607"
-  },
-  "fn-smr-prepare-keeps-the-reserve": {
-   "subject": "fn-sbud-prepare",
-   "host_test": "tests/test_native_operator_verbs.py::test_the_development_profile_budget_is_reported_and_refused_by_name",
-   "trace_witness": "tests/acl2/store-maintenance-reserve-tests.lisp::fn-smr-prepare-keeps-the-reserve",
-   "mutation": "tests/acl2/store-maintenance-reserve-tests.lisp::release-room-one-octet-short",
-   "provenance": "keystone_critical.py --declare sha256:de06f3902b4aac777ded659cb53b787f98f5dc4cbb21094d1670e27b5e442e9e"
   }
  }
 }

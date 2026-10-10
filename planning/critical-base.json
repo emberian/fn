@@ -5405,14 +5405,6 @@
    "class": "resource-reservation",
    "statement_digest": "90ca954dff0af4a1cf2447575f4308e0b7a9becec4b2790dd76540dffd1f9610"
   },
-  "fn-smr-article-verdict-keeps-the-reserve": {
-   "class": "resource-reservation",
-   "statement_digest": "192fefe5269202e5b55b4d4d22dbf0a33e04aff1b01fbd4fef7b0d309ad60ea5"
-  },
-  "fn-smr-prepare-keeps-the-reserve": {
-   "class": "resource-reservation",
-   "statement_digest": "1cc8a1ad3867feb3be59316904126cf40a391128326aeb3c87952097b6c9d0e9"
-  },
   "fn-smr-reserve-admits-the-release": {
    "class": "resource-reservation",
    "statement_digest": "e646182413abf6adf7d9cbc108fa7652e9cd617a6dfe1b25e892ff936c23918f"
