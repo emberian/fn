@@ -615,6 +615,11 @@ class BaselineTests(unittest.TestCase):
                           for r in check_steps.read_baseline(text)],
                          [("a", False, "cached (inputs unchanged since x)"), ("b", False, "b: NOT RUN"),
                           ("c", False, "skipped (unaffected)")])
+        # the capability skip is listed as deferred to the box step, and that
+        # line is not read back as a row
+        self.assertIn("  deferred to the train's box step (required there, "
+                      "tests.test_cert_world_checks): b", text.splitlines())
+        self.assertNotIn("deferred", check_steps.table_lines([row("a")])[-1])
 
     def test_only_a_red_the_baseline_did_not_have_is_new(self):
         known = check_steps.read_baseline(TABLE)
