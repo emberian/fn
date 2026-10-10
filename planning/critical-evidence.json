@@ -232,6 +232,20 @@
    "mutation": "tests/acl2/heap-command-tests.lisp::configuration-history-uncharged",
    "provenance": "keystone_critical.py --declare sha256:83f445db6ad11fb61c209beaff185dc54a0feb128795c2944f5da85c8bddb691"
   },
+  "fn-mo-read-holds-every-store-within-its-totals": {
+   "subject": "fn-mo-read-decide",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_header_totals_only_with_no_suffix",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::fn-mo-read-holds-every-store-within-its-totals",
+   "mutation": "tests/acl2/heap-command-tests.lisp::memberships-unbounded",
+   "provenance": "keystone_critical.py --declare sha256:6055e30a96b3b864f3d63c22d3c25427379845ebb5c61eea61a63a270a3d3a68"
+  },
+  "fn-mo-read-holds-the-observed-store": {
+   "subject": "fn-mo-read-decide",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_header_totals_only_with_no_suffix",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::fn-mo-read-holds-the-observed-store",
+   "mutation": "tests/acl2/heap-command-tests.lisp::read-sized-at-the-ceilings",
+   "provenance": "keystone_critical.py --declare sha256:64f2a5b7dc521d8ad23de46da6b00c48502f03a69f553a16b1409b90520b5f3b"
+  },
   "fn-orcs-predict-seal-refines-intern": {
    "subject": "fn-orcs-predict-rows-at",
    "host_test": "tests/test_native_recovery.py::test_reclaim_after_a_rotation_predicts_the_generations_a_restart_serves",

@@ -13,6 +13,12 @@
 (include-book "page-window-executor-host")
 (include-book "../books/output-tariff-families")
 (include-book "page-decoded-window-host")
+; Hosts whose entries rows below cost: fn-nco-owner-publication-word (the
+; control host), fn-owner-cfg-capture and fn-owner-sco-count (the owner host),
+; fn-owner-held-verdicts.  The image loads each before this file.
+(include-book "native-control-host")
+(include-book "owner-host")
+(include-book "owner-held-verdicts-host")
 
 (def-cost fn-reader-chunk
   :visits (+ 1 request-octets)
@@ -80,6 +86,14 @@
 (def-cost fn-owner-page-decoded-job-span-at :unaccounted (fn-owner-page-read-ledger fn-dwj-span-at))
 (def-cost fn-owner-page-decoded-window-cache-span-at
   :unaccounted (fn-owner-page-read-ledger fn-pwz-cache-span-at))
+
+; The runtime contract's exercise entry (books/runtime-contract-echo.lisp,
+; `fn runtime-contract exercise'): the script selection is bounded outright
+; (a fixed table, at most eight visits for a fault variant); the exercise is
+; derived, partial over fn-rce-run, whose layer initialization and per-item
+; step have no row of their own.
+(def-cost fn-rce-exercise-items :visits 8)
+(def-cost fn-rce-exercise :unaccounted (fn-rce-run))
 ; The BP serve loop's inbound admission (books/bp-session-scheduler), asked
 ; once per pass that finds a listener readable: two boolean steps, no size.
 (def-cost fn-bpsched-admit-p :visits 0)

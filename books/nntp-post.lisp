@@ -547,9 +547,10 @@
 ; alpha);
 ; :malformed is fn-owner-prepare's :invalid; :unaffordable is a refusal of
 ; the persisted profile (fn-store-publication-admissibility) or of the
-; transaction capacity T; :history-exhausted and :memberships are the
-; history budget H's (books/store-capacity-vector.lisp
-; fn-cvec-article-refusal-word); :storage-failed is a Store write that failed before
+; transaction capacity T; :history-exhausted is the history budget H's
+; (books/store-capacity-vector.lisp fn-cvec-article-refusal-word); :memory
+; is the memory gate's at the run's limit (books/admission-memory.lisp
+; fn-adm-article-word, T and H admitting it); :storage-failed is a Store write that failed before
 ; publication and whose reservation ACL2 consumed as a known abort, so
 ; nothing was stored.  :refused remains the kind for a refusal the Store did
 ; not name.  RFC 3977 section 6.3.1 allows 441 for all of them; the
@@ -559,12 +560,11 @@
   (declare (xargs :guard t))
   (and (member-equal completion
                      '(:refused :duplicate :conflict :malformed :unaffordable
-                       ;; A crosspost whose group memberships the history
-                       ;; budget cannot pay for, the article alone fitting
-                       ;; (books/store-capacity-vector.lisp
-                       ;; fn-cvec-article-refusal-word; lane membership-budget):
-                       ;; "441 posting failed; the store cannot pay for this article's groups: ..."
-                       :memberships
+                       ;; The memory gate refuses the article at the run's
+                       ;; limit, T and H admitting it (books/admission-
+                       ;; memory.lisp fn-adm-article-word; K-ADMIT):
+                       ;; "441 posting failed; the store is full: no capacity for this article (memory); ..."
+                       :memory
                        ;; The history budget H refuses the article: the
                        ;; history gate or the capacity vector's octet
                        ;; reservation, the transactions admitting it
@@ -618,8 +618,8 @@
     "the store refused the article as malformed")
    ((equal kind :unaffordable)
     "the store is full: no capacity for this article (unaffordable); the node's operator can raise it")
-   ((equal kind :memberships)
-    "the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)")
+   ((equal kind :memory)
+    "the store is full: no capacity for this article (memory); the node's operator can raise it")
    ((equal kind :history-exhausted)
     "the store's history budget is exhausted (history-exhausted); the node's operator can raise max-history-octets or reclaim")
    ((equal kind :article-numbers-exhausted)

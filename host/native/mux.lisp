@@ -63,7 +63,8 @@
 (defconstant +fnn-mux-tick-ms+ 250)
 ;;; The node's threads that are not loops or control clients: main (accept),
 ;;; finalizer, log writer, checkpoint publisher, feed and pull workers,
-;;; control accept, three listeners, two spare (image-floor's count).
+;;; control accept, three listeners, two spare (image-floor's count), and the
+;;; collector policy's thread (host/native/heap.lisp fnn-heap-collector-run).
 (defconstant +fnn-mux-fixed-threads+ *fn-heap-fixed-threads*) ; books/profile-limits.lisp
 
 (defconstant +fnn-mux-pollin+ 1)
@@ -2188,6 +2189,16 @@ the run's (exit 1), named on stderr and in the service log."
          ;; machine's memory figures are I/O the owner mutex never holds.
          (machine (fnn-heap-machine-octets))
          (core (fnn-heap-core-octets))
+         ;; K-ADMIT's coordinates, observed here for the same reason: the
+         ;; image as this process finds itself and the resident limits
+         ;; (host/native/heap.lisp).
+         (img (fnn-heap-img-observation (fnn-store-config store)))
+         (resident (fnn-heap-resident-observations))
+         ;; the configuration history's octets (config/'s lstat sizes)
+         (config-octets (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store)))
+         ;; the memory gate's word: :hold with C' >= 1, :refused when no
+         ;; connection fits the limit at the carried store (ruling (b))
+         (memory nil)
          (decision
            (fnn-owner-serialized
             service nil
@@ -2208,6 +2219,25 @@ the run's (exit 1), named on stderr and in the service log."
                               (fnn-owner-service-reclaim-live service))))
                 (when (eq word :hold)
                   (fnn-owner-syncer-install service threads stack)
+                  ;; The memory gate every POST's prepare applies
+                  ;; (host/owner-host.lisp fn-owner-memory-configure,
+                  ;; books/admission-memory.lisp): the image, the resident
+                  ;; limit, the serving and publication triggers, and the
+                  ;; run's configuration.  It derives the run's capacity C'
+                  ;; of C over the carried totals (fn-adm-capacity) and
+                  ;; bounds the readers accepted by it.
+                  (setq memory
+                   (fnn-owner-core 'fn-owner-memory-configure
+                                  img resident
+                                  +fnn-owner-service-nursery-octets+ (fnn-gc-nursery-octets)
+                                  (fnn-store-config store) (and tls-context t)
+                                  (fnn-owner-service-reclaim-live service)
+                                  (fnn-owner-service-cold-resources service)
+                                  (fnn-owner-service-output-resources service)
+                                  (fnn-peer-flight-profile (fnn-store-root store))
+                                  (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit)
+                                  (fnn-store-root store)
+                                  (fnn-owner-over-window) config-octets))
                   ;; Store figure is captured before both allowance extensions.
                   ;; ACL2 validates dynamic >= store + exact cold + output pool.
                   (fnn-owner-output-install
@@ -2222,4 +2252,14 @@ the run's (exit 1), named on stderr and in the service log."
     (fnn-log-line line)
     (when (eq decision :refused)
       (fnn-refuse "~a" (map 'string #'code-char line)))
+    ;; The run's capacity line, the admission statement it serves under
+    ;; ("memory capacity=C' of C bound-by=TERM sum=S MB limit=L MB",
+    ;; books/admission-memory.lisp fn-adm-capacity-line); a run no
+    ;; connection fits refuses by it.
+    (let ((mline (fnn-global 'fn-owner-memory-capacity-line)))
+      (unless (and (member memory '(:hold :refused)) (fnn-octet-list-p mline))
+        (fnn-fault "owner returned a malformed memory capacity"))
+      (fnn-log-line mline)
+      (when (eq memory :refused)
+        (fnn-refuse "~a" (map 'string #'code-char mline))))
     decision))

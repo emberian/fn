@@ -206,7 +206,8 @@
                 fn-owner-limit-decided fn-owner-limit-use
                 fn-owner-live-post-config fn-owner-log-bounds
                 fn-owner-log-reopen fn-owner-login-bindings-plan
-                fn-owner-login-gate-buffer fn-owner-moderation-plan
+                fn-owner-login-gate-buffer fn-owner-memory-configure
+                fn-owner-moderation-plan
                 fn-owner-next-store-coordinates fn-owner-next-txid
                 fn-owner-observe fn-owner-oex-capture fn-owner-open
                 fn-owner-operator-refusal-reason fn-owner-operator-submit

@@ -43,10 +43,12 @@
 (assert! (hbt-conclusion :run *hbt-small* *hbt-core* *hbt-nursery* nil
                          (fn-heap-reserve-init-connections)))
 (assert! (equal (fn-heap-init-reservation-octets *hbt-small* *hbt-core* *hbt-nursery*)
-                1100059648))
+                (fn-heap-breakdown-sum
+                 (fn-heap-breakdown :run *hbt-small* *hbt-core* *hbt-nursery* nil
+                                    (fn-heap-reserve-init-connections)))))
 (assert! (equal (fn-heap-breakdown :run *hbt-small* *hbt-core* *hbt-nursery* nil
                                    (fn-heap-reserve-init-connections))
-                '((:image-dynamic . 147604131)
+                `((:image-dynamic . 147604131)
                   (:state-history . 16793728)
                   (:state-handles . 786432)
                   (:state-records . 136314880)
@@ -62,8 +64,11 @@
                   (:collector-room . 88429136)
                   (:megabyte-rounding . 355715)
                   (:image-outside-heap . 214012928)
-                  (:thread-stacks . 35651584)
-                  (:thread-runtime . 142606336))))
+                  ;; the thread terms follow the profile's thread count
+                  (:thread-stacks . ,(* (fn-heap-thread-count (fn-heap-reserve-init-connections))
+                                        (fn-heap-stack-kib *hbt-small*) 1024))
+                  (:thread-runtime . ,(* (fn-heap-thread-count (fn-heap-reserve-init-connections))
+                                         *fn-heap-thread-runtime-octets*)))))
 
 ;; `init' holds no store (lane b-init-heap): its figure is the store-less
 ;; figure, and its breakdown is that one term.

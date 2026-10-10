@@ -5,8 +5,8 @@
 ; No store verb sets a watermark and replay only increments one, so the
 ; damaged store the open must refuse (books/owner-number-bound.lisp
 ; fn-onb-open-okp, :article-numbers-damaged) is built here: the file a
-; writer published is split into its segments, the arena run is kept as
-; written, the four tables (books/store-checkpoint-tables.lisp) are decoded
+; writer published is split into its segments, the charged-totals header
+; segment and the arena run are kept as written, the four tables (books/store-checkpoint-tables.lisp) are decoded
 ; with the reader's list-level `fn-sct-decode-file', the node's nexts are
 ; replaced, and the tables are re-encoded with `fn-sct-table-programs' and
 ; `fn-sct-file-octets' (the writer's codec, chained from the genesis and
@@ -76,7 +76,13 @@
                  (list :refused :nexts-not-replaced)))))))
 
 (defun fx-damage-segments (xs v)
-  (let ((segs (fx-split xs nil)))
+  ;; schema 4: the first segment is the charged-totals header run H
+  ;; (books/charged-totals-header.lisp; one segment, count 1), kept as
+  ;; written (the watermark is not in the totals); the arena run follows.
+  (let* ((all (fx-split xs nil))
+         (hseg (and (consp all) (car all)))
+         (hh (and hseg (fn-scc-parse-header hseg)))
+         (segs (if (and hh (equal (nth 1 hh) 1)) (cdr all) :bad)))
     (if (or (eq segs :bad) (not (consp segs)))
         (list :refused :segments)
       (let* ((h (fn-scc-parse-header (car segs)))
@@ -101,7 +107,7 @@
                     (if (not (and (not (eq again :bad))
                                   (equal (fn-sct-decode-file again) (list :ok tables2))))
                         (list :refused :round-trip)
-                      (list :ok (append (fn-scc-concat (take arena-count segs)) octets)
+                      (list :ok (append hseg (fn-scc-concat (take arena-count segs)) octets)
                             (nth 2 d) (nth 3 d)))))))))))))
 
 ; A file that carries a history image region (books/history-image-snapshot.lisp)

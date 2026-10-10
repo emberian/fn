@@ -100,10 +100,11 @@
 (defconst *sbsp-s3* (fn-sn-finish *sbsp-s2*))
 (assert-event (equal (fn-sf-phase (fn-sn-files *sbsp-s3*)) :ready))
 (assert-event (equal (sbsp-okp *sbsp-s3* (list *sbsp-w1*)) t))
-; What the relation buys: the budget counts the 2 octets the arena holds and
-; the row's two memberships at 320 each (lane membership-budget).
-;; (and the header charges, lane heap-pool)
-(assert-event (equal (fn-sbud-bytes-used *sbsp-s3*) 682))
+; What the relation buys: the budget counts the payload octets the arena
+; holds for the row, and nothing else (H charges a held row its payload
+; alone, memory landing 3+4).
+(assert-event (equal (fn-sbud-bytes-used *sbsp-s3*)
+                     (len (fn-record-payload *sbsp-w1*))))
 
 ; POST 2 on the grown history: the row at handle 1.
 (defconst *sbsp-s4* (sbsp-reserve *sbsp-s3*))
@@ -117,8 +118,10 @@
 (defconst *sbsp-s7* (fn-sn-finish (sbsp-publish *sbsp-s5*)))
 (assert-event (equal (len (fn-sf-records (fn-sn-files *sbsp-s7*))) 2))
 (assert-event (equal (sbsp-okp *sbsp-s7* (list *sbsp-w1* *sbsp-w2*)) t))
-;; (and the header charges, lane heap-pool)
-(assert-event (equal (fn-sbud-bytes-used *sbsp-s7*) 1427))
+;; The two payloads alone (a held row is charged its payload alone).
+(assert-event (equal (fn-sbud-bytes-used *sbsp-s7*)
+                     (+ (len (fn-record-payload *sbsp-w1*))
+                        (len (fn-record-payload *sbsp-w2*)))))
 
 ; A refused stage keeps the relation too: the staged store is not :reserved.
 (defconst *sbsp-st-refused* (sbsp-stage *sbsp-s5* *sbsp-w2* (list *sbsp-w1*)))

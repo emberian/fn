@@ -33,6 +33,8 @@
 (include-book "../books/peer-catchup-spool-body")
 (include-book "../books/raw-dispatch-verdict")
 (include-book "../books/response-identity")
+; The checkpoint's charged-totals header entries and keystone (fn-cth-*).
+(include-book "../books/charged-totals-header")
 ; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
 ; fold of fn-lgc-finish-one the host calls once) and its keystone, that every
 ; acknowledged record is recovered from every crash image of the host's run
@@ -938,16 +940,29 @@
 (definterface fn-ns-secret-width
   :class :common-lisp-compliant)
 
-(definterface fn-ock-capture-budget
-  :class :common-lisp-compliant)
-
 (definterface fn-ock-request-status
   :class :common-lisp-compliant)
 
 (definterface fn-ockp-donep
   :class :common-lisp-compliant)
 
-(definterface fn-ockp-initial-state
+; The checkpoint's charged-totals header (books/charged-totals-header.lisp):
+; the reader's header phase over the first segment, and the table run's
+; first state with the running total the arena run ended at
+; (host/native/io.lisp fnn-state-checkpoint-plan, fnn-state-checkpoint-
+; verify, fnn-checkpoint-write-steps).
+(definterface fn-cth-header-open
+  :class :common-lisp-compliant
+  :keystones (fn-cth-read-file-is-the-header-open))
+
+(definterface fn-cth-table-initial-state
+  :class :common-lisp-compliant
+  :kinds ((total natp)))
+
+(definterface fn-cth-status-text
+  :class :common-lisp-compliant)
+
+(definterface fn-cth-empty-suffix
   :class :common-lisp-compliant)
 
 (definterface fn-ockp-step
@@ -2926,13 +2941,15 @@
 (definterface fn-heap-reserve-init-connections
   :class :common-lisp-compliant)
 
-;; The probe's decision for every command (books/heap-command.lisp, lane
-;; memory landing 2): today's fn-heap-reserve-operation-decide for every class
-;; but the store-less one and the observed reads.
+;; The probe's decision for every command (books/heap-command.lisp, memory
+;; landings 2 and 3+4a): the stopped status store-less; every store-opening
+;; class by the equation over the observed totals, else the named offline
+;; adapter; today's fn-heap-reserve-operation-decide for the rest.
 (definterface fn-heap-command-decide
   :class :common-lisp-compliant
   :keystones (fn-heap-stopped-status-is-sized-without-the-store
-              fn-heap-command-decide-reads-is-the-read-decision
+              fn-heap-command-decide-store-opening-is-the-model
+              fn-heap-command-decide-store-opening-unobserved-is-the-adapter
               fn-heap-command-decide-otherwise-is-todays))
 
 (definterface fn-heap-command-growth
@@ -2948,6 +2965,16 @@
   :class :common-lisp-compliant)
 
 (definterface fn-mo-observed-totals
+  :class :common-lisp-compliant)
+
+;; The collector policy's decision after a collection and its view of the
+;; configuration (books/memory-model.lisp; host/native/heap.lisp
+;; fnn-heap-collector-after-gc; memory landing 3+4).
+(definterface fn-mm-collector-due-p
+  :class :common-lisp-compliant
+  :keystones (fn-mm-collector-not-due-is-within-the-term))
+
+(definterface fn-mm-collector-cfg
   :class :common-lisp-compliant)
 
 (definterface fn-crv-extend-reservation

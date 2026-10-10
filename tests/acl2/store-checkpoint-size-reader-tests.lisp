@@ -12,7 +12,7 @@
 (defun fn-scsr-fixture-plan (fn-octets)
  (declare (xargs :stobjs fn-octets :mode :program))
  (let* ((ctx '(:ok 9 ((:key "abc" (4 5))) ((1 2 3 "<a@b>" :carried (7 8) 4 (9))) nil :none))
-        (f (fn-scc-program '(3 1 1 "rev" nil 2)))
+        (f (fn-scc-program (list *fn-sct-schema* 1 1 "rev" nil 2)))
         (p (fn-scc-program '(7 8))) (e (fn-scc-program '(7 8)))
         (r (append (fn-scc-program nil) (fn-scc-program ctx)
                    (fn-scc-program nil) (fn-scc-program nil)))

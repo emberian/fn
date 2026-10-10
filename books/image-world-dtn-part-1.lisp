@@ -171,3 +171,6 @@
 (include-book "store-log-entry-bound")
 (include-book "store-log-lineage")
 (include-book "store-log-buffer")
+(include-book "store-log-walk-once")
+(include-book "store-log-segments")
+(include-book "store-log-extend")

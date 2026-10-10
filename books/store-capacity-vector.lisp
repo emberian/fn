@@ -245,22 +245,13 @@ vector holds after it at its worst case, its own promise included."
         :admissible
       :unaffordable)))
 
-;; THE ACCEPTED-STATEMENT FIGURE (lane bp-retention-leftovers, membership-
-;; budget's deferral).  A composite's stored charge is its encoding plus the
-;; membership charge of the article it carries (`fn-sbud-row-octets'), so
-;; its gate charges the kind's publication ceiling PLUS 320 per group: the
-;; composite's charge is within its figure exactly when its encoding is
-;; within the ceiling, whatever its group count
-;; (`fn-cvec-statement-row-within-its-figure').  Before, the gate charged
-;; the ceiling alone and a composite in k groups whose encoding exceeded
-;; 196,608 - 320 k was stored above the figure it was admitted at.
-; Lane heap-pool (B9): and the header charge of the article it carries, at
-; its worst (an article of the kind's ceiling, every octet a header octet).
+;; THE ACCEPTED-STATEMENT FIGURE: a composite's stored charge is its
+;; encoding (`fn-sbud-row-octets'), so its gate charges the kind's publication
+;; ceiling; the article it carries pays its memberships and header in the
+;; memory equation (memory landing 3+4, RULINGS 2026-10-09 21:50).
 (defun fn-cvec-statement-figure (group-count)
-  (declare (xargs :guard t))
-  (+ (fn-store-publication-ceiling :accepted-statement)
-     (* *fn-sbud-membership-octets* (nfix group-count))
-     (fn-sbud-article-header-figure (fn-store-publication-ceiling :accepted-statement))))
+  (declare (xargs :guard t) (ignore group-count))
+  (fn-store-publication-ceiling :accepted-statement))
 
 (defun fn-cvec-statement-verdict-at (profile used bytes-used group-count debt)
   "The publication verdict for one accepted-statement composite whose article
@@ -306,32 +297,6 @@ the capacity vector at the composite's figure."
                           (len (fn-record-payload record))
                           (len (fn-record-groups record)) debt))
 
-; THE MEMBERSHIP REFUSAL (lane membership-budget, 2026-09-27).  An article
-; the budget refused is refused FOR ITS MEMBERSHIPS when, with the same
-; count, octets and debt, its figure without the membership charge
-; (`fn-sbud-article-record-figure') would have been admitted: the count gate
-; admits one more record, the history gate and the capacity vector hold at
-; that figure.  Then the crosspost, not the article, is what the store
-; cannot pay for, and the owner names it (:memberships, rendered by
-; books/nntp-post.lisp `fn-post-store-refusal-text'), distinct from the
-; store being full (:unaffordable).
-(defun fn-cvec-article-memberships-refusedp (profile used bytes-used
-                                                     payload-length group-count
-                                                     debt)
-  (declare (xargs :guard t))
-  (and (posp group-count)
-       (equal (fn-cvec-article-budget profile used bytes-used payload-length
-                                      group-count debt)
-              0)
-       (fn-sbud-admitp (fn-sbud-budget profile :article) used)
-       (fn-bs-history-admissiblep
-        profile bytes-used
-        (fn-sbud-article-record-figure payload-length group-count))
-       (fn-cvec-roomp profile (+ 1 (nfix used))
-                      (+ (nfix bytes-used)
-                         (fn-sbud-article-record-figure payload-length group-count))
-                      debt)))
-
 ; THE TWO RESOURCES (lane m1-durable-2, 2026-10-04: Mini's condition for
 ; leaving segment rotation out of 6.6.0, "the history budget refuses by
 ; name").  The article's admission asks two resources, and each has two
@@ -371,20 +336,17 @@ the capacity vector at the composite's figure."
 ; this names which resource refused, in this precedence:
 ;
 ;   1. the transactions refuse                         :unaffordable (T)
-;   2. the history refuses at the gate figure, but the
-;      record figure without the membership charge fits  :memberships
-;   3. the history refuses                             :history-exhausted (H)
-;   4. otherwise (no budget refusal the host can hand)  :unaffordable
+;   2. the history refuses                             :history-exhausted (H)
+;   3. otherwise (no budget refusal the host can hand)  :unaffordable
 ;
 ; Any other word is passed through.  T first: a store out of transactions
 ; is full whatever its octets, and only compaction-free growth of T helps.
-; :memberships before :history-exhausted: the poster can act on it (fewer
-; groups), the operator need not.  KEYSTONES
-; `fn-cvec-article-refusal-word-names-the-memberships',
+; The owner's memory gate names its own refusal (:memory) after these two
+; (books/admission-memory.lisp, K-ADMIT).  KEYSTONES
 ; `fn-cvec-article-refusal-word-names-the-history',
 ; `fn-cvec-article-refusal-word-keeps-unaffordable-for-the-transactions' and,
 ; under the budget the host handed,
-; `fn-cvec-article-refusal-word-under-the-budget-names-the-resource' (case 4
+; `fn-cvec-article-refusal-word-under-the-budget-names-the-resource' (case 3
 ; unreachable).  The host line: host/owner-host.lisp `fn-owner-prepare' and
 ; `fn-owner-prepare-buffer', over the word `fn-pout-prepare-article'
 ; answered and the same count, octets, record and debt the budget was
@@ -396,23 +358,16 @@ the capacity vector at the composite's figure."
     (cond ((not (equal word :unaffordable)) word)
           ((not (fn-cvec-article-transactions-admitp profile used debt))
            :unaffordable)
-          ((fn-cvec-article-memberships-refusedp profile used bytes-used p k debt)
-           :memberships)
           ((not (fn-cvec-article-history-admitp
                  profile bytes-used (fn-sbud-article-gate-figure p k) debt))
            :history-exhausted)
           (t :unaffordable))))
 
-; The developer `store post' names its refusal as the served path does
-; (lane bp-retention-leftovers, membership-budget's deferral; lane
-; m1-durable-2 the history): its verdict (`fn-cvec-article-verdict-at',
-; host/store-node-host.lisp `fn-store-sn-article-verdict-word') refused,
-; and the word is the resource that refused, in the served word's
-; precedence: the transactions (:unaffordable); the membership charge alone
-; (:memberships: the article is in at least one group, and at the same
-; count, octets and debt its figure WITHOUT that charge would have passed
-; the count gate, the history gate and the vector); the history
-; (:history-exhausted).  KEYSTONE
+; The developer `store post' names its refusal as the served path does: its
+; verdict (`fn-cvec-article-verdict-at', host/store-node-host.lisp
+; `fn-store-sn-article-verdict-word') refused, and the word is the resource
+; that refused, in the served word's precedence: the transactions
+; (:unaffordable), the history (:history-exhausted).  KEYSTONE
 ; `fn-cvec-article-verdict-word-names-the-resource' (the last arm is
 ; unreachable).
 (defun fn-cvec-article-verdict-word (profile used bytes-used payload-length
@@ -424,25 +379,13 @@ the capacity vector at the composite's figure."
          :admissible)
         ((not (fn-cvec-article-transactions-admitp profile used debt))
          :unaffordable)
-        ((and (posp group-count)
-              (fn-sbud-admitp (fn-sbud-budget profile :article) used)
-              (fn-bs-history-admissiblep
-               profile bytes-used
-               (fn-sbud-article-record-figure payload-length group-count))
-              (fn-cvec-roomp profile (+ 1 (nfix used))
-                             (+ (nfix bytes-used)
-                                (fn-sbud-article-record-figure payload-length
-                                                               group-count))
-                             debt))
-         :memberships)
         ((not (fn-cvec-article-history-admitp
                profile bytes-used
                (fn-sbud-article-gate-figure payload-length group-count) debt))
          :history-exhausted)
         (t :unaffordable)))
 
-; The word admits exactly what the verdict admits; :memberships names a
-; refusal the membership charge alone caused.
+; The word admits exactly what the verdict admits.
 (defthm fn-cvec-article-verdict-word-by-definition
   (let ((word (fn-cvec-article-verdict-word profile used bytes-used
                                             payload-length group-count debt)))
@@ -450,19 +393,7 @@ the capacity vector at the composite's figure."
               (equal (fn-cvec-article-verdict-at profile used bytes-used
                                                  payload-length group-count debt)
                      :admissible))
-         (member-equal word '(:admissible :memberships :history-exhausted
-                              :unaffordable))
-         (implies (equal word :memberships)
-                  (and (posp group-count)
-                       (equal (fn-cvec-article-verdict-at
-                               profile used bytes-used payload-length
-                               group-count debt)
-                              :unaffordable)
-                       (fn-cvec-roomp profile (+ 1 (nfix used))
-                                      (+ (nfix bytes-used)
-                                         (fn-sbud-article-record-figure
-                                          payload-length group-count))
-                                      debt)))))
+         (member-equal word '(:admissible :history-exhausted :unaffordable))))
   :rule-classes nil
   :hints (("Goal" :in-theory '(fn-cvec-article-verdict-word
                                fn-cvec-article-verdict-at
@@ -574,53 +505,31 @@ the capacity vector at the composite's figure."
                             fn-store-publication-ceiling)))))
 
 ;  KEYSTONE (the composite's charge and its figure).  A retained
-; accepted-statement row's stored charge (its encoding, 320 per group of its
-; article, and its article's header charge) is within the figure its gate
-; charges when its encoding and its article's octets are within the kind's
-; publication ceiling, whatever its group count: the membership charge is
-; paid on both sides, and the header charge is at most the ceiling's
-; (lane heap-pool).  Conversely a charge within the figure has its encoding
-; within the ceiling and the header figure together.  (Before lane heap-pool
-; the two were equivalent: there was no header charge.)  The admission's
-; runtime check is the charge against the figure (fn-cvec-record-admittedp).
+; accepted-statement row's stored charge is its encoding, so it is within the
+; figure its gate charges exactly when its encoding is within the kind's
+; publication ceiling, whatever its group count.  The admission's runtime
+; check is the charge against the figure (fn-cvec-record-admittedp).
 (defthm fn-cvec-statement-row-within-its-figure
   (implies (and (fn-hstxa-p row)
                 (<= (len (fn-store-event-encode (fn-hstxa-stxa row)))
-                    (fn-store-publication-ceiling :accepted-statement))
-                (<= (nfix (fn-hf-octets (fn-held-facts (fn-hstxa-held row))))
                     (fn-store-publication-ceiling :accepted-statement)))
            (<= (fn-sbud-row-octets row)
                (fn-cvec-statement-figure (fn-sbud-row-memberships row))))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-sbud-held-header-octets-is-within-the-octets
-                                   (row (fn-hstxa-held row)))
-                        (:instance fn-sbud-held-msgid-octets-is-within-250
-                                   (row (fn-hstxa-held row)))
-                        (:instance fn-sbud-held-msgid-octets-is-within-the-octets
-                                   (row (fn-hstxa-held row))))
-           :in-theory (e/d (fn-sbud-row-octets fn-sbud-row-memberships
-                                   fn-cvec-statement-figure fn-sbud-article-header-figure
-                                   fn-sbud-held-heap-charge)
+  :hints (("Goal" :in-theory (e/d (fn-sbud-row-octets fn-cvec-statement-figure)
                                   (fn-store-event-encode fn-store-publication-ceiling
-                                   fn-sbud-held-header-octets fn-sbud-held-msgid-octets
-                                   fn-held-p fn-hstxa-stxa fn-hstxa-held fn-held-facts
-                                   fn-record-groups)))))
+                                   fn-held-p fn-hstxa-stxa)))))
 
 (defthm fn-cvec-statement-row-within-its-figure-has-its-encoding
   (implies (and (fn-hstxa-p row)
                 (<= (fn-sbud-row-octets row)
                     (fn-cvec-statement-figure (fn-sbud-row-memberships row))))
            (<= (len (fn-store-event-encode (fn-hstxa-stxa row)))
-               (+ (fn-store-publication-ceiling :accepted-statement)
-                  (fn-sbud-article-header-figure
-                   (fn-store-publication-ceiling :accepted-statement)))))
+               (fn-store-publication-ceiling :accepted-statement)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-sbud-row-octets fn-sbud-row-memberships
-                                   fn-cvec-statement-figure)
+  :hints (("Goal" :in-theory (e/d (fn-sbud-row-octets fn-cvec-statement-figure)
                                   (fn-store-event-encode fn-store-publication-ceiling
-                                   fn-sbud-article-header-figure fn-sbud-held-heap-charge
-                                   fn-held-p fn-hstxa-stxa fn-hstxa-held
-                                   fn-record-groups)))))
+                                   fn-held-p fn-hstxa-stxa)))))
 
 ;  KEYSTONE (a release discharges a debt and keeps the vector).  Where the
 ; vector holds with at least one open undertaking, a release record of at
@@ -634,17 +543,6 @@ the capacity vector at the composite's figure."
                           (fn-cvec-debt-step :release debt)))
   :rule-classes nil)
 
-; The article figure bounds the narrow record (records-shape).
-(local
- (defthm fn-cvec-figure-bounds-the-record
-   (implies (not (fn-record-widep record))
-            (<= (len (fn-record-encode record))
-                (fn-sbud-article-figure (len (fn-record-payload record))
-                                        (len (fn-record-groups record)))))
-   :rule-classes :linear
-   :hints (("Goal" :use ((:instance fn-sbud-article-figure-bounds-the-record
-                                    (payload-length (len (fn-record-payload record)))
-                                    (group-count (len (fn-record-groups record)))))))))
 
 ;  KEYSTONE (the served article prepare keeps the vector).
 (defthm fn-cvec-prepare-keeps-the-vector
@@ -653,14 +551,13 @@ the capacity vector at the composite's figure."
                              (fn-cvec-article-budget-for
                               profile (fn-sbud-used (fn-sbud-oc-store oc))
                               bytes-used record debt))
-                            oc))
-                (not (fn-record-widep record)))
+                            oc)))
            (and (fn-cvec-roomp profile
                                (+ 1 (fn-sbud-used (fn-sbud-oc-store oc)))
-                               (+ bytes-used (len (fn-record-encode record)))
+                               (+ bytes-used (len (fn-record-payload record)))
                                debt)
                 (fn-profile-replay-within-boundp
-                 profile (+ bytes-used (len (fn-record-encode record))))))
+                 profile (+ bytes-used (len (fn-record-payload record))))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
                                    (used (+ 1 (fn-sbud-used (fn-sbud-oc-store oc))))
@@ -668,12 +565,12 @@ the capacity vector at the composite's figure."
                                          (fn-sbud-article-gate-figure
                                           (len (fn-record-payload record))
                                           (len (fn-record-groups record)))))
-                                   (b2 (+ bytes-used (len (fn-record-encode record)))))
+                                   (b2 (+ bytes-used (len (fn-record-payload record)))))
                         (:instance fn-sbud-prepare-under-article-budget-keeps-history
                                    (bytes-used bytes-used)))
            :in-theory (e/d (fn-sbud-prepare fn-cvec-article-budget-for
                             fn-cvec-article-budget fn-sbud-article-budget-for
-                            fn-sbud-article-budget)
+                            fn-sbud-article-budget fn-sbud-article-gate-figure)
                            (fn-cvec-roomp fn-smr-roomp
                             fn-opc-prepare fn-sbud-used
                             fn-profile-replay-within-boundp)))))
@@ -684,46 +581,20 @@ the capacity vector at the composite's figure."
                                                    payload-length group-count
                                                    debt)
                        :admissible)
-                (not (fn-record-widep record))
-                (<= (len (fn-record-payload record)) (nfix payload-length))
-                (<= (len (fn-record-groups record)) (nfix group-count)))
+                (<= (len (fn-record-payload record)) (nfix payload-length)))
            (fn-cvec-roomp profile (+ 1 used)
-                          (+ bytes-used (len (fn-record-encode record)))
+                          (+ bytes-used (len (fn-record-payload record)))
                           debt))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
                                    (used (+ 1 used))
                                    (b (+ bytes-used (fn-sbud-article-gate-figure
                                                      payload-length group-count)))
-                                   (b2 (+ bytes-used (len (fn-record-encode record)))))
-                        (:instance fn-sbud-article-figure-bounds-the-record))
-           :in-theory (e/d (fn-cvec-article-verdict-at fn-sbud-article-verdict-at)
+                                   (b2 (+ bytes-used (len (fn-record-payload record))))))
+           :in-theory (e/d (fn-cvec-article-verdict-at fn-sbud-article-verdict-at
+                            fn-sbud-article-gate-figure)
                            (fn-cvec-roomp fn-smr-roomp)))))
 
-;  KEYSTONE (PRF-126 widths: the article verdict keeps the vector for every
-; record whose charge fits u32, whatever its sequence, txid, generation and
-; stamp widths).
-(defthm fn-cvec-article-verdict-keeps-the-vector-at-producer-width
-  (implies (and (equal (fn-cvec-article-verdict-at profile used bytes-used
-                                                   payload-length group-count
-                                                   debt)
-                       :admissible)
-                (fn-record-uint32p (fn-record-charge record))
-                (<= (len (fn-record-payload record)) (nfix payload-length))
-                (<= (len (fn-record-groups record)) (nfix group-count)))
-           (fn-cvec-roomp profile (+ 1 used)
-                          (+ bytes-used (len (fn-record-encode record)))
-                          debt))
-  :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
-                                   (used (+ 1 used))
-                                   (b (+ bytes-used (fn-sbud-article-gate-figure
-                                                     payload-length group-count)))
-                                   (b2 (+ bytes-used (len (fn-record-encode record)))))
-                        (:instance fn-sbud-article-figure-bounds-the-producer-record))
-           :in-theory (e/d (fn-cvec-article-verdict-at fn-sbud-article-verdict-at
-                            fn-sbud-admitp fn-bs-history-admissiblep)
-                           (fn-cvec-roomp fn-smr-roomp fn-record-uint32p)))))
 
 ;  KEYSTONE (the vector holds from init).
 (defthm fn-cvec-admitted-profile-starts-held
@@ -832,65 +703,36 @@ the capacity vector at the composite's figure."
           (fn-cvec-roomp profile used b d))))
 
 
-;  A held row stores its payload length, which is within the figure it
-; was charged at.
+;  A held row stores its payload length, the figure it was charged at.
 (local
  (defthm fn-cvec-held-row-octets
    (implies (fn-held-p record)
             (equal (fn-sbud-row-octets record)
-                   (+ (fn-cvec-row-payload-length record)
-                      (* *fn-sbud-membership-octets*
-                         (len (fn-record-groups record)))
-                      (fn-sbud-held-heap-charge record))))
-   :hints (("Goal" :in-theory (e/d (fn-sbud-row-octets) (fn-sbud-held-heap-charge))))))
+                   (fn-cvec-row-payload-length record)))
+   :hints (("Goal" :in-theory (enable fn-sbud-row-octets)))))
 
-; A held row's charge, its payload, its memberships (lane
-; membership-budget) and its header charge (lane heap-pool), is within the
-; figure its article was charged at.
+; A held row's charge, its payload, is the figure its article was charged at.
 (defthm fn-cvec-held-row-within-its-figure
-  (implies (natp group-count)
-           (<= (+ (fn-cvec-row-payload-length record)
-                  (* *fn-sbud-membership-octets* group-count)
-                  (fn-sbud-held-heap-charge record))
-               (fn-sbud-article-gate-figure (fn-cvec-row-payload-length record)
-                                       group-count)))
+  (equal (fn-sbud-article-gate-figure (fn-cvec-row-payload-length record) group-count)
+         (fn-cvec-row-payload-length record))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-sbud-held-header-octets-is-within-the-octets
-                                   (row record))
-                        (:instance fn-sbud-held-msgid-octets-is-within-250 (row record))
-                        (:instance fn-sbud-held-msgid-octets-is-within-the-octets (row record)))
-           :in-theory (e/d (fn-sbud-article-gate-figure fn-sbud-article-figure fn-sbud-article-header-figure
-                                   fn-sbud-held-heap-charge fn-cvec-row-payload-length
-                                   fn-record-encoded-octets-ceiling)
-                                  (fn-sbud-held-header-octets fn-sbud-held-msgid-octets)))))
+  :hints (("Goal" :in-theory (enable fn-sbud-article-gate-figure fn-cvec-row-payload-length))))
 
 ; The article verdict at a held row's payload length keeps the vector at the
 ; octets the row stores.
 (defthm fn-cvec-article-verdict-keeps-the-vector-for-a-held-row
-  (implies (and (natp group-count)
-                (equal (fn-cvec-article-verdict-at profile used bytes-used
-                                                   (fn-cvec-row-payload-length record)
-                                                   group-count debt)
-                       :admissible))
+  (implies (equal (fn-cvec-article-verdict-at profile used bytes-used
+                                              (fn-cvec-row-payload-length record)
+                                              group-count debt)
+                  :admissible)
            (fn-cvec-roomp profile (+ 1 used)
-                          (+ bytes-used (fn-cvec-row-payload-length record)
-                             (* *fn-sbud-membership-octets* group-count)
-                             (fn-sbud-held-heap-charge record))
+                          (+ bytes-used (fn-cvec-row-payload-length record))
                           debt))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-cvec-roomp-antitone-in-octets
-                                   (used (+ 1 used))
-                                   (b (+ bytes-used (fn-sbud-article-gate-figure
-                                                     (fn-cvec-row-payload-length record)
-                                                     group-count)))
-                                   (b2 (+ bytes-used (fn-cvec-row-payload-length record)
-                                          (* *fn-sbud-membership-octets* group-count)
-                                          (fn-sbud-held-heap-charge record))))
-                        (:instance fn-cvec-held-row-within-its-figure))
-           :in-theory (e/d (fn-cvec-article-verdict-at fn-sbud-article-verdict-at
-                            fn-sbud-admitp fn-bs-history-admissiblep)
-                           (fn-cvec-roomp fn-smr-roomp fn-cvec-row-payload-length
-                            fn-sbud-article-figure fn-sbud-article-gate-figure)))))
+  :hints (("Goal" :in-theory (e/d (fn-cvec-article-verdict-at fn-sbud-article-verdict-at
+                                   fn-sbud-article-gate-figure fn-cvec-row-payload-length
+                                   fn-sbud-admitp fn-bs-history-admissiblep)
+                                  (fn-cvec-roomp fn-smr-roomp fn-sbud-budget)))))
 
 ; One committed record of any kind keeps the vector, at a natural debt.
 (local
@@ -1172,22 +1014,6 @@ the capacity vector at the composite's figure."
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-cvec-roomp fn-smr-roomp fn-sbud-verdict-at) (fn-smr-reserve-octets fn-sbud-verdict-is-the-count-and-history-admissibility fn-sbud-budget-is-the-profile-admissibility fn-sbud-admitp fn-bs-history-admissiblep fn-sbud-budget)))))
 
-; A membership refusal is one the transactions admit: its own vector test is
-; at the record figure, and the transaction half does not read the figure.
-(defthm fn-cvec-article-memberships-refused-admits-the-transactions
-  (implies (fn-cvec-article-memberships-refusedp profile used bytes-used
-                                                 payload-length group-count debt)
-           (fn-cvec-article-transactions-admitp profile used debt))
-  :hints (("Goal" :in-theory (e/d (fn-cvec-article-memberships-refusedp
-                                   fn-cvec-article-transactions-admitp
-                                   fn-cvec-roomp fn-smr-roomp fn-sbud-verdict-at)
-                                  (fn-smr-reserve-octets
-                                   fn-sbud-verdict-is-the-count-and-history-admissibility
-                                   fn-sbud-budget-is-the-profile-admissibility
-                                   fn-sbud-admitp fn-bs-history-admissiblep
-                                   fn-sbud-budget fn-cvec-article-budget
-                                   fn-sbud-article-record-figure)))))
-
 ; The budget the served prepare is handed (`fn-cvec-article-budget-for')
 ; admits one more record exactly when both resources admit it at the gate
 ; figure.  So the prepare's :unaffordable is one of them refusing.
@@ -1238,52 +1064,11 @@ the capacity vector at the composite's figure."
                             fn-sbud-budget fn-sbud-article-gate-figure)))))
 
 ; -----------------------------------------------------------------------------
-; KEYSTONE (a crosspost the budget cannot pay for is refused by name).  The
-; word the host reports is :memberships exactly when the prepare answered
-; :unaffordable, the article is in at least one group, the budget handed to
-; the prepare was 0 (its figure with the membership charge does not fit),
-; and without that charge the count gate, the history gate and the capacity
-; vector would all have admitted it.  Any other word is passed through.
-(defthm fn-cvec-article-refusal-word-names-the-memberships
-  (let ((p (len (fn-record-payload record)))
-        (k (len (fn-record-groups record))))
-    (and (equal (equal (fn-cvec-article-refusal-word word profile used
-                                                     bytes-used record debt)
-                       :memberships)
-                (or (equal word :memberships)
-                    (and (equal word :unaffordable)
-                         (< 0 k)
-                         (equal (fn-cvec-article-budget-for profile used bytes-used
-                                                            record debt)
-                                0)
-                         (fn-sbud-admitp (fn-sbud-budget profile :article) used)
-                         (fn-bs-history-admissiblep
-                          profile bytes-used (fn-sbud-article-record-figure p k))
-                         (fn-cvec-roomp profile (+ 1 (nfix used))
-                                        (+ (nfix bytes-used)
-                                           (fn-sbud-article-record-figure p k))
-                                        debt))))
-         (implies (not (equal word :unaffordable))
-                  (equal (fn-cvec-article-refusal-word word profile used
-                                                       bytes-used record debt)
-                         word))))
-  :hints (("Goal" :use ((:instance fn-cvec-article-memberships-refused-admits-the-transactions
-                                   (payload-length (len (fn-record-payload record)))
-                                   (group-count (len (fn-record-groups record)))))
-           :in-theory (e/d (fn-cvec-article-budget-for)
-                                  (fn-cvec-article-budget fn-cvec-roomp
-                                   fn-cvec-article-transactions-admitp
-                                   fn-cvec-article-history-admitp
-                                   fn-sbud-article-record-figure
-                                   fn-bs-history-admissiblep fn-sbud-admitp
-                                   fn-sbud-budget)))))
-
 ; KEYSTONE (the history budget refuses by name).  The word the host reports
 ; is :history-exhausted exactly when the prepare answered :unaffordable, the
 ; transactions admit the article (the count gate and the vector's
 ; transaction reservation), the history does not at the article's gate
-; figure (the history gate or the vector's octet reservation), and the
-; refusal is not the membership charge's alone.
+; figure (the history gate or the vector's octet reservation).
 (defthm fn-cvec-article-refusal-word-names-the-history
   (let ((p (len (fn-record-payload record)))
         (k (len (fn-record-groups record))))
@@ -1295,12 +1080,9 @@ the capacity vector at the composite's figure."
                     (fn-cvec-article-transactions-admitp profile used debt)
                     (not (fn-cvec-article-history-admitp
                           profile bytes-used (fn-sbud-article-gate-figure p k)
-                          debt))
-                    (not (fn-cvec-article-memberships-refusedp
-                          profile used bytes-used p k debt))))))
+                          debt))))))
   :hints (("Goal" :in-theory (e/d ()
-                                  (fn-cvec-article-memberships-refusedp
-                                   fn-cvec-article-transactions-admitp
+                                  (fn-cvec-article-transactions-admitp
                                    fn-cvec-article-history-admitp
                                    fn-sbud-article-gate-figure)))))
 
@@ -1317,26 +1099,21 @@ the capacity vector at the composite's figure."
                 (or (not (fn-cvec-article-transactions-admitp profile used debt))
                     (fn-cvec-article-history-admitp
                      profile bytes-used (fn-sbud-article-gate-figure p k) debt)))))
-  :hints (("Goal" :use ((:instance fn-cvec-article-budget-for-admits-exactly-both-sides)
-                        (:instance fn-cvec-article-memberships-refused-admits-the-transactions
-                                   (payload-length (len (fn-record-payload record)))
-                                   (group-count (len (fn-record-groups record)))))
-           :in-theory (e/d (fn-cvec-article-memberships-refusedp fn-sbud-admitp fn-cvec-article-budget-for)
+  :hints (("Goal" :use ((:instance fn-cvec-article-budget-for-admits-exactly-both-sides))
+           :in-theory (e/d (fn-sbud-admitp fn-cvec-article-budget-for)
                            (fn-cvec-article-budget-for-admits-exactly-both-sides
-                            fn-cvec-article-memberships-refused-admits-the-transactions
                             fn-cvec-article-transactions-admitp
                             fn-cvec-article-history-admitp
                             fn-cvec-article-budget
                             fn-cvec-roomp fn-sbud-budget
                             fn-bs-history-admissiblep
-                            fn-sbud-article-record-figure
                             fn-sbud-article-gate-figure)))))
 
 ; KEYSTONE (under the host's budget, the word names the resource).  When the
 ; budget the host handed does not admit one more record (the only way the
 ; prepare answers :unaffordable), the word is :unaffordable exactly when the
-; transactions refuse, and :memberships or :history-exhausted exactly when
-; the transactions admit and the history refuses.
+; transactions refuse, and :history-exhausted exactly when the transactions
+; admit and the history refuses.
 (defthm fn-cvec-article-refusal-word-under-the-budget-names-the-resource
   (let ((p (len (fn-record-payload record)))
         (k (len (fn-record-groups record)))
@@ -1346,10 +1123,10 @@ the capacity vector at the composite's figure."
                   (not (fn-sbud-admitp (fn-cvec-article-budget-for
                                         profile used bytes-used record debt)
                                        used)))
-             (and (member-equal word2 '(:unaffordable :memberships :history-exhausted))
+             (and (member-equal word2 '(:unaffordable :history-exhausted))
                   (iff (equal word2 :unaffordable)
                        (not (fn-cvec-article-transactions-admitp profile used debt)))
-                  (iff (member-equal word2 '(:memberships :history-exhausted))
+                  (iff (equal word2 :history-exhausted)
                        (and (fn-cvec-article-transactions-admitp profile used debt)
                             (not (fn-cvec-article-history-admitp
                                   profile bytes-used
@@ -1360,7 +1137,6 @@ the capacity vector at the composite's figure."
            :in-theory (e/d ()
                            (fn-cvec-article-budget-for-admits-exactly-both-sides
                             fn-cvec-article-refusal-word-keeps-unaffordable-for-the-transactions
-                            fn-cvec-article-memberships-refusedp
                             fn-cvec-article-transactions-admitp
                             fn-cvec-article-history-admitp
                             fn-cvec-article-budget-for fn-sbud-admitp
@@ -1374,11 +1150,10 @@ the capacity vector at the composite's figure."
         (hx (fn-cvec-article-history-admitp
              profile bytes-used
              (fn-sbud-article-gate-figure payload-length group-count) debt)))
-    (and (member-equal word '(:admissible :memberships :history-exhausted
-                              :unaffordable))
+    (and (member-equal word '(:admissible :history-exhausted :unaffordable))
          (iff (equal word :admissible) (and tx hx))
          (iff (equal word :unaffordable) (not tx))
-         (iff (member-equal word '(:memberships :history-exhausted))
+         (iff (equal word :history-exhausted)
               (and tx (not hx)))))
   :hints (("Goal" :use ((:instance fn-cvec-article-verdict-admits-exactly-both-sides))
            :in-theory (e/d (fn-cvec-article-verdict-word)
@@ -1388,5 +1163,4 @@ the capacity vector at the composite's figure."
                             fn-cvec-article-history-admitp
                             fn-cvec-roomp fn-sbud-admitp fn-sbud-budget
                             fn-bs-history-admissiblep
-                            fn-sbud-article-record-figure
                             fn-sbud-article-gate-figure)))))

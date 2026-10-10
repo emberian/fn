@@ -2196,6 +2196,11 @@ resolves the names against `domain' and the host carries that list verbatim."
   ;; P3: how the last open reached the Store state: (:checkpoint S K) or
   ;; (:full-replay REASON).  `operator status' prints it.
   (open-mode '(:full-replay :absent))
+  ;; The charged totals the last checkpoint load read from its header
+  ;; segment (books/charged-totals-header.lisp fn-cth-header-open), NIL
+  ;; when the load was not :ok; the owner's seed takes it only when
+  ;; OPEN-MODE says the open went over that checkpoint (fn-cth-installed-seed).
+  (checkpoint-header nil)
   ;; The replayed configuration the core hands back at recover.  The host
   ;; stores it and passes it back; it derives no name, code or generation.
   (config-generation nil) (config-served nil) (config-domain nil)
@@ -2807,33 +2812,43 @@ Generic command callers have no owner authority sink.")
 checkpoint file's start, or NIL.")
 
 (defun fnn-state-checkpoint-plan (store)
-  "(values :absent NIL), (values :ok PLAN) or (values :refused REASON), REASON
-one of :not-regular, :truncated, :header, :exceeds-bound.
+  "(values :absent NIL), (values :ok PLAN TOT) or (values :refused REASON),
+REASON one of :not-regular, :truncated, :header, :schema, :exceeds-bound.
 
-One descriptor, consecutive reads: a segment header (37 octets), then ACL2's
-admission of that segment against the profile's segment bound and file bound
-given the octets read so far (fn-store-sco-segment-admit, books
-fn-sccr-admit-segment), then the chunk and the trailer.  Each chunk's bytes
-are appended into the live octet buffer in file order and the plan holds, per
-segment, (HEADER A B TRAILER): the header and the trailer as octet lists, the
-chunk as the buffer's cells A..B, the frames contiguous.  No octet list of
-the file is built (rep-wave-d-3): the decoder reads the buffer by index
+One descriptor, consecutive reads.  After the history image region, the
+charged-totals header segment H (books/charged-totals-header.lisp): its
+37-octet header admitted from 0 under one segment's framing
+(fn-store-sco-segment-admit with the segment bound as the file bound), its
+chunk and trailer read into a vector of their own, then ACL2's header phase
+over the whole segment (fn-cth-header-open: TOT, H's total T1 and the load
+bound at TOT and the configuration history's octets; KEYSTONE
+fn-cth-read-file-is-the-header-open).  Then every later segment: its header
+admitted from the running total under that load bound, the chunk and the
+trailer read.  Each later chunk's bytes are appended into the live octet
+buffer, reserved once at the smaller of the file and the load bound, in file
+order, and the plan holds, per segment, (HEADER A B TRAILER): the header and
+the trailer as octet lists, the chunk as the buffer's cells A..B, the frames
+contiguous.  H is not in the plan.  No octet list of the file is built
+(rep-wave-d-3): the decoder reads the buffer by index
 (books/store-checkpoint-reader.lisp fn-sccr-decode-plan)."
   (let ((path (fnn-state-checkpoint-path store)))
     (setq *fnn-checkpoint-image* nil)
     (unless (fnn-check-regular path)
       (return-from fnn-state-checkpoint-plan (values :absent nil)))
-    (let ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
-          (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
-          (profile (fnn-store-config store))
-          (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
-          (frames nil) (total 0) (at 0)
-          ;; The image region is recognized at the file's first header
-          ;; only: once (codex r72 F3).  A second image header at the seek
-          ;; target was taken again and seeked to the same offset forever,
-          ;; under the store lock; now it is a segment header, refused by
-          ;; the admission.
-          (at-start t))
+    (let* ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
+           (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
+           (profile (fnn-store-config store))
+           (segment-bound (fnn-core 'fn-store-sco-segment-read-bound profile))
+           (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
+           (frames nil) (total 0) (at 0)
+           ;; NIL until H is read: then its totals and the load bound
+           (tot nil) (bound nil)
+           ;; The image region is recognized at the file's first header
+           ;; only: once (codex r72 F3).  A second image header at the seek
+           ;; target was taken again and seeked to the same offset forever,
+           ;; under the store lock; now it is a segment header, refused by
+           ;; the admission.
+           (at-start t))
       (unless (and (integerp header-octets) (> header-octets 0)
                    (integerp trailer-octets) (> trailer-octets 0))
         (fnn-close fd)
@@ -2843,11 +2858,6 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
              (unless (fnn-regular-p st)
                (return-from fnn-state-checkpoint-plan (values :refused :not-regular)))
              (fnn-octets-clear)
-             ;; One allocation for the chunks of the whole file, never past
-             ;; what ACL2 would admit.
-             (let ((bound (fnn-core 'fn-store-sco-file-read-bound profile)))
-               (when (and (integerp bound) (> bound 0))
-                 (fnn-octets-reserve (min (max 0 (sb-posix:stat-size st)) bound))))
              (loop
                (let ((first (make-array 1 :element-type '(unsigned-byte 8))))
                  (when (zerop (fnn-read-fd fd first)) (return))
@@ -2871,7 +2881,7 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
                    (let* ((header (fnn-octet-list
                                    (concatenate '(vector (unsigned-byte 8)) first rest)))
                           (admission (fnn-core 'fn-store-sco-segment-admit
-                                               header total profile)))
+                                               header total profile (or bound segment-bound))))
                      (unless (and (consp admission)
                                   (member (first admission) '(:ok :refused)))
                        (fnn-fault "ACL2 returned a malformed checkpoint segment admission"))
@@ -2890,14 +2900,42 @@ the file is built (rep-wave-d-3): the decoder reads the buffer by index
                            (unless trailer
                              (return-from fnn-state-checkpoint-plan
                                (values :refused :truncated)))
-                           (let ((a (fnn-octets-append-vector chunk)))
-                             (unless (= a at)
-                               (fnn-fault "the octet buffer moved under the checkpoint reader"))
-                             (push (list header a (+ a chunk-octets) (fnn-octet-list trailer))
-                                   frames)
-                             (incf at chunk-octets)
-                             (incf total extent)))))))))))
-             (values :ok (nreverse frames)))
+                           (if (null bound)
+                               ;; H: ACL2's header phase over the whole segment
+                               (let ((open (fnn-core 'fn-cth-header-open
+                                                     (append header (fnn-octet-list chunk)
+                                                             (fnn-octet-list trailer))
+                                                     profile
+                                                     (fnn-heap-config-octets (fnn-store-root store)
+                                                                             profile))))
+                                 (cond
+                                   ((and (consp open) (eq (first open) :ok) (= (length open) 5)
+                                         (integerp (third open)) (= (third open) extent)
+                                         (integerp (fourth open)) (>= (fourth open) 0))
+                                    (setq tot (second open) bound (fourth open) total extent)
+                                    ;; one allocation for the chunks after H,
+                                    ;; never past what ACL2 admits
+                                    (when (> bound 0)
+                                      (fnn-octets-reserve
+                                       (min (max 0 (sb-posix:stat-size st)) bound))))
+                                   ((and (consp open) (eq (first open) :refused))
+                                    (return-from fnn-state-checkpoint-plan
+                                      (values :refused
+                                              (if (eq (second open) :header-segment)
+                                                  (third open)
+                                                  :header))))
+                                   (t (fnn-fault "ACL2 returned a malformed checkpoint header phase"))))
+                             (let ((a (fnn-octets-append-vector chunk)))
+                               (unless (= a at)
+                                 (fnn-fault "the octet buffer moved under the checkpoint reader"))
+                               (push (list header a (+ a chunk-octets) (fnn-octet-list trailer))
+                                     frames)
+                               (incf at chunk-octets)
+                               (incf total extent))))))))))))
+             (if (null bound)
+                 ;; no header segment: a file of the image region alone
+                 (values :refused :truncated)
+                 (values :ok (nreverse frames) tot)))
         (fnn-close fd)))))
 
 (defvar *fnn-checkpoint-load-io-error* nil
@@ -2906,15 +2944,17 @@ NIL: a read that failed is not a file that failed to verify
 (fnn-log-open-plan-check).")
 
 (defun fnn-state-checkpoint-load (store)
-  "Decode the checkpoint into ACL2's global: (values STATUS S) with STATUS
+  "Decode the checkpoint into ACL2's global: (values STATUS S TOT) with STATUS
 :absent, :refused, :exceeds-bound, :schema (a file of another schema, D34:
 the journal replays, `status' says reason=checkpoint-schema), :arena (a file
 without the arena run: reason=checkpoint-arena) or :ok, the vocabulary of
 fn-scka-select-named.  A read that fails is :refused (the full replay, when
 the log still holds the history, is authoritative) and its OS error is kept
-in *fnn-checkpoint-load-io-error*."
+in *fnn-checkpoint-load-io-error*.  TOT is the charged-totals header's
+(books/charged-totals-header.lisp fn-cth-header-open) on :ok, else NIL."
   (setq *fnn-checkpoint-load-io-error* nil)
-  (multiple-value-bind (status value)
+  (setf (fnn-store-checkpoint-header store) nil)
+  (multiple-value-bind (status value tot)
       (handler-case (fnn-state-checkpoint-plan store)
         (fnn-os-error (e)
           (setq *fnn-checkpoint-load-io-error* e)
@@ -2932,9 +2972,12 @@ in *fnn-checkpoint-load-io-error*."
                (multiple-value-bind (st s)
                    (fnn-state-checkpoint-load-arena (second answer) (third answer)
                                                     (fourth answer))
-                 (if (and (eq st :ok) *fnn-checkpoint-image*)
-                     (fnn-state-checkpoint-adopt-image store s)
-                     (values st s)))
+                 (multiple-value-bind (st2 s2)
+                     (if (and (eq st :ok) *fnn-checkpoint-image*)
+                         (fnn-state-checkpoint-adopt-image store s)
+                         (values st s))
+                   (setf (fnn-store-checkpoint-header store) (and (eq st2 :ok) tot))
+                   (values st2 s2 (fnn-store-checkpoint-header store))))
                ;; A file without the arena run (tables-only, written before
                ;; the flip) is refused by name: reason=checkpoint-arena.
                (progn (fnn-octets-release)
@@ -3237,13 +3280,17 @@ profile's segment and file bounds before it is read (fn-store-sco-segment-
 admit, as the open's plan reads), and only its chunk is in the publication
 buffer: work and allocation per step are one segment's. The history image
 is read back against its retained writer snapshot, one 16 KiB page at a time,
-before the framed runs. Answers
-fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
+before the framed runs.  The charged-totals header segment H is read back
+as the open reads it (ACL2's fn-cth-header-open: admitted under one
+segment's framing, its totals decoded, its frame's sequence SEQUENCE) and is
+not one of the verify's five runs; every later segment is admitted under
+H's load bound from H's total.  Answers fn-sccv-final's (:ok SEQUENCE), or
+(:refused REASON)."
   (let ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
         (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
         (profile (fnn-store-config store))
         (v (fnn-core 'fn-sccv-initial sequence))
-        (total 0) (at-start t)
+        (total 0) (at-start t) (bound nil)
         (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
     (unwind-protect
          (loop
@@ -3265,7 +3312,9 @@ fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
                        (unless (eq verdict :ok) (return verdict)))
                      (let* ((header (fnn-octet-list head))
                             (admission (fnn-core 'fn-store-sco-segment-admit
-                                                 header total profile)))
+                                                 header total profile
+                                                 (or bound (fnn-core 'fn-store-sco-segment-read-bound
+                                                                     profile)))))
                        (unless (and (consp admission) (eq (first admission) :ok))
                          (return (list :refused (if (consp admission)
                                                     (second admission)
@@ -3274,12 +3323,27 @@ fn-sccv-final's (:ok SEQUENCE), or (:refused REASON)."
                               (chunk (fnn-read-exact-fd fd n))
                               (trailer (and chunk (fnn-read-exact-fd fd trailer-octets))))
                          (unless trailer (return (list :refused :truncated)))
-                         (incf total (second admission))
-                         (setq v (fnn-core 'fn-sccv-step v
-                                           (list header 0 n (fnn-octet-list trailer))
-                                           (fnn-octets-pub-fill chunk)))
-                         (when (and (consp v) (eq (first v) :refused))
-                           (return v)))))))))
+                         (if (null bound)
+                             (let ((open (fnn-core 'fn-cth-header-open
+                                                   (append header (fnn-octet-list chunk)
+                                                           (fnn-octet-list trailer))
+                                                   profile
+                                                   (fnn-heap-config-octets (fnn-store-root store)
+                                                                           profile))))
+                               (unless (and (consp open) (eq (first open) :ok) (= (length open) 5)
+                                            (eql (third open) (second admission))
+                                            (integerp (fourth open)))
+                                 (return (list :refused :charged-totals-header)))
+                               (unless (eql (fifth open) sequence)
+                                 (return (list :refused :sequence)))
+                               (setq bound (fourth open) total (third open)))
+                           (progn
+                             (incf total (second admission))
+                             (setq v (fnn-core 'fn-sccv-step v
+                                               (list header 0 n (fnn-octet-list trailer))
+                                               (fnn-octets-pub-fill chunk)))
+                             (when (and (consp v) (eq (first v) :refused))
+                               (return v)))))))))))
       (fnn-close fd))))
 
 (defun fnn-state-checkpoint-install (store stage)
@@ -3935,16 +3999,30 @@ take for the image region."
         ;; readback, then releases it on success, refusal or nonlocal exit.
         nil))))
 
-(defun fnn-checkpoint-write-steps (fd setup segment sequence profile st arun arena)
-  "Write the file's frames to FD step by step: the arena run ARUN first
-(fnn-checkpoint-write-arena-steps), then the four tables (fn-ockp-step); the
-number of steps."
+(defun fnn-checkpoint-write-steps (fd setup segment sequence profile st arun arena hoctets budget)
+  "Write the file's frames to FD after the history image region: the
+charged-totals header run HOCTETS first (ACL2's fn-cth-header-step through
+fn-cth-publication: admitted from 0 under one segment's framing and BUDGET),
+then the arena run ARUN from the header's total (fnn-checkpoint-write-arena-
+steps; KEYSTONE fn-cth-arena-write-is-admitted), then the four tables
+(fn-ockp-step) from the total the arena run ended at
+(fn-cth-table-initial-state; KEYSTONE fn-cth-table-write-is-admitted): every
+frame admitted under BUDGET, the reader's load bound at the header's totals
+(books/charged-totals-header.lisp).  The number of steps."
+  (unless (and (listp hoctets) (consp hoctets) (integerp budget) (>= budget 0))
+    (fnn-fault "ACL2 returned a malformed checkpoint header run"))
   (let* ((segment-bound (fnn-core 'fn-store-sco-segment-read-bound profile))
-         (file-bound (fnn-core 'fn-store-sco-file-read-bound profile))
+         (file-bound budget)
+         (start (sb-posix:lseek fd 0 sb-posix:seek-cur))
          (fault (fnn-checkpoint-batch-fault))
-         (steps (fnn-checkpoint-write-arena-steps fd arun sequence segment-bound
-                                                  file-bound st fault arena))
-         (state (fnn-core 'fn-ockp-initial-state (second setup) st)))
+         (steps (let ((h (fnn-octets hoctets)))
+                  (fnn-write-range fd h 0 (length h))
+                  (fnn-checkpoint-write-arena-steps fd arun sequence segment-bound
+                                                    file-bound st fault arena)))
+         ;; the running total after H and A: the octets written since the
+         ;; segments' start (K8a: H's total plus the arena run's octets)
+         (state (fnn-core 'fn-cth-table-initial-state (second setup)
+                          (- (sb-posix:lseek fd 0 sb-posix:seek-cur) start) st)))
     (loop
       (when (fnn-core 'fn-ockp-donep state) (return steps))
       (fnn-checkpoint-yield "table" steps)
@@ -3990,7 +4068,9 @@ it covers are dropped (fnn-log-drop; T8)."
          (segment (fnn-core 'fn-ockp-segment-octets
                             (fnn-profile-nat 'fn-store-profile-max-record-octets store)
                             +fnn-checkpoint-batch-octets+))
-         (budget (fnn-core 'fn-ock-capture-budget profile))
+         ;; the configuration history's octets, the load bound's CFG field
+         ;; (books/charged-totals-header.lisp fn-cth-config-cfg)
+         (config (fnn-heap-config-octets (fnn-store-root store) profile))
          (position (fnn-log-rotate-now store))
          ;; one walk of the live rows, a bounded number per call: each
          ;; canonical payload's length and source (fn-store-sco-pass-step)
@@ -4011,17 +4091,18 @@ it covers are dropped (fnn-log-drop; T8)."
                                                   (first ident) (second ident) position)
                          (values position nil))
                    (setq image image2)
-                   (fnn-core-state 'fn-store-sco-publish-setup-of prepared segment budget
+                   (fnn-core-state 'fn-store-sco-publish-setup-of prepared segment profile config
                                    (fnn-core 'fn-his-stream-free (fnn-disk-free-octets store)
                                              (fnn-history-image-np image))
                                    (fnn-checkpoint-revision) position2))))
     (declare (ignore walked))
-    (unless (and (consp answer) (= (length answer) 3)
+    (unless (and (consp answer) (= (length answer) 5)
                  (consp (first answer)) (integerp (second answer))
                  (= (second answer) count))
       (fnn-fault "ACL2 returned a malformed state checkpoint setup"))
     (let* ((setup (first answer)) (sequence (second answer))
            (arun (third answer))
+           (hoctets (fourth answer)) (file-bound (fifth answer))
            (verdict (first setup)))
       (cond
         ((eq verdict :unencodable)
@@ -4037,7 +4118,8 @@ it covers are dropped (fnn-log-drop; T8)."
                  (lambda (fd)
                    (fnn-history-image-write fd image)
                    (setq steps (fnn-checkpoint-write-steps fd setup segment sequence
-                                                           profile st arun (fnn-live-arena))))
+                                                           profile st arun (fnn-live-arena)
+                                                           hoctets file-bound)))
                  sequence image)
              (fnn-octets-pub-release))
            (when position
@@ -5733,17 +5815,16 @@ error for the same reason."
                  (fnn-refuse "conflicting immutable Message-ID")))
              ;; ACL2's article verdict: the count gate, the history gate and
              ;; the vector at this article's own figure, and its word
-             ;; (fn-cvec-article-verdict-word): :memberships when the
-             ;; membership charge alone refused it, :history-exhausted
-             ;; when the history budget did, :unaffordable when the
+             ;; (fn-cvec-article-verdict-word, one of :admissible,
+             ;; :history-exhausted and :unaffordable by
+             ;; fn-cvec-article-verdict-word-by-definition): :history-exhausted
+             ;; when the history budget refused it, :unaffordable when the
              ;; transactions did, named as the served POST names them
              ;; (books/nntp-post.lisp).
              (case (fnn-core-state 'fn-store-sn-article-verdict-word
                                    (fnn-store-config store) (length payload)
                                    (length codes))
                (:admissible nil)
-               (:memberships
-                (fnn-refuse "store budget refuses the article's groups (memberships): each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups"))
                (:history-exhausted
                 (fnn-refuse "store history budget is exhausted (history-exhausted): raise max-history-octets or reclaim"))
                (:unaffordable
@@ -5961,6 +6042,52 @@ the region (fn-his-skip-octets).  NIL when there is no file."
                                  (+ octets (fnn-nat (fnn-core 'fn-his-skip-octets np))))
       prefix)))
 
+(defun fnn-checkpoint-header-observation (store)
+  "The checkpoint's charged-totals header as the open reads it, without
+opening the store: the first segment after the history image region,
+admitted under one segment's framing and read whole, then ACL2's header
+phase (books/charged-totals-header.lisp fn-cth-header-open): (:ok TOT T1
+BOUND S), its refusal, or NIL when there is no checkpoint file.  One
+segment's octets are read, never more (fn-store-sco-segment-admit under the
+segment bound)."
+  (let ((path (fnn-state-checkpoint-path store)))
+    (when (fnn-check-regular path)
+      (let* ((header-octets (fnn-core 'fn-store-sco-segment-header-octets))
+             (trailer-octets (fnn-core 'fn-store-sco-trailer-octets))
+             (profile (fnn-store-config store))
+             (segment-bound (fnn-core 'fn-store-sco-segment-read-bound profile))
+             (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+        (unwind-protect
+             (block read
+               (unless (fnn-regular-p (fnn-fstat fd))
+                 (return-from read (list :refused :header-segment :not-regular)))
+               (let ((head (fnn-read-exact-fd fd header-octets)))
+                 (unless head (return-from read (list :refused :header-segment :truncated)))
+                 (let ((np (fnn-core 'fn-his-image-header-np (fnn-octet-list head))))
+                   (when (integerp np)
+                     (sb-posix:lseek fd (+ header-octets (fnn-core 'fn-his-skip-octets np))
+                                     sb-posix:seek-set)
+                     (setq head (fnn-read-exact-fd fd header-octets))
+                     (unless head
+                       (return-from read (list :refused :header-segment :truncated)))))
+                 (let* ((header (fnn-octet-list head))
+                        (admission (fnn-core 'fn-store-sco-segment-admit header 0 profile
+                                             segment-bound)))
+                   (unless (and (consp admission) (eq (first admission) :ok)
+                                (integerp (third admission)) (>= (third admission) 0))
+                     (return-from read
+                       (list :refused :header-segment
+                             (if (consp admission) (second admission) :malformed))))
+                   (let* ((chunk (fnn-read-exact-fd fd (third admission)))
+                          (trailer (and chunk (fnn-read-exact-fd fd trailer-octets))))
+                     (unless trailer
+                       (return-from read (list :refused :header-segment :truncated)))
+                     (fnn-core 'fn-cth-header-open
+                               (append header (fnn-octet-list chunk) (fnn-octet-list trailer))
+                               profile
+                               (fnn-heap-config-octets (fnn-store-root store) profile))))))
+          (fnn-close fd))))))
+
 (defun fnn-stopped-observation (root)
   "Row S3: what a stopped store's status is rendered from, nothing replayed:
 config.json's octets, the newest checkpoint's first segment header (ACL2's
@@ -6001,6 +6128,20 @@ report is never rendered behind an owner."
                  (fnn-octet-list-p (second report)))
       (fnn-fault "ACL2 returned a malformed stopped report"))
     (fnn-write-report (second report))
+    ;; the checkpoint's charged-totals header, read as the open reads it
+    ;; (books/charged-totals-header.lisp fn-cth-status-text)
+    (when (eql (first report) 0)
+      (let ((text (fnn-core 'fn-cth-status-text
+                            ;; the served profile (config.json under the
+                            ;; configuration history's limit rows), read
+                            ;; as the open reads it, nothing replayed
+                            (handler-case (let ((store (make-fnn-store root)))
+                                            (fnn-load-config store)
+                                            (fnn-checkpoint-header-observation store))
+                              ((or fnn-os-error fnn-store-profile-refusal) () nil)))))
+        (unless (fnn-octet-list-p text)
+          (fnn-fault "ACL2 returned a malformed charged-totals line"))
+        (fnn-write-report text)))
     (if (eql (first report) 0) +fnn-exit-ok+ +fnn-exit-refused+)))
 
 (defun fnn-command-status (root &optional replayp)
@@ -8487,14 +8628,16 @@ is proved."
                               (fnn-nat (fnn-core 'fn-lgs-listing-bound))
                               "log segment"))
 
-(defun fnn-log-first-nonzero (path)
-  "The offset of the first nonzero octet of the file at PATH, or NIL when
-every octet is zero: one bounded buffer, read to the first nonzero chunk."
+(defun fnn-log-first-nonzero (path &optional (start 0))
+  "The offset of the first nonzero octet of the file at PATH at or after
+START, or NIL when every such octet is zero: one bounded buffer, read to the
+first nonzero chunk."
   (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
-        (buffer (fnn-make-octets 65536)) (at 0))
+        (buffer (fnn-make-octets 65536)) (at start))
     (unwind-protect
          (loop
-           (let ((got (fnn-read-fd fd buffer)))
+           initially (unless (zerop start) (sb-posix:lseek fd start sb-posix:seek-set))
+           do (let ((got (fnn-read-fd fd buffer)))
              (when (zerop got) (return nil))
              (let ((i (position-if-not #'zerop buffer :end got)))
                (when i (return (+ at i))))

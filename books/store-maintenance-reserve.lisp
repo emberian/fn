@@ -180,18 +180,6 @@ figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
            (equal (fn-sbud-verdict-at profile kind used bytes-used) :admissible))
   :rule-classes nil)
 
-; The article figure bounds the narrow record (records-shape).
-(local
- (defthm fn-smr-figure-bounds-the-record
-   (implies (not (fn-record-widep record))
-            (<= (len (fn-record-encode record))
-                (fn-sbud-article-figure (len (fn-record-payload record))
-                                        (len (fn-record-groups record)))))
-   :rule-classes :linear
-   :hints (("Goal" :use ((:instance fn-sbud-article-figure-bounds-the-record
-                                    (payload-length (len (fn-record-payload record)))
-                                    (group-count (len (fn-record-groups record)))))))))
-
 ;  KEYSTONE (the served article prepare keeps the reservation).  A prepare
 ; that staged under the reserving budget of the record it stages, at the
 ; count the prepare reads and BYTES-USED committed octets, leaves room for a
@@ -202,13 +190,12 @@ figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
                              (fn-smr-article-budget-for
                               profile (fn-sbud-used (fn-sbud-oc-store oc))
                               bytes-used record))
-                            oc))
-                (not (fn-record-widep record)))
+                            oc)))
            (and (fn-smr-roomp profile
                               (+ 1 (fn-sbud-used (fn-sbud-oc-store oc)))
-                              (+ bytes-used (len (fn-record-encode record))))
+                              (+ bytes-used (len (fn-record-payload record))))
                 (fn-profile-replay-within-boundp
-                 profile (+ bytes-used (len (fn-record-encode record))))))
+                 profile (+ bytes-used (len (fn-record-payload record))))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-smr-roomp-antitone-in-octets
                                    (used (+ 1 (fn-sbud-used (fn-sbud-oc-store oc))))
@@ -216,12 +203,12 @@ figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
                                          (fn-sbud-article-gate-figure
                                           (len (fn-record-payload record))
                                           (len (fn-record-groups record)))))
-                                   (b2 (+ bytes-used (len (fn-record-encode record)))))
+                                   (b2 (+ bytes-used (len (fn-record-payload record)))))
                         (:instance fn-smr-roomp-is-within-the-bound
                                    (used (+ 1 (fn-sbud-used (fn-sbud-oc-store oc))))
-                                   (b (+ bytes-used (len (fn-record-encode record))))))
+                                   (b (+ bytes-used (len (fn-record-payload record))))))
            :in-theory (e/d (fn-sbud-prepare fn-smr-article-budget-for
-                            fn-smr-article-budget fn-sbud-admitp
+                            fn-smr-article-budget fn-sbud-admitp fn-sbud-article-gate-figure
                             fn-sbud-article-budget fn-bs-history-admissiblep)
                            (fn-smr-roomp
                             fn-sbud-article-budget-for
@@ -245,20 +232,17 @@ figure, else 0 (the prepare refuses and the owner answers :unaffordable)."
   (implies (and (equal (fn-smr-article-verdict-at profile used bytes-used
                                                   payload-length group-count)
                        :admissible)
-                (not (fn-record-widep record))
-                (<= (len (fn-record-payload record)) (nfix payload-length))
-                (<= (len (fn-record-groups record)) (nfix group-count)))
+                (<= (len (fn-record-payload record)) (nfix payload-length)))
            (fn-smr-roomp profile (+ 1 used)
-                         (+ bytes-used (len (fn-record-encode record)))))
+                         (+ bytes-used (len (fn-record-payload record)))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-smr-roomp-antitone-in-octets
                                    (used (+ 1 used))
                                    (b (+ bytes-used (fn-sbud-article-gate-figure
                                                      payload-length group-count)))
-                                   (b2 (+ bytes-used (len (fn-record-encode record)))))
-                        (:instance fn-sbud-article-figure-bounds-the-record)
+                                   (b2 (+ bytes-used (len (fn-record-payload record)))))
                         (:instance fn-smr-article-verdict-naturals))
-           :in-theory (e/d (fn-smr-article-verdict-at)
+           :in-theory (e/d (fn-smr-article-verdict-at fn-sbud-article-gate-figure)
                            (fn-smr-roomp fn-sbud-article-verdict-at)))))
 
 ;  KEYSTONE (the reservation holds from init).  A fresh store under any

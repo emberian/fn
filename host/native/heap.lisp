@@ -502,9 +502,37 @@ to a space that already holds it."
             #+linux (fnn-heap-read-small "/proc/self/status") #-linux nil
             (fnn-core 'fn-heap-stack-kib profile) (fnn-heap-tls-octets)))
 
-(defun fnn-heap-charged-totals (root)
-  (declare (ignore root))
-  (fnn-core 'fn-mo-observed-totals nil nil))
+(defun fnn-heap-charged-totals (root profile)
+  "The read decision's totals (books/heap-command.lisp fn-mo-observed-totals):
+HDR the checkpoint's charged-totals header as the open reads it
+(io.lisp fnn-checkpoint-header-observation, books/charged-totals-header.lisp
+fn-cth-header-open), SUFFIX the log's past the header's S.  ADAPTER (owner
+Builder L, retired by L's store-log-open-scan): SUFFIX is the zero tot only
+when the log observably holds no record past S -- no octet of any segment in
+journal/ but the genesis (fnn-genesis-path, which holds no
+record) is nonzero past a headed segment's padded head
+(books/store-log-lineage.lisp fn-lgl-head-len; every entry opens with a
+nonzero header, and the rotation preallocates the segment with zeros, so a
+fresh segment's extent is past its head) -- else NIL, and the decision says
+the header's totals are unseen.  Unlocked: as fresh as the read."
+  (let* ((store (and (stringp root) profile (make-fnn-store root)))
+         (open (and store
+                    (progn (setf (fnn-store-config store) profile)
+                           (handler-case (fnn-checkpoint-header-observation store)
+                             (fnn-os-error () nil)))))
+         (hdr (and (consp open) (eq (first open) :ok) (second open)))
+         (empty (and hdr
+                     (handler-case
+                         (let ((genesis (fnn-genesis-path store))
+                               (head (fnn-nat (fnn-core 'fn-lgl-head-len (fnn-store-log-unit)))))
+                           (every (lambda (name)
+                                    (let ((path (fnn-join (fnn-journal-dir store) name)))
+                                      (or (equal path genesis)
+                                          (null (fnn-log-first-nonzero path head)))))
+                                  (fnn-log-segment-names store)))
+                       ((or fnn-os-error fnn-store-error) () nil)))))
+    (fnn-core 'fn-mo-observed-totals hdr
+              (and empty (fnn-core 'fn-cth-empty-suffix hdr)))))
 
 ;; The configuration history's octets on disk (config/, the lstat sizes of
 ;; its regular files under the profile's listing bound), which loading the
@@ -532,7 +560,7 @@ to a space that already holds it."
          (machine (fnn-heap-observations))
          (class (fnn-core 'fn-heap-command-growth action command replayp))
          (reads (eq class :reads))
-         (totals (and reads (fnn-heap-charged-totals root)))
+         (totals (and reads (fnn-heap-charged-totals root profile)))
          (img (and reads profile (fnn-heap-img-observation profile)))
          (config (and (member class '(:reads :header)) (fnn-heap-config-octets root profile)))
          (card (and reads (fnn-heap-card-octets)))
@@ -559,5 +587,50 @@ to a space that already holds it."
         ;; ACL2 (no line) by it, and prints a refusal on stderr itself.
         (fnn-out "~a" line)
         code))))
+
+;; THE COLLECTOR POLICY (memory landing 3+4; books/memory-model.lisp
+;; fn-mm-collector, fn-mm-collector-due-p).  SBCL's generational collector
+;; leaves promoted garbage in the older generations until their own triggers:
+;; measured on fn-core, the resident set at rest was 2-4 x the live heap (W1 at
+;; 4,000 records: 245-302 MB against 74 MB live), so the equation's collector
+;; room (live + 2 x trigger) was not true of the process.  The policy makes it
+;; a mechanism: after every collection ACL2 says whether a full collection is
+;; due (the dynamic usage past the live usage at the last full collection by
+;; more than RHO percent of it and twice the trigger in force); when it is, the
+;; collector thread runs one and records the live usage it leaves.  One thread
+;; (profile-limits :fixed-threads counts it); the hook only signals, so no
+;; collection runs inside another's hook.  Measured cost at RHO 25: full
+;; collections of 57-111 ms at 220-330 MB live (census m34-owner-gcp).  It
+;; bounds dead memory, never data, and decides nothing ACL2 decides.
+(defvar *fnn-heap-collector-live* nil)
+(defvar *fnn-heap-collector-pending* nil)
+(defvar *fnn-heap-collector-thread* nil)
+(defvar *fnn-heap-collector-wake* (sb-thread:make-semaphore :name "fn-collector"))
+
+(defun fnn-heap-collector-after-gc ()
+  (let ((live *fnn-heap-collector-live*))
+    (when (and live (not *fnn-heap-collector-pending*)
+               (fnn-core 'fn-mm-collector-due-p (sb-kernel:dynamic-usage) live
+                         (fnn-core 'fn-mm-collector-cfg (sb-ext:bytes-consed-between-gcs) nil)))
+      (setq *fnn-heap-collector-pending* t)
+      (sb-thread:signal-semaphore *fnn-heap-collector-wake*))))
+
+(defun fnn-heap-collector-run ()
+  (loop
+    (sb-thread:wait-on-semaphore *fnn-heap-collector-wake*)
+    (sb-ext:gc :full t)
+    (setq *fnn-heap-collector-live* (sb-kernel:dynamic-usage))
+    (setq *fnn-heap-collector-pending* nil)))
+
+(defun fnn-heap-collector-policy-start ()
+  "Start the policy once per process, right after a full collection (the
+owner's, when recovery is done: host/native/owner.lisp
+fnn-owner-release-recovery-garbage), whose usage is the first live figure;
+then the collector thread and the after-GC hook."
+  (unless *fnn-heap-collector-thread*
+    (setq *fnn-heap-collector-live* (sb-kernel:dynamic-usage))
+    (setq *fnn-heap-collector-thread*
+          (sb-thread:make-thread #'fnn-heap-collector-run :name "fn-collector"))
+    (push #'fnn-heap-collector-after-gc sb-ext:*after-gc-hooks*)))
 
 (fnn-register-verb "heap" #'fnn-command-heap)
