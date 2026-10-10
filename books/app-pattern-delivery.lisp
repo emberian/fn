@@ -35,7 +35,7 @@
 ; Posting role
 
 (defun fn-pat-encode (name-word from seconds group msgid payload)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-cbor-octet-listp payload)))
   (fn-ak-encode (fn-pat-values name-word from seconds group msgid) payload))
 
 ; The key files a posting role's KEYS directory holds, in the order
@@ -53,7 +53,7 @@
 ; of the kind carrying this pattern's Subject, FROM, GROUP, MSGID and
 ; PAYLOAD (its Date is the first run's); otherwise the reason word.
 (defun fn-pat-spool-check (request generation name-word from group msgid payload)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-cbor-octet-listp payload)))
   (let ((author (fn-native-hybrid-control-author-decode request)))
     (if (not (and (consp author) (equal (fn-pat-at 1 author) generation)))
         :spool-request

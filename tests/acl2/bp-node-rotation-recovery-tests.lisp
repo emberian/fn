@@ -102,3 +102,35 @@
    (bprr-mutant-open-without-seed (bprd-traced-q) (bprr-traced-plan)
                                 '(8 1048576 65538 1048576) '(:same (7 7 7 7)))
    (bprd-traced-q) (bprr-traced-plan))))
+
+;; PREMISE-EXCESS-D: the clock-domain premise's host establishment.
+(defconst *bprr-boot*
+  '(48 49 50 51 52 53 54 55 45 56 57 97 98 45 99 100 101 102 45
+    48 49 50 51 45 52 53 54 55 56 57 97 98 99 100 101 102))
+(defteeth fn-bpnp-hosted-recovery-admits-the-same-or-a-fresh-domain
+  :claim (let ((plan (fn-bpnf-clock-domain-plan saved present observed legacy lock final-absent))
+               (event (fn-bprpf-admit-recovery
+                       (fn-bpnr-recover-auto-event st records sequence rows gplan) profile)))
+           (((admitted (or (equal (fn-bpnf-clock-domain-plan-status plan) :same)
+                           (and (equal (fn-bpnf-clock-domain-plan-status plan) :initialize)
+                                (null records)
+                                (equal (len rows) 0)))))
+            (fn-bpnp-clock-domain-admitsp (append event (list plan)))))
+  :subject fn-bpnf-clock-domain-plan
+  :witness ((saved (fn-bpcd-frame *bprr-boot*)) (present t)
+            (observed (append *bprr-boot* '(10))) (legacy nil) (lock t)
+            (final-absent nil) (st nil) (records nil) (sequence nil)
+            (rows nil) (gplan nil) (profile nil))
+  :breaks ((admitted ((saved nil) (present nil)
+                      (observed (append *bprr-boot* '(10))) (legacy nil) (lock nil)
+                      (final-absent t) (st nil) (records nil) (sequence nil)
+                      (rows nil) (gplan nil) (profile nil))))
+  :mutations ((initializes-over-records
+               (:hypothesis admitted
+                (or (equal (fn-bpnf-clock-domain-plan-status plan) :same)
+                    (equal (fn-bpnf-clock-domain-plan-status plan) :initialize)))
+               ((saved nil) (present nil) (observed (append *bprr-boot* '(10)))
+                (legacy nil) (lock t) (final-absent t) (st nil)
+                (records '(:lifecycle-record)) (sequence nil) (rows nil)
+                (gplan nil) (profile nil))
+               :fault "a fresh domain initialized over recovered lifecycle records")))

@@ -464,14 +464,10 @@
                      credential bindings))))))))))
 
 ; CREDENTIALS without NAME's credential.
-(defun fn-native-auth-admin-remove (name credentials)
-  (declare (xargs :guard t))
-  (if (consp credentials)
-      (if (equal (fn-auth-cred-name (car credentials)) name)
-          (fn-native-auth-admin-remove name (cdr credentials))
-        (cons (car credentials)
-              (fn-native-auth-admin-remove name (cdr credentials))))
-    nil))
+(def-loop fn-native-auth-admin-remove (name credentials)
+  :shape :map :over credentials :elt c
+  :keep (not (equal (fn-auth-cred-name c) name))
+  :body c)
 
 (defun fn-native-auth-admin-delete (octets presentp name max-credentials)
   ; Host-called mutation subject for `account delete LOGIN' (row S6).  A

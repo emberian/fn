@@ -1528,9 +1528,15 @@
        (let ((base (fn-bpnf-base st)))
          (fn-bpn-machine-statep base))))
 
+;; A rotation is admitted only while the epoch after the rotating one is a
+;; frame natural: the published checkpoint's frontier is (EPOCH . 0), and a
+;; recovery from it takes an epoch above EPOCH, which the foundation's
+;; recovery step refuses past *fn-frame-max-nat*.  Without the conjunct a
+;; state at the ceiling epoch publishes a checkpoint whose restart refuses.
 (defun fn-bpnp-rotate-step (st generation ck)
   (declare (xargs :guard t))
   (if (not (and (fn-bpnp-rotation-quiescentp st)
+                (fn-frame-natp (+ 1 (fn-bpnf-epoch st)))
                 (fn-frame-natp generation) (< 0 generation)
                 (fn-bpnr-checkpoint-of-statep ck st generation)
                 (let ((octets (fn-bpnr-checkpoint-octets

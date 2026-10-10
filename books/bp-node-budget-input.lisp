@@ -1,6 +1,7 @@
 ; Operator text grammar; host performs only a bounded regular-file read.
 ; fn-bpnp-configured-budgets owns numeric policy/defaults, as before.
 (in-package "ACL2")
+(include-book "cbor") ; fn-cbor-octet-listp, fn-bpnb-read's entry kind
 
 (defun fn-bpnb-decimal (xs value digits)
   (declare (xargs :guard (and (natp value) (natp digits))))
@@ -42,7 +43,7 @@
     (and (null xs) (fn-bpnb-install-row (reverse reverse-line) rows))))
 
 (defun fn-bpnb-read (octets)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-cbor-octet-listp octets)))
   (if (<= (len octets) 256)
       (fn-bpnb-lines octets nil '(:rows nil nil))
     nil))

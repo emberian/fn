@@ -17,7 +17,7 @@
 ; corrupt record is a fault, never absence or a policy refusal.
 (defun fn-nir-resume-decision (requested-profile recorded-profile
                                                requested-octets recorded-octets history)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (fn-cbor-octet-listp requested-octets) (fn-cbor-octet-listp recorded-octets))))
   (let* ((requested (fn-cfg-decode-exact requested-octets))
          (recorded (fn-cfg-decode-exact recorded-octets)))
     (cond ((not (and (fn-record-parse-okp requested)

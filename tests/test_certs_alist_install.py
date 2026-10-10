@@ -15,7 +15,8 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from tests.test_certs import SERIALIZED, certs, install, manifest_for, worktree
+from tests.test_certs import (SERIALIZED, TEST_COMPATIBILITY, certs, install,
+                              manifest_for, worktree)
 
 ORIGIN_A = "/tank/fn/no-such-origin-a"
 ORIGIN_B = "/tank/fn/no-such-origin-b"
@@ -39,11 +40,12 @@ def hashes(paths, pairs, acl2, root):
 
 class AlistInstallTests(unittest.TestCase):
     def publish(self, directory: str, cache: Path, certs_by_book: dict[str, bytes],
-                origin: str, published_at: str = "2026-10-01T00:00:00+00:00") -> Path:
-        root = worktree(directory, certified=list(certs_by_book))
+                origin: str, published_at: str = "2026-10-01T00:00:00+00:00",
+                books: dict[str, str] | None = None) -> Path:
+        root = worktree(directory, books=books, certified=list(certs_by_book))
         for name, data in certs_by_book.items():
             (root / f"{name}.cert").write_bytes(data)
-        manifest_for(root, list(certs_by_book))
+        manifest_for(root, list(certs_by_book), books=books)
         certs.publish(root, cache, origin=origin, origin_host="hbox")
         for name in certs_by_book:
             meta_path = (certs.entry_directory(cache, certs.closure_key(root, name)[0], origin)
@@ -147,6 +149,106 @@ class AlistInstallTests(unittest.TestCase):
                 tempfile.TemporaryDirectory() as cache_dir:
             with self.assertRaises(ValueError):
                 certs.install(worktree(target_dir), Path(cache_dir))
+
+
+class ResidentParentTests(unittest.TestCase):
+    """A smaller closure's install must not strand a resident parent outside it.
+
+    persvati 2026-10-10 (native-eefe81c43a0d-r2): the default profile's acquire
+    installed image-world-part-1 over one bp-recovery-profile; the dtn
+    profile's acquire, whose closure holds bp-recovery-profile but not
+    image-world-part-1, then installed the newest one.  Every pair each
+    install chose was accepted by ACL2 in its own closure; the resident parent
+    outside it was not asked.  Here mid plays image-world-part-1 and base
+    plays bp-recovery-profile."""
+    TOOLCHAIN = certs.stable_identity(TEST_COMPATIBILITY)
+    publish = AlistInstallTests.publish
+    base = staticmethod(AlistInstallTests.base)
+    mid_over = staticmethod(AlistInstallTests.mid_over)
+
+    def scene(self, a, b, cache, target_dir, origin_b=ORIGIN_B, resident_b=False):
+        base_a, base_b = self.base("A"), self.base("B")
+        mid_a = self.mid_over(base_a, "A")
+        self.publish(a, cache, {"books/base": base_a, "books/mid": mid_a}, ORIGIN_A,
+                     "2026-10-01T00:00:00+00:00")
+        self.publish(b, cache, {"books/base": base_b}, origin_b,
+                     "2026-10-02T00:00:00+00:00")
+        target = worktree(target_dir)
+        (target / "books/base.cert").write_bytes(base_b if resident_b else base_a)
+        (target / "books/mid.cert").write_bytes(mid_a)
+        return target, base_a, base_b, mid_a
+
+    def test_install_set_of_a_smaller_closure_keeps_the_child_its_resident_parent_needs(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b, \
+                tempfile.TemporaryDirectory() as cache_dir, \
+                tempfile.TemporaryDirectory() as target_dir:
+            cache = Path(cache_dir)
+            target, base_a, base_b, mid_a = self.scene(
+                a, b, cache, target_dir, origin_b=str(Path(target_dir).resolve()))
+            report = certs.install_artifact_set(
+                target, cache, ["books/base"], self.TOOLCHAIN,
+                acl2=Path("/fixture/acl2"), pair_checker=hashes)
+            self.assertIsNotNone(report.artifact_set)
+            self.assertEqual((target / "books/base.cert").read_bytes(), base_a)
+            self.assertEqual((target / "books/mid.cert").read_bytes(), mid_a)
+            self.assertNotEqual(base_a, base_b)
+
+    def test_install_partial_of_a_smaller_closure_keeps_the_child_its_resident_parent_needs(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b, \
+                tempfile.TemporaryDirectory() as cache_dir, \
+                tempfile.TemporaryDirectory() as target_dir:
+            cache = Path(cache_dir)
+            target, base_a, _, mid_a = self.scene(a, b, cache, target_dir, resident_b=True)
+            certs.install_partial(target, cache, ["books/base"], self.TOOLCHAIN,
+                                  acl2=Path("/fixture/acl2"), pair_checker=hashes)
+            self.assertEqual((target / "books/base.cert").read_bytes(), base_a)
+            self.assertEqual((target / "books/mid.cert").read_bytes(), mid_a)
+
+    def test_a_resident_parent_with_includes_outside_the_closure_is_kept(self):
+        # train 86, hbox: protocol_emit --wire installs books/wire-export's
+        # closure; image-world includes it AND books outside it, which the
+        # search counted as unchosen children, so every image-world
+        # certificate the run had just certified was removed.  Here mid
+        # includes base (installed) and side (outside the closure).
+        books = {"books/base": '(in-package "ACL2")\n(defun fn-b (x) x)\n',
+                 "books/side": '(in-package "ACL2")\n(defun fn-s (x) x)\n',
+                 "books/mid": '(in-package "ACL2")\n(include-book "base")\n'
+                              '(include-book "side")\n(defun fn-m (x) x)\n',
+                 "tests/acl2/mid-tests": '(in-package "ACL2")\n(include-book "../../books/mid")\n'}
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b, \
+                tempfile.TemporaryDirectory() as cache_dir, \
+                tempfile.TemporaryDirectory() as target_dir:
+            cache = Path(cache_dir)
+            base_a, side = self.base("A"), SERIALIZED + b"side"
+            mid_a = self.mid_over(base_a, "A")
+            self.publish(a, cache, {"books/base": base_a, "books/side": side, "books/mid": mid_a},
+                         ORIGIN_A, "2026-10-01T00:00:00+00:00", books=books)
+            self.publish(b, cache, {"books/base": self.base("B")}, ORIGIN_B,
+                         "2026-10-02T00:00:00+00:00", books=books)
+            target = worktree(target_dir, books=books)
+            for name, data in (("books/base", base_a), ("books/side", side), ("books/mid", mid_a)):
+                (target / f"{name}.cert").write_bytes(data)
+            certs.install_partial(target, cache, ["books/base"], self.TOOLCHAIN,
+                                  acl2=Path("/fixture/acl2"), pair_checker=hashes)
+            self.assertEqual((target / "books/mid.cert").read_bytes(), mid_a)
+            self.assertEqual((target / "books/base.cert").read_bytes(), base_a)
+            self.assertEqual((target / "books/side.cert").read_bytes(), side)
+
+    def test_a_resident_parent_no_cached_child_fits_is_removed_not_left_stale(self):
+        with tempfile.TemporaryDirectory() as a, tempfile.TemporaryDirectory() as b, \
+                tempfile.TemporaryDirectory() as cache_dir, \
+                tempfile.TemporaryDirectory() as target_dir:
+            cache = Path(cache_dir)
+            base_a = self.base("A")
+            mid_a = self.mid_over(base_a, "A")
+            self.publish(a, cache, {"books/mid": mid_a}, ORIGIN_A)
+            self.publish(b, cache, {"books/base": self.base("B")}, ORIGIN_B)
+            target = worktree(target_dir)
+            (target / "books/mid.cert").write_bytes(mid_a)
+            certs.install_partial(target, cache, ["books/base"], self.TOOLCHAIN,
+                                  acl2=Path("/fixture/acl2"), pair_checker=hashes)
+            self.assertEqual((target / "books/base.cert").read_bytes(), self.base("B"))
+            self.assertFalse((target / "books/mid.cert").exists())
 
 
 if __name__ == "__main__":

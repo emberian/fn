@@ -13,7 +13,7 @@
 ; shorter than the input to its left, the rest to its right.  Two facts carry
 ; the decomposition.  (1) LOCKSTEP (fn-b3-left-chunks-of-windows): for an
 ; input of m windows (the last 1..W octets, m >= 2), that largest chunk count
-; is exactly 2^k times the largest power-of-two WINDOW count below m — the
+; is exactly 2^k times the largest power-of-two WINDOW count below m -- the
 ; split lands on a window boundary, recursively, so the whole tree is the
 ; window tree.  (2) PAIRING: the binary-counter stack over the windows'
 ; subtree outputs folds to the same tree, which is what a held chaining state
@@ -41,7 +41,7 @@
 (in-theory (disable fn-b3-parent-out fn-b3-node-cv))
 
 ; The anchor the rest unfolds from: a multi-chunk input's node IS the parent
-; of its two subtree nodes — one unfolding of `fn-b3-node'.
+; of its two subtree nodes -- one unfolding of `fn-b3-node'.
 (defthm fn-b3-node-splits-at-left-chunks
   (implies (< 1024 (len octets))
            (equal (fn-b3-node key octets counter flags)
@@ -61,7 +61,7 @@
 ; -----------------------------------------------------------------------------
 ; Windows: granularity k fixes the window size W = 1024*2^k octets.  All but
 ; the last window of an input are exactly W octets; the last is 1..W (D27:
-; the granularity is a stream parameter, never a ceiling on stored data —
+; the granularity is a stream parameter, never a ceiling on stored data --
 ; any input length digests, the last window simply shorter).
 
 (defun fn-b3-left-windows (p j)
@@ -83,7 +83,7 @@
            (< (fn-b3-left-windows p j) j))
   :rule-classes (:rewrite :linear))
 
-; A window split that does not double is itself, and one that does doubles —
+; A window split that does not double is itself, and one that does doubles --
 ; the two halves of `fn-b3-left-windows''s test, as rewrites.
 
 (defthm fn-b3-left-windows-of-not
@@ -302,7 +302,7 @@
 (local
  (defthm fn-b3-stack-push-all-of-pairs
     ; L-PAIR: absorbing an EVEN run of singles at height h onto a stack already
-    ; above h is absorbing their consecutive pairs at h+1 — the binary counter
+    ; above h is absorbing their consecutive pairs at h+1 -- the binary counter
     ; merges each two exactly once.
     (implies (and (natp h)
                   (fn-b3-stack-above h st)
@@ -327,7 +327,7 @@
 
 (defthm fn-b3-stack-push-all-even-above
   ; E: absorbing an EVEN run of singles at height h leaves the whole stack
-  ; above h — nothing single-height survives pairing.
+  ; above h -- nothing single-height survives pairing.
   (implies (and (natp h) (fn-b3-stack-above h st)
                 (true-listp outs) (evenp (len outs)))
            (fn-b3-stack-above h
@@ -352,7 +352,7 @@
 
 (defthm fn-b3-stack-push-all-append-single
   ; R: after an EVEN run of singles at h (from empty), one more single at h
-  ; does not merge — the stack is above h — it conses at the front.
+  ; does not merge -- the stack is above h -- it conses at the front.
   (implies (and (natp h) (true-listp os) (evenp (len os)))
            (equal (fn-b3-stack-push-all key flags h (append os (list x)) nil)
                   (cons (list (nfix h) x)
@@ -430,7 +430,7 @@
                    :expand ((fn-b3-nthcdrx (* 2 i) outs)))))
 
 (defthm fn-b3-pair-outs-of-append-two
-  ; Pairing an even run followed by two singles pairs the run, then the two —
+  ; Pairing an even run followed by two singles pairs the run, then the two --
   ; the alignment the odd Q' step needs (its last single pairs with the
   ; appended A).
   (implies (and (natp i) (true-listp os) (equal (len os) (* 2 i)))
@@ -517,7 +517,7 @@
   :hints (("Goal" :use ((:instance fn-b3-left-windows-plus (p 1))))))
 
 (defthm fn-b3-left-windows-1-of-2u+1
-  ; An odd run of 2u+1 outputs splits at twice lw(1, u+1) — the tail lemmas'
+  ; An odd run of 2u+1 outputs splits at twice lw(1, u+1) -- the tail lemmas'
   ; left side, where the appended single makes the count odd.
   (implies (and (natp u) (<= 1 u))
            (equal (fn-b3-left-windows 1 (+ 1 (* 2 u)))
@@ -624,7 +624,7 @@
 
 (defthm fn-b3-window-tree-of-pairs
   ; L-WTREE-PAIR: the tree over an EVEN run of outputs is the tree over
-  ; their pairs — one pairing level of the reference tree.
+  ; their pairs -- one pairing level of the reference tree.
   (implies (and (equal (len outs) (* 2 u)) (natp u) (true-listp outs))
            (equal (fn-b3-window-tree key flags outs)
                   (fn-b3-window-tree key flags

@@ -124,6 +124,46 @@
    (lambda () nil)))
  (assert stopped) (assert *second-ran*) (assert (> *first-turns* 0))
  (assert (= (hash-table-count (fnn-bpsb-held bank)) 1)))
+;;; The rotation drain (books/bp-session-scheduler fn-bpsched-admit-p): while
+;;; ADMIT answers NIL a readable listener is never accepted, so the retained
+;;; session's end empties the bank (the :rotation turn's safe point); once
+;;; ADMIT answers T again the waiting connection is accepted.
+(let* ((bank (test-bank)) (*accepted* 0) (gate nil) (drained-at nil) (passes 0)
+       (accepted-while-closed nil)
+       (grant (test-grant bank 2 :incoming :socket (make-fnn-tcl-conn :finished t))))
+ (setf (fnn-bpsg-turn grant) (let ((n 0)) (lambda () (if (< (incf n) 3) :wait :done))))
+ (catch 'stop
+  (fnn-bp-session-loop bank nil :listeners
+   (lambda (g socket) (declare (ignore socket)) (setf (fnn-bpsg-turn g) (lambda () :wait)))
+   nil
+   (lambda (action) (declare (ignore action))
+    (incf passes)
+    (when (and (null drained-at) (zerop (hash-table-count (fnn-bpsb-held bank))))
+     (setq drained-at passes accepted-while-closed *accepted* gate t))
+    (when (> passes 64) (throw 'stop t)))
+   (lambda () nil)
+   (lambda () gate)))
+ (assert drained-at)
+ (assert (eql accepted-while-closed 0))
+ (assert (plusp *accepted*))
+ (assert (plusp (hash-table-count (fnn-bpsb-held bank)))))
+;;; Tooth: the same schedule with no ADMIT accepts at every readable pass, and
+;;; the bank is never empty at a service.
+(let* ((bank (test-bank)) (*accepted* 0) (empty nil) (passes 0)
+       (grant (test-grant bank 2 :incoming :socket (make-fnn-tcl-conn :finished t))))
+ (setf (fnn-bpsg-turn grant) (let ((n 0)) (lambda () (if (< (incf n) 3) :wait :done))))
+ (catch 'stop
+  (fnn-bp-session-loop bank nil :listeners
+   (lambda (g socket) (declare (ignore socket)) (setf (fnn-bpsg-turn g) (lambda () :wait)))
+   nil
+   (lambda (action) (declare (ignore action))
+    (incf passes)
+    (when (zerop (hash-table-count (fnn-bpsb-held bank))) (setq empty t))
+    (when (> passes 64) (throw 'stop t)))
+   (lambda () nil)))
+ (assert (not empty))
+ (assert (plusp *accepted*)))
+(format t "PASS BP rotation drain: no inbound accept while a rotation is due; the bank empties.~%")
 ;;; Terminal outcome is consumed once even when a received-source dependency
 ;;; retains the context; no repeated result publication or invented return.
 (let* ((bank (test-bank))

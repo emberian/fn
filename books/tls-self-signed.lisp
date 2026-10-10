@@ -18,6 +18,8 @@
 (include-book "nntp-responses")
 (include-book "octet-text")
 (include-book "sha256")
+(include-book "def-loop")
+(include-book "rev-onto")
 (local (include-book "arithmetic-5/top" :dir :system))
 
 ; -----------------------------------------------------------------------------
@@ -181,11 +183,14 @@
               (and (true-listp v6) (not (fn-ssc-all-zerop v6)) (fn-ssc-tlv 135 v6))
             (and (fn-ssc-dns-namep xs) (fn-ssc-tlv 130 xs))))))))
 
-(defun fn-ssc-general-names (names)
-  (declare (xargs :guard t))
-  (if (consp names)
-      (append (fn-ssc-general-name (car names)) (fn-ssc-general-names (cdr names)))
-    nil))
+(def-loop fn-ssc-general-names (names)
+  :shape :concat :over names :elt n
+  :body (fn-ssc-general-name n))
+
+(local
+ (defthm fn-ssc-general-names-loop-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
 
 (defun fn-ssc-names-okp (names)
   (declare (xargs :guard t))
@@ -488,11 +493,38 @@
          (true-listp (fn-ot-b64-encode xs))
          :hints (("Goal" :use ((:instance fn-ot-octet-listp-of-b64-encode))))))
 
+; Executes by a loop (PKT-877, lane d-depth-excess-d): the recursion took one
+; control-stack frame per 64 octets of the base64 text.  The :logic is the
+; recursion, unchanged; the :exec carries the finished lines reversed.
+(defun fn-ssc-lines-loop (xs acc)
+  (declare (xargs :guard (and (true-listp xs) (true-listp acc)) :measure (len xs)
+                  :verify-guards nil))
+  (cond ((atom xs) (revappend acc nil))
+        ((<= (len xs) 64) (revappend (fn-ag-rev-onto (append xs (list 10)) acc) nil))
+        (t (fn-ssc-lines-loop (nthcdr 64 xs)
+                              (cons 10 (fn-ag-rev-onto (take 64 xs) acc))))))
+
 (defun fn-ssc-lines (xs)
-  (declare (xargs :guard (true-listp xs) :measure (len xs)))
-  (cond ((atom xs) nil)
-        ((<= (len xs) 64) (append xs (list 10)))
-        (t (append (take 64 xs) (cons 10 (fn-ssc-lines (nthcdr 64 xs)))))))
+  (declare (xargs :guard (true-listp xs) :measure (len xs) :verify-guards nil))
+  (mbe :logic
+       (cond ((atom xs) nil)
+             ((<= (len xs) 64) (append xs (list 10)))
+             (t (append (take 64 xs) (cons 10 (fn-ssc-lines (nthcdr 64 xs))))))
+       :exec (fn-ssc-lines-loop xs nil)))
+
+(local
+ (defthm fn-ssc-lines-rev-onto-append
+   (equal (revappend (fn-ag-rev-onto x acc) y)
+          (revappend acc (append x y)))))
+
+(local
+ (defthm fn-ssc-lines-loop-is-revappend
+   (equal (fn-ssc-lines-loop xs acc)
+          (revappend acc (fn-ssc-lines xs)))
+   :hints (("Goal" :induct (fn-ssc-lines-loop xs acc)))))
+
+(verify-guards fn-ssc-lines-loop)
+(verify-guards fn-ssc-lines)
 
 (defun fn-ssc-unlines (ys)
   (declare (xargs :guard (true-listp ys) :measure (len ys)))

@@ -49,15 +49,14 @@
 (in-package "ACL2")
 (include-book "hmac-sha256")
 (include-book "octet-text")
+(include-book "def-loop")
 
 ; -----------------------------------------------------------------------------
 ; Octets and constant texts
 
-(defun fn-scram-chars-octets (chars)
-  (declare (xargs :guard (character-listp chars)))
-  (if (consp chars)
-      (cons (char-code (car chars)) (fn-scram-chars-octets (cdr chars)))
-    nil))
+(def-loop fn-scram-chars-octets (chars)
+  :shape :map :over chars :elt c :guard (character-listp chars)
+  :body (char-code c))
 
 (defmacro fn-scram-text (s)
   ; A string constant as octets, evaluated when the form is read.
@@ -174,14 +173,36 @@
 ; comma-separated fields exactly, and splitting at commas loses nothing
 ; (`fn-scram-join-of-split').
 
-(defun fn-scram-split-aux (xs field)
-  ; FIELD is the current field reversed.
-  (declare (xargs :guard (true-listp field)))
+; Executes by a loop (PKT-877, lane d-depth-excess-d): the recursion took one
+; control-stack frame per octet of the message.  The :logic is the recursion,
+; unchanged; the :exec carries the finished fields reversed.
+(defun fn-scram-split-aux-loop (xs field acc)
+  (declare (xargs :guard (and (true-listp field) (true-listp acc)) :verify-guards nil))
   (if (consp xs)
       (if (equal (car xs) *fn-scram-comma*)
-          (cons (revappend field nil) (fn-scram-split-aux (cdr xs) nil))
-        (fn-scram-split-aux (cdr xs) (cons (car xs) field)))
-    (list (revappend field nil))))
+          (fn-scram-split-aux-loop (cdr xs) nil (cons (revappend field nil) acc))
+        (fn-scram-split-aux-loop (cdr xs) (cons (car xs) field) acc))
+    (revappend (cons (revappend field nil) acc) nil)))
+
+(defun fn-scram-split-aux (xs field)
+  ; FIELD is the current field reversed.
+  (declare (xargs :guard (true-listp field) :verify-guards nil))
+  (mbe :logic
+       (if (consp xs)
+           (if (equal (car xs) *fn-scram-comma*)
+               (cons (revappend field nil) (fn-scram-split-aux (cdr xs) nil))
+             (fn-scram-split-aux (cdr xs) (cons (car xs) field)))
+         (list (revappend field nil)))
+       :exec (fn-scram-split-aux-loop xs field nil)))
+
+(local
+ (defthm fn-scram-split-aux-loop-is-revappend
+   (equal (fn-scram-split-aux-loop xs field acc)
+          (revappend acc (fn-scram-split-aux xs field)))
+   :hints (("Goal" :induct (fn-scram-split-aux-loop xs field acc)))))
+
+(verify-guards fn-scram-split-aux-loop)
+(verify-guards fn-scram-split-aux)
 
 (defun fn-scram-split (xs)
   (declare (xargs :guard t))
@@ -256,22 +277,51 @@
 ; saslname = 1*(value-safe-char / "=2C" / "=3D").  Decoding refuses a bare
 ; "=", NUL, and the empty name (RFC 5802 5.1: the server MUST fail such a
 ; name).
-(defun fn-scram-saslname-decode-aux (xs)
-  (declare (xargs :guard t :measure (len xs)))
-  (cond ((atom xs) nil)
+; Executes by a loop (PKT-877, lane d-depth-excess-d): the recursion took one
+; control-stack frame per octet of the name.  The :logic is the recursion,
+; unchanged; the :exec carries the decoded octets reversed.
+(defun fn-scram-saslname-decode-aux-loop (xs acc)
+  (declare (xargs :guard (true-listp acc) :measure (len xs) :verify-guards nil))
+  (cond ((atom xs) (revappend acc nil))
         ((equal (car xs) 0) :bad)
         ((equal (car xs) *fn-scram-equals*)
          (cond ((and (consp (cdr xs)) (consp (cddr xs))
                      (equal (cadr xs) 50) (equal (caddr xs) 67))
-                (let ((rest (fn-scram-saslname-decode-aux (cdddr xs))))
-                  (if (equal rest :bad) :bad (cons *fn-scram-comma* rest))))
+                (fn-scram-saslname-decode-aux-loop (cdddr xs) (cons *fn-scram-comma* acc)))
                ((and (consp (cdr xs)) (consp (cddr xs))
                      (equal (cadr xs) 51) (equal (caddr xs) 68))
-                (let ((rest (fn-scram-saslname-decode-aux (cdddr xs))))
-                  (if (equal rest :bad) :bad (cons *fn-scram-equals* rest))))
+                (fn-scram-saslname-decode-aux-loop (cdddr xs) (cons *fn-scram-equals* acc)))
                (t :bad)))
-        (t (let ((rest (fn-scram-saslname-decode-aux (cdr xs))))
-             (if (equal rest :bad) :bad (cons (car xs) rest))))))
+        (t (fn-scram-saslname-decode-aux-loop (cdr xs) (cons (car xs) acc)))))
+
+(defun fn-scram-saslname-decode-aux (xs)
+  (declare (xargs :guard t :measure (len xs) :verify-guards nil))
+  (mbe :logic
+       (cond ((atom xs) nil)
+             ((equal (car xs) 0) :bad)
+             ((equal (car xs) *fn-scram-equals*)
+              (cond ((and (consp (cdr xs)) (consp (cddr xs))
+                          (equal (cadr xs) 50) (equal (caddr xs) 67))
+                     (let ((rest (fn-scram-saslname-decode-aux (cdddr xs))))
+                       (if (equal rest :bad) :bad (cons *fn-scram-comma* rest))))
+                    ((and (consp (cdr xs)) (consp (cddr xs))
+                          (equal (cadr xs) 51) (equal (caddr xs) 68))
+                     (let ((rest (fn-scram-saslname-decode-aux (cdddr xs))))
+                       (if (equal rest :bad) :bad (cons *fn-scram-equals* rest))))
+                    (t :bad)))
+             (t (let ((rest (fn-scram-saslname-decode-aux (cdr xs))))
+                  (if (equal rest :bad) :bad (cons (car xs) rest)))))
+       :exec (fn-scram-saslname-decode-aux-loop xs nil)))
+
+(local
+ (defthm fn-scram-saslname-decode-aux-loop-is-decode
+   (equal (fn-scram-saslname-decode-aux-loop xs acc)
+          (let ((r (fn-scram-saslname-decode-aux xs)))
+            (if (equal r :bad) :bad (revappend acc r))))
+   :hints (("Goal" :induct (fn-scram-saslname-decode-aux-loop xs acc)))))
+
+(verify-guards fn-scram-saslname-decode-aux-loop)
+(verify-guards fn-scram-saslname-decode-aux)
 
 (defun fn-scram-saslname-decode (xs)
   (declare (xargs :guard t))
@@ -406,11 +456,10 @@
   (declare (xargs :guard t))
   (if (consp xs) (if (consp (cdr xs)) (fn-scram-last (cdr xs)) (car xs)) nil))
 
-(defun fn-scram-but-last (xs)
-  (declare (xargs :guard t))
-  (if (and (consp xs) (consp (cdr xs)))
-      (cons (car xs) (fn-scram-but-last (cdr xs)))
-    nil))
+(def-loop fn-scram-but-last (xs)
+  :shape :map :over xs :elt x
+  :while (consp (cdr xs))
+  :body x)
 
 (defun fn-scram-parse-client-final (msg)
   (declare (xargs :guard t))
