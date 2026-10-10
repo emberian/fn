@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Check fn's design links and ledgers; this does not execute proof/scenario work."""
 
+import functools
 import json
 import os
 import re
@@ -45,6 +46,16 @@ def anchors(path: Path) -> set[str]:
     return result
 
 
+@functools.lru_cache(maxsize=None)
+def retired_paths() -> frozenset[str]:
+    """planning/retired-paths.json: paths removed from the tree on purpose,
+    each with where its role went (tools/cite_check.py reads the same file)."""
+    source = ROOT / "planning" / "retired-paths.json"
+    if not source.is_file():
+        return frozenset()
+    return frozenset(json.loads(source.read_text()).get("paths", {}))
+
+
 def link(target: str, base: Path, context: str) -> None:
     if not isinstance(target, str) or not target:
         fail(f"{context}: expected a nonempty path")
@@ -59,6 +70,8 @@ def link(target: str, base: Path, context: str) -> None:
     rel = dest.relative_to(ROOT).as_posix()
     if rel.startswith(HISTORICAL_PREFIXES) and not dest.exists():
         return
+    if not dest.exists() and rel in retired_paths():
+        return  # Disclosed centrally: removed on purpose, and where its role went.
     if not dest.exists():
         fail(f"{context}: missing target: {target}")
     elif parts.fragment and dest.suffix == ".md":
