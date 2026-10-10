@@ -583,11 +583,15 @@
      (* 2 (nfix ou))
      (* 2 *fn-heap-open-record-octets* (nfix on))))
 
-; The request in flight and the two octet buffers.
-; And (lane chunked-body-2, B6b) the submission the committer took: the take
-; unpacks it (fn-own-take-submission), its octets, groups and Message-ID as
-; lists until the outcome, one at a time.
-(defun fn-heap-store-inflight-octets (profile)
+; The request in flight: the record and header lists, and (lane
+; chunked-body-2, B6b) the submission the committer took: the take unpacks it
+; (fn-own-take-submission), its octets, groups and Message-ID as lists until
+; the outcome, one at a time.  This is what a SERVING process holds for it
+; (books/memory-model.lisp fn-mm-inflight): the two octet buffers are not
+; held in service (the host releases both after every load and publication,
+; host/native/io.lisp fnn-octets-release and fnn-octets-pub-release; memory
+; landing 3+4, census m34-owner-core).
+(defun fn-heap-request-octets (profile)
   (declare (xargs :guard t))
   (+ (* 2 *fn-heap-list-octets-per-octet*
         (+ (nfix (fn-bs-profile-max-record-octets profile))
@@ -596,7 +600,14 @@
      (* 2 *fn-heap-list-octets-per-octet*
         (+ (nfix (fn-bs-profile-max-article-octets profile))
            (nfix (fn-bs-profile-field *fn-bs-pf-max-header-octets* profile))
-           *fn-heap-message-id-octets*))
+           *fn-heap-message-id-octets*))))
+
+; The profile figure's request in flight and the two octet buffers at the
+; capture budget: an offline verb that loads or publishes a checkpoint holds
+; them at their largest.
+(defun fn-heap-store-inflight-octets (profile)
+  (declare (xargs :guard t))
+  (+ (fn-heap-request-octets profile)
      (* 2 (fn-ock-capture-budget profile))))
 
 ; THE ARTICLES IN FLIGHT (lane zero-copy-commit, 2026-09-28).  A connection

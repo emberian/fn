@@ -560,4 +560,49 @@ to a space that already holds it."
         (fnn-out "~a" line)
         code))))
 
+;; THE COLLECTOR POLICY (memory landing 3+4; books/memory-model.lisp
+;; fn-mm-collector, fn-mm-collector-due-p).  SBCL's generational collector
+;; leaves promoted garbage in the older generations until their own triggers:
+;; measured on fn-core, the resident set at rest was 2-4 x the live heap (W1 at
+;; 4,000 records: 245-302 MB against 74 MB live), so the equation's collector
+;; room (live + 2 x trigger) was not true of the process.  The policy makes it
+;; a mechanism: after every collection ACL2 says whether a full collection is
+;; due (the dynamic usage past the live usage at the last full collection by
+;; more than RHO percent of it and twice the trigger in force); when it is, the
+;; collector thread runs one and records the live usage it leaves.  One thread
+;; (profile-limits :fixed-threads counts it); the hook only signals, so no
+;; collection runs inside another's hook.  Measured cost at RHO 25: full
+;; collections of 57-111 ms at 220-330 MB live (census m34-owner-gcp).  It
+;; bounds dead memory, never data, and decides nothing ACL2 decides.
+(defvar *fnn-heap-collector-live* nil)
+(defvar *fnn-heap-collector-pending* nil)
+(defvar *fnn-heap-collector-thread* nil)
+(defvar *fnn-heap-collector-wake* (sb-thread:make-semaphore :name "fn-collector"))
+
+(defun fnn-heap-collector-after-gc ()
+  (let ((live *fnn-heap-collector-live*))
+    (when (and live (not *fnn-heap-collector-pending*)
+               (fnn-core 'fn-mm-collector-due-p (sb-kernel:dynamic-usage) live
+                         (fnn-core 'fn-mm-collector-cfg (sb-ext:bytes-consed-between-gcs) nil)))
+      (setq *fnn-heap-collector-pending* t)
+      (sb-thread:signal-semaphore *fnn-heap-collector-wake*))))
+
+(defun fnn-heap-collector-run ()
+  (loop
+    (sb-thread:wait-on-semaphore *fnn-heap-collector-wake*)
+    (sb-ext:gc :full t)
+    (setq *fnn-heap-collector-live* (sb-kernel:dynamic-usage))
+    (setq *fnn-heap-collector-pending* nil)))
+
+(defun fnn-heap-collector-policy-start ()
+  "Start the policy once per process, right after a full collection (the
+owner's, when recovery is done: host/native/owner.lisp
+fnn-owner-release-recovery-garbage), whose usage is the first live figure;
+then the collector thread and the after-GC hook."
+  (unless *fnn-heap-collector-thread*
+    (setq *fnn-heap-collector-live* (sb-kernel:dynamic-usage))
+    (setq *fnn-heap-collector-thread*
+          (sb-thread:make-thread #'fnn-heap-collector-run :name "fn-collector"))
+    (push #'fnn-heap-collector-after-gc sb-ext:*after-gc-hooks*)))
+
 (fnn-register-verb "heap" #'fnn-command-heap)

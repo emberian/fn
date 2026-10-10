@@ -7424,8 +7424,11 @@ is running; the publication restores this one when it ends."
 which SBCL returns the pages the recovery's garbage occupied to the system
 (a collection of the oldest generation remaps the free pages), so the
 resident set the owner serves from is its live heap, not the recovery's
-high-water mark.  Work proportional to the live heap, once per start."
-  (sb-ext:gc :full t))
+high-water mark.  Work proportional to the live heap, once per start.  Its
+live usage starts the collector policy (host/native/heap.lisp; memory landing
+3+4, carried by Builder M with Builder A's agreement)."
+  (sb-ext:gc :full t)
+  (fnn-heap-collector-policy-start))
 
 (defun fnn-owner-release-pending-extents-locked (service &optional pin)
   "Release pending groups whose reader generations and issued I/O are clear.

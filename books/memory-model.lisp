@@ -108,20 +108,21 @@
     (if (natp p)
         (min p (fn-mm-cfg-connections cfg))
       (fn-mm-cfg-connections cfg))))
+; RHO: the collector policy's dead-memory allowance, percent of the live heap
+; (host/native/heap.lisp fnn-heap-collector-policy); 25 when not given.  It
+; bounds dead memory, never data.
+(defun fn-mm-cfg-rho (cfg)
+  (declare (xargs :guard t))
+  (let ((r (nth 11 (true-list-fix cfg))))
+    (if (natp r) r 25)))
 
 ; -----------------------------------------------------------------------------
-; M_configured.  Ruling (coordinator 2026-10-09, reversible, for ember): the
-; small preset's 128 MiB (ruling 16) is the only per-preset figure; every
-; other preset's is the operator's when given, else the machine's resident
-; limit (D27: no named per-preset constant).
-
-(defconst *fn-mm-preset-configured*
-  '((:small . 134217728)))
-
-(defun fn-mm-preset-configured-octets (preset)
-  (declare (xargs :guard t))
-  (let ((row (assoc-equal preset *fn-mm-preset-configured*)))
-    (and (consp row) (cdr row))))
+; M_configured: the operator's figure when one is given, else the machine's
+; resident observations (fn-mm-resident-limit).  No preset carries a typed
+; figure (coordinator, 2026-10-09, D27 form, memory landing 3+4): the small
+; preset's former 128 MiB row could not hold fn-core's empty store at any C
+; (157 MB needed against 134 MB, known red SMALL-PRESET-128-MIB, its gap
+; attributed by term in build/ready/memory-l34-statements.md section 7).
 
 ; The least observation, NIL when none: an observation is a natural (0 is a
 ; limit of nothing, not an absent one); anything else is not an observation.
@@ -146,15 +147,15 @@
 ; -----------------------------------------------------------------------------
 ; THE FIVE TERMS.
 
-; M_base: the image's resident floor, every thread the node runs
-; (connections cost none: host/native/mux.lisp; fn-heap-thread-count), the
-; collector's room at the service trigger.  O-BASE: A-IMAGE-RESIDENT,
-; A-GC-FOOTPRINT, and the thread count is the host's (heap-reservation).
+; M_base: the image's resident floor and every thread the node runs
+; (connections cost none: host/native/mux.lisp; fn-heap-thread-count).
+; O-BASE: A-IMAGE-RESIDENT (measured on fn-core: 77.1 MB of file-backed core
+; pages and 38.7 MB anon at rest), and the thread count is the host's
+; (heap-reservation).  The collector's room is fn-mm-collector's.
 (defun fn-mm-base (img cfg)
   (declare (xargs :guard t))
   (+ (fn-mm-img-file img) (fn-mm-img-anon img)
-     (* (fn-heap-thread-count (fn-mm-cfg-connections cfg)) (fn-mm-img-thread img))
-     (* 2 (fn-mm-cfg-trigger cfg))))
+     (* (fn-heap-thread-count (fn-mm-cfg-connections cfg)) (fn-mm-img-thread img))))
 
 ; The history root's page image over the store: four word columns of one
 ; word a record and the event column of the log's octets, each region of U
@@ -192,6 +193,14 @@
        (* 64 (+ 1 (nfix n)))
        img)))
 
+; The live root alone: its page image (twice the canonical layout, the
+; relocation bound).  A generation's candidate is maintenance's.  Measured on
+; fn-core: one root generation in custody at rest (census m34-owner-core2,
+; roots-16k-b), 17.5 MB at 16,000 W1 records against this term's 68.5 MB.
+(defun fn-mm-hroot-live (n history)
+  (declare (xargs :guard t))
+  (fn-heap-hroot-image-octets (fn-mm-hroot-npages n history)))
+
 ; The payloads: in the arena (:resident), or the empty arena and the
 ; configured cache (:paged).
 (defun fn-mm-payload-octets (tot cfg)
@@ -200,27 +209,27 @@
       (+ (fn-heap-arena-octets 0) (fn-mm-cfg-cache cfg))
     (fn-heap-arena-octets (fn-mm-tot-arena tot))))
 
-; The non-article records' heap: held as decoded events, at most sixteen
-; heap octets an encoded octet, twice for the collector.  O-EVENTS (owed: a
-; measurement or a proof over the decoded event's shape).
-(defconst *fn-mm-event-heap-octets* (* 2 *fn-heap-list-octets-per-octet*))
-
-; M_owner: the held rows (handles, each record's fixed part twice for the
-; collector), the header columns at 8 heap octets a CHARGED HEADER octet
-; (fn-heap-record-charge-covers-the-state; the payload's octets are the
-; arena's and are not charged again), the memberships twice, the other
-; records' events, the payloads, and the retained history root.
-; O-OWNER: fn-heap-records-retained-within-the-terms restated over HCHARGE.
+; M_owner: what the held store keeps LIVE, once (the collector's room is
+; fn-mm-collector's, not a factor here): the payloads, each record's handle
+; and fixed part, the header columns at HCHARGE itself (8 heap octets a
+; charged header octet, 12 a Message-ID octet), the memberships, the other
+; records' events at sixteen heap octets an encoded octet, and the live
+; history root.  O-OWNER, measured on fn-core after a full collection
+; (memory landing 3+4, censuses m34-owner-core2 and m34-owner-wide): W1's
+; records (149 header octets, one group) 6,402-6,582 live octets each against
+; this term's 7,290 (root at its live size); 900 more header octets and 16
+; groups 20,934-21,270 against 23,696.  The term it replaces charged 69,071
+; a W1 record (the fixed part and memberships twice, 8 x HCHARGE).
 (defun fn-mm-owner (tot cfg)
   (declare (xargs :guard t))
   (let ((n (fn-mm-tot-records tot)))
     (+ (fn-mm-payload-octets tot cfg)
        (* *fn-heap-handle-octets* n)
-       (* 2 n *fn-heap-record-octets*)
-       (* *fn-heap-charge-heap-octets* (fn-mm-tot-hcharge tot))
-       (* 2 *fn-heap-membership-octets* (fn-mm-tot-memberships tot))
-       (* *fn-mm-event-heap-octets* (fn-mm-tot-events tot))
-       (fn-mm-hroot-demand n (fn-mm-tot-history tot)))))
+       (* n *fn-heap-record-octets*)
+       (fn-mm-tot-hcharge tot)
+       (* *fn-heap-membership-octets* (fn-mm-tot-memberships tot))
+       (* *fn-heap-list-octets-per-octet* (fn-mm-tot-events tot))
+       (fn-mm-hroot-live n (fn-mm-tot-history tot)))))
 
 ; A reply a connection holds: the article (connection-budget's stated
 ; workload, 2A + 1,024) or an OVER/XOVER cursor quantum, W NOV lines built
@@ -292,11 +301,15 @@
   (fn-mm-cfg-cold cfg))
 
 ; M_inflight: the request the owner serves (record and header lists, the
-; taken submission, both octet buffers), the articles in flight (the slots'
-; pool), the TLS handshakes' scratch, and the cold reads.
+; taken submission), the articles in flight (the slots' pool), the TLS
+; handshakes' scratch, and the cold reads.  The two octet buffers at the
+; capture budget (2 x (3H + a segment), 50.7 MB at the small preset) are not
+; charged here: in service the host has released both (fn-heap-request-octets);
+; a publication's buffer is maintenance's and the open's checkpoint load is
+; the reopen's.
 (defun fn-mm-inflight (profile cfg)
   (declare (xargs :guard t))
-  (+ (fn-heap-store-inflight-octets profile)
+  (+ (fn-heap-request-octets profile)
      (fn-heap-articles-octets profile)
      (fn-cbud-handshake-octets (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))
      (fn-mm-cold-reads profile cfg)))
@@ -313,29 +326,76 @@
            (fn-heap-reclaim-demand-octets n (fn-mm-tot-charge tot))
          0))))
 
-; THE SUM.
-(defun fn-mm-sum (profile img cfg tot)
+; THE COLLECTOR, a stated policy and not an assumption (memory landing 3+4):
+; after any collection whose dynamic usage exceeds the live usage at the last
+; full collection, plus RHO percent of it, plus twice the trigger in force,
+; one full collection runs (host/native/heap.lisp fnn-heap-collector-policy).
+; O-COLLECTOR: under it the dynamic space's resident pages are at most the
+; live heap, RHO percent of it, and twice the trigger (a publication's raise
+; is maintenance's 2 (PUB-TRIGGER - TRIGGER)).  Measured on fn-core: without
+; the policy the resident set at rest was 2-4 x the live heap (W1 at 4,000
+; records: 245-302 MB against 74 MB live), so the former A-GC-FOOTPRINT (live
+; + 2 x trigger) was false; with it at RHO 25, full collections of 57-111 ms
+; at 220-330 MB live (census m34-owner-gcp).
+(defun fn-mm-collector (live cfg)
   (declare (xargs :guard t))
-  (+ (fn-mm-base img cfg)
-     (fn-mm-owner tot cfg)
+  (+ (floor (* (nfix live) (fn-mm-cfg-rho cfg)) 100)
+     (* 2 (fn-mm-cfg-trigger cfg))))
+
+; The policy's decision after a collection (the host asks it from its
+; after-GC hook, host/native/heap.lisp fnn-heap-collector-after-gc): a full
+; collection is due when the dynamic usage USAGE exceeds the live usage LIVE
+; at the last full collection by more than the collector's room.
+; The host's view of CFG for that decision: the trigger in force and RHO
+; (NIL: the default).
+(defun fn-mm-collector-cfg (trigger rho)
+  (declare (xargs :guard t))
+  (list 0 nil trigger trigger nil 0 0 0 nil 0 nil rho))
+
+(defun fn-mm-collector-due-p (usage live cfg)
+  (declare (xargs :guard t))
+  (> (nfix usage) (+ (nfix live) (fn-mm-collector live cfg))))
+
+(defthm fn-mm-collector-not-due-is-within-the-term
+  (implies (not (fn-mm-collector-due-p usage live cfg))
+           (<= (nfix usage) (+ (nfix live) (fn-mm-collector live cfg))))
+  :rule-classes nil)
+
+; The heap the five terms keep live.
+(defun fn-mm-live (profile cfg tot)
+  (declare (xargs :guard t))
+  (+ (fn-mm-owner tot cfg)
      (fn-mm-connections profile cfg)
      (fn-mm-inflight profile cfg)
      (fn-mm-maintenance tot cfg)))
 
-; THE INSTANT: K connections open, J of them holding a large reply, S
-; article slots in use, H handshakes in flight, PUBLISHING whether a
-; publication runs.
-(defun fn-mm-need (profile img cfg tot k j s h publishing)
+; THE SUM.
+(defun fn-mm-sum (profile img cfg tot)
   (declare (xargs :guard t))
   (+ (fn-mm-base img cfg)
-     (fn-mm-owner tot cfg)
+     (fn-mm-live profile cfg tot)
+     (fn-mm-collector (fn-mm-live profile cfg tot) cfg)))
+
+; THE INSTANT: K connections open, J of them holding a large reply, S
+; article slots in use, H handshakes in flight, PUBLISHING whether a
+; publication runs: its live heap, and the process with the collector's room
+; over it.
+(defun fn-mm-need-live (profile cfg tot k j s h publishing)
+  (declare (xargs :guard t))
+  (+ (fn-mm-owner tot cfg)
      (* (nfix k) (fn-mm-connection-fixed profile cfg))
      (* (nfix j) (fn-mm-large-reply profile cfg))
-     (fn-heap-store-inflight-octets profile)
+     (fn-heap-request-octets profile)
      (* (nfix s) (fn-heap-article-reserve-octets profile))
      (* (nfix h) *fn-cbud-handshake-scratch-octets*)
      (fn-mm-cold-reads profile cfg)
      (if publishing (fn-mm-maintenance tot cfg) 0)))
+
+(defun fn-mm-need (profile img cfg tot k j s h publishing)
+  (declare (xargs :guard t))
+  (+ (fn-mm-base img cfg)
+     (fn-mm-need-live profile cfg tot k j s h publishing)
+     (fn-mm-collector (fn-mm-need-live profile cfg tot k j s h publishing) cfg)))
 
 ; -----------------------------------------------------------------------------
 ; REOPEN.  Its named terms over the totals the open holds:
@@ -352,13 +412,26 @@
 (defconst *fn-mm-failure-headroom-octets*
   (* 2 *fn-heap-list-octets-per-octet* *fn-cbud-reply-status-octets*))
 
+; The state checkpoint the open loads whole into the octet buffer
+; (host/native/io.lisp fnn-octets-fill; released after the load): at most the
+; reader's file bound, past which it refuses the checkpoint and replays.
+(defun fn-mm-checkpoint-load-octets (profile)
+  (declare (xargs :guard t))
+  (fn-ock-capture-budget profile))
+
+(defun fn-mm-reopen-live (profile cfg tot)
+  (declare (xargs :guard t))
+  (+ (fn-mm-owner tot cfg)
+     (fn-heap-store-open-octets profile (fn-mm-tot-log tot) (fn-mm-tot-records tot))
+     (fn-mm-checkpoint-load-octets profile)
+     (fn-mm-maintenance tot cfg)
+     *fn-mm-failure-headroom-octets*))
+
 (defun fn-mm-reopen-need (profile img cfg tot)
   (declare (xargs :guard t))
   (+ (fn-mm-base img cfg)
-     (fn-mm-owner tot cfg)
-     (fn-heap-store-open-octets profile (fn-mm-tot-log tot) (fn-mm-tot-records tot))
-     (fn-mm-maintenance tot cfg)
-     *fn-mm-failure-headroom-octets*))
+     (fn-mm-reopen-live profile cfg tot)
+     (fn-mm-collector (fn-mm-reopen-live profile cfg tot) cfg)))
 
 ; THE OBSERVATION a store-opening command sizes itself by: the checkpoint
 ; header's totals HDR and the totals SUFFIX of the log's records past it,
@@ -437,6 +510,50 @@
 ; KEYSTONE K1.  The instant within the sum: at most C connections open, at
 ; most P of them holding a large reply, the article slots and the TLS
 ; handshake slots in use, publishing or not.
+(defthm fn-mm-collector-monotone
+  (implies (<= (nfix a) (nfix b))
+           (<= (fn-mm-collector a cfg) (fn-mm-collector b cfg)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mm-collector) (fn-mm-cfg-rho fn-mm-cfg-trigger floor))
+           :use ((:instance fn-mm-times-monotone (a (nfix a)) (b (nfix b)) (c (fn-mm-cfg-rho cfg)))))
+          (and stable-under-simplificationp '(:nonlinearp t))))
+
+
+(defthm fn-mm-open-connections-within
+  (implies (<= (nfix k) (fn-mm-cfg-connections cfg))
+           (<= (* (nfix k) (fn-mm-connection-fixed profile cfg))
+               (* (fn-mm-cfg-connections cfg) (fn-mm-connection-fixed profile cfg))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-mm-connection-fixed fn-mm-cfg-connections) :nonlinearp t)))
+(defthm fn-mm-holders-within-the-pool
+  (implies (<= (nfix j) (fn-mm-cfg-holders cfg))
+           (<= (* (nfix j) (fn-mm-large-reply profile cfg)) (fn-mm-large-pool profile cfg)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mm-large-pool) (fn-mm-large-reply fn-mm-cfg-holders)) :nonlinearp t)))
+(defthm fn-mm-handshakes-within
+  (implies (<= (nfix h) (fn-cbud-handshake-slots tlsp hs))
+           (<= (* (nfix h) *fn-cbud-handshake-scratch-octets*) (fn-cbud-handshake-octets tlsp hs)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-cbud-handshake-octets) (fn-cbud-handshake-slots)) :nonlinearp t)))
+(defthm fn-mm-need-live-within-the-live
+  (implies (and (<= (nfix k) (fn-mm-cfg-connections cfg))
+                (<= (nfix j) (fn-mm-cfg-holders cfg))
+                (<= (nfix s) (fn-heap-article-slots profile))
+                (<= (nfix h) (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
+           (<= (fn-mm-need-live profile cfg tot k j s h publishing)
+               (fn-mm-live profile cfg tot)))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (union-theories '(fn-mm-need-live fn-mm-live fn-mm-inflight fn-mm-connections natp)
+                                       (theory 'minimal-theory))
+           :use ((:instance fn-heap-article-slots-are-held (k s))
+                 fn-mm-open-connections-within fn-mm-holders-within-the-pool
+                 (:instance fn-mm-handshakes-within (tlsp (fn-mm-cfg-tlsp cfg)) (hs (fn-mm-cfg-handshakes cfg)))
+                 fn-mm-terms-natp))))
+
+(defthm fn-mm-live-natp (natp (fn-mm-live profile cfg tot)) :rule-classes :type-prescription)
+(defthm fn-mm-need-live-natp (natp (fn-mm-need-live profile cfg tot k j s h publishing))
+  :rule-classes :type-prescription)
 (defthm fn-mm-need-within-the-sum
   (implies (and (<= (nfix k) (fn-mm-cfg-connections cfg))
                 (<= (nfix j) (fn-mm-cfg-holders cfg))
@@ -445,23 +562,11 @@
            (<= (fn-mm-need profile img cfg tot k j s h publishing)
                (fn-mm-sum profile img cfg tot)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mm-need fn-mm-sum fn-mm-inflight fn-cbud-handshake-octets
-                                   fn-mm-connections fn-mm-large-pool)
-                                  (fn-mm-base fn-mm-owner fn-mm-connection-fixed fn-mm-large-reply
-                                   fn-mm-maintenance fn-mm-cold-reads
-                                   fn-heap-store-inflight-octets fn-heap-article-slots fn-cbud-handshake-slots
-                                   fn-heap-articles-octets fn-heap-article-reserve-octets
-                                   fn-mm-cfg-connections fn-mm-cfg-holders fn-mm-cfg-tlsp))
-           :use ((:instance fn-heap-article-slots-are-held (k s))
-                 fn-mm-terms-natp
-                 (:instance fn-mm-times-monotone (a (nfix k)) (b (fn-mm-cfg-connections cfg))
-                            (c (fn-mm-connection-fixed profile cfg)))
-                 (:instance fn-mm-times-monotone (a (nfix j)) (b (fn-mm-cfg-holders cfg))
-                            (c (fn-mm-large-reply profile cfg)))
-                 (:instance fn-mm-times-monotone (a (nfix h))
-                            (b (nfix (fn-cbud-handshake-slots (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
-                            (c *fn-cbud-handshake-scratch-octets*))))
-          (and stable-under-simplificationp '(:nonlinearp t))))
+  :hints (("Goal" :in-theory (union-theories '(fn-mm-need fn-mm-sum nfix natp (:type-prescription fn-mm-live-natp) (:type-prescription fn-mm-need-live-natp)) (theory 'minimal-theory))
+           :use (fn-mm-need-live-within-the-live
+                 (:instance fn-mm-collector-monotone
+                            (a (fn-mm-need-live profile cfg tot k j s h publishing))
+                            (b (fn-mm-live profile cfg tot)))))))
 
 (defthm fn-mm-pow2-at-least-covers-acc
   (implies (posp acc) (<= acc (adt-pow2-at-least k acc)))
@@ -506,6 +611,14 @@
            :use (fn-mm-hroot-npages-monotone
                  (:instance fn-heap-hroot-image-octets-monotone
                             (a (fn-mm-hroot-npages n1 l1)) (b (fn-mm-hroot-npages n2 l2)))))))
+(defthm fn-mm-hroot-live-monotone
+  (implies (and (<= (nfix n1) (nfix n2)) (<= (nfix l1) (nfix l2)))
+           (<= (fn-mm-hroot-live n1 l1) (fn-mm-hroot-live n2 l2)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mm-hroot-live) (fn-heap-hroot-image-octets fn-mm-hroot-npages fn-mm-hroot-npages-is))
+           :use (fn-mm-hroot-npages-monotone
+                 (:instance fn-heap-hroot-image-octets-monotone
+                            (a (fn-mm-hroot-npages n1 l1)) (b (fn-mm-hroot-npages n2 l2)))))))
 (defthm fn-mm-tot-charge-monotone
   (implies (fn-mm-tot-le a b) (<= (fn-mm-tot-charge a) (fn-mm-tot-charge b)))
   :rule-classes nil
@@ -517,11 +630,11 @@
   (implies (fn-mm-tot-le a b) (<= (fn-mm-owner a cfg) (fn-mm-owner b cfg)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mm-owner fn-mm-payload-octets fn-mm-tot-le)
-                                  (fn-mm-hroot-demand fn-heap-arena-octets
+                                  (fn-mm-hroot-live fn-heap-arena-octets
                                    fn-mm-tot-arena fn-mm-tot-hcharge fn-mm-tot-memberships
                                    fn-mm-tot-records fn-mm-tot-paged-p fn-mm-tot-events fn-mm-tot-log))
            :use ((:instance fn-heap-arena-octets-monotone (u1 (fn-mm-tot-arena a)) (u2 (fn-mm-tot-arena b)))
-                 (:instance fn-mm-hroot-demand-monotone
+                 (:instance fn-mm-hroot-live-monotone
                             (n1 (fn-mm-tot-records a)) (n2 (fn-mm-tot-records b))
                             (l1 (fn-mm-tot-history a)) (l2 (fn-mm-tot-history b)))))))
 (defthm fn-mm-tot-le-parts
@@ -549,13 +662,21 @@
                             (l1 (fn-mm-tot-history a)) (l2 (fn-mm-tot-history b)))))))
 ; KEYSTONE K2.  The sum grows with the store: a prefix of a store, or what
 ; a reclaim leaves of it, needs no more than the store.
+(defthm fn-mm-live-grows-with-the-store
+  (implies (fn-mm-tot-le a b)
+           (<= (fn-mm-live profile cfg a) (fn-mm-live profile cfg b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mm-live) (fn-mm-owner fn-mm-maintenance fn-mm-tot-le
+                                                 fn-mm-connections fn-mm-inflight))
+           :use (fn-mm-owner-monotone fn-mm-maintenance-monotone))))
 (defthm fn-mm-sum-grows-with-the-store
   (implies (fn-mm-tot-le a b)
            (<= (fn-mm-sum profile img cfg a) (fn-mm-sum profile img cfg b)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-mm-sum) (fn-mm-owner fn-mm-maintenance fn-mm-tot-le fn-mm-base
-                                                fn-mm-connection fn-mm-inflight))
-           :use (fn-mm-owner-monotone fn-mm-maintenance-monotone))))
+  :hints (("Goal" :in-theory (e/d (fn-mm-sum) (fn-mm-live fn-mm-collector fn-mm-tot-le fn-mm-base))
+           :use (fn-mm-live-grows-with-the-store
+                 (:instance fn-mm-collector-monotone
+                            (a (fn-mm-live profile cfg a)) (b (fn-mm-live profile cfg b)))))))
 (defthm fn-mm-base-monotone-in-the-image
   (implies (fn-mm-img-le i1 i2) (<= (fn-mm-base i1 cfg) (fn-mm-base i2 cfg)))
   :rule-classes nil
@@ -570,18 +691,28 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-heap-store-open-octets) (fn-heap-open-chunk-bound))
            :use ((:instance fn-heap-open-chunk-bound-monotone (p1 profile) (p2 profile))))))
+(defthm fn-mm-reopen-live-monotone
+  (implies (fn-mm-tot-le a b)
+           (<= (fn-mm-reopen-live profile cfg a) (fn-mm-reopen-live profile cfg b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-mm-reopen-live)
+                                  (fn-mm-owner fn-mm-maintenance fn-heap-store-open-octets
+                                   fn-mm-checkpoint-load-octets
+                                   fn-mm-tot-le fn-mm-tot-log fn-mm-tot-records))
+           :use (fn-mm-owner-monotone fn-mm-maintenance-monotone fn-mm-tot-le-parts
+                 (:instance fn-mm-open-octets-monotone
+                            (ou1 (fn-mm-tot-log a)) (ou2 (fn-mm-tot-log b))
+                            (on1 (fn-mm-tot-records a)) (on2 (fn-mm-tot-records b)))))))
 (defthm fn-mm-reopen-need-monotone
   (implies (and (fn-mm-tot-le a b) (fn-mm-img-le i1 i2))
            (<= (fn-mm-reopen-need profile i1 cfg a) (fn-mm-reopen-need profile i2 cfg b)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-mm-reopen-need)
-                                  (fn-mm-base fn-mm-owner fn-mm-maintenance fn-heap-store-open-octets
-                                   fn-mm-tot-le fn-mm-img-le fn-mm-tot-log fn-mm-tot-records))
-           :use (fn-mm-owner-monotone fn-mm-maintenance-monotone fn-mm-tot-le-parts
+                                  (fn-mm-base fn-mm-reopen-live fn-mm-collector fn-mm-tot-le fn-mm-img-le))
+           :use (fn-mm-reopen-live-monotone
                  (:instance fn-mm-base-monotone-in-the-image)
-                 (:instance fn-mm-open-octets-monotone
-                            (ou1 (fn-mm-tot-log a)) (ou2 (fn-mm-tot-log b))
-                            (on1 (fn-mm-tot-records a)) (on2 (fn-mm-tot-records b)))))))
+                 (:instance fn-mm-collector-monotone
+                            (a (fn-mm-reopen-live profile cfg a)) (b (fn-mm-reopen-live profile cfg b)))))))
 (defthm fn-mm-img-le-reflexive (fn-mm-img-le i i))
 ; KEYSTONE K3 (REOPEN ADMISSIBILITY).  ADM the totals the gate admitted;
 ; TOT the store at any crash; HDR and SUFFIX what the observer reads (the

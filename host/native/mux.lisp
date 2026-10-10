@@ -63,7 +63,8 @@
 (defconstant +fnn-mux-tick-ms+ 250)
 ;;; The node's threads that are not loops or control clients: main (accept),
 ;;; finalizer, log writer, checkpoint publisher, feed and pull workers,
-;;; control accept, three listeners, two spare (image-floor's count).
+;;; control accept, three listeners, two spare (image-floor's count), and the
+;;; collector policy's thread (host/native/heap.lisp fnn-heap-collector-run).
 (defconstant +fnn-mux-fixed-threads+ *fn-heap-fixed-threads*) ; books/profile-limits.lisp
 
 (defconstant +fnn-mux-pollin+ 1)

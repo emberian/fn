@@ -2903,6 +2903,16 @@
 (definterface fn-mo-observed-totals
   :class :common-lisp-compliant)
 
+;; The collector policy's decision after a collection and its view of the
+;; configuration (books/memory-model.lisp; host/native/heap.lisp
+;; fnn-heap-collector-after-gc; memory landing 3+4).
+(definterface fn-mm-collector-due-p
+  :class :common-lisp-compliant
+  :keystones (fn-mm-collector-not-due-is-within-the-term))
+
+(definterface fn-mm-collector-cfg
+  :class :common-lisp-compliant)
+
 (definterface fn-crv-extend-reservation
   :class :common-lisp-compliant
   :keystones (fn-crv-accepted-launch-fits-observed-machine
