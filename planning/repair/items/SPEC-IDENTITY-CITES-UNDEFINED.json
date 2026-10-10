@@ -1,0 +1,14 @@
+{
+ "detail": "tests.test_fn_verify.SpecBookTieTests.test_the_spec_the_books_and_the_verifier_agree: ['the spec cites `fn-stx-field-octets`, which no book defines']. The spec follows the books' current name, or the definition is restored where the verifier needs it.",
+ "file": "specs/identity.md",
+ "id": "SPEC-IDENTITY-CITES-UNDEFINED",
+ "notes": [
+  "10-09 Builder D: the spec is right; the checker was not. fn-stx-field-octets is defined by def-loop (books/stx-carrier.lisp:627, since fba899b44), and tests/test_fn_verify.py book_forms read only defun/defund/defthm/defconst/defmacro. It now reads def-loop as a definer; tooth test_a_def_loop_defines_its_name. SpecBookTieTests 6 OK."
+ ],
+ "owner": "builder-D",
+ "severity": "medium",
+ "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
+ "state": "landed",
+ "title": "specs/identity.md cites fn-stx-field-octets, which no book defines (tests.test_fn_verify.SpecBookTieTests)",
+ "updated": "2026-10-10T00:50:00Z"
+}

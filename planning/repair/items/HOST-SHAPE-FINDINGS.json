@@ -1,0 +1,12 @@
+{
+ "detail": "host_shape_check: 122 findings over 131 host files. First rows: host/index-connection-owner-host.lisp:26 fn-mio-connection-finish-open (3 values where an argument of stobj-let requires one), :51 fn-owner-index-open (one value where an mv-let of 3 requires an error triple).",
+ "file": "tools/host_shape_check.py",
+ "id": "HOST-SHAPE-FINDINGS",
+ "notes": [],
+ "owner": "builder-D",
+ "severity": "medium",
+ "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
+ "state": "open",
+ "title": "host_shape_check: 122 multi-value shape findings in host files (first: host/index-connection-owner-host.lisp fn-mio-connection-finish-open returns an error triple where stobj-let needs one value)",
+ "updated": "2026-10-09T22:00:00Z"
+}

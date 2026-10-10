@@ -3,11 +3,13 @@
  "detail": "Source-level (no image) tests; read the log lines 2636, 2669, 2760 of the local copy for the assertion text. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
  "file": "tools/native_source_check.py",
  "id": "FILL-NATIVE-SOURCE-CHECK-3-MODULES",
- "notes": [],
- "owner": "unowned",
+ "notes": [
+  "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): now 12 modules FAILED on the laptop: test_native_admin_cleanup, auth_admin_fidelity (2), checkpoint_abandon_raw, cut_map, harness (installed launcher at the decided heap), heap_default_source, init_status_probe, nntp_post_probe, operator_diagnostics_source, raw_scripts, reconfig_phased (live heap profile). Mechanism not yet traced per module; the platform (macOS laptop vs Linux box) is the first question, and the heap modules route to builder-M once traced. Owner unowned -> builder-D."
+ ],
+ "owner": "builder-D",
  "severity": "medium",
  "source": "fill-20261004",
  "state": "open",
  "title": "native_source_check red (CL02 landed): FAILED tests.test_native_catchup_spool_source CatchupSpoolSourceTests.test_anonymous_spool_and_held_cancel; tests.test_native_feed_fair_round FeedFairRoundTests.test_peer_that_never_answers_is_dropped_at_the_reply_deadline; tests.test_native_peer_round_driver (test_round_core_fault_survives_cleanup_failure, test_single_attempt_kernel_connect_read_and_write_preserve_custody, test_trickling_pull_cannot_starve_healthy_pull_and_catchup)",
- "updated": "2026-10-04T19:12:27Z"
+ "updated": "2026-10-09T22:00:00Z"
 }
