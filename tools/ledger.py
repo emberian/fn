@@ -1203,7 +1203,7 @@ def defrecord_export_expansion(form: list) -> list:
 # (`fn-dk-refusal`) expands to nothing here: certification is the authority
 # on the refusal, and a guess at a refused form's events would be a lie.
 
-DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":instances", ":stobjs", ":stobj-checks", ":breaks",
+DEFTEETH_KEYS = {":claim", ":subject", ":witness", ":witness-lemma", ":witness-unguarded", ":instances", ":stobjs", ":stobj-checks", ":breaks",
                  ":mutations", ":corrupt", ":visits", ":allocation", ":must-fail",
                  ":hints"}
 DEFKEYSTONE_KEYS = DEFTEETH_KEYS | {":id", ":restates", ":hyps", ":rule-classes",
@@ -1359,6 +1359,9 @@ def _dk_spec_parts(name: Sym, options: dict) -> dict | None:
                         and isinstance(c[1], list) and c[1]
                         and (len(c) == 2 or str(c[2]) == ":hints") for c in checks)):
             return None
+    if ":witness-unguarded" in options and not (
+            _dk_reasonp(options[":witness-unguarded"]) and options.get(":stobjs")):
+        return None
     witness = options.get(":witness")
     if not (witness and _dk_bindingsp(witness)):
         return None
@@ -1604,6 +1607,7 @@ def teeth_row(parts: dict, by: str, formula: object = None) -> list:
            Sym(":subject"), parts["subject"] if parts["subject"] is not None else Sym("nil"),
            Sym(":witness"), (Sym(":instance") if ":instances" in parts["options"]
                              else Sym(":lemma") if ":witness-lemma" in parts["options"]
+                             else Sym(":unguarded") if ":witness-unguarded" in parts["options"]
                              else Sym(":executable")),
            Sym(":hyps"), list(parts["labels"]) or Sym("nil"),
            Sym(":removals"), removals or Sym("nil"),
@@ -1621,6 +1625,9 @@ def _dk_witness_event(name: Sym, msg: str, bindings: list, terms: list, opts: di
     claim = _dk_conj([_dk_at(bindings, term) for term in terms])
     if ":lemma" in opts:
         return [Sym("fn-dk-lemma-check"), name, opts[":lemma"], bindings, _dk_conj(terms), msg]
+    if ":unguarded" in opts:
+        return [Sym("assert-event"), [Sym("fn-dk-unguarded"), claim],
+                Sym(":msg"), f"{upper}: {msg} (unguarded: {opts[':unguarded']})"]
     if ":logical" in opts:
         return [Sym("assert-event"), _dk_logical(claim),
                 Sym(":msg"), f"{upper}: {msg} (logical: {opts[':logical']})"]
@@ -1637,7 +1644,9 @@ def teeth_events(parts: dict, by: str, formula: object = None) -> list:
     musts = parts["must_fail"]
     events: list = [_dk_witness_event(
         name, "witness", witness, hyps + [concl],
-        {":lemma": options[":witness-lemma"]} if ":witness-lemma" in options else {})]
+        {":lemma": options[":witness-lemma"]} if ":witness-lemma" in options
+        else {":unguarded": options[":witness-unguarded"]} if ":witness-unguarded" in options
+        else {})]
     for index, label in enumerate(labels):
         entry = parts["breaks"][str(label)]
         if _dk_assumption_breakp(entry):

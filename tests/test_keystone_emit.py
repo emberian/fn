@@ -326,6 +326,33 @@ class NewWitnessClasses(unittest.TestCase):
         self.assertIsNone(self.parts(extra=":instances (run)"))
         self.assertIsNone(self.parts(extra=":instances (run loop) :witness-lemma fact"))
 
+    def test_unguarded_witness_needs_stobjs_and_is_its_own_mode(self):
+        stobjs = ":stobjs ((cell (fill x cell))) "
+        self.assertIsNone(self.parts(extra=':witness-unguarded "a defun-sk guard"'))
+        self.assertIsNone(self.parts(extra=stobjs + ":witness-unguarded t"))
+        parts = self.parts(extra=stobjs + ':witness-unguarded "a defun-sk guard"')
+        self.assertIsNotNone(parts)
+        row = ke.ledger.teeth_row(parts, "defteeth")[3][1]
+        self.assertEqual(str(ke.ledger.keyword_plist(row)[":witness"]), ":unguarded")
+        events = ke.ledger.teeth_events(parts, "defteeth")
+        self.assertEqual(ke.ledger.head(events[0][1]), "fn-dk-unguarded")
+        self.assertIn("witness (unguarded: a defun-sk guard)", ke.ledger.source_text(events[0]))
+        # the removal and the mutation keep their own modes
+        self.assertNotIn("fn-dk-unguarded", ke.ledger.source_text(events[1:]))
+        book = SimpleNamespace(teeth_declared={"example": parts}, teeth_owed={})
+        tree = SimpleNamespace(books={"tests/acl2/t.lisp": book})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tests/acl2").mkdir(parents=True)
+            (root / "tests/acl2/t.lisp").write_text("fixture")
+            proofs = root / "proofs.json"
+            proofs.write_text('{"proofs": [{"events": ["example"]}]}')
+            with mock.patch.object(ke, "ROOT", root), mock.patch.object(ke, "PROOFS", proofs), \
+                    mock.patch.object(ke.keystone_critical, "interface_index", lambda *a: {}):
+                result = ke.obligations(tree, {"tests/acl2/t.lisp": True})["example"]
+        self.assertEqual(result["witness"], "unguarded")
+        self.assertFalse(result["complete"])
+
     def test_manifest_does_not_count_assumptions_as_reachable_or_complete(self):
         parts = self.parts()
         book = SimpleNamespace(teeth_declared={"example": parts}, teeth_owed={})

@@ -794,4 +794,74 @@
                                         (fn-dkt-other-val fn-dkt-other)))) ()
                   :fault "Multiplies instead of adding.")))
 
+; :witness-unguarded.  A builder whose verified guard reaches a DEFUN-SK
+; faults at guard checking T ("cannot ev" the skolem witness), although no
+; raw call evaluates it.  The option runs the positive witness (builders and
+; checks) under guard checking :none; a false conjunct still fails; the row
+; says :unguarded; removals and mutations keep their own modes (here
+; :logical, since the same builder rebuilds their stobjs).
+(defun-sk fn-dkt-sk-okp (x)
+  (declare (xargs :guard t :verify-guards t))
+  (forall y (implies (natp y) (equal (car (cons y x)) y))))
+(defun fn-dkt-sk-guardp (x)
+  (declare (xargs :guard t))
+  (and (integerp x) (fn-dkt-sk-okp x)))
+(defun fn-dkt-sk-fill (x fn-dkt-cell)
+  (declare (xargs :stobjs fn-dkt-cell :guard (fn-dkt-sk-guardp x)))
+  (update-fn-dkt-val x fn-dkt-cell))
+(defthm fn-dkt-sk-positive
+  (implies (< 0 (fn-dkt-val fn-dkt-cell))
+           (< 1 (+ 2 (fn-dkt-val fn-dkt-cell))))
+  :rule-classes nil)
+
+(assert-event
+ (equal (fn-teeth-refusal 'k
+                          '(:claim (((positive (< 0 x))) (< 1 (+ 2 x)))
+                            :witness ((x 1)) :witness-unguarded "no stobj"
+                            :breaks ((positive ((x 0))))
+                            :mutations (:not-applicable "a refusal test")))
+        '(:bad-witness-unguarded "no stobj")))
+(assert-event
+ (equal (fn-teeth-refusal 'k
+                          '(:claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+                                    (< 1 (+ 2 (fn-dkt-val fn-dkt-cell))))
+                            :stobjs ((fn-dkt-cell (fn-dkt-sk-fill x fn-dkt-cell)))
+                            :witness ((x 1)) :witness-unguarded t
+                            :breaks ((positive ((x 0))))
+                            :mutations (:not-applicable "a refusal test")))
+        '(:bad-witness-unguarded t)))
+
+(must-fail-checked
+ (defteeth fn-dkt-sk-positive
+   :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+           (< 1 (+ 2 (fn-dkt-val fn-dkt-cell))))
+   :stobjs ((fn-dkt-cell (fn-dkt-sk-fill x fn-dkt-cell)))
+   :witness ((x 1))
+   :breaks ((positive ((x -1)) :logical "The builder's guard reaches a defun-sk."))
+   :mutations ((high (:conclusion (< 3 (+ 2 (fn-dkt-val fn-dkt-cell)))) ()
+                     :fault "Raises the bound." :logical "The builder's guard reaches a defun-sk.")))
+ :unchecked "Under the guards the positive witness cannot evaluate the defun-sk in the builder's guard.")
+(must-fail-checked
+ (defteeth fn-dkt-sk-positive
+   :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+           (< 1 (+ 2 (fn-dkt-val fn-dkt-cell))))
+   :stobjs ((fn-dkt-cell (fn-dkt-sk-fill x fn-dkt-cell)))
+   :witness ((x 0)) :witness-unguarded "The builder's guard reaches a defun-sk."
+   :breaks ((positive ((x -1)) :logical "The builder's guard reaches a defun-sk."))
+   :mutations ((high (:conclusion (< 3 (+ 2 (fn-dkt-val fn-dkt-cell)))) ()
+                     :fault "Raises the bound." :logical "The builder's guard reaches a defun-sk.")))
+ :unchecked "An unguarded witness whose hypothesis is false still fails.")
+(defteeth fn-dkt-sk-positive
+  :claim (((positive (< 0 (fn-dkt-val fn-dkt-cell))))
+          (< 1 (+ 2 (fn-dkt-val fn-dkt-cell))))
+  :stobjs ((fn-dkt-cell (fn-dkt-sk-fill x fn-dkt-cell)))
+  :witness ((x 1)) :witness-unguarded "The builder's guard reaches a defun-sk."
+  :breaks ((positive ((x -1)) :logical "The builder's guard reaches a defun-sk."))
+  :mutations ((high (:conclusion (< 3 (+ 2 (fn-dkt-val fn-dkt-cell)))) ()
+                    :fault "Raises the bound." :logical "The builder's guard reaches a defun-sk.")))
+(assert-event
+ (equal (fn-dk-get :witness (cdr (assoc-eq 'fn-dkt-sk-positive
+                                           (table-alist 'fn-teeth (w state)))))
+        :unguarded))
+
 (defteeth-check)

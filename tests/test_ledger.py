@@ -1597,9 +1597,10 @@ class DefkeystoneExpansionTests(unittest.TestCase):
                           "fn-dkt-add-adds-again-mutant-weaker",
                           "fn-dkt-two-first-is-x-without-nat",
                           "fn-dkt-two-first-is-x-mutant-second-output"})
-        # Five generated checks plus eighteen refused source forms (the
-        # malformed-scope and two-stobj-builder fixtures of 83d922dcb).
-        self.assertEqual(book.must_fails, 23)
+        # Five generated checks plus twenty refused source forms (the
+        # malformed-scope and two-stobj-builder fixtures of 83d922dcb, and
+        # the guarded and false-hypothesis :witness-unguarded fixtures).
+        self.assertEqual(book.must_fails, 25)
         # a defteeth's bound is a theorem of its book, from the claim
         self.assertIn("fn-dkt-add-adds-source-visits-steps", names)
         # a restating defkeystone declares the teeth of the REGISTRY keystone
@@ -1609,7 +1610,8 @@ class DefkeystoneExpansionTests(unittest.TestCase):
                           "fn-dkt-walk-of-true-list", "fn-dkt-two-first-is-x",
                           "fn-dkt-assumed-one", "fn-dkt-scoped",
                           "fn-dkt-cell-positive", "fn-dkt-two-cells",
-                          "fn-dkt-two-cells-built", "fn-dkt-snapshot"})
+                          "fn-dkt-two-cells-built", "fn-dkt-snapshot",
+                          "fn-dkt-sk-positive"})
         # a bound :derived-by a def-cost row is a theorem of its book too
         self.assertIn("fn-dkt-walk-of-true-list-visits-steps", names)
         self.assertEqual(set(book.teeth_owed), {"fn-dkt-add-adds-source"})
