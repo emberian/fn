@@ -1419,6 +1419,13 @@ class ImageModuleTests(unittest.TestCase):
         self.assertEqual(read["tests.m"]["rc"], 1)
         self.assertEqual(read["tests.m"]["cases"], {"tests.m.T.test_a": "ok", "tests.m.T.test_b": "FAIL"})
 
+    def test_a_reservation_book_change_obliges_the_capacity_vector(self):
+        need = train.image_modules(["books/store-maintenance-reserve.lisp", "README.md"])
+        self.assertEqual(need, {"tests.test_native_capacity_vector": ["books/store-maintenance-reserve.lisp"]})
+        need = train.image_modules(["books/heap-figure.lisp"])
+        self.assertIn("tests.test_native_capacity_vector", need)
+        self.assertIn("tests.test_native_heap_from_profile", need)
+
     def test_a_launcher_change_obliges_the_served_natives_operator_verbs_and_heap_from_profile(self):
         need = train.image_modules(["packaging/launcher-decide.sh", "README.md"])
         self.assertEqual(set(need), {"tests.test_native_operator_verbs",
