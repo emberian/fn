@@ -2879,13 +2879,15 @@
 (definterface fn-heap-reserve-init-connections
   :class :common-lisp-compliant)
 
-;; The probe's decision for every command (books/heap-command.lisp, lane
-;; memory landing 2): today's fn-heap-reserve-operation-decide for every class
-;; but the store-less one and the observed reads.
+;; The probe's decision for every command (books/heap-command.lisp, memory
+;; landings 2 and 3+4a): the stopped status store-less; every store-opening
+;; class by the equation over the observed totals, else the named offline
+;; adapter; today's fn-heap-reserve-operation-decide for the rest.
 (definterface fn-heap-command-decide
   :class :common-lisp-compliant
   :keystones (fn-heap-stopped-status-is-sized-without-the-store
-              fn-heap-command-decide-reads-is-the-read-decision
+              fn-heap-command-decide-store-opening-is-the-model
+              fn-heap-command-decide-store-opening-unobserved-is-the-adapter
               fn-heap-command-decide-otherwise-is-todays))
 
 (definterface fn-heap-command-growth
