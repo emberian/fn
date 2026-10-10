@@ -3166,11 +3166,6 @@
    "item": "PRF-1349",
    "book": "books/store-log-buffer.lisp"
   },
-  "fn-lgb-decide-is-decide": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/store-log-buffer.lisp"
-  },
   "fn-lgb-decide-is-flat": {
    "class": "parser-boundary",
    "item": "PRF-1349",
@@ -3195,11 +3190,6 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-walk-once.lisp"
-  },
-  "fn-lgb-entry-places-is-list-places": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/store-log-buffer.lisp"
   },
   "fn-lgc-extend-program-keeps-the-relation": {
    "class": "durability",
@@ -3442,16 +3432,6 @@
    "book": "books/store-log-walk-once.lisp"
   },
   "fn-lgw-run-of-set-next-is-run-nf": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-walk-once.lisp"
-  },
-  "fn-lgw-step-buf-is-step": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/store-log-buffer.lisp"
-  },
-  "fn-lgw-step-buf-nf-is-step-nf": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-walk-once.lisp"

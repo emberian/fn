@@ -58,6 +58,12 @@ def lines(result):
 # Critical host path: fnn-log-ack calls fn-lgu-acknowledge; its host-run
 # refinement is fn-lgc-host-run. The fn-lgrc-program cut map checks the
 # copy performed by fnn-log-recover before those acknowledgements.
+# Critical host path: `fn log scan` and every recovery read the segment
+# through fnn-log-stream-segment, whose step per entry is
+# fn-lgw-step-buf-count (deciding by fn-lgb-decide-count, classifying the
+# stop's entry by fn-lgb-broken) and whose cursor per record is fn-lgb-span
+# with fn-lgb-slice; test_append_then_scan_on_both_images reads five
+# three-record batch entries back through them on both images.
 @unittest.skipUnless(DEVELOPER and PRODUCTION,
                      "FN_NATIVE_DEVELOPER_HOST and FN_NATIVE_HOST name the images")
 class NativeLogTests(unittest.TestCase):

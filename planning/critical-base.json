@@ -2585,10 +2585,6 @@
    "class": "parser-boundary",
    "statement_digest": "98298904722b644e76ba032cd65da00dc13cd538fe77133f3052f7246ff4efba"
   },
-  "fn-lgb-decide-is-decide": {
-   "class": "parser-boundary",
-   "statement_digest": "08a5b71c11453d21f03cabdce4f2f7edd633133183418a73b36c1cd0302fc77e"
-  },
   "fn-lgb-decide-is-flat": {
    "class": "parser-boundary",
    "statement_digest": "5e9de1a9f89078ab859ee2f0d8777852e7eeb4b586c6710165c74db50da6c852"
@@ -2608,10 +2604,6 @@
   "fn-lgb-decode-next-exec-loop-next": {
    "class": "durability",
    "statement_digest": "f4e1e67da8a32c8d658383dce67a809ee6b77f8b5af33b9760e5df51136a5c85"
-  },
-  "fn-lgb-entry-places-is-list-places": {
-   "class": "parser-boundary",
-   "statement_digest": "fbac5fbe258fd4ca3fe98dbbf574613df36691365c725d5efa03e6361cdf1ae9"
   },
   "fn-lgc-extend-program-keeps-the-relation": {
    "class": "durability",
@@ -2828,14 +2820,6 @@
   "fn-lgw-run-of-set-next-is-run-nf": {
    "class": "durability",
    "statement_digest": "1f72b65c8689a6a179a0d49b0bd381e0581ece8ebbd848d4af13a6b80d503a5c"
-  },
-  "fn-lgw-step-buf-is-step": {
-   "class": "parser-boundary",
-   "statement_digest": "c9bfca2587be7bc99be144ebcd589b2e69ea56b8ee2226157594cafd3d5dade1"
-  },
-  "fn-lgw-step-buf-nf-is-step-nf": {
-   "class": "durability",
-   "statement_digest": "94daf995472f40b2a466ca5a60c6f2255bae91501dcfe09af73487bebcc75949"
   },
   "fn-lzr-append-decide-framed-expands": {
    "class": "durability",

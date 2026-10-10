@@ -7655,9 +7655,9 @@ never touched by an open."
 stream calls at each segment's end for the fold of that segment's records'
 txids over 1, which the replay took from its one decode of each record
 (fn-lgb-decode-next); the stream then steps without the fold
-(fn-lgw-step-buf-nf) and sets its NEXT to that fold (fn-lgw-set-next):
+(fn-lgw-step-buf-nf-count) and sets its NEXT to that fold (fn-lgw-set-next):
 books/store-log-walk-once.lisp KEYSTONE fn-lgw-run-nf-then-fold-is-run.
-NIL otherwise: the step folds (fn-lgw-step-buf).")
+NIL otherwise: the step folds (fn-lgw-step-buf-count).")
 
 (defvar *fnn-log-stream-copy* nil
   "While the writable open recovers the active segment (fnn-log-recover): a
@@ -7673,11 +7673,13 @@ names (fn-lgw-header-len), the entry's length from them, never past the
 longest entry the open accepts (fn-lgw-entry-len-bounded, sweep S048:
 KEYSTONE fn-lgw-step-of-oversized-is-step-of-nil),
 that entry's octets read into the walk's octet buffer (none: an empty
-buffer), and ACL2's step over the buffer (fn-lgw-step-buf,
-books/store-log-buffer.lisp: KEYSTONE fn-lgw-step-buf-is-step, the list step
-on the buffer's octets); each record the step takes (one, or a batch entry's
-several) goes to SINK as ACL2's octet list and is not kept here.  One entry's
-octets at a time, never the segment (KEYSTONE fn-lgw-run-is-the-open: the
+buffer), and ACL2's step over the buffer (fn-lgw-step-buf-count,
+books/store-log-buffer.lisp: KEYSTONE fn-lgw-step-buf-count-is-step, the list
+step on the buffer's octets with its records answered by their count); each
+record the step takes (one, or a batch entry's several) is sliced from the
+buffer by ACL2's cursor one at a time (fn-lgb-span, fn-lgb-slice: KEYSTONES
+fn-lgb-span-records-are-the-records, fn-lgb-span-within-max), goes to SINK
+and is not kept here.  One entry's octets at a time, never the segment (KEYSTONE fn-lgw-run-is-the-open: the
 records are the recovered kernel's committed records and the kernel is its
 fn-lgc-of).  At the stop, ACL2's probe of the rest of the segment
 (fnn-log-probe-tail) and its verdict (fn-lgdm-verdict; KEYSTONES
@@ -7690,8 +7692,9 @@ never read as a torn tail -- unless the operator's repair *fnn-log-repair*
 names exactly this damage and ACL2 admits it (fn-lgdm-effective: LABEL the
 segment's file name, WRITABLE the active segment of a writable open).
 The walk reads each entry through the log walk's own octet buffer
-(fn-lgw-step-buf, lane snapshot-open-3; with *fnn-log-stream-finish* the
-no-fold step and the replay's fold, fn-lgw-run-nf-then-fold-is-run), and the
+(fn-lgw-step-buf-count, lane snapshot-open-3; with *fnn-log-stream-finish* the
+no-fold step fn-lgw-step-buf-nf-count and the replay's fold,
+fn-lgw-run-nf-then-fold-is-run), and the
 verdict is taken on the state it ends in.  Returns (values KERNEL VERDICT): the kernel (fn-lgw-kernel) and the verdict
 the open proceeds on (:complete, :torn or :repaired)."
   (let ((st (fnn-core 'fn-lgw-start genesis 1))
@@ -7707,34 +7710,44 @@ the open proceeds on (:complete, :torn or :repaired)."
              ;; fill (length E)), as fnn-extent-entry-ok fills the realizer's.
              (setf (svref buf 0) e
                    (svref buf 1) (length e))
-             (destructuring-bind (took records next)
-                 (fnn-call (if finish 'fn-lgw-step-buf-nf 'fn-lgw-step-buf) st unit max extent buf)
+             (destructuring-bind (took count next)
+                 (fnn-call (if finish 'fn-lgw-step-buf-nf-count 'fn-lgw-step-buf-count)
+                           st unit max extent buf)
                ;; The copy of what the step validated, from the same array
                ;; (never a second read of the entry: books/store-log-recover-
-               ;; copy.lisp, P-LOG-RECOVER-COPY).
+               ;; copy.lisp, P-LOG-RECOVER-COPY).  Under TOOK, not a positive
+               ;; COUNT: a rotation entry is taken with no record.
                (when (and took *fnn-log-stream-copy*)
                  (funcall *fnn-log-stream-copy* pos e (- (fnn-nat (fnn-core 'fn-lgw-pos next)) pos)))
+               ;; The step's COUNT records, one at a time by ACL2's cursor
+               ;; (fn-lgb-span from 42: KEYSTONE fn-lgb-span-records-are-the-
+               ;; records), each sliced from the buffer (fn-lgb-slice) only
+               ;; while SINK has it: at most MAX octets of list live
+               ;; (KEYSTONE fn-lgb-span-within-max).
                (when took
-                 (if *fnn-extent-file*
-                     ;; The full replay's extent seals (PRF-294): each record's
-                     ;; PLACE in this entry, ACL2's (fn-lgb-entry-places over
-                     ;; the buffer: fn-arx-list-places of its octets), bound for
-                     ;; the sink as *fnn-log-record-place* (FILE . PLACE), or NIL.
-                     ;; Each place with the entry's COMMITMENT (its trailer, read
-                     ;; from the buffer by ACL2: fn-arx-attach-trailers-buffer,
-                     ;; books/payload-extent-read.lisp; lane extent-identity,
-                     ;; PRF-994): the descriptor the seal makes carries it.
-                     (let ((places (fnn-core 'fn-arx-attach-trailers-buffer
-                                             (fnn-core 'fn-lgb-entry-places pos (length records) unit buf)
-                                             pos buf)))
-                       (dolist (record records)
-                         (let ((*fnn-log-record-place*
-                                 (and (consp places) (cons *fnn-extent-file* (pop places))))
-                               (*fnn-log-record-stored* record))
-                           (funcall sink (fnn-log-read-record record)))))
-                   (dolist (record records)
-                     (let ((*fnn-log-record-stored* record))
-                       (funcall sink (fnn-log-read-record record))))))
+                 (let ((i 42))
+                   (dotimes (j (fnn-nat count))
+                     (declare (ignorable j))
+                     (destructuring-bind (start len i2) (fnn-call 'fn-lgb-span i buf)
+                       (let ((record (fnn-core 'fn-lgb-slice start len buf)))
+                         (if *fnn-extent-file*
+                             ;; The full replay's extent seals (PRF-294): the
+                             ;; record's descriptor, its place in this entry with
+                             ;; the entry's COMMITMENT attached (ACL2's
+                             ;; fn-lgb-descriptor: KEYSTONE fn-lgb-descriptor-is-
+                             ;; the-attached-place, the place fn-arx-list-places
+                             ;; gives the record with fn-arx-attach-trailers-
+                             ;; buffer's trailer; lane extent-identity, PRF-994),
+                             ;; bound for the sink as *fnn-log-record-place*
+                             ;; (FILE . DESCRIPTOR), or NIL.
+                             (let* ((desc (fnn-core 'fn-lgb-descriptor pos start len buf))
+                                    (*fnn-log-record-place*
+                                      (and desc (cons *fnn-extent-file* desc)))
+                                    (*fnn-log-record-stored* record))
+                               (funcall sink (fnn-log-read-record record)))
+                           (let ((*fnn-log-record-stored* record))
+                             (funcall sink (fnn-log-read-record record)))))
+                       (setq i (fnn-nat i2))))))
                (setq st next))))
       (setf (svref buf 1) 0
             (svref buf 0) (fnn-make-octets 0)))

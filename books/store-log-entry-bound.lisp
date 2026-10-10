@@ -177,7 +177,10 @@
 
 (in-theory (disable fn-lg-entry-len-bound fn-lgw-entry-len-bounded fn-lgdm-entry-len-bounded))
 
-; Builder M charges one batch at this bound in its reopen workspace term.
+; The longest batch entry (kind 2) the open reads; a record entry is at most
+; 42 + MAX.  The walk holds the entry's octets in its buffer (an array) and,
+; of them, one record of at most MAX octets as a list at a time
+; (books/store-log-buffer.lisp fn-lgb-span-within-max).
 (defun fn-lg-batch-entry-bound ()
   (declare (xargs :guard t))
   (+ *fn-frame-overhead-octets* *fn-lg-batch-payload-max*))

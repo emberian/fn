@@ -74,6 +74,10 @@ class NativeRecoveryKeyringCheckpointTests(checkpoint_auto.AutoCheckpointFixture
         return body
 
     def test_author_keyring_rotation_checkpoint_matches_full_replay(self):
+        # Critical host path: the full replay (open=full-replay) streams the
+        # log through fnn-log-stream-segment under *fnn-log-stream-finish*,
+        # stepping by fn-lgw-step-buf-nf-count and binding each record's
+        # extent descriptor from fn-lgb-descriptor for the replay's seals.
         self.init_development()
         principal = self.root / "principal.bin"
         principal.write_bytes(bytes([85]) * 32)
