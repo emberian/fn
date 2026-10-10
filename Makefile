@@ -68,8 +68,13 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/admission-preparation-intent-tests \
 	tests/acl2/admission-preparation-source-capture-tests \
 	tests/acl2/admission-semantic-census-source-guard-tests \
+	tests/acl2/admission-semantic-census-resident-tests \
 	tests/acl2/admission-semantic-exclusion-tests \
+	tests/acl2/bp-controller-checkpoint-payload-directory-tests \
 	tests/acl2/bp-controller-registry-carry-tests \
+	tests/acl2/bp-digest-workspace-factory-tests \
+	tests/acl2/bp-digest-workspace-publication-tests \
+	tests/acl2/bp-digest-workspace-registered-factory-tests \
 	tests/acl2/bp-node-crc0-receive-tests \
 	tests/acl2/bp-node-fragment-step-job-tests \
 	tests/acl2/bp-received-source-capture-tests \
@@ -234,7 +239,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/consumer-account-private-frame \
 	tests/acl2/consumer-account-config-row-carry-tests \
 	tests/acl2/consumer-account-private-frame-tests \
-	books/history-preparation-page-ready \
 	books/snapshot-row-source-remap \
 	books/history-census-controller \
 	books/snapshot-held-remap \
@@ -470,7 +474,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/config \
 	books/config-invariants \
 	books/replay \
-	books/replay-invariants \
 	tests/acl2/store-event-replay-tests \
 	tests/acl2/store-identity-replay-tests \
 	tests/acl2/replay-tests \
@@ -669,6 +672,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/cold-read-reservation \
 	tests/acl2/cold-read-reservation-tests \
 	books/page-read-budget-growth \
+	books/page-read-growth-reserve-tokens \
 	books/page-read-ledger-rowsum \
 	tests/acl2/page-read-ledger-rowsum-tests \
 	tests/acl2/page-read-budget-growth-tests \
@@ -701,11 +705,16 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/resource-vector-tests \
 	books/resource-vector-relations \
 	tests/acl2/resource-vector-relations-tests \
+	books/resource-vector-relations-heap \
 	books/resource-vector-exec \
 	tests/acl2/resource-vector-exec-tests \
 	books/resource-vector-tree \
 	tests/acl2/resource-vector-tree-tests \
+	books/resource-operation \
 	tests/acl2/heap-figure-tests \
+	books/charged-totals \
+	books/memory-model \
+	tests/acl2/memory-model-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
 	tests/acl2/open-frontier-wire-tests \
@@ -1137,7 +1146,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-foundation \
 	books/bp-handoff-recovery-shape \
 	books/bp-handoff-producer-shape \
-	books/bp-handoff-recovery-refinement \
 	tests/acl2/bp-checkpoint-recovery-symbol-tests \
 	tests/acl2/bp-handoff-producer-shape-tests \
 	tests/acl2/bp-node-foundation-tests \
@@ -2361,7 +2369,6 @@ ACL2_BOOKS ?= books/defrecord \
 	books/crypto-attach \
 	books/auth-secret \
 	tests/acl2/auth-secret-tests \
-	books/statement-items \
 	books/statement-codec \
 	books/statement-seam \
 	books/statement-attach \
@@ -2699,7 +2706,7 @@ ACL2_BOOKS ?= books/defrecord \
 # opens a codec theory at the top or names a seam's implementation, and
 # `make check` fails if one starts to.  Each cluster lane of the step appends
 # its books; when the list is every book, `--strict` runs without `--books`.
-THEORY_STRICT_BOOKS ?= books/store-events books/replay books/replay-invariants \
+THEORY_STRICT_BOOKS ?= books/store-events books/replay \
 	books/store-files books/store-files-invariants books/store-files-traces \
 	books/store-node books/store-node-invariants-base books/store-node-invariants \
 	books/store-node-resolution books/store-observed books/store-observed-traces \
@@ -2833,7 +2840,8 @@ check:
 # not what the docs say now; the Python tools' invocations by their own
 # argparse parsers; quoted reply lines against the source that prints them.
 	@$(CHECK_STEP) $(PYTHON) tools/docs_check.py --check
-# The exported wire grammars (Mini M5): specs/wire-grammar.json is the value
+# The exported wire grammars (Mini M5): build/box/wire-grammar.json, the box
+# step's artifact (tools/box_artifacts.py), is the value
 # ACL2 renders (books/wire-export.lisp fn-wgx-file), and a second interpreter
 # written from the language's description reads every vector in it.
 	@$(CHECK_STEP) $(PYTHON) tools/protocol_emit.py --wire --check
@@ -3280,7 +3288,7 @@ test-modules:
 
 # Current captured and RX component roots; proof/native scope stays explicit.
 
-# The exported wire grammars (Mini M5): write specs/wire-grammar.json from
+# The exported wire grammars (Mini M5): write build/box/wire-grammar.json from
 # ACL2's fn-wgx-file; `make wire-grammar-check' compares.
 wire-grammar:
 	$(PYTHON) tools/protocol_emit.py --wire --write

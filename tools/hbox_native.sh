@@ -574,6 +574,11 @@ step attach-order static_gate attach-order tools/host_check.py --attach-order
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
+# The wire grammar is a box artifact (tools/box_artifacts.py: build/box/,
+# never committed), absent from a shipped tree: made here from the certified
+# books/wire-export (test_native_store_identity reads it).  A revision before
+# the registers left git has neither the tool nor the need.
+if [ -f tools/box_artifacts.py ]; then step box-wire $WRAP python3 tools/protocol_emit.py --wire --write; fi
 # acquire demands ONE complete origin in the cache.  The cache holds pairs
 # from many origins (runs before and after merges, partial recertifies), and
 # the incremental certify above installs what composes and certifies only the
@@ -696,6 +701,29 @@ step overlay $WRAP python3 \$S/bin/native_overlay.py build \$S/overlay --image-s
 BOX
         fi
     fi
+    # The wire grammar in a run that built nothing here (--no-build,
+    # --reuse-image, an image set): build/ outlives a re-ship, so it is made
+    # again for this source, only from a certified books/wire-export the tree
+    # kept; without one it is absent, and a module reading it is refused by
+    # tools/box_artifacts.py rather than handed another revision's grammar.
+    if [ $BUILD -ne 1 ]; then
+        cat <<BOX
+if [ -f tools/box_artifacts.py ]; then
+    if [ -f books/wire-export.cert ]; then
+        step box-wire $WRAP python3 tools/protocol_emit.py --wire --write
+    else
+        rm -f build/box/wire-grammar.json
+        echo "== box: no certified books/wire-export in this tree; no build/box/wire-grammar.json"
+    fi
+fi
+BOX
+    fi
+    # Every run stamps the artifact with its source (box_artifacts.load).
+    cat <<BOX
+if [ -f tools/box_artifacts.py ]; then
+    step box-stamp python3 -c "import sys; sys.path.insert(0, 'tools'); import box_artifacts; from pathlib import Path; box_artifacts.write_stamp(Path('.'), '$SOURCE_ID', '$BOX', '$SOURCE_ID')"
+fi
+BOX
     # The production image's identity (tests/test_native_peering and
     # test_native_admin check the running process against it), computed by
     # tools/native_env.py identity from the image FN_NATIVE_HOST names by
@@ -859,6 +887,16 @@ if [ $BUILD -eq 0 ] && [ -z "$IMAGE_SET" ] && [ -z "$REUSE" ]; then
         fi
     fi
 fi
+# The local record names the images' identity source.  A reused run's is the
+# one its run.log names (the box script reads it from build/REUSED_SOURCE,
+# which link-run writes later), so read it here; train.py image compares it
+# with HEAD.
+RECORD_SOURCE=$SOURCE_ID
+if [ -n "$REUSE" ]; then
+    RECORD_SOURCE=$(ssh -n "$HOST" "grep '^== source ' $REUSE/run.log" \
+        | sed -nE 's/^== source (commit|worktree) ([^ ]+) *$/\2/p' | head -n 1)
+    [ -n "$RECORD_SOURCE" ] || { echo "hbox_native: --reuse-image $REUSE: its run.log names no \`== source\` line on $HOST; its images' source is unknown" >&2; exit 2; }
+fi
 echo "hbox_native: $SOURCE -> $HOST:$S"
 ssh -n "$HOST" "mkdir -p $S/tree $S/logs" || { echo "hbox_native: cannot create $S on $HOST" >&2; exit 3; }
 # --no-build keeps the tree's certificates: its images and any REPL session
@@ -896,7 +934,7 @@ PID=$(ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /d
 echo "hbox_native: started; progress in $HOST:$S/run.log"
 # The record here names the box (item 67): status and re-attach read it.
 mkdir -p "$HERE/build/hbox-native"
-printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$SOURCE_ID" \
+printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$RECORD_SOURCE" \
     > "$HERE/build/hbox-native/$LABEL.run"
 if [ $DETACH -eq 1 ]; then
     echo "hbox_native: detached (pid $PID on $HOST); re-attach with: tools/hbox_native.sh attach $LABEL   (status: tools/hbox_native.sh status $LABEL)"

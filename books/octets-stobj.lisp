@@ -72,7 +72,11 @@
 (defstobj fn-octets$c
   (fn-octets$c-buf :type (array (unsigned-byte 8) (0)) :initially 0 :resizable t)
   (fn-octets$c-fill :type (integer 0 *) :initially 0)
-  :inline t)
+  :inline t
+  ; No function over this stobj, `fn-octets' or a congruent clone may be
+  ; memoized (ACL2 refuses the `memoize' event), so no update carries the
+  ; memoize-flush test: one load, compare and branch per array store.
+  :non-memoizable t)
 
 ; -----------------------------------------------------------------------------
 ; The abstraction: buf[i..n) as a list, over the raw array list.  Every
@@ -443,6 +447,52 @@
         (fn-oct-word-loop (floor w 256) (1+ dst) end fn-octets$c))
     fn-octets$c))
 
+; The zero-word extend, the extend of every span write, as stores only:
+; eight per step, no `mod'/`floor', fixnum indices.  It IS the word loop at
+; W = 0 (`fn-oct-zero-loop-is-word-loop'), so `append-word' takes it by `mbe'
+; and every theorem about `append-word' is untouched.
+(defun fn-oct-zero-loop (dst end fn-octets$c)
+  ; buf[dst..end) := 0, eight stores per step while eight cells remain.
+  (declare (type (unsigned-byte 59) dst end)
+           (xargs :stobjs fn-octets$c
+                  :guard (and (<= dst end)
+                              (<= end (fn-octets$c-buf-length fn-octets$c)))
+                  :measure (nfix (- (nfix end) (nfix dst)))))
+  (cond ((not (mbt (and (natp dst) (natp end)))) fn-octets$c)
+        ((<= (+ dst 8) end)
+         (let* ((fn-octets$c (update-fn-octets$c-bufi dst 0 fn-octets$c))
+                (fn-octets$c (update-fn-octets$c-bufi (+ dst 1) 0 fn-octets$c))
+                (fn-octets$c (update-fn-octets$c-bufi (+ dst 2) 0 fn-octets$c))
+                (fn-octets$c (update-fn-octets$c-bufi (+ dst 3) 0 fn-octets$c))
+                (fn-octets$c (update-fn-octets$c-bufi (+ dst 4) 0 fn-octets$c))
+                (fn-octets$c (update-fn-octets$c-bufi (+ dst 5) 0 fn-octets$c))
+                (fn-octets$c (update-fn-octets$c-bufi (+ dst 6) 0 fn-octets$c))
+                (fn-octets$c (update-fn-octets$c-bufi (+ dst 7) 0 fn-octets$c)))
+           (fn-oct-zero-loop (+ dst 8) end fn-octets$c)))
+        ((< dst end)
+         (let ((fn-octets$c (update-fn-octets$c-bufi dst 0 fn-octets$c)))
+           (fn-oct-zero-loop (+ dst 1) end fn-octets$c)))
+        (t fn-octets$c)))
+
+(local
+ (defthm fn-oct-word-loop-0-step
+   (implies (and (natp dst) (natp end) (< dst end))
+            (equal (fn-oct-word-loop 0 dst end fn-octets$c)
+                   (fn-oct-word-loop 0 (+ 1 dst) end (update-fn-octets$c-bufi dst 0 fn-octets$c))))
+   :hints (("Goal" :expand ((fn-oct-word-loop 0 dst end fn-octets$c))))))
+(local
+ (defthm fn-oct-word-loop-0-done
+   (implies (and (natp dst) (natp end) (<= end dst))
+            (equal (fn-oct-word-loop 0 dst end fn-octets$c) fn-octets$c))
+   :hints (("Goal" :expand ((fn-oct-word-loop 0 dst end fn-octets$c))))))
+(defthm fn-oct-zero-loop-is-word-loop
+  (equal (fn-oct-zero-loop dst end fn-octets$c)
+         (fn-oct-word-loop 0 dst end fn-octets$c))
+  :hints (("Goal" :induct (fn-oct-zero-loop dst end fn-octets$c)
+                  :in-theory (disable fn-oct-word-loop)
+                  :expand ((fn-oct-zero-loop dst end fn-octets$c)
+                           (fn-oct-word-loop 0 dst end fn-octets$c)))))
+
 ; The K low octets of W, least significant first.
 (defun fn-oct-word-octets (w k)
   (declare (xargs :guard t :measure (nfix k)))
@@ -469,7 +519,10 @@
              (fn-octets$c (if (<= end (fn-octets$c-buf-length fn-octets$c))
                               fn-octets$c
                             (resize-fn-octets$c-buf (max 1024 (* 2 end)) fn-octets$c)))
-             (fn-octets$c (fn-oct-word-loop w top end fn-octets$c)))
+             (fn-octets$c (mbe :logic (fn-oct-word-loop w top end fn-octets$c)
+                               :exec (if (and (eql w 0) (unsigned-byte-p 59 end))
+                                         (fn-oct-zero-loop top end fn-octets$c)
+                                       (fn-oct-word-loop w top end fn-octets$c)))))
         (update-fn-octets$c-fill end fn-octets$c))
     (fn-oct-write-list (fn-oct-word-octets w k) fn-octets$c)))
 

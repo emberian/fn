@@ -5,6 +5,7 @@ buffer holds to BOTH streams before it announces, then sleeps.  Under the
 old `stdout=PIPE, stderr=PIPE` start that read only the announcement, the
 child blocks in its first stderr write past 64 KiB and never announces.
 """
+import os
 import subprocess
 import sys
 import time
@@ -329,6 +330,14 @@ class InstalledLaunchTests(unittest.TestCase):
         self.image.write_text(FAKE_IMAGE)
         self.image.chmod(0o755)
         (self.tmp / "fn-host.core").write_bytes(b"core" * 1024)
+        # The installed layout carries a shipped OpenSSL prefix (D64: never
+        # the system pair).  The fake image loads no library, so its own
+        # empty prefix is the layout's, on any machine.
+        (self.tmp / "openssl" / "lib").mkdir(parents=True)
+        from unittest import mock
+        patch = mock.patch.dict(os.environ, {"FN_OPENSSL_PREFIX": str(self.tmp / "openssl")})
+        patch.start()
+        self.addCleanup(patch.stop)
 
     def test_an_owner_run_goes_through_the_installed_launcher_at_the_decided_heap(self):
         node = native_harness.Node(self, self.image, root=self.tmp / "node")
@@ -351,6 +360,42 @@ class InstalledLaunchTests(unittest.TestCase):
         out = plain.invoke("operator", plain.config, "status").stdout.decode()
         self.assertNotIn("--dynamic-space-size 777", out)
         self.assertIn("args=--fn operator {} status".format(plain.config), out)
+
+
+class Acl2SessionHeapTests(unittest.TestCase):
+    """BRIDGE-SESSION-STORELESS-HEAP: the session's options pass through the
+    image launcher's real heap decision (packaging/launcher-decide.sh, with
+    fn_decide_heap standing in for the image's `heap --' probe answering a
+    store-less command's 1,024 MB) and keep the session's own heap."""
+
+    def launched_args(self, user_args):
+        import os, tempfile
+        decide = (native_harness.ROOT / "packaging" / "launcher-decide.sh").read_text()
+        with tempfile.TemporaryDirectory() as work:
+            launcher = os.path.join(work, "image")
+            with open(launcher, "w") as out:
+                out.write("#!/bin/sh\n"
+                          "fn_decide_heap() { SBCL_USER_ARGS='--dynamic-space-size 1024 "
+                          "--control-stack-size 1024KB'; }\n")
+                out.write(decide)
+                out.write('\nprintf %s "$SBCL_USER_ARGS"\n')
+            os.chmod(launcher, 0o755)
+            env = dict(os.environ, SBCL_USER_ARGS=user_args)
+            env.pop("FN_TEST_HEAP_MB", None)
+            return subprocess.run([launcher, "--fn", "acl2", "session"], env=env,
+                                  capture_output=True, text=True, check=True).stdout.split()
+
+    def test_the_session_runs_at_its_own_heap_not_the_store_less_decision(self):
+        args = self.launched_args(native_harness.acl2_session_user_args())
+        self.assertNotIn("1024", args)
+        heap = args[len(args) - 1 - args[::-1].index("--dynamic-space-size") + 1]
+        self.assertGreater(int(heap), 1024)
+        self.assertEqual(args[-2:], ["--control-stack-size", "64MB"])
+
+    def test_a_stack_only_session_takes_the_store_less_decision(self):
+        args = self.launched_args("--control-stack-size 64MB")
+        self.assertEqual(args, ["--dynamic-space-size", "1024", "--control-stack-size", "1024KB",
+                                "--control-stack-size", "64MB"])
 
 
 if __name__ == "__main__":

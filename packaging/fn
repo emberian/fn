@@ -155,14 +155,17 @@ fn_decide_heap() {
 #                 each), not on any data.  The caller's SBCL_USER_ARGS and
 #                 FN_TEST_HEAP_MB are ignored.
 #   developer  -- FN_TEST_HEAP_MB, when set, is the figure (the tests' named
-#                 override); otherwise the image's own launcher figure.
+#                 override), placed after the caller's SBCL_USER_ARGS so a
+#                 caller's control stack is kept and the heap is this one;
+#                 otherwise the image's own launcher decides
+#                 (packaging/launcher-decide.sh).
 if [ -n "$installed" ]; then
     fn_decide_heap "$image" "$@"
 elif [ -n "${FN_TEST_HEAP_MB:-}" ]; then
     case $FN_TEST_HEAP_MB in
         *[!0-9]*) echo "fn: FN_TEST_HEAP_MB is not a decimal: $FN_TEST_HEAP_MB" >&2; exit 5 ;;
     esac
-    SBCL_USER_ARGS="--dynamic-space-size $FN_TEST_HEAP_MB"
+    SBCL_USER_ARGS="${SBCL_USER_ARGS:+$SBCL_USER_ARGS }--dynamic-space-size $FN_TEST_HEAP_MB"
     export SBCL_USER_ARGS
 fi
 exec "$image" --fn "$@"

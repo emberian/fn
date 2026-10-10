@@ -1,0 +1,14 @@
+{
+ "detail": "check_scaffold.evidence calls (ROOT / path).exists() on each evidence entry; an entry like 'tests/acl2/reclaim-chunked-walk-tests.lisp (the owner fixture store ...)' raises OSError ENAMETOOLONG and the tool exits 'malformed scaffold' before any other check. Measured at dev: 709 rows, 7,346 entries; 440 rows cite something that is not a tracked file (prose, or reports under planning/evidence/ that left the tree, which D71 allows); 3 rows hold a string, not a list. make check (not check-fast, not a train gate) is red on it. The repair is the lists, rewritten through ledger.py --repoint (lane/b-ledger-evidence), and check_scaffold reporting a non-path entry as a finding instead of crashing.",
+ "file": "tools/check_scaffold.py",
+ "id": "CHECK-SCAFFOLD-EVIDENCE-PROSE",
+ "notes": [
+  "10-09 builder-D: landed by lane/d-evidence-prose 3864dfddc. 43 rows named a non-file (30 proofs, 7 requirements, 6 scenarios); the other 397 of the 440 cite only files or D71 historical reports, accepted by --repoint and check_scaffold alike. Proofs lists rewritten through ledger.py --repoint (prose reduced to its path, the witness text moved to progress_note; citations of files never on dev, of deleted planning/lanes handoffs, of four files deleted on dev with their gate, and of an out-of-git coordinator decision dropped). check_scaffold reports an OSError entry as a finding. Gate: make check runs to completion (91 steps, 68 ok); check_scaffold exits 1 on 121 findings the crash hid, none an evidence entry. 4d4182a93 fixes the second crash the run exposed: teeth_check read a stored proof status (KeyError)."
+ ],
+ "owner": "builder-D",
+ "severity": "medium",
+ "source": "check_scaffold at dev 5f09a03e3 (Builder B seat 5, 2026-10-09)",
+ "state": "landed",
+ "title": "make check's check_scaffold crashes on a proofs.json evidence entry that is prose, not a path",
+ "updated": "2026-10-09T21:30:00Z"
+}

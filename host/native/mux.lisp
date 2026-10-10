@@ -351,12 +351,14 @@ never reaches a number the kernel may have reused)."
   (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
     (fnn-mux-wake-locked loop)))
 
-(defun fnn-mux-drain-wake (loop)
+(defun fnn-mux-drain-wake (wake-read)
+  "Drain the loop's wake pipe through WAKE-READ, the descriptor its loop read
+under LOCK for this iteration's poll."
   (let ((buffer (fnn-make-octets 64)))
     (loop
       (multiple-value-bind (count errno)
           (sb-sys:with-pinned-objects (buffer)
-            (sb-unix:unix-read (fnn-mux-loop-wake-read loop)
+            (sb-unix:unix-read wake-read
                                (sb-sys:vector-sap buffer) 64))
         (declare (ignore errno))
         (unless (and count (> count 0)) (return))))))
@@ -563,8 +565,11 @@ queues without it; producers cannot append after that observation."
                   (null (fnn-mux-loop-arrived loop))
                   (null (fnn-mux-loop-conns loop))
                   (null (fnn-mux-loop-cleanup-debts loop))
-                  (null (fnn-mux-loop-wake-read loop))
-                  (null (fnn-mux-loop-wake-write loop)))))
+                  ;; The wake descriptors are LOCK's (fnn-mux-start installs
+                  ;; them under it, fnn-mux-close-wake retires them under it).
+                  (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+                    (and (null (fnn-mux-loop-wake-read loop))
+                         (null (fnn-mux-loop-wake-write loop)))))))
          (fnn-owner-service-mux service)))
 
 (defmacro fnn-mux-guarded ((loop conn) &body body)
@@ -1762,6 +1767,8 @@ whatever the descriptor says."
                                         (null (fnn-mux-conn-plan conn)))))
                               (fnn-mux-loop-conns loop)))
            (n (1+ (length polled)))
+           (wake-read (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+                        (fnn-mux-loop-wake-read loop)))
            (fds (make-array n)) (events (make-array n))
            (timeout (if (or pending
                             (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
@@ -1772,7 +1779,7 @@ whatever the descriptor says."
                                (max 0 (ceiling (* 1000 (- next (fnn-now)))
                                                internal-time-units-per-second))
                              +fnn-mux-tick-ms+)))))
-      (setf (aref fds 0) (fnn-mux-loop-wake-read loop)
+      (setf (aref fds 0) wake-read
             (aref events 0) +fnn-mux-pollin+)
       (loop for conn in polled for i from 1
             do (setf (aref fds i) (fnn-mux-conn-fd conn)
@@ -1783,7 +1790,7 @@ whatever the descriptor says."
                             (fnn-mux-signal-committer loop)
                             (unwind-protect (fnn-mux-poll fds events timeout)
                               (setf (fnn-mux-loop-polling loop) nil)))))
-        (unless (zerop (aref revents 0)) (fnn-mux-drain-wake loop))
+        (unless (zerop (aref revents 0)) (fnn-mux-drain-wake wake-read))
         (loop for conn in polled for i from 1
               unless (or (zerop (aref revents i))
                          (eq (fnn-mux-conn-phase conn) :done))
@@ -1945,8 +1952,12 @@ after its wake descriptors are captured; failed setup retains every debt."
     (handler-case
         (dolist (loop loops)
           (multiple-value-bind (read write) (sb-posix:pipe)
-            (setf (fnn-mux-loop-wake-read loop) read
-                  (fnn-mux-loop-wake-write loop) write)
+            ;; The loop is already in the roster: a waker
+            ;; (fnn-mux-wake-locked) reads WAKE-WRITE under LOCK, so the
+            ;; descriptors are installed under it.
+            (sb-thread:with-mutex ((fnn-mux-loop-lock loop))
+              (setf (fnn-mux-loop-wake-read loop) read
+                    (fnn-mux-loop-wake-write loop) write))
             (fnn-set-nonblocking read)
             (fnn-set-nonblocking write))
           (setf (fnn-mux-loop-thread loop)

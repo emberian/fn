@@ -9,9 +9,16 @@ exact HEAD being pushed, recorded in build/train/<branch>.json.
     train.py regen [--label N]
     train.py certify BOX             # ONE farm run (install, certify), then emits
     train.py boxstep BOX             # tools-only trains / persvati fallback: the box step in a fresh tree
+    train.py image [--label L]       # read HEAD's image run (tools/hbox_native.sh) for the image gate
     train.py gate
     train.py push
     train.py status
+
+`push` and `status` print the shrink line (tools/shrink_line.py): the book
+count and the executable book lines (the call closure of what the host
+names) with their change against the dev this train replaces, and the net
+lines per directory.  A READY that grows them names the deletion that pays
+for it, or why there is none yet; the gate on it is the coordinator's switch.
 
 A books train runs `certify BOX`: one farm run of books/wire-export plus the
 train's changed books and tests (one cache install, one certify), then the emit
@@ -21,7 +28,8 @@ certify id and the install/certify/emit wall seconds (also in the train state,
 shown by `status`).
 
 `certify BOX` certifies the affected closure of the train: every Makefile
-root transitively affected by a changed book, plus the critical witness tests
+root transitively affected by a changed book, every root the train adds to
+the Makefile's ACL2_BOOKS, plus the critical witness tests
 of affected theorem books (COORDINATION section 5: the affected closure
 certifies on the exact artifact before a push, regardless of tree size; the
 lane selection, direct includers only, missed the far consumers of trains 49
@@ -43,10 +51,23 @@ present row (unless the row was retired and its item is closed), so amendments
 cannot be stockpiled.  `push` and `status` print the amendment count beside
 the row count.
 
+The image gate.  A train whose diff touches the heap probe, a launcher or
+host/native/ (IMAGE_RULES) must run the rule's native modules
+(test_native_operator_verbs, heap_from_profile and the served natives) on
+HEAD's image: `tools/hbox_native.sh HEAD MODULES`, then `train.py image`
+reads each module's rc and case statuses from the box.  The obliged set may
+span several runs at HEAD (heap_from_profile runs under `--mem 2G`): each
+`train.py image --label L` adds its run's modules to HEAD's record, and a
+module read from two runs is refused.  The gate passes when
+every obliged module ran at HEAD and each red case is a `native` known red;
+a module that has not run (an interrupted image gate) refuses the push.
+Every command ends with one line `TRAIN-DONE CMD rc=N`.
+
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
-regenerates planning/interfaces.json and specs/wire-grammar.json there, runs
-the world, build-list and host checks, commits the fetched outputs and records
-the resulting sha in build/train/box-step.json.  The `box_step` gate passes
+emits wire-grammar.json there, runs the interface, world, build-list and
+host checks, fetches the grammar into build/box/ (tools/box_artifacts.py,
+stamped with the sha it was made at; never committed) and records that sha
+in build/train/box-step.json.  The `box_step` gate passes
 when that sha is HEAD, or when it is an ancestor of HEAD, no file under
 books/, specs/ or tests/acl2/ changed since it, and the local checks
 (LOCAL_BOX_CHECKS) are all 0 at HEAD; the gate then records the sha it
@@ -68,16 +89,17 @@ import tempfile
 import time
 from pathlib import Path
 
+# the sibling tools (box_artifacts, certs, shrink_line) whether this runs as
+# a script or is imported as tools.train (tests/test_train.py)
+if str(Path(__file__).resolve().parent) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+import box_artifacts  # noqa: E402
+
 PY = os.environ.get("TRAIN_PY", "python3.12")
 PY3 = os.environ.get("TRAIN_PY3", "python3")
 
 # Conflicted files that are regenerated anyway: the train side wins.
 GENERATED = (
-    "planning/interfaces.json",
-    "specs/wire-grammar.json",
-    # keystone_emit --write-manifest rewrites it from the tree at regen;
-    # its owners say never hand-merge it (trains 41, 45, 46 conflicted on it)
-    "planning/teeth-obligations.json",
     # tools/extract/world.py writes the image-world umbrellas, their -part-N
     # links and the extraction world files from the native build scripts
     # (deputy C, 2026-10-08: commit-held-host bounced on the six parts)
@@ -99,19 +121,33 @@ REGEN_OUTPUTS = (
     "books/image-world*.lisp",
     "tools/extract/world*.lisp",
     "planning/proofs.json",
-    "planning/teeth-obligations.json",
     # harness_check --write-stubs rewrites only the marked derived-stub
     # blocks; the tree is clean before regen, so only those changes match
     "tests/*.lisp",
 )
-HBOX_OUTPUTS = ("planning/interfaces.json", "specs/wire-grammar.json")
+# The box step's emits, fetched into build/box/ beside stamp.json and never
+# committed (coordinator ruling 2026-10-09 19:50 on the registers DECISION;
+# tools/box_artifacts.py is their one reader).  The regen step's teeth
+# manifest is build/teeth-obligations.json, likewise uncommitted.
+HBOX_OUTPUTS = tuple(str(box_artifacts.DIR / name) for name in box_artifacts.ARTIFACTS)
+TEETH_MANIFEST = "build/teeth-obligations.json"
+
+# The certified world's three make-check steps (protocol_emit --wire,
+# host_check, system_books) say NOT RUN on a tree without it, a capability
+# skip (MAKE-CHECK-CERT-WORLD-NOT-RUN, coordinator ruling 2026-10-10); the
+# box step certifies that world and runs their witness, required, so nothing
+# reaches dev with them unrun.
+CERT_WORLD_BOOKS = ("books/image-world", "books/image-world-dtn")
+CERT_WORLD_CMD = "FN_CERT_WORLD_REQUIRED=1 python3 -m unittest tests.test_cert_world_checks"
 
 BOX_CMD = (
-    "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export && "
+    "python3 tools/certify_books.py --incremental --jobs 6 --timeout-seconds 1800 books/wire-export "
+    + " ".join(CERT_WORLD_BOOKS) + " && "
     "python3 tools/interface_emit.py --write && python3 tools/interface_emit.py --check && "
     "python3 tools/protocol_emit.py --wire --write && python3 tools/protocol_emit.py --wire --check && "
     "python3 tools/extract/world.py --check && python3 tools/host_check.py --build-lists && "
-    "python3 tools/host_check.py --read && python3 tools/host_check.py --world"
+    "python3 tools/host_check.py --read && python3 tools/host_check.py --world && "
+    + CERT_WORLD_CMD
 )
 
 # The half of BOX_CMD after the certify step; `certify` runs it in the farm tree.
@@ -124,6 +160,7 @@ EMIT_STEPS = (
     ("build_lists", "python3 tools/host_check.py --build-lists"),
     ("host_read", "python3 tools/host_check.py --read"),
     ("host_world", "python3 tools/host_check.py --world"),
+    ("cert_world", CERT_WORLD_CMD),
 )
 EMIT_CMD = " && ".join(
     f"{{ s=$(date +%s); {c}; r=$?; echo \"== step {n} $(( $(date +%s) - s ))\"; [ $r = 0 ]; }}"
@@ -155,7 +192,33 @@ UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-         "box_step", "lock_delta", "baseline", "secrets", "unit")
+         "box_step", "lock_delta", "baseline", "secrets", "unit", "image")
+
+# The image gate (coordinator 2026-10-09, after train 74).  A train whose diff
+# against origin/dev touches a rule's paths runs the rule's native modules on
+# the train's own image in the same train (COORDINATION section 5), picked
+# from the diff rather than remembered: train 63 changed the launcher's heap
+# decision and no train ran test_native_served_line_stack until train 73,
+# which found it red.  A path ending in "/" is a directory prefix.
+SERVED_NATIVES = ("tests.test_native_served_differential", "tests.test_native_owner",
+                  "tests.test_native_article_slots", "tests.test_native_reader_index",
+                  "tests.test_native_bounds_blob", "tests.test_native_served_cost",
+                  "tests.test_native_served_line_stack", "tests.test_native_over_window")
+IMAGE_RULES = (
+    ("the heap probe, a launcher or host/native/",
+     ("books/heap-figure.lisp", "packaging/fn", "packaging/launcher-decide.sh",
+      "tools/build_native_host.sh", "tools/extract/core_launcher.py", "host/native/"),
+     ("tests.test_native_operator_verbs", "tests.test_native_heap_from_profile") + SERVED_NATIVES),
+)
+# tools/hbox_native.sh's local record of a run (box=, dir=, source=), under
+# the batch tree; LABEL is the first 12 hex digits of the run's commit.
+IMAGE_RUN_RECORD = "build/hbox-native/{label}.run"
+# a case status that is not a red (tools/test_budget.py's vocabulary)
+IMAGE_CASE_PASS = ("ok", "skip")
+# tools/hbox_native.sh's module status when it ran and every test skipped
+# (a fixture or memory cap absent): it ran, it is not a red, and the gate
+# prints it so the uncovered module is never silent
+IMAGE_RC_ALL_SKIPPED = 4
 
 # Dev's recorded reds with owners (COORDINATION section 5).  Each row is
 # {"kind", "subject", "item", "owner", "evidence"}; (kind, subject) is unique.
@@ -281,16 +344,28 @@ def parse_amendments(text: str) -> list[dict]:
     records = data.get("amendments") if isinstance(data, dict) else None
     if not isinstance(records, list):
         raise TrainError(f"{KNOWN_RED_AMENDMENTS} has no list 'amendments'")
-    seen = set()
+    last: dict = {}
     for rec in records:
         if not isinstance(rec, dict) or any(not isinstance(rec.get(f), str) or not rec.get(f)
                                             for f in AMENDMENT_FIELDS):
             raise TrainError(f"{KNOWN_RED_AMENDMENTS}: a record lacks one of "
                              f"{', '.join(AMENDMENT_FIELDS)}: {str(rec)[:120]}")
         key = (rec["kind"], rec["subject"])
-        if key in seen:
-            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]} is amended twice")
-        seen.add(key)
+        prev = last.get(key)
+        if prev is not None:
+            # An owner transfer (coordinator 2026-10-09): a later record for
+            # the same row names the owner it takes over from, with the first
+            # record's item and dev sha.  The earlier records stay as written
+            # (the measured owner); the last one is the row's current owner.
+            if not (rec.get("transfer_from") == prev["owner"] and rec["owner"] != prev["owner"]
+                    and rec["item"] == prev["item"] and rec["dev_sha"] == prev["dev_sha"]):
+                raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]} is amended twice "
+                                 "(a later record must be an owner transfer: transfer_from the "
+                                 "previous owner, the same item and dev_sha, a new owner)")
+        elif "transfer_from" in rec:
+            raise TrainError(f"{KNOWN_RED_AMENDMENTS}: {key[0]} {key[1]}: a transfer with no "
+                             "earlier record")
+        last[key] = rec
     return records
 
 
@@ -452,8 +527,9 @@ def cmd_regen(t: Train, args) -> int:
         ("ledger", [PY, "tools/ledger.py", "--write"]),
         # the raw harnesses' derived-stub blocks (31 had drifted by train 51)
         ("stubs", [PY, "tools/harness_check.py", "--write-stubs"]),
-        # the teeth obligation manifest of the merged tree (the keystone gate
-        # checks it; a conflict on it took the train side at merge)
+        # the teeth obligation manifest of the merged tree, written to
+        # build/teeth-obligations.json (uncommitted); the keystone gate and
+        # certify's critical witnesses read it
         ("teeth", [PY, "tools/keystone_emit.py", "--write-manifest"]),
     ):
         rc = t.run(f"regen-{step}", argv)
@@ -463,7 +539,7 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = f"Regenerate train {n}: image-world and extraction world files, proofs.json events, derived harness stubs, teeth obligation manifest"
+    msg = f"Regenerate train {n}: image-world and extraction world files, proofs.json events, derived harness stubs"
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1
@@ -494,8 +570,8 @@ def cmd_boxstep(t: Train, args) -> int:
     if rc != 0:
         say(f"box step on {args.box} failed (rc {rc}); nothing recorded")
         return rc
-    _commit_named(t, HBOX_OUTPUTS, f"interfaces.json, wire-grammar.json: the box step's emits on {args.box} at {ran_at[:9]}")
-    record = {"sha": t.head(), "ran_at": ran_at, "box": args.box}
+    box_artifacts.write_stamp(t.root, ran_at, args.box, ran_at)
+    record = {"sha": ran_at, "ran_at": ran_at, "box": args.box}
     t.dir.mkdir(parents=True, exist_ok=True)
     box_record_path(t).write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
     say(f"box step recorded: {args.box} at {record['sha'][:9]}")
@@ -505,6 +581,29 @@ def cmd_boxstep(t: Train, args) -> int:
 def _changed_roots(t: Train, prefix: str) -> list[str]:
     out = git(t.root, "diff", "--name-only", "--diff-filter=AM", "origin/dev", "HEAD", "--", prefix).stdout.split()
     return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
+
+
+def makefile_root_list(text: str) -> list[str]:
+    """The Makefile's ACL2_BOOKS roots (tools/ledger.py makefile_roots's reading)."""
+    match = re.search(r"(?ms)^ACL2_BOOKS\s*\??=\s*(.*?)(?=^\S|\Z)", text)
+    if not match:
+        raise TrainError("Makefile: no ACL2_BOOKS assignment")
+    return [token for token in match.group(1).replace("\\\n", " ").split() if token]
+
+
+def _added_roots(t: "Train") -> list[str]:
+    """Roots HEAD's Makefile lists that origin/dev's does not.  A book that
+    becomes a root without changing (a kept claim nothing certified, a test
+    re-hooked) is affected by the train though no changed book reaches it;
+    train 76 listed three such roots and the changed-book selection missed
+    them."""
+    head = t.root / "Makefile"
+    if not head.is_file():
+        return []  # no Makefile, no roots
+    shown = git(t.root, "show", "origin/dev:Makefile", check=False)
+    # a Makefile new in this train makes every root it lists new
+    before = set(makefile_root_list(shown.stdout)) if shown.returncode == 0 else set()
+    return [r for r in makefile_root_list(head.read_text(encoding="utf-8")) if r not in before]
 
 
 def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
@@ -518,7 +617,7 @@ def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
         return []
     import certs
 
-    manifest = root / "planning/teeth-obligations.json"
+    manifest = root / TEETH_MANIFEST
     try:
         entries = json.loads(manifest.read_text())["entries"]
         witnesses: dict[str, set[str]] = {}
@@ -599,7 +698,11 @@ def cmd_certify(t: Train, args) -> int:
     # stale witness fails keystone_emit's critical gate (trains 52 and 55
     # needed a hand certify of them)
     witnesses = _critical_witness_roots(t.root, books)
-    roots = list(dict.fromkeys(["books/wire-export", *books, *tests, *witnesses]))
+    added = _added_roots(t)
+    if added:
+        say(f"certify: {len(added)} root(s) new in the Makefile: " + ", ".join(added))
+    roots = list(dict.fromkeys(["books/wire-export", *CERT_WORLD_BOOKS, *books, *tests,
+                                *witnesses, *added]))
     argv = [PY, "tools/farm.py"]
     # the affected closure: every Makefile root a changed book reaches
     for b in books:
@@ -664,8 +767,8 @@ def cmd_certify(t: Train, args) -> int:
             return 1
     t3 = time.monotonic()
     wall = {"install": round(t1 - t0), "certify": round(t2 - t1), "emit": round(t3 - t2), "total": round(t3 - t0), "emit_steps": steps}
-    _commit_named(t, HBOX_OUTPUTS, f"interfaces.json, wire-grammar.json: the train certify's emits on {args.box} at {ran_at[:9]}")
-    record = {"sha": t.head(), "ran_at": ran_at, "box": args.box, "run": run,
+    box_artifacts.write_stamp(t.root, ran_at, args.box, ran_at)
+    record = {"sha": ran_at, "ran_at": ran_at, "box": args.box, "run": run,
               "certify_id": rec.get("certify_id"), "wall": wall, "cache_seed": cache_seed,
               "known_reds_seen": known_seen}
     t.dir.mkdir(parents=True, exist_ok=True)
@@ -852,6 +955,132 @@ def _baseline_gate(t: Train) -> tuple[int, dict]:
                 "unowned": unowned, "closed_items": closed, "established": dev_rows is None}
 
 
+def image_modules(changed: list[str]) -> dict[str, list[str]]:
+    """The native modules the train's diff obliges (IMAGE_RULES), each with
+    the changed paths that oblige it."""
+    need: dict[str, list[str]] = {}
+    for _why, paths, modules in IMAGE_RULES:
+        hits = [f for f in changed
+                if any(f.startswith(p) if p.endswith("/") else f == p for p in paths)]
+        if hits:
+            for m in modules:
+                need.setdefault(m, [])
+                need[m] += [h for h in hits if h not in need[m]]
+    return need
+
+
+def parse_image_results(text: str) -> dict[str, dict]:
+    """The box's per-module outcome from the lines `RC MODULE N` (rc/test-MODULE)
+    and `FN_TEST_BUDGET_RESULT {...}` (logs/test-MODULE.log): module -> {"rc",
+    "cases": {case: status}}.  A module with an rc and no result line has no
+    cases (killed, or refused before its first test)."""
+    out: dict[str, dict] = {}
+    for line in text.splitlines():
+        words = line.split()
+        if len(words) == 3 and words[0] == "RC" and words[2].lstrip("-").isdigit():
+            out.setdefault(words[1], {"cases": {}})["rc"] = int(words[2])
+        elif line.startswith("FN_TEST_BUDGET_RESULT "):
+            try:
+                record = json.loads(line.split(" ", 1)[1])
+            except ValueError:
+                continue
+            module = record.get("module")
+            if isinstance(module, str):
+                entry = out.setdefault(module, {"cases": {}})
+                entry["cases"] = {c: s for c, s in record.get("cases") or []}
+    return {m: e for m, e in out.items() if "rc" in e}
+
+
+def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
+                  rows: list[dict] | None) -> tuple[int, dict]:
+    """The image gate's decision.  Green when nothing is obliged, or when every
+    obliged module ran on the image of HEAD and each red case in it is a
+    `native` row of planning/known-reds.json.  A module that did not run (an
+    interrupted image gate) refuses the push until it has; so does a module
+    that failed with no case recorded."""
+    if not need:
+        return 0, {"skipped": True}
+    if record is None:
+        return 1, {"error": "no image run recorded at HEAD; run tools/hbox_native.sh HEAD "
+                            "MODULES, then `train.py image`", "need": sorted(need)}
+    if record.get("source") != head:
+        return 1, {"error": "the recorded image run is of %s, not HEAD" % str(record.get("source"))[:9],
+                   "need": sorted(need)}
+    known = {r["subject"] for r in rows or [] if r.get("kind") == "native"}
+    results = record.get("modules", {})
+    missing = sorted(m for m in need if m not in results)
+    unexplained, known_seen, skipped = [], [], []
+    for m in sorted(need):
+        if m not in results:
+            continue
+        rc, cases = results[m]["rc"], results[m]["cases"]
+        reds = sorted(c for c, s in cases.items() if s not in IMAGE_CASE_PASS)
+        if rc == IMAGE_RC_ALL_SKIPPED and not reds:
+            skipped.append(m)
+        elif rc != 0 and not reds:
+            unexplained.append(f"{m} (rc {rc}, no case recorded)")
+        for c in reds:
+            (known_seen if c in known else unexplained).append(c)
+    extra = {"need": sorted(need), "runs": sorted(record.get("runs") or {}), "missing": missing,
+             "unexplained": unexplained, "known_reds": known_seen, "skipped": skipped}
+    return (1 if missing or unexplained else 0), extra
+
+
+def merge_image_run(prior: dict | None, head: str, box: str, directory: str,
+                    modules: dict[str, dict]) -> dict:
+    """HEAD's image record with one more run read into it.  An obliged set can
+    need several runs at HEAD (heap_from_profile's small cases run only under
+    `hbox_native.sh --mem 2G`, the other modules at the default), so the record
+    keeps each module with the run it came from.  A record of another commit is
+    replaced; re-reading a run replaces that run's modules; a module already
+    read from a different run at HEAD is refused, so no module's verdict is
+    ever chosen between two runs."""
+    record = {"source": head, "runs": {}, "modules": {}}
+    if prior and prior.get("source") == head and "runs" in prior:
+        record["runs"] = {d: b for d, b in prior["runs"].items() if d != directory}
+        record["modules"] = {m: e for m, e in prior["modules"].items() if e.get("run") != directory}
+    twice = sorted(m for m in modules if m in record["modules"])
+    if twice:
+        raise TrainError("module(s) already read from another run at HEAD: " + ", ".join(
+            f"{m} ({record['modules'][m]['run']})" for m in twice) + f"; not read again from {directory}")
+    record["runs"][directory] = box
+    for m, e in modules.items():
+        record["modules"][m] = dict(e, run=directory)
+    return record
+
+
+def image_record_path(t: "Train", label: str) -> Path:
+    return t.root / IMAGE_RUN_RECORD.format(label=label)
+
+
+def cmd_image(t: Train, args) -> int:
+    """Read one of HEAD's image runs from its box into the train state: each
+    module's rc and case statuses and the run it came from, for the image gate
+    (merge_image_run: several runs at HEAD combine, one module per run)."""
+    head = t.head()
+    label = args.label or head[:12]
+    path = image_record_path(t, label)
+    if not path.is_file():
+        raise TrainError(f"no image run record {path}; run tools/hbox_native.sh {head[:9]} MODULES")
+    run = dict(l.split("=", 1) for l in path.read_text().splitlines() if "=" in l)
+    if run.get("source") != head:
+        raise TrainError(f"{path} is of {run.get('source', '?')[:9]}, not HEAD {head[:9]}")
+    script = ("cd %s && for f in rc/test-*; do [ -f \"$f\" ] && echo \"RC ${f#rc/test-} $(cat \"$f\")\"; done; "
+              "grep -h FN_TEST_BUDGET_RESULT logs/test-*.log 2>/dev/null; true") % shlex.quote(run["dir"])
+    p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], script],
+                       capture_output=True, text=True)
+    if p.returncode != 0:
+        raise TrainError(f"reading {run['box']}:{run['dir']} failed (rc {p.returncode}): {p.stderr.strip()[:200]}")
+    st = t.load()
+    read = parse_image_results(p.stdout)
+    st["image"] = merge_image_run(st.get("image"), head, run["box"], run["dir"], read)
+    t.save(st)
+    for m, e in sorted(read.items()):
+        reds = [c for c, s in e["cases"].items() if s not in IMAGE_CASE_PASS]
+        say(f"image {m}: rc {e['rc']}, {len(e['cases'])} cases, red {len(reds)} ({run['dir']})")
+    return 0
+
+
 def _launches_native_image(path: Path) -> bool:
     """A suite that imports tests/native_harness starts the built image
     (tests/test_bp_node_native.py and the other BP suites are named
@@ -996,6 +1225,22 @@ def cmd_gate(t: Train, args) -> int:
             results[test] = t.run("gate-unit-" + Path(test).stem, [PY, "-m", "unittest", test])
     rec("unit", 0 if all(v == 0 for v in results.values()) else 1, tests=results)
 
+    need = image_modules(files)
+    image_rc, image_record = image_verdict(need, st.get("image"), head, known_reds_at(t, "HEAD"))
+    if need:
+        say(f"image: obliged {len(need)} module(s) by " + ", ".join(sorted({f for v in need.values() for f in v})[:5]))
+        for m in image_record.get("missing", []):
+            say(f"  NOT RUN on HEAD's image: {m}")
+        for c in image_record.get("unexplained", []):
+            say(f"  RED and not a known red: {c}")
+        for m in image_record.get("skipped", []):
+            say(f"  ran with every test skipped (not covered): {m}")
+        if "error" in image_record:
+            say(f"  {image_record['error']}")
+    else:
+        say("image: no change obliges an image module")
+    rec("image", image_rc, **image_record)
+
     bad = [n for n, g in gates.items() if g["rc"] != 0]
     say(f"gates at {head[:9]}: " + ", ".join(f"{n}={g['rc']}" for n, g in gates.items()))
     return 1 if bad else 0
@@ -1035,7 +1280,19 @@ def cmd_push(t: Train, args) -> int:
     b = gates["box_step"]
     say("box step: " + (f"inherited from {b['inherits_from'][:9]} ({b['box']})" if "inherits_from" in b
                         else f"ran at HEAD on {b['ran_on']}"))
+    say(shrink_words(t, old, head))
     return 0
+
+
+def shrink_words(t: "Train", base: str, head: str) -> str:
+    """The shrink line (tools/shrink_line.py): book count, executable book
+    lines and net lines per directory against BASE.  A status line, not a
+    gate: a measure that cannot be taken is printed, never a refusal."""
+    try:
+        import shrink_line
+        return shrink_line.line(t.root, base, head)
+    except Exception as error:  # noqa: BLE001 - the push already happened
+        return f"shrink: unavailable ({type(error).__name__}: {error})"
 
 
 # --------------------------------------------------------------------------- status
@@ -1055,6 +1312,8 @@ def cmd_status(t: Train, args) -> int:
         say("  verdict: " + verdict_words(known_reds_at(t, "HEAD"), amendments_at(t, "HEAD")))
     except TrainError as error:
         say(f"  verdict: {error}")
+    fork = git(t.root, "merge-base", "HEAD", "origin/dev", check=False).stdout.strip()
+    say("  " + (shrink_words(t, fork, head) if fork else "shrink: unavailable (no fork point with origin/dev)"))
     for n in GATES:
         g = st.get("gates", {}).get(n)
         if g:
@@ -1076,16 +1335,22 @@ def main(argv=None) -> int:
     c = sub.add_parser("certify")
     c.add_argument("box", choices=("hbox", "persvati"))
     g = sub.add_parser("gate")
+    i = sub.add_parser("image")
+    i.add_argument("--label", help="the run's label (default: HEAD's first 12 hex digits); "
+                   "each run read at HEAD adds its modules to HEAD's image record")
     sub.add_parser("push")
     sub.add_parser("status")
     args = ap.parse_args(argv)
     try:
         t = Train(toplevel(Path.cwd()))
-        return {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate,
-                "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
+        rc = {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate,
+              "image": cmd_image, "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
     except TrainError as e:
         say(f"train: {e}")
-        return 2
+        rc = 2
+    # one completion line per command, for a Monitor on a detached run
+    say(f"TRAIN-DONE {args.cmd} rc={rc}")
+    return rc
 
 
 if __name__ == "__main__":

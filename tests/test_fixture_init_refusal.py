@@ -100,14 +100,18 @@ class CheckpointSuffixTests(unittest.TestCase):
         self.assertGreater(int(flags["--max-transactions"]), 1000 + 100000 + 20000)
         self.assertGreater(int(flags["--max-open-suffix"]), 20000)
 
-    def test_post_suffix_checkpoints_then_posts_every_record_to_one_owner(self):
+    def post_suffix(self, rooms, n=3):
+        """fixtures.main post-suffix under mocks; ROOMS is each status's
+        (max-history-octets, bytes-used) in order; the gate charge is 50 and
+        the reserve 10."""
         from unittest import mock
         import rep_measure
         import msgid_measure
         work = Path(self.temporary.name).resolve() / "base"
         store = work / "store"
-        store.mkdir(parents=True)
-        verbs, posted, envs = [], [], []
+        store.mkdir(parents=True, exist_ok=True)
+        calls = {"verbs": [], "posted": [], "envs": [], "starts": 0, "stops": 0}
+        rooms = list(rooms)
 
         class Conn:
             def __init__(self, port):
@@ -116,31 +120,77 @@ class CheckpointSuffixTests(unittest.TestCase):
             def close(self):
                 pass
 
-        def run(argv, env, check):
-            verbs.append(argv[3:])
+        def run(argv, env=None, check=False, **kw):
+            words = [str(w) for w in argv[2:]]
+            if words[0] == "operator" and words[2] == "status":
+                history, used = rooms.pop(0)
+                calls["verbs"].append(["status"])
+                out = ("profile format=10 max-transactions=131072 max-history-octets=%d "
+                       "max-record-octets=196608\nheadroom transactions-used=10 "
+                       "bytes-used=%d history-bound=%d\nmaintenance-reserve octets=10 "
+                       "transactions=1 debt=0 held\n" % (history, used, history))
+                return subprocess.CompletedProcess(argv, 0, out, "")
+            calls["verbs"].append(words[2:] if words[0] == "operator" else words[1:])
             return subprocess.CompletedProcess(argv, 0)
 
         def start(image, config, env, stderr_path, timeout=3600):
-            envs.append(env)
+            calls["envs"].append(env)
+            calls["starts"] += 1
             self.assertIn(str(store), config.read_text())
             return object(), 1.0, None
+
+        def stop(proc, err):
+            calls["stops"] += 1
 
         report = work / "suffix.json"
         with mock.patch.object(fixtures.subprocess, "run", run), \
                 mock.patch.object(rep_measure, "start_owner", start), \
-                mock.patch.object(rep_measure, "stop_owner", lambda proc, err: None), \
+                mock.patch.object(rep_measure, "stop_owner", stop), \
+                mock.patch.object(fixtures, "gate_figure", lambda image, octets: 50), \
                 mock.patch.object(rep_measure, "post",
-                                  lambda conn, i, octets: posted.append((i, octets))), \
+                                  lambda conn, i, octets: calls["posted"].append((i, octets))), \
                 mock.patch.object(msgid_measure, "free_port", lambda: 1), \
                 mock.patch.object(msgid_measure, "Conn", Conn):
-            code = fixtures.main(["post-suffix", "/img", str(store), "3", "--json", str(report)])
+            code = fixtures.main(["post-suffix", "/img", str(store), str(n),
+                                  "--json", str(report)])
+        return code, calls, json.loads(report.read_text()), store
+
+    def test_post_suffix_checkpoints_then_posts_every_record_to_one_owner(self):
+        code, calls, report, store = self.post_suffix([(1 << 20, 100), (1 << 20, 200)])
         self.assertEqual(code, 0)
-        self.assertEqual(verbs, [[str(store), "rebind-filesystem"], [str(store), "checkpoint"]])
-        self.assertEqual(envs[0]["FN_NATIVE_CHECKPOINT_BUDGET_TEST"], "1")
-        self.assertEqual(posted, [(5000000, 2048), (5000001, 2048), (5000002, 2048)])
-        self.assertEqual(json.loads(report.read_text())["posted"], 3)
+        self.assertEqual(calls["verbs"], [[str(store), "rebind-filesystem"],
+                                          [str(store), "checkpoint"], ["status"], ["status"]])
+        self.assertEqual(calls["envs"][0]["FN_NATIVE_CHECKPOINT_BUDGET_TEST"], "1")
+        self.assertEqual(calls["posted"], [(5000000, 2048), (5000001, 2048), (5000002, 2048)])
+        self.assertEqual(report["post_charge"], 100)
+        self.assertEqual(report["posted"], 3)
         self.assertTrue((store / "writer.lock").is_file())
 
+    def test_post_suffix_raises_the_history_to_the_gates_bound(self):
+        # FIXTURE-CP100K-HISTORY-SIZING: the first post is charged 1 MiB; the
+        # other 2 need 11 MiB + 1 x 1 MiB + gate 50 + reserve 10, so 13 MiB.
+        code, calls, report, _ = self.post_suffix(
+            [(11 << 20, 10 << 20), (11 << 20, 11 << 20), (13 << 20, 11 << 20)])
+        self.assertEqual(code, 0)
+        self.assertIn(["policy", "set", "max-history-octets", str(13 << 20)], calls["verbs"])
+        self.assertEqual((calls["starts"], calls["stops"]), (2, 2))
+        self.assertEqual(report["history_needed"], 13 << 20)
+        self.assertEqual(len(calls["posted"]), 3)
+
+    def test_post_suffix_refuses_when_the_raise_is_not_in_force(self):
+        code, calls, report, _ = self.post_suffix(
+            [(11 << 20, 10 << 20), (11 << 20, 11 << 20), (11 << 20, 11 << 20)])
+        self.assertEqual(code, 1)
+        self.assertEqual(len(calls["posted"]), 1)
+        self.assertEqual(calls["stops"], 2)
+
+    def test_the_raise_admits_the_last_post_at_the_gate(self):
+        # used + (remaining - 1) x each + gate + reserve, to the MiB.
+        self.assertEqual(fixtures.raised_history(11 << 20, 1 << 20, 2, 50, 10), 13 << 20)
+        # cp100k on hbox at d8fb738b3: the synthesized average (4,571) under-
+        # sized the suffix, refused at post 19,992 under 549,453,824 octets.
+        self.assertGreater(fixtures.raised_history(457012000 + 4624, 4624, 19999, 23096, 4096),
+                           549453824)
 
 if __name__ == "__main__":
     unittest.main()

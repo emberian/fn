@@ -1,0 +1,12 @@
+{
+ "detail": "list_codec_check: host/native/store-identity.lisp 2 sites not in the baseline; 81 sites in 15 files against baseline 92 ('shrunk by 11: run --write'). tests.test_list_codec_check fails on the same row (2 not <= 0). The file last changed in f8a78b7b8 (a run's heap is sized by its own store, the OPERATOR-STATUS-OBSERVED-SIZING work). Either the two sites become buffer reads or they enter the baseline with a reason; the 11-site shrink is written with --write.",
+ "file": "host/native/store-identity.lisp",
+ "id": "LIST-CODEC-STORE-IDENTITY",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
+ "state": "open",
+ "title": "list_codec_check: host/native/store-identity.lisp has 2 host-called octet-list codec sites not in the baseline, and the baseline (92) is 11 above the tree (81)",
+ "updated": "2026-10-09T22:00:00Z"
+}

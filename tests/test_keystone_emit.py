@@ -30,9 +30,8 @@ def base_of(*names):
 
 class Findings(unittest.TestCase):
     def run_findings(self, current, base):
-        stored = ke.stored({e["name"]: dict(e, complete=False) for e in current})
-        return ke.manifest_findings({e["name"]: e for e in current}, base, REV,
-                                    {"entries": stored})
+        # no committed manifest (it is regenerated into build/, never committed)
+        return ke.manifest_findings({e["name"]: e for e in current}, base, REV, None)
 
     def test_a_new_untoothed_keystone_is_toothless_not_a_manifest_finding(self):
         current = {e["name"]: e for e in [entry("a"), entry("new")]}
@@ -141,9 +140,9 @@ def gen(name, book="tests/acl2/t.lisp", claim="c1", **more):
 
 class Vanished(unittest.TestCase):
     def findings(self, current, base_entries, exists=lambda path: True):
-        stored = ke.stored({e["name"]: dict(e, complete=False) for e in current})
+        # no committed manifest (it is regenerated into build/, never committed)
         return ke.manifest_findings({e["name"]: e for e in current}, {"entries": base_entries},
-                                    REV, {"entries": stored}, exists)
+                                    REV, None, exists)
 
     def test_a_base_generated_entry_that_vanishes_is_a_finding(self):
         found = self.findings([entry("a")], [gen("old"), entry("a")])
@@ -189,10 +188,14 @@ class WriteManifest(unittest.TestCase):
         self.base = base_of("kept", "gone")
         patches = [mock.patch.object(ke, "PROOFS", self.proofs),
                    mock.patch.object(ke, "MANIFEST", self.manifest),
+                   mock.patch.object(ke, "COMMITTED", self.dir / "committed.json"),
                    mock.patch.object(ke, "CEILING", self.dir / "ceiling.json"),
                    mock.patch.object(ke.ledger, "load_tree",
                                      lambda lazy=True: SimpleNamespace(books={})),
                    mock.patch.object(ke, "certified_books", lambda books: {}),
+                   # the fixture keystones are cited by no interface entry (the
+                   # box step's build/box/interfaces.json is not read here)
+                   mock.patch.object(ke.keystone_critical, "interface_index", lambda *a: {}),
                    mock.patch.object(ke, "base_manifest", lambda: (self.base, REV))]
         for patch in patches:
             patch.start()
@@ -228,12 +231,23 @@ class WriteManifest(unittest.TestCase):
         self.assertIn("keystones without teeth: 1 (ceiling 1)", out)
         self.assertIn("toothless: new", out)
 
-    def test_the_gate_check_alone_reports_staleness(self):
+    def test_the_gate_check_alone_has_no_manifest_finding(self):
+        # the manifest is regenerated into build/, never committed: an older
+        # one there is not a finding (the old "stale" finding is gone)
         self.set_ceiling(["new"])
         problems, out = self.run_gate(False)
-        self.assertEqual(len(problems), 1)
-        self.assertIn("stale", problems[0])
+        self.assertEqual(problems, [])
         self.assertIn("toothless: new", out)
+        self.assertEqual(self.written(), {"kept", "gone"})
+
+    def test_a_committed_manifest_is_refused_and_blocks_regeneration(self):
+        self.set_ceiling(["new"])
+        (self.dir / "committed.json").write_text(json.dumps({"entries": []}))
+        for write in (False, True):
+            problems, _ = self.run_gate(write)
+            self.assertEqual(len(problems), 1)
+            self.assertIn("planning/teeth-obligations.json is committed again", problems[0])
+        self.assertEqual(self.written(), {"kept", "gone"})
 
 
 class NewWitnessClasses(unittest.TestCase):
@@ -322,11 +336,28 @@ class NewWitnessClasses(unittest.TestCase):
             (root / "tests/acl2/t.lisp").write_text("fixture")
             proofs = root / "proofs.json"
             proofs.write_text('{"proofs": [{"events": ["example"]}]}')
-            with mock.patch.object(ke, "ROOT", root), mock.patch.object(ke, "PROOFS", proofs):
+            with mock.patch.object(ke, "ROOT", root), mock.patch.object(ke, "PROOFS", proofs), \
+                    mock.patch.object(ke.keystone_critical, "interface_index", lambda *a: {}):
                 result = ke.obligations(tree, {"tests/acl2/t.lisp": True})["example"]
         self.assertEqual(result["removals"],
                          {"reachable": 0, "logical": 0, "lemma": 0, "assumption": 1})
         self.assertFalse(result["complete"])
+
+
+class ClaimEvidenceStampTests(unittest.TestCase):
+    def test_a_claimed_row_carries_the_ledger_evidence_stamp(self):
+        with tempfile.TemporaryDirectory() as directory:
+            proofs = Path(directory) / "proofs.json"
+            proofs.write_text(json.dumps({"proofs": []}) + "\n")
+            keystone = SimpleNamespace(name="k", registry_name="k", subject="s",
+                                       book="books/k.lisp")
+            answer = SimpleNamespace(stdout="claimed PRF-9999\n")
+            with mock.patch.object(ke, "PROOFS", proofs), \
+                    mock.patch.object(ke.subprocess, "run", return_value=answer):
+                self.assertEqual(ke.claim(keystone, "lane", "M5", "t"), "PRF-9999")
+            registry = json.loads(proofs.read_text())
+            self.assertEqual(registry["proofs"][0]["evidence"], ["books/k.lisp"])
+            self.assertEqual(ke.ledger.evidence_problems(registry), [])
 
 
 if __name__ == "__main__":
