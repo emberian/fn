@@ -260,14 +260,17 @@
 
 (definterface fn-web-host-page-cursor :class :common-lisp-compliant)
 
-; The cursor is one fn-web-host-page-cursor made and fn-wpc-step returned: its
-; spans end inside the retained reply (fn-wpc-cursorp).
+;; :program by necessity until the cursor's invariant can be carried without
+;; evaluation: fn-wpc-step's guard (fn-wpc-cursorp, verified) walks every
+;; remaining segment, and the host calls this once per window, so an evaluated
+;; guard is quadratic in the reply; :raw-with refuses a carried conjunct over
+;; a host formal (books/definterface.lisp fn-di-raw-with-problem).
+;; DEPTH-EXCESS-D keeps it open.
 (defun fn-web-host-page-step (cursor count emitp fn-web-in)
-  (declare (xargs :stobjs fn-web-in
-                  :guard (fn-wpc-cursorp cursor (fn-octets-len fn-web-in))))
+  (declare (xargs :mode :program :stobjs fn-web-in))
   (fn-wpc-step cursor count emitp fn-web-in))
 
-(definterface fn-web-host-page-step :class :common-lisp-compliant)
+(definterface fn-web-host-page-step :class ::program)
 
 (defun fn-web-host-private-reply-p (flow event)
   (declare (xargs :guard t))
@@ -297,13 +300,13 @@
 (defun fn-web-host-article-page (config flow scan)
   (declare (xargs :mode :program))
   (fn-was-page config flow scan))
+;; :program for the reason fn-web-host-page-step gives (fn-wpc-wcursorp walks
+;; the remaining segments).
 (defun fn-web-host-window-page-step (cursor base count emitp fn-web-in)
-  (declare (xargs :stobjs fn-web-in
-                  :guard (and (natp base) (natp count) (fn-wpc-wcursorp cursor))))
+  (declare (xargs :mode :program :stobjs fn-web-in))
   (fn-wpc-window-drive 4096 cursor base count emitp nil fn-web-in))
 
-(definterface fn-web-host-window-page-step :class :common-lisp-compliant
-  :kinds ((base natp) (count natp)))
+(definterface fn-web-host-window-page-step :class ::program)
 (defun fn-web-host-replay-slice (at length need)
   (declare (xargs :guard (consp need)))
   (let ((s (max (nfix at) (nfix (car need))))
@@ -370,21 +373,15 @@
 (definterface fn-web-host-post-reply-step :class :common-lisp-compliant
   :kinds ((config true-listp)))
 
-; The traversal is one fn-wpf-start made (fn-web-host-private-begin-step) and
-; this function returned; it reads fn-web-in only inside the form span
-; (fn-wpf-statep).
+;; :program for the reason fn-web-host-page-step gives: fn-wpf-statep
+;; (verified) walks the decoded value collected so far, and the host calls
+;; this once per 4096-octet drive, so an evaluated guard is quadratic in the
+;; posted body.
 (defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
-  (declare (xargs :stobjs (fn-web-in fn-web-out)
-                  :guard (and (true-listp config)
-                              (fn-wpf-statep prep (fn-octets-len fn-web-in)))
-                  :guard-hints (("Goal" :do-not-induct t
-                                 :in-theory (disable fn-wpf-drive fn-wpf-statep)
-                                 :use ((:instance fn-wpf-drive-statep (fuel 4096) (p prep)
-                                                  (n (fn-octets-len fn-web-in))))))))
+  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
   (mv-let (next done) (fn-wpf-drive 4096 prep fn-web-in)
     (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
                            next fn-web-in fn-web-out)
       (mv (list :post-form next) fn-web-out))))
 
-(definterface fn-web-host-post-form-step :class :common-lisp-compliant
-  :kinds ((config true-listp)))
+(definterface fn-web-host-post-form-step :class ::program)
