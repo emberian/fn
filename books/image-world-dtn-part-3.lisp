@@ -7,10 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-dtn-part-2")
-(include-book "owner-feed-live-carried")
-(include-book "owner-feed-reconfigure-counted")
-(include-book "owner-outcome-counted")
-(include-book "feed-link-backoff")
 (include-book "feed-pause")
 (include-book "served-catalog-owner")
 (include-book "served-catalog-owner-keyed")
@@ -155,6 +151,7 @@
 (include-book "bp-evidence-host-names")
 (include-book "history-paged")
 (include-book "history-records")
+(include-book "reclaim-chunked-walk")
 (include-book "resource-vector-exec")
 (include-book "raw-dispatch-verdict")
 (include-book "../host/page-read-host")
