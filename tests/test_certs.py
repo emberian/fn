@@ -139,10 +139,10 @@ def install(root, cache, names=None, pair_checker=agree):
 
 
 def manifest_for(root: Path, certified: list[str], status: str = "passed",
-                 write: bool = True) -> dict:
+                 write: bool = True, books: dict[str, str] | None = None) -> dict:
     """The manifest `tools/certify_books.py` would have written for that run."""
     sources = {f"{name}.lisp": certs.content_hash(root / f"{name}.lisp")
-               for name in BOOKS}
+               for name in (books or BOOKS)}
     manifest = {
         "status": status,
         "requested_books": list(certified),
