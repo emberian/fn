@@ -631,7 +631,7 @@
 ; (books/owner-served-bound.lisp fn-osb-install-serves-the-profile-bound): the
 ; developer `owner run' never reaches fn-owner-posting-configure, and served
 ; its connections with the codec ceiling recovery installed.
-(defun fn-owner-install-profile (values over-checkpoint s header state)
+(defun fn-owner-install-profile (values over-checkpoint covered header state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (fn-owner-history-bootstrap-mutationp state))
       (value :refused)
@@ -671,8 +671,9 @@
                                     (cons count (fn-pcb-tally-records records nil))
                                     state))
                ; K-TOTALS: the charged totals start from the checkpoint
-               ; header's at S when this open went over that checkpoint
-               ; (OVER-CHECKPOINT, the open's own verdict; HEADER its
+               ; header's at COVERED (the checkpoint's S) when this open
+               ; went over that checkpoint (OVER-CHECKPOINT, the open's own
+               ; verdict; HEADER its
                ; totals: books/charged-totals-header.lisp
                ; fn-cth-installed-seed, KEYSTONE fn-cth-installed-seed-is-
                ; valid), else from the empty cache
@@ -683,7 +684,7 @@
                ; control stack).  Residency :resident charges every held
                ; payload in the arena, an upper bound of the paged store.
                (state (f-put-global 'fn-owner-record-totals
-                                    (fn-cth-installed-seed over-checkpoint s header :resident)
+                                    (fn-cth-installed-seed over-checkpoint covered header :resident)
                                     state)))
           (value :installed))
       (value :refused)))))

@@ -33,6 +33,8 @@
 (include-book "../books/peer-catchup-spool-body")
 (include-book "../books/raw-dispatch-verdict")
 (include-book "../books/response-identity")
+; The checkpoint's charged-totals header entries and keystone (fn-cth-*).
+(include-book "../books/charged-totals-header")
 ; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
 ; fold of fn-lgc-finish-one the host calls once) and its keystone, that every
 ; acknowledged record is recovered from every crash image of the host's run
