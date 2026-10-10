@@ -1183,6 +1183,16 @@ def image_record_path(t: "Train", label: str) -> Path:
     return t.root / IMAGE_RUN_RECORD.format(label=label)
 
 
+def image_read_script(directory: str) -> str:
+    """The box-side shell that prints a run's `RC MODULE N` lines and its
+    FN_TEST_BUDGET_RESULT lines (parse_image_results reads both).  grep -a:
+    a module log holding a non-text octet (an article body a test echoed)
+    is a "binary file" to grep, which then prints no line, and the module
+    read as one with no case recorded (train 86, test_native_key_statements)."""
+    return ("cd %s && for f in rc/test-*; do [ -f \"$f\" ] && echo \"RC ${f#rc/test-} $(cat \"$f\")\"; done; "
+            "grep -ah FN_TEST_BUDGET_RESULT logs/test-*.log 2>/dev/null; true") % shlex.quote(directory)
+
+
 def cmd_image(t: Train, args) -> int:
     """Read one of HEAD's image runs from its box into the train state: each
     module's rc and case statuses and the run it came from, for the image gate
@@ -1209,9 +1219,7 @@ def cmd_image(t: Train, args) -> int:
                              f"differ at HEAD {head[:9]} (first: {inputs[0]}); build HEAD's images")
         images_from = source
         say(f"image run at HEAD's tree reuses the images of {source[:9]} (no image input differs)")
-    script = ("cd %s && for f in rc/test-*; do [ -f \"$f\" ] && echo \"RC ${f#rc/test-} $(cat \"$f\")\"; done; "
-              "grep -h FN_TEST_BUDGET_RESULT logs/test-*.log 2>/dev/null; true") % shlex.quote(run["dir"])
-    p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], script],
+    p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], image_read_script(run["dir"])],
                        capture_output=True, text=True)
     if p.returncode != 0:
         raise TrainError(f"reading {run['box']}:{run['dir']} failed (rc {p.returncode}): {p.stderr.strip()[:200]}")

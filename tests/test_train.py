@@ -1381,6 +1381,23 @@ class ImageModuleTests(unittest.TestCase):
         return {"source": source or self.HEAD, "dir": "/box/run",
                 "modules": {m: {"rc": 0, "cases": {m + ".T.test_ok": "ok"}} for m in modules}}
 
+    def test_a_module_log_with_a_non_text_octet_still_reads_its_cases(self):
+        # train 86: a NUL in test_native_key_statements' log made grep call it
+        # a binary file and print nothing, so the module read with no case
+        with tempfile.TemporaryDirectory() as d:
+            run = Path(d)
+            (run / "rc").mkdir()
+            (run / "logs").mkdir()
+            (run / "rc" / "test-tests.m").write_text("1\n")
+            record = {"module": "tests.m", "cases": [["tests.m.T.test_a", "ok"], ["tests.m.T.test_b", "FAIL"]]}
+            (run / "logs" / "test-tests.m.log").write_bytes(
+                b"article \x00\xff body\n" + b"FN_TEST_BUDGET_RESULT " + json.dumps(record).encode() + b"\n")
+            out = subprocess.run(["sh", "-c", train.image_read_script(str(run))],
+                                 capture_output=True, text=True, check=True).stdout
+        read = train.parse_image_results(out)
+        self.assertEqual(read["tests.m"]["rc"], 1)
+        self.assertEqual(read["tests.m"]["cases"], {"tests.m.T.test_a": "ok", "tests.m.T.test_b": "FAIL"})
+
     def test_a_launcher_change_obliges_the_served_natives_operator_verbs_and_heap_from_profile(self):
         need = train.image_modules(["packaging/launcher-decide.sh", "README.md"])
         self.assertEqual(set(need), {"tests.test_native_operator_verbs",
