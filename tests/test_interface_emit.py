@@ -89,6 +89,33 @@ class DeclarationTests(unittest.TestCase):
         self.assertIn('(include-book "../books/demand")', rendered)
         self.assertIn('(include-book "../books/proof")', rendered)
 
+    def test_raw_route_reaching_an_attachable_generic_includes_its_attach_book_first(self):
+        # A route book whose closure reaches an attachable stobj generic is
+        # preceded by the image's attach book for it (host_check
+        # --attach-order), ordered so an attach book that itself reaches
+        # another generic follows that generic's attach book.
+        root = tree('(definterface fn-step :class :common-lisp-compliant '
+                    ':raw-with (fn-step-proof))\n')
+        books = root / "books"
+        books.mkdir()
+        (books / "walk.lisp").write_text('(include-book "cat")\n(defun fn-step (x) x)\n'
+                                         '(defthm fn-step-proof t)\n')
+        (books / "arena.lisp").write_text('(defabsstobj fn-arena :attachable t)\n')
+        (books / "cat.lisp").write_text('(include-book "arena")\n(defabsstobj fn-cat :attachable t)\n')
+        (books / "arena-attach.lisp").write_text('(attach-stobj fn-arena fn-arena-impl)\n'
+                                                 '(include-book "arena")\n')
+        (books / "cat-attach.lisp").write_text('(attach-stobj fn-cat fn-cat-impl)\n'
+                                               '(include-book "cat")\n')
+        (root / "host" / "native").mkdir()
+        (root / "host" / "native" / "build.lisp").write_text(
+            '(include-book "books/cat-attach")\n(include-book "books/arena-attach")\n')
+        rendered = interface_emit.render_raw_declarations(interface_emit.declarations(root), root=root)
+        arena = rendered.index('(include-book "../books/arena-attach")')
+        cat = rendered.index('(include-book "../books/cat-attach")')
+        walk = rendered.index('(include-book "../books/walk")')
+        self.assertLess(arena, cat)
+        self.assertLess(cat, walk)
+
     def test_raw_input_output_stobjs_deduplicate_and_state_is_builtin(self):
         root = tree('(definterface fn-a :class :common-lisp-compliant '
                     ':raw-guarded (2 (state fn-bank) (nil fn-bank)))\n')
