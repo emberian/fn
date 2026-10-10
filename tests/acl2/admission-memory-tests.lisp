@@ -283,3 +283,120 @@
                ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-250m*)
                 (a *adt-empty*) (b *adt-big*))
                :fault "a store that grows and frees connections")))
+
+; --- K-BOUND AGGREGATE (revision 8): fn-mm-profile-bound-holds-every-admitted-store ----
+; The article of adt-wire with a payload of K octets, interned on a local arena.
+(defun adt-big-row (n k)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (row fn-arena)
+      (fn-cat-intern-list
+       (fn-record-make (mod n 3) (mod n 5) (mod n 7) "<adt-big@example.invalid>"
+                       (make-list k :initial-element 66) '("fn.test") "o0" "s0" "e0" 4 841000000)
+       nil 0 fn-arena)
+      row)))
+(defun adt-w-hyps (records p)
+  (declare (xargs :verify-guards nil))
+  (list (<= (len records) (nfix (fn-bs-profile-max-transactions p)))
+        (<= (fn-sbud-record-octets records) (nfix (fn-bs-profile-max-history-octets p)))
+        (fn-adm-rows-within records p)))
+(defun adt-w-concl (records p r)
+  (declare (xargs :verify-guards nil))
+  (fn-mm-tot-le (fn-ct-charged records r) (fn-mm-profile-bound-tot p r)))
+; Satisfiable witness: two held rows with payloads (7 and 10 octets), every hypothesis true at the
+; small preset, the conclusion true at both residencies.
+(defconst *adt-wrow-a* (adt-held-row 7))
+(defconst *adt-wrow-b* (adt-held-row 10))
+(defconst *adt-w-rows* (list *adt-wrow-a* *adt-wrow-b*))
+(defconst *adt-w-octets* (fn-sbud-record-octets *adt-w-rows*))
+(assert-event (consp *adt-w-rows*))
+(assert-event (< 0 *adt-w-octets*))
+(assert-event (equal (adt-w-hyps *adt-w-rows* *adt-p*) '(t t t)))
+(assert-event (adt-w-concl *adt-w-rows* *adt-p* :resident))
+(assert-event (adt-w-concl *adt-w-rows* *adt-p* :paged))
+; Teeth, one per hypothesis: drop it (the other two stay true) and the conclusion fails.  Every
+; profile below is VALID (fn-bs-profile-validp): an invalid one reads as the empty profile.
+; T: one transaction less than the store holds, at the least T a valid profile has (the open
+; suffix, 128): one more copy of the first row than that.
+(defconst *adt-w-t* (fn-bs-pf *fn-bs-pf-max-open-suffix* *adt-p*))
+(defconst *adt-w-many* (make-list (1+ *adt-w-t*) :initial-element *adt-wrow-a*))
+(defconst *adt-w-p-t* (fn-bs-profile-put *fn-bs-pf-max-transactions* *adt-w-t* *adt-p*))
+(assert-event (fn-bs-profile-validp *adt-w-p-t*))
+(assert-event (equal (adt-w-hyps *adt-w-many* *adt-w-p-t*) '(nil t t)))
+(assert-event (not (adt-w-concl *adt-w-many* *adt-w-p-t* :resident)))
+; H: one article whose charge is one octet past the least H a valid profile has (the record octets).
+(defconst *adt-w-h* (fn-bs-pf *fn-bs-pf-max-record-octets* *adt-p*))
+(defconst *adt-w-big* (list (adt-big-row 1 (1+ *adt-w-h*))))
+(defconst *adt-w-p-h* (fn-bs-profile-put *fn-bs-pf-max-history-octets* *adt-w-h* *adt-p*))
+(assert-event (fn-bs-profile-validp *adt-w-p-h*))
+(assert-event (< *adt-w-h* (fn-sbud-record-octets *adt-w-big*)))
+(assert-event (equal (adt-w-hyps *adt-w-big* *adt-w-p-h*) '(t nil t)))
+(assert-event (not (adt-w-concl *adt-w-big* *adt-w-p-h* :resident)))
+; The per-row invariant: T x G memberships fall short of the store's, G one group short of the
+; first row's memberships at the least valid T.
+(defconst *adt-w-rows-r* (make-list *adt-w-t* :initial-element *adt-wrow-a*))
+(defconst *adt-w-p-r*
+  (fn-bs-profile-put *fn-bs-pf-max-groups-per-article*
+                     (1- (fn-mm-tot-memberships (fn-ct-row-tot *adt-wrow-a* :resident)))
+                     *adt-w-p-t*))
+(assert-event (fn-bs-profile-validp *adt-w-p-r*))
+(assert-event (equal (adt-w-hyps *adt-w-rows-r* *adt-w-p-r*) '(t t nil)))
+(assert-event (not (adt-w-concl *adt-w-rows-r* *adt-w-p-r* :resident)))
+; Counterexample search.  The cgen test? on the statement found 0 counterexamples in 1000 examples
+; (449 satisfied the hypotheses, all with empty stores), so it is not the evidence.  This is: every
+; row of 24 held rows and 2 large ones (payload H-floor / 2 and H-floor + 1), repeated 1, 2, T-floor - 1,
+; T-floor, T-floor + 1 times, and every ordered pair of them, over the grid of valid profiles
+; T in {floor, floor + 1, 2 floor, 16384}, H in {floor, floor + 1, 2 floor, 8388608},
+; G in {1, 2, 3, 16}, at both residencies.  Cases, cases whose hypotheses hold, violations.
+(defun adt-hrows (n)
+  (declare (xargs :verify-guards nil))
+  (if (zp n) nil (cons (adt-held-row (1- n)) (adt-hrows (1- n)))))
+(defconst *adt-sweep-rows*
+  (append (adt-hrows 24)
+          (list (adt-big-row 2 (floor *adt-w-h* 2)) (adt-big-row 3 (1+ *adt-w-h*)))))
+(defun adt-prof (a b c)
+  (declare (xargs :verify-guards nil))
+  (fn-bs-profile-put *fn-bs-pf-max-groups-per-article* c
+    (fn-bs-profile-put *fn-bs-pf-max-history-octets* b
+      (fn-bs-profile-put *fn-bs-pf-max-transactions* a *adt-p*))))
+(defun adt-one (records p acc)
+  (declare (xargs :verify-guards nil))
+  (let* ((hy (not (member-equal nil (adt-w-hyps records p))))
+         (bad (and hy (not (and (adt-w-concl records p :resident) (adt-w-concl records p :paged))))))
+    (list (1+ (car acc)) (+ (cadr acc) (if hy 1 0)) (+ (caddr acc) (if bad 1 0)))))
+(defun adt-gs (records a b gs acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom gs) acc (adt-gs records a b (cdr gs) (adt-one records (adt-prof a b (car gs)) acc))))
+(defun adt-hs (records a hs acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom hs) acc (adt-hs records a (cdr hs) (adt-gs records a (car hs) '(1 2 3 16) acc))))
+(defun adt-ts (records ts acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom ts) acc
+    (adt-ts records (cdr ts)
+            (adt-hs records (car ts)
+                    (list *adt-w-h* (1+ *adt-w-h*) (* 2 *adt-w-h*) 8388608) acc))))
+(defconst *adt-sweep-ts* (list *adt-w-t* (1+ *adt-w-t*) (* 2 *adt-w-t*) 16384))
+(defun adt-pairs (x ys)
+  (declare (xargs :verify-guards nil))
+  (if (atom ys) nil (cons (list x (car ys)) (adt-pairs x (cdr ys)))))
+(defun adt-lists (xs ys acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom xs) acc
+    (adt-lists (cdr xs) ys
+      (append (list (list (car xs))
+                    (make-list 2 :initial-element (car xs))
+                    (make-list (1- *adt-w-t*) :initial-element (car xs))
+                    (make-list *adt-w-t* :initial-element (car xs))
+                    (make-list (1+ *adt-w-t*) :initial-element (car xs)))
+              (adt-pairs (car xs) ys)
+              acc))))
+(defun adt-run (lists acc)
+  (declare (xargs :verify-guards nil))
+  (if (atom lists) acc (adt-run (cdr lists) (adt-ts (car lists) *adt-sweep-ts* acc))))
+(defconst *adt-sweep-lists* (adt-lists *adt-sweep-rows* *adt-sweep-rows* nil))
+(defconst *adt-sweep* (adt-run *adt-sweep-lists* '(0 0 0)))
+(assert-event (equal (car *adt-sweep*) (* (len *adt-sweep-lists*) 4 4 4)))
+(assert-event (< 0 (cadr *adt-sweep*)))
+(assert-event (< (cadr *adt-sweep*) (car *adt-sweep*)))
+(assert-event (equal (caddr *adt-sweep*) 0))

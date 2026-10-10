@@ -315,3 +315,281 @@
   :hints (("Goal" :in-theory (disable fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity
                                       fn-mm-cfg-connections fn-mm-sum fn-mm-reopen-need
                                       fn-mm-cfg-holders fn-mm-over-window-octets))))
+;
+; K-BOUND AGGREGATE (revision 8; Builder M, memory landing 4b, 2026-10-10; Codex approved the
+; statement to prove, build/memory/l34/m10/codex-kbound8.final.md).  The profile bound
+; (books/memory-model.lisp fn-mm-profile-bound-tot) holds over every store whose rows are each
+; within the per-row invariant, whose record count is within T and whose budget charge is within H.
+; PROVED here, conditional on the per-row invariant FN-ADM-ROW-WITHIN-P.  The producer facts -- that
+; every row the node interns or restores satisfies it at the store's admitting profile -- are still
+; owed (PF-INTERN, PF-COMPOSITE, PF-EVENT, PF-IDENTITY, PR-APPEND, PR-REPLAY, PR-CKPT, PR-KEYRING,
+; PR-RECLAIM, PR-PROFILE).  A row's HISTORY share is its allowance plus 3 x its CHARGE: the row
+; itself, the payload's headers once more in its facts, and a verified statement once more in its
+; context delta.
+(defun fn-adm-row-within-p (row profile)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((tot (fn-ct-row-tot row :resident))
+         (c (fn-sbud-row-octets row))
+         (rlog (fn-adm-row-allowance profile))
+         (g (nfix (fn-bs-profile-max-groups-per-article profile))))
+    (and (mv-let (err tl plen) (fn-hp-x-rowlen row) (declare (ignore tl plen)) (not err))
+         (<= (fn-mm-tot-arena tot) c)
+         (<= (fn-mm-tot-hcharge tot) (* (+ *fn-sbud-header-weight* *fn-sbud-msgid-weight*) c))
+         (<= (fn-mm-tot-memberships tot) g)
+         (<= (fn-mm-tot-events tot) c)
+         (<= (fn-mm-tot-log tot) (+ rlog c))
+         (<= (fn-mm-tot-history tot) (+ rlog (* 3 c))))))
+(defun fn-adm-rows-within (records profile)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp records)
+      (and (fn-adm-row-within-p (car records) profile)
+           (fn-adm-rows-within (cdr records) profile))
+    t))
+(encapsulate ()
+(local (defthm kb-nfix-nfix (equal (nfix (nfix a)) (nfix a))))
+(local (defthm kb-tot-fields-of-make
+  (and (equal (fn-mm-tot-records (fn-mm-make-tot a b c d e f g h r)) (nfix a))
+       (equal (fn-mm-tot-arena (fn-mm-make-tot a b c d e f g h r)) (nfix b))
+       (equal (fn-mm-tot-hcharge (fn-mm-make-tot a b c d e f g h r)) (nfix c))
+       (equal (fn-mm-tot-memberships (fn-mm-make-tot a b c d e f g h r)) (nfix d))
+       (equal (fn-mm-tot-events (fn-mm-make-tot a b c d e f g h r)) (nfix e))
+       (equal (fn-mm-tot-log (fn-mm-make-tot a b c d e f g h r)) (nfix f))
+       (equal (fn-mm-tot-history (fn-mm-make-tot a b c d e f g h r)) (nfix g))
+       (equal (fn-mm-tot-charge (fn-mm-make-tot a b c d e f g h r)) (nfix h))
+       (equal (fn-mm-tot-paged-p (fn-mm-make-tot a b c d e f g h r)) (equal r :paged)))
+  :hints (("Goal" :in-theory (e/d (fn-mm-tot-records fn-mm-tot-arena fn-mm-tot-hcharge
+                                   fn-mm-tot-memberships fn-mm-tot-events fn-mm-tot-log
+                                   fn-mm-tot-history fn-mm-tot-charge fn-mm-tot-paged-p
+                                   fn-mm-nat fn-mm-make-tot) (nfix))))))
+(local (defthm kb-tot-natp
+  (and (natp (fn-mm-tot-records a)) (natp (fn-mm-tot-arena a)) (natp (fn-mm-tot-hcharge a))
+       (natp (fn-mm-tot-memberships a)) (natp (fn-mm-tot-events a)) (natp (fn-mm-tot-log a))
+       (natp (fn-mm-tot-history a)) (natp (fn-mm-tot-charge a)))
+  :hints (("Goal" :in-theory (enable fn-mm-tot-records fn-mm-tot-arena fn-mm-tot-hcharge
+                                     fn-mm-tot-memberships fn-mm-tot-events fn-mm-tot-log
+                                     fn-mm-tot-history fn-mm-tot-charge fn-mm-nat)))))
+(local (in-theory (disable fn-mm-tot-records fn-mm-tot-arena fn-mm-tot-hcharge fn-mm-tot-memberships
+                           fn-mm-tot-events fn-mm-tot-log fn-mm-tot-history fn-mm-tot-charge
+                           fn-mm-tot-paged-p)))
+(local (defthm kb-tot-fields-of-plus
+  (and (equal (fn-mm-tot-records (fn-mm-tot-plus a b)) (+ (fn-mm-tot-records a) (fn-mm-tot-records b)))
+       (equal (fn-mm-tot-arena (fn-mm-tot-plus a b)) (+ (fn-mm-tot-arena a) (fn-mm-tot-arena b)))
+       (equal (fn-mm-tot-hcharge (fn-mm-tot-plus a b)) (+ (fn-mm-tot-hcharge a) (fn-mm-tot-hcharge b)))
+       (equal (fn-mm-tot-memberships (fn-mm-tot-plus a b)) (+ (fn-mm-tot-memberships a) (fn-mm-tot-memberships b)))
+       (equal (fn-mm-tot-events (fn-mm-tot-plus a b)) (+ (fn-mm-tot-events a) (fn-mm-tot-events b)))
+       (equal (fn-mm-tot-log (fn-mm-tot-plus a b)) (+ (fn-mm-tot-log a) (fn-mm-tot-log b)))
+       (equal (fn-mm-tot-history (fn-mm-tot-plus a b)) (+ (fn-mm-tot-history a) (fn-mm-tot-history b)))
+       (equal (fn-mm-tot-charge (fn-mm-tot-plus a b)) (+ (fn-mm-tot-charge a) (fn-mm-tot-charge b)))
+       (equal (fn-mm-tot-paged-p (fn-mm-tot-plus a b)) (fn-mm-tot-paged-p a)))
+  :hints (("Goal" :in-theory (e/d (fn-mm-tot-plus) (fn-mm-make-tot))))))
+(local (defthm kb-fields-of-zero
+  (and (equal (fn-mm-tot-records (fn-ct-zero-tot res)) 0)
+       (equal (fn-mm-tot-arena (fn-ct-zero-tot res)) 0)
+       (equal (fn-mm-tot-hcharge (fn-ct-zero-tot res)) 0)
+       (equal (fn-mm-tot-memberships (fn-ct-zero-tot res)) 0)
+       (equal (fn-mm-tot-events (fn-ct-zero-tot res)) 0)
+       (equal (fn-mm-tot-log (fn-ct-zero-tot res)) 0)
+       (equal (fn-mm-tot-history (fn-ct-zero-tot res)) 0)
+       (equal (fn-mm-tot-charge (fn-ct-zero-tot res)) 0)
+       (equal (fn-mm-tot-paged-p (fn-ct-zero-tot res)) (equal res :paged)))
+  :hints (("Goal" :in-theory (enable fn-ct-zero-tot)))))
+(local (defthm kb-fields-of-row-tot
+  (and (equal (fn-mm-tot-records (fn-ct-row-tot row res)) 1)
+       (equal (fn-mm-tot-charge (fn-ct-row-tot row res)) (nfix (fn-sbud-row-octets row)))
+       (equal (fn-mm-tot-paged-p (fn-ct-row-tot row res)) (equal res :paged))
+       (equal (fn-mm-tot-arena (fn-ct-row-tot row res)) (nfix (nth 0 (fn-ct-row row))))
+       (equal (fn-mm-tot-hcharge (fn-ct-row-tot row res)) (nfix (nth 1 (fn-ct-row row))))
+       (equal (fn-mm-tot-memberships (fn-ct-row-tot row res)) (nfix (nth 2 (fn-ct-row row))))
+       (equal (fn-mm-tot-events (fn-ct-row-tot row res)) (nfix (nth 3 (fn-ct-row row))))
+       (equal (fn-mm-tot-log (fn-ct-row-tot row res)) (nfix (fn-ct-row-log row)))
+       (equal (fn-mm-tot-history (fn-ct-row-tot row res)) (nfix (fn-ct-row-history row))))
+  :hints (("Goal" :use fn-ct-row-charge
+           :in-theory (e/d (fn-ct-row-tot) (nfix fn-mm-make-tot fn-ct-row fn-ct-row-log fn-ct-row-history
+                                            fn-ct-row-charge fn-sbud-row-octets))))))
+(local (defthm kb-row-octets-natp (natp (fn-sbud-row-octets row))
+  :hints (("Goal" :in-theory (enable fn-sbud-row-octets)))
+  :rule-classes :type-prescription))
+(local (defthm kb-nfix-row-octets (equal (nfix (fn-sbud-row-octets row)) (fn-sbud-row-octets row))
+  :hints (("Goal" :in-theory (enable nfix) :use kb-row-octets-natp))))
+(local (defthm kb-record-octets-natp (natp (fn-sbud-record-octets rs))
+  :hints (("Goal" :in-theory (enable fn-sbud-record-octets)))
+  :rule-classes :type-prescription))
+(local (in-theory (disable fn-ct-row-tot fn-mm-tot-plus fn-ct-zero-tot fn-mm-make-tot
+                           fn-ct-charged fn-adm-row-within-p fn-sbud-record-octets
+                           fn-ct-row fn-ct-row-log fn-ct-row-history fn-sbud-row-octets fn-hp-x-rowlen)))
+(local (defthm kb-charged-cons
+  (equal (fn-ct-charged (cons r rs) res)
+         (fn-mm-tot-plus (fn-ct-row-tot r res) (fn-ct-charged rs res)))
+  :hints (("Goal" :in-theory (enable fn-ct-charged)))))
+(local (defthm kb-charged-atom
+  (implies (not (consp rs)) (equal (fn-ct-charged rs res) (fn-ct-zero-tot res)))
+  :hints (("Goal" :in-theory (enable fn-ct-charged)))))
+(local (defthm kb-record-octets-cons
+  (equal (fn-sbud-record-octets (cons r rs))
+         (+ (fn-sbud-row-octets r) (fn-sbud-record-octets rs)))
+  :hints (("Goal" :in-theory (enable fn-sbud-record-octets)))))
+(local (defthm kb-record-octets-atom
+  (implies (not (consp rs)) (equal (fn-sbud-record-octets rs) 0))
+  :hints (("Goal" :in-theory (enable fn-sbud-record-octets)))))
+(local (defthm kb-within-cons
+  (equal (fn-adm-rows-within (cons r rs) p)
+         (and (fn-adm-row-within-p r p) (fn-adm-rows-within rs p)))))
+(local (defthm kb-row-within-nth
+  (implies (fn-adm-row-within-p row p)
+           (let ((c (fn-sbud-row-octets row))
+                 (a (fn-adm-row-allowance p)))
+             (and (<= (nfix (nth 0 (fn-ct-row row))) c)
+                  (<= (nfix (nth 1 (fn-ct-row row))) (* (+ *fn-sbud-header-weight* *fn-sbud-msgid-weight*) c))
+                  (<= (nfix (nth 2 (fn-ct-row row))) (nfix (fn-bs-profile-max-groups-per-article p)))
+                  (<= (nfix (nth 3 (fn-ct-row row))) c)
+                  (<= (nfix (fn-ct-row-log row)) (+ a c))
+                  (<= (nfix (fn-ct-row-history row)) (+ a (* 3 c))))))
+  :hints (("Goal" :in-theory (e/d (fn-adm-row-within-p kb-fields-of-row-tot)
+                                  (fn-hp-x-rowlen fn-ct-row fn-ct-row-log fn-ct-row-history
+                                   fn-sbud-row-octets fn-adm-row-allowance nfix))))
+  :rule-classes nil))
+(local (defun kb-concl (rs p res)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((tot (fn-ct-charged rs res))
+        (c (fn-sbud-record-octets rs))
+        (rlog (fn-adm-row-allowance p))
+        (n (len rs)))
+    (and (equal (fn-mm-tot-records tot) n)
+         (<= (fn-mm-tot-arena tot) c)
+         (<= (fn-mm-tot-hcharge tot) (* (+ *fn-sbud-header-weight* *fn-sbud-msgid-weight*) c))
+         (<= (fn-mm-tot-memberships tot) (* n (nfix (fn-bs-profile-max-groups-per-article p))))
+         (<= (fn-mm-tot-events tot) c)
+         (<= (fn-mm-tot-log tot) (+ (* n rlog) c))
+         (<= (fn-mm-tot-history tot) (+ (* n rlog) (* 3 c)))
+         (equal (fn-mm-tot-charge tot) c)
+         (equal (fn-mm-tot-paged-p tot) (equal res :paged))))))
+(local (in-theory (disable kb-concl fn-adm-row-allowance fn-mm-profile-record-log
+                           fn-bs-profile-max-groups-per-article nfix)))
+(local (defthm kb-concl-atom
+  (implies (not (consp rs)) (kb-concl rs p res))
+  :hints (("Goal" :in-theory (enable kb-concl kb-charged-atom kb-record-octets-atom)))))
+(local (defthm kb-step-0
+  (implies (and (fn-adm-row-within-p r p) (kb-concl rs p res))
+           (let ((tot (fn-ct-charged (cons r rs) res)) (c (fn-sbud-record-octets (cons r rs)))
+                 (rlog (fn-adm-row-allowance p)) (n (len (cons r rs))))
+             (declare (ignorable tot c rlog n))
+             (equal (fn-mm-tot-records tot) n)))
+  :hints (("Goal" :in-theory (enable kb-concl)
+           :use ((:instance kb-row-within-nth (row r)))))))
+(local (defthm kb-step-1
+  (implies (and (fn-adm-row-within-p r p) (kb-concl rs p res))
+           (let ((tot (fn-ct-charged (cons r rs) res)) (c (fn-sbud-record-octets (cons r rs)))
+                 (rlog (fn-adm-row-allowance p)) (n (len (cons r rs))))
+             (declare (ignorable tot c rlog n))
+             (<= (fn-mm-tot-arena tot) c)))
+  :hints (("Goal" :in-theory (enable kb-concl)
+           :use ((:instance kb-row-within-nth (row r)))))))
+(local (defthm kb-step-2
+  (implies (and (fn-adm-row-within-p r p) (kb-concl rs p res))
+           (let ((tot (fn-ct-charged (cons r rs) res)) (c (fn-sbud-record-octets (cons r rs)))
+                 (rlog (fn-adm-row-allowance p)) (n (len (cons r rs))))
+             (declare (ignorable tot c rlog n))
+             (<= (fn-mm-tot-hcharge tot) (* (+ *fn-sbud-header-weight* *fn-sbud-msgid-weight*) c))))
+  :hints (("Goal" :in-theory (enable kb-concl)
+           :use ((:instance kb-row-within-nth (row r)))))))
+(local (defthm kb-step-3
+  (implies (and (fn-adm-row-within-p r p) (kb-concl rs p res))
+           (let ((tot (fn-ct-charged (cons r rs) res)) (c (fn-sbud-record-octets (cons r rs)))
+                 (rlog (fn-adm-row-allowance p)) (n (len (cons r rs))))
+             (declare (ignorable tot c rlog n))
+             (<= (fn-mm-tot-memberships tot) (* n (nfix (fn-bs-profile-max-groups-per-article p))))))
+  :hints (("Goal" :in-theory (enable kb-concl)
+           :use ((:instance kb-row-within-nth (row r)))))))
+(local (defthm kb-step-4
+  (implies (and (fn-adm-row-within-p r p) (kb-concl rs p res))
+           (let ((tot (fn-ct-charged (cons r rs) res)) (c (fn-sbud-record-octets (cons r rs)))
+                 (rlog (fn-adm-row-allowance p)) (n (len (cons r rs))))
+             (declare (ignorable tot c rlog n))
+             (<= (fn-mm-tot-events tot) c)))
+  :hints (("Goal" :in-theory (enable kb-concl)
+           :use ((:instance kb-row-within-nth (row r)))))))
+(local (defthm kb-step-5
+  (implies (and (fn-adm-row-within-p r p) (kb-concl rs p res))
+           (let ((tot (fn-ct-charged (cons r rs) res)) (c (fn-sbud-record-octets (cons r rs)))
+                 (rlog (fn-adm-row-allowance p)) (n (len (cons r rs))))
+             (declare (ignorable tot c rlog n))
+             (<= (fn-mm-tot-log tot) (+ (* n rlog) c))))
+  :hints (("Goal" :in-theory (enable kb-concl)
+           :use ((:instance kb-row-within-nth (row r)))))))
+(local (defthm kb-step-6
+  (implies (and (fn-adm-row-within-p r p) (kb-concl rs p res))
+           (let ((tot (fn-ct-charged (cons r rs) res)) (c (fn-sbud-record-octets (cons r rs)))
+                 (rlog (fn-adm-row-allowance p)) (n (len (cons r rs))))
+             (declare (ignorable tot c rlog n))
+             (<= (fn-mm-tot-history tot) (+ (* n rlog) (* 3 c)))))
+  :hints (("Goal" :in-theory (enable kb-concl)
+           :use ((:instance kb-row-within-nth (row r)))))))
+(local (defthm kb-step-7
+  (implies (and (fn-adm-row-within-p r p) (kb-concl rs p res))
+           (let ((tot (fn-ct-charged (cons r rs) res)) (c (fn-sbud-record-octets (cons r rs)))
+                 (rlog (fn-adm-row-allowance p)) (n (len (cons r rs))))
+             (declare (ignorable tot c rlog n))
+             (equal (fn-mm-tot-charge tot) c)))
+  :hints (("Goal" :in-theory (enable kb-concl)
+           :use ((:instance kb-row-within-nth (row r)))))))
+(local (defthm kb-step-8
+  (implies (and (fn-adm-row-within-p r p) (kb-concl rs p res))
+           (let ((tot (fn-ct-charged (cons r rs) res)) (c (fn-sbud-record-octets (cons r rs)))
+                 (rlog (fn-adm-row-allowance p)) (n (len (cons r rs))))
+             (declare (ignorable tot c rlog n))
+             (equal (fn-mm-tot-paged-p tot) (equal res :paged))))
+  :hints (("Goal" :in-theory (enable kb-concl)
+           :use ((:instance kb-row-within-nth (row r)))))))
+(local (defthm kb-concl-step
+  (implies (and (fn-adm-row-within-p r p) (kb-concl rs p res))
+           (kb-concl (cons r rs) p res))
+  :hints (("Goal" :in-theory (union-theories '(kb-concl) (disable kb-concl-atom kb-charged-cons kb-record-octets-cons))
+           :use (kb-step-0 kb-step-1 kb-step-2 kb-step-3 kb-step-4 kb-step-5 kb-step-6 kb-step-7 kb-step-8)))))
+(local (defthm kb-aggregate
+  (implies (fn-adm-rows-within rs p) (kb-concl rs p res))
+  :hints (("Goal" :induct (fn-ct-charged rs res)
+           :in-theory (e/d ((:induction fn-ct-charged)) ())
+           :expand ((fn-adm-rows-within rs p)))
+          (and stable-under-simplificationp
+               '(:use ((:instance kb-concl-step (r (car rs)) (rs (cdr rs)))))))))
+(local (defthm kb-mono
+  (implies (and (natp a) (natp b) (natp c) (<= a b)) (<= (* a c) (* b c)))
+  :hints (("Goal" :nonlinearp t))
+  :rule-classes nil))
+(local (defthm kb-allowance-natp (natp (fn-adm-row-allowance p))
+  :hints (("Goal" :in-theory (enable fn-adm-row-allowance fn-mm-profile-record-log)))
+  :rule-classes :type-prescription))
+(local (defthm kb-nfix-natp (implies (natp x) (equal (nfix x) x))
+  :hints (("Goal" :in-theory (enable nfix)))))
+(local (defthm kb-nfix-natp2 (natp (nfix x)) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable nfix)))))
+(local (defthm kb-bound-fields
+  (let ((b (fn-mm-profile-bound-tot p r))
+        (tt (nfix (fn-bs-profile-max-transactions p)))
+        (h (nfix (fn-bs-profile-max-history-octets p)))
+        (g (nfix (fn-bs-profile-max-groups-per-article p)))
+        (a (fn-adm-row-allowance p)))
+    (and (equal (fn-mm-tot-records b) tt)
+         (equal (fn-mm-tot-arena b) h)
+         (equal (fn-mm-tot-hcharge b) (* (+ *fn-sbud-header-weight* *fn-sbud-msgid-weight*) h))
+         (equal (fn-mm-tot-memberships b) (* tt g))
+         (equal (fn-mm-tot-events b) h)
+         (equal (fn-mm-tot-log b) (+ (* tt a) h))
+         (equal (fn-mm-tot-history b) (+ (* tt a) (* 3 h)))
+         (equal (fn-mm-tot-charge b) h)
+         (equal (fn-mm-tot-paged-p b) (equal r :paged))))
+  :hints (("Goal" :in-theory (e/d (fn-mm-profile-bound-tot) (fn-adm-row-allowance nfix))))))
+(defthm fn-mm-profile-bound-holds-every-admitted-store
+  (implies (and (<= (len records) (nfix (fn-bs-profile-max-transactions p)))
+                (<= (fn-sbud-record-octets records) (nfix (fn-bs-profile-max-history-octets p)))
+                (fn-adm-rows-within records p))
+           (fn-mm-tot-le (fn-ct-charged records r) (fn-mm-profile-bound-tot p r)))
+  :hints (("Goal" :in-theory (e/d (fn-mm-tot-le kb-concl) (kb-aggregate fn-adm-row-allowance fn-mm-profile-bound-tot
+                                                 fn-bs-profile-max-transactions fn-bs-profile-max-history-octets
+                                                 fn-bs-profile-max-groups-per-article))
+           :use ((:instance kb-aggregate (rs records) (res r))
+                 (:instance kb-mono (a (len records)) (b (nfix (fn-bs-profile-max-transactions p)))
+                            (c (fn-adm-row-allowance p)))
+                 (:instance kb-mono (a (len records)) (b (nfix (fn-bs-profile-max-transactions p)))
+                            (c (nfix (fn-bs-profile-max-groups-per-article p))))))))
+)

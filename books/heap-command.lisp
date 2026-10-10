@@ -312,12 +312,18 @@
 ;; had before H charged a held row its payload alone: books/heap-reservation.lisp
 ;; fn-heap-reserve-operation-decide over books/heap-store-figure.lisp's state
 ;; term, which charges the history at 2 H and no membership.  It UNDER-BOUNDS
-;; a store the profile admits.  The stated bound (not proved: repair item
-;; MEMORY-K-BOUND-ADMITTED-ROWS) is the equation at the profile's bound (books/memory-model.lisp fn-mm-profile-bound-tot: T x G
-;; memberships, 20 x H header charge, the log at T x (78 + 1,083 + 261 G) +
-;; H); on fn-core's image (reads and writers; the adapter in brackets):
-;; small 2,427 MB (575), filled 26,684 MB (7,392), development 52,400 MB
-;; (2,377), scale 1.6 TB (20 GB).  Its line says so.
+;; a store the profile admits.  The bound is the equation at the profile's
+;; bound (books/memory-model.lisp fn-mm-profile-bound-tot: T x G memberships,
+;; 20 x H header charge, the log at T x ALLOWANCE + H, the history at
+;; T x ALLOWANCE + 3 H, ALLOWANCE = fn-adm-row-allowance).  PROVED to hold every
+;; store whose rows are each within (books/admission-memory.lisp
+;; fn-mm-profile-bound-holds-every-admitted-store); the producer facts that
+;; every row the node holds is within are still owed.  The figures below are the
+;; equation at H with the history at H and the log at T x (78 + 1,083 + 261 G)
+;; + H, BEFORE the history's 3 H and the allowance's numbered-row term (the
+;; bound is now larger); on fn-core's image (reads and writers; the adapter in
+;; brackets): small 2,427 MB (575), filled 26,684 MB (7,392), development
+;; 52,400 MB (2,377), scale 1.6 TB (20 GB).  Its line says so.
 (defun fn-mo-offline-adapter-decide (action profile core nursery observations connections observed)
   (declare (xargs :guard t))
   (fn-heap-reserve-operation-decide action profile core nursery observations connections observed))
