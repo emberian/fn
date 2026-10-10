@@ -58,6 +58,15 @@ IMAGE = str(native_image("FN_NATIVE_HOST"))
 SMALL_FLAGS = ("--profile", "development", "--max-transactions", "16384",
                "--max-history-octets", "8388608", "--max-record-octets", "196608",
                "--max-groups-per-article", "16", "--max-open-suffix", "128")
+# The capacity test's profile: SMALL_FLAGS with a 4 MiB article bound (R the
+# record ceiling of A = 4,194,304 at 16 groups, books/record-codec
+# fn-record-encoded-octets-ceiling, 4,199,563), init-accepted under 2 GiB; C
+# raised to 200 by policy so the article reply 2A + 1,024 per holder binds C'.
+CAPACITY_FLAGS = ("--profile", "development", "--max-transactions", "16384",
+                  "--max-history-octets", "8388608", "--max-record-octets", "4199563",
+                  "--max-article-octets", "4194304",
+                  "--max-groups-per-article", "16", "--max-open-suffix", "128")
+CAPACITY_CONNECTIONS = 200
 # `status' prints the launcher's run reservation (books/heap-reservation.lisp
 # fn-heap-status-decide): the heap line with the stack and the threads.
 HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB"
@@ -451,19 +460,46 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         over the carried store (books/admission-memory.lisp fn-adm-capacity),
         and serves at C': the gate prices C' connections and the readers
         accepted are bounded by it (books/owner-connection-callbacks.lisp
-        fn-owner-callback-exposure-total-within-the-memory-capacity).  The
-        tooth is the 2 GiB cgroup: there C' is below C (at 39c86eb48 the
-        gate priced C and refused every POST by the memory), and here C'
-        readers each POST and are admitted, and one more reader is refused
-        with RFC 3977's 400."""
+        fn-owner-memory-max-conns lowers the bound to C'+1;
+        fn-owner-callback-exposure-total-within-the-memory-capacity).
+
+        The tooth is C' below C under the 2 GiB cgroup, bound by a PERMANENT
+        term.  A 4 MiB article bound makes each holder's article reply
+        2A + 1,024 = 8,389,632 octets (books/memory-model.lisp
+        fn-mm-large-reply, fn-mm-article-reply-octets), and the gate prices
+        every connection as a holder (fn-mm-cfg-holders: C when the host does
+        not bound them).  The adapter A-OVER-WINDOW-FIT, which retires, is
+        not what binds: its W' keeps the OVER window within this reply.  The
+        small preset's own connection costs about 1.2 MB, so the preset at
+        its C of 31 never binds (m34a-9h: capacity=31 of 31 bound-by=
+        configured sum=379 MB limit=2043 MB).  Here init takes the profile
+        (books/heap-reservation.lisp fn-heap-init-decide: 1,422 MB in the
+        model, 1,083 for the small preset against the 1,001 MB measured,
+        within the 2,025 MB budget) and `policy set exposure-connections 200'
+        raises C past what the limit holds.  fn-adm-capacity at limit 2043 MB
+        over the empty store, the image calibrated to that sum=379 (the
+        figures are in build/memory/l34/m9/test2g/a5.out, a6.out):
+        "memory capacity=125 of 200 bound-by=article-reply sum=2033 MB
+        limit=2043 MB", 121 to 130 for an image 50 MB heavier or lighter.
+        Then C' readers each POST and are admitted (240), and one more
+        reader is refused with RFC 3977's 400."""
         config, port = self.config("capacity")
-        made = self.run_fn("operator", config, "init", *SMALL_FLAGS, "local.test")
+        made = self.run_fn("operator", config, "init", *CAPACITY_FLAGS, "local.test")
         self.assertEqual(made.returncode, EXIT_OK, text(made))
+        policy = self.run_fn("operator", config, "policy", "set",
+                             "exposure-connections", str(CAPACITY_CONNECTIONS))
+        self.assertEqual(policy.returncode, EXIT_OK, text(policy))
         self.start()
         cap, configured, term = self.capacity()
+        self.assertEqual(configured, CAPACITY_CONNECTIONS)
         self.assertGreaterEqual(cap, 1)
-        self.assertLess(cap, configured, "the 2 GiB cgroup bounds C' below C")
+        self.assertLess(cap, configured,
+                        "a 4 MiB article reply per holder bounds C' below C")
         self.assertNotEqual(term, "configured")
+        self.assertEqual(term, "article-reply",
+                         "the permanent term binds, not the retiring OVER window")
+        # C'+1 sockets here, the owner's as many: well inside 1,024 descriptors.
+        self.assertLess(cap, 400)
         body = ("z" * 72 + "\r\n") * 28
         readers = []
         try:
