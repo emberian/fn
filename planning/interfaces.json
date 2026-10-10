@@ -805,7 +805,9 @@
       "declared_in": "host/journal-publish-host.lisp",
       "class": "ideal",
       "kinds": [],
-      "exempt": {},
+      "exempt": {
+        "octets": "the profile's max-octets bound, a natural the operator gave, not bytes"
+      },
       "keystones": [
         {
           "theorem": "fn-ajpf-write-keeps-the-journal",
@@ -4029,7 +4031,12 @@
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {
@@ -4151,7 +4158,16 @@
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "config-octets",
+          "fn-cbor-octet-listp"
+        ],
+        [
+          "store-octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {
@@ -6950,7 +6966,12 @@
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {
@@ -7545,7 +7566,12 @@
       "subsystem": "bp",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -9460,7 +9486,12 @@
       "subsystem": "peer/feed",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "frame",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -10569,7 +10600,9 @@
       "declared_in": "host/store-node-host.lisp",
       "class": "common-lisp-compliant",
       "kinds": [],
-      "exempt": {},
+      "exempt": {
+        "stream-octets": "the history stream's length, a natural (nfixed), not bytes"
+      },
       "keystones": [],
       "extraction": null,
       "direct": null,
@@ -10741,7 +10774,12 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -11659,7 +11697,9 @@
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
       "kinds": [],
-      "exempt": {},
+      "exempt": {
+        "consed-octets": "SBCL's bytes-consed reading, a natural, not bytes"
+      },
       "keystones": [
         {
           "theorem": "fn-idle-gc-verdict-collects-only-when-owed",
@@ -11690,7 +11730,9 @@
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
       "kinds": [],
-      "exempt": {},
+      "exempt": {
+        "tick-octets": "the tick's consed count, a natural, not bytes"
+      },
       "keystones": [
         {
           "theorem": "fn-idle-gc-quiet-counts-only-quiet-ticks-at-the-limit"
@@ -12820,7 +12862,12 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "ideal",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -12839,7 +12886,12 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "ideal",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {
@@ -13720,7 +13772,12 @@
       "subsystem": "nntp/served",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {
@@ -13762,7 +13819,12 @@
       "subsystem": "nntp/served",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {
@@ -18201,10 +18263,7 @@
       "declared_in": "host/native-operator-host.lisp",
       "class": "program",
       "kinds": [],
-      "exempt": {
-        "cert-exists": "the host's lstat of tls_cert, a boolean ACL2 reads as observed",
-        "key-exists": "the host's lstat of tls_key, a boolean ACL2 reads as observed"
-      },
+      "exempt": {},
       "keystones": [],
       "extraction": null,
       "direct": null,
@@ -18223,9 +18282,7 @@
       "declared_in": "host/native-operator-host.lisp",
       "class": "program",
       "kinds": [],
-      "exempt": {
-        "reason": "the refusal word fn-tls-self-signed-host-plan or -pem returned; any other value is refused as :self-signed"
-      },
+      "exempt": {},
       "keystones": [],
       "extraction": null,
       "direct": null,
@@ -18681,7 +18738,16 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "requested-octets",
+          "fn-cbor-octet-listp"
+        ],
+        [
+          "recorded-octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {
@@ -19950,7 +20016,12 @@
       "subsystem": "admin/operator",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "record-octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {
@@ -20861,7 +20932,9 @@
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
       "kinds": [],
-      "exempt": {},
+      "exempt": {
+        "pending-octets": "the writer's pending octet count, a natural compared with 0, not bytes"
+      },
       "keystones": [],
       "extraction": null,
       "direct": null,
@@ -21360,7 +21433,12 @@
       "subsystem": "store",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {
@@ -27571,7 +27649,12 @@
       "subsystem": "owner",
       "declared_in": "host/owner-host.lisp",
       "class": "program",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -28984,7 +29067,12 @@
       "subsystem": "nntp/served",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "payload",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [
         {
@@ -29072,7 +29160,12 @@
       "subsystem": "nntp/served",
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
-      "kinds": [],
+      "kinds": [
+        [
+          "payload",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -32637,7 +32730,9 @@
       "declared_in": "host/interfaces.lisp",
       "class": "common-lisp-compliant",
       "kinds": [],
-      "exempt": {},
+      "exempt": {
+        "frame": "a frame descriptor over the fn-octets stobj (its guard fn-sccr-framep), not bytes"
+      },
       "keystones": [
         {
           "theorem": "fn-sccv-step-is-seg-step"
@@ -33764,7 +33859,12 @@
       "subsystem": "nntp/served",
       "declared_in": "host/store-identity-host.lisp",
       "class": "program",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -33802,7 +33902,12 @@
       "subsystem": "nntp/served",
       "declared_in": "host/store-identity-host.lisp",
       "class": "program",
-      "kinds": [],
+      "kinds": [
+        [
+          "octets",
+          "fn-cbor-octet-listp"
+        ]
+      ],
       "exempt": {},
       "keystones": [],
       "extraction": null,
@@ -37665,12 +37770,7 @@
           "fn-cbor-octet-listp"
         ]
       ],
-      "exempt": {
-        "names": "ACL2's own names from fn-native-operator-host-result-self-signed, handed back unchanged; fn-ssc-plan refuses a bad one by name",
-        "days": "ACL2's own days from the same request",
-        "now-ms": "the wall reading fn-otm-wall-reading returned",
-        "has-wall": "the wall reading's usable flag; fn-ssc-plan refuses :clock without it"
-      },
+      "exempt": {},
       "keystones": [
         {
           "theorem": "fn-ssc-plan-body-is-one-sequence",

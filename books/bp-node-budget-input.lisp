@@ -42,7 +42,7 @@
     (and (null xs) (fn-bpnb-install-row (reverse reverse-line) rows))))
 
 (defun fn-bpnb-read (octets)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (fn-cbor-octet-listp octets)))
   (if (<= (len octets) 256)
       (fn-bpnb-lines octets nil '(:rows nil nil))
     nil))

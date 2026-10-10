@@ -3,11 +3,13 @@
  "detail": "Full list in the log after '== harness_check'. Run: cloud1:/tank/fn/scratch/fill-wt-check.log (remote_check cloud1 --target check, dev 55ff708a6, started 2026-10-04T19:03Z; local copy build/remote-check/cloud1-check.log)",
  "file": "books/payload-kinds.lisp",
  "id": "FILL-HARNESS-ENTRY-GUARDS-23",
- "notes": [],
+ "notes": [
+  "10-10 Builder D, lane d-entry-guards: entry-guards 33 -> 0. 20 byte-carrying formals of 18 entries now carry the kind fn-cbor-octet-listp in their guard, and the definterface :kinds says the same (every host call site already passes fnn-octet-list or NIL; none has a guard-verified defun caller in books/ or host/). 6 formals named *-octets or frame are not bytes and are :exempt with the reason (a max-octets bound, a stream length, two consed counts, a pending count, a frame descriptor over the fn-octets stobj). 7 stale :exempt rows in host/native-operator-host.lisp are removed (non-byte formals the lint never asks about). The acl2-arity half is on lane d-cite-load-bearing (f68081119)."
+ ],
  "owner": "unowned",
  "severity": "medium",
  "source": "fill-20261004",
  "state": "open",
  "title": "harness_check entry-guards: 23 findings (CL10 landed): formal octets/config-octets carries bytes but the entry guard names no kind (books/payload-kinds.lisp *fn-entry-guard-kinds*), e.g. fn-aj-host-profile-write-octets, fn-bpnb-read, fn-bpnc-startup",
- "updated": "2026-10-04T19:12:27Z"
+ "updated": "2026-10-10T02:50:00Z"
 }
