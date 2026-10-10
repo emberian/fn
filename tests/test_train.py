@@ -1244,7 +1244,9 @@ class PremiseBaselineTests(TrainBase):
         sh(self.work, "git", "fetch", "-q", "origin")
         sh(self.work, "git", "reset", "-q", "--hard", "origin/dev")
         m = self.train("merge", f"p@{sha}")
-        self.assertEqual(m.returncode, 0, m.stdout + m.stderr)
+        if m.returncode:
+            sys.stderr.write(m.stdout + m.stderr)
+        self.assertEqual(m.returncode, 0, "the conflict on the premise baseline did not resolve")
         merged = json.loads((self.work / "planning/premise-baseline.json").read_text())
         self.assertEqual(sorted(merged["accepted"]), ["a", "b", "c", "d", "e"])
 
