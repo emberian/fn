@@ -2368,6 +2368,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/hybrid-store-tests \
 	books/filed-groups \
 	tests/acl2/filed-groups-tests \
+	books/filed-catalog \
+	tests/acl2/filed-catalog-tests \
 	books/crypto-attach \
 	books/auth-secret \
 	tests/acl2/auth-secret-tests \
