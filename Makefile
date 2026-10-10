@@ -2366,6 +2366,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/topic-history-local-control-tests \
 	tests/acl2/topic-history-native-vector-tests \
 	tests/acl2/hybrid-store-tests \
+	books/filed-parse \
 	books/filed-groups \
 	tests/acl2/filed-groups-tests \
 	books/filed-catalog \

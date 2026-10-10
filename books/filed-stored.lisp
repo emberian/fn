@@ -1058,707 +1058,10 @@
 ; P4-1 support (all local, o1t- prefix): the stored parse keeps the source's Newsgroups, Control and
 ; Supersedes fields, so the decision's groups are filed within the stored bytes.
 
-(local
- (defun o1t-line-ind (l acc left)
-  (declare (xargs :measure (len l)))
-  (if (consp l)
-      (o1t-line-ind (cdr l) (cons (car l) acc) (1- left))
-    (list acc left))))
-
-(local
- (defthm o1t-next-line-aux-of-a-line
-  (implies (and (fn-article-crlf-freep l) (true-listp l)
-                (<= (len l) (nfix left)) (true-listp acc))
-           (equal (fn-article-next-line-aux (append l (list* 13 10 r)) acc left)
-                  (list :ok (append (reverse acc) l) r)))
-  :hints (("Goal" :induct (o1t-line-ind l acc left)
-           :in-theory (enable fn-article-next-line-aux)))))
-
-(local
- (defthm o1t-next-line-of-a-line
-  (implies (and (fn-article-crlf-freep l) (true-listp l) (<= (len l) 998))
-           (equal (fn-article-next-line (append l (list* 13 10 r)))
-                  (list :ok l r)))
-  :hints (("Goal" :in-theory (enable fn-article-next-line)
-           :use ((:instance o1t-next-line-aux-of-a-line (acc nil) (left 998)))))))
-
-(local
- (defthm o1t-next-line-of-blank
-  (equal (fn-article-next-line (list* 13 10 r)) (list :ok nil r))
-  :hints (("Goal" :in-theory (enable fn-article-next-line fn-article-next-line-aux)))))
-
-(local
- (defthm o1t-next-line-aux-len
-  (implies (and (true-listp line-rev)
-                (fn-article-line-okp (fn-article-next-line-aux octets line-rev left)))
-           (<= (len (fn-article-line-value (fn-article-next-line-aux octets line-rev left)))
-               (+ (len line-rev) (nfix left))))
-  :hints (("Goal" :induct (fn-article-next-line-aux octets line-rev left)
-           :in-theory (enable fn-article-next-line-aux)))))
-
-(local
- (defthm o1t-next-line-len
-  (implies (fn-article-line-okp (fn-article-next-line octets))
-           (<= (len (fn-article-line-value (fn-article-next-line octets))) 998))
-  :rule-classes :linear
-  :hints (("Goal" :in-theory (enable fn-article-next-line)
-           :use ((:instance o1t-next-line-aux-len (line-rev nil) (left 998)))))))
-
-(local
- (defun o1t-line-okp (l)
-  (declare (xargs :guard t))
-  (and (true-listp l) (consp l) (fn-article-crlf-freep l) (<= (len l) 998))))
-
-(local
- (defun o1t-folds-okp (ls)
-  (declare (xargs :guard t))
-  (if (consp ls)
-      (and (o1t-line-okp (car ls)) (fn-article-fold-linep (car ls))
-           (o1t-folds-okp (cdr ls)))
-    (null ls))))
-
-(local
- (defun o1t-fold-up (f ls)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp ls)
-      (o1t-fold-up (fn-article-add-fold f (car ls)) (cdr ls))
-    f)))
-
-(local
- (defun o1t-fieldvp (f)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (true-listp f) (consp (car f))
-       (o1t-line-okp (car (car f)))
-       (not (fn-article-wspp (car (car (car f)))))
-       (fn-article-line-okp (fn-article-new-field (car (car f))))
-       (o1t-folds-okp (cdr (car f)))
-       (equal f (o1t-fold-up (fn-article-line-value (fn-article-new-field (car (car f))))
-                             (cdr (car f)))))))
-
-(local
- (defun o1t-closedp (f)
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-article-has-vcharp (fn-article-field-unfolded-value f))))
-
-(local
- (defun o1t-fieldsvp (fs)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp fs)
-      (and (o1t-fieldvp (car fs)) (o1t-closedp (car fs)) (o1t-fieldsvp (cdr fs)))
-    (null fs))))
-
-(local
- (defthm o1t-fold-up-append
-  (equal (o1t-fold-up f (append a b)) (o1t-fold-up (o1t-fold-up f a) b))))
-
-(local
- (defthm o1t-folds-okp-true-listp
-  (implies (o1t-folds-okp a) (true-listp a))
-  :rule-classes :forward-chaining))
-
-(local
- (defthm o1t-folds-okp-append
-  (implies (true-listp a)
-           (equal (o1t-folds-okp (append a b)) (and (o1t-folds-okp a) (o1t-folds-okp b))))
-  :hints (("Goal" :induct (o1t-folds-okp a)))))
-
-(local
- (defthm o1t-new-field-raw
-  (implies (fn-article-line-okp (fn-article-new-field line))
-           (equal (car (fn-article-line-value (fn-article-new-field line)))
-                  (list line)))
-  :hints (("Goal" :in-theory (enable fn-article-new-field)))))
-
-(local
- (defthm o1t-new-field-true-listp
-  (implies (fn-article-line-okp (fn-article-new-field line))
-           (true-listp (fn-article-line-value (fn-article-new-field line))))
-  :hints (("Goal" :in-theory (enable fn-article-new-field)))))
-
-(local
- (defthm o1t-new-field-is-v
-  (implies (and (o1t-line-okp line) (not (fn-article-wspp (car line)))
-                (fn-article-line-okp (fn-article-new-field line)))
-           (o1t-fieldvp (fn-article-line-value (fn-article-new-field line))))
-  :hints (("Goal" :in-theory (e/d (o1t-fieldvp) (fn-article-new-field fn-article-line-value))))))
-
-(local
- (defthm o1t-add-fold-is-v
-  (implies (and (o1t-fieldvp f) (o1t-line-okp l) (fn-article-fold-linep l))
-           (o1t-fieldvp (fn-article-add-fold f l)))
-  :hints (("Goal" :in-theory (e/d (o1t-fieldvp fn-article-add-fold)
-                                  (fn-article-new-field fn-article-line-value fn-article-fold-linep))
-           :use ((:instance o1t-fold-up-append
-                            (f (fn-article-line-value (fn-article-new-field (car (car f)))))
-                            (a (cdr (car f))) (b (list l))))))))
-
-(local
- (in-theory (disable o1t-fieldvp o1t-closedp)))
-
-(local
- (defthm o1t-fieldsvp-true-listp
-  (implies (o1t-fieldsvp fs) (true-listp fs))
-  :rule-classes :forward-chaining))
-
-(local
- (defthm o1t-fieldsvp-append
-  (implies (true-listp a)
-           (equal (o1t-fieldsvp (append a b)) (and (o1t-fieldsvp a) (o1t-fieldsvp b))))
-  :hints (("Goal" :induct (o1t-fieldsvp a)))))
-
-(local
- (defthm o1t-fieldsvp-rev
-  (implies (o1t-fieldsvp a) (o1t-fieldsvp (rev a)))
-  :hints (("Goal" :induct (o1t-fieldsvp a)
-           :in-theory (enable rev)))))
-
-(local
- (defthm o1t-fieldsvp-revappend
-  (implies (and (o1t-fieldsvp a) (o1t-fieldsvp b))
-           (o1t-fieldsvp (revappend a b)))))
-
-(local
- (defthm o1t-fieldsvp-finish-fields
-  (implies (and (o1t-fieldsvp fr)
-                (or (null cur) (and (o1t-fieldvp cur) (o1t-closedp cur))))
-           (o1t-fieldsvp (fn-article-finish-fields fr cur)))
-  :hints (("Goal" :in-theory (enable fn-article-finish-fields)))))
-
-(local
- (defthm o1t-true-list-nonnil-is-consp
-  (implies (and (true-listp x) x) (consp x))
-  :rule-classes nil))
-
-(local
- (defthm o1t-next-line-value-consp
-  (implies (and (fn-article-line-okp (fn-article-next-line octets))
-                (fn-article-line-value (fn-article-next-line octets)))
-           (consp (fn-article-line-value (fn-article-next-line octets))))
-  :hints (("Goal" :in-theory (disable fn-article-next-line fn-article-line-value)
-           :use (fn-article-next-line-value-is-list
-                 (:instance o1t-true-list-nonnil-is-consp
-                            (x (fn-article-line-value (fn-article-next-line octets)))))))))
-
-(local
- (defthm o1t-next-line-value-is-a-line
-  (implies (and (fn-article-line-okp (fn-article-next-line octets))
-                (fn-article-line-value (fn-article-next-line octets)))
-           (o1t-line-okp (fn-article-line-value (fn-article-next-line octets))))
-  :hints (("Goal" :in-theory (e/d (o1t-line-okp)
-                                  (fn-article-next-line fn-article-line-value))
-           :use (fn-article-next-line-value-is-list
-                 fn-article-next-line-value-crlf-free
-                 o1t-next-line-value-consp
-                 o1t-next-line-len)))))
-
-(local
- (defthm o1t-parse-lines-fields-v
-  (implies (and (true-listp octets)
-                (o1t-fieldsvp fields-rev)
-                (or (null current) (o1t-fieldvp current))
-                (fn-article-result-okp
-                 (fn-article-parse-lines octets limits lines-left header-bytes nfields
-                                         fields-rev current header-rev)))
-           (o1t-fieldsvp
-            (fn-article-fields
-             (fn-article-result-article
-              (fn-article-parse-lines octets limits lines-left header-bytes nfields
-                                      fields-rev current header-rev)))))
-  :hints (("Goal"
-           :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields
-                                           fields-rev current header-rev)
-           :in-theory (e/d (fn-article-parse-lines fn-article-ok fn-article-make
-                            fn-article-fields fn-article-result-okp fn-article-result-article
-                            fn-article-field-closedp o1t-closedp)
-                           (fn-article-next-line fn-article-next-line-aux
-                            fn-article-new-field fn-article-add-fold
-                            fn-article-finish-fields fn-article-body-crlfp
-                            fn-article-header-rev-add-line
-                            fn-article-line-value fn-article-line-rest
-                            o1t-fieldvp))))))
-
-(local
- (defthm o1t-parse-fields-v
-  (implies (fn-article-result-okp (fn-article-parse octets))
-           (o1t-fieldsvp (fn-article-fields (fn-article-result-article (fn-article-parse octets)))))
-  :hints (("Goal"
-           :use ((:instance o1t-parse-lines-fields-v
-                  (limits *fn-article-ceiling-limits*) (lines-left (1+ *fn-article-max-octets*))
-                  (header-bytes 0) (nfields 0) (fields-rev nil) (current nil)
-                  (header-rev nil)))
-           :in-theory (e/d (fn-article-parse fn-article-parse-under
-                            fn-article-octets-are-proper-list)
-                           (fn-article-parse-lines fn-cbor-at-mostp
-                            o1t-parse-lines-fields-v))))))
-
-(local
- (defun o1t-nlines (fs)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp fs)
-      (+ (len (car (car fs))) (o1t-nlines (cdr fs)))
-    0)))
-
-(local
- (defun o1t-hr-lines (hr lines)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp lines)
-      (o1t-hr-lines (fn-article-header-rev-add-line hr (car lines)) (cdr lines))
-    hr)))
-
-(local
- (defun o1t-run-fr (fs fr cur)
-  (declare (xargs :guard t))
-  (if (consp fs)
-      (o1t-run-fr (cdr fs) (if cur (cons cur fr) fr) (car fs))
-    fr)))
-
-(local
- (defun o1t-run-cur (fs cur)
-  (declare (xargs :guard t))
-  (if (consp fs) (o1t-run-cur (cdr fs) (car fs)) cur)))
-
-(local
- (defun o1t-run-nf (fs nf cur)
-  (declare (xargs :guard t))
-  (if (consp fs)
-      (o1t-run-nf (cdr fs) (if cur (+ 1 (nfix nf)) nf) (car fs))
-    nf)))
-
-(local
- (defun o1t-run-hr (fs hr)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp fs)
-      (o1t-run-hr (cdr fs) (o1t-hr-lines hr (car (car fs))))
-    hr)))
-
-(local
- (defthm o1t-new-field-consp
-  (implies (fn-article-line-okp (fn-article-new-field line))
-           (consp (fn-article-line-value (fn-article-new-field line))))
-  :hints (("Goal" :in-theory (enable fn-article-new-field)))))
-
-(local
- (defthm o1t-parse-lines-of-a-fold
-  (implies (and (o1t-line-okp l) (fn-article-fold-linep l) cur
-                (posp nl) (natp hb)
-                (<= (+ hb (len l) 2) (fn-article-limit-octets limits)))
-           (equal (fn-article-parse-lines (append l (list* 13 10 rest))
-                                          limits nl hb nf fr cur hr)
-                  (fn-article-parse-lines rest limits (1- nl) (+ hb (len l) 2) nf fr
-                                          (fn-article-add-fold cur l)
-                                          (fn-article-header-rev-add-line hr l))))
-  :hints (("Goal"
-           :expand ((:free (cur hr nf fr)
-                     (fn-article-parse-lines (append l (list* 13 10 rest))
-                                             limits nl hb nf fr cur hr)))
-           :in-theory (e/d (o1t-line-okp fn-article-fold-linep fn-article-wspp)
-                           (fn-article-parse-lines fn-article-add-fold
-                            fn-article-header-rev-add-line fn-article-limit-octets
-                            fn-article-header-bytes-p fn-article-has-vcharp
-                            binary-append))
-           :do-not-induct t))))
-
-(local
- (defun o1t-folds-ind (ls cur nl hb hr)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp ls)
-      (o1t-folds-ind (cdr ls) (fn-article-add-fold cur (car ls)) (1- nl)
-                     (+ hb (len (car ls)) 2)
-                     (fn-article-header-rev-add-line hr (car ls)))
-    (list cur nl hb hr))))
-
-(local
- (defthm o1t-parse-lines-of-folds
-  (implies (and (o1t-folds-okp ls) cur (natp nl) (natp hb)
-                (<= (len ls) nl)
-                (<= (+ hb (len (fn-article-lines-octets ls))) (fn-article-limit-octets limits)))
-           (equal (fn-article-parse-lines (append (fn-article-lines-octets ls) rest)
-                                          limits nl hb nf fr cur hr)
-                  (fn-article-parse-lines rest limits (- nl (len ls))
-                                          (+ hb (len (fn-article-lines-octets ls)))
-                                          nf fr (o1t-fold-up cur ls) (o1t-hr-lines hr ls))))
-  :hints (("Goal"
-           :induct (o1t-folds-ind ls cur nl hb hr)
-           :in-theory (e/d (fn-article-lines-octets)
-                           (fn-article-parse-lines fn-article-add-fold
-                            fn-article-header-rev-add-line fn-article-limit-octets
-                            fn-article-fold-linep))))))
-
-(local
- (defthm o1t-parse-lines-of-a-new-field-line
-  (implies (and (o1t-line-okp l) (not (fn-article-wspp (car l)))
-                (fn-article-line-okp (fn-article-new-field l))
-                (posp nl) (natp hb) (natp nf)
-                (or (null cur) (fn-article-has-vcharp (fn-article-field-unfolded-value cur)))
-                (<= (+ hb (len l) 2) (fn-article-limit-octets limits))
-                (< (+ nf (if cur 1 0)) (fn-article-limit-fields limits)))
-           (equal (fn-article-parse-lines (append l (list* 13 10 rest))
-                                          limits nl hb nf fr cur hr)
-                  (fn-article-parse-lines rest limits (1- nl) (+ hb (len l) 2)
-                                          (if cur (+ 1 nf) nf)
-                                          (if cur (cons cur fr) fr)
-                                          (fn-article-line-value (fn-article-new-field l))
-                                          (fn-article-header-rev-add-line hr l))))
-  :hints (("Goal"
-           :expand ((:free (cur hr nf fr)
-                     (fn-article-parse-lines (append l (list* 13 10 rest))
-                                             limits nl hb nf fr cur hr)))
-           :in-theory (e/d (o1t-line-okp fn-article-field-closedp)
-                           (fn-article-parse-lines fn-article-add-fold
-                            fn-article-header-rev-add-line fn-article-limit-octets
-                            fn-article-limit-fields fn-article-new-field
-                            fn-article-header-bytes-p fn-article-has-vcharp
-                            binary-append))
-           :do-not-induct t))))
-
-(local
- (defthm o1t-parse-lines-of-a-built-field
-  (implies (and (o1t-line-okp l1) (not (fn-article-wspp (car l1)))
-                (fn-article-line-okp (fn-article-new-field l1))
-                (o1t-folds-okp folds)
-                (natp nl) (natp hb) (natp nf)
-                (or (null cur) (fn-article-has-vcharp (fn-article-field-unfolded-value cur)))
-                (<= (+ 1 (len folds)) nl)
-                (<= (+ hb (len l1) 2 (len (fn-article-lines-octets folds)))
-                    (fn-article-limit-octets limits))
-                (< (+ nf (if cur 1 0)) (fn-article-limit-fields limits)))
-           (equal (fn-article-parse-lines
-                   (append (fn-article-lines-octets (cons l1 folds)) rest)
-                   limits nl hb nf fr cur hr)
-                  (fn-article-parse-lines
-                   rest limits (- nl (+ 1 (len folds)))
-                   (+ hb (len l1) 2 (len (fn-article-lines-octets folds)))
-                   (if cur (+ 1 nf) nf) (if cur (cons cur fr) fr)
-                   (o1t-fold-up (fn-article-line-value (fn-article-new-field l1)) folds)
-                   (o1t-hr-lines hr (cons l1 folds)))))
-  :hints (("Goal"
-           :in-theory (e/d (fn-article-lines-octets)
-                           (fn-article-parse-lines fn-article-add-fold
-                            fn-article-header-rev-add-line fn-article-limit-octets
-                            fn-article-limit-fields fn-article-new-field
-                            fn-article-has-vcharp fn-article-line-value
-                            o1t-parse-lines-of-a-new-field-line
-                            o1t-parse-lines-of-folds))
-           :do-not-induct t
-           :use ((:instance o1t-parse-lines-of-a-new-field-line
-                            (l l1) (rest (append (fn-article-lines-octets folds) rest)))
-                 (:instance o1t-parse-lines-of-folds
-                            (ls folds) (cur (fn-article-line-value (fn-article-new-field l1)))
-                            (nl (1- nl)) (hb (+ hb (len l1) 2))
-                            (nf (if cur (+ 1 nf) nf)) (fr (if cur (cons cur fr) fr))
-                            (hr (fn-article-header-rev-add-line hr l1))))))))
-
-(local
- (defthm o1t-cons-car-cdr
-  (implies (consp x) (equal (cons (car x) (cdr x)) x))))
-
-(local
- (defthm o1t-parse-lines-of-a-built-field-ls
-  (implies (and (consp ls) (o1t-line-okp (car ls)) (not (fn-article-wspp (car (car ls))))
-                (fn-article-line-okp (fn-article-new-field (car ls)))
-                (o1t-folds-okp (cdr ls))
-                (natp nl) (natp hb) (natp nf)
-                (or (null cur) (fn-article-has-vcharp (fn-article-field-unfolded-value cur)))
-                (<= (len ls) nl)
-                (<= (+ hb (len (fn-article-lines-octets ls))) (fn-article-limit-octets limits))
-                (< (+ nf (if cur 1 0)) (fn-article-limit-fields limits)))
-           (equal (fn-article-parse-lines
-                   (append (fn-article-lines-octets ls) rest)
-                   limits nl hb nf fr cur hr)
-                  (fn-article-parse-lines
-                   rest limits (- nl (len ls))
-                   (+ hb (len (fn-article-lines-octets ls)))
-                   (if cur (+ 1 nf) nf) (if cur (cons cur fr) fr)
-                   (o1t-fold-up (fn-article-line-value (fn-article-new-field (car ls))) (cdr ls))
-                   (o1t-hr-lines hr ls))))
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (disable fn-article-parse-lines fn-article-limit-octets fn-article-limit-fields
-                               fn-article-new-field fn-article-line-value o1t-hr-lines
-                               o1t-parse-lines-of-a-built-field)
-           :expand ((len ls) (fn-article-lines-octets ls))
-           :use ((:instance o1t-parse-lines-of-a-built-field
-                            (l1 (car ls)) (folds (cdr ls))))))))
-
-(local
- (defthm o1t-parse-lines-of-a-field
-  (implies (and (o1t-fieldvp f)
-                (natp nl) (natp hb) (natp nf)
-                (or (null cur) (fn-article-has-vcharp (fn-article-field-unfolded-value cur)))
-                (<= (len (car f)) nl)
-                (<= (+ hb (len (fn-article-lines-octets (car f))))
-                    (fn-article-limit-octets limits))
-                (< (+ nf (if cur 1 0)) (fn-article-limit-fields limits)))
-           (equal (fn-article-parse-lines
-                   (append (fn-article-lines-octets (car f)) rest)
-                   limits nl hb nf fr cur hr)
-                  (fn-article-parse-lines
-                   rest limits (- nl (len (car f)))
-                   (+ hb (len (fn-article-lines-octets (car f))))
-                   (if cur (+ 1 nf) nf) (if cur (cons cur fr) fr)
-                   f (o1t-hr-lines hr (car f)))))
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (o1t-fieldvp)
-                           (fn-article-parse-lines fn-article-lines-octets
-                            fn-article-limit-octets fn-article-limit-fields
-                            fn-article-new-field fn-article-line-value
-                            o1t-parse-lines-of-a-built-field-ls o1t-hr-lines))
-           :use ((:instance o1t-parse-lines-of-a-built-field-ls (ls (car f))))))))
-
-(local
- (defun o1t-fields-ind (fs nl hb nf fr cur hr)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp fs)
-      (o1t-fields-ind (cdr fs) (- nl (len (car (car fs))))
-                      (+ hb (len (fn-article-lines-octets (car (car fs)))))
-                      (if cur (+ 1 nf) nf) (if cur (cons cur fr) fr) (car fs)
-                      (o1t-hr-lines hr (car (car fs))))
-    (list nl hb nf fr cur hr))))
-
-(local
- (defthm o1t-parse-lines-of-fields
-  (implies (and (o1t-fieldsvp fs) (natp nl) (natp hb) (natp nf)
-                (or (null cur) (fn-article-has-vcharp (fn-article-field-unfolded-value cur)))
-                (<= (o1t-nlines fs) nl)
-                (<= (+ hb (len (fn-article-fields-octets fs))) (fn-article-limit-octets limits))
-                (<= (+ nf (if cur 1 0) (len fs)) (fn-article-limit-fields limits)))
-           (equal (fn-article-parse-lines
-                   (append (fn-article-fields-octets fs) rest)
-                   limits nl hb nf fr cur hr)
-                  (fn-article-parse-lines
-                   rest limits (- nl (o1t-nlines fs))
-                   (+ hb (len (fn-article-fields-octets fs)))
-                   (o1t-run-nf fs nf cur) (o1t-run-fr fs fr cur)
-                   (o1t-run-cur fs cur) (o1t-run-hr fs hr))))
-  :hints (("Goal"
-           :induct (o1t-fields-ind fs nl hb nf fr cur hr)
-           :in-theory (e/d (o1t-closedp)
-                           (fn-article-parse-lines fn-article-limit-octets
-                            fn-article-limit-fields fn-article-lines-octets
-                            o1t-hr-lines))))))
-
-(local
- (defthm o1t-parse-lines-of-the-blank-line
-  (implies (and (posp nl) (fn-article-body-crlfp body)
-                (fn-article-field-closedp cur) (true-listp hr))
-           (equal (fn-article-parse-lines (cons 13 (cons 10 body))
-                                          limits nl hb nf fr cur hr)
-                  (fn-article-ok
-                   (fn-article-make (rev hr) body (fn-article-finish-fields fr cur)))))
-  :hints (("Goal"
-           :expand ((fn-article-parse-lines (cons 13 (cons 10 body))
-                                            limits nl hb nf fr cur hr))
-           :in-theory (disable fn-article-parse-lines fn-article-field-closedp
-                               fn-article-body-crlfp fn-article-finish-fields)
-           :use ((:instance fn-article-blank-line-partitions-input (octets (cons 13 (cons 10 body)))))))))
-
-(local
- (defthm o1t-hr-lines-true-listp
-  (implies (true-listp hr) (true-listp (o1t-hr-lines hr lines)))
-  :hints (("Goal" :in-theory (enable fn-article-header-rev-add-line)))))
-
-(local
- (defthm o1t-run-hr-true-listp
-  (implies (true-listp hr) (true-listp (o1t-run-hr fs hr)))
-  :hints (("Goal" :in-theory (disable o1t-hr-lines)))))
-
-(local
- (defthm o1t-run-cur-closed
-  (implies (and (o1t-fieldsvp fs)
-                (or (null cur) (fn-article-has-vcharp (fn-article-field-unfolded-value cur))))
-           (fn-article-field-closedp (o1t-run-cur fs cur)))
-  :hints (("Goal" :in-theory (enable fn-article-field-closedp o1t-closedp)))))
-
-(local
- (defthm o1t-parse-lines-of-fields-and-body
-  (implies (and (o1t-fieldsvp fs) (natp nl) (natp hb) (natp nf) (true-listp hr)
-                (or (null cur) (fn-article-has-vcharp (fn-article-field-unfolded-value cur)))
-                (< (o1t-nlines fs) nl)
-                (<= (+ hb (len (fn-article-fields-octets fs))) (fn-article-limit-octets limits))
-                (<= (+ nf (if cur 1 0) (len fs)) (fn-article-limit-fields limits))
-                (fn-article-body-crlfp body))
-           (equal (fn-article-parse-lines
-                   (append (fn-article-fields-octets fs) (cons 13 (cons 10 body)))
-                   limits nl hb nf fr cur hr)
-                  (fn-article-ok
-                   (fn-article-make (rev (o1t-run-hr fs hr)) body
-                                    (fn-article-finish-fields (o1t-run-fr fs fr cur)
-                                                              (o1t-run-cur fs cur))))))
-  :hints (("Goal"
-           :in-theory (disable fn-article-parse-lines fn-article-limit-octets
-                               fn-article-limit-fields o1t-run-hr o1t-run-fr o1t-run-cur
-                               o1t-run-nf fn-article-field-closedp o1t-nlines
-                               fn-article-finish-fields fn-article-body-crlfp)
-           :use ((:instance o1t-parse-lines-of-fields (rest (cons 13 (cons 10 body))))
-                 (:instance o1t-parse-lines-of-the-blank-line
-                            (nl (- nl (o1t-nlines fs)))
-                            (hb (+ hb (len (fn-article-fields-octets fs))))
-                            (nf (o1t-run-nf fs nf cur)) (fr (o1t-run-fr fs fr cur))
-                            (cur (o1t-run-cur fs cur)) (hr (o1t-run-hr fs hr))))))))
-
-(local
- (defthm o1t-reverse-is-rev
-  (implies (true-listp x) (equal (reverse x) (rev x)))
-  :hints (("Goal" :in-theory (enable rev)))))
-
-(local
- (defthm o1t-finish-fields-of-the-run
-  (implies (and (o1t-fieldsvp fs) (true-listp fr))
-           (equal (fn-article-finish-fields (o1t-run-fr fs fr cur) (o1t-run-cur fs cur))
-                  (append (fn-article-finish-fields fr cur) fs)))
-  :hints (("Goal" :induct (o1t-fields-ind fs nl hb nf fr cur hr)
-           :in-theory (e/d (fn-article-finish-fields) (o1t-hr-lines))))))
-
-(local
- (defun o1t-tl-linesp (ls)
-  (declare (xargs :guard t))
-  (if (consp ls) (and (true-listp (car ls)) (o1t-tl-linesp (cdr ls))) t)))
-
-(local
- (defthm o1t-folds-okp-tl-linesp
-  (implies (o1t-folds-okp ls) (o1t-tl-linesp ls))))
-
-(local
- (defthm o1t-fieldvp-tl-lines
-  (implies (o1t-fieldvp f) (o1t-tl-linesp (car f)))
-  :hints (("Goal" :in-theory (enable o1t-fieldvp)
-           :use ((:instance o1t-cons-car-cdr (x (car f))))))))
-
-(local
- (defthm o1t-hr-lines-recompose
-  (implies (and (true-listp hr) (o1t-tl-linesp ls))
-           (equal (rev (o1t-hr-lines hr ls))
-                  (append (rev hr) (fn-article-lines-octets ls))))
-  :hints (("Goal" :induct (o1t-hr-lines hr ls)
-           :in-theory (e/d (fn-article-lines-octets)
-                           (fn-article-header-rev-add-line fn-article-header-rev-add-line-recomposes))
-           :do-not-induct t)
-          ("Subgoal *1/1" :use ((:instance fn-article-header-rev-add-line-recomposes
-                                           (header-rev hr) (line (car ls)))
-                                (:instance fn-article-extended-header-is-list
-                                           (header-rev hr) (line (car ls))))))))
-
-(local
- (defthm o1t-run-hr-recompose
-  (implies (and (o1t-fieldsvp fs) (true-listp hr))
-           (equal (rev (o1t-run-hr fs hr))
-                  (append (rev hr) (fn-article-fields-octets fs))))
-  :hints (("Goal" :induct (o1t-fields-ind fs nl hb nf fr cur hr)
-           :in-theory (e/d () (o1t-hr-lines fn-article-lines-octets))))))
-
-(local
- (defthm o1t-len-le-len-append
-  (<= (len b) (len (append a b)))
-  :rule-classes :linear))
-
-(local
- (defthm o1t-lines-le-octets
-  (<= (len ls) (len (fn-article-lines-octets ls)))
-  :rule-classes :linear
-  :hints (("Goal" :in-theory (enable fn-article-lines-octets)))))
-
-(local
- (defthm o1t-nlines-le-octets
-  (implies (o1t-fieldsvp fs)
-           (<= (o1t-nlines fs) (len (fn-article-fields-octets fs))))
-  :rule-classes :linear
-  :hints (("Goal" :induct (o1t-nlines fs)
-           :in-theory (e/d () (fn-article-lines-octets))))))
-
-(local
- (defthm o1t-fields-le-nlines
-  (implies (o1t-fieldsvp fs)
-           (<= (len fs) (o1t-nlines fs)))
-  :rule-classes :linear
-  :hints (("Goal" :induct (o1t-nlines fs)
-           :in-theory (enable o1t-fieldvp)))))
-
-(local
- (defthm o1t-parse-of-fields
-  (implies (and (o1t-fieldsvp fs) (fn-article-body-crlfp body)
-                (fn-cbor-octet-listp (append (fn-article-fields-octets fs)
-                                             (cons 13 (cons 10 body))))
-                (<= (len (append (fn-article-fields-octets fs) (cons 13 (cons 10 body))))
-                    *fn-article-max-octets*))
-           (equal (fn-article-parse (append (fn-article-fields-octets fs)
-                                            (cons 13 (cons 10 body))))
-                  (fn-article-ok (fn-article-make (fn-article-fields-octets fs) body fs))))
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-article-parse fn-article-parse-under fn-ap-at-most-is-length-bound)
-                           (fn-article-parse-lines o1t-run-hr o1t-run-fr o1t-run-cur
-                            o1t-nlines fn-article-fields-octets fn-article-finish-fields
-                            fn-article-body-crlfp o1t-parse-lines-of-fields-and-body))
-           :use ((:instance o1t-parse-lines-of-fields-and-body
-                            (limits *fn-article-ceiling-limits*)
-                            (nl (1+ *fn-article-max-octets*))
-                            (hb 0) (nf 0) (fr nil) (cur nil) (hr nil))
-                 (:instance o1t-finish-fields-of-the-run (fr nil) (cur nil))
-                 (:instance o1t-run-hr-recompose (hr nil))
-                 (:instance o1t-nlines-le-octets)
-                 (:instance o1t-fields-le-nlines))))))
-
-(local
- (defthm o1t-parse-lines-body-crlfp
-  (implies (fn-article-result-okp
-            (fn-article-parse-lines octets limits nl hb nf fr cur hr))
-           (fn-article-body-crlfp
-            (fn-article-body
-             (fn-article-result-article
-              (fn-article-parse-lines octets limits nl hb nf fr cur hr)))))
-  :hints (("Goal"
-           :induct (fn-article-parse-lines octets limits nl hb nf fr cur hr)
-           :in-theory (e/d (fn-article-parse-lines fn-article-ok fn-article-make
-                            fn-article-body fn-article-result-okp fn-article-result-article)
-                           (fn-article-next-line fn-article-next-line-aux
-                            fn-article-new-field fn-article-add-fold
-                            fn-article-finish-fields fn-article-body-crlfp
-                            fn-article-header-rev-add-line
-                            fn-article-line-value fn-article-line-rest))))))
-
-(local
- (defthm o1t-parse-body-crlfp
-  (implies (fn-article-result-okp (fn-article-parse octets))
-           (fn-article-body-crlfp
-            (fn-article-body (fn-article-result-article (fn-article-parse octets)))))
-  :hints (("Goal"
-           :use ((:instance o1t-parse-lines-body-crlfp
-                  (limits *fn-article-ceiling-limits*) (nl (1+ *fn-article-max-octets*))
-                  (hb 0) (nf 0) (fr nil) (cur nil) (hr nil)))
-           :in-theory (e/d (fn-article-parse fn-article-parse-under)
-                           (fn-article-parse-lines fn-cbor-at-mostp
-                            o1t-parse-lines-body-crlfp))))))
-
-(local
- (defthm o1t-parse-reconstructs
-  (implies (fn-article-result-okp (fn-article-parse y))
-           (let ((article (fn-article-result-article (fn-article-parse y))))
-             (and (true-listp article)
-                  (o1t-fieldsvp (fn-article-fields article))
-                  (fn-article-body-crlfp (fn-article-body article))
-                  (true-listp (fn-article-body article))
-                  (equal y (append (fn-article-fields-octets (fn-article-fields article))
-                                   (cons 13 (cons 10 (fn-article-body article))))))))
-  :rule-classes nil
-  :hints (("Goal"
-           :in-theory (union-theories '(fn-article-syntax-p fn-article-source
-                                        fn-article-octet-list-true-listp
-                                        fn-article-append-associative (:e binary-append)
-                                        binary-append car-cons cdr-cons)
-                                      (theory 'minimal-theory))
-           :use ((:instance fn-article-successful-parse-syntax-p (octets y))
-                 (:instance fn-article-successful-parse-preserves-source (octets y))
-                 (:instance fn-article-successful-parse-fields-recompose-header (octets y))
-                 (:instance o1t-parse-fields-v (octets y))
-                 (:instance o1t-parse-body-crlfp (octets y)))))))
+(local (include-book "filed-parse"))
 
 (local
- (defthm o1t-parse-article-true-listp
-  (implies (fn-article-result-okp (fn-article-parse y))
-           (true-listp (fn-article-result-article (fn-article-parse y))))
-  :hints (("Goal" :use ((:instance fn-article-successful-parse-syntax-p (octets y)))
-           :in-theory (e/d (fn-article-syntax-p) (fn-article-parse fn-article-result-article))))))
+ (in-theory (disable o1p-fieldvp o1p-closedp)))
 
 (local
  (defthm o1t-agree-source-newsgroups
@@ -1776,68 +1079,6 @@
                                   (fn-article-parse fn-article-get-headers-aux))))))
 
 (local
- (defthm o1t-classify-fields-by-named
-  (implies (and (equal (fn-ctl-fields-named *fn-ctl-control-name* fs)
-                       (fn-ctl-fields-named *fn-ctl-control-name* gs))
-                (equal (fn-ctl-fields-named *fn-ctl-supersedes-name* fs)
-                       (fn-ctl-fields-named *fn-ctl-supersedes-name* gs)))
-           (equal (fn-ctl-classify-fields fs) (fn-ctl-classify-fields gs)))
-  :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-ctl-classify-fields)
-                                  (fn-ctl-fields-named fn-ctl-parse-command))))))
-
-(local
- (defthm o1t-agree-classify
-  (implies (and (fn-article-result-okp (fn-article-parse s))
-                (fn-article-result-okp (fn-article-parse r))
-                (equal (fn-ctl-fields-named
-                        *fn-ctl-control-name*
-                        (fn-article-fields (fn-article-result-article (fn-article-parse s))))
-                       (fn-ctl-fields-named
-                        *fn-ctl-control-name*
-                        (fn-article-fields (fn-article-result-article (fn-article-parse r)))))
-                (equal (fn-ctl-fields-named
-                        *fn-ctl-supersedes-name*
-                        (fn-article-fields (fn-article-result-article (fn-article-parse s))))
-                       (fn-ctl-fields-named
-                        *fn-ctl-supersedes-name*
-                        (fn-article-fields (fn-article-result-article (fn-article-parse r))))))
-           (equal (fn-ctl-classify-octets s) (fn-ctl-classify-octets r)))
-  :hints (("Goal" :in-theory (e/d (fn-ctl-classify-octets fn-ctl-classify)
-                                  (fn-article-parse fn-ctl-fields-named fn-ctl-parse-command
-                                   fn-ctl-classify-fields fn-article-fields
-                                   fn-article-result-article))
-           :use (o1t-parse-article-true-listp
-                 (:instance o1t-parse-article-true-listp (y r))
-                 (:instance o1t-classify-fields-by-named
-                            (fs (fn-article-fields (fn-article-result-article (fn-article-parse s))))
-                            (gs (fn-article-fields (fn-article-result-article (fn-article-parse r))))))))))
-
-(local
- (defthm o1t-car-of-fold-up
-  (implies (and (true-listp (car f)) (true-listp ls))
-           (equal (car (o1t-fold-up f ls)) (append (car f) ls)))
-  :hints (("Goal" :induct (o1t-fold-up f ls) :in-theory (enable fn-article-add-fold)))))
-
-(local
- (defthm o1t-cadr-of-fold-up
-  (equal (cadr (o1t-fold-up f ls)) (cadr f))
-  :hints (("Goal" :induct (o1t-fold-up f ls) :in-theory (enable fn-article-add-fold)))))
-
-(local
- (defthm o1t-closed-of-fold-up
-  (implies (fn-article-has-vcharp (caddr f))
-           (fn-article-has-vcharp (caddr (o1t-fold-up f ls))))
-  :hints (("Goal" :induct (o1t-fold-up f ls) :in-theory (enable fn-article-add-fold)))))
-
-(local
- (defthm o1t-fold-up-true-listp
-  (implies (true-listp f) (true-listp (o1t-fold-up f ls)))
-  :hints (("Goal" :induct (o1t-fold-up f ls) :in-theory (enable fn-article-add-fold)))))
-
-(local (in-theory (disable o1t-fieldvp o1t-closedp)))
-
-(local
  (defthm o1t-octet-listp-suffix
   (implies (fn-cbor-octet-listp (append a b)) (fn-cbor-octet-listp b))
   :hints (("Goal" :induct (append a b)))))
@@ -1849,7 +1090,7 @@
 
 (local
  (defthm o1t-reparse
-  (implies (and (o1t-fieldsvp g) (fn-article-body-crlfp body)
+  (implies (and (o1p-fieldsvp g) (fn-article-body-crlfp body)
                 (fn-cbor-octet-listp tl) (<= (len tl) *fn-article-max-octets*)
                 (equal tl (append (fn-article-fields-octets g) (cons 13 (cons 10 body)))))
            (and (fn-article-result-okp (fn-article-parse tl))
@@ -1857,8 +1098,8 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-article-ok fn-article-make fn-article-fields
                             fn-article-result-article fn-article-result-okp)
-                           (fn-article-parse o1t-parse-of-fields fn-article-fields-octets))
-           :use ((:instance o1t-parse-of-fields (fs g)))))))
+                           (fn-article-parse o1p-parse-of-fields fn-article-fields-octets))
+           :use ((:instance o1p-parse-of-fields (fs g)))))))
 
 (local
  (defun o1t-ind2 (a b)
@@ -1885,20 +1126,20 @@
 
 (local
  (defthm o1t-car-folds
-  (implies (and (o1t-folds-okp b) b)
+  (implies (and (o1p-folds-okp b) b)
            (fn-article-wspp (car (append (fn-article-lines-octets b) v))))
-  :hints (("Goal" :in-theory (enable o1t-folds-okp o1t-line-okp fn-article-lines-octets fn-article-fold-linep)))))
+  :hints (("Goal" :in-theory (enable o1p-folds-okp o1p-line-okp fn-article-lines-octets fn-article-fold-linep)))))
 
 (local
  (defthm o1t-lu2
-  (implies (and (o1t-folds-okp a) (o1t-folds-okp b)
+  (implies (and (o1p-folds-okp a) (o1p-folds-okp b)
                 (not (fn-article-wspp (car u))) (not (fn-article-wspp (car v)))
                 (equal (append (fn-article-lines-octets a) u)
                        (append (fn-article-lines-octets b) v)))
            (and (equal a b) (equal u v)))
   :rule-classes nil
   :hints (("Goal" :induct (o1t-ind2 a b)
-           :in-theory (e/d (o1t-folds-okp o1t-line-okp fn-article-lines-octets fn-article-fold-linep)
+           :in-theory (e/d (o1p-folds-okp o1p-line-okp fn-article-lines-octets fn-article-fold-linep)
                            (fn-article-wspp)))
           ("Subgoal *1/2" :cases ((consp b) (consp a)))
           ("Subgoal *1/1" :cases ((consp a))))))
@@ -1913,21 +1154,21 @@
   (declare (xargs :verify-guards nil))
   (and (consp r) (o1t-line0 (car r))
        (not (fn-article-wspp (car (car r))))
-       (o1t-folds-okp (cdr r)))))
+       (o1p-folds-okp (cdr r)))))
 
 (local
  (defun o1t-mkfield (r)
   (declare (xargs :verify-guards nil))
-  (o1t-fold-up (fn-article-line-value (fn-article-new-field (car r))) (cdr r))))
+  (o1p-fold-up (fn-article-line-value (fn-article-new-field (car r))) (cdr r))))
 
 (local
  (defthm o1t-fieldvp-facts
-  (implies (o1t-fieldvp g)
+  (implies (o1p-fieldvp g)
            (and (true-listp g) (o1t-rawp0 (car g))
                 (fn-article-line-okp (fn-article-new-field (car (car g))))
                 (equal g (o1t-mkfield (car g)))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (o1t-fieldvp o1t-rawp0 o1t-line0 o1t-line-okp o1t-mkfield) ())))))
+  :hints (("Goal" :in-theory (e/d (o1p-fieldvp o1t-rawp0 o1t-line0 o1p-line-okp o1t-mkfield) ())))))
 
 (local
  (defthm o1t-lu-raw
@@ -1937,32 +1178,32 @@
                        (append (fn-article-lines-octets r2) v)))
            (and (equal r r2) (equal u v)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (o1t-rawp0 o1t-line0 o1t-line-okp fn-article-lines-octets) (fn-article-wspp))
+  :hints (("Goal" :in-theory (e/d (o1t-rawp0 o1t-line0 o1p-line-okp fn-article-lines-octets) (fn-article-wspp))
            :use ((:instance o1t-lu1 (la (car r)) (lb (car r2))
                             (x (fn-article-lines-octets (cdr r))) (y (fn-article-lines-octets (cdr r2))))
                  (:instance o1t-lu2 (a (cdr r)) (b (cdr r2))))))))
 
 (local
  (defthm o1t-car-of-field-octets
-  (implies (and (o1t-fieldsvp gs) (not (fn-article-wspp (car u))))
+  (implies (and (o1p-fieldsvp gs) (not (fn-article-wspp (car u))))
            (not (fn-article-wspp (car (append (fn-article-fields-octets gs) u)))))
-  :hints (("Goal" :in-theory (e/d (o1t-fieldsvp fn-article-fields-octets fn-article-lines-octets o1t-fieldvp
-                                   o1t-line-okp) (fn-article-wspp))))))
+  :hints (("Goal" :in-theory (e/d (o1p-fieldsvp fn-article-fields-octets fn-article-lines-octets o1p-fieldvp
+                                   o1p-line-okp) (fn-article-wspp))))))
 
 (local
  (defthm o1t-peel-core
   (implies (and (o1t-rawp0 r) (not (fn-article-wspp (car tl)))
-                (o1t-fieldsvp fs)
+                (o1p-fieldsvp fs)
                 (equal (append (fn-article-lines-octets r) tl)
                        (append (fn-article-fields-octets fs) (cons 13 (cons 10 body)))))
            (and (consp fs) (equal (car (car fs)) r)
                 (equal tl (append (fn-article-fields-octets (cdr fs)) (cons 13 (cons 10 body))))
                 (fn-article-line-okp (fn-article-new-field (car r)))
                 (equal (car fs) (o1t-mkfield r))
-                (o1t-fieldsvp (cdr fs))))
+                (o1p-fieldsvp (cdr fs))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (o1t-rawp0 o1t-line0 o1t-line-okp fn-article-lines-octets) (fn-article-wspp o1t-car-of-field-octets))
+           :in-theory (e/d (o1t-rawp0 o1t-line0 o1p-line-okp fn-article-lines-octets) (fn-article-wspp o1t-car-of-field-octets))
            :cases ((consp fs))
            :use ((:instance o1t-fieldvp-facts (g (car fs)))
                  (:instance o1t-car-of-field-octets (gs (cdr fs)) (u (cons 13 (cons 10 body))))
@@ -1986,7 +1227,7 @@
                                fn-article-lines-octets fn-article-fields-octets o1t-rawp0 o1t-mkfield
                                fn-article-successful-parse-input-octets fn-article-successful-parse-input-bound
                                o1t-octet-listp-suffix o1t-len-suffix)
-           :use ((:instance o1t-parse-reconstructs (y (append (fn-article-lines-octets r) tl)))
+           :use ((:instance o1p-parse-reconstructs (y (append (fn-article-lines-octets r) tl)))
                  (:instance o1t-peel-core
                             (fs (fn-article-fields (fn-article-result-article
                                                     (fn-article-parse (append (fn-article-lines-octets r) tl)))))
@@ -2055,52 +1296,6 @@
           )))
 
 (local
- (defun o1t-fields-agree (fs gs)
-  (declare (xargs :guard t :verify-guards nil))
-  (and (equal (fn-article-get-headers-aux fs *fn-af-newsgroups-name*)
-              (fn-article-get-headers-aux gs *fn-af-newsgroups-name*))
-       (equal (fn-ctl-fields-named *fn-ctl-control-name* fs)
-              (fn-ctl-fields-named *fn-ctl-control-name* gs))
-       (equal (fn-ctl-fields-named *fn-ctl-supersedes-name* fs)
-              (fn-ctl-fields-named *fn-ctl-supersedes-name* gs)))))
-
-(local
- (defthm o1t-split-colon-of-a-name
-  (implies (and (fn-article-ftext-listp name) (true-listp acc))
-           (equal (fn-article-split-colon-aux (append name (cons 58 rest)) acc)
-                  (list :ok (append (reverse acc) name) rest)))
-  :hints (("Goal" :induct (o1t-line-ind name acc 0)
-           :in-theory (enable fn-article-split-colon-aux fn-article-ftextp)))))
-
-(local
- (defthm o1t-get-headers-aux-skip
-  (implies (not (equal (fn-article-field-name g) (fn-article-ascii-downcase name)))
-           (equal (fn-article-get-headers-aux (cons g fs) name)
-                  (fn-article-get-headers-aux fs name)))
-  :hints (("Goal" :expand ((fn-article-get-headers-aux (cons g fs) name))
-           :in-theory (enable fn-article-field-name-equalp)))))
-
-(local
- (defun o1t-prefix-clearp (pre)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp pre)
-      (and (true-listp (car pre))
-           (not (equal (cadr (car pre)) *fn-af-newsgroups-name*))
-           (not (equal (cadr (car pre)) *fn-ctl-control-name*))
-           (not (equal (cadr (car pre)) *fn-ctl-supersedes-name*))
-           (o1t-prefix-clearp (cdr pre)))
-    t)))
-
-(local
- (defthm o1t-prefix-agrees
-  (implies (o1t-prefix-clearp pre)
-           (o1t-fields-agree (append pre fs) fs))
-  :hints (("Goal" :induct (o1t-prefix-clearp pre)
-           :in-theory (e/d (o1t-fields-agree fn-ctl-fields-named fn-ctl-field-name
-                            fn-article-get-headers-aux fn-article-field-name-equalp)
-                           ())))))
-
-(local
  (defun o1t-nameok (l)
   (declare (xargs :verify-guards nil))
   (let ((nm (fn-article-line-value (fn-article-split-colon-aux l nil))))
@@ -2138,7 +1333,7 @@
  (defthm o1t-rawsp-singles
   (implies (o1t-plinesp ls) (o1t-rawsp (o1t-singles ls)))
   :hints (("Goal" :in-theory (enable o1t-rawsp o1t-singles o1t-plinesp o1t-plinep o1t-rawp0 o1t-line0
-                                     o1t-folds-okp)))))
+                                     o1p-folds-okp)))))
 
 (local
  (defthm o1t-cadr-of-new-field
@@ -2156,7 +1351,7 @@
 (local
  (defthm o1t-cadr-mkfield
   (equal (cadr (o1t-mkfield r)) (cadr (fn-article-line-value (fn-article-new-field (car r)))))
-  :hints (("Goal" :in-theory (union-theories '(o1t-mkfield o1t-cadr-of-fold-up) (theory 'minimal-theory))))))
+  :hints (("Goal" :in-theory (union-theories '(o1t-mkfield o1p-cadr-of-fold-up) (theory 'minimal-theory))))))
 
 (local
  (defthm o1t-true-listp-mkfield
@@ -2164,7 +1359,7 @@
            (true-listp (o1t-mkfield r)))
   :hints (("Goal" :in-theory (e/d (o1t-mkfield) (fn-article-new-field))
            :use ((:instance o1t-true-listp-of-new-field (l (car r)))
-                 (:instance o1t-fold-up-true-listp (f (fn-article-line-value (fn-article-new-field (car r)))) (ls (cdr r))))))))
+                 (:instance o1p-fold-up-true-listp (f (fn-article-line-value (fn-article-new-field (car r)))) (ls (cdr r))))))))
 
 (local
  (defthm o1t-mkfield-facts
@@ -2193,9 +1388,9 @@
 (local
  (defthm o1t-clear-of-mkfields
   (implies (and (o1t-plinesp ls) (o1t-newoks (o1t-singles ls)))
-           (o1t-prefix-clearp (o1t-mkfields (o1t-singles ls))))
+           (o1p-prefix-clearp (o1t-mkfields (o1t-singles ls))))
   :hints (("Goal" :induct (o1t-singles ls)
-           :in-theory (e/d (o1t-singles o1t-mkfields o1t-newoks o1t-plinesp o1t-prefix-clearp)
+           :in-theory (e/d (o1t-singles o1t-mkfields o1t-newoks o1t-plinesp o1p-prefix-clearp)
                            (o1t-mkfield o1t-plinep fn-article-new-field o1t-cadr-mkfield))
            :do-not-induct nil)
           ("Subgoal *1/1" :use ((:instance o1t-clear-head (l (car ls))))))))
@@ -2208,7 +1403,7 @@
                 (equal (fn-article-fields (fn-article-result-article (fn-article-parse (append (o1s-octets ls) tl))))
                        (append (o1t-mkfields (o1t-singles ls))
                                (fn-article-fields (fn-article-result-article (fn-article-parse tl)))))
-                (o1t-prefix-clearp (o1t-mkfields (o1t-singles ls)))))
+                (o1p-prefix-clearp (o1t-mkfields (o1t-singles ls)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-article-parse fn-article-wspp o1t-rocts-singles o1t-rawsp-singles
@@ -2224,7 +1419,7 @@
            (not (fn-article-wspp (car src))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-article-parse fn-article-wspp o1t-car-of-field-octets)
-           :use ((:instance o1t-parse-reconstructs (y src))
+           :use ((:instance o1p-parse-reconstructs (y src))
                  (:instance o1t-car-of-field-octets
                             (gs (fn-article-fields (fn-article-result-article (fn-article-parse src))))
                             (u (cons 13 (cons 10 (fn-article-body (fn-article-result-article (fn-article-parse src))))))))))))
@@ -2234,14 +1429,14 @@
   (implies (and (o1t-plinesp ls)
                 (fn-article-result-okp (fn-article-parse src))
                 (fn-article-result-okp (fn-article-parse (append (o1s-octets ls) src))))
-           (o1t-fields-agree
+           (o1p-fields-agree
             (fn-article-fields (fn-article-result-article (fn-article-parse (append (o1s-octets ls) src))))
             (fn-article-fields (fn-article-result-article (fn-article-parse src)))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-article-parse fn-article-wspp)
            :use ((:instance o1t-peel-lines (tl src))
                  (:instance o1t-source-start)
-                 (:instance o1t-prefix-agrees
+                 (:instance o1p-prefix-agrees
                             (pre (o1t-mkfields (o1t-singles ls)))
                             (fs (fn-article-fields (fn-article-result-article (fn-article-parse src))))))))))
 
@@ -2312,14 +1507,14 @@
 
 (local
  (defthm o1t-scan-folds
-  (implies (o1t-folds-okp fl)
+  (implies (o1p-folds-okp fl)
            (equal (fn-inj-path-scan (append (fn-article-lines-octets fl) x) t)
                   (if (consp fl)
                       (let ((r (fn-inj-path-scan x t)))
                         (if r (+ (len (fn-article-lines-octets fl)) r) nil))
                     (fn-inj-path-scan x t))))
   :hints (("Goal" :induct (o1t-ind1 fl)
-           :in-theory (e/d (o1t-folds-okp o1t-line-okp fn-article-fold-linep)
+           :in-theory (e/d (o1p-folds-okp o1p-line-okp fn-article-fold-linep)
                            (fn-article-wspp o1t-scan-bol-line o1t-openp-not-lead)))
           ("Subgoal *1/1" :expand ((fn-article-lines-octets fl))
            :use ((:instance o1t-openp-not-lead
@@ -2368,13 +1563,13 @@
 
 (local
  (defthm o1t-scan-fields
-  (implies (and (o1t-fieldsvp s) (equal (car tt) 13))
+  (implies (and (o1p-fieldsvp s) (equal (car tt) 13))
            (equal (fn-inj-path-scan (append (fn-article-fields-octets s) tt) t)
                   (if (fn-inj-path-openp (append (fn-article-fields-octets (o1t-s2 s tt)) tt))
                       (+ 6 (len (fn-article-fields-octets (o1t-s1 s tt))))
                     nil)))
   :hints (("Goal" :induct (o1t-s1 s tt)
-           :in-theory (e/d (o1t-fieldsvp) (fn-inj-path-openp o1t-scan-field))
+           :in-theory (e/d (o1p-fieldsvp) (fn-inj-path-openp o1t-scan-field))
            :do-not-induct nil)
           ("Subgoal *1/2" :use ((:instance o1t-scan-at-cr (x tt)) (:instance o1t-openp-not-lead (x tt))
                                (:instance o1t-scan-open (x (append (fn-article-fields-octets s) tt)))))
@@ -2384,20 +1579,13 @@
                             (x (append (fn-article-fields-octets (cdr s)) tt))))))))
 
 (local
- (defthm o1t-fields-octets-append
-  (equal (fn-article-fields-octets (append a b))
-         (append (fn-article-fields-octets a) (fn-article-fields-octets b)))
-  :hints (("Goal" :induct (fn-article-fields-octets a)
-           :in-theory (enable fn-article-fields-octets)))))
-
-(local
  (defthm o1t-s1s2-facts
-  (implies (o1t-fieldsvp s)
+  (implies (o1p-fieldsvp s)
            (and (equal (append (o1t-s1 s tt) (o1t-s2 s tt)) s)
-                (o1t-fieldsvp (o1t-s1 s tt))
-                (o1t-fieldsvp (o1t-s2 s tt))))
+                (o1p-fieldsvp (o1t-s1 s tt))
+                (o1p-fieldsvp (o1t-s2 s tt))))
   :hints (("Goal" :induct (o1t-s1 s tt)
-           :in-theory (enable o1t-fieldsvp)))))
+           :in-theory (enable o1p-fieldsvp)))))
 
 (local
  (defthm o1t-ins-of-append
@@ -2498,27 +1686,27 @@
 
 (local
  (defthm o1t-w-is-line
-  (implies (o1t-fieldsvp (cons p s2t))
+  (implies (o1p-fieldsvp (cons p s2t))
            (equal (o1t-w p s2t sb)
                   (append (o1t-l1 p) (list* 13 10 (o1t-rw p s2t sb)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (o1t-w o1t-l1 o1t-rw fn-article-fields-octets fn-article-lines-octets o1t-fieldsvp)
+           :in-theory (e/d (o1t-w o1t-l1 o1t-rw fn-article-fields-octets fn-article-lines-octets o1p-fieldsvp)
                            ())
            :use ((:instance o1t-fieldvp-facts (g p)))))))
 
 (local
  (defthm o1t-l1-line
-  (implies (o1t-fieldsvp (cons p s2t))
+  (implies (o1p-fieldsvp (cons p s2t))
            (and (fn-ipp-no-crlfp (o1t-l1 p)) (true-listp (o1t-l1 p)) (consp (o1t-l1 p))
                 (not (fn-article-wspp (car (o1t-l1 p))))
-                (o1t-folds-okp (cdr (car p)))))
+                (o1p-folds-okp (cdr (car p)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (o1t-fieldsvp o1t-l1 o1t-rawp0 o1t-line0 o1t-crlf-free-is-no-crlf) (fn-article-wspp))
+           :in-theory (e/d (o1p-fieldsvp o1t-l1 o1t-rawp0 o1t-line0 o1t-crlf-free-is-no-crlf) (fn-article-wspp))
            :use ((:instance o1t-fieldvp-facts (g p)))))))
 
 (local
  (defthm o1t-l1-facts
-  (implies (o1t-fieldsvp (cons p s2t))
+  (implies (o1p-fieldsvp (cons p s2t))
            (equal (o1s-split (o1t-w p s2t sb)) (cons (o1t-l1 p) (o1t-rw p s2t sb))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable o1t-w o1t-l1 o1t-rw o1t-w-is-line o1t-split-of-line o1t-l1-line)
@@ -2562,8 +1750,8 @@
 
 (local
  (defthm o1t-b3-abs
-  (implies (and (o1t-rawp0 (cons m1 pf)) (o1t-fieldsvp s2t) (fn-article-body-crlfp sb)
-                (o1t-fieldsvp fs) (fn-article-body-crlfp body)
+  (implies (and (o1t-rawp0 (cons m1 pf)) (o1p-fieldsvp s2t) (fn-article-body-crlfp sb)
+                (o1p-fieldsvp fs) (fn-article-body-crlfp body)
                 (equal (append (fn-article-fields-octets fs) (list* 13 10 body))
                        (append m1 (list* 13 10 (append (fn-article-lines-octets pf)
                                                        (append (fn-article-fields-octets s2t)
@@ -2590,7 +1778,7 @@
 
 (local
  (defthm o1t-b3-uniq
-  (implies (and (o1t-rawp0 (cons m1 pf)) (o1t-fieldsvp s2t) (fn-article-body-crlfp sb)
+  (implies (and (o1t-rawp0 (cons m1 pf)) (o1p-fieldsvp s2t) (fn-article-body-crlfp sb)
                 (fn-article-result-okp (fn-article-parse (o1t-y3 m1 pf s2t sb))))
            (let ((fy (fn-article-fields (fn-article-result-article (fn-article-parse (o1t-y3 m1 pf s2t sb))))))
              (and (consp fy)
@@ -2601,7 +1789,7 @@
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-article-parse fn-article-successful-parse-is-parse-lines
                                fn-article-successful-parse-lines-okp o1t-rawp0 o1t-y3)
-           :use ((:instance o1t-parse-reconstructs (y (o1t-y3 m1 pf s2t sb)))
+           :use ((:instance o1p-parse-reconstructs (y (o1t-y3 m1 pf s2t sb)))
                  (:instance o1t-suffix-ok (y3 (o1t-y3 m1 pf s2t sb)) (x (fn-article-lines-octets pf))
                             (u (append (fn-article-fields-octets s2t) (list* 13 10 sb))))
                  (:instance o1t-b3-abs
@@ -2619,7 +1807,7 @@
            :in-theory (disable o1t-mkfield o1t-cadr-of-new-field fn-article-new-field)
            :use ((:instance o1t-cadr-mkfield (r (cons (append nm (cons 58 r)) pf)))
                  (:instance o1t-cadr-of-new-field (l (append nm (cons 58 r))))
-                 (:instance o1t-split-colon-of-a-name (name nm) (acc nil) (rest r)))))))
+                 (:instance o1p-split-colon-of-a-name (name nm) (acc nil) (rest r)))))))
 
 (local
  (defun o1t-m1 (w ins)
@@ -2629,7 +1817,7 @@
 
 (local
  (defthm o1t-b3-y3
-  (implies (and (o1t-fieldsvp (cons p s2t))
+  (implies (and (o1p-fieldsvp (cons p s2t))
                 (fn-inj-path-openp (o1t-w p s2t sb))
                 (fn-ipp-no-crlfp ins) (true-listp ins))
            (and (equal (o1s-ins (o1t-w p s2t sb) 6 ins)
@@ -2649,7 +1837,7 @@
 
 (local
  (defthm o1t-b3-m1-raw
-  (implies (and (o1t-fieldsvp (cons p s2t))
+  (implies (and (o1p-fieldsvp (cons p s2t))
                 (fn-inj-path-openp (o1t-w p s2t sb))
                 (fn-ipp-no-crlfp ins) (true-listp ins))
            (o1t-rawp0 (cons (o1t-m1 (o1t-w p s2t sb) ins) (cdr (car p)))))
@@ -2699,7 +1887,7 @@
 
 (local
  (defthm o1t-cadr-of-field
-  (implies (o1t-fieldvp p)
+  (implies (o1p-fieldvp p)
            (equal (cadr p) (cadr (fn-article-line-value (fn-article-new-field (car (car p)))))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-article-new-field o1t-mkfield o1t-cadr-mkfield)
@@ -2708,7 +1896,7 @@
 
 (local
  (defthm o1t-b3
-  (implies (and (o1t-fieldsvp (cons p s2t)) (fn-article-body-crlfp sb)
+  (implies (and (o1p-fieldsvp (cons p s2t)) (fn-article-body-crlfp sb)
                 (fn-inj-path-openp (o1t-w p s2t sb))
                 (fn-ipp-no-crlfp ins) (true-listp ins)
                 (fn-article-result-okp (fn-article-parse (o1s-ins (o1t-w p s2t sb) 6 ins))))
@@ -2749,28 +1937,28 @@
 
 (local
  (defthm o1t-raws-facts
-  (implies (o1t-fieldsvp s)
+  (implies (o1p-fieldsvp s)
            (and (o1t-rawsp (o1t-raws s))
                 (equal (o1t-rocts (o1t-raws s)) (fn-article-fields-octets s))
                 (equal (o1t-mkfields (o1t-raws s)) s)))
   :hints (("Goal" :induct (o1t-raws s)
-           :in-theory (e/d (o1t-raws o1t-rawsp o1t-rocts o1t-mkfields o1t-fieldsvp fn-article-fields-octets)
+           :in-theory (e/d (o1t-raws o1t-rawsp o1t-rocts o1t-mkfields o1p-fieldsvp fn-article-fields-octets)
                            ())
            :do-not-induct nil)
           ("Subgoal *1/1" :use ((:instance o1t-fieldvp-facts (g (car s))))))))
 
 (local
  (defthm o1t-agree-trans
-  (implies (and (o1t-fields-agree a b) (o1t-fields-agree b c))
-           (o1t-fields-agree a c))
-  :hints (("Goal" :in-theory (enable o1t-fields-agree)))))
+  (implies (and (o1p-fields-agree a b) (o1p-fields-agree b c))
+           (o1p-fields-agree a c))
+  :hints (("Goal" :in-theory (enable o1p-fields-agree)))))
 
 (local
  (defthm o1t-replace-agree
   (implies (and (equal (cadr g) '(112 97 116 104)) (equal (cadr p) '(112 97 116 104)))
-           (o1t-fields-agree (append s1 (cons g r)) (append s1 (cons p r))))
+           (o1p-fields-agree (append s1 (cons g r)) (append s1 (cons p r))))
   :hints (("Goal" :induct (len s1)
-           :in-theory (e/d (o1t-fields-agree fn-ctl-fields-named fn-ctl-field-name
+           :in-theory (e/d (o1p-fields-agree fn-ctl-fields-named fn-ctl-field-name
                             fn-article-get-headers-aux fn-article-field-name-equalp)
                            ())))))
 
@@ -2790,7 +1978,7 @@
                 (fn-inj-path-offset x))
            (let* ((s (o1t-fs x)) (sb (o1t-sbody x)) (tt (list* 13 10 sb))
                   (s1 (o1t-s1 s tt)) (s2 (o1t-s2 s tt)))
-             (and (o1t-fieldsvp s1) (consp s2) (o1t-fieldsvp s2)
+             (and (o1p-fieldsvp s1) (consp s2) (o1p-fieldsvp s2)
                   (fn-inj-path-openp (o1t-w (car s2) (cdr s2) sb))
                   (equal x (append (fn-article-fields-octets s1) (o1t-w (car s2) (cdr s2) sb)))
                   (equal (fn-inj-path-offset x) (+ 6 (len (fn-article-fields-octets s1))))
@@ -2802,12 +1990,12 @@
                            (fn-article-parse fn-inj-path-scan fn-inj-path-openp o1t-s1 o1t-s2
                             fn-article-fields-octets o1t-scan-fields
                             o1t-s1s2-facts o1t-scan-at-cr))
-           :use ((:instance o1t-parse-reconstructs (y x))
+           :use ((:instance o1p-parse-reconstructs (y x))
                  (:instance o1t-scan-fields (s (o1t-fs x)) (tt (list* 13 10 (o1t-sbody x))))
                  (:instance o1t-s1s2-facts (s (o1t-fs x)) (tt (list* 13 10 (o1t-sbody x))))
                  (:instance o1t-scan-at-cr (x (list* 13 10 (o1t-sbody x))))
                  (:instance o1t-openp-not-lead (x (list* 13 10 (o1t-sbody x))))
-                 (:instance o1t-fields-octets-append (a (o1t-s1 (o1t-fs x) (list* 13 10 (o1t-sbody x))))
+                 (:instance o1p-fields-octets-append (a (o1t-s1 (o1t-fs x) (list* 13 10 (o1t-sbody x))))
                             (b (o1t-s2 (o1t-fs x) (list* 13 10 (o1t-sbody x))))))))))
 
 (local
@@ -2815,7 +2003,7 @@
   (implies (and (o1t-plinesp ls)
                 (not (fn-article-wspp (car y2)))
                 (fn-article-result-okp (fn-article-parse (append (o1s-octets ls) y2)))
-                (o1t-fieldsvp s1)
+                (o1p-fieldsvp s1)
                 (equal y2 (append (fn-article-fields-octets s1) y3))
                 (not (fn-article-wspp (car y3)))
                 (implies (fn-article-result-okp (fn-article-parse y3))
@@ -2825,22 +2013,22 @@
                                      '(112 97 116 104))
                               (equal (cadr p) '(112 97 116 104))))
                 (equal sfields (append s1 (cons p s2t))))
-           (o1t-fields-agree
+           (o1p-fields-agree
             (fn-article-fields (fn-article-result-article (fn-article-parse (append (o1s-octets ls) y2))))
             sfields))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-article-parse fn-article-wspp o1t-rocts o1t-rawsp o1t-mkfields o1t-newoks
-                               o1t-singles o1t-plinesp fn-article-fields-octets o1t-prefix-agrees
+                               o1t-singles o1t-plinesp fn-article-fields-octets o1p-prefix-agrees
                                o1t-replace-agree o1t-agree-trans o1t-raws o1t-raws-facts
                                o1t-source-start)
            :use ((:instance o1t-peel-lines (tl y2))
                  (:instance o1t-raws-facts (s s1))
                  (:instance o1t-peel-all (rs (o1t-raws s1)) (tl y3))
-                 (:instance o1t-prefix-agrees
+                 (:instance o1p-prefix-agrees
                             (pre (o1t-mkfields (o1t-singles ls)))
                             (fs (fn-article-fields (fn-article-result-article (fn-article-parse y2)))))
-                 (:instance o1t-prefix-agrees
+                 (:instance o1p-prefix-agrees
                             (pre (o1t-mkfields (o1t-singles ls)))
                             (fs (append s1 (cons (car (fn-article-fields (fn-article-result-article (fn-article-parse y3)))) s2t))))
                  (:instance o1t-replace-agree
@@ -2893,7 +2081,7 @@
 (local
  (defthm o1t-fx-1
   (implies (and (fn-article-result-okp (fn-article-parse x)) (fn-inj-path-offset x) (true-listp ins))
-           (and (o1t-fieldsvp (o1t-s1x x))
+           (and (o1p-fieldsvp (o1t-s1x x))
                 (equal (fn-inj-splice x (fn-inj-path-offset x) ins)
                        (append (fn-article-fields-octets (o1t-s1x x)) (o1t-y3x x ins)))
                 (equal (o1t-fs x) (append (o1t-s1x x) (cons (car (o1t-s2x x)) (cdr (o1t-s2x x)))))
@@ -2924,13 +2112,9 @@
                  (:instance o1t-b-decomp))))))
 
 (local
- (defthm o1t-cons-car-cdr
-  (implies (consp x) (equal (cons (car x) (cdr x)) x))))
-
-(local
  (defthm o1t-fx-4
   (implies (and (fn-article-result-okp (fn-article-parse x)) (fn-inj-path-offset x))
-           (and (consp (o1t-s2x x)) (o1t-fieldsvp (o1t-s2x x))
+           (and (consp (o1t-s2x x)) (o1p-fieldsvp (o1t-s2x x))
                 (fn-inj-path-openp (o1t-wx x))
                 (fn-article-body-crlfp (o1t-sbody x))))
   :hints (("Goal" :do-not-induct t
@@ -2948,7 +2132,7 @@
                   (equal (cadr (car fy)) '(112 97 116 104))
                   (equal (cadr (car (o1t-s2x x))) '(112 97 116 104)))))
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(o1t-y3x o1t-wx o1t-cons-car-cdr) (theory 'minimal-theory))
+           :in-theory (union-theories '(o1t-y3x o1t-wx o1p-cons-car-cdr) (theory 'minimal-theory))
            :use ((:instance o1t-fx-4)
                  (:instance o1t-b3 (p (car (o1t-s2x x))) (s2t (cdr (o1t-s2x x))) (sb (o1t-sbody x))))))))
 
@@ -2960,14 +2144,14 @@
                 (fn-ipp-no-crlfp ins) (true-listp ins)
                 (fn-article-result-okp
                  (fn-article-parse (append (o1s-octets ls) (fn-inj-splice src (fn-inj-path-offset src) ins)))))
-           (o1t-fields-agree
+           (o1p-fields-agree
             (fn-article-fields (fn-article-result-article
                                 (fn-article-parse (append (o1s-octets ls)
                                                           (fn-inj-splice src (fn-inj-path-offset src) ins)))))
             (fn-article-fields (fn-article-result-article (fn-article-parse src)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :in-theory (union-theories '(o1t-fs o1t-cons-car-cdr) (theory 'minimal-theory))
+           :in-theory (union-theories '(o1t-fs o1p-cons-car-cdr) (theory 'minimal-theory))
            :use ((:instance o1t-fx-1 (x src))
                  (:instance o1t-fx-2 (x src))
                  (:instance o1t-fx-3 (x src))
@@ -3198,7 +2382,7 @@
                 (implies sp (and (fn-inj-path-offset source)
                                  (fn-ipp-no-crlfp ins) (true-listp ins)))
                 (equal tl (if sp (fn-inj-splice source (fn-inj-path-offset source) ins) source)))
-           (o1t-fields-agree
+           (o1p-fields-agree
             (fn-article-fields (fn-article-result-article (fn-article-parse stored)))
             (fn-article-fields (fn-article-result-article (fn-article-parse source)))))
   :hints (("Goal" :do-not-induct t
@@ -3222,7 +2406,7 @@
                 (fn-article-result-okp (fn-article-parse source))
                 (fn-article-result-okp
                  (fn-article-parse (fn-o1-post-stored-octets source config obs secret account cfg))))
-           (o1t-fields-agree
+           (o1p-fields-agree
             (fn-article-fields (fn-article-result-article
                                 (fn-article-parse (fn-o1-post-stored-octets source config obs secret account cfg))))
             (fn-article-fields (fn-article-result-article (fn-article-parse source)))))
@@ -3346,15 +2530,15 @@
  (defthm o1t-sng-agree
   (implies (and (fn-article-result-okp (fn-article-parse source))
                 (fn-article-result-okp (fn-article-parse stored))
-                (o1t-fields-agree (fn-article-fields (fn-article-result-article (fn-article-parse stored)))
+                (o1p-fields-agree (fn-article-fields (fn-article-result-article (fn-article-parse stored)))
                                   (fn-article-fields (fn-article-result-article (fn-article-parse source)))))
            (equal (fn-o1-source-newsgroups source) (fn-o1-source-newsgroups stored)))
   :hints (("Goal" :do-not-induct t
            :use ((:instance o1t-agree-source-newsgroups (s source) (r stored))
-                 (:instance o1t-fields-agree
+                 (:instance o1p-fields-agree
                             (fs (fn-article-fields (fn-article-result-article (fn-article-parse stored))))
                             (gs (fn-article-fields (fn-article-result-article (fn-article-parse source))))))
-           :in-theory (e/d (o1t-fields-agree) (fn-article-parse fn-o1-source-newsgroups fn-article-result-article
+           :in-theory (e/d (o1p-fields-agree) (fn-article-parse fn-o1-source-newsgroups fn-article-result-article
                                               fn-article-result-okp o1t-agree-source-newsgroups))))))
 
 (local
