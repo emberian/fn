@@ -64,10 +64,10 @@ a module that has not run (an interrupted image gate) refuses the push.
 Every command ends with one line `TRAIN-DONE CMD rc=N`.
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
-emits interfaces.json and wire-grammar.json there, runs the world, build-list
-and host checks, fetches the two into build/box/ (tools/box_artifacts.py,
-stamped with the sha they were made at; never committed) and records that
-sha in build/train/box-step.json.  The `box_step` gate passes
+emits wire-grammar.json there, runs the interface, world, build-list and
+host checks, fetches the grammar into build/box/ (tools/box_artifacts.py,
+stamped with the sha it was made at; never committed) and records that sha
+in build/train/box-step.json.  The `box_step` gate passes
 when that sha is HEAD, or when it is an ancestor of HEAD, no file under
 books/, specs/ or tests/acl2/ changed since it, and the local checks
 (LOCAL_BOX_CHECKS) are all 0 at HEAD; the gate then records the sha it

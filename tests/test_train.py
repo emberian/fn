@@ -58,7 +58,7 @@ STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tests/test_keystone_critical.py", "tools/harness_check.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
-for out in build/box/interfaces.json build/box/wire-grammar.json; do
+for out in build/box/wire-grammar.json; do
   [ -n "$STUB_EMIT" ] && mkdir -p "$(dirname $out)" && echo "$STUB_EMIT" > "$out"
 done
 exit "${STUB_RC_remote_check:-0}"
@@ -100,7 +100,7 @@ esac
 echo "ssh $*" >> "$STUB_LOG"
 if [ "${STUB_RC_ssh:-0}" = 0 ]; then
   [ -z "$STUB_CACHE_SEED" ] || echo "== cache seed $STUB_CACHE_SEED"
-  for out in build/box/interfaces.json build/box/wire-grammar.json; do
+  for out in build/box/wire-grammar.json; do
     mkdir -p "$FARM_TREE/$(dirname $out)" && echo "${STUB_EMIT:-emitted}" > "$FARM_TREE/$out"
   done
 fi
@@ -723,13 +723,14 @@ class BoxStepTests(TrainBase):
         self.assertEqual(b.returncode, 0, b.stdout + b.stderr)
         self.assertEqual(self.head(), before, "the box step commits nothing")
         self.assertEqual(self.box()["sha"], before)
-        for name in ("interfaces.json", "wire-grammar.json"):
-            self.assertEqual((self.work / "build/box" / name).read_text(), "emitted\n")
+        self.assertEqual((self.work / "build/box/wire-grammar.json").read_text(), "emitted\n")
+        self.assertFalse((self.work / "build/box/interfaces.json").exists())
         self.assertFalse((self.work / "planning/interfaces.json").exists())
         stamp = json.loads((self.work / "build/box/stamp.json").read_text())
         self.assertEqual((stamp["sha"], stamp["box"]), (before, "persvati"))
-        self.assertIn("--fetch build/box/interfaces.json --fetch build/box/wire-grammar.json",
-                      " | ".join(self.stub_log()))
+        log = " | ".join(self.stub_log())
+        self.assertIn("--fetch build/box/wire-grammar.json", log)
+        self.assertNotIn("interfaces.json", log)
         self.assertIn("remote_check persvati", " | ".join(self.stub_log()))
         g = self.train("gate")
         self.assertEqual(g.returncode, 0, g.stdout)
@@ -889,8 +890,7 @@ class CertifyTests(TrainBase):
             self.assertIn(word, ssh[0])
         self.assertNotIn("certify_books", ssh[0])
         self.assertEqual(self.head(), before, "the certify's emits are not committed")
-        for name in ("interfaces.json", "wire-grammar.json"):
-            self.assertEqual((self.work / "build/box" / name).read_text(), "emitted\n")
+        self.assertEqual((self.work / "build/box/wire-grammar.json").read_text(), "emitted\n")
         self.assertFalse((self.work / "planning/interfaces.json").exists())
         self.assertEqual(json.loads((self.work / "build/box/stamp.json").read_text())["sha"], before)
         rec = self.box()
