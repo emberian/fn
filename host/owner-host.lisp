@@ -1472,25 +1472,44 @@
 ; The identity preflight's verdict on one ACL2-constructed EVENT (lane
 ; bp-retention-leftovers).  Its kind is the WIRE event's
 ; (`fn-wire-event-kind'; the row reading `fn-store-event-kind' answered NIL
-; for a wire composite, so the preflight charged a composite nothing); an
-; accepted-statement composite is charged its figure, the kind's ceiling
-; plus 320 per group its article is filed in
-; (`fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at',
-; `fn-oii-publication-group-count-is-the-rows'); any other kind as before.
-(defun fn-owner-identity-publication-verdict (event fn-hist state)
-  (declare (xargs :stobjs (fn-hist state) :mode :program))
+; for a wire composite, so the preflight charged a composite nothing); any
+; kind but an accepted-statement composite as before.  A composite carries an
+; article, so it is admitted as a POST is (K-ADMIT,
+; books/admission-memory.lisp): first the transaction and history verdict at
+; its figure, the kind's ceiling
+; (`fn-pvc-statement-verdict-carried-is-cvec-statement-verdict-at'), then the
+; memory gate at the run's LIMIT over the carried totals plus the ROW the
+; prepare will stage (`fn-oii-identity-row' at the arena's count, exactly the
+; row fn-owner-prepare-identity interns under the same serialization), :memory
+; when that gate refuses (KEYSTONE fn-adm-memory-admitp; the word order T,
+; then H, then the memory, as fn-adm-article-word's).
+(defun fn-owner-identity-publication-verdict (event fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   (let ((kind (fn-wire-event-kind event)))
     (if (not (equal kind :accepted-statement))
         (fn-owner-publication-verdict kind fn-hist state)
       (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
         (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
-          (let ((s (fn-owner-store state)))
-            (mv nil (fn-pvc-statement-verdict-carried
-                     (fn-owner-profile-carry state)
-                     (fn-owner-store-profile state)
-                     (fn-sf-records-count (fn-sn-files s)) bytes
-                     (fn-oii-publication-group-count event) debt)
-                fn-hist state)))))))
+          (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+            (let* ((s (fn-owner-store state))
+                   (verdict (fn-pvc-statement-verdict-carried
+                             (fn-owner-profile-carry state)
+                             (fn-owner-store-profile state)
+                             (fn-sf-records-count (fn-sn-files s)) bytes
+                             (fn-oii-publication-group-count event) debt))
+                   (row (fn-oii-identity-row event (fn-sn-keyring s)
+                                             (fn-sn-keyring-generation s)
+                                             (fn-arena-count fn-arena)))
+                   (gate (fn-owner-memory-gate state)))
+              (mv nil
+                  (if (and (equal verdict :admissible)
+                           (not (equal row :bad))
+                           (not (fn-adm-memory-admitp (fn-owner-store-profile state)
+                                                      (first gate) (second gate)
+                                                      (third gate) tot row)))
+                      :memory
+                    verdict)
+                  fn-hist state))))))))
 
 (definterface fn-owner-identity-publication-verdict
   :class ::program)
@@ -1751,6 +1770,14 @@
 ;     use (fn-owner-memory-gate), so a live reconfiguration's capacity,
 ;     handshakes and server name are the ones charged (Codex 3+4a review F4).
 ; P (holders) is C until contract v2.1's pool lands.
+; THE RUN'S CAPACITY (ruling (b), 2026-10-10): over the carried totals the
+; run computes C' of C (books/admission-memory.lisp fn-adm-capacity: the most
+; connections at which the gate holds at LIMIT), installs it as the readers'
+; bound (`fn-owner-memory-capacity', read by fn-owner-memory-max-conns) and
+; the gate's connections, and states it on the line the host logs
+; (`fn-owner-memory-capacity-line', fn-adm-capacity-line: C', C, the term
+; that bound it, the sum and the limit).  :refused when no connection fits;
+; the host refuses to serve by that line.
 (defun fn-owner-memory-cfg (v tlsp trigger pub-trigger live cold profile window server config)
   (declare (xargs :guard t))
   (list (fn-exp-connections-capacity v) tlsp trigger pub-trigger live 0
@@ -1767,16 +1794,27 @@
      (if (consp peer) (nfix (car peer)) 0)))
 
 (defun fn-owner-memory-configure (img resident-obs trigger pub-trigger profile tlsp live cold
-                                      output peer workers cache-limit root window config state)
-  (declare (xargs :stobjs state :mode :program))
+                                      output peer workers cache-limit root window config
+                                      fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let* ((least (fn-mm-resident-limit nil resident-obs))
          (pools (fn-owner-memory-pools profile cold output peer workers cache-limit root))
-         (limit (and (natp least) (nfix (- least pools))))
-         (state (f-put-global 'fn-owner-memory-run
-                              (list img limit trigger pub-trigger profile tlsp live cold
-                                    window (nfix config))
-                              state)))
-    (value limit)))
+         (limit (and (natp least) (nfix (- least pools)))))
+    (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+      (let* ((ocfg (fn-owner-config state))
+             (cfg (fn-owner-memory-cfg (fn-cfg-value ocfg) tlsp trigger pub-trigger live cold
+                                       profile window (fn-oag-agent ocfg) (nfix config)))
+             (cap (fn-adm-capacity profile img cfg limit tot))
+             (state (f-put-global 'fn-owner-memory-run
+                                  (list img limit trigger pub-trigger profile tlsp live cold
+                                        window (nfix config) cap)
+                                  state))
+             (state (f-put-global 'fn-owner-memory-capacity cap state))
+             (state (f-put-global 'fn-owner-memory-capacity-line
+                                  (fn-record-string-octets
+                                   (fn-adm-capacity-line profile img cfg limit tot))
+                                  state)))
+        (mv nil (if (posp cap) :hold :refused) fn-hist state)))))
 
 (definterface fn-owner-memory-configure
   :class ::program)
@@ -1802,10 +1840,18 @@
            (consp (f-get-global 'fn-owner-memory-run state)))
       (let* ((r (f-get-global 'fn-owner-memory-run state))
              (cfg (fn-owner-config state))
-             (v (fn-cfg-value cfg)))
+             (v (fn-cfg-value cfg))
+             (full (fn-owner-memory-cfg v (nth 5 r) (nth 2 r) (nth 3 r) (nth 6 r) (nth 7 r)
+                                        (nth 4 r) (nth 8 r) (fn-oag-agent cfg) (nth 9 r)))
+             (cap (nth 10 r)))
         (list (nth 0 r)
-              (fn-owner-memory-cfg v (nth 5 r) (nth 2 r) (nth 3 r) (nth 6 r) (nth 7 r)
-                                   (nth 4 r) (nth 8 r) (fn-oag-agent cfg) (nth 9 r))
+              ; ruling (b): the run's C' (fn-adm-capacity at configure) bounds
+              ; the connections the gate prices, as it bounds the readers
+              ; accepted (fn-owner-memory-max-conns); a live reconfiguration
+              ; below it lowers both.
+              (if (posp cap)
+                  (fn-adm-cfg-at full (min (fn-mm-cfg-connections full) cap))
+                full)
               (nth 1 r)))
     (list nil nil nil)))
 

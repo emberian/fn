@@ -3999,11 +3999,12 @@ theorems).  Only a present carrier's arm builds the article's list, once."
   (let ((store (fnn-owner-service-store service)))
     ;; ACL2's verdict over the event itself (host/owner-host.lisp
     ;; fn-owner-identity-publication-verdict): a composite is charged its
-    ;; figure with its article's memberships.
-    (unless (eq (fnn-owner-core 'fn-owner-identity-publication-verdict event)
-                :admissible)
-      (fnn-refuse "Store transaction budget refuses ~(~a~) transaction"
-                  (fnn-core 'fn-wire-event-kind event)))
+    ;; figure, then the memory gate over the row it stages; the refusal
+    ;; names the verdict's word (:memory among them).
+    (let ((verdict (fnn-owner-core 'fn-owner-identity-publication-verdict event)))
+      (unless (eq verdict :admissible)
+        (fnn-refuse "Store refuses ~(~a~) transaction (~(~a~))"
+                    (fnn-core 'fn-wire-event-kind event) verdict)))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
                 (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))

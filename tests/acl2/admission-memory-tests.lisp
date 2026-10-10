@@ -204,3 +204,76 @@
                 (used *adt-used*) (bytes-used *adt-bytes*) (record *adt-record*) (debt *adt-debt*)
                 (tot *adt-tot*) (row *adt-row*))
                :fault "a gate that wants strict room under LIMIT: the store the budget admitted at exactly LIMIT would be called over it")))
+
+; --- THE RUN'S CAPACITY (ruling (b), 2026-10-10) ------------------------------
+; The friend's 2 GiB machine with an empty store: C' is 9 of 32, bound by the
+; OVER window (today's adapter holds W NOV lines as octet lists, about 171 MB
+; a holder); 7 GiB holds W13's 1,000 POSTs at all 32; 128 MiB holds no
+; connection (the sum with none is 204 MB): the run refuses.  The store
+; antitone: 9 at 0 posts, 8 at 1,000, 7 at 4,000, 4 at 16,000.
+(defconst *adt-2g* (* 2 1024 1048576))
+(defconst *adt-128m* (* 128 1048576))
+(defconst *adt-empty* (adt-posts 0))
+(defconst *adt-big* (adt-posts 4000))
+(assert-event (equal (fn-adm-capacity *adt-p* *adt-img* *adt-cfg* *adt-2g* *adt-empty*) 9))
+(assert-event (equal (fn-adm-capacity-binding *adt-p* *adt-img* *adt-cfg* *adt-2g* *adt-empty*)
+                     :over-window))
+(assert-event (equal (fn-adm-capacity *adt-p* *adt-img* *adt-cfg* *adt-7g* *adt-tot*) 32))
+(assert-event (equal (fn-adm-capacity-binding *adt-p* *adt-img* *adt-cfg* *adt-7g* *adt-tot*)
+                     :configured))
+(assert-event (null (fn-adm-capacity *adt-p* *adt-img* *adt-cfg* *adt-128m* *adt-empty*)))
+(assert-event (equal (fn-adm-capacity-binding *adt-p* *adt-img* *adt-cfg* *adt-128m* *adt-empty*)
+                     :store))
+(assert-event (equal (fn-adm-capacity *adt-p* *adt-img* *adt-cfg* *adt-2g* *adt-big*) 7))
+(assert-event (equal (fn-adm-capacity *adt-p* *adt-img* *adt-cfg* *adt-2g* (adt-posts 16000)) 4))
+(assert-event (equal (fn-adm-capacity-line *adt-p* *adt-img* *adt-cfg* *adt-128m* *adt-empty*)
+                     "refused memory-cannot-hold-the-store capacity=0 of 32 bound-by=store sum=204 MB limit=128 MB"))
+(assert-event (equal (fn-adm-capacity-line *adt-p* *adt-img* *adt-cfg* *adt-2g* *adt-empty*)
+                     "memory capacity=9 of 32 bound-by=over-window sum=2043 MB limit=2048 MB"))
+
+(defteeth fn-adm-capacity-is-the-most
+  :claim (((counted (natp j))
+           (within (<= j (fn-mm-cfg-connections cfg)))
+           (holds (fn-mm-gate-p profile img (fn-adm-cfg-at cfg j) limit tot)))
+          (let ((c (fn-adm-capacity profile img cfg limit tot)))
+            (and (natp c) (<= j c))))
+  :subject fn-adm-capacity
+  :witness ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-2g*)
+            (tot *adt-empty*) (j 9))
+  :breaks ((counted ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-2g*)
+                     (tot *adt-empty*) (j 19/2)))
+           (within ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-7g*)
+                    (tot *adt-empty*) (j 33)))
+           (holds ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-2g*)
+                   (tot *adt-empty*) (j 10))))
+  :mutations ((capacity-is-always-c
+               (:conclusion (equal (fn-adm-capacity profile img cfg limit tot)
+                                   (fn-mm-cfg-connections cfg)))
+               ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-2g*)
+                (tot *adt-empty*) (j 9))
+               :fault "a run that prices its configured C whatever the limit: at 39c86eb48 the 2 GiB node refused every POST by the memory")
+              (strictly-more
+               (:conclusion (< j (fn-adm-capacity profile img cfg limit tot)))
+               ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-2g*)
+                (tot *adt-empty*) (j 9))
+               :fault "a capacity past the last count the gate holds at")))
+
+(defteeth fn-adm-capacity-antitone-in-the-store
+  :claim (((smaller (fn-mm-tot-le a b))
+           (fits (fn-adm-capacity profile img cfg limit b)))
+          (and (natp (fn-adm-capacity profile img cfg limit a))
+               (<= (fn-adm-capacity profile img cfg limit b)
+                   (fn-adm-capacity profile img cfg limit a))))
+  :subject fn-adm-capacity
+  :witness ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-2g*)
+            (a *adt-empty*) (b *adt-big*))
+  :breaks ((smaller ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-2g*)
+                     (a *adt-big*) (b *adt-empty*)))
+           (fits ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-128m*)
+                  (a *adt-empty*) (b *adt-big*))))
+  :mutations ((capacity-grows-with-the-store
+               (:conclusion (<= (fn-adm-capacity profile img cfg limit a)
+                                (fn-adm-capacity profile img cfg limit b)))
+               ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-2g*)
+                (a *adt-empty*) (b *adt-big*))
+               :fault "a store that grows and frees connections")))

@@ -2196,6 +2196,9 @@ the run's (exit 1), named on stderr and in the service log."
          (resident (fnn-heap-resident-observations))
          ;; the configuration history's octets (config/'s lstat sizes)
          (config-octets (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store)))
+         ;; the memory gate's word: :hold with C' >= 1, :refused when no
+         ;; connection fits the limit at the carried store (ruling (b))
+         (memory nil)
          (decision
            (fnn-owner-serialized
             service nil
@@ -2220,8 +2223,11 @@ the run's (exit 1), named on stderr and in the service log."
                   ;; (host/owner-host.lisp fn-owner-memory-configure,
                   ;; books/admission-memory.lisp): the image, the resident
                   ;; limit, the serving and publication triggers, and the
-                  ;; run's configuration.
-                  (fnn-owner-core 'fn-owner-memory-configure
+                  ;; run's configuration.  It derives the run's capacity C'
+                  ;; of C over the carried totals (fn-adm-capacity) and
+                  ;; bounds the readers accepted by it.
+                  (setq memory
+                   (fnn-owner-core 'fn-owner-memory-configure
                                   img resident
                                   +fnn-owner-service-nursery-octets+ (fnn-gc-nursery-octets)
                                   (fnn-store-config store) (and tls-context t)
@@ -2231,7 +2237,7 @@ the run's (exit 1), named on stderr and in the service log."
                                   (fnn-peer-flight-profile (fnn-store-root store))
                                   (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit)
                                   (fnn-store-root store)
-                                  (fnn-owner-over-window) config-octets)
+                                  (fnn-owner-over-window) config-octets))
                   ;; Store figure is captured before both allowance extensions.
                   ;; ACL2 validates dynamic >= store + exact cold + output pool.
                   (fnn-owner-output-install
@@ -2246,4 +2252,14 @@ the run's (exit 1), named on stderr and in the service log."
     (fnn-log-line line)
     (when (eq decision :refused)
       (fnn-refuse "~a" (map 'string #'code-char line)))
+    ;; The run's capacity line, the admission statement it serves under
+    ;; ("memory capacity=C' of C bound-by=TERM sum=S MB limit=L MB",
+    ;; books/admission-memory.lisp fn-adm-capacity-line); a run no
+    ;; connection fits refuses by it.
+    (let ((mline (fnn-global 'fn-owner-memory-capacity-line)))
+      (unless (and (member memory '(:hold :refused)) (fnn-octet-list-p mline))
+        (fnn-fault "owner returned a malformed memory capacity"))
+      (fnn-log-line mline)
+      (when (eq memory :refused)
+        (fnn-refuse "~a" (map 'string #'code-char mline))))
     decision))

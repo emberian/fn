@@ -78,6 +78,13 @@ INIT_REFUSED = re.compile(r"refused init-budget-cannot-hold-profile profile=([a-
                           r"sizing=([a-z]+) reservation=(\d+) MB budget=(\d+) MB")
 
 
+# The run's admission statement, logged once at start (ruling (b),
+# books/admission-memory.lisp fn-adm-capacity-line): C' of C, the term that
+# bound C', the model's sum at C' over the carried store and the limit.
+CAPACITY_LINE = re.compile(rb"memory capacity=(\d+) of (\d+) bound-by=([a-z-]+) "
+                           rb"sum=(\d+) MB limit=(\d+) MB")
+
+
 def cgroup_limit():
     """The least memory.max from this process's cgroup up, or None."""
     try:
@@ -430,6 +437,57 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         print("NATIVE-HEAP vmhwm run=2 kB={}".format(hwm2))
         self.assertLess(max(hwm1, hwm2) * 1024, LIMIT)
 
+    def capacity(self):
+        """The run's capacity line from the owner's log: (C', C, term)."""
+        log = self.node.process.stderr.since(0)
+        found = CAPACITY_LINE.search(log)
+        self.assertIsNotNone(found, log[-2000:])
+        print("NATIVE-HEAP", found.group(0).decode("ascii"))
+        return int(found.group(1)), int(found.group(2)), found.group(3).decode("ascii")
+
+    def test_the_run_states_its_capacity_and_admits_every_post_up_to_it(self):
+        """Ruling (b) (2026-10-10): the run states its capacity C' of C at
+        configure, the most connections the memory gate holds at its limit
+        over the carried store (books/admission-memory.lisp fn-adm-capacity),
+        and serves at C': the gate prices C' connections and the readers
+        accepted are bounded by it (books/owner-connection-callbacks.lisp
+        fn-owner-callback-exposure-total-within-the-memory-capacity).  The
+        tooth is the 2 GiB cgroup: there C' is below C (at 39c86eb48 the
+        gate priced C and refused every POST by the memory), and here C'
+        readers each POST and are admitted, and one more reader is refused
+        with RFC 3977's 400."""
+        config, port = self.config("capacity")
+        made = self.run_fn("operator", config, "init", *SMALL_FLAGS, "local.test")
+        self.assertEqual(made.returncode, EXIT_OK, text(made))
+        self.start()
+        cap, configured, term = self.capacity()
+        self.assertGreaterEqual(cap, 1)
+        self.assertLess(cap, configured, "the 2 GiB cgroup bounds C' below C")
+        self.assertNotEqual(term, "configured")
+        body = ("z" * 72 + "\r\n") * 28
+        readers = []
+        try:
+            for _ in range(cap):
+                readers.append(Client(port, timeout=300))
+            extra = Client(port, timeout=30, greeting=None)
+            try:
+                self.assertTrue(extra.greeting.startswith(b"400 "), extra.greeting)
+            finally:
+                extra.sock.close()
+            for n, client in enumerate(readers):
+                first, final = client.post(article("<cap-{}@example.invalid>".format(n),
+                                                   groups="local.test", subject="cap",
+                                                   date=None, body=body.encode("ascii")))
+                self.assertTrue(first.startswith(b"340"), first)
+                self.assertEqual(final.rstrip(b"\r\n"), b"240 article received OK")
+        finally:
+            for client in readers:
+                client.close()
+        hwm = self.stop()
+        print("NATIVE-HEAP capacity={} of {} bound-by={} posts={} vmhwm kB={}".format(
+            cap, configured, term, len(readers), hwm))
+        self.assertLess(hwm * 1024, LIMIT)
+
     def test_a_store_init_admitted_fills_to_its_limit_and_still_restarts(self):
         """The coordinator's release blocker (friend-path, packet A): a store
         `init' sized within this machine's budget must reopen on this machine
@@ -454,6 +512,7 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         reservation = int(found.group(3))
         body = ("y" * 72 + "\r\n") * 400  # 29,600 octets
         self.start()
+        cap, configured, term = self.capacity()
         started = time.monotonic()
         stored, reply = [], b""
         with Client(port, timeout=600) as client:
@@ -491,8 +550,9 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         print("NATIVE-HEAP fill refusal={!r} headroom={}".format(reply.decode("ascii"), room))
         self.assertEqual(reply.decode("ascii"), expected,
                          "after {} posts, headroom {}".format(len(stored), room))
-        print("NATIVE-HEAP fill posts={} vmhwm kB={} init-reservation={} MB".format(
-            len(stored), hwm1, reservation))
+        print("NATIVE-HEAP fill capacity={} of {} bound-by={} posts={} vmhwm kB={} "
+              "init-reservation={} MB".format(cap, configured, term, len(stored), hwm1,
+                                              reservation))
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         heap = HEAP_LINE.search(status.stdout.decode())
