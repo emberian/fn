@@ -484,14 +484,17 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertIsNotNone(at3)
         self.assertEqual(at3["records"], 3)
         self.assertEqual(at3["residency"], "resident")
-        self.assertTrue(all(at3[k] > 0 for k in ("arena", "events", "log", "history", "charge")), at3)
+        # plain posts carry no statement or retention events: EVENTS stays 0
+        self.assertTrue(all(at3[k] > 0 for k in ("arena", "hcharge", "memberships", "log", "history",
+                                                 "charge")), at3)
         made = self.checkpoint()
         self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
         self.assertIn(b"checkpoint sequence=5 ", made.stdout)
         at5 = self.stopped_charged_totals()
         self.assertEqual(at5["records"], 5)
-        self.assertTrue(all(at5[k] > at3[k] for k in ("arena", "events", "log", "history", "charge")),
-                        (at3, at5))
+        self.assertTrue(all(at5[k] > at3[k] for k in ("arena", "hcharge", "memberships", "log", "history",
+                                                      "charge")), (at3, at5))
+        self.assertEqual(at5["events"], at3["events"])
         self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
 
     def heap_replay_line(self):

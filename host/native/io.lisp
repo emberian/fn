@@ -8615,14 +8615,16 @@ is proved."
                               (fnn-nat (fnn-core 'fn-lgs-listing-bound))
                               "log segment"))
 
-(defun fnn-log-first-nonzero (path)
-  "The offset of the first nonzero octet of the file at PATH, or NIL when
-every octet is zero: one bounded buffer, read to the first nonzero chunk."
+(defun fnn-log-first-nonzero (path &optional (start 0))
+  "The offset of the first nonzero octet of the file at PATH at or after
+START, or NIL when every such octet is zero: one bounded buffer, read to the
+first nonzero chunk."
   (let ((fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+)))
-        (buffer (fnn-make-octets 65536)) (at 0))
+        (buffer (fnn-make-octets 65536)) (at start))
     (unwind-protect
          (loop
-           (let ((got (fnn-read-fd fd buffer)))
+           initially (unless (zerop start) (sb-posix:lseek fd start sb-posix:seek-set))
+           do (let ((got (fnn-read-fd fd buffer)))
              (when (zerop got) (return nil))
              (let ((i (position-if-not #'zerop buffer :end got)))
                (when i (return (+ at i))))

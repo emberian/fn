@@ -509,10 +509,11 @@ HDR the checkpoint's charged-totals header as the open reads it
 fn-cth-header-open), SUFFIX the log's past the header's S.  ADAPTER (owner
 Builder L, retired by L's store-log-open-scan): SUFFIX is the zero tot only
 when the log observably holds no record past S -- journal/ holds exactly one
-segment and its extent is at most a headed segment's padded head
-(books/store-log-lineage.lisp fn-lgl-head-len; an unheaded segment is 0, a
-zero extension past the head answers unseen) -- else NIL, and the decision
-says the header's totals are unseen.  Unlocked: as fresh as the lstat."
+segment and no octet of it past a headed segment's padded head is nonzero
+(books/store-log-lineage.lisp fn-lgl-head-len; every entry opens with a
+nonzero header, and the rotation preallocates the segment with zeros, so a
+fresh segment's extent is past its head) -- else NIL, and the decision says
+the header's totals are unseen.  Unlocked: as fresh as the read."
   (let* ((store (and (stringp root) profile (make-fnn-store root)))
          (open (and store
                     (progn (setf (fnn-store-config store) profile)
@@ -523,9 +524,9 @@ says the header's totals are unseen.  Unlocked: as fresh as the lstat."
                      (handler-case
                          (let ((names (fnn-log-segment-names store)))
                            (and (= (length names) 1)
-                                (<= (fnn-log-observed-extent
-                                     (fnn-join (fnn-journal-dir store) (first names)))
-                                    (fnn-nat (fnn-core 'fn-lgl-head-len (fnn-store-log-unit))))))
+                                (null (fnn-log-first-nonzero
+                                       (fnn-join (fnn-journal-dir store) (first names))
+                                       (fnn-nat (fnn-core 'fn-lgl-head-len (fnn-store-log-unit)))))))
                        ((or fnn-os-error fnn-store-error) () nil)))))
     (fnn-core 'fn-mo-observed-totals hdr
               (and empty (fnn-core 'fn-cth-empty-suffix hdr)))))
