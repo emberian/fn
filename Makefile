@@ -868,6 +868,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-kernel-concrete-tests \
 	books/store-log-stream \
 	tests/acl2/store-log-stream-tests \
+	books/store-log-open-scan \
+	tests/acl2/store-log-open-scan-tests \
 	books/store-log-damage \
 	books/store-log-entry-bound \
 	tests/acl2/store-log-entry-bound-tests \
