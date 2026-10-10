@@ -34,15 +34,13 @@
 ;; on any name in it.
 (with-compilation-unit ()
 (load (concatenate 'string (sb-ext:posix-getenv "XL_X") "clruntime.lisp"))
-;; The emitted definitions are compiled at DEBUG 0: SBCL then keeps each code object's name and entry point but
-;; drops its variable and block maps (a census of the 2026-10-09 core measured the debug-info at 12.9 MB of 86.1 MB).
-;; The prologue's declaim in defs.lisp (O1: ACL2's own form) sets only compilation-speed, speed, space and safety, so
-;; it leaves this quality alone; host/native below is compiled at the default debug level and keeps its debug info,
-;; which the fault-backtrace reports (host/native/io.lisp fnn-stack-exhaustion-report, owner.lisp
-;; fnn-owner-shared-action-locked) read for frame names.
+;; The whole product is compiled at DEBUG 0: SBCL then keeps each code object's name and entry point but drops its
+;; block (code-location) maps.  The prologue's declaim in defs.lisp (O1: ACL2's own form) sets only
+;; compilation-speed, speed, space and safety, so it leaves this quality alone.  Exceptions, from ONE data file
+;; (tools/extract/debug-keep.txt, read again by debug_keep.py): the host's fault boundaries and its two
+;; backtrace readers are recompiled at DEBUG 1 below, after host-block.lisp has loaded.
 (proclaim '(optimize (debug 0)))
 (cl-user::xl-eval-forms (cl-user::xl-path "defs.lisp") :latin-1)
-(proclaim '(optimize (debug 1)))
 (load (cl-user::xl-path "core-world.lisp") :external-format :utf-8)
 ;; named through its symbol: this form is compiled before defs.lisp defines it
 (funcall 'acl2::xl-make-live-stobjs)
@@ -57,6 +55,28 @@
 ;; The actual image-hook checker refuses other restore callbacks; loading a
 ;; module after that check would evade the saved-image exclusion contract.
 (load (cl-user::xl-path "host-block.lisp"))
+;; The debug-keep set (tools/extract/debug-keep.txt): each defun is read from its host file and compiled again at
+;; DEBUG 1 (its callers reach it through the global function cell, so they need not be recompiled).
+(let ((keep (concatenate 'string (sb-ext:posix-getenv "XL_X") "debug-keep.txt")) (seen nil))
+  (with-open-file (in keep)
+    (loop for line = (read-line in nil) while line
+          do (let ((line (string-trim " " line)))
+               (unless (or (zerop (length line)) (char= (char line 0) #\#))
+                 (let* ((sp (position #\Space line))
+                        (name (let ((*package* (find-package "ACL2"))) (read-from-string (subseq line 0 sp))))
+                        (file (string-trim " " (subseq line sp)))
+                        (found nil))
+                   (with-open-file (src file :external-format :latin-1)
+                     (let ((*package* (find-package "ACL2")) (eof (list nil)))
+                       (loop for form = (read src nil eof) until (eq form eof)
+                             do (when (and (consp form) (eq (car form) 'defun) (eq (cadr form) name))
+                                  (proclaim '(optimize (debug 1)))
+                                  (handler-bind ((warning #'muffle-warning)) (eval form))
+                                  (proclaim '(optimize (debug 0)))
+                                  (setq found t) (return)))))
+                   (unless found (error "debug-keep: no top-level defun ~a in ~a" name file))
+                   (push name seen))))))
+  (format t "~&debug-keep: ~d functions recompiled at debug 1~%" (length seen)))
 ) ; the compilation unit
 (defun cl-user::xl-toplevel ()
   ;; Stage 0 (planning/design-store-representation-2026-10-01.md section 4):

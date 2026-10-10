@@ -28,6 +28,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools" / "extract"))
 import gate  # noqa: E402
 import closure_why  # noqa: E402
+import debug_keep  # noqa: E402
 
 PY = sys.executable
 # the libraries core.sh hands fn-core, which the gate requires beside the image's core
@@ -555,6 +556,37 @@ class WorldSnapshotCarriesWhatIsRead(unittest.TestCase):
     def test_a_property_kind_nothing_reads_is_refused(self):
         got = self.problems("(ACL2::G (ACL2::FORMALS ACL2::A) (ACL2::UNNORMALIZED-BODY ACL2::X))")
         self.assertEqual(got, ["snapshot: ACL2::G carries ACL2::UNNORMALIZED-BODY, a property nothing in fn-core reads"])
+
+
+class DebugKeepGate(unittest.TestCase):
+    """debug_keep.py refuses a core whose debug-keep functions lack their debug-info (item 8)."""
+
+    def test_the_keep_file_names_the_boundaries_and_backtrace_readers(self):
+        names = debug_keep.keep_names()
+        for n in ("fnn-durable-barrier", "fnn-log-fdatasync", "fnn-checkpoint-write-steps",
+                  "fnn-state-checkpoint-install", "fnn-owner-publish-captured",
+                  "fnn-stack-exhaustion-report", "fnn-owner-shared-action-locked"):
+            self.assertIn(n, names)
+
+    def report(self, names, **status):
+        return "".join("DEBUG-KEEP %s %s\n" % (n, status.get(n, "ok")) for n in names)
+
+    def test_a_core_with_every_function_ok_passes(self):
+        names = debug_keep.keep_names()
+        self.assertEqual(debug_keep.problems(self.report(names), names), [])
+
+    def test_a_function_compiled_without_blocks_is_refused(self):
+        names = debug_keep.keep_names()
+        got = debug_keep.problems(self.report(names, **{names[0]: "no-blocks"}), names)
+        self.assertEqual(len(got), 1)
+        self.assertIn(names[0], got[0])
+
+    def test_an_inlined_absent_or_unreported_function_is_refused(self):
+        names = debug_keep.keep_names()
+        rep = self.report(names, **{names[0]: "inlined", names[1]: "absent"})
+        rep = "".join(l + "\n" for l in rep.splitlines() if not l.startswith("DEBUG-KEEP %s " % names[2]))
+        got = debug_keep.problems(rep, names)
+        self.assertEqual(len(got), 3, got)
 
 
 if __name__ == "__main__":
