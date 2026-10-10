@@ -149,7 +149,7 @@
                   :verify-guards nil
                   :hints (("Goal" :in-theory (disable fn-lgw-step fn-lgw-window)))))
   (mv-let (took records st2) (fn-lgw-step (fn-lgw-window c st) st unit max (len c))
-    (mv-let (skip2 acc2) (if took (fn-lgo-fold records skip acc dicts allow) (mv skip acc))
+    (mv-let (skip2 acc2) (if took (fn-lgo-fold records skip acc dicts allow) (mv (nfix skip) acc))
       (if (and took (not (fn-lgw-stop st2)) (< (fn-lgw-pos st2) (len c)))
           (fn-lgo-run c st2 unit max skip2 acc2 dicts allow)
         (mv skip2 acc2 st2)))))
