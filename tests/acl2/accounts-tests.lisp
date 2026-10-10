@@ -411,7 +411,7 @@
 (assert-event
  (not (fn-cfg-account-livep
        (fn-cfg-row-make (at-digest) "operator"
-                        (fn-acct-decimal-text
+                        (fn-decimal-text
                          (+ (floor *at-now-ms* 1000) (* 1000 3600)))
                         0)
        (fn-clock-observation 9 *at-now-ms* 250 t))))
