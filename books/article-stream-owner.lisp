@@ -398,12 +398,16 @@
 ;; connection owns its line workspace span); fn-asto-first-event-is-span-fold
 ;; ties it to the byte fold.  An article-mode connection (a POST body) keeps
 ;; fn-wire-scan, the POST family's scanner.
+(local (defthm fn-asto-octet-listp-rev
+  (implies (fn-cbor-octet-listp x) (fn-cbor-octet-listp (rev x)))
+  :hints (("Goal" :in-theory (enable rev fn-cbor-octet-listp)))))
 (defun fn-asto-frame-line (ws start end fn-octets fn-ast-ws)
   (declare (xargs :stobjs (fn-octets fn-ast-ws)
                   :guard (and (fn-wire-fast-statep ws)
                               (equal (fn-wire-state-mode ws) :command)
                               (unsigned-byte-p 55 (fn-wire-state-line-limit ws))
                               (fn-cbor-octet-listp (fn-wire-state-line-rev ws))
+                              (unsigned-byte-p 58 (len (fn-wire-state-line-rev ws)))
                               (unsigned-byte-p 59 start) (unsigned-byte-p 59 end) (<= start end)
                               (<= end (fn-octets-len fn-octets)))
                   :guard-hints (("Goal" :in-theory (disable fn-nsp-frame fn-nsp-frame-wsp)))))
@@ -418,6 +422,7 @@
        (equal (fn-wire-state-mode ws) :command)
        (unsigned-byte-p 55 (fn-wire-state-line-limit ws))
        (fn-cbor-octet-listp (fn-wire-state-line-rev ws))
+       (unsigned-byte-p 58 (len (fn-wire-state-line-rev ws)))
        (unsigned-byte-p 59 start) (unsigned-byte-p 59 end)))
 (defthm fn-asto-frame-line-is-span-fold
   (implies (and (fn-octets-p fn-octets)
