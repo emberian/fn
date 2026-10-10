@@ -130,21 +130,19 @@ The caller holds SERVICE's mutex for this whole function."
                               :usable))
                (return-from fnn-bpapp-accept-locked
                  (values :clock-unusable nil)))
+             ;; Every submission is a transit submission (D34, PKT-646), as
+             ;; every intent is (fnn-bpapp-request-intent).
+             (unless transitp
+               (fnn-fault "BP application submit without a transit plan"))
              (setq application-result
-                   (if transitp
-                       (fnn-owner-complete-bp-transit-submission
-                        service
-                        (lambda () (fnn-owner-arena-action 'fn-owner-app-submit))
-                        msgid payload
-                        (fnn-octets (fnn-global 'fn-owner-app-stored))
-                        groups evidence generation (fnn-bpapp-planned-txid txid)
-                        (fnn-global 'fn-owner-app-obligation-id)
-                        (fnn-global 'fn-owner-app-stored-subject))
-                     (fnn-owner-complete-bound-submission
-                      service
-                      (lambda () (fnn-owner-arena-action 'fn-owner-app-submit))
-                      msgid payload groups evidence generation
-                      (fnn-bpapp-planned-txid txid))))
+                   (fnn-owner-complete-bp-transit-submission
+                    service
+                    (lambda () (fnn-owner-arena-action 'fn-owner-app-submit))
+                    msgid payload
+                    (fnn-octets (fnn-global 'fn-owner-app-stored))
+                    groups evidence generation (fnn-bpapp-planned-txid txid)
+                    (fnn-global 'fn-owner-app-obligation-id)
+                    (fnn-global 'fn-owner-app-stored-subject)))
              (unless (member application-result '(:accepted :duplicate))
                (return-from fnn-bpapp-accept-locked
                  (values application-result nil)))))
