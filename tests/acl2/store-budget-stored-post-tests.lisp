@@ -118,8 +118,10 @@
 (defconst *sbsp-s7* (fn-sn-finish (sbsp-publish *sbsp-s5*)))
 (assert-event (equal (len (fn-sf-records (fn-sn-files *sbsp-s7*))) 2))
 (assert-event (equal (sbsp-okp *sbsp-s7* (list *sbsp-w1* *sbsp-w2*)) t))
-;; (and the header charges, lane heap-pool)
-(assert-event (equal (fn-sbud-bytes-used *sbsp-s7*) 1427))
+;; The two payloads alone (a held row is charged its payload alone).
+(assert-event (equal (fn-sbud-bytes-used *sbsp-s7*)
+                     (+ (len (fn-record-payload *sbsp-w1*))
+                        (len (fn-record-payload *sbsp-w2*)))))
 
 ; A refused stage keeps the relation too: the staged store is not :reserved.
 (defconst *sbsp-st-refused* (sbsp-stage *sbsp-s5* *sbsp-w2* (list *sbsp-w1*)))

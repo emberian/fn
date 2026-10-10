@@ -19,6 +19,14 @@
                         "p" "s" "r" 2 841000000)))
 (assert-event (fn-wire-event-listp *sbst-ws*))
 
+; The octets a held row is charged: its payload alone (the memberships are the
+; memory equation's term), summed over the events the open interns.
+(defun sbst-payload-octets (ws)
+  (declare (xargs :verify-guards nil))
+  (if (consp ws)
+      (+ (len (fn-record-payload (car ws))) (sbst-payload-octets (cdr ws)))
+    0))
+
 ; The open: the rows, the budget's octets, the stored octets over the arena,
 ; the relation, and the pre-flip count (the wire encoder over each row).
 (defun sbst-old-count (rows)
@@ -55,20 +63,20 @@
 (assert-event (natp 0))
 (assert-event (fn-held-listp (nth 4 *sbst-open*)))
 (assert-event (equal (nth 2 *sbst-open*) t))
-(assert-event (equal (nth 0 *sbst-open*) 8))
-(assert-event (equal (nth 1 *sbst-open*) 8))
+(assert-event (equal (nth 0 *sbst-open*) (sbst-payload-octets *sbst-ws*)))
+(assert-event (equal (nth 1 *sbst-open*) (sbst-payload-octets *sbst-ws*)))
 (assert-event (equal (nth 3 *sbst-open*) 0))
 
 ; The same through the store the host reads (fn-sbud-bytes-used over the
 ; kernel's records; fn-sbud-bytes-used-is-the-stored-octets).
 (defconst *sbst-store*
   (list nil nil (fn-sf-make :ready 2 nil (nth 4 *sbst-open*) nil nil nil 0)))
-(assert-event (equal (fn-sbud-bytes-used *sbst-store*) 8))
+(assert-event (equal (fn-sbud-bytes-used *sbst-store*) (sbst-payload-octets *sbst-ws*)))
 ; The carried sum from a prefix cache agrees (fn-sbud-bytes-used-is-kernel-sum).
 (assert-event (equal (fn-sbud-bytes-extend
                       (cons 1 (fn-sbud-record-octets (take 1 (nth 4 *sbst-open*))))
                       (nth 4 *sbst-open*))
-                     8))
+                     (sbst-payload-octets *sbst-ws*)))
 ; A wire row still counts its encoding (fn-sbud-row-octets-of-wire-row).
 (assert-event (equal (fn-sbud-row-octets (car *sbst-ws*))
                      (len (fn-store-event-encode (car *sbst-ws*)))))
@@ -113,8 +121,9 @@
 
 (defconst *sbst-lie* (sbst-lying *sbst-ws*))
 (assert-event (equal (nth 0 *sbst-lie*) nil))
-(assert-event (equal (nth 1 *sbst-lie*) 12))
-(assert-event (equal (nth 2 *sbst-lie*) 8))
+(assert-event (equal (nth 1 *sbst-lie*)
+                     (+ 7 (sbst-payload-octets (cdr *sbst-ws*)))))
+(assert-event (equal (nth 2 *sbst-lie*) (sbst-payload-octets *sbst-ws*)))
 ; The same refutation as a theorem over the arena's logical value (the two
 ; payloads the open sealed): the conclusion is false at these rows, so the
 ; theorem without its hypothesis fails.
