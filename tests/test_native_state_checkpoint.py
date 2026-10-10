@@ -494,6 +494,53 @@ class StateCheckpointTests(StateCheckpointFixture):
                         (at3, at5))
         self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
 
+    def heap_replay_line(self):
+        """`fn heap -- operator CONFIG status --replay': the read decision over
+        the header's totals (books/heap-command.lisp fn-mo-read-decide)."""
+        probe = self.node.invoke("heap", "--", "operator", self.config, "status", "--replay")
+        line = probe.stdout.decode("ascii").strip()
+        return probe.returncode, line
+
+    def test_the_read_decision_sees_the_header_totals_only_with_no_suffix(self):
+        """Builder M's obligation (MEMORY-OBSERVED-BRANCH-CRITICAL, the subject
+        fn-mo-read-decide of fn-mo-read-holds-the-observed-store and
+        fn-mo-read-holds-every-store-within-its-totals).  (1) After a
+        checkpoint at 3 and nothing past it, the probe reads HDR from the
+        header (host/native/heap.lisp fnn-heap-charged-totals) and SUFFIX is
+        the empty one, so the decision is the observed branch: exit 0, a
+        `heap=' line, none of the offline adapter's words, and the totals it
+        read (fn-mo-totals-words) are the stopped status's header line, with
+        HISTORY the replayed headroom's bytes-used.  (2) Two records past the
+        checkpoint: SUFFIX is unseen (L's adapter), so the line says so.  (3)
+        No checkpoint at all: the same."""
+        created = self.op("init", "--profile", "development", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.ids = ["<scp-{}@example.invalid>".format(n) for n in range(5)]
+        self.post(self.ids[:3])
+        # (3) no checkpoint
+        code, line = self.heap_replay_line()
+        self.assertTrue(line.endswith("header totals unseen"), line)
+        made = self.checkpoint()
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
+        self.assertIn(b"checkpoint sequence=3", made.stdout)
+        # (1) the observed branch
+        code, line = self.heap_replay_line()
+        self.assertEqual(code, EXIT_OK, line)
+        self.assertTrue(line.startswith("heap="), line)
+        self.assertNotIn(" sized by the offline adapter", line)
+        match = re.search(r" totals=([0-9]+(?:,[0-9]+){7}),(resident|paged)", line)
+        self.assertIsNotNone(match, line)
+        observed = [int(x) for x in match.group(1).split(",")]
+        header = self.stopped_charged_totals()
+        self.assertEqual(observed, [header[k] for k in ("records", "arena", "hcharge", "memberships",
+                                                        "events", "log", "history", "charge")])
+        self.assertEqual(observed[0], 3)
+        self.assertEqual(observed[6], self.headroom()["bytes-used"])
+        # (2) records past S
+        self.post(self.ids[3:])
+        code, line = self.heap_replay_line()
+        self.assertTrue(line.endswith("header totals unseen"), line)
+
     def test_a_damaged_header_falls_back_to_full_replay_with_the_empty_seed(self):
         """A flipped octet inside H's chunk: the header phase refuses it
         (fn-cth-header-open: the seal or the row), the open replays the
