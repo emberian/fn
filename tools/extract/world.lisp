@@ -409,6 +409,7 @@
 (include-book "../../books/owner-ack-after-barrier")
 (include-book "../../books/login-binding-live")
 (include-book "../../books/connection-budget")
+(include-book "../../books/admission-memory")
 (include-book "../../books/tls-proxy")
 (include-book "../../books/owner-readers-transitions")
 (include-book "../../books/owner-stop-drain")

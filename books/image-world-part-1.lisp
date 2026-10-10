@@ -210,3 +210,4 @@
 (include-book "store-checkpoint-tables-reader")
 (include-book "store-intern")
 (include-book "open-frontier-wire")
+(include-book "store-recover-stream")
