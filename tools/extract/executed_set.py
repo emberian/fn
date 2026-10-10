@@ -6,7 +6,8 @@ the product's workloads, and the census of what the core carries but never ran
     executed_set.py run TREE IMAGE CORE OUT [--arm gate|served|load ...] [--jobs N] [--module M ...]
     executed_set.py union OUT
     executed_set.py books IMAGE OUT [--tree TREE]
-    executed_set.py census OUT CORE_DIR [--books BOOKS_TSV] [--tree TREE] [--json FILE]
+    executed_set.py sizes CORE OUT
+    executed_set.py census OUT CORE_DIR [--books BOOKS_TSV] [--sizes SIZES_TSV] [--tree TREE] [--json FILE]
 
 `run` drives CORE (TREE/build/core/fn-core, a developer core) through a wrapper
 launcher OUT/bin/fn-core that sets XL_HOOK=executed_set.lisp and FN_XC_OUT=OUT/raw,
@@ -296,6 +297,44 @@ def books(args):
     return 0
 
 
+# ---------------------------------------------------------------- sizes
+
+SIZES_LOAD = """(let ((*package* (find-package :keyword)) (n 0))
+  (with-open-file (o (sb-ext:posix-getenv "FN_XC_SIZES") :direction :output :if-exists :supersede)
+    (sb-vm:map-allocated-objects
+     (lambda (obj type size)
+       (when (= type sb-vm:code-header-widetag)
+         (let ((k (sb-kernel:code-n-entries obj)))
+           (when (plusp k)
+             (let ((name (sb-kernel:%simple-fun-name (sb-kernel:%code-entry-point obj 0))))
+               (when (and (symbolp name) (symbol-package name))
+                 (incf n)
+                 (format o "~A~C~D~%" (prin1-to-string name) #\\Tab size)))))))
+     :all))
+  (format t "SIZES-DONE ~D~%" n))
+"""
+
+
+def sizes(args):
+    """OUT/sizes.tsv (`NAME<TAB>OCTETS`): each code object of CORE (a developer
+    fn-core, `--xl-load') charged to its first entry point's name; octets are the
+    object's allocated size, instructions and boxed header (debug-info apart)."""
+    out = Path(args.out).resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    load = out / "sizes-load.lisp"
+    load.write_text(SIZES_LOAD)
+    env = dict(os.environ, FN_XC_SIZES=str(out / "sizes.tsv"))
+    env.pop("XL_HOOK", None)
+    p = subprocess.run([args.core, "--xl-load", str(load)], env=env, capture_output=True,
+                       timeout=900)
+    done = re.search(rb"SIZES-DONE (\d+)", p.stdout)
+    if not done or int(done.group(1)) == 0:
+        raise Refused("sizes: no code object measured (status %s): %s"
+                      % (p.returncode, (p.stdout + p.stderr)[-400:].decode(errors="replace")))
+    print("executed-set: %s code objects measured in %s" % (done.group(1).decode(), out / "sizes.tsv"))
+    return 0
+
+
 # ---------------------------------------------------------------- census
 
 def unit_of(name: str) -> str:
@@ -417,7 +456,18 @@ def census(args):
                 kind = parts[2] if len(parts) > 2 else "fn"
                 (books if kind == "fn" else thm_book).setdefault(parts[0], parts[1])
     claimed = claimed_books(Path(args.tree), thm_book) if args.tree else None
+    octets = {}
+    if args.sizes:
+        for l in Path(args.sizes).read_text().splitlines():
+            n, _, z = l.rpartition("\t")
+            if z.isdigit():
+                octets[n] = octets.get(n, 0) + int(z)
+    def size(u):
+        kind, name = u.split(":", 1)
+        return octets.get(STAR1 + name.split("::", 1)[1] if kind == "star1" else name, 0)
     never, r = removable(kinds, roots, edges, executed, unobserved)
+    # the upper bound: every never-executed root retired as well (its verb withdrawn)
+    _, r_all = removable(kinds, set(), edges, executed, unobserved)
     fns = {u for u, k in kinds.items() if k in ("raw", "star1")}
     fam = defaultdict(Counter)
     for u in fns:
@@ -426,6 +476,11 @@ def census(args):
         fam[f]["executed"] += u in executed
         fam[f]["never"] += u in never
         fam[f]["removable"] += u in r
+        fam[f]["removable_if_roots_retired"] += u in r_all
+        fam[f]["octets"] += size(u)
+        fam[f]["octets_never"] += size(u) * (u in never)
+        fam[f]["octets_removable"] += size(u) * (u in r)
+        fam[f]["octets_if_roots_retired"] += size(u) * (u in r_all)
     per_book = defaultdict(Counter)
     for u in fns:
         b = books.get(qualified(u), "")
@@ -438,19 +493,28 @@ def census(args):
                 fam[family(u, books)]["removable_unclaimed"] += 1
     doc = {"functions": len(fns), "executed": len(fns & executed), "never": len(never),
            "removable": sorted(r), "never_roots": sorted(roots & (fns - executed - unobserved)),
+           "removable_if_roots_retired": len(r_all),
            "families": {f: dict(c) for f, c in fam.items()},
            "books": {b: dict(c, claimed=(None if claimed is None else book_key(b) in claimed))
                      for b, c in per_book.items() if b}}
     if args.json:
         Path(args.json).write_text(json.dumps(doc, indent=1) + "\n")
-    print("| family | static fns | executed | never | removable | removable, book unclaimed |")
-    print("|---|---|---|---|---|---|")
-    for f, c in sorted(fam.items(), key=lambda kv: -kv[1]["never"]):
-        print("| %s | %d | %d | %d | %d | %s |" % (f, c["static"], c["executed"], c["never"], c["removable"],
-                                                 c["removable_unclaimed"] if claimed is not None else "-"))
-    print("| **all** | %d | %d | %d | %d | %s |" % (
-        len(fns), doc["executed"], len(never), len(r),
-        sum(c["removable_unclaimed"] for c in fam.values()) if claimed is not None else "-"))
+    def mb(n):
+        return "%.2f" % (n / 1e6)
+    print("| family | static fns | executed | never | removable | removable, book unclaimed "
+          "| removable if never-executed roots retire | code MB | never MB | removable MB | MB if roots retire |")
+    print("|---|---|---|---|---|---|---|---|---|---|---|")
+    tot = Counter()
+    for f, c in sorted(fam.items(), key=lambda kv: -kv[1]["octets_never"]):
+        tot.update(c)
+        print("| %s | %d | %d | %d | %d | %s | %d | %s | %s | %s | %s |" % (
+            f, c["static"], c["executed"], c["never"], c["removable"],
+            c["removable_unclaimed"] if claimed is not None else "-", c["removable_if_roots_retired"],
+            mb(c["octets"]), mb(c["octets_never"]), mb(c["octets_removable"]), mb(c["octets_if_roots_retired"])))
+    print("| **all** | %d | %d | %d | %d | %s | %d | %s | %s | %s | %s |" % (
+        tot["static"], tot["executed"], tot["never"], tot["removable"],
+        tot["removable_unclaimed"] if claimed is not None else "-", tot["removable_if_roots_retired"],
+        mb(tot["octets"]), mb(tot["octets_never"]), mb(tot["octets_removable"]), mb(tot["octets_if_roots_retired"])))
     return 0
 
 
@@ -467,9 +531,12 @@ def main(argv=None):
     k = sub.add_parser("books")
     k.add_argument("image"); k.add_argument("out")
     k.add_argument("--tree", help="attribute host/*.lisp definitions (build.lisp ld's them outside any book)")
+    z = sub.add_parser("sizes")
+    z.add_argument("core"); z.add_argument("out")
     c = sub.add_parser("census")
     c.add_argument("out"); c.add_argument("core_dir")
     c.add_argument("--books"); c.add_argument("--json")
+    c.add_argument("--sizes", help="sizes.tsv: code octets per unit for the MB columns")
     c.add_argument("--tree", help="the tree whose claim registers name books (the unclaimed column)")
     a = p.parse_args(argv)
     try:
@@ -479,6 +546,8 @@ def main(argv=None):
             return union(Path(a.out))
         if a.cmd == "books":
             return books(a)
+        if a.cmd == "sizes":
+            return sizes(a)
         return census(a)
     except Refused as e:
         print("executed-set: REFUSED: %s" % e, file=sys.stderr)
