@@ -544,7 +544,7 @@ class KeystoneFormulaTests(unittest.TestCase):
             capture_output=True, text=True, check=True).stdout
 
     # the entry's definition: its call closure is what a :via target must be in
-    ENTRY = ('(defun fn-bph-extend-reservation (x) (fn-bph-helper x))\n'
+    ENTRY = ('(defun fn-bph-extend-reservation (x) (fn-bph-helper x))\n'  # acl2-arity-fixture: fn-bpsp-node-startup a one-argument stand-in for the call-closure reader
              '(defun fn-bph-helper (x) (fn-bpsp-node-startup x))\n'
              '(defun fn-bpsp-node-startup (x) x)\n(defun fn-bpsp-node-capacity (x) x)\n')
 
@@ -571,7 +571,7 @@ class KeystoneFormulaTests(unittest.TestCase):
     def test_a_via_target_outside_the_entrys_call_closure_is_refused(self):
         # f338968d1: fn-oct-transit stopped calling fn-oop-transit-outcome, the
         # :via of fn-owner-transit-outcome; host-ld said so at an image build.
-        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'  # acl2-arity-fixture: fn-bpsp-node-capacity a one-argument stand-in for the call-closure reader
                 '  (implies (natp x) (fn-bpsp-node-capacity x)) :rule-classes nil)\n')
         root = self.fixture("fn-bpsp-node-capacity", book)
         problems, unresolved = self.check(root)
@@ -587,7 +587,7 @@ class KeystoneFormulaTests(unittest.TestCase):
         self.assertEqual(self.check(root), ([], []))
 
     def test_a_via_closure_is_read_through_a_macro_template_and_its_calls(self):
-        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'  # acl2-arity-fixture: fn-bpsp-node-capacity a one-argument stand-in for the call-closure reader
                 '  (implies (natp x) (fn-bpsp-node-capacity x)) :rule-classes nil)\n'
                 '(defun fn-bpsp-node-capacity (x) x)\n'
                 '(defmacro def-gen (&key rows) `(defun fn-bph-extend-reservation (x) (fn-pick x ,@rows)))\n'
@@ -599,7 +599,7 @@ class KeystoneFormulaTests(unittest.TestCase):
         self.assertEqual(len(self.check(root)[0]), 1)
 
     def test_an_entry_the_reader_finds_no_definition_for_is_listed_not_failed(self):
-        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'  # acl2-arity-fixture: fn-bpsp-node-capacity a one-argument stand-in for the call-closure reader
                 '  (implies (natp x) (fn-bpsp-node-capacity x)) :rule-classes nil)\n')
         root = self.fixture("fn-bpsp-node-capacity", book)
         (root / "books" / "aa-entry.lisp").write_text('(in-package "ACL2")\n')
@@ -618,7 +618,7 @@ class KeystoneFormulaTests(unittest.TestCase):
         self.assertEqual(len(problems), 1, problems)
 
     def test_a_bare_keystone_must_call_its_own_entry(self):
-        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'  # acl2-arity-fixture: fn-bph-extend-reservation a one-argument stand-in for the call-closure reader
                 '  (implies (natp x) (fn-bph-extend-reservation x)))\n')
         root = tree('(in-package "ACL2")\n(definterface fn-bph-extend-reservation '
                     ':class :common-lisp-compliant\n  :keystones (fn-bph-extended-reservation-holds-bp-sessions))\n')
