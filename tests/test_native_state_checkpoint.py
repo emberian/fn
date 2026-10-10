@@ -237,6 +237,23 @@ def framed_start(data):
     return 0
 
 
+def segment_end(data, at):
+    """The offset just past the FNSC segment at AT: magic(4) schema(1) index
+    count length sequence (u64 LE each), the chunk, the 32-octet trailer."""
+    length = int.from_bytes(data[at + 21:at + 29], "little")
+    return at + 37 + length + FRAME_TRAILER_OCTETS
+
+
+def arena_start(data):
+    """The offset of the arena run's first segment: after the image region
+    and the charged-totals header segment H (books/charged-totals-header.lisp,
+    schema 4: one segment, count 1)."""
+    start = framed_start(data)
+    assert data[start:start + 4] == b"FNSC"
+    assert int.from_bytes(data[start + 13:start + 21], "little") == 1
+    return segment_end(data, start)
+
+
 class StateCheckpointFixture(verbs.NativeOperatorVerbFixture):
     image = IMAGE
     listener = True
@@ -419,7 +436,8 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.init_with_checkpoint_at_three()
         expected = self.observation()
         whole = self.path().read_bytes()
-        start = framed_start(whole)
+        # the charged-totals header segment stays; the arena run after it goes
+        start = arena_start(whole)
         data = whole[start:]
         # FNSC segment: magic(4) schema(1) index count length sequence (u64 LE
         # each), the chunk, the 32-octet trailer; the first segment's count
@@ -436,6 +454,84 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
         self.assertEqual(self.open_line(), "open=full-replay reason=checkpoint-arena")
         self.assertEqual(self.observation(), expected)
+
+    def stopped_charged_totals(self):
+        """The stopped `status' line of the checkpoint's charged-totals header
+        (books/charged-totals-header.lisp fn-cth-status-text), as a dict, or
+        None for `charged-totals=absent'."""
+        status = self.op("status")
+        self.assertEqual(status.returncode, EXIT_OK, status.stderr.decode())
+        lines = [l for l in status.stdout.decode("ascii").splitlines()
+                 if l.startswith("charged-totals")]
+        self.assertEqual(len(lines), 1, status.stdout.decode())
+        if lines[0] == "charged-totals=absent":
+            return None
+        words = lines[0].split()
+        self.assertEqual(words[0], "charged-totals", lines[0])
+        fields = dict(w.split("=", 1) for w in words[1:])
+        self.assertEqual(sorted(fields), sorted(["records", "arena", "hcharge", "memberships", "events",
+                                                 "log", "history", "charge", "residency"]), lines[0])
+        return {k: (v if k == "residency" else int(v)) for k, v in fields.items()}
+
+    def test_the_header_carries_the_charged_totals_of_its_records(self):
+        """The writer puts the charged fold of the S records the checkpoint
+        covers into its first segment (fn-cth-header-step through
+        fn-cth-publication); the stopped `status' reads it as the open does
+        (fn-cth-header-open) and replays nothing.  The fold grows with the
+        records: a second checkpoint at 5 dominates the first at 3."""
+        self.init_with_checkpoint_at_three()
+        at3 = self.stopped_charged_totals()
+        self.assertIsNotNone(at3)
+        self.assertEqual(at3["records"], 3)
+        self.assertEqual(at3["residency"], "resident")
+        self.assertTrue(all(at3[k] > 0 for k in ("arena", "events", "log", "history", "charge")), at3)
+        made = self.checkpoint()
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
+        self.assertIn(b"checkpoint sequence=5 ", made.stdout)
+        at5 = self.stopped_charged_totals()
+        self.assertEqual(at5["records"], 5)
+        self.assertTrue(all(at5[k] > at3[k] for k in ("arena", "events", "log", "history", "charge")),
+                        (at3, at5))
+        self.assertEqual(self.open_line(), "open=checkpoint:5 suffix=0")
+
+    def test_a_damaged_header_falls_back_to_full_replay_with_the_empty_seed(self):
+        """A flipped octet inside H's chunk: the header phase refuses it
+        (fn-cth-header-open: the seal or the row), the open replays the
+        journal (reason=corrupt) and the owner seeds the empty cache (the
+        open's own verdict is the flag, fn-cth-installed-seed); `status' says
+        the header is absent."""
+        self.init_with_checkpoint_at_three()
+        expected = self.observation()
+        good = self.path().read_bytes()
+        start = framed_start(good)
+        data = bytearray(good)
+        data[start + 37] ^= 0x01
+        self.path().write_bytes(bytes(data))
+        self.assertIsNone(self.stopped_charged_totals())
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
+        self.assertEqual(self.open_line(), "open=full-replay reason=corrupt")
+        self.assertEqual(self.observation(), expected)
+        self.path().write_bytes(good)
+        self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
+
+    def test_a_schema_three_file_is_refused_by_name(self):
+        """A file of the previous schema (3: no header segment) is refused
+        BY NAME before anything else is read (fn-sccr-admit-segment's
+        :schema), the journal replays and `status' says
+        reason=checkpoint-schema (D34)."""
+        self.init_with_checkpoint_at_three()
+        expected = self.observation()
+        good = self.path().read_bytes()
+        start = framed_start(good)
+        self.assertEqual(good[start + 4], 4)
+        data = bytearray(good)
+        data[start + 4] = 3
+        self.path().write_bytes(bytes(data))
+        self.assertIsNone(self.stopped_charged_totals())
+        self.assertEqual(self.refused_then_restore_log(), "checkpoint-damaged")
+        self.assertEqual(self.open_line(), "open=full-replay reason=checkpoint-schema")
+        self.assertEqual(self.observation(), expected)
+        self.path().write_bytes(good)
 
     def test_a_checkpoint_past_the_profile_bound_is_refused_by_name(self):
         # rep-wave-d-3: the first segment's LENGTH field (u64 LE at octet 21)
