@@ -1,5 +1,7 @@
 # A bounded9P2000 view of a committed store
 
+HST-043: Bounded native read-only9P2000 committed view.
+
 HST-043 / PRF-1177 / SCN-1064. Selected interface: read-only base9P2000,
 loopback. Current realization is additive source work, not an activated server.
 The retired `tools/fn9p.py`, `host/ninep-host.lisp` and old whole-view adapter

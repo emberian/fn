@@ -1,5 +1,7 @@
 # Persistent all-event history directory (STO-10003)
 
+STO-10003: Persistent binary all-event directory with registered candidate and epoch custody.
+
 This is the internal concrete component for the architectural design in
 `planning/dense-history-epoch-2026-09-30.md`, owned by the dense-history lane.
 It records every committed Store event, including NIL and policy events.
