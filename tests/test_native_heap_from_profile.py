@@ -67,6 +67,9 @@ CAPACITY_FLAGS = ("--profile", "development", "--max-transactions", "16384",
                   "--max-article-octets", "4194304",
                   "--max-groups-per-article", "16", "--max-open-suffix", "128")
 CAPACITY_CONNECTIONS = 200
+# books/nntp-post.lisp fn-post-store-refusal-text of :memory.
+MEMORY_REFUSAL = (b"441 posting failed; the store is full: no capacity for this article "
+                  b"(memory); the node's operator can raise it")
 # `status' prints the launcher's run reservation (books/heap-reservation.lisp
 # fn-heap-status-decide): the heap line with the stack and the threads.
 HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB"
@@ -480,9 +483,13 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         over the empty store, the image calibrated to that sum=379 (the
         figures are in build/memory/l34/m9/test2g/a5.out, a6.out):
         "memory capacity=125 of 200 bound-by=article-reply sum=2033 MB
-        limit=2043 MB", 121 to 130 for an image 50 MB heavier or lighter.
-        Then C' readers each POST and are admitted (240), and one more
-        reader is refused with RFC 3977's 400."""
+        limit=2043 MB", 121 to 130 for an image 50 MB heavier or lighter
+        (m34a-11h, 1ea0b89ae: 123 of 200, sum=2012 MB limit=2013 MB).
+        C' readers are accepted and one more is refused with RFC 3977's
+        400.  Each reader then POSTs: the room C' leaves is under one
+        connection's charge, so POSTs are admitted (240) while the gate
+        holds after the row and from the first it cannot hold every one is
+        refused by the memory's word (K-ADMIT)."""
         config, port = self.config("capacity")
         made = self.run_fn("operator", config, "init", *CAPACITY_FLAGS, "local.test")
         self.assertEqual(made.returncode, EXIT_OK, text(made))
@@ -510,18 +517,35 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 self.assertTrue(extra.greeting.startswith(b"400 "), extra.greeting)
             finally:
                 extra.sock.close()
+            # C' is the most connections the gate holds over the store at
+            # configure, so the room left is under one connection's charge
+            # (one article reply here) and a store that grows spends it: each
+            # reader POSTs, a POST is admitted exactly while the gate holds
+            # after its row (K-ADMIT, books/admission-memory.lisp
+            # fn-adm-admitted-row-keeps-the-gate), and the first POST the
+            # gate cannot hold is refused by the memory's own word; the store
+            # only grows, so every later one is too.
+            admitted, refused = 0, 0
             for n, client in enumerate(readers):
                 first, final = client.post(article("<cap-{}@example.invalid>".format(n),
                                                    groups="local.test", subject="cap",
                                                    date=None, body=body.encode("ascii")))
                 self.assertTrue(first.startswith(b"340"), first)
-                self.assertEqual(final.rstrip(b"\r\n"), b"240 article received OK")
+                final = final.rstrip(b"\r\n")
+                if final == b"240 article received OK":
+                    self.assertEqual(refused, 0, (n, "an admission after a memory refusal"))
+                    admitted += 1
+                else:
+                    self.assertEqual(final, MEMORY_REFUSAL, n)
+                    refused += 1
+            self.assertEqual(admitted + refused, cap)
         finally:
             for client in readers:
                 client.close()
         hwm = self.stop()
-        print("NATIVE-HEAP capacity={} of {} bound-by={} posts={} vmhwm kB={}".format(
-            cap, configured, term, len(readers), hwm))
+        print("NATIVE-HEAP capacity={} of {} bound-by={} readers={} admitted={} "
+              "refused-by-memory={} vmhwm kB={}".format(
+                  cap, configured, term, len(readers), admitted, refused, hwm))
         self.assertLess(hwm * 1024, LIMIT)
 
     def test_a_store_init_admitted_fills_to_its_limit_and_still_restarts(self):
