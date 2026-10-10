@@ -2,11 +2,13 @@
  "detail": "New or grown since the baseline: host/native/admin.lisp 2 (not in the baseline), control-transport.lisp 1 (not in the baseline), extent.lisp 10 (8), immutable-publish.lisp 2 (1), io.lisp 33 (32; builder-A's file), mux.lisp 3 (2). tests.test_loop_call_check.test_the_tree_is_at_its_baseline fails on the same rows. Each loop is reshaped or enters the baseline with a reason.",
  "file": "tools/loop_call_check.py",
  "id": "LOOP-CALL-BASELINE-GROWTH",
- "notes": [],
+ "notes": [
+  "10-10 Builder D, lane d-cite-load-bearing: each of the 8 new sites judged against the baseline commit 938c30b2e's --list. Bounded by time or work, accepted with an ACKS.md line each: fnn-owner-compaction-request and fnn-owner-limit-serialized (admin.lisp), fnn-control-admin (control-transport.lisp), fnn-extent-window-cache-run (the bounded window cache, one span call per hit), fnn-immutable-drain-cleanups (per cleanup receipt), fnn-log-drain-spare-discards (io.lisp, builder-A's file, unchanged), fnn-mux-close-wake (two wake descriptors). One is a D27-class per-octet lock: fnn-extent-lz-buffer-octet, filed as LZ-BUFFER-OCTET-PER-OCTET-LOCK (builder-D) and cited by extent.lisp's ACK. Baseline rewritten by --write: 131 sites in 31 files; tests.test_loop_call_check 5 OK."
+ ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
- "state": "open",
+ "state": "landed",
  "title": "loop_call_check: 131 host loops that call ACL2 or take a lock per iteration against baseline 123",
- "updated": "2026-10-09T22:00:00Z"
+ "updated": "2026-10-10T02:20:00Z"
 }
