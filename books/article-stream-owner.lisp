@@ -416,10 +416,14 @@
     (mv-let (r s2 i2 fn-ast-ws)
       (fn-nsp-frame ll (ec-call (fn-nsp-frame-state-of ws)) start end nil (+ 1 ll) fn-octets fn-ast-ws)
       (mv (ec-call (fn-nsp-frame-wsp r s2 i2 (fn-ast-ws-list fn-ast-ws) ws)) fn-ast-ws))))
+; The mode is tested first: in :article mode fn-wire-statep walks the
+; accumulated body (fn-bch-body-okp over body-rev), which on every read of a
+; POST body made the upload quadratic (a 3 MiB POST did not finish in 400 s on
+; hbox, spans-a2-237cdbb); a command-mode state's walk is its one line.
 (defun fn-asto-frame-casep (ws start end)
   (declare (xargs :guard t))
-  (and (fn-wire-statep ws)
-       (equal (fn-wire-state-mode ws) :command)
+  (and (equal (fn-wire-state-mode ws) :command)
+       (fn-wire-statep ws)
        (unsigned-byte-p 55 (fn-wire-state-line-limit ws))
        (fn-cbor-octet-listp (fn-wire-state-line-rev ws))
        (unsigned-byte-p 58 (len (fn-wire-state-line-rev ws)))
