@@ -134,8 +134,33 @@ class NativeAuthAdminSourceMapTests(unittest.TestCase):
             self.assertIn(anchor, source)
 
 
+def uncertified_includes() -> list[str]:
+    """The books the drivers include (the closures of the two `ld'ed files and
+    books/outcome-class) that have no certificate in this tree.  An
+    uncertified include-book skips its local events, so a def-representation
+    whose :lemmas are local refuses there: the drivers need a certified tree."""
+    import certs
+    # The tree the books live in (an image-free scratch root links books/).
+    tree = (ROOT / "books").resolve().parent
+    loaded = ("books/native-auth-admin", "host/native-auth-admin-host")
+    names = set(certs.closure(tree, "books/outcome-class"))
+    for name in loaded:
+        names |= set(certs.closure(tree, name))
+    return sorted(name for name in names - set(loaded)
+                  if not (tree / (name + ".cert")).is_file())
+
+
 @unittest.skipUnless(ACL2 and os.access(str(ACL2), os.X_OK), "real ACL2 is required")
 class NativeAuthAdminFidelityTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        missing = uncertified_includes()
+        if missing:
+            raise unittest.SkipTest(
+                "capability -- the drivers include {} book(s) this tree has not "
+                "certified (first {}); a certified tree (a native run's) runs them".format(
+                    len(missing), missing[0]))
+
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix="fn-native-auth-admin-")
         self.addCleanup(self.temporary.cleanup)

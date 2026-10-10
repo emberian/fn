@@ -987,7 +987,11 @@ def verify_post_log_cut_map() -> None:
     # collects the syncer's word before COMPLETE, and seals the next batch
     # only after the replies of the batch in flight.
     start = host_function(owner, "fnn-owner-commit-start-locked")
-    if not (0 <= start.find("(fnn-owner-drain-one ") < start.find("(fnn-log-seal-capture ")):
+    # A call, whatever whitespace follows its name: the drain's arguments
+    # start on the next line.
+    drain = re.search(r"\(fnn-owner-drain-one\s", start)
+    seal = re.search(r"\(fnn-log-seal-capture\s", start)
+    if not (drain and seal and drain.start() < seal.start()):
         raise AssertionError("START does not drain its members before the seal")
     # The batch job (books/owner-queued-work.lisp fn-oqw-phases :batch): its
     # phases in the book's order, each executed by the effect that names it.

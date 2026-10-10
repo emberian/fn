@@ -5,6 +5,7 @@ buffer holds to BOTH streams before it announces, then sleeps.  Under the
 old `stdout=PIPE, stderr=PIPE` start that read only the announcement, the
 child blocks in its first stderr write past 64 KiB and never announces.
 """
+import os
 import subprocess
 import sys
 import time
@@ -329,6 +330,14 @@ class InstalledLaunchTests(unittest.TestCase):
         self.image.write_text(FAKE_IMAGE)
         self.image.chmod(0o755)
         (self.tmp / "fn-host.core").write_bytes(b"core" * 1024)
+        # The installed layout carries a shipped OpenSSL prefix (D64: never
+        # the system pair).  The fake image loads no library, so its own
+        # empty prefix is the layout's, on any machine.
+        (self.tmp / "openssl" / "lib").mkdir(parents=True)
+        from unittest import mock
+        patch = mock.patch.dict(os.environ, {"FN_OPENSSL_PREFIX": str(self.tmp / "openssl")})
+        patch.start()
+        self.addCleanup(patch.stop)
 
     def test_an_owner_run_goes_through_the_installed_launcher_at_the_decided_heap(self):
         node = native_harness.Node(self, self.image, root=self.tmp / "node")
