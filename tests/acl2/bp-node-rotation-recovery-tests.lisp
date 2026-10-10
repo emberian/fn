@@ -151,7 +151,7 @@
   :subject fn-bpnj-step
   :witness ((st (bprd-traced-q)) (event (list :rotate 1 (bprd-traced-ck))))
   :breaks ((ready ((st (update-nth 10 0 (bprd-owed-q)))
-                   (event '(:base (:forward-result nil :accepted))))))
+                   (event (list :job-result (fn-bpn-job-key (bprd-owed-job)) 999 :failed)))))
   :mutations ((issued-unfenced
                (:hypothesis ready
                 (and (natp (fn-bpnf-next-op st))

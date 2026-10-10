@@ -308,56 +308,6 @@
                             fn-bpn-nth fn-cbor-ag-car)
                            (fn-bpnr-checkpointp fn-bpnr-replay-base)))))
 
-(defthm fn-bpnr-rotation-foundation-restart-is-ready-bound
-  (implies
-   (and (equal (car (car (fn-bpnf-answer-effects
-                          (fn-bpnp-rotate-step st generation ck)))) :persist-checkpoint)
-        (fn-bpn-machine-invariantp (fn-bpnf-base st))
-        (fn-bpnr-recovery-replayp
-         0 (+ 1 (fn-bpnf-epoch st))
-         (list :ready (fn-bpnf-held-list st) (fn-bpnf-handoffs st)
-               (cons (fn-bpnf-epoch st) 0) (fn-bpnf-next-arrival st))
-         (fn-bpn-machine-state-max-jobs (fn-bpnf-base st))
-         (fn-bpn-machine-state-max-octets (fn-bpnf-base st)))
-        (equal seeded (fn-bpnr-seed-state
-                       (fn-bpnr-open-fresh st) (fn-bpnr-published-plan st generation ck)))
-        (equal event (fn-bpnr-recover-auto-event seeded nil :ready nil
-                                                (fn-bpnr-published-plan st generation ck))))
-   (equal (car (fn-bpnf-answer-effects
-                (fn-bpnf-recover-fnbs-step
-                 seeded (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
-                 (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
-          (list :restart-ready (len (fn-bpnf-held-list st)))))
-  :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bpnp-rotate-step-proposes-only-own-projection)
-                 (:instance fn-bpnr-rotation-checkpoint-is-a-checkpoint (e (fn-bpnf-epoch st)))
-                 (:instance fn-bpnr-rotation-checkpoint-fields (e (fn-bpnf-epoch st)))
-                 (:instance fn-bpnr-published-plan-is-the-rotation-checkpoint)
-                 (:instance fn-bpnr-selected-open-seed-fields
-                            (ckk (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st))))
-                 (:instance fn-bpnr-selected-event-without-rows
-                            (ckk (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
-                            (e (fn-bpnf-epoch st)))
-                 (:instance fn-bpnr-no-record-recovery-is-ready
-                            (st seeded) (epoch (fn-bpn-nth 1 event))
-                            (replay (fn-bpn-nth 4 event))))
-           :in-theory (union-theories
-                       '(fn-bpnr-checkpoint-of-statep fn-bpnp-rotation-quiescentp
-                         fn-frame-natp fn-bpn-nth fn-cbor-ag-car
-                         car-cons cdr-cons zp natp (:e zp) (:e natp)
-                         (:e binary-+) (:e unary--) (:e equal))
-                       (theory 'minimal-theory)))))
-
-(defthm fn-bprpf-admission-preserves-admitted-event-by-definition
-  (implies (or (not (equal (fn-bpn-nth 0 (fn-bpn-nth 4 event)) :ready))
-               (and (fn-bpnpf-profilep profile)
-                    (fn-bprpf-held-adus-fitp (fn-bpn-nth 1 (fn-bpn-nth 4 event))
-                                           (fn-bpnpf-adu-octets profile))))
-           (equal (fn-bprpf-admit-recovery event profile) event))
-  :hints (("Goal" :in-theory (union-theories '(fn-bprpf-admit-recovery)
-                                           (theory 'minimal-theory)))))
-
 ; PREMISE-EXCESS-D: the replay premise of the two restart keystones below,
 ; carried as an invariant of the host's BP state.  The host writes that
 ; state only at the open (fn-bpnr-seed-state over fn-bpnf-initial-state,
@@ -648,6 +598,52 @@
            :in-theory (union-theories '(fn-bpnj-step fn-bpnr-ready-arm-bpnp-step fn-bpnr-ready-arm-contact fn-bpnr-ready-arm-result)
                                       (theory 'fn-bpnr-ready-theory6))))))
 
+(defthm fn-bpnr-rotation-foundation-restart-is-ready-bound
+  (implies
+   (and (equal (car (car (fn-bpnf-answer-effects
+                          (fn-bpnp-rotate-step st generation ck)))) :persist-checkpoint)
+        (fn-bpn-machine-invariantp (fn-bpnf-base st))
+        (fn-bpnr-replay-readyp st)
+        (equal seeded (fn-bpnr-seed-state
+                       (fn-bpnr-open-fresh st) (fn-bpnr-published-plan st generation ck)))
+        (equal event (fn-bpnr-recover-auto-event seeded nil :ready nil
+                                                (fn-bpnr-published-plan st generation ck))))
+   (equal (car (fn-bpnf-answer-effects
+                (fn-bpnf-recover-fnbs-step
+                 seeded (fn-bpn-nth 1 event) (fn-bpn-nth 2 event)
+                 (fn-bpn-nth 3 event) (fn-bpn-nth 4 event))))
+          (list :restart-ready (len (fn-bpnf-held-list st)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :use ((:instance fn-bpnr-rotating-ready-state-replays)
+                 (:instance fn-bpnp-rotate-step-proposes-only-own-projection)
+                 (:instance fn-bpnr-rotation-checkpoint-is-a-checkpoint (e (fn-bpnf-epoch st)))
+                 (:instance fn-bpnr-rotation-checkpoint-fields (e (fn-bpnf-epoch st)))
+                 (:instance fn-bpnr-published-plan-is-the-rotation-checkpoint)
+                 (:instance fn-bpnr-selected-open-seed-fields
+                            (ckk (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st))))
+                 (:instance fn-bpnr-selected-event-without-rows
+                            (ckk (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
+                            (e (fn-bpnf-epoch st)))
+                 (:instance fn-bpnr-no-record-recovery-is-ready
+                            (st seeded) (epoch (fn-bpn-nth 1 event))
+                            (replay (fn-bpn-nth 4 event))))
+           :in-theory (union-theories
+                       '(fn-bpnr-checkpoint-of-statep fn-bpnp-rotation-quiescentp
+                         fn-frame-natp fn-bpn-nth fn-cbor-ag-car
+                         car-cons cdr-cons zp natp (:e zp) (:e natp)
+                         (:e binary-+) (:e unary--) (:e equal))
+                       (theory 'minimal-theory)))))
+
+(defthm fn-bprpf-admission-preserves-admitted-event-by-definition
+  (implies (or (not (equal (fn-bpn-nth 0 (fn-bpn-nth 4 event)) :ready))
+               (and (fn-bpnpf-profilep profile)
+                    (fn-bprpf-held-adus-fitp (fn-bpn-nth 1 (fn-bpn-nth 4 event))
+                                           (fn-bpnpf-adu-octets profile))))
+           (equal (fn-bprpf-admit-recovery event profile) event))
+  :hints (("Goal" :in-theory (union-theories '(fn-bprpf-admit-recovery)
+                                           (theory 'minimal-theory)))))
+
 (defthm fn-bpnj-rotation-restart-succeeds-bound
   (implies
    (and (equal (car (car (fn-bpnf-answer-effects
@@ -675,8 +671,7 @@
                 (fn-bpnf-base (fn-bpnf-answer-state answer))) t)))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
-           :use ((:instance fn-bpnr-rotating-ready-state-replays)
-                 (:instance fn-bpnr-rotation-foundation-restart-is-ready-bound)
+           :use ((:instance fn-bpnr-rotation-foundation-restart-is-ready-bound)
                  (:instance fn-bpnp-rotation-restart-keeps-owed-work)
                  (:instance fn-bpnr-open-fresh-fields)
                  (:instance fn-bpn-machine-invariant-components (st (fn-bpnf-base st)))
