@@ -509,7 +509,7 @@ HDR the checkpoint's charged-totals header as the open reads it
 fn-cth-header-open), SUFFIX the log's past the header's S.  ADAPTER (owner
 Builder L, retired by L's store-log-open-scan): SUFFIX is the zero tot only
 when the log observably holds no record past S -- no octet of any segment in
-journal/ but the genesis (journal/000000.log, segment 0, which holds no
+journal/ but the genesis (fnn-genesis-path, which holds no
 record) is nonzero past a headed segment's padded head
 (books/store-log-lineage.lisp fn-lgl-head-len; every entry opens with a
 nonzero header, and the rotation preallocates the segment with zeros, so a
@@ -523,7 +523,7 @@ the header's totals are unseen.  Unlocked: as fresh as the read."
          (hdr (and (consp open) (eq (first open) :ok) (second open)))
          (empty (and hdr
                      (handler-case
-                         (let ((genesis (fnn-segment-path-at store 0))
+                         (let ((genesis (fnn-genesis-path store))
                                (head (fnn-nat (fnn-core 'fn-lgl-head-len (fnn-store-log-unit)))))
                            (every (lambda (name)
                                     (let ((path (fnn-join (fnn-journal-dir store) name)))
