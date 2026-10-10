@@ -926,15 +926,18 @@
 ; events is open (the step's case split does not return in a minute).
 
 ;; KEYSTONE.  A rotation is proposed only for the machine's own durable
-;; projection, from a quiescent recovered state; the checkpoint the effect
-;; carries (the one the host writes) is that projection with the rotation's
-;; own operation id as its frontier (N16-F1), and its file exists.
+;; projection, from a quiescent recovered state whose successor epoch is a
+;; frame natural (so the restart from the published file can take it); the
+;; checkpoint the effect carries (the one the host writes) is that
+;; projection with the rotation's own operation id as its frontier (N16-F1),
+;; and its file exists.
 (defthm fn-bpnp-rotate-step-proposes-only-own-projection
   (implies (equal (car (car (fn-bpnf-answer-effects
                              (fn-bpnp-rotate-step st generation ck))))
                   :persist-checkpoint)
            (and (fn-bpnr-checkpoint-of-statep ck st generation)
                 (fn-bpnp-rotation-quiescentp st)
+                (fn-frame-natp (+ 1 (fn-bpnf-epoch st)))
                 (equal (fn-bpn-nth 4 (car (fn-bpnf-answer-effects
                                            (fn-bpnp-rotate-step st generation ck))))
                        (fn-bpnr-rotation-checkpoint ck (fn-bpnf-epoch st)))
