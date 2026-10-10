@@ -8659,11 +8659,16 @@ publication).  Answers the reply word."
                  ;; the reclaimed checkpoint, staged off the mutex
                  (let ((segment (fnn-core 'fn-ockp-segment-octets record-octets
                                           +fnn-checkpoint-batch-octets+))
-                       (acc2 (fnn-core 'fn-rcw-acc-init configs)) (h2 0)
+                       (acc2 (fnn-core 'create-fn-rcwacc)) (h2 0)
                        (lacc nil) (sacc nil) (nrows 0) (bad nil))
+                   ;; the accumulator is a fresh fn-rcwacc carrying the id
+                   ;; tries across chunks (RECLAIM-TRIES-PER-CHUNK); its steps
+                   ;; dispatch raw under fn-rcwacc-carriedp's preservation
+                   ;; theorems (host/interfaces.lisp :raw-with)
+                   (fnn-call 'fn-rcwacc-init configs acc2)
                    ;; pass 2: each rewritten chunk's canonical rows from the
                    ;; carried handle into the capture (KEYSTONE
-                   ;; fn-rcw-canon-acc-steps-is-the-checkpoint-capture) and
+                   ;; fn-rcwacc-canon-steps-is-the-checkpoint-capture) and
                    ;; its payloads' lengths and sources into the writer walk
                    ;; (KEYSTONE fn-rcw-srcs-steps-is-the-walk)
                    (fnn-owner-reclaim-walk
@@ -8671,10 +8676,10 @@ publication).  Answers the reply word."
                     (lambda (chunk)
                       (fnn-checkpoint-yield "reclaim-walk" nrows)
                       (unless bad
-                        (let ((r (fnn-core 'fn-rcw-canon-acc-step acc2 configs chunk h2 arena)))
+                        (let ((r (fnn-core 'fn-rcwacc-canon-step configs chunk h2 arena acc2)))
                           (if (eq r :bad)
                               (setq bad t)
-                            (setq acc2 (first r) h2 (second r)))))
+                            (setq h2 r))))
                       (unless bad
                         (let ((st (fnn-core 'fn-scka-srcs-n chunk (length chunk) lacc sacc arena)))
                           (unless (and (consp st) (= (length st) 3) (null (first st)))
@@ -8689,7 +8694,7 @@ publication).  Answers the reply word."
                    ;; binding into the F row's position, then the setup
                    (destructuring-bind (setup next n arun hoctets file-bound)
                        (let ((prepared (fnn-core 'fn-owner-sco-next-of
-                                                 (fnn-core 'fn-rcw-acc-finish acc2)
+                                                 (fnn-core 'fn-rcwacc-finish acc2)
                                                  (list nil lacc sacc) segment)))
                          (setq acc2 nil lacc nil sacc nil)
                          (multiple-value-bind (position2 image2)
@@ -8729,24 +8734,24 @@ publication).  Answers the reply word."
                  ;; deferred pass seals nothing (books/owner-reclaim-seal.lisp,
                  ;; KEYSTONE fn-orcs-seal-is-the-intern).  Pass 3: each
                  ;; rewritten chunk predicted from the carried handle into the
-                 ;; rebuilt capture (KEYSTONES fn-rcw-predict-acc-steps-is-
+                 ;; rebuilt capture (KEYSTONES fn-rcwacc-predict-steps-is-
                  ;; predict, fn-rcw-rebuild-of-the-chunked-capture-is-the-
                  ;; full-open); the chunks' seal payloads, in order.
                  (setq base (fnn-owner-gated (service :control)
                               (first (fnn-call 'fn-arena-count arena))))
-                 (let ((acc3 (fnn-core 'fn-rcw-acc-init configs)) (h3 base) (bad nil)
+                 (let ((acc3 (fnn-core 'create-fn-rcwacc)) (h3 base) (bad nil)
                        (payload-chunks nil) (nrows 0))
+                   (fnn-call 'fn-rcwacc-init configs acc3)
                    (fnn-owner-reclaim-walk
                     records ctx arena service history-source
                     (lambda (chunk)
                       (fnn-checkpoint-yield "reclaim-walk" nrows)
                       (unless bad
-                        (let ((r (fnn-core 'fn-rcw-predict-acc-step acc3 configs chunk
-                                           h3)))
+                        (let ((r (fnn-core 'fn-rcwacc-predict-step configs chunk h3 acc3)))
                           (if (eq r :bad)
                               (setq bad t)
-                            (progn (setq acc3 (first r) h3 (second r))
-                                   (when (third r) (push (third r) payload-chunks))))))
+                            (progn (setq h3 (first r))
+                                   (when (second r) (push (second r) payload-chunks))))))
                       (incf nrows (length chunk))))
                    (when bad (deferred :unencodable) (return-from pass))
                    (unless (= nrows count)
@@ -8754,7 +8759,7 @@ publication).  Answers the reply word."
                    (setq seal-payloads (let ((all nil))
                                          (dolist (c payload-chunks all)
                                            (setq all (append c all))))
-                         e (fnn-core 'fn-rcw-acc-finish acc3)
+                         e (fnn-core 'fn-rcwacc-finish acc3)
                          acc3 nil))
                  ;; the walks are done: the context freed and the root pin
                  ;; returned before the swap is attempted
