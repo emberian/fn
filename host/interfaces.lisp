@@ -72,6 +72,8 @@
 (include-book "../books/store-profile-carried")
 ; The runtime contract's multi-instance exercise (host/native/rtc-exercise.lisp).
 (include-book "../books/runtime-contract-echo")
+; The host lease's executor (fn-hld-*), declared below.
+(include-book "../books/runtime-contract-host-lease")
 (include-book "../books/store-checkpoint-arena-load")
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/reclaim-chunked-seal")

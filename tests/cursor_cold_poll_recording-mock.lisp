@@ -25,8 +25,8 @@
   (harness-stub-reached 'fnn-live-ast-ws "host/native/io.lisp"))
 (defun fnn-live-dss-out ()
   (harness-stub-reached 'fnn-live-dss-out "host/native/io.lisp"))
-(defun fnn-mux-output-window (conn octets end)
-  (declare (ignorable conn octets end))
+(defun fnn-mux-output-window (conn octets end &optional start)
+  (declare (ignorable conn octets end start))
   (harness-stub-reached 'fnn-mux-output-window "host/native/mux.lisp"))
 (defun fnn-mux-plan-window-wait (conn plan after)
   (declare (ignorable conn plan after))
@@ -48,6 +48,9 @@
 (defun fnn-owner-connection-call (service operation thunk)
   (declare (ignorable service operation thunk))
   (harness-stub-reached 'fnn-owner-connection-call "host/native/owner.lisp"))
+(defun fnn-owner-lease-article-step (cid lease plan)
+  (declare (ignorable cid lease plan))
+  (harness-stub-reached 'fnn-owner-lease-article-step "host/native/owner.lisp"))
 (defun fnn-owner-peer-read-class (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-peer-read-class "host/native/owner.lisp"))
@@ -90,8 +93,8 @@
   (let ((*held* t)) (funcall thunk)))
 (defun fnn-owner-over-window () 1)
 (defun fnn-live-stobj (name) (assert *held*) name)
-(defun fnn-call (name plan window arena &optional cat)
-  (declare (ignore name plan window arena cat))
+(defun fnn-call (name plan window arena &optional cat out)
+  (declare (ignore name plan window arena cat out))
   (assert *held*) (assert *fnn-extent-no-io*) (incf *calls*)
   (when *cold* (throw 'fnn-extent-cold '(3 100 4096 77)))
   (list :ok :advanced))
@@ -118,8 +121,8 @@
   (declare (ignore service class))
   (setf *poll-args* (list read first-miss since))
   (values *poll-word* since *clock* nil))
-(defun fnn-mux-queue (loop conn octets op after &optional end)
-  (declare (ignore loop conn end)) (push (list octets op after) *queued*))
+(defun fnn-mux-queue (loop conn octets op after &optional end start)
+  (declare (ignore loop conn end start)) (push (list octets op after) *queued*))
 (defun fnn-mux-after (loop conn after)
   (declare (ignore loop conn after)) (setf *after-called* t))
 (defun fnn-mux-work (loop conn)
@@ -173,7 +176,10 @@
 (defvar *fnn-extent-window-token* nil)
 (load-selected "host/native/owner.lisp"
                '(fnn-owner-window-activation fnn-owner-ready-plan-step fnn-owner-cursor-step
-                 fnn-owner-render-next-quantum fnn-owner-feed-logical))
+                 fnn-owner-render-next-quantum fnn-owner-feed-logical fnn-lease))
+;; The service here is a keyword: no host lease is installed, so an ARTICLE
+;; window takes adapter A2's path (the one this harness records).
+(defun fnn-owner-service-lease-ready (service) (declare (ignore service)) nil)
 (load-selected "host/native/mux.lisp"
                '(fnn-mux-loop fnn-mux-conn +fnn-mux-cold-poll-ms+ fnn-mux-service
                  fnn-mux-render-next fnn-mux-read-class fnn-mux-plan-cold fnn-mux-queue-plan
