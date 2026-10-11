@@ -208,15 +208,6 @@
 (defthm fn-rtc-true-listp-append
   (equal (true-listp (append a b)) (true-listp b)))
 
-; T1.
-(defthm fn-rtc-init-establishes-invp
-  (implies (fn-rtc-configp cfg)
-           (fn-rtc-invp (mv-nth 0 (fn-rtc-init cfg))))
-  :hints (("Goal" :in-theory
-           (enable fn-rtc-rearm fn-rtc-issue fn-rtc-make fn-rtc-config
-                   fn-rtc-slots fn-rtc-pool fn-rtc-uses fn-rtc-mstates
-                   fn-rtc-next-op fn-rtc-slot))))
-
 ; Between removal and retirement, the last use of a draining slot is absent.
 (defun fn-rtc-resource-invp (s)
   (declare (xargs :guard t))
@@ -427,6 +418,177 @@
            (e/d (fn-rtc-rearm)
                 (fn-rtc-core-invp fn-rtc-kind-out-p fn-rtc-free-slot
                  fn-rtc-free-pool-buf fn-rtc-oldest-wait)))))
+
+(defthm fn-rtc-fresh-opened-use-okp
+  (implies (and (natp id) (natp inc) (<= 1 id) (<= id (fn-rtc-nstatic (fn-rtc-config s)))
+                (< id (fn-rtc-nslots (fn-rtc-config s)))
+                (fn-rtc-current-p id inc s))
+           (fn-rtc-use-okp (list :opened id inc (fn-rtc-next-op s) nil)
+             (fn-rtc-issue (list :opened id inc (fn-rtc-next-op s) nil) s)))
+  :hints (("Goal" :in-theory (disable fn-rtc-get-of-non-natp))))
+
+(defthm fn-rtc-core-invp-of-fresh-opened-issue
+  (implies (and (fn-rtc-core-invp s)
+                (equal op (fn-rtc-next-op s))
+                (natp id) (natp inc) (<= 1 id) (<= id (fn-rtc-nstatic (fn-rtc-config s)))
+                (< id (fn-rtc-nslots (fn-rtc-config s)))
+                (fn-rtc-current-p id inc s)
+                (not (fn-rtc-kind-out-p :opened id inc (fn-rtc-uses s))))
+           (fn-rtc-core-invp
+            (fn-rtc-issue (list :opened id inc op nil) s)))
+  :hints (("Goal" :in-theory
+           (disable fn-rtc-core-invp fn-rtc-use-okp fn-rtc-uses-okp fn-rtc-kind-out-p
+                    fn-rtc-current-p fn-rtc-nslots fn-rtc-s-status))))
+
+(defun fn-rtc-opened-clear (j n uses)
+  (declare (xargs :guard (and (natp j) (natp n)) :measure (nfix n)))
+  (if (zp n) t
+    (and (not (fn-rtc-kind-out-p :opened j 1 uses))
+         (fn-rtc-opened-clear (+ 1 (nfix j)) (- n 1) uses))))
+
+(defun fn-rtc-all-opened-p (uses)
+  (declare (xargs :guard t))
+  (if (consp uses)
+      (and (eq (fn-rtc-get 0 (car uses)) :opened) (fn-rtc-all-opened-p (cdr uses)))
+    t))
+
+(defthm fn-rtc-all-opened-no-kind-out
+  (implies (and (fn-rtc-all-opened-p uses) (not (equal kind :opened)))
+           (not (fn-rtc-kind-out-p kind id inc uses))))
+
+(defthm fn-rtc-all-opened-no-oldest-wait
+  (implies (fn-rtc-all-opened-p uses) (not (fn-rtc-oldest-wait uses))))
+
+(defthm fn-rtc-opened-clear-nil
+  (fn-rtc-opened-clear j n nil))
+
+(defthm fn-rtc-opened-clear-cons
+  (implies (and (fn-rtc-opened-clear j n uses) (natp j) (natp i) (< i j))
+           (fn-rtc-opened-clear j n (cons (list :opened i 1 op nil) uses)))
+  :hints (("Goal" :induct (fn-rtc-opened-clear j n uses)
+           :in-theory (disable fn-rtc-kind-out-p))))
+
+(defthm fn-rtc-arm-opened-state
+  (let ((s2 (mv-nth 0 (fn-rtc-arm-opened j n s))))
+    (and (equal (fn-rtc-config s2) (fn-rtc-config s))
+         (equal (fn-rtc-slots s2) (fn-rtc-slots s))
+         (equal (fn-rtc-pool s2) (fn-rtc-pool s))
+         (equal (fn-rtc-mstates s2) (fn-rtc-mstates s))
+         (implies (fn-rtc-all-opened-p (fn-rtc-uses s))
+                  (fn-rtc-all-opened-p (fn-rtc-uses s2)))))
+  :hints (("Goal" :induct (fn-rtc-arm-opened j n s)
+           :in-theory (enable fn-rtc-issue fn-rtc-make fn-rtc-config fn-rtc-slots fn-rtc-pool fn-rtc-uses fn-rtc-mstates fn-rtc-next-op))))
+
+(defthm fn-rtc-statics-okp-first
+  (implies (and (fn-rtc-statics-okp j n slots) (posp n))
+           (equal (fn-rtc-get j slots) *fn-rtc-static-slot*))
+  :hints (("Goal" :expand ((fn-rtc-statics-okp j n slots))))
+  :rule-classes nil)
+
+(defthm fn-rtc-statics-okp-rest
+  (implies (and (fn-rtc-statics-okp j n slots) (posp n))
+           (fn-rtc-statics-okp (+ 1 (nfix j)) (- n 1) slots))
+  :hints (("Goal" :expand ((fn-rtc-statics-okp j n slots)))))
+
+(defthm fn-rtc-statics-okp-slot
+  (implies (and (fn-rtc-statics-okp j n (fn-rtc-slots s)) (posp n))
+           (equal (fn-rtc-slot j s) '(1 :live 0)))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-rtc-slot))
+           :use (:instance fn-rtc-statics-okp-first (slots (fn-rtc-slots s)))))
+  :rule-classes nil)
+
+(defthm fn-rtc-statics-okp-current
+  (implies (and (fn-rtc-statics-okp j n (fn-rtc-slots s)) (posp n))
+           (fn-rtc-current-p j 1 s))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-rtc-current-p fn-rtc-s-inc fn-rtc-s-status fn-rtc-get (:executable-counterpart fn-rtc-get)
+                      (:executable-counterpart nfix) (:executable-counterpart equal) (:executable-counterpart eq)
+                      (:executable-counterpart not)))
+           :use fn-rtc-statics-okp-slot)))
+
+(defthm fn-rtc-opened-clear-first
+  (implies (and (fn-rtc-opened-clear j n uses) (posp n))
+           (not (fn-rtc-kind-out-p :opened j 1 uses)))
+  :hints (("Goal" :expand ((fn-rtc-opened-clear j n uses)))))
+
+(defthm fn-rtc-opened-clear-rest
+  (implies (and (fn-rtc-opened-clear j n uses) (posp n))
+           (fn-rtc-opened-clear (+ 1 (nfix j)) (- n 1) uses))
+  :hints (("Goal" :expand ((fn-rtc-opened-clear j n uses)))))
+
+(defthm fn-rtc-static-below-nslots
+  (implies (and (fn-rtc-core-invp s) (<= j (fn-rtc-nstatic (fn-rtc-config s))))
+           (< j (fn-rtc-nslots (fn-rtc-config s))))
+  :hints (("Goal" :use fn-rtc-core-invp-shape
+           :in-theory (e/d (fn-rtc-configp fn-rtc-nstatic fn-rtc-nslots) (fn-rtc-core-invp fn-rtc-core-invp-shape)))))
+
+(defthm fn-rtc-arm-opened-preserves-core-invp
+  (implies (and (fn-rtc-core-invp s) (natp j) (<= 1 j) (natp n)
+                (<= (+ j n -1) (fn-rtc-nstatic (fn-rtc-config s)))
+                (fn-rtc-statics-okp j n (fn-rtc-slots s))
+                (fn-rtc-opened-clear j n (fn-rtc-uses s)))
+           (fn-rtc-core-invp (mv-nth 0 (fn-rtc-arm-opened j n s))))
+  :hints (("Goal" :induct (fn-rtc-arm-opened j n s)
+           :in-theory (disable fn-rtc-core-invp fn-rtc-statics-okp fn-rtc-opened-clear fn-rtc-nstatic
+                               fn-rtc-config fn-rtc-slots fn-rtc-uses fn-rtc-kind-out-p fn-rtc-current-p fn-rtc-nslots))
+          ("Subgoal *1/2" :use ((:instance fn-rtc-core-invp-of-fresh-opened-issue (id j) (inc 1) (op (fn-rtc-next-op s)))
+                                (:instance fn-rtc-statics-okp-rest (slots (fn-rtc-slots s)))
+                                (:instance fn-rtc-statics-okp-current)
+                                (:instance fn-rtc-opened-clear-first (uses (fn-rtc-uses s)))
+                                (:instance fn-rtc-static-below-nslots)
+                                (:instance fn-rtc-opened-clear-rest (uses (fn-rtc-uses s)))
+                                (:instance fn-rtc-opened-clear-cons (j (+ 1 j)) (n (- n 1)) (i j)
+                                           (op (fn-rtc-next-op s)) (uses (fn-rtc-uses s)))))))
+
+(defun fn-rtc-init-base (cfg)
+  (declare (xargs :guard t))
+  (let ((ns (fn-rtc-nstatic cfg)))
+    (fn-rtc-make cfg
+                 (cons *fn-rtc-listener*
+                       (append (fn-rtc-static-slots ns)
+                               (fn-rtc-free-slots (nfix (- (fn-rtc-nslots cfg) (+ 1 ns))))))
+                 (fn-rtc-free-pool (fn-rtc-nbufs cfg))
+                 nil
+                 (cons nil (append (fn-rtc-static-mstates 1 ns)
+                                   (make-list (nfix (- (fn-rtc-nslots cfg) (+ 1 ns)))
+                                              :initial-element nil)))
+                 0)))
+
+(defthm fn-rtc-init-is-base
+  (equal (fn-rtc-init cfg)
+         (mv-let (s0 a0) (fn-rtc-arm-opened 1 (fn-rtc-nstatic cfg) (fn-rtc-init-base cfg))
+           (mv-let (s1 a1) (fn-rtc-rearm s0)
+             (mv s1 (append a0 a1)))))
+  :hints (("Goal" :in-theory (enable fn-rtc-init fn-rtc-init-base))))
+
+(defthm fn-rtc-init-base-core-invp
+  (implies (fn-rtc-configp cfg) (fn-rtc-core-invp (fn-rtc-init-base cfg)))
+  :hints (("Goal" :in-theory
+           (enable fn-rtc-init-base fn-rtc-issue fn-rtc-make fn-rtc-config
+                   fn-rtc-slots fn-rtc-pool fn-rtc-uses fn-rtc-mstates
+                   fn-rtc-next-op fn-rtc-slot))))
+
+(defthm fn-rtc-init-base-facts
+  (implies (fn-rtc-configp cfg)
+           (and (equal (fn-rtc-uses (fn-rtc-init-base cfg)) nil)
+                (equal (fn-rtc-config (fn-rtc-init-base cfg)) cfg)
+                (fn-rtc-statics-okp 1 (fn-rtc-nstatic cfg) (fn-rtc-slots (fn-rtc-init-base cfg)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-init-base fn-rtc-make fn-rtc-config fn-rtc-slots fn-rtc-uses)
+                                  (fn-rtc-statics-okp))
+           :use ((:instance fn-rtc-initial-statics-okp (j 1) (n (fn-rtc-nstatic cfg)) (count (fn-rtc-nstatic cfg))
+                            (head *fn-rtc-listener*) (tail (fn-rtc-free-slots (nfix (- (fn-rtc-nslots cfg) (+ 1 (fn-rtc-nstatic cfg)))))))))))
+
+; T1.  The initial state arms one :opened per static slot (`fn-rtc-arm-opened')
+; and then the listener's :accept; the base state is core-invariant, arming
+; preserves that, and rearming establishes the admission clauses.
+(defthm fn-rtc-init-establishes-invp
+  (implies (fn-rtc-configp cfg)
+           (fn-rtc-invp (mv-nth 0 (fn-rtc-init cfg))))
+  :hints (("Goal" :in-theory (disable fn-rtc-invp fn-rtc-rearm fn-rtc-arm-opened fn-rtc-init-base fn-rtc-core-invp)
+           :use ((:instance fn-rtc-init-base-core-invp) (:instance fn-rtc-init-base-facts)
+                 (:instance fn-rtc-arm-opened-preserves-core-invp (j 1) (n (fn-rtc-nstatic cfg)) (s (fn-rtc-init-base cfg)))
+                 (:instance fn-rtc-arm-opened-state (j 1) (n (fn-rtc-nstatic cfg)) (s (fn-rtc-init-base cfg)))
+                 (:instance fn-rtc-rearm-establishes-admission (s (mv-nth 0 (fn-rtc-arm-opened 1 (fn-rtc-nstatic cfg) (fn-rtc-init-base cfg)))))))))
 
 (defthm fn-rtc-matching-use-fields
   (implies (and (fn-rtc-completionp e) (fn-rtc-find-use (fn-rtc-key e) uses))

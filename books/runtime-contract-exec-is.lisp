@@ -700,6 +700,21 @@
                                   (fn-rtc-find-use fn-rtc-completionp))
            :use ((:instance fn-rtc-kind-of-find-use (k (fn-rtc-key e)) (uses (fn-rtc-uses s))))))))
 
+(local (defthm fn-rtc-landed-of-opened
+  (implies (and (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))
+                (equal (fn-rtc-e-kind e) :opened))
+           (equal (fn-rtc-landed e s) e))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-landed fn-rtc-key fn-rtc-e-kind)
+                                  (fn-rtc-find-use fn-rtc-completionp))
+           :use ((:instance fn-rtc-kind-of-find-use (k (fn-rtc-key e)) (uses (fn-rtc-uses s))))))))
+
+(local (defthm fn-rtc-landed-data-of-opened
+  (implies (and (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))
+                (equal (fn-rtc-e-kind e) :opened))
+           (equal (fn-rtc-get 5 (fn-rtc-landed e s)) (fn-rtc-get 5 e)))
+  :hints (("Goal" :use fn-rtc-landed-of-opened
+           :in-theory (disable fn-rtc-landed-of-opened fn-rtc-landed fn-rtc-find-use fn-rtc-key fn-rtc-e-kind)))))
+
 (local (defthm fn-rtc-hand-delivers-p-of-landed
   (equal (fn-rtc-hand-delivers-p s (fn-rtc-landed e s)) (fn-rtc-hand-delivers-p s e))
   :hints (("Goal" :cases ((and (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s)) (equal (fn-rtc-e-kind e) :hand)))
@@ -776,7 +791,7 @@
                                    fn-rtc-accept-branch fn-rtc-close-branch fn-rtc-deliver fn-rtc-rearm
                                    fn-rtc-get nfix member-equal mv-nth fn-rtc-e-kind fn-rtc-e-id
                                    fn-rtc-e-inc fn-rtc-e-outcome fn-rtc-use-bound fn-rtc-nslots
-                                   fn-rtc-nbufs fn-rtc-u-hd fn-rtc-h-buf fn-rtc-h-len fn-rtc-ev fn-rtc-landed-of-hand)))))
+                                   fn-rtc-nbufs fn-rtc-u-hd fn-rtc-h-buf fn-rtc-h-len fn-rtc-ev fn-rtc-landed-of-hand fn-rtc-landed-of-opened)))))
 
 (defthm fn-rtc-x-step-is
   (implies (fn-rtc-st-p fn-rtc-st)
@@ -920,16 +935,31 @@
   (equal (fn-rtc-config (fn-rtc-st-fresh cfg)) cfg)
   :hints (("Goal" :in-theory (enable fn-rtc-st-fresh)))))
 
+(defthm fn-rtc-x-arm-opened-is
+  (implies (fn-rtc-st-p fn-rtc-st)
+           (equal (fn-rtc-x-arm-opened j n fn-rtc-st) (fn-rtc-arm-opened j n fn-rtc-st)))
+  :hints (("Goal" :induct (fn-rtc-x-arm-opened j n fn-rtc-st)
+           :in-theory (e/d (fn-rtc-x-arm-opened fn-rtc-arm-opened fn-rtc-st-issue fn-rtc-st-next-op)
+                           (fn-rtc-issue fn-rtc-next-op)))))
+
+(defthm fn-rtc-st-p-of-arm-opened
+  (implies (fn-rtc-st-p fn-rtc-st)
+           (fn-rtc-st-p (mv-nth 0 (fn-rtc-arm-opened j n fn-rtc-st))))
+  :hints (("Goal" :induct (fn-rtc-arm-opened j n fn-rtc-st)
+           :in-theory (e/d (fn-rtc-arm-opened) (fn-rtc-issue fn-rtc-next-op fn-rtc-xis-st-p-of-issue fn-rtc-st-p-of-issue)))
+          ("Subgoal *1/2" :use ((:instance fn-rtc-st-p-of-issue (use (list :opened j 1 (fn-rtc-next-op fn-rtc-st) nil)))))))
+
 (defthm fn-rtc-x-init-is
   (implies (fn-rtc-st-cfg-okp cfg)
            (equal (fn-rtc-x-init cfg fn-rtc-st) (fn-rtc-init cfg)))
   :hints (("Goal" :in-theory (e/d (fn-rtc-x-init fn-rtc-init fn-rtc-st-init fn-rtc-st$a-init
                                    fn-rtc-st-config)
                                   (fn-rtc-x-rearm fn-rtc-rearm fn-rtc-x-rearm-is fn-rtc-st-fresh
-                                   fn-rtc-x-statics-is fn-rtc-nstatic))
+                                   fn-rtc-x-statics-is fn-rtc-nstatic fn-rtc-x-arm-opened fn-rtc-arm-opened fn-rtc-x-arm-opened-is))
            :use ((:instance fn-rtc-x-rearm-is
-                            (fn-rtc-st (fn-rtc-x-statics 1 (fn-rtc-nstatic cfg) (fn-rtc-st-fresh cfg))))
-                 (:instance fn-rtc-xis-x-statics-keeps-st-p (j 1) (n (fn-rtc-nstatic cfg))
-                            (fn-rtc-st (fn-rtc-st-fresh cfg)))
+                            (fn-rtc-st (mv-nth 0 (fn-rtc-arm-opened 1 (fn-rtc-nstatic cfg) (fn-rtc-x-statics 1 (fn-rtc-nstatic cfg) (fn-rtc-st-fresh cfg))))))
+                 (:instance fn-rtc-x-arm-opened-is (j 1) (n (fn-rtc-nstatic cfg)) (fn-rtc-st (fn-rtc-x-statics 1 (fn-rtc-nstatic cfg) (fn-rtc-st-fresh cfg))))
+                 (:instance fn-rtc-st-p-of-arm-opened (j 1) (n (fn-rtc-nstatic cfg)) (fn-rtc-st (fn-rtc-x-statics 1 (fn-rtc-nstatic cfg) (fn-rtc-st-fresh cfg))))
+                 (:instance fn-rtc-xis-x-statics-keeps-st-p (j 1) (n (fn-rtc-nstatic cfg)) (fn-rtc-st (fn-rtc-st-fresh cfg)))
                  (:instance fn-rtc-xis-shapep-of-fresh)
                  (:instance fn-rtc-st-p-is-shapep (x (fn-rtc-st-fresh cfg)))))))
