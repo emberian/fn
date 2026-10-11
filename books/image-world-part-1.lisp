@@ -213,3 +213,4 @@
 (include-book "open-frontier-wire")
 (include-book "store-recover-stream")
 (include-book "payload-commit-extent")
+(include-book "payload-extent-read")
