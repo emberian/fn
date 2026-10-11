@@ -45,12 +45,13 @@
                             (fn-b3-window-outs *fn-b3-iv* *fn-ptx-wexp* 0 prefix 0) nil)
     nil))
 
-; While hashing: the message is octets, its head is the frame header of its length and the chain
-; field, and the held stack is the digest's state over the octets absorbed.
+; While hashing: the message is octets, holds its whole head, which is the frame header of its
+; length and the chain field, and the held stack is the digest's state over the octets absorbed.
 (defun fn-ptx-hash-invp (m id inc fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st))
   (let ((w (fn-ptx-message m id inc fn-rtc-st)) (hs (fn-ptx-hs m)))
     (and (fn-cbor-octet-listp w)
+         (<= (fn-ptx-head-len) (len w))
          (equal (take (fn-ptx-head-len) w)
                 (append (fn-ptx-frame-header (- (len w) (fn-ptx-head-len))) (fn-ptx-kd-last (fn-ptx-kd m))))
          (equal (fn-rtc-get 1 hs) (fn-ptx-stack-of (take (nfix (fn-rtc-get 0 hs)) w))))))
@@ -127,7 +128,7 @@
                           (fn-lg-append-admitsp ks (fn-ptx-unit m) (fn-ptd-nxt ptd)))))))))))
 
 ; The rely (the environment's side): across a step into the hashing phase the message is octets
-; and its head reads back as written (the frame header of its length, the chain field); across a
+; and its head reads back as written (all of it: the frame header of its length, the chain field); across a
 ; step within the hashing phase, or within the log phases, the message is unchanged; across the
 ; step that ends the hashing, the message gains exactly its trailer.
 (defun fn-ptx-in-flight-p (ph) (member-eq ph '(:extending :extsyncing :payload-writing :log-writing :committing)))
@@ -136,6 +137,7 @@
     (and (implies (and (equal ph2 :hashing) (not (equal ph :hashing)))
                   (let ((w2 (fn-ptx-message m2 id inc st2)))
                     (and (fn-cbor-octet-listp w2)
+                         (<= (fn-ptx-head-len) (len w2))
                          (equal (take (fn-ptx-head-len) w2)
                                 (append (fn-ptx-frame-header (- (len w2) (fn-ptx-head-len)))
                                         (fn-ptx-kd-last (fn-ptx-kd m2)))))))
