@@ -4,12 +4,13 @@
  "file": "tests/acl2/resource-vector-relations-tests.lisp",
  "id": "FILL-KEYSTONE-EMIT-151",
  "notes": [
-  "10-11 12:05 10-11 Builder D: keystone_emit --check at dev 3119f7d32: 0 findings over 20 defkeystone forms in 6 books."
+  "10-11 12:05 10-11 Builder D: keystone_emit --check at dev 3119f7d32: 0 findings over 20 defkeystone forms in 6 books.",
+  "10-11 13:04 10-11 Builder D, correction: my earlier close read a laptop run, where no certificate is readable and keystone_emit --check reports 0 findings. On hbox with certificates (FN_CERT_CACHE=/tank/fn/certcache) at dev 3119f7d32 (+ tools/load only, f45cc420b) it is red: 20 defkeystone forms in 6 books, 60 findings, among them the critical gate's HARD FAIL on changed durability keystones fn-scka-next-checkpoint-is-capture and fn-scka-recover-from-checkpoint-is-full-recover (evidence package: positive witness book not certified at its current closure key). Log hbox:/tank/fn/scratch/d-sweep-cells/devstatic.log."
  ],
  "owner": "unowned",
  "severity": "medium",
  "source": "fill-20261004",
- "state": "closed",
+ "state": "open",
  "title": "keystone_emit --check red: 151 findings over 30 defkeystone forms in 5 books, e.g. tests/acl2/resource-vector-relations-tests.lisp:68 rvrt-prefix-teeth has no :id, PRF-1209 keystone_subjects is None, feed-connection-teeth-tests.lisp:250 fct-refused-login (5 removal, 0 mutant, 0 bound) subject fn-fc-step",
- "updated": "2026-10-11T16:05:37Z"
+ "updated": "2026-10-11T17:04:32Z"
 }
