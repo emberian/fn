@@ -72,6 +72,7 @@ from pathlib import Path
 import re
 import secrets
 import shlex
+import socket
 import subprocess
 import sys
 import time
@@ -663,6 +664,80 @@ def refuse_a_running_run_in_the_same_tree(host: str, root: Path, remote: Path,
                         f"(wait for it, or submit to the other box)")
 
 
+# One submit at a time per box path (C15/C16, 2026-10-11: two submits to one
+# remote path ran their cache preflights at once and certs.py install_partial
+# failed unlinking a .cert the other had already removed).  The lock is a
+# directory beside the tree (never inside it: the mirror's --delete would
+# remove it), taken by an atomic mkdir before the push and given back once
+# the runner has started; a run in progress is then refuse_a_running_run_
+# in_the_same_tree's.  A lock older than SUBMIT_LOCK_STALE_MINUTES is a
+# crashed submit's and is reclaimed by an atomic rename, so two reclaimers
+# cannot both win.
+SUBMIT_LOCK_STALE_MINUTES = 120
+SUBMIT_LOCK_HELD = 75
+
+
+def submit_lock_path(remote: Path) -> str:
+    return f"{str(remote).rstrip('/')}.farm-submit.lock"
+
+
+def submit_lock_take_script(remote: Path, identifier: str, owner: str) -> str:
+    """Exit 0 when this submit holds the lock, SUBMIT_LOCK_HELD (printing the
+    holder) when another does."""
+    lock = remote_quote(submit_lock_path(remote))
+    stamp = shlex.quote(f"{identifier} {owner}")
+    take = (f"mkdir {lock} 2>/dev/null && {{ echo {stamp} > {lock}/owner; "
+            "echo FN_FARM_LOCK_TAKEN; exit 0; }")
+    return (
+        f": FN_FARM_LOCK_TAKE; mkdir -p \"$(dirname {lock})\" || exit 9; "
+        f"{take}; "
+        f"if [ -n \"$(find {lock} -maxdepth 0 -mmin +{SUBMIT_LOCK_STALE_MINUTES} 2>/dev/null)\" ] "
+        f"&& mv {lock} {lock}.stale.$$ 2>/dev/null; then "
+        f"echo \"FN_FARM_LOCK_RECLAIMED $(cat {lock}.stale.$$/owner 2>/dev/null)\"; "
+        f"rm -rf {lock}.stale.$$; {take}; fi; "
+        f"echo \"FN_FARM_LOCK_HELD $(cat {lock}/owner 2>/dev/null || echo unknown)\"; "
+        f"exit {SUBMIT_LOCK_HELD}")
+
+
+def submit_lock_give_script(remote: Path, identifier: str) -> str:
+    """Remove the lock only when this submit's id holds it."""
+    lock = remote_quote(submit_lock_path(remote))
+    return (f": FN_FARM_LOCK_GIVE; "
+            f"[ \"$(cut -d' ' -f1 {lock}/owner 2>/dev/null)\" = {shlex.quote(identifier)} ] "
+            f"&& rm -rf {lock}; exit 0")
+
+
+def take_submit_lock(host: str, remote: Path, identifier: str, root: Path) -> None:
+    owner = f"{socket.gethostname().split('.')[0]}:{root} {int(time.time())}"
+    answer = ssh(host, submit_lock_take_script(remote, identifier, owner), check=False)
+    out = (answer.stdout or "").strip()
+    for line in out.splitlines():
+        if line.startswith("FN_FARM_LOCK_RECLAIMED"):
+            print(f"{identifier}: reclaimed a stale submit lock on {host}:{remote} "
+                  f"(older than {SUBMIT_LOCK_STALE_MINUTES} min): {line.split(None, 1)[-1]}",
+                  file=sys.stderr)
+    if answer.returncode == 0:
+        return
+    held = next((line.split(None, 1)[-1] for line in out.splitlines()
+                 if line.startswith("FN_FARM_LOCK_HELD")), None)
+    if answer.returncode == SUBMIT_LOCK_HELD and held is not None:
+        raise FarmError(f"no farm run started: another submit to {host}:{remote} is "
+                        f"mirroring or installing from the cache ({held}); a second "
+                        f"preflight in the same tree would race it (wait for it to "
+                        f"start its runner, or submit to another path or box)")
+    raise FarmError(f"no farm run started: could not take the submit lock "
+                    f"{submit_lock_path(remote)} on {host}: ssh exited "
+                    f"{answer.returncode}: {out or '(no output)'}")
+
+
+def give_submit_lock(host: str, remote: Path, identifier: str) -> None:
+    given = ssh(host, submit_lock_give_script(remote, identifier), check=False)
+    if given.returncode != 0:
+        print(f"{identifier}: could not give back the submit lock "
+              f"{host}:{submit_lock_path(remote)} (ssh exited {given.returncode}); "
+              f"it is reclaimed after {SUBMIT_LOCK_STALE_MINUTES} min", file=sys.stderr)
+
+
 CERTIFY_ID = re.compile(r"Certification (?:run|evidence): (?:\S*/)?build/acl2/"
                         r"(certify-[0-9]{8}T[0-9]{6}Z-[0-9]+)")
 # `submit` asks the box this many times, CERTIFY_ID_PAUSE apart, for the
@@ -1008,6 +1083,20 @@ def submit(host: str, root: Path, books: list[str], jobs: int | str,
     identifier = run_id()
     remote = expand_remote(host, remote) if remote else root
     refuse_a_running_run_in_the_same_tree(host, root, remote)
+    take_submit_lock(host, remote, identifier, root)
+    try:
+        return _submit_locked(host, root, books, jobs, timeout_seconds, affected_by,
+                              remote, closure, cache, acl2, no_publish, prepare, pcert,
+                              budget_seconds, require_origin, recertify, images, lane,
+                              roots, identifier)
+    finally:
+        give_submit_lock(host, remote, identifier)
+
+
+def _submit_locked(host, root, books, jobs, timeout_seconds, affected_by, remote,
+                   closure, cache, acl2, no_publish, prepare, pcert, budget_seconds,
+                   require_origin, recertify, images, lane, roots, identifier) -> str:
+    """submit's mirror, cache install and runner start, under the submit lock."""
     push(host, root, remote)
     if prepare is not None:
         prepare(host, remote)
