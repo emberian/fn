@@ -721,6 +721,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-totals-carried-tests \
 	tests/acl2/heap-command-tests \
 	tests/acl2/heap-command-entry-scratch-tests \
+	tests/acl2/heap-log-extent-cap-tests \
+	books/heap-log-extent-cap-cost \
 	books/charged-totals-header \
 	books/charged-totals-header-writes \
 	books/charged-totals-header-cost \

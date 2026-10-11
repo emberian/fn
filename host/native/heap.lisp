@@ -509,11 +509,14 @@ HDR the checkpoint's charged-totals header as the open reads it
 fn-cth-header-open), SUFFIX the log's past the header's S, EXTENT the largest
 journal/ segment's observed size (the lstat of every segment the walk below
 reads), which the read's open terms charge as its entry scratch (KEYSTONE
-fn-mo-observed-log-holds-every-entry-read).  ADAPTER
-MEMORY-OBSERVED-EXTENT-CAP (owners A and M, retired by A's io.lisp cap: the
-read takes EXTENT as its cap and refuses a segment past it by name): until
-then a segment appended between this walk and the read is not covered, the
-same race the empty-suffix observation below accepts.  ADAPTER (owner
+fn-mo-observed-log-holds-every-entry-read).  Answers (values TOTALS EXTENT):
+the probe prints EXTENT on its line when its decision is the observed branch
+(books/heap-log-extent-cap.lisp fn-lxc-command-line), the launcher passes it to
+the command as FN_LOG_EXTENT_CAP, and the command's open refuses a segment
+longer than it before reading any of its entries (io.lisp
+fnn-log-observed-extent; KEYSTONE
+fn-lxc-admitted-segment-entries-within-the-decided-log), so a segment grown
+between this walk and the read is refused, not read.  ADAPTER (owner
 Builder L, retired by L's store-log-open-scan): SUFFIX is the zero tot only
 when the log observably holds no record past S -- no octet of any segment in
 journal/ but the genesis (fnn-genesis-path, which holds no
@@ -546,9 +549,10 @@ EXTENT, and so the totals, unseen.  Unlocked: as fresh as the read."
                       ((or fnn-os-error fnn-store-error) () nil))))
          (empty (first walk))
          (extent (second walk)))
-    (fnn-core 'fn-mo-observed-totals hdr
-              (and empty (fnn-core 'fn-cth-empty-suffix hdr))
-              extent)))
+    (values (fnn-core 'fn-mo-observed-totals hdr
+                      (and empty (fnn-core 'fn-cth-empty-suffix hdr))
+                      extent)
+            extent)))
 
 ;; The configuration history's octets on disk (config/, the lstat sizes of
 ;; its regular files under the profile's listing bound), which loading the
@@ -572,14 +576,16 @@ EXTENT, and so the totals, unseen.  Unlocked: as fresh as the read."
   #-gencgc nil)
 
 ;; The command's decision (books/heap-command.lisp fn-heap-command-decide) and
-;; what it read: (values DECISION TOTALS IMG CONFIG-OCTETS CARD).
+;; what it read: (values DECISION TOTALS IMG CONFIG-OCTETS CARD EXTENT).
 (defun fnn-heap-reservation (profile connections &optional action observed cold-resources output-resources root peer reclaim-live
                              bp-terms command replayp)
   (let* ((core (fnn-heap-image-observation))
          (machine (fnn-heap-observations))
          (class (fnn-core 'fn-heap-command-growth action command replayp))
          (reads (eq class :reads))
-         (totals (and reads (fnn-heap-charged-totals root profile)))
+         (observation (and reads (multiple-value-list (fnn-heap-charged-totals root profile))))
+         (totals (first observation))
+         (extent (second observation))
          (img (and reads profile (fnn-heap-img-observation profile)))
          (config (and (member class '(:reads :header)) (fnn-heap-config-octets root profile)))
          (card (and reads (fnn-heap-card-octets)))
@@ -588,7 +594,7 @@ EXTENT, and so the totals, unseen.  Unlocked: as fresh as the read."
                          (fnn-heap-resident-observations) (fnn-heap-address-observations))))
     (values (fnn-heap-extend-reservation base action cold-resources output-resources root core machine
                                          profile observed peer reclaim-live bp-terms)
-            totals img config card)))
+            totals img config card extent)))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
@@ -596,10 +602,11 @@ EXTENT, and so the totals, unseen.  Unlocked: as fresh as the read."
   (multiple-value-bind (profile connections action observed cold-resources output-resources root peer
                         reclaim-live command replayp)
       (fnn-heap-command-profile argv)
-    (multiple-value-bind (decision totals img config card)
+    (multiple-value-bind (decision totals img config card extent)
         (fnn-heap-reservation profile connections action observed cold-resources output-resources root peer
                               reclaim-live (fnn-heap-bp-terms argv) command replayp)
-      (let ((line (fnn-core 'fn-heap-command-line decision action command replayp totals img config card))
+      (let ((line (fnn-core 'fn-lxc-command-line decision action command replayp totals img config card
+                            extent))
             (code (fnn-core 'fn-heap-decision-exit-code decision)))
         ;; The decision line on stdout whatever it is: the launcher tells
         ;; ACL2's refusal (a line, exit 1) from a runtime that never reached

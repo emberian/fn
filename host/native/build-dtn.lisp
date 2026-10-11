@@ -322,6 +322,7 @@
 (include-book "books/idle-collection")
 (include-book "books/heap-reservation")
 (include-book "books/heap-command")
+(include-book "books/heap-log-extent-cap")
 (include-book "books/bp-heap-command")
 (include-book "books/cold-read-reservation")
 ;; host/native/heap.lisp fnn-heap-extend-reservation calls fn-rrv-extend-reservation
