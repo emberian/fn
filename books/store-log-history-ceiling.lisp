@@ -69,13 +69,28 @@
 ; -----------------------------------------------------------------------------
 ; 2. The ceilings.
 
-; Every cons one octet, every atom its octets: the encoding with no list of
-; octets packed.
-(defun fn-lgo-tree-ceiling (x)
-  (declare (xargs :guard t))
+; The tree ceiling counted along a list's spine in tail position: its stack
+; is the tree's nesting depth, not a payload's length (Codex l-2ah2 F1).
+(defun fn-lgo-tree-ceiling-acc (x acc)
+  (declare (xargs :guard (acl2-numberp acc)))
   (if (consp x)
-      (+ 1 (fn-lgo-tree-ceiling (car x)) (fn-lgo-tree-ceiling (cdr x)))
-    (if (fn-scc-atomp x) (len (fn-scc-atom-octets x)) 0)))
+      (fn-lgo-tree-ceiling-acc (cdr x) (+ 1 (fn-lgo-tree-ceiling-acc (car x) acc)))
+    (+ acc (if (fn-scc-atomp x) (len (fn-scc-atom-octets x)) 0))))
+
+; Every cons one octet, every atom its octets: the encoding with no list of
+; octets packed.  It executes as fn-lgo-tree-ceiling-acc.
+(defun fn-lgo-tree-ceiling (x)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp x)
+                  (+ 1 (fn-lgo-tree-ceiling (car x)) (fn-lgo-tree-ceiling (cdr x)))
+                (if (fn-scc-atomp x) (len (fn-scc-atom-octets x)) 0))
+       :exec (fn-lgo-tree-ceiling-acc x 0)))
+
+(defthm fn-lgo-tree-ceiling-acc-is-the-ceiling
+  (implies (acl2-numberp acc)
+           (equal (fn-lgo-tree-ceiling-acc x acc) (+ acc (fn-lgo-tree-ceiling x)))))
+
+(verify-guards fn-lgo-tree-ceiling)
 
 ; An encodable natural: its tag, its digit count, at most 255 digits.
 (defconst *fn-lgo-nat-ceiling* 257)

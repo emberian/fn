@@ -7,8 +7,9 @@
 ; the first two and one entry each of the last two, in one 16 KiB segment
 ; (and split over two segments for the chain).  The checkpoint covers the
 ; first record: its cache is (1 . the charged fold of the first row).
-; The rows' HISTORY is 2064/168/2064/176; the scan charges each at its
-; ceiling (books/store-log-history-ceiling.lisp), 8173/983/8176/991.
+; The rows' HISTORY is 2064/168/2064/176; the scan charges the two keyring
+; events exactly and the two articles at their ceiling
+; (books/store-log-history-ceiling.lisp), 2064/983/2064/991.
 ;
 ; The codecs are attachments: assert-event evaluates with them, so the
 ; fixture is computed by zero-argument functions and defconst-eval.
@@ -434,16 +435,17 @@
 
 ; L2H-5: the row the intern builds from W, at any handle, keyring and
 ; natural generation, has HISTORY at most W's ceiling.  The witness interns
-; the first article at handle 1 and generation 123456789012: its HISTORY is
-; 176 against the scan row's 168 (handle 0, generation 0) and the ceiling's
-; 983.
+; the first article at handle 0 and generation 4294967295, the largest a
+; keyring snapshot carries (a u32, books/stx-keyring-records.lisp), so a
+; generation the open's replay can reach: its HISTORY is 176 against the
+; scan row's 168 (generation 0) and the ceiling's 983.
 (defteeth fn-lgo-history-ceiling-bounds-the-intern
   :claim (let ((row (mv-nth 0 (fn-intern-event w keyring generation fn-arena))))
            (((gen (natp generation))
              (ok (not (equal row :bad))))
             (<= (fn-ct-row-history row) (fn-lgo-history-ceiling w))))
   :subject fn-intern-event
-  :witness ((w (nth 1 *lgot-ws*)) (keyring nil) (generation 123456789012) (pre (list (list 1))))
+  :witness ((w (nth 1 *lgot-ws*)) (keyring nil) (generation 4294967295) (pre nil))
   :stobjs ((fn-arena (lgot-presealed pre fn-arena)))
   :stobj-checks
   (((let ((row (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))) (declare (ignorable row)) (natp generation))
@@ -463,7 +465,7 @@
            (ok ((w 1/2))))
   :mutations ((the-scan-row-history
                (:conclusion (<= (fn-ct-row-history row) (fn-ct-row-history (fn-lgo-wire-row w))))
-               ((w (nth 1 *lgot-ws*)) (keyring nil) (generation 123456789012) (pre (list (list 1))))
+               ((w (nth 1 *lgot-ws*)) (keyring nil) (generation 4294967295) (pre nil))
                :fault "HISTORY taken as the scan row's own (handle 0, the empty keyring, generation 0): the handle and the generation the open gives the row encode longer (seam L-M-A)")))
 
 ;
