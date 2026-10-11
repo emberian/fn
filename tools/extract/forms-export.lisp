@@ -757,6 +757,8 @@ quote, and the members of NAMES it hands as a quoted key to f-put-global, put-gl
                           ((setq psetq) (loop for rest on (cdr x) by #'cddr do (hit (car rest))))
                           (multiple-value-bind (when (listp (cadr x)) (mapc #'hit (cadr x))))
                           (lambda (when (listp (cadr x)) (dolist (v (cadr x)) (hit (if (consp v) (car v) v)))))
+                          (progv (let ((k (cadr x)))      ; a computed symbol list could name a cell
+                                   (unless (and (consp k) (eq (car k) 'quote)) (pushnew :progv-computed hits))))
                           ((f-put-global put-global xl-set-global)
                            (let ((k (cadr x)))
                              (when (and (consp k) (eq (car k) 'quote) (member (cadr k) names))

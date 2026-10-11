@@ -642,7 +642,9 @@ class StarOneTrimTests(unittest.TestCase):
     def test_premise_refuses_a_unit_that_binds_assigns_or_names_the_cell(self):
         for form in ("`(defun w () (let ((,*cell* nil)) 1))", "`(defun w () (setq ,*cell* nil))",
                      "`(defun w () (set ',*cell* nil))", "`(defun w () (f-put-global 'guard-checking-on nil state))",
-                     "`(defun w () (put-global 'safe-mode t state))"):
+                     "`(defun w () (put-global 'safe-mode t state))",
+                     "`(defun w (syms) (progv syms '(nil) 1))",
+                     "`(let ((,*cell* nil)) 1)"):
             out = self.lisp(self.PREMISE + '(show (premise-result (list (cons "raw:ACL2::OK" (list \'(defun ok () 1))) (cons "raw:ACL2::W" (list %s)))))' % form)
             self.assertIn('unit raw:ACL2::W', out, form)
             self.assertNotIn('unit raw:ACL2::OK', out, form)
