@@ -462,6 +462,7 @@
                   (nfix pools))
                (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads))))))
   :rule-classes nil
+  :restates fn-mo-serve-holds-every-admitted-store
   :hyps (accepted same-core gate)
   :subject fn-mo-serve-decide
   :witness ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 256))) (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner (cons 81046496 70000000)) (img2 *hct-sv-core-img*) (cfg2 (hct-sv-cfg *hct-sv-core* 256)) (tot2 *hct-sv-tot*))
@@ -472,8 +473,7 @@
                (:hypothesis gate (natp (fn-mo-serve-limit resident pools)))
                ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 256))) (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner (cons 81046496 70000000)) (img2 *hct-sv-core-img*) (cfg2 (hct-sv-cfg *hct-sv-core* 256)) (tot2 *hct-sv-bound*))
                :fault "a launched heap taken to hold any store whatever under a numeric limit, the gate unchecked"))
-  :hints (("Goal" :in-theory (union-theories '(nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
-           :use (fn-mo-serve-holds-every-admitted-store fn-mo-serve-decide-heap-mb))))
+  :hints (("Goal" :by fn-mo-serve-holds-every-admitted-store)))
 
 (defkeystone hct-serve-refuses-only-by-the-model
   (implies (and (natp (fn-mo-serve-limit resident pools))
@@ -483,6 +483,7 @@
                     (<= (fn-mo-serve-reservation profile core (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools) pool-threads) (fn-mm-least-observation address))))
            (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap))
   :rule-classes nil
+  :restates fn-mo-serve-refuses-only-by-the-model
   :hyps (limit-observed model-holds address-space)
   :subject fn-mo-serve-decide
   :witness ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 1024))) (address nil) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*))
@@ -495,8 +496,7 @@
                      (<= (fn-mo-serve-reservation profile core (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools) pool-threads) (fn-mm-least-observation resident))))
                ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 1024))) (address nil) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*))
                :fault "a launch refused by comparing the reservation with the resident limit (L-FRESH's mechanism)"))
-  :hints (("Goal" :in-theory (theory 'minimal-theory)
-           :use fn-mo-serve-refuses-only-by-the-model)))
+  :hints (("Goal" :by fn-mo-serve-refuses-only-by-the-model)))
 
 (defkeystone hct-serve-launch-fits-the-address-space
   (implies (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap)
@@ -511,6 +511,7 @@
                                                          live cold profile config))))
                            (<= (fn-mm-reopen-need profile img owner-cfg tot) (fn-mo-serve-limit resident pools)))))
   :rule-classes nil
+  :restates fn-mo-serve-launch-fits-the-address-space
   :hyps (accepted)
   :subject fn-mo-serve-decide
   :witness ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 1024))) (address (list (hct-mib 2000))) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner-cfg (hct-sv-cfg *hct-sv-host-core* 1024)))
@@ -530,5 +531,4 @@
                   (<= (fn-heap-reservation-octets (cadr (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) core (nth 4 (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) (nth 5 (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads))) (fn-mm-least-observation resident))))
                ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 1024))) (address (list (hct-mib 2000))) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner-cfg (hct-sv-cfg *hct-sv-host-core* 1024)))
                :fault "a launch whose reservation is held to the resident limit (L-FRESH's mechanism)"))
-  :hints (("Goal" :in-theory (union-theories '(nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
-           :use (fn-mo-serve-launch-fits-the-address-space fn-mo-serve-decide-heap-mb))))
+  :hints (("Goal" :by fn-mo-serve-launch-fits-the-address-space)))

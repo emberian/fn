@@ -135,6 +135,7 @@
                                                    peer observed resident-o) peer
                                                     address observed workers cache-limit root resident-o)) :hold))))
   :rule-classes nil
+  :restates fn-mo-serve-startup-admits-the-pool
   :hyps (accepted same-core occupied-held owner-observed peer-valid output-valid pool-shape table-fits table-supported)
   :subject fn-mo-serve-decide
   :witness ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8) (root "/x") (owner (cons 81046496 70000000)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o (list (pfrst-mib 256))))
@@ -155,9 +156,7 @@
                                            (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers))) :admitted))
                ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8) (root "/x") (owner (cons 81046496 70000000)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o (list (pfrst-mib 256))))
                :fault "the owner's pool plan held to today's profile-bound protected runtime, which refuses the launched heap"))
-  :hints (("Goal" :in-theory (union-theories '(nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
-           :use (fn-mo-serve-startup-admits-the-pool
-                 (:instance fn-mo-serve-decide-heap-mb (cold nil) (pools (fn-mo-serve-pools profile nil output peer workers cache-limit root)) (pool-threads (fn-mo-serve-pool-threads nil peer)))))))
+  :hints (("Goal" :by fn-mo-serve-startup-admits-the-pool)))
 
 ;; K-L4c (fn-mo-serve-output-pool-is-held): with a 16 MiB output pool the run funds, fn-core's probe at
 ;; 256 MiB launches, and the owner's output grant holds at the launched space: its store need and
@@ -184,3 +183,44 @@
     (+ (fn-prstartup-protected *pfrst-sv-profile* *pfrst-sv-owner*
                                (fn-heap-nursery-trigger *pfrst-sv-odyn* *pfrst-sv-nursery*) nil 31 nil)
        (car *pfrst-sv-output*))))
+
+(defkeystone pfrst-serve-output-pool-is-held
+  (implies (and (equal (car (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))) :heap)
+                (equal (fn-heap-core-file owner) (fn-heap-core-file core))
+                (and (natp (fn-mm-least-observation resident-o))
+                     (<= (fn-mm-least-observation resident-o) (fn-mm-least-observation resident))))
+           (<= (+ (fn-prstartup-serve-store-need profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery)
+                                                 output peer workers cache-limit root resident-o)
+                  (nfix (fn-crv-nth 0 output)))
+               (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))))))
+  :rule-classes nil
+  :restates fn-mo-serve-output-pool-is-held
+  :hyps (accepted same-core owner-observed)
+  :subject fn-prstartup-serve-store-need
+  :witness ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119)
+            (resident (list (pfrst-mib 256))) (address nil) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*)
+            (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
+            (root "/x") (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 256))))
+  :breaks ((accepted ((profile *pfrst-sv-profile*) (img *pfrst-sv-host-img*) (trigger 8388608) (live nil) (config 119)
+                      (resident (list (pfrst-mib 256))) (address nil) (core *pfrst-sv-host-core*) (nursery *pfrst-sv-nursery*)
+                      (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
+                      (root "/x") (owner *pfrst-sv-host-core*) (resident-o (list (pfrst-mib 256))))
+            :logical "a refused decision's second field is its reason, not a figure, so the conclusion is evaluated for its logical value")
+           (same-core ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119)
+                       (resident (list (pfrst-mib 256))) (address nil) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*)
+                       (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
+                       (root "/x") (owner (cons 999999999999 999999999999)) (resident-o (list (pfrst-mib 256)))))
+           (owner-observed ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119)
+                            (resident (list (pfrst-mib 256))) (address nil) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*)
+                            (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
+                            (root "/x") (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 100000))))))
+  :mutations ((need-at-the-profile-bound
+               (:conclusion (<= (+ (fn-prstartup-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery) nil 31 nil)
+                                   (nfix (fn-crv-nth 0 output)))
+                                (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))))))
+               ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119)
+                (resident (list (pfrst-mib 256))) (address nil) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*)
+                (tot *pfrst-sv-tot*) (output *pfrst-sv-output*) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8)
+                (root "/x") (owner *pfrst-sv-owner*) (resident-o (list (pfrst-mib 256))))
+               :fault "the output grant given the profile's whole store (the figure before L-RUN-LAUNCH), which the launched space does not hold"))
+  :hints (("Goal" :by fn-mo-serve-output-pool-is-held)))

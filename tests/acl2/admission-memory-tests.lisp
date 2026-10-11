@@ -443,3 +443,22 @@
                (:conclusion (unsigned-byte-p 64 (+ count n 1)))
                ((count (- *adt-u64-top* 1)) (n 1))
                :fault "a decision with no spare handle: the batch that ends at the largest u64 count would be called one handle short")))
+
+; L-RUN-LAUNCH (PRF-1268's statement since the connection budget retired): the gate's handshake allowance
+; is the live limit or the handshakes still in flight, the larger.  Witness: a TLS run whose limit was
+; lowered to 4 with 12 handshakes in flight.  Mutation: the live limit alone, which releases the eight
+; still-active handshakes' scratch.
+(defconst *admt-hs-cfg* '(32 t 8388608 8388608 nil 0 0 4 nil 64 nil nil 0))
+(defkeystone admt-holding-handshakes-charges-every-handshake
+  (<= (* (nfix h) (if (fn-mm-cfg-tlsp cfg) *fn-cbud-handshake-scratch-octets* 0))
+      (fn-cbud-handshake-octets (fn-mm-cfg-tlsp (fn-adm-cfg-holding-handshakes cfg h))
+                                (fn-mm-cfg-handshakes (fn-adm-cfg-holding-handshakes cfg h))))
+  :restates fn-adm-cfg-holding-handshakes-charges-every-handshake
+  :subject fn-adm-cfg-holding-handshakes
+  :witness ((cfg *admt-hs-cfg*) (h 12))
+  :mutations ((the-live-limit-alone
+               (:conclusion (<= (* (nfix h) (if (fn-mm-cfg-tlsp cfg) *fn-cbud-handshake-scratch-octets* 0))
+                                (fn-cbud-handshake-octets (fn-mm-cfg-tlsp cfg) (fn-mm-cfg-handshakes cfg))))
+               ((cfg *admt-hs-cfg*) (h 12))
+               :fault "a lowered limit releases the still-active handshakes' scratch (the held record's job before L-RUN-LAUNCH)"))
+  :hints (("Goal" :by fn-adm-cfg-holding-handshakes-charges-every-handshake)))

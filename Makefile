@@ -705,6 +705,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/resource-vector-relations \
 	tests/acl2/resource-vector-relations-tests \
 	books/resource-vector-relations-heap \
+	tests/acl2/resource-vector-relations-heap-tests \
 	books/resource-vector-exec \
 	tests/acl2/resource-vector-exec-tests \
 	books/resource-vector-tree \

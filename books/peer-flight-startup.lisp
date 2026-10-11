@@ -805,7 +805,7 @@
 ; at most its observation and whose least resident observation is at most the probe's, admits its
 ; DEFAULT pool plan at the collector trigger it sets in that space, and with a peer flight holds its
 ; native grant against the same address-space observations.
-(defthm fn-mo-serve-startup-admits-the-pool
+(defthm fn-mo-serve-startup-admits-the-pool-at-the-decision
  (let* ((pools (fn-mo-serve-pools profile nil output peer workers cache-limit root))
         (d (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot
                                pools (fn-mo-serve-pool-threads nil peer)))
@@ -837,6 +837,31 @@
            :use ((:instance fn-mo-serve-startup-room-facts)
                  (:instance fn-mo-serve-startup-native-grant-holds)))))
 
+; KEYSTONE (L-RUN-LAUNCH), the statement its teeth bind: fn-mo-serve-startup-admits-the-pool-at-the-decision with the
+; decision written out.
+(defthm fn-mo-serve-startup-admits-the-pool
+  (implies (and (equal (car (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))) :heap)
+                (equal (fn-heap-core-file owner) (fn-heap-core-file core))
+                (and (natp occupied) (<= occupied (fn-heap-core-dynamic owner)))
+                (and (natp (fn-mm-least-observation resident-o))
+                     (<= (fn-mm-least-observation resident-o) (fn-mm-least-observation resident)))
+                (or (not peer) (fn-pfr-policy-p peer))
+                (or (not output) (fn-orv-policy-p output))
+                (and (stringp root) (posp workers) (natp cache-limit) (natp fd-limit))
+                (<= (max 8 (+ 1 cache-limit)) fd-limit)
+                (fn-crl-table-supportedp (max 8 (+ 1 cache-limit))))
+           (and (equal (car (fn-prstartup-default-plan-with-peer (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) occupied profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery) nil output
+                                                   max-connections root workers cache-limit fd-limit
+                                                   peer observed resident-o)) :admitted)
+                (implies peer (equal (car (fn-prstartup-peer-native-grant (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery) output max-connections (fn-prstartup-default-plan-with-peer (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) occupied profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery) nil output
+                                                   max-connections root workers cache-limit fd-limit
+                                                   peer observed resident-o) peer
+                                                    address observed workers cache-limit root resident-o)) :hold))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
+           :use (fn-mo-serve-startup-admits-the-pool-at-the-decision
+                 (:instance fn-mo-serve-decide-heap-mb (cold nil) (pools (fn-mo-serve-pools profile nil output peer workers cache-limit root)) (pool-threads (fn-mo-serve-pool-threads nil peer)))))))
+
 ; THE OUTPUT POOL'S STORE NEED (L-RUN-LAUNCH).  The output startup grant (books/output-reservation.lisp
 ; fn-orv-startup-grant: the dynamic space holds the store's need, the cold pool and the output pool;
 ; host/native/mux.lisp fnn-mux-budget-install) is given the served run's protected runtime without the
@@ -867,7 +892,7 @@
 ; KEYSTONE K-L4c: the owner's output pool is held where the probe launched: the store's need at the
 ; owner's observations (same core file, least resident observation at most the probe's, at the
 ; trigger it sets in that space) and the output pool fit the decided dynamic space.
-(defthm fn-mo-serve-output-pool-is-held
+(defthm fn-mo-serve-output-pool-is-held-at-the-decision
  (let* ((pools (fn-mo-serve-pools profile nil output peer workers cache-limit root))
         (d (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot
                                pools (fn-mo-serve-pool-threads nil peer)))
@@ -875,8 +900,7 @@
   (implies (and (equal (car d) :heap)
                 (equal (fn-heap-core-file owner) (fn-heap-core-file core))
                 (natp (fn-mm-least-observation resident-o))
-                (<= (fn-mm-least-observation resident-o) (fn-mm-least-observation resident))
-                (or (not peer) (fn-pfr-policy-p peer)))
+                (<= (fn-mm-least-observation resident-o) (fn-mm-least-observation resident)))
            (<= (+ (fn-prstartup-serve-store-need profile owner (fn-heap-nursery-trigger dyn nursery)
                                                  output peer workers cache-limit root resident-o)
                   (nfix (fn-crv-nth 0 output)))
@@ -901,3 +925,20 @@
                            (l1 (fn-mm-launch-dynamic (fn-mo-serve-limit resident-o (fn-mo-serve-pools profile nil output peer workers cache-limit root)) owner (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))) nursery)))
                            (l2 (fn-mm-launch-dynamic (fn-mo-serve-limit resident (fn-mo-serve-pools profile nil output peer workers cache-limit root)) (fn-prstartup-image-bound core) nursery))
                            (pools (fn-mo-serve-pools profile nil output peer workers cache-limit root)) (dyn (* *fn-heap-mib* (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) (o (nfix (fn-crv-nth 0 output))))))))
+
+; KEYSTONE K-L4c (L-RUN-LAUNCH), the statement its teeth bind: fn-mo-serve-output-pool-is-held-at-the-decision with the decision
+; written out.
+(defthm fn-mo-serve-output-pool-is-held
+ (implies (and (equal (car (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))) :heap)
+                (equal (fn-heap-core-file owner) (fn-heap-core-file core))
+                (and (natp (fn-mm-least-observation resident-o))
+                     (<= (fn-mm-least-observation resident-o) (fn-mm-least-observation resident))))
+           (<= (+ (fn-prstartup-serve-store-need profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery)
+                                                 output peer workers cache-limit root resident-o)
+                  (nfix (fn-crv-nth 0 output)))
+               (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))))))
+ :rule-classes nil
+ :hints (("Goal" :in-theory (union-theories '(nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
+          :use (fn-mo-serve-output-pool-is-held-at-the-decision
+                (:instance fn-mo-serve-decide-heap-mb
+                           (cold nil) (pools (fn-mo-serve-pools profile nil output peer workers cache-limit root)) (pool-threads (fn-mo-serve-pool-threads nil peer)))))))
