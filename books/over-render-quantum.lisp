@@ -114,6 +114,33 @@
 ;;; ---- p1
 (in-theory (disable fn-ovr-probe-len fn-ovr-put-probe fn-ovr-probe-octets))
 
+; The world KO2-KO7 were proved in: over-window's own forms loaded at the top level, so its
+; LOCAL facts about fn-ovw-hi (books/over-window.lisp:289-313: the type, the bounds as :linear,
+; hi at top, and fn-ovw-hi disabled) were live.  Included as a book those are dropped, fn-ovw-hi
+; opens inside fn-ovw-step, and fn-ovw-lines-split (free variable HI) loops in the case split.
+; The same facts, local here.
+(local
+ (defthm fn-ovrp-hi-type
+   (implies (natp top) (natp (fn-ovw-hi k top w)))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-ovw-hi)))))
+
+(local
+ (defthm fn-ovrp-hi-linear
+   (implies (and (natp k) (natp top) (<= k top))
+            (and (<= k (fn-ovw-hi k top w))
+                 (<= (fn-ovw-hi k top w) top)))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-ovw-hi)))))
+
+(local
+ (defthm fn-ovrp-hi-at-top
+   (implies (and (natp k) (natp top) (<= top (fn-ovw-hi k top w)))
+            (equal (fn-ovw-hi k top w) top))
+   :hints (("Goal" :in-theory (enable fn-ovw-hi)))))
+
+(local (in-theory (disable fn-ovw-hi)))
+
 (local
  (defthm fn-ovrp-stuff-consp
    (equal (consp (fn-nntp-stuff-lines x)) (consp x))
