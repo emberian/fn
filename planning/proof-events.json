@@ -19012,6 +19012,10 @@
         {
           "kind": "theorem",
           "name": "fn-lgo-scan-plan-scans-every-present-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-head-genesis-is-the-open-lineage-start"
         }
       ]
     },

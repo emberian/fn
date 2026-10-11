@@ -232,6 +232,13 @@
    "mutation": "tests/acl2/store-log-open-scan-tests.lisp::wire-fold-from-the-start",
    "provenance": "keystone_critical.py --declare sha256:fb76c55ea2560fbe5707f94837b831b74166534d02d1aa4c66bde262b5a28778"
   },
+  "fn-lgo-head-genesis-is-the-open-lineage-start": {
+   "subject": "fn-lgo-head-genesis",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-head-genesis-is-the-open-lineage-start",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::starts-from-the-head-itself",
+   "provenance": "keystone_critical.py --declare sha256:e3bd84318eebaa620c05ac3d17632090b95d6c1e7346b640e0791b3a95e1644b"
+  },
   "fn-lgo-host-suffix-covers-the-opened-store": {
    "subject": "fn-lgo-fold",
    "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",

@@ -4,20 +4,20 @@
  "counts": {
   "proved": 6,
   "partial": 1,
-  "derived": 100,
+  "derived": 102,
   "none": 1745
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 1,
-   "derived": 100,
+   "derived": 101,
    "none": 1030
   },
   "ideal": {
    "proved": 0,
    "partial": 0,
-   "derived": 0,
+   "derived": 1,
    "none": 144
   },
   "program": {
@@ -5825,6 +5825,20 @@
    "declared_in": "books/store-log-open-scan-cost.lisp"
   },
   {
+   "name": "fn-lgo-head-genesis",
+   "class": "ideal",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-lgl-head-index",
+    "fn-lgl-head-prev",
+    "fn-lgl-headed-p"
+   ],
+   "theorem": null,
+   "declared_in": "books/store-log-open-scan-cost.lisp"
+  },
+  {
    "name": "fn-lgo-scan-plan",
    "class": "common-lisp-compliant",
    "claim": "derived",
@@ -5836,6 +5850,16 @@
     "fn-lgs-max-index",
     "fn-lgs-open-plan"
    ],
+   "theorem": null,
+   "declared_in": "books/store-log-open-scan-cost.lisp"
+  },
+  {
+   "name": "fn-lgo-suffix-settled",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
    "theorem": null,
    "declared_in": "books/store-log-open-scan-cost.lisp"
   },

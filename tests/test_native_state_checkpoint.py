@@ -586,12 +586,33 @@ class StateCheckpointTests(StateCheckpointFixture):
         (segment 1 gone: the scan from segment 2's head with skip 0) and (2)
         with the dropped segment linked back (an interrupted drop: from the
         genesis with skip 3), each covers the header a checkpoint at 5
-        writes, exact in six fields, and the two plans agree but for LOG."""
+        writes, exact in six fields, and the two plans agree but for LOG.
+        (3) A damaged lowest head leaves the totals unseen
+        (fn-lgo-head-genesis)."""
         self.init_with_checkpoint_at_three()
         restored = self.dropped_segments()
         self.assertIn("000001.log", restored)
         after_drop = self.heap_observed_totals()
         self.assertEqual(after_drop[0], 5)
+        # (3) Codex l-2ah F2: the head the :head plan starts from is accepted
+        # only as a readable rotation entry naming the lowest segment
+        # (fn-lgo-head-genesis, KEYSTONE
+        # fn-lgo-head-genesis-is-the-open-lineage-start).  Codex's construction:
+        # the segment zeroed at its extent, which the open refuses
+        # (segment-head-damaged) and a stream from a zero-padded predecessor
+        # reads as an empty complete segment; the totals are unseen, not the
+        # header's alone.
+        # (000000.log is the genesis, which the :head plan does not read.)
+        low = self.store / "journal" / sorted(
+            p.name for p in (self.store / "journal").iterdir()
+            if p.name != "000000.log")[0]
+        self.assertNotIn(low.name, restored)
+        good = low.read_bytes()
+        low.write_bytes(bytes(len(good)))
+        code, line = self.heap_replay_line()
+        self.assertTrue(line.endswith("header totals unseen"), line)
+        low.write_bytes(good)
+        self.assertEqual(self.heap_observed_totals(), after_drop)
         for name in restored:
             os.link(self.root / "kept-log" / name, self.store / "journal" / name)
         self.assertEqual(self.open_line(), "open=checkpoint:3 suffix=2")
