@@ -57,8 +57,21 @@ def sig_probes():
     ]
 
 
+# Two durable configuration records (books/config.lisp fn-cfg-encode of
+# tests/acl2/config-tests.lisp's first two generations, groups and capacity
+# trimmed): (fn-cfg-record-make 0 10 1 (list (fn-cfg-create-group "fn.letters"
+# "policy-a") (fn-cfg-set-capacity 4096)) (fn-clock-observation 7 1000 5 t))
+# and (fn-cfg-record-make 1 11 2 (list (fn-cfg-create-group "fn.dtn"
+# "policy-b")) (fn-clock-observation 7 1000 5 t)), evaluated in the developer
+# image.
+CFG_R1 = [70, 102, 110, 45, 99, 102, 103, 0, 18, 0, 10, 1, 7, 25, 3, 232, 5, 1, 2, 1, 74, 102, 110, 46, 108,
+          101, 116, 116, 101, 114, 115, 72, 112, 111, 108, 105, 99, 121, 45, 97, 0, 0, 3, 64, 64, 25, 16, 0, 0, 0]
+CFG_R2 = [70, 102, 110, 45, 99, 102, 103, 0, 13, 1, 11, 2, 7, 25, 3, 232, 5, 1, 1, 1, 70, 102, 110, 46, 100,
+          116, 110, 72, 112, 111, 108, 105, 99, 121, 45, 98, 0, 0]
+
+
 # (label, entry, args); an arg is an int, a list (nested), ("arena",), ("state",),
-# or ("u8vec", [...]) (the host's own byte vector).
+# ("u8vec", [...]) (the host's own byte vector), or ("t",) (the symbol T).
 PROBES = [
     ("chunk-handle", "FN-READER-CHUNK", [7, ("arena",), ("state",)]),
     ("chunk-vector", "FN-READER-CHUNK", [("u8vec", [1, 1]), ("arena",), ("state",)]),
@@ -67,9 +80,20 @@ PROBES = [
     ("render-short-secret", "FN-NS-FILE-RENDER", [[1, [97, 98], [7, 7]]]),
     ("render-handle", "FN-NS-FILE-RENDER", [7]),
     ("render-arity", "FN-NS-FILE-RENDER", []),
-    ("intern-generation", "FN-INTERN-EVENTS", [[], [], -1, ("arena",)]),
-    ("intern-keyring", "FN-INTERN-EVENTS", [[], 7, 0, ("arena",)]),
-    ("intern-empty", "FN-INTERN-EVENTS", [[], [], 0, ("arena",)]),
+    # The intern's host boundary.  fn-intern-events is not a host entry: the
+    # host reaches the intern only through fn-store-cfg-native-admin-authorize
+    # (host/native/admin.lisp fnn-admin-authorize), which interns the decoded
+    # history raw through the guard-verified fn-intern-events-local
+    # (books/store-intern.lisp), so neither side's core holds fn-intern-events'
+    # *1*.  The probes call that entry: its kind guard on the history, an
+    # undecodable history, and an empty history that passes the intern and
+    # is refused after it (no profile: the group-name bound).
+    ("intern-history-kind", "FN-STORE-CFG-NATIVE-ADMIN-AUTHORIZE",
+     [7, 0, [CFG_R1], CFG_R2, ("t",), [], []]),
+    ("intern-history-undecodable", "FN-STORE-CFG-NATIVE-ADMIN-AUTHORIZE",
+     [[[1, 2, 3]], 0, [CFG_R1], CFG_R2, ("t",), [], []]),
+    ("intern-history-empty", "FN-STORE-CFG-NATIVE-ADMIN-AUTHORIZE",
+     [[], 0, [CFG_R1], CFG_R2, ("t",), [], []]),
 ] + sig_probes()
 
 
@@ -84,6 +108,8 @@ def lisp_arg(a):
         return "'(%s)" % " ".join(map(str, a))
     if isinstance(a, list):
         return "(list %s)" % " ".join(lisp_arg(x) for x in a) if a else "nil"
+    if a[0] == "t":
+        return "t"
     if a[0] == "arena":
         return "(fnn-live-arena)"
     if a[0] == "state":

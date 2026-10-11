@@ -4,14 +4,14 @@
  "counts": {
   "proved": 6,
   "partial": 1,
-  "derived": 98,
+  "derived": 101,
   "none": 1745
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 1,
-   "derived": 98,
+   "derived": 101,
    "none": 1030
   },
   "ideal": {
@@ -67,7 +67,11 @@
  },
  "undispatched_declarations": [
   "fn-cur-at",
+  "fn-heap-command-line",
   "fn-lgb-slice-acc",
+  "fn-lxc-capped-p",
+  "fn-lxc-digits-value",
+  "fn-lxc-words",
   "fn-mm-cfg-rho",
   "fn-mm-cfg-trigger",
   "fn-mm-collector",
@@ -88,6 +92,7 @@
   "fn-mo-drop-key",
   "fn-mo-prefixp",
   "fn-mo-status-kib-octets",
+  "fn-mo-tot-log-at-least",
   "fn-ncfg-nth",
   "fn-rce-exercise-items",
   "fn-scat-group-low-top",
@@ -4436,21 +4441,6 @@
    "declared_in": "books/memory-entry-cost.lisp"
   },
   {
-   "name": "fn-heap-command-line",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [
-    "fn-heap-reserve-report-line",
-    "fn-mo-read-refusal-line",
-    "fn-mo-unseen-suffix",
-    "string-append"
-   ],
-   "theorem": null,
-   "declared_in": "books/memory-entry-cost.lisp"
-  },
-  {
    "name": "fn-heap-decision-exit-code",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -6260,6 +6250,59 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-lxc-cap-of-text",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "coerce",
+    "length",
+    "our-digit-char-p"
+   ],
+   "theorem": null,
+   "declared_in": "books/heap-log-extent-cap-cost.lisp"
+  },
+  {
+   "name": "fn-lxc-command-line",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-decimal-text",
+    "fn-heap-reserve-report-line",
+    "fn-mo-read-refusal-line",
+    "fn-mo-unseen-suffix",
+    "string-append"
+   ],
+   "theorem": null,
+   "declared_in": "books/heap-log-extent-cap-cost.lisp"
+  },
+  {
+   "name": "fn-lxc-refusal-text",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-decimal-text",
+    "string-append-lst"
+   ],
+   "theorem": null,
+   "declared_in": "books/heap-log-extent-cap-cost.lisp"
+  },
+  {
+   "name": "fn-lxc-verdict",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": "books/heap-log-extent-cap-cost.lisp"
   },
   {
    "name": "fn-lzd-current-id",

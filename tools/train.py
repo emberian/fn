@@ -25,7 +25,11 @@ the STATE line.
 `push` and `status` print the shrink line (tools/shrink_line.py): the book
 count and the executable book lines (the call closure of what the host
 names) with their change against the dev this train replaces, and the net
-lines per directory.  A READY that grows them names the deletion that pays
+lines per directory, and beside it the executed-set census of HEAD's
+developer image (`census`, after tools/extract/census.sh ran in an image
+run): units and code MB with their change against census.sh's baseline,
+the noisy executed/never/removable figures only when they moved beyond the
+measured noise floor.  A READY that grows them names the deletion that pays
 for it, or why there is none yet; the gate on it is the coordinator's switch.
 
 A books train runs `certify BOX`: one farm run of books/wire-export plus the
@@ -73,6 +77,9 @@ A run whose modules ran in HEAD's tree on images built at another commit
 (`hbox_native.sh --reuse-image` of a lane's READY image) counts for HEAD
 when the two commits differ in no image input (IMAGE_NEUTRAL: planning/,
 docs/, the Python suites); the record names the commit in images_from.
+A record of an earlier commit stands for HEAD at the gate with no run when
+the two commits differ only in planning/ and docs/ (RECORD_NEUTRAL; the
+suites are inputs of a verdict already run); the gate names it carried_from.
 Every command ends with one line `TRAIN-DONE CMD rc=N`.
 
 The box step (`boxstep`) certifies wire-export incrementally on a build box,
@@ -102,6 +109,7 @@ import shlex
 import tempfile
 import time
 from pathlib import Path
+from typing import Callable
 
 # the sibling tools (box_artifacts, certs, shrink_line) whether this runs as
 # a script or is imported as tools.train (tests/test_train.py)
@@ -145,6 +153,7 @@ REGEN_OUTPUTS = (
     # harness_check --write-stubs rewrites only the marked derived-stub
     # blocks; the tree is clean before regen, so only those changes match
     "tests/*.lisp",
+    "docs/resource-contract.md",
 )
 # The box step's emits, fetched into build/box/ beside stamp.json and never
 # committed (coordinator ruling 2026-10-09 19:50 on the registers DECISION;
@@ -262,6 +271,20 @@ def image_inputs_changed(paths: list[str]) -> list[str]:
         q = Path(p)
         return q.parts[0] == "tests" and len(q.parts) >= 2 and q.parts[1] != "acl2" and q.suffix == ".py"
     return [p for p in paths if not neutral(p)]
+
+
+# Paths a recorded image run's verdict does not depend on.  A record of an
+# earlier commit stands for HEAD at the gate, with no run at all, when the two
+# commits differ only here (a docs-only regeneration over a train head forced
+# a full reuse run on train 89).  Narrower than IMAGE_NEUTRAL: the modules
+# that produced the record ran the earlier commit's Python suites, so a
+# changed suite is an input to the verdict.
+RECORD_NEUTRAL = ("planning/", "docs/")
+
+
+def record_inputs_changed(paths: list[str]) -> list[str]:
+    """The paths among PATHS that a recorded image verdict depends on."""
+    return [p for p in paths if not p.startswith(RECORD_NEUTRAL)]
 
 
 # a case status that is not a red (tools/test_budget.py's vocabulary)
@@ -651,6 +674,9 @@ def cmd_regen(t: Train, args) -> int:
         # build/teeth-obligations.json (uncommitted); the keystone gate and
         # certify's critical witnesses read it
         ("teeth", [PY, "tools/keystone_emit.py", "--write-manifest"]),
+        # docs/resource-contract.md's generated block: its counts read the
+        # merged tree (train 89 shipped 27 of 30 A-* rows when it was not here)
+        ("resource_contract", [PY, "tools/resource_contract.py", "--write"]),
     ):
         rc = t.run(f"regen-{step}", argv)
         if done(step, rc):
@@ -659,7 +685,8 @@ def cmd_regen(t: Train, args) -> int:
     # the label the integrator numbers trains by; the state file's own count
     # restarts with each state file, so it is only the fallback
     n = args.label or st["regen_commits"]
-    msg = f"Regenerate train {n}: image-world and extraction world files, proofs.json events, derived harness stubs"
+    msg = (f"Regenerate train {n}: image-world and extraction world files, proofs.json events, "
+           "derived harness stubs, the resource contract's block")
     _commit_named(t, REGEN_OUTPUTS, msg)
     if done("commit", 0):
         return 1
@@ -1139,21 +1166,36 @@ def parse_image_results(text: str) -> dict[str, dict]:
 
 
 def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
-                  rows: list[dict] | None) -> tuple[int, dict]:
+                  rows: list[dict] | None,
+                  changed_since: Callable[[str], list[str] | None] | None = None) -> tuple[int, dict]:
     """The image gate's decision.  Green when nothing is obliged, or when every
     obliged module ran on the image of HEAD and each red case in it is a
     `native` row of planning/known-reds.json.  A module that did not run (an
     interrupted image gate) refuses the push until it has; so does a module
     that failed with no case recorded, and so does an obliged module that
-    skipped, wholly or a case of it: a skip is not a verdict."""
+    skipped, wholly or a case of it: a skip is not a verdict.  A record of
+    another commit SOURCE stands for HEAD when CHANGED_SINCE(SOURCE) (the paths
+    differing between SOURCE and HEAD, None when SOURCE is no commit here)
+    names no record input (record_inputs_changed); the result names it in
+    carried_from."""
     if not need:
         return 0, {"skipped": True}
     if record is None:
         return 1, {"error": "no image run recorded at HEAD; run tools/hbox_native.sh HEAD "
                             "MODULES, then `train.py image`", "need": sorted(need)}
-    if record.get("source") != head:
-        return 1, {"error": "the recorded image run is of %s, not HEAD" % str(record.get("source"))[:9],
-                   "need": sorted(need)}
+    carried = {}
+    source = str(record.get("source"))
+    if source != head:
+        paths = changed_since(source) if changed_since else None
+        if paths is None:
+            return 1, {"error": "the recorded image run is of %s, not HEAD" % source[:9],
+                       "need": sorted(need)}
+        inputs = record_inputs_changed(paths)
+        if inputs:
+            return 1, {"error": "the recorded image run is of %s, not HEAD, and %d input(s) of its "
+                                "verdict differ (first: %s)" % (source[:9], len(inputs), inputs[0]),
+                       "need": sorted(need)}
+        carried = {"carried_from": source}
     known = {r["subject"] for r in rows or [] if r.get("kind") == "native"}
     results = record.get("modules", {})
     missing = sorted(m for m in need if m not in results)
@@ -1173,7 +1215,7 @@ def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
         for c in reds:
             (known_seen if c in known else unexplained).append(c)
     extra = {"need": sorted(need), "runs": sorted(record.get("runs") or {}), "missing": missing,
-             "unexplained": unexplained, "known_reds": known_seen, "skipped": skipped}
+             "unexplained": unexplained, "known_reds": known_seen, "skipped": skipped, **carried}
     return (1 if missing or unexplained or skipped else 0), extra
 
 
@@ -1270,6 +1312,87 @@ def cmd_image(t: Train, args) -> int:
     for m, e in sorted(read.items()):
         reds = [c for c, s in e["cases"].items() if s not in IMAGE_CASE_PASS]
         say(f"image {m}: rc {e['rc']}, {len(e['cases'])} cases, red {len(reds)} ({run['dir']})")
+    return 0
+
+
+# --------------------------------------------------------------------------- census
+
+# tools/extract/census.sh's last log line when every step succeeded, and the
+# keys of its shrink line (tools/extract/executed_set.py LINE_KEYS; the format
+# is fixed in D's READY d-executed-set, "The shrink line").
+CENSUS_DONE = "== census done status 0"
+CENSUS_KEYS = ("units", "executed", "never", "removable", "code_mb", "never_mb", "removable_mb")
+# The measured noise floor of a rerun on the same tree (d-executed-set): the
+# executed, never and removable figures move by up to these between two runs;
+# units and code_mb are exact, so only they are read as the train's change.
+CENSUS_NOISE = {"executed": 92, "never": 84, "removable": 21, "never_mb": 0.05, "removable_mb": 0.01}
+CENSUS_EXACT = ("units", "code_mb")
+
+
+def _census_fields(text: str, prefix: str) -> dict | None:
+    for row in text.splitlines():
+        if row.startswith(prefix + ": "):
+            pairs = dict(w.split("=", 1) for w in row[len(prefix) + 2:].split() if "=" in w)
+            if set(pairs) != set(CENSUS_KEYS):
+                raise TrainError(f"census: the {prefix} line names {sorted(pairs)}, not {list(CENSUS_KEYS)}")
+            try:
+                return {k: (float(v) if k.endswith("_mb") else int(v)) for k, v in pairs.items()}
+            except ValueError:
+                raise TrainError(f"census: the {prefix} line holds a non-number: {row}") from None
+    return None
+
+
+def parse_census(last_log_line: str, line_text: str) -> dict:
+    """A census run's figures and its delta against its baseline (None when
+    census.sh had no baseline).  Refused unless census.sh finished with every
+    step at 0 and its line file holds the census line."""
+    if last_log_line.strip() != CENSUS_DONE:
+        raise TrainError(f"census: the log ends {last_log_line.strip()[:120]!r}, not {CENSUS_DONE!r}")
+    figures = _census_fields(line_text, "census")
+    if figures is None:
+        raise TrainError("census: line.txt holds no `census:` line")
+    return {"figures": figures, "delta": _census_fields(line_text, "census-delta")}
+
+
+def census_words(record: dict | None, head: str) -> str:
+    """The census half of the shrink line: units and code MB at HEAD and their
+    change; a noisy figure is named only when it moved beyond its noise floor."""
+    if not record or record.get("source") != head:
+        return "census: not run at HEAD"
+    f, d = record["figures"], record.get("delta")
+    words = f"census: units={f['units']} code_mb={f['code_mb']:.2f}"
+    if d is None:
+        return words + " (no baseline)"
+    words += f" (units {d['units']:+d}, code_mb {d['code_mb']:+.2f}"
+    beyond = [f"{k} {d[k]:+d}" if isinstance(d[k], int) else f"{k} {d[k]:+.2f}"
+              for k, floor in CENSUS_NOISE.items() if abs(d[k]) > floor]
+    return words + (f"; beyond noise: {', '.join(beyond)})" if beyond else ")")
+
+
+def cmd_census(t: Train, args) -> int:
+    """Read the executed-set census of one of HEAD's image runs
+    (tools/extract/census.sh RUNDIR [BASELINE], run after the extraction
+    check) into the train state; push and status print it beside the shrink
+    line.  A measure, never a gate."""
+    head = t.head()
+    label = args.label or head[:12]
+    path = image_record_path(t, label)
+    if not path.is_file():
+        raise TrainError(f"no image run record {path}")
+    run = dict(l.split("=", 1) for l in path.read_text().splitlines() if "=" in l)
+    if head not in (run.get("source"), run.get("tree")):
+        raise TrainError(f"{path} is a run of {run.get('tree', run.get('source', '?'))[:9]}, not HEAD {head[:9]}")
+    d = shlex.quote(run["dir"])
+    script = f"tail -n 1 {d}/census.log 2>/dev/null; echo; echo CENSUS-LINE; cat {d}/census/line.txt 2>/dev/null; true"
+    p = subprocess.run(["timeout", "60", "ssh", "-n", run["box"], script], capture_output=True, text=True)
+    if p.returncode != 0:
+        raise TrainError(f"reading {run['box']}:{run['dir']} failed (rc {p.returncode}): {p.stderr.strip()[:200]}")
+    last, _, line_text = p.stdout.partition("CENSUS-LINE")
+    record = dict(parse_census(last.strip(), line_text), source=head, box=run["box"], dir=run["dir"])
+    st = t.load()
+    st["census"] = record
+    t.save(st)
+    say(census_words(record, head))
     return 0
 
 
@@ -1422,7 +1545,12 @@ def cmd_gate(t: Train, args) -> int:
     rec("unit", 0 if all(v == 0 for v in results.values()) else 1, tests=results)
 
     need = image_modules(files)
-    image_rc, image_record = image_verdict(need, st.get("image"), head, known_reds_at(t, "HEAD"))
+    def changed_since(source: str) -> list[str] | None:
+        diff = git(t.root, "diff", "--name-only", source, head, check=False)
+        return diff.stdout.split() if diff.returncode == 0 else None
+
+    image_rc, image_record = image_verdict(need, st.get("image"), head, known_reds_at(t, "HEAD"),
+                                           changed_since)
     if need:
         say(f"image: obliged {len(need)} module(s) by " + ", ".join(sorted({f for v in need.values() for f in v})[:5]))
         for m in image_record.get("missing", []):
@@ -1433,6 +1561,9 @@ def cmd_gate(t: Train, args) -> int:
             say(f"  ran with every test skipped (not covered): {m}")
         if "error" in image_record:
             say(f"  {image_record['error']}")
+        if "carried_from" in image_record:
+            say(f"  the record of {image_record['carried_from'][:9]} stands for HEAD: "
+                "only planning/ and docs/ differ")
     else:
         say("image: no change obliges an image module")
     rec("image", image_rc, **image_record)
@@ -1484,7 +1615,7 @@ def cmd_push(t: Train, args) -> int:
     b = gates["box_step"]
     say("box step: " + (f"inherited from {b['inherits_from'][:9]} ({b['box']})" if "inherits_from" in b
                         else f"ran at HEAD on {b['ran_on']}"))
-    shrink = shrink_words(t, old, head)
+    shrink = shrink_words(t, old, head) + "; " + census_words(st.get("census"), head)
     say(shrink)
     landed = rename_landed_readies(t, [l for l in st["lanes"] if l["status"] == "merged"])
     train_name = f"train {args.label}" if getattr(args, "label", None) else t.branch
@@ -1497,13 +1628,16 @@ def cmd_push(t: Train, args) -> int:
 def _stacked_on(t: "Train") -> list[str]:
     """Other integrate branches whose lane merges sit on HEAD's first-parent
     line above origin/dev: a train started from another train's HEAD (the
-    pipelined second batch tree) pushes only after that train landed."""
+    pipelined second batch tree) pushes only after that train landed.  Only
+    a merge into an integrate/ branch is a train's; a merge into a lane
+    branch is that lane's content (the Fungus tree, lane/fungus-*, is the
+    base a train is formed on, COORDINATION section 5, and lands with it)."""
     log = git(t.root, "log", "--first-parent", "--merges", "--format=%s", "origin/dev..HEAD").stdout
     mine = t.branch if t.branch.startswith("integrate/") else f"integrate/{t.branch}"
     others = []
     for subject in log.splitlines():
         m = re.match(r"Merge lane/\S+ @[0-9a-f]+ into (\S+)$", subject)
-        if m and m.group(1) != mine and m.group(1) not in others:
+        if m and m.group(1).startswith("integrate/") and m.group(1) != mine and m.group(1) not in others:
             others.append(m.group(1))
     return others
 
@@ -1606,6 +1740,7 @@ def cmd_status(t: Train, args) -> int:
         say(f"  verdict: {error}")
     fork = git(t.root, "merge-base", "HEAD", "origin/dev", check=False).stdout.strip()
     say("  " + (shrink_words(t, fork, head) if fork else "shrink: unavailable (no fork point with origin/dev)"))
+    say("  " + census_words(st.get("census"), head))
     for n in GATES:
         g = st.get("gates", {}).get(n)
         if g:
@@ -1630,6 +1765,8 @@ def main(argv=None) -> int:
     i = sub.add_parser("image")
     i.add_argument("--label", help="the run's label (default: HEAD's first 12 hex digits); "
                    "each run read at HEAD adds its modules to HEAD's image record")
+    ce = sub.add_parser("census")
+    ce.add_argument("--label", help="the image run's label (default: HEAD's first 12 hex digits)")
     pu = sub.add_parser("push")
     pu.add_argument("--label", metavar="N", help="the train number for the STATE line")
     sub.add_parser("status")
@@ -1637,7 +1774,7 @@ def main(argv=None) -> int:
     try:
         t = Train(toplevel(Path.cwd()))
         rc = {"merge": cmd_merge, "regen": cmd_regen, "boxstep": cmd_boxstep, "certify": cmd_certify, "gate": cmd_gate,
-              "image": cmd_image, "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
+              "image": cmd_image, "census": cmd_census, "push": cmd_push, "status": cmd_status}[args.cmd](t, args)
     except TrainError as e:
         say(f"train: {e}")
         rc = 2
