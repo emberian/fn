@@ -438,19 +438,13 @@
 
 (defconst *ptxt-c-p6*
   '(((rel (fn-lgk-relp bs ks ino genesis max))
-     (infl (consp (fn-lgk-inflight ks)))
      (e (equal e (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs))))
      (sum (<= (fn-ptx-sum ls) (len e)))
-     (zeros (fn-lg-zerosp (nthcdr (fn-ptx-sum ls) e)))
-     (jnat (natp j))
-     (jle (<= j (len ls)))
      (img (fn-bs-crash-imagep (fn-ptx-with-pending bs (take j (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls)))
                               image)))
     (fn-bs-crash-imagep bs image)))
 (ptxt-claim-is-the-theorem *ptxt-c-p6* fn-ptx-split-crash-images-are-entry-crash-images)
 
-(defconst *ptxt-p6-ground*
-  '(set-difference-theories (executable-counterpart-theory :here) '((:executable-counterpart fn-bs-crash-imagep))))
 ; the positive witness: the first piece's image is an image of the unsplit store
 (teeth-ground-lemma ptxt-gl-p6-witness *ptxt-c-p6*
   ((bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0) (genesis *ptxt-k-g*) (max 4096) (e *ptxt-p6-e*)
@@ -477,22 +471,145 @@
            :use ((:instance fn-bs-crash-imagep-suff (s *ptxt-p6-split1-np*) (image *ptxt-p6-img-np*) (choices (list *ptxt-p6-new10*)))
                  (:instance fn-ptx-imagep-unpack (s *ptxt-p6-bs-np*) (image *ptxt-p6-img-np*))))))
 
-; WHAT THIS SECTION IS NOT.  No defteeth form is written for P6 (nor P4-2 nor
-; the composition): defteeth demands a breaking value for EVERY declared
-; hypothesis, and for P6 four have none.  Crash images keep the store's unit and
-; land only octets of the pending writes, and a piece that lands is a slice of
-; a unit of the whole write that a :garble selector can reproduce, so:
-;   zeros  is not needed for the conclusion (a prefix of the entry's pieces
-;          lands as a subset of the entry's units; the tail's zeros only let the
-;          proof choose :new over :garble),
-;   jle    is not needed: (take j ops) past the end pads NIL operations, which
-;          fn-bs-apply-op ignores (checked below, executed),
-;   jnat   is not needed: a non-natural j takes nothing (zp),
-;   infl   is not needed: with no record in flight the entry is NIL, every piece
-;          is a write of no octets, and the image is the durable content, which
-;          the unsplit store has as the image that lands nothing.
-; Any claimed breaking value for these would be a false statement; the book does
-; not pad.  The one checked below is the NIL-operation fact behind jle.
+; THE P6 TEETH.  The statement has four hypotheses (rel, e, sum, img).  It once
+; had eight; the other four (the entry's tail zeros, j a natural, j at most
+; (len ls), a record in flight) had no breaking value, and the book now
+; discharges each by a case: a j past the end takes NIL operations, which
+; fn-bs-apply-op and fn-bs-crash ignore (checked, executed, at the end of this
+; section); a j that is no natural takes nothing; with no record in flight the
+; entry is NIL and every piece writes no octets; and the entry's tail past the
+; pieces is covered by one more piece.  What is left has teeth.  A piece that
+; lands inside the entry's footprint is an octet the unsplit store's :garble
+; selector can reproduce, so the images the unsplit store does NOT have are
+; those with an octet OUTSIDE its write (fn-ptx-p6-image-keeps-the-tail: the
+; durable content from the end of the entry on is untouched by every image of a
+; related store) and those with operations still pending
+; (fn-ptx-p6-pending-is-no-image).  Each removal below is one of those:
+;   rel  a store with its write already lost from the model (above),
+;   e    an entry one octet longer than the logged one: the second piece lands an
+;        octet past the footprint,
+;   sum  more piece octets than the entry has: take pads NIL, and the NIL octet
+;        lands past the footprint,
+;   img  an image that still has its write pending, which no crash result has.
+(defconst-eval *ptxt-p6-e2* (append *ptxt-p6-e* (list 7)))
+(defconst *ptxt-p6-ls2* '(40 41))
+(defconst *ptxt-p6-new11* (make-list 11 :initial-element :new))
+(defconst-eval *ptxt-p6-split2*
+  (fn-ptx-with-pending *ptxt-p6-bs* (take 2 (fn-ptx-split-ops 0 (fn-lgk-frontier *ptxt-p6-ks*) *ptxt-p6-e2* *ptxt-p6-ls2*))))
+(defconst-eval *ptxt-p6-img2* (fn-bs-crash *ptxt-p6-split2* (list *ptxt-p6-new10* *ptxt-p6-new11*)))
+(defconst-eval *ptxt-p6-split3*
+  (fn-ptx-with-pending *ptxt-p6-bs* (take 2 (fn-ptx-split-ops 0 (fn-lgk-frontier *ptxt-p6-ks*) *ptxt-p6-e* *ptxt-p6-ls2*))))
+(defconst-eval *ptxt-p6-img3* (fn-bs-crash *ptxt-p6-split3* (list *ptxt-p6-new10* *ptxt-p6-new11*)))
+(assert-event
+ (let ((end (+ (fn-lgk-frontier *ptxt-p6-ks*) (len *ptxt-p6-e*))))
+   (and (equal end 168)
+        (not (equal *ptxt-p6-e2* *ptxt-p6-e*))
+        (<= (fn-ptx-sum *ptxt-p6-ls2*) (len *ptxt-p6-e2*))
+        (< (len *ptxt-p6-e*) (fn-ptx-sum *ptxt-p6-ls2*))
+        (fn-bs-crash-choicesp (list *ptxt-p6-new10* *ptxt-p6-new11*) (fn-bs-pending *ptxt-p6-split2*) 4)
+        (fn-bs-crash-choicesp (list *ptxt-p6-new10* *ptxt-p6-new11*) (fn-bs-pending *ptxt-p6-split3*) 4)
+        (equal (nth end (fn-bs-durable-content *ptxt-p6-img2* 0)) 7)
+        (equal (nth end (fn-bs-durable-content *ptxt-p6-img3* 0)) nil)
+        (not (equal (nthcdr end (fn-bs-durable-content *ptxt-p6-img2* 0))
+                    (nthcdr end (fn-bs-durable-content *ptxt-p6-bs* 0))))
+        (not (equal (nthcdr end (fn-bs-durable-content *ptxt-p6-img3* 0))
+                    (nthcdr end (fn-bs-durable-content *ptxt-p6-bs* 0)))))))
+; no image of the related store has either of those octets past the entry
+(defthm ptxt-p6-img2-no-image
+  (not (fn-bs-crash-imagep *ptxt-p6-bs* *ptxt-p6-img2*))
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-ptx-p6-image-keeps-the-tail (bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0)
+                            (genesis *ptxt-k-g*) (max 4096) (e *ptxt-p6-e*) (image *ptxt-p6-img2*))))))
+(defthm ptxt-p6-img3-no-image
+  (not (fn-bs-crash-imagep *ptxt-p6-bs* *ptxt-p6-img3*))
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-ptx-p6-image-keeps-the-tail (bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0)
+                            (genesis *ptxt-k-g*) (max 4096) (e *ptxt-p6-e*) (image *ptxt-p6-img3*))))))
+(teeth-ground-lemma ptxt-gl-p6-without-e *ptxt-c-p6*
+  ((bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0) (genesis *ptxt-k-g*) (max 4096) (e *ptxt-p6-e2*)
+   (ls *ptxt-p6-ls2*) (j 2) (image *ptxt-p6-img2*))
+  :without e
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-bs-crash-imagep-suff (s *ptxt-p6-split2*) (image *ptxt-p6-img2*)
+                            (choices (list *ptxt-p6-new10* *ptxt-p6-new11*)))
+                 (:instance ptxt-p6-img2-no-image)))))
+(teeth-ground-lemma ptxt-gl-p6-without-sum *ptxt-c-p6*
+  ((bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0) (genesis *ptxt-k-g*) (max 4096) (e *ptxt-p6-e*)
+   (ls *ptxt-p6-ls2*) (j 2) (image *ptxt-p6-img3*))
+  :without sum
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-bs-crash-imagep-suff (s *ptxt-p6-split3*) (image *ptxt-p6-img3*)
+                            (choices (list *ptxt-p6-new10* *ptxt-p6-new11*)))
+                 (:instance ptxt-p6-img3-no-image)))))
+; without IMG: the unsplit store itself, its write still pending, is no image of
+; the split store nor of itself
+(teeth-ground-lemma ptxt-gl-p6-without-img *ptxt-c-p6*
+  ((bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0) (genesis *ptxt-k-g*) (max 4096) (e *ptxt-p6-e*)
+   (ls *ptxt-p6-ls*) (j 1) (image *ptxt-p6-bs*))
+  :without img
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-ptx-p6-pending-is-no-image (s *ptxt-p6-split1*) (image *ptxt-p6-bs*))
+                 (:instance fn-ptx-p6-pending-is-no-image (s *ptxt-p6-bs*) (image *ptxt-p6-bs*))))))
+; the mutation: the conclusion's store with the whole entry already durable, so
+; that nothing is pending and its one image is itself
+(defconst-eval *ptxt-p6-bs-whole*
+  (fn-bs-make (fn-bs-unit *ptxt-p6-bs*)
+              (fn-bs-put-assoc 0 (fn-bs-splice (fn-bs-durable-content *ptxt-p6-bs* 0) (fn-lgk-frontier *ptxt-p6-ks*) *ptxt-p6-e*)
+                               (fn-bs-inodes *ptxt-p6-bs*))
+              (fn-bs-dirs *ptxt-p6-bs*) nil (fn-bs-next-ino *ptxt-p6-bs*)))
+(assert-event (and (null (fn-bs-pending *ptxt-p6-bs-whole*)) (not (equal *ptxt-p6-img* *ptxt-p6-bs-whole*))))
+(defthm ptxt-p6-whole-has-no-img
+  (not (fn-bs-crash-imagep *ptxt-p6-bs-whole* *ptxt-p6-img*))
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-ptx-p6-idle-image (s *ptxt-p6-bs-whole*) (image *ptxt-p6-img*))))))
+(teeth-ground-lemma ptxt-gl-p6-mutant-whole-entry-durable *ptxt-c-p6*
+  ((bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0) (genesis *ptxt-k-g*) (max 4096) (e *ptxt-p6-e*)
+   (ls *ptxt-p6-ls*) (j 1) (image *ptxt-p6-img*))
+  :mutation (:conclusion
+             (fn-bs-crash-imagep (fn-bs-make (fn-bs-unit bs)
+                                             (fn-bs-put-assoc ino (fn-bs-splice (fn-bs-durable-content bs ino) (fn-lgk-frontier ks) e)
+                                                              (fn-bs-inodes bs))
+                                             (fn-bs-dirs bs) nil (fn-bs-next-ino bs))
+                                 image))
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-bs-crash-imagep-suff (s *ptxt-p6-split1*) (image *ptxt-p6-img*) (choices (list *ptxt-p6-new10*)))
+                 (:instance fn-bs-crash-imagep-suff (s *ptxt-p6-bs*) (image *ptxt-p6-img*)
+                            (choices (list (append *ptxt-p6-new10* (make-list 10 :initial-element :old)))))
+                 (:instance ptxt-p6-whole-has-no-img)))))
+(defteeth fn-ptx-split-crash-images-are-entry-crash-images
+  :claim (((rel (fn-lgk-relp bs ks ino genesis max))
+           (e (equal e (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs))))
+           (sum (<= (fn-ptx-sum ls) (len e)))
+           (img (fn-bs-crash-imagep (fn-ptx-with-pending bs (take j (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls)))
+                                    image)))
+          (fn-bs-crash-imagep bs image))
+  :subject fn-ptx-split-ops
+  :witness ((bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0) (genesis *ptxt-k-g*) (max 4096) (e *ptxt-p6-e*)
+            (ls *ptxt-p6-ls*) (j 1) (image *ptxt-p6-img*))
+  :witness-lemma ptxt-gl-p6-witness
+  :breaks ((rel ((bs *ptxt-p6-bs-np*) (image *ptxt-p6-img-np*)) :lemma ptxt-gl-p6-without-rel)
+           (e ((e *ptxt-p6-e2*) (ls *ptxt-p6-ls2*) (j 2) (image *ptxt-p6-img2*)) :lemma ptxt-gl-p6-without-e)
+           (sum ((ls *ptxt-p6-ls2*) (j 2) (image *ptxt-p6-img3*)) :lemma ptxt-gl-p6-without-sum)
+           (img ((image *ptxt-p6-bs*)) :lemma ptxt-gl-p6-without-img))
+  :mutations ((whole-entry-already-durable
+               (:conclusion
+                (fn-bs-crash-imagep (fn-bs-make (fn-bs-unit bs)
+                                                (fn-bs-put-assoc ino (fn-bs-splice (fn-bs-durable-content bs ino) (fn-lgk-frontier ks) e)
+                                                                 (fn-bs-inodes bs))
+                                                (fn-bs-dirs bs) nil (fn-bs-next-ino bs))
+                                    image))
+               ()
+               :fault "the conclusion's store with the whole entry already durable and nothing pending: its one image is itself, so a prefix of the entry's pieces landed is no image of it"
+               :lemma ptxt-gl-p6-mutant-whole-entry-durable)))
+; the NIL-operation fact behind the dropped j <= (len ls): take past the end pads
+; NIL operations and crash images ignore them (executed)
 (defconst-eval *ptxt-p6-ops-pad* (take 3 *ptxt-p6-ops*))
 (assert-event (and (equal (len *ptxt-p6-ops-pad*) 3) (null (nth 2 *ptxt-p6-ops-pad*))
                    (equal (fn-bs-crash (fn-ptx-with-pending *ptxt-p6-bs* *ptxt-p6-ops-pad*) (list nil nil :apply))

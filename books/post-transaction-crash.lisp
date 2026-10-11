@@ -609,7 +609,7 @@
   (implies (fn-lgk-relp bs ks ino genesis max)
            (and ino (assoc-equal ino (fn-bs-inodes bs))))
   :hints (("Goal" :in-theory (enable fn-lgk-relp))) :rule-classes nil)
-(defthm fn-ptx-split-crash-images-are-entry-crash-images
+(defthm fn-ptx-split-crash-images-core
   (implies (and (fn-lgk-relp bs ks ino genesis max)
                 (consp (fn-lgk-inflight ks))
                 (equal e (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
@@ -640,6 +640,305 @@
                  (:instance fn-ptx-log-octets (prev (fn-lgk-last ks)) (records (fn-lgk-inflight ks)) (unit (fn-bs-unit bs)))
                  (:instance fn-lg-log-true-listp (prev (fn-lgk-last ks)) (records (fn-lgk-inflight ks)) (unit (fn-bs-unit bs)))
                  (:instance fn-ptx-log-consp (prev (fn-lgk-last ks)) (records (fn-lgk-inflight ks)) (unit (fn-bs-unit bs)))))))
+
+;; P6 STRENGTHENED.  The core above keeps its eight hypotheses.  The four that the
+;; statement below drops are discharged by cases: a nonzero tail of the entry past
+;; the pieces (the pieces are a prefix of a split of the whole entry, with one
+;; more piece that covers the tail), a J past the end (TAKE pads NIL operations,
+;; which crash images ignore), a J that is no natural (TAKE of it is NIL), and a
+;; related store with no record in flight (the entry is NIL, every piece writes no
+;; octets).
+(defun fn-ptx-all-nilp (x) (if (consp x) (and (null (car x)) (fn-ptx-all-nilp (cdr x))) t))
+(defun fn-ptx-trim (ch ops)
+  (if (and (consp ops) (consp ch)) (cons (car ch) (fn-ptx-trim (cdr ch) (cdr ops))) nil))
+(defun fn-ptx-nils (n) (if (zp n) nil (cons nil (fn-ptx-nils (1- n)))))
+(defthm fn-ptx-take-pad
+  (implies (true-listp l)
+           (equal (take j l)
+                  (append (take (min (nfix j) (len l)) l)
+                          (fn-ptx-nils (- (nfix j) (len l))))))
+  :rule-classes nil
+  :hints (("Goal" :induct (take j l))))
+(defthm fn-ptx-all-nilp-of-nils (fn-ptx-all-nilp (fn-ptx-nils n)))
+(defthm fn-ptx-apply-op-nil (equal (fn-bs-apply-op i d nil) (list i d))
+  :hints (("Goal" :in-theory (enable fn-bs-apply-op))))
+(defthm fn-ptx-apply-ops-of-nils
+  (implies (fn-ptx-all-nilp b) (equal (fn-bs-apply-ops i d b) (list i d)))
+  :hints (("Goal" :in-theory (disable fn-bs-apply-op))))
+(defthm fn-ptx-apply-ops-append-nils
+  (implies (fn-ptx-all-nilp b)
+           (equal (fn-bs-apply-ops i d (append a b)) (fn-bs-apply-ops i d a)))
+  :hints (("Goal" :in-theory (disable fn-bs-apply-op))))
+
+(defthm fn-ptx-select-append
+  (equal (fn-bs-crash-select (append ops pad) ch unit)
+         (append (fn-bs-crash-select ops ch unit)
+                 (fn-bs-crash-select pad (nthcdr (len ops) ch) unit)))
+  :hints (("Goal" :induct (fn-bs-crash-select ops ch unit)
+           :in-theory (enable fn-bs-crash-select))))
+(defthm fn-ptx-select-of-nils
+  (implies (fn-ptx-all-nilp pad)
+           (fn-ptx-all-nilp (fn-bs-crash-select pad ch unit)))
+  :hints (("Goal" :in-theory (enable fn-bs-crash-select))))
+(defthm fn-ptx-all-nilp-append
+  (equal (fn-ptx-all-nilp (append a b)) (and (fn-ptx-all-nilp a) (fn-ptx-all-nilp b))))
+(defthm fn-ptx-select-trim
+  (equal (fn-bs-crash-select ops (fn-ptx-trim ch ops) unit)
+         (fn-bs-crash-select ops ch unit))
+  :hints (("Goal" :induct (fn-bs-crash-select ops ch unit)
+           :in-theory (enable fn-bs-crash-select))))
+(defthm fn-ptx-trim-choicesp
+  (implies (fn-bs-crash-choicesp ch (append ops pad) unit)
+           (fn-bs-crash-choicesp (fn-ptx-trim ch ops) ops unit))
+  :hints (("Goal" :induct (fn-ptx-trim ch ops)
+           :in-theory (e/d (fn-bs-crash-choicesp) (fn-bs-crash-choicep fn-bs-unit-count fn-lg-writes-to)))))
+(defthm fn-ptx-crash-drop-pad
+  (implies (fn-ptx-all-nilp pad)
+           (equal (fn-bs-crash (fn-ptx-with-pending bs (append ops pad)) ch)
+                  (fn-bs-crash (fn-ptx-with-pending bs ops) (fn-ptx-trim ch ops))))
+  :hints (("Goal" :in-theory (e/d (fn-bs-crash) (fn-bs-apply-op fn-bs-apply-ops fn-bs-make)))))
+
+(defthm fn-ptx-imagep-drop-pad
+  (implies (and (fn-ptx-all-nilp pad)
+                (fn-bs-crash-imagep (fn-ptx-with-pending bs (append ops pad)) image))
+           (fn-bs-crash-imagep (fn-ptx-with-pending bs ops) image))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-ptx-crash-drop-pad fn-ptx-trim-choicesp fn-bs-crash-imagep-suff)
+           :use ((:instance fn-ptx-imagep-unpack (s (fn-ptx-with-pending bs (append ops pad))))
+                 (:instance fn-ptx-crash-drop-pad
+                            (ch (fn-bs-crash-imagep-witness (fn-ptx-with-pending bs (append ops pad)) image)))
+                 (:instance fn-ptx-trim-choicesp
+                            (ch (fn-bs-crash-imagep-witness (fn-ptx-with-pending bs (append ops pad)) image))
+                            (unit (fn-bs-unit bs)))
+                 (:instance fn-bs-crash-imagep-suff (s (fn-ptx-with-pending bs ops))
+                            (choices (fn-ptx-trim (fn-bs-crash-imagep-witness (fn-ptx-with-pending bs (append ops pad)) image) ops)))))))
+(defun fn-ptx-take-ind (j f e ls)
+  (if (and (consp ls) (posp j))
+      (fn-ptx-take-ind (1- j) (+ (nfix f) (nfix (car ls))) (nthcdr (nfix (car ls)) e) (cdr ls))
+    (list j f e ls)))
+(defthm fn-ptx-take-split-append
+  (implies (and (natp j) (<= j (len ls)))
+           (equal (take j (fn-ptx-split-ops ino f e (append ls tl)))
+                  (take j (fn-ptx-split-ops ino f e ls))))
+  :hints (("Goal" :induct (fn-ptx-take-ind j f e ls))))
+(defthm fn-ptx-sum-append
+  (equal (fn-ptx-sum (append ls tl)) (+ (fn-ptx-sum ls) (fn-ptx-sum tl))))
+
+(defthm fn-ptx-sum-natp (natp (fn-ptx-sum ls)) :rule-classes :type-prescription)
+(defthm fn-ptx-tail-ls-facts
+  (implies (and (true-listp e) (<= (fn-ptx-sum ls) (len e)) (natp j) (<= j (len ls)))
+           (let ((ls2 (append ls (list (- (len e) (fn-ptx-sum ls))))))
+             (and (<= (fn-ptx-sum ls2) (len e))
+                  (fn-lg-zerosp (nthcdr (fn-ptx-sum ls2) e))
+                  (natp j) (<= j (len ls2)))))
+  :hints (("Goal" :in-theory (enable fn-lg-zerosp))))
+(defthm fn-ptx-split-crash-images-natj
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (consp (fn-lgk-inflight ks))
+                (equal e (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
+                (<= (fn-ptx-sum ls) (len e))
+                (natp j) (<= j (len ls))
+                (fn-bs-crash-imagep (fn-ptx-with-pending bs (take j (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls)))
+                                    image))
+           (fn-bs-crash-imagep bs image))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-ptx-split-crash-images-core
+                            (ls (append ls (list (- (len e) (fn-ptx-sum ls))))))
+                 (:instance fn-ptx-take-split-append (f (fn-lgk-frontier ks)) (tl (list (- (len e) (fn-ptx-sum ls)))))
+                 (:instance fn-ptx-tail-ls-facts)
+                 (:instance fn-lgk-relp-gives-the-tear-hypotheses)
+                 (:instance fn-lg-log-true-listp (prev (fn-lgk-last ks)) (records (fn-lgk-inflight ks)) (unit (fn-bs-unit bs)))))))
+
+(defthm fn-ptx-true-listp-split-ops (true-listp (fn-ptx-split-ops ino f e ls)))
+(defthm fn-ptx-take-split-any
+  (equal (take j (fn-ptx-split-ops ino f e ls))
+         (append (take (min (nfix j) (len ls)) (fn-ptx-split-ops ino f e ls))
+                 (fn-ptx-nils (- (nfix j) (len ls)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable take fn-ptx-split-ops)
+           :use ((:instance fn-ptx-take-pad (l (fn-ptx-split-ops ino f e ls)))
+                 (:instance fn-ptx-len-split-ops)))))
+(defthm fn-ptx-natj-min
+  (and (natp (min (nfix j) (len ls))) (<= (min (nfix j) (len ls)) (len ls))))
+(defthm fn-ptx-split-crash-images-consp
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (consp (fn-lgk-inflight ks))
+                (equal e (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
+                (<= (fn-ptx-sum ls) (len e))
+                (fn-bs-crash-imagep (fn-ptx-with-pending bs (take j (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls)))
+                                    image))
+           (fn-bs-crash-imagep bs image))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-ptx-take-split-any (f (fn-lgk-frontier ks)))
+                 (:instance fn-ptx-imagep-drop-pad
+                            (ops (take (min (nfix j) (len ls)) (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls)))
+                            (pad (fn-ptx-nils (- (nfix j) (len ls)))))
+                 (:instance fn-ptx-all-nilp-of-nils (n (- (nfix j) (len ls))))
+                 (:instance fn-ptx-split-crash-images-natj (j (min (nfix j) (len ls))))
+                 (:instance fn-ptx-natj-min)))))
+
+(defun fn-ptx-noop-opsp (x)
+  (if (consp x)
+      (and (or (null (car x))
+               (and (consp (car x)) (equal (car (car x)) :write) (null (nth 3 (car x)))))
+           (fn-ptx-noop-opsp (cdr x)))
+    t))
+(defthm fn-ptx-split-ops-noop
+  (implies (equal (fn-ptx-sum ls) 0) (fn-ptx-noop-opsp (fn-ptx-split-ops ino f e ls)))
+  :hints (("Goal" :induct (fn-ptx-split-ops ino f e ls))))
+(defthm fn-ptx-take-noop
+  (implies (fn-ptx-noop-opsp x) (fn-ptx-noop-opsp (take j x)))
+  :hints (("Goal" :induct (take j x))))
+(defthm fn-ptx-tear-write-of-empty
+  (implies (null (nth 3 op)) (equal (fn-bs-tear-write op sels i unit) nil))
+  :hints (("Goal" :in-theory (enable fn-bs-tear-write fn-bs-unit-count))))
+(defthm fn-ptx-select-of-noop
+  (implies (fn-ptx-noop-opsp ops) (fn-ptx-all-nilp (fn-bs-crash-select ops ch unit)))
+  :hints (("Goal" :in-theory (e/d (fn-bs-crash-select) (fn-bs-tear-write)))))
+(defthm fn-ptx-crash-of-noop
+  (implies (fn-ptx-noop-opsp ops)
+           (equal (fn-bs-crash (fn-ptx-with-pending bs ops) ch)
+                  (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs) (fn-bs-dirs bs) nil (fn-bs-next-ino bs))))
+  :hints (("Goal" :in-theory (e/d (fn-bs-crash) (fn-bs-apply-op fn-bs-apply-ops fn-bs-make fn-bs-crash-select))
+           :use ((:instance fn-ptx-select-of-noop (unit (fn-bs-unit bs))
+                            (ops ops))
+                 (:instance fn-ptx-apply-ops-of-nils
+                            (i (fn-bs-inodes bs)) (d (fn-bs-dirs bs))
+                            (b (fn-bs-crash-select ops ch (fn-bs-unit bs))))))))
+
+(defthm fn-ptx-crash-of-idle
+  (implies (equal (fn-bs-pending bs) nil)
+           (equal (fn-bs-crash bs ch)
+                  (fn-bs-make (fn-bs-unit bs) (fn-bs-inodes bs) (fn-bs-dirs bs) nil (fn-bs-next-ino bs))))
+  :hints (("Goal" :in-theory (enable fn-bs-crash fn-bs-crash-select fn-bs-apply-ops))))
+(defthm fn-ptx-relp-idle-pending
+  (implies (and (fn-lgk-relp bs ks ino genesis max) (not (consp (fn-lgk-inflight ks))))
+           (equal (fn-bs-pending bs) nil))
+  :hints (("Goal" :in-theory (enable fn-lgk-relp))))
+(defthm fn-ptx-idle-entry-sum
+  (implies (and (not (consp records)) (equal e (fn-lg-log records prev unit))
+                (<= (fn-ptx-sum ls) (len e)))
+           (equal (fn-ptx-sum ls) 0))
+  :hints (("Goal" :expand ((fn-lg-log records prev unit))
+           :use ((:instance fn-ptx-sum-natp)))))
+(defthm fn-ptx-split-crash-images-idle
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (not (consp (fn-lgk-inflight ks)))
+                (equal e (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
+                (<= (fn-ptx-sum ls) (len e))
+                (fn-bs-crash-imagep (fn-ptx-with-pending bs (take j (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls)))
+                                    image))
+           (fn-bs-crash-imagep bs image))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory) '((:definition fn-bs-crash-choicesp)))
+           :use ((:instance fn-ptx-imagep-unpack
+                            (s (fn-ptx-with-pending bs (take j (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls)))))
+                 (:instance fn-ptx-relp-idle-pending)
+                 (:instance fn-ptx-idle-entry-sum (records (fn-lgk-inflight ks)) (prev (fn-lgk-last ks)) (unit (fn-bs-unit bs)))
+                 (:instance fn-ptx-split-ops-noop (f (fn-lgk-frontier ks)))
+                 (:instance fn-ptx-take-noop (x (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls)))
+                 (:instance fn-ptx-crash-of-noop
+                            (ops (take j (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls)))
+                            (ch (fn-bs-crash-imagep-witness
+                                 (fn-ptx-with-pending bs (take j (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls))) image)))
+                 (:instance fn-ptx-crash-of-idle (ch nil))
+                 (:instance fn-bs-crash-imagep-suff (s bs) (choices nil))))))
+
+(defthm fn-ptx-split-crash-images-are-entry-crash-images
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (equal e (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
+                (<= (fn-ptx-sum ls) (len e))
+                (fn-bs-crash-imagep (fn-ptx-with-pending bs (take j (fn-ptx-split-ops ino (fn-lgk-frontier ks) e ls)))
+                                    image))
+           (fn-bs-crash-imagep bs image))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-ptx-split-crash-images-consp)
+                 (:instance fn-ptx-split-crash-images-idle)))))
+
+;; What a related store's crash images keep (used by the teeth of P6): the durable
+;; content from the end of the entry on, and an image never has operations pending.
+(defthm fn-ptx-p6-nthcdr-plus-append
+  (implies (and (true-listp d) (natp n))
+           (equal (nthcdr (+ (len d) n) (append d x)) (nthcdr n x)))
+  :rule-classes nil
+  :hints (("Goal" :induct (len d))))
+(defthm fn-ptx-p6-pieces-between0
+  (implies (posp unit) (fn-lg-writes-between (fn-lg-pieces ino 0 w sels unit) 0 (len w)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-lg-pieces-between (start 0)))
+           :in-theory (disable fn-lg-pieces-between fn-lg-pieces))))
+(defthm fn-ptx-p6-tail-abstract
+  (implies (and (posp (fn-bs-unit s)) (natp k) ino (true-listp d) (true-listp w)
+                (equal (len d) (* k (fn-bs-unit s)))
+                (equal (fn-bs-durable-content s ino) (append d z))
+                (equal (fn-bs-pending s) (list (list :write ino (len d) w)))
+                (<= (len w) (len z))
+                (fn-bs-crash-imagep s image))
+           (equal (nthcdr (+ (len d) (len w)) (fn-bs-durable-content image ino))
+                  (nthcdr (len w) z)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '((:definition natp) (:definition posp) (:executable-counterpart natp)
+                                        (:rewrite unicity-of-0) (:rewrite fn-ptx-natp-len)))
+           :use ((:instance fn-bs-crash-of-aligned-append)
+                 (:instance fn-lg-nthcdr-of-apply-to-below
+                            (c z) (ops (fn-lg-pieces ino 0 w (fn-lg-crash-sels s image) (fn-bs-unit s)))
+                            (low 0) (b (len w)))
+                 (:instance fn-ptx-p6-pieces-between0 (sels (fn-lg-crash-sels s image)) (unit (fn-bs-unit s)))
+                 (:instance fn-ptx-p6-nthcdr-plus-append (n (len w))
+                            (x (fn-lg-apply-to z (fn-lg-pieces ino 0 w (fn-lg-crash-sels s image) (fn-bs-unit s)))))))))
+(defthm fn-ptx-p6-image-keeps-the-tail
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (consp (fn-lgk-inflight ks))
+                (equal e (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
+                (fn-bs-crash-imagep bs image))
+           (equal (nthcdr (+ (fn-lgk-frontier ks) (len e)) (fn-bs-durable-content image ino))
+                  (nthcdr (+ (fn-lgk-frontier ks) (len e)) (fn-bs-durable-content bs ino))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '((:definition natp) (:definition posp) (:executable-counterpart natp)
+                                        (:rewrite fn-ptx-natp-len) (:type-prescription len)))
+           :use ((:instance fn-lgk-relp-gives-the-tear-hypotheses)
+                 (:instance fn-ptx-p6-tail-abstract
+                            (s bs) (k (floor (fn-lgk-frontier ks) (fn-bs-unit bs)))
+                            (d (fn-bs-take (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
+                            (z (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
+                            (w e))
+                 (:instance fn-lg-log-true-listp (prev (fn-lgk-last ks)) (records (fn-lgk-inflight ks)) (unit (fn-bs-unit bs)))
+                 (:instance fn-ptx-p6-nthcdr-plus-append
+                            (d (fn-bs-take (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
+                            (n (len e))
+                            (x (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs ino))))))))
+(defthm fn-ptx-p6-crash-has-no-pending
+  (equal (fn-bs-pending (fn-bs-crash s ch)) nil)
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-bs-crash))))
+(defthm fn-ptx-p6-pending-is-no-image
+  (implies (consp (fn-bs-pending image)) (not (fn-bs-crash-imagep s image)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bs-crash)
+           :use ((:instance fn-ptx-imagep-unpack)
+                 (:instance fn-ptx-p6-crash-has-no-pending (ch (fn-bs-crash-imagep-witness s image)))))))
+(defthm fn-ptx-p6-idle-image
+  (implies (and (equal (fn-bs-pending s) nil) (fn-bs-crash-imagep s image))
+           (equal image (fn-bs-make (fn-bs-unit s) (fn-bs-inodes s) (fn-bs-dirs s) nil (fn-bs-next-ino s))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-bs-crash)
+           :use ((:instance fn-ptx-imagep-unpack)
+                 (:instance fn-ptx-crash-of-idle (ch (fn-bs-crash-imagep-witness s image)))))))
 
 (defthm fn-ptx-torn-entry-is-no-partial-record
   (implies (and (fn-lgk-relp bs ks ino genesis max)
