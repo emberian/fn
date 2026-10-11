@@ -320,3 +320,227 @@
   (implies (fn-hll-invp st) (fn-hll-invp (mv-nth 0 (fn-hld-sent id inc op outcome st))))
   :hints (("Goal" :in-theory (union-theories '(fn-hld-sent fn-hld-x-step*-keeps-invp fn-hld-settle-keeps-invp)
                                              (theory 'minimal-theory)))))
+
+; -----------------------------------------------------------------------------
+; Quantum and end keep the invariant.  The leased layer's invariant is the generic one plus the leased
+; machine's states (fn-hld-hll-invp-is); the host's own requests in a quantum (the window's puts, which are the
+; :write request (HL3), then (:submit :send ...)) and in end ((:close)) leave every machine state alone and keep
+; the generic invariant: neither frees a pool buffer, issues a :wait, nor touches the :accept and :grant uses,
+; so both admission clauses hold as before, with no re-arm.
+
+(defthm fn-hld-hll-invp-is
+  (iff (fn-hll-invp s) (and (fn-rtc-invp s) (fn-hll-mstates-okp (fn-rtc-mstates s))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hll-invp fn-rtc-invp fn-hld-hll-mstates-okp-is-generic iff)
+                                             (theory 'minimal-theory)))))
+(in-theory (disable fn-hld-hll-invp-is))
+
+(local (progn
+(defthm fn-hld-put-tables
+  (and (equal (fn-rtc-config (fn-rtc-st$a-put h off o s)) (fn-rtc-config s))
+       (equal (fn-rtc-slots (fn-rtc-st$a-put h off o s)) (fn-rtc-slots s))
+       (equal (fn-rtc-mstates (fn-rtc-st$a-put h off o s)) (fn-rtc-mstates s))
+       (equal (fn-rtc-uses (fn-rtc-st$a-put h off o s)) (fn-rtc-uses s)))
+  :hints (("Goal" :in-theory (union-theories '(fn-rtc-st$a-put fn-rtc-st$a-splice fn-rtc-with-accessors) (theory 'minimal-theory)))))
+(defthm fn-hld-put-keeps-invp
+  (implies (fn-rtc-invp s) (fn-rtc-invp (fn-rtc-st$a-put h off o s)))
+  :hints (("Goal" :in-theory (union-theories '(fn-rtc-st$a-put fn-rtc-st-splice) (theory 'minimal-theory))
+           :use ((:instance fn-rtc-splice-keeps-invp (st s) (data (list o)))))))
+(defthm fn-hld-puts-keeps-invp
+  (implies (fn-rtc-invp s)
+           (and (fn-rtc-invp (fn-rtc-st$a-puts h off w s))
+                (equal (fn-rtc-mstates (fn-rtc-st$a-puts h off w s)) (fn-rtc-mstates s))
+                (equal (fn-rtc-slots (fn-rtc-st$a-puts h off w s)) (fn-rtc-slots s))
+                (equal (fn-rtc-config (fn-rtc-st$a-puts h off w s)) (fn-rtc-config s))))
+  :hints (("Goal" :induct (fn-rtc-st$a-puts h off w s)
+           :in-theory (union-theories '((:induction fn-rtc-st$a-puts) fn-hld-put-keeps-invp fn-hld-put-tables)
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/2" :expand ((fn-rtc-st$a-puts h off w s)))
+          ("Subgoal *1/1" :expand ((fn-rtc-st$a-puts h off w s)))))
+
+(defun fn-hld-set-ind (k i pool)
+  (if (or (zp k) (atom pool)) (list k i pool)
+    (fn-hld-set-ind (- k 1) (+ 1 (nfix i)) (cdr pool))))
+(defthm fn-hld-free-pool-buf-of-set-nonfree
+  (implies (and (natp k)
+                (not (equal (fn-rtc-b-owner b) '(:free)))
+                (not (equal (fn-rtc-b-owner (fn-rtc-get k pool)) '(:free))))
+           (equal (fn-rtc-free-pool-buf i (fn-rtc-set k b pool) cfg)
+                  (fn-rtc-free-pool-buf i pool cfg)))
+  :hints (("Goal" :induct (fn-hld-set-ind k i pool)
+           :expand ((:free (x xs) (fn-rtc-free-pool-buf i (cons x xs) cfg))
+                    (fn-rtc-free-pool-buf i pool cfg)
+                    (fn-rtc-set k b pool) (fn-rtc-get k pool))
+           :in-theory (disable fn-rtc-b-owner fn-rtc-pool-buf-p))))
+(defthm fn-hld-free-pool-of-set-buffer-nonfree
+  (implies (and (natp k)
+                (not (equal (fn-rtc-b-owner b) '(:free)))
+                (not (equal (fn-rtc-b-owner (fn-rtc-buffer k s)) '(:free))))
+           (equal (fn-rtc-free-pool-buf i (fn-rtc-set k b (fn-rtc-pool s)) cfg)
+                  (fn-rtc-free-pool-buf i (fn-rtc-pool s) cfg)))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-hld-free-pool-buf-of-set-nonfree (pool (fn-rtc-pool s)))
+                 (:instance fn-rtc-buffer (h k))))))
+
+; A non-pool submit and a close leave the grant and accept clauses' terms alone.
+(defthm fn-hld-submit-admission-frame
+  (implies (and (posp id) (not (equal (fn-rtc-get 1 r) :pool)))
+           (let ((s2 (mv-nth 0 (fn-rtc-req-submit r id inc s))))
+             (and (equal (fn-rtc-kind-out-p :grant 0 0 (fn-rtc-uses s2)) (fn-rtc-kind-out-p :grant 0 0 (fn-rtc-uses s)))
+                  (equal (fn-rtc-oldest-wait (fn-rtc-uses s2)) (fn-rtc-oldest-wait (fn-rtc-uses s)))
+                  (equal (fn-rtc-free-pool-buf 0 (fn-rtc-pool s2) (fn-rtc-config s))
+                         (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s)))
+                  (equal (fn-rtc-mstates s2) (fn-rtc-mstates s)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-rtc-req-submit fn-rtc-issue-frame fn-rtc-with-accessors fn-rtc-buffer-accessors
+                                               fn-rtc-kind-out-cons fn-rtc-oldest-wait-cons-other
+                                               fn-hld-free-pool-of-set-buffer-nonfree (:type-prescription nfix) (:e equal)
+                                               fn-rtc-get-of-cons car-cons cdr-cons (:e fn-rtc-get) (:e zp) (:e nfix) (:e binary-+)
+                                               member-equal (:e member-equal) posp natp mv-nth (:e mv-nth)
+                                               (:type-prescription fn-rtc-h-buf) fn-rtc-h-buf)
+                                             (theory 'minimal-theory)))))
+(defthm fn-hld-close-admission-frame
+  (implies (posp id)
+           (let ((s2 (mv-nth 0 (fn-rtc-req-close r id inc s))))
+             (and (equal (fn-rtc-kind-out-p :grant 0 0 (fn-rtc-uses s2)) (fn-rtc-kind-out-p :grant 0 0 (fn-rtc-uses s)))
+                  (equal (fn-rtc-oldest-wait (fn-rtc-uses s2)) (fn-rtc-oldest-wait (fn-rtc-uses s)))
+                  (equal (fn-rtc-pool s2) (fn-rtc-pool s))
+                  (equal (fn-rtc-config s2) (fn-rtc-config s))
+                  (equal (fn-rtc-mstates s2) (fn-rtc-mstates s)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-rtc-req-close fn-rtc-issue-frame fn-rtc-with-accessors
+                                               fn-rtc-kind-out-cons fn-rtc-oldest-wait-cons-other
+                                               fn-rtc-get-of-cons car-cons cdr-cons (:e fn-rtc-get) (:e zp) (:e nfix) (:e binary-+)
+                                               (:e equal) posp natp mv-nth (:e mv-nth))
+                                             (theory 'minimal-theory)))))
+))
+
+(defthm fn-hld-request-keeps-invp
+  (implies (and (fn-rtc-invp s) (fn-rtc-instance-active-p id inc s)
+                (or (equal (fn-rtc-get 0 r) :close)
+                    (and (equal (fn-rtc-get 0 r) :submit) (not (equal (fn-rtc-get 1 r) :pool)))))
+           (and (fn-rtc-invp (mv-nth 0 (fn-rtc-request r id inc s)))
+                (equal (fn-rtc-mstates (mv-nth 0 (fn-rtc-request r id inc s))) (fn-rtc-mstates s))))
+  :hints (("Goal" :in-theory (union-theories '(fn-rtc-invp-is-core-and-admission fn-rtc-request-preserves-core-invp
+                                               fn-rtc-request-preserves-free-slot fn-rtc-request-preserves-accept
+                                               fn-rtc-request-config-frame fn-hld-submit-admission-frame
+                                               fn-hld-close-admission-frame posp natp)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-rtc-instance-active-p)
+                 (:instance fn-rtc-request)))))
+
+(local (progn
+(defthm fn-hld-get-past-len
+  (implies (<= (len l) (nfix i)) (equal (fn-rtc-get i l) nil))
+  :hints (("Goal" :in-theory (enable fn-rtc-get))))
+(defthm fn-hld-held-is-active
+  (implies (and (fn-rtc-core-invp s) (posp id) (equal (fn-rtc-s-inc (fn-rtc-slot id s)) inc)
+                (member-eq (fn-rtc-s-status (fn-rtc-slot id s)) '(:live :closing)))
+           (fn-rtc-instance-active-p id inc s))
+  :hints (("Goal" :in-theory (union-theories '(fn-rtc-instance-active-p (:e fn-rtc-s-status) posp natp nfix
+                                               member-equal (:e member-equal) (:type-prescription fn-rtc-s-inc))
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-rtc-slot) (:instance fn-rtc-core-invp)
+                 (:instance fn-hld-get-past-len (i id) (l (fn-rtc-slots s)))))))
+(defthm fn-hld-live-is-active
+  (implies (and (fn-rtc-core-invp s) (fn-rtc-live-p id inc s) (posp id))
+           (fn-rtc-instance-active-p id inc s))
+  :hints (("Goal" :in-theory (union-theories '(fn-rtc-live-p fn-hld-held-is-active member-equal (:e member-equal))
+                                             (theory 'minimal-theory)))))
+(defthm fn-hld-workspace-okp
+  (implies (and (fn-rtc-buffer-okp h b s) (equal (fn-rtc-b-owner b) o) (equal (fn-rtc-get 0 o) :workspace))
+           (let ((id (fn-rtc-get 1 o)) (inc (fn-rtc-get 2 o)))
+             (and (posp id) (equal (fn-rtc-s-inc (fn-rtc-slot id s)) inc)
+                  (member-eq (fn-rtc-s-status (fn-rtc-slot id s)) '(:live :closing)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-rtc-buffer-okp posp natp nfix fn-rtc-get-of-cons car-cons cdr-cons (:e fn-rtc-get))
+                                             (theory 'minimal-theory)))))
+(defthm fn-hld-workspace-owner-is-active-o
+  (implies (and (fn-rtc-core-invp s) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) o) (equal (fn-rtc-get 0 o) :workspace))
+           (fn-rtc-instance-active-p (fn-rtc-get 1 o) (fn-rtc-get 2 o) s))
+  :rule-classes nil
+  :hints (("Goal" :use (fn-rtc-core-invp-buffer (:instance fn-hld-workspace-okp (b (fn-rtc-buffer h s))))
+           :in-theory (union-theories '(fn-hld-held-is-active) (theory 'minimal-theory)))))
+(defthm fn-hld-workspace-fields
+  (implies (equal x (list :workspace id inc))
+           (and (equal (fn-rtc-get 0 x) :workspace) (equal (fn-rtc-get 1 x) id) (equal (fn-rtc-get 2 x) inc)))
+  :rule-classes nil)
+))
+
+; An instance holding a workspace is active (so its requests are the contract's).
+(defthm fn-hld-workspace-owner-is-active
+  (implies (and (fn-rtc-core-invp s) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) (list :workspace id inc)))
+           (fn-rtc-instance-active-p id inc s))
+  :hints (("Goal" :use ((:instance fn-hld-workspace-owner-is-active-o (o (list :workspace id inc)))
+                        (:instance fn-hld-workspace-fields (x (fn-rtc-b-owner (fn-rtc-buffer h s)))))
+           :in-theory (union-theories '(fn-rtc-get-of-cons car-cons cdr-cons (:e fn-rtc-get)) (theory 'minimal-theory)))))
+
+(local (defthm fn-hld-close-refused-when-inactive
+  (implies (and (fn-rtc-core-invp s) (not (fn-rtc-instance-active-p id inc s)))
+           (equal (mv-nth 0 (fn-rtc-req-close r id inc s)) s))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-req-close) (fn-rtc-core-invp fn-rtc-instance-active-p fn-rtc-live-p fn-rtc-issue
+                                                     fn-rtc-with-slot fn-rtc-slot fn-rtc-s-res fn-rtc-use-bound))
+           :use (fn-hld-live-is-active)))))
+(defthm fn-hld-close-keeps-invp
+  (implies (fn-rtc-invp s)
+           (and (fn-rtc-invp (mv-nth 0 (fn-rtc-request '(:close) id inc s)))
+                (equal (fn-rtc-mstates (mv-nth 0 (fn-rtc-request '(:close) id inc s))) (fn-rtc-mstates s))))
+  :hints (("Goal" :cases ((fn-rtc-instance-active-p id inc s))
+           :in-theory (union-theories '(fn-rtc-request (:e fn-rtc-get) fn-hld-close-refused-when-inactive)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-hld-request-keeps-invp (r '(:close)))
+                 fn-rtc-invp-is-core-and-admission))))
+(defthm fn-hld-close-keeps-hll-invp
+  (implies (fn-hll-invp st) (fn-hll-invp (mv-nth 0 (fn-rtc-request '(:close) id inc st))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hld-hll-invp-is fn-hld-close-keeps-invp) (theory 'minimal-theory)))))
+(defthm fn-hld-end-keeps-invp
+  (implies (fn-hll-invp st) (fn-hll-invp (mv-nth 0 (fn-hld-end id inc st))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hld-end fn-rtc-x-request-is fn-hld-hll-invp-st-p fn-hld-close-keeps-hll-invp
+                                               fn-hld-settle-keeps-invp)
+                                             (theory 'minimal-theory)))))
+
+; The quantum: what fn-hld-quantum leaves is ST (refused) or HL5a's quantum state of a render-ready workspace.
+(local (defthm fn-hld-quantum-state-cases
+  (implies (and (fn-rtc-st-p st) (fn-cbor-octet-listp out))
+           (or (equal (mv-nth 0 (fn-hld-quantum h id inc out st)) st)
+               (and (equal (mv-nth 0 (fn-hld-quantum h id inc out st)) (fn-hl-quantum-state h out id inc st))
+                    (fn-hl-render-ready-p h id inc st))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t :in-theory (union-theories '(fn-hld-quantum fn-hl-quantum-state fn-hl-render-ready-p
+                                               fn-dss-out-len-is-len fn-hld-readers fn-rtc-x-live-p-is fn-rtc-b-gen
+                                               fn-hld-puts-keeps-st-p fn-rtc-st-p-is-shapep natp nfix (:type-prescription fn-rtc-nbufs) (:e zp) fn-hld-nthcdr-0 fn-rtc-get-of-cons car-cons cdr-cons (:e fn-rtc-get)
+                                               (:type-prescription len))
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-hld-copy-is-puts (i 0))
+                 (:instance fn-hld-puts-keeps-st-p (off 0) (w out))
+                 (:instance fn-rtc-c-shapep-buffer (s st))
+                 (:instance fn-rtc-x-request-is (r (list :submit :send (list h (fn-rtc-get 0 (fn-rtc-buffer h st)) 0 (len out)) nil))
+                            (fn-rtc-st (fn-rtc-st$a-puts h 0 out st)))
+                 (:instance fn-rtc-request (r (list :submit :send (list h (fn-rtc-get 0 (fn-rtc-buffer h st)) 0 (len out)) nil))
+                            (s (fn-rtc-st$a-puts h 0 out st))))))))
+(local (defthm fn-hld-active-of-puts
+  (implies (fn-rtc-invp s)
+           (equal (fn-rtc-instance-active-p id inc (fn-rtc-st$a-puts h off w s))
+                  (fn-rtc-instance-active-p id inc s)))
+  :hints (("Goal" :in-theory (union-theories '(fn-rtc-instance-active-p fn-hld-puts-keeps-invp) (theory 'minimal-theory))
+           :use ((:instance fn-rtc-slot (s (fn-rtc-st$a-puts h off w s))) (:instance fn-rtc-slot))))))
+(defthm fn-hld-quantum-state-keeps-invp
+  (implies (and (fn-rtc-invp s) (fn-cbor-octet-listp out) (fn-hl-render-ready-p h id inc s))
+           (and (fn-rtc-invp (fn-hl-quantum-state h out id inc s))
+                (equal (fn-rtc-mstates (fn-hl-quantum-state h out id inc s)) (fn-rtc-mstates s))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hl-quantum-state fn-hl-render-ready-p fn-rtc-request (:e fn-rtc-get)
+                                               fn-rtc-get-of-cons car-cons cdr-cons fn-hld-puts-keeps-invp fn-hld-active-of-puts
+                                               (:e zp) (:e nfix) (:e binary-+) (:e unary--))
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-hld-request-keeps-invp
+                            (r (list :submit :send (list h (fn-rtc-get 0 (fn-rtc-buffer h s)) 0 (len out)) nil))
+                            (s (fn-rtc-st$a-puts h 0 out s)))
+                 (:instance fn-hld-workspace-owner-is-active)
+                 (:instance fn-rtc-invp-is-core-and-admission)))))
+(defthm fn-hld-quantum-keeps-invp
+  (implies (and (fn-hll-invp st) (fn-dss-out-p out))
+           (fn-hll-invp (mv-nth 0 (fn-hld-quantum h id inc out st))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hld-hll-invp-is fn-hld-hll-invp-st-p fn-dss-out-p-is-octet-listp
+                                               fn-hld-quantum-state-keeps-invp)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-hld-quantum-state-cases)
+                 (:instance fn-hld-hll-invp-st-p (s st))))))
