@@ -1,0 +1,12 @@
+{
+ "detail": "tests.test_native_mux's connections_cost case is red on the developer and production images from memory landing 3+4a on: the memory gate prices the OVER reply with the named adapter A-OVER-WINDOW-FIT (books/memory-model.lisp fn-mm-window-fit, fn-mm-over-window-fit, fn-mm-article-reply-octets; host/owner-host.lisp fn-owner-memory-configure installs fn-owner-memory-over-window; host/native/owner.lisp fnn-owner-over-window serves min(W, W')), and at the run's C' the test's extra connection is answered \"400 too many connections\". Measured: hbox m15-r3 at lane/memory e6aab64bb (2/4; refused_at_start ok on both images), persvati at train 89's head a8685dab1. The adapter was agreed by C, the coordinator and A (build/ready/memory-l34a.md, Named adapters). Retirement: landing O1, Builder O's OVER rendered into one pool lease, which deletes M's granted fn-mm-*over-window* terms; the two native rows are the subjects.",
+ "file": "books/memory-model.lisp",
+ "id": "A-OVER-WINDOW-FIT",
+ "notes": [],
+ "owner": "builder-C",
+ "severity": "medium",
+ "source": "Coordinator 2026-10-10: the Fungus faerie's merge of lane/spans@96326e1ff onto train 89's head",
+ "state": "open",
+ "title": "test_native_mux connections_cost is red at C' under the OVER-window adapter until O1",
+ "updated": "2026-10-11T01:30:00Z"
+}

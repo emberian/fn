@@ -81,6 +81,22 @@
    "item": "TRANSIT-REVOKED-CONTROL-REFUSED",
    "owner": "builder-C",
    "ruling": "coordinator 2026-10-10: dev serves this defect today; enters by amendment, retired by the packet-4 READY"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_mux.DeveloperImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live",
+   "dev_sha": "a8685dab1",
+   "item": "A-OVER-WINDOW-FIT",
+   "owner": "builder-C",
+   "ruling": "coordinator 2026-10-10 (rule 6b-3): carried in READYs and STATE but absent from the baseline, so an obliged image gate refused the merge of lane/spans onto train 89's head; enters by amendment, owner builder-C, retired by landing O1 (O's pool lease)"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_mux.ProductionImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live",
+   "dev_sha": "a8685dab1",
+   "item": "A-OVER-WINDOW-FIT",
+   "owner": "builder-C",
+   "ruling": "coordinator 2026-10-10 (rule 6b-3): carried in READYs and STATE but absent from the baseline, so an obliged image gate refused the merge of lane/spans onto train 89's head; enters by amendment, owner builder-C, retired by landing O1 (O's pool lease)"
   }
  ]
 }
