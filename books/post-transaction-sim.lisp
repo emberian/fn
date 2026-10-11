@@ -18,6 +18,10 @@
 (in-package "ACL2")
 (include-book "post-transaction")
 (include-book "post-transaction-crash")
+(set-verify-guards-eagerness 0)
+; The proofs below run in the machine's theory as of its P5 statement: the machine book's later
+; proof lemmas (P0, P3) and the crash book's rules stay disabled here unless a hint names them.
+(local (in-theory (current-theory 'fn-ptx-p5)))
 
 ; -----------------------------------------------------------------------------
 ; The message and the record.
@@ -75,8 +79,13 @@
 ; batch, nothing in flight and no fault (fn-ptd-begin's take and append need all three) and has
 ; acknowledged every committed record (the commit's acknowledgement counts one), and while
 ; hashing the digest's state is the message's; in flight the projection is the kernel's before the
-; take (one txid less), the extents agree, the driver's record is the machine's, and the message
-; with the padding is the driver's entry.
+; take (one txid less), the extents agree, the driver's record is the machine's, the message
+; with the padding is the driver's entry, and the kernel holds the record as the driver's
+; invariant fn-ptd-invp has it: before the seal the batch is the record, nothing is in flight and
+; the append admits it (so the kernel is not faulted); after the seal the record is in flight
+; and the kernel is :appended.  (Restated from the counterexample of a driver at :writing over a
+; kernel with an empty batch: its two :ok completions answer :posted and commit nothing, while
+; the machine commits the record.)
 (defun fn-ptx-ptd-phase (ph)
   (case ph ((:idle :reading :hashing) :ready) (:extending :extending) (:extsyncing :extsyncing)
     ((:payload-writing :log-writing) :writing) (:committing :syncing) (:fenced :fenced) (otherwise nil)))
@@ -106,7 +115,13 @@
                    (equal (fn-ptd-nxt ptd) (fn-ptx-nxt m))
                    (equal (fn-ptd-rec ptd) (fn-ptx-record m id inc fn-rtc-st))
                    (equal (append w (fn-bs-zeros (nfix (fn-rtc-get 2 (fn-ptx-hs m)))))
-                          (fn-lg-log (list (fn-ptd-rec ptd)) (fn-lgk-last ks) (fn-ptx-unit m))))))))))
+                          (fn-lg-log (list (fn-ptd-rec ptd)) (fn-lgk-last ks) (fn-ptx-unit m)))
+                   (if (equal pph :syncing)
+                       (and (equal (fn-lgk-phase ks) :appended)
+                            (equal (fn-lgk-inflight ks) (list (fn-ptd-rec ptd)))
+                            (not (consp (fn-lgk-batch ks))))
+                     (and (equal (fn-lgk-batch ks) (list (fn-ptd-rec ptd)))
+                          (fn-lg-append-admitsp ks (fn-ptx-unit m) (fn-ptd-nxt ptd)))))))))))
 
 ; The rely (the environment's side): across a step into the hashing phase the message is octets
 ; and its head reads back as written (the frame header of its length, the chain field); across a
@@ -156,7 +171,7 @@
 ; layer's view-state of its slot), the quantum, and the host's outcome were a log action to fail.
 ; ST2 of a step is the next step's ST (the view at the following event); the last step's is its own.
 (defun-nx fn-ptx-trace-run (m trace id inc)
-  (declare (xargs :measure (len trace) :hints (("Goal" :in-theory (disable fn-ptx-step)))))
+  (declare (xargs :measure (len trace) :hints (("Goal" :in-theory (union-theories '(len o< o-finp o-p natp (:type-prescription len) (:compound-recognizer natp-compound-recognizer)) (theory 'minimal-theory))))))
   ; (mv m-final ptd-inputs posted-records): the records of the machine's answers of code 0, in order
   (if (atom trace)
       (mv m nil nil)
@@ -171,7 +186,7 @@
                   (cons (fn-ptx-record m id inc st) posted)
                 posted)))))))
 (defun-nx fn-ptx-trace-relies-p (m trace id inc)
-  (declare (xargs :measure (len trace) :hints (("Goal" :in-theory (disable fn-ptx-step fn-ptx-rely)))))
+  (declare (xargs :measure (len trace) :hints (("Goal" :in-theory (union-theories '(len o< o-finp o-p natp (:type-prescription len) (:compound-recognizer natp-compound-recognizer)) (theory 'minimal-theory))))))
   ; the rely at every step, and every event the machine's own slot's
   (if (atom trace) t
     (let* ((x (car trace)) (ev (nth 0 x)) (st (nth 1 x)) (q (nth 2 x))
@@ -181,11 +196,21 @@
            (fn-ptx-rely m m2 id inc st st2)
            (fn-ptx-trace-relies-p m2 (cdr trace) id inc)))))
 
+; The kernel the open hands the machine: L's open kernel (no batch, nothing in flight, every
+; committed record acknowledged) that is not faulted.  The open's kernel is one
+; (fn-ptx-open-kernelp-of-the-open: fn-lgk-recover leaves :ready), and the relation carries
+; "not faulted" through every phase but :fenced (fn-ptx-related-kernel-is-faulted-only-fenced), so
+; the machine is never stepped against a faulted kernel.  Without it P4-2 is false: a kernel in
+; :fault with no batch is fn-ptd-open-kernelp and R-related to the same store (neither reads the
+; phase), fn-ptd-begin refuses its take, and the machine, whose projection fn-ptx-kd-of reads no
+; phase, posts.
+(defun fn-ptx-open-kernelp (ks)
+  (and (fn-ptd-open-kernelp ks) (not (equal (fn-lgk-phase ks) :fault))))
+
 ; P4-2 (KEYSTONE, AckEligible => DurableCommitEvidence for the machine): from the machine the open
 ; admits over L's open (KS0 related to BS), along any trace that keeps the rely, the records the
 ; machine answered :posted are exactly fn-ptd's posted records over the mapped inputs, in order.
-;   (implies (and (fn-lgk-relp bs ks0 ino genesis max) (fn-ptd-open-kernelp ks0)
-;                 (not (equal (fn-lgk-phase ks0) :fault))
+;   (implies (and (fn-lgk-relp bs ks0 ino genesis max) (fn-ptx-open-kernelp ks0)
 ;                 (equal ext (len (fn-bs-durable-content bs ino)))
 ;                 (equal geo (list (fn-bs-unit bs) max hmax))
 ;                 (fn-ptx-okp (fn-ptx-opened (fn-ptx-kd-of ks0) ext geo))
@@ -456,3 +481,17 @@
                                    fn-ptx-kd-mk fn-ptx-kd-count fn-ptx-kd-frontier fn-ptx-kd-txid fn-ptx-kd-acked)
                                   (fn-lg-log fn-ptx-log-of-one fn-lg-last-trailer fn-lgk-make fn-lgk-last fn-lgk-frontier
                                    fn-lgk-committed fn-lgk-acked fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-phase)))))
+
+; The open's kernel is not faulted, and a related kernel is faulted only when the machine is
+; :fenced: the machine is never stepped against a faulted kernel.
+(defthm fn-ptx-open-kernelp-of-the-open
+  (fn-ptx-open-kernelp (fn-lgt-recover c genesis unit max floor))
+  :hints (("Goal" :use ((:instance fn-ptd-open-kernelp-of-the-open))
+                  :in-theory (e/d (fn-lgt-recover fn-lgk-recover)
+                                  (fn-ptd-open-kernelp fn-lg-scan fn-lg-scan-last fn-lgt-next-after)))))
+(defthm fn-ptx-related-kernel-is-faulted-only-fenced
+  (implies (and (fn-ptx-simp m ptd id inc st) (not (equal (fn-ptx-ph m) :fenced)))
+           (not (equal (fn-lgk-phase (fn-ptd-ks ptd)) :fault)))
+  :hints (("Goal" :in-theory (e/d (fn-ptx-simp fn-ptx-ptd-phase fn-lg-append-admitsp)
+                                  (fn-ptx-message fn-ptx-record fn-ptx-hash-invp fn-lg-log fn-bs-zeros
+                                   fn-ptx-kd-of fn-ptx-kd-before-take)))))
