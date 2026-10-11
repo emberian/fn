@@ -118,7 +118,7 @@
 ; Vocabulary
 
 (defconst *fn-rtc-kinds*
-  '(:recv :send :pread :pwrite :fsync :close :accept :timer :bp-send :hand :pool :grant))
+  '(:recv :send :pread :pwrite :fsync :close :accept :timer :bp-send :hand :pool :grant :extend :opened))
 
 ; The worker writes the buffer (:in) or reads it (:out); the rest carry none.
 (defconst *fn-rtc-in-kinds* '(:recv :pread))
@@ -143,10 +143,26 @@
 ; of a grant only by the :pool completion, a transfer (T17c).
 (defconst *fn-rtc-pool-kinds* '(:pool))
 
+; v2.2 (Builder P's POST machine).  :extend is a machine kind, unbuffered, with
+; :fsync's discipline: (:submit :extend nil (FILE FROM TO)) asks the host to make
+; FILE's preallocated extent reach TO from FROM (host meaning:
+; fnn-log-preallocate); its extras are three naturals below 2^64 with FROM < TO
+; (`fn-rtc-kind-extrap'), its completion (:done 0) | (:failed r) | (:cancelled).
+; :opened is the layer's, like :accept: the initial state arms one
+; (:opened J 1 OP (0)) action per static slot J (`fn-rtc-arm-opened'); the host
+; completes it once, after the store opens and before it accepts, with
+; (:opened J 1 OP (:done 0) DATA), DATA = (KD EXT GEO), and the static machine
+; is stepped with (:opened (:done 0) J 1 DATA) (`fn-rtc-ev-opened-data').  A
+; failed or cancelled :opened completion also steps the static machine, with
+; the event (:opened OUT J 1) and no DATA, and consumes the use; only the
+; delivery of DATA is gated on (:done 0).  Being a completion of an
+; outstanding use, it acts at most once (T6), and no machine can submit or
+; cancel it.
+
 ; What an instance may submit; :close has its own request and :accept is the
 ; layer's.
 (defconst *fn-rtc-machine-kinds*
-  '(:recv :send :pread :pwrite :fsync :timer :bp-send :hand :pool))
+  '(:recv :send :pread :pwrite :fsync :timer :bp-send :hand :pool :extend))
 
 ; Actions are the completion kinds plus :cancel, which has no completion of its
 ; own: it asks the host to finish the named action early.
@@ -164,6 +180,18 @@
   (and (true-listp x) (<= (len x) 2)
        (or (atom x) (and (natp (car x)) (< (car x) (expt 2 64))))
        (or (atom (cdr x)) (and (natp (cadr x)) (< (cadr x) (expt 2 64))))))
+
+(defun fn-rtc-extend-extrap (x)
+  (declare (xargs :guard t))
+  (and (true-listp x) (equal (len x) 3)
+       (natp (car x)) (< (car x) (expt 2 64))
+       (natp (cadr x)) (< (cadr x) (expt 2 64))
+       (natp (caddr x)) (< (caddr x) (expt 2 64))
+       (< (cadr x) (caddr x))))
+
+(defun fn-rtc-kind-extrap (kind x)
+  (declare (xargs :guard t))
+  (if (eq kind :extend) (fn-rtc-extend-extrap x) (fn-rtc-extrap x)))
 
 (defun fn-rtc-get (i l)
   (declare (xargs :guard t))
@@ -663,8 +691,10 @@
          (iff (member-eq kind '(:accept :grant)) (equal id 0))
          (implies (eq kind :close)
                   (eq (fn-rtc-s-status (fn-rtc-slot id s)) :closing))
-         (implies (not (member-eq kind '(:accept :grant :close)))
+         (implies (not (member-eq kind '(:accept :grant :close :opened)))
                   (member-eq (fn-rtc-get 0 u) (cons :wait *fn-rtc-machine-kinds*)))
+         (implies (eq kind :opened)
+                  (and (<= 1 id) (<= id (fn-rtc-nstatic cfg)) (null hd)))
          (implies (fn-rtc-handlep hd)
                   (let* ((h (fn-rtc-h-buf hd)) (b (fn-rtc-buffer h s)) (o (fn-rtc-b-owner b)))
                     (and (< h (fn-rtc-nbufs cfg))
@@ -845,8 +875,9 @@
     (cond ((eq tag :failed)
            (if (member-eq n *fn-rtc-failure-reasons*) o '(:failed :other)))
           ((not (member-eq tag '(:done :short))) o)
-          ;; a hand, a grant and a pool lease complete (:done 0) or not at all
-          ((member-eq kind '(:hand :pool :grant))
+          ;; a hand, a grant, a pool lease, an extent and the store's open
+          ;; complete (:done 0) or not at all
+          ((member-eq kind '(:hand :pool :grant :extend :opened))
            (if (and (eq tag :done) (equal n 0)) o '(:failed :malformed-completion)))
           ((member-eq kind *fn-rtc-in-kinds*)
            (if (and (natp n)
@@ -1076,7 +1107,7 @@
     (cond
      ((not (and (member-eq kind *fn-rtc-machine-kinds*)
                 (fn-rtc-live-p id inc s)
-                (fn-rtc-extrap extra)
+                (fn-rtc-kind-extrap kind extra)
                 (implies (eq kind :hand) (fn-rtc-hand-target-okp extra id s))
                 (or (eq kind :hand)
                     (not (fn-rtc-kind-out-p (if (eq kind :pool) :wait kind) id inc
@@ -1500,6 +1531,16 @@
                               q)
               (mv-let (s3 acts2) (fn-rtc-rearm s2)
                 (mv s3 (append acts acts2) refused (+ base c))))))
+         ((eq kind :opened)
+          ;; the store opened: the static machine is told, with the open's
+          ;; DATA when the outcome is (:done 0)
+          (mv-let (s2 acts refused c)
+            (fn-rtc-deliver s1 id inc
+                            (fn-rtc-ev kind out id inc
+                                       (if (eq (fn-rtc-get 0 out) :done) (list (fn-rtc-e-data e)) nil))
+                            q)
+            (mv-let (s3 acts2) (fn-rtc-rearm s2)
+              (mv s3 (append acts acts2) refused (+ base c)))))
          (t
           ;; v2.1: a delivery may issue a pool request, so the :grant is
           ;; re-armed after every step
@@ -1570,9 +1611,25 @@
   (declare (xargs :guard (natp n)))
   (if (zp n) nil (cons '(0 (:free) nil) (fn-rtc-free-pool (- n 1)))))
 
+; Arm the store-opened action of static slots J .. J+N-1 (each at incarnation 1).
+(defun fn-rtc-arm-opened (j n s)
+  (declare (xargs :guard (and (natp j) (natp n)) :measure (nfix n)))
+  (if (zp n)
+      (mv s nil)
+    (mv-let (s2 a2)
+      (fn-rtc-arm-opened (+ 1 (nfix j)) (- n 1)
+                         (fn-rtc-issue (list :opened j 1 (fn-rtc-next-op s) nil) s))
+      (mv s2 (cons (list :opened j 1 (fn-rtc-next-op s) (list 0)) a2)))))
+
+(defthm fn-rtc-arm-opened-lists
+  (true-listp (mv-nth 1 (fn-rtc-arm-opened j n s))))
+
+; The DATA a delivered :opened event carries (Builder P's machine reads it).
+(defun fn-rtc-ev-opened-data (ev) (declare (xargs :guard t)) (fn-rtc-get 4 ev))
+
 (defun fn-rtc-init (cfg)
   (declare (xargs :guard t))
-  (fn-rtc-rearm
+  (mv-let (s0 a0) (fn-rtc-arm-opened 1 (fn-rtc-nstatic cfg)
    (let ((ns (fn-rtc-nstatic cfg)))
      (fn-rtc-make cfg
                   (cons *fn-rtc-listener*
@@ -1583,7 +1640,9 @@
                   (cons nil (append (fn-rtc-static-mstates 1 ns)
                                     (make-list (nfix (- (fn-rtc-nslots cfg) (+ 1 ns)))
                                                :initial-element nil)))
-                  0))))
+                  0)))
+    (mv-let (s1 a1) (fn-rtc-rearm s0)
+      (mv s1 (append a0 a1)))))
 
 ; =============================================================================
 

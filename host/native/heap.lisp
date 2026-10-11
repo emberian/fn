@@ -536,7 +536,10 @@ the header's totals are unseen.  Unlocked: as fresh as the read."
 
 ;; The configuration history's octets on disk (config/, the lstat sizes of
 ;; its regular files under the profile's listing bound), which loading the
-;; profile reads whole (fnn-load-config-overlay); NIL when unobserved.
+;; profile reads whole (fnn-load-config-overlay); NIL when an OS call fails
+;; (unobserved).  A namespace past the bound faults here as it faults the
+;; loader (fnn-list-directory-bounded), and a core failure is a fault: both
+;; reach the fence, since the served paths (mux, owner, io) read this figure.
 (defun fnn-heap-config-octets (root profile)
   (handler-case
       (and (stringp root) profile
@@ -544,7 +547,7 @@ the header's totals are unseen.  Unlocked: as fresh as the read."
                                       ;; the reader's own namespace bound
                                       ;; (io.lisp fnn-bridge-config-observation-limit)
                                       (fnn-core 'fn-store-config-observation-limit profile)))
-    (error () nil)))
+    (fnn-os-error () nil)))
 
 ;; The collector's card size of this image (SBCL's gencgc), NIL when the
 ;; runtime does not name one.

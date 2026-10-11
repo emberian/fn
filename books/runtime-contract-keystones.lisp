@@ -47,6 +47,14 @@
                          id inc (list hd2)) q)
             (declare (ignore a r c))
             (mv-let (s3 a2) (fn-rtc-rearm s2) (declare (ignore a2)) s3))))
+       ((eq kind :opened)
+        (mv-let (s2 a r c)
+          (fn-rtc-deliver s1 id inc
+            (fn-rtc-ev kind out id inc
+                       (if (eq (fn-rtc-get 0 out) :done) (list (fn-rtc-e-data e)) nil))
+            q)
+          (declare (ignore a r c))
+          (mv-let (s3 a2) (fn-rtc-rearm s2) (declare (ignore a2)) s3)))
        (t (mv-let (s2 a r c)
             (fn-rtc-deliver s1 id inc (fn-rtc-ev kind out id inc nil) q)
             (declare (ignore a r c))
@@ -615,3 +623,40 @@
                (:executable-counterpart fn-rtc-get)))
            :do-not-induct t :cases ((equal j 0))
            :use (fn-rtc-invp-listener fn-rtc-end-use-retires-last))))
+
+;; v2.2: the :extend kind (extent request) -- KX1, KX1r, KX2.
+(defthm fn-rtc-extend-request-is-the-action
+  (implies (and (eq (fn-rtc-get 1 r) :extend)
+                (not (mv-nth 2 (fn-rtc-req-submit r id inc s))))
+           (and (fn-rtc-extend-extrap (fn-rtc-get 3 r))
+                (null (fn-rtc-get 2 r))
+                (equal (mv-nth 1 (fn-rtc-req-submit r id inc s))
+                       (list (list :extend id inc (fn-rtc-next-op s)
+                                   (cons (fn-rtc-s-res (fn-rtc-slot id s)) (fn-rtc-get 3 r)))))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-req-submit fn-rtc-buffered-kind-p fn-rtc-kind-extrap)
+                                  (fn-rtc-issue fn-rtc-live-p fn-rtc-kind-out-p fn-rtc-next-op fn-rtc-use-bound
+                                   fn-rtc-hand-target-okp fn-rtc-s-res fn-rtc-slot fn-rtc-get)))))
+
+(defthm fn-rtc-extend-refusal-changes-nothing
+  (implies (and (eq (fn-rtc-get 1 r) :extend)
+                (mv-nth 2 (fn-rtc-req-submit r id inc s)))
+           (and (equal (mv-nth 0 (fn-rtc-req-submit r id inc s)) s)
+                (null (mv-nth 1 (fn-rtc-req-submit r id inc s)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-req-submit fn-rtc-buffered-kind-p fn-rtc-kind-extrap)
+                                  (fn-rtc-issue fn-rtc-live-p fn-rtc-kind-out-p fn-rtc-next-op fn-rtc-use-bound
+                                   fn-rtc-hand-target-okp fn-rtc-s-res fn-rtc-slot fn-rtc-get)))))
+
+(local (defthm fn-rtc-len1-shape
+  (implies (and (true-listp o) (equal (len o) 1)) (equal o (list (car o)))) :rule-classes nil))
+(local (defthm fn-rtc-len2-shape
+  (implies (and (true-listp o) (equal (len o) 2)) (equal o (list (car o) (cadr o)))) :rule-classes nil))
+
+(defthm fn-rtc-extend-delivered-outcome
+  (implies (and (eq (fn-rtc-get 0 u) :extend) (fn-rtc-completionp e))
+           (let ((o (fn-rtc-delivered-outcome u e)))
+             (or (equal o '(:done 0)) (equal o '(:cancelled))
+                 (and (eq (fn-rtc-get 0 o) :failed) (equal (len o) 2)
+                      (member-eq (fn-rtc-get 1 o) *fn-rtc-failure-reasons*)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-delivered-outcome fn-rtc-completionp fn-rtc-outcomep)
+                                  (fn-rtc-get))
+           :use ((:instance fn-rtc-len1-shape (o (fn-rtc-get 4 e))) (:instance fn-rtc-len2-shape (o (fn-rtc-get 4 e)))))))

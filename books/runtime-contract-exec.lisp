@@ -158,7 +158,7 @@
     (cond ((eq tag :failed)
            (if (member-eq n *fn-rtc-failure-reasons*) o '(:failed :other)))
           ((not (member-eq tag '(:done :short))) o)
-          ((member-eq kind '(:hand :pool :grant))
+          ((member-eq kind '(:hand :pool :grant :extend :opened))
            (if (and (eq tag :done) (equal n 0)) o '(:failed :malformed-completion)))
           ((member-eq kind *fn-rtc-in-kinds*)
            (if (and (natp n)
@@ -307,7 +307,7 @@
     (cond
      ((not (and (member-eq kind *fn-rtc-machine-kinds*)
                 (fn-rtc-x-live-p id inc fn-rtc-st)
-                (fn-rtc-extrap extra)
+                (fn-rtc-kind-extrap kind extra)
                 (implies (eq kind :hand) (fn-rtc-x-hand-target-okp extra id fn-rtc-st))
                 (or (eq kind :hand)
                     (not (fn-rtc-kind-out-p (if (eq kind :pool) :wait kind) id inc
@@ -609,6 +609,14 @@
                               q fn-rtc-st)
             (mv-let (fn-rtc-st acts2) (fn-rtc-x-rearm fn-rtc-st)
               (mv fn-rtc-st (append acts acts2) refused (+ base c)))))
+         ((eq kind :opened)
+          (mv-let (fn-rtc-st acts refused c)
+            (fn-rtc-x-deliver id inc
+                              (fn-rtc-ev kind out id inc
+                                         (if (eq (fn-rtc-get 0 out) :done) (list (fn-rtc-e-data e)) nil))
+                              q fn-rtc-st)
+            (mv-let (fn-rtc-st acts2) (fn-rtc-x-rearm fn-rtc-st)
+              (mv fn-rtc-st (append acts acts2) refused (+ base c)))))
          (t
           (mv-let (fn-rtc-st acts refused c)
             (fn-rtc-x-deliver id inc (fn-rtc-ev kind out id inc nil) q fn-rtc-st)
@@ -631,10 +639,25 @@
            (fn-rtc-st (fn-rtc-st-set-mstate j (fn-rtc-m-static-init j) fn-rtc-st)))
       (fn-rtc-x-statics (+ 1 (nfix j)) (- n 1) fn-rtc-st))))
 
-; A fresh state for configuration CFG: the static instances live, the
-; listener's :accept armed.
+; Arm the store-opened action of static slots J .. J+N-1 (`fn-rtc-arm-opened').
+(defun fn-rtc-x-arm-opened (j n fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st :guard (and (natp j) (natp n)) :measure (nfix n)))
+  (if (zp n)
+      (mv fn-rtc-st nil)
+    (let* ((op (fn-rtc-st-next-op fn-rtc-st))
+           (fn-rtc-st (fn-rtc-st-issue (list :opened j 1 op nil) fn-rtc-st)))
+      (mv-let (fn-rtc-st a2) (fn-rtc-x-arm-opened (+ 1 (nfix j)) (- n 1) fn-rtc-st)
+        (mv fn-rtc-st (cons (list :opened j 1 op (list 0)) a2))))))
+
+(defthm fn-rtc-x-arm-opened-lists
+  (true-listp (mv-nth 1 (fn-rtc-x-arm-opened j n fn-rtc-st))))
+
+; A fresh state for configuration CFG: the static instances live, each
+; store-opened action and the listener's :accept armed.
 (defun fn-rtc-x-init (cfg fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st))
   (let* ((fn-rtc-st (fn-rtc-st-init cfg fn-rtc-st))
          (fn-rtc-st (fn-rtc-x-statics 1 (fn-rtc-nstatic (fn-rtc-st-config fn-rtc-st)) fn-rtc-st)))
-    (fn-rtc-x-rearm fn-rtc-st)))
+    (mv-let (fn-rtc-st a0) (fn-rtc-x-arm-opened 1 (fn-rtc-nstatic (fn-rtc-st-config fn-rtc-st)) fn-rtc-st)
+      (mv-let (fn-rtc-st a1) (fn-rtc-x-rearm fn-rtc-st)
+        (mv fn-rtc-st (append a0 a1))))))

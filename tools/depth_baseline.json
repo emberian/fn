@@ -613,7 +613,6 @@
   "fn-store-sco-decode": "store: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/store-node-host.lisp)",
   "fn-store-sco-decode-finish": "store: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/store-node-host.lisp)",
   "fn-store-sco-file-name": "store: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/store-node-host.lisp)",
-  "fn-store-sco-file-read-bound": "store: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/store-node-host.lisp)",
   "fn-store-sco-last-record-octets": "store: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/store-node-host.lisp)",
   "fn-store-sco-log-position": "store: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/store-node-host.lisp)",
   "fn-store-sco-observed-count": "store: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/store-node-host.lisp)",

@@ -266,6 +266,14 @@ def load_baseline(root: Path = ROOT) -> set[str]:
     return set(json.loads(path.read_text(encoding="utf-8")).get("undeclared", []))
 
 
+def shrunk_baseline(old: set[str], doc: dict) -> list[str]:
+    """The baseline's shrink: the listed names the tree still leaves undeclared.
+    A name declared or no longer dispatched leaves; an entry undeclared on the
+    protected base was never new, so it was never listed and is not added."""
+    undeclared = {r["name"] for r in doc["entries"] if r["claim"] == "none"}
+    return sorted(n for n in old if n in undeclared)
+
+
 def check(root: Path = ROOT, base: dict | None = None, base_contracts: dict | None = None,
           baseline: set[str] | None = None) -> list[str]:
     findings: list[str] = []
@@ -341,8 +349,7 @@ def main(argv=None) -> int:
     if args.baseline:
         doc = build()
         old = load_baseline()
-        names = sorted(r["name"] for r in doc["entries"]
-                       if r["claim"] == "none" and r["class"] == "common-lisp-compliant")
+        names = shrunk_baseline(old, doc)
         if ratchet.report("cost_obligations", ratchet.refused(
                 "cost_obligations", ratchet.old_rows("cost_obligations", BASELINE, lambda: {n: 1 for n in old}),
                 {n: 1 for n in names})):

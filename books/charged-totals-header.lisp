@@ -80,7 +80,7 @@
 (defun fn-cth-header-of-capture (c)
   (declare (xargs :guard t :verify-guards nil))
   (let ((e (fn-sco-records c)))
-    (fn-cth-header-row (len e) (fn-ct-charged-exec e :resident))))
+    (fn-cth-header-row (len e) (fn-ct-charged e :resident))))
 
 ; The header row's encodability as the writer checks it: the codec's
 ; writer recognizer (fn-sccb-treep, books/store-checkpoint-tables.lisp) and
@@ -94,12 +94,32 @@
 
 ; The header run's segments: the row's tree encoding as ONE chunk, framed and
 ; chained from the genesis with sequence S like every run (executed as that
-; one frame; fn-sct-run-segments has no verified guard).
+; one frame, header, chunk and seal, written out: fn-sct-run-segments has no
+; verified guard and fn-scc-frames is a non-tail recursion).
 (defun fn-cth-header-segments (row s)
   (declare (xargs :guard (and (natp s) (fn-scc-treep row)) :verify-guards nil))
   (let ((prog (fn-scc-encode row)))
     (mbe :logic (fn-sct-run-segments prog (max 1 (len prog)) s)
-         :exec (fn-scc-frames (list prog) 0 1 s *fn-scc-genesis*))))
+         :exec (let* ((header (fn-scc-header 0 1 (len prog) s))
+                      (trailer (fn-scc-seal *fn-scc-genesis* header prog)))
+                 (list (append header prog trailer))))))
+
+; The octets of segments, joined in one frame (fn-scc-concat's executable
+; for the header's writer step): the reversed octets so far in ACC.
+(defun fn-cth-concat-loop (segs acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (consp segs)
+      (fn-cth-concat-loop (cdr segs) (revappend (true-list-fix (car segs)) acc))
+    (revappend acc nil)))
+
+(local
+ (defthm k-revappend-of-revappend
+   (equal (revappend (revappend x a) r) (revappend a (append (true-list-fix x) r)))
+   :hints (("Goal" :induct (revappend x a)))))
+
+(defthm fn-cth-concat-loop-is-concat
+  (equal (fn-cth-concat-loop segs acc) (revappend acc (fn-scc-concat segs)))
+  :hints (("Goal" :induct (fn-cth-concat-loop segs acc))))
 
 ; The reader's first step: the first segment alone, a run of count 1, its
 ; row decoded; the TOT when the row is well-formed and its S is the
@@ -220,7 +240,7 @@
     (if (not (and (fn-cth-header-encodablep row) (< s *fn-scc-u64-bound*)))
         :unencodable
       (let* ((segs (fn-cth-header-segments row s))
-             (octets (fn-scc-concat segs))
+             (octets (mbe :logic (fn-scc-concat segs) :exec (fn-cth-concat-loop segs nil)))
              (budget (fn-cth-publication-budget profile next cfg))
              (sb (fn-cth-segment-bound profile))
              (total (fn-cth-admit-run segs 0 sb budget)))
@@ -262,7 +282,7 @@
  (defthm k-header-tot-of-capture
    (equal (caddr (fn-cth-header-of-capture (fn-sco-capture configs records)))
           (fn-ct-charged records :resident))
-   :hints (("Goal" :in-theory (e/d (fn-cth-header-of-capture fn-cth-header-row fn-ct-charged-exec)
+   :hints (("Goal" :in-theory (e/d (fn-cth-header-of-capture fn-cth-header-row)
                                    (fn-sco-capture fn-ct-charged))))))
 
 (local
@@ -390,7 +410,7 @@
 (local
  (defthm k1w-try
    (fn-cth-header-rowp (fn-cth-header-of-capture c))
-   :hints (("Goal" :in-theory (e/d (fn-cth-header-rowp fn-cth-header-of-capture fn-cth-header-row fn-ct-charged-exec)
+   :hints (("Goal" :in-theory (e/d (fn-cth-header-rowp fn-cth-header-of-capture fn-cth-header-row)
                                    (fn-ct-charged fn-mm-tot-p fn-mm-tot-records fn-mm-tot-paged-p))))))
 
 (local
@@ -819,10 +839,22 @@
 (verify-guards fn-cth-admit-run)
 (verify-guards fn-cth-segment-bound)
 (verify-guards fn-cth-publication-budget)
+; One chunk's frames are its one frame written out (fn-cth-header-segments'
+; executable).
+(local
+ (defthm k-frames-of-one
+   (equal (fn-scc-frames (list p) i c s prev)
+          (list (append (fn-scc-header i c (len p) s) p
+                        (fn-scc-seal prev (fn-scc-header i c (len p) s) p))))
+   :hints (("Goal" :expand ((fn-scc-frames (list p) i c s prev)
+                            (:free (i2 prev2) (fn-scc-frames nil i2 c s prev2)))
+            :in-theory (disable fn-scc-header fn-scc-seal)))))
+
 (verify-guards fn-cth-header-segments
   :hints (("Goal" :use ((:instance k-chunks-of-short (prog (fn-scc-encode row))
                                    (seg (max 1 (len (fn-scc-encode row))))))
-           :in-theory (e/d (fn-sct-run-segments) (fn-scc-frames k-chunks-of-short)))))
+           :in-theory (e/d (fn-sct-run-segments k-frames-of-one)
+                           (fn-scc-frames k-chunks-of-short fn-scc-header fn-scc-seal)))))
 (verify-guards fn-cth-header-tot)
 (verify-guards fn-cth-publication-setup)
 (verify-guards fn-cth-header-step
