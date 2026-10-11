@@ -9,7 +9,11 @@ iterations inside each owner hold.  The host now refreshes the LIST cursor
 to the view its hold reads at (books/served-query-plan.lisp
 fn-qplan-refresh), so the correction covers at most the batches in flight.
 
-The case creates G groups (FN_LIST_FLOOD_GROUPS, default 3000), seeds the
+The case creates G groups (FN_LIST_FLOOD_GROUPS, default 50: the served
+group table renders inside RFC 3977's 512-octet initial line, so a node
+admits about 56 names of this length, specs/reconfiguration.md 2.3,
+:group-table-unprojectable; the earlier default 3000 was refused at init and
+the case never ran), seeds the
 last ten, starts a poster appending N articles (FN_LIST_FLOOD_N, default
 2000) to those ten, then sends `LIST ACTIVE` with a small receive window and
 reads it one line at a time with a pause.  It asserts:
@@ -28,10 +32,10 @@ import threading
 import time
 import unittest
 
-from tests.native_harness import Client, Node, executable, native_image
+from tests.native_harness import EXIT, Client, Node, executable, native_image
 
 IMAGE = native_image("FN_NATIVE_DEVELOPER_HOST")
-G = int(os.environ.get("FN_LIST_FLOOD_GROUPS", "3000"))
+G = int(os.environ.get("FN_LIST_FLOOD_GROUPS", "50"))
 N = int(os.environ.get("FN_LIST_FLOOD_N", "2000"))
 GROUPS = ["fn.lf%03d" % i for i in range(G)]
 LATE = GROUPS[-10:]
@@ -52,7 +56,8 @@ def article(tag, i, group):
 class NativeListFlood(unittest.TestCase):
     def test_list_reads_each_group_at_its_hold_view(self):
         node = Node(self, IMAGE)
-        node.operator("init", "--profile", "scale", "--max-article-octets", "4096", *GROUPS)
+        node.operator("init", "--profile", "scale", "--max-article-octets", "4096", *GROUPS,
+                      expect=EXIT.OK)
         owner = node.start()
         posted = {g: 0 for g in GROUPS}
         with Client(node.port, timeout=120) as poster:
