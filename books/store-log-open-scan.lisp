@@ -1162,15 +1162,18 @@
 
 ; KEYSTONE L2H-3.  A plan scans every segment journal/ holds, LOW to the
 ; top in order, from the genesis with skip S exactly when segment 1 is
-; present, else with skip 0, the fold starting from the zero total.
+; present, else with skip 0, the fold starting from the zero total.  Stated
+; over both answers, as the host branches on them (fnn-heap-log-suffix scans
+; only a plan; NIL leaves the totals unseen): the plan is no premise the host
+; must establish (tools/premise_audit.py).
 (defthm fn-lgo-scan-plan-scans-every-present-segment
   (let ((p (fn-lgo-scan-plan names s)))
-    (implies p
-             (and (subsetp-equal (fn-lgs-indices names) (third p))
-                  (equal (third p) (fn-lgs-range (second p) (fn-lgs-max-index (fn-lgs-indices names) 0)))
-                  (iff (equal (car p) :genesis) (member-equal 1 (fn-lgs-indices names)))
-                  (equal (fourth p) (if (equal (car p) :genesis) (nfix s) 0))
-                  (equal (fifth p) (fn-ct-zero-tot :resident)))))
+    (or (null p)
+        (and (subsetp-equal (fn-lgs-indices names) (third p))
+             (equal (third p) (fn-lgs-range (second p) (fn-lgs-max-index (fn-lgs-indices names) 0)))
+             (iff (equal (car p) :genesis) (member-equal 1 (fn-lgs-indices names)))
+             (equal (fourth p) (if (equal (car p) :genesis) (nfix s) 0))
+             (equal (fifth p) (fn-ct-zero-tot :resident)))))
   :hints (("Goal" :in-theory (e/d (fn-lgs-open-plan) (fn-lgs-indices fn-lgs-range fn-lgs-all-present
                                                         fn-lgs-below fn-lgo-min-index fn-lgs-max-index))
            :use ((:instance fn-lgo-indices-in-range (xs (fn-lgs-indices names))
@@ -1199,11 +1202,12 @@
 ; decision admits for K = LOW under the F row whose G is that head's
 ; trailer, and the probe starts from the chain value the open starts from
 ; (host/native/io.lisp fnn-log-lineage-genesis answers fn-lgl-head-prev).
+; Stated over both answers, as the host branches on them (NIL: unseen).
 (defthm fn-lgo-head-genesis-is-the-open-lineage-start
-  (implies (and (fn-lgo-head-genesis octets k max)
-                (integerp k) (<= 2 k))
-           (and (not (fn-lgl-open k (fn-lgl-head-trailer octets) octets t0 max))
-                (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-prev octets max))))
+  (implies (and (integerp k) (<= 2 k))
+           (or (null (fn-lgo-head-genesis octets k max))
+               (and (not (fn-lgl-open k (fn-lgl-head-trailer octets) octets t0 max))
+                    (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-prev octets max)))))
   :hints (("Goal" :in-theory (enable fn-lgl-open fn-lgl-head-check))))
 
 ; The probe's answer: ACC, only when the plan and the header it re-reads

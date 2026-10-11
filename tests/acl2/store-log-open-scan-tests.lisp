@@ -348,19 +348,20 @@
 ; L2H-3: the plan scans every present segment; skip S only from the genesis.
 (defteeth fn-lgo-scan-plan-scans-every-present-segment
   :claim (let ((p (fn-lgo-scan-plan names s)))
-           (((planned p))
-            (and (subsetp-equal (fn-lgs-indices names) (third p))
-                 (equal (third p) (fn-lgs-range (second p) (fn-lgs-max-index (fn-lgs-indices names) 0)))
-                 (iff (equal (car p) :genesis) (member-equal 1 (fn-lgs-indices names)))
-                 (equal (fourth p) (if (equal (car p) :genesis) (nfix s) 0))
-                 (equal (fifth p) (fn-ct-zero-tot :resident)))))
+           (()
+            (or (null p)
+                (and (subsetp-equal (fn-lgs-indices names) (third p))
+                     (equal (third p) (fn-lgs-range (second p) (fn-lgs-max-index (fn-lgs-indices names) 0)))
+                     (iff (equal (car p) :genesis) (member-equal 1 (fn-lgs-indices names)))
+                     (equal (fourth p) (if (equal (car p) :genesis) (nfix s) 0))
+                     (equal (fifth p) (fn-ct-zero-tot :resident))))))
   :subject fn-lgo-scan-plan
   :witness ((names (list "000000.log" "000002.log" "000003.log")) (s 3))
-  :breaks ((planned ((names (list "000000.log" "000001.log" "000003.log")))))
   :mutations ((skip-s-past-a-drop
                (:conclusion
-                (and (subsetp-equal (fn-lgs-indices names) (third p))
-                     (equal (fourth p) (nfix s))))
+                (or (null p)
+                    (and (subsetp-equal (fn-lgs-indices names) (third p))
+                         (equal (fourth p) (nfix s)))))
                ((names (list "000000.log" "000002.log" "000003.log")) (s 3))
                :fault "the probe skips S records from the lowest present segment after the drop took the covered ones: the suffix's records go uncharged")))
 
@@ -447,17 +448,17 @@
   (declare (xargs :verify-guards nil))
   (fn-lg-rotation-entry (make-list 32 :initial-element 7) k 4))
 (defteeth fn-lgo-head-genesis-is-the-open-lineage-start
-  :claim (((accepted (fn-lgo-head-genesis octets k max))
-           (rotated (and (integerp k) (<= 2 k))))
-          (and (not (fn-lgl-open k (fn-lgl-head-trailer octets) octets t0 max))
-               (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-prev octets max))))
+  :claim (((rotated (and (integerp k) (<= 2 k))))
+          (or (null (fn-lgo-head-genesis octets k max))
+              (and (not (fn-lgl-open k (fn-lgl-head-trailer octets) octets t0 max))
+                   (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-prev octets max)))))
   :subject fn-lgo-head-genesis
   :witness ((octets (lgot-head 2)) (k 2) (max 4096) (t0 *fn-lg-genesis*))
-  :breaks ((accepted ((octets (make-list (fn-lgl-head-len 4) :initial-element 0))))
-           (rotated ((octets (lgot-head 1)) (k 1))))
+  :breaks ((rotated ((octets (lgot-head 1)) (k 1))))
   :mutations ((starts-from-the-head-itself
                (:conclusion
-                (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-trailer octets)))
+                (or (null (fn-lgo-head-genesis octets k max))
+                    (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-trailer octets))))
                ((octets (lgot-head 2)) (k 2) (max 4096) (t0 *fn-lg-genesis*))
                :fault "the probe streams segment LOW from the head's own trailer, not the closed segment's last trailer the head claims")))
 
