@@ -35,12 +35,19 @@ PY
 ) || { echo "native_box: tools/farm.py HOSTS has no row for $BOX" >&2; exit 2; }
 CACHE=$(echo "$ROW" | sed -n 1p)
 WRAP=$(echo "$ROW" | sed -n 2p)
+# The box's fixture stores (FN_OPEN_DEPTH_FIXTURES; tools/fixtures/):
+# BASE/fixtures on every box (hbox /tank/fn/scratch/fixtures, persvati
+# ~/fn-gates/fixtures), exported to the box script as FN_FIXTURES_DIR so no
+# run has to name it by hand (three train image gates skipped over_window
+# for want of it).
+FIXTURES=$BASE/fixtures
 if [ -n "$HOMEDIR" ]; then
+    case $FIXTURES in '~/'*) FIXTURES=$HOMEDIR/${FIXTURES#'~/'} ;; esac
     case $BASE in '~/'*) BASE=$HOMEDIR/${BASE#'~/'} ;; esac
     case $CACHE in '~/'*) CACHE=$HOMEDIR/${CACHE#'~/'} ;; esac
 fi
-for value in "$BASE" "$CACHE" "$WRAP" "$IMAGES_BASE"; do
+for value in "$BASE" "$CACHE" "$WRAP" "$IMAGES_BASE" "$FIXTURES"; do
     case $value in *[!A-Za-z0-9_./~-]*) echo "native_box: bad path in $BOX's row: $value" >&2; exit 2 ;; esac
 done
-printf "BASE='%s'\nCACHE='%s'\nWRAP='%s'\nIMAGES_BASE='%s'\nOPENSSL='%s'\n" \
-    "$BASE" "$CACHE" "$WRAP" "$IMAGES_BASE" "$OPENSSL"
+printf "BASE='%s'\nCACHE='%s'\nWRAP='%s'\nIMAGES_BASE='%s'\nOPENSSL='%s'\nFIXTURES='%s'\n" \
+    "$BASE" "$CACHE" "$WRAP" "$IMAGES_BASE" "$OPENSSL" "$FIXTURES"
