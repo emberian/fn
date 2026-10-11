@@ -46,6 +46,10 @@ if name == "world" and os.environ.get("STUB_WORLD"):
         os.remove("books/image-world-part-1.lisp")
 if name == "premise_audit" and mode == "json":
     print(os.environ.get("STUB_PREMISES", "{}"))
+if mode == "write" and name == "resource_contract" and os.environ.get("STUB_CONTRACT"):
+    os.makedirs("docs", exist_ok=True)
+    with open("docs/resource-contract.md", "a") as f:
+        f.write("block\\n")
 if mode == "write" and name == "ledger":
     with open("planning/proofs.json", "a") as f:
         f.write("regen\\n")
@@ -57,7 +61,8 @@ STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
          "tests/test_ledger.py", "tests/test_keystone_emit.py", "tests/test_train.py",
          "tests/test_farm.py", "tests/test_current_view.py", "tools/keystone_emit.py",
-         "tests/test_keystone_critical.py", "tools/harness_check.py", "tools/premise_audit.py"]
+         "tests/test_keystone_critical.py", "tools/harness_check.py", "tools/premise_audit.py",
+         "tools/resource_contract.py"]
 REMOTE_STUB = '''#!/bin/sh
 echo "remote_check $*" >> "$STUB_LOG"
 for out in build/box/wire-grammar.json; do
@@ -402,9 +407,16 @@ class RegenTests(TrainBase):
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
         log = [l.split()[0] + " " + (l.split()[1] if len(l.split()) > 1 else "") for l in self.stub_log()]
         self.assertEqual(log, ["world ", "ledger --write", "harness_check --write-stubs",
-                               "keystone_emit --write-manifest"])
+                               "keystone_emit --write-manifest", "resource_contract --write"])
         subj = sh(self.work, "git", "log", "-1", "--format=%s").stdout
         self.assertTrue(subj.startswith("Regenerate train 1"), subj)
+
+    def test_regen_commits_the_resource_contract_block(self):
+        p = self.train("regen", extra_env={"STUB_CONTRACT": "1"})
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(sh(self.work, "git", "status", "--porcelain").stdout.strip(), "")
+        self.assertIn("docs/resource-contract.md",
+                      sh(self.work, "git", "show", "--name-only", "--format=", "HEAD").stdout.split())
 
     def test_regen_refuses_a_cite(self):
         p = self.train("regen", "--cite", "certify-x")
@@ -470,6 +482,7 @@ class PushTests(TrainBase):
         self.assertIn(f"carried: a@{sha[:9]}", p.stdout)
         self.assertIn("verdict: green: the known-red baseline is empty", p.stdout)
         self.assertIn(f"STATE: dev = {self.head()[:9]} (integrate/t1): carries a@{sha[:9]}; green", p.stdout)
+        self.assertIn("census: not run at HEAD", p.stdout)
 
     def test_push_renames_the_landed_lanes_readies_and_names_them_in_the_state_line(self):
         sha = self.ready()
@@ -1419,6 +1432,43 @@ class AsciiGateTests(unittest.TestCase):
     def test_nothing_changed_skips(self):
         self.assertEqual(self.gate([], ["books/blake3-tree.lisp:627:17"]), 0)
 
+class CensusTests(unittest.TestCase):
+    HEAD = "a" * 40
+    LINE = ("census: units=23068 executed=10417 never=11755 removable=2575 code_mb=12.38 "
+            "never_mb=7.24 removable_mb=1.53\n")
+    DELTA = ("census-delta: units=+0 executed=+92 never=-84 removable=-21 code_mb=+0.00 "
+             "never_mb=-0.05 removable_mb=-0.01\n")
+
+    def test_a_finished_census_reads_its_figures_and_delta(self):
+        got = train.parse_census("== census done status 0", self.LINE + self.DELTA)
+        self.assertEqual(got["figures"]["units"], 23068)
+        self.assertEqual(got["figures"]["code_mb"], 12.38)
+        self.assertEqual(got["delta"]["never"], -84)
+        self.assertIsNone(train.parse_census("== census done status 0", self.LINE)["delta"])
+
+    def test_an_unfinished_or_failed_or_malformed_census_is_refused(self):
+        for last in ("== census done status 1", "== run 23:55:01", ""):
+            with self.assertRaises(train.TrainError):
+                train.parse_census(last, self.LINE)
+        with self.assertRaises(train.TrainError):
+            train.parse_census("== census done status 0", "")
+        with self.assertRaises(train.TrainError):
+            train.parse_census("== census done status 0", "census: units=1 code_mb=2.00\n")
+        with self.assertRaises(train.TrainError):
+            train.parse_census("== census done status 0", self.LINE.replace("12.38", "x"))
+
+    def test_the_words_read_units_and_code_and_name_only_moves_beyond_noise(self):
+        rec = dict(train.parse_census("== census done status 0", self.LINE + self.DELTA), source=self.HEAD)
+        self.assertEqual(train.census_words(rec, self.HEAD),
+                         "census: units=23068 code_mb=12.38 (units +0, code_mb +0.00)")
+        moved = self.DELTA.replace("units=+0", "units=-310").replace("removable=-21", "removable=-400")
+        rec = dict(train.parse_census("== census done status 0", self.LINE + moved), source=self.HEAD)
+        self.assertEqual(train.census_words(rec, self.HEAD),
+                         "census: units=23068 code_mb=12.38 (units -310, code_mb +0.00; beyond noise: removable -400)")
+        self.assertEqual(train.census_words(rec, "b" * 40), "census: not run at HEAD")
+        self.assertEqual(train.census_words(None, self.HEAD), "census: not run at HEAD")
+
+
 class ImageModuleTests(unittest.TestCase):
     """The image gate's pure half: which modules a diff obliges, the box's
     lines parsed, and the verdict."""
@@ -1490,6 +1540,28 @@ class ImageModuleTests(unittest.TestCase):
         rc, rec = train.image_verdict(need, self.ran(need, source="b" * 40), self.HEAD, [])
         self.assertEqual(rc, 1)
         self.assertIn("not HEAD", rec["error"])
+
+    def test_another_commits_record_stands_only_across_planning_and_docs(self):
+        need = train.image_modules(["packaging/fn"])
+        other = self.ran(need, source="b" * 40)
+        rc, rec = train.image_verdict(need, other, self.HEAD, [],
+                                      lambda s: ["docs/resource-contract.md", "planning/proofs.json"])
+        self.assertEqual(rc, 0, rec)
+        self.assertEqual(rec["carried_from"], "b" * 40)
+        for path in ("tests/test_native_owner.py", "tools/extract/probes.py", "host/native/io.lisp",
+                     "books/heap.lisp", "Makefile"):
+            rc, rec = train.image_verdict(need, other, self.HEAD, [], lambda s: ["docs/x.md", path])
+            self.assertEqual(rc, 1, path)
+            self.assertIn(path, rec["error"])
+        # a source that is no commit here never stands for HEAD
+        rc, rec = train.image_verdict(need, other, self.HEAD, [], lambda s: None)
+        self.assertEqual(rc, 1)
+        self.assertIn("not HEAD", rec["error"])
+        # a carried record is still read case by case
+        other["modules"]["tests.test_native_owner"] = {"rc": 1, "cases": {"o.T.a": "FAIL"}}
+        rc, rec = train.image_verdict(need, other, self.HEAD, [], lambda s: ["docs/x.md"])
+        self.assertEqual(rc, 1)
+        self.assertEqual(rec["unexplained"], ["o.T.a"])
 
     def test_every_obliged_module_green_at_head_passes(self):
         need = train.image_modules(["packaging/fn"])
