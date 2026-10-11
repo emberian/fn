@@ -439,10 +439,10 @@ share this boundary, including standalone BP owners."
 
 ;; THE SERVED RUN'S LAUNCH (L-RUN-LAUNCH; books/heap-command.lisp fn-mo-serve-decide): the
 ;; dynamic space the run's LIMIT needs (the least resident observation less the pools the run funds:
-;; DEFAULT's or the cold policy's, the output pool's, the peer flight's), plus those pools, refused by
-;; name when the observed store's reopen exceeds LIMIT or the reservation exceeds the address space.
-;; A BP served command's session terms are heap beside it (books/bp-heap-command.lisp
-;; fn-bph-extend-reservation), held to the same address-space observations.  The run's capacity C'
+;; DEFAULT's or the cold policy's, the output pool's, the peer flight's, and a BP served command's
+;; session capacity, books/bp-session-profile.lisp fn-bpsp-node-capacity), plus those pools, refused
+;; by name when the observed store's reopen exceeds LIMIT or the reservation exceeds the address
+;; space; a BP command whose session terms price nothing is refused by name.  The run's capacity C'
 ;; is its configure's (host/owner-host.lisp fn-owner-memory-configure).  Answers (values DECISION
 ;; TOTALS IMG CONFIG EXTENT): the totals, image and configuration octets the decision read.
 (defun fnn-heap-serve-decision (profile root core cold-resources output-resources peer reclaim-live
@@ -450,14 +450,18 @@ share this boundary, including standalone BP owners."
   (multiple-value-bind (totals extent) (fnn-heap-charged-totals root profile)
     (let* ((img (and profile (fnn-heap-img-observation profile)))
            (config (fnn-heap-config-octets root profile))
-           (address (fnn-heap-address-observations))
-           (pools (fnn-core 'fn-mo-serve-pools profile cold-resources output-resources peer
-                            (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit) root))
-           (decision (fnn-core 'fn-mo-serve-decide profile img +fnn-owner-service-nursery-octets+
-                               reclaim-live cold-resources config (fnn-heap-resident-observations)
-                               address core +fnn-gc-nursery-octets+ totals pools
-                               (fnn-core 'fn-mo-serve-pool-threads cold-resources peer))))
-      (values (fnn-core 'fn-bph-extend-reservation decision bp-terms core address)
+           (bp-need (and bp-terms
+                         (fnn-core 'fn-bpsp-node-capacity (first bp-terms) (second bp-terms)
+                                   (third bp-terms) (fourth bp-terms))))
+           (pools (+ (fnn-core 'fn-mo-serve-pools profile cold-resources output-resources peer
+                               (fnn-core 'fn-pio-direct-workers) (fnn-extent-cache-limit) root)
+                     (or bp-need 0))))
+      (values (if (and bp-terms (null bp-need))
+                  (list :refused :invalid-bp-session-terms 0 0)
+                (fnn-core 'fn-mo-serve-decide profile img +fnn-owner-service-nursery-octets+
+                          reclaim-live cold-resources config (fnn-heap-resident-observations)
+                          (fnn-heap-address-observations) core +fnn-gc-nursery-octets+ totals pools
+                          (fnn-core 'fn-mo-serve-pool-threads cold-resources peer)))
               totals img config extent))))
 
 ;; What the model reads beside today's observations (books/heap-command.lisp):

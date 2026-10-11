@@ -2968,6 +2968,11 @@
 (definterface fn-mo-serve-pool-threads
   :class :common-lisp-compliant)
 
+;; A BP served command's session capacity, one of the launch's pools
+;; (books/bp-session-profile.lisp; host/native/heap.lisp fnn-heap-serve-decision).
+(definterface fn-bpsp-node-capacity
+  :class :common-lisp-compliant)
+
 (definterface fn-heap-command-growth
   :class :common-lisp-compliant)
 
@@ -4286,9 +4291,6 @@
 (definterface fn-bph-node-serve-p :class :common-lisp-compliant :kinds ((argv true-listp)))
 (definterface fn-bph-node-journal :class :common-lisp-compliant :kinds ((argv true-listp)))
 (definterface fn-bph-node-transfer :class :common-lisp-compliant :kinds ((argv true-listp)))
-; The probe's BP extension and the node's startup check read one capacity figure.
-(definterface fn-bph-extend-reservation :class :common-lisp-compliant
-  :keystones (fn-bph-extended-reservation-holds-bp-sessions))
 (definterface fn-log-sink-offer-live :class :common-lisp-compliant)
 (definterface fn-native-config-cold-resources :class :common-lisp-compliant)
 (definterface fn-native-config-output-resources :class :common-lisp-compliant)

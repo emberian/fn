@@ -81,6 +81,9 @@
 (def-cost fn-mca-figure-octets :unaccounted (fn-mca-base-octets fn-heap-with-nursery))
 ; The served run's launch (books/heap-command.lisp, L-RUN-LAUNCH).
 (def-cost fn-mo-serve-pool-threads :unaccounted (true-list-fix))
+(def-cost fn-bpsp-node-capacity
+  :unaccounted (fn-bpsp-node-wire-span fn-bpnpf-held-octets fn-bpnpf-rows fn-bpnpf-adu-octets
+                fn-bpsp-capacity-octets))
 (def-cost fn-mo-serve-pools :unaccounted (fn-crv-pool-budget fn-prstartup-launch-extra))
 (def-cost fn-prstartup-serve-store-need
   :unaccounted (fn-prstartup-serve-limit fn-prstartup-serve-protected))

@@ -92,7 +92,7 @@
     (fn-mo-serve-pools (push (cons :pools args) *calls*) 4268136)
     (fn-mo-serve-pool-threads (push (cons :pool-threads args) *calls*) 1)
     (fn-mo-serve-decide (push (cons :serve args) *calls*) *serve*)
-    (fn-bph-extend-reservation (push (cons :bp args) *calls*) (first args))
+    (fn-bpsp-node-capacity (push (cons :bp args) *calls*) 1048576)
     (fn-heap-command-decide (push (cons :command args) *calls*) *base*)
     (fn-native-operator-host-result-run-cold-resources *cold*)
     (fn-native-operator-host-result-run-output-resources *output*)
@@ -116,7 +116,7 @@
 (multiple-value-bind (code line calls observed) (heap-command)
   (assert (= code 0))
   (assert (equal line (format nil "~s" *serve*)))
-  (assert (equal (mapcar #'car calls) '(:pools :pool-threads :serve :bp)))
+  (assert (equal (mapcar #'car calls) '(:pools :pool-threads :serve)))
   ;; the pools of this run: no cold or output policy, its peer flight, the
   ;; DEFAULT pool's workers and cache over the store's root
   (assert (equal (call-of calls :pools) (list *profile* nil nil *peer* 4 8 "/absolute/fixture")))
@@ -125,8 +125,6 @@
   (assert (equal (call-of calls :serve)
                  (list *profile* *img* +fnn-owner-service-nursery-octets+ nil nil 119 *resident*
                        *address* *core-observation* +fnn-gc-nursery-octets+ *totals* 4268136 1)))
-  ;; BP terms (none here) are held to the address space, not the machine
-  (assert (equal (call-of calls :bp) (list *serve* nil *core-observation* *address*)))
   ;; memory.max and physical memory are read only as the resident limit
   (assert (not (member :machine observed)))
   (assert (= 1 (count :core observed)))
@@ -160,7 +158,7 @@
 (let ((*calls* nil) (*observed* nil) (*fnn-stdout* (make-string-output-stream)))
   (fnn-heap-print-store-line "/fixture" nil nil t)
   (assert (equal (get-output-stream-string *fnn-stdout*) (format nil "~s" *serve*)))
-  (assert (equal (mapcar #'car (reverse *calls*)) '(:pools :pool-threads :serve :bp)))
+  (assert (equal (mapcar #'car (reverse *calls*)) '(:pools :pool-threads :serve)))
   (assert (equal (fourth (call-of *calls* :serve)) t))
   (assert (not (member :machine *observed*))))
 (format t "SOURCE DEFAULT HEAP PASSED~%")

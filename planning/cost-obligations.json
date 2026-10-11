@@ -4,15 +4,15 @@
  "counts": {
   "proved": 6,
   "partial": 1,
-  "derived": 103,
-  "none": 1740
+  "derived": 104,
+  "none": 1739
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 1,
-   "derived": 103,
-   "none": 1025
+   "derived": 104,
+   "none": 1024
   },
   "ideal": {
    "proved": 0,
@@ -1031,16 +1031,6 @@
   },
   {
    "name": "fn-bph-command-plan",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-bph-extend-reservation",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -3434,6 +3424,22 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-bpsp-node-capacity",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-bpnpf-adu-octets",
+    "fn-bpnpf-held-octets",
+    "fn-bpnpf-rows",
+    "fn-bpsp-capacity-octets",
+    "fn-bpsp-node-wire-span"
+   ],
+   "theorem": null,
+   "declared_in": "host/cost-host.lisp"
   },
   {
    "name": "fn-bpsp-node-startup",
