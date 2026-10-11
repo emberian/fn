@@ -19,12 +19,24 @@ class Forms(unittest.TestCase):
 
     def test_predicate_application_forms(self):
         app = premise_audit.predicate_application
-        self.assertEqual(app(reach_check.read_sexp("(fn-inv s)")), ("fn-inv", "s"))
-        self.assertEqual(app(reach_check.read_sexp("(equal (fn-inv s) t)")), ("fn-inv", "s"))
-        self.assertEqual(app(reach_check.read_sexp("(equal t (fn-inv s))")), ("fn-inv", "s"))
+        self.assertEqual(app(reach_check.read_sexp("(fn-inv s)")), ("fn-inv", ["s"]))
+        self.assertEqual(app(reach_check.read_sexp("(equal (fn-inv s) t)")), ("fn-inv", ["s"]))
+        self.assertEqual(app(reach_check.read_sexp("(equal t (fn-inv s))")), ("fn-inv", ["s"]))
+        self.assertEqual(app(reach_check.read_sexp("(fn-get 0 x)")), ("fn-get", ["0", "x"]))
         self.assertIsNone(app(reach_check.read_sexp("(not (fn-inv s))")))
         self.assertIsNone(app(reach_check.read_sexp("(equal (f s) (g s))")))
         self.assertIsNone(app("s"))
+
+    def test_a_constant_argument_is_no_variable(self):
+        # A17, lane/vertical-lease: numerals, keywords, characters, t and nil
+        # in front of the subject were read as "the bare variable".
+        var = premise_audit.variable_argument
+        read = reach_check.read_sexp
+        self.assertIsNone(var(read("(r 0 (fn-slots s))")[1:], set()))
+        self.assertEqual(var(read("(r 0 x)")[1:], set()), "x")
+        self.assertEqual(var(read("(r :hand hd id s)")[1:], set()), "hd")
+        self.assertIsNone(var(read("(r #x10 -1 1/2 t nil #\\a)")[1:], set()))
+        self.assertIsNone(var(read("(r *fn-max*)")[1:], {"*fn-max*"}))
 
 
 class LocalLemmas(unittest.TestCase):
@@ -53,7 +65,7 @@ class StubGraph:
 
     def __init__(self, hosted_open=True):
         self.book_defs = {"fn-inv": 1, "fn-step": 1, "fn-open": 1, "fn-serve": 1,
-                          "fn-other": 1, "fn-model-open": 1}
+                          "fn-other": 1, "fn-model-open": 1, "fn-slot": 1, "fn-pick": 1}
         self.books = []
         self.stobj_names = {"state"}
         self.reachable = {"fn-step", "fn-serve"} | ({"fn-open"} if hosted_open else set())
@@ -66,6 +78,11 @@ class Classification(unittest.TestCase):
         "fn-serve-ok": ("books/b.lisp", "(defthm fn-serve-ok (implies (fn-inv s) (equal (fn-serve s) :ok)))"),
         "fn-other-model": ("books/b.lisp", "(defthm fn-other-model (implies (fn-other s) (equal (fn-serve s) :ok)))"),
         "fn-other-of-model-open": ("books/b.lisp", "(defthm fn-other-of-model-open (fn-other (fn-model-open x)))"),
+        # Index-first predicates (A17): assumed of a term at a hosted entry,
+        # established by the hosted open in the second position.
+        "fn-slot-serve": ("books/c.lisp", "(defthm fn-slot-serve (implies (fn-slot 0 (fn-step s)) (equal (fn-serve s) :ok)))"),
+        "fn-slot-of-open": ("books/c.lisp", "(defthm fn-slot-of-open (fn-slot 0 (fn-open x)))"),
+        "fn-pick-serve": ("books/c.lisp", "(defthm fn-pick-serve (implies (fn-pick 0 s) (equal (fn-serve s) :ok)))"),
     }
 
     def audit(self, hosted_open=True):
@@ -115,14 +132,33 @@ class Classification(unittest.TestCase):
         self.assertEqual(row["unhosted_establishments"], ["fn-other-of-model-open"])
         self.assertEqual(row["theorems"], [("fn-other-model", "books/b.lisp")])
 
+    def test_index_first_premise_of_a_term_is_not_bare(self):
+        audit = self.audit()
+        rows = audit.assumed["fn-slot"]
+        self.assertEqual([(t, bare) for t, _, _, bare, _ in rows], [("fn-slot-serve", False)])
+        self.assertNotIn("fn-slot", audit.premises())
+        self.assertIn("fn-slot", audit.premises(all_arguments=True))
+
+    def test_index_first_establishment_reads_every_argument(self):
+        self.assertEqual(self.audit(hosted_open=True).classify("fn-slot"), premise_audit.HOSTED)
+        self.assertEqual(self.audit(hosted_open=False).classify("fn-slot"), premise_audit.OFF_HOST)
+
+    def test_index_first_premise_of_a_variable_stays_a_finding(self):
+        audit = self.audit()
+        self.assertEqual([bare for _, _, _, bare, _ in audit.assumed["fn-pick"]], [True])
+        self.assertIn("fn-pick", audit.findings())
+
     def test_summary_counts(self):
         audit = self.audit(hosted_open=False)
         line = premise_audit.summary_line(audit.findings(), audit.premises(), {"accepted": {}})
         # Three theorems assume a finding's premise at a hosted entry: the
         # preservation `(implies (fn-inv s) (fn-inv (fn-step s)))' assumes
         # fn-inv at the hosted step too, as it should (the step is entered
-        # with the premise the open never established).
-        self.assertIn("2 premises at hosted entries, 2 unestablished (3 theorems)", line)
+        # with the premise the open never established).  fn-pick (a bare
+        # variable behind an index) is the third, never concluded; fn-slot
+        # is of a term, so it is not counted.
+        self.assertIn("3 premises at hosted entries, 3 unestablished (4 theorems)", line)
+        self.assertIn("1 never concluded", line)
         self.assertIn("2 established off the host path", line)
 
 

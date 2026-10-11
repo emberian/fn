@@ -124,18 +124,34 @@ def conjuncts(term) -> list:
 
 
 def predicate_application(term):
-    """(R, argument) when TERM asserts a predicate of something: `(R a ...)',
+    """(R, ARGUMENTS) when TERM asserts a predicate of something: `(R a ...)',
     `(equal (R a ...) t)' or `(equal t (R a ...))'; else None."""
     if not isinstance(term, list) or not term or not isinstance(term[0], str):
         return None
     if term[0] == "equal" and len(term) == 3:
         for side, other in ((term[1], term[2]), (term[2], term[1])):
             if other == "t" and isinstance(side, list) and side and isinstance(side[0], str):
-                return side[0], (side[1] if len(side) > 1 else None)
+                return side[0], list(side[1:])
         return None
     if term[0] in ("not", "implies", "iff", "or", "if", "and"):
         return None
-    return term[0], (term[1] if len(term) > 1 else None)
+    return term[0], list(term[1:])
+
+
+_CONSTANT_ATOM = re.compile(r"^(?:[-+]?(?:\d+(?:/\d+)?|\d*\.\d+)|#[xXbBoO][-+]?[0-9a-fA-F]+|#\\.*|:.*|t|nil)$")
+
+
+def variable_argument(arguments, defined) -> str | None:
+    """The first of R's ARGUMENTS that is a variable: a symbol that is not a
+    numeral, a keyword, a character, t or nil, and not a name the books
+    define (a nullary call written bare).  An index or a constant in front
+    of the subject does not make the premise one of a constant (A17,
+    lane/vertical-lease: `(fn-rtc-free-slot 0 (fn-rtc-slots s))' was read
+    as a premise of the variable `0')."""
+    for arg in arguments:
+        if isinstance(arg, str) and not _CONSTANT_ATOM.match(arg) and arg not in defined:
+            return arg
+    return None
 
 
 LOCAL_THEOREM = re.compile(r"\(local\s+\(defthmd?\s+([^\s()]+)", re.IGNORECASE)
@@ -284,8 +300,10 @@ class GuardModel:
         for guard in xargs.get(":guard", ()):
             for conjunct in conjuncts(_plain(guard)):
                 app = predicate_application(conjunct)
-                if app and isinstance(app[1], str) and app[1] in formals:
-                    apps.append(app)
+                if app:
+                    var = variable_argument(app[1], ())
+                    if var in formals:
+                        apps.append((app[0], var))
         return formals, apps
 
     def establishes(self, r: str, var: str, conclusion, subjects) -> str | None:
@@ -385,11 +403,13 @@ class Audit:
                 app = predicate_application(conjunct)
                 if app is None or not self.predicate(app[0]):
                     continue
-                r, arg = app
+                r, args = app
                 if r in assumed_heads:
                     self.preserving[r].append(name)
                     continue  # a preservation, not an establishment
-                heads = (reach_check.tree_symbols(arg) & self.book_defs) - self.graph.stobj_names
+                # Every argument: an index-first predicate (R 0 (F ...)) is
+                # established by its F as (R (F ...)) is (A17).
+                heads = (reach_check.tree_symbols(args) & self.book_defs) - self.graph.stobj_names
                 hosted = bool(heads & reachable)
                 self.concluded[r].append((name, book, sorted(heads), hosted))
             if not hyps or not assumed_heads or name in self.local:
@@ -402,9 +422,10 @@ class Audit:
                     app = predicate_application(conjunct)
                     if app is None or not self.predicate(app[0]):
                         continue
-                    r, arg = app
-                    bare = isinstance(arg, str) and arg not in self.book_defs
-                    guarded = (self.guard.establishes(r, arg, conclusion, subject.functions)
+                    r, args = app
+                    var = variable_argument(args, self.book_defs)
+                    bare = var is not None
+                    guarded = (self.guard.establishes(r, var, conclusion, subject.functions)
                                if self.guard is not None and bare and hosted_subject
                                else None)
                     self.assumed[r].append((name, book, hosted_subject, bare, guarded))
