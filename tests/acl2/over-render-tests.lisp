@@ -211,3 +211,18 @@
          (equal (mv-nth 0 (fn-ovr-quantum c 5 (- (expt 2 59) 1) nil *ovrt-a* *ovrt-c*)) 5)
          (not (mv-nth 0 (fn-ovr-run c 5 (expt 2 59) nil *ovrt-a* *ovrt-c*)))))
   :rule-classes nil)
+
+; An empty range (K past TOP: OVER 5-3, and a low bound past the group's last article) is
+; one quantum that writes the close: KO2's window of one, and the run completes (KO6, KO7).
+(defthm ovrt-empty-range-witness
+  (let ((c1 (ovrt-start "fn.test" "5-3" nil *ovrt-server*))
+        (c2 (ovrt-start "fn.test" "9-12" t nil))
+        (c3 '("g" 5 3 0 nil t nil)))
+    (and (< (nfix (nth 2 c1)) (nfix (nth 1 c1)))
+         (ovrt-ok c1 1 nil) (ovrt-ok c2 3 '(1 2)) (ovrt-ok c3 1 nil)
+         (equal (mv-nth 0 (fn-ovr-quantum c1 1 100 nil *ovrt-a* *ovrt-c*)) 1)
+         (mv-nth 0 (fn-ovr-run c1 1 100 nil *ovrt-a* *ovrt-c*))
+         (mv-nth 0 (fn-ovr-run c3 1 100 nil *ovrt-a* *ovrt-c*))
+         (equal (mv-nth 1 (fn-ovr-run c2 3 100 nil *ovrt-a* *ovrt-c*))
+                (fn-ovw-run c2 3 *ovrt-a* *ovrt-c*))))
+  :rule-classes nil)

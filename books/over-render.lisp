@@ -1007,14 +1007,19 @@
            (v (nfix (nth 3 cur))) (legacyp (nth 4 cur)) (owedp (nth 5 cur)) (server (nth 6 cur)))
       (mv-let (hi owed2 fn-ovr-lease)
         (fn-ovr-fill group k (fn-ovw-hi k top w) top owedp legacyp cap server v fn-ovr-lease fn-arena fn-cat)
-        (if (< hi k)
+        (if (or (and (< hi k) (<= k top))
+                ;; an empty range (K past TOP: OVER 5-3, or a low bound past the group's last
+                ;; article) is one window of no number that writes only the close, when it fits
+                (and (< top k)
+                     (< cap (+ (fn-ovr-lease-len fn-ovr-lease)
+                               (len (fn-ovr-close-octets owed2 legacyp))))))
             (mv 0 cur fn-ovr-lease)
           (let* ((donep (<= top hi))
                  (fn-ovr-lease (if donep
                                    (fn-ovr-lease-append-list (fn-ovr-close-octets owed2 legacyp)
                                                              fn-ovr-lease)
                                  fn-ovr-lease)))
-            (mv (+ 1 (- hi k))
+            (mv (max 1 (+ 1 (- hi k)))
                 (if donep nil (fn-ovw-cursor group (+ 1 hi) top v legacyp owed2 server))
                 fn-ovr-lease)))))))
 
