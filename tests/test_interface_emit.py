@@ -116,6 +116,32 @@ class DeclarationTests(unittest.TestCase):
         self.assertLess(arena, cat)
         self.assertLess(cat, walk)
 
+    def test_a_generic_reached_only_through_an_attach_book_gets_its_attach_book_first(self):
+        # Codex l-rcw F1: the route reaches only generic a; a's attach book
+        # (its implementation) includes generic b.  b's attach book is
+        # selected too, by the fixed point, and precedes a's.
+        root = tree('(definterface fn-step :class :common-lisp-compliant '
+                    ':raw-with (fn-step-proof))\n')
+        books = root / "books"
+        books.mkdir()
+        (books / "route.lisp").write_text('(include-book "a")\n(defun fn-step (x) x)\n'
+                                          '(defthm fn-step-proof t)\n')
+        (books / "a.lisp").write_text('(defabsstobj fn-a :attachable t)\n')
+        (books / "b.lisp").write_text('(defabsstobj fn-b :attachable t)\n')
+        (books / "a-attach.lisp").write_text('(attach-stobj fn-a fn-a-impl)\n'
+                                             '(include-book "a")\n(include-book "b")\n')
+        (books / "b-attach.lisp").write_text('(attach-stobj fn-b fn-b-impl)\n'
+                                             '(include-book "b")\n')
+        (root / "host" / "native").mkdir()
+        (root / "host" / "native" / "build.lisp").write_text(
+            '(include-book "books/a-attach")\n(include-book "books/b-attach")\n')
+        rendered = interface_emit.render_raw_declarations(interface_emit.declarations(root), root=root)
+        b = rendered.index('(include-book "../books/b-attach")')
+        a = rendered.index('(include-book "../books/a-attach")')
+        route = rendered.index('(include-book "../books/route")')
+        self.assertLess(b, a)
+        self.assertLess(a, route)
+
     def test_raw_input_output_stobjs_deduplicate_and_state_is_builtin(self):
         root = tree('(definterface fn-a :class :common-lisp-compliant '
                     ':raw-guarded (2 (state fn-bank) (nil fn-bank)))\n')

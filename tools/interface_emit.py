@@ -513,7 +513,8 @@ def raw_route_books(decls: list[dict], root: Path = ROOT) -> list[str]:
 
 def raw_attach_books(books: list[str], root: Path = ROOT) -> list[str]:
     """The image's attach books (host_check.attach_pairs) whose attachable
-    generic the closure of a route book reaches, in pair order: included
+    generic the closure of a route book, or of an attach book so selected,
+    reaches, in dependency order: included
     before the route books, as host/interfaces.lisp includes them first
     (D61), so the generic is never reached bare (host_check --attach-order).
     A route book that includes the reclaim walk reaches books/catalog,
@@ -526,7 +527,17 @@ def raw_attach_books(books: list[str], root: Path = ROOT) -> list[str]:
     for book in books:
         reached.update(world.closure(book))
     pairs, _unpaired = host_check.attach_pairs(root)
-    todo = [(generic, attach) for _name, generic, attach in pairs if generic in reached]
+    # an attach book's own closure can reach another pair's generic, which
+    # the route books do not: select to a fixed point, so that generic's
+    # attach book is included (and ordered) first too
+    todo: list[tuple[str, str]] = []
+    while True:
+        selected = [(generic, attach) for _name, generic, attach in pairs if generic in reached]
+        if selected == todo:
+            break
+        todo = selected
+        for _generic, attach in todo:
+            reached.update(world.closure(attach))
     # an attach book whose own closure reaches another pair's generic goes
     # after that pair's attach book (payload-arena, history, then catalog)
     out: list[str] = []
