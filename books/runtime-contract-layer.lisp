@@ -4,35 +4,37 @@
 (include-book "runtime-contract-landing")
 (include-book "runtime-contract-budget")
 
-(defun fn-rtc-borrow-state (st)
-  (declare (xargs :guard t))
-  (fn-rtc-make nil nil (fn-rtc-borrow (fn-rtc-pool st)) nil nil 0))
+(defthm fn-rtc-view-pool-idempotent
+  (equal (fn-rtc-view-pool id inc cfg h (fn-rtc-view-pool id inc cfg h pool))
+         (fn-rtc-view-pool id inc cfg h pool))
+  :hints (("Goal" :induct (fn-rtc-view-pool id inc cfg h pool)
+           :expand ((:free (a b) (fn-rtc-view-pool id inc cfg h (cons a b))))
+           :in-theory (union-theories (theory 'minimal-theory) '(car-cons cdr-cons fn-rtc-view-pool fn-rtc-view-own-p fn-rtc-view-mine-p fn-rtc-b-owner fn-rtc-b-gen fn-rtc-get member-equal nfix natp zp (:type-prescription nfix))))))
 
-(defthm fn-rtc-borrow-idempotent
-  (equal (fn-rtc-borrow (fn-rtc-borrow p)) (fn-rtc-borrow p))
-  :hints (("Goal" :in-theory (enable fn-rtc-borrow))))
+(defthm fn-rtc-v-readers-of-view-state
+  (and (equal (fn-rtc-st-config (fn-rtc-view-state id inc st)) (fn-rtc-st-config st))
+       (equal (fn-rtc-st-v-owner h id inc (fn-rtc-view-state id inc st)) (fn-rtc-st-v-owner h id inc st))
+       (equal (fn-rtc-st-v-gen h id inc (fn-rtc-view-state id inc st)) (fn-rtc-st-v-gen h id inc st))
+       (equal (fn-rtc-st-v-fill h id inc (fn-rtc-view-state id inc st)) (fn-rtc-st-v-fill h id inc st))
+       (equal (fn-rtc-st-v-byte h i id inc (fn-rtc-view-state id inc st)) (fn-rtc-st-v-byte h i id inc st))
+       (equal (fn-rtc-st-v-pool id inc (fn-rtc-view-state id inc st)) (fn-rtc-st-v-pool id inc st)))
+  :hints (("Goal" :in-theory (enable fn-rtc-view-state fn-rtc-view fn-rtc-vb
+                                     fn-rtc-st-config fn-rtc-st-v-owner fn-rtc-st-v-gen fn-rtc-st-v-fill
+                                     fn-rtc-st-v-byte fn-rtc-st-v-pool))))
 
-(defthm fn-rtc-b-readers-of-borrow-state
-  (and (equal (fn-rtc-st-b-count (fn-rtc-borrow-state st)) (fn-rtc-st-b-count st))
-       (equal (fn-rtc-st-b-owner h (fn-rtc-borrow-state st)) (fn-rtc-st-b-owner h st))
-       (equal (fn-rtc-st-b-gen h (fn-rtc-borrow-state st)) (fn-rtc-st-b-gen h st))
-       (equal (fn-rtc-st-b-fill h (fn-rtc-borrow-state st)) (fn-rtc-st-b-fill h st))
-       (equal (fn-rtc-st-b-byte h i (fn-rtc-borrow-state st)) (fn-rtc-st-b-byte h i st))
-       (equal (fn-rtc-st-b-pool (fn-rtc-borrow-state st)) (fn-rtc-st-b-pool st)))
-  :hints (("Goal" :in-theory (enable fn-rtc-st-b-count fn-rtc-st-b-owner fn-rtc-st-b-gen fn-rtc-st-b-fill
-                                     fn-rtc-st-b-byte fn-rtc-st-b-pool))))
+(defthm fn-rtc-view-state-of-view-state
+  (equal (fn-rtc-view-state id inc (fn-rtc-view-state id inc st)) (fn-rtc-view-state id inc st)))
 
-(defthm fn-rtc-borrow-state-of-borrow-state
-  (equal (fn-rtc-borrow-state (fn-rtc-borrow-state st)) (fn-rtc-borrow-state st)))
-
-(in-theory (disable fn-rtc-borrow-state))
+(in-theory (disable fn-rtc-view-state))
 
 (defconst *fn-rtc-layer-spec-fns*
   '(fn-rtc-mstates-okp fn-rtc-invp fn-rtc-deliver fn-rtc-accept-branch fn-rtc-close-branch
-    fn-rtc-step* fn-rtc-step fn-rtc-step-cost fn-rtc-step-c))
+    fn-rtc-step* fn-rtc-step fn-rtc-step-cost fn-rtc-step-actions-bound fn-rtc-step-c fn-rtc-static-mstates fn-rtc-init))
 
 (defconst *fn-rtc-layer-exec-fns*
-  '(fn-rtc-x-deliver fn-rtc-x-accept-branch fn-rtc-x-close-branch fn-rtc-x-step* fn-rtc-x-step))
+  '(fn-rtc-x-free-pool-buf-loop fn-rtc-x-free-pool-buf fn-rtc-x-arm-grant fn-rtc-x-rearm
+    fn-rtc-x-grant-one fn-rtc-x-grant fn-rtc-x-deliver fn-rtc-x-accept-branch fn-rtc-x-close-branch
+    fn-rtc-x-step* fn-rtc-x-step fn-rtc-x-statics fn-rtc-x-init))
 
 (defun fn-rtc-layer-name (prefix f)
   (declare (xargs :mode :program))
@@ -86,7 +88,14 @@
 ; shape, then the output positions that are true lists and the one that is
 ; a natural.
 (defconst *fn-rtc-layer-exec-types*
-  '((fn-rtc-x-deliver (fn-rtc-x-deliver id inc ev q fn-rtc-st) (1) 3)
+  '((fn-rtc-x-free-pool-buf-loop (fn-rtc-x-free-pool-buf-loop h n fn-rtc-st) nil :maybe-nat)
+    (fn-rtc-x-free-pool-buf (fn-rtc-x-free-pool-buf fn-rtc-st) nil :maybe-nat)
+    (fn-rtc-x-arm-grant (fn-rtc-x-arm-grant fn-rtc-st) (1) nil)
+    (fn-rtc-x-rearm (fn-rtc-x-rearm fn-rtc-st) (1) nil)
+    (fn-rtc-x-grant-one (fn-rtc-x-grant-one fn-rtc-st) (1) nil)
+    (fn-rtc-x-grant (fn-rtc-x-grant n fn-rtc-st) (1) nil)
+    (fn-rtc-x-init (fn-rtc-x-init cfg fn-rtc-st) (1) nil)
+    (fn-rtc-x-deliver (fn-rtc-x-deliver id inc ev q fn-rtc-st) (1) 3)
     (fn-rtc-x-accept-branch (fn-rtc-x-accept-branch out q fn-rtc-st) (1) 3)
     (fn-rtc-x-close-branch (fn-rtc-x-close-branch id inc fn-rtc-st) (1) nil)))
 
@@ -100,10 +109,20 @@
                        (concatenate 'string (symbol-name (car call)) "-TYPES") (car call))))
            `((defthm ,name
                (and ,@(loop$ for i in lists collect `(true-listp (mv-nth ,i ,call)))
-                    ,@(and nat `((natp (mv-nth ,nat ,call)))))
+                    ,@(if (eq nat :maybe-nat) `((or (null ,call) (natp ,call)))
+                        (and nat `((natp (mv-nth ,nat ,call))))))
                :hints (("Goal" :expand (,call)
+                        ,@(and (member-eq f '(fn-rtc-x-free-pool-buf-loop fn-rtc-x-grant))
+                               `(:induct ,call))
                         :in-theory ,(fn-rtc-layer-rename
-                                     '(disable fn-rtc-mx-step fn-rtc-x-requests fn-rtc-x-rearm fn-rtc-x-deliver)
+                                     (append '(disable fn-rtc-mx-step fn-rtc-x-requests)
+                                             (and (member-eq f '(fn-rtc-x-rearm fn-rtc-x-grant-one fn-rtc-x-grant
+                                                                 fn-rtc-x-deliver fn-rtc-x-accept-branch fn-rtc-x-close-branch
+                                                                 fn-rtc-x-init))
+                                                  '(fn-rtc-x-rearm))
+                                             (and (member-eq f '(fn-rtc-x-deliver fn-rtc-x-accept-branch
+                                                                 fn-rtc-x-close-branch fn-rtc-x-init))
+                                                  '(fn-rtc-x-deliver)))
                                      alist)))))))))
 
 (defun fn-rtc-layer-copies (fns kind alist wrld)
@@ -230,13 +249,18 @@
            (equal (list (fn-rtc-st-gen h st) (fn-rtc-st-owner h st)
                         (fn-rtc-x-bytes h 0 (fn-rtc-st-fill h st) st))
                   (fn-rtc-buffer h st)))
-  :hints (("Goal" :in-theory (e/d (fn-rtc-st-gen fn-rtc-st-owner fn-rtc-st-fill fn-rtc-gen fn-rtc-b-gen fn-rtc-b-owner)
-                                  (fn-rtc-shapep fn-rtc-c-shapep-buffer fn-rtc-xs-three-list fn-cbor-octet-listp
-                                   fn-rtc-x-bytes fn-rtc-x-bytes-is fn-rtc-buffer fn-rtc-xs-get-is-nth))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+             '(fn-rtc-st-gen fn-rtc-st$a-gen fn-rtc-gen fn-rtc-b-gen
+               fn-rtc-st-owner fn-rtc-st$a-owner fn-rtc-b-owner
+               fn-rtc-st-fill fn-rtc-st$a-fill fn-rtc-bytes fn-rtc-b-bytes
+               fn-rtc-xs-take-len fn-cbor-octet-listp-implies-true-listp
+               nfix natp nthcdr zp unicity-of-0 commutativity-of-+ fix (:type-prescription len)))
            :use ((:instance fn-rtc-c-shapep-buffer (s st))
                  (:instance fn-rtc-x-bytes-is (i 0) (n (len (fn-rtc-bytes h st))))
-                 (:instance fn-rtc-xs-three-list (b (fn-rtc-buffer h st)))))
-          (and stable-under-simplificationp '(:in-theory (enable fn-rtc-bytes fn-rtc-b-bytes fn-rtc-xs-get-is-nth))))))
+                 (:instance fn-rtc-xs-three-list (b (fn-rtc-buffer h st)))
+                 (:instance fn-rtc-xs-get-is-nth (i 0) (l (fn-rtc-buffer h st)))
+                 (:instance fn-rtc-xs-get-is-nth (i 1) (l (fn-rtc-buffer h st)))
+                 (:instance fn-rtc-xs-get-is-nth (i 2) (l (fn-rtc-buffer h st))))))))
 
 (local (defthm fn-rtc-xs-buffer-rebuilt
   (implies (and (fn-rtc-shapep st) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config st))))
@@ -274,16 +298,13 @@
            :expand ((len st) (len (cdr st)) (len (cddr st)) (len (cdddr st)) (len (cddddr st))
                     (len (cdr (cddddr st))) (len (cddr (cddddr st))))))))
 
-(local (defthm fn-rtc-pool-shapep-true-listp
-  (implies (fn-rtc-pool-shapep pool cap) (true-listp pool))))
-
 (local (defthm fn-rtc-xs-shape-facts
   (implies (fn-rtc-shapep st)
            (and (true-listp (fn-rtc-slots st)) (equal (len (fn-rtc-slots st)) (fn-rtc-nslots (fn-rtc-config st)))
                 (true-listp (fn-rtc-mstates st)) (equal (len (fn-rtc-mstates st)) (fn-rtc-nslots (fn-rtc-config st)))
                 (true-listp (fn-rtc-pool st)) (equal (len (fn-rtc-pool st)) (fn-rtc-nbufs (fn-rtc-config st)))))
   :hints (("Goal" :in-theory (enable fn-rtc-shapep)
-           :use ((:instance fn-rtc-pool-shapep-true-listp (pool (fn-rtc-pool st)) (cap (fn-rtc-cap (fn-rtc-config st)))))))
+           :use ((:instance fn-rtc-pool-shapep-true-listp (pool (fn-rtc-pool st)) (h 0) (cfg (fn-rtc-config st))))))
   :rule-classes nil))
 
 (local (defthm fn-rtc-xs-take-nthcdr-0-len
@@ -310,7 +331,6 @@
                                       '(fn-rtc-x-state fn-rtc-st-config fn-rtc-st$a-config fn-rtc-st-uses fn-rtc-st$a-uses
                                         fn-rtc-st-next-op fn-rtc-st$a-next-op)))))
 
-
 ; -----------------------------------------------------------------------------
 ; The keystones an instance receives, by functional instance.
 
@@ -321,7 +341,7 @@
     fn-rtc-completion-ends-its-use                      ; T4
     fn-rtc-outstanding-use-is-stable                    ; T5
     fn-rtc-unmatched-completion-is-discarded            ; T6
-    fn-rtc-machine-changes-only-on-its-own-completion   ; T7
+    fn-rtc-machine-changes-only-when-delivered-to   ; T7
     fn-rtc-other-workspaces-are-untouched               ; T8
     fn-rtc-generation-is-monotone                       ; T9
     fn-rtc-every-action-is-outstanding                  ; T10
@@ -351,11 +371,11 @@
                       :in-theory (union-theories (theory 'minimal-theory) ',(append copies obligations)))))
           (fn-rtc-layer-keystone-events (cdr thms) prefix alist fi copies obligations wrld))))
 
-(defun fn-rtc-def-layer-events (prefix step init committedp c max-reqs max-state reads-borrow hints wrld)
+(defun fn-rtc-def-layer-events (prefix step init static-init committedp c max-reqs max-state reads-view hints wrld)
   (declare (xargs :mode :program))
   (let* ((m-step (fn-rtc-layer-name prefix 'fn-rtc-m-step))
          (copied (fn-rtc-layer-alist prefix (append *fn-rtc-layer-spec-fns* *fn-rtc-layer-exec-fns*)))
-         (alist (append `((fn-rtc-m-init . ,init) (fn-rtc-m-step . ,m-step)
+         (alist (append `((fn-rtc-m-init . ,init) (fn-rtc-m-static-init . ,static-init) (fn-rtc-m-step . ,m-step)
                           (fn-rtc-m-committedp . ,committedp) (fn-rtc-m-c . ,c)
                           (fn-rtc-m-max-reqs . ,max-reqs) (fn-rtc-m-max-state . ,max-state)
                           (fn-rtc-mx-step . ,step))
@@ -367,10 +387,11 @@
                                                   '(fn-rtc-m-constants fn-rtc-mx-step-is-m-step fn-rtc-m-step-is-charged
                                                     fn-rtc-m-step-requests-are-bounded fn-rtc-m-init-is-bounded
                                                     fn-rtc-m-step-state-is-bounded fn-rtc-m-init-is-uncommitted
+                                                    fn-rtc-m-static-init-is-bounded fn-rtc-m-static-init-is-uncommitted
                                                     fn-rtc-m-commits-only-on-fsync-done)))))
     `(progn
-       (defun-nx ,m-step (m ev pool q)
-         (,step m ev (fn-rtc-make nil nil pool nil nil 0) q))
+       (defun-nx ,m-step (m ev vst q)
+         (,step m ev vst q))
        ;; the machine's obligations: the constraints of `fn-rtc-m-step' and
        ;; `fn-rtc-mx-step', stated of this machine
        (defthm ,(fn-rtc-layer-name prefix 'fn-rtc-m-constants)
@@ -391,6 +412,12 @@
        (defthm ,(fn-rtc-layer-name prefix 'fn-rtc-m-init-is-bounded)
          (<= (fn-rtc-size (,init)) (,max-state))
          :hints ,hints)
+       (defthm ,(fn-rtc-layer-name prefix 'fn-rtc-m-static-init-is-bounded)
+         (<= (fn-rtc-size (,static-init j)) (,max-state))
+         :hints ,hints)
+       (defthm ,(fn-rtc-layer-name prefix 'fn-rtc-m-static-init-is-uncommitted)
+         (not (,committedp (,static-init j)))
+         :hints ,hints)
        (defthm ,(fn-rtc-layer-name prefix 'fn-rtc-m-step-state-is-bounded)
          (<= (fn-rtc-size (mv-nth 0 (,m-step m ev pool q))) (,max-state))
          :hints ,hints)
@@ -404,10 +431,10 @@
          :hints ,hints)
        (defthm ,(fn-rtc-layer-name prefix 'fn-rtc-mx-step-is-m-step)
          (equal (,step m ev fn-rtc-st q)
-                (,m-step m ev (fn-rtc-borrow (fn-rtc-pool fn-rtc-st)) q))
-         :hints (("Goal" :use ((:instance ,reads-borrow (st fn-rtc-st)))
+                (,m-step m ev (fn-rtc-view-state (fn-rtc-ev-id ev) (fn-rtc-ev-inc ev) fn-rtc-st) q))
+         :hints (("Goal" :use ((:instance ,reads-view (st fn-rtc-st)))
                   :in-theory (union-theories (theory 'minimal-theory)
-                                             '(,m-step fn-rtc-borrow-state)))))
+                                             '(,m-step)))))
        (in-theory (disable ,(fn-rtc-layer-name prefix 'fn-rtc-mx-step-is-m-step)))
        (in-theory (disable ,step ,m-step))
        ,@(fn-rtc-layer-rename
@@ -419,19 +446,20 @@
        (verify-guards ,(fn-rtc-layer-name prefix 'fn-rtc-invp))
        ,@(fn-rtc-layer-keystone-events *fn-rtc-layer-keystones* prefix alist fi copies obligations wrld))))
 
-; (fn-rtc-def-layer PREFIX :step STEP :init INIT :committedp CP :c C
-;   :max-reqs MR :max-state MS :reads-borrow LEMMA :hints HINTS)
+; (fn-rtc-def-layer PREFIX :step STEP :init INIT :static-init STATIC-INIT
+;   :committedp CP :c C :max-reqs MR :max-state MS :reads-view LEMMA :hints HINTS)
 ;
 ; STEP is the machine over the stobj, (STEP m ev fn-rtc-st q) =>
-; (mv m2 requests cost), reading the state only through the borrow readers
-; (fn-rtc-st-b-count -b-owner -b-gen -b-fill -b-byte -b-pool); LEMMA proves
-; (equal (STEP m ev (fn-rtc-borrow-state st) q) (STEP m ev st q)), in
-; exactly those variables.  INIT,
-; CP, C, MR and MS are the machine's initial state, commit observer and
-; bounds.  HINTS prove the machine's constraints over its list form
-; PREFIX-m-step.  The layer is PREFIX-x-step and PREFIX-x-step*, executable
-; over `fn-rtc-st'; its keystones are PREFIX-<keystone> for every name in
-; *fn-rtc-layer-keystones*.
-(defmacro fn-rtc-def-layer (prefix &key step init committedp c max-reqs max-state reads-borrow hints)
-  `(make-event (fn-rtc-def-layer-events ',prefix ',step ',init ',committedp ',c ',max-reqs ',max-state
-                                        ',reads-borrow ',hints (w state))))
+; (mv m2 requests cost), reading configuration and the view readers
+; fn-rtc-st-v-owner/-gen/-fill/-byte/-pool at the event's id and incarnation.
+; LEMMA proves, in exactly these variables,
+; (equal (STEP m ev (fn-rtc-view-state (fn-rtc-ev-id ev) (fn-rtc-ev-inc ev) st) q)
+;        (STEP m ev st q)). INIT and STATIC-INIT produce the connection and
+; static instance initial states; CP observes commits; C, MR and MS are bounds.
+; HINTS prove the machine's constraints over PREFIX-m-step, whose state
+; argument is already a view state. The executable layer is PREFIX-x-step
+; and PREFIX-x-step*; PREFIX-x-init initializes this instance's machines.
+; Its keystones are PREFIX-<keystone> for *fn-rtc-layer-keystones*.
+(defmacro fn-rtc-def-layer (prefix &key step init static-init committedp c max-reqs max-state reads-view hints)
+  `(make-event (fn-rtc-def-layer-events ',prefix ',step ',init ',static-init ',committedp ',c ',max-reqs ',max-state
+                                        ',reads-view ',hints (w state))))

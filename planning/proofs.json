@@ -5316,8 +5316,6 @@
       "progress_note": "Row L2 (lane small-rows, 2026-09-29): fn-smr-roomp-is-within-the-bound is no longer an event of this row. Its only host line was tools/run_store.py (the retired Python host); it stays in books/store-maintenance-reserve.lisp as a lemma; the bound it states, `the history is within H`, is concluded over the host's prepare by fn-cvec-prepare-keeps-the-vector (PRF-138) since memory landing 3+4a. Trimmed 2026-09-27 (lane flip-cleanup, 2026-09-27): the disk half (fn-cverb-pack-fits-the-disk, fn-rclp-pack-fits-the-disk: a pack fits the observed free octets) was deleted with the pack layer. Keystone for the state checkpoint's space check (the checkpoint compaction and reclaim publish): fn-scka-publication-setup-plans-within-the-disk (lane log-leftovers, 2026-09-27; admitted in the persvati REPL with its teeth in tests/acl2/store-checkpoint-arena-tests.lisp). Open: the arena run's octet estimate is not proved equal to what the writer writes. Before: Lane reclaim-lifecycle-2 (2026-09-26). Open: the free-octet observation is the host's statvfs, an environmental fact not modelled (a concurrent writer can take the space between the observation and the write; the write then fails before the selection, which the pack publication cuts cover). The BP namespace's own reservation is the FNBS debt cover (books/bp-node-debt.lisp), not restated here. Every book under 10 s.",
       "events": [
         "fn-smr-admission-keeps-the-reserve",
-        "fn-smr-prepare-keeps-the-reserve",
-        "fn-smr-article-verdict-keeps-the-reserve",
         "fn-smr-reserve-admits-the-release",
         "fn-smr-admission-is-within-the-profile",
         "fn-smr-roomp-antitone-in-octets",

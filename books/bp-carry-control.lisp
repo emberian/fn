@@ -46,6 +46,7 @@
 ; (fn-bpcc-gate-is-the-plan-otherwise).  fn-bpcc-drop-is-final: no record
 ; undoes a drop.
 (in-package "ACL2")
+(include-book "decimal-text")
 (include-book "bp-release")
 
 ; The overlay: (ALL PAUSED DROPPED WAIVED): ALL t while "*" is paused, PAUSED
@@ -105,19 +106,11 @@
 
 ; The operator's principal for an offline carry verb: the effective uid that
 ; holds the Store's lock (host/native/bp-obligation.lisp reads it).
-; The decimal is books/accounts.lisp fn-acct-decimal-text's renderer, with its
-; guard fact (not included here: accounts is not in this book's chain).
-(local
- (encapsulate ()
-   (local (include-book "arithmetic/top" :dir :system))
-   (defthm fn-bpcc-explode-characters
-     (implies (and (natp number) (character-listp accumulator))
-              (character-listp (explode-nonnegative-integer number 10 accumulator))))))
 (defun fn-bpcc-operator-principal (uid)
   (declare (xargs :guard t))
   (if (natp uid)
       (concatenate 'string "uid:"
-                   (coerce (explode-nonnegative-integer uid 10 nil) 'string))
+                   (fn-decimal-text uid))
     "uid:unknown"))
 
 (defun fn-bpcc-waiver-entry (c work-id)

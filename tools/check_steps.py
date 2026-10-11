@@ -237,6 +237,13 @@ def table_lines(rows: list[dict], footer: str = "") -> list[str]:
         elif row.get("cached") or row.get("skipped"):
             line += f"  {row.get('cached') or row['skipped']}"
         lines.append(line)
+    deferred = [row["step"] for row in rows if capability_skip(row)]
+    if deferred:
+        # MAKE-CHECK-CERT-WORLD-NOT-RUN (coordinator ruling (b), 2026-10-10):
+        # a capability skip is moved, not dropped; the train's box step runs
+        # these with the world and blocks on them (tools/train.py CERT_WORLD_CMD).
+        lines.append("  deferred to the train's box step (required there, "
+                     "tests.test_cert_world_checks): " + ", ".join(dict.fromkeys(deferred)))
     return lines
 
 

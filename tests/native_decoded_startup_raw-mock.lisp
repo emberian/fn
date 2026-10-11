@@ -47,6 +47,8 @@
 (defun fnn-extent-window-p (token)
   (declare (ignorable token))
   (harness-stub-reached 'fnn-extent-window-p "host/native/extent.lisp"))
+(defun fnn-heap-collector-policy-stop ()
+  (harness-stub-reached 'fnn-heap-collector-policy-stop "host/native/heap.lisp"))
 (defun fnn-log-offer (destination octets)
   (declare (ignorable destination octets))
   (harness-stub-reached 'fnn-log-offer "host/native/io.lisp"))

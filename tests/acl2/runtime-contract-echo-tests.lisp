@@ -2,7 +2,7 @@
 ; (books/runtime-contract-echo.lisp), run in ACL2.
 ;
 ; What this book is evidence FOR.  Two interleaved connections over one
-; layer (3 slots, 6 buffers of 64 octets): pending read and send on the same
+; layer (3 slots, three reserved 64-octet buffers per connection): pending read and send on the same
 ; connection, a held receive while a send is outstanding, a close with a send
 ; still outstanding (the slot drains), the late completion that retires the
 ; draining slot, a duplicate of it, slot reuse at the next incarnation with
@@ -15,7 +15,7 @@
 ; through the developer image and fn-core (`--fn rtc-exercise run 0|1').
 ;
 ; Teeth: a host that writes into an :out-leased buffer is reported :moved
-; (the invariant still holds: `fn-rtc-splice-keeps-invp'), also when the
+; (the injected overwrite keeps length and ownership), also when the
 ; same item then completes that send; a host that frees a buffer under an
 ; outstanding lease is reported :invp-violated.
 
@@ -48,12 +48,12 @@
 ; pending read and send: step 3 emits a send of the received octets and a
 ; new receive in another buffer
 (assert! (equal (fn-rtc-get 2 (nth 3 *rce-obs*))
-                '((:send 1 1 4 ((0 2 0 5) 7)) (:recv 1 1 5 ((2 1 0 64) 7)))))
+                '((:send 1 1 4 ((0 2 0 5) 7)) (:recv 1 1 5 ((1 1 0 64) 7)))))
 ; the close with a send outstanding drains; that send's completion retires
 ; the slot and re-arms admission
 (assert! (equal (fn-rtc-get 2 (nth 9 *rce-obs*)) '((:accept 0 0 11 (nil)))))
-; slot 2 reused at incarnation 2, receiving into buffer 0 at generation 4
-(assert! (equal (fn-rtc-get 2 (nth 11 *rce-obs*)) '((:recv 2 2 12 ((0 4 0 64) 9)))))
+; slot 2 reused at incarnation 2, receiving into its own buffer 3 at generation 4
+(assert! (equal (fn-rtc-get 2 (nth 11 *rce-obs*)) '((:recv 2 2 12 ((3 4 0 64) 9)))))
 
 ; Teeth.  Writing into buffer 0 while connection 1's send (op 4) holds it
 ; :out-leased moves its octets.
@@ -68,12 +68,29 @@
 (defconst *rce-moved-then-completed* (rce-run-variant 3))
 (assert! (equal (fn-rtc-get 5 (nth 4 *rce-moved-then-completed*)) :moved))
 ; The short send (step 13) resends the rest of the buffer.
-(assert! (equal (fn-rtc-get 2 (nth 13 *rce-obs*)) '((:send 1 1 13 ((2 3 2 2) 7)))))
+(assert! (equal (fn-rtc-get 2 (nth 13 *rce-obs*)) '((:send 1 1 13 ((1 3 2 2) 7)))))
 ; The close with the resent rest outstanding drains slot 1; that send's
 ; completion retires it and re-arms admission.
 (assert! (equal (fn-rtc-get 2 (nth 16 *rce-obs*)) '((:accept 0 0 15 (nil)))))
-; Redirecting that buffer's lease to another instance keeps the invariant
-; but is not a landing: reported :moved (the cross-review's case).
+; Redirecting that buffer's lease to another instance violates the use
+; owner check and is not a landing: reported :invp-violated and :moved.
 (defconst *rce-redirected* (rce-run-variant 4))
 (assert! (equal (fn-rtc-get 5 (nth 4 *rce-redirected*)) :moved))
-(assert! (equal (fn-rtc-get 4 (nth 4 *rce-redirected*)) :invp))
+(assert! (equal (fn-rtc-get 4 (nth 4 *rce-redirected*)) :invp-violated))
+
+; Initialization also uses the instance's static initializer: this executes
+; without an attachment for the contract's constrained static machine.
+(defun rce-static-scene1 (fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st :guard t))
+  (mv-let (fn-rtc-st acts) (fn-rcl-x-init '(3 2 64 1 1 0 64) fn-rtc-st)
+    (declare (ignore acts))
+    (mv fn-rtc-st (fn-rtc-x-state fn-rtc-st))))
+(defun rce-static-scene ()
+  (declare (xargs :guard t))
+  (with-local-stobj fn-rtc-st
+    (mv-let (fn-rtc-st s) (rce-static-scene1 fn-rtc-st)
+      s)))
+(assert! (let ((s (rce-static-scene)))
+           (and (fn-rcl-invp s)
+                (equal (fn-rtc-slot 1 s) *fn-rtc-static-slot*)
+                (equal (fn-rtc-mstate 1 s) (fn-rce-static-init 1)))))

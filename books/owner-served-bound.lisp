@@ -13,7 +13,8 @@
 ; host/owner-host.lisp `fn-owner-install-profile' calls, on every run path
 ; (host/native/owner.lisp fnn-owner-install, after recovery and before any
 ; connection opens).  It keeps the posting bit, the agent and the served
-; groups and sets the article bound to the profile's A, which
+; groups and sets the article bound to the profile's A and the header
+; limits to the profile's sealed ones; the article bound
 ; `fn-own-body-limit' hands every connection the owner opens afterwards
 ; (books/owner.lisp fn-own-open), so the wire closes an article past A with
 ; `:body-overlimit' and the reply names the size.
@@ -22,13 +23,21 @@
 (include-book "owner")
 (include-book "store-budget-naming")
 
+; The bound is the pair of the profile's article octets and its header
+; limits (fn-inj-post-bound, as host/owner-host.lisp fn-owner-served-post-
+; bound builds it).  A bare natural here selected the default header
+; limits, so an applied live limit change (host/native/admin.lisp, through
+; fn-owner-apply-limit-profile) served POST under (64 256 16384) whatever
+; the store was sealed with: a store sealed at 10 header fields admitted 12
+; (lane spans-osb-limits, tests/test_native_header_limits.py).
 (defun fn-osb-config (cfg profile)
-  "CFG with its article bound replaced by PROFILE's payload bound."
+  "CFG with its article bound and header limits replaced by PROFILE's."
   (declare (xargs :guard t))
   (fn-inj-make-config-full (fn-inj-config-allow cfg)
                            (fn-inj-config-agent cfg)
                            (fn-inj-config-groups cfg)
-                           (fn-sbud-payload-bound profile)
+                           (fn-inj-post-bound (fn-sbud-payload-bound profile)
+                                              (fn-bs-profile-header-limits profile))
                            (fn-inj-config-listing cfg)
                            (fn-inj-config-closed cfg)))
 
@@ -39,6 +48,18 @@
   (if (fn-bs-profile-admittedp profile)
       (mv :installed (fn-own-configure o (fn-osb-config (fn-own-config o) profile)))
     (mv :refused o)))
+
+(local
+ (defthm fn-osb-bound-octets-of-post-bound
+   (equal (fn-inj-bound-octets (fn-inj-post-bound octets limits)) octets)
+   :hints (("Goal" :in-theory (enable fn-inj-bound-octets fn-inj-post-bound)))))
+
+(local
+ (defthm fn-osb-bound-header-limits-of-post-bound
+   (equal (fn-inj-bound-header-limits (fn-inj-post-bound octets limits)) limits)
+   :hints (("Goal" :in-theory (enable fn-inj-bound-header-limits fn-inj-post-bound)))))
+
+(local (in-theory (disable fn-inj-post-bound)))
 
 (local
  (defthm fn-osb-own-config-of-configure
@@ -71,6 +92,17 @@
                                    fn-bs-profile-max-article-octets
                                    fn-own-configure fn-own-config)))))
 
+;; KEYSTONE.  After an admitted profile is installed, the header limits every
+;; POST and control decision checks (fn-inj-decide's census against
+;; fn-inj-config-header-limits) are the profile's sealed limits.
+(defthm fn-osb-install-serves-the-profile-header-limits
+  (implies (fn-bs-profile-admittedp profile)
+           (equal (fn-inj-config-header-limits
+                   (fn-own-config (mv-nth 1 (fn-osb-install o profile))))
+                  (fn-bs-profile-header-limits profile)))
+  :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp fn-bs-profile-header-limits
+                                      fn-sbud-payload-bound fn-own-configure fn-own-config))))
+
 ; Nothing else of the posting configuration moves: the posting bit, the
 ; injecting agent and the served groups are the ones recovery installed.
 (defthm fn-osb-install-keeps-the-posting-configuration
@@ -79,7 +111,7 @@
     (and (equal (fn-inj-config-allow next) (fn-inj-config-allow cfg))
          (equal (fn-inj-config-agent next) (fn-inj-config-agent cfg))
          (equal (fn-inj-config-groups next) (fn-inj-config-groups cfg))))
-  :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp fn-sbud-payload-bound
+  :hints (("Goal" :in-theory (disable fn-bs-profile-admittedp fn-bs-profile-header-limits fn-sbud-payload-bound
                                       fn-own-configure fn-own-config))))
 
 ; A well-formed posting configuration stays one (the bound is within
@@ -88,7 +120,7 @@
   (implies (fn-inj-configp (fn-own-config o))
            (fn-inj-configp (fn-own-config (mv-nth 1 (fn-osb-install o profile)))))
   :hints (("Goal" :in-theory (e/d (fn-sbud-payload-bound fn-inj-configp)
-                                  (fn-bs-profile-admittedp
+                                  (fn-bs-profile-admittedp fn-bs-profile-header-limits
                                    fn-bs-profile-max-article-octets
                                    fn-own-configure fn-own-config)))))
 
