@@ -188,3 +188,184 @@
 ;              (declare (ignore mf))
 ;              (equal posted
 ;                     (fn-ptd-posted (mv-nth 2 (fn-ptd-run (fn-ptd-init ks0 ext) ins ino (fn-bs-unit bs) max))))))
+
+; -----------------------------------------------------------------------------
+; Proofs (Builder P): the message, the digest's held state, the trailer and the entry.
+; The held stack over whole windows is the binary-counter stack of their subtree outputs
+; (fn-ptx-absorb-is-the-stack), the trailer is BLAKE3 of the message
+; (fn-ptx-trailer-is-the-digest), and the message with its trailer and padding is the log of
+; its record (fn-ptx-entry-of-message).
+(defthm fn-ptx-len-of-msg-range (equal (len (fn-ptx-msg-range i n spans id inc st)) (nfix n)))
+(defun fn-ptx-mr-ind (i a n)
+  (if (zp a) (list i n) (fn-ptx-mr-ind (+ 1 (nfix i)) (- a 1) (- (nfix n) 1))))
+(defthm fn-ptx-nthcdr-of-msg-range
+  (implies (and (natp i) (natp a) (<= a (nfix n)))
+           (equal (nthcdr a (fn-ptx-msg-range i n spans id inc st))
+                  (fn-ptx-msg-range (+ i a) (- (nfix n) a) spans id inc st)))
+  :hints (("Goal" :induct (fn-ptx-mr-ind i a n) :in-theory (disable fn-ptx-msg-byte))))
+(defthm fn-ptx-take-of-msg-range
+  (implies (and (natp a) (<= a (nfix n)))
+           (equal (take a (fn-ptx-msg-range i n spans id inc st))
+                  (fn-ptx-msg-range i a spans id inc st)))
+  :hints (("Goal" :induct (fn-ptx-mr-ind i a n) :in-theory (disable fn-ptx-msg-byte))))
+(defun fn-ptx-tps-ind (a w) (if (zp a) w (fn-ptx-tps-ind (- a 1) (cdr w))))
+(defthm fn-ptx-take-plus-split
+  (implies (and (natp a) (natp b) (<= (+ a b) (len w)))
+           (equal (take (+ a b) w) (append (take a w) (take b (nthcdr a w)))))
+  :hints (("Goal" :induct (fn-ptx-tps-ind a w))))
+(defthm fn-ptx-stack-of-append-window
+  (implies (and (true-listp p) (consp p) (posp j) (equal (len p) (* 1024 j))
+                (consp x) (<= (len x) 1024))
+           (equal (fn-ptx-stack-of (append p x))
+                  (fn-b3-cv-push *fn-b3-iv* 0 0 (fn-b3-node *fn-b3-iv* x j 0) (fn-ptx-stack-of p))))
+  :hints (("Goal" :use ((:instance fn-b3-window-outs-of-append-window
+                                   (key *fn-b3-iv*) (k 0) (base 0) (prefix p) (w x) (flags 0)))
+                  :in-theory (disable fn-b3-window-outs fn-b3-node fn-b3-cv-push)
+                  :expand ((fn-ptx-stack-of p) (fn-ptx-stack-of (append p x))))))
+(defthm fn-ptx-stack-of-first-window
+  (implies (and (consp x) (<= (len x) 1024))
+           (equal (fn-ptx-stack-of x)
+                  (fn-b3-cv-push *fn-b3-iv* 0 0 (fn-b3-node *fn-b3-iv* x 0 0) nil)))
+  :hints (("Goal" :expand ((fn-b3-window-outs *fn-b3-iv* 0 0 x 0)
+                           (fn-b3-stack-push-all *fn-b3-iv* 0 0 (list (fn-b3-node *fn-b3-iv* x 0 0)) nil))
+                  :in-theory (disable fn-b3-node fn-b3-cv-push))))
+(defthm fn-ptx-consp-take
+  (equal (consp (take n w)) (not (zp n))))
+(defthm fn-ptx-stack-of-push-window
+  (implies (and (natp j) (<= (+ (* 1024 j) 1024) (len w)))
+           (equal (fn-ptx-stack-of (take (+ (* 1024 j) 1024) w))
+                  (fn-b3-cv-push *fn-b3-iv* 0 0
+                                 (fn-b3-node *fn-b3-iv* (take 1024 (nthcdr (* 1024 j) w)) j 0)
+                                 (fn-ptx-stack-of (take (* 1024 j) w)))))
+  :hints (("Goal" :cases ((equal j 0)) :do-not-induct t
+                  :in-theory (disable fn-b3-node fn-b3-cv-push fn-ptx-stack-of fn-ptx-take-plus-split
+                                      fn-b3-node-splits-at-left-chunks))
+          ("Subgoal 2" :use ((:instance fn-ptx-take-plus-split (a (* 1024 j)) (b 1024))
+                             (:instance fn-ptx-stack-of-append-window (p (take (* 1024 j) w))
+                                        (x (take 1024 (nthcdr (* 1024 j) w))))))
+          ("Subgoal 1" :use ((:instance fn-ptx-stack-of-first-window (x (take 1024 w)))))))
+(defun fn-ptx-abs-ind (nw j n stk)
+  (if (or (zp nw) (<= (nfix n) (+ (* 1024 (nfix j)) 1024)))
+      (list stk)
+    (fn-ptx-abs-ind (- nw 1) (+ 1 (nfix j)) n stk)))
+(encapsulate ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+  (defthm fn-ptx-floor-1024-j
+    (implies (natp j) (equal (floor (* 1024 j) 1024) j)))
+  (defthm fn-ptx-mod-1024-j
+    (implies (natp j) (equal (mod (* 1024 j) 1024) 0))))
+(defthm fn-ptx-absorb-is-the-stack
+  (implies (and (natp j) (natp n) (<= (* 1024 j) n))
+           (let ((r (fn-ptx-absorb nw (* 1024 j)
+                                   (fn-ptx-stack-of (take (* 1024 j) (fn-ptx-msg-range 0 n spans id inc st)))
+                                   n spans id inc st)))
+             (and (equal (mv-nth 1 r)
+                         (fn-ptx-stack-of (take (mv-nth 0 r) (fn-ptx-msg-range 0 n spans id inc st))))
+                  (natp (mv-nth 0 r))
+                  (equal (mod (mv-nth 0 r) 1024) 0)
+                  (<= (* 1024 j) (mv-nth 0 r))
+                  (implies (< (* 1024 j) n) (< (mv-nth 0 r) n)))))
+  :hints (("Goal" :induct (fn-ptx-abs-ind nw j n stk)
+                  :in-theory (disable fn-b3-node fn-b3-cv-push fn-ptx-stack-of fn-ptx-take-plus-split
+                                      fn-b3-node-splits-at-left-chunks fn-ptx-msg-range))
+          ("Subgoal *1/2" :expand ((fn-ptx-absorb nw (* 1024 j)
+                                   (fn-ptx-stack-of (take (* 1024 j) (fn-ptx-msg-range 0 n spans id inc st)))
+                                   n spans id inc st))
+                          :use ((:instance fn-ptx-stack-of-push-window (w (fn-ptx-msg-range 0 n spans id inc st)))))
+          ("Subgoal *1/1" :expand ((fn-ptx-absorb nw (* 1024 j)
+                                   (fn-ptx-stack-of (take (* 1024 j) (fn-ptx-msg-range 0 n spans id inc st)))
+                                   n spans id inc st)))))
+(defthm fn-ptx-cbor-octets-are-b3-octets
+  (implies (fn-cbor-octet-listp x) (fn-b3-octet-listp x))
+  :hints (("Goal" :in-theory (enable fn-cbor-octet-listp fn-cbor-octetp fn-b3-octet-listp))))
+(defthm fn-ptx-b3-octets-take
+  (implies (and (fn-b3-octet-listp x) (<= (nfix n) (len x))) (fn-b3-octet-listp (take n x)))
+  :hints (("Goal" :in-theory (enable fn-b3-octet-listp))))
+(defthm fn-ptx-b3-octets-nthcdr
+  (implies (fn-b3-octet-listp x) (fn-b3-octet-listp (nthcdr n x)))
+  :hints (("Goal" :in-theory (enable fn-b3-octet-listp))))
+(defthm fn-ptx-b3-octets-true-listp
+  (implies (fn-b3-octet-listp x) (true-listp x))
+  :hints (("Goal" :in-theory (enable fn-b3-octet-listp)))
+  :rule-classes :forward-chaining)
+(defthm fn-ptx-fold-of-single
+  (equal (fn-b3-stack-fold key flags (fn-b3-cv-push key flags h x nil)) x)
+  :hints (("Goal" :in-theory (enable fn-b3-stack-fold fn-b3-stack-spine fn-b3-cv-push fn-b3-nthx))))
+(defthm fn-ptx-append-take-nthcdr
+  (implies (and (natp n) (<= n (len w))) (equal (append (take n w) (nthcdr n w)) w))
+  :hints (("Goal" :induct (fn-ptx-tps-ind n w))))
+(defthm fn-ptx-digest-of-held-state
+  (implies (and (fn-b3-octet-listp w) (natp j) (< (* 1024 j) (len w)) (<= (len w) (+ (* 1024 j) 1024)))
+           (equal (fn-b3-output-root
+                   (fn-b3-stack-fold *fn-b3-iv* 0
+                                     (fn-b3-cv-push *fn-b3-iv* 0 0
+                                                    (fn-b3-node *fn-b3-iv* (nthcdr (* 1024 j) w) j 0)
+                                                    (fn-ptx-stack-of (take (* 1024 j) w)))))
+                  (fn-blake3 w)))
+  :hints (("Goal" :cases ((equal j 0)) :do-not-induct t
+                  :in-theory (e/d (fn-blake3 fn-b3-hash)
+                                  (fn-b3-node fn-b3-cv-push fn-ptx-stack-of fn-ptx-take-plus-split
+                                   fn-b3-node-splits-at-left-chunks fn-b3-stack-fold fn-b3-output-root floor)))
+          ("Subgoal 2" :use ((:instance fn-b3-append-window
+                                        (key *fn-b3-iv*) (flags 0) (k 0) (counter 0)
+                                        (prefix (take (* 1024 j) w)) (w (nthcdr (* 1024 j) w)))
+                             (:instance fn-ptx-append-take-nthcdr (n (* 1024 j))))
+                       :expand ((fn-ptx-stack-of (take (* 1024 j) w))))
+          ("Subgoal 1" :expand ((fn-ptx-stack-of nil)) :in-theory (e/d (fn-blake3 fn-b3-hash fn-b3-stack-fold fn-b3-stack-spine fn-b3-nthx) (fn-b3-node fn-b3-output-root)))))
+(defthm fn-ptx-trailer-is-the-digest
+  (implies (and (natp j) (natp n) (< (* 1024 j) n) (<= n (+ (* 1024 j) 1024))
+                (fn-cbor-octet-listp (fn-ptx-msg-range 0 n spans id inc st)))
+           (equal (fn-ptx-finish-digest (* 1024 j)
+                                        (fn-ptx-stack-of (take (* 1024 j) (fn-ptx-msg-range 0 n spans id inc st)))
+                                        n spans id inc st)
+                  (fn-blake3 (fn-ptx-msg-range 0 n spans id inc st))))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-ptx-digest-of-held-state (w (fn-ptx-msg-range 0 n spans id inc st)))
+                        (:instance fn-ptx-nthcdr-of-msg-range (i 0) (a (* 1024 j))))
+                  :in-theory (e/d (fn-ptx-finish-digest)
+                                  (fn-b3-node fn-b3-cv-push fn-ptx-stack-of fn-ptx-take-plus-split fn-ptx-take-of-msg-range
+                                   fn-b3-node-splits-at-left-chunks fn-b3-stack-fold fn-b3-output-root floor
+                                   fn-ptx-msg-range fn-ptx-nthcdr-of-msg-range fn-blake3)))))
+(defthm fn-ptx-head-len-value (equal (fn-ptx-head-len) 42)
+  :hints (("Goal" :in-theory (enable fn-ptx-head-len fn-ptx-frame-header fn-frame-header fn-cbor-u32-bytes))))
+(defthm fn-ptx-frame-of-parts
+  (implies (and (true-listp r) (true-listp last) (equal (len last) 32))
+           (equal (fn-lg-frame last (list r))
+                  (append (fn-ptx-frame-header (len r)) last r
+                          (fn-blake3 (append (fn-ptx-frame-header (len r)) last r)))))
+  :hints (("Goal" :do-not-induct t
+                  :in-theory (e/d (fn-lg-frame fn-lg-frame-kind fn-lg-frame-body fn-frame-seal fn-frame-encode
+                                   fn-frame-protected fn-ptx-frame-header fn-frame-digest)
+                                  (fn-blake3 fn-frame-header)))))
+(defthm fn-ptx-w-is-head-and-rest
+  (implies (and (<= 42 (len w)) (equal (take 42 w) x))
+           (equal (append x (nthcdr 42 w)) w))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ptx-append-take-nthcdr (n 42))) :in-theory (disable fn-ptx-append-take-nthcdr fn-rtc-append-take-nthcdr))))
+(defthm fn-ptx-append3-then
+  (implies (equal (append a b c) w) (equal (append a b c d) (append w d)))
+  :rule-classes nil)
+(defthm fn-ptx-frame-of-message
+  (implies (and (true-listp w) (<= 42 (len w)) (true-listp last) (equal (len last) 32)
+                (equal (take 42 w) (append (fn-ptx-frame-header (- (len w) 42)) last)))
+           (equal (fn-lg-frame last (list (nthcdr 42 w)))
+                  (append w (fn-blake3 w))))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-ptx-w-is-head-and-rest (x (append (fn-ptx-frame-header (- (len w) 42)) last)))
+                        (:instance fn-ptx-frame-of-parts (r (nthcdr 42 w)))
+                        (:instance fn-ptx-append3-then (a (fn-ptx-frame-header (- (len w) 42))) (b last) (c (nthcdr 42 w)) (d (fn-blake3 w))))
+                  :in-theory (e/d () (fn-blake3 fn-ptx-append-take-nthcdr fn-ptx-frame-of-parts fn-frame-header
+                                      fn-ptx-frame-header fn-lg-frame fn-rtc-append-take-nthcdr)))))
+(defthm fn-ptx-log-of-one
+  (equal (fn-lg-log (list r) last unit) (fn-lg-entry last (list r) unit))
+  :hints (("Goal" :expand ((fn-lg-log (list r) last unit))
+                  :in-theory (e/d (fn-lg-chunk-len fn-lg-fit-count fn-bs-take) (fn-lg-entry fn-lg-frame)))))
+(defthm fn-ptx-entry-of-message
+  (implies (and (true-listp w) (<= 42 (len w)) (true-listp last) (equal (len last) 32)
+                (equal (take 42 w) (append (fn-ptx-frame-header (- (len w) 42)) last))
+                (equal (len (fn-blake3 w)) 32))
+           (equal (append w (fn-blake3 w) (fn-bs-zeros (fn-lg-pad-len (+ (len w) 32) unit)))
+                  (fn-lg-log (list (nthcdr 42 w)) last unit)))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-ptx-frame-of-message))
+                  :in-theory (e/d (fn-lg-entry) (fn-blake3 fn-lg-frame fn-ptx-frame-of-message fn-ptx-frame-header fn-lg-pad-len fn-bs-zeros)))))
