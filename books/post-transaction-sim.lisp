@@ -83,7 +83,9 @@
 ; with the padding is the driver's entry, and the kernel holds the record as the driver's
 ; invariant fn-ptd-invp has it: before the seal the batch is the record, nothing is in flight and
 ; the append admits it (so the kernel is not faulted); after the seal the record is in flight
-; and the kernel is :appended.  (Restated from the counterexample of a driver at :writing over a
+; and the kernel is :appended; and the trailer the machine holds is the chain's trailer of the
+; record (the commit makes it the chain head).  (Restated from Sonnet 6's counterexample: a held
+; trailer other than the digest is otherwise related, and the commit then diverges from the fence.)  (Restated from the counterexample of a driver at :writing over a
 ; kernel with an empty batch: its two :ok completions answer :posted and commit nothing, while
 ; the machine commits the record.)
 (defun fn-ptx-ptd-phase (ph)
@@ -114,6 +116,7 @@
                    (equal (fn-ptd-ext ptd) (fn-ptx-ext m))
                    (equal (fn-ptd-nxt ptd) (fn-ptx-nxt m))
                    (equal (fn-ptd-rec ptd) (fn-ptx-record m id inc fn-rtc-st))
+                   (equal (fn-rtc-get 1 (fn-ptx-hs m)) (fn-lg-last-trailer (list (fn-ptd-rec ptd)) (fn-lgk-last ks)))
                    (equal (append w (fn-bs-zeros (nfix (fn-rtc-get 2 (fn-ptx-hs m)))))
                           (fn-lg-log (list (fn-ptd-rec ptd)) (fn-lgk-last ks) (fn-ptx-unit m)))
                    (if (equal pph :syncing)
