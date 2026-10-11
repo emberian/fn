@@ -7,7 +7,7 @@
 ; once with the conclusion failing.
 
 (in-package "ACL2")
-(include-book "../../books/over-render")
+(include-book "../../books/over-render-quantum")
 
 (defconst *ovrt-p0* (append (fn-record-string-octets "Subject: a") '(13 10 13 10 65 13 10)))
 (defconst *ovrt-p1* (append (fn-record-string-octets "Subject: bb") '(13 10 13 10 66 13 10)))

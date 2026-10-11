@@ -104,6 +104,7 @@
 (local (defthm fn-ovr-append-assoc (equal (append (append a b) c) (append a (append b c)))))
 (local (defthm fn-ovr-nthcdr-past (implies (and (natp i) (<= (len l) i) (true-listp l)) (equal (nthcdr i l) nil))))
 
+
 ; The decimal digits of N, most significant first.
 (defun fn-ovr-put-digits (n fn-ovr-lease)
   (declare (xargs :stobjs fn-ovr-lease
@@ -175,6 +176,7 @@
            (equal (fn-ovr-digits-len n) (len (fn-nntp-decimal n))))
   :hints (("Goal" :induct (fn-ovr-digits-len n)
            :in-theory (enable fn-nntp-decimal fn-nntp-decimal-rev fn-nntp-string-octets-aux))))
+
 
 ; String predicates read in place (no octet list): the Message-ID test and the Xref word test.
 
@@ -454,6 +456,7 @@
                          (:instance fn-ovr-put-digits-is-decimal (fn-ovr-lease nil)))
             :in-theory (disable fn-ovr-put-digits-token fn-ovr-put-digits-is-decimal fn-ovr-put-digits
                                 fn-nntp-decimal)))))
+
 
 (local
  (defthm fn-ovr-decimal-of-non-natural
@@ -962,97 +965,4 @@
                                   (fn-ovr-put-number fn-ovr-number-len fn-cnx-view-seq fn-held-number-in
                                    fn-ovr-msgid-okp fn-ovr-put-number-is-the-lines fn-ovr-number-len-is-len
                                    fn-ovr-probe-len-is-the-length fn-ovr-put-probe-is-the-served-octets)))))
-
-; The two framing texts of a window.
-(defun fn-ovr-status-octets ()
-  (declare (xargs :guard t))
-  (fn-ovw-status (fn-proto-text * :overview)))
-(defun fn-ovr-close-octets (owed2 legacyp)
-  (declare (xargs :guard t))
-  (if owed2 (fn-ovw-status (fn-ovw-empty-text legacyp)) '(46 13 10)))
-
-;; One pass over the probes J..LAST: each probe's length is read, and the probe is
-;; written (after the status, while owed) only when the window through it, closed if
-;; J is the range's last number, fits ROOM.  (mv HI OWED LEASE'): HI the last number
-;; written (J-1 when none), OWED the status still owed.
-(defun fn-ovr-fill (group j last top owedp legacyp room server v fn-ovr-lease fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-ovr-lease fn-arena fn-cat) :verify-guards nil
-                  :measure (nfix (- (+ 1 (nfix last)) (nfix j)))))
-  (if (and (natp j) (<= j (nfix last)))
-      (let* ((p (fn-ovr-probe-len group j server v fn-arena fn-cat))
-             (s (if (and owedp (posp p)) (len (fn-ovr-status-octets)) 0))
-             (owed2 (and owedp (zp p)))
-             (close (if (<= (nfix top) j) (len (fn-ovr-close-octets owed2 legacyp)) 0)))
-        (if (<= (+ (fn-ovr-lease-len fn-ovr-lease) s p close) (nfix room))
-            (let* ((fn-ovr-lease (if (posp s)
-                                     (fn-ovr-lease-append-list (fn-ovr-status-octets) fn-ovr-lease)
-                                   fn-ovr-lease))
-                   (fn-ovr-lease (fn-ovr-put-probe group j server v fn-ovr-lease fn-arena fn-cat)))
-              (fn-ovr-fill group (+ 1 j) last top owed2 legacyp room server v fn-ovr-lease fn-arena fn-cat))
-          (mv (- j 1) owedp fn-ovr-lease)))
-    (mv (- (nfix j) 1) owedp fn-ovr-lease)))
-
-; ONE QUANTUM.  (mv N NEXT LEASE'): N numbers taken (0: not even one number's window
-; fits the lease's remaining room under CAP; nothing written, the cursor unchanged),
-; NEXT the cursor after them (nil when the range is exhausted), LEASE' the lease with
-; the window's octets appended.  A header cursor (nth 7) is not this landing's: N = 0.
-; A server name that is not an octet list cannot be written into an octet lease: N = 0
-; (the served arm's server is fn-xref-serverp or nil, fn-nntp-xref-server-is-a-server).
-(defun fn-ovr-quantum (cur w cap fn-ovr-lease fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-ovr-lease fn-arena fn-cat) :verify-guards nil))
-  (if (or (not (consp cur)) (nth 7 cur) (not (fn-cbor-octet-listp (nth 6 cur)))
-          (not (unsigned-byte-p 59 cap)) (< cap (fn-ovr-lease-len fn-ovr-lease)))
-      (mv 0 cur fn-ovr-lease)
-    (let* ((group (nth 0 cur)) (k (nfix (nth 1 cur))) (top (nfix (nth 2 cur)))
-           (v (nfix (nth 3 cur))) (legacyp (nth 4 cur)) (owedp (nth 5 cur)) (server (nth 6 cur)))
-      (mv-let (hi owed2 fn-ovr-lease)
-        (fn-ovr-fill group k (fn-ovw-hi k top w) top owedp legacyp cap server v fn-ovr-lease fn-arena fn-cat)
-        (if (or (and (< hi k) (<= k top))
-                ;; an empty range (K past TOP: OVER 5-3, or a low bound past the group's last
-                ;; article) is one window of no number that writes only the close, when it fits
-                (and (< top k)
-                     (< cap (+ (fn-ovr-lease-len fn-ovr-lease)
-                               (len (fn-ovr-close-octets owed2 legacyp))))))
-            (mv 0 cur fn-ovr-lease)
-          (let* ((donep (<= top hi))
-                 (fn-ovr-lease (if donep
-                                   (fn-ovr-lease-append-list (fn-ovr-close-octets owed2 legacyp)
-                                                             fn-ovr-lease)
-                                 fn-ovr-lease)))
-            (mv (max 1 (+ 1 (- hi k)))
-                (if donep nil (fn-ovw-cursor group (+ 1 hi) top v legacyp owed2 server))
-                fn-ovr-lease)))))))
-
-; The run: quanta into the lease, cleared before each, until the cursor is nil;
-; OKP nil when a quantum takes no number.
-(defun fn-ovr-run (cur w cap fn-ovr-lease fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-ovr-lease fn-arena fn-cat) :verify-guards nil
-                  :measure (fn-ovw-remaining cur)
-                  :hints (("Goal" :in-theory (disable fn-ovr-quantum)))))
-  (if (consp cur)
-      (let ((fn-ovr-lease (fn-ovr-lease-clear fn-ovr-lease)))
-        (mv-let (n next fn-ovr-lease) (fn-ovr-quantum cur w cap fn-ovr-lease fn-arena fn-cat)
-          (cond ((not (posp n)) (mv nil nil fn-ovr-lease))
-                ((null next) (mv t (fn-ovr-lease-list fn-ovr-lease) fn-ovr-lease))
-                ((< (fn-ovw-remaining next) (fn-ovw-remaining cur))
-                 (let ((octets (fn-ovr-lease-list fn-ovr-lease)))
-                   (mv-let (okp rest fn-ovr-lease) (fn-ovr-run next w cap fn-ovr-lease fn-arena fn-cat)
-                     (mv okp (append octets rest) fn-ovr-lease))))
-                (t (mv nil nil fn-ovr-lease)))))
-    (mv t nil fn-ovr-lease)))
-
-; Every probe of K..TOP renders within L octets.
-(defun fn-ovr-probes-within (group k top server v l fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil
-                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
-  (if (and (natp k) (<= k (nfix top)))
-      (and (<= (fn-ovr-probe-len group k server v fn-arena fn-cat) (nfix l))
-           (fn-ovr-probes-within group (+ 1 k) top server v l fn-arena fn-cat))
-    t))
-
-; The framing a window may add beyond its lines: the status and the longer close.
-(defun fn-ovr-frame-max ()
-  (declare (xargs :guard t))
-  (+ (len (fn-ovr-status-octets))
-     (max (len (fn-ovr-close-octets t t)) (max (len (fn-ovr-close-octets t nil)) 3))))
 
