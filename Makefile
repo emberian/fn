@@ -3302,7 +3302,7 @@ model-test: certify
 # ledger 16 s (a cold tree analysis), reach_check 12 s -- and the 120 s kill
 # landed in whichever module was running then, before the later modules ran
 # (PKT-305).  No module or test is over its budget.
-TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
+TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper tests.test_test_search \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
 	    tests.test_green_check tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \
