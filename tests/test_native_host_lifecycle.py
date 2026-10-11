@@ -341,13 +341,10 @@ class IdleTimerTests(unittest.TestCase):
             time.sleep(1)
             passes = [int(m) for m in re.findall(rb"OVER (?:cursor|empty)-yield cid=\d+ passes=(\d+)",
                                                   owner.stderr.since(0))]
-            if not passes:
-                # unreachable-in-composition: OVER is not served on the
-                # cursor arm at this revision (over_pins 0/4, a known served
-                # defect), so no reply yields and the timer cannot meet a
-                # yield.  The case runs as soon as a reply does.
-                node.stop(process=owner, expect=EXIT.OK)
-                self.skipTest("no cursor yield in composition: OVER is not on the cursor arm")
+            # OVER is served on the cursor arm (the case ran and passed on
+            # hbox's qual-eef2e87 and drain-c0e35e156 images), so a reply
+            # with no cursor yield is a regression of that arm, not a skip.
+            self.assertTrue(passes, "no cursor yield: OVER did not reach the cursor arm")
             self.assertGreater(seconds, 2.0, "the reply was too short to outlive the idle second")
             self.assertGreater(len(passes), self.COUNT // 2)
             later = passes[len(passes) // 2:]

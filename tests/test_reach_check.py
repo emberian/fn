@@ -7,6 +7,7 @@ books must never be reported hosted.
 """
 import io
 import json
+import shutil
 from contextlib import redirect_stdout
 import subprocess
 import sys
@@ -1041,6 +1042,9 @@ class CertificateExpansionTests(unittest.TestCase):
         import cert_expansions
         cls.cert_expansions = cert_expansions
         cls.acl2 = acl2_slots.configured_acl2()
+        if not (Path(cls.acl2).is_file() or shutil.which(cls.acl2)):
+            raise unittest.SkipTest("no ACL2 launcher here (FN_ACL2, ~/.config/fn/acl2 "
+                                    "or acl2 on PATH): " + cls.acl2)
         cls.tmp = tempfile.TemporaryDirectory()
         cls.root = Path(cls.tmp.name)
         (cls.root / "books").mkdir()
@@ -1051,8 +1055,11 @@ class CertificateExpansionTests(unittest.TestCase):
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               check=False, timeout=300)
         if not (cls.root / "books/t.cert").is_file():
+            # ACL2 is here (checked above), so a book it does not certify is
+            # a failure of this fixture or the toolchain, never a skip.
             cls.tmp.cleanup()
-            raise unittest.SkipTest("no ACL2 here: " + done.stdout.decode()[-300:])
+            raise AssertionError("ACL2 did not certify the fixture book: "
+                                 + done.stdout.decode()[-300:])
 
     @classmethod
     def tearDownClass(cls):
