@@ -65,9 +65,64 @@
 (defthm fn-wpc-cursorp-readyp
   (implies (fn-wpc-cursorp cursor n) (fn-wpc-readyp cursor n)))
 
+; Total reads of the reply, so that a step needs no evaluated guard: an index
+; past the buffer reads nil, exactly the logical value of fn-octets-get there
+; (fn-oct-get-is-nth).  Where the cursor is ready (fn-wpc-readyp) the read is
+; in range and these are the octets themselves.
+(defun fn-wpc-get (i fn-web-in)
+  (declare (xargs :stobjs fn-web-in :guard t))
+  (if (and (natp i) (< i (fn-octets-len fn-web-in)))
+      (fn-octets-get i fn-web-in)
+    nil))
+
+(defthm fn-wpc-get-is-octets-get
+  (implies (natp i) (equal (fn-wpc-get i fn-web-in) (fn-octets-get i fn-web-in)))
+  :hints (("Goal" :in-theory (enable fn-oct-get-is-nth fn-oct-len-is-len))))
+
+; The reverse of the octets emitted, guard t: the traversal is handed nil and
+; conses, so its list is always a true list, and the old (reverse rev) is this
+; (fn-wpc-rev-is-reverse).
+(defun fn-wpc-rev (x acc)
+  (declare (xargs :guard t))
+  (if (consp x) (fn-wpc-rev (cdr x) (cons (car x) acc)) acc))
+
+(defthm fn-wpc-rev-is-revappend
+  (equal (fn-wpc-rev x acc) (revappend x acc)))
+
+(defthm fn-wpc-rev-is-reverse
+  (implies (true-listp rev) (equal (fn-wpc-rev rev nil) (reverse rev))))
+
+(defun fn-wpc-slice-loop (i n fn-web-in acc)
+  (declare (xargs :stobjs fn-web-in :guard t :measure (nfix (- n i))))
+  (if (or (not (natp i)) (not (natp n)) (<= n i))
+      (fn-wpc-rev acc nil)
+    (fn-wpc-slice-loop (1+ i) n fn-web-in (cons (fn-wpc-get i fn-web-in) acc))))
+
+(local
+ (defthm fn-wpc-slice-loop-is-slice
+   (equal (fn-wpc-slice-loop i n fn-web-in acc)
+          (revappend acc (fn-oct-slice-list i n fn-web-in)))
+   :hints (("Goal" :induct (fn-wpc-slice-loop i n fn-web-in acc)
+                   :in-theory (enable fn-oct-slice-list)))))
+
+(defun fn-wpc-slice (i n fn-web-in)
+  (declare (xargs :stobjs fn-web-in :guard t))
+  (fn-wpc-slice-loop i n fn-web-in nil))
+
+(defthm fn-wpc-slice-is-slice-list
+  (equal (fn-wpc-slice i n fn-web-in) (fn-oct-slice-list i n fn-web-in)))
+
+; Total car and cdr (guard t), the logical car and cdr.
+(defun fn-wpc-car (x)
+  (declare (xargs :guard t))
+  (mbe :logic (car x) :exec (if (consp x) (car x) nil)))
+
+(defun fn-wpc-cdr (x)
+  (declare (xargs :guard t))
+  (mbe :logic (cdr x) :exec (if (consp x) (cdr x) nil)))
+
 (defun fn-wpc-next (cursor fn-web-in)
-  (declare (xargs :stobjs fn-web-in
-                  :guard (fn-wpc-readyp cursor (fn-octets-len fn-web-in))))
+  (declare (xargs :stobjs fn-web-in :guard t))
   (let* ((segs (fn-wrq-nth 0 cursor)) (kind (fn-wrq-nth 1 cursor))
          (xs (fn-wrq-nth 2 cursor)) (s (nfix (fn-wrq-nth 3 cursor)))
          (e (nfix (fn-wrq-nth 4 cursor))) (bol (fn-wrq-nth 5 cursor))
@@ -86,21 +141,21 @@
         (mv nil nil (fn-wpc-cursor segs) nil)))
      ((member kind '(:s :d))
       (if (< s e)
-          (let ((o (fn-octets-get s fn-web-in)))
+          (let ((o (fn-wpc-get s fn-web-in)))
             (if (and (equal kind :d) bol (equal o 46) (< (1+ s) e)
-                     (equal (fn-octets-get (1+ s) fn-web-in) 46))
+                     (equal (fn-wpc-get (1+ s) fn-web-in) 46))
                 (mv nil nil (list segs kind nil (1+ s) e nil nil) nil)
               (mv nil nil (list segs kind nil (1+ s) e (equal o 10)
                                (fn-wr-escape-octet o)) nil)))
         (mv nil nil (fn-wpc-cursor segs) nil)))
      ((consp segs)
-      (let* ((seg (car segs)) (kind (car seg))
-             (s (nfix (cadr seg))) (e (nfix (cddr seg))))
+      (let* ((seg (car segs)) (kind (fn-wpc-car seg))
+             (s (nfix (fn-wpc-car (fn-wpc-cdr seg)))) (e (nfix (fn-wpc-cdr (fn-wpc-cdr seg)))))
         (mv nil nil
             (case kind
-              ((:m :t :u) (list (cdr segs) kind (cdr seg) 0 0 t nil))
+              ((:m :t :u) (list (cdr segs) kind (fn-wpc-cdr seg) 0 0 t nil))
               (:w (if (<= (- e s) *fn-w47-max*)
-                      (list (cdr segs) :t (fn-w47-decode (if (< s e) (fn-oct-slice-list s e fn-web-in) nil)) 0 0 t nil)
+                      (list (cdr segs) :t (fn-w47-decode (if (< s e) (fn-wpc-slice s e fn-web-in) nil)) 0 0 t nil)
                     (list (cdr segs) :s nil s e t nil)))
               (otherwise (list (cdr segs) kind nil s e t nil))) nil)))
      (t (mv nil nil cursor t)))))
@@ -199,21 +254,19 @@
            (not (equal (fn-wrq-nth 1 (mv-nth 2 (fn-wpc-next cursor fn-web-in))) :v-list))))
 
 (defun fn-wpc-drive (fuel cursor count emitp rev fn-web-in)
-  (declare (xargs :stobjs fn-web-in
-                  :guard (and (natp fuel)
-                              (fn-wpc-cursorp cursor (fn-octets-len fn-web-in))
-                              (true-listp rev))))
+  ; The guard is a natural number: fn-wpc-next is total, so the scheduling
+  ; quantum needs no recognizer over the segments or the emitted octets.
+  (declare (xargs :stobjs fn-web-in :guard (natp fuel)))
   (if (zp fuel)
-      (mv (reverse rev) cursor (nfix count) nil)
+      (mv (fn-wpc-rev rev nil) cursor (nfix count) nil)
     (mv-let (present octet next done) (fn-wpc-next cursor fn-web-in)
       (if done
-          (mv (reverse rev) next (nfix count) t)
+          (mv (fn-wpc-rev rev nil) next (nfix count) t)
         (fn-wpc-drive (1- fuel) next (if present (1+ (nfix count)) (nfix count))
                       emitp (if (and present emitp) (cons octet rev) rev) fn-web-in)))))
 
 (defun fn-wpc-step (cursor count emitp fn-web-in)
-  (declare (xargs :stobjs fn-web-in
-                  :guard (fn-wpc-cursorp cursor (fn-octets-len fn-web-in))))
+  (declare (xargs :stobjs fn-web-in :guard t))
   ; Fixed scheduling quantum, not a response length ceiling. The bounded
   ; RFC2047 decoder may additionally inspect at most *fn-w47-max* bytes.
   (fn-wpc-drive 4096 cursor count emitp nil fn-web-in))

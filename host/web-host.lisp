@@ -260,17 +260,12 @@
 
 (definterface fn-web-host-page-cursor :class :common-lisp-compliant)
 
-;; :program by necessity until the cursor's invariant can be carried without
-;; evaluation: fn-wpc-step's guard (fn-wpc-cursorp, verified) walks every
-;; remaining segment, and the host calls this once per window, so an evaluated
-;; guard is quadratic in the reply; :raw-with refuses a carried conjunct over
-;; a host formal (books/definterface.lisp fn-di-raw-with-problem).
-;; DEPTH-EXCESS-D keeps it open.
+;; Constant-time guard: t.  fn-wpc-step is total (its reads are tested, books/web-page-cursor.lisp fn-wpc-get), so no recognizer over the segments is evaluated per window.
 (defun fn-web-host-page-step (cursor count emitp fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :stobjs fn-web-in :guard t))
   (fn-wpc-step cursor count emitp fn-web-in))
 
-(definterface fn-web-host-page-step :class ::program)
+(definterface fn-web-host-page-step :class :common-lisp-compliant)
 
 (defun fn-web-host-private-reply-p (flow event)
   (declare (xargs :guard t))
@@ -300,13 +295,13 @@
 (defun fn-web-host-article-page (config flow scan)
   (declare (xargs :mode :program))
   (fn-was-page config flow scan))
-;; :program for the reason fn-web-host-page-step gives (fn-wpc-wcursorp walks
-;; the remaining segments).
+;; Constant-time guard: two naturals (the window step is total, books/web-article-stream.lisp fn-wpc-window-next).
 (defun fn-web-host-window-page-step (cursor base count emitp fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :stobjs fn-web-in :guard (and (natp base) (natp count))))
   (fn-wpc-window-drive 4096 cursor base count emitp nil fn-web-in))
 
-(definterface fn-web-host-window-page-step :class ::program)
+(definterface fn-web-host-window-page-step :class :common-lisp-compliant
+  :kinds ((base natp) (count natp)))
 (defun fn-web-host-replay-slice (at length need)
   (declare (xargs :guard (consp need)))
   (let ((s (max (nfix at) (nfix (car need))))
@@ -371,12 +366,19 @@
 (definterface fn-web-host-post-reply-step :class :common-lisp-compliant
   :kinds ((config true-listp)))
 
+;; Constant-time guard: config is a list and the traversal is a bounded tuple (fn-wpf-cp), O(1) in the body.
 (defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
-  (declare (xargs :mode :logic :guard t :stobjs (fn-web-in fn-web-out)))
-  (mv-let (next done) (ec-call (fn-wpf-drive 4096 prep fn-web-in))
-    (if done (ec-call (fn-wpf-finish
-                       (append (ec-call (take 6 config)) (list :page-plan :private-begin))
-                       next fn-web-in fn-web-out))
+  (declare (xargs :stobjs (fn-web-in fn-web-out)
+                  :guard (and (true-listp config)
+                              (fn-wpf-cp prep (fn-octets-len fn-web-in)))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-wpf-drive fn-wpf-cp fn-wpf-finish)
+                                 :use ((:instance fn-wpf-drive-cp (fuel 4096) (p prep)
+                                                  (n (fn-octets-len fn-web-in))))))))
+  (mv-let (next done) (fn-wpf-drive 4096 prep fn-web-in)
+    (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
+                           next fn-web-in fn-web-out)
       (mv (list :post-form next) fn-web-out))))
 
-(definterface fn-web-host-post-form-step :class :common-lisp-compliant)
+(definterface fn-web-host-post-form-step :class :common-lisp-compliant
+  :kinds ((config true-listp)))

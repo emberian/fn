@@ -369,8 +369,28 @@
                 (equal (len (fn-wpf-store name start end spans)) 4)))
   :hints (("Goal" :in-theory (enable fn-wpf-store))))
 
+(defun fn-wpf-cp (p n)
+  ; The constant-time shape of a traversal: fixed-arity fields and bounded
+  ; lists only (name <= 8 octets, vals <= 3 values, 4 spans); never the
+  ; decoded value or the octets of the reply.
+  (declare (xargs :guard (natp n)))
+  (and (true-listp p)
+       (or (equal (len p) 11) (equal (len p) 12))
+       (natp (nth 1 p)) (natp (nth 2 p)) (<= (nth 1 p) (nth 2 p)) (<= (nth 2 p) n)
+       (true-listp (nth 3 p)) (<= (len (nth 3 p)) 8)
+       (or (null (nth 4 p)) (natp (nth 4 p)))
+       (fn-wpf-spansp (nth 5 p) n) (equal (len (nth 5 p)) 4)
+       (member (nth 6 p) '(:scan :decode :reverse :subject-check))
+       (natp (nth 7 p)) (<= (nth 7 p) 3)
+       (implies (equal (nth 6 p) :reverse) (<= (nth 7 p) 2))
+       (true-listp (nth 0 p))
+       (implies (equal (nth 6 p) :decode) (or (null (nth 8 p)) (natp (nth 8 p))))
+       (true-listp (nth 10 p)) (<= (len (nth 10 p)) (nth 7 p))))
+
 (defun fn-wpf-step (p fn-web-in)
-  (declare (xargs :verify-guards nil :stobjs fn-web-in))
+  (declare (xargs :stobjs fn-web-in
+                  :guard (fn-wpf-cp p (fn-octets-len fn-web-in))
+                  :verify-guards nil))
   (let* ((at (nth 1 p)) (end (nth 2 p)) (name (nth 3 p)) (start (nth 4 p))
          (spans (nth 5 p)) (phase (nth 6 p)) (index (nth 7 p))
          (pos (nth 8 p)) (rev (nth 9 p)) (vals (nth 10 p)))
@@ -407,8 +427,30 @@
       (if (atom pos) (mv p t)
         (let ((o (if (member (car pos) '(13 10 9 0)) 32 (car pos))))
           (mv (update-nth 8 (cdr pos) (update-nth 11
-                (and (nth 11 p) (<= 32 o) (<= o 126)) p)) nil))))
+                (and (nth 11 p) (integerp o) (<= 32 o) (<= o 126)) p)) nil))))
      (t (mv p t)))))
+
+(defthm fn-wpf-start-cp
+  (implies (and (true-listp action)
+                (<= (fn-wss-c-bs (nth 3 action)) (fn-wss-c-be (nth 3 action)))
+                (<= (fn-wss-c-be (nth 3 action)) n))
+           (fn-wpf-cp (fn-wpf-start action) n))
+  :hints (("Goal" :in-theory (e/d (fn-wpf-cp fn-wpf-start) (nth update-nth)))))
+
+(defthm fn-wpf-len-append
+  (equal (len (append a b)) (+ (len a) (len b))))
+
+(defthm fn-wpf-step-cp
+  ; A step keeps the shape, whatever the decoded value holds.
+  (implies (and (fn-wpf-cp p n) (equal n (fn-octets-len fn-web-in)))
+           (fn-wpf-cp (mv-nth 0 (fn-wpf-step p fn-web-in)) n))
+  :hints (("Goal" :do-not-induct t
+                  :in-theory (e/d (fn-wpf-cp) (nth update-nth fn-wss-decode-at fn-wpf-store)))))
+
+(verify-guards fn-wpf-step
+  :hints (("Goal" :do-not-induct t
+                  :in-theory (e/d (fn-wpf-cp) (nth update-nth fn-wss-decode-at fn-wpf-store)))))
+
 (defthm fn-wpf-step-statep
   ; A step keeps the traversal inside the buffer it reads.
   (implies (and (fn-wpf-statep p n) (equal n (fn-octets-len fn-web-in))
@@ -418,18 +460,41 @@
                   :in-theory (disable nth update-nth fn-wss-decode-at fn-wpf-store))))
 
 (defun fn-wpf-drive (fuel p fn-web-in)
-  (declare (xargs :verify-guards nil :stobjs fn-web-in))
+  (declare (xargs :stobjs fn-web-in
+                  :guard (and (natp fuel) (fn-wpf-cp p (fn-octets-len fn-web-in)))
+                  :verify-guards nil))
   (if (zp fuel) (mv p nil)
     (mv-let (next done) (fn-wpf-step p fn-web-in)
       (if done (mv next t) (fn-wpf-drive (1- fuel) next fn-web-in)))))
+
+(defthm fn-wpf-drive-cp
+  (implies (and (fn-wpf-cp p n) (equal n (fn-octets-len fn-web-in)))
+           (fn-wpf-cp (mv-nth 0 (fn-wpf-drive fuel p fn-web-in)) n))
+  :hints (("Goal" :in-theory (disable fn-wpf-step fn-wpf-cp mv-nth))))
+
+(verify-guards fn-wpf-drive
+  :hints (("Goal" :in-theory (disable fn-wpf-step fn-wpf-cp mv-nth)
+                  :use ((:instance fn-wpf-step-cp (n (fn-octets-len fn-web-in)))))))
+
 (defthm fn-wpf-drive-statep
   (implies (and (fn-wpf-statep p n) (equal n (fn-octets-len fn-web-in))
                 (fn-cbor-octet-listp fn-web-in))
            (fn-wpf-statep (mv-nth 0 (fn-wpf-drive fuel p fn-web-in)) n))
   :hints (("Goal" :in-theory (disable fn-wpf-step fn-wpf-statep mv-nth))))
 
+(defthm fn-wpf-all-vchar-true-listp
+  (implies (fn-wss-all-vchar xs) (true-listp xs))
+  :rule-classes :forward-chaining)
+
+(defthm fn-wpf-groupp-true-listp
+  (implies (fn-wss-groupp x) (true-listp x))
+  :hints (("Goal" :in-theory (enable fn-wss-groupp fn-wss-argp)))
+  :rule-classes :forward-chaining)
+
+
+
 (defun fn-wpf-finish (config p fn-web-in fn-web-out)
-  (declare (xargs :verify-guards nil :stobjs (fn-web-in fn-web-out)))
+  (declare (xargs :stobjs (fn-web-in fn-web-out) :guard (fn-wpf-cp p (fn-octets-len fn-web-in)) :verify-guards nil))
   (let* ((action (nth 0 p)) (session (nth 2 action)) (ctx (nth 3 action))
          (vals (nth 10 p)) (csrf (nth 0 vals)) (group (nth 1 vals))
          (subject (nth 2 vals)) (span (nth 3 (nth 5 p))))
@@ -445,6 +510,8 @@
                     (fn-wss-flow :post :posting ctx (list group nil))) fn-web-out))
       ; Preserve the exact existing refusal/page behavior, currently full.
       (fn-web-private-begin-step config action fn-web-in fn-web-out))))
+
+(verify-guards fn-wpf-finish :hints (("Goal" :in-theory (e/d (fn-wpf-cp) (nth)))))
 (defun fn-wpf-private-begin (config action fn-web-in fn-web-out)
   (declare (xargs :stobjs (fn-web-in fn-web-out) :guard (true-listp action)))
   (let* ((row (nth 1 action)) (session (nth 2 action)) (ctx (nth 3 action)))
