@@ -593,7 +593,8 @@
   :keystones (fn-hld-begin-keeps-invp))
 
 (definterface fn-hld-workspace
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :kinds ((h natp)))
 
 (definterface fn-hld-window-base
   :class :common-lisp-compliant

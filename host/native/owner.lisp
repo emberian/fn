@@ -894,7 +894,7 @@ never awaits a page or replays a quantum in the same I/O event."
 CFG (host/owner-host.lisp fn-owner-lease-cfg), the store's profile and ACL2's
 ARTICLE quantum; the caller holds the owner serialization, before any actor
 exists (fnn-mux-budget-install)."
-  (let ((cfg (fnn-owner-core 'fn-owner-lease-cfg))
+  (let ((cfg (first (fnn-call 'fn-owner-lease-cfg *the-live-state*)))
         (profile (fnn-store-config (fnn-owner-service-store service))))
     (destructuring-bind (st okp left)
         (fnn-call 'fn-hld-init profile cfg (fnn-owner-article-window) (fnn-live-rtc-st))

@@ -1875,7 +1875,7 @@
 ; admits and fn-mm-cfg-holders pool buffers (HL4).
 (defun fn-owner-lease-cfg (state)
   (declare (xargs :stobjs state :mode :program))
-  (value (cadr (fn-owner-memory-gate state))))
+  (cadr (fn-owner-memory-gate state)))
 
 (definterface fn-owner-lease-cfg
   :class ::program)
