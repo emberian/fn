@@ -733,13 +733,15 @@
 
 ;; The run is sized for the full store (fn-heap-operation-figure-octets-of-a-run):
 ;; the open term at the profile's H = 8 MiB, T = 16,384 and R = 192 KiB is
-;; 104,858,288 octets (BATCH-ENTRY-UNDER-CHARGE: 32 x (min(H, 1 MiB + R) +
-;; min(H, R)) = 46,137,344 for the chunk and one log record as lists; the log
-;; walk's entry array min(H, 16 MiB + 42) = 8,388,608 and its header 688; 2 H =
-;; 16,777,216; 2,048 T = 33,554,432) where the empty store's is 0.
+;; 104,923,402 octets (BATCH-ENTRY-UNDER-CHARGE): the chunk and one log
+;; record as lists, 32 x (min(H, 1 MiB + R) + min(H, R)) = 46,137,344; the
+;; log walk's entry array min(H, 42 + 16 MiB) = 8,388,608 and its fixed
+;; octets 65,802 (three arrays' overhead 96, the header's 10 octets as an
+;; array and as a list 10 + 160, the read's staging array 65,536); 2 H =
+;; 16,777,216; 2,048 T = 33,554,432.  The empty store's is 0.
 (defthm fn-heap-small-run-base-of-an-unobserved-store
   (equal (fn-heap-store-base-octets *fn-heap-small-profile* core nil)
-         (+ (fn-heap-core-dynamic core) 446234682))
+         (+ (fn-heap-core-dynamic core) 446299796))
   :hints (("Goal" :in-theory (enable fn-heap-store-base-octets fn-heap-open-octets-bound
                                      fn-heap-open-records-bound))))
 

@@ -1,7 +1,7 @@
 ; Teeth for books/heap-store-open-walk.lisp (Builder M,
 ; BATCH-ENTRY-UNDER-CHARGE): KEYSTONE fn-heap-open-walk-entry-within-the-term
 ; over a batch entry at the batch payload bound (16 MiB + 42 octets) under
-; the small preset (R = 64 KiB).
+; the small preset (R = 192 KiB).
 ;   WITNESS: the batch header, its whole entry inside the extent, OU the
 ;     extent: the entry is within the entry array component.
 ;   BREAK: an extent past OU (the entry is read past the array component).

@@ -28,17 +28,18 @@
 
 ;; The reachable witness: `init''s number for the small preset (the run of
 ;; the full store, unobserved, at init's connections): the hypothesis holds,
-;; the terms add up to it: 965 MiB since lane chunked-body-2 packed the
-;; articles in flight, 1,015 MiB since lane heap-pool charged the
-;; header to the history budget (the records' fixed part 128 MiB and the
-;; header charge's heap 8 H = 64 MiB; 1,884 MiB under lane heap-bounds'
-;; uncharged term, 1,235 MiB before it with zero-copy-commit's 32 article
-;; slots and the 12 KiB record constant long headers exceeded, 1,188 MiB
-;; before lane f8-reservation).  THE SWITCH adds 2 x 64 x 16,384
-;; = 2,097,152 state octets: base 562,489,005, figure ceil(8 base / 7)
-;; = 642,844,578, rounded to 614 MiB; with the unchanged core and thread
-;; terms the reservation is 1,015,124,992 octets.  These numeric pins are
-;; independently summed; the expression oracle above stays unchanged.
+;; and the terms add up to it.  The numeric pins below are summed
+;; independently of the model (the expression oracle above stays
+;; unchanged): base 593,903,927, figure ceil(8 base / 7) = 678,747,346,
+;; rounded to 648 MiB; with the core file's 214,012,928 octets and the
+;; thread terms the reservation is 1,076,990,976 octets.  BATCH-ENTRY-UNDER-
+;; CHARGE replaced the open's second chunk-sized list (79,691,776 for two)
+;; by the log record's list, the walk's entry array and its fixed octets
+;; (39,845,888 + 6,291,456 + 8,388,608 + 65,802): base 619,003,949 and 675
+;; MiB before it.  History: 965 MiB since lane chunked-body-2 packed the
+;; articles in flight, 1,015 MiB since lane heap-pool charged the header to
+;; the history budget, 1,884 MiB under lane heap-bounds' uncharged term,
+;; 1,235 MiB before it, 1,188 MiB before lane f8-reservation.
 (assert! (not (member-equal :run *fn-heap-list-actions*)))
 (assert! (hbt-conclusion :run *hbt-small* *hbt-core* *hbt-nursery* nil
                          (fn-heap-reserve-init-connections)))
@@ -53,7 +54,10 @@
                   (:state-handles . 786432)
                   (:state-records . 136314880)
                   (:state-record-headers . 67108864)
-                  (:open-chunk-lists . 79691776)
+                  (:open-chunk-lists . 39845888)
+                  (:open-record-lists . 6291456)
+                  (:open-entry-array . 8388608)
+                  (:open-walk-fixed . 65802)
                   (:open-suffix-vectors . 16777216)
                   (:open-per-record . 33554432)
                   (:inflight-lists . 7864320)
@@ -61,8 +65,8 @@
                   (:octet-buffers . 50725002)
                   (:articles . 3441664)
                   (:history-roots . 56760640)
-                  (:collector-room . 88429136)
-                  (:megabyte-rounding . 355715)
+                  (:collector-room . 84843419)
+                  (:megabyte-rounding . 729902)
                   (:image-outside-heap . 214012928)
                   ;; the thread terms follow the profile's thread count
                   (:thread-stacks . ,(* (fn-heap-thread-count (fn-heap-reserve-init-connections))

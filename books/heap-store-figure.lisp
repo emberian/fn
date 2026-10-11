@@ -495,11 +495,28 @@
 ; (the entry lies within the observed extent, books/heap-command.lisp
 ; fn-mo-tot-log-at-least); its header as a list; and, of the entry, ONE
 ; record as a list at a time, at most R and at most OU
-; (fn-lgb-span-within-max at MAX = R + 32; books/heap-store-open-walk.lisp
-; ties both bounds to the walk).  BATCH-ENTRY-UNDER-CHARGE: the term priced
+; (fn-lgb-span-within-max at MAX = R + 32; books/heap-store-open-walk.lisp; ties both bounds to the walk).  BATCH-ENTRY-UNDER-CHARGE: the term priced
 ; the entry as lists at min(OU, 1 MiB + R), while the host held a batch
 ; entry, to 16 MiB + 42 octets, as lists.
-(defconst *fn-heap-octet-array-header-octets* 16)
+;
+; Beside the entry and the record the walk holds, while OU > 0, octets no
+; input length moves (`fn-heap-open-walk-fixed-bound'): each octet array
+; costs its two-word header and its data's rounding to two words, at most
+; *fn-heap-octet-array-overhead-octets*; the header octets (at most
+; *fn-frame-header-octets*, fn-lgw-header-len) as an array and as a list;
+; and, while fnn-read-exact-fd fills the entry, one staging array of at most
+; *fn-heap-read-staging-octets* (its chunk) and at most OU.
+(defconst *fn-heap-octet-array-overhead-octets* 32)
+(defconst *fn-heap-read-staging-octets* 65536)
+
+(defun fn-heap-open-walk-fixed-bound (ou)
+  (declare (xargs :guard t))
+  (if (zp (nfix ou))
+      0
+    (+ (* 3 *fn-heap-octet-array-overhead-octets*)
+       *fn-frame-header-octets*
+       (* *fn-heap-list-octets-per-octet* *fn-frame-header-octets*)
+       (min (nfix ou) *fn-heap-read-staging-octets*))))
 
 (defun fn-heap-open-entry-array-bound (profile ou)
   (declare (xargs :guard t))
@@ -515,17 +532,14 @@
 ; The open's transient over an input of OU octets in ON records: one chunk
 ; (at most `fn-heap-open-chunk-bound') and one log record
 ; (`fn-heap-open-record-bound') as lists, the log walk's entry array and
-; header list, the checkpoint suffix's vectors, and the per-record build.
+; its fixed octets, the checkpoint suffix's vectors, and the per-record build.
 (defun fn-heap-store-open-octets (profile ou on)
   (declare (xargs :guard t))
   (+ (* *fn-heap-list-octets-per-octet* *fn-heap-open-list-copies*
         (+ (fn-heap-open-chunk-bound profile ou)
            (fn-heap-open-record-bound profile ou)))
      (fn-heap-open-entry-array-bound profile ou)
-     (if (zp (nfix ou))
-         0
-       (+ *fn-heap-octet-array-header-octets*
-          (* *fn-heap-list-octets-per-octet* *fn-frame-overhead-octets*)))
+     (fn-heap-open-walk-fixed-bound ou)
      (* 2 (nfix ou))
      (* 2 *fn-heap-open-record-octets* (nfix on))))
 
