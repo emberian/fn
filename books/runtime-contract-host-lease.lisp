@@ -87,11 +87,16 @@
     (+ 4 (* 2 (+ (fn-rtc-nbufs cfg) (fn-rtc-nslots cfg))))))
 
 ; A fresh contract state for the run: listener, the owner (static 1), one slot per connection, no
-; home buffers, the leased pool (HL4: fn-hl-rtc-config).
+; home buffers, the leased pool (HL4: fn-hl-rtc-config).  (mv st okp left): OKP is nil, and the state
+; untouched, when the configuration is past the stobj's limits (fn-rtc-st-cfg-okp).
 (defun fn-hld-init (profile cfg q fn-rtc-st)
-  (declare (xargs :stobjs fn-rtc-st :guard-hints (("Goal" :in-theory (disable fn-hll-x-init fn-hl-rtc-config)))))
-  (mv-let (fn-rtc-st acts) (fn-hll-x-init (fn-hl-rtc-config profile cfg q 1 0 0) fn-rtc-st)
-    (fn-hld-settle (true-list-fix acts) (fn-hld-fuel fn-rtc-st) fn-rtc-st)))
+  (declare (xargs :stobjs fn-rtc-st :guard-hints (("Goal" :in-theory (disable fn-hll-x-init fn-hl-rtc-config fn-rtc-st-cfg-okp)))))
+  (let ((c (fn-hl-rtc-config profile cfg q 1 0 0)))
+    (if (fn-rtc-st-cfg-okp c)
+        (mv-let (fn-rtc-st acts) (fn-hll-x-init c fn-rtc-st)
+          (mv-let (fn-rtc-st left) (fn-hld-settle (true-list-fix acts) (fn-hld-fuel fn-rtc-st) fn-rtc-st)
+            (mv fn-rtc-st t left)))
+      (mv fn-rtc-st nil nil))))
 
 ; Begin a response for resource R (the connection id): (mv st id inc left).  ID is nil when no
 ; slot is free or no :accept is outstanding.
@@ -244,3 +249,74 @@
   :hints (("Goal" :in-theory (union-theories '(fn-dss-out-p-is-octet-listp) (theory 'minimal-theory))
            :use (fn-hld-quantum-is-the-quantum-state
                  (:instance fn-hl-leased-quantum-sends-the-window (s st))))))
+
+; -----------------------------------------------------------------------------
+; The invariant on the host's states.  The leased machine's states are all nil (size 1), and the contract's
+; encapsulate forces fn-rtc-m-max-state >= size(m-init) >= 1, so the leased layer's invariant is the generic
+; fn-rtc-invp: every generic keystone assuming it applies to the host lease's states.
+
+(defthm fn-hld-size-pos
+  (<= 1 (fn-rtc-size x))
+  :rule-classes :linear)
+(defthm fn-hld-hll-mstates-okp-is-generic
+  (implies (fn-hll-mstates-okp ms) (fn-rtc-mstates-okp ms))
+  :hints (("Goal" :induct (fn-rtc-mstates-okp ms)
+           :in-theory (enable fn-rtc-mstates-okp fn-hll-mstates-okp fn-hlm-max-state))
+          ("Subgoal *1/1" :use ((:instance fn-hld-size-pos (x (fn-rtc-m-init)))
+                                fn-rtc-m-init-is-bounded))))
+(defthm fn-hld-hll-invp-is-generic-invp
+  (implies (fn-hll-invp s) (fn-rtc-invp s))
+  :hints (("Goal" :in-theory (union-theories '(fn-hll-invp fn-rtc-invp fn-hld-hll-mstates-okp-is-generic)
+                                             (theory 'minimal-theory)))))
+
+(make-event
+ (let* ((prefix 'fn-hll)
+        (copied (fn-rtc-layer-alist prefix (append *fn-rtc-layer-spec-fns* *fn-rtc-layer-exec-fns*)))
+        (alist (append '((fn-rtc-m-init . fn-hlm-init) (fn-rtc-m-static-init . fn-hlm-static-init)
+                         (fn-rtc-m-step . fn-hll-m-step) (fn-rtc-m-committedp . fn-hlm-committedp)
+                         (fn-rtc-m-c . fn-hlm-c) (fn-rtc-m-max-reqs . fn-hlm-max-reqs)
+                         (fn-rtc-m-max-state . fn-hlm-max-state) (fn-rtc-mx-step . fn-hlm-step))
+                       copied))
+        (obligations (cons 'natp (fn-rtc-layer-names prefix
+                                   '(fn-rtc-m-constants fn-rtc-mx-step-is-m-step fn-rtc-m-step-is-charged
+                                     fn-rtc-m-step-requests-are-bounded fn-rtc-m-init-is-bounded
+                                     fn-rtc-m-step-state-is-bounded fn-rtc-m-init-is-uncommitted
+                                     fn-rtc-m-static-init-is-bounded fn-rtc-m-static-init-is-uncommitted
+                                     fn-rtc-m-commits-only-on-fsync-done)))))
+   (cons 'progn (fn-rtc-layer-keystone-events '(fn-rtc-x-init-is) prefix alist (fn-rtc-layer-fi-alist alist)
+                                              (strip-cdrs copied) obligations (w state)))))
+
+(defthm fn-hld-hll-invp-st-p
+  (implies (fn-hll-invp s) (fn-rtc-st-p s))
+  :hints (("Goal" :use (fn-hld-hll-invp-is-generic-invp fn-rtc-invp-implies-st-p)
+           :in-theory (theory 'minimal-theory))))
+(defthm fn-hld-x-step*-keeps-invp
+  (implies (fn-hll-invp st) (fn-hll-invp (mv-nth 0 (fn-hll-x-step* e q st))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hld-hll-invp-st-p fn-hll-x-step*-is fn-hll-step) (theory 'minimal-theory))
+           :use ((:instance fn-hll-step-preserves-invp (s st) (e (fn-rtc-landed e st)))))))
+
+(defthm fn-hld-mv-nth-0-cons (equal (mv-nth 0 (cons a b)) a))
+(defthm fn-hld-settle-keeps-invp
+  (implies (fn-hll-invp st) (fn-hll-invp (mv-nth 0 (fn-hld-settle work fuel st))))
+  :hints (("Goal" :induct (fn-hld-settle work fuel st)
+           :expand ((fn-hld-settle work fuel st))
+           :in-theory (union-theories '(fn-hld-x-step*-keeps-invp (:induction fn-hld-settle) fn-hld-mv-nth-0-cons)
+                                      (theory 'minimal-theory)))))
+
+(defthm fn-hld-init-establishes-invp
+  (implies (mv-nth 1 (fn-hld-init profile cfg q st))
+           (fn-hll-invp (mv-nth 0 (fn-hld-init profile cfg q st))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hld-init fn-hll-x-init-is fn-hld-settle-keeps-invp fn-rtc-st-cfg-okp
+                                               fn-hld-mv-nth-0-cons)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-hll-init-establishes-invp (cfg (fn-hl-rtc-config profile cfg q 1 0 0)))))))
+
+(defthm fn-hld-begin-keeps-invp
+  (implies (fn-hll-invp st) (fn-hll-invp (mv-nth 0 (fn-hld-begin r st))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hld-begin fn-hld-x-step*-keeps-invp fn-hld-settle-keeps-invp
+                                               fn-hld-mv-nth-0-cons)
+                                             (theory 'minimal-theory)))))
+(defthm fn-hld-sent-keeps-invp
+  (implies (fn-hll-invp st) (fn-hll-invp (mv-nth 0 (fn-hld-sent id inc op outcome st))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hld-sent fn-hld-x-step*-keeps-invp fn-hld-settle-keeps-invp)
+                                             (theory 'minimal-theory)))))
