@@ -543,6 +543,272 @@ class FormsCheckerTests(unittest.TestCase):
         self.assertIn('raw:ACL2::G references function ACL2::F', out)
 
 
+# The *1* forms below are what ACL2 8.7's oneify-cltl-code returns (printed by the live harness further down, from
+# the local ACL2 launcher): a compliant function, a compliant function of two arguments, an :ideal one
+# (runtime symbol-class test), a :program one, and a compliant one whose guard is T.
+STAR1_FIXTURES = r"""
+(defpackage "ACL2_*1*_ACL2" (:use))
+(defpackage "ACL2_*1*_COMMON-LISP" (:use))
+(defvar *cap* '(acl2_*1*_acl2::cap (x)
+   (when (not (eq (f-get-global 'guard-checking-on *the-live-state*) :none))
+     (cond ((natp x) (return-from acl2_*1*_acl2::cap (cap x)))
+           ((f-get-global 'guard-checking-on *the-live-state*)
+            (throw-raw-ev-fncall (list 'ev-fncall-guard-er 'cap (list x) '(natp x) '(nil) nil)))))
+   (labels ((acl2_*1*_acl2::cap (x)
+              (if (acl2_*1*_acl2::zp x) '0
+                  (acl2_*1*_acl2::binary-+ '1 (acl2_*1*_acl2::cap (acl2_*1*_acl2::binary-+ '-1 x))))))
+     (acl2_*1*_acl2::cap x))))
+(defvar *ideal* '(acl2_*1*_acl2::idl (x)
+   (when (eq (symbol-class 'idl (w *the-live-state*)) :common-lisp-compliant)
+     (return-from acl2_*1*_acl2::idl (idl x)))
+   (labels ((acl2_*1*_acl2::idl (x)
+              (if (consp x) (acl2_*1*_acl2::binary-+ '1 (acl2_*1*_acl2::idl (acl2_*1*_common-lisp::cdr x))) '0)))
+     (acl2_*1*_acl2::idl x))))
+(defvar *program* '(acl2_*1*_acl2::prg (x)
+   (cond ((or (member-eq (f-get-global 'guard-checking-on *the-live-state*) '(:none :all))
+              (f-get-global 'safe-mode *the-live-state*))
+          (return-from acl2_*1*_acl2::prg (if (consp x) (acl2_*1*_acl2::binary-+ '1 (acl2_*1*_acl2::prg (acl2_*1*_common-lisp::cdr x))) '0))))
+   (prg x)))
+(defvar *guard-t* '(acl2_*1*_acl2::gt (x) (gt x)))
+(defun star1-names (o)
+  (let ((fns (make-hash-table :test 'eq)) (vars (make-hash-table :test 'eq)) (out nil))
+    (fe-calls (fe-walkable (cons 'defun o)) fns vars)
+    (maphash (lambda (s v) (declare (ignore v)) (when (fe-star1-p s) (push (symbol-name s) out))) fns)
+    (sort out #'string<)))
+"""
+
+
+@unittest.skipUnless(SBCL, 'SBCL required')
+class StarOneTrimTests(unittest.TestCase):
+    """fe-star1-trim and its premise check, on *1* forms as ACL2 8.7 oneifies them (the live differential against
+    the real oneify is StarOneTrimLiveTests)."""
+
+    def lisp(self, body):
+        return run_lisp(STAR1_FIXTURES + body)
+
+    def test_trim_removes_exactly_the_labels_form_and_its_callee_star1_edges(self):
+        out = self.lisp("""
+(show (star1-names *cap*))
+(show (star1-names (fe-star1-trim 'cap *cap*)))
+(show (equal (butlast (fe-star1-trim 'cap *cap*)) (butlast *cap*)))
+(show (car (last (fe-star1-trim 'cap *cap*))))""")
+        lines = out.strip().splitlines()
+        self.assertIn('ZP', lines[0])
+        self.assertIn('BINARY-+', lines[0])
+        self.assertEqual(lines[1], 'NIL')
+        self.assertEqual(lines[2], 'T')
+        self.assertEqual(lines[3], "(XL-STAR1-LOGIC-PATH-DROPPED 'CAP)")
+
+    def test_trim_applies_only_to_the_compliant_shape(self):
+        out = self.lisp("""
+(show (list (eq (fe-star1-trim 'idl *ideal*) *ideal*)
+            (eq (fe-star1-trim 'prg *program*) *program*)
+            (eq (fe-star1-trim 'gt *guard-t*) *guard-t*)))""")
+        self.assertEqual(out.strip(), '(T T T)')
+
+    def test_a_compliant_form_without_its_guard_violation_clause_is_not_trimmed(self):
+        out = self.lisp("""
+(let ((bad (subst nil '(throw-raw-ev-fncall (list 'ev-fncall-guard-er 'cap (list x) '(natp x) '(nil) nil)) *cap* :test #'equal)))
+  (show (eq (fe-star1-trim 'cap bad) bad)))
+(let ((bad (subst '(acl2_*1*_acl2::cap x) '(return-from acl2_*1*_acl2::cap (cap x)) *cap* :test #'equal)))
+  (show (eq (fe-star1-trim 'cap bad) bad)))""")
+        self.assertEqual(out.split(), ['T', 'T'])
+
+    def test_compliant_predicate_is_logic_mode_and_the_worlds_symbol_class(self):
+        out = self.lisp("""
+(defvar *fe-w* nil)
+(defun symbol-class (f w) (declare (ignore w)) (get f 'cls))
+(setf (get 'cap 'cls) :common-lisp-compliant (get 'idl 'cls) :ideal (get 'prg 'cls) :program)
+(show (list (fe-star1-compliant-p 'cap :logic) (fe-star1-compliant-p 'idl :logic)
+            (fe-star1-compliant-p 'prg :program) (fe-star1-compliant-p 'cap :program)))""")
+        self.assertEqual(out.strip(), '(T NIL NIL NIL)')
+
+    PREMISE = r"""
+(defvar *the-live-state* nil)
+(defvar *gc* t) (defvar *safe* nil)
+(defun global-symbol (s) (intern (symbol-name s) (or (find-package "ACL2_GLOBAL_ACL2") (make-package "ACL2_GLOBAL_ACL2" :use nil))))
+(defun f-get-global (s st) (declare (ignore st)) (if (eq s 'guard-checking-on) *gc* *safe*))
+(defun premise-result (units)
+  (handler-case (progn (fe-check-star1-premise units) :ok) (error (c) (princ-to-string c))))
+(defvar *cell* (global-symbol 'guard-checking-on))
+"""
+
+    def test_premise_accepts_reads_and_locals_named_safe_mode(self):
+        out = self.lisp(self.PREMISE + """
+(show (premise-result (list (cons "raw:ACL2::A" (list `(defun a (safe-mode) (let ((safe-mode 1)) (let nil (declare (special ,*cell*)) ,*cell*)))))
+                            (cons "raw:ACL2::B" (list '(defun b () (quote (and safe-mode guard-checking-on))))))))""")
+        self.assertEqual(out.strip(), 'OK')
+
+    def test_premise_refuses_a_unit_that_binds_assigns_or_names_the_cell(self):
+        for form in ("`(defun w () (let ((,*cell* nil)) 1))", "`(defun w () (setq ,*cell* nil))",
+                     "`(defun w () (set ',*cell* nil))", "`(defun w () (f-put-global 'guard-checking-on nil state))",
+                     "`(defun w () (put-global 'safe-mode t state))"):
+            out = self.lisp(self.PREMISE + '(show (premise-result (list (cons "raw:ACL2::OK" (list \'(defun ok () 1))) (cons "raw:ACL2::W" (list %s)))))' % form)
+            self.assertIn('unit raw:ACL2::W', out, form)
+            self.assertNotIn('unit raw:ACL2::OK', out, form)
+
+    def test_premise_refuses_a_session_that_is_not_guard_checking_t_and_safe_mode_nil(self):
+        out = self.lisp(self.PREMISE + '(setq *gc* nil) (show (premise-result nil)) (setq *gc* t *safe* t) (show (premise-result nil))')
+        first, second = out.strip().splitlines()
+        self.assertIn('guard-checking-on is NIL', first.upper().replace('GUARD-CHECKING-ON IS', 'guard-checking-on is'))
+        self.assertIn('safe-mode', second.lower())
+
+
+LIVE_HARNESS = r"""
+(set-ld-prompt nil state)
+(defun cap (x) (declare (xargs :guard (natp x))) (if (zp x) 0 (+ 1 (cap (- x 1)))))
+(defun two (x y) (declare (xargs :guard (and (natp x) (true-listp y)))) (+ x (len y)))
+(defun mb (x) (declare (xargs :guard (natp x))) (mbe :logic (+ 1 x) :exec (1+ x)))
+(defun idl (x) (if (consp x) (+ 1 (idl (cdr x))) 0))
+(defun prg (x) (declare (xargs :mode :program)) (if (consp x) (+ 1 (prg (cdr x))) 0))
+(defun gt (x) (declare (xargs :guard t)) (if (consp x) 1 0))
+(defstobj st (fld :type integer :initially 0))
+(defun sget (st) (declare (xargs :stobjs st :guard (natp (fld st)))) (+ 1 (fld st)))
+:q
+(load "FORMS")
+(in-package "ACL2")
+(fe-index-world)
+(defun xl-star1-logic-path-dropped (fn) (throw 'trap (list :trap fn)))
+(defun squeeze (string)
+  (with-output-to-string (o)
+    (let ((space nil))
+      (loop for c across string
+            do (if (member c '(#\Space #\Newline #\Tab)) (setq space t)
+                 (progn (when space (write-char #\Space o) (setq space nil)) (write-char c o)))))))
+(defun outcome (thunk)
+  "(:value v), (:trap f), or (:error condition-text printed-text): the guard violation is the text ACL2 prints."
+  (let* ((printed (make-string-output-stream))
+         (co (get *standard-co* *open-output-channel-key*))
+         (r (unwind-protect
+                (progn (setf (get *standard-co* *open-output-channel-key*) printed)
+                       (catch 'trap
+                         (catch 'raw-ev-fncall
+                           (let ((*standard-output* printed) (*error-output* printed))
+                             (handler-case (list :value (funcall thunk))
+                               (error (c) (list :error (princ-to-string c))))))))
+              (setf (get *standard-co* *open-output-channel-key*) co))))
+    (if (eq (car r) :error)
+        (list :error (squeeze (get-output-stream-string printed)) (squeeze (cadr r)))
+      r)))
+(defun drop-gc-clause (x)
+  "The mutant: the guard-violation clause of the early exit removed."
+  (cond ((atom x) x)
+        ((and (eq (car x) 'cond) (some (lambda (c) (equal (car c) '(f-get-global 'guard-checking-on *the-live-state*))) (cdr x)))
+         (cons 'cond (remove-if (lambda (c) (equal (car c) '(f-get-global 'guard-checking-on *the-live-state*))) (cdr x))))
+        (t (cons (drop-gc-clause (car x)) (drop-gc-clause (cdr x))))))
+(defun star1-of (f)
+  (let* ((e (gethash f *fe-defs*)))
+    (oneify-cltl-code (car e) (caddr e) (if (consp (cadr e)) (cdr (cadr e)) nil) (w *the-live-state*))))
+(defun install (o) (eval (cons 'defun o)) (symbol-function (car o)))
+(defun live-st () (cdr (assoc 'st *user-stobj-alist*)))
+(defun cases (f)
+  (case f
+    (cap '(((3) "ok") ((-1) "bad") ((nil) "bad")))
+    (two '(((2 (a b)) "ok") ((2 7) "bad") ((-1 nil) "bad")))
+    (mb '(((4) "ok") ((-2) "bad")))
+    (sget (list (list (list (live-st)) "ok") (list (list (list 5)) "nonlive-ok")))))
+(dolist (f '(idl prg gt))
+  (let ((o (star1-of f)))
+    (format t "~%R UNCHANGED ~a ~a~%" f (eq o (fe-star1-trim f o)))))
+(dolist (f '(cap two mb sget))
+  (let* ((o (star1-of f)) (star1 (car o)) (orig (symbol-function star1))
+         (trim (install (fe-star1-trim f o)))
+         (mutant (install (drop-gc-clause (fe-star1-trim f o)))))
+    (format t "~%R COMPLIANT ~a ~a SHAPE ~a~%" f (fe-star1-compliant-p f :logic) (fe-star1-trimmable-shape-p f o))
+    (setf (symbol-function star1) orig)
+    (dolist (gc '(t :all nil :none))
+      (dolist (c (cases f))
+        (when (eq f 'sget) (update-fld 0 (live-st)))
+        (let ((row nil))
+          (dolist (v (list (cons :orig orig) (cons :trim trim) (cons :mutant mutant)))
+            (f-put-global 'guard-checking-on gc *the-live-state*)
+            (push (cons (car v) (outcome (lambda () (apply (cdr v) (car c))))) row))
+          (format t "~%R ROW ~a ~s ~a~%" f gc (cadr c))
+          (dolist (r (reverse row)) (let ((*print-pretty* nil)) (format t "~%R OUT ~a ~s~%" (car r) (cdr r)))))))))
+(f-put-global 'guard-checking-on t *the-live-state*)
+"""
+
+
+def local_acl2():
+    launcher = os.environ.get('FN_ACL2') or str(Path.home() / 'tools/acl2-fn/acl2-literal-4g-tls64k')
+    return launcher if os.access(launcher, os.X_OK) else None
+
+
+@unittest.skipUnless(local_acl2(), 'a local ACL2 launcher is required (FN_ACL2)')
+class StarOneTrimLiveTests(unittest.TestCase):
+    """S1 against the real oneify: each toy function is oneified by ACL2 8.7 in the local image, the trimmed form is
+    installed over the real *1* function, and the two run side by side under guard-checking-on T, :all, NIL and :none."""
+
+    @classmethod
+    def setUpClass(cls):
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / 'harness.lsp'
+            script.write_text(LIVE_HARNESS.replace('FORMS', str(FORMS)))
+            run = subprocess.run(['timeout', '600', local_acl2()], input=script.read_text(), cwd=ROOT,
+                                 capture_output=True, text=True, timeout=700)
+        cls.output = run.stdout
+        cls.unchanged, cls.compliant, cls.rows = {}, {}, []
+        for line in run.stdout.splitlines():
+            if line.startswith('R UNCHANGED'):
+                _, _, f, same = line.split()
+                cls.unchanged[f] = same
+            elif line.startswith('R COMPLIANT'):
+                parts = line.split()
+                cls.compliant[parts[2]] = (parts[3], parts[5])
+            elif line.startswith('R ROW'):
+                _, _, f, gc, kind = line.split(None, 4)
+                cls.rows.append({'f': f, 'gc': gc, 'kind': kind.strip(), 'out': {}})
+            elif line.startswith('R OUT'):
+                _, _, variant, rest = line.split(None, 3)
+                cls.rows[-1]['out'][variant] = rest.strip()
+
+    def rows_for(self, gcs, kinds=None):
+        return [r for r in self.rows if r['gc'] in gcs and (kinds is None or r['kind'] in kinds)]
+
+    def test_harness_ran(self):
+        self.assertEqual(sorted(self.compliant), ['CAP', 'MB', 'SGET', 'TWO'], self.output[-2000:])
+        self.assertTrue(self.rows, self.output[-2000:])
+
+    def test_only_compliant_functions_with_the_recognised_shape_are_trimmed(self):
+        for f, (compliant, shape) in self.compliant.items():
+            self.assertEqual((compliant, shape), ('T', 'T'), f)
+        self.assertEqual(self.unchanged, {'IDL': 'T', 'PRG': 'T', 'GT': 'T'})
+
+    def test_guard_checking_t_and_all_agree_with_oneify_on_values_and_on_the_guard_violation(self):
+        rows = self.rows_for({'T', ':ALL'}, {'ok', 'bad'})
+        self.assertGreaterEqual(len(rows), 14)
+        for r in rows:
+            self.assertEqual(r['out']['TRIM'], r['out']['ORIG'], r)
+        bad = [r for r in rows if r['kind'] == 'bad']
+        self.assertTrue(all(':ERROR' in r['out']['ORIG'] and 'guard' in r['out']['ORIG'] for r in bad))
+
+    def test_guard_checking_nil_keeps_the_raw_value_and_traps_by_name_where_oneify_took_the_logic_path(self):
+        for r in self.rows_for({'NIL'}, {'ok'}):
+            self.assertEqual(r['out']['TRIM'], r['out']['ORIG'], r)
+        for r in self.rows_for({'NIL'}, {'bad'}):
+            self.assertEqual(r['out']['TRIM'], '(:TRAP %s)' % r['f'], r)
+            self.assertTrue(r['out']['ORIG'].startswith('(:VALUE'), r)
+
+    def test_guard_checking_none_always_traps_by_name(self):
+        rows = self.rows_for({':NONE'}, {'ok', 'bad'})
+        self.assertTrue(rows)
+        for r in rows:
+            self.assertEqual(r['out']['TRIM'], '(:TRAP %s)' % r['f'], r)
+
+    def test_a_stobj_argument_that_is_not_live_traps_by_name(self):
+        rows = self.rows_for({'T'}, {'nonlive-ok'})
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['out']['TRIM'], '(:TRAP SGET)')
+        self.assertTrue(rows[0]['out']['ORIG'].startswith('(:VALUE'), rows[0])
+
+    def test_mutant_that_drops_the_guard_violation_clause_is_caught_by_the_agreement_check(self):
+        rows = self.rows_for({'T', ':ALL'}, {'ok', 'bad'})
+        mismatching = [r for r in rows if r['out']['MUTANT'] != r['out']['ORIG']]
+        self.assertTrue(mismatching, 'the agreement check cannot see the dropped guard-violation clause')
+        self.assertTrue(all(r['kind'] == 'bad' for r in mismatching))
+        self.assertTrue(all(r['out']['TRIM'] == r['out']['ORIG'] for r in mismatching))
+
+
 @unittest.skipUnless(os.environ.get('FN_EXTRACT_FORMS_WORLD'), 'an extraction world image is required')
 class FormsWorldTests(unittest.TestCase):
     """Against the real world: run on hbox with FN_EXTRACT_FORMS_WORLD (a world launcher) and

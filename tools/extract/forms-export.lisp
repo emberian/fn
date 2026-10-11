@@ -10,7 +10,8 @@
 ;;; For every function f the host's closure reaches, the core compiles exactly
 ;;; the forms ACL2 itself installed, where the world holds them:
 ;;;   raw  -- the def of f's cltl-command `defuns' (or its defstobj raw-defs);
-;;;   *1*  -- (oneify-cltl-code mode def stobj-flag wrld) of that def,
+;;;   *1*  -- (oneify-cltl-code mode def stobj-flag wrld) of that def, its logic path replaced by a named
+;;;           runtime error when F is compliant (fe-star1-trim),
 ;;; and, where ACL2 installed them from its own source files (a boot-strap
 ;;; function reclassified to :logic, the *1* of a Common Lisp primitive, an
 ;;; ACL2 runtime variable), the top-level form read from that file, located by
@@ -701,11 +702,88 @@ disarms it when it returns, so it bounds this export and not the xt-core-export 
   (let ((src (gethash name *fe-src*)))
     (when (and src (eq (car src) :struct)) (cons (list (third src)) (fe-src-origin src)))))
 
+;;; The logic path of a compliant *1* (ACL2 8.7 interface-raw.lisp oneify-cltl-code-1, 2063 and 2607-2625).
+;;; For F in logic mode and :common-lisp-compliant, *1*F is: the wormhole check, then
+;;;   (when (not (eq GC :none)) (cond (GUARD0 (return-from *1*F (F ...))) (GC <guard-violation throw>)))
+;;; then (labels ((*1*F ...)) (*1*F ...)), F's body evaluated over its callees' *1* functions.  With the
+;;; core's guard-checking-on = T (fe-check-star1-premise) the cond either returns the raw value or throws,
+;;; so the labels form is entered only if guard-checking-on is NIL or :none, or a stobj argument is not live.
+;;; It is replaced by a runtime error naming F (clruntime.lisp), which is also what makes the callee *1*
+;;; units unreachable from F: the closure walk sees only the forms emitted here.
+(defun fe-tree-find (x pred)
+  (cond ((funcall pred x) t)
+        ((consp x) (or (fe-tree-find (car x) pred) (fe-tree-find (cdr x) pred)))))
+
+(defun fe-star1-trimmable-shape-p (f o)
+  "O, oneify-cltl-code's (*1*F formals ... (labels ((*1*F formals ...)) (*1*F . formals))), has the compliant
+shape: the logic path is a final labels form, and the forms before it hold the raw return and the guard
+violation that make it unreachable at guard-checking-on T, and no runtime symbol-class test."
+  (let* ((star1 (car o)) (formals (cadr o)) (last (car (last o))) (before (butlast (cddr o))))
+    (and (consp last) (eq (car last) 'labels)
+         (= (length (cadr last)) 1)
+         (let ((binding (car (cadr last))))
+           (and (eq (car binding) star1) (equal (cadr binding) formals)))
+         (equal (cddr last) (list (cons star1 formals)))
+         (fe-tree-find before (lambda (x) (and (consp x) (eq (car x) 'return-from) (eq (cadr x) star1)
+                                               (consp (caddr x)) (eq (car (caddr x)) f))))
+         (fe-tree-find before (lambda (x) (and (consp x) (eq (car x) 'throw-raw-ev-fncall)
+                                               (fe-tree-find x (lambda (y) (equal y '(quote ev-fncall-guard-er))))
+                                               (fe-tree-find x (lambda (y) (equal y (list 'quote f)))))))
+         (not (fe-tree-find before (lambda (x) (eq x 'symbol-class)))))))
+
+(defun fe-star1-trim (f o)
+  "O with the logic path of a compliant F replaced by the named runtime error; O itself when it has any other shape."
+  (if (fe-star1-trimmable-shape-p f o)
+      (append (butlast o) (list (list 'xl-star1-logic-path-dropped (list 'quote f))))
+    o))
+
+(defun fe-star1-compliant-p (f mode)
+  "oneify-cltl-code-1's cl-compliant-p-optimization: logic mode and :common-lisp-compliant in the extraction world."
+  (and (eq mode :logic) (eq (symbol-class f *fe-w*) :common-lisp-compliant)))
+
+(defun fe-form-writes (form cells names)
+  "The members of CELLS that FORM binds (let, let*, multiple-value-bind, lambda, progv), assigns or names in a
+quote, and the members of NAMES it hands as a quoted key to f-put-global, put-global or xl-set-global."
+  (let ((hits nil))
+    (labels ((hit (s) (when (member s cells) (pushnew s hits)))
+             (quoted (d) (cond ((symbolp d) (hit d))
+                               ((consp d) (quoted (car d)) (quoted (cdr d)))))
+             (walk (x)
+               (cond ((atom x) nil)
+                     ((eq (car x) 'quote) (quoted (cadr x)))
+                     (t (case (car x)
+                          ((let let*) (when (listp (cadr x))
+                                        (dolist (b (cadr x)) (hit (if (consp b) (car b) b)))))
+                          ((setq psetq) (loop for rest on (cdr x) by #'cddr do (hit (car rest))))
+                          (multiple-value-bind (when (listp (cadr x)) (mapc #'hit (cadr x))))
+                          (lambda (when (listp (cadr x)) (dolist (v (cadr x)) (hit (if (consp v) (car v) v)))))
+                          ((f-put-global put-global xl-set-global)
+                           (let ((k (cadr x)))
+                             (when (and (consp k) (eq (car k) 'quote) (member (cadr k) names))
+                               (pushnew (cadr k) hits)))))
+                        (loop for y on x while (consp y) do (walk (car y)))))))
+      (walk form))
+    hits))
+
+(defun fe-check-star1-premise (unit-forms)
+  "S1's premise P1.  UNIT-FORMS: (id . forms) for every emitted unit.  Error, naming what failed, unless the
+session's guard-checking-on is T and safe-mode NIL (the values the core carries) and no unit writes either."
+  (unless (eq (f-get-global 'guard-checking-on *the-live-state*) t)
+    (error "star1 trim premise: guard-checking-on is ~s in the extraction session, not T" (f-get-global 'guard-checking-on *the-live-state*)))
+  (when (f-get-global 'safe-mode *the-live-state*)
+    (error "star1 trim premise: safe-mode is ~s in the extraction session, not NIL" (f-get-global 'safe-mode *the-live-state*)))
+  (let ((cells (list (global-symbol 'guard-checking-on) (global-symbol 'safe-mode)))
+        (names '(guard-checking-on safe-mode)))
+    (dolist (u unit-forms)
+      (dolist (f (cdr u))
+        (let ((w (fe-form-writes f cells names)))
+          (when w (error "star1 trim premise: unit ~a binds, assigns or names ~s" (car u) w)))))))
+
 (defun fe-derive-star1 (f)
   (let ((e (gethash f *fe-defs*)) (ax (gethash f *fe-stobj-ax*)))
     (flet ((oneified (mode def stobj)
              (let ((o (oneify-cltl-code mode def stobj *fe-w*)))
-               (list (fe-expand-def o)))))
+               (list (fe-expand-def (if (fe-star1-compliant-p f mode) (fe-star1-trim f o) o))))))
       (cond (e (cons (oneified (car e) (caddr e) (if (consp (cadr e)) (cdr (cadr e)) nil)) "world:oneify"))
             (ax (cons (oneified :logic (cadr ax) (car ax)) "world:oneify-stobj"))
             (t (let ((src (gethash (*1*-symbol f) *fe-src*)))
@@ -1065,6 +1143,7 @@ global XT-FE-TABLES to the tables the closure reads (for xt-core-export); return
                        (setf (gethash "decl:specials" (fr-units run)) (list (car d) (cdr d))))
                      (fe-sorted-ids run)))
          (defs (make-string-output-stream)) (man (make-string-output-stream)) (all (make-string-output-stream)))
+    (fe-check-star1-premise (loop for id being the hash-keys of (fr-units run) using (hash-value u) collect (cons id (car u))))
     (format man "#world_key~c~a~%#roots~c~d~%" #\Tab world-key #\Tab (length roots))
     (let ((files (make-hash-table :test 'equal)))
       (dolist (id ids)
