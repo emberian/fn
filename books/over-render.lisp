@@ -22,6 +22,7 @@
 (in-package "ACL2")
 (include-book "over-window")
 (include-book "def-span-scan")
+(include-book "decimal-text")
 (local (include-book "arithmetic-5/top" :dir :system))
 
 (def-buffer fn-ovr-lease :view t)
@@ -105,78 +106,58 @@
 (local (defthm fn-ovr-nthcdr-past (implies (and (natp i) (<= (len l) i) (true-listp l)) (equal (nthcdr i l) nil))))
 
 
-; The decimal digits of N, most significant first.
-(defun fn-ovr-put-digits (n fn-ovr-lease)
-  (declare (xargs :stobjs fn-ovr-lease
-                  :guard (and (natp n) (fn-ovr-lease-p fn-ovr-lease))
-                  :measure (nfix n)))
-  (if (and (natp n) (<= 10 n))
-      (let ((fn-ovr-lease (fn-ovr-put-digits (floor n 10) fn-ovr-lease)))
-        (fn-ovr-lease-append-octet (+ 48 (mod n 10)) fn-ovr-lease))
-    (fn-ovr-lease-append-octet (+ 48 (nfix n)) fn-ovr-lease)))
-
-(defun fn-ovr-digits-len (n)
-  (declare (xargs :guard (natp n) :measure (nfix n)))
-  (if (and (natp n) (<= 10 n)) (+ 1 (fn-ovr-digits-len (floor n 10))) 1))
-
-;; explode-nonnegative-integer's accumulator: a non-empty one is appended.
+;; Decimals: C's fn-decimal-text (books/decimal-text.lisp), copied into the lease by
+;; fn-ovr-put-string; no second digits writer.
 (local
- (defthm fn-ovr-explode-append
-   (implies (and (natp n) (consp a))
-            (equal (explode-nonnegative-integer n 10 (append a b))
-                   (append (explode-nonnegative-integer n 10 a) b)))
-   :hints (("Goal" :induct (explode-nonnegative-integer n 10 a)
-            :in-theory (enable explode-nonnegative-integer)))))
+ (defthm fn-ovr-explode-characters
+   (implies (and (natp n) (character-listp acc))
+            (character-listp (explode-nonnegative-integer n 10 acc)))))
 
 (local
- (defthm fn-ovr-explode-acc
-   (implies (and (posp n) (syntaxp (not (equal acc ''nil))))
-            (equal (explode-nonnegative-integer n 10 acc)
-                   (append (explode-nonnegative-integer n 10 nil) acc)))
-   :hints (("Goal" :expand ((explode-nonnegative-integer n 10 acc)
-                            (explode-nonnegative-integer n 10 nil))
-            :use ((:instance fn-ovr-explode-append (n (floor n 10))
-                             (a (list (digit-to-char (mod n 10)))) (b acc)))
-            :in-theory (disable fn-ovr-explode-append)))))
+ (defthm fn-ovr-decimal-text-octets
+   (implies (natp n)
+            (equal (fn-nntp-string-octets (fn-decimal-text n)) (fn-nntp-decimal n)))
+   :hints (("Goal" :in-theory (enable fn-decimal-text fn-nntp-string-octets fn-nntp-decimal
+                                      fn-nntp-decimal-rev)))))
 
 (local
- (defthm fn-ovr-explode-step
-   (implies (and (natp n) (<= 10 n))
-            (equal (explode-nonnegative-integer n 10 nil)
-                   (append (explode-nonnegative-integer (floor n 10) 10 nil)
-                           (list (digit-to-char (mod n 10))))))
-   :hints (("Goal" :expand ((explode-nonnegative-integer n 10 nil))
-            :use ((:instance fn-ovr-explode-acc (n (floor n 10)) (acc (list (digit-to-char (mod n 10))))))
-            :in-theory (disable fn-ovr-explode-acc)))))
+ (defthm fn-ovr-decimal-text-len
+   (implies (natp n)
+            (equal (len (coerce (fn-decimal-text n) 'list)) (len (fn-nntp-decimal n))))
+   :hints (("Goal" :in-theory (enable fn-decimal-text fn-nntp-decimal fn-nntp-decimal-rev)))))
 
 (local
- (defthm fn-ovr-explode-small
-   (implies (and (natp n) (< n 10))
-            (equal (explode-nonnegative-integer n 10 nil) (list (digit-to-char n))))
+ (defun fn-ovr-digit-charsp (cs)
+   (if (consp cs)
+       (and (member (car cs) '(#\0 #\1 #\2 #\3 #\4 #\5 #\6 #\7 #\8 #\9))
+            (fn-ovr-digit-charsp (cdr cs)))
+     t)))
+
+(local
+ (defthm fn-ovr-explode-digits
+   (implies (and (natp n) (fn-ovr-digit-charsp acc))
+            (fn-ovr-digit-charsp (explode-nonnegative-integer n 10 acc)))
+   :hints (("Goal" :in-theory (enable explode-nonnegative-integer digit-to-char)))))
+
+(local
+ (defthm fn-ovr-explode-consp
+   (implies (natp n) (consp (explode-nonnegative-integer n 10 nil)))
    :hints (("Goal" :expand ((explode-nonnegative-integer n 10 nil))))))
 
 (local
- (defthm fn-ovr-string-octets-aux-append
-   (equal (fn-nntp-string-octets-aux (append a b))
-          (append (fn-nntp-string-octets-aux a) (fn-nntp-string-octets-aux b)))
-   :hints (("Goal" :in-theory (enable fn-nntp-string-octets-aux)))))
+ (defthm fn-ovr-digit-chars-token
+   (implies (and (fn-ovr-digit-charsp cs) (consp cs))
+            (and (consp (fn-nntp-string-octets-aux cs))
+                 (fn-nntp-decimal-tokenp (fn-nntp-string-octets-aux cs))))
+   :hints (("Goal" :in-theory (enable fn-nntp-string-octets-aux fn-nntp-decimal-tokenp
+                                      fn-nntp-decimal-digitp)))))
 
-(defthm fn-ovr-put-digits-is-decimal
-  (implies (and (natp n) (true-listp fn-ovr-lease))
-           (equal (fn-ovr-put-digits n fn-ovr-lease)
-                  (append fn-ovr-lease (fn-nntp-decimal n))))
-  :hints (("Goal" :induct (fn-ovr-put-digits n fn-ovr-lease)
-           :in-theory (e/d (fn-ovr-lease-append-octet fn-oct-snoc fn-nntp-decimal fn-nntp-decimal-rev
-                            fn-nntp-string-octets-aux digit-to-char)
-                           ()))
-))
-
-(defthm fn-ovr-digits-len-is-decimal-len
-  (implies (natp n)
-           (equal (fn-ovr-digits-len n) (len (fn-nntp-decimal n))))
-  :hints (("Goal" :induct (fn-ovr-digits-len n)
-           :in-theory (enable fn-nntp-decimal fn-nntp-decimal-rev fn-nntp-string-octets-aux))))
-
+(local
+ (defthm fn-ovr-decimal-token
+   (implies (natp n)
+            (and (consp (fn-nntp-decimal n))
+                 (fn-nntp-decimal-tokenp (fn-nntp-decimal n))))
+   :hints (("Goal" :in-theory (enable fn-nntp-decimal fn-nntp-decimal-rev)))))
 
 ; String predicates read in place (no octet list): the Message-ID test and the Xref word test.
 
@@ -352,12 +333,15 @@
 
 (defun fn-ovr-decimal-field-len (n)
   (declare (xargs :guard t :verify-guards nil))
-  (if (and (natp n) (<= (fn-ovr-digits-len n) *fn-nntp-max-decimal-octets*)) (fn-ovr-digits-len n) 1))
+  (if (natp n)
+      (let ((d (length (fn-decimal-text n))))
+        (if (<= d *fn-nntp-max-decimal-octets*) d 1))
+    1))
 
 
 (defun fn-ovr-decimal-len (n)
   (declare (xargs :guard t :verify-guards nil))
-  (if (natp n) (fn-ovr-digits-len n) 0))
+  (if (natp n) (length (fn-decimal-text n)) 0))
 
 (defun fn-ovr-xref-len (ms all idp)
   (declare (xargs :guard t :verify-guards nil))
@@ -426,9 +410,11 @@
   (equal (true-listp (append a b)) (true-listp b)))
 
 (defun fn-ovr-put-decimal-field (n fn-ovr-lease)
-  (declare (xargs :stobjs fn-ovr-lease :guard (fn-ovr-lease-p fn-ovr-lease) :verify-guards nil))
-  (if (and (natp n) (<= (fn-ovr-digits-len n) *fn-nntp-max-decimal-octets*))
-      (fn-ovr-put-digits n fn-ovr-lease)
+  (declare (xargs :stobjs fn-ovr-lease
+                  :guard (unsigned-byte-p 59 (+ (fn-ovr-lease-len fn-ovr-lease) (fn-ovr-decimal-field-len n)))
+                  :verify-guards nil))
+  (if (and (natp n) (<= (length (fn-decimal-text n)) *fn-nntp-max-decimal-octets*))
+      (fn-ovr-put-string (fn-decimal-text n) fn-ovr-lease)
     (fn-ovr-lease-append-octet 48 fn-ovr-lease)))
 
 (local
@@ -436,27 +422,6 @@
    (equal (fn-nntp-decimal-tokenp (append a b))
           (and (fn-nntp-decimal-tokenp a) (fn-nntp-decimal-tokenp b)))
    :hints (("Goal" :in-theory (enable fn-nntp-decimal-tokenp)))))
-
-(local
- (defthm fn-ovr-put-digits-token
-   (implies (natp n)
-            (and (consp (fn-ovr-put-digits n nil))
-                 (fn-nntp-decimal-tokenp (fn-ovr-put-digits n nil))))
-   :hints (("Goal" :induct (fn-ovr-put-digits n nil)
-            :in-theory (e/d (fn-ovr-lease-append-octet fn-oct-snoc fn-nntp-decimal-tokenp
-                             fn-nntp-decimal-digitp)
-                            (fn-ovr-put-digits-is-decimal))))))
-
-(local
- (defthm fn-ovr-decimal-token
-   (implies (natp n)
-            (and (consp (fn-nntp-decimal n))
-                 (fn-nntp-decimal-tokenp (fn-nntp-decimal n))))
-   :hints (("Goal" :use ((:instance fn-ovr-put-digits-token)
-                         (:instance fn-ovr-put-digits-is-decimal (fn-ovr-lease nil)))
-            :in-theory (disable fn-ovr-put-digits-token fn-ovr-put-digits-is-decimal fn-ovr-put-digits
-                                fn-nntp-decimal)))))
-
 
 (local
  (defthm fn-ovr-decimal-of-non-natural
@@ -467,9 +432,9 @@
   (implies (true-listp fn-ovr-lease)
            (equal (fn-ovr-put-decimal-field n fn-ovr-lease)
                   (append fn-ovr-lease (fn-nntp-decimal-field n))))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-decimal-field fn-ovr-lease-append-octet fn-oct-snoc)
-                                  (fn-nntp-decimal fn-ovr-put-digits fn-ovr-digits-len))
-           :use ((:instance fn-ovr-digits-len-is-decimal-len)))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-decimal-field fn-ovr-lease-append-octet fn-oct-snoc length)
+                                  (fn-nntp-decimal fn-decimal-text))
+           :use ((:instance fn-ovr-decimal-text-octets)))))
 
 ; The Xref locations of the pairs of MS that name ALL's numbers.
 (defun fn-ovr-put-xref (ms all idp fn-ovr-lease)
@@ -505,14 +470,16 @@
 
 ; fn-nntp-decimal, in place: the digits of a natural, nothing otherwise.
 (defun fn-ovr-put-decimal (n fn-ovr-lease)
-  (declare (xargs :stobjs fn-ovr-lease :guard (fn-ovr-lease-p fn-ovr-lease) :verify-guards nil))
-  (if (natp n) (fn-ovr-put-digits n fn-ovr-lease) fn-ovr-lease))
+  (declare (xargs :stobjs fn-ovr-lease
+                  :guard (unsigned-byte-p 59 (+ (fn-ovr-lease-len fn-ovr-lease) (fn-ovr-decimal-len n)))
+                  :verify-guards nil))
+  (if (natp n) (fn-ovr-put-string (fn-decimal-text n) fn-ovr-lease) fn-ovr-lease))
 
 (defthm fn-ovr-put-decimal-is-decimal
   (implies (true-listp fn-ovr-lease)
            (equal (fn-ovr-put-decimal n fn-ovr-lease)
                   (append fn-ovr-lease (fn-nntp-decimal n))))
-  :hints (("Goal" :in-theory (enable fn-nntp-decimal))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-decimal) (fn-decimal-text)))))
 
 ; The served line of number N from the row's decided column NOV (fn-hnov-ok), the
 ; payload's octet count OCTETS and body lines BODY, then CRLF.  SERVER, ALL, IDP and MS:
@@ -745,12 +712,13 @@
 
 (defthm fn-ovr-decimal-field-len-is-len
   (equal (fn-ovr-decimal-field-len n) (len (fn-nntp-decimal-field n)))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-decimal-field) (fn-ovr-digits-len))
-           :use ((:instance fn-ovr-digits-len-is-decimal-len)))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-decimal-field length) (fn-decimal-text fn-nntp-decimal))
+           :use ((:instance fn-ovr-decimal-text-octets)))))
 
 (defthm fn-ovr-decimal-len-is-len
   (equal (fn-ovr-decimal-len n) (len (fn-nntp-decimal n)))
-  :hints (("Goal" :in-theory (e/d (fn-nntp-decimal) (fn-ovr-digits-len)))))
+  :hints (("Goal" :in-theory (e/d (fn-nntp-decimal length) (fn-decimal-text))
+           :use ((:instance fn-ovr-decimal-text-octets)))))
 
 (defthm fn-ovr-string-len-is-len
   (equal (fn-ovr-string-len s) (len (fn-nntp-string-octets s)))
@@ -817,8 +785,6 @@
                     fn-ovr-xref-len-is-len))
 
 (verify-guards fn-ovr-put-string)
-(verify-guards fn-ovr-put-digits)
-(verify-guards fn-ovr-digits-len)
 (verify-guards fn-ovr-decimal-field-len)
 (verify-guards fn-ovr-decimal-len)
 (verify-guards fn-ovr-xref-len)
