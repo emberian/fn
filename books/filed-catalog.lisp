@@ -1,18 +1,20 @@
-; fn: every served catalog row is filed within its own stored bytes (O1,
-; packet 3).  The catalog numbers each committed row's groups in order
+; fn: every served catalog row is a reclaimed article or is filed within its own
+; stored bytes (O1).  The catalog numbers each committed row's groups in order
 ; (FN-O1-ASSIGN-IS-POSITIONAL), so every catalog the updaters build has
 ; positional memberships (FN-O1-COMMIT-, -WITHDRAW-, -REDECIDE-KEEPS-THE-
-; CATALOG-POSITIONAL, FN-O1-CLEAR-MAKES-THE-CATALOG-POSITIONAL); under the
-; catalog's history relation (books/catalog-relation.lisp), a history whose
-; article records are filed within their own payloads (FN-O1-RECORDS-FILEDP)
-; gives every row, at any index, FN-O1-ARTICLE-WITHIN-HEADERP over the bytes
-; its handle denotes (FN-O1-CATALOG-ROWS-WITHIN-HEADER), the hypothesis
-; books/filed-groups' FN-O1-XREF-WITHIN-THE-HEADER asks of a served article.
-;  Packet 4 states the same per row under the prefix relation, between
-; the durable write and the finish (FN-O1-CATALOG-ROWS-WITHIN-HEADER-AT-A-
-; PREFIX), and so under the owner's catalog relation, idle or not, over the
-; served articles of the store's rows (FN-O1-SERVED-CATALOG-ROWS-WITHIN-
-; HEADER).
+; CATALOG-POSITIONAL, FN-O1-CLEAR-MAKES-THE-CATALOG-POSITIONAL).  Content
+; reclamation replaces an article's payload by a tombstone and keeps its
+; groups, so the history premise is FN-O1-RECORDS-FILED-OR-RECLAIMEDP: every
+; article record is filed within its payload or its payload is a reclaim
+; tombstone.  Under the catalog's history relation (books/catalog-relation.lisp)
+; that gives every row, at any index, either FN-NNTP-ARTICLE-TOMBSTONEP (the
+; served path refuses it, "article reclaimed") or FN-O1-ARTICLE-WITHIN-HEADERP
+; over the bytes its handle denotes (FN-O1-CATALOG-ROWS-ARE-RECLAIMED-OR-
+; WITHIN-HEADER); the same per row under the prefix relation, between the
+; durable write and the finish (...-AT-A-PREFIX), and so under the owner's
+; catalog relation, idle or not, over the served articles of the store's rows
+; (FN-O1-SERVED-CATALOG-ROWS-ARE-RECLAIMED-OR-WITHIN-HEADER).
+; FN-O1-RECORDS-FILEDP stays: it is the per-row ingress fact a prepare stages.
 
 (in-package "ACL2")
 
@@ -149,21 +151,9 @@
   :hints (("Goal" :induct (o1c-jk-ind j k)
            :in-theory (e/d (nth) (fn-held-wire-of fn-cat-at-is-nth fn-cat-count-is-len))
            :expand ((fn-cat-wire-list j fn-arena fn-cat))))))
-(local
- (defun o1c-all-filedp (l)
-  (if (consp l)
-      (and (fn-o1-filed-within-sourcep (fn-record-groups (car l)) (fn-record-payload (car l)))
-           (o1c-all-filedp (cdr l)))
-    t)))
-(local
- (defthm o1c-filedp-article-records
-  (implies (fn-o1-records-filedp records) (o1c-all-filedp (fn-sf-article-records records)))
-  :hints (("Goal" :in-theory (e/d (fn-o1-records-filedp) (fn-o1-filed-within-sourcep))))))
-(local
- (defthm o1c-all-filedp-nth
-  (implies (and (o1c-all-filedp l) (< (nfix k) (len l)))
-           (fn-o1-filed-within-sourcep (fn-record-groups (nth k l)) (fn-record-payload (nth k l))))
-  :hints (("Goal" :in-theory (e/d (nth) (fn-o1-filed-within-sourcep))))))
+
+
+
 (local
  (defthm o1c-len-wire-list
   (implies (natp j)
@@ -174,48 +164,8 @@
  (defthm o1c-filed-nil
   (fn-o1-filed-within-sourcep nil p)
   :hints (("Goal" :in-theory (enable fn-o1-filed-within-sourcep fn-o1-subseqp fn-o1-groups-octets)))))
-(local
- (defthm o1c-wire-filed
-  (implies (and (o1c-all-filedp (fn-cat-wire-list 0 fn-arena fn-cat))
-                (natp i) (< i (fn-cat-count fn-cat)))
-           (fn-o1-filed-within-sourcep (fn-record-groups (fn-cat-at i fn-cat))
-                                       (fn-arena-payload (fn-record-payload (fn-cat-at i fn-cat)) fn-arena)))
-  :rule-classes nil
-  :hints (("Goal" :do-not-induct t
-           :in-theory (e/d (fn-held-wire-of fn-held-wire)
-                           (fn-o1-filed-within-sourcep fn-cat-wire-list o1c-nth-wire-list o1c-all-filedp-nth
-                            o1c-len-wire-list fn-cat-at-is-nth fn-cat-count-is-len fn-arena-payload))
-           :use ((:instance o1c-nth-wire-list (j 0) (k i))
-                 (:instance o1c-len-wire-list (j 0))
-                 (:instance o1c-all-filedp-nth (k i) (l (fn-cat-wire-list 0 fn-arena fn-cat))))))))
-(local
- (defthm o1c-row-within-below-the-count
-  (implies (and (fn-cat-history-relation records fn-arena fn-cat)
-                (fn-o1-records-filedp records)
-                (fn-o1-cat-positionalp fn-cat)
-                (natp i) (< i (fn-cat-count fn-cat)))
-           (let ((article (fn-cat-row-article i fn-arena fn-cat)))
-             (fn-o1-article-within-headerp
-              article (fn-nntp-article-bytes article fn-arena))))
-  :rule-classes nil
-  :hints (("Goal"
-           :do-not-induct t
-           :in-theory (e/d (fn-cat-history-relation fn-o1-article-within-headerp fn-cat-row-article
-                            fn-nntp-article-bytes fn-nntp-payload-bytes o1c-rowp)
-                           (fn-o1-filed-within-sourcep fn-membership-listp fn-cat-wire-list
-                            fn-cat-at-is-nth fn-cat-count-is-len fn-arena-payload-is-nth fn-arena-count-is-len
-                            fn-arena-payload fn-arena-count
-                            fn-cat-handles-inp fn-cat-handles-inp-at o1c-rowsp-nth
-                            o1c-positionalp-is-rowsp fn-o1-records-filedp o1c-filedp-article-records
-                            fn-cat-row-payload-natp))
-           :use ((:instance o1c-wire-filed)
-                 (:instance o1c-filedp-article-records)
-                 (:instance o1c-positionalp-is-rowsp (c fn-cat))
-                 (:instance fn-cat-row-payload-natp (seq i))
-                 (:instance fn-cat-handles-inp-at (n (fn-cat-count fn-cat)) (seq i))
-                 (:instance o1c-rowsp-nth (c fn-cat) (k i))
-                 (:instance fn-cat-at-is-nth (seq i))
-                 (:instance fn-cat-count-is-len))))))
+
+
 (local
  (defthm o1c-nth-past (implies (and (natp i) (<= (len c) i)) (equal (nth i c) nil))
   :hints (("Goal" :in-theory (enable nth)))))
@@ -237,22 +187,89 @@
            (equal (fn-cat-row-article i fn-arena fn-cat) (fn-cat-row-article 0 fn-arena fn-cat)))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-cat-row-article)))))
-(defthm fn-o1-catalog-rows-within-header
+
+
+(local
+ (defun o1c2-all-frp (l)
+   (if (consp l)
+       (and (or (fn-rcl-tombstonep (fn-record-payload (car l)))
+                (fn-o1-filed-within-sourcep (fn-record-groups (car l)) (fn-record-payload (car l))))
+            (o1c2-all-frp (cdr l)))
+     t)))
+(local
+ (defthm o1c2-frp-article-records
+   (implies (fn-o1-records-filed-or-reclaimedp records) (o1c2-all-frp (fn-sf-article-records records)))
+   :hints (("Goal" :in-theory (e/d (fn-o1-records-filed-or-reclaimedp) (fn-o1-filed-within-sourcep fn-rcl-tombstonep))))))
+(local
+ (defthm o1c2-all-frp-nth
+   (implies (and (o1c2-all-frp l) (< (nfix k) (len l)))
+            (or (fn-rcl-tombstonep (fn-record-payload (nth k l)))
+                (fn-o1-filed-within-sourcep (fn-record-groups (nth k l)) (fn-record-payload (nth k l)))))
+   :hints (("Goal" :in-theory (e/d (nth) (fn-o1-filed-within-sourcep fn-rcl-tombstonep))))))
+(local
+ (defthm o1c2-wire-fr
+   (implies (and (o1c2-all-frp (fn-cat-wire-list 0 fn-arena fn-cat))
+                 (natp i) (< i (fn-cat-count fn-cat)))
+            (or (fn-rcl-tombstonep (fn-arena-payload (fn-record-payload (fn-cat-at i fn-cat)) fn-arena))
+                (fn-o1-filed-within-sourcep (fn-record-groups (fn-cat-at i fn-cat))
+                                            (fn-arena-payload (fn-record-payload (fn-cat-at i fn-cat)) fn-arena))))
+   :rule-classes nil
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-held-wire-of fn-held-wire)
+                            (fn-o1-filed-within-sourcep fn-rcl-tombstonep fn-cat-wire-list o1c-nth-wire-list o1c2-all-frp-nth
+                             o1c-len-wire-list fn-cat-at-is-nth fn-cat-count-is-len fn-arena-payload))
+            :use ((:instance o1c-nth-wire-list (j 0) (k i))
+                  (:instance o1c-len-wire-list (j 0))
+                  (:instance o1c2-all-frp-nth (k i) (l (fn-cat-wire-list 0 fn-arena fn-cat))))))))
+(local
+ (defthm o1c2-row-below-the-count
+   (implies (and (fn-cat-history-relation records fn-arena fn-cat)
+                 (fn-o1-records-filed-or-reclaimedp records)
+                 (fn-o1-cat-positionalp fn-cat)
+                 (natp i) (< i (fn-cat-count fn-cat)))
+            (let ((article (fn-cat-row-article i fn-arena fn-cat)))
+              (or (fn-nntp-article-tombstonep article fn-arena)
+                  (fn-o1-article-within-headerp
+                   article (fn-nntp-article-bytes article fn-arena)))))
+   :rule-classes nil
+   :hints (("Goal"
+            :do-not-induct t
+            :in-theory (e/d (fn-cat-history-relation fn-o1-article-within-headerp fn-cat-row-article
+                             fn-nntp-article-bytes fn-nntp-payload-bytes o1c-rowp fn-nntp-article-tombstonep)
+                            (fn-o1-filed-within-sourcep fn-membership-listp fn-cat-wire-list
+                             fn-cat-at-is-nth fn-cat-count-is-len fn-arena-payload-is-nth fn-arena-count-is-len
+                             fn-arena-payload fn-arena-count fn-rcl-tombstonep
+                             fn-cat-handles-inp fn-cat-handles-inp-at o1c-rowsp-nth
+                             o1c-positionalp-is-rowsp fn-o1-records-filed-or-reclaimedp o1c2-frp-article-records
+                             fn-cat-row-payload-natp))
+            :use ((:instance o1c2-wire-fr)
+                  (:instance o1c2-frp-article-records)
+                  (:instance o1c-positionalp-is-rowsp (c fn-cat))
+                  (:instance fn-cat-row-payload-natp (seq i))
+                  (:instance fn-cat-handles-inp-at (n (fn-cat-count fn-cat)) (seq i))
+                  (:instance o1c-rowsp-nth (c fn-cat) (k i))
+                  (:instance fn-cat-at-is-nth (seq i))
+                  (:instance fn-cat-count-is-len))))))
+
+; K1a (replaces P3 FN-O1-CATALOG-ROWS-WITHIN-HEADER): every row is a tombstone, or within its header.
+(defthm fn-o1-catalog-rows-are-reclaimed-or-within-header
   (implies (and (fn-cat-history-relation records fn-arena fn-cat)
-                (fn-o1-records-filedp records)
+                (fn-o1-records-filed-or-reclaimedp records)
                 (fn-o1-cat-positionalp fn-cat))
            (let ((article (fn-cat-row-article i fn-arena fn-cat)))
-             (fn-o1-article-within-headerp
-              article (fn-nntp-article-bytes article fn-arena))))
+             (or (fn-nntp-article-tombstonep article fn-arena)
+                 (fn-o1-article-within-headerp
+                  article (fn-nntp-article-bytes article fn-arena)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :cases ((and (natp i) (< i (fn-cat-count fn-cat)))
                    (natp i)
                    (< 0 (fn-cat-count fn-cat)))
            :in-theory (disable fn-cat-row-article fn-o1-article-within-headerp fn-nntp-article-bytes
-                               fn-cat-history-relation fn-o1-records-filedp fn-o1-cat-positionalp)
-           :use (o1c-row-within-below-the-count
-                 (:instance o1c-row-within-below-the-count (i 0))
+                               fn-cat-history-relation fn-o1-records-filed-or-reclaimedp fn-o1-cat-positionalp
+                               fn-nntp-article-tombstonep)
+           :use (o1c2-row-below-the-count
+                 (:instance o1c2-row-below-the-count (i 0))
                  o1c-row-article-non-natp
                  (:instance o1c-row-within-past-the-count
                             (p (fn-nntp-article-bytes (fn-cat-row-article i fn-arena fn-cat) fn-arena)))
@@ -269,34 +286,43 @@
 
 (include-book "catalog-entries")
 
-(local
- (defthm o1c-all-filedp-prefix
-   (implies (and (fn-sf-prefixp xs ys) (o1c-all-filedp ys)) (o1c-all-filedp xs))
-   :hints (("Goal" :in-theory (enable fn-sf-prefixp) :induct (fn-sf-prefixp xs ys)))))
+
+
+
+
+; P4-0a K-O1-PREFIX-ROWS-WITHIN
+
+
+; P4-0b K-O1-SERVED-ROWS-WITHIN
 
 (local
- (defthm o1c-prefix-row-within-below-the-count
+ (defthm o1c2-frp-prefix
+   (implies (and (fn-sf-prefixp xs ys) (o1c2-all-frp ys)) (o1c2-all-frp xs))
+   :hints (("Goal" :in-theory (enable fn-sf-prefixp) :induct (fn-sf-prefixp xs ys)))))
+(local
+ (defthm o1c2-prefix-row-below-the-count
    (implies (and (fn-cat-history-prefix-relation records fn-arena fn-cat)
-                 (fn-o1-records-filedp records)
+                 (fn-o1-records-filed-or-reclaimedp records)
                  (fn-o1-cat-positionalp fn-cat)
                  (natp i) (< i (fn-cat-count fn-cat)))
             (let ((article (fn-cat-row-article i fn-arena fn-cat)))
-              (fn-o1-article-within-headerp
-               article (fn-nntp-article-bytes article fn-arena))))
+              (or (fn-nntp-article-tombstonep article fn-arena)
+                  (fn-o1-article-within-headerp
+                   article (fn-nntp-article-bytes article fn-arena)))))
    :rule-classes nil
    :hints (("Goal"
             :do-not-induct t
             :in-theory (e/d (fn-cat-history-prefix-relation fn-o1-article-within-headerp fn-cat-row-article
-                             fn-nntp-article-bytes fn-nntp-payload-bytes o1c-rowp)
+                             fn-nntp-article-bytes fn-nntp-payload-bytes o1c-rowp fn-nntp-article-tombstonep)
                             (fn-o1-filed-within-sourcep fn-membership-listp fn-cat-wire-list
                              fn-cat-at-is-nth fn-cat-count-is-len fn-arena-payload-is-nth fn-arena-count-is-len
-                             fn-arena-payload fn-arena-count fn-sf-prefixp
-                             fn-cat-handles-inp fn-cat-handles-inp-at o1c-rowsp-nth o1c-all-filedp-prefix
-                             o1c-positionalp-is-rowsp fn-o1-records-filedp o1c-filedp-article-records
+                             fn-arena-payload fn-arena-count fn-sf-prefixp fn-rcl-tombstonep
+                             fn-cat-handles-inp fn-cat-handles-inp-at o1c-rowsp-nth o1c2-frp-prefix
+                             o1c-positionalp-is-rowsp fn-o1-records-filed-or-reclaimedp o1c2-frp-article-records
                              fn-cat-row-payload-natp))
-            :use ((:instance o1c-wire-filed)
-                  (:instance o1c-filedp-article-records)
-                  (:instance o1c-all-filedp-prefix (xs (fn-cat-wire-list 0 fn-arena fn-cat))
+            :use ((:instance o1c2-wire-fr)
+                  (:instance o1c2-frp-article-records)
+                  (:instance o1c2-frp-prefix (xs (fn-cat-wire-list 0 fn-arena fn-cat))
                              (ys (fn-sf-article-records records)))
                   (:instance o1c-positionalp-is-rowsp (c fn-cat))
                   (:instance fn-cat-row-payload-natp (seq i))
@@ -304,49 +330,50 @@
                   (:instance o1c-rowsp-nth (c fn-cat) (k i))
                   (:instance fn-cat-at-is-nth (seq i))
                   (:instance fn-cat-count-is-len))))))
-
-; P4-0a K-O1-PREFIX-ROWS-WITHIN
-(defthm fn-o1-catalog-rows-within-header-at-a-prefix
+; K1b (replaces P4-0a): the same per row at a prefix of the history.
+(defthm fn-o1-catalog-rows-are-reclaimed-or-within-header-at-a-prefix
   (implies (and (fn-cat-history-prefix-relation records fn-arena fn-cat)
-                (fn-o1-records-filedp records)
+                (fn-o1-records-filed-or-reclaimedp records)
                 (fn-o1-cat-positionalp fn-cat))
            (let ((article (fn-cat-row-article i fn-arena fn-cat)))
-             (fn-o1-article-within-headerp
-              article (fn-nntp-article-bytes article fn-arena))))
+             (or (fn-nntp-article-tombstonep article fn-arena)
+                 (fn-o1-article-within-headerp
+                  article (fn-nntp-article-bytes article fn-arena)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :cases ((and (natp i) (< i (fn-cat-count fn-cat)))
                    (natp i)
                    (< 0 (fn-cat-count fn-cat)))
            :in-theory (disable fn-cat-row-article fn-o1-article-within-headerp fn-nntp-article-bytes
-                               fn-cat-history-prefix-relation fn-o1-records-filedp fn-o1-cat-positionalp)
-           :use (o1c-prefix-row-within-below-the-count
-                 (:instance o1c-prefix-row-within-below-the-count (i 0))
+                               fn-cat-history-prefix-relation fn-o1-records-filed-or-reclaimedp fn-o1-cat-positionalp
+                               fn-nntp-article-tombstonep)
+           :use (o1c2-prefix-row-below-the-count
+                 (:instance o1c2-prefix-row-below-the-count (i 0))
                  o1c-row-article-non-natp
                  (:instance o1c-row-within-past-the-count
                             (p (fn-nntp-article-bytes (fn-cat-row-article i fn-arena fn-cat) fn-arena)))
                  (:instance o1c-row-within-past-the-count (i 0)
                             (p (fn-nntp-article-bytes (fn-cat-row-article 0 fn-arena fn-cat) fn-arena)))))))
-
-; P4-0b K-O1-SERVED-ROWS-WITHIN
-(defthm fn-o1-served-catalog-rows-within-header
+; K1c (replaces P4-0b): the owner's catalog relation, idle or not.
+(defthm fn-o1-served-catalog-rows-are-reclaimed-or-within-header
   (implies (and (fn-cat-ocl-relation oc fn-arena fn-cat)
-                (fn-o1-records-filedp
+                (fn-o1-records-filed-or-reclaimedp
                  (fn-cat-history-articles
                   (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena))
                 (fn-o1-cat-positionalp fn-cat))
            (let ((article (fn-cat-row-article i fn-arena fn-cat)))
-             (fn-o1-article-within-headerp
-              article (fn-nntp-article-bytes article fn-arena))))
+             (or (fn-nntp-article-tombstonep article fn-arena)
+                 (fn-o1-article-within-headerp
+                  article (fn-nntp-article-bytes article fn-arena)))))
   :rule-classes nil
   :hints (("Goal" :do-not-induct t
            :in-theory (e/d (fn-cat-ocl-relation)
                            (fn-cat-row-article fn-o1-article-within-headerp fn-nntp-article-bytes
-                            fn-cat-history-prefix-relation fn-cat-history-relation fn-o1-records-filedp
-                            fn-o1-cat-positionalp fn-cat-history-articles fn-ocl-relation))
-           :use ((:instance fn-o1-catalog-rows-within-header
+                            fn-cat-history-prefix-relation fn-cat-history-relation fn-o1-records-filed-or-reclaimedp
+                            fn-o1-cat-positionalp fn-cat-history-articles fn-ocl-relation fn-nntp-article-tombstonep))
+           :use ((:instance fn-o1-catalog-rows-are-reclaimed-or-within-header
                             (records (fn-cat-history-articles
                                       (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)))
-                 (:instance fn-o1-catalog-rows-within-header-at-a-prefix
+                 (:instance fn-o1-catalog-rows-are-reclaimed-or-within-header-at-a-prefix
                             (records (fn-cat-history-articles
                                       (fn-sf-records (fn-sn-files (fn-own-store (fn-ocfg-owner oc)))) fn-arena)))))))
