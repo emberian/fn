@@ -669,3 +669,61 @@
   :hints (("Goal" :in-theory (enable fn-lst-refresh fn-lst-view fn-cur-progress))))
 
 (in-theory (disable fn-lst-env-at fn-lst-refresh fn-lst-view))
+
+; -----------------------------------------------------------------------------
+; K-LH-1 (lane spans-list-hold): the work of one controller call.  Logical
+; only.  A call computes at most one group summary (fn-scat-available-summary
+; -> fn-scv-summary), in the :group phase of an unfiltered LIST or the :match
+; phase once its wildmat matched; every other phase is one step of a bounded
+; sub-cursor.  The summary's work is fn-scv-summary-work
+; (books/served-catalog-view.lisp), linear in the catalog's change since the
+; cursor's view plus the scan steps at the group's ends (RED-2's term).  With
+; the view refreshed to the hold's (fn-lst-refresh), that change is the
+; batches in flight, never the appends since the LIST command.
+(defun-nx fn-lst-one-summary-group (progress)
+  (let* ((env (fn-cur-at 0 progress))
+         (phase (fn-cur-at 1 progress))
+         (groups (fn-cur-at 2 progress))
+         (detail (fn-cur-at 4 progress)))
+    (cond ((and (eq phase :group) (consp groups) (not (fn-cur-at 5 env))) (list (car groups)))
+          ((and (eq phase :match) (fn-wmc-decidedp detail) (fn-wmc-matchedp detail))
+           (list (fn-cur-at 3 progress)))
+          (t nil))))
+
+(defun-nx fn-lst-one-work (progress fn-cat)
+  (let ((g (fn-lst-one-summary-group progress))
+        (v (nfix (fn-cur-at 6 (fn-cur-at 0 progress)))))
+    (+ 1 (if (and progress (consp g)) (fn-scv-summary-work (car g) v fn-cat) 0))))
+
+(defun-nx fn-lst-one-scan-steps (progress fn-cat)
+  (let ((g (fn-lst-one-summary-group progress)))
+    (if (consp g)
+        (fn-scv-scan-steps (car g) (nfix (fn-cur-at 6 (fn-cur-at 0 progress))) fn-cat)
+      0)))
+
+; KEYSTONE K-LH-1.
+(defthm fn-lst-one-work-bound
+  (implies (fn-cat-p fn-cat)
+           (<= (fn-lst-one-work progress fn-cat)
+               (+ 2 (* 7 (fn-scv-change-since (nfix (fn-cur-at 6 (fn-cur-at 0 progress))) fn-cat))
+                  (fn-lst-one-scan-steps progress fn-cat))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-lst-one-work fn-lst-one-scan-steps)
+                                  (fn-scv-summary-work fn-scv-change-since fn-scv-scan-steps
+                                   fn-lst-one-summary-group fn-scv-summary-work-linear nfix))
+           :use ((:instance fn-scv-summary-work-linear
+                            (group (car (fn-lst-one-summary-group progress)))
+                            (v (nfix (fn-cur-at 6 (fn-cur-at 0 progress)))))))))
+
+; With a refresh: the change is measured from the later of the two views.
+(defthm fn-lst-refresh-work-bound
+  (implies (and (fn-cat-p fn-cat) (consp (fn-cur-progress cur)))
+           (<= (fn-lst-one-work (fn-cur-progress (fn-lst-refresh cur r)) fn-cat)
+               (+ 2 (* 7 (fn-scv-change-since (max (fn-lst-view cur) (nfix r)) fn-cat))
+                  (fn-lst-one-scan-steps (fn-cur-progress (fn-lst-refresh cur r)) fn-cat))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-lst-one-work-bound
+                                   (progress (fn-cur-progress (fn-lst-refresh cur r))))
+                        (:instance fn-lst-refresh-view))
+           :in-theory (e/d (fn-lst-view) (fn-lst-one-work fn-lst-one-scan-steps fn-scv-change-since
+                                          fn-lst-refresh-view nfix fn-lst-refresh)))))
