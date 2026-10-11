@@ -2223,13 +2223,22 @@ limit at the carried store); the gate alone answers :hold."
             ;; the quantum, not a W' an earlier configure of this process
             ;; installed (fnn-owner-over-window)
             (window (fnn-owner-over-quantum)))
-        (if gate-only
-            (fnn-owner-core 'fn-owner-memory-gate-install
-                            img resident trigger pub-trigger profile tlsp live cold output
-                            peer workers cache-limit root window config-octets)
-          (fnn-owner-core 'fn-owner-memory-configure
-                          img resident trigger pub-trigger profile tlsp live cold output
-                          peer workers cache-limit root window config-octets))))))
+        (prog1
+            (if gate-only
+                (fnn-owner-core 'fn-owner-memory-gate-install
+                                img resident trigger pub-trigger profile tlsp live cold output
+                                peer workers cache-limit root window config-octets)
+              (fnn-owner-core 'fn-owner-memory-configure
+                              img resident trigger pub-trigger profile tlsp live cold output
+                              peer workers cache-limit root window config-octets))
+          ;; A-OVER-WINDOW-FIT: the W' this configure installed, published
+          ;; for the serving actors' OVER quantum (fnn-owner-over-window).
+          ;; Both configures run before any actor exists (the install, and
+          ;; fnn-mux-budget-install before the committer and fnn-mux-start),
+          ;; so the actors only read it (lock_discipline_contracts
+          ;; unlocked_publication).
+          (setq *fnn-owner-over-window-fit*
+                (fnn-global 'fn-owner-memory-over-window)))))))
 
 (defun fnn-owner-memory-install (service)
   "The memory gate for an owner process before it admits anything, called
