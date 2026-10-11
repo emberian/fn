@@ -159,14 +159,22 @@
  (assert-event (equal (fn-orcp-request-word :recorded nil :ok) :ok)))
 ; Without the opt-in the run's ledger holds only the open's transient: the
 ; small preset's off ledger is pass-free for itself but not for a live pass
-; (its completion reserve is the open's 130,023,424, not the demand
-; 358,006,784), so the reserve really is absent and not merely unused.
+; (its completion reserve is the open's transient at the profile's bounds,
+; fn-heap-store-open-octets, less than the live reclaim's demand,
+; fn-heap-reclaim-octets; neither figure is pinned), so the reserve really
+; is absent and not merely unused.
 (defconst *orcp-t-small-off* (fn-mca-initial *fn-heap-small-profile* *orcp-t-core* 67108864 nil))
 (assert-event (fn-mca-pass-free-p *orcp-t-small-off* *fn-heap-small-profile* nil))
 (assert-event (not (fn-mca-pass-free-p *orcp-t-small-off* *fn-heap-small-profile* t)))
 (assert-event (equal (fn-mcr-completion *orcp-t-small-off*)
                      (fn-mca-owner-octets *fn-heap-small-profile* nil)))
-(assert-event (equal (fn-mcr-completion *orcp-t-small-off*) 130023424))
+(assert-event (equal (fn-mcr-completion *orcp-t-small-off*)
+                     (fn-heap-store-open-octets
+                      *fn-heap-small-profile*
+                      (fn-bs-profile-max-history-octets *fn-heap-small-profile*)
+                      (fn-bs-profile-max-transactions *fn-heap-small-profile*))))
+(assert-event (< (fn-mcr-completion *orcp-t-small-off*)
+                 (fn-heap-reclaim-octets *fn-heap-small-profile*)))
 (assert-event (equal (car (fn-orcp-reserve *orcp-t-small-off* 16384 8388608 t)) :refused))
 
 ; -----------------------------------------------------------------------------

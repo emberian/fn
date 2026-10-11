@@ -366,6 +366,6 @@ refused by name, `offline-only` (not `deferred-credit`), before anything is reco
 first (books/reclaim-reservation.lisp, before the cold and output allowances) and K4 becomes
 `fn-heap-store-live-figure-holds-every-store-and-its-reclaim` over the live figure; the running
 owner's budget holds the reserve (`fn-mca-figure-on-is-the-live-figure`). Small preset, production
-core: the reserve grows the figure by 227,983,360 octets (the reserve 358,006,784 against the
-open's 130,023,424; tests/acl2/owner-credits-tests.lisp). Init does not size for the key: a node
+core: the reserve grows the figure by 253,083,382 octets (the reserve 358,006,784 against the
+open's 104,923,402 since BATCH-ENTRY-UNDER-CHARGE; tests/acl2/owner-credits-tests.lisp). Init does not size for the key: a node
 that adds it can be refused at start (`machine-cannot-hold-reclaim-reserve`), by name.

@@ -90,8 +90,12 @@
   (let ((*held* t)) (funcall thunk)))
 (defun fnn-owner-over-window () 1)
 (defun fnn-live-stobj (name) (assert *held*) name)
-(defun fnn-call (name plan window arena &optional cat)
-  (declare (ignore name plan window arena cat))
+(defun fnn-call (name plan window &rest live-stobjs)
+  ;; The two dispatches this harness reaches: fn-qplan-cursor-step with the
+  ;; live arena and cat (host/native/owner.lisp fnn-owner-cursor-step), and
+  ;; fn-asto-plan-render-window with the arena, ast-ws and dss-out buffers
+  ;; (fnn-owner-render-next-quantum, Adapter A2).
+  (declare (ignore name plan window live-stobjs))
   (assert *held*) (assert *fnn-extent-no-io*) (incf *calls*)
   (when *cold* (throw 'fnn-extent-cold '(3 100 4096 77)))
   (list :ok :advanced))
