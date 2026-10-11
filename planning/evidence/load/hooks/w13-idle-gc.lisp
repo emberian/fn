@@ -3,8 +3,15 @@
 ;;; Environment, all optional:
 ;;;   FN_LOAD_GC_LOG=<path>     one line per GC: GC <epoch-us> <gc-run-time-us> <dynamic-usage>
 ;;;                             (the MEM-007 mem7hook pattern: *after-gc-hooks*)
-;;;   FN_LOAD_IDLE_GC=off       the A arm of W13: fnn-owner-maybe-collect-idle does nothing
-;;;                             (the MEM-003 armA pattern)
+;;;   FN_LOAD_IDLE_GC=off       the A arm of W13: no collection beyond SBCL's own triggers
+;;;                             (the MEM-003 armA pattern): fnn-owner-maybe-collect-idle
+;;;                             does nothing, and the collector policy (memory landing
+;;;                             3+4a, host/native/heap.lisp fnn-heap-collector-policy-start)
+;;;                             never starts, so its thread runs no full collection.  At
+;;;                             3119f7d32 the arm read 182,076 KiB (138,796 at the drain):
+;;;                             host/native/owner.lisp fnn-owner-release-recovery-garbage
+;;;                             starts the policy whatever this hook says, so the arm ran
+;;;                             the policy's full collections (traced, re-measure owed)
 (in-package "ACL2")
 (let ((path (sb-ext:posix-getenv "FN_LOAD_GC_LOG")))
   (when (and path (plusp (length path)))
@@ -20,4 +27,7 @@
             sb-ext:*after-gc-hooks*))))
 (when (equal (sb-ext:posix-getenv "FN_LOAD_IDLE_GC") "off")
   (sb-int:encapsulate 'fnn-owner-maybe-collect-idle 'fn-load-idle-gc-off
-                      (lambda (f service) (declare (ignore f service)) nil)))
+                      (lambda (f service) (declare (ignore f service)) nil))
+  (when (fboundp 'fnn-heap-collector-policy-start)
+    (sb-int:encapsulate 'fnn-heap-collector-policy-start 'fn-load-idle-gc-off
+                        (lambda (f) (declare (ignore f)) nil))))
