@@ -3817,23 +3817,34 @@
 
 ; host/native/owner.lisp dispatches them (lane reclaim, PRF-1315): the
 ; reclaim pass over the pinned history in chunks.
-(definterface fn-rcw-acc-init
-  :class :ideal)
+; The accumulator is the stobj fn-rcwacc (RECLAIM-TRIES-PER-CHUNK): it
+; carries the id tries across chunks, and the steps' guard
+; fn-rcwacc-carriedp is held by the init and both steps' preservation
+; theorems, so the steps dispatch raw (D40).
+(definterface create-fn-rcwacc :class :common-lisp-compliant
+ :raw-guarded (0 nil (fn-rcwacc)))
 
-(definterface fn-rcw-acc-finish
+(definterface fn-rcwacc-init
+  :class :common-lisp-compliant)
+
+(definterface fn-rcwacc-finish
   :class :common-lisp-compliant
-  :keystones (fn-rcw-acc-steps-is-capture))
+  :keystones (fn-rcwacc-canon-steps-is-the-checkpoint-capture fn-rcwacc-predict-steps-is-predict))
 
-(definterface fn-rcw-canon-acc-step
-  :class :ideal
-  :keystones ((fn-rcw-canon-acc-steps-is-the-checkpoint-capture
-               :step-of fn-rcw-canon-acc-steps)))
+(definterface fn-rcwacc-canon-step
+  :class :common-lisp-compliant
+  :keystones ((fn-rcwacc-canon-steps-is-the-checkpoint-capture
+               :step-of fn-rcwacc-canon-steps))
+  :raw-with (fn-rcwacc-carriedp-of-init fn-rcwacc-carriedp-of-canon-step
+             fn-rcwacc-carriedp-of-predict-step))
 
-(definterface fn-rcw-predict-acc-step
-  :class :ideal
-  :keystones ((fn-rcw-predict-acc-steps-is-predict :step-of fn-rcw-predict-acc-steps)
+(definterface fn-rcwacc-predict-step
+  :class :common-lisp-compliant
+  :keystones ((fn-rcwacc-predict-steps-is-predict :step-of fn-rcwacc-predict-steps)
               (fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
-               :step-of fn-rcw-predict-acc-steps)))
+               :step-of fn-rcw-predict-acc-steps fn-rcw-predict-acc-step))
+  :raw-with (fn-rcwacc-carriedp-of-init fn-rcwacc-carriedp-of-canon-step
+             fn-rcwacc-carriedp-of-predict-step))
 
 
 

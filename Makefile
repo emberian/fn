@@ -913,6 +913,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-reclaim-retained \
 	books/reclaim-chunked-walk \
 	books/reclaim-chunked-seal \
+	books/reclaim-chunked-cost \
 	books/catalog-may-seal \
 	books/catalog-root-incarnation \
 	tests/acl2/catalog-root-incarnation-tests \

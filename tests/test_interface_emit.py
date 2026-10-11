@@ -89,6 +89,59 @@ class DeclarationTests(unittest.TestCase):
         self.assertIn('(include-book "../books/demand")', rendered)
         self.assertIn('(include-book "../books/proof")', rendered)
 
+    def test_raw_route_reaching_an_attachable_generic_includes_its_attach_book_first(self):
+        # A route book whose closure reaches an attachable stobj generic is
+        # preceded by the image's attach book for it (host_check
+        # --attach-order), ordered so an attach book that itself reaches
+        # another generic follows that generic's attach book.
+        root = tree('(definterface fn-step :class :common-lisp-compliant '
+                    ':raw-with (fn-step-proof))\n')
+        books = root / "books"
+        books.mkdir()
+        (books / "walk.lisp").write_text('(include-book "cat")\n(defun fn-step (x) x)\n'
+                                         '(defthm fn-step-proof t)\n')
+        (books / "arena.lisp").write_text('(defabsstobj fn-arena :attachable t)\n')
+        (books / "cat.lisp").write_text('(include-book "arena")\n(defabsstobj fn-cat :attachable t)\n')
+        (books / "arena-attach.lisp").write_text('(attach-stobj fn-arena fn-arena-impl)\n'
+                                                 '(include-book "arena")\n')
+        (books / "cat-attach.lisp").write_text('(attach-stobj fn-cat fn-cat-impl)\n'
+                                               '(include-book "cat")\n')
+        (root / "host" / "native").mkdir()
+        (root / "host" / "native" / "build.lisp").write_text(
+            '(include-book "books/cat-attach")\n(include-book "books/arena-attach")\n')
+        rendered = interface_emit.render_raw_declarations(interface_emit.declarations(root), root=root)
+        arena = rendered.index('(include-book "../books/arena-attach")')
+        cat = rendered.index('(include-book "../books/cat-attach")')
+        walk = rendered.index('(include-book "../books/walk")')
+        self.assertLess(arena, cat)
+        self.assertLess(cat, walk)
+
+    def test_a_generic_reached_only_through_an_attach_book_gets_its_attach_book_first(self):
+        # Codex l-rcw F1: the route reaches only generic a; a's attach book
+        # (its implementation) includes generic b.  b's attach book is
+        # selected too, by the fixed point, and precedes a's.
+        root = tree('(definterface fn-step :class :common-lisp-compliant '
+                    ':raw-with (fn-step-proof))\n')
+        books = root / "books"
+        books.mkdir()
+        (books / "route.lisp").write_text('(include-book "a")\n(defun fn-step (x) x)\n'
+                                          '(defthm fn-step-proof t)\n')
+        (books / "a.lisp").write_text('(defabsstobj fn-a :attachable t)\n')
+        (books / "b.lisp").write_text('(defabsstobj fn-b :attachable t)\n')
+        (books / "a-attach.lisp").write_text('(attach-stobj fn-a fn-a-impl)\n'
+                                             '(include-book "a")\n(include-book "b")\n')
+        (books / "b-attach.lisp").write_text('(attach-stobj fn-b fn-b-impl)\n'
+                                             '(include-book "b")\n')
+        (root / "host" / "native").mkdir()
+        (root / "host" / "native" / "build.lisp").write_text(
+            '(include-book "books/a-attach")\n(include-book "books/b-attach")\n')
+        rendered = interface_emit.render_raw_declarations(interface_emit.declarations(root), root=root)
+        b = rendered.index('(include-book "../books/b-attach")')
+        a = rendered.index('(include-book "../books/a-attach")')
+        route = rendered.index('(include-book "../books/route")')
+        self.assertLess(b, a)
+        self.assertLess(a, route)
+
     def test_raw_input_output_stobjs_deduplicate_and_state_is_builtin(self):
         root = tree('(definterface fn-a :class :common-lisp-compliant '
                     ':raw-guarded (2 (state fn-bank) (nil fn-bank)))\n')
