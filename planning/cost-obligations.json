@@ -88,6 +88,7 @@
   "fn-mo-drop-key",
   "fn-mo-prefixp",
   "fn-mo-status-kib-octets",
+  "fn-mo-tot-log-at-least",
   "fn-ncfg-nth",
   "fn-rce-exercise-items",
   "fn-scat-group-low-top",
