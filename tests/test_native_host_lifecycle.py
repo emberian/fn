@@ -377,10 +377,12 @@ class IdleTimerTests(unittest.TestCase):
             # One pass for the resume timer, at most a few for the window's
             # write; a busy poll is hundreds per millisecond of wait.
             self.assertLess(statistics.median(later), 10, later[:50])
-            # The held wait: one pass per send look (+fnn-mux-tick-ms+, 250
-            # ms) over HOLD seconds, a few for the window's wakeups; a busy
-            # poll over the HOLD - 1 expired seconds is hundreds of thousands.
-            self.assertLess(max(deltas), 200, sorted(deltas)[-10:])
+            # The held wait is the one long delta.  On the correct image it
+            # measured 272-364 passes for holds of 2.5-6 s (hbox, 2266e7be1:
+            # about 250 fixed, about 26 per held second; the send looks at
+            # +fnn-mux-tick-ms+ are 4 of them); a zero-timeout poll over the
+            # HOLD - 1 expired seconds is orders of magnitude more.
+            self.assertLess(max(deltas), 2000, sorted(deltas)[-10:])
             node.stop(process=owner, expect=EXIT.OK)
 
 
