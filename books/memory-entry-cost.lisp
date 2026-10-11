@@ -43,6 +43,9 @@
 (def-cost fn-mm-collector-due-p :unaccounted (true-list-fix))
 (def-cost fn-heap-command-decide :unaccounted (fn-mo-header-decide fn-heap-reserve-operation-decide fn-mo-read-decide fn-mo-offline-adapter-decide))
 (def-cost fn-heap-command-line :unaccounted (fn-mo-read-refusal-line fn-heap-reserve-report-line fn-mo-unseen-suffix string-append))
+; The suffix scan's HISTORY allowance (landing 2a-host, host/native/heap.lisp
+; fnn-heap-log-suffix; L's line, by M's agreement 2026-10-11).
+(def-cost fn-adm-row-allowance)
 
 (def-cost-check fn-heap-command-growth)
 (def-cost-check fn-mo-observed-totals)
@@ -52,3 +55,4 @@
 (def-cost-check fn-mm-collector-due-p)
 (def-cost-check fn-heap-command-decide)
 (def-cost-check fn-heap-command-line)
+(def-cost-check fn-adm-row-allowance)

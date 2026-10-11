@@ -60,6 +60,9 @@
 (include-book "../books/store-log-walk-once")
 (include-book "../books/store-log-lineage")
 (include-book "../books/store-log-entry-bound")
+; Landing 2a-host: the read-only probe's suffix scan (fn-lgo-scan-plan, fn-lgo-fold;
+; host/native/heap.lisp fnn-heap-log-suffix) and its keystones.
+(include-book "../books/store-log-open-scan")
 (include-book "../books/payload-lz-append")
 (include-book "../books/owner-compact-request")
 (include-book "../books/owner-log-route")
@@ -833,6 +836,22 @@
 (definterface fn-lgs-segment-name
   :class :common-lisp-compliant)
 
+;; The read-only probe's scan of the log past the header's S (landing 2a-host,
+;; books/store-log-open-scan.lisp; host/native/heap.lisp fnn-heap-log-suffix).
+(definterface fn-lgo-scan-plan
+  :class :common-lisp-compliant
+  :keystones (fn-lgo-scan-plan-scans-every-present-segment))
+
+(definterface fn-lgo-fold
+  :class :common-lisp-compliant
+  :kinds ((zs fn-octet-list-listp))
+  :keystones (fn-lgo-observed-covers-the-opened-store
+              fn-lgo-host-suffix-covers-the-opened-store
+              fn-lgo-fold-from-no-skip-bounds-any-skip))
+
+(definterface fn-adm-row-allowance
+  :class :common-lisp-compliant)
+
 (definterface fn-lgw-header-len
   :class :common-lisp-compliant
   :kinds ((st true-listp)))
@@ -960,9 +979,6 @@
   :kinds ((total natp)))
 
 (definterface fn-cth-status-text
-  :class :common-lisp-compliant)
-
-(definterface fn-cth-empty-suffix
   :class :common-lisp-compliant)
 
 (definterface fn-ockp-step

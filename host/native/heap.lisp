@@ -506,49 +506,85 @@ to a space that already holds it."
   "The read decision's totals (books/heap-command.lisp fn-mo-observed-totals):
 HDR the checkpoint's charged-totals header as the open reads it
 (io.lisp fnn-checkpoint-header-observation, books/charged-totals-header.lisp
-fn-cth-header-open), SUFFIX the log's past the header's S, EXTENT the largest
-journal/ segment's observed size (the lstat of every segment the walk below
-reads), which the read's open terms charge as its entry scratch (KEYSTONE
+fn-cth-header-open), SUFFIX the log's past the header's S
+(fnn-heap-log-suffix, below), EXTENT the largest journal/ segment's observed
+size (the lstat of every segment the walk below reads), which the read's
+open terms charge as its entry scratch (KEYSTONE
 fn-mo-observed-log-holds-every-entry-read).  ADAPTER
 MEMORY-OBSERVED-EXTENT-CAP (owners A and M, retired by A's io.lisp cap: the
 read takes EXTENT as its cap and refuses a segment past it by name): until
-then a segment appended between this walk and the read is not covered, the
-same race the empty-suffix observation below accepts.  ADAPTER (owner
-Builder L, retired by L's store-log-open-scan): SUFFIX is the zero tot only
-when the log observably holds no record past S -- no octet of any segment in
-journal/ but the genesis (fnn-genesis-path, which holds no
-record) is nonzero past a headed segment's padded head
-(books/store-log-lineage.lisp fn-lgl-head-len; every entry opens with a
-nonzero header, and the rotation preallocates the segment with zeros, so a
-fresh segment's extent is past its head) -- else NIL, and the decision says
-the header's totals are unseen.  A segment that is not a regular file leaves
-EXTENT, and so the totals, unseen.  Unlocked: as fresh as the read."
+then a segment appended between this walk and the read is not covered.  A
+segment that is not a regular file leaves EXTENT, and so the totals, unseen.
+Unlocked: as fresh as the read."
   (let* ((store (and (stringp root) profile (make-fnn-store root)))
          (open (and store
                     (progn (setf (fnn-store-config store) profile)
                            (handler-case (fnn-checkpoint-header-observation store)
                              (fnn-os-error () nil)))))
          (hdr (and (consp open) (eq (first open) :ok) (second open)))
-         (walk (and hdr
-                    (handler-case
-                        (let ((genesis (fnn-genesis-path store))
-                              (head (fnn-nat (fnn-core 'fn-lgl-head-len (fnn-store-log-unit))))
-                              (extent 0))
-                          (dolist (name (fnn-log-segment-names store) (list t extent))
-                            (let* ((path (fnn-join (fnn-journal-dir store) name))
-                                   (st (fnn-lstat path)))
-                              (unless (and st (fnn-regular-p st))
-                                (return (list nil nil)))
-                              (setf extent (max extent (sb-posix:stat-size st)))
-                              (unless (or (equal path genesis)
-                                          (null (fnn-log-first-nonzero path head)))
-                                (return (list nil nil))))))
-                      ((or fnn-os-error fnn-store-error) () nil))))
-         (empty (first walk))
-         (extent (second walk)))
-    (fnn-core 'fn-mo-observed-totals hdr
-              (and empty (fnn-core 'fn-cth-empty-suffix hdr))
-              extent)))
+         (extent (and hdr
+                      (handler-case
+                          (let ((extent 0))
+                            (dolist (name (fnn-log-segment-names store) extent)
+                              (let ((st (fnn-lstat (fnn-join (fnn-journal-dir store) name))))
+                                (unless (and st (fnn-regular-p st))
+                                  (return nil))
+                                (setf extent (max extent (sb-posix:stat-size st))))))
+                        ((or fnn-os-error fnn-store-error) () nil))))
+         (suffix (and extent
+                      (handler-case (fnn-heap-log-suffix store profile (fifth open))
+                        ((or fnn-os-error fnn-store-error) () nil)))))
+    (fnn-core 'fn-mo-observed-totals hdr suffix extent)))
+
+(defun fnn-heap-log-suffix (store profile s)
+  "SUFFIX of the read decision (books/heap-command.lisp fn-mo-observed-totals):
+the charged totals of the log's records past the header's S, by ACL2's
+open-scan fold (books/store-log-open-scan.lisp fn-lgo-fold, HISTORY at
+ALLOW = fn-adm-row-allowance PROFILE + 3 x octets, Builder M's ruling (b)).
+ACL2's plan over journal/ (fn-lgo-scan-plan, KEYSTONE
+fn-lgo-scan-plan-scans-every-present-segment): with segment 1 present, the
+chain from the genesis (its trailer, read and checked by fn-store-genesis-open
+under PROFILE, nothing installed) with skip S, the open's fold exactly
+(KEYSTONE fn-lgo-observed-covers-the-opened-store); with segment 1 gone,
+from the lowest segment's head predecessor (fn-lgl-head-prev) with skip 0,
+which bounds it (KEYSTONE fn-lgo-host-suffix-covers-the-opened-store: the
+dropped segments hold at most S records).  Each segment is read only, one
+entry at a time (fnn-log-read-closed-segment), each record's stored octets
+folded as it passes and not kept.  NIL (unseen) when the plan refuses, the
+fold refuses (:bad), or any read refuses or fails.  Unlocked: a record
+appended during the walk may be missed, the same race as
+MEMORY-OBSERVED-EXTENT-CAP."
+  (let ((plan (fnn-core 'fn-lgo-scan-plan (fnn-log-segment-names store) s)))
+    (when plan
+      (destructuring-bind (kind low scan skip acc) plan
+        (let* ((unit (fnn-store-log-unit))
+               (max (fnn-store-log-max store))
+               (genesis
+                 (if (eq kind :genesis)
+                     (fnn-core 'fn-store-genesis-chain
+                               (fnn-core 'fn-store-genesis-open
+                                         (fnn-octet-list (fnn-read-regular-bounded
+                                                          (fnn-genesis-path store) 1024))
+                                         profile))
+                   (let* ((path (fnn-segment-path-at store low))
+                          (fd (fnn-open path (logior sb-posix:o-rdonly +fnn-o-nofollow+))))
+                     (unwind-protect
+                          (let ((head (fnn-read-exact-fd
+                                       fd (fnn-nat (fnn-core 'fn-lgl-head-len unit)))))
+                            (and head (fnn-core 'fn-lgl-head-prev (fnn-octet-list head) max)))
+                       (fnn-close fd)))))
+               (dicts (fnn-lz-dicts))
+               (allow (fnn-core 'fn-adm-row-allowance profile))
+               (sink (lambda (record)
+                       (declare (ignore record))
+                       (unless (eq acc :bad)
+                         (destructuring-bind (skip2 acc2)
+                             (fnn-call 'fn-lgo-fold (list *fnn-log-record-stored*) skip acc dicts allow)
+                           (setq skip skip2 acc acc2))))))
+          (when genesis
+            (dolist (k scan)
+              (setq genesis (fnn-log-read-closed-segment store k genesis unit max sink)))
+            (and (not (eq acc :bad)) acc)))))))
 
 ;; The configuration history's octets on disk (config/, the lstat sizes of
 ;; its regular files under the profile's listing bound), which loading the
