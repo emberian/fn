@@ -1698,6 +1698,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/over-window-tests \
 	books/over-render-quantum \
 	tests/acl2/over-render-tests \
+	books/over-render-bound \
+	tests/acl2/over-render-bound-tests \
 	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
