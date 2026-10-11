@@ -22,8 +22,9 @@
 ;
 ; SCOPE.  This is the open's establishment.  The reclaim pass predicts the
 ; LIVE history, rewritten (fn-orc-rewrite-rows), and that history also grows
-; by the owner's appends after the open.  The rewrite step and the appends
-; that carry the premise from the open to the pass are owed by item
+; by the owner's appends after the open.  The rewrite step is carried at the
+; end of this book (KEYSTONE fn-rfc-the-rewrite-keeps-the-fold-contexts).  The
+; appends that carry the premise from the open to the pass remain owed by item
 ; RECLAIM-FOLD-CONTEXTS-CARRIED (owner Builder L).
 (in-package "ACL2")
 (include-book "owner-reclaim-retained")
@@ -320,3 +321,310 @@
                  (:instance fn-rfc-holds-of-append-payloads (b (true-list-fix fn-arena)) (c nil))
                  (:instance fn-rfc-fold-okp (acc (fn-ssr-seed id)) (h (len fn-arena)) (id0 id) (hh h)
                             (a (append (true-list-fix fn-arena) (fn-scka-payloads ws))))))))
+
+; -----------------------------------------------------------------------------
+; RECLAIM-FOLD-CONTEXTS-CARRIED, part (1): the reclaim rewrite keeps the
+; premise (Builder L12, 2026-10-11).
+;
+; The pass rewrites a chunk (fn-orc-rewrite-rows) and predicts over the
+; rewritten rows at the live arena's count.  A rewritten row is the tombstone
+; of the record its wire decodes as.  The codec obstacle: a store event that
+; is not a record must never decode as one, or the rewrite would turn a
+; statement or keyring row into a record and move the identity the fold
+; advances.  fn-rfc-only-a-record-decodes-as-a-record closes it: a record's
+; decode accepts only the "fn-r" magic (books/records-seam.lisp
+; fn-record-decode-exact-refuses-another-magic), and every other encoder's
+; first five octets differ (retention, stxe, stxk and stxa lead with "fn-e",
+; cpe with the raw "fnce", topics with "fnto").  A rewritten held or record
+; row then becomes a record row whose intern is held at the same sequence,
+; so the identity step agrees (fn-replay-identity-step reads a held row's
+; sequence only), and a record row is not retained, so its context is not
+; checked.  The premise does not depend on the handle counter
+; (fn-rfc-fold-contexts-okp-any-handle), so the prediction's count may be the
+; live arena's.
+;
+; KEYSTONE fn-rfc-the-rewrite-keeps-the-fold-contexts (at the live arena's
+; count, as its consumer states the premise; any two natural counts:
+; fn-rfc-the-rewrite-keeps-the-fold-contexts-any-handle).
+; OWED (part 2): the owner's live appends after the open intern at the fold
+; context of their position.
+
+(local
+ (defthm fn-rfc-step-of-held-rows
+    (implies (and (fn-held-p x) (fn-held-p y)
+                  (equal (fn-record-sequence x) (fn-record-sequence y)))
+             (equal (fn-replay-identity-step ctx x)
+                    (fn-replay-identity-step ctx y)))
+    :hints (("Goal" :in-theory (enable fn-replay-identity-step fn-replay-identity-wire
+                                       fn-store-event-sequence)
+             :use ((:instance fn-held-is-no-wire-event (x x))
+                   (:instance fn-held-is-no-wire-event (x y))
+                   (:instance fn-hstxa-is-not-held (x x))
+                   (:instance fn-hstxa-is-not-held (x y)))))
+    :rule-classes nil))
+(local
+ (defthm fn-rfc-sequence-of-intern-row-at
+    (equal (fn-record-sequence (fn-intern-row-at w k g h)) (fn-record-sequence w))
+    :hints (("Goal" :in-theory (enable fn-intern-row-at)))))
+(local
+ (defthm fn-rfc-held-is-store-event
+   (implies (fn-held-p x) (fn-store-event-p x))
+   :hints (("Goal" :in-theory (enable fn-store-event-p)))))
+(local
+ (defthm fn-rfc-seed-generation-natp
+   (natp (fn-ssr-at 2 (fn-ssr-seed id)))
+   :rule-classes :type-prescription
+   :hints (("Goal" :use ((:instance fn-ssr-seed-establishes-statep (identity id)))
+            :in-theory (enable fn-ssr-statep)))))
+(local
+ (defthm fn-rfc-loop-of-intern-any-handle
+   (implies (and (fn-record-p w) (natp h1) (natp h2))
+            (equal (fn-replay-identity-loop (list (fn-intern-row-at w (fn-ssr-at 1 (fn-ssr-seed id)) (fn-ssr-at 2 (fn-ssr-seed id)) h1)) id)
+                   (fn-replay-identity-loop (list (fn-intern-row-at w (fn-ssr-at 1 (fn-ssr-seed id)) (fn-ssr-at 2 (fn-ssr-seed id)) h2)) id)))
+   :rule-classes nil
+   :hints (("Goal" :expand ((:free (r) (fn-replay-identity-loop (list r) id)))
+            :use ((:instance fn-rfc-step-of-held-rows (ctx id)
+                   (x (fn-intern-row-at w (fn-ssr-at 1 (fn-ssr-seed id)) (fn-ssr-at 2 (fn-ssr-seed id)) h1))
+                   (y (fn-intern-row-at w (fn-ssr-at 1 (fn-ssr-seed id)) (fn-ssr-at 2 (fn-ssr-seed id)) h2))))
+            :in-theory (disable fn-intern-row-at fn-ssr-seed fn-ssr-at fn-replay-identity-step fn-record-p fn-store-event-p)))))
+(local
+ (defun fn-rfc-next (w id h)
+   (declare (xargs :verify-guards nil))
+   (let ((seed (fn-ssr-seed id)))
+     (fn-replay-identity-loop
+      (list (if (fn-record-p w) (fn-intern-row-at w (fn-ssr-at 1 seed) (fn-ssr-at 2 seed) h) w))
+      id))))
+(local
+ (defun fn-rfc-ok1 (w id fn-arena)
+   (declare (xargs :stobjs fn-arena :verify-guards nil))
+   (let ((seed (fn-ssr-seed id)))
+     (or (not (fn-orcr-retained-p w))
+         (equal (fn-held-context (fn-orcr-held-part w))
+                (fn-held-context-of (fn-row-bytes (fn-orcr-held-part w) fn-arena)
+                                    (fn-ssr-at 1 seed) (fn-ssr-at 2 seed)))))))
+(local
+ (defthm fn-rfc-next-any-handle
+   (implies (and (syntaxp (not (equal h ''0))) (natp h))
+            (equal (fn-rfc-next w id h) (fn-rfc-next w id 0)))
+   :hints (("Goal" :cases ((fn-record-p w))
+            :in-theory (union-theories '(fn-rfc-next fn-rfc-seed-generation-natp natp)
+                                       (theory 'minimal-theory)))
+           ("Subgoal 1" :use ((:instance fn-rfc-loop-of-intern-any-handle (h1 h) (h2 0)))))))
+(local
+ (defthm fn-rfc-okp-unfold
+   (implies (consp rows)
+            (equal (fn-orcr-fold-contexts-okp rows id h fn-arena)
+                   (and (fn-rfc-ok1 (car rows) id fn-arena)
+                        (fn-orcr-fold-contexts-okp (cdr rows) (fn-rfc-next (car rows) id h)
+                                                   (if (fn-record-p (car rows)) (+ 1 h) h) fn-arena))))
+   :hints (("Goal" :in-theory (union-theories '(fn-orcr-fold-contexts-okp fn-rfc-ok1 fn-rfc-next)
+                                              (theory 'minimal-theory))))))
+(local
+ (defun fn-rfc-okp-free (rows id fn-arena)
+   (declare (xargs :stobjs fn-arena :verify-guards nil))
+   (if (atom rows) t
+     (and (fn-rfc-ok1 (car rows) id fn-arena)
+          (fn-rfc-okp-free (cdr rows) (fn-rfc-next (car rows) id 0) fn-arena)))))
+(local
+ (defun fn-rfc-okpf-ind (rows id h)
+   (declare (xargs :verify-guards nil))
+   (if (atom rows) (list id h)
+     (fn-rfc-okpf-ind (cdr rows) (fn-rfc-next (car rows) id 0) (if (fn-record-p (car rows)) (+ 1 h) h)))))
+(local
+ (defthm fn-rfc-okp-is-free
+   (implies (natp h)
+            (equal (fn-orcr-fold-contexts-okp rows id h fn-arena)
+                   (fn-rfc-okp-free rows id fn-arena)))
+   :hints (("Goal" :induct (fn-rfc-okpf-ind rows id h)
+            :in-theory (disable fn-orcr-fold-contexts-okp fn-rfc-next fn-rfc-ok1 fn-record-p))
+           ("Subgoal *1/1" :expand ((fn-orcr-fold-contexts-okp rows id h fn-arena))))))
+(defthm fn-rfc-fold-contexts-okp-any-handle
+  (implies (and (natp h1) (natp h2))
+           (equal (fn-orcr-fold-contexts-okp rows id h1 fn-arena)
+                  (fn-orcr-fold-contexts-okp rows id h2 fn-arena)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-rfc-okp-is-free) (fn-orcr-fold-contexts-okp fn-rfc-okp-free)))))
+(local
+ (defthm fn-rfc-stxe-prefix
+   (implies (fn-stxe-p e) (not (equal (take 5 (fn-stxe-encode e)) *fn-record-magic-octets*)))
+   :hints (("Goal" :in-theory (e/d (fn-stxe-encode fn-stxe-items fn-stxe-encode-items fn-stxe-encode-items-bounded) (fn-stxe-p))))))
+(local
+ (defthm fn-rfc-stxk-prefix
+   (implies (fn-stxk-p e) (not (equal (take 5 (fn-stxk-encode e)) *fn-record-magic-octets*)))
+   :hints (("Goal" :in-theory (e/d (fn-stxk-encode fn-stxk-items fn-stxe-encode-items fn-stxe-encode-items-bounded) (fn-stxk-p))))))
+(local
+ (defthm fn-rfc-stxa-prefix
+   (implies (fn-stxa-p e) (not (equal (take 5 (fn-stxa-encode e)) *fn-record-magic-octets*)))
+   :hints (("Goal" :in-theory (e/d (fn-stxa-encode fn-stxa-items fn-stxe-encode-items fn-stxe-encode-items-bounded) (fn-stxa-p))))))
+(local
+ (defthm fn-rfc-retention-prefix
+   (implies (fn-store-retention-event-p e) (not (equal (take 5 (fn-store-retention-event-encode e)) *fn-record-magic-octets*)))
+   :hints (("Goal" :in-theory (e/d (fn-store-retention-event-encode) (fn-store-retention-event-p))))))
+(local
+ (defthm fn-rfc-cpe-prefix
+   (implies (fn-cpe-eventp e) (not (equal (take 5 (fn-cpe-encode e)) *fn-record-magic-octets*)))
+   :hints (("Goal" :in-theory (e/d (fn-cpe-encode) (fn-cpe-eventp))))))
+(local
+ (defthm fn-rfc-topic-prefix
+   (implies (fn-th-topic-eventp e) (not (equal (take 5 (fn-th-topic-event-encode e)) *fn-record-magic-octets*)))
+   :hints (("Goal" :in-theory (e/d (fn-th-topic-event-encode fn-th-topic-event-items fn-stxe-encode-items) (fn-th-topic-eventp))))))
+(local
+ (defthm fn-rfc-non-record-encoding-prefix
+   (implies (not (fn-record-p e))
+            (not (equal (take 5 (fn-store-event-encode e)) *fn-record-magic-octets*)))
+   :hints (("Goal" :in-theory (e/d (fn-store-event-encode) (fn-record-p fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p fn-cpe-eventp fn-th-topic-eventp
+      fn-stxe-encode fn-stxk-encode fn-stxa-encode fn-cpe-encode fn-th-topic-event-encode fn-store-retention-event-encode))))))
+(defthm fn-rfc-only-a-record-decodes-as-a-record
+  (implies (fn-record-result-okp (fn-record-decode-exact (fn-store-event-encode e)))
+           (and (fn-record-p e)
+                (equal (fn-record-result-record (fn-record-decode-exact (fn-store-event-encode e))) e)))
+  :hints (("Goal" :cases ((fn-record-p e))
+           :use ((:instance fn-record-decode-exact-refuses-another-magic (octets (fn-store-event-encode e)))
+                 (:instance fn-record-round-trip-succeeds (record e)))
+           :in-theory (disable fn-record-p fn-store-event-encode))))
+(local
+ (defthm fn-rfc-held-wire-sequence
+   (equal (fn-record-sequence (fn-held-wire h p)) (fn-record-sequence h))
+   :hints (("Goal" :in-theory (enable fn-held-wire)))))
+(local
+ (defthm fn-rfc-stxa-is-not-record
+   (implies (fn-stxa-p w) (not (fn-record-p w)))
+   :hints (("Goal" :in-theory (enable fn-stxa-p fn-record-p fn-stxa-shapep fn-record-shapep)))))
+(local
+ (defthm fn-rfc-hstxa-wire-is-not-record
+   (implies (fn-hstxa-p w) (not (fn-record-p (fn-hstxa-stxa w))))
+   :hints (("Goal" :in-theory (e/d (fn-hstxa-p fn-hstxa-stxa) (fn-record-p fn-stxa-p fn-held-p))))))
+(local
+ (defthm fn-rfc-tombstoned-sequence
+   (equal (fn-record-sequence (fn-rclp-tombstoned r)) (fn-record-sequence r))
+   :hints (("Goal" :in-theory (enable fn-rclp-tombstoned)))))
+(local
+ (defthm fn-rfc-loop-of-held-rows
+   (implies (and (fn-held-p x) (fn-held-p y)
+                 (equal (fn-record-sequence x) (fn-record-sequence y)))
+            (equal (fn-replay-identity-loop (list x) id)
+                   (fn-replay-identity-loop (list y) id)))
+   :rule-classes nil
+   :hints (("Goal" :expand ((:free (r) (fn-replay-identity-loop (list r) id)))
+            :use ((:instance fn-rfc-step-of-held-rows (ctx id)))
+            :in-theory (disable fn-replay-identity-step fn-store-event-p fn-held-p)))))
+(local
+ (defthm fn-rfc-rewrite-row-when-rewritten
+   (implies (fn-rclp-rewrites-p (fn-orc-row-octets w fn-arena) ctx)
+            (and (fn-record-p (fn-row-wire-of w fn-arena))
+                 (equal (fn-orc-rewrite-row w ctx fn-arena)
+                        (fn-rclp-tombstoned (fn-row-wire-of w fn-arena)))
+                 (fn-record-p (fn-orc-rewrite-row w ctx fn-arena))))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-rfc-only-a-record-decodes-as-a-record
+                                    (e (fn-row-wire-of w fn-arena))))
+            :in-theory (e/d (fn-orc-rewrite-row fn-orc-row-octets fn-rclp-rewrites-p fn-record-result-okp fn-record-result-record)
+                            (fn-record-p fn-row-wire-of fn-store-event-encode fn-rclp-tombstoned
+                             fn-rclp-ctx-reclaimable fn-rcl-payload-profilep fn-rcl-tombstonep))))))
+(local
+ (defthm fn-rfc-rewrite-row-when-kept
+   (implies (not (fn-rclp-rewrites-p (fn-orc-row-octets w fn-arena) ctx))
+            (equal (fn-orc-rewrite-row w ctx fn-arena) w))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-orc-rewrite-row) (fn-rclp-rewrites-p fn-orc-row-octets))))))
+(local
+ (defthm fn-rfc-held-p-of-tomb-intern
+   (implies (fn-record-p tt)
+            (fn-held-p (fn-intern-row-at tt (fn-ssr-at 1 (fn-ssr-seed id)) (fn-ssr-at 2 (fn-ssr-seed id)) 0)))
+   :hints (("Goal" :in-theory (disable fn-intern-row-at fn-record-p fn-held-p fn-ssr-seed fn-ssr-at)))))
+(local
+ (defthm fn-rfc-next-of-a-non-record
+   (implies (not (fn-record-p w))
+            (equal (fn-rfc-next w id h) (fn-replay-identity-loop (list w) id)))
+   :hints (("Goal" :in-theory (union-theories '(fn-rfc-next) (theory 'minimal-theory))))))
+(local
+ (defthm fn-rfc-next-of-a-record
+   (implies (fn-record-p w)
+            (equal (fn-rfc-next w id h)
+                   (fn-replay-identity-loop
+                    (list (fn-intern-row-at w (fn-ssr-at 1 (fn-ssr-seed id)) (fn-ssr-at 2 (fn-ssr-seed id)) h)) id)))
+   :hints (("Goal" :in-theory (union-theories '(fn-rfc-next) (theory 'minimal-theory))))))
+(local
+ (defthm fn-rfc-next-rewritten-held
+   (implies (and (fn-held-p w)
+                 (fn-rclp-rewrites-p (fn-orc-row-octets w fn-arena) ctx))
+            (equal (fn-rfc-next (fn-orc-rewrite-row w ctx fn-arena) id 0)
+                   (fn-rfc-next w id 0)))
+   :hints (("Goal"
+            :use ((:instance fn-rfc-rewrite-row-when-rewritten)
+                  (:instance fn-rfc-held-is-not-record (x w))
+                  (:instance fn-rfc-loop-of-held-rows
+                             (x (fn-intern-row-at (fn-rclp-tombstoned (fn-row-wire-of w fn-arena))
+                                                  (fn-ssr-at 1 (fn-ssr-seed id)) (fn-ssr-at 2 (fn-ssr-seed id)) 0))
+                             (y w)))
+            :in-theory (union-theories
+                        '(fn-rfc-next-of-a-record fn-rfc-next-of-a-non-record fn-rfc-held-p-of-tomb-intern
+                          fn-rfc-sequence-of-intern-row-at fn-rfc-tombstoned-sequence fn-rfc-held-wire-sequence
+                          fn-row-wire-of)
+                        (theory 'minimal-theory))))))
+(local
+ (defthm fn-rfc-next-rewritten-other
+   (implies (and (not (fn-held-p w))
+                 (fn-rclp-rewrites-p (fn-orc-row-octets w fn-arena) ctx))
+            (equal (fn-rfc-next (fn-orc-rewrite-row w ctx fn-arena) id 0)
+                   (fn-rfc-next w id 0)))
+   :hints (("Goal"
+            :use ((:instance fn-rfc-rewrite-row-when-rewritten)
+                  (:instance fn-rfc-hstxa-wire-is-not-record)
+                  (:instance fn-rfc-loop-of-held-rows
+                             (x (fn-intern-row-at (fn-rclp-tombstoned w)
+                                                  (fn-ssr-at 1 (fn-ssr-seed id)) (fn-ssr-at 2 (fn-ssr-seed id)) 0))
+                             (y (fn-intern-row-at w (fn-ssr-at 1 (fn-ssr-seed id)) (fn-ssr-at 2 (fn-ssr-seed id)) 0))))
+            :in-theory (union-theories
+                        '(fn-rfc-next-of-a-record fn-rfc-next-of-a-non-record fn-rfc-held-p-of-tomb-intern
+                          fn-rfc-sequence-of-intern-row-at fn-rfc-tombstoned-sequence
+                          fn-row-wire-of)
+                        (theory 'minimal-theory))))))
+(local
+ (defthm fn-rfc-next-of-rewrite-row
+   (equal (fn-rfc-next (fn-orc-rewrite-row w ctx fn-arena) id 0)
+          (fn-rfc-next w id 0))
+   :hints (("Goal" :cases ((and (fn-rclp-rewrites-p (fn-orc-row-octets w fn-arena) ctx) (fn-held-p w))
+                           (and (fn-rclp-rewrites-p (fn-orc-row-octets w fn-arena) ctx) (not (fn-held-p w))))
+            :use ((:instance fn-rfc-rewrite-row-when-kept))
+            :in-theory (union-theories '(fn-rfc-next-rewritten-held fn-rfc-next-rewritten-other)
+                                       (theory 'minimal-theory))))))
+(local
+ (defthm fn-rfc-record-is-not-retained
+   (implies (fn-record-p x) (not (fn-orcr-retained-p x)))
+   :hints (("Goal" :use ((:instance fn-rfc-stxa-is-not-record (w x)))
+            :in-theory (enable fn-orcr-retained-p fn-hstxa-p fn-record-p fn-record-shapep fn-held-p fn-held-shapep fn-record-payloadp)))))
+(local
+ (defthm fn-rfc-ok1-of-a-record
+   (implies (fn-record-p x) (fn-rfc-ok1 x id fn-arena))
+   :hints (("Goal" :in-theory (union-theories '(fn-rfc-ok1 fn-rfc-record-is-not-retained) (theory 'minimal-theory))))))
+(local
+ (defthm fn-rfc-ok1-of-rewrite-row
+   (implies (fn-rfc-ok1 w id fn-arena)
+            (fn-rfc-ok1 (fn-orc-rewrite-row w ctx fn-arena) id fn-arena))
+   :hints (("Goal" :cases ((fn-rclp-rewrites-p (fn-orc-row-octets w fn-arena) ctx))
+            :use ((:instance fn-rfc-rewrite-row-when-rewritten) (:instance fn-rfc-rewrite-row-when-kept))
+            :in-theory (union-theories '(fn-rfc-ok1-of-a-record) (theory 'minimal-theory))))))
+(local
+ (defthm fn-rfc-okp-free-of-rewrite
+   (implies (fn-rfc-okp-free rows id fn-arena)
+            (fn-rfc-okp-free (fn-orc-rewrite-rows rows ctx fn-arena) id fn-arena))
+   :hints (("Goal" :induct (fn-rfc-okp-free rows id fn-arena)
+            :in-theory (e/d (fn-orc-rewrite-rows) (fn-orc-rewrite-row fn-rfc-next fn-rfc-ok1 fn-rclp-rewrites-p fn-orc-row-octets))))))
+(defthm fn-rfc-the-rewrite-keeps-the-fold-contexts-any-handle
+  (implies (and (natp h) (natp h2)
+                (fn-orcr-fold-contexts-okp rows id h fn-arena))
+           (fn-orcr-fold-contexts-okp (fn-orc-rewrite-rows rows ctx fn-arena) id h2 fn-arena))
+  :hints (("Goal" :in-theory (e/d (fn-rfc-okp-is-free) (fn-orc-rewrite-rows fn-rfc-okp-free fn-orcr-fold-contexts-okp)))))
+
+; KEYSTONE, in the terms of its consumer (fn-orcs-predict-rows-at-refines-the-
+; replay states the premise at the live arena's count): the rows the pass
+; predicts, rewritten, keep the premise the unrewritten rows had.
+(defthm fn-rfc-the-rewrite-keeps-the-fold-contexts
+  (implies (fn-orcr-fold-contexts-okp rows id (fn-arena-count fn-arena) fn-arena)
+           (fn-orcr-fold-contexts-okp (fn-orc-rewrite-rows rows ctx fn-arena) id
+                                      (fn-arena-count fn-arena) fn-arena))
+  :hints (("Goal" :use ((:instance fn-rfc-the-rewrite-keeps-the-fold-contexts-any-handle
+                                   (h (fn-arena-count fn-arena)) (h2 (fn-arena-count fn-arena))))
+           :in-theory (disable fn-rfc-the-rewrite-keeps-the-fold-contexts-any-handle
+                               fn-orcr-fold-contexts-okp fn-orc-rewrite-rows))))
