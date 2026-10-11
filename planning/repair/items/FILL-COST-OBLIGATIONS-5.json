@@ -4,12 +4,13 @@
  "file": "planning/cost-baseline.json",
  "id": "FILL-COST-OBLIGATIONS-5",
  "notes": [
-  "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): cost_obligations: 75 findings; 63 are new guard-verified dispatched entries with no def-cost and not in planning/cost-baseline.json (first: fn-asto-resume-ms, books/article-stream-owner.lisp:647; fn-bpnf-mixed-recovery-plan-from; fn-bpnr-plan-start-token; fn-bpnr-seed-state). Owner unowned -> builder-D."
+  "10-09 builder-D (coordinator ruling: each red make check step is a row with a current owner): cost_obligations: 75 findings; 63 are new guard-verified dispatched entries with no def-cost and not in planning/cost-baseline.json (first: fn-asto-resume-ms, books/article-stream-owner.lisp:647; fn-bpnf-mixed-recovery-plan-from; fn-bpnr-plan-start-token; fn-bpnr-seed-state). Owner unowned -> builder-D.",
+  "10-11 10:13 10-11 Builder D, lane/d-cost-cl04: on dev 3119f7d32 the one finding left was planning/cost-obligations.json stale; regenerated with cost_obligations.py --write (one row, fn-mo-tot-log-at-least); cost_obligations --check 0 findings. The undeclared entries were declared by A's charged-totals-header-cost (57a4d6e7c) and M's lanes in the convergence train; the baseline shrink rode A's refile."
  ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "fill-20261004",
- "state": "open",
+ "state": "ready",
  "title": "cost_obligations --check red: planning/cost-obligations.json is stale and 4 new guard-verified dispatched entries have no def-cost and are not in planning/cost-baseline.json: fn-owner-article-preflight-unavailable, fn-owner-page-window-cache-byte-at, fn-owner-page-window-executor-cache, fn-prd-pause-ms",
- "updated": "2026-10-09T22:00:00Z"
+ "updated": "2026-10-11T14:13:27Z"
 }
