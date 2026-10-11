@@ -16,12 +16,30 @@
 
 (include-book "filed-catalog")
 (include-book "store-intern")
+(include-book "store-reclaim-pack")      ; fn-rclp-tombstoned
+(include-book "history-fold-refinement") ; fn-rows-composites-okp
 
 (defun fn-o1-files-filedp (files fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (and (fn-o1-records-filedp (fn-cat-history-articles (fn-sf-records files) fn-arena))
        (fn-o1-records-filedp (fn-cat-history-articles
                               (list (fn-sf-record-candidate files)) fn-arena))))
+
+
+; Rows in an arena: their articles filed or reclaimed, each what the intern
+; makes of a row (a composite row's held article is its composite's
+; article), every handle in the arena.
+(defun fn-o1-rows-invp (rows fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (and (fn-o1-records-filed-or-reclaimedp (fn-cat-history-articles rows fn-arena))
+       (fn-rows-composites-okp rows fn-arena)
+       (fn-rows-handles-inp rows fn-arena)))
+
+; The Store's files: the records and the staged candidate.
+(defun fn-o1-files-invp (files fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (and (fn-o1-rows-invp (fn-sf-records files) fn-arena)
+       (fn-o1-rows-invp (list (fn-sf-record-candidate files)) fn-arena)))
 
 (local
  (defthm o1h-history-articles-of-append

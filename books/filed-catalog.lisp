@@ -18,6 +18,7 @@
 
 (include-book "filed-groups")
 (include-book "catalog-view")
+(include-book "article-arena-reads")   ; fn-nntp-article-tombstonep
 
 ; Rows I..N-1 positional: groups against held numbers.
 (defun fn-o1-cat-rows-positionalp (i n fn-cat)
@@ -42,6 +43,20 @@
                (fn-o1-filed-within-sourcep (fn-record-groups (car records))
                                            (fn-record-payload (car records))))
            (fn-o1-records-filedp (cdr records)))
+    t))
+
+
+; The reclaim-aware history invariant: every article record is filed within
+; its payload, or its payload is a reclaim tombstone (content reclamation
+; replaces a payload by a tombstone and keeps the record's groups).
+(defun fn-o1-records-filed-or-reclaimedp (records)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp records)
+      (and (or (not (fn-record-p (car records)))
+               (fn-rcl-tombstonep (fn-record-payload (car records)))
+               (fn-o1-filed-within-sourcep (fn-record-groups (car records))
+                                           (fn-record-payload (car records))))
+           (fn-o1-records-filed-or-reclaimedp (cdr records)))
     t))
 
 
