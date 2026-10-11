@@ -649,6 +649,48 @@ class StarOneTrimTests(unittest.TestCase):
             self.assertIn('unit raw:ACL2::W', out, form)
             self.assertNotIn('unit raw:ACL2::OK', out, form)
 
+    def test_premise_refuses_codex_review_witness_a_raw_helper_that_sets_a_computed_symbol(self):
+        # REVIEW1.md section 3 (live-review.lsp): both units passed the scan before computed writes were refused.
+        out = self.lisp(self.PREMISE + """
+(let ((units (list (cons "raw:ACL2::R4-INDIRECT-SET"
+                         (list (fe-expand-def '(r4-indirect-set (name value) (set (global-symbol name) value)))))
+                   (cons "raw:ACL2::R4-ENTER"
+                         (list (fe-expand-def '(r4-enter () (r4-indirect-set 'guard-checking-on nil))))))))
+  (show (premise-result units)))""")
+        self.assertIn('unit raw:ACL2::R4-INDIRECT-SET', out)
+        self.assertIn('COMPUTED-WRITE', out)
+
+    def test_premise_refuses_each_computed_write_form_and_a_computed_setter_key(self):
+        for form in ("(set (global-symbol k) 1)", "(setf (symbol-value k) 1)", "(makunbound k)",
+                     "(setf (sb-ext:symbol-global-value k) 1)", "(f-put-global k 1 st)", "(put-global k 1 st)"):
+            out = self.lisp(self.PREMISE + '(show (premise-result (list (cons "raw:ACL2::W" (list (fe-expand-def \'(w (k st) %s)))))))' % form)
+            self.assertIn('unit raw:ACL2::W', out, form)
+
+    def test_premise_does_not_mistake_a_variable_named_set_for_a_call(self):
+        out = self.lisp(self.PREMISE + """
+(show (premise-result (list (cons "raw:ACL2::OK" (list (fe-expand-def '(ok (x) (let ((set (car x))) (set-foo set))))
+                                                        (fe-expand-def '(ok2 (set) (flet ((g (set) set)) (g set)))))))))""")
+        self.assertEqual(out.strip(), 'OK')
+
+    def test_named_exceptions_match_only_their_unit_and_their_kind(self):
+        out = self.lisp(self.PREMISE + """
+(defvar *flush* (fe-expand-def '(memoize-flush1 (s) (set (the symbol s) nil))))
+(show (premise-result (list (cons "raw:ACL2::MEMOIZE-FLUSH1" (list *flush*)))))
+(show (search "unit raw:ACL2::OTHER" (premise-result (list (cons "raw:ACL2::OTHER" (list *flush*))))))
+(show (search "unit raw:ACL2::MEMOIZE-FLUSH1" (premise-result (list (cons "raw:ACL2::MEMOIZE-FLUSH1"
+        (list (fe-expand-def (list 'memoize-flush1 '(s) (list 'setq *cell* nil)))))))))
+(show (search "unit raw:ACL2::MEMOIZE-FLUSH1" (premise-result (list (cons "raw:ACL2::MEMOIZE-FLUSH1"
+        (list (fe-expand-def (list 'memoize-flush1 '(s) (list 'let (list (list *cell* nil)) 1)))))))))
+(show (premise-result (list (cons "star1:ACL2::PUT-GLOBAL" (list (fe-expand-def '(put-global (k v st) (f-put-global k v st))))))))
+(show (search "unit raw:ACL2::PUT-GLOBAL" (premise-result (list (cons "raw:ACL2::PUT-GLOBAL" (list (fe-expand-def '(put-global (k v st) (f-put-global k v st)))))))))""")
+        lines = out.split('\n')
+        lines = [l for l in lines if l.strip()]
+        self.assertEqual(lines[0], 'OK')
+        self.assertNotEqual(lines[1], 'NIL')
+        self.assertNotEqual(lines[3], 'NIL')
+        self.assertEqual(lines[4], 'OK')
+        self.assertNotEqual(lines[5], 'NIL')
+
     def test_premise_refuses_a_session_that_is_not_guard_checking_t_and_safe_mode_nil(self):
         out = self.lisp(self.PREMISE + '(setq *gc* nil) (show (premise-result nil)) (setq *gc* t *safe* t) (show (premise-result nil))')
         first, second = out.strip().splitlines()

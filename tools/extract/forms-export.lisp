@@ -741,35 +741,63 @@ violation that make it unreachable at guard-checking-on T, and no runtime symbol
   "oneify-cltl-code-1's cl-compliant-p-optimization: logic mode and :common-lisp-compliant in the extraction world."
   (and (eq mode :logic) (eq (symbol-class f *fe-w*) :common-lisp-compliant)))
 
+(defparameter *fe-computed-write-ops* '("SET" "MAKUNBOUND" "%SET-SYMBOL-VALUE" "SET-SYMBOL-GLOBAL-VALUE" "%SET-SYMBOL-GLOBAL-VALUE")
+  "Operators that write or unbind the value of the symbol their first argument evaluates to, by symbol name
+(setf of symbol-value expands to SET).")
+
 (defun fe-form-writes (form cells names)
-  "The members of CELLS that FORM binds (let, let*, multiple-value-bind, lambda, progv), assigns or names in a
-quote, and the members of NAMES it hands as a quoted key to f-put-global, put-global or xl-set-global."
+  "What FORM does that could change a guard-checking cell, as a list: the members of CELLS it binds (let, let*,
+multiple-value-bind, lambda, progv), assigns or names in a quote; the members of NAMES it hands as a quoted
+key to f-put-global, put-global or xl-set-global; and :computed-write when it applies SET, MAKUNBOUND or
+an equivalent (*fe-computed-write-ops*) to a symbol that is not a quoted constant, :progv-computed for a
+progv symbol list that is not quoted, :computed-key for a setter key that is not quoted.  Binding lists and
+lambda lists are not forms: a variable named SET is not a call."
   (let ((hits nil))
     (labels ((hit (s) (when (member s cells) (pushnew s hits)))
              (quoted (d) (cond ((symbolp d) (hit d))
                                ((consp d) (quoted (car d)) (quoted (cdr d)))))
+             (quote-p (k) (and (consp k) (eq (car k) 'quote)))
+             (vars (l) (dolist (v l) (hit (if (consp v) (car v) v))))
+             (walk-body (b) (dolist (y b) (walk y)))
              (walk (x)
                (cond ((atom x) nil)
                      ((eq (car x) 'quote) (quoted (cadr x)))
+                     ((member (car x) '(let let*))
+                      (dolist (b (cadr x)) (hit (if (consp b) (car b) b)) (when (consp b) (walk (cadr b))))
+                      (walk-body (cddr x)))
+                     ((eq (car x) 'multiple-value-bind) (vars (cadr x)) (walk (caddr x)) (walk-body (cdddr x)))
+                     ((eq (car x) 'lambda) (vars (cadr x)) (walk-body (cddr x)))
+                     ((member (car x) '(defun defmacro)) (walk-body (cdddr x)))
+                     ((member (car x) '(flet labels))
+                      (dolist (f (cadr x)) (vars (cadr f)) (walk-body (cddr f)))
+                      (walk-body (cddr x)))
+                     ((eq (car x) 'function) (when (and (consp (cadr x)) (eq (car (cadr x)) 'lambda)) (walk (cadr x))))
+                     ((eq (car x) 'declare) nil)
                      (t (case (car x)
-                          ((let let*) (when (listp (cadr x))
-                                        (dolist (b (cadr x)) (hit (if (consp b) (car b) b)))))
                           ((setq psetq) (loop for rest on (cdr x) by #'cddr do (hit (car rest))))
-                          (multiple-value-bind (when (listp (cadr x)) (mapc #'hit (cadr x))))
-                          (lambda (when (listp (cadr x)) (dolist (v (cadr x)) (hit (if (consp v) (car v) v)))))
-                          (progv (let ((k (cadr x)))      ; a computed symbol list could name a cell
-                                   (unless (and (consp k) (eq (car k) 'quote)) (pushnew :progv-computed hits))))
+                          (progv (unless (quote-p (cadr x)) (pushnew :progv-computed hits)))
                           ((f-put-global put-global xl-set-global)
                            (let ((k (cadr x)))
-                             (when (and (consp k) (eq (car k) 'quote) (member (cadr k) names))
-                               (pushnew (cadr k) hits)))))
-                        (loop for y on x while (consp y) do (walk (car y)))))))
+                             (cond ((not (quote-p k)) (pushnew :computed-key hits))
+                                   ((member (cadr k) names) (pushnew (cadr k) hits)))))
+                          (t (when (and (symbolp (car x)) (member (symbol-name (car x)) *fe-computed-write-ops* :test #'string=)
+                                        (not (quote-p (cadr x))))
+                               (pushnew :computed-write hits))))
+                        (walk-body (cdr x))))))
       (walk form))
     hits))
 
+(defparameter *fe-star1-computed-write-exceptions*
+  '(("raw:ACL2::MEMOIZE-FLUSH1" :computed-write
+     "ACL2's memoize-flush1 SETs its argument cells (the *HONS-S* cells of memoized functions).  REVIEW1.md (Codex review of star1, section 3): its 40 argument cells have NIL initializers among the core's 67 and none is the guard-checking-on or safe-mode cell.")
+    ("star1:ACL2::PUT-GLOBAL" :computed-key
+     "The *1* of put-global forwards its KEY argument to the put-global runtime function; every call site of f-put-global/put-global in the core's emitted units passes a quoted key that is not a guard or safe-mode cell (this scan refuses one that is)."))
+  "Units allowed one named kind of computed write, with the finding that justifies each.  An exception matches its unit id exactly and only its kind.")
+
 (defun fe-check-star1-premise (unit-forms)
   "S1's premise P1.  UNIT-FORMS: (id . forms) for every emitted unit.  Error, naming what failed, unless the
-session's guard-checking-on is T and safe-mode NIL (the values the core carries) and no unit writes either."
+session's guard-checking-on is T and safe-mode NIL (the values the core carries) and no unit writes either
+(fe-form-writes), apart from *fe-star1-computed-write-exceptions*."
   (unless (eq (f-get-global 'guard-checking-on *the-live-state*) t)
     (error "star1 trim premise: guard-checking-on is ~s in the extraction session, not T" (f-get-global 'guard-checking-on *the-live-state*)))
   (when (f-get-global 'safe-mode *the-live-state*)
@@ -777,9 +805,9 @@ session's guard-checking-on is T and safe-mode NIL (the values the core carries)
   (let ((cells (list (global-symbol 'guard-checking-on) (global-symbol 'safe-mode)))
         (names '(guard-checking-on safe-mode)))
     (dolist (u unit-forms)
-      (dolist (f (cdr u))
-        (let ((w (fe-form-writes f cells names)))
-          (when w (error "star1 trim premise: unit ~a binds, assigns or names ~s" (car u) w)))))))
+      (let* ((allowed (loop for e in *fe-star1-computed-write-exceptions* when (string= (car e) (car u)) collect (cadr e)))
+             (w (set-difference (loop for f in (cdr u) append (fe-form-writes f cells names)) allowed)))
+        (when w (error "star1 trim premise: unit ~a binds, assigns or names ~s" (car u) w))))))
 
 (defun fe-derive-star1 (f)
   (let ((e (gethash f *fe-defs*)) (ax (gethash f *fe-stobj-ax*)))
