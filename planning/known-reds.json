@@ -57,6 +57,20 @@
    "item": "MEMORY-2G-PROFILE-SEMANTICS",
    "owner": "builder-M",
    "evidence": "measured red at dev dd93a43f1 under --mem 2G (hbox native-dd93a43f1-2g-control) and on train 79's image (native-d8fb738b3859-2g): the fill's refusal reason is history-exhausted where the test expects unaffordable; retirement: memory landing 3; admitted by amendment, coordinator 2026-10-09 18:05"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_mux.DeveloperImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live",
+   "item": "A-OVER-WINDOW-FIT",
+   "owner": "builder-C",
+   "evidence": "measured red on both images at memory landing 3+4a (hbox m15-r3 at lane/memory e6aab64bb; B's persvati run at train 89's gated head a8685dab1 agrees): the run admitted at C' answers \"400 too many connections\" where the test expects the connection served, because the admission gate prices the OVER reply through the named adapter A-OVER-WINDOW-FIT (books/memory-model.lisp fn-mm-over-window-fit; host/native/owner.lisp fnn-owner-over-window) until OVER renders into one pool lease; retirement: landing O1 (Builder O's OVER pool lease); admitted by amendment, coordinator 2026-10-10"
+  },
+  {
+   "kind": "native",
+   "subject": "tests.test_native_mux.ProductionImageMux.test_connections_cost_no_thread_and_the_bound_is_kept_live",
+   "item": "A-OVER-WINDOW-FIT",
+   "owner": "builder-C",
+   "evidence": "measured red on both images at memory landing 3+4a (hbox m15-r3 at lane/memory e6aab64bb; B's persvati run at train 89's gated head a8685dab1 agrees): the run admitted at C' answers \"400 too many connections\" where the test expects the connection served, because the admission gate prices the OVER reply through the named adapter A-OVER-WINDOW-FIT (books/memory-model.lisp fn-mm-over-window-fit; host/native/owner.lisp fnn-owner-over-window) until OVER renders into one pool lease; retirement: landing O1 (Builder O's OVER pool lease); admitted by amendment, coordinator 2026-10-10"
   }
  ]
 }
