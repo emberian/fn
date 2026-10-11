@@ -567,7 +567,10 @@ the capacity vector at the composite's figure."
                                           (len (fn-record-groups record)))))
                                    (b2 (+ bytes-used (len (fn-record-payload record)))))
                         (:instance fn-sbud-prepare-under-article-budget-keeps-history
-                                   (bytes-used bytes-used)))
+                                   (bytes-used bytes-used))
+                        (:instance fn-bs-history-admissible-is-within-the-replay-bound
+                                   (committed bytes-used)
+                                   (prospective (len (fn-record-payload record)))))
            :in-theory (e/d (fn-sbud-prepare fn-cvec-article-budget-for
                             fn-cvec-article-budget fn-sbud-article-budget-for
                             fn-sbud-article-budget fn-sbud-article-gate-figure)

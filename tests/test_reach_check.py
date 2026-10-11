@@ -7,6 +7,7 @@ books must never be reported hosted.
 """
 import io
 import json
+import shutil
 from contextlib import redirect_stdout
 import subprocess
 import sys
@@ -584,7 +585,13 @@ class RatchetTests(unittest.TestCase):
 
     def test_the_tree_is_at_its_baseline(self):
         done = self.run_check("--summary", "--strict")
-        self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
+        said = done.stdout + done.stderr
+        # 2 is NOT RUN: events behind a generated function this tree has no
+        # certificate for (tests/test_cert_world_checks.py judges them where
+        # the world is); every other strict failure is 1.
+        self.assertIn(done.returncode, (0, 2), said)
+        if done.returncode == 2:
+            self.assertIn("NOT RUN -- ", done.stdout, said)
         self.assertIn("0 of them unbaselined", done.stdout)
 
     def test_an_unbaselined_orphan_fails_and_is_named(self):
@@ -880,10 +887,11 @@ class GeneratedDispatcherTests(unittest.TestCase):
             blind = {f.key(): reach_check.generated_through(graph, f) for f in findings}
             self.assertEqual(blind["PRF-T1:fn-t-subject-prop"], ["fn-t-dispatch"])
 
-    def strict(self, root, extra=()):
+    def strict(self, root, extra=(), accepted=None):
         baseline = root / "baseline.json"
-        baseline.write_text(json.dumps({"accepted": {"PRF-T2:fn-t-lone-prop": "SPEC: fixture"},
-                                        "unresolved": {}}))
+        if accepted is None:
+            accepted = {"PRF-T2:fn-t-lone-prop": "SPEC: fixture"}
+        baseline.write_text(json.dumps({"accepted": accepted, "unresolved": {}}))
         out = io.StringIO()
         loaded = reach_check.loaded_host_files(root=root)
         with patch.object(reach_check, "ROOT", root), patch.object(reach_check, "BASELINE", baseline), \
@@ -904,12 +912,38 @@ class GeneratedDispatcherTests(unittest.TestCase):
         dump.write_text(json.dumps({"functions": records, "theorems": []}))
         return dump
 
-    def test_needs_world_fails_strict_in_source_mode_with_its_own_line(self):
+    def test_needs_world_without_a_certificate_is_not_run(self):
+        # MAKE-CHECK-CERT-WORLD-NOT-RUN's convention: no current certificate
+        # for the generating book, so this tree cannot judge the event; the
+        # train's box step, which has the world, does.
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             self.tree(root)
-            code, text = self.strict(root)
+            with patch.object(reach_check, "certificate_expansions", return_value=None):
+                code, text = self.strict(root)
+            self.assertEqual(code, 2, text)
+            self.assertIn("NOT RUN -- 1 event(s) need the certified world: no current "
+                          "certificate here for books/t", text)
+
+    def test_needs_world_beside_a_new_orphan_is_red(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.tree(root)
+            with patch.object(reach_check, "certificate_expansions", return_value=None):
+                code, text = self.strict(root, accepted={})
             self.assertEqual(code, 1, text)
+            self.assertNotIn("NOT RUN", text)
+
+    def test_needs_world_fails_strict_in_source_mode_with_its_own_line(self):
+        # A certificate was read (its expansion defines nothing that reaches
+        # the subject), so the event is judged and stays a red.
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.tree(root)
+            with patch.object(reach_check, "certificate_expansions", return_value=[]):
+                code, text = self.strict(root)
+            self.assertEqual(code, 1, text)
+            self.assertNotIn("NOT RUN", text)
             self.assertIn("1 event(s) need --world", text)
             self.assertIn("fn-t-dispatch 1", text)
             self.assertIn("NEEDS --world -- PRF-T1:fn-t-subject-prop", text)
@@ -1041,6 +1075,9 @@ class CertificateExpansionTests(unittest.TestCase):
         import cert_expansions
         cls.cert_expansions = cert_expansions
         cls.acl2 = acl2_slots.configured_acl2()
+        if not (Path(cls.acl2).is_file() or shutil.which(cls.acl2)):
+            raise unittest.SkipTest("no ACL2 launcher here (FN_ACL2, ~/.config/fn/acl2 "
+                                    "or acl2 on PATH): " + cls.acl2)
         cls.tmp = tempfile.TemporaryDirectory()
         cls.root = Path(cls.tmp.name)
         (cls.root / "books").mkdir()
@@ -1051,8 +1088,11 @@ class CertificateExpansionTests(unittest.TestCase):
                               stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                               check=False, timeout=300)
         if not (cls.root / "books/t.cert").is_file():
+            # ACL2 is here (checked above), so a book it does not certify is
+            # a failure of this fixture or the toolchain, never a skip.
             cls.tmp.cleanup()
-            raise unittest.SkipTest("no ACL2 here: " + done.stdout.decode()[-300:])
+            raise AssertionError("ACL2 did not certify the fixture book: "
+                                 + done.stdout.decode()[-300:])
 
     @classmethod
     def tearDownClass(cls):
@@ -1102,7 +1142,7 @@ class LowerStaleTests(unittest.TestCase):
     baseline row whose event is now hosted or gone, keeps a row still
     orphaned, and never adds an orphan."""
 
-    def lower(self, accepted):
+    def lower(self, accepted, argv=("--lower-stale",)):
         base = GeneratedDispatcherTests()
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -1117,7 +1157,7 @@ class LowerStaleTests(unittest.TestCase):
                     patch.object(reach_check, "loaded_host_files", return_value=loaded), \
                     patch.object(reach_check, "load_rows", return_value=base.ROWS), \
                     redirect_stdout(out):
-                code = reach_check.main(["--lower-stale"])
+                code = reach_check.main(list(argv))
             return code, out.getvalue(), json.loads(baseline.read_text())
 
     def test_a_stale_row_is_dropped_and_a_still_orphaned_row_stays(self):
@@ -1142,6 +1182,21 @@ class LowerStaleTests(unittest.TestCase):
         code, text, after = self.lower({"PRF-T1:fn-t-subject-prop": "SPEC: needs --world"})
         self.assertEqual(sorted(after["accepted"]), ["PRF-T1:fn-t-subject-prop"])
         self.assertIn("nothing to drop", text)
+
+    def test_the_summary_calls_stale_exactly_what_lower_stale_drops(self):
+        # dev 3119f7d32 printed "12 baselined orphan(s) now hosted; drop them
+        # with --baseline" while --lower-stale dropped 8 (the other 4 were
+        # campaign-tied or unresolved), and --baseline would have written
+        # every new orphan into the baseline.
+        accepted = {"PRF-T1:fn-t-subject-prop": "SPEC: needs --world",
+                    "PRF-T3:fn-t-textual-prop": "SPEC: now hosted",
+                    "PRF-GONE:fn-t-nothing": "SPEC: event left the registry"}
+        code, text, after = self.lower(accepted, argv=("--summary",))
+        self.assertIn("2 baselined orphan(s) now hosted; drop them with --lower-stale: "
+                      "PRF-GONE:fn-t-nothing, PRF-T3:fn-t-textual-prop", text)
+        self.assertEqual(after["accepted"], accepted)
+        code, text, after = self.lower(accepted)
+        self.assertEqual(sorted(after["accepted"]), ["PRF-T1:fn-t-subject-prop"])
 
     def test_nothing_stale_leaves_the_file_byte_identical(self):
         before = {"PRF-T2:fn-t-lone-prop": "SPEC: still orphaned"}

@@ -30,8 +30,8 @@
  (and (equal (fn-sbud-article-verdict-at *pmt-old* 1 *sbat-safe* 32768 400) :admissible)
       (equal (fn-sbud-article-budget-for *pmt-old* *sbat-safe* *pmt-record*)
              (fn-sbud-budget *pmt-old* :article))
-      (fn-profile-replay-within-boundp
-       *pmt-old* (+ *sbat-safe* (len (fn-record-payload *pmt-record*))))))
+      (fn-bs-history-admissiblep
+       *pmt-old* *sbat-safe* (len (fn-record-payload *pmt-record*)))))
 ; One octet more committed and the gate refuses, the prepare's budget is 0.
 (assert-event (equal (fn-sbud-article-verdict-at *pmt-old* 1 (1+ *sbat-safe*) 32768 400)
                      :unaffordable))
@@ -39,22 +39,22 @@
 (assert-event (not (fn-sbud-admitp (fn-sbud-article-budget-for *pmt-old* (1+ *sbat-safe*)
                                                                *pmt-record*)
                                    1)))
-(assert-event (not (fn-profile-replay-within-boundp
-                    *pmt-old* (+ (1+ *sbat-safe*) (len (fn-record-payload *pmt-record*))))))
+(assert-event (not (fn-bs-history-admissiblep
+                    *pmt-old* (1+ *sbat-safe*) (len (fn-record-payload *pmt-record*)))))
 
 ; Hypothesis: the verdict.  At H - 32 767 the payload overflows H.
 (must-fail-checked
  (defthm sbat-without-the-verdict
    (implies (<= (len (fn-record-payload record)) (nfix payload-length))
-            (fn-profile-replay-within-boundp
-             profile (+ bytes-used (len (fn-record-payload record)))))
+            (fn-bs-history-admissiblep
+             profile bytes-used (len (fn-record-payload record))))
    :rule-classes nil))
 ; Hypothesis: the payload count.  Asked for (0, 1), the 32 768-octet article
 ; is admitted at H and overflows.
 (assert-event
  (and (equal (fn-sbud-article-verdict-at *pmt-old* 1 250000 0 1) :admissible)
-      (not (fn-profile-replay-within-boundp
-            *pmt-old* (+ 250000 (len (fn-record-payload *pmt-record*)))))))
+      (not (fn-bs-history-admissiblep
+            *pmt-old* 250000 (len (fn-record-payload *pmt-record*))))))
 ; The widths no longer matter to H: the same article with sequence, txid,
 ; generation and stamp at 2^32 is charged its payload, within H at the same
 ; committed octets (the deleted producer-width twin).
@@ -71,8 +71,8 @@
       (fn-record-widep *sbat-wide*)
       (equal (fn-sbud-article-budget-for *pmt-old* *sbat-safe* *sbat-wide*)
              (fn-sbud-budget *pmt-old* :article))
-      (fn-profile-replay-within-boundp
-       *pmt-old* (+ *sbat-safe* (len (fn-record-payload *sbat-wide*))))))
+      (fn-bs-history-admissiblep
+       *pmt-old* *sbat-safe* (len (fn-record-payload *sbat-wide*)))))
 
 ; ---------------------------------------------------------------------------
 ; The record figure (fn-sbud-article-figure-bounds-the-record and
@@ -129,8 +129,8 @@
 ; Its charge is kept, though: admitted at H - 65 536 it keeps H, wide.
 (assert-event
  (and (equal (fn-sbud-article-verdict-at *sbat-p* 1 (- 1000000 65536) 65536 0) :admissible)
-      (fn-profile-replay-within-boundp
-       *sbat-p* (+ (- 1000000 65536) (len (fn-record-payload *sbat-tight-charge*))))))
+      (fn-bs-history-admissiblep
+       *sbat-p* (- 1000000 65536) (len (fn-record-payload *sbat-tight-charge*)))))
 
 ; ---------------------------------------------------------------------------
 ; Teeth bound to the two keystones (defteeth: the witness, one removal per
@@ -152,8 +152,8 @@
                                                        payload-length group-count)
                            :admissible))
            (payload (<= (len (fn-record-payload record)) (nfix payload-length))))
-          (fn-profile-replay-within-boundp
-           profile (+ bytes-used (len (fn-record-payload record)))))
+          (fn-bs-history-admissiblep
+           profile bytes-used (len (fn-record-payload record))))
   :subject fn-sbud-article-verdict-at
   :witness ((profile *pmt-old*) (used 1) (bytes-used (- *sbat-h* *sbat-pl*))
             (payload-length *sbat-pl*) (group-count *sbat-gc*) (record *pmt-record*))
@@ -162,8 +162,8 @@
            (payload ((profile *pmt-old*) (used 1) (bytes-used *sbat-h*)
                      (payload-length 0) (group-count 1) (record *pmt-record*))))
   :mutations ((history-charged-the-whole-encoding
-               (:conclusion (fn-profile-replay-within-boundp
-                             profile (+ bytes-used (len (fn-record-encode record)))))
+               (:conclusion (fn-bs-history-admissiblep
+                             profile bytes-used (len (fn-record-encode record))))
                ((profile *pmt-old*) (used 1) (bytes-used (- *sbat-h* *sbat-pl*))
                 (payload-length *sbat-pl*) (group-count *sbat-gc*) (record *pmt-record*))
                :fault "an admitted article leaving H charged its whole encoding, not its payload")))
@@ -173,16 +173,16 @@
                                 oc record
                                 (fn-sbud-article-budget-for profile bytes-used record))
                                oc))))
-          (fn-profile-replay-within-boundp
-           profile (+ bytes-used (len (fn-record-payload record)))))
+          (fn-bs-history-admissiblep
+           profile bytes-used (len (fn-record-payload record))))
   :subject fn-sbud-prepare
   :witness ((oc *osbt-reserved*) (record *osbt-second*) (profile *pmt-old*)
             (bytes-used *sbat-row-safe*))
   :breaks ((staged ((oc *osbt-reserved*) (record *osbt-second*) (profile *pmt-old*)
                     (bytes-used (1+ *sbat-row-safe*)))))
   :mutations ((prepare-leaves-one-octet-past-h
-               (:conclusion (fn-profile-replay-within-boundp
-                             profile (+ 1 bytes-used (len (fn-record-payload record)))))
+               (:conclusion (fn-bs-history-admissiblep
+                             profile (+ 1 bytes-used) (len (fn-record-payload record))))
                ((oc *osbt-reserved*) (record *osbt-second*) (profile *pmt-old*)
                 (bytes-used *sbat-row-safe*))
                :fault "a staged row charged one octet past its payload, past H at the edge")))
