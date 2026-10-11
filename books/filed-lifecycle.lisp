@@ -21,6 +21,7 @@
 (include-book "history-pages-owner")
 (include-book "served-catalog-owner")
 (include-book "catalog-availability-owner-load")
+(include-book "served-catalog-owner-keyed")
 
 ; The arena is read through its interface, never through the opened list view.
 (local (in-theory (disable fn-arena-payload-is-nth fn-arena-count-is-len
@@ -864,6 +865,16 @@
   :hints (("Goal" :in-theory (disable fn-o1-cat-positionalp fn-sca-load-held-available-from fn-cat-clear)
            :use ((:instance o1l-load-available-from-positional (fn-cat (fn-cat-clear fn-cat)))
                  fn-o1-clear-makes-the-catalog-positional))))
+
+; K6 at the host's call: the open installs the catalog with the keyed load
+; (host/owner-host.lisp fn-owner-install-extended), which is the load above
+; (books/served-catalog-owner-keyed.lisp); the hosted establishment of
+; fn-o1-cat-positionalp (premise_audit).
+(defthm fn-o1-keyed-load-makes-the-catalog-positional
+  (fn-o1-cat-positionalp (fn-sca-load-held-rows-keyed key rows view-index fn-arena fn-cat))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (disable fn-o1-cat-positionalp fn-sca-load-held-rows)
+           :use (fn-o1-load-makes-the-catalog-positional))))
 
 (defthm fn-o1-installed-catalog-rows-are-reclaimed-or-within-header
   (implies (and (fn-arena-p fn-arena)

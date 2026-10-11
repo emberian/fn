@@ -36,8 +36,9 @@
   (declare (xargs :stobjs fn-cat :verify-guards nil))
   (fn-o1-cat-rows-positionalp 0 (fn-cat-count fn-cat) fn-cat))
 
-; The history invariant: every article record's groups are filed within its
-; own payload octets.
+; Every article record's groups are filed within its own payload octets: the
+; per-row ingress fact, false of a reclaimed record (its payload a tombstone);
+; the history invariant is fn-o1-records-filed-or-reclaimedp below.
 (defun fn-o1-records-filedp (records)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp records)
