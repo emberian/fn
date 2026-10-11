@@ -1,12 +1,13 @@
 {
- "detail": "Core side only; image side passed (completed 6.2 s). After the stall file was removed, `fn health` answered \"disk ok\" while the stalled barrier completed only at 10,464 ms (core stderr: \"disk recovered after a stall: the barrier completed after 10464 ms\"). The test then posted extract-after on the warm connection; that post queued behind the still-pending barrier, reached the 6,000 ms barrier-stall deadline and was answered \"441 posting failed; the outcome is uncertain\". Health readiness is not ordered after the stalled barrier completes. Intermittent: identical image inputs passed the step at fb4e1aa5d (C2 first form); 9 of the last 10 train extraction runs pass it. Ruling (coordinator 2026-10-11): C2 lands on one extraction rerun; this item records the race, owner builder-A (host owner code).",
- "file": "books/owner-time-model.lisp",
+ "detail": "Re-traced and measured by A16 (2026-10-11). Health is not early and fn-core is not slower: at C2's failing run (hbox:/tank/fn/scratch/integrate-20261011c/native-6d313a98f145/extract-run1/owner/core/owner-0.stderr) the core side's stalled barrier recovered at 14,750 ms (about 8.7 s of fdatasync after the stall file went) and the warm post's own barrier took 10,464 ms, with the device un-stalled, past the case's shortened 6,000 ms stall limit, so the post was answered 441 uncertain (correctly, by that limit). Rerun at the same binaries under strace (hbox:/tank/fn/scratch/vertical-core-barrier/t1): 6 iterations each side, recovery at 6,173-6,268 ms (core) and 6,205-6,332 ms (image); 600 fsync/fdatasync calls, the slowest 0.31 s. The time goes to the box's fdatasync under concurrent load on the shared pool; the code path is the same in both images (fnn-log-fence, fnn-log-fdatasync). The case runs its after-stall posts under the shortened limits it set for the stalled barrier; it now restores the defaults (5,000 / 30,000 ms) once health reports the recovery.",
+ "file": "tools/extract/owner.py",
  "id": "OWNER-HEALTH-BEFORE-BARRIER",
  "notes": [],
  "owner": "builder-A",
  "severity": "medium",
+ "sha": "98b23fb64",
  "source": "extraction step 5b (owner differential, stalled-owner-late-completion) at train C2 6d313a98f, core side; hbox:/tank/fn/scratch/integrate-20261011c/native-6d313a98f145/extract-run1/{owner/owner.json,owner/core/owner-0.stderr,extract-check.log}",
- "state": "open",
- "title": "health reports \"disk ok\" before a stalled barrier completes; a post on the warm connection queues behind it and gets 441 uncertain",
- "updated": "2026-10-11T16:50:17Z"
+ "state": "ready",
+ "title": "step 5b runs its after-stall posts under the 6 s stall limit set for the stalled barrier, so box fdatasync latency over 6 s answers 441",
+ "updated": "2026-10-11T19:29:59Z"
 }
