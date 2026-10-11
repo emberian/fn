@@ -9,12 +9,13 @@
  "locus": "gates-tests-packaging",
  "notes": [
   "10-11 12:05 10-11 Builder D: keystone_emit --check at dev 3119f7d32: 20 defkeystone forms in 6 books, 0 findings (green); the 151 findings of 10-04 are gone.",
-  "10-11 13:04 10-11 Builder D, correction: my earlier close read a laptop run, where no certificate is readable and keystone_emit --check reports 0 findings. On hbox with certificates (FN_CERT_CACHE=/tank/fn/certcache) at dev 3119f7d32 (+ tools/load only, f45cc420b) it is red: 20 defkeystone forms in 6 books, 60 findings, among them the critical gate's HARD FAIL on changed durability keystones fn-scka-next-checkpoint-is-capture and fn-scka-recover-from-checkpoint-is-full-recover (evidence package: positive witness book not certified at its current closure key). Log hbox:/tank/fn/scratch/d-sweep-cells/devstatic.log."
+  "10-11 13:04 10-11 Builder D, correction: my earlier close read a laptop run, where no certificate is readable and keystone_emit --check reports 0 findings. On hbox with certificates (FN_CERT_CACHE=/tank/fn/certcache) at dev 3119f7d32 (+ tools/load only, f45cc420b) it is red: 20 defkeystone forms in 6 books, 60 findings, among them the critical gate's HARD FAIL on changed durability keystones fn-scka-next-checkpoint-is-capture and fn-scka-recover-from-checkpoint-is-full-recover (evidence package: positive witness book not certified at its current closure key). Log hbox:/tank/fn/scratch/d-sweep-cells/devstatic.log.",
+  "10-11 13:49 10-11 Builder D, second correction: neither of my measurements judges this row. The laptop has no record cache, so the critical gate reports 0. The hbox run was in a remote_check mirror (hbox:/tank/fn/scratch/d-sweep-cells-check), where green_check's audit judges the record cache against the mirror: 315 of 462 books in the witness closure of fn-scka-recover-from-checkpoint-is-full-recover read uncertified there, books/accounts among them. That is the Fungus seat's finding, in B's tools queue (keystone_emit and premise_audit to refuse a mirror). The 60 findings are that artifact. The row stays open until keystone_emit --check runs where the full cache is installed."
  ],
  "owner": "sweep-gates",
  "severity": "medium",
  "source": "check-lane-355a5c843",
  "state": "open",
  "title": "check-lane red: keystone_emit",
- "updated": "2026-10-11T17:04:32Z"
+ "updated": "2026-10-11T17:49:17Z"
 }
