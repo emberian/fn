@@ -2781,10 +2781,6 @@
    "class": "parser-boundary",
    "statement_digest": "93ac39304e43723692b6836874e31e97194981474dd41e0344766875dc1e3557"
   },
-  "fn-lgw-entry-len-bounded-step": {
-   "class": "parser-boundary",
-   "statement_digest": "637401d6c49a9226dd090cb25302663eca433a3529e6fcb9376f4b4aa3c911e1"
-  },
   "fn-lgw-run-nf-then-fold-is-run": {
    "class": "durability",
    "statement_digest": "b4e17af42a3356073483c714125c4d9cc76511cf66708efbebadb189aa297dd4"

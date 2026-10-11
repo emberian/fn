@@ -176,7 +176,8 @@ reply; never a degraded mode. *Not bounded*: what this row leaves out.
   and a pointer) 17,039,424; the handles (48 T) 786,432; the records'
   fixed part with the keyed Message-ID index (2 x T x 4,160) 136,314,880;
   the header charge (8 H) 67,108,864; the open's transient 0 (an empty
-  store; 130,023,424 for a full replay of H and T); the request in flight
+  store; 104,923,402 for a full replay of H and T, the log walk's
+  entry array and one record as a list among them); the request in flight
   and both buffers 60,170,186; the articles in flight (32 slots)
   3,441,664. What B9 also asked, the base plus a credited pool sized from
   the operator's budget, is NOT built: it is the resource vector's (stage
