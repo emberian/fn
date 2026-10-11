@@ -250,6 +250,17 @@
                 (fn-wss-flow :post :article (fn-wss-f-ctx flow) (fn-wss-f-data flow))) fn-web-out)
     (fn-web-private-reply-step config flow event fn-web-in fn-web-out)))
 
+(defthm fn-wps-private-reply-page-plan-cursorp
+  ; A :page-plan response is a plan the plain page cursor may walk over the
+  ; buffer this entry was handed (it never returns fn-web-in).
+  (let ((action (mv-nth 0 (fn-wps-private-reply config flow event cursor fn-web-in fn-web-out))))
+    (implies (and (equal (fn-wrq-nth 0 action) :respond)
+                  (equal (fn-wrq-nth 4 action) :page-plan))
+             (fn-wpc-cursorp (fn-wpc-cursor (fn-wrq-nth 5 action)) (fn-octets-len fn-web-in))))
+  :hints (("Goal" :use ((:instance fn-web-private-reply-step-planok (n (fn-octets-len fn-web-in))))
+                  :in-theory (e/d (fn-wss-planok fn-wps-private-reply)
+                                  (fn-web-private-reply-step-planok fn-web-private-reply-step-planok-car fn-web-private-reply-step fn-wpc-cursorp fn-wpc-cursor)))))
+
 ; One form traversal. Raw names are at most seven octets; values remain spans.
 ;
 ; The traversal state P is (ACTION AT END NAME START SPANS PHASE INDEX POS REV
@@ -532,6 +543,28 @@
              (<= (fn-wss-c-be ctx) (fn-octets-len fn-web-in)))
         (mv (list :post-form (fn-wpf-start action)) fn-web-out)
       (fn-web-private-begin-step config action fn-web-in fn-web-out))))
+
+(defthm fn-wpf-finish-page-plan-cursorp
+  ; A :page-plan response is a plan the plain page cursor may walk over the
+  ; buffer this entry was handed (it never returns fn-web-in).
+  (let ((action (mv-nth 0 (fn-wpf-finish config p fn-web-in fn-web-out))))
+    (implies (and (equal (fn-wrq-nth 0 action) :respond)
+                  (equal (fn-wrq-nth 4 action) :page-plan))
+             (fn-wpc-cursorp (fn-wpc-cursor (fn-wrq-nth 5 action)) (fn-octets-len fn-web-in))))
+  :hints (("Goal" :use ((:instance fn-web-private-begin-step-planok (action (nth 0 p)) (n (fn-octets-len fn-web-in))))
+                  :in-theory (e/d (fn-wss-planok fn-wpf-finish)
+                                  (fn-web-private-begin-step-planok fn-web-private-begin-step-planok-car fn-web-private-begin-step fn-wpc-cursorp fn-wpc-cursor)))))
+
+(defthm fn-wpf-private-begin-page-plan-cursorp
+  ; A :page-plan response is a plan the plain page cursor may walk over the
+  ; buffer this entry was handed (it never returns fn-web-in).
+  (let ((action (mv-nth 0 (fn-wpf-private-begin config action fn-web-in fn-web-out))))
+    (implies (and (equal (fn-wrq-nth 0 action) :respond)
+                  (equal (fn-wrq-nth 4 action) :page-plan))
+             (fn-wpc-cursorp (fn-wpc-cursor (fn-wrq-nth 5 action)) (fn-octets-len fn-web-in))))
+  :hints (("Goal" :use ((:instance fn-web-private-begin-step-planok (n (fn-octets-len fn-web-in))))
+                  :in-theory (e/d (fn-wss-planok fn-wpf-private-begin)
+                                  (fn-web-private-begin-step-planok fn-web-private-begin-step-planok-car fn-web-private-begin-step fn-wpc-cursorp fn-wpc-cursor)))))
 
 ; ---------------------------------------------------------------------------
 ; Accepted and refused stay distinct.
