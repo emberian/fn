@@ -5,8 +5,9 @@
  "notes": [],
  "owner": "builder-A",
  "severity": "medium",
+ "sha": "98b23fb64",
  "source": "extraction step 5b (owner differential, stalled-owner-late-completion) at train C2 6d313a98f, core side; hbox:/tank/fn/scratch/integrate-20261011c/native-6d313a98f145/extract-run1/{owner/owner.json,owner/core/owner-0.stderr,extract-check.log}",
- "state": "open",
+ "state": "ready",
  "title": "step 5b runs its after-stall posts under the 6 s stall limit set for the stalled barrier, so box fdatasync latency over 6 s answers 441",
- "updated": "2026-10-11T19:04:45Z"
+ "updated": "2026-10-11T19:29:59Z"
 }
