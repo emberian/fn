@@ -67,28 +67,34 @@ class NativeListFlood(unittest.TestCase):
         other_waits = []
 
         def flood():
-            with Client(node.port, timeout=120) as p:
-                for i in range(N):
-                    if stop.is_set():
-                        return
-                    g = LATE[i % len(LATE)]
-                    first, final = p.post(article("flood", i, g))
-                    if final is None or not final.startswith(b"240"):
-                        flood_errors.append((i, final))
-                        return
-                    posted[g] += 1
-                    flood_started.set()
+            try:
+                with Client(node.port, timeout=120) as p:
+                    for i in range(N):
+                        if stop.is_set():
+                            return
+                        g = LATE[i % len(LATE)]
+                        first, final = p.post(article("flood", i, g))
+                        if final is None or not final.startswith(b"240"):
+                            flood_errors.append((i, final))
+                            return
+                        posted[g] += 1
+                        flood_started.set()
+            except Exception as error:  # reported to the test thread
+                flood_errors.append(("exception", repr(error)))
 
         def other_reader():
-            with Client(node.port, timeout=OTHER_SECONDS * 4) as other:
-                while not stop.is_set():
-                    asked = time.monotonic()
-                    status = other.command("GROUP " + GROUPS[0])
-                    other_waits.append(time.monotonic() - asked)
-                    if not status.startswith(b"211"):
-                        other_waits.append(("status", status))
-                        return
-                    time.sleep(0.02)
+            try:
+                with Client(node.port, timeout=OTHER_SECONDS * 4) as other:
+                    while not stop.is_set():
+                        asked = time.monotonic()
+                        status = other.command("GROUP " + GROUPS[0])
+                        other_waits.append(time.monotonic() - asked)
+                        if not status.startswith(b"211"):
+                            other_waits.append(("status", status))
+                            return
+                        time.sleep(0.02)
+            except Exception as error:  # a timeout is a failed wait, not a missing sample
+                other_waits.append(("exception", repr(error)))
 
         lines = []
         with Client(node.port, timeout=ANSWER_SECONDS) as client:
@@ -100,10 +106,13 @@ class NativeListFlood(unittest.TestCase):
             reader.start()
             poster_thread.start()
             self.assertTrue(flood_started.wait(60), "the flood never posted")
-            at_command = dict(posted)
             asked = time.monotonic()
             status = client.command("LIST ACTIVE")
             self.assertTrue(status.startswith(b"215"), status)
+            # Read after the 215: the command's view was captured before it,
+            # and the one serial poster has at most one post in flight, so
+            # the command's view holds no more than this plus one per group.
+            at_command = dict(posted)
             try:
                 while True:
                     line = client.line()
@@ -116,7 +125,10 @@ class NativeListFlood(unittest.TestCase):
                 stop.set()
                 poster_thread.join(120)
                 reader.join(OTHER_SECONDS * 8)
+        self.assertFalse(poster_thread.is_alive(), "the poster did not stop")
+        self.assertFalse(reader.is_alive(), "the other reader did not stop")
         self.assertFalse(flood_errors, flood_errors[:3])
+        self.assertEqual(len(lines), G, "LIST did not give exactly one line per group")
         highs = {}
         for line in lines:
             name, high, low, _status = line.split(" ")

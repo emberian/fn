@@ -693,7 +693,12 @@
 (defun-nx fn-lst-one-work (progress fn-cat)
   (let ((g (fn-lst-one-summary-group progress))
         (v (nfix (fn-cur-at 6 (fn-cur-at 0 progress)))))
-    (+ 1 (if (and progress (consp g)) (fn-scv-summary-work (car g) v fn-cat) 0))))
+    ;; fn-scat-available-summary's empty-group arm walks the archive's
+    ;; next-number alist (fn-next-number): at most its length (Codex F1).
+    (+ 1 (if (and progress (consp g))
+             (+ (fn-scv-summary-work (car g) v fn-cat)
+                (len (fn-state-nexts (fn-cur-at 0 (fn-cur-at 0 progress)))))
+           0))))
 
 (defun-nx fn-lst-one-scan-steps (progress fn-cat)
   (let ((g (fn-lst-one-summary-group progress)))
@@ -706,7 +711,8 @@
   (implies (fn-cat-p fn-cat)
            (<= (fn-lst-one-work progress fn-cat)
                (+ 2 (* 7 (fn-scv-change-since (nfix (fn-cur-at 6 (fn-cur-at 0 progress))) fn-cat))
-                  (fn-lst-one-scan-steps progress fn-cat))))
+                  (fn-lst-one-scan-steps progress fn-cat)
+                  (len (fn-state-nexts (fn-cur-at 0 (fn-cur-at 0 progress)))))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-lst-one-work fn-lst-one-scan-steps)
                                   (fn-scv-summary-work fn-scv-change-since fn-scv-scan-steps
@@ -720,7 +726,8 @@
   (implies (and (fn-cat-p fn-cat) (consp (fn-cur-progress cur)))
            (<= (fn-lst-one-work (fn-cur-progress (fn-lst-refresh cur r)) fn-cat)
                (+ 2 (* 7 (fn-scv-change-since (max (fn-lst-view cur) (nfix r)) fn-cat))
-                  (fn-lst-one-scan-steps (fn-cur-progress (fn-lst-refresh cur r)) fn-cat))))
+                  (fn-lst-one-scan-steps (fn-cur-progress (fn-lst-refresh cur r)) fn-cat)
+                  (len (fn-state-nexts (fn-cur-at 0 (fn-cur-at 0 (fn-cur-progress (fn-lst-refresh cur r)))))))))
   :rule-classes nil
   :hints (("Goal" :use ((:instance fn-lst-one-work-bound
                                    (progress (fn-cur-progress (fn-lst-refresh cur r))))
