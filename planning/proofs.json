@@ -22029,7 +22029,10 @@
       ],
       "note": "Exact keystone book and teeth certification passed in the cited per-book entries; certified_claims and current_view confirm each keystone at this source/include closure. Global runs separately record prior failing harness/unsupported standalone host fragment entries, and inherited unrelated cached dependency provenance remains a separate convergence concern. Immutable saved-image protocol observation and deployment are not claimed.",
       "evidence_digest": "b06dcedffc91554d",
-      "progress_note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/sol-access-native-faults-2026-10-03.md were never committed and are in neither the evidence archive nor any tree searched; dropped."
+      "progress_note": "Evidence owed (Builder D, 2026-10-09): planning/evidence/sol-access-native-faults-2026-10-03.md were never committed and are in neither the evidence archive nor any tree searched; dropped.",
+      "keystone_subjects": {
+        "fn-adm-cfg-holding-handshakes-charges-every-handshake": "fn-adm-cfg-holding-handshakes"
+      }
     },
     {
       "id": "PRF-1277",
@@ -23677,7 +23680,7 @@
       ],
       "evidence_digest": "0036a2af1f64dcfc",
       "keystone_subjects": {
-        "fn-mo-serve-startup-admits-the-pool": "fn-prstartup-default-plan-with-peer"
+        "fn-mo-serve-startup-admits-the-pool": "fn-mo-serve-decide"
       },
       "events": [
         "fn-mo-serve-startup-admits-the-pool"

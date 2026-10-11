@@ -4,7 +4,7 @@
 ; configured capacity of 100 under a 240 MiB limit, where the gate holds fewer than 100 connections.
 (in-package "ACL2")
 (include-book "../../books/resource-vector-relations-heap")
-(include-book "../../books/defkeystone")
+
 
 (defconst *rvht-profile*
   '((102 110 45 115 116 111 114 101 45 49 48) 16384 8388608 196608 32768 16 256 128 1048576 1048576 1048576
@@ -19,18 +19,13 @@
    (and (posp c) (< c (fn-mm-cfg-connections *rvht-cfg*)))))
 (assert-event (null (fn-adm-capacity *rvht-profile* *rvht-img* *rvht-cfg* (* 150 1048576) *rvht-tot*)))
 
-(defkeystone rvht-connection-capacity-funds-the-root
-  (implies (posp (fn-adm-capacity profile img cfg limit tot))
-           (and (fn-rv-okp (fn-rv-connections-root profile img cfg limit tot))
-                (fn-rv-fundedp (fn-rv-connections-root profile img cfg limit tot))))
-  :restates fn-rv-connection-capacity-funds-the-root
-  :hyps (capacity)
-  :subject fn-rv-connections-root
-  :witness ((profile *rvht-profile*) (img *rvht-img*) (cfg *rvht-cfg*) (limit *rvht-limit*) (tot *rvht-tot*))
-  :breaks ((capacity ((profile *rvht-profile*) (img *rvht-img*) (cfg *rvht-cfg*) (limit (* 150 1048576))
-                      (tot *rvht-tot*))))
-  :mutations ((funded-at-the-configured-capacity
-               (:conclusion (<= (fn-mm-sum profile img cfg tot) (nfix limit)))
-               ((profile *rvht-profile*) (img *rvht-img*) (cfg *rvht-cfg*) (limit *rvht-limit*) (tot *rvht-tot*))
-               :fault "the root funded at the configured C instead of the gate's C' (the retired budget's claim)"))
-  :hints (("Goal" :by fn-rv-connection-capacity-funds-the-root)))
+;; The relation at the witness (positive), and without its hypothesis (the 150 MiB limit no
+;; connection fits).  fn-rv-connections-root is a relation, called by no host line, so its teeth are
+;; these evaluations, not a host-bound keystone; the run's capacity itself is PRF-223's
+;; (fn-adm-capacity-fits, fn-adm-capacity-is-the-most).
+(assert-event
+ (and (fn-rv-okp (fn-rv-connections-root *rvht-profile* *rvht-img* *rvht-cfg* *rvht-limit* *rvht-tot*))
+      (fn-rv-fundedp (fn-rv-connections-root *rvht-profile* *rvht-img* *rvht-cfg* *rvht-limit* *rvht-tot*))))
+;; The retired budget's claim, the root funded at the configured C, is false at the witness.
+(assert-event
+ (not (<= (fn-mm-sum *rvht-profile* *rvht-img* *rvht-cfg* *rvht-tot*) *rvht-limit*)))

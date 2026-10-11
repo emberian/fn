@@ -453,6 +453,7 @@
   (<= (* (nfix h) (if (fn-mm-cfg-tlsp cfg) *fn-cbud-handshake-scratch-octets* 0))
       (fn-cbud-handshake-octets (fn-mm-cfg-tlsp (fn-adm-cfg-holding-handshakes cfg h))
                                 (fn-mm-cfg-handshakes (fn-adm-cfg-holding-handshakes cfg h))))
+  :id "PRF-1268"
   :restates fn-adm-cfg-holding-handshakes-charges-every-handshake
   :subject fn-adm-cfg-holding-handshakes
   :witness ((cfg *admt-hs-cfg*) (h 12))
