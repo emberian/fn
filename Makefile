@@ -1932,6 +1932,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/source-routes-tests \
 	books/consumer-artifact-retry \
 	tests/acl2/consumer-artifact-retry-tests \
+	books/relay-parse \
 	books/relay-source \
 	tests/acl2/relay-source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
@@ -2379,12 +2380,17 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/topic-history-local-control-tests \
 	tests/acl2/topic-history-native-vector-tests \
 	tests/acl2/hybrid-store-tests \
+	books/filed-parse \
+	books/filed-names \
 	books/filed-groups \
 	tests/acl2/filed-groups-tests \
 	books/filed-catalog \
 	tests/acl2/filed-catalog-tests \
 	books/filed-stored \
 	tests/acl2/filed-stored-tests \
+	books/filed-history \
+	tests/acl2/filed-history-tests \
+	books/filed-operator \
 	books/crypto-attach \
 	books/auth-secret \
 	tests/acl2/auth-secret-tests \

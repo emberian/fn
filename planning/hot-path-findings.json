@@ -791,8 +791,8 @@
     },
     "fn-index-build-loop recursion N": {
       "class": "unexpected",
-      "packet": "HOT-PATH-OPEN-WALKS-N",
-      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/index.lisp:111 (a walk of N, retained Store history), reached via fn-owner-recover-from-store-open -> fn-ock-install -> fn-own-start -> fn-gidx-build -> fn-index-build -> fn-index-build-loop [recursion]; owning book books/index.lisp. Owned by HOT-PATH-OPEN-WALKS-N (builder-A, under the lazy-open shape: a walk of N at open or recover is what the reopen protocol forbids); the bound is N until the packet replaces the walk."
+      "packet": "HOT-PATH-SERVED-WALKS-N",
+      "note": "check-sweep 2026-10-10 (Builder D, coordinator ruling on CL25): first reported at books/index.lisp:111 (a walk of N, retained Store history). Re-owned 2026-10-10 by coordinator ruling (relayed by L6; audit lanes/log build/log-runs/l2bb/AUDIT.md finding 3): 21 of its 24 entries are served, reaching the build through fn-gidx-refresh's rebuild arm (books/owner.lisp:904-910: any change of the visible list other than one new article, a withdrawal or a verdict) and the fn-gac-*/fn-gacc-* builds; the open's own build is one pass inside the owner's O(N) open. Owned by HOT-PATH-SERVED-WALKS-N (builder-C); the bound is N until the packet replaces the served rebuilds."
     },
     "fn-nntp-group-count-loop recursion N": {
       "class": "unexpected",

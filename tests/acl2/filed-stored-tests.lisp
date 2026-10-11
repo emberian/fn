@@ -5,8 +5,10 @@
 ; a supplied Path, the splice arm (W3).  Removal of the parse hypothesis: a
 ; 990-octet supplied Path is injected and its stored bytes do not parse, so
 ; the conclusion fails.  Mutation: six added fields refuse W2.
+; P4-1 and P4-3 (the transit arm) witnesses are at the end.
 (in-package "ACL2")
 (include-book "../../books/filed-stored")
+(include-book "peer-inbound-tests")   ; the configured peer innA and its transferred article
 
 (defun p3-codes (cs) (declare (xargs :mode :program)) (if (consp cs) (cons (char-code (car cs)) (p3-codes (cdr cs))) nil))
 (defun p3-octets (s) (declare (xargs :mode :program)) (p3-codes (coerce s 'list)))
@@ -89,3 +91,73 @@ body
 (assert-event (equal (nth 11 (p3-check *p3-src-cancel*)) '(11 11 634)))
 (assert-event (let ((r (p3-check *p3-long-path*)))
                 (and (equal (nth 1 r) t) (equal (nth 3 r) nil) (equal (nth 5 r) nil))))
+
+; P4-1 (fn-o1-served-post-files-within-the-stored): an ordinary POST files
+; fn.letters, a cancel files control.cancel, a supplied Path files
+; fn.letters, each filed within the stored bytes; the cancel without
+; control.cancel in the domain is refused (no :file).
+(defun p4-arm1 (source domain) (declare (xargs :mode :program))
+  (let* ((config (p3-inj-at source))
+         (d (fn-inj-decide source config *p3-obs*))
+         (stored (fn-o1-post-stored-octets source config *p3-obs* *p3-ring* *p3-account* *p3-cfg1*))
+         (plan (fn-pa-filing-plan stored (fn-inj-decision-groups d) domain)))
+    (list (fn-article-result-okp (fn-article-parse stored)) plan
+          (fn-o1-filed-octets-within-sourcep (cadr plan) stored))))
+(assert-event (equal (p4-arm1 *p3-src-gen* (list "fn.letters"))
+                     (list t (list :file (list (p3-octets "fn.letters"))) t)))
+(assert-event (equal (p4-arm1 *p3-src-cancel* (list "fn.letters" "control.cancel"))
+                     (list t (list :file (list (p3-octets "control.cancel"))) t)))
+(assert-event (equal (p4-arm1 *p3-src-path* (list "fn.letters"))
+                     (list t (list :file (list (p3-octets "fn.letters"))) t)))
+(assert-event (equal (cadr (p4-arm1 *p3-src-cancel* (list "fn.letters")))
+                     '(:refused :control-not-filed)))
+; teeth: a group the stored Newsgroups does not name is not filed within it
+(assert-event (not (fn-o1-filed-octets-within-sourcep
+                    (list (p3-octets "fn.other"))
+                    (fn-o1-post-stored-octets *p3-src-gen* (p3-inj-at *p3-src-gen*) *p3-obs*
+                                              *p3-ring* *p3-account* *p3-cfg1*))))
+
+; P4-3 (fn-o1-transit-files-within-the-stored) over peer-inbound-tests'
+; configured peer innA: the transferred article *pt-a1* (Newsgroups
+; fn.letters,alt.test; the peer's scope keeps fn.letters) files fn.letters;
+; two groups, with a received Xref the relay removes, file both in order; a
+; cancel files control.cancel, or is refused without it in the domain.
+; Removal of the parse hypothesis: a received Path of 995 octets parses, the
+; relayed one (this node's identity prepended) does not, the plan still files
+; fn.letters and the conclusion fails.  A refused plan's group list is an
+; atom, so the :file hypothesis has no removal witness (labelled).
+(defun p4-transit (octets domain)
+  (declare (xargs :mode :program))
+  (let* ((args (fn-peer-injection-arguments *pt-node0* *pt-cfg* "innA" *pt-id1*
+                                            octets 1 "ob" "s" *pt-obs*))
+         (stored (nth 2 args))
+         (plan (fn-pa-filing-plan stored (fn-oag-group-octets (nth 3 args)) domain)))
+    (list (fn-article-result-okp (fn-article-parse octets))
+          (fn-article-result-okp (fn-article-parse stored)) plan
+          (fn-o1-filed-octets-within-sourcep (cadr plan) stored))))
+(defun p4-tl (path ngs extra)
+  (declare (xargs :mode :program))
+  (fn-post-body-octets
+   (pt-lines (append (list path "From: poster@example.invalid" (concatenate 'string "Newsgroups: " ngs))
+                     extra
+                     (list "Subject: s" "Date: Sat, 19 Sep 2026 12:00:00 +0000"
+                           "Message-ID: <a1@example.invalid>" "" "body")))))
+(assert-event (equal (p4-transit *pt-a1* '("fn.letters"))
+                     (list t t (list :file (list (p3-octets "fn.letters"))) t)))
+(assert-event (equal (p4-transit (p4-tl "Path: inn.hbox.test!not-for-mail" "fn.test,fn.letters"
+                                        '("Xref: inn.hbox.test fn.letters:3"))
+                                 '("fn.letters" "fn.test"))
+                     (list t t (list :file (list (p3-octets "fn.test") (p3-octets "fn.letters"))) t)))
+(assert-event (equal (p4-transit (p4-tl "Path: inn.hbox.test!not-for-mail" "fn.letters"
+                                        '("Control: cancel <z@example.invalid>"))
+                                 '("fn.letters" "control.cancel"))
+                     (list t t (list :file (list (p3-octets "control.cancel"))) t)))
+(assert-event (equal (caddr (p4-transit (p4-tl "Path: inn.hbox.test!not-for-mail" "fn.letters"
+                                               '("Control: cancel <z@example.invalid>"))
+                                        '("fn.letters")))
+                     '(:refused :control-not-filed)))
+(assert-event (equal (p4-transit (p4-tl (concatenate 'string "Path: inn.hbox.test!"
+                                                     (coerce (make-list 975 :initial-element #\a) 'string))
+                                        "fn.letters" nil)
+                                 '("fn.letters"))
+                     (list t nil (list :file (list (p3-octets "fn.letters"))) nil)))
