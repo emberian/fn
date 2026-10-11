@@ -822,3 +822,210 @@
                             (cfg (fn-adm-cfg-at cfg (nfix (fn-adm-capacity profile img cfg
                                                                            (fn-mm-resident-limit configured resident) tot))))
                             (resident-obs resident) (address-obs address) (obs tot))))))
+
+; -----------------------------------------------------------------------------
+; THE SERVED RUN'S LAUNCH (L-RUN-LAUNCH): the :run probe decides as the run's configure does
+; (host/owner-host.lisp fn-owner-memory-configure: fn-mo-run-decide at LIMIT = the least resident
+; observation less the pools, no resident observation left), and the dynamic space adds the pools' heap
+; share POOL-HEAP (the DEFAULT pool's fn-prstartup-launch-extra, the peer slice).
+(defun fn-mo-serve-limit (resident pools)
+  (declare (xargs :guard t))
+  (let ((r (fn-mm-least-observation resident)))
+    (and (natp r) (nfix (- r (nfix pools))))))
+
+(defun fn-mo-serve-decide (profile img cfg resident address core nursery tot pools pool-heap)
+  (declare (xargs :guard t :verify-guards nil))
+  (let* ((limit (fn-mo-serve-limit resident pools))
+         (d (fn-mo-run-decide profile img cfg limit nil address core nursery tot)))
+    (if (equal (car d) :heap)
+        (list* :heap (fn-heap-mb-of (+ (fn-mm-launch-dynamic limit core nursery) (nfix pool-heap)))
+               (cddr d))
+      d)))
+
+(defthm fn-mo-serve-decide-heap-shape
+  (implies (equal (car (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
+                  :heap)
+           (and (equal (car (fn-mo-run-decide profile img cfg (fn-mo-serve-limit resident pools) nil
+                                              address core nursery tot))
+                       :heap)
+                (equal (cadr (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
+                       (fn-heap-mb-of (+ (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery)
+                                         (nfix pool-heap))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(fn-mo-serve-decide car-cons cdr-cons)
+                                             (theory 'minimal-theory)))))
+
+(defthm fn-mm-launch-dynamic-natp
+  (natp (fn-mm-launch-dynamic limit core nursery))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-mm-launch-dynamic))))
+
+; K-L2: the launched heap holds the core's content, every store the gate admits at the run's capacity
+; (its reopen), and the pools' heap.
+(defthm fn-mo-serve-holds-every-admitted-store
+  (let* ((limit (fn-mo-serve-limit resident pools))
+         (c (fn-adm-capacity profile img cfg limit tot))
+         (d (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap)))
+    (implies (and (equal (car d) :heap)
+                  (fn-mm-gate-p profile img (fn-adm-cfg-at cfg c) limit tot2))
+             (<= (+ (fn-heap-core-dynamic core)
+                    (fn-mm-reopen-need profile img (fn-adm-cfg-at cfg c) tot2)
+                    (nfix pool-heap))
+                 (* *fn-heap-mib* (cadr d)))))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (e/d (fn-mm-gate-p) (fn-mm-launch-decide fn-adm-capacity fn-mo-run-decide fn-adm-cfg-at fn-mm-sum fn-mm-reopen-need fn-mm-launch-dynamic fn-mo-serve-decide fn-mo-serve-limit fn-heap-mb-of fn-heap-core-dynamic fn-mm-resident-limit fn-mm-least-observation))
+           :use ((:instance fn-mo-serve-decide-heap-shape)
+                 (:instance fn-mm-launch-dynamic-holds-the-core-and-the-limit
+                            (limit (fn-mo-serve-limit resident pools)))
+                 (:instance fn-heap-mb-of-covers
+                            (octets (+ (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery)
+                                       (nfix pool-heap))))))))
+
+(defthm fn-mo-serve-run-limit-is-the-limit
+  (implies (natp limit)
+           (equal (fn-mm-resident-limit limit nil) limit))
+  :hints (("Goal" :in-theory (enable fn-mm-resident-limit fn-mm-least-observation))))
+
+(defthm fn-mo-serve-limit-is-natp
+  (implies (natp (fn-mm-least-observation resident))
+           (natp (fn-mo-serve-limit resident pools)))
+  :hints (("Goal" :in-theory (enable fn-mo-serve-limit))))
+
+; K-L3: the launch refuses only by the model: with a resident observation, a positive capacity and no
+; address-space refusal of the model's launch, it launches.  No comparison of the reservation with a
+; resident limit remains.
+(defthm fn-mo-serve-refuses-only-by-the-model
+  (let* ((limit (fn-mo-serve-limit resident pools))
+         (c (fn-adm-capacity profile img cfg limit tot))
+         (dl (fn-mm-launch-decide profile img (fn-adm-cfg-at cfg (nfix c)) limit nil address core nursery tot)))
+    (implies (and (natp (fn-mm-least-observation resident))
+                  (posp c)
+                  (not (equal (cadr dl) :address-space-cannot-hold-the-reservation)))
+             (equal (car (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
+                    :heap)))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (e/d (fn-mo-serve-decide)
+                           (fn-mm-launch-decide fn-adm-capacity fn-mo-run-decide fn-adm-cfg-at fn-mm-sum
+                            fn-mm-reopen-need fn-mm-launch-dynamic fn-mo-serve-limit fn-heap-mb-of
+                            fn-heap-core-dynamic fn-mm-resident-limit fn-mm-least-observation fn-mm-gate-p))
+           :use ((:instance fn-mo-serve-limit-is-natp)
+                 (:instance fn-mo-run-decide-launches-at-its-capacity
+                            (configured (fn-mo-serve-limit resident pools)) (resident nil))
+                 (:instance fn-adm-capacity-fits
+                            (limit (fn-mo-serve-limit resident pools)))
+                 (:instance fn-mo-serve-run-limit-is-the-limit
+                            (limit (fn-mo-serve-limit resident pools)))
+                 (:instance (:definition fn-mm-launch-decide)
+                            (cfg (fn-adm-cfg-at cfg (nfix (fn-adm-capacity profile img cfg (fn-mo-serve-limit resident pools) tot))))
+                            (configured (fn-mo-serve-limit resident pools)) (resident-obs nil) (address-obs address)
+                            (obs tot))))))
+
+; The resident-observation hypothesis of fn-mo-serve-refuses-only-by-the-model follows from the positive
+; capacity: the gate holds only at a numeric limit, which exists only when a resident observation does.
+(defthm fn-mo-serve-capacity-needs-a-resident-observation
+  (implies (posp (fn-adm-capacity profile img cfg (fn-mo-serve-limit resident pools) tot))
+           (natp (fn-mm-least-observation resident)))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (e/d (fn-mo-serve-limit)
+                           (fn-adm-capacity fn-adm-cfg-at fn-mm-gate-p fn-mm-least-observation))
+           :use ((:instance fn-adm-capacity-fits (limit (fn-mo-serve-limit resident pools)))
+                 (:instance (:definition fn-mm-gate-p)
+                            (cfg (fn-adm-cfg-at cfg (fn-adm-capacity profile img cfg (fn-mo-serve-limit resident pools) tot)))
+                            (limit (fn-mo-serve-limit resident pools)))))))
+
+(defthm fn-mo-serve-read-reserve-is-natp
+  (natp (fn-prstartup-read-reserve extent workers))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-prstartup-read-reserve fn-cwq-queue-octets))))
+
+(defthm fn-mo-serve-launch-extra-is-the-plans-need
+  (equal (fn-prstartup-launch-extra profile workers cache-limit root)
+         (+ (fn-prstartup-required-heap (max 8 (+ 1 (nfix cache-limit))) workers root)
+            (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))
+  :hints (("Goal" :in-theory (enable fn-prstartup-launch-extra))))
+
+(defthm fn-mo-serve-launch-extra-natp
+  (natp (fn-prstartup-launch-extra profile workers cache-limit root))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (enable fn-prstartup-launch-extra))))
+
+(defthm fn-mo-serve-launch-extra-nfix
+  (equal (nfix (fn-prstartup-launch-extra profile workers cache-limit root))
+         (fn-prstartup-launch-extra profile workers cache-limit root))
+  :hints (("Goal" :in-theory (disable fn-prstartup-launch-extra))))
+
+(defthm fn-mo-serve-plan-admits-when-funded
+  (let ((minimum (max 8 (+ 1 (nfix cache-limit)))))
+    (implies (and (natp dynamic) (natp occupied) (natp protected) (<= occupied protected)
+                  (<= protected dynamic)
+                  (stringp root) (posp workers) (natp stack) (natp runtime) (natp cache-limit)
+                  (natp fd-limit) (<= minimum fd-limit) (fn-crl-table-supportedp minimum)
+                  (natp reserve)
+                  (<= (+ (fn-prstartup-required-heap minimum workers root) reserve)
+                      (fn-prstartup-available dynamic occupied protected)))
+             (equal (car (fn-prstartup-plan dynamic occupied protected root workers stack runtime
+                                            cache-limit fd-limit reserve))
+                    :admitted)))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (e/d (fn-prstartup-plan)
+                           (fn-prstartup-available fn-prstartup-required-heap fn-prstartup-affordable-capacity
+                            fn-prstartup-baseline-heap fn-crl-table-supportedp fn-cgb-capacity
+                            fn-prstartup-fd-bookkeeping))
+           :use ((:instance fn-prstartup-required-heap-natp
+                            (files (max 8 (+ 1 (nfix cache-limit)))))))))
+
+(defthm fn-mo-serve-funded-room
+  (implies (and (natp dynamic) (natp occupied) (natp protected) (<= occupied protected)
+                (natp req) (natp reserve)
+                (<= (+ protected req reserve) dynamic))
+           (<= (+ req reserve) (fn-prstartup-available dynamic occupied protected)))
+  :hints (("Goal" :in-theory (enable fn-prstartup-available))))
+
+; K-L4: the owner's DEFAULT pool plan admits at the launched heap when its protected runtime is the
+; launch's dynamic space and the pools' heap is the DEFAULT pool's extra.
+(defthm fn-mo-serve-startup-admits-the-pool
+  (let* ((limit (fn-mo-serve-limit resident pools))
+         (pool-heap (fn-prstartup-launch-extra profile workers cache-limit root))
+         (d (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
+         (protected (fn-mm-launch-dynamic limit core nursery))
+         (minimum (max 8 (+ 1 (nfix cache-limit)))))
+    (implies (and (equal (car d) :heap)
+                  (natp occupied) (<= occupied protected)
+                  (stringp root) (posp workers) (natp stack) (natp runtime) (natp cache-limit)
+                  (natp fd-limit) (<= minimum fd-limit) (fn-crl-table-supportedp minimum))
+             (equal (car (fn-prstartup-plan (* *fn-heap-mib* (cadr d)) occupied protected root workers
+                                            stack runtime cache-limit fd-limit
+                                            (fn-prstartup-read-reserve (fn-prstartup-read-extent profile)
+                                                                       workers)))
+                    :admitted)))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (union-theories '(car-cons cdr-cons natp posp nfix fn-mo-serve-launch-extra-nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
+           :use ((:instance fn-mo-serve-decide-heap-shape
+                            (pool-heap (fn-prstartup-launch-extra profile workers cache-limit root)))
+                 (:instance fn-heap-mb-of-covers
+                            (octets (+ (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery)
+                                       (nfix (fn-prstartup-launch-extra profile workers cache-limit root)))))
+                 (:instance fn-mo-serve-launch-extra-is-the-plans-need)
+                 (:instance fn-mo-serve-read-reserve-is-natp
+                            (extent (fn-prstartup-read-extent profile)))
+                 (:instance fn-prstartup-required-heap-natp
+                            (files (max 8 (+ 1 (nfix cache-limit)))))
+                 (:instance fn-mm-launch-dynamic-natp (limit (fn-mo-serve-limit resident pools)))
+                 (:instance fn-mo-serve-funded-room
+                            (dynamic (* *fn-heap-mib*
+                                        (cadr (fn-mo-serve-decide profile img cfg resident address core nursery tot pools
+                                                                  (fn-prstartup-launch-extra profile workers cache-limit root)))))
+                            (protected (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery))
+                            (req (fn-prstartup-required-heap (max 8 (+ 1 (nfix cache-limit))) workers root))
+                            (reserve (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))
+                 (:instance fn-mo-serve-plan-admits-when-funded
+                            (dynamic (* *fn-heap-mib*
+                                        (cadr (fn-mo-serve-decide profile img cfg resident address core nursery tot pools
+                                                                  (fn-prstartup-launch-extra profile workers cache-limit root)))))
+                            (protected (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery))
+                            (reserve (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))))))
