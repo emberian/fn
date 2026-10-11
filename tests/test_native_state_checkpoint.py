@@ -538,8 +538,9 @@ class StateCheckpointTests(StateCheckpointFixture):
         header = self.stopped_charged_totals()
         # LOG is the header's raised to the largest segment's observed size,
         # the read's entry scratch (books/heap-command.lisp
-        # fn-mo-tot-log-at-least; memory landing 4b, adapter
-        # MEMORY-OBSERVED-EXTENT-CAP); every other figure is the header's
+        # fn-mo-tot-log-at-least; memory landing 4b), and that size is the
+        # cap the line passes to the read (books/heap-log-extent-cap.lisp
+        # fn-lxc-words); every other figure is the header's
         # over the names the host walks (fnn-log-segment-names: every entry of
         # journal/), each a regular file, the condition the host reads EXTENT on
         segments = list((self.store / "journal").iterdir())
@@ -549,6 +550,7 @@ class StateCheckpointTests(StateCheckpointFixture):
                                         "events", "log", "history", "charge")]
         expected[5] = max(expected[5], extent)
         self.assertEqual(observed, expected)
+        self.assertTrue(line.endswith(" extent={}".format(extent)), line)
         self.assertEqual(observed[0], 3)
         # CHARGE is the store budget's row octets (fn-sbud-row-octets), whose
         # sum the replayed headroom reports as bytes-used
@@ -557,6 +559,38 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.post(self.ids[3:])
         code, line = self.heap_replay_line()
         self.assertTrue(line.endswith("header totals unseen"), line)
+
+    def test_the_read_refuses_a_segment_past_the_decided_extent(self):
+        """The read's extent cap (books/heap-log-extent-cap.lisp; host/native/io.lisp
+        fnn-log-observed-extent; retires MEMORY-OBSERVED-EXTENT-CAP).  Through
+        the launcher the probe's ` extent=E' becomes the read's cap and the
+        replayed status opens every segment (exit 0).  A segment longer than
+        the cap the process holds -- the store grown past the extent its heap
+        was decided over, here a cap one octet short of the largest segment,
+        the caller naming the heap -- is refused by name before its entries
+        are read (exit 1); an unreadable cap refuses every segment."""
+        created = self.op("init", "--profile", "development", "fn.test")
+        self.assertEqual(created.returncode, EXIT_OK, created.stderr.decode())
+        self.ids = ["<lxc-{}@example.invalid>".format(n) for n in range(3)]
+        self.post(self.ids)
+        made = self.checkpoint()
+        self.assertEqual(made.returncode, EXIT_OK, made.stderr.decode())
+        code, line = self.heap_replay_line()
+        self.assertEqual(code, EXIT_OK, line)
+        extent = max(p.lstat().st_size for p in (self.store / "journal").iterdir())
+        self.assertTrue(line.endswith(" extent={}".format(extent)), line)
+        replay = self.op("status", "--replay")
+        self.assertEqual(replay.returncode, EXIT_OK, replay.stderr.decode())
+        caller = {"FN_TEST_HEAP_MB": "1024"}
+        short = self.op("status", "--replay", env=dict(caller, FN_LOG_EXTENT_CAP=str(extent - 1)))
+        self.assertEqual(short.returncode, EXIT_REFUSED, short.stderr.decode())
+        self.assertIn(b"past the extent %d" % (extent - 1), short.stderr + short.stdout)
+        self.assertIn(b"(log-segment-past-decided-extent)", short.stderr + short.stdout)
+        unreadable = self.op("status", "--replay", env=dict(caller, FN_LOG_EXTENT_CAP="8k"))
+        self.assertEqual(unreadable.returncode, EXIT_REFUSED, unreadable.stderr.decode())
+        self.assertIn(b"(log-extent-cap-unreadable)", unreadable.stderr + unreadable.stdout)
+        exact = self.op("status", "--replay", env=dict(caller, FN_LOG_EXTENT_CAP=str(extent)))
+        self.assertEqual(exact.returncode, EXIT_OK, exact.stderr.decode())
 
     def test_a_damaged_header_falls_back_to_full_replay_with_the_empty_seed(self):
         """A flipped octet inside H's chunk: the header phase refuses it

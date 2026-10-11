@@ -182,6 +182,7 @@
 (include-book "../books/history-root-credit")
 (include-book "../books/decoded-worker-job")
 (include-book "../books/heap-command")
+(include-book "../books/heap-log-extent-cap")
 (include-book "../books/bp-heap-command")
 (include-book "../books/bp-session-scheduler")
 (include-book "../books/bp-forward-cursor")
@@ -2955,7 +2956,7 @@
 (definterface fn-heap-command-growth
   :class :common-lisp-compliant)
 
-(definterface fn-heap-command-line
+(definterface fn-lxc-command-line
   :class :common-lisp-compliant)
 
 (definterface fn-heap-stack-kib
@@ -2965,6 +2966,20 @@
   :class :common-lisp-compliant)
 
 (definterface fn-mo-observed-totals
+  :class :common-lisp-compliant)
+
+;; The read's log extent cap (books/heap-log-extent-cap.lisp; host/native/io.lisp
+;; fnn-log-observed-extent): the cap the launcher passes from the probe's
+;; line, the verdict at each segment's open and its refusal.
+(definterface fn-lxc-cap-of-text
+  :class :common-lisp-compliant
+  :keystones (fn-lxc-cap-of-the-probes-extent))
+
+(definterface fn-lxc-verdict
+  :class :common-lisp-compliant
+  :keystones (fn-lxc-admitted-segment-entries-within-the-decided-log))
+
+(definterface fn-lxc-refusal-text
   :class :common-lisp-compliant)
 
 ;; The collector policy's decision after a collection and its view of the
