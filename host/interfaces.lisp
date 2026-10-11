@@ -1765,7 +1765,7 @@
 
 (definterface fn-qplan-cursor-step
   :class :common-lisp-compliant
-  :kinds ((w natp)))
+  :kinds ((w natp) (v natp) (b natp)))
 
 ; -----------------------------------------------------------------------------
 ; nntp/served (21 entries)
