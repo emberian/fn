@@ -11485,6 +11485,14 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-lgb-descriptor-of-an-accepted-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-entry-okp-holds-the-chain-field"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-lgb-decide-is-flat"
         }
       ]
