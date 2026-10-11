@@ -44,12 +44,28 @@
 ;                                        scan's total bounds the charged fold
 ;                                        of every row the open recovers, the
 ;                                        suffix replayed from the epoch at K
+;   L2H-1 fn-lgo-fold-from-no-skip-bounds-any-skip
+;                                        the fold is monotone in its skip:
+;                                        from skip 0 it bounds any skip
+;   L2H-2 fn-lgo-host-suffix-covers-the-opened-store
+;                                        the probe's suffix, the dropped
+;                                        segments' records unseen, bounds the
+;                                        charged fold the open recovers
+;   L2H-3 fn-lgo-scan-plan-scans-every-present-segment
+;                                        the probe's plan scans every segment
+;                                        journal/ holds, skip S only from
+;                                        the genesis
+;   L2H-4 fn-lgo-head-genesis-is-the-open-lineage-start
+;                                        a head the probe accepts is one the
+;                                        open admits, and both start from
+;                                        its predecessor
 
 (in-package "ACL2")
 (include-book "store-log-segments")
 (include-book "store-log-stream")
 (include-book "statement-recover-stream")
 (include-book "history-totals-carried")
+(include-book "store-log-lineage")
 
 (local (in-theory (disable (tau-system))))
 
@@ -1049,3 +1065,279 @@
   :rule-classes nil
   :hints (("Goal" :induct (fn-lgo-fold zs skip acc dicts allow)
            :in-theory (disable fn-lgo-record-tot fn-mm-tot-p))))
+
+; -----------------------------------------------------------------------------
+; 9. The host's scan before the open (landing 2a-host): which segments, from
+; which chain value, with which skip (fn-lgo-scan-plan), and why a scan that
+; cannot see the dropped prefix still bounds the open (L2H-1, L2H-2).
+;
+; Before the open the read-only probe (host/native/heap.lisp
+; fnn-heap-charged-totals) knows the header's S but not the F row's K.  The
+; checkpoint's capture rotates, so the segments below K hold exactly the
+; S-record prefix (books/store-log-stream.lisp T8,
+; fn-lgw-segment-drop-preserves-the-open; the chain splits at a segment
+; boundary, books/store-log-segments.lisp fn-lgs-chain-records-of-append).
+; With segment 1 present the probe streams the whole chain from the genesis
+; and skips S: the open's fold exactly (L2-5).  With segment 1 gone (the
+; install's drop took the covered segments) it streams from the lowest
+; present segment's head predecessor with skip 0.  The records it cannot see
+; (PRE, the dropped segments') number at most S, so its fold bounds the
+; open's (L2H-2): exact when the drop completed, an over-count of the covered
+; records an interrupted drop left (transient: the next install's drop takes
+; them, fn-lgs-install-drop-covers-what-the-open-left).
+
+; The least positive index of KS, at most ACC.
+(defun fn-lgo-min-index (ks acc)
+  (declare (xargs :guard (natp acc)))
+  (if (consp ks)
+      (fn-lgo-min-index (cdr ks) (if (posp (car ks)) (min acc (car ks)) acc))
+    acc))
+
+; The probe's plan over journal/'s NAMES and the header's S: (KIND LOW SCAN
+; SKIP ACC), ACC the fold's start (L2H-2's), KIND :genesis (segment 1 present: from the genesis, skip S) or :head
+; (from segment LOW's head predecessor, skip 0), SCAN the indices LOW..top
+; in order; NIL when the indices are not one contiguous run (the open
+; refuses such a log by name: history-short-of-checkpoint, checkpoint-damaged).
+(defun fn-lgo-scan-plan (names s)
+  (declare (xargs :guard t))
+  (let* ((present (fn-lgs-indices names))
+         (low (fn-lgo-min-index present (fn-lgs-max-index present 0)))
+         (plan (fn-lgs-open-plan names (if (eql low 1) nil low))))
+    (if (and (posp low) (consp plan) (eq (car plan) :scan))
+        (list (if (eql low 1) :genesis :head) low (cadr plan) (if (eql low 1) (nfix s) 0)
+              (fn-ct-zero-tot :resident))
+      nil)))
+
+(local
+ (defthm fn-lgo-member-range
+   (implies (and (natp from) (natp to) (natp k) (<= from k) (<= k to))
+            (member-equal k (fn-lgs-range from to)))
+   :hints (("Goal" :induct (fn-lgs-range from to) :in-theory (enable fn-lgs-range)))))
+(local
+ (defthm fn-lgo-indices-are-posp
+   (implies (member-equal k (fn-lgs-indices names)) (posp k))
+   :hints (("Goal" :in-theory (enable fn-lgs-indices fn-lgs-segment-index)))))
+(local
+ (defthm fn-lgo-min-index-le-acc
+   (<= (fn-lgo-min-index ks acc) acc)
+   :rule-classes :linear))
+(local
+ (defthm fn-lgo-min-index-natp
+   (implies (natp acc) (natp (fn-lgo-min-index ks acc)))
+   :rule-classes :type-prescription))
+(local
+ (defthm fn-lgo-min-index-le-member
+   (implies (and (member-equal k ks) (posp k))
+            (<= (fn-lgo-min-index ks acc) k))
+   :rule-classes nil))
+(local
+ (defthm fn-lgo-max-index-ge-acc
+   (implies (natp acc) (<= acc (fn-lgs-max-index ks acc)))
+   :rule-classes :linear))
+(local
+ (defthm fn-lgo-max-index-ge-member
+   (implies (and (member-equal k ks) (natp k) (natp acc))
+            (<= k (fn-lgs-max-index ks acc)))
+   :rule-classes nil))
+(local
+ (defun fn-lgo-subset-ind (xs)
+   (if (consp xs) (fn-lgo-subset-ind (cdr xs)) xs)))
+(local
+ (defthm fn-lgo-indices-in-range
+   (implies (and (subsetp-equal xs (fn-lgs-indices names))
+                 (natp lo) (natp hi)
+                 (<= lo (fn-lgo-min-index (fn-lgs-indices names) a))
+                 (<= (fn-lgs-max-index (fn-lgs-indices names) 0) hi))
+            (subsetp-equal xs (fn-lgs-range lo hi)))
+   :hints (("Goal" :induct (fn-lgo-subset-ind xs))
+           ("Subgoal *1/1" :use ((:instance fn-lgo-min-index-le-member (k (car xs))
+                                            (ks (fn-lgs-indices names)) (acc a))
+                                 (:instance fn-lgo-max-index-ge-member (k (car xs))
+                                            (ks (fn-lgs-indices names)) (acc 0))
+                                 (:instance fn-lgo-indices-are-posp (k (car xs))))))))
+(local
+ (defthm fn-lgo-subsetp-cons
+   (implies (subsetp-equal x y) (subsetp-equal x (cons a y)))))
+(local (defthm fn-lgo-subsetp-refl (subsetp-equal x x)))
+
+; KEYSTONE L2H-3.  A plan scans every segment journal/ holds, LOW to the
+; top in order, from the genesis with skip S exactly when segment 1 is
+; present, else with skip 0, the fold starting from the zero total.  Stated
+; over both answers, as the host branches on them (fnn-heap-log-suffix scans
+; only a plan; NIL leaves the totals unseen): the plan is no premise the host
+; must establish (tools/premise_audit.py).
+(defthm fn-lgo-scan-plan-scans-every-present-segment
+  (let ((p (fn-lgo-scan-plan names s)))
+    (or (null p)
+        (and (subsetp-equal (fn-lgs-indices names) (third p))
+             (equal (third p) (fn-lgs-range (second p) (fn-lgs-max-index (fn-lgs-indices names) 0)))
+             (iff (equal (car p) :genesis) (member-equal 1 (fn-lgs-indices names)))
+             (equal (fourth p) (if (equal (car p) :genesis) (nfix s) 0))
+             (equal (fifth p) (fn-ct-zero-tot :resident)))))
+  :hints (("Goal" :in-theory (e/d (fn-lgs-open-plan) (fn-lgs-indices fn-lgs-range fn-lgs-all-present
+                                                        fn-lgs-below fn-lgo-min-index fn-lgs-max-index))
+           :use ((:instance fn-lgo-indices-in-range (xs (fn-lgs-indices names))
+                            (lo (fn-lgo-min-index (fn-lgs-indices names)
+                                                  (fn-lgs-max-index (fn-lgs-indices names) 0)))
+                            (a (fn-lgs-max-index (fn-lgs-indices names) 0))
+                            (hi (fn-lgs-max-index (fn-lgs-indices names) 0)))
+                 (:instance fn-lgo-min-index-le-member (k 1) (ks (fn-lgs-indices names))
+                            (acc (fn-lgs-max-index (fn-lgs-indices names) 0)))))))
+
+;
+; The chain value the :head plan streams segment LOW from: the head's claimed
+; predecessor, only when the head is a readable rotation entry naming LOW
+; (books/store-log-lineage.lisp fn-lgl-headed-p, fn-lgl-head-index); NIL
+; (unseen) for a damaged or misnamed head (Codex l-2ah F2).  Whether the head
+; continues this store's lineage needs the F row's G, which the probe cannot
+; read before the open: a foreign head is refused by the open itself
+; (foreign-lineage), so the figure then sizes a command that refuses.
+(defun fn-lgo-head-genesis (octets low max)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
+  (and (fn-lgl-headed-p octets max)
+       (equal (fn-lgl-head-index octets max) (fn-cbor-u32-bytes low))
+       (fn-lgl-head-prev octets max)))
+
+; KEYSTONE L2H-4.  A head the probe accepts is one the open's lineage
+; decision admits for K = LOW under the F row whose G is that head's
+; trailer, and the probe starts from the chain value the open starts from
+; (host/native/io.lisp fnn-log-lineage-genesis answers fn-lgl-head-prev).
+; Stated over both answers, as the host branches on them (NIL: unseen).
+(defthm fn-lgo-head-genesis-is-the-open-lineage-start
+  (implies (and (integerp k) (<= 2 k))
+           (or (null (fn-lgo-head-genesis octets k max))
+               (and (not (fn-lgl-open k (fn-lgl-head-trailer octets) octets t0 max))
+                    (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-prev octets max)))))
+  :hints (("Goal" :in-theory (enable fn-lgl-open fn-lgl-head-check))))
+
+; The probe's answer: ACC, only when the plan and the header it re-reads
+; after the walk are the ones it started from and the fold did not refuse;
+; else NIL (unseen).  A checkpoint, rotation or drop that lands during the
+; walk changes one of them (Codex l-2ah F1).  Records appended to the active
+; segment after its stream passed them are missed, within the size the probe
+; observed, so the read's extent cap does not see them (ADAPTER
+; LOG-SUFFIX-WALK-STALE, owner Builder L, retired by A's host lease).
+(defun fn-lgo-suffix-settled (plan hdr acc plan2 hdr2)
+  (declare (xargs :guard t))
+  (and (equal plan plan2) (equal hdr hdr2) (not (eq acc :bad)) acc))
+
+; The order's algebra.
+(local
+ (defthm fn-lgo-le-trans
+   (implies (and (fn-mm-tot-le a b) (fn-mm-tot-le b c)) (fn-mm-tot-le a c))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-le)))))
+(local
+ (defthm fn-lgo-le-plus
+   (implies (fn-mm-tot-le a b) (fn-mm-tot-le a (fn-mm-tot-plus b r)))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-le fn-mm-tot-plus)))))
+(local
+ (defthm fn-lgo-plus-monotone
+   (implies (fn-mm-tot-le a b) (fn-mm-tot-le (fn-mm-tot-plus a r) (fn-mm-tot-plus b r)))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-le fn-mm-tot-plus)))))
+(local
+ (defthm fn-lgo-plus-monotone-right
+   (implies (fn-mm-tot-le a b) (fn-mm-tot-le (fn-mm-tot-plus c a) (fn-mm-tot-plus c b)))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-le fn-mm-tot-plus)))))
+(local
+ (defthm fn-lgo-plus-not-bad
+   (not (equal (fn-mm-tot-plus a b) :bad))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-plus fn-mm-make-tot)))))
+(local
+ (defthm fn-lgo-le-zero
+   (fn-mm-tot-le (fn-ct-zero-tot :resident) (fn-ct-zero-tot :resident))
+   :hints (("Goal" :in-theory (enable fn-mm-tot-le fn-ct-zero-tot)))))
+(local
+ (defthm fn-lgo-zero-not-bad
+   (not (equal (fn-ct-zero-tot :resident) :bad))
+   :hints (("Goal" :in-theory (enable (:e fn-ct-zero-tot))))))
+(local
+ (defthm fn-lgo-nthcdr-of-append
+   (implies (<= (len a) (nfix n))
+            (equal (nthcdr n (append a b)) (nthcdr (- (nfix n) (len a)) b)))
+   :hints (("Goal" :induct (nthcdr n a)))))
+(local
+ (defun fn-lgo-skip-ind (zs j a b dicts allow)
+   (declare (xargs :measure (len zs) :verify-guards nil))
+   (cond ((atom zs) (list j a b))
+         ((posp j) (fn-lgo-skip-ind (cdr zs) (1- j) a (fn-lgo-add b (car zs) dicts allow) dicts allow))
+         (t (fn-lgo-skip-ind (cdr zs) 0 (fn-lgo-add a (car zs) dicts allow)
+                             (fn-lgo-add b (car zs) dicts allow) dicts allow)))))
+
+; KEYSTONE L2H-1.  The fold is monotone in its skip and its start: from
+; skip 0 and a start B above A, a fold that does not refuse bounds the fold
+; from any skip J and A, which does not refuse either.
+(defthm fn-lgo-fold-from-no-skip-bounds-any-skip
+  (implies (and (fn-mm-tot-le a b)
+                (not (equal a :bad))
+                (not (equal (mv-nth 1 (fn-lgo-fold zs 0 b dicts allow)) :bad)))
+           (and (not (equal (mv-nth 1 (fn-lgo-fold zs j a dicts allow)) :bad))
+                (fn-mm-tot-le (mv-nth 1 (fn-lgo-fold zs j a dicts allow))
+                              (mv-nth 1 (fn-lgo-fold zs 0 b dicts allow)))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-lgo-skip-ind zs j a b dicts allow)
+           :expand ((fn-lgo-fold zs 0 b dicts allow) (fn-lgo-fold zs j a dicts allow))
+           :in-theory (union-theories '(fn-lgo-add fn-lgo-fold-of-bad fn-lgo-le-trans fn-lgo-le-plus
+                                        fn-lgo-plus-monotone fn-lgo-plus-not-bad posp zp nfix mv-nth
+                                        (:induction fn-lgo-skip-ind))
+                                      (theory 'minimal-theory)))))
+
+; The host's case: a prefix PRE of at most J records dropped from the front,
+; the fold of the rest from skip 0 bounds the open's fold from skip J.
+(defthm fn-lgo-fold-past-a-dropped-prefix-is-bounded
+  (let ((exact (mv-nth 1 (fn-lgo-fold (append pre rest) j (fn-ct-zero-tot :resident) dicts allow)))
+        (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts allow))))
+    (implies (and (<= (len pre) (nfix j))
+                  (not (equal host :bad)))
+             (and (not (equal exact :bad))
+                  (fn-mm-tot-le exact host))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgo-nthcdr-of-append fn-lgo-zero-not-bad fn-lgo-le-zero)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-lgo-fold-past-the-skip (zs (append pre rest)) (skip j)
+                            (acc (fn-ct-zero-tot :resident)))
+                 (:instance fn-lgo-fold-past-the-skip (zs rest) (skip (- (nfix j) (len pre)))
+                            (acc (fn-ct-zero-tot :resident)))
+                 (:instance fn-lgo-fold-from-no-skip-bounds-any-skip (zs rest) (j (- (nfix j) (len pre)))
+                            (a (fn-ct-zero-tot :resident)) (b (fn-ct-zero-tot :resident)))))))
+
+; KEYSTONE L2H-2.  The open's records are PRE (the dropped segments', at
+; most J of them) then REST (the host's scan); from a valid (K . TOT) cache,
+; the rows past K the replay's from the epoch at K, each within the HISTORY
+; clause, the host's suffix (REST from skip 0) over the cache's TOT bounds
+; the charged fold of every row the open recovers.  PRE empty is the
+; :genesis plan's case with J = S (L2-5 itself).  A refusing host suffix is
+; unseen (the host answers NIL), never a bound.
+(defthm fn-lgo-host-suffix-covers-the-opened-store
+  (let* ((k (car cache))
+         (zs (append pre rest))
+         (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts allow)))
+         (acc1 (mv-nth 0 (fn-ssr-intern-step
+                          (fn-ssr-state nil keyring (nfix generation) identity)
+                          (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts))
+                          nil nil :resident nil fn-arena))))
+    (implies (and (<= (len pre) (nfix j))
+                  (not (equal host :bad))
+                  (fn-ct-totals-cache-validp cache rows :resident)
+                  (equal (nthcdr k rows) (fn-ssr-rows acc1))
+                  (fn-lgo-rows-history-within (nthcdr k rows) allow))
+             (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) host))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgo-le-trans fn-lgo-plus-monotone-right)
+                                      (theory 'minimal-theory))
+           :use ((:instance fn-lgo-observed-covers-the-opened-store (zs (append pre rest)))
+                 (:instance fn-lgo-fold-past-a-dropped-prefix-is-bounded)
+                 (:instance fn-lgo-plus-monotone-right
+                            (c (cdr cache))
+                            (a (mv-nth 1 (fn-lgo-fold (append pre rest) j (fn-ct-zero-tot :resident)
+                                                      dicts allow)))
+                            (b (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts allow))))
+                 (:instance fn-lgo-le-trans
+                            (a (fn-ct-charged rows :resident))
+                            (b (fn-mm-tot-plus (cdr cache)
+                                               (mv-nth 1 (fn-lgo-fold (append pre rest) j
+                                                                      (fn-ct-zero-tot :resident) dicts allow))))
+                            (c (fn-mm-tot-plus (cdr cache)
+                                               (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident)
+                                                                      dicts allow)))))))))
