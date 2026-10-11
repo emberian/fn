@@ -21,6 +21,7 @@
 
 (in-package "ACL2")
 (include-book "../../books/runtime-contract-echo")
+(include-book "../../books/runtime-contract-opened")
 (include-book "std/testing/assert-bang" :dir :system)
 
 (defun rce-run-variant (variant)
