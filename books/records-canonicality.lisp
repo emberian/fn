@@ -1264,6 +1264,10 @@
    (implies (fn-record-p r) (fn-record-payloadp (fn-record-payload r)))
    :hints (("Goal" :in-theory (enable fn-record-p)))))
 
+(local
+ (defthm fn-record-pieces-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
 (defthm fn-record-impl-encode-splits-at-the-payload
   (implies (fn-record-p record)
            (equal (fn-record-encode-impl record)
@@ -1273,14 +1277,14 @@
                           (fn-record-tail-octets-impl record))))
   :rule-classes nil
   :hints (("Goal" :use (fn-record-pieces-encode-impl-non-nil
-                        fn-record-pieces-payloadp
+                        (:instance fn-record-pieces-payloadp (r record))
                         (:instance fn-record-pieces-item-encode-payload
                                    (p (fn-record-payload record))))
-           :in-theory (e/d (fn-record-encode-impl)
-                           (fn-record-pieces-payloadp fn-record-payloadp
-                            fn-record-pieces-item-encode-payload fn-cbor-at-mostp
-                            fn-record-item-encode fn-record-uint-encode
-                            fn-record-encode-groups fn-record-string-octets)))))
+           :in-theory (union-theories
+                       '(fn-record-encode-impl fn-record-head-octets-impl
+                         fn-record-groups-octets-impl fn-record-tail-octets-impl
+                         fn-record-pieces-append-assoc)
+                       (theory 'minimal-theory)))))
 
 (local
  (defthm fn-record-pieces-len-append
