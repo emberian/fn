@@ -19016,6 +19016,10 @@
         {
           "kind": "theorem",
           "name": "fn-lgo-head-genesis-is-the-open-lineage-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-history-ceiling-bounds-the-intern"
         }
       ]
     }

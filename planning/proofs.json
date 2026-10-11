@@ -23608,7 +23608,8 @@
         "fn-lgo-fold-from-no-skip-bounds-any-skip",
         "fn-lgo-host-suffix-covers-the-opened-store",
         "fn-lgo-scan-plan-scans-every-present-segment",
-        "fn-lgo-head-genesis-is-the-open-lineage-start"
+        "fn-lgo-head-genesis-is-the-open-lineage-start",
+        "fn-lgo-history-ceiling-bounds-the-intern"
       ]
     }
   ]
