@@ -1628,13 +1628,16 @@ def cmd_push(t: Train, args) -> int:
 def _stacked_on(t: "Train") -> list[str]:
     """Other integrate branches whose lane merges sit on HEAD's first-parent
     line above origin/dev: a train started from another train's HEAD (the
-    pipelined second batch tree) pushes only after that train landed."""
+    pipelined second batch tree) pushes only after that train landed.  Only
+    a merge into an integrate/ branch is a train's; a merge into a lane
+    branch is that lane's content (the Fungus tree, lane/fungus-*, is the
+    base a train is formed on, COORDINATION section 5, and lands with it)."""
     log = git(t.root, "log", "--first-parent", "--merges", "--format=%s", "origin/dev..HEAD").stdout
     mine = t.branch if t.branch.startswith("integrate/") else f"integrate/{t.branch}"
     others = []
     for subject in log.splitlines():
         m = re.match(r"Merge lane/\S+ @[0-9a-f]+ into (\S+)$", subject)
-        if m and m.group(1) != mine and m.group(1) not in others:
+        if m and m.group(1).startswith("integrate/") and m.group(1) != mine and m.group(1) not in others:
             others.append(m.group(1))
     return others
 
