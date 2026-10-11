@@ -280,7 +280,7 @@
                                                      obligation-id subject
                                                      evidence charge) fn-arena))
                             s)))
-           (fn-profile-replay-within-boundp profile (+ bytes-used (len payload))))
+           (fn-bs-history-admissiblep profile bytes-used (len payload)))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-sbud-article-verdict-at fn-sbud-article-gate-figure
                             fn-bs-history-admissiblep fn-profile-replay-within-boundp)
