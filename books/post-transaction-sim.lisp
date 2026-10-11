@@ -12,9 +12,12 @@
 ; The machine reads its message (the entry's octets, the spans of fn-ptx-spans) through the
 ; layer's view at each step; the environment's side is the rely (fn-ptx-rely): the octets the
 ; machine wrote at the head's end read back, and the message is unchanged from then on except for
-; the trailer the last hashing step appends.  For layer runs the rely follows from the layer's
-; write and ownership theorems (the handed buffer is the machine's :out lease, its workspaces its
-; own), stated separately.
+; the trailer the last hashing step appends.  For layer runs the rely is NOT yet discharged (P4's
+; open condition): ownership alone does not give it, since a refused layer write leaves the
+; machine's advanced state in place; the discharge needs a joint invariant over the handed and
+; workspace buffers, their generations, fill and capacity, and the accepted requests (landing 2).
+; P4's composition is over the driver's run: that the machine's emitted writes are the split
+; operations of P6 at the driver's offsets is landing 2's request/effect refinement.
 (in-package "ACL2")
 (include-book "post-transaction")
 (include-book "post-transaction-crash")
@@ -205,7 +208,7 @@
 ; committed record acknowledged) that is not faulted.  The open's kernel is one
 ; (fn-ptx-open-kernelp-of-the-open: fn-lgk-recover leaves :ready), and the relation carries
 ; "not faulted" through every phase but :fenced (fn-ptx-related-kernel-is-faulted-only-fenced), so
-; the machine is never stepped against a faulted kernel.  Without it P4-2 is false: a kernel in
+; while unfenced the machine is never related to a faulted kernel.  Without it P4-2 is false: a kernel in
 ; :fault with no batch is fn-ptd-open-kernelp and R-related to the same store (neither reads the
 ; phase), fn-ptd-begin refuses its take, and the machine, whose projection fn-ptx-kd-of reads no
 ; phase, posts.
@@ -488,7 +491,7 @@
                                    fn-lgk-committed fn-lgk-acked fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-phase)))))
 
 ; The open's kernel is not faulted, and a related kernel is faulted only when the machine is
-; :fenced: the machine is never stepped against a faulted kernel.
+; :fenced: while unfenced the machine is never related to a faulted kernel.
 (defthm fn-ptx-open-kernelp-of-the-open
   (fn-ptx-open-kernelp (fn-lgt-recover c genesis unit max floor))
   :hints (("Goal" :use ((:instance fn-ptd-open-kernelp-of-the-open))
