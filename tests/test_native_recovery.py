@@ -145,8 +145,9 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
     value-fold) and the
     swap installs the owner those predicted rows rebuild; a restart replays the
     rewritten history through the fold (fn-ssr-intern-step), which freezes the
-    keyring generation in force before each record.  The prediction is that
-    fold (fn-orcs-predict-rows-at-is-the-fold), so the verdict generations the
+    keyring generation in force before each record.  The prediction refines
+    that fold (fn-orcs-predict-rows-at-refines-the-replay, its contexts from
+    fn-rfc-the-open-interns-at-the-fold-contexts), so the verdict generations the
     swapped owner serves are the restart's: article A (posted under generation
     1) keeps generation 1 and article B (generation 2) keeps generation 2.
     The prediction used to intern every record at the store's current keyring

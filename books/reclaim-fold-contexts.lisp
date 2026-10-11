@@ -29,6 +29,10 @@
 (include-book "owner-reclaim-retained")
 
 (local
+ (defthm fn-rfc-rev-onto
+   (equal (fn-ag-rev-onto x acc) (revappend x acc))))
+
+(local
  (defun fn-rfc-after (rows id h)
    (declare (xargs :verify-guards nil))
    (if (atom rows)
@@ -187,6 +191,8 @@
                          (w (car ws)) (k (fn-ssr-at 1 acc)) (g (fn-ssr-at 2 acc))
                          (id (fn-ssr-at 3 acc)) (fn-arena a))))))))
 
+(local (defthm fn-rfc-nth-len-append (equal (nth (len b) (append b y)) (car y)) :hints (("Goal" :induct (len b)))))
+
 (local
  (defun fn-rfc-holds-ind (b ws)
    (declare (xargs :verify-guards nil))
@@ -250,6 +256,26 @@
             :use ((:instance fn-rfc-tlf-arena-of-intern-event)
                   (:instance fn-rfc-append-from-tlf (x (mv-nth 1 (fn-intern-event w keyring generation fn-arena)))
                              (z (if (fn-scka-sealsp w)
+                                    (append (true-list-fix fn-arena) (list (fn-scka-payload-of w)))
+                                  (true-list-fix fn-arena)))))
+            :in-theory (disable fn-rfc-tlf-arena-of-intern-event fn-intern-event fn-scka-intern-one
+                                fn-scka-sealsp fn-scka-payload-of)))))
+
+(local
+ (defthm fn-rfc-len-from-tlf
+   (implies (equal (true-list-fix x) y) (equal (len x) (len y)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (enable true-list-fix)))))
+
+(local
+ (defthm fn-rfc-len-arena-of-intern-event
+   (implies (not (equal (fn-scka-intern-one w keyring generation h) :bad))
+            (equal (len (mv-nth 1 (fn-intern-event w keyring generation fn-arena)))
+                   (if (fn-scka-sealsp w) (+ 1 (len fn-arena)) (len fn-arena))))
+   :hints (("Goal" :do-not-induct t
+            :use ((:instance fn-rfc-tlf-arena-of-intern-event)
+                  (:instance fn-rfc-len-from-tlf (x (mv-nth 1 (fn-intern-event w keyring generation fn-arena)))
+                             (y (if (fn-scka-sealsp w)
                                     (append (true-list-fix fn-arena) (list (fn-scka-payload-of w)))
                                   (true-list-fix fn-arena)))))
             :in-theory (disable fn-rfc-tlf-arena-of-intern-event fn-intern-event fn-scka-intern-one
