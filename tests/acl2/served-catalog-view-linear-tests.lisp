@@ -1,8 +1,9 @@
 ; served-catalog-view-linear-tests.lisp -- witnesses and teeth for the
 ; linear correction of books/served-catalog-view.lisp (lane list-hold, LH-B):
 ; X is built without a pass over itself, a scan step tests membership in X
-; in constant time, and the summary's work is a constant plus seven per unit
-; of change since the view plus the scan steps.
+; in constant time, the walks at the group's ends step only past numbers of
+; X, and the summary's work is a constant plus nine per unit of change since
+; the view (fn-scv-summary-work-bounded).
 ;
 ; The fixture is a three-row catalog (fn.test 1, 2, 3) followed by N appended
 ; rows.  A reader holding view 3 sees three rows however many are appended;
@@ -107,4 +108,61 @@
               (list (fn-scv-count-p "fn.test" 1 1 1 *scvl-dup*)
                     (fn-scv-first-p "fn.test" 1 1 1 *scvl-dup*)
                     (fn-scv-last-p "fn.test" 1 1 *scvl-dup*))))
+  :rule-classes nil)
+
+;; RED-2's TOOTH, the dead run (lane spans-dead-runs): fn.test 1 live, 2 .. 51
+;; cancelled at version 51, a fn.other row, then fn.test 52 posted at row 52;
+;; the reader's view is 52 (the posting-load case: the
+;; reader's view one batch behind, the table's high in X).  The number-wise
+;; scan down from the high crosses the whole cancelled run (scvl-scan-down-
+;; steps, the old count, kept here as the red); the summary's walk takes two
+;; steps, 52 (in X) then its live neighbour 1, and the answer is the
+;; number-wise one.
+(defun scvl-withdraw-range (i n c)
+  (declare (xargs :measure (nfix n)))
+  (if (zp n)
+      c
+    (scvl-withdraw-range (+ 1 i) (- n 1) (fn-cat$a-withdraw i (len c) c))))
+
+; A row of another group: the count moves past the cancels' version without
+; a fn.test number, so the view 52 sees the cancels and not the post after it.
+(defun scvl-held-other (i)
+  (let ((w (scvl-record i)))
+    (fn-held-make (fn-record-sequence w) (fn-record-txid w) (fn-record-generation w)
+                  (fn-record-msgid w) i '("fn.other") (fn-record-obligation-id w)
+                  (fn-record-content-subject w) (fn-record-release-evidence w)
+                  (fn-record-charge w) (fn-record-stamp w)
+                  (fn-held-facts-of (fn-record-payload w))
+                  (fn-held-context-of (fn-record-payload w) nil 0) nil nil)))
+
+(defconst *scvl-dead*
+  (scvl-append 52 1 (fn-cat$a-commit (scvl-held-other 51)
+                                     (scvl-withdraw-range 1 50 (scvl-append 0 51 nil)))))
+
+(defun scvl-scan-down-steps (group k v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (and (natp k) (natp v))))
+  (if (posp k)
+      (if (and (not (fn-scv-in-xp group k v fn-cat)) (fn-scv-liveq group k fn-cat))
+          1
+        (+ 1 (scvl-scan-down-steps group (- k 1) v fn-cat)))
+    0))
+
+(defthm scvl-dead-run
+  (and (fn-cat-p *scvl-dead*)
+       (equal (fn-cat-count *scvl-dead*) 53)
+       (equal (fn-cat-group-live-high "fn.test" *scvl-dead*) 52)
+       (equal (fn-cat-group-live-low "fn.test" *scvl-dead*) 1)
+       (equal (fn-cat-live-prev "fn.test" 52 *scvl-dead*) 1)
+       (equal (fn-cat-live-next "fn.test" 1 *scvl-dead*) 52)
+       (equal (fn-cat-live-prev "fn.test" 30 *scvl-dead*) 0)
+       (equal (fn-scv-x "fn.test" 52 *scvl-dead*) '(52))
+       (>= (scvl-scan-down-steps "fn.test" 52 52 *scvl-dead*) 51)
+       (equal (fn-scv-scan-steps "fn.test" 52 *scvl-dead*) 3)
+       (equal (fn-scv-summary "fn.test" 52 *scvl-dead*) '(1 1 1))
+       (equal (fn-scv-summary "fn.test" 52 *scvl-dead*)
+              (list (fn-scv-count-p "fn.test" 1 52 52 *scvl-dead*)
+                    (fn-scv-first-p "fn.test" 1 52 52 *scvl-dead*)
+                    (fn-scv-last-p "fn.test" 52 52 *scvl-dead*)))
+       (<= (fn-scv-summary-work "fn.test" 52 *scvl-dead*)
+           (+ 3 (* 9 (fn-scv-change-since 52 *scvl-dead*)))))
   :rule-classes nil)

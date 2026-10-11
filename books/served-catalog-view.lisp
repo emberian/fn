@@ -902,22 +902,127 @@
             :in-theory (e/d (fn-scv-liveq-is-live-numberp) (fn-cat-live-numberp))))))
 
 ; -----------------------------------------------------------------------------
+; The walks the summary executes: along the catalog's live list (the
+; exports fn-cat-live-next and fn-cat-live-prev, one link read each in the
+; paged catalog), stepping only past numbers in X.  A step past a number
+; outside X never happens, so a walk takes at most one step more than the
+; numbers of X it passes (fn-scv-link-up-steps-bound below), whatever the
+; dead runs between the live numbers.  The number-wise scans above stay as
+; the logical side (the summary's mbe), and the walks equal them from a live
+; start (fn-scv-link-up-is-scan-up, fn-scv-link-down-is-scan-down).
+
+(local
+ (defthm fn-scv-live-first-bound
+   (implies (and (natp top) (not (equal (fn-cat-live-first g k top c) 0)))
+            (and (<= (fn-cat-live-first g k top c) top)
+                 (<= (nfix k) (fn-cat-live-first g k top c))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (disable fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-scv-live-next-bound
+   (implies (not (equal (fn-cat-live-next g k fn-cat) 0))
+            (and (< (nfix k) (fn-cat-live-next g k fn-cat))
+                 (<= (fn-cat-live-next g k fn-cat) (fn-cat-group-high g fn-cat))))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (disable fn-cat-live-numberp)))))
+
+(defun fn-scv-link-up (group k v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)
+                  :measure (nfix (- (+ 1 (fn-cat-group-high group fn-cat)) (nfix k)))))
+  (if (and (posp k) (fn-scv-in-xp group k v fn-cat))
+      (let ((n (fn-cat-live-next group k fn-cat)))
+        (if (< k n) (fn-scv-link-up group n v fn-cat) 0))
+    (nfix k)))
+
+(defun fn-scv-link-down (group k v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v) :measure (nfix k)))
+  (if (and (posp k) (fn-scv-in-xp group k v fn-cat))
+      (let ((p (fn-cat-live-prev group k fn-cat)))
+        (if (< p k) (fn-scv-link-down group p v fn-cat) 0))
+    (nfix k)))
+
+(local
+ (defthm fn-scv-number-seq-above-high
+   (implies (and (natp n) (< (fn-cat-group-high g c) n))
+            (equal (fn-cat-number-seq g n c i) nil))
+   :hints (("Goal" :in-theory (enable fn-cat-number-seq fn-cat-group-high)))))
+
+(local
+ (defthm fn-scv-live-numberp-below-high
+   (implies (fn-cat-live-numberp g k c)
+            (<= k (fn-cat-group-high g c)))
+   :rule-classes :forward-chaining
+   :hints (("Goal" :in-theory (enable fn-cat-live-numberp)))))
+
+(defthm fn-scv-link-up-is-scan-up
+  (implies (and (fn-cat-p fn-cat) (fn-cat-live-numberp g k fn-cat))
+           (equal (fn-scv-link-up g k v fn-cat)
+                  (fn-scv-scan-up g k (fn-cat-group-high g fn-cat) v fn-cat)))
+  :hints (("Goal" :induct (fn-scv-link-up g k v fn-cat)
+           :in-theory (disable fn-cat-live-numberp fn-scv-in-xp fn-cat-live-first))
+          ("Subgoal *1/1" :expand ((fn-scv-scan-up g k (fn-cat-group-high g fn-cat) v fn-cat))
+           :use ((:instance fn-scv-scan-up-from-first (group g) (k (+ 1 k))
+                            (top (fn-cat-group-high g fn-cat)))))
+          ("Subgoal *1/2" :expand ((fn-scv-scan-up g k (fn-cat-group-high g fn-cat) v fn-cat))
+           :use ((:instance fn-scv-scan-up-from-first (group g) (k (+ 1 k))
+                            (top (fn-cat-group-high g fn-cat)))))))
+
+(local
+ (defthm fn-scv-live-last-bound
+   (<= (fn-cat-live-last g k c) (nfix k))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (disable fn-cat-live-numberp)))))
+
+(defthm fn-scv-link-down-is-scan-down
+  (implies (and (fn-cat-p fn-cat) (fn-cat-live-numberp g k fn-cat))
+           (equal (fn-scv-link-down g k v fn-cat)
+                  (fn-scv-scan-down g k v fn-cat)))
+  :hints (("Goal" :induct (fn-scv-link-down g k v fn-cat)
+           :in-theory (disable fn-cat-live-numberp fn-scv-in-xp fn-cat-live-last))
+          ("Subgoal *1/1" :expand ((fn-scv-scan-down g k v fn-cat))
+           :use ((:instance fn-scv-scan-down-from-last (group g) (k (- k 1)))))
+          ("Subgoal *1/2" :expand ((fn-scv-scan-down g k v fn-cat))
+           :use ((:instance fn-scv-scan-down-from-last (group g) (k (- k 1)))))))
+
+(local
+ (defthm fn-scv-live-first-is-live
+   (implies (not (equal (fn-cat-live-first g k top c) 0))
+            (fn-cat-live-numberp g (fn-cat-live-first g k top c) c))
+   :hints (("Goal" :in-theory (disable fn-cat-live-numberp)))))
+
+(local
+ (defthm fn-scv-live-last-is-live
+   (implies (not (equal (fn-cat-live-last g k c) 0))
+            (fn-cat-live-numberp g (fn-cat-live-last g k c) c))
+   :hints (("Goal" :in-theory (disable fn-cat-live-numberp)))))
+
+; -----------------------------------------------------------------------------
 ; The summary at V, and its keystones.
 
 (defun fn-scv-summary (group v fn-cat)
   "(COUNT LEAST GREATEST) of GROUP's numbers served at view V: the live
 table's, corrected over X (the numbers of the rows appended at or after V
 and of the rows withdrawn at or after V)."
-  (declare (xargs :stobjs fn-cat :guard (natp v)))
+  (declare (xargs :stobjs fn-cat :guard (natp v)
+                  :guard-hints (("Goal" :in-theory (disable fn-scv-scan-up fn-scv-scan-down fn-scv-link-up
+                                                            fn-scv-link-down fn-cat-live-numberp
+                                                            fn-cat-live-first fn-cat-live-last)))))
   (let* ((top (nfix (- (fn-cat-group-next group fn-cat) 1)))
          (x (fn-scv-x group v fn-cat))
          (count (+ (fn-cat-group-live-count group fn-cat)
                    (fn-scv-xdiff group x 1 top v fn-cat)))
          (low (fn-cat-group-live-low group fn-cat))
-         (first (fn-scv-min* (if (posp low) (fn-scv-scan-up group low top v fn-cat) 0)
+         (first (fn-scv-min* (if (posp low)
+                                 (mbe :logic (fn-scv-scan-up group low top v fn-cat)
+                                      :exec (fn-scv-link-up group low v fn-cat))
+                               0)
                              (fn-scv-xmin group x 1 top v fn-cat)))
          (high (fn-cat-group-live-high group fn-cat))
-         (last (max (if (posp high) (fn-scv-scan-down group high v fn-cat) 0)
+         (last (max (if (posp high)
+                        (mbe :logic (fn-scv-scan-down group high v fn-cat)
+                             :exec (fn-scv-link-down group high v fn-cat))
+                      0)
                     (fn-scv-xmax group x 1 top v fn-cat))))
     (list (nfix count) first last)))
 
@@ -1085,10 +1190,9 @@ and of the rows withdrawn at or after V)."
 ; without a pass over itself and a scan step tests membership in X in
 ; constant time.
 ;
-; Not covered, said once here: the scans cross withdrawn numbers at the
-; group's two ends, and no bound on those steps is claimed beyond
-; fn-scv-scan-steps itself (a long run of dead numbers under a flood waits
-; on an index from a number to the next live number below it).
+; The walks step along the live list, only past numbers of X, so their
+; steps are at most two plus two per number of X (fn-scv-scan-steps-bound),
+; whatever dead runs lie between live numbers.
 
 (defun fn-scv-new-work (s n fn-cat)
   (declare (xargs :stobjs fn-cat :guard (and (natp s) (natp n))
@@ -1105,31 +1209,83 @@ and of the rows withdrawn at or after V)."
          (fn-scv-withdrawn-work (+ 1 w) hz fn-cat))
     0))
 
-(defun fn-scv-scan-up-steps (group k top v fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (and (natp k) (natp top) (natp v))
-                  :measure (nfix (- (+ 1 (nfix top)) (nfix k)))))
-  (if (and (natp k) (natp top) (<= k top))
-      (if (and (not (fn-scv-in-xp group k v fn-cat)) (fn-scv-liveq group k fn-cat))
-          1
-        (+ 1 (fn-scv-scan-up-steps group (+ 1 k) top v fn-cat)))
+(defun fn-scv-count-in (xs lo hi)
+  (declare (xargs :guard t))
+  (if (consp xs)
+      (+ (if (and (natp (car xs)) (natp lo) (natp hi) (<= lo (car xs)) (<= (car xs) hi)) 1 0)
+         (fn-scv-count-in (cdr xs) lo hi))
     0))
 
-(defun fn-scv-scan-down-steps (group k v fn-cat)
-  (declare (xargs :stobjs fn-cat :guard (and (natp k) (natp v))))
-  (if (posp k)
-      (if (and (not (fn-scv-in-xp group k v fn-cat)) (fn-scv-liveq group k fn-cat))
-          1
-        (+ 1 (fn-scv-scan-down-steps group (- k 1) v fn-cat)))
-    0))
+(local
+ (defthm fn-scv-count-in-len
+   (<= (fn-scv-count-in xs lo hi) (len xs))
+   :rule-classes :linear))
 
-; The steps the summary's two scans take.
+(local
+ (defthm fn-scv-count-in-up
+   (implies (and (member-equal k xs) (natp k) (natp n) (natp hi) (< k n) (<= k hi))
+            (<= (+ 1 (fn-scv-count-in xs n hi)) (fn-scv-count-in xs k hi)))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-scv-count-in-down
+   (implies (and (member-equal k xs) (natp k) (natp p) (< p k) (posp lo) (<= lo k))
+            (<= (+ 1 (fn-scv-count-in xs lo p)) (fn-scv-count-in xs lo k)))
+   :rule-classes :linear))
+
+(defun fn-scv-link-up-steps (group k v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v)
+                  :measure (nfix (- (+ 1 (fn-cat-group-high group fn-cat)) (nfix k)))))
+  (if (and (posp k) (fn-scv-in-xp group k v fn-cat))
+      (let ((n (fn-cat-live-next group k fn-cat)))
+        (if (< k n) (+ 1 (fn-scv-link-up-steps group n v fn-cat)) 1))
+    1))
+
+(defun fn-scv-link-down-steps (group k v fn-cat)
+  (declare (xargs :stobjs fn-cat :guard (natp v) :measure (nfix k)))
+  (if (and (posp k) (fn-scv-in-xp group k v fn-cat))
+      (let ((p (fn-cat-live-prev group k fn-cat)))
+        (if (< p k) (+ 1 (fn-scv-link-down-steps group p v fn-cat)) 1))
+    1))
+
+(defthm fn-scv-link-up-steps-bound
+  (implies (and (fn-cat-p fn-cat) (natp k))
+           (<= (fn-scv-link-up-steps g k v fn-cat)
+               (+ 1 (fn-scv-count-in (fn-scv-x g v fn-cat) k (fn-cat-group-high g fn-cat)))))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-scv-link-up-steps g k v fn-cat)
+           :in-theory (disable fn-cat-live-numberp fn-cat-live-first fn-scv-x fn-cat-live-next-is-first))))
+
+(defthm fn-scv-link-down-steps-bound
+  (implies (and (fn-cat-p fn-cat) (natp k))
+           (<= (fn-scv-link-down-steps g k v fn-cat)
+               (+ 1 (fn-scv-count-in (fn-scv-x g v fn-cat) 1 k))))
+  :rule-classes :linear
+  :hints (("Goal" :induct (fn-scv-link-down-steps g k v fn-cat)
+           :in-theory (disable fn-cat-live-numberp fn-cat-live-last fn-scv-x fn-cat-live-prev-is-last))))
+
+; The steps the summary's two walks take.
 (defun fn-scv-scan-steps (group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
-  (let* ((top (nfix (- (fn-cat-group-next group fn-cat) 1)))
-         (low (fn-cat-group-live-low group fn-cat))
+  (let* ((low (fn-cat-group-live-low group fn-cat))
          (high (fn-cat-group-live-high group fn-cat)))
-    (+ (if (posp low) (fn-scv-scan-up-steps group low top v fn-cat) 0)
-       (if (posp high) (fn-scv-scan-down-steps group high v fn-cat) 0))))
+    (+ (if (posp low) (fn-scv-link-up-steps group low v fn-cat) 0)
+       (if (posp high) (fn-scv-link-down-steps group high v fn-cat) 0))))
+
+; THE WALKS ARE LINEAR IN X: two steps plus two per number of X.
+(defthm fn-scv-scan-steps-bound
+  (implies (fn-cat-p fn-cat)
+           (<= (fn-scv-scan-steps group v fn-cat)
+               (+ 2 (* 2 (len (fn-scv-x group v fn-cat))))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (disable fn-scv-x fn-cat-live-numberp fn-cat-live-first fn-cat-live-last
+                                      fn-scv-link-up-steps fn-scv-link-down-steps)
+           :use ((:instance fn-scv-link-up-steps-bound (g group) (k (fn-cat-group-live-low group fn-cat)))
+                 (:instance fn-scv-link-down-steps-bound (g group) (k (fn-cat-group-live-high group fn-cat)))
+                 (:instance fn-scv-count-in-len (xs (fn-scv-x group v fn-cat)) (lo (fn-cat-group-live-low group fn-cat))
+                            (hi (fn-cat-group-high group fn-cat)))
+                 (:instance fn-scv-count-in-len (xs (fn-scv-x group v fn-cat)) (lo 1)
+                            (hi (fn-cat-group-live-high group fn-cat)))))))
 
 (defun fn-scv-summary-work (group v fn-cat)
   (declare (xargs :stobjs fn-cat :guard (natp v)))
@@ -1219,5 +1375,30 @@ and of the rows withdrawn at or after V)."
                             (a (nfix (- (fn-cat-count fn-cat) (nfix v))))
                             (b (fn-scv-versions-change (nfix v) (nfix (fn-cat-horizon fn-cat))
                                                        fn-cat))
+                            (l (len (fn-scv-x group v fn-cat)))
+                            (r (fn-scv-scan-steps group v fn-cat)))))))
+
+(local
+ (defthm fn-scv-bounded-arithmetic
+   (implies (and (natp a) (natp b) (natp l) (natp r) (<= l (+ a b)) (<= r (+ 2 (* 2 l))))
+            (<= (+ 1 (* 7 (+ a b)) r) (+ 3 (* 9 (+ a b)))))
+   :rule-classes nil))
+
+; K-DR-4, THE BOUND: a summary at V is a constant plus nine per unit of
+; change since V; no term counts the group's numbers or its dead runs.
+(defthm fn-scv-summary-work-bounded
+  (implies (fn-cat-p fn-cat)
+           (<= (fn-scv-summary-work group v fn-cat)
+               (+ 3 (* 9 (fn-scv-change-since v fn-cat)))))
+  :hints (("Goal" :in-theory (e/d (fn-scv-change-since)
+                                  (fn-scv-x fn-scv-scan-steps fn-scv-summary-work))
+           :use ((:instance fn-scv-summary-work-linear)
+                 (:instance fn-scv-scan-steps-bound)
+                 (:instance fn-scv-len-x)
+                 (:instance fn-scv-new-work-is-difference
+                            (s (nfix v)) (n (fn-cat-count fn-cat)) (c fn-cat))
+                 (:instance fn-scv-bounded-arithmetic
+                            (a (nfix (- (fn-cat-count fn-cat) (nfix v))))
+                            (b (fn-scv-versions-change (nfix v) (nfix (fn-cat-horizon fn-cat)) fn-cat))
                             (l (len (fn-scv-x group v fn-cat)))
                             (r (fn-scv-scan-steps group v fn-cat)))))))
