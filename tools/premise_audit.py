@@ -45,6 +45,8 @@ table's method over the whole tree, generated:
                                                 # entry that is no longer one
                                                 # (shrink-only)
     python3 tools/premise_audit.py --baseline   # rewrite the baseline (deliberate)
+    python3 tools/premise_audit.py --baseline-terms  # the term-premise baseline,
+                                                # through the same ratchet
     python3 tools/premise_audit.py --lower-stale  # drop only the entries that are
                                                 # no longer findings (adds none)
     python3 tools/premise_audit.py --markdown   # the evidence record's table
@@ -55,8 +57,14 @@ WHAT IS DELIBERATELY NOT COUNTED.  Recognizers a record macro generates
 (reach_check.record_definitions: the shape of a tuple, established by its
 constructor's theorem) and ACL2 primitives (natp, true-listp: not book
 definitions).  A premise applied to a term (`(R (fn-sn-node s))') rather
-than a variable is counted separately (`--all`), since the entry's state is
-not what it is assumed of.  The baseline is per predicate: one hosted establishment clears every
+than a variable is counted separately, since the entry's state is not what
+it is assumed of: a predicate assumed ONLY of terms at hosted entries is a
+term finding, held to its own shrink-only baseline
+(planning/premise-term-baseline.json, written by --baseline-terms, lowered
+by --lower-stale), so --strict refuses a new one as it refuses a bare one
+(`--all' still lists both together).  A variable is a symbol in any of R's
+arguments that is not a numeral, keyword, character, t, nil or defined name
+(`(R 0 x)' is of x; `(R 0 (F s))' of a term).  The baseline is per predicate: one hosted establishment clears every
 theorem that assumes R.
 
 GUARD-ESTABLISHED (PREMISE-CHECKER-GUARD-ESTABLISHED).  A premise (R v) of
@@ -105,6 +113,10 @@ from tools import ratchet  # noqa: E402
 
 ROOT = reach_check.ROOT
 BASELINE = ROOT / "planning" / "premise-baseline.json"
+# Premises stated of a term (`(R (nthcdr k rows))'), not of a bare variable:
+# their own shrink-only baseline, so --strict sees them too (coordinator,
+# 10-11, rule 6.4: a check that skips them silently is vacuous).
+TERM_BASELINE = ROOT / "planning" / "premise-term-baseline.json"
 
 NEVER, PRESERVED, OFF_HOST, HOSTED = (
     "never concluded", "preserved only", "established off the host path",
@@ -467,11 +479,43 @@ class Audit:
         return {r: row for r, row in self.premises(all_arguments=all_arguments).items()
                 if row["class"] in FINDING_CLASSES}
 
+    def term_findings(self) -> dict[str, dict]:
+        """The findings only a premise of a term makes: R unestablished and
+        assumed at a hosted entry of no bare variable (the bare ones are the
+        main baseline's)."""
+        bare = self.findings()
+        return {r: row for r, row in self.findings(all_arguments=True).items() if r not in bare}
 
-def load_baseline() -> dict:
-    if not BASELINE.exists():
+
+def load_baseline(path=None) -> dict:
+    path = path or BASELINE
+    if not path.exists():
         return {"accepted": {}}
-    return json.loads(BASELINE.read_text())
+    return json.loads(path.read_text())
+
+
+TERM_NOTE = ("Predicates assumed only of a term (`(R (nthcdr k rows))'), not of a bare "
+             "variable, by a theorem whose subject a host line reaches, that no hosted "
+             "theorem establishes.  tools/premise_audit.py --strict fails on one NOT listed "
+             "here and on a listed one that is no longer a finding; the list only shrinks "
+             "(--lower-stale).  Remove an entry by establishing R of what the host passes, "
+             "never by editing this file.")
+
+
+def write_term_baseline(terms: dict) -> int:
+    """The term baseline through the same ratchet: the first capture is the
+    one initial capture (no history), every later write only shrinks."""
+    current = load_baseline(TERM_BASELINE)
+    existing = current.get("accepted", {})
+    old = ratchet.old_rows("premise_audit_terms", TERM_BASELINE, lambda: dict.fromkeys(existing, 1))
+    if ratchet.report("premise_audit_terms",
+                      ratchet.refused("premise_audit_terms", old, dict.fromkeys(terms, 1))):
+        return 1
+    accepted = {r: existing.get(r, terms[r]["class"] + "; assumed of a term; no one has said "
+                                "which host entry establishes it") for r in sorted(terms)}
+    TERM_BASELINE.write_text(json.dumps({"note": current.get("note") or TERM_NOTE,
+                                         "accepted": accepted}, indent=2, sort_keys=True) + "\n")
+    return 0
 
 
 def write_baseline(findings: dict) -> int:
@@ -498,7 +542,7 @@ def write_baseline(findings: dict) -> int:
     return 0
 
 
-def lower_stale(findings: dict, baseline: dict) -> list[str]:
+def lower_stale(findings: dict, baseline: dict, path=None) -> list[str]:
     """Remove from the baseline every accepted entry that is no longer a
     finding, keep every other entry as it is, and add none: what --strict
     names as stale leaves through this tool while other rows are still NEW
@@ -509,11 +553,31 @@ def lower_stale(findings: dict, baseline: dict) -> list[str]:
     stale = sorted(r for r in accepted if r not in findings)
     if stale:
         kept = {r: v for r, v in accepted.items() if r in findings}
-        BASELINE.write_text(json.dumps(dict(baseline, accepted=kept), indent=2, sort_keys=True) + "\n")
+        (path or BASELINE).write_text(json.dumps(dict(baseline, accepted=kept), indent=2, sort_keys=True) + "\n")
     return stale
 
 
-def summary_line(findings: dict, premises: dict, baseline: dict) -> str:
+def strict_verdict(findings: dict, accepted: dict, terms: dict, term_accepted: dict):
+    """(lines, rc) of --strict: a finding of a bare variable or of a term not
+    in its baseline, or a baseline entry of either that is no longer one."""
+    lines = []
+    for r in sorted(r for r in findings if r not in accepted):
+        lines.append(f"premise_audit: NEW unestablished premise {r} ({findings[r]['class']}): "
+                     f"assumed by {', '.join(t for t, _ in findings[r]['theorems'][:3])}")
+    for r in sorted(r for r in accepted if r not in findings):
+        lines.append(f"premise_audit: baseline entry {r} is no longer a finding: remove it "
+                     "(the baseline only shrinks)")
+    for r in sorted(r for r in terms if r not in term_accepted):
+        lines.append(f"premise_audit: NEW unestablished premise of a term {r} ({terms[r]['class']}): "
+                     f"assumed by {', '.join(t for t, _ in terms[r]['theorems'][:3])}")
+    for r in sorted(r for r in term_accepted if r not in terms):
+        lines.append(f"premise_audit: term baseline entry {r} is no longer a finding: remove it "
+                     "(--lower-stale; the baseline only shrinks)")
+    return lines, (1 if lines else 0)
+
+
+def summary_line(findings: dict, premises: dict, baseline: dict,
+                 terms: dict | None = None, term_baseline: dict | None = None) -> str:
     counts = collections.Counter(row["class"] for row in findings.values())
     theorems = sum(len(row["theorems"]) for row in findings.values())
     return (f"premise_audit: {len(premises)} premises at hosted entries, "
@@ -522,7 +586,10 @@ def summary_line(findings: dict, premises: dict, baseline: dict) -> str:
             f"{counts[OFF_HOST]} established off the host path; "
             f"{sum(1 for row in premises.values() if row['class'] == GUARD)} established "
             f"by a checked guard only; "
-            f"baseline {len(baseline.get('accepted', {}))}")
+            f"baseline {len(baseline.get('accepted', {}))}"
+            + ("" if terms is None else
+               f"; {len(terms)} more assumed only of a term, term baseline "
+               f"{len((term_baseline or {}).get('accepted', {}))}"))
 
 
 def markdown(findings: dict, premises: dict) -> str:
@@ -549,6 +616,8 @@ def main(argv=None) -> int:
                         help="exit non-zero on a finding not in the baseline, or a baseline entry that is no longer one")
     parser.add_argument("--baseline", action="store_true",
                         help="rewrite planning/premise-baseline.json from this run")
+    parser.add_argument("--baseline-terms", action="store_true",
+                        help="write planning/premise-term-baseline.json (the term premises) through the ratchet")
     parser.add_argument("--lower-stale", action="store_true",
                         help="drop the baseline entries that are no longer findings; add none")
     parser.add_argument("--markdown", action="store_true", help="the evidence record's table")
@@ -580,6 +649,14 @@ def main(argv=None) -> int:
     premises = audit.premises(all_arguments=arguments.all)
     findings = audit.findings(all_arguments=arguments.all)
     baseline = load_baseline()
+    terms = audit.term_findings()
+    term_baseline = load_baseline(TERM_BASELINE)
+
+    if arguments.baseline_terms:
+        if write_term_baseline(terms):
+            return 1
+        print(f"premise_audit: term baseline written, {len(terms)} entries")
+        return 0
 
     if arguments.lower_stale:
         removed = lower_stale(findings, baseline)
@@ -587,6 +664,12 @@ def main(argv=None) -> int:
             print(f"premise_audit: removed stale baseline entry {r}")
         print(f"premise_audit: {len(removed)} stale entr{'y' if len(removed) == 1 else 'ies'} removed, "
               f"{len(baseline.get('accepted', {})) - len(removed)} kept")
+        if TERM_BASELINE.exists():
+            gone = lower_stale(terms, term_baseline, TERM_BASELINE)
+            for r in gone:
+                print(f"premise_audit: removed stale term baseline entry {r}")
+            print(f"premise_audit: {len(gone)} stale term entr{'y' if len(gone) == 1 else 'ies'} removed, "
+                  f"{len(term_baseline.get('accepted', {})) - len(gone)} kept")
         return 0
     if arguments.baseline:
         if write_baseline(findings):
@@ -605,10 +688,10 @@ def main(argv=None) -> int:
         print(markdown(findings, premises))
         return 0
 
-    line = summary_line(findings, premises, baseline)
+    line = summary_line(findings, premises, baseline,
+                        None if arguments.all else terms, term_baseline)
+    term_accepted = term_baseline.get("accepted", {})
     accepted = baseline.get("accepted", {})
-    new = sorted(r for r in findings if r not in accepted)
-    stale = sorted(r for r in accepted if r not in findings)
     if arguments.summary:
         print(line)
     else:
@@ -622,15 +705,19 @@ def main(argv=None) -> int:
                 print(f"    {t}: held by the checked guard of {s}")
             for t in row["unhosted_establishments"]:
                 print(f"    established (unhosted) by {t}")
+        if not arguments.all:
+            for r in sorted(terms, key=lambda k: (terms[k]["class"], k)):
+                mark = "" if r in term_accepted else "  NEW"
+                print(f"{r}: {terms[r]['class']}, assumed only of a term{mark}")
+                for t, b in terms[r]["theorems"]:
+                    print(f"    {t} ({b})")
         print(line)
     if arguments.strict:
-        for r in new:
-            print(f"premise_audit: NEW unestablished premise {r} ({findings[r]['class']}): "
-                  f"assumed by {', '.join(t for t, _ in findings[r]['theorems'][:3])}")
-        for r in stale:
-            print(f"premise_audit: baseline entry {r} is no longer a finding: remove it "
-                  "(the baseline only shrinks)")
-        return 1 if new or stale else 0
+        lines, rc = strict_verdict(findings, accepted, {} if arguments.all else terms,
+                                   {} if arguments.all else term_accepted)
+        for text in lines:
+            print(text)
+        return rc
     return 0
 
 

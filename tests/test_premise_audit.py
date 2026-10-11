@@ -294,5 +294,89 @@ class LowerStale(unittest.TestCase):
             self.assertFalse(path.exists())
 
 
+class TermPremises(unittest.TestCase):
+    """The Fungus case (10-11): fn-lgo-rows-history-within assumed of
+    (nthcdr k rows) by L2-4, L2-5 and L2H-2 at a hosted entry and never
+    concluded was invisible to --strict, which counted bare variables only."""
+    forms = {
+        # The case as stated (books/store-log-open-scan.lisp:941): ALLOW is a
+        # variable argument, so with every argument read it is a bare finding.
+        "l2-4": ("books/store-log-open-scan.lisp",
+                 "(defthm l2-4 (implies (fn-lgo-rows-history-within (nthcdr k rows) allow)"
+                 " (equal (fn-serve rows) :ok)))"),
+        # The same shape with no variable argument: a term finding only.
+        "l2-term": ("books/store-log-open-scan.lisp",
+                    "(defthm l2-term (implies (fn-lgo-rows-within (nthcdr k rows))"
+                    " (equal (fn-serve rows) :ok)))"),
+        "fn-inv-serve": ("books/a.lisp", "(defthm fn-inv-serve (implies (fn-inv s) (equal (fn-serve s) :ok)))"),
+    }
+
+    def audit(self, extra=None):
+        graph = StubGraph()
+        graph.book_defs = dict(graph.book_defs, **{"fn-lgo-rows-history-within": 1,
+                                                   "fn-lgo-rows-within": 1, "nthcdr": 1})
+        forms = dict(self.forms, **(extra or {}))
+        original = (reach_check.theorem_forms, reach_check.record_definitions,
+                    reach_check.Subject.hosted)
+        reach_check.theorem_forms = lambda paths: dict(forms)
+        reach_check.record_definitions = lambda paths: {}
+        reach_check.Subject.hosted = lambda self, graph: bool(set(self.functions) & graph.reachable)
+        try:
+            return premise_audit.Audit(graph)
+        finally:
+            (reach_check.theorem_forms, reach_check.record_definitions,
+             reach_check.Subject.hosted) = original
+
+    def test_the_stated_case_is_now_a_bare_finding(self):
+        findings = self.audit().findings()
+        self.assertEqual(findings["fn-lgo-rows-history-within"]["theorems"],
+                         [("l2-4", "books/store-log-open-scan.lisp")])
+
+    def test_a_term_premise_is_a_term_finding_not_a_bare_one(self):
+        audit = self.audit()
+        self.assertNotIn("fn-lgo-rows-within", audit.findings())
+        terms = audit.term_findings()
+        self.assertEqual(list(terms), ["fn-lgo-rows-within"])
+        self.assertEqual(terms["fn-lgo-rows-within"]["class"], premise_audit.NEVER)
+
+    def test_strict_refuses_a_new_term_premise_and_a_stale_term_entry(self):
+        audit = self.audit()
+        findings, terms = audit.findings(), audit.term_findings()
+        accepted = dict.fromkeys(findings, "x")
+        lines, rc = premise_audit.strict_verdict(findings, accepted, terms, {})
+        self.assertEqual(rc, 1)
+        self.assertIn("NEW unestablished premise of a term fn-lgo-rows-within", lines[0])
+        lines, rc = premise_audit.strict_verdict(findings, accepted, terms, {"fn-lgo-rows-within": "x"})
+        self.assertEqual((lines, rc), ([], 0))
+        # established at the host: the entry is stale, and strict says so
+        opened = self.audit({"l-open": ("books/store-log-open-scan.lisp",
+                                        "(defthm l-open (fn-lgo-rows-within (fn-open x)))")})
+        self.assertEqual(opened.term_findings(), {})
+        lines, rc = premise_audit.strict_verdict(opened.findings(), accepted, opened.term_findings(),
+                                                 {"fn-lgo-rows-within": "x"})
+        self.assertEqual(rc, 1)
+        self.assertIn("term baseline entry fn-lgo-rows-within is no longer a finding", lines[0])
+
+    def test_term_baseline_captures_once_then_only_shrinks(self):
+        import json
+        import tempfile
+        terms = self.audit().term_findings()
+        with tempfile.TemporaryDirectory() as d:
+            path = pathlib.Path(d) / "premise-term-baseline.json"
+            original = premise_audit.TERM_BASELINE
+            premise_audit.TERM_BASELINE = path
+            try:
+                self.assertEqual(premise_audit.write_term_baseline(terms), 0)   # initial capture
+                self.assertEqual(list(json.loads(path.read_text())["accepted"]),
+                                 ["fn-lgo-rows-within"])
+                grown = dict(terms, **{"fn-other-term": {"class": premise_audit.NEVER}})
+                self.assertEqual(premise_audit.write_term_baseline(grown), 1)   # refused: it only shrinks
+                removed = premise_audit.lower_stale({}, json.loads(path.read_text()), path)
+                self.assertEqual(removed, ["fn-lgo-rows-within"])
+                self.assertEqual(json.loads(path.read_text())["accepted"], {})
+            finally:
+                premise_audit.TERM_BASELINE = original
+
+
 if __name__ == "__main__":
     unittest.main()
