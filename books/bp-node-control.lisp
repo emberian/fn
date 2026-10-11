@@ -14,7 +14,7 @@
   *fn-ncfg-max-octets*)
 
 (defun fn-bpnc-startup (config-octets store-octets)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (fn-cbor-octet-listp config-octets) (fn-cbor-octet-listp store-octets))))
   (let* ((loaded (fn-native-config-load config-octets))
          (config (fn-ncfg-nth 1 loaded))
          (root (fn-native-config-store config))

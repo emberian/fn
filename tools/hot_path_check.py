@@ -27,8 +27,8 @@ What "the executed path" means here:
     counterpart's guard check performs at the host boundary (fn-sn-statep
     of the live Store for the owner's served entries) is never on the
     path this tool traverses.  That walk is accounted by the raw-dispatch
-    list instead: an entry declared `:raw-with` (D40; planning/
-    interfaces.json `raw_dispatched`) runs its guard-verified definition
+    list instead: an entry declared `:raw-with` (D40; the box step's
+    the interface registry's `raw_dispatched`) runs its guard-verified definition
     and skips it; every other guard-verified host entry still pays it once
     per call.  Do not read a silent report here as "no boundary walk".
   * A constrained function runs its `defattach` (edges from
@@ -46,6 +46,8 @@ replay folds.  Each find is classified:
                   checkpoint, install, pack or compaction (the name rule in
                   the dimensions file);
   resumable       the dimensions file names the work quantum that bounds it;
+  bounded         its dimension has a profile bound in the dimensions file
+                  (`bounds`: J, the profile's max-jobs term);
   output-proportional
                   the walked value grows only in K;
   unexpected      retained-state work on a served entry;
@@ -97,7 +99,7 @@ Sym = ledger.Sym
 head = ledger.head
 E: frozenset = frozenset()
 DIMENSIONS = ("N", "F", "J", "K", "B")
-CLASSES = ("unexpected", "cold", "resumable", "output-proportional", "unresolved",
+CLASSES = ("unexpected", "cold", "resumable", "bounded", "output-proportional", "unresolved",
            "uncalled")
 
 # ---------------------------------------------------------------------------
@@ -953,6 +955,7 @@ def analyze(root: Path = ROOT, dimensions_path: Path | None = None) -> Analysis:
     uncalled = uncalled_hosts(root, definitions)
     resumable = {key: reason for key, reason in dims.get("resumable", {}).items()
                  if key != "note"}
+    bounds = {key: bound for key, bound in dims.get("bounds", {}).items() if key != "note"}
 
     finds: dict[str, Find] = {}
     unresolved: list = []
@@ -991,6 +994,9 @@ def analyze(root: Path = ROOT, dimensions_path: Path | None = None) -> Analysis:
         if find.key in resumable or find.function in resumable:
             find.klass = "resumable"
             find.bound = resumable.get(find.key) or resumable.get(find.function)
+        elif find.dimension in bounds:
+            find.klass = "bounded"
+            find.bound = bounds[find.dimension]
         elif find.dimension == "K":
             find.klass = "output-proportional"
         elif find.entries and all(host in uncalled for host in find.entries):
@@ -1224,7 +1230,7 @@ def main(argv=None) -> int:
         description=__doc__.splitlines()[0],
         epilog="A host entry's OWN guard (the *1* counterpart's check at the host "
                "boundary) is not modelled here; the raw-dispatch list (D40, "
-               "planning/interfaces.json raw_dispatched) accounts for that walk.")
+               "the interface registry's raw_dispatched) accounts for that walk.")
     parser.add_argument("--report", action="store_true",
                         help="every find, grouped by host entry, with its path")
     parser.add_argument("--summary", action="store_true",

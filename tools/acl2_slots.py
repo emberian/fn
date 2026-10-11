@@ -75,6 +75,22 @@ def heap_cap_user_args() -> str | None:
     return f"--dynamic-space-size {megabytes}" if megabytes > 0 else None
 
 
+# ACL2's own figure: the saved_acl2 launcher names `--dynamic-space-size 32000`
+# (tools/build_native_host.sh refuses an image launcher that does not).
+ACL2_SAVE_EXEC_HEAP_MB = 32000
+
+
+def own_heap_user_args() -> str:
+    """The heap of an ACL2 this project runs as its own tool (a proof, the
+    native harness's session): the pool's cap where one applies, else ACL2's
+    save-exec figure.  Never a node's decided heap: an fn image's launcher
+    decides a store-less command's heap as a node's (1,024 MB), which a
+    tool's ACL2 holding a 10 MiB literal exhausts
+    (BRIDGE-SESSION-STORELESS-HEAP); a caller's SBCL_USER_ARGS that names a
+    heap is its own figure and wins there (packaging/launcher-decide.sh)."""
+    return heap_cap_user_args() or f"--dynamic-space-size {ACL2_SAVE_EXEC_HEAP_MB}"
+
+
 def apply_heap_cap(environment: dict) -> dict:
     """Add the heap cap to an ACL2 child's environment unless one is set."""
     cap = heap_cap_user_args()

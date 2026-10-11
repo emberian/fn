@@ -1214,7 +1214,82 @@ def raw_arity_findings(root: Path) -> tuple[list[dict], dict]:
             continue
         if len(lengths) == 1:
             arity[name] = lengths.pop()
-    return raw_arity_scan(sources, set(tree.functions) | set(seen), arity)
+    findings, counts = raw_arity_scan(sources, set(tree.functions) | set(seen), arity)
+    mock_findings, mock_counts = harness_mock_arity_findings(root)
+    counts.update(mock_counts)
+    return sorted(findings + mock_findings, key=lambda row: row["where"]), counts
+
+
+# A raw harness that LOADS a host file (`(load "host/...")', HOST_LOAD) and
+# defines, in its own text, a function that host file calls but does not
+# define is a mock of that function: the host's calls run against the mock's
+# lambda list.  When the host's call changes and the mock does not, the call
+# signals at run time and nothing static said so (WEB-RAW-HARNESS-DRIFT:
+# 24281d120 added CLASS to fnn-owner-cold-poll, web-host.lisp passed five
+# arguments to tests/native_web_reactor_raw-mock.lisp's four-argument mock,
+# and four harnesses stopped running unseen).  raw_arity_scan reads only the
+# host's own raw files; this reads each harness against the host files it loads.
+def harness_mock_arity_scan(harnesses: dict[str, list], hosts: dict[str, list],
+                            loads: dict[str, list[str]]) -> tuple[list[dict], dict]:
+    """HARNESSES and HOSTS: relative path -> [(form, line)]; LOADS: harness ->
+    the host files it loads.  A finding per host application of a mocked name
+    whose argument count the mock's lambda list does not admit."""
+    findings: list[dict] = []
+    counts = {"harness_mocks": 0, "harness_mock_applications": 0}
+    host_defined_cache: dict[str, set] = {}
+    for relative, forms in sorted(harnesses.items()):
+        loaded = [h for h in loads.get(relative, []) if h in hosts]
+        if not loaded:
+            continue
+        mocks, _ambiguous = raw_definitions({relative: forms})
+        for host in loaded:
+            if host not in host_defined_cache:
+                host_defined_cache[host] = set(raw_definitions({host: hosts[host]})[0])
+            mocked = {name: row for name, row in mocks.items()
+                      if name not in host_defined_cache[host]}
+            counts["harness_mocks"] += len(mocked)
+            for form, line in hosts[host]:
+                applications: list = []
+                raw_applications(form, applications)
+                for name, count in applications:
+                    if count is None or name not in mocked:
+                        continue
+                    low, high, where = mocked[name]
+                    counts["harness_mock_applications"] += 1
+                    if count < low or (high is not None and count > high):
+                        wanted = (str(low) if high == low else
+                                  "{} to {}".format(low, high) if high is not None
+                                  else "at least {}".format(low))
+                        findings.append({
+                            "lint": "raw-arity",
+                            "where": where,
+                            "callee": name,
+                            "defined": where,
+                            "problem": "the harness mocks it taking {}, and the form at {}:{} "
+                                       "(a file it loads) calls it with {} argument{}".format(
+                                           wanted, host, line, count,
+                                           "" if count == 1 else "s"),
+                        })
+    return findings, counts
+
+
+def harness_mock_arity_findings(root: Path) -> tuple[list[dict], dict]:
+    from tools import ledger
+
+    harnesses: dict[str, list] = {}
+    loads: dict[str, list[str]] = {}
+    for path in sorted((root / "tests").glob("*.lisp")):
+        text = path.read_text(encoding="utf-8", errors="replace")
+        targets = HOST_LOAD.findall(text)
+        if not targets:
+            continue
+        relative = str(path.relative_to(root))
+        harnesses[relative] = ledger.Reader(text).top_level()
+        loads[relative] = targets
+    hosts = {target: ledger.Reader((root / target).read_text(encoding="utf-8")).top_level()
+             for target in sorted({t for ts in loads.values() for t in ts})
+             if (root / target).is_file()}
+    return harness_mock_arity_scan(harnesses, hosts, loads)
 
 
 # --------------------------------------------------------------------------
@@ -1982,7 +2057,7 @@ def harness_scan(relative: str, text: str, rawdefs: dict, bodies: dict,
     # signal and turned two harnesses red, facef3839).
     # `(load "host/x.lisp")', and the overridable default
     # `(load (or (sb-ext:posix-getenv "FN_WEB_REACTOR_SOURCE") "host/native/web-host.lisp"))'
-    # (tests/native_web_reactor_raw-mock.lisp, which seven web harnesses load).
+    # (tests/native_web_reactor_raw-mock.lisp, which native_web_page_cursor_raw loads, and through it the article stream and producer harnesses).
     loaded_hosts = {target for source in sources.values()
                     for target in HOST_LOAD.findall(source)}
     provided = {name for name, (_formals, origin) in origins.items() if origin in loaded_hosts}

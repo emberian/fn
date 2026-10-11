@@ -1,11 +1,6 @@
 {
  "about": "Existing critical keystones that lack the evidence package, each owned by a claimed item (tools/keystone_critical.py --claim-owed). Shrink-only: --lower-stale removes obsolete rows; --lower-complete removes only rows whose full package passes with current-closure certification. New or changed critical keystones cannot be owed.",
  "items": {
-  "fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths": {
-   "class": "authorization",
-   "item": "PRF-1344",
-   "book": "books/accounts.lisp"
-  },
   "fn-acct-bound-row-succeeds": {
    "class": "authorization",
    "item": "PRF-1344",
@@ -950,11 +945,6 @@
    "class": "authorization",
    "item": "PRF-1344",
    "book": "books/bp-fnbs-forward-publication.lisp"
-  },
-  "fn-bpnp-rotate-step-proposes-only-own-projection": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/bp-node-rotation.lisp"
   },
   "fn-bpnp-step-rotate-is-rotate-step": {
    "class": "durability",
@@ -2106,26 +2096,6 @@
    "item": "PRF-1350",
    "book": "books/store-capacity-vector.lisp"
   },
-  "fn-cvec-article-refusal-word-names-the-memberships": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
-  "fn-cvec-article-verdict-keeps-the-vector": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
-  "fn-cvec-article-verdict-keeps-the-vector-at-producer-width": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
-  "fn-cvec-article-verdict-keeps-the-vector-for-a-held-row": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
   "fn-cvec-config-publication-keeps-the-release-generation": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -2136,20 +2106,10 @@
    "item": "PRF-1350",
    "book": "books/store-capacity-vector.lisp"
   },
-  "fn-cvec-held-row-within-its-figure": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
   "fn-cvec-native-admin-authorize-refuses-exactly-past-the-group-name-bound": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/store-capacity-config.lisp"
-  },
-  "fn-cvec-prepare-keeps-the-vector": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
   },
   "fn-cvec-record-keeps-the-vector": {
    "class": "resource-reservation",
@@ -2192,11 +2152,6 @@
    "book": "books/store-capacity-vector.lisp"
   },
   "fn-cvec-statement-admission-keeps-the-vector": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-capacity-vector.lisp"
-  },
-  "fn-cvec-statement-row-within-its-figure": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/store-capacity-vector.lisp"
@@ -2466,11 +2421,6 @@
    "item": "PRF-1350",
    "book": "books/heap-breakdown.lisp"
   },
-  "fn-heap-decide-admits-every-store-the-profile-admits": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-figure.lisp"
-  },
   "fn-heap-decide-refuses-exactly-past-the-machine": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -2631,22 +2581,7 @@
    "item": "PRF-1350",
    "book": "books/heap-reservation.lisp"
   },
-  "fn-heap-store-figure-holds-every-store": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-store-figure.lisp"
-  },
-  "fn-heap-store-figure-holds-every-store-at-the-open-trigger": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-open-nursery.lisp"
-  },
   "fn-heap-store-figure-observed-is-at-most-unobserved": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/heap-store-figure.lisp"
-  },
-  "fn-heap-store-history-holds-payload-and-memberships": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/heap-store-figure.lisp"
@@ -3171,11 +3106,6 @@
    "item": "PRF-1349",
    "book": "books/store-log-buffer.lisp"
   },
-  "fn-lgb-decide-is-decide": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/store-log-buffer.lisp"
-  },
   "fn-lgb-decide-is-flat": {
    "class": "parser-boundary",
    "item": "PRF-1349",
@@ -3200,11 +3130,6 @@
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-walk-once.lisp"
-  },
-  "fn-lgb-entry-places-is-list-places": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/store-log-buffer.lisp"
   },
   "fn-lgc-extend-program-keeps-the-relation": {
    "class": "durability",
@@ -3447,16 +3372,6 @@
    "book": "books/store-log-walk-once.lisp"
   },
   "fn-lgw-run-of-set-next-is-run-nf": {
-   "class": "durability",
-   "item": "PRF-1345",
-   "book": "books/store-log-walk-once.lisp"
-  },
-  "fn-lgw-step-buf-is-step": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/store-log-buffer.lisp"
-  },
-  "fn-lgw-step-buf-nf-is-step-nf": {
    "class": "durability",
    "item": "PRF-1345",
    "book": "books/store-log-walk-once.lisp"
@@ -5636,11 +5551,6 @@
    "item": "PRF-1348",
    "book": "books/reclaim-chunked-walk.lisp"
   },
-  "fn-rcw-finish-of-step": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/reclaim-chunked-walk.lisp"
-  },
   "fn-rdc-reset-is-served-open": {
    "class": "extraction",
    "item": "PRF-1346",
@@ -6196,26 +6106,6 @@
    "item": "PRF-1350",
    "book": "books/store-budget-article.lisp"
   },
-  "fn-sbud-article-gate-figure-bounds-every-record": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
-  "fn-sbud-article-verdict-keeps-history": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
-  "fn-sbud-article-verdict-keeps-history-at-producer-width": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
-  "fn-sbud-article-verdict-keeps-history-for-every-record": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
   "fn-sbud-budget-is-the-profile-admissibility": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -6286,16 +6176,6 @@
    "item": "PRF-1350",
    "book": "books/owner-store-budget.lisp"
   },
-  "fn-sbud-prepare-under-article-budget-keeps-history": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
-  "fn-sbud-prepare-under-article-budget-keeps-history-at-producer-width": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget-article.lisp"
-  },
   "fn-sbud-record-octets-is-the-stored-octets": {
    "class": "resource-reservation",
    "item": "PRF-1350",
@@ -6306,20 +6186,10 @@
    "item": "PRF-1350",
    "book": "books/store-budget.lisp"
   },
-  "fn-sbud-record-octets-pays-the-memberships": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget.lisp"
-  },
   "fn-sbud-refusal-kind-at-budget-is-unaffordable": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/owner-store-budget.lisp"
-  },
-  "fn-sbud-row-octets-pays-its-memberships": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-budget.lisp"
   },
   "fn-sbud-used-names-the-transaction-namespace": {
    "class": "resource-reservation",
@@ -6667,16 +6537,6 @@
    "book": "books/store-maintenance-reserve.lisp"
   },
   "fn-smr-admitted-profile-starts-reserved": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-maintenance-reserve.lisp"
-  },
-  "fn-smr-article-verdict-keeps-the-reserve": {
-   "class": "resource-reservation",
-   "item": "PRF-1350",
-   "book": "books/store-maintenance-reserve.lisp"
-  },
-  "fn-smr-prepare-keeps-the-reserve": {
    "class": "resource-reservation",
    "item": "PRF-1350",
    "book": "books/store-maintenance-reserve.lisp"

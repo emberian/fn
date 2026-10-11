@@ -1,0 +1,13 @@
+# The host functions fn-core keeps compiled at (debug 1), as NAME FILE (EXTRACTION-PROGRAM-20261007.md item 8
+# and the two backtrace readers).  Everything else in the product is compiled at (debug 0).  ONE place:
+# core-main.lisp recompiles these from FILE after the host loads; debug_keep.py (core.sh, tests) refuses a core
+# in which any of them lacks block debug-info or is inlined or absent.
+fnn-durable-barrier host/native/io.lisp
+fnn-log-fdatasync host/native/io.lisp
+fnn-checkpoint-write-steps host/native/io.lisp
+fnn-checkpoint-write-arena-steps host/native/io.lisp
+fnn-state-checkpoint-publish-steps host/native/io.lisp
+fnn-state-checkpoint-install host/native/io.lisp
+fnn-owner-publish-captured host/native/owner.lisp
+fnn-stack-exhaustion-report host/native/io.lisp
+fnn-owner-shared-action-locked host/native/owner.lisp

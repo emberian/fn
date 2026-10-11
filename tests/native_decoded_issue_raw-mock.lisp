@@ -15,14 +15,14 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
-(defun fnn-cold-queue-locked ()
-  (harness-stub-reached 'fnn-cold-queue-locked "host/native/owner.lisp"))
-(defun fnn-owner-cold-issue-now (service cid entry)
-  (declare (ignorable service cid entry))
-  (harness-stub-reached 'fnn-owner-cold-issue-now "host/native/owner.lisp"))
+(defun fnn-extent-pool-funded-p ()
+  (harness-stub-reached 'fnn-extent-pool-funded-p "host/native/extent.lisp"))
 (defun fnn-owner-cold-wait-arrive (cid force)
   (declare (ignorable cid force))
   (harness-stub-reached 'fnn-owner-cold-wait-arrive "host/native/owner.lisp"))
+(defun fnn-owner-cold-window-result-locked (service read)
+  (declare (ignorable service read))
+  (harness-stub-reached 'fnn-owner-cold-window-result-locked "host/native/owner.lisp"))
 ;;; ---- derived stubs: END ----
 (load-deployed-forms "host/native/extent.lisp"
  '((defmacro fnn-extent-native-observe) (defvar *fnn-cold-free*) (defvar *fnn-cold-stopping*)
@@ -74,11 +74,23 @@
    (defstruct (fnn-output-dependency (:constructor %make-fnn-output-dependency)))
    (defstruct (fnn-output-grant (:constructor %make-fnn-output-grant)))
    (defun fnn-owner-cold-enqueue-locked) (defun fnn-owner-cold-remove-locked)
-   (defun fnn-owner-output-dependency) (defun fnn-owner-cold-issue-locked)))
+   (defun fnn-owner-output-dependency) (defun fnn-owner-cold-issue-locked)
+   (defun fnn-owner-cold-issue-now)
+   (defvar *fnn-cold-queue*) (defun fnn-cold-queue-locked)))
+;; ACL2's len, which fn-cwq-waiting calls.
+(defun len (x) (if (consp x) (1+ (len (cdr x))) 0))
+;; The cold-wait queue is ACL2's value (books/cold-read-wait.lisp); the owner
+;; asks it whether anyone waits before issuing.
+(load-deployed-forms "books/cold-read-wait.lisp"
+ '((defun fn-cwq-new) (defun fn-cwq-waiting)))
 (defvar *fnn-response-capture* nil)
 (defvar *fnn-output-grant* nil)
 (defun fnn-core (subject &rest args)
-  (assert (equal args '(:descriptor)))
+  (case subject
+    (fn-cwq-new (assert (null args)) (fn-cwq-new))
+    (fn-cwq-waiting (apply #'fn-cwq-waiting args))
+    (otherwise (assert (equal args '(:descriptor))) (fnn-core-descriptor subject))))
+(defun fnn-core-descriptor (subject)
   (case subject
     (fn-owner-page-window-discovery-kind :decoded-window)
     (fn-owner-page-decoded-window-price-status :unpriced-decoded-window)

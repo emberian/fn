@@ -1,0 +1,12 @@
+{
+ "detail": "tests/native_web_reactor_raw-mock.lisp, native_web_page_cursor_raw.lisp, native_web_article_stream_raw.lisp and native_web_article_producer_raw.lisp each end in PASS lines, and only scenarios SCN-1099, 1105, 1108 and 1113 (status specified) cite them; no tests/*.py runs them (test_native_web_terminal and test_native_web_progress run the other two web mocks). Five drifts accumulated between 10-03 and 10-07 (WEB-RAW-HARNESS-DRIFT, repaired by Builder D). The row: a native module (as tests/test_native_web_terminal.py runs its mock: sbcl --noinform --script) that runs the four and requires each PASS line, in the served natives' set, so a drift turns a gate red. Also unrun and red today: tests/native_reconfig_history_raw.lisp ('The assertion (= COUNT 500) failed with COUNT = 0', unchanged with or without this lane), which a sweep of the raw harnesses no native runs should cover.",
+ "file": "tests/native_web_article_producer_raw.lisp",
+ "id": "WEB-RAW-HARNESS-NATIVE",
+ "notes": [],
+ "owner": "builder-C",
+ "severity": "medium",
+ "source": "coordinator ruling 2026-10-09 on WEB-RAW-HARNESS-DRIFT (Builder D)",
+ "state": "open",
+ "title": "no native runs the four web raw harnesses (reactor mock, page cursor, article stream, the shared article producer), so they drifted unseen for six days; a native must run them",
+ "updated": "2026-10-09T22:29:25Z"
+}

@@ -9,10 +9,10 @@
   (fn-bpn-append
    (fn-record-string-octets "bp-status:")
    (fn-bpn-append
-    (fn-record-string-octets (fn-prov-nat-string (fn-bpn-nth 1 record)))
+    (fn-record-string-octets (fn-decimal-text (fn-bpn-nth 1 record)))
     (cons 58
           (fn-record-string-octets
-           (fn-prov-nat-string (fn-bpn-nth 2 record)))))))
+           (fn-decimal-text (fn-bpn-nth 2 record)))))))
 
 (defun fn-bpn-report-outbox-view (held)
   (declare (xargs :guard t))

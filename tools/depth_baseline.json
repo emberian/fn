@@ -53,7 +53,6 @@
   "fn-cp-fields-encode": "kinds is the same fixed 9-field cursor grammar as fn-cp-read-fields",
   "fn-cp-read-fields": "kinds is always the fixed 9-field cursor grammar '(:id :id :id :id :id :uint :uint :uint :uint)",
   "fn-cpt-ins": "walks the withdrawals-by-version trie root to leaf: depth = the trie height, log n of the largest row number filed at the version (n the catalog count), never n itself",
-  "fn-cpt-walk": "non-tail only into the LOW subtree: recursion depth = the trie height, log n of the largest row number (n the catalog count); the high subtree is the accumulator argument",
   "fn-cu-first": "walks n, always called with (fn-cu-batch-entries) = 4 (the entries one XFNCATCHUP batch examines), never store data",
   "fn-cu-hex": "hex-encodes a fixed 8-octet u64 or 32-octet chain digest",
   "fn-cu-render-lines": "walks the selected catch-up batch; capped by *fn-cu-max-quantum*",
@@ -114,7 +113,6 @@
   "fn-ns-append": "walks 'a'; only fixed HMAC pad blocks (64 octets) or short magic/length fields",
   "fn-ns-take": "n comes from a 16-bit length field (u16), capped at 65535; node-secret file",
   "fn-ockp-len-acc": "the (cdr x) call is in tail position; the non-tail one descends into (car x): depth is one checkpoint row tree's car-nesting (a fixed row shape; lane depth-debt read it)",
-  "fn-oct-word-octets": "k is a small fixed word width encoding a numeric field",
   "fn-olog-downcase-octets": "walks a Lisp symbol's short fixed name text, never traffic data",
   "fn-olog-join": "walks a fixed small field list (5-7 items) building one log line",
   "fn-olog-visible-aux": "n is *fn-olog-max-field-octets*, a fixed logging-fuel constant",
@@ -200,24 +198,22 @@
   "fn-zin-go-bindings": ":program macro-expansion helper of fn-zin-go: walks the literal field writes written in one fn-zin-go form (a fixed shape, expanded at compile time)",
   "fn-was-put": "walks the scan record's fixed alist: at most 19 keys (fn-was-start, fn-wov-start, fn-wls-start), a fixed shape",
   "fn-wov-rows": "walks the OVER rows, at most *fn-wss-window* (fn-wov-octet marks :invalid rather than keep another row)",
-  "fn-wps-subject-prefix": "walks at most FUEL octets; its only caller passes 46 (one 45-octet RFC 2047 chunk plus one)"
+  "fn-wps-subject-prefix": "walks at most FUEL octets; its only caller passes 46 (one 45-octet RFC 2047 chunk plus one)",
+  "fn-pat-digits-rev": "walks the decimal digits of one number (log10 n, at most 20 for a u64 day, year or counter), never a list of data",
+  "fn-pat-zeros": "k is (nfix (- width (len digits))) for fn-pat-padded, whose only callers pass the literal width 2 or 4 (the date fields of fn-pat-date-text), so k <= 4",
+  "fn-pfp-fields": "walks a flight policy, which fn-pfp-write admits only when fn-pfr-policy-p holds (books/peer-flight-reservation.lisp: a true-list of length 6), depth <= 6",
+  "fn-pfp-take": "n is the literal 4 (the prefix, fn-pfp-read) or 8 (one u64 field, fn-pfp-values), depth <= 8",
+  "fn-pfp-values": "n is the literal 6 at its only caller fn-pfp-read, the six u64 fields of a flight policy (fn-pfr-policy-p demands len 6), depth <= 6",
+  "fn-sdg-canon-list": "its (cdr x) recursion is a tail call; the non-tail call descends into (car x) through fn-sdg-canon-rev, so the depth is the value's car-nesting depth (a stored row's fixed shape), not a list's length"
  },
  "debt": {},
  "append": {
   "_doc": "tools/depth_check.py's data-sized append rule (lane depth-debt-2): an `append' whose first argument is not a literal, a constant or a (list ...), in a function on the host-called closure whose guards are not verified (so the host's *1* call runs binary-append's recursion, one frame per element of that argument). bounded names the bound as the recursions' entries do; debt only shrinks (verify the function's guards).",
   "bounded": {
    "fn-aj-record-name-chars": "the first argument is a number's decimal digits (fn-bs-txn-digits: 20 digits, fixed width)",
-   "fn-bpnf-stored-record-values": "the first argument is a fixed record of 11 fields (base), never a list of data",
    "fn-bpaj-ref-metadata": "the first argument is the fixed fields of a request head (fn-bpaj-head-read), a fixed shape",
-   "fn-was-start": "the first argument is the session login, at most 64 octets (fn-wss-loginp: fn-wss-argp x 64)",
-   "fn-was-octet": "each first argument is a status/header prefix or field name kept below 17 octets (the (< (len ...) 17) tests in its body), or the login pattern tail, at most 66 octets (64-octet login, fn-wss-loginp, plus < and @)",
-   "fn-wgl-feed": "the first argument is (take 11 next): the LIST row parser's fixed 11 scalar fields",
-   "fn-wls-octet": "the first argument is the status prefix, kept below 17 octets (the (< (len prefix) 17) test in its body)",
-   "fn-wov-octet": "each first argument is the status prefix (below 17 octets) or the row's column spans, at most 4 (appended only while field < 4)",
-   "fn-wpc-window-next": "the first argument is one LIST ACTIVE row's segment plan (fn-wgl-segs: fn-wr-group-row-segments of one row), a fixed shape",
-   "fn-wpf-step": "the first argument is the decoded form values, at most 4 (csrf, g, subject, body: index < 3 before the append)",
-   "fn-wps-header-cursor": "each first argument is a fixed header word or the From field (64-octet login, fn-wss-loginp; domain at most *fn-ncfg-max-text* = 256) or the group (fn-wss-groupp: 497 octets)",
-   "fn-wps-next": "each first argument is a fixed RFC 2047 delimiter, CR LF, or the base64 of at most 45 subject octets (fn-wss-utf8-take ... 45): one encoded word of at most 75 octets"
+   "fn-bpnf-stored-record-values": "the first argument is a fixed record of 11 fields (base), never a list of data",
+   "fn-frb-site-decode": "the first argument is the result of fn-frb-control-decode-with, the six-element tuple (list reasoned request admin moderation topic consumer) built at the end of that function (books/native-control-buffer.lisp), a fixed shape, never a list of data"
   },
   "debt": {}
  },
@@ -493,7 +489,6 @@
   "fn-owner-feed-dial-open": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
   "fn-owner-feed-has-queued": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
   "fn-owner-feed-host": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
-  "fn-owner-feed-journal-scan": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
   "fn-owner-feed-lost": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
   "fn-owner-feed-port": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
   "fn-owner-feed-reconcile-apply": "owner: a :program host entry the K2 2b burn-down makes :logic + guard-verified by subsystem (baselined 2026-09-29, lane depth-debt-3; host/owner-host.lisp)",
@@ -718,7 +713,8 @@
   "fn-owner-orc-ctx": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
   "fn-owner-orc-decide": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
   "fn-owner-orc-finish": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
-  "fn-owner-orc-request": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)"
+  "fn-owner-orc-request": "owner: a :program host entry that arrived with dev 33bb1ada7 (lane online-reclaim; host/owner-host.lisp) after the K2 lint baselined 2026-09-29: K2 2b makes it :logic + guard-verified with its subsystem (listed at the seam by depth-debt-4; the list only shrinks)",
+  "fn-rdv-row-digest": "build: a :program entry by nature (coordinator ruling 2026-10-10 on DEPTH-EXCESS-D): it reads the world through ACL2's own :program accessors (guard, stobjs-in, stobjs-out, getpropc), so it cannot be :logic; its one caller is fnn-install-raw-dispatch (host/native/raw-trap.lisp), at build time, once per raw-declared interface row, with no client data and never on a served path. The condition is checked: \"program_build_time\" names the only host files that may mention it, and depth_check fails on any other mention (books/raw-dispatch-verdict.lisp)"
  },
  "raw": {
   "_doc": "tools/depth_check.py --raw's classification of every non-tail recursion in the raw host code (host/native/*.lisp), with tools/depth_check.py's rules: bounded names its bound (a *constant* the tree defines, a number, or a structural bound); debt only shrinks; operator data is never a bound (D27).  Introduced empty of debt (lane depth-debt, 2026-09-28).",
@@ -739,5 +735,12 @@
    "fnn-tcl-apply": "depth 2: its non-tail call (through fnn-tcl-turn-lost, which applies the tcp-closed result) is under the :refused arm of the passive admission, which runs once per connection because fnn-tclc-session-admitted is set before the admission is asked, so the inner apply skips it"
   },
   "debt": {}
+ },
+ "program_build_time": {
+  "_doc": "A :program entry listed here is safe only off the served path: depth_check refuses any mention of it in a host/ or tools/extract/ file not named in its list (tools/depth_check.py check_build_time).",
+  "fn-rdv-row-digest": [
+   "host/interfaces.lisp",
+   "host/native/raw-trap.lisp"
+  ]
  }
 }

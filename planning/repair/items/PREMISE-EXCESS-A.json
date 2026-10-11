@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Each premise is assumed at a host entry by a theorem introduced after the 2026-10-07 baseline cut (blame of the assuming theorem; the lanes are named in CL24's note) and no host establishment proves it. Close each by a host-path establishment, or retire the host entry that needs it (the contract's collapse list retires many for builder-A). The figure stays red until each is established; no rebase. Premises: adt-tp-seq-lens-ok, fn-act-livep, fn-cado-widthp, fn-cp-escapedp, fn-cpg-tape-ok, fn-cpl-holdsp, fn-cpl-payloadp, fn-crowp, fn-ews-span-effect, fn-his-all-dirty, fn-his-cursors-apart, fn-his-planp, fn-his-put-apart-from-cursors, fn-his-put-apart-from-pending, fn-his-pwp, fn-his-rcp, fn-his-rcs-fitp, fn-hp-events-okp, fn-lgp-relp, fn-nco-at, fn-ocr-invariantp, fn-opub-recordp, fn-orcr-fold-contexts-okp, fn-orcs-fold-rowsp, fn-otm-holdp, fn-rtc-actionp, fn-rtc-actions-okp, fn-rtc-acts-on-p, fn-rtc-buffer-okp, fn-rtc-c-metas-okp, fn-rtc-c-wfp, fn-rtc-compatible-use-p, fn-rtc-compatible-usesp, fn-rtc-completionp, fn-rtc-core-invp, fn-rtc-current-p, fn-rtc-draining-okp, fn-rtc-ends-use-p, fn-rtc-foreign-ws-p, fn-rtc-free-slot, fn-rtc-get, fn-rtc-in-leased-p, fn-rtc-instance-active-p, fn-rtc-invp, fn-rtc-live-p, fn-rtc-mstates-okp, fn-rtc-octets-n-p, fn-rtc-ownerp, fn-rtc-pool-okp, fn-rtc-pool-shapep, fn-rtc-shapep, fn-rtc-slots-okp, fn-rtc-st-cfg-okp, fn-rtc-st-p, fn-rtc-submit-okp, pcki-img, pcko-img",
+ "file": "tools/premise_audit.py",
+ "id": "PREMISE-EXCESS-A",
+ "notes": [],
+ "owner": "builder-A",
+ "severity": "medium",
+ "source": "premise_audit at dev 9b580dd36, Builder D 2026-10-10 under the coordinator's CL24 ruling (a)",
+ "state": "open",
+ "title": "premise_audit: 57 unestablished host premises added since the baseline (runtime contract, storage, owner, checkpoint image, account adoption and control receipts)",
+ "updated": "2026-10-10T03:00:00Z"
+}

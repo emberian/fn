@@ -3,12 +3,13 @@
  "file": "Makefile",
  "id": "MAKE-CHECK-CERT-WORLD-NOT-RUN",
  "notes": [
-  "10-10 Builder D: landed by coordinator ruling (b) on lane d-cert-world-skip@2378c4dc2: check_steps shows a step that exits 2 saying NOT RUN as a capability skip with its reason, never a red; protocol_emit --wire says NOT RUN when the wire-export closure is uncertified; tests/test_cert_world_checks.py is the condition (a tree with the world runs the three steps), for the train's box step."
+  "10-11 00:47 10-11 Builder D: landed by coordinator ruling (b) with lane d-cert-world-skip@2378c4dc2, an ancestor of dev and of lane/fungus-20261010@2705af5f6: check_steps reports a step exiting 2 with NOT RUN as a capability skip with its reason, never a red; protocol_emit --wire says NOT RUN when the wire-export closure is uncertified; tests/test_cert_world_checks.py is the condition (a tree with the world runs the three steps)."
  ],
  "owner": "builder-D",
  "severity": "medium",
+ "sha": "2378c4dc2",
  "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
  "state": "landed",
  "title": "make check on a tree without the certified world: protocol_emit, host_check and system_books report NOT RUN or an uncertified include as a red step",
- "updated": "2026-10-10T02:35:00Z"
+ "updated": "2026-10-11T04:47:53Z"
 }

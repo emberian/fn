@@ -32,7 +32,9 @@ and reports a finding when a known shape disagrees:
 Modelled forms: `if`, `cond`, `case`, `and`, `or`, `let`, `let*`, `mv-let`,
 `mv?-let`, `mv`, `mv-list`, `value`, `er`, `er-progn`, `er-let*`, `pprogn`,
 `prog2$`, `progn$`, `the`, `mbe`, `ec-call`, `assert$`, `state-global-let*`,
-`with-output`, `quote`, and `declare`.  A head that is none of these, not a
+`with-output`, `stobj-let` (bindings single, the producer one value per
+producer variable, the form the consumer's shape), `with-local-stobj` (its
+mv-let's shape), `quote`, and `declare`.  A head that is none of these, not a
 tree `defun`, and not a single-valued ACL2 builtin (tools/acl2-builtins.txt
 plus the multiple-valued table below) is UNDECIDABLE: its shape is counted
 and never guessed, and a definition whose every result arm is undecidable has
@@ -243,6 +245,13 @@ class Shapes:
         if name == "mbe":
             options = ledger.keyword_plist(form[1:])
             return self.of(options.get(":exec"), bound) if ":exec" in options else UNKNOWN
+        if name == "stobj-let":
+            # (stobj-let BINDINGS PRODUCER-VARIABLES PRODUCER CONSUMER): the
+            # form returns what its consumer returns.
+            return self.of(form[4], bound) if len(form) >= 5 else UNKNOWN
+        if name == "with-local-stobj":
+            # (with-local-stobj ST MV-LET-FORM [CREATOR]): the mv-let's result.
+            return self.of(form[2], bound) if len(form) >= 3 else UNKNOWN
         return self.callee(name)
 
 
@@ -373,6 +382,27 @@ class Checker:
                             "an `mv-let` of {} variables".format(count))
             for item in form[3:]:
                 self.expect(item, None, "")
+            return
+        if name == "stobj-let":
+            # Each binding's accessor term is one value; the producer returns
+            # one value per producer variable (one symbol: one value); the
+            # consumer is the form's own result.
+            if len(form) >= 2 and isinstance(form[1], list):
+                for binding in form[1]:
+                    if isinstance(binding, list) and len(binding) >= 2:
+                        self.expect(binding[1], 1, "a `stobj-let` binding")
+            if len(form) >= 4:
+                variables = form[2]
+                count = len(variables) if isinstance(variables, list) and len(variables) > 1 else 1
+                self.expect(form[3], count,
+                            "the producer of a `stobj-let` of {} variable{}".format(
+                                count, "" if count == 1 else "s"))
+            if len(form) >= 5:
+                self.expect(form[4], None, "")
+            return
+        if name == "with-local-stobj":
+            if len(form) >= 3:
+                self.expect(form[2], None, "")
             return
         if name == "mv-list":
             if len(form) >= 3 and isinstance(form[1], int):

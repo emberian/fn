@@ -19,6 +19,20 @@ sys.path.insert(0, str(ROOT))
 
 from tools import coverage  # noqa: E402
 
+
+# The registry is rendered from a tree's declarations (tools/interface_emit.py
+# registry); these fixture trees declare nothing, so each stands its registry
+# beside it and the seam reads that one.
+def _fixture_registry(root=None):
+    return json.loads((Path(root) / "build" / "box" / "interfaces.json").read_text())
+
+
+def setUpModule():
+    from tools import interface_emit
+    patcher = mock.patch.object(interface_emit, "registry", _fixture_registry)
+    patcher.start()
+    unittest.addModuleCleanup(patcher.stop)
+
 BOOK = "/box/tree/books/served.lisp"
 
 
@@ -104,9 +118,12 @@ def tree() -> Path:
     root = Path(tempfile.mkdtemp())
     (root / "planning").mkdir()
     (root / "build" / "coverage").mkdir(parents=True)
-    for name, doc in (("interfaces", INTERFACES), ("proofs", PROOFS),
-                      ("requirements", REQUIREMENTS), ("families", FAMILIES)):
+    for name, doc in (("proofs", PROOFS), ("requirements", REQUIREMENTS), ("families", FAMILIES)):
         (root / "planning" / (name + ".json")).write_text(json.dumps(doc))
+    # the box step's artifact (tools/box_artifacts.py), stamped
+    (root / "build" / "box").mkdir(parents=True)
+    (root / "build" / "box" / "interfaces.json").write_text(json.dumps(INTERFACES))
+    (root / "build" / "box" / "stamp.json").write_text(json.dumps({"sha": "fixture"}))
     (root / "build" / "coverage" / "world.json").write_text(json.dumps(WORLD))
     return root
 
@@ -146,12 +163,8 @@ class DelegationTests(unittest.TestCase):
             entry("fn-wrap-shape", "fn-shape"), entry("fn-shape", None),
             entry("fn-wrap-plain", None), entry("fn-wrap-plain-invert", None),
         ]
-        root = Path(tempfile.mkdtemp())
-        (root / "planning").mkdir()
-        (root / "build" / "coverage").mkdir(parents=True)
-        for name, doc in (("interfaces", interfaces), ("proofs", PROOFS),
-                          ("requirements", REQUIREMENTS), ("families", FAMILIES)):
-            (root / "planning" / (name + ".json")).write_text(json.dumps(doc))
+        root = tree()
+        (root / "build" / "box" / "interfaces.json").write_text(json.dumps(interfaces))
         (root / "build" / "coverage" / "world.json").write_text(json.dumps(world))
         return root, coverage.build(root / "build" / "coverage" / "world.json", root=root)
 
@@ -305,10 +318,10 @@ class CoverTests(unittest.TestCase):
         (self.root / "planning" / "interfaces-gaps.md").write_text("old")
         problems, _notes = coverage.check(cov, root=self.root)
         self.assertTrue(any("interfaces-gaps.md" in p for p in problems))
-        doc = json.loads((self.root / "planning" / "interfaces.json").read_text())
+        doc = json.loads((self.root / "build" / "box" / "interfaces.json").read_text())
         doc["entries"].append({"name": "fn-new", "subsystem": "web", "class": "program",
                                "keystones": [], "dispatched_from": []})
-        (self.root / "planning" / "interfaces.json").write_text(json.dumps(doc))
+        (self.root / "build" / "box" / "interfaces.json").write_text(json.dumps(doc))
         (self.root / "planning" / "interfaces-gaps.md").write_text(coverage.render_gaps(cov))
         problems, notes = coverage.check(cov, root=self.root)
         self.assertEqual(problems, [])

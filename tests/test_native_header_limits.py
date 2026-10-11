@@ -96,6 +96,32 @@ class NativeHeaderLimitsTests(unittest.TestCase):
         self.assertEqual(reply, b"441 posting failed; the header has more lines "
                                 b"than the profile's max-header-lines")
 
+    def test_a_live_limit_change_keeps_the_sealed_header_limits(self):
+        """LIVE-LIMITS-RESET-HEADER-BOUNDS: an applied live limit change
+        (`policy set max-transactions', fn-owner-apply-limit-profile ->
+        books/owner-served-bound.lisp fn-osb-install) serves the store's
+        sealed header limits, never the defaults
+        (fn-osb-install-serves-the-profile-header-limits).  Red before: a
+        store sealed at 10 header fields refused a 12-field POST until the
+        change and admitted it after."""
+        self.init("--profile", "development", "--max-transactions", "12",
+                  "--max-header-fields", "10", "--max-header-lines", "20")
+        # The owner's reservation, pinned as tests/test_native_limits_live.py
+        # pins it, so the raise is applied now rather than recorded.
+        self.node.start(env={"SBCL_USER_ARGS": "--dynamic-space-size 4096"})
+        line = (b"441 posting failed; the header has more fields than the "
+                b"profile's max-header-fields")
+        reply, _ = self.post(article(10, "<live-10@example.invalid>"), "<live-10@example.invalid>")
+        self.assertTrue(reply.startswith(b"240"), reply)
+        reply, _ = self.post(article(12, "<live-12a@example.invalid>"), "<live-12a@example.invalid>")
+        self.assertEqual(reply, line)
+        raised = self.node.operator("policy", "set", "max-transactions", "14", expect=EXIT.OK)
+        self.assertIn(b"applied limit max-transactions=14", raised.stderr)
+        reply, _ = self.post(article(12, "<live-12b@example.invalid>"), "<live-12b@example.invalid>")
+        self.assertEqual(reply, line)
+        reply, _ = self.post(article(10, "<live-10b@example.invalid>"), "<live-10b@example.invalid>")
+        self.assertTrue(reply.startswith(b"240"), reply)
+
     def transit_article(self, total_fields, message_id):
         """A relayed article of TOTAL_FIELDS header fields: Path, Date and
         the four of `article', and TOTAL_FIELDS - 6 X- fields."""

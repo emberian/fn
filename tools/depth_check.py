@@ -907,8 +907,34 @@ def check_program(rows: list[dict], baseline: dict) -> list[str]:
                 "with why (that list only shrinks)".format(fn, r["where"]))
     for fn in sorted(set(listed) - found):
         problems.append("{}: listed under \"program\" in tools/depth_baseline.json but no longer a "
-                        ":program host-called entry: remove its entry (the list only shrinks)"
+                        ":program host-called entry: remove its entry with tools/depth_check.py --lower-stale (the list only shrinks)"
                         .format(fn))
+    return problems
+
+
+def check_build_time(baseline: dict, root: Path = ROOT) -> list[str]:
+    """A :program entry that is safe only at build time (listed under
+    "program_build_time" with the host files allowed to mention it) must stay
+    off the served path: any mention of it in another host/ or tools/extract/
+    file is refused.  An entry here must also be listed under "program"."""
+    problems = []
+    listed = baseline.get("program", {})
+    files = sorted(list((root / "host").rglob("*.lisp"))
+                   + list((root / "tools" / "extract").rglob("*.lisp")))
+    for fn, allowed in sorted(baseline.get("program_build_time", {}).items()):
+        if fn not in listed:
+            problems.append("{}: listed under \"program_build_time\" but not under \"program\" "
+                            "in tools/depth_baseline.json".format(fn))
+        pattern = re.compile(r"(?<![A-Za-z0-9*+!?<>=/$%&^~:.-])" + re.escape(fn)
+                             + r"(?![A-Za-z0-9*+!?<>=/$%&^~:.-])", re.IGNORECASE)
+        for path in files:
+            rel = path.relative_to(root).as_posix()
+            if rel in allowed:
+                continue
+            if pattern.search(path.read_text(encoding="utf-8", errors="replace")):
+                problems.append("{} ({}): a build-time-only :program entry is mentioned outside "
+                                "its listed callers ({}); a served-path caller is refused".format(
+                                    fn, rel, ", ".join(allowed)))
     return problems
 
 
@@ -918,6 +944,8 @@ def load_baseline(path: Path = BASELINE) -> dict:
     return {"bounded": dict(data.get("bounded", {})), "debt": dict(data.get("debt", {})),
             "append": {"bounded": dict(app.get("bounded", {})), "debt": dict(app.get("debt", {}))},
             "program": dict(data.get("program", {})),
+            "program_build_time": {k: list(v) for k, v in data.get("program_build_time", {}).items()
+                                   if not k.startswith("_")},
             "raw": {k: dict(data.get("raw", {}).get(k, {})) for k in ("bounded", "debt")}}
 
 
@@ -939,7 +967,7 @@ def check_appends(rows: list[dict], baseline: dict) -> list[str]:
     for kind in ("bounded", "debt"):
         for fn in sorted(set(listed[kind]) - set(found)):
             problems.append("{}: listed under \"append\" -> \"{}\" but no longer appends data "
-                            "through *1* on the closure: remove its entry".format(fn, kind))
+                            "through *1* on the closure: remove its entry with tools/depth_check.py --lower-stale".format(fn, kind))
     for fn, why in sorted(listed["bounded"].items()):
         text = why if isinstance(why, str) else ""
         if not (CONSTANT.search(text) or LITERAL.search(text) or STRUCTURAL.search(text)):
@@ -970,8 +998,8 @@ def check(rows: list[dict], baseline: dict, constants: set[str] | None = None) -
     for kind in ("bounded", "debt"):
         for fn in sorted(set(baseline[kind]) - set(found)):
             problems.append("{}: listed under \"{}\" in tools/depth_baseline.json but no longer "
-                            "a non-tail recursion on the host-called closure: remove its entry "
-                            "(the list only shrinks)".format(fn, kind))
+                            "a non-tail recursion on the host-called closure: remove its entry with "
+                            "tools/depth_check.py --lower-stale (the list only shrinks)".format(fn, kind))
     known = defined_constants() if constants is None else constants
     for fn, why in sorted(baseline["bounded"].items()):
         text = why if isinstance(why, str) else ""
@@ -1309,6 +1337,61 @@ def raw_run(arguments) -> list[str]:
     return problems
 
 
+def lower_stale(data: dict, found: dict[str, set[str]]) -> tuple[dict, list[str]]:
+    """DATA (tools/depth_baseline.json as read) without the rows no longer
+    found, and the removed rows as "section: name".  FOUND names the current
+    findings per domain: "closure" (bounded/debt), "append", "program" and
+    "raw".  A program_build_time row leaves with its "program" row.  It never
+    adds a row, never moves one between sections and never edits a reason, so
+    the shrink the check asks for ("remove its entry") goes through this tool
+    and not by hand."""
+    import copy
+    out = copy.deepcopy(data)
+    removed: list[str] = []
+
+    def drop(section: dict, keep: set[str], label: str) -> None:
+        for name in sorted(k for k in section if not k.startswith("_") and k not in keep):
+            del section[name]
+            removed.append("{}: {}".format(label, name))
+
+    for kind in ("bounded", "debt"):
+        drop(out.get(kind, {}), found["closure"], kind)
+        drop(out.get("append", {}).get(kind, {}), found["append"], "append " + kind)
+        drop(out.get("raw", {}).get(kind, {}), found["raw"], "raw " + kind)
+    drop(out.get("program", {}), found["program"], "program")
+    drop(out.get("program_build_time", {}), set(out.get("program", {})), "program_build_time")
+
+    def names(d: dict, prefix: str = "") -> set[str]:
+        got = set()
+        for k, v in d.items():
+            got.add(prefix + k)
+            if isinstance(v, dict):
+                got |= names(v, prefix + k + "/")
+        return got
+    if not names(out) <= names(data):
+        raise ValueError("lower-stale would add a row")
+    return out, removed
+
+
+def lower_stale_main(write: bool = True) -> int:
+    """--lower-stale: remove every baseline row whose finding is gone; print each."""
+    rows, _size, _roots = findings()
+    raw_rows, _ = raw_findings()
+    found = {"closure": {r["function"] for r in rows},
+             "append": {r["function"] for r in append_findings(_LAST_DEFS)},
+             "program": {r["function"] for r in program_entries(_LAST_DEFS, _LAST_ROOTS)},
+             "raw": {r["function"] for r in raw_rows}}
+    data = json.loads(BASELINE.read_text(encoding="utf-8"))
+    lowered, removed = lower_stale(data, found)
+    for line in removed:
+        print("depth_check --lower-stale: removed {}".format(line))
+    if removed and write:
+        BASELINE.write_text(json.dumps(lowered, indent=1, ensure_ascii=False) + "\n", encoding="utf-8")
+    print("depth_check --lower-stale: {} row(s) removed{}".format(
+        len(removed), "" if write or not removed else " (not written)"))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--list", action="store_true", help="every finding with its class")
@@ -1323,7 +1406,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--world", metavar="JSON", default=None,
                         help="the coverage dump whose symbol classes --interpreted reads "
                              "(default build/coverage/world.json when present)")
+    parser.add_argument("--lower-stale", action="store_true",
+                        help="remove the baseline rows no longer found (never adds one), "
+                             "and write tools/depth_baseline.json")
     arguments = parser.parse_args(argv)
+    if arguments.lower_stale:
+        return lower_stale_main()
     if arguments.interpreted:
         world = Path(arguments.world) if arguments.world else WORLD_JSON
         rows, source = interpreted(world)
@@ -1381,6 +1469,7 @@ def main(argv: list[str] | None = None) -> int:
                 "listed" if r["function"] in listed else "UNLISTED", r["function"],
                 r["where"], listed.get(r["function"], "")))
     problems += check_program(program_rows, baseline)
+    problems += check_build_time(baseline)
     for p in problems:
         print("depth_check: " + p, file=sys.stderr)
     print("depth_check: {} host-called root(s), {} function(s) in the closure, {} non-tail "

@@ -767,6 +767,10 @@ ACK/reopen and fenced-clone cursor checks on `1d26e01f`. General authenticated
 multi-group selection and the two-store trace remain open; the one-node
 two-consumer transaction/ACK join is CNS-002.
 
+### Authenticated remote consumers
+
+CNS-011: Authenticated remote consumers own durable immutable multi-group queries, current account authority, explicit view rebase and incarnation-safe progress.
+
 The additive FNCR source caller captures the real current CP, dense event count,
 canonical process coordinate, ready account publication and installed owner
 post-config in the same serialized span. Every scope tick reauthenticates the

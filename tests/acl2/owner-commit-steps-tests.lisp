@@ -290,7 +290,7 @@
 ; START is taken from *ocst-s-done*, an idle owner the committer reached (a
 ; batch fenced and completed), through fn-ocs-commit-event as the inline
 ; quantum and the committer take it.
-(defconst *ocst-full* '(:unaffordable :memberships :history-exhausted :unaffordable))
+(defconst *ocst-full* '(:unaffordable :memory :history-exhausted :unaffordable))
 
 ; Positive witness: the complete antecedent (every drained word a refusal
 ; told at its drain) and every conjunct of the conclusion, over the reached
@@ -310,7 +310,7 @@
 ; member beside the full-store refusals.  The hypothesis fails (:durable is
 ; not told at its drain), and so does the conclusion: one member is kept, the
 ; START reports :started and names the barrier, the batch is staged.
-(defconst *ocst-full-and-one* '(:unaffordable :durable :memberships))
+(defconst *ocst-full-and-one* '(:unaffordable :durable :memory))
 (assert-event (not (fn-ocs-all-told-at-drain-p *ocst-full-and-one*)))
 (assert-event (equal (fn-ocs-kept-count *ocst-full-and-one*) 1))
 (assert-event (equal (fn-ocs-start-event nil (fn-ocs-kept-count *ocst-full-and-one*)) :started))

@@ -3355,6 +3355,8 @@ initial healthy-first configuration from masquerading as concurrent progress.
 
 ### Bounded redeem client input (NNT-1003)
 
+NNT-1003: Redeem bounds input before accumulation and sends only validated credential commands.
+
 The native `fn redeem` client reads a password one character at a time. Before
 retaining each octet it asks `fn-rip-password-step` (PRF-1302). The credential
 is one nonempty graphic ASCII token of at most496octets: both the13octet

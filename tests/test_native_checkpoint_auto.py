@@ -80,7 +80,11 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         self.assertIn("(fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2", publish)
         self.assertIn("(fnn-history-image-build", publish)
         self.assertIn("(fnn-history-image-write fd image)", publish)
-        self.assertIn("(fnn-live-octets-pub) arun arena)", publish)
+        # charged-totals header (books/charged-totals-header.lisp): the setup
+        # carries the header run and the file bound every frame is admitted
+        # under, written first after the image region
+        self.assertIn("(fnn-live-octets-pub) arun arena\n                                                hoctets file-bound)", publish)
+        self.assertIn("(fnn-heap-config-octets", publish)
         # the reported octets are the file's, the stream's free space what
         # the image leaves: both ACL2's (host/store-node-host.lisp)
         self.assertIn("(fnn-core 'fn-his-file-octets (fnn-history-image-np image)", publish)
@@ -92,12 +96,16 @@ class AutoCheckpointSourceTests(unittest.TestCase):
         # (the base is kept stripped of its event index and restored here:
         # fn-scka-restore-base-of-strip-of-capture, PKT-PRS-2)
         self.assertIn("(fn-scka-next-checkpoint (fn-scka-restore-base base) h0 configs records", prepare)
-        self.assertIn("(fn-scka-publication-setup next frontier revision log seg budget free", prepare)
+        # the header first, then the setup with its octets counted, the
+        # capture's budget only narrowing the plan (fn-cth-publication)
+        self.assertIn("(fn-cth-publication next frontier revision log seg profile config cap free ws", prepare)
         # checkpoint-arena-3: the arena run's setup from the host's bounded
         # walk (fn-scka-srcs-n: lengths and sources in one pass, no alpha
         # in the write), not a second walk of the rows.
         self.assertIn("(fn-scka-lens-setup (reverse (nth 1 walked)) seg)", prepare)
-        self.assertIn("(fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0)", prepare)
+        self.assertIn("(reverse (nth 2 walked))", prepare)
+        cth = (ROOT / "books" / "charged-totals-header.lisp").read_text(encoding="ascii")
+        self.assertIn("(fn-scka-initial-state srcs (fn-sco-at 1 ws) (fn-sco-at 2 h))", cth)
         self.assertIn("(fnn-checkpoint-walk records arena)", publish)
         walk = native_cuts.host_function(io, "fnn-checkpoint-walk")
         self.assertIn("(fnn-core 'fn-scka-srcs-n (first walk) +fnn-checkpoint-batch-rows+", walk)

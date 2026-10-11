@@ -93,6 +93,7 @@
 ; refuses a row that changed or vanished against the committed copy.
 
 (in-package "ACL2")
+(include-book "decimal-text")
 (include-book "definterface") ; fn-di-guard-kinds, fn-di-kind-checks; fn-cd-subst
 
 ; ---------------------------------------------------------------------------
@@ -252,7 +253,7 @@
   ; (a1 ... an)
   (if (zp n) nil (append (fn-cost-template-vars (1- n))
                          (list (intern-in-package-of-symbol
-                                (concatenate 'string "A" (coerce (explode-nonnegative-integer n 10 nil) 'string))
+                                (concatenate 'string "A" (fn-decimal-text n))
                                 'fn-cost-get)))))
 
 (defun fn-cost-contract-term (row actuals)

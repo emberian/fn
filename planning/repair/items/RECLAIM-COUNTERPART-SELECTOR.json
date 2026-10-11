@@ -1,0 +1,13 @@
+{
+ "file": "host/native/raw-trap.lisp",
+ "id": "RECLAIM-COUNTERPART-SELECTOR",
+ "note": "Production images have no selector and dispatch raw: unaffected. With the selector, target (raw-trap.lisp:155) returns the counterpart for every non-creator, guard checking is t (io.lisp:10303), and fn-rcwacc-canon-step / fn-rcwacc-predict-step (books/reclaim-chunked-walk.lisp:709, reclaim-chunked-seal.lisp:344) have guard (fn-rcwacc-carriedp fn-rcwacc), whose fn-sfi-cpr-carriedp reaches fn-rii-known-okp (replay-identity-index.lisp:207, defun-sk): the first step after fn-rcwacc-init faults. Reached by tools/native_mixed_workload.py --funded-trace (maintenance includes reclaim); no gate runs that combination (tests.test_native_owner's selector cases do not reclaim). Introduced by the reclaim carry; before it the value steps had no such guard.",
+ "notes": [],
+ "owner": "L",
+ "retirement": "the counterpart path dispatches a :raw-with entry whose guard is not executable raw (or checks its executable conjuncts only), host/native/raw-trap.lisp target, A's file, settled with A; then a native runs tools/native_mixed_workload.py --funded-trace with maintenance (reclaim) green",
+ "severity": "low",
+ "source": "Codex l-rcw F2 on the reclaim carry (lane/log-rcw2), confirmed by L8 at host/native/raw-trap.lisp:153-157",
+ "state": "open",
+ "title": "Under the developer selector FN_NATIVE_DISPATCH_COUNTERPART=1 the reclaim pass faults at its first fn-rcwacc step: the step guard (fn-rcwacc-carriedp) reaches the defun-sk fn-rii-known-okp",
+ "updated": "2026-10-11T01:19:19Z"
+}

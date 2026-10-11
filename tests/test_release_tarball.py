@@ -16,6 +16,7 @@ Without FN_RELEASE_TARBALL every case is skipped (not a pass).
 from __future__ import annotations
 
 import hashlib
+import json
 import os
 from pathlib import Path
 import platform
@@ -153,6 +154,15 @@ class ReleaseTarballTests(unittest.TestCase):
         self.assertNotIn("ungated", gate)
         self.assertRegex(gate, r"green-check profile=default: (\d+) books in the closure of "
                                r"\d+ roots, \1 green at their current digest; not green: none")
+
+    def test_a_gated_release_ships_the_exported_wire_grammar(self):
+        # build/box/wire-grammar.json, evaluated at REV by step 2b (never
+        # committed; Mini pins the exported grammar)
+        gate = (self.top / "share/fn/release-gate.txt").read_text()
+        if "ungated" in gate:
+            self.skipTest("a --frozen package is not a release")
+        grammar = json.loads((self.top / "share/fn/wire-grammar.json").read_bytes())
+        self.assertEqual(grammar["format"], "fn-wire-grammar")
 
     def test_runpath_check_passes_and_a_planted_python_fails(self):
         self.assertEqual(runpath_check.main(["--quiet", "--tree", str(self.top)]), 0)

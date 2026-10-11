@@ -129,27 +129,43 @@
 ; Node surgery: only the retention component changes.
 
 (defun fn-bprl-node-with-retention (node retention)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-node-make-state (fn-node-acceptance node) retention
                       (fn-node-stage node) (fn-node-bindings node)))
 
 (defun fn-bprl-with-node (s node)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-bp-make-state node (fn-bp-state-config s) (fn-bp-state-works s)
                     (fn-bp-state-receipts s) (fn-bp-state-pending s)
                     (fn-bp-state-fenced s) (fn-bp-state-used-txs s)))
 
 (defun fn-bprl-pins (s)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-retain-pins (fn-node-retention (fn-bp-state-node s))))
 
+; The pin lookup is guard t: a host call hands the whole workflow image, and
+; fn-retain-find-id's guard (an obligation list) would be a whole-pins walk.
+; The :exec twin reads each pin through the total record accessor and is the
+; recursion itself (equal for every input, proved below).
+(defun fn-bprl-find-pin (id pins)
+  (declare (xargs :guard t))
+  (if (consp pins)
+      (if (equal id (fn-retain-obligation-id (car pins)))
+          (car pins)
+        (fn-bprl-find-pin id (cdr pins)))
+    nil))
+
+(defthm fn-bprl-find-pin-is-find-id
+  (equal (fn-bprl-find-pin id pins) (fn-retain-find-id id pins)))
+
 (defun fn-bprl-work-pin (s work)
-  (declare (xargs :guard t :verify-guards nil))
-  (fn-retain-find-id (fn-bp-work-obligation-id work) (fn-bprl-pins s)))
+  (declare (xargs :guard t))
+  (mbe :logic (fn-retain-find-id (fn-bp-work-obligation-id work) (fn-bprl-pins s))
+       :exec (fn-bprl-find-pin (fn-bp-work-obligation-id work) (fn-bprl-pins s))))
 
 ; The :forward pin for this work is present with the required evidence.
 (defun fn-bprl-work-pinnedp (s work)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-retain-matching-releasep
    (fn-bprl-work-pin s work)
    (fn-bp-work-obligation-id work) (fn-bp-work-subject work) :forward
@@ -163,8 +179,18 @@
 ; prospective retention would go stale), a forwarding id that is the archive
 ; id (one pin cannot be two obligations), a non-positive charge, and the
 ; ledger's own admissibility (known id or no capacity).
+; The guards of the ledger's functions ask the node's retention to be a
+; retention state; the workflow image carries it.
+(defthm fn-bprl-statep-retention
+  (implies (fn-bp-statep s)
+           (fn-retain-statep (fn-node-retention (fn-bp-state-node s))))
+  :hints (("Goal" :in-theory (enable fn-bp-statep fn-node-statep))))
+
 (defun fn-bprl-undertake-okp (s work charge)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-bp-statep)
+                                 :use (fn-bprl-statep-retention)))))
   (and (fn-bp-statep s)
        (not (consp (fn-bp-state-pending s)))
        (not (fn-bp-state-fenced s))
@@ -179,8 +205,17 @@
                               (fn-bprl-required-evidence (fn-bp-state-config s) work)
                               charge)))
 
+(defthm fn-bprl-undertake-okp-statep
+  (implies (fn-bprl-undertake-okp s work charge) (fn-bp-statep s))
+  :rule-classes :forward-chaining)
+
 (defun fn-bprl-undertake (s work-id charge)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-bp-statep fn-bprl-undertake-okp)
+                                 :use ((:instance fn-bprl-undertake-okp-statep
+                                                  (work (fn-bp-find-work work-id (fn-bp-state-works s))))
+                                       fn-bprl-statep-retention)))))
   (let ((work (fn-bp-find-work work-id (fn-bp-state-works s))))
     (if (not (fn-bprl-undertake-okp s work charge))
         s
@@ -213,7 +248,7 @@
 ;   pin present with required evidence     duplicated (second decision)
 ;   stage null, id not an archive binding  node invariant guards
 (defun fn-bprl-release-okp (s receipt work)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (and (fn-bp-statep s)
        (not (consp (fn-bp-state-pending s)))
        (not (fn-bp-state-fenced s))
@@ -233,8 +268,23 @@
 (defun fn-bprl-decision-state (d) (declare (xargs :guard t)) (fn-bp-nth 1 d))
 (defun fn-bprl-decision-evidence (d) (declare (xargs :guard t)) (fn-bp-nth 2 d))
 
+(defthm fn-bprl-release-okp-statep
+  (implies (fn-bprl-release-okp s receipt work) (fn-bp-statep s))
+  :rule-classes :forward-chaining)
+
 (defun fn-bprl-release-decision (s receipt-id)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-bp-statep fn-bprl-release-okp)
+                                 :use ((:instance fn-bprl-release-okp-statep
+                                                  (receipt (fn-bprl-find-receipt
+                                                            receipt-id (fn-bp-state-receipts s)))
+                                                  (work (fn-bp-find-work
+                                                         (fn-bp-receipt-work-id
+                                                          (fn-bprl-find-receipt
+                                                           receipt-id (fn-bp-state-receipts s)))
+                                                         (fn-bp-state-works s))))
+                                       fn-bprl-statep-retention)))))
   (let* ((receipt (fn-bprl-find-receipt receipt-id (fn-bp-state-receipts s)))
          (work (fn-bp-find-work (fn-bp-receipt-work-id receipt)
                                 (fn-bp-state-works s))))
@@ -265,14 +315,14 @@
 ; host now calls this extension for FNWF preflight, apply and replay.
 
 (defun fn-bprl-undertake-recordp (r)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (and (true-listp r) (equal (len r) 3) (equal (car r) :undertake)
        (fn-bp-journal-textp (fn-bp-journal-nth 1 r))
        (posp (fn-bp-journal-nth 2 r))
        (fn-bp-u64p (fn-bp-journal-nth 2 r))))
 
 (defun fn-bprl-release-recordp (r)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (and (true-listp r) (equal (len r) 8) (equal (car r) :release)
        (fn-bp-journal-textp (fn-bp-journal-nth 1 r))
        (fn-bp-journal-textp (fn-bp-journal-nth 2 r))
@@ -283,7 +333,7 @@
        (fn-bp-journal-textp (fn-bp-journal-nth 7 r))))
 
 (defun fn-bprl-record-evidence (r)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (fn-bprl-make-evidence (fn-bp-journal-nth 1 r) (fn-bp-journal-nth 2 r)
                          (fn-bp-journal-nth 3 r) (fn-bp-journal-nth 4 r)
                          (fn-bprl-make-term (fn-bp-journal-nth 5 r)
@@ -295,7 +345,7 @@
 ; computes from the state is refused: the record does not carry authority,
 ; it carries what the decision was, and replay recomputes it.
 (defun fn-bprl-apply-journal-record (s r)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (cond
    ((fn-bprl-release-recordp r)
     (let ((d (fn-bprl-release-decision s (fn-bp-journal-nth 1 r))))

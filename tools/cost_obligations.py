@@ -64,7 +64,6 @@ from tools import ratchet  # noqa: E402
 OBLIGATIONS = ROOT / "planning" / "cost-obligations.json"
 CONTRACTS = ROOT / "planning" / "cost-contracts.json"
 BASELINE = ROOT / "planning" / "cost-baseline.json"
-INTERFACES = ROOT / "planning" / "interfaces.json"
 GENERATOR = ROOT / "books" / "def-cost.lisp"
 SOURCES = ("books", "host")
 CLAIMS = ("proved", "partial", "derived", "none")
@@ -146,7 +145,8 @@ def claim(decl: dict | None) -> str:
 
 
 def build(root: Path = ROOT) -> dict:
-    interfaces = json.loads((root / "planning" / "interfaces.json").read_text(encoding="utf-8"))
+    from tools import interface_emit
+    interfaces = interface_emit.registry(root)
     decls = declarations(root)
     rows = []
     for entry in interfaces["entries"]:

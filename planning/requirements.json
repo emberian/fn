@@ -1588,7 +1588,8 @@
         "PRF-1060",
         "PRF-1067",
         "PRF-1231",
-        "PRF-1232"
+        "PRF-1232",
+        "PRF-1357"
       ],
       "verification": [
         "proof",
@@ -3007,7 +3008,7 @@
         "tests/reclaim_lifecycle_native.py",
         "planning/evidence/reclaim-lifecycle-2-2026-09-26.md"
       ],
-      "implementation_note": "Lane flip-cleanup (2026-09-27): the pack's disk check (fn-cverb-pack-fits-the-disk, fn-rclp-pack-fits-the-disk) was deleted with the pack layer; the state checkpoint that compact and reclaim publish is checked against the host-observed free octets by books/owner-checkpoint-writer.lisp fn-ockp-decide (no keystone in PRF-129 yet). Before: PKT-169 as decided. The served gates (fn-smr-verdict-at, fn-smr-article-budget-for, fn-smr-article-verdict-at) keep one release record admissible after every other admission; compact and reclaim refuse temporary-space against the host-observed free octets (statvfs), not the history bound. `status` prints `maintenance-reserve octets=4096 transactions=1 held|short`. FN_NATIVE_DISK_FREE (developer image) caps the observation for the native small-disk case."
+      "implementation_note": "Lane flip-cleanup (2026-09-27): the pack's disk check (fn-cverb-pack-fits-the-disk, fn-rclp-pack-fits-the-disk) was deleted with the pack layer; the state checkpoint that compact and reclaim publish is checked against the host-observed free octets by books/owner-checkpoint-writer.lisp fn-ockp-decide (no keystone in PRF-129 yet). Before: PKT-169 as decided. The served gates (fn-smr-verdict-at; for an article the capacity vector's fn-cvec-article-budget-for and fn-cvec-article-verdict-at, the reservation at no open undertaking) keep one release record admissible after every other admission; compact and reclaim refuse temporary-space against the host-observed free octets (statvfs), not the history bound. `status` prints `maintenance-reserve octets=4096 transactions=1 held|short`. FN_NATIVE_DISK_FREE (developer image) caps the observation for the native small-disk case."
     },
     {
       "id": "REP-010",
@@ -5971,7 +5972,7 @@
       "title": "Running and stopped snapshot producers capture one committed Store frontier and coherent identity/configuration epoch, restore the retained state, and fund bounded work with marker-last completion",
       "specification": "specs/checkpoint.md#running-and-stopped-snapshot-producer",
       "milestone": "M5",
-      "status": "planned",
+      "status": "specified",
       "proof_targets": [
         "PRF-1068",
         "PRF-1086",
@@ -6305,11 +6306,7 @@
       "status": "specified",
       "proof_targets": [
         "PRF-1154",
-        "PRF-1158",
         "PRF-1159",
-        "PRF-1163",
-        "PRF-1161",
-        "PRF-1162",
         "PRF-1182",
         "PRF-1200"
       ],
@@ -6340,7 +6337,7 @@
         "planning/evidence/manifests/certify-20261001T025802Z-1029297.json",
         "planning/evidence/bootstrap-data6-current-source-2026-10-01/scope.json"
       ],
-      "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation. Request-budget and physical-fit recognizers are distinct; request admission retains positive pinned reserve policy with no physical-fit or GC-success authority. SCN-1074 covers scalar separation; genuine issuance/caller and physical qualification remain open."
+      "implementation_note": "Internal guarded scalar, same-pool, installed-geometry observation and actual sharedPRS nonce source. Genuine runtime/source tariff installation, process-wide barrier, identity rescue and once-only allocating-turn producer joins remain open; no activation/funding claim. Guarded STATE-ticket completion and idempotent fault are exercised through actual native transport; fixture installation and operation setup do not establish complete allowance or activation. Request-budget and physical-fit recognizers are distinct; request admission retains positive pinned reserve policy with no physical-fit or GC-success authority. SCN-1074 covers scalar separation; genuine issuance/caller and physical qualification remain open. Proof targets PRF-1158, PRF-1161, PRF-1162 and PRF-1163 are rows only on the unmerged branch origin/codex/allocation-turns (fd3759b4f), never on dev; the references were removed 2026-10-10 (CL04) and return with those rows if that branch lands."
     },
     {
       "id": "REP-018",
@@ -6386,7 +6383,7 @@
       "title": "Committed membership transcript retains signed commit-ID conflicts and refuses their authority before any epoch evidence merge",
       "specification": "specs/substrate-transport.md#committed-transcript-collision-boundary",
       "milestone": "M4",
-      "status": "planned",
+      "status": "specified",
       "proof_targets": [
         "PRF-1176",
         "PRF-1189",
@@ -6521,7 +6518,8 @@
       "proof_targets": [
         "PRF-1209",
         "PRF-1210",
-        "PRF-1211"
+        "PRF-1211",
+        "PRF-1343"
       ],
       "verification": [
         "proof"

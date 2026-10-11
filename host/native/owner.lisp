@@ -740,13 +740,23 @@ range), which the caller runs under the owner mutex
 ;;; quanta together write the reply the served machine decided, expanded
 ;;; (fn-ovw-expand), for every W and however the socket paced them; with
 ;;; fn-ovw-run-is-over-range-cat that is the unbounded reader's reply.
-(defun fnn-owner-over-window ()
-  "ACL2's cursor quantum, the developer selector's override passed through."
+(defun fnn-owner-over-quantum ()
+  "ACL2's cursor quantum, the developer selector's override passed through:
+the window the memory gate's configure fits (fn-owner-memory-configure)."
   (let ((raw (fnn-developer-selector "FN_NATIVE_OVER_WINDOW")))
     (fnn-core 'fn-splan-cursor-window
-              (and raw (> (length raw) 0)
-                   (every #'digit-char-p raw)
-                   (parse-integer raw)))))
+              (and raw (> (length raw) 0) (every #'digit-char-p raw) (parse-integer raw)))))
+
+(defvar *fnn-owner-over-window-fit* nil
+  "The run's W' (A-OVER-WINDOW-FIT), published by
+fnn-owner-memory-configure-locked (host/native/mux.lisp) before any actor
+exists; NIL until a configure.")
+
+(defun fnn-owner-over-window ()
+  "ACL2's cursor quantum (fnn-owner-over-quantum); under a configured run, the run's W' (A-OVER-WINDOW-FIT: books/memory-model.lisp fn-mm-over-window-fit, installed by host/owner-host.lisp fn-owner-memory-configure and published in *fnn-owner-over-window-fit*), at most that quantum."
+  (let ((w (fnn-owner-over-quantum))
+        (fit *fnn-owner-over-window-fit*))
+    (if (and (integerp fit) (plusp fit)) (min w fit) w)))
 
 (defun fnn-owner-article-window ()
   "ACL2's ARTICLE quantum (fn-asto-quantum), the developer selector's override
@@ -880,16 +890,25 @@ Empty progress yields; a cold read retains the exact original plan/capture."
                (let ((attempt
                        (catch 'fnn-extent-cold
                          (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
-                           (destructuring-bind (word bytes next done)
+                           ;; Adapter A2 (Builder A): the window is rendered
+                           ;; into fn-dss-out and copied out here, under the
+                           ;; owner mutex, before another render reuses it.
+                           (destructuring-bind (word next done &rest ignored)
                                (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-article-window)
-                                         (fnn-live-stobj 'fn-arena))
-                             (list :warm word bytes next done))))))))
+                                         (fnn-live-stobj 'fn-arena) (fnn-live-ast-ws)
+                                         (fnn-live-dss-out))
+                             (declare (ignore ignored))
+                             ;; :ordinary renders nothing and leaves the
+                             ;; buffer as it was: no octets then
+                             (list :warm word
+                                   (if (eq word :article) (fnn-dss-out-octets) (fnn-make-octets 0))
+                                   next done))))))))
                  (if (eq (car attempt) :warm) attempt
                    (list :cold (fnn-owner-cold-issue-locked service cid attempt))))) class)))
       (when (eq (car article) :cold)
         (return-from fnn-owner-render-next-quantum
           (values (fnn-make-octets 0) plan nil nil (second article) 0)))
-      (let ((bytes (fnn-octets (third article))))
+      (let ((bytes (third article)))
         (return-from fnn-owner-render-next-quantum
           (values bytes (fourth article) (fifth article)
                   (and (zerop (length bytes)) (not (fifth article))) nil (length bytes))))))
@@ -1652,8 +1671,16 @@ one ring, so the table's key and the served boundary's are one source."
               (fnn-log-line (fnn-core 'fn-native-health-host-run-opened-line ms)))
             ;; The persisted profile ACL2 decoded at open, handed back once:
             ;; the owner's transaction budget is derived from it there.
-            (unless (eq (fnn-owner-core 'fn-owner-install-profile
-                                        (fnn-store-config store))
+            ;; With it the charged-totals cache's seed: the checkpoint
+            ;; header's totals at S when this open went over that checkpoint
+            ;; (open-mode :checkpoint), else the empty cache
+            ;; (books/charged-totals-header.lisp fn-cth-installed-seed, K9).
+            (unless (eq (let ((mode (fnn-store-open-mode store)))
+                          (fnn-owner-core 'fn-owner-install-profile
+                                          (fnn-store-config store)
+                                          (eq (first mode) :checkpoint)
+                                          (second mode)
+                                          (fnn-store-checkpoint-header store)))
                         :installed)
               (fnn-fault "owner refused the store profile"))
             ;; The recovery barriers again (three, fnn-store-recovery-barriers):
@@ -1713,6 +1740,9 @@ one ring, so the table's key and the served boundary's are one source."
               ;; checkpoint's then faults by name (fnn-log-history-plan).
               (fnn-core-state 'fn-store-sco-clear)
               (fnn-log-history-release-prefix store)
+              ;; K-ADMIT's gate for this process, before it admits anything
+              ;; (host/native/mux.lisp fnn-owner-memory-install).
+              (fnn-owner-memory-install service)
               service))
         (error (e)
           ;; Neither cleanup condition replaces E. Keep the actual Store
@@ -3396,11 +3426,11 @@ here: its budget is part of its prepare (fn-owner-prepare)."
 ;; answers are D25's :duplicate / :conflict (books/store-intern.lisp fn-store-existing-action,
 ;; keyed on the poster's source through the injection inverse, D25), :clock-unusable,
 ;; :unaffordable (the Store's transaction budget, fn-sbud-refusal-kind), its
-;; history budget's :memberships or :history-exhausted
-;; (fn-cvec-article-refusal-word), or :refused.
+;; history budget's :history-exhausted (fn-cvec-article-refusal-word), the
+;; memory gate's :memory (fn-adm-article-word), or :refused.
 (defun fnn-owner-prepare-refusal-word (prepared)
   (case prepared
-    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memberships
+    ((:duplicate :conflict :clock-unusable :refused :unaffordable :memory
       :history-exhausted :article-numbers-exhausted :canonical-size-unavailable :invalid-binding)
      prepared)
     (:invalid :malformed)
@@ -3999,11 +4029,12 @@ theorems).  Only a present carrier's arm builds the article's list, once."
   (let ((store (fnn-owner-service-store service)))
     ;; ACL2's verdict over the event itself (host/owner-host.lisp
     ;; fn-owner-identity-publication-verdict): a composite is charged its
-    ;; figure with its article's memberships.
-    (unless (eq (fnn-owner-core 'fn-owner-identity-publication-verdict event)
-                :admissible)
-      (fnn-refuse "Store transaction budget refuses ~(~a~) transaction"
-                  (fnn-core 'fn-wire-event-kind event)))
+    ;; figure, then the memory gate over the row it stages; the refusal
+    ;; names the verdict's word (:memory among them).
+    (let ((verdict (fnn-owner-core 'fn-owner-identity-publication-verdict event)))
+      (unless (eq verdict :admissible)
+        (fnn-refuse "Store refuses ~(~a~) transaction (~(~a~))"
+                    (fnn-core 'fn-wire-event-kind event) verdict)))
     (let ((*fnn-observe-callback* #'fnn-owner-observe)
                 (*fnn-identity-reservation-callback* #'fnn-owner-identity-reservation)
           (*fnn-finish-callback* #'fnn-owner-finish))
@@ -5646,7 +5677,7 @@ owner's recovery fence."
                 (fnn-store-fault (condition) (error condition))
                 (fnn-store-error () :refused))))
     (unless (member word '(:durable :duplicate :conflict :malformed :unaffordable
-                           :memberships :history-exhausted :article-numbers-exhausted
+                           :memory :history-exhausted :article-numbers-exhausted
                            :storage-failed :refused :clock-unusable :uncertain))
       (fnn-fault "owner bound commit returned ~a" word))
     word))
@@ -5732,6 +5763,12 @@ own result vocabulary."
               (fnn-fault "owner bound completion returned ~a" result))
             (when (eq result :uncertain)
               (fnn-indeterminate "owner bound Store outcome is uncertain"))
+            ;; The BP application's refusal line names the Store's own word
+            ;; (as fnn-owner-complete-bp-transit-submission does); the
+            ;; control callers answer by their status instead.
+            (when (and (not name-conflict) (eq result :refused)
+                       (keywordp word) (not (eq word :refused)))
+              (fnn-owner-transit-refused word))
             (if name-conflict
                 (fnn-core 'fn-native-control-completion-status result word)
               result)))))))
@@ -5811,6 +5848,12 @@ own result vocabulary."
                 (unless (member result '(:accepted :duplicate :refused
                                          :clock-unusable :uncertain))
                   (fnn-fault "owner BP transit completion returned ~a" result))
+                ;; The Store's own word for a refusal (:memory,
+                ;; :history-exhausted, :unaffordable ...) is the refusal
+                ;; line's reason: the outcome answers :refused alone.
+                (when (and (eq result :refused) (keywordp word)
+                           (not (eq word :refused)))
+                  (fnn-owner-transit-refused word))
                 (when (eq result :uncertain)
                   (fnn-indeterminate "owner BP transit Store outcome is uncertain"))
                 result))))))))
@@ -6703,6 +6746,9 @@ enters the section, which reads the head again under the mutex."
 (defun fnn-owner-cold-shutdown (service)
   "Clients have stopped. Join the persistent workers before shared close."
   (fnn-extent-executor-stop)
+  ;; The collector policy's thread (host/native/heap.lisp), started when
+  ;; recovery was done.
+  (fnn-heap-collector-policy-stop)
   ;; No worker activation can issue or touch a descriptor now. Its slot may
   ;; still own the private result until the following owner transfer returns.
   ;; All reads remain funded until this exact settlement, including errors.
@@ -7424,8 +7470,11 @@ is running; the publication restores this one when it ends."
 which SBCL returns the pages the recovery's garbage occupied to the system
 (a collection of the oldest generation remaps the free pages), so the
 resident set the owner serves from is its live heap, not the recovery's
-high-water mark.  Work proportional to the live heap, once per start."
-  (sb-ext:gc :full t))
+high-water mark.  Work proportional to the live heap, once per start.  Its
+live usage starts the collector policy (host/native/heap.lisp; memory landing
+3+4, carried by Builder M with Builder A's agreement)."
+  (sb-ext:gc :full t)
+  (fnn-heap-collector-policy-start))
 
 (defun fnn-owner-release-pending-extents-locked (service &optional pin)
   "Release pending groups whose reader generations and issued I/O are clear.
@@ -7812,7 +7861,7 @@ the crash keystone) and serving continues."
               ;; (host/native/io.lisp fnn-history-image-build), then the
               ;; setup over that position and the space the image leaves
               ;; (fn-owner-sco-setup-of): fn-owner-sco-prepare in two halves.
-              (destructuring-bind (setup prepared-next n arun)
+              (destructuring-bind (setup prepared-next n arun hoctets file-bound)
                   (let ((prepared (let ((walk (fnn-checkpoint-walk records arena)))
                                     (fnn-extent-with-read-refusal
                                      :checkpoint-walk
@@ -7825,8 +7874,17 @@ the crash keystone) and serving continues."
                                                      (first ident) (second ident) position)
                             (values position nil))
                       (setq image image2)
-                      (fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2 segment
-                                budget (fnn-core 'fn-his-stream-free free (fnn-history-image-np image)))))
+                      ;; the charged-totals header first (books/charged-totals-
+                      ;; header.lisp fn-cth-publication), under the load bound at
+                      ;; the configuration history's octets; BUDGET (the capture's)
+                      ;; only narrows the plan
+                      (let ((profile (fnn-store-config (fnn-owner-service-store service))))
+                        (fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2 segment
+                                  profile
+                                  (fnn-heap-config-octets
+                                   (fnn-store-root (fnn-owner-service-store service)) profile)
+                                  budget
+                                  (fnn-core 'fn-his-stream-free free (fnn-history-image-np image))))))
                 (unless (and (consp setup) (= (length setup) 7))
                   (fnn-fault "owner returned a malformed checkpoint setup"))
                 (setq next prepared-next payloads n)
@@ -7861,7 +7919,8 @@ the crash keystone) and serving continues."
                                    (fnn-history-image-write fd image)
                                    (setq steps (fnn-checkpoint-write-steps
                                                 fd setup segment sequence (fnn-store-config store)
-                                                (fnn-live-octets-pub) arun arena)))
+                                                (fnn-live-octets-pub) arun arena
+                                                hoctets file-bound)))
                                  sequence image)
                              ;; the buffer's array back (PKT-PRS-2)
                              (fnn-octets-pub-release))
@@ -8627,11 +8686,16 @@ publication).  Answers the reply word."
                  ;; the reclaimed checkpoint, staged off the mutex
                  (let ((segment (fnn-core 'fn-ockp-segment-octets record-octets
                                           +fnn-checkpoint-batch-octets+))
-                       (acc2 (fnn-core 'fn-rcw-acc-init configs)) (h2 0)
+                       (acc2 (fnn-core 'create-fn-rcwacc)) (h2 0)
                        (lacc nil) (sacc nil) (nrows 0) (bad nil))
+                   ;; the accumulator is a fresh fn-rcwacc carrying the id
+                   ;; tries across chunks (RECLAIM-TRIES-PER-CHUNK); its steps
+                   ;; dispatch raw under fn-rcwacc-carriedp's preservation
+                   ;; theorems (host/interfaces.lisp :raw-with)
+                   (fnn-call 'fn-rcwacc-init configs acc2)
                    ;; pass 2: each rewritten chunk's canonical rows from the
                    ;; carried handle into the capture (KEYSTONE
-                   ;; fn-rcw-canon-acc-steps-is-the-checkpoint-capture) and
+                   ;; fn-rcwacc-canon-steps-is-the-checkpoint-capture) and
                    ;; its payloads' lengths and sources into the writer walk
                    ;; (KEYSTONE fn-rcw-srcs-steps-is-the-walk)
                    (fnn-owner-reclaim-walk
@@ -8639,10 +8703,10 @@ publication).  Answers the reply word."
                     (lambda (chunk)
                       (fnn-checkpoint-yield "reclaim-walk" nrows)
                       (unless bad
-                        (let ((r (fnn-core 'fn-rcw-canon-acc-step acc2 configs chunk h2 arena)))
+                        (let ((r (fnn-core 'fn-rcwacc-canon-step configs chunk h2 arena acc2)))
                           (if (eq r :bad)
                               (setq bad t)
-                            (setq acc2 (first r) h2 (second r)))))
+                            (setq h2 r))))
                       (unless bad
                         (let ((st (fnn-core 'fn-scka-srcs-n chunk (length chunk) lacc sacc arena)))
                           (unless (and (consp st) (= (length st) 3) (null (first st)))
@@ -8655,9 +8719,9 @@ publication).  Answers the reply word."
                    ;; as a publication stages it (fnn-owner-publish-captured):
                    ;; NEXT, the history image of NEXT's records with its
                    ;; binding into the F row's position, then the setup
-                   (destructuring-bind (setup next n arun)
+                   (destructuring-bind (setup next n arun hoctets file-bound)
                        (let ((prepared (fnn-core 'fn-owner-sco-next-of
-                                                 (fnn-core 'fn-rcw-acc-finish acc2)
+                                                 (fnn-core 'fn-rcwacc-finish acc2)
                                                  (list nil lacc sacc) segment)))
                          (setq acc2 nil lacc nil sacc nil)
                          (multiple-value-bind (position2 image2)
@@ -8668,7 +8732,9 @@ publication).  Answers the reply word."
                                  (values position nil))
                            (setq image image2)
                            (fnn-core 'fn-owner-sco-setup-of prepared frontier revision position2
-                                     segment budget
+                                     segment profile
+                                     (fnn-heap-config-octets (fnn-store-root store) profile)
+                                     budget
                                      (fnn-core 'fn-his-stream-free free*
                                                (fnn-history-image-np image)))))
                      (declare (ignore next n))
@@ -8685,7 +8751,7 @@ publication).  Answers the reply word."
                                          (fnn-history-image-write fd image)
                                          (fnn-checkpoint-write-steps
                                           fd setup segment count (fnn-store-config store)
-                                          (fnn-live-octets-pub) arun arena))
+                                          (fnn-live-octets-pub) arun arena hoctets file-bound))
                                        count image))
                        (fnn-octets-pub-release))))
                  (fnn-reclaim-cut :staged)
@@ -8695,24 +8761,24 @@ publication).  Answers the reply word."
                  ;; deferred pass seals nothing (books/owner-reclaim-seal.lisp,
                  ;; KEYSTONE fn-orcs-seal-is-the-intern).  Pass 3: each
                  ;; rewritten chunk predicted from the carried handle into the
-                 ;; rebuilt capture (KEYSTONES fn-rcw-predict-acc-steps-is-
+                 ;; rebuilt capture (KEYSTONES fn-rcwacc-predict-steps-is-
                  ;; predict, fn-rcw-rebuild-of-the-chunked-capture-is-the-
                  ;; full-open); the chunks' seal payloads, in order.
                  (setq base (fnn-owner-gated (service :control)
                               (first (fnn-call 'fn-arena-count arena))))
-                 (let ((acc3 (fnn-core 'fn-rcw-acc-init configs)) (h3 base) (bad nil)
+                 (let ((acc3 (fnn-core 'create-fn-rcwacc)) (h3 base) (bad nil)
                        (payload-chunks nil) (nrows 0))
+                   (fnn-call 'fn-rcwacc-init configs acc3)
                    (fnn-owner-reclaim-walk
                     records ctx arena service history-source
                     (lambda (chunk)
                       (fnn-checkpoint-yield "reclaim-walk" nrows)
                       (unless bad
-                        (let ((r (fnn-core 'fn-rcw-predict-acc-step acc3 configs chunk
-                                           h3)))
+                        (let ((r (fnn-core 'fn-rcwacc-predict-step configs chunk h3 acc3)))
                           (if (eq r :bad)
                               (setq bad t)
-                            (progn (setq acc3 (first r) h3 (second r))
-                                   (when (third r) (push (third r) payload-chunks))))))
+                            (progn (setq h3 (first r))
+                                   (when (second r) (push (second r) payload-chunks))))))
                       (incf nrows (length chunk))))
                    (when bad (deferred :unencodable) (return-from pass))
                    (unless (= nrows count)
@@ -8720,7 +8786,7 @@ publication).  Answers the reply word."
                    (setq seal-payloads (let ((all nil))
                                          (dolist (c payload-chunks all)
                                            (setq all (append c all))))
-                         e (fnn-core 'fn-rcw-acc-finish acc3)
+                         e (fnn-core 'fn-rcwacc-finish acc3)
                          acc3 nil))
                  ;; the walks are done: the context freed and the root pin
                  ;; returned before the swap is attempted

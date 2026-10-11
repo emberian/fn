@@ -39,8 +39,16 @@
 (load-forms "books/bp-route.lisp" '(fn-bprt-nth))
 (load-forms "books/bp-primary-cbor.lisp" '(*fn-bpc-max-uint*))
 (load-forms "books/bp-primary.lisp" '(fn-bpp-eidp))
-(load-forms "books/bp-node-forward-plan.lisp"
- '(fn-bpnp-forward-plan-rows-loop fn-bpnp-forward-plan-rows fn-bpnp-forward-plan))
+(load "tests/raw_def_loop.lisp")
+(defmacro mv (&rest xs) `(values ,@xs))
+(defmacro mv-let (vars form &body body) `(multiple-value-bind ,vars ,form ,@body))
+(defun subsetp-eq (a b) (subsetp a b :test (function eq)))
+(defun pairlis$ (a b) (mapcar #'cons a b))
+(defun strip-cdrs (l) (mapcar #'cdr l))
+(defun assoc-eq (x al) (assoc x al :test #'eq))
+(unless (raw-def-loop-load "books/bp-node-forward-plan.lisp" 'fn-bpnp-forward-plan-rows)
+ (error "books/bp-node-forward-plan.lisp: def-loop fn-bpnp-forward-plan-rows not found"))
+(load-forms "books/bp-node-forward-plan.lisp" '(fn-bpnp-forward-plan))
 (load-forms "books/bp-session-scheduler.lisp" '(fn-bpsched-forward-entry))
 (load-forms "books/bp-forward-cursor.lisp"
  '(fn-bpfc-scan fn-bpfc-cursor fn-bpfc-pos fn-bpfc-seen fn-bpfc-initial

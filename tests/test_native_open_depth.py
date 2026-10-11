@@ -49,6 +49,7 @@ import time
 import unittest
 
 from tests.native_harness import Node, executable, native_image
+from tools import fixtures
 
 IMAGE = native_image("FN_NATIVE_HOST")
 
@@ -160,6 +161,9 @@ class OpenDepthTests(unittest.TestCase):
         source = Path(FIXTURES) / name / "store"
         if not source.is_dir():
             self.skipTest("no fixture store {}".format(source))
+        refusal = fixtures.schema_refusal(source.parent, fixtures.schema_digest())
+        if refusal:
+            self.fail(refusal)
         node = Node(self, IMAGE, root=self.work / name, name=name)
         shutil.copytree(source, node.store_path, symlinks=True)
         lock = node.store_path / "writer.lock"

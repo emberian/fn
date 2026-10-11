@@ -70,14 +70,14 @@
 ; post's From when [web] names none (books/web-config.lisp fn-web-plan-domain).
 ; Octets, or nil while the policy is unset.
 (defun fn-web-host-identity (state)
-  (declare (xargs :mode :program :stobjs state))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (let ((identity (fn-cfg-policy (fn-cfg-value (fn-owner-config state)) "path-identity")))
     (if (and (stringp identity) (not (equal identity "")))
         (fn-record-string-octets identity)
       nil)))
 
 (definterface fn-web-host-identity
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (defun fn-web-host-limits (article-limit)
   (declare (xargs :mode :program))
@@ -193,45 +193,45 @@
 ; Q10d: observe only the fixed scheduler/disk and checkpoint values, no
 ; whole-state walk. Called under the existing owner mutex by the web face.
 (defun fn-web-host-health-observe (sched state)
-  (declare (xargs :mode :program :stobjs state))
+  (declare (xargs :stobjs state :guard t))
   (fn-whl-observe sched (fn-owner-sco-deferred state)))
 
 ; Q10d bounded observation for the owner's web readiness route.
 (definterface fn-web-host-health-observe
-  :class :program
+  :class :common-lisp-compliant
   :keystones ((fn-whl-success-requires-observed-clear-owner :via fn-whl-observe)))
 
 ; Scheduling ceilings are the configured supported profile and a work window,
 ; never a truncation of a stored article. The HTTP actor consumes these exact
 ; core decisions before allocating/reading or slicing a continuation.
 (defun fn-web-host-connection-limit (config)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-wss-cfg-max config))
 
 ; HTTP reactor uses these actual ACL2 scheduling and lease projections.
-(definterface fn-web-host-connection-limit :class ::program)
+(definterface fn-web-host-connection-limit :class :common-lisp-compliant)
 
 (defun fn-web-host-request-end (end request)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (+ (nfix end) (fn-web-req-clen request)))
 
-(definterface fn-web-host-request-end :class ::program)
+(definterface fn-web-host-request-end :class :common-lisp-compliant)
 
 (defun fn-web-host-window-end (start end)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (min (nfix end) (+ (nfix start) 4096)))
 
-(definterface fn-web-host-window-end :class ::program)
+(definterface fn-web-host-window-end :class :common-lisp-compliant)
 
 (defun fn-web-host-read-size (used limits end request)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (min 4096 (nfix (- (if request (fn-web-host-request-end end request)
                        (fn-wrq-limits-head limits)) (nfix used)))))
 
-(definterface fn-web-host-read-size :class ::program)
+(definterface fn-web-host-read-size :class :common-lisp-compliant)
 
 (defun fn-web-host-event-cid (config flow event state)
-  (declare (xargs :mode :program :stobjs state))
+  (declare (xargs :stobjs state :guard t))
   (if (or (equal (fn-wss-car event) :begin) (equal (fn-wss-f-route flow) :expire))
       (let* ((begin (if (equal (fn-wss-car event) :begin) event (fn-wss-f-data flow)))
              (request (fn-wrq-nth 1 begin)) (now (nfix (fn-wrq-nth 4 begin)))
@@ -243,41 +243,43 @@
         (and session (fn-wss-s-cid session)))
     nil))
 
-(definterface fn-web-host-event-cid :class ::program)
+(definterface fn-web-host-event-cid :class :common-lisp-compliant)
 
 (defun fn-web-host-reserve-size (need capacity)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (if (<= (nfix need) (nfix capacity)) (nfix capacity)
     (max 1024 (* 2 (nfix need)))))
 
-(definterface fn-web-host-reserve-size :class ::program)
+(definterface fn-web-host-reserve-size :class :common-lisp-compliant)
 
 ; Count and emit use the same immutable segment cursor outside the owner
 ; section. IN remains the exact retained NNTP reply through the HTTP body.
 (defun fn-web-host-page-cursor (segs)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-wpc-cursor segs))
 
-(definterface fn-web-host-page-cursor :class ::program)
+(definterface fn-web-host-page-cursor :class :common-lisp-compliant)
 
+;; Constant-time guard: t.  fn-wpc-step is total (its reads are tested, books/web-page-cursor.lisp fn-wpc-get), so no recognizer over the segments is evaluated per window.
 (defun fn-web-host-page-step (cursor count emitp fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :stobjs fn-web-in :guard t))
   (fn-wpc-step cursor count emitp fn-web-in))
 
-(definterface fn-web-host-page-step :class ::program)
+(definterface fn-web-host-page-step :class :common-lisp-compliant)
 
 (defun fn-web-host-private-reply-p (flow event)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard t))
   (fn-web-private-reply-p flow event))
 
-(definterface fn-web-host-private-reply-p :class ::program)
+(definterface fn-web-host-private-reply-p :class :common-lisp-compliant)
 
 (defun fn-web-host-private-reply-step (config flow event fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (declare (xargs :stobjs (fn-web-in fn-web-out) :guard (true-listp config)))
   (fn-web-private-reply-step (append (take 6 config) (list :page-plan :private-begin))
                             flow event fn-web-in fn-web-out))
 
-(definterface fn-web-host-private-reply-step :class ::program)
+(definterface fn-web-host-private-reply-step :class :common-lisp-compliant
+  :kinds ((config true-listp)))
 
 ; Virtual ARTICLE source: scan only one rendered window, then replay the
 ; retained logical plans for the exact spans requested by the page cursor.
@@ -293,68 +295,90 @@
 (defun fn-web-host-article-page (config flow scan)
   (declare (xargs :mode :program))
   (fn-was-page config flow scan))
+;; Constant-time guard: two naturals (the window step is total, books/web-article-stream.lisp fn-wpc-window-next).
 (defun fn-web-host-window-page-step (cursor base count emitp fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in))
+  (declare (xargs :stobjs fn-web-in :guard (and (natp base) (natp count))))
   (fn-wpc-window-drive 4096 cursor base count emitp nil fn-web-in))
 
-(definterface fn-web-host-window-page-step :class ::program)
+(definterface fn-web-host-window-page-step :class :common-lisp-compliant
+  :kinds ((base natp) (count natp)))
 (defun fn-web-host-replay-slice (at length need)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard (consp need)))
   (let ((s (max (nfix at) (nfix (car need))))
         (e (min (+ (nfix at) (nfix length)) (nfix (cdr need)))))
     (list (max 0 (- s (nfix at))) (max 0 (- e (nfix at)))
           (+ (nfix at) (nfix length)) (>= (+ (nfix at) (nfix length)) (nfix (cdr need))))))
 
-(definterface fn-web-host-replay-slice :class ::program)
+(definterface fn-web-host-replay-slice :class :common-lisp-compliant)
 
 (defun fn-web-host-replay-forward-p (need base end)
-  (declare (xargs :mode :program))
+  (declare (xargs :guard (consp need)))
   (and (<= (nfix base) (nfix (car need))) (<= (nfix (car need)) (nfix end))))
 
-(definterface fn-web-host-replay-forward-p :class ::program)
+(definterface fn-web-host-replay-forward-p :class :common-lisp-compliant)
 
-(defun fn-web-host-stream-p (flow) (declare (xargs :mode :program)) (fn-wrs-p flow))
+(defun fn-web-host-stream-p (flow) (declare (xargs :guard t)) (fn-wrs-p flow))
 
-(definterface fn-web-host-stream-p :class ::program)
-(defun fn-web-host-stream-start (flow) (declare (xargs :mode :program)) (fn-wrs-start flow))
+(definterface fn-web-host-stream-p :class :common-lisp-compliant)
+(defun fn-web-host-stream-start (flow) (declare (xargs :guard t)) (fn-wrs-start flow))
 
-(definterface fn-web-host-stream-start :class ::program)
+(definterface fn-web-host-stream-start :class :common-lisp-compliant)
+
+; The scan is one fn-web-host-stream-start made and fn-web-host-stream-scan
+; returned (fn-wrs-statep).
 (defun fn-web-host-stream-scan (scan fn-web-in)
-  (declare (xargs :mode :program :stobjs fn-web-in)) (fn-wrs-scan scan fn-web-in))
+  (declare (xargs :stobjs fn-web-in :guard (fn-wrs-statep scan)))
+  (fn-wrs-scan scan fn-web-in))
 
-(definterface fn-web-host-stream-scan :class ::program)
+(definterface fn-web-host-stream-scan :class :common-lisp-compliant)
 (defun fn-web-host-stream-page (config flow scan)
-  (declare (xargs :mode :program)) (fn-wrs-page config flow scan))
+  (declare (xargs :guard (fn-wrs-statep scan)))
+  (fn-wrs-page config flow scan))
 
-(definterface fn-web-host-stream-page :class ::program)
+(definterface fn-web-host-stream-page :class :common-lisp-compliant)
 
 (defun fn-web-host-private-begin-step (config action fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (declare (xargs :stobjs (fn-web-in fn-web-out)
+                  :guard (and (true-listp config) (true-listp action))))
   (fn-wpf-private-begin (append (take 6 config) (list :page-plan :private-begin))
                              action fn-web-in fn-web-out))
 
-(definterface fn-web-host-private-begin-step :class ::program)
+(definterface fn-web-host-private-begin-step :class :common-lisp-compliant
+  :kinds ((config true-listp) (action true-listp)))
 
+; Guard t, logic mode, guards verified.  ec-call is the identity in the logic
+; and runs the callee's own checked *1*: fn-wps-window and fn-octets-append-list
+; (guard fn-cbor-octet-listp of the window bytes) keep their guards, so this
+; entry reaches no stobj updater with a non-trivial guard.
 (defun fn-web-host-post-window (cursor fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
-  (mv-let (bytes next done) (fn-wps-window 4096 cursor nil fn-web-in)
+  (declare (xargs :mode :logic :guard t :stobjs (fn-web-in fn-web-out)))
+  (mv-let (bytes next done) (ec-call (fn-wps-window 4096 cursor nil fn-web-in))
     (let* ((fn-web-out (fn-octets-clear fn-web-out))
-           (fn-web-out (fn-octets-append-list bytes fn-web-out)))
+           (fn-web-out (ec-call (fn-octets-append-list bytes fn-web-out))))
       (mv next done fn-web-out))))
 
-(definterface fn-web-host-post-window :class ::program)
+(definterface fn-web-host-post-window :class :common-lisp-compliant)
 (defun fn-web-host-post-reply-step (config flow event cursor fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (declare (xargs :stobjs (fn-web-in fn-web-out) :guard (true-listp config)))
   (fn-wps-private-reply (append (take 6 config) (list :page-plan :private-begin))
                         flow event cursor fn-web-in fn-web-out))
 
-(definterface fn-web-host-post-reply-step :class ::program)
+(definterface fn-web-host-post-reply-step :class :common-lisp-compliant
+  :kinds ((config true-listp)))
 
+;; Constant-time guard: config is a list and the traversal is a bounded tuple (fn-wpf-cp), O(1) in the body.
 (defun fn-web-host-post-form-step (config prep fn-web-in fn-web-out)
-  (declare (xargs :mode :program :stobjs (fn-web-in fn-web-out)))
+  (declare (xargs :stobjs (fn-web-in fn-web-out)
+                  :guard (and (true-listp config)
+                              (fn-wpf-cp prep (fn-octets-len fn-web-in)))
+                  :guard-hints (("Goal" :do-not-induct t
+                                 :in-theory (disable fn-wpf-drive fn-wpf-cp fn-wpf-finish)
+                                 :use ((:instance fn-wpf-drive-cp (fuel 4096) (p prep)
+                                                  (n (fn-octets-len fn-web-in))))))))
   (mv-let (next done) (fn-wpf-drive 4096 prep fn-web-in)
     (if done (fn-wpf-finish (append (take 6 config) (list :page-plan :private-begin))
                            next fn-web-in fn-web-out)
       (mv (list :post-form next) fn-web-out))))
 
-(definterface fn-web-host-post-form-step :class ::program)
+(definterface fn-web-host-post-form-step :class :common-lisp-compliant
+  :kinds ((config true-listp)))

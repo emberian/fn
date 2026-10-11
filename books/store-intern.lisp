@@ -1024,6 +1024,19 @@
   :hints (("Goal" :in-theory (e/d (fn-store-existing-action fn-rcl-action-over)
                                   (fn-handle-bytes fn-rcl-same-articlep)))))
 
+; The intern into a LOCAL arena (host/store-host.lisp fn-store-intern-
+; records-local, for a decision over a history that is not the live
+; Store's): guard-verified, so the :program host entries that call it
+; (fn-store-cfg-native-admin-authorize) run it raw instead of carrying
+; ACL2's invariant-risk through a with-local-stobj of their own
+; (tools/invariant_risk_check.py).  The arena is dropped with the answer.
+(defun fn-intern-events-local (records)
+  (declare (xargs :guard t))
+  (with-local-stobj fn-arena
+    (mv-let (rows fn-arena)
+      (fn-intern-events records nil 0 fn-arena)
+      rows)))
+
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in
 ;; almost none (planning/evidence/rule-cost-*.json has the counts;

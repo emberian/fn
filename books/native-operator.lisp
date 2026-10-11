@@ -377,26 +377,82 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
        (:type-prescription fn-native-admin-decimal-value-aux)
        (:type-prescription len)))))
 
-(defun fn-nop-parse-init-sizing (words budget largest)
-  (declare (xargs :guard t :measure (len words)
+; Executes by a loop (PKT-877, lane d-depth-excess-d): the recursion took one
+; control-stack frame per flag pair of the operator's init command.  The
+; :logic is the recursion, unchanged; the :exec carries the flag words reversed.
+(defun fn-nop-parse-init-sizing-loop (words budget largest acc)
+  (declare (xargs :guard (true-listp acc) :measure (len words)
                   :hints (("Goal" :in-theory (theory (quote fn-nop-parse-init-sizing-hint-rules))))
-                  :guard-hints (("Goal" :in-theory (union-theories (theory (quote fn-nop-parse-init-sizing-hint-rules))
-                                  (quote ((:definition fn-nop-parse-init-sizing) (:induction fn-nop-parse-init-sizing) (:type-prescription fn-nop-parse-init-sizing))))))))
-  (cond ((atom words) (list budget largest nil))
+                  :verify-guards nil))
+  (cond ((atom words) (list budget largest (revappend acc nil)))
         ((equal (car words) "--budget")
          (let ((mb (if (consp (cdr words)) (fn-nop-profile-decimal (cadr words)) nil)))
            (if (or budget (not (posp mb)))
                :bad
-             (fn-nop-parse-init-sizing (cddr words) mb largest))))
+             (fn-nop-parse-init-sizing-loop (cddr words) mb largest acc))))
         ((equal (car words) "--largest")
-         (if largest :bad (fn-nop-parse-init-sizing (cdr words) budget t)))
+         (if largest :bad (fn-nop-parse-init-sizing-loop (cdr words) budget t acc)))
         ((and (fn-nop-flag-wordp (car words)) (consp (cdr words)))
-         (let ((r (fn-nop-parse-init-sizing (cddr words) budget largest)))
-           (if (equal r :bad)
-               :bad
-             (list (car r) (cadr r)
-                   (list* (car words) (cadr words) (caddr r))))))
-        (t (list budget largest (true-list-fix words)))))
+         (fn-nop-parse-init-sizing-loop (cddr words) budget largest
+                                        (cons (cadr words) (cons (car words) acc))))
+        (t (list budget largest (revappend acc (true-list-fix words))))))
+
+(defun fn-nop-parse-init-sizing (words budget largest)
+  (declare (xargs :guard t :verify-guards nil :measure (len words)
+                  :hints (("Goal" :in-theory (theory (quote fn-nop-parse-init-sizing-hint-rules))))
+                  :guard-hints (("Goal" :in-theory (union-theories (theory (quote fn-nop-parse-init-sizing-hint-rules))
+                                  (quote ((:definition fn-nop-parse-init-sizing) (:induction fn-nop-parse-init-sizing) (:type-prescription fn-nop-parse-init-sizing))))))))
+  (mbe :logic
+       (cond ((atom words) (list budget largest nil))
+               ((equal (car words) "--budget")
+                (let ((mb (if (consp (cdr words)) (fn-nop-profile-decimal (cadr words)) nil)))
+                  (if (or budget (not (posp mb)))
+                      :bad
+                    (fn-nop-parse-init-sizing (cddr words) mb largest))))
+               ((equal (car words) "--largest")
+                (if largest :bad (fn-nop-parse-init-sizing (cdr words) budget t)))
+               ((and (fn-nop-flag-wordp (car words)) (consp (cdr words)))
+                (let ((r (fn-nop-parse-init-sizing (cddr words) budget largest)))
+                  (if (equal r :bad)
+                      :bad
+                    (list (car r) (cadr r)
+                          (list* (car words) (cadr words) (caddr r))))))
+               (t (list budget largest (true-list-fix words))))
+       :exec (fn-nop-parse-init-sizing-loop words budget largest nil)))
+
+(local
+ (defthm fn-nop-parse-init-sizing-loop-is-sizing
+   (equal (fn-nop-parse-init-sizing-loop words budget largest acc)
+          (let ((r (fn-nop-parse-init-sizing words budget largest)))
+            (if (equal r :bad)
+                :bad
+              (list (car r) (cadr r) (revappend acc (caddr r))))))
+   :hints (("Goal" :induct (fn-nop-parse-init-sizing-loop words budget largest acc)
+                   :in-theory (enable fn-nop-parse-init-sizing-loop)
+                   :expand ((fn-nop-parse-init-sizing words budget largest))))))
+
+(local
+ (defthm fn-nop-parse-init-sizing-shape
+   (let ((r (fn-nop-parse-init-sizing words budget largest)))
+     (or (equal r :bad) (equal r (list (car r) (cadr r) (caddr r)))))
+   :hints (("Goal" :induct (fn-nop-parse-init-sizing words budget largest)
+                   :in-theory (enable fn-nop-parse-init-sizing)))))
+
+(local
+ (defthm fn-nop-parse-init-sizing-loop-at-nil
+   (equal (fn-nop-parse-init-sizing-loop words budget largest nil)
+          (fn-nop-parse-init-sizing words budget largest))
+   :hints (("Goal" :in-theory (disable fn-nop-parse-init-sizing-loop fn-nop-parse-init-sizing)
+                   :use (fn-nop-parse-init-sizing-shape
+                         (:instance fn-nop-parse-init-sizing-loop-is-sizing (acc nil)))))))
+
+(verify-guards fn-nop-parse-init-sizing-loop)
+(verify-guards fn-nop-parse-init-sizing
+  :hints (("Goal" :in-theory (union-theories
+                              '((:definition fn-nop-parse-init-sizing)
+                                fn-nop-parse-init-sizing-loop-at-nil)
+                              (theory 'minimal-theory)))))
+
 
 ; The capacity fields (T, H and R): a request naming one over no named preset
 ; is sized from the development preset, not D27's defaults (row Q10b; the
@@ -466,14 +522,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
 
 (defun fn-nop-init-field-text (name i values)
   (declare (xargs :guard (and (stringp name) (natp i))))
-  (concatenate 'string name " " (fn-acct-decimal-text (fn-bs-pf i values))))
+  (concatenate 'string name " " (fn-decimal-text (fn-bs-pf i values))))
 
 (defthm fn-nop-init-field-text-stringp
   (stringp (fn-nop-init-field-text name i values))
-  :rule-classes :type-prescription)
-
-(defthm fn-nop-acct-decimal-text-stringp
-  (stringp (fn-acct-decimal-text n))
   :rule-classes :type-prescription)
 
 (in-theory (disable fn-nop-init-field-text))
@@ -490,7 +542,7 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
                                           fn-nop-parse-init-request
                                           fn-nop-parse-init-sizing
                                           fn-bs-profile-invalid-reason
-                                          fn-bs-pf fn-acct-decimal-text
+                                          fn-bs-pf fn-decimal-text
                                           fn-record-encoded-octets-ceiling)))))
   (let* ((split (fn-nop-parse-init-sizing words nil nil))
          (parsed (if (consp split) (fn-nop-parse-init-request (caddr split)) :bad))
@@ -507,10 +559,10 @@ bare `init' is therefore a usage error, not a store with two guessed groups."
         (cond ((equal reason :max-history-octets-below-max-record-octets)
                (concatenate 'string "init: " h " is below " r
                             "; pass --max-history-octets "
-                            (fn-acct-decimal-text (fn-bs-pf *fn-bs-pf-max-record-octets* values))
+                            (fn-decimal-text (fn-bs-pf *fn-bs-pf-max-record-octets* values))
                             " or more, or a smaller --max-record-octets"))
               ((equal reason :max-record-octets-below-the-article-record)
-               (let ((need (fn-acct-decimal-text
+               (let ((need (fn-decimal-text
                             (fn-record-encoded-octets-ceiling
                              (nfix (fn-bs-pf *fn-bs-pf-max-article-octets* values))
                              (nfix (fn-bs-pf *fn-bs-pf-max-groups-per-article* values))))))

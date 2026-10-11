@@ -4,6 +4,7 @@
 (in-package "ACL2")
 (include-book "feed-wire-input")
 (include-book "scheduler-peers")
+(include-book "def-loop")
 
 ; Keys are ACL2's pair (kind peer), never a host-derived identity.
 (defun fn-prd-key (kind peer)
@@ -20,13 +21,10 @@
         (fn-prd-select active (cdr remaining)))
     (list nil nil)))
 
-(defun fn-prd-sweep (active remaining)
-  (declare (xargs :guard (true-listp active)))
-  (if (consp remaining)
-      (if (member-equal (car remaining) active)
-          (cons (car remaining) (fn-prd-sweep active (cdr remaining)))
-        (fn-prd-sweep active (cdr remaining)))
-    nil))
+(def-loop fn-prd-sweep (active remaining)
+  :shape :map :over remaining :elt r :guard (true-listp active)
+  :keep (member-equal r active)
+  :body r)
 
 ; KEYSTONE PRF-1260: every retained admitted key in a stable sweep is visited,
 ; in order, without being skipped by driver selection. This

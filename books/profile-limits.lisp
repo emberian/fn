@@ -42,8 +42,8 @@
      "every thread's control stack (--control-stack-size), whatever the store profile")
     (:default-stack-kib 2048 "KiB"
      "the control stack when no store profile is named (help, --version): SBCL's own default")
-    (:fixed-threads 12 "threads"
-     "the node's threads that are not I/O loops or control clients")
+    (:fixed-threads 13 "threads"
+     "the node's threads that are not I/O loops or control clients (the collector policy's thread among them: host/native/heap.lisp fnn-heap-collector-run, memory landing 3+4)")
     (:mux-loops 2 "threads"
      "the I/O loops every served connection is multiplexed on")
     (:cold-workers 4 "threads"

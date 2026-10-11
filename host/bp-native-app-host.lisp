@@ -17,11 +17,11 @@
 (include-book "owner-host")
 
 (defun fn-owner-bp-session-admission (channel announced-uri state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-bpaj-session-admission (fn-owner-config state) channel announced-uri)))
 
 (definterface fn-owner-bp-session-admission
-  :class ::program)
+  :class :common-lisp-compliant)
 
 (defun fn-owner-bp-tcpcl-ingress
     (fnbs-state session-counter xfer-id channel announced-uri state)
@@ -54,22 +54,22 @@
 
 ; Actual owner configuration is captured on this sole serialized writer.
 (defun fn-owner-bplc-recover (mode state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-bplc-recover mode (fn-owner-config state))))
 
-(definterface fn-owner-bplc-recover :class ::program)
+(definterface fn-owner-bplc-recover :class :common-lisp-compliant)
 
 (defun fn-owner-bplc-begin (carry mode state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-bplc-begin carry mode (fn-owner-config state))))
 
-(definterface fn-owner-bplc-begin :class ::program)
+(definterface fn-owner-bplc-begin :class :common-lisp-compliant)
 
 (defun fn-owner-bplc-turn-plan (ownerp admin carry state)
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs state :guard (boundp-global 'fn-owner state)))
   (value (fn-bplc-turn-plan ownerp admin (fn-owner-config state) carry)))
 
-(definterface fn-owner-bplc-turn-plan :class ::program)
+(definterface fn-owner-bplc-turn-plan :class :common-lisp-compliant)
 
 (defun fn-owner-bp-request-trustedp (view state)
   (declare (xargs :stobjs state :mode :program))
@@ -472,6 +472,14 @@
                                        :dispatch)
                                    state)))
           (value (if (equal (car action) :busy) :busy :refused)))
+      ; Every BP application submission is a transit submission (D34,
+      ; PKT-646): fn-bpaj-dispatch-fast answers (:submit) only at status
+      ; :intent, and planning :new or :intent sets the transit plan.  A
+      ; (:submit) without one would carry whatever msgid, article and groups
+      ; an earlier request left (planning a bound status sets none of them),
+      ; so it is refused, never submitted with groups no parse ties to its
+      ; bytes.  O1 packet 4 arm 5b: this was the one unchecked caller of
+      ; fn-own-control-decision besides the signed author path.
       (if (f-get-global 'fn-owner-app-transitp state)
           (fn-owner-bp-transit-submit
            (f-get-global 'fn-owner-app-peer state)
@@ -479,10 +487,9 @@
            (f-get-global 'fn-owner-app-article state)
            (f-get-global 'fn-owner-app-obligation-id state)
            (f-get-global 'fn-owner-app-stored-subject state) fn-arena state)
-        (fn-owner-control-submit
-         (f-get-global 'fn-owner-app-msgid state)
-         (f-get-global 'fn-owner-app-groups state)
-         (f-get-global 'fn-owner-app-article state) fn-arena state)))))
+        (let ((state (f-put-global 'fn-owner-app-refusal-reason
+                                   :no-transit-plan state)))
+          (value :refused))))))
 
 (defun fn-owner-app-submit (fn-arena fn-hist state)
   (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))

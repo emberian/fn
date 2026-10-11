@@ -26,10 +26,9 @@
 ;
 ; KEYSTONE `fn-heap-open-nursery-trigger-bounds': the trigger is at least
 ; 8 MiB, at most the figure's trigger, and with an observed history at most
-; the larger of 8 MiB and 4 x that history.  `fn-heap-store-figure-holds-
-; every-store-at-the-open-trigger' composes it with the figure's keystone
-; (books/heap-store-figure.lisp fn-heap-store-figure-holds-every-store): the
-; figure holds every store at the open's trigger too.
+; the larger of 8 MiB and 4 x that history: an open's collector room is
+; within the memory equation's (books/memory-model.lisp fn-mm-collector at
+; the trigger in force).
 
 (in-package "ACL2")
 (include-book "heap-store-figure")
@@ -65,50 +64,5 @@
                     (max *fn-heap-nursery-least-octets*
                          (* *fn-heap-open-garbage-per-history-octet* history)))))
   :rule-classes nil)
-
-(local
- (defthm fn-hon-at-most-the-trigger
-   (<= (fn-heap-open-nursery-trigger d nursery history)
-       (fn-heap-nursery-trigger d nursery))
-   :rule-classes :linear
-   :hints (("Goal" :use fn-heap-open-nursery-trigger-bounds))))
-
-(local
- (defthm fn-hon-store-need-monotone-in-the-trigger
-   (implies (<= (nfix t1) (nfix t2))
-            (<= (fn-heap-store-need profile core used n m ou on t1)
-                (fn-heap-store-need profile core used n m ou on t2)))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (union-theories '(fn-heap-store-need nfix)
-                                              (theory 'minimal-theory))))))
-
-;; The trigger is a natural, so NFIX leaves it (the composition below runs in
-;; the minimal theory).
-(local
- (defthm fn-hon-nfix-of-open-trigger
-   (equal (nfix (fn-heap-open-nursery-trigger d nursery history))
-          (fn-heap-open-nursery-trigger d nursery history))))
-
-; The figure holds every store at the open's trigger: the keystone of
-; books/heap-store-figure.lisp at the figure's trigger, which bounds this one.
-(defthm fn-heap-store-figure-holds-every-store-at-the-open-trigger
-  (implies (and (natp d)
-                (<= (fn-heap-store-figure-octets profile core nursery observed) d)
-                (<= (+ (nfix used) (* *fn-sbud-membership-octets* (nfix m)))
-                    (nfix (fn-bs-profile-max-history-octets profile)))
-                (<= (nfix n) (nfix (fn-bs-profile-max-transactions profile)))
-                (<= (nfix ou) (fn-heap-open-octets-bound profile observed))
-                (<= (nfix on) (fn-heap-open-records-bound profile observed)))
-           (<= (fn-heap-store-need profile core used n m ou on
-                                   (fn-heap-open-nursery-trigger d nursery history))
-               d))
-  :hints (("Goal" :in-theory (union-theories '(fn-hon-at-most-the-trigger
-                                               fn-hon-nfix-of-open-trigger
-                                               fn-heap-nfix-of-nursery-trigger)
-                                             (theory 'minimal-theory))
-           :use (fn-heap-store-figure-holds-every-store
-                 (:instance fn-hon-store-need-monotone-in-the-trigger
-                            (t1 (fn-heap-open-nursery-trigger d nursery history))
-                            (t2 (fn-heap-nursery-trigger d nursery)))))))
 
 (in-theory (disable fn-heap-open-nursery-trigger))

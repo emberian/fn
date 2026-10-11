@@ -233,6 +233,11 @@ def table_problems(out: Path) -> list[str]:
 FUNCTION_PROPS = {"ACL2::FORMALS", "ACL2::STOBJS-IN", "ACL2::GUARD", "ACL2::SYMBOL-CLASS", "ACL2::STOBJ",
                   "ACL2::ABSSTOBJ-INFO", "ACL2::STOBJ-FUNCTION", "ACL2::INVARIANT-RISK", "ACL2::PREDEFINED",
                   "ACL2::CONST", "ACL2::TABLE-ALIST", "ACL2::STOBJS-OUT"}
+# Every property kind the snapshot may carry (core-export.lisp xt-snapshot-stored-properties, the computed
+# rows of xt-world-snapshot): the per-function properties above, the tables and world globals the emitted
+# forms name, and the stobj registry rows the runtime reads (clruntime.lisp get-stobj-creator etc.).
+CARRIED_PROPS = FUNCTION_PROPS | {"ACL2::GLOBAL-VALUE", "ACL2::TABLE-ALIST", ":XL-STOBJ-EVENT",
+                                  ":XL-STOBJ-CREATOR", ":XL-STOBJ-RECOGNIZER"}
 # The definitions of the property readers themselves read a property passed in.
 # GLOBAL-VAL's own definition reads GLOBAL-VALUE of its argument; its callers are checked as GLOBAL-VAL reads.
 ACCESSOR_UNITS = {"%s:ACL2::%s" % (k, f) for k in ("raw", "star1")
@@ -245,8 +250,10 @@ def _qualified_symbol(text: str) -> str:
     return text if "::" in text or text.startswith(":") else "ACL2::" + text
 
 
-def snapshot_props(core_world: str) -> dict[str, set[str]]:
-    """{symbol: {property}} of xl-set-world-snapshot's rows."""
+def snapshot_props(core_world: str, repeats: list | None = None) -> dict[str, set[str]]:
+    """{symbol: {property}} of xl-set-world-snapshot's rows.  A property a row carries twice is
+    appended to REPEATS as (symbol, property) when a list is given: lookups (clruntime getpropc,
+    assoc) answer the first pair, so the later one is dead weight in the core."""
     for head in ("(XL-SET-WORLD-SNAPSHOT (QUOTE (", "(XL-SET-WORLD-SNAPSHOT '("):
         at = core_world.find(head)
         if at >= 0:
@@ -276,7 +283,10 @@ def snapshot_props(core_world: str) -> dict[str, set[str]]:
                 r = p + 1
                 while core_world[r] not in " ()\n\t":
                     r += 1
-                props.add(_qualified_symbol(core_world[p + 1:r]))
+                prop = _qualified_symbol(core_world[p + 1:r])
+                if prop in props and repeats is not None:
+                    repeats.append((sym, prop))
+                props.add(prop)
             p = q
         rows.setdefault(sym, set()).update(props)
         i = end
@@ -297,9 +307,17 @@ def _args(text: str, i: int, n: int) -> list[str]:
 
 def prop_problems(out: Path) -> list[str]:
     """O2: every world property an emitted form reads by name is one the snapshot carries."""
-    props = snapshot_props((out / "core-world.lisp").read_text(encoding="latin-1"))
+    repeats: list = []
+    props = snapshot_props((out / "core-world.lisp").read_text(encoding="latin-1"), repeats)
     defs = (out / "defs.lisp").read_text(encoding="latin-1")
     problems = []
+    # the snapshot carries exactly what is read: each (symbol, property) once, and only property kinds
+    # something in fn-core reads (a kind added to the export without a reader here is refused)
+    for sym, prop in repeats:
+        problems.append("snapshot: %s carries %s twice (the first answers every read)" % (sym, prop))
+    for sym, carried in sorted(props.items()):
+        for prop in sorted(carried - CARRIED_PROPS):
+            problems.append("snapshot: %s carries %s, a property nothing in fn-core reads" % (sym, prop))
     for unit in re.split(r"(?m)^;;;; UNIT ", defs)[1:]:
         uid, body = unit.split("\n", 1)
         uid = uid.strip()

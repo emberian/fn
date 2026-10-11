@@ -200,6 +200,8 @@ class ScanTests(unittest.TestCase):
                          [("catalogue", "catalogue")])
         self.assertEqual(sorted(cite_check.CATALOGUE),
                          ["planning/lanes/HANDOFF-w11-phantom-cites.md",
+                          "tests/acl2/book-name-provenance-tests.lisp",
+                          "tests/acl2/book-name-relative-tests.lisp",
                           "tests/test_cite_check.py", "tools/cite_check.py"])
 
     def test_an_evidence_record_names_what_was_certified_then(self):

@@ -1,4 +1,4 @@
-"""specs/wire-grammar.json read by a second, independent interpreter.
+"""build/box/wire-grammar.json (the box step's artifact) read by a second, independent interpreter.
 
 The file is ACL2's (books/wire-export.lisp, written by
 `tools/protocol_emit.py --wire --write`).  This test is the contract's other
@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
 import blake3_ref  # noqa: E402
 
-WIRE = ROOT / "specs" / "wire-grammar.json"
+import box_artifacts  # noqa: E402
 
 
 class Refused(Exception):
@@ -62,7 +62,7 @@ def is_hex(x):
 def delimited(g):
     """Section 2, `Delimited`: decoding stops at the end of the encoding."""
     op = g[0]
-    if op in ("const", "uint", "bytes", "line", "enum", "frame"):
+    if op in ("const", "uint", "bytes", "line", "enum", "sized", "frame"):
         return True
     if op == "seq":
         return all(delimited(e) for e in g[1])
@@ -78,7 +78,7 @@ def nonempty(g):
     op = g[0]
     if op == "const":
         return len(g[1]) > 0
-    if op in ("uint", "bytes", "line", "enum", "frame", "tag"):
+    if op in ("uint", "bytes", "line", "enum", "sized", "frame", "tag"):
         return True
     if op == "rest":
         return g[1] >= 1
@@ -154,6 +154,9 @@ def wellformed(g):
                     and all(nat(i) for i in check[1:])):
                 return False
         return True
+    if op == "sized":
+        return (len(args) == 4 and args[0] in WIDTHS and nat(args[0])
+                and bounded(args[1], args[2], 256 ** args[0]) and wellformed(args[3]))
     if op == "frame":
         return (len(args) == 5 and is_hex(args[0]) and len(args[0]) == 8
                 and nat(args[1]) and args[1] < 256 and nat(args[2]) and args[2] < 256
@@ -268,6 +271,20 @@ def decode(g, xs):
             if not ok:
                 raise Refused("where")
         return v, rest
+    if op == "sized":
+        # The declared length is checked against LO, HI and the octets present
+        # before the inner grammar is given them; the inner grammar must
+        # consume all of them (underrun and overrun are both malformed).
+        w, lo, hi, sub = g[1:]
+        if len(xs) < w:
+            raise Refused("malformed")
+        n, body = be(xs[:w]), xs[w:]
+        if not (lo <= n <= hi and n <= len(body)):
+            raise Refused("malformed")
+        v, rest = decode(sub, body[:n])
+        if rest:
+            raise Refused("malformed")
+        return v, body[n:]
     if op == "frame":
         magic, version, kind, mx, sub = g[1:]
         if len(xs) < 10 or xs[:4] != bytes.fromhex(magic) or xs[4] != version or xs[5] != kind:
@@ -313,6 +330,9 @@ def encode(g, v):
         return encode(g[1], v[0]) if v else b""
     if op == "where":
         return encode(g[1], v)
+    if op == "sized":
+        e = encode(g[4], v)
+        return len(e).to_bytes(g[1], "big") + e
     if op == "frame":
         magic, version, kind, mx, sub = g[1:]
         p = encode(sub, v)
@@ -324,7 +344,7 @@ def encode(g, v):
 KINDS = {"accept", "concat", "prefix", "mutation", "length", "refuse"}
 REFUSALS = ["trailer", "where", "malformed"]
 NODES = {"const", "uint", "bytes", "rest", "line", "base64-lines", "enum",
-         "seq", "tag", "maybe", "where", "frame"}
+         "seq", "tag", "maybe", "where", "sized", "frame"}
 
 
 def nodes(g):
@@ -338,6 +358,8 @@ def nodes(g):
             out |= nodes(arm[2])
     elif g[0] in ("maybe", "where"):
         out |= nodes(g[1])
+    elif g[0] == "sized":
+        out |= nodes(g[4])
     elif g[0] == "frame":
         out |= nodes(g[5])
     return out
@@ -379,6 +401,10 @@ class WellFormedness(unittest.TestCase):
          ["where", ["seq", [["uint", 1, 0, 1]]], [["le", 0, 0]]]),
         ("where check name", ["where", ["seq", [["uint", 1, 0, 1]]], [["lt", 0, 0]]],
          ["where", ["seq", [["uint", 1, 0, 1]]], [["eq", 0, 0]]]),
+        ("sized width", ["sized", 3, 0, 1, ["seq", []]], ["sized", 4, 0, 1, ["seq", []]]),
+        ("sized bound", ["sized", 1, 0, 256, ["seq", []]], ["sized", 1, 0, 255, ["seq", []]]),
+        ("sized order", ["sized", 1, 2, 1, ["seq", []]], ["sized", 1, 1, 1, ["seq", []]]),
+        ("sized inner", ["sized", 1, 0, 1, ["uint", 3, 0, 1]], ["sized", 1, 0, 1, ["uint", 1, 0, 1]]),
         ("frame magic", ["frame", "666e63", 1, 1, 0, ["seq", []]],
          ["frame", "666e6374", 1, 1, 0, ["seq", []]]),
         ("frame max", ["frame", "666e6374", 1, 1, 2 ** 32, ["seq", []]],
@@ -393,13 +419,36 @@ class WellFormedness(unittest.TestCase):
             self.assertFalse(wellformed(bad), rule)
             self.assertTrue(wellformed(good), rule)
 
+    def test_sized_inner_need_not_be_delimited(self):
+        self.assertTrue(wellformed(["sized", 1, 0, 9, ["rest", 0, 9, "any"]]))
+
+    def test_sized_length_must_agree_with_content(self):
+        g = ["sized", 1, 2, 4, ["seq", [["uint", 1, 0, 255], ["uint", 1, 0, 255]]]]
+        self.assertEqual(decode(g, bytes([2, 1, 2, 9, 9])), ([1, 2], bytes([9, 9])))
+        for bad in ([5, 1, 2, 3, 4, 5],  # past HI
+                    [1, 7],              # under LO
+                    [4, 1, 2, 3],        # fewer octets than declared
+                    [3, 1, 2, 3],        # inner leaves an octet over
+                    []):                 # no length octet
+            with self.assertRaises(Refused, msg=str(bad)) as r:
+                decode(g, bytes(bad))
+            self.assertEqual(r.exception.reason, "malformed")
+        under = ["sized", 1, 1, 4, g[4]]
+        with self.assertRaises(Refused):  # inner needs more than the L octets
+            decode(under, bytes([1, 9, 8]))
+        inner = ["sized", 1, 0, 4, ["where", ["seq", [["uint", 1, 0, 9], ["uint", 1, 0, 9]]],
+                                    [["le", 0, 1]]]]
+        with self.assertRaises(Refused) as r:  # an inner refusal is the answer
+            decode(inner, bytes([2, 5, 4]))
+        self.assertEqual(r.exception.reason, "where")
+
     def test_frame_payload_need_not_be_delimited(self):
         self.assertTrue(wellformed(["frame", "666e6374", 1, 1, 9, ["rest", 0, 9, "any"]]))
 
 
 class WireGrammarFile(unittest.TestCase):
     def setUp(self):
-        self.doc = json.loads(WIRE.read_bytes())
+        self.doc = box_artifacts.load("wire-grammar.json", ROOT)
 
     def test_header(self):
         self.assertEqual(self.doc["format"], "fn-wire-grammar")

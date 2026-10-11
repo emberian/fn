@@ -1,0 +1,13 @@
+{
+ "detail": "fnn-command-probe (host/native/io.lisp:6095) calls (fnn-initialize store) with its default profile :development and (fnn-record-filesystem-at-init store :development). Since debaad165 (2026-10-03, init resume contract) fnn-initialize on an existing store runs fnn-initialize-resume-check, and fn-nir-resume-decision (books/native-init-resume.lisp:32) refuses :profile-mismatch when the requested profile differs from the sealed one. chain_fixture.py build and NativePackChainTests.scale_store both run operator init --profile scale ... then store probe N article, so probe refuses: 'store: init refused reason=profile-mismatch: existing store keeps its sealed profile'. Groups are not the cause (+fnn-default-groups+ is fn.letters fn.test, as both callers init). Repair at the mechanism: probe opens the store it is given under its sealed profile (initializing as development only when the root holds no store), so the fixture recipe needs no change. Gate: tools/fixtures.py rebuild --only chain-20000 on hbox, then tests.test_native_pack_chain with FN_P5_FIXTURE.",
+ "file": "host/native/io.lisp",
+ "id": "PROBE-REINIT-DEVELOPMENT-PROFILE",
+ "line": "6095",
+ "notes": [],
+ "owner": "builder-A",
+ "severity": "medium",
+ "source": "tools/fixtures.py rebuild chain-20000, hbox, image d8fb738b3 (dev dd93a43f1), Builder D 2026-10-09; log hbox:/dev/shm/fn-fixtures-d/chain-20000.log",
+ "state": "open",
+ "title": "store probe re-runs init with the development profile, so it refuses every store sealed under another profile (profile-mismatch); the chain-20000 fixture and test_native_pack_chain's FN_P5_SCALE build cannot be made",
+ "updated": "2026-10-09T21:55:05Z"
+}

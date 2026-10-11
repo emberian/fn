@@ -32,6 +32,7 @@
 (include-book "native-config")
 (include-book "identity")
 (include-book "native-admin-shape")
+(include-book "def-loop")
 
 (local (in-theory (disable (tau-system))))
 
@@ -251,13 +252,10 @@
 ;; ---------------------------------------------------------------------------
 ;; The delta over the live table
 
-(defun fn-pset-extension-rows (rows)
-  (declare (xargs :guard t))
-  (if (consp rows)
-      (if (member-equal (fn-cfg-row-b (car rows)) *fn-pset-record-slots*)
-          (fn-pset-extension-rows (cdr rows))
-        (cons (car rows) (fn-pset-extension-rows (cdr rows))))
-    nil))
+(def-loop fn-pset-extension-rows (rows)
+  :shape :map :over rows :elt r
+  :keep (not (member-equal (fn-cfg-row-b r) *fn-pset-record-slots*))
+  :body r)
 
 ; (:ok DELTAS) or (:refused REASON), over the peers rows PEERS.
 (defun fn-pset-plan (name opts peers)

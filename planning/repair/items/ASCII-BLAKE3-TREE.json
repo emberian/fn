@@ -2,11 +2,13 @@
  "detail": "ascii_check --strict: REFUSED books/blake3-tree.lisp:16:70, 44:28, 64:73, 86:76 (bytes E2 80 94). Introduced by 69b73a41d (2026-10-06, proof-cost cut). The fix changes the book's bytes, so its closure recertifies in the train that carries it.",
  "file": "books/blake3-tree.lisp",
  "id": "ASCII-BLAKE3-TREE",
- "notes": [],
+ "notes": [
+  "10-09 23:52 lane/d-depth-excess-d: the ten U+2014 in comments (lines 16 44 64 86 305 330 355 433 520 627) are now ASCII '--'; comment-only, so the certify cache key is unchanged"
+ ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "make check at lane/d-evidence-prose 3864dfddc (dev dd93a43f1 + the evidence lists), laptop, python3.12, Builder D 2026-10-09; logs build/lanes/d-evidence-prose/build/check-steps/logs/",
- "state": "open",
+ "state": "ready",
  "title": "books/blake3-tree.lisp carries U+2014 EM DASH in four comments; books/ and host/ are ASCII (PKT-379)",
- "updated": "2026-10-09T22:00:00Z"
+ "updated": "2026-10-10T03:52:02Z"
 }

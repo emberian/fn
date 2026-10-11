@@ -151,6 +151,8 @@ FIXED = {
     "FN_TEST_OPENSSL": (OPENSSL, "the test tool OpenSSL 3.5 (independent ML-DSA-65 keys)"),
     "FN_OPENSSL": (OPENSSL, "the test tool OpenSSL 3.5"),
     "FN_NATIVE_TEST_ROOT": ("$T", "the shipped tree"),
+    "FN_OPEN_DEPTH_FIXTURES": ("$FN_FIXTURES_DIR",
+                               "the box's fixture stores (tools/native_box.sh FIXTURES)"),
 }
 # Of FIXED, the names that locate a test tool and gate nothing: set for a
 # module that reads one only through a helper too, since a module that

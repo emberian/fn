@@ -52,6 +52,7 @@
 ; mistaken for a frame (`fn-lzr-record-is-not-a-frame': the codec's magic is
 ; not the frame's head).
 (in-package "ACL2")
+(include-book "decimal-text")
 (include-book "payload-lz-record")
 (include-book "config")
 
@@ -292,16 +293,6 @@
   (equal (mv-nth 0 (fn-lzr-read-step tally dicts z)) (fn-lzr-expand dicts z))
   :hints (("Goal" :in-theory (disable fn-lzr-expand fn-lzr-tally-add))))
 
-(local
- (defthm fn-lzr-explode-is-characters
-   (implies (character-listp acc)
-            (character-listp (explode-nonnegative-integer n base acc)))
-   :hints (("Goal" :in-theory (disable floor mod)))))
-
-(defun fn-lzr-nat-text (n)
-  (declare (xargs :guard t))
-  (coerce (explode-nonnegative-integer (nfix n) 10 nil) 'string))
-
 ; The dictionary list has no fixed cap (D27): the text executes by a loop
 ; (lane depth-debt, PRF-919) that collects the characters reversed and
 ; coerces once; fn-lzr-nats-text-loop-is-rev-onto equates it with the
@@ -313,8 +304,8 @@
     (fn-lzr-nats-text-loop
      (cdr ns)
      (fn-ag-rev-onto (coerce (if (atom (cdr ns))
-                                 (fn-lzr-nat-text (car ns))
-                               (concatenate 'string (fn-lzr-nat-text (car ns)) ","))
+                                 (fn-decimal-text (car ns))
+                               (concatenate 'string (fn-decimal-text (car ns)) ","))
                              'list)
                      acc))))
 
@@ -340,8 +331,8 @@
        (if (atom ns)
            ""
          (if (atom (cdr ns))
-             (fn-lzr-nat-text (car ns))
-           (concatenate 'string (fn-lzr-nat-text (car ns)) "," (fn-lzr-nats-text (cdr ns)))))
+             (fn-decimal-text (car ns))
+           (concatenate 'string (fn-decimal-text (car ns)) "," (fn-lzr-nats-text (cdr ns)))))
        :exec (fn-lzr-nats-text-loop ns nil)))
 
 (defthm fn-lzr-nats-text-stringp
@@ -354,21 +345,21 @@
                   (coerce (fn-ag-rev-onto acc (coerce (fn-lzr-nats-text ns) 'list))
                           'string)))
   :hints (("Goal" :induct (fn-lzr-nats-text-loop ns acc)
-                  :in-theory (disable fn-lzr-nat-text))))
+                  :in-theory (disable fn-decimal-text))))
 
 (verify-guards fn-lzr-nats-text
-  :hints (("Goal" :in-theory (disable fn-lzr-nat-text fn-lzr-nats-text-loop))))
+  :hints (("Goal" :in-theory (disable fn-decimal-text fn-lzr-nats-text-loop))))
 
 ; `store ROOT compression': MIN the profile's compress-min-octets.
 (defun fn-lzr-tally-text (min tally)
   (declare (xargs :guard (true-listp tally)))
   (concatenate 'string
-               "compression: compress-min-octets=" (fn-lzr-nat-text min)
+               "compression: compress-min-octets=" (fn-decimal-text min)
                (if (posp min) "" " (off)")
-               " records=" (fn-lzr-nat-text (nth 0 tally))
-               " compressed-records=" (fn-lzr-nat-text (nth 1 tally))
-               " stored-octets=" (fn-lzr-nat-text (nth 2 tally))
-               " uncompressed-octets=" (fn-lzr-nat-text (nth 3 tally))
+               " records=" (fn-decimal-text (nth 0 tally))
+               " compressed-records=" (fn-decimal-text (nth 1 tally))
+               " stored-octets=" (fn-decimal-text (nth 2 tally))
+               " uncompressed-octets=" (fn-decimal-text (nth 3 tally))
                " dictionaries=" (if (consp (nth 4 tally)) (fn-lzr-nats-text (nth 4 tally)) "none")))
 
 ; -----------------------------------------------------------------------------

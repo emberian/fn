@@ -5,6 +5,7 @@ import subprocess
 import tempfile
 import contextlib
 import io
+import json
 from pathlib import Path
 import sys
 import unittest
@@ -87,6 +88,59 @@ class DeclarationTests(unittest.TestCase):
         rendered = interface_emit.render_raw_declarations(interface_emit.declarations(root), root=root)
         self.assertIn('(include-book "../books/demand")', rendered)
         self.assertIn('(include-book "../books/proof")', rendered)
+
+    def test_raw_route_reaching_an_attachable_generic_includes_its_attach_book_first(self):
+        # A route book whose closure reaches an attachable stobj generic is
+        # preceded by the image's attach book for it (host_check
+        # --attach-order), ordered so an attach book that itself reaches
+        # another generic follows that generic's attach book.
+        root = tree('(definterface fn-step :class :common-lisp-compliant '
+                    ':raw-with (fn-step-proof))\n')
+        books = root / "books"
+        books.mkdir()
+        (books / "walk.lisp").write_text('(include-book "cat")\n(defun fn-step (x) x)\n'
+                                         '(defthm fn-step-proof t)\n')
+        (books / "arena.lisp").write_text('(defabsstobj fn-arena :attachable t)\n')
+        (books / "cat.lisp").write_text('(include-book "arena")\n(defabsstobj fn-cat :attachable t)\n')
+        (books / "arena-attach.lisp").write_text('(attach-stobj fn-arena fn-arena-impl)\n'
+                                                 '(include-book "arena")\n')
+        (books / "cat-attach.lisp").write_text('(attach-stobj fn-cat fn-cat-impl)\n'
+                                               '(include-book "cat")\n')
+        (root / "host" / "native").mkdir()
+        (root / "host" / "native" / "build.lisp").write_text(
+            '(include-book "books/cat-attach")\n(include-book "books/arena-attach")\n')
+        rendered = interface_emit.render_raw_declarations(interface_emit.declarations(root), root=root)
+        arena = rendered.index('(include-book "../books/arena-attach")')
+        cat = rendered.index('(include-book "../books/cat-attach")')
+        walk = rendered.index('(include-book "../books/walk")')
+        self.assertLess(arena, cat)
+        self.assertLess(cat, walk)
+
+    def test_a_generic_reached_only_through_an_attach_book_gets_its_attach_book_first(self):
+        # Codex l-rcw F1: the route reaches only generic a; a's attach book
+        # (its implementation) includes generic b.  b's attach book is
+        # selected too, by the fixed point, and precedes a's.
+        root = tree('(definterface fn-step :class :common-lisp-compliant '
+                    ':raw-with (fn-step-proof))\n')
+        books = root / "books"
+        books.mkdir()
+        (books / "route.lisp").write_text('(include-book "a")\n(defun fn-step (x) x)\n'
+                                          '(defthm fn-step-proof t)\n')
+        (books / "a.lisp").write_text('(defabsstobj fn-a :attachable t)\n')
+        (books / "b.lisp").write_text('(defabsstobj fn-b :attachable t)\n')
+        (books / "a-attach.lisp").write_text('(attach-stobj fn-a fn-a-impl)\n'
+                                             '(include-book "a")\n(include-book "b")\n')
+        (books / "b-attach.lisp").write_text('(attach-stobj fn-b fn-b-impl)\n'
+                                             '(include-book "b")\n')
+        (root / "host" / "native").mkdir()
+        (root / "host" / "native" / "build.lisp").write_text(
+            '(include-book "books/a-attach")\n(include-book "books/b-attach")\n')
+        rendered = interface_emit.render_raw_declarations(interface_emit.declarations(root), root=root)
+        b = rendered.index('(include-book "../books/b-attach")')
+        a = rendered.index('(include-book "../books/a-attach")')
+        route = rendered.index('(include-book "../books/route")')
+        self.assertLess(b, a)
+        self.assertLess(a, route)
 
     def test_raw_input_output_stobjs_deduplicate_and_state_is_builtin(self):
         root = tree('(definterface fn-a :class :common-lisp-compliant '
@@ -357,14 +411,12 @@ class HostBindingTests(unittest.TestCase):
                         "(definterface fn-z :class :program)\n" if declared else ""))
                     decls = interface_emit.declarations(root)
                     roots = root / "roots.sh"
-                    registry = root / "interfaces.json"
                     raw = root / "interfaces-raw.lisp"
                     roots.write_text(interface_emit.render_roots(decls))
-                    registry.write_text(interface_emit.render_registry(decls, observed))
                     raw.write_text(interface_emit.render_raw_declarations(decls))
                     output = io.StringIO()
                     with mock.patch.multiple(interface_emit, ROOTS_SH=roots,
-                                             REGISTRY=registry, RAW_DECLARATIONS=raw), \
+                                             RAW_DECLARATIONS=raw), \
                             mock.patch.object(interface_emit, "declarations", return_value=decls), \
                             mock.patch.object(interface_emit, "host_reading", return_value=observed), \
                             mock.patch.object(interface_emit, "findings", side_effect=lambda d, r:
@@ -544,7 +596,7 @@ class KeystoneFormulaTests(unittest.TestCase):
             capture_output=True, text=True, check=True).stdout
 
     # the entry's definition: its call closure is what a :via target must be in
-    ENTRY = ('(defun fn-bph-extend-reservation (x) (fn-bph-helper x))\n'
+    ENTRY = ('(defun fn-bph-extend-reservation (x) (fn-bph-helper x))\n'  # acl2-arity-fixture: fn-bpsp-node-startup a one-argument stand-in for the call-closure reader
              '(defun fn-bph-helper (x) (fn-bpsp-node-startup x))\n'
              '(defun fn-bpsp-node-startup (x) x)\n(defun fn-bpsp-node-capacity (x) x)\n')
 
@@ -571,7 +623,7 @@ class KeystoneFormulaTests(unittest.TestCase):
     def test_a_via_target_outside_the_entrys_call_closure_is_refused(self):
         # f338968d1: fn-oct-transit stopped calling fn-oop-transit-outcome, the
         # :via of fn-owner-transit-outcome; host-ld said so at an image build.
-        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'  # acl2-arity-fixture: fn-bpsp-node-capacity a one-argument stand-in for the call-closure reader
                 '  (implies (natp x) (fn-bpsp-node-capacity x)) :rule-classes nil)\n')
         root = self.fixture("fn-bpsp-node-capacity", book)
         problems, unresolved = self.check(root)
@@ -587,7 +639,7 @@ class KeystoneFormulaTests(unittest.TestCase):
         self.assertEqual(self.check(root), ([], []))
 
     def test_a_via_closure_is_read_through_a_macro_template_and_its_calls(self):
-        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'  # acl2-arity-fixture: fn-bpsp-node-capacity a one-argument stand-in for the call-closure reader
                 '  (implies (natp x) (fn-bpsp-node-capacity x)) :rule-classes nil)\n'
                 '(defun fn-bpsp-node-capacity (x) x)\n'
                 '(defmacro def-gen (&key rows) `(defun fn-bph-extend-reservation (x) (fn-pick x ,@rows)))\n'
@@ -599,7 +651,7 @@ class KeystoneFormulaTests(unittest.TestCase):
         self.assertEqual(len(self.check(root)[0]), 1)
 
     def test_an_entry_the_reader_finds_no_definition_for_is_listed_not_failed(self):
-        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'  # acl2-arity-fixture: fn-bpsp-node-capacity a one-argument stand-in for the call-closure reader
                 '  (implies (natp x) (fn-bpsp-node-capacity x)) :rule-classes nil)\n')
         root = self.fixture("fn-bpsp-node-capacity", book)
         (root / "books" / "aa-entry.lisp").write_text('(in-package "ACL2")\n')
@@ -618,7 +670,7 @@ class KeystoneFormulaTests(unittest.TestCase):
         self.assertEqual(len(problems), 1, problems)
 
     def test_a_bare_keystone_must_call_its_own_entry(self):
-        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'
+        book = ('(in-package "ACL2")\n(defthm fn-bph-extended-reservation-holds-bp-sessions\n'  # acl2-arity-fixture: fn-bph-extend-reservation a one-argument stand-in for the call-closure reader
                 '  (implies (natp x) (fn-bph-extend-reservation x)))\n')
         root = tree('(in-package "ACL2")\n(definterface fn-bph-extend-reservation '
                     ':class :common-lisp-compliant\n  :keystones (fn-bph-extended-reservation-holds-bp-sessions))\n')
@@ -643,6 +695,21 @@ class KeystoneFormulaTests(unittest.TestCase):
         self.assertLessEqual(len(problems), 1)
         self.assertLessEqual(len(unresolved), 1)  # fn-tariff-family-...: a defmacro template
 
+
+class RegistryTests(unittest.TestCase):
+    """The registry is rendered from the tree on read, in any tree: no file,
+    no box step (train 81's regen read it before any box step had run)."""
+
+    def test_the_registry_is_the_render_of_the_declarations(self):
+        expected = json.loads(interface_emit.render_registry(interface_emit.declarations(),
+                                                             interface_emit.host_reading()))
+        self.assertEqual(interface_emit.registry(), expected)
+        self.assertGreater(len(expected["entries"]), 0)
+
+    def test_no_box_artifact_carries_it(self):
+        from tools import box_artifacts
+        self.assertNotIn("interfaces.json", box_artifacts.ARTIFACTS)
+        self.assertFalse(hasattr(interface_emit, "REGISTRY"))
 
 if __name__ == "__main__":
     unittest.main()

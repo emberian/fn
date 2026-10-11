@@ -1,5 +1,7 @@
 # Allocation epoch modes
 
+STO-10001: Same-pool prepaid allocation epoch separates cumulative physical allocation from reusable logical grants.
+
 The shared epoch distinguishes request admission from the stronger physical-fit installation. Both use the genuine unchanged runtime/image/profile/pool association, actual dynamic capacity D, source-derived gate/collection/resume charges, cumulative allocation debt, turn settlement and collection identity. A recognized tuple is representation shape, never installation authority.
 
 `fn-aec-physical-installationp` preserves the original thirteen-field `:allocation-epoch-installation` recognizer. Physical admission remains the minimum of the affine physical ceiling and D minus the dynamic reserve. Only this predicate authorizes `fn-aec-physical-ceiling` and the physical footprint theorem.

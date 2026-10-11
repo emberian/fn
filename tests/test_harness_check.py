@@ -653,6 +653,57 @@ class RawArityTests(unittest.TestCase):
         self.assertGreater(counts["dispatched_applications"], 500)
 
 
+class HarnessMockArityTests(unittest.TestCase):
+    """raw-arity reads a harness's mocks against the host files it loads
+    (WEB-RAW-HARNESS-DRIFT: 24281d120 added CLASS to fnn-owner-cold-poll and
+    web-host.lisp called the reactor mock's four-argument version with five)."""
+
+    HOST = textwrap.dedent("""\
+        (defun fnn-web-cold-step (face conn read issued)
+          (fnn-owner-cold-poll (fnn-web-face-service face) read (fnn-web-conn-line-since conn) issued
+                               :reader))
+        (defun fnn-web-face-service (face) face)
+        """)
+
+    def tree(self, mock_lambda_list):
+        root = Path(tempfile.mkdtemp())
+        self.addCleanup(lambda: __import__("shutil").rmtree(root))
+        (root / "host" / "native").mkdir(parents=True)
+        (root / "tests").mkdir()
+        (root / "host" / "native" / "web-host.lisp").write_text(self.HOST)
+        (root / "tests" / "native_web_reactor_raw-mock.lisp").write_text(textwrap.dedent("""\
+            (defun fnn-owner-cold-poll {}
+              (values :serve 0 10 nil))
+            (defun fnn-web-conn-line-since (conn) conn)
+            (load (or (sb-ext:posix-getenv "FN_WEB_REACTOR_SOURCE") "host/native/web-host.lisp"))
+            """.format(mock_lambda_list)))
+        return root
+
+    def test_the_first_drift_is_found(self):
+        findings, counts = harness_check.harness_mock_arity_findings(
+            self.tree("(service read first since)"))
+        self.assertEqual(len(findings), 1, findings)
+        self.assertEqual(findings[0]["callee"], "fnn-owner-cold-poll")
+        self.assertIn("taking 4", findings[0]["problem"])
+        self.assertIn("host/native/web-host.lisp", findings[0]["problem"])
+        self.assertIn("with 5 arguments", findings[0]["problem"])
+        self.assertGreaterEqual(counts["harness_mock_applications"], 1)
+
+    def test_the_repaired_mock_is_clean(self):
+        findings, _ = harness_check.harness_mock_arity_findings(
+            self.tree("(service read line-since since &optional (class :control))"))
+        self.assertEqual(findings, [])
+
+    def test_a_name_the_host_defines_is_not_a_mock(self):
+        # fnn-web-face-service is the host's own: a harness definition of it
+        # is replaced by the load, so its lambda list is not checked
+        root = self.tree("(service read line-since since &optional class)")
+        mock_file = root / "tests" / "native_web_reactor_raw-mock.lisp"
+        mock_file.write_text("(defun fnn-web-face-service (a b c) a)\n" + mock_file.read_text())
+        findings, _ = harness_check.harness_mock_arity_findings(root)
+        self.assertEqual(findings, [])
+
+
 class DuplicateDefunTests(unittest.TestCase):
     """`duplicate-defun`: a raw name defined twice across one image's files."""
 

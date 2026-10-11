@@ -320,6 +320,9 @@ class NativeFriendsAccountsTests(unittest.TestCase):
         # unit; the expiry is now + expires in milliseconds on both paths,
         # and since PRF-378 the record stamp is milliseconds too, so the
         # redeem record is admitted by the same comparison the plan made.
+        # The host path is host/native-admin-host.lisp fn-native-admin-host-apply
+        # calling fn-acct-admin-deltas at fn-acct-offline-invite-reading: the
+        # subject of fn-acct-admin-deltas-expire-at-now-plus-expires-on-both-paths.
         stopped = self.invite()
         self.node.start()
         running = self.invite()

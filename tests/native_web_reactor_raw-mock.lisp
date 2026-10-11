@@ -17,12 +17,24 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-concat (&rest strings)
+  (declare (ignorable strings))
+  (harness-stub-reached 'fnn-concat "host/native/io.lisp"))
+(defun fnn-emit (stream text)
+  (declare (ignorable stream text))
+  (harness-stub-reached 'fnn-emit "host/native/io.lisp"))
 (defun fnn-extent-window-cancel (worker token)
   (declare (ignorable worker token))
   (harness-stub-reached 'fnn-extent-window-cancel "host/native/extent.lisp"))
+(defun fnn-log-offer (destination octets)
+  (declare (ignorable destination octets))
+  (harness-stub-reached 'fnn-log-offer "host/native/io.lisp"))
 (defun fnn-owner-cold-window-result-locked (service read)
   (declare (ignorable service read))
   (harness-stub-reached 'fnn-owner-cold-window-result-locked "host/native/owner.lisp"))
+(defun fnn-string-octets (string)
+  (declare (ignorable string))
+  (harness-stub-reached 'fnn-string-octets "host/native/io.lisp"))
 ;;; ---- derived stubs: END ----
 (deftype fnn-octets () '(simple-array (unsigned-byte 8) (*)))
 (define-condition fnn-os-error (error) ())
@@ -119,8 +131,18 @@
     (t (error "unexpected call ~s" name))))
 (defun fnn-owner-serialized (service cid thunk &optional class)
   (declare (ignore service cid class)) (funcall thunk))
-(defun fnn-owner-thread-escape (service condition label)
-  (declare (ignore service label)) (push condition *faults*))
+(defun fnn-owner-thread-escape (service condition label &optional jobp)
+  (declare (ignore service label jobp)) (push condition *faults*))
+;; host/native/owner.lisp's def-section entry and install-or-end, at their
+;; signatures (web-host.lisp's cleanup reaches both since 65b9a3077): the
+;; section runs its thunk; an installation that signals fails the harness
+;; loudly where the owner would end the process.
+(defun fnn-quantum-mux-finish (service cid thunk &optional class)
+  (declare (ignore service cid class)) (funcall thunk))
+(defun fnn-owner-install-or-end (install original label)
+  (handler-case (funcall install)
+    (serious-condition (failure)
+      (error "~a: installing the stop failed (~a); original condition: ~a" label failure original))))
 (defun fnn-owner-response-unpin (service cid) (declare (ignore service)) (push cid *released*))
 (defun fnn-owner-action (name cid) (push (list name cid) *released*) :ok)
 (defun fnn-owner-await-register (service cid callback socket)
@@ -135,8 +157,8 @@
   (declare (ignore service cid class))
   (if *render-cold* (values (fnn-make-octets 0) plan nil nil :read)
     (values (fnn-octets '(50 52 48 13 10)) nil t nil nil)))
-(defun fnn-owner-cold-poll (service read first since)
-  (declare (ignore service read first)) (values *cold-result* since 10 nil))
+(defun fnn-owner-cold-poll (service read line-since since &optional (class :control))
+  (declare (ignore service read line-since class)) (values *cold-result* since 10 nil))
 (defun fnn-transport-write-now (fd channel data offset)
   (declare (ignore channel))
   (let ((n (min *write-limit* (- (length data) offset))))
@@ -146,7 +168,19 @@
 (defun fnn-socket-fd (socket) socket)
 (defun fnn-mux-poll (fds events timeout)
   (declare (ignore events)) (setq *poll-timeout* timeout) (make-array (length fds) :initial-element 0))
-(load (or (sb-ext:posix-getenv "FN_WEB_REACTOR_SOURCE") "host/native/web-host.lisp"))
+;; web-host.lisp's actor body and listener start expand host/native/io.lisp's
+;; fnn-unwind-cleanups: the deployed macro and its escape-path helper, as
+;; every cleanup harness loads them.
+(load "tests/unwind_cleanups_prelude.lisp")
+(in-package "ACL2")
+(unwind-prelude-load-forms *unwind-prelude-io-source* '((defmacro fnn-unwind-cleanups)))
+;; A form that does not compile here (an unloaded macro compiles as an
+;; illegal call, which no PASS line reaches) refuses the harness by name.
+(with-compilation-unit (:override t)
+  (load (or (sb-ext:posix-getenv "FN_WEB_REACTOR_SOURCE") "host/native/web-host.lisp"))
+  (when (plusp sb-c::*compiler-error-count*)
+    (error "web-host.lisp: ~d form(s) do not compile in this harness (the compiler's report is above)"
+           sb-c::*compiler-error-count*)))
 (defun fixture-conn (socket phase &optional cid)
   (%make-fnn-web-conn :socket socket :fd socket :phase phase :cid cid
                      :in (create-fn-octets$c) :out (create-fn-octets$c) :deadline 15))

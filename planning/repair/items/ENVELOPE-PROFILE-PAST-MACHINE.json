@@ -1,0 +1,13 @@
+{
+ "detail": "Measured with operator init --budget 900000 on image d8fb738b3: reservation 38,368 / 62,968 / 112,168 MB at H = 1 / 2 / 4 GiB (scale, T 2^20, A 16 KiB), linear at 24,600 MB per GiB of H. The 09-28 03:13 fixture's state.json records 74,517 MB for the same arguments. a52332d93 (09-28 20:43, heap-pool B9) added the figure's header term 8 H (*fn-heap-charge-heap-octets*, 32 GiB at H = 4 GiB, books/heap-breakdown.lisp :state-record-headers) and the collector room over it; later reserves (92e054a48 history roots, 7b1dcb85e reclaim) add the rest. fixtures.py's recipe runs service_envelope load in a 40G unit, whose init reports budget=40937 MB; with --budget 98304 (native_env.HARNESS_INIT_WORDS) it still refuses since 112,168 > 98,304. Decision needed, not a recipe workaround: either the figure's H terms shrink (this item's owner), or the envelope's profile changes H (a change to what service_envelope measures, ruled by the coordinator). The fixture stays unrebuilt and refuses as schema-unrecorded until then.",
+ "file": "books/heap-store-figure.lisp",
+ "id": "ENVELOPE-PROFILE-PAST-MACHINE",
+ "line": "283",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "tools/fixtures.py rebuild t40k-2k-cp5, hbox, image d8fb738b3 (dev dd93a43f1), Builder D 2026-10-09; log hbox:/dev/shm/fn-fixtures-d/t40k-2k-cp5.log; init probes hbox:/tank/fn/scratch/d-fixtures-schema/heapprobe",
+ "state": "open",
+ "title": "the scale-1m profile (tools/service_envelope.py PROFILE, H = 4 GiB) reserves 112,168 MB at init, past hbox's machine budget (94,694 MB) and the harness target (98,304 MB): the t40k-2k-cp5 fixture and the service_envelope native cannot init",
+ "updated": "2026-10-09T21:55:05Z"
+}

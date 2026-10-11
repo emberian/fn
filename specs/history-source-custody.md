@@ -1,5 +1,7 @@
 # Captured all-event history custody
 
+STO-10004: Remote history captures retain an exact committed all-event prefix through reset fencing and once-only shared-pool return.
+
 This is the source preparation boundary for the S7/P12 history producer and
 remote consumer. Dense frontier F counts every committed Store event. The
 article catalog ordinal is not F. An event value NIL is distinct from an

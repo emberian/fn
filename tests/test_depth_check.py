@@ -212,6 +212,31 @@ class ProgramEntryTests(unittest.TestCase):
     def test_a_baseline_without_the_key_refuses_every_entry(self):
         self.assertEqual(len(d.check_program([self.ROW], {"bounded": {}, "debt": {}})), 1)
 
+    def test_a_build_time_entry_mentioned_off_its_callers_fails(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "host" / "native").mkdir(parents=True)
+            (root / "host" / "native" / "raw-trap.lisp").write_text("(fn-rdv-row-digest name kvs w)\n")
+            served = root / "host" / "native" / "nntp-serve.lisp"
+            served.write_text("(fn-rdv-row-digest-other x)\n")
+            base = {"program": {"fn-rdv-row-digest": "build time only"},
+                    "program_build_time": {"fn-rdv-row-digest": ["host/native/raw-trap.lisp"]}}
+            self.assertEqual(d.check_build_time(base, root), [])
+            served.write_text("(fn-rdv-row-digest name kvs w)\n")
+            problems = d.check_build_time(base, root)
+            self.assertEqual(len(problems), 1)
+            self.assertIn("host/native/nntp-serve.lisp", problems[0])
+            unlisted = d.check_build_time({"program": {}, "program_build_time":
+                                           {"fn-rdv-row-digest": ["host/native/raw-trap.lisp",
+                                                                  "host/native/nntp-serve.lisp"]}}, root)
+            self.assertEqual(len(unlisted), 1)
+            self.assertIn("not under \"program\"", unlisted[0])
+
+    def test_the_loaded_baseline_carries_the_build_time_list(self):
+        self.assertIn("fn-rdv-row-digest", d.load_baseline()["program_build_time"])
+        self.assertEqual(d.check_build_time(d.load_baseline()), [])
+
     def test_only_program_definitions_are_rows(self):
         defs = {
             "fn-a": d.callgraph.Definition(
@@ -301,6 +326,52 @@ class RawBaselineTests(unittest.TestCase):
     def test_the_tree_is_clean(self):
         rows, _ = d.raw_findings()
         self.assertEqual(d.raw_check(rows, d.load_baseline()["raw"]), [])
+
+
+class LowerStaleTests(unittest.TestCase):
+    DATA = {"_doc": "d", "bounded": {"fn-a": "*k*", "fn-gone": "*k*"},
+            "debt": {"fn-b": "articles", "fn-old": "articles"},
+            "append": {"_doc": "a", "bounded": {"fn-c": "*k*", "fn-c-gone": "*k*"}, "debt": {}},
+            "program": {"fn-p": "why", "fn-p-gone": "why"},
+            "raw": {"_doc": "r", "bounded": {"fn-r": "3"}, "debt": {"fn-r-gone": "q"}},
+            "program_build_time": {"_doc": "b", "fn-p": ["host/x.lisp"],
+                                   "fn-p-gone": ["host/y.lisp"]}}
+    FOUND = {"closure": {"fn-a", "fn-b", "fn-new"}, "append": {"fn-c"},
+             "program": {"fn-p", "fn-p-new"}, "raw": {"fn-r"}}
+
+    def test_stale_rows_leave_and_nothing_else_changes(self):
+        out, removed = d.lower_stale(self.DATA, self.FOUND)
+        self.assertEqual(sorted(removed), sorted([
+            "bounded: fn-gone", "debt: fn-old", "append bounded: fn-c-gone",
+            "program: fn-p-gone", "raw debt: fn-r-gone", "program_build_time: fn-p-gone"]))
+        self.assertEqual(out["bounded"], {"fn-a": "*k*"})
+        self.assertEqual(out["debt"], {"fn-b": "articles"})
+        self.assertEqual(out["append"], {"_doc": "a", "bounded": {"fn-c": "*k*"}, "debt": {}})
+        self.assertEqual(out["program"], {"fn-p": "why"})
+        self.assertEqual(out["raw"], {"_doc": "r", "bounded": {"fn-r": "3"}, "debt": {}})
+        self.assertEqual(out["program_build_time"], {"_doc": "b", "fn-p": ["host/x.lisp"]})
+        self.assertEqual(out["_doc"], "d")
+        # a new finding is never added: the check refuses it, a person classifies it
+        self.assertNotIn("fn-new", out["bounded"])
+        self.assertNotIn("fn-p-new", out["program"])
+        self.assertIn("fn-gone", self.DATA["bounded"])  # the input is not mutated
+
+    def test_the_lowered_baseline_passes_the_stale_checks(self):
+        out, _ = d.lower_stale(self.DATA, self.FOUND)
+        rows = [{"function": f, "where": "x:1", "nontail_calls": [f]} for f in ("fn-a", "fn-b")]
+        base = {"bounded": out["bounded"], "debt": out["debt"]}
+        self.assertEqual([p for p in d.check(rows, base, constants={"*k*"})
+                          if "no longer" in p], [])
+        stale = [p for p in d.check(rows, {"bounded": self.DATA["bounded"],
+                                           "debt": self.DATA["debt"]}, constants={"*k*"})
+                 if "no longer" in p]
+        self.assertEqual(len(stale), 2)
+        self.assertIn("--lower-stale", stale[0])
+
+    def test_an_already_current_baseline_is_unchanged(self):
+        out, _ = d.lower_stale(self.DATA, self.FOUND)
+        again, removed = d.lower_stale(out, self.FOUND)
+        self.assertEqual((again, removed), (out, []))
 
 
 if __name__ == "__main__":

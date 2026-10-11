@@ -389,7 +389,7 @@
    (fn-bpn-append
     rid (cons 58
               (fn-record-string-octets
-               (fn-prov-nat-string arrival))))))
+               (fn-decimal-text arrival))))))
 
 (defun fn-bpah-outbox-view-for (st handoff)
   (declare (xargs :guard t))

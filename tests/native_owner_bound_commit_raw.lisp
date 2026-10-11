@@ -21,6 +21,9 @@
 (defun fnn-owner-attempt-served (service msgid payload groups evidence)
   (declare (ignorable service msgid payload groups evidence))
   (harness-stub-reached 'fnn-owner-attempt-served "host/native/owner.lisp"))
+(defun fnn-owner-transit-refused (detail)
+  (declare (ignorable detail))
+  (harness-stub-reached 'fnn-owner-transit-refused "host/native/owner.lisp"))
 ;;; ---- derived stubs: END ----
 
 ;; Retirement's intake fence (books/owner-retire-counted.lisp, the real

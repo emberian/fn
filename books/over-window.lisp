@@ -766,3 +766,389 @@
                            (fn-ovw-hdr-lines fn-nntp-stuff-lines fn-ovw-status ceiling fn-clq-ceil-is-ceiling
                             fn-ovw-hdr-status fn-ovw-hdr-empty fn-ovw-hdr-quantum fn-ovw-hdr-cursor
                             fn-clq-ceil)))))
+
+; -----------------------------------------------------------------------------
+; O-NOV-LINE: one served NOV line is within the bound.  The statement is
+; build/memory/l34/onovline-statement.lisp; its lemmas are local.
+(local (include-book "arithmetic-5/top" :dir :system))
+(local (include-book "article-invariants"))
+(local (include-book "article-header-limits"))
+
+(defun fn-ovw-names-within (pairs gn)
+  (declare (xargs :guard t))
+  (if (consp pairs)
+      (and (consp (car pairs))
+           (<= (len (fn-nntp-string-octets (car (car pairs)))) (nfix gn))
+           (fn-ovw-names-within (cdr pairs) gn))
+    t))
+
+(defun fn-ovw-nov-line-bound (hdr a server g gn)
+  (declare (xargs :guard t))
+  (+ (nfix hdr)
+     *fn-nntp-max-decimal-octets* 7
+     (* 2 (len (fn-nntp-decimal (nfix a))))
+     1 (len *fn-xref-name*) (len (true-list-fix server))
+     (* (nfix g) (+ (nfix gn) 2 *fn-nntp-max-decimal-octets*))))
+
+(local
+ (defun fn-ovwx-dg (n)
+   (declare (xargs :guard (natp n) :measure (nfix n)))
+   (if (zp n) 0 (+ 1 (fn-ovwx-dg (floor n 10))))))
+
+(local
+ (defthm fn-ovwx-len-explode
+   (implies (and (natp n) (true-listp ans))
+            (equal (len (explode-nonnegative-integer n 10 ans))
+                   (if (zp n) (if (consp ans) (len ans) 1) (+ (len ans) (fn-ovwx-dg n)))))
+   :hints (("Goal" :induct (explode-nonnegative-integer n 10 ans)
+            :in-theory (enable explode-nonnegative-integer)))))
+
+(local
+ (defun fn-ovwx-ind (x a)
+   (declare (xargs :guard (and (natp x) (natp a)) :measure (nfix a)))
+   (if (zp a) x (fn-ovwx-ind (floor x 10) (floor a 10)))))
+
+(local
+ (defthm fn-ovwx-dg-mono
+   (implies (and (natp x) (natp a) (<= x a))
+            (<= (fn-ovwx-dg x) (fn-ovwx-dg a)))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-ovwx-ind x a)))))
+
+(local
+ (defthm fn-ovwx-len-string-octets-aux
+   (equal (len (fn-nntp-string-octets-aux chars)) (len chars))
+   :hints (("Goal" :in-theory (enable fn-nntp-string-octets-aux)))))
+
+(local
+ (defthm fn-ovwx-decimal-mono
+   (implies (and (natp x) (natp a) (<= x a))
+            (<= (len (fn-nntp-decimal x)) (len (fn-nntp-decimal a))))
+   :rule-classes nil
+   :hints (("Goal" :use (fn-ovwx-dg-mono
+                         (:instance fn-ovwx-len-explode (n x) (ans nil))
+                         (:instance fn-ovwx-len-explode (n a) (ans nil)))
+            :expand ((fn-ovwx-dg a))
+            :in-theory (e/d (fn-nntp-decimal fn-nntp-decimal-rev) (fn-ovwx-len-explode))))))
+
+(local
+ (defthm fn-ovwx-count-aux-bound
+   (implies (and (natp n) (fn-nov-crlf-count-aux bytes pending n))
+            (<= (fn-nov-crlf-count-aux bytes pending n) (+ n (len bytes))))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-ovwx-split-aux-body-len
+   (implies (equal (car (fn-nntp-split-article-aux bytes pre)) :ok)
+            (<= (len (car (cdr (cdr (fn-nntp-split-article-aux bytes pre))))) (len bytes)))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-nntp-split-article-aux bytes pre)
+            :in-theory (enable fn-nntp-split-article-aux)))))
+
+(local
+ (defthm fn-ovwx-body-line-count-bound
+   (<= (fn-nov-body-line-count payload) (len payload))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (e/d (fn-nov-body-line-count fn-nntp-split-article fn-nntp-split-okp fn-nntp-split-body fn-nntp-crlf-lines)
+                                   (fn-nov-crlf-count-aux-is-len-of-lines))
+            :use ((:instance fn-ovwx-split-aux-body-len (bytes payload) (pre nil))
+                  (:instance fn-ovwx-count-aux-bound (bytes (fn-nntp-split-body (fn-nntp-split-article payload))) (pending nil) (n 0))
+                  (:instance fn-nov-crlf-count-aux-is-len-of-lines
+                             (bytes (fn-nntp-split-body (fn-nntp-split-article payload))) (line-rev nil) (lines-rev nil)))))))
+
+(local
+ (defthm fn-ovwx-parse-lines-header-len
+   (implies (and (true-listp octets)
+                 (true-listp header-rev)
+                 (natp header-bytes)
+                 (<= (len header-rev) header-bytes)
+                 (fn-article-result-okp
+                  (fn-article-parse-lines octets limits lines-left header-bytes nfields
+                                          fields-rev current header-rev)))
+            (<= (len (fn-article-header
+                      (fn-article-result-article
+                       (fn-article-parse-lines octets limits lines-left header-bytes nfields
+                                               fields-rev current header-rev))))
+                (max header-bytes (fn-article-limit-octets limits))))
+   :rule-classes nil
+   :hints (("Goal"
+            :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields
+                                            fields-rev current header-rev)
+            :in-theory (e/d (fn-article-parse-lines
+                             fn-article-ok fn-article-make fn-article-header
+                             fn-article-header-rev-add-line
+                             fn-article-result-okp fn-article-result-article)
+                            (fn-article-next-line fn-article-next-line-aux
+                             fn-article-new-field fn-article-add-fold
+                             fn-article-finish-fields fn-article-body-crlfp
+                             fn-article-line-value fn-article-line-rest
+                             fn-article-limit-octets))))))
+
+(local
+ (defthm fn-ovwx-parse-under-header-len
+   (implies (fn-article-result-okp (fn-article-parse-under octets limits))
+            (<= (len (fn-article-header
+                      (fn-article-result-article (fn-article-parse-under octets limits))))
+                (fn-article-limit-octets limits)))
+   :rule-classes nil
+   :hints (("Goal"
+            :use ((:instance fn-ovwx-parse-lines-header-len
+                             (lines-left (1+ (fn-article-limit-lines limits)))
+                             (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
+            :in-theory (e/d (fn-article-parse-under)
+                            (fn-article-parse-lines fn-article-limit-octets fn-article-limit-lines
+                             fn-article-header fn-article-result-article fn-article-result-okp
+                             fn-cbor-at-mostp fn-cbor-octet-listp))))))
+
+(local
+ (defthm fn-ovwx-scrub-len
+   (<= (len (fn-nov-scrub bytes)) (len bytes))
+   :rule-classes :linear
+   :hints (("Goal" :induct (fn-nov-scrub bytes) :in-theory (enable fn-nov-scrub)))))
+
+(local
+ (defthm fn-ovwx-value-content-len
+   (<= (len (fn-nov-value-content v)) (len v))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-nov-value-content)))))
+
+(local
+ (defthm fn-ovwx-unfold-len
+   (<= (len (fn-article-unfold-octets x)) (len x))
+   :rule-classes :linear
+   :hints (("Goal" :in-theory (enable fn-article-unfold-octets)))))
+
+(local
+ (defthm fn-ovwx-after-colon-len
+   (<= (len (fn-article-value-after-colon x)) (len x))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-ovwx-join-len
+   (<= (len (fn-article-join-crlf lines)) (len (fn-article-lines-octets lines)))
+   :rule-classes :linear))
+
+(local
+ (defthm fn-ovwx-field-value-len
+   (implies (fn-article-field-correspondsp field)
+            (<= (len (fn-article-field-unfolded-value field))
+                (len (fn-article-lines-octets (fn-article-field-raw-lines field)))))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-article-field-correspondsp fn-article-unfold-reference)
+                                   (fn-article-lines-octets fn-article-join-crlf fn-article-unfold-octets fn-article-value-after-colon))
+            :use ((:instance fn-ovwx-join-len (lines (fn-article-field-raw-lines field)))
+                  (:instance fn-ovwx-unfold-len (x (fn-article-join-crlf (fn-article-field-raw-lines field))))
+                  (:instance fn-ovwx-after-colon-len (x (fn-article-unfold-octets (fn-article-join-crlf (fn-article-field-raw-lines field))))))))))
+
+(local
+ (defun fn-ovwx-wsum (fields)
+   (declare (xargs :guard t :verify-guards nil))
+   (if (consp fields)
+       (+ (len (fn-article-field-unfolded-value (car fields))) (fn-ovwx-wsum (cdr fields)))
+     0)))
+
+(local
+ (defthm fn-ovwx-len-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local
+ (defthm fn-ovwx-wsum-bound
+   (implies (fn-article-fields-correspondp fields)
+            (<= (fn-ovwx-wsum fields) (len (fn-article-fields-octets fields))))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-ovwx-wsum fields)
+            :do-not '(generalize eliminate-destructors)
+            :in-theory (disable fn-article-lines-octets fn-article-field-correspondsp fn-article-field-unfolded-value
+                                fn-article-field-raw-lines))
+           ("Subgoal *1/1" :expand ((fn-article-fields-correspondp fields) (fn-article-fields-octets fields))
+            :use ((:instance fn-ovwx-field-value-len (field (car fields))))))))
+
+(local
+ (defun fn-ovwx-fw (fields name)
+   (declare (xargs :guard t :verify-guards nil))
+   (if (consp (fn-article-get-headers-aux fields name))
+       (len (fn-article-field-unfolded-value (car (fn-article-get-headers-aux fields name))))
+     0)))
+
+(local
+ (defun fn-ovwx-fw2 (fields d)
+   (declare (xargs :guard t :verify-guards nil))
+   (if (consp fields)
+       (if (equal (fn-article-field-name (car fields)) d)
+           (len (fn-article-field-unfolded-value (car fields)))
+         (fn-ovwx-fw2 (cdr fields) d))
+     0)))
+
+(local
+ (defthm fn-ovwx-five-abs
+   (implies (and (not (equal d1 d2)) (not (equal d1 d3)) (not (equal d1 d4)) (not (equal d1 d5))
+                 (not (equal d2 d3)) (not (equal d2 d4)) (not (equal d2 d5))
+                 (not (equal d3 d4)) (not (equal d3 d5)) (not (equal d4 d5)))
+            (<= (+ (fn-ovwx-fw2 fields d1) (fn-ovwx-fw2 fields d2) (fn-ovwx-fw2 fields d3)
+                   (fn-ovwx-fw2 fields d4) (fn-ovwx-fw2 fields d5))
+                (fn-ovwx-wsum fields)))
+   :rule-classes nil
+   :hints (("Goal" :induct (fn-ovwx-wsum fields)
+            :in-theory (disable fn-article-field-name fn-article-field-unfolded-value)))))
+
+(local
+ (defthm fn-ovwx-fw-is-fw2
+   (equal (fn-ovwx-fw fields name)
+          (fn-ovwx-fw2 fields (fn-article-ascii-downcase name)))
+   :hints (("Goal" :induct (fn-ovwx-wsum fields)
+            :in-theory (e/d (fn-ovwx-fw fn-article-field-name-equalp) ())))))
+
+(local
+ (defthm fn-ovwx-five-fields
+   (<= (+ (fn-ovwx-fw fields *fn-nov-subject-name*)
+          (fn-ovwx-fw fields *fn-nov-from-name*)
+          (fn-ovwx-fw fields *fn-nov-date-name*)
+          (fn-ovwx-fw fields *fn-nov-message-id-name*)
+          (fn-ovwx-fw fields *fn-nov-references-name*))
+       (fn-ovwx-wsum fields))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-ovwx-five-abs
+                                    (d1 (fn-article-ascii-downcase *fn-nov-subject-name*))
+                                    (d2 (fn-article-ascii-downcase *fn-nov-from-name*))
+                                    (d3 (fn-article-ascii-downcase *fn-nov-date-name*))
+                                    (d4 (fn-article-ascii-downcase *fn-nov-message-id-name*))
+                                    (d5 (fn-article-ascii-downcase *fn-nov-references-name*))))))))
+
+(local
+ (defthm fn-ovwx-header-content-len
+   (<= (len (fn-nov-header-content view name))
+       (fn-ovwx-fw (fn-article-fields view) name))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-nov-header-content fn-article-get-headers)
+                                   (fn-article-get-headers-aux fn-ovwx-fw-is-fw2))
+            :expand ((fn-ovwx-fw (fn-article-fields view) name))))))
+
+(local
+ (defthm fn-ovwx-five-contents-within-header
+   (implies (fn-article-result-okp (fn-article-parse payload))
+            (let ((view (fn-article-result-article (fn-article-parse payload))))
+              (<= (+ (len (fn-nov-header-content view *fn-nov-subject-name*))
+                     (len (fn-nov-header-content view *fn-nov-from-name*))
+                     (len (fn-nov-header-content view *fn-nov-date-name*))
+                     (len (fn-nov-header-content view *fn-nov-message-id-name*))
+                     (len (fn-nov-header-content view *fn-nov-references-name*)))
+                  (len (fn-article-header view)))))
+   :rule-classes nil
+   :hints (("Goal"
+            :use ((:instance fn-ovwx-header-content-len (view (fn-article-result-article (fn-article-parse payload))) (name *fn-nov-subject-name*))
+                  (:instance fn-ovwx-header-content-len (view (fn-article-result-article (fn-article-parse payload))) (name *fn-nov-from-name*))
+                  (:instance fn-ovwx-header-content-len (view (fn-article-result-article (fn-article-parse payload))) (name *fn-nov-date-name*))
+                  (:instance fn-ovwx-header-content-len (view (fn-article-result-article (fn-article-parse payload))) (name *fn-nov-message-id-name*))
+                  (:instance fn-ovwx-header-content-len (view (fn-article-result-article (fn-article-parse payload))) (name *fn-nov-references-name*))
+                  (:instance fn-ovwx-five-fields (fields (fn-article-fields (fn-article-result-article (fn-article-parse payload)))))
+                  (:instance fn-ovwx-wsum-bound (fields (fn-article-fields (fn-article-result-article (fn-article-parse payload)))))
+                  (:instance fn-article-successful-parse-fields-correspond (octets payload))
+                  (:instance fn-article-successful-parse-fields-recompose-header (octets payload)))
+            :in-theory (disable fn-ovwx-fw fn-ovwx-fw-is-fw2
+                                fn-article-successful-parse-fields-correspond
+                                fn-article-successful-parse-fields-recompose-header
+                                fn-article-parse fn-article-fields-octets fn-article-fields-correspondp
+                                fn-article-result-article fn-article-result-okp fn-ovwx-wsum)))))
+
+(local
+ (defthm fn-ovwx-ceiling-parse-is-limits-parse
+   (implies (and (fn-article-result-okp (fn-article-parse payload))
+                 (fn-article-result-okp (fn-article-parse-under payload limits)))
+            (equal (fn-article-parse payload) (fn-article-parse-under payload limits)))
+   :rule-classes nil
+   :hints (("Goal" :use ((:instance fn-article-parse-under-admits-exactly-the-limits
+                                    (octets payload) (wider limits) (limits *fn-article-ceiling-limits*))
+                         (:instance fn-article-parse-is-the-ceiling-limits-by-definition (octets payload)))
+            :in-theory (disable fn-article-parse-under fn-article-parse
+                                fn-article-census-within fn-article-header-census fn-article-limit-reasonp)))))
+
+(local
+ (defthm fn-ovwx-overview-text-within-header
+   (let ((over (fn-nov-overview article fn-arena))
+         (payload (fn-nntp-article-bytes article fn-arena)))
+     (implies (and (fn-article-result-okp (fn-article-parse-under payload limits))
+                   (<= (nfix (fn-article-limit-octets limits)) (nfix hdr)))
+              (<= (+ (len (fn-nov-subject over)) (len (fn-nov-from over)) (len (fn-nov-date over))
+                     (len (fn-nov-msgid over)) (len (fn-nov-references over)))
+                  (nfix hdr))))
+   :rule-classes nil
+   :hints (("Goal"
+            :use ((:instance fn-ovwx-five-contents-within-header
+                             (payload (fn-nntp-article-bytes article fn-arena)))
+                  (:instance fn-ovwx-ceiling-parse-is-limits-parse
+                             (payload (fn-nntp-article-bytes article fn-arena)))
+                  (:instance fn-ovwx-parse-under-header-len
+                             (octets (fn-nntp-article-bytes article fn-arena))))
+            :in-theory (e/d (fn-nov-overview fn-nov-subject fn-nov-from fn-nov-date fn-nov-msgid fn-nov-references)
+                            (fn-article-parse fn-article-parse-under fn-article-header fn-article-result-article
+                             fn-article-result-okp fn-article-limit-octets fn-nov-header-content
+                             fn-article-syntax-p fn-nntp-article-bytes))))))
+
+(local
+ (defthm fn-ovwx-overview-counts
+   (let ((over (fn-nov-overview article fn-arena))
+         (payload (fn-nntp-article-bytes article fn-arena)))
+     (implies (<= (len payload) (nfix a))
+              (and (<= (len (fn-nntp-decimal (fn-nov-bytes over))) (len (fn-nntp-decimal (nfix a))))
+                   (<= (len (fn-nntp-decimal (fn-nov-lines over))) (len (fn-nntp-decimal (nfix a)))))))
+   :rule-classes nil
+   :hints (("Goal"
+            :use ((:instance fn-ovwx-decimal-mono (x (len (fn-nntp-article-bytes article fn-arena))) (a (nfix a)))
+                  (:instance fn-ovwx-decimal-mono (x (fn-nov-body-line-count (fn-nntp-article-bytes article fn-arena))) (a (nfix a)))
+                  (:instance fn-ovwx-body-line-count-bound (payload (fn-nntp-article-bytes article fn-arena))))
+            :in-theory (e/d (fn-nov-overview fn-nov-bytes fn-nov-lines)
+                            (fn-article-parse fn-nntp-article-bytes fn-ovwx-body-line-count-bound
+                             fn-nov-body-line-count fn-article-syntax-p))))))
+
+(local
+ (defthm fn-ovwx-len-append-pieces
+   (equal (len (fn-nntp-append-pieces pieces))
+          (if (consp pieces)
+              (+ (len (car pieces)) (len (fn-nntp-append-pieces (cdr pieces))))
+            0))
+   :hints (("Goal" :in-theory (enable fn-nntp-append-pieces)))))
+
+(local
+ (defthm fn-ovwx-nov-line-len
+   (equal (len (fn-nov-line number over))
+          (+ (len (fn-nntp-decimal-field number))
+             (len (fn-nov-subject over)) (len (fn-nov-from over)) (len (fn-nov-date over))
+             (len (fn-nov-msgid over)) (len (fn-nov-references over))
+             (len (fn-nntp-decimal (fn-nov-bytes over)))
+             (len (fn-nntp-decimal (fn-nov-lines over)))
+             7))
+   :hints (("Goal" :in-theory (enable fn-nov-line)))))
+
+(local
+ (defthm fn-ovwx-xref-locations-len
+   (implies (fn-ovw-names-within pairs gn)
+            (<= (len (fn-xref-locations pairs))
+                (* (len pairs) (+ (nfix gn) 2 *fn-nntp-max-decimal-octets*))))
+   :hints (("Goal" :in-theory (enable fn-xref-locations fn-ovw-names-within)))))
+
+(local
+ (defthm fn-ovwx-mul-mono
+   (implies (and (natp a) (natp b) (natp c) (<= a b))
+            (<= (* a c) (* b c)))
+   :rule-classes nil))
+
+(defthm fn-ovw-nov-line-within-the-bound
+  (let ((payload (fn-nntp-article-bytes article fn-arena)))
+    (implies (and (fn-article-result-okp (fn-article-parse-under payload limits))
+                  (<= (nfix (fn-article-limit-octets limits)) (nfix hdr))
+                  (<= (len payload) (nfix a))
+                  (<= (len (fn-xref-pairs article)) (nfix g))
+                  (fn-ovw-names-within (fn-xref-pairs article) gn))
+             (<= (len (fn-nov-served-line number (fn-nov-overview article fn-arena) server article))
+                 (fn-ovw-nov-line-bound hdr a server g gn))))
+  :hints (("Goal"
+           :use ((:instance fn-ovwx-overview-text-within-header)
+                 (:instance fn-ovwx-overview-counts)
+                 (:instance fn-ovwx-xref-locations-len (pairs (fn-xref-pairs article)))
+                 (:instance fn-ovwx-mul-mono (a (len (fn-xref-pairs article))) (b (nfix g))
+                            (c (+ (nfix gn) 2 *fn-nntp-max-decimal-octets*))))
+           :in-theory (e/d (fn-nov-served-line fn-xref-field fn-ovw-nov-line-bound)
+                           (fn-nov-line fn-nov-overview fn-nntp-article-bytes fn-nov-subject fn-nov-from fn-nov-date
+                            fn-nov-msgid fn-nov-references fn-nov-bytes fn-nov-lines fn-article-parse-under
+                            fn-xref-locations fn-xref-pairs fn-ovw-names-within fn-article-limit-octets
+                            fn-nntp-decimal fn-nntp-decimal-field)))))

@@ -32,6 +32,10 @@
 #      (tools/proof_artifacts.py acquire/validate --profile default;
 #      FN_CERT_CACHE and FN_ACL2 name the cache and ACL2; nothing is
 #      certified here),
+#   2b. evaluates the exported wire grammar from those certificates
+#      (tools/protocol_emit.py --wire --write: books/wire-export.lisp
+#      fn-wgx-file into build/box/wire-grammar.json; the file is a box-step
+#      artifact, never committed, and Mini pins it),
 #   3. builds the PRODUCTION image (tools/build_native_host.sh, under
 #      swarm-build where it exists; FN_IMAGE_ACL2, when set, is the ACL2
 #      launcher the image load runs under, e.g. the toolchain's at
@@ -73,7 +77,10 @@
 #                                install.sh --reader), docs/install.md, web.md,
 #                                agents.md, the guides' articles
 #                                (docs/articles/*.txt), native-artifacts.txt,
-#                                release-gate.txt, runpath-check.txt
+#                                release-gate.txt, runpath-check.txt,
+#                                wire-grammar.json (the exported wire
+#                                grammars, step 2b; the node's identity line
+#                                prints its BLAKE3 as grammar=)
 #   fn/clients/                  fn's client programs, separate from the node
 #                                (packaging/install-clients.sh): fn-client,
 #                                fn-agent, fn-consumer, fn-verify.  No
@@ -126,7 +133,7 @@ usage() {
   echo '       release-tarball.sh --frozen FROZEN_DIR PLATFORM REV OUT_DIR' >&2
   exit 2
 }
-frozen='' runtime_from=''
+frozen='' frozen_given='' runtime_from=''
 if [ "${1:-}" = --runtime-from ]; then
   [ "$#" -ge 2 ] || usage
   runtime_from=$2; shift 2
@@ -135,7 +142,7 @@ if [ "${1:-}" = --runtime-from ]; then
   [ "$#" -eq 3 ] || [ "$#" -eq 4 ] || usage
 elif [ "${1:-}" = --frozen ]; then
   [ "$#" -eq 5 ] || usage
-  frozen=$2; shift 2
+  frozen=$2 frozen_given=1; shift 2
   [ "$#" -eq 3 ] || usage
 else
   [ "$#" -eq 3 ] || [ "$#" -eq 4 ] || usage
@@ -203,6 +210,10 @@ if [ -z "$frozen" ]; then
     > "$work/validate.txt" 2>&1 || {
       tail -20 "$work/validate.txt" >&2; echo 'release-tarball: validate failed' >&2; exit 4; }
   tail -1 "$work/validate.txt"
+  echo "== 2b. the exported wire grammar from REV's certified books/wire-export"
+  "$python" tools/protocol_emit.py --wire --write > "$work/wire-grammar.txt" 2>&1 || {
+    tail -20 "$work/wire-grammar.txt" >&2; echo 'release-tarball: the wire grammar did not evaluate' >&2; exit 4; }
+  tail -1 "$work/wire-grammar.txt"
   echo "== 3. the production image"
   wrap=
   command -v swarm-build >/dev/null 2>&1 && wrap=swarm-build
@@ -268,6 +279,15 @@ mkdir -p "$top/share/fn/docs"
 install -m 0644 packaging/fn.toml.example "$top/share/fn/fn.toml.example"
 install -m 0644 docs/install.md "$top/share/fn/docs/install.md"
 install -m 0644 docs/articles/*.txt "$top/share/fn/docs/"
+# The exported wire grammar (build/box/, never committed): step 2b made it at
+# REV; the --frozen form ships the tree's when it has one and says so.
+if [ -s build/box/wire-grammar.json ]; then
+  install -m 0644 build/box/wire-grammar.json "$top/share/fn/wire-grammar.json"
+elif [ -z "$frozen_given" ]; then
+  echo 'release-tarball: no build/box/wire-grammar.json after step 2b' >&2; exit 4
+else
+  echo "wire-grammar: not shipped (no build/box/wire-grammar.json in $(pwd))" >> "$gate"
+fi
 install -m 0644 "$gate" "$top/share/fn/release-gate.txt"
 printed=$(env -i PATH=/usr/bin:/bin "$top/bin/fn" --version)
 [ "$printed" = "fn $version ($short)" ] || {

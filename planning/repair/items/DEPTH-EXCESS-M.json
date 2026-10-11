@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "tools/depth_check.py findings on the host-called closure that tools/depth_baseline.json does not classify, in the limits and resource-vector books. The baseline was last written 2026-10-07 (b90d0148e) and depth_check has been red since 2026-10-03 (CL13); most of these definitions are older than the cut and entered the closure as host files came to mention them. Close each by a loop twin, (mbe :logic <recursion> :exec <tail loop>) with its equality lemma; or a `bounded' baseline entry naming a bound that is not operator data (D27); or by retiring the host entry. A :program entry closes when it becomes :logic and guard-verified or is retired. The baseline never grows to absorb these. non-tail recursions (3): fn-lim-lines-octets (books/limits-live.lisp:486); fn-rv-idle-rows (books/resource-vector.lisp:632); fn-rv-plus (books/resource-vector.lisp:154)",
+ "file": "tools/depth_check.py",
+ "id": "DEPTH-EXCESS-M",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "depth_check at lane/d-registry-findings (dev 9b580dd36 + D's queued lanes), Builder D 2026-10-10, CL13 attributed by area under the CL24 ruling's pattern",
+ "state": "open",
+ "title": "depth_check: 3 unclassified host-closure finding(s) in builder-M's area",
+ "updated": "2026-10-10T05:00:00Z"
+}

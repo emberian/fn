@@ -58,7 +58,7 @@
 ; PAYLOADS): ACC extended by the chunk's predicted rows from H, H advanced by
 ; the chunk's sealed payloads, which are returned for the swap's seal.
 (defun fn-rcw-predict-acc-step (acc configs chunk h)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-rcw-acc-carriedp acc)))
   (if (fn-orcs-has-bad chunk)
       :bad
     (let ((rows (fn-orcs-predict-rows-at chunk (fn-sco-at 3 acc) (nfix h)))
@@ -124,7 +124,7 @@
 
 (local
  (defthm fn-rcw-predict-steps-from
-   (implies (and (fn-rcw-accp acc) (natp h0) (natp h)
+   (implies (and (fn-rcw-accp acc) (fn-rcw-acc-carriedp acc) (natp h0) (natp h)
                  (not (fn-orcs-has-bad prefix))
                  (equal h (+ h0 (len (fn-orcs-payloads prefix))))
                  (equal payloads (fn-orcs-payloads prefix))
@@ -142,7 +142,7 @@
                                  (equal (caddr r) (fn-orcs-payloads all)))))))
    :hints (("Goal" :induct (fn-rcw-predict-ind acc configs chunks h
                                                payloads prefix)
-            :in-theory (disable fn-rcw-acc-finish fn-rcw-accp fn-sco-capture fn-sco-extend
+            :in-theory (disable fn-rcw-acc-finish fn-rcw-accp fn-rcw-acc-carriedp fn-sco-capture fn-sco-extend
                                 fn-intern-row-at fn-record-p))
            ("Subgoal *1/2" :use ((:instance fn-sco-extend-of-capture
                                             (prefix (fn-orcs-predict-rows-at prefix (fn-sco-identity (fn-sco-capture configs nil)) h0))
@@ -150,7 +150,7 @@
                                  (:instance fn-rcw-finish-of-step
                                             (chunk (fn-orcs-predict-rows-at (car chunks) (fn-sco-at 3 acc) h))))
             :in-theory (e/d (fn-rcw-concat)
-                            (fn-rcw-acc-finish fn-rcw-accp fn-sco-capture fn-sco-extend
+                            (fn-rcw-acc-finish fn-rcw-accp fn-rcw-acc-carriedp fn-sco-capture fn-sco-extend
                              fn-intern-row-at fn-record-p))))))
 
 (local
@@ -322,3 +322,110 @@
                                   (fn-sca-load-held-rows-keyed-is-load-held-rows
                                    fn-sca-load-held-available-from fn-cat-clear-keyed
                                    fn-rcw-load-chunks)))))
+
+; -----------------------------------------------------------------------------
+; 6. Pass 3 on the accumulator stobj (books/reclaim-chunked-walk.lisp
+; section 4): the entry is the value step on the stobj's field, the stobj's
+; carried invariant is its guard, and the entries over the chunks from the
+; fresh stobj are the value fold.
+
+(local
+ (defthm fn-rcw-predict-acc-step-shape
+   (implies (not (equal (fn-rcw-predict-acc-step acc configs chunk h) :bad))
+            (and (true-listp (fn-rcw-predict-acc-step acc configs chunk h))
+                 (consp (fn-rcw-predict-acc-step acc configs chunk h))
+                 (consp (cdr (fn-rcw-predict-acc-step acc configs chunk h)))))
+   :hints (("Goal" :in-theory (enable fn-rcw-predict-acc-step)))))
+
+; Pass 3's entry: ACC extended by the chunk's predicted rows from H; (H'
+; PAYLOADS), the next handle and the chunk's sealed payloads, or :bad (the
+; stobj untouched) when a row is the intern's refusal word.
+(defun fn-rcwacc-predict-step (configs chunk h fn-rcwacc)
+  (declare (xargs :stobjs fn-rcwacc :guard (fn-rcwacc-carriedp fn-rcwacc)))
+  (let ((r (fn-rcw-predict-acc-step (fn-rcwacc-acc fn-rcwacc) configs chunk h)))
+    (if (eq r :bad)
+        (mv :bad fn-rcwacc)
+      (let ((fn-rcwacc (update-fn-rcwacc-acc (car r) fn-rcwacc)))
+        (mv (cdr r) fn-rcwacc)))))
+
+(defthm fn-rcwacc-carriedp-of-predict-step
+  (implies (fn-rcwacc-carriedp fn-rcwacc)
+           (fn-rcwacc-carriedp
+            (mv-nth 1 (fn-rcwacc-predict-step configs chunk h fn-rcwacc))))
+  :hints (("Goal" :in-theory (e/d (fn-rcwacc-carriedp fn-rcwacc-predict-step
+                                   fn-rcw-predict-acc-step)
+                                  (fn-rcw-acc-carriedp fn-rcw-acc-step))
+           :use ((:instance fn-rcw-acc-carriedp-of-step
+                            (acc (fn-rcwacc-acc fn-rcwacc))
+                            (chunk (fn-orcs-predict-rows-at chunk (fn-sco-at 3 (fn-rcwacc-acc fn-rcwacc))
+                                                            (nfix h))))))))
+
+(defthm fn-rcwacc-predict-step-is-the-value-step
+  (let ((r (fn-rcw-predict-acc-step (fn-rcwacc-acc fn-rcwacc) configs chunk h))
+        (e (fn-rcwacc-predict-step configs chunk h fn-rcwacc)))
+    (and (equal (mv-nth 0 e) (if (equal r :bad) :bad (cdr r)))
+         (equal (fn-rcwacc-acc (mv-nth 1 e))
+                (if (equal r :bad) (fn-rcwacc-acc fn-rcwacc) (car r)))))
+  :hints (("Goal" :in-theory (enable fn-rcwacc-predict-step))))
+
+(defun fn-rcwacc-predict-steps (configs chunks h payloads fn-rcwacc)
+  (declare (xargs :stobjs fn-rcwacc :verify-guards nil :measure (len chunks)))
+  (if (consp chunks)
+      (mv-let (r fn-rcwacc)
+        (fn-rcwacc-predict-step configs (car chunks) h fn-rcwacc)
+        (if (eq r :bad)
+            (mv :bad fn-rcwacc)
+          (fn-rcwacc-predict-steps configs (cdr chunks) (car r)
+                                   (append payloads (cadr r)) fn-rcwacc)))
+    (mv (list h payloads) fn-rcwacc)))
+
+(defthm fn-rcwacc-predict-steps-is-the-value-fold-from
+  (let ((v (fn-rcw-predict-acc-steps (fn-rcwacc-acc fn-rcwacc) configs chunks h payloads))
+        (e (fn-rcwacc-predict-steps configs chunks h payloads fn-rcwacc)))
+    (and (equal (equal (mv-nth 0 e) :bad) (equal v :bad))
+         (implies (not (equal v :bad))
+                  (and (equal (mv-nth 0 e) (cdr v))
+                       (equal (fn-rcwacc-acc (mv-nth 1 e)) (car v))))))
+  :hints (("Goal" :induct (fn-rcwacc-predict-steps configs chunks h payloads fn-rcwacc)
+           :in-theory (disable fn-rcwacc-predict-step fn-rcwacc-acc update-fn-rcwacc-acc
+                               fn-rcw-predict-acc-step))))
+
+; R4.  From the fresh stobj, the entries over the host's chunks are the value
+; fold from fn-rcw-acc-init.
+(defthm fn-rcwacc-predict-steps-is-the-value-fold
+  (let ((v (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks h0 nil))
+        (e (fn-rcwacc-predict-steps configs chunks h0 nil (fn-rcwacc-init configs fn-rcwacc))))
+    (and (equal (equal (mv-nth 0 e) :bad) (equal v :bad))
+         (implies (not (equal v :bad))
+                  (and (equal (mv-nth 0 e) (cdr v))
+                       (equal (fn-rcwacc-acc (mv-nth 1 e)) (car v))))))
+  :hints (("Goal" :use ((:instance fn-rcwacc-predict-steps-is-the-value-fold-from
+                                   (payloads nil) (h h0)
+                                   (fn-rcwacc (fn-rcwacc-init configs fn-rcwacc))))
+           :in-theory (disable fn-rcwacc-predict-steps-is-the-value-fold-from
+                               fn-rcwacc-predict-steps fn-rcw-predict-acc-steps
+                               fn-rcw-acc-init))))
+
+; The keystone fn-rcw-predict-acc-steps-is-predict, on the stobj.
+(defthm fn-rcwacc-predict-steps-is-predict
+  (implies (natp h0)
+           (let ((e (fn-rcwacc-predict-steps configs chunks h0 nil
+                                             (fn-rcwacc-init configs fn-rcwacc)))
+                 (all (fn-rcw-concat chunks)))
+             (and (equal (equal (mv-nth 0 e) :bad) (if (fn-orcs-has-bad all) t nil))
+                  (implies (not (equal (mv-nth 0 e) :bad))
+                           (and (equal (fn-rcwacc-finish (mv-nth 1 e))
+                                       (fn-sco-capture configs
+                                                       (car (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0))))
+                                (equal (cadr (mv-nth 0 e))
+                                       (cadr (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0)))
+                                (equal (car (mv-nth 0 e)) (+ h0 (len (cadr (mv-nth 0 e))))))))))
+  :hints (("Goal" :use (fn-rcwacc-predict-steps-is-the-value-fold
+                        fn-rcw-predict-acc-steps-is-predict)
+           :in-theory (e/d (fn-rcwacc-finish)
+                           (fn-rcwacc-predict-steps-is-the-value-fold
+                            fn-rcwacc-predict-steps-is-the-value-fold-from
+                            fn-rcw-predict-acc-steps-is-predict
+                            fn-rcwacc-predict-steps fn-rcw-predict-acc-steps fn-rcw-acc-init
+                            fn-rcw-acc-finish fn-orcs-predict fn-sco-capture
+                            fn-rcwacc-acc update-fn-rcwacc-acc fn-rcwacc-init)))))

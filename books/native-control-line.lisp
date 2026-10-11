@@ -12,6 +12,8 @@
 
 (in-package "ACL2")
 (include-book "native-control-reason")
+(include-book "def-loop")
+(include-book "rev-onto")
 
 (defconst *fn-ncline-reply-kind* 23)
 (defconst *fn-ncline-max-line-octets* 1024)
@@ -21,15 +23,14 @@
         (cons :blob *fn-ncline-max-line-octets*)))
 
 ; A line's characters as octets: printable ASCII, the space included, else :bad.
-(defun fn-ncline-chars-octets (chars)
-  (declare (xargs :guard t))
-  (if (consp chars)
-      (let ((rest (fn-ncline-chars-octets (cdr chars))))
-        (if (and (characterp (car chars)) (not (equal rest :bad)))
-            (let ((n (char-code (car chars))))
-              (if (and (<= 32 n) (<= n 126)) (cons n rest) :bad))
-          :bad))
-    nil))
+(def-loop fn-ncline-chars-octets (chars)
+  :shape :foldr :over chars :elt c
+  :combine (if (and (characterp c) (not (equal acc :bad)))
+               (let ((n (char-code c)))
+                 (if (and (<= 32 n) (<= n 126)) (cons n acc) :bad))
+             :bad)
+  :init nil
+  :rev fn-ag-rev-onto)
 
 (defthm fn-ncline-chars-octets-are-octets
   (implies (not (equal (fn-ncline-chars-octets chars) :bad))

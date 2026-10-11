@@ -643,8 +643,7 @@
            :use ((:instance fn-lgk-relp-at-rest)
                  (:instance fn-lgu-two-steps-are-the-extended-state)
                  (:instance fn-lg-extension-keeps-the-relation)))))
-(local
- (defthm fn-lgu-sealed-extent-facts
+(defthm fn-lgu-sealed-extent-facts
    (implies (and (posp unit) (natp extent) (equal (mod extent unit) 0))
             (let ((next (fn-lgk-sealed-extent ks extent unit)))
               (and (natp next) (equal (mod next unit) 0) (<= extent next))))
@@ -653,7 +652,7 @@
             :in-theory (disable fn-lgc-sealed-extent fn-lgk-sealed-extent fn-lgc-fitsp mod
                                 fn-lgc-sealed-extent-fits-the-batch fn-lgc-sealed-extent-of-abstraction)
             :use ((:instance fn-lgc-sealed-extent-fits-the-batch (c (fn-lgc-of ks)))
-                  (:instance fn-lgc-sealed-extent-of-abstraction))))))
+                  (:instance fn-lgc-sealed-extent-of-abstraction)))))
 (local
  (defthm fn-lgu-fields-of-append
    (let ((k2 (fn-lgk-append ks unit extent)))
@@ -682,15 +681,14 @@
             :use ((:instance fn-lgu-safep-acked-within)
                   (:instance fn-lgu-safep-when-fields-agree (k2 (fn-lgk-append ks unit extent)))
                   (:instance fn-lgu-safep-when-fields-agree (k2 (fn-lgk-fence-failed ks))))))))
-(local
- (defthm fn-lgu-relp-content-shape
+(defthm fn-lgu-relp-content-shape
    (implies (fn-lgk-relp bs ks ino genesis max)
             (and (posp (fn-bs-unit bs))
                  (equal (mod (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)) 0)))
    :rule-classes nil
    :hints (("Goal" :in-theory (e/d (fn-lgk-relp fn-lgk-content-okp)
                                    (fn-lg-scan fn-lg-scan-last fn-lg-log fn-bs-take fn-lg-zerosp
-                                    fn-lg-recordsp fn-frame-digestp fn-bs-durable-content mod))))))
+                                    fn-lg-recordsp fn-frame-digestp fn-bs-durable-content mod)))))
 (local
  (defthm fn-lgu-seal-step-from-the-relation
    (implies (and (fn-lgk-relp bs ks ino genesis max)
@@ -1210,3 +1208,423 @@
                  (:instance fn-lgu-acknowledged-records-are-recovered-at-every-cut
                             (ks (fn-lgt-recover (fn-lgd-octets s) genesis (fn-bs-unit bs) max floor))
                             (ops (append ops (fn-lgu-finishes n))))))))
+
+; -----------------------------------------------------------------------------
+; 9. Exports for the commit driver (books/post-transaction-durable.lisp): the
+; section 3, 6 and 8 facts it composes, as :rule-classes nil copies of local
+; lemmas so no includer's theory changes.
+
+(defthm fn-lgu-host-step-of-a-kernel-op-export
+  (implies (and (fn-lgu-kernel-op-p op)
+                (implies (member-equal (car op) '(:prepare :take))
+                         (equal (fn-lgu-take-verdict (nth 1 op) max) :admissible)))
+           (equal (fn-lgu-host-step bs ks op ino max)
+                  (list (list (cons bs (fn-lgk-host-step ks op))) bs (fn-lgk-host-step ks op))))
+  :rule-classes nil
+  :hints (("Goal" :by fn-lgu-host-step-of-a-kernel-op)))
+
+(defthm fn-lgu-kernel-op-keeps-the-relation-export
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (fn-lgu-kernel-op-p op)
+                (implies (member-equal (car op) '(:prepare :take))
+                         (fn-lg-recordp (nth 1 op) max)))
+           (fn-lgk-relp bs (fn-lgk-host-step ks op) ino genesis max))
+  :rule-classes nil
+  :hints (("Goal" :by fn-lgu-kernel-op-keeps-the-relation)))
+
+(defthm fn-lgu-host-final-of-append-export
+  (equal (fn-lgu-host-final bs ks (append x y) ino max)
+         (let ((f (fn-lgu-host-final bs ks x ino max)))
+           (fn-lgu-host-final (car f) (cdr f) y ino max)))
+  :rule-classes nil
+  :hints (("Goal" :by fn-lgu-host-final-of-append)))
+
+(defthm fn-lgu-host-final-is-a-cut-export
+  (member-equal (fn-lgu-host-final bs ks ops ino max) (fn-lgu-host-run bs ks ops ino max))
+  :rule-classes nil
+  :hints (("Goal" :by fn-lgu-host-final-is-a-cut)))
+
+
+; -----------------------------------------------------------------------------
+; 10. The tail invariant (landing 3, L3-1: books/post-transaction-durable.lisp).
+;
+; What every cut of the host's run keeps, in the faulted branch as well: the
+; durable content's first FRONTIER octets scan to COMMITTED and end on LAST
+; (the chain head the kernel holds), LAST is a digest, the batch in flight is
+; a list of log records, and every pending write of the segment starts at or
+; above FRONTIER (fn-lgu-safep).  It says nothing of the octets above
+; FRONTIER, which a failed barrier or a torn extension may leave as the
+; platform likes; the scan of a crash image reads those after COMMITTED
+; (fn-lgu-tail-image-scans), and the driver's book decides what it can read.
+; FN-LGU-PSTAB is a store step that keeps the prefix, the segment's reach
+; and the writes above FRONTIER; a write at or above FRONTIER and any
+; fsync, whatever its outcome, are such steps.
+
+(defun fn-lgu-tailp (bs ks ino genesis max)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (fn-lgu-safep bs ks ino genesis max)
+       (equal (fn-lg-scan-last (fn-bs-take (fn-lgk-frontier ks) (fn-bs-durable-content bs ino))
+                               genesis (fn-bs-unit bs) max)
+              (fn-lgk-last ks))
+       (fn-frame-digestp (fn-lgk-last ks))
+       (fn-lg-recordsp (fn-lgk-inflight ks) max)))
+
+(defthm fn-lgu-tailp-when-fields-agree
+  (implies (and (fn-lgu-tailp bs ks ino genesis max)
+                (equal (fn-lgk-committed k2) (fn-lgk-committed ks))
+                (equal (fn-lgk-last k2) (fn-lgk-last ks))
+                (equal (fn-lgk-frontier k2) (fn-lgk-frontier ks))
+                (fn-lg-recordsp (fn-lgk-inflight k2) max)
+                (<= (fn-lgk-acked k2) (len (fn-lgk-committed ks))))
+           (fn-lgu-tailp bs k2 ino genesis max))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-tailp)
+                           (fn-lgu-safep fn-lg-scan fn-lg-scan-last fn-bs-take fn-bs-durable-content
+                            fn-lgk-committed fn-lgk-last fn-lgk-frontier fn-lgk-inflight fn-lgk-acked
+                            fn-lg-recordsp fn-frame-digestp))
+           :use ((:instance fn-lgu-safep-when-fields-agree)))))
+
+(defthm fn-lgu-relp-is-tailp
+  (implies (fn-lgk-relp bs ks ino genesis max)
+           (fn-lgu-tailp bs ks ino genesis max))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-tailp fn-lgk-relp fn-lgk-content-okp)
+                           (fn-lgu-safep fn-lg-scan fn-lg-scan-last fn-bs-take fn-bs-durable-content
+                            fn-lg-log fn-lg-zerosp mod fn-lgk-committed fn-lgk-last fn-lgk-frontier
+                            fn-lgk-inflight fn-lgk-acked fn-lg-recordsp fn-frame-digestp))
+           :use ((:instance fn-lgu-related-state-is-safe)))))
+
+(defthm fn-lgu-kernel-op-fields
+  (implies (and (<= (fn-lgk-acked ks) (len (fn-lgk-committed ks)))
+                (fn-lgu-kernel-op-p op))
+           (let ((k2 (fn-lgk-host-step ks op)))
+             (and (equal (fn-lgk-committed k2) (fn-lgk-committed ks))
+                  (equal (fn-lgk-last k2) (fn-lgk-last ks))
+                  (equal (fn-lgk-frontier k2) (fn-lgk-frontier ks))
+                  (equal (fn-lgk-inflight k2) (fn-lgk-inflight ks))
+                  (<= (fn-lgk-acked k2) (len (fn-lgk-committed ks))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgk-host-step fn-lgu-kernel-op-p fn-lgt-prepare fn-lgk-prepare
+                            fn-olr-take fn-olr-consume-to fn-lgk-finish-one fn-lgk-fence-failed
+                            fn-lgk-fields-of-make)
+                           (fn-lgk-make fn-lgk-committed fn-lgk-last fn-lgk-frontier
+                            fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-acked fn-lgk-phase
+                            fn-lgk-append fn-lgk-fence fn-lgs-rotate
+                            fn-lgs-rotate-admitsp fn-lgk-sealed-extent fn-olr-entry-octets)))))
+
+(defun fn-lgu-pstab (bs bs2 ks ino)
+  (declare (xargs :guard t :verify-guards nil))
+  (let ((f (fn-lgk-frontier ks)))
+    (and ino
+         (<= f (len (fn-bs-durable-content bs2 ino)))
+         (equal (fn-bs-take f (fn-bs-durable-content bs2 ino))
+                (fn-bs-take f (fn-bs-durable-content bs ino)))
+         (fn-lgu-writes-at-or-above (fn-bs-pending bs2) ino f)
+         (equal (fn-bs-unit bs2) (fn-bs-unit bs)))))
+
+(defthm fn-lgu-pstab-transitive
+  (implies (and (fn-lgu-pstab bs bs2 ks ino) (fn-lgu-pstab bs2 bs3 ks ino))
+           (fn-lgu-pstab bs bs3 ks ino))
+  :hints (("Goal" :in-theory (e/d (fn-lgu-pstab) (fn-bs-take fn-bs-durable-content fn-lgk-frontier
+                                                  fn-lgu-writes-at-or-above)))))
+
+(defthm fn-lgu-tailp-of-pstab
+  (implies (and (fn-lgu-tailp bs ks ino genesis max) (fn-lgu-pstab bs bs2 ks ino))
+           (fn-lgu-tailp bs2 ks ino genesis max))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-tailp fn-lgu-safep fn-lgu-pstab)
+                           (fn-lg-scan fn-lg-scan-last fn-bs-take fn-bs-durable-content
+                            fn-lgk-committed fn-lgk-last fn-lgk-frontier fn-lgk-inflight fn-lgk-acked
+                            fn-lg-recordsp fn-frame-digestp fn-lgu-writes-at-or-above)))))
+
+(defthm fn-lgu-pstab-reflexive
+  (implies (and ino (<= (fn-lgk-frontier ks) (len (fn-bs-durable-content bs ino)))
+                (fn-lgu-writes-at-or-above (fn-bs-pending bs) ino (fn-lgk-frontier ks)))
+           (fn-lgu-pstab bs bs ks ino))
+  :hints (("Goal" :in-theory (e/d (fn-lgu-pstab) (fn-bs-take fn-bs-durable-content fn-lgk-frontier
+                                                  fn-lgu-writes-at-or-above)))))
+
+(defthm fn-lgu-write-is-pstab
+  (implies (and (fn-lgu-safep bs ks ino genesis max)
+                (<= (fn-lgk-frontier ks) (nfix off)))
+           (fn-lgu-pstab bs (mv-nth 1 (fn-bs-write bs ino off octets outcome)) ks ino))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-pstab fn-lgu-safep)
+                           (fn-bs-write fn-lg-scan fn-bs-take fn-lgk-frontier fn-lgk-committed
+                            fn-bs-durable-content fn-lgu-writes-at-or-above))
+           :use ((:instance fn-lgu-write-parts (f (fn-lgk-frontier ks)) (i ino))))))
+
+(defthm fn-lgu-fsync-is-pstab
+  (implies (fn-lgu-safep bs ks ino genesis max)
+           (fn-lgu-pstab bs (mv-nth 1 (fn-bs-fsync-file bs ino outcome)) ks ino))
+  :hints (("Goal" :in-theory (e/d (fn-lgu-pstab fn-lgu-safep fn-bs-fsync-file fn-bs-fence-file fn-bs-durable-content)
+                                  (fn-lg-scan fn-bs-take fn-lgk-frontier fn-lgk-committed
+                                   fn-bs-apply-ops fn-bs-crash-select fn-bs-ops-for-ino
+                                   fn-bs-ops-not-for-ino fn-lgu-apply-ops-keeps-the-prefix))
+           :use ((:instance fn-lgu-apply-ops-keeps-the-prefix
+                            (inodes (fn-bs-inodes bs)) (dirs (fn-bs-dirs bs)) (f (fn-lgk-frontier ks))
+                            (ops (fn-bs-ops-for-ino (fn-bs-pending bs) ino)))
+                 (:instance fn-lgu-apply-ops-keeps-the-prefix
+                            (inodes (fn-bs-inodes bs)) (dirs (fn-bs-dirs bs)) (f (fn-lgk-frontier ks))
+                            (ops (fn-bs-crash-select (fn-bs-ops-for-ino (fn-bs-pending bs) ino)
+                                                     (cdr outcome) (fn-bs-unit bs))))
+                 (:instance fn-lgu-ops-for-ino-writes-at-or-above
+                            (ops (fn-bs-pending bs)) (j ino) (f (fn-lgk-frontier ks)))))))
+
+(defun fn-lgu-all-tailp (pairs ino genesis max)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom pairs)
+      t
+    (and (consp (car pairs))
+         (fn-lgu-tailp (car (car pairs)) (cdr (car pairs)) ino genesis max)
+         (fn-lgu-all-tailp (cdr pairs) ino genesis max))))
+(defthm fn-lgu-all-tailp-of-append
+  (equal (fn-lgu-all-tailp (append a b) ino genesis max)
+         (and (fn-lgu-all-tailp a ino genesis max) (fn-lgu-all-tailp b ino genesis max)))
+  :hints (("Goal" :in-theory (disable fn-lgu-tailp))))
+(defthm fn-lgu-all-tailp-member
+  (implies (and (fn-lgu-all-tailp pairs ino genesis max) (member-equal pair pairs))
+           (fn-lgu-tailp (car pair) (cdr pair) ino genesis max))
+  :hints (("Goal" :in-theory (disable fn-lgu-tailp))))
+(defthm fn-lgu-tailp-is-safep
+  (implies (fn-lgu-tailp bs ks ino genesis max) (fn-lgu-safep bs ks ino genesis max))
+  :hints (("Goal" :in-theory (enable fn-lgu-tailp))))
+
+(defthm fn-lgu-tailp-frontier-within
+  (implies (fn-lgu-tailp bs ks ino genesis max)
+           (<= (fn-lgk-frontier ks) (len (fn-bs-durable-content bs ino))))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-lgu-tailp fn-lgu-safep)
+                                  (fn-lg-scan fn-lg-scan-last fn-bs-take fn-bs-durable-content
+                                   fn-lgk-frontier fn-lgk-committed fn-lgu-writes-at-or-above)))))
+
+(defthm fn-lgu-tailp-pstab-self
+  (implies (fn-lgu-tailp bs ks ino genesis max) (fn-lgu-pstab bs bs ks ino))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-tailp fn-lgu-safep fn-lgu-pstab)
+                           (fn-lg-scan fn-lg-scan-last fn-bs-take fn-bs-durable-content fn-lgk-frontier
+                            fn-lgk-committed fn-lgu-writes-at-or-above)))))
+
+(defthm fn-lgu-write-keeps-tailp
+  (implies (and (fn-lgu-tailp bs ks ino genesis max)
+                (<= (fn-lgk-frontier ks) (nfix off)))
+           (let ((bs2 (mv-nth 1 (fn-bs-write bs ino off octets outcome))))
+             (and (fn-lgu-tailp bs2 ks ino genesis max)
+                  (fn-lgu-pstab bs bs2 ks ino))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-lgu-tailp fn-lgu-pstab fn-lgu-safep fn-bs-write fn-lgk-frontier)
+           :use ((:instance fn-lgu-write-is-pstab)
+                 (:instance fn-lgu-tailp-is-safep)
+                 (:instance fn-lgu-tailp-of-pstab
+                            (bs2 (mv-nth 1 (fn-bs-write bs ino off octets outcome))))))))
+
+(defthm fn-lgu-fsync-keeps-tailp
+  (implies (fn-lgu-tailp bs ks ino genesis max)
+           (let ((bs2 (mv-nth 1 (fn-bs-fsync-file bs ino outcome))))
+             (and (fn-lgu-tailp bs2 ks ino genesis max)
+                  (fn-lgu-pstab bs bs2 ks ino))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-lgu-tailp fn-lgu-pstab fn-lgu-safep fn-bs-fsync-file fn-lgk-frontier)
+           :use ((:instance fn-lgu-fsync-is-pstab)
+                 (:instance fn-lgu-tailp-is-safep)
+                 (:instance fn-lgu-tailp-of-pstab
+                            (bs2 (mv-nth 1 (fn-bs-fsync-file bs ino outcome))))))))
+
+(defthm fn-lgu-extend-keeps-tailp
+  (implies (and (fn-lgu-tailp bs k ino genesis max)
+                (equal extent (len (fn-bs-durable-content bs ino))))
+           (mv-let (pairs bs2 ok) (fn-lgu-extend bs k ino extent next eo1 eo2)
+             (declare (ignore ok))
+             (and (fn-lgu-all-tailp pairs ino genesis max)
+                  (fn-lgu-tailp bs2 k ino genesis max)
+                  (fn-lgu-pstab bs bs2 k ino))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-extend)
+                           (fn-lgu-tailp fn-lgu-safep fn-lgu-pstab fn-bs-write fn-bs-fsync-file fn-bs-zeros
+                            fn-bs-durable-content fn-lgk-frontier))
+           :use ((:instance fn-lgu-write-keeps-tailp (ks k) (off extent)
+                            (octets (fn-bs-zeros (- (nfix next) (nfix extent)))) (outcome eo1))
+                 (:instance fn-lgu-fsync-keeps-tailp (ks k)
+                            (bs (mv-nth 1 (fn-bs-write bs ino extent (fn-bs-zeros (- (nfix next) (nfix extent))) eo1)))
+                            (outcome eo2))
+                 (:instance fn-lgu-tailp-is-safep (ks k))
+                 (:instance fn-lgu-tailp-pstab-self (ks k))
+                 (:instance fn-lgu-pstab-transitive (ks k)
+                            (bs2 (mv-nth 1 (fn-bs-write bs ino extent (fn-bs-zeros (- (nfix next) (nfix extent))) eo1)))
+                            (bs3 (mv-nth 1 (fn-bs-fsync-file (mv-nth 1 (fn-bs-write bs ino extent (fn-bs-zeros (- (nfix next) (nfix extent))) eo1)) ino eo2))))))))
+
+(defthm fn-lgu-tailp-recordsp
+  (implies (fn-lgu-tailp bs ks ino genesis max)
+           (fn-lg-recordsp (fn-lgk-inflight ks) max))
+  :hints (("Goal" :in-theory (enable fn-lgu-tailp))))
+
+(defthm fn-lgu-tailp-of-fence-failed
+  (implies (fn-lgu-tailp bs ks ino genesis max)
+           (fn-lgu-tailp bs (fn-lgk-fence-failed ks) ino genesis max))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgk-fence-failed fn-lgk-fields-of-make)
+                           (fn-lgu-tailp fn-lgk-make fn-lgk-committed fn-lgk-last fn-lgk-frontier
+                            fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-acked fn-lgk-phase))
+           :use ((:instance fn-lgu-tailp-when-fields-agree (k2 (fn-lgk-fence-failed ks)))
+                 (:instance fn-lgu-safep-acked-within)
+                 (:instance fn-lgu-tailp-is-safep)
+                 (:instance fn-lgu-tailp-recordsp)))))
+
+(defthm fn-lgu-recordsp-of-true-list-fix
+  (implies (fn-lg-recordsp x max) (fn-lg-recordsp (true-list-fix x) max)))
+
+(defthm fn-lgu-tailp-of-append
+  (implies (and (fn-lgu-tailp bs ks ino genesis max)
+                (fn-lg-recordsp (fn-lgk-batch ks) max))
+           (fn-lgu-tailp bs (fn-lgk-append ks unit extent) ino genesis max))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgk-append fn-lgk-fields-of-make)
+                           (fn-lgu-tailp fn-lgk-make fn-lgk-committed fn-lgk-last fn-lgk-frontier
+                            fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-acked fn-lgk-phase
+                            fn-lgk-fitsp))
+           :use ((:instance fn-lgu-tailp-when-fields-agree (k2 (fn-lgk-append ks unit extent)))
+                 (:instance fn-lgu-safep-acked-within)
+                 (:instance fn-lgu-tailp-is-safep)
+                 (:instance fn-lgu-tailp-recordsp)))))
+
+(defthm fn-lgu-seal-tail-core
+  (implies (and (fn-lgu-tailp bs k1 ino genesis max)
+                (equal extent (len (fn-bs-durable-content bs ino)))
+                (equal off (fn-lgk-frontier k1)))
+           (mv-let (xpairs bs2 xok) (fn-lgu-extend bs k1 ino extent next eo1 eo2)
+             (declare (ignore xok))
+             (let ((bs3 (mv-nth 1 (fn-bs-write bs2 ino off octets o))))
+               (and (fn-lgu-all-tailp (append xpairs (list (cons bs3 k1))) ino genesis max)
+                    (fn-lgu-tailp bs2 k1 ino genesis max)
+                    (fn-lgu-tailp bs3 k1 ino genesis max)
+                    (fn-lgu-tailp bs2 (fn-lgk-fence-failed k1) ino genesis max)
+                    (fn-lgu-tailp bs3 (fn-lgk-fence-failed k1) ino genesis max)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-lgu-tailp fn-lgu-extend fn-bs-write fn-lgk-fence-failed fn-lgk-frontier
+                               fn-bs-durable-content)
+           :use ((:instance fn-lgu-extend-keeps-tailp (k k1))
+                 (:instance fn-lgu-write-keeps-tailp
+                            (bs (mv-nth 1 (fn-lgu-extend bs k1 ino extent next eo1 eo2)))
+                            (ks k1) (outcome o))
+                 (:instance fn-lgu-tailp-of-fence-failed
+                            (bs (mv-nth 1 (fn-lgu-extend bs k1 ino extent next eo1 eo2))) (ks k1))
+                 (:instance fn-lgu-tailp-of-fence-failed
+                            (bs (mv-nth 1 (fn-bs-write (mv-nth 1 (fn-lgu-extend bs k1 ino extent next eo1 eo2)) ino off octets o)))
+                            (ks k1))))))
+
+(defthm fn-lgu-seal-step-tailp
+  (implies (and (fn-lgu-tailp bs ks ino genesis max)
+                (fn-lg-recordsp (fn-lgk-batch ks) max)
+                (consp op) (equal (car op) :seal))
+           (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
+             (and (fn-lgu-all-tailp pairs ino genesis max)
+                  (fn-lgu-tailp bs1 ks1 ino genesis max))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-host-step)
+                           (fn-lgu-tailp fn-lgu-extend fn-bs-write fn-lgk-fence-failed fn-lgk-frontier
+                            fn-bs-durable-content fn-lgk-append fn-lg-append-admitsp
+                            fn-lgk-sealed-extent fn-lgk-append-octets fn-lgu-kernel-op-p))
+           :use ((:instance fn-lgu-tailp-of-append (unit (fn-bs-unit bs))
+                            (extent (fn-lgk-sealed-extent ks (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs))))
+                 (:instance fn-lgu-fields-of-append (unit (fn-bs-unit bs))
+                            (extent (fn-lgk-sealed-extent ks (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs))))
+                 (:instance fn-lgu-seal-tail-core
+                            (k1 (fn-lgk-append ks (fn-bs-unit bs)
+                                               (fn-lgk-sealed-extent ks (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs))))
+                            (extent (len (fn-bs-durable-content bs ino)))
+                            (next (fn-lgk-sealed-extent ks (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)))
+                            (eo1 (nth 1 op)) (eo2 (nth 2 op)) (o (nth 3 op))
+                            (off (fn-lgk-frontier ks))
+                            (octets (fn-lgk-append-octets ks (fn-bs-unit bs))))))))
+
+(defthm fn-lgu-fence-step-tailp
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (consp op) (equal (car op) :fence))
+           (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
+             (and (fn-lgu-all-tailp pairs ino genesis max)
+                  (fn-lgu-tailp bs1 ks1 ino genesis max))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-host-step)
+                           (fn-lgu-tailp fn-lgk-relp fn-bs-fsync-file fn-lgk-fence fn-lgk-fence-failed
+                            fn-lgk-phase))
+           :use ((:instance fn-lgu-relp-is-tailp)
+                 (:instance fn-lgu-fsync-keeps-tailp (outcome (nth 1 op)))
+                 (:instance fn-lgu-tailp-of-fence-failed
+                            (bs (mv-nth 1 (fn-bs-fsync-file bs ino (nth 1 op)))))
+                 (:instance fn-lgk-fence-preserves-relation)
+                 (:instance fn-lgu-relp-is-tailp
+                            (bs (mv-nth 1 (fn-bs-fsync-file bs ino :ok)))
+                            (ks (fn-lgk-fence ks (fn-bs-unit bs))))))))
+
+(defthm fn-lgu-kernel-step-tailp
+  (implies (and (fn-lgu-tailp bs ks ino genesis max)
+                (fn-lgu-kernel-op-p op))
+           (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
+             (and (fn-lgu-all-tailp pairs ino genesis max)
+                  (fn-lgu-tailp bs1 ks1 ino genesis max))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((and (member-equal (car op) '(:prepare :take))
+                        (not (equal (fn-lgu-take-verdict (nth 1 op) max) :admissible))))
+           :in-theory (e/d (fn-lgu-host-step)
+                           (fn-lgu-tailp fn-lgk-host-step fn-lgu-kernel-op-p fn-lgu-take-verdict
+                            fn-lgk-committed fn-lgk-last fn-lgk-frontier fn-lgk-inflight fn-lgk-acked))
+           :use ((:instance fn-lgu-kernel-op-fields)
+                 (:instance fn-lgu-safep-acked-within)
+                 (:instance fn-lgu-tailp-is-safep)
+                 (:instance fn-lgu-tailp-recordsp)
+                 (:instance fn-lgu-tailp-when-fields-agree (k2 (fn-lgk-host-step ks op)))))))
+
+(defthm fn-lgu-host-step-under-fault
+  (implies (and (equal (fn-lgk-phase ks) :fault) (consp op) (member-equal (car op) '(:seal :fence)))
+           (equal (fn-lgu-host-step bs ks op ino max) (list nil bs ks)))
+  :hints (("Goal" :in-theory (e/d (fn-lgu-host-step fn-lg-append-admitsp fn-lgu-kernel-op-p)
+                                  (fn-lgk-sealed-extent fn-lgk-append fn-lgu-extend)))))
+
+(defthm fn-lgu-step-tailp
+  (implies (and (fn-lgu-invp bs ks ino genesis max)
+                (fn-lgu-tailp bs ks ino genesis max))
+           (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
+             (and (fn-lgu-all-tailp pairs ino genesis max)
+                  (fn-lgu-tailp bs1 ks1 ino genesis max))))
+  :hints (("Goal" :do-not-induct t
+           :cases ((fn-lgu-kernel-op-p op)
+                   (and (consp op) (equal (car op) :seal) (fn-lgk-relp bs ks ino genesis max))
+                   (and (consp op) (equal (car op) :seal) (not (fn-lgk-relp bs ks ino genesis max)))
+                   (and (consp op) (equal (car op) :fence) (fn-lgk-relp bs ks ino genesis max))
+                   (and (consp op) (equal (car op) :fence) (not (fn-lgk-relp bs ks ino genesis max))))
+           :in-theory (e/d (fn-lgu-invp)
+                           (fn-lgu-tailp fn-lgk-relp fn-lgu-host-step fn-lgu-kernel-op-p
+                            fn-lgu-seal-step-tailp fn-lgu-fence-step-tailp fn-lgu-kernel-step-tailp
+                            fn-lgu-host-step-of-nothing fn-lg-append-admitsp fn-lgk-phase
+                            fn-lgu-host-step-under-fault))
+           :use ((:instance fn-lgu-kernel-step-tailp)
+                 (:instance fn-lgu-seal-step-tailp)
+                 (:instance fn-lgu-fence-step-tailp)
+                 (:instance fn-lgk-relp-forward)
+                 (:instance fn-lgu-host-step-of-nothing)
+                 (:instance fn-lgu-host-step-under-fault)))))
+
+(defthm fn-lgu-host-run-is-tailed
+  (implies (and (fn-lgu-invp bs ks ino genesis max)
+                (fn-lgu-tailp bs ks ino genesis max))
+           (fn-lgu-all-tailp (fn-lgu-host-run bs ks ops ino max) ino genesis max))
+  :hints (("Goal" :induct (fn-lgu-host-run bs ks ops ino max)
+           :in-theory (union-theories '(fn-lgu-host-run fn-lgu-all-tailp fn-lgu-all-tailp-of-append
+                                        car-cons cdr-cons (:induction fn-lgu-host-run))
+                                      (theory 'minimal-theory)))
+          ("Subgoal *1/2" :use ((:instance fn-lgu-step-tailp (op (car ops)))
+                                (:instance fn-lgu-step-keeps-the-invariant (op (car ops)))))))
+
+(defthm fn-lgu-tail-image-scans
+  (implies (and (fn-lgu-tailp bs ks ino genesis max) (fn-bs-crash-imagep bs image))
+           (equal (car (fn-lg-scan (fn-bs-durable-content image ino) genesis (fn-bs-unit bs) max))
+                  (append (fn-lgk-committed ks)
+                          (car (fn-lg-scan (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image ino))
+                                           (fn-lgk-last ks) (fn-bs-unit bs) max)))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-tailp)
+                           (fn-lgu-safep fn-lg-scan fn-lg-scan-last fn-bs-take fn-bs-durable-content
+                            fn-bs-crash-imagep fn-lgk-committed fn-lgk-last fn-lgk-frontier fn-lgk-inflight
+                            fn-lg-recordsp fn-frame-digestp))
+           :use ((:instance fn-lgu-safe-image-scans-the-committed-records-first)))))

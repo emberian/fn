@@ -174,6 +174,36 @@ class Positions(unittest.TestCase):
             with self.subTest(body=body):
                 self.assertEqual(self.one(body), [])
 
+    # stobj-let (BINDINGS PRODUCER-VARIABLES PRODUCER CONSUMER): the 122
+    # findings of 10-09 were this form read as a function call, its producer
+    # and consumer each "an argument" requiring one value.
+    def test_stobj_let_producer_of_two_variables_is_clean(self):
+        self.assertEqual(self.one(
+            "(stobj-let ((a (fn-zz-acc x)) (b (fn-zz-acc2 x))) (a b) (fn-zz-pair a) "
+            "(value (list x a b)))"), [])
+
+    def test_stobj_let_has_its_consumers_shape(self):
+        prelude = """
+        (defun fn-zz-sl (x st)
+          (stobj-let ((a (fn-zz-acc st))) (a) (fn-zz-one a) (mv x a st)))"""
+        self.assertEqual(findings_for(self.PRELUDE + prelude + """
+        (defun fn-zz-subject (x st)
+          (mv-let (p q st) (fn-zz-sl x st) (mv p q st)))"""), [])
+        found = findings_for(self.PRELUDE + prelude + """
+        (defun fn-zz-subject (x st)
+          (list (fn-zz-sl x st)))""")
+        self.assertEqual(len(found), 1, found)
+        self.assertIn("3 values", found[0]["problem"])
+
+    def test_stobj_let_producer_of_the_wrong_count(self):
+        self.assertFlags("(stobj-let ((a (fn-zz-acc x)) (b (fn-zz-acc2 x))) (a b) "
+                         "(fn-zz-triple state) (value x))",
+                         "producer of a `stobj-let` of 2 variables")
+
+    def test_stobj_let_binding_is_one_value(self):
+        self.assertFlags("(stobj-let ((a (fn-zz-pair x))) (a) (fn-zz-one a) (value x))",
+                         "`stobj-let` binding")
+
     def test_unmodelled_macro_is_undecidable_not_a_finding(self):
         report = host_shape_check.analyze({FIXTURE: textwrap.dedent(self.PRELUDE + """
         (defun fn-zz-subject (x state)

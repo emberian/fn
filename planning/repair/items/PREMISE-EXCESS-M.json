@@ -1,0 +1,13 @@
+{
+ "category": "implementation",
+ "detail": "Each premise is assumed at a host entry by a theorem introduced after the 2026-10-07 baseline cut (blame of the assuming theorem; the lanes are named in CL24's note) and no host establishment proves it. Close each by a host-path establishment, or retire the host entry that needs it (the contract's collapse list retires many for builder-A). The figure stays red until each is established; no rebase. Premises: fn-cwq-below, fn-heap-storeless-action-p",
+ "file": "tools/premise_audit.py",
+ "id": "PREMISE-EXCESS-M",
+ "notes": [],
+ "owner": "builder-M",
+ "severity": "medium",
+ "source": "premise_audit at dev 9b580dd36, Builder D 2026-10-10 under the coordinator's CL24 ruling (a)",
+ "state": "open",
+ "title": "premise_audit: 2 unestablished host premises added since the baseline (heap figure and the cold-read wait queue)",
+ "updated": "2026-10-10T03:00:00Z"
+}

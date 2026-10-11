@@ -33,12 +33,15 @@
           name source)
   (finish-output *error-output*)
   (error 'harness-stub-reached :name name :source source))
+(defun fnn-fault (control &rest args)
+  (declare (ignorable control args))
+  (harness-stub-reached 'fnn-fault "host/native/io.lisp"))
+(defun fnn-owner-reconfig-hold (service entry)
+  (declare (ignorable service entry))
+  (harness-stub-reached 'fnn-owner-reconfig-hold "host/native/owner.lisp"))
 (defun fnn-owner-result (recognizer name &rest args)
   (declare (ignorable recognizer name args))
   (harness-stub-reached 'fnn-owner-result "host/native/owner.lisp"))
-(defun fnn-pinv-owner-enrol-accepted (service received observed)
-  (declare (ignorable service received observed))
-  (harness-stub-reached 'fnn-pinv-owner-enrol-accepted "host/native/peer-invite.lisp"))
 (defun fnn-rc-begin (run reserve)
   (declare (ignorable run reserve))
   (harness-stub-reached 'fnn-rc-begin "host/native/admin.lisp"))
@@ -46,9 +49,11 @@
 (defun source-definition (path kind name)
   (with-open-file (stream path)
     (let* ((text (make-string (file-length stream)))
-           (prefix (format nil "(~a ~a " kind name)))
+           (prefix (format nil "(~a ~a" kind name))
+           (end-newline (string #\Newline)))
       (read-sequence text stream)
-      (let ((start (search prefix text)))
+      (let ((start (or (search (concatenate 'string prefix " ") text)
+                       (search (concatenate 'string prefix end-newline) text))))
         (unless start (error "missing definition ~a in ~a" name path))
         (read-from-string text nil nil :start start)))))
 (defparameter *handlers* (or (sb-ext:posix-getenv "FN_PINV_HOST_SOURCE")
@@ -88,12 +93,23 @@
   (declare (ignore ed-key ml-key preimage signatures))
   (list :ed-observation (list :ml-verdict #(1 2 3))))
 (defun fnn-err (&rest args) (declare (ignore args)))
+;; No window opened, so no journal was scanned: nothing to close.
+(defun fnn-owner-feed-close-entries (entries) (assert (null entries)))
 (defun fnn-developer-selector (name) (declare (ignore name)) nil)
 (defun fnn-owner-identity-commit (&rest args) (declare (ignore args)) (error "not reached"))
 
+;; The handlers run inside the live-reconfiguration macro (host/native/admin.lisp
+;; fnn-owner-live-reconfigure): its record, quantum wrapper and leave are the
+;; deployed ones.  These cases answer the plan so no reconfiguration window
+;; opens (a refusal or :enrol), so the section runs the one quantum.
+(defparameter *admin* "host/native/admin.lisp")
+(eval (source-definition *admin* "defstruct" "(fnn-reconfig"))
+(dolist (name '("fnn-rc-leave" "fnn-rc-hold" "fnn-rc-close-scanned"))
+  (eval (source-definition *admin* "defun" name)))
+(eval (source-definition *admin* "defmacro" "fnn-owner-live-reconfigure"))
 (dolist (name '("fnn-pinv-observe" "fnn-pinv-refused" "fnn-pinv-owner-issue"
-                "fnn-pinv-owner-accept" "fnn-pinv-owner-enrol-confirmed"
-                "fnn-pinv-owner-confirm"))
+                "fnn-pinv-owner-accept" "fnn-pinv-owner-enrol-accepted"
+                "fnn-pinv-owner-enrol-confirmed" "fnn-pinv-owner-confirm"))
   (eval (source-definition *handlers* "defun" name)))
 
 (defparameter +subject+

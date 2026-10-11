@@ -39,7 +39,7 @@ import unittest
 # The module, not its TestCase: a TestCase imported by name is collected and
 # run again as this module's own (the checkpoint suite ran twice here).
 from tests import test_native_checkpoint as checkpoint
-from tools import native_env
+from tools import fixtures, native_env
 
 IMAGE = checkpoint.IMAGE
 
@@ -192,6 +192,9 @@ class NativePackChainTests(unittest.TestCase):
 
     def scale_fixture(self, name):
         fixture = Path(FIXTURE)
+        refusal = fixtures.schema_refusal(fixture, fixtures.schema_digest())
+        if refusal:
+            self.fail(refusal)
         origin = json.loads((fixture / "origin.json").read_text(encoding="ascii"))
         recorded = json.loads((fixture / "before-view.json").read_text(encoding="ascii"))
         store = self.base / name

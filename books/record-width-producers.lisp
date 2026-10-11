@@ -265,8 +265,9 @@
 
 ; The store-post sequence: the POST boundary admits the article, the article
 ; verdict admits it, the producer builds its record and the prepare stages
-; it; then the committed octets plus the record are within H.  The record's
-; narrowness is the keystone above.
+; it; then the committed octets plus its payload, the held row's charge, are
+; within H (memory landing 3+4: H charges payloads; the record's encoding is
+; within the open's input bound B, books/store-replay-bound.lisp).
 (defthm fn-post-admitted-article-keeps-history
   (implies (and (equal (fn-sbud-post-boundary profile msgid-octets
                                               (len payload) (len groups) charge)
@@ -279,30 +280,13 @@
                                                      obligation-id subject
                                                      evidence charge) fn-arena))
                             s)))
-           (fn-profile-replay-within-boundp
-            profile
-            (+ bytes-used
-               (len (fn-record-encode
-                     (fn-sn-article-record s obs msgid payload groups
-                                           obligation-id subject evidence
-                                           charge))))))
+           (fn-profile-replay-within-boundp profile (+ bytes-used (len payload))))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance fn-sbud-post-boundary-admits-a-u32-charge
-                                   (payload-length (len payload))
-                                   (group-count (len groups)))
-                        (:instance fn-sn-prepare-stages-a-narrow-article-record)
-                        (:instance fn-sbud-article-verdict-keeps-history
-                                   (payload-length (len payload))
-                                   (group-count (len groups))
-                                   (record (fn-sn-article-record
-                                            s obs msgid payload groups
-                                            obligation-id subject evidence
-                                            charge))))
-           :in-theory (e/d (fn-sn-article-record)
-                           (fn-sbud-article-verdict-at fn-sn-prepare fn-store-prepare-interned
-                            fn-record-widep fn-sbud-post-boundary
-                            fn-profile-replay-within-boundp
-                            fn-record-stamp-of-observation)))))
+  :hints (("Goal" :in-theory (e/d (fn-sbud-article-verdict-at fn-sbud-article-gate-figure
+                            fn-bs-history-admissiblep fn-profile-replay-within-boundp)
+                           (fn-sn-prepare fn-store-prepare-interned fn-sbud-post-boundary
+                            fn-sbud-admitp fn-sbud-budget fn-bs-profile-admittedp
+                            fn-bs-profile-max-history-octets)))))
 
 ; ===========================================================================
 ; PRF-126: the producer ceiling.  A record whose charge fits u32 encodes

@@ -1,5 +1,7 @@
 # The productive contract
 
+NNT-1000: The served POST is productive: a request the Store admits, under the specified successful primitive completions, reaches the 240 line and the record in durable history within nine steps of the served step function; every uncertain answer names its cause; the 240 on the wire is the line the theorem names.
+
 Status: specified and proved for the served POST (PRF-1001, PRF-1002);
 the served read and the peer transfer are stated (section 5) and open. From
 GPT-6's second review, `warranty-quality-proof-engineering.md` section 1

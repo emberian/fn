@@ -87,7 +87,7 @@
 (defun fn-lgl-head-prev (octets max)
   ; The chain value the entry claims to continue from: the closed segment's
   ; last trailer.  The host streams the segment from it.
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (fn-bs-take *fn-frame-trailer-octets* (fn-frame-result-payload (fn-lgl-head octets max))))
 
 (defun fn-lgl-head-index (octets max)
@@ -111,7 +111,7 @@
   ; The open's lineage decision over the F row's position (K G), the head
   ; OCTETS of segment K and the genesis record's trailer T0: nil when the
   ; checkpoint continues this log, else the refusal by name.
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
   (if (equal k 1)
       (if (equal g t0) nil (list :refused :foreign-lineage))
     (fn-lgl-head-check octets k g max)))

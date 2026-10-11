@@ -1,0 +1,14 @@
+{
+ "detail": "NNTP transit refuses every signed control article whose author's key this node later revoked: books/peer-authored-accept.lisp fn-pa-revoked-event requires (equal groups (cadr fields)), the source's raw Newsgroups, while its fn-hsig-carried-record-metadatap conjunct requires the filed groups (fn-hsig-source-filed-groups: for a control article its filing group control.<verb>), so no groups satisfy both and the constructor returns no event; replay's revoked branch would admit the filed-groups record. C3 (632a73038, 2026-09-25 04:56) moved the other signed arms to the filed groups; PRF-098 (ec7782e3f, 06:11) added the revoked arm with the old test. Measured: ACL2 (persvati REPL over peer-authored-accept-tests, build/spans/o1/p4/rv-revoked-cancel.lisp on lane/spans) and native (hbox native-rv-red2 at 41aa1f457: the cancel 437 detail=event, the ordinary article of the same key 235 revoked). Retirement: the packet-4 READY on lane/spans (fn-pa-revoked-event binds the filed groups as fn-pa-carried-event does; keystone fn-pa-revoked-event-files-the-sources-filed-groups; the native test is the subject row).",
+ "file": "books/peer-authored-accept.lisp",
+ "id": "TRANSIT-REVOKED-CONTROL-REFUSED",
+ "notes": [
+  "closed by lane spans (O1 packet 4): fn-pa-revoked-event binds (fn-hsig-source-filed-groups source fields) as fn-pa-carried-event does; keystones fn-pa-revoked-event-files-the-sources-filed-groups and fn-pa-carried-event-files-the-sources-filed-groups (books/peer-authored-accept.lisp); witness *pat-rv-cancel-event* in tests/acl2/peer-authored-accept-tests.lisp (the cancel's event lists control.cancel; its raw Newsgroups give none); native test tests.test_native_control_filing...test_transit_revoked_signed_cancel"
+ ],
+ "owner": "builder-C",
+ "severity": "high",
+ "source": "Builder C12, O1 packet 4 open question 6b (build/spans/o1/p4/statements.lisp on lane/spans)",
+ "state": "closed",
+ "title": "transit refuses a signed control article under a later-revoked key",
+ "updated": "2026-10-10T23:30:00Z"
+}

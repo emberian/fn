@@ -1,5 +1,7 @@
 # Once-only allocating scheduling turns (HST-042)
 
+HST-042: Once-only allocating scheduling turns use direct installed worker slots distinct from lifetime holders.
+
 This is fn's internal allocation-accounting contract, not an RFC requirement.
 The architecture implementation direction is the 2026-09-30 allocation epoch
 and once-only scheduling-turn design. The public connection ABI stays unchanged.

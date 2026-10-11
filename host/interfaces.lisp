@@ -33,6 +33,8 @@
 (include-book "../books/peer-catchup-spool-body")
 (include-book "../books/raw-dispatch-verdict")
 (include-book "../books/response-identity")
+; The checkpoint's charged-totals header entries and keystone (fn-cth-*).
+(include-book "../books/charged-totals-header")
 ; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
 ; fold of fn-lgc-finish-one the host calls once) and its keystone, that every
 ; acknowledged record is recovered from every crash image of the host's run
@@ -68,6 +70,8 @@
 (include-book "../books/owner-time-reconfig")
 (include-book "../books/clock-reading")
 (include-book "../books/store-profile-carried")
+; The runtime contract's multi-instance exercise (host/native/rtc-exercise.lisp).
+(include-book "../books/runtime-contract-echo")
 (include-book "../books/store-checkpoint-arena-load")
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/reclaim-chunked-seal")
@@ -177,6 +181,7 @@
 (include-book "../books/history-paged-adopt")
 (include-book "../books/history-root-credit")
 (include-book "../books/decoded-worker-job")
+(include-book "../books/heap-command")
 (include-book "../books/bp-heap-command")
 (include-book "../books/bp-session-scheduler")
 (include-book "../books/bp-forward-cursor")
@@ -382,7 +387,7 @@
   :kinds ()
   :direct "the install path's check of the carried tables' row digests (host/native/raw-trap.lisp fnn-check-carried-tables); a load-time decision, no client data")
 (definterface fn-rdv-raw-declared-p
-  :class :program
+  :class :common-lisp-compliant
   :direct "the install path's selection of the raw-declared rows (host/native/raw-trap.lisp); a build-time decision, no client data")
 (definterface fn-rdv-row-digest
   :class :program
@@ -393,6 +398,27 @@
   :kinds ((n natp))
   :keystones (fn-octets-reserve{correspondence})
   :direct "the octet buffer's stobj primitive (host/native/io.lisp fnn-live-octets)")
+
+;; A-ARENA-SPAN-INTO (books/assumptions-durable-spans.lisp, adapter A4 of
+;; spans step 3; owner Builder C, retired with A's leased-handle read): the
+;; host fn-arena-get-span-into (host/native/extent.lisp) checks its window
+;; against the payload at entry and reads the arena's own fields and octets.
+(definterface fn-arena$x-count
+  :class :common-lisp-compliant
+  :kinds ()
+  :direct "A-ARENA-SPAN-INTO's host (host/native/extent.lisp fn-arena-get-span-into): the handle bound of the window check, after its own bounds check at entry")
+(definterface fn-arena$x-payload-len
+  :class :common-lisp-compliant
+  :kinds ((h natp))
+  :direct "A-ARENA-SPAN-INTO's host (host/native/extent.lisp fn-arena-get-span-into): the payload bound of the window check, after its own bounds check at entry")
+(definterface fn-arn-extentp
+  :class :common-lisp-compliant
+  :kinds ()
+  :direct "A-ARENA-SPAN-INTO's host (host/native/extent.lisp fn-arena-get-span-into): the entry kind (an extent takes the verified-window route), after its own bounds check at entry")
+(definterface fn-arena$x-get
+  :class :common-lisp-compliant
+  :kinds ((h natp) (i natp))
+  :direct "A-ARENA-SPAN-INTO's host (host/native/extent.lisp fn-arena-get-span-into): every other entry kind's octets, AT to AT+N, written into the octet buffer, after its own bounds check at entry")
 
 (definterface fn-outcome-host-condition-exit-code
   :class :common-lisp-compliant
@@ -539,13 +565,18 @@
 (definterface fn-arx-list-places
   :class :common-lisp-compliant
   :kinds ((tail true-listp) (p natp) (count natp) (ep natp) (en natp) (qtail true-listp) (q natp) (qend natp) (acc true-listp))
-  :keystones (fn-lgb-entry-places-is-list-places))
+  :keystones (fn-lgb-descriptor-is-the-attached-place))
 
 (definterface fn-b3-left-chunks
   :class :common-lisp-compliant
   :kinds ((p natp) (n natp)))
 
 (definterface fn-blake3-of-prefixed-buffer-any
+  :class :common-lisp-compliant)
+
+; host/native/rtc-exercise.lisp: the runtime contract's multi-instance
+; exercise over the live fn-rtc-st.
+(definterface fn-rce-exercise
   :class :common-lisp-compliant)
 
 (definterface fn-bs-config-encode
@@ -596,10 +627,19 @@
 (definterface fn-lgb-decode-next
   :class :common-lisp-compliant)
 
-(definterface fn-lgb-entry-places
+(definterface fn-lgb-span
   :class :common-lisp-compliant
-  :kinds ((pos natp) (count natp))
-  :keystones (fn-lgb-entry-places-is-list-places))
+  :kinds ((i natp))
+  :keystones (fn-lgb-span-within-max fn-lgb-descriptor-is-the-attached-place))
+
+(definterface fn-lgb-slice
+  :class :common-lisp-compliant
+  :kinds ((start natp) (len natp)))
+
+(definterface fn-lgb-descriptor
+  :class :common-lisp-compliant
+  :kinds ((pos natp) (start natp) (len natp))
+  :keystones (fn-lgb-descriptor-is-the-attached-place))
 
 (definterface fn-lgc-acked
   :class :common-lisp-compliant
@@ -689,10 +729,12 @@
 ;; head (books/store-log-lineage.lisp, PRF-979; host fnn-log-lineage-genesis).
 (definterface fn-lgl-open
   :class ::ideal
+  :kinds ((octets fn-cbor-octet-listp))
   :keystones (fn-lgl-open-of-rotated-segment))
 
 (definterface fn-lgl-head-prev
-  :class ::ideal)
+  :class ::ideal
+  :kinds ((octets fn-cbor-octet-listp)))
 
 (definterface fn-lgl-head-len
   :class :common-lisp-compliant)
@@ -898,16 +940,29 @@
 (definterface fn-ns-secret-width
   :class :common-lisp-compliant)
 
-(definterface fn-ock-capture-budget
-  :class :common-lisp-compliant)
-
 (definterface fn-ock-request-status
   :class :common-lisp-compliant)
 
 (definterface fn-ockp-donep
   :class :common-lisp-compliant)
 
-(definterface fn-ockp-initial-state
+; The checkpoint's charged-totals header (books/charged-totals-header.lisp):
+; the reader's header phase over the first segment, and the table run's
+; first state with the running total the arena run ended at
+; (host/native/io.lisp fnn-state-checkpoint-plan, fnn-state-checkpoint-
+; verify, fnn-checkpoint-write-steps).
+(definterface fn-cth-header-open
+  :class :common-lisp-compliant
+  :keystones (fn-cth-read-file-is-the-header-open))
+
+(definterface fn-cth-table-initial-state
+  :class :common-lisp-compliant
+  :kinds ((total natp)))
+
+(definterface fn-cth-status-text
+  :class :common-lisp-compliant)
+
+(definterface fn-cth-empty-suffix
   :class :common-lisp-compliant)
 
 (definterface fn-ockp-step
@@ -988,6 +1043,7 @@
   :class :common-lisp-compliant)
 (definterface fn-otjs-consume
   :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
   :keystones (fn-otjs-consume-of-append fn-otjs-consume-fields-bounded))
 (definterface fn-otjs-read-count
   :class :common-lisp-compliant)
@@ -1267,6 +1323,7 @@
 
 (definterface fn-sccv-step
   :class :common-lisp-compliant
+  :exempt ((frame "a frame descriptor over the fn-octets stobj (its guard fn-sccr-framep), not bytes"))
   :keystones (fn-sccv-step-is-seg-step))
 
 (definterface fn-sccv-final
@@ -1474,6 +1531,7 @@
 
 (definterface fn-olau-authorize-observed
   :class :common-lisp-compliant
+  :kinds ((record-octets fn-cbor-octet-listp))
   :keystones (fn-olau-authorize-observed-is-the-carried-authorization
               (fn-olau-authorize-carried-across-reader-events
                :via fn-olau-authorize-carried)))
@@ -1840,7 +1898,8 @@
   :class :common-lisp-compliant)
 
 (definterface fn-feed-journal-scan
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :kinds ((frame fn-cbor-octet-listp)))
 
 (definterface fn-feed-journal-prefix
   :class :common-lisp-compliant)
@@ -2071,6 +2130,7 @@
 
 (definterface fn-bprpf-row-admit
   :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
   :keystones (fn-bprpf-admitted-row-has-bounded-adu))
 
 (definterface fn-bprpf-selection-admit
@@ -2430,6 +2490,7 @@
 
 (definterface fn-bpnb-read
   :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
   :keystones ((fn-bpnb-installed-backoff-refuses-another-backoff :via fn-bpnb-install-row)
               (fn-bpnb-installed-retries-refuses-another-retries :via fn-bpnb-install-row)
               fn-bpnb-input-past-read-bound-is-refused))
@@ -2855,10 +2916,12 @@
 
 (definterface fn-idle-gc-quiet
   :class :common-lisp-compliant
+  :exempt ((tick-octets "the tick's consed count, a natural, not bytes"))
   :keystones (fn-idle-gc-quiet-counts-only-quiet-ticks-at-the-limit))
 
 (definterface fn-idle-gc-decide
   :class :common-lisp-compliant
+  :exempt ((consed-octets "SBCL's bytes-consed reading, a natural, not bytes"))
   :keystones ((fn-idle-gc-verdict-collects-only-when-owed :via fn-idle-gc-verdict)
               (fn-idle-gc-verdict-collects-when-owed :via fn-idle-gc-verdict)
               fn-idle-gc-decide-never-collects-during-a-publication))
@@ -2878,10 +2941,41 @@
 (definterface fn-heap-reserve-init-connections
   :class :common-lisp-compliant)
 
-(definterface fn-heap-reserve-operation-decide
+;; The probe's decision for every command (books/heap-command.lisp, memory
+;; landings 2 and 3+4a): the stopped status store-less; every store-opening
+;; class by the equation over the observed totals, else the named offline
+;; adapter; today's fn-heap-reserve-operation-decide for the rest.
+(definterface fn-heap-command-decide
   :class :common-lisp-compliant
-  :keystones (fn-heap-status-decide-is-the-launchers-run-reservation
-              fn-heap-reserve-operation-decide-holds-the-operation))
+  :keystones (fn-heap-stopped-status-is-sized-without-the-store
+              fn-heap-command-decide-store-opening-is-the-model
+              fn-heap-command-decide-store-opening-unobserved-is-the-adapter
+              fn-heap-command-decide-otherwise-is-todays))
+
+(definterface fn-heap-command-growth
+  :class :common-lisp-compliant)
+
+(definterface fn-heap-command-line
+  :class :common-lisp-compliant)
+
+(definterface fn-heap-stack-kib
+  :class :common-lisp-compliant)
+
+(definterface fn-mo-img-observed
+  :class :common-lisp-compliant)
+
+(definterface fn-mo-observed-totals
+  :class :common-lisp-compliant)
+
+;; The collector policy's decision after a collection and its view of the
+;; configuration (books/memory-model.lisp; host/native/heap.lisp
+;; fnn-heap-collector-after-gc; memory landing 3+4).
+(definterface fn-mm-collector-due-p
+  :class :common-lisp-compliant
+  :keystones (fn-mm-collector-not-due-is-within-the-term))
+
+(definterface fn-mm-collector-cfg
+  :class :common-lisp-compliant)
 
 (definterface fn-crv-extend-reservation
   :class :common-lisp-compliant
@@ -3104,11 +3198,13 @@
   :keystones (fn-pat-values-check-is-the-kind))
 (definterface fn-pat-encode
   :class :common-lisp-compliant
+  :kinds ((payload fn-cbor-octet-listp))
   :keystones (fn-pat-reader-delivers-what-the-writer-encoded))
 (definterface fn-pat-key-names
   :class :common-lisp-compliant)
 (definterface fn-pat-spool-check
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :kinds ((payload fn-cbor-octet-listp)))
 (definterface fn-pat-project
   :class :common-lisp-compliant
   :keystones (fn-pat-reader-delivers-what-the-writer-encoded))
@@ -3316,7 +3412,8 @@
   :kinds ((np natp)))
 
 (definterface fn-his-readback-page
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp)))
 
 ; host/native/io.lisp dispatches it (lane composed-owner).
 (definterface fn-his-skip-octets
@@ -3639,11 +3736,6 @@
 (definterface fn-pio-issued-row :class :common-lisp-compliant)
 (definterface fn-pio-issued-remove :class :common-lisp-compliant)
 
-; host/native/io.lisp dispatches it (lane extent-identity).
-(definterface fn-arx-attach-trailers-buffer
-  :class :common-lisp-compliant
-  :kinds ((places true-listp) (base natp)))
-
 ; host/native/extent.lisp dispatches it (lane extent-identity).
 (definterface fn-arx-entry-verdict-buffer
   :class :common-lisp-compliant)
@@ -3725,23 +3817,34 @@
 
 ; host/native/owner.lisp dispatches them (lane reclaim, PRF-1315): the
 ; reclaim pass over the pinned history in chunks.
-(definterface fn-rcw-acc-init
-  :class :ideal)
+; The accumulator is the stobj fn-rcwacc (RECLAIM-TRIES-PER-CHUNK): it
+; carries the id tries across chunks, and the steps' guard
+; fn-rcwacc-carriedp is held by the init and both steps' preservation
+; theorems, so the steps dispatch raw (D40).
+(definterface create-fn-rcwacc :class :common-lisp-compliant
+ :raw-guarded (0 nil (fn-rcwacc)))
 
-(definterface fn-rcw-acc-finish
+(definterface fn-rcwacc-init
+  :class :common-lisp-compliant)
+
+(definterface fn-rcwacc-finish
   :class :common-lisp-compliant
-  :keystones (fn-rcw-acc-steps-is-capture))
+  :keystones (fn-rcwacc-canon-steps-is-the-checkpoint-capture fn-rcwacc-predict-steps-is-predict))
 
-(definterface fn-rcw-canon-acc-step
-  :class :ideal
-  :keystones ((fn-rcw-canon-acc-steps-is-the-checkpoint-capture
-               :step-of fn-rcw-canon-acc-steps)))
+(definterface fn-rcwacc-canon-step
+  :class :common-lisp-compliant
+  :keystones ((fn-rcwacc-canon-steps-is-the-checkpoint-capture
+               :step-of fn-rcwacc-canon-steps))
+  :raw-with (fn-rcwacc-carriedp-of-init fn-rcwacc-carriedp-of-canon-step
+             fn-rcwacc-carriedp-of-predict-step))
 
-(definterface fn-rcw-predict-acc-step
-  :class :ideal
-  :keystones ((fn-rcw-predict-acc-steps-is-predict :step-of fn-rcw-predict-acc-steps)
+(definterface fn-rcwacc-predict-step
+  :class :common-lisp-compliant
+  :keystones ((fn-rcwacc-predict-steps-is-predict :step-of fn-rcwacc-predict-steps)
               (fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
-               :step-of fn-rcw-predict-acc-steps)))
+               :step-of fn-rcw-predict-acc-steps fn-rcw-predict-acc-step))
+  :raw-with (fn-rcwacc-carriedp-of-init fn-rcwacc-carriedp-of-canon-step
+             fn-rcwacc-carriedp-of-predict-step))
 
 
 
@@ -3801,6 +3904,7 @@
   :class :common-lisp-compliant)
 (definterface fn-bpnc-startup
   :class :common-lisp-compliant
+  :kinds ((config-octets fn-cbor-octet-listp) (store-octets fn-cbor-octet-listp))
   :keystones (fn-bpnc-ready-startup-binds-the-parsed-store))
 (definterface fn-bpnc-socket-initial
   :class :common-lisp-compliant
@@ -3884,6 +3988,7 @@
 
 (definterface fn-nir-resume-decision
   :class :common-lisp-compliant
+  :kinds ((requested-octets fn-cbor-octet-listp) (recorded-octets fn-cbor-octet-listp))
   :keystones (fn-nir-resume-admits-identical-initial-contract-across-stamps
               fn-nir-resume-refuses-distinct-initial-changes))
 (definterface fn-nir-resume-line
@@ -4040,7 +4145,8 @@
 (definterface fn-ort-final-checkpoint-action :class :common-lisp-compliant
   :keystones ((fn-ort-final-checkpoint-only-when-drained :via fn-ort-final-checkpoint-action)))
 (definterface fn-ort-intake-action :class :common-lisp-compliant)
-(definterface fn-ort-log-close-action :class :common-lisp-compliant)
+(definterface fn-ort-log-close-action :class :common-lisp-compliant
+  :exempt ((pending-octets "the writer's pending octet count, a natural compared with 0, not bytes")))
 (definterface fn-ort-log-close-exit :class :common-lisp-compliant
   :kinds ((prior integerp) (uncertain integerp))
   :keystones ((fn-ort-clean-stop-keeps-its-exit :via fn-ort-log-close-exit)))
@@ -4191,6 +4297,9 @@
   :keystones (fn-bpfc-turn-advances-at-most-quantum
               fn-bpfc-turn-after-a-yield-is-the-larger-turn
               (fn-bpfc-run-is-the-plan-choice :step-of fn-bpfc-run)))
+(definterface fn-bpsched-admit-p
+  :class :common-lisp-compliant
+  :keystones (fn-bpsched-refused-rotation-keeps-admission-open))
 (definterface fn-bpsched-idle-p :class :common-lisp-compliant)
 (definterface fn-bpsched-listener-index :class :common-lisp-compliant)
 (definterface fn-bpsched-listener-step :class :common-lisp-compliant)
@@ -4211,7 +4320,8 @@
   :keystones (fn-bpsp-free-incoming-slot-is-not-contention fn-bpsp-nobody-waiting-is-not-contention))
 (definterface fn-bpsp-passive-ms :class :common-lisp-compliant :kinds ((profile true-listp)))
 (definterface fn-bpsp-stall-ms :class :common-lisp-compliant :kinds ((profile true-listp)))
-(definterface fn-bpsp-read :class :common-lisp-compliant)
+(definterface fn-bpsp-read :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp)))
 (definterface fn-bpsp-read-bound :class :common-lisp-compliant)
 (definterface fn-bpsp-root-release-ready :class :common-lisp-compliant)
 (definterface fn-bpsp-node-startup :class :common-lisp-compliant
@@ -4280,8 +4390,10 @@
 (definterface fn-csp-bank-idle-p :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:26
 (definterface fn-csp-candidate :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:6
 (definterface fn-cu-cursor-envelope :class :common-lisp-compliant) ; books/peer-catchup.lisp:1024
-(definterface fn-lgw-step-buf :class :common-lisp-compliant :kinds ((st true-listp))) ; books/store-log-buffer.lisp:539
-(definterface fn-lgw-step-buf-nf :class :common-lisp-compliant :kinds ((st true-listp))) ; books/store-log-walk-once.lisp:48
+(definterface fn-lgw-step-buf-count :class :common-lisp-compliant :kinds ((st true-listp))
+  :keystones (fn-lgw-step-buf-count-is-step)) ; books/store-log-buffer.lisp
+(definterface fn-lgw-step-buf-nf-count :class :common-lisp-compliant :kinds ((st true-listp))
+  :keystones (fn-lgw-step-buf-nf-count-is-step-nf)) ; books/store-log-walk-once.lisp
 (definterface fn-ort-log-caller-action :class :common-lisp-compliant) ; books/owner-retire-settlement.lisp:47
 (definterface fn-pfr-flight-demand :class :common-lisp-compliant) ; books/peer-flight-reservation.lisp:46
 (definterface fn-pfr-install-funded :class :common-lisp-compliant) ; books/peer-flight-reservation.lisp:117
@@ -4299,11 +4411,13 @@
 ;; Bounded live-owner profile read for heap preflight.
 (definterface fn-lpf-request :class :common-lisp-compliant)
 (definterface fn-lpf-request-p :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
   :keystones (fn-lpf-request-is-recognized))
 (definterface fn-lpf-request-size-p :class :common-lisp-compliant)
 (definterface fn-lpf-reply :class :common-lisp-compliant
   :keystones (fn-lpf-reply-is-bounded))
 (definterface fn-lpf-reply-read :class :common-lisp-compliant
+  :kinds ((octets fn-cbor-octet-listp))
   :keystones (fn-lpf-reply-round-trip))
 (definterface fn-lpf-reply-bound :class :common-lisp-compliant)
 ; Control receipt decisions; kinds copied from each guard.

@@ -58,6 +58,18 @@ IMAGE = str(native_image("FN_NATIVE_HOST"))
 SMALL_FLAGS = ("--profile", "development", "--max-transactions", "16384",
                "--max-history-octets", "8388608", "--max-record-octets", "196608",
                "--max-groups-per-article", "16", "--max-open-suffix", "128")
+# The capacity test's profile: SMALL_FLAGS with a 4 MiB article bound (R the
+# record ceiling of A = 4,194,304 at 16 groups, books/record-codec
+# fn-record-encoded-octets-ceiling, 4,199,563), init-accepted under 2 GiB; C
+# raised to 200 by policy so the article reply 2A + 1,024 per holder binds C'.
+CAPACITY_FLAGS = ("--profile", "development", "--max-transactions", "16384",
+                  "--max-history-octets", "8388608", "--max-record-octets", "4199563",
+                  "--max-article-octets", "4194304",
+                  "--max-groups-per-article", "16", "--max-open-suffix", "128")
+CAPACITY_CONNECTIONS = 200
+# books/nntp-post.lisp fn-post-store-refusal-text of :memory.
+MEMORY_REFUSAL = (b"441 posting failed; the store is full: no capacity for this article "
+                  b"(memory); the node's operator can raise it")
 # `status' prints the launcher's run reservation (books/heap-reservation.lisp
 # fn-heap-status-decide): the heap line with the stack and the threads.
 HEAP_LINE = re.compile(r"^heap=(\d+) MB profile=([a-z]+) machine=(\d+) MB"
@@ -76,6 +88,13 @@ INIT_NAMED_BELOW = re.compile(r"fn: warning init-budget-below-machine named-budg
                               r"machine-budget=(\d+) MB: ")
 INIT_REFUSED = re.compile(r"refused init-budget-cannot-hold-profile profile=([a-z]+) "
                           r"sizing=([a-z]+) reservation=(\d+) MB budget=(\d+) MB")
+
+
+# The run's admission statement, logged once at start (ruling (b),
+# books/admission-memory.lisp fn-adm-capacity-line): C' of C, the term that
+# bound C', the model's sum at C' over the carried store and the limit.
+CAPACITY_LINE = re.compile(rb"memory capacity=(\d+) of (\d+) bound-by=([a-z-]+) "
+                           rb"sum=(\d+) MB limit=(\d+) MB")
 
 
 def cgroup_limit():
@@ -419,7 +438,9 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         hwm1 = self.stop()
         print("NATIVE-HEAP vmhwm run=1 kB={}".format(hwm1))
 
-        reopened = self.run_fn("operator", config, "status")
+        # Row S3: a stopped `status' is its checkpoint header's; the open
+        # line is the replay's (`status --replay' reopens the store).
+        reopened = self.run_fn("operator", config, "status", "--replay")
         self.assertEqual(reopened.returncode, EXIT_OK, text(reopened))
         self.assertRegex(reopened.stdout.decode(), r"open=checkpoint:\d+")
         self.start()
@@ -428,6 +449,105 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         print("NATIVE-HEAP vmhwm run=2 kB={}".format(hwm2))
         self.assertLess(max(hwm1, hwm2) * 1024, LIMIT)
 
+    def capacity(self):
+        """The run's capacity line from the owner's log: (C', C, term)."""
+        log = self.node.process.stderr.since(0)
+        found = CAPACITY_LINE.search(log)
+        self.assertIsNotNone(found, log[-2000:])
+        print("NATIVE-HEAP", found.group(0).decode("ascii"))
+        return int(found.group(1)), int(found.group(2)), found.group(3).decode("ascii")
+
+    def test_the_run_states_its_capacity_and_admits_every_post_up_to_it(self):
+        """Ruling (b) (2026-10-10): the run states its capacity C' of C at
+        configure, the most connections the memory gate holds at its limit
+        over the carried store (books/admission-memory.lisp fn-adm-capacity),
+        and serves at C': the gate prices C' connections and the readers
+        accepted are bounded by it (books/owner-connection-callbacks.lisp
+        fn-owner-memory-max-conns lowers the bound to C'+1;
+        fn-owner-callback-exposure-total-within-the-memory-capacity).
+
+        The tooth is C' below C under the 2 GiB cgroup, bound by a PERMANENT
+        term.  A 4 MiB article bound makes each holder's article reply
+        2A + 1,024 = 8,389,632 octets (books/memory-model.lisp
+        fn-mm-large-reply, fn-mm-article-reply-octets), and the gate prices
+        every connection as a holder (fn-mm-cfg-holders: C when the host does
+        not bound them).  The adapter A-OVER-WINDOW-FIT, which retires, is
+        not what binds: its W' keeps the OVER window within this reply.  The
+        small preset's own connection costs about 1.2 MB, so the preset at
+        its C of 31 never binds (m34a-9h: capacity=31 of 31 bound-by=
+        configured sum=379 MB limit=2043 MB).  Here init takes the profile
+        (books/heap-reservation.lisp fn-heap-init-decide: 1,422 MB in the
+        model, 1,083 for the small preset against the 1,001 MB measured,
+        within the 2,025 MB budget) and `policy set exposure-connections 200'
+        raises C past what the limit holds.  fn-adm-capacity at limit 2043 MB
+        over the empty store, the image calibrated to that sum=379 (the
+        figures are in build/memory/l34/m9/test2g/a5.out, a6.out):
+        "memory capacity=125 of 200 bound-by=article-reply sum=2033 MB
+        limit=2043 MB", 121 to 130 for an image 50 MB heavier or lighter
+        (m34a-11h, 1ea0b89ae: 123 of 200, sum=2012 MB limit=2013 MB).
+        C' readers are accepted and one more is refused with RFC 3977's
+        400.  Each reader then POSTs: the room C' leaves is under one
+        connection's charge, so POSTs are admitted (240) while the gate
+        holds after the row and from the first it cannot hold every one is
+        refused by the memory's word (K-ADMIT)."""
+        config, port = self.config("capacity")
+        made = self.run_fn("operator", config, "init", *CAPACITY_FLAGS, "local.test")
+        self.assertEqual(made.returncode, EXIT_OK, text(made))
+        policy = self.run_fn("operator", config, "policy", "set",
+                             "exposure-connections", str(CAPACITY_CONNECTIONS))
+        self.assertEqual(policy.returncode, EXIT_OK, text(policy))
+        self.start()
+        cap, configured, term = self.capacity()
+        self.assertEqual(configured, CAPACITY_CONNECTIONS)
+        self.assertGreaterEqual(cap, 1)
+        self.assertLess(cap, configured,
+                        "a 4 MiB article reply per holder bounds C' below C")
+        self.assertNotEqual(term, "configured")
+        self.assertEqual(term, "article-reply",
+                         "the permanent term binds, not the retiring OVER window")
+        # C'+1 sockets here, the owner's as many: well inside 1,024 descriptors.
+        self.assertLess(cap, 400)
+        body = ("z" * 72 + "\r\n") * 28
+        readers = []
+        try:
+            for _ in range(cap):
+                readers.append(Client(port, timeout=300))
+            extra = Client(port, timeout=30, greeting=None)
+            try:
+                self.assertTrue(extra.greeting.startswith(b"400 "), extra.greeting)
+            finally:
+                extra.sock.close()
+            # C' is the most connections the gate holds over the store at
+            # configure, so the room left is under one connection's charge
+            # (one article reply here) and a store that grows spends it: each
+            # reader POSTs, a POST is admitted exactly while the gate holds
+            # after its row (K-ADMIT, books/admission-memory.lisp
+            # fn-adm-admitted-row-keeps-the-gate), and the first POST the
+            # gate cannot hold is refused by the memory's own word; the store
+            # only grows, so every later one is too.
+            admitted, refused = 0, 0
+            for n, client in enumerate(readers):
+                first, final = client.post(article("<cap-{}@example.invalid>".format(n),
+                                                   groups="local.test", subject="cap",
+                                                   date=None, body=body.encode("ascii")))
+                self.assertTrue(first.startswith(b"340"), first)
+                final = final.rstrip(b"\r\n")
+                if final == b"240 article received OK":
+                    self.assertEqual(refused, 0, (n, "an admission after a memory refusal"))
+                    admitted += 1
+                else:
+                    self.assertEqual(final, MEMORY_REFUSAL, n)
+                    refused += 1
+            self.assertEqual(admitted + refused, cap)
+        finally:
+            for client in readers:
+                client.close()
+        hwm = self.stop()
+        print("NATIVE-HEAP capacity={} of {} bound-by={} readers={} admitted={} "
+              "refused-by-memory={} vmhwm kB={}".format(
+                  cap, configured, term, len(readers), admitted, refused, hwm))
+        self.assertLess(hwm * 1024, LIMIT)
+
     def test_a_store_init_admitted_fills_to_its_limit_and_still_restarts(self):
         """The coordinator's release blocker (friend-path, packet A): a store
         `init' sized within this machine's budget must reopen on this machine
@@ -435,9 +555,13 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         rung the budget holds, judged by its FULL store since lane
         membership-budget: books/heap-reservation.lisp
         `fn-heap-init-accepted-store-always-reopens'), filled with 30 KiB
-        articles until the store refuses by name (the history budget, which
-        now also pays for every group membership), then `status' and a
-        restart are accepted and the articles are served."""
+        articles until the store refuses by name, then `status' and a
+        restart are accepted and the articles are served.  The refusal is
+        the resource the decision names (books/admission-memory.lisp
+        fn-adm-article-word: the transactions T, then the history H, then the
+        memory gate at the run's limit), read back from the stopped store's
+        headroom: T spent, else H without room for one more article and the
+        maintenance reserve, else the memory."""
         config, port = self.config("fill")
         began = time.monotonic()
         made = self.run_fn("operator", config, "init", "local.test")
@@ -448,6 +572,7 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         reservation = int(found.group(3))
         body = ("y" * 72 + "\r\n") * 400  # 29,600 octets
         self.start()
+        cap, configured, term = self.capacity()
         started = time.monotonic()
         stored, reply = [], b""
         with Client(port, timeout=600) as client:
@@ -463,14 +588,31 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
                 stored.append(message_id)
         print("NATIVE-HEAP fill init-and-start-s={:.1f} fill-s={:.1f} posts={}".format(
             started - began, time.monotonic() - started, len(stored)))
-        with node_log_on_failure(self.node.process):
-            self.assertEqual(reply.decode("ascii"),
-                             "441 posting failed; the store is full: no capacity for this "
-                             "article (unaffordable); the node's operator can raise it",
-                             "after {} posts".format(len(stored)))
         hwm1 = self.stop()
-        print("NATIVE-HEAP fill posts={} vmhwm kB={} init-reservation={} MB".format(
-            len(stored), hwm1, reservation))
+        replay = self.run_fn("operator", config, "status", "--replay")
+        self.assertEqual(replay.returncode, EXIT_OK, text(replay))
+        room = {}
+        for line in replay.stdout.decode("ascii").splitlines():
+            if line.startswith("headroom "):
+                room = {k: int(v) for k, v in (w.split("=", 1) for w in line.split()[1:])}
+        self.assertTrue(room, text(replay))
+        per_post = room["bytes-used"] // max(1, len(stored))
+        if room["transactions-used"] + 1 > room["transactions-budget"]:
+            expected = ("441 posting failed; the store is full: no capacity for this "
+                        "article (unaffordable); the node's operator can raise it")
+        elif room["bytes-used"] + per_post + 4096 > room["history-bound"]:
+            expected = ("441 posting failed; the store's history budget is exhausted "
+                        "(history-exhausted); the node's operator can raise "
+                        "max-history-octets or reclaim")
+        else:
+            expected = ("441 posting failed; the store is full: no capacity for this "
+                        "article (memory); the node's operator can raise it")
+        print("NATIVE-HEAP fill refusal={!r} headroom={}".format(reply.decode("ascii"), room))
+        self.assertEqual(reply.decode("ascii"), expected,
+                         "after {} posts, headroom {}".format(len(stored), room))
+        print("NATIVE-HEAP fill capacity={} of {} bound-by={} posts={} vmhwm kB={} "
+              "init-reservation={} MB".format(cap, configured, term, len(stored), hwm1,
+                                              reservation))
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         heap = HEAP_LINE.search(status.stdout.decode())
@@ -492,7 +634,8 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         2026-09-27: lane membership-budget), unless `init --budget MB' names a
         target budget that holds it: then it is written for that machine
         (`within-budget=no target-budget=16384 MB', the scale preset) and
-        the launcher refuses its run and status here by name."""
+        the launcher refuses its run here by name; its stopped status holds
+        no store and is accepted."""
         config, port = self.config("development")
         refused = self.run_fn("operator", config, "init", "--profile", "development",
                               "local.test")
@@ -518,21 +661,35 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         # an EMPTY development store's run fits 2 GiB (the open's chunk is
         # bounded by the input, and a run sizes the open by the store on
         # disk), so the launcher's refusal is shown on the scale preset,
-        # whose state at its bounds alone is past 2 GiB.
-        made = self.run_fn("operator", config, "init", "--budget", "16384", "--profile", "scale",
+        # whose state at its bounds alone is past 2 GiB.  The target budget
+        # is the scale store's own reservation, as init's refusal names it
+        # (never a figure written here: 16384 MB held it until the scale
+        # figure grew past it).
+        asked = self.run_fn("operator", config, "init", "--profile", "scale", "local.test",
+                            command=[IMAGE, "--fn"])
+        self.assertEqual(asked.returncode, EXIT_REFUSED, text(asked))
+        target = INIT_REFUSED.search(text(asked))
+        self.assertIsNotNone(target, text(asked))
+        made = self.run_fn("operator", config, "init", "--budget", target.group(3), "--profile", "scale",
                            "local.test", command=[IMAGE, "--fn"])
         self.assertEqual(made.returncode, EXIT_OK, text(made))
         self.assertRegex(made.stdout.decode(),
                          r"init: profile=scale sizing=requested reservation=\d+ MB "
-                         r"budget=\d+ MB within-budget=no target-budget=16384 MB")
-        for verb in ("run", "status"):
-            result = self.run_fn("operator", config, verb)
-            self.assertEqual(result.returncode, EXIT_REFUSED, text(result))
-            found = REFUSED.search(text(result))
-            self.assertIsNotNone(found, text(result))
-            self.assertGreater(int(found.group(1)), int(found.group(2)))
-            self.assertEqual(int(found.group(2)), LIMIT // (1024 * 1024))
-            self.assertEqual(result.stdout, b"")
+                         r"budget=\d+ MB within-budget=no target-budget=" + target.group(3) + " MB")
+        # The launcher refuses its run by name; its stopped `status' holds the
+        # checkpoint header and the configuration history, not the store
+        # (books/heap-command.lisp fn-mo-header-decide-holds-the-header), so
+        # it is accepted here (lane memory, landing 2).
+        result = self.run_fn("operator", config, "run")
+        self.assertEqual(result.returncode, EXIT_REFUSED, text(result))
+        found = REFUSED.search(text(result))
+        self.assertIsNotNone(found, text(result))
+        self.assertGreater(int(found.group(1)), int(found.group(2)))
+        self.assertEqual(int(found.group(2)), LIMIT // (1024 * 1024))
+        self.assertEqual(result.stdout, b"")
+        status = self.run_fn("operator", config, "status")
+        self.assertEqual(status.returncode, EXIT_OK, text(status))
+        self.assertIn("max-history-octets=", status.stdout.decode())
         with self.assertRaises(OSError):
             socket.create_connection(("127.0.0.1", port), timeout=2).close()
 
