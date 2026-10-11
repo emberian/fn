@@ -83,3 +83,75 @@
                             (off (fn-rtc-h-off (fn-rtc-u-hd u))) (len (fn-rtc-h-len (fn-rtc-u-hd u)))
                             (fl (nfix (fn-rtc-get 2 (nth (fn-rtc-h-buf (fn-rtc-u-hd u)) (nth *fn-rtc-c-metai* c)))))
                             (arr (nth *fn-rtc-c-bytesi* c)))))))
+
+; -----------------------------------------------------------------------------
+; HL3: the in-place render (puts into the instance's workspace) is the contract's :write request, so every
+; contract keystone covers it.  The empty window is excluded: req-write rebuilds the state record, puts do not.
+(defun fn-rtc-st$a-puts (h off w s)
+  (declare (xargs :guard t))
+  (if (consp w)
+      (fn-rtc-st$a-puts h (+ 1 (nfix off)) (cdr w) (fn-rtc-st$a-put h off (car w) s))
+    s))
+(local (progn
+(defthm fn-rtchl-get-of-set
+  (equal (fn-rtc-get i (fn-rtc-set j v l))
+         (if (and (equal (nfix i) (nfix j)) (< (nfix j) (len l))) v (fn-rtc-get i l))))
+(defthm fn-rtchl-set-of-set
+  (equal (fn-rtc-set j v2 (fn-rtc-set j v1 l)) (fn-rtc-set j v2 l)))
+(defthm fn-rtchl-len-of-set (equal (len (fn-rtc-set j v l)) (len l)))
+(defthm fn-rtchl-get-past-len (implies (<= (len l) (nfix i)) (equal (fn-rtc-get i l) nil)))
+(defthm fn-rtchl-with-buffer-accessors
+  (and (equal (fn-rtc-config (fn-rtc-with-buffer h b s)) (fn-rtc-config s))
+       (equal (fn-rtc-uses (fn-rtc-with-buffer h b s)) (fn-rtc-uses s))
+       (equal (fn-rtc-buffer k (fn-rtc-with-buffer h b s))
+              (if (and (equal (nfix k) (nfix h)) (< (nfix h) (len (fn-rtc-pool s)))) b (fn-rtc-buffer k s)))
+       (equal (fn-rtc-with-buffer h b2 (fn-rtc-with-buffer h b1 s)) (fn-rtc-with-buffer h b2 s)))
+  :hints (("Goal" :in-theory (enable fn-rtc-with-buffer fn-rtc-config fn-rtc-uses fn-rtc-buffer fn-rtc-pool
+                                     fn-rtc-make fn-rtc-slots fn-rtc-mstates fn-rtc-next-op))))
+(defthm fn-rtchl-len-take (equal (len (take n l)) (nfix n)))
+(defthm fn-rtchl-take-append-len
+  (implies (and (true-listp a) (natp k))
+           (equal (take (+ (len a) k) (append a b)) (append a (take k b)))))
+(defthm fn-rtchl-nthcdr-append-len
+  (implies (natp k)
+           (equal (nthcdr (+ (len a) k) (append a b)) (nthcdr k b))))
+(defthm fn-rtchl-nthcdr-nthcdr
+  (implies (and (natp i) (natp j)) (equal (nthcdr i (nthcdr j l)) (nthcdr (+ i j) l))))
+(defthm fn-rtchl-append-assoc (equal (append (append a b) c) (append a (append b c))))
+(defthm fn-rtchl-true-listp-take (true-listp (take n l)))
+(defthm fn-rtchl-take-len-tlf
+  (implies (and (natp off) (<= off (len b)))
+           (equal (len (take off (true-list-fix b))) off)))
+(defthm fn-rtchl-take-1 (equal (take 1 (cons a b)) (list a)))
+(defthm fn-rtchl-len-tlf (equal (len (true-list-fix x)) (len x)))
+(defthm fn-rtchl-nthcdr-cons (implies (natp k) (equal (nthcdr (+ 1 k) (cons a x)) (nthcdr k x))))
+(defthm fn-rtchl-splice-compose
+  (implies (and (natp off) (<= off (len bytes)))
+           (equal (fn-rtc-splice (fn-rtc-splice bytes off (list o)) (+ 1 off) rest)
+                  (fn-rtc-splice bytes off (cons o rest))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-splice) (take nthcdr))
+                  :use ((:instance fn-rtchl-take-append-len (a (take off (true-list-fix bytes))) (k 1)
+                                   (b (cons o (nthcdr (+ 1 off) (true-list-fix bytes)))))
+                        (:instance fn-rtchl-nthcdr-append-len (a (take off (true-list-fix bytes)))
+                                   (k (+ 1 (len rest))) (b (cons o (nthcdr (+ 1 off) (true-list-fix bytes)))))))))
+(defthm fn-rtchl-len-splice
+  (implies (and (natp off) (<= off (len bytes)))
+           (equal (len (fn-rtc-splice bytes off data))
+                  (max (len bytes) (+ off (len data)))))
+  :hints (("Goal" :in-theory (enable fn-rtc-splice))))
+))
+(defthm fn-rtc-puts-is-the-write-request
+  (let ((b (fn-rtc-buffer h s)))
+    (implies (and (consp w) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                  (equal (fn-rtc-b-owner b) (list :workspace id inc))
+                  (natp g) (equal (fn-rtc-get 0 b) g)
+                  (natp off) (<= off (len (fn-rtc-b-bytes b)))
+                  (fn-cbor-octet-listp w)
+                  (<= (+ off (len w)) (fn-rtc-buf-cap h (fn-rtc-config s))))
+             (equal (fn-rtc-st$a-puts h off w s)
+                    (mv-nth 0 (fn-rtc-req-write (list :write h g off w) id inc s)))))
+  :hints (("Goal" :induct (fn-rtc-st$a-puts h off w s)
+                  :in-theory (e/d (fn-rtc-st$a-put fn-rtc-st$a-splice fn-rtc-splice-okp fn-rtc-splice-target-p
+                                   fn-rtc-req-write fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes)
+                                  (fn-rtc-splice fn-rtc-with-buffer fn-rtc-buf-cap fn-rtc-nbufs fn-rtc-config
+                                   fn-rtc-buffer fn-rtc-uses)))))
