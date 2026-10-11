@@ -4786,6 +4786,20 @@
 (definterface fn-owner-reader-views-capture
   :class ::program)
 
+; LH-A (lane spans-list-hold): the view a reader hold reads at, as its
+; version: the reader view while a capture is held, else the working view
+; (fn-ocfg-at-reader-view).  host/native/owner.lisp fnn-owner-cursor-step
+; refreshes a LIST cursor to it (fn-qplan-refresh) before each quantum.
+(defun fn-owner-hold-view-version (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (nfix (fn-own-view-version
+                (fn-own-view (fn-ocfg-owner (fn-ocfg-at-reader-view
+                                             (fn-owner-ocfg state)
+                                             (fn-owner-reader-views state))))))))
+
+(definterface fn-owner-hold-view-version
+  :class ::program)
+
 ; A reader entry at the reader view: while a capture is held the entry runs
 ; on the owner with the reader view in place of the working view
 ; (fn-ocfg-at-reader-view; fn-ocl-relation-of-a-view-captured-before-appends:

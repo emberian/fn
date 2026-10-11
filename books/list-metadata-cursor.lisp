@@ -577,3 +577,95 @@
 (in-theory (disable fn-lst-row-cost fn-lst-status-cost
                     fn-lst-group-cost fn-lst-groups-cost fn-lst-phase-cost fn-lst-potential
                     fn-lst-progress-okp))
+
+; -----------------------------------------------------------------------------
+; THE HOLD'S VIEW (lane spans-list-hold, LH-A).  A group's summary is the
+; catalog's live summary corrected over the rows appended and withdrawn
+; since the view (books/served-catalog-view.lisp fn-scv-x), whose premise is
+; "the rows appended since V: one batch".  A LIST holds its cursor across many
+; owner holds, so a view captured at the command falls behind the catalog by
+; every append since, and one group visit walked them all.  The host
+; therefore refreshes the cursor's view to the view its hold reads at (the
+; reader view while a batch is in flight, else the working view) before each
+; quantum: the view only moves forward, every later line is read at the new
+; view, and the lines already emitted stay as they were.  Each line is the
+; reference line at the view of the hold that read its group.
+(defun fn-lst-env-at (env r)
+  (declare (xargs :guard t))
+  (fn-lst-env (fn-cur-at 0 env) (fn-cur-at 1 env) (fn-cur-at 2 env) (fn-cur-at 3 env)
+              (fn-cur-at 4 env) (fn-cur-at 5 env)
+              (max (nfix (fn-cur-at 6 env)) (nfix r))))
+
+(defun fn-lst-refresh (cur r)
+  (declare (xargs :guard t))
+  (let ((progress (fn-cur-progress cur)))
+    (if (and (consp progress)
+             (< (nfix (fn-cur-at 6 (fn-cur-at 0 progress))) (nfix r)))
+        (let ((env (fn-lst-env-at (fn-cur-at 0 progress) r)))
+          (fn-cur-make (fn-cur-context cur)
+                       (fn-lst-progress env (fn-cur-at 1 progress) (fn-cur-at 2 progress)
+                                        (fn-cur-at 3 progress) (fn-cur-at 4 progress)
+                                        (fn-cur-at 5 progress) (fn-cur-at 6 progress))
+                       (fn-cur-pending cur) (fn-cur-dependency cur)))
+      cur)))
+
+; The view the cursor reads its next group at.
+(defun fn-lst-view (cur)
+  (declare (xargs :guard t))
+  (nfix (fn-cur-at 6 (fn-cur-at 0 (fn-cur-progress cur)))))
+
+; KEYSTONE LH-A1: the refreshed view is the later of the two, never earlier.
+(defthm fn-lst-refresh-view
+  (implies (consp (fn-cur-progress cur))
+           (equal (fn-lst-view (fn-lst-refresh cur r))
+                  (max (fn-lst-view cur) (nfix r))))
+  :hints (("Goal" :in-theory (enable fn-lst-refresh fn-lst-view fn-lst-env-at fn-lst-env
+                                     fn-lst-progress fn-cur-make fn-cur-progress fn-cur-at))))
+
+; KEYSTONE LH-A2: a refresh changes nothing but the view: the pending octets,
+; the dependency, the phase, the groups left and the row in progress stay, so
+; what is owed after it is the reference reply at the new view.
+(defthm fn-lst-refresh-remaining
+  (equal (fn-lst-remaining (fn-lst-refresh cur r) fn-cat)
+         (if (and (consp (fn-cur-progress cur)) (< (fn-lst-view cur) (nfix r)))
+             (append (fn-cur-pending cur)
+                     (fn-lst-progress-reference
+                      (fn-lst-progress (fn-lst-env-at (fn-cur-at 0 (fn-cur-progress cur)) r)
+                                       (fn-cur-at 1 (fn-cur-progress cur))
+                                       (fn-cur-at 2 (fn-cur-progress cur))
+                                       (fn-cur-at 3 (fn-cur-progress cur))
+                                       (fn-cur-at 4 (fn-cur-progress cur))
+                                       (fn-cur-at 5 (fn-cur-progress cur))
+                                       (fn-cur-at 6 (fn-cur-progress cur)))
+                      fn-cat))
+           (fn-lst-remaining cur fn-cat)))
+  :hints (("Goal" :in-theory (enable fn-lst-refresh fn-lst-remaining fn-lst-view fn-cur-make
+                                     fn-cur-progress fn-cur-pending fn-cur-at))))
+
+(local
+ (defthm fn-lst-progress-consp
+   (consp (fn-lst-progress env phase groups group detail summary calls))
+   :rule-classes :type-prescription
+   :hints (("Goal" :in-theory (enable fn-lst-progress)))))
+
+(defthm fn-lst-refresh-keeps-livep
+  (iff (fn-lst-livep (fn-lst-refresh cur r)) (fn-lst-livep cur))
+  :hints (("Goal" :in-theory (union-theories
+                              '(fn-lst-refresh fn-lst-livep fn-cur-make fn-cur-progress
+                                fn-cur-pending fn-cur-dependency fn-cur-context fn-cur-at
+                                fn-lst-progress-consp car-cons cdr-cons zp nfix)
+                              (theory 'minimal-theory)))))
+
+(defthm fn-lst-refresh-keeps-okp
+  (implies (fn-lst-progress-okp (fn-cur-progress cur))
+           (fn-lst-progress-okp (fn-cur-progress (fn-lst-refresh cur r))))
+  :hints (("Goal" :in-theory (enable fn-lst-refresh fn-lst-progress-okp fn-lst-progress
+                                     fn-cur-make fn-cur-progress fn-cur-at))))
+
+; At a view no later than the cursor's own a refresh is the identity.
+(defthm fn-lst-refresh-at-own-view
+  (implies (<= (nfix r) (fn-lst-view cur))
+           (equal (fn-lst-refresh cur r) cur))
+  :hints (("Goal" :in-theory (enable fn-lst-refresh fn-lst-view fn-cur-progress))))
+
+(in-theory (disable fn-lst-env-at fn-lst-refresh fn-lst-view))

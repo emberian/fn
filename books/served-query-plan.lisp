@@ -565,3 +565,90 @@
 
 (in-theory (disable fn-qplan-cw-octets fn-qplan-cw-remaining fn-qplan-take-budget
                     fn-qplan-cw-drain))
+
+; -----------------------------------------------------------------------------
+; LH-A (lane spans-list-hold): before each quantum the host refreshes the view
+; of the LIST cursor the quantum would step (the first cursor effect, past the
+; same prefix fn-qplan-rest-cursor-step skips) to the view its hold reads at
+; (books/list-metadata-cursor.lisp fn-lst-refresh).  Other cursor kinds and
+; every effect behind the first cursor are untouched.
+; The LIST cursor a quantum would step (when fn-qplan-rest-lst-cursorp).
+(defun fn-qplan-rest-lst-cursor (rest)
+  (declare (xargs :guard t))
+  (if (consp rest)
+      (cond ((fn-lst-effectp (car rest)) (fn-cur-at 1 (car rest)))
+            ((fn-splan-cursor-effectp (car rest)) nil)
+            (t (fn-qplan-rest-lst-cursor (cdr rest))))
+    nil))
+
+; The effect with its cursor refreshed, every other field as it was.
+(defun fn-qplan-lst-effect-refresh (effect r)
+  (declare (xargs :guard t))
+  (if (consp effect)
+      (cons (car effect) (cons (fn-lst-refresh (fn-cur-at 1 effect) r)
+                               (if (consp (cdr effect)) (cddr effect) nil)))
+    effect))
+
+(defun fn-qplan-rest-refresh-acc (rest r acc)
+  (declare (xargs :guard (true-listp acc)))
+  (if (consp rest)
+      (cond ((fn-lst-effectp (car rest))
+             (revappend acc (cons (fn-qplan-lst-effect-refresh (car rest) r) (cdr rest))))
+            ((fn-splan-cursor-effectp (car rest)) (revappend acc rest))
+            (t (fn-qplan-rest-refresh-acc (cdr rest) r (cons (car rest) acc))))
+    (revappend acc rest)))
+
+(defun fn-qplan-rest-refresh (rest r)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp rest)
+           (cond ((fn-lst-effectp (car rest))
+                  (cons (fn-qplan-lst-effect-refresh (car rest) r) (cdr rest)))
+                 ((fn-splan-cursor-effectp (car rest)) rest)
+                 (t (cons (car rest) (fn-qplan-rest-refresh (cdr rest) r))))
+         rest)
+       :exec (fn-qplan-rest-refresh-acc rest r nil)))
+
+(local
+ (defthm fn-qplan-rest-refresh-acc-is-revappend
+   (equal (fn-qplan-rest-refresh-acc rest r acc)
+          (revappend acc (fn-qplan-rest-refresh rest r)))
+   :hints (("Goal" :induct (fn-qplan-rest-refresh-acc rest r acc)))))
+
+(verify-guards fn-qplan-rest-refresh)
+
+(defun fn-qplan-refresh (plan r)
+  (declare (xargs :guard t))
+  (cons (fn-splan-cur plan) (fn-qplan-rest-refresh (fn-splan-rest plan) r)))
+
+; KEYSTONE LH-A3: a refresh at a view no later than the stepped cursor's own
+; is the identity, so the existing drain keystones are the case of a host
+; whose hold view never passes the command's view.
+(defthm fn-qplan-rest-refresh-at-own-view
+  (implies (equal (fn-lst-refresh (fn-qplan-rest-lst-cursor rest) r)
+                  (fn-qplan-rest-lst-cursor rest))
+           (equal (fn-qplan-rest-refresh rest r) rest))
+  :hints (("Goal" :in-theory (enable fn-qplan-rest-lst-cursor fn-qplan-lst-effect-refresh
+                                     fn-lst-effectp fn-cur-at))))
+
+; With fn-lst-refresh-at-own-view: a hold view no later than the stepped
+; LIST cursor's own leaves the plan as it was.
+(defthm fn-qplan-refresh-at-own-view
+  (implies (<= (nfix r) (fn-lst-view (fn-qplan-rest-lst-cursor (fn-splan-rest plan))))
+           (equal (fn-qplan-refresh plan r)
+                  (cons (fn-splan-cur plan) (fn-splan-rest plan))))
+  :hints (("Goal" :in-theory (enable fn-qplan-refresh))))
+
+(defthm fn-qplan-rest-refresh-keeps-lst-cursorp
+  (equal (fn-qplan-rest-lst-cursorp (fn-qplan-rest-refresh rest r))
+         (fn-qplan-rest-lst-cursorp rest))
+  :hints (("Goal" :in-theory (enable fn-qplan-rest-lst-cursorp fn-qplan-cursor-effectp
+                                     fn-qplan-lst-effect-refresh fn-lst-effectp))))
+
+(defthm fn-qplan-rest-refresh-keeps-at-cursorp
+  (equal (fn-qplan-rest-at-cursorp (fn-qplan-rest-refresh rest r))
+         (fn-qplan-rest-at-cursorp rest))
+  :hints (("Goal" :in-theory (enable fn-qplan-rest-at-cursorp fn-qplan-cursor-effectp
+                                     fn-qplan-lst-effect-refresh fn-lst-effectp))))
+
+(in-theory (disable fn-qplan-rest-refresh fn-qplan-refresh))

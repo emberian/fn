@@ -1767,6 +1767,12 @@
   :class :common-lisp-compliant
   :kinds ((w natp) (v natp) (b natp)))
 
+; LH-A (lane spans-list-hold): the hold's view, put into the LIST cursor the
+; quantum steps, under the owner mutex before fn-qplan-cursor-step.
+(definterface fn-qplan-refresh
+  :class :common-lisp-compliant
+  :kinds ((r natp)))
+
 ; -----------------------------------------------------------------------------
 ; nntp/served (21 entries)
 

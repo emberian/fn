@@ -872,7 +872,12 @@ never awaits a page or replays a quantum in the same I/O event."
                      (catch 'fnn-extent-cold
                        (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
                          (destructuring-bind (status rest)
-                             (fnn-call 'fn-qplan-cursor-step plan (fnn-owner-over-window)
+                             ;; LH-A: the LIST cursor reads at this hold's view
+                             ;; (books/served-query-plan.lisp fn-qplan-refresh).
+                             (fnn-call 'fn-qplan-cursor-step
+                                       (fnn-call 'fn-qplan-refresh plan
+                                                 (fnn-owner-core 'fn-owner-hold-view-version))
+                                       (fnn-owner-over-window)
                                        (fnn-owner-over-quantum) (fnn-owner-cursor-octets)
                                        (fnn-live-stobj 'fn-arena) (fnn-live-stobj 'fn-cat))
                            (unless (eq status :ok)
