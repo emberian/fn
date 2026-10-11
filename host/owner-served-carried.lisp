@@ -183,6 +183,7 @@
                 fn-owner-finish-identity fn-owner-finish-submission
                 fn-owner-group-codes fn-owner-handshake-admit
                 fn-owner-handshake-done fn-owner-handshake-leave
+                fn-owner-hold-view-version
                 fn-owner-hroot-abandon fn-owner-hroot-abandon-word
                 fn-owner-hroot-activate fn-owner-hroot-begin
                 fn-owner-hroot-detach fn-owner-hroot-frontier-value
