@@ -205,3 +205,35 @@
 (assert! (equal (fn-rtc-delivered-outcome '(:extend 1 1 5 nil) '(:extend 1 1 5 (:failed :enospc))) '(:failed :enospc)))
 (assert! (equal (fn-rtc-delivered-outcome '(:extend 1 1 5 nil) '(:extend 1 1 5 (:done 1))) '(:failed :malformed-completion)))
 (assert! (equal (fn-rtc-delivered-outcome '(:extend 1 1 5 nil) '(:extend 1 1 5 (:short 0))) '(:failed :malformed-completion)))
+
+; A failed :opened still steps the owner and consumes the use (only the DATA
+; delivery is gated on (:done 0)): the echo answers the unknown event with
+; its (:close) request, refused for a static instance, and a later (:done 0)
+; :opened for the same slot incarnation is discarded -- also after a run of
+; other events (the listener's accept completes and a stale timer is dropped).
+(defconst *rce-open-failed* (list :opened 1 1 0 '(:failed :eio)))
+(defconst *rce-open-3*
+  (mv-let (obs s)
+    (rce-open-run (list (list :complete *rce-open-failed*)
+                        (list :complete *rce-open-e*)))
+    (list obs s)))
+(assert! (let ((obs (car *rce-open-3*)) (s (cadr *rce-open-3*)))
+           (and (equal (fn-rtc-get 6 (nth 1 obs)) :matched)
+                (equal (fn-rtc-get 3 (nth 1 obs)) '((:close)))
+                (equal (fn-rtc-get 4 (nth 1 obs)) :invp)
+                (equal (fn-rtc-get 6 (nth 2 obs)) :discarded)
+                (null (fn-rtc-get 2 (nth 2 obs)))
+                (not (fn-rtc-kind-out-p :opened 1 1 (fn-rtc-uses s))))))
+(defconst *rce-open-4*
+  (mv-let (obs s)
+    (rce-open-run (list (list :complete *rce-open-failed*)
+                        (list :complete '(:accept 0 0 1 (:done 7)))
+                        (list :complete '(:timer 1 1 0 (:done 0)))
+                        (list :complete *rce-open-e*)))
+    (list obs s)))
+(assert! (let ((obs (car *rce-open-4*)))
+           (and (equal (fn-rtc-get 6 (nth 1 obs)) :matched)
+                (equal (fn-rtc-get 6 (nth 2 obs)) :matched)
+                (equal (fn-rtc-get 6 (nth 3 obs)) :discarded)
+                (equal (fn-rtc-get 6 (nth 4 obs)) :discarded)
+                (null (fn-rtc-get 2 (nth 4 obs))))))

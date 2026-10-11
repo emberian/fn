@@ -152,9 +152,12 @@
 ; (:opened J 1 OP (0)) action per static slot J (`fn-rtc-arm-opened'); the host
 ; completes it once, after the store opens and before it accepts, with
 ; (:opened J 1 OP (:done 0) DATA), DATA = (KD EXT GEO), and the static machine
-; is stepped with (:opened (:done 0) J 1 DATA) (`fn-rtc-ev-opened-data').  Being
-; a completion of an outstanding use, it acts at most once (T6), and no machine
-; can submit or cancel it.
+; is stepped with (:opened (:done 0) J 1 DATA) (`fn-rtc-ev-opened-data').  A
+; failed or cancelled :opened completion also steps the static machine, with
+; the event (:opened OUT J 1) and no DATA, and consumes the use; only the
+; delivery of DATA is gated on (:done 0).  Being a completion of an
+; outstanding use, it acts at most once (T6), and no machine can submit or
+; cancel it.
 
 ; What an instance may submit; :close has its own request and :accept is the
 ; layer's.
