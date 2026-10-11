@@ -1494,10 +1494,24 @@
                                 fn-record-head-octets-impl fn-record-groups-octets-impl
                                 fn-record-tail-octets-impl)))))
 
+(local
+ (defthm fn-record-pieces-of-a-non-record
+   (implies (not (fn-record-p record))
+            (and (equal (fn-record-head-octets-impl record) nil)
+                 (equal (fn-record-groups-octets-impl record) nil)
+                 (equal (fn-record-tail-octets-impl record) nil)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (union-theories
+                               '(fn-record-head-octets-impl fn-record-groups-octets-impl
+                                 fn-record-tail-octets-impl)
+                               (theory 'minimal-theory))))))
+
 (defthm fn-record-impl-pieces-are-octets
   (and (fn-cbor-octet-listp (fn-record-head-octets-impl record))
        (fn-cbor-octet-listp (fn-record-groups-octets-impl record))
        (fn-cbor-octet-listp (fn-record-tail-octets-impl record)))
   :rule-classes nil
-  :hints (("Goal" :use fn-record-pieces-octets-of-a-record
-           :cases ((fn-record-p record)))))
+  :hints (("Goal" :use (fn-record-pieces-octets-of-a-record
+                        fn-record-pieces-of-a-non-record)
+           :in-theory (union-theories '((:e fn-cbor-octet-listp))
+                                      (theory 'minimal-theory)))))
