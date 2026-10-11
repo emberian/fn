@@ -94,3 +94,113 @@
            (and (fn-rcl-invp s)
                 (equal (fn-rtc-slot 1 s) *fn-rtc-static-slot*)
                 (equal (fn-rtc-mstate 1 s) (fn-rce-static-init 1)))))
+
+; ---------------------------------------------------------------------------
+; Contract v2.2: the :extend request (KX1, KX1r, KX2) and the layer-armed
+; :opened completion (KO1, KO1b, KO2, KO3), on the echo layer with one static
+; owner (slot 1) and one connection slot.  The echo machine never asks for an
+; extent and does not know :opened; it answers the unknown event with a
+; (:close) request, which the layer refuses for a static instance -- that
+; refusal is the witness that the owner's machine was stepped.
+
+(defconst *rce-open-cfg* '(3 2 64 1 1 0 64))
+(defconst *rce-open-data* (list (list 0 nil 0 1 0) 7 (list 1 40 4)))
+
+(defun rce-open-run1 (items fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st))
+  (mv-let (fn-rtc-st obs) (fn-rce-run *rce-open-cfg* items fn-rtc-st)
+    (mv fn-rtc-st obs (fn-rtc-x-state fn-rtc-st))))
+(defun rce-open-run (items)
+  (declare (xargs :guard t))
+  (with-local-stobj fn-rtc-st
+    (mv-let (fn-rtc-st obs s) (rce-open-run1 items fn-rtc-st)
+      (mv obs s))))
+
+(defconst *rce-open-e* (list :opened 1 1 0 '(:done 0) *rce-open-data*))
+
+; KO1: the initial state arms the owner's :opened, and only the owner's -- the
+; connection slot and the listener hold none -- and its action is in the
+; initial action list.
+(defconst *rce-open-0* (mv-let (obs s) (rce-open-run nil) (list obs s)))
+(assert! (let ((obs (car *rce-open-0*)) (s (cadr *rce-open-0*)))
+           (and (member-equal '(:opened 1 1 0 (0)) (fn-rtc-get 2 (nth 0 obs)))
+                (fn-rtc-kind-out-p :opened 1 1 (fn-rtc-uses s))
+                (not (fn-rtc-kind-out-p :opened 2 1 (fn-rtc-uses s)))
+                (not (fn-rtc-kind-out-p :opened 0 1 (fn-rtc-uses s)))
+                (not (fn-rtc-kind-out-p :opened 1 2 (fn-rtc-uses s)))
+                (fn-rcl-invp s))))
+
+; KO2 and KO3: the owner's (:done 0) :opened acts -- matched, the invariant
+; and the stability checks hold, the owner's machine answered (refused
+; (:close)) -- and delivered again it is discarded, changing nothing.
+(defconst *rce-open-1*
+  (mv-let (obs s) (rce-open-run (list (list :complete *rce-open-e*) (list :complete *rce-open-e*)))
+    (list obs s)))
+(assert! (let ((obs (car *rce-open-1*)) (s (cadr *rce-open-1*)))
+           (and (equal (fn-rtc-get 6 (nth 1 obs)) :matched)
+                (equal (fn-rtc-get 4 (nth 1 obs)) :invp)
+                (equal (fn-rtc-get 5 (nth 1 obs)) :stable)
+                (equal (fn-rtc-get 3 (nth 1 obs)) '((:close)))
+                (equal (fn-rtc-get 6 (nth 2 obs)) :discarded)
+                (null (fn-rtc-get 2 (nth 2 obs)))
+                (not (fn-rtc-kind-out-p :opened 1 1 (fn-rtc-uses s)))
+                (equal (fn-rtc-slot 1 s) *fn-rtc-static-slot*))))
+
+; Teeth.  A completion that does not name the armed action is not the owner's
+; :opened: another slot, another incarnation, another operation, another kind
+; are each discarded, and the owner's own still acts afterwards.
+(defconst *rce-open-2*
+  (mv-let (obs s)
+    (rce-open-run (list (list :complete (list :opened 2 1 0 '(:done 0) *rce-open-data*))
+                        (list :complete (list :opened 1 2 0 '(:done 0) *rce-open-data*))
+                        (list :complete (list :opened 1 1 9 '(:done 0) *rce-open-data*))
+                        (list :complete (list :timer 1 1 0 '(:done 0)))
+                        (list :complete *rce-open-e*)))
+    (list obs s)))
+(assert! (let ((obs (car *rce-open-2*)))
+           (and (equal (fn-rtc-get 6 (nth 1 obs)) :discarded)
+                (equal (fn-rtc-get 6 (nth 2 obs)) :discarded)
+                (equal (fn-rtc-get 6 (nth 3 obs)) :discarded)
+                (equal (fn-rtc-get 6 (nth 4 obs)) :discarded)
+                (equal (fn-rtc-get 6 (nth 5 obs)) :matched))))
+
+; KO3's (:done 0) hypothesis: the outcome the owner is told of any other
+; outcome is a malformed failure (or the host's own failure), never DATA.
+(assert! (equal (fn-rtc-delivered-outcome '(:opened 1 1 0 nil) '(:opened 1 1 0 (:done 3)))
+                '(:failed :malformed-completion)))
+(assert! (equal (fn-rtc-delivered-outcome '(:opened 1 1 0 nil) '(:opened 1 1 0 (:short 0)))
+                '(:failed :malformed-completion)))
+(assert! (equal (fn-rtc-delivered-outcome '(:opened 1 1 0 nil) '(:opened 1 1 0 (:done 0))) '(:done 0)))
+
+(defun rce-sub (r id inc s)
+  (declare (xargs :guard t))
+  (mv-let (s2 acts refused cost) (fn-rtc-req-submit r id inc s)
+    (declare (ignore cost))
+    (list s2 acts refused)))
+
+; KX1, KX1r: on the opened state the owner's extent request is exactly the
+; action (:extend 1 1 OP (RES FILE FROM TO)), FROM < TO below 2^64, no handle;
+; every other request is refused and changes nothing.
+(defconst *rce-ext-r* '(:submit :extend nil (7 10 20)))
+(defconst *rce-ext-s* (cadr *rce-open-1*))
+(assert! (let ((res (rce-sub *rce-ext-r* 1 1 *rce-ext-s*)))
+           (and (null (mv-nth 2 res))
+                (equal (mv-nth 1 res)
+                       (list (list :extend 1 1 (fn-rtc-next-op *rce-ext-s*)
+                                   (cons (fn-rtc-s-res (fn-rtc-slot 1 *rce-ext-s*)) '(7 10 20)))))
+                (fn-rtc-kind-out-p :extend 1 1 (fn-rtc-uses (mv-nth 0 res))))))
+(assert! (let ((res (rce-sub '(:submit :extend nil (7 10 10)) 1 1 *rce-ext-s*)))
+           (and (mv-nth 2 res) (equal (mv-nth 0 res) *rce-ext-s*) (null (mv-nth 1 res)))))
+(assert! (mv-nth 2 (rce-sub '(:submit :extend nil (7 20 10)) 1 1 *rce-ext-s*)))
+(assert! (mv-nth 2 (rce-sub '(:submit :extend nil (7 10)) 1 1 *rce-ext-s*)))
+(assert! (mv-nth 2 (rce-sub (list :submit :extend '(0 1 0 0) '(7 10 20)) 1 1 *rce-ext-s*)))
+(assert! (mv-nth 2 (rce-sub (list :submit :extend nil (list 7 10 (expt 2 64))) 1 1 *rce-ext-s*)))
+; one extent outstanding per instance: a second is refused
+(assert! (mv-nth 2 (rce-sub *rce-ext-r* 1 1 (mv-nth 0 (rce-sub *rce-ext-r* 1 1 *rce-ext-s*)))))
+
+; KX2: what the instance is told of its extent.
+(assert! (equal (fn-rtc-delivered-outcome '(:extend 1 1 5 nil) '(:extend 1 1 5 (:done 0))) '(:done 0)))
+(assert! (equal (fn-rtc-delivered-outcome '(:extend 1 1 5 nil) '(:extend 1 1 5 (:cancelled))) '(:cancelled)))
+(assert! (equal (fn-rtc-delivered-outcome '(:extend 1 1 5 nil) '(:extend 1 1 5 (:failed :enospc))) '(:failed :enospc)))
+(assert! (equal (fn-rtc-delivered-outcome '(:extend 1 1 5 nil) '(:extend 1 1 5 (:done 1))) '(:failed :malformed-completion)))
+(assert! (equal (fn-rtc-delivered-outcome '(:extend 1 1 5 nil) '(:extend 1 1 5 (:short 0))) '(:failed :malformed-completion)))
