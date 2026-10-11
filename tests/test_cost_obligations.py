@@ -167,6 +167,15 @@ class CostObligationsTests(unittest.TestCase):
         findings = cost_obligations.check(root, base=base, base_contracts=cdoc, baseline={"fn-new"})
         self.assertTrue(any("differs from what the tree says" in f for f in findings), findings)
 
+    def test_the_baseline_only_shrinks(self):
+        # fn-listed is still undeclared, fn-gone is declared now, fn-old was
+        # undeclared on the base and never listed: only fn-gone leaves, nothing joins
+        root = tree([entry("fn-listed"), entry("fn-gone"), entry("fn-old")],
+                    {"x.lisp": "(def-cost fn-gone :visits 1)\n"}, {})
+        doc = cost_obligations.build(root)
+        self.assertEqual(cost_obligations.shrunk_baseline({"fn-listed", "fn-gone", "fn-vanished"}, doc),
+                         ["fn-listed"])
+
     def test_contracts_are_a_reviewed_base(self):
         root = tree([entry("fn-a")], {}, {})
         cdoc = cost_obligations.build_contracts(root)

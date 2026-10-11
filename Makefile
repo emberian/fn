@@ -2726,7 +2726,9 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/history-image-place-tests \
     tests/acl2/history-image-canonical-tests \
     tests/acl2/book-name-relative-tests \
-    tests/acl2/book-name-provenance-tests
+    tests/acl2/book-name-provenance-tests \
+    tests/acl2/runtime-contract-echo-tests \
+    tests/acl2/runtime-contract-landing-tests
 
 .PHONY: wire-grammar wire-grammar-check host-convert-check extract-check site check check-lane check-fast check-fast-lane check-host-translate certify acl2-ld certs-install certs-publish model-test tooling-test test test-modules labs labs-quick
 # The books a codec seam has cleared (plan 2026-09-22 §4.1, step T1): none
