@@ -134,7 +134,7 @@
 ; books/memory-model.lisp fn-mm-launch-decide), and its terms are read only
 ; by the owner's protected-runtime partition (books/page-read-startup.lisp,
 ; books/peer-flight-startup.lisp, books/owner-credits.lisp,
-; books/limits-live.lisp, books/reclaim-reservation.lisp), item
+; books/limits-live.lisp), item
 ; MEMORY-RUNTIME-PARTITION, until those read the equation's terms.
 
 (in-package "ACL2")

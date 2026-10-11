@@ -53,7 +53,7 @@
 #      overlap) under systemd-run --user --scope -p MemoryMax (24G by
 #      default, --mem; a served-read measurement through
 #      tools/fundamentals/sr_measure.py or served_ab.sh needs 40G: at 24G the
-#      owner refuses its connections, connections-exceed-memory), against
+#      memory gate's capacity C' is below the connections it opens), against
 #      the box's shipped OpenSSL 3.5.8 (FN_OPENSSL_PREFIX, D64), with every
 #      --env NAME=VALUE exported.  The same 3.5.8 binary is also the TEST TOOL
 #      (ML-DSA-65 keys and signatures made independently of the node):

@@ -34,7 +34,6 @@ EXEMPT = {
     "tests/acl2/bp-heap-command-tests.lisp": "an input base reservation",
     "tests/acl2/page-read-startup-tests.lisp": "an input base reservation",
     "tests/acl2/peer-flight-reservation-tests.lisp": "an input base reservation",
-    "tests/acl2/reclaim-reservation-tests.lisp": "an input base reservation",
     "tests/acl2/limits-live-tests.lisp": "decisions handed to the line and word formatters",
     "tests/acl2/native-control-line-tests.lisp": "a decision handed to the line formatter",
 }

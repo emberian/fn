@@ -126,8 +126,8 @@ class ProductionTests(unittest.TestCase):
     def test_fresh_node_serves_in_256_mb(self):
         # The node as the launcher starts it: 1 MiB control stacks (books/
         # heap-reservation.lisp fn-heap-stack-octets).  The raw image script's
-        # own 64 MiB stacks count 78 x 68 MiB in connection-multiplexing's
-        # run budget, which a 2 GiB limit refuses (holds=0, batch AR).
+        # own 64 MiB stacks count 78 x 68 MiB of address space, which the
+        # launch's address-space comparison holds them to (batch AR).
         stack_env = dict(environment(), NM_STACK_MB="1")
         with tempfile.TemporaryDirectory() as work:
             res = subprocess.run([sys.executable, str(MEASURE), "floor", str(IMAGE), work,

@@ -24,6 +24,8 @@
   (harness-stub-reached 'fnn-bps-read-profile "host/native/bp-service.lisp"))
 ;;; ---- derived stubs: END ----
 (selected-source "books/native-config.lisp"
+ '(fn-ncfg-nth *fn-ncfg-max-u64* fn-native-config-output-resources-wfp))
+(selected-source "books/native-config.lisp"
  '(fn-native-config-store fn-native-config-cold-resources fn-native-config-output-resources))
 (selected-source "books/native-operator.lisp" '(fn-native-operator-result-config))
 (selected-source "host/native-operator-host.lisp"
@@ -57,29 +59,30 @@
 (defun fnn-operator-health-report (&rest args) (declare (ignore args)) :health-report)
 (defun fnn-write-report (report) (assert (eq report :health-report)))
 (defparameter +fnn-exit-refused+ 1)
-(defun policy-case (command cold output expected)
+(defun policy-case (command cold output)
  (let* ((config (make-list 31))
         (result (list :accepted nil command config nil))
         (*fnn-stdout* (make-string-output-stream))
-        (*calls* nil) (*captured-core* 0) (*captured-machine* 0))
+        (*calls* nil) (*observed* nil))
   (setf (first config) "/fixture" (nth 29 config) cold (nth 30 config) output)
   (assert (= (if (equal command "status")
                 (fnn-operator-execute-status result)
               (fnn-operator-execute-health result)) 0))
-  (assert (equal (get-output-stream-string *fnn-stdout*) expected))
-  (let ((cold-call (assoc :cold *calls*)) (output-call (assoc :output *calls*)))
-   (assert (equal (third cold-call) cold))
-   (assert (equal (third output-call) output))
-   (assert (equal (assoc :accounting *calls*) (list :accounting output))))
-  (assert (= *captured-core* *captured-machine* 1))))
-; The DEFAULT run (259 MiB before output: tests/native_heap_default_source-mock.lisp)
-; and the explicit-cold one (256) each add the 16 MiB output backing: 275 and
-; 272.  At the 8 MiB collection-trigger cap (books/profile-limits.lisp
-; :gc-nursery-mib, MEM-007) the output backing no longer enlarges the
-; collector's nursery protection, which at the former 64 MiB cap added 3 MiB
-; (the former 276/275).
+  ;; the next run's launch line (fnn-heap-print-store-line: the probe's own
+  ;; decision), then the accounting line
+  (assert (equal (get-output-stream-string *fnn-stdout*)
+                 (format nil "~s|accounting" *serve*)))
+  ;; the configured policies reach the launch's pools and threads
+  (let ((pools (call-of *calls* :pools)))
+   (assert (equal (second pools) cold))
+   (assert (equal (third pools) output)))
+  (assert (equal (first (call-of *calls* :pool-threads)) cold))
+  (assert (equal (assoc :accounting *calls*) (list :accounting output)))
+  (assert (= 1 (count :core *observed*)))
+  (assert (not (member :machine *observed*)))))
+; The DEFAULT run and an explicit-cold one, each with an output pool: the
+; next-run line is the served run's launch over the pools those policies fund.
 (dolist (command '("status" "health"))
- (policy-case command nil '(16777216 1048576) "(:HEAP 275 :SMALL 8192 1024 16)|accounting")
- (policy-case command '(67108864 4 256 256 256) '(16777216 1048576)
-              "(:HEAP 272 :SMALL 8192 1024 16)|accounting"))
+ (policy-case command nil '(16777216 1048576))
+ (policy-case command '(67108864 4 256 256 256) '(16777216 1048576)))
 (format t "SOURCE NEXT-RUN POLICY DIAGNOSTICS PASSED~%")

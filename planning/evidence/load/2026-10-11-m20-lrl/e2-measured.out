@@ -1,0 +1,37 @@
+ 14:27:23 up 87 days, 20:11, 129 users,  load average: 8.70, 11.62, 12.70
+== /tank/fn/scratch/integrate-20261011a/native-3119f7d3253e/tree/build/core/fn-core.core fc 256 350 /tank/fn/scratch/m20/e2.lisp 264167320
+greet 200 fn-nntp experimental server ready
+post? 340 send article to be posted
+post 240 article received OK
+article 220 0 <m20-1791743254367120014@fresh.invalid> article follows
+VmHWM: 57004 kB VmRSS: 46448 kB RssAnon: 16244 kB RssFile: 30204 kB 
+memory capacity=31 of 31 bound-by=configured sum=219 MB limit=251 MB
+== /tank/fn/scratch/integrate-20261011a/native-3119f7d3253e/tree/build/core/fn-core.core fc 1024 1118 /tank/fn/scratch/m20/e2.lisp 1069473688
+greet 200 fn-nntp experimental server ready
+post? 340 send article to be posted
+post 240 article received OK
+article 220 0 <m20-1791743258677365772@fresh.invalid> article follows
+VmHWM: 63504 kB VmRSS: 49400 kB RssAnon: 17768 kB RssFile: 31632 kB 
+memory capacity=31 of 31 bound-by=configured sum=223 MB limit=1019 MB
+== /tank/fn/scratch/integrate-20261011c/native-meas-ce629789b/tree/build/fn-host.core fh 1024 1278 /tank/fn/scratch/m20/e2.lisp 1069473688
+greet 200 fn-nntp experimental server ready
+post? 340 send article to be posted
+post 240 article received OK
+article 220 0 <m20-1791743262741721718@fresh.invalid> article follows
+VmHWM: 138132 kB VmRSS: 127160 kB RssAnon: 20084 kB RssFile: 107076 kB 
+memory capacity=31 of 31 bound-by=configured sum=385 MB limit=1019 MB
+## e2-1990284.log
+(:PLAN :ADMITTED)
+(:PEER-GRANT (:HOLD (367001600 366989872 (11728 917504 2 1 458752 33554432) 1048576 4194304)))
+(:CBUD-RETIRED (:REFUSED :CONNECTIONS-EXCEED-MEMORY 31 0))
+(:CAPLINE "memory capacity=31 of 31 bound-by=configured sum=219 MB limit=251 MB")
+## e2-1990541.log
+(:PLAN :ADMITTED)
+(:PEER-GRANT (:HOLD (1172307968 1172296240 (11728 917504 2 1 458752 33554432) 1048576 4194304)))
+(:CBUD-RETIRED (:HOLD 551))
+(:CAPLINE "memory capacity=31 of 31 bound-by=configured sum=223 MB limit=1019 MB")
+## e2-1990599.log
+(:PLAN :ADMITTED)
+(:PEER-GRANT (:HOLD (1340080128 1340068400 (11728 917504 2 1 458752 33554432) 1048576 4194304)))
+(:CBUD-RETIRED (:REFUSED :CONNECTIONS-EXCEED-MEMORY 31 0))
+(:CAPLINE "memory capacity=31 of 31 bound-by=configured sum=385 MB limit=1019 MB")

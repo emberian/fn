@@ -149,6 +149,26 @@
   (declare (xargs :guard t))
   (update-nth 0 (nfix k) (true-list-fix cfg)))
 
+; The handshake allowance the gate charges during a run: the live limit L, or
+; the handshakes still in flight when a live reconfiguration lowered L below
+; them (host/owner-host.lisp fn-owner-memory-run-cfg), the larger.
+(defun fn-adm-cfg-holding-handshakes (cfg h)
+  (declare (xargs :guard t))
+  (update-nth 7 (max (fn-mm-cfg-handshakes cfg) (nfix h)) (true-list-fix cfg)))
+
+; With a TLS context, every handshake in flight is within the scratch the gate
+; charges (the PRF-986 term of the memory equation, books/memory-model.lisp
+; fn-mm-inflight), whatever the live limit.
+(defthm fn-adm-cfg-holding-handshakes-charges-every-handshake
+  (implies (fn-mm-cfg-tlsp cfg)
+           (<= (* (nfix h) *fn-cbud-handshake-scratch-octets*)
+               (fn-cbud-handshake-octets (fn-mm-cfg-tlsp (fn-adm-cfg-holding-handshakes cfg h))
+                                         (fn-mm-cfg-handshakes (fn-adm-cfg-holding-handshakes cfg h)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-cbud-handshake-octets fn-cbud-handshake-slots fn-mm-cfg-tlsp
+                                     fn-mm-cfg-handshakes fn-mm-nat)
+           :nonlinearp t)))
+
 (defun fn-adm-capacity-down (profile img cfg limit tot k)
   (declare (xargs :guard t :verify-guards nil :measure (nfix k)
                   :hints (("Goal" :in-theory '(zp nfix o-p o< o-finp natp)))))

@@ -4,8 +4,9 @@
 ; Every native action the operator surface names
 ; (books/native-operator.lisp fn-native-operator-result-native-action;
 ; tests/test_heap_action_growth.py checks each has a row) is one of:
-;   :serves      `run': the owner, sized at the profile's bounds with no
-;                observation (ADMISSION-RESERVES-NOT-REOPEN);
+;   :serves      `run': the owner, launched at the run's resident LIMIT
+;                (fn-mo-serve-decide below, L-RUN-LAUNCH; the memory gate
+;                keeps every store the run grows within it);
 ;   :grows       the offline commands that write records or rewrite the
 ;                store, and `account-hash', which reads a credential file
 ;                the profile sizes: the profile's bounds, today's figure;
@@ -388,7 +389,9 @@
                                       observed totals img config-octets card resident address)
   (declare (xargs :guard t))
   (let ((class (fn-heap-command-growth action command replayp)))
-    (cond ((equal class :store-less)
+    ; A served run over a store is the launch's (fn-mo-serve-decide, host/native/heap.lisp
+    ; fnn-heap-serve-decision, L-RUN-LAUNCH); one that names no store holds none.
+    (cond ((or (equal class :store-less) (equal class :serves))
            (fn-heap-reserve-operation-decide :init profile core nursery observations
                                              connections nil))
           ((and (equal class :header) (natp config-octets))
@@ -563,6 +566,7 @@
 
 (defthm fn-heap-command-decide-otherwise-is-todays
   (implies (and (not (equal (fn-heap-command-growth action command replayp) :store-less))
+                (not (equal (fn-heap-command-growth action command replayp) :serves))
                 (not (and (equal (fn-heap-command-growth action command replayp) :header)
                           (natp config-octets)))
                 (not (fn-mo-store-opening-p (fn-heap-command-growth action command replayp))))
@@ -824,208 +828,373 @@
                             (resident-obs resident) (address-obs address) (obs tot))))))
 
 ; -----------------------------------------------------------------------------
-; THE SERVED RUN'S LAUNCH (L-RUN-LAUNCH): the :run probe decides as the run's configure does
-; (host/owner-host.lisp fn-owner-memory-configure: fn-mo-run-decide at LIMIT = the least resident
-; observation less the pools, no resident observation left), and the dynamic space adds the pools' heap
-; share POOL-HEAP (the DEFAULT pool's fn-prstartup-launch-extra, the peer slice).
+; -----------------------------------------------------------------------------
+; THE SERVED RUN'S LAUNCH (L-RUN-LAUNCH; planning/memory-l-fresh-attribution.md).  The `run' probe
+; (host/native/heap.lisp fnn-heap-serve-decision) launches at the run's LIMIT, the configure's
+; (host/owner-host.lisp fn-owner-memory-configure: the least resident observation less the pools): its
+; dynamic space holds the launch's (the core's content and LIMIT, with the collector's room:
+; fn-mm-launch-dynamic) plus the pools' heap, and it refuses an observed store whose reopen LIMIT
+; cannot hold.  The run's capacity C' is the configure's alone (fn-adm-capacity over the replayed
+; totals and the stored configuration), which refuses by name when no connection fits.  The reservation is compared
+; with the address-space observations only: memory.max and physical memory bound resident memory,
+; which the gate keeps within LIMIT, not the dynamic space.  The core's content is charged at the
+; image FILE's bound (fn-prstartup-image-bound), so the owner, whose content at startup exceeds the
+; probe's, is held by the same figure (fn-mo-serve-holds-every-admitted-store).
+;
+; The pools the served run funds beside the model's terms: the DEFAULT pool's heap (or the explicit
+; cold policy's budget), the output pool's, the peer flight's.  The configure's LIMIT excludes them
+; and the dynamic space adds them.
+(defun fn-mo-serve-pools (profile cold output peer workers cache-limit root)
+  (declare (xargs :guard t))
+  (+ (if cold
+         (nfix (car (fn-crv-pool-budget cold profile)))
+       (nfix (fn-prstartup-launch-extra profile workers cache-limit root)))
+     (if (consp output) (nfix (car output)) 0)
+     (if (consp peer) (nfix (car peer)) 0)))
+
+; The threads the pools run beside the node's own: the cold policy's workers and the peer flight's.
+(defun fn-mo-serve-pool-threads (cold peer)
+  (declare (xargs :guard t))
+  (+ (if (consp cold) (nfix (nth 1 (true-list-fix cold))) 0)
+     (if (consp peer) (nfix (nth 3 (true-list-fix peer))) 0)))
+
 (defun fn-mo-serve-limit (resident pools)
   (declare (xargs :guard t))
   (let ((r (fn-mm-least-observation resident)))
     (and (natp r) (nfix (- r (nfix pools))))))
 
-(defun fn-mo-serve-decide (profile img cfg resident address core nursery tot pools pool-heap)
-  (declare (xargs :guard t :verify-guards nil))
-  (let* ((limit (fn-mo-serve-limit resident pools))
-         (d (fn-mo-run-decide profile img cfg limit nil address core nursery tot)))
-    (if (equal (car d) :heap)
-        (list* :heap (fn-heap-mb-of (+ (fn-mm-launch-dynamic limit core nursery) (nfix pool-heap)))
-               (cddr d))
-      d)))
+(defun fn-mo-serve-dynamic (limit core nursery pools)
+  (declare (xargs :guard t))
+  (+ (fn-mm-launch-dynamic limit (fn-prstartup-image-bound core) nursery) (nfix pools)))
 
-(defthm fn-mo-serve-decide-heap-shape
-  (implies (equal (car (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
-                  :heap)
-           (and (equal (car (fn-mo-run-decide profile img cfg (fn-mo-serve-limit resident pools) nil
-                                              address core nursery tot))
-                       :heap)
-                (equal (cadr (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
-                       (fn-heap-mb-of (+ (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery)
-                                         (nfix pool-heap))))))
+; The node's threads (fn-heap-thread-count, structural since PRF-211) and the pools'.
+(defun fn-mo-serve-threads (pool-threads)
+  (declare (xargs :guard t))
+  (+ (fn-heap-thread-count nil) (nfix pool-threads)))
+
+(defun fn-mo-serve-reservation (profile core dynamic pool-threads)
+  (declare (xargs :guard t))
+  (fn-heap-reservation-octets (fn-heap-mb-of dynamic) core (fn-heap-stack-kib profile)
+                              (fn-mo-serve-threads pool-threads)))
+
+; The run's reopen coordinates, the only ones the store's reopen reads (fn-mo-serve-reopen-reads-
+; its-coordinates): the serving trigger, the publication trigger the owner sets in the launched space
+; (host/native/io.lisp fnn-gc-nursery-octets: fn-heap-nursery-trigger of that space), the live-reclaim
+; opt-in, the cold policy's budget, and the configuration history's octets.  The serving coordinates
+; (connections, TLS, handshakes, the OVER window, the server name) are the configure's, which decides C'
+; (host/owner-host.lisp fn-owner-memory-configure); the probe does not read the stored configuration.
+(defun fn-mo-reopen-cfg (cfg)
+  (declare (xargs :guard t))
+  (let ((cfg (true-list-fix cfg)))
+    (list 0 nil (nth 2 cfg) (nth 3 cfg) (nth 4 cfg) (nth 5 cfg) (nth 6 cfg) 0 nil 0 nil
+          (nth 11 cfg) (nth 12 cfg))))
+
+(defun fn-mo-serve-cfg (trigger pub-trigger live cold profile config)
+  (declare (xargs :guard t))
+  (list 0 nil trigger pub-trigger live 0
+        (if cold (car (fn-crv-pool-budget cold profile)) 0)
+        0 nil 0 nil nil (nfix config)))
+
+; (:heap MB PROFILE-WORD LIMIT-MB STACK-KIB THREADS), or a refusal in fn-mo-run-refusal's words.  TOT
+; the observed charged totals, NIL when unseen (the reopen is then the configure's alone, after the
+; open); TRIGGER, LIVE, COLD, CONFIG the run's reopen coordinates; NURSERY the collector cap the owner's
+; trigger is taken under.
+(defun fn-mo-serve-decide (profile img trigger live cold config resident address core nursery tot pools
+                                   pool-threads)
+  (declare (xargs :guard t))
+  (let* ((limit (fn-mo-serve-limit resident pools))
+         (dynamic (fn-mo-serve-dynamic limit core nursery pools))
+         (cfg (fn-mo-serve-cfg trigger
+                               (fn-heap-nursery-trigger (* *fn-heap-mib* (fn-heap-mb-of dynamic)) nursery)
+                               live cold profile config))
+         (reservation (fn-mo-serve-reservation profile core dynamic pool-threads))
+         (addr (fn-mm-least-observation address)))
+    (cond ((not (natp limit)) (list :refused :machine-memory-unobserved 0 0))
+          ((and (fn-mm-tot-p tot) (< limit (fn-mm-reopen-need profile img cfg tot)))
+           (list :refused :machine-cannot-hold-the-store
+                 (fn-heap-mb-of (fn-mm-reopen-need profile img cfg tot)) (floor limit *fn-heap-mib*)))
+          ((and (natp addr) (< addr reservation))
+           (list :refused :address-space-cannot-hold-the-reservation
+                 (fn-heap-mb-of reservation) (floor addr *fn-heap-mib*)))
+          (t (list :heap (fn-heap-mb-of dynamic) (fn-heap-profile-word profile)
+                   (floor limit *fn-heap-mib*) (fn-heap-stack-kib profile)
+                   (fn-mo-serve-threads pool-threads))))))
+
+; The reopen coordinates carry every field the reopen reads, term by term.
+(defthm fn-mo-reopen-cfg-accessors
+  (and (equal (fn-mm-cfg-trigger (fn-mo-reopen-cfg cfg)) (fn-mm-cfg-trigger cfg))
+       (equal (fn-mm-cfg-pub-trigger (fn-mo-reopen-cfg cfg)) (fn-mm-cfg-pub-trigger cfg))
+       (equal (fn-mm-cfg-reclaim-live-p (fn-mo-reopen-cfg cfg)) (fn-mm-cfg-reclaim-live-p cfg))
+       (equal (fn-mm-cfg-cache (fn-mo-reopen-cfg cfg)) (fn-mm-cfg-cache cfg))
+       (equal (fn-mm-cfg-rho (fn-mo-reopen-cfg cfg)) (fn-mm-cfg-rho cfg))
+       (equal (fn-mm-cfg-config (fn-mo-reopen-cfg cfg)) (fn-mm-cfg-config cfg)))
+  :hints (("Goal" :in-theory (enable fn-mo-reopen-cfg fn-mm-cfg-trigger fn-mm-cfg-pub-trigger
+                                     fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache fn-mm-cfg-rho
+                                     fn-mm-cfg-config fn-mm-nat))))
+
+(defthm fn-mo-reopen-cfg-owner
+  (equal (fn-mm-owner tot (fn-mo-reopen-cfg cfg)) (fn-mm-owner tot cfg))
+  :hints (("Goal" :in-theory (e/d (fn-mm-owner fn-mm-payload-octets)
+                                  (fn-mo-reopen-cfg fn-mm-cfg-cache fn-mm-cfg-config)))))
+
+(defthm fn-mo-reopen-cfg-maintenance
+  (equal (fn-mm-maintenance tot (fn-mo-reopen-cfg cfg)) (fn-mm-maintenance tot cfg))
+  :hints (("Goal" :in-theory (e/d (fn-mm-maintenance)
+                                  (fn-mo-reopen-cfg fn-mm-cfg-trigger fn-mm-cfg-pub-trigger
+                                   fn-mm-cfg-reclaim-live-p)))))
+
+(defthm fn-mo-reopen-cfg-checkpoint-load
+  (equal (fn-mm-checkpoint-load-octets profile tot (fn-mo-reopen-cfg cfg))
+         (fn-mm-checkpoint-load-octets profile tot cfg))
+  :hints (("Goal" :in-theory (e/d (fn-mm-checkpoint-load-octets)
+                                  (fn-mo-reopen-cfg fn-mm-cfg-config)))))
+
+(defthm fn-mo-reopen-cfg-collector
+  (equal (fn-mm-collector live (fn-mo-reopen-cfg cfg)) (fn-mm-collector live cfg))
+  :hints (("Goal" :in-theory (e/d (fn-mm-collector)
+                                  (fn-mo-reopen-cfg fn-mm-cfg-trigger fn-mm-cfg-rho)))))
+
+(defthm fn-mo-reopen-cfg-base
+  (equal (fn-mm-base img (fn-mo-reopen-cfg cfg)) (fn-mm-base img cfg))
+  :hints (("Goal" :in-theory (e/d (fn-mm-base fn-mm-cfg-connections) (fn-mo-reopen-cfg)))))
+
+; The store's reopen reads only the reopen coordinates.
+(defthm fn-mo-serve-reopen-reads-its-coordinates
+  (equal (fn-mm-reopen-need profile img (fn-mo-reopen-cfg cfg) tot)
+         (fn-mm-reopen-need profile img cfg tot))
+  :hints (("Goal" :in-theory (e/d (fn-mm-reopen-need fn-mm-reopen-live)
+                                  (fn-mo-reopen-cfg fn-mm-owner fn-mm-maintenance
+                                   fn-mm-checkpoint-load-octets fn-mm-collector fn-mm-base)))))
+
+; The decision's cases, over abstract terms: the proofs of the keystones below never expand the
+; decision's let* (a clause that size defeats the prover's subsumption).
+(defthm fn-mo-serve-decide-cases-launch
+  (implies (and (natp limit)
+                (or (not totp) (<= need limit))
+                (or (not (natp addr)) (<= res addr)))
+           (equal (car (cond ((not (natp limit)) (list :refused :machine-memory-unobserved 0 0))
+                             ((and totp (< limit need)) (list :refused :machine-cannot-hold-the-store a b))
+                             ((and (natp addr) (< addr res))
+                              (list :refused :address-space-cannot-hold-the-reservation c d))
+                             (t (list :heap e f g h i))))
+                  :heap))
+  :rule-classes nil)
+
+(defthm fn-mo-serve-decide-cases-heap
+  (let ((d (cond ((not (natp limit)) (list :refused :machine-memory-unobserved 0 0))
+                 ((and totp (< limit need)) (list :refused :machine-cannot-hold-the-store a b))
+                 ((and (natp addr) (< addr res))
+                  (list :refused :address-space-cannot-hold-the-reservation c d0))
+                 (t (list :heap e f g h i)))))
+    (implies (equal (car d) :heap)
+             (and (natp limit)
+                  (implies totp (<= need limit))
+                  (implies (natp addr) (<= res addr))
+                  (equal d (list :heap e f g h i)))))
+  :rule-classes nil)
+
+(defthm fn-mo-serve-decide-heap-facts
+  (let* ((limit (fn-mo-serve-limit resident pools))
+         (dynamic (fn-mo-serve-dynamic limit core nursery pools))
+         (cfg (fn-mo-serve-cfg trigger
+                               (fn-heap-nursery-trigger (* *fn-heap-mib* (fn-heap-mb-of dynamic)) nursery)
+                               live cold profile config))
+         (addr (fn-mm-least-observation address))
+         (d (fn-mo-serve-decide profile img trigger live cold config resident address core
+                                nursery tot pools pool-threads)))
+    (implies (equal (car d) :heap)
+             (and (natp limit)
+                  (implies (fn-mm-tot-p tot) (<= (fn-mm-reopen-need profile img cfg tot) limit))
+                  (implies (natp addr)
+                           (<= (fn-mo-serve-reservation profile core dynamic pool-threads) addr))
+                  (equal d (list :heap (fn-heap-mb-of dynamic) (fn-heap-profile-word profile)
+                                 (floor limit *fn-heap-mib*) (fn-heap-stack-kib profile)
+                                 (fn-mo-serve-threads pool-threads))))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(fn-mo-serve-decide car-cons cdr-cons)
-                                             (theory 'minimal-theory)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-mo-serve-decide) (theory 'minimal-theory))
+           :use ((:instance fn-mo-serve-decide-cases-heap
+                  (limit (fn-mo-serve-limit resident pools))
+                  (totp (fn-mm-tot-p tot))
+                  (need (fn-mm-reopen-need profile img
+                          (fn-mo-serve-cfg trigger
+                            (fn-heap-nursery-trigger
+                             (* *fn-heap-mib* (fn-heap-mb-of (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools)))
+                             nursery)
+                            live cold profile config)
+                          tot))
+                  (addr (fn-mm-least-observation address))
+                  (res (fn-mo-serve-reservation profile core
+                         (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools) pool-threads))
+                  (a (fn-heap-mb-of (fn-mm-reopen-need profile img
+                          (fn-mo-serve-cfg trigger
+                            (fn-heap-nursery-trigger
+                             (* *fn-heap-mib* (fn-heap-mb-of (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools)))
+                             nursery)
+                            live cold profile config)
+                          tot)))
+                  (b (floor (fn-mo-serve-limit resident pools) *fn-heap-mib*))
+                  (c (fn-heap-mb-of (fn-mo-serve-reservation profile core
+                         (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools) pool-threads)))
+                  (d0 (floor (fn-mm-least-observation address) *fn-heap-mib*))
+                  (e (fn-heap-mb-of (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools)))
+                  (f (fn-heap-profile-word profile))
+                  (g (floor (fn-mo-serve-limit resident pools) *fn-heap-mib*))
+                  (h (fn-heap-stack-kib profile))
+                  (i (fn-mo-serve-threads pool-threads)))))))
 
-(defthm fn-mm-launch-dynamic-natp
-  (natp (fn-mm-launch-dynamic limit core nursery))
-  :rule-classes :type-prescription
-  :hints (("Goal" :in-theory (enable fn-mm-launch-dynamic))))
+(defthm fn-mo-serve-decide-heap-mb
+  (implies (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core
+                                           nursery tot pools pool-threads))
+                  :heap)
+           (equal (cadr (fn-mo-serve-decide profile img trigger live cold config resident address core
+                                            nursery tot pools pool-threads))
+                  (fn-heap-mb-of (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons) (theory 'minimal-theory))
+           :use ((:instance fn-mo-serve-decide-heap-facts)))))
 
-; K-L2: the launched heap holds the core's content, every store the gate admits at the run's capacity
-; (its reopen), and the pools' heap.
+(defthm fn-mo-serve-decide-heap-limit
+  (implies (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core
+                                           nursery tot pools pool-threads))
+                  :heap)
+           (natp (fn-mo-serve-limit resident pools)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons) (theory 'minimal-theory))
+           :use ((:instance fn-mo-serve-decide-heap-facts)))))
+
+(defthm fn-mo-serve-decide-heap-reservation
+  (implies (and (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core
+                                                nursery tot pools pool-threads))
+                       :heap)
+                (natp (fn-mm-least-observation address)))
+           (<= (fn-mo-serve-reservation profile core
+                                        (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools)
+                                        pool-threads)
+               (fn-mm-least-observation address)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons) (theory 'minimal-theory))
+           :use ((:instance fn-mo-serve-decide-heap-facts)))))
+
+(defthm fn-mo-serve-gate-holds-the-limit
+  (implies (fn-mm-gate-p profile img cfg limit tot)
+           (and (natp limit) (<= (fn-mm-reopen-need profile img cfg tot) limit)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-mm-gate-p))))
+
+(defthm fn-mo-serve-image-bound-dynamic-is-the-file
+  (equal (fn-heap-core-dynamic (fn-prstartup-image-bound core))
+         (fn-heap-core-file core))
+  :hints (("Goal" :in-theory (enable fn-prstartup-image-bound fn-heap-core-dynamic fn-heap-core-file))))
+
+(defthm fn-mo-serve-dynamic-holds-the-owner-and-the-store
+  (implies (and (equal (fn-heap-core-file owner) (fn-heap-core-file core))
+                (natp limit) (<= need limit))
+           (<= (+ (fn-heap-core-dynamic owner) need (nfix pools))
+               (fn-mo-serve-dynamic limit core nursery pools)))
+  :rule-classes nil
+  :hints (("Goal"
+           :in-theory (e/d (fn-mo-serve-dynamic)
+                           (fn-mm-launch-dynamic fn-heap-core-dynamic fn-heap-core-file
+                            fn-prstartup-image-bound))
+           :use ((:instance fn-mm-launch-dynamic-holds-the-core-and-the-limit
+                  (core (fn-prstartup-image-bound core)))
+                 (:instance fn-heap-core-dynamic-is-at-most-the-file (core owner))))))
+
+; KEYSTONE K-L2: the launched heap holds the core's content of any process of the same core file, the
+; reopen of every store any memory gate at the run's LIMIT admits (whatever image and coordinates it is
+; priced at: the owner's configure prices its own), and the pools.
 (defthm fn-mo-serve-holds-every-admitted-store
-  (let* ((limit (fn-mo-serve-limit resident pools))
-         (c (fn-adm-capacity profile img cfg limit tot))
-         (d (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap)))
+  (let ((d (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot
+                               pools pool-threads)))
     (implies (and (equal (car d) :heap)
-                  (fn-mm-gate-p profile img (fn-adm-cfg-at cfg c) limit tot2))
-             (<= (+ (fn-heap-core-dynamic core)
-                    (fn-mm-reopen-need profile img (fn-adm-cfg-at cfg c) tot2)
-                    (nfix pool-heap))
+                  (equal (fn-heap-core-file owner) (fn-heap-core-file core))
+                  (fn-mm-gate-p profile img2 cfg2 (fn-mo-serve-limit resident pools) tot2))
+             (<= (+ (fn-heap-core-dynamic owner)
+                    (fn-mm-reopen-need profile img2 cfg2 tot2)
+                    (nfix pools))
                  (* *fn-heap-mib* (cadr d)))))
   :rule-classes nil
   :hints (("Goal"
-           :in-theory (e/d (fn-mm-gate-p) (fn-mm-launch-decide fn-adm-capacity fn-mo-run-decide fn-adm-cfg-at fn-mm-sum fn-mm-reopen-need fn-mm-launch-dynamic fn-mo-serve-decide fn-mo-serve-limit fn-heap-mb-of fn-heap-core-dynamic fn-mm-resident-limit fn-mm-least-observation))
-           :use ((:instance fn-mo-serve-decide-heap-shape)
-                 (:instance fn-mm-launch-dynamic-holds-the-core-and-the-limit
-                            (limit (fn-mo-serve-limit resident pools)))
+           :in-theory (disable fn-mo-serve-decide fn-mo-serve-limit fn-mo-serve-dynamic fn-mm-gate-p fn-mm-reopen-need fn-heap-mb-of fn-heap-core-dynamic fn-heap-core-file fn-mm-sum)
+           :use ((:instance fn-mo-serve-decide-heap-mb)
+                 (:instance fn-mo-serve-gate-holds-the-limit
+                  (cfg cfg2) (img img2) (tot tot2) (limit (fn-mo-serve-limit resident pools)))
+                 (:instance fn-mo-serve-dynamic-holds-the-owner-and-the-store
+                  (limit (fn-mo-serve-limit resident pools))
+                  (need (fn-mm-reopen-need profile img2 cfg2 tot2)))
                  (:instance fn-heap-mb-of-covers
-                            (octets (+ (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery)
-                                       (nfix pool-heap))))))))
+                  (octets (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools)))))))
 
-(defthm fn-mo-serve-run-limit-is-the-limit
-  (implies (natp limit)
-           (equal (fn-mm-resident-limit limit nil) limit))
-  :hints (("Goal" :in-theory (enable fn-mm-resident-limit fn-mm-least-observation))))
 
-(defthm fn-mo-serve-limit-is-natp
-  (implies (natp (fn-mm-least-observation resident))
-           (natp (fn-mo-serve-limit resident pools)))
-  :hints (("Goal" :in-theory (enable fn-mo-serve-limit))))
-
-; K-L3: the launch refuses only by the model: with a resident observation, a positive capacity and no
-; address-space refusal of the model's launch, it launches.  No comparison of the reservation with a
-; resident limit remains.
+; KEYSTONE K-L3: the launch refuses only by the model: with a resident observation, the observed store's
+; reopen within the limit (or the totals unseen), and the reservation within the address space (or none
+; observed), it launches.  No comparison of the reservation with a resident limit remains.
 (defthm fn-mo-serve-refuses-only-by-the-model
   (let* ((limit (fn-mo-serve-limit resident pools))
-         (c (fn-adm-capacity profile img cfg limit tot))
-         (dl (fn-mm-launch-decide profile img (fn-adm-cfg-at cfg (nfix c)) limit nil address core nursery tot)))
-    (implies (and (natp (fn-mm-least-observation resident))
-                  (posp c)
-                  (not (equal (cadr dl) :address-space-cannot-hold-the-reservation)))
-             (equal (car (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
+         (dynamic (fn-mo-serve-dynamic limit core nursery pools))
+         (cfg (fn-mo-serve-cfg trigger
+                               (fn-heap-nursery-trigger (* *fn-heap-mib* (fn-heap-mb-of dynamic)) nursery)
+                               live cold profile config))
+         (addr (fn-mm-least-observation address)))
+    (implies (and (natp limit)
+                  (or (not (fn-mm-tot-p tot)) (<= (fn-mm-reopen-need profile img cfg tot) limit))
+                  (or (not (natp addr))
+                      (<= (fn-mo-serve-reservation profile core dynamic pool-threads) addr)))
+             (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core
+                                             nursery tot pools pool-threads))
                     :heap)))
   :rule-classes nil
-  :hints (("Goal"
-           :in-theory (e/d (fn-mo-serve-decide)
-                           (fn-mm-launch-decide fn-adm-capacity fn-mo-run-decide fn-adm-cfg-at fn-mm-sum
-                            fn-mm-reopen-need fn-mm-launch-dynamic fn-mo-serve-limit fn-heap-mb-of
-                            fn-heap-core-dynamic fn-mm-resident-limit fn-mm-least-observation fn-mm-gate-p))
-           :use ((:instance fn-mo-serve-limit-is-natp)
-                 (:instance fn-mo-run-decide-launches-at-its-capacity
-                            (configured (fn-mo-serve-limit resident pools)) (resident nil))
-                 (:instance fn-adm-capacity-fits
-                            (limit (fn-mo-serve-limit resident pools)))
-                 (:instance fn-mo-serve-run-limit-is-the-limit
-                            (limit (fn-mo-serve-limit resident pools)))
-                 (:instance (:definition fn-mm-launch-decide)
-                            (cfg (fn-adm-cfg-at cfg (nfix (fn-adm-capacity profile img cfg (fn-mo-serve-limit resident pools) tot))))
-                            (configured (fn-mo-serve-limit resident pools)) (resident-obs nil) (address-obs address)
-                            (obs tot))))))
+  :hints (("Goal" :in-theory (union-theories '(fn-mo-serve-decide car-cons) (theory 'minimal-theory))
+           :use ((:instance fn-mo-serve-decide-cases-launch
+                  (limit (fn-mo-serve-limit resident pools))
+                  (totp (fn-mm-tot-p tot))
+                  (need (fn-mm-reopen-need profile img
+                          (fn-mo-serve-cfg trigger
+                            (fn-heap-nursery-trigger
+                             (* *fn-heap-mib* (fn-heap-mb-of (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools)))
+                             nursery)
+                            live cold profile config)
+                          tot))
+                  (addr (fn-mm-least-observation address))
+                  (res (fn-mo-serve-reservation profile core
+                         (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools) pool-threads))
+                  (a 0) (b 0) (c 0) (d 0) (e 0) (f 0) (g 0) (h 0) (i 0))))))
 
-; The resident-observation hypothesis of fn-mo-serve-refuses-only-by-the-model follows from the positive
-; capacity: the gate holds only at a numeric limit, which exists only when a resident observation does.
-(defthm fn-mo-serve-capacity-needs-a-resident-observation
-  (implies (posp (fn-adm-capacity profile img cfg (fn-mo-serve-limit resident pools) tot))
-           (natp (fn-mm-least-observation resident)))
-  :rule-classes nil
-  :hints (("Goal"
-           :in-theory (e/d (fn-mo-serve-limit)
-                           (fn-adm-capacity fn-adm-cfg-at fn-mm-gate-p fn-mm-least-observation))
-           :use ((:instance fn-adm-capacity-fits (limit (fn-mo-serve-limit resident pools)))
-                 (:instance (:definition fn-mm-gate-p)
-                            (cfg (fn-adm-cfg-at cfg (fn-adm-capacity profile img cfg (fn-mo-serve-limit resident pools) tot)))
-                            (limit (fn-mo-serve-limit resident pools)))))))
 
-(defthm fn-mo-serve-read-reserve-is-natp
-  (natp (fn-prstartup-read-reserve extent workers))
-  :rule-classes :type-prescription
-  :hints (("Goal" :in-theory (enable fn-prstartup-read-reserve fn-cwq-queue-octets))))
-
-(defthm fn-mo-serve-launch-extra-is-the-plans-need
-  (equal (fn-prstartup-launch-extra profile workers cache-limit root)
-         (+ (fn-prstartup-required-heap (max 8 (+ 1 (nfix cache-limit))) workers root)
-            (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))
-  :hints (("Goal" :in-theory (enable fn-prstartup-launch-extra))))
-
-(defthm fn-mo-serve-launch-extra-natp
-  (natp (fn-prstartup-launch-extra profile workers cache-limit root))
-  :rule-classes :type-prescription
-  :hints (("Goal" :in-theory (enable fn-prstartup-launch-extra))))
-
-(defthm fn-mo-serve-launch-extra-nfix
-  (equal (nfix (fn-prstartup-launch-extra profile workers cache-limit root))
-         (fn-prstartup-launch-extra profile workers cache-limit root))
-  :hints (("Goal" :in-theory (disable fn-prstartup-launch-extra))))
-
-(defthm fn-mo-serve-plan-admits-when-funded
-  (let ((minimum (max 8 (+ 1 (nfix cache-limit)))))
-    (implies (and (natp dynamic) (natp occupied) (natp protected) (<= occupied protected)
-                  (<= protected dynamic)
-                  (stringp root) (posp workers) (natp stack) (natp runtime) (natp cache-limit)
-                  (natp fd-limit) (<= minimum fd-limit) (fn-crl-table-supportedp minimum)
-                  (natp reserve)
-                  (<= (+ (fn-prstartup-required-heap minimum workers root) reserve)
-                      (fn-prstartup-available dynamic occupied protected)))
-             (equal (car (fn-prstartup-plan dynamic occupied protected root workers stack runtime
-                                            cache-limit fd-limit reserve))
-                    :admitted)))
-  :rule-classes nil
-  :hints (("Goal"
-           :in-theory (e/d (fn-prstartup-plan)
-                           (fn-prstartup-available fn-prstartup-required-heap fn-prstartup-affordable-capacity
-                            fn-prstartup-baseline-heap fn-crl-table-supportedp fn-cgb-capacity
-                            fn-prstartup-fd-bookkeeping))
-           :use ((:instance fn-prstartup-required-heap-natp
-                            (files (max 8 (+ 1 (nfix cache-limit)))))))))
-
-(defthm fn-mo-serve-funded-room
-  (implies (and (natp dynamic) (natp occupied) (natp protected) (<= occupied protected)
-                (natp req) (natp reserve)
-                (<= (+ protected req reserve) dynamic))
-           (<= (+ req reserve) (fn-prstartup-available dynamic occupied protected)))
-  :hints (("Goal" :in-theory (enable fn-prstartup-available))))
-
-; K-L4: the owner's DEFAULT pool plan admits at the launched heap when its protected runtime is the
-; launch's dynamic space and the pools' heap is the DEFAULT pool's extra.
-(defthm fn-mo-serve-startup-admits-the-pool
+; KEYSTONE K-L3b: a launch's whole reservation (the dynamic space it answers, the core file, every
+; thread it answers) fits every address-space observation, and an observed store reopens within the
+; limit at the coordinates the owner will price it at: every configuration whose reopen coordinates
+; are the probe's (fn-mo-reopen-cfg), the publication trigger the owner sets in the launched space.
+(defthm fn-mo-serve-launch-fits-the-address-space
   (let* ((limit (fn-mo-serve-limit resident pools))
-         (pool-heap (fn-prstartup-launch-extra profile workers cache-limit root))
-         (d (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
-         (protected (fn-mm-launch-dynamic limit core nursery))
-         (minimum (max 8 (+ 1 (nfix cache-limit)))))
-    (implies (and (equal (car d) :heap)
-                  (natp occupied) (<= occupied protected)
-                  (stringp root) (posp workers) (natp stack) (natp runtime) (natp cache-limit)
-                  (natp fd-limit) (<= minimum fd-limit) (fn-crl-table-supportedp minimum))
-             (equal (car (fn-prstartup-plan (* *fn-heap-mib* (cadr d)) occupied protected root workers
-                                            stack runtime cache-limit fd-limit
-                                            (fn-prstartup-read-reserve (fn-prstartup-read-extent profile)
-                                                                       workers)))
-                    :admitted)))
+         (d (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot
+                                pools pool-threads))
+         (addr (fn-mm-least-observation address)))
+    (implies (equal (car d) :heap)
+             (and (natp limit)
+                  (implies (natp addr)
+                           (<= (fn-heap-reservation-octets (cadr d) core (nth 4 d) (nth 5 d)) addr))
+                  (implies (and (fn-mm-tot-p tot)
+                                (equal (fn-mo-reopen-cfg owner-cfg)
+                                       (fn-mo-reopen-cfg
+                                        (fn-mo-serve-cfg trigger
+                                                         (fn-heap-nursery-trigger (* *fn-heap-mib* (cadr d))
+                                                                                  nursery)
+                                                         live cold profile config))))
+                           (<= (fn-mm-reopen-need profile img owner-cfg tot) limit)))))
   :rule-classes nil
   :hints (("Goal"
-           :in-theory (union-theories '(car-cons cdr-cons natp posp nfix fn-mo-serve-launch-extra-nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
-           :use ((:instance fn-mo-serve-decide-heap-shape
-                            (pool-heap (fn-prstartup-launch-extra profile workers cache-limit root)))
-                 (:instance fn-heap-mb-of-covers
-                            (octets (+ (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery)
-                                       (nfix (fn-prstartup-launch-extra profile workers cache-limit root)))))
-                 (:instance fn-mo-serve-launch-extra-is-the-plans-need)
-                 (:instance fn-mo-serve-read-reserve-is-natp
-                            (extent (fn-prstartup-read-extent profile)))
-                 (:instance fn-prstartup-required-heap-natp
-                            (files (max 8 (+ 1 (nfix cache-limit)))))
-                 (:instance fn-mm-launch-dynamic-natp (limit (fn-mo-serve-limit resident pools)))
-                 (:instance fn-mo-serve-funded-room
-                            (dynamic (* *fn-heap-mib*
-                                        (cadr (fn-mo-serve-decide profile img cfg resident address core nursery tot pools
-                                                                  (fn-prstartup-launch-extra profile workers cache-limit root)))))
-                            (protected (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery))
-                            (req (fn-prstartup-required-heap (max 8 (+ 1 (nfix cache-limit))) workers root))
-                            (reserve (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))
-                 (:instance fn-mo-serve-plan-admits-when-funded
-                            (dynamic (* *fn-heap-mib*
-                                        (cadr (fn-mo-serve-decide profile img cfg resident address core nursery tot pools
-                                                                  (fn-prstartup-launch-extra profile workers cache-limit root)))))
-                            (protected (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery))
-                            (reserve (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))))))
+           :in-theory (e/d (fn-mo-serve-reservation)
+                           (fn-mo-serve-decide fn-mo-serve-limit fn-mo-serve-dynamic fn-mo-serve-cfg
+                            fn-mm-reopen-need fn-mm-least-observation fn-mm-tot-p fn-heap-nursery-trigger
+                            fn-heap-mb-of fn-mo-reopen-cfg fn-heap-reservation-octets fn-mo-serve-threads
+                            fn-mo-serve-reopen-reads-its-coordinates floor fn-heap-profile-word fn-heap-stack-kib fn-heap-stack-octets))
+           :use ((:instance fn-mo-serve-decide-heap-facts)
+                 (:instance fn-mo-serve-reopen-reads-its-coordinates (cfg owner-cfg))
+                 (:instance fn-mo-serve-reopen-reads-its-coordinates
+                  (cfg (fn-mo-serve-cfg trigger
+                         (fn-heap-nursery-trigger
+                          (* *fn-heap-mib* (fn-heap-mb-of (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools)))
+                          nursery)
+                         live cold profile config)))))))
+

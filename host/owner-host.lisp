@@ -259,8 +259,8 @@
 (include-book "../books/public-exposure")
 ; fn-exp-observe-effects: the observation without building the reply.
 (include-book "../books/public-exposure-reply")
-; PKT-605 (PRF-223): the connection budget the run installs and every live
-; reconfiguration keeps (fn-owner-connection-budget, fn-owner-reconfigure-deltas).
+; PKT-605: a connection's and a handshake's terms (fn-cbud-conn-octets,
+; fn-cbud-handshake-slots), which the memory gate charges, and the read size.
 (include-book "../books/connection-budget")
 ;; K-ADMIT: the memory gate the prepare applies (memory landing 3+4a).
 (include-book "../books/admission-memory")
@@ -1571,52 +1571,6 @@
                       state)))
         (value (fn-ores-config-staged-result staged reason))))))
 
-;; PKT-605 (PRF-223): the bound the run installed (fn-owner-connection-budget)
-;; is kept by every live reconfiguration: a delta list whose configuration
-;; holds more connections than the machine does is refused by name,
-;; :connections-exceed-memory, before the owner stages anything
-;; (books/connection-budget.lisp fn-cbud-deltas-refusal-keeps-the-capacity-held).
-;; Every live path reaches this function (native-admin, peer-invite, auth).
-;; PRF-986's term (lane tls-handshake-budget-2): the run holds its
-;; observations and the handshake slots it charged (fn-cbud-run-held), and a
-;; live reconfiguration is the run's decision re-made on them, the handshake
-;; slots the larger of the held and the new `tls-handshakes-in-flight'
-;; (fn-cbud-deltas-refusal-keeps-the-machine-held).
-(defun fn-owner-connection-held (state)
-  (declare (xargs :stobjs state :guard t))
-  (and (boundp-global 'fn-owner-connection-held state)
-       (f-get-global 'fn-owner-connection-held state)))
-
-; PRF-1268: the handshake model carries the exact still-owned admissions.
-; The charge is rebased only after durable publication or settled release.
-(defun fn-owner-connection-held-refresh (state)
-  (declare (xargs :stobjs state :mode :program))
-  (let* ((held (fn-owner-connection-held state))
-         (handshakes (if (boundp-global 'fn-owner-handshakes state)
-                         (f-get-global 'fn-owner-handshakes state)
-                       (fn-hsb-initial)))
-         (current (fn-cbud-live-held (fn-cfg-value (fn-owner-config state))
-                                     (len (fn-hsb-flight handshakes)) held))
-         (state (f-put-global 'fn-owner-connection-held current state)))
-    state))
-
-(defun fn-owner-reconfigure-deltas (id deltas fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
-  (let* ((oc (fn-owner-ocfg state))
-         (v (fn-cfg-value (fn-ocfg-config oc)))
-         (gen (+ 1 (fn-cfg-generation (fn-ocfg-config oc))))
-         (stamp (fn-own-clock (fn-ocfg-owner oc)))
-         (held (fn-owner-connection-held state))
-         (memory (fn-cbud-deltas-refusal v gen stamp deltas held)))
-    ;; The refusal is the staging step's result value (PRF-208,
-    ;; adapter-retirement: books/owner-results.lisp fn-ores-config-refused),
-    ;; which every live caller's recognizer accepts.
-    (if memory
-        (value (fn-ores-config-refused memory))
-      ;; A candidate is not a live generation.  Admission/staging can still
-      ;; refuse, and no connection may allocate under the candidate yet.
-      (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
-
 ; PKT-643: the restricted views prepared for read-restricted sessions
 ; (books/group-access-cache.lisp), nil before the first read.
 (defun fn-owner-access-cache (state)
@@ -1676,32 +1630,21 @@
 (definterface fn-owner-credits-stop
   :class ::program)
 
-(defun fn-owner-connection-budget (machine dynamic core threads stack nursery profile
-                                           tlsp live state)
+(defun fn-owner-connection-budget (core nursery profile live state)
   ; Once per run, after recovery and before listen (host/native/mux.lisp
-  ; fnn-mux-budget-install, from fnn-owner-run).  MACHINE, DYNAMIC (the
-  ; dynamic space this process has), CORE, THREADS and STACK are the host's
-  ; observations; NURSERY its collection trigger;
-  ; PROFILE the store's; TLSP whether a TLS context is loaded; LIVE the
-  ; operator's live-reclaim opt-in (the owner's work reserve beyond the
-  ; open's exists only with it).  The capacity is the live configuration's.
+  ; fnn-mux-budget-install, from fnn-owner-run): the run's article slots and
+  ; credits.  CORE is the host's image observation, NURSERY its collection
+  ; trigger, PROFILE the store's, LIVE the operator's live-reclaim opt-in (the
+  ; owner's work reserve beyond the open's exists only with it).  The run's
+  ; connection capacity is the memory gate's C' (fn-owner-memory-configure,
+  ; books/admission-memory.lisp fn-adm-capacity: PRF-223's statement since
+  ; L-RUN-LAUNCH), which refuses a run no connection fits; the resident model
+  ; this budget kept beside it (books/connection-budget.lisp fn-cbud-run-decide:
+  ; the profile's whole store and every thread's runtime charged as resident,
+  ; the dynamic space compared with memory.max) is retired with the profile-
+  ; bound launch.
   (declare (xargs :stobjs state :mode :program))
-  (let* ((v (fn-cfg-value (fn-owner-config state)))
-         (capacity (fn-exp-connections-capacity v))
-         (article (fn-bs-profile-max-article-octets profile))
-         (hneed (fn-mca-figure-octets profile core nursery live))
-         ;; PRF-986: the handshakes' native scratch, L x the scratch with a
-         ;; TLS context, is part of the base (books/connection-budget.lisp).
-         (slots (fn-cbud-config-handshake-slots v tlsp))
-         (hs (fn-cbud-slots-octets slots))
-         (d (fn-cbud-run-decide capacity machine dynamic hneed core threads stack hs
-                                 article tlsp))
-         (state (f-put-global 'fn-owner-connection-held
-                              (and (equal (car d) :hold)
-                                   (fn-cbud-run-held machine dynamic hneed core threads
-                                                     stack article tlsp slots))
-                              state))
-         ;; The COUNT of articles in flight every served read admits within
+  (let* (;; The COUNT of articles in flight every served read admits within
          ;; (fn-owner-chunk-span-at): the default configuration's connections
          ;; (*fn-heap-article-slots-most*).  The OCTETS they hold are the
          ;; credits' (below, books/owner-credits.lisp): an article mid-body
@@ -1719,15 +1662,8 @@
                               (fn-heap-article-reserve-octets profile)
                               state))
          (state (fn-ost-install-admission (fn-oadm-configure-reclaim live) state))
-         (state (fn-owner-put-credits (fn-mca-initial profile core nursery live) state))
-         (state (f-put-global 'fn-owner-connection-budget-line
-                              (fn-record-string-octets
-                               (if (equal (car d) :hold)
-                                   (fn-cbud-hold-line d article tlsp)
-                                 (fn-cbud-run-refusal-line d article tlsp machine dynamic
-                                                           hneed core threads stack hs)))
-                              state)))
-    (value (car d))))
+         (state (fn-owner-put-credits (fn-mca-initial profile core nursery live) state)))
+    (value :hold)))
 
 (definterface fn-owner-connection-budget
   :class ::program)
@@ -1739,7 +1675,7 @@
 ;   LIMIT the resident limit (fn-mm-resident-limit: no operator figure exists,
 ;     so the least resident observation, physical memory or a cgroup's
 ;     memory.max) LESS the runtime pools the launch funded beside the model's
-;     terms (fn-owner-memory-pools: the page-read pool, the explicit cold
+;     terms (fn-mo-serve-pools: the page-read pool, the explicit cold
 ;     policy's or the default plan's, the output pool, the peer flight's;
 ;     memory landing 4b's launch model makes them terms);
 ;   the run's CFG coordinates: the serving and publication triggers, TLS,
@@ -1764,13 +1700,8 @@
         (fn-cfg-limit v "tls-handshakes-in-flight")
         window (len server) nil nil (nfix config)))
 
-(defun fn-owner-memory-pools (profile cold output peer workers cache-limit root)
-  (declare (xargs :guard t))
-  (+ (if cold
-         (nfix (car (fn-crv-pool-budget cold profile)))
-       (nfix (fn-prstartup-launch-extra profile workers cache-limit root)))
-     (if (consp output) (nfix (car output)) 0)
-     (if (consp peer) (nfix (car peer)) 0)))
+; The pools the launch funded beside the model's terms: books/heap-command.lisp
+; fn-mo-serve-pools, the probe's own (host/native/heap.lisp fnn-heap-serve-decision).
 
 ; THE GATE ALONE, for every owner process (host/native/mux.lisp
 ; fnn-owner-memory-install, called by fnn-owner-install): the run's coordinates
@@ -1785,7 +1716,7 @@
                                            config state)
   (declare (xargs :stobjs state :mode :program))
   (let* ((least (fn-mm-resident-limit nil resident-obs))
-         (pools (fn-owner-memory-pools profile cold output peer workers cache-limit root))
+         (pools (fn-mo-serve-pools profile cold output peer workers cache-limit root))
          (limit (and (natp least) (nfix (- least pools))))
          (ocfg (fn-owner-config state))
          (cfg (fn-owner-memory-cfg (fn-cfg-value ocfg) tlsp trigger pub-trigger live cold
@@ -1844,6 +1775,23 @@
 (definterface fn-owner-memory-configure
   :class ::program)
 
+; The handshakes in flight now (fn-owner-handshake-admit's state), which a
+; reconfiguration that lowered the live limit leaves outstanding.
+(defun fn-owner-memory-handshakes-in-flight (state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (boundp-global 'fn-owner-handshakes state)
+      (len (fn-hsb-flight (f-get-global 'fn-owner-handshakes state)))
+    0))
+
+; The run's CFG at the live configuration V: its coordinates, its own
+; connection count, and the handshake allowance the gate charges (the live
+; limit, or the handshakes still in flight when a reconfiguration lowered it).
+(defun fn-owner-memory-run-cfg (r v cfg state)
+  (declare (xargs :stobjs state :mode :program))
+  (let ((full (fn-owner-memory-cfg v (nth 5 r) (nth 2 r) (nth 3 r) (nth 6 r) (nth 7 r)
+                                   (nth 4 r) (nth 8 r) (fn-oag-agent cfg) (nth 9 r))))
+    (fn-adm-cfg-holding-handshakes full (fn-owner-memory-handshakes-in-flight state))))
+
 ; (IMG CFG LIMIT): the CFG rebuilt from the live configuration; LIMIT NIL
 ; until a run configured it, so the gate (fn-mm-gate-p: LIMIT a natural)
 ; admits nothing a run did not configure.
@@ -1853,13 +1801,12 @@
            (consp (f-get-global 'fn-owner-memory-run state)))
       (let* ((r (f-get-global 'fn-owner-memory-run state))
              (cfg (fn-owner-config state))
-             (v (fn-cfg-value cfg))
-             (full (fn-owner-memory-cfg v (nth 5 r) (nth 2 r) (nth 3 r) (nth 6 r) (nth 7 r)
-                                        (nth 4 r) (nth 8 r) (fn-oag-agent cfg) (nth 9 r)))
+             (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state))
              (cap (nth 10 r)))
         (list (nth 0 r)
-              ; ruling (b): the run's C' (fn-adm-capacity at configure) bounds
-              ; the connections the gate prices, as it bounds the readers
+              ; ruling (b): the run's C' (fn-adm-capacity at configure, again
+              ; after each live reconfiguration: fn-owner-memory-recapacity)
+              ; bounds the connections the gate prices, as it bounds the readers
               ; accepted (fn-owner-memory-max-conns); a live reconfiguration
               ; below it lowers both.
               (if (posp cap)
@@ -1867,6 +1814,88 @@
                 full)
               (nth 1 r)))
     (list nil nil nil)))
+
+; A LIVE RECONFIGURATION AND THE RUN'S CAPACITY (L-RUN-LAUNCH; PRF-223's
+; statement, which books/connection-budget.lisp's resident model carried
+; until the launch took the memory equation).  A candidate configuration V2
+; that raises the connections or the handshake limit is refused by name
+; before the owner stages it when the gate does not hold at what it raises
+; (its connections, or the run's C' when it does not raise them, and its
+; handshake limit) over the run's carried totals as of the last admission
+; (fn-owner-record-totals' cache): :handshakes-exceed-memory when its
+; connections alone fit, else :connections-exceed-memory.  That refusal is
+; the operator's answer; the bound itself is fn-owner-memory-recapacity's at
+; the reconfiguration's completion, over the synced totals.
+(defun fn-owner-memory-candidate-refusal (v2 state)
+  (declare (xargs :stobjs state :mode :program))
+  (if (not (and (boundp-global 'fn-owner-memory-run state)
+                (consp (f-get-global 'fn-owner-memory-run state))
+                (boundp-global 'fn-owner-record-totals state)
+                (consp (f-get-global 'fn-owner-record-totals state))))
+      nil
+    (let* ((r (f-get-global 'fn-owner-memory-run state))
+           (cfg (fn-owner-config state))
+           (v (fn-cfg-value cfg))
+           (tot (cdr (f-get-global 'fn-owner-record-totals state)))
+           (now (fn-owner-memory-run-cfg r v cfg state))
+           (next (fn-owner-memory-run-cfg r v2 cfg state))
+           (cap (nth 10 r))
+           (c2 (fn-mm-cfg-connections next))
+           (raises-c (< (fn-mm-cfg-connections now) c2))
+           (raises-h (< (fn-mm-cfg-handshakes now) (fn-mm-cfg-handshakes next)))
+           (held (if (or raises-c (not (natp cap))) c2 (min c2 cap)))
+           (profile (nth 4 r)) (img (nth 0 r)) (limit (nth 1 r)))
+      (cond ((not (or raises-c raises-h)) nil)
+            ((fn-mm-gate-p profile img (fn-adm-cfg-at next held) limit tot) nil)
+            ((and raises-h
+                  (fn-mm-gate-p profile img
+                                (fn-adm-cfg-at (update-nth 7 (fn-mm-cfg-handshakes now) next) held)
+                                limit tot))
+             :handshakes-exceed-memory)
+            (t :connections-exceed-memory)))))
+
+; After a durable live reconfiguration: C' over the published configuration
+; and the synced totals, as the configure computed it (a raise the memory
+; holds is admitted, one it no longer holds is bounded), and its line.  The
+; configure's C' is at most the configured C (fn-adm-capacity-fits), so a
+; raise is admitted only here.
+(defun fn-owner-memory-recapacity (fn-hist state)
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
+  (if (not (and (boundp-global 'fn-owner-memory-run state)
+                (consp (f-get-global 'fn-owner-memory-run state))))
+      (mv fn-hist state)
+    (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+      (let* ((r (f-get-global 'fn-owner-memory-run state))
+             (cfg (fn-owner-config state))
+             (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state))
+             (found (fn-adm-capacity (nth 4 r) (nth 0 r) full (nth 1 r) tot))
+             ; With no count the gate holds at, the bound in force stays
+             ; (the gate then refuses every record; the readers stay at C').
+             (cap (if (posp found) found (nth 10 r)))
+             (state (f-put-global 'fn-owner-memory-run (update-nth 10 cap r) state))
+             (state (f-put-global 'fn-owner-memory-capacity cap state))
+             (state (f-put-global 'fn-owner-memory-capacity-line
+                                  (fn-record-string-octets
+                                   (fn-adm-capacity-line (nth 4 r) (nth 0 r) full (nth 1 r) tot))
+                                  state)))
+        (mv fn-hist state)))))
+
+; Every live path reaches this function (native-admin, peer-invite, auth).
+(defun fn-owner-reconfigure-deltas (id deltas fn-arena state)
+  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (let* ((oc (fn-owner-ocfg state))
+         (v (fn-cfg-value (fn-ocfg-config oc)))
+         (gen (+ 1 (fn-cfg-generation (fn-ocfg-config oc))))
+         (stamp (fn-own-clock (fn-ocfg-owner oc)))
+         (memory (fn-owner-memory-candidate-refusal (fn-cfg-apply v gen stamp deltas) state)))
+    ;; The refusal is the staging step's result value (PRF-208,
+    ;; adapter-retirement: books/owner-results.lisp fn-ores-config-refused),
+    ;; which every live caller's recognizer accepts.
+    (if memory
+        (value (fn-ores-config-refused memory))
+      ;; A candidate is not a live generation.  Admission/staging can still
+      ;; refuse, and no connection may allocate under the candidate yet.
+      (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
 
 ; The identity preflight's verdict on one ACL2-constructed EVENT (lane
 ; bp-retention-leftovers).  Its kind is the WIRE event's
@@ -1947,7 +1976,7 @@
              (state (fn-ost-install-authority authority state)))
         (value word)))))
 
-(defun fn-owner-reconfigure-complete (generation state)
+(defun fn-owner-reconfigure-complete (generation fn-hist state)
   ; Called only after Store.write_config_record has named the record durable;
   ; an uncertain write has no call here and forces recovery.  The whole
   ; completion is ACL2's `fn-oclc-publish' (books/config-owner-carried): the
@@ -1968,16 +1997,16 @@
   ; never reused.  Forward completion (AUTHORITY-FIELD lane): the authority
   ; binding produced on the stage path and proved to reach this call, then
   ; this body returns to the consume + fn-ccp-publish + install collector.
-  (declare (xargs :stobjs state :mode :program))
+  (declare (xargs :stobjs (fn-hist state) :mode :program))
   (let ((state (fn-owner-authority-proposal-clear state)))
     (mv-let (verdict next)
       (fn-oclc-publish (fn-owner-ocfg state) generation
                        (fn-owner-served-post-bound state))
-      (let* ((state (fn-owner-install-ocfg next state))
-             (state (if (equal verdict :durable)
-                        (fn-owner-connection-held-refresh state)
-                      state)))
-        (value verdict)))))
+      (let ((state (fn-owner-install-ocfg next state)))
+        (if (equal verdict :durable)
+            (mv-let (fn-hist state) (fn-owner-memory-recapacity fn-hist state)
+              (mv nil verdict fn-hist state))
+          (mv nil verdict fn-hist state))))))
 
 (definterface fn-owner-reconfigure-complete
   :class ::program)
@@ -4977,8 +5006,7 @@
   (let ((state (f-put-global 'fn-owner-handshakes
                              (fn-hsb-done (fn-owner-handshake-state state) id)
                              state)))
-    (let ((state (fn-owner-connection-held-refresh state)))
-      (value :ok))))
+    (value :ok)))
 
 ; host/native/mux.lisp dispatches it (lane tls-handshake-budget).
 (definterface fn-owner-handshake-done
@@ -6371,8 +6399,8 @@ itself."
 ;; of the offline host/checkpoint-host.lisp fn-store-reclaim-instant-record:
 ;; the one delta fn-rci-delta of CLOCK's stamp, staged on the private
 ;; connection CID by the path every live reconfiguration takes
-;; (fn-owner-reconfigure-deltas: the generation pin, the connection budget,
-;; the staged record), published by host/native/admin.lisp
+;; (fn-owner-reconfigure-deltas: the generation pin, the memory gate's
+;; capacity, the staged record), published by host/native/admin.lisp
 ;; fnn-owner-live-reconfigure-locked.  An unrepresentable instant is refused
 ;; by name, :reclaim-instant, before anything is staged.  KEYSTONE
 ;; (books/owner-reclaim-instant.lisp, PRF-987)

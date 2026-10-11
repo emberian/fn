@@ -374,202 +374,161 @@
                " totals=3,4,5,6,7,8,9,10,resident"))))
 
 ;; L-RUN-LAUNCH: the served run's launch (fn-mo-serve-decide).  The witnesses are the run's own
-;; configure arguments captured on hbox (planning/evidence/load/2026-10-11-m19-lfresh/cap-args-1709566.lisp,
-;; fn-host, and cap-args-1715174.lisp, fn-core); the figures asserted are derived by the book's functions.
+;; configure arguments captured on hbox (2026-10-11): fn-core, the production image, and fn-host, the
+;; 249 MB image of the host's own build, each with the peer flight profile the run funds.  The figures
+;; are derived by the book's functions: an assert states what the witness is about, never a megabyte.
 (defconst *hct-sv-profile*
   '((102 110 45 115 116 111 114 101 45 49 48) 16384 8388608 196608 32768 16 256 128 1048576 1048576 1048576
     1048576 1048576 64 256 16384))
-(defconst *hct-sv-cfg* '(31 NIL 8388608 8388608 NIL 0 0 0 256 18 NIL NIL 120))
-(defconst *hct-sv-pools* 4270656)
-(defconst *hct-sv-pool-heap* (fn-prstartup-launch-extra *hct-sv-profile* 4 8 "/x"))
-(defconst *hct-sv-core-img* '(81046496 28704768 1376256))
-(defconst *hct-sv-core* '(81046496 . 81046496))
-(defconst *hct-sv-core-tot* '(1 2288 2756 1 0 3710 520 2288 :RESIDENT))
+(defconst *hct-sv-peer* '(11728 917504 2 1 458752 33554432))
+(defconst *hct-sv-pools* (fn-mo-serve-pools *hct-sv-profile* nil nil *hct-sv-peer* 4 8 "/x"))
+(defconst *hct-sv-pool-threads* (fn-mo-serve-pool-threads nil *hct-sv-peer*))
+(defconst *hct-sv-core-img* '(81046496 30081024 1376256))
+(defconst *hct-sv-core* '(81046496 . 30081024))
 (defconst *hct-sv-host-img* '(248946304 30081024 1310720))
 (defconst *hct-sv-host-core* '(248946304 . 136689072))
-(defconst *hct-sv-host-tot* '(0 0 0 0 0 0 0 0 :RESIDENT))
-(defun hct-sv-core (mib)
-  (fn-mo-serve-decide *hct-sv-profile* *hct-sv-core-img* *hct-sv-cfg* (list (hct-mib mib)) nil
-                      *hct-sv-core* *hct-nur* *hct-sv-core-tot* *hct-sv-pools* *hct-sv-pool-heap*))
-(defun hct-sv-host (mib address)
-  (fn-mo-serve-decide *hct-sv-profile* *hct-sv-host-img* *hct-sv-cfg* (list (hct-mib mib)) address
-                      *hct-sv-host-core* *hct-nur* *hct-sv-host-tot* *hct-sv-pools* *hct-sv-pool-heap*))
+;; what a fresh store charges (no records), the totals the probe reads before a store exists
+(defconst *hct-sv-tot* '(0 0 0 0 0 0 0 0 :RESIDENT))
+(defconst *hct-sv-bound* (fn-mm-profile-bound-tot *hct-sv-profile* :resident))
+(defun hct-sv (img core mib address)
+  (fn-mo-serve-decide *hct-sv-profile* img 8388608 nil nil 119 (list (hct-mib mib)) address core *hct-nur*
+                      *hct-sv-tot* *hct-sv-pools* *hct-sv-pool-threads*))
+(defun hct-sv-limit (mib) (fn-mo-serve-limit (list (hct-mib mib)) *hct-sv-pools*))
+(defun hct-sv-dynamic (core mib)
+  (fn-mo-serve-dynamic (hct-sv-limit mib) core *hct-nur* *hct-sv-pools*))
+;; the reopen coordinates the decision prices the store at
+(defun hct-sv-cfg (core mib)
+  (fn-mo-serve-cfg 8388608
+                   (fn-heap-nursery-trigger (* *fn-heap-mib* (fn-heap-mb-of (hct-sv-dynamic core mib))) *hct-nur*)
+                   nil nil *hct-sv-profile* 119))
+(defun hct-sv-need (img core mib)
+  (fn-mm-reopen-need *hct-sv-profile* img (hct-sv-cfg core mib) *hct-sv-tot*))
+(defun hct-sv-reservation (core mib)
+  (fn-mo-serve-reservation *hct-sv-profile* core (hct-sv-dynamic core mib) *hct-sv-pool-threads*))
 
-(assert-event (equal *hct-sv-pool-heap* 4256408))
-(assert-event (fn-mm-tot-p *hct-sv-core-tot*))
-(assert-event (equal (hct-sv-core 256) '(:heap 350 "small" 251 1024 35)))
-(assert-event (equal (hct-sv-core 1024) '(:heap 1118 "small" 1019 1024 35)))
-(assert-event (equal (hct-sv-host 256 nil) '(:refused :machine-cannot-hold-the-store 342 251)))
-(assert-event (equal (hct-sv-host 1024 nil) '(:heap 1171 "small" 1019 1024 35)))
-(assert-event (equal (hct-sv-host 1024 (list (hct-mib 1100)))
-                     '(:refused :address-space-cannot-hold-the-reservation 1580 1100)))
+;; The pools: the DEFAULT pool's heap (its table and the reads in flight) and the peer flight's heap; the
+;; threads the pools add are the peer flight's workers.
+(assert-event (equal *hct-sv-pools* (+ (fn-prstartup-launch-extra *hct-sv-profile* 4 8 "/x") (car *hct-sv-peer*))))
+(assert-event (equal *hct-sv-pool-threads* (nth 3 *hct-sv-peer*)))
+(assert-event (fn-mm-tot-p *hct-sv-tot*))
 
-;; K-L2's teeth: at fn-core 256 MiB the profile's bound totals fail the gate at the run's capacity, and
-;; the conclusion without the gate hypothesis is false there.
-(defconst *hct-sv-core-bound* (fn-mm-profile-bound-tot *hct-sv-profile* :resident))
+;; fn-core launches at 256 and at 1024 MiB: the launched heap holds the core, the limit and the pools,
+;; and its limit is the resident observation less the pools.
 (assert-event
- (not (fn-mm-gate-p *hct-sv-profile* *hct-sv-core-img*
-                    (fn-adm-cfg-at *hct-sv-cfg*
-                                   (fn-adm-capacity *hct-sv-profile* *hct-sv-core-img* *hct-sv-cfg*
-                                                    (fn-mo-serve-limit (list (hct-mib 256)) *hct-sv-pools*)
-                                                    *hct-sv-core-tot*))
-                    (fn-mo-serve-limit (list (hct-mib 256)) *hct-sv-pools*)
-                    *hct-sv-core-bound*)))
+ (and (equal (car (hct-sv *hct-sv-core-img* *hct-sv-core* 256 nil)) :heap)
+      (equal (car (hct-sv *hct-sv-core-img* *hct-sv-core* 1024 nil)) :heap)
+      (<= (+ (fn-mm-launch-dynamic (hct-sv-limit 256) (fn-prstartup-image-bound *hct-sv-core*) *hct-nur*)
+             *hct-sv-pools*)
+          (* *fn-heap-mib* (cadr (hct-sv *hct-sv-core-img* *hct-sv-core* 256 nil))))
+      (equal (cadddr (hct-sv *hct-sv-core-img* *hct-sv-core* 256 nil))
+             (floor (hct-sv-limit 256) *fn-heap-mib*))
+      (equal (hct-sv-limit 256) (- (hct-mib 256) *hct-sv-pools*))))
+;; fn-host at 256 MiB: the store cannot be reopened within the limit, and the refusal says by how much.
 (assert-event
- (let ((c (fn-adm-capacity *hct-sv-profile* *hct-sv-core-img* *hct-sv-cfg*
-                           (fn-mo-serve-limit (list (hct-mib 256)) *hct-sv-pools*) *hct-sv-core-tot*)))
-   (not (<= (+ (fn-heap-core-dynamic *hct-sv-core*)
-               (fn-mm-reopen-need *hct-sv-profile* *hct-sv-core-img* (fn-adm-cfg-at *hct-sv-cfg* c)
-                                  *hct-sv-core-bound*)
-               (nfix *hct-sv-pool-heap*))
-            (* *fn-heap-mib* (cadr (hct-sv-core 256)))))))
-
-;; K-L4's tooth: today's profile-bound protected runtime at fn-core 256 MiB refuses the plan.
+ (let ((need (hct-sv-need *hct-sv-host-img* *hct-sv-host-core* 256)))
+   (and (< (hct-sv-limit 256) need)
+        (equal (hct-sv *hct-sv-host-img* *hct-sv-host-core* 256 nil)
+               (list :refused :machine-cannot-hold-the-store (fn-heap-mb-of need)
+                     (floor (hct-sv-limit 256) *fn-heap-mib*))))))
+;; fn-host at 1024 MiB launches although its reservation passes the resident limit: the reservation is
+;; compared with the address space only.
 (assert-event
- (equal (fn-prstartup-plan (* *fn-heap-mib* (cadr (hct-sv-core 256)))
-                           (cdr *hct-sv-core*)
-                           (fn-prstartup-protected *hct-sv-profile* *hct-sv-core* *hct-nur* nil 31 nil)
-                           "/x" 4 0 0 0 8
-                           (fn-prstartup-read-reserve (fn-prstartup-read-extent *hct-sv-profile*) 4))
-        '(:refused :default-pool-heap-not-held)))
+ (and (equal (car (hct-sv *hct-sv-host-img* *hct-sv-host-core* 1024 nil)) :heap)
+      (<= (hct-sv-need *hct-sv-host-img* *hct-sv-host-core* 1024) (hct-sv-limit 1024))
+      (< (hct-mib 1024) (hct-sv-reservation *hct-sv-host-core* 1024))))
+;; An address-space observation below that reservation refuses by name, and says what the model needs.
+(assert-event
+ (and (< (hct-mib 1100) (hct-sv-reservation *hct-sv-host-core* 1024))
+      (equal (hct-sv *hct-sv-host-img* *hct-sv-host-core* 1024 (list (hct-mib 1100)))
+             (list :refused :address-space-cannot-hold-the-reservation
+                   (fn-heap-mb-of (hct-sv-reservation *hct-sv-host-core* 1024)) 1100))))
+;; One at or above it launches.
+(assert-event
+ (equal (car (fn-mo-serve-decide *hct-sv-profile* *hct-sv-host-img* 8388608 nil nil 119 (list (hct-mib 1024))
+                                 (list (hct-sv-reservation *hct-sv-host-core* 1024)) *hct-sv-host-core* *hct-nur*
+                                 *hct-sv-tot* *hct-sv-pools* *hct-sv-pool-threads*))
+        :heap))
 
-;; K-L2, K-L3, K-L4: teeth for the book's let*-stated keystones.  defteeth binds only a claim that
+;; K-L2, K-L3, K-L3b: teeth for the book's let*-stated keystones.  defteeth binds only a claim that
 ;; translates to the theorem, which a let* does not; each twin below states the same claim with the
-;; let* inlined (the claim's conclusion takes nfix of the launched MB so a refusal's keyword is no
-;; guard violation under the teeth's evaluation) and is proved from the book's keystone.
-;; K-L3's resident-observed hypothesis follows from the positive capacity
-;; (fn-mo-serve-capacity-needs-a-resident-observation), so no value breaks it: the twin drops it.
+;; let* inlined (K-L2's conclusion takes nfix of the launched MB so a refusal's keyword is no guard
+;; violation under the teeth's evaluation) and is proved from the book's keystone.
 (defkeystone hct-serve-holds-every-admitted-store
-  (implies (and (equal (car (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
-                            :heap)
-                (fn-mm-gate-p profile img
-                               (fn-adm-cfg-at cfg (fn-adm-capacity profile img cfg
-                                                                   (fn-mo-serve-limit resident pools) tot))
-                               (fn-mo-serve-limit resident pools) tot2))
-           (<= (+ (fn-heap-core-dynamic core)
-                 (fn-mm-reopen-need profile img
-                                    (fn-adm-cfg-at cfg (fn-adm-capacity profile img cfg
-                                                                        (fn-mo-serve-limit resident pools) tot))
-                                    tot2)
-                 (nfix pool-heap))
-              (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img cfg resident address core nursery tot
-                                                                pools pool-heap))))))
+  (implies (and (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap)
+                (equal (fn-heap-core-file owner) (fn-heap-core-file core))
+                (fn-mm-gate-p profile img2 cfg2 (fn-mo-serve-limit resident pools) tot2))
+           (<= (+ (fn-heap-core-dynamic owner)
+                  (fn-mm-reopen-need profile img2 cfg2 tot2)
+                  (nfix pools))
+               (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads))))))
   :rule-classes nil
-  :hyps (accepted gate)
+  :hyps (accepted same-core gate)
   :subject fn-mo-serve-decide
-  :witness ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (cfg *hct-sv-cfg*) (resident (list (hct-mib 256)))
-            (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-core-tot*) (pools *hct-sv-pools*)
-            (pool-heap *hct-sv-pool-heap*) (tot2 *hct-sv-core-tot*))
-  :breaks ((accepted ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (cfg *hct-sv-cfg*)
-                      (resident (list (hct-mib 1024))) (address (list (hct-mib 1100))) (core *hct-sv-host-core*)
-                      (nursery *hct-nur*) (tot *hct-sv-host-tot*) (pools *hct-sv-pools*)
-                      (pool-heap *hct-sv-pool-heap*) (tot2 *hct-sv-host-tot*)))
-           (gate ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (cfg *hct-sv-cfg*) (resident (list (hct-mib 256)))
-                  (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-core-tot*) (pools *hct-sv-pools*)
-                  (pool-heap *hct-sv-pool-heap*) (tot2 *hct-sv-core-bound*))))
+  :witness ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 256))) (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner (cons 81046496 70000000)) (img2 *hct-sv-core-img*) (cfg2 (hct-sv-cfg *hct-sv-core* 256)) (tot2 *hct-sv-tot*))
+  :breaks ((accepted ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 1024))) (address (list (hct-mib 1100))) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner *hct-sv-host-core*) (img2 *hct-sv-host-img*) (cfg2 (hct-sv-cfg *hct-sv-host-core* 1024)) (tot2 *hct-sv-tot*)))
+           (same-core ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 256))) (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner (cons 999999999999 999999999999)) (img2 *hct-sv-core-img*) (cfg2 (hct-sv-cfg *hct-sv-core* 256)) (tot2 *hct-sv-tot*)))
+           (gate ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 256))) (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner (cons 81046496 70000000)) (img2 *hct-sv-core-img*) (cfg2 (hct-sv-cfg *hct-sv-core* 256)) (tot2 *hct-sv-bound*))))
   :mutations ((gate-reduced-to-a-numeric-limit
                (:hypothesis gate (natp (fn-mo-serve-limit resident pools)))
-               ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (cfg *hct-sv-cfg*) (resident (list (hct-mib 256)))
-                (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-core-tot*) (pools *hct-sv-pools*)
-                (pool-heap *hct-sv-pool-heap*) (tot2 *hct-sv-core-bound*))
+               ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 256))) (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner (cons 81046496 70000000)) (img2 *hct-sv-core-img*) (cfg2 (hct-sv-cfg *hct-sv-core* 256)) (tot2 *hct-sv-bound*))
                :fault "a launched heap taken to hold any store whatever under a numeric limit, the gate unchecked"))
   :hints (("Goal" :in-theory (union-theories '(nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
-           :use (fn-mo-serve-holds-every-admitted-store fn-mo-serve-decide-heap-shape))))
+           :use (fn-mo-serve-holds-every-admitted-store fn-mo-serve-decide-heap-mb))))
 
 (defkeystone hct-serve-refuses-only-by-the-model
-  (implies (and (posp (fn-adm-capacity profile img cfg (fn-mo-serve-limit resident pools) tot))
-                (not (equal (cadr (fn-mm-launch-decide
-                               profile img
-                               (fn-adm-cfg-at cfg (nfix (fn-adm-capacity profile img cfg
-                                                                         (fn-mo-serve-limit resident pools) tot)))
-                               (fn-mo-serve-limit resident pools) nil address core nursery tot))
-                        :address-space-cannot-hold-the-reservation)))
-           (equal (car (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
-                 :heap))
+  (implies (and (natp (fn-mo-serve-limit resident pools))
+                (or (not (fn-mm-tot-p tot))
+                    (<= (fn-mm-reopen-need profile img (fn-mo-serve-cfg trigger (fn-heap-nursery-trigger (* *fn-heap-mib* (fn-heap-mb-of (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools))) nursery) live cold profile config) tot) (fn-mo-serve-limit resident pools)))
+                (or (not (natp (fn-mm-least-observation address)))
+                    (<= (fn-mo-serve-reservation profile core (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools) pool-threads) (fn-mm-least-observation address))))
+           (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap))
   :rule-classes nil
-  :hyps (capacity address-space)
+  :hyps (limit-observed model-holds address-space)
   :subject fn-mo-serve-decide
-  :witness ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (cfg *hct-sv-cfg*) (resident (list (hct-mib 1024)))
-            (address nil) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-host-tot*)
-            (pools *hct-sv-pools*) (pool-heap *hct-sv-pool-heap*))
-  :breaks ((capacity ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (cfg *hct-sv-cfg*)
-                      (resident (list (hct-mib 256))) (address nil) (core *hct-sv-host-core*) (nursery *hct-nur*)
-                      (tot *hct-sv-host-tot*) (pools *hct-sv-pools*) (pool-heap *hct-sv-pool-heap*)))
-           (address-space ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (cfg *hct-sv-cfg*)
-                           (resident (list (hct-mib 1024))) (address (list (hct-mib 1100)))
-                           (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-host-tot*)
-                           (pools *hct-sv-pools*) (pool-heap *hct-sv-pool-heap*))))
+  :witness ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 1024))) (address nil) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*))
+  :breaks ((limit-observed ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident nil) (address nil) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot nil) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*)))
+           (model-holds ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 256))) (address nil) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*)))
+           (address-space ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 1024))) (address (list (hct-mib 1100))) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*))))
   :mutations ((reservation-held-to-the-resident-limit
                (:conclusion
-                (and (equal (car (fn-mo-serve-decide profile img cfg resident address core nursery tot pools pool-heap))
-                            :heap)
-                     (<= (fn-mm-launch-reservation (fn-mo-serve-limit resident pools) core nursery
-                                                   (fn-adm-cfg-at cfg (fn-adm-capacity profile img cfg
-                                                                                       (fn-mo-serve-limit resident pools) tot))
-                                                   profile)
-                         (fn-mm-least-observation resident))))
-               ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (cfg *hct-sv-cfg*) (resident (list (hct-mib 1024)))
-                (address nil) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-host-tot*)
-                (pools *hct-sv-pools*) (pool-heap *hct-sv-pool-heap*))
+                (and (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap)
+                     (<= (fn-mo-serve-reservation profile core (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools) pool-threads) (fn-mm-least-observation resident))))
+               ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 1024))) (address nil) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*))
                :fault "a launch refused by comparing the reservation with the resident limit (L-FRESH's mechanism)"))
   :hints (("Goal" :in-theory (theory 'minimal-theory)
-           :use (fn-mo-serve-refuses-only-by-the-model fn-mo-serve-capacity-needs-a-resident-observation))))
+           :use fn-mo-serve-refuses-only-by-the-model)))
 
-(defkeystone hct-serve-startup-admits-the-pool
-  (implies (and (equal (car (fn-mo-serve-decide
-                                  profile img cfg resident address core nursery tot pools
-                                  (fn-prstartup-launch-extra profile workers cache-limit root)))
-                            :heap)
-                (and (natp occupied)
-                               (<= occupied (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery)))
-                (and (stringp root) (posp workers) (natp stack) (natp runtime) (natp cache-limit))
-                (and (natp fd-limit) (<= (max 8 (+ 1 (nfix cache-limit))) fd-limit)
-                       (fn-crl-table-supportedp (max 8 (+ 1 (nfix cache-limit))))))
-           (equal (car (fn-prstartup-plan
-                       (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide
-                                                  profile img cfg resident address core nursery tot pools
-                                                  (fn-prstartup-launch-extra profile workers cache-limit root)))))
-                       occupied (fn-mm-launch-dynamic (fn-mo-serve-limit resident pools) core nursery)
-                       root workers stack runtime cache-limit fd-limit
-                       (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))
-                 :admitted))
+(defkeystone hct-serve-launch-fits-the-address-space
+  (implies (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap)
+           (and (natp (fn-mo-serve-limit resident pools))
+                  (implies (natp (fn-mm-least-observation address)) (<= (fn-heap-reservation-octets (cadr (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) core (nth 4 (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) (nth 5 (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads))) (fn-mm-least-observation address)))
+                  (implies (and (fn-mm-tot-p tot)
+                                (equal (fn-mo-reopen-cfg owner-cfg)
+                                       (fn-mo-reopen-cfg
+                                        (fn-mo-serve-cfg trigger
+                                                         (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads))))
+                                                                                  nursery)
+                                                         live cold profile config))))
+                           (<= (fn-mm-reopen-need profile img owner-cfg tot) (fn-mo-serve-limit resident pools)))))
   :rule-classes nil
-  :hyps (accepted occupied-held shape table)
+  :hyps (accepted)
   :subject fn-mo-serve-decide
-  :witness ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (cfg *hct-sv-cfg*) (resident (list (hct-mib 256)))
-            (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-core-tot*) (pools *hct-sv-pools*)
-            (workers 4) (cache-limit 8) (root "/x") (occupied 28704768) (stack 0) (runtime 0) (fd-limit 256))
-  :breaks ((accepted ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (cfg *hct-sv-cfg*)
-                      (resident (list (hct-mib 256))) (address nil) (core *hct-sv-host-core*) (nursery *hct-nur*)
-                      (tot *hct-sv-host-tot*) (pools *hct-sv-pools*) (workers 4) (cache-limit 8) (root "/x")
-                      (occupied 28704768) (stack 0) (runtime 0) (fd-limit 256)))
-           (occupied-held ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (cfg *hct-sv-cfg*)
-                           (resident (list (hct-mib 256))) (address nil) (core *hct-sv-core*) (nursery *hct-nur*)
-                           (tot *hct-sv-core-tot*) (pools *hct-sv-pools*) (workers 4) (cache-limit 8) (root "/x")
-                           (occupied 1000000000000) (stack 0) (runtime 0) (fd-limit 256)))
-           (shape ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (cfg *hct-sv-cfg*)
-                   (resident (list (hct-mib 256))) (address nil) (core *hct-sv-core*) (nursery *hct-nur*)
-                   (tot *hct-sv-core-tot*) (pools *hct-sv-pools*) (workers 0) (cache-limit 8) (root "/x")
-                   (occupied 28704768) (stack 0) (runtime 0) (fd-limit 256)))
-           (table ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (cfg *hct-sv-cfg*)
-                   (resident (list (hct-mib 256))) (address nil) (core *hct-sv-core*) (nursery *hct-nur*)
-                   (tot *hct-sv-core-tot*) (pools *hct-sv-pools*) (workers 4) (cache-limit 8) (root "/x")
-                   (occupied 28704768) (stack 0) (runtime 0) (fd-limit 8))))
-  :mutations ((protected-by-the-profile-bound
+  :witness ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 1024))) (address (list (hct-mib 2000))) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner-cfg (hct-sv-cfg *hct-sv-host-core* 1024)))
+  :breaks ((accepted ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident nil) (address (list (hct-mib 2000))) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner-cfg (hct-sv-cfg *hct-sv-host-core* 1024)))))
+  :mutations ((reservation-held-to-the-resident-limit
                (:conclusion
-                (equal (car (fn-prstartup-plan
-                             (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide
-                                                        profile img cfg resident address core nursery tot pools
-                                                        (fn-prstartup-launch-extra profile workers cache-limit root)))))
-                             occupied (fn-prstartup-protected profile core nursery nil 31 nil)
-                             root workers stack runtime cache-limit fd-limit
-                             (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers)))
-                       :admitted))
-               ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (cfg *hct-sv-cfg*) (resident (list (hct-mib 256)))
-                (address nil) (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-core-tot*) (pools *hct-sv-pools*)
-                (workers 4) (cache-limit 8) (root "/x") (occupied 28704768) (stack 0) (runtime 0) (fd-limit 256))
-               :fault "the owner's pool plan held to today's profile-bound protected runtime, which refuses the launched heap"))
+                (and (natp (fn-mo-serve-limit resident pools))
+                  (implies (natp (fn-mm-least-observation address)) (<= (fn-heap-reservation-octets (cadr (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) core (nth 4 (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) (nth 5 (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads))) (fn-mm-least-observation address)))
+                  (implies (and (fn-mm-tot-p tot)
+                                (equal (fn-mo-reopen-cfg owner-cfg)
+                                       (fn-mo-reopen-cfg
+                                        (fn-mo-serve-cfg trigger
+                                                         (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads))))
+                                                                                  nursery)
+                                                         live cold profile config))))
+                           (<= (fn-mm-reopen-need profile img owner-cfg tot) (fn-mo-serve-limit resident pools)))
+                  (<= (fn-heap-reservation-octets (cadr (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) core (nth 4 (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) (nth 5 (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads))) (fn-mm-least-observation resident))))
+               ((profile *hct-sv-profile*) (img *hct-sv-host-img*) (trigger 8388608) (live nil) (cold nil) (config 119) (resident (list (hct-mib 1024))) (address (list (hct-mib 2000))) (core *hct-sv-host-core*) (nursery *hct-nur*) (tot *hct-sv-tot*) (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*) (owner-cfg (hct-sv-cfg *hct-sv-host-core* 1024)))
+               :fault "a launch whose reservation is held to the resident limit (L-FRESH's mechanism)"))
   :hints (("Goal" :in-theory (union-theories '(nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
-           :use (fn-mo-serve-startup-admits-the-pool
-                 (:instance fn-mo-serve-decide-heap-shape
-                            (pool-heap (fn-prstartup-launch-extra profile workers cache-limit root)))))))
+           :use (fn-mo-serve-launch-fits-the-address-space fn-mo-serve-decide-heap-mb))))

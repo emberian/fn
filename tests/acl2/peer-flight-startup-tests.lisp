@@ -1,48 +1,52 @@
 (in-package "ACL2")
 (include-book "../../books/peer-flight-startup")
+(include-book "../../books/defkeystone")
+(include-book "std/testing/assert-bang" :dir :system)
 (defconst *pfrst-peer* '(32768 65536 2 1 32768 20))
 (defconst *pfrst-core* '(83886080 . 67108864))
 (defconst *pfrst-plan*
  (fn-prstartup-default-plan-with-peer 268435456 67108864 nil *pfrst-core* 0 nil nil 0
-                                     "/tmp/store" 4 8 256 *pfrst-peer* nil))
+                                     "/tmp/store" 4 8 256 *pfrst-peer* nil nil))
 (assert-event
  (and (fn-prstartup-planp *pfrst-plan*)
       (equal (fn-pfr-at 0 (fn-prstartup-peer-grant 268435456 nil *pfrst-core* 0 nil 0
-                                                *pfrst-plan* *pfrst-peer* nil)) :hold)
-      (equal (+ (fn-prstartup-peer-protected nil *pfrst-core* 0 nil 0 *pfrst-plan* nil)
+                                                *pfrst-plan* *pfrst-peer* nil nil)) :hold)
+      (equal (+ (fn-prstartup-peer-protected nil *pfrst-core* 0 nil 0 *pfrst-plan* nil nil)
                 (fn-pfr-at 0 *pfrst-peer*)) 268435456)))
 (assert-event
  (equal (fn-prstartup-default-plan-with-peer 268435456 67108864 nil *pfrst-core* 0 nil nil 0
-                                            "/tmp/store" 4 8 256 nil nil)
-        (fn-prstartup-default-plan 268435456 67108864 nil *pfrst-core* 0 nil nil 0
-                                   "/tmp/store" 4 8 256 nil)))
+                                            "/tmp/store" 4 8 256 nil nil nil)
+        (fn-prstartup-plan 268435456 67108864
+                           (fn-prstartup-protected nil *pfrst-core* 0 nil 0 nil)
+                           "/tmp/store" 4 (fn-heap-stack-octets nil) *fn-heap-thread-runtime-octets*
+                           8 256 (fn-prstartup-read-reserve (fn-prstartup-read-extent nil) 4))))
 (assert-event
  (and (equal (fn-prstartup-status
   (fn-prstartup-default-plan-with-peer 268435456 67108864 nil *pfrst-core* 0 nil nil 0
-                                       "/tmp/store" 4 8 256 '(bad) nil)) :refused)
-      (equal (fn-pfr-at 0 (fn-prstartup-peer-grant 268435456 nil *pfrst-core* 0 nil 0 nil *pfrst-peer* nil)) :refused)))
+                                       "/tmp/store" 4 8 256 '(bad) nil nil)) :refused)
+      (equal (fn-pfr-at 0 (fn-prstartup-peer-grant 268435456 nil *pfrst-core* 0 nil 0 nil *pfrst-peer* nil nil)) :refused)))
 
 (assert-event
  (and (fn-pfr-operation-observes-p :run)
       (not (fn-pfr-operation-observes-p :status))
       (equal (fn-prstartup-peer-native-capture 268435456 nil *pfrst-core* 0 nil 0
-               *pfrst-plan* *pfrst-peer* nil)
+               *pfrst-plan* *pfrst-peer* nil nil)
              (list 268435456
-                   (fn-prstartup-peer-protected nil *pfrst-core* 0 nil 0 *pfrst-plan* nil)
+                   (fn-prstartup-peer-protected nil *pfrst-core* 0 nil 0 *pfrst-plan* nil nil)
                    *pfrst-peer* (fn-heap-stack-octets nil) *fn-heap-thread-runtime-octets*))
       (not (fn-prstartup-peer-native-capture 268435456 nil *pfrst-core* 0 nil 0
-               nil *pfrst-peer* nil))))
+               nil *pfrst-peer* nil nil))))
 
 (assert-event
  (let* ((need (fn-heap-reservation-octets 256 *pfrst-core* (fn-heap-stack-kib nil)
                     (+ (fn-heap-thread-count 0) 1)))
         (yes (fn-prstartup-peer-native-grant 268435456 nil *pfrst-core* 0 nil 0
-                    *pfrst-plan* *pfrst-peer* (list need) nil))
+                    *pfrst-plan* *pfrst-peer* (list need) nil 4 8 "/tmp/store" nil))
         (no (fn-prstartup-peer-native-grant 268435456 nil *pfrst-core* 0 nil 0
-                    *pfrst-plan* *pfrst-peer* (list (1- need)) nil)))
+                    *pfrst-plan* *pfrst-peer* (list (1- need)) nil 4 8 "/tmp/store" nil)))
   (and (equal (car yes) :hold)
        (equal (cadr yes) (fn-prstartup-peer-native-capture 268435456 nil *pfrst-core* 0 nil 0
-                          *pfrst-plan* *pfrst-peer* nil))
+                          *pfrst-plan* *pfrst-peer* nil nil))
        (equal no '(:refused :peer-native-reservation-not-held)))))
 
 ; A policy file changed after launch cannot add a second unfunded worker.
@@ -51,119 +55,132 @@
                     (+ (fn-heap-thread-count 0) 1)))
         (changed (update-nth 3 2 *pfrst-peer*))
         (grant (fn-prstartup-peer-native-grant 268435456 nil *pfrst-core* 0 nil 0
-                    *pfrst-plan* changed (list need) nil)))
+                    *pfrst-plan* changed (list need) nil 4 8 "/tmp/store" nil)))
   (and (fn-pfr-policy-p changed)
        (equal (car (fn-prstartup-peer-grant 268435456 nil *pfrst-core* 0 nil 0
-                    *pfrst-plan* changed nil)) :hold)
+                    *pfrst-plan* changed nil nil)) :hold)
        (equal grant '(:refused :peer-native-reservation-not-held))
        (stringp (fn-prstartup-peer-native-refusal-line grant)))))
 
-; Launcher and startup agree with a peer flight profile (cold-start,
-; 2026-10-04): the run the launcher reserves for a fresh development store
-; with this peer allowance is admitted and its native grant held at exactly
-; that figure whatever the store observation; an 85% heap refuses.
-; The host trigger the figures are taken at: books/profile-limits.lisp's :gc-nursery-mib
-; (+fnn-gc-nursery-octets+), not a copy of its value.
-(defconst *pfrst-nursery* (* 1048576 (fn-profile-limit :gc-nursery-mib)))
-(defconst *pfrst-run-core* '(615110568 . 517243296))
-(defconst *pfrst-fresh* '(0 . 0))
-(defconst *pfrst-machine* (list (* 24 1073741824)))
-(defconst *pfrst-flight* (list (* 8 1048576) (* 512 1048576) 2 1 (* 64 1048576) (expt 2 50)))
-(defconst *pfrst-run*
- (fn-pfr-extend-operation-reservation
-  (fn-prstartup-extend-operation-reservation
-   (fn-heap-reserve-operation-decide :run *fn-bs-profile-development* *pfrst-run-core*
-                                     *pfrst-nursery* *pfrst-machine* 32 *pfrst-fresh*)
-   :run nil "/tmp/store" 4 8 *pfrst-run-core* *pfrst-machine*
-   *fn-bs-profile-development* *pfrst-fresh*)
-  :run *pfrst-flight* *pfrst-run-core* *pfrst-machine*))
-(assert-event
- (let* ((dyn (* 1048576 (fn-prstartup-nth 1 *pfrst-run*)))
-        (plan (fn-prstartup-default-plan-with-peer
-               dyn (cdr *pfrst-run-core*) *fn-bs-profile-development* *pfrst-run-core*
-               *pfrst-nursery* nil nil 32 "/tmp/store" 4 8 1024 *pfrst-flight* *pfrst-fresh*)))
-  (and (equal (fn-prstartup-nth 0 *pfrst-run*) :heap)
-       (fn-prstartup-planp plan)
-       (equal (car (fn-prstartup-peer-native-grant
-                    dyn *fn-bs-profile-development* *pfrst-run-core* *pfrst-nursery* nil 32
-                    plan *pfrst-flight* *pfrst-machine* *pfrst-fresh*))
-              :hold)
-       ; a run is sized for the full store, so the observation is not read
-       (fn-prstartup-planp
-        (fn-prstartup-default-plan-with-peer
-         dyn (cdr *pfrst-run-core*) *fn-bs-profile-development* *pfrst-run-core*
-         *pfrst-nursery* nil nil 32 "/tmp/store" 4 8 1024 *pfrst-flight* nil))
-       ; and an 85% heap (tests/test_native_start_every_preset.py) is refused
-       (equal (fn-prstartup-status
-               (fn-prstartup-default-plan-with-peer
-                (floor (* 85 dyn) 100) (cdr *pfrst-run-core*) *fn-bs-profile-development*
-                *pfrst-run-core* *pfrst-nursery* nil nil 32 "/tmp/store" 4 8 1024
-                *pfrst-flight* nil))
-              :refused))))
+;; L-RUN-LAUNCH, K-L4: the owner starts what the probe launched.  The witnesses are the heap-command teeth's
+;; (tests/acl2/heap-command-tests.lisp): fn-core's probe with the peer flight the run funds.
+(defconst *pfrst-sv-profile*
+  '((102 110 45 115 116 111 114 101 45 49 48) 16384 8388608 196608 32768 16 256 128 1048576 1048576 1048576
+    1048576 1048576 64 256 16384))
+(defconst *pfrst-sv-peer* '(11728 917504 2 1 458752 33554432))
+(defconst *pfrst-sv-core-img* '(81046496 30081024 1376256))
+(defconst *pfrst-sv-core* '(81046496 . 30081024))
+(defconst *pfrst-sv-host-img* '(248946304 30081024 1310720))
+(defconst *pfrst-sv-host-core* '(248946304 . 136689072))
+(defconst *pfrst-sv-tot* '(0 0 0 0 0 0 0 0 :RESIDENT))
+(defconst *pfrst-sv-nursery* 8388608)
+(defun pfrst-mib (n) (* n 1048576))
+(defun pfrst-sv-pools (profile peer workers cache-limit root)
+  (fn-mo-serve-pools profile nil nil peer workers cache-limit root))
+;; the probe's decision at fn-core with 256 MiB resident, and the space the owner starts in
+(defconst *pfrst-sv-d*
+  (fn-mo-serve-decide *pfrst-sv-profile* *pfrst-sv-core-img* 8388608 nil nil 119 (list (pfrst-mib 256)) nil
+                      *pfrst-sv-core* *pfrst-sv-nursery* *pfrst-sv-tot*
+                      (pfrst-sv-pools *pfrst-sv-profile* *pfrst-sv-peer* 4 8 "/x")
+                      (fn-mo-serve-pool-threads nil *pfrst-sv-peer*)))
+(defconst *pfrst-sv-dyn* (* *fn-heap-mib* (cadr *pfrst-sv-d*)))
+(defconst *pfrst-sv-trigger* (fn-heap-nursery-trigger *pfrst-sv-dyn* *pfrst-sv-nursery*))
+(defconst *pfrst-sv-owner* '(81046496 . 70000000))
+(defun pfrst-sv-plan (protected)
+  (fn-prstartup-plan *pfrst-sv-dyn* 60000000 protected "/x" 4 (fn-heap-stack-octets *pfrst-sv-profile*)
+                     *fn-heap-thread-runtime-octets* 8 256
+                     (fn-prstartup-read-reserve (fn-prstartup-read-extent *pfrst-sv-profile*) 4)))
 
-; KEYSTONE fn-prstartup-peer-launch-admits-owner-protected, its fields
-; (cold-start, 2026-10-04; w-peer cls2/cls3 on 6107ceb56).  w-peer's store:
-; init --max-transactions 16384 --max-history-octets 67108864
-; --max-record-octets 196608 --max-article-octets 32768
-; --max-groups-per-article 16 --max-open-suffix 128, peer flight profile
-; 8MiB,512MiB,2,1,64MiB,2^50.  A probe whose own usage is 214.6 MB answers
-; 1509 without the launch floor (DEFAULT extension skipped), and an owner
-; whose usage is 18 MB larger needs 1526: the figures of the hand repro.
-(defconst *pfrst-wp-profile*
- (update-nth 7 128 (update-nth 5 16 (update-nth 3 196608
-  (fn-bs-profile-preset 16384 67108864 32768)))))
-(defconst *pfrst-wp-probe-core* '(615110568 . 214600000))
-(defconst *pfrst-wp-owner-core* '(615110568 . 232600000))
-(defconst *pfrst-wp-base*
- (fn-heap-reserve-operation-decide :run *pfrst-wp-profile* *pfrst-wp-probe-core*
-                                   *pfrst-nursery* *pfrst-machine* 32 *pfrst-fresh*))
-(defconst *pfrst-wp-run*
- (fn-pfr-extend-operation-reservation
-  (fn-prstartup-extend-operation-reservation *pfrst-wp-base*
-   :run nil "/tmp/store" 4 8 *pfrst-wp-probe-core* *pfrst-machine*
-   *pfrst-wp-profile* *pfrst-fresh*)
-  :run *pfrst-flight* *pfrst-wp-probe-core* *pfrst-machine*))
-(defun pfrst-wp-owner-need (dyn core)
- (declare (xargs :guard t :verify-guards nil))
- (fn-prstartup-protected-with-peer
-  *pfrst-wp-profile* core
-  (fn-heap-nursery-trigger dyn (* 1048576 (fn-profile-limit :gc-nursery-mib)))
-  nil 32 *pfrst-flight* *pfrst-fresh*))
-; Satisfiable: the profile is valid, the launcher answers :heap with the
-; peer, and the owner (same core file, larger usage) is admitted there:
-; its protected check, its DEFAULT plan and its native peer grant.
+;; The owner's DEFAULT pool plan is admitted at the launched space and its native peer grant holds ...
 (assert-event
- (let* ((dyn (* 1048576 (fn-prstartup-nth 1 *pfrst-wp-run*)))
-        (nursery (fn-heap-nursery-trigger dyn (* 1048576 (fn-profile-limit :gc-nursery-mib))))
-        (plan (fn-prstartup-default-plan-with-peer
-               dyn (cdr *pfrst-wp-owner-core*) *pfrst-wp-profile* *pfrst-wp-owner-core*
-               nursery nil nil 32 "/tmp/store" 4 8 1024 *pfrst-flight* *pfrst-fresh*)))
-  (and (fn-bs-profile-validp *pfrst-wp-profile*)
-       (fn-pfr-policy-p *pfrst-flight*)
-       (equal (fn-prstartup-nth 0 *pfrst-wp-run*) :heap)
-       ;; 1891 before the pool's read reserve (lane pool-refusal): the
-       ;; served run now also holds its workers' reads in flight.
-       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 2410)
-       (equal (fn-heap-core-file *pfrst-wp-owner-core*) (fn-heap-core-file *pfrst-wp-probe-core*))
-       (<= (pfrst-wp-owner-need dyn *pfrst-wp-owner-core*) dyn)
-       (fn-prstartup-planp plan)
-       (equal (car (fn-prstartup-peer-native-grant
-                    dyn *pfrst-wp-profile* *pfrst-wp-owner-core* nursery nil 32
-                    plan *pfrst-flight* *pfrst-machine* *pfrst-fresh*))
-              :hold))))
-; Teeth: without the DEFAULT extension's launch floor the peer figure is
-; 6107ceb56's figure (1509 at the 64 MiB trigger, 1397 at the 8 MiB trigger
-; since MEM-007; 2024 with the history roots' reserve and the full store), and the owner refuses it (it needs 2041, was 1805 before the run was sized for the full store, 1526 before that); an owner
-; core with a larger file (the core-file hypothesis dropped) fails at 2410
-; (was 2174, 1893).
+ (let ((plan (fn-prstartup-default-plan-with-peer
+              *pfrst-sv-dyn* 60000000 *pfrst-sv-profile* *pfrst-sv-owner* *pfrst-sv-trigger* nil nil 31 "/x" 4 8 256
+              *pfrst-sv-peer* nil (list (pfrst-mib 256)))))
+   (and (equal (car *pfrst-sv-d*) :heap)
+        (equal (car plan) :admitted)
+        (equal (car (fn-prstartup-peer-native-grant
+                     *pfrst-sv-dyn* *pfrst-sv-profile* *pfrst-sv-owner* *pfrst-sv-trigger* nil 31 plan
+                     *pfrst-sv-peer* (list (pfrst-mib 2048)) nil 4 8 "/x" (list (pfrst-mib 256))))
+               :hold))))
+;; ... and the protected runtime it was admitted at is within the profile's bound, strictly (the launch is
+;; smaller than the whole store the profile admits, which at fn-core's 256 MiB the plan cannot be held to).
 (assert-event
- (let* ((old (fn-pfr-extend-operation-reservation *pfrst-wp-base* :run *pfrst-flight*
-                                                   *pfrst-wp-probe-core* *pfrst-machine*))
-        (dyn-old (* 1048576 (fn-prstartup-nth 1 old)))
-        (dyn (* 1048576 (fn-prstartup-nth 1 *pfrst-wp-run*))))
-  (and (equal (fn-prstartup-nth 0 old) :heap)
-       (equal (fn-prstartup-nth 1 old) 2024)
-       (not (<= (pfrst-wp-owner-need dyn-old *pfrst-wp-owner-core*) dyn-old))
-       (<= (pfrst-wp-owner-need (* 1048576 2041) *pfrst-wp-owner-core*) (* 1048576 2041))
-       (not (<= (pfrst-wp-owner-need (* 1048576 2040) *pfrst-wp-owner-core*) (* 1048576 2040)))
-       (not (<= (pfrst-wp-owner-need dyn '(1615110568 . 1600000000)) dyn)))))
+ (let ((limit (fn-prstartup-serve-limit *pfrst-sv-profile* nil *pfrst-sv-peer* 4 8 "/x" (list (pfrst-mib 256)))))
+   (and (natp limit)
+        (< (fn-prstartup-serve-protected *pfrst-sv-profile* *pfrst-sv-owner* *pfrst-sv-trigger* nil 31 nil limit)
+           (fn-prstartup-protected *pfrst-sv-profile* *pfrst-sv-owner* *pfrst-sv-trigger* nil 31 nil)))))
+;; Held to the profile's bound the same plan is refused: the heap the probe launched does not hold it.
+(assert-event
+ (equal (pfrst-sv-plan (+ (fn-prstartup-protected *pfrst-sv-profile* *pfrst-sv-owner* *pfrst-sv-trigger* nil 31 nil)
+                          (nfix (car *pfrst-sv-peer*))))
+        '(:refused :default-pool-heap-not-held)))
+
+
+(defkeystone pfrst-serve-startup-admits-the-pool
+  (implies (and (equal (car (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))) :heap)
+                (equal (fn-heap-core-file owner) (fn-heap-core-file core))
+                (and (natp occupied) (<= occupied (fn-heap-core-dynamic owner)))
+                (and (natp (fn-mm-least-observation resident-o))
+                     (<= (fn-mm-least-observation resident-o) (fn-mm-least-observation resident)))
+                (or (not peer) (fn-pfr-policy-p peer))
+                (or (not output) (fn-orv-policy-p output))
+                (and (stringp root) (posp workers) (natp cache-limit) (natp fd-limit))
+                (<= (max 8 (+ 1 cache-limit)) fd-limit)
+                (fn-crl-table-supportedp (max 8 (+ 1 cache-limit))))
+           (and (equal (car (fn-prstartup-default-plan-with-peer (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) occupied profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery) nil output
+                                                   max-connections root workers cache-limit fd-limit
+                                                   peer observed resident-o)) :admitted)
+                (implies peer (equal (car (fn-prstartup-peer-native-grant (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery) output max-connections (fn-prstartup-default-plan-with-peer (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) occupied profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery) nil output
+                                                   max-connections root workers cache-limit fd-limit
+                                                   peer observed resident-o) peer
+                                                    address observed workers cache-limit root resident-o)) :hold))))
+  :rule-classes nil
+  :hyps (accepted same-core occupied-held owner-observed peer-valid output-valid pool-shape table-fits table-supported)
+  :subject fn-mo-serve-decide
+  :witness ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8) (root "/x") (owner (cons 81046496 70000000)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o (list (pfrst-mib 256))))
+  :breaks ((accepted ((profile *pfrst-sv-profile*) (img *pfrst-sv-host-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 1024))) (address (list (pfrst-mib 1100))) (core *pfrst-sv-host-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8) (root "/x") (owner *pfrst-sv-host-core*) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o (list (pfrst-mib 1024)))))
+           (same-core ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8) (root "/x") (owner (cons 999999999999 999999999999)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o (list (pfrst-mib 256)))))
+           (occupied-held ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8) (root "/x") (owner (cons 81046496 70000000)) (occupied 1000000000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o (list (pfrst-mib 256)))))
+           (owner-observed ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8) (root "/x") (owner (cons 81046496 70000000)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o nil)))
+           (peer-valid ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer '(bad)) (workers 4) (cache-limit 8) (root "/x") (owner (cons 81046496 70000000)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o (list (pfrst-mib 256)))))
+           (output-valid ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output '(bad)) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8) (root "/x") (owner (cons 81046496 70000000)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o (list (pfrst-mib 256)))))
+           (pool-shape ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 0) (cache-limit 8) (root "/x") (owner (cons 81046496 70000000)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o (list (pfrst-mib 256)))))
+           (table-fits ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8) (root "/x") (owner (cons 81046496 70000000)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 8) (resident-o (list (pfrst-mib 256)))))
+           (table-supported ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 4000000))) (address nil) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 4) (cache-limit (expt 2 25)) (root "/x") (owner (cons 81046496 70000000)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit (expt 2 26)) (resident-o (list (pfrst-mib 4000000))))))
+  :mutations ((protected-by-the-profile-bound
+               (:conclusion
+                (equal (car (fn-prstartup-plan (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) occupied (+ (fn-prstartup-protected profile owner (fn-heap-nursery-trigger (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer))))) nursery) output max-connections observed) (if peer (nfix (fn-pfr-at 0 peer)) 0)) root workers
+                                           (fn-heap-stack-octets profile) *fn-heap-thread-runtime-octets*
+                                           cache-limit fd-limit
+                                           (fn-prstartup-read-reserve (fn-prstartup-read-extent profile) workers))) :admitted))
+               ((profile *pfrst-sv-profile*) (img *pfrst-sv-core-img*) (trigger 8388608) (live nil) (config 119) (resident (list (pfrst-mib 256))) (address (list (pfrst-mib 2048))) (core *pfrst-sv-core*) (nursery *pfrst-sv-nursery*) (tot *pfrst-sv-tot*) (output nil) (peer *pfrst-sv-peer*) (workers 4) (cache-limit 8) (root "/x") (owner (cons 81046496 70000000)) (occupied 60000000) (max-connections 31) (observed nil) (fd-limit 256) (resident-o (list (pfrst-mib 256))))
+               :fault "the owner's pool plan held to today's profile-bound protected runtime, which refuses the launched heap"))
+  :hints (("Goal" :in-theory (union-theories '(nfix fn-heap-mb-of-natp) (theory 'minimal-theory))
+           :use (fn-mo-serve-startup-admits-the-pool
+                 (:instance fn-mo-serve-decide-heap-mb (cold nil) (pools (fn-mo-serve-pools profile nil output peer workers cache-limit root)) (pool-threads (fn-mo-serve-pool-threads nil peer)))))))
+
+;; K-L4c (fn-mo-serve-output-pool-is-held): with a 16 MiB output pool the run funds, fn-core's probe at
+;; 256 MiB launches, and the owner's output grant holds at the launched space: its store need and
+;; the pool fit, and books/output-reservation.lisp's grant is :hold.  Tooth: the need at the profile's
+;; bound alone (the store figure the grant was given before L-RUN-LAUNCH) does not fit that space.
+(defconst *pfrst-sv-output* '(16777216 1048576))
+(defconst *pfrst-sv-od*
+  (fn-mo-serve-decide *pfrst-sv-profile* *pfrst-sv-core-img* 8388608 nil nil 119 (list (pfrst-mib 256)) nil
+                      *pfrst-sv-core* *pfrst-sv-nursery* *pfrst-sv-tot*
+                      (fn-mo-serve-pools *pfrst-sv-profile* nil *pfrst-sv-output* *pfrst-sv-peer* 4 8 "/x")
+                      (fn-mo-serve-pool-threads nil *pfrst-sv-peer*)))
+(defconst *pfrst-sv-odyn* (* *fn-heap-mib* (cadr *pfrst-sv-od*)))
+(defconst *pfrst-sv-need*
+  (fn-prstartup-serve-store-need *pfrst-sv-profile* *pfrst-sv-owner*
+                                 (fn-heap-nursery-trigger *pfrst-sv-odyn* *pfrst-sv-nursery*)
+                                 *pfrst-sv-output* *pfrst-sv-peer* 4 8 "/x" (list (pfrst-mib 256))))
+(assert-event
+ (and (equal (car *pfrst-sv-od*) :heap)
+      (fn-orv-policy-p *pfrst-sv-output*)
+      (<= (+ *pfrst-sv-need* (car *pfrst-sv-output*)) *pfrst-sv-odyn*)
+      (equal (car (fn-orv-startup-grant *pfrst-sv-odyn* *pfrst-sv-need* nil *pfrst-sv-output* 33)) :hold)))
+(assert-event
+ (< *pfrst-sv-odyn*
+    (+ (fn-prstartup-protected *pfrst-sv-profile* *pfrst-sv-owner*
+                               (fn-heap-nursery-trigger *pfrst-sv-odyn* *pfrst-sv-nursery*) nil 31 nil)
+       (car *pfrst-sv-output*))))

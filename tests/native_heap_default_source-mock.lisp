@@ -1,6 +1,12 @@
-; SCN-1136: actual heap consumers with actual ACL2 DEFAULT arithmetic.
-; Machine/config/base/output observations are explicit seams. This is neither
-; complete allocation coverage nor execution of a saved image/Store recovery.
+; SCN-1136, restated for L-RUN-LAUNCH: the actual heap probe source
+; (host/native/heap.lisp fnn-heap-reservation, fnn-heap-serve-decision,
+; fnn-heap-print-store-line) over recording seams for ACL2's decisions.  A
+; served run is decided by fn-mo-serve-decide over the run's own observations
+; (charged totals, image, configuration octets, resident and address-space
+; limits, the pools fn-mo-serve-pools prices), its BP terms held to the
+; address space; every other command by fn-heap-command-decide over the
+; machine.  The arithmetic is the books' (tests/acl2/heap-command-tests.lisp);
+; this checks what the host passes.  Not a saved image or a Store recovery.
 (load "tests/native_operator_diagnostics_source-mock.lisp")
 (in-package "ACL2")
 
@@ -31,9 +37,6 @@
 (defun true-listp (x) (if (consp x) (true-listp (cdr x)) (null x)))
 (defun member-eq (x xs) (member x xs :test #'eq))
 (defun assoc-eq (x xs) (assoc x xs :test #'eq))
-(load "books/profile-limits.lisp")
-(load "books/cold-read-layout.lisp")
-(load "books/decoded-worker-backing.lisp")
 ; Read only the selected actual definitions/constants, not theorem forms or
 ; dependency substitutes. ALL selected names must exist in the source.
 (defun selected-source (path names)
@@ -43,155 +46,121 @@
                     (member (second form) names))
           do (eval form) (setf names (remove (second form) names))
           finally (assert (null names)))))
-(selected-source "books/cold-guard-bootstrap.lisp"
- '(*fn-cgb-roster* fn-cgb-capacity fn-cgb-retained-conses
-   fn-cgb-prewarm-conses fn-cgb-baseline-octets))
-(selected-source "books/heap-figure.lisp"
- '(*fn-heap-mib* fn-heap-mb-of fn-heap-machine-octets))
-(selected-source "books/native-config.lisp"
- '(fn-ncfg-nth *fn-ncfg-max-u64* fn-native-config-output-resources-wfp))
-;; The cold-wait queue is part of the fixed reservation since s-coldwait (train 45).
-(selected-source "books/cold-read-wait.lisp" '(*fn-cwq-bound* fn-cwq-bound *fn-cwq-entry-octets* fn-cwq-queue-octets))
-(selected-source "books/cold-read-reservation.lisp" '(fn-crv-nth))
-(selected-source "books/output-reservation.lisp" '(fn-orv-policy-p fn-orv-extend-reservation))
-(selected-source "books/heap-store-figure.lisp" '(fn-heap-core-file *fn-heap-nursery-least-octets* fn-heap-nursery-trigger fn-heap-with-nursery fn-heap-grow-runtime-dynamic))
-(selected-source "books/heap-reservation.lisp"
- '(*fn-heap-thread-runtime-octets* fn-heap-reservation-octets))
-;; ACL2's launch extra (books/page-read-startup.lisp fn-prstartup-launch-extra):
-;; the reads in flight at the profile's segment extent, and what that reads.
-(selected-source "books/page-read-startup.lisp"
- '(fn-prstartup-launch-extra fn-prstartup-registration-reserve fn-prstartup-read-extent fn-prstartup-read-reserve fn-prstartup-read-demand fn-prstartup-read-token-octets))
-(selected-source "books/byte-store-frame.lisp"
- '(fn-bs-profile-max-record-octets *fn-bs-pf-max-record-octets* fn-bs-profile-field fn-bs-profile-of fn-bs-profile-validp fn-bs-profile-invalid-reason *fn-bs-pf-max-transactions* fn-bs-pf fn-bs-meta-nth *fn-bs-pf-max-history-octets* *fn-bs-pf-max-article-octets* *fn-bs-pf-max-groups-per-article* *fn-bs-pf-max-group-name-octets* *fn-bs-pf-max-open-suffix* *fn-bs-meta-profile-spec*))
-(selected-source "books/frame-fields.lisp"
- '(fn-frame-values-okp fn-frame-field-okp fn-frame-textp))
-(selected-source "books/frame-octets.lisp"
- '(*fn-frame-max-text* *fn-frame-trailer-octets*))
-(selected-source "books/cbor.lisp"
- '(fn-cbor-at-mostp fn-cbor-octet-listp))
-(selected-source "books/store-checkpoint-codec.lisp"
- '(fn-scc-segment-max-octets))
-(selected-source "books/store-tree-codec.lisp"
- '(*fn-scc-segment-header-octets*))
-(selected-source "books/page-read-resources.lisp"
- '(fn-prs-worker-demand))
-(selected-source (or (fourth sb-ext:*posix-argv*) "books/page-read-startup.lisp")
- '(fn-prstartup-nth fn-prstartup-fd-bookkeeping fn-prstartup-baseline-heap
-   fn-prstartup-required-heap fn-prstartup-extend-default-reservation
-   fn-prstartup-extend-operation-reservation))
-(source-forms (or (third sb-ext:*posix-argv*) "host/native/heap.lisp")
- '(fnn-heap-extend-reservation))
-;; The launch floor's store figure is books/page-read-startup.lisp's keystone
-;; subject; here it records the observation the host passes and adds nothing.
-(defvar *floor-args* nil)
-(defun fn-prstartup-launch-floor (profile core observed)
-  (push (list profile core observed) *floor-args*) 0)
-(source-forms (or (fifth sb-ext:*posix-argv*) (third sb-ext:*posix-argv*) "host/native/heap.lisp")
- '(fnn-heap-reservation fnn-heap-print-store-line))
-(source-forms "host/native/extent.lisp" '(fnn-extent-cache-limit))
+;; The heap source, and the host observations it calls, as seams.
 (defparameter +fnn-gc-nursery-octets+ 67108864)
+(defparameter +fnn-owner-service-nursery-octets+ 8388608)
+(source-forms "host/native/heap.lisp"
+ '(fnn-heap-serve-decision fnn-heap-reservation fnn-heap-print-store-line))
+(source-forms "host/native/extent.lisp" '(fnn-extent-cache-limit))
+(defparameter *serve* '(:heap 350 "small" 251 1024 36))
 (defparameter *base* '(:heap 256 :small 8192 1024 16))
+(defparameter *profile* '(:recorded-profile))
 (defparameter *cold* nil)
 (defparameter *output* nil)
 (defparameter *live* nil)
+(defparameter *peer* '(:peer-policy))
+(defparameter *bp-terms* nil)
 (defparameter *core-observation* '(83886080 . 67108864))
 (defparameter *machine* '(8589934592))
+(defparameter *resident* '(268435456))
+(defparameter *address* '(1153433600))
+(defparameter *totals* '(0 0 0 0 0 0 0 0 :resident))
+(defparameter *extent* 1048576)
+(defparameter *img* '(81046496 30081024 1376256))
 (defparameter *calls* nil)
-(defparameter *captured-core* 0)
-(defparameter *captured-machine* 0)
+(defparameter *observed* nil)
 (defparameter *original-core* (symbol-function 'fnn-core))
+(defun observe (what value) (push what *observed*) value)
 (defun fnn-absolute (path) (concatenate 'string "/absolute" path))
 (defun fnn-developer-selector (name) (declare (ignore name)) nil)
-(defun fnn-heap-image-observation () (incf *captured-core*) *core-observation*)
-(defun fnn-heap-observations () (incf *captured-machine*) *machine*)
+(defun fnn-heap-image-observation () (observe :core *core-observation*))
+(defun fnn-heap-observations () (observe :machine *machine*))
+(defun fnn-heap-resident-observations () (observe :resident *resident*))
+(defun fnn-heap-address-observations () (observe :address *address*))
+(defun fnn-heap-charged-totals (root profile)
+  (observe (list :totals root profile) nil)
+  (values *totals* *extent*))
+(defun fnn-heap-img-observation (profile) (observe (list :img profile) *img*))
+(defun fnn-heap-config-octets (root profile) (observe (list :config root profile) 119))
+(defun fnn-heap-card-octets () (observe :card 32768))
 (defun fnn-heap-history-observation (&rest args) (declare (ignore args)) '(0 . 0))
+(defun fnn-heap-store-profile (root) (observe (list :profile root) *profile*))
+(defun fnn-peer-flight-profile (root) (observe (list :peer root) *peer*))
 (defun fnn-core (entry &rest args)
   (case entry
-    ((fn-heap-reserve-operation-decide fn-heap-status-decide) *base*)
+    (fn-heap-command-growth (if (eq (first args) :run) :serves :grows))
+    (fn-mo-serve-pools (push (cons :pools args) *calls*) 4268136)
+    (fn-mo-serve-pool-threads (push (cons :pool-threads args) *calls*) 1)
+    (fn-mo-serve-decide (push (cons :serve args) *calls*) *serve*)
+    (fn-bph-extend-reservation (push (cons :bp args) *calls*) (first args))
+    (fn-heap-command-decide (push (cons :command args) *calls*) *base*)
     (fn-native-operator-host-result-run-cold-resources *cold*)
     (fn-native-operator-host-result-run-output-resources *output*)
     (fn-native-operator-host-result-run-reclaim-live *live*)
-    ;; D53 (books/reclaim-reservation.lisp): the opt-in's extension, first in
-    ;; the chain; recorded, and the base itself when off (its keystone
-    ;; fn-rrv-without-the-opt-in-is-the-base-decision), one more MiB when on.
-    (fn-rrv-extend-reservation
-     (push (cons :reclaim args) *calls*)
-     (let ((base (first args)))
-       (if (second args) (list* (first base) (1+ (second base)) (cddr base)) base)))
     (fn-pio-direct-workers 4)
     (fn-arx-read-cache-entries 8)
-    (fn-crv-extend-reservation
-     (push (cons :cold args) *calls*) (first args))
-    ((fn-prstartup-extend-operation-reservation fn-prstartup-extend-default-reservation)
-     (push (cons :default args) *calls*) (apply (symbol-function entry) args))
-    (fn-pfr-extend-operation-reservation
-     (push (cons :peer args) *calls*) (first args))
-    ;; books/bp-heap-command.lisp: not a BP node serve, so no BP terms and the
-    ;; base itself (fn-bph-extend-reservation with no terms).
-    (fn-bph-node-serve-p nil)
-    (fn-bph-extend-reservation (first args))
-    (fn-orv-extend-reservation
-     (push (cons :output args) *calls*) (apply (symbol-function entry) args))
+    (fn-bph-node-serve-p (and *bp-terms* t))
     (fn-heap-reserve-report-line (format nil "~s" (first args)))
+    (fn-lxc-command-line (format nil "~s" (first args)))
     (fn-heap-decision-exit-code (if (eq (caar args) :heap) 0 1))
     (otherwise (apply *original-core* entry args))))
+(defun call-of (calls tag) (cdr (assoc tag calls)))
 (defun heap-command (&optional (action :run) cold live)
   (let ((*native-action* action) (*cold* cold) (*live* live)
         (*fnn-stdout* (make-string-output-stream))
-        (*calls* nil) (*captured-core* 0) (*captured-machine* 0))
+        (*calls* nil) (*observed* nil))
     (let ((code (fnn-command-heap "--" '("operator" "CONFIG" "run"))))
-      (values code (get-output-stream-string *fnn-stdout*)
-              (reverse *calls*) *captured-core* *captured-machine*))))
-;; 259: the base's 256 MiB grown by ACL2's launch extra (books/page-read-startup.lisp
-;; fn-prstartup-launch-extra, 2,676,432 octets here): the descriptor table and
-;; the 4 workers' backing, whose two reusable window vectors each are the
-;; profile's :read-window-octets (262,144; 1,966,080 octets of the extra), and
-;; the reads in flight (2,472).  At the former 16 KiB window it was 257.
-(multiple-value-bind (code line calls cores machines) (heap-command)
+      (values code (get-output-stream-string *fnn-stdout*) (reverse *calls*) (reverse *observed*)))))
+
+;; A served run: the launch at the run's LIMIT over its own observations.
+(multiple-value-bind (code line calls observed) (heap-command)
   (assert (= code 0))
-  (assert (equal line "(:HEAP 259 :SMALL 8192 1024 16)"))
-  (assert (equal (mapcar #'car calls) '(:reclaim :cold :default :peer :output)))
-  ;; Off (no `[resources] reclaim_live'): the store decision, unextended; a
-  ;; served run's base is not sized by an observed history (ACL2's
-  ;; fn-heap-operation-observes-p), so neither is its reserve.
-  (assert (equal (cdr (first calls))
-                 (list *base* nil '(:recorded-profile) nil *core-observation* *machine*)))
-  (assert (equal (subseq (cdr (third calls)) 1 6)
-                 '(:run nil "/absolute/fixture" 4 8)))
-  (assert (equal (second (cdr (fifth calls))) nil))
-  ;; The base decision's own profile and observation reach the launch floor.
-  (assert (equal (nthcdr 8 (cdr (third calls)))
-                 (list (first (car *floor-args*)) (third (car *floor-args*)))))
-  (assert (equal (second (car *floor-args*)) *core-observation*))
-  (assert (= cores machines 1)))
-;; On: the opt-in reaches ACL2's extension with the base decision's profile
-;; and observation, and the cold, default and output extensions are added to
-;; the space that already holds the reserve.
-(multiple-value-bind (code line calls) (heap-command :run nil t)
+  (assert (equal line (format nil "~s" *serve*)))
+  (assert (equal (mapcar #'car calls) '(:pools :pool-threads :serve :bp)))
+  ;; the pools of this run: no cold or output policy, its peer flight, the
+  ;; DEFAULT pool's workers and cache over the store's root
+  (assert (equal (call-of calls :pools) (list *profile* nil nil *peer* 4 8 "/absolute/fixture")))
+  (assert (equal (call-of calls :pool-threads) (list nil *peer*)))
+  ;; (profile img trigger live cold config resident address core nursery tot pools pool-threads)
+  (assert (equal (call-of calls :serve)
+                 (list *profile* *img* +fnn-owner-service-nursery-octets+ nil nil 119 *resident*
+                       *address* *core-observation* +fnn-gc-nursery-octets+ *totals* 4268136 1)))
+  ;; BP terms (none here) are held to the address space, not the machine
+  (assert (equal (call-of calls :bp) (list *serve* nil *core-observation* *address*)))
+  ;; memory.max and physical memory are read only as the resident limit
+  (assert (not (member :machine observed)))
+  (assert (= 1 (count :core observed)))
+  (assert (= 1 (count :address observed))))
+;; The live-reclaim opt-in and an explicit cold policy reach the launch: the
+;; pools and their threads, and the reopen coordinates.
+(multiple-value-bind (code line calls) (heap-command :run '(complete) t)
+  (declare (ignore line))
   (assert (= code 0))
-  (assert (equal line "(:HEAP 260 :SMALL 8192 1024 16)"))
-  (assert (equal (second (cdr (first calls))) t))
-  (assert (equal (second (second calls)) '(:heap 257 :small 8192 1024 16))))
-; No selected backing extension for init/offline/help, or explicit cold.
-(dolist (action '(:init :status :compact nil))
-  (multiple-value-bind (code line) (heap-command action)
-    (assert (= code 0)) (assert (equal line "(:HEAP 256 :SMALL 8192 1024 16)"))))
-(multiple-value-bind (code line) (heap-command :run '(complete))
-  (assert (= code 0)) (assert (equal line "(:HEAP 256 :SMALL 8192 1024 16)")))
-; Exact minimum-machine boundary and prior refusal remain ACL2 decisions.
-(let* ((d (fn-prstartup-extend-default-reservation *base* nil "/absolute/fixture" 4 8
-                                                  *core-observation* *machine* nil '(0 . 0)))
-       (total (fn-heap-reservation-octets (second d) *core-observation* (fifth d) (sixth d))))
-  (let ((*machine* (list total))) (assert (= (heap-command) 0)))
-  (let ((*machine* (list (1- total)))) (assert (= (heap-command) 1))))
-(let ((*base* '(:refused :original-refusal 256 128)))
+  (assert (equal (second (call-of calls :pools)) '(complete)))
+  (assert (equal (call-of calls :pool-threads) (list '(complete) *peer*)))
+  (assert (equal (subseq (call-of calls :serve) 3 5) (list t '(complete)))))
+;; A refusal of the launch is the probe's answer (exit 1).
+(let ((*serve* '(:refused :machine-cannot-hold-the-store 327 251)))
   (multiple-value-bind (code line) (heap-command)
-    (assert (= code 1)) (assert (equal line "(:REFUSED :ORIGINAL-REFUSAL 256 128)"))))
-; Status's next-run figure shares the DEFAULT projection and observations.
-(let ((*calls* nil) (*captured-core* 0) (*captured-machine* 0)
-      (*fnn-stdout* (make-string-output-stream)))
-  (fnn-heap-print-store-line "/fixture")
-  (assert (equal (get-output-stream-string *fnn-stdout*) "(:HEAP 259 :SMALL 8192 1024 16)"))
-  (assert (= *captured-core* *captured-machine* 1))
-  (assert (equal (fourth (cdr (assoc :default *calls*))) "/absolute/fixture")))
+    (assert (= code 1))
+    (assert (equal line (format nil "~s" *serve*)))))
+;; Every other command: fn-heap-command-decide over the machine, no launch.
+(dolist (action '(:init :status :compact nil))
+  (multiple-value-bind (code line calls observed) (heap-command action)
+    (assert (= code 0))
+    (assert (equal line (format nil "~s" *base*)))
+    (assert (equal (mapcar #'car calls) '(:command)))
+    (assert (member :machine observed))))
+;; A run with no store there: no launch to size (fn-heap-command-decide).
+(let ((*profile* nil))
+  (multiple-value-bind (code line calls) (heap-command)
+    (declare (ignore code line))
+    (assert (equal (mapcar #'car calls) '(:command)))))
+;; Status's next-run line is the probe's launch: the same decision.
+(let ((*calls* nil) (*observed* nil) (*fnn-stdout* (make-string-output-stream)))
+  (fnn-heap-print-store-line "/fixture" nil nil t)
+  (assert (equal (get-output-stream-string *fnn-stdout*) (format nil "~s" *serve*)))
+  (assert (equal (mapcar #'car (reverse *calls*)) '(:pools :pool-threads :serve :bp)))
+  (assert (equal (fourth (call-of *calls* :serve)) t))
+  (assert (not (member :machine *observed*))))
 (format t "SOURCE DEFAULT HEAP PASSED~%")

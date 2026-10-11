@@ -128,7 +128,7 @@
     (fn-native-operator-host-result-run-cold-resources '(:cold))
     (fn-native-operator-host-result-run-output-resources '(:output))
     (fn-native-operator-host-result-run-reclaim-live t)
-    (fn-heap-reserve-report-line "heap=fixture")
+    ((fn-heap-reserve-report-line fn-lxc-command-line) "heap=fixture")
     (fn-heap-decision-exit-code 0)
     (fn-cfg-host-initial-octets-at *initial-result*)
     (fn-store-frame-constants *constants-result*)
@@ -161,11 +161,12 @@
 (let ((*fault-at* 'operator-plan) (*condition-kind* 'fnn-store-error))
   (command-outcome (lambda () (fnn-command-heap "--" '("operator" "CONFIG" "run"))) 0 "heap=fixture"))
 (assert (equal (multiple-value-list (fnn-heap-operator-profile "CONFIG" '("run")))
-               '((:recorded-profile) 4 :run nil (:cold) (:output) "/fixture" nil t)))
+               '((:recorded-profile) 4 :run nil (:cold) (:output) "/fixture" nil t nil nil)))
 ; D53: the accepted run's live-reclaim opt-in is the ninth value and reaches
-; the reservation (fnn-heap-reservation is the recording stub above).
+; the reservation (fnn-heap-reservation is the recording stub above); the
+; operator's word and `--replay' follow (none for `run').
 (assert (equal (multiple-value-list (fnn-heap-command-profile '("operator" "CONFIG" "run")))
-               '((:recorded-profile) 4 :run nil (:cold) (:output) "/fixture" nil t)))
+               '((:recorded-profile) 4 :run nil (:cold) (:output) "/fixture" nil t nil nil)))
 
 ; Initial configuration keeps only the actual ACL2 named refusal (:bad).
 (let ((*initial-result* :bad))

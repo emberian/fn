@@ -25,12 +25,12 @@ scheduler changes).
                     tail measures that quantum, not the commit's
   argv: WORKDIR [SECONDS]  (SECONDS default 3600)
 The store's profile: the qualification's init plus --max-article-octets
-4 MiB.  Since connection-multiplexing (PKT-605) the run refuses a capacity
-the machine cannot hold, and the per-connection figure is about 34 times the
+4 MiB.  The run's capacity is the memory gate's C' (books/admission-memory.lisp
+fn-adm-capacity), and the per-connection figure is about 34 times the
 profile's article limit (the parser's list representation): the default
 16 MiB profile makes it 557 MB, and the default capacity of 31 does not fit
-a 24 GB scope (`refused connections-exceed-memory`, observed 2026-09-27 on
-both images).  Both images get the same profile; the articles this hour
+a 24 GB scope (observed 2026-09-27 on both images as the connection budget's
+`refused connections-exceed-memory`, retired by L-RUN-LAUNCH).  Both images get the same profile; the articles this hour
 posts are kilobytes.
 
 The workload (unchanged): 3 tight-loop readers (GROUP / OVER / ARTICLE /

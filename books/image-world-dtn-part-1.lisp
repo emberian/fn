@@ -134,7 +134,6 @@
 (include-book "heap-log-extent-cap")
 (include-book "bp-heap-command")
 (include-book "cold-read-reservation")
-(include-book "reclaim-reservation")
 (include-book "resource-output")
 (include-book "served-plan-line-buffer")
 (include-book "mux-accept-slot")
@@ -173,3 +172,4 @@
 (include-book "store-log-lineage")
 (include-book "store-log-buffer")
 (include-book "store-log-walk-once")
+(include-book "store-log-segments")

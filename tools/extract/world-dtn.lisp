@@ -134,7 +134,6 @@
 (include-book "../../books/heap-log-extent-cap")
 (include-book "../../books/bp-heap-command")
 (include-book "../../books/cold-read-reservation")
-(include-book "../../books/reclaim-reservation")
 (include-book "../../books/resource-output")
 (include-book "../../books/served-plan-line-buffer")
 (include-book "../../books/mux-accept-slot")

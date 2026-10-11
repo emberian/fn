@@ -2262,12 +2262,13 @@ again with the run's coordinates and refuses a run no connection fits."
     memory))
 
 (defun fnn-mux-budget-install (service tls-context)
-  "ACL2 decides whether this machine holds the live capacity; a refusal is
-the run's (exit 1), named on stderr and in the service log."
+  "The run's credits and article slots, then ACL2's memory gate decides the
+run's capacity C' (host/owner-host.lisp fn-owner-memory-configure); a run no
+connection fits is refused by its capacity line (exit 1), named on stderr and
+in the service log."
   (let* ((store (fnn-owner-service-store service))
          ;; Observed before the section: a stat of the core file and the
          ;; machine's memory figures are I/O the owner mutex never holds.
-         (machine (fnn-heap-machine-octets))
          (core (fnn-heap-core-octets))
          ;; K-ADMIT's coordinates, observed here for the same reason
          ;; (fnn-owner-memory-observe).
@@ -2279,22 +2280,17 @@ the run's (exit 1), named on stderr and in the service log."
            (fnn-owner-serialized
             service nil
             (lambda ()
-              (let* ((threads (fnn-mux-thread-count service))
-                     (stack (fnn-mux-thread-stack-octets))
-                     (word (fnn-owner-core 'fn-owner-connection-budget
-                              machine
-                              (sb-ext:dynamic-space-size)
+              (let ((word (fnn-owner-core 'fn-owner-connection-budget
                               core
-                              threads stack
                               +fnn-gc-nursery-octets+
                               (fnn-store-config store)
-                              (and tls-context t)
                               ;; the operator's opt-in (`[resources]
                               ;; reclaim_live'): the owner's work reserve
                               ;; beyond the open's exists only with it
                               (fnn-owner-service-reclaim-live service))))
                 (when (eq word :hold)
-                  (fnn-owner-syncer-install service threads stack)
+                  (fnn-owner-syncer-install service (fnn-mux-thread-count service)
+                                            (fnn-mux-thread-stack-octets))
                   ;; The memory gate every POST's prepare applies
                   ;; (host/owner-host.lisp fn-owner-memory-configure,
                   ;; books/admission-memory.lisp): the image, the resident
@@ -2304,20 +2300,23 @@ the run's (exit 1), named on stderr and in the service log."
                   ;; bounds the readers accepted by it.
                   (setq memory
                    (fnn-owner-memory-configure-locked service tls-context observed))
-                  ;; Store figure is captured before both allowance extensions.
-                  ;; ACL2 validates dynamic >= store + exact cold + output pool.
+                  ;; ACL2 validates dynamic >= the store's need + exact cold +
+                  ;; output pool; the need is the served run's protected
+                  ;; runtime without the output pool, at the run's LIMIT
+                  ;; (books/peer-flight-startup.lisp
+                  ;; fn-prstartup-serve-store-need, KEYSTONE
+                  ;; fn-mo-serve-output-pool-is-held).
                   (fnn-owner-output-install
                    service (sb-ext:dynamic-space-size)
-                   (fnn-core 'fn-mca-figure-octets (fnn-store-config store)
-                             core +fnn-gc-nursery-octets+
-                             (fnn-owner-service-reclaim-live service))))
-                word))))
-         (line (fnn-global 'fn-owner-connection-budget-line)))
-    (unless (and (member decision '(:hold :refused)) (fnn-octet-list-p line))
-      (fnn-fault "owner returned a malformed connection budget"))
-    (fnn-log-line line)
-    (when (eq decision :refused)
-      (fnn-refuse "~a" (map 'string #'code-char line)))
+                   (fnn-core 'fn-prstartup-serve-store-need (fnn-store-config store)
+                             core (fnn-gc-nursery-octets)
+                             (fnn-owner-service-output-resources service)
+                             (sixth observed) (fnn-core 'fn-pio-direct-workers)
+                             (fnn-extent-cache-limit) (fnn-store-root store)
+                             (second observed))))
+                word)))))
+    (unless (eq decision :hold)
+      (fnn-fault "owner returned a malformed run installation"))
     ;; The run's capacity line, the admission statement it serves under
     ;; ("memory capacity=C' of C bound-by=TERM sum=S MB limit=L MB",
     ;; books/admission-memory.lisp fn-adm-capacity-line); a run no
