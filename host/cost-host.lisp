@@ -80,14 +80,13 @@
 (def-cost fn-native-config-reclaim-livep :visits 32)
 (def-cost fn-mca-figure-octets :unaccounted (fn-mca-base-octets fn-heap-with-nursery))
 ; The served run's launch (books/heap-command.lisp, L-RUN-LAUNCH).
-(def-cost fn-mo-serve-pool-threads)
+(def-cost fn-mo-serve-pool-threads :unaccounted (true-list-fix))
 (def-cost fn-mo-serve-pools :unaccounted (fn-crv-pool-budget fn-prstartup-launch-extra))
 (def-cost fn-prstartup-serve-store-need
-  :unaccounted (fn-prstartup-serve-protected fn-prstartup-serve-limit))
+  :unaccounted (fn-prstartup-serve-limit fn-prstartup-serve-protected))
 (def-cost fn-mo-serve-decide
-  :unaccounted (fn-mm-reopen-need fn-mm-tot-p fn-mm-least-observation fn-heap-nursery-trigger
-                fn-mm-launch-dynamic fn-heap-reservation-octets fn-heap-mb-of fn-heap-profile-word
-                fn-heap-stack-kib fn-heap-thread-count fn-crv-pool-budget fn-prstartup-image-bound))
+  :unaccounted (fn-mo-serve-limit fn-mo-serve-dynamic fn-mo-serve-cfg fn-mm-least-observation
+                fn-mm-reopen-need fn-heap-profile-word))
 (def-cost fn-owner-page-window-span-at :unaccounted (fn-owner-page-read-ledger fn-pwr-span-at))
 (def-cost fn-owner-page-window-cache-span-at :unaccounted (fn-owner-page-read-ledger fn-pwc-span-at))
 (def-cost fn-owner-page-decoded-job-span-at :unaccounted (fn-owner-page-read-ledger fn-dwj-span-at))
