@@ -40,8 +40,14 @@
           (cons :state-record-headers
                 (* *fn-heap-charge-heap-octets*
                    (nfix (fn-bs-profile-max-history-octets profile))))
-          (cons :open-chunk-lists (* 2 *fn-heap-list-octets-per-octet* *fn-heap-open-list-copies*
+          ;; the open's chunk and one log record as lists; the log walk's
+          ;; entry array and its fixed octets (BATCH-ENTRY-UNDER-CHARGE)
+          (cons :open-chunk-lists (* *fn-heap-list-octets-per-octet* *fn-heap-open-list-copies*
                                      (fn-heap-open-chunk-bound profile ou)))
+          (cons :open-record-lists (* *fn-heap-list-octets-per-octet* *fn-heap-open-list-copies*
+                                      (fn-heap-open-record-bound profile ou)))
+          (cons :open-entry-array (fn-heap-open-entry-array-bound profile ou))
+          (cons :open-walk-fixed (fn-heap-open-walk-fixed-bound ou))
           (cons :open-suffix-vectors (* 2 ou))
           (cons :open-per-record (* 2 *fn-heap-open-record-octets* on))
           (cons :inflight-lists (* 2 *fn-heap-list-octets-per-octet*
@@ -108,6 +114,8 @@
    :hints (("Goal" :in-theory (e/d (fn-heap-store-base-octets fn-heap-store-state-bound
                                     fn-heap-store-open-octets fn-heap-store-inflight-octets)
                                    (fn-ock-capture-budget fn-heap-store-history-octets fn-heap-open-chunk-bound
+                                    fn-heap-open-record-bound fn-heap-open-entry-array-bound
+                                    fn-heap-open-walk-fixed-bound
                                     fn-heap-articles-octets fn-heap-core-dynamic
                                     fn-heap-open-octets-bound fn-heap-open-records-bound
                                     fn-bs-profile-max-history-octets

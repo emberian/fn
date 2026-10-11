@@ -183,6 +183,33 @@ class SignatureLintTests(unittest.TestCase):
                           found[0]["problem"])
 
 
+class SignatureScopeTests(unittest.TestCase):
+    """A def nested in a function binds its name there (tests/test_certs.py
+    at 3119f7d32: a local `install(target)` beside the module's
+    `install(root, cache, ...)` was reported twice)."""
+
+    SOURCE = """
+        def install(root, cache, names=None):
+            return (root, cache, names)
+
+        def uses_the_local_one(cache):
+            def install(target):
+                return target
+            return install("t")
+
+        def uses_the_module_one():
+            return install("r")
+        """
+
+    def test_a_call_of_the_local_binding_is_not_the_module_function(self):
+        temporary = corpus(tests__certs=self.SOURCE)
+        with temporary:
+            found, counts = harness_check.signature_findings(Path(temporary.name))
+        self.assertEqual([row["where"] for row in found], ["tests/certs.py:10"])
+        self.assertIn("missing 1 required argument: 'cache'", found[0]["problem"])
+        self.assertEqual(counts["resolved"], 1)
+
+
 class Acl2ArityWalkTests(unittest.TestCase):
     """The host-file walker, over the binders fn actually writes."""
 
@@ -651,6 +678,37 @@ class RawArityTests(unittest.TestCase):
         self.assertEqual(found, [])
         self.assertGreater(counts["applications"], 1000)
         self.assertGreater(counts["dispatched_applications"], 500)
+
+
+class TrailingStobjsTests(unittest.TestCase):
+    """raw-arity reads the stobjs passed before state from the runtime."""
+
+    def tree(self, text):
+        temporary = tempfile.TemporaryDirectory(prefix="fn-harness-check-")
+        path = Path(temporary.name) / "host/native/io.lisp"
+        path.parent.mkdir(parents=True)
+        path.write_text(textwrap.dedent(text), encoding="utf-8")
+        return temporary
+
+    def test_the_run_is_the_runtime_member_list(self):
+        with self.tree("""
+            (defun fnn-trailing-kind (name)
+              (loop for sym in (cdr ins)
+                    while (member sym '(fn-arena fn-ast-ws fn-x))
+                    do (push sym run)))
+            """) as root:
+            self.assertEqual(harness_check.runtime_trailing_stobjs(Path(root)),
+                             frozenset({"fn-arena", "fn-ast-ws", "fn-x"}))
+
+    def test_a_runtime_without_the_list_is_refused(self):
+        with self.tree("(defun fnn-trailing-kind (name) (list name))\n") as root:
+            with self.assertRaises(SystemExit):
+                harness_check.runtime_trailing_stobjs(Path(root))
+
+    def test_this_tree_passes_fn_ast_ws_and_fn_owner_st(self):
+        passed = harness_check.runtime_trailing_stobjs(ROOT)
+        self.assertLessEqual({"fn-arena", "fn-ast-ws", "fn-cat", "fn-hist",
+                              "fn-owner-st"}, passed)
 
 
 class HarnessMockArityTests(unittest.TestCase):

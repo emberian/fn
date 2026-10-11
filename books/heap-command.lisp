@@ -304,8 +304,13 @@
 
 (defconst *fn-mo-rss-anon-key* '(82 115 115 65 110 111 110 58)) ; "RssAnon:"
 
+; The entry's kinds (lane entry-guards): CORE-OCTETS the core file's length,
+; a natural (fnn-heap-core-octets: 0 when unread); STATUS-OCTETS
+; /proc/self/status's octets, NIL off Linux or unread (fnn-heap-read-small);
+; TLS-OCTETS a count, NIL when the runtime cannot report it (exempt in
+; host/interfaces.lisp: the body tests natp and observes no image).
 (defun fn-mo-img-observed (core-octets status-octets stack-kib tls-octets)
-  (declare (xargs :guard t))
+  (declare (xargs :guard (and (natp core-octets) (fn-cbor-octet-listp status-octets))))
   (let ((anon (fn-mo-status-kib-octets *fn-mo-rss-anon-key* status-octets)))
     (if (and (natp core-octets) (natp anon) (natp tls-octets))
         (list core-octets anon (+ (* 1024 (nfix stack-kib)) tls-octets))
