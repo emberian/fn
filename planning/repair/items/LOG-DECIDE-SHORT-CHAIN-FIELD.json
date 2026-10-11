@@ -1,0 +1,16 @@
+{
+ "evidence": "build/lanes/log/build/log-runs/l2b (REPL session l2bs): (fn-lgw-decide (fn-frame-seal *fn-lg-magic* *fn-lg-version* 1 nil) *fn-lg-genesis* 4096) = (T (NIL)); 47 octets the same",
+ "file": "books/store-log-stream.lisp",
+ "id": "LOG-DECIDE-SHORT-CHAIN-FIELD",
+ "note": "fn-lgw-decide (store-log-stream.lisp:222) compares (fn-bs-take 32 payload) with PREV; fn-bs-take pads with zeros, so under the genesis predecessor (32 zeros) a 42..73-octet record frame decides one empty record. fn-lgb-decide falls back to the list decision below 74 octets, so the host accepts it too. Reach: only an author of disk bytes (the chain digest is unkeyed, so such an author can forge a full entry anyway); the writer never writes it and a torn write cannot produce its digest. Coordinator accepted 2026-10-10; 2b(a) proceeds over the decision as it is.",
+ "notes": [
+  "10-10 15:17 Also bounds 2b(a): the per-record hold S4 is stated as LEN <= MAX, not (+ 32 LEN) <= MAX, since a 42-octet record frame under genesis with MAX < 32 is accepted with one empty record; and the extent place fn-lgb-place answers NIL for a declared payload below 32, as fn-arx-list-places does. The chain-field packet owes S4 in the (+ 32 LEN) form."
+ ],
+ "owner": "L",
+ "retirement": "the chain-field packet after 2b(a)",
+ "severity": "low",
+ "source": "Builder L4, landing 2b(a) test? search (2026-10-10)",
+ "state": "open",
+ "title": "The log entry decision accepts a record frame whose payload is shorter than the 32-octet chain field",
+ "updated": "2026-10-10T19:17:26Z"
+}

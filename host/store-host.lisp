@@ -66,7 +66,7 @@
 (include-book "../books/store-log-entry-bound")
 (include-book "../books/store-log-lineage")
 ;; The walk over the entry's octet buffer (lane snapshot-open-3; KEYSTONE
-;; fn-lgw-step-buf-is-step): host/native/io.lisp fnn-log-stream-segment.
+;; fn-lgw-step-buf-count-is-step): host/native/io.lisp fnn-log-stream-segment.
 (include-book "../books/store-log-buffer")
 ;; The full replay decodes each record once (lane snapshot-open-3; KEYSTONE
 ;; fn-lgw-run-nf-then-fold-is-run): fnn-log-stream-segment, fnn-recover-log-stream-flush.

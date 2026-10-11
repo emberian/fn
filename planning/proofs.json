@@ -11809,8 +11809,8 @@
     },
     {
       "id": "PRF-328",
-      "title": "The log walk decides each entry in the octet buffer it was read into: header by index, trailer as the window digest, chain link compared in place, batch unpacked by index, each record sliced once; and the records' extent places from the same buffer",
-      "statement": "books/store-log-buffer.lisp: the host preads each log entry into its own octet buffer fn-octets-lg (an abstract stobj congruent to fn-octets) and calls fn-lgw-step-buf and fn-lgb-entry-places over it. KEYSTONE fn-lgw-step-buf-is-step: (fn-lgw-step-buf st unit max extent buf) = (fn-lgw-step buf st unit max extent), no hypothesis (the index decision fn-lgb-decide-fast runs under mbe behind the buffer's recognizer; its equality with the list decision is fn-lgb-decide-fast-is-decide over fn-lgb-decide-is-flat, the list step's closed form for an entry of at least 74 octets under a frame bound; shorter entries and other bounds take the list step on the buffer's octets). So fn-lgw-run-is-the-open (PRF-297) holds of the host's loop. KEYSTONE fn-lgb-entry-places-is-list-places: (fn-lgb-entry-places pos count unit buf) = (fn-arx-list-places buf pos count unit 0 0 nil 0 0 nil), no hypothesis. Host subject: host/native/io.lisp fnn-log-stream-segment. NOT done: the step's next-txid fold still decodes each record (fn-lgt-txid over fn-record-decode-exact-impl), and the records still reach the replay as octet lists.",
+      "title": "The log walk decides each entry in the octet buffer it was read into and answers its record count; the host slices one record at a time by ACL2's cursor and forms each record's extent descriptor beside it",
+      "statement": "books/store-log-buffer.lisp: the host preads each log entry into its own octet buffer fn-octets-lg (an abstract stobj congruent to fn-octets) and calls fn-lgw-step-buf-count over it, then, COUNT times from offset 42, fn-lgb-span (the record's START LEN NEXT, no copy), fn-lgb-slice (the one octet list the sink holds) and, for the full replay's extent seals, fn-lgb-descriptor. KEYSTONE fn-lgw-step-buf-count-is-step: (fn-lgw-step-buf-count st unit max extent buf) = (fn-lgw-step buf st unit max extent) with its records answered by their count, no hypothesis (the decision fn-lgb-decide-count and the refusal's classification fn-lgb-broken run under mbe behind the buffer's recognizer, by index in place for an entry of at least 74 octets under a frame bound, the list step on the buffer's octets otherwise; fn-lgb-decide-count-is-decide, fn-lgb-broken-is-broken-slice, over fn-lgb-decide-is-flat). KEYSTONE fn-lgb-span-records-are-the-records: COUNT records by the cursor from 42 are the list decision's records, in order, accepted or not. KEYSTONE fn-lgb-span-within-max: each record the cursor yields of an accepted entry is at most MAX octets, so one step's live record list is one record. KEYSTONE fn-lgb-descriptor-is-the-attached-place: the J-th descriptor is the J-th of fn-arx-attach-trailers-buffer over fn-arx-list-places, NIL where the places walk answers none. So fn-lgw-run-is-the-open (PRF-297) holds of the host's loop. Host subject: host/native/io.lisp fnn-log-stream-segment. NOT done: the folding step slices each record a second time for the txid fold (one at a time); the 32-octet margin of fn-lgb-span-within-max returns with LOG-DECIDE-SHORT-CHAIN-FIELD.",
       "milestone": "M5",
       "requirements": [
         "STO-003",
@@ -11832,9 +11832,12 @@
       ],
       "progress_note": "Lane snapshot-open-3 (2026-09-27): the log walk over a buffer.",
       "events": [
-        "fn-lgw-step-buf-is-step",
-        "fn-lgb-entry-places-is-list-places",
-        "fn-lgb-decide-is-decide",
+        "fn-lgw-step-buf-count-is-step",
+        "fn-lgb-decide-count-is-decide",
+        "fn-lgb-broken-is-broken-slice",
+        "fn-lgb-span-records-are-the-records",
+        "fn-lgb-span-within-max",
+        "fn-lgb-descriptor-is-the-attached-place",
         "fn-lgb-decide-is-flat"
       ],
       "evidence_digest": "c798c4d8f6ce4411"
@@ -11888,7 +11891,7 @@
     {
       "id": "PRF-331",
       "title": "The full replay's log walk decodes each record once: the walk without its txid fold, and the fold from the replay's decode",
-      "statement": "books/store-log-walk-once.lisp: fn-lgw-step-buf-nf is the buffer step keeping the stream's NEXT (fn-lgw-step-buf-nf-is-step-nf: EQUAL to fn-lgw-step-nf, the list step with NEXT kept, no hypothesis). KEYSTONE fn-lgw-run-nf-then-fold-is-run: from (fn-lgw-start GENESIS FLOOR), the run without the fold (fn-lgw-run-nf), its NEXT then set to (fn-lgw-next-fold RECORDS FLOOR) of the records it emitted (fn-lgw-set-next), IS fn-lgw-run, no hypothesis (the general form fn-lgw-run-of-set-next-is-run-nf holds from any state and NEXT); so PRF-297's fn-lgw-run-is-the-open holds of the host's composition. fn-lgb-decode-next RS NEXT answers (mv (fn-srs-decode RS) (fn-lgw-next-fold RS NEXT)) under mbe, its exec decoding each record once (fn-lgb-decode-next-exec-decode, fn-lgb-decode-next-exec-fold); the fold over any chunking is the fold of the concatenation (fn-lgw-next-fold-of-append). books/store-log-txid.lisp: fn-lgt-txid reads the record through the codec's seam (fn-record-decode-exact), as the replay's decode does. Host subject: host/native/io.lisp fnn-log-stream-segment under *fnn-log-stream-finish* (bound by fnn-recover-log's full replay) calls fn-lgw-step-buf-nf and, at the segment's end, fn-lgw-set-next with the fold fnn-recover-log-stream-flush took from fn-lgb-decode-next.",
+      "statement": "books/store-log-walk-once.lisp: fn-lgw-step-buf-nf-count is the buffer count step keeping the stream's NEXT (fn-lgw-step-buf-nf-count-is-step-nf: EQUAL to fn-lgw-step-nf, the list step with NEXT kept, with its records answered by their count, no hypothesis). KEYSTONE fn-lgw-run-nf-then-fold-is-run: from (fn-lgw-start GENESIS FLOOR), the run without the fold (fn-lgw-run-nf), its NEXT then set to (fn-lgw-next-fold RECORDS FLOOR) of the records it emitted (fn-lgw-set-next), IS fn-lgw-run, no hypothesis (the general form fn-lgw-run-of-set-next-is-run-nf holds from any state and NEXT); so PRF-297's fn-lgw-run-is-the-open holds of the host's composition. fn-lgb-decode-next RS NEXT answers (mv (fn-srs-decode RS) (fn-lgw-next-fold RS NEXT)) under mbe, its exec decoding each record once (fn-lgb-decode-next-exec-decode, fn-lgb-decode-next-exec-fold); the fold over any chunking is the fold of the concatenation (fn-lgw-next-fold-of-append). books/store-log-txid.lisp: fn-lgt-txid reads the record through the codec's seam (fn-record-decode-exact), as the replay's decode does. Host subject: host/native/io.lisp fnn-log-stream-segment under *fnn-log-stream-finish* (bound by fnn-recover-log's full replay) calls fn-lgw-step-buf-nf-count and, at the segment's end, fn-lgw-set-next with the fold fnn-recover-log-stream-flush took from fn-lgb-decode-next.",
       "milestone": "M5",
       "requirements": [
         "STO-003",
@@ -11912,7 +11915,7 @@
       "events": [
         "fn-lgw-run-nf-then-fold-is-run",
         "fn-lgw-run-of-set-next-is-run-nf",
-        "fn-lgw-step-buf-nf-is-step-nf",
+        "fn-lgw-step-buf-nf-count-is-step-nf",
         "fn-lgb-decode-next-exec-decode",
         "fn-lgb-decode-next-exec-fold"
       ],

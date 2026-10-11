@@ -148,9 +148,9 @@
                   (fn-arx-trailer-nat-at j fn-octets)))
   :hints (("Goal" :in-theory (enable fn-octets-p))))
 
-; The places of the entry the buffer holds (books/store-log-buffer.lisp
-; fn-lgb-entry-places: START is BASE, the entry's file offset, for each), with
-; the entry's commitment attached.
+; The places of the entry the buffer holds (START is BASE, the entry's file
+; offset, for each), with the entry's commitment attached; the log walk
+; attaches one place at a time (books/store-log-buffer.lisp fn-lgb-descriptor).
 (defun fn-arx-attach-trailers-buffer (places base fn-octets)
   (declare (xargs :stobjs fn-octets
                   :guard (and (true-listp places) (natp base))))

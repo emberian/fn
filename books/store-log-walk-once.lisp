@@ -1,7 +1,7 @@
 ; fn: the log walk decodes each record once (lane snapshot-open-3,
 ; 2026-09-27).  Prefix `fn-lgb-', as books/store-log-buffer.lisp (and the stream's
 ; `fn-lgw-' names it adds:
-; fn-lgw-set-next, fn-lgw-step-nf, fn-lgw-step-buf-nf, fn-lgw-run-nf).
+; fn-lgw-set-next, fn-lgw-step-nf, fn-lgw-step-buf-nf-count, fn-lgw-run-nf).
 ;
 ; books/store-log-buffer.lisp walks the log over an octet buffer; its step
 ; still folds each record's txid into the stream's NEXT (fn-lgw-next-fold:
@@ -22,7 +22,7 @@
 ; The step folds each record's txid into the stream's NEXT
 ; (fn-lgw-next-fold: fn-lgt-txid decodes the whole record), and the full
 ; replay decodes every record again (fn-srs-decode).  Here the host's full
-; replay walks with fn-lgw-step-buf-nf, which keeps NEXT, and takes the fold
+; replay walks with fn-lgw-step-buf-nf-count, which keeps NEXT, and takes the fold
 ; from its one decode of each record (fn-lgb-decode-next: the replay's
 ; events and the fold, EQUAL to fn-srs-decode and fn-lgw-next-fold, one
 ; fn-record-decode-exact per article record); at the segment's end it sets
@@ -45,28 +45,31 @@
   (mv-let (took records st2) (fn-lgw-step e st unit max extent)
     (mv took records (fn-lgw-set-next st2 (fn-lgw-next st)))))
 
-(defun fn-lgw-step-buf-nf (st unit max extent fn-octets)
+;; The host's step without the fold: the count step of
+;; books/store-log-buffer.lisp with NEXT kept.
+(defun fn-lgw-step-buf-nf-count (st unit max extent fn-octets)
   (declare (xargs :stobjs fn-octets :guard (true-listp st)))
   (let ((pos (fn-lgw-pos st)) (prev (fn-lgw-prev st))
         (count (fn-lgw-count st)) (next (fn-lgw-next st)))
-    (cond ((fn-lgw-stop st) (mv nil nil (fn-lgw-set-next st next)))
-          (t (mv-let (ok records) (fn-lgb-decide prev max fn-octets)
+    (cond ((fn-lgw-stop st) (mv nil 0 (fn-lgw-set-next st next)))
+          (t (mv-let (ok k) (fn-lgb-decide-count prev max fn-octets)
                (if (not ok)
-                   (mv nil nil (fn-lgw-make pos prev count next t
-                                            (fn-lgw-broken-slice-p (fn-octets-list fn-octets)
-                                                                   prev max)))
+                   (mv nil 0 (fn-lgw-make pos prev count next t
+                                          (fn-lgb-broken prev max fn-octets)))
                  (let* ((n (fn-octets-len fn-octets))
                         (step (+ n (fn-lg-pad-len n unit)))
                         (last (fn-lgb-trailer fn-octets)))
-                   (mv t records
-                       (fn-lgw-make (+ pos step) last (+ count (len records)) next
+                   (mv t k
+                       (fn-lgw-make (+ pos step) last (+ count k) next
                                     (not (< (+ pos step) (nfix extent))) nil)))))))))
 
-; The host's step is the list step with NEXT kept, no hypothesis.
-(defthm fn-lgw-step-buf-nf-is-step-nf
-  (equal (fn-lgw-step-buf-nf st unit max extent fn-octets)
-         (fn-lgw-step-nf fn-octets st unit max extent))
-  :hints (("Goal" :in-theory (e/d (fn-lgw-step fn-lgw-set-next)
+; KEYSTONE (S1b): the host's step is the list step with NEXT kept, its
+; records answered by their count, no hypothesis.
+(defthm fn-lgw-step-buf-nf-count-is-step-nf
+  (equal (fn-lgw-step-buf-nf-count st unit max extent fn-octets)
+         (mv-let (took records st2) (fn-lgw-step-nf fn-octets st unit max extent)
+           (mv took (len records) st2)))
+  :hints (("Goal" :in-theory (e/d (fn-lgw-step fn-lgw-set-next fn-lgb-decide-count fn-lgb-broken)
                                   (fn-lgw-decide fn-lg-trailer fn-lgw-broken-slice-p
                                    fn-lgw-next-fold fn-lg-pad-len
                                    fn-lgw-decide-is-okp-and-records fn-lg-entry-okp
