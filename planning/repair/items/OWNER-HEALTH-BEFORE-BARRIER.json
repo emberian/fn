@@ -1,0 +1,12 @@
+{
+ "detail": "Core side only; image side passed (completed 6.2 s). After the stall file was removed, `fn health` answered \"disk ok\" while the stalled barrier completed only at 10,464 ms (core stderr: \"disk recovered after a stall: the barrier completed after 10464 ms\"). The test then posted extract-after on the warm connection; that post queued behind the still-pending barrier, reached the 6,000 ms barrier-stall deadline and was answered \"441 posting failed; the outcome is uncertain\". Health readiness is not ordered after the stalled barrier completes. Intermittent: identical image inputs passed the step at fb4e1aa5d (C2 first form); 9 of the last 10 train extraction runs pass it. Ruling (coordinator 2026-10-11): C2 lands on one extraction rerun; this item records the race, owner builder-A (host owner code).",
+ "file": "books/owner-time-model.lisp",
+ "id": "OWNER-HEALTH-BEFORE-BARRIER",
+ "notes": [],
+ "owner": "builder-A",
+ "severity": "medium",
+ "source": "extraction step 5b (owner differential, stalled-owner-late-completion) at train C2 6d313a98f, core side; hbox:/tank/fn/scratch/integrate-20261011c/native-6d313a98f145/extract-run1/{owner/owner.json,owner/core/owner-0.stderr,extract-check.log}",
+ "state": "open",
+ "title": "health reports \"disk ok\" before a stalled barrier completes; a post on the warm connection queues behind it and gets 441 uncertain",
+ "updated": "2026-10-11T16:50:17Z"
+}
