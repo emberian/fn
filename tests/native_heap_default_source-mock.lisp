@@ -105,9 +105,16 @@
 (defun fnn-heap-image-observation () (incf *captured-core*) *core-observation*)
 (defun fnn-heap-observations () (incf *captured-machine*) *machine*)
 (defun fnn-heap-history-observation (&rest args) (declare (ignore args)) '(0 . 0))
+;; The resident and address-space limits the launch decision reads: seams.
+(defun fnn-heap-resident-observations () nil)
+(defun fnn-heap-address-observations () nil)
 (defun fnn-core (entry &rest args)
   (case entry
-    ((fn-heap-reserve-operation-decide fn-heap-status-decide) *base*)
+    ((fn-heap-command-decide fn-heap-status-decide) *base*)
+    ;; The command's observation class (books/heap-command.lisp): a seam here,
+    ;; neither :reads nor :header, so no store totals, image or config are
+    ;; read; the default extensions are this fixture's subject.
+    (fn-heap-command-growth nil)
     (fn-native-operator-host-result-run-cold-resources *cold*)
     (fn-native-operator-host-result-run-output-resources *output*)
     (fn-native-operator-host-result-run-reclaim-live *live*)
@@ -133,6 +140,10 @@
     (fn-orv-extend-reservation
      (push (cons :output args) *calls*) (apply (symbol-function entry) args))
     (fn-heap-reserve-report-line (format nil "~s" (first args)))
+    ;; The command's line (books/heap-log-extent-cap.lisp): the decision, as
+    ;; the report line prints it; the totals, image, config and extent words
+    ;; are the charged-totals fixtures', not this one's.
+    (fn-lxc-command-line (format nil "~s" (first args)))
     (fn-heap-decision-exit-code (if (eq (caar args) :heap) 0 1))
     (otherwise (apply *original-core* entry args))))
 (defun heap-command (&optional (action :run) cold live)

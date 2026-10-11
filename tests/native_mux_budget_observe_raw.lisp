@@ -5,25 +5,6 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-owner-memory-configure-locked (service tls-context observed &optional gate-only)
-  (declare (ignorable service tls-context observed gate-only))
-  (harness-stub-reached 'fnn-owner-memory-configure-locked "host/native/mux.lisp"))
-(defun fnn-owner-memory-observe (store)
-  (declare (ignorable store))
-  (harness-stub-reached 'fnn-owner-memory-observe "host/native/mux.lisp"))
-;;; ---- derived stubs: END ----
 (defvar *in-section* nil)
 (defvar *violations* nil)
 (defvar *seen* nil)
@@ -47,6 +28,19 @@
 (defun fnn-log-line (line) (declare (ignore line)))
 (defun fnn-refuse (&rest args) (declare (ignore args)) (error "refused"))
 (defun fnn-fault (&rest args) (error "fault ~s" args))
+;; The memory gate's coordinates are observed off the section too
+;; (fnn-owner-memory-observe); its configure and the host lease's install run
+;; inside it, after the connection budget holds.
+(defvar *installed* nil)
+(defun fnn-owner-memory-observe (store) (declare (ignore store)) (observe :memory) '(:observed))
+(defun fnn-owner-memory-configure-locked (service tls-context observed &optional gate-only)
+  (declare (ignore service tls-context gate-only))
+  (unless (and *in-section* (equal observed '(:observed))) (error "configure outside the section"))
+  :hold)
+(defun fnn-owner-lease-install-locked (service)
+  (declare (ignore service))
+  (unless *in-section* (error "lease install outside the section"))
+  (setq *installed* t))
 (defconstant +fnn-gc-nursery-octets+ 7)
 (with-open-file (stream "host/native/mux.lisp")
   (loop for form = (read stream nil :eof) until (eq form :eof)
@@ -54,5 +48,7 @@
           do (eval form) (return)))
 (unless (eq (fnn-mux-budget-install :service nil) :hold) (error "decision"))
 (when *violations* (error "observed inside the owner section: ~s" *violations*))
-(unless (and (member :machine *seen*) (member :core *seen*)) (error "observations missing"))
+(unless (and (member :machine *seen*) (member :core *seen*) (member :memory *seen*))
+  (error "observations missing"))
+(unless *installed* (error "the host lease was not installed under a holding gate"))
 (format t "native mux budget observe: PASS~%")
