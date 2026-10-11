@@ -10,14 +10,19 @@
 ; record *p4-swap* that recovery accepts), a handle the release names, a
 ; composite whose stxa article is not its held article.
 ;
-; Hypotheses with no tooth (the conclusion holds with the hypothesis failing,
-; so no instance has it alone failing and the conclusion false):
-;   K3: (not (equal row :bad)); the prepare of :bad stages nothing.
-;   K4: (not (equal rebuilt :fault)); the swap over a fault leaves an empty store.
-;   K5a: (not (equal (car fr) :bad)) and (not (equal oc :fault)); a failed open
-;        has no store, and the empty store is invariant.
-;   K5b: the intern of the whole journal not :bad, and oc not :fault: likewise.
-; The stobj recognizers (fn-arena-p) are true of every live arena.
+; Hypotheses the first statement draft carried, dropped because no instance
+; has one failing alone with a false conclusion (the instances below are the
+; evidence: each asserts the conclusion with the hypothesis failing):
+;   K3: the interned row is not :bad; the prepare of :bad stages nothing.
+;   K4: the rebuilt owner is not :fault; the swap over a fault is an empty Store.
+;   K5a: the full replay is not :bad and the open is not :fault; a failed open
+;        has no Store, and the empty Store is invariant.
+;   K5b: the open is not :fault: likewise.
+; K5b keeps (true-listp ws) and the intern of the whole journal not :bad, which
+; the cited equality with the full recover needs.  The stobj recognizers
+; (fn-arena-p) are true of every live arena; fn-sf-record-valuesp (K7) has no
+; runtime removal witness: a catalog loaded from a non-record row is not a live
+; fn-cat.
 (in-package "ACL2")
 (include-book "../../books/filed-lifecycle")
 (include-book "filed-history-tests")   ; *otf-good*, *otf-z*, *otf-bad*, the signed composites, the mixed Store

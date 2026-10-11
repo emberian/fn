@@ -144,10 +144,10 @@
 ; event) and the files invariant holds before and after.  With the unfiled
 ; record *otf-bad* in place of *otf-z* the hypothesis on the files fails and
 ; so does the conclusion (the removal tooth of the files hypothesis).
-; Their second hypothesis, FN-O1-ROWS-INVP of the staged event, is T of every
-; event these prepares stage (a retention, consumer or topic event is not a
-; record, a held row or a composite), so no instance exists in which it alone
-; fails and the prepare stages.
+; The statements carry no row hypothesis for these three: FN-O1-ROWS-INVP of
+; the staged event is T of every event they stage (a retention, consumer or
+; topic event is not a record, a held row or a composite; asserted below as the
+; last three items), so no instance has it alone failing.
 (defun otf-mixed (w fn-arena)
   (declare (xargs :mode :program :stobjs fn-arena))
   (mv-let (rows fn-arena)
@@ -303,12 +303,11 @@
 
 ; ---------------------------------------------------------------------------
 ; K0: the reclaim rewrite of a record is reclaimed (its payload a tombstone),
-; whatever its groups: the instances below satisfy FN-RCL-PAYLOAD-PROFILEP; the
-; unfiled record's rewrite too.  The mutation (the tombstone disjunct removed)
-; is false of the filed record's rewrite.  The statement's hypothesis has no
-; removal tooth: with the profile hypothesis failing (a non-octet payload, a
-; payload over the bound) the rewrite is still a tombstone, so the conclusion
-; holds on every instance tried (searches.md).
+; whatever its groups and whatever its payload.  The instances below satisfy
+; FN-RCL-PAYLOAD-PROFILEP; the unfiled record's rewrite too; and a payload that
+; does not satisfy it ('(300)) is rewritten to a tombstone all the same, which
+; is why the statement carries no profile hypothesis.  The mutation (the
+; tombstone disjunct removed) is false of the filed record's rewrite.
 (assert-event (and (fn-rcl-payload-profilep (fn-record-payload *otf-good*))
                    (fn-o1-records-filed-or-reclaimedp (list (fn-rclp-tombstoned *otf-good*)))
                    (fn-o1-records-filed-or-reclaimedp (list (fn-rclp-tombstoned *otf-bad*)))
