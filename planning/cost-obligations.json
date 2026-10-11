@@ -4,21 +4,21 @@
  "counts": {
   "proved": 6,
   "partial": 1,
-  "derived": 80,
-  "none": 1757
+  "derived": 86,
+  "none": 1756
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 1,
-   "derived": 80,
-   "none": 1026
+   "derived": 86,
+   "none": 1028
   },
   "ideal": {
    "proved": 0,
    "partial": 0,
    "derived": 0,
-   "none": 147
+   "none": 144
   },
   "program": {
    "proved": 0,
@@ -69,6 +69,7 @@
   "fn-cur-at",
   "fn-lgb-slice-acc",
   "fn-ncfg-nth",
+  "fn-rce-exercise-items",
   "fn-scat-group-low-top",
   "fn-scat-top-viewp",
   "fn-sl-loop",
@@ -120,6 +121,16 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "create-fn-rcwacc",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": "books/reclaim-chunked-cost.lisp"
   },
   {
    "name": "create-fn-resource-ledger",
@@ -3939,6 +3950,46 @@
    "declared_in": null
   },
   {
+   "name": "fn-cth-empty-suffix",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-cth-header-open",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-cth-status-text",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-cth-table-initial-state",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
    "name": "fn-cu-cursor-envelope",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -6298,6 +6349,26 @@
    ],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"
+  },
+  {
+   "name": "fn-mm-collector-cfg",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-mm-collector-due-p",
+   "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
   },
   {
    "name": "fn-mo-img-observed",
@@ -8976,16 +9047,6 @@
    "declared_in": "host/cost-host.lisp"
   },
   {
-   "name": "fn-ock-capture-budget",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
    "name": "fn-ock-request-status",
    "class": "common-lisp-compliant",
    "claim": "none",
@@ -8997,16 +9058,6 @@
   },
   {
    "name": "fn-ockp-donep",
-   "class": "common-lisp-compliant",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-ockp-initial-state",
    "class": "common-lisp-compliant",
    "claim": "none",
    "bound": null,
@@ -11740,6 +11791,16 @@
   {
    "name": "fn-owner-login-gate-buffer",
    "class": "common-lisp-compliant",
+   "claim": "none",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": null
+  },
+  {
+   "name": "fn-owner-memory-configure",
+   "class": "program",
    "claim": "none",
    "bound": null,
    "sizes": [],
@@ -14742,52 +14803,62 @@
   {
    "name": "fn-rce-exercise",
    "class": "common-lisp-compliant",
-   "claim": "none",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-rce-run"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "host/cost-host.lisp"
   },
   {
-   "name": "fn-rcw-acc-finish",
+   "name": "fn-rcwacc-canon-step",
    "class": "common-lisp-compliant",
-   "claim": "none",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-rcw-canon-acc-step"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "books/reclaim-chunked-cost.lisp"
   },
   {
-   "name": "fn-rcw-acc-init",
-   "class": "ideal",
-   "claim": "none",
+   "name": "fn-rcwacc-finish",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-rcw-acc-finish"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "books/reclaim-chunked-cost.lisp"
   },
   {
-   "name": "fn-rcw-canon-acc-step",
-   "class": "ideal",
-   "claim": "none",
+   "name": "fn-rcwacc-init",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-rcw-acc-init"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "books/reclaim-chunked-cost.lisp"
   },
   {
-   "name": "fn-rcw-predict-acc-step",
-   "class": "ideal",
-   "claim": "none",
+   "name": "fn-rcwacc-predict-step",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-rcw-predict-acc-step"
+   ],
    "theorem": null,
-   "declared_in": null
+   "declared_in": "books/reclaim-chunked-cost.lisp"
   },
   {
    "name": "fn-reader-chunk",
@@ -16466,16 +16537,6 @@
   },
   {
    "name": "fn-store-sco-file-name",
-   "class": "program",
-   "claim": "none",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [],
-   "theorem": null,
-   "declared_in": null
-  },
-  {
-   "name": "fn-store-sco-file-read-bound",
    "class": "program",
    "claim": "none",
    "bound": null,
