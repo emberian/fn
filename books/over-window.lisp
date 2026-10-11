@@ -857,50 +857,6 @@
                              (bytes (fn-nntp-split-body (fn-nntp-split-article payload))) (line-rev nil) (lines-rev nil)))))))
 
 (local
- (defthm fn-ovwx-parse-lines-header-len
-   (implies (and (true-listp octets)
-                 (true-listp header-rev)
-                 (natp header-bytes)
-                 (<= (len header-rev) header-bytes)
-                 (fn-article-result-okp
-                  (fn-article-parse-lines octets limits lines-left header-bytes nfields
-                                          fields-rev current header-rev)))
-            (<= (len (fn-article-header
-                      (fn-article-result-article
-                       (fn-article-parse-lines octets limits lines-left header-bytes nfields
-                                               fields-rev current header-rev))))
-                (max header-bytes (fn-article-limit-octets limits))))
-   :rule-classes nil
-   :hints (("Goal"
-            :induct (fn-article-parse-lines octets limits lines-left header-bytes nfields
-                                            fields-rev current header-rev)
-            :in-theory (e/d (fn-article-parse-lines
-                             fn-article-ok fn-article-make fn-article-header
-                             fn-article-header-rev-add-line
-                             fn-article-result-okp fn-article-result-article)
-                            (fn-article-next-line fn-article-next-line-aux
-                             fn-article-new-field fn-article-add-fold
-                             fn-article-finish-fields fn-article-body-crlfp
-                             fn-article-line-value fn-article-line-rest
-                             fn-article-limit-octets))))))
-
-(local
- (defthm fn-ovwx-parse-under-header-len
-   (implies (fn-article-result-okp (fn-article-parse-under octets limits))
-            (<= (len (fn-article-header
-                      (fn-article-result-article (fn-article-parse-under octets limits))))
-                (fn-article-limit-octets limits)))
-   :rule-classes nil
-   :hints (("Goal"
-            :use ((:instance fn-ovwx-parse-lines-header-len
-                             (lines-left (1+ (fn-article-limit-lines limits)))
-                             (header-bytes 0) (nfields 0) (fields-rev nil) (current nil) (header-rev nil)))
-            :in-theory (e/d (fn-article-parse-under)
-                            (fn-article-parse-lines fn-article-limit-octets fn-article-limit-lines
-                             fn-article-header fn-article-result-article fn-article-result-okp
-                             fn-cbor-at-mostp fn-cbor-octet-listp))))))
-
-(local
  (defthm fn-ovwx-scrub-len
    (<= (len (fn-nov-scrub bytes)) (len bytes))
    :rule-classes :linear
@@ -911,34 +867,6 @@
    (<= (len (fn-nov-value-content v)) (len v))
    :rule-classes :linear
    :hints (("Goal" :in-theory (enable fn-nov-value-content)))))
-
-(local
- (defthm fn-ovwx-unfold-len
-   (<= (len (fn-article-unfold-octets x)) (len x))
-   :rule-classes :linear
-   :hints (("Goal" :in-theory (enable fn-article-unfold-octets)))))
-
-(local
- (defthm fn-ovwx-after-colon-len
-   (<= (len (fn-article-value-after-colon x)) (len x))
-   :rule-classes :linear))
-
-(local
- (defthm fn-ovwx-join-len
-   (<= (len (fn-article-join-crlf lines)) (len (fn-article-lines-octets lines)))
-   :rule-classes :linear))
-
-(local
- (defthm fn-ovwx-field-value-len
-   (implies (fn-article-field-correspondsp field)
-            (<= (len (fn-article-field-unfolded-value field))
-                (len (fn-article-lines-octets (fn-article-field-raw-lines field)))))
-   :rule-classes nil
-   :hints (("Goal" :in-theory (e/d (fn-article-field-correspondsp fn-article-unfold-reference)
-                                   (fn-article-lines-octets fn-article-join-crlf fn-article-unfold-octets fn-article-value-after-colon))
-            :use ((:instance fn-ovwx-join-len (lines (fn-article-field-raw-lines field)))
-                  (:instance fn-ovwx-unfold-len (x (fn-article-join-crlf (fn-article-field-raw-lines field))))
-                  (:instance fn-ovwx-after-colon-len (x (fn-article-unfold-octets (fn-article-join-crlf (fn-article-field-raw-lines field))))))))))
 
 (local
  (defun fn-ovwx-wsum (fields)
@@ -961,7 +889,7 @@
             :in-theory (disable fn-article-lines-octets fn-article-field-correspondsp fn-article-field-unfolded-value
                                 fn-article-field-raw-lines))
            ("Subgoal *1/1" :expand ((fn-article-fields-correspondp fields) (fn-article-fields-octets fields))
-            :use ((:instance fn-ovwx-field-value-len (field (car fields))))))))
+            :use ((:instance fn-article-field-unfolded-within-raw (field (car fields))))))))
 
 (local
  (defun fn-ovwx-fw (fields name)
@@ -1077,7 +1005,7 @@
                              (payload (fn-nntp-article-bytes article fn-arena)))
                   (:instance fn-ovwx-ceiling-parse-is-limits-parse
                              (payload (fn-nntp-article-bytes article fn-arena)))
-                  (:instance fn-ovwx-parse-under-header-len
+                  (:instance fn-article-parse-under-header-within-the-limit
                              (octets (fn-nntp-article-bytes article fn-arena))))
             :in-theory (e/d (fn-nov-overview fn-nov-subject fn-nov-from fn-nov-date fn-nov-msgid fn-nov-references)
                             (fn-article-parse fn-article-parse-under fn-article-header fn-article-result-article
