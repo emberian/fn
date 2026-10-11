@@ -536,6 +536,7 @@
   :step fn-nnw-stream-step :stobjs (fn-arena fn-cat)
   :byte-proof fn-nnw-stream-step-byte-bound
   :call-proof fn-nnw-stream-step-call-bound
+  :yield-proof fn-nnw-stream-step-yield-is-exhaustion
   :remaining (fn-nnw-stream-remaining cur fn-arena fn-cat)
   :residual-proof fn-nnw-stream-step-residual)
 
