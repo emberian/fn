@@ -581,11 +581,11 @@
                  (mv-nth 2 (fn-splan-cw-drain
                             (fn-splan-of-effects
                              (cdr (fn-nntp-over-range-ovw session v token legacyp server fn-cat)))
-                            w wl v b n fn-arena fn-cat))))
+                            w wl vq bq n fn-arena fn-cat))))
            (equal (mv-nth 1 (fn-splan-cw-drain
                              (fn-splan-of-effects
                               (cdr (fn-nntp-over-range-ovw session v token legacyp server fn-cat)))
-                             w wl v b n fn-arena fn-cat))
+                             w wl vq bq n fn-arena fn-cat))
                   (fn-served-reply-octets
                    (cdr (fn-splan-arm-reference session v token legacyp server fn-arena fn-cat)))))
   :hints (("Goal" :do-not-induct t
@@ -595,6 +595,7 @@
                                         fn-splan-cw-octets-of-the-arm)
                                       (theory 'minimal-theory))
            :use ((:instance fn-splan-cw-drain-is-the-expanded-reply
+                            (v vq) (b bq)
                             (effects (cdr (fn-nntp-over-range-ovw session v token legacyp server
                                                                   fn-cat))))
                  (:instance fn-splan-cw-octets-is-the-expanded-reply
