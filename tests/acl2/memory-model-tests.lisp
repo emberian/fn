@@ -208,8 +208,8 @@
                                                   core nursery obs)))
                     (caddr (fn-mm-launch-decide profile img cfg configured resident-obs address-obs
                                                 core nursery obs)))))
-  :id "PRF-10006"
   :subject fn-mm-launch-decide
+  :id "PRF-10008"
   :restates fn-mm-launch-holds-the-store-and-the-reservation
   :hyps (launch)
   :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured *mmt-2g*)
@@ -248,8 +248,8 @@
            (equal (car (fn-mm-launch-decide profile img cfg configured resident-obs
                                             address-obs core nursery obs))
                   :launch))
-  :id "PRF-10007"
   :subject fn-mm-launch-decide
+  :id "PRF-10009"
   :restates fn-mm-launch-refuses-only-by-the-model
   :hyps (gate address)
   :witness ((profile *mmt-p*) (img *mmt-img*) (cfg *mmt-cfg1*) (configured nil)

@@ -429,7 +429,11 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertIsNotNone(heap, out)
         figure, word, machine = int(heap.group(1)), heap.group(2), int(heap.group(3))
         self.assertEqual(word, "small")
-        # The run's LIMIT is the cgroup's less the pools it funds; the dynamic
+        # The launch's decision (books/heap-command.lisp fn-mo-serve-decide,
+        # KEYSTONES fn-mo-serve-holds-every-admitted-store,
+        # fn-mo-serve-refuses-only-by-the-model,
+        # fn-mo-serve-launch-fits-the-address-space): the run's LIMIT is the
+        # cgroup's less the pools it funds; the dynamic
         # space holds the core's content and LIMIT (L-RUN-LAUNCH), so it is
         # larger than LIMIT, and the resident set stays within the cgroup
         # (the VmHWM assertions below).
@@ -503,7 +507,8 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
 
         The registered keystones this exercises: the run starts only when
         the owner's configure answers :hold, which is the launch decision
-        fn-mo-run-decide answering :heap (books/heap-command.lisp,
+        fn-mo-run-decide answering :heap (its launch, books/memory-model.lisp
+        fn-mm-launch-decide; books/heap-command.lisp,
         PRF-10004 holds the store at C', PRF-10005 refuses only by the
         model) over the serving sum fn-mm-sum (books/memory-model.lisp,
         PRF-10002 the instant within the sum, PRF-10003 the sum grows with

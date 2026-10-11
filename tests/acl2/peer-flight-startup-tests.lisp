@@ -135,6 +135,7 @@
                                                    peer observed resident-o) peer
                                                     address observed workers cache-limit root resident-o)) :hold))))
   :rule-classes nil
+  :id "PRF-10013"
   :restates fn-mo-serve-startup-admits-the-pool
   :hyps (accepted same-core occupied-held owner-observed peer-valid output-valid pool-shape table-fits table-supported)
   :subject fn-mo-serve-decide
@@ -194,6 +195,7 @@
                   (nfix (fn-crv-nth 0 output)))
                (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live nil config resident address core nursery tot (fn-mo-serve-pools profile nil output peer workers cache-limit root) (fn-mo-serve-pool-threads nil peer)))))))
   :rule-classes nil
+  :id "PRF-10014"
   :restates fn-mo-serve-output-pool-is-held
   :hyps (accepted same-core owner-observed)
   :subject fn-prstartup-serve-store-need

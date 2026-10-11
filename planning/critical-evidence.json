@@ -267,6 +267,20 @@
    "mutation": "tests/acl2/store-log-walk-once-tests.lisp::count-from-the-record-prefix",
    "provenance": "keystone_critical.py --declare sha256:250d84899bd1b39123021981c2fb1410bf2f47b1f18e10a19bc27c0865e6b994"
   },
+  "fn-mm-launch-holds-the-store-and-the-reservation": {
+   "subject": "fn-mm-launch-decide",
+   "host_test": "tests/test_native_heap_from_profile.py::test_the_run_states_its_capacity_and_admits_every_post_up_to_it",
+   "trace_witness": "tests/acl2/memory-model-tests.lisp::mmt-launch-holds-the-store-and-the-reservation",
+   "mutation": "tests/acl2/memory-model-tests.lisp::reservation-against-the-resident-limit",
+   "provenance": "keystone_critical.py --declare sha256:ac44da06aefd44626a5b96c55bf896c89287865936d8bedfa9d806fb50c17e52"
+  },
+  "fn-mm-launch-refuses-only-by-the-model": {
+   "subject": "fn-mm-launch-decide",
+   "host_test": "tests/test_native_heap_from_profile.py::test_the_run_states_its_capacity_and_admits_every_post_up_to_it",
+   "trace_witness": "tests/acl2/memory-model-tests.lisp::mmt-launch-refuses-only-by-the-model",
+   "mutation": "tests/acl2/memory-model-tests.lisp::gate-without-the-reopen",
+   "provenance": "keystone_critical.py --declare sha256:edd29d8ad470ea6f2d9f1ffe6e4670ebed396cf121ed91b89bce9a3e3acaa8e9"
+  },
   "fn-mm-need-within-the-sum": {
    "subject": "fn-mm-sum",
    "host_test": "tests/test_native_heap_from_profile.py::test_the_run_states_its_capacity_and_admits_every_post_up_to_it",
@@ -315,6 +329,27 @@
    "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-run-refuses-only-by-the-model",
    "mutation": "tests/acl2/heap-command-tests.lisp::zero-connections-taken-as-a-capacity",
    "provenance": "keystone_critical.py --declare sha256:2a5fccf38b3bf430b0cfb0dc2c3d9eb3eca503eb7b4f742bd4b44457c67ce1d8"
+  },
+  "fn-mo-serve-holds-every-admitted-store": {
+   "subject": "fn-mo-serve-decide",
+   "host_test": "tests/test_native_heap_from_profile.py::test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-serve-holds-every-admitted-store",
+   "mutation": "tests/acl2/heap-command-tests.lisp::gate-reduced-to-a-numeric-limit",
+   "provenance": "keystone_critical.py --declare sha256:31cad9c81253f6922aad595817309cb2c9cdeafc5534dea72c1f623d3db50fb5"
+  },
+  "fn-mo-serve-launch-fits-the-address-space": {
+   "subject": "fn-mo-serve-decide",
+   "host_test": "tests/test_native_heap_from_profile.py::test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-serve-launch-fits-the-address-space",
+   "mutation": "tests/acl2/heap-command-tests.lisp::reservation-held-to-the-resident-limit",
+   "provenance": "keystone_critical.py --declare sha256:3d54ddd0e0ba3a573bbe9b8868f2d3aa4d7dd4f8a953cef4793732682c55949a"
+  },
+  "fn-mo-serve-refuses-only-by-the-model": {
+   "subject": "fn-mo-serve-decide",
+   "host_test": "tests/test_native_heap_from_profile.py::test_a_small_node_starts_serves_checkpoints_and_reopens_in_2g",
+   "trace_witness": "tests/acl2/heap-command-tests.lisp::hct-serve-refuses-only-by-the-model",
+   "mutation": "tests/acl2/heap-command-tests.lisp::reservation-held-to-the-resident-limit",
+   "provenance": "keystone_critical.py --declare sha256:6c9c4e599dae47acfc3beb5e34e2c1b6c487be192cf39da14c826d7e28a37657"
   },
   "fn-orcs-predict-seal-refines-intern": {
    "subject": "fn-orcs-predict-rows-at",

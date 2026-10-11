@@ -462,6 +462,7 @@
                   (nfix pools))
                (* *fn-heap-mib* (nfix (cadr (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads))))))
   :rule-classes nil
+  :id "PRF-10010"
   :restates fn-mo-serve-holds-every-admitted-store
   :hyps (accepted same-core gate)
   :subject fn-mo-serve-decide
@@ -483,6 +484,7 @@
                     (<= (fn-mo-serve-reservation profile core (fn-mo-serve-dynamic (fn-mo-serve-limit resident pools) core nursery pools) pool-threads) (fn-mm-least-observation address))))
            (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap))
   :rule-classes nil
+  :id "PRF-10011"
   :restates fn-mo-serve-refuses-only-by-the-model
   :hyps (limit-observed model-holds address-space)
   :subject fn-mo-serve-decide
@@ -511,6 +513,7 @@
                                                          live cold profile config))))
                            (<= (fn-mm-reopen-need profile img owner-cfg tot) (fn-mo-serve-limit resident pools)))))
   :rule-classes nil
+  :id "PRF-10012"
   :restates fn-mo-serve-launch-fits-the-address-space
   :hyps (accepted)
   :subject fn-mo-serve-decide

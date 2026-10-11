@@ -7992,10 +7992,6 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-rv-connection-capacity-funds-the-root"
-        },
-        {
-          "kind": "theorem",
           "name": "fn-cbud-step-read-octets-is-bounded"
         },
         {
@@ -18935,6 +18931,69 @@
         {
           "kind": "theorem",
           "name": "fn-mm-sum-grows-with-the-store"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10008",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mm-launch-holds-the-store-and-the-reservation"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10009",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mm-launch-refuses-only-by-the-model"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10010",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-holds-every-admitted-store"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10011",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-refuses-only-by-the-model"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10012",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-launch-fits-the-address-space"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10013",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-startup-admits-the-pool"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10014",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-mo-serve-output-pool-is-held"
         }
       ]
     }
