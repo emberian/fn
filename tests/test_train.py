@@ -550,6 +550,21 @@ class PushTests(TrainBase):
         self.assertIn(f"carried: b@{sha[:9]}", p.stdout)
         self.assertNotIn(first[:9], p.stdout.split("carried:")[1].splitlines()[0])
 
+    def test_a_train_formed_on_a_fungus_branch_is_not_stacked(self):
+        # the Fungus seat merges lanes into lane/fungus-*; the train branches
+        # from it, so those merges sit on the train's first-parent line
+        # (the work tree's integrate/t1 starts at dev and takes the Fungus
+        # merge first, as a train branched from lane/fungus-x does)
+        sha = self.lane("f", {"f.txt": "f\n"})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        sh(self.work, "git", "merge", "-q", "--no-ff", "-m", f"Merge lane/f @{sha[:9]} into lane/fungus-x", sha)
+        b = self.lane("b", {"b.txt": "b\n"})
+        self.assertEqual(self.train("merge", f"b@{b}").returncode, 0)
+        self.assertEqual(self.train("gate").returncode, 0)
+        p = self.train("push")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(self.origin_rev("dev"), self.head())
+
     # ruling 21: the lock gate's table.  The only green is "no key added
     # relative to dev"; dev's own keys are an owned red list; a checker that
     # breaks its exit/JSON contract is a failure, never an empty set.
