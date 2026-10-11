@@ -471,35 +471,77 @@
                     (:free (a b c) (fn-asx-prefix-equalp a b c))))))
 
 
-; ---- fn-asto-resume-ms (books/article-stream-owner.lisp): a LIST quantum is
-; due on the loop's next pass, an OVER/NEWNEWS quantum waits ACL2's delay.
+; ---- fn-asto-resume-ms (books/article-stream-owner.lisp): a quantum that
+; produced octets, and a LIST or ARTICLE quantum, are due on the loop's next
+; pass; only an OVER/NEWNEWS quantum that produced nothing waits ACL2's delay.
+; The produced plan has a reply in front of its cursor: the window the host
+; renders after a quantum that took a number (not at a cursor).
 (defconst *aot-lst-plan* '(nil (:list-cursor (nil (x)))))
 (defconst *aot-over-plan* '(nil (:over-cursor (x))))
+(defconst *aot-over-produced-plan* '(nil (:reply (50 50 52 13 10)) (:over-cursor (x))))
 (defconst *aot-article-plan* '(nil (:article-cursor x)))
 (defconst *aot-preflight-plan* '(nil (:article-preflight x)))
 
 (defteeth fn-asto-resume-ms-lst-is-immediate
   :claim (((lst (fn-qplan-lst-cursorp plan)))
-          (equal (fn-asto-resume-ms plan) 0))
+          (equal (fn-asto-resume-ms plan producedp) 0))
   :subject fn-asto-resume-ms
-  :witness ((plan *aot-lst-plan*))
-  :breaks ((lst ((plan *aot-over-plan*))))
+  :witness ((plan *aot-lst-plan*) (producedp nil))
+  :breaks ((lst ((plan *aot-over-plan*) (producedp nil))))
   :mutations ((lst-waits
-               (:conclusion (equal (fn-asto-resume-ms plan) 1))
-               ((plan *aot-lst-plan*))
+               (:conclusion (equal (fn-asto-resume-ms plan producedp) 1))
+               ((plan *aot-lst-plan*) (producedp nil))
                :fault "a LIST yield that idles for the OVER delay")))
 
+; Behaviour change 2026-10-11 (OVER-40): the delay is owed only by empty
+; progress; NOT-PRODUCED is the new hypothesis and its removal is the
+; regression's own state, a produced OVER window.
 (defteeth fn-asto-resume-ms-over-waits
-  :claim (((not-article (not (fn-asto-plan-articlep plan)))
+  :claim (((not-produced (not producedp))
+           (not-article (not (fn-asto-plan-articlep plan)))
            (not-preflight (not (fn-asto-preflight-planp plan)))
            (not-lst (not (fn-qplan-lst-cursorp plan))))
-          (posp (fn-asto-resume-ms plan)))
+          (posp (fn-asto-resume-ms plan producedp)))
   :subject fn-asto-resume-ms
-  :witness ((plan *aot-over-plan*))
-  :breaks ((not-article ((plan *aot-article-plan*)))
-           (not-preflight ((plan *aot-preflight-plan*)))
-           (not-lst ((plan *aot-lst-plan*))))
+  :witness ((plan *aot-over-plan*) (producedp nil))
+  :breaks ((not-produced ((plan *aot-over-plan*) (producedp t)))
+           (not-article ((plan *aot-article-plan*) (producedp nil)))
+           (not-preflight ((plan *aot-preflight-plan*) (producedp nil)))
+           (not-lst ((plan *aot-lst-plan*) (producedp nil))))
   :mutations ((over-immediate
-               (:conclusion (equal (fn-asto-resume-ms plan) 0))
-               ((plan *aot-over-plan*))
+               (:conclusion (equal (fn-asto-resume-ms plan producedp) 0))
+               ((plan *aot-over-plan*) (producedp nil))
                :fault "an OVER quantum with no delay, rescanning a sparse range in one event")))
+
+(defteeth fn-asto-resume-ms-produced-is-immediate
+  :claim (((produced producedp))
+          (equal (fn-asto-resume-ms plan producedp) 0))
+  :subject fn-asto-resume-ms
+  :witness ((plan *aot-over-plan*) (producedp t))
+  :breaks ((produced ((plan *aot-over-plan*) (producedp nil))))
+  :mutations ((produced-waits
+               (:conclusion (equal (fn-asto-resume-ms plan producedp) (fn-splan-cursor-resume-ms)))
+               ((plan *aot-over-plan*) (producedp t))
+               :fault "an OVER window that was sent idles for the delay (OVER-40: forty delays at W' = 1)")))
+
+; The protocol keystone has no hypothesis, so no removal; its mutation is the
+; host before 2026-10-11, which asked for the delay without PRODUCEDP.
+(defteeth fn-asto-quantum-waits-only-on-empty-progress
+  :claim (()
+          (implies (posp (fn-asto-resume-ms plan (not (fn-qplan-at-cursorp plan))))
+                   (fn-qplan-at-cursorp plan)))
+  :subject fn-asto-resume-ms
+  :witness ((plan *aot-over-produced-plan*))
+  :breaks ()
+  :mutations ((delay-ignores-progress
+               (:conclusion (implies (posp (fn-asto-resume-ms plan nil))
+                                     (fn-qplan-at-cursorp plan)))
+               ((plan *aot-over-produced-plan*))
+               :fault "the pre-fix host: every OVER yield waits, a produced window included")))
+
+; Both arms are reached: the empty plan is at a cursor and waits; the produced
+; one is not and does not.
+(assert-event (and (fn-qplan-at-cursorp *aot-over-plan*)
+                   (posp (fn-asto-resume-ms *aot-over-plan* nil))
+                   (not (fn-qplan-at-cursorp *aot-over-produced-plan*))
+                   (equal (fn-asto-resume-ms *aot-over-produced-plan* t) 0)))
