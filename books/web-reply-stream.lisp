@@ -107,11 +107,14 @@
     (:rows (fn-wov-rowsp v))
     (otherwise t)))
 
-(defthm fn-wov-statep-of-put
-  (implies (and (fn-wov-statep x) key (symbolp key) (fn-wov-field-okp key v))
-           (fn-wov-statep (fn-was-put key v x)))
-  :hints (("Goal" :in-theory (enable fn-wov-statep fn-wov-field-okp)
-                  :use (fn-wov-statep-facts))))
+;; A proof step of fn-wov-octet-statep, which discharges its field condition
+;; at each put.
+(local
+ (defthm fn-wov-statep-of-put
+   (implies (and (fn-wov-statep x) key (symbolp key) (fn-wov-field-okp key v))
+            (fn-wov-statep (fn-was-put key v x)))
+   :hints (("Goal" :in-theory (enable fn-wov-statep fn-wov-field-okp)
+                   :use (fn-wov-statep-facts)))))
 
 (defthm fn-wov-octet-statep
   (implies (fn-wov-statep x) (fn-wov-statep (fn-wov-octet o x)))
@@ -126,6 +129,26 @@
                   :measure (nfix (- (nfix end) (nfix i)))))
   (if (>= (nfix i) (nfix end)) x
     (fn-wov-scan (1+ (nfix i)) end (fn-wov-octet (fn-octets-get i fn-web-in) x) fn-web-in)))
+
+;; The OVER scan the host starts is in its state; octets and scans keep the
+;; state and the kind.
+(defthm fn-wov-start-statep
+  (fn-wov-statep (fn-wov-start)))
+
+(defthm fn-wov-octet-kind
+  (equal (fn-was-get :kind (fn-wov-octet o x)) (fn-was-get :kind x))
+  :hints (("Goal" :in-theory (disable fn-was-get fn-was-put
+                                      (:executable-counterpart tau-system)))))
+
+(defthm fn-wov-scan-statep
+  (implies (fn-wov-statep x) (fn-wov-statep (fn-wov-scan i end x fn-web-in)))
+  :hints (("Goal" :induct (fn-wov-scan i end x fn-web-in)
+                  :in-theory (disable fn-wov-octet fn-wov-statep fn-was-get))))
+
+(defthm fn-wov-scan-kind
+  (equal (fn-was-get :kind (fn-wov-scan i end x fn-web-in)) (fn-was-get :kind x))
+  :hints (("Goal" :induct (fn-wov-scan i end x fn-web-in)
+                  :in-theory (disable fn-wov-octet fn-was-get))))
 (defun fn-wov-rows (group rows)
   (declare (xargs :guard (fn-wov-rowsp rows)))
   (if (consp rows)
@@ -171,6 +194,26 @@
   (if (>= (nfix i) (nfix end)) x
     (fn-wls-scan (1+ (nfix i)) end (fn-wls-octet (fn-octets-get i fn-web-in) x) fn-web-in)))
 
+;; The LIST scan the host starts is in its state; octets and scans keep the
+;; state and the kind.
+(defthm fn-wls-start-statep
+  (fn-wls-statep (fn-wls-start)))
+
+(defthm fn-wls-octet-kind
+  (equal (fn-was-get :kind (fn-wls-octet o x)) (fn-was-get :kind x))
+  :hints (("Goal" :in-theory (disable fn-was-get fn-was-put
+                                      (:executable-counterpart tau-system)))))
+
+(defthm fn-wls-scan-statep
+  (implies (fn-wls-statep x) (fn-wls-statep (fn-wls-scan i end x fn-web-in)))
+  :hints (("Goal" :induct (fn-wls-scan i end x fn-web-in)
+                  :in-theory (disable fn-wls-octet fn-wls-statep fn-was-get))))
+
+(defthm fn-wls-scan-kind
+  (equal (fn-was-get :kind (fn-wls-scan i end x fn-web-in)) (fn-was-get :kind x))
+  :hints (("Goal" :induct (fn-wls-scan i end x fn-web-in)
+                  :in-theory (disable fn-wls-octet fn-was-get))))
+
 (defun fn-wrs-p (flow)
   (declare (xargs :guard t))
   (or (member (fn-wss-f-route flow) '(:article :groups))
@@ -201,6 +244,20 @@
     (if (equal (fn-was-get :kind scan) :list)
         (fn-wls-scan 0 (fn-octets-len fn-web-in) scan fn-web-in)
       (fn-wov-scan 0 (fn-octets-len fn-web-in) scan fn-web-in))))
+
+;; What the host's guard-checked entries rely on (host/web-host.lisp): the
+;; scan fn-web-host-stream-start makes satisfies the guard of
+;; fn-web-host-stream-scan, and every scan it returns satisfies the guards of
+;; the next fn-web-host-stream-scan and of fn-web-host-stream-page, so neither
+;; call refuses its guard on a reply the host retained.
+(defthm fn-wrs-start-statep
+  (fn-wrs-statep (fn-wrs-start flow)))
+
+(defthm fn-wrs-scan-statep
+  (implies (fn-wrs-statep scan)
+           (fn-wrs-statep (fn-wrs-scan scan fn-web-in)))
+  :hints (("Goal" :in-theory (disable fn-was-scan fn-wov-scan fn-wls-scan fn-was-get
+                                      fn-was-statep fn-wov-statep fn-wls-statep))))
 (defun fn-wrs-page (config flow scan)
   (declare (xargs :guard (fn-wrs-statep scan)))
   (if (equal (fn-was-get :kind scan) :article) (fn-was-page config flow scan)

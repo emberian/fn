@@ -221,5 +221,42 @@ class GuardEstablished(unittest.TestCase):
         self.assertNotIn("fn-inv", with_guard.findings())
 
 
+class LowerStale(unittest.TestCase):
+    """--lower-stale drops exactly the entries --strict calls stale, keeps the
+    rest (accepted text included) and adds no finding, NEW ones included."""
+
+    def test_only_stale_entries_leave(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = pathlib.Path(d) / "premise-baseline.json"
+            baseline = {"note": "n", "accepted": {"fn-kept": "why kept", "fn-gone": "why gone"}}
+            path.write_text(json.dumps(baseline))
+            findings = {"fn-kept": {"class": "never concluded"},
+                        "fn-new": {"class": "never concluded"}}
+            original = premise_audit.BASELINE
+            premise_audit.BASELINE = path
+            try:
+                removed = premise_audit.lower_stale(findings, baseline)
+            finally:
+                premise_audit.BASELINE = original
+            self.assertEqual(removed, ["fn-gone"])
+            written = json.loads(path.read_text())
+            self.assertEqual(written, {"note": "n", "accepted": {"fn-kept": "why kept"}})
+
+    def test_nothing_stale_writes_nothing(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = pathlib.Path(d) / "premise-baseline.json"
+            original = premise_audit.BASELINE
+            premise_audit.BASELINE = path
+            try:
+                removed = premise_audit.lower_stale({"fn-a": {}}, {"accepted": {"fn-a": "x"}})
+            finally:
+                premise_audit.BASELINE = original
+            self.assertEqual(removed, [])
+            self.assertFalse(path.exists())
+
+
 if __name__ == "__main__":
     unittest.main()

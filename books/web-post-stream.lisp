@@ -341,6 +341,13 @@
                 (<= (fn-wss-c-be (nth 3 action)) n))
            (fn-wpf-statep (fn-wpf-start action) n))
   :hints (("Goal" :in-theory (e/d (fn-wpf-statep fn-wpf-start) (nth update-nth)))))
+;; The traversal the host starts (fn-wpf-private-begin, through
+;; fn-web-host-private-begin-step) holds four empty spans and no values: its
+;; spans are in any buffer and its values are octet lists.
+(defthm fn-wpf-start-spans-and-values
+  (and (fn-wpf-spansp (nth 5 (fn-wpf-start action)) n)
+       (fn-wpf-valsp (nth 10 (fn-wpf-start action))))
+  :hints (("Goal" :in-theory (enable fn-wpf-start))))
 (defun fn-wpf-store (name start end spans)
   (declare (xargs :guard (true-listp spans)))
   (let ((index (cond ((equal name (fn-wrq-oct "csrf")) 0)
@@ -482,14 +489,18 @@
            (fn-wpf-statep (mv-nth 0 (fn-wpf-drive fuel p fn-web-in)) n))
   :hints (("Goal" :in-theory (disable fn-wpf-step fn-wpf-statep mv-nth))))
 
-(defthm fn-wpf-all-vchar-true-listp
-  (implies (fn-wss-all-vchar xs) (true-listp xs))
-  :rule-classes :forward-chaining)
+;; Proof steps of fn-wpf-finish's guards, which hold only of a group the
+;; finish has tested (fn-wss-groupp).
+(local
+ (defthm fn-wpf-all-vchar-true-listp
+   (implies (fn-wss-all-vchar xs) (true-listp xs))
+   :rule-classes :forward-chaining))
 
-(defthm fn-wpf-groupp-true-listp
-  (implies (fn-wss-groupp x) (true-listp x))
-  :hints (("Goal" :in-theory (enable fn-wss-groupp fn-wss-argp)))
-  :rule-classes :forward-chaining)
+(local
+ (defthm fn-wpf-groupp-true-listp
+   (implies (fn-wss-groupp x) (true-listp x))
+   :hints (("Goal" :in-theory (enable fn-wss-groupp fn-wss-argp)))
+   :rule-classes :forward-chaining))
 
 
 

@@ -45,6 +45,8 @@ table's method over the whole tree, generated:
                                                 # entry that is no longer one
                                                 # (shrink-only)
     python3 tools/premise_audit.py --baseline   # rewrite the baseline (deliberate)
+    python3 tools/premise_audit.py --lower-stale  # drop only the entries that are
+                                                # no longer findings (adds none)
     python3 tools/premise_audit.py --markdown   # the evidence record's table
     python3 tools/premise_audit.py --explain R  # every theorem assuming or
                                                 # concluding R and why it counts
@@ -475,6 +477,21 @@ def write_baseline(findings: dict) -> int:
     return 0
 
 
+def lower_stale(findings: dict, baseline: dict) -> list[str]:
+    """Remove from the baseline every accepted entry that is no longer a
+    finding, keep every other entry as it is, and add none: what --strict
+    names as stale leaves through this tool while other rows are still NEW
+    (--baseline refuses a new row without an ACKS.md line, so it cannot
+    shrink the file while any finding is unaccepted).  Returns the removed
+    names."""
+    accepted = baseline.get("accepted", {})
+    stale = sorted(r for r in accepted if r not in findings)
+    if stale:
+        kept = {r: v for r, v in accepted.items() if r in findings}
+        BASELINE.write_text(json.dumps(dict(baseline, accepted=kept), indent=2, sort_keys=True) + "\n")
+    return stale
+
+
 def summary_line(findings: dict, premises: dict, baseline: dict) -> str:
     counts = collections.Counter(row["class"] for row in findings.values())
     theorems = sum(len(row["theorems"]) for row in findings.values())
@@ -511,6 +528,8 @@ def main(argv=None) -> int:
                         help="exit non-zero on a finding not in the baseline, or a baseline entry that is no longer one")
     parser.add_argument("--baseline", action="store_true",
                         help="rewrite planning/premise-baseline.json from this run")
+    parser.add_argument("--lower-stale", action="store_true",
+                        help="drop the baseline entries that are no longer findings; add none")
     parser.add_argument("--markdown", action="store_true", help="the evidence record's table")
     parser.add_argument("--all", action="store_true",
                         help="count premises applied to a term as well as to a bare variable")
@@ -541,6 +560,13 @@ def main(argv=None) -> int:
     findings = audit.findings(all_arguments=arguments.all)
     baseline = load_baseline()
 
+    if arguments.lower_stale:
+        removed = lower_stale(findings, baseline)
+        for r in removed:
+            print(f"premise_audit: removed stale baseline entry {r}")
+        print(f"premise_audit: {len(removed)} stale entr{'y' if len(removed) == 1 else 'ies'} removed, "
+              f"{len(baseline.get('accepted', {})) - len(removed)} kept")
+        return 0
     if arguments.baseline:
         if write_baseline(findings):
             return 1
