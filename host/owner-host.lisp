@@ -1821,22 +1821,19 @@
 ; that raises the connections or the handshake limit is refused by name
 ; before the owner stages it when the gate does not hold at what it raises
 ; (its connections, or the run's C' when it does not raise them, and its
-; handshake limit) over the run's carried totals as of the last admission
-; (fn-owner-record-totals' cache): :handshakes-exceed-memory when its
-; connections alone fit, else :connections-exceed-memory.  That refusal is
-; the operator's answer; the bound itself is fn-owner-memory-recapacity's at
-; the reconfiguration's completion, over the synced totals.
-(defun fn-owner-memory-candidate-refusal (v2 state)
+; handshake limit) over the run's carried totals TOT, synced to the committed
+; history (fn-owner-record-totals): :handshakes-exceed-memory when its
+; connections alone fit, else :connections-exceed-memory.  The bound itself
+; is fn-owner-memory-recapacity's at the reconfiguration's completion, over
+; the totals synced again.
+(defun fn-owner-memory-candidate-refusal (v2 tot state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (and (boundp-global 'fn-owner-memory-run state)
-                (consp (f-get-global 'fn-owner-memory-run state))
-                (boundp-global 'fn-owner-record-totals state)
-                (consp (f-get-global 'fn-owner-record-totals state))))
+                (consp (f-get-global 'fn-owner-memory-run state))))
       nil
     (let* ((r (f-get-global 'fn-owner-memory-run state))
            (cfg (fn-owner-config state))
            (v (fn-cfg-value cfg))
-           (tot (cdr (f-get-global 'fn-owner-record-totals state)))
            (now (fn-owner-memory-run-cfg r v cfg state))
            (next (fn-owner-memory-run-cfg r v2 cfg state))
            (cap (nth 10 r))
@@ -1869,9 +1866,11 @@
              (cfg (fn-owner-config state))
              (full (fn-owner-memory-run-cfg r (fn-cfg-value cfg) cfg state))
              (found (fn-adm-capacity (nth 4 r) (nth 0 r) full (nth 1 r) tot))
-             ; With no count the gate holds at, the bound in force stays
-             ; (the gate then refuses every record; the readers stay at C').
-             (cap (if (posp found) found (nth 10 r)))
+             ; With no count the gate holds at (records admitted under the
+             ; previous configuration between staging and completion), the
+             ; least bound C' can state, one connection, and the gate refuses
+             ; every record until the store fits (Codex review F1).
+             (cap (if (posp found) found 1))
              (state (f-put-global 'fn-owner-memory-run (update-nth 10 cap r) state))
              (state (f-put-global 'fn-owner-memory-capacity cap state))
              (state (f-put-global 'fn-owner-memory-capacity-line
@@ -1881,21 +1880,25 @@
         (mv fn-hist state)))))
 
 ; Every live path reaches this function (native-admin, peer-invite, auth).
-(defun fn-owner-reconfigure-deltas (id deltas fn-arena state)
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+(defun fn-owner-reconfigure-deltas (id deltas fn-arena fn-hist state)
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program))
   (let* ((oc (fn-owner-ocfg state))
          (v (fn-cfg-value (fn-ocfg-config oc)))
          (gen (+ 1 (fn-cfg-generation (fn-ocfg-config oc))))
-         (stamp (fn-own-clock (fn-ocfg-owner oc)))
-         (memory (fn-owner-memory-candidate-refusal (fn-cfg-apply v gen stamp deltas) state)))
-    ;; The refusal is the staging step's result value (PRF-208,
-    ;; adapter-retirement: books/owner-results.lisp fn-ores-config-refused),
-    ;; which every live caller's recognizer accepts.
-    (if memory
-        (value (fn-ores-config-refused memory))
-      ;; A candidate is not a live generation.  Admission/staging can still
-      ;; refuse, and no connection may allocate under the candidate yet.
-      (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state))))
+         (stamp (fn-own-clock (fn-ocfg-owner oc))))
+    ;; The carried totals synced to the committed history (fn-owner-record-totals), so the
+    ;; candidate is priced over the store as it is (Codex review F1 of L-RUN-LAUNCH).
+    (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
+      (let ((memory (fn-owner-memory-candidate-refusal (fn-cfg-apply v gen stamp deltas) tot state)))
+        ;; The refusal is the staging step's result value (PRF-208,
+        ;; adapter-retirement: books/owner-results.lisp fn-ores-config-refused),
+        ;; which every live caller's recognizer accepts.
+        (if memory
+            (mv nil (fn-ores-config-refused memory) fn-hist state)
+          ;; A candidate is not a live generation.  Admission/staging can still
+          ;; refuse, and no connection may allocate under the candidate yet.
+          (mv-let (erp val state) (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state)
+            (mv erp val fn-hist state)))))))
 
 ; The identity preflight's verdict on one ACL2-constructed EVENT (lane
 ; bp-retention-leftovers).  Its kind is the WIRE event's
@@ -1946,19 +1949,19 @@
 (definterface fn-owner-identity-publication-verdict
   :class ::program)
 
-(defun fn-owner-reconfigure (id kind name-octets fn-arena state)
+(defun fn-owner-reconfigure (id kind name-octets fn-arena fn-hist state)
   ; Answers a ConfigResult: :staged with exactly one encoded configuration
   ; record, or :refused with the named ACL2 refusal reason.  No state is
   ; published until fn-owner-reconfigure-complete follows a durable write.
-  (declare (xargs :stobjs (state fn-arena) :mode :program))
+  (declare (xargs :stobjs (state fn-arena fn-hist) :mode :program))
   (let ((name (if (fn-pfld-group-name-requestp name-octets)
                   (fn-store-octets->string name-octets) :bad)))
     (if (equal name :bad)
-        (value (fn-ores-config-refused :group-name))
+        (mv nil (fn-ores-config-refused :group-name) fn-hist state)
       (let ((deltas (fn-ocl-request-deltas kind name)))
         (if (null deltas)
-            (value (fn-ores-config-refused :delta-kind))
-          (fn-owner-reconfigure-deltas id deltas fn-arena state))))))
+            (mv nil (fn-ores-config-refused :delta-kind) fn-hist state)
+          (fn-owner-reconfigure-deltas id deltas fn-arena fn-hist state))))))
 
 ; Configuration completion collector for the one saved ACL2 authority decision.
 ; Full4 is producer-owned (:durable next-oc metadata nil); a configuration
@@ -6407,13 +6410,13 @@ itself."
 ;; fn-orli-live-record-decides-the-context: the record this stages yields the
 ;; context the offline record decides at NOW
 ;; (fn-rci-recorded-context-is-the-decided-context).
-(defun fn-owner-orc-instant-stage (cid clock fn-arena state)
-  (declare (xargs :stobjs (fn-arena state) :mode :program))
+(defun fn-owner-orc-instant-stage (cid clock fn-arena fn-hist state)
+  (declare (xargs :stobjs (fn-arena fn-hist state) :mode :program))
   (let* ((stamp (fn-record-stamp-of-observation clock))
          (now (if (natp stamp) stamp nil)))
     (if (fn-rci-representablep now)
-        (fn-owner-reconfigure-deltas cid (list (fn-rci-delta now)) fn-arena state)
-      (value (fn-ores-config-refused :reclaim-instant)))))
+        (fn-owner-reconfigure-deltas cid (list (fn-rci-delta now)) fn-arena fn-hist state)
+      (mv nil (fn-ores-config-refused :reclaim-instant) fn-hist state))))
 
 
 ; Off the mutex, pure: the rebuild (fn-orcp-rebuild: KEYSTONE
