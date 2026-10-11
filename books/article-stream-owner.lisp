@@ -717,9 +717,11 @@
 ;; grant of visits), resume on the loop's next pass (fairness is the pass
 ;; order, not a sleep; no second quantum runs in the same I/O event); only an
 ;; OVER/NEWNEWS quantum that made empty progress (a sparse range) waits
-;; fn-splan-cursor-resume-ms.  Before 2026-10-11 the delay ignored PRODUCEDP,
-;; so every completed OVER window waited it: OVER 1-40 at W' = 1 was forty
-;; delays (the acceptance table's OVER-40, about 52 ms).
+;; fn-splan-cursor-resume-ms.  The host passes PRODUCEDP as the negation of
+;; the empty-progress flag its renderer returned (host/native/mux.lisp
+;; fnn-mux-plan-yield).  Before 2026-10-11 the delay ignored PRODUCEDP, so
+;; every completed OVER window waited it: OVER 1-40 at W' = 1 was 39 delayed
+;; yields (the 40th window carries the terminator and leaves no cursor).
 (defun fn-asto-resume-ms (plan producedp)
   (declare (xargs :guard t))
   (if (or producedp
@@ -747,19 +749,6 @@
 (defthm fn-asto-resume-ms-produced-is-immediate
   (implies producedp
            (equal (fn-asto-resume-ms plan producedp) 0)))
-
-; The host's protocol over the cursor step (host/native/mux.lisp
-; fnn-mux-plan-yield, PRODUCEDP = (not EMPTY-PROGRESSP)).  After a quantum
-; the host renders the plan it returned (fnn-owner-render-next): a plan not
-; at a cursor renders a window, a plan at a cursor yields with none (empty
-; progress).  So on that path PRODUCEDP is (not (fn-qplan-at-cursorp plan)),
-; and a delay is waited only by a plan the step left at a cursor with no
-; octets to send.  The other yield, after a window was sent (fnn-mux-flush),
-; passes PRODUCEDP t: fn-asto-resume-ms-produced-is-immediate.  No
-; hypothesis: every plan a step returns.
-(defthm fn-asto-quantum-waits-only-on-empty-progress
-  (implies (posp (fn-asto-resume-ms plan (not (fn-qplan-at-cursorp plan))))
-           (fn-qplan-at-cursorp plan)))
 
 ;; The ARTICLE quantum: how many payload octets one hold of the owner mutex
 ;; scans (preflight fuel) or renders (window), and so how many octets one

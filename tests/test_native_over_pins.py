@@ -184,6 +184,15 @@ class NativeOverPinsTests(unittest.TestCase):
                     log = owner.stderr.since(0)[at:]
                     yielded = re.search(rb"OVER empty-yield cid=(\d+)", log)
                     self.assertIsNotNone(yielded, log[-3000:])
+                    # The resume delay (books/article-stream-owner.lisp
+                    # fn-asto-resume-ms, PRODUCEDP from the mux's empty-progress
+                    # flag): a gap quantum that produced nothing waits ACL2's
+                    # positive delay, a yield after a sent window waits none.
+                    empty = [int(ms) for ms in re.findall(rb"OVER empty-yield cid=\d+ passes=\d+ ms=(\d+)", log)]
+                    sent = [int(ms) for ms in re.findall(rb"OVER cursor-yield cid=\d+ passes=\d+ ms=(\d+)", log)]
+                    self.assertTrue(empty and sent, (empty, sent, log[-3000:]))
+                    self.assertTrue(all(ms >= 1 for ms in empty), empty)
+                    self.assertTrue(all(ms == 0 for ms in sent), sent)
                     settled = rb"OVER response-settled cid=" + yielded.group(1) + rb" status=released"
                     self.assertRegex(log[yielded.end():], settled)
             finally:

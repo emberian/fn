@@ -706,10 +706,10 @@ positive ACL2 scheduling delay expires.  AFTER belongs to the whole reply."
                (fnn-mux-conn-cid conn) (fnn-mux-loop-passes loop) ms))
     ;; ACL2 decides the delay (fn-asto-resume-ms, PRODUCEDP = not
     ;; EMPTY-PROGRESSP): a yield after a sent window (fnn-mux-flush) and an
-    ;; ARTICLE or LIST quantum are due now and resume on the next pass of the
-    ;; loop (the poll timeout is zero, every other ready connection is served
-    ;; first, no second quantum in this I/O event); only an OVER/NEWNEWS
-    ;; quantum that made empty progress (a sparse range) waits ACL2's delay.
+    ;; ARTICLE or LIST quantum are due now: this I/O event ends here and the
+    ;; plan resumes at the loop's next timer pass (no second quantum in this
+    ;; event); only an OVER/NEWNEWS quantum that made empty progress (a sparse
+    ;; range) waits ACL2's positive delay.
     (setf (fnn-mux-conn-plan conn) plan
           (fnn-mux-conn-drained-late conn) t
           (fnn-mux-conn-after conn) after

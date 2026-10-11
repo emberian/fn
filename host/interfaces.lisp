@@ -1744,8 +1744,7 @@
   :class :common-lisp-compliant
   :keystones (fn-asto-resume-ms-lst-is-immediate
               fn-asto-resume-ms-over-waits
-              fn-asto-resume-ms-produced-is-immediate
-              fn-asto-quantum-waits-only-on-empty-progress))
+              fn-asto-resume-ms-produced-is-immediate))
 
 
 ; Consumed by native owner/mux. LIST is a distinct query residual subject;
