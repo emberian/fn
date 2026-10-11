@@ -175,9 +175,51 @@
         ((zp k) nil)
         (t (fn-adm-capacity-down profile img cfg limit tot (1- k)))))
 
-(defun fn-adm-capacity (profile img cfg limit tot)
+;; THE SEARCH (K-RUN-LAUNCH).  The gate is antitone in the connection count
+;; (fn-adm-gate-antitone-in-the-connections), so the counts it holds at are a
+;; prefix 0..C' of 0..C, and C' is found by halving in O(log C) gate evaluations
+;; (the walk above spends C - C' + 1 of them: at C = 4,000,000 the owner was
+;; killed walking).  Invariant of (search lo hi): the gate holds at lo-1 (or lo
+;; is 0) and fails at hi (or hi is C+1); the answer is lo-1 when the interval
+;; closes, NIL for lo = 0.
+(defun fn-adm-search-mid (lo hi)
+  (declare (xargs :guard t))
+  (floor (+ (nfix lo) (nfix hi)) 2))
+
+(encapsulate ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+  (defthm fn-adm-search-mid-bounds
+    (implies (< (nfix lo) (nfix hi))
+             (and (natp (fn-adm-search-mid lo hi))
+                  (<= (nfix lo) (fn-adm-search-mid lo hi))
+                  (< (fn-adm-search-mid lo hi) (nfix hi))))
+    :hints (("Goal" :in-theory (enable fn-adm-search-mid)))))
+
+(defun fn-adm-capacity-search (profile img cfg limit tot lo hi)
+  (declare (xargs :guard t :verify-guards nil :measure (nfix (- (nfix hi) (nfix lo)))
+                  :hints (("Goal" :in-theory (disable fn-adm-search-mid fn-mm-gate-p fn-adm-cfg-at)
+                           :use ((:instance fn-adm-search-mid-bounds))))))
+  (if (< (nfix lo) (nfix hi))
+      (if (fn-mm-gate-p profile img (fn-adm-cfg-at cfg (fn-adm-search-mid lo hi)) limit tot)
+          (fn-adm-capacity-search profile img cfg limit tot (1+ (fn-adm-search-mid lo hi)) hi)
+        (fn-adm-capacity-search profile img cfg limit tot lo (fn-adm-search-mid lo hi)))
+    (if (zp lo) nil (1- lo))))
+
+; The search over [0, C].
+(defun fn-adm-capacity-search-top (profile img cfg limit tot)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-adm-capacity-search profile img cfg limit tot 0 (1+ (fn-mm-cfg-connections cfg))))
+
+; The walk, the specification the search is proved equal to
+; (fn-adm-capacity-is-the-walk).
+(defun fn-adm-capacity-walk (profile img cfg limit tot)
   (declare (xargs :guard t :verify-guards nil))
   (fn-adm-capacity-down profile img cfg limit tot (fn-mm-cfg-connections cfg)))
+
+; The run's capacity C': the search.
+(defun fn-adm-capacity (profile img cfg limit tot)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-adm-capacity-search-top profile img cfg limit tot))
 
 ; The term that bound C', named on the run's line: :configured when C' is C;
 ; when C' < C the term one more connection adds, the large reply (the OVER
@@ -236,6 +278,119 @@
   (equal (fn-adm-cfg-at cfg (nfix k)) (fn-adm-cfg-at cfg k))
   :hints (("Goal" :in-theory (enable fn-adm-cfg-at)))))
 
+; The gate is antitone in the connection count.  Every term of the sum reads
+; cfg field 0 only through the connection count C and the holders min(P, C) (or
+; C): the fixed parts grow with C, the large replies with the holders; the
+; thread count, the owner, the in-flight, the maintenance and the collector's
+; policy ignore it, and the reopen need ignores it altogether.
+(encapsulate ()
+  (local (defthm fn-adm-at-accessors
+    (and (equal (fn-mm-cfg-tlsp (fn-adm-cfg-at cfg k)) (fn-mm-cfg-tlsp cfg))
+         (equal (fn-mm-cfg-trigger (fn-adm-cfg-at cfg k)) (fn-mm-cfg-trigger cfg))
+         (equal (fn-mm-cfg-pub-trigger (fn-adm-cfg-at cfg k)) (fn-mm-cfg-pub-trigger cfg))
+         (equal (fn-mm-cfg-reclaim-live-p (fn-adm-cfg-at cfg k)) (fn-mm-cfg-reclaim-live-p cfg))
+         (equal (fn-mm-cfg-cache (fn-adm-cfg-at cfg k)) (fn-mm-cfg-cache cfg))
+         (equal (fn-mm-cfg-cold (fn-adm-cfg-at cfg k)) (fn-mm-cfg-cold cfg))
+         (equal (fn-mm-cfg-handshakes (fn-adm-cfg-at cfg k)) (fn-mm-cfg-handshakes cfg))
+         (equal (fn-mm-cfg-over-window (fn-adm-cfg-at cfg k)) (fn-mm-cfg-over-window cfg))
+         (equal (fn-mm-cfg-server-octets (fn-adm-cfg-at cfg k)) (fn-mm-cfg-server-octets cfg))
+         (equal (fn-mm-cfg-rho (fn-adm-cfg-at cfg k)) (fn-mm-cfg-rho cfg))
+         (equal (fn-mm-cfg-config (fn-adm-cfg-at cfg k)) (fn-mm-cfg-config cfg))
+         (equal (fn-mm-cfg-connections (fn-adm-cfg-at cfg k)) (nfix k)))
+    :hints (("Goal" :in-theory (enable fn-adm-cfg-at fn-mm-cfg-tlsp fn-mm-cfg-trigger
+                                       fn-mm-cfg-pub-trigger fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache
+                                       fn-mm-cfg-cold fn-mm-cfg-handshakes fn-mm-cfg-over-window
+                                       fn-mm-cfg-server-octets fn-mm-cfg-rho fn-mm-cfg-config
+                                       fn-mm-cfg-connections fn-mm-nat)))))
+
+  (local (in-theory (disable fn-mm-cfg-tlsp fn-mm-cfg-trigger fn-mm-cfg-pub-trigger
+                             fn-mm-cfg-reclaim-live-p fn-mm-cfg-cache fn-mm-cfg-cold
+                             fn-mm-cfg-handshakes fn-mm-cfg-over-window fn-mm-cfg-server-octets
+                             fn-mm-cfg-rho fn-mm-cfg-config fn-mm-cfg-connections fn-adm-cfg-at)))
+
+  (local (defthm fn-adm-at-owner
+    (equal (fn-mm-owner tot (fn-adm-cfg-at cfg k)) (fn-mm-owner tot cfg))
+    :hints (("Goal" :in-theory (enable fn-mm-owner fn-mm-payload-octets)))))
+  (local (defthm fn-adm-at-inflight
+    (equal (fn-mm-inflight profile (fn-adm-cfg-at cfg k)) (fn-mm-inflight profile cfg))
+    :hints (("Goal" :in-theory (enable fn-mm-inflight fn-mm-cold-reads)))))
+  (local (defthm fn-adm-at-base
+    (equal (fn-mm-base img (fn-adm-cfg-at cfg k)) (fn-mm-base img cfg))
+    :hints (("Goal" :in-theory (enable fn-mm-base)))))
+  (local (defthm fn-adm-at-collector
+    (equal (fn-mm-collector live (fn-adm-cfg-at cfg k)) (fn-mm-collector live cfg))
+    :hints (("Goal" :in-theory (enable fn-mm-collector)))))
+  (local (defthm fn-adm-at-fixed
+    (equal (fn-mm-connection-fixed profile (fn-adm-cfg-at cfg k)) (fn-mm-connection-fixed profile cfg))
+    :hints (("Goal" :in-theory (enable fn-mm-connection-fixed)))))
+  (local (defthm fn-adm-at-large
+    (equal (fn-mm-large-reply profile (fn-adm-cfg-at cfg k)) (fn-mm-large-reply profile cfg))
+    :hints (("Goal" :in-theory (enable fn-mm-large-reply fn-mm-over-window-octets
+                                       fn-mm-over-window-fit fn-mm-nov-line-octets)))))
+  (local (defthm fn-adm-at-maintenance
+    (equal (fn-mm-maintenance tot (fn-adm-cfg-at cfg k)) (fn-mm-maintenance tot cfg))
+    :hints (("Goal" :in-theory (enable fn-mm-maintenance)))))
+  (local (defthm fn-adm-at-reopen
+    (equal (fn-mm-reopen-need profile img (fn-adm-cfg-at cfg k) tot)
+           (fn-mm-reopen-need profile img cfg tot))
+    :hints (("Goal" :in-theory (enable fn-mm-reopen-need fn-mm-reopen-live
+                                       fn-mm-checkpoint-load-octets)))))
+  (local (defthm fn-adm-at-holders
+    (equal (fn-mm-cfg-holders (fn-adm-cfg-at cfg k))
+           (if (natp (nth 10 (true-list-fix cfg))) (min (nth 10 (true-list-fix cfg)) (nfix k)) (nfix k)))
+    :hints (("Goal" :in-theory (enable fn-mm-cfg-holders fn-adm-cfg-at fn-mm-cfg-connections fn-mm-nat)))))
+  (local (defthm fn-adm-at-holders-monotone
+    (implies (and (natp j) (natp k) (<= j k))
+             (<= (fn-mm-cfg-holders (fn-adm-cfg-at cfg j)) (fn-mm-cfg-holders (fn-adm-cfg-at cfg k))))
+    :hints (("Goal" :in-theory (enable fn-mm-cfg-holders fn-adm-cfg-at fn-mm-cfg-connections fn-mm-nat)))))
+
+  (local (defthm fn-adm-live-sum-monotone-abstract
+    (implies (and (natp j) (natp k) (<= j k) (natp hj) (natp hk) (<= hj hk) (natp f) (natp l))
+             (<= (+ a (* j f) (* l hj)) (+ a (* k f) (* l hk))))
+    :rule-classes nil
+    :hints (("Goal" :nonlinearp t))))
+
+  (local (defthm fn-adm-live-monotone-in-the-connections
+    (implies (and (natp j) (natp k) (<= j k))
+             (<= (fn-mm-live profile (fn-adm-cfg-at cfg j) tot) (fn-mm-live profile (fn-adm-cfg-at cfg k) tot)))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (e/d (fn-mm-live fn-mm-connections fn-mm-large-pool)
+                                    (fn-adm-at-holders fn-mm-owner fn-mm-inflight fn-mm-maintenance
+                                     fn-mm-connection-fixed fn-mm-large-reply fn-mm-cfg-holders))
+             :use ((:instance fn-adm-live-sum-monotone-abstract
+                              (a (+ (fn-mm-owner tot cfg) (fn-mm-inflight profile cfg)
+                                    (fn-mm-maintenance tot cfg)))
+                              (hj (fn-mm-cfg-holders (fn-adm-cfg-at cfg j)))
+                              (hk (fn-mm-cfg-holders (fn-adm-cfg-at cfg k)))
+                              (f (fn-mm-connection-fixed profile cfg))
+                              (l (fn-mm-large-reply profile cfg)))
+                   fn-adm-at-holders-monotone
+                   (:instance fn-mm-terms-natp (cfg (fn-adm-cfg-at cfg j)))
+                   (:instance fn-mm-terms-natp (cfg (fn-adm-cfg-at cfg k)))
+                   (:instance fn-mm-terms-natp))))))
+
+  (local (defthm fn-adm-sum-monotone-in-the-connections
+    (implies (and (natp j) (natp k) (<= j k))
+             (<= (fn-mm-sum profile img (fn-adm-cfg-at cfg j) tot)
+                 (fn-mm-sum profile img (fn-adm-cfg-at cfg k) tot)))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (e/d (fn-mm-sum) (fn-mm-live fn-mm-base fn-mm-collector))
+             :use (fn-adm-live-monotone-in-the-connections
+                   (:instance fn-mm-collector-monotone
+                              (a (fn-mm-live profile (fn-adm-cfg-at cfg j) tot))
+                              (b (fn-mm-live profile (fn-adm-cfg-at cfg k) tot)))
+                   (:instance fn-mm-live-natp (cfg (fn-adm-cfg-at cfg j)))
+                   (:instance fn-mm-live-natp (cfg (fn-adm-cfg-at cfg k))))))))
+
+  (defthm fn-adm-gate-antitone-in-the-connections
+    (implies (and (natp j) (natp k) (<= j k)
+                  (fn-mm-gate-p profile img (fn-adm-cfg-at cfg k) limit tot))
+             (fn-mm-gate-p profile img (fn-adm-cfg-at cfg j) limit tot))
+    :hints (("Goal" :in-theory (e/d (fn-mm-gate-p) (fn-mm-sum fn-mm-reopen-need fn-adm-cfg-at))
+             :use (fn-adm-sum-monotone-in-the-connections
+                   (:instance fn-adm-at-reopen (k j))
+                   (:instance fn-adm-at-reopen))))))
+
 (local (defthm fn-adm-capacity-down-fits
   (let ((c (fn-adm-capacity-down profile img cfg limit tot k)))
     (implies c
@@ -257,6 +412,46 @@
   (natp (fn-mm-cfg-connections cfg))
   :rule-classes :type-prescription))
 
+(local (defthm fn-adm-search-base
+  (implies (and (natp lo) (natp hi) (natp c) (<= lo hi) (<= hi (1+ c))
+                (or (zp lo) (fn-mm-gate-p profile img (fn-adm-cfg-at cfg (1- lo)) limit tot))
+                (or (equal hi (1+ c)) (not (fn-mm-gate-p profile img (fn-adm-cfg-at cfg hi) limit tot)))
+                (not (< lo hi)))
+           (equal (fn-adm-capacity-down profile img cfg limit tot c)
+                  (if (zp lo) nil (1- lo))))
+  :hints (("Goal" :in-theory (disable fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity-down)
+           :use ((:instance fn-adm-capacity-down-fits (k c))
+                 (:instance fn-adm-capacity-down-is-the-most (k c) (j (1- lo)))
+                 (:instance fn-adm-gate-antitone-in-the-connections (j 0)
+                            (k (fn-adm-capacity-down profile img cfg limit tot c)))
+                 (:instance fn-adm-gate-antitone-in-the-connections (j lo)
+                            (k (fn-adm-capacity-down profile img cfg limit tot c))))))))
+
+(local (defthm fn-adm-search-is-the-down
+  (implies (and (natp lo) (natp hi) (natp c) (<= lo hi) (<= hi (1+ c))
+                (or (zp lo) (fn-mm-gate-p profile img (fn-adm-cfg-at cfg (1- lo)) limit tot))
+                (or (equal hi (1+ c)) (not (fn-mm-gate-p profile img (fn-adm-cfg-at cfg hi) limit tot))))
+           (equal (fn-adm-capacity-search profile img cfg limit tot lo hi)
+                  (fn-adm-capacity-down profile img cfg limit tot c)))
+  :hints (("Goal" :induct (fn-adm-capacity-search profile img cfg limit tot lo hi)
+           :in-theory (disable fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity-down fn-adm-search-mid))
+          ("Subgoal *1/3" :use fn-adm-search-base)
+          ("Subgoal *1/2" :use ((:instance fn-adm-search-mid-bounds)))
+          ("Subgoal *1/1" :use ((:instance fn-adm-search-mid-bounds))))))
+
+; The search answers the walk's C'.
+(defthm fn-adm-capacity-is-the-walk
+  (equal (fn-adm-capacity profile img cfg limit tot)
+         (fn-adm-capacity-walk profile img cfg limit tot))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-adm-capacity fn-adm-capacity-search-top fn-adm-capacity-walk)
+                                  (fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity-down
+                                   fn-adm-capacity-search fn-mm-cfg-connections))
+           :use ((:instance fn-adm-search-is-the-down (lo 0) (hi (1+ (fn-mm-cfg-connections cfg)))
+                            (c (fn-mm-cfg-connections cfg)))))))
+
+
+
 ; KEYSTONE (C' fits): C' is at most C and the gate holds at C' connections.
 (defthm fn-adm-capacity-fits
   (implies (fn-adm-capacity profile img cfg limit tot)
@@ -264,9 +459,11 @@
              (and (natp c)
                   (<= c (fn-mm-cfg-connections cfg))
                   (fn-mm-gate-p profile img (fn-adm-cfg-at cfg c) limit tot))))
-  :hints (("Goal" :in-theory (disable fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity-down
-                                      fn-mm-cfg-connections)
-           :use ((:instance fn-adm-capacity-down-fits (k (fn-mm-cfg-connections cfg)))))))
+  :hints (("Goal" :in-theory (e/d (fn-adm-capacity-walk)
+                                  (fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity-down fn-adm-capacity
+                                   fn-mm-cfg-connections))
+           :use (fn-adm-capacity-is-the-walk
+                 (:instance fn-adm-capacity-down-fits (k (fn-mm-cfg-connections cfg)))))))
 
 ; KEYSTONE (C' is the most): every count up to C the gate holds at is at most
 ; C'; with none, C' is NIL.
@@ -276,9 +473,11 @@
                 (fn-mm-gate-p profile img (fn-adm-cfg-at cfg j) limit tot))
            (let ((c (fn-adm-capacity profile img cfg limit tot)))
              (and (natp c) (<= j c))))
-  :hints (("Goal" :in-theory (disable fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity-down
-                                      fn-mm-cfg-connections)
-           :use ((:instance fn-adm-capacity-down-is-the-most (k (fn-mm-cfg-connections cfg)))))))
+  :hints (("Goal" :in-theory (e/d (fn-adm-capacity-walk)
+                                  (fn-mm-gate-p fn-adm-cfg-at fn-adm-capacity-down fn-adm-capacity
+                                   fn-mm-cfg-connections))
+           :use (fn-adm-capacity-is-the-walk
+                 (:instance fn-adm-capacity-down-is-the-most (k (fn-mm-cfg-connections cfg)))))))
 
 (local (defthm fn-adm-gate-monotone-in-the-limit
   (implies (and (fn-mm-gate-p profile img cfg l1 tot) (natp l2) (<= l1 l2))
