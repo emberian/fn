@@ -1222,6 +1222,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-rotation-codec \
 	tests/acl2/bp-node-rotation-codec-tests \
 	books/bp-node-rotation \
+	books/bp-checkpoint-size \
+	tests/acl2/bp-checkpoint-size-tests \
 	books/bp-node-rotation-slice \
 	books/bp-node-rotation-buffer \
 	tests/acl2/bp-node-rotation-buffer-tests \
