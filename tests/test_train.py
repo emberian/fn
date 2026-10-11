@@ -995,6 +995,33 @@ class CertifyTests(TrainBase):
         self.assertNotIn("tests/acl2/unrelated-witness", words)
         self.assertNotIn("tests/acl2/noncritical-witness", words)
 
+    def test_certify_adds_a_critical_witness_whose_own_closure_changed(self):
+        (self.seed / "books").mkdir(exist_ok=True)
+        (self.seed / "tests/acl2").mkdir(parents=True, exist_ok=True)
+        critical = {"critical": "durability", "book": "books/theorem.lisp",
+                    "owner_book": "tests/acl2/special-witness.lisp"}
+        entries = [critical,
+                   dict(critical, book="books/unrelated.lisp",
+                        owner_book="tests/acl2/unrelated-witness.lisp")]
+        self.advance_dev({
+            "books/b.lisp": '(in-package "ACL2")\n',
+            "books/teeth.lisp": '(in-package "ACL2")\n',
+            "books/theorem.lisp": '(include-book "b")\n',
+            "books/unrelated.lisp": '(in-package "ACL2")\n',
+            "tests/acl2/special-witness.lisp":
+                '(include-book "../../books/theorem")\n(include-book "../../books/teeth")\n',
+            "tests/acl2/unrelated-witness.lisp": '(in-package "ACL2")\n',
+        })
+        (self.work / "build/teeth-obligations.json").write_text(json.dumps({"entries": entries}))
+        sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
+        self.merge({"books/teeth.lisp": '(in-package "ACL2")\n; changed\n'})
+        result = self.train("certify", "hbox")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        submit = next(line for line in self.stub_log() if line.startswith("farm "))
+        words = submit.split()
+        self.assertEqual(words.count("tests/acl2/special-witness"), 1)
+        self.assertNotIn("tests/acl2/unrelated-witness", words)
+
     def test_certify_emits_in_the_run_tree_fetches_into_build_box_and_records_the_split(self):
         self.books_train()
         before = self.head()
