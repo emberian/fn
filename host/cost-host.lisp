@@ -82,6 +82,8 @@
 ; The served run's launch (books/heap-command.lisp, L-RUN-LAUNCH).
 (def-cost fn-mo-serve-pool-threads)
 (def-cost fn-mo-serve-pools :unaccounted (fn-crv-pool-budget fn-prstartup-launch-extra))
+(def-cost fn-prstartup-serve-store-need
+  :unaccounted (fn-prstartup-serve-protected fn-prstartup-serve-limit))
 (def-cost fn-mo-serve-decide
   :unaccounted (fn-mm-reopen-need fn-mm-tot-p fn-mm-least-observation fn-heap-nursery-trigger
                 fn-mm-launch-dynamic fn-heap-reservation-octets fn-heap-mb-of fn-heap-profile-word
