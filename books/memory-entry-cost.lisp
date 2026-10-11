@@ -45,7 +45,8 @@
 (def-cost fn-heap-command-line :unaccounted (fn-mo-read-refusal-line fn-heap-reserve-report-line fn-mo-unseen-suffix string-append))
 ; The suffix scan's HISTORY allowance (landing 2a-host, host/native/heap.lisp
 ; fnn-heap-log-suffix; L's line, by M's agreement 2026-10-11).
-(def-cost fn-adm-row-allowance)
+(def-cost fn-adm-row-allowance
+  :unaccounted (fn-mm-profile-record-log fn-bs-profile-max-groups-per-article))
 
 (def-cost-check fn-heap-command-growth)
 (def-cost-check fn-mo-observed-totals)

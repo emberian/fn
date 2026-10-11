@@ -251,7 +251,10 @@
    "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-bs-profile-max-groups-per-article",
+    "fn-mm-profile-record-log"
+   ],
    "theorem": null,
    "declared_in": "books/memory-entry-cost.lisp"
   },
@@ -5815,7 +5818,9 @@
    "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-lgo-add"
+   ],
    "theorem": null,
    "declared_in": "books/store-log-open-scan-cost.lisp"
   },
@@ -5825,7 +5830,12 @@
    "claim": "derived",
    "bound": null,
    "sizes": [],
-   "unaccounted": [],
+   "unaccounted": [
+    "fn-lgo-min-index",
+    "fn-lgs-indices",
+    "fn-lgs-max-index",
+    "fn-lgs-open-plan"
+   ],
    "theorem": null,
    "declared_in": "books/store-log-open-scan-cost.lisp"
   },

@@ -5,8 +5,9 @@
 (include-book "def-cost")
 (include-book "store-log-open-scan")
 
-(def-cost fn-lgo-scan-plan)
-(def-cost fn-lgo-fold)
+(def-cost fn-lgo-fold :unaccounted (fn-lgo-add))
+(def-cost fn-lgo-scan-plan
+  :unaccounted (fn-lgs-indices fn-lgs-max-index fn-lgo-min-index fn-lgs-open-plan))
 
 (def-cost-check fn-lgo-scan-plan)
 (def-cost-check fn-lgo-fold)
