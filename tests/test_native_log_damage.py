@@ -110,6 +110,38 @@ class LogDamageTests(unittest.TestCase):
                 self.assertFalse((self.store / "quarantine").exists())
                 self.tearDown()
 
+    def test_an_entry_declaring_more_than_the_open_accepts_is_never_read(self):
+        # The header's length field (octets 6..9 of the frame) set to the
+        # largest u32: the bounded length is NIL (books/store-log-entry-bound.lisp
+        # fn-lgw-entry-len-bounded), the host reads no entry and steps over an
+        # empty buffer, which is the step over the oversized entry
+        # (books/store-log-buffer.lisp KEYSTONE
+        # fn-lgw-entry-len-bounded-step-buf-count, the step
+        # fn-lgw-step-buf-count).  The walk stops there: the last entry is a
+        # torn tail (11 records), a middle one is damage refused by name.
+        def oversize(at):
+            path = self.store / SEGMENT
+            data = bytearray(path.read_bytes())
+            data[at + 6:at + 10] = b"\xff\xff\xff\xff"
+            path.write_bytes(bytes(data))
+        last = self.starts[-1]
+        oversize(last)
+        result = self.fn("recover")
+        self.assertEqual(result.returncode, fz.EXIT_OK, result.stderr[-600:])
+        self.assertIn(b"recovered transactions=11 articles=11", result.stdout)
+        self.assertIn(b"log torn-tail at=000001.log:%d " % last, result.stdout)
+        self.assertEqual(self.served(), self.ids[:-1])
+        self.tearDown()
+        self.setUp()
+        mid = self.starts[5]
+        oversize(mid)
+        damaged = sha(self.store / SEGMENT)
+        result = self.fn("status", "--replay")
+        err = result.stderr.decode("utf-8", "replace")
+        self.assertEqual(result.returncode, fz.EXIT_REFUSED, err[-600:])
+        self.assertIn("reason=log-damaged at=000001.log:{} ".format(mid), err)
+        self.assertEqual(sha(self.store / SEGMENT), damaged)
+
     def test_a_torn_last_entry_recovers_to_the_entry_before_it_and_says_so(self):
         # The last entry's second half zeroed: nothing valid after it, the
         # torn tail of the one pending write (the power-loss case).

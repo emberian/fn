@@ -309,6 +309,13 @@
    "mutation": "tests/acl2/store-log-critical-teeth-tests.lisp::stale-inode",
    "provenance": "keystone_critical.py --declare sha256:02422ef1703b7be6f7ba649454e5cb3942760f6697d2880d5620f31203fc5ac1"
   },
+  "fn-lgw-entry-len-bounded-step-buf-count": {
+   "subject": "fn-lgw-step-buf-count",
+   "host_test": "tests/test_native_log_damage.py::test_an_entry_declaring_more_than_the_open_accepts_is_never_read",
+   "trace_witness": "tests/acl2/store-log-entry-bound-tests.lisp::fn-lgw-entry-len-bounded-step-buf-count",
+   "mutation": "tests/acl2/store-log-entry-bound-tests.lisp::step-buf-told-apart",
+   "provenance": "keystone_critical.py --declare sha256:455204d446083aa69895fdecc806c7935a0cb5958c7bf93e26ed6ad2bbe598f8"
+  },
   "fn-lgw-step-buf-count-is-step": {
    "subject": "fn-lgw-step-buf-count",
    "host_test": "tests/test_native_log.py::test_append_then_scan_on_both_images",

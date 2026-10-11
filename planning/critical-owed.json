@@ -3361,11 +3361,6 @@
    "item": "PRF-1349",
    "book": "books/store-log-entry-bound.lisp"
   },
-  "fn-lgw-entry-len-bounded-step": {
-   "class": "parser-boundary",
-   "item": "PRF-1349",
-   "book": "books/store-log-entry-bound.lisp"
-  },
   "fn-lgw-run-nf-then-fold-is-run": {
    "class": "durability",
    "item": "PRF-1345",

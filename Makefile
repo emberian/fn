@@ -1249,6 +1249,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/post-head-limit-tests \
 	books/post-acceptance-bound \
 	tests/acl2/post-acceptance-bound-tests \
+	books/heap-store-open-walk \
+	tests/acl2/heap-store-open-walk-tests \
 	tests/acl2/bp-held-projection-tests \
 	tests/acl2/bp-heap-command-tests \
 	books/bp-handoff-report \
