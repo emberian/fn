@@ -171,6 +171,14 @@ def exercise_at(image, directory):
             case.assertLess(time.monotonic(), deadline, (health.stdout, health.stderr))
             time.sleep(0.1)
         timings["completed_seconds"] = time.monotonic() - started
+        # The shortened deadline and stall limit exist for the stalled barrier
+        # above.  The posts below test the recovered connection, so they run
+        # under the defaults (books/owner-time-model.lisp fn-otm-limits): their
+        # own barriers are the box's fdatasync, which on hbox's shared pool
+        # under concurrent builds took 8.7 and 10.5 s at C2's extraction (core
+        # side, extract-run1), turning a correct recovery into a 441 at 6 s.
+        for name, value in (("barrier-deadline-ms", "5000"), ("barrier-stall-ms", "30000")):
+            node.operator("policy", "set", name, value, expect=0)
         _, reader = connect()
         inspect(reader, "")
         post(warm, b"extract-after@example.invalid")
