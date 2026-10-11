@@ -689,7 +689,11 @@ class FromTrainDryRunTests(unittest.TestCase):
         for name in ("tools", "tests"):
             shutil.copytree(ROOT / name, cls.repo / name, ignore=ignore)
         git = ["git", "-C", str(cls.repo), "-c", "commit.gpgsign=false",
-               "-c", "user.name=t", "-c", "user.email=t@t"]
+               "-c", "user.name=t", "-c", "user.email=t@t",
+               # the commit holds every file of tools/ and tests/ as loose
+               # objects, past gc.auto: a detached auto-gc then packs them
+               # into .git/objects while tearDownClass removes the repo
+               "-c", "gc.auto=0", "-c", "maintenance.auto=false"]
         subprocess.run([*git, "init", "-q", "-b", "lane/x"], check=True)
         subprocess.run([*git, "add", "."], check=True, capture_output=True)
         subprocess.run([*git, "commit", "-q", "-m", "c"], check=True, capture_output=True)
