@@ -403,6 +403,25 @@
                :fault "the phase list of the code-1 clause widened to :hashing: the refusal an over-large extension forces at the end of the digest is no entry write"
                :lemma ptxt-gl-p5-mutant-no-refusal-in-hashing)))
 
+; -----------------------------------------------------------------------------
+; fn-ptx-closed-is-ok: the machine before the open satisfies the invariant (no
+; hypothesis, no variable).  The attachment above makes fn-ptx-okp run, so the
+; witness is executed.  A hypothesis-free, variable-free claim has no removal;
+; the mutation is a closed machine that still carries one entry completion in
+; its ghost log: the :closed phase demands an empty log, so the invariant is
+; false of it (a stale completion surviving the close is the fault the
+; invariant exists to rule out).
+(defteeth fn-ptx-closed-is-ok
+  :claim (() (fn-ptx-okp (fn-ptx-closed)))
+  :subject fn-ptx-step
+  :witness ((none nil))
+  :mutations ((closed-with-a-stale-completion
+               (:conclusion
+                (fn-ptx-okp (fn-ptx-mk :closed 0 nil nil nil 0 0 nil nil nil nil
+                                       (list (list :pwrite (list :done 10) 1 1)) nil nil)))
+               ()
+               :fault "the closed machine built with an entry completion still in its ghost log, as if a close had not cleared the finished transaction: the :closed phase demands no completions, so the invariant is false of it")))
+
 ; =============================================================================
 ; The ledger's checks of a copied claim: the statement below is read back from
 ; the world and compared with the copy.
@@ -490,7 +509,8 @@
 ;        octet past the footprint,
 ;   sum  more piece octets than the entry has: take pads NIL, and the NIL octet
 ;        lands past the footprint,
-;   img  an image that still has its write pending, which no crash result has.
+;   img  an image with no write pending whose committed log has one octet changed:
+;        a crash image keeps the durable content before the pending write.
 (defconst-eval *ptxt-p6-e2* (append *ptxt-p6-e* (list 7)))
 (defconst *ptxt-p6-ls2* '(40 41))
 (defconst *ptxt-p6-new11* (make-list 11 :initial-element :new))
@@ -545,16 +565,52 @@
            :use ((:instance fn-bs-crash-imagep-suff (s *ptxt-p6-split3*) (image *ptxt-p6-img3*)
                             (choices (list *ptxt-p6-new10* *ptxt-p6-new11*)))
                  (:instance ptxt-p6-img3-no-image)))))
-; without IMG: the unsplit store itself, its write still pending, is no image of
-; the split store nor of itself
+; without IMG: an image the unsplit store does not have, with the entry's
+; write NOT pending (every crash image has none) and octet-valued: the witness
+; image with one durable octet changed OUTSIDE the entry's footprint, the first
+; octet of the committed log (before the frontier 88).  A crash image of a
+; related store keeps the durable content before the pending write
+; (fn-ptx-p6-image-keeps-the-prefix), so it is no image of the unsplit store,
+; and by the keystone itself no image of the split store either.
+(defconst-eval *ptxt-p6-b0* (nth 0 (fn-bs-durable-content *ptxt-p6-img* 0)))
+(defconst-eval *ptxt-p6-b0-new* (mod (+ 1 *ptxt-p6-b0*) 256))
+(defconst-eval *ptxt-p6-img-pre*
+  (fn-bs-make (fn-bs-unit *ptxt-p6-img*)
+              (fn-bs-put-assoc 0 (fn-bs-splice (fn-bs-durable-content *ptxt-p6-img* 0) 0 (list *ptxt-p6-b0-new*))
+                               (fn-bs-inodes *ptxt-p6-img*))
+              (fn-bs-dirs *ptxt-p6-img*) nil (fn-bs-next-ino *ptxt-p6-img*)))
+(assert-event
+ (and (null (fn-bs-pending *ptxt-p6-img-pre*))
+      (natp *ptxt-p6-b0*) (< *ptxt-p6-b0* 256)
+      (natp *ptxt-p6-b0-new*) (< *ptxt-p6-b0-new* 256)
+      (not (equal *ptxt-p6-b0* *ptxt-p6-b0-new*))
+      (< 0 (fn-lgk-frontier *ptxt-p6-ks*))
+      (true-listp (fn-bs-durable-content *ptxt-p6-img-pre* 0))
+      (equal (len (fn-bs-durable-content *ptxt-p6-img-pre* 0)) (len (fn-bs-durable-content *ptxt-p6-img* 0)))
+      ; it differs from the witness image in that one octet and no other
+      (equal (cdr (fn-bs-durable-content *ptxt-p6-img-pre* 0)) (cdr (fn-bs-durable-content *ptxt-p6-img* 0)))
+      (equal (fn-bs-make (fn-bs-unit *ptxt-p6-img-pre*)
+                         (fn-bs-put-assoc 0 (fn-bs-splice (fn-bs-durable-content *ptxt-p6-img-pre* 0) 0 (list *ptxt-p6-b0*))
+                                          (fn-bs-inodes *ptxt-p6-img-pre*))
+                         (fn-bs-dirs *ptxt-p6-img-pre*) nil (fn-bs-next-ino *ptxt-p6-img-pre*))
+             *ptxt-p6-img*)
+      (not (equal *ptxt-p6-img-pre* *ptxt-p6-img*))))
+(defthm ptxt-p6-img-pre-no-image
+  (not (fn-bs-crash-imagep *ptxt-p6-bs* *ptxt-p6-img-pre*))
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-ptx-p6-image-keeps-the-prefix (bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0)
+                            (genesis *ptxt-k-g*) (max 4096) (e *ptxt-p6-e*) (image *ptxt-p6-img-pre*))))))
 (teeth-ground-lemma ptxt-gl-p6-without-img *ptxt-c-p6*
   ((bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0) (genesis *ptxt-k-g*) (max 4096) (e *ptxt-p6-e*)
-   (ls *ptxt-p6-ls*) (j 1) (image *ptxt-p6-bs*))
+   (ls *ptxt-p6-ls*) (j 1) (image *ptxt-p6-img-pre*))
   :without img
   :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
                                                       '((:executable-counterpart fn-bs-crash-imagep)))
-           :use ((:instance fn-ptx-p6-pending-is-no-image (s *ptxt-p6-split1*) (image *ptxt-p6-bs*))
-                 (:instance fn-ptx-p6-pending-is-no-image (s *ptxt-p6-bs*) (image *ptxt-p6-bs*))))))
+           :use ((:instance fn-ptx-split-crash-images-are-entry-crash-images
+                            (bs *ptxt-p6-bs*) (ks *ptxt-p6-ks*) (ino 0) (genesis *ptxt-k-g*) (max 4096)
+                            (e *ptxt-p6-e*) (ls *ptxt-p6-ls*) (j 1) (image *ptxt-p6-img-pre*))
+                 (:instance ptxt-p6-img-pre-no-image)))))
 ; the mutation: the conclusion's store with the whole entry already durable, so
 ; that nothing is pending and its one image is itself
 (defconst-eval *ptxt-p6-bs-whole*
@@ -597,7 +653,7 @@
   :breaks ((rel ((bs *ptxt-p6-bs-np*) (image *ptxt-p6-img-np*)) :lemma ptxt-gl-p6-without-rel)
            (e ((e *ptxt-p6-e2*) (ls *ptxt-p6-ls2*) (j 2) (image *ptxt-p6-img2*)) :lemma ptxt-gl-p6-without-e)
            (sum ((ls *ptxt-p6-ls2*) (j 2) (image *ptxt-p6-img3*)) :lemma ptxt-gl-p6-without-sum)
-           (img ((image *ptxt-p6-bs*)) :lemma ptxt-gl-p6-without-img))
+           (img ((image *ptxt-p6-img-pre*)) :lemma ptxt-gl-p6-without-img))
   :mutations ((whole-entry-already-durable
                (:conclusion
                 (fn-bs-crash-imagep (fn-bs-make (fn-bs-unit bs)

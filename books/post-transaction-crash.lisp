@@ -931,6 +931,39 @@
            :in-theory (disable fn-bs-crash)
            :use ((:instance fn-ptx-imagep-unpack)
                  (:instance fn-ptx-p6-crash-has-no-pending (ch (fn-bs-crash-imagep-witness s image)))))))
+;; An image of a related store keeps the durable content BEFORE the pending entry too
+;; (the committed log): the first frontier octets (used by the img teeth of P6).
+(defthm fn-ptx-p6-take-of-append
+  (implies (and (true-listp d) (equal (len d) f))
+           (equal (fn-bs-take f (append d x)) d))
+  :rule-classes nil
+  :hints (("Goal" :induct (len d) :in-theory (enable fn-bs-take))))
+(defthm fn-ptx-p6-image-keeps-the-prefix
+  (implies (and (fn-lgk-relp bs ks ino genesis max)
+                (consp (fn-lgk-inflight ks))
+                (equal e (fn-lg-log (fn-lgk-inflight ks) (fn-lgk-last ks) (fn-bs-unit bs)))
+                (fn-bs-crash-imagep bs image))
+           (equal (fn-bs-take (fn-lgk-frontier ks) (fn-bs-durable-content image ino))
+                  (fn-bs-take (fn-lgk-frontier ks) (fn-bs-durable-content bs ino))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories (theory 'minimal-theory)
+                                      '((:definition natp) (:definition posp) (:executable-counterpart natp)
+                                        (:rewrite fn-ptx-natp-len) (:type-prescription len)))
+           :use ((:instance fn-lgk-relp-gives-the-tear-hypotheses)
+                 (:instance fn-bs-crash-of-aligned-append
+                            (s bs) (k (floor (fn-lgk-frontier ks) (fn-bs-unit bs)))
+                            (d (fn-bs-take (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
+                            (z (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
+                            (w e))
+                 (:instance fn-lg-log-true-listp (prev (fn-lgk-last ks)) (records (fn-lgk-inflight ks)) (unit (fn-bs-unit bs)))
+                 (:instance fn-ptx-p6-take-of-append (f (fn-lgk-frontier ks))
+                            (d (fn-bs-take (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
+                            (x (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs ino))))
+                 (:instance fn-ptx-p6-take-of-append (f (fn-lgk-frontier ks))
+                            (d (fn-bs-take (fn-lgk-frontier ks) (fn-bs-durable-content bs ino)))
+                            (x (fn-lg-apply-to (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content bs ino))
+                                 (fn-lg-pieces ino 0 e (fn-lg-crash-sels bs image) (fn-bs-unit bs)))))))))
 (defthm fn-ptx-p6-idle-image
   (implies (and (equal (fn-bs-pending s) nil) (fn-bs-crash-imagep s image))
            (equal image (fn-bs-make (fn-bs-unit s) (fn-bs-inodes s) (fn-bs-dirs s) nil (fn-bs-next-ino s))))
