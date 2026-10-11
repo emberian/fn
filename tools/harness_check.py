@@ -437,14 +437,36 @@ def signature_findings(root: Path) -> tuple[list[dict], dict]:
     for module in modules.values():
         stack: list[str] = []
 
+        local: list[set[str]] = []
+
         class Walk(ast.NodeVisitor):
             def visit_ClassDef(self, node):
                 stack.append(node.name)
                 self.generic_visit(node)
                 stack.pop()
 
+            def visit_FunctionDef(self, node):
+                # A def or class inside this function binds its name in the
+                # function's scope, so a call of that name there is the local
+                # one, not the module's (tests/test_certs.py's local
+                # `install(target)` beside the module's `install(root, cache,
+                # ...)`).
+                local.append({inner.name for inner in ast.walk(node)
+                              if inner is not node and isinstance(
+                                  inner, (ast.FunctionDef, ast.AsyncFunctionDef,
+                                          ast.ClassDef))})
+                self.generic_visit(node)
+                local.pop()
+
+            visit_AsyncFunctionDef = visit_FunctionDef
+
             def visit_Call(self, node):
                 counts["calls"] += 1
+                if isinstance(node.func, ast.Name) and \
+                        any(node.func.id in names for names in local):
+                    # resolved by the local binding, not by this lint
+                    self.generic_visit(node)
+                    return
                 signature = resolve(corpus, module, node,
                                     stack[-1] if stack else None)
                 if signature is None:
@@ -796,7 +818,8 @@ RAW_DISPATCHERS = {"fnn-call": 0, "fnn-core": 0, "fnn-core-state": 1,
 # The state dispatchers pass the live payload arena before state to an entry
 # whose ACL2 formals end in (fn-arena state) (host/native/io.lisp
 # fnn-arena-then-state, read off the entry's stobjs-in: lane served-readers).
-# (or any run of fn-arena, fn-cat and fn-hist before state).  ARENA_ENTRIES (name -> how many) is
+# The run before state is the one fnn-trailing-kind passes, read from the
+# runtime by runtime_trailing_stobjs.  ARENA_ENTRIES (name -> how many) is
 # filled from the tree's formals by raw_arity_findings.
 ARENA_STATE_DISPATCHERS = {"fnn-core-state", "fnn-owner-core", "fnn-owner-action",
                            "fnn-core-buffer-state"}
@@ -1160,6 +1183,28 @@ def raw_arity_scan(sources: dict[str, list], exclude: set[str] = frozenset(),
     return findings, counts
 
 
+TRAILING_KIND_SOURCE = "host/native/io.lisp"
+TRAILING_KIND_FORM = re.compile(
+    r"\(defun fnn-trailing-kind .*?\(member sym '\(([^()]*)\)\)", re.S)
+
+
+def runtime_trailing_stobjs(root: Path) -> frozenset[str]:
+    """The stobjs the raw dispatchers pass before state, as the runtime decides
+    them: the member list in host/native/io.lisp fnn-trailing-kind.  Refuses a
+    tree whose fnn-trailing-kind no longer has that shape, so the check never
+    falls back to a copy of the list."""
+    text = (root / TRAILING_KIND_SOURCE).read_text(encoding="utf-8")
+    match = TRAILING_KIND_FORM.search(text)
+    if match is None:
+        raise SystemExit(f"harness_check raw-arity: {TRAILING_KIND_SOURCE} has no "
+                         "fnn-trailing-kind with a (member sym '(...)) run")
+    names = frozenset(match.group(1).lower().split())
+    if not names:
+        raise SystemExit(f"harness_check raw-arity: {TRAILING_KIND_SOURCE} "
+                         "fnn-trailing-kind's run is empty")
+    return names
+
+
 def raw_arity_findings(root: Path) -> tuple[list[dict], dict]:
     from tools import ledger
 
@@ -1190,16 +1235,17 @@ def raw_arity_findings(root: Path) -> tuple[list[dict], dict]:
     for definition in wrappers:
         seen.setdefault(definition.name, set()).add(len(definition.formals))
     ARENA_ENTRIES.clear()
+    passed = runtime_trailing_stobjs(root)
     def trailing(formals):
-        # the run of fn-arena, fn-cat and fn-hist just before state
-        # (host/native/io.lisp fnn-trailing-kind; fn-hist: lane
-        # history-columns-2)
+        # the run of the stobjs the runtime passes just before state
+        # (host/native/io.lisp fnn-trailing-kind, read by
+        # runtime_trailing_stobjs)
         names = [str(f).lower() for f in formals]
         if not names or names[-1] != "state":
             return 0
         count = 0
         for name in reversed(names[:-1]):
-            if name not in ("fn-arena", "fn-cat", "fn-hist"):
+            if name not in passed:
                 break
             count += 1
         return count
