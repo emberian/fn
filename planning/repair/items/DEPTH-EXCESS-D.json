@@ -7,12 +7,13 @@
   "2026-10-10 Builder D: lane/d-depth-excess-d closes 63; see its READY.",
   "10-10 12:08 2026-10-10 Builder D, lane/d-rdv-build-time: fn-rdv-row-digest is program-listed by the coordinator's ruling (a) with its reason and call site; tools/depth_check.py check_build_time refuses any mention of it outside host/interfaces.lisp and host/native/raw-trap.lisp. Open: 11 web wrappers (Builder D's Sonnet, lane/d-web-guards) and 3 bp-release-owner wrappers.",
   "10-10 15:56 2026-10-10 Builder D, lane/d-web-guards: 8 of the 11 web wrappers :logic and guard-verified over the five web stream books (their 37 callees verified); depth_check 234 -> 226 problems on this tree. fn-web-host-page-step, -window-page-step and -post-form-step stay :program: their verified guards (fn-wpc-cursorp, fn-wpc-wcursorp, fn-wpf-statep) grow with the reply or posted body and the host calls each once per window, and :raw-with refuses a carried conjunct over a host formal; closing them needs constant-time step guards (each pop checks the segment it pops). Open also: the 3 bp-release-owner wrappers.",
-  "10-10 16:50 2026-10-10 Builder D, lane/d-web-guards merged with lane/spans@3312e9929: 9 of the 11 web wrappers are :logic, guard-verified CLC (7 here, post-window and post-form-step in C's guard-t ec-call form, d9a4f0132); the five web stream books' 37 callees are guard-verified. fn-web-host-page-step and -window-page-step stay :program (their verified guards walk the remaining segments per window; :raw-with refuses a carried conjunct over a host formal). Open: those 2 and the 3 bp-release-owner wrappers."
+  "10-10 16:50 2026-10-10 Builder D, lane/d-web-guards merged with lane/spans@3312e9929: 9 of the 11 web wrappers are :logic, guard-verified CLC (7 here, post-window and post-form-step in C's guard-t ec-call form, d9a4f0132); the five web stream books' 37 callees are guard-verified. fn-web-host-page-step and -window-page-step stay :program (their verified guards walk the remaining segments per window; :raw-with refuses a carried conjunct over a host formal). Open: those 2 and the 3 bp-release-owner wrappers.",
+  "10-10 17:07 2026-10-10 Builder D, lane/d-release-guards: fn-owner-workflow-request-plan, -store-waive and -pending-waivers are :logic, guard-verified CLC with constant-time guards (boundp-global of the workflow and owner globals); their callees in bp-release, bp-request-plan, bp-payload-gate and bp-carry-control verified at guard t (fn-bprl-work-pin an mbe over a guard-t lookup twin). Open: fn-web-host-page-step and -window-page-step, and the constant-time wpf guards (lane/d-web-guards follow-up)."
  ],
  "owner": "builder-D",
  "severity": "medium",
  "source": "depth_check at lane/d-registry-findings (dev 9b580dd36 + D's queued lanes), Builder D 2026-10-10, CL13 attributed by area under the CL24 ruling's pattern",
  "state": "in-progress",
  "title": "depth_check: 17 unclassified host-closure findings in builder-D's area (80 at CL13; 2 more left to retiring landings)",
- "updated": "2026-10-10T20:50:46Z"
+ "updated": "2026-10-10T21:07:42Z"
 }
