@@ -2377,6 +2377,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/filed-catalog-tests \
 	books/filed-stored \
 	tests/acl2/filed-stored-tests \
+	books/filed-history \
+	tests/acl2/filed-history-tests \
 	books/filed-operator \
 	books/crypto-attach \
 	books/auth-secret \
