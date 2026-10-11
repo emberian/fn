@@ -1236,6 +1236,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/bp-recovery-profile-row-tests \
 	books/post-head-limit \
 	tests/acl2/post-head-limit-tests \
+	books/post-acceptance-bound \
+	tests/acl2/post-acceptance-bound-tests \
 	tests/acl2/bp-held-projection-tests \
 	tests/acl2/bp-heap-command-tests \
 	books/bp-handoff-report \
