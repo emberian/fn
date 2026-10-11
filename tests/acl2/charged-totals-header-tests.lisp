@@ -14,7 +14,7 @@
 (include-book "../../books/records-attach")
 (include-book "../../books/catalog-record")
 
-(defun htct-row (n)
+(defun ctht-row (n)
   (declare (xargs :guard t :verify-guards nil))
   (let ((n (nfix n)))
     (fn-record-make (mod n 3) (mod n 5) (mod n 7)
@@ -23,23 +23,23 @@
                     (if (evenp n) '("fn.test") '("fn.test" "fn.other"))
                     "o0" "s0" "e0" 4 (+ 841000000 n))))
 
-(defun htct-intern-all (ns fn-arena)
+(defun ctht-intern-all (ns fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (if (atom ns)
       (mv nil fn-arena)
-    (mv-let (row fn-arena) (fn-cat-intern-list (htct-row (car ns)) nil 0 fn-arena)
-      (mv-let (rest fn-arena) (htct-intern-all (cdr ns) fn-arena)
+    (mv-let (row fn-arena) (fn-cat-intern-list (ctht-row (car ns)) nil 0 fn-arena)
+      (mv-let (rest fn-arena) (ctht-intern-all (cdr ns) fn-arena)
         (mv (cons row rest) fn-arena)))))
 
-(defun htct-held-rows (ns)
+(defun ctht-held-rows (ns)
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
     (mv-let (rows fn-arena)
-      (htct-intern-all ns fn-arena)
+      (ctht-intern-all ns fn-arena)
       rows)))
 
 (defconst *ct2-held*
-  (append (htct-held-rows '(11 5))
+  (append (ctht-held-rows '(11 5))
           (list (fn-store-retention-event-make :undertake 2 2 2 "forward" "fwd-subject" "evidence" 4))))
 (defconst *ct2-events*
   (list (fn-store-retention-event-make :undertake 0 0 0 "forward-sct" "subject" "evidence" 10)

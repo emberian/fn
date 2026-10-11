@@ -202,13 +202,27 @@
   (declare (xargs :guard t))
   (fn-mm-make-tot 0 0 0 0 0 0 0 0 residency))
 
-; The fold: the charged totals of RECORDS at RESIDENCY.
-(defun fn-ct-charged (records residency)
+; The fold with an accumulator: one frame however many records.  It is
+; fn-ct-charged's executable (fn-ct-charged-acc-is-the-fold, below).
+(defun fn-ct-charged-acc (records residency acc)
   (declare (xargs :guard t :verify-guards nil))
   (if (consp records)
-      (fn-mm-tot-plus (fn-ct-row-tot (car records) residency)
-                      (fn-ct-charged (cdr records) residency))
-    (fn-ct-zero-tot residency)))
+      (fn-ct-charged-acc (cdr records) residency
+                         (fn-mm-tot-plus acc (fn-ct-row-tot (car records) residency)))
+    acc))
+
+; The fold: the charged totals of RECORDS at RESIDENCY, the list fold in the
+; logic and the accumulator at run time (the owner's carried totals and the
+; checkpoint's header run it over a store's records: a non-tail recursion
+; would be one control-stack frame per record, tools/depth_check.py).  Its
+; guards are verified after fn-ct-charged-acc-is-the-fold.
+(defun fn-ct-charged (records residency)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic (if (consp records)
+                  (fn-mm-tot-plus (fn-ct-row-tot (car records) residency)
+                                  (fn-ct-charged (cdr records) residency))
+                (fn-ct-zero-tot residency))
+       :exec (fn-ct-charged-acc records residency (fn-ct-zero-tot residency))))
 
 ; The log's records' octets a full replay reads, charged.
 (defun fn-ct-log-of-records (records)
@@ -220,7 +234,7 @@
 (verify-guards fn-ct-row)
 (verify-guards fn-ct-row-log)
 (verify-guards fn-ct-row-tot)
-(verify-guards fn-ct-charged)
+(verify-guards fn-ct-charged-acc)
 (verify-guards fn-ct-log-of-records)
 
 (local (in-theory (disable fn-ct-row fn-ct-row-log fn-ct-row-history)))
@@ -447,16 +461,6 @@
            :in-theory (enable fn-ct-charged fn-mm-tot-plus fn-ct-row-tot fn-ct-zero-tot
                               fn-mm-make-tot fn-mm-tot-paged-p))))
 
-; The fold with an accumulator: one frame however many records (the list
-; fold holds one a record).  The checkpoint's writer runs it through
-; fn-ct-charged-exec; fn-ct-charged-acc-is-the-fold makes it the fold.
-(defun fn-ct-charged-acc (records residency acc)
-  (declare (xargs :guard t))
-  (if (consp records)
-      (fn-ct-charged-acc (cdr records) residency
-                         (fn-mm-tot-plus acc (fn-ct-row-tot (car records) residency)))
-    acc))
-
 (local
  (defthm fn-ct-tot-p-of-row-tot (fn-mm-tot-p (fn-ct-row-tot r res))
    :hints (("Goal" :in-theory (union-theories '(fn-ct-row-tot fn-mm-make-tot-is-a-tot)
@@ -491,8 +495,4 @@
   :hints (("Goal" :use ((:instance fn-ct-charged-acc-is-plus (a nil)))
            :in-theory (e/d (fn-ct-charged) (fn-ct-charged-acc-is-plus)))))
 
-; The executable fold: the list fold in the logic, the accumulator at run time.
-(defun fn-ct-charged-exec (records residency)
-  (declare (xargs :guard t))
-  (mbe :logic (fn-ct-charged records residency)
-       :exec (fn-ct-charged-acc records residency (fn-ct-zero-tot residency))))
+(verify-guards fn-ct-charged)

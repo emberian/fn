@@ -677,11 +677,27 @@
 ; The reader, list level: one run at a time.  The first header names the
 ; run's count; that many segments are joined (the codec's chain check) into
 ; the run's program.
-(defun fn-sct-take-segs (n segs)
-  (declare (xargs :guard (natp n)))
+; Executed as a loop (the host's header read and the tables reader take a
+; run's segments, as many as its header names: a non-tail recursion here is
+; one control-stack frame per segment, tools/depth_check.py).
+(defun fn-sct-take-segs-loop (n segs acc)
+  (declare (xargs :guard (and (natp n) (true-listp acc))))
   (if (or (zp n) (not (consp segs)))
-      nil
-    (cons (car segs) (fn-sct-take-segs (1- n) (cdr segs)))))
+      (revappend acc nil)
+    (fn-sct-take-segs-loop (1- n) (cdr segs) (cons (car segs) acc))))
+
+(defun fn-sct-take-segs (n segs)
+  (declare (xargs :guard (natp n) :verify-guards nil))
+  (mbe :logic (if (or (zp n) (not (consp segs)))
+                  nil
+                (cons (car segs) (fn-sct-take-segs (1- n) (cdr segs))))
+       :exec (fn-sct-take-segs-loop n segs nil)))
+
+(defthm fn-sct-take-segs-loop-is-take-segs
+  (equal (fn-sct-take-segs-loop n segs acc)
+         (revappend acc (fn-sct-take-segs n segs))))
+
+(verify-guards fn-sct-take-segs)
 
 (defun fn-sct-drop-segs (n segs)
   (declare (xargs :guard (natp n)))
