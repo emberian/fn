@@ -48,6 +48,7 @@
 (include-book "frame-digest-buffer")
 (include-book "payload-extent")
 (include-book "payload-extent-read")
+(include-book "store-log-entry-bound")
 (local (include-book "arithmetic/top" :dir :system))
 
 ;; The tau system is off in this book (lane tau-pass, tools/tau_cost.py).
@@ -1465,4 +1466,21 @@
                                    fn-lgw-decide-is-okp-and-records fn-lg-entry-okp
                                    fn-lg-open-bound))
            :use ((:instance fn-lgb-span-records-are-the-records (prev (fn-lgw-prev st)))))))
+
+; KEYSTONE fn-lgw-entry-len-bounded-step-buf-count: the step the host runs
+; (fn-lgw-step-buf-count, host/native/io.lisp fnn-log-stream-segment) over an
+; entry longer than the open accepts (fn-lgw-entry-len-bounded NIL) is its
+; step over no entry, which is what the host gives it (an empty buffer).  The
+; list statement is books/store-log-entry-bound.lisp
+; fn-lgw-entry-len-bounded-step; this is it over the hosted step.
+(defthm fn-lgw-entry-len-bounded-step-buf-count
+  (implies (and (not (fn-lgw-entry-len-bounded h st extent max))
+                (equal (len e) (fn-lgw-entry-len h st extent))
+                (equal (nth 5 e) (nth 5 h)))
+           (equal (fn-lgw-step-buf-count st unit max extent e)
+                  (fn-lgw-step-buf-count st unit max extent nil)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-lgw-step-buf-count-is-step) (theory 'minimal-theory))
+           :use ((:instance fn-lgw-entry-len-bounded-step)))))
 
