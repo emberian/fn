@@ -295,6 +295,13 @@
    "mutation": "tests/acl2/store-checkpoint-fold-tests.lisp::scft-nil0-rows",
    "provenance": "keystone_critical.py --declare sha256:6897f9e1a1de5f7127b7ea125e1b62b992f0bdc83ccbb0efff9dc9badfc6d0f5"
   },
+  "fn-rcw-finish-of-step": {
+   "subject": "fn-rcw-acc-step",
+   "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
+   "trace_witness": "tests/acl2/reclaim-chunked-walk-tests.lisp::fn-rcw-finish-of-step",
+   "mutation": "tests/acl2/reclaim-chunked-walk-tests.lisp::chunk-not-extended",
+   "provenance": "keystone_critical.py --declare sha256:6014383104974d5ca35176c67ab69a63e6f38b1e9123b773bc70dbeda3a62968"
+  },
   "fn-rcw-load-chunks-is-load": {
    "subject": "fn-rcw-load-chunks",
    "host_test": "tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available",
