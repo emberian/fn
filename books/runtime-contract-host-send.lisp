@@ -58,7 +58,7 @@
   :rule-classes nil
   :hints (("Goal" :in-theory (disable fn-rtc-c-octets)
                   :expand ((:free (i x) (fn-rtc-c-octets i 0 x))))))
-(defthm fn-rtc-host-send-range-is-the-lease
+(local (defthm fn-rtchs-send-range-of-a-handle
   (implies (and (fn-rtc-st$corr c s)
                 (fn-rtc-invp s)
                 (member-equal u (fn-rtc-uses s))
@@ -82,7 +82,29 @@
                             (b (fn-rtc-buf-base (fn-rtc-h-buf (fn-rtc-u-hd u)) (fn-rtc-config s)))
                             (off (fn-rtc-h-off (fn-rtc-u-hd u))) (len (fn-rtc-h-len (fn-rtc-u-hd u)))
                             (fl (nfix (fn-rtc-get 2 (nth (fn-rtc-h-buf (fn-rtc-u-hd u)) (nth *fn-rtc-c-metai* c)))))
-                            (arr (nth *fn-rtc-c-bytesi* c)))))))
+                            (arr (nth *fn-rtc-c-bytesi* c))))))))
+; An :out use's handle is a handle (fn-rtc-usep), so the keystone needs no handle hypothesis.
+(local (defthm fn-rtchs-out-use-has-a-handle
+  (implies (and (fn-rtc-use-okp u s) (member-eq (fn-rtc-get 0 u) *fn-rtc-out-kinds*))
+           (fn-rtc-handlep (fn-rtc-u-hd u)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-rtc-use-okp fn-rtc-usep fn-rtc-u-hd)
+                                  (fn-rtc-handlep fn-rtc-buffer fn-rtc-current-p))))))
+(defthm fn-rtc-host-send-range-is-the-lease
+  (implies (and (fn-rtc-st$corr c s)
+                (fn-rtc-invp s)
+                (member-equal u (fn-rtc-uses s))
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-out-kinds*))
+           (let* ((hd (fn-rtc-u-hd u)) (h (fn-rtc-h-buf hd)))
+             (equal (fn-rtc-c-octets (+ (fn-rtc-buf-base h (fn-rtc-config s)) (fn-rtc-h-off hd))
+                                     (fn-rtc-h-len hd) (nth *fn-rtc-c-bytesi* c))
+                    (take (fn-rtc-h-len hd)
+                          (nthcdr (fn-rtc-h-off hd) (fn-rtc-b-bytes (fn-rtc-buffer h s)))))))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-rtchs-use-okp-of-member (uses (fn-rtc-uses s)))
+                 fn-rtchs-invp-uses-okp
+                 fn-rtchs-out-use-has-a-handle
+                 fn-rtchs-send-range-of-a-handle))))
 
 ; -----------------------------------------------------------------------------
 ; HL3: the in-place render (puts into the instance's workspace) is the contract's :write request, so every
@@ -140,7 +162,7 @@
                   (max (len bytes) (+ off (len data)))))
   :hints (("Goal" :in-theory (enable fn-rtc-splice))))
 ))
-(defthm fn-rtc-puts-is-the-write-request
+(local (defthm fn-rtchl-puts-in-range-is-the-write-request
   (let ((b (fn-rtc-buffer h s)))
     (implies (and (consp w) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
                   (equal (fn-rtc-b-owner b) (list :workspace id inc))
@@ -154,7 +176,35 @@
                   :in-theory (e/d (fn-rtc-st$a-put fn-rtc-st$a-splice fn-rtc-splice-okp fn-rtc-splice-target-p
                                    fn-rtc-req-write fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes)
                                   (fn-rtc-splice fn-rtc-with-buffer fn-rtc-buf-cap fn-rtc-nbufs fn-rtc-config
-                                   fn-rtc-buffer fn-rtc-uses)))))
+                                   fn-rtc-buffer fn-rtc-uses))))))
+; Outside the buffer table, or past the buffer's bytes, both sides refuse: no put lands, and
+; req-write leaves the state.  So those are no hypotheses of the keystone.
+(local (defthm fn-rtchl-puts-refused
+  (implies (and (natp off)
+                (not (and (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                          (<= off (len (fn-rtc-b-bytes (fn-rtc-buffer h s)))))))
+           (equal (fn-rtc-st$a-puts h off w s) s))
+  :hints (("Goal" :induct (fn-rtc-st$a-puts h off w s)
+                  :in-theory (e/d (fn-rtc-st$a-put fn-rtc-st$a-splice fn-rtc-splice-okp)
+                                  (fn-rtc-splice fn-rtc-with-buffer fn-rtc-buf-cap fn-rtc-nbufs fn-rtc-config
+                                   fn-rtc-buffer fn-rtc-uses fn-rtc-b-bytes fn-rtc-splice-target-p))))))
+(defthm fn-rtc-puts-is-the-write-request
+  (let ((b (fn-rtc-buffer h s)))
+    (implies (and (consp w)
+                  (equal (fn-rtc-b-owner b) (list :workspace id inc))
+                  (natp g) (equal (fn-rtc-get 0 b) g)
+                  (natp off)
+                  (fn-cbor-octet-listp w)
+                  (<= (+ off (len w)) (fn-rtc-buf-cap h (fn-rtc-config s))))
+             (equal (fn-rtc-st$a-puts h off w s)
+                    (mv-nth 0 (fn-rtc-req-write (list :write h g off w) id inc s)))))
+  :hints (("Goal" :cases ((and (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+                               (<= off (len (fn-rtc-b-bytes (fn-rtc-buffer h s)))))))
+          ("Subgoal 2" :in-theory (e/d (fn-rtc-req-write fn-rtc-b-gen)
+                                       (fn-rtc-st$a-puts fn-rtc-buffer fn-rtc-b-bytes fn-rtc-b-owner fn-rtc-buf-cap
+                                        fn-rtc-nbufs fn-rtc-config fn-rtc-with-buffer fn-rtc-splice))
+                       :use fn-rtchl-puts-refused)
+          ("Subgoal 1" :in-theory (theory 'minimal-theory) :use fn-rtchl-puts-in-range-is-the-write-request)))
 
 ; HL1b: under the invariant, a buffer an outstanding :out use names is (:leased id inc :out), never a workspace and
 ; never the target of an :in use, so no splice (nor put, its one-octet case) changes it until the use completes.
@@ -189,7 +239,7 @@
                                       fn-rtc-handlep))
           ("Subgoal *1/1" :use ((:instance fn-rtchs-in-use-owner (u (car uses2)))))))
 ))
-(defthm fn-hl-splice-keeps-out-use-bytes
+(local (defthm fn-rtchs-splice-keeps-a-handled-out-use
   (implies (and (fn-rtc-invp s)
                 (member-equal u (fn-rtc-uses s))
                 (member-eq (fn-rtc-get 0 u) *fn-rtc-out-kinds*)
@@ -202,4 +252,15 @@
            :use ((:instance fn-rtchs-use-okp-of-member (uses (fn-rtc-uses s)))
                  fn-rtchs-invp-uses-okp
                  fn-rtchs-out-use-owner
-                 (:instance fn-rtchs-in-use-on-means-in-lease (h h2) (uses2 (fn-rtc-uses s)))))))
+                 (:instance fn-rtchs-in-use-on-means-in-lease (h h2) (uses2 (fn-rtc-uses s))))))))
+(defthm fn-hl-splice-keeps-out-use-bytes
+  (implies (and (fn-rtc-invp s)
+                (member-equal u (fn-rtc-uses s))
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-out-kinds*))
+           (equal (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) (fn-rtc-st$a-splice h2 off data s))
+                  (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) s)))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-rtchs-use-okp-of-member (uses (fn-rtc-uses s)))
+                 fn-rtchs-invp-uses-okp
+                 fn-rtchs-out-use-has-a-handle
+                 fn-rtchs-splice-keeps-a-handled-out-use))))
