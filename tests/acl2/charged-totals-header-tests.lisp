@@ -401,4 +401,3 @@
                              (fn-nls-text " residency=resident") (list 10))))
 (assert-event (equal (fn-cth-status-text '(:refused :header-segment :schema))
                      (append (fn-nls-text "charged-totals=absent") (list 10))))
-(assert-event (equal (fn-cth-empty-suffix (nth 1 *ctc-open*)) (fn-ct-zero-tot :resident)))

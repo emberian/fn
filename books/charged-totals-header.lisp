@@ -43,7 +43,7 @@
 ; reader's and the readback's header phase (fn-cth-read-file is that phase
 ; then the rest: fn-cth-read-file-is-the-header-open); fn-cth-config-cfg,
 ; the load bound's CFG from the configuration history's octets;
-; fn-cth-status-text, the stopped `status' line; fn-cth-empty-suffix.
+; fn-cth-status-text, the stopped `status' line.
 
 (in-package "ACL2")
 (include-book "memory-model")
@@ -1235,10 +1235,3 @@
                 (fn-nls-text (if (fn-mm-tot-paged-p tot) " residency=paged" " residency=resident"))
                 (list 10)))
     (append (fn-nls-text "charged-totals=absent") (list 10))))
-
-; The log's totals past S when it holds no record there: the zero tot at
-; the header's residency (host/native/heap.lisp fnn-heap-charged-totals, the
-; read-only heap command's SUFFIX).
-(defun fn-cth-empty-suffix (hdr)
-  (declare (xargs :guard t))
-  (fn-ct-zero-tot (if (fn-mm-tot-paged-p hdr) :paged :resident)))
