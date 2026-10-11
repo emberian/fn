@@ -7,11 +7,15 @@
 ;;;                             (the MEM-003 armA pattern): fnn-owner-maybe-collect-idle
 ;;;                             does nothing, and the collector policy (memory landing
 ;;;                             3+4a, host/native/heap.lisp fnn-heap-collector-policy-start)
-;;;                             never starts, so its thread runs no full collection.  At
-;;;                             3119f7d32 the arm read 182,076 KiB (138,796 at the drain):
-;;;                             host/native/owner.lisp fnn-owner-release-recovery-garbage
-;;;                             starts the policy whatever this hook says, so the arm ran
-;;;                             the policy's full collections (traced, re-measure owed)
+;;;                             never starts (host/native/owner.lisp
+;;;                             fnn-owner-release-recovery-garbage starts it whatever the
+;;;                             idle encapsulation says), so its thread runs no full
+;;;                             collection.  Measured (planning/evidence/load/
+;;;                             2026-10-11-m18-w13, -w13b, -w13c): this moves the arm's anon by a few
+;;;                             MB at most.  Arm A's HWM rise at 3119f7d32 (182,076 KiB
+;;;                             against 138,796) was file-backed core pages, which vary
+;;;                             from 65 to 108 MB between runs of one image (the drain's
+;;;                             own two arms: 65,500 and 106,352 KiB file)
 (in-package "ACL2")
 (let ((path (sb-ext:posix-getenv "FN_LOAD_GC_LOG")))
   (when (and path (plusp (length path)))
