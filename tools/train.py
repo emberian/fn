@@ -744,11 +744,16 @@ def _added_roots(t: "Train") -> list[str]:
 
 
 def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
-    """Critical teeth whose theorem's closure changed, from regen's manifest.
+    """Critical teeth whose theorem's closure or own closure changed, from
+    regen's manifest.
 
     `book` defines the theorem; `owner_book` supplies its teeth and may be
     a test outside the Makefile roots. Include that test even when only a
-    transitive dependency of the theorem changed.
+    transitive dependency of the theorem changed, and when a book only the
+    test reads changed (books/defkeystone, whose defteeth every witness
+    test calls: the tools train of 2026-10-10 certified the affected
+    Makefile roots and left tests/acl2/heap-command-tests, a witness
+    outside them, uncertified at its new closure key).
     """
     if not changed:
         return []
@@ -768,6 +773,9 @@ def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
         for book, tests in witnesses.items():
             if targets.intersection(certs.closure(root, book)):
                 selected.update(tests)
+            else:
+                selected.update(test for test in tests
+                                if targets.intersection(certs.closure(root, test)))
         return sorted(selected)
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise TrainError(f"cannot select critical witnesses from {manifest}: {error}") from error
