@@ -156,14 +156,13 @@
   (declare (xargs :guard t))
   (update-nth 7 (max (fn-mm-cfg-handshakes cfg) (nfix h)) (true-list-fix cfg)))
 
-; With a TLS context, every handshake in flight is within the scratch the gate
-; charges (the PRF-986 term of the memory equation, books/memory-model.lisp
+; Every handshake in flight (each holding its scratch when a TLS context is
+; loaded) is within the scratch the gate charges (the PRF-986 term of the memory equation, books/memory-model.lisp
 ; fn-mm-inflight), whatever the live limit.
 (defthm fn-adm-cfg-holding-handshakes-charges-every-handshake
-  (implies (fn-mm-cfg-tlsp cfg)
-           (<= (* (nfix h) *fn-cbud-handshake-scratch-octets*)
-               (fn-cbud-handshake-octets (fn-mm-cfg-tlsp (fn-adm-cfg-holding-handshakes cfg h))
-                                         (fn-mm-cfg-handshakes (fn-adm-cfg-holding-handshakes cfg h)))))
+  (<= (* (nfix h) (if (fn-mm-cfg-tlsp cfg) *fn-cbud-handshake-scratch-octets* 0))
+      (fn-cbud-handshake-octets (fn-mm-cfg-tlsp (fn-adm-cfg-holding-handshakes cfg h))
+                                (fn-mm-cfg-handshakes (fn-adm-cfg-holding-handshakes cfg h))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-cbud-handshake-octets fn-cbud-handshake-slots fn-mm-cfg-tlsp
                                      fn-mm-cfg-handshakes fn-mm-nat)
