@@ -401,8 +401,19 @@ class ScopedAuditTests(Fixture):
 
 
 class BoxTests(Fixture):
-    """The ssh path, with ssh replaced: one call per process, hbox first,
-    persvati when hbox cannot be reached, never a silent "uncertified"."""
+    real_on_box = staticmethod(green_check.on_box)
+
+    """The ssh path, with ssh replaced: one call per process to one box, hbox
+    unless another is named, never another box's answer and never a silent
+    "uncertified"; on the box itself its cache is read without ssh."""
+
+    def setUp(self):
+        super().setUp()
+        # the ssh path is what these cases test, wherever the suite runs
+        # (on hbox itself on_box is true and no ssh would be made)
+        stub = patch.object(green_check, "on_box", return_value=False)
+        stub.start()
+        self.addCleanup(stub.stop)
 
     def reply(self, hits, code=0, identity="i" * 64):
         return subprocess.CompletedProcess(
@@ -425,20 +436,37 @@ class BoxTests(Fixture):
         self.assertIn(green_check.RECORD_LAUNCHER, script)
         compile(script, "remote", "exec")
 
-    def test_hbox_unreachable_falls_back_to_persvati_and_says_so(self):
+    def test_hbox_unreachable_is_an_error_never_persvatis_answer(self):
+        # 2026-10-11: run on hbox, ssh to "hbox" failed host-key verification
+        # and persvati's stale cache answered; keystone_emit then reported
+        # certified witnesses as uncertified.  No other box stands in.
         asked = []
 
         def fake(command, **kwargs):
             asked.append(command[-3])
             return self.reply({}, code=255) if command[-3] == "hbox" else self.reply({"k1": {"x": 1}})
         cache = green_check.Cache()
-        with patch.object(green_check.subprocess, "run", side_effect=fake), \
-                patch("sys.stderr") as err:
-            cache.ask(["k1"])
-        self.assertEqual(asked, ["hbox", "persvati"])
-        self.assertEqual(cache.hit("k1"), {"x": 1})
-        said = "".join(call.args[0] for call in err.write.call_args_list)
-        self.assertIn("answered by persvati", said)
+        with patch.object(green_check, "on_box", return_value=False), \
+                patch.object(green_check.subprocess, "run", side_effect=fake):
+            with self.assertRaisesRegex(green_check.CacheUnavailable, "hbox: ssh exit 255"):
+                cache.ask(["k1"])
+        self.assertEqual(asked, ["hbox"])
+        self.assertIsNone(cache.hit("k1"))
+
+    def test_on_the_box_its_own_cache_is_read_without_ssh(self):
+        book(self.root, "books/a", '(in-package "ACL2")')
+        entry = publish(self.cache, self.root, "books/a", identity="record-id")
+        key = entry.parent.name
+        with patch.object(green_check, "on_box", BoxTests.real_on_box), \
+                patch.dict(green_check.certs.REMOTE_CACHES, {"hbox": str(self.cache)}), \
+                patch.object(green_check, "RECORD_LAUNCHER", __file__), \
+                patch.object(green_check.subprocess, "run",
+                             side_effect=AssertionError("ssh to itself")):
+            self.assertTrue(green_check.on_box("hbox"))
+            cache = green_check.Cache(identity="record-id")
+            cache.ask([key])
+        self.assertIsNotNone(cache.hit(key))
+        self.assertIn(f"local cache {self.cache}", cache.describe())
 
     def test_no_box_answering_is_an_error_not_an_uncertified_verdict(self):
         cache = green_check.Cache()
