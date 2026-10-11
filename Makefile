@@ -2170,7 +2170,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-access-revoke-tests \
 	books/def-cursor-batch \
 	books/newnews-stream-cursor \
+	books/newnews-stream-cost \
 	tests/acl2/newnews-stream-cursor-tests \
+	tests/acl2/newnews-stream-cost-tests \
 	tests/acl2/served-plan-newnews-tests \
 	books/served-plan-cursor \
 	books/output-command-admission \
