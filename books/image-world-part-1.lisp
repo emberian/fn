@@ -117,6 +117,7 @@
 (include-book "idle-collection")
 (include-book "heap-reservation")
 (include-book "heap-command")
+(include-book "heap-log-extent-cap")
 (include-book "bp-heap-command")
 (include-book "cold-read-reservation")
 (include-book "output-reservation")
@@ -212,5 +213,3 @@
 (include-book "store-intern")
 (include-book "open-frontier-wire")
 (include-book "store-recover-stream")
-(include-book "payload-commit-extent")
-(include-book "payload-extent-read")

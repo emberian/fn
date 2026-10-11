@@ -510,12 +510,19 @@ fn-cth-header-open), SUFFIX the log's past the header's S
 (fnn-heap-log-suffix, below), EXTENT the largest journal/ segment's observed
 size (the lstat of every segment the walk below reads), which the read's
 open terms charge as its entry scratch (KEYSTONE
-fn-mo-observed-log-holds-every-entry-read).  ADAPTER
-MEMORY-OBSERVED-EXTENT-CAP (owners A and M, retired by A's io.lisp cap: the
-read takes EXTENT as its cap and refuses a segment past it by name): until
-then a segment appended between this walk and the read is not covered.  A
-segment that is not a regular file leaves EXTENT, and so the totals, unseen.
-Unlocked: as fresh as the read."
+fn-mo-observed-log-holds-every-entry-read).  Answers (values TOTALS EXTENT):
+the probe prints EXTENT on its line when its decision is the observed branch
+(books/heap-log-extent-cap.lisp fn-lxc-command-line), the launcher passes it to
+the command as FN_LOG_EXTENT_CAP, and the command's open refuses a segment
+longer than it before reading any of its entries (io.lisp
+fnn-log-observed-extent; KEYSTONE
+fn-lxc-admitted-segment-entries-within-the-decided-log): a segment grown
+past EXTENT between this walk and the read is refused, and one that grows
+after the read checks its descriptor is read only within the size it
+admitted (fn-lxc-admitted-entries-end-within-the-admitted-size).  A segment
+that is not a regular file leaves EXTENT, and so the totals, unseen.
+Unlocked: as fresh as the read (fnn-heap-log-suffix names the race its
+SUFFIX keeps)."
   (let* ((store (and (stringp root) profile (make-fnn-store root)))
          (open (and store
                     (progn (setf (fnn-store-config store) profile)
@@ -534,7 +541,7 @@ Unlocked: as fresh as the read."
          (suffix (and extent
                       (handler-case (fnn-heap-log-suffix store profile open)
                         ((or fnn-os-error fnn-store-error) () nil)))))
-    (fnn-core 'fn-mo-observed-totals hdr suffix extent)))
+    (values (fnn-core 'fn-mo-observed-totals hdr suffix extent) extent)))
 
 (defun fnn-heap-log-suffix (store profile open)
   "SUFFIX of the read decision (books/heap-command.lisp fn-mo-observed-totals):
@@ -559,8 +566,11 @@ and ACL2 answers the fold only when both are unchanged
 leaves the totals unseen.  NIL (unseen) also when the plan refuses, the
 head is not one, the fold refuses (:bad), or any read refuses or fails.
 Unlocked: records appended to the active segment after the walk passed them
-are missed, the staleness every pre-open observation has (adapter
-MEMORY-OBSERVED-EXTENT-CAP)."
+are missed.  The read's extent cap does not see them: the rotation
+preallocates a segment with zeros, so such appends stay within the size the
+probe observed.  ADAPTER LOG-SUFFIX-WALK-STALE (owner Builder L; retired by
+A's host lease and leased reader, which give the observation and the open
+one protected history boundary)."
   (let* ((s (fifth open))
          (plan (fnn-core 'fn-lgo-scan-plan (fnn-log-segment-names store) s)))
     (when plan
@@ -618,14 +628,16 @@ MEMORY-OBSERVED-EXTENT-CAP)."
   #-gencgc nil)
 
 ;; The command's decision (books/heap-command.lisp fn-heap-command-decide) and
-;; what it read: (values DECISION TOTALS IMG CONFIG-OCTETS CARD).
+;; what it read: (values DECISION TOTALS IMG CONFIG-OCTETS CARD EXTENT).
 (defun fnn-heap-reservation (profile connections &optional action observed cold-resources output-resources root peer reclaim-live
                              bp-terms command replayp)
   (let* ((core (fnn-heap-image-observation))
          (machine (fnn-heap-observations))
          (class (fnn-core 'fn-heap-command-growth action command replayp))
          (reads (eq class :reads))
-         (totals (and reads (fnn-heap-charged-totals root profile)))
+         (observation (and reads (multiple-value-list (fnn-heap-charged-totals root profile))))
+         (totals (first observation))
+         (extent (second observation))
          (img (and reads profile (fnn-heap-img-observation profile)))
          (config (and (member class '(:reads :header)) (fnn-heap-config-octets root profile)))
          (card (and reads (fnn-heap-card-octets)))
@@ -634,7 +646,7 @@ MEMORY-OBSERVED-EXTENT-CAP)."
                          (fnn-heap-resident-observations) (fnn-heap-address-observations))))
     (values (fnn-heap-extend-reservation base action cold-resources output-resources root core machine
                                          profile observed peer reclaim-live bp-terms)
-            totals img config card)))
+            totals img config card extent)))
 
 (defun fnn-command-heap (marker argv)
   (unless (string= marker "--")
@@ -642,10 +654,11 @@ MEMORY-OBSERVED-EXTENT-CAP)."
   (multiple-value-bind (profile connections action observed cold-resources output-resources root peer
                         reclaim-live command replayp)
       (fnn-heap-command-profile argv)
-    (multiple-value-bind (decision totals img config card)
+    (multiple-value-bind (decision totals img config card extent)
         (fnn-heap-reservation profile connections action observed cold-resources output-resources root peer
                               reclaim-live (fnn-heap-bp-terms argv) command replayp)
-      (let ((line (fnn-core 'fn-heap-command-line decision action command replayp totals img config card))
+      (let ((line (fnn-core 'fn-lxc-command-line decision action command replayp totals img config card
+                            extent))
             (code (fnn-core 'fn-heap-decision-exit-code decision)))
         ;; The decision line on stdout whatever it is: the launcher tells
         ;; ACL2's refusal (a line, exit 1) from a runtime that never reached

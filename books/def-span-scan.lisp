@@ -60,6 +60,13 @@
 ;            so no octet is read after it is written.  `fn-octets-append-back''s
 ;            overlapping LZ semantics (each octet the one OFF back at the time
 ;            it is appended) is a different, named operation and not this shape.
+;   :copy-string (NAME CTX.. I END CAP DSS-STR fn-dss-out): :copy with a string source:
+;            the characters [I, END) of the string DSS-STR, each read as its code
+;            and mapped by MAP, appended onto a distinct output instance under the
+;            same CAPACITY contract (the one extend, one put per octet).  List model:
+;            the :copy list of `fn-dss-string-octets' (each character's code;
+;            `fn-nntp-string-octets' on a string).  OVER's column fields and Xref
+;            names are strings (books/over-render.lisp, Builder O).
 ;   :stream  (NAME CTX.. S I END LAST CAP fn-octets fn-dss-out): a bounded
 ;            transducer.  STEP (a function of S, the octet and CTX returning
 ;            (mv S' K W SIG)) is applied octet by octet: it emits the K <=
@@ -771,6 +778,117 @@
       (+ 1 (* (+ 1 (fn-dss-copy-cmax)) (nfix (- (nfix end) (nfix i))))))
   :rule-classes :linear
   :hints (("Goal" :induct (fn-dss-copy-work i end fn-octets))))
+
+; ---- :copy :source :string (Builder O, row O1, 2026-10-10; granted by Builder C): the
+; source is a Lisp string's characters [I, END), each read as its char-code octet, onto a
+; distinct output instance under the :copy contract (capacity CAP, the one extend, one
+; put per octet, A-RESERVED).  Its meaning is the :copy shape's over the string's octets
+; (`fn-dss-string-octets'): every theorem below is the :copy theorem at that list.
+
+;; The string's octets: each character's code (the list model of the source; equal to
+;; `fn-dss-string-octets' and `fn-record-string-octets', which are stated above this
+;; book's includes; books/over-render.lisp proves the equality).
+(defun fn-dss-string-octets-aux (cs)
+  (declare (xargs :guard (character-listp cs)))
+  (if (consp cs) (cons (char-code (car cs)) (fn-dss-string-octets-aux (cdr cs))) nil))
+
+(defun fn-dss-string-octets (dss-str)
+  (declare (xargs :guard t))
+  (if (stringp dss-str) (fn-dss-string-octets-aux (coerce dss-str 'list)) nil))
+
+(defun fn-dss-scopy-loop (i end j dss-str fn-dss-out)
+  (declare (xargs :stobjs fn-dss-out :verify-guards nil
+                  :measure (nfix (- (nfix end) (nfix i)))
+                  :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
+  (if (and (mbt (and (natp i) (natp end))) (< i end))
+      (let ((fn-dss-out (fn-dss-out-put j (fn-dss-copy-f (char-code (char dss-str i))) fn-dss-out)))
+        (fn-dss-scopy-loop (+ 1 i) end (+ 1 j) dss-str fn-dss-out))
+    fn-dss-out))
+
+(defun fn-dss-scopy (i end cap dss-str fn-dss-out)
+  (declare (xargs :stobjs fn-dss-out :verify-guards nil))
+  (let ((dss-m (nfix (- (nfix end) (nfix i)))))
+    (if (<= (+ (fn-dss-out-len fn-dss-out) dss-m) (nfix cap))
+        (let* ((dss-j (fn-dss-out-len fn-dss-out))
+               (fn-dss-out (fn-dss-out-reserve (+ dss-j dss-m) fn-dss-out))
+               (fn-dss-out (fn-dss-out-append-word 0 (if (and (natp i) (natp end)) dss-m 0)
+                                                   fn-dss-out))
+               (fn-dss-out (fn-dss-scopy-loop i end dss-j dss-str fn-dss-out)))
+          (mv :done fn-dss-out))
+      (mv :refused fn-dss-out))))
+
+(defun fn-dss-scopy-work (i end dss-str)
+  (declare (xargs :verify-guards nil
+                  :measure (nfix (- (nfix end) (nfix i)))
+                  :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
+  (if (and (mbt (and (natp i) (natp end))) (< i end))
+      (+ 1 (nfix (fn-dss-copy-cost (char-code (char dss-str i))))
+         (fn-dss-scopy-work (+ 1 i) end dss-str))
+    1))
+
+(defun-nx fn-dss-scopy-write-charge (i end cap dss-str fn-dss-out)
+  (declare (xargs :stobjs fn-dss-out :verify-guards nil))
+  (let ((dss-m (nfix (- (nfix end) (nfix i)))))
+    (if (<= (+ (fn-dss-out-len fn-dss-out) dss-m) (nfix cap))
+        (+ dss-m (len (fn-dss-copy-list (fn-oct-slice-list i end (fn-dss-string-octets dss-str)))))
+      0)))
+
+; The string's octet at K is its character's code.
+(local
+ (defthm fn-dss-string-octets-aux-nth
+   (implies (and (natp k) (< k (len cs)))
+            (equal (nth k (fn-dss-string-octets-aux cs)) (char-code (nth k cs))))
+   :hints (("Goal" :in-theory (enable fn-dss-string-octets-aux nth)))))
+
+(local
+ (defthm fn-dss-string-octets-get
+   (implies (and (stringp dss-str) (natp k) (< k (length dss-str)))
+            (equal (fn-octets-get k (fn-dss-string-octets dss-str))
+                   (char-code (char dss-str k))))
+   :hints (("Goal" :in-theory (enable fn-oct-get-is-nth fn-dss-string-octets char)))))
+
+(local
+ (defthm fn-dss-scopy-loop-is-copy-loop
+   (implies (and (stringp dss-str) (<= (nfix end) (length dss-str)))
+            (equal (fn-dss-scopy-loop i end j dss-str fn-dss-out)
+                   (fn-dss-copy-loop i end j (fn-dss-string-octets dss-str) fn-dss-out)))
+   :hints (("Goal" :induct (fn-dss-scopy-loop i end j dss-str fn-dss-out)
+            :in-theory (e/d () (fn-oct-slice-list-is-take-nthcdr))
+            :expand ((fn-dss-copy-loop i end j (fn-dss-string-octets dss-str) fn-dss-out))))))
+
+(defthm fn-dss-scopy-is-list
+  (implies (and (true-listp fn-dss-out) (stringp dss-str) (<= (nfix end) (length dss-str)))
+           (equal (fn-dss-scopy i end cap dss-str fn-dss-out)
+                  (if (<= (+ (len fn-dss-out) (nfix (- (nfix end) (nfix i)))) (nfix cap))
+                      (mv :done (append fn-dss-out
+                                        (fn-dss-copy-list
+                                         (fn-oct-slice-list i end (fn-dss-string-octets dss-str)))))
+                    (mv :refused fn-dss-out))))
+  :hints (("Goal" :use ((:instance fn-dss-copy-is-list (fn-octets (fn-dss-string-octets dss-str))))
+           :in-theory (e/d (fn-dss-scopy fn-dss-copy) (fn-dss-copy-is-list fn-dss-copy-loop
+                                                       fn-oct-slice-list-is-take-nthcdr)))))
+
+(local
+ (defthm fn-dss-scopy-work-is-copy-work
+   (implies (and (stringp dss-str) (<= (nfix end) (length dss-str)))
+            (equal (fn-dss-scopy-work i end dss-str)
+                   (fn-dss-copy-work i end (fn-dss-string-octets dss-str))))
+   :hints (("Goal" :induct (fn-dss-scopy-work i end dss-str)
+            :expand ((fn-dss-copy-work i end (fn-dss-string-octets dss-str)))))))
+
+(defthm fn-dss-scopy-work-bound
+  (implies (and (stringp dss-str) (<= (nfix end) (length dss-str)))
+           (<= (fn-dss-scopy-work i end dss-str)
+               (+ 1 (* (+ 1 (fn-dss-copy-cmax)) (nfix (- (nfix end) (nfix i)))))))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-dss-copy-work-bound (fn-octets (fn-dss-string-octets dss-str)))))))
+
+(defthm fn-dss-scopy-write-charge-bound
+  (<= (fn-dss-scopy-write-charge i end cap dss-str fn-dss-out)
+      (* 2 (nfix (- (nfix end) (nfix i)))))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-dss-copy-write-charge-bound (fn-octets (fn-dss-string-octets dss-str))))
+           :in-theory (enable fn-dss-copy-write-charge))))
 
 ; =============================================================================
 ; :stream
@@ -2493,6 +2611,132 @@
                               :writes ,(if within '(- end i) '(* 2 (- end i)))
                               :workspace (i))))))
 
+; ---- :copy-string (Builder O, 2026-10-10; granted by Builder C): the :copy contract with a
+; string source.  Formals (NAME CTX.. I END CAP DSS-STR fn-dss-out).
+
+(defun fn-dss-scopy-events (name ctx elt map cost cost-max guard guard-hints ch exec)
+  (declare (xargs :mode :program))
+  (let* ((cc (fn-dss-name (list name (if exec "-EXEC-COST-CONTRACT" "-COST-CONTRACT")) name))
+         (mc (fn-dss-name (list name "-MAP-OCTET") name))
+         (loop (fn-dss-name (list name "-LOOP") name))
+         (lst (fn-dss-name (list name "-LIST") name))
+         (work (fn-dss-name (list name (if exec "-EXEC-WORK" "-WORK")) name))
+         (bridge (fn-dss-name (list name "-IS-LIST") name))
+         (wb (fn-dss-name (list name (if exec "-EXEC-WORK-BOUND" "-WORK-BOUND")) name))
+         (wc (fn-dss-name (list name "-WRITE-CHARGE") name))
+         (wcb (fn-dss-name (list name "-WRITE-CHARGE-BOUND") name))
+         (mapf `(lambda (,elt) ,map))
+         (sguard '(and (stringp dss-str) (unsigned-byte-p 59 i) (unsigned-byte-p 59 end) (<= i end)
+                       (<= end (length dss-str))))
+         (subst `((fn-dss-copy-f ,mapf)
+                  (fn-dss-copy-list (lambda (xs) (,lst ,@ctx xs)))
+                  (fn-dss-scopy-loop (lambda (i end j dss-str fn-dss-out)
+                                       (,loop ,@ctx i end j dss-str fn-dss-out)))
+                  (fn-dss-scopy (lambda (i end cap dss-str fn-dss-out)
+                                  (,name ,@ctx i end cap dss-str fn-dss-out))))))
+    `(,(fn-dss-contract mc `(implies (fn-cbor-octetp ,elt) (fn-cbor-octetp ,map))
+                        'fn-dss-copy-f-octet `((fn-dss-copy-f ,mapf)) `((o ,elt)) ch)
+      ,(fn-dss-contract cc `(and (natp ,cost-max) (<= (nfix ,cost) ,cost-max))
+                        'fn-dss-copy-cost-contract
+                        `((fn-dss-copy-cost (lambda (,elt) ,cost)) (fn-dss-copy-cmax (lambda () ,cost-max)))
+                        `((o ,elt)) ch)
+      (defun ,loop (,@ctx i end j dss-str fn-dss-out)
+        (declare (xargs :stobjs fn-dss-out
+                        :guard ,(fn-dss-and guard
+                                            `(and ,sguard
+                                                  (unsigned-byte-p 59 j)
+                                                  (unsigned-byte-p 59 (+ j (- end i)))
+                                                  (<= (+ j (- end i)) (fn-dss-out-len fn-dss-out))))
+                        :measure (nfix (- (nfix end) (nfix i)))
+                        :hints (("Goal" :in-theory (fn-dss-measure-theory)))
+                        :verify-guards nil)
+                 (type (unsigned-byte 59) i end j))
+        (if (and (mbt (and (natp i) (natp end))) (< i end))
+            (let ((fn-dss-out (fn-dss-out-put j (let ((,elt (char-code (char dss-str i))))
+                                                  (declare (ignorable ,elt)) ,map)
+                                              fn-dss-out)))
+              (,loop ,@ctx (+ 1 i) end (+ 1 j) dss-str fn-dss-out))
+          fn-dss-out))
+      (defun ,name (,@ctx i end cap dss-str fn-dss-out)
+        (declare (xargs :stobjs fn-dss-out
+                        :guard ,(fn-dss-and guard `(and ,sguard (unsigned-byte-p 59 cap)))
+                        :verify-guards nil)
+                 (type (unsigned-byte 59) i end))
+        (let ((dss-m (nfix (- (nfix end) (nfix i)))))
+          (if (<= (+ (fn-dss-out-len fn-dss-out) dss-m) (nfix cap))
+              (let* ((dss-j (fn-dss-out-len fn-dss-out))
+                     (fn-dss-out (fn-dss-out-reserve (+ dss-j dss-m) fn-dss-out))
+                     (fn-dss-out (fn-dss-out-append-word 0 (if (and (natp i) (natp end)) dss-m 0)
+                                                         fn-dss-out))
+                     (fn-dss-out (,loop ,@ctx i end dss-j dss-str fn-dss-out)))
+                (mv :done fn-dss-out))
+            (mv :refused fn-dss-out))))
+      (defun ,lst (,@ctx xs)
+        (declare (xargs :verify-guards nil))
+        (if (consp xs)
+            (cons (let ((,elt (car xs))) (declare (ignorable ,elt)) ,map) (,lst ,@ctx (cdr xs)))
+          nil))
+      (defun ,work (,@ctx i end dss-str)
+        (declare (xargs :verify-guards nil
+                        :measure (nfix (- (nfix end) (nfix i)))
+                        :hints (("Goal" :in-theory (fn-dss-measure-theory)))))
+        (if (and (mbt (and (natp i) (natp end))) (< i end))
+            (+ 1 (nfix (let ((,elt (char-code (char dss-str i)))) (declare (ignorable ,elt)) ,cost))
+               (,work ,@ctx (+ 1 i) end dss-str))
+          1))
+      (defthm ,bridge
+        (implies (and (true-listp fn-dss-out) (stringp dss-str) (<= (nfix end) (length dss-str)))
+                 (equal (,name ,@ctx i end cap dss-str fn-dss-out)
+                        (if (<= (+ (len fn-dss-out) (nfix (- (nfix end) (nfix i)))) (nfix cap))
+                            (mv :done (append fn-dss-out
+                                              (,lst ,@ctx (fn-oct-slice-list i end (fn-dss-string-octets dss-str)))))
+                          (mv :refused fn-dss-out))))
+        :hints (("Goal" :use (,(fn-dss-use-contract mc elt)
+                              (:functional-instance fn-dss-scopy-is-list ,@subst))
+                 :in-theory ,(fn-dss-defs-theory (list name loop lst)))))
+      (defthm ,wb
+        (implies (and (stringp dss-str) (<= (nfix end) (length dss-str)))
+                 (<= (,work ,@ctx i end dss-str)
+                     (+ 1 (* (+ 1 ,cost-max) (nfix (- (nfix end) (nfix i)))))))
+        :rule-classes :linear
+        :hints (("Goal" :use (,(fn-dss-use-contract mc elt) ,(fn-dss-use-contract cc elt)
+                              (:functional-instance
+                               fn-dss-scopy-work-bound
+                               (fn-dss-copy-f ,mapf)
+                               (fn-dss-copy-cost (lambda (,elt) ,cost))
+                               (fn-dss-copy-cmax (lambda () ,cost-max))
+                               (fn-dss-scopy-work (lambda (i end dss-str) (,work ,@ctx i end dss-str)))))
+                 :expand ((,work ,@ctx i end dss-str))
+                 :in-theory ,(fn-dss-defs-theory (list work)))))
+      (defun-nx ,wc (,@ctx i end cap dss-str fn-dss-out)
+        (declare (xargs :stobjs fn-dss-out :verify-guards nil))
+        (let ((dss-m (nfix (- (nfix end) (nfix i)))))
+          (if (<= (+ (fn-dss-out-len fn-dss-out) dss-m) (nfix cap))
+              (+ dss-m (len (,lst ,@ctx (fn-oct-slice-list i end (fn-dss-string-octets dss-str)))))
+            0)))
+      (defthm ,wcb
+        (<= (,wc ,@ctx i end cap dss-str fn-dss-out)
+            (* 2 (nfix (- (nfix end) (nfix i)))))
+        :rule-classes :linear
+        :hints (("Goal" :use (,(fn-dss-use-contract mc elt)
+                              (:functional-instance
+                               fn-dss-scopy-write-charge-bound
+                               (fn-dss-copy-f ,mapf)
+                               (fn-dss-copy-list (lambda (xs) (,lst ,@ctx xs)))
+                               (fn-dss-scopy-write-charge
+                                (lambda (i end cap dss-str fn-dss-out)
+                                  (,wc ,@ctx i end cap dss-str fn-dss-out)))))
+                 :in-theory ,(fn-dss-defs-theory (list wc lst)))))
+      (verify-guards ,loop
+        :hints ,(or guard-hints
+                    `(("Goal" :in-theory (enable ,@(fn-dss-guard-theory))))))
+      (verify-guards ,name)
+      (table fn-generated ',name
+             '(:def-span-scan :shape :copy-string :loop ,loop :list ,lst :work ,work
+                              :bridge ,bridge :c0 1 :c1 (+ 1 ,cost-max)
+                              :writes (* 2 (- end i))
+                              :workspace (i))))))
+
 ; ---- :stream
 
 (defun fn-dss-stream-events (name ctx elt state-type step final emit-max final-max
@@ -2957,6 +3201,8 @@
                                  cost-max against constant guard guard-hints constraint-hints exec))
     (:copy (fn-dss-copy-events name ctx elt (or map elt) cost
                                cost-max within guard guard-hints constraint-hints exec))
+    (:copy-string (fn-dss-scopy-events name ctx elt (or map elt) cost
+                                       cost-max guard guard-hints constraint-hints exec))
     (otherwise
      (fn-dss-stream-events name ctx elt state-type step final emit-max final-max
                            cost cost-max final-cost final-cost-max
@@ -2992,8 +3238,8 @@
                         (fn-dss-prefixed own)
                         (and (not (no-duplicatesp-eq own)) own))))
     (cond
-     ((not (member-eq shape '(:find :fold :equal :copy :stream)))
-      (er soft ctx-name "~x0: unknown shape ~x1 (one of :find :fold :equal :copy :stream)." name shape))
+     ((not (member-eq shape '(:find :fold :equal :copy :copy-string :stream)))
+      (er soft ctx-name "~x0: unknown shape ~x1 (one of :find :fold :equal :copy :copy-string :stream)." name shape))
      ((not (symbol-listp ctx))
       (er soft ctx-name "~x0: the context formals must be a list of symbols." name))
      (clash
@@ -3016,8 +3262,8 @@
       (er soft ctx-name "~x0: :stream needs :state-type, :step, :final, :emit-max and :final-max (both at most 7)." name))
      ((and norm (not (eq shape :equal)))
       (er soft ctx-name "~x0: :norm is an :equal option." name))
-     ((and map (not (eq shape :copy)))
-      (er soft ctx-name "~x0: :map is a :copy option." name))
+     ((and map (not (member-eq shape '(:copy :copy-string))))
+      (er soft ctx-name "~x0: :map is a :copy and :copy-string option." name))
      (t
       (let ((cost-max (or cost-max 0)))
         (value
@@ -3031,7 +3277,7 @@
             (table fn-dss-assumptions ',name
                    ',(append (and (or (member-eq shape '(:find :fold :stream)) norm map)
                                   '(:a-body-cost))
-                             (and (member-eq shape '(:copy :stream)) '(:a-reserved))
+                             (and (member-eq shape '(:copy :copy-string :stream)) '(:a-reserved))
                              (and (eq shape :stream) '(:a-host-room))))
             ,@(fn-dss-shape-events name ctx shape elt body norm map against constant within
                                    acc acc-type state-type step final emit-max final-max

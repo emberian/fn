@@ -8368,10 +8368,21 @@ is framed)."
 
 (defun fnn-log-observed-extent (path)
   "The segment's size (the extent the recovery zeroes to).  Not a positive
-number of units is a fault: init and every extension leave whole units."
+number of units is a fault: init and every extension leave whole units.
+A size past the extent this process's heap was decided over is refused by
+name before any entry of the segment is read (books/heap-log-extent-cap.lisp
+fn-lxc-verdict over FN_LOG_EXTENT_CAP, the heap probe's EXTENT the launcher
+exports; KEYSTONE fn-lxc-admitted-segment-entries-within-the-decided-log);
+the descriptor's size is then checked equal to it at the open
+(fnn-log-open-segment), and the stream reads within it."
   (let ((st (fnn-check-regular path)))
     (unless st (fnn-refuse "no log segment at ~a" path))
-    (sb-posix:stat-size st)))
+    (let ((size (sb-posix:stat-size st))
+          (cap (fnn-core 'fn-lxc-cap-of-text (sb-ext:posix-getenv "FN_LOG_EXTENT_CAP"))))
+      (unless (eq (fnn-core 'fn-lxc-verdict size cap) :read)
+        (error 'fnn-store-open-refusal
+               :message (fnn-core 'fn-lxc-refusal-text (file-namestring path) size cap)))
+      size)))
 
 ;;; The genesis at position 0 of the log (format 10, lane format-bump-10;
 ;;; books/store-genesis.lisp).  The host draws the recorded readings -- the

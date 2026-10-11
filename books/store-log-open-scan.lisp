@@ -1213,9 +1213,10 @@
 ; The probe's answer: ACC, only when the plan and the header it re-reads
 ; after the walk are the ones it started from and the fold did not refuse;
 ; else NIL (unseen).  A checkpoint, rotation or drop that lands during the
-; walk changes one of them (Codex l-2ah F1); records appended to the active
-; segment after its stream passed them are the staleness every pre-open
-; observation has (adapter MEMORY-OBSERVED-EXTENT-CAP, owners A and M).
+; walk changes one of them (Codex l-2ah F1).  Records appended to the active
+; segment after its stream passed them are missed, within the size the probe
+; observed, so the read's extent cap does not see them (ADAPTER
+; LOG-SUFFIX-WALK-STALE, owner Builder L, retired by A's host lease).
 (defun fn-lgo-suffix-settled (plan hdr acc plan2 hdr2)
   (declare (xargs :guard t))
   (and (equal plan plan2) (equal hdr hdr2) (not (eq acc :bad)) acc))

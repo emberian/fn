@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
+(include-book "payload-commit-extent")
+(include-book "payload-extent-read")
 (include-book "page-read-ownership")
 (include-book "payload-lz-append")
 (include-book "payload-lz-replay")
@@ -185,4 +187,3 @@
 (include-book "consumer-publication-budget")
 (include-book "post-admission-keyed")
 (include-book "moderation-verbs")
-(include-book "owner-results")
