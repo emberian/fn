@@ -579,8 +579,8 @@ class StateCheckpointTests(StateCheckpointFixture):
                 self.assertEqual(observed[i], exact[k], (k, observed, exact))
 
     def test_the_read_decision_sees_the_records_past_the_header(self):
-        """Landing 2a-host (host/native/heap.lisp fnn-heap-log-suffix, the
-        open-scan fold; KEYSTONES fn-lgo-host-suffix-covers-the-opened-store,
+        """Landing 2a-host (host/native/heap.lisp fnn-heap-log-suffix: the
+        plan fn-lgo-scan-plan and the fold fn-lgo-fold; KEYSTONES fn-lgo-host-suffix-covers-the-opened-store,
         fn-lgo-scan-plan-scans-every-present-segment).  A checkpoint at 3 and
         two records past it: the probe sees the totals.  (1) After the drop
         (segment 1 gone: the scan from segment 2's head with skip 0) and (2)

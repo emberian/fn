@@ -4,14 +4,14 @@
  "counts": {
   "proved": 6,
   "partial": 1,
-  "derived": 98,
+  "derived": 100,
   "none": 1745
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 1,
-   "derived": 98,
+   "derived": 100,
    "none": 1030
   },
   "ideal": {
@@ -88,6 +88,7 @@
   "fn-mo-drop-key",
   "fn-mo-prefixp",
   "fn-mo-status-kib-octets",
+  "fn-mo-tot-log-at-least",
   "fn-ncfg-nth",
   "fn-rce-exercise-items",
   "fn-scat-group-low-top",
@@ -243,6 +244,16 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-adm-row-allowance",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": "books/memory-entry-cost.lisp"
   },
   {
    "name": "fn-aj-host-authorize",
@@ -3970,18 +3981,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-cth-empty-suffix",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [
-    "fn-mm-tot-paged-p"
-   ],
-   "theorem": null,
-   "declared_in": "books/charged-totals-header-cost.lisp"
-  },
-  {
    "name": "fn-cth-header-open",
    "class": "common-lisp-compliant",
    "claim": "derived",
@@ -5809,6 +5808,26 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-lgo-fold",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": "books/store-log-open-scan-cost.lisp"
+  },
+  {
+   "name": "fn-lgo-scan-plan",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": "books/store-log-open-scan-cost.lisp"
   },
   {
    "name": "fn-lgrc-copy-refusal-text",
