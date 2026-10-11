@@ -1,12 +1,12 @@
-; Witnesses for books/store-log-walk-once (the full replay's walk decodes
-; each record once).
+; Witnesses and teeth for books/store-log-walk-once (the full replay's walk
+; decodes each record once).
 ;
 ; fn-lgw-run-nf-then-fold-is-run, fn-lgw-run-of-set-next-is-run-nf,
-; fn-lgw-step-buf-nf-is-step-nf, fn-lgb-decode-next-exec-fold and
+; fn-lgw-step-buf-nf-count-is-step-nf, fn-lgb-decode-next-exec-fold and
 ; fn-lgb-decode-next-exec-decode have no hypothesis.  REACHABLE:
 ;   (1) three one-record entries and one batch entry, walked the host's way
-;       (header window, entry length, the entry into the buffer, the step
-;       that keeps NEXT), the records decoded in two chunks by
+;       (header window, entry length, the entry into the buffer, the count step
+;       that keeps NEXT, the records sliced by the cursor), the records decoded in two chunks by
 ;       fn-lgb-decode-next, NEXT set to the fold at the end: the records, the
 ;       state and the kernel are fn-lgw-run's, and the chunks' events are
 ;       fn-srs-decode's of all the records;
@@ -16,6 +16,7 @@
 (in-package "ACL2")
 (include-book "../../books/store-log-walk-once")
 (include-book "../../books/codec-attach")
+(include-book "../../books/defkeystone")
 
 (defun sloo-unit () (declare (xargs :guard t)) 4)
 (defun sloo-max () (declare (xargs :guard t)) 4096)
@@ -45,7 +46,17 @@
                                (sloo-unit)))))
 
 ; The host's walk without the fold (fnn-log-stream-segment under
-; *fnn-log-stream-finish*): the records it hands on, and its final state.
+; *fnn-log-stream-finish*): the count step that keeps NEXT, then COUNT times
+; the cursor from 42 (fn-lgb-span, fn-lgb-slice); the records it hands on,
+; and its final state.
+(defun sloo-cut (k i fn-octets-lg)
+  (declare (xargs :stobjs fn-octets-lg :guard t :verify-guards nil :measure (nfix k)))
+  (if (zp k)
+      nil
+    (mv-let (start len i2) (fn-lgb-span i fn-octets-lg)
+      (cons (fn-lgb-slice start len fn-octets-lg)
+            (sloo-cut (1- k) i2 fn-octets-lg)))))
+
 (defun sloo-walk (c st fuel acc fn-octets-lg)
   (declare (xargs :stobjs fn-octets-lg :guard t :verify-guards nil :measure (nfix fuel)))
   (if (or (zp fuel) (fn-lgw-stop st))
@@ -55,8 +66,10 @@
            (n (fn-lgw-entry-len h st (len c)))
            (e (and n (fn-bs-take n (nthcdr pos c))))
            (fn-octets-lg (fn-octets-lg-from-list e fn-octets-lg)))
-      (mv-let (took records st2) (fn-lgw-step-buf-nf st (sloo-unit) (sloo-max) (len c) fn-octets-lg)
-        (sloo-walk c st2 (1- fuel) (if took (revappend records acc) acc) fn-octets-lg)))))
+      (mv-let (took count st2)
+        (fn-lgw-step-buf-nf-count st (sloo-unit) (sloo-max) (len c) fn-octets-lg)
+        (let ((records (if took (sloo-cut count 42 fn-octets-lg) nil)))
+          (sloo-walk c st2 (1- fuel) (revappend records acc) fn-octets-lg))))))
 
 ; The replay's two chunks (the first record, then the rest), decoded with
 ; the fold carried; then NEXT set to the fold (the segment's end).
@@ -128,6 +141,64 @@
         (equal next 2))))
 
 (assert-event
- (and (eq (symbol-class 'fn-lgw-step-buf-nf (w state)) :common-lisp-compliant)
+ (and (eq (symbol-class 'fn-lgw-step-buf-nf-count (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-lgb-span (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-lgb-slice (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-lgb-decode-next (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-lgw-set-next (w state)) :common-lisp-compliant)))
+
+; -----------------------------------------------------------------------------
+; The tooth (books/defkeystone.lisp; docs/proof-style.md section 5) of
+; fn-lgw-step-buf-nf-count-is-step-nf.  The claim mentions the stobj variable
+; fn-octets, so it is stated with a local fn-octets built from the witness's
+; BUFFER (:stobjs) and a native checker per conjunct (:stobj-checks), proved
+; equal to the claim's term before any witness runs.  The witness is the
+; sealed one-record entry (kind 1, one octet), an unstopped start state.
+(defun sloo-one () (declare (xargs :guard t :verify-guards nil))
+  (fn-lg-frame *fn-lg-genesis* (list (list 7))))
+
+(defun sloo-nf-check (i st unit max extent fn-octets)
+  (declare (xargs :stobjs fn-octets :guard t :verify-guards nil))
+  (mv (mv-let (took records st2) (fn-lgw-step-nf (fn-octets-list fn-octets) st unit max extent)
+        (let ((counted (if (equal i 0)
+                           (len records)
+                         (fn-lgb-count 42 (- (fn-octets-len fn-octets) 32) fn-octets))))
+          (equal (mv-list 3 (fn-lgw-step-buf-nf-count st unit max extent fn-octets))
+                 (list took counted st2))))
+      fn-octets))
+
+(defteeth fn-lgw-step-buf-nf-count-is-step-nf
+  :claim (()
+          (equal (fn-lgw-step-buf-nf-count st unit max extent fn-octets)
+                 (mv-let (took records st2) (fn-lgw-step-nf fn-octets st unit max extent)
+                   (mv took (len records) st2))))
+  :subject fn-lgw-step-buf-nf-count
+  :witness ((st (fn-lgw-start *fn-lg-genesis* 1)) (unit 4) (max 33) (extent 2048)
+            (buffer (sloo-one)))
+  :stobjs ((fn-octets (fn-octets-from-list buffer fn-octets)))
+  :stobj-checks
+  (((equal (fn-lgw-step-buf-nf-count st unit max extent fn-octets)
+           (mv-let (took records st2) (fn-lgw-step-nf fn-octets st unit max extent)
+             (mv took (len records) st2)))
+    (sloo-nf-check 0 st unit max extent fn-octets)
+    :hints (("Goal" :in-theory (union-theories '(sloo-nf-check mv-list fn-oct-list-is-identity)
+                                               (theory 'minimal-theory)))))
+   ((equal (fn-lgw-step-buf-nf-count st unit max extent fn-octets)
+           (mv-let (took records st2) (fn-lgw-step-nf fn-octets st unit max extent)
+             (declare (ignore records))
+             (mv took (fn-lgb-count 42 (- (len fn-octets) 32) fn-octets) st2)))
+    (sloo-nf-check 1 st unit max extent fn-octets)
+    :hints (("Goal" :in-theory (union-theories '(sloo-nf-check mv-list fn-oct-list-is-identity
+                                                 fn-oct-len-is-len)
+                                               (theory 'minimal-theory))))))
+  :breaks ()
+  :mutations ((count-from-the-record-prefix
+               (:conclusion
+                (equal (fn-lgw-step-buf-nf-count st unit max extent fn-octets)
+                       (mv-let (took records st2) (fn-lgw-step-nf fn-octets st unit max extent)
+                         (declare (ignore records))
+                         (mv took (fn-lgb-count 42 (- (len fn-octets) 32) fn-octets) st2))))
+               ()
+               :fault "the step counts u32 prefixes in a single-record entry")))
+
+(defteeth-check (fn-lgw-step-buf-nf-count-is-step-nf))

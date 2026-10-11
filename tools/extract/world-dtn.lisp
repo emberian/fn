@@ -473,6 +473,7 @@
 (include-book "../../books/bp-evidence-host-names")
 (include-book "../../books/history-paged")
 (include-book "../../books/history-records")
+(include-book "../../books/reclaim-chunked-walk")
 (include-book "../../books/resource-vector-exec")
 (include-book "../../books/raw-dispatch-verdict")
 (include-book "../../host/page-read-host")

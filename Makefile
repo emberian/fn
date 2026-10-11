@@ -714,7 +714,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/heap-figure-tests \
 	books/charged-totals \
 	books/memory-model \
+	books/memory-entry-cost \
 	tests/acl2/memory-model-tests \
+	tests/acl2/admission-memory-tests \
+	tests/acl2/history-totals-carried-tests \
+	tests/acl2/heap-command-tests \
 	books/charged-totals-header \
 	books/charged-totals-header-writes \
 	books/charged-totals-header-cost \
@@ -872,6 +876,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-kernel-concrete-tests \
 	books/store-log-stream \
 	tests/acl2/store-log-stream-tests \
+	books/store-log-open-scan \
+	tests/acl2/store-log-open-scan-tests \
 	books/store-log-damage \
 	books/store-log-entry-bound \
 	tests/acl2/store-log-entry-bound-tests \
@@ -880,6 +886,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-buffer-tests \
 	books/store-log-walk-once \
 	tests/acl2/store-log-walk-once-tests \
+	books/store-log-buffer-cost \
 	books/store-log-segments \
 	tests/acl2/store-log-segments-tests \
 	books/store-log-lineage \
@@ -907,6 +914,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/owner-reclaim-retained \
 	books/reclaim-chunked-walk \
 	books/reclaim-chunked-seal \
+	books/reclaim-chunked-cost \
 	books/catalog-may-seal \
 	books/catalog-root-incarnation \
 	tests/acl2/catalog-root-incarnation-tests \
@@ -998,6 +1006,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-maintenance-reserve-tests \
 	books/store-capacity-vector \
 	tests/acl2/store-capacity-vector-tests \
+	tests/acl2/store-capacity-vector-prepare-tests \
 	books/store-capacity-config \
 	books/served-auth-wire-bridge \
 	tests/acl2/served-auth-wire-bridge-tests \
@@ -1925,6 +1934,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/source-routes-tests \
 	books/consumer-artifact-retry \
 	tests/acl2/consumer-artifact-retry-tests \
+	books/relay-parse \
 	books/relay-source \
 	tests/acl2/relay-source-routes-tests \
 	tests/acl2/owner-served-invariants-tests \
@@ -2372,6 +2382,17 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/topic-history-local-control-tests \
 	tests/acl2/topic-history-native-vector-tests \
 	tests/acl2/hybrid-store-tests \
+	books/filed-parse \
+	books/filed-names \
+	books/filed-groups \
+	tests/acl2/filed-groups-tests \
+	books/filed-catalog \
+	tests/acl2/filed-catalog-tests \
+	books/filed-stored \
+	tests/acl2/filed-stored-tests \
+	books/filed-history \
+	tests/acl2/filed-history-tests \
+	books/filed-operator \
 	books/crypto-attach \
 	books/auth-secret \
 	tests/acl2/auth-secret-tests \

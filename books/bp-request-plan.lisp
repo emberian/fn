@@ -12,7 +12,7 @@
 ; are ACL2's: the work's next generation and the configured local/peer EID,
 ; policy and lifetime.  The ION sender publishes this same record.
 (defun fn-bprq-attempt-record (s txid tx-generation work-id attempt-id)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (let* ((work (fn-bp-find-work work-id (fn-bp-state-works s)))
          (config (fn-bp-state-config s))
          (record (list :attempt txid tx-generation work-id attempt-id
@@ -28,7 +28,7 @@
 ; The transaction id is chosen above every id the recovered image has used,
 ; as fn-bprl-receipt-auto-record does; the operator supplies none.
 (defun fn-bprq-next-txid (s)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (1+ (fn-bprl-max-used-txid (fn-bp-state-used-txs s) 0)))
 
 ; The effects fn-workflow-take-submit accepts: exactly one :submit for
@@ -57,7 +57,7 @@
 ; replay, and makes the old attempt :unknown, which is retryable.  The
 ; operator asking again for the same work is that decision.
 (defun fn-bprq-retry-record (s work-id)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (let* ((work (fn-bp-find-work work-id (fn-bp-state-works s)))
          (old (fn-bp-work-attempt work))
          (record (list :retry-request work-id (fn-bp-attempt-id old)
@@ -71,7 +71,7 @@
       nil)))
 
 (defun fn-bprq-pre-state (s retry)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (if retry (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s retry)) s))
 
 ; The workflow image after the plan's records (its retry request, if any,
@@ -92,7 +92,7 @@
 ; (fn-bpo-request-adu refuses a work that is not outstanding, not bound to a
 ; committed article, or whose image is pending or fenced).
 (defun fn-bprq-plan (s work-id attempt-id fn-arena)
-  (declare (xargs :stobjs fn-arena :guard t :verify-guards nil))
+  (declare (xargs :stobjs fn-arena :guard t))
   (let* ((retry (fn-bprq-retry-record s work-id))
          (s1 (fn-bprq-pre-state s retry))
          (txid (fn-bprq-next-txid s1))

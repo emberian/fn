@@ -38,7 +38,7 @@
 
 ; The work's :forward pin, with its required evidence, is live in CANON.
 (defun fn-bppg-canonically-pinnedp (canon s work-id)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (let ((work (fn-bp-find-work work-id (fn-bp-state-works s))))
     (and (consp work)
          (fn-bprl-work-pinnedp (fn-bprl-with-node s canon) work)
@@ -46,7 +46,7 @@
 
 ; The article an encoded request ADU carries is a reclaim tombstone.
 (defun fn-bppg-adu-tombstonep (adu)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (let ((d (fn-bpa-decode-exact adu)))
     (and (consp d) (equal (car d) :ok)
          (fn-rcl-tombstonep (fn-bpa-request-article (cadr d))))))
@@ -64,7 +64,7 @@
 ; The generic request (`bp-obligation request'): PLAN is fn-bprq-plan's (or
 ; a refusal already).  A :request plan passes only pinned and live.
 (defun fn-bppg-request-gate (canon s work-id plan)
-  (declare (xargs :guard t :verify-guards nil))
+  (declare (xargs :guard t))
   (if (and (consp plan) (equal (car plan) :request))
       (cond ((not (fn-bppg-canonically-pinnedp canon s work-id))
              (list :refused :forward-pin-not-durable))

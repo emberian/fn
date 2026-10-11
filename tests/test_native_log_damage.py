@@ -29,6 +29,9 @@ def sha(path):
     return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
+# Critical host path: the stream's step refuses the entry at the stop and
+# classifies it by fn-lgb-broken (a chained frame under another predecessor
+# is a broken chain, never a torn tail); the probe of the rest follows.
 class LogDamageTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):

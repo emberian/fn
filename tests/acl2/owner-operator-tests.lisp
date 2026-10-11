@@ -29,6 +29,7 @@
 (include-book "../../books/owner-invariants")
 (include-book "../../books/owner-served-invariants")   ; fn-own-operator-stored-octets
 (include-book "../../books/injection-invariants")
+(include-book "../../books/filed-operator")         ; O1 packet 4, P4-2
 (include-book "must-fail-checked")
 
 (defun opt-codes (cs)
@@ -514,3 +515,43 @@
          'same 'same))
 (assert-event (equal (opt-pk-hyps *opt-pk-s*) '(t t t nil)))
 (assert-event (not (opt-pk-concl *opt-pk-s*)))
+
+;; O1 packet 4, P4-2 (books/filed-operator.lisp
+;; fn-o1-operator-decision-is-fresh-or-held).  The Date-less article's retry
+;; under CLI groups the stored article was not filed in: the decision keeps
+;; those groups over the stored injection and is not the fresh injection (so
+;; the keystone's second disjunct is the one that holds), and the Store,
+;; holding the Message-ID, answers :conflict for those groups and :duplicate
+;; for the stored ones; nothing is appended.  With no article held the
+;; decision is the fresh injection.
+(defun opt-existing-in (o msgid payload groups prior fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (rows fn-arena)
+    (fn-hrt-events prior nil 0 fn-arena)
+    (declare (ignore rows))
+    (mv (fn-store-existing-action (fn-record-octets-string msgid) payload groups
+                                  (fn-own-store o) fn-arena)
+        fn-arena)))
+(defun opt-existing (o msgid payload groups prior)
+  (declare (xargs :verify-guards nil))
+  (with-local-stobj fn-arena
+    (mv-let (action fn-arena)
+      (opt-existing-in o msgid payload groups prior fn-arena)
+      action)))
+(defconst *opt-a2-other* (list (opt-octets "fn.other")))
+(defconst *opt-a2-d*
+  (fn-own-operator-decision-of *opt-nd-stored* *opt-msgid* *opt-a2-other*
+                               *opt-nodate* *opt-nd-read*))
+(assert-event (fn-inj-injectedp *opt-a2-d*))
+(assert-event (equal *opt-a2-d* (fn-inj-make-decision :injected nil *opt-msgid*
+                                                      *opt-a2-other* *opt-nd-injected*)))
+(assert-event (not (equal *opt-a2-d* (fn-inj-decide *opt-nodate* (fn-own-config *opt-nd-stored*)
+                                                    (fn-own-clock *opt-nd-stored*)))))
+(assert-event (equal (opt-existing *opt-nd-stored* *opt-msgid* *opt-nd-injected*
+                                   '("fn.other") (list *opt-nd-wire*))
+                     :conflict))
+(assert-event (equal (opt-existing *opt-nd-stored* *opt-msgid* *opt-nd-injected*
+                                   '("fn.letters") (list *opt-nd-wire*))
+                     :duplicate))
+(assert-event (equal (fn-own-operator-decision-of *opt-0* *opt-msgid* *opt-groups* *opt-nodate* :absent)
+                     (fn-inj-decide *opt-nodate* (fn-own-config *opt-0*) (fn-own-clock *opt-0*))))

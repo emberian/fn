@@ -322,6 +322,25 @@ echo REACHED
         self.assertNotIn("--profile dtn", answer.stdout)
         self.assertNotIn("FN_NATIVE_BP_HOST", answer.stdout)
 
+    def test_the_box_names_its_fixture_stores_for_the_modules_that_read_them(self):
+        import sys
+        sys.path.insert(0, str(ROOT))
+        from tools import native_env
+        lines, _refused, _notes = native_env.plan(["developer"], {}, ["tests.test_native_over_window"])
+        self.assertIn("FN_OPEN_DEPTH_FIXTURES=$FN_FIXTURES_DIR", " ".join(lines))
+        # an explicit --env still wins
+        lines, _refused, _notes = native_env.plan(
+            ["developer"], {"FN_OPEN_DEPTH_FIXTURES": "/x"}, ["tests.test_native_over_window"])
+        self.assertNotIn("$FN_FIXTURES_DIR", " ".join(lines))
+        for box, fixtures in (("hbox", "/tank/fn/scratch/fixtures"),
+                              ("persvati", "/home/u/fn-gates/fixtures")):
+            row = subprocess.run(["sh", str(ROOT / "tools/native_box.sh"), box, str(ROOT), "/home/u"],
+                                 capture_output=True, text=True)
+            self.assertIn(f"FIXTURES='{fixtures}'", row.stdout, row.stderr)
+        answer = dry("HEAD", "tests.test_native_over_window")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertIn("export FN_FIXTURES_DIR=/tank/fn/scratch/fixtures", answer.stdout)
+
     def test_bp_service_native_takes_the_dtn_developer_image(self):
         import sys
         sys.path.insert(0, str(ROOT))
@@ -642,6 +661,7 @@ class IdentityTests(unittest.TestCase):
         shutil.copy(ROOT / "tools" / "native_box.sh", tree / "tools" / "native_box.sh")
         shutil.copy(ROOT / "tools" / "image_set.py", tree / "tools" / "image_set.py")
         shutil.copy(ROOT / "tools" / "native_overlay.py", tree / "tools" / "native_overlay.py")
+        shutil.copy(ROOT / "tools" / "native_reuse.py", tree / "tools" / "native_reuse.py")
         env = {k: v for k, v in os.environ.items() if not k.startswith("FN_HBOX_NATIVE_")}
         probe = subprocess.run(["sh", str(tree / "tools" / "hbox_native.sh")], cwd=ROOT,
                                capture_output=True, text=True, timeout=30, env=env)
@@ -651,6 +671,125 @@ class IdentityTests(unittest.TestCase):
         self.assertNotIn(str(tree), fields["COPY"])
         self.assertEqual(fields["HERE"], str(tree.resolve()))
         self.assertFalse(Path(fields["COPY"]).exists())
+
+
+class FromTrainDryRunTests(unittest.TestCase):
+    """--from-train, read through --dry-run in a scratch git repo that holds a
+    copy of tools/ and tests/ (the plan reads that repo's build/train records,
+    never this tree's)."""
+
+    @classmethod
+    def setUpClass(cls):
+        import shutil
+        import tempfile
+        cls.holder = tempfile.TemporaryDirectory()
+        cls.repo = Path(cls.holder.name) / "scratch"
+        cls.repo.mkdir()
+        ignore = shutil.ignore_patterns("__pycache__", "*.pyc", "build")
+        for name in ("tools", "tests"):
+            shutil.copytree(ROOT / name, cls.repo / name, ignore=ignore)
+        git = ["git", "-C", str(cls.repo), "-c", "commit.gpgsign=false",
+               "-c", "user.name=t", "-c", "user.email=t@t"]
+        subprocess.run([*git, "init", "-q", "-b", "lane/x"], check=True)
+        subprocess.run([*git, "add", "."], check=True, capture_output=True)
+        subprocess.run([*git, "commit", "-q", "-m", "c"], check=True, capture_output=True)
+        cls.rev = subprocess.run([*git, "rev-parse", "HEAD"], check=True, capture_output=True,
+                                 text=True).stdout.strip()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.holder.cleanup()
+
+    def records(self, **changes):
+        import json
+        record = {"sha": self.rev, "ran_at": self.rev, "box": "hbox", "run": "run-1",
+                  "certify_id": "cid-1", "known_reds_seen": []}
+        record.update(changes)
+        train, farm = self.repo / "build" / "train", self.repo / "build" / "farm"
+        train.mkdir(parents=True, exist_ok=True)
+        farm.mkdir(parents=True, exist_ok=True)
+        (train / "lane__x.json").write_text(json.dumps({"box_run": "run-1"}))
+        (train / "lane__x.box-step.json").write_text(json.dumps(record))
+        (farm / "run-1.json").write_text(json.dumps({
+            "host": "hbox", "box_manifest": "passed", "certify_id": "cid-1",
+            "remote_path": "/tank/fn/batch/tree"}))
+
+    def run_dry(self, *args):
+        env = {k: v for k, v in os.environ.items() if not k.startswith("FN_HBOX_NATIVE_")}
+        return subprocess.run(
+            ["sh", str(self.repo / "tools" / "hbox_native.sh"), "--dry-run", "--name", "t",
+             "--label", "l", "--box", "hbox", "--images", "developer,production,dtn", *args,
+             "HEAD", "tests.test_native_owner"],
+            cwd=self.repo, capture_output=True, text=True, timeout=60, env=env)
+
+    def test_without_from_train_the_box_script_installs_certifies_and_acquires(self):
+        import shutil
+        shutil.rmtree(self.repo / "build", ignore_errors=True)
+        answer = self.run_dry()
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        out = answer.stdout
+        for line in ("T=$S/tree",
+                     "ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
+                     "  # the certify launcher (tools/farm.py HOSTS)",
+                     "acquire_step acquire default", "acquire_step acquire-dtn dtn"):
+            self.assertIn(line, out.splitlines())
+        for fragment in ("step install ", "step certify ", "step box-wire "):
+            self.assertIn(fragment, out)
+        self.assertNotIn("== reuse:", out)
+        self.assertNotIn("from-train", answer.stderr)
+
+    def test_a_refused_plan_says_why_and_falls_back(self):
+        import shutil
+        shutil.rmtree(self.repo / "build", ignore_errors=True)
+        answer = self.run_dry("--from-train")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertIn("--from-train refused:", answer.stderr)
+        self.assertIn("falling back", answer.stderr)
+        self.assertIn("step install ", answer.stdout)
+        self.assertIn("T=$S/tree", answer.stdout.splitlines())
+        self.assertNotIn("== reuse:", answer.stdout)
+
+    def test_a_record_for_another_commit_falls_back_naming_the_difference(self):
+        self.records(sha="0" * 40)
+        answer = self.run_dry("--from-train")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertIn("box step ran at 000000000000", answer.stderr)
+        self.assertIn("falling back", answer.stderr)
+        self.assertIn("step install ", answer.stdout)
+
+    def test_an_accepted_plan_runs_in_the_trains_tree_without_install_certify_or_acquire(self):
+        self.records()
+        answer = self.run_dry("--from-train")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertNotIn("falling back", answer.stderr)
+        out = answer.stdout
+        self.assertIn("T=/tank/fn/batch/tree", out.splitlines())
+        self.assertIn("== reuse: the train's certified tree", out)
+        for fragment in ("step install ", "step certify ", "step box-wire ", "acquire_step acquire"):
+            self.assertNotIn(fragment, out)
+        # what follows the certify stays: the image's own launcher still loads the roots
+        self.assertIn("step validate ", out)
+        self.assertIn("step validate-dtn ", out)
+        self.assertLess(out.index("== reuse:"), out.index("step validate "))
+
+    def test_the_claim_is_taken_before_the_link_and_the_pid_recorded_after_the_start(self):
+        text = SCRIPT.read_text()
+        self.assertLess(text.index("native_reuse.py claim --root $REUSE_TREE --owner $S\""),
+                        text.index("ln -sfn $REUSE_TREE $S/tree"))
+        self.assertLess(text.index("echo \"hbox_native: started;"),
+                        text.index("--owner $S --pid $PID"))
+
+    def test_from_train_refuses_no_build_and_a_working_tree(self):
+        for extra, rev in (("--no-build", "HEAD"), ("", ".")):
+            with self.subTest(extra=extra, rev=rev):
+                env = {k: v for k, v in os.environ.items() if not k.startswith("FN_HBOX_NATIVE_")}
+                argv = ["sh", str(self.repo / "tools" / "hbox_native.sh"), "--dry-run", "--name", "t",
+                        "--label", "l", "--box", "hbox", "--from-train", *([extra] if extra else []),
+                        rev, "tests.test_native_owner"]
+                answer = subprocess.run(argv, cwd=self.repo, capture_output=True, text=True,
+                                        timeout=60, env=env)
+                self.assertEqual(answer.returncode, 2, answer.stdout + answer.stderr)
+                self.assertIn("--from-train starts an image build", answer.stderr)
 
 
 class HarnessBudgetTests(unittest.TestCase):
@@ -728,7 +867,7 @@ class BoxRowTests(unittest.TestCase):
         row = self.row("hbox")
         self.assertEqual(row, {"BASE": "'/tank/fn/scratch'", "CACHE": "'/tank/fn/certcache'",
                                "WRAP": "'swarm-build'", "IMAGES_BASE": "'/tank/fn/images'",
-                               "OPENSSL": "'bundled'"})
+                               "OPENSSL": "'bundled'", "FIXTURES": "'/tank/fn/scratch/fixtures'"})
         script = dry("--box", "hbox", "HEAD", "tests.test_native_owner").stdout
         self.assertIn("S=/tank/fn/scratch/t/native-l", script)
         self.assertIn("CACHE=/tank/fn/certcache", script)
@@ -740,7 +879,8 @@ class BoxRowTests(unittest.TestCase):
     def test_persvati_row(self):
         row = self.row("persvati")
         self.assertEqual(row, {"BASE": "'~/fn-gates'", "CACHE": "'~/fn-certcache'",
-                               "WRAP": "'/tank/fn/bin/persvati-jobs'", "IMAGES_BASE": "''", "OPENSSL": "'bundled'"})
+                               "WRAP": "'/tank/fn/bin/persvati-jobs'", "IMAGES_BASE": "''", "OPENSSL": "'bundled'",
+                               "FIXTURES": "'~/fn-gates/fixtures'"})
         resolved = self.row("persvati", "/home/u")
         self.assertEqual((resolved["BASE"], resolved["CACHE"]),
                          ("'/home/u/fn-gates'", "'/home/u/fn-certcache'"))

@@ -995,6 +995,33 @@ class CertifyTests(TrainBase):
         self.assertNotIn("tests/acl2/unrelated-witness", words)
         self.assertNotIn("tests/acl2/noncritical-witness", words)
 
+    def test_certify_adds_a_critical_witness_whose_own_closure_changed(self):
+        (self.seed / "books").mkdir(exist_ok=True)
+        (self.seed / "tests/acl2").mkdir(parents=True, exist_ok=True)
+        critical = {"critical": "durability", "book": "books/theorem.lisp",
+                    "owner_book": "tests/acl2/special-witness.lisp"}
+        entries = [critical,
+                   dict(critical, book="books/unrelated.lisp",
+                        owner_book="tests/acl2/unrelated-witness.lisp")]
+        self.advance_dev({
+            "books/b.lisp": '(in-package "ACL2")\n',
+            "books/teeth.lisp": '(in-package "ACL2")\n',
+            "books/theorem.lisp": '(include-book "b")\n',
+            "books/unrelated.lisp": '(in-package "ACL2")\n',
+            "tests/acl2/special-witness.lisp":
+                '(include-book "../../books/theorem")\n(include-book "../../books/teeth")\n',
+            "tests/acl2/unrelated-witness.lisp": '(in-package "ACL2")\n',
+        })
+        (self.work / "build/teeth-obligations.json").write_text(json.dumps({"entries": entries}))
+        sh(self.work, "git", "merge", "-q", "--ff-only", "origin/dev")
+        self.merge({"books/teeth.lisp": '(in-package "ACL2")\n; changed\n'})
+        result = self.train("certify", "hbox")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        submit = next(line for line in self.stub_log() if line.startswith("farm "))
+        words = submit.split()
+        self.assertEqual(words.count("tests/acl2/special-witness"), 1)
+        self.assertNotIn("tests/acl2/unrelated-witness", words)
+
     def test_certify_emits_in_the_run_tree_fetches_into_build_box_and_records_the_split(self):
         self.books_train()
         before = self.head()
@@ -1419,6 +1446,13 @@ class ImageModuleTests(unittest.TestCase):
         self.assertEqual(read["tests.m"]["rc"], 1)
         self.assertEqual(read["tests.m"]["cases"], {"tests.m.T.test_a": "ok", "tests.m.T.test_b": "FAIL"})
 
+    def test_a_reservation_book_change_obliges_the_capacity_vector(self):
+        need = train.image_modules(["books/store-maintenance-reserve.lisp", "README.md"])
+        self.assertEqual(need, {"tests.test_native_capacity_vector": ["books/store-maintenance-reserve.lisp"]})
+        need = train.image_modules(["books/heap-figure.lisp"])
+        self.assertIn("tests.test_native_capacity_vector", need)
+        self.assertIn("tests.test_native_heap_from_profile", need)
+
     def test_a_launcher_change_obliges_the_served_natives_operator_verbs_and_heap_from_profile(self):
         need = train.image_modules(["packaging/launcher-decide.sh", "README.md"])
         self.assertEqual(set(need), {"tests.test_native_operator_verbs",
@@ -1481,12 +1515,25 @@ class ImageModuleTests(unittest.TestCase):
         # a row of another kind with the same subject does not excuse it
         self.assertEqual(train.image_verdict(need, run, self.HEAD, [dict(row, kind="check")])[0], 1)
 
-    def test_a_module_whose_every_test_skipped_passes_and_is_listed(self):
+    def test_an_obliged_module_whose_every_test_skipped_refuses_and_is_named(self):
         need = train.image_modules(["packaging/fn"])
         run = self.ran(need)
         run["modules"]["tests.test_native_over_window"] = {"rc": 4, "cases": {}}
         rc, rec = train.image_verdict(need, run, self.HEAD, [])
-        self.assertEqual((rc, rec["skipped"]), (0, ["tests.test_native_over_window"]))
+        self.assertEqual((rc, rec["skipped"]), (1, ["tests.test_native_over_window"]))
+
+    def test_a_skipped_case_of_an_obliged_module_refuses(self):
+        need = train.image_modules(["packaging/fn"])
+        run = self.ran(need)
+        run["modules"]["tests.test_native_owner"] = {"rc": 0, "cases": {"o.T.a": "ok", "o.T.b": "skip"}}
+        rc, rec = train.image_verdict(need, run, self.HEAD, [])
+        self.assertEqual((rc, rec["skipped"]), (1, ["o.T.b"]))
+
+    def test_a_skip_in_a_module_nothing_obliges_is_not_read(self):
+        need = train.image_modules(["packaging/fn"])
+        run = self.ran(need)
+        run["modules"]["tests.test_native_mux"] = {"rc": 4, "cases": {}}
+        self.assertEqual(train.image_verdict(need, run, self.HEAD, [])[0], 0)
 
     def test_a_failed_module_with_no_case_recorded_refuses(self):
         need = train.image_modules(["packaging/fn"])
@@ -1495,6 +1542,22 @@ class ImageModuleTests(unittest.TestCase):
         rc, rec = train.image_verdict(need, run, self.HEAD, [])
         self.assertEqual(rc, 1)
         self.assertEqual(rec["unexplained"], ["tests.test_native_owner (rc 137, no case recorded)"])
+
+    def test_a_later_run_supersedes_a_skipped_module_and_only_a_skipped_one(self):
+        skipped = {"tests.test_native_over_window": {"rc": 4, "cases": {}},
+                   "tests.test_native_owner": {"rc": 0, "cases": {"o.T.a": "ok", "o.T.b": "skip"}},
+                   "tests.test_native_served_cost": {"rc": 0, "cases": {"s.T.a": "ok"}}}
+        one = train.merge_image_run(None, self.HEAD, "hbox", "/r/main", skipped)
+        rerun = {"tests.test_native_over_window": {"rc": 0, "cases": {"w.T.a": "ok"}},
+                 "tests.test_native_owner": {"rc": 0, "cases": {"o.T.a": "ok", "o.T.b": "ok"}}}
+        two = train.merge_image_run(one, self.HEAD, "hbox", "/r/fixtures", rerun)
+        self.assertEqual({m: e["run"] for m, e in two["modules"].items()},
+                         {"tests.test_native_over_window": "/r/fixtures",
+                          "tests.test_native_owner": "/r/fixtures",
+                          "tests.test_native_served_cost": "/r/main"})
+        with self.assertRaises(train.TrainError):
+            train.merge_image_run(two, self.HEAD, "hbox", "/r/third",
+                                  {"tests.test_native_served_cost": {"rc": 0, "cases": {"s.T.a": "ok"}}})
 
     def test_runs_at_head_merge_by_module_and_a_module_from_two_runs_is_refused(self):
         a = {"tests.test_native_owner": {"rc": 0, "cases": {"o.T.a": "ok"}}}

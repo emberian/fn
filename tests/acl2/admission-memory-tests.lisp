@@ -237,6 +237,25 @@
 (assert-event (equal (fn-adm-capacity-line *adt-p* *adt-img* *adt-cfg* *adt-230m* *adt-empty*)
                      "memory capacity=18 of 32 bound-by=over-window sum=229 MB limit=230 MB"))
 
+(defteeth fn-adm-capacity-fits
+  :claim (((fits (fn-adm-capacity profile img cfg limit tot)))
+          (let ((c (fn-adm-capacity profile img cfg limit tot)))
+            (and (natp c)
+                 (<= c (fn-mm-cfg-connections cfg))
+                 (fn-mm-gate-p profile img (fn-adm-cfg-at cfg c) limit tot))))
+  :subject fn-adm-capacity
+  :witness ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-230m*)
+            (tot *adt-empty*))
+  :breaks ((fits ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-128m*)
+                  (tot *adt-empty*))))
+  :mutations ((the-gate-holds-one-more
+               (:conclusion (fn-mm-gate-p profile img
+                                          (fn-adm-cfg-at cfg (+ 1 (fn-adm-capacity profile img cfg limit tot)))
+                                          limit tot))
+               ((profile *adt-p*) (img *adt-img*) (cfg *adt-cfg*) (limit *adt-230m*)
+                (tot *adt-empty*))
+               :fault "a capacity one below the count the gate holds at: the run would admit fewer readers than the memory holds, or, read the other way, one more than it holds")))
+
 (defteeth fn-adm-capacity-is-the-most
   :claim (((counted (natp j))
            (within (<= j (fn-mm-cfg-connections cfg)))

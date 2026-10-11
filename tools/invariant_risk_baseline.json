@@ -1,0 +1,13 @@
+{
+ "_doc": "tools/invariant_risk_check.py: declared host entries that are not guard-verified and carry ACL2's invariant-risk property in the image world, so their *1* runs every callee interpreted with its guard checked. Each 'owner: why'. Measured from hbox:/tank/fn/scratch/integrate-20261006n/native-adc9e4ed3a55-x/tree/build/core/core.json (python3 tools/invariant_risk_check.py --ir ... --list): 11 such entries at adc9e4ed3a55, 8 after spans' guard-t entries (train 87); 37 more are marked but guard-verified (reported, not failed). The list only shrinks: fix the entry (make it guard-verified :logic, or move the with-local-stobj below a guard-verified function) and delete its line.",
+ "marked": {
+  "fn-native-live-status-host-answer": "builder-M: the live status answer (the observation form); its chain reads state and the arena through :program accessors",
+  "fn-owner-finish-identity": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-owner-finish-submission": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-owner-recover-from-store-open": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-owner-orcp-load-catalog-begin": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-owner-orcp-load-catalog-chunk": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-store-cfg-native-admin-authorize": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
+  "fn-store-sco-image-open": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor"
+ }
+}

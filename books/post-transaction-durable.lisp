@@ -1274,3 +1274,470 @@
   :hints (("Goal" :in-theory (theory 'minimal-theory)
            :use fn-ptd-posted-records-are-recovered-at-every-later-cut-nested)))
 
+
+; -----------------------------------------------------------------------------
+; L3-1 (landing 3): at every cut, a crash image recovers the committed
+; records, or those and the batch in flight, or a forgery.
+;
+; fn-lg-forgery-past is fn-lg-forgery-in (books/store-log-crash.lisp) with one
+; more forgery: once every frame of the batch has matched, an accepted frame
+; past them is also one.  The scan of ANY octets from a chain head reads a
+; prefix of the batch, or the first frame it accepts is a forgery of this kind
+; (fn-lg-scan-is-a-prefix-or-a-forgery-past); so the keystone needs nothing of
+; the octets above the committed records but that they are the store's, and
+; every cut of the host run keeps fn-lgu-tailp (books/store-log-durable.lisp,
+; section 10), the faulted branch included.  The one-record counts come from
+; the driver: fn-ptd-mok at every cut.
+
+(defun fn-lg-forgery-past (x batch prev unit max)
+  (declare (xargs :guard t :verify-guards nil :measure (len batch)))
+  (if (atom batch)
+      (fn-lg-forgeryp x prev max nil)
+    (let ((fr (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))))
+      (if (equal (fn-lg-slice x) fr)
+          (fn-lg-forgery-past (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                              (nthcdr (fn-lg-chunk-len batch) batch) (fn-lg-trailer fr) unit max)
+        (fn-lg-forgeryp x prev max fr)))))
+
+(defthm fn-lg-forgery-in-is-forgery-past
+  (implies (fn-lg-forgery-in x batch prev unit max)
+           (fn-lg-forgery-past x batch prev unit max))
+  :hints (("Goal" :induct (fn-lg-forgery-in x batch prev unit max)
+           :in-theory (disable fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-slice fn-lg-forgeryp))))
+
+(defthm fn-lgp-verdict-or-past-of-no-batch
+  (or (fn-lg-prefix-verdictp (fn-lg-scan x prev unit max) nil prev unit)
+      (fn-lg-forgery-past x nil prev unit max))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((fn-lg-scan x prev unit max) (fn-lg-log nil prev unit) (fn-lg-forgery-past x nil prev unit max))
+           :in-theory (e/d (fn-lg-prefix-verdictp fn-lg-forgeryp)
+                           (fn-lg-slice fn-lg-entry-okp fn-lg-scan fn-lg-log)))))
+
+(defthm fn-lgp-verdict-step-frame
+  (implies (and (fn-frame-digestp prev) (fn-lg-recordsp batch max) (consp batch)
+                (equal (fn-lg-slice x) (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch)))
+                (or (fn-lg-prefix-verdictp
+                     (fn-lg-scan (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                                 (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit max)
+                     (nthcdr (fn-lg-chunk-len batch) batch) (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit)
+                    (fn-lg-forgery-past (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                                      (nthcdr (fn-lg-chunk-len batch) batch) (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit max)))
+           (or (fn-lg-prefix-verdictp (fn-lg-scan x prev unit max) batch prev unit)
+               (fn-lg-forgery-past x batch prev unit max)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :expand ((:free (unit) (fn-lg-forgery-past x batch prev unit max)))
+           :in-theory (union-theories
+                       '(fn-lg-prefix-verdictp)
+                       (set-difference-theories
+                        (current-theory 'fn-lgc-verdict-step-frame)
+                        '(fn-lg-entry fn-lg-frame fn-lg-trailer fn-lg-slice fn-lg-scan
+                          fn-lg-forgery-past fn-lg-chunkp fn-lg-recordsp fn-lgc-log-of-prefix
+                          fn-lgc-scan-when-slice-is-frame fn-lg-take-then-nthcdr-append-2
+                          fn-lgc-prefixp-of-append-chunk (:definition fn-lg-log)
+                          fn-lg-chunk-len fn-lg-entry-len fn-lg-frame-len)))
+           :use ((:instance fn-lg-chunkp-of-first-chunk (records batch))
+                 (:instance fn-lgc-scan-when-slice-is-frame (chunk (fn-bs-take (fn-lg-chunk-len batch) batch)))
+                 (:instance fn-lg-take-then-nthcdr-append-2 (k (fn-lg-chunk-len batch)) (x batch))
+                 (:instance fn-lgc-prefixp-of-append-chunk
+                            (c (fn-bs-take (fn-lg-chunk-len batch) batch)) (r (nthcdr (fn-lg-chunk-len batch) batch))
+                            (p (car (fn-lg-scan (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                                                (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit max))))
+                 (:instance fn-lgc-log-of-prefix
+                            (p (car (fn-lg-scan (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+                                                (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch))) unit max))))))))
+
+(defthm fn-lgp-verdict-step-not-frame
+  (implies (and (consp batch)
+                (not (equal (fn-lg-slice x) (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch)))))
+           (or (fn-lg-prefix-verdictp (fn-lg-scan x prev unit max) batch prev unit)
+               (fn-lg-forgery-past x batch prev unit max)))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-lg-forgery-in fn-lg-forgery-past fn-lg-prefix-verdictp fn-lg-scan)
+           :use (fn-lgc-verdict-step-not-frame fn-lg-forgery-in-is-forgery-past))))
+
+(defun fn-lgp-ind (x batch prev unit)
+  (declare (xargs :guard t :verify-guards nil :measure (len batch)))
+  (if (atom batch) (list x prev unit)
+    (fn-lgp-ind
+     (nthcdr (len (fn-lg-entry prev (fn-bs-take (fn-lg-chunk-len batch) batch) unit)) x)
+     (nthcdr (fn-lg-chunk-len batch) batch)
+     (fn-lg-trailer (fn-lg-frame prev (fn-bs-take (fn-lg-chunk-len batch) batch)))
+     unit)))
+
+; ANY octets x whatever: the scan of x from PREV reads a prefix of the batch
+; and consumes exactly its log, or an accepted frame is a forgery: one that
+; differs from the batch's frame, or one past the whole batch.
+(defthm fn-lg-scan-is-a-prefix-or-a-forgery-past
+  (implies (and (fn-frame-digestp prev) (fn-lg-recordsp batch max))
+           (or (fn-lg-prefix-verdictp (fn-lg-scan x prev unit max) batch prev unit)
+               (fn-lg-forgery-past x batch prev unit max)))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-lgp-ind x batch prev unit)
+           :in-theory (disable fn-lg-forgery-past fn-lg-prefix-verdictp fn-lg-scan fn-lg-entry
+                               fn-lg-frame fn-lg-trailer fn-lg-slice fn-lg-recordsp fn-lg-chunkp))
+          ("Subgoal *1/2"
+           :use ((:instance fn-lgp-verdict-step-frame)
+                 (:instance fn-lgp-verdict-step-not-frame)
+                 (:instance fn-lg-chunkp-of-first-chunk (records batch))
+                 (:instance fn-lg-recordsp-of-nthcdr (records batch) (k (fn-lg-chunk-len batch)))
+                 (:instance fn-lg-trailer-of-frame-digestp (chunk (fn-bs-take (fn-lg-chunk-len batch) batch)))))
+          ("Subgoal *1/1"
+           :use ((:instance fn-lgp-verdict-or-past-of-no-batch)))))
+
+; The one-record bookkeeping at every cut: at most one record is committed
+; and not acknowledged, in flight or open.
+(defun fn-ptd-mok (ks)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (<= (fn-lgk-acked ks) (len (fn-lgk-committed ks)))
+       (<= (+ (len (fn-lgk-committed ks)) (len (fn-lgk-inflight ks)) (len (fn-lgk-batch ks)))
+           (+ 1 (fn-lgk-acked ks)))))
+
+(defun fn-ptd-all-mok (pairs)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom pairs) t
+    (and (consp (car pairs)) (fn-ptd-mok (cdr (car pairs))) (fn-ptd-all-mok (cdr pairs)))))
+
+(defthm fn-ptd-all-mok-of-append
+  (equal (fn-ptd-all-mok (append a b)) (and (fn-ptd-all-mok a) (fn-ptd-all-mok b))))
+
+(defthm fn-ptd-all-mok-member
+  (implies (and (fn-ptd-all-mok pairs) (member-equal p pairs))
+           (fn-ptd-mok (cdr p)))
+  :hints (("Goal" :in-theory (disable fn-ptd-mok))))
+
+(defthm fn-ptd-mok-bounds
+  (implies (fn-ptd-mok ks)
+           (and (<= (len (fn-lgk-committed ks)) (+ 1 (fn-lgk-acked ks)))
+                (<= (len (fn-lgk-inflight ks)) 1)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-ptd-mok))))
+
+(defthm fn-ptd-len-true-list-fix (equal (len (true-list-fix x)) (len x)))
+
+(defthm fn-ptd-mok-of-append
+  (implies (and (fn-ptd-mok ks) (fn-lg-append-admitsp ks unit extent))
+           (fn-ptd-mok (fn-lgk-append ks unit extent)))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ptd-mok) (fn-lgk-append fn-lg-append-admitsp))
+           :use ((:instance fn-ptd-append-fields)
+                 (:instance fn-lg-append-admitsp-means-fits)))))
+
+(defthm fn-ptd-fence-failed-fields-2
+  (let ((k2 (fn-lgk-fence-failed ks)))
+    (and (equal (fn-lgk-inflight k2) (fn-lgk-inflight ks))
+         (equal (fn-lgk-batch k2) (fn-lgk-batch ks))))
+  :hints (("Goal" :in-theory (enable fn-lgk-fence-failed))))
+
+(defthm fn-ptd-mok-of-fence-failed
+  (implies (fn-ptd-mok ks) (fn-ptd-mok (fn-lgk-fence-failed ks)))
+  :hints (("Goal" :in-theory (e/d (fn-ptd-mok) (fn-lgk-fence-failed))
+           :use ((:instance fn-ptd-fence-failed-fields) (:instance fn-ptd-fence-failed-fields-2)))))
+
+(defthm fn-ptd-mok-of-fence
+  (implies (fn-ptd-mok ks) (fn-ptd-mok (fn-lgk-fence ks unit)))
+  :hints (("Goal" :in-theory (e/d (fn-ptd-mok) (fn-lgk-fence))
+           :use ((:instance fn-ptd-fence-fields)))))
+
+(defthm fn-ptd-mok-of-finish-one
+  (implies (fn-ptd-mok ks) (fn-ptd-mok (fn-lgk-finish-one ks)))
+  :hints (("Goal" :in-theory (e/d (fn-ptd-mok) (fn-lgk-finish-one))
+           :use ((:instance fn-ptd-finish-one-fields)))))
+
+(defthm fn-ptd-extend-pairs-mok
+  (implies (fn-ptd-mok k)
+           (fn-ptd-all-mok (mv-nth 0 (fn-lgu-extend bs k ino extent next eo1 eo2))))
+  :hints (("Goal" :in-theory (e/d (fn-lgu-extend) (fn-bs-write fn-bs-fsync-file fn-bs-zeros fn-ptd-mok)))))
+
+(defthm fn-ptd-seal-mok
+  (implies (and (fn-ptd-mok ks) (consp op) (equal (car op) :seal))
+           (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
+             (declare (ignore bs1))
+             (and (fn-ptd-all-mok pairs) (fn-ptd-mok ks1))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-host-step)
+                           (fn-ptd-mok fn-lgu-extend fn-bs-write fn-lgk-append fn-lgk-fence-failed
+                            fn-lgk-sealed-extent fn-lg-append-admitsp fn-lgk-append-octets
+                           ))
+           :use ((:instance fn-ptd-mok-of-append (unit (fn-bs-unit bs))
+                            (extent (fn-lgk-sealed-extent ks (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs))))
+                 (:instance fn-ptd-extend-pairs-mok
+                            (k (fn-lgk-append ks (fn-bs-unit bs)
+                                              (fn-lgk-sealed-extent ks (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs))))
+                            (extent (len (fn-bs-durable-content bs ino)))
+                            (next (fn-lgk-sealed-extent ks (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)))
+                            (eo1 (nth 1 op)) (eo2 (nth 2 op)))
+                 (:instance fn-ptd-mok-of-fence-failed
+                            (ks (fn-lgk-append ks (fn-bs-unit bs)
+                                               (fn-lgk-sealed-extent ks (len (fn-bs-durable-content bs ino)) (fn-bs-unit bs)))))))))
+
+(defthm fn-ptd-fence-op-mok
+  (implies (and (fn-ptd-mok ks) (consp op) (equal (car op) :fence))
+           (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
+             (declare (ignore bs1))
+             (and (fn-ptd-all-mok pairs) (fn-ptd-mok ks1))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-host-step)
+                           (fn-ptd-mok fn-bs-fsync-file fn-lgk-fence fn-lgk-fence-failed fn-lgk-phase
+                           ))
+           :use ((:instance fn-ptd-mok-of-fence (unit (fn-bs-unit bs)))
+                 (:instance fn-ptd-mok-of-fence-failed)))))
+
+(defthm fn-ptd-finish-op-mok
+  (implies (fn-ptd-mok ks)
+           (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks '(:finish-one) ino max)
+             (declare (ignore bs1))
+             (and (fn-ptd-all-mok pairs) (fn-ptd-mok ks1))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-lgu-host-step fn-lgu-kernel-op-p fn-lgk-host-step)
+                           (fn-ptd-mok fn-lgk-finish-one))
+           :use ((:instance fn-ptd-mok-of-finish-one)))))
+
+(defun fn-ptd-mok-opsp (ops)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (atom ops) t
+    (and (or (equal (car ops) '(:finish-one))
+             (and (consp (car ops)) (member-equal (car (car ops)) '(:seal :fence))))
+         (fn-ptd-mok-opsp (cdr ops)))))
+
+(defthm fn-ptd-host-step-mok
+  (implies (and (fn-ptd-mok ks) (or (equal op '(:finish-one))
+                                    (and (consp op) (member-equal (car op) '(:seal :fence)))))
+           (mv-let (pairs bs1 ks1) (fn-lgu-host-step bs ks op ino max)
+             (declare (ignore bs1))
+             (and (fn-ptd-all-mok pairs) (fn-ptd-mok ks1))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-ptd-mok fn-lgu-host-step fn-ptd-all-mok)
+           :use ((:instance fn-ptd-seal-mok) (:instance fn-ptd-fence-op-mok) (:instance fn-ptd-finish-op-mok)))))
+
+(defthm fn-ptd-host-run-mok
+  (implies (and (fn-ptd-mok ks) (fn-ptd-mok-opsp ops))
+           (fn-ptd-all-mok (fn-lgu-host-run bs ks ops ino max)))
+  :hints (("Goal" :induct (fn-lgu-host-run bs ks ops ino max)
+           :in-theory (disable fn-lgu-host-step fn-ptd-mok fn-ptd-host-step-mok))
+          ("Subgoal *1/2" :use ((:instance fn-ptd-host-step-mok (op (car ops)))))))
+
+(defthm fn-ptd-complete-ops-are-mok-ops
+  (fn-ptd-mok-opsp (mv-nth 3 (fn-ptd-complete st ev ino unit)))
+  :hints (("Goal" :in-theory (e/d (fn-ptd-complete) (fn-ptd-sealed fn-ptd-mk)))))
+
+(defthm fn-ptd-complete-mok
+  (implies (fn-ptd-mok ks)
+           (mv-let (st1 acts ans ops) (fn-ptd-complete st ev ino unit)
+             (declare (ignore st1 acts ans))
+             (let ((f (fn-lgu-host-final bs ks ops ino max)))
+               (and (fn-ptd-all-mok (fn-lgu-host-run bs ks ops ino max))
+                    (fn-ptd-mok (cdr f))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-ptd-complete fn-ptd-mok fn-lgu-host-run fn-lgu-host-final
+                               fn-ptd-mok-opsp fn-ptd-all-mok)
+           :use ((:instance fn-ptd-complete-ops-are-mok-ops)
+                 (:instance fn-ptd-host-run-mok (ops (mv-nth 3 (fn-ptd-complete st ev ino unit))))
+                 (:instance fn-lgu-host-final-is-a-cut-export
+                            (ops (mv-nth 3 (fn-ptd-complete st ev ino unit))))
+                 (:instance fn-ptd-all-mok-member
+                            (pairs (fn-lgu-host-run bs ks (mv-nth 3 (fn-ptd-complete st ev ino unit)) ino max))
+                            (p (fn-lgu-host-final bs ks (mv-nth 3 (fn-ptd-complete st ev ino unit)) ino max)))))))
+
+(defthm fn-ptd-mok-of-take
+  (implies (and (fn-ptd-mok ks) (equal (fn-lgk-acked ks) (len (fn-lgk-committed ks)))
+                (not (consp (fn-lgk-batch ks))) (not (consp (fn-lgk-inflight ks)))
+                (consp (fn-lgk-batch (fn-lgk-host-step ks (fn-ptd-take-op ks r unit)))))
+           (fn-ptd-mok (fn-lgk-host-step ks (fn-ptd-take-op ks r unit))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ptd-mok) (fn-lgk-host-step fn-ptd-take-op))
+           :use ((:instance fn-ptd-take-fields)))))
+
+(defthm fn-ptd-begin-mok
+  (implies (and (fn-ptd-invp st bs ks ino genesis max) (fn-ptd-mok ks) (equal unit (fn-bs-unit bs)))
+           (mv-let (st1 acts ans ops) (fn-ptd-begin st r ino unit max)
+             (declare (ignore st1 acts ans))
+             (let ((f (fn-lgu-host-final bs ks ops ino max)))
+               (and (fn-ptd-all-mok (fn-lgu-host-run bs ks ops ino max))
+                    (fn-ptd-mok (cdr f))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ptd-begin)
+                           (fn-lgk-host-step fn-lgk-sealed-extent fn-lg-append-admitsp fn-lgu-take-verdict
+                            fn-lgk-relp fn-bs-zeros fn-lgk-append-octets fn-lgu-host-step fn-ptd-take-op
+                            fn-lgk-committed fn-lgk-acked fn-lgk-inflight fn-lgk-batch fn-lgk-phase
+                            fn-ptd-invp fn-ptd-mk fn-ptd-ph fn-ptd-ks fn-ptd-ext fn-ptd-nxt fn-ptd-rec
+                            fn-ptd-record-write fn-bs-durable-content fn-ptd-mok fn-ptd-mok-of-take))
+           :cases ((equal (fn-ptd-ph st) :ready))
+           :use ((:instance fn-lgu-host-step-of-a-kernel-op-export
+                            (op (fn-ptd-take-op ks r unit)))
+                 (:instance fn-ptd-invp-at-ready)
+                 (:instance fn-ptd-mok-of-take)
+                 (:instance fn-lgu-take-verdict-admits-exactly-log-records (record r))))))
+
+(defthm fn-ptd-step-mok
+  (implies (and (fn-ptd-invp st bs ks ino genesis max) (fn-ptd-mok ks) (equal unit (fn-bs-unit bs)))
+           (mv-let (st1 acts ans ops) (fn-ptd-step st in ino unit max)
+             (declare (ignore st1 acts ans))
+             (let ((f (fn-lgu-host-final bs ks ops ino max)))
+               (and (fn-ptd-all-mok (fn-lgu-host-run bs ks ops ino max))
+                    (fn-ptd-mok (cdr f))))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (union-theories '(fn-ptd-step) (theory 'minimal-theory))
+           :use ((:instance fn-ptd-begin-mok (r (cadr in)))
+                 (:instance fn-ptd-complete-mok (ev in))))))
+
+(defthm fn-ptd-all-mok-of-host-run-append
+  (implies (and (fn-ptd-all-mok (fn-lgu-host-run bs ks x ino max))
+                (fn-ptd-all-mok (fn-lgu-host-run (car (fn-lgu-host-final bs ks x ino max))
+                                                 (cdr (fn-lgu-host-final bs ks x ino max)) y ino max)))
+           (fn-ptd-all-mok (fn-lgu-host-run bs ks (append x y) ino max)))
+  :hints (("Goal" :induct (fn-ptd-final-ind bs ks x ino max)
+           :in-theory (disable fn-lgu-host-step))))
+
+(defthm fn-ptd-run-pairs-mok
+  (implies (and (fn-ptd-invp st bs ks ino genesis max) (fn-ptd-mok ks) (equal unit (fn-bs-unit bs)))
+           (mv-let (st1 acts ans ops) (fn-ptd-run st ins ino unit max)
+             (declare (ignore st1 acts ans))
+             (fn-ptd-all-mok (fn-lgu-host-run bs ks ops ino max))))
+  :hints (("Goal" :induct (fn-ptd-run-ind st bs ks ins ino unit max)
+           :in-theory (disable fn-ptd-step fn-ptd-invp fn-lgu-host-final fn-ptd-invp-of-same
+                               fn-ptd-invp-at-ready fn-ptd-ks fn-ptd-mok fn-ptd-all-mok
+                               fn-lgu-host-run))
+          ("Subgoal *1/2" :use ((:instance fn-ptd-step-mok (in (car ins)))
+                                (:instance fn-ptd-step-keeps-the-invariant (in (car ins)))
+                                (:instance fn-ptd-unit-of-host-final
+                                           (ops (mv-nth 3 (fn-ptd-step st (car ins) ino unit max))))
+                                (:instance fn-lgu-host-final-of-append-export
+                                           (x (mv-nth 3 (fn-ptd-step st (car ins) ino unit max)))
+                                           (y (mv-nth 3 (fn-ptd-run (mv-nth 0 (fn-ptd-step st (car ins) ino unit max))
+                                                                    (cdr ins) ino unit max))))
+                                (:instance fn-ptd-all-mok-of-host-run-append
+                                           (x (mv-nth 3 (fn-ptd-step st (car ins) ino unit max)))
+                                           (y (mv-nth 3 (fn-ptd-run (mv-nth 0 (fn-ptd-step st (car ins) ino unit max))
+                                                                    (cdr ins) ino unit max))))))))
+
+(defthm fn-ptd-tailp-digestp
+  (implies (fn-lgu-tailp bs ks ino genesis max)
+           (fn-frame-digestp (fn-lgk-last ks)))
+  :hints (("Goal" :in-theory (enable fn-lgu-tailp))))
+
+(defthm fn-ptd-tailp-committed-true-listp
+  (implies (fn-lgu-tailp bs ks ino genesis max)
+           (true-listp (fn-lgk-committed ks)))
+  :hints (("Goal" :in-theory (enable fn-lgu-tailp fn-lgu-safep))))
+
+(defthm fn-ptd-prefix-of-a-short-batch
+  (implies (and (fn-lg-prefixp p b) (true-listp p) (fn-lg-recordsp b max) (<= (len b) 1))
+           (or (equal p nil) (equal p b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-lg-prefixp fn-lg-recordsp))))
+
+(defthm fn-ptd-three-way
+  (implies (and (true-listp c) (true-listp p) (fn-lg-prefixp p b) (fn-lg-recordsp b max)
+                (<= (len b) 1) (equal rec (append c p)))
+           (or (equal rec c) (and (consp b) (equal rec (append c b)))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-lg-prefixp fn-lg-recordsp)
+           :use ((:instance fn-ptd-prefix-of-a-short-batch)))))
+
+(defthm fn-ptd-cut-recovers-the-committed-or-the-in-flight
+  (implies (and (fn-lgu-tailp bs ks ino genesis max)
+                (fn-ptd-mok ks)
+                (fn-bs-crash-imagep bs image))
+           (let* ((unit (fn-bs-unit bs))
+                  (b (fn-lgk-inflight ks)) (c (fn-lgk-committed ks))
+                  (content (fn-bs-durable-content image ino))
+                  (recovered (fn-lgk-committed (fn-lgk-recover content genesis unit max next-txid))))
+             (and (or (equal recovered c)
+                      (and (consp b) (equal recovered (append c b)))
+                      (fn-lg-forgery-past (nthcdr (fn-lgk-frontier ks) content) b (fn-lgk-last ks) unit max))
+                  (<= (len c) (+ 1 (fn-lgk-acked ks)))
+                  (<= (len b) 1))))
+  :hints (("Goal" :do-not-induct t
+           :in-theory (disable fn-lgu-tailp fn-ptd-mok fn-lg-scan fn-lg-forgery-past
+                               fn-lgk-recover fn-lg-prefixp fn-lg-recordsp fn-bs-durable-content
+                               fn-bs-crash-imagep)
+           :use ((:instance fn-lgu-tail-image-scans)
+                 (:instance fn-lgu-recovered-kernel-holds-the-scan
+                            (c (fn-bs-durable-content image ino)) (unit (fn-bs-unit bs)))
+                 (:instance fn-lg-scan-is-a-prefix-or-a-forgery-past
+                            (x (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image ino)))
+                            (prev (fn-lgk-last ks)) (batch (fn-lgk-inflight ks)) (unit (fn-bs-unit bs)))
+                 (:instance fn-ptd-mok-bounds)
+                 (:instance fn-ptd-tailp-digestp) (:instance fn-lgu-tailp-recordsp)
+                 (:instance fn-ptd-tailp-committed-true-listp)
+                 (:instance fn-lgc-scan-records-true-listp
+                            (octets (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image ino)))
+                            (prev (fn-lgk-last ks)) (unit (fn-bs-unit bs)))
+                 (:instance fn-ptd-three-way
+                            (c (fn-lgk-committed ks))
+                            (p (car (fn-lg-scan (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image ino))
+                                                (fn-lgk-last ks) (fn-bs-unit bs) max)))
+                            (b (fn-lgk-inflight ks))
+                            (rec (car (fn-lg-scan (fn-bs-durable-content image ino) genesis (fn-bs-unit bs) max))))))))
+
+(defthm fn-ptd-open-kernel-is-mok
+  (implies (fn-ptd-open-kernelp ks) (fn-ptd-mok ks))
+  :hints (("Goal" :in-theory (enable fn-ptd-open-kernelp fn-ptd-mok))))
+
+(defthm fn-ptd-relp-is-invp
+  (implies (fn-lgk-relp bs ks ino genesis max) (fn-lgu-invp bs ks ino genesis max))
+  :hints (("Goal" :in-theory (enable fn-lgu-invp))))
+
+; L3-1 (landing 3, "nothing else"): from the open, at every cut of the host
+; run of the POST driver's operations, every admissible crash image recovers
+; the cut kernel's committed records, or those followed by its batch in
+; flight, or its tail past the committed records holds a forgery (an accepted
+; frame that differs from the batch's, or one past the whole batch); and at
+; most one record is committed and not acknowledged, and at most one is in
+; flight.  Scope: one segment, no rotation, a batch of one.
+(defthm fn-ptd-recovered-is-the-committed-or-the-in-flight-at-every-cut
+  (let* ((unit (fn-bs-unit bs))
+         (r (fn-ptd-run (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino))) e ino unit max))
+         (ks (cdr pair)) (c (fn-lgk-committed ks)) (b (fn-lgk-inflight ks))
+         (content (fn-bs-durable-content image ino))
+         (recovered (fn-lgk-committed (fn-lgk-recover content genesis unit max next-txid))))
+    (implies (and (fn-lgk-relp bs ks0 ino genesis max) (fn-ptd-open-kernelp ks0)
+                  (member-equal pair (fn-lgu-host-run bs ks0 (mv-nth 3 r) ino max))
+                  (fn-bs-crash-imagep (car pair) image))
+             (and (or (equal recovered c)
+                      (and (consp b) (equal recovered (append c b)))
+                      (fn-lg-forgery-past (nthcdr (fn-lgk-frontier ks) content) b (fn-lgk-last ks) unit max))
+                  (<= (len c) (+ 1 (fn-lgk-acked ks)))
+                  (<= (len b) 1))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-ptd-relp-is-invp (ks ks0))
+                 (:instance fn-lgu-relp-is-tailp (ks ks0))
+                 (:instance fn-lgu-host-run-is-tailed
+                            (ks ks0)
+                            (ops (mv-nth 3 (fn-ptd-run (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino)))
+                                                       e ino (fn-bs-unit bs) max))))
+                 (:instance fn-lgu-all-tailp-member
+                            (pairs (fn-lgu-host-run bs ks0
+                                                    (mv-nth 3 (fn-ptd-run (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino)))
+                                                                          e ino (fn-bs-unit bs) max))
+                                                    ino max)))
+                 (:instance fn-ptd-init-invp)
+                 (:instance fn-ptd-open-kernel-is-mok (ks ks0))
+                 (:instance fn-ptd-run-pairs-mok
+                            (st (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino))))
+                            (ks ks0) (ins e) (unit (fn-bs-unit bs)))
+                 (:instance fn-ptd-all-mok-member
+                            (pairs (fn-lgu-host-run bs ks0
+                                                    (mv-nth 3 (fn-ptd-run (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino)))
+                                                                          e ino (fn-bs-unit bs) max))
+                                                    ino max))
+                            (p pair))
+                 (:instance fn-ptd-host-run-pairs-unit
+                            (ks ks0)
+                            (ops (mv-nth 3 (fn-ptd-run (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino)))
+                                                       e ino (fn-bs-unit bs) max))))
+                 (:instance fn-ptd-all-unit-member
+                            (u (fn-bs-unit bs))
+                            (pairs (fn-lgu-host-run bs ks0
+                                                    (mv-nth 3 (fn-ptd-run (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino)))
+                                                                          e ino (fn-bs-unit bs) max))
+                                                    ino max))
+                            (p pair))
+                 (:instance fn-ptd-cut-recovers-the-committed-or-the-in-flight
+                            (bs (car pair)) (ks (cdr pair)))))))

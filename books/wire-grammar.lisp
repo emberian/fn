@@ -5,7 +5,7 @@
 ;
 ; A grammar is DATA: a tree of the nodes below.  A family's grammar is a
 ; `defconst'; `books/wire-export.lisp' renders the family table as
-; the JSON text of specs/wire-grammar.json, and the other side (Mini, in
+; the JSON text of build/box/wire-grammar.json, and the other side (Mini, in
 ; Lean) runs its own interpreter of the same language over that file.
 ;
 ;   (:const OCTETS)                 exactly OCTETS; value nil

@@ -140,3 +140,26 @@
         (equal (nth 6 *htct-fold*) (nth 6 a))
         (equal (nth 7 *htct-fold*) (nth 7 a))
         (equal (nth 5 *htct-fold*) *htct-log*))))
+
+(defteeth fn-ct-charged-is-the-store-but-the-log
+  :claim (()
+          (let ((a (fn-ct-of-store s lens (fn-sf-records (fn-sn-files s)) residency))
+                (b (fn-ct-charged (fn-sf-records (fn-sn-files s)) residency)))
+            (and (equal (fn-mm-tot-records b) (fn-mm-tot-records a))
+                 (equal (fn-mm-tot-arena b) (fn-mm-tot-arena a))
+                 (equal (fn-mm-tot-hcharge b) (fn-mm-tot-hcharge a))
+                 (equal (fn-mm-tot-memberships b) (fn-mm-tot-memberships a))
+                 (equal (fn-mm-tot-events b) (fn-mm-tot-events a))
+                 (equal (fn-mm-tot-history b) (fn-mm-tot-history a))
+                 (equal (fn-mm-tot-charge b) (fn-mm-tot-charge a))
+                 (equal (fn-mm-tot-paged-p b) (fn-mm-tot-paged-p a))
+                 (equal (fn-mm-tot-log b) (fn-ct-log-of-records (fn-sf-records (fn-sn-files s)))))))
+  :subject fn-ct-charged
+  :witness ((s *htct-s*) (lens (list 3000)) (residency :resident))
+  :breaks ()
+  :mutations ((log-is-the-replayed-lengths
+               (:conclusion (let ((a (fn-ct-of-store s lens (fn-sf-records (fn-sn-files s)) residency))
+                                  (b (fn-ct-charged (fn-sf-records (fn-sn-files s)) residency)))
+                              (equal (fn-mm-tot-log b) (fn-mm-tot-log a))))
+               ((s *htct-s*) (lens (list 3000)) (residency :resident))
+               :fault "the charged LOG read as the replayed entry lengths, which the charge only covers")))

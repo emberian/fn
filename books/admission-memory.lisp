@@ -240,8 +240,8 @@
 
 ; KEYSTONE (C' fits): C' is at most C and the gate holds at C' connections.
 (defthm fn-adm-capacity-fits
-  (let ((c (fn-adm-capacity profile img cfg limit tot)))
-    (implies c
+  (implies (fn-adm-capacity profile img cfg limit tot)
+           (let ((c (fn-adm-capacity profile img cfg limit tot)))
              (and (natp c)
                   (<= c (fn-mm-cfg-connections cfg))
                   (fn-mm-gate-p profile img (fn-adm-cfg-at cfg c) limit tot))))

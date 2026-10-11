@@ -319,7 +319,8 @@ def obligations(tree: ledger.Tree, certified: dict[str, bool] | None = None) -> 
             entry["claim_digest"] = _digest(ledger.source_text(parts["claim"]))
             entry["subject"] = str(parts["subject"]) if parts["subject"] is not None else None
             entry["witness"] = ("instance" if ":instances" in parts["options"] else
-                                "lemma" if ":witness-lemma" in parts["options"] else "executable")
+                                "lemma" if ":witness-lemma" in parts["options"] else
+                                "unguarded" if ":witness-unguarded" in parts["options"] else "executable")
             kinds = [str(ledger._dk_removal_kind(parts["breaks"][str(label)])).lstrip(":") for label in parts["labels"]]
             entry["removals"] = {kind: kinds.count(kind)
                                  for kind in ("reachable", "logical", "lemma", "assumption")}

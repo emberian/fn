@@ -27,6 +27,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools" / "extract"))
 import gate  # noqa: E402
+import closure_why  # noqa: E402
+import debug_keep  # noqa: E402
+import executed_set  # noqa: E402
 
 PY = sys.executable
 # the libraries core.sh hands fn-core, which the gate requires beside the image's core
@@ -141,6 +144,12 @@ elif role == "core":
     os.chmod(exe, 0o755)
     print("core: built (stand-in)")
 
+elif role == "invariant-risk":
+    # stand-in for tools/invariant_risk_check.py --ir CORE_JSON
+    if FAULT == "invariant-risk-marked":
+        print("invariant-risk: fn-x (host/x.lisp:1): a declared host entry carries invariant-risk")
+        print("invariant-risk: FAIL (1 problem(s))"); sys.exit(1)
+    print("invariant-risk: PASS (1 declared, 0 marked and baselined)")
 elif role == "obligations":
     # stand-in for tools/extract/obligations.py VERB ...: two items; compare is the real one
     sys.path.insert(0, os.environ["FAKE_EXTRACT_DIR"])
@@ -276,6 +285,7 @@ class Fixture:
                                 owner=[PY, str(self.standin), "owner"],
                                 obligations=[PY, str(self.standin), "obligations"],
                                 faults=[PY, str(self.standin), "faults"],
+                                invariant_risk=[PY, str(self.standin), "invariant-risk"],
                                 core=[PY, str(self.standin), "core", str(t)],
                                 store=str(self.store), source="stand-in")
         self.env = {"FAKE_EXTRACT_DIR": str(ROOT / "tools" / "extract"),
@@ -388,6 +398,9 @@ class ExtractGateTest(unittest.TestCase):
 
     def test_core_evidence_names_other_defs(self):
         self.assertFails("core-evidence-sha", "core", "names other defs.lisp bytes")
+
+    def test_invariant_risk_marked_entry(self):
+        self.assertFails("invariant-risk-marked", "invariant-risk", "invariant_risk_check.py exited 1")
 
     def test_obligations_differ(self):
         self.assertFails("obligations-differ", "obligations", "ENTRY ACL2::F")
@@ -517,6 +530,154 @@ class CheckShTest(unittest.TestCase):
 class CoreLibraries(unittest.TestCase):
     def test_the_gate_requires_exactly_the_libraries_core_sh_exports(self):
         self.assertEqual(sorted(CORE_LIBS), ["libfn-blake3", "libfn-deflate", "libfn-mldsa65"])
+
+
+class WorldSnapshotCarriesWhatIsRead(unittest.TestCase):
+    """closure_why --check-props (O2): the snapshot carries exactly the properties something reads.
+
+    A synthetic OUT directory: core-world.lisp's snapshot rows and the one defs.lisp unit that reads them."""
+
+    DEFS = (";;;; UNIT raw:ACL2::F\n(DEFUN F (X) (FGETPROP (COMMON-LISP:QUOTE ACL2::G) (COMMON-LISP:QUOTE ACL2::FORMALS) NIL W))\n")
+
+    def problems(self, rows, defs=None):
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "core-world.lisp").write_text("(XL-SET-WORLD-SNAPSHOT (QUOTE (%s)))\n" % rows)
+            (Path(d) / "defs.lisp").write_text(defs if defs is not None else self.DEFS)
+            return closure_why.prop_problems(Path(d))
+
+    def test_a_snapshot_carrying_what_is_read_passes(self):
+        self.assertEqual(self.problems("(ACL2::G (ACL2::FORMALS ACL2::A) (ACL2::GUARD T))"), [])
+
+    def test_a_read_outside_the_carried_set_is_refused(self):
+        got = self.problems("(ACL2::G (ACL2::GUARD T))")
+        self.assertEqual(len(got), 1, got)
+        self.assertIn("raw:ACL2::F", got[0])
+        self.assertIn("does not carry", got[0])
+
+    def test_a_computed_symbol_read_of_an_unlisted_property_is_refused(self):
+        defs = ";;;; UNIT raw:ACL2::F\n(DEFUN F (S) (FGETPROP S (COMMON-LISP:QUOTE ACL2::UNNORMALIZED-BODY) NIL W))\n"
+        got = self.problems("(ACL2::G (ACL2::FORMALS ACL2::A))", defs)
+        self.assertEqual(len(got), 1, got)
+        self.assertIn("computed at run time", got[0])
+
+    def test_a_property_carried_twice_in_a_row_is_refused(self):
+        got = self.problems("(ACL2::G (ACL2::FORMALS ACL2::A) (ACL2::SYMBOL-CLASS . :X) (ACL2::SYMBOL-CLASS . :X))")
+        self.assertEqual(got, ["snapshot: ACL2::G carries ACL2::SYMBOL-CLASS twice (the first answers every read)"])
+
+    def test_a_property_kind_nothing_reads_is_refused(self):
+        got = self.problems("(ACL2::G (ACL2::FORMALS ACL2::A) (ACL2::UNNORMALIZED-BODY ACL2::X))")
+        self.assertEqual(got, ["snapshot: ACL2::G carries ACL2::UNNORMALIZED-BODY, a property nothing in fn-core reads"])
+
+
+class DebugKeepGate(unittest.TestCase):
+    """debug_keep.py refuses a core whose debug-keep functions lack their debug-info (item 8)."""
+
+    def test_the_keep_file_names_the_boundaries_and_backtrace_readers(self):
+        names = debug_keep.keep_names()
+        for n in ("fnn-durable-barrier", "fnn-log-fdatasync", "fnn-checkpoint-write-steps",
+                  "fnn-state-checkpoint-install", "fnn-owner-publish-captured",
+                  "fnn-stack-exhaustion-report", "fnn-owner-shared-action-locked"):
+            self.assertIn(n, names)
+
+    def report(self, names, **status):
+        return "".join("DEBUG-KEEP %s %s\n" % (n, status.get(n, "ok")) for n in names)
+
+    def test_a_core_with_every_function_ok_passes(self):
+        names = debug_keep.keep_names()
+        self.assertEqual(debug_keep.problems(self.report(names), names), [])
+
+    def test_a_function_compiled_without_blocks_is_refused(self):
+        names = debug_keep.keep_names()
+        got = debug_keep.problems(self.report(names, **{names[0]: "no-blocks"}), names)
+        self.assertEqual(len(got), 1)
+        self.assertIn(names[0], got[0])
+
+    def test_an_inlined_absent_or_unreported_function_is_refused(self):
+        names = debug_keep.keep_names()
+        rep = self.report(names, **{names[0]: "inlined", names[1]: "absent"})
+        rep = "".join(l + "\n" for l in rep.splitlines() if not l.startswith("DEBUG-KEEP %s " % names[2]))
+        got = debug_keep.problems(rep, names)
+        self.assertEqual(len(got), 3, got)
+
+
+class ExecutedSetRefuses(unittest.TestCase):
+    """tools/extract/executed_set.py: an absent or empty executed set is refused, never read as
+    "nothing executed" (which would make every carried function removable); the census's
+    removable set holds only units whose every static caller is itself removable."""
+
+    def setUp(self):
+        self.out = Path(tempfile.mkdtemp(prefix="executed-set-"))
+        self.addCleanup(shutil.rmtree, self.out, True)
+
+    def write(self, pid, names, wrapped=26157, unobserved=()):
+        raw = self.out / "raw"
+        raw.mkdir(exist_ok=True)
+        (raw / ("%d.txt" % pid)).write_text("".join(n + "\n" for n in names))
+        (raw / ("%d.wrapped" % pid)).write_text("%d\n" % wrapped)
+        (raw / ("%d.unobserved" % pid)).write_text("".join("%s\n;; why\n" % n for n in unobserved))
+
+    def refused(self, *argv):
+        with contextlib.redirect_stderr(io.StringIO()) as err, contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(executed_set.main(list(argv)), 1)
+        self.assertIn("REFUSED", err.getvalue())
+
+    def test_an_absent_set_is_refused(self):
+        self.refused("union", str(self.out))
+        self.refused("census", str(self.out), str(self.out))
+
+    def test_an_empty_set_is_refused(self):
+        self.write(1, [])
+        self.refused("union", str(self.out))
+
+    def test_a_process_that_wrapped_nothing_is_refused(self):
+        self.write(1, ["ACL2::FN-A"], wrapped=0)
+        self.refused("union", str(self.out))
+
+    def test_a_recorded_set_unions_and_the_census_keeps_live_callers(self):
+        self.write(1, ["ACL2::FN-A"], unobserved=["ACL2::FN-U"])
+        self.write(2, ["ACL2::FN-A", "ACL2_*1*_ACL2::FN-B"])
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(executed_set.main(["union", str(self.out)]), 0)
+        self.assertEqual((self.out / "executed.txt").read_text().split(),
+                         ["ACL2::FN-A", "ACL2_*1*_ACL2::FN-B"])
+        cd = self.out / "core"
+        cd.mkdir()
+        units = ["raw:ACL2::FN-%s" % c for c in "ACDEFGU"] + ["star1:ACL2::FN-B", "var:ACL2::*T*"]
+        (cd / "manifest.tsv").write_text("#roots\t1\n" + "".join(u + "\tx\tworld\n" for u in units))
+        # A (executed root) calls C (never) and U (unobserved); C calls D; E (never) is called by
+        # F (never) and by the variable *T*; F calls itself; G (never) is called only by D.
+        (cd / "edges.tsv").write_text(
+            "#root\traw:ACL2::FN-A\n"
+            "raw:ACL2::FN-A\traw:ACL2::FN-C raw:ACL2::FN-U\nraw:ACL2::FN-C\traw:ACL2::FN-D\n"
+            "raw:ACL2::FN-D\traw:ACL2::FN-G\nraw:ACL2::FN-F\traw:ACL2::FN-E raw:ACL2::FN-F\n"
+            "var:ACL2::*T*\traw:ACL2::FN-E\n")
+        js = self.out / "census.json"
+        bk = self.out / "books.tsv"
+        bk.write_text("ACL2::FN-F\t/t/tree/books/zz-dead.lisp\tfn\nACL2::FN-A\thost/aa-live.lisp\tfn\n")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(executed_set.main(["census", str(self.out), str(cd), "--json", str(js),
+                                                "--books", str(bk)]), 0)
+        doc = json.loads(js.read_text())
+        self.assertEqual(doc["never"], 5)          # C D E F G; U is unobserved, so never counted
+        # C, D and G hang below the executed A, E below a variable: only F, called by no one
+        # but itself, is removable.
+        self.assertEqual(doc["removable"], ["raw:ACL2::FN-F"])
+        self.assertEqual(doc["families"]["zz"]["removable"], 1)
+        self.assertEqual(doc["families"]["host/aa"]["executed"], 1)
+        self.assertEqual(doc["books"]["/t/tree/books/zz-dead.lisp"]["removable"], 1)
+        # the train's shrink line: a census without code sizes is refused; with sizes, one line
+        self.refused("line", str(js))
+        sz = self.out / "sizes.tsv"
+        sz.write_text("ACL2::FN-A\t100\nACL2::FN-F\t40\nACL2_*1*_ACL2::FN-B\t8\n")
+        with contextlib.redirect_stdout(io.StringIO()):
+            executed_set.main(["census", str(self.out), str(cd), "--json", str(js),
+                               "--books", str(bk), "--sizes", str(sz)])
+        with contextlib.redirect_stdout(io.StringIO()) as o:
+            self.assertEqual(executed_set.main(["line", str(js), "--baseline", str(js)]), 0)
+        first, delta = o.getvalue().splitlines()
+        self.assertEqual(first, "census: units=8 executed=2 never=5 removable=1 code_mb=0.0 "
+                                "never_mb=0.0 removable_mb=0.0")
+        self.assertTrue(delta.startswith("census-delta: units=+0 executed=+0 "))
 
 
 if __name__ == "__main__":

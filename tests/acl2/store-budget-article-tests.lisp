@@ -8,6 +8,8 @@
 (include-book "profile-monotonicity-tests")
 (include-book "../../books/store-budget-article")
 (include-book "must-fail-checked")
+(include-book "owner-store-budget-tests")
+(include-book "../../books/defkeystone")
 
 (defconst *sbat-fig* (fn-sbud-article-figure 32768 400))
 (defconst *sbat-gate* (fn-sbud-article-gate-figure 32768 400))
@@ -129,3 +131,58 @@
  (and (equal (fn-sbud-article-verdict-at *sbat-p* 1 (- 1000000 65536) 65536 0) :admissible)
       (fn-profile-replay-within-boundp
        *sbat-p* (+ (- 1000000 65536) (len (fn-record-payload *sbat-tight-charge*))))))
+
+; ---------------------------------------------------------------------------
+; Teeth bound to the two keystones (defteeth: the witness, one removal per
+; hypothesis and an edit mutation, all derived from the fixtures above).
+; The verdict keystone's article is packet 1's (*pmt-record*); the served
+; prepare's is owner-store-budget-tests' held row *osbt-second* on its owner
+; *osbt-reserved* (one committed record, so the prepare stages), whose payload
+; field is the handle the arena holds, as the host's row is.
+(defconst *sbat-pl* (len (fn-record-payload *pmt-record*)))
+(defconst *sbat-gc* (len (fn-record-groups *pmt-record*)))
+(defconst *sbat-h* (fn-bs-profile-max-history-octets *pmt-old*))
+(defconst *sbat-row-gate*
+  (fn-sbud-article-gate-figure (len (fn-record-payload *osbt-second*))
+                               (len (fn-record-groups *osbt-second*))))
+(defconst *sbat-row-safe* (- *sbat-h* *sbat-row-gate*))
+
+(defteeth fn-sbud-article-verdict-keeps-history
+  :claim (((verdict (equal (fn-sbud-article-verdict-at profile used bytes-used
+                                                       payload-length group-count)
+                           :admissible))
+           (payload (<= (len (fn-record-payload record)) (nfix payload-length))))
+          (fn-profile-replay-within-boundp
+           profile (+ bytes-used (len (fn-record-payload record)))))
+  :subject fn-sbud-article-verdict-at
+  :witness ((profile *pmt-old*) (used 1) (bytes-used (- *sbat-h* *sbat-pl*))
+            (payload-length *sbat-pl*) (group-count *sbat-gc*) (record *pmt-record*))
+  :breaks ((verdict ((profile *pmt-old*) (used 1) (bytes-used (1+ (- *sbat-h* *sbat-pl*)))
+                     (payload-length *sbat-pl*) (group-count *sbat-gc*) (record *pmt-record*)))
+           (payload ((profile *pmt-old*) (used 1) (bytes-used *sbat-h*)
+                     (payload-length 0) (group-count 1) (record *pmt-record*))))
+  :mutations ((history-charged-the-whole-encoding
+               (:conclusion (fn-profile-replay-within-boundp
+                             profile (+ bytes-used (len (fn-record-encode record)))))
+               ((profile *pmt-old*) (used 1) (bytes-used (- *sbat-h* *sbat-pl*))
+                (payload-length *sbat-pl*) (group-count *sbat-gc*) (record *pmt-record*))
+               :fault "an admitted article leaving H charged its whole encoding, not its payload")))
+
+(defteeth fn-sbud-prepare-under-article-budget-keeps-history
+  :claim (((staged (not (equal (fn-sbud-prepare
+                                oc record
+                                (fn-sbud-article-budget-for profile bytes-used record))
+                               oc))))
+          (fn-profile-replay-within-boundp
+           profile (+ bytes-used (len (fn-record-payload record)))))
+  :subject fn-sbud-prepare
+  :witness ((oc *osbt-reserved*) (record *osbt-second*) (profile *pmt-old*)
+            (bytes-used *sbat-row-safe*))
+  :breaks ((staged ((oc *osbt-reserved*) (record *osbt-second*) (profile *pmt-old*)
+                    (bytes-used (1+ *sbat-row-safe*)))))
+  :mutations ((prepare-leaves-one-octet-past-h
+               (:conclusion (fn-profile-replay-within-boundp
+                             profile (+ 1 bytes-used (len (fn-record-payload record)))))
+               ((oc *osbt-reserved*) (record *osbt-second*) (profile *pmt-old*)
+                (bytes-used *sbat-row-safe*))
+               :fault "a staged row charged one octet past its payload, past H at the edge")))

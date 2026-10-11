@@ -605,25 +605,36 @@ the header's totals are unseen.  Unlocked: as fresh as the read."
 ;; collection runs inside another's hook.  Measured cost at RHO 25: full
 ;; collections of 57-111 ms at 220-330 MB live (census m34-owner-gcp).  It
 ;; bounds dead memory, never data, and decides nothing ACL2 decides.
-(defvar *fnn-heap-collector-live* nil)
-(defvar *fnn-heap-collector-pending* nil)
+;; The collector thread owns the live figure (a local of its loop); the
+;; after-GC hook only wakes it, and no global is written while actors run
+;; (lock_discipline_check R1b).  The thread is joined by
+;; fnn-heap-collector-policy-stop at the owner's cold shutdown.
 (defvar *fnn-heap-collector-thread* nil)
 (defvar *fnn-heap-collector-wake* (sb-thread:make-semaphore :name "fn-collector"))
+(defvar *fnn-heap-collector-stop* (sb-thread:make-semaphore :name "fn-collector-stop"))
 
 (defun fnn-heap-collector-after-gc ()
-  (let ((live *fnn-heap-collector-live*))
-    (when (and live (not *fnn-heap-collector-pending*)
-               (fnn-core 'fn-mm-collector-due-p (sb-kernel:dynamic-usage) live
-                         (fnn-core 'fn-mm-collector-cfg (sb-ext:bytes-consed-between-gcs) nil)))
-      (setq *fnn-heap-collector-pending* t)
-      (sb-thread:signal-semaphore *fnn-heap-collector-wake*))))
+  (when (zerop (sb-thread:semaphore-count *fnn-heap-collector-wake*))
+    (sb-thread:signal-semaphore *fnn-heap-collector-wake*)))
 
-(defun fnn-heap-collector-run ()
-  (loop
-    (sb-thread:wait-on-semaphore *fnn-heap-collector-wake*)
-    (sb-ext:gc :full t)
-    (setq *fnn-heap-collector-live* (sb-kernel:dynamic-usage))
-    (setq *fnn-heap-collector-pending* nil)))
+(defun fnn-heap-collector-run (live)
+  "LIVE: the dynamic usage after the last full collection.  Each wake asks
+ACL2 whether a full collection is due and runs one when it is.  Answers
+:stopped when asked to stop, or the condition that ended it (the policy
+bounds dead memory only; the condition is the thread's result, which
+fnn-heap-collector-policy-stop re-signals as a fault on the joining owner)."
+  (handler-case
+      (loop
+        (sb-thread:wait-on-semaphore *fnn-heap-collector-wake*)
+        (when (sb-thread:try-semaphore *fnn-heap-collector-stop*)
+          (return :stopped))
+        (when (fnn-core 'fn-mm-collector-due-p (sb-kernel:dynamic-usage) live
+                        (fnn-core 'fn-mm-collector-cfg (sb-ext:bytes-consed-between-gcs) nil))
+          (sb-ext:gc :full t)
+          (setq live (sb-kernel:dynamic-usage))))
+    (serious-condition (condition)
+      (fnn-err "collector policy stopped: ~a" condition)
+      condition)))
 
 (defun fnn-heap-collector-policy-start ()
   "Start the policy once per process, right after a full collection (the
@@ -631,9 +642,24 @@ owner's, when recovery is done: host/native/owner.lisp
 fnn-owner-release-recovery-garbage), whose usage is the first live figure;
 then the collector thread and the after-GC hook."
   (unless *fnn-heap-collector-thread*
-    (setq *fnn-heap-collector-live* (sb-kernel:dynamic-usage))
-    (setq *fnn-heap-collector-thread*
-          (sb-thread:make-thread #'fnn-heap-collector-run :name "fn-collector"))
-    (push #'fnn-heap-collector-after-gc sb-ext:*after-gc-hooks*)))
+    (let ((live (sb-kernel:dynamic-usage)))
+      (setq *fnn-heap-collector-thread*
+            (sb-thread:make-thread (lambda () (fnn-heap-collector-run live))
+                                   :name "fn-collector"))
+      (push #'fnn-heap-collector-after-gc sb-ext:*after-gc-hooks*))))
+
+(defun fnn-heap-collector-policy-stop ()
+  "Remove the hook, stop the collector thread and join it (a full collection
+in progress finishes first).  Nothing when the policy never started."
+  (let ((thread *fnn-heap-collector-thread*))
+    (when thread
+      (setq sb-ext:*after-gc-hooks*
+            (remove #'fnn-heap-collector-after-gc sb-ext:*after-gc-hooks*))
+      (sb-thread:signal-semaphore *fnn-heap-collector-stop*)
+      (sb-thread:signal-semaphore *fnn-heap-collector-wake*)
+      (let ((result (sb-thread:join-thread thread :default nil)))
+        (setq *fnn-heap-collector-thread* nil)
+        (when (typep result 'condition)
+          (fnn-fault "the collector policy ended by ~a" result))))))
 
 (fnn-register-verb "heap" #'fnn-command-heap)

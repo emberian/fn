@@ -565,7 +565,7 @@
 (definterface fn-arx-list-places
   :class :common-lisp-compliant
   :kinds ((tail true-listp) (p natp) (count natp) (ep natp) (en natp) (qtail true-listp) (q natp) (qend natp) (acc true-listp))
-  :keystones (fn-lgb-entry-places-is-list-places))
+  :keystones (fn-lgb-descriptor-is-the-attached-place))
 
 (definterface fn-b3-left-chunks
   :class :common-lisp-compliant
@@ -627,10 +627,19 @@
 (definterface fn-lgb-decode-next
   :class :common-lisp-compliant)
 
-(definterface fn-lgb-entry-places
+(definterface fn-lgb-span
   :class :common-lisp-compliant
-  :kinds ((pos natp) (count natp))
-  :keystones (fn-lgb-entry-places-is-list-places))
+  :kinds ((i natp))
+  :keystones (fn-lgb-span-within-max fn-lgb-descriptor-is-the-attached-place))
+
+(definterface fn-lgb-slice
+  :class :common-lisp-compliant
+  :kinds ((start natp) (len natp)))
+
+(definterface fn-lgb-descriptor
+  :class :common-lisp-compliant
+  :kinds ((pos natp) (start natp) (len natp))
+  :keystones (fn-lgb-descriptor-is-the-attached-place))
 
 (definterface fn-lgc-acked
   :class :common-lisp-compliant
@@ -3727,11 +3736,6 @@
 (definterface fn-pio-issued-row :class :common-lisp-compliant)
 (definterface fn-pio-issued-remove :class :common-lisp-compliant)
 
-; host/native/io.lisp dispatches it (lane extent-identity).
-(definterface fn-arx-attach-trailers-buffer
-  :class :common-lisp-compliant
-  :kinds ((places true-listp) (base natp)))
-
 ; host/native/extent.lisp dispatches it (lane extent-identity).
 (definterface fn-arx-entry-verdict-buffer
   :class :common-lisp-compliant)
@@ -3813,23 +3817,34 @@
 
 ; host/native/owner.lisp dispatches them (lane reclaim, PRF-1315): the
 ; reclaim pass over the pinned history in chunks.
-(definterface fn-rcw-acc-init
-  :class :ideal)
+; The accumulator is the stobj fn-rcwacc (RECLAIM-TRIES-PER-CHUNK): it
+; carries the id tries across chunks, and the steps' guard
+; fn-rcwacc-carriedp is held by the init and both steps' preservation
+; theorems, so the steps dispatch raw (D40).
+(definterface create-fn-rcwacc :class :common-lisp-compliant
+ :raw-guarded (0 nil (fn-rcwacc)))
 
-(definterface fn-rcw-acc-finish
+(definterface fn-rcwacc-init
+  :class :common-lisp-compliant)
+
+(definterface fn-rcwacc-finish
   :class :common-lisp-compliant
-  :keystones (fn-rcw-acc-steps-is-capture))
+  :keystones (fn-rcwacc-canon-steps-is-the-checkpoint-capture fn-rcwacc-predict-steps-is-predict))
 
-(definterface fn-rcw-canon-acc-step
-  :class :ideal
-  :keystones ((fn-rcw-canon-acc-steps-is-the-checkpoint-capture
-               :step-of fn-rcw-canon-acc-steps)))
+(definterface fn-rcwacc-canon-step
+  :class :common-lisp-compliant
+  :keystones ((fn-rcwacc-canon-steps-is-the-checkpoint-capture
+               :step-of fn-rcwacc-canon-steps))
+  :raw-with (fn-rcwacc-carriedp-of-init fn-rcwacc-carriedp-of-canon-step
+             fn-rcwacc-carriedp-of-predict-step))
 
-(definterface fn-rcw-predict-acc-step
-  :class :ideal
-  :keystones ((fn-rcw-predict-acc-steps-is-predict :step-of fn-rcw-predict-acc-steps)
+(definterface fn-rcwacc-predict-step
+  :class :common-lisp-compliant
+  :keystones ((fn-rcwacc-predict-steps-is-predict :step-of fn-rcwacc-predict-steps)
               (fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
-               :step-of fn-rcw-predict-acc-steps)))
+               :step-of fn-rcw-predict-acc-steps fn-rcw-predict-acc-step))
+  :raw-with (fn-rcwacc-carriedp-of-init fn-rcwacc-carriedp-of-canon-step
+             fn-rcwacc-carriedp-of-predict-step))
 
 
 
@@ -4375,8 +4390,10 @@
 (definterface fn-csp-bank-idle-p :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:26
 (definterface fn-csp-candidate :class :common-lisp-compliant) ; books/peer-catchup-spool-resources.lisp:6
 (definterface fn-cu-cursor-envelope :class :common-lisp-compliant) ; books/peer-catchup.lisp:1024
-(definterface fn-lgw-step-buf :class :common-lisp-compliant :kinds ((st true-listp))) ; books/store-log-buffer.lisp:539
-(definterface fn-lgw-step-buf-nf :class :common-lisp-compliant :kinds ((st true-listp))) ; books/store-log-walk-once.lisp:48
+(definterface fn-lgw-step-buf-count :class :common-lisp-compliant :kinds ((st true-listp))
+  :keystones (fn-lgw-step-buf-count-is-step)) ; books/store-log-buffer.lisp
+(definterface fn-lgw-step-buf-nf-count :class :common-lisp-compliant :kinds ((st true-listp))
+  :keystones (fn-lgw-step-buf-nf-count-is-step-nf)) ; books/store-log-walk-once.lisp
 (definterface fn-ort-log-caller-action :class :common-lisp-compliant) ; books/owner-retire-settlement.lisp:47
 (definterface fn-pfr-flight-demand :class :common-lisp-compliant) ; books/peer-flight-reservation.lisp:46
 (definterface fn-pfr-install-funded :class :common-lisp-compliant) ; books/peer-flight-reservation.lisp:117

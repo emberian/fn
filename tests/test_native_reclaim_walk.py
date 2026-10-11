@@ -86,6 +86,10 @@ def rss_kib(pid: int):
 
 # Critical host path: the bounded fn-scka-srcs-n walk, fn-scka-canon-rows
 # capture, and fn-owner-orcp-rebuild precede installing the reclaimed view.
+# Passes 2 and 3 step a fresh fn-rcwacc per chunk (fn-rcwacc-canon-step,
+# fn-rcwacc-predict-step), each the value step over fn-rcw-acc-step, which
+# carries the id tries across chunks (RECLAIM-TRIES-PER-CHUNK); the pass longer
+# than two chunks below runs both passes over several chunks.
 # The catalog loaders refine fn-rcw-load-chunks and call
 # fn-sca-load-held-rows-keyed, whose held-row byte facts justify availability.
 @requires(IMAGE)
