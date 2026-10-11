@@ -264,3 +264,171 @@
                  fn-rtchs-invp-uses-okp
                  fn-rtchs-out-use-has-a-handle
                  fn-rtchs-splice-keeps-a-handled-out-use))))
+;
+; HL5a: one leased quantum.  The window OUT, rendered at offset 0 of the instance's workspace H (the puts,
+; HL3: the :write request) and submitted as (:submit :send (h g 0 n) nil) at H's generation G, is the
+; outstanding use (:send id inc op (h g 0 n)) at the next operation number, and the array range the host writes for it, [base(H), +n), is OUT.  The host executor's
+; quantum (fnn-lease-article-quantum) is this state's step.  No invariant hypothesis: the correspondence
+; with the concrete stobj carries the facts it would (a natural generation, a pool of nbufs buffers).
+(defun fn-hl-render-ready-p (h id inc s)
+  (declare (xargs :guard t))
+  (and (natp h) (< h (fn-rtc-nbufs (fn-rtc-config s)))
+       (equal (fn-rtc-b-owner (fn-rtc-buffer h s)) (list :workspace id inc))))
+
+(defun fn-hl-quantum-state (h out id inc s)
+  (declare (xargs :guard t))
+  (let ((g (fn-rtc-get 0 (fn-rtc-buffer h s))))
+    (mv-let (s3 acts refused cost)
+      (fn-rtc-req-submit (list :submit :send (list h g 0 (len out)) nil) id inc (fn-rtc-st$a-puts h 0 out s))
+      (declare (ignore acts refused cost))
+      s3)))
+
+(local (progn
+(defun fn-hlq-s2 (h out id inc s)
+  (declare (xargs :guard t))
+  (let ((b (fn-rtc-buffer h s)))
+    (fn-rtc-with-buffer h (list (fn-rtc-get 0 b) (list :workspace id inc) (fn-rtc-splice (fn-rtc-b-bytes b) 0 out)) s)))
+(defthm fn-hlq-puts-is-s2
+  (implies (and (fn-hl-render-ready-p h id inc s)
+                (natp (fn-rtc-get 0 (fn-rtc-buffer h s)))
+                (consp out) (fn-cbor-octet-listp out)
+                (<= (len out) (fn-rtc-buf-cap h (fn-rtc-config s))))
+           (equal (fn-rtc-st$a-puts h 0 out s) (fn-hlq-s2 h out id inc s)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-req-write fn-hl-render-ready-p fn-rtc-b-gen)
+                                  (fn-rtc-st$a-puts fn-rtc-with-buffer fn-rtc-splice fn-rtc-buffer fn-rtc-b-bytes
+                                   fn-rtc-b-owner fn-rtc-buf-cap fn-rtc-nbufs fn-rtc-config))
+           :use ((:instance fn-rtc-puts-is-the-write-request (off 0) (w out)
+                            (g (fn-rtc-get 0 (fn-rtc-buffer h s))))))))
+(defthm fn-hlq-take-0 (equal (take 0 x) nil))
+(defthm fn-hlq-take-of-append-len
+  (implies (true-listp a) (equal (take (len a) (append a b)) a)))
+(defthm fn-hlq-take-of-splice-0
+  (implies (true-listp out)
+           (and (equal (take (len out) (fn-rtc-splice bytes 0 out)) out)
+                (<= (len out) (len (fn-rtc-splice bytes 0 out)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-splice) (take nthcdr)))))
+(defthm fn-hlq-next-op-of-with-buffer
+  (equal (fn-rtc-next-op (fn-rtc-with-buffer h b s)) (fn-rtc-next-op s))
+  :hints (("Goal" :in-theory (enable fn-rtc-with-buffer fn-rtc-make fn-rtc-next-op))))
+(defthm fn-hlq-submit-of-s2
+  (let* ((g (fn-rtc-get 0 (fn-rtc-buffer h s)))
+         (s3 (mv-nth 0 (fn-rtc-req-submit (list :submit :send (list h g 0 (len out)) nil) id inc
+                                          (fn-hlq-s2 h out id inc s)))))
+    (implies (and (fn-hl-render-ready-p h id inc s)
+                  (natp g)
+                  (fn-rtc-live-p id inc s)
+                  (not (fn-rtc-kind-out-p :send id inc (fn-rtc-uses s)))
+                  (true-listp out)
+                  (<= (len out) (fn-rtc-buf-cap h (fn-rtc-config s)))
+                  (< h (len (fn-rtc-pool s))))
+             (and (member-equal (list :send id inc (fn-rtc-next-op s) (list h g 0 (len out))) (fn-rtc-uses s3))
+                  (equal (fn-rtc-b-bytes (fn-rtc-buffer h s3)) (fn-rtc-splice (fn-rtc-b-bytes (fn-rtc-buffer h s)) 0 out))
+                  (equal (fn-rtc-config s3) (fn-rtc-config s)))))
+  :hints (("Goal" :do-not (quote (preprocess)) :in-theory (e/d (fn-rtc-req-submit fn-rtc-submit-okp fn-hlq-s2 fn-hl-render-ready-p fn-rtc-issue
+                                   fn-rtc-buffered-kind-p fn-rtc-kind-extrap fn-rtc-extrap fn-rtc-handlep
+                                   fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-b-gen fn-rtc-b-owner
+                                   fn-rtc-b-bytes fn-rtc-live-p fn-rtc-slot)
+                                  (fn-rtc-splice fn-rtc-buf-cap fn-rtc-nbufs fn-rtc-use-bound fn-rtc-c-get-is-nth fn-rtc-c-get-non-natp)))))
+(defthm fn-hlq-splice-frame
+  (and (equal (fn-rtc-get 0 (fn-rtc-buffer k (fn-rtc-st$a-splice h off data s))) (fn-rtc-get 0 (fn-rtc-buffer k s)))
+       (equal (len (fn-rtc-pool (fn-rtc-st$a-splice h off data s))) (len (fn-rtc-pool s)))
+       (equal (fn-rtc-config (fn-rtc-st$a-splice h off data s)) (fn-rtc-config s))
+       (equal (fn-rtc-next-op (fn-rtc-st$a-splice h off data s)) (fn-rtc-next-op s)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-st$a-splice fn-rtc-with-buffer fn-rtc-buffer fn-rtc-pool fn-rtc-config fn-rtc-make fn-rtc-next-op)
+                                  (fn-rtc-splice-okp fn-rtc-splice)))))
+(defthm fn-hlq-puts-frame
+  (and (equal (fn-rtc-get 0 (fn-rtc-buffer k (fn-rtc-st$a-puts h off w s))) (fn-rtc-get 0 (fn-rtc-buffer k s)))
+       (equal (len (fn-rtc-pool (fn-rtc-st$a-puts h off w s))) (len (fn-rtc-pool s)))
+       (equal (fn-rtc-config (fn-rtc-st$a-puts h off w s)) (fn-rtc-config s))
+       (equal (fn-rtc-next-op (fn-rtc-st$a-puts h off w s)) (fn-rtc-next-op s)))
+  :hints (("Goal" :induct (fn-rtc-st$a-puts h off w s)
+           :in-theory (e/d (fn-rtc-st$a-put) (fn-rtc-st$a-splice fn-rtc-buffer fn-rtc-pool fn-rtc-config fn-rtc-next-op)))))
+(defthm fn-hlq-submit-send-frame
+  (let ((s3 (mv-nth 0 (fn-rtc-req-submit (list :submit :send (list h (fn-rtc-get 0 (fn-rtc-buffer h s)) 0 n) nil) id inc s))))
+    (implies (natp h)
+             (and (equal (fn-rtc-get 0 (fn-rtc-buffer h s3)) (fn-rtc-get 0 (fn-rtc-buffer h s)))
+                  (equal (len (fn-rtc-pool s3)) (len (fn-rtc-pool s)))
+                  (equal (fn-rtc-config s3) (fn-rtc-config s)))))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-req-submit fn-rtc-submit-okp fn-rtc-issue fn-rtc-with-buffer fn-rtc-make
+                                   fn-rtc-buffer fn-rtc-pool fn-rtc-config fn-rtc-b-gen fn-rtc-handlep fn-rtc-h-gen
+                                   fn-rtc-h-buf fn-rtc-buffered-kind-p)
+                                  (fn-rtc-splice fn-rtc-buf-cap fn-rtc-nbufs fn-rtc-use-bound fn-rtc-live-p
+                                   fn-rtc-kind-out-p fn-rtc-kind-extrap)))))
+(defun fn-hlq-ind-km (j k meta)
+  (declare (xargs :measure (len meta)))
+  (if (or (zp j) (atom meta)) (list j k meta) (fn-hlq-ind-km (- j 1) (+ 1 k) (cdr meta))))
+(defthm fn-hlq-gen-natp-of-metas-okp-at
+  (implies (and (fn-rtc-c-metas-okp k meta cfg) (natp k) (natp j) (< j (len meta)))
+           (natp (fn-rtc-get 0 (nth j meta))))
+  :hints (("Goal" :induct (fn-hlq-ind-km j k meta) :in-theory (e/d (nth) (fn-rtc-buf-cap)))))
+(defthm fn-hlq-corr-gives-gen-and-pool
+  (implies (and (fn-rtc-st$corr c x) (natp h) (< h (fn-rtc-nbufs (fn-rtc-config x))))
+           (and (natp (fn-rtc-get 0 (fn-rtc-buffer h x)))
+                (equal (len (fn-rtc-pool x)) (fn-rtc-nbufs (fn-rtc-config x)))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-rtc-st$corr fn-rtc-c-abs fn-rtc-c-wfp fn-rtc-buffer fn-rtc-pool fn-rtc-config
+                                   fn-rtc-make fn-rtc-c-buffer)
+                                  (fn-rtc-c-octets fn-rtc-c-pool fn-rtc-st$cp fn-rtc-buf-base fn-rtc-nbufs
+                                   fn-rtc-c-metas-okp fn-rtc-configp))
+           :use ((:instance fn-rtchs-get-of-c-pool (k h) (h 0) (n (fn-rtc-nbufs (nth *fn-rtc-c-cfg* c)))
+                            (cfg (nth *fn-rtc-c-cfg* c)) (meta (nth *fn-rtc-c-metai* c))
+                            (bytes (nth *fn-rtc-c-bytesi* c)))
+                 (:instance fn-hlq-gen-natp-of-metas-okp-at (k 0) (j h) (meta (nth *fn-rtc-c-metai* c))
+                            (cfg (nth *fn-rtc-c-cfg* c)))))))
+(defthm fn-hlq-submit-empty
+  (let* ((g (fn-rtc-get 0 (fn-rtc-buffer h s)))
+         (s3 (mv-nth 0 (fn-rtc-req-submit (list :submit :send (list h g 0 0) nil) id inc s))))
+    (implies (and (fn-hl-render-ready-p h id inc s) (natp g)
+                  (fn-rtc-live-p id inc s)
+                  (not (fn-rtc-kind-out-p :send id inc (fn-rtc-uses s))))
+             (member-equal (list :send id inc (fn-rtc-next-op s) (list h g 0 0)) (fn-rtc-uses s3))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-rtc-req-submit fn-rtc-submit-okp fn-hl-render-ready-p fn-rtc-issue
+                                   fn-rtc-buffered-kind-p fn-rtc-kind-extrap fn-rtc-extrap fn-rtc-handlep
+                                   fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-b-gen fn-rtc-b-owner
+                                   fn-rtc-live-p fn-rtc-slot)
+                                  (fn-rtc-splice fn-rtc-buf-cap fn-rtc-nbufs fn-rtc-use-bound)))))
+(defthm fn-hlq-octet-list-atom (implies (and (fn-cbor-octet-listp x) (not (consp x))) (equal x nil)) :rule-classes nil)
+(defthm fn-hlq-nthcdr-0 (equal (nthcdr 0 x) x))
+(defthm fn-hlq-plus-0 (implies (acl2-numberp x) (equal (+ x 0) x)))
+(defthm fn-hlq-len-of-consp (implies (consp x) (< 0 (len x))) :rule-classes :linear)
+(defthm fn-hlq-octet-list-true (implies (fn-cbor-octet-listp x) (true-listp x)) :rule-classes nil)
+))
+(defthm fn-hl-leased-quantum-sends-the-window
+  (implies (and (fn-hl-render-ready-p h id inc s)
+                (fn-rtc-live-p id inc s)
+                (not (fn-rtc-kind-out-p :send id inc (fn-rtc-uses s)))
+                (fn-cbor-octet-listp out)
+                (<= (len out) (fn-rtc-buf-cap h (fn-rtc-config s)))
+                (fn-rtc-st$corr c (fn-hl-quantum-state h out id inc s)))
+           (and (member-equal (list :send id inc (fn-rtc-next-op s)
+                                    (list h (fn-rtc-get 0 (fn-rtc-buffer h s)) 0 (len out)))
+                              (fn-rtc-uses (fn-hl-quantum-state h out id inc s)))
+                (equal (fn-rtc-c-octets (fn-rtc-buf-base h (fn-rtc-config s)) (len out)
+                                        (nth *fn-rtc-c-bytesi* c))
+                       out)))
+  :hints (("Goal" :cases ((consp out)) :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-hl-render-ready-p)
+                 (:instance fn-hlq-puts-frame (k h) (off 0) (w out))
+                 (:instance fn-hlq-submit-send-frame (n (len out)) (s (fn-rtc-st$a-puts h 0 out s)))
+                 (:instance fn-hlq-corr-gives-gen-and-pool (x (fn-hl-quantum-state h out id inc s)))
+                 (:instance fn-hl-quantum-state)))
+          ("Subgoal 2" :in-theory (union-theories '(fn-rtc-c-octets zp fn-rtc-st$a-puts len (:e len)) (theory 'minimal-theory))
+           :use ((:instance fn-hlq-octet-list-atom (x out))
+                 (:instance fn-hlq-submit-empty)))
+          ("Subgoal 1" :in-theory (union-theories '(fn-hlq-nthcdr-0 fn-hlq-plus-0 fn-hlq-len-of-consp fn-rtc-c-len-of-octets natp nfix
+                                               (:type-prescription fn-rtc-buf-base-natp)
+                                               (:type-prescription fn-rtc-buf-base) (:type-prescription len)
+                                               (:type-prescription fn-rtc-c-octets))
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-hlq-puts-is-s2)
+                 (:instance fn-hlq-submit-of-s2)
+                 (:instance fn-hlq-take-of-splice-0 (bytes (fn-rtc-b-bytes (fn-rtc-buffer h s))))
+                 (:instance fn-hlq-octet-list-true (x out))
+                 (:instance fn-rtchs-buffer-of-corr
+                            (s (mv-nth 0 (fn-rtc-req-submit (list :submit :send (list h (fn-rtc-get 0 (fn-rtc-buffer h s)) 0 (len out)) nil)
+                                                            id inc (fn-hlq-s2 h out id inc s)))))
+                 (:instance fn-rtchs-window-of-octets
+                            (b (fn-rtc-buf-base h (fn-rtc-config s))) (off 0) (len (len out))
+                            (fl (nfix (fn-rtc-get 2 (nth h (nth *fn-rtc-c-metai* c)))))
+                            (arr (nth *fn-rtc-c-bytesi* c)))))))

@@ -213,3 +213,66 @@
               (not (rths-hl3-concl 0 2 '(1 2 3 4 5 6 7) *rths-s* 1 1 3))))
 ; mutation: the puts leave the state
 (assert! (not (equal (fn-rtc-st$a-puts 0 2 '(67 68) *rths-s*) *rths-s*)))
+
+; ---------------------------------------------------------------------------
+; HL5a: fn-hl-leased-quantum-sends-the-window.  Slot 1's workspace (buffer 0, "AB") takes the
+; window "CDE" at offset 0 and submits its :send; the use is the next operation's and the array
+; range the host writes is "CDE".
+(defun rths-hl5a-concl (c s h out id inc)
+  (declare (xargs :guard t :verify-guards nil))
+  (and (member-equal (list :send id inc (fn-rtc-next-op s) (list h (fn-rtc-get 0 (fn-rtc-buffer h s)) 0 (len out)))
+                     (fn-rtc-uses (fn-hl-quantum-state h out id inc s)))
+       (equal (fn-rtc-c-octets (fn-rtc-buf-base h (fn-rtc-config s)) (len out) (nth *fn-rtc-c-bytesi* c)) out)
+       t))
+(defun rths-hl5a-hyps (c s h out id inc)
+  (declare (xargs :guard t :verify-guards nil))
+  (list (fn-hl-render-ready-p h id inc s) (fn-rtc-live-p id inc s)
+        (not (fn-rtc-kind-out-p :send id inc (fn-rtc-uses s)))
+        (fn-cbor-octet-listp out) (<= (len out) (fn-rtc-buf-cap h (fn-rtc-config s)))
+        (fn-rtc-st$corr c (fn-hl-quantum-state h out id inc s))))
+(defun rths-qc (s h out id inc)
+  (declare (xargs :guard t :verify-guards nil))
+  (rths-concrete (fn-hl-quantum-state h out id inc s)))
+(defconst *rths-q* (rths-scene '(:free) '(65 66) nil nil 2))
+(defconst *rths-hl5a-all* '(t t t t t t))
+
+; positive: and the leased buffer holds "CDE", :out-leased to slot 1
+(assert! (let ((c (rths-qc *rths-q* 0 '(67 68 69) 1 1)))
+           (and (equal (rths-hl5a-hyps c *rths-q* 0 '(67 68 69) 1 1) *rths-hl5a-all*)
+                (rths-hl5a-concl c *rths-q* 0 '(67 68 69) 1 1)
+                (equal (fn-rtc-buffer 0 (fn-hl-quantum-state 0 '(67 68 69) 1 1 *rths-q*))
+                       '(3 (:leased 1 1 :out) (67 68 69))))))
+; ready removed: buffer 0 :out-leased to slot 1's outstanding :pwrite; the render is refused and
+; the :send is issued over the old octets
+(defconst *rths-q-pw* (list *rths-cfg* '((0 :live nil) (1 :live 5))
+                            '((3 (:leased 1 1 :out) (65 66)) (4 (:free) nil))
+                            '((:pwrite 1 1 1 (0 3 0 2))) '(nil nil) 2))
+(assert! (let ((c (rths-qc *rths-q-pw* 0 '(67) 1 1)))
+           (and (equal (rths-hl5a-hyps c *rths-q-pw* 0 '(67) 1 1) '(nil t t t t t))
+                (not (rths-hl5a-concl c *rths-q-pw* 0 '(67) 1 1)))))
+; live removed: slot 1 closing; the :send is refused
+(defconst *rths-q-closing* (list *rths-cfg* '((0 :live nil) (1 :closing 5))
+                                 '((3 (:workspace 1 1) (65 66)) (4 (:free) nil)) nil '(nil nil) 2))
+(assert! (let ((c (rths-qc *rths-q-closing* 0 '(67) 1 1)))
+           (and (equal (rths-hl5a-hyps c *rths-q-closing* 0 '(67) 1 1) '(t nil t t t t))
+                (not (rths-hl5a-concl c *rths-q-closing* 0 '(67) 1 1)))))
+; no-send removed: slot 1's send on buffer 1 is outstanding; the second :send is refused
+(assert! (let ((c (rths-qc *rths-s* 0 '(67) 1 1)))
+           (and (equal (rths-hl5a-hyps c *rths-s* 0 '(67) 1 1) '(t t nil t t t))
+                (not (rths-hl5a-concl c *rths-s* 0 '(67) 1 1)))))
+; octet list removed: a non-octet is not rendered and the :send carries the old octet
+(assert! (let ((c (rths-qc *rths-q* 0 '(300) 1 1)))
+           (and (equal (rths-hl5a-hyps c *rths-q* 0 '(300) 1 1) '(t t t nil t t))
+                (not (rths-hl5a-concl c *rths-q* 0 '(300) 1 1)))))
+; capacity removed: nine octets into an 8-octet lease; the :send is refused
+(assert! (let ((c (rths-qc *rths-q* 0 '(1 2 3 4 5 6 7 8 9) 1 1)))
+           (and (equal (rths-hl5a-hyps c *rths-q* 0 '(1 2 3 4 5 6 7 8 9) 1 1) '(t t t t nil t))
+                (not (rths-hl5a-concl c *rths-q* 0 '(1 2 3 4 5 6 7 8 9) 1 1)))))
+; corr removed: an array whose first octet is not the lease's
+(assert! (let* ((c0 (rths-qc *rths-q* 0 '(67 68 69) 1 1))
+                (c (update-nth *fn-rtc-c-bytesi* (update-nth 0 0 (nth *fn-rtc-c-bytesi* c0)) c0)))
+           (and (equal (rths-hl5a-hyps c *rths-q* 0 '(67 68 69) 1 1) '(t t t t t nil))
+                (not (rths-hl5a-concl c *rths-q* 0 '(67 68 69) 1 1)))))
+; mutation: the range one past the lease's base is not the window
+(assert! (let ((c (rths-qc *rths-q* 0 '(67 68 69) 1 1)))
+           (not (equal (fn-rtc-c-octets 1 3 (nth *fn-rtc-c-bytesi* c)) '(67 68 69)))))
