@@ -80,17 +80,28 @@ else 0 (so `fn-sbud-prepare' refuses and the owner answers :unaffordable)."
                             fn-record-encoded-octets-ceiling)
                            (fn-record-encode-narrow-length-bound)))))
 
+; The gate's own predicate is the replay bound's: committed and prospective
+; octets the history gate admits sum within H.
+(defthm fn-bs-history-admissible-is-within-the-replay-bound
+  (implies (fn-bs-history-admissiblep profile committed prospective)
+           (fn-profile-replay-within-boundp profile (+ committed prospective)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-bs-history-admissiblep
+                                     fn-profile-replay-within-boundp))))
+
 ; KEYSTONE (an admitted article never pushes history past H).  If the article
 ; verdict at BYTES-USED committed octets admits an article of those counts,
 ; the committed octets plus its payload, the charge of the held row it
-; becomes, are within H, whatever the record's width.
+; becomes, are within H, whatever the record's width: the history gate's
+; own predicate holds of them (fn-bs-history-admissiblep, which the host
+; reaches through the verdict; it implies the replay bound,
+; fn-bs-history-admissible-is-within-the-replay-bound).
 (defthm fn-sbud-article-verdict-keeps-history
   (implies (and (equal (fn-sbud-article-verdict-at profile used bytes-used
                                                    payload-length group-count)
                        :admissible)
                 (<= (len (fn-record-payload record)) (nfix payload-length)))
-           (fn-profile-replay-within-boundp
-            profile (+ bytes-used (len (fn-record-payload record)))))
+           (fn-bs-history-admissiblep profile bytes-used (len (fn-record-payload record))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-sbud-article-verdict-at
                                    fn-sbud-article-gate-figure
@@ -108,8 +119,7 @@ else 0 (so `fn-sbud-prepare' refuses and the owner answers :unaffordable)."
                         oc record
                         (fn-sbud-article-budget-for profile bytes-used record))
                        oc))
-           (fn-profile-replay-within-boundp
-            profile (+ bytes-used (len (fn-record-payload record)))))
+           (fn-bs-history-admissiblep profile bytes-used (len (fn-record-payload record))))
   :rule-classes nil
   :hints (("Goal" :in-theory (e/d (fn-sbud-prepare fn-sbud-article-budget-for
                                    fn-sbud-article-budget fn-sbud-admitp

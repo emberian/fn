@@ -2952,19 +2952,23 @@
   :keystones (fn-heap-stopped-status-is-sized-without-the-store
               fn-heap-command-decide-store-opening-is-the-model
               fn-heap-command-decide-store-opening-unobserved-is-the-adapter
-              fn-heap-command-decide-otherwise-is-todays))
+              fn-heap-command-decide-otherwise-is-todays)
+  :exempt ((config-octets "a count of octets, NIL when unobserved (natp in the body: the adapter)")))
 
 (definterface fn-heap-command-growth
   :class :common-lisp-compliant)
 
 (definterface fn-lxc-command-line
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :exempt ((config-octets "a count of octets, NIL when unobserved (natp in fn-heap-command-line's body: the adapter's line)")))
 
 (definterface fn-heap-stack-kib
   :class :common-lisp-compliant)
 
 (definterface fn-mo-img-observed
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :kinds ((core-octets natp) (status-octets fn-cbor-octet-listp))
+  :exempt ((tls-octets "a count of octets, NIL when the runtime cannot report it (natp in the body: no image)")))
 
 (definterface fn-mo-observed-totals
   :class :common-lisp-compliant)

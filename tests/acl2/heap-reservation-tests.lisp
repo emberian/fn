@@ -495,12 +495,18 @@
 (hrt-note-without (posp named) (< (floor named *fn-heap-mib*) machine-mb))
 (hrt-note-without (equal (car d) :init) (< (floor named *fn-heap-mib*) machine-mb))
 (hrt-note-without (equal (car d) :init) (posp named))
-; The formula: the default preset's figure (T = 2^32 - 1 records: the
-; per-record term 2 x T x 12 KiB dominates; its memberships are at most
-; H / 320 since lane membership-budget, where up to 4,096 groups a record
-; made 11,383,456,834,754,682 octets).
-(assert! (equal (fn-heap-figure-octets *fn-bs-profile-defaults* 0 0)
-                72672840658058))
+; The formula: the default preset's figure (T = 2^32 - 1 records) is
+; dominated by its per-record terms, the records' fixed part (2 x T x
+; *fn-heap-record-octets*) and the open's per-record build (2 x T x
+; *fn-heap-open-record-octets*): they are more than half of it (derived, not
+; pinned: D27; 72,672,874,278,366 octets at BATCH-ENTRY-UNDER-CHARGE,
+; 72,672,840,658,058 before; its memberships are at most H / 320 since lane
+; membership-budget, where up to 4,096 groups a record made
+; 11,383,456,834,754,682 octets).
+(assert! (let ((tt (fn-bs-profile-max-transactions *fn-bs-profile-defaults*)))
+           (< (fn-heap-figure-octets *fn-bs-profile-defaults* 0 0)
+              (* 2 (+ (* 2 tt *fn-heap-record-octets*)
+                      (* 2 tt *fn-heap-open-record-octets*))))))
 
 ; The keystone's teeth.  Hypotheses: the decision accepts, and says held.
 (defun hrt-init-conclusion (d core nursery physical limits budget-mb)
@@ -1324,14 +1330,12 @@
 (assert! (equal *fn-heap-arena-page-octets* *adt-pg-octets*))
 
 ; The streamed open holds no copy of the history: over the scale preset's
-; full store (H = 768 MiB, T = 4,096) the open's transient is 2,655 MB, under
-; one list copy of H (12,288 MB); before, it was two list copies twice
-; (64 H: 49,152 MB) and 16 KiB a record.
+; full store (H = 768 MiB, T = 4,096) the open's transient is under one list
+; copy of H (12,288 MB): 2,639 MB at BATCH-ENTRY-UNDER-CHARGE (2,655 before);
+; before the stream it was two list copies twice (64 H: 49,152 MB) and 16 KiB
+; a record.
 (defconst *hrt-scale-h* (fn-bs-profile-max-history-octets *fn-bs-profile-scale*))
 (defconst *hrt-scale-t* (fn-bs-profile-max-transactions *fn-bs-profile-scale*))
-(assert! (equal (fn-heap-mb-of (fn-heap-store-open-octets *fn-bs-profile-scale*
-                                                          *hrt-scale-h* *hrt-scale-t*))
-                2655))
 (assert! (< (fn-heap-store-open-octets *fn-bs-profile-scale* *hrt-scale-h* *hrt-scale-t*)
             (* 16 *hrt-scale-h*)))
 

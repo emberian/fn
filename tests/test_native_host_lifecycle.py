@@ -358,13 +358,10 @@ class IdleTimerTests(unittest.TestCase):
             self.assertEqual(rows, self.COUNT)
             time.sleep(1)
             passes = [int(m) for m in yielded.findall(owner.stderr.since(0)[at:])]
-            if not passes:
-                # unreachable-in-composition: OVER is not served on the
-                # cursor arm at this revision (over_pins 0/4, a known served
-                # defect), so no reply yields and the timer cannot meet a
-                # yield.  The case runs as soon as a reply does.
-                node.stop(process=owner, expect=EXIT.OK)
-                self.skipTest("no cursor yield in composition: OVER is not on the cursor arm")
+            # OVER is served on the cursor arm (the case ran and passed on
+            # hbox's qual-eef2e87 and drain-c0e35e156 images), so a reply
+            # with no cursor yield is a regression of that arm, not a skip.
+            self.assertTrue(passes, "no cursor yield: OVER did not reach the cursor arm")
             # The premise: the reply was still in flight when the idle
             # second had passed (the hold stopped it part way), not
             # complete before the client looked.
@@ -381,7 +378,8 @@ class IdleTimerTests(unittest.TestCase):
             # measured 272-364 passes for holds of 2.5-6 s (hbox, 2266e7be1:
             # about 250 fixed, about 26 per held second; the send looks at
             # +fnn-mux-tick-ms+ are 4 of them); a zero-timeout poll over the
-            # HOLD - 1 expired seconds is orders of magnitude more.
+            # HOLD - 1 expired seconds is orders of magnitude more (835,315
+            # with the eligibility guard removed, run over-resume-idle-mutant).
             self.assertLess(max(deltas), 2000, sorted(deltas)[-10:])
             node.stop(process=owner, expect=EXIT.OK)
 

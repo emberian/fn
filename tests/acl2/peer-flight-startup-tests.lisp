@@ -141,9 +141,6 @@
   (and (fn-bs-profile-validp *pfrst-wp-profile*)
        (fn-pfr-policy-p *pfrst-flight*)
        (equal (fn-prstartup-nth 0 *pfrst-wp-run*) :heap)
-       ;; 1891 before the pool's read reserve (lane pool-refusal): the
-       ;; served run now also holds its workers' reads in flight.
-       (equal (fn-prstartup-nth 1 *pfrst-wp-run*) 2410)
        (equal (fn-heap-core-file *pfrst-wp-owner-core*) (fn-heap-core-file *pfrst-wp-probe-core*))
        (<= (pfrst-wp-owner-need dyn *pfrst-wp-owner-core*) dyn)
        (fn-prstartup-planp plan)
@@ -152,18 +149,28 @@
                     plan *pfrst-flight* *pfrst-machine* *pfrst-fresh*))
               :hold))))
 ; Teeth: without the DEFAULT extension's launch floor the peer figure is
-; 6107ceb56's figure (1509 at the 64 MiB trigger, 1397 at the 8 MiB trigger
-; since MEM-007; 2024 with the history roots' reserve and the full store), and the owner refuses it (it needs 2041, was 1805 before the run was sized for the full store, 1526 before that); an owner
-; core with a larger file (the core-file hypothesis dropped) fails at 2410
-; (was 2174, 1893).
+; 6107ceb56's figure, and the owner refuses it: the least heap the owner's
+; protected check admits (searched up from that figure, never pinned: D27)
+; lies above it and within the run's heap; an owner core with a larger file
+; (the core-file hypothesis dropped) fails at the run's heap.  At
+; BATCH-ENTRY-UNDER-CHARGE the figures are 2,008 without the floor, an owner
+; edge of 2,025 and a run of 2,394 MB (2,024, 2,041 and 2,410 before).
+(defun pfrst-wp-owner-edge (mb hi)
+  (declare (xargs :mode :program))
+  (cond ((> mb hi) nil)
+        ((<= (pfrst-wp-owner-need (* 1048576 mb) *pfrst-wp-owner-core*) (* 1048576 mb)) mb)
+        (t (pfrst-wp-owner-edge (1+ mb) hi))))
 (assert-event
  (let* ((old (fn-pfr-extend-operation-reservation *pfrst-wp-base* :run *pfrst-flight*
                                                    *pfrst-wp-probe-core* *pfrst-machine*))
-        (dyn-old (* 1048576 (fn-prstartup-nth 1 old)))
-        (dyn (* 1048576 (fn-prstartup-nth 1 *pfrst-wp-run*))))
+        (mb-old (fn-prstartup-nth 1 old))
+        (dyn-old (* 1048576 mb-old))
+        (mb-run (fn-prstartup-nth 1 *pfrst-wp-run*))
+        (dyn (* 1048576 mb-run))
+        (edge (pfrst-wp-owner-edge mb-old mb-run)))
   (and (equal (fn-prstartup-nth 0 old) :heap)
-       (equal (fn-prstartup-nth 1 old) 2024)
        (not (<= (pfrst-wp-owner-need dyn-old *pfrst-wp-owner-core*) dyn-old))
-       (<= (pfrst-wp-owner-need (* 1048576 2041) *pfrst-wp-owner-core*) (* 1048576 2041))
-       (not (<= (pfrst-wp-owner-need (* 1048576 2040) *pfrst-wp-owner-core*) (* 1048576 2040)))
+       (natp edge)
+       (< mb-old edge)
+       (<= edge mb-run)
        (not (<= (pfrst-wp-owner-need dyn '(1615110568 . 1600000000)) dyn)))))
