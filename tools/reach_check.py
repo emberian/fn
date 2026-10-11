@@ -640,6 +640,7 @@ class Graph:
 
     generated: dict = {}           # make-event products (generated_templates)
     generated_books: dict = {}     # name -> the books whose templates write it
+    uncertified: set = set()       # books whose expansion has no current certificate here
     expanded: dict = {}            # name -> (book, via) judged from a current certificate
     generated_callers: dict = {}
     shadow: dict = {}
@@ -885,8 +886,11 @@ class Graph:
             except OSError:
                 continue
         found = {}
+        self.uncertified = set()
         for book in sorted(wanted):
             items = self.expansion_source(book)
+            if items is None:
+                self.uncertified.add(book)
             if items:
                 found[book] = [(kind, name, text.strip().lower() if kind in ("defstobj", "defabsstobj") else text)
                                for kind, name, text in items]
@@ -1741,6 +1745,23 @@ def baseline_raise_refused(findings) -> bool:
         "reach_check", old, {f.key(): 1 for f in findings}))
 
 
+def unjudgeable_here(graph: "Graph", blind: list) -> list[str]:
+    """The books whose missing certificate is why BLIND (the needs --world
+    findings) are unjudged: every generated name each one goes through is
+    written only by books with no current certificate here.  Empty when any
+    blind finding goes through a generated name a certified book writes (its
+    expansion was read and still did not reach it: that is a red, not a
+    missing capability)."""
+    books = set()
+    for finding in blind:
+        through = generated_through(graph, finding)
+        writers = {b for g in through for b in graph.generated_books.get(g, ())}
+        if not through or not writers or not writers <= graph.uncertified:
+            return []
+        books |= writers
+    return sorted(books)
+
+
 def generated_through(graph: "Graph", finding: "Finding") -> list[str]:
     """The generated names (make-event products, unknown edges) a finding's
     unreached subjects may be reached through; empty when none can be."""
@@ -1916,7 +1937,11 @@ def main(argv=None) -> int:
     accepted = baseline.get("accepted", {})
     untriaged_unresolved = unresolved_failures(unresolved, baseline.get("unresolved", {}))
     fresh = [f for f in findings if f.key() not in accepted]
-    stale = sorted(set(accepted) - {f.key() for f in findings} - {f.key() for f in blind})
+    # Hosted or gone: what --lower-stale drops.  Campaign-tied and unresolved
+    # events are not hosted, so they are not stale either.
+    stale = sorted(set(accepted) - {f.key() for f in findings} - {f.key() for f in blind}
+                   - {f.key() for f in tied}
+                   - {f"{proof_id}:{event}" for proof_id, event, _ in unresolved})
     if chosen is not None:
         # Only this book's events were judged: a baselined orphan elsewhere
         # is not "now hosted", it was not looked at.
@@ -1951,7 +1976,7 @@ def main(argv=None) -> int:
             print(f"reach_check: NEW unreachable subject -- {finding.render()}")
         if stale:
             print(f"reach_check: {len(stale)} baselined orphan(s) now hosted; "
-                  f"drop them with --baseline: {', '.join(stale[:4])}")
+                  f"drop them with --lower-stale: {', '.join(stale[:4])}")
     else:
         for finding in sorted(findings, key=Finding.key):
             mark = "NEW  " if finding.key() not in accepted else "     "
@@ -1990,7 +2015,19 @@ def main(argv=None) -> int:
         print(f"reach_check: NEEDS --world -- {finding.proof_id}:{finding.event} "
               f"(through {', '.join(generated_through(graph, finding))}); "
               "--strict fails until a --world run judges it")
-    failed = fresh or blind or untriaged or untriaged_unresolved or graph.unreadable
+    failed = fresh or untriaged or untriaged_unresolved or graph.unreadable
+    uncertified = unjudgeable_here(graph, blind) if blind and not arguments.world else []
+    if blind and uncertified and not failed:
+        # The certified world's convention (MAKE-CHECK-CERT-WORLD-NOT-RUN,
+        # coordinator ruling (b) 2026-10-10): a judgement this tree lacks the
+        # certificates for is NOT RUN, a capability skip, and a tree with them
+        # runs it (tests/test_cert_world_checks.py on the train's box step,
+        # which requires it).
+        print(f"reach_check: NOT RUN -- {len(blind)} event(s) need the certified world: "
+              f"no current certificate here for {', '.join(uncertified)}; "
+              "the train's box step judges them (tests/test_cert_world_checks.py)")
+        return 2 if arguments.strict else 0
+    failed = failed or blind
     return 1 if (arguments.strict and failed) else 0
 
 
