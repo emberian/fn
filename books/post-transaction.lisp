@@ -2982,3 +2982,401 @@ fn-ptx-elen fn-ptx-nmsg fn-ptx-nspans fn-ptx-span-n fn-ptx-spans fn-ptx-spans-le
   (defthm fn-ptx-ceil-plus5
     (implies (natp a) (<= (ceiling (+ a 5) 1024) (+ 1 (ceiling a 1024))))
     :rule-classes :linear))
+
+; -----------------------------------------------------------------------------
+; P3 (Sonnet 5): fn-ptx-step-makes-progress.  The measure is len(q) * post-bound + rem;
+; every arm lowers it: the end of a transaction is bounded by the start of the next post
+; (fn-ptx-end-measure), the reading and hashing arms by the window they advance.
+(encapsulate ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+  (defthm fn-ptx-ar-end
+    (implies (and (natp x) (natp y) (natp r) (<= r y))
+             (<= (+ (* x y) r) (* (+ 1 x) y)))
+    :rule-classes nil)
+  (defthm fn-ptx-ceil-nonneg
+    (implies (natp a) (and (integerp (ceiling a 1024)) (<= 0 (ceiling a 1024))))
+    :rule-classes nil)
+  (defthm fn-ptx-prod-nonneg
+    (implies (and (natp x) (natp y)) (and (integerp (* x y)) (<= 0 (* x y))))
+    :rule-classes nil))
+(defthm fn-ptx-ceil-nfix-ge0
+  (natp (ceiling (nfix a) 1024))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use ((:instance fn-ptx-ceil-nonneg (a (nfix a)))))))
+(defthm fn-ptx-ceil-plus10-ge0
+  (natp (ceiling (+ 10 (nfix a)) 1024))
+  :rule-classes :type-prescription
+  :hints (("Goal" :use ((:instance fn-ptx-ceil-nonneg (a (+ 10 (nfix a))))))))
+(defthm fn-ptx-min-nfix-le
+  (<= (nfix (+ (min (nfix c) (nfix g)) 0)) (nfix g))
+  :rule-classes :linear)
+(defun fn-ptx-post-bound-geo (geo)
+  (+ 11 (ceiling (nfix (fn-rtc-get 2 geo)) 1024) (ceiling (+ 10 (nfix (fn-rtc-get 1 geo))) 1024)))
+(defthm fn-ptx-post-bound-m
+  (equal (fn-ptx-post-bound m) (fn-ptx-post-bound-geo (fn-ptx-geo m)))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-post-bound fn-ptx-post-bound-geo fn-ptx-hmax fn-ptx-fmax)) :do-not-induct t)))
+(defthm fn-ptx-post-bound-of-mk
+  (equal (fn-ptx-post-bound (fn-ptx-mk ph k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (fn-ptx-post-bound-geo geo))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-post-bound fn-ptx-post-bound-geo fn-ptx-hmax fn-ptx-fmax fn-ptx-accessors-of-mk))
+           :do-not-induct t)))
+(defthm fn-ptx-post-bound-geo-ge
+  (<= 11 (fn-ptx-post-bound-geo geo))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-post-bound-geo fn-ptx-ceil-nfix-ge0 fn-ptx-ceil-plus10-ge0 natp (:type-prescription nfix) (:type-prescription fn-rtc-get)))
+)))
+(defthm fn-ptx-post-bound-geo-natp
+  (natp (fn-ptx-post-bound-geo geo))
+  :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-post-bound-geo fn-ptx-ceil-nfix-ge0 fn-ptx-ceil-plus10-ge0 natp (:type-prescription nfix) (:type-prescription fn-rtc-get)))
+)))
+(defthm fn-ptx-measure-m
+  (equal (fn-ptx-measure m) (+ (* (len (fn-ptx-q m)) (fn-ptx-post-bound-geo (fn-ptx-geo m))) (fn-ptx-rem m)))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-measure fn-ptx-post-bound-m)))))
+(defthm fn-ptx-measure-mk
+  (equal (fn-ptx-measure (fn-ptx-mk ph k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (+ (* (len q) (fn-ptx-post-bound-geo geo))
+            (fn-ptx-rem (fn-ptx-mk ph k cur q kd ext nxt b1 b3 hs committed evd geo acc))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-measure fn-ptx-post-bound-of-mk fn-ptx-accessors-of-mk)) :do-not-induct t)))
+(defthm fn-ptx-measure-reading
+  (equal (fn-ptx-measure (fn-ptx-mk :reading k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (+ (* (len q) (fn-ptx-post-bound-geo geo))
+            (+ (+ 10 (ceiling (+ 10 (nfix (fn-rtc-get 1 geo))) 1024)) 1
+               (ceiling (nfix (+ (min (fn-ptx-cur-len cur) (nfix (fn-rtc-get 2 geo))) (- (fn-ptx-cur-hoff cur)))) 1024))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-measure fn-ptx-rem fn-ptx-post-bound-geo fn-ptx-post-bound-of-mk fn-ptx-accessors-of-mk
+                      fn-ptx-alen fn-ptx-hmax fn-ptx-fmax (:executable-counterpart equal) (:executable-counterpart fn-ptx-rem)))
+           :do-not-induct t)))
+(defthm fn-ptx-measure-idle
+  (equal (fn-ptx-measure (fn-ptx-mk :idle k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (* (len q) (fn-ptx-post-bound-geo geo)))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-measure fn-ptx-rem fn-ptx-post-bound-of-mk fn-ptx-accessors-of-mk (:executable-counterpart equal)))
+           :do-not-induct t)))
+(defthm fn-ptx-measure-fenced
+  (equal (fn-ptx-measure (fn-ptx-mk :fenced k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (* (len q) (fn-ptx-post-bound-geo geo)))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-measure fn-ptx-rem fn-ptx-post-bound-of-mk fn-ptx-accessors-of-mk (:executable-counterpart equal)))
+           :do-not-induct t)))
+(defthm fn-ptx-end-0
+  (equal (mv-nth 0 (fn-ptx-end m o kd ext fenced committed id inc st))
+         (if fenced
+             (fn-ptx-mk :fenced 0 nil nil kd ext ext nil nil nil committed nil (fn-ptx-geo m) nil)
+           (if (consp (fn-ptx-q m))
+               (mv-nth 0 (fn-ptx-start (car (fn-ptx-q m)) (cdr (fn-ptx-q m)) kd ext (fn-ptx-geo m) committed))
+             (fn-ptx-mk :idle 0 nil nil kd ext ext nil nil nil committed nil (fn-ptx-geo m) nil))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-end (:executable-counterpart mv-nth) mv-nth)) :do-not-induct t)))
+(defthm fn-ptx-start-0
+  (equal (mv-nth 0 (fn-ptx-start p q kd ext geo committed))
+         (fn-ptx-mk :reading 0
+                    (list (fn-ptx-cur-fid p) (fn-ptx-cur-finc p) (fn-ptx-cur-bp p) (fn-ptx-cur-len p) 0 (fn-ptx-kd-txid kd) (fn-ptx-cur-len p))
+                    q kd ext ext nil nil nil committed nil geo (fn-ptx-acc-begin (fn-ptx-kd-txid kd))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-start (:executable-counterpart mv-nth) mv-nth)) :do-not-induct t)))
+(defthm fn-ptx-start-measure
+  (<= (fn-ptx-measure (mv-nth 0 (fn-ptx-start p q kd ext geo committed)))
+      (+ (fn-ptx-post-bound-geo geo) (* (len q) (fn-ptx-post-bound-geo geo))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-start-0 fn-ptx-measure-reading fn-ptx-accessors-of-mk fn-ptx-cur-of-list fn-ptx-post-bound-geo
+                      (:executable-counterpart nfix) natp (:type-prescription nfix) fn-ptx-min-nfix-le
+                      fn-ptx-ceil-nfix-ge0 fn-ptx-ceil-plus10-ge0 (:type-prescription nfix) fn-ptx-len-cons2))
+           :use ((:instance fn-ptx-ceil-mono (a (nfix (+ (min (nfix (fn-ptx-cur-len p)) (nfix (fn-rtc-get 2 geo))) 0)))
+                            (b (nfix (fn-rtc-get 2 geo))))
+                 )
+           :do-not-induct t)))
+(encapsulate ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+  (defthm fn-ptx-ar-dist1
+    (equal (* (+ 1 x) y) (+ y (* x y)))))
+(defthm fn-ptx-len-consp (implies (consp q) (equal (len q) (+ 1 (len (cdr q))))))
+(defthm fn-ptx-len-atom (implies (not (consp q)) (equal (len q) 0)))
+(defthm fn-ptx-times-0 (equal (* 0 x) 0))
+(defthm fn-ptx-end-measure
+  (<= (fn-ptx-measure (mv-nth 0 (fn-ptx-end m o kd ext fenced committed id inc st)))
+      (* (len (fn-ptx-q m)) (fn-ptx-post-bound m)))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-end-0 fn-ptx-measure-idle fn-ptx-measure-fenced fn-ptx-post-bound-m fn-ptx-len-consp fn-ptx-len-atom fn-ptx-times-0 (:executable-counterpart len) fn-ptx-ar-dist1
+                      (:type-prescription len) (:type-prescription fn-ptx-post-bound-geo-natp)
+                      (:executable-counterpart consp) natp fn-ptx-start-measure))
+           :cases (fenced (consp (fn-ptx-q m)))
+           :use ((:instance fn-ptx-prod-nonneg (x (len (fn-ptx-q m))) (y (fn-ptx-post-bound-geo (fn-ptx-geo m))))
+                 (:instance fn-ptx-start-measure (p (car (fn-ptx-q m))) (q (cdr (fn-ptx-q m))) (geo (fn-ptx-geo m)) (kd kd) (ext ext) (committed committed)))
+           :do-not-induct t)))
+(defthm fn-ptx-absorb-adv
+  (and (natp (mv-nth 0 (fn-ptx-absorb nw pos st n spans id inc stx)))
+       (<= (nfix pos) (mv-nth 0 (fn-ptx-absorb nw pos st n spans id inc stx)))
+       (or (zp nw)
+           (<= (+ (nfix pos) 1024) (mv-nth 0 (fn-ptx-absorb nw pos st n spans id inc stx)))
+           (<= (nfix n) (+ 1024 (mv-nth 0 (fn-ptx-absorb nw pos st n spans id inc stx))))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-ptx-absorb nw pos st n spans id inc stx)
+           :in-theory (disable fn-b3-cv-push fn-b3-node fn-ptx-msg-range)
+           :expand ((fn-ptx-absorb nw pos st n spans id inc stx)))))
+(defthm fn-ptx-rem-extending (implies (equal (fn-ptx-ph m) :extending) (equal (fn-ptx-rem m) 8))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-rem (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-rem-extsyncing (implies (equal (fn-ptx-ph m) :extsyncing) (equal (fn-ptx-rem m) 7))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-rem (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-rem-log-writing (implies (equal (fn-ptx-ph m) :log-writing) (equal (fn-ptx-rem m) 2))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-rem (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-rem-committing (implies (equal (fn-ptx-ph m) :committing) (equal (fn-ptx-rem m) 1))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-rem (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-rem-payload (implies (equal (fn-ptx-ph m) :payload-writing) (equal (fn-ptx-rem m) (nfix (- (+ 1 (fn-ptx-nspans m)) (fn-ptx-k m)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-rem (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-rem-hashing (implies (equal (fn-ptx-ph m) :hashing)
+                                    (equal (fn-ptx-rem m) (+ 10 (ceiling (nfix (- (fn-ptx-nmsg m) (nfix (fn-rtc-get 0 (fn-ptx-hs m))))) 1024))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-rem (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-rem-reading (implies (equal (fn-ptx-ph m) :reading)
+                                    (equal (fn-ptx-rem m) (+ 10 (ceiling (+ 10 (nfix (fn-rtc-get 1 (fn-ptx-geo m)))) 1024) 1
+                                                             (ceiling (nfix (+ (min (fn-ptx-cur-len (fn-ptx-cur m)) (nfix (fn-rtc-get 2 (fn-ptx-geo m)))) (- (fn-ptx-cur-hoff (fn-ptx-cur m))))) 1024))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-rem fn-ptx-alen fn-ptx-hmax fn-ptx-fmax (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-nmsg-natp (natp (fn-ptx-nmsg m)) :rule-classes :type-prescription
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-nmsg fn-ptx-spans-len-natp natp)))))
+(defthm fn-ptx-measure-extending
+  (equal (fn-ptx-measure (fn-ptx-mk :extending k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (+ (* (len q) (fn-ptx-post-bound-geo geo)) 8))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-measure fn-ptx-rem fn-ptx-post-bound-of-mk fn-ptx-accessors-of-mk (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-measure-extsyncing
+  (equal (fn-ptx-measure (fn-ptx-mk :extsyncing k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (+ (* (len q) (fn-ptx-post-bound-geo geo)) 7))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-measure fn-ptx-rem fn-ptx-post-bound-of-mk fn-ptx-accessors-of-mk (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-measure-log-writing
+  (equal (fn-ptx-measure (fn-ptx-mk :log-writing k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (+ (* (len q) (fn-ptx-post-bound-geo geo)) 2))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-measure fn-ptx-rem fn-ptx-post-bound-of-mk fn-ptx-accessors-of-mk (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-measure-committing
+  (equal (fn-ptx-measure (fn-ptx-mk :committing k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (+ (* (len q) (fn-ptx-post-bound-geo geo)) 1))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-measure fn-ptx-rem fn-ptx-post-bound-of-mk fn-ptx-accessors-of-mk (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-measure-payload
+  (equal (fn-ptx-measure (fn-ptx-mk :payload-writing k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (+ (* (len q) (fn-ptx-post-bound-geo geo))
+            (nfix (- (+ 1 (len (fn-ptx-spans-g b1 b3 cur))) (nfix k)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-measure fn-ptx-rem fn-ptx-post-bound-of-mk fn-ptx-accessors-of-mk fn-ptx-nspans-of-mk (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-measure-hashing
+  (equal (fn-ptx-measure (fn-ptx-mk :hashing k cur q kd ext nxt b1 b3 hs committed evd geo acc))
+         (+ (* (len q) (fn-ptx-post-bound-geo geo))
+            (+ 10 (ceiling (nfix (- (fn-ptx-spans-len (fn-ptx-spans-g b1 b3 cur)) (nfix (fn-rtc-get 0 hs)))) 1024))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-measure fn-ptx-rem fn-ptx-post-bound-of-mk fn-ptx-accessors-of-mk fn-ptx-nmsg-of-mk (:executable-counterpart equal))) :do-not-induct t)))
+(defthm fn-ptx-len-spans-g-m
+  (equal (len (fn-ptx-spans-g (fn-ptx-b1 m) (fn-ptx-b3 m) (fn-ptx-cur m))) (fn-ptx-nspans m))
+  :hints (("Goal" :use fn-ptx-nspans-is-g :in-theory (union-theories (theory 'minimal-theory) '()))))
+(defthm fn-ptx-nfix-natp-rw (implies (natp x) (equal (nfix x) x)))
+(defthm fn-ptx-nspans-natp (natp (fn-ptx-nspans m)) :rule-classes :type-prescription)
+(defthm fn-ptx-step-0
+  (implies (fn-ptx-okp m)
+           (equal (mv-nth 0 (fn-ptx-step m ev st q)) (mv-nth 0 (fn-ptx-step1 m ev st q))))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory) '(fn-ptx-step (:executable-counterpart mv-nth) mv-nth))
+           :use ((:instance fn-ptx-okp-wfp)) :do-not-induct t)))
+(deftheory fn-ptx-p3u
+  (union-theories (theory 'minimal-theory)
+    '(fn-ptx-step1-0 fn-ptx-measure-m fn-ptx-accessors-of-mk fn-ptx-post-bound-of-mk fn-ptx-post-bound-m
+      fn-ptx-measure-extending fn-ptx-measure-extsyncing fn-ptx-measure-log-writing fn-ptx-measure-committing fn-ptx-measure-payload
+      fn-ptx-measure-idle fn-ptx-measure-fenced
+      fn-ptx-rem-extending fn-ptx-rem-extsyncing fn-ptx-rem-log-writing fn-ptx-rem-committing fn-ptx-rem-payload
+      fn-ptx-len-spans-g-m fn-ptx-nspans-of-mk
+      (:executable-counterpart equal) (:executable-counterpart member-equal) member-equal (:executable-counterpart eq) (:executable-counterpart consp)
+      (:type-prescription fn-ptx-post-bound-geo-natp) (:type-prescription len) natp (:executable-counterpart nfix) fn-ptx-nfix-natp-rw fn-ptx-nspans-natp)))
+(defthm fn-ptx-extending-progress
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :extending) (equal (fn-rtc-get 0 ev) :extend))
+           (< (fn-ptx-measure (mv-nth 0 (fn-ptx-step1 m ev st q))) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (theory 'fn-ptx-p3u)
+           :cases ((equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done))
+           :use ((:instance fn-ptx-end-measure (m (fn-ptx-chg m :committed nil)) (o :refused) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m))
+                            (fenced t) (committed nil) (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev))))
+           :do-not-induct t)))
+(defthm fn-ptx-extsyncing-progress
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :extsyncing) (equal (fn-rtc-get 0 ev) :fsync))
+           (< (fn-ptx-measure (mv-nth 0 (fn-ptx-step1 m ev st q))) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (theory 'fn-ptx-p3u)
+           :cases ((equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done))
+           :use ((:instance fn-ptx-end-measure (m (fn-ptx-chg m :committed nil)) (o :refused) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m))
+                            (fenced t) (committed nil) (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev)))
+                 (:instance fn-ptx-spans-g-len (b1 (fn-ptx-b1 m)) (b3 (fn-ptx-b3 m)) (cur (fn-ptx-cur m))))
+           :do-not-induct t)))
+(defthm fn-ptx-logwrite-progress
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :log-writing) (equal (fn-rtc-get 0 ev) :pwrite))
+           (< (fn-ptx-measure (mv-nth 0 (fn-ptx-step1 m ev st q))) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (theory 'fn-ptx-p3u)
+           :cases ((and (equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done) (equal (fn-rtc-get 1 (fn-rtc-get 1 ev)) (fn-ptx-span-n (fn-ptx-k m) m))))
+           :use ((:instance fn-ptx-end-measure (m (fn-ptx-chg m :committed nil)) (o :uncertain) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m))
+                            (fenced t) (committed nil) (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev))))
+           :do-not-induct t)))
+(defthm fn-ptx-committing-progress
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :committing) (equal (fn-rtc-get 0 ev) :fsync))
+           (< (fn-ptx-measure (mv-nth 0 (fn-ptx-step1 m ev st q))) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (theory 'fn-ptx-p3u)
+           :cases ((equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done))
+           :use ((:instance fn-ptx-end-measure (m (fn-ptx-chg m :committed nil)) (o :uncertain) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m))
+                            (fenced t) (committed nil) (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev)))
+                 (:instance fn-ptx-end-measure (m (fn-ptx-chg m :committed nil)) (o :posted)
+                            (kd (fn-ptx-kd-commit (fn-ptx-kd m) (fn-rtc-get 1 (fn-ptx-hs m)) (fn-ptx-elen m))) (ext (fn-ptx-nxt m))
+                            (fenced nil) (committed t) (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev))))
+           :do-not-induct t)))
+(defthm fn-ptx-nfix-sub (implies (and (integerp a) (integerp b) (<= b a)) (equal (nfix (+ a (- b))) (+ a (- b))))
+  :rule-classes nil)
+(defthm fn-ptx-payload-progress
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :payload-writing) (equal (fn-rtc-get 0 ev) :pwrite))
+           (< (fn-ptx-measure (mv-nth 0 (fn-ptx-step1 m ev st q))) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (union-theories (theory 'fn-ptx-p3u) '((:type-prescription fn-ptx-k)))
+           :cases ((and (equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done) (equal (fn-rtc-get 1 (fn-rtc-get 1 ev)) (fn-ptx-span-n (fn-ptx-k m) m))
+                        (< (+ (fn-ptx-k m) 2) (fn-ptx-nspans m)))
+                   (and (equal (fn-rtc-get 0 (fn-rtc-get 1 ev)) :done) (equal (fn-rtc-get 1 (fn-rtc-get 1 ev)) (fn-ptx-span-n (fn-ptx-k m) m))
+                        (not (< (+ (fn-ptx-k m) 2) (fn-ptx-nspans m)))))
+           :use ((:instance fn-ptx-end-measure (m (fn-ptx-chg m :committed nil)) (o :uncertain) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m))
+                            (fenced t) (committed nil) (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev)))
+                 (:instance fn-ptx-okp-elim)
+                 (:instance fn-ptx-nfix-sub (a (+ 1 (fn-ptx-nspans m))) (b (fn-ptx-k m)))
+                 (:instance fn-ptx-nfix-sub (a (+ 1 (fn-ptx-nspans m))) (b (+ 1 (fn-ptx-k m)))))
+           :do-not-induct t)))
+(defthm fn-ptx-spans-len-g-m
+  (equal (fn-ptx-spans-len (fn-ptx-spans-g (fn-ptx-b1 m) (fn-ptx-b3 m) (fn-ptx-cur m))) (fn-ptx-spans-len (fn-ptx-spans m)))
+  :hints (("Goal" :use fn-ptx-spans-is-g :in-theory (union-theories (theory 'minimal-theory) '()))))
+(defthm fn-ptx-minmax-pos
+  (implies (natp f) (and (integerp (min 64 (max 1 f))) (< 0 (min 64 (max 1 f)))))
+  :rule-classes nil :hints (("Goal" :in-theory (enable min max))))
+(defthm fn-ptx-hash-nw-pos
+  (let ((nw (min 64 (max 1 (floor (nfix q) 1024))))) (and (integerp nw) (< 0 nw)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ptx-minmax-pos (f (floor (nfix q) 1024))) (:instance fn-ptx-floor-1024-natp (pos (nfix q)))))))
+(defthm fn-ptx-hash-ceil
+  (implies (and (natp n) (natp p0) (natp p2) (<= (+ p0 1024) p2) (< (+ p2 1024) n))
+           (< (ceiling (nfix (- n p2)) 1024) (ceiling (nfix (- n p0)) 1024)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ptx-ceil-step (a (- n p2)) (b (- n p0)))
+                        (:instance fn-ptx-nfix-sub (a n) (b p2)) (:instance fn-ptx-nfix-sub (a n) (b p0)))
+           :in-theory (disable fn-ptx-ceil-step))))
+(defthm fn-ptx-absorb-adv2
+  (implies (and (integerp nw) (< 0 nw))
+           (and (natp (mv-nth 0 (fn-ptx-absorb nw pos st n spans id inc stx)))
+                (<= (nfix pos) (mv-nth 0 (fn-ptx-absorb nw pos st n spans id inc stx)))
+                (or (<= (+ (nfix pos) 1024) (mv-nth 0 (fn-ptx-absorb nw pos st n spans id inc stx)))
+                    (<= (nfix n) (+ 1024 (mv-nth 0 (fn-ptx-absorb nw pos st n spans id inc stx)))))))
+  :rule-classes nil
+  :hints (("Goal" :use fn-ptx-absorb-adv :in-theory (union-theories (theory 'minimal-theory) '(zp)))))
+(defthm fn-ptx-hash-progress
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :hashing))
+           (< (fn-ptx-measure (mv-nth 0 (fn-ptx-hash m q id inc st))) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (union-theories (theory 'fn-ptx-p3u)
+                    '(fn-ptx-hash-0 fn-ptx-measure-hashing fn-ptx-rem-hashing fn-ptx-nmsg fn-ptx-get-list2 fn-ptx-spans-len-g-m fn-ptx-spans-len-natp
+                      fn-ptx-ceil-nfix-ge0 fn-ptx-ceil-plus10-ge0 (:type-prescription nfix) fn-ptx-spans-g-len))
+           :cases ((< (+ (mv-nth 0 (fn-ptx-absorb (min 64 (max 1 (floor (nfix q) 1024))) (fn-rtc-get 0 (fn-ptx-hs m)) (fn-rtc-get 1 (fn-ptx-hs m))
+                                                  (fn-ptx-spans-len (fn-ptx-spans m)) (fn-ptx-spans m) id inc st)) 1024)
+                      (fn-ptx-spans-len (fn-ptx-spans m))))
+           :use ((:instance fn-ptx-hash-nw-pos)
+                 (:instance fn-ptx-absorb-adv2 (nw (min 64 (max 1 (floor (nfix q) 1024)))) (pos (fn-rtc-get 0 (fn-ptx-hs m))) (st (fn-rtc-get 1 (fn-ptx-hs m)))
+                            (n (fn-ptx-spans-len (fn-ptx-spans m))) (spans (fn-ptx-spans m)) (stx st))
+                 (:instance fn-ptx-hash-ceil (n (fn-ptx-spans-len (fn-ptx-spans m))) (p0 (nfix (fn-rtc-get 0 (fn-ptx-hs m))))
+                            (p2 (mv-nth 0 (fn-ptx-absorb (min 64 (max 1 (floor (nfix q) 1024))) (fn-rtc-get 0 (fn-ptx-hs m)) (fn-rtc-get 1 (fn-ptx-hs m))
+                                                         (fn-ptx-spans-len (fn-ptx-spans m)) (fn-ptx-spans m) id inc st))))
+                 (:instance fn-ptx-end-measure (m (fn-ptx-chg m :committed nil)) (o :refused) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m))
+                            (fenced nil) (committed nil))
+                 (:instance fn-ptx-ceil-nonneg (a (+ (fn-ptx-spans-len (fn-ptx-spans m)) (- (fn-rtc-get 0 (fn-ptx-hs m))))))
+                 (:instance fn-ptx-okp-elim))
+           :do-not-induct t)))
+(defthm fn-ptx-rd-ceil
+  (implies (and (natp l) (natp p) (natp w) (<= 1024 w) (< (+ p w 3) l))
+           (<= (+ 1 (ceiling (nfix (+ l (- (nfix (+ p w))))) 1024)) (ceiling (nfix (+ l (- p))) 1024)))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-ptx-ceil-step (a (- l (+ p w))) (b (- l p)))
+                        (:instance fn-ptx-nfix-sub (a l) (b (+ p w))) (:instance fn-ptx-nfix-sub (a l) (b p)))
+           :in-theory (disable fn-ptx-ceil-step))))
+(defthm fn-ptx-rd-cont-lt
+  (implies (and (equal (fn-ptx-ph m) :reading)
+                (< (+ (fn-ptx-cur-hoff (fn-ptx-cur m)) (fn-ptx-read-w q) 3) (min (fn-ptx-cur-len (fn-ptx-cur m)) (fn-ptx-hmax m))))
+           (< (fn-ptx-measure (fn-ptx-rd-cont m q h1 g1 h3 g3 off off2 a)) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (union-theories (theory 'fn-ptx-p3u)
+                    '(fn-ptx-rd-cont fn-ptx-measure-reading fn-ptx-rem-reading fn-ptx-cur-of-list fn-ptx-hmax fn-ptx-fmax fn-ptx-nfix-cur
+                      fn-ptx-min-natp fn-ptx-read-w-natp fn-ptx-read-w-ge (:type-prescription fn-ptx-cur-len) (:type-prescription fn-ptx-cur-hoff)
+                      (:type-prescription nfix) fn-ptx-ceil-nfix-ge0 fn-ptx-ceil-plus10-ge0 (:type-prescription nfix)))
+           :use ((:instance fn-ptx-rd-ceil (l (min (fn-ptx-cur-len (fn-ptx-cur m)) (fn-ptx-hmax m))) (p (fn-ptx-cur-hoff (fn-ptx-cur m))) (w (fn-ptx-read-w q)))
+                 (:instance fn-ptx-min-natp (a (fn-ptx-cur-len (fn-ptx-cur m))) (b (fn-ptx-hmax m))))
+           :do-not-induct t)))
+(defthm fn-ptx-rd-end0-lt
+  (implies (equal (fn-ptx-ph m) :reading)
+           (< (fn-ptx-measure (fn-ptx-rd-end0 m id inc st)) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (union-theories (theory 'fn-ptx-p3u)
+                    '(fn-ptx-rd-end0 fn-ptx-rem-reading fn-ptx-hmax fn-ptx-fmax fn-ptx-ceil-nfix-ge0 fn-ptx-ceil-plus10-ge0 (:type-prescription nfix) (:type-prescription nfix) (:type-prescription fn-ptx-cur-len) (:type-prescription fn-ptx-cur-hoff) fn-ptx-min-natp))
+           :use ((:instance fn-ptx-end-measure (m (fn-ptx-chg m :committed nil)) (o :refused) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m))
+                            (fenced nil) (committed nil)))
+           :do-not-induct t)))
+(defthm fn-ptx-rd-endr-lt
+  (implies (equal (fn-ptx-ph m) :reading)
+           (< (fn-ptx-measure (fn-ptx-rd-endr m id inc st)) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (union-theories (theory 'fn-ptx-p3u)
+                    '(fn-ptx-rd-endr fn-ptx-rem-reading fn-ptx-hmax fn-ptx-fmax fn-ptx-ceil-nfix-ge0 fn-ptx-ceil-plus10-ge0 (:type-prescription nfix) (:type-prescription nfix) (:type-prescription fn-ptx-cur-len) (:type-prescription fn-ptx-cur-hoff) fn-ptx-min-natp))
+           :use ((:instance fn-ptx-end-measure (m (fn-ptx-chg (fn-ptx-chg m :committed nil) :b1 nil :b3 nil)) (o :refused) (kd (fn-ptx-kd m)) (ext (fn-ptx-ext m))
+                            (fenced nil) (committed nil)))
+           :do-not-induct t)))
+(defthm fn-ptx-plus0 (implies (natp x) (equal (+ x 0) x)))
+(defthm fn-ptx-rd-hashing-nmsg
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :reading) (natp off2) (<= 9 off2)
+                (<= ioff (fn-ptx-cur-len (fn-ptx-cur m)))
+                (<= (+ 32 (+ (len pre) (fn-ptx-cur-len (fn-ptx-cur m)) (len ins) (- (+ off2 (len st)) (- *fn-ptx-sufhead-max* (min (len sh) *fn-ptx-sufhead-max*))))) (fn-ptx-fmax m)))
+           (<= (fn-ptx-nmsg (fn-ptx-rd-hashing m h1 g1 h3 g3 off off2 e ioff pre ins sh st)) (+ 10 (fn-ptx-fmax m))))
+  :hints (("Goal" :in-theory (union-theories (theory 'fn-ptx-p3u)
+                    '(fn-ptx-rd-hashing fn-ptx-nmsg-of-mk fn-ptx-spans-len-g fn-ptx-buf-of-list fn-ptx-nfix-buf fn-ptx-cur-of-list fn-ptx-nfix-cur
+                      fn-ptx-frame-header-len fn-ptx-len-append fn-ptx-fmax natp min (:type-prescription len) (:type-prescription nfix)
+                      (:type-prescription fn-ptx-cur-len) (:executable-counterpart fn-ptx-frame-header) fn-ptx-nfix-natp-rw))
+           :use ((:instance fn-ptx-okp-elim))
+           :do-not-induct t)))
+(defthm fn-ptx-measure-rd-hashing
+  (implies (equal (fn-ptx-ph m) :reading)
+           (equal (fn-ptx-measure (fn-ptx-rd-hashing m h1 g1 h3 g3 off off2 e ioff pre ins sh st))
+                  (+ (* (len (fn-ptx-q m)) (fn-ptx-post-bound-geo (fn-ptx-geo m)))
+                     (+ 10 (ceiling (fn-ptx-nmsg (fn-ptx-rd-hashing m h1 g1 h3 g3 off off2 e ioff pre ins sh st)) 1024)))))
+  :hints (("Goal" :in-theory (union-theories (theory 'fn-ptx-p3u)
+                    '(fn-ptx-rd-hashing fn-ptx-measure-hashing fn-ptx-nmsg-of-mk fn-ptx-get-list2 (:executable-counterpart fn-rtc-get)
+                      fn-ptx-nfix-natp-rw fn-ptx-spans-len-natp fn-ptx-plus0))
+           :do-not-induct t)))
+(defthm fn-ptx-rd-hashing-lt
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :reading) (natp off2) (<= 9 off2)
+                (<= ioff (fn-ptx-cur-len (fn-ptx-cur m)))
+                (<= (+ 32 (+ (len pre) (fn-ptx-cur-len (fn-ptx-cur m)) (len ins) (- (+ off2 (len st)) (- *fn-ptx-sufhead-max* (min (len sh) *fn-ptx-sufhead-max*))))) (fn-ptx-fmax m)))
+           (< (fn-ptx-measure (fn-ptx-rd-hashing m h1 g1 h3 g3 off off2 e ioff pre ins sh st)) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (union-theories (theory 'fn-ptx-p3u)
+                    '(fn-ptx-rem-reading fn-ptx-hmax fn-ptx-fmax fn-ptx-ceil-nfix-ge0 fn-ptx-ceil-plus10-ge0 (:type-prescription nfix) (:type-prescription nfix) (:type-prescription fn-ptx-cur-len)
+                      (:type-prescription fn-ptx-cur-hoff) fn-ptx-min-natp fn-ptx-spans-len-natp fn-ptx-ceil-natp fn-ptx-nmsg-natp))
+           :use ((:instance fn-ptx-measure-rd-hashing) (:instance fn-ptx-rd-hashing-nmsg)
+                 (:instance fn-ptx-ceil-mono (a (fn-ptx-nmsg (fn-ptx-rd-hashing m h1 g1 h3 g3 off off2 e ioff pre ins sh st))) (b (+ 10 (fn-ptx-fmax m)))))
+           :do-not-induct t)))
+(defthm fn-ptx-read-b3-ge9
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :reading) (consp (fn-ptx-b1 m)))
+           (<= 9 (fn-ptx-buf-len (fn-ptx-b3 m))))
+  :rule-classes :linear
+  :hints (("Goal" :use ((:instance fn-ptx-okp-elim)) :in-theory (union-theories (theory 'minimal-theory) (theory 'fn-ptx-mt7)))))
+(defthm fn-ptx-measure-if
+  (equal (fn-ptx-measure (if a b c)) (if a (fn-ptx-measure b) (fn-ptx-measure c))))
+(defthm fn-ptx-lt-if
+  (equal (< (if a x y) z) (if a (< x z) (< y z))))
+(defthm fn-ptx-read-progress
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :reading))
+           (< (fn-ptx-measure (mv-nth 0 (fn-ptx-read m q id inc stx))) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-read-1 fn-ptx-measure-if fn-ptx-lt-if fn-ptx-rd-cont-lt fn-ptx-rd-end0-lt fn-ptx-rd-endr-lt fn-ptx-rd-hashing-lt
+                      fn-ptx-read-b3-ge9 (:type-prescription len) (:type-prescription fn-ptx-buf-len) natp
+                      (:type-prescription fn-ptx-cur-len) (:type-prescription fn-ptx-cur-hoff)))
+           :cases ((consp (fn-ptx-b1 m)))
+           :do-not-induct t)))
+(defthm fn-ptx-reading-progress
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :reading) (equal (fn-rtc-get 0 ev) :timer))
+           (< (fn-ptx-measure (mv-nth 0 (fn-ptx-step1 m ev st q))) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (theory 'fn-ptx-p3u) :use ((:instance fn-ptx-read-progress (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev)) (stx st))) :do-not-induct t)))
+(defthm fn-ptx-hashing-progress
+  (implies (and (fn-ptx-okp m) (equal (fn-ptx-ph m) :hashing) (equal (fn-rtc-get 0 ev) :timer))
+           (< (fn-ptx-measure (mv-nth 0 (fn-ptx-step1 m ev st q))) (fn-ptx-measure m)))
+  :hints (("Goal" :in-theory (theory 'fn-ptx-p3u) :use ((:instance fn-ptx-hash-progress (id (fn-rtc-ev-id ev)) (inc (fn-rtc-ev-inc ev)))) :do-not-induct t)))
+(defthm fn-ptx-step-makes-progress (fn-ptx-p3 m ev st q)
+  :hints (("Goal" :in-theory (union-theories (theory 'minimal-theory)
+                    '(fn-ptx-p3 fn-ptx-step-0 fn-ptx-expected (:executable-counterpart equal) (:executable-counterpart member-equal) member-equal
+                      (:executable-counterpart eq)))
+           :cases ((equal (fn-ptx-ph m) :reading) (equal (fn-ptx-ph m) :hashing) (equal (fn-ptx-ph m) :extending) (equal (fn-ptx-ph m) :extsyncing)
+                   (equal (fn-ptx-ph m) :payload-writing) (equal (fn-ptx-ph m) :log-writing) (equal (fn-ptx-ph m) :committing))
+           :use (fn-ptx-reading-progress fn-ptx-hashing-progress fn-ptx-extending-progress fn-ptx-extsyncing-progress fn-ptx-payload-progress fn-ptx-logwrite-progress fn-ptx-committing-progress)
+           :do-not-induct t)))
