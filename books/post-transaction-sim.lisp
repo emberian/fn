@@ -72,7 +72,8 @@
 
 ; -----------------------------------------------------------------------------
 ; The relation.  Phases map; at rest the kernel projection is the driver kernel's, which has no
-; batch, nothing in flight and no fault (fn-ptd-begin's take and append need all three), and while
+; batch, nothing in flight and no fault (fn-ptd-begin's take and append need all three) and has
+; acknowledged every committed record (the commit's acknowledgement counts one), and while
 ; hashing the digest's state is the message's; in flight the projection is the kernel's before the
 ; take (one txid less), the extents agree, the driver's record is the machine's, and the message
 ; with the padding is the driver's entry.
@@ -91,11 +92,16 @@
                         (equal (fn-ptd-ext ptd) (fn-ptx-ext m))
                         (not (consp (fn-lgk-batch ks))) (not (consp (fn-lgk-inflight ks)))
                         (not (equal (fn-lgk-phase ks) :fault))
+                        (equal (fn-lgk-acked ks) (len (fn-lgk-committed ks)))
+                        (true-listp (fn-lgk-committed ks))
                         (implies (equal ph :hashing) (fn-ptx-hash-invp m id inc fn-rtc-st))))
            (:fenced t)
            (otherwise
             (let ((w (fn-ptx-message m id inc fn-rtc-st)))
               (and (equal (fn-ptx-kd m) (fn-ptx-kd-before-take ks))
+                   (equal (fn-lgk-acked ks) (len (fn-lgk-committed ks)))
+                   (true-listp (fn-lgk-committed ks))
+                   (<= 1 (fn-lgk-next-txid ks))
                    (equal (fn-ptd-ext ptd) (fn-ptx-ext m))
                    (equal (fn-ptd-nxt ptd) (fn-ptx-nxt m))
                    (equal (fn-ptd-rec ptd) (fn-ptx-record m id inc fn-rtc-st))
@@ -369,3 +375,84 @@
   :hints (("Goal" :do-not-induct t
                   :use ((:instance fn-ptx-frame-of-message))
                   :in-theory (e/d (fn-lg-entry) (fn-blake3 fn-lg-frame fn-ptx-frame-of-message fn-ptx-frame-header fn-lg-pad-len fn-bs-zeros)))))
+(defthm fn-ptx-take-is-prepare
+  (implies (not (equal (fn-lgk-phase ks) :fault))
+           (equal (fn-lgk-host-step ks (fn-ptd-take-op ks r unit)) (fn-lgk-prepare ks r)))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-host-step fn-olr-take fn-ptd-take-op) (fn-lgk-prepare)))))
+(defthm fn-ptx-prepare-fields
+  (implies (not (equal (fn-lgk-phase ks) :fault))
+           (let ((ks1 (fn-lgk-prepare ks r)))
+             (and (equal (fn-lgk-last ks1) (fn-lgk-last ks))
+                  (equal (fn-lgk-frontier ks1) (fn-lgk-frontier ks))
+                  (equal (fn-lgk-committed ks1) (fn-lgk-committed ks))
+                  (equal (fn-lgk-acked ks1) (fn-lgk-acked ks))
+                  (equal (fn-lgk-next-txid ks1) (+ 1 (fn-lgk-next-txid ks)))
+                  (equal (fn-lgk-batch ks1) (append (true-list-fix (fn-lgk-batch ks)) (list r)))
+                  (equal (fn-lgk-inflight ks1) (fn-lgk-inflight ks))
+                  (equal (fn-lgk-phase ks1) (fn-lgk-phase ks)))))
+  :hints (("Goal" :in-theory (e/d (fn-lgk-prepare) (fn-lgk-make fn-lgk-last fn-lgk-frontier fn-lgk-committed fn-lgk-acked
+                                                    fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-phase)))))
+(encapsulate ()
+  (local (include-book "arithmetic-5/top" :dir :system))
+  (defthm fn-ptx-extension-target-bounds
+    (implies (and (fn-olr-extension-needed-p front e ext unit) (posp unit) (natp front) (natp e) (natp ext))
+             (and (< ext (fn-olr-extension-target front e ext unit))
+                  (<= (+ front e) (fn-olr-extension-target front e ext unit))
+                  (natp (fn-olr-extension-target front e ext unit))))
+    :rule-classes nil
+    :hints (("Goal" :in-theory (enable fn-olr-extension-needed-p fn-olr-extension-target)))))
+(defthm fn-ptx-no-extension-fits
+  (implies (and (not (fn-olr-extension-needed-p front e ext unit)) (natp front) (natp e) (natp ext))
+           (<= (+ front e) ext))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-olr-extension-needed-p))))
+(defthm fn-ptx-ptd-begin-takes
+  (implies (and (equal (fn-ptd-ph st) :ready)
+                (not (consp (fn-lgk-batch (fn-ptd-ks st))))
+                (not (consp (fn-lgk-inflight (fn-ptd-ks st))))
+                (not (equal (fn-lgk-phase (fn-ptd-ks st)) :fault))
+                (fn-lg-recordp r max) (posp unit))
+           (let* ((ks (fn-ptd-ks st)) (ext (fn-ptd-ext st))
+                  (ks1 (fn-lgk-prepare ks r))
+                  (e (len (fn-lg-log (list r) (fn-lgk-last ks) unit)))
+                  (tk (fn-ptd-take-op ks r unit)))
+             (equal (fn-ptd-begin st r ino unit max)
+                    (if (fn-olr-extension-needed-p (fn-lgk-frontier ks) e ext unit)
+                        (let ((nxt (fn-olr-extension-target (fn-lgk-frontier ks) e ext unit)))
+                          (mv (fn-ptd-mk :extending ks1 r ext nxt)
+                              (list (list :pwrite ino ext (fn-bs-zeros (- nxt ext)))) nil (list tk)))
+                      (mv (fn-ptd-mk :writing ks1 r ext ext)
+                          (list (fn-ptd-record-write ks1 ino unit)) nil (list tk))))))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-ptx-extension-target-bounds (front (fn-lgk-frontier (fn-ptd-ks st))) (e (len (fn-lg-log (list r) (fn-lgk-last (fn-ptd-ks st)) unit))) (ext (fn-ptd-ext st)))
+                        (:instance fn-ptx-no-extension-fits (front (fn-lgk-frontier (fn-ptd-ks st))) (e (len (fn-lg-log (list r) (fn-lgk-last (fn-ptd-ks st)) unit))) (ext (fn-ptd-ext st))))
+                  :in-theory (e/d (fn-ptd-begin fn-lgk-sealed-extent fn-lgk-append-octets fn-lg-append-admitsp fn-lgk-fitsp
+                                   fn-lgu-take-verdict)
+                                  (fn-olr-extension-needed-p fn-olr-extension-target fn-lg-log fn-ptx-log-of-one fn-lg-entry fn-lg-pad-len fn-ptd-record-write fn-bs-zeros fn-lg-recordp fn-lgk-prepare fn-ptd-take-op
+                                   fn-lgk-host-step fn-lgk-make fn-lgk-last fn-lgk-frontier fn-lgk-committed fn-lgk-acked
+                                   fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-phase fn-ptd-ks fn-ptd-ph fn-ptd-ext)))))
+(defthm fn-ptx-last-trailer-of-one
+  (equal (fn-lg-last-trailer (list r) last) (fn-lg-trailer (fn-lg-frame last (list r))))
+  :hints (("Goal" :expand ((fn-lg-last-trailer (list r) last))
+                  :in-theory (e/d (fn-lg-chunk-len fn-lg-fit-count fn-bs-take) (fn-lg-trailer fn-lg-frame)))))
+(defthm fn-ptx-trailer-of-message-frame
+  (implies (and (true-listp w) (<= 42 (len w)) (true-listp last) (equal (len last) 32)
+                (equal (take 42 w) (append (fn-ptx-frame-header (- (len w) 42)) last)))
+           (equal (fn-lg-last-trailer (list (nthcdr 42 w)) last) (fn-blake3 w)))
+  :hints (("Goal" :do-not-induct t
+                  :use ((:instance fn-ptx-frame-of-message))
+                  :in-theory (e/d (fn-lg-trailer) (fn-blake3 fn-lg-frame fn-ptx-frame-of-message fn-ptx-frame-header)))))
+(defthm fn-ptx-commit-is-the-kernel-commit
+  (implies (and (equal (fn-lgk-inflight ks) (list r))
+                (true-listp (fn-lgk-committed ks))
+                (equal (fn-lgk-acked ks) (len (fn-lgk-committed ks)))
+                (<= 1 (fn-lgk-next-txid ks))
+                (equal trailer (fn-lg-last-trailer (list r) (fn-lgk-last ks)))
+                (equal elen (len (fn-lg-log (list r) (fn-lgk-last ks) unit))))
+           (equal (fn-ptx-kd-commit (fn-ptx-kd-before-take ks) trailer elen)
+                  (fn-ptx-kd-of (fn-lgk-finish-one (fn-lgk-fence ks unit)))))
+  :hints (("Goal" :do-not-induct t
+                  :in-theory (e/d (fn-lgk-fence fn-lgk-finish-one fn-ptx-kd-commit fn-ptx-kd-before-take fn-ptx-kd-of
+                                   fn-ptx-kd-mk fn-ptx-kd-count fn-ptx-kd-frontier fn-ptx-kd-txid fn-ptx-kd-acked)
+                                  (fn-lg-log fn-ptx-log-of-one fn-lg-last-trailer fn-lgk-make fn-lgk-last fn-lgk-frontier
+                                   fn-lgk-committed fn-lgk-acked fn-lgk-next-txid fn-lgk-batch fn-lgk-inflight fn-lgk-phase)))))
