@@ -21,6 +21,14 @@
 
 (defconst *rcw-rows* (fn-sf-records (fn-sn-files *rpt-s*)))
 (defconst *rcw-configs* (list *xt-star*))
+; *rcw-configs* is the expiring policy VALUE (*xt-star*, eleven fields), on which
+; the configuration fold faults at the first chunk.  The host passes the store's
+; configuration-record history (fn-sn-config-history, host/owner-host.lisp), so
+; the stobj keystones' witnesses run on a well-formed history of records: the
+; default record, under which both passes pause configured at every chunk
+; boundary and carry the tries (asserted where the passes are defined).
+(defconst *rcw-history* (list *fn-cfg-default-record*))
+(assert-event (fn-cfg-recordp (car *rcw-history*)))
 (assert-event (with-guard-checking :none (<= 3 (len *rcw-rows*))))
 
 ; The rewritten history the pass 2/3 walks produce (the offline rewrite of
@@ -386,6 +394,18 @@
                           (equal (fn-rcwacc-finish fn-rcwacc) (fn-sco-capture configs all))))
             fn-arena fn-rcwacc)))))
 
+;; On *rcw-history* the first chunk of *rcw-c2* seals two payloads and the
+;; canonical pass leaves a configured pause carrying the tries: the next chunk
+;; resumes carried (the reachable shape of the stobj witness below).
+(assert-event
+ (with-guard-checking :none
+   (let ((a (in-arena-fn-rcw-canon-acc-steps *rpt-payloads* (fn-rcw-acc-init *rcw-history*)
+                                              *rcw-history* (list (car *rcw-c2*)) 0)))
+     (and (equal (cadr a) 2)
+          (fn-rcw-acc-ix (car a))
+          (fn-sco-pausedp (fn-sco-at 2 (car a)))
+          (fn-cnode-statep (fn-sco-at 1 (fn-sco-at 2 (car a))))))))
+
 (defteeth fn-rcwacc-canon-steps-is-the-checkpoint-capture
   :claim (()
     (let ((e (fn-rcwacc-canon-steps configs chunks 0 fn-arena (fn-rcwacc-init configs fn-rcwacc)))
@@ -394,7 +414,7 @@
            (implies (not (eq all :bad))
                     (equal (fn-rcwacc-finish (mv-nth 1 e)) (fn-sco-capture configs all))))))
   :subject fn-rcwacc-canon-steps
-  :witness ((configs *rcw-configs*) (chunks *rcw-c2*))
+  :witness ((configs *rcw-history*) (chunks *rcw-c2*))
   :stobjs ((fn-arena (fn-arn-seal-many *rpt-payloads* fn-arena))
            (fn-rcwacc fn-rcwacc))
   :stobj-checks
@@ -418,11 +438,11 @@
                                                        (fn-scka-canon-rows (car chunks) fn-arena 0
                                                                            (fn-stxk-initial-context 0))
                                                        (fn-stxk-initial-context 0))))))))
-               ((configs *rcw-configs*) (chunks (list (take 2 *rcw-new*) (nthcdr 2 *rcw-new*))))
+               ((configs *rcw-history*) (chunks (list (take 2 *rcw-new*) (nthcdr 2 *rcw-new*))))
                :fault "the pass-2 loop restarts the second chunk at handle zero"
                :logical "the steps' guard reaches the carried invariant's defun-sk"))
   :hints (("Goal" :use ((:instance fn-rcwacc-canon-steps-is-the-checkpoint-capture
-                                   (configs *rcw-configs*)
+                                   (configs *rcw-history*)
                                    (chunks (list (take 2 *rcw-new*) (nthcdr 2 *rcw-new*)))
                                    (fn-arena (fn-arn-seal-many *rpt-payloads* (create-fn-arena)))
                                    (fn-rcwacc (create-fn-rcwacc))))

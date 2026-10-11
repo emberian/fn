@@ -294,6 +294,18 @@
            :in-theory (e/d (fn-rcw-predict-acc-step)
                            (fn-orcs-predict-rows-at fn-rcw-acc-step fn-orcs-has-bad)))))
 
+;; On *rcw-history* the first chunk of *rcw-c2* predicts sealed payloads past
+;; *rcs-h0* and the prediction pass leaves a configured pause carrying the
+;; tries (the reachable shape of the stobj witness below).
+(assert-event
+ (with-guard-checking :none
+   (let ((a (fn-rcw-predict-acc-steps (fn-rcw-acc-init *rcw-history*) *rcw-history*
+                                      (list (car *rcw-c2*)) *rcs-h0* nil)))
+     (and (< *rcs-h0* (cadr a))
+          (fn-rcw-acc-ix (car a))
+          (fn-sco-pausedp (fn-sco-at 2 (car a)))
+          (fn-cnode-statep (fn-sco-at 1 (fn-sco-at 2 (car a))))))))
+
 (defteeth fn-rcwacc-predict-steps-is-predict
   :claim (((start-handle (natp h0)))
           (let ((e (fn-rcwacc-predict-steps configs chunks h0 nil
@@ -308,7 +320,7 @@
                                       (cadr (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0)))
                                (equal (car (mv-nth 0 e)) (+ h0 (len (cadr (mv-nth 0 e))))))))))
   :subject fn-rcwacc-predict-steps
-  :witness ((configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*))
+  :witness ((configs *rcw-history*) (chunks *rcw-c2*) (h0 *rcs-h0*))
   :stobjs ((fn-rcwacc fn-rcwacc))
   :stobj-checks
   (((let ((e (fn-rcwacc-predict-steps configs chunks h0 nil
@@ -336,19 +348,19 @@
                :fault "the final handle left at the start handle"
                :logical "the steps' guard reaches the carried invariant's defun-sk"))
   :hints (("Goal" :use ((:instance fn-rcwacc-predict-steps-is-the-value-fold
-                                   (configs *rcw-configs*) (chunks *rcw-c2*) (h0 -5)
+                                   (configs *rcw-history*) (chunks *rcw-c2*) (h0 -5)
                                    (fn-rcwacc (create-fn-rcwacc)))
                         (:instance fn-rcwacc-predict-steps-is-the-value-fold
-                                   (configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*)
+                                   (configs *rcw-history*) (chunks *rcw-c2*) (h0 *rcs-h0*)
                                    (fn-rcwacc (create-fn-rcwacc)))
                         (:instance rcs-t-steps-handle
-                                   (acc (fn-rcw-acc-init *rcw-configs*)) (configs *rcw-configs*)
+                                   (acc (fn-rcw-acc-init *rcw-history*)) (configs *rcw-history*)
                                    (chunks *rcw-c2*) (h -5) (payloads nil))
                         (:instance rcs-t-steps-handle
-                                   (acc (fn-rcw-acc-init *rcw-configs*)) (configs *rcw-configs*)
+                                   (acc (fn-rcw-acc-init *rcw-history*)) (configs *rcw-history*)
                                    (chunks *rcw-c2*) (h *rcs-h0*) (payloads nil))
                         (:instance fn-rcwacc-predict-steps-is-predict
-                                   (configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*)
+                                   (configs *rcw-history*) (chunks *rcw-c2*) (h0 *rcs-h0*)
                                    (fn-rcwacc (create-fn-rcwacc))))
            :in-theory (disable (:executable-counterpart fn-rcwacc-predict-steps)
                                (:executable-counterpart fn-rcw-predict-acc-steps)
