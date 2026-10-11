@@ -146,6 +146,15 @@ Presence is distinct from a present NIL value; no classes are inferred here."
   (format *error-output* "HARD ACL2 ERROR in ~a:  ~a~%" ctx str)
   (xl-halt))
 (defun illegal (ctx str alist) (hard-error ctx str alist))
+;;; The logic path of a compliant *1*F is not extracted (forms-export.lisp fe-star1-trim): it runs only when
+;;; guard-checking-on is NIL or :none, or a stobj argument is not live, and the core is T throughout with
+;;; every stobj live.  Should either fail, F is named here and the entry halts like a guard violation.
+(defun xl-star1-logic-path-dropped (fn)
+  (hard-error fn (format nil "the logic path of its *1* function is not in this core (guard-checking-on ~s); the extractor dropped it for a compliant function"
+                         (if (f-boundp-global 'guard-checking-on *the-live-state*)
+                             (f-get-global 'guard-checking-on *the-live-state*)
+                           :unbound))
+              nil))
 (defun throw-nonexec-error (fn actuals)
   (declare (ignore actuals))
   (hard-error fn "a non-executable function was called" nil))
