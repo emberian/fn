@@ -19018,15 +19018,6 @@
           "name": "fn-lgo-head-genesis-is-the-open-lineage-start"
         }
       ]
-    },
-    {
-      "id": "PRF-10007",
-      "events": [
-        {
-          "kind": "theorem",
-          "name": "fn-ptd-posted-records-are-recovered-at-every-later-cut"
-        }
-      ]
     }
   ]
 }
