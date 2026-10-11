@@ -18014,7 +18014,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lgw-entry-len-bounded-step"
+          "name": "fn-lgw-entry-len-bounded-step-buf-count"
         },
         {
           "kind": "theorem",

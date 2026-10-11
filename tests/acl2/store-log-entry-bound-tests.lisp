@@ -17,6 +17,7 @@
 (include-book "store-log-stream-tests")
 (include-book "../../books/defkeystone")
 (include-book "../../books/store-log-entry-bound")
+(include-book "../../books/store-log-buffer")
 
 (assert-event
  (and (eq (symbol-class 'fn-lgw-entry-len-bounded (w state)) :common-lisp-compliant)
@@ -184,3 +185,26 @@
                (:conclusion (implies (and (not (fn-lgdm-entry-len-bounded h ps extent max)) (equal (nth 5 e) (nth 5 h))) (equal (fn-lgdm-step h e ps unit max) (fn-lgdm-step h nil ps unit max))))
                ((h *sleb-h-ok*) (ps *sleb-ps*) (extent 20) (max *sleb-max*) (e *sleb-e-ok*) (unit *sleb-unit*))
                :fault "a claim that drops the length hypothesis: the entry is not the one the length named")))
+
+; fn-lgw-entry-len-bounded-step-buf-count (books/store-log-buffer.lisp): the
+; same claim over the step the host runs.  Its witness is the oversized entry
+; above as a ground theorem (the step's records come from the attached
+; decode); the mutation is the step that tells the oversized entry from none.
+(defthm sleb-lgw-step-buf-count-witness
+  (implies (and (not (fn-lgw-entry-len-bounded *sleb-h* *sleb-st* 8192 *sleb-max*)) (equal (len *sleb-e*) (fn-lgw-entry-len *sleb-h* *sleb-st* 8192)) (equal (nth 5 *sleb-e*) (nth 5 *sleb-h*))) (equal (fn-lgw-step-buf-count *sleb-st* *sleb-unit* *sleb-max* 8192 *sleb-e*) (fn-lgw-step-buf-count *sleb-st* *sleb-unit* *sleb-max* 8192 nil)))
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use ((:instance fn-lgw-entry-len-bounded-step-buf-count (h *sleb-h*) (st *sleb-st*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))))))
+(defthm sleb-lgw-step-buf-count-mutant-conclusion
+  (and (implies (and (not (fn-lgw-entry-len-bounded *sleb-h* *sleb-st* 8192 *sleb-max*)) (equal (len *sleb-e*) (fn-lgw-entry-len *sleb-h* *sleb-st* 8192)) (equal (nth 5 *sleb-e*) (nth 5 *sleb-h*))) (equal (fn-lgw-step-buf-count *sleb-st* *sleb-unit* *sleb-max* 8192 *sleb-e*) (fn-lgw-step-buf-count *sleb-st* *sleb-unit* *sleb-max* 8192 nil))) (not (implies (and (not (fn-lgw-entry-len-bounded *sleb-h* *sleb-st* 8192 *sleb-max*)) (equal (len *sleb-e*) (fn-lgw-entry-len *sleb-h* *sleb-st* 8192)) (equal (nth 5 *sleb-e*) (nth 5 *sleb-h*))) (not (equal (fn-lgw-step-buf-count *sleb-st* *sleb-unit* *sleb-max* 8192 *sleb-e*) (fn-lgw-step-buf-count *sleb-st* *sleb-unit* *sleb-max* 8192 nil))))))
+  :hints (("Goal"
+           :use ((:instance fn-lgw-entry-len-bounded-step-buf-count (h *sleb-h*) (st *sleb-st*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))))))
+(defteeth fn-lgw-entry-len-bounded-step-buf-count
+  :claim (() (implies (and (not (fn-lgw-entry-len-bounded h st extent max)) (equal (len e) (fn-lgw-entry-len h st extent)) (equal (nth 5 e) (nth 5 h))) (equal (fn-lgw-step-buf-count st unit max extent e) (fn-lgw-step-buf-count st unit max extent nil))))
+  :subject fn-lgw-step-buf-count
+  :witness-lemma sleb-lgw-step-buf-count-witness
+  :witness ((h *sleb-h*) (st *sleb-st*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))
+  :mutations ((step-buf-told-apart
+               (:conclusion (implies (and (not (fn-lgw-entry-len-bounded h st extent max)) (equal (len e) (fn-lgw-entry-len h st extent)) (equal (nth 5 e) (nth 5 h))) (not (equal (fn-lgw-step-buf-count st unit max extent e) (fn-lgw-step-buf-count st unit max extent nil)))))
+               ((h *sleb-h*) (st *sleb-st*) (extent 8192) (max *sleb-max*) (e *sleb-e*) (unit *sleb-unit*))
+               :fault "a hosted step that tells an oversized entry from the empty buffer the host gives it"
+               :lemma sleb-lgw-step-buf-count-mutant-conclusion)))
