@@ -155,3 +155,51 @@
                                    fn-rtc-req-write fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes)
                                   (fn-rtc-splice fn-rtc-with-buffer fn-rtc-buf-cap fn-rtc-nbufs fn-rtc-config
                                    fn-rtc-buffer fn-rtc-uses)))))
+
+; HL1b: under the invariant, a buffer an outstanding :out use names is (:leased id inc :out), never a workspace and
+; never the target of an :in use, so no splice (nor put, its one-octet case) changes it until the use completes.
+(local (progn
+(defthm fn-rtchs-out-use-owner
+  (implies (and (fn-rtc-use-okp u s)
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-out-kinds*)
+                (fn-rtc-handlep (fn-rtc-u-hd u)))
+           (let ((o (fn-rtc-b-owner (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) s))))
+             (and (eq (fn-rtc-get 0 o) :leased) (eq (fn-rtc-get 3 o) :out))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-rtc-use-okp) (fn-rtc-buffer fn-rtc-b-bytes fn-rtc-nbufs fn-rtc-h-buf
+                                                    fn-rtc-h-off fn-rtc-h-len fn-rtc-config fn-rtc-buf-cap
+                                                    fn-rtc-holders fn-rtc-usep fn-rtc-current-p)))))
+(defthm fn-rtchs-in-use-owner
+  (implies (and (fn-rtc-use-okp u s)
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
+                (fn-rtc-handlep (fn-rtc-u-hd u)))
+           (let ((o (fn-rtc-b-owner (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) s))))
+             (and (eq (fn-rtc-get 0 o) :leased) (eq (fn-rtc-get 3 o) :in))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-rtc-use-okp) (fn-rtc-buffer fn-rtc-b-bytes fn-rtc-nbufs fn-rtc-h-buf
+                                                    fn-rtc-h-off fn-rtc-h-len fn-rtc-config fn-rtc-buf-cap
+                                                    fn-rtc-holders fn-rtc-usep fn-rtc-current-p)))))
+(defthm fn-rtchs-in-use-on-means-in-lease
+  (implies (and (fn-rtc-uses-okp uses2 s) (fn-rtc-in-use-on-p h uses2))
+           (let ((o (fn-rtc-b-owner (fn-rtc-buffer h s))))
+             (and (eq (fn-rtc-get 0 o) :leased) (eq (fn-rtc-get 3 o) :in))))
+  :rule-classes nil
+  :hints (("Goal" :induct (fn-rtc-in-use-on-p h uses2)
+                  :in-theory (disable fn-rtc-use-okp fn-rtc-buffer fn-rtc-b-owner fn-rtc-h-buf fn-rtc-u-hd
+                                      fn-rtc-handlep))
+          ("Subgoal *1/1" :use ((:instance fn-rtchs-in-use-owner (u (car uses2)))))))
+))
+(defthm fn-hl-splice-keeps-out-use-bytes
+  (implies (and (fn-rtc-invp s)
+                (member-equal u (fn-rtc-uses s))
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-out-kinds*)
+                (fn-rtc-handlep (fn-rtc-u-hd u)))
+           (equal (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) (fn-rtc-st$a-splice h2 off data s))
+                  (fn-rtc-buffer (fn-rtc-h-buf (fn-rtc-u-hd u)) s)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-st$a-splice fn-rtc-splice-okp fn-rtc-splice-target-p)
+                                  (fn-rtc-invp fn-rtc-use-okp fn-rtc-in-use-on-p fn-rtc-splice fn-rtc-buffer
+                                   fn-rtc-b-owner fn-rtc-h-buf fn-rtc-u-hd fn-rtc-handlep))
+           :use ((:instance fn-rtchs-use-okp-of-member (uses (fn-rtc-uses s)))
+                 fn-rtchs-invp-uses-okp
+                 fn-rtchs-out-use-owner
+                 (:instance fn-rtchs-in-use-on-means-in-lease (h h2) (uses2 (fn-rtc-uses s)))))))
