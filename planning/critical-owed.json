@@ -5581,11 +5581,6 @@
    "item": "PRF-1348",
    "book": "books/reclaim-chunked-walk.lisp"
   },
-  "fn-rcw-finish-of-step": {
-   "class": "ownership-reclamation",
-   "item": "PRF-1348",
-   "book": "books/reclaim-chunked-walk.lisp"
-  },
   "fn-rdc-reset-is-served-open": {
    "class": "extraction",
    "item": "PRF-1346",
