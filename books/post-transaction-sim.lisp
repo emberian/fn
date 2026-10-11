@@ -501,6 +501,28 @@
                                   (fn-ptx-message fn-ptx-record fn-ptx-hash-invp fn-lg-log fn-bs-zeros
                                    fn-ptx-kd-of fn-ptx-kd-before-take)))))
 
+; Every driver reached from L's open holds its record: in flight before the seal its batch is the
+; one record, at :syncing that record is in flight (fn-ptd-invp, established by fn-ptd-init-invp,
+; kept by fn-ptd-run-keeps-the-invariant).  So the driver state of the in-flight restatement's
+; counterexample (:writing over an empty batch, whose two :ok completions answer :posted and
+; commit nothing) is never reached, and the relation's batch clause excludes nothing reachable.
+(defthm fn-ptx-reached-driver-holds-its-record
+  (let ((st (mv-nth 0 (fn-ptd-run (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino)))
+                                  ins ino (fn-bs-unit bs) max))))
+    (implies (and (fn-lgk-relp bs ks0 ino genesis max) (fn-ptd-open-kernelp ks0))
+             (and (implies (member-equal (fn-ptd-ph st) '(:extending :extsyncing :writing))
+                           (equal (fn-lgk-batch (fn-ptd-ks st)) (list (fn-ptd-rec st))))
+                  (implies (equal (fn-ptd-ph st) :syncing)
+                           (and (equal (fn-lgk-inflight (fn-ptd-ks st)) (list (fn-ptd-rec st)))
+                                (not (consp (fn-lgk-batch (fn-ptd-ks st)))))))))
+  :rule-classes nil
+  :hints (("Goal" :do-not-induct t
+           :in-theory (e/d (fn-ptd-invp) (fn-ptd-run fn-ptd-init fn-lgu-host-final fn-lgk-relp fn-lg-append-admitsp fn-lgk-sealed-extent fn-ptd-open-kernelp fn-ptd-invp-of-same fn-ptd-invp-at-ready fn-ptd-invp-of-in-flight fn-bs-durable-content fn-lgk-committed fn-lgk-acked))
+           :use ((:instance fn-ptd-init-invp)
+                 (:instance fn-ptd-run-keeps-the-invariant
+                            (st (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino))))
+                            (ks ks0) (unit (fn-bs-unit bs)))))))
+
 ; -----------------------------------------------------------------------------
 ; P4-1 (Builder P, Sonnet 6 and 7): the simulation step, by arms of the machine's step.
 ; The lemmas run in the theory the book opens with; each arm is fn-ptx-p4-1 restricted to one
