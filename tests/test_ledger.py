@@ -2079,5 +2079,101 @@ class EvidenceWriterTests(unittest.TestCase):
                 ledger.main(["--repoint", "PRF-007"])
 
 
+class ProofRetirementTests(unittest.TestCase):
+    """A proofs.json row leaves only through --retire, with its reason; a bare
+    drop against the fork point is a --check finding (coordinator, 10-11:
+    L12 dropped PRF-10007 by hand because nothing else could)."""
+
+    def setUp(self):
+        temporary = tempfile.TemporaryDirectory(prefix="ledger-retire-")
+        self.addCleanup(temporary.cleanup)
+        self.dir = Path(temporary.name)
+        self.proofs = self.dir / "proofs.json"
+        self.events = self.dir / "proof-events.json"
+        self.retirements = self.dir / "proof-retirements.json"
+        rows = [{"id": i, "title": "t " + i, "evidence": ["books/x.lisp"], "events": ["thm-" + i]}
+                for i in ("PRF-1", "PRF-2", "PRF-3")]
+        ledger._dump(self.proofs, {"schema_version": 1, "description": "d", "proofs": rows})
+        ledger._dump(self.events, {"schema_version": 1, "description": "d", "targets": [
+            {"id": i, "events": [{"kind": "theorem", "name": "thm-" + i}]} for i in ("PRF-1", "PRF-2", "PRF-3")]})
+
+    def retire(self, ident, why, to, owner="builder-P", ruling="coordinator 10-11"):
+        return ledger.retire(ident, why, to, owner, ruling, None, self.proofs, self.events,
+                             self.retirements)
+
+    def ids(self):
+        return [e["id"] for e in json.loads(self.proofs.read_text())["proofs"]]
+
+    def target_ids(self):
+        return [t["id"] for t in json.loads(self.events.read_text())["targets"]]
+
+    def test_deferred_moves_the_row_and_its_events_and_restore_puts_them_back(self):
+        self.assertEqual(self.retire("PRF-3", "deferred", "P landing 2 (POST host caller)"), [])
+        self.assertEqual((self.ids(), self.target_ids()), (["PRF-1", "PRF-2"], ["PRF-1", "PRF-2"]))
+        row = ledger.load_retirements(self.retirements)["PRF-3"]
+        self.assertEqual((row["why"], row["row"]["title"], row["events"]["id"]),
+                         ("deferred", "t PRF-3", "PRF-3"))
+        self.assertEqual(ledger.restore("PRF-3", self.proofs, self.events, self.retirements), [])
+        self.assertEqual(sorted(self.ids()), ["PRF-1", "PRF-2", "PRF-3"])
+        self.assertIn("PRF-3", self.target_ids())
+        self.assertEqual(ledger.load_retirements(self.retirements), {})
+
+    def test_superseded_needs_another_existing_row(self):
+        before = self.proofs.read_text()
+        for to in ("PRF-3", "PRF-99", "a landing"):
+            self.assertTrue(self.retire("PRF-3", "superseded", to), to)
+        self.assertEqual(self.proofs.read_text(), before, "a refused retirement wrote nothing")
+        self.assertEqual(self.retire("PRF-3", "superseded", "PRF-1"), [])
+
+    def test_a_bare_retirement_is_refused(self):
+        self.assertTrue(self.retire("PRF-3", "deferred", "landing", ruling=" "))
+        self.assertTrue(self.retire("PRF-3", "deferred", "landing", owner=""))
+        self.assertTrue(self.retire("PRF-3", "dropped", "landing"))
+        self.assertTrue(self.retire("PRF-3", "deferred", "PRF-1"))
+        self.assertTrue(self.retire("PRF-9", "deferred", "landing"))
+        self.assertFalse(self.retirements.exists())
+
+    def test_check_refuses_a_bare_drop_and_accepts_a_retired_one(self):
+        base = {"PRF-1", "PRF-2", "PRF-3"}
+        found = ledger.retirement_problems(base, {"PRF-1", "PRF-2"}, {})
+        self.assertEqual(len(found), 1)
+        self.assertIn("PRF-3: a row of planning/proofs.json at the fork point is gone", found[0])
+        self.retire("PRF-3", "deferred", "P landing 2")
+        retired = ledger.load_retirements(self.retirements)
+        self.assertEqual(ledger.retirement_problems(base, {"PRF-1", "PRF-2"}, retired), [])
+
+    def test_check_flags_a_stale_or_broken_retirement_row(self):
+        self.retire("PRF-3", "superseded", "PRF-2")
+        retired = ledger.load_retirements(self.retirements)
+        again = ledger.retirement_problems({"PRF-1", "PRF-2", "PRF-3"}, {"PRF-1", "PRF-2", "PRF-3"}, retired)
+        self.assertTrue(any("is a row of planning/proofs.json again" in p for p in again))
+        orphaned = ledger.retirement_problems({"PRF-1", "PRF-2", "PRF-3"}, {"PRF-1"}, retired)
+        self.assertTrue(any("superseded by 'PRF-2'" in p for p in orphaned), orphaned)
+
+    def test_a_row_added_and_dropped_inside_the_branch_needs_nothing(self):
+        # never on the fork point: the lane that added it may remove it (PRF-10007's case)
+        self.assertEqual(ledger.retirement_problems({"PRF-1"}, {"PRF-1"}, {}), [])
+
+    def test_the_fork_point_is_the_merge_base_not_the_base_tip(self):
+        import subprocess
+        repo = self.dir / "repo"
+        (repo / "planning").mkdir(parents=True)
+        def git(*a):
+            subprocess.run(["git", "-C", str(repo), *a], check=True, capture_output=True)
+        def commit(ids, msg):
+            ledger._dump(repo / "planning/proofs.json", {"proofs": [{"id": i} for i in ids]})
+            git("add", "-A"); git("commit", "-q", "-m", msg)
+        git("init", "-q", "-b", "main"); git("config", "user.email", "t@t"); git("config", "user.name", "t")
+        git("config", "commit.gpgsign", "false")
+        commit(["PRF-1", "PRF-2"], "fork")
+        git("checkout", "-q", "-b", "lane")
+        commit(["PRF-1"], "lane drops PRF-2")
+        git("checkout", "-q", "main")
+        commit(["PRF-1", "PRF-2", "PRF-5"], "dev adds PRF-5")
+        git("checkout", "-q", "lane")
+        self.assertEqual(ledger.fork_point_ids(repo, "main"), {"PRF-1", "PRF-2"})
+        self.assertIsNone(ledger.fork_point_ids(repo, "no-such-ref"))
+
+
 if __name__ == "__main__":
     unittest.main()
