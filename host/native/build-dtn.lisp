@@ -318,6 +318,9 @@
 ;; CONVERGE-2 row 20: mux.lisp's send verdict, as in build.lisp.
 (include-book "books/send-progress")
 (include-book "books/send-window")
+;; owner.lisp's host lease (fnn-owner-lease-*, installed by mux.lisp's
+;; budget install), as in build.lisp.
+(include-book "books/runtime-contract-host-lease")
 ;; MEM-003: fnn-owner-maybe-collect-idle (owner.lisp), as in build.lisp.
 (include-book "books/idle-collection")
 (include-book "books/heap-reservation")
