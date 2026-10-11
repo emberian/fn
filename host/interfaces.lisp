@@ -858,9 +858,6 @@
 (definterface fn-lgo-suffix-settled
   :class :common-lisp-compliant)
 
-(definterface fn-adm-row-allowance
-  :class :common-lisp-compliant)
-
 (definterface fn-lgw-header-len
   :class :common-lisp-compliant
   :kinds ((st true-listp)))

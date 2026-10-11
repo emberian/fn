@@ -547,8 +547,9 @@ SUFFIX keeps)."
   "SUFFIX of the read decision (books/heap-command.lisp fn-mo-observed-totals):
 the charged totals of the log's records past the header's S (the fifth of
 OPEN, fnn-checkpoint-header-observation's (:ok TOT T1 BOUND S)), by ACL2's
-open-scan fold (books/store-log-open-scan.lisp fn-lgo-fold, HISTORY at
-ALLOW = fn-adm-row-allowance PROFILE + 3 x octets, Builder M's ruling (b)).
+open-scan fold (books/store-log-open-scan.lisp fn-lgo-fold; HISTORY at the
+record's own ceiling, books/store-log-history-ceiling.lisp
+fn-lgo-history-ceiling, KEYSTONE fn-lgo-history-ceiling-bounds-the-intern).
 ACL2's plan over journal/ (fn-lgo-scan-plan, KEYSTONE
 fn-lgo-scan-plan-scans-every-present-segment): with segment 1 present, the
 chain from the genesis (its trailer, read and checked by fn-store-genesis-open
@@ -592,12 +593,11 @@ one protected history boundary)."
                             (and head (fnn-core 'fn-lgo-head-genesis (fnn-octet-list head) low max)))
                        (fnn-close fd)))))
                (dicts (fnn-lz-dicts))
-               (allow (fnn-core 'fn-adm-row-allowance profile))
                (sink (lambda (record)
                        (declare (ignore record))
                        (unless (eq acc :bad)
                          (destructuring-bind (skip2 acc2)
-                             (fnn-call 'fn-lgo-fold (list *fnn-log-record-stored*) skip acc dicts allow)
+                             (fnn-call 'fn-lgo-fold (list *fnn-log-record-stored*) skip acc dicts)
                            (setq skip skip2 acc acc2))))))
           (when genesis
             (dolist (k scan)
