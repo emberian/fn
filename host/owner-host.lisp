@@ -264,6 +264,7 @@
 (include-book "../books/connection-budget")
 ;; K-ADMIT: the memory gate the prepare applies (memory landing 3+4a).
 (include-book "../books/admission-memory")
+(include-book "../books/heap-command")
 (include-book "../books/cold-read-reservation")
 ; PRF-986 (PKT-639): the TLS handshake admission (fn-owner-handshake-admit/
 ; -done/-leave) and the PROXY header on a trusted path (fn-owner-proxy-*);
@@ -1815,7 +1816,7 @@
 
 (defun fn-owner-memory-configure (img resident-obs trigger pub-trigger profile tlsp live cold
                                       output peer workers cache-limit root window config
-                                      fn-hist state)
+                                      address-obs core nursery fn-hist state)
   (declare (xargs :stobjs (fn-hist state) :mode :program))
   (mv-let (limit cfg state)
     (fn-owner-memory-configure-gate img resident-obs trigger pub-trigger profile tlsp live
@@ -1823,15 +1824,22 @@
                                     config state)
     (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
       (let* ((cap (fn-adm-capacity profile img cfg limit tot))
+             ; The run's launch by the model at C' (books/heap-command.lisp
+             ; fn-mo-run-decide): LIMIT is the configured figure (after the
+             ; pools) and no resident observation remains, so the launch's
+             ; resident limit is LIMIT.  :heap implies (posp cap)
+             ; (fn-mo-run-decide-holds-the-store-at-its-capacity).
+             (d (fn-mo-run-decide profile img cfg limit nil address-obs core nursery tot))
              (state (f-put-global 'fn-owner-memory-run
                                   (update-nth 10 cap (f-get-global 'fn-owner-memory-run state))
                                   state))
              (state (f-put-global 'fn-owner-memory-capacity cap state))
              (state (f-put-global 'fn-owner-memory-capacity-line
                                   (fn-record-string-octets
-                                   (fn-adm-capacity-line profile img cfg limit tot))
+                                   (fn-mo-run-capacity-line
+                                    d (fn-adm-capacity-line profile img cfg limit tot)))
                                   state)))
-        (mv nil (if (posp cap) :hold :refused) fn-hist state)))))
+        (mv nil (if (equal (car d) :heap) :hold :refused) fn-hist state)))))
 
 (definterface fn-owner-memory-configure
   :class ::program)
@@ -1893,13 +1901,17 @@
                                              (fn-arena-count fn-arena)))
                    (gate (fn-owner-memory-gate state)))
               (mv nil
-                  (if (and (equal verdict :admissible)
-                           (not (equal row :bad))
-                           (not (fn-adm-memory-admitp (fn-owner-store-profile state)
-                                                      (first gate) (second gate)
-                                                      (third gate) tot row)))
-                      :memory
-                    verdict)
+                  ; The handle space (fn-adm-handle-room-p at N = 1: the
+                  ; row's handle is the arena's count), then the memory.
+                  (cond ((not (equal verdict :admissible)) verdict)
+                        ((not (fn-adm-handle-room-p (fn-arena-count fn-arena) 1))
+                         :handle-space)
+                        ((and (not (equal row :bad))
+                              (not (fn-adm-memory-admitp (fn-owner-store-profile state)
+                                                         (first gate) (second gate)
+                                                         (third gate) tot row)))
+                         :memory)
+                        (t verdict))
                   fn-hist state))))))))
 
 (definterface fn-owner-identity-publication-verdict
@@ -2289,8 +2301,12 @@
       ; prepare-served): the host makes no served test of its own.
       (let* ((msgid (fn-store-octets->string msgid-octets))
              (existing (fn-store-existing-action msgid payload groups s fn-arena)))
-        (if existing
-            (mv nil existing fn-arena fn-hist state)
+        ; K-BOUND P3 (books/admission-memory.lisp fn-adm-handle-room-p): the
+        ; row's handle is the arena's count and its seal adds one, so a POST
+        ; with no handle left is refused by the handle space's word before a
+        ; handle is predicted (KEYSTONE fn-adm-handle-room-is-u64-room).
+        (if (or existing (not (fn-adm-handle-room-p (fn-arena-count fn-arena) 1)))
+            (mv nil (or existing :handle-space) fn-arena fn-hist state)
           (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
           (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
           (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)
@@ -2506,8 +2522,12 @@
              ; fn-pidx-existing-action-cat-of-live-owner).
              (existing (fn-pidx-existing-action-cat msgid fn-octets groups
                                                     (fn-owner-core state) fn-arena fn-cat)))
-        (if existing
-            (mv nil existing fn-arena fn-hist state)
+        ; K-BOUND P3 (books/admission-memory.lisp fn-adm-handle-room-p): the
+        ; row's handle is the arena's count and its seal adds one, so a POST
+        ; with no handle left is refused by the handle space's word before a
+        ; handle is predicted (KEYSTONE fn-adm-handle-room-is-u64-room).
+        (if (or existing (not (fn-adm-handle-room-p (fn-arena-count fn-arena) 1)))
+            (mv nil (or existing :handle-space) fn-arena fn-hist state)
           (mv-let (bytes fn-hist state) (fn-owner-record-octets fn-hist state)
           (mv-let (debt fn-hist state) (fn-owner-record-debt fn-hist state)
           (mv-let (tot fn-hist state) (fn-owner-record-totals fn-hist state)

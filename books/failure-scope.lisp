@@ -70,6 +70,10 @@
     "fnn-history-image-refusal"
     ;; a Store open ACL2 refused by name, and its profile form.
     "fnn-store-open-refusal" "fnn-store-profile-refusal"
+    ;; host/native/owner.lisp: an identity event's publication verdict
+    ;; refused by name, a subclass of fnn-store-error carrying ACL2's word
+    ;; (host/owner-host.lisp fn-owner-identity-publication-verdict).
+    "fnn-identity-verdict-refusal"
     ;; host/native/owner.lisp: a pending admission verdict (:yield,
     ;; :continue, :demand, :unavailable) is a refusal of that request until
     ;; the retained scheduler's join resolves such an intent (TCB-SHRINK

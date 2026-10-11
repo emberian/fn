@@ -59,6 +59,21 @@
 (definterface fn-native-live-status-host-offline
   :class ::program)
 
+;; The `health' report's index line over the catalog.  fn-cat-index-health
+;; carries ACL2's invariant-risk property (its exec arm writes the stuck count),
+;; which every :program caller inherits: the caller's *1* then interprets its whole
+;; chain with a guard check per call (tools/invariant_risk_check.py).  A
+;; :logic function whose guard is T is exempt from that propagation
+;; (defuns.lisp remove-guard-t), because it cannot be entered ill-guarded; so
+;; the export's guard (a Message-ID key of *fn-mpxt-key-octets* octets) is
+;; tested here, and a key that fails it renders the line's unavailable arm.
+(defun fn-native-index-health-line (key fn-cat)
+  (declare (xargs :stobjs fn-cat :guard t))
+  (fn-pak-index-health-line
+   (if (and (fn-mpxt-keyp key) (equal (len key) *fn-mpxt-key-octets*))
+       (fn-cat-index-health key fn-cat)
+     nil)))
+
 (defun fn-native-live-status-host-answer (request cached obs min log-sink sched fn-arena fn-cat state)
   ; The running owner's page for one FNLS request, under its mutex
   ; (host/native/control.lisp `fnn-control-live-status-answer'): (REPLY
@@ -157,9 +172,8 @@
                                    ;; fn-cat-index-health under the ring's
                                    ;; key (books/post-admission-keyed.lisp
                                    ;; fn-pak-index-health-line).
-                                   (fn-pak-index-health-line
-                                    (fn-cat-index-health (fn-owner-mpx-key state)
-                                                         fn-cat))
+                                   (fn-native-index-health-line
+                                    (fn-owner-mpx-key state) fn-cat)
                                    ;; PRF-996: each live limit's requested,
                                    ;; funded and ceiling values, from the
                                    ;; owner's carry (no history walk;

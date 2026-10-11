@@ -25,6 +25,7 @@ The witnesses:
   open reads the old checkpoint (S=3) or the new one (S=5), byte for byte,
   as the cut's candidate column says, and opens to the same state.
 """
+import stat
 import hashlib
 import os
 import re
@@ -535,8 +536,19 @@ class StateCheckpointTests(StateCheckpointFixture):
         self.assertIsNotNone(match, line)
         observed = [int(x) for x in match.group(1).split(",")]
         header = self.stopped_charged_totals()
-        self.assertEqual(observed, [header[k] for k in ("records", "arena", "hcharge", "memberships",
-                                                        "events", "log", "history", "charge")])
+        # LOG is the header's raised to the largest segment's observed size,
+        # the read's entry scratch (books/heap-command.lisp
+        # fn-mo-tot-log-at-least; memory landing 4b, adapter
+        # MEMORY-OBSERVED-EXTENT-CAP); every other figure is the header's
+        # over the names the host walks (fnn-log-segment-names: every entry of
+        # journal/), each a regular file, the condition the host reads EXTENT on
+        segments = list((self.store / "journal").iterdir())
+        self.assertTrue(all(stat.S_ISREG(p.lstat().st_mode) for p in segments), segments)
+        extent = max(p.lstat().st_size for p in segments)
+        expected = [header[k] for k in ("records", "arena", "hcharge", "memberships",
+                                        "events", "log", "history", "charge")]
+        expected[5] = max(expected[5], extent)
+        self.assertEqual(observed, expected)
         self.assertEqual(observed[0], 3)
         # CHARGE is the store budget's row octets (fn-sbud-row-octets), whose
         # sum the replayed headroom reports as bytes-used

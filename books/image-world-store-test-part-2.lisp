@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-store-test-part-1")
-(include-book "post-prepare-catalog")
 (include-book "post-retain-carried")
 (include-book "identity-retain-carried")
 (include-book "owner-prepare-served")
@@ -77,6 +76,7 @@
 (include-book "public-exposure-reply")
 (include-book "connection-budget")
 (include-book "admission-memory")
+(include-book "heap-command")
 (include-book "cold-read-reservation")
 (include-book "tls-proxy")
 (include-book "owner-open-carried")

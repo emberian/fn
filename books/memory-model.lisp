@@ -533,31 +533,39 @@
   (fn-mm-tot-plus hdr suffix))
 
 ; THE PROFILE'S BOUND: the charged totals of the largest store a profile
-; admits as stated (not proved: below), the size of a store-opening
-; command whose totals are unseen
+; admits, the size of a store-opening command whose totals are unseen
 ; (books/heap-command.lisp decides those by its offline adapter, which
 ; under-bounds this until A's charged-totals header; coordinator ruling
-; 2026-10-09).  T records; H payload octets in the
-; arena and of budget charge; header charges at most 20 heap octets a
-; payload octet (*fn-sbud-header-weight* a header octet and
-; *fn-sbud-msgid-weight* a Message-ID octet, each within the payload:
-; books/store-budget.lisp), so 20 H; T x G memberships; the other records'
-; events within the budget charge, H; and the log and the history image at
-; one frame and one article record's fixed part (its encoding ceiling at no
-; payload and G groups: books/records-shape.lisp
-; fn-record-encoded-octets-ceiling is the payload plus that) a record, with
-; the held payloads and the other records' encodings, which the budget's
-; charge holds within H together (the open's input bound B of
-; books/store-replay-bound.lisp, framed).  STATED, NOT PROVED: that every
-; store the profile admits is within it (K-BOUND) is false over the rows the
-; recognizers admit -- a composite pairing any held row (ARENA past H) and a
-; held row with unboundedly many article numbers (HISTORY 1.5 MB against
-; 415 KB) -- and holds only over rows carrying producer facts no book states
-; yet (repair item MEMORY-K-BOUND-ADMITTED-ROWS, memory landing 4b).
+; 2026-10-09).  T records; H payload octets in the arena and of budget
+; charge; header charges at most 20 heap octets a payload octet
+; (*fn-sbud-header-weight* a header octet and *fn-sbud-msgid-weight* a
+; Message-ID octet, each within the payload: books/store-budget.lisp), so
+; 20 H; T x G memberships; the other records' events within the budget
+; charge, H; the log at T x ALLOWANCE + H (a row's log share is its frame and
+; its encoding at no payload and G groups, its allowance, plus the payload
+; it carries, within its charge); and the history image at T x ALLOWANCE + 3 H:
+; a held row's padded image row is its allowance plus its payload three times,
+; the payload itself and its headers and verified statement once more each
+; (NOV facts, the context delta).  PROVED, conditional on the per-row
+; invariant: books/admission-memory.lisp
+; fn-mm-profile-bound-holds-every-admitted-store, over stores of at most T
+; records and H charge whose every row is within (fn-adm-row-within-p).  STILL
+; OWED: the producer facts that every row the node interns, restores or
+; recontexts is within at the store's admitting profile (the PF-* and PR-*
+; keystones of build/memory/l34/m10/kbound8/statement.lisp).
 (defun fn-mm-profile-record-log (profile)
   (declare (xargs :guard t))
   (+ *fn-ct-log-frame-octets*
      (fn-record-encoded-octets-ceiling 0 (nfix (fn-bs-profile-max-groups-per-article profile)))))
+
+;; SCC entry: list cell 1, pair cons 1, string prefix 4, name, u64 integer 10, +1 spare (store-tree-length.lisp:7).
+(defconst *fn-adm-number-entry-ceiling* (+ 1 1 4 *fn-record-max-group-name* 10 1))
+(defconst *fn-adm-row-extra-ceiling* 64)
+(defun fn-adm-row-allowance (profile)
+  (declare (xargs :guard t))
+  (+ (fn-mm-profile-record-log profile)
+     (* (nfix (fn-bs-profile-max-groups-per-article profile)) *fn-adm-number-entry-ceiling*)
+     *fn-adm-row-extra-ceiling*))
 
 (defun fn-mm-profile-bound-tot (profile residency)
   (declare (xargs :guard t))
@@ -568,8 +576,8 @@
                     (* (+ *fn-sbud-header-weight* *fn-sbud-msgid-weight*) h)
                     (* tt g)
                     h
-                    (+ (* tt (fn-mm-profile-record-log profile)) h)
-                    (+ (* tt (fn-mm-profile-record-log profile)) h)
+                    (+ (* tt (fn-adm-row-allowance profile)) h)
+                    (+ (* tt (fn-adm-row-allowance profile)) (* 3 h))
                     h
                     residency)))
 

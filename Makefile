@@ -468,6 +468,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/records-tests \
 	tests/acl2/records-teeth-tests \
 	tests/acl2/records-ceiling-tests \
+	tests/acl2/records-payload-split-tests \
 	tests/acl2/records-shape-tests \
 	books/provenance-codec \
 	tests/acl2/provenance-tests \
@@ -719,6 +720,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/admission-memory-tests \
 	tests/acl2/history-totals-carried-tests \
 	tests/acl2/heap-command-tests \
+	tests/acl2/heap-command-entry-scratch-tests \
 	books/charged-totals-header \
 	books/charged-totals-header-writes \
 	books/charged-totals-header-cost \
@@ -1230,6 +1232,8 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-node-rotation-codec \
 	tests/acl2/bp-node-rotation-codec-tests \
 	books/bp-node-rotation \
+	books/bp-checkpoint-size \
+	tests/acl2/bp-checkpoint-size-tests \
 	books/bp-node-rotation-slice \
 	books/bp-node-rotation-buffer \
 	tests/acl2/bp-node-rotation-buffer-tests \
@@ -1237,6 +1241,11 @@ ACL2_BOOKS ?= books/defrecord \
 	books/bp-recovery-guards \
 	books/bp-recovery-profile \
 	tests/acl2/bp-recovery-profile-tests \
+	tests/acl2/bp-recovery-profile-row-tests \
+	books/post-head-limit \
+	tests/acl2/post-head-limit-tests \
+	books/post-acceptance-bound \
+	tests/acl2/post-acceptance-bound-tests \
 	tests/acl2/bp-held-projection-tests \
 	tests/acl2/bp-heap-command-tests \
 	books/bp-handoff-report \

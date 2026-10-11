@@ -506,7 +506,14 @@ to a space that already holds it."
   "The read decision's totals (books/heap-command.lisp fn-mo-observed-totals):
 HDR the checkpoint's charged-totals header as the open reads it
 (io.lisp fnn-checkpoint-header-observation, books/charged-totals-header.lisp
-fn-cth-header-open), SUFFIX the log's past the header's S.  ADAPTER (owner
+fn-cth-header-open), SUFFIX the log's past the header's S, EXTENT the largest
+journal/ segment's observed size (the lstat of every segment the walk below
+reads), which the read's open terms charge as its entry scratch (KEYSTONE
+fn-mo-observed-log-holds-every-entry-read).  ADAPTER
+MEMORY-OBSERVED-EXTENT-CAP (owners A and M, retired by A's io.lisp cap: the
+read takes EXTENT as its cap and refuses a segment past it by name): until
+then a segment appended between this walk and the read is not covered, the
+same race the empty-suffix observation below accepts.  ADAPTER (owner
 Builder L, retired by L's store-log-open-scan): SUFFIX is the zero tot only
 when the log observably holds no record past S -- no octet of any segment in
 journal/ but the genesis (fnn-genesis-path, which holds no
@@ -514,25 +521,34 @@ record) is nonzero past a headed segment's padded head
 (books/store-log-lineage.lisp fn-lgl-head-len; every entry opens with a
 nonzero header, and the rotation preallocates the segment with zeros, so a
 fresh segment's extent is past its head) -- else NIL, and the decision says
-the header's totals are unseen.  Unlocked: as fresh as the read."
+the header's totals are unseen.  A segment that is not a regular file leaves
+EXTENT, and so the totals, unseen.  Unlocked: as fresh as the read."
   (let* ((store (and (stringp root) profile (make-fnn-store root)))
          (open (and store
                     (progn (setf (fnn-store-config store) profile)
                            (handler-case (fnn-checkpoint-header-observation store)
                              (fnn-os-error () nil)))))
          (hdr (and (consp open) (eq (first open) :ok) (second open)))
-         (empty (and hdr
-                     (handler-case
-                         (let ((genesis (fnn-genesis-path store))
-                               (head (fnn-nat (fnn-core 'fn-lgl-head-len (fnn-store-log-unit)))))
-                           (every (lambda (name)
-                                    (let ((path (fnn-join (fnn-journal-dir store) name)))
-                                      (or (equal path genesis)
-                                          (null (fnn-log-first-nonzero path head)))))
-                                  (fnn-log-segment-names store)))
-                       ((or fnn-os-error fnn-store-error) () nil)))))
+         (walk (and hdr
+                    (handler-case
+                        (let ((genesis (fnn-genesis-path store))
+                              (head (fnn-nat (fnn-core 'fn-lgl-head-len (fnn-store-log-unit))))
+                              (extent 0))
+                          (dolist (name (fnn-log-segment-names store) (list t extent))
+                            (let* ((path (fnn-join (fnn-journal-dir store) name))
+                                   (st (fnn-lstat path)))
+                              (unless (and st (fnn-regular-p st))
+                                (return (list nil nil)))
+                              (setf extent (max extent (sb-posix:stat-size st)))
+                              (unless (or (equal path genesis)
+                                          (null (fnn-log-first-nonzero path head)))
+                                (return (list nil nil))))))
+                      ((or fnn-os-error fnn-store-error) () nil))))
+         (empty (first walk))
+         (extent (second walk)))
     (fnn-core 'fn-mo-observed-totals hdr
-              (and empty (fnn-core 'fn-cth-empty-suffix hdr)))))
+              (and empty (fnn-core 'fn-cth-empty-suffix hdr))
+              extent)))
 
 ;; The configuration history's octets on disk (config/, the lstat sizes of
 ;; its regular files under the profile's listing bound), which loading the

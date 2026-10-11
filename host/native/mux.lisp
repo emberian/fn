@@ -2196,11 +2196,15 @@ constants must agree with it or the budget is refused as a fault."
   "K-ADMIT's coordinates as this process observes them, outside the owner
 mutex (a stat of the core file and the machine's memory figures are I/O):
 the image (fn-mo-img-observed), the resident limits, the configuration
-history's octets (config/'s lstat sizes), and the peer flight profile (a
-file read: an lstat, an open, an fstat; fnn-peer-flight-profile)."
+history's octets (config/'s lstat sizes), the address-space limits, the
+core file's octets, and the peer flight profile (a file read: an lstat, an
+open, an fstat; fnn-peer-flight-profile)."
   (list (fnn-heap-img-observation (fnn-store-config store))
         (fnn-heap-resident-observations)
         (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store))
+        ;; the address-space limits and the core file (landing 4b's launch)
+        (fnn-heap-address-observations)
+        (fnn-heap-core-octets)
         (fnn-peer-flight-profile (fnn-store-root store))))
 
 (defun fnn-owner-memory-configure-locked (service tls-context observed &optional gate-only)
@@ -2210,7 +2214,7 @@ no C'); the caller holds the owner serialization or is the single-threaded
 install.  The configure answers :hold or :refused (no connection fits the
 limit at the carried store); the gate alone answers :hold."
   (let ((store (fnn-owner-service-store service)))
-    (destructuring-bind (img resident config-octets peer) observed
+    (destructuring-bind (img resident config-octets address core peer) observed
       (let ((trigger +fnn-owner-service-nursery-octets+)
             (pub-trigger (fnn-gc-nursery-octets))
             (profile (fnn-store-config store))
@@ -2231,7 +2235,8 @@ limit at the carried store); the gate alone answers :hold."
                                 peer workers cache-limit root window config-octets)
               (fnn-owner-core 'fn-owner-memory-configure
                               img resident trigger pub-trigger profile tlsp live cold output
-                              peer workers cache-limit root window config-octets))
+                              peer workers cache-limit root window config-octets
+                              address core +fnn-gc-nursery-octets+))
           ;; A-OVER-WINDOW-FIT: the W' this configure installed, published
           ;; for the serving actors' OVER quantum (fnn-owner-over-window).
           ;; Both configures run before any actor exists (the install, and
