@@ -189,5 +189,38 @@ named landing retires the request-lists term.
 2. **The image L-FRESH judges** (ember; DECISIONS item 6): fn-core closes the 256 start on the model, and A's *1*
    widens the margin.
 3. **The FILE term's resident charge** (DECISIONS item 7). This is the only route to 256 MB on fn-host.
-4. **The development profile:** A's lease and O's landing 2 (OVER window), and an owner for the request-lists
-   term.
+4. **The development profile:** A's lease and O's landing 2 retire the OVER window. P's POST landing 2 retires
+   the request-lists term (section below).
+
+## The request-lists term (551,585,280 octets at the development profile)
+
+`fn-heap-request-octets` (books/heap-store-figure.lisp:506) is two terms, both at 16 heap octets a list octet,
+twice for the collector:
+- **inflight-lists**, 32 x (R + 3 HDR): the record being committed and three header copies, held as octet lists.
+- **taken-submission-lists**, 32 x (A + HDR + 250): the submission the committer took, unpacked.
+
+| profile | R | HDR | A | inflight-lists | taken-submission-lists | request |
+|---|---|---|---|---|---|---|
+| development | 17,138,486 | 16,384 | 32,768 | 550,004,416 | 1,580,864 | 551,585,280 |
+| small (L-FRESH) | 196,608 | 16,384 | 32,768 | 7,864,320 | 1,580,864 | 9,445,184 |
+
+- **Who holds it:** the owner's one request in flight, the committer serialising POSTs. It is charged once per
+  process (fn-mm-inflight, memory-model.lisp:364), not per connection, so unlike the OVER window it does not
+  scale with C'. The development figure is large because R is large there: 17.1 MB of record charged as lists
+  is 32 x R.
+- **Whether it is a twin today:** no. The host still builds the POST's record and submission as octet lists.
+  The acceptance's T-ALLOC measured POST at 5,076,156 octets consed per 2 KiB command. So the term prices a real
+  allocation, and deleting it now would under-charge.
+  - A's lease: neither HL4 (the leased pool within the large term) nor HL5 (the ARTICLE/OVER quantum) covers
+    the POST path. They price replies, not the request.
+  - C's spans landings: they moved ARTICLE (T-ALLOC 55 MB to 0.76 MB at 128 KiB) and wire parsing. The POST
+    record encoding stays on lists.
+- **Owner and retiring landing:** Builder P, POST machine landing 2, the host realizer `host/native/post.lisp`.
+  In P's charter that landing has the leased payload span go socket-to-log with head-local edits, and the eight
+  list conversions deleted.
+  - When it lands, inflight-lists becomes the lease's span (R octets, not 32 R), and taken-submission-lists
+    goes away. The term must be restated in the same landing, so the gate cannot keep charging a list nobody
+    builds.
+  - The restatement is M's, as `fn-heap-request-octets` over the span; P supplies the span's bound.
+  - Landing 2 is not opened; P's current landing is landing 1. Until it lands, the development profile cannot
+    start under 1024 MB on either image: the request alone is 526 MiB.
