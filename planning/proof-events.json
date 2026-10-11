@@ -18977,6 +18977,52 @@
           "name": "fn-mm-sum-grows-with-the-store"
         }
       ]
+    },
+    {
+      "id": "PRF-10006",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-run-is-the-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-chain-is-the-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-fold-is-the-wire-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-wire-fold-covers-the-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-observed-covers-the-opened-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-fold-from-no-skip-bounds-any-skip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-host-suffix-covers-the-opened-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-scan-plan-scans-every-present-segment"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10007",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-ptd-posted-records-are-recovered-at-every-later-cut"
+        }
+      ]
     }
   ]
 }

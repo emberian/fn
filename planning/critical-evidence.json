@@ -260,6 +260,13 @@
    "mutation": "tests/acl2/store-log-open-scan-tests.lisp::skip-s-past-a-drop",
    "provenance": "keystone_critical.py --declare sha256:43f57315e80e859285d978eb1138ff4c83dfcfa3781d64b883742a6f8c87baaf"
   },
+  "fn-lgo-wire-fold-covers-the-replay": {
+   "subject": "fn-lgo-fold",
+   "host_test": "tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header",
+   "trace_witness": "tests/acl2/store-log-open-scan-tests.lisp::fn-lgo-wire-fold-covers-the-replay",
+   "mutation": "tests/acl2/store-log-open-scan-tests.lisp::history-claimed-exact",
+   "provenance": "keystone_critical.py --declare sha256:2edf6fd2478b6004e63c756451a2c35e0cd33a4282877fc6d2618c883acad2f2"
+  },
   "fn-lgob-three-barrier-open-after-the-copy-is-the-five": {
    "subject": "fn-lg-open-program",
    "host_test": "tests/campaign/native_operator_campaign.py::run_cut",

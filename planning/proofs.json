@@ -23596,7 +23596,17 @@
         "tests/test_native_state_checkpoint.py"
       ],
       "evidence_digest": "82473eaa326326a7",
-      "progress_note": "Proved; teeth in tests/acl2/store-log-open-scan-tests.lisp; native tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header."
+      "progress_note": "Proved; teeth in tests/acl2/store-log-open-scan-tests.lisp; native tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header.",
+      "events": [
+        "fn-lgo-run-is-the-fold",
+        "fn-lgo-chain-is-the-fold",
+        "fn-lgo-fold-is-the-wire-fold",
+        "fn-lgo-wire-fold-covers-the-replay",
+        "fn-lgo-observed-covers-the-opened-store",
+        "fn-lgo-fold-from-no-skip-bounds-any-skip",
+        "fn-lgo-host-suffix-covers-the-opened-store",
+        "fn-lgo-scan-plan-scans-every-present-segment"
+      ]
     },
     {
       "id": "PRF-10007",
@@ -23616,7 +23626,10 @@
         "books/store-log-durable.lisp"
       ],
       "evidence_digest": "b2f89fd89f427e1a",
-      "progress_note": "Proved (landing 1, on dev); defteeth in tests/acl2/post-transaction-durable-tests.lisp."
+      "progress_note": "Proved (landing 1, on dev); defteeth in tests/acl2/post-transaction-durable-tests.lisp.",
+      "events": [
+        "fn-ptd-posted-records-are-recovered-at-every-later-cut"
+      ]
     }
   ]
 }
