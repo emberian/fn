@@ -803,6 +803,12 @@
   }
  },
  "threads": {
+  "fnn-heap-collector-policy-start": {
+   "registry": null,
+   "join": "fnn-heap-collector-policy-stop",
+   "fault_policy": "private",
+   "why": "the collector policy's thread (heap.lisp, memory landing 3+4): it runs ACL2's fn-mm-collector-due-p and a full collection when due, nothing else; it bounds dead memory and decides nothing ACL2 decides. Started once by fnn-owner-release-recovery-garbage when recovery is done, stopped and joined by fnn-owner-cold-shutdown after the clients stopped. Its live figure is a local of its loop; the after-GC hook only signals its semaphore. A condition that ends it is reported on stderr and is its RESULT, which the join re-signals as fnn-fault on the owner's shutdown"
+  },
   "fnn-log-writer-start": {
    "registry": null,
    "join": "fnn-log-writer-stop",
@@ -856,6 +862,10 @@
   }
  },
  "failure_scopes": {
+  "fnn-heap-collector-run": {
+   "scope": "result",
+   "why": "the collector policy's condition is its RESULT: the loop returns it (heap.lisp fnn-heap-collector-run) and fnn-heap-collector-policy-stop, at the owner's cold shutdown, re-signals any condition as fnn-fault on the joining thread"
+  },
   "fnn-call": {
    "scope": "converts",
    "why": "every condition in a core call becomes fnn-fault after the handler (io.lisp:1372-1393): converted, never swallowed"
@@ -947,6 +957,10 @@
   "fnn-app-journal-close": "the application journal's lock fd (fnn-app-journal-lock-fd), consumed here before the close (workflow.lisp:34); unlocked and closed once, custody of an ambiguous return retained via fnn-app-retain-close-debt"
  },
  "unlocked_publication": {
+  "*fnn-owner-over-window-fit*": {
+   "writers": ["fnn-owner-memory-configure-locked"],
+   "why": "The run's OVER window W' (A-OVER-WINDOW-FIT, books/memory-model.lisp fn-mm-over-window-fit). Written only by fnn-owner-memory-configure-locked (host/native/mux.lisp), reached only from fnn-owner-memory-install (fnn-owner-install, single-threaded: no actor exists) and fnn-mux-budget-install (fnn-owner-run, before fnn-owner-start-committer and fnn-mux-start create the first actor). Read by fnn-owner-over-window from the serving actors (mux, pull, web) after their creation, so every read is ordered after the last write by thread creation. The checker has no spawn happens-before edge; a write reached after an actor starts is red."
+  },
   "*fnn-arena-release-custody*": {
    "writers": ["fnn-arena-release-due", "fnn-arena-release-returned"],
    "why": "The release handoff of the live arena. Written only by fnn-arena-release-due and fnn-arena-release-returned (host/native/io.lisp), both reached only from fnn-log-reseat-fenced, itself called only from fnn-finish and fnn-log-batch-finish; read by those two and by fnn-arena-return-observation (fnn-log-reseat-fenced, fnn-store-close, fnn-payload-lifecycle-answer, fnn-owner-page-read-startup, fnn-bp-served-owner-stop, fnn-owner-run's failed-startup branch). Every service actor (committer, mux, control client, pull, web, the node and app command threads) reaches the finish chain only inside the owner mutex O (call-graph census: no thread or async root reaches fnn-log-reseat-fenced, fnn-arena-release-due or fnn-arena-release-returned without O; the lifecycle reads are made under O then L, and fnn-owner-actor-fault-service reaches fnn-owner-stop-service-locked only in the branch where the thread holds the service lock), so those accesses are totally ordered by O. The paths that reach it without O are single-threaded for this process: either the command thread of an offline verb, in a process that never starts an owner (fnn-dispatch -> fnn-command-post / fnn-command-probe / fnn-command-store-import, fnn-checkpoint-command -> fnn-clone-activate, the bp-obligation / bp-contact / bp-service route readers fnn-bpo-call-with-owner-journal and fnn-bps-read-route-table, which install an owner that serves nothing and close it; fnn-operator-execute-store-action runs its one action in its own process and a verb that reaches a running owner goes over the control socket and is executed there as a control actor under O), or the command thread of a serving process before its first actor exists (fnn-owner-run installs the service, fnn-owner-install with its recovery, before fnn-owner-start-committer, fnn-mux-start and the start hooks; fnn-bp-served-owner-start before the sessions) or after the actors are joined (fnn-owner-run's cleanup and fnn-bp-served-owner-stop, whose Store close is taken only on a :joined settlement, books/owner-retire-settlement.lisp fn-ort-store-close-requires-settled-producers). Those uses are ordered before the actors' O-held ones by thread creation and after them by the joins. The checker has no spawn/join happens-before edge and does not see O through the quantum lambdas (LOCK-CHECKER-MODEL-GAPS); a second writer function is red."

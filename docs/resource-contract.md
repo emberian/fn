@@ -991,11 +991,11 @@ not on this tree yet; its citations are checked once they land.
 
 | Row | Theorems (book: events) | Proofs | Records | Landing |
 | --- | --- | --- | --- | --- |
-| M1 | `books/heap-figure`: `fn-heap-decide-refuses-exactly-past-the-machine`, `fn-heap-decision-exit-code-of-a-refusal`, `fn-heap-operation-decide-holds-the-store`; `books/heap-reservation`: `fn-heap-init-decide-fits-the-budget-and-the-machine`, `fn-heap-init-decide-refuses-the-operators-request-past-the-budget`, `fn-heap-reserve-decide-holds-every-thread-the-node-runs`, `fn-heap-reserve-thread-refusal-exits-1` | PRF-198 | `planning/records/heap-from-profile-2026-09-26.md`, `planning/records/heap-bounds-2026-09-28.md` |  |
-| M2 | `books/heap-store-figure`: `fn-heap-store-figure-holds-every-store`, `fn-heap-store-history-holds-payload-and-memberships`, `fn-heap-records-retained-within-the-terms` | PRF-198, PRF-314 | `planning/records/heap-bounds-2026-09-28.md` |  |
+| M1 | `books/heap-figure`: `fn-heap-decide-refuses-exactly-past-the-machine`, `fn-heap-decision-exit-code-of-a-refusal`; `books/heap-reservation`: `fn-heap-init-decide-fits-the-budget-and-the-machine`, `fn-heap-init-decide-refuses-the-operators-request-past-the-budget`, `fn-heap-reserve-decide-holds-every-thread-the-node-runs`, `fn-heap-reserve-thread-refusal-exits-1` | PRF-198 | `planning/records/heap-from-profile-2026-09-26.md`, `planning/records/heap-bounds-2026-09-28.md` |  |
+| M2 | `books/heap-command`: `fn-mo-read-holds-the-observed-store`, `fn-mo-read-holds-every-store-within-its-totals`, `fn-heap-command-decide-store-opening-is-the-model`, `fn-heap-command-decide-store-opening-unobserved-is-the-adapter`; `books/heap-store-figure`: `fn-heap-records-retained-within-the-terms` | PRF-198, PRF-314 | `planning/records/heap-bounds-2026-09-28.md` |  |
 | M2b | `books/heap-store-figure`: `fn-heap-record-charge-is-the-budgets-charge`, `fn-heap-record-charge-covers-the-state`, `fn-heap-records-retained-within-the-terms`; `books/heap-figure`: `fn-heap-small-run-base-of-an-empty-store` | PRF-198 | `planning/records/heap-bounds-2026-09-28.md` |  |
 | M3 | `books/heap-breakdown`: `fn-heap-breakdown-sums-to-the-reservation`, `fn-heap-breakdown-is-inits-reservation` | PRF-375 | `planning/records/f8-reservation-2026-09-28.md` |  |
-| M4 | `books/heap-open-nursery`: `fn-heap-open-nursery-trigger-bounds`, `fn-heap-store-figure-holds-every-store-at-the-open-trigger` | PRF-364 | none |  |
+| M4 | `books/heap-open-nursery`: `fn-heap-open-nursery-trigger-bounds` | PRF-364 | none |  |
 | M5 | `books/owner-article-slots`: `fn-oas-read-span-admits-within-the-slots`; `books/owner-article-held`: `fn-oah-read-span-leaves-the-others-article-mode`; `books/heap-store-figure`: `fn-heap-article-slots-are-held`, `fn-heap-article-slots-bounds` | PRF-377 | `planning/records/zero-copy-commit-2026-09-28.md` |  |
 | M5b | `books/owner-article-slots`: `fn-oas-refusal-line-follows-the-disk-unfolds` | PRF-377 | `planning/records/credits-stall-2026-09-28.md` |  |
 | M6 | `books/memory-credits`: `fn-mcr-transitions-keep-funded`, `fn-mcr-acquire-refuses-exactly-past-the-budget`, `fn-mcr-grow-within-the-reserve-is-admitted`, `fn-mcr-overdraw-is-within-the-completion-reserve`; `books/owner-credits`: `fn-mca-read-span-keeps-funded`, `fn-mca-commit-steps-keep-funded`, `fn-mca-initial-funds-exactly-the-articles` | PRF-380 | `planning/records/f8-reservation-2026-09-28.md`, `planning/records/credits-2026-09-28.md` |  |
@@ -1053,7 +1053,7 @@ Constants the rows quote, read from the books that define them.
 | `:max-connections` | 32 | served connections, default | `books/profile-limits.lisp` |
 | `:control-clients` | 16 | control clients | `books/profile-limits.lisp` |
 | `:gc-nursery-mib` | 8 | MiB, the collector's nursery | `books/profile-limits.lisp` |
-| `:fixed-threads` | 12 | threads the node always runs | `books/profile-limits.lisp` |
+| `:fixed-threads` | 13 | threads the node always runs | `books/profile-limits.lisp` |
 
 The small preset (`*fn-heap-small-request*`, books/heap-figure.lisp);
 A, the article bound, is inherited from the development preset.
@@ -1080,8 +1080,8 @@ The outcome classes and their codes (`*fn-outcome-codes*`, books/outcome-class.l
 
 Counts.
 
-- Depth lint baseline (tools/depth_baseline.json): 0 debt entries (data-sized recursion on a host-called path with no bound), 200 bounded.
-- Named assumptions: 25 `A-*` rows in specs/failures.md, 12 encapsulates in books/assumptions.lisp.
+- Depth lint baseline (tools/depth_baseline.json): 0 debt entries (data-sized recursion on a host-called path with no bound), 204 bounded.
+- Named assumptions: 27 `A-*` rows in specs/failures.md, 12 encapsulates in books/assumptions.lisp.
 - The throughput gate's tolerance (tools/throughput_gate.py, planning/throughput-baseline.json): 25% over the baseline per operation, plaintext.
 
 <!-- END resource-contract -->

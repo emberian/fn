@@ -747,11 +747,15 @@ the window the memory gate's configure fits (fn-owner-memory-configure)."
     (fnn-core 'fn-splan-cursor-window
               (and raw (> (length raw) 0) (every #'digit-char-p raw) (parse-integer raw)))))
 
+(defvar *fnn-owner-over-window-fit* nil
+  "The run's W' (A-OVER-WINDOW-FIT), published by
+fnn-owner-memory-configure-locked (host/native/mux.lisp) before any actor
+exists; NIL until a configure.")
+
 (defun fnn-owner-over-window ()
-  "ACL2's cursor quantum (fnn-owner-over-quantum); under a configured run, the run's W' (A-OVER-WINDOW-FIT: books/memory-model.lisp fn-mm-over-window-fit, installed by host/owner-host.lisp fn-owner-memory-configure), at most that quantum."
+  "ACL2's cursor quantum (fnn-owner-over-quantum); under a configured run, the run's W' (A-OVER-WINDOW-FIT: books/memory-model.lisp fn-mm-over-window-fit, installed by host/owner-host.lisp fn-owner-memory-configure and published in *fnn-owner-over-window-fit*), at most that quantum."
   (let ((w (fnn-owner-over-quantum))
-        (fit (and (boundp-global 'fn-owner-memory-over-window *the-live-state*)
-                  (fnn-global 'fn-owner-memory-over-window))))
+        (fit *fnn-owner-over-window-fit*))
     (if (and (integerp fit) (plusp fit)) (min w fit) w)))
 
 (defun fnn-owner-article-window ()
@@ -6745,6 +6749,9 @@ enters the section, which reads the head again under the mutex."
 (defun fnn-owner-cold-shutdown (service)
   "Clients have stopped. Join the persistent workers before shared close."
   (fnn-extent-executor-stop)
+  ;; The collector policy's thread (host/native/heap.lisp), started when
+  ;; recovery was done.
+  (fnn-heap-collector-policy-stop)
   ;; No worker activation can issue or touch a descriptor now. Its slot may
   ;; still own the private result until the following owner transfer returns.
   ;; All reads remain funded until this exact settlement, including errors.
