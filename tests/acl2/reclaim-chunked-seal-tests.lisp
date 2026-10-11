@@ -90,6 +90,33 @@
 
 ; TEETH-62 BEGIN
 ; fn-rcw-predict-acc-steps-is-predict with its teeth (TEETH CONTRACT v1).
+; The steps are guarded by the carried invariant, whose defun-sk no evaluator
+; runs: the positive witness is a proved ground fact (:witness-lemma, the
+; keystone at the witness), and the removal and mutations run under
+; (with-guard-checking :none) (:logical).
+(defthm rcs-predict-witness
+  (and (natp *rcs-h0*)
+       (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init *rcw-configs*) *rcw-configs* *rcw-c2*
+                                          *rcs-h0* nil))
+             (all (fn-rcw-concat *rcw-c2*))
+             (h0 *rcs-h0*)
+             (configs *rcw-configs*))
+         (and (equal (equal r :bad) (if (fn-orcs-has-bad all) t nil))
+              (implies (not (equal r :bad))
+                       (and (equal (fn-rcw-acc-finish (car r))
+                                   (fn-sco-capture configs
+                                                   (car (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0))))
+                            (equal (caddr r)
+                                   (cadr (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0)))
+                            (equal (cadr r) (+ h0 (len (caddr r)))))))))
+  :hints (("Goal" :use ((:instance fn-rcw-predict-acc-steps-is-predict
+                                   (configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*)))
+           :in-theory (disable (:executable-counterpart fn-rcw-predict-acc-steps)
+                               (:executable-counterpart fn-rcw-acc-init)
+                               (:executable-counterpart fn-rcw-acc-finish)
+                               fn-rcw-predict-acc-steps fn-rcw-acc-finish fn-rcw-acc-init
+                               fn-rcw-predict-acc-steps-is-predict))))
+
 (defteeth fn-rcw-predict-acc-steps-is-predict
   :claim (((start-handle (natp h0)))
           (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks
@@ -105,11 +132,13 @@
                                 (equal (cadr r) (+ h0 (len (caddr r)))))))))
   :subject fn-rcw-predict-acc-steps
   :witness ((configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*))
+  :witness-lemma rcs-predict-witness
   :breaks ((start-handle ((configs *rcw-configs*) (chunks *rcw-c2*) (h0 -5)) :logical "a negative start handle is outside the guard (natp h0) of the walk"))
   :mutations ((handle-not-advanced
                (:conclusion (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks h0 nil))) (equal (cadr r) h0)))
                ((configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*))
-               :fault "the final handle left at the start handle")
+               :fault "the final handle left at the start handle"
+               :logical "the steps' guard reaches the carried invariant's defun-sk")
               (chunks-reset-identity
                (:conclusion
                 (let ((r (fn-rcw-predict-acc-steps (fn-rcw-acc-init configs) configs chunks h0 nil)))
@@ -122,7 +151,8 @@
                                    (cadr chunks) (fn-sco-identity (fn-sco-capture configs nil))
                                    (+ h0 (len (fn-orcs-payloads (car chunks))))))))))
                ((configs *scft-cfgs*) (chunks (list *scft-ws* *scft-vs*)) (h0 0))
-               :fault "each chunk is predicted from the initial identity, so the second forgets the enrollment the first made")))
+               :fault "each chunk is predicted from the initial identity, so the second forgets the enrollment the first made"
+               :logical "the steps' guard reaches the carried invariant's defun-sk")))
 
 ; Host fnn-owner-reclaim-pass / fnn-checkpoint-walk, exercised by
 ; tests/test_native_reclaim_walk.py::test_a_pass_longer_than_two_chunks_installs_and_counts_the_available.
@@ -151,6 +181,29 @@
 (assert-event
 (with-guard-checking :none  (not (equal (fn-ock-recover-full (list *fn-cfg-default-record*) 8
               (car (fn-orcs-predict *rcw-new* *rcs-id* 0)) 4) :fault))))
+; The rebuild's keystone reads the value steps: the positive witness is a
+; proved ground fact, the mutation runs under (with-guard-checking :none).
+(defthm rcs-rebuild-witness
+  (and (natp 0)
+       (equal (cadr (fn-owner-orcp-rebuild
+                     (fn-rcw-acc-finish
+                      (car (fn-rcw-predict-acc-steps (fn-rcw-acc-init (list *fn-cfg-default-record*))
+                                                     (list *fn-cfg-default-record*) *rcw-c2* 0 nil)))
+                     (list *fn-cfg-default-record*) 8 4))
+              (fn-ock-recover-full (list *fn-cfg-default-record*) 8
+                                   (car (fn-orcs-predict (fn-rcw-concat *rcw-c2*)
+                                                         (fn-sco-identity (fn-sco-capture (list *fn-cfg-default-record*) nil))
+                                                         0))
+                                   4)))
+  :hints (("Goal" :use ((:instance fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
+                                   (configs (list *fn-cfg-default-record*)) (chunks *rcw-c2*)
+                                   (h0 0) (frontier 8) (max-conns 4)))
+           :in-theory (disable (:executable-counterpart fn-rcw-predict-acc-steps)
+                               (:executable-counterpart fn-rcw-acc-init)
+                               (:executable-counterpart fn-rcw-acc-finish)
+                               fn-rcw-predict-acc-steps fn-rcw-acc-finish fn-rcw-acc-init
+                               fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open))))
+
 (defteeth fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
  :claim (((handle (natp h0))) (equal (cadr (fn-owner-orcp-rebuild
                          (fn-rcw-acc-finish
@@ -163,6 +216,7 @@
  :subject fn-owner-orcp-rebuild
  :witness ((configs (list *fn-cfg-default-record*)) (chunks *rcw-c2*)
            (h0 0) (frontier 8) (max-conns 4))
+ :witness-lemma rcs-rebuild-witness
  :breaks ((handle ((h0 -1)) :logical "a negative predicted handle is outside the natural-handle guard"))
  :mutations ((skipped-chunk (:conclusion (equal (cadr (fn-owner-orcp-rebuild
                          (fn-rcw-acc-finish
@@ -172,7 +226,8 @@
                   (fn-ock-recover-full configs frontier
                                        (car (fn-orcs-predict (fn-rcw-concat chunks) (fn-sco-identity (fn-sco-capture configs nil)) h0))
                                        max-conns))) ()
-              :fault "pass 3 advances past the first chunk before extending the capture")))
+              :fault "pass 3 advances past the first chunk before extending the capture"
+              :logical "the steps' guard reaches the carried invariant's defun-sk")))
 
 ; The actual pass-3 accumulator carries the enrollment across the chunk
 ; boundary and observes the rotation in the next chunk.
@@ -198,3 +253,113 @@
         (r (fn-rcw-predict-acc-step reset *scft-cfgs* *scft-vs*
                                     (cadr *rcs-rotation-first*))))
    (not (equal (fn-sco-records (fn-rcw-acc-finish (car r))) *scft-replay*)))))
+
+; -----------------------------------------------------------------------------
+; KEYSTONE fn-rcwacc-predict-steps-is-predict: pass 3 on the host's stobj
+; accumulator (fn-rcwacc), from the fresh stobj (fn-rcwacc-init).  The claim
+; binds a multiple-value call with a LET, which no executable conjunct states:
+; the positive witness runs through a native checker (:stobj-checks) the
+; defteeth proves equal to the claim, and under guard checking :none for the
+; reason of the value keystone (the steps' guard holds a defun-sk).  The
+; removal and the mutation are ground theorems (:logical) over the owner
+; fixture: rcs-t-steps-handle is the final handle of the value steps, which
+; the stobj entries equal (fn-rcwacc-predict-steps-is-the-value-fold).
+(defun rcs-t-predict-check (configs chunks h0 fn-rcwacc)
+  (declare (xargs :stobjs fn-rcwacc :verify-guards nil))
+  (let ((fn-rcwacc (fn-rcwacc-init configs fn-rcwacc)))
+    (mv-let (r fn-rcwacc)
+      (fn-rcwacc-predict-steps configs chunks h0 nil fn-rcwacc)
+      (let ((all (fn-rcw-concat chunks)))
+        (mv (and (equal (equal r :bad) (if (fn-orcs-has-bad all) t nil))
+                 (implies (not (equal r :bad))
+                          (and (equal (fn-rcwacc-finish fn-rcwacc)
+                                      (fn-sco-capture configs
+                                                      (car (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0))))
+                               (equal (cadr r)
+                                      (cadr (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0)))
+                               (equal (car r) (+ h0 (len (cadr r)))))))
+            fn-rcwacc)))))
+
+; The final handle of the value steps: the base handle (as a natural) plus the
+; payloads the chunks added.
+(defthm rcs-t-steps-handle
+  (implies (and (true-listp payloads)
+                (not (equal (fn-rcw-predict-acc-steps acc configs chunks h payloads) :bad)))
+           (equal (cadr (fn-rcw-predict-acc-steps acc configs chunks h payloads))
+                  (if (consp chunks)
+                      (- (+ (nfix h) (len (caddr (fn-rcw-predict-acc-steps acc configs chunks h payloads))))
+                         (len payloads))
+                    h)))
+  :hints (("Goal" :induct (fn-rcw-predict-acc-steps acc configs chunks h payloads)
+           :in-theory (e/d (fn-rcw-predict-acc-step)
+                           (fn-orcs-predict-rows-at fn-rcw-acc-step fn-orcs-has-bad)))))
+
+(defteeth fn-rcwacc-predict-steps-is-predict
+  :claim (((start-handle (natp h0)))
+          (let ((e (fn-rcwacc-predict-steps configs chunks h0 nil
+                                            (fn-rcwacc-init configs fn-rcwacc)))
+                (all (fn-rcw-concat chunks)))
+            (and (equal (equal (mv-nth 0 e) :bad) (if (fn-orcs-has-bad all) t nil))
+                 (implies (not (equal (mv-nth 0 e) :bad))
+                          (and (equal (fn-rcwacc-finish (mv-nth 1 e))
+                                      (fn-sco-capture configs
+                                                      (car (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0))))
+                               (equal (cadr (mv-nth 0 e))
+                                      (cadr (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0)))
+                               (equal (car (mv-nth 0 e)) (+ h0 (len (cadr (mv-nth 0 e))))))))))
+  :subject fn-rcwacc-predict-steps
+  :witness ((configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*))
+  :stobjs ((fn-rcwacc fn-rcwacc))
+  :stobj-checks
+  (((let ((e (fn-rcwacc-predict-steps configs chunks h0 nil
+                                      (fn-rcwacc-init configs fn-rcwacc)))
+          (all (fn-rcw-concat chunks)))
+      (and (equal (equal (mv-nth 0 e) :bad) (if (fn-orcs-has-bad all) t nil))
+           (implies (not (equal (mv-nth 0 e) :bad))
+                    (and (equal (fn-rcwacc-finish (mv-nth 1 e))
+                                (fn-sco-capture configs
+                                                (car (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0))))
+                         (equal (cadr (mv-nth 0 e))
+                                (cadr (fn-orcs-predict all (fn-sco-identity (fn-sco-capture configs nil)) h0)))
+                         (equal (car (mv-nth 0 e)) (+ h0 (len (cadr (mv-nth 0 e)))))))))
+    (rcs-t-predict-check configs chunks h0 fn-rcwacc)
+    :hints (("Goal" :in-theory (enable rcs-t-predict-check)))))
+  :witness-unguarded "the steps' verified guard is the carried invariant, which holds a defun-sk (fn-rii-okp) the evaluator cannot run"
+  :breaks ((start-handle ((h0 -5))
+                         :logical "a negative start handle is outside the guard (natp h0) of the prediction"))
+  :mutations ((handle-not-advanced
+               (:conclusion
+                (let ((e (fn-rcwacc-predict-steps configs chunks h0 nil
+                                                  (fn-rcwacc-init configs fn-rcwacc))))
+                  (equal (car (mv-nth 0 e)) h0)))
+               ()
+               :fault "the final handle left at the start handle"
+               :logical "the steps' guard reaches the carried invariant's defun-sk"))
+  :hints (("Goal" :use ((:instance fn-rcwacc-predict-steps-is-the-value-fold
+                                   (configs *rcw-configs*) (chunks *rcw-c2*) (h0 -5)
+                                   (fn-rcwacc (create-fn-rcwacc)))
+                        (:instance fn-rcwacc-predict-steps-is-the-value-fold
+                                   (configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*)
+                                   (fn-rcwacc (create-fn-rcwacc)))
+                        (:instance rcs-t-steps-handle
+                                   (acc (fn-rcw-acc-init *rcw-configs*)) (configs *rcw-configs*)
+                                   (chunks *rcw-c2*) (h -5) (payloads nil))
+                        (:instance rcs-t-steps-handle
+                                   (acc (fn-rcw-acc-init *rcw-configs*)) (configs *rcw-configs*)
+                                   (chunks *rcw-c2*) (h *rcs-h0*) (payloads nil))
+                        (:instance fn-rcwacc-predict-steps-is-predict
+                                   (configs *rcw-configs*) (chunks *rcw-c2*) (h0 *rcs-h0*)
+                                   (fn-rcwacc (create-fn-rcwacc))))
+           :in-theory (disable (:executable-counterpart fn-rcwacc-predict-steps)
+                               (:executable-counterpart fn-rcw-predict-acc-steps)
+                               (:executable-counterpart fn-rcw-acc-init)
+                               (:executable-counterpart fn-rcwacc-init)
+                               (:executable-counterpart fn-rcwacc-finish)
+                               fn-rcwacc-predict-steps fn-rcw-predict-acc-steps fn-rcw-acc-init
+                               fn-rcwacc-init fn-rcwacc-finish
+                               fn-rcwacc-predict-steps-is-the-value-fold
+                               fn-rcwacc-predict-steps-is-predict rcs-t-steps-handle))))
+
+(defteeth-check (fn-rcw-predict-acc-steps-is-predict fn-rcw-srcs-steps-is-the-walk
+                 fn-rcw-rebuild-of-the-chunked-capture-is-the-full-open
+                 fn-rcwacc-predict-steps-is-predict))

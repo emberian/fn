@@ -321,15 +321,18 @@
 ; Host fnn-owner-reclaim-pass: tests/test_native_reclaim_walk.py::
 ; test_a_pass_longer_than_two_chunks_installs_and_counts_the_available.
 ; The local arena is filled by sealing the owner fixture's payloads.
-; IMPLEMENTATION MUTATION: fail to carry the next handle across chunks.
-(defun rcw-reset-h-steps (acc configs chunks fn-arena)
-  (declare (xargs :stobjs fn-arena :verify-guards nil :measure (len chunks)))
-  (if (consp chunks)
-      (let ((r (fn-rcw-canon-acc-step acc configs (car chunks) 0 fn-arena)))
-        (if (eq r :bad) :bad
-          (rcw-reset-h-steps (car r) configs (cdr chunks) fn-arena)))
-    acc))
-
+;
+; The pass-2 steps are guarded by the carried invariant, whose defun-sk no
+; evaluator runs: the positive witness runs under (with-guard-checking :none)
+; (:witness-unguarded), and the mutation is a ground theorem (:logical) that
+; names the faulty host's result at the specification level instead of running
+; its steps.  IMPLEMENTATION MUTATION: fail to carry the next handle across
+; chunks.  A host that did so would stage the capture of the first chunk's
+; canonical rows from handle 0 and the second chunk's from handle 0 again,
+; interned from the identity the first left; the mutant conclusion says the
+; steps finish to that capture.  The check proves the keystone's instance at
+; the mutation's witness (the steps finish to the capture of the whole canonical
+; rows) and that the two captures differ.
 (defteeth fn-rcw-canon-acc-steps-is-the-checkpoint-capture
   :claim (()
     (let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena))
@@ -340,11 +343,95 @@
   :subject fn-rcw-canon-acc-steps
   :witness ((configs *rcw-configs*) (chunks *rcw-c2*))
   :stobjs ((fn-arena (fn-arn-seal-many *rpt-payloads* fn-arena)))
+  :witness-unguarded "the step's verified guard is the carried invariant, which holds a defun-sk (fn-rii-okp) the evaluator cannot run"
   :mutations ((reset-handle
                (:conclusion
-                (equal (fn-rcw-acc-finish
-                        (rcw-reset-h-steps (fn-rcw-acc-init configs) configs chunks fn-arena))
-                       (fn-sco-capture configs
-                         (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0)))))
-               ((configs *rcw-configs*) (chunks *rcw-c2*))
-               :fault "the pass-2 loop restarts each chunk at handle zero")))
+                (let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena)))
+                  (equal (fn-rcw-acc-finish (car r))
+                         (fn-sco-capture
+                          configs
+                          (append (fn-scka-canon-rows (car chunks) fn-arena 0 (fn-stxk-initial-context 0))
+                                  (fn-scka-canon-rows (cadr chunks) fn-arena 0
+                                                      (fn-replay-identity-loop
+                                                       (fn-scka-canon-rows (car chunks) fn-arena 0
+                                                                           (fn-stxk-initial-context 0))
+                                                       (fn-stxk-initial-context 0))))))))
+               ((configs *rcw-configs*) (chunks (list (take 2 *rcw-new*) (nthcdr 2 *rcw-new*))))
+               :fault "the pass-2 loop restarts the second chunk at handle zero"
+               :logical "the steps' guard reaches the carried invariant's defun-sk"))
+  :hints (("Goal" :use ((:instance fn-rcw-canon-acc-steps-is-the-checkpoint-capture
+                                   (configs *rcw-configs*)
+                                   (chunks (list (take 2 *rcw-new*) (nthcdr 2 *rcw-new*)))
+                                   (fn-arena (fn-arn-seal-many *rpt-payloads* (create-fn-arena)))))
+           :in-theory (disable (:executable-counterpart fn-rcw-canon-acc-steps)
+                               (:executable-counterpart fn-rcw-acc-init)
+                               (:executable-counterpart fn-rcw-acc-finish)
+                               fn-rcw-canon-acc-steps fn-rcw-acc-finish fn-rcw-acc-init
+                               fn-rcw-canon-acc-steps-is-the-checkpoint-capture))))
+; KEYSTONE fn-rcwacc-canon-steps-is-the-checkpoint-capture: the same pass over
+; the host's stobj accumulator (fn-rcwacc), from the fresh stobj
+; (fn-rcwacc-init).  The claim's multiple-value call is bound by a LET, which
+; no executable conjunct can state, so the positive witness runs through a
+; native checker (:stobj-checks) that the defteeth proves equal to the claim.
+; It runs unguarded for the value keystone's reason.  The mutation is the value
+; keystone's, on the stobj: the second chunk restarts at handle zero.
+(defun rcw-t-canon-check (configs chunks fn-arena fn-rcwacc)
+  (declare (xargs :stobjs (fn-arena fn-rcwacc) :verify-guards nil))
+  (let ((fn-rcwacc (fn-rcwacc-init configs fn-rcwacc)))
+    (mv-let (h fn-rcwacc)
+      (fn-rcwacc-canon-steps configs chunks 0 fn-arena fn-rcwacc)
+      (let ((all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0))))
+        (mv (and (equal (eq h :bad) (eq all :bad))
+                 (implies (not (eq all :bad))
+                          (equal (fn-rcwacc-finish fn-rcwacc) (fn-sco-capture configs all))))
+            fn-arena fn-rcwacc)))))
+
+(defteeth fn-rcwacc-canon-steps-is-the-checkpoint-capture
+  :claim (()
+    (let ((e (fn-rcwacc-canon-steps configs chunks 0 fn-arena (fn-rcwacc-init configs fn-rcwacc)))
+          (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0))))
+      (and (equal (eq (mv-nth 0 e) :bad) (eq all :bad))
+           (implies (not (eq all :bad))
+                    (equal (fn-rcwacc-finish (mv-nth 1 e)) (fn-sco-capture configs all))))))
+  :subject fn-rcwacc-canon-steps
+  :witness ((configs *rcw-configs*) (chunks *rcw-c2*))
+  :stobjs ((fn-arena (fn-arn-seal-many *rpt-payloads* fn-arena))
+           (fn-rcwacc fn-rcwacc))
+  :stobj-checks
+  (((let ((e (fn-rcwacc-canon-steps configs chunks 0 fn-arena (fn-rcwacc-init configs fn-rcwacc)))
+          (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0))))
+      (and (equal (eq (mv-nth 0 e) :bad) (eq all :bad))
+           (implies (not (eq all :bad))
+                    (equal (fn-rcwacc-finish (mv-nth 1 e)) (fn-sco-capture configs all)))))
+    (rcw-t-canon-check configs chunks fn-arena fn-rcwacc)
+    :hints (("Goal" :in-theory (enable rcw-t-canon-check)))))
+  :witness-unguarded "the steps' verified guard is the carried invariant, which holds a defun-sk (fn-rii-okp) the evaluator cannot run"
+  :mutations ((reset-handle
+               (:conclusion
+                (let ((e (fn-rcwacc-canon-steps configs chunks 0 fn-arena (fn-rcwacc-init configs fn-rcwacc))))
+                  (equal (fn-rcwacc-finish (mv-nth 1 e))
+                         (fn-sco-capture
+                          configs
+                          (append (fn-scka-canon-rows (car chunks) fn-arena 0 (fn-stxk-initial-context 0))
+                                  (fn-scka-canon-rows (cadr chunks) fn-arena 0
+                                                      (fn-replay-identity-loop
+                                                       (fn-scka-canon-rows (car chunks) fn-arena 0
+                                                                           (fn-stxk-initial-context 0))
+                                                       (fn-stxk-initial-context 0))))))))
+               ((configs *rcw-configs*) (chunks (list (take 2 *rcw-new*) (nthcdr 2 *rcw-new*))))
+               :fault "the pass-2 loop restarts the second chunk at handle zero"
+               :logical "the steps' guard reaches the carried invariant's defun-sk"))
+  :hints (("Goal" :use ((:instance fn-rcwacc-canon-steps-is-the-checkpoint-capture
+                                   (configs *rcw-configs*)
+                                   (chunks (list (take 2 *rcw-new*) (nthcdr 2 *rcw-new*)))
+                                   (fn-arena (fn-arn-seal-many *rpt-payloads* (create-fn-arena)))
+                                   (fn-rcwacc (create-fn-rcwacc))))
+           :in-theory (disable (:executable-counterpart fn-rcwacc-canon-steps)
+                               (:executable-counterpart fn-rcwacc-init)
+                               (:executable-counterpart fn-rcwacc-finish)
+                               fn-rcwacc-canon-steps fn-rcwacc-finish fn-rcwacc-init
+                               fn-rcwacc-canon-steps-is-the-checkpoint-capture))))
+
+(defteeth-check (fn-rcw-acc-steps-is-capture fn-rcw-finish-of-step
+                 fn-rcw-canon-acc-steps-is-the-checkpoint-capture
+                 fn-rcwacc-canon-steps-is-the-checkpoint-capture))

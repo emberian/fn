@@ -140,7 +140,9 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
 
     Pass 3 of the live reclaim predicts the rewritten history's rows
     (fn-orcs-predict-rows-at, which fn-orcs-predict wraps, chunk by chunk
-    through fn-rcwacc-predict-step, the step of fn-rcwacc-predict-steps) and the
+    through fn-rcwacc-predict-step, the step of fn-rcwacc-predict-steps, which
+    is the value fold fn-rcw-predict-acc-steps: fn-rcwacc-predict-steps-is-the-
+    value-fold) and the
     swap installs the owner those predicted rows rebuild; a restart replays the
     rewritten history through the fold (fn-ssr-intern-step), which freezes the
     keyring generation in force before each record.  The prediction is that

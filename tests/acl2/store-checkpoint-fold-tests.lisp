@@ -486,18 +486,94 @@
                         (fn-sco-capture configs (scft-nil0-rows (fn-rows-wire-of records fn-arena)))))
     () :fault "The capture interns every row at keyring NIL and generation 0, as before this change.")))
 
+; The chunked pass-2 steps (books/reclaim-chunked-walk.lisp) are guarded by
+; the carried invariant, whose defun-sk no evaluator runs, so a ground call at
+; guard checking T faults.  SCFT-LOOP is the same fold with its guards VERIFIED
+; (the invariant preserved by the step, scft-canon-acc-step-ok) and SCFT-RUN
+; its entry at the empty capture under the guard T (the invariant holds of
+; fn-rcw-acc-init): a verified function's guard is a proof obligation, never
+; run, so the teeth below run the pass natively under the guards.
+(defthm scft-canon-acc-step-ok
+  (implies (and (fn-rcw-acc-carriedp acc)
+                (not (equal (fn-rcw-canon-acc-step acc configs chunk h fn-arena) :bad)))
+           (and (true-listp (fn-rcw-canon-acc-step acc configs chunk h fn-arena))
+                (consp (fn-rcw-canon-acc-step acc configs chunk h fn-arena))
+                (true-listp (cdr (fn-rcw-canon-acc-step acc configs chunk h fn-arena)))
+                (consp (cdr (fn-rcw-canon-acc-step acc configs chunk h fn-arena)))
+                (fn-rcw-acc-carriedp (car (fn-rcw-canon-acc-step acc configs chunk h fn-arena)))))
+  :hints (("Goal" :in-theory (union-theories '(fn-rcw-canon-acc-step car-cons cdr-cons eq)
+                                             (theory 'minimal-theory))
+           :use ((:instance fn-rcw-acc-carriedp-of-step
+                            (chunk (fn-scka-canon-rows chunk fn-arena (nfix h) (fn-sco-at 3 acc))))))))
+
+(defun scft-loop (acc configs chunks h fn-arena)
+  (declare (xargs :stobjs fn-arena :guard (fn-rcw-acc-carriedp acc) :measure (len chunks)
+                  :verify-guards nil))
+  (if (consp chunks)
+      (let ((r (fn-rcw-canon-acc-step acc configs (car chunks) h fn-arena)))
+        (if (eq r :bad)
+            :bad
+          (scft-loop (car r) configs (cdr chunks) (cadr r) fn-arena)))
+    (list acc h)))
+
+(verify-guards scft-loop
+  :hints (("Goal" :in-theory (disable fn-rcw-canon-acc-step fn-rcw-acc-carriedp)
+           :use ((:instance scft-canon-acc-step-ok (chunk (car chunks)))))))
+
+(defthm scft-loop-is-the-book-fold
+  (equal (scft-loop acc configs chunks h fn-arena)
+         (fn-rcw-canon-acc-steps acc configs chunks h fn-arena))
+  :hints (("Goal" :induct (scft-loop acc configs chunks h fn-arena)
+           :in-theory (disable fn-rcw-canon-acc-step))))
+
+(defun scft-run (configs chunks fn-arena)
+  (declare (xargs :stobjs fn-arena :guard t
+                  :guard-hints (("Goal" :in-theory (disable fn-rcw-acc-init fn-rcw-acc-carriedp)
+                                 :use ((:instance fn-rcw-acc-carriedp-of-init))))))
+  (scft-loop (fn-rcw-acc-init configs) configs chunks 0 fn-arena))
+
+(defun scft-canon-check (configs chunks fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((r (scft-run configs chunks fn-arena))
+        (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0))))
+    (mv (and (equal (eq r :bad) (eq all :bad))
+             (implies (not (eq r :bad))
+                      (equal (fn-rcw-acc-finish (car r)) (fn-sco-capture configs all))))
+        fn-arena)))
+(defun scft-canon-old-check (configs chunks fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((r (scft-run configs chunks fn-arena)))
+    (mv (equal (fn-rcw-acc-finish (car r))
+               (fn-sco-capture configs (scft-nil0-rows (fn-rows-wire-of (fn-rcw-concat chunks)
+                                                                         fn-arena))))
+        fn-arena)))
+
 (defteeth fn-rcw-canon-acc-steps-is-the-checkpoint-capture
   :subject fn-rcw-canon-acc-step
   :claim
-  (let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena))
-        (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0))))
-    (()
+  (()
+   (let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena))
+         (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0))))
      (and (equal (eq r :bad) (eq all :bad))
           (implies (not (eq r :bad))
                    (equal (fn-rcw-acc-finish (car r)) (fn-sco-capture configs all))))))
   :witness ((configs *scft-cfgs*)
             (chunks (list (take 2 *scft-replay*) (nthcdr 2 *scft-replay*))))
   :stobjs ((fn-arena (scft-live-arena fn-arena)))
+  :stobj-checks
+  (((let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena))
+          (all (fn-scka-canon-rows (fn-rcw-concat chunks) fn-arena 0 (fn-stxk-initial-context 0))))
+      (and (equal (eq r :bad) (eq all :bad))
+           (implies (not (eq r :bad))
+                    (equal (fn-rcw-acc-finish (car r)) (fn-sco-capture configs all)))))
+    (scft-canon-check configs chunks fn-arena)
+    :hints (("Goal" :in-theory (enable scft-canon-check scft-run))))
+   ((let ((r (fn-rcw-canon-acc-steps (fn-rcw-acc-init configs) configs chunks 0 fn-arena)))
+      (equal (fn-rcw-acc-finish (car r))
+             (fn-sco-capture configs (scft-nil0-rows (fn-rows-wire-of (fn-rcw-concat chunks)
+                                                                       fn-arena)))))
+    (scft-canon-old-check configs chunks fn-arena)
+    :hints (("Goal" :in-theory (enable scft-canon-old-check scft-run)))))
   :mutations
   ((old-nil-zero-intern
     (:conclusion
