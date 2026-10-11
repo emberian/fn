@@ -53,9 +53,17 @@
 ;; without the work's :forward pin live in the Store reclaim honours, and
 ;; never one carrying a reclaim tombstone.
 (defun fn-owner-workflow-request-plan (work-id attempt-id fn-arena state)
+ ;; The guard proof needs only that fn-workflow-request-plan returns STATE
+ ;; unchanged, so it opens that one definition in the minimal theory.  In the
+ ;; image build's world (host/native/build.lisp) the default theory opened the
+ ;; whole BP plan beneath it, 100 definitions and 68,198,263 prover steps
+ ;; (659 s on hbox, past host_translate_check's 600 s on persvati, train 90).
  (declare (xargs :stobjs (fn-arena state)
                  :guard (and (boundp-global 'fn-owner state)
-                             (boundp-global 'fn-workflow-state state))))
+                             (boundp-global 'fn-workflow-state state))
+                 :guard-hints (("Goal" :in-theory
+                                (union-theories '(fn-workflow-request-plan state-p boundp-global)
+                                                (theory 'minimal-theory))))))
  (mv-let (erp plan state)
    (fn-workflow-request-plan work-id attempt-id fn-arena state)
   (declare (ignore erp))
