@@ -849,6 +849,14 @@
               fn-lgo-host-suffix-covers-the-opened-store
               fn-lgo-fold-from-no-skip-bounds-any-skip))
 
+(definterface fn-lgo-head-genesis
+  :class ::ideal
+  :kinds ((octets fn-cbor-octet-listp))
+  :keystones (fn-lgo-head-genesis-is-the-open-lineage-start))
+
+(definterface fn-lgo-suffix-settled
+  :class :common-lisp-compliant)
+
 (definterface fn-adm-row-allowance
   :class :common-lisp-compliant)
 

@@ -18,6 +18,7 @@
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
 (include-book "../../books/statement-attach")
+(include-book "../../books/frame-trailer")
 (include-book "../../books/defkeystone")
 (include-book "teeth-ground-lemma")
 
@@ -439,7 +440,39 @@
                ((cache *lgot-cache3*) (rows *lgot-rows*) (pre (take 2 *lgot-zs*)) (rest (nthcdr 2 *lgot-zs*)) (j 3) (keyring (fn-ssr-at 1 *lgot-acc3*)) (generation (fn-ssr-at 2 *lgot-acc3*)) (identity (fn-ssr-at 3 *lgot-acc3*)) (dicts nil) (allow 200) (sealed *lgot-pre3*))
                :fault "the probe's suffix claimed equal to the open's after a drop: the covered records an interrupted drop leaves are over-counted, so it is a bound")))
 
+;
+; L2H-4: a head the probe accepts is one the open admits, both starting from
+; its predecessor.  Segment 2's head as the rotation wrote it from P.
+(defun lgot-head (k)
+  (declare (xargs :verify-guards nil))
+  (fn-lg-rotation-entry (make-list 32 :initial-element 7) k 4))
+(defteeth fn-lgo-head-genesis-is-the-open-lineage-start
+  :claim (((accepted (fn-lgo-head-genesis octets k max))
+           (rotated (and (integerp k) (<= 2 k))))
+          (and (not (fn-lgl-open k (fn-lgl-head-trailer octets) octets t0 max))
+               (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-prev octets max))))
+  :subject fn-lgo-head-genesis
+  :witness ((octets (lgot-head 2)) (k 2) (max 4096) (t0 *fn-lg-genesis*))
+  :breaks ((accepted ((octets (make-list (fn-lgl-head-len 4) :initial-element 0))))
+           (rotated ((octets (lgot-head 1)) (k 1))))
+  :mutations ((starts-from-the-head-itself
+               (:conclusion
+                (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-trailer octets)))
+               ((octets (lgot-head 2)) (k 2) (max 4096) (t0 *fn-lg-genesis*))
+               :fault "the probe streams segment LOW from the head's own trailer, not the closed segment's last trailer the head claims")))
+
+(assert-event
+ (and (equal (fn-lgo-head-genesis (lgot-head 2) 2 4096) (make-list 32 :initial-element 7))
+      (null (fn-lgo-head-genesis (lgot-head 2) 3 4096))
+      (null (fn-lgo-head-genesis (make-list (fn-lgl-head-len 4) :initial-element 0) 2 4096))
+      (equal (fn-lgo-suffix-settled '(:head 2 (2) 0 x) '(:ok 1) 'tot '(:head 2 (2) 0 x) '(:ok 1)) 'tot)
+      (null (fn-lgo-suffix-settled '(:head 2 (2) 0 x) '(:ok 1) 'tot '(:head 3 (3) 0 x) '(:ok 1)))
+      (null (fn-lgo-suffix-settled '(:head 2 (2) 0 x) '(:ok 1) 'tot '(:head 2 (2) 0 x) '(:ok 2)))
+      (null (fn-lgo-suffix-settled '(:head 2 (2) 0 x) '(:ok 1) :bad '(:head 2 (2) 0 x) '(:ok 1))))
+ :msg "the probe: a head naming another segment or zeroed is no start (Codex l-2ah F2); a plan or header that moved during the walk, or a refused fold, is unseen (F1)")
+
 (defteeth-check (fn-lgo-run-is-the-fold fn-lgo-chain-is-the-fold fn-lgo-fold-is-the-wire-fold
                  fn-lgo-wire-fold-covers-the-replay fn-lgo-observed-covers-the-opened-store
                  fn-lgo-fold-from-no-skip-bounds-any-skip fn-lgo-scan-plan-scans-every-present-segment
-                 fn-lgo-host-suffix-covers-the-opened-store))
+                 fn-lgo-host-suffix-covers-the-opened-store
+                 fn-lgo-head-genesis-is-the-open-lineage-start))

@@ -532,13 +532,14 @@ Unlocked: as fresh as the read."
                                 (setf extent (max extent (sb-posix:stat-size st))))))
                         ((or fnn-os-error fnn-store-error) () nil))))
          (suffix (and extent
-                      (handler-case (fnn-heap-log-suffix store profile (fifth open))
+                      (handler-case (fnn-heap-log-suffix store profile open)
                         ((or fnn-os-error fnn-store-error) () nil)))))
     (fnn-core 'fn-mo-observed-totals hdr suffix extent)))
 
-(defun fnn-heap-log-suffix (store profile s)
+(defun fnn-heap-log-suffix (store profile open)
   "SUFFIX of the read decision (books/heap-command.lisp fn-mo-observed-totals):
-the charged totals of the log's records past the header's S, by ACL2's
+the charged totals of the log's records past the header's S (the fifth of
+OPEN, fnn-checkpoint-header-observation's (:ok TOT T1 BOUND S)), by ACL2's
 open-scan fold (books/store-log-open-scan.lisp fn-lgo-fold, HISTORY at
 ALLOW = fn-adm-row-allowance PROFILE + 3 x octets, Builder M's ruling (b)).
 ACL2's plan over journal/ (fn-lgo-scan-plan, KEYSTONE
@@ -546,15 +547,22 @@ fn-lgo-scan-plan-scans-every-present-segment): with segment 1 present, the
 chain from the genesis (its trailer, read and checked by fn-store-genesis-open
 under PROFILE, nothing installed) with skip S, the open's fold exactly
 (KEYSTONE fn-lgo-observed-covers-the-opened-store); with segment 1 gone,
-from the lowest segment's head predecessor (fn-lgl-head-prev) with skip 0,
-which bounds it (KEYSTONE fn-lgo-host-suffix-covers-the-opened-store: the
-dropped segments hold at most S records).  Each segment is read only, one
-entry at a time (fnn-log-read-closed-segment), each record's stored octets
-folded as it passes and not kept.  NIL (unseen) when the plan refuses, the
-fold refuses (:bad), or any read refuses or fails.  Unlocked: a record
-appended during the walk may be missed, the same race as
-MEMORY-OBSERVED-EXTENT-CAP."
-  (let ((plan (fnn-core 'fn-lgo-scan-plan (fnn-log-segment-names store) s)))
+from the lowest segment's head predecessor with skip 0, the head accepted
+only as a readable rotation entry naming that segment (fn-lgo-head-genesis,
+KEYSTONE fn-lgo-head-genesis-is-the-open-lineage-start), which bounds it
+(KEYSTONE fn-lgo-host-suffix-covers-the-opened-store: the dropped segments
+hold at most S records).  Each segment is read only, one entry at a time
+(fnn-log-read-closed-segment), each record's stored octets folded as it
+passes and not kept.  After the walk the plan and the header are read again,
+and ACL2 answers the fold only when both are unchanged
+(fn-lgo-suffix-settled): a checkpoint, rotation or drop during the walk
+leaves the totals unseen.  NIL (unseen) also when the plan refuses, the
+head is not one, the fold refuses (:bad), or any read refuses or fails.
+Unlocked: records appended to the active segment after the walk passed them
+are missed, the staleness every pre-open observation has (adapter
+MEMORY-OBSERVED-EXTENT-CAP)."
+  (let* ((s (fifth open))
+         (plan (fnn-core 'fn-lgo-scan-plan (fnn-log-segment-names store) s)))
     (when plan
       (destructuring-bind (kind low scan skip acc) plan
         (let* ((unit (fnn-store-log-unit))
@@ -571,7 +579,7 @@ MEMORY-OBSERVED-EXTENT-CAP."
                      (unwind-protect
                           (let ((head (fnn-read-exact-fd
                                        fd (fnn-nat (fnn-core 'fn-lgl-head-len unit)))))
-                            (and head (fnn-core 'fn-lgl-head-prev (fnn-octet-list head) max)))
+                            (and head (fnn-core 'fn-lgo-head-genesis (fnn-octet-list head) low max)))
                        (fnn-close fd)))))
                (dicts (fnn-lz-dicts))
                (allow (fnn-core 'fn-adm-row-allowance profile))
@@ -584,7 +592,9 @@ MEMORY-OBSERVED-EXTENT-CAP."
           (when genesis
             (dolist (k scan)
               (setq genesis (fnn-log-read-closed-segment store k genesis unit max sink)))
-            (and (not (eq acc :bad)) acc)))))))
+            (fnn-core 'fn-lgo-suffix-settled plan open acc
+                      (fnn-core 'fn-lgo-scan-plan (fnn-log-segment-names store) s)
+                      (fnn-checkpoint-header-observation store))))))))
 
 ;; The configuration history's octets on disk (config/, the lstat sizes of
 ;; its regular files under the profile's listing bound), which loading the

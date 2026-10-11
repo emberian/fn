@@ -55,12 +55,17 @@
 ;                                        the probe's plan scans every segment
 ;                                        journal/ holds, skip S only from
 ;                                        the genesis
+;   L2H-4 fn-lgo-head-genesis-is-the-open-lineage-start
+;                                        a head the probe accepts is one the
+;                                        open admits, and both start from
+;                                        its predecessor
 
 (in-package "ACL2")
 (include-book "store-log-segments")
 (include-book "store-log-stream")
 (include-book "statement-recover-stream")
 (include-book "history-totals-carried")
+(include-book "store-log-lineage")
 
 (local (in-theory (disable (tau-system))))
 
@@ -1175,6 +1180,41 @@
                             (hi (fn-lgs-max-index (fn-lgs-indices names) 0)))
                  (:instance fn-lgo-min-index-le-member (k 1) (ks (fn-lgs-indices names))
                             (acc (fn-lgs-max-index (fn-lgs-indices names) 0)))))))
+
+;
+; The chain value the :head plan streams segment LOW from: the head's claimed
+; predecessor, only when the head is a readable rotation entry naming LOW
+; (books/store-log-lineage.lisp fn-lgl-headed-p, fn-lgl-head-index); NIL
+; (unseen) for a damaged or misnamed head (Codex l-2ah F2).  Whether the head
+; continues this store's lineage needs the F row's G, which the probe cannot
+; read before the open: a foreign head is refused by the open itself
+; (foreign-lineage), so the figure then sizes a command that refuses.
+(defun fn-lgo-head-genesis (octets low max)
+  (declare (xargs :guard (fn-cbor-octet-listp octets) :verify-guards nil))
+  (and (fn-lgl-headed-p octets max)
+       (equal (fn-lgl-head-index octets max) (fn-cbor-u32-bytes low))
+       (fn-lgl-head-prev octets max)))
+
+; KEYSTONE L2H-4.  A head the probe accepts is one the open's lineage
+; decision admits for K = LOW under the F row whose G is that head's
+; trailer, and the probe starts from the chain value the open starts from
+; (host/native/io.lisp fnn-log-lineage-genesis answers fn-lgl-head-prev).
+(defthm fn-lgo-head-genesis-is-the-open-lineage-start
+  (implies (and (fn-lgo-head-genesis octets k max)
+                (integerp k) (<= 2 k))
+           (and (not (fn-lgl-open k (fn-lgl-head-trailer octets) octets t0 max))
+                (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-prev octets max))))
+  :hints (("Goal" :in-theory (enable fn-lgl-open fn-lgl-head-check))))
+
+; The probe's answer: ACC, only when the plan and the header it re-reads
+; after the walk are the ones it started from and the fold did not refuse;
+; else NIL (unseen).  A checkpoint, rotation or drop that lands during the
+; walk changes one of them (Codex l-2ah F1); records appended to the active
+; segment after its stream passed them are the staleness every pre-open
+; observation has (adapter MEMORY-OBSERVED-EXTENT-CAP, owners A and M).
+(defun fn-lgo-suffix-settled (plan hdr acc plan2 hdr2)
+  (declare (xargs :guard t))
+  (and (equal plan plan2) (equal hdr hdr2) (not (eq acc :bad)) acc))
 
 ; The order's algebra.
 (local
