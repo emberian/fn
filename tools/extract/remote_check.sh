@@ -12,8 +12,14 @@ if [ -x build/fn-host-developer ] && [ -d /tank/fn/toolchains ]; then
     exec sh tools/extract/check.sh . build/fn-host-developer
 fi
 NAME=$(basename "$(pwd)")
-tools/hbox_native.sh --label "$LABEL" "$REV" tests.test_native_served_differential || {
-    echo "extract-check: FAIL at image: tools/hbox_native.sh"; exit 1; }
+# hbox_native.sh detaches by default and returns once the box run has
+# started; check.sh needs the built image, so wait for the run's status
+# (attach), which also leaves the run alive if this side dies.  --box hbox:
+# the check below runs in hbox's scratch path.
+tools/hbox_native.sh --box hbox --label "$LABEL" "$REV" tests.test_native_served_differential || {
+    echo "extract-check: FAIL at image: tools/hbox_native.sh could not start"; exit 1; }
+tools/hbox_native.sh attach "$LABEL" || {
+    echo "extract-check: FAIL at image: tools/hbox_native.sh run $LABEL (status: tools/hbox_native.sh status $LABEL)"; exit 1; }
 # The source the image was built from, for the gate's extraction manifest
 # (as hbox_native.sh names it: HEAD, +dirty for uncommitted edits, or REV).
 if [ "$REV" = . ]; then
@@ -21,7 +27,7 @@ if [ "$REV" = . ]; then
 else
     SOURCE=$(git rev-parse --verify "$REV^{commit}")
 fi
-ssh hbox "cd /tank/fn/scratch/$NAME/native-$LABEL/tree && FN_EXTRACT_SOURCE=$SOURCE sh tools/extract/check.sh . build/fn-host-developer"
+ssh hbox "cd /tank/fn/scratch/$NAME/native-$LABEL/tree && FN_EXTRACT_SOURCE=$SOURCE swarm-build sh tools/extract/check.sh . build/fn-host-developer"
 st=$?
 [ $st = 0 ] || echo "extract-check: FAIL (remote status $st; /tank/fn/scratch/$NAME/native-$LABEL/tree/build/extract/check/status.json)"
 exit $st

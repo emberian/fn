@@ -721,6 +721,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/history-totals-carried-tests \
 	tests/acl2/heap-command-tests \
 	tests/acl2/heap-command-entry-scratch-tests \
+	tests/acl2/heap-log-extent-cap-tests \
+	books/heap-log-extent-cap-cost \
 	books/charged-totals-header \
 	books/charged-totals-header-writes \
 	books/charged-totals-header-cost \
@@ -1697,6 +1699,10 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/served-catalog-raw-availability-tests tests/acl2/served-catalog-load-identity-tests \
 	tests/acl2/served-incremental-tests \
 	tests/acl2/over-window-tests \
+	books/over-render-quantum \
+	tests/acl2/over-render-tests \
+	books/over-render-bound \
+	tests/acl2/over-render-bound-tests \
 	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
