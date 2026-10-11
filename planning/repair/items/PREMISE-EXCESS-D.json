@@ -5,13 +5,14 @@
  "id": "PREMISE-EXCESS-D",
  "notes": [
   "2026-10-10 Builder D, lane/d-premise-establish: fn-bpnp-clock-domain-admitsp established by a hosted entry (books/bp-node-rotation-recovery.lisp fn-bpnp-hosted-recovery-admits-the-same-or-a-fresh-domain, with its converse); fn-bpnr-recovery-replayp remains.",
-  "10-10 12:03 2026-10-10 Builder D, lane/d-replayp-invariant: fn-bpnr-recovery-replayp is carried by the invariant fn-bpnr-replay-readyp, established at the open (fn-bpnr-open-is-replay-ready) and preserved by fn-bpnj-step (fn-bpnj-step-preserves-replay-readiness); the restart keystones and their helper take it; premise_audit lists no premise of this item."
+  "10-10 12:03 2026-10-10 Builder D, lane/d-replayp-invariant: fn-bpnr-recovery-replayp is carried by the invariant fn-bpnr-replay-readyp, established at the open (fn-bpnr-open-is-replay-ready) and preserved by fn-bpnj-step (fn-bpnj-step-preserves-replay-readiness); the restart keystones and their helper take it; premise_audit lists no premise of this item.",
+  "10-11 12:51 10-11 Builder D, lane/d-web-premises: D's web lanes (d03d3bfe3, 21e658e74) had added 11 NEW premises; 10 are established on the host path or scoped local: fn-was-statep, fn-wov-statep, fn-wls-statep (start theorems of each scan kind fn-wrs-start returns, with octet and scan preservation of state and kind), fn-wrs-start-statep and fn-wrs-scan-statep (the guards of the CLC entries fn-web-host-stream-scan and -page hold of every scan the host makes), fn-wpc-wcursorp (fn-wpc-cursor-wcursorp over window segments), fn-wpf-spansp and fn-wpf-valsp (fn-wpf-start-spans-and-values); fn-was-field-okp, fn-wov-field-okp, fn-wss-all-vchar, fn-wss-groupp leave with their put/forward lemmas made local proof steps. Open: fn-wpc-cursorp (assumed by fn-wpc-next-cursorp; fn-web-host-page-step is live for every non-reply-scan page): its base needs fn-wpc-segs-okp of every :page-plan against the buffer the step reads, the byte refinement's span half; not narrowed, not baselined."
  ],
  "owner": "builder-D",
  "severity": "medium",
  "sha": "d6c40cd05",
  "source": "premise_audit at dev 9b580dd36, Builder D 2026-10-10 under the coordinator's CL24 ruling (a)",
- "state": "ready",
- "title": "premise_audit: 1 unestablished host premise added since the baseline (BP serve rotation restart)",
- "updated": "2026-10-10T16:03:05Z"
+ "state": "in-progress",
+ "title": "premise_audit: fn-wpc-cursorp, the plain page step's cursor, is assumed at a hosted step and never established",
+ "updated": "2026-10-11T16:51:21Z"
 }

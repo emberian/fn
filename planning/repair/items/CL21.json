@@ -7,11 +7,16 @@
  "id": "CL21",
  "line": "",
  "locus": "gates-tests-packaging",
- "notes": [],
+ "notes": [
+  "10-11 12:05 10-11 Builder D: keystone_emit --check at dev 3119f7d32: 20 defkeystone forms in 6 books, 0 findings (green); the 151 findings of 10-04 are gone.",
+  "10-11 13:04 10-11 Builder D, correction: my earlier close read a laptop run, where no certificate is readable and keystone_emit --check reports 0 findings. On hbox with certificates (FN_CERT_CACHE=/tank/fn/certcache) at dev 3119f7d32 (+ tools/load only, f45cc420b) it is red: 20 defkeystone forms in 6 books, 60 findings, among them the critical gate's HARD FAIL on changed durability keystones fn-scka-next-checkpoint-is-capture and fn-scka-recover-from-checkpoint-is-full-recover (evidence package: positive witness book not certified at its current closure key). Log hbox:/tank/fn/scratch/d-sweep-cells/devstatic.log.",
+  "10-11 13:49 10-11 Builder D, second correction: neither of my measurements judges this row. The laptop has no record cache, so the critical gate reports 0. The hbox run was in a remote_check mirror (hbox:/tank/fn/scratch/d-sweep-cells-check), where green_check's audit judges the record cache against the mirror: 315 of 462 books in the witness closure of fn-scka-recover-from-checkpoint-is-full-recover read uncertified there, books/accounts among them. That is the Fungus seat's finding, in B's tools queue (keystone_emit and premise_audit to refuse a mirror). The 60 findings are that artifact. The row stays open until keystone_emit --check runs where the full cache is installed.",
+  "10-11 14:03 10-11 Builder D, closed on L11's evidence: against hbox's own record cache at ec78ffb17, keystone_emit --check reports 0 findings (L11's run, routed by the coordinator). Mechanism of the 53 'positive witness book is not certified at its current closure key' findings in hbox:/tank/fn/scratch/d11-ks/ks3.log and in my remote_check runs: on hbox, green_check asks the record box 'hbox' over ssh; that ssh fails host-key verification and green_check silently falls back to persvati's stale cache. The laptop's 0 had no record cache at all. The tool defect, a silent fallback to another box's cache being a vacuous check that must refuse instead, is B13's."
+ ],
  "owner": "sweep-gates",
  "severity": "medium",
  "source": "check-lane-355a5c843",
- "state": "open",
+ "state": "closed",
  "title": "check-lane red: keystone_emit",
- "updated": "2026-10-03T02:30:23Z"
+ "updated": "2026-10-11T18:03:18Z"
 }
