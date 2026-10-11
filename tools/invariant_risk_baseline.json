@@ -7,7 +7,6 @@
   "fn-owner-recover-from-store-open": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
   "fn-owner-orcp-load-catalog-begin": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
   "fn-owner-orcp-load-catalog-chunk": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
-  "fn-store-cfg-native-admin-authorize": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor",
   "fn-store-sco-image-open": "builder-A: the current owner path landing 2 rebuilds (survivorship rule, coordinator 2026-10-10); retirement: A's landing 2, unless A names this entry a survivor"
  }
 }
