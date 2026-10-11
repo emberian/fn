@@ -580,6 +580,38 @@
 (definterface fn-rce-exercise
   :class :common-lisp-compliant)
 
+; host/native/owner.lisp: the host lease's executor (books/runtime-contract-
+; host-lease.lisp) for a plain connection's ARTICLE responses, under the owner
+; mutex.  Every call keeps the leased layer's invariant (fn-hld-*-keeps-invp,
+; fn-hld-init-establishes-invp); the quantum's send range is the window.
+(definterface fn-hld-init
+  :class :common-lisp-compliant
+  :keystones (fn-hld-init-establishes-invp))
+
+(definterface fn-hld-begin
+  :class :common-lisp-compliant
+  :keystones (fn-hld-begin-keeps-invp))
+
+(definterface fn-hld-workspace
+  :class :common-lisp-compliant)
+
+(definterface fn-hld-window-base
+  :class :common-lisp-compliant
+  :keystones (fn-hld-window-base-is-the-base))
+
+(definterface fn-hld-quantum
+  :class :common-lisp-compliant
+  :keystones (fn-hld-quantum-sends-the-window
+              fn-hld-quantum-keeps-invp))
+
+(definterface fn-hld-sent
+  :class :common-lisp-compliant
+  :keystones (fn-hld-sent-keeps-invp))
+
+(definterface fn-hld-end
+  :class :common-lisp-compliant
+  :keystones (fn-hld-end-keeps-invp))
+
 (definterface fn-bs-config-encode
   :class :common-lisp-compliant)
 

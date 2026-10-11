@@ -273,6 +273,10 @@ not armed. Instrumentation has no semantic or admission role."
   ;; The I/O loops that serve every reader and transit connection
   ;; (host/native/mux.lisp), and the round-robin cursor over them.
   (mux nil) (mux-next 0)
+  ;; T once the host lease's contract state is initialized for this run
+  ;; (fnn-owner-lease-install-locked); a plain ARTICLE response renders
+  ;; through the lease only then.
+  (lease-ready nil)
   ;; r71 F13: the accepted sockets not yet taken by a loop are bounded by the
   ;; loops: an accept thread takes a socket from the kernel only into a
   ;; loop's free slot (no reservation, empty inbox), reserved under
@@ -873,16 +877,136 @@ never awaits a page or replays a quantum in the same I/O event."
         (values (second result) nil)
       (values plan (second result)))))
 
-(defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp borrowp)
+;;; The host lease (Builder A; books/runtime-contract-host-lease.lisp).  One
+;;; plain ARTICLE response is one instance of the runtime contract over the
+;;; process's one fn-rtc-st.  Every call below is the book's executor
+;;; (fn-hld-*), under the owner mutex; the host itself only writes a submitted
+;;; send's array range, [base(H), base(H)+n) of the stobj's one octet array,
+;;; off the mutex (fn-hld-quantum-sends-the-window: that range is the window).
+;;; A connection's LEASE is its instance (ID INC) while a response holds it and
+;;; the operation OP and length N of its outstanding send.
+
+(defstruct (fnn-lease (:constructor fnn-make-lease))
+  (id nil) (inc nil) (op nil) (n 0))
+
+(defun fnn-owner-lease-install-locked (service)
+  "Initialize the run's lease state (fn-hld-init) from the configured gate's
+CFG (host/owner-host.lisp fn-owner-lease-cfg), the store's profile and ACL2's
+ARTICLE quantum; the caller holds the owner serialization, before any actor
+exists (fnn-mux-budget-install)."
+  (let ((cfg (fnn-owner-core 'fn-owner-lease-cfg))
+        (profile (fnn-store-config (fnn-owner-service-store service))))
+    (destructuring-bind (st okp left)
+        (fnn-call 'fn-hld-init profile cfg (fnn-owner-article-window) (fnn-live-rtc-st))
+      (declare (ignore st))
+      (unless (and okp (null left))
+        (fnn-fault "the host lease's contract state did not initialize (okp ~s, unsettled ~s)" okp left)))
+    (unless (typep (svref (fnn-live-rtc-st) *fn-rtc-c-bytesi*) 'fnn-octets)
+      (fnn-fault "the host lease's octet array is not an octet vector"))
+    (setf (fnn-owner-service-lease-ready service) t)))
+
+(defun fnn-owner-lease-sent-locked (lease outcome)
+  "Complete LEASE's outstanding send with OUTCOME ((:done n) when the socket
+took the whole window, else (:failed reason)); the caller holds the mutex."
+  (when (fnn-lease-op lease)
+    (destructuring-bind (st left)
+        (fnn-call 'fn-hld-sent (fnn-lease-id lease) (fnn-lease-inc lease) (fnn-lease-op lease)
+                  outcome (fnn-live-rtc-st))
+      (declare (ignore st))
+      (when left (fnn-fault "the host lease left completions unsettled: ~s" left)))
+    (setf (fnn-lease-op lease) nil (fnn-lease-n lease) 0)))
+
+(defun fnn-owner-lease-end-locked (lease outcome)
+  "End LEASE's response: its send completed with OUTCOME, then the instance
+closed (fn-hld-end), which returns its workspace to the pool and grants the
+next waiter; the caller holds the mutex."
+  (fnn-owner-lease-sent-locked lease outcome)
+  (when (fnn-lease-id lease)
+    (destructuring-bind (st left)
+        (fnn-call 'fn-hld-end (fnn-lease-id lease) (fnn-lease-inc lease) (fnn-live-rtc-st))
+      (declare (ignore st))
+      (when left (fnn-fault "the host lease left completions unsettled: ~s" left)))
+    (setf (fnn-lease-id lease) nil (fnn-lease-inc lease) nil))
+  :ended)
+
+(defun fnn-owner-lease-release (service cid lease class &optional (outcome :done))
+  "The response drained (OUTCOME :done) or was abandoned (:failed): end the
+lease under the owner mutex.  Nothing to do when it holds no instance."
+  (when (or (fnn-lease-id lease) (fnn-lease-op lease))
+    (fnn-owner-serialized
+     service cid
+     (lambda ()
+       (fnn-owner-lease-end-locked
+        lease (if (eq outcome :done) (list :done (fnn-lease-n lease)) '(:failed :gone))))
+     class)))
+
+(defun fnn-owner-lease-article-step (cid lease plan)
+  "One leased ARTICLE quantum under the owner mutex: the previous window's
+send completed (the socket took it all before this render), the response's
+instance begun on its first quantum, its workspace H, the window rendered into
+fn-dss-out and fn-hld-quantum's send of it.  (:wait) while no instance slot or
+pool buffer is free; else (:warm ARRAY START END NEXT DONE), ARRAY the stobj's
+octet array and [START, END) the send's range (END = START when the window
+is empty, and then no send is outstanding)."
+  (let ((st (fnn-live-rtc-st)))
+    (fnn-owner-lease-sent-locked lease (list :done (fnn-lease-n lease)))
+    (unless (fnn-lease-id lease)
+      (destructuring-bind (st2 id inc left) (fnn-call 'fn-hld-begin cid st)
+        (declare (ignore st2))
+        (when left (fnn-fault "the host lease left completions unsettled: ~s" left))
+        (unless id (return-from fnn-owner-lease-article-step (list :wait)))
+        (setf (fnn-lease-id lease) id (fnn-lease-inc lease) inc)))
+    (let* ((id (fnn-lease-id lease)) (inc (fnn-lease-inc lease))
+           (h (first (fnn-call 'fn-hld-workspace 0 id inc st))))
+      (unless h (return-from fnn-owner-lease-article-step (list :wait)))
+      (destructuring-bind (word next done &rest ignored)
+          (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-article-window)
+                    (fnn-live-stobj 'fn-arena) (fnn-live-ast-ws) (fnn-live-dss-out))
+        (declare (ignore ignored))
+        (let ((base (first (fnn-call 'fn-hld-window-base h st))))
+          (if (not (eq word :article))
+              (list :warm nil base base next done)
+            (destructuring-bind (st2 op n) (fnn-call 'fn-hld-quantum h id inc (fnn-live-dss-out) st)
+              (declare (ignore st2))
+              (cond (op (setf (fnn-lease-op lease) op (fnn-lease-n lease) n)
+                        (list :warm (svref st *fn-rtc-c-bytesi*) base (+ base n) next done))
+                    ((zerop (svref (fnn-live-dss-out) 1)) (list :warm nil base base next done))
+                    (t (fnn-fault "the host lease refused a window of ~d octets" (svref (fnn-live-dss-out) 1)))))))))))
+
+(defun fnn-owner-render-next-quantum (service cid plan class &optional compressedp borrowp lease)
   "Render a window, running at most one cursor quantum under the owner
-mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP COLD-READ END).
-Empty progress yields; a cold read retains the exact original plan/capture."
+mutex as CID's CLASS: (values OCTETS PLAN-REST DONEP YIELDP COLD-READ END
+NIL START), the window OCTETS[START, END) (START nil: 0).  Empty progress
+yields; a cold read retains the exact original plan/capture.  With LEASE (a
+plain connection's fnn-lease) an ARTICLE window is the host lease's
+(fnn-owner-lease-article-step): written from the contract's octet array, a
+yield while no pool buffer is free."
   (multiple-value-bind (ready ready-p yield cold)
       (fnn-owner-ready-plan-step service cid plan class)
     (unless ready-p
       (return-from fnn-owner-render-next-quantum
         (values (fnn-make-octets 0) ready nil yield cold 0)))
     (setq plan ready))
+  (when (and lease (fnn-owner-service-lease-ready service) (fnn-core 'fn-asto-plan-articlep plan))
+    (let ((article
+            (fnn-owner-cursor-step-serialized service cid
+             (lambda ()
+               (let ((attempt
+                       (catch 'fnn-extent-cold
+                         (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
+                           (fnn-owner-lease-article-step cid lease plan)))))))
+                 (if (member (car attempt) '(:warm :wait)) attempt
+                   (list :cold (fnn-owner-cold-issue-locked service cid attempt))))) class)))
+      (case (car article)
+        (:cold (return-from fnn-owner-render-next-quantum
+                 (values (fnn-make-octets 0) plan nil nil (second article) 0)))
+        (:wait (return-from fnn-owner-render-next-quantum
+                 (values (fnn-make-octets 0) plan nil t nil 0))))
+      (destructuring-bind (array start end next done) (cdr article)
+        (return-from fnn-owner-render-next-quantum
+          (if (< start end)
+              (values array next done nil nil end nil start)
+            (values (fnn-make-octets 0) next done (not done) nil 0))))))
   (when (fnn-core 'fn-asto-plan-articlep plan)
     (let ((article
             (fnn-owner-cursor-step-serialized service cid
@@ -890,9 +1014,11 @@ Empty progress yields; a cold read retains the exact original plan/capture."
                (let ((attempt
                        (catch 'fnn-extent-cold
                          (fnn-owner-window-activation (lambda () (let ((*fnn-extent-no-io* t))
-                           ;; Adapter A2 (Builder A): the window is rendered
-                           ;; into fn-dss-out and copied out here, under the
-                           ;; owner mutex, before another render reuses it.
+                           ;; Adapter A2 (owner Builder A; retired when the
+                           ;; compressed, Web and pull callers lease): the
+                           ;; window is rendered into fn-dss-out and copied
+                           ;; out here, under the owner mutex, before another
+                           ;; render reuses it.
                            (destructuring-bind (word next done &rest ignored)
                                (fnn-call 'fn-asto-plan-render-window plan (fnn-owner-article-window)
                                          (fnn-live-stobj 'fn-arena) (fnn-live-ast-ws)

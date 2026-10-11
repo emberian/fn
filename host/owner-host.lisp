@@ -1868,6 +1868,18 @@
               (nth 1 r)))
     (list nil nil nil)))
 
+; The host lease's memory configuration (books/runtime-contract-host-lease.lisp
+; fn-hld-init, called by host/native/owner.lisp fnn-owner-lease-install-locked
+; once the run's gate is configured): the gate's CFG, its connections bounded
+; by the run's C', so the lease has one instance slot per connection the gate
+; admits and fn-mm-cfg-holders pool buffers (HL4).
+(defun fn-owner-lease-cfg (state)
+  (declare (xargs :stobjs state :mode :program))
+  (value (cadr (fn-owner-memory-gate state))))
+
+(definterface fn-owner-lease-cfg
+  :class ::program)
+
 ; The identity preflight's verdict on one ACL2-constructed EVENT (lane
 ; bp-retention-leftovers).  Its kind is the WIRE event's
 ; (`fn-wire-event-kind'; the row reading `fn-store-event-kind' answered NIL

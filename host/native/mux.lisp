@@ -142,6 +142,10 @@
   ;; :transit when ACL2 named a peer at open) and the render plan whose
   ;; windows the loop is writing (nil between replies).
   (class :reader) plan
+  ;; The host lease (host/native/owner.lisp fnn-lease) a plain connection's
+  ;; ARTICLE responses render through: made at its first; between responses
+  ;; it holds no instance.
+  (lease nil)
   ;; First dependency miss of this retained response, across cursor retries.
   ;; A new plan resets it before its first render; it is not a physical hold.
   (cursor-cold-since nil)
@@ -494,6 +498,13 @@ failed effects remain discoverable while independent physical cleanup runs."
               loop conn :output-discard
               (lambda () (fnn-owner-output-close service (fnn-mux-conn-output-grant conn) :discarded))
               nil nil)
+             ;; An abandoned leased response: its send fails, its instance
+             ;; closes and its workspace returns to the pool.
+             (when (fnn-mux-conn-lease conn)
+               (fnn-mux-cleanup-attempt
+                loop conn :lease-end
+                (lambda () (fnn-owner-lease-end-locked (fnn-mux-conn-lease conn) '(:failed :gone)))
+                :ended t))
              (fnn-mux-cleanup-attempt
               loop conn :response-unpin
               (lambda () (fnn-owner-response-unpin service (or cid opened-cid))) nil nil)
@@ -634,8 +645,11 @@ ending the connection with fnn-mux-finish."
 ;;; greeting included.  A reply is written as before; the issuer gate
 ;;; returns with its producer, as a rowed operation (section 4, M4).
 
-(defun fnn-mux-output-window (conn octets end)
-  "Retain the valid prefix; compression consumes an exact-length input."
+(defun fnn-mux-output-window (conn octets end &optional start)
+  "Retain the valid range [START, END) (START nil: 0); compression consumes an
+exact-length input.  A leased window (START non-nil) is the contract's octet
+array itself, never compressed (fnn-mux-render-next leases only a plain
+connection)."
   (let* ((end (or end (length octets)))
          (out (if (fnn-mux-conn-zout conn)
                   (fnn-mux-z-out conn (if (= end (length octets)) octets
@@ -643,9 +657,9 @@ ending the connection with fnn-mux-finish."
                 octets)))
     (setf (fnn-mux-conn-out conn) out
           (fnn-mux-conn-out-end conn) (if (fnn-mux-conn-zout conn) (length out) end)
-          (fnn-mux-conn-out-at conn) 0)))
+          (fnn-mux-conn-out-at conn) (or start 0))))
 
-(defun fnn-mux-queue (loop conn octets op after &optional end)
+(defun fnn-mux-queue (loop conn octets op after &optional end start)
   "Queue the one reply OCTETS (a greeting, a rendered window); AFTER (nil,
 :close or :starttls) runs when the socket has taken it and no window of the
 plan remains."
@@ -653,7 +667,7 @@ plan remains."
     ;; The named non-semantic scope (and its private test injection) of the
     ;; worker's send, fnn-owner-connection-call's.
     (fnn-owner-connection-call service op (lambda () nil))
-    (fnn-mux-output-window conn (fnn-octets octets) end)
+    (fnn-mux-output-window conn (fnn-octets octets) end start)
     (setf (fnn-mux-conn-out-op conn) op
           (fnn-mux-conn-after conn) after
           (fnn-mux-conn-want conn) nil)
@@ -676,7 +690,8 @@ none of it waits for a barrier in flight that the read itself did not."
 (lane join-f2-13, PRF-1020: a served OVER/XOVER range; fnn-owner-cursor-step
 under the owner mutex, at most one quantum per mutex hold; sparse ranges
 can take several empty quanta before a write): (values OCTETS PLAN-REST
-DONEP YIELDP COLD-READ END WINDOW-WAIT)."
+DONEP YIELDP COLD-READ END WINDOW-WAIT START).  A plain connection's ARTICLE
+window is leased (fnn-owner-render-next-quantum's LEASE): OCTETS[START, END)."
   (unless (fnn-core 'fn-send-window-render-p (fnn-mux-send-notsent conn))
     (return-from fnn-mux-render-next (values nil plan nil nil nil nil t)))
   (unless (fnn-mux-conn-output-grant conn)
@@ -691,7 +706,10 @@ DONEP YIELDP COLD-READ END WINDOW-WAIT)."
                          (third (fnn-mux-conn-response-identity conn)))
       (fnn-owner-render-next-quantum (fnn-mux-service loop) (fnn-mux-conn-cid conn) plan
                                      (fnn-mux-read-class loop conn)
-                                     (and (fnn-mux-conn-zout conn) t) t))))
+                                     (and (fnn-mux-conn-zout conn) t) t
+                                     (and (null (fnn-mux-conn-zout conn))
+                                          (or (fnn-mux-conn-lease conn)
+                                              (setf (fnn-mux-conn-lease conn) (fnn-make-lease))))))))
 
 (defun fnn-mux-plan-yield (loop conn plan after &optional empty-progressp)
   "Retain the cursor's exact continuation and ownership until its
@@ -769,7 +787,7 @@ whole reply; a plan with nothing to write runs AFTER at once."
           (fnn-owner-response-identity
            (fnn-mux-service loop) (fnn-mux-conn-connection-identity conn)
            (fnn-mux-read-class loop conn))))
-  (multiple-value-bind (octets rest donep yieldedp cold-read end window-wait)
+  (multiple-value-bind (octets rest donep yieldedp cold-read end window-wait start)
       (fnn-mux-render-next loop conn plan)
     (when window-wait
       (fnn-mux-plan-window-wait conn plan after)
@@ -782,7 +800,7 @@ whole reply; a plan with nothing to write runs AFTER at once."
     (cond (cold-read (fnn-mux-plan-cold loop conn rest after cold-read))
           (yieldedp (fnn-mux-plan-yield loop conn rest after t))
           ((> (or end (length octets)) 0)
-           (fnn-mux-queue loop conn octets :send-reply after end))
+           (fnn-mux-queue loop conn octets :send-reply after end start))
           (t (fnn-mux-after loop conn after)))))
 
 (defun fnn-mux-flush (loop conn)
@@ -814,7 +832,7 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
           (fnn-mux-plan-yield loop conn plan (fnn-mux-conn-after conn))
           (return-from fnn-mux-flush nil))
         (if plan
-            (multiple-value-bind (octets rest donep yieldedp cold-read end window-wait)
+            (multiple-value-bind (octets rest donep yieldedp cold-read end window-wait start)
                 (fnn-mux-render-next loop conn plan)
               (when window-wait
                 (fnn-mux-plan-window-wait conn plan (fnn-mux-conn-after conn))
@@ -826,7 +844,7 @@ window (off the owner mutex) and go on; with nothing left, run AFTER."
               (when yieldedp
                 (fnn-mux-plan-yield loop conn rest (fnn-mux-conn-after conn) t)
                 (return-from fnn-mux-flush nil))
-              (fnn-mux-output-window conn octets end)
+              (fnn-mux-output-window conn octets end start)
               (setf (fnn-mux-conn-plan conn) (if donep nil rest))
               (fnn-mux-send-look conn))
           (let ((after (fnn-mux-conn-after conn)))
@@ -876,6 +894,11 @@ contract, without blocking the loop)."
   ;; answered under the disk-slow posture must not wait here for the batch in
   ;; flight, or the connection reads nothing more until the barrier ends
   ;; (PKT-858; CONVERGE-3, test_a_peer_is_told_to_retry_while_the_disk_is_slow).
+  ;; The host lease's response ended: its last send completed and its
+  ;; instance closed, so its workspace returns to the pool (no-op unleased).
+  (when (fnn-mux-conn-lease conn)
+    (fnn-owner-lease-release (fnn-mux-service loop) (fnn-mux-conn-cid conn) (fnn-mux-conn-lease conn)
+                             (fnn-mux-read-class loop conn)))
   (fnn-owner-response-window-close (fnn-mux-service loop) (fnn-mux-conn-response-capture conn)
                                    (fnn-mux-read-class loop conn))
   (fnn-owner-response-unpin (fnn-mux-service loop) (fnn-mux-conn-cid conn))
@@ -2304,6 +2327,10 @@ the run's (exit 1), named on stderr and in the service log."
                   ;; bounds the readers accepted by it.
                   (setq memory
                    (fnn-owner-memory-configure-locked service tls-context observed))
+                  ;; The host lease's pool for this run's admitted
+                  ;; connections (books/runtime-contract-host-lease.lisp).
+                  (when (eq memory :hold)
+                    (fnn-owner-lease-install-locked service))
                   ;; Store figure is captured before both allowance extensions.
                   ;; ACL2 validates dynamic >= store + exact cold + output pool.
                   (fnn-owner-output-install

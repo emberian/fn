@@ -7,6 +7,9 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-2")
+(include-book "owner-identity-prepare")
+(include-book "consumer-event-charge")
+(include-book "consumer-publication-budget")
 (include-book "post-admission-keyed")
 (include-book "moderation-verbs")
 (include-book "owner-results")

@@ -174,6 +174,12 @@
     (declare (ignore refused cost))
     (fn-hld-settle (true-list-fix acts) (fn-hld-fuel fn-rtc-st) fn-rtc-st)))
 
+;; The array offset the host writes a window of H from: buffer H's base (the quantum's keystone's range
+;; starts there, fn-hld-window-base-is-the-base).
+(defun fn-hld-window-base (h fn-rtc-st)
+  (declare (xargs :stobjs fn-rtc-st))
+  (fn-rtc-buf-base h (fn-rtc-st-config fn-rtc-st)))
+
 ; -----------------------------------------------------------------------------
 ; The quantum's keystone: what fn-hld-quantum leaves is HL5a's state, so the array range the host writes
 ; for the send it submits is the render's window (fn-hld-quantum-sends-the-window).
@@ -212,6 +218,10 @@
                                      fn-rtc-st-config fn-rtc-st$a-config))))
 
 (in-theory (disable fn-hld-readers))
+
+(defthm fn-hld-window-base-is-the-base
+  (equal (fn-hld-window-base h st) (fn-rtc-buf-base h (fn-rtc-config st)))
+  :hints (("Goal" :in-theory (union-theories '(fn-hld-window-base fn-hld-readers) (theory 'minimal-theory)))))
 
 (defthm fn-hld-nthcdr-0 (equal (nthcdr 0 x) x))
 (defthm fn-hld-quantum-is-the-quantum-state
