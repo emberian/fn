@@ -68,13 +68,17 @@ class CoreLauncherTests(unittest.TestCase):
         launcher, env = self.decide_world(probe_stdout)
         runtime = launcher.parent / "sbcl"
         runtime.write_text('#!/bin/sh\nfor a in "$@"; do [ "$a" = heap ] && '
-                           '{ echo "$PROBE"; exit "$PROBE_RC"; }; done\n'
+                           '{ echo "probe-cap=${FN_LOG_EXTENT_CAP-unset}" >&2; echo "$PROBE"; '
+                           'exit "$PROBE_RC"; }; done\n'
                            'echo "cap=${FN_LOG_EXTENT_CAP-unset}"\n')
         if stale is not None:
             env["FN_LOG_EXTENT_CAP"] = stale
         result = subprocess.run(["sh", str(launcher), "--fn", "operator", "/cfg", "status", "--replay"],
                                 env=env, capture_output=True, text=True)
         self.assertEqual(result.returncode, 0, result.stderr)
+        if "--dynamic-space-size" not in env.get("SBCL_USER_ARGS", "") and "FN_TEST_HEAP_MB" not in env:
+            # the probe itself never runs under a cap (packaging/fn unsets it first)
+            self.assertIn("probe-cap=unset", result.stderr)
         return result.stdout.strip()
 
     def test_the_probes_extent_is_the_commands_cap(self):
@@ -87,6 +91,20 @@ class CoreLauncherTests(unittest.TestCase):
         line = "heap=300 MB profile=development machine=9 MB stack=512 KB threads=1"
         self.assertEqual(self.cap_seen(line), "cap=unset")
         self.assertEqual(self.cap_seen(line, stale="5"), "cap=unset")
+
+    def test_a_caller_named_heap_keeps_the_callers_own_cap(self):
+        # no probe runs, so the launcher has no cap to give: what the caller set
+        # (or did not set) is what the command reads (books/heap-log-extent-cap.lisp)
+        launcher, env = self.decide_world("refused never-probed", 1)
+        runtime = launcher.parent / "sbcl"
+        runtime.write_text('#!/bin/sh\necho "cap=${FN_LOG_EXTENT_CAP-unset}"\n')
+        for extra, seen in (({"FN_TEST_HEAP_MB": "700"}, "cap=unset"),
+                            ({"FN_TEST_HEAP_MB": "700", "FN_LOG_EXTENT_CAP": "5"}, "cap=5"),
+                            ({"SBCL_USER_ARGS": "--dynamic-space-size 700", "FN_LOG_EXTENT_CAP": "5"}, "cap=5")):
+            result = subprocess.run(["sh", str(launcher), "--fn", "operator", "/cfg", "status", "--replay"],
+                                    env=dict(env, **extra), capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(result.stdout.strip(), seen)
 
     def test_the_probes_refusal_stops_the_start_by_name(self):
         launcher, env = self.decide_world("refused machine-cannot-hold-profile need=9 MB", 1)

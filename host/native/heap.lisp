@@ -515,8 +515,10 @@ the probe prints EXTENT on its line when its decision is the observed branch
 the command as FN_LOG_EXTENT_CAP, and the command's open refuses a segment
 longer than it before reading any of its entries (io.lisp
 fnn-log-observed-extent; KEYSTONE
-fn-lxc-admitted-segment-entries-within-the-decided-log), so a segment grown
-between this walk and the read is refused, not read.  ADAPTER (owner
+fn-lxc-admitted-segment-entries-within-the-decided-log): a segment grown
+past EXTENT between this walk and the read is refused, and one that grows
+after the read checks its descriptor is read only within the size it
+admitted (fn-lxc-admitted-entries-end-within-the-admitted-size).  ADAPTER (owner
 Builder L, retired by L's store-log-open-scan): SUFFIX is the zero tot only
 when the log observably holds no record past S -- no octet of any segment in
 journal/ but the genesis (fnn-genesis-path, which holds no

@@ -16,10 +16,19 @@
 ; the command reads it once per segment (host/native/io.lisp
 ; fnn-log-observed-extent): a segment longer than the cap is refused by name
 ; before any of its entries is read (fn-lxc-verdict), and the descriptor's
-; size is checked equal to that observed size at its open
-; (fnn-log-open-segment), so no entry past the decided extent is read.  A
-; start whose caller names its own heap runs no probe and passes no cap:
-; the caller's figure is the caller's (:uncapped).
+; size is checked equal to that admitted size at its open
+; (fnn-log-open-segment).  The reader then reads within the admitted size,
+; whatever the file does after: every entry ends within it (KEYSTONE
+; fn-lxc-admitted-entries-end-within-the-admitted-size), so no entry past the
+; decided extent is read.  A file that grows after its descriptor is checked
+; is still read, but only within that frozen size (Codex review-cap item 4).
+; Scope: the two entry readers of the log stream; the genesis file's bounded
+; metadata read, the rotation's bounded zero scan and the explicit-extent
+; `log' diagnostics are outside it.  A start whose caller names its own heap
+; (SBCL_USER_ARGS --dynamic-space-size, FN_TEST_HEAP_MB) runs no probe, and
+; the launcher leaves FN_LOG_EXTENT_CAP as the caller set it: unset, the read
+; is :uncapped; set, it is the caller's own cap (the native test of the
+; refusal uses this).
 (in-package "ACL2")
 (include-book "heap-command-entry-scratch")
 (include-book "decimal-text")
@@ -190,6 +199,34 @@
                         fn-lxc-lgdm-entry-within-size
                         fn-lxc-observed-log-at-least-cap
                         fn-lxc-observed-cap-natp))))
+
+; KEYSTONE (the frozen read range): every entry either reader takes from an
+; admitted segment ends within the admitted size, which is at most the cap.
+(local
+ (defthm fn-lxc-lgw-entry-ends-within-size
+   (implies (fn-lgw-entry-len-bounded h st size max)
+            (<= (+ (fn-lgw-pos st) (fn-lgw-entry-len-bounded h st size max)) (nfix size)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-lgw-entry-len-bounded fn-lgw-entry-len)
+                                   ((tau-system) fn-lg-entry-len-bound fn-lg-declared-len))))))
+
+(local
+ (defthm fn-lxc-lgdm-entry-ends-within-size
+   (implies (fn-lgdm-entry-len-bounded h ps size max)
+            (<= (+ (fn-lgdm-q ps) (fn-lgdm-entry-len-bounded h ps size max)) (nfix size)))
+   :rule-classes nil
+   :hints (("Goal" :in-theory (e/d (fn-lgdm-entry-len-bounded fn-lgdm-entry-len)
+                                   ((tau-system) fn-lg-entry-len-bound fn-lg-declared-len))))))
+
+(defthm fn-lxc-admitted-entries-end-within-the-admitted-size
+  (implies (and (natp cap) (equal (fn-lxc-verdict size cap) :read))
+           (and (<= size (nfix cap))
+                (implies (fn-lgw-entry-len-bounded h st size max)
+                         (<= (+ (fn-lgw-pos st) (fn-lgw-entry-len-bounded h st size max)) size))
+                (implies (fn-lgdm-entry-len-bounded h ps size max)
+                         (<= (+ (fn-lgdm-q ps) (fn-lgdm-entry-len-bounded h ps size max)) size))))
+  :hints (("Goal" :in-theory (union-theories '(fn-lxc-verdict natp nfix) (theory 'minimal-theory))
+                  :use (fn-lxc-lgw-entry-ends-within-size fn-lxc-lgdm-entry-ends-within-size))))
 
 ; The refusals: a segment past a natural cap, and every segment under an
 ; unreadable one.

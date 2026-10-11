@@ -65,3 +65,29 @@
                                    extent))
                ((extent 8192))
                :fault "the launcher's cap read past the probe's extent word")))
+
+; KEYSTONE fn-lxc-admitted-entries-end-within-the-admitted-size (Codex review-cap item 4's restatement: the
+; reader reads within the size it admitted, whatever the file does after).  WITNESS: the segment admitted at its
+; own extent, its first entry ends within it.  BREAKS: no natural cap (the size is then bounded by nothing), and
+; a segment past the cap.  MUTATION: an entry that ends at its own start.
+(assert-event (fn-lgw-entry-len-bounded (hcest-h) (hcest-st) (sleb-extent) (slw-max)))
+(defteeth fn-lxc-admitted-entries-end-within-the-admitted-size
+  :claim (((capped (natp cap))
+           (admitted (equal (fn-lxc-verdict size cap) :read)))
+          (and (<= size (nfix cap))
+               (implies (fn-lgw-entry-len-bounded h st size max)
+                        (<= (+ (fn-lgw-pos st) (fn-lgw-entry-len-bounded h st size max)) size))
+               (implies (fn-lgdm-entry-len-bounded h ps size max)
+                        (<= (+ (fn-lgdm-q ps) (fn-lgdm-entry-len-bounded h ps size max)) size))))
+  :subject fn-lxc-verdict
+  :witness ((cap (sleb-extent)) (size (sleb-extent)) (h (hcest-h)) (st (hcest-st)) (ps (lxct-ps)) (max (slw-max)))
+  :breaks ((capped ((cap :uncapped) (size (sleb-extent)) (h (hcest-h)) (st (hcest-st)) (ps (lxct-ps))
+                    (max (slw-max))))
+           (admitted ((cap 1) (size (sleb-extent)) (h (hcest-h)) (st (hcest-st)) (ps (lxct-ps)) (max (slw-max)))))
+  :mutations ((entry-ends-at-its-start
+               (:conclusion (implies (fn-lgw-entry-len-bounded h st size max)
+                                     (<= (+ (fn-lgw-pos st) (fn-lgw-entry-len-bounded h st size max))
+                                         (fn-lgw-pos st))))
+               ((cap (sleb-extent)) (size (sleb-extent)) (h (hcest-h)) (st (hcest-st)) (ps (lxct-ps))
+                (max (slw-max)))
+               :fault "the reader's entry not counted against the admitted size")))
