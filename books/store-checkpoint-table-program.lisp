@@ -7,7 +7,7 @@
 (include-book "store-checkpoint-accessors")
 (local (include-book "arithmetic/top" :dir :system))
 
-(defconst *fn-sct-schema* 3)
+(defconst *fn-sct-schema* 4)
 (assert-event (equal *fn-sct-schema* *fn-scc-schema*))
 ; The one op added to the tree codec's 0..7.
 (defconst *fn-sct-op-ref* 8)

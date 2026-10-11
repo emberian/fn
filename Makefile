@@ -719,6 +719,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/admission-memory-tests \
 	tests/acl2/history-totals-carried-tests \
 	tests/acl2/heap-command-tests \
+	books/charged-totals-header \
+	books/charged-totals-header-writes \
+	tests/acl2/charged-totals-header-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
 	tests/acl2/open-frontier-wire-tests \

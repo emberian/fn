@@ -33,6 +33,8 @@
 (include-book "../books/peer-catchup-spool-body")
 (include-book "../books/raw-dispatch-verdict")
 (include-book "../books/response-identity")
+; The checkpoint's charged-totals header entries and keystone (fn-cth-*).
+(include-book "../books/charged-totals-header")
 ; Lane m1-durable: the log kernel's acknowledgement (fn-lgu-acknowledge, the
 ; fold of fn-lgc-finish-one the host calls once) and its keystone, that every
 ; acknowledged record is recovered from every crash image of the host's run
@@ -938,16 +940,29 @@
 (definterface fn-ns-secret-width
   :class :common-lisp-compliant)
 
-(definterface fn-ock-capture-budget
-  :class :common-lisp-compliant)
-
 (definterface fn-ock-request-status
   :class :common-lisp-compliant)
 
 (definterface fn-ockp-donep
   :class :common-lisp-compliant)
 
-(definterface fn-ockp-initial-state
+; The checkpoint's charged-totals header (books/charged-totals-header.lisp):
+; the reader's header phase over the first segment, and the table run's
+; first state with the running total the arena run ended at
+; (host/native/io.lisp fnn-state-checkpoint-plan, fnn-state-checkpoint-
+; verify, fnn-checkpoint-write-steps).
+(definterface fn-cth-header-open
+  :class :common-lisp-compliant
+  :keystones (fn-cth-read-file-is-the-header-open))
+
+(definterface fn-cth-table-initial-state
+  :class :common-lisp-compliant
+  :kinds ((total natp)))
+
+(definterface fn-cth-status-text
+  :class :common-lisp-compliant)
+
+(definterface fn-cth-empty-suffix
   :class :common-lisp-compliant)
 
 (definterface fn-ockp-step

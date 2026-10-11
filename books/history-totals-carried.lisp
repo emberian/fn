@@ -40,40 +40,10 @@
 
 (local (in-theory (disable (tau-system))))
 
-(defun fn-ct-row-log (row)
-  (declare (xargs :guard t :verify-guards nil))
-  (+ *fn-ct-log-frame-octets*
-     (cond ((fn-held-p row)
-            (fn-record-encoded-octets-ceiling (nfix (fn-hf-octets (fn-held-facts row)))
-                                              (len (fn-record-groups row))))
-           ((fn-hstxa-p row) (len (fn-store-event-encode (fn-hstxa-stxa row))))
-           (t (len (fn-store-event-encode row))))))
-
-(defun fn-ct-row-history (row)
-  (declare (xargs :guard t))
-  (mv-let (err tl plen) (fn-hp-x-rowlen row)
-    (declare (ignore err tl))
-    (nfix plen)))
-
-; One record's charged totals.
-(defun fn-ct-row-tot (row residency)
-  (declare (xargs :guard t :verify-guards nil))
-  (let ((r (fn-ct-row row)))
-    (fn-mm-make-tot 1 (nth 0 r) (nth 1 r) (nth 2 r) (nth 3 r)
-                    (fn-ct-row-log row) (fn-ct-row-history row) (nth 4 r)
-                    residency)))
-
-(defun fn-ct-zero-tot (residency)
-  (declare (xargs :guard t))
-  (fn-mm-make-tot 0 0 0 0 0 0 0 0 residency))
-
-; The fold: the charged totals of RECORDS at RESIDENCY.
-(defun fn-ct-charged (records residency)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp records)
-      (fn-mm-tot-plus (fn-ct-row-tot (car records) residency)
-                      (fn-ct-charged (cdr records) residency))
-    (fn-ct-zero-tot residency)))
+; The per-record charged totals and their fold (fn-ct-row-log, fn-ct-row-
+; history, fn-ct-row-tot, fn-ct-zero-tot, fn-ct-charged, fn-ct-log-of-
+; records) are in books/charged-totals.lisp (moved by Builder A's charged-
+; totals header, agreed 2026-10-10: the checkpoint's F row folds them).
 
 ; A cache (K . TOT) is valid for RECORDS when TOT is the fold over the first K.
 (defun fn-ct-totals-cache-validp (cache records residency)
@@ -366,13 +336,6 @@
 (defthm fn-ct-totals-empty-cache-is-valid
   (fn-ct-totals-cache-validp (cons 0 (fn-ct-zero-tot residency)) records residency)
   :hints (("Goal" :in-theory (e/d (fn-ct-totals-cache-validp) ()))))
-
-; The log's records' octets a full replay reads, charged.
-(defun fn-ct-log-of-records (records)
-  (declare (xargs :guard t :verify-guards nil))
-  (if (consp records)
-      (+ (fn-ct-row-log (car records)) (fn-ct-log-of-records (cdr records)))
-    0))
 
 (local
  (defthm kt-nfix-natp (implies (natp x) (equal (nfix x) x))))

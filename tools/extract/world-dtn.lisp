@@ -226,6 +226,7 @@
 (include-book "../../books/store-checkpoint-digest")
 (include-book "../../books/store-finalize-incremental")
 (include-book "../../books/store-checkpoint-arena-writer")
+(include-book "../../books/charged-totals-header")
 (include-book "../../books/store-open-pre-c1")
 (include-book "../../books/store-open-replay-refusal")
 (include-book "../../books/owner-commit-carried")

@@ -117,6 +117,7 @@
 (include-book "connection-receiver-source")
 (include-book "state-globals")
 (include-book "owner-config")
+(include-book "charged-totals-header")
 (include-book "owner-authority-transitions")
 (include-book "owner-authority-proposal-state")
 (include-book "consumer-account-carries-state")
@@ -166,4 +167,3 @@
 (include-book "owner-prepare-carried")
 (include-book "post-identity-index")
 (include-book "post-identity-catalog")
-(include-book "post-prepare-catalog")
