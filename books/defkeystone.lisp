@@ -21,6 +21,8 @@
 ;     [:stobjs ((STOBJ BUILDER) ...)]       ; fresh locals per conjunct; BUILDER
 ;                                           ; returns STOBJ (possibly among MV outputs)
 ;     [:stobj-checks ((LOGICAL (CHECKER ...) [:hints H]) ...)] ; proved equality
+;     [:witness-unguarded "why"]            ; with :stobjs only: the positive
+;                                           ; witness runs with guard checking :none
 ;     [:instances (GENERATED-FN GENERATED-LOOP)] ; use the generator-recorded
 ;                                           ; functional substitution at :witness
 ;     [:witness-lemma THM]                  ; or a named ground theorem instead of
@@ -101,6 +103,18 @@
 ; This permits out-of-guard logical values without corrupting native arrays;
 ; it is recorded as :logical, never as reachable. Ordinary :logical checks
 ; without :stobjs and named :lemma checks keep their existing behavior.
+; :witness-unguarded "why" (only with :stobjs) runs the POSITIVE witness,
+; its stobj builders and its :stobj-checks checkers on the same fresh local
+; stobjs as the live path, but under (with-guard-checking :none ...): for a
+; subject whose verified guard reaches a predicate no evaluator runs (a
+; DEFUN-SK's witness), which faults at guard checking T although the host's
+; raw call never evaluates it.  The value checked is the logical value of
+; the full conjunction at the witness; a false conjunct still fails the
+; book.  The row records :witness :unguarded, never :executable: the
+; witness shows the premises satisfiable at a built state, not that the
+; host's guard holds there.  Removals, mutations, corrupted states and
+; bounds are unchanged (each runs under the guards unless its own entry
+; says :logical).
 ;
 ; SCOPED CLAIMS. Outer LET/LET* bindings are preserved in the statement
 ; compared to the world's theorem, and bound before each hypothesis,
@@ -146,7 +160,7 @@
 ; "NAME: corrupt L", "NAME: visits L", "NAME: attains L").
 ;
 ; ROW IDENTITY.  ROW = (:by defteeth|defkeystone :claim CLAIM :formula
-; FORMULA :subject FN :witness :executable|:lemma :hyps (L...)
+; FORMULA :subject FN :witness :executable|:instance|:lemma|:unguarded :hyps (L...)
 ; :removals ((L :reachable|:logical|:lemma|:assumption) ...)
 ; :mutations ((L :conclusion|:hypothesis "fault") ...) | :not-applicable | :deferred
 ; :corrupt (L...) :visits ((L V B :attains|:not-attained :rests-on (A...)
@@ -188,7 +202,7 @@
 
 
 (defconst *fn-dk-spec-keys*
-  '(:claim :subject :witness :witness-lemma :instances :stobjs :stobj-checks :breaks :mutations :corrupt
+  '(:claim :subject :witness :witness-lemma :witness-unguarded :instances :stobjs :stobj-checks :breaks :mutations :corrupt
     :visits :allocation :must-fail :hints))
 
 (defconst *fn-dk-keys*
@@ -521,6 +535,10 @@
            (not (and (fn-dk-get :stobjs kvs)
                      (fn-dk-stobj-checksp (fn-dk-get :stobj-checks kvs)))))
       (list :bad-stobj-checks (fn-dk-get :stobj-checks kvs)))
+     ((and (assoc-keyword :witness-unguarded kvs)
+           (not (and (fn-dk-reasonp (fn-dk-get :witness-unguarded kvs))
+                     (fn-dk-get :stobjs kvs))))
+      (list :bad-witness-unguarded (fn-dk-get :witness-unguarded kvs)))
      ((not (and (fn-dk-get :witness kvs)
                 (fn-dk-bindingsp (fn-dk-get :witness kvs))))
       (list :no-witness name))
@@ -636,6 +654,12 @@
   (declare (xargs :mode :program))
   (concatenate 'string (symbol-name name) ": " words))
 
+;; The positive witness under :witness-unguarded: the stobj expansion
+;; (fn-dt-stobj-events) recognizes this head and runs its live checker
+;; under (with-guard-checking :none ...).
+(defmacro fn-dk-unguarded (x)
+  `(with-guard-checking :none ,x))
+
 (defun fn-dk-witness-event (name msg bindings terms opts)
   (declare (xargs :mode :program))
   ; the assert-event of TERMS at BINDINGS, logical under :logical, or the
@@ -645,6 +669,11 @@
   (let ((claim (fn-dk-conj (fn-dk-all-at bindings terms)))
         (lemma (fn-dk-get :lemma opts)))
     (cond (lemma `(fn-dk-lemma-check ,name ,lemma ,bindings ,(fn-dk-conj terms) ,msg))
+          ((assoc-keyword :unguarded opts)
+           `(assert-event (fn-dk-unguarded ,claim)
+                          :msg ,(fn-dk-label-msg
+                                 name (concatenate 'string msg " (unguarded: "
+                                                   (fn-dk-get :unguarded opts) ")"))))
           ((assoc-keyword :logical opts)
            `(assert-event (with-guard-checking :none ,claim)
                           :msg ,(fn-dk-label-msg
@@ -806,6 +835,7 @@
               :subject ,(fn-dk-get :subject kvs)
               :witness ,(cond ((assoc-keyword :instances kvs) :instance)
                               ((assoc-keyword :witness-lemma kvs) :lemma)
+                              ((assoc-keyword :witness-unguarded kvs) :unguarded)
                               (t :executable))
               :hyps ,(fn-dk-claim-labels claim)
               :removals ,(fn-dk-removal-rows (fn-dk-claim-labels claim) (fn-dk-get :breaks kvs))
@@ -828,8 +858,11 @@
          (must-fail (fn-dk-get :must-fail kvs)))
     (append
      (list (fn-dk-witness-event name "witness" witness (append hyps (list concl))
-                                (and (assoc-keyword :witness-lemma kvs)
-                                     (list :lemma (fn-dk-get :witness-lemma kvs)))))
+                                (cond ((assoc-keyword :witness-lemma kvs)
+                                       (list :lemma (fn-dk-get :witness-lemma kvs)))
+                                      ((assoc-keyword :witness-unguarded kvs)
+                                       (list :unguarded (fn-dk-get :witness-unguarded kvs)))
+                                      (t nil))))
      (fn-dk-removals name 0 labels hyps concl witness (fn-dk-get :breaks kvs)
                      hint-args must-fail)
      (fn-dk-mutants name claim witness (fn-dk-mutation-entries (fn-dk-get :mutations kvs))
@@ -911,6 +944,10 @@
           (msg "~x0: bound ~x1 says :derived-by ~x2, but its visit term does not ~
                 call that row's route twin ~x3: V is the derived cost, not a term ~
                 beside it." name label record detail)))))
+    (:bad-witness-unguarded
+     (msg ":witness-unguarded ~x0 is not a reason string on a form with :stobjs: ~
+           the option runs a stobj positive witness with guard checking :none and ~
+           says why the guard cannot be evaluated there." (cadr reason)))
     (otherwise (msg "malformed form: ~x0." reason))))
 
 ; ---------------------------------------------------------------------------
@@ -1350,6 +1387,8 @@
     (let* ((event (car events))
            (value (cadr event))
            (logical (and (consp value) (eq (car value) 'with-guard-checking)))
+           (unguarded (and (consp value) (eq (car value) 'fn-dk-unguarded)))
+           (value (if unguarded (cadr value) value))
            (fn (packn-pos (list name '-stobj-check- i) name)))
       (append
        (cond
@@ -1372,7 +1411,9 @@
            `((local (defun ,fn ()
                       (declare (xargs :verify-guards nil))
                       ,body))
-             (assert-event (,fn) ,@(cddr event))))))
+             ,(if unguarded
+                  `(assert-event (with-guard-checking :none (,fn)) ,@(cddr event))
+                `(assert-event (,fn) ,@(cddr event)))))))
        (fn-dt-stobj-events (cdr events) builders checks hints name (1+ i) w)))))
 
 (defun fn-dt-stobjs-problem (builders w)

@@ -249,8 +249,12 @@ def package(entry: dict, declared: dict | None, reachable, root: Path = ROOT) ->
         # the CLOSED full premise-and-conclusion conjunction. It establishes
         # satisfiability even for non-executable crash-image predicates.
         # Reachability still needs the separate trace_witness declaration.
-        if entry.get("witness") not in ("executable", "instance", "lemma"):
-            out["premises"] = "no executable/instance/ground-lemma positive witness"
+        # An unguarded witness (:witness-unguarded, stobj witnesses only) is
+        # the full conjunction evaluated at a built state with guard
+        # checking :none: satisfiability as a ground lemma shows it, at a
+        # state the subject's builders made, and never coverage of the guard.
+        if entry.get("witness") not in ("executable", "instance", "lemma", "unguarded"):
+            out["premises"] = "no executable/instance/ground-lemma/unguarded positive witness"
         elif not entry.get("certified"):
             out["premises"] = "positive witness book is not certified at its current closure key"
         else:
