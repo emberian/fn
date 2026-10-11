@@ -4,7 +4,7 @@
 ; the small preset (R = 64 KiB).
 ;   WITNESS: the batch header, its whole entry inside the extent, OU the
 ;     extent: the entry is within the entry array component.
-;   BREAKS: no entry (a header past the extent: NIL), and an extent past OU.
+;   BREAK: an extent past OU (the entry is read past the array component).
 ;   MUTATION: the entry priced at the chunk bound (1 MiB + R), the term this
 ;     landing replaces: the batch entry refutes it -- the gate that would
 ;     have seen the under-charge.
@@ -32,21 +32,17 @@
 (assert-event (null (hsowt-n (1- *hsowt-n*))))
 
 (defteeth fn-heap-open-walk-entry-within-the-term
-  :claim (((read (fn-lgw-entry-len-bounded h st extent
-                                           (fn-lgu-log-max (fn-bs-profile-max-record-octets profile))))
-           (within (<= (nfix extent) (nfix ou))))
-          (<= (fn-lgw-entry-len-bounded h st extent
-                                        (fn-lgu-log-max (fn-bs-profile-max-record-octets profile)))
+  :claim (((within (<= (nfix extent) (nfix ou))))
+          (<= (nfix (fn-lgw-entry-len-bounded h st extent
+                                              (fn-lgu-log-max (fn-bs-profile-max-record-octets profile))))
               (fn-heap-open-entry-array-bound profile ou)))
   :subject fn-heap-store-open-octets
   :witness ((h *hsowt-h*) (st (hsowt-st)) (extent *hsowt-n*) (ou *hsowt-n*) (profile *hsowt-profile*))
-  :breaks ((read ((h *hsowt-h*) (st (hsowt-st)) (extent (1- *hsowt-n*)) (ou *hsowt-n*)
-                  (profile *hsowt-profile*)))
-           (within ((h *hsowt-h*) (st (hsowt-st)) (extent *hsowt-n*) (ou 1048576)
+  :breaks ((within ((h *hsowt-h*) (st (hsowt-st)) (extent *hsowt-n*) (ou 1048576)
                     (profile *hsowt-profile*))))
   :mutations ((entry-priced-at-the-chunk-bound
-               (:conclusion (<= (fn-lgw-entry-len-bounded h st extent
-                                                          (fn-lgu-log-max (fn-bs-profile-max-record-octets profile)))
+               (:conclusion (<= (nfix (fn-lgw-entry-len-bounded h st extent
+                                                                (fn-lgu-log-max (fn-bs-profile-max-record-octets profile))))
                                 (fn-heap-open-chunk-bound profile ou)))
                ((h *hsowt-h*) (st (hsowt-st)) (extent *hsowt-n*) (ou *hsowt-n*) (profile *hsowt-profile*))
                :fault "a batch entry of 16 MiB + 42 octets priced at the chunk bound, 1 MiB + R (BATCH-ENTRY-UNDER-CHARGE)")))

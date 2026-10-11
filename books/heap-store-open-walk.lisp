@@ -7,7 +7,7 @@
 ; (host/native/io.lisp fnn-store-log-max), R the profile's record octets.
 ; The two keystones below tie those components to what the walk reads:
 ; - fn-heap-open-walk-entry-within-the-term: an entry the walk reads (its
-;   length fn-lgw-entry-len-bounded) within an extent of at most OU octets is
+;   length fn-lgw-entry-len-bounded, 0 when none) within an extent of at most OU octets is
 ;   within the entry array component.  Its teeth's mutation is the term this
 ;   landing replaces (the entry priced at the chunk bound, 1 MiB + R): a
 ;   batch entry of 16 MiB + 42 octets refutes it, the gate that would have
@@ -51,11 +51,9 @@
 
 (local
  (defthm fn-hsow-entry-len-within-extent-and-bound
-   (let ((n (fn-lgw-entry-len-bounded h st extent max)))
-     (implies n
-              (and (natp n)
-                   (<= n (nfix extent))
-                   (<= n (fn-lg-entry-len-bound h max)))))
+   (let ((n (nfix (fn-lgw-entry-len-bounded h st extent max))))
+     (and (<= n (nfix extent))
+          (<= n (fn-lg-entry-len-bound h max))))
    :rule-classes nil
    :hints (("Goal" :in-theory (enable fn-lgw-entry-len-bounded fn-lgw-entry-len)))))
 
@@ -68,11 +66,11 @@
    :hints (("Goal" :in-theory (enable fn-lg-entry-len-bound fn-lg-open-bound fn-lgu-log-max)))))
 
 (defthm fn-heap-open-walk-entry-within-the-term
-  (let ((n (fn-lgw-entry-len-bounded h st extent
-                                     (fn-lgu-log-max (fn-bs-profile-max-record-octets profile)))))
-    (implies (and n (<= (nfix extent) (nfix ou)))
-             (<= n (fn-heap-open-entry-array-bound profile ou))))
-  :hints (("Goal" :in-theory (union-theories '(fn-heap-open-entry-array-bound min max nfix)
+  (implies (<= (nfix extent) (nfix ou))
+           (<= (nfix (fn-lgw-entry-len-bounded h st extent
+                                               (fn-lgu-log-max (fn-bs-profile-max-record-octets profile))))
+               (fn-heap-open-entry-array-bound profile ou)))
+  :hints (("Goal" :in-theory (union-theories '(fn-heap-open-entry-array-bound min max nfix (:type-prescription fn-lgw-entry-len-bounded))
                                              (theory 'minimal-theory))
            :use ((:instance fn-hsow-entry-len-within-extent-and-bound
                             (max (fn-lgu-log-max (fn-bs-profile-max-record-octets profile))))
