@@ -600,5 +600,105 @@ class NativeControlFilingTests(unittest.TestCase):
                          {t1: "430", u: "430", t2: "430", t3: "430", s3: "220"})
 
 
+    @unittest.skipUnless(os.environ.get("FN_RUN_HYBRID_E2E") == "1",
+                         "set FN_RUN_HYBRID_E2E=1 (OpenSSL 3.5 with ML-DSA-65)")
+    def test_transit_revoked_signed_cancel(self):
+        """The revoked arm files a signed control article like the carried and
+        :ok arms (TRANSIT-REVOKED-CONTROL-REFUSED; books/peer-authored-
+        accept.lisp fn-pa-revoked-event binds the filed groups,
+        fn-hsig-source-filed-groups, as C3 made every other signed arm do).
+        P is enrolled on A and B; A authors a signed cancel and a signed
+        ordinary article; B revokes P; both reach B over IHAVE (relayed by
+        this test, Path prefixed with the peer's name) and B's plan is the
+        revoked arm.  The cancel is accepted into control.cancel, the ordinary
+        article into fn.test, and both survive B's restart (replay's revoked
+        binding, fn-hsig-carried-record-metadatap)."""
+        openssl = os.environ.get("FN_TEST_OPENSSL", "openssl")
+        groups = ["fn.test", "control.cancel"]
+        a, b = self.initialize("ra", groups), self.initialize("rb", groups)
+        self.command([IMAGE, "--fn", "operator", b.config, "peer", "add",
+                      "source", "source.example.invalid", "127.0.0.1",
+                      str(free_port()), "fn.*", "-", "127.0.0.1", "true"])
+        root = self.base / "signer"
+        root.mkdir()
+        principal, ed_public, ed_secret = (root / "principal.bin",
+                                           root / "ed-public.bin", root / "ed-secret.bin")
+        principal.write_bytes(bytes([0x55]) * 32)
+        # RFC 8032 section 7.1, TEST 1.
+        ed_public.write_bytes(bytes.fromhex(
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        ed_secret.write_bytes(bytes.fromhex(
+            "9d61b19deffd5a60ba844af492ec2cc44449c5697b326919703bac031cae7f60"
+            "d75a980182b10ab7d54bfed3c964073a0ee172f3daa62325af021a68f707511a"))
+        ml_private, ml_public = root / "ml.pem", root / "ml-public.pem"
+        self.command([openssl, "genpkey", "-algorithm", "ML-DSA-65", "-out", ml_private])
+        self.command([openssl, "pkey", "-in", ml_private, "-pubout", "-out", ml_public])
+        codes = {}
+
+        def author(message_id, control):
+            source = root / (message_id.strip("<>").replace("@", "_") + ".eml")
+            source.write_bytes(article(message_id, "revoked " + message_id,
+                                       control=control))
+            signed = self.command([IMAGE, "--fn", "hybrid-sign", principal, ed_public,
+                                   ed_secret, ml_public, ml_private, source])
+            parts = dict(line.split() for line in signed.stdout.decode().splitlines())
+            ed_sig, ml_sig = source.with_suffix(".ed"), source.with_suffix(".ml")
+            ed_sig.write_bytes(bytes.fromhex(parts["ed25519"]))
+            ml_sig.write_bytes(bytes.fromhex(parts["ml-dsa-65"]))
+            codes["author " + message_id] = run(
+                [IMAGE, "--fn", "hybrid-author", str(a.control), "1", str(source),
+                 str(ed_sig), str(ml_sig), str(ml_public)], env=self.env).returncode
+
+        def relay(message_id):
+            with Client(a.port, timeout=30, greeting=(b"200",)) as client:
+                status, octets = client.multiline("ARTICLE " + message_id)
+            self.assertTrue(status.startswith(b"220"), (message_id, status))
+            head, _, body = octets.partition(b"\r\n\r\n")
+            fields = head.split(b"\r\n")
+            rest = [f for f in fields if not f.lower().startswith(b"path:")]
+            old = [f for f in fields if f.lower().startswith(b"path:")]
+            tail = old[0].split(b":", 1)[1].strip() if old else b"not-for-mail"
+            relayed = b"\r\n".join([b"Path: source.example.invalid!" + tail] + rest) \
+                + b"\r\n\r\n" + body
+            stuffed = b"".join((b"." + line if line.startswith(b".") else line)
+                               for line in relayed.splitlines(keepends=True))
+            first, second = self.session(b, [b"IHAVE " + message_id.encode() + b"\r\n",
+                                             stuffed + b".\r\n"])
+            return (first + second).decode().strip()
+
+        def reply(message_id):
+            return self.article_reply(b, message_id).decode().strip()[:3]
+
+        for node in (a, b):
+            node.start()
+            self.command([IMAGE, "--fn", "hybrid-enroll", node.control, "1", principal,
+                          ed_public, ml_public])
+        cancel = "<rv-cancel@example.invalid>"
+        ordinary = "<rv-ordinary@example.invalid>"
+        author(cancel, "cancel <rv-absent@example.invalid>")
+        author(ordinary, None)
+        revoked = self.command([IMAGE, "--fn", "hybrid-revoke", b.control, "2", principal])
+        witness = {"revoke-p-on-b": revoked.returncode,
+                   "relay-cancel": relay(cancel), "relay-ordinary": relay(ordinary),
+                   "b-cancel": reply(cancel), "b-ordinary": reply(ordinary),
+                   "b-listgroup-control.cancel":
+                       self.listgroup(b, b"control.cancel")[0].decode().strip()}
+        log = self.stop(b)
+        b.start()
+        witness["b-after-restart"] = {m: reply(m) for m in (cancel, ordinary)}
+        self.stop(b)
+        self.stop(a)
+        witness["codes"] = codes
+        witness["log"] = [line for line in log.splitlines() if "transit" in line][:6]
+        print("NATIVE-REVOKED-CONTROL-WITNESS " + json.dumps(witness, sort_keys=True))
+        self.assertEqual(codes, {"author " + cancel: 0, "author " + ordinary: 0})
+        self.assertEqual(witness["revoke-p-on-b"], 0)
+        for key in ("relay-cancel", "relay-ordinary"):
+            self.assertTrue(witness[key].startswith("335") and "235" in witness[key],
+                            witness)
+        self.assertEqual((witness["b-cancel"], witness["b-ordinary"]), ("220", "220"))
+        self.assertTrue(witness["b-listgroup-control.cancel"].startswith("211 1 "), witness)
+        self.assertEqual(witness["b-after-restart"], {cancel: "220", ordinary: "220"})
+
 if __name__ == "__main__":
     unittest.main()

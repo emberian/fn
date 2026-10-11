@@ -267,8 +267,11 @@ def image_inputs_changed(paths: list[str]) -> list[str]:
 # a case status that is not a red (tools/test_budget.py's vocabulary)
 IMAGE_CASE_PASS = ("ok", "skip")
 # tools/hbox_native.sh's module status when it ran and every test skipped
-# (a fixture or memory cap absent): it ran, it is not a red, and the gate
-# prints it so the uncovered module is never silent
+# (a fixture or memory cap absent).  For an OBLIGED module that is no
+# verdict: the gate refuses it, and so a skipped case of one (coordinator
+# ruling 2026-10-10, after over_window skipped for a missing fixture path a
+# third time and passed train 89's gate unexercised).  The box sets the
+# fixture paths itself (tools/native_box.sh FIXTURES, tools/native_env.py).
 IMAGE_RC_ALL_SKIPPED = 4
 
 # Dev's recorded reds with owners (COORDINATION section 5).  Each row is
@@ -744,11 +747,16 @@ def _added_roots(t: "Train") -> list[str]:
 
 
 def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
-    """Critical teeth whose theorem's closure changed, from regen's manifest.
+    """Critical teeth whose theorem's closure or own closure changed, from
+    regen's manifest.
 
     `book` defines the theorem; `owner_book` supplies its teeth and may be
     a test outside the Makefile roots. Include that test even when only a
-    transitive dependency of the theorem changed.
+    transitive dependency of the theorem changed, and when a book only the
+    test reads changed (books/defkeystone, whose defteeth every witness
+    test calls: the tools train of 2026-10-10 certified the affected
+    Makefile roots and left tests/acl2/heap-command-tests, a witness
+    outside them, uncertified at its new closure key).
     """
     if not changed:
         return []
@@ -768,6 +776,9 @@ def _critical_witness_roots(root: Path, changed: list[str]) -> list[str]:
         for book, tests in witnesses.items():
             if targets.intersection(certs.closure(root, book)):
                 selected.update(tests)
+            else:
+                selected.update(test for test in tests
+                                if targets.intersection(certs.closure(root, test)))
         return sorted(selected)
     except (OSError, ValueError, KeyError, TypeError) as error:
         raise TrainError(f"cannot select critical witnesses from {manifest}: {error}") from error
@@ -1133,7 +1144,8 @@ def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
     obliged module ran on the image of HEAD and each red case in it is a
     `native` row of planning/known-reds.json.  A module that did not run (an
     interrupted image gate) refuses the push until it has; so does a module
-    that failed with no case recorded."""
+    that failed with no case recorded, and so does an obliged module that
+    skipped, wholly or a case of it: a skip is not a verdict."""
     if not need:
         return 0, {"skipped": True}
     if record is None:
@@ -1151,15 +1163,25 @@ def image_verdict(need: dict[str, list[str]], record: dict | None, head: str,
             continue
         rc, cases = results[m]["rc"], results[m]["cases"]
         reds = sorted(c for c, s in cases.items() if s not in IMAGE_CASE_PASS)
+        skips = sorted(c for c, s in cases.items() if s == "skip")
         if rc == IMAGE_RC_ALL_SKIPPED and not reds:
             skipped.append(m)
         elif rc != 0 and not reds:
             unexplained.append(f"{m} (rc {rc}, no case recorded)")
+        elif skips:
+            skipped.extend(skips)
         for c in reds:
             (known_seen if c in known else unexplained).append(c)
     extra = {"need": sorted(need), "runs": sorted(record.get("runs") or {}), "missing": missing,
              "unexplained": unexplained, "known_reds": known_seen, "skipped": skipped}
-    return (1 if missing or unexplained else 0), extra
+    return (1 if missing or unexplained or skipped else 0), extra
+
+
+def _image_skipped(entry: dict) -> bool:
+    """A module's recorded outcome that is no verdict: it skipped wholly, or
+    a case of it skipped (image_verdict refuses either when obliged)."""
+    cases = entry.get("cases") or {}
+    return entry.get("rc") == IMAGE_RC_ALL_SKIPPED or any(s == "skip" for s in cases.values())
 
 
 def merge_image_run(prior: dict | None, head: str, box: str, directory: str,
@@ -1180,6 +1202,12 @@ def merge_image_run(prior: dict | None, head: str, box: str, directory: str,
         if kept:
             record["images_from"] = kept
     twice = sorted(m for m in modules if m in record["modules"])
+    # A module whose verdict at HEAD was a skip (no verdict: image_verdict
+    # refuses it) is superseded by a later run that exercised it; any other
+    # module read from two runs is refused.
+    for m in [m for m in twice if _image_skipped(record["modules"][m])]:
+        del record["modules"][m]
+    twice = [m for m in twice if m in record["modules"]]
     if twice:
         raise TrainError("module(s) already read from another run at HEAD: " + ", ".join(
             f"{m} ({record['modules'][m]['run']})" for m in twice) + f"; not read again from {directory}")

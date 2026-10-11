@@ -58,6 +58,8 @@
 ; parked with D43's revert, and no served entry dispatches it since the POST
 ; precheck returned to the 7aad444ce check (host/native/owner.lisp).
 (include-book "../books/owner-config")
+; The checkpoint publication's charged-totals header (fn-owner-sco-setup-of).
+(include-book "../books/charged-totals-header")
 (include-book "../books/owner-authority-transitions")
 (include-book "../books/owner-authority-proposal-state")
 (include-book "../books/consumer-account-carries-state")
@@ -630,7 +632,7 @@
 ; (books/owner-served-bound.lisp fn-osb-install-serves-the-profile-bound): the
 ; developer `owner run' never reaches fn-owner-posting-configure, and served
 ; its connections with the codec ceiling recovery installed.
-(defun fn-owner-install-profile (values state)
+(defun fn-owner-install-profile (values over-checkpoint covered header state)
   (declare (xargs :stobjs state :mode :program))
   (if (not (fn-owner-history-bootstrap-mutationp state))
       (value :refused)
@@ -669,16 +671,21 @@
                (state (f-put-global 'fn-owner-carried-usage
                                     (cons count (fn-pcb-tally-records records nil))
                                     state))
-               ; K-TOTALS: the charged totals start from the empty cache
-               ; (fn-ct-totals-empty-cache-is-valid) and the first query
-               ; folds the recovered store from the history stobj one row a
-               ; record, tail-recursively (fn-hist-totals-advance; the
-               ; list fold fn-ct-charged would hold one frame a record on
-               ; a 1 MiB control stack).  Residency :resident charges every
-               ; held payload in the arena, an upper bound of the paged
-               ; store.
+               ; K-TOTALS: the charged totals start from the checkpoint
+               ; header's at COVERED (the checkpoint's S) when this open
+               ; went over that checkpoint (OVER-CHECKPOINT, the open's own
+               ; verdict; HEADER its
+               ; totals: books/charged-totals-header.lisp
+               ; fn-cth-installed-seed, KEYSTONE fn-cth-installed-seed-is-
+               ; valid), else from the empty cache
+               ; (fn-ct-totals-empty-cache-is-valid); the first query folds
+               ; the rest from the history stobj one row a record,
+               ; tail-recursively (fn-hist-totals-advance; the list fold
+               ; fn-ct-charged would hold one frame a record on a 1 MiB
+               ; control stack).  Residency :resident charges every held
+               ; payload in the arena, an upper bound of the paged store.
                (state (f-put-global 'fn-owner-record-totals
-                                    (cons 0 (fn-ct-zero-tot :resident))
+                                    (fn-cth-installed-seed over-checkpoint covered header :resident)
                                     state)))
           (value :installed))
       (value :refused)))))
@@ -1003,8 +1010,10 @@
 ; decision by name over the whole file's octets before anything is
 ; allocated).  LOG is the record log's position at the capture's S (a
 ; owner rotated the log there; NIL otherwise): the F row carries it.
-; (list SETUP NEXT N ARUN), N the canonical payload count (the
-; next base's H0), ARUN (N COUNT STATE0) for fnn-checkpoint-write-steps.
+; (list SETUP NEXT N ARUN HOCTETS BUDGET), N the canonical payload count
+; (the next base's H0), ARUN (N COUNT STATE0) for fnn-checkpoint-write-steps,
+; HOCTETS the charged-totals header run written first and BUDGET the file
+; bound of every frame (books/charged-totals-header.lisp fn-cth-publication).
 ; The arena is read at handles below the count the capture saw: the owner
 ; thread only appends to it (a seal never moves a sealed payload's bytes),
 ; so what is read is what was sealed before the capture.
@@ -1028,27 +1037,29 @@
   :class ::program)
 
 
-(defun fn-owner-sco-setup-of (prepared frontier revision log seg budget free)
-  ; The second half: (list SETUP NEXT N ARUN) as fn-owner-sco-prepare answers.
+(defun fn-owner-sco-setup-of (prepared frontier revision log seg profile config cap free)
+  ; The second half: (list SETUP NEXT N ARUN HOCTETS BUDGET) as
+  ; fn-owner-sco-prepare answers: the charged-totals header first, then the
+  ; setup with its octets counted (books/charged-totals-header.lisp
+  ; fn-cth-publication; CONFIG the configuration history's octets, CAP the
+  ; capture's budget, fn-owner-sco-budget's: it only narrows the plan).
   (declare (xargs :mode :program))
   (if (not (consp prepared))
-      (list (list :unencodable nil nil nil nil 0 0) nil 0 nil)
+      (list (list :unencodable nil nil nil nil 0 0) nil 0 nil nil 0)
     (let* ((next (nth 0 prepared)) (ws (nth 1 prepared)) (walked (nth 2 prepared))
-           (setup (fn-scka-publication-setup next frontier revision log seg budget free
-                                             (nth 3 ws))))
-      (list setup next (nth 0 ws)
-            (list (nth 0 ws) (nth 2 ws)
-                  (fn-scka-initial-state (reverse (nth 2 walked)) (nth 1 ws) 0))))))
+           (pub (fn-cth-publication next frontier revision log seg profile config cap free ws
+                                    (reverse (nth 2 walked)))))
+      (list (nth 0 pub) next (nth 0 ws) (nth 3 pub) (nth 1 pub) (nth 2 pub)))))
 
 ; host/native/owner.lisp dispatches it (lane composed-owner).
 (definterface fn-owner-sco-setup-of
   :class ::program)
 
-(defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg budget free
-                                  walked fn-arena)
+(defun fn-owner-sco-prepare (base h0 configs records frontier revision log seg profile config
+                                  cap free walked fn-arena)
   (declare (xargs :stobjs fn-arena :mode :program))
   (fn-owner-sco-setup-of (fn-owner-sco-next base h0 configs records walked seg fn-arena)
-                         frontier revision log seg budget free))
+                         frontier revision log seg profile config cap free))
 
 ; Outside the mutex, the host calls `fn-ock-next-checkpoint' (NEXT, the
 ; capture of the captured history: fn-ock-next-checkpoint-is-the-capture),

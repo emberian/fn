@@ -238,6 +238,7 @@
       (if (and (fn-frame-result-okp r)
                (equal (fn-frame-result-magic r) *fn-lg-magic*)
                (equal (fn-frame-result-version r) *fn-lg-version*)
+               (<= *fn-frame-trailer-octets* (len (fn-frame-result-payload r)))
                (or (equal (fn-frame-result-kind r) *fn-lg-record-kind*)
                    (and batchp
                         (mbe :logic (ec-call (fn-lg-unpack-okp body max))

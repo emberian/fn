@@ -254,3 +254,232 @@
                ((bs *ptdt-k-bs0*) (ks0 *ptdt-k-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0) (e1 *ptdt-uncertain*) (e2 nil) (pair *ptdt-k-u-f1*) (image *ptdt-k-u-image*))
                :fault "a record answered :uncertain (its barrier failed) claimed recovered like a :posted one"
                :lemma ptdt-gl-key-mutant)))
+
+; -----------------------------------------------------------------------------
+; L3-1 (landing 3): fn-ptd-recovered-is-the-committed-or-the-in-flight-at-
+; every-cut, on the same ground log.
+;
+; Witness: the cut of the one post where the record's write is pending (the
+; fourth cut of the host run), under the image that lands every unit of it:
+; the recovery reads the open's two records and the in-flight one.  A cut
+; after the fence and before the acknowledgement (the sixth) has three records
+; committed and two acknowledged.  The strongest tooth: a segment with no
+; spare octets past the frontier (the frontier is the extent), a post whose
+; seal extends it, and the cut where the zeros of the extension are pending:
+; the image that garbles them into the record's entry and a second chained
+; entry recovers the open's record, the post and another, which only the
+; forgery past the batch accounts for.
+
+(defconst-eval *ptdt-l-wiped-image* (fn-bs-crash *ptdt-k-wiped* nil))
+(defconst-eval *ptdt-l-new-image*
+  (fn-bs-crash (car *ptdt-k-early-pair*) (list (make-list 20 :initial-element :new))))
+(defconst-eval *ptdt-l-ack-pair* (nth 5 *ptdt-k-run1*))
+(defconst-eval *ptdt-l-ack-image* (fn-bs-crash (car *ptdt-l-ack-pair*) nil))
+(assert-event (and (equal (ptdt-recovered *ptdt-l-new-image*)
+                          (append (fn-lgk-committed (cdr *ptdt-k-early-pair*))
+                                  (fn-lgk-inflight (cdr *ptdt-k-early-pair*))))
+                   (equal (len (ptdt-recovered *ptdt-l-new-image*)) 3)
+                   (equal (len (ptdt-recovered *ptdt-l-ack-image*)) 3)
+                   (equal (fn-lgk-acked (cdr *ptdt-l-ack-pair*)) 2)
+                   (equal (len (fn-lgk-committed (cdr *ptdt-l-ack-pair*))) 3)))
+
+; The segment with no spare octets: one record of 100 octets, the frontier at
+; the extent.
+(defun ptdt-split (bytes n)
+  (declare (xargs :guard t :verify-guards nil :measure (nfix n)))
+  (if (or (zp n) (atom bytes)) nil
+    (cons (fn-bs-take 4 bytes) (ptdt-split (nthcdr 4 bytes) (1- n)))))
+(defun ptdt-garbles (chunks)
+  (declare (xargs :guard t))
+  (if (atom chunks) nil (cons (cons :garble (car chunks)) (ptdt-garbles (cdr chunks)))))
+; The record's entry, then a second entry chained to it: what no writer
+; wrote at that position.
+(defun ptdt-forged (ks)
+  (declare (xargs :guard t :verify-guards nil))
+  (append (fn-lg-log (list '(11 12 7)) (fn-lgk-last ks) 4)
+          (fn-lg-log (list '(12 13 7)) (fn-lg-last-trailer (list '(11 12 7)) (fn-lgk-last ks)) 4)))
+(defconst-eval *ptdt-l-bs0*
+  (ptdt-store (fn-lg-log (list (make-list 100 :initial-element 5)) (ptdt-genesis) 4) nil))
+(defconst-eval *ptdt-l-ks0* (fn-lg-recovered-kernel *ptdt-l-bs0* 0 (ptdt-genesis) 4096 0))
+(defconst *ptdt-l-e* (list (list :begin '(11 12 7)) '(:pwrite . :ok) '(:fsync . :ok) '(:pwrite . :ok)))
+(defconst-eval *ptdt-l-ops*
+  (mv-let (st a ans ops)
+    (fn-ptd-run (fn-ptd-init *ptdt-l-ks0* (len (fn-bs-durable-content *ptdt-l-bs0* 0))) *ptdt-l-e* 0 4 4096)
+    (declare (ignore st a ans)) ops))
+(defconst-eval *ptdt-l-run* (fn-lgu-host-run *ptdt-l-bs0* *ptdt-l-ks0* *ptdt-l-ops* 0 4096))
+(defconst-eval *ptdt-l-pair* (nth 3 *ptdt-l-run*))
+(defconst-eval *ptdt-l-sels*
+  (append (ptdt-garbles (ptdt-split (ptdt-forged *ptdt-l-ks0*) 100))
+          (make-list 4 :initial-element :old)))
+(defconst-eval *ptdt-l-image* (fn-bs-crash (car *ptdt-l-pair*) (list *ptdt-l-sels*)))
+(assert-event (and (fn-lgk-relp *ptdt-l-bs0* *ptdt-l-ks0* 0 (ptdt-genesis) 4096)
+                   (fn-ptd-open-kernelp *ptdt-l-ks0*)
+                   (equal (fn-lgk-frontier *ptdt-l-ks0*) (len (fn-bs-durable-content *ptdt-l-bs0* 0)))
+                   (fn-bs-crash-choicesp (list *ptdt-l-sels*) (fn-bs-pending (car *ptdt-l-pair*)) 4)
+                   (equal (ptdt-recovered *ptdt-l-image*)
+                          (append (fn-lgk-committed (cdr *ptdt-l-pair*))
+                                  (fn-lgk-inflight (cdr *ptdt-l-pair*))
+                                  (list '(12 13 7))))
+                   (fn-lg-forgery-past (nthcdr (fn-lgk-frontier (cdr *ptdt-l-pair*))
+                                               (fn-bs-durable-content *ptdt-l-image* 0))
+                                       (fn-lgk-inflight (cdr *ptdt-l-pair*))
+                                       (fn-lgk-last (cdr *ptdt-l-pair*)) 4 4096)
+                   (not (fn-lg-forgery-in (nthcdr (fn-lgk-frontier (cdr *ptdt-l-pair*))
+                                                  (fn-bs-durable-content *ptdt-l-image* 0))
+                                          (fn-lgk-inflight (cdr *ptdt-l-pair*))
+                                          (fn-lgk-last (cdr *ptdt-l-pair*)) 4 4096))))
+
+(defconst *ptdt-c-l31*
+  '(let* ((unit (fn-bs-unit bs))
+          (r (fn-ptd-run (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino))) e ino unit max))
+          (ks (cdr pair)) (c (fn-lgk-committed ks)) (b (fn-lgk-inflight ks))
+          (content (fn-bs-durable-content image ino))
+          (recovered (fn-lgk-committed (fn-lgk-recover content genesis unit max next-txid))))
+     (((rel (fn-lgk-relp bs ks0 ino genesis max))
+       (opened (fn-ptd-open-kernelp ks0))
+       (member (member-equal pair (fn-lgu-host-run bs ks0 (mv-nth 3 r) ino max)))
+       (img (fn-bs-crash-imagep (car pair) image)))
+      (and (or (equal recovered c)
+               (and (consp b) (equal recovered (append c b)))
+               (fn-lg-forgery-past (nthcdr (fn-lgk-frontier ks) content) b (fn-lgk-last ks) unit max))
+           (<= (len c) (+ 1 (fn-lgk-acked ks)))
+           (<= (len b) 1)))))
+
+(teeth-ground-lemma ptdt-gl-l31-witness *ptdt-c-l31*
+  ((bs *ptdt-k-bs0*) (ks0 *ptdt-k-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+   (e *ptdt-post-one*) (pair *ptdt-k-early-pair*) (image *ptdt-l-new-image*))
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-bs-crash-imagep-suff (s (car *ptdt-k-early-pair*)) (image *ptdt-l-new-image*)
+                            (choices (list (make-list 20 :initial-element :new))))))))
+(teeth-ground-lemma ptdt-gl-l31-no-rel *ptdt-c-l31*
+  ((bs *ptdt-k-bs-unrel*) (ks0 *ptdt-k-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+   (e nil) (pair (cons *ptdt-k-bs-unrel* *ptdt-k-ks0*)) (image *ptdt-k-unrel-image*))
+  :without rel
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-bs-crash-imagep-suff (s *ptdt-k-bs-unrel*) (image *ptdt-k-unrel-image*)
+                            (choices '((:new))))))))
+(teeth-ground-lemma ptdt-gl-l31-no-opened *ptdt-c-l31*
+  ((bs *ptdt-k-bs0*) (ks0 *ptdt-k-ks-unacked*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+   (e *ptdt-post-one*) (pair *ptdt-k-ua-f1*) (image *ptdt-k-ua-image*))
+  :without opened
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-bs-crash-imagep-suff (s (car *ptdt-k-ua-f1*)) (image *ptdt-k-ua-image*)
+                            (choices nil))))))
+(teeth-ground-lemma ptdt-gl-l31-no-member *ptdt-c-l31*
+  ((bs *ptdt-k-bs0*) (ks0 *ptdt-k-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+   (e nil) (pair (cons *ptdt-k-wiped* *ptdt-k-ks0*)) (image *ptdt-l-wiped-image*))
+  :without member
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-bs-crash-imagep-suff (s *ptdt-k-wiped*) (image *ptdt-l-wiped-image*)
+                            (choices nil))))))
+(teeth-ground-lemma ptdt-gl-l31-no-img *ptdt-c-l31*
+  ((bs *ptdt-k-bs0*) (ks0 *ptdt-k-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+   (e nil) (pair (cons *ptdt-k-bs0* *ptdt-k-ks0*)) (image *ptdt-k-wiped*))
+  :without img :keystone fn-ptd-recovered-is-the-committed-or-the-in-flight-at-every-cut)
+(teeth-ground-lemma ptdt-gl-l31-mutant-forgery-in *ptdt-c-l31*
+  ((bs *ptdt-l-bs0*) (ks0 *ptdt-l-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+   (e *ptdt-l-e*) (pair *ptdt-l-pair*) (image *ptdt-l-image*))
+  :mutation (:conclusion
+             (and (or (equal recovered c)
+                      (and (consp b) (equal recovered (append c b)))
+                      (fn-lg-forgery-in (nthcdr (fn-lgk-frontier ks) content) b (fn-lgk-last ks) unit max))
+                  (<= (len c) (+ 1 (fn-lgk-acked ks)))
+                  (<= (len b) 1)))
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-bs-crash-imagep-suff (s (car *ptdt-l-pair*)) (image *ptdt-l-image*)
+                            (choices (list *ptdt-l-sels*)))))))
+(teeth-ground-lemma ptdt-gl-l31-mutant-no-in-flight *ptdt-c-l31*
+  ((bs *ptdt-k-bs0*) (ks0 *ptdt-k-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+   (e *ptdt-post-one*) (pair *ptdt-k-early-pair*) (image *ptdt-l-new-image*))
+  :mutation (:conclusion
+             (and (or (equal recovered c)
+                      (fn-lg-forgery-past (nthcdr (fn-lgk-frontier ks) content) b (fn-lgk-last ks) unit max))
+                  (<= (len c) (+ 1 (fn-lgk-acked ks)))
+                  (<= (len b) 1)))
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-bs-crash-imagep-suff (s (car *ptdt-k-early-pair*)) (image *ptdt-l-new-image*)
+                            (choices (list (make-list 20 :initial-element :new))))))))
+(teeth-ground-lemma ptdt-gl-l31-mutant-committed-is-acked *ptdt-c-l31*
+  ((bs *ptdt-k-bs0*) (ks0 *ptdt-k-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+   (e *ptdt-post-one*) (pair *ptdt-l-ack-pair*) (image *ptdt-l-ack-image*))
+  :mutation (:conclusion
+             (and (or (equal recovered c)
+                      (and (consp b) (equal recovered (append c b)))
+                      (fn-lg-forgery-past (nthcdr (fn-lgk-frontier ks) content) b (fn-lgk-last ks) unit max))
+                  (<= (len c) (fn-lgk-acked ks))
+                  (<= (len b) 1)))
+  :hints (("Goal" :in-theory (set-difference-theories (executable-counterpart-theory :here)
+                                                      '((:executable-counterpart fn-bs-crash-imagep)))
+           :use ((:instance fn-bs-crash-imagep-suff (s (car *ptdt-l-ack-pair*)) (image *ptdt-l-ack-image*)
+                            (choices nil))))))
+
+(defteeth fn-ptd-recovered-is-the-committed-or-the-in-flight-at-every-cut
+  :claim (let* ((unit (fn-bs-unit bs))
+                (r (fn-ptd-run (fn-ptd-init ks0 (len (fn-bs-durable-content bs ino))) e ino unit max))
+                (ks (cdr pair)) (c (fn-lgk-committed ks)) (b (fn-lgk-inflight ks))
+                (content (fn-bs-durable-content image ino))
+                (recovered (fn-lgk-committed (fn-lgk-recover content genesis unit max next-txid))))
+           (((rel (fn-lgk-relp bs ks0 ino genesis max))
+             (opened (fn-ptd-open-kernelp ks0))
+             (member (member-equal pair (fn-lgu-host-run bs ks0 (mv-nth 3 r) ino max)))
+             (img (fn-bs-crash-imagep (car pair) image)))
+            (and (or (equal recovered c)
+                     (and (consp b) (equal recovered (append c b)))
+                     (fn-lg-forgery-past (nthcdr (fn-lgk-frontier ks) content) b (fn-lgk-last ks) unit max))
+                 (<= (len c) (+ 1 (fn-lgk-acked ks)))
+                 (<= (len b) 1))))
+  :subject fn-ptd-run
+  :witness ((bs *ptdt-k-bs0*) (ks0 *ptdt-k-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+            (e *ptdt-post-one*) (pair *ptdt-k-early-pair*) (image *ptdt-l-new-image*))
+  :witness-lemma ptdt-gl-l31-witness
+  :breaks ((rel ((bs *ptdt-k-bs-unrel*) (e nil) (pair (cons *ptdt-k-bs-unrel* *ptdt-k-ks0*))
+                 (image *ptdt-k-unrel-image*))
+                :lemma ptdt-gl-l31-no-rel)
+           (opened ((ks0 *ptdt-k-ks-unacked*) (pair *ptdt-k-ua-f1*) (image *ptdt-k-ua-image*))
+                   :lemma ptdt-gl-l31-no-opened)
+           (member ((e nil) (pair (cons *ptdt-k-wiped* *ptdt-k-ks0*)) (image *ptdt-l-wiped-image*))
+                   :lemma ptdt-gl-l31-no-member)
+           (img ((e nil) (pair (cons *ptdt-k-bs0* *ptdt-k-ks0*)) (image *ptdt-k-wiped*))
+                :lemma ptdt-gl-l31-no-img))
+  :mutations ((forgery-in-for-forgery-past
+               (:conclusion
+                (and (or (equal recovered c)
+                         (and (consp b) (equal recovered (append c b)))
+                         (fn-lg-forgery-in (nthcdr (fn-lgk-frontier ks) content) b (fn-lgk-last ks) unit max))
+                     (<= (len c) (+ 1 (fn-lgk-acked ks)))
+                     (<= (len b) 1)))
+               ((bs *ptdt-l-bs0*) (ks0 *ptdt-l-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+                (e *ptdt-l-e*) (pair *ptdt-l-pair*) (image *ptdt-l-image*))
+               :fault "the third disjunct reads only a frame that differs from the batch's: a second chained entry garbled into the extension's zeros, past the whole batch, is missed"
+               :lemma ptdt-gl-l31-mutant-forgery-in)
+              (no-in-flight-arm
+               (:conclusion
+                (and (or (equal recovered c)
+                         (fn-lg-forgery-past (nthcdr (fn-lgk-frontier ks) content) b (fn-lgk-last ks) unit max))
+                     (<= (len c) (+ 1 (fn-lgk-acked ks)))
+                     (<= (len b) 1)))
+               ((bs *ptdt-k-bs0*) (ks0 *ptdt-k-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+                (e *ptdt-post-one*) (pair *ptdt-k-early-pair*) (image *ptdt-l-new-image*))
+               :fault "the batch in flight never recovered: the arm for an image that landed the whole entry write is dropped"
+               :lemma ptdt-gl-l31-mutant-no-in-flight)
+              (committed-equals-acked
+               (:conclusion
+                (and (or (equal recovered c)
+                         (and (consp b) (equal recovered (append c b)))
+                         (fn-lg-forgery-past (nthcdr (fn-lgk-frontier ks) content) b (fn-lgk-last ks) unit max))
+                     (<= (len c) (fn-lgk-acked ks))
+                     (<= (len b) 1)))
+               ((bs *ptdt-k-bs0*) (ks0 *ptdt-k-ks0*) (genesis *ptdt-k-g*) (max 4096) (ino 0) (next-txid 0)
+                (e *ptdt-post-one*) (pair *ptdt-l-ack-pair*) (image *ptdt-l-ack-image*))
+               :fault "a committed record is already acknowledged: the cut after the fence and before the acknowledgement has one committed and not acknowledged"
+               :lemma ptdt-gl-l31-mutant-committed-is-acked)))
+
+(defteeth-check (fn-ptd-posted-only-at-the-barrier-completion
+                 fn-ptd-posted-records-are-recovered-at-every-later-cut
+                 fn-ptd-recovered-is-the-committed-or-the-in-flight-at-every-cut))

@@ -29,6 +29,7 @@ sys.path.insert(0, str(ROOT / "tools" / "extract"))
 import gate  # noqa: E402
 import closure_why  # noqa: E402
 import debug_keep  # noqa: E402
+import executed_set  # noqa: E402
 
 PY = sys.executable
 # the libraries core.sh hands fn-core, which the gate requires beside the image's core
@@ -597,6 +598,86 @@ class DebugKeepGate(unittest.TestCase):
         rep = "".join(l + "\n" for l in rep.splitlines() if not l.startswith("DEBUG-KEEP %s " % names[2]))
         got = debug_keep.problems(rep, names)
         self.assertEqual(len(got), 3, got)
+
+
+class ExecutedSetRefuses(unittest.TestCase):
+    """tools/extract/executed_set.py: an absent or empty executed set is refused, never read as
+    "nothing executed" (which would make every carried function removable); the census's
+    removable set holds only units whose every static caller is itself removable."""
+
+    def setUp(self):
+        self.out = Path(tempfile.mkdtemp(prefix="executed-set-"))
+        self.addCleanup(shutil.rmtree, self.out, True)
+
+    def write(self, pid, names, wrapped=26157, unobserved=()):
+        raw = self.out / "raw"
+        raw.mkdir(exist_ok=True)
+        (raw / ("%d.txt" % pid)).write_text("".join(n + "\n" for n in names))
+        (raw / ("%d.wrapped" % pid)).write_text("%d\n" % wrapped)
+        (raw / ("%d.unobserved" % pid)).write_text("".join("%s\n;; why\n" % n for n in unobserved))
+
+    def refused(self, *argv):
+        with contextlib.redirect_stderr(io.StringIO()) as err, contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(executed_set.main(list(argv)), 1)
+        self.assertIn("REFUSED", err.getvalue())
+
+    def test_an_absent_set_is_refused(self):
+        self.refused("union", str(self.out))
+        self.refused("census", str(self.out), str(self.out))
+
+    def test_an_empty_set_is_refused(self):
+        self.write(1, [])
+        self.refused("union", str(self.out))
+
+    def test_a_process_that_wrapped_nothing_is_refused(self):
+        self.write(1, ["ACL2::FN-A"], wrapped=0)
+        self.refused("union", str(self.out))
+
+    def test_a_recorded_set_unions_and_the_census_keeps_live_callers(self):
+        self.write(1, ["ACL2::FN-A"], unobserved=["ACL2::FN-U"])
+        self.write(2, ["ACL2::FN-A", "ACL2_*1*_ACL2::FN-B"])
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(executed_set.main(["union", str(self.out)]), 0)
+        self.assertEqual((self.out / "executed.txt").read_text().split(),
+                         ["ACL2::FN-A", "ACL2_*1*_ACL2::FN-B"])
+        cd = self.out / "core"
+        cd.mkdir()
+        units = ["raw:ACL2::FN-%s" % c for c in "ACDEFGU"] + ["star1:ACL2::FN-B", "var:ACL2::*T*"]
+        (cd / "manifest.tsv").write_text("#roots\t1\n" + "".join(u + "\tx\tworld\n" for u in units))
+        # A (executed root) calls C (never) and U (unobserved); C calls D; E (never) is called by
+        # F (never) and by the variable *T*; F calls itself; G (never) is called only by D.
+        (cd / "edges.tsv").write_text(
+            "#root\traw:ACL2::FN-A\n"
+            "raw:ACL2::FN-A\traw:ACL2::FN-C raw:ACL2::FN-U\nraw:ACL2::FN-C\traw:ACL2::FN-D\n"
+            "raw:ACL2::FN-D\traw:ACL2::FN-G\nraw:ACL2::FN-F\traw:ACL2::FN-E raw:ACL2::FN-F\n"
+            "var:ACL2::*T*\traw:ACL2::FN-E\n")
+        js = self.out / "census.json"
+        bk = self.out / "books.tsv"
+        bk.write_text("ACL2::FN-F\t/t/tree/books/zz-dead.lisp\tfn\nACL2::FN-A\thost/aa-live.lisp\tfn\n")
+        with contextlib.redirect_stdout(io.StringIO()):
+            self.assertEqual(executed_set.main(["census", str(self.out), str(cd), "--json", str(js),
+                                                "--books", str(bk)]), 0)
+        doc = json.loads(js.read_text())
+        self.assertEqual(doc["never"], 5)          # C D E F G; U is unobserved, so never counted
+        # C, D and G hang below the executed A, E below a variable: only F, called by no one
+        # but itself, is removable.
+        self.assertEqual(doc["removable"], ["raw:ACL2::FN-F"])
+        self.assertEqual(doc["families"]["zz"]["removable"], 1)
+        self.assertEqual(doc["families"]["host/aa"]["executed"], 1)
+        self.assertEqual(doc["books"]["/t/tree/books/zz-dead.lisp"]["removable"], 1)
+        # the train's shrink line: a census without code sizes is refused; with sizes, one line
+        self.refused("line", str(js))
+        sz = self.out / "sizes.tsv"
+        sz.write_text("ACL2::FN-A\t100\nACL2::FN-F\t40\nACL2_*1*_ACL2::FN-B\t8\n")
+        with contextlib.redirect_stdout(io.StringIO()):
+            executed_set.main(["census", str(self.out), str(cd), "--json", str(js),
+                               "--books", str(bk), "--sizes", str(sz)])
+        with contextlib.redirect_stdout(io.StringIO()) as o:
+            self.assertEqual(executed_set.main(["line", str(js), "--baseline", str(js)]), 0)
+        first, delta = o.getvalue().splitlines()
+        self.assertEqual(first, "census: units=8 executed=2 never=5 removable=1 code_mb=0.0 "
+                                "never_mb=0.0 removable_mb=0.0")
+        self.assertTrue(delta.startswith("census-delta: units=+0 executed=+0 "))
 
 
 if __name__ == "__main__":

@@ -244,7 +244,9 @@
          (mv (car (fn-lg-scan (fn-lgd-octets s) prev unit max))
              (cdr (fn-lg-scan (fn-lgd-octets s) prev unit max))
              (fn-lg-scan-last (fn-lgd-octets s) prev unit max)))
-  :hints (("Goal" :cases ((stringp s)))))
+  :hints (("Goal" :cases ((stringp s))
+           :in-theory (disable fn-lg-scan fn-lg-scan-last fn-lg-entry-okp fn-lgd-loop-is-the-scan)
+           :use ((:instance fn-lgd-loop-is-the-scan (pos 0) (acc nil))))))
 
 ;; Withdrawn from includers (lane rule-hygiene, tools/rule_cost.py).
 ;; Each is tried in includers' proofs and pays for its frames in

@@ -332,6 +332,29 @@
                  fn-stxe-decode-exact
                  fn-hc-received-plan fn-hsig-authored-source-id)))))
 
+; The carried composite lists the same filed groups (D23 and C3).
+(defthm fn-pa-carried-event-files-the-sources-filed-groups
+  (let ((source (nth 1 (fn-pa-current-plan received snapshots carried t))))
+    (implies (fn-pa-carried-event
+              sequence txid generation msgid received groups obligation-id
+              content-subject release-evidence charge snapshots carried
+              clock-observation)
+             (and (fn-hsig-authored-source-fields source)
+                  (equal groups
+                         (fn-hsig-source-filed-groups
+                          source (fn-hsig-authored-source-fields source))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-pa-carried-event)
+                (fn-pa-current-plan fn-hsig-source-filed-groups
+                 fn-hsig-article-event-carried-bindsp
+                 fn-stxa-make-carried fn-stxe-encode
+                 fn-stxe-make fn-record-make
+                 fn-hsig-carried-record-metadatap
+                 fn-hsig-authored-source-id fn-hsig-authored-source-fields
+                 fn-hsig-evidence-tag fn-record-stamp-of-observation
+                 fn-charge-for-payload)))))
+
 (defthm fn-pa-absent-is-only-parser-confirmed-absence
   (implies (equal (fn-pa-current-plan received snapshots carried transitp)
                   :absent)
@@ -352,7 +375,8 @@
 
 ;; ---------------------------------------------------------------------------
 ;; PRF-098: the revoked arm's Store event.  The same article record, authored
-;; source and carrier the carried arm binds, a verdict whose token is
+;; source, carrier and filed groups (fn-hsig-source-filed-groups) the carried
+;; arm binds, a verdict whose token is
 ;; :revoked, whose detail is the carrier's principal and whose keyring
 ;; generation is the tombstone's, and BOTH primitive observations: the
 ;; caller supplies them over the carrier's keys (the keys this node once
@@ -384,7 +408,7 @@
              (source-id (fn-hsig-authored-source-id source)))
         (if (and (natp stamp) fields source-id
                  (equal msgid (car fields))
-                 (equal groups (cadr fields))
+                 (equal groups (fn-hsig-source-filed-groups source fields))
                  (equal charge (fn-charge-for-payload (len received)))
                  (fn-hsig-carried-record-metadatap source received record)
                  (fn-hsig-authorize-at (fn-hsig-source-version source)
@@ -569,6 +593,35 @@
                                     release-evidence charge snapshots
                                     observed-ml-key ed-observation
                                     ml-observation clock-observation)))))))
+
+; KEYSTONE (TRANSIT-REVOKED-CONTROL-REFUSED).  A revoked composite lists
+; exactly the groups its signed source is filed in
+; (fn-hsig-source-filed-groups): for a control article its filing group,
+; control.<verb> or control, never the Newsgroups it names; for any other
+; article its Newsgroups.  Replay's revoked branch binds the same groups
+; (fn-hsig-carried-record-metadatap), so the event and replay agree.
+(defthm fn-pa-revoked-event-files-the-sources-filed-groups
+  (let ((source (nth 1 (fn-pa-current-plan received snapshots nil t))))
+    (implies (fn-pa-revoked-event
+              sequence txid generation msgid received groups obligation-id
+              content-subject release-evidence charge snapshots
+              observed-ml-key ed-observation ml-observation clock-observation)
+             (and (fn-hsig-authored-source-fields source)
+                  (equal groups
+                         (fn-hsig-source-filed-groups
+                          source (fn-hsig-authored-source-fields source))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+           (e/d (fn-pa-revoked-event)
+                (fn-pa-current-plan fn-hsig-source-filed-groups
+                 fn-hsig-article-event-revoked-bindsp
+                 fn-hsig-revoked-tombstone-bindsp
+                 fn-stxa-make-carried fn-stxe-encode fn-stxe-decode-exact
+                 fn-stxe-make fn-record-make fn-hsig-authorize-at
+                 fn-hsig-carried-record-metadatap
+                 fn-hsig-authored-source-id fn-hsig-authored-source-fields
+                 fn-hsig-evidence-tag fn-record-stamp-of-observation
+                 fn-charge-for-payload)))))
 
 ;; The served POST's outcome word after the carried attempt (served NNTP
 ;; POST and the bound local submissions call the same attempt transit does,

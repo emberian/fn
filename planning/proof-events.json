@@ -11461,15 +11461,35 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lgw-step-buf-is-step"
+          "name": "fn-lgw-step-buf-count-is-step"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgb-entry-places-is-list-places"
+          "name": "fn-lgb-decide-count-is-decide"
         },
         {
           "kind": "theorem",
-          "name": "fn-lgb-decide-is-decide"
+          "name": "fn-lgb-broken-is-broken-slice"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-span-records-are-the-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-span-within-max"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-descriptor-is-the-attached-place"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-descriptor-of-an-accepted-record"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lg-entry-okp-holds-the-chain-field"
         },
         {
           "kind": "theorem",
@@ -11512,7 +11532,7 @@
         },
         {
           "kind": "theorem",
-          "name": "fn-lgw-step-buf-nf-is-step-nf"
+          "name": "fn-lgw-step-buf-nf-count-is-step-nf"
         },
         {
           "kind": "theorem",

@@ -161,6 +161,7 @@ if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
     cp "$FN_HBOX_NATIVE_HERE/tools/hbox_native.sh" "$FN_HBOX_NATIVE_HERE/tools/wait_for.sh" \
         "$FN_HBOX_NATIVE_HERE/tools/boxes.sh" "$FN_HBOX_NATIVE_HERE/tools/image_set.py" \
         "$FN_HBOX_NATIVE_HERE/tools/native_box.sh" "$FN_HBOX_NATIVE_HERE/tools/native_overlay.py" \
+        "$FN_HBOX_NATIVE_HERE/tools/native_reuse.py" \
         "$FN_HBOX_NATIVE_COPY/" || exit 3
     export FN_HBOX_NATIVE_COPY FN_HBOX_NATIVE_HERE
     exec sh "$FN_HBOX_NATIVE_COPY/hbox_native.sh" "$@"
@@ -189,6 +190,7 @@ PUBLISH=
 IMAGE_SET=
 REUSE=
 OVERLAY=
+FROM_TRAIN=
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
 # status / attach LABEL: read the record this worktree's start wrote.
 attach_run() {
@@ -261,6 +263,7 @@ while [ $# -gt 0 ]; do
             case $REUSE in *..*|*[!A-Za-z0-9._/-]*) echo "hbox_native: bad --reuse-image $2" >&2; exit 2 ;; esac
             BUILD=0; shift 2 ;;
         --overlay) OVERLAY=1; shift ;;
+        --from-train) FROM_TRAIN=1; shift ;;
         --detach) DETACH=1; shift ;;
         --wait) DETACH=0; shift ;;
         --dry-run) DRY=1; shift ;;
@@ -339,6 +342,11 @@ if [ -n "$OVERLAY" ] && [ -z "$IMAGE_SET" ]; then
 fi
 if [ -n "$IMAGE_SET" ] && [ -n "$REUSE" ]; then
     echo "hbox_native: --image-set and --reuse-image both name the images; give one" >&2; exit 2
+fi
+if [ -n "$FROM_TRAIN" ]; then
+    if [ "$REV" = . ] || [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ] || [ -n "$OVERLAY" ] || [ $BUILD -ne 1 ]; then
+        echo "hbox_native: --from-train starts an image build from the train's certified tree of the commit REV; it takes a commit and no --image-set, --reuse-image, --overlay or --no-build" >&2; exit 2
+    fi
 fi
 if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     for image in $(echo "$IMAGES" | tr ',' ' '); do
@@ -437,16 +445,39 @@ if [ -n "$REUSE" ]; then
 fi
 case $S in /tank/fn/node*) echo "hbox_native: refusing the live node path" >&2; exit 2 ;; esac
 
+# --from-train: the image run starts from the train's certified tree of this
+# commit (tools/native_reuse.py).  The records are read here; the tree itself
+# is checked on the box before anything starts (below).  Any refusal says why
+# and leaves REUSE_TREE empty: the run then installs, certifies and acquires
+# as it always did, in its own freshly shipped tree.
+REUSE_TREE=
+REUSE_RUN=
+CERT_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k  # the certify launcher (tools/farm.py HOSTS)
+reuse_refused() {
+    echo "hbox_native: --from-train refused: $1" >&2
+    echo "hbox_native: falling back to the install, certify and acquire path in a freshly shipped tree" >&2
+    REUSE_TREE=
+}
+if [ -n "$FROM_TRAIN" ]; then
+    if PLAN_OUT=$(python3 "$FN_HBOX_NATIVE_COPY/native_reuse.py" plan --repo "$HERE" --rev "$FULL" --box "$HOST"); then
+        REUSE_TREE=$(printf '%s' "$PLAN_OUT" | python3 -c 'import json,sys; print(json.load(sys.stdin)["remote_path"])')
+        REUSE_RUN=$(printf '%s' "$PLAN_OUT" | python3 -c 'import json,sys; d=json.load(sys.stdin); print(d["run"] + " " + d["certify_id"])')
+    else
+        reuse_refused "${PLAN_OUT#native_reuse: }"
+    fi
+fi
+
 # The box half.  Every step logs to $S/logs and a failure stops the run with
 # that step's code in $S/status.
 box_script() {
+    if [ -n "$REUSE_TREE" ]; then TREE_EXPR=$REUSE_TREE; else TREE_EXPR='$S/tree'; fi
     cat <<BOX
 #!/bin/sh
 set -u
 S=$S
-T=\$S/tree
+T=$TREE_EXPR
 L=\$S/logs
-ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k  # the certify launcher (tools/farm.py HOSTS)
+ACL2=$CERT_ACL2  # the certify launcher (tools/farm.py HOSTS)
 CACHE=$CACHE  # this box's (tools/farm.py HOSTS)
 export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
 mkdir -p \$S/bin
@@ -457,6 +488,9 @@ export FN_TEST_OPENSSL_BIN=\$S/bin/openssl-test
 # durable_root: hbox's root ext4 on NVMe, where an init's fsyncs cost 0.24 s;
 # the tank's ZFS cost 4.7 s at load 33 and one command 194 s (tooling-truth-3).
 export FN_TEST_DURABLE_TMP=\${FN_TEST_DURABLE_TMP:-/var/tmp}
+# The box's fixture stores (tools/native_box.sh FIXTURES); tools/native_env.py
+# sets FN_OPEN_DEPTH_FIXTURES from it for each module that reads it.
+export FN_FIXTURES_DIR=$FIXTURES
 export FN_ACL2=\$ACL2 FN_CERT_CACHE=\$CACHE FN_CERT_ORIGIN_KIND=run
 # One install per run (tools/certs.py INSTALL_RECORD): the install step and
 # the incremental certify share this id, so the certify reuses the install
@@ -576,6 +610,19 @@ step host-books static_gate host-books tools/host_check.py --books
 # A certified host file attaches the image's stobj implementation before the
 # generic it implements (CONVERGE-1 red 1; tools/host_check.py --attach-order).
 step attach-order static_gate attach-order tools/host_check.py --attach-order
+BOX
+        if [ -n "$REUSE_TREE" ]; then
+            # The train's certified tree stands in for the install, the
+            # incremental certify, box-wire (the train's protocol_emit
+            # --wire --write made build/box there) and acquire.  native_reuse.py
+            # verify proved, before this script was written, that the tree is
+            # the commit and holds the cache pair of every book of the roots;
+            # validate below still loads the roots in the image's launcher.
+            cat <<BOX
+echo "== reuse: the train's certified tree \$T (farm run $REUSE_RUN); install, certify, box-wire and acquire skipped"
+BOX
+        else
+            cat <<BOX
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
@@ -618,6 +665,9 @@ acquire_step() {
     fi
 }
 acquire_step acquire default
+BOX
+        fi
+        cat <<BOX
 step validate python3 tools/proof_artifacts.py validate --profile default --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 # The ld host files in the image's order, before any image build: statically
 # (a call before its definition, seconds), then through ACL2 in the certified
@@ -631,8 +681,8 @@ step host-ld env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_translate_ch
 BOX
         if [ $DTN -eq 1 ]; then
             # hbox-image-build.sh's dtn acquire/validate, before a DTN image.
+            [ -n "$REUSE_TREE" ] || echo 'acquire_step acquire-dtn dtn'
             cat <<BOX
-acquire_step acquire-dtn dtn
 step validate-dtn python3 tools/proof_artifacts.py validate --profile dtn --acl2 "\$ACL2" --load-acl2 "${IMAGE_ACL2:-\$ACL2}"
 step host-ld-dtn env FN_ACL2="${IMAGE_ACL2:-\$ACL2}" python3 tools/host_translate_check.py --build host/native/build-dtn.lisp --log \$L/host-translate-dtn.log
 BOX
@@ -902,7 +952,47 @@ if [ -n "$REUSE" ]; then
         | sed -nE 's/^== source (commit|worktree) ([^ ]+) *$/\2/p' | head -n 1)
     [ -n "$RECORD_SOURCE" ] || { echo "hbox_native: --reuse-image $REUSE: its run.log names no \`== source\` line on $HOST; its images' source is unknown" >&2; exit 2; }
 fi
+# --from-train: prove, on the box and just before the start, that the farm
+# tree is this commit and holds the cache pair of every book of the image's
+# roots (tools/native_reuse.py verify).  Reading only; a difference of any
+# kind refuses (said, with the first differences) and the run ships its own
+# tree and installs, certifies and acquires as before.
+REUSE_LINKED=
+if [ -n "$REUSE_TREE" ]; then
+    EXPECT=$(mktemp "${TMPDIR:-/tmp}/hbox_native_expect.XXXXXX") || exit 3
+    PROFILES="--profile default"
+    [ $DTN -eq 0 ] || PROFILES="$PROFILES --profile dtn"
+    if ! ssh -n "$HOST" "[ -d $REUSE_TREE/books ] && { [ ! -e $S/tree ] || [ -L $S/tree ]; }"; then
+        reuse_refused "$HOST:$REUSE_TREE is not a tree, or $S/tree already exists as a directory (use another --label)"
+    elif ! python3 "$FN_HBOX_NATIVE_COPY/native_reuse.py" expect --repo "$HERE" --rev "$FULL" --out "$EXPECT"; then
+        reuse_refused "cannot list $FULL's tracked files"
+    elif ! { ssh "$HOST" "mkdir -p $S/bin $S/logs && cat > $S/reuse-expect.json" < "$EXPECT" \
+            && ssh "$HOST" "cat > $S/bin/native_reuse.py" < "$FN_HBOX_NATIVE_COPY/native_reuse.py"; }; then
+        reuse_refused "cannot ship the check to $HOST"
+    else
+        VERDICT=$(ssh -n "$HOST" "cd $REUSE_TREE && python3 $S/bin/native_reuse.py verify --root $REUSE_TREE --expect $S/reuse-expect.json --cache $CACHE --acl2 $CERT_ACL2 $PROFILES" 2>&1) \
+            && echo "$VERDICT" \
+            || reuse_refused "$VERDICT"
+    fi
+    rm -f "$EXPECT"
+    if [ -n "$REUSE_TREE" ]; then
+        # One image run per train tree: two builds in its one build/ clobber
+        # each other.  The claim stays while the run's images are there.
+        if CLAIMED=$(ssh -n "$HOST" "python3 $S/bin/native_reuse.py claim --root $REUSE_TREE --owner $S" 2>&1); then
+            echo "$CLAIMED"
+            ssh -n "$HOST" "ln -sfn $REUSE_TREE $S/tree" || {
+                ssh -n "$HOST" "rm -rf $REUSE_TREE/build/native-reuse.claim" || true  # no image is in the tree yet
+                reuse_refused "cannot link $S/tree"; }
+        else
+            reuse_refused "${CLAIMED#native_reuse: }"
+        fi
+    fi
+    [ -z "$REUSE_TREE" ] || REUSE_LINKED=1
+fi
 echo "hbox_native: $SOURCE -> $HOST:$S"
+if [ -n "$REUSE_LINKED" ]; then
+    echo "hbox_native: $SOURCE -> the train's tree $HOST:$REUSE_TREE (farm run $REUSE_RUN); nothing shipped"
+else
 ssh -n "$HOST" "mkdir -p $S/tree $S/logs" || { echo "hbox_native: cannot create $S on $HOST" >&2; exit 3; }
 # --no-build keeps the tree's certificates: its images and any REPL session
 # there were made against them, and a re-ship that deleted them left those
@@ -926,6 +1016,7 @@ else
     git -C "$HERE" archive --format=tar.gz -1 "$FULL" | ssh "$HOST" "tar -xz -C $S/tree" \
         || { echo "hbox_native: shipping $FULL failed" >&2; exit 3; }
 fi
+fi
 box_script "$@" | ssh "$HOST" "cat > $S/run.sh" || exit 3
 if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     ssh "$HOST" "mkdir -p $S/bin && cat > $S/bin/image_set.py" < "$FN_HBOX_NATIVE_COPY/image_set.py" || exit 3
@@ -937,6 +1028,7 @@ if [ -n "$OVERLAY" ]; then
 fi
 PID=$(ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null & echo \$!") || exit 3
 echo "hbox_native: started; progress in $HOST:$S/run.log"
+[ -z "$REUSE_LINKED" ] || ssh -n "$HOST" "python3 $S/bin/native_reuse.py claim --root $REUSE_TREE --owner $S --pid $PID" >/dev/null 2>&1 || true
 # The record here names the box (item 67): status and re-attach read it.
 mkdir -p "$HERE/build/hbox-native"
 printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\ntree=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$RECORD_SOURCE" "$TREE_ID" \

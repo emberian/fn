@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
-(include-book "payload-commit-extent")
 (include-book "payload-extent-read")
 (include-book "page-read-ownership")
 (include-book "payload-lz-append")
@@ -86,6 +85,7 @@
 (include-book "store-checkpoint-digest")
 (include-book "store-finalize-incremental")
 (include-book "store-checkpoint-arena-writer")
+(include-book "charged-totals-header")
 (include-book "store-open-pre-c1")
 (include-book "store-open-replay-refusal")
 (include-book "store-prepare-carried")
@@ -185,4 +185,3 @@
 (include-book "consumer-event-charge")
 (include-book "consumer-publication-budget")
 (include-book "post-admission-keyed")
-(include-book "moderation-verbs")

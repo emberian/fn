@@ -66,7 +66,7 @@
 (include-book "../books/store-log-entry-bound")
 (include-book "../books/store-log-lineage")
 ;; The walk over the entry's octet buffer (lane snapshot-open-3; KEYSTONE
-;; fn-lgw-step-buf-is-step): host/native/io.lisp fnn-log-stream-segment.
+;; fn-lgw-step-buf-count-is-step): host/native/io.lisp fnn-log-stream-segment.
 (include-book "../books/store-log-buffer")
 ;; The full replay decodes each record once (lane snapshot-open-3; KEYSTONE
 ;; fn-lgw-run-nf-then-fold-is-run): fnn-log-stream-segment, fnn-recover-log-stream-flush.
@@ -136,12 +136,11 @@
 ; a history that is not the live Store's (the administrative candidate
 ; reopen, the checkpoint generation capture): the rows are the replay's
 ; domain; the arena is dropped with the answer, so nothing is retained.
+; The with-local-stobj is books/store-intern.lisp fn-intern-events-local,
+; guard-verified, so no :program caller carries invariant-risk through it.
 (defun fn-store-intern-records-local (records)
   (declare (xargs :mode :program))
-  (with-local-stobj fn-arena
-    (mv-let (rows fn-arena)
-      (fn-intern-events records nil 0 fn-arena)
-      rows)))
+  (fn-intern-events-local records))
 
 ; A journal record's sequence, read off the WIRE event its octets decode to
 ; (fn-rcon-wire-event-sequence-is-wire-event-sequence, books/records-concrete):
