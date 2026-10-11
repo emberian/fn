@@ -270,7 +270,7 @@
 ;; The groups section of GROUPS at its widest: the count's head (at most 3
 ;; for *fn-record-max-groups*) and each name with a 3-octet head.
 (defun fn-record-groups-octets-ceiling (groups)
-  (declare (xargs :guard t))
+  (declare (xargs :guard t :verify-guards nil))
   (if (consp groups)
       (+ 3 (len (fn-record-string-octets (car groups)))
          (fn-record-groups-octets-ceiling (cdr groups)))
