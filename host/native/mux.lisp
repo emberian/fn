@@ -2195,11 +2195,13 @@ constants must agree with it or the budget is refused as a fault."
 (defun fnn-owner-memory-observe (store)
   "K-ADMIT's coordinates as this process observes them, outside the owner
 mutex (a stat of the core file and the machine's memory figures are I/O):
-the image (fn-mo-img-observed), the resident limits, and the configuration
-history's octets (config/'s lstat sizes)."
+the image (fn-mo-img-observed), the resident limits, the configuration
+history's octets (config/'s lstat sizes), and the peer flight profile (a
+file read: an lstat, an open, an fstat; fnn-peer-flight-profile)."
   (list (fnn-heap-img-observation (fnn-store-config store))
         (fnn-heap-resident-observations)
-        (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store))))
+        (fnn-heap-config-octets (fnn-store-root store) (fnn-store-config store))
+        (fnn-peer-flight-profile (fnn-store-root store))))
 
 (defun fnn-owner-memory-configure-locked (service tls-context observed &optional gate-only)
   "ACL2's fn-owner-memory-configure over OBSERVED and SERVICE's run
@@ -2208,7 +2210,7 @@ no C'); the caller holds the owner serialization or is the single-threaded
 install.  The configure answers :hold or :refused (no connection fits the
 limit at the carried store); the gate alone answers :hold."
   (let ((store (fnn-owner-service-store service)))
-    (destructuring-bind (img resident config-octets) observed
+    (destructuring-bind (img resident config-octets peer) observed
       (let ((trigger +fnn-owner-service-nursery-octets+)
             (pub-trigger (fnn-gc-nursery-octets))
             (profile (fnn-store-config store))
@@ -2216,7 +2218,6 @@ limit at the carried store); the gate alone answers :hold."
             (live (fnn-owner-service-reclaim-live service))
             (cold (fnn-owner-service-cold-resources service))
             (output (fnn-owner-service-output-resources service))
-            (peer (fnn-peer-flight-profile (fnn-store-root store)))
             (workers (fnn-core 'fn-pio-direct-workers))
             (cache-limit (fnn-extent-cache-limit))
             (root (fnn-store-root store))
