@@ -1613,10 +1613,19 @@
                                            (y (mv-nth 3 (fn-ptd-run (mv-nth 0 (fn-ptd-step st (car ins) ino unit max))
                                                                     (cdr ins) ino unit max))))))))
 
-(defthm fn-ptd-tailp-digestp
-  (implies (fn-lgu-tailp bs ks ino genesis max)
-           (fn-frame-digestp (fn-lgk-last ks)))
-  :hints (("Goal" :in-theory (enable fn-lgu-tailp))))
+; Two projections of the tail invariant, proof steps of the cut theorem
+; below (local: not premises the host establishes).
+(local
+ (defthm fn-ptd-tailp-digestp
+   (implies (fn-lgu-tailp bs ks ino genesis max)
+            (fn-frame-digestp (fn-lgk-last ks)))
+   :hints (("Goal" :in-theory (enable fn-lgu-tailp)))))
+
+(local
+ (defthm fn-ptd-tailp-recordsp
+   (implies (fn-lgu-tailp bs ks ino genesis max)
+            (fn-lg-recordsp (fn-lgk-inflight ks) max))
+   :hints (("Goal" :in-theory (enable fn-lgu-tailp)))))
 
 (defthm fn-ptd-tailp-committed-true-listp
   (implies (fn-lgu-tailp bs ks ino genesis max)
@@ -1662,7 +1671,7 @@
                             (x (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image ino)))
                             (prev (fn-lgk-last ks)) (batch (fn-lgk-inflight ks)) (unit (fn-bs-unit bs)))
                  (:instance fn-ptd-mok-bounds)
-                 (:instance fn-ptd-tailp-digestp) (:instance fn-lgu-tailp-recordsp)
+                 (:instance fn-ptd-tailp-digestp) (:instance fn-ptd-tailp-recordsp)
                  (:instance fn-ptd-tailp-committed-true-listp)
                  (:instance fn-lgc-scan-records-true-listp
                             (octets (nthcdr (fn-lgk-frontier ks) (fn-bs-durable-content image ino)))
