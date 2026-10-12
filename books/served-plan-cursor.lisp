@@ -7,14 +7,16 @@
 ; books/served-plan.lisp's windows stop in front of it (fn-splan-fill's
 ; :cursor status; fn-splan-at-cursorp).  This book is the plan's step at a
 ; cursor and its proof:
-;   fn-splan-cursor-step (p w fn-arena fn-cat) -> (mv status p')
+;   fn-splan-cursor-step (p w v b fn-arena fn-cat) -> (mv status p')
 ;     the host-called subject (host/native/owner.lisp fnn-owner-cursor-step,
 ;     under the owner mutex, one quantum of the connection's scheduling
 ;     class; host/native/mux.lisp fnn-mux-flush re-feeds it): one
 ;     fn-ovw-step of the plan's first cursor (at most W numbers probed, at
 ;     most W NOV lines built: books/over-window.lisp
 ;     fn-ovw-step-window-at-most-w), whose octets replace the cursor as a
-;     reply effect followed by the cursor that remains, if any.  Status :ok,
+;     reply effect followed by the cursor that remains, if any; a NEWNEWS
+;     cursor instead runs one fn-nnw-stream-batch of at most V control
+;     visits and B octets (below).  Status :ok,
 ;     or :malformed (the plan's cursor is not one: a core fault, as a
 ;     non-octet reply effect is).
 ;   fn-splan-cursor-window (override) -> W: ACL2's quantum
@@ -23,7 +25,7 @@
 ;     one).
 ; The list model of the host's loop (fnn-mux-flush: render a window off the
 ; mutex, write it; at a cursor run its quantum under the mutex; again):
-;   fn-splan-cw-drain (p w wl n fn-arena fn-cat): N rounds, each a cursor
+;   fn-splan-cw-drain (p w wl v b n fn-arena fn-cat): N rounds, each a cursor
 ;     quantum (at a cursor) or a window of W octets.
 ;   fn-splan-cw-remaining (p wl fn-arena fn-cat): what the plan owes with
 ;     every cursor read as its run (fn-ovw-run: the steps until the cursor
@@ -32,7 +34,7 @@
 ; the octets written are fn-served-reply-octets of the step's effects
 ; EXPANDED (books/served-catalog.lisp fn-ovw-expand: what the chain
 ; equations of books/served-catalog-chain.lisp are stated modulo), for every
-; window size W, every quantum WL and however the socket paced the windows,
+; window size W, every quantum (WL, V, B) and however the socket paced the windows,
 ; provided every cursor in the effects is FRESH (fn-splan-fresh-cursorp: the
 ; arm's, its status line owed; fn-nntp-over-range-ovw-emits-a-fresh-cursor,
 ; and fn-ovw-cursor-effect has that one call site).  With
@@ -125,6 +127,17 @@
   (posp (fn-splan-cursor-window override))
   :rule-classes (:rewrite :type-prescription))
 
+; The quantum per cursor kind (lane spans-newnews, 2026-10-11).  W bounds an
+; OVER quantum's NOV lines and is what the memory gate fits (A-OVER-WINDOW-FIT:
+; books/memory-model.lisp fn-mm-over-window-fit, W' = 1 at a profile whose NOV
+; line outweighs the article reply).  A NEWNEWS or LIST quantum builds no NOV
+; line: V bounds its control visits (the unfitted fn-splan-cursor-window) and
+; B its octets (fn-mm-cursor-octets-fit, the octets of W' NOV lines, which the
+; gate already charges: fn-mm-cursor-octets-fit-is-charged).  With V and B
+; both W' a NEWNEWS selector microstep and each output octet each took a whole
+; quantum and its rescheduling (test_native_newnews_wildmat at 1000 articles:
+; 171 s, about 63 quanta per candidate).
+
 ; An empty quantum still advanced the cursor.  The host retains its plan
 ; and response ownership, then resumes after this positive scheduling delay
 ; instead of scanning the rest of a sparse range in the same event.
@@ -155,16 +168,16 @@
 ; carries it reversed in ACC (tail recursion: a bounded stack however many
 ; effects precede the first cursor); the logical definition is the plain
 ; recursion and the worker is proved equal to it below.
-(defun fn-splan-rest-cursor-step-acc (rest w acc fn-arena fn-cat)
+(defun fn-splan-rest-cursor-step-acc (rest w v b acc fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp w) (true-listp acc))
+                  :guard (and (natp w) (natp v) (natp b) (true-listp acc))
                   :verify-guards nil))
   (if (consp rest)
       (if (fn-splan-cursor-effectp (car rest))
           (let ((cur (car (cdr (car rest)))))
             (if (fn-nnw-meta-effectp (car rest))
                 (mv-let (octets next calls state)
-                  (fn-nnw-stream-batch cur w w fn-arena fn-cat)
+                  (fn-nnw-stream-batch cur v b fn-arena fn-cat)
                   (declare (ignore calls state))
                   (mv :ok (revappend acc
                                      (fn-splan-reply-then octets
@@ -180,16 +193,16 @@
                                            (cons (fn-ovw-cursor-effect next) (cdr rest))
                                          (cdr rest))))))
               (mv :malformed (revappend acc rest)))))
-        (fn-splan-rest-cursor-step-acc (cdr rest) w (cons (car rest) acc)
+        (fn-splan-rest-cursor-step-acc (cdr rest) w v b (cons (car rest) acc)
                                        fn-arena fn-cat))
     (mv :ok (revappend acc rest))))
 
 (verify-guards fn-splan-rest-cursor-step-acc
   :hints (("Goal" :in-theory (disable fn-ovw-step fn-ovw-cursorp))))
 
-(defun fn-splan-rest-cursor-step (rest w fn-arena fn-cat)
+(defun fn-splan-rest-cursor-step (rest w v b fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (natp w)
+                  :guard (and (natp w) (natp v) (natp b))
                   :verify-guards nil))
   (mbe
    :logic
@@ -198,7 +211,7 @@
              (let ((cur (car (cdr (car rest)))))
                (if (fn-nnw-meta-effectp (car rest))
                    (mv-let (octets next calls state)
-                     (fn-nnw-stream-batch cur w w fn-arena fn-cat)
+                     (fn-nnw-stream-batch cur v b fn-arena fn-cat)
                      (declare (ignore calls state))
                      (mv :ok (fn-splan-reply-then octets
                                (if (fn-nnw-meta-livep next)
@@ -213,27 +226,27 @@
                                  (cdr rest)))))
                  (mv :malformed rest))))
            (mv-let (status rest2)
-             (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
+             (fn-splan-rest-cursor-step (cdr rest) w v b fn-arena fn-cat)
              (mv status (cons (car rest) rest2))))
        (mv :ok rest))
-   :exec (fn-splan-rest-cursor-step-acc rest w nil fn-arena fn-cat)))
+   :exec (fn-splan-rest-cursor-step-acc rest w v b nil fn-arena fn-cat)))
 
 ; fn-splan-rest-cursor-step returns exactly two values.
 (defthm fn-splan-rest-cursor-step-is-an-mv
-  (equal (list (car (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
-               (mv-nth 1 (fn-splan-rest-cursor-step rest w fn-arena fn-cat)))
-         (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
-  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest w fn-arena fn-cat)
+  (equal (list (car (fn-splan-rest-cursor-step rest w v b fn-arena fn-cat))
+               (mv-nth 1 (fn-splan-rest-cursor-step rest w v b fn-arena fn-cat)))
+         (fn-splan-rest-cursor-step rest w v b fn-arena fn-cat))
+  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest w v b fn-arena fn-cat)
            :in-theory (e/d (fn-splan-rest-cursor-step)
                            (fn-ovw-step fn-ovw-cursorp fn-nnw-stream-batch
                             fn-nnw-meta-livep)))))
 
 ; The worker is the logical function with the reversed prefix put back.
 (defthm fn-splan-rest-cursor-step-acc-is-the-reference
-  (equal (fn-splan-rest-cursor-step-acc rest w acc fn-arena fn-cat)
-         (mv (mv-nth 0 (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
-             (revappend acc (mv-nth 1 (fn-splan-rest-cursor-step rest w fn-arena fn-cat)))))
-  :hints (("Goal" :induct (fn-splan-rest-cursor-step-acc rest w acc fn-arena fn-cat)
+  (equal (fn-splan-rest-cursor-step-acc rest w v b acc fn-arena fn-cat)
+         (mv (mv-nth 0 (fn-splan-rest-cursor-step rest w v b fn-arena fn-cat))
+             (revappend acc (mv-nth 1 (fn-splan-rest-cursor-step rest w v b fn-arena fn-cat)))))
+  :hints (("Goal" :induct (fn-splan-rest-cursor-step-acc rest w v b acc fn-arena fn-cat)
            :in-theory (e/d (fn-splan-rest-cursor-step)
                            (fn-ovw-step fn-ovw-cursorp fn-nnw-stream-batch
                             fn-nnw-meta-livep)))))
@@ -247,11 +260,11 @@
 ; fn-cat-handles-inp of the whole catalog, a walk of all N rows per quantum
 ; (a quantized OVER of a whole group cost about N x ceil(N/W): Codex r67 F1).
 ; A quantum's reads are its window's: fn-ovw-step-window-at-most-w.
-(defun fn-splan-cursor-step (p w fn-arena fn-cat)
+(defun fn-splan-cursor-step (p w v b fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (natp w)))
+                  :guard (and (natp w) (natp v) (natp b))))
   (mv-let (status rest)
-    (fn-splan-rest-cursor-step (fn-splan-rest p) w fn-arena fn-cat)
+    (fn-splan-rest-cursor-step (fn-splan-rest p) w v b fn-arena fn-cat)
     (mv status (cons (fn-splan-cur p) rest))))
 
 ; -----------------------------------------------------------------------------
@@ -274,15 +287,15 @@
 
 ; N rounds of the host's loop: a quantum at a cursor, else a window of W
 ; octets (:malformed stops it, as the host faults).
-(defun fn-splan-cw-drain (p w wl n fn-arena fn-cat)
+(defun fn-splan-cw-drain (p w wl v b n fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil :measure (nfix n)))
   (if (zp n)
       (mv :ok nil p)
     (if (fn-splan-at-cursorp p)
         (mv-let (status p2)
-          (fn-splan-cursor-step p wl fn-arena fn-cat)
+          (fn-splan-cursor-step p wl v b fn-arena fn-cat)
           (if (equal status :ok)
-              (fn-splan-cw-drain p2 w wl (- n 1) fn-arena fn-cat)
+              (fn-splan-cw-drain p2 w wl v b (- n 1) fn-arena fn-cat)
             (mv status nil p)))
       (mv-let (status octets p2)
         (fn-splan-take (fn-splan-cur p) (fn-splan-rest p) w)
@@ -292,7 +305,7 @@
         ;; the effect the window starts in), but the model takes every W.
         (if (or (equal status :ok) (equal status :cursor))
             (mv-let (status2 more p3)
-              (fn-splan-cw-drain p2 w wl (- n 1) fn-arena fn-cat)
+              (fn-splan-cw-drain p2 w wl v b (- n 1) fn-arena fn-cat)
               (mv status2 (append octets more) p3))
           (mv status octets p2))))))
 
@@ -347,34 +360,34 @@
 ; A quantum keeps what the plan owes: the cursor's run is its step's octets
 ; followed by the run of the cursor that remains (fn-ovw-run unfolds).
 (defthm fn-splan-rest-cursor-step-keeps-cw-octets
-  (implies (equal (mv-nth 0 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)) :ok)
-           (equal (fn-splan-cw-octets (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat))
+  (implies (equal (mv-nth 0 (fn-splan-rest-cursor-step rest wl v b fn-arena fn-cat)) :ok)
+           (equal (fn-splan-cw-octets (mv-nth 1 (fn-splan-rest-cursor-step rest wl v b fn-arena fn-cat))
                                       wl fn-arena fn-cat)
                   (fn-splan-cw-octets rest wl fn-arena fn-cat)))
-  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
+  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl v b fn-arena fn-cat)
            :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep
                                fn-nnw-stream-batch)
            :expand ((fn-ovw-run (car (cdr (car rest))) wl fn-arena fn-cat)))))
 
 (defthm fn-splan-cursor-step-keeps-cw-remaining
-  (implies (equal (mv-nth 0 (fn-splan-cursor-step p wl fn-arena fn-cat)) :ok)
-           (equal (fn-splan-cw-remaining (mv-nth 1 (fn-splan-cursor-step p wl fn-arena fn-cat))
+  (implies (equal (mv-nth 0 (fn-splan-cursor-step p wl v b fn-arena fn-cat)) :ok)
+           (equal (fn-splan-cw-remaining (mv-nth 1 (fn-splan-cursor-step p wl v b fn-arena fn-cat))
                                          wl fn-arena fn-cat)
                   (fn-splan-cw-remaining p wl fn-arena fn-cat)))
   :hints (("Goal" :in-theory (disable fn-splan-rest-cursor-step))))
 
 (defthm fn-splan-cw-drain-is-a-prefix
-  (equal (append (mv-nth 1 (fn-splan-cw-drain p w wl n fn-arena fn-cat))
-                 (fn-splan-cw-remaining (mv-nth 2 (fn-splan-cw-drain p w wl n fn-arena fn-cat))
+  (equal (append (mv-nth 1 (fn-splan-cw-drain p w wl v b n fn-arena fn-cat))
+                 (fn-splan-cw-remaining (mv-nth 2 (fn-splan-cw-drain p w wl v b n fn-arena fn-cat))
                                         wl fn-arena fn-cat))
          (fn-splan-cw-remaining p wl fn-arena fn-cat))
-  :hints (("Goal" :induct (fn-splan-cw-drain p w wl n fn-arena fn-cat)
+  :hints (("Goal" :induct (fn-splan-cw-drain p w wl v b n fn-arena fn-cat)
            :in-theory (disable fn-splan-take fn-splan-cursor-step fn-splan-cur fn-splan-rest
                                fn-splan-at-cursorp fn-ovw-run))))
 
 (defthm fn-splan-cw-drain-octets-true-listp
-  (true-listp (mv-nth 1 (fn-splan-cw-drain p w wl n fn-arena fn-cat)))
-  :hints (("Goal" :induct (fn-splan-cw-drain p w wl n fn-arena fn-cat)
+  (true-listp (mv-nth 1 (fn-splan-cw-drain p w wl v b n fn-arena fn-cat)))
+  :hints (("Goal" :induct (fn-splan-cw-drain p w wl v b n fn-arena fn-cat)
            :in-theory (disable fn-splan-take fn-splan-cursor-step fn-ovw-run))))
 
 (local
@@ -454,9 +467,9 @@
 ; owed, exactly, to the connection's continuation.
 (defthm fn-splan-cw-residual-rendering
   (implies (fn-splan-fresh-effectsp effects)
-           (equal (append (mv-nth 1 (fn-splan-cw-drain (fn-splan-of-effects effects) w wl n fn-arena fn-cat))
+           (equal (append (mv-nth 1 (fn-splan-cw-drain (fn-splan-of-effects effects) w wl v b n fn-arena fn-cat))
                           (fn-splan-cw-remaining
-                           (mv-nth 2 (fn-splan-cw-drain (fn-splan-of-effects effects) w wl n fn-arena fn-cat))
+                           (mv-nth 2 (fn-splan-cw-drain (fn-splan-of-effects effects) w wl v b n fn-arena fn-cat))
                            wl fn-arena fn-cat))
                   (fn-served-reply-octets (fn-ovw-expand effects fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
@@ -473,8 +486,8 @@
 (defthm fn-splan-cw-drain-is-the-expanded-reply
   (implies (and (fn-splan-fresh-effectsp effects)
                 (fn-splan-donep
-                 (mv-nth 2 (fn-splan-cw-drain (fn-splan-of-effects effects) w wl n fn-arena fn-cat))))
-           (equal (mv-nth 1 (fn-splan-cw-drain (fn-splan-of-effects effects) w wl n fn-arena fn-cat))
+                 (mv-nth 2 (fn-splan-cw-drain (fn-splan-of-effects effects) w wl v b n fn-arena fn-cat))))
+           (equal (mv-nth 1 (fn-splan-cw-drain (fn-splan-of-effects effects) w wl v b n fn-arena fn-cat))
                   (fn-served-reply-octets (fn-ovw-expand effects fn-arena fn-cat))))
   :hints (("Goal" :do-not-induct t
            :in-theory (disable fn-splan-cw-drain fn-splan-cw-remaining fn-splan-donep
@@ -486,7 +499,7 @@
            :use ((:instance fn-splan-cw-residual-rendering)
                  (:instance fn-splan-donep-implies-cw-nothing-remains
                             (p (mv-nth 2 (fn-splan-cw-drain (fn-splan-of-effects effects)
-                                                            w wl n fn-arena fn-cat))))
+                                                            w wl v b n fn-arena fn-cat))))
                  (:instance fn-splan-cw-drain-octets-true-listp (p (fn-splan-of-effects effects)))))))
 
 ; -----------------------------------------------------------------------------
@@ -568,11 +581,11 @@
                  (mv-nth 2 (fn-splan-cw-drain
                             (fn-splan-of-effects
                              (cdr (fn-nntp-over-range-ovw session v token legacyp server fn-cat)))
-                            w wl n fn-arena fn-cat))))
+                            w wl vq bq n fn-arena fn-cat))))
            (equal (mv-nth 1 (fn-splan-cw-drain
                              (fn-splan-of-effects
                               (cdr (fn-nntp-over-range-ovw session v token legacyp server fn-cat)))
-                             w wl n fn-arena fn-cat))
+                             w wl vq bq n fn-arena fn-cat))
                   (fn-served-reply-octets
                    (cdr (fn-splan-arm-reference session v token legacyp server fn-arena fn-cat)))))
   :hints (("Goal" :do-not-induct t
@@ -582,6 +595,7 @@
                                         fn-splan-cw-octets-of-the-arm)
                                       (theory 'minimal-theory))
            :use ((:instance fn-splan-cw-drain-is-the-expanded-reply
+                            (v vq) (b bq)
                             (effects (cdr (fn-nntp-over-range-ovw session v token legacyp server
                                                                   fn-cat))))
                  (:instance fn-splan-cw-octets-is-the-expanded-reply
@@ -629,15 +643,15 @@
 
 (defthm fn-splan-rest-cursor-step-of-okp
   (implies (fn-splan-cw-rest-okp rest)
-           (and (equal (mv-nth 0 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)) :ok)
-                (fn-splan-cw-rest-okp (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)))))
-  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
+           (and (equal (mv-nth 0 (fn-splan-rest-cursor-step rest wl v b fn-arena fn-cat)) :ok)
+                (fn-splan-cw-rest-okp (mv-nth 1 (fn-splan-rest-cursor-step rest wl v b fn-arena fn-cat)))))
+  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl v b fn-arena fn-cat)
            :in-theory (disable fn-ovw-step fn-ovw-cursorp fn-cur-pending fn-nnw-stream-batch))))
 
 (defthm fn-splan-cursor-step-of-okp-is-ok
   (implies (fn-splan-cw-okp p)
-           (and (equal (mv-nth 0 (fn-splan-cursor-step p wl fn-arena fn-cat)) :ok)
-                (fn-splan-cw-okp (mv-nth 1 (fn-splan-cursor-step p wl fn-arena fn-cat)))))
+           (and (equal (mv-nth 0 (fn-splan-cursor-step p wl v b fn-arena fn-cat)) :ok)
+                (fn-splan-cw-okp (mv-nth 1 (fn-splan-cursor-step p wl v b fn-arena fn-cat)))))
   :hints (("Goal" :in-theory (disable fn-splan-rest-cursor-step))))
 
 (defthm fn-splan-take-keeps-cw-okp
@@ -678,16 +692,16 @@
 ; fn-splan-reply-then each empty quantum left one empty reply effect behind.
 (defthm fn-splan-rest-cursor-step-adds-no-empty-effect
   (<= (fn-splan-rest-empties
-       (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)))
+       (mv-nth 1 (fn-splan-rest-cursor-step rest wl v b fn-arena fn-cat)))
       (fn-splan-rest-empties rest))
   :rule-classes :linear
-  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)
+  :hints (("Goal" :induct (fn-splan-rest-cursor-step rest wl v b fn-arena fn-cat)
            :in-theory (e/d (fn-splan-rest-cursor-step fn-splan-rest-empties)
                            (fn-ovw-step fn-ovw-cursorp fn-nnw-meta-livep
                             fn-nnw-stream-batch)))))
 
 (defthm fn-splan-cursor-step-adds-no-empty-effect
-  (<= (fn-splan-empties (mv-nth 1 (fn-splan-cursor-step p wl fn-arena fn-cat)))
+  (<= (fn-splan-empties (mv-nth 1 (fn-splan-cursor-step p wl v b fn-arena fn-cat)))
       (fn-splan-empties p))
   :rule-classes :linear
   :hints (("Goal" :in-theory (e/d (fn-splan-cursor-step fn-splan-empties)

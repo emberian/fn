@@ -2246,7 +2246,9 @@ limit at the carried store); the gate alone answers :hold."
           ;; so the actors only read it (lock_discipline_contracts
           ;; unlocked_publication).
           (setq *fnn-owner-over-window-fit*
-                (fnn-global 'fn-owner-memory-over-window)))))))
+                (fnn-global 'fn-owner-memory-over-window)
+                *fnn-owner-cursor-octets-fit*
+                (fnn-global 'fn-owner-memory-cursor-octets)))))))
 
 (defun fnn-owner-memory-install (service)
   "The memory gate for an owner process before it admits anything, called

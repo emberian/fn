@@ -2165,11 +2165,14 @@ def def_cursor_batch_expansion(form: list) -> list:
             and all(isinstance(x, Sym) for x in form[2])):
         return []
     opts = _dk_plist(list(form[3:]))
-    allowed = {":step", ":stobjs", ":byte-proof", ":call-proof", ":remaining", ":residual-proof"}
+    allowed = {":step", ":stobjs", ":byte-proof", ":call-proof", ":remaining", ":residual-proof",
+               ":yield-proof"}
     if opts is None or set(opts) - allowed:
         return []
     if not all(isinstance(opts.get(k), Sym) for k in
-               (":step", ":byte-proof", ":call-proof", ":residual-proof")):
+               (":step", ":byte-proof", ":call-proof", ":residual-proof", ":yield-proof")):
+        return []
+    if str(opts[":yield-proof"]).lower() == "nil":
         return []
     remaining = opts.get(":remaining")
     if not isinstance(remaining, list) or not remaining:
@@ -2205,6 +2208,10 @@ def def_cursor_batch_expansion(form: list) -> list:
              Sym(":rule-classes"), Sym("nil")],
             [Sym("defthm"), _gen_sym(name, "-batch-call-natp"), [Sym("natp"), nth(2)],
              Sym(":rule-classes"), [Sym(":rewrite"), Sym(":type-prescription")]],
+            [Sym("defthm"), _gen_sym(name, "-batch-yield-spends-the-visits"),
+             [Sym("implies"), [Sym("and"), [Sym("posp"), byte_count],
+                               [Sym("equal"), nth(3), Sym(":yield")]],
+              [Sym("equal"), nth(2), [Sym("nfix"), visits]]]],
             [Sym("verify-guards"), batch]]
 
 

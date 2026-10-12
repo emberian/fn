@@ -54,7 +54,7 @@
  (unless (and (null (car result)) (fn-nnw-meta-effectp (car (cdr result))))
   (error "actual NEWNEWS factory did not return the configured cursor"))
  (format t "~%native_newnews_allocation: factory ~d bytes~%" factory-consed)
- (let ((answer (fnn-call 'fn-splan-cursor-step plan 1 nil nil)))
+ (let ((answer (fnn-call 'fn-splan-cursor-step plan 1 1 1 nil nil)))
   (unless (eq (first answer) :ok) (error "actual sparse metadata plan could not step"))
   (format t "native_newnews_allocation: first actual plan step PASS~%")))
 
@@ -145,7 +145,7 @@
              (let ((octets
                     (if (eq route :direct-buffer)
                         (fnn-owner-render-next plan)
-                      (let ((answer (fnn-call 'fn-splan-cursor-step plan *fnout-window* nil nil)))
+                      (let ((answer (fnn-call 'fn-splan-cursor-step plan *fnout-window* *fnout-window* *fnout-window* nil nil)))
                         (assert (eq (first answer) :ok))
                         (fnn-owner-render-next (second answer))))))
                (assert (= (length octets) *fnout-window*)))))
@@ -203,7 +203,7 @@
     (declare (ignore donep))
     (setf plan rest)
     (if cursorp
-        (let ((answer (fnn-call 'fn-splan-cursor-step plan quantum nil nil)))
+        (let ((answer (fnn-call 'fn-splan-cursor-step plan quantum quantum quantum nil nil)))
          (unless (eq (first answer) :ok) (error "actual cursor could not step"))
          (incf cursor-steps) (setf plan (second answer)))
       (loop for octet across octets do (vector-push-extend octet output)))))
