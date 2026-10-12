@@ -128,6 +128,7 @@
 (include-book "heap-open-nursery")
 (include-book "send-progress")
 (include-book "send-window")
+(include-book "runtime-contract-host-lease")
 (include-book "idle-collection")
 (include-book "heap-reservation")
 (include-book "heap-command")
@@ -170,5 +171,3 @@
 (include-book "store-log-kernel-concrete")
 (include-book "store-log-stream")
 (include-book "store-log-damage")
-(include-book "store-log-entry-bound")
-(include-book "store-log-lineage")
