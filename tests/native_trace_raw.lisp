@@ -61,14 +61,15 @@
   (< (first args) 65536))
 ;; Real mux render caller over a recorded owner leaf: all six results and
 ;; exact ACL2 response generations remain available through the trace hook.
-(load-deployed-forms "host/native/owner.lisp" '((defvar *fnn-output-grant*)))
+(load-deployed-forms "host/native/owner.lisp" '((defvar *fnn-output-grant*)
+                                               (defstruct (fnn-lease (:constructor fnn-make-lease)))))
 (load-deployed-forms "host/native/mux.lisp"
  '((defstruct (fnn-mux-loop (:constructor %make-fnn-mux-loop)))
    (defstruct (fnn-mux-conn (:constructor %make-fnn-mux-conn)))
    (defun fnn-mux-service) (defun fnn-mux-read-class) (defun fnn-mux-render-next)))
-(defun fnn-owner-render-next-quantum (service cid plan class compressed &optional borrowp)
+(defun fnn-owner-render-next-quantum (service cid plan class compressed &optional borrowp lease)
   (assert (and (eq service :service) (= cid 9) (eq plan :plan)
-               (eq class :read) (null compressed) borrowp))
+               (eq class :read) (null compressed) borrowp (fnn-lease-p lease)))
   (values :octets :rest :done :yield :cold 2))
 (let ((loop (%make-fnn-mux-loop :service :service))
       (conn (%make-fnn-mux-conn :cid 9 :class :read :output-grant :held
