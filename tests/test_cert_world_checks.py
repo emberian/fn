@@ -1,7 +1,8 @@
-"""The three make-check steps that need the certified world run where it is.
+"""The make-check steps that need the certified world run where it is.
 
 On a tree without certificates or an ACL2 launcher, protocol_emit --wire,
-host_check's translate and system_books exit 2 with NOT RUN, a capability
+host_check's translate, system_books and reach_check --strict (for its
+events behind a generated function) exit 2 with NOT RUN, a capability
 skip that tools/check_steps.py does not count red (coordinator ruling
 2026-10-10, MAKE-CHECK-CERT-WORLD-NOT-RUN).  The condition of that ruling is
 that a tree WITH the world runs them, so nothing reaches dev skipped: this
@@ -19,7 +20,26 @@ STEPS = (
     ("protocol_emit", [sys.executable, "tools/protocol_emit.py", "--wire", "--check"]),
     ("host_check", [sys.executable, "tools/host_check.py"]),
     ("system_books", [sys.executable, "tools/system_books.py", "check"]),
+    # its needs --world events are NOT RUN without the generating books'
+    # current certificates, which it reads from the box's cache
+    ("reach_check", [sys.executable, "tools/reach_check.py", "--summary", "--strict"]),
 )
+
+
+def cert_cache() -> str | None:
+    """The certificate cache the steps read: FN_CERT_CACHE, else the farm
+    cache this machine holds (tools/farm.py HOSTS, the cache the box step's
+    certify installed from)."""
+    named = os.environ.get("FN_CERT_CACHE")
+    if named:
+        return named
+    sys.path.insert(0, str(ROOT / "tools"))
+    import farm
+    for settings in farm.HOSTS.values():
+        cache = Path(str(settings.get("cache", ""))).expanduser()
+        if settings.get("cache") and cache.is_dir():
+            return str(cache)
+    return None
 
 
 def world() -> str | None:
@@ -45,10 +65,14 @@ class CertifiedWorldTests(unittest.TestCase):
                                     "; the train's box step runs this module")
 
     def test_each_world_step_runs_and_passes(self):
+        env = dict(os.environ)
+        cache = cert_cache()
+        if cache:
+            env["FN_CERT_CACHE"] = cache
         for name, command in STEPS:
             with self.subTest(step=name):
                 done = subprocess.run(command, cwd=ROOT, capture_output=True, text=True,
-                                      timeout=3600)
+                                      timeout=3600, env=env)
                 said = done.stdout + done.stderr
                 self.assertNotIn("NOT RUN", said, said[-2000:])
                 # with the world in hand each step's verdict is the box step's:

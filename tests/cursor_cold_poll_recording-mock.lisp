@@ -93,8 +93,12 @@
   (let ((*held* t)) (funcall thunk)))
 (defun fnn-owner-over-window () 1)
 (defun fnn-live-stobj (name) (assert *held*) name)
-(defun fnn-call (name plan window arena &optional cat out)
-  (declare (ignore name plan window arena cat out))
+(defun fnn-call (name plan window &rest live-stobjs)
+  ;; The two dispatches this harness reaches: fn-qplan-cursor-step with the
+  ;; live arena and cat (host/native/owner.lisp fnn-owner-cursor-step), and
+  ;; fn-asto-plan-render-window with the arena, ast-ws and dss-out buffers
+  ;; (fnn-owner-render-next-quantum, Adapter A2).
+  (declare (ignore name plan window live-stobjs))
   (assert *held*) (assert *fnn-extent-no-io*) (incf *calls*)
   (when *cold* (throw 'fnn-extent-cold '(3 100 4096 77)))
   (list :ok :advanced))
@@ -121,8 +125,8 @@
   (declare (ignore service class))
   (setf *poll-args* (list read first-miss since))
   (values *poll-word* since *clock* nil))
-(defun fnn-mux-queue (loop conn octets op after &optional end start)
-  (declare (ignore loop conn end start)) (push (list octets op after) *queued*))
+(defun fnn-mux-queue (loop conn octets op after &optional end)
+  (declare (ignore loop conn end)) (push (list octets op after) *queued*))
 (defun fnn-mux-after (loop conn after)
   (declare (ignore loop conn after)) (setf *after-called* t))
 (defun fnn-mux-work (loop conn)
@@ -176,10 +180,7 @@
 (defvar *fnn-extent-window-token* nil)
 (load-selected "host/native/owner.lisp"
                '(fnn-owner-window-activation fnn-owner-ready-plan-step fnn-owner-cursor-step
-                 fnn-owner-render-next-quantum fnn-owner-feed-logical fnn-lease))
-;; The service here is a keyword: no host lease is installed, so an ARTICLE
-;; window takes adapter A2's path (the one this harness records).
-(defun fnn-owner-service-lease-ready (service) (declare (ignore service)) nil)
+                 fnn-owner-render-next-quantum fnn-owner-feed-logical))
 (load-selected "host/native/mux.lisp"
                '(fnn-mux-loop fnn-mux-conn +fnn-mux-cold-poll-ms+ fnn-mux-service
                  fnn-mux-render-next fnn-mux-read-class fnn-mux-plan-cold fnn-mux-queue-plan

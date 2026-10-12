@@ -5,9 +5,12 @@
 at the book's current closure key (`certs.closure_key`: the read forms of the
 book and everything it includes, plus the world it was certified in) whose
 `toolchain_identity` is the record toolchain's.  The record toolchain is
-hbox's `w28` launcher; persvati shares it byte for byte (`farm.HOSTS`), so it
-answers identically and is the fallback.  A laptop (darwin arm64) entry never
-counts: its identity is a different toolchain's.
+hbox's `w28` launcher; persvati shares it byte for byte (`farm.HOSTS`), but
+its cache is its own and can lag hbox's, so it answers only when named
+(`--box persvati`), never as a silent fallback (2026-10-11: green_check run on
+hbox could not ssh to "hbox", took persvati's cache, stale since an outage,
+and keystone_emit reported certified witnesses as uncertified).  A laptop
+(darwin arm64) entry never counts: its identity is a different toolchain's.
 
     python3 tools/green_check.py --summary   # the lines `make check` prints
     python3 tools/green_check.py --table     # every book, not certified first
@@ -24,8 +27,10 @@ counts: its identity is a different toolchain's.
     --cache DIR [--identity ID]              # answer from a local cache (a box
                                              # asking itself) instead of ssh
     --box hbox|persvati                      # which box to ask (default hbox;
-                                             # persvati when hbox is unreachable,
-                                             # said on stderr)
+                                             # on hbox itself, its own cache is
+                                             # read directly, no ssh; a box that
+                                             # cannot be reached is an error,
+                                             # never another box's answer)
 
 WHAT IT MEASURES.  Every root in the Makefile's `ACL2_BOOKS` and every book in
 those roots' local include closure, read through the one closure walker
@@ -75,7 +80,6 @@ RECORD_LAUNCHER = "/tank/fn/toolchains/w28/acl2-literal-4g-tls64k"
 # Local mirrors without that launcher require --identity. A hardcoded digest
 # silently became stale when :FN changed the proof-environment contract.
 RECORD_BOX = "hbox"
-FALLBACK_BOX = "persvati"
 SSH = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]
 SSH_SECONDS = 300
 
@@ -152,11 +156,21 @@ def remote_script(cache: str, launcher: str, keys: list[str]) -> str:
     ])
 
 
+def on_box(box: str) -> bool:
+    """True when this process runs on BOX: its certificate cache directory and
+    the record launcher are both on this machine, so the cache is read here
+    rather than over ssh to itself (which needs a host key for its own name)."""
+    return (Path(certs.REMOTE_CACHES[box]).expanduser().is_dir()
+            and Path(RECORD_LAUNCHER).is_file())
+
+
 class Cache:
     """One cache answering `which of these keys are certified on the record
     toolchain`.  `local` is a directory (a box asking its own cache, or a test
-    fixture) read with `identity`; otherwise the record box is asked over ssh,
-    hbox first and persvati when hbox cannot be reached.  Answers are
+    fixture) read with `identity`; on the asked box itself (its cache
+    directory and the record launcher are both here) that box's cache is read
+    directly; otherwise that one box is asked over ssh, and a box that does
+    not answer raises CacheUnavailable with the reason.  Answers are
     remembered, so a process asks each key once."""
 
     def __init__(self, box: str | None = None, local: Path | str | None = None,
@@ -173,6 +187,8 @@ class Cache:
         wanted = sorted(set(keys) - self.answered.keys())
         if not wanted:
             return
+        if self.local is None and on_box(self.box or RECORD_BOX):
+            self.local = Path(certs.REMOTE_CACHES[self.box or RECORD_BOX]).expanduser()
         if self.local is not None:
             hits = scan(str(self.local), wanted, self.local_identity())
             self.source = f"local cache {self.local}"
@@ -191,9 +207,8 @@ class Cache:
         return self.identity
 
     def ask_box(self, keys: list[str]) -> dict:
-        boxes = [self.box] if self.box else [RECORD_BOX, FALLBACK_BOX]
         failures = []
-        for box in boxes:
+        for box in [self.box or RECORD_BOX]:
             script = remote_script(certs.REMOTE_CACHES[box], RECORD_LAUNCHER, keys)
             try:
                 done = subprocess.run([*SSH, box, "python3", "-"], input=script,
@@ -210,12 +225,9 @@ class Cache:
                 failures.append(f"{box}: {RECORD_LAUNCHER} is not a qualified launcher there")
                 continue
             self.source = f"{box} certcache, record identity {answer['identity'][:12]}"
-            if failures:
-                print(f"green-check: {'; '.join(failures)}; answered by {box}",
-                      file=sys.stderr)
             self.identity = answer["identity"]
             return answer["hits"]
-        raise CacheUnavailable("no record box answered: " + "; ".join(failures))
+        raise CacheUnavailable("the record box did not answer: " + "; ".join(failures))
 
     def hit(self, key: str) -> dict | None:
         return self.answered.get(key)
@@ -245,8 +257,8 @@ def add_arguments(parser: argparse.ArgumentParser) -> None:
                              "(default: this machine's own record launcher)")
     parser.add_argument("--box", metavar="BOX", default=None,
                         choices=sorted(certs.REMOTE_CACHES),
-                        help="the record box to ask (default hbox, persvati "
-                             "when hbox is unreachable)")
+                        help="the record box to ask (default hbox; never "
+                             "another box when it is unreachable)")
 
 
 def configure_from(args: argparse.Namespace) -> Cache:
@@ -633,8 +645,9 @@ def main(argv: list[str] | None = None) -> int:
            for entry in report.get("books_by_verdict", {}).values()):
         # Uncertain stays distinct from red (1) and from usage errors (2):
         # an unreachable box never turns a certification step green.
-        print("green-check: UNKNOWN: no record cache reachable (tried hbox, persvati); "
-              "pass --cache DIR for a local mirror", file=sys.stderr)
+        print("green-check: UNKNOWN: the record cache was not reachable (no other box's "
+              "cache stands in for it); pass --box BOX to name one, or --cache DIR",
+              file=sys.stderr)
         return 3
 
     if args.profile:

@@ -711,29 +711,44 @@
   (and (not (consp (fn-splan-cur plan)))
        (eq (fn-cbor-ag-car (fn-cbor-ag-car (fn-splan-rest plan))) :article-cursor)))
 
-;; The scheduling delay of a yielded plan, ACL2's: an ARTICLE or LIST quantum
-;; spends its whole grant of visits, so it resumes on the loop's next pass
-;; (fairness is the pass order, not a sleep); only an OVER/NEWNEWS quantum that
-;; may have made empty progress waits fn-splan-cursor-resume-ms.
-(defun fn-asto-resume-ms (plan)
+;; The scheduling delay of a yielded plan, ACL2's.  PRODUCEDP: the quantum
+;; before this yield produced octets (the host sent a window).  A quantum that
+;; produced octets, and an ARTICLE or LIST quantum (which spends its whole
+;; grant of visits), resume on the loop's next pass (fairness is the pass
+;; order, not a sleep; no second quantum runs in the same I/O event); only an
+;; OVER/NEWNEWS quantum that made empty progress (a sparse range) waits
+;; fn-splan-cursor-resume-ms.  The host passes PRODUCEDP as the negation of
+;; the empty-progress flag its renderer returned (host/native/mux.lisp
+;; fnn-mux-plan-yield).  Before 2026-10-11 the delay ignored PRODUCEDP, so
+;; every completed OVER window waited it: OVER 1-40 at W' = 1 was 39 delayed
+;; yields (the 40th window carries the terminator and leaves no cursor).
+(defun fn-asto-resume-ms (plan producedp)
   (declare (xargs :guard t))
-  (if (or (fn-asto-plan-articlep plan) (fn-asto-preflight-planp plan)
+  (if (or producedp
+          (fn-asto-plan-articlep plan) (fn-asto-preflight-planp plan)
           (fn-qplan-lst-cursorp plan))
       0
     (fn-splan-cursor-resume-ms)))
 
 (defthm fn-asto-resume-ms-natp
-  (natp (fn-asto-resume-ms plan))
+  (natp (fn-asto-resume-ms plan producedp))
   :rule-classes :type-prescription)
 
 (defthm fn-asto-resume-ms-lst-is-immediate
   (implies (fn-qplan-lst-cursorp plan)
-           (equal (fn-asto-resume-ms plan) 0)))
+           (equal (fn-asto-resume-ms plan producedp) 0)))
 
+; An OVER/NEWNEWS quantum that produced nothing waits.
 (defthm fn-asto-resume-ms-over-waits
-  (implies (and (not (fn-asto-plan-articlep plan)) (not (fn-asto-preflight-planp plan))
+  (implies (and (not producedp)
+                (not (fn-asto-plan-articlep plan)) (not (fn-asto-preflight-planp plan))
                 (not (fn-qplan-lst-cursorp plan)))
-           (posp (fn-asto-resume-ms plan))))
+           (posp (fn-asto-resume-ms plan producedp))))
+
+; A quantum that produced octets never waits.
+(defthm fn-asto-resume-ms-produced-is-immediate
+  (implies producedp
+           (equal (fn-asto-resume-ms plan producedp) 0)))
 
 ;; The ARTICLE quantum: how many payload octets one hold of the owner mutex
 ;; scans (preflight fuel) or renders (window), and so how many octets one

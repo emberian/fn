@@ -215,7 +215,7 @@
 (assert-event (equal (mcat-admit-n *mcat-a4* 8 *mcat-a4-r*) :refused))
 ; The owner's work reserve (lane reclaim-funding): with the opt-in, at the
 ; small preset the live reclaim's demand at the bounds, 358,006,784, exceeds
-; the open's transient, 130,023,424, so the reserve is the demand; without
+; the open's transient, 104,923,402, so the reserve is the demand; without
 ; it the reserve is the open's transient alone.
 ; (The demand is fn-heap-reclaim-octets, the open's transient
 ; fn-heap-store-open-octets at the profile's bounds; neither figure is pinned.)
@@ -263,7 +263,7 @@
 
 ; With the opt-in (fn-mca-figure-on-is-the-live-figure,
 ; fn-mca-figure-off-is-the-store-figure): the figure grows by exactly the
-; reserve's excess, 227,983,360 = 358,006,784 - 130,023,424; the articles'
+; reserve's excess, 253,083,382 = 358,006,784 - 104,923,402; the articles'
 ; pool is the same 32 reserves; the run's ledger is pass-free for a live pass.
 (defconst *mcat-small-live* (fn-mca-initial *fn-heap-small-profile* *mcat-core* nil t))
 (assert-event (fn-mcr-fundedp *mcat-small-live*))

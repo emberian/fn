@@ -60,6 +60,9 @@
 (include-book "../books/store-log-walk-once")
 (include-book "../books/store-log-lineage")
 (include-book "../books/store-log-entry-bound")
+; Landing 2a-host: the read-only probe's suffix scan (fn-lgo-scan-plan, fn-lgo-fold;
+; host/native/heap.lisp fnn-heap-log-suffix) and its keystones.
+(include-book "../books/store-log-open-scan")
 (include-book "../books/payload-lz-append")
 (include-book "../books/owner-compact-request")
 (include-book "../books/owner-log-route")
@@ -609,6 +612,7 @@
 
 (definterface fn-hld-sent
   :class :common-lisp-compliant
+  :kinds ((id natp) (inc natp) (op natp))
   :keystones (fn-hld-sent-keeps-invp))
 
 (definterface fn-hld-end
@@ -869,6 +873,27 @@
 (definterface fn-lgs-segment-name
   :class :common-lisp-compliant)
 
+;; The read-only probe's scan of the log past the header's S (landing 2a-host,
+;; books/store-log-open-scan.lisp; host/native/heap.lisp fnn-heap-log-suffix).
+(definterface fn-lgo-scan-plan
+  :class :common-lisp-compliant
+  :keystones (fn-lgo-scan-plan-scans-every-present-segment))
+
+(definterface fn-lgo-fold
+  :class :common-lisp-compliant
+  :kinds ((zs fn-octet-list-listp))
+  :keystones (fn-lgo-observed-covers-the-opened-store
+              fn-lgo-host-suffix-covers-the-opened-store
+              fn-lgo-fold-from-no-skip-bounds-any-skip))
+
+(definterface fn-lgo-head-genesis
+  :class ::ideal
+  :kinds ((octets fn-cbor-octet-listp))
+  :keystones (fn-lgo-head-genesis-is-the-open-lineage-start))
+
+(definterface fn-lgo-suffix-settled
+  :class :common-lisp-compliant)
+
 (definterface fn-lgw-header-len
   :class :common-lisp-compliant
   :kinds ((st true-listp)))
@@ -996,9 +1021,6 @@
   :kinds ((total natp)))
 
 (definterface fn-cth-status-text
-  :class :common-lisp-compliant)
-
-(definterface fn-cth-empty-suffix
   :class :common-lisp-compliant)
 
 (definterface fn-ockp-step
@@ -1778,7 +1800,8 @@
 (definterface fn-asto-resume-ms
   :class :common-lisp-compliant
   :keystones (fn-asto-resume-ms-lst-is-immediate
-              fn-asto-resume-ms-over-waits))
+              fn-asto-resume-ms-over-waits
+              fn-asto-resume-ms-produced-is-immediate))
 
 
 ; Consumed by native owner/mux. LIST is a distinct query residual subject;
@@ -2986,19 +3009,23 @@
   :keystones (fn-heap-stopped-status-is-sized-without-the-store
               fn-heap-command-decide-store-opening-is-the-model
               fn-heap-command-decide-store-opening-unobserved-is-the-adapter
-              fn-heap-command-decide-otherwise-is-todays))
+              fn-heap-command-decide-otherwise-is-todays)
+  :exempt ((config-octets "a count of octets, NIL when unobserved (natp in the body: the adapter)")))
 
 (definterface fn-heap-command-growth
   :class :common-lisp-compliant)
 
 (definterface fn-lxc-command-line
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :exempt ((config-octets "a count of octets, NIL when unobserved (natp in fn-heap-command-line's body: the adapter's line)")))
 
 (definterface fn-heap-stack-kib
   :class :common-lisp-compliant)
 
 (definterface fn-mo-img-observed
-  :class :common-lisp-compliant)
+  :class :common-lisp-compliant
+  :kinds ((core-octets natp) (status-octets fn-cbor-octet-listp))
+  :exempt ((tls-octets "a count of octets, NIL when the runtime cannot report it (natp in the body: no image)")))
 
 (definterface fn-mo-observed-totals
   :class :common-lisp-compliant)

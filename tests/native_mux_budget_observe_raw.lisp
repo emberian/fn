@@ -20,13 +20,8 @@
 (defun fnn-owner-lease-install-locked (service)
   (declare (ignorable service))
   (harness-stub-reached 'fnn-owner-lease-install-locked "host/native/owner.lisp"))
-(defun fnn-owner-memory-configure-locked (service tls-context observed &optional gate-only)
-  (declare (ignorable service tls-context observed gate-only))
-  (harness-stub-reached 'fnn-owner-memory-configure-locked "host/native/mux.lisp"))
-(defun fnn-owner-memory-observe (store)
-  (declare (ignorable store))
-  (harness-stub-reached 'fnn-owner-memory-observe "host/native/mux.lisp"))
 ;;; ---- derived stubs: END ----
+
 (defvar *in-section* nil)
 (defvar *violations* nil)
 (defvar *seen* nil)
@@ -50,6 +45,14 @@
 (defun fnn-log-line (line) (declare (ignore line)))
 (defun fnn-refuse (&rest args) (declare (ignore args)) (error "refused"))
 (defun fnn-fault (&rest args) (error "fault ~s" args))
+;; The memory gate's coordinates are observed off the section too
+;; (fnn-owner-memory-observe); its configure runs inside it, after the
+;; connection budget holds.
+(defun fnn-owner-memory-observe (store) (declare (ignore store)) (observe :memory) '(:observed))
+(defun fnn-owner-memory-configure-locked (service tls-context observed &optional gate-only)
+  (declare (ignore service tls-context gate-only))
+  (unless (and *in-section* (equal observed '(:observed))) (error "configure outside the section"))
+  :hold)
 (defconstant +fnn-gc-nursery-octets+ 7)
 (with-open-file (stream "host/native/mux.lisp")
   (loop for form = (read stream nil :eof) until (eq form :eof)
@@ -57,5 +60,6 @@
           do (eval form) (return)))
 (unless (eq (fnn-mux-budget-install :service nil) :hold) (error "decision"))
 (when *violations* (error "observed inside the owner section: ~s" *violations*))
-(unless (and (member :machine *seen*) (member :core *seen*)) (error "observations missing"))
+(unless (and (member :machine *seen*) (member :core *seen*) (member :memory *seen*))
+  (error "observations missing"))
 (format t "native mux budget observe: PASS~%")

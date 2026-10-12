@@ -21340,7 +21340,7 @@
     {
       "id": "PRF-1250",
       "title": "The log entry length the host reads is bounded by the frame open's own bound before the read, and the stream and the damage probe decide exactly as before",
-      "statement": "books/store-log-entry-bound.lisp fn-lgw-entry-len-bounded-step and fn-lgdm-entry-len-bounded-step: when the bounded length (fn-lgw-entry-len-bounded / fn-lgdm-entry-len-bounded: NIL also past *fn-frame-overhead-octets* plus fn-lg-open-bound at the header's kind octet) answers NIL where the unbounded one named an entry E whose kind octet is the header window's, the stream's step (fn-lgw-step) and the probe's step (fn-lgdm-step) over E equal their steps over no entry; fn-lgw-/fn-lgdm-entry-len-bounded-is-entry-len: when the bounded length answers, it is the unbounded one. Host: host/native/io.lisp fnn-log-stream-segment and fnn-log-probe-tail (and the extracted fn-xo-/fn-xw- walks and probes) call the bounded lengths, so one read is at most the overhead plus the open's bound. Sweep 2026-10-03 S048.",
+      "statement": "books/store-log-buffer.lisp fn-lgw-entry-len-bounded-step-buf-count (the hosted step fn-lgw-step-buf-count, from books/store-log-entry-bound.lisp fn-lgw-entry-len-bounded-step over the list step through fn-lgw-step-buf-count-is-step) and books/store-log-entry-bound.lisp fn-lgdm-entry-len-bounded-step: when the bounded length (fn-lgw-entry-len-bounded / fn-lgdm-entry-len-bounded: NIL also past *fn-frame-overhead-octets* plus fn-lg-open-bound at the header's kind octet) answers NIL where the unbounded one named an entry E whose kind octet is the header window's, the stream's step (fn-lgw-step) and the probe's step (fn-lgdm-step) over E equal their steps over no entry; fn-lgw-/fn-lgdm-entry-len-bounded-is-entry-len: when the bounded length answers, it is the unbounded one. Host: host/native/io.lisp fnn-log-stream-segment and fnn-log-probe-tail (and the extracted fn-xo-/fn-xw- walks and probes) call the bounded lengths, so one read is at most the overhead plus the open's bound. Sweep 2026-10-03 S048.",
       "milestone": "M5",
       "requirements": [
         "STO-028"
@@ -21352,7 +21352,7 @@
       ],
       "progress_note": "sweep-store, 2026-10-03: REPL-admitted. Witnesses (moved from the evidence list, 2026-10-09): tests/acl2/store-log-entry-bound-tests.lisp (reachable walk equal both ways; corrupted segment: the first entry's length field 5000, unbounded 5042, bounded NIL, both steps equal over E and over nothing; removal of the NIL hypothesis and of the length hypothesis).",
       "events": [
-        "fn-lgw-entry-len-bounded-step",
+        "fn-lgw-entry-len-bounded-step-buf-count",
         "fn-lgdm-entry-len-bounded-step",
         "fn-lgw-entry-len-bounded-is-entry-len",
         "fn-lgdm-entry-len-bounded-is-entry-len"
@@ -23575,6 +23575,41 @@
       },
       "events": [
         "fn-mo-run-decide-refuses-only-by-the-model"
+      ]
+    },
+    {
+      "id": "PRF-10006",
+      "title": "The read-only probe's suffix: the charged totals of the log past a checkpoint, read before the open, bound the charged fold of every row the open recovers (exact in eight fields, HISTORY at the record's own ceiling); a probe that cannot see the dropped segments still bounds it",
+      "statement": "books/store-log-open-scan.lisp (landing 2a and 2a-host). KEYSTONES L2-1 fn-lgo-run-is-the-fold, L2-2 fn-lgo-chain-is-the-fold, L2-3 fn-lgo-fold-is-the-wire-fold, L2-4 fn-lgo-wire-fold-covers-the-replay, L2-5 fn-lgo-observed-covers-the-opened-store, L2H-1 fn-lgo-fold-from-no-skip-bounds-any-skip, L2H-2 fn-lgo-host-suffix-covers-the-opened-store, L2H-3 fn-lgo-scan-plan-scans-every-present-segment, L2H-4 fn-lgo-head-genesis-is-the-open-lineage-start, L2H-5 fn-lgo-history-ceiling-bounds-the-intern (books/store-log-history-ceiling.lisp: the row the intern builds at any handle, keyring and natural generation has HISTORY at most the record's ceiling). The host subject is host/native/heap.lisp fnn-heap-log-suffix (definterfaces fn-lgo-scan-plan, fn-lgo-fold, fn-lgo-head-genesis, fn-lgo-suffix-settled).",
+      "milestone": "M5",
+      "requirements": [
+        "STO-003"
+      ],
+      "depends_on": [
+        "PRF-936"
+      ],
+      "assumptions": [],
+      "evidence": [
+        "books/store-log-open-scan.lisp",
+        "books/store-log-history-ceiling.lisp",
+        "tests/acl2/store-log-open-scan-tests.lisp",
+        "books/store-log-open-scan-cost.lisp",
+        "tests/test_native_state_checkpoint.py",
+        "tests/test_native_checkpoint_auto.py"
+      ],
+      "evidence_digest": "8564bb2ea8a26624",
+      "progress_note": "Proved; teeth in tests/acl2/store-log-open-scan-tests.lisp; native tests/test_native_state_checkpoint.py::test_the_read_decision_sees_the_records_past_the_header.",
+      "events": [
+        "fn-lgo-run-is-the-fold",
+        "fn-lgo-chain-is-the-fold",
+        "fn-lgo-fold-is-the-wire-fold",
+        "fn-lgo-wire-fold-covers-the-replay",
+        "fn-lgo-observed-covers-the-opened-store",
+        "fn-lgo-fold-from-no-skip-bounds-any-skip",
+        "fn-lgo-host-suffix-covers-the-opened-store",
+        "fn-lgo-scan-plan-scans-every-present-segment",
+        "fn-lgo-head-genesis-is-the-open-lineage-start",
+        "fn-lgo-history-ceiling-bounds-the-intern"
       ]
     }
   ]

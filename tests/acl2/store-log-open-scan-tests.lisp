@@ -1,14 +1,15 @@
 ; Teeth for books/store-log-open-scan (Builder L, landing 2a): the log
-; suffix's charged totals before the open, L2-1 to L2-5.
+; suffix's charged totals before the open, L2-1 to L2-5, and the read-only
+; probe's scan of it (landing 2a-host), L2H-1 to L2H-5.
 ;
 ; The fixture is a keyring history: an enrollment (a keyring snapshot), an
 ; article, a key rotation, an article; encoded, logged as one batch entry of
 ; the first two and one entry each of the last two, in one 16 KiB segment
 ; (and split over two segments for the chain).  The checkpoint covers the
 ; first record: its cache is (1 . the charged fold of the first row).
-; ALLOW 200 puts every row within the HISTORY clause (row HISTORY
-; 2064/168/2064/176 against octets 2052/3/2052/3); at ALLOW 0 the two article
-; rows are not within (their exact HISTORY 344 against the wire fold's 18).
+; The rows' HISTORY is 2064/168/2064/176; the scan charges the two keyring
+; events exactly and the two articles at their ceiling
+; (books/store-log-history-ceiling.lisp), 2064/983/2064/991.
 ;
 ; The codecs are attachments: assert-event evaluates with them, so the
 ; fixture is computed by zero-argument functions and defconst-eval.
@@ -17,6 +18,7 @@
 (include-book "../../books/codec-attach")
 (include-book "../../books/crypto-attach")
 (include-book "../../books/statement-attach")
+(include-book "../../books/frame-trailer")
 (include-book "../../books/defkeystone")
 (include-book "teeth-ground-lemma")
 
@@ -85,59 +87,59 @@
 ; -----------------------------------------------------------------------------
 ; L2-1: one segment's stream folds the recovered kernel's committed records.
 (defteeth fn-lgo-run-is-the-fold
-  :claim (let* ((run (fn-lgo-run c (fn-lgw-start genesis floor) unit max skip acc dicts allow))
+  :claim (let* ((run (fn-lgo-run c (fn-lgw-start genesis floor) unit max skip acc dicts))
                 (ks (fn-lgt-recover c genesis unit max floor))
-                (fold (fn-lgo-fold (fn-lgk-committed ks) skip acc dicts allow)))
+                (fold (fn-lgo-fold (fn-lgk-committed ks) skip acc dicts)))
            (()
             (and (equal (mv-nth 0 run) (mv-nth 0 fold))
                  (equal (mv-nth 1 run) (mv-nth 1 fold))
                  (equal (fn-lgw-kernel (mv-nth 2 run)) (fn-lgc-of ks)))))
   :subject fn-lgo-run
   :witness ((c *lgot-seg*) (genesis *fn-lg-genesis*) (floor 1) (unit 4) (max 16384) (skip 1)
-            (acc (cdr *lgot-cache*)) (dicts nil) (allow 200))
+            (acc (cdr *lgot-cache*)) (dicts nil))
   :breaks ()
   :mutations ((charges-the-covered-records
                (:conclusion
-                (let ((fold0 (fn-lgo-fold (fn-lgk-committed ks) 0 acc dicts allow)))
+                (let ((fold0 (fn-lgo-fold (fn-lgk-committed ks) 0 acc dicts)))
                   (and (equal (mv-nth 0 run) (mv-nth 0 fold0))
                        (equal (mv-nth 1 run) (mv-nth 1 fold0))
                        (equal (fn-lgw-kernel (mv-nth 2 run)) (fn-lgc-of ks)))))
                ((c *lgot-seg*) (genesis *fn-lg-genesis*) (floor 1) (unit 4) (max 16384) (skip 1)
-                (acc (cdr *lgot-cache*)) (dicts nil) (allow 200))
+                (acc (cdr *lgot-cache*)) (dicts nil))
                :fault "the scan's fold drops the skip and charges the records the checkpoint already covers")))
 
 ; -----------------------------------------------------------------------------
 ; L2-2: over the open's segments, the fold over the chain's records.
 (defteeth fn-lgo-chain-is-the-fold
   :claim (()
-          (equal (fn-lgo-chain cs genesis unit max skip acc dicts allow)
-                 (fn-lgo-fold (fn-lgs-chain-records cs genesis unit max) skip acc dicts allow)))
+          (equal (fn-lgo-chain cs genesis unit max skip acc dicts)
+                 (fn-lgo-fold (fn-lgs-chain-records cs genesis unit max) skip acc dicts)))
   :subject fn-lgo-chain
   :witness ((cs (list *lgot-seg1* *lgot-seg2*)) (genesis *fn-lg-genesis*) (unit 4) (max 16384)
-            (skip 1) (acc (cdr *lgot-cache*)) (dicts nil) (allow 200))
+            (skip 1) (acc (cdr *lgot-cache*)) (dicts nil))
   :breaks ()
   :mutations ((genesis-not-carried
                (:conclusion
-                (equal (fn-lgo-chain cs genesis unit max skip acc dicts allow)
+                (equal (fn-lgo-chain cs genesis unit max skip acc dicts)
                        (fn-lgo-fold (append (car (fn-lg-scan (car cs) genesis unit max))
                                             (car (fn-lg-scan (cadr cs) genesis unit max)))
-                                    skip acc dicts allow)))
+                                    skip acc dicts)))
                ((cs (list *lgot-seg1* *lgot-seg2*)) (genesis *fn-lg-genesis*) (unit 4) (max 16384)
-                (skip 1) (acc (cdr *lgot-cache*)) (dicts nil) (allow 200))
+                (skip 1) (acc (cdr *lgot-cache*)) (dicts nil))
                :fault "each segment scanned from the log's genesis instead of the trailer the one before ends on")))
 
 ; -----------------------------------------------------------------------------
 ; L2-3: a fold that does not refuse is ACC plus the wire fold past the skip.
 (defteeth fn-lgo-fold-is-the-wire-fold
-  :claim (let ((acc2 (mv-nth 1 (fn-lgo-fold zs skip acc dicts allow)))
+  :claim (let ((acc2 (mv-nth 1 (fn-lgo-fold zs skip acc dicts)))
                (xs (fn-lgo-expansions (nthcdr skip zs) dicts)))
            (((tot (fn-mm-tot-p acc))
              (ok (not (eq acc2 :bad))))
             (and (not (eq xs :bad))
                  (not (eq (fn-srs-decode xs) :bad))
-                 (equal acc2 (fn-mm-tot-plus acc (fn-lgo-wire-fold (fn-srs-decode xs) allow))))))
+                 (equal acc2 (fn-mm-tot-plus acc (fn-lgo-wire-fold (fn-srs-decode xs)))))))
   :subject fn-lgo-fold
-  :witness ((zs *lgot-zs*) (skip 1) (acc (cdr *lgot-cache*)) (dicts nil) (allow 200))
+  :witness ((zs *lgot-zs*) (skip 1) (acc (cdr *lgot-cache*)) (dicts nil))
   :breaks ((tot ((acc '(1 2 3)) (skip 4)))
            (ok ((zs (cons '(1 2 3 4 5) *lgot-zs*)) (skip 0))))
   :mutations ((wire-fold-from-the-start
@@ -145,8 +147,8 @@
                 (let ((xs0 (fn-lgo-expansions zs dicts)))
                   (and (not (eq xs0 :bad))
                        (not (eq (fn-srs-decode xs0) :bad))
-                       (equal acc2 (fn-mm-tot-plus acc (fn-lgo-wire-fold (fn-srs-decode xs0) allow))))))
-               ((zs *lgot-zs*) (skip 1) (acc (cdr *lgot-cache*)) (dicts nil) (allow 200))
+                       (equal acc2 (fn-mm-tot-plus acc (fn-lgo-wire-fold (fn-srs-decode xs0)))))))
+               ((zs *lgot-zs*) (skip 1) (acc (cdr *lgot-cache*)) (dicts nil))
                :fault "the wire fold counted from the log's first record, not past the checkpoint's")))
 
 ; -----------------------------------------------------------------------------
@@ -202,7 +204,7 @@
       (equal (lgot-rows-from *lgot-acc3* (nthcdr 3 *lgot-ws*) *lgot-pre3*) (nthcdr 3 *lgot-rows*)))
  :msg "the suffix replay from the epoch at K interns the rows past K")
 
-(defun lgot4-check (i acc ws dicts allow fn-arena)
+(defun lgot4-check (i acc ws dicts fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (mv-let (acc1 fn-arena) (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena)
     (let ((rows (fn-ssr-rows acc1)))
@@ -210,15 +212,14 @@
         (0 (fn-ssr-statep acc))
         (1 (null (fn-ssr-at 0 acc)))
         (2 (not (eq acc1 :bad)))
-        (3 (fn-lgo-rows-history-within rows allow))
-        (4 (and (fn-lgo-agree-but-history (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow)) (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow))))
-        (otherwise (equal (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow))))
+        (3 (and (fn-lgo-agree-but-history (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws)) (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws))))
+        (otherwise (equal (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws))))
           fn-arena))))
 
-(defun lgot5-check (i cache rows zs j keyring generation identity dicts allow fn-arena)
+(defun lgot5-check (i cache rows zs j keyring generation identity dicts fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
   (let ((k (car cache))
-        (suffix (mv-nth 1 (mv-list 2 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow)))))
+        (suffix (mv-nth 1 (mv-list 2 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts)))))
     (mv-let (acc1 fn-arena)
       (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity)
                           (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts))
@@ -226,97 +227,280 @@
       (mv (case i
         (0 (fn-ct-totals-cache-validp cache rows :resident))
         (1 (equal (nthcdr k rows) (fn-ssr-rows acc1)))
-        (2 (fn-lgo-rows-history-within (nthcdr k rows) allow))
-        (3 (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) suffix)))
-        (otherwise (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) (mv-nth 1 (mv-list 2 (fn-lgo-fold (nthcdr j zs) j (fn-ct-zero-tot :resident) dicts allow)))))))
+        (2 (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) suffix)))
+        (otherwise (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) (mv-nth 1 (mv-list 2 (fn-lgo-fold (nthcdr j zs) j (fn-ct-zero-tot :resident) dicts)))))))
           fn-arena))))
 
 ; L2-4: the rows the suffix replay interns agree with the wire fold in eight
-; fields and are bounded by it, every row within the HISTORY clause.
+; fields and are bounded by it.
 (defteeth fn-lgo-wire-fold-covers-the-replay
   :claim (let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena)))
                 (rows (fn-ssr-rows acc1)))
            (((st (fn-ssr-statep acc))
              (fresh (null (fn-ssr-at 0 acc)))
-             (ok (not (eq acc1 :bad)))
-             (within (fn-lgo-rows-history-within rows allow)))
-            (and (fn-lgo-agree-but-history (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow))
-                 (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow)))))
+             (ok (not (eq acc1 :bad))))
+            (and (fn-lgo-agree-but-history (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws))
+                 (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws)))))
   :subject fn-ssr-intern-step
-  :witness ((acc *lgot-seed*) (ws *lgot-ws*) (dicts nil) (allow 200) (pre nil))
+  :witness ((acc *lgot-seed*) (ws *lgot-ws*) (dicts nil) (pre nil))
   :stobjs ((fn-arena (lgot-presealed pre fn-arena)))
   :stobj-checks
   (
    ((let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))) (rows (fn-ssr-rows acc1))) (declare (ignorable acc1 rows)) (fn-ssr-statep acc))
-    (lgot4-check 0 acc ws dicts allow fn-arena)
+    (lgot4-check 0 acc ws dicts fn-arena)
     :hints (("Goal" :in-theory (union-theories '(lgot4-check) (theory 'minimal-theory)))))
    ((let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))) (rows (fn-ssr-rows acc1))) (declare (ignorable acc1 rows)) (null (fn-ssr-at 0 acc)))
-    (lgot4-check 1 acc ws dicts allow fn-arena)
+    (lgot4-check 1 acc ws dicts fn-arena)
     :hints (("Goal" :in-theory (union-theories '(lgot4-check) (theory 'minimal-theory)))))
    ((let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))) (rows (fn-ssr-rows acc1))) (declare (ignorable acc1 rows)) (not (eq acc1 :bad)))
-    (lgot4-check 2 acc ws dicts allow fn-arena)
+    (lgot4-check 2 acc ws dicts fn-arena)
     :hints (("Goal" :in-theory (union-theories '(lgot4-check) (theory 'minimal-theory)))))
-   ((let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))) (rows (fn-ssr-rows acc1))) (declare (ignorable acc1 rows)) (fn-lgo-rows-history-within rows allow))
-    (lgot4-check 3 acc ws dicts allow fn-arena)
+   ((let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))) (rows (fn-ssr-rows acc1))) (declare (ignorable acc1 rows)) (and (fn-lgo-agree-but-history (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws)) (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws))))
+    (lgot4-check 3 acc ws dicts fn-arena)
     :hints (("Goal" :in-theory (union-theories '(lgot4-check) (theory 'minimal-theory)))))
-   ((let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))) (rows (fn-ssr-rows acc1))) (declare (ignorable acc1 rows)) (and (fn-lgo-agree-but-history (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow)) (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow))))
-    (lgot4-check 4 acc ws dicts allow fn-arena)
-    :hints (("Goal" :in-theory (union-theories '(lgot4-check) (theory 'minimal-theory)))))
-   ((let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))) (rows (fn-ssr-rows acc1))) (declare (ignorable acc1 rows)) (equal (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow)))
-    (lgot4-check 5 acc ws dicts allow fn-arena)
+   ((let* ((acc1 (mv-nth 0 (fn-ssr-intern-step acc ws nil nil :resident dicts fn-arena))) (rows (fn-ssr-rows acc1))) (declare (ignorable acc1 rows)) (equal (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws)))
+    (lgot4-check 4 acc ws dicts fn-arena)
     :hints (("Goal" :in-theory (union-theories '(lgot4-check) (theory 'minimal-theory))))))
-  :breaks ((st ((acc *lgot-seed-x*) (ws (list (nth 1 *lgot-ws*))) (allow 1000000)) :logical "a replay state's generation is a natural (fn-ssr-statep, the replay's guard)")
+  :breaks ((st ((acc *lgot-seed-x*) (ws (list (nth 1 *lgot-ws*)))) :logical "a replay state's generation is a natural (fn-ssr-statep, the replay's guard)")
            (fresh ((acc *lgot-seed-held*)))
-           (ok ((ws (list :not-an-event))))
-           (within ((acc *lgot-acc1*) (ws (list (nth 1 *lgot-ws*))) (allow 0))))
+           (ok ((ws (list :not-an-event)))))
   :mutations ((history-claimed-exact
-               (:conclusion (equal (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws allow)))
-               ((acc *lgot-seed*) (ws *lgot-ws*) (dicts nil) (allow 200))
+               (:conclusion (equal (fn-ct-charged rows :resident) (fn-lgo-wire-fold ws)))
+               ((acc *lgot-seed*) (ws *lgot-ws*) (dicts nil))
                :fault "the scan's totals claimed equal to the opened store's in all nine fields, HISTORY included, which reads the handle and the statement context the log past S does not carry (seam L-M-A)")))
 
 ; L2-5: from a valid cache, the scan's total bounds the opened store's
 ; charged fold; the suffix replay starts from the epoch at K with no rows.
 (defteeth fn-lgo-observed-covers-the-opened-store
   :claim (let* ((k (car cache))
-                (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow)))
+                (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts)))
                 (acc1 (mv-nth 0 (fn-ssr-intern-step
                                  (fn-ssr-state nil keyring (nfix generation) identity)
                                  (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts))
                                  nil nil :resident nil fn-arena))))
            (((valid (fn-ct-totals-cache-validp cache rows :resident))
-             (tail (equal (nthcdr k rows) (fn-ssr-rows acc1)))
-             (within (fn-lgo-rows-history-within (nthcdr k rows) allow)))
+             (tail (equal (nthcdr k rows) (fn-ssr-rows acc1))))
             (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) suffix))))
   :subject fn-lgo-fold
   :witness ((cache *lgot-cache*) (rows *lgot-rows*) (zs *lgot-zs*) (j 1) (keyring (fn-ssr-at 1 *lgot-acc1*)) (generation (fn-ssr-at 2 *lgot-acc1*)) (identity (fn-ssr-at 3 *lgot-acc1*))
-            (dicts nil) (allow 200) (pre nil))
+            (dicts nil) (pre nil))
   :stobjs ((fn-arena (lgot-presealed pre fn-arena)))
   :stobj-checks
   (
-   ((let* ((k (car cache)) (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k suffix acc1)) (fn-ct-totals-cache-validp cache rows :resident))
-    (lgot5-check 0 cache rows zs j keyring generation identity dicts allow fn-arena)
+   ((let* ((k (car cache)) (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k suffix acc1)) (fn-ct-totals-cache-validp cache rows :resident))
+    (lgot5-check 0 cache rows zs j keyring generation identity dicts fn-arena)
     :hints (("Goal" :in-theory (union-theories '(lgot5-check mv-list) (theory 'minimal-theory)))))
-   ((let* ((k (car cache)) (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k suffix acc1)) (equal (nthcdr k rows) (fn-ssr-rows acc1)))
-    (lgot5-check 1 cache rows zs j keyring generation identity dicts allow fn-arena)
+   ((let* ((k (car cache)) (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k suffix acc1)) (equal (nthcdr k rows) (fn-ssr-rows acc1)))
+    (lgot5-check 1 cache rows zs j keyring generation identity dicts fn-arena)
     :hints (("Goal" :in-theory (union-theories '(lgot5-check mv-list) (theory 'minimal-theory)))))
-   ((let* ((k (car cache)) (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k suffix acc1)) (fn-lgo-rows-history-within (nthcdr k rows) allow))
-    (lgot5-check 2 cache rows zs j keyring generation identity dicts allow fn-arena)
+   ((let* ((k (car cache)) (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k suffix acc1)) (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) suffix)))
+    (lgot5-check 2 cache rows zs j keyring generation identity dicts fn-arena)
     :hints (("Goal" :in-theory (union-theories '(lgot5-check mv-list) (theory 'minimal-theory)))))
-   ((let* ((k (car cache)) (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k suffix acc1)) (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) suffix)))
-    (lgot5-check 3 cache rows zs j keyring generation identity dicts allow fn-arena)
-    :hints (("Goal" :in-theory (union-theories '(lgot5-check mv-list) (theory 'minimal-theory)))))
-   ((let* ((k (car cache)) (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts allow))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k suffix acc1)) (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) (mv-nth 1 (fn-lgo-fold (nthcdr j zs) j (fn-ct-zero-tot :resident) dicts allow)))))
-    (lgot5-check 4 cache rows zs j keyring generation identity dicts allow fn-arena)
+   ((let* ((k (car cache)) (suffix (mv-nth 1 (fn-lgo-fold zs j (fn-ct-zero-tot :resident) dicts))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k suffix acc1)) (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) (mv-nth 1 (fn-lgo-fold (nthcdr j zs) j (fn-ct-zero-tot :resident) dicts)))))
+    (lgot5-check 3 cache rows zs j keyring generation identity dicts fn-arena)
     :hints (("Goal" :in-theory (union-theories '(lgot5-check mv-list) (theory 'minimal-theory))))))
   :breaks ((valid ((cache (cons 1 (fn-ct-zero-tot :resident)))))
-           (tail ((rows (append *lgot-rows* (list (car *lgot-rows*))))))
-           (within ((cache *lgot-cache3*) (j 3) (keyring (fn-ssr-at 1 *lgot-acc3*)) (generation (fn-ssr-at 2 *lgot-acc3*)) (identity (fn-ssr-at 3 *lgot-acc3*)) (allow 0) (pre *lgot-pre3*))))
+           (tail ((rows (append *lgot-rows* (list (car *lgot-rows*)))))))
   :mutations ((prefix-skipped-twice
                (:conclusion
-                (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) (mv-nth 1 (fn-lgo-fold (nthcdr j zs) j (fn-ct-zero-tot :resident) dicts allow)))))
+                (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) (mv-nth 1 (fn-lgo-fold (nthcdr j zs) j (fn-ct-zero-tot :resident) dicts)))))
                ((cache *lgot-cache*) (rows *lgot-rows*) (zs *lgot-zs*) (j 1) (keyring (fn-ssr-at 1 *lgot-acc1*)) (generation (fn-ssr-at 2 *lgot-acc1*)) (identity (fn-ssr-at 3 *lgot-acc1*))
-                (dicts nil) (allow 200) (pre nil))
+                (dicts nil) (pre nil))
                :fault "the host trims the log to the suffix and the scan skips the checkpoint's records again (Codex l-l2a F2)")))
 
+; -----------------------------------------------------------------------------
+; Landing 2a-host: the probe's scan before the open (L2H-1 to L2H-3).
+
+; L2H-1: from skip 0 the fold bounds the fold from any skip.
+(defteeth fn-lgo-fold-from-no-skip-bounds-any-skip
+  :claim (((le (fn-mm-tot-le a b))
+           (tot (not (equal a :bad)))
+           (ok (not (equal (mv-nth 1 (fn-lgo-fold zs 0 b dicts)) :bad))))
+          (and (not (equal (mv-nth 1 (fn-lgo-fold zs j a dicts)) :bad))
+               (fn-mm-tot-le (mv-nth 1 (fn-lgo-fold zs j a dicts))
+                             (mv-nth 1 (fn-lgo-fold zs 0 b dicts)))))
+  :subject fn-lgo-fold
+  :witness ((zs *lgot-zs*) (j 1) (a (fn-ct-zero-tot :resident)) (b (fn-ct-zero-tot :resident))
+            (dicts nil))
+  :breaks ((le ((a (fn-mm-make-tot 1000 0 0 0 0 0 0 0 :resident))))
+           (tot ((a :bad)))
+           (ok ((zs (cons '(1 2 3 4 5) *lgot-zs*)))))
+  :mutations ((skip-blind
+               (:conclusion
+                (equal (mv-nth 1 (fn-lgo-fold zs j a dicts))
+                       (mv-nth 1 (fn-lgo-fold zs 0 b dicts))))
+               ((zs *lgot-zs*) (j 1) (a (fn-ct-zero-tot :resident)) (b (fn-ct-zero-tot :resident))
+                (dicts nil))
+               :fault "the skip claimed not to matter: the covered records charged as if past S")))
+
+; L2H-3: the plan scans every present segment; skip S only from the genesis.
+(defteeth fn-lgo-scan-plan-scans-every-present-segment
+  :claim (let ((p (fn-lgo-scan-plan names s)))
+           (()
+            (or (null p)
+                (and (subsetp-equal (fn-lgs-indices names) (third p))
+                     (equal (third p) (fn-lgs-range (second p) (fn-lgs-max-index (fn-lgs-indices names) 0)))
+                     (iff (equal (car p) :genesis) (member-equal 1 (fn-lgs-indices names)))
+                     (equal (fourth p) (if (equal (car p) :genesis) (nfix s) 0))
+                     (equal (fifth p) (fn-ct-zero-tot :resident))))))
+  :subject fn-lgo-scan-plan
+  :witness ((names (list "000000.log" "000002.log" "000003.log")) (s 3))
+  :mutations ((skip-s-past-a-drop
+               (:conclusion
+                (or (null p)
+                    (and (subsetp-equal (fn-lgs-indices names) (third p))
+                         (equal (fourth p) (nfix s)))))
+               ((names (list "000000.log" "000002.log" "000003.log")) (s 3))
+               :fault "the probe skips S records from the lowest present segment after the drop took the covered ones: the suffix's records go uncharged")))
+
+(assert-event
+ (and (equal (fn-lgo-scan-plan (list "000000.log" "000001.log" "000002.log") 3) (list :genesis 1 '(1 2) 3 (fn-ct-zero-tot :resident)))
+      (equal (fn-lgo-scan-plan (list "000000.log" "000002.log" "000003.log") 3) (list :head 2 '(2 3) 0 (fn-ct-zero-tot :resident))))
+ :msg "the plan: from the genesis with skip S when segment 1 is present, from segment 2's head with skip 0 when the drop took it")
+
+; L2H-2: the open's records are PRE (the dropped segment's, the first two)
+; then REST (the host's scan); the checkpoint at K = 3 covers one record of
+; REST, which the host's skip-0 suffix over-counts: a bound, not equal.
+(defun lgot6-check (i cache rows pre rest j keyring generation identity dicts fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (let ((k (car cache))
+        (host (mv-nth 1 (mv-list 2 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts)))))
+    (mv-let (acc1 fn-arena)
+      (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity)
+                          (fn-srs-decode (fn-lgo-expansions (nthcdr j (append pre rest)) dicts))
+                          nil nil :resident nil fn-arena)
+      (mv (case i
+        (0 (<= (len pre) (nfix j)))
+        (1 (not (equal host :bad)))
+        (2 (fn-ct-totals-cache-validp cache rows :resident))
+        (3 (equal (nthcdr k rows) (fn-ssr-rows acc1)))
+        (4 (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) host)))
+        (otherwise (equal (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) host))))
+          fn-arena))))
+;
+(defteeth fn-lgo-host-suffix-covers-the-opened-store
+  :claim (let* ((k (car cache))
+                (zs (append pre rest))
+                (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts)))
+                (acc1 (mv-nth 0 (fn-ssr-intern-step
+                                 (fn-ssr-state nil keyring (nfix generation) identity)
+                                 (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts))
+                                 nil nil :resident nil fn-arena))))
+           (((dropped (<= (len pre) (nfix j)))
+             (seen (not (equal host :bad)))
+             (valid (fn-ct-totals-cache-validp cache rows :resident))
+             (tail (equal (nthcdr k rows) (fn-ssr-rows acc1))))
+            (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) host))))
+  :subject fn-lgo-fold
+  :witness ((cache *lgot-cache3*) (rows *lgot-rows*) (pre (take 2 *lgot-zs*)) (rest (nthcdr 2 *lgot-zs*)) (j 3) (keyring (fn-ssr-at 1 *lgot-acc3*)) (generation (fn-ssr-at 2 *lgot-acc3*)) (identity (fn-ssr-at 3 *lgot-acc3*)) (dicts nil) (sealed *lgot-pre3*))
+  :stobjs ((fn-arena (lgot-presealed sealed fn-arena)))
+  :stobj-checks
+  (
+   ((let* ((k (car cache)) (zs (append pre rest)) (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k zs host acc1)) (<= (len pre) (nfix j)))
+    (lgot6-check 0 cache rows pre rest j keyring generation identity dicts fn-arena)
+    :hints (("Goal" :in-theory (union-theories '(lgot6-check mv-list) (theory 'minimal-theory)))))
+   ((let* ((k (car cache)) (zs (append pre rest)) (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k zs host acc1)) (not (equal host :bad)))
+    (lgot6-check 1 cache rows pre rest j keyring generation identity dicts fn-arena)
+    :hints (("Goal" :in-theory (union-theories '(lgot6-check mv-list) (theory 'minimal-theory)))))
+   ((let* ((k (car cache)) (zs (append pre rest)) (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k zs host acc1)) (fn-ct-totals-cache-validp cache rows :resident))
+    (lgot6-check 2 cache rows pre rest j keyring generation identity dicts fn-arena)
+    :hints (("Goal" :in-theory (union-theories '(lgot6-check mv-list) (theory 'minimal-theory)))))
+   ((let* ((k (car cache)) (zs (append pre rest)) (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k zs host acc1)) (equal (nthcdr k rows) (fn-ssr-rows acc1)))
+    (lgot6-check 3 cache rows pre rest j keyring generation identity dicts fn-arena)
+    :hints (("Goal" :in-theory (union-theories '(lgot6-check mv-list) (theory 'minimal-theory)))))
+   ((let* ((k (car cache)) (zs (append pre rest)) (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k zs host acc1)) (fn-mm-tot-le (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) host)))
+    (lgot6-check 4 cache rows pre rest j keyring generation identity dicts fn-arena)
+    :hints (("Goal" :in-theory (union-theories '(lgot6-check mv-list) (theory 'minimal-theory)))))
+   ((let* ((k (car cache)) (zs (append pre rest)) (host (mv-nth 1 (fn-lgo-fold rest 0 (fn-ct-zero-tot :resident) dicts))) (acc1 (mv-nth 0 (fn-ssr-intern-step (fn-ssr-state nil keyring (nfix generation) identity) (fn-srs-decode (fn-lgo-expansions (nthcdr j zs) dicts)) nil nil :resident nil fn-arena)))) (declare (ignorable k zs host acc1)) (equal (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) host)))
+    (lgot6-check 5 cache rows pre rest j keyring generation identity dicts fn-arena)
+    :hints (("Goal" :in-theory (union-theories '(lgot6-check mv-list) (theory 'minimal-theory))))))
+  :breaks ((dropped ((pre *lgot-zs*) (rest nil)))
+           (seen ((pre (take 1 *lgot-zs*)) (rest (cons '(1 2 3 4 5) (nthcdr 1 *lgot-zs*))) (j 4)))
+           (valid ((cache (cons 3 (fn-ct-zero-tot :resident)))))
+           (tail ((pre (take 3 *lgot-zs*)) (rest (nthcdr 3 *lgot-zs*)) (rows (append *lgot-rows* (list (nth 3 *lgot-rows*)))))))
+  :mutations ((the-bound-claimed-exact
+               (:conclusion (equal (fn-ct-charged rows :resident) (fn-mm-tot-plus (cdr cache) host)))
+               ((cache *lgot-cache3*) (rows *lgot-rows*) (pre (take 2 *lgot-zs*)) (rest (nthcdr 2 *lgot-zs*)) (j 3) (keyring (fn-ssr-at 1 *lgot-acc3*)) (generation (fn-ssr-at 2 *lgot-acc3*)) (identity (fn-ssr-at 3 *lgot-acc3*)) (dicts nil) (sealed *lgot-pre3*))
+               :fault "the probe's suffix claimed equal to the open's after a drop: the covered records an interrupted drop leaves are over-counted, so it is a bound")))
+
+(defun lgot7-check (i w keyring generation fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (mv-let (row fn-arena) (fn-intern-event w keyring generation fn-arena)
+    (mv (case i
+          (0 (natp generation))
+          (1 (not (equal row :bad)))
+          (2 (<= (fn-ct-row-history row) (fn-lgo-history-ceiling w)))
+          (otherwise (<= (fn-ct-row-history row) (fn-ct-row-history (fn-lgo-wire-row w)))))
+        fn-arena)))
+
+; L2H-5: the row the intern builds from W, at any handle, keyring and
+; natural generation, has HISTORY at most W's ceiling.  The witness interns
+; the first article at handle 0 and generation 4294967295, the largest a
+; keyring snapshot carries (a u32, books/stx-keyring-records.lisp), so a
+; generation the open's replay can reach: its HISTORY is 176 against the
+; scan row's 168 (generation 0) and the ceiling's 983.
+(defteeth fn-lgo-history-ceiling-bounds-the-intern
+  :claim (let ((row (mv-nth 0 (fn-intern-event w keyring generation fn-arena))))
+           (((gen (natp generation))
+             (ok (not (equal row :bad))))
+            (<= (fn-ct-row-history row) (fn-lgo-history-ceiling w))))
+  :subject fn-intern-event
+  :witness ((w (nth 1 *lgot-ws*)) (keyring nil) (generation 4294967295) (pre nil))
+  :stobjs ((fn-arena (lgot-presealed pre fn-arena)))
+  :stobj-checks
+  (((let ((row (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))) (declare (ignorable row)) (natp generation))
+    (lgot7-check 0 w keyring generation fn-arena)
+    :hints (("Goal" :in-theory (union-theories '(lgot7-check) (theory 'minimal-theory)))))
+   ((let ((row (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))) (declare (ignorable row)) (not (equal row :bad)))
+    (lgot7-check 1 w keyring generation fn-arena)
+    :hints (("Goal" :in-theory (union-theories '(lgot7-check) (theory 'minimal-theory)))))
+   ((let ((row (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))) (declare (ignorable row)) (<= (fn-ct-row-history row) (fn-lgo-history-ceiling w)))
+    (lgot7-check 2 w keyring generation fn-arena)
+    :hints (("Goal" :in-theory (union-theories '(lgot7-check) (theory 'minimal-theory)))))
+   ((let ((row (mv-nth 0 (fn-intern-event w keyring generation fn-arena)))) (declare (ignorable row)) (<= (fn-ct-row-history row) (fn-ct-row-history (fn-lgo-wire-row w))))
+    (lgot7-check 3 w keyring generation fn-arena)
+    :hints (("Goal" :in-theory (union-theories '(lgot7-check) (theory 'minimal-theory))))))
+  :breaks ((gen ((generation (coerce (make-list 3000 :initial-element #\x) 'string)))
+                :logical "a replay's generation is a natural (fn-ssr-statep); a long string in its place is encoded twice in the row's context")
+           (ok ((w 1/2))))
+  :mutations ((the-scan-row-history
+               (:conclusion (<= (fn-ct-row-history row) (fn-ct-row-history (fn-lgo-wire-row w))))
+               ((w (nth 1 *lgot-ws*)) (keyring nil) (generation 4294967295) (pre nil))
+               :fault "HISTORY taken as the scan row's own (handle 0, the empty keyring, generation 0): the handle and the generation the open gives the row encode longer (seam L-M-A)")))
+
+;
+; L2H-4: a head the probe accepts is one the open admits, both starting from
+; its predecessor.  Segment 2's head as the rotation wrote it from P.
+(defun lgot-head (k)
+  (declare (xargs :verify-guards nil))
+  (fn-lg-rotation-entry (make-list 32 :initial-element 7) k 4))
+(defteeth fn-lgo-head-genesis-is-the-open-lineage-start
+  :claim (((rotated (and (integerp k) (<= 2 k))))
+          (or (null (fn-lgo-head-genesis octets k max))
+              (and (not (fn-lgl-open k (fn-lgl-head-trailer octets) octets t0 max))
+                   (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-prev octets max)))))
+  :subject fn-lgo-head-genesis
+  :witness ((octets (lgot-head 2)) (k 2) (max 4096) (t0 *fn-lg-genesis*))
+  :breaks ((rotated ((octets (lgot-head 1)) (k 1))))
+  :mutations ((starts-from-the-head-itself
+               (:conclusion
+                (or (null (fn-lgo-head-genesis octets k max))
+                    (equal (fn-lgo-head-genesis octets k max) (fn-lgl-head-trailer octets))))
+               ((octets (lgot-head 2)) (k 2) (max 4096) (t0 *fn-lg-genesis*))
+               :fault "the probe streams segment LOW from the head's own trailer, not the closed segment's last trailer the head claims")))
+
+(assert-event
+ (and (equal (fn-lgo-head-genesis (lgot-head 2) 2 4096) (make-list 32 :initial-element 7))
+      (null (fn-lgo-head-genesis (lgot-head 2) 3 4096))
+      (null (fn-lgo-head-genesis (make-list (fn-lgl-head-len 4) :initial-element 0) 2 4096))
+      (equal (fn-lgo-suffix-settled '(:head 2 (2) 0 x) '(:ok 1) 'tot '(:head 2 (2) 0 x) '(:ok 1)) 'tot)
+      (null (fn-lgo-suffix-settled '(:head 2 (2) 0 x) '(:ok 1) 'tot '(:head 3 (3) 0 x) '(:ok 1)))
+      (null (fn-lgo-suffix-settled '(:head 2 (2) 0 x) '(:ok 1) 'tot '(:head 2 (2) 0 x) '(:ok 2)))
+      (null (fn-lgo-suffix-settled '(:head 2 (2) 0 x) '(:ok 1) :bad '(:head 2 (2) 0 x) '(:ok 1))))
+ :msg "the probe: a head naming another segment or zeroed is no start (Codex l-2ah F2); a plan or header that moved during the walk, or a refused fold, is unseen (F1)")
+
 (defteeth-check (fn-lgo-run-is-the-fold fn-lgo-chain-is-the-fold fn-lgo-fold-is-the-wire-fold
-                 fn-lgo-wire-fold-covers-the-replay fn-lgo-observed-covers-the-opened-store))
+                 fn-lgo-wire-fold-covers-the-replay fn-lgo-observed-covers-the-opened-store
+                 fn-lgo-fold-from-no-skip-bounds-any-skip fn-lgo-scan-plan-scans-every-present-segment
+                 fn-lgo-host-suffix-covers-the-opened-store
+                 fn-lgo-head-genesis-is-the-open-lineage-start))

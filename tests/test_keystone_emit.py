@@ -172,6 +172,61 @@ class Vanished(unittest.TestCase):
         self.assertEqual(self.findings([gen("old")], [gen("old")]), [])
 
 
+class Retired(unittest.TestCase):
+    """A generated keystone deleted as a twin a different keystone supersedes
+    (coordinator ruling 2026-10-11 on fn-orcs-predict-rows-at-is-the-fold)."""
+
+    def row(self, **more):
+        return {"name": "old", "owner_book": "tests/acl2/t.lisp", "superseded_by": "succ",
+                "ruling": "coordinator 2026-10-11", "item": None, **more}
+
+    def findings(self, current, base_entries, rows):
+        return ke.manifest_findings({e["name"]: e for e in current}, {"entries": base_entries},
+                                    REV, None, lambda path: True,
+                                    retirements={r["name"]: r for r in rows})
+
+    def test_a_row_naming_a_generated_successor_retires_the_entry(self):
+        self.assertEqual(self.findings([gen("succ", claim="c9")], [gen("old"), gen("succ", claim="c9")],
+                                       [self.row()]), [])
+
+    def test_a_bare_drop_is_still_refused(self):
+        found = self.findings([gen("succ", claim="c9")], [gen("old")], [])
+        self.assertTrue(any("old had generated teeth" in f for f in found), found)
+
+    def test_a_row_whose_successor_is_toothless_missing_or_itself_is_refused(self):
+        for current, row, words in (
+                ([entry("succ")], self.row(), "has no generated teeth now"),
+                ([gen("other", claim="c9")], self.row(), "not a keystone in the current manifest"),
+                ([gen("other", claim="c9")], self.row(superseded_by="old"), "not a keystone"),
+                ([gen("succ", claim="c9")], self.row(ruling=" "), "names no ruling"),
+                ([gen("succ", claim="c9")], self.row(owner_book="books/x.lisp"), "owner book")):
+            found = self.findings(current, [gen("old")], [row])
+            self.assertEqual(len(found), 1, (row, found))
+            self.assertIn(words, found[0])
+
+    def test_a_row_for_a_keystone_still_present_is_a_finding(self):
+        found = self.findings([gen("old"), gen("succ", claim="c9")], [gen("old")], [self.row()])
+        self.assertTrue(any("still a keystone" in f for f in found), found)
+
+    def test_retire_writes_the_row_and_refuses_what_it_cannot_retire(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "teeth-retirements.json"
+            base = {"entries": [gen("old"), entry("hand")]}
+            with contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(ke.retire("old", None, "r", None, base, path), 2)
+                self.assertEqual(ke.retire("old", "old", "r", None, base, path), 2)
+                self.assertEqual(ke.retire("old", "succ", "", None, base, path), 2)
+                self.assertEqual(ke.retire("hand", "succ", "r", None, base, path), 2)
+                self.assertEqual(ke.retire("nope", "succ", "r", None, base, path), 2)
+                self.assertFalse(path.exists())
+                self.assertEqual(ke.retire("old", "succ", "coordinator 2026-10-11", "IT-1", base, path), 0)
+            rows = ke.load_retirements(path)
+            self.assertEqual(rows["old"], {"name": "old", "owner_book": "tests/acl2/t.lisp",
+                                           "superseded_by": "succ",
+                                           "ruling": "coordinator 2026-10-11", "item": "IT-1"})
+
+
 class WriteManifest(unittest.TestCase):
     """gate(write=True) over a fixture registry: no books, three keystones."""
 

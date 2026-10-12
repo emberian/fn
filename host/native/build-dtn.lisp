@@ -326,6 +326,10 @@
 (include-book "books/heap-reservation")
 (include-book "books/heap-command")
 (include-book "books/heap-log-extent-cap")
+;; host/native/heap.lisp fnn-heap-log-suffix calls fn-lgo-scan-plan, fn-lgo-head-genesis,
+;; fn-lgo-fold and fn-lgo-suffix-settled (landing 2a-host), as build.lisp reaches them
+;; through host/interfaces.lisp.
+(include-book "books/store-log-open-scan")
 (include-book "books/bp-heap-command")
 (include-book "books/cold-read-reservation")
 ;; host/native/heap.lisp fnn-heap-extend-reservation calls fn-rrv-extend-reservation

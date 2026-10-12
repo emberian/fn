@@ -18014,7 +18014,7 @@
       "events": [
         {
           "kind": "theorem",
-          "name": "fn-lgw-entry-len-bounded-step"
+          "name": "fn-lgw-entry-len-bounded-step-buf-count"
         },
         {
           "kind": "theorem",
@@ -18975,6 +18975,51 @@
         {
           "kind": "theorem",
           "name": "fn-mm-sum-grows-with-the-store"
+        }
+      ]
+    },
+    {
+      "id": "PRF-10006",
+      "events": [
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-run-is-the-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-chain-is-the-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-fold-is-the-wire-fold"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-wire-fold-covers-the-replay"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-observed-covers-the-opened-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-fold-from-no-skip-bounds-any-skip"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-host-suffix-covers-the-opened-store"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-scan-plan-scans-every-present-segment"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-head-genesis-is-the-open-lineage-start"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgo-history-ceiling-bounds-the-intern"
         }
       ]
     }
