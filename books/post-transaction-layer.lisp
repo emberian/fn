@@ -17,16 +17,10 @@
 ; The machine's guards are not verified (its book runs at eagerness 0), so the instance's exec
 ; copies are admitted without guard verification too; fn-ptx-step's guards are landing 2's, where
 ; the host first executes it.
-(set-verify-guards-eagerness 0)
 
-(defun fn-ptx-static-init (j) (declare (ignore j)) (fn-ptx-closed))
+(defun fn-ptx-static-init (j) (declare (xargs :guard t) (ignore j)) (fn-ptx-closed))
 
 ; The layer's invariant runs (fn-ptl-mstates-okp, fn-ptl-invp) and reads these bounds.
-(verify-guards fn-ptx-max-state)
-(verify-guards fn-ptx-committedp)
-(verify-guards fn-ptx-max-reqs)
-(verify-guards fn-ptx-wf-cost)
-(verify-guards fn-ptx-c)
 
 (defthm fn-ptx-closed-facts
   (and (equal (fn-rtc-size (fn-ptx-closed)) 29)
