@@ -5,22 +5,6 @@
 (defpackage "ACL2" (:use "CL"))
 (in-package "ACL2")
 
-;;; ---- derived stubs: BEGIN (python3 tools/harness_check.py --write-stubs; do not edit) ----
-(define-condition harness-stub-reached (serious-condition)
-  ((name :initarg :name :reader harness-stub-reached-name)
-   (source :initarg :source :reader harness-stub-reached-source))
-  (:report (lambda (c s)
-             (format s "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it"
-                     (harness-stub-reached-name c) (harness-stub-reached-source c)))))
-(defun harness-stub-reached (name source)
-  (format *error-output* "harness: host function ~(~a~) (~a) was reached; this harness neither stubs nor extracts it~%"
-          name source)
-  (finish-output *error-output*)
-  (error 'harness-stub-reached :name name :source source))
-(defun fnn-owner-lease-install-locked (service)
-  (declare (ignorable service))
-  (harness-stub-reached 'fnn-owner-lease-install-locked "host/native/owner.lisp"))
-;;; ---- derived stubs: END ----
 
 (defvar *in-section* nil)
 (defvar *violations* nil)
@@ -39,6 +23,11 @@
 (defun fnn-owner-service-reclaim-live (service) (declare (ignore service)) nil)
 (defun fnn-owner-syncer-install (&rest args) (declare (ignore args)))
 (defun fnn-owner-output-install (&rest args) (declare (ignore args)))
+;; The real installer initializes in-memory lease state; it observes no files.
+(defun fnn-owner-lease-install-locked (service)
+  (declare (ignore service))
+  (unless *in-section* (error "lease install outside the section"))
+  (push :lease-install *seen*))
 (defun fnn-core (&rest args) (declare (ignore args)) 0)
 (defun fnn-global (name) (declare (ignore name)) '(1))
 (defun fnn-octet-list-p (x) (listp x))
@@ -60,6 +49,7 @@
           do (eval form) (return)))
 (unless (eq (fnn-mux-budget-install :service nil) :hold) (error "decision"))
 (when *violations* (error "observed inside the owner section: ~s" *violations*))
+(unless (member :lease-install *seen*) (error "lease install missing"))
 (unless (and (member :machine *seen*) (member :core *seen*) (member :memory *seen*))
   (error "observations missing"))
 (format t "native mux budget observe: PASS~%")
