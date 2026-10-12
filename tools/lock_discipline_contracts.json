@@ -957,13 +957,9 @@
   "fnn-app-journal-close": "the application journal's lock fd (fnn-app-journal-lock-fd), consumed here before the close (workflow.lisp:34); unlocked and closed once, custody of an ambiguous return retained via fnn-app-retain-close-debt"
  },
  "unlocked_publication": {
-  "*fnn-owner-over-window-fit*": {
-   "writers": ["fnn-owner-memory-configure-locked"],
-   "why": "The run's OVER window W' (A-OVER-WINDOW-FIT, books/memory-model.lisp fn-mm-over-window-fit). Written only by fnn-owner-memory-configure-locked (host/native/mux.lisp), reached only from fnn-owner-memory-install (fnn-owner-install, single-threaded: no actor exists) and fnn-mux-budget-install (fnn-owner-run, before fnn-owner-start-committer and fnn-mux-start create the first actor). Read by fnn-owner-over-window from the serving actors (mux, pull, web) after their creation, so every read is ordered after the last write by thread creation. The checker has no spawn happens-before edge; a write reached after an actor starts is red."
-  },
   "*fnn-owner-cursor-octets-fit*": {
    "writers": ["fnn-owner-memory-configure-locked"],
-   "why": "The run's NEWNEWS/LIST quantum octets B (books/memory-model.lisp fn-mm-cursor-octets-fit, lane spans-newnews), published beside *fnn-owner-over-window-fit* by the same setq in fnn-owner-memory-configure-locked (host/native/mux.lisp), so it has that row's ordering: written only before any actor exists (fnn-owner-memory-install, fnn-mux-budget-install), read by fnn-owner-cursor-octets from the serving actors after their creation. A write reached after an actor starts is red."
+   "why": "The run's NEWNEWS/LIST quantum octets B (books/memory-model.lisp fn-mm-cursor-octets-fit, lane spans-newnews), published by the setq in fnn-owner-memory-configure-locked (host/native/mux.lisp), with ordering: written only before any actor exists (fnn-owner-memory-install, fnn-mux-budget-install), read by fnn-owner-cursor-octets from the serving actors after their creation. A write reached after an actor starts is red."
   },
   "*fnn-arena-release-custody*": {
    "writers": ["fnn-arena-release-due", "fnn-arena-release-returned"],

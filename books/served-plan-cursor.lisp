@@ -127,16 +127,10 @@
   (posp (fn-splan-cursor-window override))
   :rule-classes (:rewrite :type-prescription))
 
-; The quantum per cursor kind (lane spans-newnews, 2026-10-11).  W bounds an
-; OVER quantum's NOV lines and is what the memory gate fits (A-OVER-WINDOW-FIT:
-; books/memory-model.lisp fn-mm-over-window-fit, W' = 1 at a profile whose NOV
-; line outweighs the article reply).  A NEWNEWS or LIST quantum builds no NOV
-; line: V bounds its control visits (the unfitted fn-splan-cursor-window) and
-; B its octets (fn-mm-cursor-octets-fit, the octets of W' NOV lines, which the
-; gate already charges: fn-mm-cursor-octets-fit-is-charged).  With V and B
-; both W' a NEWNEWS selector microstep and each output octet each took a whole
-; quantum and its rescheduling (test_native_newnews_wildmat at 1000 articles:
-; 171 s, about 63 quanta per candidate).
+; The quantum per cursor kind: W bounds OVER's work and NOV lines; each
+; line renders into one pool buffer. NEWNEWS/LIST build no NOV line: V
+; bounds control visits and B output octets. B is fn-mm-cursor-octets-fit,
+; funded within LARGE by fn-mm-cursor-octets-fit-is-charged.
 
 ; An empty quantum still advanced the cursor.  The host retains its plan
 ; and response ownership, then resumes after this positive scheduling delay

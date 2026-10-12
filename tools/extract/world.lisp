@@ -317,6 +317,7 @@
 (include-book "../../books/owner-readers-state")
 (include-book "../../books/owner-authority-state")
 (include-book "../../books/history-root-status")
+(include-book "../../books/filed-stored")
 (include-book "../../books/index-writer-ticket")
 (include-book "../../books/catalog-may-seal")
 (include-book "../../books/owner-catalog-root-state")

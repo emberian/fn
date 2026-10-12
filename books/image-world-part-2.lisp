@@ -7,7 +7,6 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
-(include-book "open-frontier-wire")
 (include-book "store-recover-stream")
 (include-book "payload-commit-extent")
 (include-book "payload-extent-read")
@@ -113,6 +112,7 @@
 (include-book "owner-readers-state")
 (include-book "owner-authority-state")
 (include-book "history-root-status")
+(include-book "filed-stored")
 (include-book "index-writer-ticket")
 (include-book "catalog-may-seal")
 (include-book "owner-catalog-root-state")
@@ -187,4 +187,3 @@
 (include-book "owner-identity-prepare")
 (include-book "consumer-event-charge")
 (include-book "consumer-publication-budget")
-(include-book "post-admission-keyed")
