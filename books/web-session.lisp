@@ -70,6 +70,7 @@
 
 (in-package "ACL2")
 (include-book "web-render")
+(include-book "web-page-cursor") ; fn-wpc-cursorp: what a :page-plan action's plan satisfies (fn-wss-planok)
 (include-book "web-health")
 (include-book "protocol-table")
 (include-book "def-loop")
@@ -1919,3 +1920,289 @@
         (declare (ignore sessions))
         (mv next fn-web-out))
     (mv nil fn-web-out)))
+
+; -----------------------------------------------------------------------------
+; The plan a :page-plan response carries.  fn-wss-page answers :page-plan only
+; after (fn-wr-segsp segs) and (fn-wr-segs-within segs (fn-octets-len fn-web-in)),
+; and no other function here builds a response with a fifth element, so every
+; action a step returns is fn-wss-planok over the buffer the step was handed
+; (the steps do not return fn-web-in): the host's plain page cursor
+; (fn-wpc-cursor segs) satisfies fn-wpc-cursorp over that buffer.
+
+(defthm fn-wpc-segs-okp-of-within
+  ; A segment list the renderer admits (fn-wr-segsp) whose spans end within N
+  ; is one fn-wpc-next may pop.  N is a natural: it is a buffer length.
+  (implies (and (fn-wr-segsp segs) (fn-wr-segs-within segs n) (natp n))
+           (fn-wpc-segs-okp segs n))
+  :hints (("Goal" :in-theory (enable fn-wr-segsp fn-wr-segp fn-wr-segs-within fn-wpc-segs-okp))))
+
+(defun fn-wss-planok (action n)
+  ; A :page-plan response carries a plan the plain page cursor may walk over
+  ; an N-octet buffer.
+  (declare (xargs :guard (natp n)))
+  (implies (and (equal (fn-wrq-nth 0 action) :respond)
+                (equal (fn-wrq-nth 4 action) :page-plan))
+           (fn-wpc-cursorp (fn-wpc-cursor (fn-wrq-nth 5 action)) n)))
+
+(defthm fn-wss-planok-of-cons
+  (implies (not (equal h :respond)) (fn-wss-planok (cons h r) n))
+  :hints (("Goal" :in-theory (enable fn-wss-planok))))
+
+(defthm fn-wss-planok-of-short-respond
+  ; A :respond of four elements (no plan) is no :page-plan response.
+  (fn-wss-planok (cons :respond (cons a (cons b (cons c nil)))) n)
+  :hints (("Goal" :in-theory (enable fn-wss-planok))))
+
+(defthm fn-wss-planok-of-nil (fn-wss-planok nil n)
+  :hints (("Goal" :in-theory (enable fn-wss-planok))))
+
+(local (defthm fn-wss-page-planok
+  ; fn-wss-page admits a plan only after fn-wr-segs-within the buffer.
+  (implies (equal n (fn-octets-len fn-web-in))
+           (fn-wss-planok (mv-nth 0 (fn-wss-page code fields title main ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-page fn-wss-planok fn-wpc-cursorp fn-wpc-cursor)
+                                  (fn-wr-segsp fn-wr-segs-within fn-wr-frame
+                                   fn-wr-emit fn-octets-clear fn-octets-append-list fn-octets-len))
+                  :use ((:instance fn-wpc-segs-okp-of-within
+                                   (segs (fn-wr-frame title (fn-wss-cfg-site config) (fn-wss-c-theme ctx)
+                                                      (and (fn-wss-c-session ctx) (fn-wss-s-login (fn-wss-c-session ctx)))
+                                                      (and (fn-wss-c-session ctx) (fn-wss-s-csrf (fn-wss-c-session ctx)))
+                                                      main))
+                                   (n (fn-octets-len fn-web-in))))))))
+
+(local (defthm fn-wss-page-planok-car
+  (implies (equal n (fn-octets-len fn-web-in))
+           (fn-wss-planok (car (fn-wss-page code fields title main ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-page-planok :in-theory (disable fn-wss-page-planok fn-wss-planok fn-wss-page)))))
+
+(local (defthm fn-wss-redirect-planok
+  (implies t (fn-wss-planok (mv-nth 0 (fn-wss-redirect location fields ctx fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-redirect) (fn-wss-planok fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-redirect-planok-car
+  (implies t (fn-wss-planok (car (fn-wss-redirect location fields ctx fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-redirect-planok :in-theory (disable fn-wss-redirect-planok fn-wss-planok fn-wss-redirect)))))
+
+(local (defthm fn-wss-outcome-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-outcome code kind title message detail back ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-outcome) (fn-wss-planok fn-wss-redirect fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-outcome-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-outcome code kind title message detail back ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-outcome-planok :in-theory (disable fn-wss-outcome-planok fn-wss-planok fn-wss-outcome)))))
+
+(local (defthm fn-wss-signin-page-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-signin-page code message user next ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-signin-page) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-signin-page-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-signin-page code message user next ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-signin-page-planok :in-theory (disable fn-wss-signin-page-planok fn-wss-planok fn-wss-signin-page)))))
+
+(local (defthm fn-wss-redeem-page-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-redeem-page code message user ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-redeem-page) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-redeem-page-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-redeem-page code message user ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-redeem-page-planok :in-theory (disable fn-wss-redeem-page-planok fn-wss-planok fn-wss-redeem-page)))))
+
+(local (defthm fn-wss-after-authinfo-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-after-authinfo route login next cid config sessions ctx fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-after-authinfo) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-after-authinfo-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-after-authinfo route login next cid config sessions ctx fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-after-authinfo-planok :in-theory (disable fn-wss-after-authinfo-planok fn-wss-planok fn-wss-after-authinfo)))))
+
+(local (defthm fn-wss-signin-refused-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-signin-refused why user detail ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-signin-refused) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-signin-refused-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-signin-refused why user detail ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-signin-refused-planok :in-theory (disable fn-wss-signin-refused-planok fn-wss-planok fn-wss-signin-refused)))))
+
+(local (defthm fn-wss-m-signin-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-m-signin sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-m-signin) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-m-signin-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-m-signin sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-m-signin-planok :in-theory (disable fn-wss-m-signin-planok fn-wss-planok fn-wss-m-signin)))))
+
+(local (defthm fn-wss-k-signin-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-k-signin sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-k-signin) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-k-signin-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-k-signin sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-k-signin-planok :in-theory (disable fn-wss-k-signin-planok fn-wss-planok fn-wss-k-signin)))))
+
+(local (defthm fn-wss-m-redeem-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-m-redeem sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-m-redeem) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-m-redeem-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-m-redeem sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-m-redeem-planok :in-theory (disable fn-wss-m-redeem-planok fn-wss-planok fn-wss-m-redeem)))))
+
+(local (defthm fn-wss-redeem-refused-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-redeem-refused why user ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-redeem-refused) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-redeem-refused-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-redeem-refused why user ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-redeem-refused-planok :in-theory (disable fn-wss-redeem-refused-planok fn-wss-planok fn-wss-redeem-refused)))))
+
+(local (defthm fn-wss-k-redeem-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-k-redeem sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-k-redeem) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-k-redeem-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-k-redeem sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-k-redeem-planok :in-theory (disable fn-wss-k-redeem-planok fn-wss-planok fn-wss-k-redeem)))))
+
+(local (defthm fn-wss-send-session-planok
+  (implies t (fn-wss-planok (mv-nth 0 (fn-wss-send-session route stage data octets session ctx sessions fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-send-session) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-send-session-planok-car
+  (implies t (fn-wss-planok (car (fn-wss-send-session route stage data octets session ctx sessions fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-send-session-planok :in-theory (disable fn-wss-send-session-planok fn-wss-planok fn-wss-send-session)))))
+
+(local (defthm fn-wss-trouble-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-trouble code title message ctx config sessions fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-trouble) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-trouble-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-trouble code title message ctx config sessions fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-trouble-planok :in-theory (disable fn-wss-trouble-planok fn-wss-planok fn-wss-trouble)))))
+
+(local (defthm fn-wss-k-groups-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-k-groups sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-k-groups) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-k-groups-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-k-groups sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-k-groups-planok :in-theory (disable fn-wss-k-groups-planok fn-wss-planok fn-wss-k-groups)))))
+
+(local (defthm fn-wss-k-group-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-k-group sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-k-group) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-k-group-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-k-group sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-k-group-planok :in-theory (disable fn-wss-k-group-planok fn-wss-planok fn-wss-k-group)))))
+
+(local (defthm fn-wss-k-article-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-k-article sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-k-article) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-k-article-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-k-article sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-k-article-planok :in-theory (disable fn-wss-k-article-planok fn-wss-planok fn-wss-k-article)))))
+
+(local (defthm fn-wss-k-submit-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-k-submit sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-k-submit) (fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-k-submit-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-k-submit sessions flow event config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-k-submit-planok :in-theory (disable fn-wss-k-submit-planok fn-wss-planok fn-wss-k-submit)))))
+
+(local (defthm fn-wss-m-theme-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-m-theme sessions ctx fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-m-theme) (fn-wss-form fn-wss-referer-path fn-wrq-body-span fn-wss-cmd fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-m-theme-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-m-theme sessions ctx fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-m-theme-planok :in-theory (disable fn-wss-m-theme-planok fn-wss-planok fn-wss-m-theme)))))
+
+(local (defthm fn-wss-m-post-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-m-post session sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-m-post) (fn-wss-form fn-wss-referer-path fn-wrq-body-span fn-wss-cmd fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-m-post-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-m-post session sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-m-post-planok :in-theory (disable fn-wss-m-post-planok fn-wss-planok fn-wss-m-post)))))
+
+(local (defthm fn-wss-m-remove-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-m-remove session sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-m-remove) (fn-wss-form fn-wss-referer-path fn-wrq-body-span fn-wss-cmd fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-m-remove-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-m-remove session sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-m-remove-planok :in-theory (disable fn-wss-m-remove-planok fn-wss-planok fn-wss-m-remove)))))
+
+(local (defthm fn-wss-start-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-start name session sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-start) (fn-wss-form fn-wss-referer-path fn-wrq-body-span fn-wss-cmd fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-start-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-start name session sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-start-planok :in-theory (disable fn-wss-start-planok fn-wss-planok fn-wss-start)))))
+
+(local (defthm fn-wss-gate-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-gate row session sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-gate) (fn-wss-form fn-wss-referer-path fn-wrq-body-span fn-wss-cmd fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-gate-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-gate row session sessions ctx config fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-gate-planok :in-theory (disable fn-wss-gate-planok fn-wss-planok fn-wss-gate)))))
+
+(local (defthm fn-wss-route-refusal-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-route-refusal route ctx config sessions fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-route-refusal) (fn-wss-form fn-wss-referer-path fn-wrq-body-span fn-wss-cmd fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-begin fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-route-refusal-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-route-refusal route ctx config sessions fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-route-refusal-planok :in-theory (disable fn-wss-route-refusal-planok fn-wss-planok fn-wss-route-refusal)))))
+
+(local (defthm fn-wss-begin-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-wss-begin config sessions event fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-wss-begin) (fn-wss-form fn-wss-referer-path fn-wrq-body-span fn-wss-cmd fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-web-step fn-web-private-reply-step fn-web-private-begin-step fn-wss-page))))))
+
+(local (defthm fn-wss-begin-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-wss-begin config sessions event fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-wss-begin-planok :in-theory (disable fn-wss-begin-planok fn-wss-planok fn-wss-begin)))))
+
+(defthm fn-web-step-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-web-step config sessions flow event fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-web-step) (fn-wss-form fn-wss-referer-path fn-wrq-body-span fn-wss-cmd fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-private-reply-step fn-web-private-begin-step fn-wss-page)))))
+
+(defthm fn-web-step-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-web-step config sessions flow event fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-web-step-planok :in-theory (disable fn-web-step-planok fn-wss-planok fn-web-step))))
+
+(defthm fn-web-private-reply-step-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-web-private-reply-step config flow event fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-web-private-reply-step) (fn-wss-form fn-wss-referer-path fn-wrq-body-span fn-wss-cmd fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-begin-step fn-wss-page)))))
+
+(defthm fn-web-private-reply-step-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-web-private-reply-step config flow event fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-web-private-reply-step-planok :in-theory (disable fn-web-private-reply-step-planok fn-wss-planok fn-web-private-reply-step))))
+
+(defthm fn-web-private-begin-step-planok
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (mv-nth 0 (fn-web-private-begin-step config action fn-web-in fn-web-out)) n))
+  :hints (("Goal" :in-theory (e/d (fn-web-private-begin-step) (fn-wss-form fn-wss-referer-path fn-wrq-body-span fn-wss-cmd fn-wss-planok fn-wss-redirect fn-wss-outcome fn-wss-signin-page fn-wss-redeem-page fn-wss-after-authinfo fn-wss-signin-refused fn-wss-m-signin fn-wss-k-signin fn-wss-m-redeem fn-wss-redeem-refused fn-wss-k-redeem fn-wss-send-session fn-wss-trouble fn-wss-k-groups fn-wss-k-group fn-wss-k-article fn-wss-k-submit fn-wss-m-theme fn-wss-m-post fn-wss-m-remove fn-wss-start fn-wss-gate fn-wss-route-refusal fn-wss-begin fn-web-step fn-web-private-reply-step fn-wss-page)))))
+
+(defthm fn-web-private-begin-step-planok-car
+  (implies (equal n (fn-octets-len fn-web-in)) (fn-wss-planok (car (fn-web-private-begin-step config action fn-web-in fn-web-out)) n))
+  :hints (("Goal" :use fn-web-private-begin-step-planok :in-theory (disable fn-web-private-begin-step-planok fn-wss-planok fn-web-private-begin-step))))
+
+(defthm fn-web-step-page-plan-cursorp
+  (let ((action (mv-nth 0 (fn-web-step config sessions flow event fn-web-in fn-web-out))))
+    (implies (and (equal (fn-wrq-nth 0 action) :respond)
+                  (equal (fn-wrq-nth 4 action) :page-plan))
+             (fn-wpc-cursorp (fn-wpc-cursor (fn-wrq-nth 5 action)) (fn-octets-len fn-web-in))))
+  :hints (("Goal" :use ((:instance fn-web-step-planok (n (fn-octets-len fn-web-in))))
+                  :in-theory (e/d (fn-wss-planok) (fn-web-step-planok fn-web-step-planok-car fn-web-step fn-wpc-cursorp fn-wpc-cursor)))))
+
+(defthm fn-web-private-reply-step-page-plan-cursorp
+  (let ((action (mv-nth 0 (fn-web-private-reply-step config flow event fn-web-in fn-web-out))))
+    (implies (and (equal (fn-wrq-nth 0 action) :respond)
+                  (equal (fn-wrq-nth 4 action) :page-plan))
+             (fn-wpc-cursorp (fn-wpc-cursor (fn-wrq-nth 5 action)) (fn-octets-len fn-web-in))))
+  :hints (("Goal" :use ((:instance fn-web-private-reply-step-planok (n (fn-octets-len fn-web-in))))
+                  :in-theory (e/d (fn-wss-planok) (fn-web-private-reply-step-planok fn-web-private-reply-step-planok-car fn-web-private-reply-step fn-wpc-cursorp fn-wpc-cursor)))))
