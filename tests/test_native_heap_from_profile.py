@@ -747,7 +747,10 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         heap = HEAP_LINE.search(status.stdout.decode())
         self.assertIsNotNone(heap, text(status))
-        self.assertLessEqual(int(heap.group(1)), int(heap.group(3)))
+        # The launched heap is address space: the core's content, LIMIT and
+        # the pools (books/heap-command.lisp fn-mo-serve-decide), so it exceeds
+        # `machine' (LIMIT) by design; the resident set is the gate's, held
+        # below (VmHWM within the limit before and after the restart).
         print("NATIVE-HEAP full store: {}".format(heap.group(0)))
         self.start()
         with Client(port, timeout=300) as client:
@@ -763,9 +766,10 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         init REFUSES it by name with both numbers and makes nothing (ember,
         2026-09-27: lane membership-budget), unless `init --budget MB' names a
         target budget that holds it: then it is written for that machine
-        (`within-budget=no target-budget=16384 MB', the scale preset) and
-        the launcher refuses its run here by name; its stopped status holds
-        no store and is accepted."""
+        (`within-budget=no target-budget=16384 MB', the scale preset).  Its
+        run is not sized by the profile: the empty store serves here at the
+        capacity the memory gate derives; its stopped status holds no store
+        and is accepted."""
         config, port = self.config("development")
         refused = self.run_fn("operator", config, "init", "--profile", "development",
                               "local.test")
@@ -806,15 +810,21 @@ class HeapFromProfileTests(Harness, unittest.TestCase):
         self.assertRegex(made.stdout.decode(),
                          r"init: profile=scale sizing=requested reservation=\d+ MB "
                          r"budget=\d+ MB within-budget=no target-budget=" + target.group(3) + " MB")
-        # Its run is refused by name (the launch, or the configure when no
-        # connection fits); its stopped `status' holds the
+        # Its run is not sized by its profile (L-RUN-LAUNCH retired the
+        # profile-bound run sizing): the empty store's reopen fits the run's
+        # LIMIT, so it serves at the capacity the gate derives here (persvati,
+        # 2 GiB, 10-12: capacity=1 of 31 bound-by=over-window sum=1662 MB
+        # limit=1909 MB), and its resident set stays within the limit.  A run
+        # the memory cannot hold is refused by name where the model refuses
+        # (REFUSED above; the pools past the limit in
+        # test_native_control_reply_fit).  Its stopped `status' holds the
         # checkpoint header and the configuration history, not the store
         # (books/heap-command.lisp fn-mo-header-decide-holds-the-header), so
         # it is accepted here (lane memory, landing 2).
-        result = self.run_fn("operator", config, "run")
-        self.assertEqual(result.returncode, EXIT_REFUSED, text(result))
-        found = REFUSED.search(text(result))
-        self.assertIsNotNone(found, text(result))
+        self.start()
+        self.post(port, ["<scale-0@heap.invalid>"])
+        hwm = self.stop()
+        self.assertLess(hwm * 1024, LIMIT)
         status = self.run_fn("operator", config, "status")
         self.assertEqual(status.returncode, EXIT_OK, text(status))
         self.assertIn("max-history-octets=", status.stdout.decode())
