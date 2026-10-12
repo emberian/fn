@@ -43,7 +43,7 @@
    (declare (ignore route rcost))
    (and (null problem) (equal un '(fn-clt-leaf))
         (consp (car bcost))
-        (equal (fn-cost-unaccounted-terms bcost)
+        (equal (fn-cost-unaccounted-terms bcost (w state))
                '((fn-cost-unaccounted 'fn-clt-leaf (list (cdr xs))))))))
 
 (assert-event
@@ -52,7 +52,7 @@
    (declare (ignore route rcost))
    (and (null problem) (equal un '(fn-clt-leaf))
         (consp (car bcost))
-        (equal (fn-cost-unaccounted-terms bcost)
+        (equal (fn-cost-unaccounted-terms bcost (w state))
                '((fn-cost-unaccounted 'fn-clt-leaf (list (cdr xs)))
                  (fn-cost-unaccounted 'fn-clt-leaf
                                       (list (fn-clt-leaf (cdr xs)))))))))
@@ -126,7 +126,7 @@
       (declare (ignore route rcost))
       (and (null problem)
            (subsetp-eq un ',names) (subsetp-eq ',names un)
-           (equal (fn-cost-unaccounted-terms bcost) ',expected)))))
+           (equal (fn-cost-unaccounted-terms bcost (w state)) ',expected)))))
 
 ; Separate lambda applications execute the same unknown call twice.
 (defun fn-clt-twice (xs)
@@ -150,7 +150,7 @@
     (equal
      (fn-cost-unaccounted-terms
       (caddr (cadr (fn-cost-get :claim
-                    (cdr (assoc-eq ',name (table-alist 'fn-teeth-owed (w state))))))))
+                    (cdr (assoc-eq ',name (table-alist 'fn-teeth-owed (w state))))))) (w state))
      ',expected)))
 (fn-clt-bound-terms fn-clt-twice-visits-bound
   ((fn-cost-unaccounted 'fn-clt-leaf (list (cdr xs)))
@@ -214,7 +214,7 @@
            (events (fn-cost-events-dimension 'fn-clt-single nil :served
                      (cons u u) '(fn-clt-leaf) nil ''0 (w state) ,dimension))
            (statement (caddr (assoc-eq 'defthm (cdr events)))))
-      (equal (fn-cost-unaccounted-terms statement) (list u u)))))
+      (equal (fn-cost-unaccounted-terms statement (w state)) (list u u)))))
 (fn-clt-route-body-bag :visits)
 (fn-clt-route-body-bag :conses)
 
@@ -222,7 +222,106 @@
 ; over-approximates either chosen branch because unknown costs are natural.
 (assert-event
  (let ((u '(fn-cost-unaccounted 'fn-clt-leaf (list xs))))
-   (equal (fn-cost-unaccounted-terms (list 'if 'flag u u)) (list u u))))
+   (equal (fn-cost-unaccounted-terms (list 'if 'flag u u) (w state)) (list u u))))
 (assert-event
  (let ((u '(fn-cost-unaccounted-conses 'fn-clt-leaf (list xs))))
-   (equal (fn-cost-unaccounted-terms (list 'if 'flag u u)) (list u u))))
+   (equal (fn-cost-unaccounted-terms (list 'if 'flag u u) (w state)) (list u u))))
+
+; A row boundary preserves the bag, in both dimensions and at each call.
+(defun fn-clt-row-helper (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-clt-leaf xs))
+(def-cost fn-clt-row-helper :visits 0 :unaccounted (fn-clt-leaf)
+  :conses 0 :cons-unaccounted (fn-clt-leaf))
+(defun fn-clt-row-caller (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (cons (fn-clt-row-helper (cdr xs)) (fn-clt-row-helper (cdr xs))))
+(def-cost fn-clt-row-caller :visits 0 :unaccounted (fn-clt-leaf)
+  :conses 1 :cons-unaccounted (fn-clt-leaf))
+(fn-clt-bound-terms fn-clt-row-caller-visits-bound
+  ((fn-cost-unaccounted 'fn-clt-leaf (list (cdr xs)))
+   (fn-cost-unaccounted 'fn-clt-leaf (list (cdr xs)))))
+(fn-clt-bound-terms fn-clt-row-caller-conses-bound
+  ((fn-cost-unaccounted-conses 'fn-clt-leaf (list (cdr xs)))
+   (fn-cost-unaccounted-conses 'fn-clt-leaf (list (cdr xs)))))
+
+; One leaf per recursive step cannot become one finite caller summand.
+(defun fn-clt-row-recursive (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (if (consp xs)
+      (cons (fn-clt-leaf (car xs)) (fn-clt-row-recursive (cdr xs)))
+    nil))
+(def-cost fn-clt-row-recursive :unaccounted (fn-clt-leaf)
+  :cons-unaccounted (fn-clt-leaf))
+(defun fn-clt-row-recursive-caller (xs)
+  (declare (xargs :guard t :verify-guards nil))
+  (fn-clt-row-recursive xs))
+(assert-event
+ (mv-let (problem route cost un sizes bound)
+   (fn-cost-problem 'fn-clt-row-recursive-caller
+                    '(:visits 0 :unaccounted (fn-clt-leaf)) (w state))
+   (declare (ignore route cost un sizes bound))
+   (equal problem
+          (msg "~x0: ~x1's twin recurs over unaccounted leaves, so no finite ~
+                            partial bound exists; give the callee a :visits bound"
+               'fn-clt-row-recursive-caller 'fn-clt-row-recursive))))
+(assert-event
+ (mv-let (problem route cost un sizes bound)
+   (fn-cost-problem-dimension 'fn-clt-row-recursive-caller
+     '(:conses 0 :cons-unaccounted (fn-clt-leaf)) (w state) :conses)
+   (declare (ignore route cost un sizes bound))
+   (equal problem
+          (msg "~x0: ~x1's twin recurs over unaccounted leaves, so no finite ~
+                            partial bound exists; give the callee a :visits bound"
+               'fn-clt-row-recursive-caller 'fn-clt-row-recursive))))
+
+; A recursive row with no unknown leaves contributes an empty U bag.
+(defun fn-clt-row-clean (xs)
+  (declare (xargs :guard t))
+  (if (consp xs) (fn-clt-row-clean (cdr xs)) nil))
+(def-cost fn-clt-row-clean)
+(assert-event
+ (mv-let (bad us)
+   (fn-cost-unaccounted-walk '(fn-clt-row-clean-visits xs) (w state) nil)
+   (and (null bad) (null us))))
+
+; The review's F/G pair has no direct self-call. F's derived twin recurs
+; after inlining G; walking that row while declaring G must terminate.
+; Local rows keep this order-sensitive fixture out of the final-world table.
+(local
+ (encapsulate ()
+   (mutual-recursion
+    (defun fn-clt-mutual-f (xs)
+      (if (consp xs) (fn-clt-mutual-g (cdr xs)) nil))
+    (defun fn-clt-mutual-g (xs)
+      (if (consp xs) (fn-clt-mutual-f (cdr xs)) nil)))
+   (def-cost fn-clt-mutual-f)
+   (def-cost fn-clt-mutual-g)
+   (assert-event
+    (mv-let (bad us)
+      (fn-cost-unaccounted-walk '(fn-clt-mutual-g-visits xs) (w state) nil)
+      (and (null bad) (null us))))))
+
+; The same cycle with an unknown leaf at each F step must refuse a caller bound
+; by the name of the row whose twin re-enters the expansion path.
+(local
+ (encapsulate ()
+   (mutual-recursion
+    (defun fn-clt-mutual-leaf-f (xs)
+      (if (consp xs)
+          (cons (fn-clt-leaf (car xs)) (fn-clt-mutual-leaf-g (cdr xs)))
+        nil))
+    (defun fn-clt-mutual-leaf-g (xs)
+      (if (consp xs) (fn-clt-mutual-leaf-f (cdr xs)) nil)))
+   (def-cost fn-clt-mutual-leaf-f :unaccounted (fn-clt-leaf))
+   (def-cost fn-clt-mutual-leaf-g :unaccounted (fn-clt-leaf))
+   (defun fn-clt-mutual-leaf-caller (xs) (fn-clt-mutual-leaf-g xs))
+   (assert-event
+    (mv-let (problem route cost un sizes bound)
+      (fn-cost-problem 'fn-clt-mutual-leaf-caller
+                       '(:visits 0 :unaccounted (fn-clt-leaf)) (w state))
+      (declare (ignore route cost un sizes bound))
+      (equal problem
+             (msg "~x0: ~x1's twin recurs over unaccounted leaves, so no finite ~
+                            partial bound exists; give the callee a :visits bound"
+                  'fn-clt-mutual-leaf-caller 'fn-clt-mutual-leaf-f))))))

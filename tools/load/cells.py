@@ -120,6 +120,8 @@ def derive(workload, phases):
     m["posts.admitted"] = sum((p.get("counts") or {}).get("admitted", 0) for p in phases)
     m["posts.refused"] = sum((p.get("counts") or {}).get("refused", 0) for p in phases)
     for p in phases:
+        nm.update(p.get("not_measured", {}))
+        nm.update(p.get("floor", {}).get("not_measured", {}))
         nm.update(p.get("faults", {}).get("not_measured", {}))
         for name, value in p.get("lock_metrics", {}).items():
             key = name + "." + p["name"]

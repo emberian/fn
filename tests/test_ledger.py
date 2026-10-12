@@ -369,6 +369,33 @@ class EventTests(unittest.TestCase):
     def test_a_theorem_inside_must_fail_is_not_a_theorem(self):
         self.assertNotIn("never", self.tree.theorems)
 
+    def test_dir_nil_is_local_for_book_host_and_nonlocal_include_consumers(self):
+        source = '(include-book "target" :dir nil)\n' \
+                 '(local (include-book "local-target" :dir nil))\n' \
+                 '(include-book "system-target" :dir :system)\n'
+        book = ledger.Book("books/root.lisp")
+        host = ledger.HostFile("host/root.lisp")
+        for form, line in ledger.Reader(source).top_level():
+            ledger.record(book, form, line, local=False, suppressed=False)
+            ledger.host_record(host, form, line)
+        self.assertEqual(book.includes, ["target", "local-target"])
+        self.assertEqual(book.nonlocal_includes, [(1, "target")])
+        self.assertEqual(book.system_includes, ["system-target"])
+        self.assertEqual(host.includes, ["target", "local-target"])
+
+    def test_default_reader_record_and_source_events_keep_conditional_host_definitions(self):
+        source = '#+linux\n(defun conditional-host (x) (#-linux f x))\n'
+        forms = ledger.Reader(source).top_level()
+        self.assertEqual(forms[0], (ledger.Sym("#+linux"), 1))
+        definition = [ledger.Sym("defun"), ledger.Sym("conditional-host"),
+                      [ledger.Sym("x")], [ledger.Sym("#-linux"), ledger.Sym("f"), ledger.Sym("x")]]
+        self.assertEqual(forms[1], (definition, 2))
+        self.assertIn((definition, 2), list(ledger.source_events(forms)))
+        book = ledger.Book("host/root.lisp")
+        for form, line in forms:
+            ledger.record(book, form, line, local=False, suppressed=False)
+        self.assertEqual([function.name for function in book.functions], ["conditional-host"])
+
     def test_guard_status_distinguishes_four_states(self):
         states = {f.name: f.guard_status for f in self.book.functions}
         self.assertEqual(states, {"f": "verified", "g": "default-guarded",

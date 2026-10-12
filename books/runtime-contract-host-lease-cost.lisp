@@ -4,6 +4,7 @@
 ; callees named :unaccounted.  No :visits bound is declared: the claim is
 ; `derived'.
 (in-package "ACL2")
+(include-book "image-world")
 (include-book "def-cost")
 (include-book "runtime-contract-host-lease")
 
@@ -23,7 +24,7 @@
   :unaccounted (fn-rtc-nbufs fn-rtc-x-live-p fn-rtc-kind-out-p fn-rtc-buf-cap fn-hld-copy fn-rtc-x-request mv-nth))
 
 (def-cost fn-hld-sent
-  :unaccounted (fn-hll-x-step* mv-nth true-list-fix fn-hld-fuel fn-hld-settle))
+  :unaccounted (fn-rtc-outcomep fn-hll-x-step* mv-nth true-list-fix fn-hld-fuel fn-hld-settle))
 
 (def-cost fn-hld-end
   :unaccounted (fn-rtc-x-request mv-nth true-list-fix fn-hld-fuel fn-hld-settle))
