@@ -90,7 +90,7 @@
 ; instead of the layer's x-init).
 (defun hlt-m-init-unarmed (profile cfg q fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st :mode :program))
-  (let ((c (fn-hl-rtc-config profile cfg q 1 0 0)))
+  (let ((c (fn-hl-rtc-config profile cfg q 1 0 0 0 0)))
     (if (fn-rtc-st-cfg-okp c)
         (let ((fn-rtc-st (fn-rtc-st-init c fn-rtc-st))) (mv fn-rtc-st t nil))
       (mv fn-rtc-st nil nil))))

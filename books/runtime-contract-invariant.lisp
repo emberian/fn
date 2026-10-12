@@ -7,6 +7,9 @@
 (in-package "ACL2")
 (include-book "runtime-contract-invariant-ops")
 
+; Slot and use frames preserve configuration; segment capacities stay symbolic.
+(local (in-theory (disable fn-rtc-buf-cap)))
+
 (local (in-theory (disable fn-rtc-accept-branch-keeps-foreign fn-rtc-accept-branch-no-slot-keeps-buffers
                            fn-rtc-accept-branch-not-done-keeps-buffers fn-rtc-close-branch-keeps-foreign
                            fn-rtc-deliver-keeps-foreign fn-rtc-end-use-keeps-workspaces fn-rtc-end-use-structure
@@ -81,7 +84,7 @@
                  fn-rtc-s-inc fn-rtc-s-status fn-rtc-nslots fn-rtc-cap fn-rtc-current-p
                  fn-rtc-invp-listener fn-rtc-core-invp-listener fn-rtc-invp-is-core-and-admission
                  fn-rtc-core-invp fn-rtc-uses-okp fn-rtc-pool-okp-unfolds fn-rtc-use-okp
-                 fn-rtc-get-out-of-range fn-rtc-buffer-out-of-range))
+                 fn-rtc-get-out-of-range fn-rtc-buffer-out-of-range fn-rtc-buf-cap fn-rtc-pool-buf-p))
            :use (fn-rtc-delivered-in-data fn-rtc-use-okp-in-range
                  fn-rtc-use-okp-lease
                  (:instance fn-rtc-buffer-okp-bytes (h (fn-rtc-h-buf (fn-rtc-u-hd u)))
@@ -635,7 +638,7 @@
                     fn-rtc-get fn-rtc-e-id fn-rtc-e-inc fn-rtc-e-op fn-rtc-e-kind fn-rtc-completionp
                     fn-rtc-handlep fn-rtc-holders fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes
                     fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len
-                    fn-rtc-s-inc fn-rtc-s-status fn-rtc-nslots fn-rtc-cap)
+                    fn-rtc-s-inc fn-rtc-s-status fn-rtc-nslots fn-rtc-cap fn-rtc-buf-cap fn-rtc-pool-buf-p)
            :use ((:instance fn-rtc-core-invp-found-use (key (fn-rtc-key e)))
                  (:instance fn-rtc-matching-use-fields (uses (fn-rtc-uses s)))))))
 
@@ -888,7 +891,8 @@
                 (not (fn-rtc-kind-out-p :close id inc (fn-rtc-uses s))))
            (fn-rtc-use-okp u (fn-rtc-close-state s id inc)))
   :hints (("Goal" :in-theory
-           (disable fn-rtc-core-invp fn-rtc-handlep fn-rtc-holders
+           (disable fn-rtc-buf-cap fn-rtc-pool-buf-p
+                    fn-rtc-core-invp fn-rtc-handlep fn-rtc-holders
                     fn-rtc-uses-of-slot-p fn-rtc-kind-out-p fn-rtc-get fn-rtc-u-hd
                     fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen
                     fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-s-status fn-rtc-s-res
@@ -1221,7 +1225,7 @@
                  fn-rtc-delivered-outcome fn-rtc-u-hd fn-rtc-h-buf fn-rtc-handlep
                  fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-s-inc fn-rtc-s-status
                  fn-rtc-get fn-rtc-nslots fn-rtc-nbufs fn-rtc-nstatic fn-rtc-cap
-                 fn-rtc-find-use fn-rtc-completionp fn-rtc-key fn-rtc-e-kind))
+                 fn-rtc-find-use fn-rtc-completionp fn-rtc-key fn-rtc-e-kind fn-rtc-buf-cap fn-rtc-pool-buf-p))
            :use ((:instance fn-rtc-core-invp-found-use (key (fn-rtc-key e)))
                  (:instance fn-rtc-use-okp-buffer-index (u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses s))))
                  (:instance fn-rtc-core-invp-buffer

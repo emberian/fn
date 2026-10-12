@@ -51,7 +51,7 @@
 ; ---------------------------------------------------------------------------
 ; The scenes.  Configuration: 2 slots, 2 buffers, no home buffers, a pool of two
 ; 8-octet buffers (base 0 and 8 in the array).
-(defconst *rths-cfg* '(2 2 8 0 0 2 8))
+(defconst *rths-cfg* '(2 2 8 0 0 2 8 0 0))
 
 (defun rths-scene (b1-owner b0 b1 uses nop)
   (declare (xargs :guard t))

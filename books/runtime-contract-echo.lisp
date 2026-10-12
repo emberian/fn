@@ -297,7 +297,7 @@
 ; later generation, a stale completion naming the old incarnation, a short
 ; send and the send of its rest, a failed receive and a close with that send
 ; outstanding, and the send's completion that retires the slot.
-(defconst *fn-rce-exercise-cfg* '(3 6 64 0 3 0 64))
+(defconst *fn-rce-exercise-cfg* '(3 6 64 0 3 0 64 0 0))
 
 (defconst *fn-rce-exercise-script*
   '((:complete (:accept 0 0 0 (:done 7)))

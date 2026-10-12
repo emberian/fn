@@ -49,7 +49,7 @@
                 (<= (len (fn-rtc-b-bytes (fn-rtc-buffer h s)))
                     (fn-rtc-cap (fn-rtc-config s)))))
   :hints (("Goal" :in-theory (disable fn-rtc-pool-bytes-okp fn-rtc-b-bytes
-                                      fn-cbor-octet-listp fn-rtc-cap)
+                                      fn-cbor-octet-listp fn-rtc-cap fn-rtc-buf-cap fn-rtc-pool-buf-p)
            :use ((:instance fn-rtc-pool-bytes-okp-get
                    (pool (fn-rtc-pool s)) (cap (fn-rtc-cap (fn-rtc-config s))))))))
 
@@ -80,7 +80,7 @@
                  fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp
                  fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap
                  fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op fn-rtc-splice
-                 fn-cbor-octet-listp fn-rtc-cap fn-rtc-nbufs fn-rtc-nstatic))
+                 fn-cbor-octet-listp fn-rtc-cap fn-rtc-nbufs fn-rtc-nstatic fn-rtc-buf-cap fn-rtc-pool-buf-p))
            :use ((:instance fn-rtc-bounded-pool-buffer-bytes (h (fn-rtc-get 1 r)))
                  (:instance fn-rtc-bounded-pool-buffer-bytes
                    (h (fn-rtc-h-buf (fn-rtc-get 2 r))))))))
@@ -94,7 +94,7 @@
                                fn-rtc-b-bytes fn-cbor-octet-listp)))
   :rule-classes :linear)
 
-(local (in-theory (disable fn-rtc-cap fn-rtc-pool-bytes-okp)))
+(local (in-theory (disable fn-rtc-cap fn-rtc-pool-bytes-okp fn-rtc-buf-cap fn-rtc-pool-buf-p)))
 
 (defun fn-rtc-act-octets (a)
   (declare (xargs :guard t))
@@ -174,7 +174,7 @@
   :hints (("Goal" :in-theory (e/d (fn-rtc-request)
                                   (mv-nth fn-rtc-req-acquire fn-rtc-req-write fn-rtc-req-release fn-rtc-req-close
                                    fn-rtc-req-cancel fn-rtc-req-submit fn-rtc-req-octets fn-rtc-use-bound
-                                   fn-rtc-actions-octets fn-rtc-cap)))))
+                                   fn-rtc-actions-octets fn-rtc-cap fn-rtc-buf-cap fn-rtc-pool-buf-p)))))
 
 (defthm fn-rtc-request-budget-linear
   (implies (fn-rtc-pool-bytes-okp (fn-rtc-pool s) (fn-rtc-cap (fn-rtc-config s)))
@@ -196,7 +196,7 @@
          (equal (fn-rtc-config (mv-nth 0 x)) (fn-rtc-config s)))))
   :hints (("Goal" :in-theory (e/d (fn-rtc-requests)
                                   (mv-nth fn-rtc-request fn-rtc-req-octets fn-rtc-use-bound fn-rtc-actions-octets
-                                   fn-rtc-cap))
+                                   fn-rtc-cap fn-rtc-buf-cap fn-rtc-pool-buf-p))
            :induct (fn-rtc-requests reqs id inc s))
           ("Subgoal *1/1'" :nonlinearp t)))
 
@@ -209,7 +209,7 @@
                   (<= (fn-rtc-actions-octets (mv-nth 1 x)) (* (fn-rtc-m-max-reqs) (fn-rtc-cap (fn-rtc-config s))))))))
   :hints (("Goal" :in-theory (e/d (fn-rtc-deliver)
                                   (fn-rtc-requests mv-nth fn-rtc-use-bound fn-rtc-actions-octets fn-rtc-cap
-                                   fn-rtc-m-step-is-charged fn-rtc-m-step-requests-are-bounded fn-rtc-requests-budget))
+                                   fn-rtc-m-step-is-charged fn-rtc-m-step-requests-are-bounded fn-rtc-requests-budget fn-rtc-buf-cap fn-rtc-pool-buf-p))
            :use ((:instance fn-rtc-m-step-is-charged (m (fn-rtc-mstate id s)) (pool (fn-rtc-make (fn-rtc-config s) nil (fn-rtc-view id inc s) nil nil 0)))
                  (:instance fn-rtc-m-step-requests-are-bounded (m (fn-rtc-mstate id s))
                             (pool (fn-rtc-make (fn-rtc-config s) nil (fn-rtc-view id inc s) nil nil 0)) (q (nfix q)))
@@ -270,7 +270,7 @@
                   (<= (fn-rtc-actions-octets (mv-nth 1 x)) (* (fn-rtc-m-max-reqs) (fn-rtc-cap (fn-rtc-config s1))))))))
   :hints (("Goal" :in-theory (disable fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-res fn-rtc-s-inc fn-rtc-slot fn-rtc-next-op fn-rtc-use-bound fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-buffered-kind-p member-equal fn-rtc-kind-op fn-rtc-accept-branch fn-rtc-deliver fn-rtc-rearm mv-nth fn-rtc-use-bound
                                       fn-rtc-actions-octets fn-rtc-cap fn-rtc-deliver-budget fn-rtc-accept-go-p
-                                      fn-rtc-accept-prepared fn-rtc-accept-slot fn-rtc-accept-inc)
+                                      fn-rtc-accept-prepared fn-rtc-accept-slot fn-rtc-accept-inc fn-rtc-buf-cap fn-rtc-pool-buf-p)
            :use ((:instance fn-rtc-deliver-budget
                   (s (fn-rtc-accept-prepared s1 out)) (id (fn-rtc-accept-slot s1)) (inc (fn-rtc-accept-inc s1))
                   (ev (fn-rtc-ev :accept out (fn-rtc-accept-slot s1) (fn-rtc-accept-inc s1) nil)))))))

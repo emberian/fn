@@ -128,37 +128,37 @@
        (equal (fn-rtc-uses (mv-nth 0 (fn-rtc-req-release r id inc s))) (fn-rtc-uses s))
        (equal (fn-rtc-slots (mv-nth 0 (fn-rtc-req-release r id inc s))) (fn-rtc-slots s)))
   :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-b-gen fn-rtc-b-owner fn-rtc-splice fn-rtc-cap
-                                      fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer))))
+                                      fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-buf-cap fn-rtc-pool-buf-p))))
 
 (defthm fn-rtc-req-close-keeps-res
   (equal (fn-rtc-s-res (fn-rtc-slot id (mv-nth 0 (fn-rtc-req-close r id inc s))))
          (fn-rtc-s-res (fn-rtc-slot id s)))
-  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op fn-rtc-buf-cap fn-rtc-pool-buf-p))))
 
 (defthm fn-rtc-req-close-ops-natp
   (implies (fn-rtc-uses-ops-natp (fn-rtc-uses s))
            (fn-rtc-uses-ops-natp (fn-rtc-uses (mv-nth 0 (fn-rtc-req-close r id inc s)))))
-  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op fn-rtc-slot fn-rtc-s-res))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op fn-rtc-slot fn-rtc-s-res fn-rtc-buf-cap fn-rtc-pool-buf-p))))
 
 (defthm fn-rtc-req-cancel-keeps-res
   (equal (fn-rtc-s-res (fn-rtc-slot id (mv-nth 0 (fn-rtc-req-cancel r id inc s))))
          (fn-rtc-s-res (fn-rtc-slot id s)))
-  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op fn-rtc-buf-cap fn-rtc-pool-buf-p))))
 
 (defthm fn-rtc-req-cancel-ops-natp
   (implies (fn-rtc-uses-ops-natp (fn-rtc-uses s))
            (fn-rtc-uses-ops-natp (fn-rtc-uses (mv-nth 0 (fn-rtc-req-cancel r id inc s)))))
-  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op fn-rtc-slot fn-rtc-s-res))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op fn-rtc-slot fn-rtc-s-res fn-rtc-buf-cap fn-rtc-pool-buf-p))))
 
 (defthm fn-rtc-req-submit-keeps-res
   (equal (fn-rtc-s-res (fn-rtc-slot id (mv-nth 0 (fn-rtc-req-submit r id inc s))))
          (fn-rtc-s-res (fn-rtc-slot id s)))
-  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op fn-rtc-buf-cap fn-rtc-pool-buf-p))))
 
 (defthm fn-rtc-req-submit-ops-natp
   (implies (fn-rtc-uses-ops-natp (fn-rtc-uses s))
            (fn-rtc-uses-ops-natp (fn-rtc-uses (mv-nth 0 (fn-rtc-req-submit r id inc s)))))
-  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op fn-rtc-slot fn-rtc-s-res))))
+  :hints (("Goal" :in-theory (disable fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len fn-rtc-s-inc fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-live-p fn-rtc-current-p fn-rtc-extrap fn-rtc-kind-op fn-rtc-slot fn-rtc-s-res fn-rtc-buf-cap fn-rtc-pool-buf-p))))
 
 (defthm fn-rtc-extrap-args-0
   (implies (fn-rtc-extrap x) (fn-rtc-action-argsp x))
@@ -206,7 +206,7 @@
                                       fn-rtc-use-bound fn-rtc-buffered-kind-p fn-rtc-b-gen fn-rtc-splice fn-rtc-b-owner
                                       fn-rtc-cap fn-rtc-nbufs fn-rtc-config fn-cbor-octet-listp fn-rtc-buffer
                                       fn-rtc-submit-okp fn-rtc-live-p fn-rtc-current-p fn-rtc-slot fn-rtc-s-res
-                                      fn-rtc-extrap fn-rtc-extend-extrap fn-rtc-action-argsp member-equal fn-rtc-kind-out-p fn-rtc-handlep))
+                                      fn-rtc-extrap fn-rtc-extend-extrap fn-rtc-action-argsp member-equal fn-rtc-kind-out-p fn-rtc-handlep fn-rtc-buf-cap fn-rtc-pool-buf-p))
           ("Goal'" :use ((:instance fn-rtc-submit-okp-handlep (kind (fn-rtc-get 1 r)) (hd (fn-rtc-get 2 r)))))))
 
 (defthm fn-rtc-req-cancel-actions-ok-fast

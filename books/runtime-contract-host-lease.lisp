@@ -91,7 +91,7 @@
 ; untouched, when the configuration is past the stobj's limits (fn-rtc-st-cfg-okp).
 (defun fn-hld-init (profile cfg q fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st :guard-hints (("Goal" :in-theory (disable fn-hll-x-init fn-hl-rtc-config fn-rtc-st-cfg-okp)))))
-  (let ((c (fn-hl-rtc-config profile cfg q 1 0 0)))
+  (let ((c (fn-hl-rtc-config profile cfg q 1 0 0 0 0)))
     (if (fn-rtc-st-cfg-okp c)
         (mv-let (fn-rtc-st acts) (fn-hll-x-init c fn-rtc-st)
           (mv-let (fn-rtc-st left) (fn-hld-settle (true-list-fix acts) (fn-hld-fuel fn-rtc-st) fn-rtc-st)
@@ -327,7 +327,7 @@
   :hints (("Goal" :in-theory (union-theories '(fn-hld-init fn-hll-x-init-is fn-hld-settle-keeps-invp fn-rtc-st-cfg-okp
                                                fn-hld-mv-nth-0-cons)
                                              (theory 'minimal-theory))
-           :use ((:instance fn-hll-init-establishes-invp (cfg (fn-hl-rtc-config profile cfg q 1 0 0)))))))
+           :use ((:instance fn-hll-init-establishes-invp (cfg (fn-hl-rtc-config profile cfg q 1 0 0 0 0)))))))
 
 (defthm fn-hld-begin-keeps-invp
   (implies (fn-hll-invp st) (fn-hll-invp (mv-nth 0 (fn-hld-begin r st))))

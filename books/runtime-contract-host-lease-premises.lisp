@@ -832,7 +832,7 @@
   (implies (and (fn-rtc-invp s) (fn-rtc-free-pool-buf 0 (fn-rtc-pool s) (fn-rtc-config s)))
            (< 0 (fn-rtc-npool (fn-rtc-config s))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (union-theories '(fn-rtc-pool-buf-p fn-rtc-nhome fn-rtc-npool fn-rtc-nbufs fn-rtc-nslots fn-rtc-qfixed fn-rtc-configp nfix natp) (theory 'minimal-theory))
+  :hints (("Goal" :in-theory (union-theories '(fn-rtc-pool-buf-p fn-rtc-nhome fn-rtc-nstatic-home fn-rtc-nconnection-home fn-rtc-nconnections fn-rtc-nstatic fn-rtc-qfixed-static fn-rtc-npool fn-rtc-nbufs fn-rtc-nslots fn-rtc-qfixed fn-rtc-configp nfix natp) (theory 'minimal-theory))
            :use ((:instance fn-rtc-free-pool-buf-pool-index (i 0) (pool (fn-rtc-pool s)) (cfg (fn-rtc-config s)))
                  fn-hlp-invp-configp)))))
 (local (defthm fn-hlp-workspace-exists
@@ -1897,9 +1897,9 @@
   (implies (and (mv-nth 1 (fn-hld-init profile cfg q st)) (null (mv-nth 2 (fn-hld-init profile cfg q st))))
            (not (fn-rtc-kind-out-p :grant 0 0 (fn-rtc-uses (mv-nth 0 (fn-hld-init profile cfg q st))))))
   :hints (("Goal" :in-theory (union-theories '(fn-hld-init fn-hll-x-init-is fn-rtc-st-cfg-okp fn-hld-mv-nth-0-cons fn-hlp-gin-tlf) (set-difference-theories (theory 'minimal-theory) '(mv-nth)))
-           :use ((:instance fn-hlp-init-fresh (cfg (fn-hl-rtc-config profile cfg q 1 0 0)))
-                 (:instance fn-hll-init-establishes-invp (cfg (fn-hl-rtc-config profile cfg q 1 0 0)))
-                 (:instance fn-hlp-settle-no-grant (st (mv-nth 0 (fn-hll-init (fn-hl-rtc-config profile cfg q 1 0 0)))) (work (true-list-fix (mv-nth 1 (fn-hll-init (fn-hl-rtc-config profile cfg q 1 0 0))))) (fuel (fn-hld-fuel (mv-nth 0 (fn-hll-init (fn-hl-rtc-config profile cfg q 1 0 0))))))))))
+           :use ((:instance fn-hlp-init-fresh (cfg (fn-hl-rtc-config profile cfg q 1 0 0 0 0)))
+                 (:instance fn-hll-init-establishes-invp (cfg (fn-hl-rtc-config profile cfg q 1 0 0 0 0)))
+                 (:instance fn-hlp-settle-no-grant (st (mv-nth 0 (fn-hll-init (fn-hl-rtc-config profile cfg q 1 0 0 0 0)))) (work (true-list-fix (mv-nth 1 (fn-hll-init (fn-hl-rtc-config profile cfg q 1 0 0 0 0))))) (fuel (fn-hld-fuel (mv-nth 0 (fn-hll-init (fn-hl-rtc-config profile cfg q 1 0 0 0 0))))))))))
 (defthm fn-hlp-begin-leaves-no-grant
   (implies (and (fn-hll-invp st) (not (fn-rtc-kind-out-p :grant 0 0 (fn-rtc-uses st)))
                 (null (mv-nth 3 (fn-hld-begin r st))))

@@ -207,26 +207,17 @@
 
 ; -----------------------------------------------------------------------------
 ; -----------------------------------------------------------------------------
-; Configuration (nslots nbufs capf nstatic qfixed npool capl): instance slots
-; including the listener, buffers, the capacity of a home buffer in octets,
-; the static instances (slots 1..nstatic, live at incarnation 1 from the
-; initial state and never closed; the owner is slot 1, so an :accept never
-; binds them), the home buffers per instance, the large buffers, and the
-; capacity of a large buffer.  Buffers [0, (nslots-1)*qfixed) are home
-; buffers: buffer h's home is instance slot 1 + floor(h / qfixed), and an
-; instance acquires only free buffers of its own home, so what one instance
-; can acquire never depends on what another holds.  Buffers
-; [(nslots-1)*qfixed, nbufs) are the pool of npool large buffers, held one
-; per large holder and granted in request order (`fn-rtc-grant').  The
-; host sizes qfixed and npool from the profile by Builder M's
-; books/memory-model.lisp (lane/memory): `fn-mm-instance-qfixed' (with
-; `fn-mm-instance-qfixed-is-the-ceiling') and `fn-mm-large-pool' (with
-; `fn-mm-large-pool-within-the-leases'); the connection term is
-; C*qfixed*capf + npool*capl (`fn-mm-connection-fixed').
+; Configuration (nslots nbufs capf nstatic qfixed npool capl qs cs).
+; Static slots 1..nstatic have qs home buffers of cs octets; connection slots
+; have qfixed homes of capf octets. Static homes come first, connection homes
+; next, then npool pool buffers of capl octets. The listener has no homes.
+; Each instance acquires only free buffers of its own home. Pool buffers are
+; granted in request order. The connection term is C*qfixed*capf + npool*capl;
+; static workspace bytes are charged separately as nstatic*qs*cs.
 
 (defun fn-rtc-configp (c)
   (declare (xargs :guard t))
-  (and (true-listp c) (equal (len c) 7)
+  (and (true-listp c) (equal (len c) 9)
        (natp (fn-rtc-get 0 c)) (<= 2 (fn-rtc-get 0 c))
        (natp (fn-rtc-get 1 c))
        (natp (fn-rtc-get 2 c))
@@ -234,7 +225,13 @@
        (natp (fn-rtc-get 4 c))
        (natp (fn-rtc-get 5 c))
        (natp (fn-rtc-get 6 c))
-       (equal (fn-rtc-get 1 c) (+ (* (- (fn-rtc-get 0 c) 1) (fn-rtc-get 4 c)) (fn-rtc-get 5 c)))))
+       (natp (fn-rtc-get 7 c))
+       (natp (fn-rtc-get 8 c))
+       (equal (fn-rtc-get 1 c)
+              (+ (* (fn-rtc-get 3 c) (fn-rtc-get 7 c))
+                 (* (- (- (fn-rtc-get 0 c) 1) (fn-rtc-get 3 c))
+                    (fn-rtc-get 4 c))
+                 (fn-rtc-get 5 c)))))
 
 (defun fn-rtc-nslots (c) (declare (xargs :guard t)) (nfix (fn-rtc-get 0 c)))
 (defun fn-rtc-nbufs (c) (declare (xargs :guard t)) (nfix (fn-rtc-get 1 c)))
@@ -244,30 +241,55 @@
 (defun fn-rtc-npool (c) (declare (xargs :guard t)) (nfix (fn-rtc-get 5 c)))
 (defun fn-rtc-capl (c) (declare (xargs :guard t)) (nfix (fn-rtc-get 6 c)))
 
-; The home buffers' count; the pool's buffers follow them.
+(defun fn-rtc-qfixed-static (c)
+  (declare (xargs :guard t))
+  (nfix (fn-rtc-get 7 c)))
+
+(defun fn-rtc-capf-static (c)
+  (declare (xargs :guard t))
+  (nfix (fn-rtc-get 8 c)))
+
+(defun fn-rtc-nconnections (c)
+  (declare (xargs :guard t))
+  (nfix (- (- (fn-rtc-nslots c) 1) (fn-rtc-nstatic c))))
+
+(defun fn-rtc-nstatic-home (c)
+  (declare (xargs :guard t))
+  (* (fn-rtc-nstatic c) (fn-rtc-qfixed-static c)))
+
+(defun fn-rtc-nconnection-home (c)
+  (declare (xargs :guard t))
+  (* (fn-rtc-nconnections c) (fn-rtc-qfixed c)))
+
 (defun fn-rtc-nhome (c)
   (declare (xargs :guard t))
-  (* (nfix (- (fn-rtc-nslots c) 1)) (fn-rtc-qfixed c)))
+  (+ (fn-rtc-nstatic-home c) (fn-rtc-nconnection-home c)))
 
 (defun fn-rtc-pool-buf-p (h c)
   (declare (xargs :guard t))
   (and (natp h) (<= (fn-rtc-nhome c) h) (< h (fn-rtc-nbufs c))))
 
-; Buffer H's capacity, and the largest (the bound on what one action names).
 (defun fn-rtc-buf-cap (h c)
   (declare (xargs :guard t))
-  (if (< (nfix h) (fn-rtc-nhome c)) (fn-rtc-capf c) (fn-rtc-capl c)))
+  (cond ((< (nfix h) (fn-rtc-nstatic-home c)) (fn-rtc-capf-static c))
+        ((< (nfix h) (fn-rtc-nhome c)) (fn-rtc-capf c))
+        (t (fn-rtc-capl c))))
 
 (defun fn-rtc-cap (c)
   (declare (xargs :guard t))
-  (max (fn-rtc-capf c) (fn-rtc-capl c)))
+  (max (fn-rtc-capf-static c) (max (fn-rtc-capf c) (fn-rtc-capl c))))
 
-; The instance slot buffer H belongs to; 0 (no instance) for a pool buffer.
 (defun fn-rtc-home (h c)
   (declare (xargs :guard t))
-  (if (or (zp (fn-rtc-qfixed c)) (<= (fn-rtc-nhome c) (nfix h)))
-      0
-    (+ 1 (floor (nfix h) (fn-rtc-qfixed c)))))
+  (let ((h (nfix h)) (nsh (fn-rtc-nstatic-home c)))
+    (cond ((<= (fn-rtc-nhome c) h) 0)
+          ((< h nsh)
+           (if (zp (fn-rtc-qfixed-static c))
+               0
+             (+ 1 (floor h (fn-rtc-qfixed-static c)))))
+          ((zp (fn-rtc-qfixed c)) 0)
+          (t (+ 1 (fn-rtc-nstatic c)
+                (floor (- h nsh) (fn-rtc-qfixed c)))))))
 
 ; A static slot's record: incarnation 1, live, resource 0 (it has no socket).
 (defconst *fn-rtc-static-slot* '(1 :live 0))
@@ -1791,6 +1813,9 @@
 (defthm fn-rtc-mstate-of-non-natp
   (implies (not (natp h)) (equal (fn-rtc-mstate h s) (fn-rtc-mstate 0 s)))
   :hints (("Goal" :in-theory (enable fn-rtc-mstate))))
+; Home arithmetic and segment capacities are opaque in the resource frame proofs.
+(local (in-theory (disable fn-rtc-home fn-rtc-buf-cap)))
+
 (defthm fn-rtc-req-acquire-keeps-leased
   (implies (fn-rtc-leasedp h s)
            (equal (fn-rtc-buffer h (mv-nth 0 (fn-rtc-req-acquire r id inc s))) (fn-rtc-buffer h s))))

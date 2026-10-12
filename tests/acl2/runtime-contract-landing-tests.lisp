@@ -65,7 +65,7 @@
          (uses (append (list (list :recv 1 inc 0 (list 0 g off len)))
                        (if (equal k 2) (list (list :send 1 inc 1 (list 1 4 0 (len b1)))) nil)
                        (list (list :accept 0 0 2 nil)))))
-    (list '(3 2 8 0 1 0 8) (list '(0 :live nil) (list inc :live 5) '(0 :free nil))
+    (list '(3 2 8 0 1 0 8 0 0) (list '(0 :live nil) (list inc :live 5) '(0 :free nil))
           (list (list g (list :leased 1 inc :in) b0) buf1) uses '(nil nil nil) 3)))
 
 ; The scene used below: buffer 0 holds "AB", the :recv's handle is (0 1 2 6),
@@ -151,7 +151,7 @@
 ; And when the completion does not act on a live instance: slot 1 draining
 ; with its :recv outstanding (the cross-review's state, 2026-10-09).  The
 ; buffer returns :free holding the landed octet on both sides.
-(defconst *rtcz-drain* '((2 1 1 0 1 0 1) ((0 :live nil) (1 :draining 7)) ((1 (:leased 1 1 :in) nil))
+(defconst *rtcz-drain* '((2 1 1 0 1 0 1 0 0) ((0 :live nil) (1 :draining 7)) ((1 (:leased 1 1 :in) nil))
                          ((:recv 1 1 0 (0 1 0 1))) (nil nil) 1))
 (defconst *rtcz-drain-e* '(:recv 1 1 0 (:done 1)))
 (assert! (rtcz-model-invp *rtcz-drain*))
@@ -165,11 +165,11 @@
 ; Amendment 1 regressions: neither an outstanding hand nor an unconsumed
 ; pool grant permits host input. Their exact-length/empty-byte invariants hold.
 (defconst *rtcz-pinned-hand*
-  '((3 2 8 1 1 0 8) ((0 :live nil) (1 :live 0) (1 :live 7))
+  '((3 2 8 1 1 0 8 1 8) ((0 :live nil) (1 :live 0) (1 :live 7))
     ((1 (:handed 1 1 2 1) (65)) (0 (:free) nil))
     ((:hand 1 1 0 (0 1 0 1))) (nil nil nil) 1))
 (defconst *rtcz-pinned-pool*
-  '((2 1 0 0 0 1 8) ((0 :live nil) (1 :live 7))
+  '((2 1 0 0 0 1 8 0 0) ((0 :live nil) (1 :live 7))
     ((1 (:leased 1 1 :in) nil)) ((:pool 1 1 0 (0 1 0 0))) (nil nil) 1))
 (assert! (and (rtcz-model-invp *rtcz-pinned-hand*)
               (not (fn-rtc-splice-okp 0 1 '(66) *rtcz-pinned-hand*))

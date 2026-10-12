@@ -256,7 +256,7 @@
                  (fn-rtc-get fn-rtc-home fn-rtc-nslots fn-rtc-nbufs fn-rtc-cap fn-rtc-use-bound fn-rtc-next-op fn-rtc-extrap fn-rtc-s-res fn-rtc-s-inc fn-rtc-hand-submit-okp-owner fn-rtc-submit-okp fn-rtc-live-p fn-rtc-current-p fn-rtc-kind-out-p
                   fn-rtc-buffered-kind-p fn-rtc-hand-target-okp fn-rtc-kind-op
                   fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-h-buf fn-rtc-h-gen
-                  fn-rtc-h-off fn-rtc-h-len fn-rtc-splice fn-cbor-octet-listp))))))
+                  fn-rtc-h-off fn-rtc-h-len fn-rtc-splice fn-cbor-octet-listp fn-rtc-buf-cap fn-rtc-pool-buf-p))))))
 
 (local
  (defthm fn-rtc-requests-foreign-workspace-frame

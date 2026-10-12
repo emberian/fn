@@ -317,7 +317,7 @@
 
 
 ; A small nonempty reachable-state witness; the :opened use has op 0.
-(defconst *fn-pth-rely-cfg* '(3 9 128 1 4 1 256))
+(defconst *fn-pth-rely-cfg* '(3 9 128 1 4 1 256 4 128))
 (defconst *fn-pth-rely-events0*
   (list (list :opened 1 1 0 '(:done 0)
               (list (list 0 (make-list 32 :initial-element 0) 0 1 0)

@@ -19,6 +19,12 @@
 (include-book "memory-model")
 (include-book "runtime-contract")
 (include-book "defkeystone")
+(local (include-book "arithmetic-5/top" :dir :system))
+
+(defconst *fn-pth-nstatic* 1)
+(defconst *fn-pth-qs* 3)
+(defconst *fn-pbatch-max* 65634)
+(defconst *fn-pth-cs* (max 5606 (+ 29 *fn-pbatch-max*)))
 
 (defun fn-hl-article-capl (profile q)
   (declare (xargs :guard t))
@@ -26,13 +32,18 @@
      *fn-cbud-reply-status-octets*))
 
 ; The run's contract configuration: listener, NSTATIC static instances (the owner is 1), one
-; slot per connection; QFIXED home buffers of CAPF octets per instance slot; the pool.
-(defun fn-hl-rtc-config (profile cfg q nstatic qfixed capf)
+; slot per connection; QS static home buffers of CS octets, QFIXED connection
+; home buffers of CAPF octets per connection slot; the pool.
+(defun fn-hl-rtc-config (profile cfg q nstatic qfixed capf qs cs)
   (declare (xargs :guard t))
-  (let* ((nslots (+ 1 (nfix nstatic) (fn-mm-cfg-connections cfg)))
+  (let* ((nstatic (nfix nstatic))
+         (qfixed (nfix qfixed)) (capf (nfix capf))
+         (qs (nfix qs)) (cs (nfix cs))
+         (nconnections (fn-mm-cfg-connections cfg))
+         (nslots (+ 1 nstatic nconnections))
          (npool (fn-mm-cfg-holders cfg)))
-    (list nslots (+ (* (- nslots 1) (nfix qfixed)) npool) (nfix capf) (nfix nstatic) (nfix qfixed)
-          npool (fn-hl-article-capl profile q))))
+    (list nslots (+ (* nstatic qs) (* (- (- nslots 1) nstatic) qfixed) npool)
+          capf nstatic qfixed npool (fn-hl-article-capl profile q) qs cs)))
 
 (defthm fn-hl-article-capl-is-a-lease
   (and (posp (fn-hl-article-capl profile q))
@@ -43,27 +54,29 @@
                                              (theory 'minimal-theory)))))
 
 (local (defthm fn-hl-configp-of-a-list
-  (implies (and (natp ns) (<= 2 ns) (natp cf) (natp st) (< st ns) (natp qf) (natp np) (natp cl))
-           (fn-rtc-configp (list ns (+ (* (- ns 1) qf) np) cf st qf np cl)))
+  (implies (and (natp ns) (<= 2 ns) (natp cf) (natp st) (< st ns) (natp qf) (natp np) (natp cl)
+                (natp qs) (natp cs))
+           (fn-rtc-configp
+            (list ns (+ (* st qs) (* (- (- ns 1) st) qf) np) cf st qf np cl qs cs)))
   :hints (("Goal" :in-theory (enable fn-rtc-configp fn-rtc-get) :nonlinearp t))))
 
 (defthm fn-hl-rtc-config-is-a-config
   (implies (posp nstatic)
-           (fn-rtc-configp (fn-hl-rtc-config profile cfg q nstatic qfixed capf)))
+           (fn-rtc-configp (fn-hl-rtc-config profile cfg q nstatic qfixed capf qs cs)))
   :hints (("Goal" :in-theory (union-theories '(fn-hl-rtc-config posp natp nfix) (theory 'minimal-theory))
            :use (fn-hl-article-capl-is-a-lease (:instance fn-mm-terms-natp (img nil) (tot nil))
                  (:instance fn-hl-configp-of-a-list
                             (ns (+ 1 (nfix nstatic) (fn-mm-cfg-connections cfg))) (cf (nfix capf))
                             (st (nfix nstatic)) (qf (nfix qfixed)) (np (fn-mm-cfg-holders cfg))
-                            (cl (fn-hl-article-capl profile q)))))))
+                            (cl (fn-hl-article-capl profile q)) (qs (nfix qs)) (cs (nfix cs)))))))
 
 (local (defthm fn-hl-times-monotone
   (implies (and (natp a) (natp b) (natp c) (<= a b)) (<= (* c a) (* c b)))
   :hints (("Goal" :nonlinearp t))))
 
 (local (defthm fn-hl-rtc-config-pool-fields
-  (and (equal (fn-rtc-npool (fn-hl-rtc-config profile cfg q nstatic qfixed capf)) (fn-mm-cfg-holders cfg))
-       (equal (fn-rtc-capl (fn-hl-rtc-config profile cfg q nstatic qfixed capf)) (fn-hl-article-capl profile q)))
+  (and (equal (fn-rtc-npool (fn-hl-rtc-config profile cfg q nstatic qfixed capf qs cs)) (fn-mm-cfg-holders cfg))
+       (equal (fn-rtc-capl (fn-hl-rtc-config profile cfg q nstatic qfixed capf qs cs)) (fn-hl-article-capl profile q)))
   :hints (("Goal" :in-theory (e/d (fn-hl-rtc-config fn-rtc-npool fn-rtc-capl fn-rtc-get)
                                   (fn-hl-article-capl fn-mm-cfg-holders fn-mm-cfg-connections))))))
 
@@ -74,7 +87,7 @@
   :hints (("Goal" :in-theory (union-theories '(fn-mm-large-reply max) (theory 'minimal-theory))))))
 
 (defthm fn-hl-leased-pool-within-the-large-term
-  (let ((c (fn-hl-rtc-config profile cfg q nstatic qfixed capf)))
+  (let ((c (fn-hl-rtc-config profile cfg q nstatic qfixed capf qs cs)))
     (<= (* (fn-rtc-npool c) (fn-rtc-capl c)) (fn-mm-large-pool profile cfg)))
   :hints (("Goal" :in-theory (union-theories '(fn-hl-rtc-config-pool-fields fn-mm-large-pool posp natp)
                                              (theory 'minimal-theory))
@@ -88,15 +101,15 @@
 (defconst *fn-hl-teeth-cfg* '(200000 nil 0 0 nil 0 0 0 nil 0 10))
 
 (defteeth fn-hl-leased-pool-within-the-large-term
-  :claim (() (let ((c (fn-hl-rtc-config profile cfg q nstatic qfixed capf)))
+  :claim (() (let ((c (fn-hl-rtc-config profile cfg q nstatic qfixed capf qs cs)))
                (<= (* (fn-rtc-npool c) (fn-rtc-capl c)) (fn-mm-large-pool profile cfg))))
   :subject fn-hl-rtc-config
   :witness ((profile *fn-bs-profile-development*) (cfg *fn-hl-teeth-cfg*) (q 16384) (nstatic 1)
-            (qfixed 1) (capf 4096))
+            (qfixed 1) (capf 4096) (qs 0) (cs 0))
   :breaks ()
   :mutations ((a-buffer-per-connection
-               (:conclusion (let ((c (fn-hl-rtc-config profile cfg q nstatic qfixed capf)))
+               (:conclusion (let ((c (fn-hl-rtc-config profile cfg q nstatic qfixed capf qs cs)))
                               (<= (* (fn-mm-cfg-connections cfg) (fn-rtc-capl c)) (fn-mm-large-pool profile cfg))))
                ((profile *fn-bs-profile-development*) (cfg *fn-hl-teeth-cfg*) (q 16384) (nstatic 1)
-                (qfixed 1) (capf 4096))
+                (qfixed 1) (capf 4096) (qs 0) (cs 0))
                :fault "A pool of one lease per connection, not per holder, is past the memory equation's LARGE term.")))

@@ -83,7 +83,7 @@
 ; without an attachment for the contract's constrained static machine.
 (defun rce-static-scene1 (fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st :guard t))
-  (mv-let (fn-rtc-st acts) (fn-rcl-x-init '(3 2 64 1 1 0 64) fn-rtc-st)
+  (mv-let (fn-rtc-st acts) (fn-rcl-x-init '(3 2 64 1 1 0 64 1 64) fn-rtc-st)
     (declare (ignore acts))
     (mv fn-rtc-st (fn-rtc-x-state fn-rtc-st))))
 (defun rce-static-scene ()
@@ -104,7 +104,7 @@
 ; (:close) request, which the layer refuses for a static instance -- that
 ; refusal is the witness that the owner's machine was stepped.
 
-(defconst *rce-open-cfg* '(3 2 64 1 1 0 64))
+(defconst *rce-open-cfg* '(3 2 64 1 1 0 64 1 64))
 (defconst *rce-open-data* (list (list 0 nil 0 1 0) 7 (list 1 40 4)))
 
 (defun rce-open-run1 (items fn-rtc-st)

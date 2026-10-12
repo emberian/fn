@@ -342,9 +342,9 @@
 ; slot 1 are [0, qfixed)).
 (defun fn-ptx-free (i skip id inc fn-rtc-st)
   (declare (xargs :guard t :stobjs fn-rtc-st
-                  :measure (nfix (- (min (fn-rtc-qfixed (fn-rtc-st-config fn-rtc-st)) (fn-rtc-nbufs (fn-rtc-st-config fn-rtc-st))) (nfix i)))))
+                  :measure (nfix (- (min (fn-rtc-nstatic-home (fn-rtc-st-config fn-rtc-st)) (fn-rtc-nbufs (fn-rtc-st-config fn-rtc-st))) (nfix i)))))
   (let ((i (nfix i)))
-    (if (< i (min (fn-rtc-qfixed (fn-rtc-st-config fn-rtc-st)) (fn-rtc-nbufs (fn-rtc-st-config fn-rtc-st))))
+    (if (< i (min (fn-rtc-nstatic-home (fn-rtc-st-config fn-rtc-st)) (fn-rtc-nbufs (fn-rtc-st-config fn-rtc-st))))
         (if (and (not (equal i skip)) (equal (fn-rtc-st-v-owner i id inc fn-rtc-st) '(:free)))
             i
           (fn-ptx-free (+ 1 i) skip id inc fn-rtc-st))

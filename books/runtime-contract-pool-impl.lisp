@@ -9,10 +9,11 @@
 ; keystones are about, and its EXECUTABLE is arrays: the slot table and the
 ; machine states one cell per slot, each buffer's (generation owner fill) one
 ; cell per buffer, and every buffer's octets in ONE (unsigned-byte 8) array,
-; buffer h at cells [base(h), base(h) + cap(h)): the home buffers of capf
-; octets first, then the pool's npool buffers of capl octets
-; (`fn-rtc-buf-base', `fn-rtc-buf-cap'), so the array holds
-; nhome*capf + npool*capl octets, the memory model's connection term.  No
+; buffer h at cells [base(h), base(h) + cap(h)): static homes of capf-static
+; octets first, connection homes of capf octets next, then npool buffers of
+; capl octets (`fn-rtc-buf-base', `fn-rtc-buf-cap'). The array holds
+; nstatic-home*capf-static + nconnection-home*capf + npool*capl octets;
+; static workspace bytes are charged separately from the connection term. No
 ; buffer's bytes are ever a list at run time; a worker's input lands in the
 ; array in place.
 ;
@@ -31,7 +32,7 @@
 ; The concrete stobj.
 
 (defstobj fn-rtc-st$c
-  (fn-rtc-c-cfg :type t :initially (2 0 0 0 0 0 0))
+  (fn-rtc-c-cfg :type t :initially (2 0 0 0 0 0 0 0 0))
   (fn-rtc-c-slots :type (array t (2)) :initially nil :resizable t)
   (fn-rtc-c-ms :type (array t (2)) :initially nil :resizable t)
   (fn-rtc-c-meta :type (array t (0)) :initially nil :resizable t)
@@ -47,16 +48,30 @@
 
 (defun fn-rtc-buf-base (h cfg)
   (declare (xargs :guard t))
-  (let ((h (nfix h)) (nh (fn-rtc-nhome cfg)))
-    (if (< h nh)
-        (* h (fn-rtc-capf cfg))
-      (+ (* nh (fn-rtc-capf cfg)) (* (- h nh) (fn-rtc-capl cfg))))))
+  (let* ((h (nfix h))
+         (nsh (fn-rtc-nstatic-home cfg))
+         (nh (fn-rtc-nhome cfg))
+         (static-octets (* nsh (fn-rtc-capf-static cfg))))
+    (cond ((< h nsh) (* h (fn-rtc-capf-static cfg)))
+          ((< h nh)
+           (+ static-octets (* (- h nsh) (fn-rtc-capf cfg))))
+          (t (+ static-octets
+                (* (- nh nsh) (fn-rtc-capf cfg))
+                (* (- h nh) (fn-rtc-capl cfg)))))))
 
 (defun fn-rtc-octets-total (cfg)
   (declare (xargs :guard t))
-  (+ (* (fn-rtc-nhome cfg) (fn-rtc-capf cfg)) (* (fn-rtc-npool cfg) (fn-rtc-capl cfg))))
+  (+ (* (fn-rtc-nstatic-home cfg) (fn-rtc-capf-static cfg))
+     (* (fn-rtc-nconnection-home cfg) (fn-rtc-capf cfg))
+     (* (fn-rtc-npool cfg) (fn-rtc-capl cfg))))
 
-(local (in-theory (disable fn-rtc-nhome fn-rtc-capf fn-rtc-capl fn-rtc-npool fn-rtc-nbufs)))
+(local (in-theory (disable fn-rtc-nhome fn-rtc-nstatic-home fn-rtc-nconnection-home
+                           fn-rtc-capf-static fn-rtc-capf fn-rtc-capl fn-rtc-npool fn-rtc-nbufs)))
+
+(local (defthm fn-rtc-k1-static-homes-le-home
+  (<= (fn-rtc-nstatic-home cfg) (fn-rtc-nhome cfg))
+  :rule-classes (:rewrite :linear)
+  :hints (("Goal" :in-theory (enable fn-rtc-nhome)))))
 
 (defthm fn-rtc-buf-base-natp
   (natp (fn-rtc-buf-base h cfg))
@@ -66,7 +81,8 @@
 (defthm fn-rtc-buf-base-of-succ
   (implies (natp h)
            (equal (fn-rtc-buf-base (+ 1 h) cfg)
-                  (+ (fn-rtc-buf-base h cfg) (fn-rtc-buf-cap h cfg)))))
+                  (+ (fn-rtc-buf-base h cfg) (fn-rtc-buf-cap h cfg))))
+  :hints (("Goal" :nonlinearp t)))
 
 (local (defun fn-rtc-buf-ind (j h)
   (declare (xargs :measure (nfix (- (nfix h) (nfix j)))))
@@ -81,11 +97,23 @@
           ("Subgoal *1/1" :use ((:instance fn-rtc-buf-base-of-succ (h j))))
           ("Subgoal *1/2" :use ((:instance fn-rtc-buf-base-of-succ (h (+ 1 j)))))))
 
+(local (defthm fn-rtc-k1-config-buffer-count
+  (implies (fn-rtc-configp cfg)
+           (equal (fn-rtc-nbufs cfg) (+ (fn-rtc-nhome cfg) (fn-rtc-npool cfg))))
+  :rule-classes nil
+  :hints (("Goal" :nonlinearp t
+           :in-theory (enable fn-rtc-configp fn-rtc-nhome fn-rtc-nstatic-home
+                              fn-rtc-nconnection-home fn-rtc-nconnections
+                              fn-rtc-nslots fn-rtc-nstatic fn-rtc-qfixed
+                              fn-rtc-qfixed-static fn-rtc-nbufs fn-rtc-npool)))))
+
 (defthm fn-rtc-buf-base-of-nbufs
   (implies (fn-rtc-configp cfg)
            (equal (fn-rtc-buf-base (fn-rtc-nbufs cfg) cfg) (fn-rtc-octets-total cfg)))
-  :hints (("Goal" :in-theory (enable fn-rtc-nbufs fn-rtc-npool fn-rtc-nhome fn-rtc-configp fn-rtc-octets-total
-                                     fn-rtc-buf-base))))
+  :hints (("Goal" :nonlinearp t
+           :in-theory (e/d (fn-rtc-buf-base fn-rtc-octets-total fn-rtc-nhome)
+                            (fn-rtc-configp fn-rtc-nbufs fn-rtc-npool))
+           :use fn-rtc-k1-config-buffer-count)))
 
 (in-theory (disable fn-rtc-buf-base fn-rtc-octets-total))
 (local (in-theory (enable fn-rtc-nhome fn-rtc-capf fn-rtc-capl fn-rtc-npool fn-rtc-nbufs)))
@@ -461,7 +489,8 @@
 (defthm fn-rtc-c-shapep-of-abs
   (implies (and (fn-rtc-st$cp c) (fn-rtc-c-wfp c))
            (fn-rtc-shapep (fn-rtc-c-abs c)))
-  :hints (("Goal" :in-theory (disable fn-rtc-c-pool-shapep-of-pool fn-rtc-buf-base-of-nbufs)
+  :hints (("Goal" :in-theory (disable fn-rtc-configp fn-rtc-nbufs fn-rtc-nslots
+                    fn-rtc-c-pool-shapep-of-pool fn-rtc-buf-base-of-nbufs)
            :use ((:instance fn-rtc-c-pool-shapep-of-pool (k 0) (n (fn-rtc-nbufs (nth *fn-rtc-c-cfg* c)))
                             (cfg (nth *fn-rtc-c-cfg* c))
                             (meta (nth *fn-rtc-c-metai* c)) (bytes (nth *fn-rtc-c-bytesi* c)))
@@ -521,6 +550,7 @@
        (< (fn-rtc-nbufs cfg) (expt 2 32))
        (< (fn-rtc-capf cfg) (expt 2 32))
        (< (fn-rtc-capl cfg) (expt 2 32))
+       (< (fn-rtc-capf-static cfg) (expt 2 32))
        (<= (fn-rtc-octets-total cfg) (expt 2 40))))
 
 ; The state `fn-rtc-init' starts from, before the listener's :accept is armed.
@@ -536,7 +566,7 @@
 (defun fn-rtc-st$ap (s) (declare (xargs :guard t)) (fn-rtc-shapep s))
 (defun create-fn-rtc-st$a ()
   (declare (xargs :guard t))
-  (fn-rtc-make '(2 0 0 0 0 0 0) '(nil nil) nil nil '(nil nil) 0))
+  (fn-rtc-make '(2 0 0 0 0 0 0 0 0) '(nil nil) nil nil '(nil nil) 0))
 
 (defun fn-rtc-st$a-config (s) (declare (xargs :guard t)) (fn-rtc-config s))
 (defun fn-rtc-st$a-slot (id s) (declare (xargs :guard t)) (fn-rtc-slot id s))

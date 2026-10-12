@@ -9,6 +9,9 @@
 (in-package "ACL2")
 (include-book "runtime-contract-keystones")
 
+; Per-operation frames retain the same indexed capacity function.
+(local (in-theory (disable fn-rtc-buf-cap)))
+
 ; These proofs are written against the base book's theory; the keystone
 ; book's later rules (structure and frame lemmas for T7-T15) are kept out.
 (local (in-theory (disable fn-rtc-accept-branch-keeps-foreign fn-rtc-accept-branch-no-slot-keeps-buffers
@@ -320,7 +323,9 @@
 
 (defthm fn-rtc-buf-cap-at-most-cap
   (<= (fn-rtc-buf-cap h cfg) (fn-rtc-cap cfg))
-  :hints (("Goal" :in-theory (disable fn-rtc-pool-buf-p)))
+  :hints (("Goal" :in-theory (e/d (fn-rtc-buf-cap fn-rtc-cap)
+                            (fn-rtc-pool-buf-p fn-rtc-nhome fn-rtc-nstatic-home
+                             fn-rtc-capf-static fn-rtc-capf fn-rtc-capl))))
   :rule-classes :linear)
 
 (defthm fn-rtc-buffer-okp-local-bytes
@@ -755,7 +760,7 @@
            (disable fn-rtc-core-invp fn-rtc-handlep fn-rtc-holders fn-rtc-uses-okp
                     fn-rtc-s-inc fn-rtc-s-status fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes
                     fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len
-                    fn-rtc-nbufs fn-rtc-nslots fn-rtc-cap fn-rtc-configp)
+                    fn-rtc-nbufs fn-rtc-nslots fn-rtc-cap fn-rtc-configp fn-rtc-buf-cap fn-rtc-pool-buf-p)
            :use ((:instance fn-rtc-holders-of-unleased-buffer
                   (h (fn-rtc-h-buf hd)) (g (fn-rtc-h-gen hd)) (uses (fn-rtc-uses s)))))))
 
@@ -851,7 +856,7 @@
            (disable fn-rtc-core-invp fn-rtc-handlep fn-rtc-holders fn-rtc-uses-okp
                     fn-rtc-s-inc fn-rtc-s-status fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes
                     fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len
-                    fn-rtc-nbufs fn-rtc-nslots fn-rtc-cap fn-rtc-configp)
+                    fn-rtc-nbufs fn-rtc-nslots fn-rtc-cap fn-rtc-configp fn-rtc-buf-cap fn-rtc-pool-buf-p)
            :use ((:instance fn-rtc-holders-of-unleased-buffer
                   (h (fn-rtc-h-buf hd)) (g (fn-rtc-h-gen hd)) (uses (fn-rtc-uses s)))))))
 
@@ -919,7 +924,7 @@
            (e/d (fn-rtc-request)
                 (fn-rtc-submit-okp fn-rtc-kind-out-p fn-rtc-extrap fn-rtc-splice
                  fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-s-inc fn-rtc-s-status
-                 fn-rtc-s-res fn-rtc-nslots fn-rtc-nbufs fn-rtc-cap fn-cbor-octet-listp)))))
+                 fn-rtc-s-res fn-rtc-nslots fn-rtc-nbufs fn-rtc-cap fn-cbor-octet-listp fn-rtc-buf-cap fn-rtc-pool-buf-p)))))
 
 (defthm fn-rtc-requests-preserve-core-invp
   (implies (and (fn-rtc-core-invp s) (fn-rtc-instance-active-p id inc s))
@@ -960,7 +965,7 @@
                 (fn-rtc-core-invp fn-rtc-free-slot fn-rtc-submit-okp fn-rtc-kind-out-p
                  fn-rtc-extrap fn-rtc-splice fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes
                  fn-rtc-s-inc fn-rtc-s-status fn-rtc-s-res fn-rtc-nslots fn-rtc-nbufs
-                 fn-rtc-cap fn-cbor-octet-listp))
+                 fn-rtc-cap fn-cbor-octet-listp fn-rtc-buf-cap fn-rtc-pool-buf-p))
            :use ((:instance fn-rtc-free-slot-of-set-nonfree
                   (i 0) (k id) (slots (fn-rtc-slots s))
                   (slot (list inc :closing (fn-rtc-s-res (fn-rtc-slot id s)))))))))
@@ -980,7 +985,7 @@
            (e/d (fn-rtc-request)
                 (fn-rtc-kind-out-p fn-rtc-submit-okp fn-rtc-extrap fn-rtc-splice
                  fn-rtc-b-owner fn-rtc-b-gen fn-rtc-b-bytes fn-rtc-s-inc fn-rtc-s-status
-                 fn-rtc-s-res fn-rtc-nslots fn-rtc-nbufs fn-rtc-cap fn-cbor-octet-listp)))))
+                 fn-rtc-s-res fn-rtc-nslots fn-rtc-nbufs fn-rtc-cap fn-cbor-octet-listp fn-rtc-buf-cap fn-rtc-pool-buf-p)))))
 
 (defthm fn-rtc-active-id-natural
   (implies (fn-rtc-instance-active-p id inc s) (natp id))
@@ -1068,7 +1073,7 @@
                 (fn-rtc-usep fn-rtc-handlep fn-rtc-holders fn-rtc-remove-use fn-rtc-uses
                  fn-rtc-get fn-rtc-u-hd fn-rtc-b-gen fn-rtc-b-owner fn-rtc-b-bytes
                  fn-rtc-h-buf fn-rtc-h-gen fn-rtc-h-off fn-rtc-h-len
-                 fn-rtc-s-inc fn-rtc-s-status fn-rtc-nbufs fn-rtc-nslots fn-rtc-cap))
+                 fn-rtc-s-inc fn-rtc-s-status fn-rtc-nbufs fn-rtc-nslots fn-rtc-cap fn-rtc-buf-cap fn-rtc-pool-buf-p))
            :use ((:instance fn-rtc-holders-remove-bound
                   (h (fn-rtc-h-buf (fn-rtc-u-hd u))) (g (fn-rtc-h-gen (fn-rtc-u-hd u)))
                   (uses (fn-rtc-uses s)))
