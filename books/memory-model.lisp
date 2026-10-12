@@ -329,6 +329,27 @@
           *fn-cbud-reply-status-octets*)
        (fn-mm-over-window-octets profile cfg)))
 
+;; The octets of a NEWNEWS or LIST cursor quantum (books/served-plan-cursor.lisp
+;; B; lane spans-newnews): the octets of W' NOV lines, as raw octets.  Such a
+;; quantum builds no NOV line, so W' does not bound its control visits (V, the
+;; unfitted fn-splan-cursor-window); its output is an octet list of at most B
+;; octets (fn-nnw-stream-batch-byte-bound, fn-lst-batch-byte-bound), which the
+;; LARGE term already charges (fn-mm-cursor-octets-fit-is-charged).  Published
+;; by fn-owner-memory-configure as fn-owner-memory-cursor-octets.
+(defun fn-mm-cursor-octets-fit (profile cfg)
+  (declare (xargs :guard t))
+  (* (fn-mm-over-window-fit profile cfg) (fn-mm-nov-line-octets profile cfg)))
+
+;; KEYSTONE: a cursor quantum of B octets, held as an octet list, fits the one
+;; large reply the gate charges each holder.
+(defthm fn-mm-cursor-octets-fit-is-charged
+  (<= (* 2 *fn-heap-list-octets-per-octet* (fn-mm-cursor-octets-fit profile cfg))
+      (fn-mm-large-reply profile cfg))
+  :rule-classes :linear
+  :hints (("Goal" :in-theory (e/d (fn-mm-cursor-octets-fit fn-mm-large-reply
+                                   fn-mm-over-window-octets)
+                                  (fn-mm-over-window-fit fn-mm-nov-line-octets)))))
+
 (defun fn-mm-large-pool (profile cfg)
   (declare (xargs :guard t))
   (* (fn-mm-cfg-holders cfg) (fn-mm-large-reply profile cfg)))

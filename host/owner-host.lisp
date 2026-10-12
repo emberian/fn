@@ -1728,7 +1728,12 @@
          ; A-OVER-WINDOW-FIT: the OVER quantum the gate charges, which
          ; the host serves (host/native/owner.lisp fnn-owner-over-window).
          (state (f-put-global 'fn-owner-memory-over-window
-                              (fn-mm-over-window-fit profile cfg) state)))
+                              (fn-mm-over-window-fit profile cfg) state))
+         ; The octets of a NEWNEWS or LIST quantum (fn-mm-cursor-octets-fit,
+         ; within the same LARGE term: fn-mm-cursor-octets-fit-is-charged);
+         ; their visits stay the unfitted quantum (lane spans-newnews).
+         (state (f-put-global 'fn-owner-memory-cursor-octets
+                              (fn-mm-cursor-octets-fit profile cfg) state)))
     (mv limit cfg state)))
 
 (defun fn-owner-memory-gate-install (img resident-obs trigger pub-trigger profile tlsp live
@@ -1899,6 +1904,18 @@
           ;; refuse, and no connection may allocate under the candidate yet.
           (mv-let (erp val state) (fn-owner-reconfigure-deltas-admitted id deltas fn-arena state)
             (mv erp val fn-hist state)))))))
+
+; The host lease's memory configuration (books/runtime-contract-host-lease.lisp
+; fn-hld-init, called by host/native/owner.lisp fnn-owner-lease-install-locked
+; once the run's gate is configured): the gate's CFG, its connections bounded
+; by the run's C', so the lease has one instance slot per connection the gate
+; admits and fn-mm-cfg-holders pool buffers (HL4).
+(defun fn-owner-lease-cfg (state)
+  (declare (xargs :stobjs state :mode :program))
+  (cadr (fn-owner-memory-gate state)))
+
+(definterface fn-owner-lease-cfg
+  :class ::program)
 
 ; The identity preflight's verdict on one ACL2-constructed EVENT (lane
 ; bp-retention-leftovers).  Its kind is the WIRE event's

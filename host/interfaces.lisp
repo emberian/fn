@@ -75,6 +75,8 @@
 (include-book "../books/store-profile-carried")
 ; The runtime contract's multi-instance exercise (host/native/rtc-exercise.lisp).
 (include-book "../books/runtime-contract-echo")
+; The host lease's executor (fn-hld-*), declared below.
+(include-book "../books/runtime-contract-host-lease")
 (include-book "../books/store-checkpoint-arena-load")
 (include-book "../books/store-checkpoint-arena-writer")
 (include-book "../books/reclaim-chunked-seal")
@@ -581,6 +583,40 @@
 ; exercise over the live fn-rtc-st.
 (definterface fn-rce-exercise
   :class :common-lisp-compliant)
+
+; host/native/owner.lisp: the host lease's executor (books/runtime-contract-
+; host-lease.lisp) for a plain connection's ARTICLE responses, under the owner
+; mutex.  Every call keeps the leased layer's invariant (fn-hld-*-keeps-invp,
+; fn-hld-init-establishes-invp); the quantum's send range is the window.
+(definterface fn-hld-init
+  :class :common-lisp-compliant
+  :keystones (fn-hld-init-establishes-invp))
+
+(definterface fn-hld-begin
+  :class :common-lisp-compliant
+  :keystones (fn-hld-begin-keeps-invp))
+
+(definterface fn-hld-workspace
+  :class :common-lisp-compliant
+  :kinds ((h natp)))
+
+(definterface fn-hld-window-base
+  :class :common-lisp-compliant
+  :keystones (fn-hld-window-base-is-the-base))
+
+(definterface fn-hld-quantum
+  :class :common-lisp-compliant
+  :keystones (fn-hld-quantum-sends-the-window
+              fn-hld-quantum-keeps-invp))
+
+(definterface fn-hld-sent
+  :class :common-lisp-compliant
+  :kinds ((id natp) (inc natp) (op natp))
+  :keystones (fn-hld-sent-keeps-invp))
+
+(definterface fn-hld-end
+  :class :common-lisp-compliant
+  :keystones (fn-hld-end-keeps-invp))
 
 (definterface fn-bs-config-encode
   :class :common-lisp-compliant)
@@ -1786,7 +1822,7 @@
 
 (definterface fn-qplan-cursor-step
   :class :common-lisp-compliant
-  :kinds ((w natp)))
+  :kinds ((w natp) (v natp) (b natp)))
 
 ; -----------------------------------------------------------------------------
 ; nntp/served (21 entries)

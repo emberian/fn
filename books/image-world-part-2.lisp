@@ -7,6 +7,8 @@
 ; Do not edit; regenerate.
 (in-package "ACL2")
 (include-book "image-world-part-1")
+(include-book "open-frontier-wire")
+(include-book "store-recover-stream")
 (include-book "payload-commit-extent")
 (include-book "payload-extent-read")
 (include-book "page-read-ownership")

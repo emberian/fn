@@ -155,6 +155,9 @@
 ;; first instance, the echo machine with the multi-instance exercise
 ;; (host/native/rtc-exercise.lisp, developer images).
 (include-book "books/runtime-contract-echo")
+;; The host lease's executor (host/native/owner.lisp fnn-owner-lease-*): a
+;; plain connection's ARTICLE windows sent from the contract's octet array.
+(include-book "books/runtime-contract-host-lease")
 ;; The owner's automatic checkpoint publication over the PUBLICATION buffer
 ;; fn-octets-pub (a second stobj congruent to fn-octets): host/native/owner.lisp
 ;; fnn-owner-publish-captured calls fn-ock-publication-stream; host/owner-host.lisp

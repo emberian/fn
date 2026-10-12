@@ -144,6 +144,7 @@
   :step fn-cur-dtest-step
   :byte-proof fn-cur-dtest-step-byte-bound
   :call-proof fn-cur-dtest-step-call-bound
+  :yield-proof fn-cur-dtest-step-yield-is-exhaustion
   :remaining (fn-cur-dtest-remaining cur)
   :residual-proof fn-cur-dtest-step-residual
   :demand-metric (fn-cur-dtest-reads progress) :demand-proof fn-cur-dtest-step-demand-bound)
@@ -186,6 +187,7 @@
    :step fn-cur-dtest-step
    :byte-proof fn-cur-dtest-step-byte-bound
    :call-proof fn-cur-dtest-step-call-bound
+   :yield-proof fn-cur-dtest-step-yield-is-exhaustion
    :remaining (fn-cur-dtest-remaining cur)
    :residual-proof fn-cur-dtest-step-residual
    :demand-metric (fn-cur-dtest-reads progress) :demand-proof fn-cur-dtest-step-call-bound)
@@ -213,6 +215,7 @@
   :step fn-cur-dfree-step
   :byte-proof fn-cur-dfree-step-byte-bound
   :call-proof fn-cur-dfree-step-call-bound
+  :yield-proof fn-cur-dfree-step-yield-is-exhaustion
   :remaining (fn-cur-dfree-remaining cur)
   :residual-proof fn-cur-dfree-step-residual)
 (assert-event
@@ -221,3 +224,25 @@
       (let ((all (mv-list 4 (fn-cur-dfree-batch (fn-cur-make '(:view root-a) '(0 a b c d) nil nil) 10 2))))
         (and (equal (fn-cur-progress (nth 1 all)) nil)
              (equal (nth 2 all) 5) (equal (nth 3 all) :done)))))
+
+; The yield contract (lane spans-newnews): a batch refuses a :yield-proof that
+; is not the step's yield fact, and the demand-free batch proves that a
+; yielding batch spent its whole visit budget: at four visits over six
+; unread items it yields after exactly four, and with no octet budget it
+; yields at once having visited nothing (the theorem's posp-bytes premise).
+(must-fail-checked
+ (def-cursor/batch fn-cur-dfree-wrong-yield ()
+   :step fn-cur-dfree-step
+   :byte-proof fn-cur-dfree-step-byte-bound
+   :call-proof fn-cur-dfree-step-call-bound
+   :yield-proof fn-cur-dfree-step-call-bound
+   :remaining (fn-cur-dfree-remaining cur)
+   :residual-proof fn-cur-dfree-step-residual)
+ :unchecked "def-cursor/batch refuses a :yield-proof that is not the step's yield fact")
+(assert-event
+ (and (getpropc 'fn-cur-dfree-batch-yield-spends-the-visits 'theorem nil (w state))
+      (not (getpropc 'fn-cur-dtest-batch-yield-spends-the-visits 'theorem nil (w state)))
+      (let ((four (mv-list 4 (fn-cur-dfree-batch (fn-cur-make '(:view root-a) '(0 a b c d e f) nil nil) 4 2)))
+            (none (mv-list 4 (fn-cur-dfree-batch (fn-cur-make '(:view root-a) '(0 a b c d e f) nil nil) 4 0))))
+        (and (equal (nth 3 four) :yield) (equal (nth 2 four) 4)
+             (equal (nth 3 none) :yield) (equal (nth 2 none) 0)))))

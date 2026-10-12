@@ -75,6 +75,7 @@
 (include-book "records-concrete-owner")
 (include-book "octets-stobj")
 (include-book "runtime-contract-echo")
+(include-book "runtime-contract-host-lease")
 (include-book "owner-checkpoint-pipeline")
 (include-book "poster-bytes-buffer")
 (include-book "store-reclaim-buffer")
@@ -210,5 +211,3 @@
 (include-book "store-checkpoint-tables")
 (include-book "store-checkpoint-tables-reader")
 (include-book "store-intern")
-(include-book "open-frontier-wire")
-(include-book "store-recover-stream")

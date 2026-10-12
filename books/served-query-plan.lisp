@@ -85,14 +85,14 @@
 ; executable is a tail-recursive worker that carries the skipped prefix
 ; reversed in ACC and restores it with revappend at the first cursor or LIST
 ; effect; the logical definition below is the plain recursion.
-(defun fn-qplan-rest-cursor-step-acc (rest w acc fn-arena fn-cat)
+(defun fn-qplan-rest-cursor-step-acc (rest w v b acc fn-arena fn-cat)
   (declare (xargs :stobjs (fn-arena fn-cat)
-                  :guard (and (natp w) (true-listp acc))))
+                  :guard (and (natp w) (natp v) (natp b) (true-listp acc))))
   (if (consp rest)
       (cond
        ((fn-lst-effectp (car rest))
         (mv-let (octets next calls state)
-          (fn-lst-batch (fn-cur-at 1 (car rest)) w w fn-cat)
+          (fn-lst-batch (fn-cur-at 1 (car rest)) v b fn-cat)
           (declare (ignore calls state))
           (mv :ok (revappend acc
                              (fn-splan-reply-then
@@ -102,14 +102,14 @@
                                 (cdr rest)))))))
        ((fn-splan-cursor-effectp (car rest))
         (mv-let (status next)
-          (fn-splan-rest-cursor-step rest w fn-arena fn-cat)
+          (fn-splan-rest-cursor-step rest w v b fn-arena fn-cat)
           (mv status (revappend acc next))))
-       (t (fn-qplan-rest-cursor-step-acc (cdr rest) w (cons (car rest) acc)
+       (t (fn-qplan-rest-cursor-step-acc (cdr rest) w v b (cons (car rest) acc)
                                          fn-arena fn-cat)))
     (mv :ok (revappend acc rest))))
 
-(defun fn-qplan-rest-cursor-step (rest w fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp w)
+(defun fn-qplan-rest-cursor-step (rest w v b fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp w) (natp v) (natp b))
                   :verify-guards nil))
   (mbe
    :logic
@@ -117,7 +117,7 @@
        (cond
         ((fn-lst-effectp (car rest))
          (mv-let (octets next calls state)
-           (fn-lst-batch (fn-cur-at 1 (car rest)) w w fn-cat)
+           (fn-lst-batch (fn-cur-at 1 (car rest)) v b fn-cat)
            (declare (ignore calls state))
            (mv :ok (fn-splan-reply-then
                     octets
@@ -125,26 +125,26 @@
                         (cons (fn-lst-effect next) (cdr rest))
                       (cdr rest))))))
         ((fn-splan-cursor-effectp (car rest))
-         (fn-splan-rest-cursor-step rest w fn-arena fn-cat))
+         (fn-splan-rest-cursor-step rest w v b fn-arena fn-cat))
         (t (mv-let (status next)
-             (fn-qplan-rest-cursor-step (cdr rest) w fn-arena fn-cat)
+             (fn-qplan-rest-cursor-step (cdr rest) w v b fn-arena fn-cat)
              (mv status (cons (car rest) next)))))
      (mv :ok rest))
-   :exec (fn-qplan-rest-cursor-step-acc rest w nil fn-arena fn-cat)))
+   :exec (fn-qplan-rest-cursor-step-acc rest w v b nil fn-arena fn-cat)))
 
 ; The worker is the logical function with the reversed prefix put back.
 (defthm fn-qplan-rest-cursor-step-acc-is-the-reference
-  (equal (fn-qplan-rest-cursor-step-acc rest w acc fn-arena fn-cat)
-         (mv (mv-nth 0 (fn-qplan-rest-cursor-step rest w fn-arena fn-cat))
-             (revappend acc (mv-nth 1 (fn-qplan-rest-cursor-step rest w fn-arena fn-cat)))))
-  :hints (("Goal" :induct (fn-qplan-rest-cursor-step-acc rest w acc fn-arena fn-cat))))
+  (equal (fn-qplan-rest-cursor-step-acc rest w v b acc fn-arena fn-cat)
+         (mv (mv-nth 0 (fn-qplan-rest-cursor-step rest w v b fn-arena fn-cat))
+             (revappend acc (mv-nth 1 (fn-qplan-rest-cursor-step rest w v b fn-arena fn-cat)))))
+  :hints (("Goal" :induct (fn-qplan-rest-cursor-step-acc rest w v b acc fn-arena fn-cat))))
 
 (verify-guards fn-qplan-rest-cursor-step)
 
-(defun fn-qplan-cursor-step (plan w fn-arena fn-cat)
-  (declare (xargs :stobjs (fn-arena fn-cat) :guard (natp w)))
+(defun fn-qplan-cursor-step (plan w v b fn-arena fn-cat)
+  (declare (xargs :stobjs (fn-arena fn-cat) :guard (and (natp w) (natp v) (natp b))))
   (mv-let (status next)
-    (fn-qplan-rest-cursor-step (fn-splan-rest plan) w fn-arena fn-cat)
+    (fn-qplan-rest-cursor-step (fn-splan-rest plan) w v b fn-arena fn-cat)
     (mv status (cons (fn-splan-cur plan) next))))
 
 (in-theory (disable fn-qplan-cursor-effectp fn-qplan-rest-donep fn-qplan-donep
@@ -197,26 +197,26 @@
  (defthm fn-qplan-splan-arm-adds-no-empty-effect
    (implies (fn-splan-cursor-effectp (car rest))
             (<= (fn-qplan-rest-empties
-                 (mv-nth 1 (fn-splan-rest-cursor-step rest wl fn-arena fn-cat)))
+                 (mv-nth 1 (fn-splan-rest-cursor-step rest wl v b fn-arena fn-cat)))
                 (fn-qplan-rest-empties rest)))
    :rule-classes :linear
    :hints (("Goal" :do-not-induct t
-            :expand ((fn-splan-rest-cursor-step rest wl fn-arena fn-cat))
+            :expand ((fn-splan-rest-cursor-step rest wl v b fn-arena fn-cat))
             :in-theory (e/d (fn-qplan-rest-empties fn-qplan-cursor-effectp)
                             (fn-ovw-step fn-ovw-cursorp fn-nnw-meta-livep
                              fn-nnw-stream-batch fn-splan-rest-cursor-step))))))
 
 (defthm fn-qplan-rest-cursor-step-adds-no-empty-effect
   (<= (fn-qplan-rest-empties
-       (mv-nth 1 (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)))
+       (mv-nth 1 (fn-qplan-rest-cursor-step rest wl v b fn-arena fn-cat)))
       (fn-qplan-rest-empties rest))
   :rule-classes :linear
-  :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)
+  :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest wl v b fn-arena fn-cat)
            :in-theory (e/d (fn-qplan-rest-cursor-step fn-qplan-rest-empties)
                            (fn-lst-batch fn-lst-livep fn-lst-effect fn-splan-rest-cursor-step)))))
 
 (defthm fn-qplan-cursor-step-adds-no-empty-effect
-  (<= (fn-qplan-empties (mv-nth 1 (fn-qplan-cursor-step p wl fn-arena fn-cat)))
+  (<= (fn-qplan-empties (mv-nth 1 (fn-qplan-cursor-step p wl v b fn-arena fn-cat)))
       (fn-qplan-empties p))
   :rule-classes :linear
   :hints (("Goal" :in-theory (e/d (fn-qplan-cursor-step fn-qplan-empties)
@@ -268,17 +268,17 @@
 (local
  (defthm fn-qplan-rest-cursor-step-is-splan
    (implies (fn-qplan-rest-no-lstp rest)
-            (equal (fn-qplan-rest-cursor-step rest w fn-arena fn-cat)
-                   (fn-splan-rest-cursor-step rest w fn-arena fn-cat)))
-   :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest w fn-arena fn-cat)
+            (equal (fn-qplan-rest-cursor-step rest w v b fn-arena fn-cat)
+                   (fn-splan-rest-cursor-step rest w v b fn-arena fn-cat)))
+   :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest w v b fn-arena fn-cat)
             :in-theory (e/d (fn-qplan-rest-cursor-step fn-qplan-rest-no-lstp
                              fn-qplan-cursor-effectp)
                             (fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep
                              fn-nnw-stream-batch fn-lst-batch fn-lst-remaining fn-lst-livep
                              fn-nntp-reply-effect fn-lst-effect mv-nth fn-splan-cursor-effectp
                              fn-nnw-meta-effectp fn-ovw-cursor-effect fn-nnw-meta-effect))
-            :expand ((fn-splan-rest-cursor-step rest w fn-arena fn-cat)
-                     (fn-splan-rest-cursor-step (cdr rest) w fn-arena fn-cat))))))
+            :expand ((fn-splan-rest-cursor-step rest w v b fn-arena fn-cat)
+                     (fn-splan-rest-cursor-step (cdr rest) w v b fn-arena fn-cat))))))
 
 (defthm fn-qplan-window-size-is-splan-window-size
   (implies (fn-qplan-rest-no-lstp (fn-splan-rest p))
@@ -300,8 +300,8 @@
 
 (defthm fn-qplan-cursor-step-is-splan-cursor-step
   (implies (fn-qplan-rest-no-lstp (fn-splan-rest p))
-           (equal (fn-qplan-cursor-step p w fn-arena fn-cat)
-                  (fn-splan-cursor-step p w fn-arena fn-cat)))
+           (equal (fn-qplan-cursor-step p w v b fn-arena fn-cat)
+                  (fn-splan-cursor-step p w v b fn-arena fn-cat)))
   :hints (("Goal" :in-theory (e/d (fn-qplan-cursor-step fn-splan-cursor-step)
                                   (fn-qplan-rest-cursor-step fn-splan-rest-cursor-step))
            :use ((:instance fn-qplan-rest-cursor-step-is-splan (rest (fn-splan-rest p))))))
@@ -427,11 +427,11 @@
    :hints (("Goal" :use fn-qplan-lst-step-last
             :in-theory (e/d (mv-nth) (fn-qplan-lst-step-last fn-lst-batch fn-lst-livep))))))
 (defthm fn-qplan-rest-cursor-step-keeps-cw-octets
-  (implies (equal (mv-nth 0 (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)) :ok)
-           (equal (fn-qplan-cw-octets (mv-nth 1 (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat))
+  (implies (equal (mv-nth 0 (fn-qplan-rest-cursor-step rest wl v b fn-arena fn-cat)) :ok)
+           (equal (fn-qplan-cw-octets (mv-nth 1 (fn-qplan-rest-cursor-step rest wl v b fn-arena fn-cat))
                                       wl fn-arena fn-cat)
                   (fn-qplan-cw-octets rest wl fn-arena fn-cat)))
-  :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest wl fn-arena fn-cat)
+  :hints (("Goal" :induct (fn-qplan-rest-cursor-step rest wl v b fn-arena fn-cat)
            :in-theory (e/d (fn-qplan-rest-cursor-step fn-splan-rest-cursor-step)
                            (fn-ovw-step fn-ovw-cursorp fn-ovw-run fn-nnw-meta-livep
                             fn-nnw-stream-batch fn-lst-batch fn-lst-remaining fn-lst-livep
@@ -441,8 +441,8 @@
 
 
 (defthm fn-qplan-cursor-step-keeps-cw-remaining
-  (implies (equal (mv-nth 0 (fn-qplan-cursor-step p wl fn-arena fn-cat)) :ok)
-           (equal (fn-qplan-cw-remaining (mv-nth 1 (fn-qplan-cursor-step p wl fn-arena fn-cat))
+  (implies (equal (mv-nth 0 (fn-qplan-cursor-step p wl v b fn-arena fn-cat)) :ok)
+           (equal (fn-qplan-cw-remaining (mv-nth 1 (fn-qplan-cursor-step p wl v b fn-arena fn-cat))
                                          wl fn-arena fn-cat)
                   (fn-qplan-cw-remaining p wl fn-arena fn-cat)))
   :hints (("Goal" :use ((:instance fn-qplan-rest-cursor-step-keeps-cw-octets
@@ -493,21 +493,21 @@
 ; N rounds of the host's loop over the list model of fn-qplan-window: a
 ; quantum at a cursor, else one window of at most W octets bounded by the
 ; current materialized effect. :malformed stops it, as the host faults.
-(defun-nx fn-qplan-cw-drain (p w wl n fn-arena fn-cat)
+(defun-nx fn-qplan-cw-drain (p w wl v b n fn-arena fn-cat)
   (declare (xargs :measure (nfix n)))
   (if (zp n)
       (mv :ok nil p)
     (if (fn-qplan-at-cursorp p)
         (mv-let (status p2)
-          (fn-qplan-cursor-step p wl fn-arena fn-cat)
+          (fn-qplan-cursor-step p wl v b fn-arena fn-cat)
           (if (equal status :ok)
-              (fn-qplan-cw-drain p2 w wl (- n 1) fn-arena fn-cat)
+              (fn-qplan-cw-drain p2 w wl v b (- n 1) fn-arena fn-cat)
             (mv status nil p)))
       (mv-let (status octets p2)
         (fn-splan-take (fn-splan-cur p) (fn-splan-rest p) (min (nfix w) (fn-qplan-window-size p)))
         (if (or (equal status :ok) (equal status :cursor))
             (mv-let (status2 more p3)
-              (fn-qplan-cw-drain p2 w wl (- n 1) fn-arena fn-cat)
+              (fn-qplan-cw-drain p2 w wl v b (- n 1) fn-arena fn-cat)
               (mv status2 (append octets more) p3))
           (mv status octets p2))))))
 
@@ -519,11 +519,11 @@
    :hints (("Goal" :in-theory (enable fn-qplan-window-size fn-qplan-take-budget)))))
 
 (defthm fn-qplan-cw-drain-is-a-prefix
-  (equal (append (mv-nth 1 (fn-qplan-cw-drain p w wl n fn-arena fn-cat))
-                 (fn-qplan-cw-remaining (mv-nth 2 (fn-qplan-cw-drain p w wl n fn-arena fn-cat))
+  (equal (append (mv-nth 1 (fn-qplan-cw-drain p w wl v b n fn-arena fn-cat))
+                 (fn-qplan-cw-remaining (mv-nth 2 (fn-qplan-cw-drain p w wl v b n fn-arena fn-cat))
                                         wl fn-arena fn-cat))
          (fn-qplan-cw-remaining p wl fn-arena fn-cat))
-  :hints (("Goal" :induct (fn-qplan-cw-drain p w wl n fn-arena fn-cat)
+  :hints (("Goal" :induct (fn-qplan-cw-drain p w wl v b n fn-arena fn-cat)
            :in-theory (e/d (fn-qplan-cw-remaining)
                            (fn-splan-take fn-qplan-cursor-step fn-splan-cur fn-splan-rest
                             fn-qplan-at-cursorp fn-qplan-cw-octets fn-qplan-window-size
