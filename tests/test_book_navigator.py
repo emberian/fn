@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+from tests.scratch_git import run as scratch_git
 
 SPEC=importlib.util.spec_from_file_location('book_navigator',Path(__file__).resolve().parents[1]/'tools/book_navigator.py')
 nav=importlib.util.module_from_spec(SPEC);SPEC.loader.exec_module(nav)
@@ -13,7 +14,7 @@ class BookNavigatorTests(unittest.TestCase):
     def setUp(self):
         self.tmp=tempfile.TemporaryDirectory();self.addCleanup(self.tmp.cleanup)
         self.root=Path(self.tmp.name)
-        subprocess.run(['git','init','-q',str(self.root)],check=True)
+        scratch_git(['git','init','-q',str(self.root)],check=True)
         self.write('Makefile','ACL2_BOOKS = books/runtime books/unknown\n')
         self.write('docs/prefixes.md','| `fn-run-` | `runtime` | Current runtime boundary |\n')
         self.write('docs/books/catalog.json',json.dumps({'subsystems':[{'name':'Runtime','patterns':['runtime'],'responsibility':'Actual runtime seam'}],'extra_roots':[],'book_notes':{}}))
@@ -30,12 +31,12 @@ class BookNavigatorTests(unittest.TestCase):
         self.write('tests/acl2/scenario.lisp','(include-book "../../books/test-only")')
         self.write('tools/extract/loader.lisp','(include-book "../../books/generation")')
         self.track()
-        subprocess.run(['git','-c','commit.gpgsign=false','-c','core.hooksPath=/dev/null','-c','user.email=test@example.invalid','-c','user.name=Fixture','commit','-qm','fixture'],cwd=self.root,check=True)
+        scratch_git(['git','-c','commit.gpgsign=false','-c','core.hooksPath=/dev/null','-c','user.email=test@example.invalid','-c','user.name=Fixture','commit','-qm','fixture'],cwd=self.root,check=True)
 
     def write(self,path,text):
         p=self.root/path;p.parent.mkdir(parents=True,exist_ok=True);p.write_text(text)
 
-    def track(self): subprocess.run(['git','add','.'],cwd=self.root,check=True)
+    def track(self): scratch_git(['git','add','.'],cwd=self.root,check=True)
     def rows(self,data): return {b['path']:b for b in data['books']}
 
     def test_tracked_canonical_only_and_untracked_dependency_explicit(self):

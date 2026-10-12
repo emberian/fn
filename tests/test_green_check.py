@@ -20,6 +20,7 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
+from tests.scratch_git import run as scratch_git
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -287,7 +288,7 @@ class MergeGateTests(Fixture):
 
     def git_repo(self):
         root = self.root
-        git = lambda *words: subprocess.run(  # noqa: E731
+        git = lambda *words: scratch_git(  # noqa: E731
             ["git", *words], cwd=root, check=True, capture_output=True, text=True)
         git("init", "-q", "-b", "main")
         git("config", "user.email", "t@example.invalid")

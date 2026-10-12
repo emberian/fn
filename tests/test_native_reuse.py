@@ -14,6 +14,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from unittest import mock
+from tests.scratch_git import run as scratch_git
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -31,7 +32,7 @@ BOOKS = {"books/a.lisp": '(in-package "ACL2")\n(defun f (x) x)\n',
 
 
 def git(repo, *argv):
-    return subprocess.run(["git", "-C", str(repo), "-c", "commit.gpgsign=false", *argv], check=True, capture_output=True,
+    return scratch_git(["git", "-C", str(repo), "-c", "commit.gpgsign=false", *argv], check=True, capture_output=True,
                           text=True).stdout.strip()
 
 
@@ -144,7 +145,7 @@ class VerifyTests(unittest.TestCase):
         git(self.repo, "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "c")
         self.rev = git(self.repo, "rev-parse", "HEAD")
         self.tree.mkdir()
-        archive = subprocess.run(["git", "-C", str(self.repo), "archive", self.rev],
+        archive = scratch_git(["git", "-C", str(self.repo), "archive", self.rev],
                                  check=True, capture_output=True).stdout
         subprocess.run(["tar", "-x", "-C", str(self.tree)], input=archive, check=True)
         self.expect = base / "expect.json"

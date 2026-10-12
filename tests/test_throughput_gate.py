@@ -11,10 +11,11 @@ import unittest
 from unittest import mock
 
 from tools import throughput_gate as tg
+from tests.scratch_git import run as scratch_git
 
 
 def git(root, *args):
-    return subprocess.run(["git", "-C", str(root)] + list(args), check=True, stdout=subprocess.PIPE,
+    return scratch_git(["git", "-C", str(root)] + list(args), check=True, stdout=subprocess.PIPE,
                           text=True, env={"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@x",
                                           "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@x",
                                           "PATH": "/usr/bin:/bin:/usr/local/bin:/opt/homebrew/bin"}).stdout.strip()

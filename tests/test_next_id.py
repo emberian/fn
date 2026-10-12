@@ -20,6 +20,7 @@ import tempfile
 import threading
 import unittest
 from unittest import mock
+from tests.scratch_git import run as scratch_git
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -28,7 +29,8 @@ import next_id  # noqa: E402
 
 
 def run(cwd: Path, *words: str) -> str:
-    return subprocess.run(list(words), cwd=cwd, check=True, capture_output=True,
+    runner = scratch_git if words[:1] == ("git",) else subprocess.run
+    return runner(list(words), cwd=cwd, check=True, capture_output=True,
                           text=True).stdout
 
 

@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from tests.scratch_git import run as scratch_git
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -21,7 +22,7 @@ import keystone_emit  # noqa: E402
 
 
 def git(root: Path, *args: str) -> str:
-    return subprocess.run(["git", "-C", str(root), *args], check=True, capture_output=True,
+    return scratch_git(["git", "-C", str(root), *args], check=True, capture_output=True,
                           text=True).stdout.strip()
 
 
@@ -85,6 +86,45 @@ class BoxArtifacts(unittest.TestCase):
     def test_unknown_name_is_refused(self):
         with self.assertRaises(box_artifacts.Refused):
             box_artifacts.path("teeth-obligations.json", self.root)
+
+
+class ScratchGitSigning(unittest.TestCase):
+    def test_scratch_commits_and_tags_ignore_global_and_system_signing(self):
+        import os
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as directory:
+            base = Path(directory)
+            global_config = base / "global.gitconfig"
+            system_config = base / "system.gitconfig"
+            config = ("[commit]\n gpgsign = true\n[tag]\n gpgsign = true\n"
+                      "[gpg]\n program = /signing-must-not-run\n"
+                      "[fixture]\n inherited = yes\n")
+            global_config.write_text(config)
+            system_config.write_text(config)
+            with mock.patch.dict(os.environ, {"GIT_CONFIG_GLOBAL": str(global_config),
+                                              "GIT_CONFIG_SYSTEM": str(system_config)}):
+                repo = base / "repo"
+                scratch_git(["git", "init", "-q", "-b", "main", str(repo)], check=True)
+                git(repo, "config", "user.email", "t@example.invalid")
+                git(repo, "config", "user.name", "t")
+                for setting in ("commit.gpgsign", "tag.gpgsign"):
+                    self.assertEqual(git(repo, "config", "--local", "--get", setting), "false")
+                inherited = scratch_git(["git", "-C", str(repo), "config", "--get",
+                                         "fixture.inherited"], capture_output=True)
+                self.assertEqual(inherited.returncode, 1)
+                git(repo, "commit", "-q", "--allow-empty", "-m", "unsigned")
+                git(repo, "tag", "unsigned")
+                # Tools that call Git themselves still get the local settings.
+                subprocess.run(["git", "-C", str(repo), "commit", "-q", "--allow-empty",
+                                "-m", "local settings"], check=True, capture_output=True,
+                               timeout=10)
+                subprocess.run(["git", "-C", str(repo), "tag", "local-settings"],
+                               check=True, capture_output=True, timeout=10)
+                clone = base / "clone"
+                scratch_git(["git", "clone", "-q", str(repo), str(clone)], check=True)
+                for setting in ("commit.gpgsign", "tag.gpgsign"):
+                    self.assertEqual(git(clone, "config", "--local", "--get", setting), "false")
+
 
 
 class TeethManifest(unittest.TestCase):

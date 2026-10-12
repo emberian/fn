@@ -11,6 +11,7 @@ import sys
 import tempfile
 import unittest
 from contextlib import redirect_stdout
+from tests.scratch_git import run as scratch_git
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -544,7 +545,7 @@ class ExecuteTests(ExecuteBase):
         (repo / "books").mkdir()
 
         def git(*argv):
-            subprocess.run(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t",
+            scratch_git(["git", "-C", str(repo), "-c", "user.name=t", "-c", "user.email=t@t",
                             "-c", "commit.gpgsign=false", *argv], check=True,
                            capture_output=True)
         git("init", "-q")

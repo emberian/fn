@@ -26,6 +26,7 @@ import unittest
 from contextlib import nullcontext
 from types import SimpleNamespace
 from unittest import mock
+from tests.scratch_git import run as scratch_git
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -3208,7 +3209,7 @@ class CertifyByDefaultTests(unittest.TestCase):
             for words in (("init", "-q", "-b", "lane"), ("add", "."),
                           ("commit", "-q", "-m", "base"),
                           ("update-ref", "refs/remotes/origin/dev", "HEAD")):
-                subprocess.run(["git", "-C", str(root), "-c", "commit.gpgsign=false",
+                scratch_git(["git", "-C", str(root), "-c", "commit.gpgsign=false",
                                 "-c", "user.name=t", "-c", "user.email=t@t", *words],
                                check=True, capture_output=True)
             (root / "books" / "base.lisp").write_text(

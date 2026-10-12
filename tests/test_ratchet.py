@@ -11,6 +11,7 @@ from unittest import mock
 from tools import (clock_unit_check, cost_obligations, evidence_size_check, list_codec_check,
                    loop_call_check, owner_globals_check, proof_cost, ratchet, reach_check,
                    premise_audit, scenario_suite, throughput_gate)
+from tests.scratch_git import run as scratch_git
 
 DASH = "—"
 
@@ -84,7 +85,7 @@ class DeletedBaseline(Base):
         import subprocess
         root = self.dir / "r"
         (root / "tools").mkdir(parents=True)
-        run = lambda *a: subprocess.run(["git", "-C", str(root), *a], check=True, capture_output=True)
+        run = lambda *a: scratch_git(["git", "-C", str(root), *a], check=True, capture_output=True)
         run("init", "-q")
         run("config", "user.email", "t@t")
         run("config", "user.name", "t")
@@ -116,7 +117,7 @@ class DeletedBaseline(Base):
         (root / "tools/loop_call_baseline.json").write_text(json.dumps({"total": 3, "sites": {"f": 3}}))
         import subprocess
         for a in (["add", "-f", "tools/loop_call_baseline.json"], ["commit", "-qm", "l"]):
-            subprocess.run(["git", "-C", str(root), *a], check=True, capture_output=True)
+            scratch_git(["git", "-C", str(root), *a], check=True, capture_output=True)
         path = root / "tools/loop_call_baseline.json"
         path.unlink()
         with mock.patch.object(loop_call_check, "BASELINE", path), \

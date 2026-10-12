@@ -6,6 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from tests.scratch_git import run as scratch_git
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,7 +18,7 @@ import merge_registry  # noqa: E402
 def git(repo: Path, *words: str, check: bool = True) -> subprocess.CompletedProcess:
     env = dict(os.environ, GIT_AUTHOR_NAME="t", GIT_AUTHOR_EMAIL="t@t",
                GIT_COMMITTER_NAME="t", GIT_COMMITTER_EMAIL="t@t")
-    return subprocess.run(["git", "-C", str(repo), "-c", "commit.gpgsign=false",
+    return scratch_git(["git", "-C", str(repo), "-c", "commit.gpgsign=false",
                            "-c", "merge.fn-registry.driver="
                            f"{sys.executable} {DRIVER} %O %A %B %P", *words],
                           check=check, env=env, stdout=subprocess.PIPE,
@@ -221,7 +222,7 @@ class RequirementsAndCatalogThroughGit(unittest.TestCase):
     def test_an_unregistered_clone_is_named_and_install_registers_it(self):
         with tempfile.TemporaryDirectory() as directory:
             repo = Path(directory)
-            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            scratch_git(["git", "init", "-q", str(repo)], check=True)
             env = dict(os.environ, GIT_CONFIG_GLOBAL=os.devnull, GIT_CONFIG_SYSTEM=os.devnull)
             run = lambda *words: subprocess.run([sys.executable, str(DRIVER), *words],
                                                 cwd=repo, capture_output=True, text=True,
@@ -230,7 +231,7 @@ class RequirementsAndCatalogThroughGit(unittest.TestCase):
             self.assertEqual(missing.returncode, 1)
             self.assertIn("NOT REGISTERED", missing.stdout)
             self.assertEqual(run("--install").returncode, 0)
-            driver = subprocess.run(["git", "-C", str(repo), "config", "--get",
+            driver = scratch_git(["git", "-C", str(repo), "config", "--get",
                                      "merge.fn-registry.driver"], capture_output=True,
                                     text=True, env=env).stdout.strip()
             self.assertEqual(driver, "python3 tools/merge_registry.py %O %A %B %P")
@@ -251,7 +252,7 @@ class WorktreeSetupTests(unittest.TestCase):
     def clone(self, directory: str) -> Path:
         repo = Path(directory) / "main"
         (repo / "tools").mkdir(parents=True)
-        subprocess.run(["git", "init", "-q", "-b", "dev", str(repo)], check=True)
+        scratch_git(["git", "init", "-q", "-b", "dev", str(repo)], check=True)
         (repo / "tools" / "merge_registry.py").write_text(DRIVER.read_text())
         (repo / ".gitattributes").write_text((ROOT / ".gitattributes").read_text())
         git(repo, "add", ".")
@@ -269,7 +270,7 @@ class WorktreeSetupTests(unittest.TestCase):
             self.assertEqual(added.returncode, 0, added.stdout + added.stderr)
             self.assertIn("merge by row", added.stdout)
             self.assertEqual(self.run_setup(lane, "--check").returncode, 0)
-            driver = subprocess.run(["git", "-C", str(lane), "config", "--get",
+            driver = scratch_git(["git", "-C", str(lane), "config", "--get",
                                      "merge.fn-registry.driver"], capture_output=True,
                                     text=True).stdout.strip()
             self.assertEqual(driver, "python3 tools/merge_registry.py %O %A %B %P")

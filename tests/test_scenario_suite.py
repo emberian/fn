@@ -3,6 +3,7 @@ import pathlib
 import sys
 import tempfile
 import unittest
+from tests.scratch_git import run as scratch_git
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
@@ -140,9 +141,9 @@ class AffectedTests(unittest.TestCase):
                               "def b():\n    return a()\n\nclass Node:\n"
                               "    def start(self):\n        return 2\n")
             git = ["git", "-C", str(root), "-c", "user.email=t@t", "-c", "user.name=t"]
-            subprocess.run(git + ["init", "-q"], check=True)
-            subprocess.run(git + ["add", "-A"], check=True)
-            subprocess.run(git + ["commit", "-qm", "base"], check=True)
+            scratch_git(git + ["init", "-q"], check=True)
+            scratch_git(git + ["add", "-A"], check=True)
+            scratch_git(git + ["commit", "-qm", "base"], check=True)
             (root / "tests" / "test_native_web.py").write_text("from tests.native_harness import b\nb()\n")
             (root / "tests" / "test_native_peer.py").write_text("node.start()\n")
             helper.write_text(helper.read_text().replace("return 1", "return 3")

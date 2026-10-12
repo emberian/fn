@@ -34,6 +34,7 @@ import sys
 import tempfile
 import unittest
 from unittest import mock
+from tests.scratch_git import run as scratch_git
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURES = Path(__file__).resolve().parent / "fixtures" / "triage"
@@ -177,7 +178,7 @@ GIT_ENVIRONMENT = {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NO
 
 
 def git(root: Path, *arguments: str) -> None:
-    subprocess.run(["git", "-C", str(root), *arguments], check=True,
+    scratch_git(["git", "-C", str(root), *arguments], check=True,
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                    env=GIT_ENVIRONMENT)
 

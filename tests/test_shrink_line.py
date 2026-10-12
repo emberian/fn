@@ -5,6 +5,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from tests.scratch_git import run as scratch_git
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 import shrink_line  # noqa: E402
@@ -43,7 +44,7 @@ class ShrinkLineTests(unittest.TestCase):
         self.git("config", "user.name", "t")
 
     def git(self, *args):
-        return subprocess.run(["git", "-C", str(self.root), *args], check=True,
+        return scratch_git(["git", "-C", str(self.root), *args], check=True,
                               capture_output=True, text=True).stdout.strip()
 
     def commit(self, files):

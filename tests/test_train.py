@@ -15,6 +15,7 @@ from types import SimpleNamespace
 from unittest import mock
 
 from tools import train
+from tests.scratch_git import run as scratch_git
 
 REPO = Path(__file__).resolve().parent.parent
 SCRIPT = Path(os.environ.get("TRAIN_SCRIPT", REPO / "tools" / "train.py"))
@@ -117,7 +118,8 @@ exit "${STUB_RC_ssh:-0}"
 
 
 def sh(cwd, *argv, env=None, check=True):
-    p = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, env=env)
+    runner = scratch_git if argv[:1] == ("git",) else subprocess.run
+    p = runner(argv, cwd=cwd, capture_output=True, text=True, env=env)
     if check and p.returncode != 0:
         raise AssertionError(f"{argv} rc {p.returncode}\n{p.stdout}\n{p.stderr}")
     return p

@@ -10,6 +10,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from tests.scratch_git import run as scratch_git
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -44,7 +45,7 @@ class CutReleaseDryRunTests(unittest.TestCase):
             for rel in ("tools/cut_release.sh", "tools/release_sequence.py", "planning/release-sequence.json"):
                 (repo / rel).parent.mkdir(parents=True, exist_ok=True)
                 (repo / rel).write_bytes((ROOT / rel).read_bytes())
-            git = lambda *a: subprocess.run(["git", "-C", str(repo), *a], check=True, env=ENV,
+            git = lambda *a: scratch_git(["git", "-C", str(repo), *a], check=True, env=ENV,
                                             capture_output=True, text=True).stdout
             git("init", "-q")
             git("add", "-A")
