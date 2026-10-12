@@ -39,6 +39,7 @@ import unittest
 # The module, not its TestCase: a TestCase imported by name is collected and
 # run again as this module's own (the checkpoint suite ran twice here).
 from tests import test_native_checkpoint as checkpoint
+from tests.native_harness import EXIT_FAULT
 from tools import fixtures, native_env
 
 IMAGE = checkpoint.IMAGE
@@ -130,6 +131,27 @@ class NativePackChainTests(unittest.TestCase):
 
     def inspect(self, store, msgids):
         return {m: self.native("store", store, "inspect", m).stdout for m in msgids}
+
+    def test_the_probe_keeps_a_scale_store_s_sealed_profile(self):
+        store = self.base / "probe-sealed-scale"
+        config, _ = self.owner_config(store, "probe-sealed-scale")
+        init = self.native("operator", config, "init", *native_env.HARNESS_INIT_WORDS,
+                           *PROFILE_FLAGS, "fn.letters", "fn.test", env=self.env)
+        self.assertIn("accepted operator init", init.stderr)
+        probe = self.native("store", store, "probe", "3", "article")
+        report = json.loads(probe.stdout)
+        self.assertEqual(report["status"], "passed")
+        # io.lisp fnn-config-max-payload reads max-article-octets directly;
+        # PROFILE_FLAGS sets it to 2048, below the scale preset's 32768.
+        self.assertEqual(report["payload_bytes"], 2048)
+        self.recovered(store, 3)
+        # Sequence 0 repeats capacity-0's bytes and groups: store-node-host.lisp
+        # fn-store-sn-prepare returns :duplicate before staging/publication,
+        # so fnn-command-probe faults at "probe prepare refused" first.
+        repeated = self.native("store", store, "probe", "3", "article",
+                               expected=EXIT_FAULT)
+        self.assertIn("probe prepare refused", repeated.stderr)
+        self.recovered(store, 3)
 
     def test_a_multi_unit_store_compacts_over_the_log(self):
         store, config, _ = self.scale_store("cut-base", CUT_N)

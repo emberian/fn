@@ -6262,8 +6262,9 @@ the Store and the served projection judge them like any posted article."
     octets))
 
 (defun fnn-command-probe (root count &optional articlep)
-  "tests/store_capacity_probe.py's sequence in-process: commit COUNT maximum
-payloads, close, reopen, and report both timings as JSON on stdout.  With
+  "Probe an operator-initialized, empty store under its sealed profile, or
+initialize a fresh development root: commit COUNT maximum payloads, close,
+reopen, and report both timings as JSON on stdout.  With
 ARTICLEP (`probe N article') each payload is a well-formed article of the
 same size (fnn-probe-article), so the served reader can frame it."
   (unless (fnn-developer-image-p)
@@ -6272,12 +6273,15 @@ same size (fnn-probe-article), so the served reader can frame it."
   (let* ((started (get-internal-real-time))
          (store (make-fnn-store root :writable t))
          (payload nil))
-    (fnn-initialize store)
-    (fnn-record-filesystem-at-init store :development)
-    (fnn-acquire store)
-    (fnn-bridge-reset)
-    (fnn-extent-pool-open-context)
-    (fnn-recover store)
+    (if (fnn-lstat (fnn-config-path store))
+        (setq store (fnn-open-live-store root t))
+      (progn
+        (fnn-initialize store)
+        (fnn-record-filesystem-at-init store :development)
+        (fnn-acquire store)
+        (fnn-bridge-reset)
+        (fnn-extent-pool-open-context)
+        (fnn-recover store)))
     (setq payload (make-array (fnn-config-max-payload store)
                               :element-type '(unsigned-byte 8)
                               :initial-element (char-code #\x)))
