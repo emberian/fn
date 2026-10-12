@@ -204,7 +204,11 @@ class NativeRecoveryReclaimKeyringTests(unittest.TestCase):
                             keys / "ed-public.bin", keys / "ml-public.pem", expect=EXIT_OK)
                 if generation == 1:
                     self.post(node, before)
-                    # The expired article is the record the pass rewrites.
+                    # The expired article is the record the pass rewrites
+                    # (fn-orc-rewrite-rows, pass 3's chunk rewrite); the rows
+                    # after it keep the fold contexts the prediction reads
+                    # (KEYSTONE fn-rfc-the-rewrite-keeps-the-fold-contexts,
+                    # books/reclaim-fold-contexts.lisp).
                     self.post(node, expiring, expiry.article("rk", expiry.GROUP, expiry.PAST))
                 else:
                     self.post(node, after)

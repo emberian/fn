@@ -30,7 +30,7 @@
   (when (probe-file path)
     (with-open-file (stream path)
       (loop for form = (read stream nil :eof) until (eq form :eof)
-            when (and (consp form) (member (car form) '(defun defstruct)))
+            when (and (consp form) (member (car form) '(defun def-loop defstruct)))
               do (load-deployed-forms path (list (list (car form) (cadr form))))))))
 (with-open-file (stream "host/native/io.lisp")
   (loop for form = (read stream nil :eof) until (eq form :eof)

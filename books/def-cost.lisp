@@ -68,6 +68,11 @@
 ; bound is always PARTIAL over them, stated as such (the row's :unaccounted
 ; must equal the derived list, else refused), and complete when the list is
 ; empty.  The default hints open the twin and induct on it when it recurs.
+; Unaccounted bound terms form a bag: each occurrence contributes one summand,
+; including occurrences in different IF branches, in both cost dimensions.
+; At each lambda application, simultaneous actual-for-formal substitution in
+; collected body terms composes through nested lambdas, retaining the actuals'
+; own unaccounted terms.
 ; The owed teeth row (lanedumps/generators-2.md, contract v1) names the claim
 ; and the subject; the teeth book states the witness (an executable twin is
 ; evaluated; a defun-nx twin takes a :witness-lemma).
@@ -510,19 +515,21 @@
 (mutual-recursion
  (defun fn-cost-unaccounted-terms (term)
    (declare (xargs :mode :program))
-   ; every (fn-cost-unaccounted ...) subterm, each once
+   ; One summand per occurrence, including both IF branches. Unknown costs
+   ; are natural, so summing unchosen branches is a sound over-approximation.
    (cond ((or (atom term) (eq (car term) 'quote)) nil)
          ((member-eq (car term) '(fn-cost-unaccounted fn-cost-unaccounted-conses)) (list term))
          ((consp (car term))
-          (union-equal (fn-cost-unaccounted-terms (car (last (car term))))
-                       (fn-cost-unaccounted-terms-lst (cdr term))))
+          (append (sublis-var-lst (pairlis$ (cadr (car term)) (cdr term))
+                                  (fn-cost-unaccounted-terms (car (last (car term)))))
+                  (fn-cost-unaccounted-terms-lst (cdr term))))
          (t (fn-cost-unaccounted-terms-lst (cdr term)))))
  (defun fn-cost-unaccounted-terms-lst (terms)
    (declare (xargs :mode :program))
    (if (atom terms)
        nil
-     (union-equal (fn-cost-unaccounted-terms (car terms))
-                  (fn-cost-unaccounted-terms-lst (cdr terms))))))
+     (append (fn-cost-unaccounted-terms (car terms))
+             (fn-cost-unaccounted-terms-lst (cdr terms))))))
 
 (defun fn-cost-problem-dimension (fn kvs w dimension)
   (declare (xargs :mode :program))
@@ -585,6 +592,13 @@
                 (fn-cost-derive-dimension fn w dimension)
                 (cond
                  (msg (mv msg nil nil nil nil nil))
+                 ((not (subsetp-eq
+                        (all-vars1-lst (fn-cost-unaccounted-terms-lst (list rcost bcost)) nil)
+                        (getpropc fn 'formals nil w)))
+                  (mv (msg "~x0: unaccounted cost terms ~x1 have free variables outside formals ~x2"
+                           fn (fn-cost-unaccounted-terms-lst (list rcost bcost))
+                           (getpropc fn 'formals nil w))
+                      nil nil nil nil nil))
                  ((not (and (subsetp-eq unaccounted (fn-cost-get (fn-cost-dimension-key :unaccounted dimension) kvs))
                             (subsetp-eq (fn-cost-get (fn-cost-dimension-key :unaccounted dimension) kvs) unaccounted)))
                   (mv (msg "~x0: the derivation leaves ~&1 unaccounted (no contract, no ~
@@ -641,7 +655,7 @@
          (measure (and recursive j (fn-cd-subst (access justification j :measure) alist)))
          (rel (and recursive j (access justification j :rel)))
          (guard (fn-cd-subst (getpropc fn 'guard *t* w) alist))
-         (us (union-equal (fn-cost-unaccounted-terms rcost) (fn-cost-unaccounted-terms bcost)))
+         (us (append (fn-cost-unaccounted-terms rcost) (fn-cost-unaccounted-terms bcost)))
          (bound-term (and bound
                           (fn-cost-sum (cons (fn-cd-subst (fn-cd-subst bound (fn-cost-sizes-alist sizes)) alist)
                                              us))))
@@ -654,6 +668,7 @@
                  (xargs :verify-guards nil
                         ,@(and measure (list :measure measure))
                         ,@(and rel (list :well-founded-relation rel))
+                        ,@(and recursive (list :ruler-extenders :all))
                         ,@(and (fn-cost-get :measure-hints kvs)
                                (list :hints (fn-cost-get :measure-hints kvs)))))
         ,bcost)

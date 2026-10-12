@@ -558,7 +558,14 @@ uninterned and held only by raw-trap.lisp's closures, bound by the dispatcher
 (`fnn-call`, a fixed callback, the developer `acl2 session`) for the call's
 dynamic extent. A same-named symbol, a closure kept past the call and a
 thread started inside the extent are all outside it; no lock or allocation
-is added per call. The table is sealed at the end of the image build, and
+is added per call. At seal, the final loaded world's `fn-interfaces` names
+that this world defines are resolved once into an immutable target table (a declared name it does not define gets no row and keeps the call-time fault).
+Each row holds the captured raw function (if any), the creator flag and the
+executable-counterpart symbol; a dispatch selects its target with one hash
+lookup. Dispatch applies the symbol's current function binding, preserving
+ACL2 redefinition in a developer session; unsealed calls and undeclared names
+retain the lookup and missing-counterpart fault. The table is sealed at the
+end of the image build, and
 `fnn-raw-dispatch-traps-intact` refuses a redefined target at the build's end
 and at every start. `fn acl2 raw-traps` (developer images) probes every entry.
 
@@ -1549,10 +1556,14 @@ the cgroup's `memory.max` from the process's group up and `RLIMIT_AS`, and
 `RLIMIT_DATA` (which OpenBSD's login classes set). A figure above the
 machine is refused: exit 1 (outcome class `refused`), `refused
 machine-cannot-hold-profile heap=MB MB machine=M MB` on stderr, and the
-command does not run. An accepted figure holds every store the profile
-admits with an open of the store on disk
-(`fn-heap-operation-decide-holds-the-store`,
-`fn-heap-decide-admits-every-store-the-profile-admits`). `status` and
+command does not run. Holding every store the profile admits, including
+its open from disk, remains a requirement; that universal claim is not
+proved by the current books. The command-specific run theorem
+`fn-mo-run-decide-holds-the-store-at-its-capacity` bounds the model's
+resident and reopen terms for the supplied totals at the admitted connection
+capacity, while `fn-heap-operation-decide-holds-the-operation` bounds the
+listed offline verbs' transient parts. Neither establishes the former
+universal store claim. `status` and
 `health` end with `heap=MB MB profile=WORD machine=M MB stack=KB KB
 threads=N`, the reservation the launcher's probe makes for the store's next
 `run` over the store on disk (books/heap-reservation.lisp

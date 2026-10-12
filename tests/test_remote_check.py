@@ -8,6 +8,10 @@ from pathlib import Path
 import subprocess
 import tempfile
 import unittest
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests.scratch_git import run as scratch_git
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,7 +23,7 @@ GIT_ENV = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@example.invalid",
 def git(tree, *words):
     # No signing in the temporary repository: on the laptop a signing agent
     # hung each commit for 60 s (batch AZ, 2026-09-28).
-    subprocess.run(["git", "-C", str(tree), "-c", "commit.gpgsign=false", *words],
+    scratch_git(["git", "-C", str(tree), "-c", "commit.gpgsign=false", *words],
                    check=True, capture_output=True,
                    env={**os.environ, **GIT_ENV})
 
@@ -107,7 +111,7 @@ class RemoteCheckTests(unittest.TestCase):
         done = self.run_check("--target", "gen", "--fetch", "out")
         self.assertEqual(done.returncode, 0, done.stdout + done.stderr)
         self.assertEqual((self.lane / "out/a.txt").read_text(), "newer\n")
-        sha = subprocess.run(["git", "-C", str(self.lane), "rev-parse", "HEAD"],
+        sha = scratch_git(["git", "-C", str(self.lane), "rev-parse", "HEAD"],
                              capture_output=True, text=True).stdout.strip()
         aside = f"build/remote-check/fetched/{sha[:12]}/out/a.txt"
         self.assertEqual((self.lane / aside).read_text(), "box\n")
@@ -156,7 +160,7 @@ class RemoteCheckTests(unittest.TestCase):
             "check-lane:\n\t@echo since=$(CHECK_CHANGED_SINCE) base=$(CHECK_BASELINE)"
             " out=$(CHECK_BASELINE_OUT); cat $(CHECK_BASELINE); echo table > $(CHECK_BASELINE_OUT)\n")
         git(self.lane, "commit", "-q", "-am", "makefile")
-        base = subprocess.run(["git", "-C", str(self.lane), "rev-parse", "HEAD~1"],
+        base = scratch_git(["git", "-C", str(self.lane), "rev-parse", "HEAD~1"],
                               capture_output=True, text=True).stdout.strip()
         (self.lane / "build").mkdir()
         (self.lane / "build" / "known.txt").write_text("== check: 1 steps\n")

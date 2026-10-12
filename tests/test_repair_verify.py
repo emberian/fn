@@ -9,6 +9,10 @@ import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests.scratch_git import run as scratch_git
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location("repair", ROOT / "planning/repair/repair.py")
@@ -48,7 +52,7 @@ class RepairVerifyTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def git(self, *args):
-        return subprocess.run(["git", *args], cwd=self.root, capture_output=True,
+        return scratch_git(["git", *args], cwd=self.root, capture_output=True,
                               text=True, check=True).stdout
 
     def write(self, name, text):
