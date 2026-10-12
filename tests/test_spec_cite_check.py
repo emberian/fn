@@ -85,6 +85,91 @@ class SpecCiteCheckTests(unittest.TestCase):
         # books/native-control-buffer.lisp: (def-buffer fn-octets-ctl)
         self.assertIn("fn-octets-ctl", scc.defined_names())
 
+    def test_concatenated_definer_names_come_only_from_emitted_definitions(self):
+        source = """
+(defconst *model-definitions* '(model-invp model-step))
+(defun instance-name (prefix original)
+  (intern-in-package-of-symbol
+    (concatenate 'string (symbol-name prefix) "-"
+      (subseq (symbol-name original) 6 (length (symbol-name original)))) prefix))
+(defun instance-events (prefix originals)
+  (if (endp originals) nil
+    (cons `(defun ,(instance-name prefix (car originals)) (x)
+             ;; Merely calling a constructed name does not define it.
+             (,(instance-name prefix 'model-referenced-only) x))
+          (instance-events prefix (cdr originals)))))
+(defmacro define-instance (prefix)
+  `(make-event (cons 'progn (instance-events ',prefix *model-definitions*))))
+(define-instance fn-first)
+(define-instance fn-second)
+; (define-instance fn-comment)
+'(define-instance fn-quoted)
+(defun unused-example () (define-instance fn-unexecuted))
+"""
+        names = scc.concatenated_macro_definitions(source)
+        self.assertEqual(names, {"fn-first-invp", "fn-first-step",
+                                 "fn-second-invp", "fn-second-step"})
+        result = scc.check(names, [("docs/example.md",
+            "`fn-first-invp` `fn-second-step` `fn-first-never-built` "
+            "`fn-first-referenced-only` `fn-comment-invp` "
+            "`fn-quoted-invp` `fn-unexecuted-invp`")], {})
+        self.assertEqual(result.resolved, 2)
+        self.assertEqual(set(result.unlisted), {
+            "fn-first-never-built", "fn-first-referenced-only",
+            "fn-comment-invp", "fn-quoted-invp", "fn-unexecuted-invp"})
+
+    def test_unknown_definer_condition_cannot_admit_either_branch(self):
+        source = """
+(defmacro define-choice (prefix)
+  (if (unmodelled-condition)
+      `(defun ,(intern-in-package-of-symbol
+                 (concatenate 'string (symbol-name prefix) "-yes") prefix) () t)
+    `(defun ,(intern-in-package-of-symbol
+               (concatenate 'string (symbol-name prefix) "-no") prefix) () nil)))
+(define-choice fn-choice)
+"""
+        self.assertEqual(scc.concatenated_macro_definitions(source), set())
+
+    def test_definer_conditions_distinguish_strings_from_symbols(self):
+        source = """
+(defmacro define-choice (prefix)
+  (let ((suffix (if (equal "nil" 'nil) "-wrong"
+                  (if "nil" "-truth" "-also-wrong"))))
+    `(defun ,(intern-in-package-of-symbol
+               (concatenate 'string (symbol-name prefix) suffix) prefix) () t)))
+(define-choice fn-choice)
+"""
+        self.assertEqual(scc.concatenated_macro_definitions(source), {"fn-choice-truth"})
+
+    def test_definer_keyword_conditions_use_the_actual_first_value(self):
+        source = """
+(defmacro define-view (prefix &key view)
+  (let ((name (intern-in-package-of-symbol
+                (concatenate 'string (symbol-name prefix) "-view") prefix)))
+    `(progn ,@(and view `((defthm ,name t))))))
+(define-view fn-visible :view t)
+(define-view fn-hidden :view nil :view t)
+(define-view fn-bad-call :view t :unknown t)
+(define-view fn-odd-call :view t :view)
+"""
+        self.assertEqual(scc.concatenated_macro_definitions(source), {"fn-visible-view"})
+
+    def test_runtime_layer_definer_resolves_both_actual_prefixes(self):
+        from ledger import Reader, head
+        source = (ROOT / "books/runtime-contract-layer.lisp").read_text()
+        calls = [form for path in (ROOT / "books/runtime-contract-echo.lisp",
+                                   ROOT / "books/post-transaction-layer.lisp")
+                 for form, _ in Reader(path.read_text()).top_level()
+                 if head(form) == "fn-rtc-def-layer"]
+        names = scc.concatenated_macro_definitions(source, calls)
+        for prefix in ("fn-rcl", "fn-ptl"):
+            self.assertIn(prefix + "-invp", names)
+            self.assertIn(prefix + "-x-deliver-types", names)
+            self.assertIn(prefix + "-host-landing-is-the-contract-step", names)
+            self.assertNotIn(prefix + "-never-built", names)
+            # The machine's supplied init is referenced, not renamed/defined.
+            self.assertNotIn(prefix + "-m-init", names)
+
     def test_a_def_generic_export_is_defined(self):
         # books/payload-arena.lisp: (def-generic fn-arena ... :exports
         # ((:update fn-arena-seal-buffer :logic fn-arena$a-seal-buffer) ...))

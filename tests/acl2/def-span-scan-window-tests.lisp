@@ -4,6 +4,11 @@
 (include-book "../../books/def-span-scan-window")
 (include-book "std/testing/assert-bang" :dir :system)
 
+; The exported pool theory is available to consumers but leaves every rule disabled.
+(assert-event
+ (not (intersectp-equal (theory-fn 'fn-dsw-pool-theory (w state))
+                       (current-theory-fn :here (w state)))))
+
 (defun dsw-t-map (o) (declare (xargs :guard t)) o)
 (def-span-scan-window dsw-t-id-copy () :shape :copy)
 (def-span-scan-window dsw-t-id-copy-string () :shape :copy-string)

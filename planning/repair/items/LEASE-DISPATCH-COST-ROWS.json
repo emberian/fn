@@ -1,0 +1,14 @@
+{
+ "file": "books/runtime-contract-host-lease.lisp",
+ "id": "LEASE-DISPATCH-COST-ROWS",
+ "notes": [
+  "10-12 11:26 retired in train C9 by lane/vertical-header-cost@e62edce23 (books/runtime-contract-host-lease-cost.lisp); cost_obligations --check 0 findings on integrate/20261012e"
+ ],
+ "owner": "builder-A",
+ "retired_by": "lane/vertical-header-cost (books/runtime-contract-host-lease-cost.lisp, derived rows), next train after C8",
+ "severity": "medium",
+ "source": "cost_obligations --check on dev 402b65786 (train C7 vertical-lease); found by A18 and the C8 Fungus pass",
+ "state": "landed",
+ "title": "Seven dispatched host-lease entries (fn-hld-begin, end, init, quantum, sent, window-base, workspace) have no def-cost row",
+ "updated": "2026-10-12T15:26:08Z"
+}

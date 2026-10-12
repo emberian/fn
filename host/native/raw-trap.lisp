@@ -77,6 +77,12 @@
   "T when the developer selector keeps the executable-counterpart path.  Safe
 for any caller to set: the counterpart evaluates the entry's whole guard.")
 
+(defun fnn-counterpart-if-defined (name)
+  "NAME's executable-counterpart symbol when this image's world defines it,
+else NIL (the seal leaves NAME to fnn-counterpart's fault at its call)."
+  (let ((symbol (find-symbol (symbol-name name) "ACL2_*1*_ACL2")))
+    (and symbol (fboundp symbol) symbol)))
+
 (defun fnn-raw-trap-fault (control &rest args)
   (error 'fnn-raw-dispatch-trap :message (apply #'format nil control args)))
 
@@ -102,6 +108,7 @@ for any caller to set: the counterpart evaluates the entry's whole guard.")
        (captured (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; raw symbol -> function object
        (traps (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; raw symbol -> its trap
        (arities (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; raw symbol -> formals count, -1 unknown
+       (targets (make-hash-table :test 'eq))   ; thread-confined: written only before fnn-raw-trap-seal (image build), read-only after; declared entry name -> (captured raw function, creator-p, counterpart symbol)
        (sealed nil)
        (session-p nil))
   (proclaim `(special ,slot))
@@ -150,11 +157,28 @@ for any caller to set: the counterpart evaluates the entry's whole guard.")
                              "raw-dispatch: ~(~a~) was redefined after its trap was installed; the new body is not captured"
                              raw))))
                  raw)
+               (counterpart (name &optional resolved)
+                 ;; Keep the symbol: a developer ACL2 session can redefine
+                 ;; its *1* binding after seal. APPLY must see the new body.
+                 (let ((symbol (or resolved (and sealed (third (gethash name targets))))))
+                   (if symbol
+                       (progn
+                         (unless (fboundp symbol)
+                           (fnn-fault "ACL2 executable counterpart missing: ~a" name))
+                         symbol)
+                     (fnn-counterpart name))))
                (target (name)
-                 ;; the function a dispatcher call of NAME applies
-                 (let ((raw (and (or (gethash name creators) (not *fnn-dispatch-counterpart*))
-                                 (gethash name dispatch))))
-                   (if raw (gethash raw captured) (fnn-counterpart name)))))
+                 ;; One lookup selects a sealed entry in either mode.
+                 (let ((entry (and sealed (gethash name targets))))
+                   (if entry
+                       (or (and (or (second entry) (not *fnn-dispatch-counterpart*))
+                                (first entry))
+                           (counterpart name (third entry)))
+                     ;; Unsealed sessions and undeclared names retain the
+                     ;; old raw selection and counterpart lookup/fault path.
+                     (let ((raw (and (or (gethash name creators) (not *fnn-dispatch-counterpart*))
+                                     (gethash name dispatch))))
+                       (if raw (gethash raw captured) (fnn-counterpart name)))))))
 
         (defun fnn-raw-dispatch-reset ()
           "Empty the table before an installation; the traps stay installed."
@@ -177,9 +201,25 @@ recorded).  CREATOR: a startup creator, dispatched raw in either mode."
 
         (defun fnn-raw-trap-seal (&key developer)
           "Close installation at the end of the image build, once.  DEVELOPER:
-whether `fn acl2 session' may run ACL2's loop in an extent."
+whether `fn acl2 session' may run ACL2's loop in an extent. Resolve every
+fn-interfaces entry's executable counterpart; the table is immutable once
+sealed. Unsealed calls and undeclared names keep the lookup/fault path."
           (when sealed
             (fnn-raw-trap-fault "raw-dispatch: the table is already sealed"))
+          ;; Resolve against the final loaded world, after io.lisp has
+          ;; supplied fnn-counterpart. A failed seal stays unsealed, so a
+          ;; retry starts fresh and no call reads a partially filled table.
+          (clrhash targets)
+          (dolist (entry (table-alist 'fn-interfaces (w *the-live-state*)))
+            ;; An entry this image's world does not define (a declaration
+            ;; another image serves) gets no row: a call of it keeps
+            ;; fnn-counterpart's fault, at the call, as before.
+            (let* ((name (car entry))
+                   (symbol (fnn-counterpart-if-defined name))
+                   (raw (gethash name dispatch)))
+              (when symbol
+                (setf (gethash name targets)
+                      (list (and raw (gethash raw captured)) (gethash name creators) symbol)))))
           ;; Assign the slot's thread-local storage index now, at build,
           ;; rather than on the first served call.
           (progv slots on (in-extent-p))
@@ -228,7 +268,7 @@ not raw-dispatched."
 symbol (bound to its trap) or its executable counterpart."
           (let ((raw (and (or (gethash name creators) (not *fnn-dispatch-counterpart*))
                           (gethash name dispatch))))
-            (or raw (fnn-counterpart name))))
+            (or raw (counterpart name))))
 
         (defun fnn-raw-dispatch-captured-p (name)
           "T when a dispatcher call of NAME applies its captured object."

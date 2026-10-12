@@ -176,6 +176,17 @@ class CostObligationsTests(unittest.TestCase):
         self.assertEqual(cost_obligations.shrunk_baseline({"fn-listed", "fn-gone", "fn-vanished"}, doc),
                          ["fn-listed"])
 
+    def test_a_new_entry_is_a_raise_and_a_base_entry_is_not(self):
+        # with the protected base given, fn-new (absent from the base, no
+        # def-cost) joins as the raise tools/ratchet.py judges; fn-old,
+        # undeclared on the base and never listed, still does not
+        root = tree([entry("fn-listed"), entry("fn-old"), entry("fn-new")], {}, {})
+        doc = cost_obligations.build(root)
+        base = {"entries": [{"name": "fn-listed"}, {"name": "fn-old"}]}
+        self.assertEqual(cost_obligations.shrunk_baseline({"fn-listed"}, doc, base),
+                         ["fn-listed", "fn-new"])
+        self.assertEqual(cost_obligations.shrunk_baseline({"fn-listed"}, doc), ["fn-listed"])
+
     def test_contracts_are_a_reviewed_base(self):
         root = tree([entry("fn-a")], {}, {})
         cdoc = cost_obligations.build_contracts(root)
