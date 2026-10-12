@@ -1045,9 +1045,9 @@
                   :guard (fn-sn-statep (fn-own-store o))
                   :guard-hints
                   (("Goal" :in-theory
-                    (e/d (fn-evc-recordp)
+                    (e/d (fn-evc-recordp fn-row-wire-of fn-held-wire)
                          (fn-ccar-completion-record-is-completion-record
-                          fn-apc-completion-row-names-p fn-row-wire-of
+                          fn-apc-completion-row-names-p
                           fn-apc-sub-stored-octets))))))
   (let ((sub (fn-own-inflight o))
         (record (fn-ccar-completion-record (fn-own-store o))))
@@ -1060,10 +1060,12 @@
                 (equal (fn-record-payload w)
                        (fn-apc-sub-stored-octets cfg sub (fn-own-node-secret o)
                                                  carry))))
-              :exec (fn-apc-completion-row-names-p
-                      record (fn-record-octets-string (fn-own-sub-msgid sub))
-                      (fn-apc-sub-stored-octets cfg sub (fn-own-node-secret o) carry)
-                      fn-arena))
+              :exec (let ((msgid (fn-record-octets-string (fn-own-sub-msgid sub))))
+                      (and (equal (fn-record-msgid record) msgid)
+                           (fn-apc-completion-row-names-p
+                            record msgid
+                            (fn-apc-sub-stored-octets cfg sub (fn-own-node-secret o) carry)
+                            fn-arena))))
          t)))
 
 (defthm fn-apc-completion-names-submission-p-is-reference
