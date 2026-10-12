@@ -342,7 +342,7 @@
 ; A release record whose evidence fields disagree with the decision ACL2
 ; computes from the state is refused: the record does not carry authority,
 ; it carries what the decision was, and replay recomputes it.
-(defun fn-bprl-apply-journal-record (s r pin-carry)
+(defun fn-bprl-apply-journal-record-with-pin-carry (s r pin-carry)
   (declare (xargs :guard t))
   (cond
    ((fn-bprl-release-recordp r)
@@ -359,6 +359,26 @@
           (list nil s nil)
         (list t next (list (list :undertaken (fn-bp-journal-nth 1 r)))))))
    (t (fn-bp-apply-journal-record s r))))
+
+; A non-release record never reaches the release decision's pin lookup.
+; In particular both receipt constructors build :receipt-intent records.
+(defthm fn-bprl-apply-nonrelease-pin-carry-independent-by-definition
+  (implies (not (fn-bprl-release-recordp r))
+           (equal (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry-a)
+                  (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry-b)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory
+            (union-theories '(fn-bprl-apply-journal-record-with-pin-carry)
+                            (theory 'minimal-theory)))))
+
+; The receipt authority path retains its original entry and arity.  Its
+; :receipt-intent records are independent of this nil carry by
+; fn-bprl-apply-nonrelease-pin-carry-independent-by-definition.  Pin-bearing execution
+; and replay explicitly use fn-bprl-apply-journal-record-with-pin-carry.
+(defun fn-bprl-apply-journal-record (s r)
+  (declare (xargs :guard t))
+  (fn-bprl-apply-journal-record-with-pin-carry s r nil))
+
 
 ; The three definitions the host release owner calls (host/bp-release-owner-
 ; host.lisp), landed from faf16519 (branch w25/bp-obligation-vertical) on
@@ -391,7 +411,7 @@
       (let ((answer (fn-bp-step s (fn-bp-restart-event))))
         (list t (fn-bp-result-state answer)
               (append effects (fn-bp-result-effects answer))))
-    (let ((answer (fn-bprl-apply-journal-record s (car records) pin-carry)))
+    (let ((answer (fn-bprl-apply-journal-record-with-pin-carry s (car records) pin-carry)))
       (if (not (car answer))
           (list nil s effects)
         (fn-bprl-replay-records

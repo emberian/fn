@@ -933,9 +933,9 @@
 
 (defthm fn-bprl-apply-journal-record-agrees-with-host-on-bp-records
   (implies (and (fn-prc-carryp pin-carry) (fn-bp-journal-recordp r))
-           (equal (fn-bprl-apply-journal-record s r pin-carry)
+           (equal (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry)
                   (fn-bp-apply-journal-record s r)))
-  :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record)
+  :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record-with-pin-carry)
                                   (fn-bp-journal-recordp
                                    fn-bprl-release-recordp
                                    fn-bprl-undertake-recordp
@@ -947,8 +947,8 @@
 ; the decision state, and its evidence fields are the computed evidence.
 (defthm fn-bprl-release-record-replays-decision-by-definition
   (implies (and (fn-prc-carryp pin-carry) (fn-bprl-release-recordp r)
-                (car (fn-bprl-apply-journal-record s r pin-carry)))
-           (and (equal (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s r pin-carry))
+                (car (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry)))
+           (and (equal (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record-with-pin-carry s r pin-carry))
                        (fn-bprl-decision-state
                         (fn-bprl-release-decision s (fn-bp-journal-nth 1 r) pin-carry)))
                 (equal (fn-bprl-record-evidence r)
@@ -956,7 +956,7 @@
                         (fn-bprl-release-decision s (fn-bp-journal-nth 1 r) pin-carry)))
                 (fn-bprl-decision-okp
                  (fn-bprl-release-decision s (fn-bp-journal-nth 1 r) pin-carry))))
-  :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record fn-bp-journal-nth)
+  :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record-with-pin-carry fn-bp-journal-nth)
                                   (fn-bprl-release-recordp
                                    fn-bprl-undertake-recordp
                                    fn-bp-apply-journal-record

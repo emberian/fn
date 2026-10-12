@@ -22,7 +22,7 @@
                        (fn-bp-config-policy-id config)
                        (fn-bp-config-lifetime config))))
     (if (and (fn-bp-journal-recordp record)
-             (car (fn-bprl-apply-journal-record s record pin-carry)))
+             (car (fn-bprl-apply-journal-record-with-pin-carry s record pin-carry)))
         record nil)))
 
 ; The transaction id is chosen above every id the recovered image has used,
@@ -66,13 +66,13 @@
     (if (and (consp old)
              (equal (fn-bp-attempt-status old) :restart-observed)
              (fn-bp-journal-recordp record)
-             (car (fn-bprl-apply-journal-record s record pin-carry)))
+             (car (fn-bprl-apply-journal-record-with-pin-carry s record pin-carry)))
         record
       nil)))
 
 (defun fn-bprq-pre-state (s retry pin-carry)
   (declare (xargs :guard t))
-  (if retry (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record s retry pin-carry)) s))
+  (if retry (fn-bp-journal-nth 1 (fn-bprl-apply-journal-record-with-pin-carry s retry pin-carry)) s))
 
 ; The workflow image after the plan's records (its retry request, if any,
 ; its attempt and the attempt's durable outcome), which is the image the host
@@ -80,9 +80,9 @@
 (defun fn-bprq-published-state (s retry attempt outcome pin-carry)
   (declare (xargs :guard t :verify-guards nil))
   (fn-bp-journal-nth
-   1 (fn-bprl-apply-journal-record
+   1 (fn-bprl-apply-journal-record-with-pin-carry
       (fn-bp-journal-nth
-       1 (fn-bprl-apply-journal-record (fn-bprq-pre-state s retry pin-carry) attempt pin-carry))
+       1 (fn-bprl-apply-journal-record-with-pin-carry (fn-bprq-pre-state s retry pin-carry) attempt pin-carry))
       outcome pin-carry)))
 
 ; Plan: (:request ATTEMPT OUTCOME (WORK ATTEMPT-ID GENERATION) ADU DESTINATION
@@ -100,8 +100,8 @@
     (if (not attempt)
         nil
       (let* ((outcome (list :outcome txid 0 :ordinary :durable))
-             (a1 (fn-bprl-apply-journal-record s1 attempt pin-carry))
-             (a2 (fn-bprl-apply-journal-record
+             (a1 (fn-bprl-apply-journal-record-with-pin-carry s1 attempt pin-carry))
+             (a2 (fn-bprl-apply-journal-record-with-pin-carry
                   (fn-bp-journal-nth 1 a1) outcome pin-carry))
              (generation (fn-bp-journal-nth 5 attempt))
              (result (fn-bpo-request-adu (fn-bp-journal-nth 1 a2)
@@ -238,7 +238,7 @@
                                   (fn-bp-find-work fn-bp-work-peer-eid
                                    fn-bprq-retry-record fn-bprq-pre-state
                                    fn-bp-state-works fn-bprq-attempt-record fn-bprq-next-txid
-                                   fn-bprl-apply-journal-record
+                                   fn-bprl-apply-journal-record-with-pin-carry
                                    fn-bpo-request-adu fn-bpo-result-okp
                                    fn-bpo-result-value
                                    ; the request's own theorems are not needed
@@ -262,7 +262,7 @@
                   (equal (fn-bp-journal-nth 3 r) work-id)
                   (equal (fn-bp-journal-nth 4 r) attempt-id))))
   :rule-classes nil
-  :hints (("Goal" :in-theory (disable fn-bprl-apply-journal-record
+  :hints (("Goal" :in-theory (disable fn-bprl-apply-journal-record-with-pin-carry
                                       fn-bp-apply-journal-record
                                       fn-bp-journal-recordp))))
 
@@ -386,7 +386,7 @@
         (list :refused reason)
       (let ((record (fn-bprq-recovery-record s outcome)))
         (if (and (fn-bp-journal-recordp record)
-                 (car (fn-bprl-apply-journal-record s record pin-carry)))
+                 (car (fn-bprl-apply-journal-record-with-pin-carry s record pin-carry)))
             (list :recover record)
           (list :refused :not-admitted))))))
 

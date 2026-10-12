@@ -16,7 +16,7 @@
             (equal (fn-bpiw-apply bp ion r pin-carry fn-arena)
                    (let ((a (fn-bp-apply-journal-record bp r)))
                      (list (car a) (nth 1 a) (nth 2 a) ion))))
-   :hints (("Goal" :in-theory (e/d (fn-bpiw-apply fn-bprl-apply-journal-record
+   :hints (("Goal" :in-theory (e/d (fn-bpiw-apply fn-bprl-apply-journal-record-with-pin-carry
                                     fn-bprl-release-recordp
                                     fn-bprl-undertake-recordp
                                     fn-bpiw-recovery-outcomep fn-bp-journal-nth)
@@ -36,9 +36,9 @@
 (local
  (defthm fn-bprq-bprl-apply-of-recovery-outcome
    (implies (and (fn-prc-carryp pin-carry) (fn-bpiw-recovery-outcomep r))
-            (equal (fn-bprl-apply-journal-record bp r pin-carry)
+            (equal (fn-bprl-apply-journal-record-with-pin-carry bp r pin-carry)
                    (fn-bp-apply-journal-record bp r)))
-   :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record
+   :hints (("Goal" :in-theory (e/d (fn-bprl-apply-journal-record-with-pin-carry
                                     fn-bprl-release-recordp
                                     fn-bprl-undertake-recordp
                                     fn-bpiw-recovery-outcomep fn-bp-journal-nth)
@@ -59,7 +59,7 @@
                                     fn-bpiw-recovery-outcomep
                                     fn-bp-journal-nth)
                                    (fn-bp-apply-journal-record
-                                    fn-bprl-apply-journal-record
+                                    fn-bprl-apply-journal-record-with-pin-carry
                                     fn-bprq-recovery-refusal
                                     fn-bp-journal-recordp))))))
 

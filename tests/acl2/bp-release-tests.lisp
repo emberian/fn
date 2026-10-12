@@ -269,25 +269,25 @@
              "policy-1" "terms-1" "home-incarnation-1"))
 (assert-event (fn-bprl-release-recordp *rl-release-record*))
 (assert-event (not (fn-bp-journal-recordp *rl-release-record*)))
-(assert-event (equal (fn-bprl-apply-journal-record *rl-receipted* *rl-release-record* nil)
+(assert-event (equal (fn-bprl-apply-journal-record-with-pin-carry *rl-receipted* *rl-release-record* nil)
                      (list t *rl-released* '((:released "work-1")))))
 ; The host-called function refuses the record it does not know.
 (assert-event (equal (car (fn-bp-apply-journal-record *rl-receipted* *rl-release-record*)) nil))
 ; A release record whose evidence disagrees with the computed decision is refused.
-(assert-event (equal (fn-bprl-apply-journal-record
+(assert-event (equal (fn-bprl-apply-journal-record-with-pin-carry
                       *rl-receipted*
                       '(:release "receipt-1" "work-1" "subject-other" "receipt-authority"
                                  "policy-1" "terms-1" "home-incarnation-1") nil)
                      (list nil *rl-receipted* nil)))
 ; Replaying the release twice is refused the second time.
-(assert-event (equal (car (fn-bprl-apply-journal-record *rl-released* *rl-release-record* nil)) nil))
-(assert-event (equal (fn-bprl-apply-journal-record *rl-enqueued* '(:undertake "work-1" 3) nil)
+(assert-event (equal (car (fn-bprl-apply-journal-record-with-pin-carry *rl-released* *rl-release-record* nil)) nil))
+(assert-event (equal (fn-bprl-apply-journal-record-with-pin-carry *rl-enqueued* '(:undertake "work-1" 3) nil)
                      (list t *rl-undertaken* '((:undertaken "work-1")))))
-(assert-event (equal (car (fn-bprl-apply-journal-record *rl-undertaken* '(:undertake "work-1" 3) nil)) nil))
+(assert-event (equal (car (fn-bprl-apply-journal-record-with-pin-carry *rl-undertaken* '(:undertake "work-1" 3) nil)) nil))
 ; An ordinary fn-bp record goes to the host-called function unchanged.
 (defconst *rl-transport-record* '(:transport "work-1" "attempt-0" 0 :forwarded))
 (assert-event (fn-bp-journal-recordp *rl-transport-record*))
-(assert-event (equal (fn-bprl-apply-journal-record *rl-undertaken* *rl-transport-record* nil)
+(assert-event (equal (fn-bprl-apply-journal-record-with-pin-carry *rl-undertaken* *rl-transport-record* nil)
                      (fn-bp-apply-journal-record *rl-undertaken* *rl-transport-record*)))
 
 ; These are the native workflow-host constructor subjects.  The frame and
@@ -307,23 +307,42 @@
                       (fn-bp-state-used-txs *rl-delivered*) 0)
                      11))
 (assert-event (equal (fn-bprl-receipt-auto-record
-                      *rl-delivered* *rl-receipt-octets* t nil)
+                      *rl-delivered* *rl-receipt-octets* t)
                      '(:receipt-intent 12 0 "receipt-1" "work-1" "subject-rl"
                        "receipt-authority" "dtn://peer/fn" "policy-1"
                        "home-incarnation-1" "authorization-context-1"
                        "terms-1")))
 (assert-event (null (fn-bprl-receipt-auto-record
-                     *rl-delivered* *rl-receipt-octets* nil nil)))
+                     *rl-delivered* *rl-receipt-octets* nil)))
+; Neither constructor's receipt-intent preflight inspects even a forged
+; carry.  The record is real and accepted, so this exercises the served arm.
+(assert-event
+ (let ((record (fn-bprl-receipt-auto-record
+                *rl-delivered* *rl-receipt-octets* t)))
+   (and (consp record)
+        (car (fn-bprl-apply-journal-record *rl-delivered* record))
+        (equal (fn-bprl-apply-journal-record-with-pin-carry
+                *rl-delivered* record nil)
+               (fn-bprl-apply-journal-record-with-pin-carry
+                *rl-delivered* record '(:forged-pin-carry))))))
+(assert-event
+ (let ((record (fn-bprl-receipt-intent-record
+                *rl-delivered* *rl-receipt-octets* 12 0 t)))
+   (and (consp record)
+        (equal (fn-bprl-apply-journal-record-with-pin-carry
+                *rl-delivered* record '(:first-arbitrary-carry))
+               (fn-bprl-apply-journal-record-with-pin-carry
+                *rl-delivered* record '(:second-arbitrary-carry))))))
 (assert-event (equal (fn-bprl-receipt-intent-record
-                      *rl-delivered* *rl-receipt-octets* 12 0 t nil)
+                      *rl-delivered* *rl-receipt-octets* 12 0 t)
                      '(:receipt-intent 12 0 "receipt-1" "work-1" "subject-rl"
                        "receipt-authority" "dtn://peer/fn" "policy-1"
                        "home-incarnation-1" "authorization-context-1"
                        "terms-1")))
 (assert-event (null (fn-bprl-receipt-intent-record
-                     *rl-delivered* *rl-receipt-octets* 12 0 nil nil)))
+                     *rl-delivered* *rl-receipt-octets* 12 0 nil)))
 (assert-event (null (fn-bprl-receipt-intent-record
-                     *rl-delivered* '(0 1 2) 12 0 t nil)))
+                     *rl-delivered* '(0 1 2) 12 0 t)))
 ; Wrong work and authority are decoded successfully, then refused by the
 ; stateful receipt decision. A duplicate after durable completion is refused.
 (assert-event
@@ -334,7 +353,7 @@
                               "receipt-authority" "dtn://peer/fn" "policy-1"
                               "home-incarnation-1" "authorization-context-1"
                               "terms-1"))
-        12 0 t nil)))
+        12 0 t)))
 (assert-event
  (null (fn-bprl-receipt-intent-record
         *rl-delivered*
@@ -343,9 +362,9 @@
                               "other-authority" "dtn://peer/fn" "policy-1"
                               "home-incarnation-1" "authorization-context-1"
                               "terms-1"))
-        12 0 t nil)))
+        12 0 t)))
 (assert-event (null (fn-bprl-receipt-intent-record
-                     *rl-receipted* *rl-receipt-octets* 13 0 t nil)))
+                     *rl-receipted* *rl-receipt-octets* 13 0 t)))
 (assert-event (equal (fn-bprl-release-record-for-journal
                       *rl-receipted* "receipt-1" nil)
                      *rl-release-record*))

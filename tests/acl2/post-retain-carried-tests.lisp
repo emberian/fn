@@ -714,3 +714,27 @@
       (eq (symbol-class 'fn-prc-pin-ids-loop (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-prc-release-ids-loop (w state)) :common-lisp-compliant)
       (eq (symbol-class 'fn-prc-refresh (w state)) :common-lisp-compliant)))
+
+; Host-premise establishment: nonempty record/release reads, the bucket
+; reader, empty/nonempty built roots, and both build and delta refreshes.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (mv-let (ok delta-trie) (fn-prc-delta *d14-prct-c1* *d14-prct-l2*)
+   (let* ((trie (fn-prc-build *d14-prct-l1*))
+         (pin (fn-rit-get "a1" 0 trie))
+         (release (fn-rit-get "c3" 0 trie))
+         (bucket (fn-rit-bucket-find "a1" (list 7 *d14-prct-a1*)))
+         (built (fn-prc-refresh nil *d14-prct-l1*))
+         (delta (fn-prc-refresh *d14-prct-c1* *d14-prct-l2*)))
+    (and pin (equal pin *d14-prct-a1*) (fn-rit-leafp pin)
+         release (equal release "c3") (fn-rit-leafp release)
+         bucket (equal bucket *d14-prct-a1*) (fn-rit-leafp bucket)
+         (not (fn-rit-get "zz" 0 trie))
+         (fn-rit-branchp trie)
+         (fn-rit-branchp (fn-prc-build (fn-retain-initial-state 100)))
+         (fn-prc-carryp nil) (fn-prc-carryp *d14-prct-c1*)
+         (equal ok t) (equal delta (cons *d14-prct-l2* delta-trie))
+         (fn-prc-carry-findsp built) (fn-prc-carry-findsp delta)
+         (fn-prc-ledger-findsp (car built))
+         (fn-prc-ledger-findsp (car delta)))))))

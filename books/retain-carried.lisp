@@ -54,6 +54,19 @@
          (fn-rit-get id (1+ i) (fn-midx-branch-get (char id i) node)))
         (t (fn-rit-bucket-find
             id (fn-ag-cdr (fn-midx-branch-get :end node))))))
+; A successful served lookup returns an actual leaf, including at :end.
+; This establishes the node premise from the reader, without assuming it.
+(defthm fn-rit-leafp-of-bucket-find
+  (implies (not (equal (fn-rit-bucket-find id xs) nil))
+           (fn-rit-leafp (fn-rit-bucket-find id xs)))
+  :hints (("Goal" :induct (fn-rit-bucket-find id xs))))
+(defthm fn-rit-leafp-of-get
+  (implies (not (equal (fn-rit-get id i node) nil))
+           (fn-rit-leafp (fn-rit-get id i node)))
+  :hints (("Goal" :induct (fn-rit-get id i node)
+           :in-theory (disable fn-rit-leafp fn-rit-bucket-find)))
+  :rule-classes nil)
+
 (defun fn-rit-hasp (id i node)
   (declare (xargs :guard (and (stringp id) (natp i))))
   (if (fn-rit-get id i node) t nil))
@@ -509,6 +522,12 @@
    (fn-prc-add-pins (fn-retain-pins ledger)
                     (fn-prc-add-releases (fn-retain-releases ledger) nil))
    (fn-prc-ledger-findsp ledger)))
+
+; The build always creates a root branch, even for an empty ledger.
+(defthm fn-rit-branchp-of-build
+  (fn-rit-branchp (fn-prc-build ledger))
+  :hints (("Goal" :in-theory (enable fn-prc-build fn-prc-mark fn-rit-branchp)))
+  :rule-classes nil)
 
 (local (in-theory (disable fn-prc-find-scan-is-find-id)))
 (defthm fn-prc-find-of-add-pin
@@ -1665,6 +1684,21 @@
 (defthm fn-prc-refresh-names-the-ledger
   (and (consp (fn-prc-refresh carry ledger))
        (equal (car (fn-prc-refresh carry ledger)) ledger)))
+
+; A marked refresh establishes the ledger premise used by the build/find
+; theorems. The host starts with nil and carries fn-prc-carryp thereafter.
+(defthm fn-prc-ledger-findsp-of-marked-refresh
+  (implies (and (fn-prc-carryp carry)
+                (fn-prc-carry-findsp (fn-prc-refresh carry ledger)))
+           (fn-prc-ledger-findsp (car (fn-prc-refresh carry ledger))))
+  :hints (("Goal" :in-theory (union-theories '(fn-prc-carryp)
+                                              (theory 'minimal-theory))
+           :use ((:instance fn-prc-carryp-of-refresh)
+                 (:instance fn-prc-refresh-names-the-ledger)
+                 (:instance fn-prc-find-okp-implies-ledger-findsp
+                            (ledger (car (fn-prc-refresh carry ledger)))
+                            (trie (cdr (fn-prc-refresh carry ledger)))))))
+  :rule-classes nil)
 
 (in-theory (disable fn-prc-carryp fn-prc-refresh fn-prc-delta fn-prc-set-okp
                     fn-prc-build))

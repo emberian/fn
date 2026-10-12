@@ -181,12 +181,11 @@
   (octets txid generation authorizedp state)
  (declare (xargs :stobjs state :mode :program
                   :guard (fn-cbor-octet-listp octets)))
- (let* ((pin-carry (fn-workflow-pin-carry-of state)))
-  (value (fn-bpcc-receipt-gate
+ (value (fn-bpcc-receipt-gate
          (fn-workflow-carry-state-of state)
          (fn-bprl-receipt-intent-record
           (f-get-global 'fn-workflow-state state)
-          octets txid generation authorizedp pin-carry)))))
+          octets txid generation authorizedp))))
 
 (definterface fn-workflow-receipt-record
   :class ::program

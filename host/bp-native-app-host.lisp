@@ -133,21 +133,19 @@
 
 (defun fn-owner-bp-receipt-release-record (view obs state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((pin-carry (fn-workflow-pin-carry-of state)))
   (value (fn-bpah-receipt-release-record view (fn-owner-config state)
                                          (fn-owner-bp-workflow-image state)
-                                         (fn-owner-bp-keyring state) obs pin-carry))))
+                                         (fn-owner-bp-keyring state) obs)))
 
 (definterface fn-owner-bp-receipt-release-record
   :class ::program)
 
 (defun fn-owner-bp-receipt-release-detail (view obs state)
   (declare (xargs :stobjs state :mode :program))
-  (let* ((pin-carry (fn-workflow-pin-carry-of state)))
   (value (fn-bpah-release-detail
           (fn-bpah-receipt-release-verdict
            view (fn-owner-config state) (fn-owner-bp-workflow-image state)
-           (fn-owner-bp-keyring state) obs pin-carry)))))
+           (fn-owner-bp-keyring state) obs))))
 
 (definterface fn-owner-bp-receipt-release-detail
   :class ::program)

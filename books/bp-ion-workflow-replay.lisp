@@ -201,7 +201,7 @@
             (equal (fn-bpiw-apply bp ion r pin-carry fn-arena)
                    (let ((a (fn-bp-apply-journal-record bp r)))
                      (list (car a) (nth 1 a) (nth 2 a) ion))))
-   :hints (("Goal" :in-theory (e/d (fn-bpiw-apply fn-bprl-apply-journal-record
+   :hints (("Goal" :in-theory (e/d (fn-bpiw-apply fn-bprl-apply-journal-record-with-pin-carry
                                     fn-bprl-release-recordp
                                     fn-bprl-undertake-recordp
                                     fn-bpiw-recovery-outcomep fn-bp-journal-nth)

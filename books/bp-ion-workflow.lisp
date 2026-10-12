@@ -110,7 +110,7 @@
               (list (fn-bpiw-routes ion)
                     (cons record (fn-bpiw-observations ion))))
       (list nil bp nil ion)))
-   (t (let ((answer (fn-bprl-apply-journal-record bp record pin-carry)))
+   (t (let ((answer (fn-bprl-apply-journal-record-with-pin-carry bp record pin-carry)))
         (list (car answer) (nth 1 answer) (nth 2 answer) ion)))))
 
 ; A recovery outcome is written only after a reopen, whose :restart fenced
