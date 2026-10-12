@@ -5,7 +5,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from tools.load import cells, driver, op_profile, workloads
+from tools.load import cells, driver, op_profile, pub_profile, workloads
 
 
 class ParserTests(unittest.TestCase):
@@ -92,6 +92,63 @@ gate FNN-OWNER-GATE-LEAVE 100 3.0
     def test_not_measured_reaches_cell_result(self):
         _, nm = cells.derive("op-prof", [{"not_measured": {"GROUP.syscalls": "sudo denied"}}])
         self.assertEqual(nm["GROUP.syscalls"], "sudo denied")
+
+
+class PublicationParserTests(unittest.TestCase):
+    def test_exit_counters_are_operation_totals(self):
+        got = pub_profile.parse_exit_consed("consed_bytes 6000 gc_ms 12.500000 cpu_ms 90.250000 write_bytes 8192\n")
+        self.assertEqual(got, {"consed_bytes": 6000, "gc_ms": 12.5,
+                               "profile_cpu_ms": 90.25, "profile_write_bytes": 8192})
+        got = pub_profile.parse_exit_consed("consed_bytes 0 gc_ms 1.5d+1 cpu_ms 2e+2 write_bytes unavailable")
+        self.assertEqual(got["gc_ms"], 15)
+        self.assertEqual(got["profile_cpu_ms"], 200)
+        self.assertIsNone(got["profile_write_bytes"])
+        for text in ("", "consed_bytes -10 gc_ms 0 cpu_ms 0 write_bytes 0", "consed_bytes 10 gc_ms 0 gcs 1"):
+            with self.assertRaises(ValueError):
+                pub_profile.parse_exit_consed(text)
+
+    def test_combined_report_parses_only_flat_frames(self):
+        flat = (Path(__file__).parent / "fixtures/load-sprof-flat.txt").read_text()
+        report = "=== flat ===\n" + flat + "=== graph ===\n 1 99 99.0 99 99.0 - GRAPH-ONLY\n"
+        self.assertEqual(pub_profile.parse_exit_report(report), op_profile.parse_sprof(flat))
+        with self.assertRaises(ValueError):
+            pub_profile.parse_exit_report(flat)
+
+    def test_publication_syscalls_are_integer_counts(self):
+        text = '''% time seconds usecs/call calls errors syscall
+ 50.00 0.050000 100 500 pread64
+ 25.00 0.025000 100 250 1 openat
+ 25.00 0.025000 250 100 fdatasync
+100.00 0.100000 850 1 total
+'''
+        got = pub_profile.parse_syscalls(text)
+        self.assertEqual(got["counts"]["pread64"], 500)
+        self.assertIsInstance(got["counts"]["pread64"], int)
+        self.assertEqual(got["counts"]["fdatasync"], 100)
+        self.assertEqual(got["counts"]["madvise"], 0)
+        self.assertEqual(got["top20"][0], {"syscall": "pread64", "count": 500})
+        with self.assertRaises(ValueError):
+            pub_profile.parse_syscalls("strace: ptrace denied")
+
+    def test_owner_open_path_is_observed(self):
+        replay = pub_profile.parse_owner_open("noise\nOWNER-OPEN open=full-replay reason=missing ms=1234\n")
+        self.assertEqual(replay["kind"], "replay")
+        checkpoint = pub_profile.parse_owner_open("OWNER-OPEN open=checkpoint:50000 suffix=0 ms=800\n")
+        self.assertEqual(checkpoint["kind"], "checkpoint")
+        self.assertEqual(checkpoint["checkpoint_records"], 50000)
+        with self.assertRaises(ValueError):
+            pub_profile.parse_owner_open("LISTENING 8119")
+
+    def test_publication_cell_resolution(self):
+        for cell_id, n in (("PUBPROF@50k", 50000), ("PUBPROF@10k", 10000)):
+            cell = workloads.resolve(cell_id)
+            self.assertEqual(cell.workload, "pub-prof")
+            self.assertEqual(cell.spec["store"]["preload"], n)
+            self.assertEqual(cell.spec["store"]["fixture"], "curve/n{N}")
+            self.assertTrue(cell.spec["store"]["require_fixture"])
+            self.assertTrue(cell.spec["own_nodes"])
+            self.assertEqual(cell.spec["preset"], "scale-1m")
+            self.assertEqual(cell.spec["phases"][0]["kind"], "pub_profile")
 
 
 class WindowTests(unittest.TestCase):
