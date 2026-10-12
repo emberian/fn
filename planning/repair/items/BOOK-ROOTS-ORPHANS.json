@@ -1,0 +1,12 @@
+{
+ "detail": "Each book: its owner roots it in the Makefile with a certify of record, or deletes it; then drops its EXCLUDED entry (the check refuses an entry that is covered or absent). B routes each to its owning seat. Books: books/acceptance-binding-held-gate.lisp books/acceptance-binding.lisp books/account-adoption-operation-source.lisp books/account-adoption-result.lisp books/account-adoption-turn-continuation.lisp books/account-config-generation-cursor.lisp books/account-config-history-cursor.lisp books/account-replay-source.lisp books/arena-reader-bound.lisp books/bp-received-raw-source.lisp books/bp-segmented-wire-job.lisp books/bp-wire-canonical-cursor.lisp books/bp-wire-primary-cursor.lisp books/consumer-account-durable-outcome-state.lisp books/consumer-authority-carried-fold.lisp books/consumer-authority-carried-result.lisp books/consumer-configured-authority-event.lisp books/consumer-configured-authority-replay.lisp books/consumer-configured-control-event.lisp books/consumer-control-row-cursor.lisp books/control-config-projection.lisp books/held-composite-fields.lisp books/history-config-completion.lisp books/history-config-journal-state.lisp books/index-backing-publication-row-carry.lisp books/index-backing-row-carry.lisp books/index-backing-served-producer-carry.lisp books/index-incoming-request.lisp books/owner-catalog-root-recovery.lisp books/owner-report-writer-entry.lisp books/page-maintenance-lease.lisp books/page-read-bindings-transaction.lisp books/recovery-file-turn.lisp books/recovery-open-origin.lisp books/recovery-page-file-controller.lisp books/snapshot-initial-custody.lisp books/snapshot-initial-request.lisp ",
+ "file": "tools/book_roots_check.py",
+ "id": "BOOK-ROOTS-ORPHANS",
+ "notes": [],
+ "owner": "builder-B",
+ "severity": "medium",
+ "source": "tools/book_roots_check.py first run at dev 402b65786 (lane b-cost-gate, 10-12)",
+ "state": "open",
+ "title": "37 books under books/ are outside every Makefile root's closure, so no certify of record covers them",
+ "updated": "2026-10-12T12:46:48Z"
+}

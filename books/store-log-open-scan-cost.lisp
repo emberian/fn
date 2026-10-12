@@ -3,10 +3,11 @@
 ; fnn-heap-log-suffix calls once per record, the head's start and the
 ; settled answer after the walk.
 (in-package "ACL2")
+(include-book "image-world")
 (include-book "def-cost")
 (include-book "store-log-open-scan")
 
-(def-cost fn-lgo-fold :unaccounted (fn-lgo-add))
+(def-cost fn-lgo-fold :unaccounted (fn-lzr-dictsp fn-lgo-add))
 (def-cost fn-lgo-scan-plan
   :unaccounted (fn-lgs-indices fn-lgs-max-index fn-lgo-min-index fn-lgs-open-plan))
 
