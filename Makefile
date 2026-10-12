@@ -361,6 +361,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-keyset-check-tests \
 	books/def-cost \
 	tests/acl2/def-cost-tests \
+	books/def-cost-lambda-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \

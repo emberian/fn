@@ -514,7 +514,8 @@
    (cond ((or (atom term) (eq (car term) 'quote)) nil)
          ((member-eq (car term) '(fn-cost-unaccounted fn-cost-unaccounted-conses)) (list term))
          ((consp (car term))
-          (union-equal (fn-cost-unaccounted-terms (car (last (car term))))
+          (union-equal (sublis-var-lst (pairlis$ (cadr (car term)) (cdr term))
+                                       (fn-cost-unaccounted-terms (car (last (car term)))))
                        (fn-cost-unaccounted-terms-lst (cdr term))))
          (t (fn-cost-unaccounted-terms-lst (cdr term)))))
  (defun fn-cost-unaccounted-terms-lst (terms)
@@ -585,6 +586,13 @@
                 (fn-cost-derive-dimension fn w dimension)
                 (cond
                  (msg (mv msg nil nil nil nil nil))
+                 ((not (subsetp-eq
+                        (all-vars1-lst (fn-cost-unaccounted-terms-lst (list rcost bcost)) nil)
+                        (getpropc fn 'formals nil w)))
+                  (mv (msg "~x0: unaccounted cost terms ~x1 have free variables outside formals ~x2"
+                           fn (fn-cost-unaccounted-terms-lst (list rcost bcost))
+                           (getpropc fn 'formals nil w))
+                      nil nil nil nil nil))
                  ((not (and (subsetp-eq unaccounted (fn-cost-get (fn-cost-dimension-key :unaccounted dimension) kvs))
                             (subsetp-eq (fn-cost-get (fn-cost-dimension-key :unaccounted dimension) kvs) unaccounted)))
                   (mv (msg "~x0: the derivation leaves ~&1 unaccounted (no contract, no ~
