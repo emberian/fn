@@ -192,7 +192,7 @@ def run(run, ph, driver):
         raise driver.CellError("unknown profile operations")
     # Unique POST IDs even if the fixture was made by this harness's article generator.
     run.ctr._ids = __import__("itertools").count(int(time.time_ns()))
-    ids = {}
+    ids, skipped = {}, {}
     c = run.conn()
     try:
         if c is None:
@@ -200,6 +200,11 @@ def run(run, ph, driver):
         for kib in (2, 128):
             if "ARTICLE_%dk" % kib in ops:
                 if driver.post_one(c, run.ctr, kib * 1024, retries=1) is None:
+                    if kib == 128:
+                        skipped["ARTICLE_128k"] = ("setup POST of a 128 KiB article refused under preset %s "
+                                                   "(its article limit); T-OPS measures 128 KiB on big-articles"
+                                                   % run.spec.get("preset"))
+                        continue
                     raise driver.CellError("setup ARTICLE_%dk POST refused" % kib)
                 ids[kib] = driver.mid(run.ctr.known[-1])
     finally:
@@ -209,7 +214,8 @@ def run(run, ph, driver):
     if not known:
         raise driver.CellError("profile needs discoverable fixture articles")
     base_env, base_launcher = dict(node.env), node.launcher
-    result = {}
+    result = {op: {"not_measured": {"op": why}} for op, why in skipped.items()}
+    ops = [op for op in ops if op not in skipped]
     for op in ops:
         record = {"not_measured": {}, "windows": {}, "sprof": {},
                   "counter_scope": "process-wide; clean uses only a trigger/counter observer, no encapsulation"}
