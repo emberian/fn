@@ -64,8 +64,7 @@
 ;            the characters [I, END) of the string DSS-STR, each read as its code
 ;            and mapped by MAP, appended onto a distinct output instance under the
 ;            same CAPACITY contract (the one extend, one put per octet).  List model:
-;            the :copy list of `fn-dss-string-octets' (each character's code;
-;            `fn-nntp-string-octets' on a string).  OVER's column fields and Xref
+;            the :copy list of `fn-nntp-string-octets' (each character's code).  OVER's column fields and Xref
 ;            names are strings (books/over-render.lisp, Builder O).
 ;   :stream  (NAME CTX.. S I END LAST CAP fn-octets fn-dss-out): a bounded
 ;            transducer.  STEP (a function of S, the octet and CTX returning
@@ -161,6 +160,7 @@
 
 (in-package "ACL2")
 (include-book "octets-stobj")
+(include-book "nntp-syntax")
 (include-book "def-buffer")
 (include-book "assumptions-spans")
 
@@ -783,18 +783,7 @@
 ; source is a Lisp string's characters [I, END), each read as its char-code octet, onto a
 ; distinct output instance under the :copy contract (capacity CAP, the one extend, one
 ; put per octet, A-RESERVED).  Its meaning is the :copy shape's over the string's octets
-; (`fn-dss-string-octets'): every theorem below is the :copy theorem at that list.
-
-;; The string's octets: each character's code (the list model of the source; equal to
-;; `fn-dss-string-octets' and `fn-record-string-octets', which are stated above this
-;; book's includes; books/over-render.lisp proves the equality).
-(defun fn-dss-string-octets-aux (cs)
-  (declare (xargs :guard (character-listp cs)))
-  (if (consp cs) (cons (char-code (car cs)) (fn-dss-string-octets-aux (cdr cs))) nil))
-
-(defun fn-dss-string-octets (dss-str)
-  (declare (xargs :guard t))
-  (if (stringp dss-str) (fn-dss-string-octets-aux (coerce dss-str 'list)) nil))
+; (`fn-nntp-string-octets`): every theorem below is the :copy theorem at that list.
 
 (defun fn-dss-scopy-loop (i end j dss-str fn-dss-out)
   (declare (xargs :stobjs fn-dss-out :verify-guards nil
@@ -830,31 +819,32 @@
   (declare (xargs :stobjs fn-dss-out :verify-guards nil))
   (let ((dss-m (nfix (- (nfix end) (nfix i)))))
     (if (<= (+ (fn-dss-out-len fn-dss-out) dss-m) (nfix cap))
-        (+ dss-m (len (fn-dss-copy-list (fn-oct-slice-list i end (fn-dss-string-octets dss-str)))))
+        (+ dss-m (len (fn-dss-copy-list (fn-oct-slice-list i end (fn-nntp-string-octets dss-str)))))
       0)))
 
 ; The string's octet at K is its character's code.
 (local
  (defthm fn-dss-string-octets-aux-nth
    (implies (and (natp k) (< k (len cs)))
-            (equal (nth k (fn-dss-string-octets-aux cs)) (char-code (nth k cs))))
-   :hints (("Goal" :in-theory (enable fn-dss-string-octets-aux nth)))))
+            (equal (nth k (fn-nntp-string-octets-aux cs)) (char-code (nth k cs))))
+   :hints (("Goal" :in-theory (enable fn-nntp-string-octets-aux nth)))))
 
 (local
  (defthm fn-dss-string-octets-get
    (implies (and (stringp dss-str) (natp k) (< k (length dss-str)))
-            (equal (fn-octets-get k (fn-dss-string-octets dss-str))
+            (equal (fn-octets-get k (fn-nntp-string-octets dss-str))
                    (char-code (char dss-str k))))
-   :hints (("Goal" :in-theory (enable fn-oct-get-is-nth fn-dss-string-octets char)))))
+   :hints (("Goal" :in-theory (enable fn-oct-get-is-nth fn-nntp-string-octets char)))))
 
 (local
  (defthm fn-dss-scopy-loop-is-copy-loop
    (implies (and (stringp dss-str) (<= (nfix end) (length dss-str)))
             (equal (fn-dss-scopy-loop i end j dss-str fn-dss-out)
-                   (fn-dss-copy-loop i end j (fn-dss-string-octets dss-str) fn-dss-out)))
+                   (fn-dss-copy-loop i end j (fn-nntp-string-octets dss-str) fn-dss-out)))
    :hints (("Goal" :induct (fn-dss-scopy-loop i end j dss-str fn-dss-out)
-            :in-theory (e/d () (fn-oct-slice-list-is-take-nthcdr))
-            :expand ((fn-dss-copy-loop i end j (fn-dss-string-octets dss-str) fn-dss-out))))))
+            :in-theory (e/d (fn-oct-get-is-nth fn-nntp-string-octets char)
+                            (fn-oct-slice-list-is-take-nthcdr))
+            :expand ((fn-dss-copy-loop i end j (fn-nntp-string-octets dss-str) fn-dss-out))))))
 
 (defthm fn-dss-scopy-is-list
   (implies (and (true-listp fn-dss-out) (stringp dss-str) (<= (nfix end) (length dss-str)))
@@ -862,9 +852,9 @@
                   (if (<= (+ (len fn-dss-out) (nfix (- (nfix end) (nfix i)))) (nfix cap))
                       (mv :done (append fn-dss-out
                                         (fn-dss-copy-list
-                                         (fn-oct-slice-list i end (fn-dss-string-octets dss-str)))))
+                                         (fn-oct-slice-list i end (fn-nntp-string-octets dss-str)))))
                     (mv :refused fn-dss-out))))
-  :hints (("Goal" :use ((:instance fn-dss-copy-is-list (fn-octets (fn-dss-string-octets dss-str))))
+  :hints (("Goal" :use ((:instance fn-dss-copy-is-list (fn-octets (fn-nntp-string-octets dss-str))))
            :in-theory (e/d (fn-dss-scopy fn-dss-copy) (fn-dss-copy-is-list fn-dss-copy-loop
                                                        fn-oct-slice-list-is-take-nthcdr)))))
 
@@ -872,22 +862,23 @@
  (defthm fn-dss-scopy-work-is-copy-work
    (implies (and (stringp dss-str) (<= (nfix end) (length dss-str)))
             (equal (fn-dss-scopy-work i end dss-str)
-                   (fn-dss-copy-work i end (fn-dss-string-octets dss-str))))
+                   (fn-dss-copy-work i end (fn-nntp-string-octets dss-str))))
    :hints (("Goal" :induct (fn-dss-scopy-work i end dss-str)
-            :expand ((fn-dss-copy-work i end (fn-dss-string-octets dss-str)))))))
+            :in-theory (enable fn-oct-get-is-nth fn-nntp-string-octets char)
+            :expand ((fn-dss-copy-work i end (fn-nntp-string-octets dss-str)))))))
 
 (defthm fn-dss-scopy-work-bound
   (implies (and (stringp dss-str) (<= (nfix end) (length dss-str)))
            (<= (fn-dss-scopy-work i end dss-str)
                (+ 1 (* (+ 1 (fn-dss-copy-cmax)) (nfix (- (nfix end) (nfix i)))))))
   :rule-classes :linear
-  :hints (("Goal" :use ((:instance fn-dss-copy-work-bound (fn-octets (fn-dss-string-octets dss-str)))))))
+  :hints (("Goal" :use ((:instance fn-dss-copy-work-bound (fn-octets (fn-nntp-string-octets dss-str)))))))
 
 (defthm fn-dss-scopy-write-charge-bound
   (<= (fn-dss-scopy-write-charge i end cap dss-str fn-dss-out)
       (* 2 (nfix (- (nfix end) (nfix i)))))
   :rule-classes :linear
-  :hints (("Goal" :use ((:instance fn-dss-copy-write-charge-bound (fn-octets (fn-dss-string-octets dss-str))))
+  :hints (("Goal" :use ((:instance fn-dss-copy-write-charge-bound (fn-octets (fn-nntp-string-octets dss-str))))
            :in-theory (enable fn-dss-copy-write-charge))))
 
 ; =============================================================================
@@ -2689,7 +2680,7 @@
                  (equal (,name ,@ctx i end cap dss-str fn-dss-out)
                         (if (<= (+ (len fn-dss-out) (nfix (- (nfix end) (nfix i)))) (nfix cap))
                             (mv :done (append fn-dss-out
-                                              (,lst ,@ctx (fn-oct-slice-list i end (fn-dss-string-octets dss-str)))))
+                                              (,lst ,@ctx (fn-oct-slice-list i end (fn-nntp-string-octets dss-str)))))
                           (mv :refused fn-dss-out))))
         :hints (("Goal" :use (,(fn-dss-use-contract mc elt)
                               (:functional-instance fn-dss-scopy-is-list ,@subst))
@@ -2712,7 +2703,7 @@
         (declare (xargs :stobjs fn-dss-out :verify-guards nil))
         (let ((dss-m (nfix (- (nfix end) (nfix i)))))
           (if (<= (+ (fn-dss-out-len fn-dss-out) dss-m) (nfix cap))
-              (+ dss-m (len (,lst ,@ctx (fn-oct-slice-list i end (fn-dss-string-octets dss-str)))))
+              (+ dss-m (len (,lst ,@ctx (fn-oct-slice-list i end (fn-nntp-string-octets dss-str)))))
             0)))
       (defthm ,wcb
         (<= (,wc ,@ctx i end cap dss-str fn-dss-out)
