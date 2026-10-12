@@ -84,7 +84,7 @@
 (def-cost fn-bpsp-node-capacity
   :unaccounted (fn-bpsp-node-wire-span fn-bpnpf-held-octets fn-bpnpf-rows fn-bpnpf-adu-octets
                 fn-bpsp-capacity-octets))
-(def-cost fn-mo-serve-pools :unaccounted (fn-crv-pool-budget fn-prstartup-launch-extra))
+(def-cost fn-mo-serve-pools :unaccounted (fn-crv-pool-budget fn-prstartup-launch-extra true-list-fix))
 (def-cost fn-prstartup-serve-store-need
   :unaccounted (fn-prstartup-serve-limit fn-prstartup-serve-protected))
 (def-cost fn-mo-serve-decide
