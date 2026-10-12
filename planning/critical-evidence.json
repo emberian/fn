@@ -197,6 +197,13 @@
    "mutation": "tests/acl2/store-log-buffer-tests.lisp::every-record-is-non-empty",
    "provenance": "keystone_critical.py --declare sha256:6d3e60d51a45c05c412a1054dc71a53ee3d40621ec8649bcd083653b0ef47bbe"
   },
+  "fn-lgb-next-record-advances-the-cursor": {
+   "subject": "fn-lgb-next-record",
+   "host_test": "tests/test_native_log.py::test_append_then_scan_on_both_images",
+   "trace_witness": "tests/acl2/store-log-buffer-tests.lisp::fn-lgb-next-record-advances-the-cursor",
+   "mutation": "tests/acl2/store-log-buffer-tests.lisp::next-one-too-far",
+   "provenance": "keystone_critical.py --declare sha256:cdd0278ac0b340e1a7ee6371e464f5d2ab43e4701e6672308f3d85c7d5de8d32"
+  },
   "fn-lgb-next-record-descriptor-is-the-attached-place": {
    "subject": "fn-lgb-next-record",
    "host_test": "tests/test_native_recovery.py::test_author_keyring_rotation_checkpoint_matches_full_replay",

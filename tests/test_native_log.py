@@ -64,7 +64,8 @@ def lines(result):
 # the entry decision fn-lg-entry-okp over the buffer, so every accepted entry
 # holds the 32-octet chain field; classifying the stop's entry by
 # fn-lgb-broken) and whose cursor per record is fn-lgb-next-record,
-# returning one record and its next cursor; test_append_then_scan_on_both_images
+# returning one record and its next cursor (it composes fn-lgb-span's
+# window, fn-lgb-slice and fn-lgb-descriptor); test_append_then_scan_on_both_images
 # reads five three-record batch entries back through it on both images.
 @unittest.skipUnless(DEVELOPER and PRODUCTION,
                      "FN_NATIVE_DEVELOPER_HOST and FN_NATIVE_HOST name the images")
