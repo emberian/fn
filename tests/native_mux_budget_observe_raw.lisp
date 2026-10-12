@@ -1,4 +1,4 @@
-;;; The budget install observes the machine and the core file before its owner
+;;; The budget install observes memory coordinates and the core file before its owner
 ;;; section (lock discipline R2): no stat or /proc read under the owner mutex.
 (require :sb-posix)
 (require :sb-bsd-sockets)
@@ -11,7 +11,7 @@
 (defvar *seen* nil)
 (defun observe (name) (push name *seen*) (when *in-section* (push name *violations*)))
 (defun fnn-owner-service-store (service) (declare (ignore service)) :store)
-(defun fnn-heap-machine-octets () (observe :machine) 1000)
+(defun fnn-heap-machine-octets () (error "retired resident/reservation comparison reached"))
 (defun fnn-heap-core-octets () (observe :core) 10)
 (defun fnn-owner-serialized (service cid thunk &optional class)
   (declare (ignore service cid class))
@@ -20,7 +20,11 @@
 (defun fnn-mux-thread-stack-octets () 5)
 (defun fnn-owner-core (name &rest args) (declare (ignore name)) (push args *seen*) :hold)
 (defun fnn-store-config (store) store)
+(defun fnn-store-root (store) (declare (ignore store)) "/fixture")
+(defun fnn-gc-nursery-octets () 7)
+(defun fnn-extent-cache-limit () 8)
 (defun fnn-owner-service-reclaim-live (service) (declare (ignore service)) nil)
+(defun fnn-owner-service-output-resources (service) (declare (ignore service)) nil)
 (defun fnn-owner-syncer-install (&rest args) (declare (ignore args)))
 (defun fnn-owner-output-install (&rest args) (declare (ignore args)))
 ;; The real installer initializes in-memory lease state; it observes no files.
@@ -50,6 +54,6 @@
 (unless (eq (fnn-mux-budget-install :service nil) :hold) (error "decision"))
 (when *violations* (error "observed inside the owner section: ~s" *violations*))
 (unless (member :lease-install *seen*) (error "lease install missing"))
-(unless (and (member :machine *seen*) (member :core *seen*) (member :memory *seen*))
+(unless (and (member :core *seen*) (member :memory *seen*))
   (error "observations missing"))
 (format t "native mux budget observe: PASS~%")

@@ -1014,7 +1014,8 @@ class Run:
 
     def phase_fresh_start(self, ph):
         """L-FRESH (absorbed from tools/load_fresh_start.py): per limit, a fresh store, the node started the way an
-        installed node starts (packaging/fn: the image's heap probe, which may refuse the profile on this machine)
+        installed node starts (packaging/fn: the probe checks pools, store reopen and address space;
+        configure derives C' from the memory gate, or refuses when no connection fits)
         inside `systemd-run --user --scope -p MemoryMax=LIMIT -p MemorySwapMax=0`, then one POST and one ARTICLE."""
         from tests import native_harness as h
         image = self.node.target.path
@@ -1150,8 +1151,9 @@ class Run:
         return {"prof": res, "reps": K, "hooked": True}
 
     def phase_conn_capacity(self, ph):
-        """Per preset: the decided default cap (no key in fn.toml), then the largest `[server] max_connections` the image
-        admits (doubling, then 3 bisection steps), the RSS per held connection and the refusal line past the cap."""
+        """Per preset: the served capacity the node states, then the largest live exposure-connections request
+        it admits (doubling, then 3 bisection steps), RSS per held connection and the greeting past that capacity.
+        C' is configure's memory-gate result; a profile-sized connection-budget run refusal is retired."""
         m, _ = _clients()
         data = self.args.data
         image_node = self.node
@@ -1175,7 +1177,17 @@ class Run:
                     t["policy_set"] = node.policy_set("exposure-connections", mc)
                 time.sleep(1)
                 base = (proc_snapshot(node.pid) or {}).get("vmrss")
-                want = (mc or 32) + 1
+                report = node.operator("status")
+                capacity = re.search(r"^exposure capacity connections=\d+ capacity=(\d+) ", report, re.M)
+                if capacity is None:
+                    raise CellError("running status did not state exposure capacity: " + report[-400:])
+                t["served_capacity"] = int(capacity.group(1))
+                # The runtime's own line accounts for C' after a live change.
+                log = (node.work / ("owner.%d.err" % node.err_n)).read_text("utf-8", "replace")
+                memory = re.findall(r"^memory capacity=\d+ of \d+ bound-by=\S+ sum=\d+ MB limit=\d+ MB$",
+                                    log, re.M)
+                t["memory_capacity_line"] = memory[-1] if memory else None
+                want = t["served_capacity"] + 1
                 held, greetings, last = [], collections.Counter(), None
                 for i in range(want):
                     # One loopback source address per 16,384 connections: a single

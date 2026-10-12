@@ -1,4 +1,4 @@
-"""The budget install observes machine and core figures off the owner section."""
+"""The budget install observes memory coordinates and core figures off the owner section."""
 from pathlib import Path
 import shutil
 import subprocess

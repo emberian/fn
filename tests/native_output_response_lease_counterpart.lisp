@@ -48,11 +48,12 @@
 (let* ((ledger (fnn-core 'create-fn-resource-ledger))
        (policy '(16777216 1048576))
        (dynamic (sb-ext:dynamic-space-size))
-       (store-need (fnn-core 'fn-heap-figure-octets *fn-heap-small-profile*
-                            (sb-kernel:dynamic-usage) 0))
+       ;; This isolated lease fixture has no Store.  Delete the retired
+       ;; whole-profile startup floor; protect the runtime actually captured.
+       (occupied (sb-kernel:dynamic-usage))
        (service (%make-fnn-owner-service :output-ledger ledger)))
-  (unless (eq (first (fnn-call 'fn-rlo-install dynamic store-need nil policy 4 ledger)) :installed)
-    (error "actual captured profile cannot install lease fixture"))
+  (unless (eq (first (fnn-call 'fn-rlo-install dynamic occupied nil policy 4 ledger)) :installed)
+    (error "actual captured runtime cannot install lease fixture"))
   (setq *fnn-dispatch-counterpart* t)
   (let* ((identity (second (fnn-call 'fn-rid-response '(:connection 7 11) 8)))
          (grant (fnn-owner-output-issue service identity))

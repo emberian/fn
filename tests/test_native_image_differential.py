@@ -133,8 +133,8 @@ def normalize(data, *roots):
     for root in roots:
         text = text.replace(str(root), "<T>")
     text = re.sub(r"\bpid[= ]\d+", "pid=<N>", text)
-    # heap-figure's figure counts the image's core file (books/heap-figure.lisp
-    # fn-heap-figure-octets): the full core is larger by design, an input.
+    # The run reserves its image content + LIMIT + pools (fn-mo-serve-decide);
+    # offline commands retain their own sizing.  Image content is an input.
     text = re.sub(r"\bheap=\d+ MB", "heap=<core-dependent> MB", text)
     text = re.sub(r"\breservation=\d+ MB", "reservation=<core-dependent> MB", text)
     # Wall-clock readings: a file's modification time, an accept's time.

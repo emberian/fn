@@ -30,8 +30,9 @@
 (let* ((ledger (fnn-core 'create-fn-resource-ledger))
        (policy '(16777216 1048576))
        (dynamic (sb-ext:dynamic-space-size))
-       (core-dynamic (sb-kernel:dynamic-usage))
-       (store-need (fnn-core 'fn-heap-figure-octets *fn-heap-small-profile* core-dynamic 0))
+       ;; This isolated custody fixture has no Store.  Delete the retired
+       ;; whole-profile startup floor; protect the runtime actually captured.
+       (occupied (sb-kernel:dynamic-usage))
        (text (make-string 1048576 :initial-element #\X)))
   ;; The private constructor used the actual validated creator route. All
   ;; semantics below use ordinary executable counterparts, no raw escape.
@@ -40,7 +41,7 @@
                  fn-rlo-output fn-rlo-physical fn-rlo-drainedp fn-sl-step))
     (unless (eq (fnn-dispatch-symbol name) (fnn-counterpart name))
       (error "output probe did not use normal semantic counterpart: ~s" name)))
-  (unless (eq (first (fnn-call 'fn-rlo-install dynamic store-need nil policy 4 ledger)) :installed)
+  (unless (eq (first (fnn-call 'fn-rlo-install dynamic occupied nil policy 4 ledger)) :installed)
     (error "actual captured heap cannot fund output fixture"))
   (unless (fnn-core 'fn-rlo-drainedp ledger) (error "fresh output pool not drained"))
   (let* ((issued (fnn-call 'fn-rlo-issue 7 11 8 :none ledger))

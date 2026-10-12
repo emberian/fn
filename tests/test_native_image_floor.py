@@ -275,9 +275,9 @@ class DeepInputStackTests(unittest.TestCase):
         probe = node.invoke("heap", "--", "operator", node.config, "run")
         self.assertEqual(probe.returncode, 0, probe.stderr)
         stack = int(re.search(rb"stack=(\d+) KB", probe.stdout).group(1))
-        # The heap the same probe decides for this store (the run's full-store
-        # figure, ADMISSION-RESERVES-NOT-REOPEN): the node starts at it, as
-        # the installed launcher would; a pinned figure below it is refused.
+        # The probe's launch holds core content + LIMIT + pools.  Start at
+        # that address-space reservation and the probe's control stack;
+        # configure derives C' within the resident LIMIT.
         node.decided_heap_mb = int(re.search(rb"heap=(\d+) MB", probe.stdout).group(1))
         return node, stack
 

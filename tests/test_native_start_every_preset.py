@@ -3,7 +3,8 @@
 A bare launch of an image -- no SBCL_USER_ARGS, no FN_TEST_HEAP_MB, no
 installed layout -- decides its heap per command, as packaging/fn's installed
 branch does (tools/build_native_host.sh splices packaging/fn's fn_decide_heap
-into the launcher): the image's `heap -- ARGV` probe, ACL2's fn-heap-decide.
+into the launcher): the image's `heap -- ARGV` probe, ACL2's fn-mo-serve-decide
+for a served run (fn-heap-command-decide for other commands).
 The launcher used to run every command at the small preset's figure (1767 MB
 at 207ed2afd), so a default-profile store was refused at cold start
 (:default-pool-read-headroom-unavailable, books/page-read-startup.lisp
@@ -13,9 +14,11 @@ fn-prstartup-plan) and a BP node more so, and nothing started bare noticed
 For each preset (small, development, scale) and each node type -- the
 operator's served run, the developer store owner (`owner run`) and a BP node
 (`bp-node serve`), on the developer image and on the DTN developer image where
-it has the verb (the DTN image omits the NNTP service, so its served run is not an NNTP start) -- the node must reach its LISTENING announcement.  A preset the
-machine cannot hold is refused by the probe by name (machine-cannot-hold-profile)
-and is reported as skipped, never as started.  The teeth: the same node at
+it has the verb (the DTN image omits the NNTP service, so its served run is not an NNTP start) -- the node must reach its LISTENING announcement.  Init may
+refuse a requested preset's target budget; once written, the run launches at
+resident LIMIT with its pools and serves at the gate's C'.  Its probe refuses
+unobserved memory, pools or observed store reopen that cannot fit, or address
+space that cannot hold the reservation.  The teeth: the same node at
 85% of its decided heap, named explicitly, is refused at cold start by ACL2 and
 never announces.
 """
