@@ -10,11 +10,12 @@
 (include-book "store-identity-traces-tests")
 
 
-(set-guard-checking :none)
 
-(defconst *rfcllive-wire*
-  (fn-record-make 1 1 1 "<rfcllive@example.invalid>" '(76 13 10) *sit-groups*
-                  "rfcllive-obligation" "rfcllive-subject" "rfcllive-release" 2 841000000))
+(with-guard-checking-event
+ :none
+ (defconst *rfcllive-wire*
+   (fn-record-make 1 1 1 "<rfcllive@example.invalid>" '(76 13 10) *sit-groups*
+                   "rfcllive-obligation" "rfcllive-subject" "rfcllive-release" 2 841000000)))
 
 (defun rfcllive-check (s fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -24,11 +25,13 @@
             :rows (len (fn-rfcl-rows s))
             :count (fn-arena-count fn-arena)) fn-arena))
 
-(defconst *rfcllive-configs2*
-  (list *fn-cfg-default-record*
-        (fn-cfg-record-make 1 0 2
-           (list (fn-cfg-create-group "example" *fn-cfg-default-policy-id*))
-           *fn-cfg-default-stamp*)))
+(with-guard-checking-event
+ :none
+ (defconst *rfcllive-configs2*
+   (list *fn-cfg-default-record*
+         (fn-cfg-record-make 1 0 2
+            (list (fn-cfg-create-group "example" *fn-cfg-default-policy-id*))
+            *fn-cfg-default-stamp*))))
 
 (make-event `(defconst *rfcllive-open* ',(fn-cpo-open-observed *rfcllive-configs2* 1 (list *sit-enrollment*))))
 
@@ -153,33 +156,45 @@
   (declare (xargs :verify-guards nil))
   (with-local-stobj fn-arena
     (mv-let (answer fn-arena) (rfcllive-reference fn-arena) answer)))
-(assert-event (rfcllive-run-reference))
+(with-guard-checking-event
+ :none
+ (assert-event (rfcllive-run-reference)))
 
-(assert-event (equal (rfcllive-run-entry nil)
-                     '(:before (:owner t :retained t :record t :okp t :arena t :count 0) :word :prepared :changed t :sealed t :after-okp t :count 1 :candidate t)))
+(with-guard-checking-event
+ :none
+ (assert-event (equal (rfcllive-run-entry nil)
+                      '(:before (:owner t :retained t :record t :okp t :arena t :count 0) :word :prepared :changed t :sealed t :after-okp t :count 1 :candidate t))))
 
-(assert-event (equal (rfcllive-run-entry t)
-                     '(:before (:owner t :retained t :record t :okp t :arena t :count 0) :word :prepared :changed t :sealed t :after-okp t :count 1 :candidate t)))
+(with-guard-checking-event
+ :none
+ (assert-event (equal (rfcllive-run-entry t)
+                      '(:before (:owner t :retained t :record t :okp t :arena t :count 0) :word :prepared :changed t :sealed t :after-okp t :count 1 :candidate t))))
 
 ; Invariant teeth: the historical stale composite has payloads in-range,
 ; but carries generation 0 after the generation-1 enrollment.
-(assert-event (equal (rfcllive-run-stale-composite2)
-                     '(:okp nil :phase :ready :records 2 :rows 2 :count 1)))
+(with-guard-checking-event
+ :none
+ (assert-event (equal (rfcllive-run-stale-composite2)
+                      '(:okp nil :phase :ready :records 2 :rows 2 :count 1))))
 ; LV-2 removal: all retainedness conjuncts except resolution remain true;
 ; the entry really stages a generation-0 row and its conclusion is NIL.
-(assert-event
- (equal (rfcllive-run-resolution-teeth2)
-        '((:good-retained t :good-csi t :before-ok t :bad-retained nil
-           :live t :resolved nil :verdict t :index t :event-index-empty t :csi t)
-          :changed t :after-ok nil :phase :record-staged :row-generation 0)))
+(with-guard-checking-event
+ :none
+ (assert-event
+  (equal (rfcllive-run-resolution-teeth2)
+         '((:good-retained t :good-csi t :before-ok t :bad-retained nil
+            :live t :resolved nil :verdict t :index t :event-index-empty t :csi t)
+           :changed t :after-ok nil :phase :record-staged :row-generation 0))))
 ; LV-3 mutation: replacing the outcome entry with raw fn-sn-prepare-identity
 ; accepts a composite interned at a stale generation, despite retainedness
 ; and the invariant both being T before.  The exact seal leaves NIL.
-(assert-event
- (equal (rfcllive-run-identity-mutation)
-        '(:before (:retained t :okp t :generation 1) :composite t
-          :row-generation 0 :changed t :phase :record-staged :after-okp nil
-          :published-finished-okp nil)))
+(with-guard-checking-event
+ :none
+ (assert-event
+  (equal (rfcllive-run-identity-mutation)
+         '(:before (:retained t :okp t :generation 1) :composite t
+           :row-generation 0 :changed t :phase :record-staged :after-okp nil
+           :published-finished-okp nil))))
 
 (defun rfcllive-known-abort (fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
@@ -211,8 +226,10 @@
 
 ; LV-2k: all antecedents hold; the staged candidate has no sealed payload.
 ; Known abort restores the invariant and leaves the real arena empty.
-(assert-event
- (equal (rfcllive-run-known-abort)
-        '(:before (:owner t :retained t :record t :okp t :arena t :count 0)
-          :word :prepared :staged-phase :record-staged :unsealed-okp nil
-          :abort-word :aborted :after-phase :ready :after-okp t :count 0)))
+(with-guard-checking-event
+ :none
+ (assert-event
+  (equal (rfcllive-run-known-abort)
+         '(:before (:owner t :retained t :record t :okp t :arena t :count 0)
+           :word :prepared :staged-phase :record-staged :unsealed-okp nil
+           :abort-word :aborted :after-phase :ready :after-okp t :count 0))))
