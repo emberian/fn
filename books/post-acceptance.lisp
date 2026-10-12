@@ -1,4 +1,4 @@
-; POST acceptance instance definitions; no Section A packet keystones.
+; POST acceptance instance definitions and the approved A0/A3 keystones.
 (in-package "ACL2")
 (include-book "post-context")
 (include-book "runtime-contract")
@@ -200,3 +200,503 @@
                                     (fn-pctx-get 4 inj)))
          (sealed (fn-arena-seal-list (fn-record-payload rec) fn-arena)))
     (fn-rcon-store-event-encode (fn-row-wire-of row sealed))))
+
+; Acceptance keystones: the record seam remains constrained.
+(local (include-book "injection-info-params-invariants"))
+
+(local
+ (defthm fn-pacc-a0-inj-append-is-append
+   (equal (fn-inj-append a b) (append a b))
+   :hints (("Goal" :in-theory (enable fn-inj-append)))))
+
+(local
+ (defthm fn-pacc-a0-append-assoc
+   (equal (append (append a b) c) (append a (append b c)))))
+
+(local
+ (defthm fn-pacc-a0-line-of-append-lf-free
+   (implies (not (member-equal 10 a))
+            (equal (fn-pb-line (append a y)) (append a (fn-pb-line y))))))
+
+(local
+ (defthm fn-pacc-a0-strip-of-append-left
+   (implies (true-listp a)
+            (equal (fn-inj-strip a (append a b)) b))
+   :hints (("Goal" :in-theory (enable fn-inj-strip)))))
+
+(local
+ (defthm fn-pacc-a0-take-of-append
+   (implies (and (true-listp a) (equal n (len a)))
+            (equal (fn-inj-take n (append a b)) a))
+   :hints (("Goal" :in-theory (enable fn-inj-take)))))
+
+(local
+ (defthm fn-pacc-a0-len-of-append
+   (equal (len (append a b)) (+ (len a) (len b)))))
+
+(local
+ (defthm fn-pacc-a0-drop-of-append
+   (implies (and (true-listp a) (equal n (len a)))
+            (equal (fn-inj-drop n (append a b)) b))
+   :hints (("Goal" :in-theory (enable fn-inj-drop)))))
+
+(local
+ (defthm fn-pacc-a0-info-line-agent-of-an-info-line
+   (implies (and (true-listp agent) (consp agent)
+                 (not (member-equal 10 agent)) (not (member-equal 59 agent)))
+            (equal (fn-pb-info-line-agent
+                    (append (fn-inj-injection-info-line agent) rest))
+                   agent))
+   :hints (("Goal" :in-theory (enable fn-pb-info-line-agent
+                                      fn-inj-injection-info-line fn-inj-strip)))))
+
+(local
+ (defthm fn-pacc-a0-s1
+   (fn-pb-opensp *fn-inj-injection-date-field*
+                  (append (fn-inj-injection-date-line date) x))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pacc-a0-s2
+   (not (fn-pb-opensp *fn-inj-injection-date-field*
+                       (append (fn-inj-injection-info-line agent) x)))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pacc-a0-s3
+   (implies (and (true-listp date) (equal (len date) 31))
+            (equal (fn-inj-drop 49 (append (fn-inj-injection-date-line date) x)) x))
+   :hints (("Goal" :in-theory (e/d (fn-inj-injection-date-line) (fn-inj-drop fn-pacc-a0-drop-of-append))
+            :use ((:instance fn-pacc-a0-drop-of-append
+                             (a (fn-inj-injection-date-line date)) (b x) (n 49)))))))
+
+(local
+ (defthm fn-pacc-a0-message-id-line-is-a-true-list
+   (true-listp (fn-inj-message-id-line msgid))
+   :hints (("Goal" :in-theory (enable fn-inj-message-id-line)))))
+
+(local
+ (defthm fn-pacc-a0-append-of-a-cons-is-not-no
+   (implies (consp a) (not (equal (append a b) :no)))))
+
+(local
+ (defthm fn-pacc-a0-s4
+   (implies (not (equal x :no))
+            (equal (fn-inj-strip-optional (fn-inj-message-id-line msgid)
+                                          (append (fn-inj-message-id-line msgid) x))
+                   x))
+   :hints (("Goal" :in-theory (e/d (fn-inj-strip-optional)
+                                   (fn-inj-message-id-line fn-pacc-a0-strip-of-append-left))
+            :use ((:instance fn-pacc-a0-strip-of-append-left
+                             (a (fn-inj-message-id-line msgid)) (b x)))))))
+
+(local
+ (defthm fn-pacc-a0-s5
+   (equal (fn-inj-strip-optional (fn-inj-message-id-line msgid)
+                                 (append (fn-inj-date-line date) x))
+          (append (fn-inj-date-line date) x))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pacc-a0-s6
+   (equal (fn-inj-strip-optional (fn-inj-message-id-line msgid)
+                                 (append (fn-inj-injection-info-line agent) x))
+          (append (fn-inj-injection-info-line agent) x))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pacc-a0-s7
+   (fn-pb-opensp *fn-inj-date-field* (append (fn-inj-date-line date) x))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pacc-a0-s8
+   (implies (and (true-listp date) (equal (len date) 31))
+            (equal (fn-inj-drop 39 (append (fn-inj-date-line date) x)) x))
+   :hints (("Goal" :in-theory (e/d (fn-inj-date-line) (fn-inj-drop fn-pacc-a0-drop-of-append))
+            :use ((:instance fn-pacc-a0-drop-of-append
+                             (a (fn-inj-date-line date)) (b x) (n 39)))))))
+
+(local
+ (defthm fn-pacc-a0-s9
+   (not (fn-pb-opensp *fn-inj-date-field*
+                       (append (fn-inj-injection-info-line agent) x)))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                      fn-inj-drop fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pacc-a0-block-agent-of-a-block
+   (implies (and (true-listp agent) (consp agent)
+                 (not (member-equal 10 agent)) (not (member-equal 59 agent))
+                 (true-listp date) (equal (len date) 31))
+            (equal (fn-pb-block-agent
+                    (append (fn-inj-block date msgid agent gid gdate) rest)
+                    msgid)
+                   agent))
+   :hints (("Goal" :in-theory (e/d (fn-pb-block-agent fn-inj-block)
+                                   (fn-pb-opensp fn-inj-strip-optional fn-inj-strip
+                                    fn-inj-drop fn-pb-info-line-agent
+                                    fn-inj-injection-date-line fn-inj-date-line fn-inj-message-id-line fn-inj-injection-info-line))
+            :do-not-induct t
+            :cases ((and gid gdate) (and gid (not gdate))
+                    (and (not gid) gdate))))))
+
+(local
+ (defthm fn-pacc-a0-path-line-agent-of-another-line
+   (implies (and (consp x) (not (equal (car x) 80)) (not (equal (car x) 10)))
+            (not (fn-pb-path-line-agent x)))
+   :hints (("Goal" :in-theory (enable fn-pb-path-line-agent fn-inj-strip)
+            :expand ((fn-pb-line x))))))
+
+(local
+ (defthm fn-pacc-a0-a-block-opens-with-i
+   (and (consp (append (fn-inj-block date msgid agent gid gdate) rest))
+        (equal (car (append (fn-inj-block date msgid agent gid gdate) rest)) 73))
+   :hints (("Goal" :in-theory (enable fn-inj-block fn-inj-injection-date-line
+                                      fn-inj-injection-info-line)
+            :cases ((or gid gdate))))))
+
+(local
+ (defthm fn-pacc-a0-path-agent-of-a-block
+   (implies (and (true-listp agent) (consp agent)
+                 (not (member-equal 10 agent)) (not (member-equal 59 agent))
+                 (true-listp date) (equal (len date) 31))
+            (equal (fn-pb-path-agent
+                    (fn-inj-append (fn-inj-block date msgid agent gid gdate) rest)
+                    msgid)
+                   agent))
+   :hints (("Goal" :do-not-induct t
+            :in-theory (e/d (fn-pb-path-agent)
+                            (fn-pb-block-agent fn-pb-path-line-agent fn-inj-block))))))
+
+(local
+ (defthm fn-pacc-a0-a-configured-agent-is-a-line-free-list
+   (implies (fn-inj-configp config)
+            (and (true-listp (fn-inj-config-agent config))
+                 (consp (fn-inj-config-agent config))
+                 (not (member-equal 10 (fn-inj-config-agent config)))
+                 (not (member-equal 59 (fn-inj-config-agent config)))))
+   :hints (("Goal" :in-theory (enable fn-inj-configp fn-af-dot-atom-textp)))))
+
+(local
+ (defthm fn-pacc-a0-date-octets-shape
+   (and (true-listp (fn-inj-date-octets inst))
+        (equal (len (fn-inj-date-octets inst)) 31))
+   :hints (("Goal" :in-theory (enable fn-inj-date-octets)))))
+
+(local
+ (defthm fn-pacc-a0-strip-of-a-different-first-octet
+   (implies (and (consp a) (consp b) (not (equal (car a) (car b))))
+            (equal (fn-inj-strip a (append b x)) :no))
+   :hints (("Goal" :in-theory (enable fn-inj-strip)))))
+
+(local
+ (defthm fn-pacc-a0-lines-shape
+   (and (consp (fn-inj-path-line agent))
+        (equal (car (fn-inj-path-line agent)) 80)
+        (consp (fn-inj-injection-date-line date))
+        (equal (car (fn-inj-injection-date-line date)) 73)
+        (consp (fn-inj-injection-info-line agent))
+        (equal (car (fn-inj-injection-info-line agent)) 73)
+        (consp (fn-inj-injection-info-line-with agent params))
+        (equal (car (fn-inj-injection-info-line-with agent params)) 73)
+        (consp (fn-inj-message-id-line msgid))
+        (equal (car (fn-inj-message-id-line msgid)) 77)
+        (consp (fn-inj-date-line date))
+        (equal (car (fn-inj-date-line date)) 68)
+        (true-listp (fn-inj-path-line agent))
+        (true-listp (fn-inj-injection-date-line date))
+        (true-listp (fn-inj-injection-info-line agent))
+        (true-listp (fn-inj-injection-info-line-with agent params))
+        (true-listp (fn-inj-message-id-line msgid))
+        (true-listp (fn-inj-date-line date)))
+   :hints (("Goal" :in-theory (enable fn-inj-path-line fn-inj-injection-date-line
+                                      fn-inj-injection-info-line
+                                      fn-inj-injection-info-line-with
+                                      fn-inj-message-id-line fn-inj-date-line)))))
+
+(local
+ (defthm fn-pacc-a0-len-of-the-dated-lines
+   (implies (equal (len date) 31)
+            (and (equal (len (fn-inj-injection-date-line date)) 49)
+                 (equal (len (fn-inj-date-line date)) 39)))
+   :hints (("Goal" :in-theory (enable fn-inj-injection-date-line fn-inj-date-line)))))
+
+(local
+ (defthm fn-pacc-a0-opens-of-the-lines
+   (and (fn-pb-opensp *fn-inj-injection-date-field*
+                      (append (fn-inj-injection-date-line date) x))
+        (not (fn-pb-opensp *fn-inj-injection-date-field*
+                           (append (fn-inj-injection-info-line agent) x)))
+        (not (fn-pb-opensp *fn-inj-date-field*
+                           (append (fn-inj-injection-info-line agent) x)))
+        (fn-pb-opensp *fn-inj-date-field* (append (fn-inj-date-line date) x))
+        (not (fn-pb-opensp *fn-inj-injection-date-field*
+                           (append (fn-inj-message-id-line msgid) x)))
+        (not (fn-pb-opensp *fn-inj-injection-date-field*
+                           (append (fn-inj-date-line date) x))))
+   :hints (("Goal" :in-theory (enable fn-pb-opensp fn-inj-strip
+                                      fn-inj-injection-date-line fn-inj-date-line
+                                      fn-inj-injection-info-line
+                                      fn-inj-message-id-line)))))
+
+(local
+ (defthm fn-pacc-a0-at-stamp-of-a-block
+   (implies (and (true-listp date) (equal (len date) 31)
+                 (not (equal source :no)))
+            (equal (fn-ipp-at-stamp (append (fn-inj-block date msgid agent gid gdate)
+                                            source)
+                                    agent msgid params)
+                   (append (fn-ipp-block-with date msgid agent gid gdate params)
+                           source)))
+   :hints (("Goal" :in-theory (enable fn-inj-block fn-ipp-block-with)
+            :cases ((and gid gdate) (and gid (not gdate))
+                    (and (not gid) gdate))))))
+
+(local
+ (defthm fn-pacc-a0-a-block-is-not-a-path-line
+   (equal (fn-inj-strip (fn-inj-path-line agent)
+                        (append (fn-inj-block date msgid agent2 gid gdate) x))
+          :no)
+   :hints (("Goal" :in-theory (enable fn-inj-block)
+            :cases ((or gid gdate))))))
+
+(local
+ (defthm fn-pacc-a0-prefix-is-the-path-line-and-the-block
+   (equal (append (fn-inj-prefix date msgid agent gid gdate) x)
+          (append (fn-inj-path-line agent)
+                  (append (fn-inj-block date msgid agent gid gdate) x)))
+   :hints (("Goal" :in-theory (enable fn-inj-prefix fn-inj-block)))))
+
+(local
+ (defthm fn-pacc-a0-with-params-of-a-prefix
+   (implies (and (true-listp date) (equal (len date) 31) (consp params) agent
+                 (not (equal source :no))
+                 (equal (fn-pb-path-agent
+                         (append (fn-inj-prefix date msgid agent gid gdate) source)
+                         msgid)
+                        agent))
+            (equal (fn-ipp-with-params
+                    (append (fn-inj-prefix date msgid agent gid gdate) source)
+                    msgid params)
+                   (append (fn-ipp-prefix-with date msgid agent gid gdate params)
+                           source)))
+   :hints (("Goal" :in-theory (e/d (fn-ipp-with-params fn-ipp-prefix-with)
+                                   (fn-ipp-at-stamp fn-inj-prefix fn-inj-block
+                                    fn-pb-path-agent fn-ipp-block-with))))))
+
+(local
+ (defthm fn-pacc-a0-with-params-of-a-block
+   (implies (and (true-listp date) (equal (len date) 31) (consp params) agent
+                 (not (equal rest :no))
+                 (equal (fn-pb-path-agent
+                         (append (fn-inj-block date msgid agent gid gdate) rest)
+                         msgid)
+                        agent))
+            (equal (fn-ipp-with-params
+                    (append (fn-inj-block date msgid agent gid gdate) rest)
+                    msgid params)
+                   (append (fn-ipp-block-with date msgid agent gid gdate params)
+                           rest)))
+   :hints (("Goal" :in-theory (e/d (fn-ipp-with-params)
+                                   (fn-ipp-at-stamp fn-inj-prefix fn-inj-block
+                                    fn-pb-path-agent fn-ipp-block-with))))))
+
+(local
+ (defthm fn-pacc-a0-no-params-lines
+   (implies (not (consp params))
+            (and (equal (fn-ipp-prefix-with date msgid agent gid gdate params)
+                        (fn-inj-prefix date msgid agent gid gdate))
+                 (equal (fn-ipp-block-with date msgid agent gid gdate params)
+                        (fn-inj-block date msgid agent gid gdate))))
+   :hints (("Goal" :in-theory (enable fn-ipp-prefix-with fn-ipp-block-with
+                                      fn-inj-prefix fn-inj-block
+                                      fn-inj-injection-info-line-with
+                                      fn-inj-injection-info-line)))))
+
+(local
+ (defthm fn-pacc-a0-with-no-params
+   (implies (not (consp params))
+            (equal (fn-ipp-with-params x msgid params) x))
+   :hints (("Goal" :in-theory (enable fn-ipp-with-params)))))
+
+(local
+ (defthm fn-pacc-intern-materializes-l
+ (implies (and (fn-record-p w) (natp generation) (fn-apc-p carry))
+  (equal (fn-row-wire-of
+           (fn-apc-intern-row-at w keyring generation (fn-arena-count fn-arena) carry)
+           (fn-arena-seal-list (fn-record-payload w) fn-arena)) w))
+ :hints (("Goal"
+  :use ((:instance fn-apc-intern-row-at-is-reference (h (fn-arena-count fn-arena)))
+        (:instance fn-cat-intern-list-is-row-at-count)
+        (:instance fn-held-p-of-intern-list)
+        (:instance fn-cat-intern-list-materializes)
+        (:instance fn-intern-list-handle))
+  :in-theory (e/d (fn-row-wire-of fn-row-bytes fn-held-wire-of)
+                 (fn-apc-intern-row-at fn-intern-row-at fn-cat-intern-list fn-record-p
+                  fn-apc-intern-row-at-is-reference fn-intern-list-handle
+                  fn-held-p fn-held-p-of-intern-list fn-cat-intern-list-materializes
+                  fn-cat-intern-list-is-row-at-count))))))
+
+(local
+ (defthm fn-pacc-state-generation-l
+ (implies (fn-sn-statep s) (natp (fn-sn-keyring-generation s)))
+ :hints (("Goal" :in-theory '(fn-sn-statep)))))
+
+(local
+ (defthm fn-pacc-injection-carry-l
+ (implies (fn-pacc-injectionp inj art) (fn-apc-p (fn-pctx-get 4 inj)))
+ :hints (("Goal" :in-theory '(fn-pacc-injectionp)))))
+
+(local
+ (defthm fn-pacc-block-prefix-true-listp-l
+ (and (true-listp (fn-inj-block date msgid agent gid gdate))
+      (true-listp (fn-inj-prefix date msgid agent gid gdate))
+      (true-listp (fn-ipp-block-with date msgid agent gid gdate params))
+      (true-listp (fn-ipp-prefix-with date msgid agent gid gdate params)))
+ :hints (("Goal" :in-theory
+  (enable fn-inj-block fn-inj-prefix fn-ipp-block-with fn-ipp-prefix-with
+          fn-inj-append fn-inj-injection-info-line-with)))))
+
+(local
+ (defthm fn-pacc-standalone-block-l
+ (implies (and (true-listp date) (equal (len date) 31)
+               (true-listp agent) (consp agent)
+               (not (member-equal 10 agent)) (not (member-equal 59 agent)))
+  (equal (fn-ipp-with-params (fn-inj-block date msgid agent gid gdate) msgid params)
+         (fn-ipp-block-with date msgid agent gid gdate params)))
+ :hints (("Goal" :cases ((consp params))
+   :use ((:instance fn-pacc-a0-with-params-of-a-block (rest nil))
+         (:instance fn-pacc-a0-path-agent-of-a-block (rest nil)))
+   :in-theory (e/d (fn-pacc-a0-inj-append-is-append)
+                  (fn-inj-block fn-ipp-block-with fn-ipp-with-params fn-pb-path-agent
+                   fn-pacc-a0-with-params-of-a-block fn-pacc-a0-path-agent-of-a-block))))))
+
+(local
+ (defthm fn-pacc-prefix-path-l
+ (equal (fn-inj-prefix date msgid agent gid gdate)
+        (append (fn-inj-path-line agent) (fn-inj-block date msgid agent gid gdate)))
+ :hints (("Goal" :in-theory (enable fn-inj-prefix fn-inj-block)))))
+
+(local
+ (defthm fn-pacc-standalone-prefix-l
+ (implies (and (true-listp date) (equal (len date) 31)
+               (true-listp agent) (consp agent)
+               (not (member-equal 10 agent)) (not (member-equal 59 agent)))
+  (equal (fn-ipp-with-params (fn-inj-prefix date msgid agent gid gdate) msgid params)
+         (fn-ipp-prefix-with date msgid agent gid gdate params)))
+ :hints (("Goal" :cases ((consp params))
+   :use ((:instance fn-pacc-a0-with-params-of-a-prefix (source nil))
+         (:instance fn-pb-path-agent-of-a-path-line
+                    (rest (fn-inj-block date msgid agent gid gdate))))
+   :in-theory (e/d (fn-pacc-prefix-path-l)
+                  (fn-inj-prefix fn-inj-block fn-ipp-prefix-with fn-ipp-with-params fn-pb-path-agent
+                   fn-pacc-a0-with-params-of-a-prefix fn-pb-path-agent-of-a-path-line))))))
+
+(local
+ (defthm fn-pacc-take-n-is-take-l
+ (implies (and (natp n) (<= n (len x)))
+          (equal (fn-inj-take-n n x) (take n x)))
+ :hints (("Goal" :in-theory (enable fn-inj-take-n take)))))
+
+(local
+ (defthm fn-pacc-success-parse-l
+ (implies (fn-inj-injectedp (fn-inj-decide art config obs))
+  (and (fn-article-result-okp (fn-article-parse art))
+       (fn-article-syntax-p (fn-article-result-article (fn-article-parse art)))))
+ :hints (("Goal" :do-not-induct t :in-theory
+  (union-theories (theory 'ground-zero)
+    '(fn-inj-decide fn-inj-refuse fn-inj-injectedp fn-inj-decision-status-of-fn-inj-make-decision))))))
+
+(local
+ (defthm fn-pacc-len-take-bound-l
+ (<= (len (fn-inj-take-n n x)) (len x))
+ :hints (("Goal" :in-theory (enable fn-inj-take-n))) :rule-classes :linear))
+
+(local
+ (defthm fn-pacc-path-open-bound-l
+ (implies (fn-inj-path-openp x) (<= 6 (len x)))
+ :hints (("Goal" :in-theory (enable fn-inj-path-openp))) :rule-classes :linear))
+
+(local
+ (defthm fn-pacc-path-bounds-l
+ (implies (fn-inj-path-scan x bol)
+          (and (natp (fn-inj-path-scan x bol))
+               (<= (fn-inj-path-scan x bol) (len x))))
+ :hints (("Goal" :induct (fn-inj-path-scan x bol)
+                 :in-theory (e/d (fn-inj-path-scan) (fn-inj-path-openp))))))
+
+(local
+ (defthm fn-pacc-drop-n-is-nthcdr-l
+ (implies (and (natp n) (true-listp x))
+          (equal (fn-inj-drop-n n x) (nthcdr n x)))
+ :hints (("Goal" :in-theory (enable fn-inj-drop-n nthcdr)))))
+
+(local
+ (defthm fn-pacc-cat-is-append-l (equal (fn-pctx-cat x y) (append x y)) :hints (("Goal" :in-theory (enable fn-pctx-cat)))))
+
+(local
+ (defthm fn-pacc-injection-decision-l
+ (implies (fn-pacc-injectionp inj art)
+  (and (fn-inj-configp (fn-pctx-get 5 inj))
+       (equal (fn-pctx-get 0 inj) (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj)))
+       (fn-inj-injectedp (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj)))))
+ :hints (("Goal" :in-theory '(fn-pacc-injectionp)))))
+
+(local
+ (defthm fn-pacc-parsed-candidate-l
+ (equal (fn-pctx-get 1 x) (fn-article-result-article x))
+ :hints (("Goal" :in-theory (enable fn-pctx-get fn-article-result-article)))))
+
+(local
+ (defthm fn-pacc-octets-true-listp-l
+ (implies (fn-octet-listp x) (true-listp x))
+ :hints (("Goal" :in-theory (enable fn-octet-listp)))))
+
+(local
+ (defthm fn-pacc-fix-true-list-l (implies (true-listp x) (equal (true-list-fix x) x)) :hints (("Goal" :in-theory (enable true-list-fix)))))
+
+(local
+ (defthm fn-pacc-fix-append-l (equal (true-list-fix (append x y)) (append x (true-list-fix y))) :hints (("Goal" :in-theory (enable true-list-fix append)))))
+
+(defthm fn-pacc-stored-payload-is-one-splice
+  (implies (and (fn-octet-listp art) (fn-pacc-injectionp inj art))
+           (mv-let (p0 ins ioff) (fn-pacc-splice art inj)
+             (and (natp ioff) (<= ioff (len art))
+                  (equal (fn-pacc-stored-payload art inj)
+                         (append p0 (take ioff art) ins (nthcdr ioff art))))))
+ :hints (("Goal" :do-not-induct t
+ :use ((:instance fn-ipp-injected-octets-carry-the-parameters
+       (source art) (config (fn-pctx-get 5 inj)) (obs (fn-pctx-get 6 inj))
+       (secret (fn-pctx-get 1 inj)) (login (fn-pctx-get 2 inj)) (cfg (fn-pctx-get 3 inj)))
+       (:instance fn-pacc-injection-decision-l)
+       (:instance fn-pacc-success-parse-l (config (fn-pctx-get 5 inj)) (obs (fn-pctx-get 6 inj)))
+       (:instance fn-inj-an-injected-supplied-path-has-an-offset
+        (source art) (config (fn-pctx-get 5 inj)) (obs (fn-pctx-get 6 inj)))
+       (:instance fn-pacc-path-bounds-l (x art) (bol t)))
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-pacc-splice fn-pacc-stored-payload fn-apc-cl-served-payload
+   fn-inj-supplies-pathp fn-inj-path-offset fn-inj-splice
+   fn-pacc-parsed-candidate-l fn-pacc-cat-is-append-l
+   fn-pacc-standalone-block-l fn-pacc-standalone-prefix-l fn-pacc-take-n-is-take-l fn-pacc-drop-n-is-nthcdr-l
+   fn-pacc-octets-true-listp-l fn-cll-append-is-append fn-pacc-a0-inj-append-is-append
+   fn-pacc-a0-a-configured-agent-is-a-line-free-list fn-pacc-a0-date-octets-shape
+   fn-inj-path-insert fn-pacc-fix-true-list-l fn-pacc-fix-append-l fn-pacc-a0-append-assoc)))))
+
+
+(defthm fn-pacc-batch-record-is-the-encoded-record
+  (let ((rec (fn-sn-article-record s obs msgid (fn-pacc-stored-payload art inj) groups oid subject evidence charge)))
+    (implies (and (fn-sn-statep s) (fn-record-p rec) (fn-octet-listp art) (fn-pacc-injectionp inj art))
+             (equal (fn-pacc-batch-record-octets s obs art inj (list msgid groups oid subject evidence charge) fn-arena)
+                    (fn-record-encode rec))))
+  :hints (("Goal" :in-theory
+    (union-theories (theory 'ground-zero)
+      '(fn-pacc-batch-record-octets fn-pctx-get nfix zp fn-rcon-store-event-encode
+        fn-rcon-record-p-is-record-p fn-pacc-intern-materializes-l
+        fn-pacc-state-generation-l fn-pacc-injection-carry-l)))))
+
