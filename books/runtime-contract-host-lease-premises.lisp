@@ -1976,6 +1976,17 @@
 ; and settle's completions (kinds :grant :pool :close :opened only, fn-hld-settle) are not :hand.  So
 ; fn-rtc-hand-delivers-p stays unestablished on purpose: the theorems assuming it have no instance on this
 ; host path.  The READY names it (no hosted :hand transfer exists).
+; The work fn-hld-sent settles (the leased step's actions on the host's completion) is benign: grants,
+; pool completions and accepts only, the hypothesis fn-hlr-settle-frames assumes of its work list.
+(local (defthm fn-hlp-sent-event-kind
+  (equal (fn-rtc-get 0 (fn-hld-sent-event id inc op outcome)) :send)
+  :hints (("Goal" :in-theory (enable fn-hld-sent-event fn-rtc-get)))))
+(defthm fn-hlp-sent-work-is-benign
+  (implies (fn-hll-invp st)
+           (fn-hlr-benign-actsp (mv-nth 1 (fn-hll-x-step* (fn-hld-sent-event id inc op outcome) q st))))
+  :hints (("Goal" :in-theory (union-theories '(fn-hlp-sent-event-kind (:e member-eq)) (theory 'minimal-theory))
+           :use ((:instance fn-hlr-xstep-frames (e (fn-hld-sent-event id inc op outcome)) (id 0) (inc 0) (k 0) (j 0))))))
+
 (defthm fn-hlp-sent-event-is-not-a-hand-delivery
   (not (fn-rtc-hand-delivers-p s (fn-hld-sent-event id inc op outcome)))
   :hints (("Goal" :in-theory (union-theories '(fn-hld-sent-event fn-rtc-hand-delivers-p fn-rtc-e-kind fn-rtc-get-of-cons car-cons cdr-cons (:e fn-rtc-get) (:e zp) (:e nfix) (:e binary-+) (:e unary--)) (theory 'minimal-theory)))))

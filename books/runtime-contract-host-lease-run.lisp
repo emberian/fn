@@ -222,10 +222,10 @@
            (<= (+ off (len data)) (len (fn-rtc-splice bytes off data))))
   :rule-classes :linear
   :hints (("Goal" :in-theory (e/d (fn-rtc-splice) (take nthcdr)))))
-(defthm fn-hlr-splice-okp-natp
+(local (defthm fn-hlr-splice-okp-natp
   (implies (fn-rtc-splice-okp h off data s) (natp h))
   :rule-classes :forward-chaining
-  :hints (("Goal" :in-theory (enable fn-rtc-splice-okp))))
+  :hints (("Goal" :in-theory (enable fn-rtc-splice-okp)))))
 (defthm fn-hlr-get-nfix-b (equal (fn-rtc-get (nfix i) l) (fn-rtc-get i l))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-rtc-get))))
