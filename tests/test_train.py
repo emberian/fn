@@ -4,6 +4,8 @@ TRAIN_SCRIPT may point at an alternative copy of train.py (used to show a test
 red against a variant that skips a rule).
 """
 import ast
+import contextlib
+import io
 import json
 import os
 import shutil
@@ -223,6 +225,13 @@ class CacheSeedTests(unittest.TestCase):
 
 class TrainBase(unittest.TestCase):
     def setUp(self):
+        # Direct fixture-helper calls also need isolation when this suite is
+        # invoked with a pin exported, outside the train's unit runner.
+        environment = mock.patch.dict(os.environ)
+        environment.start()
+        self.addCleanup(environment.stop)
+        for variable in train.BASE_PIN_VARS:
+            os.environ.pop(variable, None)
         self.tmp = Path(tempfile.mkdtemp(prefix="train-test-"))
         self.addCleanup(shutil.rmtree, self.tmp, True)
         self.origin = self.tmp / "origin.git"
@@ -263,7 +272,7 @@ class TrainBase(unittest.TestCase):
         self.log = self.tmp / "stub.log"
         self.env = dict(os.environ, STUB_LOG=str(self.log), TRAIN_PY=sys.executable,
                         TRAIN_PY3=sys.executable)
-        for variable in ("FN_TRAIN_BASE", "FN_LEDGER_BASE", "FN_HOST_CHECK_BASE"):
+        for variable in train.BASE_PIN_VARS:
             self.env.pop(variable, None)
 
     def cfg(self, d):
@@ -322,6 +331,34 @@ class TrainBase(unittest.TestCase):
 
 
 class LaneCheckTests(TrainBase):
+    def test_unit_step_removes_inherited_pins_for_a_new_fixture_suite(self):
+        # This new suite has no TrainBase/environment cleanup of its own.
+        suite = '''import os, unittest
+from tools import train
+
+class NewFixtureTests(unittest.TestCase):
+    def test_default_fixture_base(self):
+        self.assertEqual(train.train_base(), "origin/dev")
+        for name in ("FN_TRAIN_BASE", "FN_LEDGER_BASE", "FN_HOST_CHECK_BASE"):
+            self.assertNotIn(name, os.environ)
+        self.assertEqual(os.environ["UNIT_KEEP"], "preserved")
+'''
+        path = "tests/test_new_fixture.py"
+        (self.work / path).write_text(suite)
+        pins = {name: "f" * 40 for name in ("FN_TRAIN_BASE", "FN_LEDGER_BASE", "FN_HOST_CHECK_BASE")}
+        t = train.Train(self.work)
+        with mock.patch.dict(os.environ, dict(self.env, **pins, UNIT_KEEP="preserved")), \
+                contextlib.redirect_stdout(io.StringIO()):
+            rc, record = train._unit_gate(t, [path])
+            # Removing unit pins must not change the parent or other gates.
+            self.assertEqual({name: os.environ[name] for name in pins}, pins)
+            control = t.run("pin-env-control", [sys.executable, "-c",
+                'import os; assert all(os.environ[name] == "f" * 40 for name in '
+                '("FN_TRAIN_BASE", "FN_LEDGER_BASE", "FN_HOST_CHECK_BASE"))'])
+        self.assertEqual(control, 0)
+        self.assertIn(path, record["tests"])
+        self.assertEqual(rc, 0, (t.logs / "gate-unit-test_new_fixture.log").read_text())
+
     def check_lane(self, name, sha, *options, extra_env=None, record=True):
         if record and not self.scratch(name).exists():
             # A real fixture record at the initial dev commit, not a guessed

@@ -20,6 +20,7 @@ refs. It checks committed lane HEAD (ignoring dirty source edits) in an owned
 scratch worktree, runs its own train.py regen and gate --local subprocesses,
 and prints their BOX decisions. FN_TRAIN_BASE, FN_LEDGER_BASE and FN_HOST_CHECK_BASE pin
 the train and its child tools to the fetched dev SHA.
+Unit suites run without those pins so their repository fixtures use their own base.
 Its log is copied to the lane's build/lane-check/; --clean removes only that
 scratch worktree.
 The verdict names the dev SHA merged onto. A local PASS leaves the printed
@@ -356,6 +357,9 @@ def toplevel(start: Path) -> Path:
     return Path(p.stdout.strip())
 
 
+BASE_PIN_VARS = ("FN_TRAIN_BASE", "FN_LEDGER_BASE", "FN_HOST_CHECK_BASE")
+
+
 def train_base() -> str:
     """One base for every train comparison; lane-check pins it to a commit."""
     pinned = os.environ.get("FN_TRAIN_BASE")
@@ -393,11 +397,12 @@ class Train:
         return bool(git(self.root, "status", "--porcelain").stdout.strip())
 
     # ---- running commands
-    def run(self, step: str, argv: list[str], cwd: Path | None = None) -> int:
+    def run(self, step: str, argv: list[str], cwd: Path | None = None,
+            *, env: dict[str, str] | None = None) -> int:
         say("$ " + " ".join(argv))
         self.logs.mkdir(parents=True, exist_ok=True)
         log = self.logs / f"{step}.log"
-        p = subprocess.run(argv, cwd=cwd or self.root, capture_output=True, text=True)
+        p = subprocess.run(argv, cwd=cwd or self.root, env=env, capture_output=True, text=True)
         out = p.stdout + p.stderr
         log.write_text(out)
         if p.returncode != 0:
@@ -1603,13 +1608,18 @@ def _secrets_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:
 def _unit_gate(t: Train, files: list[str] | None = None) -> tuple[int, dict]:
     files = changed_paths(t) if files is None else files
     unit = unit_tests(t.root, files)
+    # Pins describe this train's repository, never a suite's throwaway repos.
+    # Apply at the runner boundary so every selected/future suite is covered.
+    env = dict(os.environ)
+    for variable in BASE_PIN_VARS:
+        env.pop(variable, None)
     results = {}
     for test in unit:
         if not (t.root / test).is_file():
             say(f"unit: {test} is missing")
             results[test] = 1
         else:
-            results[test] = t.run("gate-unit-" + Path(test).stem, [PY, "-m", "unittest", test])
+            results[test] = t.run("gate-unit-" + Path(test).stem, [PY, "-m", "unittest", test], env=env)
     return (0 if all(v == 0 for v in results.values()) else 1), {"tests": results}
 
 
@@ -1877,7 +1887,8 @@ def _run_lane_check(t: Train, args, name: str, sha: str, source: Path,
     merged = run("merge", lambda: 0 if merge_one(scratch, scratch.load(), name, sha) else 1,
                  f"git merge --no-ff {sha}") == 0
     if merged:
-        env = dict(os.environ, FN_TRAIN_BASE=dev, FN_LEDGER_BASE=dev, FN_HOST_CHECK_BASE=dev)
+        env = dict(os.environ)
+        env.update(dict.fromkeys(BASE_PIN_VARS, dev))
 
         def child(argv: list[str]) -> int:
             say("$ " + shlex.join(argv))
