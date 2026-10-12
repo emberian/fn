@@ -25,6 +25,17 @@
                      (format stream "\\u~4,'0x" (char-code c))
                      (write-char c stream)))))
   (write-char #\" stream))
+(defun fn-load-frame-name (info)
+  ;; Use the same MAKE-NODE -> NODE-NAME mapping as SB-SPROF's call graph,
+  ;; rather than assuming INFO is a DEBUG-FUN. In SBCL 2.6.8 it can also be
+  ;; a code component, assembler symbol, or a (possibly nonsimple) string
+  ;; such as "foreign function call_into_lisp_". NIL is counted elsewhere.
+  ;; PRINT-FLAT prints string names with PRINC and other names with PRIN1.
+  (if info
+      (let ((name (funcall (intern "NODE-NAME" "SB-SPROF")
+                          (funcall (intern "MAKE-NODE" "SB-SPROF") info))))
+        (if (stringp name) name (prin1-to-string name)))
+      "elsewhere"))
 (defun fn-load-thread-samples (path)
   ;; REPORT extracts raw traces into *SAMPLES* before this is called. Keep even
   ;; exited syncer threads. Python subtracts by THREAD NAME, not function name.
@@ -36,10 +47,9 @@
         (let ((name "elsewhere"))
           ;; MAP-TRACE-PC-LOCS visits oldest to youngest; last is the self PC.
           (funcall (intern "MAP-TRACE-PC-LOCS" "SB-SPROF")
-            (lambda (debug-fun pc)
-              (setf name (if debug-fun
-                             (prin1-to-string (sb-di:debug-fun-name debug-fun))
-                             (format nil "(foreign #x~x)" pc)))) trace)
+            (lambda (info pc)
+              (declare (ignore pc))
+              (setf name (fn-load-frame-name info))) trace)
           (incf (gethash (list (or (sb-thread:thread-name thread) "unnamed") name) counts 0))))
       (symbol-value (intern "*SAMPLES*" "SB-SPROF")))
     (with-open-file (s path :direction :output :if-exists :supersede)

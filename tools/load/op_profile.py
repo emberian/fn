@@ -69,6 +69,24 @@ def parse_thread_samples(text):
     return rows
 
 
+def read_sprof_frames(directory):
+    """Prefer controller-subtracted samples; preserve flat rows if export fails."""
+    flat = (directory / "sprof.000.txt").read_text()
+    try:
+        error = directory / "sprof.000.threads.error.txt"
+        if error.exists():
+            raise RuntimeError("per-thread samples unavailable: " + error.read_text().strip())
+        sidecar = (directory / "sprof.000.threads.jsonl").read_text()
+        frames = parse_sprof(flat, thread_samples=sidecar)
+        removed = sum(row["count"] for row in parse_thread_samples(sidecar)
+                      if row["thread"] == "fn-load-prof")
+    except Exception as exc:
+        return parse_sprof(flat), {"controller_excluded": False,
+                                  "controller_samples_removed": 0,
+                                  "controller_exclusion_reason": "%s: %s" % (type(exc).__name__, exc)}
+    return frames, {"controller_excluded": True, "controller_samples_removed": removed}
+
+
 def parse_strace(text, n):
     """strace -f -c summary; optional errors column does not shift the calls column."""
     calls = {}
@@ -519,13 +537,10 @@ def run(run, ph, driver):
                     else:
                         flat = directory / "sprof.000.txt"
                         record["sprof"][window] = str(flat.relative_to(run.args.out))
-                        sidecar = directory / "sprof.000.threads.jsonl"
-                        error = directory / "sprof.000.threads.error.txt"
-                        if error.exists():
-                            raise RuntimeError("per-thread samples unavailable: " + error.read_text().strip())
-                        frames = parse_sprof(flat.read_text(), thread_samples=sidecar.read_text())
-                        wr["controller_samples_removed"] = sum(row["count"] for row in
-                            parse_thread_samples(sidecar.read_text()) if row["thread"] == "fn-load-prof")
+                        frames, extraction = read_sprof_frames(directory)
+                        wr.update(extraction)
+                        if not extraction["controller_excluded"]:
+                            record["not_measured"][window + ".controller_excluded"] = extraction["controller_exclusion_reason"]
                         record["top_frames_" + window] = frames
                         if not frames:
                             record["not_measured"]["top_frames_" + window] = "flat report has no sample rows"

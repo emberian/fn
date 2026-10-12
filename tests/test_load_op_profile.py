@@ -70,6 +70,54 @@ class ParserTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             op_profile.parse_sprof("Number of samples: 101", thread_samples=sidecar)
 
+    def test_foreign_names_survive_flat_and_thread_parsing(self):
+        name = "foreign function call_into_lisp_"
+        flat = "Number of samples: 4\nSelf Total Cumul\n 1 4 100.0 4 100.0 4 100.0 - " + name
+        raw = op_profile.parse_sprof(flat)
+        sidecar = json.dumps(dict(thread="fn owner", function=name, count=4))
+        self.assertEqual(op_profile.parse_sprof(flat, thread_samples=sidecar), raw)
+        self.assertEqual(raw[0]["function"], name)
+
+    def test_sprof_export_failures_preserve_flat_report_and_explain_controller(self):
+        flat = (Path(__file__).parent / "fixtures/load-sprof-flat.txt").read_text()
+        cases = (
+            (None, None, "FileNotFoundError"),
+            ("partial JSON", None, "JSONDecodeError"),
+            (json.dumps(dict(thread="fn owner", function="F", count=-1)), None, "invalid sprof"),
+            (json.dumps(dict(thread="fn owner", function="F", count=1)), None, "totals differ"),
+            (None, 'The value "foreign function call_into_lisp_" is not of type SB-DI:DEBUG-FUN',
+             "foreign function call_into_lisp_"),
+        )
+        for sidecar, error, reason in cases:
+            with self.subTest(reason=reason), tempfile.TemporaryDirectory() as temp:
+                directory = Path(temp)
+                (directory / "sprof.000.txt").write_text(flat)
+                if sidecar is not None:
+                    (directory / "sprof.000.threads.jsonl").write_text(sidecar)
+                if error is not None:
+                    (directory / "sprof.000.threads.error.txt").write_text(error)
+                rows, meta = op_profile.read_sprof_frames(directory)
+                self.assertEqual(rows, op_profile.parse_sprof(flat))
+                self.assertFalse(meta["controller_excluded"])
+                self.assertEqual(meta["controller_samples_removed"], 0)
+                self.assertIn(reason, meta["controller_exclusion_reason"])
+
+    def test_sprof_valid_export_excludes_controller_and_missing_flat_is_an_error(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            with self.assertRaises(FileNotFoundError):
+                op_profile.read_sprof_frames(directory)
+            flat = (Path(__file__).parent / "fixtures/load-sprof-flat.txt").read_text()
+            sidecar = "\n".join(json.dumps(row) for row in (
+                dict(thread="fn-load-prof", function="SLEEP", count=20),
+                dict(thread="fn owner", function="foreign function poll", count=80)))
+            (directory / "sprof.000.txt").write_text(flat)
+            (directory / "sprof.000.threads.jsonl").write_text(sidecar)
+            rows, meta = op_profile.read_sprof_frames(directory)
+            self.assertEqual(meta, dict(controller_excluded=True, controller_samples_removed=20))
+            self.assertEqual(rows, [dict(count=80, percent=100.0, cumulative_percent=100.0,
+                                         function="foreign function poll")])
+
     def test_current_sbcl_flat_column_order(self):
         text = "Self Total Cumul\n 1 60 60.0 80 80.0 60 60.0 - F\n 2 25 25.0 40 40.0 85 85.0 - G\n"
         self.assertEqual(op_profile.parse_sprof(text)[1]["cumulative_percent"], 85)
@@ -384,6 +432,62 @@ class HookRuntimeTests(unittest.TestCase):
                     self.assertFalse((directory / "report.000.threads.jsonl").exists())
                 self.assertTrue((directory / "report.000.txt").exists())
 
+    def test_thread_export_names_all_recorded_frame_types_like_sprof_report(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            self.lisp('''
+(in-package "ACL2")
+(require :sb-sprof)
+(load "planning/evidence/load/hooks/profile-support.lisp")
+(defun frame-witness () 42)
+(defvar *infos*
+  (list "foreign function call_into_lisp_"
+        (let ((name (concatenate 'string "foreign function named" (string (code-char 92)) "path")))
+          (make-array (length name) :element-type 'character :initial-contents name
+                                   :fill-pointer (length name)))
+        'sb-fasl:*assembler-routines*
+        (sb-di:fun-debug-fun #'frame-witness)
+        (sb-kernel:fun-code-header #'frame-witness)
+        nil))
+;; Exercise the exporter with the same opaque INFO objects that samples hold.
+;; Each trace starts with the live failure's foreign string; its last frame is
+;; the self PC. These mocks replace traversal only, never the naming mapper.
+(sb-int:encapsulate 'sb-sprof:map-traces 'test-frame-types
+ (lambda (fn callback samples)
+   (declare (ignore fn samples))
+   (dolist (info *infos*) (funcall callback sb-thread:*current-thread* info))))
+(sb-int:encapsulate 'sb-sprof::map-trace-pc-locs 'test-frame-types
+ (lambda (fn callback info)
+   (declare (ignore fn))
+   (funcall callback "foreign function call_into_lisp_" 0)
+   (funcall callback info 0)))
+(fn-load-thread-samples (sb-ext:posix-getenv "FN_TEST_SIDECAR"))
+;; Use the actual flat report as the oracle for string/symbol/debug-fun/code
+;; names. Unknown NIL information is represented by its elsewhere count.
+(let ((nodes (loop for info in *infos* when info collect
+                   (let ((node (sb-sprof::make-node info)))
+                     (setf (sb-sprof::node-count node) 1
+                           (sb-sprof::node-accrued-count node) 1)
+                     node))))
+  (loop for node in nodes for i from 1 do (setf (sb-sprof::node-index node) i))
+  (with-open-file (stream (sb-ext:posix-getenv "FN_TEST_FLAT")
+                         :direction :output :if-exists :supersede)
+    (sb-sprof::print-flat
+      (sb-sprof::%make-call-graph :vertices nodes :sample-interval 0.001
+          :sampling-mode :cpu :nsamples (length *infos*)
+          :unique-trace-count (length *infos*) :elsewhere-count 1)
+      :max 60 :stream stream)))
+''', directory, FN_TEST_SIDECAR=str(directory / "threads.jsonl"),
+                FN_TEST_FLAT=str(directory / "flat.txt"))
+            samples = op_profile.parse_thread_samples((directory / "threads.jsonl").read_text())
+            names = {row["function"] for row in samples}
+            self.assertIn("foreign function call_into_lisp_", names)
+            self.assertIn("foreign function named\\path", names)
+            self.assertIn("elsewhere", names)
+            self.assertEqual(sum(row["count"] for row in samples), 6)
+            flat_names = {row["function"] for row in op_profile.parse_sprof((directory / "flat.txt").read_text())}
+            self.assertEqual(flat_names, names - {"elsewhere"}, (directory / "flat.txt").read_text())
+
     def test_thread_sample_export_retains_a_later_created_syncer(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp)
@@ -479,6 +583,13 @@ class WindowTests(unittest.TestCase):
             got = out["op_profile"]["GROUP"]
             self.assertEqual(got["clean"]["n"], 3)
             self.assertEqual(got["calls"]["acl2_calls_per_command"], 2 / 3)
+            for window in ("cpu", "alloc"):
+                self.assertFalse(got["windows"][window]["controller_excluded"])
+                self.assertIn("totals differ", got["windows"][window]["controller_exclusion_reason"])
+                self.assertIn(window + ".controller_excluded", got["not_measured"])
+                self.assertNotIn("top_frames_" + window, got["not_measured"])
+                self.assertEqual(len(got["top_frames_" + window]), 3)
+            self.assertIn("graph", got["sprof"])
             self.assertIn("syscalls", got["not_measured"])
             self.assertTrue((work / "test/op-profile/GROUP/result.json").exists())
             self.assertEqual(node.env, {})
