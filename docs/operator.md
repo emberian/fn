@@ -1152,11 +1152,11 @@ Nothing is lost. A friend's node that feeds you is told "try later"
 (`436`). It keeps the articles and tries again, and its `health` shows
 `unavailable-peer`.
 
-Each group a post goes to costs room too: about 320 bytes of the
-store's history per group, as well as the post itself. Posting to many
-groups at once is allowed, but paid for. When the post would fit but its
-groups would not, it is refused with
-`441 posting failed; the store cannot pay for this article's groups: each group it is posted to is charged to the history budget, and the article alone would fit; post it to fewer groups (memberships)`.
+Each group a post goes to costs memory too, as well as the post itself.
+Posting to many groups at once is allowed, but the memory gate must have
+room for the whole article and its groups. When the memory gate refuses
+a post, the reply is
+`441 posting failed; the store is full: no capacity for this article (memory); the node's operator can raise it`.
 A feeding node is told "try later" (`436`) for this too.
 
 When the store still has transactions left but its history octets are

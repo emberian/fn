@@ -1526,9 +1526,10 @@ store (`fn-heap-reclaim-demand-octets` of the records and the history octets
 the owner carries) from the run's owner work reserve under its own key, never
 from the articles' pool (`fn-orcp-reserve-keeps-funded`,
 `fn-orcp-reserve-keeps-the-articles-room`; on every store the profile admits
-it is admitted, `fn-orcp-profile-admitted-reclaim-is-funded`, and the
-launcher's figure holds what it builds,
-`fn-heap-store-live-figure-holds-every-store-and-its-reclaim`; a refusal is
+it is admitted, `fn-orcp-profile-admitted-reclaim-is-funded`; the requirement
+that the launcher's figure hold every admitted store and its reclaim remains,
+but no current theorem proves that universal claim after the payload-only
+history accounting change; a refusal is
 `deferred reason=credit` by name, nothing moved; lane reclaim-funding,
 planning/design/reclaim-funding-2026-10-04.md), captures under
 the owner mutex, and off it rewrites, decides, stages the reclaimed

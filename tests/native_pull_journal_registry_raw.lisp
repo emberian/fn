@@ -75,7 +75,7 @@
           do (load-deployed-forms "host/native/pull-service.lisp" (list (list (car form) (cadr form))))))
 (when (probe-file "books/peer-round-driver.lisp")
   (load-deployed-forms "books/peer-round-driver.lisp"
-                      '((defun fn-prd-sweep) (defun fn-prd-select) (defun fn-prd-idle-ms)
+                      '((def-loop fn-prd-sweep) (defun fn-prd-select) (defun fn-prd-idle-ms)
                         (defun fn-prd-idle-max-ms) (defun fn-prd-row-schedulablep)
                         (defun fn-prd-row-wait) (defun fn-prd-next-due-wait)
                         (defun fn-prd-pause-ms) (defun fn-prd-resume-at))))
