@@ -66,8 +66,12 @@
   ]
  },
  "undispatched_declarations": [
+  "fn-clt-mv",
   "fn-clt-nested",
+  "fn-clt-shadow",
   "fn-clt-single",
+  "fn-clt-swap",
+  "fn-clt-twice",
   "fn-cur-at",
   "fn-heap-command-line",
   "fn-lgb-slice-acc",
@@ -18952,6 +18956,15 @@
    "unaccounted": [],
    "theorem": "fn-asto-quantum-conses-bound",
    "declared_in": "host/cost-host.lisp"
+  },
+  "fn-clt-twice": {
+   "claim": "partial",
+   "bound": "1",
+   "unaccounted": [
+    "fn-clt-leaf"
+   ],
+   "theorem": "fn-clt-twice-conses-bound",
+   "declared_in": "books/def-cost-lambda-tests.lisp"
   },
   "fn-cur-at": {
    "claim": "derived",

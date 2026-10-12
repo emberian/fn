@@ -510,20 +510,21 @@
 (mutual-recursion
  (defun fn-cost-unaccounted-terms (term)
    (declare (xargs :mode :program))
-   ; every (fn-cost-unaccounted ...) subterm, each once
+   ; One summand per occurrence, including both IF branches. Unknown costs
+   ; are natural, so summing unchosen branches is a sound over-approximation.
    (cond ((or (atom term) (eq (car term) 'quote)) nil)
          ((member-eq (car term) '(fn-cost-unaccounted fn-cost-unaccounted-conses)) (list term))
          ((consp (car term))
-          (union-equal (sublis-var-lst (pairlis$ (cadr (car term)) (cdr term))
-                                       (fn-cost-unaccounted-terms (car (last (car term)))))
-                       (fn-cost-unaccounted-terms-lst (cdr term))))
+          (append (sublis-var-lst (pairlis$ (cadr (car term)) (cdr term))
+                                  (fn-cost-unaccounted-terms (car (last (car term)))))
+                  (fn-cost-unaccounted-terms-lst (cdr term))))
          (t (fn-cost-unaccounted-terms-lst (cdr term)))))
  (defun fn-cost-unaccounted-terms-lst (terms)
    (declare (xargs :mode :program))
    (if (atom terms)
        nil
-     (union-equal (fn-cost-unaccounted-terms (car terms))
-                  (fn-cost-unaccounted-terms-lst (cdr terms))))))
+     (append (fn-cost-unaccounted-terms (car terms))
+             (fn-cost-unaccounted-terms-lst (cdr terms))))))
 
 (defun fn-cost-problem-dimension (fn kvs w dimension)
   (declare (xargs :mode :program))
@@ -649,7 +650,7 @@
          (measure (and recursive j (fn-cd-subst (access justification j :measure) alist)))
          (rel (and recursive j (access justification j :rel)))
          (guard (fn-cd-subst (getpropc fn 'guard *t* w) alist))
-         (us (union-equal (fn-cost-unaccounted-terms rcost) (fn-cost-unaccounted-terms bcost)))
+         (us (append (fn-cost-unaccounted-terms rcost) (fn-cost-unaccounted-terms bcost)))
          (bound-term (and bound
                           (fn-cost-sum (cons (fn-cd-subst (fn-cd-subst bound (fn-cost-sizes-alist sizes)) alist)
                                              us))))
