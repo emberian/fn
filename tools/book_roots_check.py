@@ -20,11 +20,9 @@ import ledger  # noqa: E402
 # The seat assigns exclusions, each with a reason naming its outstanding work.
 _P_DRAFTS = (
     "P's unrooted drafts (coordinator ruling 10-11, Fungus seam 9): post-identity-captured stays off the roots until it is rebased on fn-cpe-eventp (its tests are KNOWN_RED in tools/test_roots_check.py)")
-_C_ROUTED = (
-    'never certified of record; found by A18 10-12; routed to seat C (coordinator 10-12): root it with a certify of record, or delete it')
 _ORPHAN = (
     'outside every Makefile root at dev 402b65786 (first run of this check, 10-12); repair item BOOK-ROOTS-ORPHANS: its owner roots it with a certify of record or deletes it')
-P, C, O = _P_DRAFTS, _C_ROUTED, _ORPHAN
+P, O = _P_DRAFTS, _ORPHAN
 EXCLUDED: dict[str, str] = {
     "books/acceptance-binding-held-gate.lisp": O,
     "books/acceptance-binding.lisp": O,
@@ -79,7 +77,6 @@ EXCLUDED: dict[str, str] = {
     "books/recovery-file-turn.lisp": O,
     "books/recovery-open-origin.lisp": O,
     "books/recovery-page-file-controller.lisp": O,
-    "books/served-catalog-group-low-cost.lisp": C,
     "books/snapshot-initial-custody.lisp": O,
     "books/snapshot-initial-request.lisp": O,
 }
