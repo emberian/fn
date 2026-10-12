@@ -226,15 +226,50 @@
        (:executable-counterpart fn-ptx-step1) (:executable-counterpart fn-ptx-start)
        (:executable-counterpart fn-ptx-wfp))))))))
 
-; R1's actual final-entry convention supplies the pre-step view twice.
+; R1's old counterexample, with the actual whole-delivery POST-ST added.
 (defconst *pthrt-r1-op* (nth 0 (nth 6 *pthrt-host-observations*)))
 (defconst *pthrt-r1-m* (nth 1 (fn-rtc-mstates (nth 1 (nth 6 *pthrt-host-observations*)))))
 (defconst *pthrt-r1-m2* (nth 1 (fn-rtc-mstates (nth 2 (nth 6 *pthrt-host-observations*)))))
 (defconst *pthrt-r1-v* (fn-rtc-view-state 1 1 (nth 1 (nth 6 *pthrt-host-observations*))))
 (defconst *pthrt-r1-ev* (nth 4 (nth 6 *pthrt-host-observations*)))
-(defconst *pthrt-r1-trace* (list (list *pthrt-r1-ev* *pthrt-r1-v* 100000 :ok)))
-(defthm pthrt-final-reading-entry-refutes-the-rely
+(defconst *pthrt-r1-post-v*
+ (fn-rtc-view-state 1 1 (nth 2 (nth 6 *pthrt-host-observations*))))
+(defconst *pthrt-r1-trace*
+ (list (list *pthrt-r1-ev* *pthrt-r1-v* 100000 :ok *pthrt-r1-post-v*)))
+; The only mutation is field 4 := field 1.  It reconstructs exactly the
+; old final ST2 convention, while every current trace still has five fields.
+(defconst *pthrt-r1-old-mutant-trace*
+ (list (update-nth 4 (nth 1 (car *pthrt-r1-trace*))
+                   (car *pthrt-r1-trace*))))
+(assert-event
+ (and (equal (len (car *pthrt-r1-trace*)) 5)
+      (equal (take 4 (car *pthrt-r1-old-mutant-trace*))
+             (take 4 (car *pthrt-r1-trace*)))
+      (equal (nth 4 (car *pthrt-r1-old-mutant-trace*)) *pthrt-r1-v*)
+      (equal (nth 4 (car *pthrt-r1-trace*)) *pthrt-r1-post-v*)
+      (not (equal *pthrt-r1-v* *pthrt-r1-post-v*))))
+; M2 is captured from the actual product executor on this timer, using the
+; checked acceptance instance above.  Test fn-ptx-rely on that very pair;
+; the constrained signature's attachment is not used as a proof rewrite.
+(defthm pthrt-pre-step-post-st-mutant-fails-the-rely
+ (not (fn-ptx-rely *pthrt-r1-m* *pthrt-r1-m2* 1 1
+                   (nth 1 (car *pthrt-r1-old-mutant-trace*))
+                   (nth 4 (car *pthrt-r1-old-mutant-trace*))))
+ :hints (("Goal" :in-theory
+  (union-theories '(fn-ptx-rely)
+   (union-theories (theory 'minimal-theory)
+    (set-difference-theories (executable-counterpart-theory :here)
+     '((:executable-counterpart fn-ptx-rely))))))))
+(defthm pthrt-old-final-reading-entry-refutes-the-rely
  (not (fn-ptx-rely *pthrt-r1-m* *pthrt-r1-m2* 1 1 *pthrt-r1-v* *pthrt-r1-v*))
+ :hints (("Goal" :use pthrt-pre-step-post-st-mutant-fails-the-rely
+          :in-theory
+  (union-theories (theory 'minimal-theory)
+   '((:executable-counterpart nth) (:executable-counterpart car))))))
+(defthm pthrt-real-post-st-keeps-the-rely
+ (fn-ptx-rely *pthrt-r1-m* *pthrt-r1-m2* 1 1
+              (nth 1 (car *pthrt-r1-trace*))
+              (nth 4 (car *pthrt-r1-trace*)))
  :hints (("Goal" :in-theory
   (union-theories '(fn-ptx-rely)
    (union-theories (theory 'minimal-theory)
@@ -245,5 +280,5 @@
                    (nth 3 (nth 6 *pthrt-host-observations*))
                    (not (nth 5 (nth 6 *pthrt-host-observations*)))))
 (value-triple
- (cw "R1 RED: s=(pthrt-reading-state), host cfg=~x0 q=100000 ops=(~x1); delivered event=~x2; last ST2=ST; reading->hashing relies NIL; runtime refused NIL. Checked acceptance is the encapsulate's local witness.~%"
+ (cw "R5 TEETH: s=(pthrt-reading-state), host cfg=~x0 q=100000 ops=(~x1); delivered event=~x2; reading->hashing; old POST-ST:=ST relies NIL; real whole-delivery POST-ST relies T; runtime refused NIL. Checked acceptance is the encapsulate's local witness.~%"
   *fn-pth-rely-cfg* *pthrt-r1-op* *pthrt-r1-ev*))

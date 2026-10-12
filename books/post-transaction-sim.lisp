@@ -175,16 +175,17 @@
                                   (equal (cdr (car ans)) (fn-ptx-record m id inc st)))))))))
 
 ; -----------------------------------------------------------------------------
-; Traces.  A trace is a list of steps (EV ST Q FO): the event, the machine's view at it (the
-; layer's view-state of its slot), the quantum, and the host's outcome were a log action to fail.
-; ST2 of a step is the next step's ST (the view at the following event); the last step's is its own.
+; Traces.  Each entry is (EV ST Q FO POST-ST): the event, the machine's pre-step
+; view, the quantum, the host's failure outcome, and the view after the whole
+; layer delivery (machine step AND its requests).  A nonfinal ST2 is the next
+; entry's ST; the final ST2 is this entry's POST-ST, never its pre-step ST.
 (defun-nx fn-ptx-trace-run (m trace id inc)
   (declare (xargs :measure (len trace) :hints (("Goal" :in-theory (union-theories '(len o< o-finp o-p natp (:type-prescription len) (:compound-recognizer natp-compound-recognizer)) (theory 'minimal-theory))))))
   ; (mv m-final ptd-inputs posted-records): the records of the machine's answers of code 0, in order
   (if (atom trace)
       (mv m nil nil)
     (let* ((x (car trace)) (ev (nth 0 x)) (st (nth 1 x)) (q (nth 2 x)) (fo (nth 3 x))
-           (st2 (if (consp (cdr trace)) (nth 1 (cadr trace)) st)))
+           (st2 (if (consp (cdr trace)) (nth 1 (cadr trace)) (nth 4 x))))
       (mv-let (m2 reqs c) (fn-ptx-step m ev st q)
         (declare (ignore c))
         (mv-let (mf ins posted) (fn-ptx-trace-run m2 (cdr trace) id inc)
@@ -198,7 +199,7 @@
   ; the rely at every step, and every event the machine's own slot's
   (if (atom trace) t
     (let* ((x (car trace)) (ev (nth 0 x)) (st (nth 1 x)) (q (nth 2 x))
-           (st2 (if (consp (cdr trace)) (nth 1 (cadr trace)) st))
+           (st2 (if (consp (cdr trace)) (nth 1 (cadr trace)) (nth 4 x)))
            (m2 (mv-nth 0 (fn-ptx-step m ev st q))))
       (and (equal (fn-rtc-ev-id ev) id) (equal (fn-rtc-ev-inc ev) inc)
            (fn-ptx-rely m m2 id inc st st2)
@@ -1872,7 +1873,7 @@
 (defmacro tst* () '(nth 1 (car trace)))
 (defmacro tq* () '(nth 2 (car trace)))
 (defmacro tfo* () '(nth 3 (car trace)))
-(defmacro tst2* () '(if (consp (cdr trace)) (nth 1 (cadr trace)) (nth 1 (car trace))))
+(defmacro tst2* () '(if (consp (cdr trace)) (nth 1 (cadr trace)) (nth 4 (car trace))))
 (defmacro tm2* () '(mv-nth 0 (fn-ptx-step m (tev*) (tst*) (tq*))))
 (deftheory fn-ptx-tr-th
   (union-theories (theory 'minimal-theory)
@@ -1905,7 +1906,7 @@
   (declare (xargs :measure (len trace) :hints (("Goal" :in-theory (union-theories '(len o< o-finp o-p natp (:type-prescription len) (:compound-recognizer natp-compound-recognizer)) (theory 'minimal-theory))))))
   (if (atom trace) nil
     (let* ((x (car trace)) (ev (nth 0 x)) (st (nth 1 x)) (q (nth 2 x)) (fo (nth 3 x))
-           (st2 (if (consp (cdr trace)) (nth 1 (cadr trace)) st))
+           (st2 (if (consp (cdr trace)) (nth 1 (cadr trace)) (nth 4 x)))
            (m2 (mv-nth 0 (fn-ptx-step m ev st q)))
            (ptd2 (mv-nth 0 (fn-ptd-run ptd (fn-ptx-ptd-ins m ev m2 (fn-ptx-record m2 id inc st2) fo) ino (fn-ptx-unit m) max))))
       (fn-ptx-trace-ind m2 ptd2 (cdr trace) id inc ino max))))

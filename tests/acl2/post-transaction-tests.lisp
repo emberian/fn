@@ -674,6 +674,8 @@
 ; =============================================================================
 ; P4-2 (fn-ptx-posted-are-the-driver-posted) and the composition
 ; (fn-ptx-posted-records-are-recovered-at-every-later-cut): NOT covered here.
+; This section constructs no trace.  Any future producer must supply
+; (EV ST Q FO POST-ST), with POST-ST after the delivery AND its requests.
 ; The machine reads a post through fn-ptx-acc-begin / -feed / -end, a CONSTRAINED
 ; signature with no body.  The prover never uses an attachment, and the
 ; constraints admit an acceptance that refuses every post, so "this trace of the

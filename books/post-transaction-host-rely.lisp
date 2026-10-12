@@ -68,6 +68,50 @@
           (otherwise (fn-pth-host-run s (cdr ops) q))))
     s))
 
+; POST-ST is after the WHOLE delivery: fn-rtc-deliver stores m2 and runs
+; requests (runtime-contract.lisp:1432-1440), as does the executor
+; (runtime-contract-exec.lisp:501-508).  The two equalities below justify
+; the field, including the A-HOST-LANDS input-landing boundary.
+(defthm fn-pth-step-post-view-is-executor-post-view
+  (implies (fn-rtc-st-p fn-rtc-st)
+           (equal
+            (fn-rtc-view-state 1 1
+              (mv-nth 0 (fn-pth-step fn-rtc-st (fn-rtc-landed e fn-rtc-st) q)))
+            (fn-rtc-view-state 1 1
+              (mv-nth 0 (fn-pth-x-step* e q fn-rtc-st)))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-pth-x-step*-is))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                     '(fn-pth-step mv-nth car-cons cdr-cons
+                                       (:executable-counterpart zp)
+                                       (:executable-counterpart not))))))
+
+; A-HOST-LANDS: host has spliced the operation's octets before delivery.
+(defthm fn-pth-host-post-view-is-the-contract-post-view
+  (implies (and (fn-pth-invp st)
+                (fn-rtc-completionp e)
+                (equal u (fn-rtc-find-use (fn-rtc-key e) (fn-rtc-uses st)))
+                u
+                (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
+                (member-eq (fn-rtc-get 0 (fn-rtc-e-outcome e)) '(:done :short))
+                (<= (fn-rtc-get 1 (fn-rtc-e-outcome e)) (fn-rtc-h-len (fn-rtc-u-hd u))))
+           (let ((data (fn-assume-host-input (fn-rtc-e-op e)
+                                            (fn-rtc-get 1 (fn-rtc-e-outcome e)))))
+             (equal
+              (fn-rtc-view-state 1 1
+                (mv-nth 0 (fn-pth-step st (fn-rtc-with-data e data) q)))
+              (fn-rtc-view-state 1 1
+                (mv-nth 0
+                  (fn-pth-x-step* e q
+                    (fn-rtc-st-splice (fn-rtc-h-buf (fn-rtc-u-hd u))
+                                     (fn-rtc-h-off (fn-rtc-u-hd u)) data st)))))))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance fn-pth-host-landing-is-the-contract-step))
+           :in-theory (union-theories (theory 'minimal-theory)
+                                     '(fn-pth-step mv-nth car-cons cdr-cons
+                                       (:executable-counterpart zp)
+                                       (:executable-counterpart not))))))
+
 (defun-nx fn-pth-owner-trace (s ops q)
   (if (consp ops)
       (let ((op (car ops)))
@@ -75,10 +119,11 @@
           (:complete
            (let ((e (fn-rtc-get 1 op)))
              (mv-let (deliveredp ev) (fn-pth-owner-delivery s e q)
-               (let ((tail (fn-pth-owner-trace
-                            (mv-nth 0 (fn-pth-step s e q)) (cdr ops) q)))
+               (let* ((s2 (mv-nth 0 (fn-pth-step s e q)))
+                      (tail (fn-pth-owner-trace s2 (cdr ops) q)))
                  (if deliveredp
-                     (cons (list ev (fn-rtc-view-state 1 1 s) q (fn-pth-fo e)) tail)
+                     (cons (list ev (fn-rtc-view-state 1 1 s) q (fn-pth-fo e)
+                                 (fn-rtc-view-state 1 1 s2)) tail)
                    tail)))))
           (:request
            (fn-pth-owner-trace
