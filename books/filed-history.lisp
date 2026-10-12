@@ -16,12 +16,23 @@
 
 (include-book "filed-catalog")
 (include-book "store-intern")
+(include-book "store-reclaim-pack")      ; fn-rclp-tombstoned
+(include-book "history-fold-refinement") ; fn-rows-composites-okp
 
-(defun fn-o1-files-filedp (files fn-arena)
+; Rows in an arena: their articles filed or reclaimed, each what the intern
+; makes of a row (a composite row's held article is its composite's
+; article), every handle in the arena.
+(defun fn-o1-rows-invp (rows fn-arena)
   (declare (xargs :stobjs fn-arena :verify-guards nil))
-  (and (fn-o1-records-filedp (fn-cat-history-articles (fn-sf-records files) fn-arena))
-       (fn-o1-records-filedp (fn-cat-history-articles
-                              (list (fn-sf-record-candidate files)) fn-arena))))
+  (and (fn-o1-records-filed-or-reclaimedp (fn-cat-history-articles rows fn-arena))
+       (fn-rows-composites-okp rows fn-arena)
+       (fn-rows-handles-inp rows fn-arena)))
+
+; The Store's files: the records and the staged candidate.
+(defun fn-o1-files-invp (files fn-arena)
+  (declare (xargs :stobjs fn-arena :verify-guards nil))
+  (and (fn-o1-rows-invp (fn-sf-records files) fn-arena)
+       (fn-o1-rows-invp (list (fn-sf-record-candidate files)) fn-arena)))
 
 (local
  (defthm o1h-history-articles-of-append
@@ -29,20 +40,65 @@
           (append (fn-cat-history-articles a fn-arena) (fn-cat-history-articles b fn-arena)))))
 
 (local
- (defthm o1h-records-filedp-of-append
-   (equal (fn-o1-records-filedp (append a b))
-          (and (fn-o1-records-filedp a) (fn-o1-records-filedp b)))
-   :hints (("Goal" :induct (fn-o1-records-filedp a)
+ (defthm o1h-fr-append
+   (equal (fn-o1-records-filed-or-reclaimedp (append a b))
+          (and (fn-o1-records-filed-or-reclaimedp a) (fn-o1-records-filed-or-reclaimedp b)))
+   :hints (("Goal" :induct (fn-o1-records-filed-or-reclaimedp a)
             :in-theory (disable fn-o1-filed-within-sourcep)))))
 
 (local
- (defthm o1h-history-articles-of-nil-list
-   (fn-o1-records-filedp (fn-cat-history-articles (list nil) fn-arena))
-   :hints (("Goal" :in-theory (enable fn-cat-history-article fn-row-wire-of fn-hstxa-p fn-held-p)))))
+ (defthm o1h-comp-append
+   (equal (fn-rows-composites-okp (append a b) fn-arena)
+          (and (fn-rows-composites-okp a fn-arena) (fn-rows-composites-okp b fn-arena)))
+   :hints (("Goal" :induct (fn-rows-composites-okp a fn-arena)))))
 
 (local
- (defthm o1h-history-articles-of-nil
-   (fn-o1-records-filedp (fn-cat-history-articles nil fn-arena))))
+ (defthm o1h-handles-append
+   (equal (fn-rows-handles-inp (append a b) fn-arena)
+          (and (fn-rows-handles-inp a fn-arena) (fn-rows-handles-inp b fn-arena)))
+   :hints (("Goal" :induct (fn-rows-handles-inp a fn-arena)))))
+
+; Rows are invariant exactly when their parts are (the lifecycle books split
+; a row list by this).
+(defthm fn-o1-rows-invp-append
+  (equal (fn-o1-rows-invp (append a b) fn-arena)
+         (and (fn-o1-rows-invp a fn-arena) (fn-o1-rows-invp b fn-arena)))
+  :hints (("Goal" :in-theory (e/d (fn-o1-rows-invp)
+                                  (fn-o1-records-filed-or-reclaimedp fn-rows-composites-okp
+                                   fn-rows-handles-inp)))))
+
+(local
+ (defthm o1h-invp-nil
+   (fn-o1-rows-invp nil fn-arena)
+   :hints (("Goal" :in-theory (enable fn-o1-rows-invp)))))
+
+(local
+ (defthm o1h-invp-list-nil
+   (fn-o1-rows-invp (list nil) fn-arena)
+   :hints (("Goal" :in-theory (enable fn-o1-rows-invp fn-cat-history-article fn-row-wire-of fn-hstxa-p
+                                      fn-held-p fn-row-composite-okp fn-stxa-p)))))
+
+; The events the four non-article prepares stage are no row: not a record,
+; a held row, a composite or a composite row.
+(local
+ (defthm o1h-event-not-row
+   (implies (or (fn-store-retention-event-p e) (fn-cpe-eventp e) (fn-th-topic-eventp e))
+            (and (not (fn-held-p e)) (not (fn-hstxa-p e)) (not (fn-stxa-p e)) (not (fn-record-p e))))
+   :hints (("Goal" :use ((:instance fn-held-is-no-wire-event (x e))
+                         (:instance fn-hstxa-is-no-wire-event (x e))
+                         (:instance fn-stxa-is-no-other-wire-event (x e))
+                         (:instance fn-record-is-no-other-wire-event (x e)))
+            :in-theory (theory 'minimal-theory)))))
+
+(local
+ (defthm o1h-event-invp
+   (implies (or (fn-store-retention-event-p e) (fn-cpe-eventp e) (fn-th-topic-eventp e))
+            (fn-o1-rows-invp (list e) fn-arena))
+   :hints (("Goal" :use o1h-event-not-row
+            :in-theory (e/d (fn-o1-rows-invp fn-cat-history-article fn-row-wire-of fn-row-composite-okp
+                             fn-rows-composites-okp fn-rows-handles-inp fn-o1-records-filed-or-reclaimedp)
+                            (o1h-event-not-row fn-held-p fn-hstxa-p fn-stxa-p fn-record-p
+                             fn-store-retention-event-p fn-cpe-eventp fn-th-topic-eventp))))))
 
 (local
  (defthm o1h-start-frontier-shape
@@ -143,10 +199,11 @@
             (equal (fn-sf-record-candidate f2) nil)))))
 
 (local
- (defthm o1h-shape-keeps-filed
-   (implies (and (fn-o1-files-filedp f1 fn-arena) (o1h-shape f2 f1))
-            (fn-o1-files-filedp f2 fn-arena))
-   :hints (("Goal" :in-theory (e/d (o1h-shape fn-o1-files-filedp) (fn-o1-records-filedp fn-cat-history-articles))))
+ (defthm o1h-shape-keeps-inv
+   (implies (and (fn-o1-files-invp f1 fn-arena) (o1h-shape f2 f1))
+            (fn-o1-files-invp f2 fn-arena))
+   :hints (("Goal" :in-theory (e/d (o1h-shape fn-o1-files-invp)
+                                   (fn-o1-rows-invp))))
    :rule-classes nil))
 
 (local
@@ -297,15 +354,18 @@
                                                 o1h-recover-shape o1h-make-fault-shape)
                                               (theory 'minimal-theory))))))
 
-(local
- (defthm o1h-prepared-keeps-filed
-   (implies (and (fn-o1-files-filedp f1 fn-arena)
-                 (fn-o1-records-filedp (fn-cat-history-articles (list record) fn-arena))
-                 (or (equal f2 f1)
-                     (equal f2 (fn-sf-prepare-record f1 record groups capacity))))
-            (fn-o1-files-filedp f2 fn-arena))
-   :hints (("Goal" :use ((:instance o1h-prepare-record-shape (s f1)))
-            :in-theory (e/d (fn-o1-files-filedp) (fn-o1-records-filedp fn-cat-history-articles fn-sf-prepare-record))))))
+; Staging a row whose article is filed or reclaimed, or staging nothing, keeps
+; the history (the files-level step every prepare, and the intern-then-stage
+; of books/filed-lifecycle, is).
+(defthm fn-o1-staging-keeps-the-history
+  (implies (and (fn-o1-files-invp f1 fn-arena)
+                (or (equal f2 f1)
+                    (and (fn-o1-rows-invp (list record) fn-arena)
+                         (equal f2 (fn-sf-prepare-record f1 record groups capacity)))))
+           (fn-o1-files-invp f2 fn-arena))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance o1h-prepare-record-shape (s f1)))
+           :in-theory (e/d (fn-o1-files-invp) (fn-o1-rows-invp fn-sf-prepare-record)))))
 
 (local
  (defthm o1h-sn-prepare-files
@@ -320,7 +380,8 @@
  (defthm o1h-sn-prepare-retention-files
    (let ((f (fn-sn-files (fn-sn-prepare-retention s event))))
      (or (equal f (fn-sn-files s))
-         (equal f (fn-sf-prepare-record (fn-sn-files s) event (fn-sn-groups s) (fn-sn-capacity s)))))
+         (and (fn-store-retention-event-p event)
+              (equal f (fn-sf-prepare-record (fn-sn-files s) event (fn-sn-groups s) (fn-sn-capacity s))))))
    :rule-classes nil
    :hints (("Goal" :in-theory (union-theories '(fn-sn-prepare-retention o1h-files-of-constructors)
                                               (theory 'minimal-theory))))))
@@ -338,7 +399,8 @@
  (defthm o1h-sn-prepare-consumer-files
    (let ((f (fn-sn-files (fn-sn-prepare-consumer s event))))
      (or (equal f (fn-sn-files s))
-         (equal f (fn-sf-prepare-record (fn-sn-files s) event (fn-sn-groups s) (fn-sn-capacity s)))))
+         (and (fn-cpe-eventp event)
+              (equal f (fn-sf-prepare-record (fn-sn-files s) event (fn-sn-groups s) (fn-sn-capacity s))))))
    :rule-classes nil
    :hints (("Goal" :in-theory (union-theories '(fn-sn-prepare-consumer o1h-files-of-constructors)
                                               (theory 'minimal-theory))))))
@@ -347,7 +409,8 @@
  (defthm o1h-sn-prepare-topic-files
    (let ((f (fn-sn-files (fn-sn-prepare-topic s event))))
      (or (equal f (fn-sn-files s))
-         (equal f (fn-sf-prepare-record (fn-sn-files s) event (fn-sn-groups s) (fn-sn-capacity s)))))
+         (and (fn-th-topic-eventp event)
+              (equal f (fn-sf-prepare-record (fn-sn-files s) event (fn-sn-groups s) (fn-sn-capacity s))))))
    :rule-classes nil
    :hints (("Goal" :in-theory (union-theories '(fn-sn-prepare-topic o1h-files-of-constructors)
                                               (theory 'minimal-theory))))))
@@ -393,115 +456,170 @@
            ("Subgoal *1/2" :use ((:instance o1h-history-article-survives-seal (row (car rows)))))
            ("Subgoal *1/1" :use ((:instance o1h-history-article-survives-seal (row (car rows))))))))
 
-; P4-R1 io: every file step (frontier, record file, link, directory, the
-; recovery barrier) keeps the files filed.
-(defthm fn-o1-io-keeps-the-files-filed
-  (implies (fn-o1-files-filedp (fn-sn-files s) fn-arena)
-           (fn-o1-files-filedp (fn-sn-files (fn-sn-io s operation result)) fn-arena))
+;; sealing more payloads keeps what a row with its handle in the arena reads
+(local
+ (defthm o1h-handles-survive-seal
+   (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
+            (fn-rows-handles-inp rows (fn-arena-seal-list xs fn-arena)))
+   :hints (("Goal" :induct (fn-rows-handles-inp rows fn-arena)
+            :in-theory (enable fn-rows-handles-inp fn-row-handle-inp)))))
+
+(local
+ (defthm o1h-row-composite-okp-survives-seal
+   (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp (list row) fn-arena))
+            (equal (fn-row-composite-okp row (fn-arena-seal-list xs fn-arena))
+                   (fn-row-composite-okp row fn-arena)))
+   :hints (("Goal" :in-theory (e/d (fn-row-composite-okp fn-rows-handles-inp) (fn-row-wire-of))
+            :use ((:instance o1h-row-wire-of-survives-seal (row row))
+                  (:instance o1h-row-wire-of-survives-seal (row (fn-hstxa-held row))))))))
+
+(local
+ (defthm o1h-handles-car-cdr
+   (implies (fn-rows-handles-inp rows fn-arena)
+            (and (fn-rows-handles-inp (list (car rows)) fn-arena)
+                 (fn-rows-handles-inp (cdr rows) fn-arena)))
+   :hints (("Goal" :expand ((fn-rows-handles-inp rows fn-arena)
+                            (fn-rows-handles-inp (list (car rows)) fn-arena)
+                            (fn-rows-handles-inp nil fn-arena))))))
+
+(local
+ (defun o1h-ind (rows) (if (atom rows) nil (o1h-ind (cdr rows)))))
+
+(local
+ (defthm o1h-composites-survive-seal
+   (implies (and (fn-arena-p fn-arena) (fn-rows-handles-inp rows fn-arena))
+            (equal (fn-rows-composites-okp rows (fn-arena-seal-list xs fn-arena))
+                   (fn-rows-composites-okp rows fn-arena)))
+   :hints (("Goal" :induct (o1h-ind rows)
+            :in-theory (disable fn-row-composite-okp fn-rows-handles-inp fn-arena-seal-list))
+           ("Subgoal *1/2" :use ((:instance o1h-row-composite-okp-survives-seal (row (car rows)))
+                                 o1h-handles-car-cdr)
+            :expand ((fn-rows-composites-okp rows (fn-arena-seal-list xs fn-arena))
+                     (fn-rows-composites-okp rows fn-arena))))))
+
+; Sealing more payloads into the arena keeps rows that were invariant in it.
+(defthm fn-o1-rows-invp-seal
+  (implies (and (fn-arena-p fn-arena) (fn-o1-rows-invp rows fn-arena))
+           (fn-o1-rows-invp rows (fn-arena-seal-list xs fn-arena)))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance o1h-shape-keeps-filed (f1 (fn-sn-files s))
+  :hints (("Goal" :in-theory (e/d (fn-o1-rows-invp) (fn-arena-seal-list))
+           :use (o1h-history-articles-survive-seal o1h-composites-survive-seal o1h-handles-survive-seal))))
+
+; KR1 io: every file step (frontier, record file, link, directory, the
+; recovery barrier) keeps the history.
+(defthm fn-o1-io-keeps-the-history
+  (implies (fn-o1-files-invp (fn-sn-files s) fn-arena)
+           (fn-o1-files-invp (fn-sn-files (fn-sn-io s operation result)) fn-arena))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance o1h-shape-keeps-inv (f1 (fn-sn-files s))
                                    (f2 (fn-sn-files (fn-sn-io s operation result)))))
-           :in-theory (disable fn-sn-io fn-o1-files-filedp o1h-shape))))
+           :in-theory (disable fn-sn-io fn-o1-files-invp o1h-shape))))
 
-; P4-R2 finish (the completion; fn-sf-core-completion keeps the records).
-(defthm fn-o1-finish-keeps-the-files-filed
-  (implies (fn-o1-files-filedp (fn-sn-files s) fn-arena)
-           (fn-o1-files-filedp (fn-sn-files (fn-sn-finish s)) fn-arena))
+; KR2 finish (the completion; fn-sf-core-completion keeps the records).
+(defthm fn-o1-finish-keeps-the-history
+  (implies (fn-o1-files-invp (fn-sn-files s) fn-arena)
+           (fn-o1-files-invp (fn-sn-files (fn-sn-finish s)) fn-arena))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance o1h-shape-keeps-filed (f1 (fn-sn-files s))
+  :hints (("Goal" :use ((:instance o1h-shape-keeps-inv (f1 (fn-sn-files s))
                                    (f2 (fn-sn-files (fn-sn-finish s)))))
-           :in-theory (disable fn-sn-finish fn-o1-files-filedp o1h-shape))))
+           :in-theory (disable fn-sn-finish fn-o1-files-invp o1h-shape))))
 
-; P4-R3 crash, every choice.
-(defthm fn-o1-crash-keeps-the-files-filed
-  (implies (fn-o1-files-filedp (fn-sn-files s) fn-arena)
-           (fn-o1-files-filedp (fn-sn-files (fn-sn-crash s frontier-choice record-choice)) fn-arena))
+; KR3 crash, every choice.
+(defthm fn-o1-crash-keeps-the-history
+  (implies (fn-o1-files-invp (fn-sn-files s) fn-arena)
+           (fn-o1-files-invp (fn-sn-files (fn-sn-crash s frontier-choice record-choice)) fn-arena))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance o1h-shape-keeps-filed (f1 (fn-sn-files s))
+  :hints (("Goal" :use ((:instance o1h-shape-keeps-inv (f1 (fn-sn-files s))
                                    (f2 (fn-sn-files (fn-sn-crash s frontier-choice record-choice)))))
-           :in-theory (disable fn-sn-crash fn-o1-files-filedp o1h-shape))))
+           :in-theory (disable fn-sn-crash fn-o1-files-invp o1h-shape))))
 
-; P4-R4 recovery.
-(defthm fn-o1-recover-keeps-the-files-filed
-  (implies (fn-o1-files-filedp (fn-sn-files s) fn-arena)
-           (fn-o1-files-filedp (fn-sn-files (fn-sn-recover s)) fn-arena))
+; KR4 recovery.
+(defthm fn-o1-recover-keeps-the-history
+  (implies (fn-o1-files-invp (fn-sn-files s) fn-arena)
+           (fn-o1-files-invp (fn-sn-files (fn-sn-recover s)) fn-arena))
   :rule-classes nil
-  :hints (("Goal" :use ((:instance o1h-shape-keeps-filed (f1 (fn-sn-files s))
+  :hints (("Goal" :use ((:instance o1h-shape-keeps-inv (f1 (fn-sn-files s))
                                    (f2 (fn-sn-files (fn-sn-recover s)))))
-           :in-theory (disable fn-sn-recover fn-o1-files-filedp o1h-shape))))
+           :in-theory (disable fn-sn-recover fn-o1-files-invp o1h-shape))))
 
-; P4-R5 prepare, each of the five: what is staged is what was prepared.
-(defthm fn-o1-prepare-keeps-the-files-filed
-  (implies (and (fn-o1-files-filedp (fn-sn-files s) fn-arena)
-                (fn-o1-records-filedp (fn-cat-history-articles (list record) fn-arena)))
-           (fn-o1-files-filedp (fn-sn-files (fn-sn-prepare s record)) fn-arena))
+; KR5 prepare, each of the five: what is staged is what was prepared.  The
+; article and identity entries stage a row the caller supplies, so that row
+; is a premise; a retention, consumer or topic event is no row at all
+; (o1h-event-invp), so those need none.
+(defthm fn-o1-prepare-keeps-the-history
+  (implies (and (fn-o1-files-invp (fn-sn-files s) fn-arena)
+                (fn-o1-rows-invp (list record) fn-arena))
+           (fn-o1-files-invp (fn-sn-files (fn-sn-prepare s record)) fn-arena))
   :rule-classes nil
   :hints (("Goal" :use (o1h-sn-prepare-files
-                        (:instance o1h-prepared-keeps-filed (f1 (fn-sn-files s))
+                        (:instance fn-o1-staging-keeps-the-history (f1 (fn-sn-files s))
                                    (f2 (fn-sn-files (fn-sn-prepare s record)))
-                                   (record record) (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))))
-           :in-theory (disable o1h-prepared-keeps-filed))))
+                                   (record record) (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s)))))))
 
-(defthm fn-o1-prepare-retention-keeps-the-files-filed
-  (implies (and (fn-o1-files-filedp (fn-sn-files s) fn-arena)
-                (fn-o1-records-filedp (fn-cat-history-articles (list event) fn-arena)))
-           (fn-o1-files-filedp (fn-sn-files (fn-sn-prepare-retention s event)) fn-arena))
+(defthm fn-o1-prepare-retention-keeps-the-history
+  (implies (fn-o1-files-invp (fn-sn-files s) fn-arena)
+           (fn-o1-files-invp (fn-sn-files (fn-sn-prepare-retention s event)) fn-arena))
   :rule-classes nil
   :hints (("Goal" :use (o1h-sn-prepare-retention-files
-                        (:instance o1h-prepared-keeps-filed (f1 (fn-sn-files s))
+                        (:instance o1h-event-invp (e event))
+                        (:instance fn-o1-staging-keeps-the-history (f1 (fn-sn-files s))
                                    (f2 (fn-sn-files (fn-sn-prepare-retention s event)))
                                    (record event) (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))))
-           :in-theory (disable o1h-prepared-keeps-filed))))
+           :in-theory (disable o1h-event-invp))))
 
-(defthm fn-o1-prepare-identity-keeps-the-files-filed
-  (implies (and (fn-o1-files-filedp (fn-sn-files s) fn-arena)
-                (fn-o1-records-filedp (fn-cat-history-articles (list event) fn-arena)))
-           (fn-o1-files-filedp (fn-sn-files (fn-sn-prepare-identity s event)) fn-arena))
+(defthm fn-o1-prepare-identity-keeps-the-history
+  (implies (and (fn-o1-files-invp (fn-sn-files s) fn-arena)
+                (fn-o1-rows-invp (list event) fn-arena))
+           (fn-o1-files-invp (fn-sn-files (fn-sn-prepare-identity s event)) fn-arena))
   :rule-classes nil
   :hints (("Goal" :use (o1h-sn-prepare-identity-files
-                        (:instance o1h-prepared-keeps-filed (f1 (fn-sn-files s))
+                        (:instance fn-o1-staging-keeps-the-history (f1 (fn-sn-files s))
                                    (f2 (fn-sn-files (fn-sn-prepare-identity s event)))
-                                   (record event) (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))))
-           :in-theory (disable o1h-prepared-keeps-filed))))
+                                   (record event) (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s)))))))
 
-(defthm fn-o1-prepare-consumer-keeps-the-files-filed
-  (implies (and (fn-o1-files-filedp (fn-sn-files s) fn-arena)
-                (fn-o1-records-filedp (fn-cat-history-articles (list event) fn-arena)))
-           (fn-o1-files-filedp (fn-sn-files (fn-sn-prepare-consumer s event)) fn-arena))
+(defthm fn-o1-prepare-consumer-keeps-the-history
+  (implies (fn-o1-files-invp (fn-sn-files s) fn-arena)
+           (fn-o1-files-invp (fn-sn-files (fn-sn-prepare-consumer s event)) fn-arena))
   :rule-classes nil
   :hints (("Goal" :use (o1h-sn-prepare-consumer-files
-                        (:instance o1h-prepared-keeps-filed (f1 (fn-sn-files s))
+                        (:instance o1h-event-invp (e event))
+                        (:instance fn-o1-staging-keeps-the-history (f1 (fn-sn-files s))
                                    (f2 (fn-sn-files (fn-sn-prepare-consumer s event)))
                                    (record event) (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))))
-           :in-theory (disable o1h-prepared-keeps-filed))))
+           :in-theory (disable o1h-event-invp))))
 
-(defthm fn-o1-prepare-topic-keeps-the-files-filed
-  (implies (and (fn-o1-files-filedp (fn-sn-files s) fn-arena)
-                (fn-o1-records-filedp (fn-cat-history-articles (list event) fn-arena)))
-           (fn-o1-files-filedp (fn-sn-files (fn-sn-prepare-topic s event)) fn-arena))
+(defthm fn-o1-prepare-topic-keeps-the-history
+  (implies (fn-o1-files-invp (fn-sn-files s) fn-arena)
+           (fn-o1-files-invp (fn-sn-files (fn-sn-prepare-topic s event)) fn-arena))
   :rule-classes nil
   :hints (("Goal" :use (o1h-sn-prepare-topic-files
-                        (:instance o1h-prepared-keeps-filed (f1 (fn-sn-files s))
+                        (:instance o1h-event-invp (e event))
+                        (:instance fn-o1-staging-keeps-the-history (f1 (fn-sn-files s))
                                    (f2 (fn-sn-files (fn-sn-prepare-topic s event)))
                                    (record event) (groups (fn-sn-groups s)) (capacity (fn-sn-capacity s))))
-           :in-theory (disable o1h-prepared-keeps-filed))))
+           :in-theory (disable o1h-event-invp))))
 
-; P4-R0 the start: the initial Store's files are filed.
-(defthm fn-o1-initial-files-are-filed
-  (fn-o1-files-filedp (fn-sn-files (fn-sn-initial groups capacity)) fn-arena)
+; KR6 the start: the initial Store's files hold no record and no candidate.
+(defthm fn-o1-initial-history
+  (fn-o1-files-invp (fn-sn-files (fn-sn-initial groups capacity)) fn-arena)
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-o1-files-filedp fn-sn-initial fn-sn-make-v2 fn-sn-files fn-sf-initial-state)
+  :hints (("Goal" :in-theory (e/d (fn-o1-files-invp fn-sn-initial fn-sn-make-v2 fn-sn-files fn-sf-initial-state)
                                   ()))))
 
-; P4-R6 interning: sealing more payloads into the arena keeps what every row
-; with handles in the arena reads, so it keeps the files filed.
-(defthm fn-o1-seal-keeps-the-files-filed
+; KR7 interning: sealing more payloads into the arena keeps what every row
+; with handles in the arena reads, so it keeps the history.
+(defthm fn-o1-seal-keeps-the-history
   (implies (and (fn-arena-p fn-arena)
-                (fn-rows-handles-inp (fn-sf-records files) fn-arena)
-                (fn-rows-handles-inp (list (fn-sf-record-candidate files)) fn-arena)
-                (fn-o1-files-filedp files fn-arena))
-           (fn-o1-files-filedp files (fn-arena-seal-list xs fn-arena)))
+                (fn-o1-files-invp files fn-arena))
+           (fn-o1-files-invp files (fn-arena-seal-list xs fn-arena)))
   :rule-classes nil
-  :hints (("Goal" :in-theory (e/d (fn-o1-files-filedp) (fn-arena-seal-list fn-o1-records-filedp))
-           :use ((:instance o1h-history-articles-survive-seal (rows (fn-sf-records files)))
-                 (:instance o1h-history-articles-survive-seal (rows (list (fn-sf-record-candidate files))))))))
+  :hints (("Goal" :in-theory (e/d (fn-o1-files-invp) (fn-arena-seal-list fn-o1-rows-invp))
+           :use ((:instance fn-o1-rows-invp-seal (rows (fn-sf-records files)))
+                 (:instance fn-o1-rows-invp-seal (rows (list (fn-sf-record-candidate files))))))))
+
+; K0 reclaim's rewrite: a tombstoned record is reclaimed, whatever its groups.
+(defthm fn-o1-tombstoned-record-is-reclaimed
+  (fn-o1-records-filed-or-reclaimedp (list (fn-rclp-tombstoned r)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (e/d (fn-rclp-tombstoned fn-rcl-tombstonep fn-rcl-tombstone-of fn-o1-records-filed-or-reclaimedp)
+                                  (fn-asj-subject fn-asj-preimage fn-asj-project fn-blake3 fn-pb-subject fn-pb-path-agent)))))
