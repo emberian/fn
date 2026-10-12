@@ -16,15 +16,18 @@
          (natp j) (<= j (fn-rtc-st-fill h fn-rtc-st))
          (<= (+ j (nfix m)) (fn-rtc-buf-cap h cfg)))))
 
-(local (progn
-(defthm fn-dsw-get-of-set
+(defthmd fn-dsw-get-of-set
   (equal (fn-rtc-get i (fn-rtc-set j v l))
          (if (and (equal (nfix i) (nfix j)) (< (nfix j) (len l))) v (fn-rtc-get i l))))
-(defthm fn-dsw-set-of-set
+(local (in-theory (enable fn-dsw-get-of-set)))
+(defthmd fn-dsw-set-of-set
   (equal (fn-rtc-set j v2 (fn-rtc-set j v1 l)) (fn-rtc-set j v2 l)))
-(defthm fn-dsw-len-of-set (equal (len (fn-rtc-set j v l)) (len l)))
-(defthm fn-dsw-get-past-len (implies (<= (len l) (nfix i)) (equal (fn-rtc-get i l) nil)))
-(defthm fn-dsw-with-buffer-accessors
+(local (in-theory (enable fn-dsw-set-of-set)))
+(defthmd fn-dsw-len-of-set (equal (len (fn-rtc-set j v l)) (len l)))
+(local (in-theory (enable fn-dsw-len-of-set)))
+(defthmd fn-dsw-get-past-len (implies (<= (len l) (nfix i)) (equal (fn-rtc-get i l) nil)))
+(local (in-theory (enable fn-dsw-get-past-len)))
+(defthmd fn-dsw-with-buffer-accessors
   (and (equal (fn-rtc-config (fn-rtc-with-buffer h b s)) (fn-rtc-config s))
        (equal (fn-rtc-uses (fn-rtc-with-buffer h b s)) (fn-rtc-uses s))
        (equal (fn-rtc-buffer k (fn-rtc-with-buffer h b s))
@@ -32,24 +35,25 @@
        (equal (fn-rtc-with-buffer h b2 (fn-rtc-with-buffer h b1 s)) (fn-rtc-with-buffer h b2 s)))
   :hints (("Goal" :in-theory (enable fn-rtc-with-buffer fn-rtc-config fn-rtc-uses fn-rtc-buffer fn-rtc-pool
                                      fn-rtc-make fn-rtc-slots fn-rtc-mstates fn-rtc-next-op))))
-(defthm fn-dsw-len-take (equal (len (take n l)) (nfix n)))
-(defthm fn-dsw-take-append-len
+(local (in-theory (enable fn-dsw-with-buffer-accessors)))
+(local (defthm fn-dsw-len-take (equal (len (take n l)) (nfix n))))
+(local (defthm fn-dsw-take-append-len
   (implies (and (true-listp a) (natp k))
-           (equal (take (+ (len a) k) (append a b)) (append a (take k b)))))
-(defthm fn-dsw-nthcdr-append-len
+           (equal (take (+ (len a) k) (append a b)) (append a (take k b))))))
+(local (defthm fn-dsw-nthcdr-append-len
   (implies (natp k)
-           (equal (nthcdr (+ (len a) k) (append a b)) (nthcdr k b))))
-(defthm fn-dsw-nthcdr-nthcdr
-  (implies (and (natp i) (natp j)) (equal (nthcdr i (nthcdr j l)) (nthcdr (+ i j) l))))
-(defthm fn-dsw-append-assoc (equal (append (append a b) c) (append a (append b c))))
-(defthm fn-dsw-true-listp-take (true-listp (take n l)))
-(defthm fn-dsw-take-len-tlf
+           (equal (nthcdr (+ (len a) k) (append a b)) (nthcdr k b)))))
+(local (defthm fn-dsw-nthcdr-nthcdr
+  (implies (and (natp i) (natp j)) (equal (nthcdr i (nthcdr j l)) (nthcdr (+ i j) l)))))
+(local (defthm fn-dsw-append-assoc (equal (append (append a b) c) (append a (append b c)))))
+(local (defthm fn-dsw-true-listp-take (true-listp (take n l))))
+(local (defthm fn-dsw-take-len-tlf
   (implies (and (natp off) (<= off (len b)))
-           (equal (len (take off (true-list-fix b))) off)))
-(defthm fn-dsw-take-1 (equal (take 1 (cons a b)) (list a)))
-(defthm fn-dsw-len-tlf (equal (len (true-list-fix x)) (len x)))
-(defthm fn-dsw-nthcdr-cons (implies (natp k) (equal (nthcdr (+ 1 k) (cons a x)) (nthcdr k x))))
-(defthm fn-dsw-splice-compose
+           (equal (len (take off (true-list-fix b))) off))))
+(local (defthm fn-dsw-take-1 (equal (take 1 (cons a b)) (list a))))
+(local (defthm fn-dsw-len-tlf (equal (len (true-list-fix x)) (len x))))
+(local (defthm fn-dsw-nthcdr-cons (implies (natp k) (equal (nthcdr (+ 1 k) (cons a x)) (nthcdr k x)))))
+(defthmd fn-dsw-splice-compose
   (implies (and (natp off) (<= off (len bytes)))
            (equal (fn-rtc-splice (fn-rtc-splice bytes off (list o)) (+ 1 off) rest)
                   (fn-rtc-splice bytes off (cons o rest))))
@@ -58,12 +62,42 @@
                                    (b (cons o (nthcdr (+ 1 off) (true-list-fix bytes)))))
                         (:instance fn-dsw-nthcdr-append-len (a (take off (true-list-fix bytes)))
                                    (k (+ 1 (len rest))) (b (cons o (nthcdr (+ 1 off) (true-list-fix bytes)))))))))
-(defthm fn-dsw-len-splice
+(local (in-theory (enable fn-dsw-splice-compose)))
+(defthmd fn-dsw-len-splice
   (implies (and (natp off) (<= off (len bytes)))
            (equal (len (fn-rtc-splice bytes off data))
                   (max (len bytes) (+ off (len data)))))
   :hints (("Goal" :in-theory (enable fn-rtc-splice))))
-))
+(local (in-theory (enable fn-dsw-len-splice)))
+
+(local (defthm fn-dsw-tlf-append
+  (equal (true-list-fix (append a b))
+         (append (true-list-fix a) (true-list-fix b)))))
+(local (defthm fn-dsw-take-len-tlf-identity
+  (equal (take (len a) (true-list-fix a)) (true-list-fix a))))
+(local (defthm fn-dsw-take-zero
+  (equal (take 0 xs) nil) :hints (("Goal" :in-theory (enable take)))))
+
+(defthmd fn-dsw-splice-compose-append
+  (implies (and (natp off) (<= off (len bytes)))
+    (equal (fn-rtc-splice (fn-rtc-splice bytes off data) (+ off (len data)) rest)
+           (fn-rtc-splice bytes off (append data rest))))
+  :hints (("Goal" :do-not-induct t :in-theory (e/d (fn-rtc-splice) (take nthcdr))
+           :use ((:instance fn-dsw-take-append-len
+                            (a (take off (true-list-fix bytes))) (k (len data))
+                            (b (append (true-list-fix data)
+                                       (nthcdr (+ off (len data)) (true-list-fix bytes)))))
+                 (:instance fn-dsw-nthcdr-append-len
+                            (a (take off (true-list-fix bytes)))
+                            (k (+ (len data) (len rest)))
+                            (b (append (true-list-fix data)
+                                       (nthcdr (+ off (len data)) (true-list-fix bytes)))))
+                 (:instance fn-dsw-take-append-len
+                            (a (true-list-fix data)) (k 0)
+                            (b (nthcdr (+ off (len data)) (true-list-fix bytes))))
+                 (:instance fn-dsw-nthcdr-append-len
+                            (a (true-list-fix data)) (k (len rest))
+                            (b (nthcdr (+ off (len data)) (true-list-fix bytes))))))))
 
 (defun fn-dsw-append-loop (h j octets fn-rtc-st)
   (declare (xargs :stobjs fn-rtc-st :guard (natp j) :verify-guards nil))
@@ -182,11 +216,12 @@
            :in-theory (enable fn-rtc-st$ap fn-rtc-shapep fn-rtc-get fn-rtc-make
                                     fn-rtc-config fn-rtc-slots fn-rtc-pool fn-rtc-uses fn-rtc-mstates fn-rtc-next-op)))))
 
-(local (defthm fn-dsw-buffer-rebuild
+(defthmd fn-dsw-buffer-rebuild
   (implies (and (true-listp b) (equal (len b) 3))
     (equal (list (fn-rtc-get 0 b) (fn-rtc-get 1 b) (fn-rtc-get 2 b)) b))
   :hints (("Goal" :expand ((len b) (len (cdr b)) (len (cddr b)))
-           :in-theory (enable fn-rtc-get)))))
+           :in-theory (enable fn-rtc-get))))
+(local (in-theory (enable fn-dsw-buffer-rebuild)))
 
 (local (defthm fn-dsw-splice-empty-bytes
   (implies (and (true-listp bytes) (natp off) (<= off (len bytes)))
@@ -203,18 +238,20 @@
          (equal (len (fn-rtc-pool s)) (fn-rtc-nbufs (fn-rtc-config s)))))
   :hints (("Goal" :in-theory (enable fn-rtc-st$ap fn-rtc-shapep)))))
 
-(local (defthm fn-dsw-state-buffer-shape
+(defthmd fn-dsw-state-buffer-shape
   (implies (fn-rtc-st$ap s)
     (and (fn-cbor-octet-listp (fn-rtc-b-bytes (fn-rtc-buffer h s)))
          (implies (< (nfix h) (fn-rtc-nbufs (fn-rtc-config s)))
            (and (true-listp (fn-rtc-buffer h s)) (equal (len (fn-rtc-buffer h s)) 3)))))
   :hints (("Goal" :in-theory (e/d (fn-rtc-st$ap fn-rtc-b-bytes) (fn-rtc-c-shapep-buffer))
-           :use fn-rtc-c-shapep-buffer))))
+           :use fn-rtc-c-shapep-buffer)))
+(local (in-theory (enable fn-dsw-state-buffer-shape)))
 
-(local (defthm fn-dsw-with-original-buffer
+(defthmd fn-dsw-with-original-buffer
   (implies (fn-rtc-st$ap s) (equal (fn-rtc-with-buffer h (fn-rtc-buffer h s) s) s))
   :hints (("Goal" :in-theory (union-theories '(fn-rtc-with-buffer fn-rtc-buffer fn-dsw-set-original
-                         fn-dsw-state-pool-shape fn-dsw-state-rebuild) (theory 'minimal-theory))))))
+                         fn-dsw-state-pool-shape fn-dsw-state-rebuild) (theory 'minimal-theory)))))
+(local (in-theory (enable fn-dsw-with-original-buffer)))
 
 (local (defthm fn-dsw-splice-empty
   (implies (fn-rtc-st$ap s) (equal (fn-rtc-st$a-splice h j nil s) s))
@@ -226,7 +263,7 @@
            :use ((:instance fn-dsw-state-buffer-shape)
                  (:instance fn-cbor-octet-listp-implies-true-listp (xs (fn-rtc-b-bytes (fn-rtc-buffer h s)))))))))
 
-(local (defthm fn-dsw-puts-is-splice
+(defthmd fn-dsw-puts-is-splice
   (implies (and (fn-rtc-st$ap s) (fn-rtc-splice-okp h j data s))
     (equal (fn-dsw-append-loop h j data s) (fn-rtc-st$a-splice h j data s)))
   :hints (("Goal" :induct (fn-dsw-append-loop h j data s)
@@ -235,7 +272,8 @@
                             fn-rtc-uses fn-rtc-get fn-rtc-st$ap))
            )
           ("Subgoal *1/1" :use ((:instance fn-dsw-state-buffer-shape)
-                                (:instance fn-rtc-st-put{preserved} (fn-rtc-st s) (off j) (o (car data))))))))
+                                (:instance fn-rtc-st-put{preserved} (fn-rtc-st s) (off j) (o (car data)))))))
+(local (in-theory (enable fn-dsw-puts-is-splice)))
 
 (defthmd fn-dsw-append-loop-is-puts
   (implies (natp j)
@@ -349,8 +387,6 @@
                  (:instance fn-cbor-octet-listp-implies-true-listp (xs data))
                  (:instance fn-dsw-view-appends-bytes (bytes (fn-rtc-b-bytes (fn-rtc-buffer h s))))))))
 
-(local (defthm fn-dsw-take-zero
-  (equal (take 0 xs) nil) :hints (("Goal" :in-theory (enable take)))))
 (local (defthm fn-dsw-append-nil
   (implies (true-listp xs) (equal (append xs nil) xs))))
 (local (defthm fn-dsw-splice-prefix
@@ -367,11 +403,20 @@
     (equal (take (len data) (fn-rtc-splice bytes 0 data)) data))
   :hints (("Goal" :in-theory (disable fn-rtc-splice take)
            :use ((:instance fn-dsw-splice-prefix (j 0)))))))
-(local (defthm fn-dsw-splice-cons
+(defthmd fn-dsw-splice-cons
   (implies (and (posp j) (<= j (+ 1 (len bytes))))
     (equal (fn-rtc-splice (cons o bytes) j data)
            (cons o (fn-rtc-splice bytes (- j 1) data))))
-  :hints (("Goal" :in-theory (enable fn-rtc-splice take nthcdr)))))
+  :hints (("Goal" :in-theory (enable fn-rtc-splice take nthcdr))))
+(local (in-theory (enable fn-dsw-splice-cons)))
+
+; Consumers opt into these pool rules together; the library leaves them disabled.
+(deftheory fn-dsw-pool-theory
+  '(fn-dsw-get-of-set fn-dsw-set-of-set fn-dsw-len-of-set fn-dsw-get-past-len
+    fn-dsw-with-buffer-accessors fn-dsw-buffer-rebuild fn-dsw-with-original-buffer
+    fn-dsw-splice-compose fn-dsw-splice-compose-append fn-dsw-splice-cons
+    fn-dsw-len-splice fn-dsw-state-buffer-shape fn-dsw-puts-is-splice
+    fn-dsw-append-loop-is-puts fn-dsw-splice-is-puts))
 (local (defun fn-dsw-view-splice-ind (base j bytes)
   (declare (xargs :measure (nfix base)))
   (if (and (posp base) (consp bytes))
