@@ -16,6 +16,7 @@ import os
 from pathlib import Path
 import shlex
 import subprocess
+import time
 import sys
 import tempfile
 import unittest
@@ -240,8 +241,10 @@ class RemoteRootTests(unittest.TestCase):
                             affected_by=[], remote=Path("/tank/fn/tree"))
             # rsync creates the last component only; a missing parent is
             # exit 11 and nothing else.
-            self.assertEqual(fake.commands[0][-1], "mkdir -p /tank/fn/tree")
-            self.assertEqual(fake.commands[1][0], "rsync")
+            # (the submit lock is taken first, beside the tree; see SubmitLockTests)
+            mirror = next(i for i, c in enumerate(fake.commands) if c[0] == "rsync")
+            self.assertEqual(fake.commands[mirror - 1][-1], "mkdir -p /tank/fn/tree")
+            self.assertIn("FN_FARM_LOCK_TAKE", fake.commands[0][-1])
 
 
 class FailureTests(unittest.TestCase):
@@ -1230,6 +1233,83 @@ class StatusTests(unittest.TestCase):
             self.assertIn("python3 -c", commands[0])
             self.assertNotIn("certify_books.py", commands[0])
 
+
+
+class SubmitLockTests(unittest.TestCase):
+    """One submit at a time per box path (C15/C16, 2026-10-11: two concurrent
+    preflights in one tree; certs.py install_partial failed unlinking a .cert
+    the other had removed).  The lock scripts run in a real shell here."""
+
+    def sh(self, script):
+        return subprocess.run(["sh", "-c", script], capture_output=True, text=True)
+
+    def test_take_hold_and_give_back_only_by_its_owner(self):
+        with tempfile.TemporaryDirectory() as directory:
+            remote = Path(directory) / "lanes" / "x"
+            first = self.sh(farm.submit_lock_take_script(remote, "run-a", "mac:/a 1"))
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            second = self.sh(farm.submit_lock_take_script(remote, "run-b", "mac:/b 2"))
+            self.assertEqual(second.returncode, farm.SUBMIT_LOCK_HELD)
+            self.assertIn("FN_FARM_LOCK_HELD run-a mac:/a 1", second.stdout)
+            self.sh(farm.submit_lock_give_script(remote, "run-b"))
+            self.assertTrue(Path(farm.submit_lock_path(remote)).is_dir(), "a non-owner gave it back")
+            self.sh(farm.submit_lock_give_script(remote, "run-a"))
+            self.assertFalse(Path(farm.submit_lock_path(remote)).exists())
+            self.assertEqual(self.sh(farm.submit_lock_take_script(remote, "run-b", "m")).returncode, 0)
+
+    def test_a_stale_lock_is_reclaimed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            remote = Path(directory) / "x"
+            self.sh(farm.submit_lock_take_script(remote, "run-old", "mac:/a 1"))
+            lock = Path(farm.submit_lock_path(remote))
+            old = time.time() - (farm.SUBMIT_LOCK_STALE_MINUTES + 5) * 60
+            os.utime(lock, (old, old))
+            again = self.sh(farm.submit_lock_take_script(remote, "run-new", "mac:/b 2"))
+            self.assertEqual(again.returncode, 0, again.stdout)
+            self.assertIn("FN_FARM_LOCK_RECLAIMED run-old", again.stdout)
+            self.assertTrue((lock / "owner").read_text().startswith("run-new "))
+
+    def test_concurrent_takers_get_exactly_one_lock(self):
+        with tempfile.TemporaryDirectory() as directory:
+            remote = Path(directory) / "x"
+            takers = [subprocess.Popen(["sh", "-c", farm.submit_lock_take_script(
+                remote, f"run-{n}", "m")], stdout=subprocess.PIPE, text=True) for n in range(8)]
+            codes = sorted(p.wait() for p in takers)
+            for p in takers:
+                p.stdout.close()
+            self.assertEqual(codes, [0] + [farm.SUBMIT_LOCK_HELD] * 7)
+
+    def test_submit_takes_the_lock_before_the_mirror_and_gives_it_after_the_start(self):
+        fake = Fake([])
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"):
+                farm.submit("hbox", root, ["books/alpha"], jobs=4, timeout_seconds=900,
+                            affected_by=[])
+            order = [" ".join(c) for c in fake.commands]
+            take = next(i for i, c in enumerate(order) if "FN_FARM_LOCK_TAKE" in c)
+            mirror = next(i for i, c in enumerate(order) if c.startswith("rsync"))
+            preflight = next(i for i, c in enumerate(order) if "tools/certs.py" in c)
+            start = next(i for i, c in enumerate(order) if "nohup sh -c" in c)
+            give = next(i for i, c in enumerate(order) if "FN_FARM_LOCK_GIVE" in c)
+            self.assertTrue(take < mirror < preflight < start < give, order)
+
+    def test_a_held_lock_refuses_before_any_mirror_and_a_failed_push_still_gives_it_back(self):
+        fake = Fake([], codes={"FN_FARM_LOCK_TAKE": farm.SUBMIT_LOCK_HELD})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"), self.assertRaises(farm.FarmError):
+                farm.submit("hbox", root, ["books/alpha"], jobs=4, timeout_seconds=900,
+                            affected_by=[])
+            self.assertEqual(fake.rsyncs(), [])
+            self.assertFalse([c for c in fake.scripts() if "tools/certs.py" in c])
+        fake = Fake([], codes={"rsync": 11})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            with driving(fake, root / "cache"), self.assertRaises(farm.FarmError):
+                farm.submit("hbox", root, ["books/alpha"], jobs=4, timeout_seconds=900,
+                            affected_by=[])
+            self.assertTrue([c for c in fake.scripts() if "FN_FARM_LOCK_GIVE" in c])
 
 
 class CertifyIdTests(unittest.TestCase):

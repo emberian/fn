@@ -1527,6 +1527,21 @@
                            (fn-hsig-authored-source-fields fn-o1-source-newsgroups
                             fn-ctl-classify-octets fn-hsig-octet-fields-to-strings fn-o1-groups-octets fn-record-p))))))
 
+; The hosted establishment of fn-o1-filed-within-sourcep (premise_audit; O1
+; packet 5): the groups the host files for an authored source
+; (fn-hsig-source-filed-groups, called by host/native/hybrid-control.lisp) are
+; filed within that source.  fn-o1-filed-names-within-the-header assumes the
+; relation of exactly such groups.
+(defthm fn-o1-source-filed-groups-are-filed-within-the-source
+  (implies (fn-hsig-authored-source-fields source)
+           (fn-o1-filed-within-sourcep
+            (fn-hsig-source-filed-groups source (fn-hsig-authored-source-fields source))
+            source))
+  :rule-classes nil
+  :hints (("Goal" :use ((:instance o1e-filed-groups-filed-within-the-source
+                                   (groups (fn-hsig-source-filed-groups
+                                            source (fn-hsig-authored-source-fields source))))))))
+
 ; P4-6a.  The carried transit event's groups are filed within the received
 ; carrier: they are its signed source's filed groups
 ; (fn-pa-carried-event-files-the-sources-filed-groups), and the source is the

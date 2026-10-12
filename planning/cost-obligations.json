@@ -4,20 +4,20 @@
  "counts": {
   "proved": 6,
   "partial": 1,
-  "derived": 101,
+  "derived": 104,
   "none": 1745
  },
  "by_class": {
   "common-lisp-compliant": {
    "proved": 6,
    "partial": 1,
-   "derived": 101,
+   "derived": 103,
    "none": 1030
   },
   "ideal": {
    "proved": 0,
    "partial": 0,
-   "derived": 0,
+   "derived": 1,
    "none": 144
   },
   "program": {
@@ -3975,18 +3975,6 @@
    "declared_in": null
   },
   {
-   "name": "fn-cth-empty-suffix",
-   "class": "common-lisp-compliant",
-   "claim": "derived",
-   "bound": null,
-   "sizes": [],
-   "unaccounted": [
-    "fn-mm-tot-paged-p"
-   ],
-   "theorem": null,
-   "declared_in": "books/charged-totals-header-cost.lisp"
-  },
-  {
    "name": "fn-cth-header-open",
    "class": "common-lisp-compliant",
    "claim": "derived",
@@ -5799,6 +5787,57 @@
    "unaccounted": [],
    "theorem": null,
    "declared_in": null
+  },
+  {
+   "name": "fn-lgo-fold",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-lgo-add"
+   ],
+   "theorem": null,
+   "declared_in": "books/store-log-open-scan-cost.lisp"
+  },
+  {
+   "name": "fn-lgo-head-genesis",
+   "class": "ideal",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-lgl-head-index",
+    "fn-lgl-head-prev",
+    "fn-lgl-headed-p"
+   ],
+   "theorem": null,
+   "declared_in": "books/store-log-open-scan-cost.lisp"
+  },
+  {
+   "name": "fn-lgo-scan-plan",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [
+    "fn-lgo-min-index",
+    "fn-lgs-indices",
+    "fn-lgs-max-index",
+    "fn-lgs-open-plan"
+   ],
+   "theorem": null,
+   "declared_in": "books/store-log-open-scan-cost.lisp"
+  },
+  {
+   "name": "fn-lgo-suffix-settled",
+   "class": "common-lisp-compliant",
+   "claim": "derived",
+   "bound": null,
+   "sizes": [],
+   "unaccounted": [],
+   "theorem": null,
+   "declared_in": "books/store-log-open-scan-cost.lisp"
   },
   {
    "name": "fn-lgrc-copy-refusal-text",

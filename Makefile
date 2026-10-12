@@ -882,6 +882,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-stream-tests \
 	books/store-log-open-scan \
 	tests/acl2/store-log-open-scan-tests \
+	books/store-log-open-scan-cost \
 	books/store-log-damage \
 	books/store-log-entry-bound \
 	tests/acl2/store-log-entry-bound-tests \
@@ -919,6 +920,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/reclaim-chunked-walk \
 	books/reclaim-chunked-seal \
 	books/reclaim-chunked-cost \
+	books/reclaim-fold-contexts \
 	books/catalog-may-seal \
 	books/catalog-root-incarnation \
 	tests/acl2/catalog-root-incarnation-tests \
@@ -934,6 +936,11 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/store-log-durable-tests \
 	books/post-transaction-durable \
 	tests/acl2/post-transaction-durable-tests \
+	books/post-transaction \
+	books/post-transaction-crash \
+	books/post-transaction-sim \
+	books/post-transaction-layer \
+	tests/acl2/post-transaction-tests \
 	tests/acl2/store-log-critical-teeth-tests \
 	tests/acl2/store-log-copy-teeth-tests \
 	tests/acl2/store-log-copy-ack-teeth-tests \
@@ -2300,6 +2307,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-reclaim-pass-tests \
 	tests/acl2/reclaim-chunked-walk-tests \
 	tests/acl2/reclaim-chunked-seal-tests \
+	tests/acl2/reclaim-fold-contexts-tests \
 	tests/acl2/reclaim-chunked-load-teeth-tests \
 	tests/acl2/owner-reclaim-carry-tests \
 	tests/acl2/owner-retain-state-tests \
@@ -2411,6 +2419,8 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/filed-stored-tests \
 	books/filed-history \
 	tests/acl2/filed-history-tests \
+	books/filed-lifecycle \
+	tests/acl2/filed-lifecycle-tests \
 	books/filed-operator \
 	books/crypto-attach \
 	books/auth-secret \
@@ -3304,7 +3314,7 @@ model-test: certify
 # ledger 16 s (a cold tree analysis), reach_check 12 s -- and the 120 s kill
 # landed in whichever module was running then, before the later modules ran
 # (PKT-305).  No module or test is over its budget.
-TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper \
+TOOLING_TEST_MODULES = tests.test_certify_runner tests.test_acl2_wrapper tests.test_test_search \
 	    tests.test_ledger tests.test_cite_check tests.test_reach_check tests.test_hot_path_check tests.test_fixture_stderr tests.test_fixture_init_refusal \
 	    tests.test_green_check tests.test_current_view tests.test_proof_cost tests.test_throughput_gate tests.test_service_envelope \
 	    tests.test_node_probe tests.test_fn_client tests.test_theory_check tests.test_rule_cost tests.test_tau_cost tests.test_proof_repl tests.test_native_raw_scripts \

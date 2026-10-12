@@ -19,12 +19,24 @@ class Forms(unittest.TestCase):
 
     def test_predicate_application_forms(self):
         app = premise_audit.predicate_application
-        self.assertEqual(app(reach_check.read_sexp("(fn-inv s)")), ("fn-inv", "s"))
-        self.assertEqual(app(reach_check.read_sexp("(equal (fn-inv s) t)")), ("fn-inv", "s"))
-        self.assertEqual(app(reach_check.read_sexp("(equal t (fn-inv s))")), ("fn-inv", "s"))
+        self.assertEqual(app(reach_check.read_sexp("(fn-inv s)")), ("fn-inv", ["s"]))
+        self.assertEqual(app(reach_check.read_sexp("(equal (fn-inv s) t)")), ("fn-inv", ["s"]))
+        self.assertEqual(app(reach_check.read_sexp("(equal t (fn-inv s))")), ("fn-inv", ["s"]))
+        self.assertEqual(app(reach_check.read_sexp("(fn-get 0 x)")), ("fn-get", ["0", "x"]))
         self.assertIsNone(app(reach_check.read_sexp("(not (fn-inv s))")))
         self.assertIsNone(app(reach_check.read_sexp("(equal (f s) (g s))")))
         self.assertIsNone(app("s"))
+
+    def test_a_constant_argument_is_no_variable(self):
+        # A17, lane/vertical-lease: numerals, keywords, characters, t and nil
+        # in front of the subject were read as "the bare variable".
+        var = premise_audit.variable_argument
+        read = reach_check.read_sexp
+        self.assertIsNone(var(read("(r 0 (fn-slots s))")[1:], set()))
+        self.assertEqual(var(read("(r 0 x)")[1:], set()), "x")
+        self.assertEqual(var(read("(r :hand hd id s)")[1:], set()), "hd")
+        self.assertIsNone(var(read("(r #x10 -1 1/2 t nil #\\a)")[1:], set()))
+        self.assertIsNone(var(read("(r *fn-max*)")[1:], {"*fn-max*"}))
 
 
 class LocalLemmas(unittest.TestCase):
@@ -53,7 +65,7 @@ class StubGraph:
 
     def __init__(self, hosted_open=True):
         self.book_defs = {"fn-inv": 1, "fn-step": 1, "fn-open": 1, "fn-serve": 1,
-                          "fn-other": 1, "fn-model-open": 1}
+                          "fn-other": 1, "fn-model-open": 1, "fn-slot": 1, "fn-pick": 1}
         self.books = []
         self.stobj_names = {"state"}
         self.reachable = {"fn-step", "fn-serve"} | ({"fn-open"} if hosted_open else set())
@@ -66,6 +78,11 @@ class Classification(unittest.TestCase):
         "fn-serve-ok": ("books/b.lisp", "(defthm fn-serve-ok (implies (fn-inv s) (equal (fn-serve s) :ok)))"),
         "fn-other-model": ("books/b.lisp", "(defthm fn-other-model (implies (fn-other s) (equal (fn-serve s) :ok)))"),
         "fn-other-of-model-open": ("books/b.lisp", "(defthm fn-other-of-model-open (fn-other (fn-model-open x)))"),
+        # Index-first predicates (A17): assumed of a term at a hosted entry,
+        # established by the hosted open in the second position.
+        "fn-slot-serve": ("books/c.lisp", "(defthm fn-slot-serve (implies (fn-slot 0 (fn-step s)) (equal (fn-serve s) :ok)))"),
+        "fn-slot-of-open": ("books/c.lisp", "(defthm fn-slot-of-open (fn-slot 0 (fn-open x)))"),
+        "fn-pick-serve": ("books/c.lisp", "(defthm fn-pick-serve (implies (fn-pick 0 s) (equal (fn-serve s) :ok)))"),
     }
 
     def audit(self, hosted_open=True):
@@ -115,14 +132,33 @@ class Classification(unittest.TestCase):
         self.assertEqual(row["unhosted_establishments"], ["fn-other-of-model-open"])
         self.assertEqual(row["theorems"], [("fn-other-model", "books/b.lisp")])
 
+    def test_index_first_premise_of_a_term_is_not_bare(self):
+        audit = self.audit()
+        rows = audit.assumed["fn-slot"]
+        self.assertEqual([(t, bare) for t, _, _, bare, _ in rows], [("fn-slot-serve", False)])
+        self.assertNotIn("fn-slot", audit.premises())
+        self.assertIn("fn-slot", audit.premises(all_arguments=True))
+
+    def test_index_first_establishment_reads_every_argument(self):
+        self.assertEqual(self.audit(hosted_open=True).classify("fn-slot"), premise_audit.HOSTED)
+        self.assertEqual(self.audit(hosted_open=False).classify("fn-slot"), premise_audit.OFF_HOST)
+
+    def test_index_first_premise_of_a_variable_stays_a_finding(self):
+        audit = self.audit()
+        self.assertEqual([bare for _, _, _, bare, _ in audit.assumed["fn-pick"]], [True])
+        self.assertIn("fn-pick", audit.findings())
+
     def test_summary_counts(self):
         audit = self.audit(hosted_open=False)
         line = premise_audit.summary_line(audit.findings(), audit.premises(), {"accepted": {}})
         # Three theorems assume a finding's premise at a hosted entry: the
         # preservation `(implies (fn-inv s) (fn-inv (fn-step s)))' assumes
         # fn-inv at the hosted step too, as it should (the step is entered
-        # with the premise the open never established).
-        self.assertIn("2 premises at hosted entries, 2 unestablished (3 theorems)", line)
+        # with the premise the open never established).  fn-pick (a bare
+        # variable behind an index) is the third, never concluded; fn-slot
+        # is of a term, so it is not counted.
+        self.assertIn("3 premises at hosted entries, 3 unestablished (4 theorems)", line)
+        self.assertIn("1 never concluded", line)
         self.assertIn("2 established off the host path", line)
 
 
@@ -219,6 +255,127 @@ class GuardEstablished(unittest.TestCase):
         self.assertEqual(row["class"], premise_audit.GUARD)
         self.assertEqual(row["guard_established"], [("fn-serve-ok", "fn-serve")])
         self.assertNotIn("fn-inv", with_guard.findings())
+
+
+class LowerStale(unittest.TestCase):
+    """--lower-stale drops exactly the entries --strict calls stale, keeps the
+    rest (accepted text included) and adds no finding, NEW ones included."""
+
+    def test_only_stale_entries_leave(self):
+        import json
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = pathlib.Path(d) / "premise-baseline.json"
+            baseline = {"note": "n", "accepted": {"fn-kept": "why kept", "fn-gone": "why gone"}}
+            path.write_text(json.dumps(baseline))
+            findings = {"fn-kept": {"class": "never concluded"},
+                        "fn-new": {"class": "never concluded"}}
+            original = premise_audit.BASELINE
+            premise_audit.BASELINE = path
+            try:
+                removed = premise_audit.lower_stale(findings, baseline)
+            finally:
+                premise_audit.BASELINE = original
+            self.assertEqual(removed, ["fn-gone"])
+            written = json.loads(path.read_text())
+            self.assertEqual(written, {"note": "n", "accepted": {"fn-kept": "why kept"}})
+
+    def test_nothing_stale_writes_nothing(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = pathlib.Path(d) / "premise-baseline.json"
+            original = premise_audit.BASELINE
+            premise_audit.BASELINE = path
+            try:
+                removed = premise_audit.lower_stale({"fn-a": {}}, {"accepted": {"fn-a": "x"}})
+            finally:
+                premise_audit.BASELINE = original
+            self.assertEqual(removed, [])
+            self.assertFalse(path.exists())
+
+
+class TermPremises(unittest.TestCase):
+    """The Fungus case (10-11): fn-lgo-rows-history-within assumed of
+    (nthcdr k rows) by L2-4, L2-5 and L2H-2 at a hosted entry and never
+    concluded was invisible to --strict, which counted bare variables only."""
+    forms = {
+        # The case as stated (books/store-log-open-scan.lisp:941): ALLOW is a
+        # variable argument, so with every argument read it is a bare finding.
+        "l2-4": ("books/store-log-open-scan.lisp",
+                 "(defthm l2-4 (implies (fn-lgo-rows-history-within (nthcdr k rows) allow)"
+                 " (equal (fn-serve rows) :ok)))"),
+        # The same shape with no variable argument: a term finding only.
+        "l2-term": ("books/store-log-open-scan.lisp",
+                    "(defthm l2-term (implies (fn-lgo-rows-within (nthcdr k rows))"
+                    " (equal (fn-serve rows) :ok)))"),
+        "fn-inv-serve": ("books/a.lisp", "(defthm fn-inv-serve (implies (fn-inv s) (equal (fn-serve s) :ok)))"),
+    }
+
+    def audit(self, extra=None):
+        graph = StubGraph()
+        graph.book_defs = dict(graph.book_defs, **{"fn-lgo-rows-history-within": 1,
+                                                   "fn-lgo-rows-within": 1, "nthcdr": 1})
+        forms = dict(self.forms, **(extra or {}))
+        original = (reach_check.theorem_forms, reach_check.record_definitions,
+                    reach_check.Subject.hosted)
+        reach_check.theorem_forms = lambda paths: dict(forms)
+        reach_check.record_definitions = lambda paths: {}
+        reach_check.Subject.hosted = lambda self, graph: bool(set(self.functions) & graph.reachable)
+        try:
+            return premise_audit.Audit(graph)
+        finally:
+            (reach_check.theorem_forms, reach_check.record_definitions,
+             reach_check.Subject.hosted) = original
+
+    def test_the_stated_case_is_now_a_bare_finding(self):
+        findings = self.audit().findings()
+        self.assertEqual(findings["fn-lgo-rows-history-within"]["theorems"],
+                         [("l2-4", "books/store-log-open-scan.lisp")])
+
+    def test_a_term_premise_is_a_term_finding_not_a_bare_one(self):
+        audit = self.audit()
+        self.assertNotIn("fn-lgo-rows-within", audit.findings())
+        terms = audit.term_findings()
+        self.assertEqual(list(terms), ["fn-lgo-rows-within"])
+        self.assertEqual(terms["fn-lgo-rows-within"]["class"], premise_audit.NEVER)
+
+    def test_strict_refuses_a_new_term_premise_and_a_stale_term_entry(self):
+        audit = self.audit()
+        findings, terms = audit.findings(), audit.term_findings()
+        accepted = dict.fromkeys(findings, "x")
+        lines, rc = premise_audit.strict_verdict(findings, accepted, terms, {})
+        self.assertEqual(rc, 1)
+        self.assertIn("NEW unestablished premise of a term fn-lgo-rows-within", lines[0])
+        lines, rc = premise_audit.strict_verdict(findings, accepted, terms, {"fn-lgo-rows-within": "x"})
+        self.assertEqual((lines, rc), ([], 0))
+        # established at the host: the entry is stale, and strict says so
+        opened = self.audit({"l-open": ("books/store-log-open-scan.lisp",
+                                        "(defthm l-open (fn-lgo-rows-within (fn-open x)))")})
+        self.assertEqual(opened.term_findings(), {})
+        lines, rc = premise_audit.strict_verdict(opened.findings(), accepted, opened.term_findings(),
+                                                 {"fn-lgo-rows-within": "x"})
+        self.assertEqual(rc, 1)
+        self.assertIn("term baseline entry fn-lgo-rows-within is no longer a finding", lines[0])
+
+    def test_term_baseline_captures_once_then_only_shrinks(self):
+        import json
+        import tempfile
+        terms = self.audit().term_findings()
+        with tempfile.TemporaryDirectory() as d:
+            path = pathlib.Path(d) / "premise-term-baseline.json"
+            original = premise_audit.TERM_BASELINE
+            premise_audit.TERM_BASELINE = path
+            try:
+                self.assertEqual(premise_audit.write_term_baseline(terms), 0)   # initial capture
+                self.assertEqual(list(json.loads(path.read_text())["accepted"]),
+                                 ["fn-lgo-rows-within"])
+                grown = dict(terms, **{"fn-other-term": {"class": premise_audit.NEVER}})
+                self.assertEqual(premise_audit.write_term_baseline(grown), 1)   # refused: it only shrinks
+                removed = premise_audit.lower_stale({}, json.loads(path.read_text()), path)
+                self.assertEqual(removed, ["fn-lgo-rows-within"])
+                self.assertEqual(json.loads(path.read_text())["accepted"], {})
+            finally:
+                premise_audit.TERM_BASELINE = original
 
 
 if __name__ == "__main__":

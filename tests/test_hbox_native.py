@@ -34,6 +34,30 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertNotIn("not set: opt-in for the integrated reader-index gate",
                          answer.stdout + answer.stderr)
 
+    def test_the_prof_image_alone_builds_and_finishes(self):
+        # C15, 2026-10-11: `grep -vc` counted 0 non-prof images and exited 1
+        # under set -e, so box_script stopped after host-ld (no image step, no
+        # finish) and run.sh shipped truncated.
+        answer = dry("--box", "hbox", "--build-only", "--images", "prof", "HEAD")
+        self.assertEqual(answer.returncode, 0, answer.stdout[-2000:] + answer.stderr)
+        lines = answer.stdout.splitlines()
+        self.assertIn("step image-prof", " ".join(lines))
+        self.assertIn("finish 0", lines)
+
+    def test_a_build_only_dry_run_exits_zero(self):
+        # with no modules `grep -c .` exited 1 under set -e after the build-only finish
+        answer = dry("--box", "hbox", "--build-only", "--images", "developer", "HEAD")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+
+    def test_an_env_value_may_hold_commas_but_not_shell_syntax(self):
+        answer = dry("--box", "hbox", "--env", "FN_TEST_LIST=a,b,c", "HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertIn("export FN_TEST_LIST=a,b,c", answer.stdout)
+        for value in ("a;b", "a b", "a`b`", "a'b"):
+            refused = dry("--box", "hbox", "--env", f"FN_TEST_LIST={value}", "HEAD", "tests.test_native_owner")
+            self.assertEqual(refused.returncode, 2, value)
+            self.assertIn("--env value may hold only", refused.stderr)
+
     def test_several_images_save_in_parallel_after_the_libraries_and_one_image_stays_serial(self):
         answer = dry("--box", "hbox", "--images", "developer,production,dtn", "HEAD", "tests.test_native_owner")
         lines = answer.stdout.splitlines()

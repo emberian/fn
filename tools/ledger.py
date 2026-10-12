@@ -29,6 +29,16 @@ Usage:
     python3 tools/ledger.py --stdout   # print the ledger markdown
     python3 tools/ledger.py --check    # fail on drift; used by `make check`
     python3 tools/ledger.py --repoint PRF-N --evidence PATH...   # write a row's evidence list
+    python3 tools/ledger.py --retire PRF-N --why superseded|deferred --to PRF-M|LANDING \\
+        --owner WHO --ruling TEXT [--item ID]     # a row leaves, with its reason
+    python3 tools/ledger.py --restore PRF-N       # a deferred row comes back
+
+A row of ``planning/proofs.json`` leaves only through ``--retire``, which moves
+it and its ``proof-events.json`` target into ``planning/proof-retirements.json``
+with why (superseded by another row, or deferred until a named landing), who
+owns it and who ruled it.  ``--check`` refuses a row the fork point (merge base
+with origin/dev) had that the tree lacks with no retirement row, and a
+retirement row whose id is a row again.
 """
 
 from __future__ import annotations
@@ -69,6 +79,12 @@ LEDGER_JSON = ROOT / "build/ledger/ledger.json"
 LEDGER_MD = ROOT / "build/ledger/ledger.md"
 PROOF_EVENTS = ROOT / "planning/proof-events.json"
 PROOFS = ROOT / "planning/proofs.json"
+# A proofs.json row that leaves: one row per retirement {id, why, to, owner,
+# ruling, item, row, events}, written only by --retire (and removed by
+# --restore).  --check refuses a row the fork point had that this tree lacks
+# with no retirement row: a register row never leaves by a bare drop.
+PROOF_RETIREMENTS = ROOT / "planning/proof-retirements.json"
+RETIRE_REASONS = ("superseded", "deferred")
 
 
 # --------------------------------------------------------------------------
@@ -5283,6 +5299,144 @@ def seal_evidence() -> list[str]:
 
 
 # --------------------------------------------------------------------------
+# row retirement: a proofs.json row leaves only with its reason
+# --------------------------------------------------------------------------
+
+_PRF_ID = re.compile(r"^PRF-\d+$")
+
+
+def _dump(path: Path, data: dict) -> None:
+    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def load_retirements(path: Path | None = None) -> dict[str, dict]:
+    """planning/proof-retirements.json's rows by retired id ({} when absent)."""
+    path = path or PROOF_RETIREMENTS
+    if not path.is_file():
+        return {}
+    return {row["id"]: row for row in json.loads(path.read_text(encoding="utf-8"))["rows"]}
+
+
+def retirement_row_problems(row: dict, current_ids: set[str]) -> list[str]:
+    """Why ROW is not a valid retirement (empty when it is)."""
+    ident = row.get("id", "?")
+    problems = []
+    why = row.get("why")
+    if why not in RETIRE_REASONS:
+        problems.append(f"{ident}: retirement why {why!r} is not one of {', '.join(RETIRE_REASONS)}")
+    for key in ("owner", "ruling", "to"):
+        if not str(row.get(key) or "").strip():
+            problems.append(f"{ident}: retirement row names no {key}")
+    to = str(row.get("to") or "")
+    if why == "superseded" and to and (not _PRF_ID.match(to) or to == ident or to not in current_ids):
+        problems.append(f"{ident}: superseded by {to!r}, which is not another row of planning/proofs.json")
+    if why == "deferred" and _PRF_ID.match(to):
+        problems.append(f"{ident}: deferred names a row ({to}), not the landing it waits for")
+    if not isinstance(row.get("row"), dict) or row["row"].get("id") != ident:
+        problems.append(f"{ident}: retirement row does not carry the retired proofs.json row")
+    return problems
+
+
+def retire(ident: str, why: str, to: str, owner: str, ruling: str, item: str | None = None,
+           proofs: Path | None = None, events: Path | None = None,
+           retirements: Path | None = None) -> list[str]:
+    """Move row IDENT (and its proof-events target) out of the register into
+    planning/proof-retirements.json with its reason; nothing is written when
+    any part is refused."""
+    proofs, events = proofs or PROOFS, events or PROOF_EVENTS
+    retirements = retirements or PROOF_RETIREMENTS
+    registry = json.loads(proofs.read_text(encoding="utf-8"))
+    curated = json.loads(events.read_text(encoding="utf-8"))
+    current_ids = {entry.get("id") for entry in registry.get("proofs", [])}
+    if ident not in current_ids:
+        return [f"{ident}: not a row of planning/proofs.json"]
+    existing = load_retirements(retirements)
+    if ident in existing:
+        return [f"{ident}: already has a retirement row"]
+    entry = next(e for e in registry["proofs"] if e.get("id") == ident)
+    target = next((t for t in curated.get("targets", []) if t.get("id") == ident), None)
+    row = {"id": ident, "why": why, "to": to, "owner": owner, "ruling": ruling,
+           "item": item, "row": entry, "events": target}
+    problems = retirement_row_problems(row, current_ids - {ident})
+    if problems:
+        return problems
+    registry["proofs"] = [e for e in registry["proofs"] if e.get("id") != ident]
+    curated["targets"] = [t for t in curated.get("targets", []) if t.get("id") != ident]
+    rows = sorted(list(existing.values()) + [row], key=lambda r: r["id"])
+    _dump(proofs, registry)
+    _dump(events, curated)
+    _dump(retirements, {"description": (
+        "Rows that left planning/proofs.json, each with its reason, written only by "
+        "`tools/ledger.py --retire` (superseded: by another row; deferred: until a named "
+        "landing, restored by `--restore`).  `ledger.py --check` refuses a row the fork "
+        "point had that the tree lacks with no row here."), "rows": rows})
+    return []
+
+
+def restore(ident: str, proofs: Path | None = None, events: Path | None = None,
+            retirements: Path | None = None) -> list[str]:
+    """Put a retired row (and its events target) back and drop its retirement row."""
+    proofs, events = proofs or PROOFS, events or PROOF_EVENTS
+    retirements = retirements or PROOF_RETIREMENTS
+    existing = load_retirements(retirements)
+    if ident not in existing:
+        return [f"{ident}: no retirement row to restore"]
+    registry = json.loads(proofs.read_text(encoding="utf-8"))
+    curated = json.loads(events.read_text(encoding="utf-8"))
+    if any(e.get("id") == ident for e in registry.get("proofs", [])):
+        return [f"{ident}: already a row of planning/proofs.json"]
+    row = existing.pop(ident)
+    registry["proofs"].append(row["row"])
+    if row.get("events"):
+        curated["targets"].append(row["events"])
+    data = json.loads(retirements.read_text(encoding="utf-8"))
+    data["rows"] = sorted(existing.values(), key=lambda r: r["id"])
+    _dump(proofs, registry)
+    _dump(events, curated)
+    _dump(retirements, data)
+    return []
+
+
+def fork_point_ids(root: Path = ROOT, base: str | None = None) -> set[str] | None:
+    """The proofs.json ids at the merge base of HEAD and BASE (default
+    $FN_LEDGER_BASE, else origin/dev); None when that cannot be read (not a
+    git tree, no such ref).  The merge base, not BASE itself: a lane behind
+    dev has not removed the rows dev added since."""
+    base = base or os.environ.get("FN_LEDGER_BASE", "origin/dev")
+    fork = subprocess.run(["git", "-C", str(root), "merge-base", "HEAD", base],
+                          capture_output=True, text=True)
+    if fork.returncode != 0:
+        return None
+    shown = subprocess.run(["git", "-C", str(root), "show",
+                            f"{fork.stdout.strip()}:planning/proofs.json"],
+                           capture_output=True, text=True)
+    if shown.returncode != 0:
+        return None
+    return {entry.get("id") for entry in json.loads(shown.stdout).get("proofs", [])}
+
+
+def retirement_problems(base_ids: set[str], current_ids: set[str],
+                        retirements: dict[str, dict]) -> list[str]:
+    """A row the fork point had and this tree lacks needs a valid retirement
+    row; a retirement row of a row present again is stale."""
+    problems = []
+    for ident in sorted(base_ids - current_ids):
+        row = retirements.get(ident)
+        if row is None:
+            problems.append(f"{ident}: a row of planning/proofs.json at the fork point is gone "
+                            f"with no retirement row: a row leaves only through "
+                            f"`ledger.py --retire {ident} --why superseded|deferred --to ... "
+                            f"--owner ... --ruling ...`")
+    for ident, row in sorted(retirements.items()):
+        if ident in current_ids:
+            problems.append(f"{ident}: has a retirement row but is a row of planning/proofs.json "
+                            f"again: `ledger.py --restore {ident}` (or delete the row)")
+            continue
+        problems.extend(retirement_row_problems(row, current_ids))
+    return problems
+
+
+# --------------------------------------------------------------------------
 # entry points
 # --------------------------------------------------------------------------
 
@@ -5322,7 +5476,16 @@ def check_problems(tree: "Tree | None" = None) -> list[str]:
     elif PROOFS.read_text(encoding="utf-8") != expected:
         problems.append(f"{relative}: stale; run `python3 tools/ledger.py --write`")
     if PROOFS.is_file():
-        problems.extend(evidence_problems(json.loads(PROOFS.read_text(encoding="utf-8"))))
+        registry = json.loads(PROOFS.read_text(encoding="utf-8"))
+        problems.extend(evidence_problems(registry))
+        current_ids = {entry.get("id") for entry in registry.get("proofs", [])}
+        base_ids = fork_point_ids()
+        if base_ids is None:
+            print("WARN: proof retirements: no fork point readable (not a git tree, or no "
+                  "origin/dev / $FN_LEDGER_BASE); the bare-drop check did not run",
+                  file=sys.stderr)
+            base_ids = current_ids
+        problems.extend(retirement_problems(base_ids, current_ids, load_retirements()))
     return problems
 
 
@@ -5425,6 +5588,19 @@ def _main(argv: list[str] | None = None) -> int:
                         help="with --repoint: the row's whole evidence list, in order; "
                              "each a file in this tree (planning/evidence/ and "
                              "docs/evidence/ citations may name reports that left it)")
+    parser.add_argument("--retire", metavar="PRF-ID",
+                        help="move this proofs.json row and its proof-events target to "
+                             "planning/proof-retirements.json; needs --why, --to, --owner, --ruling")
+    parser.add_argument("--why", choices=RETIRE_REASONS,
+                        help="with --retire: superseded (by --to, another row) or deferred "
+                             "(until --to, the landing that restores it)")
+    parser.add_argument("--to", metavar="PRF-ID|LANDING",
+                        help="with --retire: the superseding row, or the landing it waits for")
+    parser.add_argument("--owner", help="with --retire: who restores or answers for it")
+    parser.add_argument("--ruling", help="with --retire: who ruled it, and when")
+    parser.add_argument("--item", help="with --retire: a repair item id (optional)")
+    parser.add_argument("--restore", metavar="PRF-ID",
+                        help="put a retired row back (the landing it waited for is here)")
     parser.add_argument("--seal-evidence", action="store_true",
                         help="stamp every row's evidence list as it stands; runs once, "
                              "refused when any row carries a stamp")
@@ -5440,6 +5616,27 @@ def _main(argv: list[str] | None = None) -> int:
         if not problems:
             print(f"{arguments.repoint}: evidence list written "
                   f"({len(arguments.evidence)} file(s)), stamped")
+        return 1 if problems else 0
+    if arguments.retire:
+        missing = [flag for flag, value in (("--why", arguments.why), ("--to", arguments.to),
+                                            ("--owner", arguments.owner), ("--ruling", arguments.ruling))
+                   if not (value or "").strip()]
+        if missing:
+            parser.error(f"--retire needs {', '.join(missing)}: a row never leaves by a bare drop")
+        problems = retire(arguments.retire, arguments.why, arguments.to, arguments.owner,
+                          arguments.ruling, arguments.item)
+        for problem in problems:
+            print(f"ERROR: {problem}", file=sys.stderr)
+        if not problems:
+            print(f"{arguments.retire}: retired ({arguments.why}, {arguments.to}); "
+                  f"run `python3 tools/ledger.py --write`")
+        return 1 if problems else 0
+    if arguments.restore:
+        problems = restore(arguments.restore)
+        for problem in problems:
+            print(f"ERROR: {problem}", file=sys.stderr)
+        if not problems:
+            print(f"{arguments.restore}: restored; run `python3 tools/ledger.py --write`")
         return 1 if problems else 0
     if arguments.seal_evidence:
         problems = seal_evidence()

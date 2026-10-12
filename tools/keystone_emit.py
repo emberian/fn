@@ -46,7 +46,11 @@ with it:
   `ratchet:keystone_emit:<name>` (tools/ratchet.py).  A base `generated`
   entry that vanishes with no generated successor of the same owner book and
   claim (a rename shows as old gone plus new generated, printed as `renamed`;
-  an entry whose book is deleted is exempt); a new `deferred`
+  an entry whose book is deleted is exempt; a keystone deleted as a twin
+  another supersedes is exempt only through a row of
+  planning/teeth-retirements.json, written by `--retire NAME --superseded-by
+  SUCCESSOR --ruling TEXT`, whose SUCCESSOR is a different keystone with
+  generated teeth in the current manifest: a bare drop stays refused); a new `deferred`
   exemption (rejected by default; a base deferred is grandfathered); an
   owed row not met; a committed manifest.  Counts are printed from
   the sets: coverage counts only certified generated entries whose
@@ -97,6 +101,11 @@ MANIFEST = ROOT / "build/teeth-obligations.json"
 COMMITTED = ROOT / "planning/teeth-obligations.json"
 BASE = ROOT / "planning/teeth-base.json"
 CEILING = ROOT / "planning/teeth-ceiling.json"
+# A generated-teeth keystone deleted as a twin another keystone supersedes:
+# one row per retirement {name, owner_book, superseded_by, ruling, item}.  The
+# gate accepts the vanished entry only when its row names a different
+# keystone that has generated teeth in the current manifest.
+RETIREMENTS = ROOT / "planning/teeth-retirements.json"
 CEILING_ROW = "toothless"
 LEDGER: list[str] = []  # the toothless names of the last gate() run
 CRITICAL: list[str] = []  # the critical-gate findings of the last gate() run
@@ -449,14 +458,54 @@ def vanished_generated(current: dict[str, dict], base: dict | None,
     return renamed, lost
 
 
+def load_retirements(path: Path | None = None) -> dict[str, dict]:
+    """planning/teeth-retirements.json's rows by retired name ({} when absent)."""
+    path = path or RETIREMENTS
+    if not path.exists():
+        return {}
+    return {row["name"]: row for row in json.loads(path.read_text(encoding="utf-8"))["rows"]}
+
+
+def retirement_finding(old: dict, row: dict, current: dict[str, dict]) -> str | None:
+    """Why ROW does not retire OLD (a base generated entry gone from CURRENT),
+    or None when it does: it names a different keystone, of the same owner
+    book's row, with generated teeth now, and a ruling."""
+    successor = row.get("superseded_by") or ""
+    if not str(row.get("ruling") or "").strip():
+        return f"the retirement row of {old['name']} names no ruling"
+    if row.get("owner_book") != old.get("owner_book"):
+        return (f"the retirement row of {old['name']} names owner book {row.get('owner_book')}, "
+                f"but the base entry's is {old.get('owner_book')}")
+    if successor == old["name"] or successor not in current:
+        return (f"the retirement row of {old['name']} names superseded_by {successor or '(none)'}, "
+                f"which is not a keystone in the current manifest")
+    if current[successor]["class"] != "generated":
+        return (f"the retirement row of {old['name']} names {successor}, which has no generated "
+                f"teeth now (class {current[successor]['class']})")
+    return None
+
+
 def manifest_findings(current: dict[str, dict], base: dict | None, why: str,
                       committed: dict | None,
-                      book_exists=None) -> list[str]:
+                      book_exists=None, retirements: dict[str, dict] | None = None) -> list[str]:
     problems: list[str] = []
     if base is None:
         return [f"teeth gate: {why}"]
+    retirements = retirements or {}
     base_entries = {entry["name"]: entry for entry in base.get("entries", [])}
+    for name in sorted(retirements):
+        if name in current:
+            problems.append(f"teeth gate: {name} has a retirement row in "
+                            f"planning/teeth-retirements.json but is still a keystone: "
+                            f"delete the keystone or the row")
     for old in vanished_generated(current, base, book_exists)[1]:
+        row = retirements.get(old["name"])
+        if row is not None:
+            reason = retirement_finding(old, row, current)
+            if reason is None:
+                continue
+            problems.append(f"teeth gate: {reason}")
+            continue
         problems.append(f"teeth gate: {old['name']} had generated teeth in the base "
                         f"({old.get('owner_book')}) and is gone from the manifest with no "
                         f"generated successor (same book and claim): a deletion or rename "
@@ -574,7 +623,7 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
             committed = {}
     toothless = untoothed_new(current, base)
     ceiling = load_ceiling()
-    problems = manifest_findings(current, base, why, committed)
+    problems = manifest_findings(current, base, why, committed, retirements=load_retirements())
     if base is not None:
         problems += toothless_findings(toothless, ceiling)
     critical, summary = keystone_critical.findings(
@@ -590,6 +639,11 @@ def gate(write: bool, bootstrap: bool = False) -> list[str]:
     for old_name, new_names in sorted(vanished_generated(current, base)[0].items()):
         print(f"keystone_emit: renamed: {old_name} -> {', '.join(new_names)} (generated "
               f"teeth, same book and claim)")
+    for old in vanished_generated(current, base)[1]:
+        row = load_retirements().get(old["name"])
+        if row is not None and retirement_finding(old, row, current) is None:
+            print(f"keystone_emit: retired: {old['name']} superseded by {row['superseded_by']} "
+                  f"({row['ruling']})")
     print(manifest_counts(current))
     print(f"keystone_emit: critical keystones: {summary['critical']} "
           f"({', '.join(f'{k} {v}' for k, v in sorted(summary['by_class'].items()))}); "
@@ -644,6 +698,39 @@ def claim(keystone: Keystone, lane: str, milestone: str, title: str) -> str:
     return ident
 
 
+def retire(name: str, successor: str | None, ruling: str | None, item: str | None,
+           base: dict | None = None, path: Path | None = None) -> int:
+    """Write NAME's row to planning/teeth-retirements.json.  Refused unless
+    NAME is a generated entry of the base manifest and a different SUCCESSOR
+    and a RULING are named; whether SUCCESSOR has generated teeth is the
+    gate's check (it needs the current manifest)."""
+    path = path or RETIREMENTS
+    if not successor or successor == name:
+        print("keystone_emit: --retire needs --superseded-by naming a different keystone")
+        return 2
+    if not (ruling or "").strip():
+        print("keystone_emit: --retire needs --ruling (who ruled the twin superseded, and when)")
+        return 2
+    if base is None:
+        base, why = base_manifest()
+        if base is None:
+            print(f"keystone_emit: --retire refused: {why}")
+            return 2
+    entry = next((e for e in base.get("entries", []) if e["name"] == name), None)
+    if entry is None or entry["class"] != "generated":
+        print(f"keystone_emit: --retire refused: {name} is not a generated entry of the base "
+              f"manifest (only a keystone with generated teeth is retired this way)")
+        return 2
+    rows = json.loads(path.read_text(encoding="utf-8"))["rows"] if path.exists() else []
+    rows = [r for r in rows if r["name"] != name] + [{
+        "name": name, "owner_book": entry.get("owner_book"), "superseded_by": successor,
+        "ruling": ruling.strip(), "item": item}]
+    path.write_text(json.dumps({"rows": sorted(rows, key=lambda r: r["name"])}, indent=1) + "\n",
+                    encoding="utf-8")
+    print(f"keystone_emit: retired {name} (superseded by {successor}) in {path.name}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true",
@@ -665,7 +752,16 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--bootstrap", action="store_true",
                         help="with --write-manifest: write the FIRST manifest when no base "
                              "and no manifest exist (never again)")
+    parser.add_argument("--retire", metavar="NAME",
+                        help="record NAME (a base keystone with generated teeth) as deleted, "
+                             "superseded by --superseded-by under --ruling; the gate then "
+                             "checks the successor has generated teeth")
+    parser.add_argument("--superseded-by", metavar="SUCCESSOR")
+    parser.add_argument("--ruling", metavar="TEXT")
+    parser.add_argument("--item", metavar="ID", default=None)
     arguments = parser.parse_args(argv)
+    if arguments.retire:
+        return retire(arguments.retire, arguments.superseded_by, arguments.ruling, arguments.item)
     json_out = sys.stdout
     if arguments.json:
         sys.stdout = sys.stderr  # stdout carries only the JSON object

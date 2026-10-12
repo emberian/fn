@@ -61,11 +61,14 @@
     ((:vs :slot) (or (null v) (natp v)))
     (otherwise t)))
 
-(defthm fn-was-statep-of-put
-  (implies (and (fn-was-statep x) key (symbolp key) (fn-was-field-okp key v))
-           (fn-was-statep (fn-was-put key v x)))
-  :hints (("Goal" :in-theory (enable fn-was-statep fn-was-field-okp)
-                  :use (fn-was-statep-facts))))
+;; A proof step of fn-was-octet-statep and fn-was-commit-statep, which
+;; discharge its field condition at each put.
+(local
+ (defthm fn-was-statep-of-put
+   (implies (and (fn-was-statep x) key (symbolp key) (fn-was-field-okp key v))
+            (fn-was-statep (fn-was-put key v x)))
+   :hints (("Goal" :in-theory (enable fn-was-statep fn-was-field-okp)
+                   :use (fn-was-statep-facts)))))
 
 (defun fn-was-commit (x)
   (declare (xargs :guard (fn-was-statep x)))
@@ -142,6 +145,16 @@
   :hints (("Goal" :in-theory (disable fn-was-get fn-was-put fn-was-statep
                                       (:executable-counterpart tau-system)))))
 
+;; The ARTICLE scan the host starts (fn-wrs-start, fn-web-host-stream-start)
+;; is in its state, whatever the login, and an octet never changes its kind.
+(defthm fn-was-start-statep
+  (fn-was-statep (fn-was-start login)))
+
+(defthm fn-was-octet-kind
+  (equal (fn-was-get :kind (fn-was-octet o x)) (fn-was-get :kind x))
+  :hints (("Goal" :in-theory (disable fn-was-get fn-was-put
+                                      (:executable-counterpart tau-system)))))
+
 (defun fn-was-scan (i end x fn-web-in)
   (declare (xargs :stobjs fn-web-in
                   :guard (and (natp i) (natp end) (<= end (fn-octets-len fn-web-in))
@@ -150,6 +163,16 @@
                   :measure (nfix (- (nfix end) (nfix i)))))
   (if (>= (nfix i) (nfix end)) x
     (fn-was-scan (1+ (nfix i)) end (fn-was-octet (fn-octets-get i fn-web-in) x) fn-web-in)))
+
+(defthm fn-was-scan-statep
+  (implies (fn-was-statep x) (fn-was-statep (fn-was-scan i end x fn-web-in)))
+  :hints (("Goal" :induct (fn-was-scan i end x fn-web-in)
+                  :in-theory (disable fn-was-octet fn-was-statep fn-was-get))))
+
+(defthm fn-was-scan-kind
+  (equal (fn-was-get :kind (fn-was-scan i end x fn-web-in)) (fn-was-get :kind x))
+  :hints (("Goal" :induct (fn-was-scan i end x fn-web-in)
+                  :in-theory (disable fn-was-octet fn-was-get))))
 
 ;; The :v-list rows' segments are plan segments (a kind, then a list).
 (local
@@ -393,6 +416,13 @@
            (fn-wpc-wcursorp (mv-nth 2 (fn-wpc-window-next cursor base fn-web-in))))
   :hints (("Goal" :use (wn-vlist wn-vu wn-span wn-text wn-none)
                   :in-theory (disable fn-wpc-window-next))))
+
+;; The cursor the host starts over a page plan (fn-web-host-page-cursor) is a
+;; windowed cursor whenever the plan's segments are of the window vocabulary
+;; (fn-wpc-wsegsp, which fn-wgl-segs-wsegsp gives the :v-list rows' segments).
+(defthm fn-wpc-cursor-wcursorp
+  (implies (fn-wpc-wsegsp segs) (fn-wpc-wcursorp (fn-wpc-cursor segs)))
+  :hints (("Goal" :in-theory (enable fn-wpc-cursor))))
 
 (defun fn-wpc-window-drive (fuel cursor base count emitp rev fn-web-in)
   ; The guard is three naturals: the window step is total (see
