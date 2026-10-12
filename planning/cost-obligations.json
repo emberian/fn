@@ -68,6 +68,10 @@
  "undispatched_declarations": [
   "fn-clt-mv",
   "fn-clt-nested",
+  "fn-clt-row-caller",
+  "fn-clt-row-clean",
+  "fn-clt-row-helper",
+  "fn-clt-row-recursive",
   "fn-clt-shadow",
   "fn-clt-single",
   "fn-clt-swap",
@@ -4004,7 +4008,7 @@
    "name": "fn-cth-status-text",
    "class": "common-lisp-compliant",
    "claim": "partial",
-   "bound": "(+ 64 (* 3 n) l)",
+   "bound": "(+ 106 (* 3 n) l)",
    "sizes": [
     "n",
     "l"
@@ -19074,6 +19078,33 @@
    "unaccounted": [],
    "theorem": "fn-asto-quantum-conses-bound",
    "declared_in": "host/cost-host.lisp"
+  },
+  "fn-clt-row-caller": {
+   "claim": "partial",
+   "bound": "1",
+   "unaccounted": [
+    "fn-clt-leaf"
+   ],
+   "theorem": "fn-clt-row-caller-conses-bound",
+   "declared_in": "books/def-cost-lambda-tests.lisp"
+  },
+  "fn-clt-row-helper": {
+   "claim": "partial",
+   "bound": "0",
+   "unaccounted": [
+    "fn-clt-leaf"
+   ],
+   "theorem": "fn-clt-row-helper-conses-bound",
+   "declared_in": "books/def-cost-lambda-tests.lisp"
+  },
+  "fn-clt-row-recursive": {
+   "claim": "derived",
+   "bound": null,
+   "unaccounted": [
+    "fn-clt-leaf"
+   ],
+   "theorem": null,
+   "declared_in": "books/def-cost-lambda-tests.lisp"
   },
   "fn-clt-twice": {
    "claim": "partial",

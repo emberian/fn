@@ -8,15 +8,35 @@
 (include-book "def-cost")
 (include-book "charged-totals-header")
 
+(local
+ (defthm fn-cth-mm-nat-visits-explicit
+   (equal (fn-mm-nat-visits i x)
+          (+ 1 (nfix i) (fn-cost-unaccounted 'true-list-fix (list x))))
+   :hints (("Goal" :in-theory (enable fn-mm-nat-visits)))))
+(local
+ (defthm fn-cth-mm-paged-visits-explicit
+   (implies (fn-mm-tot-p tot)
+            (equal (fn-mm-tot-paged-p-visits tot)
+                   (+ 10 (fn-cost-unaccounted 'true-list-fix (list tot)))))
+   :hints (("Goal" :in-theory (union-theories (theory 'ground-zero)
+                       '(fn-mm-tot-p fn-mm-tot-paged-p-visits fn-rtc-true-list-fix-identity))))))
+
 (def-cost fn-cth-status-text
-  :visits (+ 64 (* 3 n) l)
+  :visits (+ 106 (* 3 n) l)
   :sizes ((n (len (cadr open)))
           (l (len (fn-cth-status-text open))))
   :unaccounted (fn-cth-status-field true-list-fix fn-nls-text)
-  :hints (("Goal" :in-theory (disable fn-mm-tot-records fn-mm-tot-arena fn-mm-tot-hcharge
-                                    fn-mm-tot-memberships fn-mm-tot-events fn-mm-tot-log
-                                    fn-mm-tot-history fn-mm-tot-charge fn-mm-tot-paged-p
-                                    fn-cth-status-field fn-nls-text))))
+  :hints (("Goal" :in-theory
+           (union-theories
+            (theory 'ground-zero)
+            '(fn-cth-status-text fn-cth-status-text-visits
+              fn-cth-status-text-route-visits
+              fn-mm-tot-records-visits fn-mm-tot-arena-visits
+              fn-mm-tot-hcharge-visits fn-mm-tot-memberships-visits
+              fn-mm-tot-events-visits fn-mm-tot-log-visits
+              fn-mm-tot-history-visits fn-mm-tot-charge-visits
+              fn-cth-mm-nat-visits-explicit fn-cth-mm-paged-visits-explicit
+              fn-cost-unaccounted-natp fn-rtc-len-append)))))
 
 (def-cost fn-cth-table-initial-state :visits 0 :unaccounted (fn-ockp-initial-state update-nth))
 
