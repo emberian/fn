@@ -21627,7 +21627,8 @@
         "tests/acl2/owner-reclaim-seal-tests.lisp"
       ],
       "events": [
-        "fn-orcs-predict-seal-refines-intern"
+        "fn-orcs-predict-seal-refines-intern",
+        "fn-rfc-the-rewrite-keeps-the-fold-contexts"
       ],
       "progress_note": "Actual normal/DTN host prefixes at frozen1a946582c passed. Full output/effect positive and no-bad omission teeth admitted31/33steps; all19 existing/new test forms admitted in scoped cached world. Matching changed-teeth root certification pending; host files are LD-loaded, not certified. No whole reclaim/custody/allocation claim. Evidence owed (Builder D, 2026-10-09): planning/evidence/reclaim-boundary-2026-10-03/repl.log, planning/evidence/reclaim-boundary-2026-10-03/result.json were never committed and are in neither the evidence archive nor any tree searched; dropped.",
       "evidence_digest": "e36486221d648c41"
