@@ -446,7 +446,8 @@ DRIVER_COUNTERPARTS = r"""
 (setq *test-interfaces* '((fn-plain :class :common-lisp-compliant)
                           (fn-raw :raw-with (fn-raw-carries))
                           (create-fn-test :raw-guarded (0 nil (fn-test)))
-                          (fn-refused :class :common-lisp-compliant)))
+                          (fn-refused :class :common-lisp-compliant)
+                          (fn-late-declared :class :common-lisp-compliant)))
 (defun fn-raw (x) (values x :raw))
 (defun create-fn-test () :creator-raw)
 (compile 'fn-raw) (compile 'create-fn-test)
@@ -493,6 +494,14 @@ DRIVER_COUNTERPARTS = r"""
   (assert (handler-case (progn (fnn-call 'fn-refused) nil)
             (fnn-entry-guard-fault (c) (equal (princ-to-string c) "guard comes first"))))
   (assert (= *lookups* before))) ; no lookup or fallback cache writes for sealed names
+;; A declared entry undefined at seal, whose guard admits the call: the call
+;; faults at the call as before, and once defined it dispatches in both modes.
+(assert (equal (fault-text 'fn-late-declared)
+               "ACL2 error in fn-late-declared: ACL2 executable counterpart missing: FN-LATE-DECLARED"))
+(setf (symbol-function (intern "FN-LATE-DECLARED" "ACL2_*1*_ACL2")) (lambda () :late-declared))
+(dolist (mode '(nil t))
+  (let ((*fnn-dispatch-counterpart* mode))
+    (assert (equal (fnn-call 'fn-late-declared) '(:late-declared)))))
 (let ((before *lookups*))
   (assert (equal (fault-text 'fn-missing)
                  "ACL2 error in fn-missing: ACL2 executable counterpart missing: FN-MISSING"))
