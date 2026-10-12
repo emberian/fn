@@ -361,6 +361,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/def-keyset-check-tests \
 	books/def-cost \
 	tests/acl2/def-cost-tests \
+	books/def-cost-lambda-tests \
 	books/acceptance \
 	books/acceptance-invariants \
 	tests/acl2/acceptance-tests \
@@ -726,6 +727,7 @@ ACL2_BOOKS ?= books/defrecord \
 	books/charged-totals-header \
 	books/charged-totals-header-writes \
 	books/charged-totals-header-cost \
+	books/runtime-contract-host-lease-cost \
 	tests/acl2/charged-totals-header-tests \
 	tests/acl2/open-frontier-tests \
 	books/open-frontier-wire \
