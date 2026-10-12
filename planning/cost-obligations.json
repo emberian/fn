@@ -5495,6 +5495,7 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
+    "expt",
     "fn-arx-attach-trailers-buffer",
     "mv-nth",
     "unsigned-byte-p"
