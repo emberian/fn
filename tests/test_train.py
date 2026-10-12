@@ -296,6 +296,176 @@ class TrainBase(unittest.TestCase):
         return sh(self.work, "git", "rev-parse", "HEAD").stdout.strip()
 
 
+class LaneCheckTests(TrainBase):
+    def check_lane(self, name, sha, *options, extra_env=None):
+        # lane-check itself must fetch the throwaway origin, including new lane SHAs.
+        return self.train("lane-check", f"{name}@{sha}", *options, extra_env=extra_env)
+
+    def scratch(self, name):
+        return self.work / "build/lanes" / ("lane-check-" + name)
+
+    def test_ledger_red_only_in_the_merge_fails_and_copies_the_log(self):
+        ledger = STUB.replace('sys.exit(int(os.environ.get(',
+            'if name == "ledger" and mode == "check" and os.path.exists("lane-event") and os.path.exists("dev-event"):\n'
+            '    print("merged ledger is red"); sys.exit(1)\n'
+            'sys.exit(int(os.environ.get(')
+        self.advance_dev({"tools/ledger.py": ledger})
+        sha = self.lane("red", {"lane-event": "lane\n"})
+        self.advance_dev({"dev-event": "dev\n"})
+        p = self.check_lane("red", sha)
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("lane-check ledger: FAIL", p.stdout)
+        self.assertIn("lane-check verdict: FAIL", p.stdout)
+        log = self.work / "build/lane-check" / f"red-{sha[:9]}.log"
+        self.assertIn("merged ledger is red", log.read_text())
+        self.assertIn(str(log), p.stdout)
+        self.assertEqual(log.read_bytes(), (self.scratch("red") / "build/lane-check" / log.name).read_bytes())
+
+    def test_regen_red_fails_before_local_gates(self):
+        sha = self.lane("regen-red", {"tools/x.py": "x\n"})
+        p = self.check_lane("regen-red", sha, extra_env={"STUB_RC_ledger_write": "1"})
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("lane-check regen: FAIL", p.stdout)
+        self.assertNotIn("lane-check ledger: PASS", p.stdout)
+        self.assertIn("lane-check verdict: FAIL", p.stdout)
+
+    def test_regen_that_leaves_uncommitted_sources_cannot_pass(self):
+        dirty_stub = STUB.replace('sys.exit(int(os.environ.get(',
+            'if name == "resource_contract" and mode == "write":\n'
+            '    with open("leftover-source", "w") as f: f.write("uncommitted\\n")\n'
+            'sys.exit(int(os.environ.get(')
+        sha = self.lane("dirty-regen", {"tools/resource_contract.py": dirty_stub})
+        p = self.check_lane("dirty-regen", sha)
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("lane-check regen: FAIL", p.stdout)
+        self.assertNotIn("lane-check ledger: PASS", p.stdout)
+        log = self.work / "build/lane-check" / f"dirty-regen-{sha[:9]}.log"
+        self.assertIn("gates must run at a committed HEAD", log.read_text())
+
+    def test_dropped_bare_and_term_findings_fail(self):
+        for path in train.PREMISE_BASELINES:
+            (self.seed / path).write_text(json.dumps({"accepted": {"still": "why"}}))
+        self.commit(self.seed, "premise baselines")
+        sh(self.seed, "git", "push", "-q", "origin", "HEAD:dev")
+        sha = self.lane("premises", {path: '{"accepted": {}}' for path in train.PREMISE_BASELINES})
+        p = self.check_lane("premises", sha, extra_env={
+            "STUB_PREMISES": '{"still": {"class": "preserved only"}}',
+            "STUB_PREMISES_ALL": '{"still": {"class": "preserved only"}}'})
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("lane-check premise_baseline: FAIL", p.stdout)
+        self.assertIn("lane-check verdict: FAIL", p.stdout)
+        log = self.work / "build/lane-check" / f"premises-{sha[:9]}.log"
+        self.assertIn("premise baseline LOST", log.read_text())
+        self.assertIn("premise term baseline LOST", log.read_text())
+        self.assertIn("premise_audit --json --all", self.stub_log())
+
+    def test_clean_path_runs_train_gates_and_preserves_dirty_lane_sources(self):
+        sha = self.lane("clean", {"tools/x.py": "x\n"})
+        sh(self.work, "git", "fetch", "-q", "origin")
+        (self.seed / "src.txt").write_text("uncommitted source\n")
+        before = sh(self.seed, "git", "status", "--porcelain").stdout
+        dev = self.origin_rev("dev")
+        p = self.train("lane-check", str(self.seed))
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("lane-check verdict: PASS (12 box gates owed)", p.stdout)
+        for name in train.GATES:
+            if name not in ("box_step", "image"):
+                self.assertIn(f"lane-check {name}: PASS", p.stdout)
+        for name in ("certify", "box_host_world", "reach", "keystone_cert", "image", "extraction"):
+            self.assertRegex(p.stdout, f"lane-check {name}: BOX timeout [0-9]+ ")
+        self.assertIn(f"dev={dev}", p.stdout)
+        self.assertIn("--build-only", p.stdout)
+        self.assertNotIn("remote_check ", "\n".join(self.stub_log()))
+        self.assertEqual(sh(self.seed, "git", "status", "--porcelain").stdout, before)
+        self.assertEqual(self.origin_rev("dev"), dev)
+        self.assertEqual(sh(self.seed, "git", "rev-parse", "HEAD").stdout.strip(), sha)
+        log = self.seed / "build/lane-check" / f"clean-{sha[:9]}.log"
+        self.assertTrue(log.is_file())
+        self.assertIn("ledger --write", self.stub_log())
+        self.assertIn("ledger --check", self.stub_log())
+        self.assertIn("keystone_emit --write-manifest", self.stub_log())
+        self.assertIn("keystone_emit --check", self.stub_log())
+        self.assertIn("current_view --check", self.stub_log())
+        scratch = self.scratch("clean")
+        self.assertEqual(sh(scratch, "git", "branch", "--show-current").stdout.strip(), "integrate/lane-check-clean")
+        self.assertIn("regen", (scratch / "planning/proofs.json").read_text())
+        self.assertFalse((self.seed / "planning/proofs.json").exists())
+
+    def test_reuse_resets_to_new_dev_and_clean_removes_only_scratch(self):
+        sha = self.lane("reuse", {"lane-event": "lane\n"})
+        self.assertEqual(self.check_lane("reuse", sha).returncode, 0)
+        old_dev = sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip()
+        self.advance_dev({"dev-event": "dev\n"})
+        dev = self.origin_rev("dev")
+        self.assertNotEqual(old_dev, dev)
+        self.assertEqual(sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip(), old_dev)
+        p = self.check_lane("reuse", sha)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn(f"lane-check verdict: PASS (12 box gates owed) dev={dev}", p.stdout)
+        self.assertTrue((self.scratch("reuse") / "dev-event").is_file())
+        self.assertEqual((self.scratch("reuse") / "planning/proofs.json").read_text().count("regen"), 1)
+        p = self.check_lane("reuse", sha, "--clean")
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertFalse(self.scratch("reuse").exists())
+        self.assertNotIn("integrate/lane-check-reuse", sh(self.work, "git", "branch").stdout)
+        self.assertTrue((self.work / "build/lane-check" / f"reuse-{sha[:9]}.log").is_file())
+        self.assertTrue(self.seed.is_dir())
+
+    def test_unowned_scratch_is_not_reset(self):
+        sha = self.lane("occupied", {"lane-event": "lane\n"})
+        scratch = self.scratch("occupied")
+        scratch.mkdir(parents=True)
+        sentinel = scratch / "other-seat"
+        sentinel.write_text("keep\n")
+        p = self.check_lane("occupied", sha)
+        self.assertNotEqual(p.returncode, 0)
+        self.assertIn("refusing to reset unowned scratch", (self.work / "build/lane-check" / f"occupied-{sha[:9]}.log").read_text())
+        self.assertEqual(sentinel.read_text(), "keep\n")
+
+    def test_box_image_modules_are_exactly_the_obliged_set(self):
+        sha = self.lane("image", {"tools/build_native_host.sh": "launcher\n"})
+        p = self.check_lane("image", sha)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check image: BOX"))
+        modules = line.split()[line.split().index("hbox") + 2:]
+        self.assertEqual(modules, sorted(train.image_modules(["tools/build_native_host.sh"])))
+        self.assertNotIn("--build-only", line)
+
+    def test_box_certify_uses_the_train_affected_books_and_added_roots(self):
+        manifest_stub = STUB.replace('sys.exit(int(os.environ.get(',
+            'if name == "keystone_emit" and mode == "write-manifest":\n'
+            '    os.makedirs("build", exist_ok=True)\n'
+            '    with open("build/teeth-obligations.json", "w") as f: json.dump({"entries": []}, f)\n'
+            'sys.exit(int(os.environ.get(')
+        (self.seed / "books").mkdir(exist_ok=True)
+        sha = self.lane("books", {"books/a.lisp": "(in-package \"ACL2\")\n",
+                                  "Makefile": "ACL2_BOOKS = books/new-root\n",
+                                  "tools/keystone_emit.py": manifest_stub})
+        p = self.check_lane("books", sha)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check certify: BOX"))
+        self.assertIn("--affected-by books/a", line)
+        self.assertIn("books/new-root", line)
+        self.assertIn("books/wire-export books/image-world books/image-world-dtn books/a", line)
+        self.assertNotIn("--lane", line)
+
+    def test_cmd_gate_preserves_names_order_output_and_return_codes(self):
+        for rc in (0, 7):
+            p = self.train("gate", extra_env={"STUB_RC_ledger_check": str(rc)})
+            st = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+            expected = {name: rc if name == "ledger" else 0 for name in train.GATES}
+            self.assertEqual({name: entry["rc"] for name, entry in st["gates"].items()}, expected)
+            self.assertEqual(p.returncode, 1 if rc else 0, p.stdout + p.stderr)
+            summary = "gates at " + self.head()[:9] + ": " + ", ".join(f"{n}={v}" for n, v in expected.items())
+            self.assertIn(summary + "\n", p.stdout)
+            self.assertEqual(self.stub_log(), [
+                "ledger --check", "current_view --check", "main_last_check ", "keystone_emit --check",
+                "lock_discipline_check --json",
+                "lock_discipline_check --json", "test_ledger ", "test_keystone_emit ",
+                "test_keystone_critical ", "test_train ", "test_farm "])
+            self.log.unlink()
+
+
 class MergeTests(TrainBase):
     def test_generated_conflict_takes_train_side(self):
         # train side first changes the ledger on dev; the lane changes it too.
