@@ -409,12 +409,37 @@ def acl2_environment(base: dict | None = None, *, root: Path | None = None) -> d
     return apply_heap_cap(environment)
 
 
+def inherited_run_lock_fds(environment: dict | None = None) -> tuple[int, ...]:
+    """Keep farm's lifetime lock in children despite subprocess's close_fds.
+
+    The shell opens and locks this descriptor before acknowledging startup.
+    Carry that open file description, never reopen the path or infer liveness
+    from a PID. Outside a farm run there is no extra descriptor to carry.
+    """
+    environment = os.environ if environment is None else environment
+    value = environment.get("FN_FARM_RUN_LOCK_FD")
+    if value is None:
+        return ()
+    fd = int(value)
+    if fd < 3:
+        raise ValueError("a farm run lock must use a non-stdio descriptor")
+    os.fstat(fd)  # An invalid inherited descriptor must fail, not lose the lock.
+    return (fd,)
+
+
+def carry_run_lock(environment: dict, kwargs: dict) -> dict:
+    """Merge the run lock with any descriptors a launcher already carries."""
+    return dict(kwargs, pass_fds=tuple(dict.fromkeys(
+        (*kwargs.get("pass_fds", ()), *inherited_run_lock_fds(environment)))))
+
+
 def run(argv: list, label: str, env: dict | None = None, *,
         root: Path | None = None, **kwargs):
     """`subprocess.run` of an ACL2 under this tree's slot, with the environment."""
     import subprocess
     with tree_slot(label):
-        return subprocess.run(argv, env=acl2_environment(env, root=root), **kwargs)
+        environment = acl2_environment(env, root=root)
+        return subprocess.run(argv, env=environment, **carry_run_lock(environment, kwargs))
 
 
 def popen(argv: list, label: str, env: dict | None = None, **kwargs):
@@ -426,7 +451,8 @@ def popen(argv: list, label: str, env: dict | None = None, **kwargs):
     import subprocess
     acquire_tree_slot(label)
     try:
-        return subprocess.Popen(argv, env=acl2_environment(env), **kwargs)
+        environment = acl2_environment(env)
+        return subprocess.Popen(argv, env=environment, **carry_run_lock(environment, kwargs))
     except BaseException:
         release_tree_slot()
         raise
