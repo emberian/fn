@@ -181,7 +181,7 @@ MANUAL = {
     "FN_SPAN_REFERENCE_HOST": "the base image of the ingress-span differential (SCN-110; built from the lane base, by --env)",
     "FN_RUN_IMAGE_HEAP": "opt-in for the 128 MB bar's measurement (tests.test_native_image_heap)",
     "FN_RUN_RECLAIM_RSS": "opt-in for the reclaim walk's resident-set measurement (tests.test_native_reclaim_walk)",
-    "FN_DEAD_RUN_PROF_HOST": "the profiling image for dead-run's measured case (tests.test_native_dead_run); defaults to build/fn-host-prof, built only by --images developer,prof",
+    "FN_DEAD_RUN_PROF_HOST": "defaults to build/fn-host-prof (the profiling image for dead-run's measured case, tests.test_native_dead_run; built only by --images developer,prof)",
     "FN_RUN_SLOW": "opt-in for tests marked slow (tests/native_harness.py `slow'): batches and qualification",
     "FN_INN_SRC": "an installed INN 2.7 tree",
     "FN_DTN7_REPO": "a dtn7-rs checkout",

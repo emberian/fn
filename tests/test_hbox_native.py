@@ -27,6 +27,47 @@ def image_lines(out):
 
 
 class HboxNativeDryRunTests(unittest.TestCase):
+    def test_dead_run_profiling_image_is_an_optional_default(self):
+        answer = dry("--box", "hbox", "--images", "developer,prof", "HEAD",
+                     "tests.test_native_dead_run", env={"FN_DEAD_RUN_PROF_HOST": ""})
+        self.assertEqual(answer.returncode, 0, answer.stdout + answer.stderr)
+        self.assertNotIn("is gated by FN_DEAD_RUN_PROF_HOST", answer.stderr)
+        self.assertIn("step image-prof", answer.stdout)
+        self.assertIn("--one tests.test_native_dead_run", answer.stdout)
+
+    def test_module_scope_names_are_recorded_at_the_unit_start(self):
+        import re
+        import tempfile
+        answer = dry("--box", "hbox", "--jobs", "3", "HEAD",
+                     "tests.test_native_owner", "tests.test_native_web")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        self.assertIn("export FN_NATIVE_SCOPE_UNIT=$FN_NATIVE_SCOPE_PREFIX-1.scope", answer.stdout)
+        self.assertIn("export FN_NATIVE_SCOPE_UNIT=$FN_NATIVE_SCOPE_PREFIX-2.scope", answer.stdout)
+        self.assertIn("unit=$FN_NATIVE_SCOPE_UNIT", answer.stdout)
+        wrapper = re.search(r"^cat > \$S/scope.sh <<'SCOPERUN'\n(.*?)^SCOPERUN$",
+                            answer.stdout, re.M | re.S).group(1)
+        self.assertLess(wrapper.index('>> "$S/scopes"'), wrapper.index("exec systemd-run"))
+        self.assertIn('systemd-run --user --scope --unit="$FN_NATIVE_SCOPE_UNIT"', wrapper)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            script = root / "scope.sh"
+            script.write_text(wrapper)
+            fake = root / "systemd-run"
+            fake.write_text('#!/bin/sh\ncat "$S/scopes"\nprintf "%s\\n" "$*"\n')
+            fake.chmod(0o755)
+            unit = "fn-native-test-888-1.scope"
+            done = subprocess.run(["sh", str(script), "-p", "MemoryMax=40G", "--", "true"],
+                env={**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"],
+                     "S": str(root), "FN_NATIVE_SCOPE_UNIT": unit},
+                capture_output=True, text=True, timeout=30)
+            self.assertEqual(done.returncode, 0, done.stderr)
+            self.assertEqual((root / "scopes").read_text(), unit + "\n")
+            self.assertIn("--unit=" + unit, done.stdout)
+            self.assertIn("MemoryMax=40G", done.stdout)
+        big = dry("--box", "hbox", "--mem", "40G", "HEAD", "tests.test_native_owner")
+        line = next(line for line in big.stdout.splitlines() if line.startswith("tstep test-"))
+        self.assertLess(line.index("flock "), line.index("sh $S/scope.sh"))
+
     def test_modules_choose_their_own_units_and_override_is_visible(self):
         modules = ["tests.test_native_pack_chain", "tests.test_native_bounds_join",
                    "tests.test_native_heap_from_profile", "tests.test_native_owner"]
@@ -337,7 +378,7 @@ echo REACHED
             log = Path(directory) / "calls"
             for tool in ("ssh", "rsync"):
                 stub = Path(directory) / tool
-                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *"remaining=5"*) echo 4242;; esac\ncat > /dev/null\nexit 0\n'
+                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *"remaining=5"*) echo 4242; echo 888;; esac\ncat > /dev/null\nexit 0\n'
                                 % (tool, log))
                 stub.chmod(0o755)
             env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}"}
@@ -1004,7 +1045,7 @@ class DetachedByDefaultTests(unittest.TestCase):
             log = Path(directory) / "calls"
             for tool in ("ssh", "rsync"):
                 stub = Path(directory) / tool
-                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *"remaining=5"*) echo 4242 ;; '
+                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *"remaining=5"*) echo 4242; echo 888 ;; '
                                 'esac\ncat > /dev/null\nexit 0\n'
                                 % (tool, log))
                 stub.chmod(0o755)
@@ -1022,9 +1063,11 @@ class DetachedByDefaultTests(unittest.TestCase):
             self.assertEqual(fields["box"], "hbox")
             self.assertEqual(fields["pid"], "4242")
             self.assertEqual(fields["pgid"], "4242")
+            self.assertEqual(fields["starttime"], "888")
             commands = log.read_text()
             self.assertIn("nohup setsid sh -c", commands)
             self.assertIn(f"echo $$ > {fields['dir']}/run.pid || exit 3; exec sh {fields['dir']}/run.sh", commands)
+            self.assertIn(f"cat {fields['dir']}/run.pid {fields['dir']}/run.starttime", commands)
             self.assertEqual(fields["dir"], f"/tank/fn/scratch/t/native-{label}")
             self.assertEqual(fields["log"], fields["dir"] + "/run.log")
             # No wait_for poll happened: the start did not attach.
@@ -1044,7 +1087,7 @@ class DetachedByDefaultTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 for tool in ("ssh", "rsync"):
                     stub = Path(directory) / tool
-                    stub.write_text('#!/bin/sh\ncase "$*" in *"remaining=5"*) echo 4242 ;; '
+                    stub.write_text('#!/bin/sh\ncase "$*" in *"remaining=5"*) echo 4242; echo 888 ;; '
                                     '*run.log*) printf "%%s\\n" "== load 1" %r ;; esac\n'
                                     'cat > /dev/null\nexit 0\n' % log_line)
                     stub.chmod(0o755)
@@ -1134,50 +1177,183 @@ def install_from_cache(roots, toolchain, acl2):
 
 
 class NativeStopTests(unittest.TestCase):
-    def test_stop_requires_leader_and_exact_run_command_and_uses_recorded_group(self):
+    def setUp(self):
         import tempfile
+        from types import SimpleNamespace
+        from unittest import mock
+        self.temp = tempfile.TemporaryDirectory(prefix="fn-native-stop-")
+        self.addCleanup(self.temp.cleanup)
+        self.root = Path(self.temp.name)
+        self.run_dir = self.root / "run"
+        self.run_dir.mkdir()
+        self.proc = self.root / "proc"
+        (self.proc / "4242").mkdir(parents=True)
+        self.code = SCRIPT.read_text().split("    cat <<'PROCESS'\n", 1)[1].split("\nPROCESS\n", 1)[0]
+        self.api = {"__name__": "native_process_test"}
+        exec(compile(self.code, str(SCRIPT), "exec"), self.api)
+        self.events = []
+        self.fake_os = SimpleNamespace(fsencode=os.fsencode,
+            pidfd_open=mock.Mock(side_effect=lambda pid: self.events.append(("open", pid)) or 701),
+            close=mock.Mock(side_effect=lambda fd: self.events.append(("close", fd))))
+        self.fake_signal = SimpleNamespace(SIGTERM=15,
+            pidfd_send_signal=mock.Mock(side_effect=lambda *args: self.events.append(("signal", args))))
+        self.fake_subprocess = SimpleNamespace(TimeoutExpired=subprocess.TimeoutExpired,
+            run=mock.Mock(side_effect=lambda args, **kw: self.events.append(("scope", args[-1])) or
+                         SimpleNamespace(returncode=0, stdout="", stderr="")))
+        self.api.update(os=self.fake_os, signal=self.fake_signal, subprocess=self.fake_subprocess)
+        self.units = [self.api["scope_prefix"](self.run_dir, 888) + f"-{n}.scope" for n in (1, 2)]
+        (self.run_dir / "scopes").write_text("\n".join(self.units) + "\n")
+        self.identity()
+
+    def identity(self, pgid=4242, starttime=888, cmdline=None):
+        # Parenthesized comm exercises spaces and ')' without shifting field 22.
+        fields = ["S", "999", str(pgid)] + ["0"] * 16 + [str(starttime)] + ["0"] * 20
+        (self.proc / "4242/stat").write_text("4242 (sh (odd) name) " + " ".join(fields))
+        (self.proc / "4242/cmdline").write_bytes(
+            cmdline if cmdline is not None else b"sh\0" + os.fsencode(str(self.run_dir / "run.sh")) + b"\0")
+
+    def stop(self):
+        import contextlib
+        import io
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            rc = self.api["stop_run"](4242, 888, self.run_dir, self.proc)
+        return rc, out.getvalue(), err.getvalue()
+
+    def test_identity_capture_records_field_22_and_run_specific_scope_prefix(self):
+        original = self.api["process_stat"]
+        self.api["process_stat"] = lambda pid: original(pid, self.proc)
+        self.api["write_identity"](4242, self.run_dir)
+        self.assertEqual((self.run_dir / "run.starttime").read_text(), "888\n")
+        prefix = (self.run_dir / "scope-prefix").read_text().strip()
+        self.assertTrue(self.units[0].startswith(prefix + "-"))
+        self.assertNotEqual(prefix, self.api["scope_prefix"](self.run_dir, 889))
+        self.assertNotEqual(prefix, self.api["scope_prefix"](self.root / "other", 888))
+
+    def test_opens_pidfd_before_identity_and_uses_only_it_to_signal(self):
+        self.fake_signal.PIDFD_SIGNAL_PROCESS_GROUP = 4
+        original = self.api["process_stat"]
+        def checked_stat(*args):
+            self.assertEqual(self.events, [("open", 4242)])
+            return original(*args)
+        self.api["process_stat"] = checked_stat
+        rc, out, err = self.stop()
+        self.assertEqual(rc, 0, err)
+        self.fake_os.pidfd_open.assert_called_once_with(4242)
+        self.fake_signal.pidfd_send_signal.assert_called_once_with(701, 15, None, 4)
+        self.fake_os.close.assert_called_once_with(701)
+        self.assertLess(next(i for i, e in enumerate(self.events) if e[0] == "signal"),
+                        next(i for i, e in enumerate(self.events) if e[0] == "scope"))
+        self.assertIn("sent TERM through pidfd", out)
+        self.assertNotIn("os.kill", self.code)
+        self.assertNotIn("killpg", self.code)
+
+    def test_reuse_between_open_and_identity_is_refused(self):
+        def opened(pid):
+            self.events.append(("open", pid))
+            self.identity(starttime=999)
+            return 701
+        self.fake_os.pidfd_open.side_effect = opened
+        rc, _, err = self.stop()
+        self.assertEqual(rc, 2)
+        self.assertIn("start time", err)
+        self.fake_signal.pidfd_send_signal.assert_not_called()
+        self.fake_subprocess.run.assert_not_called()
+        self.fake_os.close.assert_called_once_with(701)
+
+    def test_reuse_after_identity_cannot_redirect_signal_to_numeric_pid(self):
+        def signal_pinned(fd, sig, info, flags):
+            self.identity(starttime=999, cmdline=b"sh\0/tmp/stranger/run.sh\0")
+            self.events.append(("signal", (fd, sig, info, flags)))
+            self.assertEqual((fd, sig, info, flags), (701, 15, None, 4))
+        # The absent constant must use flag 4, never a numeric kill fallback.
+        self.fake_signal.pidfd_send_signal.side_effect = signal_pinned
+        rc, _, err = self.stop()
+        self.assertEqual(rc, 0, err)
+        self.fake_signal.pidfd_send_signal.assert_called_once_with(701, 15, None, 4)
+
+    def test_missing_leader_or_unsupported_pidfd_refuses_without_cleanup(self):
+        for error in (ProcessLookupError("leader gone"), AttributeError("pidfd unavailable")):
+            with self.subTest(error=error):
+                self.fake_os.pidfd_open.side_effect = error
+                rc, _, err = self.stop()
+                self.assertEqual(rc, 2)
+                self.assertIn("refused stop", err)
+                self.fake_signal.pidfd_send_signal.assert_not_called()
+                self.fake_subprocess.run.assert_not_called()
+                self.fake_os.close.assert_not_called()
+
+    def test_nonleader_wrong_starttime_and_inexact_commands_refuse(self):
+        cases = [(12, 888, None, "group leader"), (4242, 889, None, "start time"),
+                 (4242, 888, b"sh\0/tmp/stranger/run.sh\0", "command line"),
+                 (4242, 888, b"sh\0" + os.fsencode(str(self.run_dir / "run.sh.extra")) + b"\0", "command line"),
+                 (4242, 888, b"sh\0" + os.fsencode(str(self.run_dir / "run.sh")) + b"\0extra\0", "command line")]
+        for pgid, start, cmd, message in cases:
+            with self.subTest(message=message, cmd=cmd):
+                self.identity(pgid, start, cmd)
+                rc, _, err = self.stop()
+                self.assertEqual(rc, 2)
+                self.assertIn(message, err)
+                self.fake_signal.pidfd_send_signal.assert_not_called()
+                self.fake_subprocess.run.assert_not_called()
+
+    def test_leader_exit_or_unsupported_group_signal_refuses_without_numeric_fallback(self):
+        for error in (ProcessLookupError("pinned leader exited"), OSError("group flag unsupported")):
+            with self.subTest(error=error):
+                self.fake_signal.pidfd_send_signal.side_effect = error
+                rc, _, err = self.stop()
+                self.assertEqual(rc, 2)
+                self.assertIn("refused stop", err)
+                self.fake_subprocess.run.assert_not_called()
+
+    def test_only_recorded_exact_units_are_stopped_after_term_and_reported(self):
+        from types import SimpleNamespace
+        self.fake_subprocess.run.side_effect = [SimpleNamespace(returncode=1, stdout="", stderr="unit failure"),
+                                               SimpleNamespace(returncode=0, stdout="", stderr="")]
+        # Deduplicate; reject foreign run units, option injection and globs.
+        (self.run_dir / "scopes").write_text("\n".join(
+            [self.units[0], self.units[0], "--all", "fn-native-foreign-888-1.scope", "*.scope", self.units[1]]) + "\n")
+        rc, out, err = self.stop()
+        self.assertEqual(rc, 2)
+        calls = self.fake_subprocess.run.call_args_list
+        self.assertEqual([c.args[0] for c in calls],
+                         [["systemctl", "--user", "stop", "--", unit] for unit in self.units])
+        self.assertTrue(all(c.kwargs["timeout"] == 60 for c in calls))
+        self.assertIn(self.units[0] + ": stop failed (exit 1): unit failure", err)
+        self.assertIn(self.units[1] + ": stopped", out)
+        self.assertIn("refused scope name outside this run", err)
+
+    def test_stop_transport_uses_recorded_starttime_and_legacy_stop_refuses(self):
         import shlex
-        with tempfile.TemporaryDirectory() as directory:
-            root = Path(directory)
-            command = root / "command"
-            ssh = root / "ssh"
-            ssh.write_text('#!/bin/sh\nshift 2\nprintf "%s" "$1" > ' + shlex.quote(str(command)) + '\n')
-            ssh.chmod(0o755)
-            label = f"stop-unit-{os.getpid()}"
-            record = ROOT / "build/hbox-native" / (label + ".run")
-            record.parent.mkdir(parents=True, exist_ok=True)
-            self.addCleanup(lambda: record.unlink(missing_ok=True))
-            record.write_text("box=hbox\ndir=/tmp/native-owned\npid=9999\npgid=4242\n")
-            env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]}
-            request = subprocess.run(["sh", str(SCRIPT), "stop", label], cwd=ROOT, env=env,
-                                     capture_output=True, text=True, timeout=30)
-            self.assertEqual(request.returncode, 0, request.stderr)
-            script = command.read_text()
-            self.assertIn("/bin/kill -TERM -- -4242", script)
-            self.assertNotIn("9999", script)
-            # Execute the remote decision with fake ps and kill. No signal is sent.
-            for identity, args, expected in (("4242 12", "sh /tmp/native-owned/run.sh", "not a group leader"),
-                    ("", "", "absent"), ("4242 4242", "sh /tmp/stranger/run.sh", "command line"),
-                    ("4242 4242", "sh /tmp/native-owned/run.sh.extra", "command line"),
-                    ("4242 4242", "sh /tmp/native-owned/run.sh", "sent TERM")):
-                harness = ("ps() { case \"$*\" in *args=*) echo " + shlex.quote(args) +
-                    ";; *) echo " + shlex.quote(identity) + ";; esac; }\n"
-                    "mock_kill() { echo SIGNAL \"$*\"; return 0; }\n" +
-                    script.replace("/bin/kill", "mock_kill"))
-                result = subprocess.run(["sh", "-c", harness], capture_output=True, text=True, timeout=30)
-                self.assertIn(expected, result.stdout + result.stderr)
-                if expected != "sent TERM":
-                    self.assertEqual(result.returncode, 2)
-                    self.assertNotIn("SIGNAL", result.stdout)
-                else:
-                    self.assertEqual(result.returncode, 0)
-                    self.assertIn("SIGNAL -TERM -- -4242", result.stdout)
-            # Old records retain the PID fallback for status, attach and stop.
-            record.write_text("box=hbox\ndir=/tmp/native-owned\npid=4242\n")
-            request = subprocess.run(["sh", str(SCRIPT), "status", label], cwd=ROOT, env=env,
-                                     capture_output=True, text=True, timeout=30)
-            self.assertEqual(request.returncode, 0, request.stderr)
-            self.assertIn("/bin/kill -0 -- 4242", command.read_text())
+        command = self.root / "command"
+        source = self.root / "source"
+        ssh = self.root / "ssh"
+        ssh.write_text('#!/bin/sh\nprintf "%s" "$*" > ' + shlex.quote(str(command)) +
+                       '\ncat > ' + shlex.quote(str(source)) + '\n')
+        ssh.chmod(0o755)
+        label = f"stop-unit-{os.getpid()}"
+        record = ROOT / "build/hbox-native" / (label + ".run")
+        record.parent.mkdir(parents=True, exist_ok=True)
+        self.addCleanup(lambda: record.unlink(missing_ok=True))
+        record.write_text(f"box=hbox\ndir={self.run_dir}\npid=9999\npgid=4242\nstarttime=888\n")
+        env = {**os.environ, "PATH": str(self.root) + os.pathsep + os.environ["PATH"]}
+        request = subprocess.run(["sh", str(SCRIPT), "stop", label], cwd=ROOT, env=env,
+                                 capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
+        self.assertEqual(request.returncode, 0, request.stderr)
+        self.assertIn(f"python3 - stop 4242 888 {self.run_dir}", command.read_text())
+        self.assertNotIn("9999", command.read_text())
+        self.assertEqual(source.read_text().strip(), self.code.strip())
+        command.write_text("")
+        record.write_text(f"box=hbox\ndir={self.run_dir}\npid=4242\n")
+        refused = subprocess.run(["sh", str(SCRIPT), "stop", label], cwd=ROOT, env=env,
+                                 capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
+        self.assertEqual(refused.returncode, 2)
+        self.assertIn("lacks a safe starttime", refused.stderr)
+        self.assertEqual(command.read_text(), "")
+        status = subprocess.run(["sh", str(SCRIPT), "status", label], cwd=ROOT, env=env,
+                                capture_output=True, text=True, timeout=30, stdin=subprocess.DEVNULL)
+        self.assertEqual(status.returncode, 0, status.stderr)
+        self.assertIn("/bin/kill -0 -- 4242", command.read_text())
 
 
 class HelperImageUseTests(unittest.TestCase):

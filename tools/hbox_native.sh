@@ -94,12 +94,18 @@
 #                                        (tools/wait_for.sh, --deadline S),
 #                                        prints the run log, exits with status
 #   tools/hbox_native.sh stop LABEL     TERM the recorded process group only
-#                                        after checking its leader and run.sh
+#                                        through a pidfd after checking its
+#                                        leader, start time and exact run.sh;
+#                                        then stop its recorded module scopes
 #
 # from any later session.  --wait keeps the old behaviour (start, then attach
 # at once; start it with run_in_background).  --detach is accepted and is the
 # default.  The box run survives a dropped ssh (nohup, its own setsid group).
 # Records name pgid and the same pid for older readers; status/attach use pgid.
+# New records also name starttime (Linux /proc/PID/stat field 22). Stop refuses
+# records lacking it and systems lacking pidfd group signals; no numeric kill
+# fallback. Module scopes have run-specific names in RUN/scopes; stop names
+# only those units, including their children in independent sessions.
 # --allow-certify permits missing-book and certify-origin closure certification.
 # Without it, either plan needing books finishes with status 16 (certify refused).
 # hbox_native does not coordinate with farm runs: farm locks are per mirror.
@@ -204,6 +210,104 @@ REUSE=
 OVERLAY=
 FROM_TRAIN=
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
+# Shared by launch identity capture and stop, streamed from this private copy.
+native_process_script() {
+    cat <<'PROCESS'
+import hashlib
+import os
+from pathlib import Path
+import re
+import signal
+import subprocess
+import sys
+
+
+def process_stat(pid, proc_root=Path("/proc")):
+    text = (proc_root / str(pid) / "stat").read_text()
+    # comm is parenthesized and may contain spaces or closing parentheses.
+    fields = text.rsplit(")", 1)[1].split()
+    if int(text.split("(", 1)[0]) != pid:
+        raise ValueError("stat names a different PID")
+    return int(fields[2]), int(fields[19])  # fields 5 (pgrp), 22 (starttime)
+
+
+def scope_prefix(run_dir, starttime):
+    digest = hashlib.sha256(os.fsencode(str(run_dir))).hexdigest()
+    return f"fn-native-{digest}-{starttime}"
+
+
+def write_identity(pid, run_dir):
+    pgid, starttime = process_stat(pid)
+    if pgid != pid or starttime <= 0:
+        raise ValueError("launch process is not a live group leader")
+    (run_dir / "scope-prefix").write_text(scope_prefix(run_dir, starttime) + "\n")
+    # Write last: readback waits for this before recording the launch.
+    (run_dir / "run.starttime").write_text(str(starttime) + "\n")
+
+
+def stop_run(pid, starttime, run_dir, proc_root=Path("/proc")):
+    fd = None
+    try:
+        if pid <= 1 or starttime <= 0:
+            raise ValueError("record lacks a safe PID/starttime")
+        fd = os.pidfd_open(pid)
+        pgid, observed_start = process_stat(pid, proc_root)
+        if pgid != pid:
+            raise ValueError("recorded process is not a group leader")
+        if observed_start != starttime:
+            raise ValueError("leader start time does not match the launch record")
+        cmdline = (proc_root / str(pid) / "cmdline").read_bytes()
+        script = os.fsencode(str(run_dir / "run.sh"))
+        if cmdline not in (b"sh\0" + script + b"\0", b"/bin/sh\0" + script + b"\0"):
+            raise ValueError("leader command line is not exactly this run's run.sh")
+        # Linux >=6.9. The fd still names the opened leader if its PID is reused.
+        signal.pidfd_send_signal(fd, signal.SIGTERM, None,
+                                getattr(signal, "PIDFD_SIGNAL_PROCESS_GROUP", 4))
+    except (AttributeError, OSError, ValueError, IndexError) as error:
+        print(f"hbox_native: refused stop: {error}", file=sys.stderr)
+        return 2
+    finally:
+        if fd is not None:
+            os.close(fd)
+    print(f"hbox_native: sent TERM through pidfd to pgid {pid} ({run_dir}/run.sh)", flush=True)
+    try:
+        units = list(dict.fromkeys((run_dir / "scopes").read_text().splitlines()))
+    except OSError as error:
+        print(f"hbox_native: cannot read recorded scopes: {error}", file=sys.stderr)
+        return 2
+    pattern = re.compile(re.escape(scope_prefix(run_dir, starttime)) + r"-[1-9][0-9]*\.scope")
+    failed = False
+    for unit in units:
+        if not pattern.fullmatch(unit):
+            print(f"hbox_native: refused scope name outside this run: {unit!r}", file=sys.stderr)
+            failed = True
+            continue
+        try:
+            done = subprocess.run(["systemctl", "--user", "stop", "--", unit],
+                                  capture_output=True, text=True, timeout=60)
+            if done.returncode:
+                print(f"hbox_native: scope {unit}: stop failed (exit {done.returncode}): "
+                      f"{done.stderr.strip() or done.stdout.strip()}", file=sys.stderr)
+                failed = True
+            else:
+                print(f"hbox_native: scope {unit}: stopped", flush=True)
+        except (OSError, subprocess.TimeoutExpired) as error:
+            print(f"hbox_native: scope {unit}: stop failed: {error}", file=sys.stderr)
+            failed = True
+    if not units:
+        print("hbox_native: no recorded module scopes")
+    return 2 if failed else 0
+
+
+if __name__ == "__main__":
+    if sys.argv[1] == "identity":
+        write_identity(int(sys.argv[2]), Path(sys.argv[3]))
+    elif sys.argv[1] == "stop":
+        sys.exit(stop_run(int(sys.argv[2]), int(sys.argv[3]), Path(sys.argv[4])))
+    else:
+        sys.exit("hbox_native: unknown process operation")
+PROCESS
+}
 # status / attach / stop LABEL: read the record this worktree's start wrote.
 attach_run() {
     record=$HERE/build/hbox-native/$2.run
@@ -222,18 +326,9 @@ attach_run() {
     case $S in /*) ;; *) echo "hbox_native: bad run directory in $record" >&2; exit 2 ;; esac
     case $S in *[!A-Za-z0-9_./-]*) echo "hbox_native: bad run directory in $record" >&2; exit 2 ;; esac
     if [ "$1" = stop ]; then
-        ssh -n "$HOST" "
-set -- \$(ps -p '$PID' -o pid= -o pgid=)
-if [ \"\$#\" -ne 2 ] || [ \"\$1\" != '$PID' ] || [ \"\$2\" != '$PID' ]; then
-    echo 'hbox_native: refused stop: pgid $PID is absent or is not a group leader' >&2; exit 2
-fi
-cmd=\$(ps -p '$PID' -o args=)
-if [ \"\$cmd\" != 'sh $S/run.sh' ] && [ \"\$cmd\" != '/bin/sh $S/run.sh' ]; then
-    echo 'hbox_native: refused stop: pgid $PID command line does not name this run: $S/run.sh' >&2; exit 2
-fi
-/bin/kill -0 -- -$PID 2>/dev/null || { echo 'hbox_native: refused stop: pgid $PID no longer exists' >&2; exit 2; }
-/bin/kill -TERM -- -$PID && echo 'hbox_native: sent TERM to pgid $PID ($S/run.sh)'
-"
+        STARTTIME=$(sed -n 's/^starttime=//p' "$record")
+        case $STARTTIME in ''|*[!0-9]*|0) echo "hbox_native: refused stop: $record lacks a safe starttime" >&2; exit 2 ;; esac
+        native_process_script | ssh "$HOST" "python3 - stop $PID $STARTTIME $S"
         exit $?
     fi
     if [ "$1" = status ]; then
@@ -522,6 +617,11 @@ set -u
 S=$S
 T=$TREE_EXPR
 L=\$S/logs
+cat > \$S/process.py <<'PROCESS'
+$(native_process_script)
+PROCESS
+python3 \$S/process.py identity \$\$ \$S || { echo 3 > \$S/status; exit 3; }
+export FN_NATIVE_SCOPE_PREFIX=\$(cat \$S/scope-prefix)
 ACL2=$CERT_ACL2  # the certify launcher (tools/farm.py HOSTS)
 CACHE=$CACHE  # this box's (tools/farm.py HOSTS)
 export FN_OPENSSL_PREFIX=/tank/fn/toolchains/openssl-3.5.8
@@ -878,6 +978,16 @@ BOX
     echo "export S T L FN_TEST_OPENSSL_BIN"
     echo "export FN_VERDICT_STORE=\${FN_VERDICT_STORE:-$BASE/.verdicts} FN_NATIVE_ALL=$ALL"
     echo "rm -rf \$S/rc; mkdir -p \$S/rc"
+    cat <<'SCOPE'
+cat > $S/scope.sh <<'SCOPERUN'
+#!/bin/sh
+set -eu
+# Called after the bigmem flock is acquired, immediately before the unit starts.
+printf '%s\n' "$FN_NATIVE_SCOPE_UNIT" >> "$S/scopes"
+exec systemd-run --user --scope --unit="$FN_NATIVE_SCOPE_UNIT" "$@"
+SCOPERUN
+export FN_NATIVE_SCOPE_PREFIX
+SCOPE
     echo "cat > \$S/module.sh <<'MODULE'"
     cat <<'MOD'
 #!/bin/sh
@@ -911,7 +1021,7 @@ tcached() {
 }
 tstep() {
     name=$1; shift
-    echo "== $name $(date -u +%H:%M:%SZ) MemoryMax=$FN_NATIVE_MEMORY load $(cut -d' ' -f1-3 /proc/loadavg)"
+    echo "== $name $(date -u +%H:%M:%SZ) unit=$FN_NATIVE_SCOPE_UNIT MemoryMax=$FN_NATIVE_MEMORY load $(cut -d' ' -f1-3 /proc/loadavg)"
     # A failed test's processes' stderr lands in $L/stderr/$name (and its
     # digest in the module log after the failure): tools/test_budget.py.
     FN_NATIVE_STDERR_DIR=$L/stderr/$name FN_NATIVE_MODULE_LOG=$L/$name.log "$@" > $L/$name.log 2>&1
@@ -936,8 +1046,9 @@ MOD
         cat <<BOX
 $i)
 export FN_NATIVE_MEMORY=$module_mem
+export FN_NATIVE_SCOPE_UNIT=\$FN_NATIVE_SCOPE_PREFIX-$i.scope
 tcached test-$module $module $assignments ||
-tstep test-$module $BIGMEM env $assignments systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$module_mem -p MemorySwapMax=0 -- sh -c "echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module \$CASES"
+tstep test-$module $BIGMEM env $assignments sh \$S/scope.sh --quiet --slice=swarm.slice -p MemoryMax=$module_mem -p MemorySwapMax=0 -- sh -c "echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module \$CASES"
 ;;
 BOX
     done
@@ -1084,15 +1195,18 @@ if [ -n "$OVERLAY" ]; then
     tar -C "$OVERLAY_DIR" -cf - . | ssh "$HOST" "tar -xf - -C $S/overlay" || exit 3
     ssh "$HOST" "cat > $S/bin/native_overlay.py" < "$FN_HBOX_NATIVE_COPY/native_overlay.py" || exit 3
 fi
-ssh -n "$HOST" "rm -f $S/status $S/run.pid; nohup setsid sh -c 'echo \$\$ > $S/run.pid || exit 3; exec sh $S/run.sh' > $S/run.log 2>&1 < /dev/null &" || exit 3
+ssh -n "$HOST" "rm -f $S/status $S/run.pid $S/run.starttime; : > $S/scopes; nohup setsid sh -c 'echo \$\$ > $S/run.pid || exit 3; exec sh $S/run.sh' > $S/run.log 2>&1 < /dev/null &" || exit 3
 # Read the leader's own file in a second ssh, never the ssh wrapper's $!.
-PID=$(ssh -n "$HOST" "remaining=5; while [ ! -s $S/run.pid ] && [ \"\$remaining\" -gt 0 ]; do sleep 1; remaining=\$((remaining - 1)); done; cat $S/run.pid") || exit 3
+IDENTITY=$(ssh -n "$HOST" "remaining=5; while { [ ! -s $S/run.pid ] || [ ! -s $S/run.starttime ]; } && [ \"\$remaining\" -gt 0 ]; do sleep 1; remaining=\$((remaining - 1)); done; cat $S/run.pid $S/run.starttime") || exit 3
+PID=$(printf '%s\n' "$IDENTITY" | sed -n '1p')
+STARTTIME=$(printf '%s\n' "$IDENTITY" | sed -n '2p')
 case $PID in ''|*[!0-9]*|0|1) echo "hbox_native: box run wrote no safe leader PID ($S/run.pid)" >&2; exit 3 ;; esac
+case $STARTTIME in ''|*[!0-9]*|0) echo "hbox_native: box run wrote no safe starttime ($S/run.starttime)" >&2; exit 3 ;; esac
 echo "hbox_native: started; progress in $HOST:$S/run.log"
 [ -z "$REUSE_LINKED" ] || ssh -n "$HOST" "python3 $S/bin/native_reuse.py claim --root $REUSE_TREE --owner $S --pid $PID" >/dev/null 2>&1 || true
 # The record here names the box (item 67): status and re-attach read it.
 mkdir -p "$HERE/build/hbox-native"
-printf 'box=%s\ndir=%s\npid=%s\npgid=%s\nlog=%s\nstatus=%s\nsource=%s\ntree=%s\n' "$HOST" "$S" "$PID" "$PID" "$S/run.log" "$S/status" "$RECORD_SOURCE" "$TREE_ID" \
+printf 'box=%s\ndir=%s\npid=%s\npgid=%s\nstarttime=%s\nlog=%s\nstatus=%s\nsource=%s\ntree=%s\n' "$HOST" "$S" "$PID" "$PID" "$STARTTIME" "$S/run.log" "$S/status" "$RECORD_SOURCE" "$TREE_ID" \
     > "$HERE/build/hbox-native/$LABEL.run"
 if [ $DETACH -eq 1 ]; then
     echo "hbox_native: detached (pgid $PID on $HOST); re-attach with: tools/hbox_native.sh attach $LABEL   (status: tools/hbox_native.sh status $LABEL)"
