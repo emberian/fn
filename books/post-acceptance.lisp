@@ -1,6 +1,7 @@
 ; POST acceptance instance definitions and the approved A0/A3 keystones.
 (in-package "ACL2")
 (include-book "post-context")
+(include-book "nntp-post")
 (include-book "runtime-contract")
 (include-book "owner-parse-carried")
 (include-book "records-concrete")
@@ -133,8 +134,9 @@
     (fn-apc-cl-served-payload secret login (fn-inj-decision-msgid d)
                             (fn-ipp-injected-octets d secret login cfg) carry)))
 
-; Successful local injection and the take's valid parse carry are the
-; domains relied on here (inj-decide:968-1048; apc-take:251-264).
+; Successful gated injection and the take's valid parse carry are the
+; domains relied on here (nntp-post:277-285; apc-take:251-264).  Slot 0
+; holds the direct decision or the moderation-forward envelope decision.
 ; ipp/cl callees have guard T: no invented secret/login/live-cfg predicate.
 (defun fn-pacc-injectionp (inj art)
   (declare (xargs :guard t))
@@ -142,13 +144,18 @@
        (fn-inj-configp (fn-pctx-get 5 inj))
        (fn-clock-observationp (fn-pctx-get 6 inj))
        (equal (fn-pctx-get 0 inj)
-              (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj)))
+              (fn-post-gated-decision art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj)))
        (fn-inj-injectedp (fn-pctx-get 0 inj))
        (fn-apc-p (fn-pctx-get 4 inj))))
 
+; Direct injection keeps the original recipe.  A forwarded envelope stores
+; the untouched source as a suffix: its added octets are PRE, INS is nil,
+; and the insertion offset is zero.
 (defun fn-pacc-splice (art inj)
   (declare (xargs :guard t))
-  (let* ((d (fn-pctx-get 0 inj)) (secret (fn-pctx-get 1 inj))
+  (if (equal (fn-pctx-get 0 inj)
+             (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj)))
+      (let* ((d (fn-pctx-get 0 inj)) (secret (fn-pctx-get 1 inj))
          (login (fn-pctx-get 2 inj)) (cfg (fn-pctx-get 3 inj))
          (carry (fn-pctx-get 4 inj)) (icfg (fn-pctx-get 5 inj))
          (obs (fn-pctx-get 6 inj)) (msgid (fn-inj-decision-msgid d))
@@ -170,7 +177,10 @@
                            (fn-cl-key-values secret login fields))))
     (mv (fn-pctx-cat cl (fn-ipp-with-params block msgid params))
         (if pathp (fn-inj-path-insert agent) nil)
-        (if pathp (nfix (fn-inj-path-offset art)) 0))))
+        (if pathp (nfix (fn-inj-path-offset art)) 0)))
+    (let ((stored (fn-pacc-stored-payload art inj)))
+      (mv (fn-inj-take-n (nfix (- (len stored) (len art))) stored)
+          nil 0))))
 
 (defun fn-pctx-of-prepared (s rec art inj)
   (declare (xargs :guard t))
@@ -641,12 +651,20 @@
  (defthm fn-pacc-cat-is-append-l (equal (fn-pctx-cat x y) (append x y)) :hints (("Goal" :in-theory (enable fn-pctx-cat)))))
 
 (local
- (defthm fn-pacc-injection-decision-l
+ (defthm fn-pacc-gated-injection-decision-l
  (implies (fn-pacc-injectionp inj art)
   (and (fn-inj-configp (fn-pctx-get 5 inj))
-       (equal (fn-pctx-get 0 inj) (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj)))
-       (fn-inj-injectedp (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj)))))
- :hints (("Goal" :in-theory '(fn-pacc-injectionp)))))
+       (fn-inj-injectedp (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj)))
+       (or (equal (fn-pctx-get 0 inj)
+                  (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj)))
+           (equal (fn-inj-decision-msgid (fn-pctx-get 0 inj))
+                  (fn-mod-envelope-msgid
+                   (fn-inj-decision-msgid
+                    (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj))))))))
+ :hints (("Goal" :use ((:instance fn-post-gated-decision-is-the-decision-or-its-envelope
+                      (source art) (config (fn-pctx-get 5 inj))
+                      (injection (fn-pctx-get 6 inj))))
+          :in-theory (union-theories (theory 'ground-zero) '(fn-pacc-injectionp))))))
 
 (local
  (defthm fn-pacc-parsed-candidate-l
@@ -680,7 +698,7 @@
 (local
  (defthm fn-pacc-injection-requires-octets-l
  (implies (fn-pacc-injectionp inj art) (fn-octet-listp art))
- :hints (("Goal" :use ((:instance fn-pacc-injection-decision-l)
+ :hints (("Goal" :use ((:instance fn-pacc-gated-injection-decision-l)
  (:instance fn-pacc-success-parse-l (config (fn-pctx-get 5 inj)) (obs (fn-pctx-get 6 inj)))
  (:instance fn-pacc-parse-requires-octets-l))
  :in-theory (union-theories (theory 'ground-zero) '(fn-pacc-cbor-is-octets-l))))))
@@ -806,6 +824,256 @@
  fn-store-retention-event-p fn-stxe-p fn-stxk-p fn-stxa-p fn-stxe-internals fn-stxk-internals fn-stxa-internals fn-cpe-eventp fn-th-topic-eventp)
  (fn-store-retention-event-encode fn-stxe-encode fn-stxk-encode fn-stxa-encode fn-cpe-encode fn-th-topic-event-encode))))))
 
+; MOD4: local suffix lemmas preserve the approved keystone formulas.
+(local (defthm fn-pacc-mod-append-suffix-l
+ (fn-inj-suffixp tail (append pre tail))
+ :hints (("Goal" :induct (append pre tail) :in-theory
+          (union-theories (theory 'ground-zero) '(append fn-inj-suffixp))))))
+
+(local (defthm fn-pacc-mod-suffix-transitive-l
+ (implies (and (fn-inj-suffixp a b) (fn-inj-suffixp b c)) (fn-inj-suffixp a c))
+ :hints (("Goal" :induct (fn-inj-suffixp b c) :in-theory
+          (union-theories (theory 'ground-zero) '(fn-inj-suffixp))))
+ :rule-classes nil))
+
+(local (defthm fn-pacc-mod-forwarded-source-suffix-l
+ (fn-inj-suffixp source (fn-mod-forwarded-source source facts msgid date))
+ :hints (("Goal" :use ((:instance fn-pacc-mod-suffix-transitive-l (a source)
+ (b (fn-inj-append (if (fn-inj-car (fn-inj-cdr (fn-inj-cdr facts))) (fn-inj-date-line date) nil) source))
+ (c (fn-mod-forwarded-source source facts msgid date))))
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-mod-forwarded-source fn-inj-suffixp fn-pacc-a0-inj-append-is-append
+   fn-pacc-mod-append-suffix-l fn-pacc-a0-append-assoc))))))
+
+(local (defthm fn-pacc-mod-car-append-l
+ (equal (car (append a b)) (if (consp a) (car a) (car b)))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero) '(append))))))
+
+(local (defthm fn-pacc-mod-cdr-append-l
+ (equal (cdr (append a b)) (if (consp a) (append (cdr a) b) (cdr b)))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero) '(append))))))
+
+(local (defthm fn-pacc-mod-append-nil-l
+ (equal (append a nil) (true-list-fix a))
+ :hints (("Goal" :induct (true-list-fix a) :in-theory
+ (union-theories (theory 'ground-zero) '(append true-list-fix))))))
+
+(local (defthm fn-pacc-mod-suffix-self-l
+ (fn-inj-suffixp a a)
+ :hints (("Goal" :expand ((fn-inj-suffixp a a))))))
+
+(local (defthm fn-pacc-mod-append-keeps-suffix-l
+ (implies (fn-inj-suffixp tail b) (fn-inj-suffixp tail (append a b)))
+ :hints (("Goal" :induct (append a b) :in-theory
+ (union-theories (theory 'ground-zero) '(append fn-inj-suffixp))))))
+
+(local (defthm fn-pacc-mod-len-positive-l
+ (implies (consp x) (< 0 (len x)))
+ :hints (("Goal" :expand ((len x)))) :rule-classes :linear))
+
+(local (defthm fn-pacc-mod-path-open-before-separator-l
+ (implies (fn-inj-path-openp (append pre '(13 10 13 10) tail))
+          (<= 6 (len pre)))
+ :hints (("Goal" :do-not-induct t :expand ((:free (x) (fn-inj-take-n 1 x)) (:free (x) (fn-inj-take-n 2 x)) (:free (x) (fn-inj-take-n 3 x)) (:free (x) (fn-inj-take-n 4 x)) (:free (x) (fn-inj-take-n 5 x)) (:free (x) (fn-inj-take-n 6 x))) :in-theory (union-theories (theory 'ground-zero)
+ '(fn-inj-path-openp fn-inj-take-n fn-inj-downcase nth len append fn-pacc-mod-len-positive-l fn-pacc-mod-car-append-l fn-pacc-mod-cdr-append-l))
+ :cases ((not (consp pre)) (not (consp (cdr pre))) (not (consp (cddr pre)))
+         (not (consp (cdddr pre))) (not (consp (cddddr pre))) (not (consp (cdr (cddddr pre)))))))))
+
+(local (defthm fn-pacc-mod-envelope-source-suffix-l
+ (implies (true-listp forwarded)
+  (fn-inj-suffixp forwarded (fn-mod-envelope-source agent group queue msgid forwarded)))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero)
+ '(fn-mod-envelope-source fn-mod-concat fn-pacc-a0-inj-append-is-append
+   fn-pacc-a0-append-assoc fn-pacc-mod-append-suffix-l fn-pacc-fix-true-list-l
+   fn-pacc-fix-append-l fn-pacc-mod-append-keeps-suffix-l fn-pacc-mod-suffix-self-l fn-pacc-mod-append-nil-l fn-inj-suffixp append))))))
+
+(local (defthm fn-pacc-mod-take-append-l
+ (implies (and (natp k) (<= k (len pre)))
+  (equal (fn-inj-take-n k (append pre tail)) (fn-inj-take-n k pre)))
+ :hints (("Goal" :induct (fn-inj-take-n k pre) :in-theory
+ (union-theories (theory 'ground-zero) '(fn-inj-take-n len append))))))
+
+(local (defthm fn-pacc-mod-drop-append-l
+ (implies (and (natp k) (<= k (len pre)))
+  (equal (fn-inj-drop-n k (append pre tail)) (append (fn-inj-drop-n k pre) tail)))
+ :hints (("Goal" :induct (fn-inj-drop-n k pre) :in-theory
+ (union-theories (theory 'ground-zero) '(fn-inj-drop-n len append))))))
+
+(local (defthm fn-pacc-mod-splice-append-l
+ (implies (and (natp k) (<= k (len pre)))
+  (equal (fn-inj-splice (append pre tail) k ins)
+         (append (fn-inj-splice pre k ins) tail)))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero)
+ '(fn-inj-splice fn-pacc-mod-take-append-l fn-pacc-mod-drop-append-l
+   fn-pacc-a0-append-assoc))))))
+
+(local (defthm fn-pacc-mod-suffix-layout-l
+ (implies (and (true-listp tail) (fn-inj-suffixp tail stored))
+  (and (<= (len tail) (len stored))
+       (equal (append (fn-inj-take-n (nfix (- (len stored) (len tail))) stored) tail)
+              stored)))
+ :hints (("Goal" :induct (fn-inj-suffixp tail stored) :in-theory
+ (union-theories (theory 'ground-zero)
+ '(fn-inj-suffixp fn-inj-take-n len append true-listp))))))
+
+(local (defun fn-pacc-mod-scan-induct (pre bol)
+ (declare (xargs :guard t :measure (acl2-count pre)) (ignore bol))
+ (cond ((atom pre) nil)
+       ((and (equal (car pre) 13) (consp (cdr pre)) (equal (cadr pre) 10))
+        (fn-pacc-mod-scan-induct (cddr pre) t))
+       (t (fn-pacc-mod-scan-induct (cdr pre) nil)))))
+
+(local (defthm fn-pacc-mod-append-true-list-l
+ (implies (true-listp b) (true-listp (append a b)))
+ :hints (("Goal" :induct (append a b) :in-theory
+ (union-theories (theory 'ground-zero) '(append true-listp))))))
+
+(local (defthm fn-pacc-mod-forwarded-true-list-l
+ (implies (true-listp source)
+          (true-listp (fn-mod-forwarded-source source facts msgid date)))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero)
+ '(fn-mod-forwarded-source fn-pacc-a0-inj-append-is-append fn-pacc-mod-append-true-list-l))))))
+
+(local (defun fn-pacc-mod-envelope-prefix (agent group queue msgid)
+ (declare (xargs :guard t))
+ (fn-mod-concat (list *fn-mod-from* agent *fn-inj-crlf*
+                     *fn-mod-subject* group *fn-inj-crlf*
+                     *fn-mod-newsgroups* queue *fn-inj-crlf*
+                     (fn-inj-message-id-line (fn-mod-envelope-msgid msgid))
+                     *fn-mod-content-type*))))
+
+(local (defthm fn-pacc-mod-envelope-by-definition-l
+ (implies (true-listp forwarded)
+  (equal (fn-mod-envelope-source agent group queue msgid forwarded)
+         (append (fn-pacc-mod-envelope-prefix agent group queue msgid)
+                 '(13 10 13 10) forwarded)))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero)
+ '(fn-mod-envelope-source fn-pacc-mod-envelope-prefix fn-mod-concat
+   fn-pacc-a0-inj-append-is-append fn-pacc-a0-append-assoc
+   fn-pacc-mod-append-nil-l fn-pacc-fix-true-list-l fn-pacc-fix-append-l))))))
+
+(local (defthm fn-pacc-mod-scan-before-separator-l
+ (let ((k (fn-inj-path-scan (append pre '(13 10 13 10) tail) bol)))
+  (implies k (and (natp k) (<= k (+ 4 (len pre))))))
+ :hints (("Goal" :induct (fn-pacc-mod-scan-induct pre bol)
+ :in-theory (union-theories (set-difference-theories (theory 'ground-zero) '(binary-append fn-inj-path-openp))
+ '(fn-pacc-mod-scan-induct fn-inj-path-scan fn-pacc-mod-path-open-before-separator-l
+   len fn-pacc-mod-car-append-l fn-pacc-mod-cdr-append-l fn-pacc-mod-len-positive-l))
+ :expand ((fn-inj-path-scan (append pre '(13 10 13 10) tail) bol) (fn-inj-path-openp (list* 13 10 13 10 tail))
+          (fn-inj-path-openp (list* (car pre) 13 10 13 10 tail))))
+ ("Subgoal *1/1" :in-theory (union-theories (theory 'ground-zero)
+ '(fn-inj-path-scan fn-inj-path-openp fn-inj-take-n fn-inj-downcase nth append len)))
+ ("Subgoal *1/3" :use ((:instance fn-pacc-mod-path-open-before-separator-l)))
+ ("Subgoal *1/2" :use ((:instance fn-pacc-mod-path-open-before-separator-l)))
+ )))
+
+(local (defthm fn-pacc-mod-len-append-l
+ (equal (len (append a b)) (+ (len a) (len b)))
+ :hints (("Goal" :induct (append a b) :in-theory
+ (union-theories (theory 'ground-zero) '(append len))))))
+
+(local (defthm fn-pacc-mod-separated-splice-suffix-l
+ (implies (and (natp k) (<= k (+ 4 (len pre))))
+  (fn-inj-suffixp tail (fn-inj-splice (append pre '(13 10 13 10) tail) k ins)))
+ :hints (("Goal" :use ((:instance fn-pacc-mod-splice-append-l (pre (append pre '(13 10 13 10)))))
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-pacc-mod-len-append-l fn-pacc-a0-append-assoc fn-pacc-mod-append-suffix-l))))))
+
+(local (defthm fn-pacc-mod-separated-splice-normalized-l
+ (implies (and (natp k) (<= k (+ 4 (len pre))))
+  (fn-inj-suffixp tail (fn-inj-splice (append pre (list* 13 10 13 10 tail)) k ins)))
+ :hints (("Goal" :use ((:instance fn-pacc-mod-separated-splice-suffix-l))
+ :in-theory (union-theories (theory 'ground-zero) '(append))))))
+
+(local (defthm fn-pacc-mod-ipp-separator-suffix-l
+ (let* ((source (append pre '(13 10 13 10) tail))
+        (d (fn-inj-decide source config obs)))
+  (implies (fn-inj-injectedp d)
+           (fn-inj-suffixp tail (fn-ipp-injected-octets d secret login cfg))))
+ :hints (("Goal" :do-not-induct t
+ :use ((:instance fn-ipp-injected-octets-carry-the-parameters
+                  (source (append pre '(13 10 13 10) tail)))
+       (:instance fn-inj-an-injected-supplied-path-has-an-offset
+                  (source (append pre '(13 10 13 10) tail)))
+       (:instance fn-pacc-mod-scan-before-separator-l (bol t)))
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-ipp-injected-octets-carry-the-parameters fn-inj-suffixp fn-pacc-mod-suffix-self-l fn-inj-path-offset fn-pacc-mod-append-keeps-suffix-l fn-pacc-mod-append-suffix-l
+   fn-pacc-mod-splice-append-l fn-pacc-mod-separated-splice-suffix-l fn-pacc-mod-separated-splice-normalized-l fn-pacc-a0-append-assoc len
+   fn-inj-take-n fn-inj-drop-n))))))
+
+(local (defthm fn-pacc-mod-cl-suffix-l
+ (implies (fn-inj-suffixp tail payload)
+          (fn-inj-suffixp tail (fn-apc-cl-served-payload ring account msgid payload carry)))
+ :hints (("Goal" :in-theory (union-theories (theory 'ground-zero)
+ '(fn-apc-cl-served-payload fn-cll-append-is-append fn-pacc-mod-append-keeps-suffix-l))))))
+
+(local (defthm fn-pacc-mod-ipp-envelope-suffix-l
+ (let* ((envelope (fn-mod-envelope-source agent group queue msgid forwarded))
+        (d (fn-inj-decide envelope config obs)))
+  (implies (and (true-listp forwarded) (fn-inj-injectedp d))
+           (fn-inj-suffixp forwarded (fn-ipp-injected-octets d secret login cfg))))
+ :hints (("Goal" :use ((:instance fn-pacc-mod-ipp-separator-suffix-l
+                      (pre (fn-pacc-mod-envelope-prefix agent group queue msgid)) (tail forwarded)))
+ :in-theory (union-theories (theory 'ground-zero) '(fn-pacc-mod-envelope-by-definition-l))))))
+
+(local (defthm fn-pacc-mod-forward-ipp-suffix-l
+ (implies (and (true-listp source)
+               (fn-inj-injectedp (fn-mod-forward source config obs decision facts entry)))
+  (fn-inj-suffixp source
+   (fn-ipp-injected-octets (fn-mod-forward source config obs decision facts entry) secret login cfg)))
+ :hints (("Goal" :do-not-induct t
+ :use ((:instance fn-pacc-mod-ipp-envelope-suffix-l
+        (agent (fn-inj-config-agent config)) (group (fn-mod-entry-group entry))
+        (queue (fn-mod-entry-queue entry)) (msgid (fn-inj-decision-msgid decision))
+        (forwarded (fn-mod-forwarded-source source facts (fn-inj-decision-msgid decision)
+                     (fn-inj-date-octets (fn-inj-instant-of (fn-clock-wall obs))))))
+       (:instance fn-pacc-mod-suffix-transitive-l (a source)
+        (b (fn-mod-forwarded-source source facts (fn-inj-decision-msgid decision)
+             (fn-inj-date-octets (fn-inj-instant-of (fn-clock-wall obs)))))
+        (c (fn-ipp-injected-octets
+            (fn-inj-decide
+             (fn-mod-envelope-source (fn-inj-config-agent config)
+              (fn-mod-entry-group entry) (fn-mod-entry-queue entry)
+              (fn-inj-decision-msgid decision)
+              (fn-mod-forwarded-source source facts (fn-inj-decision-msgid decision)
+               (fn-inj-date-octets (fn-inj-instant-of (fn-clock-wall obs))))) config obs)
+            secret login cfg))))
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-mod-forward fn-inj-refuse fn-inj-injectedp fn-inj-decision-status-of-fn-inj-make-decision
+   fn-pacc-mod-forwarded-true-list-l fn-pacc-mod-forwarded-source-suffix-l))))))
+
+(local (defthm fn-pacc-mod-gate-ipp-suffix-l
+ (implies (and (true-listp source)
+               (not (equal (fn-mod-gate source config obs decision) decision))
+               (fn-inj-injectedp (fn-mod-gate source config obs decision)))
+  (fn-inj-suffixp source
+   (fn-ipp-injected-octets (fn-mod-gate source config obs decision) secret login cfg)))
+ :hints (("Goal" :do-not-induct t
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-mod-gate fn-inj-refuse fn-inj-injectedp fn-inj-decision-status-of-fn-inj-make-decision
+   fn-pacc-mod-forward-ipp-suffix-l))))))
+
+(local (defthm fn-pacc-mod-post-gate-ipp-suffix-l
+ (implies (and (true-listp source)
+               (not (equal (fn-post-gated-decision source config obs) (fn-inj-decide source config obs)))
+               (fn-inj-injectedp (fn-post-gated-decision source config obs)))
+  (fn-inj-suffixp source
+   (fn-ipp-injected-octets (fn-post-gated-decision source config obs) secret login cfg)))
+ :hints (("Goal" :do-not-induct t
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-post-gated-decision fn-inj-refuse fn-inj-injectedp fn-inj-decision-status-of-fn-inj-make-decision
+   fn-pacc-mod-gate-ipp-suffix-l))))))
+
+(local (defthm fn-pacc-mod-stored-suffix-l
+ (implies (and (fn-pacc-injectionp inj art)
+               (not (equal (fn-pctx-get 0 inj)
+                      (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj)))))
+          (fn-inj-suffixp art (fn-pacc-stored-payload art inj)))
+ :hints (("Goal" :do-not-induct t :use ((:instance fn-pacc-injection-requires-octets-l))
+ :in-theory (union-theories (theory 'ground-zero)
+ '(fn-pacc-injectionp fn-pacc-stored-payload fn-pacc-mod-cl-suffix-l
+   fn-pacc-mod-post-gate-ipp-suffix-l fn-pacc-octets-true-listp-l))))))
+
 (defthm fn-pacc-stored-payload-is-one-splice
   (implies (fn-pacc-injectionp inj art)
            (mv-let (p0 ins ioff) (fn-pacc-splice art inj)
@@ -813,11 +1081,14 @@
                   (equal (fn-pacc-stored-payload art inj)
                          (append p0 (take ioff art) ins (nthcdr ioff art))))))
  :hints (("Goal" :do-not-induct t
- :use ((:instance fn-pacc-injection-requires-octets-l)
+ :cases ((equal (fn-pctx-get 0 inj) (fn-inj-decide art (fn-pctx-get 5 inj) (fn-pctx-get 6 inj))))
+ :use ((:instance fn-pacc-mod-stored-suffix-l)
+       (:instance fn-pacc-mod-suffix-layout-l (tail art) (stored (fn-pacc-stored-payload art inj)))
+       (:instance fn-pacc-injection-requires-octets-l)
        (:instance fn-ipp-injected-octets-carry-the-parameters
        (source art) (config (fn-pctx-get 5 inj)) (obs (fn-pctx-get 6 inj))
        (secret (fn-pctx-get 1 inj)) (login (fn-pctx-get 2 inj)) (cfg (fn-pctx-get 3 inj)))
-       (:instance fn-pacc-injection-decision-l)
+       (:instance fn-pacc-gated-injection-decision-l)
        (:instance fn-pacc-success-parse-l (config (fn-pctx-get 5 inj)) (obs (fn-pctx-get 6 inj)))
        (:instance fn-inj-an-injected-supplied-path-has-an-offset
         (source art) (config (fn-pctx-get 5 inj)) (obs (fn-pctx-get 6 inj)))
