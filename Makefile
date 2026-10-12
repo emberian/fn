@@ -1711,6 +1711,9 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/over-render-tests \
 	books/over-render-bound \
 	tests/acl2/over-render-bound-tests \
+	books/over-render-capl \
+	books/over-render-store \
+	tests/acl2/over-render-store-tests \
 	tests/acl2/served-catalog-view-tests \
 	tests/acl2/served-catalog-chain-tests \
 	tests/acl2/served-catalog-scan-tests \
