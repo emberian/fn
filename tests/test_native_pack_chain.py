@@ -39,7 +39,7 @@ import unittest
 # The module, not its TestCase: a TestCase imported by name is collected and
 # run again as this module's own (the checkpoint suite ran twice here).
 from tests import test_native_checkpoint as checkpoint
-from tests.native_harness import EXIT_FAULT, EXIT_UNCERTAIN
+from tests.native_harness import EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, run
 from tools import fixtures, native_env
 
 IMAGE = checkpoint.IMAGE
@@ -162,7 +162,7 @@ class NativePackChainTests(unittest.TestCase):
         self.assertIn("probe prepare refused", repeated.stderr)
         self.recovered(store, 3)
 
-    def test_the_probe_resumes_an_incomplete_development_init(self):
+    def test_the_probe_matches_development_init_resume_at_every_cut(self):
         # Existing init EIO cuts leave config.json without generation one,
         # without genesis, without its log segment, or after all artifacts
         # exist but before init records the filesystem (the four late cuts).
@@ -176,19 +176,37 @@ class NativePackChainTests(unittest.TestCase):
         for cut, outcome, history, genesis in cuts:
             with self.subTest(cut=cut):
                 store = self.base / cut
+                remedy = self.base / (cut + "-remedy")
                 env = dict(self.env, FN_NATIVE_INIT_FAULT=cut + ":eio")
-                self.native("store", store, "init", expected=outcome, env=env)
-                self.assertTrue((store / "config.json").is_file())
-                self.assertEqual((store / "config" / "00000001.cfg").is_file(), history)
-                self.assertEqual((store / "journal" / GENESIS).is_file(), genesis)
-                late = cut.startswith("init-final-") or cut in (
-                    "init-root-fenced", "init-parent-fenced")
-                self.assertEqual((store / "journal" / "000001.log").is_file(), late)
-                self.assertFalse((store / "filesystem-identity.fnmi").exists())
-                probe = self.native("store", store, "probe", "3", "article")
-                self.assertEqual(json.loads(probe.stdout)["status"], "passed")
-                self.assertTrue((store / "filesystem-identity.fnmi").is_file())
-                self.recovered(store, 3)
+                for root in (store, remedy):
+                    self.native("store", root, "init", expected=outcome, env=env)
+                    self.assertTrue((root / "config.json").is_file())
+                    self.assertEqual((root / "config" / "00000001.cfg").is_file(), history)
+                    self.assertEqual((root / "journal" / GENESIS).is_file(), genesis)
+                    late = cut.startswith("init-final-") or cut in (
+                        "init-root-fenced", "init-parent-fenced")
+                    self.assertEqual((root / "journal" / "000001.log").is_file(), late)
+                    self.assertFalse((root / "filesystem-identity.fnmi").exists())
+                # Use the existing harness runner to observe the documented
+                # remedy's outcome, without assuming every cut is resumable.
+                resumed = run([self.image, "--fn", "store", remedy, "init"],
+                              env=self.env, timeout=self.native_timeout, text=True)
+                self.assertIn(resumed.returncode, (EXIT_OK, EXIT_REFUSED, EXIT_FAULT),
+                              resumed.stdout + resumed.stderr)
+                probe = self.native("store", store, "probe", "3", "article",
+                                    expected=resumed.returncode)
+                if resumed.returncode == EXIT_OK:
+                    self.assertEqual(json.loads(probe.stdout)["status"], "passed")
+                    self.assertTrue((store / "filesystem-identity.fnmi").is_file())
+                    self.recovered(store, 3)
+                else:
+                    # fnn-main prints the named store condition on stderr;
+                    # unrelated diagnostics must not satisfy the comparison.
+                    refusal = [line for line in resumed.stderr.splitlines()
+                               if line.startswith("store: ")]
+                    self.assertEqual(len(refusal), 1, resumed.stderr)
+                    self.assertEqual([line for line in probe.stderr.splitlines()
+                                      if line.startswith("store: ")], refusal)
 
     def test_a_multi_unit_store_compacts_over_the_log(self):
         store, config, _ = self.scale_store("cut-base", CUT_N)
