@@ -114,11 +114,14 @@ def declarations(root: Path = ROOT) -> dict[str, dict]:
 
 
 def final_world_findings(root: Path = ROOT) -> list[str]:
-    """Require direct final-world includes for files with top-level def-costs."""
+    """Require every declaring file's include, followed by the aggregate check."""
     final = root / "books" / "cost-final-world.lisp"
     included: set[str] = set()
+    forms = []
     if final.is_file():
-        for form, _line in ledger.Reader(final.read_text(encoding="utf-8")).top_level():
+        forms = [form for form, _line in
+                 ledger.Reader(final.read_text(encoding="utf-8")).top_level()]
+        for form in forms:
             if (ledger.head(form) != "include-book" or len(form) < 2
                     or type(form[1]) is not str
                     or ledger.keyword_plist(form[2:]).get(":dir") is not None):
@@ -126,9 +129,14 @@ def final_world_findings(root: Path = ROOT) -> list[str]:
             included.add(posixpath.normpath(posixpath.join("books", form[1] + ".lisp")))
     declared = {relative for directory in SOURCES for relative, form in _forms(root, directory)
                 if ledger.head(form) == "def-cost"}
-    return ["{}: top-level def-cost declarations are not included by "
-            "books/cost-final-world.lisp".format(relative)
-            for relative in sorted(declared - included)]
+    findings = ["{}: top-level def-cost declarations are not included by "
+                "books/cost-final-world.lisp".format(relative)
+                for relative in sorted(declared - included)]
+    if (not forms or ledger.head(forms[-1]) != "def-cost-check-all"
+            or len(forms[-1]) != 1):
+        findings.append("books/cost-final-world.lisp: last top-level form must be exactly "
+                        "(def-cost-check-all), after every include-book")
+    return findings
 
 
 def contracts(root: Path = ROOT, dimension: str = "visits") -> list[dict]:

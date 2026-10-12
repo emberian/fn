@@ -8752,7 +8752,6 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-nco-work-class",
     "fn-nctrl-reason-word"
    ],
    "theorem": null,
@@ -8777,7 +8776,6 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-nco-client-status",
     "fn-nctrl-reason-word"
    ],
    "theorem": null,
@@ -8856,8 +8854,7 @@
    "bound": null,
    "sizes": [],
    "unaccounted": [
-    "fn-nco-terminalp",
-    "fn-nco-work-class"
+    "fn-nco-terminalp"
    ],
    "theorem": null,
    "declared_in": "host/cost-host.lisp"
@@ -8911,7 +8908,6 @@
    "unaccounted": [
     "fn-nco-terminalp",
     "fn-nco-token-text",
-    "fn-nco-work-class",
     "fn-record-string-octets"
    ],
    "theorem": null,

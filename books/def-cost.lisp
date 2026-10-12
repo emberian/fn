@@ -524,9 +524,10 @@
         (t (fn-cost-twin-row twin (cdr rows)))))
 
 (mutual-recursion
- (defun fn-cost-unaccounted-walk (term w)
+ (defun fn-cost-unaccounted-walk (term w path)
    (declare (xargs :mode :program))
    ; Return the first recursive partial callee and the bag of finite leaves.
+   ; PATH contains only row expansions on this path, not sibling occurrences.
    ; Actual costs and every occurrence (including both IF arms) remain separate.
    (cond
     ((or (atom term) (eq (car term) 'quote)) (mv nil nil))
@@ -534,9 +535,9 @@
      (mv nil (list term)))
     ((consp (car term))
      (mv-let (bad body-terms)
-       (fn-cost-unaccounted-walk (car (last (car term))) w)
+       (fn-cost-unaccounted-walk (car (last (car term))) w path)
        (mv-let (abad actual-terms)
-         (fn-cost-unaccounted-walk-lst (cdr term) w)
+         (fn-cost-unaccounted-walk-lst (cdr term) w path)
          (mv (or bad abad)
              (append (sublis-var-lst (pairlis$ (cadr (car term)) (cdr term)) body-terms)
                      actual-terms)))))
@@ -545,40 +546,42 @@
             (row (cdr entry))
             (conses (and entry (eq (car term) (fn-cost-get :cons-twin row)))))
        (mv-let (abad actual-terms)
-         (fn-cost-unaccounted-walk-lst (cdr term) w)
+         (fn-cost-unaccounted-walk-lst (cdr term) w path)
          (cond
           ((not entry) (mv abad actual-terms))
-          ((fn-cost-recursivep (car entry) w)
+          ((or (fn-cost-recursivep (car entry) w)
+               (member-eq (car entry) path))
            (mv (or (and (fn-cost-get (if conses :cons-unaccounted :unaccounted) row)
                         (car entry)) abad)
                actual-terms))
           (t
            (mv-let (bad body-terms)
              (fn-cost-unaccounted-walk
-              (fn-cost-get (if conses :cons-body-cost :body-cost) row) w)
+              (fn-cost-get (if conses :cons-body-cost :body-cost) row)
+              w (cons (car entry) path))
              (mv (or bad abad)
                  (append (sublis-var-lst
                           (pairlis$ (getpropc (car entry) 'formals nil w) (cdr term))
                           body-terms)
                          actual-terms))))))))))
- (defun fn-cost-unaccounted-walk-lst (terms w)
+ (defun fn-cost-unaccounted-walk-lst (terms w path)
    (declare (xargs :mode :program))
    (if (atom terms) (mv nil nil)
      (mv-let (bad leaves)
-       (fn-cost-unaccounted-walk (car terms) w)
+       (fn-cost-unaccounted-walk (car terms) w path)
        (mv-let (rest-bad rest-leaves)
-         (fn-cost-unaccounted-walk-lst (cdr terms) w)
+         (fn-cost-unaccounted-walk-lst (cdr terms) w path)
          (mv (or bad rest-bad) (append leaves rest-leaves)))))))
 
 (defun fn-cost-unaccounted-terms (term w)
   (declare (xargs :mode :program))
-  (mv-let (bad terms) (fn-cost-unaccounted-walk term w)
+  (mv-let (bad terms) (fn-cost-unaccounted-walk term w nil)
     (declare (ignore bad))
     terms))
 
 (defun fn-cost-unaccounted-terms-lst (terms w)
   (declare (xargs :mode :program))
-  (mv-let (bad leaves) (fn-cost-unaccounted-walk-lst terms w)
+  (mv-let (bad leaves) (fn-cost-unaccounted-walk-lst terms w nil)
     (declare (ignore bad))
     leaves))
 
@@ -642,7 +645,7 @@
               (mv-let (msg route rcost bcost unaccounted)
                 (fn-cost-derive-dimension fn w dimension)
                 (mv-let (recursive-callee us)
-                  (fn-cost-unaccounted-walk-lst (list rcost bcost) w)
+                  (fn-cost-unaccounted-walk-lst (list rcost bcost) w nil)
                 (cond
                  (msg (mv msg nil nil nil nil nil))
                  ((and bound recursive-callee)

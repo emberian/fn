@@ -282,5 +282,46 @@
 (def-cost fn-clt-row-clean)
 (assert-event
  (mv-let (bad us)
-   (fn-cost-unaccounted-walk '(fn-clt-row-clean-visits xs) (w state))
+   (fn-cost-unaccounted-walk '(fn-clt-row-clean-visits xs) (w state) nil)
    (and (null bad) (null us))))
+
+; The review's F/G pair has no direct self-call. F's derived twin recurs
+; after inlining G; walking that row while declaring G must terminate.
+; Local rows keep this order-sensitive fixture out of the final-world table.
+(local
+ (encapsulate ()
+   (mutual-recursion
+    (defun fn-clt-mutual-f (xs)
+      (if (consp xs) (fn-clt-mutual-g (cdr xs)) nil))
+    (defun fn-clt-mutual-g (xs)
+      (if (consp xs) (fn-clt-mutual-f (cdr xs)) nil)))
+   (def-cost fn-clt-mutual-f)
+   (def-cost fn-clt-mutual-g)
+   (assert-event
+    (mv-let (bad us)
+      (fn-cost-unaccounted-walk '(fn-clt-mutual-g-visits xs) (w state) nil)
+      (and (null bad) (null us))))))
+
+; The same cycle with an unknown leaf at each F step must refuse a caller bound
+; by the name of the row whose twin re-enters the expansion path.
+(local
+ (encapsulate ()
+   (mutual-recursion
+    (defun fn-clt-mutual-leaf-f (xs)
+      (if (consp xs)
+          (cons (fn-clt-leaf (car xs)) (fn-clt-mutual-leaf-g (cdr xs)))
+        nil))
+    (defun fn-clt-mutual-leaf-g (xs)
+      (if (consp xs) (fn-clt-mutual-leaf-f (cdr xs)) nil)))
+   (def-cost fn-clt-mutual-leaf-f :unaccounted (fn-clt-leaf))
+   (def-cost fn-clt-mutual-leaf-g :unaccounted (fn-clt-leaf))
+   (defun fn-clt-mutual-leaf-caller (xs) (fn-clt-mutual-leaf-g xs))
+   (assert-event
+    (mv-let (problem route cost un sizes bound)
+      (fn-cost-problem 'fn-clt-mutual-leaf-caller
+                       '(:visits 0 :unaccounted (fn-clt-leaf)) (w state))
+      (declare (ignore route cost un sizes bound))
+      (equal problem
+             (msg "~x0: ~x1's twin recurs over unaccounted leaves, so no finite ~
+                            partial bound exists; give the callee a :visits bound"
+                  'fn-clt-mutual-leaf-caller 'fn-clt-mutual-leaf-f))))))
