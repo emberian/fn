@@ -4626,7 +4626,9 @@ def root_closure(books: dict[str, Book], roots: list[str]) -> set[str]:
     closure: set[str] = set()
     pending = [f"{root}.lisp" for root in roots]
     while pending:
-        relative = pending.pop()
+        # Normalize before lookup as well as in the returned set: a test
+        # root's ../../books include may itself include another local book.
+        relative = resolve(pending.pop())
         if relative in closure:
             continue
         closure.add(relative)

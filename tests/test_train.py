@@ -57,6 +57,7 @@ if mode == "write" and name == "ledger":
 sys.exit(int(os.environ.get("STUB_RC_%s_%s" % (name, mode), "0")))
 '''
 STUBS = ["tools/ledger.py", "tools/current_view.py", "tools/host_check.py",
+         "tools/cost_obligations.py", "tools/book_roots_check.py",
          "tools/lock_discipline_check.py",
          "tools/secrets_check.py", "planning/repair/repair.py",
          "tools/main_last_check.py", "tools/interface_emit.py", "tools/extract/world.py",
@@ -1500,6 +1501,97 @@ class PremiseTermBaselineTests(TrainBase):
         self.assertEqual(self.train("merge", f"p@{sha}").returncode, 0)
         g, record = self.gate_terms({}, {})
         self.assertEqual((record["rc"], record["term"]), (0, {"skipped": True}), g.stdout)
+
+
+class CostObligationsGateTests(TrainBase):
+    """Exercise the actual cost ratchet, with only the interface registry stubbed."""
+    def setUp(self):
+        super().setUp()
+        from tools import cost_obligations, interface_emit
+
+        (self.seed / "books").mkdir()
+        script = f'''import sys
+from pathlib import Path
+from unittest import mock
+sys.path.insert(0, {str(REPO)!r})
+from tools import cost_obligations, interface_emit
+import json
+assert sys.argv[1:] == ["--check"]
+root = Path.cwd()
+with mock.patch.object(interface_emit, "registry", lambda root: json.loads(
+        (root / "planning/dispatched.json").read_text())):
+    findings = cost_obligations.check(root)
+for finding in findings:
+    print(finding)
+print("cost_obligations: {{}} finding(s)".format(len(findings)))
+sys.exit(1 if findings else 0)
+'''
+        with mock.patch.object(interface_emit, "registry", return_value={"entries": []}):
+            # Build the protected base with no dispatched entry. HEAD will
+            # contain the new entry, so falling back to HEAD would miss it.
+            generator = '(defconst *fn-cost-contracts* \'((car 0 "one cell read")))\n'
+            (self.seed / "books/def-cost.lisp").write_text(generator)
+            obligations = cost_obligations.render(cost_obligations.build(self.seed))
+            contracts = cost_obligations.render(cost_obligations.build_contracts(self.seed))
+        self.advance_dev({"tools/cost_obligations.py": script,
+                          "books/def-cost.lisp": generator,
+                          "planning/dispatched.json": '{"entries": []}\n',
+                          "planning/cost-obligations.json": obligations,
+                          "planning/cost-contracts.json": contracts})
+        sh(self.work, "git", "pull", "-q", "--ff-only")
+        head = self.head()
+        (self.work / "build/train/box-step.json").write_text(
+            json.dumps({"sha": head, "ran_at": head, "box": "persvati"}))
+
+    def test_a_dispatched_entry_without_def_cost_fails_and_is_named(self):
+        from tools import cost_obligations, interface_emit
+        entries = {"entries": [{"name": "fn-new-dispatched", "class": "common-lisp-compliant",
+                                 "dispatched_from": ["host/native/io.lisp"]}]}
+        (self.work / "planning/dispatched.json").write_text(json.dumps(entries))
+        with mock.patch.object(interface_emit, "registry", return_value=entries):
+            (self.work / "planning/cost-obligations.json").write_text(
+                cost_obligations.render(cost_obligations.build(self.work)))
+        self.commit(self.work, "new dispatched entry without cost")
+        g = self.train("gate")
+        self.assertNotEqual(g.returncode, 0, g.stdout + g.stderr)
+        self.assertIn("fn-new-dispatched: a new guard-verified dispatched entry with no def-cost", g.stdout)
+        record = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        self.assertEqual(record["gates"]["cost_obligations"]["rc"], 1)
+
+    def test_a_clean_tree_passes(self):
+        g = self.train("gate")
+        self.assertEqual(g.returncode, 0, g.stdout + g.stderr)
+        self.assertIn("cost_obligations: 0 finding(s)", g.stdout)
+        record = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        self.assertEqual(record["gates"]["cost_obligations"]["rc"], 0)
+
+    def test_gates_lists_cost_obligations(self):
+        self.assertIn("cost_obligations", train.GATES)
+
+
+class BookRootsGateTests(TrainBase):
+    def test_an_orphan_book_fails_the_train_gate(self):
+        script = f'''import sys
+from pathlib import Path
+from unittest import mock
+sys.path.insert(0, {str(REPO)!r})
+from tools import book_roots_check
+with mock.patch.object(book_roots_check.ledger, "ROOT", Path.cwd()):
+    sys.exit(book_roots_check.main(Path.cwd()))
+'''
+        (self.work / "tools/book_roots_check.py").write_text(script)
+        (self.work / "Makefile").write_text("ACL2_BOOKS =\n")
+        (self.work / "books").mkdir()
+        (self.work / "books/orphan.lisp").write_text("")
+        self.commit(self.work, "orphan production book")
+        g = self.train("gate")
+        self.assertNotEqual(g.returncode, 0, g.stdout + g.stderr)
+        self.assertIn("books/orphan.lisp is outside", g.stdout)
+        record = json.loads((self.work / "build/train/integrate__t1.json").read_text())
+        self.assertEqual(record["gates"]["book_roots"]["rc"], 1)
+
+    def test_gates_lists_book_roots(self):
+        self.assertIn("book_roots", train.GATES)
 
 
 class AsciiGateTests(unittest.TestCase):

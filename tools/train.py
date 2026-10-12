@@ -229,6 +229,7 @@ UNIT_TESTS = ("tests/test_ledger.py", "tests/test_keystone_emit.py",
               "tests/test_train.py", "tests/test_farm.py")
 
 GATES = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
+         "cost_obligations", "book_roots",
          "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
 
 # The image gate (coordinator 2026-10-09, after train 74).  A train whose diff
@@ -1063,6 +1064,22 @@ def _lock_owners(root: Path, keys) -> dict[str, list[dict]]:
     return out
 
 
+def _reported_check_gate(t: Train, name: str, argv: list[str]) -> int:
+    """Run a tree-wide check in the train tree and print every finding."""
+    try:
+        p = subprocess.run([PY, *argv], cwd=t.root, capture_output=True, text=True,
+                           timeout=600)
+    except subprocess.TimeoutExpired as e:
+        say(f"$ {PY} {' '.join(argv)}  -> timed out after {e.timeout}s: the gate fails")
+        return 124
+    t.logs.mkdir(parents=True, exist_ok=True)
+    (t.logs / f"gate-{name}.log").write_text(p.stdout + p.stderr)
+    say(f"$ {PY} {' '.join(argv)}  -> rc {p.returncode}")
+    for line in (p.stdout + p.stderr).splitlines():
+        say("  | " + line)
+    return p.returncode
+
+
 def _ascii_gate(t: Train) -> int:
     """ascii_check refusals in files this train changes (books/, host/).  The
     tree carries older refusals (make check's debt); a train must add none:
@@ -1491,6 +1508,10 @@ def cmd_gate(t: Train, args) -> int:
         rec("host_load", 0, skipped=True)
 
     rec("ascii", _ascii_gate(t))
+    rec("cost_obligations", _reported_check_gate(
+        t, "cost_obligations", ["tools/cost_obligations.py", "--check"]))
+    rec("book_roots", _reported_check_gate(
+        t, "book_roots", ["tools/book_roots_check.py"]))
 
     box = load_branch_box_record(t)
     if box is None:
