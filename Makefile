@@ -355,6 +355,7 @@ ACL2_BOOKS ?= books/defrecord \
 	tests/acl2/owner-post-carried-tests \
 	books/owner-retain-frame \
 	tests/acl2/owner-retain-frame-tests \
+	tests/acl2/owner-retain-live-tests \
 	books/def-carried-view \
 	tests/acl2/def-carried-view-tests \
 	books/def-keyset-check \
@@ -2745,6 +2746,8 @@ ACL2_BOOKS ?= books/defrecord \
     tests/acl2/substrate-commit-codec-gap-tests \
     books/tcpcl-session-carried \
     books/owner-retain-carried \
+    books/owner-retain-livep \
+    books/owner-retain-live \
     tests/acl2/catalog-dense-map-tests \
     tests/acl2/config-owner-live-authorize-carried-tests \
     tests/acl2/def-representation-late-world-tests \
