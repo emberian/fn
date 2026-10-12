@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -228,7 +229,15 @@ class TrainBase(unittest.TestCase):
             p = self.seed / s
             p.parent.mkdir(parents=True, exist_ok=True)
             p.write_text(STUB)
+        # The gate imports the finding classes after querying this tool.
+        # Importing its CLI stub must not terminate the scratch train process.
+        (self.seed / "tools/premise_audit.py").write_text(
+            'FINDING_CLASSES = ("never concluded", "preserved only", "established off the host path")\n'
+            'if __name__ == "__main__":\n' + textwrap.indent(STUB, "    "))
         (self.seed / "tools/remote_check.sh").write_text(REMOTE_STUB)
+        (self.seed / "tools/train.py").write_bytes(SCRIPT.read_bytes())
+        (self.seed / "tools/box_artifacts.py").write_bytes((REPO / "tools/box_artifacts.py").read_bytes())
+        (self.seed / "tools/certs.py").write_text("def closure(root, book): return {book: 'fixture-key'}\n")
         (self.seed / ".gitignore").write_text("build/\n__pycache__/\n")
         (self.seed / "lockkeys.json").write_text("[]\n")
         (self.seed / "src.txt").write_text("a\nb\nc\n")
@@ -249,6 +258,7 @@ class TrainBase(unittest.TestCase):
         self.log = self.tmp / "stub.log"
         self.env = dict(os.environ, STUB_LOG=str(self.log), TRAIN_PY=sys.executable,
                         TRAIN_PY3=sys.executable)
+        self.env.pop("FN_TRAIN_BASE", None)
 
     def cfg(self, d):
         sh(d, "git", "config", "user.email", "t@example.org")
@@ -306,8 +316,14 @@ class TrainBase(unittest.TestCase):
 
 
 class LaneCheckTests(TrainBase):
-    def check_lane(self, name, sha, *options, extra_env=None):
-        # lane-check itself must fetch the throwaway origin, including new lane SHAs.
+    def check_lane(self, name, sha, *options, extra_env=None, record=True):
+        if record and not self.scratch(name).exists():
+            # A real fixture record at the initial dev commit, not a guessed
+            # record synthesized by the driver. The gate checks its currency.
+            t = train.Train(self.work)
+            dev = self.head()
+            scratch = train.lane_check_tree(t, name, dev)
+            train.save_box_record(scratch, {"sha": dev, "ran_at": dev, "box": "persvati"})
         return self.train("lane-check", f"{name}@{sha}", *options, extra_env=extra_env)
 
     def scratch(self, name):
@@ -346,7 +362,8 @@ class LaneCheckTests(TrainBase):
         sha = self.lane("dirty-regen", {"tools/resource_contract.py": dirty_stub})
         p = self.check_lane("dirty-regen", sha)
         self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
-        self.assertIn("lane-check regen: FAIL", p.stdout)
+        self.assertIn("lane-check regen: PASS", p.stdout)
+        self.assertIn("lane-check gate: FAIL", p.stdout)
         self.assertNotIn("lane-check ledger: PASS", p.stdout)
         log = self.work / "build/lane-check" / f"dirty-regen-{sha[:9]}.log"
         self.assertIn("gates must run at a committed HEAD", log.read_text())
@@ -374,17 +391,18 @@ class LaneCheckTests(TrainBase):
         (self.seed / "src.txt").write_text("uncommitted source\n")
         before = sh(self.seed, "git", "status", "--porcelain").stdout
         dev = self.origin_rev("dev")
+        scratch = train.lane_check_tree(train.Train(self.work), "clean", self.head())
+        train.save_box_record(scratch, {"sha": self.head(), "ran_at": self.head(), "box": "persvati"})
         p = self.train("lane-check", str(self.seed))
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn("lane-check verdict: PASS (0 box gates owed)", p.stdout)
+        self.assertIn("lane-check verdict: PASS (1 box gates owed)", p.stdout)
         for name in train.GATES:
-            if name != "image":
-                self.assertIn(f"lane-check {name}: PASS", p.stdout)
-        for name in ("certify", "box_host_world", "reach", "keystone_cert", "image", "extraction"):
+            self.assertIn(f"lane-check {name}: PASS {sys.executable} tools/train.py gate --local", p.stdout)
+        for name in ("certify", "box_host_world", "reach", "keystone_cert", "image"):
             self.assertIn(f"lane-check {name}: NONE (", p.stdout)
         self.assertIn(f"dev={dev}", p.stdout)
-        self.assertIn("lane-check certify: NONE (no book changed)", p.stdout)
-        self.assertNotIn(": BOX ", p.stdout)
+        self.assertIn("lane-check certify: NONE (box step inherits:", p.stdout)
+        self.assertIn("lane-check extraction: BOX", p.stdout)
         for _, argv in train.LOCAL_BOX_CHECKS:
             self.assertIn(Path(argv[0]).stem + " " + " ".join(argv[1:]), self.stub_log())
         self.assertNotIn("remote_check ", "\n".join(self.stub_log()))
@@ -413,7 +431,7 @@ class LaneCheckTests(TrainBase):
         self.assertEqual(sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip(), old_dev)
         p = self.check_lane("reuse", sha)
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn(f"lane-check verdict: PASS (0 box gates owed) dev={dev}", p.stdout)
+        self.assertIn(f"lane-check verdict: PASS (1 box gates owed) dev={dev}", p.stdout)
         self.assertTrue((self.scratch("reuse") / "dev-event").is_file())
         self.assertEqual((self.scratch("reuse") / "planning/proofs.json").read_text().count("regen"), 1)
         p = self.check_lane("reuse", sha, "--clean")
@@ -437,24 +455,43 @@ class LaneCheckTests(TrainBase):
     def test_box_image_modules_are_exactly_the_obliged_set(self):
         sha = self.lane("image", {"tools/build_native_host.sh": "launcher\n"})
         p = self.check_lane("image", sha)
-        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("lane-check image: FAIL", p.stdout)
         line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check image: BOX"))
         modules = line.split()[line.split().index("hbox") + 2:]
         self.assertEqual(modules, sorted(train.image_modules(["tools/build_native_host.sh"])))
         self.assertNotIn("--build-only", line)
 
-    def test_host_input_obliges_image_and_extraction_with_native_modules(self):
+    def test_reuse_preserves_and_evaluates_a_real_image_record(self):
+        sha = self.lane("image-record", {"tools/build_native_host.sh": "launcher\n"})
+        first = self.check_lane("image-record", sha)
+        self.assertEqual(first.returncode, 1, first.stdout + first.stderr)
+        scratch = train.Train(self.scratch("image-record"))
+        state = scratch.load()
+        modules = train.image_modules(["tools/build_native_host.sh"])
+        state["image"] = {
+            "source": scratch.head(), "box": "hbox", "dir": "/r",
+            "modules": {m: {"rc": 0, "cases": {m + ".T.a": "ok"}} for m in modules}}
+        scratch.save(state)
+        second = self.check_lane("image-record", sha)
+        self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+        report = json.loads((scratch.root / "build/lane-check/gates.json").read_text())
+        self.assertEqual(report["gates"]["image"]["rc"], 0)
+        self.assertEqual(scratch.load()["image"], state["image"])
+        self.assertIn("lane-check image: NONE (image gate passed)", second.stdout)
+
+    def test_f6_host_owner_image_gate_matches_dev(self):
         (self.seed / "host").mkdir(exist_ok=True)
         sha = self.lane("host", {"host/owner-host.lisp": "(in-package \"ACL2\")\n"})
         p = self.check_lane("host", sha)
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn("lane-check certify: NONE (no book changed)", p.stdout)
-        self.assertIn("lane-check box_host_world: NONE (box step inherits:", p.stdout)
-        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check image: BOX"))
-        self.assertIn("tests.test_native_served_differential", line)
-        self.assertNotIn("--build-only", line)
+        report = json.loads((self.scratch("host") / "build/lane-check/gates.json").read_text())
+        self.assertEqual(report["gates"]["image"]["rc"], 0)
+        self.assertTrue(report["gates"]["image"]["skipped"])
+        self.assertEqual(train.image_modules(["host/owner-host.lisp"]), {})
+        self.assertIn("lane-check image: NONE (no native module obliged)", p.stdout)
         self.assertIn("lane-check extraction: BOX", p.stdout)
-        self.assertIn("lane-check verdict: PASS (2 box gates owed)", p.stdout)
+        self.assertIn("lane-check verdict: PASS (1 box gates owed)", p.stdout)
 
     def test_local_box_check_failure_blocks_inheritance_and_verdict(self):
         sha = self.lane("local-red", {"tools/x.py": "x\n"})
@@ -476,16 +513,80 @@ class LaneCheckTests(TrainBase):
                                   "Makefile": "ACL2_BOOKS = books/new-root\n",
                                   "tools/keystone_emit.py": manifest_stub})
         p = self.check_lane("books", sha)
-        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
         line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check certify: BOX"))
         self.assertIn("--affected-by books/a", line)
         self.assertIn("books/new-root", line)
         self.assertIn("books/wire-export books/image-world books/image-world-dtn books/a", line)
         self.assertNotIn("--lane", line)
         self.assertIn("lane-check box_interface_emit: BOX", p.stdout)
-        self.assertIn("lane-check image: BOX", p.stdout)
-        self.assertIn("tests.test_native_served_differential", p.stdout)
+        self.assertIn("lane-check box_step: FAIL", p.stdout)
+        self.assertIn("lane-check image: NONE (no native module obliged)", p.stdout)
         self.assertIn("lane-check extraction: BOX", p.stdout)
+
+    def test_f1_missing_box_record_is_a_real_gate_failure(self):
+        sha = self.lane("no-record", {"tools/x.py": "x\n"})
+        p = self.check_lane("no-record", sha, record=False)
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        report = json.loads((self.scratch("no-record") / "build/lane-check/gates.json").read_text())
+        box = report["gates"]["box_step"]
+        self.assertEqual(box["rc"], 1)
+        self.assertEqual(box["error"], "no box step recorded")
+        self.assertNotIn("inherits_from", box)
+        self.assertIn("lane-check box_step: FAIL", p.stdout)
+        self.assertIn("tools/train.py boxstep hbox", p.stdout)
+        self.assertNotIn("NONE (box step inherits:", p.stdout)
+
+    def test_f4_no_books_still_owes_certifys_mandatory_roots_without_inheritance(self):
+        sha = self.lane("wire", {"tools/x.py": "x\n"})
+        p = self.check_lane("wire", sha, record=False)
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check certify: BOX"))
+        self.assertIn("submit hbox books/wire-export books/image-world books/image-world-dtn", line)
+        self.assertNotIn("--affected-by", line)
+        self.assertNotIn("lane-check certify: NONE", p.stdout)
+
+    def test_f3_pinned_base_survives_a_shared_origin_dev_move_during_regen(self):
+        baseline = json.dumps({"accepted": {"still": "why"}})
+        self.advance_dev({"planning/premise-baseline.json": baseline})
+        pinned = self.origin_rev("dev")
+        moved = self.lane("moving-dev", {"planning/premise-baseline.json": '{"accepted": {}}'})
+        mover = STUB.replace('sys.exit(int(os.environ.get(',
+            'if name == "resource_contract" and mode == "write":\n'
+            '    import subprocess\n'
+            '    subprocess.run(["git", "-C", os.getcwd(), "update-ref", "refs/remotes/origin/dev", os.environ["MOVE_DEV"]], check=True)\n'
+            'sys.exit(int(os.environ.get(')
+        sha = self.lane("pinned", {"planning/premise-baseline.json": '{"accepted": {}}',
+                                    "tools/resource_contract.py": mover})
+        p = self.check_lane("pinned", sha, extra_env={"MOVE_DEV": moved,
+            "STUB_PREMISES": '{"still": {"class": "preserved only"}}'})
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("lane-check premise_baseline: FAIL", p.stdout)
+        self.assertIn(f"dev={pinned}", p.stdout)
+        self.assertEqual(sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip(), moved)
+        report = json.loads((self.scratch("pinned") / "build/lane-check/gates.json").read_text())
+        self.assertEqual(report["dev"], pinned)
+        self.assertEqual({r["dev"] for r in report["gates"].values()}, {pinned})
+        self.assertEqual(report["gates"]["premise_baseline"]["lost"], ["still"])
+
+    def test_f5_merged_tree_owns_regeneration_and_new_gate_policy(self):
+        sha = self.lane("older-policy", {"tools/x.py": "x\n"})
+        policy = (self.seed / "tools/train.py").read_text()
+        policy = policy.replace('def cmd_regen(t: Train, args) -> int:\n',
+            'def cmd_regen(t: Train, args) -> int:\n    say("MERGED-REGEN-POLICY " + args.label + " " + __file__)\n')
+        policy = policy.replace('def cmd_gate(t: Train, args) -> int:',
+            'GATES = (*GATES, "fetched_policy")\n'
+            'GATE_FUNCTIONS["fetched_policy"] = lambda t: (7, {"error": "new dev gate"})\n\n'
+            'def cmd_gate(t: Train, args) -> int:')
+        self.advance_dev({"tools/train.py": policy})
+        p = self.check_lane("older-policy", sha)
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("lane-check fetched_policy: FAIL", p.stdout)
+        log = self.work / "build/lane-check" / f"older-policy-{sha[:9]}.log"
+        self.assertIn("MERGED-REGEN-POLICY lane-check", log.read_text())
+        self.assertIn(str(self.scratch("older-policy") / "tools/train.py"), log.read_text())
+        report = json.loads((self.scratch("older-policy") / "build/lane-check/gates.json").read_text())
+        self.assertEqual(report["gates"]["fetched_policy"]["rc"], 7)
 
     def test_cmd_gate_preserves_names_order_output_and_return_codes(self):
         for rc in (0, 7):
@@ -1041,8 +1142,6 @@ class BoxStepTests(TrainBase):
         self.merge({"books/b.lisp": "changed\n"})
         self.assertNotEqual(self.train("gate").returncode, 0)
         before = self.head()
-        # Keep the image input's differential green while isolating the box step.
-        self.set_image(["tests.test_native_served_differential"])
         b = self.train("boxstep", "persvati", extra_env={"STUB_EMIT": "emitted"})
         self.assertEqual(b.returncode, 0, b.stdout + b.stderr)
         self.assertEqual(self.head(), before, "the box step commits nothing")
@@ -1067,7 +1166,6 @@ class BoxStepTests(TrainBase):
         (self.seed / "books").mkdir(exist_ok=True)
         (self.seed / "specs").mkdir(exist_ok=True)
         self.merge({"books/b.lisp": "first\n"})
-        self.set_image(["tests.test_native_served_differential"])
         self.assertEqual(self.train("boxstep", "persvati").returncode, 0)
         first = self.head()
         sh(self.work, "git", "checkout", "-q", "-b", "integrate/t2", "origin/dev")
@@ -1818,20 +1916,19 @@ class ImageModuleTests(unittest.TestCase):
         self.assertEqual(train.image_modules(["host/owner-host.lisp", "tools/train.py",
                                               "books/heap-figure-tests.lisp", "packaging/fn.md"]), {})
 
-    def test_image_inputs_and_requirements_are_shared_with_lane_check(self):
-        tools = ["tools/train.py", "tools/ledger.py", "tools/x.py", "tests/test_train.py"]
-        self.assertEqual(train.image_inputs_changed(tools), [])
-        self.assertEqual(train.image_requirements(tools), {})
-        for path in ("host/owner-host.lisp", "books/a.lisp", "tests/acl2/a-tests.lisp", "VERSION"):
-            with self.subTest(path=path):
-                self.assertEqual(train.image_inputs_changed([path]), [path])
-                self.assertEqual(train.image_requirements([path]),
-                                 {"tests.test_native_served_differential": [path]})
-        self.assertEqual(train.image_requirements(["tools/build_native_host.sh"]),
-                         train.image_modules(["tools/build_native_host.sh"]))
-        mixed = train.image_requirements(["host/owner-host.lisp", "books/store-maintenance-reserve.lisp"])
-        self.assertEqual(mixed["tests.test_native_served_differential"], ["host/owner-host.lisp"])
-        self.assertEqual(mixed["tests.test_native_capacity_vector"], ["books/store-maintenance-reserve.lisp"])
+    def test_f2_acl2_projects_file_is_an_image_input(self):
+        self.assertEqual(train.image_inputs_changed(["acl2-projects"]), ["acl2-projects"])
+
+    def test_f2_acl2_projects_loader_is_an_image_input(self):
+        self.assertEqual(train.image_inputs_changed(["tools/acl2_projects.py"]), ["tools/acl2_projects.py"])
+
+    def test_f2_acl2_toolchain_is_an_image_input(self):
+        self.assertEqual(train.image_inputs_changed(["tools/acl2_toolchain.py"]), ["tools/acl2_toolchain.py"])
+
+    def test_image_input_classification_keeps_devs_default(self):
+        paths = ["tools/train.py", "unlisted-source", "VERSION", "tests/acl2/a.lisp",
+                 "planning/proofs.json", "docs/a.md", "tests/test_train.py"]
+        self.assertEqual(train.image_inputs_changed(paths), paths[:4])
 
     def test_parse_reads_rc_and_cases_and_keeps_a_caseless_crash(self):
         text = "\n".join([
