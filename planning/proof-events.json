@@ -11489,6 +11489,26 @@
         },
         {
           "kind": "theorem",
+          "name": "fn-lgb-next-record-yields-the-records"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-next-record-advances-the-cursor"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-next-record-within-max"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-next-record-descriptor-is-the-attached-place"
+        },
+        {
+          "kind": "theorem",
+          "name": "fn-lgb-next-record-has-a-descriptor"
+        },
+        {
+          "kind": "theorem",
           "name": "fn-lg-entry-okp-holds-the-chain-field"
         },
         {
