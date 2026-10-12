@@ -14,6 +14,9 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from tests.scratch_git import run as scratch_git
+
 from tools import train
 
 REPO = Path(__file__).resolve().parent.parent
@@ -117,7 +120,8 @@ exit "${STUB_RC_ssh:-0}"
 
 
 def sh(cwd, *argv, env=None, check=True):
-    p = subprocess.run(argv, cwd=cwd, capture_output=True, text=True, env=env)
+    runner = scratch_git if argv[:1] == ("git",) else subprocess.run
+    p = runner(argv, cwd=cwd, capture_output=True, text=True, env=env)
     if check and p.returncode != 0:
         raise AssertionError(f"{argv} rc {p.returncode}\n{p.stdout}\n{p.stderr}")
     return p
