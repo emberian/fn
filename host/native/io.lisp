@@ -6262,8 +6262,8 @@ the Store and the served projection judge them like any posted article."
     octets))
 
 (defun fnn-command-probe (root count &optional articlep)
-  "Probe an operator-initialized, empty store under its sealed profile, or
-initialize a fresh development root: commit COUNT maximum payloads, close,
+  "Probe a completely initialized, empty store under its sealed profile, or
+initialize/resume a development root: commit COUNT maximum payloads, close,
 reopen, and report both timings as JSON on stdout.  With
 ARTICLEP (`probe N article') each payload is a well-formed article of the
 same size (fnn-probe-article), so the served reader can frame it."
@@ -6272,41 +6272,60 @@ same size (fnn-probe-article), so the served reader can frame it."
            :message "store probe is available only in the developer image"))
   (let* ((started (get-internal-real-time))
          (store (make-fnn-store root :writable t))
-         (payload nil))
-    (if (fnn-lstat (fnn-config-path store))
-        (setq store (fnn-open-live-store root t))
-      (progn
-        (fnn-initialize store)
-        (fnn-record-filesystem-at-init store :development)
-        (fnn-acquire store)
-        (fnn-bridge-reset)
-        (fnn-extent-pool-open-context)
-        (fnn-recover store)))
-    (setq payload (make-array (fnn-config-max-payload store)
-                              :element-type '(unsigned-byte 8)
-                              :initial-element (char-code #\x)))
-    (let ((codes (fnn-group-codes-for store +fnn-default-groups+)))
-      (dotimes (sequence count)
-        (let ((msgid (fnn-octets (fnn-ascii-octet-list
-                                  (format nil "<capacity-~d@example.invalid>" sequence))))
-              (payload (if articlep
-                           (fnn-probe-article sequence (length payload))
-                         payload)))
-          (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
-            (fnn-advance-frontier store (fnn-bridge-next-txid))
-            (unless (eq (fnn-bridge-prepare msgid payload codes obligation subject evidence
-                                            (fnn-charge (length payload)))
-                        :prepared)
-              (fnn-fault "probe prepare refused"))
-            (let ((pending (fnn-pending-sequence
-                            (fnn-core-state 'fn-store-sn-pending-sequence))))
-              (unless (eq (fnn-publish store pending (fnn-bridge-pending-record))
-                          :durable)
-                (fnn-fault "probe publish refused")))
-            (unless (eq (fnn-finish store) :durable) (fnn-fault "probe finish refused"))))))
-    (let ((commit-seconds (/ (- (get-internal-real-time) started)
-                             (float internal-time-units-per-second 1d0))))
-      (fnn-store-close store)
+         (payload nil)
+         (primary nil))
+    (let ((commit-seconds
+           (unwind-protect
+                (handler-case
+                 (progn
+                  ;; fnn-initialize publishes generation one, genesis, then
+                  ;; the segment; init records the filesystem afterward.
+                  ;; Compaction can replace segment one with a checkpoint;
+                  ;; the live open validates these artifacts.
+                  (if (and (fnn-lstat (fnn-config-path store))
+                           (fnn-lstat (fnn-config-record-path store 1))
+                           (fnn-lstat (fnn-genesis-path store))
+                           (fnn-lstat (fnn-filesystem-record-path store))
+                           (or (fnn-lstat (fnn-segment-path store))
+                               (fnn-lstat (fnn-state-checkpoint-path store))))
+                      (setq store (fnn-open-live-store root t))
+                    (progn
+                      (fnn-initialize store)
+                      (fnn-record-filesystem-at-init store :development)
+                      (fnn-acquire store)
+                      (fnn-bridge-reset)
+                      (fnn-extent-pool-open-context)
+                      (fnn-recover store)))
+                  (setq payload (make-array (fnn-config-max-payload store)
+                                            :element-type '(unsigned-byte 8)
+                                            :initial-element (char-code #\x)))
+                  (let ((codes (fnn-group-codes-for store +fnn-default-groups+)))
+                    (dotimes (sequence count)
+                      (let ((msgid (fnn-octets (fnn-ascii-octet-list
+                                                (format nil "<capacity-~d@example.invalid>" sequence))))
+                            (payload (if articlep
+                                         (fnn-probe-article sequence (length payload))
+                                       payload)))
+                        (multiple-value-bind (obligation subject evidence) (fnn-metadata msgid payload)
+                          (fnn-advance-frontier store (fnn-bridge-next-txid))
+                          (unless (eq (fnn-bridge-prepare msgid payload codes obligation subject evidence
+                                                          (fnn-charge (length payload)))
+                                      :prepared)
+                            (fnn-fault "probe prepare refused"))
+                          (let ((pending (fnn-pending-sequence
+                                          (fnn-core-state 'fn-store-sn-pending-sequence))))
+                            (unless (eq (fnn-publish store pending (fnn-bridge-pending-record))
+                                        :durable)
+                              (fnn-fault "probe publish refused")))
+                          (unless (eq (fnn-finish store) :durable) (fnn-fault "probe finish refused"))))))
+                  (/ (- (get-internal-real-time) started)
+                     (float internal-time-units-per-second 1d0)))
+                 (serious-condition (condition)
+                   (setq primary condition)
+                   (error condition)))
+             (if primary
+                 (fnn-store-failed-open-close store primary)
+               (fnn-store-close store)))))
       (let ((before (get-internal-real-time)))
         (multiple-value-bind (reopened replayed) (fnn-open-live-store root nil)
           (let ((reopen-seconds (/ (- (get-internal-real-time) before)
