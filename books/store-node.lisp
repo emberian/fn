@@ -866,19 +866,72 @@
   (declare (xargs :guard t))
   (let ((stamp (fn-record-stamp-of-observation obs))
         (txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
-    (if (not (natp stamp))
-        :clock-unusable
-      (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
-                      obligation-id subject evidence charge stamp))))
+    (cond ((not (natp stamp)) :clock-unusable)
+          ((not (fn-record-uint64p (fn-sn-identity-next s)))
+           :sequence-exhausted)
+          ((not (fn-record-uint64p txid)) :txid-exhausted)
+          (t (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
+                             obligation-id subject evidence charge stamp)))))
+
+(defconst *fn-sn-article-record-refusals*
+  '(:clock-unusable :sequence-exhausted :txid-exhausted))
+
+; KEYSTONE: article construction returns a record or a named refusal.
+(defthm fn-sn-article-record-is-a-record-or-a-named-refusal
+  (implies (and (fn-record-msgidp msgid)
+                (fn-record-payloadp payload)
+                (fn-record-groups-validp groups)
+                (fn-record-metadata-bytes-p obligation-id)
+                (fn-record-metadata-bytes-p subject)
+                (fn-record-metadata-bytes-p evidence)
+                (fn-record-uint64p charge))
+           (let ((r (fn-sn-article-record s obs msgid payload groups
+                                          obligation-id subject evidence charge)))
+             (or (fn-record-p r)
+                 (member-equal r *fn-sn-article-record-refusals*))))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-p))))
+
+(defthm fn-sn-article-record-refuses-an-exhausted-sequence
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (not (fn-record-uint64p (fn-sn-identity-next s))))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :sequence-exhausted))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record))))
+
+(defthm fn-sn-article-record-refuses-an-exhausted-txid
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (not (fn-record-uint64p
+                      (fn-state-next-txid (fn-node-acceptance (fn-sn-node s))))))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  :txid-exhausted))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record))))
+
+(defthm fn-sn-article-record-below-exhaustion-is-the-record
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (fn-record-uint64p
+                 (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
+           (equal (fn-sn-article-record s obs msgid payload groups
+                                        obligation-id subject evidence charge)
+                  (let ((txid (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
+                    (fn-record-make (fn-sn-identity-next s) txid txid msgid payload groups
+                                    obligation-id subject evidence charge
+                                    (fn-record-stamp-of-observation obs)))))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record))))
 
 (defthm fn-sn-article-record-stamps-the-observation
-  (implies (natp (fn-record-stamp-of-observation obs))
+  (implies (and (natp (fn-record-stamp-of-observation obs))
+                (fn-record-uint64p (fn-sn-identity-next s))
+                (fn-record-uint64p
+                 (fn-state-next-txid (fn-node-acceptance (fn-sn-node s)))))
            (equal (fn-record-stamp
                    (fn-sn-article-record s obs msgid payload groups
                                          obligation-id subject evidence charge))
                   (floor (fn-clock-wall obs) 1000)))
-  :hints (("Goal" :in-theory (enable fn-sn-article-record
-                                     fn-record-stamp-of-observation))))
+  :hints (("Goal" :in-theory (enable fn-sn-article-record fn-record-stamp-of-observation))))
 
 (defthm fn-sn-article-record-without-a-usable-clock-is-refused
   (implies (not (natp (fn-record-stamp-of-observation obs)))
