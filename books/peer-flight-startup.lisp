@@ -3,6 +3,7 @@
 (include-book "page-read-startup")
 (include-book "peer-flight-reservation")
 (include-book "heap-command")
+(include-book "payload-extent")
 
 (defun fn-prstartup-protected-with-peer (profile core nursery output max-connections peer observed)
  (declare (xargs :guard t))
@@ -166,6 +167,17 @@
            (<= (max 8 (+ 1 c)) (min fd (expt 2 24))))
   :rule-classes nil
   :hints (("Goal" :in-theory (enable fn-crl-table-supportedp fn-crl-table-capacity))))
+
+; host/native/owner.lisp fnn-owner-page-read-startup passes fnn-extent-cache-limit:
+; host/native/extent.lisp returns 0 for the developer cache-off selector, otherwise
+; ACL2's fn-arx-read-cache-entries.  Both startup minima are representable; the
+; generic admission theorems still need their premise for arbitrary cache limits.
+(defthm fn-mo-serve-native-cache-limit-is-table-supported
+  (fn-crl-table-supportedp
+   (max 8 (+ 1 (nfix (if (equal cache-selector "1") 0 (fn-arx-read-cache-entries))))))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (enable fn-arx-read-cache-entries
+                                     fn-crl-table-supportedp fn-crl-table-capacity))))
 
 (defthm fn-mo-serve-table-supported-within-range
   (implies (and (natp f) (<= f (expt 2 24))) (fn-crl-table-supportedp f))

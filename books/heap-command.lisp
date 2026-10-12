@@ -1087,9 +1087,8 @@
   :hints (("Goal" :in-theory (union-theories '(car-cons cdr-cons) (theory 'minimal-theory))
            :use ((:instance fn-mo-serve-decide-heap-facts)))))
 
-; KEYSTONE K-L2p (L-RUN-LAUNCH, native m21-lrl-2): a launch's pools are within its
-; least resident observation.
-(defthm fn-mo-serve-launch-holds-its-pools
+; A launched decision carries a natural resident observation that holds its pools.
+(defthm fn-mo-serve-launch-holds-its-pools-at-the-decision
   (implies (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap)
            (and (natp (fn-mm-least-observation resident))
                 (<= (nfix pools) (fn-mm-least-observation resident))))
@@ -1097,6 +1096,16 @@
   :hints (("Goal"
            :in-theory (union-theories '(fn-mo-serve-decide fn-mo-serve-limit car-cons natp nfix)
                                       (theory 'minimal-theory)))))
+
+; KEYSTONE K-L2p (L-RUN-LAUNCH, native m21-lrl-2): the probe refuses an unobserved
+; resident bound or pools beyond it; no such decision launches.
+(defthm fn-mo-serve-launch-holds-its-pools
+  (implies (or (not (natp (fn-mm-least-observation resident)))
+               (< (fn-mm-least-observation resident) (nfix pools)))
+           (not (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap)))
+  :rule-classes nil
+  :hints (("Goal" :in-theory (theory 'minimal-theory)
+           :use fn-mo-serve-launch-holds-its-pools-at-the-decision)))
 
 (defthm fn-mo-serve-decide-heap-reservation
   (implies (and (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core

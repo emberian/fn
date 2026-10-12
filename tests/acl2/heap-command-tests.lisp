@@ -576,26 +576,26 @@
   :hints (("Goal" :by fn-mo-serve-launch-fits-the-address-space)))
 
 
-;; K-L2p: the missing pool refusal let the pre-fix decision admit a launch at LIMIT zero.
+;; K-L2p: pools beyond the observation refuse; omitting that arm admits the positive witness.
 (defkeystone hct-serve-launch-holds-its-pools
-  (implies (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap)
-           (and (natp (fn-mm-least-observation resident))
-                (<= (nfix pools) (fn-mm-least-observation resident))))
+  (implies (or (not (natp (fn-mm-least-observation resident)))
+               (< (fn-mm-least-observation resident) (nfix pools)))
+           (not (equal (car (fn-mo-serve-decide profile img trigger live cold config resident address core nursery tot pools pool-threads)) :heap)))
   :rule-classes nil
   :id "PRF-10016"
   :restates fn-mo-serve-launch-holds-its-pools
-  :hyps (accepted)
+  :hyps (pools-unheld)
   :subject fn-mo-serve-decide
-  :witness ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (trigger 8388608)
-            (live nil) (cold nil) (config 119) (resident (list (hct-mib 256))) (address nil)
-            (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-tot*)
-            (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*))
-  :breaks ((accepted ((profile *hct-sv-ceiling-profile*) (img *hct-sv-core-img*) (trigger 8388608)
+  :witness ((profile *hct-sv-ceiling-profile*) (img *hct-sv-core-img*) (trigger 8388608)
                        (live nil) (cold nil) (config 119) (resident *hct-sv-pool-resident*) (address nil)
                        (core *hct-sv-core*) (nursery *hct-nur*) (tot nil)
-                       (pools *hct-sv-over-pools*) (pool-threads *hct-sv-pool-threads*))))
+                       (pools *hct-sv-over-pools*) (pool-threads *hct-sv-pool-threads*))
+  :breaks ((pools-unheld ((profile *hct-sv-profile*) (img *hct-sv-core-img*) (trigger 8388608)
+            (live nil) (cold nil) (config 119) (resident (list (hct-mib 256))) (address nil)
+            (core *hct-sv-core*) (nursery *hct-nur*) (tot *hct-sv-tot*)
+            (pools *hct-sv-pools*) (pool-threads *hct-sv-pool-threads*))))
   :mutations ((decision-without-the-pool-refusal
-               (:hypothesis accepted (equal (car (let* ((limit (fn-mo-serve-limit resident pools))
+               (:conclusion (not (equal (car (let* ((limit (fn-mo-serve-limit resident pools))
          (dynamic (fn-mo-serve-dynamic limit core nursery pools))
          (cfg (fn-mo-serve-cfg trigger
                                (fn-heap-nursery-trigger (* *fn-heap-mib* (fn-heap-mb-of dynamic)) nursery)
@@ -611,7 +611,7 @@
                  (fn-heap-mb-of reservation) (floor addr *fn-heap-mib*)))
           (t (list :heap (fn-heap-mb-of dynamic) (fn-heap-profile-word profile)
                    (floor limit *fn-heap-mib*) (fn-heap-stack-kib profile)
-                   (fn-mo-serve-threads pool-threads)))))) :heap))
+                   (fn-mo-serve-threads pool-threads)))))) :heap)))
                ((profile *hct-sv-ceiling-profile*) (img *hct-sv-core-img*) (trigger 8388608)
                        (live nil) (cold nil) (config 119) (resident *hct-sv-pool-resident*) (address nil)
                        (core *hct-sv-core*) (nursery *hct-nur*) (tot nil)
