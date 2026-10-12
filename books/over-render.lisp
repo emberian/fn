@@ -581,13 +581,6 @@
   (equal (fn-record-string-octets s) (fn-nntp-string-octets s))
   :hints (("Goal" :in-theory (enable fn-record-string-octets fn-nntp-string-octets))))
 
-; Preserve the inverse equality for explicit :use. Automatic rewriting follows
-; fn-ovr-record-octets-is-nntp-octets, avoiding a cycle between the two names.
-(defthm fn-ovr-dss-string-octets-is-record
-  (equal (fn-nntp-string-octets s) (fn-record-string-octets s))
-  :hints (("Goal" :in-theory (disable fn-nntp-string-octets fn-record-string-octets)))
-  :rule-classes nil)
-
 (defthm fn-ovr-put-column-line-is-the-line
   (implies (true-listp fn-ovr-lease)
            (equal (fn-ovr-put-column-line n nov octets body server
