@@ -1,0 +1,12 @@
+{
+ "file": "host/store-node-host.lisp",
+ "id": "PAYLOAD-EXPORT-CHECKPOINT-PREFIX",
+ "notes": [],
+ "owner": "builder-L",
+ "retired_by": "a span/arena-side read of the row payload (FILL-BOUNDS-JOIN-POST-HEAP follow-up; perf plan D1)",
+ "severity": "medium",
+ "source": "FACTS-I.md section 5 (A20, lane vertical-post-heap, dev f0c2f4d5f; static trace): whole-payload export via fn-row-wire-of/fn-row-bytes on a path that survives POST landing 2",
+ "state": "open",
+ "title": "Checkpoint prefix/history export encodes one whole payload per held row (host/store-node-host.lisp:933, :946/:954, :979)",
+ "updated": "2026-10-12T17:32:17Z"
+}
