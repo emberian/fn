@@ -39,6 +39,7 @@ import unittest
 # The module, not its TestCase: a TestCase imported by name is collected and
 # run again as this module's own (the checkpoint suite ran twice here).
 from tests import test_native_checkpoint as checkpoint
+from tests.native_harness import EXIT_FAULT, EXIT_OK, EXIT_REFUSED, EXIT_UNCERTAIN, run
 from tools import fixtures, native_env
 
 IMAGE = checkpoint.IMAGE
@@ -130,6 +131,82 @@ class NativePackChainTests(unittest.TestCase):
 
     def inspect(self, store, msgids):
         return {m: self.native("store", store, "inspect", m).stdout for m in msgids}
+
+    def test_the_probe_keeps_a_scale_store_s_sealed_profile(self):
+        store = self.base / "probe-sealed-scale"
+        config, _ = self.owner_config(store, "probe-sealed-scale")
+        init = self.native("operator", config, "init", *native_env.HARNESS_INIT_WORDS,
+                           *PROFILE_FLAGS, "fn.letters", "fn.test", env=self.env)
+        self.assertIn("accepted operator init", init.stderr)
+        probe = self.native("store", store, "probe", "3", "article")
+        report = json.loads(probe.stdout)
+        self.assertEqual(report["status"], "passed")
+        # io.lisp fnn-config-max-payload reads max-article-octets directly;
+        # PROFILE_FLAGS sets it to 2048, below the scale preset's 32768.
+        self.assertEqual(report["payload_bytes"], 2048)
+        self.recovered(store, 3)
+        # Sequence 0 repeats capacity-0's bytes and groups: store-node-host.lisp
+        # fn-store-sn-prepare returns :duplicate before staging/publication,
+        # so fnn-command-probe faults at "probe prepare refused" first.
+        repeated = self.native("store", store, "probe", "3", "article",
+                               expected=EXIT_FAULT)
+        self.assertIn("probe prepare refused", repeated.stderr)
+        self.recovered(store, 3)
+        # Compaction drops segment one; its checkpoint must still select the
+        # sealed scale open, rather than a development-profile reinitialization.
+        self.assertEqual(self.compacted(
+            self.native("operator", config, "store", "compact").stdout, 3), (2, 1))
+        self.assertEqual(segments(store), ["000002.log"])
+        repeated = self.native("store", store, "probe", "3", "article",
+                               expected=EXIT_FAULT)
+        self.assertIn("probe prepare refused", repeated.stderr)
+        self.recovered(store, 3)
+
+    def test_the_probe_matches_development_init_resume_at_every_cut(self):
+        # Existing init EIO cuts leave config.json without generation one,
+        # without genesis, without its log segment, or after all artifacts
+        # exist but before init records the filesystem (the four late cuts).
+        cuts = (("init-config-linked", EXIT_UNCERTAIN, False, False),
+                ("init-config-history-fenced", EXIT_FAULT, True, False),
+                ("init-genesis-journal-fenced", EXIT_FAULT, True, True),
+                ("init-final-config-file-fenced", EXIT_FAULT, True, True),
+                ("init-final-config-record-file-fenced", EXIT_FAULT, True, True),
+                ("init-root-fenced", EXIT_FAULT, True, True),
+                ("init-parent-fenced", EXIT_FAULT, True, True))
+        for cut, outcome, history, genesis in cuts:
+            with self.subTest(cut=cut):
+                store = self.base / cut
+                remedy = self.base / (cut + "-remedy")
+                env = dict(self.env, FN_NATIVE_INIT_FAULT=cut + ":eio")
+                for root in (store, remedy):
+                    self.native("store", root, "init", expected=outcome, env=env)
+                    self.assertTrue((root / "config.json").is_file())
+                    self.assertEqual((root / "config" / "00000001.cfg").is_file(), history)
+                    self.assertEqual((root / "journal" / GENESIS).is_file(), genesis)
+                    late = cut.startswith("init-final-") or cut in (
+                        "init-root-fenced", "init-parent-fenced")
+                    self.assertEqual((root / "journal" / "000001.log").is_file(), late)
+                    self.assertFalse((root / "filesystem-identity.fnmi").exists())
+                # Use the existing harness runner to observe the documented
+                # remedy's outcome, without assuming every cut is resumable.
+                resumed = run([self.image, "--fn", "store", remedy, "init"],
+                              env=self.env, timeout=self.native_timeout, text=True)
+                self.assertIn(resumed.returncode, (EXIT_OK, EXIT_REFUSED, EXIT_FAULT),
+                              resumed.stdout + resumed.stderr)
+                probe = self.native("store", store, "probe", "3", "article",
+                                    expected=resumed.returncode)
+                if resumed.returncode == EXIT_OK:
+                    self.assertEqual(json.loads(probe.stdout)["status"], "passed")
+                    self.assertTrue((store / "filesystem-identity.fnmi").is_file())
+                    self.recovered(store, 3)
+                else:
+                    # fnn-main prints the named store condition on stderr;
+                    # unrelated diagnostics must not satisfy the comparison.
+                    refusal = [line for line in resumed.stderr.splitlines()
+                               if line.startswith("store: ")]
+                    self.assertEqual(len(refusal), 1, resumed.stderr)
+                    self.assertEqual([line for line in probe.stderr.splitlines()
+                                      if line.startswith("store: ")], refusal)
 
     def test_a_multi_unit_store_compacts_over_the_log(self):
         store, config, _ = self.scale_store("cut-base", CUT_N)
