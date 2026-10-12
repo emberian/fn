@@ -1,12 +1,14 @@
 {
- "detail": "A configured moderated (or any) group name wider than the record codec's group-name width (*fn-record-max-group-name*, 256 octets; books/records-shape.lisp) can never be stored as a group, yet a valid injection config admits it (fn-inj-configp, books/injection.lisp): P9's c9 built a valid ICFG with a 900-octet moderated source group (post-acc build/post-runs/l2/c9/A1-COUNTEREXAMPLE.lsp). A post to it is forwarded to the moderation queue and the envelope's Subject carries the 900-octet name (books/moderation.lisp:221-231). Config validation should reject a group name wider than the record codec. This is hygiene, not a dependency: POST landing 2 derives K from the stored-article line gate (coordinator DECISION (i), 2026-10-12), which bounds the envelope independently of config validation.",
+ "detail": "Config validation (fn-inj-configp, books/injection.lisp:592-601; the moderation entries it carries are checked only for cons shape by fn-nntp-moderated-entryp, books/nntp-responses.lisp:306-311) admits (1) a group or moderation-queue name wider than the record codec's group-name width (*fn-record-max-group-name*, 256 octets; books/records-shape.lisp) and (2) a group or queue name containing CR or LF. (1): P9's c9 built a valid ICFG with a 900-octet moderated source group (post-acc build/post-runs/l2/c9/A1-COUNTEREXAMPLE.lsp); its envelope Subject carries the name (books/moderation.lisp:221-231). (2): P10's c9 K-LINE run spliced a queue holding CRLF + headers + body into the envelope's Newsgroups line, PRE 13646 (c9/K-LINE-COUNTEREXAMPLE.lsp): header injection. Coordinator DECISION (c), 2026-10-12: POST landing 2 makes fn-mod-forward refuse a malformed entry (:moderation-unavailable) through one well-formedness predicate defined in books/moderation.lisp, so the envelope is closed at its producer. This item is DEFENCE IN DEPTH: config validation also rejects group and queue names wider than 256 octets or carrying CR/LF, citing that predicate (no twin).",
  "file": "books/injection.lisp",
  "id": "CONFIG-GROUP-NAME-WIDER-THAN-RECORD",
- "notes": [],
+ "notes": [
+  "10-12 19:54 P10: widened per coordinator DECISION (c) condition 3 (CR/LF in group and queue names; cite the moderation well-formedness predicate landing 2 defines)"
+ ],
  "owner": "builder-A",
  "severity": "low",
  "source": "Coordinator DECISION 2026-10-12 (P9's A1 RED, option (ii) filed as hygiene)",
  "state": "open",
- "title": "Config admits group names wider than the record codec can store",
- "updated": "2026-10-12T22:01:43Z"
+ "title": "Config admits group and queue names wider than the record codec, or carrying CR/LF",
+ "updated": "2026-10-12T23:54:32Z"
 }
