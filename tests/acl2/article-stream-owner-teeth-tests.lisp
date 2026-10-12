@@ -495,7 +495,7 @@
 (defthm aot-over-plan-is-a-served-residual
   (let* ((s (spct-session "fn.test"))
          (p (spct-plan s *spct-range* nil))
-         (r (fn-qplan-cursor-step p 1 *spct-a* *spct-c*))
+         (r (fn-qplan-cursor-step p 1 *fn-splan-cursor-window* *fn-splan-cursor-window* *spct-a* *spct-c*))
          (next (mv-nth 1 r)))
     (and (equal (mv-nth 0 r) :ok)
          (posp (fn-qplan-window-size next))

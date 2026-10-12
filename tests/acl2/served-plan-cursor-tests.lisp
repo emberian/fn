@@ -59,7 +59,7 @@
 (defmacro spct-plan (session token legacyp)
   `(fn-splan-of-effects (spct-effects ,session ,token ,legacyp)))
 (defmacro spct-drain (session token legacyp w wl n)
-  `(fn-splan-cw-drain (spct-plan ,session ,token ,legacyp) ,w ,wl ,n *spct-a* *spct-c*))
+  `(fn-splan-cw-drain (spct-plan ,session ,token ,legacyp) ,w ,wl ,wl ,wl ,n *spct-a* *spct-c*))
 
 ;; POSITIVE: the keystone, complete antecedent and conclusion, at (W, WL) =
 ;; (5, 1) (windows of five octets, one number per quantum), (3, 2) and
@@ -105,7 +105,7 @@
 (defthm spct-first-quantum
   (let* ((s (spct-session "fn.test"))
          (p (spct-plan s *spct-range* nil))
-         (r (fn-splan-cursor-step p 1 *spct-a* *spct-c*)))
+         (r (fn-splan-cursor-step p 1 1 1 *spct-a* *spct-c*)))
     (and (equal (mv-nth 0 r) :ok)
          (not (fn-splan-at-cursorp (mv-nth 1 r)))
          (posp (fn-splan-window-size (mv-nth 1 r)))
@@ -122,13 +122,13 @@
 
 (defthm spct-malformed-cursor-witness
   (and (not (fn-splan-cw-okp *spct-bad*))
-       (equal (mv-nth 0 (fn-splan-cursor-step *spct-bad* 1 *spct-a* *spct-c*)) :malformed)
-       (equal (mv-nth 1 (fn-splan-cursor-step *spct-bad* 1 *spct-a* *spct-c*)) *spct-bad*))
+       (equal (mv-nth 0 (fn-splan-cursor-step *spct-bad* 1 1 1 *spct-a* *spct-c*)) :malformed)
+       (equal (mv-nth 1 (fn-splan-cursor-step *spct-bad* 1 1 1 *spct-a* *spct-c*)) *spct-bad*))
   :rule-classes nil)
 
 (must-fail-checked
  (defthm spct-malformed-is-not-ok
-   (equal (mv-nth 0 (fn-splan-cursor-step *spct-bad* 1 *spct-a* *spct-c*)) :ok)
+   (equal (mv-nth 0 (fn-splan-cursor-step *spct-bad* 1 1 1 *spct-a* *spct-c*)) :ok)
    :rule-classes nil))
 
 ;; MUST-FAIL: a plan at a cursor has no positive window size and is not
@@ -156,7 +156,7 @@
 (defthm spct-pipelined-cursors-witness
   (let* ((s (spct-session "fn.test"))
          (effects (append (spct-effects s *spct-range* nil) (spct-effects s *spct-past* t)))
-         (r (fn-splan-cw-drain (fn-splan-of-effects effects) 5 1 400 *spct-a* *spct-c*)))
+         (r (fn-splan-cw-drain (fn-splan-of-effects effects) 5 1 1 1 400 *spct-a* *spct-c*)))
     (and (fn-splan-fresh-effectsp effects)
          (equal (len effects) 2)
          (fn-splan-cw-okp (fn-splan-of-effects effects))
@@ -190,8 +190,8 @@
          (old (fn-served-reply-octets
                (cdr (fn-nntp-over-range-served-cat s 3 *spct-range* nil *spct-server*
                                                    *spct-a* *spct-c*))))
-         (r1 (fn-splan-cw-drain (fn-splan-of-effects effects) 5 1 400 *spct-a* *spct-c*))
-         (r2 (fn-splan-cw-drain (fn-splan-of-effects effects) 1000 100 2 *spct-a* *spct-c*)))
+         (r1 (fn-splan-cw-drain (fn-splan-of-effects effects) 5 1 1 1 400 *spct-a* *spct-c*))
+         (r2 (fn-splan-cw-drain (fn-splan-of-effects effects) 1000 100 100 100 2 *spct-a* *spct-c*)))
     (and (natp 3)
          (fn-splan-fresh-effectsp effects)
          (fn-splan-cw-okp (fn-splan-of-effects effects))
@@ -223,7 +223,7 @@
   (declare (xargs :stobjs (fn-arena fn-cat) :verify-guards nil :measure (nfix n)))
   (if (zp n)
       p
-    (mv-let (status p2) (fn-splan-cursor-step p wl fn-arena fn-cat)
+    (mv-let (status p2) (fn-splan-cursor-step p wl wl wl fn-arena fn-cat)
       (declare (ignore status))
       (spct-quanta p2 wl (- n 1) fn-arena fn-cat))))
 
@@ -288,7 +288,7 @@
 ;; the next cursor: the one non-empty effect the window renders and consumes.
 (defthm spct-nonempty-quantum-keeps-its-reply-witness
   (let* ((p (fn-splan-of-effects (spct-effects (spct-session "fn.test") *spct-range* nil)))
-         (r (mv-nth 1 (fn-splan-cursor-step p 1 *spct-a* *spct-c*))))
+         (r (mv-nth 1 (fn-splan-cursor-step p 1 1 1 *spct-a* *spct-c*))))
     (and (equal (len (fn-splan-rest r)) 2)
          (consp (fn-srb-effect-octets (car (fn-splan-rest r))))
          (equal (fn-splan-empties r) 0)
@@ -300,7 +300,7 @@
 ;; every quantum under the owner mutex; these are the guards as the world
 ;; holds them, stobj recognizers aside: no fact about the whole catalog.  A
 ;; guard that asks fn-cat-handles-inp again fails here by name.
-(assert-event (equal (guard 'fn-splan-cursor-step t (w state)) '(natp w)))
+(assert-event (equal (guard 'fn-splan-cursor-step t (w state)) '(if (natp w) (if (natp v) (natp b) 'nil) 'nil)))
 (assert-event (equal (guard 'fn-ovw-step t (w state)) '(fn-ovw-cursorp cur)))
 (assert-event (not (member-eq 'fn-cat-handles-inp
                               (all-ffn-symbs (guard 'fn-cat-row-article t (w state)) nil))))

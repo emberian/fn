@@ -395,6 +395,7 @@
     :step fn-lst-step :stobjs (fn-cat)
     :byte-proof fn-lst-step-byte-bound
     :call-proof fn-lst-step-call-bound
+    :yield-proof fn-lst-step-yield-is-exhaustion
     :remaining (fn-lst-remaining cur fn-cat)
     :residual-proof fn-lst-step-residual))
 
