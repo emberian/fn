@@ -18,14 +18,6 @@
 ;;; and every check are the book's.
 (in-package "ACL2")
 
-(defvar *fnn-rtc-st* nil)
-
-(defun fnn-live-rtc-st ()
-  (or *fnn-rtc-st*
-      (setq *fnn-rtc-st*
-            (or (cdr (assoc 'fn-rtc-st (user-stobj-alist *the-live-state*)))
-                (fnn-fault "the runtime contract stobj is not in this image")))))
-
 (defun fnn-rtc-observation-sound-p (obs)
   (and (eq (nth 4 obs) :invp)
        (eq (nth 5 obs) :stable)

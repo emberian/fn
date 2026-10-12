@@ -484,6 +484,13 @@ return the index the bytes begin at."
   (or (cdr (assoc 'fn-dss-out (user-stobj-alist *the-live-state*)))
       (fnn-fault "the span output stobj is not in this image")))
 
+(defun fnn-live-rtc-st ()
+  "The runtime contract's one stobj (books/runtime-contract-pool.lisp
+fn-rtc-st): the host lease's pool (owner.lisp fnn-owner-lease-install-locked)
+and the developer exercise (rtc-exercise.lisp)."
+  (or (cdr (assoc 'fn-rtc-st (user-stobj-alist *the-live-state*)))
+      (fnn-fault "the runtime contract stobj is not in this image")))
+
 (defun fnn-dss-out-octets ()
   "A fresh byte vector of the span output's octets [0, fill): the window the
 render left there (books/article-stream-owner.lisp fn-asto-plan-render-window).
