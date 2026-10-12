@@ -8,8 +8,9 @@
 ; history is mixed: besides the tombstones it keeps the store's RETAINED rows,
 ; held articles (fn-held-p) and accepted-statement rows (fn-hstxa-p), whose
 ; handles point into the live arena and whose contexts were decided when they
-; were interned.  fn-orcs-predict-rows-at-is-the-fold covers only histories
-; with no retained row (fn-orcs-fold-rowsp).  A restart does not see the
+; were interned.  (The exact-rows twin over histories with no retained row,
+; fn-orcs-predict-rows-at-is-the-fold, was retired as superseded by this
+; book's keystone, coordinator 2026-10-11.)  A restart does not see the
 ; predicted rows; it replays their wire projection (fn-rows-wire-of, books/
 ; store-intern.lisp) through the fold (fn-scka-fold-at, books/
 ; store-checkpoint-fold.lisp), which re-interns every article at a fresh handle

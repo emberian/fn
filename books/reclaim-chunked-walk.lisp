@@ -167,11 +167,13 @@
 ; -----------------------------------------------------------------------------
 ; The carried invariant (R1) at init and over every step, and the step's
 ; fold as the checkpoint's resume (R2).  The cpr slot is unchanged in value:
-; the carry only skips the trie rebuild.
+; the carry only skips the trie rebuild.  The carry is stated over both of
+; fn-rcw-carry-of's answers, as fn-rcw-cpr-step branches on them (NIL: no
+; carry, the next chunk rebuilds): it is no premise the host must establish.
 
 (defthm fn-rcw-carry-of-is-carried
-  (implies (fn-rcw-carry-of r)
-           (fn-sfi-cpr-carriedp r (fn-rcw-carry-of r)))
+  (or (null (fn-rcw-carry-of r))
+      (fn-sfi-cpr-carriedp r (fn-rcw-carry-of r)))
   :hints (("Goal" :in-theory (e/d (fn-rcw-carry-of fn-sfi-cpr-carriedp)
                                   (fn-cnode-statep fn-rii-ix-of fn-sco-at fn-rii-okp)))))
 
