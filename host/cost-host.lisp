@@ -3,7 +3,6 @@
 ; claim.  FN-READER-INSTALL-RESULT is itself unaccounted: its installer is
 ; too large/has unresolved dependencies for this derivation's inliner.
 (in-package "ACL2")
-(include-book "../books/memory-run-cost")
 ; D61: the image attaches these (attach-stobj) before the generic they implement;
 ; a certified host file carries the same order in its own world (tools/host_check.py --attach-order).
 (include-book "../books/payload-arena-attach")
@@ -14,6 +13,8 @@
 (include-book "page-window-executor-host")
 (include-book "../books/output-tariff-families")
 (include-book "page-decoded-window-host")
+; The served run's memory costs (L-RUN-LAUNCH), after every attach above.
+(include-book "../books/memory-run-cost")
 ; Hosts whose entries rows below cost: fn-nco-owner-publication-word (the
 ; control host), fn-owner-cfg-capture and fn-owner-sco-count (the owner host),
 ; fn-owner-held-verdicts.  The image loads each before this file.
