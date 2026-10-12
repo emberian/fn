@@ -39,7 +39,7 @@ import unittest
 # The module, not its TestCase: a TestCase imported by name is collected and
 # run again as this module's own (the checkpoint suite ran twice here).
 from tests import test_native_checkpoint as checkpoint
-from tests.native_harness import EXIT_FAULT
+from tests.native_harness import EXIT_FAULT, EXIT_UNCERTAIN
 from tools import fixtures, native_env
 
 IMAGE = checkpoint.IMAGE
@@ -152,6 +152,43 @@ class NativePackChainTests(unittest.TestCase):
                                expected=EXIT_FAULT)
         self.assertIn("probe prepare refused", repeated.stderr)
         self.recovered(store, 3)
+        # Compaction drops segment one; its checkpoint must still select the
+        # sealed scale open, rather than a development-profile reinitialization.
+        self.assertEqual(self.compacted(
+            self.native("operator", config, "store", "compact").stdout, 3), (2, 1))
+        self.assertEqual(segments(store), ["000002.log"])
+        repeated = self.native("store", store, "probe", "3", "article",
+                               expected=EXIT_FAULT)
+        self.assertIn("probe prepare refused", repeated.stderr)
+        self.recovered(store, 3)
+
+    def test_the_probe_resumes_an_incomplete_development_init(self):
+        # Existing init EIO cuts leave config.json without generation one,
+        # without genesis, without its log segment, or after all artifacts
+        # exist but before init records the filesystem (the four late cuts).
+        cuts = (("init-config-linked", EXIT_UNCERTAIN, False, False),
+                ("init-config-history-fenced", EXIT_FAULT, True, False),
+                ("init-genesis-journal-fenced", EXIT_FAULT, True, True),
+                ("init-final-config-file-fenced", EXIT_FAULT, True, True),
+                ("init-final-config-record-file-fenced", EXIT_FAULT, True, True),
+                ("init-root-fenced", EXIT_FAULT, True, True),
+                ("init-parent-fenced", EXIT_FAULT, True, True))
+        for cut, outcome, history, genesis in cuts:
+            with self.subTest(cut=cut):
+                store = self.base / cut
+                env = dict(self.env, FN_NATIVE_INIT_FAULT=cut + ":eio")
+                self.native("store", store, "init", expected=outcome, env=env)
+                self.assertTrue((store / "config.json").is_file())
+                self.assertEqual((store / "config" / "00000001.cfg").is_file(), history)
+                self.assertEqual((store / "journal" / GENESIS).is_file(), genesis)
+                late = cut.startswith("init-final-") or cut in (
+                    "init-root-fenced", "init-parent-fenced")
+                self.assertEqual((store / "journal" / "000001.log").is_file(), late)
+                self.assertFalse((store / "filesystem-identity.fnmi").exists())
+                probe = self.native("store", store, "probe", "3", "article")
+                self.assertEqual(json.loads(probe.stdout)["status"], "passed")
+                self.assertTrue((store / "filesystem-identity.fnmi").is_file())
+                self.recovered(store, 3)
 
     def test_a_multi_unit_store_compacts_over_the_log(self):
         store, config, _ = self.scale_store("cut-base", CUT_N)
