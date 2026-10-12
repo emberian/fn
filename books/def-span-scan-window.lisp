@@ -541,3 +541,140 @@
                             fn-dsw-append-is-splice fn-dsw-puts-is-splice fn-rtc-st$ap fn-rtc-shapep
                             fn-rtc-config fn-rtc-nbufs fn-rtc-buf-cap fn-rtc-buffer fn-rtc-get
                             fn-rtc-splice-okp fn-rtc-st$a-splice)))))
+
+; Executable refinements exported for generated window instances.  The map
+; contract and list/loop equations are substituted once, just as for :copy.
+(defthmd fn-dsw-copy-exec-is-logic
+  (implies (and (fn-rtc-st$ap s) (fn-octets-p fn-octets)
+                (natp i) (natp end) (<= i end) (<= end (fn-octets-len fn-octets)))
+    (equal (if (fn-dsw-roomp h j (- end i) s)
+               (mv :done (+ j (- end i)) (fn-dsw-copy-loop h i end j fn-octets s))
+             (mv :refused j s))
+           (fn-dsw-append h j (fn-dss-copy-list (fn-oct-slice-list i end fn-octets)) s)))
+  :hints (("Goal" :in-theory (e/d (fn-dsw-append)
+                                  (fn-dsw-append-loop fn-dsw-copy-loop fn-oct-slice-list
+                                   fn-dss-copy-list fn-dsw-roomp)))))
+
+(defthmd fn-dsw-copy-string-exec-is-logic
+  (implies (and (fn-rtc-st$ap s) (stringp dss-str)
+                (natp i) (natp end) (<= i end) (<= end (length dss-str)))
+    (equal (if (fn-dsw-roomp h j (- end i) s)
+               (mv :done (+ j (- end i)) (fn-dsw-string-loop h i end j dss-str s))
+             (mv :refused j s))
+           (fn-dsw-append h j
+                          (fn-dss-copy-list (fn-oct-slice-list i end (fn-nntp-string-octets dss-str))) s)))
+  :hints (("Goal" :in-theory (e/d (fn-dsw-append)
+                                  (fn-dsw-append-loop fn-dsw-copy-loop fn-dsw-string-loop
+                                   fn-oct-slice-list fn-dss-copy-list fn-dsw-roomp)))))
+
+(defthmd fn-dsw-roomp-has-natural-position
+  (implies (fn-dsw-roomp h j m s) (natp j))
+  :rule-classes (:rewrite :forward-chaining)
+  :hints (("Goal" :use fn-dsw-roomp-position :in-theory (theory 'minimal-theory))))
+
+(defthmd fn-dsw-st-p-is-abstract-recognizer
+  (equal (fn-rtc-st-p s) (fn-rtc-st$ap s))
+  :hints (("Goal" :in-theory (enable fn-rtc-st-p))))
+
+; Generator only: no separate hand-written concrete writer. CTX precedes H;
+; O is the element in MAP, whose octet-preservation contract is discharged
+; without an execution attachment. Reuse the source generator's naming,
+; contract, list definition and functional-instance obligation machinery.
+(defmacro def-span-scan-window (name ctx &key shape (map 'o map-supplied-p))
+  (if (not (and (symbolp name) (symbol-listp ctx) (no-duplicatesp-eq ctx)
+                (not (intersectp-eq ctx (append *fn-dss-reserved* '(o h data fn-rtc-st dss-str))))
+                (member-eq shape '(:copy :copy-string))))
+      (er hard 'def-span-scan-window "Expected NAME, distinct context symbols, and :shape :copy or :copy-string.")
+    (let* ((map (or map 'o))
+           (stringp (eq shape :copy-string))
+           (source (if stringp 'dss-str 'fn-octets))
+           (stobjs (if stringp 'fn-rtc-st '(fn-octets fn-rtc-st)))
+           (lst (fn-dss-name (list name "-LIST") name))
+           (mc (fn-dss-name (list name "-MAP-OCTET") name))
+           (loop (fn-dss-name (list name "-LOOP") name))
+           (bridge (fn-dss-name (list name "-IS-SPLICE") name))
+           (refusal (fn-dss-name (list name "-REFUSES-PAST-CAPACITY") name))
+           (identity (fn-dss-name (list name "-LIST-IS-IDENTITY") name))
+           (source-bridge (fn-dss-name (list name "-IS-THE-SOURCE-SPLICE") name))
+           (generic (if stringp 'fn-dsw-copy-string 'fn-dsw-copy))
+           (generic-loop (if stringp 'fn-dsw-string-loop 'fn-dsw-copy-loop))
+           (generic-bridge (if stringp 'fn-dsw-copy-string-is-splice 'fn-dsw-copy-is-splice))
+           (generic-refusal (if stringp 'fn-dsw-copy-string-refuses-past-capacity 'fn-dsw-copy-refuses-past-capacity))
+           (exec-bridge (if stringp 'fn-dsw-copy-string-exec-is-logic 'fn-dsw-copy-exec-is-logic))
+           (read-octet (if stringp '(char-code (char dss-str i)) '(fn-octets-get i fn-octets)))
+           (span (if stringp '(fn-oct-slice-list i end (fn-nntp-string-octets dss-str))
+                   '(fn-oct-slice-list i end fn-octets)))
+           (logic-span (if stringp `(non-exec ,span) span))
+           (guard `(and ,@(and stringp '((stringp dss-str)))
+                        (natp i) (natp end) (<= i end)
+                        (<= end ,(if stringp '(length dss-str) '(fn-octets-len fn-octets)))))
+           (subst `((fn-dss-copy-f (lambda (o) ,map))
+                    (fn-dss-copy-list (lambda (xs) (,lst ,@ctx xs)))
+                    (,generic-loop (lambda (h i end j ,source fn-rtc-st)
+                                     (,loop ,@ctx h i end j ,source fn-rtc-st)))
+                    (,generic (lambda (h i end j ,source fn-rtc-st)
+                                (,name ,@ctx h i end j ,source fn-rtc-st))))))
+      `(progn
+         ,@(fn-dss-keep-named (list mc lst)
+              (fn-dss-copy-events name ctx 'o map 0 0 nil t nil nil nil))
+         (defun ,loop (,@ctx h i end j ,source fn-rtc-st)
+           (declare (xargs :stobjs ,stobjs :guard (and ,guard (natp j))
+                           :measure (nfix (- (nfix end) (nfix i)))
+                           :hints (("Goal" :in-theory (fn-dss-measure-theory)))
+                           :verify-guards nil))
+           (if (and (natp i) (natp end) (< i end))
+               (let ((fn-rtc-st (fn-rtc-st-put h j (let ((o ,read-octet)) (declare (ignorable o)) ,map)
+                                              fn-rtc-st)))
+                 (,loop ,@ctx h (+ 1 i) end (+ 1 j) ,source fn-rtc-st))
+             fn-rtc-st))
+         (defun ,name (,@ctx h i end j ,source fn-rtc-st)
+           (declare (xargs :stobjs ,stobjs :guard ,guard :verify-guards nil))
+           (mbe :logic (fn-dsw-append h j (,lst ,@ctx ,logic-span) fn-rtc-st)
+                :exec (if (fn-dsw-roomp h j (- end i) fn-rtc-st)
+                          (let ((fn-rtc-st (,loop ,@ctx h i end j ,source fn-rtc-st)))
+                            (mv :done (+ j (- end i)) fn-rtc-st))
+                        (mv :refused j fn-rtc-st))))
+         (defthm ,bridge
+           (implies (fn-rtc-st$ap s)
+             (let ((data (,lst ,@ctx ,span)))
+               (equal (,name ,@ctx h i end j ,source s)
+                      (if (fn-rtc-splice-okp h j data s)
+                          (mv :done (+ j (len data)) (fn-rtc-st$a-splice h j data s))
+                        (mv :refused j s)))))
+           :hints (("Goal" :use (,mc (:functional-instance ,generic-bridge ,@subst))
+                    :in-theory ,(fn-dss-defs-theory (list name loop lst)))))
+         (defthm ,refusal
+           (implies (and (fn-rtc-st$ap s)
+                         (< (fn-rtc-buf-cap h (fn-rtc-config s)) (+ j (len (,lst ,@ctx ,span)))))
+             (equal (,name ,@ctx h i end j ,source s) (mv :refused j s)))
+           :hints (("Goal" :use (,mc (:functional-instance ,generic-refusal ,@subst))
+                    :in-theory ,(fn-dss-defs-theory (list name loop lst)))))
+         (verify-guards ,loop)
+         (verify-guards ,name
+           :hints (("Goal" :use (,mc
+                                (:instance fn-dsw-roomp-has-natural-position
+                                           (m (- end i)) (s fn-rtc-st))
+                                (:instance (:functional-instance ,exec-bridge ,@subst) (s fn-rtc-st)))
+                    :in-theory
+                    (e/d (fn-dsw-st-p-is-abstract-recognizer)
+                         (,name ,loop ,lst ,bridge fn-dsw-roomp
+                          fn-dsw-append-is-splice fn-dsw-append fn-dsw-append-loop
+                          fn-oct-slice-list fn-dss-copy-list fn-rtc-st-p
+                          fn-rtc-st$ap fn-rtc-shapep fn-rtc-st$a-splice)))))
+         ,@(and (not map-supplied-p)
+                `((defthm ,identity
+                    (implies (true-listp xs) (equal (,lst ,@ctx xs) xs))
+                    :hints (("Goal" :in-theory (enable ,lst))))
+                  (defthm ,source-bridge
+                    (implies (fn-rtc-st$ap s)
+                      (let ((data ,span))
+                        (equal (,name ,@ctx h i end j ,source s)
+                               (if (fn-rtc-splice-okp h j data s)
+                                   (mv :done (+ j (len data)) (fn-rtc-st$a-splice h j data s))
+                                 (mv :refused j s)))))
+                    :hints (("Goal" :use ,bridge
+                             :in-theory (disable ,name fn-oct-slice-list fn-nntp-string-octets
+                                                 fn-rtc-splice-okp fn-rtc-st$a-splice))))))
+         (table fn-generated ',name
+                '(:def-span-scan-window :shape ,shape :loop ,loop :list ,lst :bridge ,bridge
+                  :refusal ,refusal))))))
