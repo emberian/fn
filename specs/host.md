@@ -1549,10 +1549,14 @@ the cgroup's `memory.max` from the process's group up and `RLIMIT_AS`, and
 `RLIMIT_DATA` (which OpenBSD's login classes set). A figure above the
 machine is refused: exit 1 (outcome class `refused`), `refused
 machine-cannot-hold-profile heap=MB MB machine=M MB` on stderr, and the
-command does not run. An accepted figure holds every store the profile
-admits with an open of the store on disk
-(`fn-heap-operation-decide-holds-the-store`,
-`fn-heap-decide-admits-every-store-the-profile-admits`). `status` and
+command does not run. Holding every store the profile admits, including
+its open from disk, remains a requirement; that universal claim is not
+proved by the current books. The command-specific run theorem
+`fn-mo-run-decide-holds-the-store-at-its-capacity` bounds the model's
+resident and reopen terms for the supplied totals at the admitted connection
+capacity, while `fn-heap-operation-decide-holds-the-operation` bounds the
+listed offline verbs' transient parts. Neither establishes the former
+universal store claim. `status` and
 `health` end with `heap=MB MB profile=WORD machine=M MB stack=KB KB
 threads=N`, the reservation the launcher's probe makes for the store's next
 `run` over the store on disk (books/heap-reservation.lisp
