@@ -31,7 +31,7 @@
 # On the box, under BASE/NAME/native-LABEL/ (NAME is the lane: the
 # basename of this worktree, or --name), it
 #   1. installs the default profile's closure from /tank/fn/certcache and
-#      certifies the rest under swarm-build (a lane's changed books);
+#      plans the rest, certifying under swarm-build only with --allow-certify;
 #   2. acquires and validates the image's artifact set (tools/proof_artifacts.py;
 #      the dtn profile too when a DTN image is asked);
 #   3. builds the requested images under swarm-build
@@ -48,10 +48,10 @@
 #      lacked books the profiling entry's world loads (served-columns,
 #      native-n1: outcome-class, replay, node).  Build it here, in the run
 #      that certifies, not by hand in a copied tree;
-#   4. runs each MODULE (a --mem of 48G or more waits on one box-wide flock,
+#   4. runs each MODULE (a MemoryMax of 40G or more waits on one box-wide flock,
 #      /tank/fn/scratch/.hbox-native-bigmem.lock, so two such scopes never
-#      overlap) under systemd-run --user --scope -p MemoryMax (24G by
-#      default, --mem; a served-read measurement through
+#      overlap) under systemd-run --user --scope -p MemoryMax (the module's
+#      NATIVE_MEMORY, else 24G; --mem overrides it; a served-read measurement through
 #      tools/fundamentals/sr_measure.py or served_ab.sh needs 40G: at 24G the
 #      owner refuses its connections, connections-exceed-memory), against
 #      the box's shipped OpenSSL 3.5.8 (FN_OPENSSL_PREFIX, D64), with every
@@ -93,10 +93,20 @@
 #   tools/hbox_native.sh attach LABEL   re-attaches: waits for `status`
 #                                        (tools/wait_for.sh, --deadline S),
 #                                        prints the run log, exits with status
+#   tools/hbox_native.sh stop LABEL     TERM the recorded process group only
+#                                        after checking its leader and run.sh
 #
 # from any later session.  --wait keeps the old behaviour (start, then attach
 # at once; start it with run_in_background).  --detach is accepted and is the
-# default.  The box run survives a dropped ssh (nohup).
+# default.  The box run survives a dropped ssh (nohup, its own setsid group).
+# Records name pgid and the same pid for older readers; status/attach use pgid.
+# --allow-certify permits missing-book and certify-origin closure certification.
+# Without it, either plan needing books finishes with status 16 (certify refused).
+# hbox_native does not coordinate with farm runs: farm locks are per mirror.
+# Lanes should certify through python3 tools/farm.py submit BOX --affected-by ...
+# first, publishing to the cache, then rerun native; coordinate any allowed certify.
+# --mem SIZE explicitly overrides each module's NATIVE_MEMORY (default 24G).
+# Modules with MemoryMax >=40G hold the box-wide native bigmem flock.
 #
 # Options: --box hbox|persvati|auto (above), --name NAME, --label LABEL, --images LIST, --mem SIZE,
 # --image-acl2 PATH (the ACL2 wrapper the IMAGES are built with; certification
@@ -162,6 +172,7 @@ if [ -z "${FN_HBOX_NATIVE_COPY:-}" ]; then
         "$FN_HBOX_NATIVE_HERE/tools/boxes.sh" "$FN_HBOX_NATIVE_HERE/tools/image_set.py" \
         "$FN_HBOX_NATIVE_HERE/tools/native_box.sh" "$FN_HBOX_NATIVE_HERE/tools/native_overlay.py" \
         "$FN_HBOX_NATIVE_HERE/tools/native_reuse.py" \
+        "$FN_HBOX_NATIVE_HERE/tools/native_certify_plan.py" \
         "$FN_HBOX_NATIVE_COPY/" || exit 3
     export FN_HBOX_NATIVE_COPY FN_HBOX_NATIVE_HERE
     exec sh "$FN_HBOX_NATIVE_COPY/hbox_native.sh" "$@"
@@ -172,7 +183,8 @@ BOX=${FN_HBOX:-auto}
 NAME=$(basename "$HERE")
 LABEL=
 IMAGES=developer
-MEM=24G
+MEM=
+ALLOW_CERTIFY=
 IMAGE_ACL2=/tank/fn/toolchains/w28/acl2-literal-4g-tls64k
 JOBS=auto
 MODULE_JOBS=1
@@ -192,22 +204,46 @@ REUSE=
 OVERLAY=
 FROM_TRAIN=
 usage() { sed -n '2,/^set -eu/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//' >&2; exit 2; }
-# status / attach LABEL: read the record this worktree's start wrote.
+# status / attach / stop LABEL: read the record this worktree's start wrote.
 attach_run() {
     record=$HERE/build/hbox-native/$2.run
     case $2 in ''|*[!A-Za-z0-9._-]*) echo "hbox_native: $1 takes the run's LABEL" >&2; exit 2 ;; esac
     [ -f "$record" ] || { echo "hbox_native: no record $record (runs started here: $(ls "$HERE/build/hbox-native" 2>/dev/null | sed 's/\.run$//' | tr '\n' ' '))" >&2; exit 2; }
     HOST=$(sed -n 's/^box=//p' "$record")
     S=$(sed -n 's/^dir=//p' "$record")
-    PID=$(sed -n 's/^pid=//p' "$record")
+    PID=$(sed -n 's/^pgid=//p' "$record")
+    PROBE=-$PID
+    if [ -z "$PID" ]; then
+        PID=$(sed -n 's/^pid=//p' "$record")
+        PROBE=$PID  # old launchers did not create a group of their own
+    fi
     [ -n "$HOST" ] && [ -n "$S" ] || { echo "hbox_native: $record names no box or dir" >&2; exit 2; }
+    case $PID in ''|*[!0-9]*|0|1) echo "hbox_native: $record names no safe process group" >&2; exit 2 ;; esac
+    case $S in /*) ;; *) echo "hbox_native: bad run directory in $record" >&2; exit 2 ;; esac
+    case $S in *[!A-Za-z0-9_./-]*) echo "hbox_native: bad run directory in $record" >&2; exit 2 ;; esac
+    if [ "$1" = stop ]; then
+        ssh -n "$HOST" "
+set -- \$(ps -p '$PID' -o pid= -o pgid=)
+if [ \"\$#\" -ne 2 ] || [ \"\$1\" != '$PID' ] || [ \"\$2\" != '$PID' ]; then
+    echo 'hbox_native: refused stop: pgid $PID is absent or is not a group leader' >&2; exit 2
+fi
+cmd=\$(ps -p '$PID' -o args=)
+if [ \"\$cmd\" != 'sh $S/run.sh' ] && [ \"\$cmd\" != '/bin/sh $S/run.sh' ]; then
+    echo 'hbox_native: refused stop: pgid $PID command line does not name this run: $S/run.sh' >&2; exit 2
+fi
+/bin/kill -0 -- -$PID 2>/dev/null || { echo 'hbox_native: refused stop: pgid $PID no longer exists' >&2; exit 2; }
+/bin/kill -TERM -- -$PID && echo 'hbox_native: sent TERM to pgid $PID ($S/run.sh)'
+"
+        exit $?
+    fi
     if [ "$1" = status ]; then
         cat "$record"
-        ssh -n "$HOST" "if [ -n '$PID' ] && kill -0 '$PID' 2>/dev/null; then echo 'pid $PID: running'; else echo 'pid ${PID:-?}: not running'; fi; if [ -f $S/status ]; then echo \"status \$(cat $S/status)\"; else echo 'status: none yet'; fi; tail -n 12 $S/run.log 2>/dev/null"
+        ssh -n "$HOST" "if /bin/kill -0 -- $PROBE 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi; if [ -f $S/status ]; then echo \"status \$(cat $S/status)\"; else echo 'status: none yet'; fi; tail -n 12 $S/run.log 2>/dev/null"
         exit $?
     fi
     DEADLINE=${3:-$DEADLINE}
-    echo "hbox_native: attached to $HOST:$S (pid ${PID:-?})"
+    echo "hbox_native: attached to $HOST:$S (pgid $PID)"
+    ssh -n "$HOST" "if /bin/kill -0 -- $PROBE 2>/dev/null; then echo 'pgid $PID: running'; else echo 'pgid $PID: not running'; fi"
     set +e
     sh "$FN_HBOX_NATIVE_COPY/wait_for.sh" --host "$HOST" --deadline "$DEADLINE" --interval 30 --file "$S/status" >/dev/null
     waited=$?
@@ -222,7 +258,7 @@ attach_run() {
     exit "$status"
 }
 case ${1:-} in
-    status|attach)
+    status|attach|stop)
         [ $# -ge 2 ] || usage
         case ${3:-} in --deadline) set -- "$1" "$2" "${4:?--deadline S}" ;; '') ;; *) usage ;; esac
         attach_run "$@" ;;
@@ -233,6 +269,7 @@ while [ $# -gt 0 ]; do
         --label) LABEL=$2; shift 2 ;;
         --images) IMAGES=$2; IMAGES_GIVEN=1; shift 2 ;;
         --mem) MEM=$2; shift 2 ;;
+        --allow-certify) ALLOW_CERTIFY=--allow-certify; shift ;;
         --jobs)
             case $2 in ''|*[!0-9]*|0) echo "hbox_native: --jobs takes a positive integer" >&2; exit 2 ;; esac
             MODULE_JOBS=$2; shift 2 ;;
@@ -371,6 +408,11 @@ ENVARGS=
 for assignment in $ENVS; do ENVARGS="$ENVARGS --env $assignment"; done
 if [ -n "$BUILD_ONLY" ]; then PLAN=
 else PLAN=$(python3 "$HERE/tools/native_env.py" plan --images "$IMAGES" $ENVARGS $ALLOW_SKIPS "$@") || exit 2; fi
+if [ -n "$MEM" ]; then
+    PLAN=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-plan --memory-override "$MEM") || exit 2
+else
+    PLAN=$(printf '%s\n' "$PLAN" | python3 "$HERE/tools/test_budget.py" --memory-plan) || exit 2
+fi
 if [ "$REV" = . ]; then
     # The image's declared source: HEAD, marked +dirty for uncommitted edits
     # (before 2026-09-27 FN_NATIVE_IMAGE_SOURCE_SHA was the literal ".").
@@ -628,6 +670,14 @@ BOX
             cat <<BOX
 toolchain=\$(python3 tools/acl2_toolchain.py identity "\$ACL2") || finish 14
 step install python3 tools/certs.py --cache \$CACHE --toolchain-identity "\$toolchain" --acl2 "\$ACL2" install-partial \$(cat \$L/roots.txt)
+# Prints "== certify plan: N books to certify of M in the roots' closure";
+# refuses with status 16 without --allow-certify before either certify step.
+certify_plan() {
+    python3 \$S/bin/native_certify_plan.py --tree "\$T" --mode "\$1" --toolchain-identity "\$toolchain" --acl2 "\$ACL2" --box $BOX $ALLOW_CERTIFY \$(cat \$L/roots.txt)
+    rc=\$?
+    [ \$rc -eq 0 ] || finish \$rc
+}
+certify_plan incremental
 step certify $WRAP python3 tools/certify_books.py --incremental --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
 # The wire grammar is a box artifact (tools/box_artifacts.py: build/box/,
 # never committed), absent from a shipped tree: made here from the certified
@@ -654,6 +704,7 @@ acquire_step() {
     echo "   \$name exit \$rc (\$L/\$name.log)"
     if [ \$rc -eq 3 ] && [ \$ORIGIN_DONE -eq 0 ]; then
         ORIGIN_DONE=1
+        certify_plan closure
         echo "   \$name: no complete single-origin set in the cache; certifying the roots' closure in this tree (one coherent origin), then acquiring once more"
         mv \$L/\$name.log \$L/\$name-first.log
         step certify-origin $WRAP python3 tools/certify_books.py --closure --images ${FN_CERT_IMAGES:-on} --jobs $JOBS --timeout-seconds 900 \$(cat \$L/roots.txt)
@@ -805,21 +856,17 @@ BOX
     for assignment in $ENVS; do
         echo "export $assignment"
     done
-    echo "$PLAN" | while read -r module assignments; do
+    echo "$PLAN" | while read -r module module_mem module_bigmem assignments; do
+        [ -n "$module" ] || continue
         for assignment in $assignments; do
             case ${assignment#*=} in
                 '$T/build/fn-host'*) echo "need $module ${assignment%%=*} ${assignment#*=}" ;;
             esac
         done
     done
-    # A scope of 48G or more waits for every other such scope on the box
+    # A scope of 40G or more waits for every other such scope on the box
     # (one flock, held for the module): two 80G open_depth runs collided on
     # hbox's 123 GiB (2026-09-28).  Smaller scopes run as before.
-    BIGMEM=
-    case ${MEM%G} in
-        ''|*[!0-9]*) ;;
-        *) [ "${MEM%G}" -ge 48 ] && BIGMEM="flock $BASE/.hbox-native-bigmem.lock" ;;
-    esac
     # The modules run from $S/module.sh, one process per module, --jobs at
     # a time (xargs -P; 1 keeps the old serial order).  Each writes its exit
     # code to $S/rc/test-MODULE and prints its verdict as one line when it
@@ -864,7 +911,7 @@ tcached() {
 }
 tstep() {
     name=$1; shift
-    echo "== $name $(date -u +%H:%M:%SZ) load $(cut -d' ' -f1-3 /proc/loadavg)"
+    echo "== $name $(date -u +%H:%M:%SZ) MemoryMax=$FN_NATIVE_MEMORY load $(cut -d' ' -f1-3 /proc/loadavg)"
     # A failed test's processes' stderr lands in $L/stderr/$name (and its
     # digest in the module log after the failure): tools/test_budget.py.
     FN_NATIVE_STDERR_DIR=$L/stderr/$name FN_NATIVE_MODULE_LOG=$L/$name.log "$@" > $L/$name.log 2>&1
@@ -881,12 +928,16 @@ tstep() {
 case $1 in
 MOD
     i=0
-    echo "$PLAN" | while read -r module assignments; do
+    echo "$PLAN" | while read -r module module_mem module_bigmem assignments; do
+        [ -n "$module" ] || continue
         i=$((i+1))
+        BIGMEM=
+        [ "$module_bigmem" != 1 ] || BIGMEM="flock $BASE/.hbox-native-bigmem.lock"
         cat <<BOX
 $i)
+export FN_NATIVE_MEMORY=$module_mem
 tcached test-$module $module $assignments ||
-tstep test-$module $BIGMEM env $assignments systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$MEM -p MemorySwapMax=0 -- sh -c "echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module \$CASES"
+tstep test-$module $BIGMEM env $assignments systemd-run --user --scope --quiet --slice=swarm.slice -p MemoryMax=$module_mem -p MemorySwapMax=0 -- sh -c "echo 0 > /proc/self/oom_score_adj 2>/dev/null; exec python3 tools/test_budget.py --one $module \$CASES"
 ;;
 BOX
     done
@@ -897,7 +948,7 @@ BOX
     echo "echo \"== modules: $count, $MODULE_JOBS at a time\""
     echo "seq 1 $count | xargs -P $MODULE_JOBS -n 1 sh \$S/module.sh"
     echo 'failed=0 passed=0 skipped=0 broke=0'
-    echo "for name in $(echo "$PLAN" | while read -r module assignments; do printf 'test-%s ' "$module"; done); do"
+    echo "for name in $(echo "$PLAN" | while read -r module module_mem module_bigmem assignments; do printf 'test-%s ' "$module"; done); do"
     cat <<'BOX'
     rc=$(cat $S/rc/$name 2>/dev/null || echo 125)
     case $rc in 0) passed=$((passed+1)) ;; 4) skipped=$((skipped+1)) ;; *) broke=$((broke+1)) ;; esac
@@ -1024,6 +1075,7 @@ else
 fi
 fi
 box_script "$@" | ssh "$HOST" "cat > $S/run.sh" || exit 3
+ssh "$HOST" "mkdir -p $S/bin && cat > $S/bin/native_certify_plan.py" < "$FN_HBOX_NATIVE_COPY/native_certify_plan.py" || exit 3
 if [ -n "$IMAGE_SET" ] || [ -n "$REUSE" ]; then
     ssh "$HOST" "mkdir -p $S/bin && cat > $S/bin/image_set.py" < "$FN_HBOX_NATIVE_COPY/image_set.py" || exit 3
 fi
@@ -1032,15 +1084,18 @@ if [ -n "$OVERLAY" ]; then
     tar -C "$OVERLAY_DIR" -cf - . | ssh "$HOST" "tar -xf - -C $S/overlay" || exit 3
     ssh "$HOST" "cat > $S/bin/native_overlay.py" < "$FN_HBOX_NATIVE_COPY/native_overlay.py" || exit 3
 fi
-PID=$(ssh -n "$HOST" "rm -f $S/status; nohup sh $S/run.sh > $S/run.log 2>&1 < /dev/null & echo \$!") || exit 3
+ssh -n "$HOST" "rm -f $S/status $S/run.pid; nohup setsid sh -c 'echo \$\$ > $S/run.pid || exit 3; exec sh $S/run.sh' > $S/run.log 2>&1 < /dev/null &" || exit 3
+# Read the leader's own file in a second ssh, never the ssh wrapper's $!.
+PID=$(ssh -n "$HOST" "remaining=5; while [ ! -s $S/run.pid ] && [ \"\$remaining\" -gt 0 ]; do sleep 1; remaining=\$((remaining - 1)); done; cat $S/run.pid") || exit 3
+case $PID in ''|*[!0-9]*|0|1) echo "hbox_native: box run wrote no safe leader PID ($S/run.pid)" >&2; exit 3 ;; esac
 echo "hbox_native: started; progress in $HOST:$S/run.log"
 [ -z "$REUSE_LINKED" ] || ssh -n "$HOST" "python3 $S/bin/native_reuse.py claim --root $REUSE_TREE --owner $S --pid $PID" >/dev/null 2>&1 || true
 # The record here names the box (item 67): status and re-attach read it.
 mkdir -p "$HERE/build/hbox-native"
-printf 'box=%s\ndir=%s\npid=%s\nlog=%s\nstatus=%s\nsource=%s\ntree=%s\n' "$HOST" "$S" "$PID" "$S/run.log" "$S/status" "$RECORD_SOURCE" "$TREE_ID" \
+printf 'box=%s\ndir=%s\npid=%s\npgid=%s\nlog=%s\nstatus=%s\nsource=%s\ntree=%s\n' "$HOST" "$S" "$PID" "$PID" "$S/run.log" "$S/status" "$RECORD_SOURCE" "$TREE_ID" \
     > "$HERE/build/hbox-native/$LABEL.run"
 if [ $DETACH -eq 1 ]; then
-    echo "hbox_native: detached (pid $PID on $HOST); re-attach with: tools/hbox_native.sh attach $LABEL   (status: tools/hbox_native.sh status $LABEL)"
+    echo "hbox_native: detached (pgid $PID on $HOST); re-attach with: tools/hbox_native.sh attach $LABEL   (status: tools/hbox_native.sh status $LABEL)"
     exit 0
 fi
 attach_run attach "$LABEL"

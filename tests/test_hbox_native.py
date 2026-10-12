@@ -27,6 +27,46 @@ def image_lines(out):
 
 
 class HboxNativeDryRunTests(unittest.TestCase):
+    def test_modules_choose_their_own_units_and_override_is_visible(self):
+        modules = ["tests.test_native_pack_chain", "tests.test_native_bounds_join",
+                   "tests.test_native_heap_from_profile", "tests.test_native_owner"]
+        answer = dry("--box", "hbox", "--allow-skips", "--images", "developer,production",
+                     "--jobs", "3", "HEAD", *modules)
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        steps = [line for line in answer.stdout.splitlines() if line.startswith("tstep test-")]
+        for module, unit, big in zip(modules, ("48G", "40G", "2G", "24G"), (True, True, False, False)):
+            line = next(line for line in steps if "test-" + module + " " in line)
+            self.assertIn("MemoryMax=" + unit, line)
+            self.assertEqual("flock /tank/fn/scratch/.hbox-native-bigmem.lock env" in line, big)
+            self.assertIn("export FN_NATIVE_MEMORY=" + unit, answer.stdout)
+        self.assertIn("MemoryMax=$FN_NATIVE_MEMORY", answer.stdout)
+        self.assertIn("xargs -P 3", answer.stdout)
+        overridden = dry("--box", "hbox", "--allow-skips", "--images", "developer,production",
+                         "--mem", "40960M", "HEAD", *modules)
+        self.assertEqual(overridden.returncode, 0, overridden.stderr)
+        for module, unit in zip(modules, ("48G", "40G", "2G", "24G")):
+            self.assertIn(f"{module} memory override {unit} -> 40960M", overridden.stderr)
+        for line in overridden.stdout.splitlines():
+            if line.startswith("tstep test-"):
+                self.assertIn("MemoryMax=40960M", line)
+                self.assertIn(".hbox-native-bigmem.lock", line)
+        invalid = dry("--mem", "48G;touch x", "HEAD", "tests.test_native_owner")
+        self.assertEqual(invalid.returncode, 2)
+
+    def test_both_certify_steps_are_guarded_and_opt_in_is_in_the_script(self):
+        answer = dry("--box", "hbox", "HEAD", "tests.test_native_owner")
+        self.assertEqual(answer.returncode, 0, answer.stderr)
+        text = answer.stdout
+        self.assertIn("== certify plan: N books to certify of M in the roots' closure", text)
+        self.assertIn("[ $rc -eq 0 ] || finish $rc", text)
+        self.assertLess(text.index("certify_plan incremental"), text.index("step certify "))
+        self.assertLess(text.index("certify_plan closure"), text.index("step certify-origin "))
+        self.assertNotIn("--box hbox --allow-certify", text)
+        allowed = dry("--box", "hbox", "--allow-certify", "HEAD", "tests.test_native_owner")
+        self.assertIn("--box hbox --allow-certify", allowed.stdout)
+        # The scope ruling excludes any new coordination lock or farm wait.
+        self.assertNotIn("FN_FARM_RUN_LOCK_FD", text)
+
     def test_reader_index_runs_against_the_integrated_image(self):
         answer = dry("--box", "persvati", "--images", "developer,production", "HEAD",
                      "tests.test_native_reader_index")
@@ -79,7 +119,7 @@ class HboxNativeDryRunTests(unittest.TestCase):
     def test_acquire_without_a_complete_origin_certifies_the_closure_once_and_retries(self):
         import re
         import tempfile
-        answer = dry("--box", "hbox", "--images", "developer,production,dtn-developer", "HEAD",
+        answer = dry("--box", "hbox", "--allow-certify", "--images", "developer,production,dtn-developer", "HEAD",
                      "tests.test_native_log")
         self.assertEqual(answer.returncode, 0, answer.stderr)
         out = answer.stdout
@@ -87,17 +127,21 @@ class HboxNativeDryRunTests(unittest.TestCase):
         self.assertIn("acquire_step acquire-dtn dtn", out)
         self.assertLess(out.index("step certify "), out.index("acquire_step acquire default"))
         function = re.search(r"^ORIGIN_DONE=0\nacquire_step\(\) \{.*?^\}\n", out, re.S | re.M).group(0)
+        guard = re.search(r"^certify_plan\(\) \{.*?^\}\n", out, re.S | re.M).group(0)
         # The decision, run against stubs: python3 acquire exits 3
         # (proof_artifacts.NO_SET: no complete installable set) until
         # certify-origin has run; every call is logged.  An ACL2 load that
         # rejected a set exits 1 and must not trigger the closure certify.
         harness = """
-T=. L=$PWD/logs CACHE=c ACL2=a
+S=. T=. L=$PWD/logs CACHE=c ACL2=a toolchain=identity
 mkdir -p $L; echo books/x > $L/roots.txt
 finish() { echo "FINISH $1"; exit $1; }
 step() { name=$1; shift; echo "STEP $name $*"; touch $L/certified; }
 python3() {
     case "$*" in
+      *native_certify_plan.py*)
+          echo "== certify plan: 1 books to certify of 1 in the roots' closure"
+          case "$*" in *--allow-certify*) return 0;; *) echo "refused closure certify"; return 16;; esac;;
       *acquire*) echo "ACQ $*" >> $L/calls
           if [ "$MODE" = rejected ]; then echo "profile=default result=no complete current artifact set passed an ACL2 load rejected=1"; return 1; fi
           if [ "$MODE" = fast ] || [ -f $L/certified ] && [ "$MODE" != stillred ]; then echo ok; return 0; fi
@@ -105,14 +149,15 @@ python3() {
       *loadfail*) return 1;;
     esac
 }
-""" + function + """
+""" + guard + function + """
 acquire_step acquire default
 acquire_step acquire-dtn dtn
 echo REACHED
 """
-        def run(mode):
+        def run(mode, allow=True):
             with tempfile.TemporaryDirectory() as d:
-                done = subprocess.run(["sh", "-c", harness], cwd=d, capture_output=True, text=True,
+                script = harness if allow else harness.replace(" --allow-certify ", " ")
+                done = subprocess.run(["sh", "-c", script], cwd=d, capture_output=True, text=True,
                                       env={**os.environ, "MODE": mode}, timeout=30)
                 calls = Path(d, "logs", "calls").read_text().count("ACQ")
                 return done, calls
@@ -132,6 +177,11 @@ echo REACHED
         self.assertEqual(calls, 2)
         done, calls = run("rejected")
         self.assertIn("FINISH 1", done.stdout)
+        self.assertNotIn("STEP certify-origin", done.stdout)
+        self.assertEqual(calls, 1)
+        done, calls = run("red-until-certified", allow=False)
+        self.assertEqual(done.returncode, 16, done.stdout + done.stderr)
+        self.assertIn("FINISH 16", done.stdout)
         self.assertNotIn("STEP certify-origin", done.stdout)
         self.assertEqual(calls, 1)
 
@@ -287,7 +337,7 @@ echo REACHED
             log = Path(directory) / "calls"
             for tool in ("ssh", "rsync"):
                 stub = Path(directory) / tool
-                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncat > /dev/null\nexit 0\n'
+                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *"remaining=5"*) echo 4242;; esac\ncat > /dev/null\nexit 0\n'
                                 % (tool, log))
                 stub.chmod(0o755)
             env = {**os.environ, "PATH": f"{directory}:{os.environ['PATH']}"}
@@ -690,6 +740,7 @@ class IdentityTests(unittest.TestCase):
         shutil.copy(ROOT / "tools" / "image_set.py", tree / "tools" / "image_set.py")
         shutil.copy(ROOT / "tools" / "native_overlay.py", tree / "tools" / "native_overlay.py")
         shutil.copy(ROOT / "tools" / "native_reuse.py", tree / "tools" / "native_reuse.py")
+        shutil.copy(ROOT / "tools" / "native_certify_plan.py", tree / "tools" / "native_certify_plan.py")
         env = {k: v for k, v in os.environ.items() if not k.startswith("FN_HBOX_NATIVE_")}
         probe = subprocess.run(["sh", str(tree / "tools" / "hbox_native.sh")], cwd=ROOT,
                                capture_output=True, text=True, timeout=30, env=env)
@@ -953,7 +1004,7 @@ class DetachedByDefaultTests(unittest.TestCase):
             log = Path(directory) / "calls"
             for tool in ("ssh", "rsync"):
                 stub = Path(directory) / tool
-                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *nohup*) echo 4242 ;; '
+                stub.write_text('#!/bin/sh\necho "%s $*" >> %s\ncase "$*" in *"remaining=5"*) echo 4242 ;; '
                                 'esac\ncat > /dev/null\nexit 0\n'
                                 % (tool, log))
                 stub.chmod(0o755)
@@ -970,6 +1021,10 @@ class DetachedByDefaultTests(unittest.TestCase):
             fields = dict(line.split("=", 1) for line in record.read_text().splitlines())
             self.assertEqual(fields["box"], "hbox")
             self.assertEqual(fields["pid"], "4242")
+            self.assertEqual(fields["pgid"], "4242")
+            commands = log.read_text()
+            self.assertIn("nohup setsid sh -c", commands)
+            self.assertIn(f"echo $$ > {fields['dir']}/run.pid || exit 3; exec sh {fields['dir']}/run.sh", commands)
             self.assertEqual(fields["dir"], f"/tank/fn/scratch/t/native-{label}")
             self.assertEqual(fields["log"], fields["dir"] + "/run.log")
             # No wait_for poll happened: the start did not attach.
@@ -979,7 +1034,7 @@ class DetachedByDefaultTests(unittest.TestCase):
                                     stdin=subprocess.DEVNULL)
             self.assertEqual(status.returncode, 0, status.stderr)
             self.assertIn("pid=4242", status.stdout)
-            self.assertIn("kill -0 '4242'", log.read_text())
+            self.assertIn("/bin/kill -0 -- -4242", log.read_text())
 
     def test_a_reused_run_records_the_source_its_images_were_built_from(self):
         import os
@@ -989,7 +1044,7 @@ class DetachedByDefaultTests(unittest.TestCase):
             with tempfile.TemporaryDirectory() as directory:
                 for tool in ("ssh", "rsync"):
                     stub = Path(directory) / tool
-                    stub.write_text('#!/bin/sh\ncase "$*" in *nohup*) echo 4242 ;; '
+                    stub.write_text('#!/bin/sh\ncase "$*" in *"remaining=5"*) echo 4242 ;; '
                                     '*run.log*) printf "%%s\\n" "== load 1" %r ;; esac\n'
                                     'cat > /dev/null\nexit 0\n' % log_line)
                     stub.chmod(0o755)
@@ -1019,6 +1074,110 @@ class DetachedByDefaultTests(unittest.TestCase):
         self.assertIn("no-such-label.run", answer.stderr)
         # --wait keeps the old attach-at-once behaviour; the dry run takes it.
         self.assertEqual(dry("--wait", "HEAD", "tests.test_native_owner").returncode, 0)
+
+
+class NativeCertifyPlanTests(unittest.TestCase):
+    def test_fake_planner_counts_only_misses_and_closure_refuses_even_with_full_cache(self):
+        import tempfile
+        helper = ROOT / "tools/native_certify_plan.py"
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tools").mkdir()
+            (root / "tools/certify_books.py").write_text('''
+import os
+from types import SimpleNamespace
+def with_dependencies(roots):
+    assert roots == ["books/root"]
+    return ["books/base", "books/miss", "books/root"]
+def install_from_cache(roots, toolchain, acl2):
+    assert roots == ["books/root"] and toolchain == "identity"
+    assert str(acl2) == "/fake/acl2"
+    installed = ["books/base", "books/root"]
+    if os.environ.get("FULL_CACHE") == "1": installed.append("books/miss")
+    return SimpleNamespace(installed_from=dict.fromkeys(installed, "cache"))
+''')
+            def run(mode, allow=False, full=False):
+                return subprocess.run([sys.executable, str(helper), "--tree", str(root),
+                    "--mode", mode, "--box", "hbox", "--toolchain-identity", "identity",
+                    "--acl2", "/fake/acl2", *( ["--allow-certify"] if allow else []), "books/root"],
+                    capture_output=True, text=True, timeout=30,
+                    env={**os.environ, "FULL_CACHE": str(int(full))})
+            refused = run("incremental")
+            self.assertEqual(refused.returncode, 16, refused.stderr)
+            self.assertIn("1 books to certify of 3", refused.stdout)
+            self.assertIn("first: books/miss", refused.stdout)
+            self.assertIn("python3 tools/farm.py submit hbox --affected-by ...", refused.stdout)
+            self.assertIn("--allow-certify", refused.stdout)
+            self.assertEqual(run("incremental", allow=True).returncode, 0)
+            cached = run("incremental", full=True)
+            self.assertEqual(cached.returncode, 0, cached.stderr)
+            self.assertIn("0 books to certify of 3", cached.stdout)
+            closure = run("closure", full=True)
+            self.assertEqual(closure.returncode, 16)
+            self.assertIn("3 books to certify of 3", closure.stdout)
+            self.assertIn("first: books/base, books/miss, books/root", closure.stdout)
+            self.assertEqual(run("closure", allow=True, full=True).returncode, 0)
+
+    def test_plan_failure_refuses_instead_of_certifying(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "tools").mkdir()
+            (root / "tools/certify_books.py").write_text(
+                'def with_dependencies(roots): raise ValueError("cannot read closure")\n')
+            result = subprocess.run([sys.executable, str(ROOT / "tools/native_certify_plan.py"),
+                "--tree", str(root), "--mode", "closure", "--box", "hbox",
+                "--toolchain-identity", "identity", "--acl2", "/fake/acl2", "books/root"],
+                capture_output=True, text=True, timeout=30)
+            self.assertEqual(result.returncode, 2)
+            self.assertIn("cannot read closure", result.stderr)
+
+
+class NativeStopTests(unittest.TestCase):
+    def test_stop_requires_leader_and_exact_run_command_and_uses_recorded_group(self):
+        import tempfile
+        import shlex
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            command = root / "command"
+            ssh = root / "ssh"
+            ssh.write_text('#!/bin/sh\nshift 2\nprintf "%s" "$1" > ' + shlex.quote(str(command)) + '\n')
+            ssh.chmod(0o755)
+            label = f"stop-unit-{os.getpid()}"
+            record = ROOT / "build/hbox-native" / (label + ".run")
+            record.parent.mkdir(parents=True, exist_ok=True)
+            self.addCleanup(lambda: record.unlink(missing_ok=True))
+            record.write_text("box=hbox\ndir=/tmp/native-owned\npid=9999\npgid=4242\n")
+            env = {**os.environ, "PATH": str(root) + os.pathsep + os.environ["PATH"]}
+            request = subprocess.run(["sh", str(SCRIPT), "stop", label], cwd=ROOT, env=env,
+                                     capture_output=True, text=True, timeout=30)
+            self.assertEqual(request.returncode, 0, request.stderr)
+            script = command.read_text()
+            self.assertIn("/bin/kill -TERM -- -4242", script)
+            self.assertNotIn("9999", script)
+            # Execute the remote decision with fake ps and kill. No signal is sent.
+            for identity, args, expected in (("4242 12", "sh /tmp/native-owned/run.sh", "not a group leader"),
+                    ("", "", "absent"), ("4242 4242", "sh /tmp/stranger/run.sh", "command line"),
+                    ("4242 4242", "sh /tmp/native-owned/run.sh.extra", "command line"),
+                    ("4242 4242", "sh /tmp/native-owned/run.sh", "sent TERM")):
+                harness = ("ps() { case \"$*\" in *args=*) echo " + shlex.quote(args) +
+                    ";; *) echo " + shlex.quote(identity) + ";; esac; }\n"
+                    "mock_kill() { echo SIGNAL \"$*\"; return 0; }\n" +
+                    script.replace("/bin/kill", "mock_kill"))
+                result = subprocess.run(["sh", "-c", harness], capture_output=True, text=True, timeout=30)
+                self.assertIn(expected, result.stdout + result.stderr)
+                if expected != "sent TERM":
+                    self.assertEqual(result.returncode, 2)
+                    self.assertNotIn("SIGNAL", result.stdout)
+                else:
+                    self.assertEqual(result.returncode, 0)
+                    self.assertIn("SIGNAL -TERM -- -4242", result.stdout)
+            # Old records retain the PID fallback for status, attach and stop.
+            record.write_text("box=hbox\ndir=/tmp/native-owned\npid=4242\n")
+            request = subprocess.run(["sh", str(SCRIPT), "status", label], cwd=ROOT, env=env,
+                                     capture_output=True, text=True, timeout=30)
+            self.assertEqual(request.returncode, 0, request.stderr)
+            self.assertIn("/bin/kill -0 -- 4242", command.read_text())
 
 
 class HelperImageUseTests(unittest.TestCase):
