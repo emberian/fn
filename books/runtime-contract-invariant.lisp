@@ -452,9 +452,9 @@
       (and (eq (fn-rtc-get 0 (car uses)) :opened) (fn-rtc-all-opened-p (cdr uses)))
     t))
 
-(defthm fn-rtc-all-opened-no-kind-out
+(local (defthm fn-rtc-all-opened-no-kind-out
   (implies (and (fn-rtc-all-opened-p uses) (not (equal kind :opened)))
-           (not (fn-rtc-kind-out-p kind id inc uses))))
+           (not (fn-rtc-kind-out-p kind id inc uses)))))
 
 (defthm fn-rtc-all-opened-no-oldest-wait
   (implies (fn-rtc-all-opened-p uses) (not (fn-rtc-oldest-wait uses))))
@@ -506,10 +506,10 @@
                       (:executable-counterpart not)))
            :use fn-rtc-statics-okp-slot)))
 
-(defthm fn-rtc-opened-clear-first
+(local (defthm fn-rtc-opened-clear-first
   (implies (and (fn-rtc-opened-clear j n uses) (posp n))
            (not (fn-rtc-kind-out-p :opened j 1 uses)))
-  :hints (("Goal" :expand ((fn-rtc-opened-clear j n uses)))))
+  :hints (("Goal" :expand ((fn-rtc-opened-clear j n uses))))))
 
 (defthm fn-rtc-opened-clear-rest
   (implies (and (fn-rtc-opened-clear j n uses) (posp n))
