@@ -203,16 +203,19 @@ DRIVER = r"""
 
 ;; r69-L1: no allocation per call beyond the entry's own.  A callback call
 ;; and a trapped inner call cons what the same body conses called plainly.
-;; sb-ext:get-bytes-consed advances as allocation regions close, so two
-;; measurements of the same per-call allocation differ by up to one GC page
-;; (hbox, 32 KiB pages: plain 3,175,392 against callback 3,208,128 over 100k
-;; calls, and callback 31,997,600 below plain 32,015,808 over 1M).  One page
-;; is the resolution; one extra word per call over 100k calls is 800,000.
 (defun consed (thunk)
+  ;; The least of three runs: sb-ext:get-bytes-consed moves as whole
+  ;; allocation regions close (sb-vm:gencgc-page-bytes: 32 KiB on hbox's
+  ;; and persvati's SBCL 2.6.8 x86-64, 64 KiB on the arm64 laptop), so one
+  ;; run can read a region boundary the calls did not cause (hbox, one run:
+  ;; plain 3,175,392, callback 3,208,128; the least of three: both
+  ;; 3,175,392).  An allocation per call shows in every run (100k calls x
+  ;; 16 octets is 1.6 MB).
   (funcall thunk)
-  (let ((before (sb-ext:get-bytes-consed)))
-    (funcall thunk)
-    (- (sb-ext:get-bytes-consed) before)))
+  (loop repeat 3
+        minimize (let ((before (sb-ext:get-bytes-consed)))
+                   (funcall thunk)
+                   (- (sb-ext:get-bytes-consed) before))))
 (defun fn-sub-plain (x y) (values (- x y) (list x y)))
 (compile 'fn-sub-plain)
 (let* ((sub (fnn-fixed-raw-callback 'fn-sub))
@@ -224,8 +227,8 @@ DRIVER = r"""
   (format t "consed per 100k: plain ~d callback ~d trapped-inner ~d~%"
           plain via-callback trapped-inner)
   (check (> plain 0))
-  (check (<= via-callback (+ plain sb-vm:gencgc-page-bytes)))
-  (check (<= trapped-inner (+ plain sb-vm:gencgc-page-bytes))))
+  (check (<= via-callback (+ plain 4096)))
+  (check (<= trapped-inner (+ plain 4096))))
 
 ;; Every host call outside an extent faults, however spelled.
 (check (trapped-p (lambda () (fn-sub 7 2))))                                 ; literal call
