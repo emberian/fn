@@ -157,11 +157,19 @@
             (mv fn-rtc-st (if refused nil op) n)))
       (mv fn-rtc-st nil 0))))
 
+; The completion the host delivers for its send: a contract completion by its guard (an operation
+; number, the instance, and an outcome the contract reads), checked at the host's call.
+(defun fn-hld-sent-event (id inc op outcome)
+  (declare (xargs :guard (and (natp id) (natp inc) (natp op) (fn-rtc-outcomep outcome))))
+  (list :send id inc op outcome))
+
 ; The socket took the send's octets: complete it with OUTCOME, (:done n) or (:failed reason).
 (defun fn-hld-sent (id inc op outcome fn-rtc-st)
-  (declare (xargs :stobjs fn-rtc-st :guard-hints (("Goal" :in-theory (disable fn-hll-x-step* fn-rtc-x-request fn-hld-settle)))))
+  (declare (xargs :stobjs fn-rtc-st
+                  :guard (and (natp id) (natp inc) (natp op) (fn-rtc-outcomep outcome))
+                  :guard-hints (("Goal" :in-theory (disable fn-hll-x-step* fn-rtc-x-request fn-hld-settle)))))
   (mv-let (fn-rtc-st acts refused cost)
-    (fn-hll-x-step* (list :send id inc op outcome) 1 fn-rtc-st)
+    (fn-hll-x-step* (fn-hld-sent-event id inc op outcome) 1 fn-rtc-st)
     (declare (ignore refused cost))
     (fn-hld-settle (true-list-fix acts) (fn-hld-fuel fn-rtc-st) fn-rtc-st)))
 

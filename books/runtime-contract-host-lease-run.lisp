@@ -533,7 +533,7 @@
                   (fn-rtc-live-p id inc s3)
                   (not (fn-rtc-kind-out-p :send id inc (fn-rtc-uses s3)))
                   (equal (fn-rtc-config s3) (fn-rtc-config q)))))
-  :hints (("Goal" :in-theory (union-theories '(fn-hld-sent fn-hlr-settle-frames fn-hlr-xstep-frames fn-hlr-xstep-send fn-hld-x-step*-keeps-invp fn-hld-settle-keeps-invp
+  :hints (("Goal" :in-theory (union-theories '(fn-hld-sent fn-hld-sent-event fn-hlr-settle-frames fn-hlr-xstep-frames fn-hlr-xstep-send fn-hld-x-step*-keeps-invp fn-hld-settle-keeps-invp
                                                fn-hlr-benign-tlf fn-hld-mv-nth-0-cons fn-hlr-mv-nth-1-cons fn-rtc-get-of-cons car-cons cdr-cons (:e fn-rtc-get) (:e zp) (:e nfix) zp nfix natp
                                                (:e equal) (:e member-equal) member-equal (:e member-eq) member-eq fn-hlr-live-status fn-hlr-live-via-slot)
                                              (set-difference-theories (theory 'minimal-theory) '(mv-nth))))))

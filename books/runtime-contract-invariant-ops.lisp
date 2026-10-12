@@ -1192,10 +1192,10 @@
                      (fn-rtc-pool-okp i (cons b (cdr pool))
                        (fn-rtc-with-uses (fn-rtc-remove-use key (fn-rtc-uses s)) s)))))))
 
-(defthm fn-rtc-octets-n-properties
+(local (defthm fn-rtc-octets-n-properties
   (implies (fn-rtc-octets-n-p data n)
            (and (fn-cbor-octet-listp data) (equal (len data) (nfix n))))
-  :hints (("Goal" :induct (fn-rtc-octets-n-p data n))))
+  :hints (("Goal" :induct (fn-rtc-octets-n-p data n)))))
 
 (defthm fn-rtc-delivered-in-data
   (implies (and (member-eq (fn-rtc-get 0 u) *fn-rtc-in-kinds*)
