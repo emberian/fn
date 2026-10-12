@@ -636,9 +636,10 @@ class NewFixtureTests(unittest.TestCase):
         self.assertEqual(report["gates"]["fetched_policy"]["rc"], 7)
 
     def test_cmd_gate_preserves_names_order_output_and_return_codes(self):
-        # Literal order from 9fe40c34a, independent of this implementation.
+        # Literal order from 9fe40c34a plus b-cost-gate's two gates after ascii,
+        # independent of this implementation.
         baseline_gates = ("ancestor", "ledger", "current_view", "main_last", "keystone", "host_load", "ascii",
-                          "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
+                          "cost_obligations", "book_roots", "box_step", "lock_delta", "baseline", "premise_baseline", "secrets", "unit", "image")
         self.assertEqual(train.GATES, baseline_gates)
         for rc in (0, 7):
             p = self.train("gate", extra_env={"STUB_RC_ledger_check": str(rc)})
@@ -650,6 +651,7 @@ class NewFixtureTests(unittest.TestCase):
             self.assertIn(summary + "\n", p.stdout)
             self.assertEqual(self.stub_log(), [
                 "ledger --check", "current_view --check", "main_last_check ", "keystone_emit --check",
+                "cost_obligations --check", "book_roots_check ",
                 "lock_discipline_check --json",
                 "lock_discipline_check --json", "test_ledger ", "test_keystone_emit ",
                 "test_keystone_critical ", "test_train ", "test_farm "])
