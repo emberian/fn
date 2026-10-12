@@ -476,16 +476,68 @@
 
 ; Total ID collectors for mark construction; the model collectors have
 ; obligation-list guards and cannot run on arbitrary refresh inputs.
-(defun fn-prc-pin-ids (pins)
-  (declare (xargs :guard t))
+; Like retention's collectors, keep the logical recursion but execute a
+; reverse-accumulator walk. No frame is retained for each collected ID.
+(local
+ (defthm fn-prc-revappend-revappend
+   (equal (revappend (revappend x y) z)
+          (revappend y (append x z)))))
+(local
+ (defthm fn-prc-append-nil-when-true-listp
+   (implies (true-listp x) (equal (append x nil) x))))
+(local
+ (defthm fn-prc-true-listp-of-revappend
+   (implies (true-listp y) (true-listp (revappend x y)))))
+
+(defun fn-prc-pin-ids-rev (pins acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp pins)
-      (cons (fn-retain-obligation-id (car pins)) (fn-prc-pin-ids (cdr pins)))
-    nil))
-(defun fn-prc-release-ids (releases)
-  (declare (xargs :guard t))
+      (fn-prc-pin-ids-rev (cdr pins)
+                         (cons (fn-retain-obligation-id (car pins)) acc))
+    acc))
+(defun fn-prc-pin-ids (pins)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp pins)
+           (cons (fn-retain-obligation-id (car pins)) (fn-prc-pin-ids (cdr pins)))
+         nil)
+       :exec (reverse (fn-prc-pin-ids-rev pins nil))))
+(encapsulate ()
+ (local
+  (defthm fn-prc-pin-ids-rev-is-revappend
+    (equal (fn-prc-pin-ids-rev pins acc)
+           (revappend (fn-prc-pin-ids pins) acc))
+    :hints (("Goal" :in-theory (disable fn-retain-obligation-id)))))
+ (local
+  (defthm fn-prc-true-listp-of-pin-ids
+    (true-listp (fn-prc-pin-ids pins))))
+ (verify-guards fn-prc-pin-ids
+   :hints (("Goal" :in-theory (disable fn-retain-obligation-id)))))
+
+(defun fn-prc-release-ids-rev (releases acc)
+  (declare (xargs :guard (true-listp acc)))
   (if (consp releases)
-      (cons (fn-retain-release-id (car releases)) (fn-prc-release-ids (cdr releases)))
-    nil))
+      (fn-prc-release-ids-rev (cdr releases)
+                         (cons (fn-retain-release-id (car releases)) acc))
+    acc))
+(defun fn-prc-release-ids (releases)
+  (declare (xargs :guard t :verify-guards nil))
+  (mbe :logic
+       (if (consp releases)
+           (cons (fn-retain-release-id (car releases)) (fn-prc-release-ids (cdr releases)))
+         nil)
+       :exec (reverse (fn-prc-release-ids-rev releases nil))))
+(encapsulate ()
+ (local
+  (defthm fn-prc-release-ids-rev-is-revappend
+    (equal (fn-prc-release-ids-rev releases acc)
+           (revappend (fn-prc-release-ids releases) acc))
+    :hints (("Goal" :in-theory (disable fn-retain-release-id)))))
+ (local
+  (defthm fn-prc-true-listp-of-release-ids
+    (true-listp (fn-prc-release-ids releases))))
+ (verify-guards fn-prc-release-ids
+   :hints (("Goal" :in-theory (disable fn-retain-release-id)))))
 (defthm fn-prc-pin-ids-is-obligation-ids
   (equal (fn-prc-pin-ids pins) (fn-retain-obligation-ids pins)))
 (defthm fn-prc-release-ids-is-release-ids
@@ -1286,7 +1338,10 @@
 (defun fn-prc-refresh (carry ledger)
   (declare (xargs :guard t))
   (if (and (consp carry) (equal (car carry) ledger))
-      carry
+      ; Reuse the trie but anchor the executable carry to this exact ledger
+      ; object. Logical equality still returns CARRY; raw EQ on lists is
+      ; outside ACL2's EQ guard, so always allocate the one carry cons.
+      (mbe :logic carry :exec (cons ledger (cdr carry)))
     (mv-let (ok trie)
       (if (consp carry) (fn-prc-delta carry ledger) (mv nil nil))
       (if ok

@@ -684,3 +684,33 @@
           (not (fn-prc-carryp (cons *d14-prct-l2* walk-trie)))))))))
 ))
 ; END D14 GENERATED T-MUT
+
+; Phase 3: total collectors preserve order even on malformed ledger fields.
+(with-guard-checking-event
+ :none
+ (assert-event
+  (and (equal (fn-prc-pin-ids '(("a1" . 7) 3 ("b2") . end)) '("a1" nil "b2"))
+       (equal (fn-prc-release-ids '(("c3") 3 ("d4" . 7) . end)) '("c3" nil "d4"))
+       (equal (fn-prc-pin-ids (fn-retain-pins *d14-prct-l1*))
+              (fn-retain-obligation-ids (fn-retain-pins *d14-prct-l1*)))
+       (equal (fn-prc-release-ids (fn-retain-releases *d14-prct-l1*))
+              (fn-retain-release-ids (fn-retain-releases *d14-prct-l1*))))))
+; Re-anchoring is value-preserving and keeps the old trie. Physical EQ of
+; a separately allocated equal ledger is checked by build/d14/phase3-raw.lsp.
+(assert-event
+ (let* ((ledger (fn-retain-make-state
+                 (fn-retain-capacity *d14-prct-l1*) (fn-retain-reserved *d14-prct-l1*)
+                 (fn-retain-pins *d14-prct-l1*) (fn-retain-releases *d14-prct-l1*)))
+        (refreshed (fn-prc-refresh *d14-prct-c1* ledger)))
+   (and (equal refreshed *d14-prct-c1*)
+        (equal (car refreshed) ledger)
+        (equal (cdr refreshed) (cdr *d14-prct-c1*))
+        (fn-prc-carryp refreshed))))
+(assert-event
+ (and (equal (guard 'fn-prc-pin-ids nil (w state)) '(quote t))
+      (equal (guard 'fn-prc-release-ids nil (w state)) '(quote t))
+      (eq (symbol-class 'fn-prc-pin-ids (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-release-ids (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-pin-ids-rev (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-release-ids-rev (w state)) :common-lisp-compliant)
+      (eq (symbol-class 'fn-prc-refresh (w state)) :common-lisp-compliant)))
