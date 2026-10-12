@@ -1,0 +1,16 @@
+{
+ "category": "proofs",
+ "file": "books/reclaim-fold-contexts-live.lisp",
+ "id": "RFCL-OWNER-RETAIN-LIFT",
+ "note": "Retired by A's owner-retain-state transition-preservation landing, which adds fn-rfcl-okp to fn-owner-retain-statep's carry using LV-1b, LV-2h, LV-2k, LV-3, LV-4, LV-5 and LV-6. Not yet scheduled: A18 (2026-10-12) lists it after the host lease, unstarted.",
+ "notes": [
+  "10-12 08:26 Retired by A's owner-retain-state transition-preservation landing, which adds fn-rfcl-okp to fn-owner-retain-statep's carry at completed owner quanta (the intermediate staged state between a prepare and its seal/abort does not hold it; LV-2c/LV-3c cover a crash there). It must also establish LV-1b's supplied premise on the checkpoint-open path: checkpoint prefix contexts, the suffix worker seeded from fn-sco-identity, arena loading and handle validity (review F4, build/lanes/codex-r-l-rfcl/build/codex/l-rfcl-review/FINDINGS.md); the full-replay path reaches it through the open keystone. Not yet scheduled: A18 (2026-10-12) lists it after the host lease, unstarted."
+ ],
+ "owner": "builder-L",
+ "severity": "medium",
+ "slice": "storage",
+ "source": "coordinator ruling (a) on RECLAIM-FOLD-CONTEXTS-CARRIED part 2 (2026-10-12)",
+ "state": "open",
+ "title": "Named adapter: fn-rfcl-okp (books/reclaim-fold-contexts-live.lisp) is proved preserved at completed owner quanta (prepare+seal LV-2h/LV-3, prepare+abort LV-2k, the served deferred prepares LV-4e, io/finish/seal, and a valid crash at any point incl. the unsealed prepare interval LV-2c/LV-3c/LV-6) but is not yet a conjunct of fn-owner-retain-statep's carried relation, so the owner's running state is not proved to hold it at the reclaim capture",
+ "updated": "2026-10-12T12:26:29Z"
+}
