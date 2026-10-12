@@ -20,7 +20,8 @@ committed lane HEAD (ignoring dirty source edits) in an owned scratch worktree,
 runs the shared local gates, and prints the owed box commands. Its log is copied
 to the lane's build/lane-check/; --clean removes only that scratch worktree.
 The verdict names the dev SHA merged onto. A local PASS leaves the printed
-box gates owed.
+box gates owed. Inherited gates print NONE with their reason; their local
+box checks still run.
 
 Pipelined trains.  A second batch tree may start the next train from this
 train's integrate HEAD while this one waits on its image gate.  `push`
@@ -281,14 +282,22 @@ IMAGE_RUN_RECORD = "build/hbox-native/{label}.run"
 IMAGE_NEUTRAL = ("planning/", "docs/")
 
 
+# Actual image/build inputs. Integrator and checker Python tools are source
+# gates, not bytes an image is built from; the native builders remain inputs.
+IMAGE_INPUT_PATHS = (
+    "books/", "host/", "specs/", "tests/acl2/", "packaging/", "third_party/", "acl2-projects/",
+    "tools/extract/", "tools/profile/", "tools/runbooks/", "tools/build_",
+    "tools/native_", "tools/hbox_native.sh", "tools/proof_artifacts.py",
+    "tools/image_set.py", "Makefile", "VERSION",
+)
+
+
 def image_inputs_changed(paths: list[str]) -> list[str]:
     """The paths among PATHS that a native image is built from."""
-    def neutral(p: str) -> bool:
-        if p.startswith(IMAGE_NEUTRAL):
-            return True
-        q = Path(p)
-        return q.parts[0] == "tests" and len(q.parts) >= 2 and q.parts[1] != "acl2" and q.suffix == ".py"
-    return [p for p in paths if not neutral(p)]
+    return [p for p in paths if not p.startswith(IMAGE_NEUTRAL)
+            and not p.endswith(".md")
+            and any(p.startswith(rule) if rule.endswith(("/", "_")) else p == rule
+                    for rule in IMAGE_INPUT_PATHS)]
 
 
 # Paths a recorded image run's verdict does not depend on.  A record of an
@@ -784,6 +793,10 @@ def cmd_boxstep(t: Train, args) -> int:
     return 0
 
 
+def box_paths_changed(t: Train, source: str = "origin/dev") -> list[str]:
+    return git(t.root, "diff", "--name-only", source, "HEAD", "--", *BOX_PATHS).stdout.split()
+
+
 def _changed_roots(t: Train, prefix: str) -> list[str]:
     out = git(t.root, "diff", "--name-only", "--diff-filter=AM", "origin/dev", "HEAD", "--", prefix).stdout.split()
     return [p[:-5] for p in out if p.startswith(prefix + "/") and p.endswith(".lisp")]
@@ -900,24 +913,28 @@ def emit_remote_command(tree: str, envs: str, box: str, seed: str) -> str:
             f"{wrap + ' ' if wrap else ''}timeout {EMIT_TIMEOUT_SECONDS} sh -c {shlex.quote(body)}")
 
 
-def certify_command(t: Train, box: str) -> list[str]:
-    """The train's book selection and farm submit command, also used by lane-check."""
+def certify_selection(t: Train) -> dict:
+    """The train's changed inputs, affected roots and critical witnesses."""
     books = _changed_roots(t, "books")
     tests = _changed_roots(t, "tests/acl2")
-    # critical witness tests whose theorem closure changed: always, since a
-    # stale witness fails keystone_emit's critical gate (trains 52 and 55
-    # needed a hand certify of them)
     witnesses = _critical_witness_roots(t.root, books)
     added = _added_roots(t)
+    return {"books": books, "added": added,
+            "needed": bool(box_paths_changed(t) or added),
+            "roots": list(dict.fromkeys(["books/wire-export", *CERT_WORLD_BOOKS,
+                                          *books, *tests, *witnesses, *added]))}
+
+
+def certify_command(t: Train, box: str, selection: dict | None = None) -> list[str]:
+    """The train's farm submit command, also used by lane-check."""
+    selection = certify_selection(t) if selection is None else selection
+    added = selection["added"]
     if added:
         say(f"certify: {len(added)} root(s) new in the Makefile: " + ", ".join(added))
-    roots = list(dict.fromkeys(["books/wire-export", *CERT_WORLD_BOOKS, *books, *tests,
-                                *witnesses, *added]))
     argv = [PY, "tools/farm.py"]
-    # the affected closure: every Makefile root a changed book reaches
-    for b in books:
-        argv += ["--affected-by", b]
-    argv += ["--timeout-seconds", str(FARM_TIMEOUT_SECONDS), "submit", box, *roots]
+    for book in selection["books"]:
+        argv += ["--affected-by", book]
+    argv += ["--timeout-seconds", str(FARM_TIMEOUT_SECONDS), "submit", box, *selection["roots"]]
     return argv
 
 
@@ -1185,6 +1202,16 @@ def image_modules(changed: list[str]) -> dict[str, list[str]]:
             for m in modules:
                 need.setdefault(m, [])
                 need[m] += [h for h in hits if h not in need[m]]
+    return need
+
+
+def image_requirements(changed: list[str]) -> dict[str, list[str]]:
+    """Specialized modules plus the served differential for uncovered image inputs."""
+    need = image_modules(changed)
+    covered = {path for paths in need.values() for path in paths}
+    inputs = [path for path in image_inputs_changed(changed) if path not in covered]
+    if inputs:
+        need.setdefault("tests.test_native_served_differential", []).extend(inputs)
     return need
 
 
@@ -1518,17 +1545,21 @@ def _box_step_gate(t: Train) -> tuple[int, dict]:
         say(f"box_step: the recorded box step {box['sha'][:9]} is not an ancestor of HEAD; run `train.py boxstep BOX`")
         return 1, {'error': "box step not an ancestor", 'box_sha': box["sha"]}
     else:
-        changed = git(t.root, "diff", "--name-only", box["sha"], "HEAD", "--", *BOX_PATHS).stdout.split()
-        if changed:
-            say(f"box_step: {len(changed)} file(s) under {', '.join(BOX_PATHS)} changed since the box step at "
-                f"{box['sha'][:9]} (first: {changed[0]}); run `train.py boxstep BOX`")
-            return 1, {'error': "box paths changed since the box step", 'box_sha': box["sha"], 'changed': changed}
-        else:
-            local = {name: t.run(f"gate-box-{name}", [PY, *argv]) for name, argv in LOCAL_BOX_CHECKS}
-            rc = 0 if all(v == 0 for v in local.values()) else 1
-            say(f"box_step: inherits {box['sha'][:9]} ({box['box']}); local checks "
-                + ", ".join(f"{k}={v}" for k, v in local.items()))
-            return rc, {'inherits_from': box["sha"], 'box': box["box"], 'local_checks': local}
+        return box_step_inheritance(t, box["sha"], box["box"])
+
+
+def box_step_inheritance(t: Train, source: str, box: str) -> tuple[int, dict]:
+    changed = box_paths_changed(t, source)
+    if changed:
+        say(f"box_step: {len(changed)} file(s) under {', '.join(BOX_PATHS)} changed since the box step at "
+            f"{source[:9]} (first: {changed[0]}); run `train.py boxstep BOX`")
+        return 1, {'error': "box paths changed since the box step", 'box_sha': source, 'changed': changed}
+    else:
+        local = {name: t.run(f"gate-box-{name}", [PY, *argv]) for name, argv in LOCAL_BOX_CHECKS}
+        rc = 0 if all(v == 0 for v in local.values()) else 1
+        say(f"box_step: inherits {source[:9]} ({box}); local checks "
+            + ", ".join(f"{k}={v}" for k, v in local.items()))
+        return rc, {'inherits_from': source, 'box': box, 'local_checks': local}
 
 
 def _lock_delta_gate(t: Train) -> tuple[int, dict]:
@@ -1591,7 +1622,7 @@ def _unit_gate(t: Train) -> tuple[int, dict]:
 def _image_gate(t: Train) -> tuple[int, dict]:
     head, st = t.head(), t.load()
     files = changed_paths(t)
-    need = image_modules(files)
+    need = image_requirements(files)
     def changed_since(source: str) -> list[str] | None:
         diff = git(t.root, "diff", "--name-only", source, head, check=False)
         return diff.stdout.split() if diff.returncode == 0 else None
@@ -1711,27 +1742,30 @@ def lane_check_tree(t: Train, name: str, dev: str) -> Train:
     return scratch
 
 
-def lane_check_box_commands(t: Train) -> dict[str, str]:
-    """Commands to run later from the scratch tree; never launch a box here."""
-    commands = {"certify": shlex.join(["timeout", "3600", *certify_command(t, "hbox")])}
-    for name, command in EMIT_STEPS:
-        commands["box_" + name] = shlex.join([
-            "timeout", "3600", "sh", "tools/remote_check.sh", "hbox", "--no-dirty",
-            "--install-certs", "--cmd", command])
-    for name, command in (
-        ("reach", "python3 tools/reach_check.py --summary --strict"),
-        ("keystone_cert", shlex.join(GATE_COMMANDS["keystone"])),
-    ):
-        commands[name] = shlex.join([
-            "timeout", "3600", "sh", "tools/remote_check.sh", "hbox", "--no-dirty",
-            "--install-certs", "--cmd", command])
-    modules = sorted(image_modules(changed_paths(t)))
-    image = ["timeout", "7200", "sh", "tools/hbox_native.sh", "--box", "hbox"]
-    if not modules:
-        image += ["--build-only"]
-    image += [t.head(), *modules]
-    commands["image"] = shlex.join(image)
-    commands["extraction"] = f"timeout 7200 sh tools/extract/remote_check.sh {t.head()}"
+def lane_check_box_commands(t: Train, inheritance: tuple[int, dict]) -> dict[str, tuple[str, str]]:
+    """Shared train selections as BOX commands or NONE with their reason."""
+    selection = certify_selection(t)
+    commands = {"certify": ("BOX", shlex.join(["timeout", "3600", *certify_command(t, "hbox", selection)]))
+                if selection["needed"] else ("NONE", "no book changed")}
+    rc, record = inheritance
+    inherited = rc == 0
+    reason = f"box step inherits: no box paths changed since {record.get('inherits_from', '')}; local checks passed"
+    for name, command in (*EMIT_STEPS,
+                          ("reach", "python3 tools/reach_check.py --summary --strict"),
+                          ("keystone_cert", shlex.join(GATE_COMMANDS["keystone"]))):
+        gate = "box_" + name if name in dict(EMIT_STEPS) else name
+        commands[gate] = (("NONE", reason) if inherited else
+                          ("BOX", shlex.join(["timeout", "3600", "sh", "tools/remote_check.sh",
+                                             "hbox", "--no-dirty", "--install-certs", "--cmd", command])))
+    changed = changed_paths(t)
+    modules = sorted(image_requirements(changed))
+    if modules:
+        commands["image"] = ("BOX", shlex.join(["timeout", "7200", "sh", "tools/hbox_native.sh",
+                                                "--box", "hbox", t.head(), *modules]))
+    else:
+        commands["image"] = ("NONE", "no image input changed or native module obliged")
+    commands["extraction"] = (("BOX", f"timeout 7200 sh tools/extract/remote_check.sh {t.head()}")
+                              if image_inputs_changed(changed) else ("NONE", "no image input changed"))
     return commands
 
 
@@ -1800,6 +1834,8 @@ def _run_lane_check(t: Train, args, name: str, sha: str, source: Path,
     merged = run("merge", lambda: 0 if merge_one(scratch, scratch.load(), name, sha) else 1,
                  f"git merge --no-ff {sha}") == 0
     if merged:
+        inheritance = (1, {"error": "regen did not complete"})
+
         def regenerate() -> int:
             rc = cmd_regen(scratch, argparse.Namespace(label=None))
             if rc == 0:
@@ -1810,24 +1846,37 @@ def _run_lane_check(t: Train, args, name: str, sha: str, source: Path,
                           f"{PY} tools/train.py regen") == 0
         if regenerated:
             for gate in GATES:
-                if gate in ("box_step", "image"):
+                if gate == "image":
+                    continue
+                if gate == "box_step":
+                    with contextlib.redirect_stdout(transcript):
+                        try:
+                            inheritance = box_step_inheritance(scratch, dev, "origin/dev")
+                        except (TrainError, OSError) as error:
+                            say(str(error))
+                            inheritance = (1, {"error": str(error)})
+                    # Changed box paths owe the box step; a broken local
+                    # inheritance check is a gate failure as in cmd_gate.
+                    if not inheritance[1].get("changed"):
+                        report(gate, inheritance[0], f"{PY} tools/train.py gate")
                     continue
                 command = shlex.join(GATE_COMMANDS[gate]) if gate in GATE_COMMANDS else f"{PY} tools/train.py gate"
                 run(gate, lambda gate=gate: GATE_FUNCTIONS[gate](scratch)[0], command)
         with contextlib.redirect_stdout(transcript):
             try:
-                box = lane_check_box_commands(scratch)
+                box = lane_check_box_commands(scratch, inheritance)
             except (TrainError, OSError) as error:
                 say(str(error))
                 box = None
         if box is None:
             report("box_commands", 1)
         else:
-            for gate, command in box.items():
-                line = f"lane-check {gate}: BOX {command}"
+            for gate, (status, command) in box.items():
+                line = (f"lane-check {gate}: BOX {command}" if status == "BOX" else
+                        f"lane-check {gate}: NONE ({command})")
                 say(line)
                 transcript.write(line + "\n")
-            owed = len(box)
+            owed = sum(status == "BOX" for status, _ in box.values())
     verdict = f"lane-check verdict: {'FAIL' if failed else 'PASS'} ({owed} box gates owed) dev={dev}"
     transcript.write(verdict + "\n")
     log.write_text(transcript.getvalue())

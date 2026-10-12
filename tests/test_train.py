@@ -295,6 +295,15 @@ class TrainBase(unittest.TestCase):
     def head(self):
         return sh(self.work, "git", "rev-parse", "HEAD").stdout.strip()
 
+    def set_image(self, modules):
+        path = self.work / "build/train/integrate__t1.json"
+        st = json.loads(path.read_text()) if path.exists() else {"lanes": []}
+        st["image"] = {"source": self.head(), "box": "hbox", "dir": "/r",
+                       "modules": {m: {"rc": 0, "cases": {m + ".T.a": "ok"}} for m in modules}}
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(st))
+
+
 
 class LaneCheckTests(TrainBase):
     def check_lane(self, name, sha, *options, extra_env=None):
@@ -367,14 +376,17 @@ class LaneCheckTests(TrainBase):
         dev = self.origin_rev("dev")
         p = self.train("lane-check", str(self.seed))
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn("lane-check verdict: PASS (12 box gates owed)", p.stdout)
+        self.assertIn("lane-check verdict: PASS (0 box gates owed)", p.stdout)
         for name in train.GATES:
-            if name not in ("box_step", "image"):
+            if name != "image":
                 self.assertIn(f"lane-check {name}: PASS", p.stdout)
         for name in ("certify", "box_host_world", "reach", "keystone_cert", "image", "extraction"):
-            self.assertRegex(p.stdout, f"lane-check {name}: BOX timeout [0-9]+ ")
+            self.assertIn(f"lane-check {name}: NONE (", p.stdout)
         self.assertIn(f"dev={dev}", p.stdout)
-        self.assertIn("--build-only", p.stdout)
+        self.assertIn("lane-check certify: NONE (no book changed)", p.stdout)
+        self.assertNotIn(": BOX ", p.stdout)
+        for _, argv in train.LOCAL_BOX_CHECKS:
+            self.assertIn(Path(argv[0]).stem + " " + " ".join(argv[1:]), self.stub_log())
         self.assertNotIn("remote_check ", "\n".join(self.stub_log()))
         self.assertEqual(sh(self.seed, "git", "status", "--porcelain").stdout, before)
         self.assertEqual(self.origin_rev("dev"), dev)
@@ -401,7 +413,7 @@ class LaneCheckTests(TrainBase):
         self.assertEqual(sh(self.work, "git", "rev-parse", "origin/dev").stdout.strip(), old_dev)
         p = self.check_lane("reuse", sha)
         self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
-        self.assertIn(f"lane-check verdict: PASS (12 box gates owed) dev={dev}", p.stdout)
+        self.assertIn(f"lane-check verdict: PASS (0 box gates owed) dev={dev}", p.stdout)
         self.assertTrue((self.scratch("reuse") / "dev-event").is_file())
         self.assertEqual((self.scratch("reuse") / "planning/proofs.json").read_text().count("regen"), 1)
         p = self.check_lane("reuse", sha, "--clean")
@@ -431,6 +443,28 @@ class LaneCheckTests(TrainBase):
         self.assertEqual(modules, sorted(train.image_modules(["tools/build_native_host.sh"])))
         self.assertNotIn("--build-only", line)
 
+    def test_host_input_obliges_image_and_extraction_with_native_modules(self):
+        (self.seed / "host").mkdir(exist_ok=True)
+        sha = self.lane("host", {"host/owner-host.lisp": "(in-package \"ACL2\")\n"})
+        p = self.check_lane("host", sha)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        self.assertIn("lane-check certify: NONE (no book changed)", p.stdout)
+        self.assertIn("lane-check box_host_world: NONE (box step inherits:", p.stdout)
+        line = next(l for l in p.stdout.splitlines() if l.startswith("lane-check image: BOX"))
+        self.assertIn("tests.test_native_served_differential", line)
+        self.assertNotIn("--build-only", line)
+        self.assertIn("lane-check extraction: BOX", p.stdout)
+        self.assertIn("lane-check verdict: PASS (2 box gates owed)", p.stdout)
+
+    def test_local_box_check_failure_blocks_inheritance_and_verdict(self):
+        sha = self.lane("local-red", {"tools/x.py": "x\n"})
+        p = self.check_lane("local-red", sha, extra_env={"STUB_RC_host_check_world": "7"})
+        self.assertEqual(p.returncode, 1, p.stdout + p.stderr)
+        self.assertIn("lane-check box_step: FAIL", p.stdout)
+        self.assertIn("lane-check box_host_world: BOX", p.stdout)
+        self.assertNotIn("NONE (box step inherits:", p.stdout)
+        self.assertIn("lane-check verdict: FAIL", p.stdout)
+
     def test_box_certify_uses_the_train_affected_books_and_added_roots(self):
         manifest_stub = STUB.replace('sys.exit(int(os.environ.get(',
             'if name == "keystone_emit" and mode == "write-manifest":\n'
@@ -448,6 +482,10 @@ class LaneCheckTests(TrainBase):
         self.assertIn("books/new-root", line)
         self.assertIn("books/wire-export books/image-world books/image-world-dtn books/a", line)
         self.assertNotIn("--lane", line)
+        self.assertIn("lane-check box_interface_emit: BOX", p.stdout)
+        self.assertIn("lane-check image: BOX", p.stdout)
+        self.assertIn("tests.test_native_served_differential", p.stdout)
+        self.assertIn("lane-check extraction: BOX", p.stdout)
 
     def test_cmd_gate_preserves_names_order_output_and_return_codes(self):
         for rc in (0, 7):
@@ -1003,6 +1041,8 @@ class BoxStepTests(TrainBase):
         self.merge({"books/b.lisp": "changed\n"})
         self.assertNotEqual(self.train("gate").returncode, 0)
         before = self.head()
+        # Keep the image input's differential green while isolating the box step.
+        self.set_image(["tests.test_native_served_differential"])
         b = self.train("boxstep", "persvati", extra_env={"STUB_EMIT": "emitted"})
         self.assertEqual(b.returncode, 0, b.stdout + b.stderr)
         self.assertEqual(self.head(), before, "the box step commits nothing")
@@ -1027,6 +1067,7 @@ class BoxStepTests(TrainBase):
         (self.seed / "books").mkdir(exist_ok=True)
         (self.seed / "specs").mkdir(exist_ok=True)
         self.merge({"books/b.lisp": "first\n"})
+        self.set_image(["tests.test_native_served_differential"])
         self.assertEqual(self.train("boxstep", "persvati").returncode, 0)
         first = self.head()
         sh(self.work, "git", "checkout", "-q", "-b", "integrate/t2", "origin/dev")
@@ -1777,6 +1818,21 @@ class ImageModuleTests(unittest.TestCase):
         self.assertEqual(train.image_modules(["host/owner-host.lisp", "tools/train.py",
                                               "books/heap-figure-tests.lisp", "packaging/fn.md"]), {})
 
+    def test_image_inputs_and_requirements_are_shared_with_lane_check(self):
+        tools = ["tools/train.py", "tools/ledger.py", "tools/x.py", "tests/test_train.py"]
+        self.assertEqual(train.image_inputs_changed(tools), [])
+        self.assertEqual(train.image_requirements(tools), {})
+        for path in ("host/owner-host.lisp", "books/a.lisp", "tests/acl2/a-tests.lisp", "VERSION"):
+            with self.subTest(path=path):
+                self.assertEqual(train.image_inputs_changed([path]), [path])
+                self.assertEqual(train.image_requirements([path]),
+                                 {"tests.test_native_served_differential": [path]})
+        self.assertEqual(train.image_requirements(["tools/build_native_host.sh"]),
+                         train.image_modules(["tools/build_native_host.sh"]))
+        mixed = train.image_requirements(["host/owner-host.lisp", "books/store-maintenance-reserve.lisp"])
+        self.assertEqual(mixed["tests.test_native_served_differential"], ["host/owner-host.lisp"])
+        self.assertEqual(mixed["tests.test_native_capacity_vector"], ["books/store-maintenance-reserve.lisp"])
+
     def test_parse_reads_rc_and_cases_and_keeps_a_caseless_crash(self):
         text = "\n".join([
             "RC tests.test_native_owner 0",
@@ -1949,14 +2005,6 @@ class ImageGateTests(TrainBase):
         (self.work / "packaging").mkdir(exist_ok=True)
         (self.work / "packaging/launcher-decide.sh").write_text("# decide\n")
         self.commit(self.work, "launcher change")
-
-    def set_image(self, modules):
-        path = self.work / "build/train/integrate__t1.json"
-        st = json.loads(path.read_text()) if path.exists() else {"lanes": []}
-        st["image"] = {"source": self.head(), "box": "hbox", "dir": "/r",
-                       "modules": {m: {"rc": 0, "cases": {m + ".T.a": "ok"}} for m in modules}}
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(st))
 
     def gate(self):
         g = self.train("gate")
