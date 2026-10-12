@@ -128,6 +128,7 @@
 (include-book "../../books/heap-open-nursery")
 (include-book "../../books/send-progress")
 (include-book "../../books/send-window")
+(include-book "../../books/runtime-contract-host-lease")
 (include-book "../../books/idle-collection")
 (include-book "../../books/heap-reservation")
 (include-book "../../books/heap-command")
